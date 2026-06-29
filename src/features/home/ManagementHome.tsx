@@ -84,10 +84,10 @@ export function ManagementHome() {
         </motion.div>
 
         <div className="grid grid-cols-4 gap-2">
-          <StatTile icon={<Phone size={15} />} value={totalCalls} label="تماس‌ها" trend={8} />
-          <StatTile icon={<Target size={15} />} value={`${toFa(avgConversion)}٪`} label="تبدیل" trend={4} tone="secondary" />
-          <StatTile icon={<Flame size={15} />} value={hotLeads} label="لید داغ" trend={6} tone="accent" />
-          <StatTile icon={<AlertTriangle size={15} />} value={overdue} label="عقب‌افتاده" trend={-3} tone="warning" />
+          <StatTile variant="compact" icon={<Phone size={15} />} value={totalCalls} label="تماس‌ها" trend={8} />
+          <StatTile variant="compact" icon={<Target size={15} />} value={`${toFa(avgConversion)}٪`} label="تبدیل" trend={4} tone="secondary" />
+          <StatTile variant="compact" icon={<Flame size={15} />} value={hotLeads} label="لید داغ" trend={6} tone="accent" />
+          <StatTile variant="compact" icon={<AlertTriangle size={15} />} value={overdue} label="عقب‌افتاده" trend={-3} tone="warning" />
         </div>
 
         <section>

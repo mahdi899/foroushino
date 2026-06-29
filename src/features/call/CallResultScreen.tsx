@@ -260,17 +260,27 @@ function SuccessOverlay({
           className="mt-7 w-full rounded-3xl bg-neutral-50 p-4 border border-border/60"
         >
           <p className="mb-3 text-center text-xs font-bold text-neutral-400">سرنخ بعدی پیشنهادی</p>
-          <div className="flex items-center gap-3">
-            <Avatar id={next.id} first={next.firstName} last={next.lastName} src={next.avatar} size={48} ring />
-            <div className="flex-1">
-              <p className="text-sm font-extrabold text-neutral-900">
+          <div className="flex items-center justify-between gap-3">
+            <Avatar
+              id={next.id}
+              first={next.firstName}
+              last={next.lastName}
+              src={next.avatar}
+              size={48}
+              ring
+              className="shrink-0"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-extrabold text-neutral-900">
                 {next.firstName} {next.lastName}
               </p>
-              <p className="ltr-nums text-xs font-bold text-primary-600 tabular-nums">
-                {formatPhone(next.phone)}
-              </p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <ContactStatusBadge temperature={next.temperature} size="sm" />
+                <p className="ltr-nums text-xs font-bold text-primary-600 tabular-nums">
+                  {formatPhone(next.phone)}
+                </p>
+              </div>
             </div>
-            <ContactStatusBadge temperature={next.temperature} size="sm" />
           </div>
         </motion.div>
       )}

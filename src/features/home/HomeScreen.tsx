@@ -47,13 +47,13 @@ export function HomeScreen() {
           <div className="relative flex items-center gap-4">
             <div className="min-w-0 flex-1">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-bold backdrop-blur-sm">
-                <Sparkles size={13} className="text-amber-200" />
+                <Sparkles size={13} className="text-emerald-200" />
                 آماده فروش
               </span>
 
               <h2 className="mt-3 text-[22px] font-black leading-[1.25]">
                 تماس بعدی{' '}
-                <span className="bg-gradient-to-l from-amber-200 to-white bg-clip-text text-transparent">
+                <span className="bg-gradient-to-l from-emerald-200 to-white bg-clip-text text-transparent">
                   آماده‌ست
                 </span>
               </h2>
@@ -72,7 +72,7 @@ export function HomeScreen() {
                     initial={{ width: 0 }}
                     animate={{ width: `${goalPct}%` }}
                     transition={{ duration: 0.9, ease: 'easeOut', delay: 0.15 }}
-                    className="h-full rounded-full bg-gradient-to-l from-amber-300 via-white to-emerald-100 shadow-[0_0_10px_rgba(255,255,255,0.35)]"
+                    className="h-full rounded-full bg-gradient-to-l from-emerald-200 via-white to-emerald-100 shadow-[0_0_10px_rgba(255,255,255,0.35)]"
                   />
                 </div>
               </div>

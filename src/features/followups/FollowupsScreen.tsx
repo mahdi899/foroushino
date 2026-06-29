@@ -35,11 +35,24 @@ const kindIcon: Record<FollowupKind, LucideIcon> = {
   reminder: Bell,
   meeting: CalendarDays,
 }
-const kindTone: Record<FollowupKind, 'primary' | 'secondary' | 'accent' | 'success'> = {
-  call: 'success',
-  message: 'secondary',
-  reminder: 'accent',
-  meeting: 'primary',
+
+const kindTheme: Record<FollowupKind, { accent: string; actionBtn: string }> = {
+  call: {
+    accent: 'bg-success-500',
+    actionBtn: 'bg-success-50 text-success-600',
+  },
+  message: {
+    accent: 'bg-secondary-500',
+    actionBtn: 'bg-secondary-50 text-secondary-600',
+  },
+  reminder: {
+    accent: 'bg-accent-500',
+    actionBtn: 'bg-accent-50 text-accent-600',
+  },
+  meeting: {
+    accent: 'bg-primary-500',
+    actionBtn: 'bg-primary-50 text-primary-600',
+  },
 }
 
 export function FollowupsScreen() {
@@ -222,59 +235,85 @@ function FollowupCard({
   onCall: () => void
 }) {
   const Icon = kindIcon[followup.kind]
+  const theme = kindTheme[followup.kind]
+
   return (
     <motion.div
-      initial={{ opacity: 0, x: 12 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.05 }}
-      className="flex items-stretch gap-3"
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04 }}
+      className={cn(
+        'relative flex items-center gap-2.5 overflow-hidden rounded-2xl border bg-surface py-2.5 pl-2.5 pr-3 shadow-card',
+        overdue ? 'border-error-200/60' : 'border-border/50',
+      )}
     >
-      <div className="flex w-12 shrink-0 flex-col items-center">
-        <span className={cn('text-[11px] font-extrabold tabular-nums', overdue ? 'text-error-500' : 'text-neutral-500')}>
-          {formatTime(new Date(followup.dueAt))}
-        </span>
-        <button
-          onClick={onCall}
-          className={cn(
-            'mt-1.5 flex h-9 w-9 items-center justify-center rounded-full',
-            overdue ? 'bg-error-50 text-error-500' : 'bg-primary-50 text-primary-600',
-          )}
-        >
-          <Icon size={16} />
-        </button>
-      </div>
+      <div
+        className={cn(
+          'absolute inset-y-2.5 right-0 w-[3px] rounded-l-full',
+          overdue ? 'bg-error-500' : theme.accent,
+        )}
+      />
+
+      <span
+        className={cn(
+          'w-9 shrink-0 text-center text-[11px] font-extrabold tabular-nums leading-none',
+          overdue ? 'text-error-600' : 'text-neutral-500',
+        )}
+      >
+        {formatTime(new Date(followup.dueAt))}
+      </span>
 
       <button
+        type="button"
         onClick={onOpen}
-        className="flex flex-1 items-center gap-3 rounded-2xl bg-surface p-3 text-right shadow-card border border-border/60"
+        className="flex min-w-0 flex-1 items-center gap-2.5 text-right"
       >
-        <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={42} />
+        <Avatar
+          id={lead.id}
+          first={lead.firstName}
+          last={lead.lastName}
+          src={lead.avatar}
+          size={36}
+        />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[14px] font-extrabold text-neutral-900">
+          <p className="truncate text-[13px] font-extrabold leading-tight text-neutral-900">
             {lead.firstName} {lead.lastName}
           </p>
-          <p className="truncate text-[11px] font-bold text-neutral-400">{followup.title}</p>
-          <div className="mt-1.5 flex items-center gap-1.5">
-            <Badge tone={kindTone[followup.kind]} size="sm">
-              {followupKindLabels[followup.kind]}
-            </Badge>
+          <p className="truncate text-[11px] font-bold leading-tight text-neutral-400">
+            {followup.title}
             {(overdue || followup.priority === 3) && (
-              <Badge tone={overdue ? 'error' : 'hot'} size="sm">
+              <span className={cn(overdue ? 'text-error-500' : 'text-hot-500')}>
+                {' · '}
                 {overdue ? 'عقب‌افتاده' : 'اولویت بالا'}
-              </Badge>
+              </span>
             )}
-          </div>
+          </p>
         </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onComplete()
-          }}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-success-50 text-success-600"
-        >
-          <Check size={18} />
-        </button>
       </button>
+
+      <div className="flex shrink-0 items-center gap-1">
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.9 }}
+          onClick={onCall}
+          aria-label={`${followupKindLabels[followup.kind]} با ${lead.firstName}`}
+          className={cn(
+            'flex h-8 w-8 items-center justify-center rounded-lg',
+            overdue ? 'bg-error-50 text-error-600' : theme.actionBtn,
+          )}
+        >
+          <Icon size={15} strokeWidth={2.25} />
+        </motion.button>
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.9 }}
+          onClick={onComplete}
+          aria-label="علامت‌گذاری انجام‌شده"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-success-50 hover:text-success-600"
+        >
+          <Check size={16} strokeWidth={2.25} />
+        </motion.button>
+      </div>
     </motion.div>
   )
 }

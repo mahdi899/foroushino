@@ -13,6 +13,7 @@ import { BottomNav } from '@/components/layout/BottomNav'
 import { RoleSwitcher } from '@/components/layout/RoleSwitcher'
 import { QuickActionSheet } from '@/components/layout/QuickActionSheet'
 import { ToastHost } from '@/components/ui/Toast'
+import { cn } from '@/lib/cn'
 
 import { SplashScreen } from '@/features/auth/SplashScreen'
 import { OnboardingScreen } from '@/features/auth/OnboardingScreen'
@@ -44,6 +45,7 @@ function Shell() {
   const [fabOpen, setFabOpen] = useState(false)
 
   const showNav = isAuthed && NAV_ROUTES.includes(location.pathname)
+  const lockScroll = location.pathname.startsWith('/dialer/')
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, 0)
@@ -51,9 +53,13 @@ function Shell() {
 
   return (
     <main className="relative h-full overflow-hidden">
-      <div ref={scrollRef} className="h-full overflow-y-auto no-scrollbar">
-        <AnimatePresence mode="wait">
-          <Routes location={location} key={location.pathname.split('/').slice(0, 2).join('/')}>
+      <div
+        ref={scrollRef}
+        className={cn('h-full no-scrollbar', lockScroll ? 'overflow-hidden' : 'overflow-y-auto')}
+      >
+        <div className={lockScroll ? 'h-full' : 'min-h-full'}>
+          <AnimatePresence mode="wait">
+            <Routes location={location} key={location.pathname.split('/').slice(0, 2).join('/')}>
             <Route path="/splash" element={<SplashScreen />} />
             <Route path="/onboarding" element={<OnboardingScreen />} />
             <Route path="/login" element={<LoginScreen />} />
@@ -73,6 +79,7 @@ function Shell() {
             <Route path="*" element={<Navigate to={isAuthed ? '/home' : '/splash'} replace />} />
           </Routes>
         </AnimatePresence>
+        </div>
       </div>
 
       {showNav && (

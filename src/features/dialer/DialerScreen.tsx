@@ -33,6 +33,7 @@ export function DialerScreen() {
   const [speaker, setSpeaker] = useState(false)
   const [sheet, setSheet] = useState<null | 'note' | 'keypad'>(null)
   const [note, setNote] = useState('')
+  const [scriptOpen, setScriptOpen] = useState(false)
 
   useEffect(() => {
     const t = setInterval(() => setSeconds((s) => s + 1), 1000)
@@ -54,9 +55,9 @@ export function DialerScreen() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex h-full flex-col bg-gradient-to-b from-primary-50/60 via-background to-background"
+      className="flex h-full flex-col overflow-hidden bg-gradient-to-b from-primary-50/60 via-background to-background"
     >
-      <div className="flex items-center justify-between px-4 pt-[calc(16px+var(--safe-top))]">
+      <div className="flex shrink-0 items-center justify-between px-4 pt-[calc(16px+var(--safe-top))]">
         <button
           onClick={hangUp}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-surface shadow-card text-neutral-500"
@@ -72,73 +73,101 @@ export function DialerScreen() {
         </button>
       </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center">
-        <div className="relative flex items-center justify-center">
-          <span className="absolute h-40 w-40 animate-pulse-ring rounded-full bg-primary-400/20" />
-          <span className="absolute h-32 w-32 rounded-full bg-primary-400/10" />
-          <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={120} ring />
+      {scriptOpen ? (
+        <div className="flex shrink-0 items-center gap-3 px-5 py-3">
+          <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={52} ring />
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-base font-black text-neutral-900">
+              {lead.firstName} {lead.lastName}
+            </h2>
+            <div className="mt-1 flex items-center gap-2">
+              <ContactStatusBadge temperature={lead.temperature} />
+              <span className="flex items-center gap-1 text-xs font-bold text-success-600 tabular-nums">
+                <span className="h-1.5 w-1.5 rounded-full bg-success-500" />
+                {formatDuration(seconds)}
+              </span>
+            </div>
+          </div>
         </div>
-        <h2 className="mt-6 text-2xl font-black text-neutral-900">
-          {lead.firstName} {lead.lastName}
-        </h2>
-        <p className="ltr-nums mt-1.5 text-base font-bold text-neutral-500 tabular-nums">
-          {formatPhone(lead.phone)}
-        </p>
-        <div className="mt-3 flex items-center gap-2">
-          <ContactStatusBadge temperature={lead.temperature} />
-          <span className="flex items-center gap-1 text-sm font-bold text-success-600 tabular-nums">
-            <span className="h-1.5 w-1.5 rounded-full bg-success-500" />
-            {formatDuration(seconds)}
-          </span>
-        </div>
-      </div>
+      ) : (
+        <>
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4">
+            <div className="relative flex items-center justify-center">
+              <span className="absolute h-36 w-36 animate-pulse-ring rounded-full bg-primary-400/20" />
+              <span className="absolute h-28 w-28 rounded-full bg-primary-400/10" />
+              <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={108} ring />
+            </div>
+            <h2 className="mt-5 text-xl font-black text-neutral-900">
+              {lead.firstName} {lead.lastName}
+            </h2>
+            <p className="ltr-nums mt-1 text-sm font-bold text-neutral-500 tabular-nums">
+              {formatPhone(lead.phone)}
+            </p>
+            <div className="mt-2.5 flex items-center gap-2">
+              <ContactStatusBadge temperature={lead.temperature} />
+              <span className="flex items-center gap-1 text-sm font-bold text-success-600 tabular-nums">
+                <span className="h-1.5 w-1.5 rounded-full bg-success-500" />
+                {formatDuration(seconds)}
+              </span>
+            </div>
+          </div>
 
-      <div className="px-8">
-        <div className="grid grid-cols-3 gap-y-5 gap-x-4">
-          <ControlButton
-            icon={muted ? <MicOff size={22} /> : <Mic size={22} />}
-            label="بی‌صدا"
-            active={muted}
-            onClick={() => { haptic('light'); setMuted((v) => !v) }}
-          />
-          <ControlButton icon={<Grid3x3 size={22} />} label="صفحه کلید" onClick={() => setSheet('keypad')} />
-          <ControlButton icon={<NotebookPen size={22} />} label="یادداشت" onClick={() => setSheet('note')} />
-          <ControlButton
-            icon={<BookOpen size={22} />}
-            label="اسکریپت"
-            tone="secondary"
-            onClick={() => {
-              const el = document.getElementById('dialer-script')
-              el?.scrollIntoView({ behavior: 'smooth' })
-            }}
-          />
-          <ControlButton
-            icon={<Volume2 size={22} />}
-            label="بلندگو"
-            active={speaker}
-            onClick={() => { haptic('light'); setSpeaker((v) => !v) }}
-          />
-          <ControlButton
-            icon={<UserPlus size={22} />}
-            label="پیگیری بعدی"
-            tone="accent"
-            onClick={() => navigate(`/call-result/${lead.id}`)}
-          />
-        </div>
+          <div className="shrink-0 px-8 pb-3">
+            <div className="grid grid-cols-3 gap-y-4 gap-x-3">
+              <ControlButton
+                icon={muted ? <MicOff size={22} /> : <Mic size={22} />}
+                label="بی‌صدا"
+                active={muted}
+                onClick={() => { haptic('light'); setMuted((v) => !v) }}
+              />
+              <ControlButton icon={<Grid3x3 size={22} />} label="صفحه کلید" onClick={() => setSheet('keypad')} />
+              <ControlButton icon={<NotebookPen size={22} />} label="یادداشت" onClick={() => setSheet('note')} />
+              <ControlButton
+                icon={<BookOpen size={22} />}
+                label="اسکریپت"
+                tone="secondary"
+                active={scriptOpen}
+                onClick={() => setScriptOpen(true)}
+              />
+              <ControlButton
+                icon={<Volume2 size={22} />}
+                label="بلندگو"
+                active={speaker}
+                onClick={() => { haptic('light'); setSpeaker((v) => !v) }}
+              />
+              <ControlButton
+                icon={<UserPlus size={22} />}
+                label="پیگیری بعدی"
+                tone="accent"
+                onClick={() => navigate(`/call-result/${lead.id}`)}
+              />
+            </div>
 
-        <div className="mt-7 flex justify-center">
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={hangUp}
-            className="flex h-[68px] w-[68px] items-center justify-center rounded-full bg-error text-white shadow-[0_12px_30px_-8px_rgba(239,68,68,0.6)]"
-          >
-            <PhoneOff size={26} />
-          </motion.button>
-        </div>
-      </div>
+            <div className="mt-5 flex justify-center">
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={hangUp}
+                className="flex h-16 w-16 items-center justify-center rounded-full bg-error text-white shadow-[0_12px_30px_-8px_rgba(239,68,68,0.6)]"
+              >
+                <PhoneOff size={24} />
+              </motion.button>
+            </div>
+          </div>
+        </>
+      )}
 
-      <div id="dialer-script" className="mt-6">
-        <SalesScriptSheet />
+      <div
+        id="dialer-script"
+        className={cn(
+          'shrink-0 pb-[var(--safe-bottom,0px)]',
+          scriptOpen && 'flex min-h-0 flex-1 flex-col',
+        )}
+      >
+        <SalesScriptSheet
+          expanded={scriptOpen}
+          onExpandedChange={setScriptOpen}
+          fill={scriptOpen}
+        />
       </div>
 
       <BottomSheet open={sheet === 'note'} onClose={() => setSheet(null)} title="یادداشت تماس">
@@ -184,17 +213,17 @@ function ControlButton({
         ? 'bg-accent-50 text-accent-600'
         : 'bg-surface text-neutral-700'
   return (
-    <button onClick={onClick} className="flex flex-col items-center gap-2">
+    <button onClick={onClick} className="flex flex-col items-center gap-1.5">
       <motion.span
         whileTap={{ scale: 0.9 }}
         className={cn(
-          'flex h-16 w-16 items-center justify-center rounded-full shadow-card',
+          'flex h-14 w-14 items-center justify-center rounded-full shadow-card',
           active ? 'bg-primary-600 text-white' : toneCls,
         )}
       >
         {icon}
       </motion.span>
-      <span className="text-[11px] font-bold text-neutral-500">{label}</span>
+      <span className="text-[10px] font-bold text-neutral-500">{label}</span>
     </button>
   )
 }
