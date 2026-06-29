@@ -39,7 +39,7 @@ export function NextCallCard({ lead, onCall, onDetails }: NextCallCardProps) {
             </span>
           </div>
         </div>
-        <Avatar first={lead.firstName} last={lead.lastName} src={lead.avatar} size={64} online ring />
+        <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={64} online ring />
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-neutral-50 p-3">

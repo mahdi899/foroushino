@@ -261,7 +261,7 @@ function SuccessOverlay({
         >
           <p className="mb-3 text-center text-xs font-bold text-neutral-400">سرنخ بعدی پیشنهادی</p>
           <div className="flex items-center gap-3">
-            <Avatar first={next.firstName} last={next.lastName} size={48} ring />
+            <Avatar id={next.id} first={next.firstName} last={next.lastName} src={next.avatar} size={48} ring />
             <div className="flex-1">
               <p className="text-sm font-extrabold text-neutral-900">
                 {next.firstName} {next.lastName}

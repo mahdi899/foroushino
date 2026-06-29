@@ -183,7 +183,7 @@ function Podium({ podium, meId }: { podium: Agent[]; meId: string }) {
             className="flex flex-1 flex-col items-center"
           >
             <div className="relative">
-              <Avatar first={agent.firstName} last={agent.lastName} size={rank === 1 ? 56 : 46} ring />
+              <Avatar id={agent.id} first={agent.firstName} last={agent.lastName} src={agent.avatar} size={rank === 1 ? 56 : 46} ring />
               <span
                 className={cn(
                   'absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-black text-white ring-2 ring-surface',

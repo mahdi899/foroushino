@@ -76,7 +76,7 @@ export function DialerScreen() {
         <div className="relative flex items-center justify-center">
           <span className="absolute h-40 w-40 animate-pulse-ring rounded-full bg-primary-400/20" />
           <span className="absolute h-32 w-32 rounded-full bg-primary-400/10" />
-          <Avatar first={lead.firstName} last={lead.lastName} src={lead.avatar} size={120} ring />
+          <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={120} ring />
         </div>
         <h2 className="mt-6 text-2xl font-black text-neutral-900">
           {lead.firstName} {lead.lastName}

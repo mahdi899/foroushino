@@ -14,7 +14,7 @@ export function AppHeader() {
   return (
     <div className="flex items-center justify-between px-4 pt-[calc(14px+var(--safe-top))] pb-2">
       <button onClick={() => navigate('/profile')} className="flex items-center gap-3">
-        <Avatar first={agent.firstName} last={agent.lastName} size={46} online ring />
+        <Avatar id={agent.id} first={agent.firstName} last={agent.lastName} src={agent.avatar} size={46} online ring />
         <div className="text-right">
           <p className="flex items-center gap-1 text-[15px] font-extrabold text-neutral-900">
             {agent.firstName} {agent.lastName}

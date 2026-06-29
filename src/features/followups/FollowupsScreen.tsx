@@ -256,7 +256,7 @@ function FollowupCard({
         onClick={onOpen}
         className="flex flex-1 items-center gap-3 rounded-2xl bg-surface p-3 text-right shadow-card border border-border/60"
       >
-        <Avatar first={lead.firstName} last={lead.lastName} size={42} />
+        <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={42} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] font-extrabold text-neutral-900">
             {lead.firstName} {lead.lastName}

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import { MapPin, Phone, Clock } from 'lucide-react'
 import type { Lead } from '@/types'
+import { Avatar } from '@/components/ui/Avatar'
 import { ContactStatusBadge, PriorityBadge, SourceChip } from './Badges'
 import { formatPhone, relativeDayTime } from '@/lib/format'
 import { cn } from '@/lib/cn'
@@ -22,15 +23,7 @@ export function LeadCard({ lead, onClick, onCall, index = 0 }: LeadCardProps) {
       className="bg-surface rounded-3xl p-4 shadow-card border border-border/60 active:scale-[0.99] transition-transform"
     >
       <div className="flex items-start gap-3">
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            onCall?.()
-          }}
-          className="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 active:bg-primary-100"
-        >
-          <Phone size={20} />
-        </button>
+        <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={48} />
 
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center justify-between gap-2">
@@ -48,6 +41,16 @@ export function LeadCard({ lead, onClick, onCall, index = 0 }: LeadCardProps) {
             <span className="truncate">{lead.city}</span>
           </p>
         </div>
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onCall?.()
+          }}
+          className="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 active:bg-primary-100"
+        >
+          <Phone size={20} />
+        </button>
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-3">

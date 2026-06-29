@@ -4,6 +4,10 @@ export function toFa(input: string | number): string {
   return String(input).replace(/[0-9]/g, (d) => FA_DIGITS[Number(d)])
 }
 
+export function toEn(input: string): string {
+  return input.replace(/[۰-۹]/g, (d) => String(FA_DIGITS.indexOf(d)))
+}
+
 export function formatPhone(phone: string): string {
   const clean = phone.replace(/\D/g, '')
   if (clean.length === 11) {

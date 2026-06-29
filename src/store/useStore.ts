@@ -20,6 +20,7 @@ import {
   notifications as mockNotifications,
   MY_AGENT_ID,
 } from '@/data/mock'
+import { avatarUrl } from '@/data/avatars'
 import { positiveResults, resultToStage } from '@/data/labels'
 
 let idCounter = 1000
@@ -103,6 +104,32 @@ function syncFollowupStatuses(followups: Followup[]): Followup[] {
     }
   })
 }
+
+function withAvatars<T extends { id: string; avatar?: string | null }>(
+  items: T[],
+  mockItems: T[],
+): T[] {
+  return items.map((item) => {
+    const mock = mockItems.find((m) => m.id === item.id)
+    return {
+      ...item,
+      avatar: item.avatar || mock?.avatar || avatarUrl(item.id),
+    }
+  })
+}
+
+type PersistedSlice = Pick<
+  AppState,
+  | 'isAuthed'
+  | 'phone'
+  | 'role'
+  | 'currentAgentId'
+  | 'leads'
+  | 'calls'
+  | 'followups'
+  | 'notifications'
+  | 'agents'
+>
 
 export const useStore = create<AppState>()(
   persist(
@@ -266,6 +293,23 @@ export const useStore = create<AppState>()(
     }),
     {
       name: 'foroushino-store',
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = persisted as PersistedSlice
+        if (version < 1) {
+          return {
+            ...state,
+            agents: withAvatars(state.agents ?? mockAgents, mockAgents),
+            leads: withAvatars(state.leads ?? mockLeads, mockLeads),
+          }
+        }
+        return state
+      },
+      onRehydrateStorage: () => (state) => {
+        if (!state) return
+        state.agents = withAvatars(state.agents, mockAgents)
+        state.leads = withAvatars(state.leads, mockLeads)
+      },
       partialize: (state) => ({
         isAuthed: state.isAuthed,
         phone: state.phone,

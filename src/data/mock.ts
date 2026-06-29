@@ -7,6 +7,7 @@ import type {
   Team,
   AppNotification,
 } from '@/types'
+import { avatarUrl } from './avatars'
 
 const now = Date.now()
 const HOUR = 3600_000
@@ -48,6 +49,7 @@ export const agents: Agent[] = [
     points: 2480,
     streak: 6,
     callGoal: 18,
+    avatar: avatarUrl('a-me'),
   },
   {
     id: 'a2',
@@ -63,6 +65,7 @@ export const agents: Agent[] = [
     points: 2120,
     streak: 4,
     callGoal: 18,
+    avatar: avatarUrl('a2'),
   },
   {
     id: 'a3',
@@ -78,6 +81,7 @@ export const agents: Agent[] = [
     points: 1980,
     streak: 2,
     callGoal: 18,
+    avatar: avatarUrl('a3'),
   },
   {
     id: 'a4',
@@ -93,6 +97,7 @@ export const agents: Agent[] = [
     points: 1450,
     streak: 1,
     callGoal: 18,
+    avatar: avatarUrl('a4'),
   },
   {
     id: 'a5',
@@ -108,6 +113,7 @@ export const agents: Agent[] = [
     points: 1180,
     streak: 0,
     callGoal: 18,
+    avatar: avatarUrl('a5'),
   },
   {
     id: 'a6',
@@ -123,6 +129,7 @@ export const agents: Agent[] = [
     points: 1760,
     streak: 3,
     callGoal: 18,
+    avatar: avatarUrl('a6'),
   },
   {
     id: 'a7',
@@ -138,6 +145,7 @@ export const agents: Agent[] = [
     points: 980,
     streak: 0,
     callGoal: 18,
+    avatar: avatarUrl('a7'),
   },
   {
     id: 'a8',
@@ -153,6 +161,7 @@ export const agents: Agent[] = [
     points: 2610,
     streak: 7,
     callGoal: 18,
+    avatar: avatarUrl('a8'),
   },
   {
     id: 'a9',
@@ -168,6 +177,7 @@ export const agents: Agent[] = [
     points: 1540,
     streak: 2,
     callGoal: 18,
+    avatar: avatarUrl('a9'),
   },
   {
     id: 'a-leader',
@@ -183,6 +193,7 @@ export const agents: Agent[] = [
     points: 4200,
     streak: 12,
     callGoal: 0,
+    avatar: avatarUrl('a-leader'),
   },
   {
     id: 'a-sup',
@@ -198,6 +209,7 @@ export const agents: Agent[] = [
     points: 5100,
     streak: 18,
     callGoal: 0,
+    avatar: avatarUrl('a-sup'),
   },
   {
     id: 'a-mgr',
@@ -213,6 +225,7 @@ export const agents: Agent[] = [
     points: 8200,
     streak: 30,
     callGoal: 0,
+    avatar: avatarUrl('a-mgr'),
   },
 ]
 
@@ -1090,6 +1103,7 @@ const leadSeeds: LeadSeed[] = [
 export const leads: Lead[] = leadSeeds.map((seed) => ({
   ...seed,
   assignedAgentId: MY_AGENT_ID,
+  avatar: avatarUrl(seed.id),
 }))
 
 export const followups: Followup[] = [

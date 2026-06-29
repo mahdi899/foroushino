@@ -47,7 +47,7 @@ export function LeaderboardRow({
       >
         {toFa(rank)}
       </span>
-      <Avatar first={agent.firstName} last={agent.lastName} size={40} />
+      <Avatar id={agent.id} first={agent.firstName} last={agent.lastName} src={agent.avatar} size={40} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-extrabold text-neutral-900">
           {agent.firstName} {agent.lastName}

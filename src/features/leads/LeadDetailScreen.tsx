@@ -95,7 +95,7 @@ export function LeadDetailScreen() {
 
       <div className="space-y-4 px-4">
         <div className="flex flex-col items-center rounded-3xl bg-surface p-5 shadow-card border border-border/60">
-          <Avatar first={lead.firstName} last={lead.lastName} src={lead.avatar} size={76} online ring />
+          <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={76} online ring />
           <h2 className="mt-3 text-lg font-extrabold text-neutral-900">
             {lead.firstName} {lead.lastName}
           </h2>

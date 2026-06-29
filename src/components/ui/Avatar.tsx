@@ -1,7 +1,9 @@
 import { cn } from '@/lib/cn'
+import { resolveAvatar } from '@/data/avatars'
 import { initials } from '@/lib/format'
 
 interface AvatarProps {
+  id?: string
   first: string
   last: string
   src?: string | null
@@ -26,8 +28,9 @@ function pickColor(seed: string): [string, string] {
   return PALETTE[Math.abs(h)] as [string, string]
 }
 
-export function Avatar({ first, last, src, size = 48, online, className, ring }: AvatarProps) {
+export function Avatar({ id, first, last, src, size = 48, online, className, ring }: AvatarProps) {
   const [c1, c2] = pickColor(first + last)
+  const imageSrc = id ? resolveAvatar(id, src) : src
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <div
@@ -41,8 +44,8 @@ export function Avatar({ first, last, src, size = 48, online, className, ring }:
           fontSize: size * 0.36,
         }}
       >
-        {src ? (
-          <img src={src} alt="" className="w-full h-full object-cover" />
+        {imageSrc ? (
+          <img src={imageSrc} alt="" className="w-full h-full object-cover" />
         ) : (
           initials(first, last)
         )}

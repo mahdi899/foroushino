@@ -45,7 +45,7 @@ export function ProfileScreen() {
 
       <div className="space-y-5 px-4">
         <div className="flex flex-col items-center rounded-3xl bg-gradient-to-br from-primary-500 to-primary-700 p-6 text-white shadow-float">
-          <Avatar first={agent.firstName} last={agent.lastName} size={84} ring />
+          <Avatar id={agent.id} first={agent.firstName} last={agent.lastName} src={agent.avatar} size={84} ring />
           <h2 className="mt-3 text-xl font-black">
             {agent.firstName} {agent.lastName}
           </h2>
