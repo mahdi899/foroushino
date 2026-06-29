@@ -89,11 +89,10 @@ export function LeadsScreen() {
             action={{ label: 'پاک کردن فیلترها', onClick: () => setFilter('all') }}
           />
         ) : (
-          filtered.map((lead, i) => (
+          filtered.map((lead) => (
             <LeadCard
               key={lead.id}
               lead={lead}
-              index={i}
               onClick={() => navigate(`/leads/${lead.id}`)}
               onCall={() => call(lead)}
             />

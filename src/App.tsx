@@ -6,7 +6,6 @@ import {
   Navigate,
   useLocation,
 } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
 import { useStore } from '@/store/useStore'
 import { initTelegram } from '@/lib/telegram'
 import { BottomNav } from '@/components/layout/BottomNav'
@@ -57,9 +56,8 @@ function Shell() {
         ref={scrollRef}
         className={cn('h-full no-scrollbar', lockScroll ? 'overflow-hidden' : 'overflow-y-auto')}
       >
-        <div className={lockScroll ? 'h-full' : 'min-h-full'}>
-          <AnimatePresence mode="wait">
-            <Routes location={location} key={location.pathname.split('/').slice(0, 2).join('/')}>
+        <div className={lockScroll ? 'h-full' : 'h-full min-h-full'}>
+          <Routes location={location} key={location.pathname.split('/').slice(0, 2).join('/')}>
             <Route path="/splash" element={<SplashScreen />} />
             <Route path="/onboarding" element={<OnboardingScreen />} />
             <Route path="/login" element={<LoginScreen />} />
@@ -78,7 +76,6 @@ function Shell() {
 
             <Route path="*" element={<Navigate to={isAuthed ? '/home' : '/splash'} replace />} />
           </Routes>
-        </AnimatePresence>
         </div>
       </div>
 

@@ -1,6 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import {
   Phone,
   MessageCircle,
@@ -9,6 +8,9 @@ import {
   Check,
   AlertTriangle,
   ChevronLeft,
+  Flame,
+  Sun,
+  Sunrise,
   type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
@@ -109,7 +111,7 @@ export function FollowupsScreen() {
             <EmptyState title="پیگیری امروز نداری" description="وقت خوبیه برای تماس با سرنخ‌های جدید." />
           ) : (
             <div className="space-y-3">
-              {today.map((f, i) => {
+              {today.map((f) => {
                 const lead = leadOf(f.leadId)
                 if (!lead) return null
                 return (
@@ -117,7 +119,6 @@ export function FollowupsScreen() {
                     key={f.id}
                     followup={f}
                     lead={lead}
-                    index={i}
                     onOpen={() => navigate(`/leads/${lead.id}`)}
                     onComplete={() => complete(f)}
                     onCall={() => navigate(`/dialer/${lead.id}`)}
@@ -140,7 +141,7 @@ export function FollowupsScreen() {
               </Badge>
             </div>
             <div className="space-y-3">
-              {overdue.map((f, i) => {
+              {overdue.map((f) => {
                 const lead = leadOf(f.leadId)
                 if (!lead) return null
                 return (
@@ -148,7 +149,6 @@ export function FollowupsScreen() {
                     key={f.id}
                     followup={f}
                     lead={lead}
-                    index={i}
                     overdue
                     onOpen={() => navigate(`/leads/${lead.id}`)}
                     onComplete={() => complete(f)}
@@ -187,29 +187,58 @@ export function FollowupsScreen() {
   )
 }
 
+const WEEKDAY_SHORT = ['ی', 'د', 'س', 'چ', 'پ', 'ج', 'ش']
+
 function DateStrip({ date }: { date: Date }) {
   const days = Array.from({ length: 5 }).map((_, i) => {
     const d = new Date(date)
     d.setDate(d.getDate() + i)
     return d
   })
+
   return (
     <div className="mt-4 flex gap-2 overflow-x-auto no-scrollbar">
       {days.map((d, i) => {
         const active = i === 0
+        const [dayNum, month] = formatJalaliShort(d).split(' ')
+
         return (
           <div
             key={i}
+            aria-label={relativeDay(d.toISOString())}
             className={cn(
-              'flex min-w-[64px] flex-col items-center rounded-2xl border px-3 py-2.5',
-              active ? 'border-primary-600 bg-primary-600 text-white' : 'border-border bg-surface text-neutral-500',
+              'flex min-h-[84px] min-w-[72px] shrink-0 flex-col items-center justify-center rounded-2xl border px-3.5 py-3',
+              active
+                ? 'border-primary-600 bg-primary-600 text-white shadow-[0_4px_14px_-4px_rgba(13,148,136,0.4)]'
+                : 'border-border bg-surface text-neutral-500',
             )}
           >
-            <span className="text-[11px] font-bold opacity-80">
-              {i === 0 ? 'امروز' : relativeDay(d.toISOString())}
-            </span>
-            <span className="text-lg font-extrabold">{toFa(formatJalaliShort(d).split(' ')[0])}</span>
-            <span className="text-[10px] font-bold opacity-80">{formatJalaliShort(d).split(' ')[1]}</span>
+            <div className="mb-2 flex h-6 w-6 items-center justify-center">
+              {i === 0 ? (
+                <Sun
+                  size={17}
+                  strokeWidth={2.25}
+                  className={active ? 'text-white' : 'text-primary-500'}
+                />
+              ) : i === 1 ? (
+                <Sunrise
+                  size={17}
+                  strokeWidth={2.25}
+                  className={active ? 'text-white' : 'text-neutral-400'}
+                />
+              ) : (
+                <span
+                  className={cn(
+                    'flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-extrabold leading-none',
+                    active ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-500',
+                  )}
+                >
+                  {WEEKDAY_SHORT[d.getDay()]}
+                </span>
+              )}
+            </div>
+            <span className="text-[22px] font-black leading-none tabular-nums">{dayNum}</span>
+            <span className="mt-1.5 text-[11px] font-bold leading-none opacity-80">{month}</span>
           </div>
         )
       })}
@@ -220,7 +249,6 @@ function DateStrip({ date }: { date: Date }) {
 function FollowupCard({
   followup,
   lead,
-  index,
   overdue,
   onOpen,
   onComplete,
@@ -228,93 +256,104 @@ function FollowupCard({
 }: {
   followup: Followup
   lead: Lead
-  index: number
   overdue?: boolean
   onOpen: () => void
   onComplete: () => void
   onCall: () => void
 }) {
-  const Icon = kindIcon[followup.kind]
+  const KindIcon = kindIcon[followup.kind]
   const theme = kindTheme[followup.kind]
+  const highPriority = followup.priority === 3
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04 }}
+    <div
       className={cn(
-        'relative flex items-center gap-2.5 overflow-hidden rounded-2xl border bg-surface py-2.5 pl-2.5 pr-3 shadow-card',
-        overdue ? 'border-error-200/60' : 'border-border/50',
+        'relative flex items-center gap-2 overflow-hidden rounded-2xl border bg-surface py-3 pl-3 pr-2.5 shadow-card',
+        overdue ? 'border-error-200/70' : 'border-border/50',
       )}
     >
       <div
         className={cn(
-          'absolute inset-y-2.5 right-0 w-[3px] rounded-l-full',
+          'absolute inset-y-3 right-0 w-[3px] rounded-l-full',
           overdue ? 'bg-error-500' : theme.accent,
         )}
       />
 
-      <span
+      <div
         className={cn(
-          'w-9 shrink-0 text-center text-[11px] font-extrabold tabular-nums leading-none',
+          'w-11 shrink-0 text-center tabular-nums',
           overdue ? 'text-error-600' : 'text-neutral-500',
         )}
       >
-        {formatTime(new Date(followup.dueAt))}
-      </span>
+        <span className="text-[12px] font-extrabold leading-none">
+          {formatTime(new Date(followup.dueAt))}
+        </span>
+      </div>
 
       <button
         type="button"
         onClick={onOpen}
-        className="flex min-w-0 flex-1 items-center gap-2.5 text-right"
+        className="flex min-w-0 flex-1 items-center gap-3 text-right"
       >
         <Avatar
           id={lead.id}
           first={lead.firstName}
           last={lead.lastName}
           src={lead.avatar}
-          size={36}
+          size={40}
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-extrabold leading-tight text-neutral-900">
-            {lead.firstName} {lead.lastName}
-          </p>
-          <p className="truncate text-[11px] font-bold leading-tight text-neutral-400">
-            {followup.title}
-            {(overdue || followup.priority === 3) && (
-              <span className={cn(overdue ? 'text-error-500' : 'text-hot-500')}>
-                {' · '}
-                {overdue ? 'عقب‌افتاده' : 'اولویت بالا'}
+          <div className="flex items-center gap-1.5 min-w-0">
+            <p className="truncate text-[14px] font-extrabold leading-snug text-neutral-900">
+              {lead.firstName} {lead.lastName}
+            </p>
+            {overdue && (
+              <span
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-error-50 text-error-600"
+                title="عقب‌افتاده"
+                aria-label="عقب‌افتاده"
+              >
+                <AlertTriangle size={11} strokeWidth={2.5} />
               </span>
             )}
+            {highPriority && (
+              <span
+                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-hot-50 text-hot-600"
+                title="اولویت بالا"
+                aria-label="اولویت بالا"
+              >
+                <Flame size={11} strokeWidth={2.5} />
+              </span>
+            )}
+          </div>
+          <p className="mt-1 truncate text-[12px] font-bold leading-snug text-neutral-500">
+            {followup.title}
           </p>
         </div>
       </button>
 
-      <div className="flex shrink-0 items-center gap-1">
-        <motion.button
+      <div className="flex shrink-0 items-center gap-1.5 pl-0.5">
+        <button
           type="button"
-          whileTap={{ scale: 0.9 }}
           onClick={onCall}
           aria-label={`${followupKindLabels[followup.kind]} با ${lead.firstName}`}
           className={cn(
-            'flex h-8 w-8 items-center justify-center rounded-lg',
+            'flex h-9 w-9 items-center justify-center rounded-xl transition-transform active:scale-90',
             overdue ? 'bg-error-50 text-error-600' : theme.actionBtn,
           )}
         >
-          <Icon size={15} strokeWidth={2.25} />
-        </motion.button>
-        <motion.button
+          <KindIcon size={16} strokeWidth={2.25} />
+        </button>
+        <button
           type="button"
-          whileTap={{ scale: 0.9 }}
           onClick={onComplete}
           aria-label="علامت‌گذاری انجام‌شده"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-neutral-400 transition-colors hover:bg-success-50 hover:text-success-600"
+          className="flex h-9 w-9 items-center justify-center rounded-xl text-neutral-400 transition-colors hover:bg-success-50 hover:text-success-600 active:scale-90"
         >
-          <Check size={16} strokeWidth={2.25} />
-        </motion.button>
+          <Check size={17} strokeWidth={2.25} />
+        </button>
       </div>
-    </motion.div>
+    </div>
   )
 }
 

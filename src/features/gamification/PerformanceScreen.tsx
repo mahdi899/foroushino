@@ -1,5 +1,4 @@
-import { useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { useMemo, useState } from 'react'
 import {
   Flame,
   Target,
@@ -18,16 +17,19 @@ import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { StatTile } from '@/components/domain/StatTile'
 import { LeaderboardRow } from '@/components/domain/LeaderboardRow'
-import { AchievementBadge } from '@/components/domain/AchievementBadge'
+import { AchievementBadge, AchievementBadgeIcon } from '@/components/domain/AchievementBadge'
+import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { achievements } from '@/data/mock'
 import { toFa } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import type { Agent } from '@/types'
+import { haptic } from '@/lib/telegram'
+import type { Agent, Achievement } from '@/types'
 
 export function PerformanceScreen() {
   const agents = useStore((s) => s.agents)
   const me = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
+  const [selectedAch, setSelectedAch] = useState<Achievement | null>(null)
 
   const teamAgents = useMemo(
     () =>
@@ -54,10 +56,8 @@ export function PerformanceScreen() {
         iconTone="warning"
       />
 
-      <div className="space-y-5 px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+      <div className="flex flex-col gap-6 px-4">
+        <div
           className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-primary-800 via-primary-600 to-primary-400 p-5 text-white shadow-float"
         >
           <div className="pointer-events-none absolute inset-0">
@@ -88,41 +88,36 @@ export function PerformanceScreen() {
                 )}
               </div>
 
-              <div className="mt-4">
-                <div className="mb-1.5 flex items-center justify-between text-[11px] font-bold">
+              <div className="mt-4 max-w-[210px]">
+                <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] font-bold">
                   <span className="text-white/65">پیشرفت امروز</span>
-                  <span className="tabular-nums text-white/90">
+                  <span className="shrink-0 tabular-nums text-white/90">
                     {toFa(me.callsToday)}
                     <span className="text-white/50"> / </span>
                     {toFa(me.callGoal)}
                   </span>
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-white/15">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${barPct}%` }}
-                    transition={{ duration: 0.9, ease: 'easeOut', delay: 0.15 }}
-                    className="h-full rounded-full bg-gradient-to-l from-emerald-200 via-white to-emerald-100 shadow-[0_0_10px_rgba(255,255,255,0.35)]"
+                  <div
+                    className="h-full rounded-full bg-gradient-to-l from-emerald-200 via-white to-emerald-100 shadow-[0_0_10px_rgba(255,255,255,0.35)] transition-[width] duration-500 ease-out"
+                    style={{ width: `${barPct}%` }}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex h-[72px] w-[72px] shrink-0 flex-col items-center justify-center rounded-[20px] border border-white/20 bg-white/10 backdrop-blur-sm">
+            <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[20px] border border-white/20 bg-white/10 backdrop-blur-sm">
               {goalComplete ? (
-                <>
-                  <CheckCircle2 size={26} className="text-emerald-200" strokeWidth={2.5} />
-                  <span className="mt-1 text-[9px] font-bold text-white/55">کامل شد</span>
-                </>
+                <CheckCircle2 size={36} className="text-emerald-200" strokeWidth={2.25} />
               ) : (
-                <>
+                <div className="flex flex-col items-center">
                   <span className="text-[28px] font-black tabular-nums leading-none">{toFa(remaining)}</span>
                   <span className="mt-0.5 text-[10px] font-bold text-white/55">تماس مانده</span>
-                </>
+                </div>
               )}
             </div>
           </div>
-        </motion.div>
+        </div>
 
         <section>
           <h2 className="mb-3 flex items-center gap-1.5 text-[15px] font-extrabold text-neutral-900">
@@ -130,10 +125,10 @@ export function PerformanceScreen() {
             خلاصه عملکرد امروز
           </h2>
           <div className="grid grid-cols-4 gap-2">
-            <StatTile variant="compact" icon={<Phone size={14} />} value={me.callsToday} label="تماس‌ها" trend={3} />
-            <StatTile variant="compact" icon={<CheckCircle2 size={14} />} value={me.successfulToday} label="موفق" trend={2} tone="success" />
-            <StatTile variant="compact" icon={<Target size={14} />} value={`${toFa(me.conversionRate)}٪`} label="نرخ تبدیل" trend={6} tone="secondary" />
-            <StatTile variant="compact" icon={<Clock size={14} />} value="۲:۴۵" label="زمان مکالمه" trend={20} tone="accent" />
+            <StatTile variant="compact" icon={<Phone size={18} />} value={me.callsToday} label="تماس‌ها" />
+            <StatTile variant="compact" icon={<CheckCircle2 size={18} />} value={me.successfulToday} label="موفق" tone="success" />
+            <StatTile variant="compact" icon={<Target size={18} />} value={`${toFa(me.conversionRate)}٪`} label="نرخ تبدیل" tone="secondary" />
+            <StatTile variant="compact" icon={<Clock size={18} />} value="۲:۴۵" label="زمان مکالمه" tone="accent" />
           </div>
         </section>
 
@@ -149,7 +144,6 @@ export function PerformanceScreen() {
                 key={a.id}
                 agent={a}
                 rank={i + 4}
-                index={i}
                 highlight={a.id === me.id}
               />
             ))}
@@ -162,8 +156,15 @@ export function PerformanceScreen() {
             دستاوردهای من
           </h2>
           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-            {achievements.map((ach, i) => (
-              <AchievementBadge key={ach.id} ach={ach} index={i} />
+            {achievements.map((ach) => (
+              <AchievementBadge
+                key={ach.id}
+                ach={ach}
+                onClick={() => {
+                  haptic('selection')
+                  setSelectedAch(ach)
+                }}
+              />
             ))}
           </div>
         </section>
@@ -174,14 +175,9 @@ export function PerformanceScreen() {
             چالش روزانه
           </h2>
           <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-secondary-500 to-secondary-600 p-5 text-white shadow-float">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[13px] font-bold text-white/80">۳ ثبت‌نام موفق امروز</p>
-                <p className="mt-1 text-lg font-black">جایزه: ۵۰۰ امتیاز</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl font-black tabular-nums">{toFa(2)}/{toFa(3)}</p>
-              </div>
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-lg font-black">جایزه: ۵۰۰ امتیاز</p>
+              <p className="text-3xl font-black tabular-nums shrink-0">{toFa(2)}/{toFa(3)}</p>
             </div>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/20">
               <div className="h-full w-2/3 rounded-full bg-white" />
@@ -196,7 +192,37 @@ export function PerformanceScreen() {
           </p>
         </div>
       </div>
+
+      <AchievementSheet ach={selectedAch} onClose={() => setSelectedAch(null)} />
     </Page>
+  )
+}
+
+function AchievementSheet({
+  ach,
+  onClose,
+}: {
+  ach: Achievement | null
+  onClose: () => void
+}) {
+  return (
+    <BottomSheet open={ach != null} onClose={onClose} title="دستاورد">
+      {ach && (
+        <div className="flex flex-col items-center pt-2 text-center">
+          <AchievementBadgeIcon ach={ach} size="lg" />
+          <h3 className="mt-4 text-xl font-black text-neutral-900">{ach.title}</h3>
+          <p className="mt-2 text-[14px] leading-7 text-neutral-500">{ach.description}</p>
+          <span
+            className={cn(
+              'mt-4 inline-flex items-center rounded-full px-3 py-1.5 text-[12px] font-bold',
+              ach.unlocked ? 'bg-success-50 text-success-600' : 'bg-neutral-100 text-neutral-500',
+            )}
+          >
+            {ach.unlocked ? 'باز شده' : 'هنوز باز نشده'}
+          </span>
+        </div>
+      )}
+    </BottomSheet>
   )
 }
 
@@ -238,23 +264,15 @@ function Podium({ podium, meId }: { podium: Agent[]; meId: string }) {
           const isMe = agent.id === meId
 
           return (
-            <motion.div
+            <div
               key={agent.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: pos * 0.1, type: 'spring', stiffness: 260, damping: 22 }}
               className="flex min-w-0 flex-1 flex-col items-center"
             >
               <div className="relative mb-2.5 flex flex-col items-center">
                 {cfg.crown && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25, type: 'spring' }}
-                    className="mb-1"
-                  >
+                  <div className="mb-1">
                     <Crown size={17} className="text-warning-500" fill="currentColor" strokeWidth={1.5} />
-                  </motion.div>
+                  </div>
                 )}
                 <div
                   className={cn(
@@ -292,11 +310,7 @@ function Podium({ podium, meId }: { podium: Agent[]; meId: string }) {
                 {toFa(agent.callsToday)}
               </span>
 
-              <motion.div
-                initial={{ scaleY: 0 }}
-                animate={{ scaleY: 1 }}
-                transition={{ delay: pos * 0.1 + 0.15, duration: 0.45, ease: 'easeOut' }}
-                style={{ transformOrigin: 'bottom' }}
+              <div
                 className={cn(
                   'mt-2.5 w-full rounded-t-2xl shadow-[inset_0_2px_6px_rgba(0,0,0,0.04)]',
                   cfg.stepHeight,
@@ -313,8 +327,8 @@ function Podium({ podium, meId }: { podium: Agent[]; meId: string }) {
                     {toFa(rank)}
                   </span>
                 </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
           )
         })}
       </div>

@@ -23,6 +23,13 @@ const slides = [
   },
 ]
 
+const fade = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+  transition: { duration: 0.18, ease: 'easeOut' },
+}
+
 export function OnboardingScreen() {
   const navigate = useNavigate()
   const [index, setIndex] = useState(0)
@@ -31,55 +38,59 @@ export function OnboardingScreen() {
   const last = index === slides.length - 1
 
   return (
-    <div className="flex h-full flex-col px-6 pt-[calc(20px+var(--safe-top))] pb-[calc(24px+var(--safe-bottom))]">
-      <div className="flex justify-end">
+    <div className="flex h-full min-h-full flex-col px-5 pt-[calc(8px+var(--safe-top))] pb-[calc(20px+var(--safe-bottom))]">
+      <header className="flex h-10 shrink-0 items-center justify-end">
         <button
           onClick={() => navigate('/login', { replace: true })}
-          className="text-sm font-bold text-neutral-400"
+          className="px-1 py-2 text-[13px] font-bold text-neutral-400 active:text-neutral-500"
         >
           رد کردن
         </button>
-      </div>
+      </header>
 
-      <div className="flex flex-1 flex-col items-center justify-center text-center">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-2 py-4">
         <AnimatePresence mode="wait">
           <motion.div
             key={index}
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -30 }}
-            className="flex flex-col items-center"
+            {...fade}
+            className="flex flex-col items-center text-center"
           >
-            <div className="mb-8 flex h-32 w-32 items-center justify-center rounded-[40px] bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-float">
-              <Icon size={56} />
+            <div
+              className="mb-5 flex h-[88px] w-[88px] items-center justify-center rounded-[26px] bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-[0_12px_32px_-12px_rgba(13,148,136,0.45)]"
+            >
+              <Icon size={40} strokeWidth={2.25} />
             </div>
-            <h2 className="text-2xl font-black text-neutral-900">{slide.title}</h2>
-            <p className="mt-3 max-w-[280px] text-[15px] leading-7 text-neutral-500">
+            <h2 className="text-[21px] font-black leading-snug text-neutral-900">
+              {slide.title}
+            </h2>
+            <p className="mt-2.5 max-w-[280px] text-[14px] leading-[1.65] text-neutral-500">
               {slide.body}
             </p>
           </motion.div>
         </AnimatePresence>
       </div>
 
-      <div className="mb-6 flex justify-center gap-2">
-        {slides.map((_, i) => (
-          <span
-            key={i}
-            className={cn(
-              'h-2 rounded-full transition-all',
-              i === index ? 'w-7 bg-primary-600' : 'w-2 bg-neutral-300',
-            )}
-          />
-        ))}
-      </div>
+      <footer className="shrink-0 space-y-5">
+        <div className="flex justify-center gap-1.5">
+          {slides.map((_, i) => (
+            <span
+              key={i}
+              className={cn(
+                'h-1.5 rounded-full transition-[width,background-color] duration-200 ease-out',
+                i === index ? 'w-6 bg-primary-600' : 'w-1.5 bg-neutral-300',
+              )}
+            />
+          ))}
+        </div>
 
-      <Button
-        size="lg"
-        full
-        onClick={() => (last ? navigate('/login', { replace: true }) : setIndex((i) => i + 1))}
-      >
-        {last ? 'شروع کنیم' : 'بعدی'}
-      </Button>
+        <Button
+          size="lg"
+          full
+          onClick={() => (last ? navigate('/login', { replace: true }) : setIndex((i) => i + 1))}
+        >
+          {last ? 'شروع کنیم' : 'بعدی'}
+        </Button>
+      </footer>
     </div>
   )
 }

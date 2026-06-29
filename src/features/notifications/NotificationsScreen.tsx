@@ -1,5 +1,4 @@
 import { useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { Flame, Clock, Award, Bell, CheckCheck, type LucideIcon } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
@@ -40,14 +39,11 @@ export function NotificationsScreen() {
         {notifications.length === 0 ? (
           <EmptyState title="اعلانی نداری" description="همه چیز به‌روز است." />
         ) : (
-          notifications.map((n, i) => {
+          notifications.map((n) => {
             const { icon: Icon, bg, fg } = kindConfig[n.kind]
             return (
-              <motion.div
+              <div
                 key={n.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }}
                 className={cn(
                   'flex items-start gap-3 rounded-2xl p-3.5 border',
                   n.read ? 'bg-surface border-border/60' : 'bg-primary-50/40 border-primary-100',
@@ -64,7 +60,7 @@ export function NotificationsScreen() {
                   <p className="mt-0.5 text-xs leading-5 text-neutral-500">{n.body}</p>
                   <p className="mt-1 text-[10px] font-bold text-neutral-300">{relativeDayTime(n.createdAt)}</p>
                 </div>
-              </motion.div>
+              </div>
             )
           })
         )}

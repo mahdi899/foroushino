@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import type { FunnelStage, SourcePerf, TeamRow } from '@/data/reports'
 import { stageLabels, sourceLabels } from '@/data/labels'
 import { sourceIcon, sourceColor } from '@/components/domain/icons'
@@ -12,7 +11,7 @@ export function FunnelCard({ funnel }: { funnel: FunnelStage[] }) {
     <div className="rounded-3xl bg-surface p-4 shadow-card border border-border/60">
       <h3 className="mb-4 text-[15px] font-extrabold text-neutral-900">قیف فروش</h3>
       <div className="space-y-2.5">
-        {funnel.map((s, i) => {
+        {funnel.map((s) => {
           const pct = Math.round((s.count / max) * 100)
           return (
             <div key={s.stage}>
@@ -21,11 +20,9 @@ export function FunnelCard({ funnel }: { funnel: FunnelStage[] }) {
                 <span className="text-neutral-400 tabular-nums">{toFa(s.count)}</span>
               </div>
               <div className="h-2.5 overflow-hidden rounded-full bg-neutral-100">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${pct}%` }}
-                  transition={{ delay: i * 0.06, duration: 0.6 }}
-                  className="h-full rounded-full bg-gradient-to-l from-primary-600 to-primary-400"
+                <div
+                  className="h-full rounded-full bg-gradient-to-l from-primary-600 to-primary-400 transition-[width] duration-500 ease-out"
+                  style={{ width: `${pct}%` }}
                 />
               </div>
             </div>

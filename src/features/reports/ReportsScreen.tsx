@@ -52,10 +52,10 @@ export function ReportsScreen() {
         {tab === 'overview' && (
           <>
             <div className="grid grid-cols-2 gap-2.5">
-              <StatTile icon={<Phone size={16} />} value={totalCalls} label="تماس امروز" trend={8} />
-              <StatTile icon={<CheckCircle2 size={16} />} value={totalSuccess} label="تماس موفق" trend={5} tone="success" />
-              <StatTile icon={<Target size={16} />} value={`${toFa(avgConversion)}٪`} label="نرخ تبدیل" trend={4} tone="secondary" />
-              <StatTile icon={<Flame size={16} />} value={hotLeads} label="لید داغ" trend={6} tone="accent" />
+              <StatTile icon={<Phone size={18} />} value={totalCalls} label="تماس امروز" />
+              <StatTile icon={<CheckCircle2 size={18} />} value={totalSuccess} label="تماس موفق" tone="success" />
+              <StatTile icon={<Target size={18} />} value={`${toFa(avgConversion)}٪`} label="نرخ تبدیل" tone="secondary" />
+              <StatTile icon={<Flame size={18} />} value={hotLeads} label="لید داغ" tone="accent" />
             </div>
             <section>
               <h2 className="mb-3 text-[15px] font-extrabold text-neutral-900">بینش‌های مدیریتی</h2>
@@ -72,8 +72,8 @@ export function ReportsScreen() {
           <>
             <FunnelCard funnel={funnel} />
             <div className="grid grid-cols-2 gap-2.5">
-              <StatTile icon={<Target size={16} />} value={`${toFa(avgConversion)}٪`} label="نرخ تبدیل کل" trend={4} tone="secondary" />
-              <StatTile icon={<CheckCircle2 size={16} />} value={toFa(41)} label="فروش موفق" trend={9} tone="success" />
+              <StatTile icon={<Target size={18} />} value={`${toFa(avgConversion)}٪`} label="نرخ تبدیل کل" tone="secondary" />
+              <StatTile icon={<CheckCircle2 size={18} />} value={toFa(41)} label="فروش موفق" tone="success" />
             </div>
           </>
         )}
@@ -85,7 +85,7 @@ export function ReportsScreen() {
               <h2 className="mb-3 text-[15px] font-extrabold text-neutral-900">عملکرد کارشناسان</h2>
               <div className="space-y-2">
                 {ranked.map((a, i) => (
-                  <LeaderboardRow key={a.id} agent={a} rank={i + 1} index={i} metric={a.callsToday} />
+                  <LeaderboardRow key={a.id} agent={a} rank={i + 1} metric={a.callsToday} />
                 ))}
               </div>
             </section>

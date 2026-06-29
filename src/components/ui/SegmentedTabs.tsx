@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { cn } from '@/lib/cn'
 
 interface Tab {
@@ -33,10 +32,8 @@ export function SegmentedTabs({ tabs, value, onChange, className }: SegmentedTab
             )}
           >
             {active && (
-              <motion.div
-                layoutId="segmented-active"
-                transition={{ type: 'spring', damping: 30, stiffness: 380 }}
-                className="absolute inset-0 bg-surface rounded-xl shadow-soft"
+              <span
+                className="absolute inset-0 rounded-xl bg-surface shadow-soft transition-transform duration-200 ease-out"
               />
             )}
             <span className="relative z-10">{tab.label}</span>

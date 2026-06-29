@@ -11,38 +11,37 @@ export function SplashScreen() {
   useEffect(() => {
     const t = setTimeout(() => {
       navigate(isAuthed ? '/home' : '/onboarding', { replace: true })
-    }, 1900)
+    }, 1600)
     return () => clearTimeout(t)
   }, [navigate, isAuthed])
 
   return (
-    <div className="relative flex h-full flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-primary-600 to-primary-800">
-      <div className="absolute -top-24 -right-20 h-72 w-72 rounded-full bg-white/10 blur-2xl" />
-      <div className="absolute -bottom-24 -left-20 h-72 w-72 rounded-full bg-primary-400/30 blur-2xl" />
+    <div className="relative flex h-full min-h-full flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-primary-600 to-primary-800">
+      <div className="absolute -top-20 -right-16 h-56 w-56 rounded-full bg-white/10" />
+      <div className="absolute -bottom-20 -left-16 h-56 w-56 rounded-full bg-primary-400/20" />
 
       <motion.div
-        initial={{ scale: 0.6, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: 'spring', damping: 16, stiffness: 200 }}
-        className="relative flex h-24 w-24 items-center justify-center rounded-[28px] bg-white shadow-2xl"
+        initial={{ opacity: 0, scale: 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        className="relative flex h-20 w-20 items-center justify-center rounded-[22px] bg-white shadow-[0_16px_40px_-12px_rgba(0,0,0,0.25)]"
       >
-        <PhoneCall size={44} className="text-primary-600" />
-        <span className="absolute inset-0 animate-pulse-ring rounded-[28px] ring-4 ring-white/40" />
+        <PhoneCall size={38} className="text-primary-600" strokeWidth={2.25} />
       </motion.div>
 
       <motion.h1
-        initial={{ y: 16, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.25 }}
-        className="mt-6 text-3xl font-black text-white"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.15, duration: 0.3 }}
+        className="mt-5 text-[26px] font-black text-white"
       >
         فروشینو
       </motion.h1>
       <motion.p
-        initial={{ y: 12, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="mt-1.5 text-sm font-bold text-white/70"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.25, duration: 0.3 }}
+        className="mt-1 text-[13px] font-bold text-white/70"
       >
         دستیار فروش تیم شما
       </motion.p>

@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { MapPin, Phone, Clock, Flame, Sun, Snowflake } from 'lucide-react'
 import type { Lead, LeadSource, Temperature } from '@/types'
 import { Avatar } from '@/components/ui/Avatar'
@@ -11,7 +10,6 @@ interface LeadCardProps {
   lead: Lead
   onClick?: () => void
   onCall?: () => void
-  index?: number
 }
 
 const sourceTone: Record<LeadSource, string> = {
@@ -52,7 +50,7 @@ const tempTheme: Record<
 const tempIcon = { hot: Flame, warm: Sun, cold: Snowflake }
 const tempLabel = { hot: 'داغ', warm: 'گرم', cold: 'سرد' }
 
-export function LeadCard({ lead, onClick, onCall, index = 0 }: LeadCardProps) {
+export function LeadCard({ lead, onClick, onCall }: LeadCardProps) {
   const SourceIcon = sourceIcon[lead.source]
   const TempIcon = tempIcon[lead.temperature]
   const theme = tempTheme[lead.temperature]
@@ -61,10 +59,7 @@ export function LeadCard({ lead, onClick, onCall, index = 0 }: LeadCardProps) {
   const followupToday = lead.nextFollowupAt != null && isToday(lead.nextFollowupAt)
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.04, 0.3) }}
+    <div
       onClick={onClick}
       className="group relative cursor-pointer overflow-hidden rounded-[22px] border border-border/50 bg-surface shadow-card transition-transform active:scale-[0.985]"
     >
@@ -113,20 +108,20 @@ export function LeadCard({ lead, onClick, onCall, index = 0 }: LeadCardProps) {
             )}
           </div>
 
-          <motion.button
-            whileTap={{ scale: 0.9 }}
+          <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation()
               onCall?.()
             }}
             aria-label={`تماس با ${lead.firstName} ${lead.lastName}`}
             className={cn(
-              'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-colors',
+              'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-transform active:scale-90',
               theme.callBtn,
             )}
           >
             <Phone size={19} strokeWidth={2.25} />
-          </motion.button>
+          </button>
         </div>
 
         {lead.lastNote && (
@@ -177,6 +172,6 @@ export function LeadCard({ lead, onClick, onCall, index = 0 }: LeadCardProps) {
           </span>
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }

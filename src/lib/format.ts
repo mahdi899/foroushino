@@ -10,8 +10,11 @@ export function toEn(input: string): string {
 
 export function formatPhone(phone: string): string {
   const clean = phone.replace(/\D/g, '')
-  if (clean.length === 11) {
-    return toFa(`${clean.slice(0, 4)} ${clean.slice(4, 7)} ${clean.slice(7)}`)
+  if (clean.length === 11 && clean.startsWith('09')) {
+    return toFa(`${clean.slice(0, 4)} · ${clean.slice(4, 7)} · ${clean.slice(7)}`)
+  }
+  if (clean.length === 10 && clean.startsWith('9')) {
+    return toFa(`0${clean.slice(0, 3)} · ${clean.slice(3, 6)} · ${clean.slice(6)}`)
   }
   return toFa(phone)
 }

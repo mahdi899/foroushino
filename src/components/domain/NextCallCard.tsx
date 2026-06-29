@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import { Phone, Clock, Target, NotebookPen, ChevronDown, TrendingUp, type LucideIcon } from 'lucide-react'
 import type { Lead, LeadSource } from '@/types'
 import { Avatar } from '@/components/ui/Avatar'
@@ -28,12 +27,7 @@ export function NextCallCard({ lead, onCall, onDetails }: NextCallCardProps) {
   const SourceIcon = sourceIcon[lead.source]
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 18, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: 'spring', damping: 22, stiffness: 240 }}
-      className="rounded-[28px] bg-surface p-5 shadow-card border border-border/60"
-    >
+    <div className="rounded-[28px] bg-surface p-5 shadow-card border border-border/60">
       <div className="mb-4 flex items-center justify-between">
         <span className="flex items-center gap-1.5 text-[13px] font-extrabold text-neutral-400">
           <Target size={15} className="text-primary-500" />
@@ -47,11 +41,17 @@ export function NextCallCard({ lead, onCall, onDetails }: NextCallCardProps) {
           <h2 className="truncate text-xl font-extrabold text-neutral-900">
             {lead.firstName} {lead.lastName}
           </h2>
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <ContactStatusBadge temperature={lead.temperature} />
-            <span className="ltr-nums text-sm font-bold text-primary-600 tabular-nums">
-              {formatPhone(lead.phone)}
-            </span>
+            <div
+              dir="ltr"
+              className="inline-flex max-w-full items-center gap-1.5 rounded-xl bg-primary-50 px-2.5 py-1.5 ring-1 ring-primary-100/80"
+            >
+              <Phone size={13} strokeWidth={2.25} className="shrink-0 text-primary-500" />
+              <span className="truncate text-[13px] font-extrabold tabular-nums tracking-wide text-primary-700">
+                {formatPhone(lead.phone)}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -90,22 +90,23 @@ export function NextCallCard({ lead, onCall, onDetails }: NextCallCardProps) {
         </div>
       )}
 
-      <motion.button
-        whileTap={{ scale: 0.98 }}
+      <button
+        type="button"
         onClick={onCall}
-        className="mt-4 flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-l from-primary-700 to-primary-500 text-base font-extrabold text-white shadow-float"
+        className="mt-4 flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-l from-primary-700 to-primary-500 text-base font-extrabold text-white shadow-float transition-transform active:scale-[0.98]"
       >
         <Phone size={20} />
         تماس بگیر
-      </motion.button>
+      </button>
 
       <button
+        type="button"
         onClick={onDetails}
         className="mx-auto mt-2 flex items-center justify-center p-1 text-neutral-300"
       >
         <ChevronDown size={20} />
       </button>
-    </motion.div>
+    </div>
   )
 }
 

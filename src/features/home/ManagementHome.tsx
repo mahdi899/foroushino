@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import {
   Phone,
   Target,
@@ -52,9 +51,7 @@ export function ManagementHome() {
       <AppHeader />
 
       <div className="space-y-5 px-4 pt-2">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+        <div
           className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-primary-600 to-primary-800 p-5 text-white shadow-float"
         >
           <div className="absolute -left-10 -top-10 h-36 w-36 rounded-full bg-white/10 blur-xl" />
@@ -81,13 +78,13 @@ export function ManagementHome() {
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         <div className="grid grid-cols-4 gap-2">
-          <StatTile variant="compact" icon={<Phone size={15} />} value={totalCalls} label="تماس‌ها" trend={8} />
-          <StatTile variant="compact" icon={<Target size={15} />} value={`${toFa(avgConversion)}٪`} label="تبدیل" trend={4} tone="secondary" />
-          <StatTile variant="compact" icon={<Flame size={15} />} value={hotLeads} label="لید داغ" trend={6} tone="accent" />
-          <StatTile variant="compact" icon={<AlertTriangle size={15} />} value={overdue} label="عقب‌افتاده" trend={-3} tone="warning" />
+          <StatTile variant="compact" icon={<Phone size={18} />} value={totalCalls} label="تماس‌ها" />
+          <StatTile variant="compact" icon={<Target size={18} />} value={`${toFa(avgConversion)}٪`} label="تبدیل" tone="secondary" />
+          <StatTile variant="compact" icon={<Flame size={18} />} value={hotLeads} label="لید داغ" tone="accent" />
+          <StatTile variant="compact" icon={<AlertTriangle size={18} />} value={overdue} label="عقب‌افتاده" tone="warning" />
         </div>
 
         <section>
@@ -124,7 +121,7 @@ export function ManagementHome() {
             </div>
             <div className="space-y-2">
               {topAgents.map((a, i) => (
-                <LeaderboardRow key={a.id} agent={a} rank={i + 1} index={i} metric={a.callsToday} />
+                <LeaderboardRow key={a.id} agent={a} rank={i + 1} metric={a.callsToday} />
               ))}
             </div>
           </section>

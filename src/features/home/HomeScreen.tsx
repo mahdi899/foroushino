@@ -1,5 +1,4 @@
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { Sparkles, CheckCircle2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
@@ -26,9 +25,7 @@ export function HomeScreen() {
       <AppHeader />
 
       <div className="space-y-5 px-4 pt-2">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
+        <div
           className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-primary-800 via-primary-600 to-primary-400 p-5 text-white shadow-float"
         >
           <div className="pointer-events-none absolute inset-0">
@@ -58,41 +55,36 @@ export function HomeScreen() {
                 </span>
               </h2>
 
-              <div className="mt-4">
-                <div className="mb-1.5 flex items-center justify-between text-[11px] font-bold">
+              <div className="mt-4 max-w-[210px]">
+                <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] font-bold">
                   <span className="text-white/65">پیشرفت هدف امروز</span>
-                  <span className="tabular-nums text-white/90">
+                  <span className="shrink-0 tabular-nums text-white/90">
                     {toFa(agent?.callsToday ?? 0)}
                     <span className="text-white/50"> / </span>
                     {toFa(agent?.callGoal ?? 0)}
                   </span>
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-white/15">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${goalPct}%` }}
-                    transition={{ duration: 0.9, ease: 'easeOut', delay: 0.15 }}
-                    className="h-full rounded-full bg-gradient-to-l from-emerald-200 via-white to-emerald-100 shadow-[0_0_10px_rgba(255,255,255,0.35)]"
+                  <div
+                    className="h-full rounded-full bg-gradient-to-l from-emerald-200 via-white to-emerald-100 shadow-[0_0_10px_rgba(255,255,255,0.35)] transition-[width] duration-500 ease-out"
+                    style={{ width: `${goalPct}%` }}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex h-[72px] w-[72px] shrink-0 flex-col items-center justify-center rounded-[20px] border border-white/20 bg-white/10 backdrop-blur-sm">
+            <div className="flex h-[88px] w-[88px] shrink-0 items-center justify-center rounded-[22px] border border-white/20 bg-white/10 backdrop-blur-sm">
               {goalComplete ? (
-                <>
-                  <CheckCircle2 size={26} className="text-emerald-200" strokeWidth={2.5} />
-                  <span className="mt-1 text-[9px] font-bold text-white/55">کامل شد</span>
-                </>
+                <CheckCircle2 size={42} className="text-emerald-200" strokeWidth={2.25} />
               ) : (
-                <>
-                  <span className="text-[28px] font-black tabular-nums leading-none">{toFa(remaining)}</span>
-                  <span className="mt-0.5 text-[10px] font-bold text-white/55">تماس مانده</span>
-                </>
+                <div className="flex flex-col items-center">
+                  <span className="text-[32px] font-black tabular-nums leading-none">{toFa(remaining)}</span>
+                  <span className="mt-1 text-[10px] font-bold text-white/55">تماس مانده</span>
+                </div>
               )}
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {nextLead ? (
           <NextCallCard
