@@ -10,6 +10,9 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
     "framer-motion": "^11.3.19",
     "lucide-react": "^0.427.0",
     "react": "^18.3.1",
