@@ -266,7 +266,7 @@ function SuccessOverlay({
               <p className="text-sm font-extrabold text-neutral-900">
                 {next.firstName} {next.lastName}
               </p>
-              <p className="text-xs font-bold text-primary-600 tabular-nums">
+              <p className="ltr-nums text-xs font-bold text-primary-600 tabular-nums">
                 {formatPhone(next.phone)}
               </p>
             </div>

@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Phone, Target, CheckCircle2, Flame } from 'lucide-react'
+import { Phone, Target, CheckCircle2, Flame, BarChart3 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
+import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
 import { StatTile } from '@/components/domain/StatTile'
 import { LeaderboardRow } from '@/components/domain/LeaderboardRow'
@@ -26,19 +27,26 @@ export function ReportsScreen() {
 
   return (
     <Page>
-      <div className="sticky top-0 z-20 bg-background/85 glass px-4 pt-[calc(14px+var(--safe-top))] pb-3">
-        <h1 className="mb-3 text-center text-base font-extrabold text-neutral-900">گزارش‌ها</h1>
-        <SegmentedTabs
-          value={tab}
-          onChange={setTab}
-          tabs={[
-            { id: 'overview', label: 'کلی' },
-            { id: 'funnel', label: 'قیف فروش' },
-            { id: 'team', label: 'تیم' },
-            { id: 'sources', label: 'منابع' },
-          ]}
-        />
-      </div>
+      <ScreenHeader
+        sticky
+        title="گزارش‌ها"
+        subtitle="تحلیل عملکرد تیم"
+        icon={BarChart3}
+        iconTone="primary"
+      >
+        <div className="mt-3">
+          <SegmentedTabs
+            value={tab}
+            onChange={setTab}
+            tabs={[
+              { id: 'overview', label: 'کلی' },
+              { id: 'funnel', label: 'قیف فروش' },
+              { id: 'team', label: 'تیم' },
+              { id: 'sources', label: 'منابع' },
+            ]}
+          />
+        </div>
+      </ScreenHeader>
 
       <div className="space-y-5 px-4 pt-4">
         {tab === 'overview' && (

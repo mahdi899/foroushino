@@ -99,7 +99,7 @@ export function LeadDetailScreen() {
           <h2 className="mt-3 text-lg font-extrabold text-neutral-900">
             {lead.firstName} {lead.lastName}
           </h2>
-          <p className="mt-0.5 text-sm font-bold text-primary-600 tabular-nums">
+          <p className="ltr-nums mt-0.5 text-sm font-bold text-primary-600 tabular-nums">
             {formatPhone(lead.phone)}
           </p>
           <p className="mt-1 text-xs text-neutral-400">{lead.city}</p>

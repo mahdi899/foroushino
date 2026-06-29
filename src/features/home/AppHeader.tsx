@@ -12,25 +12,38 @@ export function AppHeader() {
   if (!agent) return null
 
   return (
-    <div className="flex items-center justify-between px-4 pt-[calc(14px+var(--safe-top))] pb-2">
-      <button onClick={() => navigate('/profile')} className="flex items-center gap-3">
-        <Avatar id={agent.id} first={agent.firstName} last={agent.lastName} src={agent.avatar} size={46} online ring />
-        <div className="text-right">
-          <p className="flex items-center gap-1 text-[15px] font-extrabold text-neutral-900">
+    <div className="flex items-center justify-between gap-3 px-4 pt-[calc(14px+var(--safe-top))] pb-3">
+      <button
+        onClick={() => navigate('/profile')}
+        className="flex min-w-0 items-center gap-3 text-right"
+      >
+        <Avatar
+          id={agent.id}
+          first={agent.firstName}
+          last={agent.lastName}
+          src={agent.avatar}
+          size={42}
+          online
+          ring
+        />
+        <div className="min-w-0">
+          <p className="flex items-center gap-1 truncate text-[15px] font-extrabold tracking-tight text-neutral-900">
             {agent.firstName} {agent.lastName}
-            <BadgeCheck size={15} className="text-primary-500" />
+            <BadgeCheck size={14} className="shrink-0 text-primary-500" />
           </p>
-          <p className="text-[11px] font-bold text-neutral-400">{roleLabels[agent.role]}</p>
+          <p className="truncate text-[11px] font-semibold text-neutral-400">
+            {roleLabels[agent.role]}
+          </p>
         </div>
       </button>
 
       <button
         onClick={() => navigate('/notifications')}
-        className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-surface shadow-card border border-border/60 text-neutral-600"
+        className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border border-border/70 bg-surface text-neutral-500 shadow-sm"
       >
-        <Bell size={20} />
+        <Bell size={18} strokeWidth={2.25} />
         {unread > 0 && (
-          <span className="absolute -top-1 -left-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-error px-1 text-[10px] font-extrabold text-white ring-2 ring-background">
+          <span className="absolute -top-1 -left-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-error px-1 text-[9px] font-extrabold text-white ring-2 ring-background">
             {toFa(unread)}
           </span>
         )}

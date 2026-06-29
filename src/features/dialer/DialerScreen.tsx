@@ -81,7 +81,7 @@ export function DialerScreen() {
         <h2 className="mt-6 text-2xl font-black text-neutral-900">
           {lead.firstName} {lead.lastName}
         </h2>
-        <p className="mt-1.5 text-base font-bold text-neutral-500 tabular-nums">
+        <p className="ltr-nums mt-1.5 text-base font-bold text-neutral-500 tabular-nums">
           {formatPhone(lead.phone)}
         </p>
         <div className="mt-3 flex items-center gap-2">

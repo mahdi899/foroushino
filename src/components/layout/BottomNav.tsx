@@ -52,16 +52,18 @@ export function BottomNav({ onFabClick }: { onFabClick: () => void }) {
           <div className="w-16 shrink-0" />
           {right.map(renderItem)}
         </div>
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={() => {
-            haptic('medium')
-            onFabClick()
-          }}
-          className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-float ring-4 ring-background"
-        >
-          <Plus size={26} strokeWidth={2.5} />
-        </motion.button>
+        <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => {
+              haptic('medium')
+              onFabClick()
+            }}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-float ring-4 ring-background"
+          >
+            <Plus size={26} strokeWidth={2.5} />
+          </motion.button>
+        </div>
       </div>
     </div>
   )

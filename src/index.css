@@ -47,6 +47,10 @@ button {
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+  .ltr-nums {
+    direction: ltr;
+    unicode-bidi: isolate;
+  }
   .glass {
     backdrop-filter: blur(12px) saturate(140%);
     -webkit-backdrop-filter: blur(12px) saturate(140%);

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
+import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { ProgressRing } from '@/components/ui/ProgressRing'
 import { StatTile } from '@/components/domain/StatTile'
 import { LeaderboardRow } from '@/components/domain/LeaderboardRow'
@@ -44,11 +45,14 @@ export function PerformanceScreen() {
 
   return (
     <Page>
-      <div className="px-4 pt-[calc(14px+var(--safe-top))]">
-        <h1 className="text-center text-base font-extrabold text-neutral-900">عملکرد من</h1>
-      </div>
+      <ScreenHeader
+        title="عملکرد من"
+        subtitle="پیشرفت و دستاوردهای امروز"
+        icon={Trophy}
+        iconTone="warning"
+      />
 
-      <div className="space-y-5 px-4 pt-3">
+      <div className="space-y-5 px-4">
         <div className="rounded-[28px] bg-surface p-5 shadow-card border border-border/60">
           <div className="flex items-center gap-5">
             <ProgressRing value={goalPct} size={120} stroke={12} gradient={['#f59e0b', '#10b981']}>

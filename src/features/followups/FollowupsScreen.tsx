@@ -8,12 +8,12 @@ import {
   CalendarDays,
   Check,
   AlertTriangle,
-  Sparkles,
   ChevronLeft,
   type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
+import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { Avatar } from '@/components/ui/Avatar'
 import { Badge } from '@/components/ui/Badge'
 import { BottomSheet } from '@/components/ui/BottomSheet'
@@ -75,22 +75,14 @@ export function FollowupsScreen() {
 
   return (
     <Page>
-      <div className="px-4 pt-[calc(14px+var(--safe-top))]">
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="flex items-center gap-1.5 text-xl font-black text-neutral-900">
-              پیگیری‌ها
-              <Sparkles size={16} className="text-primary-500" />
-            </h1>
-            <p className="text-[11px] font-bold text-neutral-400">هیچ فرصتی را از دست نده</p>
-          </div>
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
-            <CalendarDays size={20} />
-          </div>
-        </div>
-
+      <ScreenHeader
+        title="پیگیری‌ها"
+        subtitle="هیچ فرصتی را از دست نده"
+        icon={CalendarDays}
+        iconTone="accent"
+      >
         <DateStrip date={todayDate} />
-      </div>
+      </ScreenHeader>
 
       <div className="space-y-5 px-4 pt-4">
         <section>

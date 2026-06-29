@@ -1,10 +1,22 @@
 import { motion } from 'framer-motion'
-import { Phone, Clock, Target, NotebookPen, ChevronDown } from 'lucide-react'
-import type { Lead } from '@/types'
+import { Phone, Clock, Target, NotebookPen, ChevronDown, TrendingUp, type LucideIcon } from 'lucide-react'
+import type { Lead, LeadSource } from '@/types'
 import { Avatar } from '@/components/ui/Avatar'
-import { ContactStatusBadge, SourceChip } from './Badges'
+import { ContactStatusBadge } from './Badges'
+import { sourceIcon } from './icons'
+import { sourceLabels } from '@/data/labels'
 import { formatPhone } from '@/lib/format'
 import { toFa } from '@/lib/format'
+
+const sourceIconClass: Record<LeadSource, string> = {
+  instagram: 'text-secondary-500',
+  website: 'text-cold-500',
+  telegram: 'text-cold-500',
+  ads: 'text-accent-500',
+  webinar: 'text-secondary-500',
+  form: 'text-primary-500',
+  excel: 'text-success-500',
+}
 
 interface NextCallCardProps {
   lead: Lead
@@ -13,6 +25,8 @@ interface NextCallCardProps {
 }
 
 export function NextCallCard({ lead, onCall, onDetails }: NextCallCardProps) {
+  const SourceIcon = sourceIcon[lead.source]
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 18, scale: 0.97 }}
@@ -34,7 +48,7 @@ export function NextCallCard({ lead, onCall, onDetails }: NextCallCardProps) {
           </h2>
           <div className="mt-2 flex items-center gap-2">
             <ContactStatusBadge temperature={lead.temperature} />
-            <span className="text-sm font-bold text-primary-600 tabular-nums">
+            <span className="ltr-nums text-sm font-bold text-primary-600 tabular-nums">
               {formatPhone(lead.phone)}
             </span>
           </div>
@@ -42,38 +56,26 @@ export function NextCallCard({ lead, onCall, onDetails }: NextCallCardProps) {
         <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={64} online ring />
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-neutral-50 p-3">
-        <Stat
-          icon={<Clock size={15} className="text-neutral-400" />}
-          label="بهترین زمان"
+      <div className="mt-4 grid grid-cols-3 gap-1.5 rounded-2xl bg-neutral-50 p-2">
+        <MetaCell
+          icon={Clock}
+          iconClass="text-primary-500"
           value={lead.bestCallTime}
+          label="بهترین زمان"
         />
-        <div className="flex flex-col items-center justify-center border-x border-border/70">
-          <div className="relative flex h-11 w-11 items-center justify-center">
-            <svg className="absolute -rotate-90" width={44} height={44}>
-              <circle cx={22} cy={22} r={18} fill="none" stroke="#eef1f4" strokeWidth={5} />
-              <circle
-                cx={22}
-                cy={22}
-                r={18}
-                fill="none"
-                stroke="#10b981"
-                strokeWidth={5}
-                strokeLinecap="round"
-                strokeDasharray={2 * Math.PI * 18}
-                strokeDashoffset={2 * Math.PI * 18 * (1 - lead.conversionProbability / 100)}
-              />
-            </svg>
-            <span className="text-[11px] font-extrabold text-neutral-800 tabular-nums">
-              {toFa(lead.conversionProbability)}
-            </span>
-          </div>
-          <span className="mt-1 text-[10px] font-bold text-neutral-400">احتمال موفقیت</span>
-        </div>
-        <div className="flex flex-col items-center justify-center gap-1">
-          <SourceChip source={lead.source} size="sm" />
-          <span className="text-[10px] font-bold text-neutral-400">منبع سرنخ</span>
-        </div>
+        <MetaCell
+          icon={TrendingUp}
+          iconClass="text-success-500"
+          value={`${toFa(lead.conversionProbability)}٪`}
+          label="احتمال موفقیت"
+          meter={lead.conversionProbability}
+        />
+        <MetaCell
+          icon={SourceIcon}
+          iconClass={sourceIconClass[lead.source]}
+          value={sourceLabels[lead.source]}
+          label="منبع سرنخ"
+        />
       </div>
 
       {lead.interestReason && (
@@ -107,12 +109,36 @@ export function NextCallCard({ lead, onCall, onDetails }: NextCallCardProps) {
   )
 }
 
-function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function MetaCell({
+  icon: Icon,
+  iconClass,
+  value,
+  label,
+  meter,
+}: {
+  icon: LucideIcon
+  iconClass: string
+  value: string
+  label: string
+  meter?: number
+}) {
   return (
-    <div className="flex flex-col items-center justify-center gap-0.5 text-center">
-      {icon}
-      <span className="text-[11px] font-extrabold text-neutral-800 leading-4">{value}</span>
-      <span className="text-[10px] font-bold text-neutral-400">{label}</span>
+    <div className="flex flex-col items-center gap-2 rounded-xl bg-white px-1.5 py-3 text-center ring-1 ring-border/40">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutral-50">
+        <Icon size={15} className={iconClass} strokeWidth={2.25} />
+      </span>
+      <div className="min-w-0 w-full">
+        <p className="text-[11px] font-extrabold leading-tight text-neutral-800 line-clamp-2">{value}</p>
+        {meter != null && (
+          <div className="mx-auto mt-1.5 h-1 w-10 overflow-hidden rounded-full bg-neutral-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-l from-primary-600 to-primary-400"
+              style={{ width: `${Math.max(0, Math.min(100, meter))}%` }}
+            />
+          </div>
+        )}
+        <p className="mt-1 text-[10px] font-bold leading-tight text-neutral-400">{label}</p>
+      </div>
     </div>
   )
 }

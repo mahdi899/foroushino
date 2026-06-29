@@ -6,18 +6,20 @@ export function Skeleton({ className }: { className?: string }) {
 
 export function LeadCardSkeleton() {
   return (
-    <div className="bg-surface rounded-3xl p-4 shadow-card border border-border/60">
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-12 w-12 rounded-full" />
-        <div className="flex-1 space-y-2">
-          <Skeleton className="h-4 w-2/3" />
-          <Skeleton className="h-3 w-1/3" />
+    <div className="overflow-hidden rounded-[22px] border border-border/50 bg-surface shadow-card">
+      <div className="p-4 pr-5">
+        <div className="flex items-start gap-3">
+          <Skeleton className="h-[52px] w-[52px] shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+          <Skeleton className="h-11 w-11 shrink-0 rounded-2xl" />
         </div>
-        <Skeleton className="h-12 w-12 rounded-2xl" />
-      </div>
-      <div className="mt-4 flex gap-2">
-        <Skeleton className="h-6 w-20 rounded-full" />
-        <Skeleton className="h-6 w-16 rounded-full" />
+        <Skeleton className="mt-2.5 h-3 w-full" />
+        <div className="mt-3 border-t border-border/50 pt-2.5">
+          <Skeleton className="h-3.5 w-full" />
+        </div>
       </div>
     </div>
   )
