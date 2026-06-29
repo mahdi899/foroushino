@@ -42,7 +42,8 @@ export function NextCallCard({ lead, onCall, onDetails }: NextCallCardProps) {
       </div>
 
       <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
+        <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={64} online ring />
+        <div className="min-w-0 flex-1">
           <h2 className="truncate text-xl font-extrabold text-neutral-900">
             {lead.firstName} {lead.lastName}
           </h2>
@@ -53,7 +54,6 @@ export function NextCallCard({ lead, onCall, onDetails }: NextCallCardProps) {
             </span>
           </div>
         </div>
-        <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={64} online ring />
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-1.5 rounded-2xl bg-neutral-50 p-2">
