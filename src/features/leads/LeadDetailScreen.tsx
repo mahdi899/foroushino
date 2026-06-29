@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import type { LucideIcon } from 'lucide-react'
 import {
   Phone,
   ClipboardList,
@@ -13,15 +14,17 @@ import {
   AlertCircle,
   MessageSquareWarning,
   PhoneCall,
+  NotebookPen,
+  History,
+  CalendarClock,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
-import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Chip } from '@/components/ui/Chip'
-import { ContactStatusBadge, SourceChip } from '@/components/domain/Badges'
+import { LeadProfileHero } from '@/components/domain/LeadProfileHero'
 import { StageBar } from '@/components/domain/StageBar'
 import { resultIcon } from '@/components/domain/icons'
 import { EmptyState } from '@/components/ui/States'
@@ -32,8 +35,9 @@ import {
   stageLabels,
   temperatureLabels,
 } from '@/data/labels'
-import { formatPhone, relativeDayTime, toFa, formatDuration } from '@/lib/format'
+import { relativeDayTime, toFa, formatDuration } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
+import { cn } from '@/lib/cn'
 import type { SaleStage, Temperature } from '@/types'
 
 const stageOptions: SaleStage[] = [
@@ -47,6 +51,87 @@ const stageOptions: SaleStage[] = [
   'lost',
 ]
 const tempOptions: Temperature[] = ['hot', 'warm', 'cold']
+
+function DetailIconBox({
+  icon: Icon,
+  tone = 'primary',
+}: {
+  icon: LucideIcon
+  tone?: 'primary' | 'warning' | 'error' | 'accent'
+}) {
+  const tones = {
+    primary: 'text-primary-600',
+    warning: 'text-warning-600',
+    error: 'text-error-600',
+    accent: 'text-accent-600',
+  }
+  return (
+    <div
+      className={cn(
+        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface shadow-sm',
+        tones[tone],
+      )}
+    >
+      <Icon size={15} />
+    </div>
+  )
+}
+
+function DetailSectionHeader({
+  icon,
+  title,
+  count,
+}: {
+  icon: LucideIcon
+  title: string
+  count?: number | string
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <DetailIconBox icon={icon} />
+      <p className="text-[13px] font-extrabold text-neutral-900">{title}</p>
+      {count !== undefined && (
+        <span className="mr-auto rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-extrabold text-neutral-500 tabular-nums">
+          {count}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function DetailRow({
+  icon,
+  tone = 'primary',
+  label,
+  value,
+  meta,
+  sub,
+}: {
+  icon: LucideIcon
+  tone?: 'primary' | 'warning' | 'error' | 'accent'
+  label?: string
+  value: ReactNode
+  meta?: ReactNode
+  sub?: ReactNode
+}) {
+  return (
+    <div className="flex items-center gap-2.5 rounded-xl bg-neutral-50 px-2.5 py-2">
+      <DetailIconBox icon={icon} tone={tone} />
+      <div className="min-w-0 flex-1">
+        {label && <p className="text-[10px] font-bold text-neutral-400">{label}</p>}
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 truncate text-[12px] font-extrabold text-neutral-800">{value}</div>
+          {meta && <span className="shrink-0 text-[10px] font-bold text-neutral-400 tabular-nums">{meta}</span>}
+        </div>
+        {sub && <p className="truncate text-[10px] font-bold text-neutral-400">{sub}</p>}
+      </div>
+    </div>
+  )
+}
+
+function DetailDivider() {
+  return <div className="h-px bg-border/60" />
+}
 
 export function LeadDetailScreen() {
   const { id } = useParams()
@@ -94,125 +179,89 @@ export function LeadDetailScreen() {
       />
 
       <div className="space-y-4 px-4">
-        <div className="flex flex-col items-center rounded-3xl bg-surface p-5 shadow-card border border-border/60">
-          <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={76} online ring />
-          <h2 className="mt-3 text-lg font-extrabold text-neutral-900">
-            {lead.firstName} {lead.lastName}
-          </h2>
-          <p className="ltr-nums mt-0.5 text-sm font-bold text-primary-600 tabular-nums">
-            {formatPhone(lead.phone)}
-          </p>
-          <p className="mt-1 text-xs text-neutral-400">{lead.city}</p>
-          <div className="mt-3 flex items-center gap-2">
-            <ContactStatusBadge temperature={lead.temperature} />
-            <SourceChip source={lead.source} />
+        <LeadProfileHero lead={lead} />
+
+        <StageBar stage={lead.stage} />
+
+        <div className="space-y-3 rounded-3xl border border-border/60 bg-surface p-3 shadow-card">
+          <div className="grid grid-cols-2 gap-2">
+            {info.map((item) => (
+              <DetailRow key={item.label} icon={item.icon} label={item.label} value={item.value} />
+            ))}
           </div>
-        </div>
 
-        <div className="rounded-3xl bg-surface p-4 shadow-card border border-border/60">
-          <p className="mb-4 text-[13px] font-extrabold text-neutral-900">مرحله فروش</p>
-          <StageBar stage={lead.stage} />
-        </div>
-
-        <div className="grid grid-cols-2 gap-2.5">
-          {info.map((item) => (
-            <div key={item.label} className="rounded-2xl bg-surface p-3 shadow-card border border-border/60">
-              <div className="flex items-center gap-1.5 text-neutral-400">
-                <item.icon size={14} />
-                <span className="text-[11px] font-bold">{item.label}</span>
+          {(lead.painPoint || lead.objection || lead.lastNote) && (
+            <>
+              <DetailDivider />
+              <div className="space-y-2">
+                {lead.painPoint && (
+                  <DetailRow
+                    icon={AlertCircle}
+                    tone="warning"
+                    label="نیاز اصلی"
+                    value={lead.painPoint}
+                  />
+                )}
+                {lead.objection && (
+                  <DetailRow
+                    icon={MessageSquareWarning}
+                    tone="error"
+                    label="اعتراض احتمالی"
+                    value={objectionLabels[lead.objection]}
+                  />
+                )}
+                {lead.lastNote && (
+                  <DetailRow icon={NotebookPen} label="آخرین یادداشت" value={lead.lastNote} />
+                )}
               </div>
-              <p className="mt-1 text-[13px] font-extrabold text-neutral-800">{item.value}</p>
-            </div>
-          ))}
-        </div>
+            </>
+          )}
 
-        {(lead.painPoint || lead.objection) && (
-          <div className="space-y-2.5">
-            {lead.painPoint && (
-              <div className="flex items-start gap-2.5 rounded-2xl bg-warning-50 p-3.5">
-                <AlertCircle size={17} className="mt-0.5 shrink-0 text-warning-600" />
-                <div>
-                  <p className="text-[11px] font-bold text-warning-600">نیاز اصلی</p>
-                  <p className="mt-0.5 text-[13px] font-bold text-neutral-700">{lead.painPoint}</p>
-                </div>
-              </div>
-            )}
-            {lead.objection && (
-              <div className="flex items-start gap-2.5 rounded-2xl bg-error-50 p-3.5">
-                <MessageSquareWarning size={17} className="mt-0.5 shrink-0 text-error-600" />
-                <div>
-                  <p className="text-[11px] font-bold text-error-600">اعتراض احتمالی</p>
-                  <p className="mt-0.5 text-[13px] font-bold text-neutral-700">
-                    {objectionLabels[lead.objection]}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {lead.lastNote && (
-          <div className="rounded-2xl bg-surface p-4 shadow-card border border-border/60">
-            <p className="mb-1 text-[13px] font-extrabold text-neutral-900">آخرین یادداشت</p>
-            <p className="text-[13px] leading-6 text-neutral-600">{lead.lastNote}</p>
-          </div>
-        )}
-
-        <div className="rounded-3xl bg-surface p-4 shadow-card border border-border/60">
-          <p className="mb-3 text-[13px] font-extrabold text-neutral-900">تاریخچه تماس‌ها</p>
+          <DetailDivider />
+          <DetailSectionHeader
+            icon={History}
+            title="تاریخچه تماس"
+            count={toFa(calls.length || lead.callCount)}
+          />
           {calls.length === 0 ? (
-            <p className="py-3 text-center text-xs font-bold text-neutral-400">
-              {lead.callCount > 0
-                ? `${toFa(lead.callCount)} تماس قبلی ثبت شده`
-                : 'هنوز تماسی ثبت نشده'}
+            <p className="pr-10 text-[11px] font-bold text-neutral-400">
+              {lead.callCount > 0 ? `${toFa(lead.callCount)} تماس قبلی ثبت شده` : 'هنوز تماسی ثبت نشده'}
             </p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {calls.map((c) => {
                 const Icon = resultIcon[c.result]
                 return (
-                  <div key={c.id} className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-50 text-primary-600">
-                        <Icon size={16} />
-                      </div>
-                    </div>
-                    <div className="flex-1 border-b border-border/60 pb-3">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[13px] font-extrabold text-neutral-800">
-                          {resultLabels[c.result]}
-                        </p>
-                        <span className="text-[11px] font-bold text-neutral-400 tabular-nums">
-                          {formatDuration(c.durationSec)}
-                        </span>
-                      </div>
-                      {c.note && <p className="mt-0.5 text-xs text-neutral-500">{c.note}</p>}
-                      <p className="mt-1 text-[10px] font-bold text-neutral-300">
-                        {relativeDayTime(c.createdAt)}
-                      </p>
-                    </div>
-                  </div>
+                  <DetailRow
+                    key={c.id}
+                    icon={Icon}
+                    value={resultLabels[c.result]}
+                    meta={formatDuration(c.durationSec)}
+                    sub={c.note ? c.note : relativeDayTime(c.createdAt)}
+                  />
                 )
               })}
             </div>
           )}
-        </div>
 
-        {followups.length > 0 && (
-          <div className="rounded-3xl bg-surface p-4 shadow-card border border-border/60">
-            <p className="mb-3 text-[13px] font-extrabold text-neutral-900">پیگیری‌ها</p>
-            <div className="space-y-2">
-              {followups.map((f) => (
-                <div key={f.id} className="flex items-center justify-between rounded-2xl bg-neutral-50 p-3">
-                  <span className="text-[13px] font-bold text-neutral-700">{f.title}</span>
-                  <span className="text-[11px] font-bold text-neutral-400">
-                    {relativeDayTime(f.dueAt)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          {followups.length > 0 && (
+            <>
+              <DetailDivider />
+              <DetailSectionHeader icon={CalendarClock} title="پیگیری‌ها" count={toFa(followups.length)} />
+              <div className="space-y-2">
+                {followups.map((f) => (
+                  <DetailRow
+                    key={f.id}
+                    icon={Repeat2}
+                    tone="accent"
+                    value={f.title}
+                    meta={relativeDayTime(f.dueAt)}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <div className="absolute inset-x-0 bottom-0 z-20 flex gap-2.5 border-t border-border/60 bg-surface/90 glass px-4 pt-3 pb-[calc(14px+var(--safe-bottom))]">

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   BrowserRouter,
   Routes,
@@ -39,14 +39,19 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 function Shell() {
   const location = useLocation()
+  const scrollRef = useRef<HTMLDivElement>(null)
   const isAuthed = useStore((s) => s.isAuthed)
   const [fabOpen, setFabOpen] = useState(false)
 
   const showNav = isAuthed && NAV_ROUTES.includes(location.pathname)
 
+  useEffect(() => {
+    scrollRef.current?.scrollTo(0, 0)
+  }, [location.pathname])
+
   return (
     <main className="relative h-full overflow-hidden">
-      <div className="h-full overflow-y-auto no-scrollbar">
+      <div ref={scrollRef} className="h-full overflow-y-auto no-scrollbar">
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname.split('/').slice(0, 2).join('/')}>
             <Route path="/splash" element={<SplashScreen />} />
