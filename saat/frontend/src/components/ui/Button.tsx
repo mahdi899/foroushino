@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'soft' | 'danger'
+type Variant = 'primary' | 'secondary' | 'sales' | 'ghost' | 'soft' | 'danger'
 type Size = 'sm' | 'md' | 'lg'
 
 interface ButtonProps {
@@ -19,11 +19,16 @@ interface ButtonProps {
 
 const variants: Record<Variant, string> = {
   primary:
-    'bg-gradient-to-l from-primary-700 to-primary-500 text-white shadow-float',
-  secondary: 'bg-neutral-900 text-white',
-  soft: 'bg-primary-50 text-primary-700',
-  ghost: 'bg-transparent text-neutral-600',
-  danger: 'bg-error text-white shadow-[0_8px_24px_-8px_rgba(229,72,77,0.5)]',
+    'bg-gradient-to-br from-primary-600 to-primary-500 text-white shadow-float hover:from-primary-700 hover:to-primary-600 active:from-primary-800 active:to-primary-700 dark:shadow-float-dark',
+  sales:
+    'bg-gradient-to-br from-secondary-500 to-accent-500 text-[#1A1200] shadow-sales hover:from-secondary-600 hover:to-accent-600 active:opacity-90',
+  secondary:
+    'bg-surface-soft text-primary border border-border hover:bg-surface-tint dark:bg-surface-elevated dark:text-[var(--color-text)] dark:border-border dark:hover:bg-[var(--color-surface-hover)]',
+  soft: 'bg-primary-50 text-primary-700 dark:bg-[rgba(0,140,150,0.14)] dark:text-primary-300',
+  ghost:
+    'bg-transparent text-primary hover:bg-surface-tint dark:text-text-soft dark:hover:bg-[rgba(0,140,150,0.12)] dark:hover:text-[var(--color-text)]',
+  danger:
+    'bg-error text-white shadow-[0_8px_24px_-8px_rgba(229,72,77,0.5)] dark:bg-[var(--color-error)]',
 }
 
 const sizes: Record<Size, string> = {

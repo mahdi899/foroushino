@@ -29,55 +29,71 @@ const stageIcons: Record<PipelineStage, typeof UserPlus> = {
 }
 
 type StageTheme = {
-  card: string
-  cardBorder: string
-  cardGradient: string
+  shell: string
+  overlay: string
+  glow: string
   shadow: string
+  progressFill: string
+  stepAccent: string
 }
 
-/** Dark brand ramp — white text, readable contrast */
+/** Pipeline journey: Teal (start) → Gold (mid) → Orange (close) → Success (won) */
 const harmonySteps: StageTheme[] = [
   {
-    card: 'bg-primary-500',
-    cardBorder: 'border-primary-400',
-    cardGradient: 'from-primary-700/50 via-primary-600/30 to-primary-500',
-    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,111,117,0.5)]',
+    shell: 'border-primary-400/40 bg-gradient-to-br from-primary-800 via-primary-600 to-primary-500',
+    overlay: 'from-primary-900/35 via-transparent to-primary-300/15',
+    glow: 'bg-primary-300/25',
+    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,111,117,0.42)]',
+    progressFill: 'bg-gradient-to-l from-primary-200 via-white to-primary-100',
+    stepAccent: 'text-primary-600',
   },
   {
-    card: 'bg-primary-600',
-    cardBorder: 'border-primary-500',
-    cardGradient: 'from-primary-800/45 via-primary-700/25 to-primary-600',
-    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,111,117,0.52)]',
+    shell: 'border-primary-500/45 bg-gradient-to-br from-primary-900 via-primary-700 to-primary-600',
+    overlay: 'from-primary-900/40 via-primary-600/10 to-primary-400/10',
+    glow: 'bg-primary-400/20',
+    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,91,97,0.48)]',
+    progressFill: 'bg-gradient-to-l from-primary-200 via-white to-primary-100',
+    stepAccent: 'text-primary-600',
   },
   {
-    card: 'bg-primary-600',
-    cardBorder: 'border-primary-500',
-    cardGradient: 'from-primary-800/50 via-primary-700/30 to-primary-600',
-    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,91,97,0.55)]',
+    shell: 'border-primary-500/50 bg-gradient-to-br from-[#003B40] via-primary-700 to-primary-500',
+    overlay: 'from-secondary-500/18 via-transparent to-primary-400/12',
+    glow: 'bg-secondary-400/18',
+    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,91,97,0.5)]',
+    progressFill: 'bg-gradient-to-l from-secondary-200 via-white to-primary-100',
+    stepAccent: 'text-primary-700',
   },
   {
-    card: 'bg-primary-700',
-    cardBorder: 'border-primary-600',
-    cardGradient: 'from-primary-900/40 via-primary-800/30 to-primary-700',
-    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,91,97,0.58)]',
+    shell: 'border-secondary-500/35 bg-gradient-to-br from-primary-900 via-[#00484D] to-primary-600',
+    overlay: 'from-secondary-500/22 via-primary-700/10 to-transparent',
+    glow: 'bg-secondary-400/22',
+    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,72,77,0.52)]',
+    progressFill: 'bg-gradient-to-l from-secondary-200 via-white to-primary-100',
+    stepAccent: 'text-secondary-600',
   },
   {
-    card: 'bg-primary-700',
-    cardBorder: 'border-primary-600',
-    cardGradient: 'from-primary-900/45 via-primary-800/35 to-primary-700',
-    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,72,77,0.6)]',
+    shell: 'border-secondary-400/45 bg-gradient-to-br from-primary-900 via-[#00484D] to-secondary-600',
+    overlay: 'from-secondary-400/28 via-transparent to-primary-500/10',
+    glow: 'bg-secondary-300/25',
+    shadow: 'shadow-[0_10px_30px_-12px_rgba(255,176,0,0.22)]',
+    progressFill: 'bg-gradient-to-l from-secondary-200 via-white to-secondary-100',
+    stepAccent: 'text-secondary-600',
   },
   {
-    card: 'bg-primary-800',
-    cardBorder: 'border-primary-700',
-    cardGradient: 'from-primary-900/55 via-primary-800/40 to-primary-800',
-    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,72,77,0.62)]',
+    shell: 'border-accent-400/40 bg-gradient-to-br from-secondary-700 via-accent-600 to-accent-500',
+    overlay: 'from-white/12 via-accent-500/10 to-secondary-400/15',
+    glow: 'bg-accent-400/22',
+    shadow: 'shadow-[0_10px_30px_-12px_rgba(255,107,0,0.32)]',
+    progressFill: 'bg-gradient-to-l from-white via-secondary-100 to-white',
+    stepAccent: 'text-accent-600',
   },
   {
-    card: 'bg-success-600',
-    cardBorder: 'border-success-500',
-    cardGradient: 'from-success-800/50 via-success-700/35 to-success-600',
-    shadow: 'shadow-[0_10px_30px_-12px_rgba(16,163,127,0.5)]',
+    shell: 'border-success-400/45 bg-gradient-to-br from-success-800 via-success-600 to-primary-600',
+    overlay: 'from-secondary-400/20 via-success-500/15 to-primary-500/10',
+    glow: 'bg-success-300/25',
+    shadow: 'shadow-[0_10px_30px_-12px_rgba(16,163,127,0.45)]',
+    progressFill: 'bg-gradient-to-l from-success-200 via-white to-secondary-100',
+    stepAccent: 'text-success-600',
   },
 ]
 
@@ -90,7 +106,7 @@ export function StageBar({ stage }: { stage: SaleStage }) {
 
   if (stage === 'lost') {
     return (
-      <div className="rounded-3xl border border-error-200 bg-error-600 px-4 py-3 text-center text-sm font-bold text-white shadow-[0_10px_30px_-12px_rgba(201,54,59,0.45)]">
+      <div className="rounded-3xl border border-error-200 bg-gradient-to-br from-error-600 to-error-500 px-4 py-3 text-center text-sm font-bold text-white shadow-[0_10px_30px_-12px_rgba(201,54,59,0.45)]">
         {stageLabels.lost}
       </div>
     )
@@ -104,30 +120,45 @@ export function StageBar({ stage }: { stage: SaleStage }) {
   const theme = stageThemeAt(currentIndex)
   const Icon = stageIcons[currentStage]
   const isWon = stage === 'won'
+  const isClosing = currentIndex >= 5
 
   return (
     <motion.div
       key={currentStage}
-      initial={{ opacity: 0.85 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
+      initial={{ opacity: 0.88, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: 'easeOut' }}
       className={cn(
         'relative overflow-hidden rounded-3xl border p-4 text-white',
-        theme.card,
-        theme.cardBorder,
+        theme.shell,
         theme.shadow,
       )}
     >
+      <div className={cn('pointer-events-none absolute inset-0 bg-gradient-to-l', theme.overlay)} />
       <div
         className={cn(
-          'pointer-events-none absolute inset-0 bg-gradient-to-l',
-          theme.cardGradient,
+          'pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full blur-3xl',
+          theme.glow,
         )}
       />
+      <div
+        className={cn(
+          'pointer-events-none absolute -bottom-12 -right-8 h-28 w-28 rounded-full blur-3xl',
+          isClosing ? 'bg-accent-400/15' : 'bg-white/8',
+        )}
+      />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
 
       <div className="relative space-y-3">
         <div className="flex items-center gap-3.5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white shadow-md ring-4 ring-white/25">
+          <div
+            className={cn(
+              'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-md ring-4',
+              isClosing
+                ? 'bg-white/25 text-white ring-white/30'
+                : 'bg-white/20 text-white ring-white/25',
+            )}
+          >
             {isWon ? <Check size={24} strokeWidth={2.5} /> : <Icon size={22} strokeWidth={2.5} />}
           </div>
           <div className="min-w-0 flex-1">
@@ -136,9 +167,19 @@ export function StageBar({ stage }: { stage: SaleStage }) {
               {stageLabels[currentStage]}
             </p>
           </div>
+          {isClosing && !isWon && (
+            <span className="shrink-0 rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[10px] font-extrabold backdrop-blur-sm">
+              نزدیک فروش
+            </span>
+          )}
+          {isWon && (
+            <span className="shrink-0 rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[10px] font-extrabold backdrop-blur-sm">
+              🎉 موفق
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-2.5 rounded-xl border border-white/20 bg-white/10 px-3 py-2.5">
+        <div className="flex items-center gap-2.5 rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
           <span className="shrink-0 text-[11px] font-extrabold tabular-nums text-white/80">
             {toFa(currentIndex + 1)}/{toFa(total)}
           </span>
@@ -147,7 +188,7 @@ export function StageBar({ stage }: { stage: SaleStage }) {
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.6, ease: 'easeOut' }}
-              className="h-full rounded-full bg-white"
+              className={cn('h-full rounded-full shadow-[0_0_10px_rgba(255,255,255,0.35)]', theme.progressFill)}
             />
           </div>
           <span className="shrink-0 text-[13px] font-extrabold tabular-nums text-white">
@@ -190,6 +231,7 @@ export function StageBar({ stage }: { stage: SaleStage }) {
                 {stageOrder.map((s, i) => {
                   const done = i < currentIndex
                   const active = i === currentIndex
+                  const stepTheme = stageThemeAt(i)
                   return (
                     <div
                       key={s}
@@ -203,13 +245,13 @@ export function StageBar({ stage }: { stage: SaleStage }) {
                       <div
                         className={cn(
                           'flex h-8 w-8 items-center justify-center rounded-full bg-white text-[11px] font-extrabold',
-                          done && 'text-primary-600',
-                          active && 'text-primary-700 ring-4 ring-white/30',
-                          !done && !active && 'bg-white/75 text-primary-400',
+                          done && stepTheme.stepAccent,
+                          active && cn(stepTheme.stepAccent, 'ring-4 ring-white/30'),
+                          !done && !active && 'bg-white/75 text-neutral-400',
                         )}
                       >
                         {done ? (
-                          <Check size={14} strokeWidth={2.5} className="text-primary-600" />
+                          <Check size={14} strokeWidth={2.5} className={stepTheme.stepAccent} />
                         ) : (
                           toFa(i + 1)
                         )}

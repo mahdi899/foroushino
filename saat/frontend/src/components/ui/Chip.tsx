@@ -18,7 +18,7 @@ const activeStyles: Record<ChipTone, string> = {
     'bg-primary-600 text-white border-primary-600 shadow-[0_6px_16px_-6px_rgba(0,111,117,0.55)]',
   hot: 'bg-hot-600 text-white border-hot-600 shadow-[0_6px_16px_-6px_rgba(255,107,0,0.45)]',
   warm: 'bg-warm-600 text-white border-warm-600 shadow-[0_6px_16px_-6px_rgba(255,176,0,0.45)]',
-  cold: 'bg-cold-600 text-white border-cold-600 shadow-[0_6px_16px_-6px_rgba(0,140,150,0.45)]',
+  cold: 'bg-cold-600 text-white border-cold-600 shadow-[0_6px_16px_-6px_rgba(82,107,128,0.45)]',
   error: 'bg-error-600 text-white border-error-600 shadow-[0_6px_16px_-6px_rgba(201,54,59,0.45)]',
   neutral:
     'bg-neutral-800 text-white border-neutral-800 shadow-[0_6px_16px_-6px_rgba(11,31,34,0.35)]',

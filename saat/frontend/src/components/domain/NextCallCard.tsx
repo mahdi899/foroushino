@@ -1,21 +1,11 @@
 import { Phone, Clock, Target, NotebookPen, ChevronDown, TrendingUp, type LucideIcon } from 'lucide-react'
-import type { Lead, LeadSource } from '@/types'
+import type { Lead } from '@/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { ContactStatusBadge } from './Badges'
-import { sourceIcon } from './icons'
+import { sourceIcon, sourceIconClass } from './icons'
 import { sourceLabels } from '@/data/labels'
 import { formatPhone } from '@/lib/format'
 import { toFa } from '@/lib/format'
-
-const sourceIconClass: Record<LeadSource, string> = {
-  instagram: 'text-secondary-500',
-  website: 'text-cold-500',
-  telegram: 'text-cold-500',
-  ads: 'text-accent-500',
-  webinar: 'text-secondary-500',
-  form: 'text-primary-500',
-  excel: 'text-success-500',
-}
 
 interface NextCallCardProps {
   lead: Lead

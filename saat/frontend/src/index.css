@@ -45,6 +45,7 @@
   --color-surface: #0D1517;
   --color-surface-soft: #142326;
   --color-surface-tint: #102E33;
+  --color-surface-hover: #1A2F33;
   --color-border: #1D3438;
   --color-border-strong: #2B555B;
 
@@ -122,7 +123,7 @@ button {
   .skeleton {
     position: relative;
     overflow: hidden;
-    background: var(--color-border);
+    background: var(--color-surface-soft);
   }
   .skeleton::after {
     content: '';

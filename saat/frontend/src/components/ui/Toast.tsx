@@ -10,9 +10,17 @@ const icons = {
 }
 
 const tones = {
-  success: 'bg-neutral-900 text-white',
-  info: 'bg-neutral-900 text-white',
-  error: 'bg-error text-white',
+  success:
+    'bg-success-50 text-success-700 border border-success-200 dark:bg-[rgba(16,163,127,0.14)] dark:text-success-300 dark:border-[rgba(16,163,127,0.28)]',
+  info: 'bg-primary-50 text-primary-700 border border-primary-200 dark:bg-[rgba(0,140,150,0.14)] dark:text-primary-300 dark:border-[rgba(0,140,150,0.28)]',
+  error:
+    'bg-error-50 text-error-600 border border-error-200 dark:bg-[rgba(255,92,102,0.14)] dark:text-error-300 dark:border-[rgba(255,92,102,0.28)]',
+}
+
+const iconBg = {
+  success: 'bg-success-500 text-white dark:bg-success-400',
+  info: 'bg-primary-600 text-white dark:bg-primary-500',
+  error: 'bg-error-500 text-white dark:bg-error-400',
 }
 
 export function ToastHost() {
@@ -33,8 +41,8 @@ export function ToastHost() {
           >
             <span
               className={cn(
-                'flex h-6 w-6 items-center justify-center rounded-full',
-                t.tone === 'error' ? 'bg-white/20' : 'bg-primary-500',
+                'flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
+                iconBg[t.tone],
               )}
             >
               {icons[t.tone]}

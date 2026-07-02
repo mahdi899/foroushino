@@ -1,6 +1,6 @@
 import { Flame, Snowflake, Sun, Star } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
-import { sourceIcon, sourceColor } from './icons'
+import { sourceIcon, sourceIconClass } from './icons'
 import { sourceLabels, temperatureLabels } from '@/data/labels'
 import type { LeadSource, Priority, Temperature } from '@/types'
 import { cn } from '@/lib/cn'
@@ -26,6 +26,8 @@ export function ContactStatusBadge({
   )
 }
 
+const sourceIconColor = sourceIconClass
+
 export function SourceChip({ source, size = 'md' }: { source: LeadSource; size?: 'sm' | 'md' }) {
   const Icon = sourceIcon[source]
   return (
@@ -35,7 +37,7 @@ export function SourceChip({ source, size = 'md' }: { source: LeadSource; size?:
         size === 'sm' ? 'text-[11px]' : 'text-xs',
       )}
     >
-      <Icon size={size === 'sm' ? 12 : 14} className={`text-${sourceColor[source]}-500`} />
+      <Icon size={size === 'sm' ? 12 : 14} className={sourceIconColor[source]} />
       {sourceLabels[source]}
     </span>
   )

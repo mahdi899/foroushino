@@ -49,6 +49,27 @@ export const sourceColor: Record<LeadSource, string> = {
   excel: 'success',
 }
 
+/** Static Tailwind classes — never use dynamic `text-${sourceColor}-500` */
+export const sourceIconClass: Record<LeadSource, string> = {
+  instagram: 'text-secondary-500',
+  website: 'text-cold-500',
+  telegram: 'text-cold-500',
+  ads: 'text-accent-500',
+  webinar: 'text-secondary-500',
+  form: 'text-primary-500',
+  excel: 'text-success-500',
+}
+
+export const sourceBadgeClass: Record<LeadSource, string> = {
+  instagram: 'bg-secondary-500',
+  website: 'bg-cold-500',
+  telegram: 'bg-cold-500',
+  ads: 'bg-accent-500',
+  webinar: 'bg-secondary-500',
+  form: 'bg-primary-600',
+  excel: 'bg-success-500',
+}
+
 export const resultIcon: Record<CallResult, LucideIcon> = {
   interested: Smile,
   very_hot: Flame,

@@ -77,7 +77,18 @@ export function SettingsScreen() {
                 <span className="flex-1 text-[14px] font-bold text-neutral-800">{s.label}</span>
                 <Toggle
                   on={toggles[s.key]}
-                  onToggle={() => setToggles((t) => ({ ...t, [s.key]: !t[s.key] }))}
+                  onToggle={() => {
+                    setToggles((t) => {
+                      const next = { ...t, [s.key]: !t[s.key] }
+                      if (s.key === 'dark') {
+                        document.documentElement.setAttribute(
+                          'data-theme',
+                          next.dark ? 'dark' : 'light',
+                        )
+                      }
+                      return next
+                    })
+                  }}
                 />
               </div>
             ))}

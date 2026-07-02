@@ -8,7 +8,7 @@
 
 - React 18 + TypeScript
 - Vite
-- Tailwind CSS (سیستم رنگی اختصاصی teal/emerald)
+- Tailwind CSS (سیستم رنگی Saat — Teal / Gold / Orange)
 - Framer Motion (میکرواینترکشن و ترنزیشن صفحات)
 - Zustand + persist (state و ذخیره‌سازی محلی)
 - React Router
@@ -60,6 +60,14 @@ src/
   store/        Zustand store
   types/        تایپ‌ها
 ```
+
+## سیستم رنگی
+
+راهنمای کامل برای دیزاین و فرانت‌اند: [`docs/COLOR_SYSTEM.md`](docs/COLOR_SYSTEM.md)
+
+توکن‌های JS: `src/lib/colors.ts` · CSS variables: `src/index.css` · Tailwind: `tailwind.config.js`
+
+---
 
 ## اتصال بعدی به بک‌اند / تلگرام
 

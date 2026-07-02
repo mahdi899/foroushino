@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
+import { progressRing, salesProgressRing } from '@/lib/colors'
 
 interface ProgressRingProps {
   value: number // 0-100
@@ -8,6 +9,7 @@ interface ProgressRingProps {
   children?: ReactNode
   gradient?: [string, string]
   trackColor?: string
+  variant?: 'default' | 'sales'
 }
 
 export function ProgressRing({
@@ -15,22 +17,26 @@ export function ProgressRing({
   size = 120,
   stroke = 12,
   children,
-  gradient = ['#006F75', '#FFB000'],
-  trackColor = '#DDEAEA',
+  gradient,
+  trackColor,
+  variant = 'default',
 }: ProgressRingProps) {
+  const preset = variant === 'sales' ? salesProgressRing : progressRing
+  const ringGradient = gradient ?? [preset.from, preset.to]
+  const ringTrack = trackColor ?? preset.track
   const radius = (size - stroke) / 2
   const circumference = 2 * Math.PI * radius
   const clamped = Math.max(0, Math.min(100, value))
   const offset = circumference - (clamped / 100) * circumference
-  const gradId = `ring-${gradient[0]}-${gradient[1]}`.replace(/[^a-z0-9]/gi, '')
+  const gradId = `ring-${ringGradient[0]}-${ringGradient[1]}`.replace(/[^a-z0-9]/gi, '')
 
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
         <defs>
           <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={gradient[0]} />
-            <stop offset="100%" stopColor={gradient[1]} />
+            <stop offset="0%" stopColor={ringGradient[0]} />
+            <stop offset="100%" stopColor={ringGradient[1]} />
           </linearGradient>
         </defs>
         <circle
@@ -38,7 +44,7 @@ export function ProgressRing({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={trackColor}
+          stroke={ringTrack}
           strokeWidth={stroke}
         />
         <motion.circle

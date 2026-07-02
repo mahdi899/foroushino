@@ -1,6 +1,6 @@
 import type { FunnelStage, SourcePerf, TeamRow } from '@/data/reports'
 import { stageLabels, sourceLabels } from '@/data/labels'
-import { sourceIcon, sourceColor } from '@/components/domain/icons'
+import { sourceIcon, sourceIconClass } from '@/components/domain/icons'
 import { toFa } from '@/lib/format'
 import { ArrowUp, ArrowDown } from 'lucide-react'
 import { cn } from '@/lib/cn'
@@ -43,7 +43,7 @@ export function SourceCard({ sources }: { sources: SourcePerf[] }) {
           const Icon = sourceIcon[s.source]
           return (
             <div key={s.source} className="flex items-center gap-3">
-              <span className={cn('flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-50', `text-${sourceColor[s.source]}-500`)}>
+              <span className={cn('flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-50', sourceIconClass[s.source])}>
                 <Icon size={16} />
               </span>
               <div className="min-w-0 flex-1">

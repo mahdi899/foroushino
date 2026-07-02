@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: ['selector', '[data-theme="dark"]'],
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   safelist: [
     'text-primary-500',
@@ -114,15 +115,15 @@ export default {
           DEFAULT: '#FFB000',
         },
         cold: {
-          50: '#EAF8F9',
-          100: '#D1F0F2',
-          200: '#A6DEE3',
-          300: '#72C8D0',
-          400: '#3AAAB6',
-          500: '#008C96',
-          600: '#00717A',
-          700: '#005B61',
-          DEFAULT: '#008C96',
+          50: '#F0F4F8',
+          100: '#DCE4EC',
+          200: '#B8C9D9',
+          300: '#8FA8BC',
+          400: '#6B8499',
+          500: '#526B80',
+          600: '#415566',
+          700: '#334452',
+          DEFAULT: '#526B80',
         },
         neutral: {
           50: '#F8FBFB',
@@ -141,6 +142,7 @@ export default {
           DEFAULT: '#FFFFFF',
           soft: '#F2F7F7',
           tint: '#E6F5F4',
+          elevated: '#142326',
         },
         border: {
           DEFAULT: '#DDEAEA',
@@ -160,8 +162,11 @@ export default {
       },
       boxShadow: {
         soft: '0 2px 12px -4px rgba(11, 31, 34, 0.08), 0 4px 24px -8px rgba(11, 31, 34, 0.06)',
-        card: '0 1px 3px rgba(11, 31, 34, 0.04), 0 8px 24px -12px rgba(11, 31, 34, 0.10)',
-        float: '0 8px 30px -6px rgba(0, 111, 117, 0.28)',
+        card: '0 10px 28px rgba(11, 31, 34, 0.08)',
+        'card-dark': '0 12px 32px rgba(2, 6, 7, 0.42)',
+        float: '0 8px 20px rgba(0, 111, 117, 0.22)',
+        'float-dark': '0 0 18px rgba(0, 140, 150, 0.30)',
+        sales: '0 8px 22px rgba(255, 176, 0, 0.28)',
         nav: '0 -2px 20px -8px rgba(11, 31, 34, 0.12)',
       },
       keyframes: {

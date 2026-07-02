@@ -2,7 +2,7 @@ import { MapPin, Phone, Clock, Flame, Sun, Snowflake } from 'lucide-react'
 import type { Lead, LeadSource, Temperature } from '@/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { PriorityBadge } from './Badges'
-import { sourceIcon } from './icons'
+import { sourceBadgeClass, sourceIcon } from './icons'
 import { relativeDayTime, isToday, toFa } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
@@ -12,15 +12,9 @@ interface LeadCardProps {
   onCall?: () => void
 }
 
-const sourceTone: Record<LeadSource, string> = {
-  instagram: 'bg-secondary-500 text-white',
-  website: 'bg-cold-500 text-white',
-  telegram: 'bg-cold-500 text-white',
-  ads: 'bg-accent-500 text-white',
-  webinar: 'bg-secondary-500 text-white',
-  form: 'bg-primary-600 text-white',
-  excel: 'bg-success-500 text-white',
-}
+const sourceTone = Object.fromEntries(
+  Object.entries(sourceBadgeClass).map(([k, v]) => [k, `${v} text-white`]),
+) as Record<LeadSource, string>
 
 const tempTheme: Record<
   Temperature,
@@ -43,7 +37,7 @@ const tempTheme: Record<
     stripe: 'from-cold-500 via-cold-400/60 to-transparent',
     accent: 'text-cold-600',
     callBtn:
-      'bg-gradient-to-br from-cold-500 to-cold-600 text-white shadow-[0_4px_16px_-4px_rgba(0,140,150,0.4)]',
+      'bg-gradient-to-br from-cold-500 to-cold-600 text-white shadow-[0_4px_16px_-4px_rgba(82,107,128,0.4)]',
   },
 }
 

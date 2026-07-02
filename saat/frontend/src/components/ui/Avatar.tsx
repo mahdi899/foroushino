@@ -1,5 +1,6 @@
 import { cn } from '@/lib/cn'
 import { resolveAvatar } from '@/data/avatars'
+import { avatarGradients } from '@/lib/colors'
 import { initials } from '@/lib/format'
 
 interface AvatarProps {
@@ -9,18 +10,13 @@ interface AvatarProps {
   src?: string | null
   size?: number
   online?: boolean
+  onlineClassName?: string
+  gradient?: [string, string]
   className?: string
   ring?: boolean
 }
 
-const PALETTE = [
-  ['#003B40', '#008C96'],
-  ['#006F75', '#10A37F'],
-  ['#FFB000', '#FF6B00'],
-  ['#008C96', '#5FBDBE'],
-  ['#E5484D', '#FF6B00'],
-  ['#00484D', '#FFB000'],
-]
+const PALETTE = avatarGradients
 
 function pickColor(seed: string): [string, string] {
   let h = 0
@@ -28,8 +24,19 @@ function pickColor(seed: string): [string, string] {
   return PALETTE[Math.abs(h)] as [string, string]
 }
 
-export function Avatar({ id, first, last, src, size = 48, online, className, ring }: AvatarProps) {
-  const [c1, c2] = pickColor(first + last)
+export function Avatar({
+  id,
+  first,
+  last,
+  src,
+  size = 48,
+  online,
+  onlineClassName,
+  gradient,
+  className,
+  ring,
+}: AvatarProps) {
+  const [c1, c2] = gradient ?? pickColor(first + last)
   const imageSrc = id ? resolveAvatar(id, src) : src
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
@@ -52,7 +59,10 @@ export function Avatar({ id, first, last, src, size = 48, online, className, rin
       </div>
       {online && (
         <span
-          className="absolute bottom-0 left-0 rounded-full bg-success-500 ring-2 ring-white"
+          className={cn(
+            'absolute bottom-0 left-0 rounded-full ring-2 ring-white',
+            onlineClassName ?? 'bg-success-500',
+          )}
           style={{ width: size * 0.26, height: size * 0.26 }}
         />
       )}
