@@ -19,10 +19,18 @@
 
 ```bash
 npm install
-npm run dev      # اجرای محیط توسعه روی http://localhost:5173
+npm run dev      # فقط مینی‌اپ — http://localhost:5173
 npm run build    # خروجی production
 npm run preview  # پیش‌نمایش خروجی build
 ```
+
+برای اجرای همزمان مینی‌اپ و سایت بهرام، از روت مونورپو:
+
+```bash
+cd ../..
+npm run dev
+```
+
 
 ## امکانات
 

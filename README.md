@@ -5,27 +5,32 @@
 ## ساختار
 
 ```
-saat/         ← مینی‌اپ کال‌سنتر و مدیریت فروش (React + Vite + Capacitor)
-bahram-cm/    ← سایت عمومی بهرام رستمی (Next.js + FastAPI)
+saat/         ← مینی‌اپ کال‌سنتر (React + Vite) — پورت 5173
+bahram-cm/    ← سایت عمومی بهرام رستمی (Next.js) — پورت 3000
 ```
 
-## Saat
+## اجرای همزمان (پیشنهادی)
+
+از روت پروژه هر دو سرویس با هم بالا می‌آیند، بدون تداخل پورت:
 
 ```bash
-cd saat/frontend
-npm install
+npm install          # فقط یک‌بار — concurrently را نصب می‌کند
+npm run install:all  # وابستگی‌های saat و bahram-cm
 npm run dev
 ```
 
-جزئیات بیشتر در [saat/frontend/README.md](saat/frontend/README.md).
+| سرویس | آدرس |
+|--------|------|
+| مینی‌اپ سات | http://localhost:5173 |
+| سایت بهرام | http://localhost:3000 |
 
-## Bahram CM
+## اجرای جداگانه
 
 ```bash
-cd bahram-cm
-cp .env.example .env.local
-npm ci
-npm run dev
+npm run dev:saat      # فقط مینی‌اپ
+npm run dev:website   # فقط سایت
 ```
 
-جزئیات بیشتر در [bahram-cm/README.md](bahram-cm/README.md).
+جزئیات بیشتر:
+- [saat/frontend/README.md](saat/frontend/README.md)
+- [bahram-cm/README.md](bahram-cm/README.md)
