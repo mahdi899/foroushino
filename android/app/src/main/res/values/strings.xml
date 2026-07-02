@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">فروشینو</string>
-    <string name="title_activity_main">فروشینو</string>
-    <string name="package_name">com.foroushino.app</string>
-    <string name="custom_url_scheme">com.foroushino.app</string>
-</resources>
