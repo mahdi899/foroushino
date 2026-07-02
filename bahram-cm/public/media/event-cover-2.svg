@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="">
+  <defs>
+    <linearGradient id="ev2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0e1214"/>
+      <stop offset="100%" stop-color="#1a1410"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#ev2)"/>
+  <g opacity="0.4">
+    <rect x="60" y="320" width="40" height="60" fill="#2fb07f"/>
+    <rect x="110" y="290" width="40" height="90" fill="#2fb07f" opacity="0.7"/>
+    <rect x="160" y="250" width="40" height="130" fill="#c9a24a"/>
+    <rect x="210" y="220" width="40" height="160" fill="#c9a24a" opacity="0.6"/>
+    <rect x="260" y="200" width="40" height="180" fill="#2fb07f"/>
+  </g>
+  <text x="60" y="100" fill="#c9a24a" font-size="14" font-family="sans-serif" letter-spacing="6">ARCHIVE · RECORDING</text>
+  <text x="60" y="170" fill="#f4efe6" font-size="40" font-family="sans-serif" font-weight="700">E1H1 ©E~ÌFG'Ì (1*1</text>
+  <text x="60" y="220" fill="#f4efe6" font-size="40" font-family="sans-serif" font-weight="700">/'F4"EH.*¯'F</text>
+</svg>

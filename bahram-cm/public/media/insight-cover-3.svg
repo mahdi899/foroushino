@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-label="">
+  <defs>
+    <linearGradient id="ic3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0e1214"/>
+      <stop offset="100%" stop-color="#1a1410"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="400" fill="url(#ic3)"/>
+  <g stroke="#2fb07f" stroke-opacity="0.35" fill="none" stroke-width="1.5">
+    <path d="M40 360 L 80 320 L 120 340 L 160 280 L 200 300 L 240 240 L 280 260 L 320 200 L 360 220 L 400 160 L 440 180 L 480 120 L 520 140 L 560 80"/>
+  </g>
+  <text x="40" y="80" fill="#c9a24a" font-size="14" font-family="sans-serif" letter-spacing="6">IDENTITY</text>
+  <text x="40" y="140" fill="#f4efe6" font-size="36" font-family="sans-serif" font-weight="700">'2 Ì'/¯Ì1Ì (G 4/F</text>
+</svg>

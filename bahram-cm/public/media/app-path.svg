@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 860" role="img" aria-label="E3М1 E-AD">
+  <defs>
+    <linearGradient id="ap-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0e1214"/>
+      <stop offset="100%" stop-color="#07090a"/>
+    </linearGradient>
+  </defs>
+  <rect width="420" height="860" rx="48" fill="url(#ap-bg)" stroke="#f4efe6" stroke-opacity="0.08"/>
+  <rect x="160" y="22" width="100" height="22" rx="11" fill="#000"/>
+  <g transform="translate(24,80)">
+    <text fill="#c9a24a" font-size="11" font-family="sans-serif" letter-spacing="4">PATH</text>
+    <text y="36" fill="#f4efe6" font-size="22" font-family="sans-serif" font-weight="700">E3М1 *H</text>
+    <text y="64" fill="#9aa0a6" font-size="12" font-family="sans-serif">у '2 ср A5D *©EМD 4/G</text>
+  </g>
+  <g transform="translate(24,170)">
+    <rect width="372" height="6" rx="3" fill="#f4efe6" fill-opacity="0.06"/>
+    <rect width="120" height="6" rx="3" fill="#146b4f"/>
+  </g>
+  <g transform="translate(24,210)" font-family="sans-serif">
+    <g>
+      <rect width="372" height="74" rx="14" fill="#161b1e" stroke="#2fb07f" stroke-opacity="0.4"/>
+      <text x="18" y="28" fill="#2fb07f" font-size="11">A5D у  /1 -'D 'F,'E</text>
+      <text x="18" y="50" fill="#f4efe6" font-size="14">71'-М ©E~МF</text>
+      <text x="18" y="68" fill="#9aa0a6" font-size="11">х '2 ч /13</text>
+    </g>
+    <g transform="translate(0,90)">
+      <rect width="372" height="64" rx="14" fill="#0e1214" stroke="#f4efe6" stroke-opacity="0.05"/>
+      <text x="18" y="26" fill="#9aa0a6" font-size="11">A5D ф</text>
+      <text x="18" y="48" fill="#f4efe6" font-size="13">',1' H *©1'1</text>
+    </g>
+    <g transform="translate(0,170)">
+      <rect width="372" height="64" rx="14" fill="#0e1214" stroke="#f4efe6" stroke-opacity="0.05"/>
+      <text x="18" y="26" fill="#9aa0a6" font-size="11">A5D х</text>
+      <text x="18" y="48" fill="#f4efe6" font-size="13">1H'М* ('2'1</text>
+    </g>
+    <g transform="translate(0,250)">
+      <rect width="372" height="64" rx="14" fill="#0e1214" stroke="#f4efe6" stroke-opacity="0.05"/>
+      <text x="18" y="26" fill="#9aa0a6" font-size="11">A5D ц</text>
+      <text x="18" y="48" fill="#f4efe6" font-size="13">~М4FG'/ A1H4</text>
+    </g>
+    <g transform="translate(0,330)">
+      <rect width="372" height="64" rx="14" fill="#0e1214" stroke="#c9a24a" stroke-opacity="0.25"/>
+      <text x="18" y="26" fill="#c9a24a" font-size="11">A5D ч  BAD</text>
+      <text x="18" y="48" fill="#f4efe6" font-size="13">E9E'1М '9*E'/</text>
+    </g>
+  </g>
+  <g transform="translate(0,780)">
+    <rect width="420" height="80" fill="#0a0d0e"/>
+    <g fill="#f4efe6" fill-opacity="0.55" font-size="10" font-family="sans-serif">
+      <text x="50" y="48" text-anchor="middle">.'FG</text>
+      <text x="155" y="48" text-anchor="middle" fill="#2fb07f">E3М1</text>
+      <text x="260" y="48" text-anchor="middle">'*'B</text>
+      <text x="365" y="48" text-anchor="middle">EF</text>
+    </g>
+  </g>
+</svg>

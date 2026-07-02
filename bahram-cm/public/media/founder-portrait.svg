@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" role="img" aria-label="بهرام رستمی">
+  <defs>
+    <linearGradient id="fp-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0e1214"/>
+      <stop offset="60%" stop-color="#0e3b2c"/>
+      <stop offset="100%" stop-color="#07090a"/>
+    </linearGradient>
+    <radialGradient id="fp-halo" cx="55%" cy="28%" r="55%">
+      <stop offset="0%" stop-color="#2fb07f" stop-opacity="0.45"/>
+      <stop offset="70%" stop-color="#2fb07f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="fp-skin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3a3128"/>
+      <stop offset="100%" stop-color="#1f1a16"/>
+    </linearGradient>
+    <linearGradient id="fp-jacket" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#121819"/>
+      <stop offset="100%" stop-color="#070b0d"/>
+    </linearGradient>
+    <pattern id="fp-grain" width="6" height="6" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="0.4" fill="#f4efe6" fill-opacity="0.04"/>
+      <circle cx="4" cy="3" r="0.3" fill="#f4efe6" fill-opacity="0.03"/>
+    </pattern>
+  </defs>
+  <rect width="800" height="1000" fill="url(#fp-bg)"/>
+  <rect width="800" height="1000" fill="url(#fp-halo)"/>
+  <g transform="translate(0,40)">
+    <path d="M150 920 C 170 720 260 620 400 620 C 540 620 630 720 650 920 Z" fill="url(#fp-jacket)"/>
+    <path d="M340 600 L460 600 L460 690 L340 690 Z" fill="url(#fp-skin)"/>
+    <ellipse cx="400" cy="430" rx="170" ry="200" fill="url(#fp-skin)"/>
+    <path d="M260 420 C 280 280 360 220 400 220 C 440 220 520 280 540 420 C 540 380 510 320 470 290 C 440 270 360 270 330 290 C 290 320 260 380 260 420 Z" fill="#0a0807"/>
+    <ellipse cx="350" cy="450" rx="8" ry="3" fill="#f4efe6" opacity="0.7"/>
+    <ellipse cx="450" cy="450" rx="8" ry="3" fill="#f4efe6" opacity="0.7"/>
+    <path d="M380 520 Q 400 540 420 520" stroke="#0a0807" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M150 720 L650 720" stroke="#c9a24a" stroke-opacity="0.25" stroke-width="0.6"/>
+  </g>
+  <rect width="800" height="1000" fill="url(#fp-grain)"/>
+  <g opacity="0.7">
+    <line x1="60" y1="940" x2="120" y2="940" stroke="#c9a24a" stroke-width="0.8"/>
+    <text x="60" y="965" fill="#c9a24a" font-size="14" font-family="sans-serif" letter-spacing="6">PORTRAIT</text>
+  </g>
+</svg>

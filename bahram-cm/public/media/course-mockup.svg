@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 700" role="img" aria-label="©E~МFFHМ3М">
+  <defs>
+    <linearGradient id="cm-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0e1214"/>
+      <stop offset="100%" stop-color="#0e3b2c"/>
+    </linearGradient>
+    <linearGradient id="cm-card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#161b1e"/>
+      <stop offset="100%" stop-color="#0e1214"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="700" fill="url(#cm-bg)"/>
+  <g transform="translate(120,90)">
+    <rect width="660" height="520" rx="22" fill="url(#cm-card)" stroke="#f4efe6" stroke-opacity="0.07"/>
+    <rect x="28" y="28" width="120" height="24" rx="12" fill="#c9a24a" fill-opacity="0.15"/>
+    <text x="40" y="44" fill="#c9a24a" font-size="11" font-family="sans-serif" letter-spacing="3">CAMPAIGN WRITING</text>
+    <text x="28" y="100" fill="#f4efe6" font-size="34" font-family="sans-serif" font-weight="700">'2 E.'7( *' ©E~МF</text>
+    <text x="28" y="138" fill="#9aa0a6" font-size="16" font-family="sans-serif">3'.*'1М ср A5D ',1'М H'B9М</text>
+    <g transform="translate(28,180)">
+      <rect width="600" height="56" rx="12" fill="#0e1214" stroke="#f4efe6" stroke-opacity="0.06"/>
+      <circle cx="34" cy="28" r="14" fill="#0e3b2c" stroke="#2fb07f" stroke-opacity="0.6"/>
+      <text x="29" y="33" fill="#2fb07f" font-size="12" font-family="sans-serif">с</text>
+      <text x="62" y="34" fill="#f4efe6" font-size="14" font-family="sans-serif">FЇ'G -1AG'М</text>
+      <text x="540" y="34" fill="#9aa0a6" font-size="12" font-family="sans-serif">ф /13</text>
+    </g>
+    <g transform="translate(28,250)">
+      <rect width="600" height="56" rx="12" fill="#0e1214" stroke="#f4efe6" stroke-opacity="0.06"/>
+      <circle cx="34" cy="28" r="14" fill="#0e3b2c" stroke="#2fb07f" stroke-opacity="0.6"/>
+      <text x="29" y="33" fill="#2fb07f" font-size="12" font-family="sans-serif">т</text>
+      <text x="62" y="34" fill="#f4efe6" font-size="14" font-family="sans-serif">~М'E E*E'М2</text>
+      <text x="540" y="34" fill="#9aa0a6" font-size="12" font-family="sans-serif">ц /13</text>
+    </g>
+    <g transform="translate(28,320)">
+      <rect width="600" height="56" rx="12" fill="#0e1214" stroke="#f4efe6" stroke-opacity="0.06"/>
+      <circle cx="34" cy="28" r="14" fill="#0e3b2c" stroke="#2fb07f" stroke-opacity="0.6"/>
+      <text x="29" y="33" fill="#2fb07f" font-size="12" font-family="sans-serif">у</text>
+      <text x="62" y="34" fill="#f4efe6" font-size="14" font-family="sans-serif">71'-М ©E~МF</text>
+      <text x="540" y="34" fill="#9aa0a6" font-size="12" font-family="sans-serif">ч /13</text>
+    </g>
+    <g transform="translate(28,390)">
+      <rect width="600" height="56" rx="12" fill="#0e1214" stroke="#c9a24a" stroke-opacity="0.4"/>
+      <circle cx="34" cy="28" r="14" fill="#c9a24a" fill-opacity="0.18" stroke="#c9a24a" stroke-opacity="0.6"/>
+      <text x="29" y="33" fill="#c9a24a" font-size="12" font-family="sans-serif">ф</text>
+      <text x="62" y="34" fill="#f4efe6" font-size="14" font-family="sans-serif">',1' H *©1'1</text>
+      <text x="540" y="34" fill="#9aa0a6" font-size="12" font-family="sans-serif">щ /13</text>
+    </g>
+    <rect x="28" y="460" width="160" height="40" rx="20" fill="#146b4f"/>
+    <text x="76" y="486" fill="#f4efe6" font-size="13" font-family="sans-serif">":'2 E3М1 ђ</text>
+  </g>
+</svg>

@@ -1,0 +1,12 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="OG Image">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#07090a" />
+      <stop offset="100%" stop-color="#0e3b2c" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g1)" />
+  <circle cx="960" cy="120" r="260" fill="#2fb07f" fill-opacity="0.15" />
+  <text x="110" y="280" fill="#f4efe6" font-size="72" font-family="sans-serif">بهرام رستمی</text>
+  <text x="110" y="360" fill="#c9a24a" font-size="44" font-family="sans-serif">مسیر کمپین‌نویسی تا اکوسیستم آکادمی</text>
+</svg>

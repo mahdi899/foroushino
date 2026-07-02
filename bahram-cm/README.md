@@ -1,0 +1,68 @@
+# Bahram CM — Marketing Website
+
+سایت عمومی بهرام رستمی (Next.js) به‌همراه API فرم‌های درخواست و خبرنامه.
+
+## ساختار
+
+```
+app/          صفحات Next.js
+components/   کامپوننت‌های UI
+content/      محتوای MDX (دوره‌ها، مقالات، رویدادها، …)
+backend/      FastAPI — فرم Apply و Newsletter
+docs/         راهنمای deploy و چک‌لیست‌ها
+public/       رسانه و فونت‌ها
+```
+
+## پیش‌نیاز
+
+- Node.js 20+
+- Python 3.11+ (برای backend فرم‌ها)
+- MySQL 8 و Redis (برای backend)
+
+## Frontend
+
+```bash
+cp .env.example .env.local
+npm ci
+npm run dev
+```
+
+سایت روی <http://localhost:3000> بالا می‌آید.
+
+```bash
+npm run verify   # lint + typecheck + validate images/imports
+npm run build
+npm start
+```
+
+## Backend (فرم‌ها)
+
+```bash
+cd backend
+cp .env.example .env
+pip install -e ".[dev]"
+alembic upgrade head
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+در `.env.local` فرانت‌اند:
+
+```
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+## Deploy
+
+جزئیات در [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
+- **Frontend:** Vercel یا هر هاست Node — روت پروژه همین پوشه
+- **Backend:** هر سرور Python — `backend/` با MySQL + Redis
+
+## Companion
+
+صفحه `/companion` به API اصلی Academy (اپ موبایل) وابسته است. اگر فقط سایت مارکتینگ را deploy می‌کنید، `NEXT_PUBLIC_API_BASE_URL` را به همان API اصلی تنظیم کنید یا این صفحه را غیرفعال نگه دارید.
+
+## License
+
+Private. All rights reserved.

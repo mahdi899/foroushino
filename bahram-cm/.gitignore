@@ -1,15 +1,12 @@
+# Dependencies
 node_modules/
-dist/
 .next/
 out/
-*.local
-.DS_Store
+.env*.local
 *.tsbuildinfo
-vite.config.js
-vite.config.d.ts
-*.apk
+next-env.d.ts
 
-# Python (bahram-cm backend)
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -21,4 +18,13 @@ venv/
 
 # Env
 .env
-bahram-cm/backend/.env
+backend/.env
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

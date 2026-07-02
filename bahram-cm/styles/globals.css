@@ -1,0 +1,816 @@
+@import "tailwindcss";
+
+/* =====================================================================
+   Design Tokens — Bahram Rostami public site
+   Theme-aware: both light & dark share token NAMES; values swap at runtime.
+   ===================================================================== */
+
+@theme {
+  /* --- Colors (default = dark — pearl smoke / ink) ------------------ */
+  /* Blue-ink blacks: depth without flat gray */
+  --color-ink: #070a0f;
+  --color-obsidian: #0c1017;
+  --color-charcoal: #141a22;
+  --color-charcoal-2: #1b232d;
+
+  /* Jade + mint highlight — jewelled, not neon */
+  --color-emerald-deep: #0b3d2e;
+  --color-emerald: #178a68;
+  --color-emerald-glow: #4dd4a8;
+
+  /* Warm pearl text on dark */
+  --color-bone: #f4efe8;
+  --color-bone-dim: #d6cfc4;
+  --color-mist: #8f98a3;
+  --color-veil: #55606b;
+
+  /* Champagne / brushed gold — quiet luxury: warm pearl, less yellow than classic #d4af37 */
+  --color-gold: #c5a46b;
+  --color-gold-soft: #eee2c8;
+
+  /* --- Typography ---------------------------------------------------- */
+  --font-display: var(--font-yekan-bakh), "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-yekan-bakh), "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+  --font-latin: ui-sans-serif, system-ui, sans-serif;
+
+  /* Fluid type scale — strong hierarchy; tighter floor on narrow viewports */
+  --text-display: clamp(2rem, 3.8vw + 1.15rem, 5.75rem);
+  --text-display--line-height: 1.04;
+  --text-display--letter-spacing: -0.024em;
+  --text-h1: clamp(1.875rem, 2vw + 1.12rem, 4rem);
+  --text-h1--line-height: 1.08;
+  --text-h1--letter-spacing: -0.018em;
+  --text-h2: clamp(1.375rem, 1.35vw + 1rem, 3rem);
+  --text-h2--line-height: 1.12;
+  --text-h2--letter-spacing: -0.014em;
+  --text-h3: clamp(1.25rem, 0.55vw + 1.05rem, 1.875rem);
+  --text-h3--line-height: 1.28;
+  --text-body: clamp(1rem, 0.2vw + 0.93rem, 1.125rem);
+  --text-body--line-height: 1.82;
+  --text-caption: clamp(0.75rem, 0.08vw + 0.72rem, 0.875rem);
+  --text-caption--line-height: 1.45;
+
+  /* --- Spacing (section rhythm — denser on phone, full on desktop) -- */
+  --spacing-section-sm: clamp(2.5rem, 4vw + 1.25rem, 5rem);
+  --spacing-section: clamp(3rem, 5.5vw + 1.5rem, 8rem);
+  --spacing-section-xl: clamp(3rem, 5.5vw + 1.5rem, 8rem);
+
+  /* --- Radius -------------------------------------------------------- */
+  --radius-pill: 999px;
+  --radius-card: 24px;
+  --radius-card-lg: 32px;
+  --radius-tile: 14px;
+  --radius-frame: 18px;
+
+  /* --- Shadows (theme-aware via CSS vars below) -------------------- */
+  --shadow-veil: var(--shadow-veil-resolved);
+  --shadow-aura: var(--shadow-aura-resolved);
+  --shadow-gold: var(--shadow-gold-resolved);
+  --shadow-frame: var(--shadow-frame-resolved);
+
+  /* --- Easings ------------------------------------------------------- */
+  --ease-luxe: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-exit: cubic-bezier(0.7, 0, 0.84, 0);
+
+  /* --- Surface aliases (always reference theme-aware vars) --------- */
+  --color-page: var(--color-ink);
+  --color-surface: var(--color-charcoal);
+  --color-surface-elevated: var(--color-charcoal-2);
+  --color-border-soft: color-mix(in oklab, var(--color-bone) 9%, transparent);
+  --color-border-strong: color-mix(in oklab, var(--color-bone) 20%, transparent);
+}
+
+/*
+  Runtime light/dark tokens must live in @layer theme.
+  Plain selectors after @theme are dropped by the Tailwind v4 pipeline, so
+  [data-theme="light"] never reached the browser and the toggle had no effect.
+*/
+@layer theme {
+  :root {
+    /* Rim light + depth — slight cool pearl on the edge */
+    --shadow-veil-resolved:
+      0 1px 0 rgba(232, 240, 255, 0.055) inset,
+      0 28px 70px -24px rgba(0, 0, 0, 0.58);
+    --shadow-aura-resolved:
+      0 0 140px -12px rgba(77, 212, 168, 0.28),
+      0 0 80px -20px rgba(197, 164, 107, 0.12);
+    --shadow-gold-resolved:
+      0 0 0 1px rgba(238, 226, 200, 0.2),
+      0 16px 48px -18px rgba(197, 164, 107, 0.26);
+    --shadow-frame-resolved:
+      0 1px 0 rgba(232, 240, 255, 0.06) inset,
+      0 36px 90px -32px rgba(0, 0, 0, 0.68);
+    --hero-vignette:
+      radial-gradient(
+        120% 90% at 50% -15%,
+        rgba(77, 212, 168, 0.07) 0%,
+        transparent 52%
+      ),
+      radial-gradient(
+        80% 60% at 50% 0%,
+        transparent 0%,
+        rgba(7, 10, 15, 0.72) 80%
+      );
+
+    /* HeroCinematic animated sheen — tokenized so light mode stays airy (no muddy green wash) */
+    --hero-sheen-gradient:
+      linear-gradient(
+        115deg,
+        color-mix(in oklab, rgb(20 107 79) 8%, transparent) 0%,
+        transparent 30%,
+        color-mix(in oklab, rgb(197 164 107) 9%, transparent) 55%,
+        transparent 80%
+      );
+
+    /* Primary CTA label: bone on teal; hover flips to ink on mint (see .neon-btn-primary rules) */
+    --btn-primary-fg: var(--color-bone);
+    --btn-primary-fg-hover: var(--color-ink);
+
+    /* Neon accents (dark only — “neon morphism” rim + bloom, 2024–2025 trend) */
+    --neon-accent: #48f0c8;
+    --neon-accent-strong: color-mix(in oklab, #48f0c8 55%, #7dfce6);
+    --neon-accent-soft: color-mix(in oklab, var(--neon-accent) 32%, transparent);
+    --neon-accent-faint: color-mix(in oklab, var(--neon-accent) 14%, transparent);
+    --neon-accent-wire: color-mix(in oklab, var(--neon-accent) 24%, transparent);
+  }
+
+  [data-theme="light"] {
+    color-scheme: light;
+
+    /*
+     * Light = cool editorial paper + pure white lifts (contrast with dark’s warm pearl).
+     * Avoid muddy beige / brown secondary text — same luxury discipline as dark tokens.
+     */
+    --color-ink: #e8eaef;
+    --color-obsidian: #d9dde5;
+    --color-charcoal: #ffffff;
+    --color-charcoal-2: #f2f4f8;
+
+    --color-emerald-deep: #0a3f32;
+    /* CTA green: slightly brighter on paper so it doesn’t read as a heavy slab */
+    --color-emerald: #0d7a62;
+    --color-emerald-glow: #14a884;
+
+    --color-bone: #0b0f14;
+    --color-bone-dim: #2f3842;
+    --color-mist: #55606c;
+    --color-veil: #7d8793;
+
+    --color-gold: #5c4d32;
+    --color-gold-soft: #c9b08c;
+
+    --shadow-veil-resolved:
+      0 1px 0 rgba(255, 255, 255, 0.98) inset,
+      0 18px 48px -22px rgba(15, 23, 42, 0.1);
+    --shadow-aura-resolved:
+      0 0 72px -20px rgba(20, 167, 132, 0.12),
+      0 0 44px -24px rgba(92, 77, 50, 0.07);
+    --shadow-gold-resolved:
+      0 0 0 1px rgba(92, 77, 50, 0.12),
+      0 14px 40px -18px rgba(92, 77, 50, 0.14);
+    --shadow-frame-resolved:
+      0 1px 0 rgba(255, 255, 255, 0.95) inset,
+      0 26px 68px -30px rgba(15, 23, 42, 0.12);
+
+    --hero-vignette:
+      radial-gradient(
+        120% 90% at 50% -15%,
+        rgba(20, 167, 132, 0.05) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        80% 60% at 50% 0%,
+        transparent 0%,
+        rgba(216, 222, 232, 0.75) 80%
+      );
+
+    --hero-sheen-gradient:
+      linear-gradient(
+        115deg,
+        color-mix(in oklab, var(--color-emerald-glow) 14%, transparent) 0%,
+        transparent 32%,
+        color-mix(in oklab, var(--color-gold-soft) 12%, transparent) 55%,
+        transparent 82%
+      );
+
+    --btn-primary-fg: #fafdfb;
+    --btn-primary-fg-hover: #ffffff;
+
+    --neon-accent: transparent;
+    --neon-accent-strong: transparent;
+    --neon-accent-soft: transparent;
+    --neon-accent-faint: transparent;
+    --neon-accent-wire: transparent;
+  }
+
+  [data-theme="light"] h1,
+  [data-theme="light"] h2,
+  [data-theme="light"] h3 {
+    font-weight: 760;
+  }
+}
+
+/* =====================================================================
+   Base
+   ===================================================================== */
+
+@layer base {
+  html {
+    /* Non-static positioning: document scroll root for Framer Motion `useScroll` + offset math */
+    position: relative;
+    background-color: var(--color-ink);
+    color: var(--color-bone);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+    transition:
+      background-color 0.6s var(--ease-luxe),
+      color 0.6s var(--ease-luxe);
+  }
+
+  body {
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    background-color: var(--color-ink);
+    color: var(--color-bone);
+    overflow-x: hidden;
+    transition:
+      background-color 0.6s var(--ease-luxe),
+      color 0.6s var(--ease-luxe);
+  }
+
+  :lang(fa) {
+    line-height: 1.9;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--color-emerald-glow) 35%, transparent);
+    color: var(--color-bone);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-emerald-glow);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  input,
+  textarea,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  h1, h2, h3, h4, h5 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* =====================================================================
+   Utilities
+   ===================================================================== */
+
+@layer utilities {
+  /*
+   * Keep icon path as authored (e.g. Lucide ArrowLeft). Flex + dir=rtl already
+   * place trailing icons on the inline-start side; mirroring here reversed CTAs.
+   */
+  .rtl-flip {
+    transform: none;
+  }
+
+  .hairline {
+    height: 1px;
+    background: linear-gradient(
+      to left,
+      transparent,
+      color-mix(in oklab, var(--color-bone) 14%, transparent) 30%,
+      color-mix(in oklab, var(--color-bone) 14%, transparent) 70%,
+      transparent
+    );
+  }
+
+  .hairline-gold {
+    height: 1px;
+    background: linear-gradient(
+      to left,
+      transparent,
+      color-mix(in oklab, var(--color-gold) 60%, transparent) 30%,
+      color-mix(in oklab, var(--color-gold) 60%, transparent) 70%,
+      transparent
+    );
+  }
+
+  .glass {
+    background-color: color-mix(in oklab, var(--color-charcoal) 60%, transparent);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
+    border: 1px solid color-mix(in oklab, var(--color-bone) 6%, transparent);
+  }
+
+  .wash-emerald {
+    background:
+      radial-gradient(
+        80% 60% at 85% 0%,
+        color-mix(in oklab, var(--color-emerald-deep) 50%, transparent) 0%,
+        transparent 60%
+      ),
+      radial-gradient(
+        50% 40% at 10% 100%,
+        color-mix(in oklab, var(--color-emerald-deep) 30%, transparent) 0%,
+        transparent 70%
+      );
+  }
+
+  .container-luxe {
+    width: 100%;
+    min-width: 0;
+    margin-inline: auto;
+    padding-inline: clamp(1rem, 3.5vw, 1.25rem);
+    max-width: 88rem;
+  }
+  @media (min-width: 768px) {
+    .container-luxe {
+      padding-inline: 2.5rem;
+    }
+  }
+  @media (min-width: 1280px) {
+    .container-luxe {
+      padding-inline: 4rem;
+    }
+  }
+
+  .container-wide {
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: clamp(0.875rem, 3.25vw, 1rem);
+    max-width: 96rem;
+  }
+  @media (min-width: 768px) {
+    .container-wide {
+      padding-inline: 2rem;
+    }
+  }
+  @media (min-width: 1280px) {
+    .container-wide {
+      padding-inline: 3rem;
+    }
+  }
+
+  .nums-fa {
+    font-feature-settings: "ss01" on;
+  }
+
+  .num-latin {
+    font-family: var(--font-latin);
+    font-feature-settings: "tnum" on, "lnum" on;
+    letter-spacing: -0.01em;
+  }
+
+  /* Soft surface that reads on either theme */
+  .surface-card {
+    background-color: color-mix(in oklab, var(--color-charcoal) 92%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-bone) 10%, transparent);
+  }
+  .surface-card-soft {
+    background-color: color-mix(in oklab, var(--color-charcoal) 55%, transparent);
+    border: 1px solid color-mix(in oklab, var(--color-bone) 8%, transparent);
+  }
+
+  /* Theme-aware checkered pattern for photo placeholders */
+  .placeholder-grid {
+    background-image:
+      linear-gradient(
+        45deg,
+        color-mix(in oklab, var(--color-bone) 6%, transparent) 25%,
+        transparent 25%
+      ),
+      linear-gradient(
+        -45deg,
+        color-mix(in oklab, var(--color-bone) 6%, transparent) 25%,
+        transparent 25%
+      ),
+      linear-gradient(
+        45deg,
+        transparent 75%,
+        color-mix(in oklab, var(--color-bone) 6%, transparent) 75%
+      ),
+      linear-gradient(
+        -45deg,
+        transparent 75%,
+        color-mix(in oklab, var(--color-bone) 6%, transparent) 75%
+      );
+    background-size: 18px 18px;
+    background-position:
+      0 0,
+      0 9px,
+      9px -9px,
+      -9px 0;
+  }
+
+  .placeholder-radial {
+    background:
+      radial-gradient(
+        60% 60% at 50% 40%,
+        color-mix(in oklab, var(--color-emerald-deep) 60%, transparent) 0%,
+        transparent 70%
+      ),
+      radial-gradient(
+        80% 60% at 80% 90%,
+        color-mix(in oklab, var(--color-gold) 25%, transparent) 0%,
+        transparent 70%
+      ),
+      linear-gradient(
+        135deg,
+        color-mix(in oklab, var(--color-obsidian) 100%, transparent) 0%,
+        color-mix(in oklab, var(--color-charcoal) 100%, transparent) 100%
+      );
+  }
+
+  /* Reading prose */
+  .prose-luxe p {
+    font-size: clamp(1rem, 0.22vw + 0.94rem, 1.125rem);
+    line-height: 1.92;
+    margin-bottom: 1.5rem;
+  }
+  .prose-luxe h2 {
+    font-size: var(--text-h2);
+    line-height: var(--text-h2--line-height);
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+  }
+  .prose-luxe h3 {
+    font-size: var(--text-h3);
+    line-height: var(--text-h3--line-height);
+    margin-top: 2.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .prose-luxe blockquote {
+    border-inline-start: 3px solid var(--color-gold);
+    padding: 0.5rem 1.25rem;
+    margin: 2.5rem 0;
+    font-size: clamp(1.0625rem, 0.35vw + 0.98rem, 1.3125rem);
+    line-height: 1.7;
+    color: var(--color-bone);
+    font-family: var(--font-display);
+    font-weight: 600;
+  }
+
+  /* Floating shimmer animation for premium cards */
+  @keyframes shimmer-luxe {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+  }
+  .shimmer-luxe {
+    background-image: linear-gradient(
+      110deg,
+      transparent 30%,
+      color-mix(in oklab, var(--color-bone) 6%, transparent) 50%,
+      transparent 70%
+    );
+    background-size: 200% 100%;
+    animation: shimmer-luxe 5s linear infinite;
+  }
+
+  /* Slow float */
+  @keyframes float-slow {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+  }
+  .float-slow {
+    animation: float-slow 7s ease-in-out infinite;
+  }
+
+  /* Pulse ring for live badge */
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-emerald-glow) 50%, transparent); }
+    100% { box-shadow: 0 0 0 12px color-mix(in oklab, var(--color-emerald-glow) 0%, transparent); }
+  }
+  .pulse-ring {
+    animation: pulse-ring 2.4s ease-out infinite;
+  }
+
+  /* Seamless infinity ticker — GPU-friendly, linear loop */
+  @keyframes marquee-scroll-rtl {
+    0% {
+      transform: translate3d(0, 0, 0);
+    }
+    100% {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+  @keyframes marquee-scroll-ltr {
+    0% {
+      transform: translate3d(-50%, 0, 0);
+    }
+    100% {
+      transform: translate3d(0, 0, 0);
+    }
+  }
+  .animate-marquee-rtl {
+    animation-name: marquee-scroll-rtl;
+    animation-duration: var(--marquee-duration, 40s);
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    will-change: transform;
+  }
+  .animate-marquee-ltr {
+    animation-name: marquee-scroll-ltr;
+    animation-duration: var(--marquee-duration, 40s);
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    will-change: transform;
+  }
+
+  /*
+   * Neon edge + bloom (dark theme only). Trending “neon morphism” looks:
+   * thin luminous rim, layered outer glow — cyan for emerald/bone, amber for gold.
+   */
+  html:not([data-theme="light"]) [data-neon-tone="gold"] {
+    --neon-accent: #d4c4a3;
+    --neon-accent-strong: color-mix(in oklab, #ebe0cc 52%, #a89470);
+    --neon-accent-soft: color-mix(in oklab, var(--neon-accent) 30%, transparent);
+    --neon-accent-faint: color-mix(in oklab, var(--neon-accent) 13%, transparent);
+    --neon-accent-wire: color-mix(in oklab, var(--neon-accent) 26%, transparent);
+  }
+
+  /* Academy teaser: antique gold rim + bloom (no emerald spill — luxe slab) */
+  html:not([data-theme="light"]) .academy-teaser-luxe,
+  html:not([data-theme="light"]) .academy-teaser-luxe [data-neon-tone="gold"] {
+    --neon-accent: #8b7a58;
+    --neon-accent-strong: color-mix(in oklab, #c5a46b 50%, #3a3224);
+    --neon-accent-soft: color-mix(in oklab, var(--neon-accent) 22%, transparent);
+    --neon-accent-faint: color-mix(in oklab, var(--neon-accent) 8%, transparent);
+    --neon-accent-wire: color-mix(in oklab, var(--neon-accent) 16%, transparent);
+  }
+
+  html:not([data-theme="light"]) .academy-teaser-luxe .neon-btn-primary {
+    box-shadow:
+      0 0 0 1px var(--neon-accent-wire),
+      0 0 26px -10px var(--neon-accent-soft),
+      0 10px 40px -12px color-mix(in oklab, var(--neon-accent) 36%, rgba(7, 10, 15, 0.52));
+  }
+
+  html:not([data-theme="light"]) .academy-teaser-luxe .neon-btn-primary:hover {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--neon-accent-strong) 40%, transparent),
+      0 0 42px -6px var(--neon-accent-soft),
+      0 0 78px -20px var(--neon-accent-faint),
+      0 12px 46px -10px color-mix(in oklab, var(--neon-accent) 30%, rgba(7, 10, 15, 0.45));
+  }
+
+  html:not([data-theme="light"]) .neon-btn-primary {
+    box-shadow:
+      0 0 0 1px var(--neon-accent-wire),
+      0 0 26px -10px var(--neon-accent-soft),
+      0 10px 40px -12px rgba(20, 107, 79, 0.58);
+  }
+
+  html:not([data-theme="light"]) .neon-btn-primary:hover {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--neon-accent-strong) 42%, transparent),
+      0 0 42px -6px var(--neon-accent-soft),
+      0 0 78px -20px var(--neon-accent-faint),
+      0 12px 46px -10px rgba(18, 95, 72, 0.52);
+  }
+
+  html:not([data-theme="light"]) .neon-btn-ghost {
+    transition-property: background-color, color, border-color, box-shadow, transform;
+  }
+
+  html:not([data-theme="light"]) .neon-btn-ghost:hover {
+    box-shadow:
+      0 0 0 1px var(--neon-accent-wire),
+      0 0 34px -12px var(--neon-accent-soft);
+  }
+
+  /* Cards: glow only on hover */
+  html:not([data-theme="light"]) .neon-surface-hover {
+    transition-property: box-shadow, border-color, background-color;
+    transition-duration: 0.45s;
+    transition-timing-function: var(--ease-luxe);
+  }
+
+  html:not([data-theme="light"]) .neon-surface-hover:hover {
+    box-shadow:
+      0 0 0 1px var(--neon-accent-wire),
+      0 0 46px -12px var(--neon-accent-soft),
+      0 0 72px -26px var(--neon-accent-faint);
+  }
+
+  /* Cards: always-on neon rim + lift on hover */
+  html:not([data-theme="light"]) .neon-surface-static {
+    box-shadow:
+      0 0 0 1px var(--neon-accent-wire),
+      0 0 30px -14px var(--neon-accent-soft),
+      var(--shadow-veil-resolved);
+    transition-property: transform, box-shadow, border-color, background-color;
+    transition-duration: 0.45s;
+    transition-timing-function: var(--ease-luxe);
+  }
+
+  html:not([data-theme="light"]) .neon-surface-static:hover {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--neon-accent-strong) 36%, transparent),
+      0 0 48px -8px var(--neon-accent-soft),
+      0 0 96px -22px var(--neon-accent-faint),
+      var(--shadow-aura-resolved);
+  }
+
+  /* Light theme: neutral lift + faint mint (avoid heavy forest-green bloom under the button) */
+  [data-theme="light"] .neon-btn-primary {
+    box-shadow:
+      0 6px 22px -8px rgba(15, 23, 42, 0.11),
+      0 2px 10px -4px color-mix(in oklab, var(--color-emerald-glow) 16%, transparent);
+  }
+
+  [data-theme="light"] .neon-btn-primary:hover {
+    box-shadow:
+      0 10px 30px -10px rgba(15, 23, 42, 0.1),
+      0 4px 14px -4px color-mix(in oklab, var(--color-emerald-glow) 20%, transparent);
+  }
+
+  /* Emerald primary only — VIP/gold keeps its own `text-neutral-950` */
+  .neon-btn-primary:not([data-neon-tone="gold"]) {
+    color: var(--btn-primary-fg);
+  }
+
+  .neon-btn-primary:not([data-neon-tone="gold"]):hover {
+    color: var(--btn-primary-fg-hover);
+  }
+
+  [data-theme="light"] .academy-teaser-luxe .neon-btn-primary {
+    box-shadow: 0 10px 40px -12px color-mix(in oklab, var(--color-gold) 42%, rgba(24, 20, 16, 0.35));
+  }
+
+  [data-theme="light"] .academy-teaser-luxe .neon-btn-primary:hover {
+    box-shadow: 0 14px 46px -11px color-mix(in oklab, var(--color-gold) 38%, rgba(24, 20, 16, 0.28));
+  }
+
+  [data-theme="light"] .neon-surface-static {
+    box-shadow: var(--shadow-veil-resolved);
+    transition-property: transform, box-shadow, border-color, background-color;
+    transition-duration: 0.45s;
+    transition-timing-function: var(--ease-luxe);
+  }
+
+  [data-theme="light"] .neon-surface-static:hover {
+    box-shadow: var(--shadow-aura-resolved);
+  }
+
+  /* Gradient CTA / footer slabs (emerald or gold via data-neon-tone) */
+  html:not([data-theme="light"]) .neon-cta-slab {
+    box-shadow:
+      0 0 0 1px var(--neon-accent-wire),
+      0 0 40px -10px var(--neon-accent-soft),
+      inset 0 1px 0 color-mix(in oklab, var(--neon-accent) 14%, transparent);
+    transition: box-shadow 0.5s var(--ease-luxe);
+  }
+
+  html:not([data-theme="light"]) .neon-cta-slab:hover {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--neon-accent-strong) 38%, transparent),
+      0 0 56px -6px var(--neon-accent-soft),
+      0 0 100px -24px var(--neon-accent-faint),
+      inset 0 1px 0 color-mix(in oklab, var(--neon-accent) 20%, transparent);
+  }
+
+  [data-theme="light"] .neon-cta-slab {
+    transition: box-shadow 0.5s var(--ease-luxe);
+  }
+
+  [data-theme="light"] .neon-cta-slab:hover {
+    box-shadow: 0 18px 50px -20px rgba(40, 36, 48, 0.12);
+  }
+
+  /* Pinned / hero panels that use --shadow-frame */
+  html:not([data-theme="light"]) .neon-surface-framed {
+    box-shadow:
+      0 0 0 1px var(--neon-accent-wire),
+      0 0 26px -12px var(--neon-accent-soft),
+      var(--shadow-frame-resolved);
+    transition-property: box-shadow, border-color, transform, background-color;
+    transition-duration: 0.45s;
+    transition-timing-function: var(--ease-luxe);
+  }
+
+  html:not([data-theme="light"]) .neon-surface-framed:hover {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--neon-accent-strong) 32%, transparent),
+      0 0 42px -8px var(--neon-accent-soft),
+      var(--shadow-frame-resolved);
+  }
+
+  [data-theme="light"] .neon-surface-framed {
+    box-shadow: var(--shadow-frame-resolved);
+  }
+
+  [data-theme="light"] .neon-surface-framed:hover {
+    box-shadow: var(--shadow-frame-resolved);
+  }
+}
+
+/* =====================================================================
+   Reduced motion
+   ===================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Marquee: keep an infinite loop but slow it down — global rule above would break the seam (−50%) illusion */
+  .animate-marquee-rtl,
+  .animate-marquee-ltr {
+    animation-duration: calc(var(--marquee-duration, 40s) * 2) !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
+/*
+ * IconTile must stay a Server Component (Lucide icons are functions — not serializable
+ * to Client Components). Light styling lives here, unlayered, so it wins over @layer utilities.
+ */
+html[data-theme="light"] .icon-tile[data-icon-tile-tone="emerald"] {
+  background-color: color-mix(in oklab, var(--color-emerald-glow) 9%, var(--color-charcoal));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--color-emerald) 22%, var(--color-obsidian)),
+    inset 0 1px 0 color-mix(in oklab, white 88%, transparent),
+    0 12px 36px -18px rgba(15, 23, 42, 0.1);
+}
+
+html[data-theme="light"] .icon-tile[data-icon-tile-tone="emerald"] svg {
+  color: var(--color-emerald-deep);
+}
+
+html[data-theme="light"] .icon-tile[data-icon-tile-tone="gold"] {
+  background-color: color-mix(in oklab, var(--color-gold) 10%, var(--color-charcoal));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--color-gold) 28%, var(--color-obsidian)),
+    inset 0 1px 0 color-mix(in oklab, white 90%, transparent),
+    0 12px 36px -18px rgba(92, 77, 50, 0.12);
+}
+
+html[data-theme="light"] .icon-tile[data-icon-tile-tone="bone"] {
+  background-color: color-mix(in oklab, var(--color-bone) 6%, var(--color-charcoal));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--color-bone) 12%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 85%, transparent);
+}
+
+html[data-theme="light"] .icon-tile[data-icon-tile-tone="bone"] svg {
+  color: var(--color-bone-dim);
+}
+
+/* IconLabel — Server Component; emerald glow reads harsh on paper */
+html[data-theme="light"] [data-icon-label-tone="emerald"] {
+  color: var(--color-emerald-deep);
+}
+
+html[data-theme="light"] [data-icon-label-tone="emerald"] svg {
+  color: inherit;
+}
+
+/* WhyDifferent / inline emerald check wells */
+html[data-theme="light"] .well-emerald-chip {
+  background-color: color-mix(in oklab, var(--color-emerald-glow) 11%, var(--color-charcoal));
+  color: var(--color-emerald-deep);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklab, var(--color-emerald) 22%, var(--color-obsidian)),
+    inset 0 1px 0 color-mix(in oklab, white 90%, transparent);
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+}
+
+html[data-theme="light"] .well-emerald-chip svg {
+  color: inherit;
+}
+
+/*
+ * VIP / gold primary CTA — light: champagne slab + ink type (token `bg-gold` is too dark for a pill).
+ */
+html[data-theme="light"] .neon-btn-primary[data-neon-tone="gold"] {
+  background-color: color-mix(in oklab, var(--color-gold-soft) 48%, var(--color-gold));
+  color: var(--color-bone);
+  box-shadow:
+    0 6px 22px -8px rgba(15, 23, 42, 0.1),
+    0 2px 10px -4px color-mix(in oklab, var(--color-gold) 18%, rgba(15, 23, 42, 0.04));
+}
+
+html[data-theme="light"] .neon-btn-primary[data-neon-tone="gold"]:hover {
+  background-color: color-mix(in oklab, var(--color-gold-soft) 62%, var(--color-charcoal));
+  color: var(--color-bone);
+  box-shadow:
+    0 10px 28px -10px rgba(15, 23, 42, 0.09),
+    0 3px 12px -4px color-mix(in oklab, var(--color-gold) 14%, transparent);
+}
