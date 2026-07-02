@@ -15,13 +15,13 @@ interface ChipProps {
 
 const activeStyles: Record<ChipTone, string> = {
   primary:
-    'bg-primary-600 text-white border-primary-600 shadow-[0_6px_16px_-6px_rgba(13,148,136,0.55)]',
-  hot: 'bg-hot-600 text-white border-hot-600 shadow-[0_6px_16px_-6px_rgba(225,29,72,0.45)]',
-  warm: 'bg-warm-600 text-white border-warm-600 shadow-[0_6px_16px_-6px_rgba(217,119,6,0.45)]',
-  cold: 'bg-cold-600 text-white border-cold-600 shadow-[0_6px_16px_-6px_rgba(37,99,235,0.45)]',
-  error: 'bg-error-600 text-white border-error-600 shadow-[0_6px_16px_-6px_rgba(220,38,38,0.45)]',
+    'bg-primary-600 text-white border-primary-600 shadow-[0_6px_16px_-6px_rgba(0,111,117,0.55)]',
+  hot: 'bg-hot-600 text-white border-hot-600 shadow-[0_6px_16px_-6px_rgba(255,107,0,0.45)]',
+  warm: 'bg-warm-600 text-white border-warm-600 shadow-[0_6px_16px_-6px_rgba(255,176,0,0.45)]',
+  cold: 'bg-cold-600 text-white border-cold-600 shadow-[0_6px_16px_-6px_rgba(0,140,150,0.45)]',
+  error: 'bg-error-600 text-white border-error-600 shadow-[0_6px_16px_-6px_rgba(201,54,59,0.45)]',
   neutral:
-    'bg-neutral-800 text-white border-neutral-800 shadow-[0_6px_16px_-6px_rgba(15,23,42,0.35)]',
+    'bg-neutral-800 text-white border-neutral-800 shadow-[0_6px_16px_-6px_rgba(11,31,34,0.35)]',
 }
 
 const inactiveStyles: Record<ChipTone, string> = {

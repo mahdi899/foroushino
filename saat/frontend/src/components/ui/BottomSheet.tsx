@@ -34,7 +34,7 @@ export function BottomSheet({ open, onClose, children, title, className }: Botto
               if (info.offset.y > 120) onClose()
             }}
             className={cn(
-              'absolute inset-x-0 bottom-0 z-50 bg-surface rounded-t-[28px] shadow-[0_-12px_40px_-12px_rgba(15,23,42,0.25)]',
+              'absolute inset-x-0 bottom-0 z-50 bg-surface rounded-t-[28px] shadow-[0_-12px_40px_-12px_rgba(11,31,34,0.25)]',
               'max-h-[88%] flex flex-col',
               className,
             )}

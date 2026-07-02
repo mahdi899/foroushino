@@ -62,7 +62,7 @@ export function PerformanceScreen() {
         >
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute -left-16 -top-16 h-52 w-52 rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute -bottom-20 -right-10 h-48 w-48 rounded-full bg-emerald-300/20 blur-3xl" />
+            <div className="absolute -bottom-20 -right-10 h-48 w-48 rounded-full bg-primary-300/20 blur-3xl" />
             <div
               className="absolute inset-0 opacity-[0.06]"
               style={{
@@ -77,12 +77,12 @@ export function PerformanceScreen() {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-bold backdrop-blur-sm">
-                  <Target size={12} className="text-emerald-200" />
+                  <Target size={12} className="text-primary-200" />
                   هدف روزانه
                 </span>
                 {me.streak > 0 && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[11px] font-bold text-white/90 backdrop-blur-sm">
-                    <Flame size={13} className="text-emerald-200" />
+                    <Flame size={13} className="text-primary-200" />
                     {toFa(me.streak)} روز
                   </span>
                 )}
@@ -99,7 +99,7 @@ export function PerformanceScreen() {
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-white/15">
                   <div
-                    className="h-full rounded-full bg-gradient-to-l from-emerald-200 via-white to-emerald-100 shadow-[0_0_10px_rgba(255,255,255,0.35)] transition-[width] duration-500 ease-out"
+                    className="h-full rounded-full bg-gradient-to-l from-primary-200 via-white to-primary-100 shadow-[0_0_10px_rgba(234,251,251,0.35)] transition-[width] duration-500 ease-out"
                     style={{ width: `${barPct}%` }}
                   />
                 </div>
@@ -108,7 +108,7 @@ export function PerformanceScreen() {
 
             <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[20px] border border-white/20 bg-white/10 backdrop-blur-sm">
               {goalComplete ? (
-                <CheckCircle2 size={36} className="text-emerald-200" strokeWidth={2.25} />
+                <CheckCircle2 size={36} className="text-primary-200" strokeWidth={2.25} />
               ) : (
                 <div className="flex flex-col items-center">
                   <span className="text-[28px] font-black tabular-nums leading-none">{toFa(remaining)}</span>
@@ -312,7 +312,7 @@ function Podium({ podium, meId }: { podium: Agent[]; meId: string }) {
 
               <div
                 className={cn(
-                  'mt-2.5 w-full rounded-t-2xl shadow-[inset_0_2px_6px_rgba(0,0,0,0.04)]',
+                  'mt-2.5 w-full rounded-t-2xl shadow-[inset_0_2px_6px_rgba(2,6,7,0.04)]',
                   cfg.stepHeight,
                   cfg.step,
                 )}

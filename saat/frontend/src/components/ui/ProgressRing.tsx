@@ -15,8 +15,8 @@ export function ProgressRing({
   size = 120,
   stroke = 12,
   children,
-  gradient = ['#10b981', '#0d9488'],
-  trackColor = '#eef1f4',
+  gradient = ['#006F75', '#FFB000'],
+  trackColor = '#DDEAEA',
 }: ProgressRingProps) {
   const radius = (size - stroke) / 2
   const circumference = 2 * Math.PI * radius

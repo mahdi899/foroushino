@@ -14,12 +14,12 @@ interface AvatarProps {
 }
 
 const PALETTE = [
-  ['#0d9488', '#10b981'],
-  ['#6366f1', '#818cf8'],
-  ['#f97316', '#fb923c'],
-  ['#3b82f6', '#60a5fa'],
-  ['#e11d48', '#fb7185'],
-  ['#0891b2', '#22d3ee'],
+  ['#003B40', '#008C96'],
+  ['#006F75', '#10A37F'],
+  ['#FFB000', '#FF6B00'],
+  ['#008C96', '#5FBDBE'],
+  ['#E5484D', '#FF6B00'],
+  ['#00484D', '#FFB000'],
 ]
 
 function pickColor(seed: string): [string, string] {

@@ -24,7 +24,7 @@ export function SplashScreen() {
         initial={{ opacity: 0, scale: 0.92 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="relative flex h-20 w-20 items-center justify-center rounded-[22px] bg-white shadow-[0_16px_40px_-12px_rgba(0,0,0,0.25)]"
+        className="relative flex h-20 w-20 items-center justify-center rounded-[22px] bg-white shadow-[0_16px_40px_-12px_rgba(2,6,7,0.25)]"
       >
         <PhoneCall size={38} className="text-primary-600" strokeWidth={2.25} />
       </motion.div>

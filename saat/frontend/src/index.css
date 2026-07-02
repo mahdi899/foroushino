@@ -7,6 +7,67 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --tg-vh: 100vh;
   color-scheme: light;
+
+  --color-bg: #F8FBFB;
+  --color-surface: #FFFFFF;
+  --color-surface-soft: #F2F7F7;
+  --color-surface-tint: #E6F5F4;
+  --color-border: #DDEAEA;
+  --color-border-strong: #C4D6D8;
+
+  --color-text: #0B1F22;
+  --color-text-muted: #52676A;
+  --color-text-soft: #8BA8AC;
+
+  --color-primary: #006F75;
+  --color-primary-hover: #005B61;
+  --color-primary-active: #00484D;
+
+  --color-secondary: #FFB000;
+  --color-accent: #FF6B00;
+  --color-glow: #FFE08A;
+
+  --color-success: #10A37F;
+  --color-warning: #FFB000;
+  --color-error: #E5484D;
+
+  --shadow-primary: rgba(0, 111, 117, 0.24);
+  --shadow-sales: rgba(255, 107, 0, 0.28);
+  --shadow-gold: rgba(255, 176, 0, 0.28);
+  --skeleton-shimmer: rgba(234, 251, 251, 0.65);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-bg: #050A0B;
+  --color-bg-deep: #020607;
+  --color-surface: #0D1517;
+  --color-surface-soft: #142326;
+  --color-surface-tint: #102E33;
+  --color-border: #1D3438;
+  --color-border-strong: #2B555B;
+
+  --color-text: #EAFBFB;
+  --color-text-muted: #95B4B8;
+  --color-text-soft: #5F7F83;
+
+  --color-primary: #008C96;
+  --color-primary-hover: #00A0A8;
+  --color-primary-active: #006F75;
+
+  --color-secondary: #FFB000;
+  --color-accent: #FF6B00;
+  --color-glow: #FFE08A;
+
+  --color-success: #18C99A;
+  --color-warning: #FFB000;
+  --color-error: #FF5C66;
+
+  --shadow-primary: rgba(0, 140, 150, 0.34);
+  --shadow-sales: rgba(255, 107, 0, 0.34);
+  --shadow-gold: rgba(255, 176, 0, 0.34);
+  --skeleton-shimmer: rgba(234, 251, 251, 0.08);
 }
 
 * {
@@ -19,8 +80,8 @@ body {
   padding: 0;
   height: 100%;
   font-family: 'Vazirmatn', system-ui, sans-serif;
-  background: #e9edf1;
-  color: #0f172a;
+  background: var(--color-bg);
+  color: var(--color-text);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overscroll-behavior: none;
@@ -61,7 +122,7 @@ button {
   .skeleton {
     position: relative;
     overflow: hidden;
-    background: #eef1f4;
+    background: var(--color-border);
   }
   .skeleton::after {
     content: '';
@@ -71,7 +132,7 @@ button {
     background: linear-gradient(
       90deg,
       transparent,
-      rgba(255, 255, 255, 0.65),
+      var(--skeleton-shimmer),
       transparent
     );
     animation: skeleton-shimmer 1.4s infinite;

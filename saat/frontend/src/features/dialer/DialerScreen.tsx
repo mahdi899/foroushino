@@ -147,7 +147,7 @@ export function DialerScreen() {
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={hangUp}
-                className="flex h-16 w-16 items-center justify-center rounded-full bg-error text-white shadow-[0_12px_30px_-8px_rgba(239,68,68,0.6)]"
+                className="flex h-16 w-16 items-center justify-center rounded-full bg-error text-white shadow-[0_12px_30px_-8px_rgba(229,72,77,0.6)]"
               >
                 <PhoneOff size={24} />
               </motion.button>

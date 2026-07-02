@@ -56,7 +56,7 @@ export function OnboardingScreen() {
             className="flex flex-col items-center text-center"
           >
             <div
-              className="mb-5 flex h-[88px] w-[88px] items-center justify-center rounded-[26px] bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-[0_12px_32px_-12px_rgba(13,148,136,0.45)]"
+              className="mb-5 flex h-[88px] w-[88px] items-center justify-center rounded-[26px] bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-[0_12px_32px_-12px_rgba(0,111,117,0.45)]"
             >
               <Icon size={40} strokeWidth={2.25} />
             </div>

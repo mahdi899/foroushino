@@ -30,8 +30,8 @@ export function SalesScriptSheet({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-t-[24px] bg-surface shadow-[0_-8px_30px_-12px_rgba(15,23,42,0.2)]',
-        expanded && 'shadow-[0_-16px_40px_-12px_rgba(15,23,42,0.28)]',
+        'overflow-hidden rounded-t-[24px] bg-surface shadow-[0_-8px_30px_-12px_rgba(11,31,34,0.2)]',
+        expanded && 'shadow-[0_-16px_40px_-12px_rgba(11,31,34,0.28)]',
         fill && expanded && 'flex min-h-0 flex-1 flex-col',
       )}
     >

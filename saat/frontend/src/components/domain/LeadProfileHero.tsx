@@ -24,19 +24,19 @@ const heroTheme: Record<
   hot: {
     glow: 'bg-hot-400/25',
     avatarRing: 'ring-hot-100',
-    avatarShadow: 'shadow-[0_16px_40px_-12px_rgba(244,63,94,0.35)]',
+    avatarShadow: 'shadow-[0_16px_40px_-12px_rgba(255,107,0,0.35)]',
     accent: 'bg-hot-500',
   },
   warm: {
     glow: 'bg-warm-400/20',
     avatarRing: 'ring-warm-100',
-    avatarShadow: 'shadow-[0_16px_40px_-12px_rgba(245,158,11,0.3)]',
+    avatarShadow: 'shadow-[0_16px_40px_-12px_rgba(255,176,0,0.3)]',
     accent: 'bg-warm-500',
   },
   cold: {
     glow: 'bg-cold-400/20',
     avatarRing: 'ring-cold-100',
-    avatarShadow: 'shadow-[0_16px_40px_-12px_rgba(37,99,235,0.28)]',
+    avatarShadow: 'shadow-[0_16px_40px_-12px_rgba(0,140,150,0.28)]',
     accent: 'bg-cold-500',
   },
 }

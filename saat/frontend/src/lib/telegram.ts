@@ -13,7 +13,7 @@ export function initTelegram() {
     wa.ready()
     wa.expand()
     wa.setHeaderColor?.('#ffffff')
-    wa.setBackgroundColor?.('#e9edf1')
+    wa.setBackgroundColor?.('#F8FBFB')
   } catch {
     // ignore – running outside Telegram
   }

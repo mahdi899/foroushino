@@ -97,7 +97,7 @@ export default function App() {
   }, [])
 
   return (
-    <div className="flex min-h-[100dvh] w-full items-center justify-center bg-[#d6dbe2] sm:p-4">
+    <div className="flex min-h-[100dvh] w-full items-center justify-center bg-neutral-200 sm:p-4">
       <div className="relative h-[100dvh] w-full max-w-[440px] overflow-hidden bg-background sm:h-[896px] sm:max-h-[94vh] sm:rounded-[44px] sm:border-[8px] sm:border-neutral-900 sm:shadow-2xl">
         <BrowserRouter>
           <Shell />

@@ -41,43 +41,43 @@ const harmonySteps: StageTheme[] = [
     card: 'bg-primary-500',
     cardBorder: 'border-primary-400',
     cardGradient: 'from-primary-700/50 via-primary-600/30 to-primary-500',
-    shadow: 'shadow-[0_10px_30px_-12px_rgba(13,148,136,0.5)]',
+    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,111,117,0.5)]',
   },
   {
     card: 'bg-primary-600',
     cardBorder: 'border-primary-500',
     cardGradient: 'from-primary-800/45 via-primary-700/25 to-primary-600',
-    shadow: 'shadow-[0_10px_30px_-12px_rgba(13,148,136,0.52)]',
+    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,111,117,0.52)]',
   },
   {
     card: 'bg-primary-600',
     cardBorder: 'border-primary-500',
     cardGradient: 'from-primary-800/50 via-primary-700/30 to-primary-600',
-    shadow: 'shadow-[0_10px_30px_-12px_rgba(15,118,110,0.55)]',
+    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,91,97,0.55)]',
   },
   {
     card: 'bg-primary-700',
     cardBorder: 'border-primary-600',
     cardGradient: 'from-primary-900/40 via-primary-800/30 to-primary-700',
-    shadow: 'shadow-[0_10px_30px_-12px_rgba(15,118,110,0.58)]',
+    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,91,97,0.58)]',
   },
   {
     card: 'bg-primary-700',
     cardBorder: 'border-primary-600',
     cardGradient: 'from-primary-900/45 via-primary-800/35 to-primary-700',
-    shadow: 'shadow-[0_10px_30px_-12px_rgba(17,94,89,0.6)]',
+    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,72,77,0.6)]',
   },
   {
     card: 'bg-primary-800',
     cardBorder: 'border-primary-700',
     cardGradient: 'from-primary-900/55 via-primary-800/40 to-primary-800',
-    shadow: 'shadow-[0_10px_30px_-12px_rgba(17,94,89,0.62)]',
+    shadow: 'shadow-[0_10px_30px_-12px_rgba(0,72,77,0.62)]',
   },
   {
     card: 'bg-success-600',
     cardBorder: 'border-success-500',
     cardGradient: 'from-success-800/50 via-success-700/35 to-success-600',
-    shadow: 'shadow-[0_10px_30px_-12px_rgba(5,150,105,0.5)]',
+    shadow: 'shadow-[0_10px_30px_-12px_rgba(16,163,127,0.5)]',
   },
 ]
 
@@ -90,7 +90,7 @@ export function StageBar({ stage }: { stage: SaleStage }) {
 
   if (stage === 'lost') {
     return (
-      <div className="rounded-3xl border border-error-200 bg-error-600 px-4 py-3 text-center text-sm font-bold text-white shadow-[0_10px_30px_-12px_rgba(220,38,38,0.45)]">
+      <div className="rounded-3xl border border-error-200 bg-error-600 px-4 py-3 text-center text-sm font-bold text-white shadow-[0_10px_30px_-12px_rgba(201,54,59,0.45)]">
         {stageLabels.lost}
       </div>
     )

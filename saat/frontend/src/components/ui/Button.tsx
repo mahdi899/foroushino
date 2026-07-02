@@ -23,7 +23,7 @@ const variants: Record<Variant, string> = {
   secondary: 'bg-neutral-900 text-white',
   soft: 'bg-primary-50 text-primary-700',
   ghost: 'bg-transparent text-neutral-600',
-  danger: 'bg-error text-white shadow-[0_8px_24px_-8px_rgba(239,68,68,0.5)]',
+  danger: 'bg-error text-white shadow-[0_8px_24px_-8px_rgba(229,72,77,0.5)]',
 }
 
 const sizes: Record<Size, string> = {

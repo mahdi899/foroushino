@@ -209,7 +209,7 @@ function DateStrip({ date }: { date: Date }) {
             className={cn(
               'flex min-h-[84px] min-w-[72px] shrink-0 flex-col items-center justify-center rounded-2xl border px-3.5 py-3',
               active
-                ? 'border-primary-600 bg-primary-600 text-white shadow-[0_4px_14px_-4px_rgba(13,148,136,0.4)]'
+                ? 'border-primary-600 bg-primary-600 text-white shadow-[0_4px_14px_-4px_rgba(0,111,117,0.4)]'
                 : 'border-border bg-surface text-neutral-500',
             )}
           >

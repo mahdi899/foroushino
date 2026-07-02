@@ -108,7 +108,7 @@ export function LoginScreen() {
     <div className="flex h-full min-h-full flex-col px-5 pt-[calc(8px+var(--safe-top))] pb-[calc(20px+var(--safe-bottom))]">
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-2 py-4">
         <div
-          className="mb-5 flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[22px] bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-[0_12px_32px_-12px_rgba(13,148,136,0.45)]"
+          className="mb-5 flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[22px] bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-[0_12px_32px_-12px_rgba(0,111,117,0.45)]"
         >
           <PhoneCall size={32} strokeWidth={2.25} />
         </div>
@@ -197,7 +197,7 @@ export function LoginScreen() {
                     )}
                     {otpPhase === 'success' && (
                       <div
-                        className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-500 text-white shadow-[0_8px_20px_-8px_rgba(13,148,136,0.5)]"
+                        className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-500 text-white shadow-[0_8px_20px_-8px_rgba(0,111,117,0.5)]"
                       >
                         <Check size={20} strokeWidth={3} />
                       </div>

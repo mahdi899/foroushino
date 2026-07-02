@@ -30,7 +30,7 @@ export function HomeScreen() {
         >
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute -left-16 -top-16 h-52 w-52 rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute -bottom-20 -right-10 h-48 w-48 rounded-full bg-emerald-300/20 blur-3xl" />
+            <div className="absolute -bottom-20 -right-10 h-48 w-48 rounded-full bg-primary-300/20 blur-3xl" />
             <div
               className="absolute inset-0 opacity-[0.06]"
               style={{
@@ -44,13 +44,13 @@ export function HomeScreen() {
           <div className="relative flex items-center gap-4">
             <div className="min-w-0 flex-1">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-bold backdrop-blur-sm">
-                <Sparkles size={13} className="text-emerald-200" />
+                <Sparkles size={13} className="text-primary-200" />
                 آماده فروش
               </span>
 
               <h2 className="mt-3 text-[22px] font-black leading-[1.25]">
                 تماس بعدی{' '}
-                <span className="bg-gradient-to-l from-emerald-200 to-white bg-clip-text text-transparent">
+                <span className="bg-gradient-to-l from-primary-200 to-white bg-clip-text text-transparent">
                   آماده‌ست
                 </span>
               </h2>
@@ -66,7 +66,7 @@ export function HomeScreen() {
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-white/15">
                   <div
-                    className="h-full rounded-full bg-gradient-to-l from-emerald-200 via-white to-emerald-100 shadow-[0_0_10px_rgba(255,255,255,0.35)] transition-[width] duration-500 ease-out"
+                    className="h-full rounded-full bg-gradient-to-l from-primary-200 via-white to-primary-100 shadow-[0_0_10px_rgba(234,251,251,0.35)] transition-[width] duration-500 ease-out"
                     style={{ width: `${goalPct}%` }}
                   />
                 </div>
@@ -75,7 +75,7 @@ export function HomeScreen() {
 
             <div className="flex h-[88px] w-[88px] shrink-0 items-center justify-center rounded-[22px] border border-white/20 bg-white/10 backdrop-blur-sm">
               {goalComplete ? (
-                <CheckCircle2 size={42} className="text-emerald-200" strokeWidth={2.25} />
+                <CheckCircle2 size={42} className="text-primary-200" strokeWidth={2.25} />
               ) : (
                 <div className="flex flex-col items-center">
                   <span className="text-[32px] font-black tabular-nums leading-none">{toFa(remaining)}</span>

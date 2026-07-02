@@ -30,20 +30,20 @@ const tempTheme: Record<
     glow: 'bg-hot-400/20',
     stripe: 'from-hot-500 via-hot-400/60 to-transparent',
     accent: 'text-hot-600',
-    callBtn: 'bg-gradient-to-br from-hot-500 to-hot-600 text-white shadow-[0_4px_16px_-4px_rgba(244,63,94,0.45)]',
+    callBtn: 'bg-gradient-to-br from-hot-500 to-hot-600 text-white shadow-[0_4px_16px_-4px_rgba(255,107,0,0.45)]',
   },
   warm: {
     glow: 'bg-warm-400/15',
     stripe: 'from-warm-500 via-warm-400/60 to-transparent',
     accent: 'text-warm-600',
-    callBtn: 'bg-gradient-to-br from-warm-500 to-warm-600 text-white shadow-[0_4px_16px_-4px_rgba(245,158,11,0.4)]',
+    callBtn: 'bg-gradient-to-br from-warm-500 to-warm-600 text-white shadow-[0_4px_16px_-4px_rgba(255,176,0,0.4)]',
   },
   cold: {
     glow: 'bg-cold-400/15',
     stripe: 'from-cold-500 via-cold-400/60 to-transparent',
     accent: 'text-cold-600',
     callBtn:
-      'bg-gradient-to-br from-cold-500 to-cold-600 text-white shadow-[0_4px_16px_-4px_rgba(37,99,235,0.4)]',
+      'bg-gradient-to-br from-cold-500 to-cold-600 text-white shadow-[0_4px_16px_-4px_rgba(0,140,150,0.4)]',
   },
 }
 
