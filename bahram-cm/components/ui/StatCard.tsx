@@ -43,7 +43,7 @@ export function StatCard({
         </div>
 
         {caption ? (
-          <p className="max-w-[26ch] font-display text-caption leading-relaxed tracking-wide text-bone-dim group-hover:text-bone/90">
+          <p className="max-w-[26ch] font-display text-caption tracking-wide text-bone-dim group-hover:text-bone/90">
             {caption}
           </p>
         ) : null}

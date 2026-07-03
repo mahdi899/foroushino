@@ -78,7 +78,7 @@ export default function ApplyPage() {
             </h1>
           </Reveal>
           <Reveal delay={0.2}>
-            <p className="mt-5 max-w-2xl text-base leading-relaxed text-bone-dim md:mt-7 md:text-lg">
+            <p className="mt-5 max-w-2xl text-body text-bone-dim md:mt-7">
               فقط با کسی کار می‌کنیم که آماده‌ی مسیر است؛ این فرم شروع یک گفت‌وگوی واقعی است.
             </p>
           </Reveal>

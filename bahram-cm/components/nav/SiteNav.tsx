@@ -49,7 +49,7 @@ export function SiteNav() {
                   href={link.href}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "group relative whitespace-nowrap rounded-md px-2 pt-1.5 pb-3 text-[0.8125rem] font-medium leading-snug transition-colors duration-300 xl:px-2.5 xl:pb-3.5",
+                    "group relative whitespace-nowrap rounded-md px-2 pt-1.5 pb-3 text-sm font-medium leading-snug transition-colors duration-300 xl:px-2.5 xl:pb-3.5",
                     active ? "text-bone" : "text-bone-dim/95 hover:text-bone",
                   )}
                 >
@@ -73,7 +73,7 @@ export function SiteNav() {
                 href={site.ctaPrimary.href}
                 event="homepage_cta_click"
                 eventProps={{ cta: "nav_primary", location: "nav" }}
-                variant="sales"
+                variant="primary"
                 size="sm"
                 withArrow
               >

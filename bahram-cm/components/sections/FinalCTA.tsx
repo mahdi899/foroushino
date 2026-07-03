@@ -37,7 +37,7 @@ export function FinalCTA() {
                 </h2>
               </Reveal>
               <Reveal delay={0.2}>
-                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-bone-dim md:mt-6 md:text-body">
+                <p className="mt-3 max-w-2xl text-sm text-bone-dim md:mt-6 md:text-body">
                   {site.finalCta.body}
                 </p>
               </Reveal>
@@ -79,10 +79,10 @@ export function FinalCTA() {
                   href={site.finalCta.cta.href}
                   event="homepage_cta_click"
                   eventProps={{ cta: "final_primary", location: "final_cta" }}
-                  variant="sales"
+                  variant="primary"
                   size="lg"
                   withArrow
-                  className="h-12 min-h-12 w-full min-w-0 px-5 text-[0.88rem] md:h-14 md:min-h-14 md:w-auto md:shrink-0 md:px-7 md:text-base"
+                  className="h-12 min-h-12 w-full min-w-0 px-5 text-sm md:h-14 md:min-h-14 md:w-auto md:shrink-0 md:px-7 md:text-base"
                 >
                   {site.finalCta.cta.label}
                 </TrackedLinkButton>
@@ -90,10 +90,10 @@ export function FinalCTA() {
                   href="/apply"
                   event="homepage_cta_click"
                   eventProps={{ cta: "final_apply", location: "final_cta" }}
-                  variant="sales"
+                  variant="primary"
                   size="lg"
                   withArrow
-                  className="h-12 min-h-12 w-full min-w-0 px-5 text-[0.88rem] md:h-14 md:min-h-14 md:w-auto md:shrink-0 md:px-7 md:text-base"
+                  className="h-12 min-h-12 w-full min-w-0 px-5 text-sm md:h-14 md:min-h-14 md:w-auto md:shrink-0 md:px-7 md:text-base"
                 >
                   درخواست ورود به آکادمی
                 </TrackedLinkButton>

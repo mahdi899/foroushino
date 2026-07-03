@@ -139,7 +139,7 @@ function StepCard({
         <h3 className="mt-5 text-h3 text-balance text-bone">{step.title}</h3>
         <p
           className={cn(
-            "mt-4 text-[0.97rem] leading-[1.78] text-bone-dim sm:text-base sm:leading-relaxed",
+            "mt-4 text-sm text-bone-dim sm:text-body",
             stretch && "min-h-0 flex-1",
           )}
         >
@@ -289,10 +289,10 @@ function MobileFlow() {
                   <StepFigure icon={step.icon} tone={tone} compact />
                 </div>
                 <span className="min-w-0 flex-1 leading-tight">
-                  <span className="block text-[0.6875rem] font-medium uppercase tracking-wide text-mist/90">
+                  <span className="block text-caption font-medium uppercase tracking-wide text-mist/90">
                     {step.phaseLabel}
                   </span>
-                  <span className="mt-0.5 block font-display text-[0.95rem] font-semibold text-balance text-bone sm:text-base">
+                  <span className="mt-0.5 block font-display text-sm font-semibold text-balance text-bone sm:text-base">
                     {step.title}
                   </span>
                 </span>
@@ -321,7 +321,7 @@ function MobileFlow() {
                     <div className="space-y-3 border-t border-bone/[0.06] bg-obsidian/30 px-3 py-3 sm:px-4">
                       <Chip
                         className={cn(
-                          "w-fit max-w-full truncate px-2.5 py-1 text-[0.65rem] sm:text-caption",
+                          "w-fit max-w-full truncate px-2.5 py-1 text-caption",
                           tone === "gold"
                             ? "border-gold/[0.16] bg-gold/[0.055] text-gold-soft/90"
                             : "border-emerald-glow/15 bg-emerald-glow/[0.05] text-emerald-glow/88",
@@ -329,7 +329,7 @@ function MobileFlow() {
                       >
                         خروجی: {step.outcome}
                       </Chip>
-                      <p className="text-[0.9rem] leading-[1.72] text-bone-dim sm:text-[0.97rem] sm:leading-relaxed">
+                      <p className="text-sm text-bone-dim sm:text-body">
                         {step.body}
                       </p>
                     </div>

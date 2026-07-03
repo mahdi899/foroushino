@@ -10,8 +10,8 @@ export const OG_CONTENT_TYPE = "image/png";
 const loadFonts = cache(async () => {
   const dir = path.join(process.cwd(), "public", "fonts");
   const [bold, medium] = await Promise.all([
-    fs.readFile(path.join(dir, "YekanBakh-Bold.ttf")),
-    fs.readFile(path.join(dir, "YekanBakh-Medium.ttf")),
+    fs.readFile(path.join(dir, "Peyda-Bold.ttf")),
+    fs.readFile(path.join(dir, "Peyda-Medium.ttf")),
   ]);
   return { bold, medium };
 });
@@ -44,7 +44,7 @@ export async function renderOgImage({
           padding: "72px 80px",
           background:
             "radial-gradient(120% 120% at 85% 0%, #003b40 0%, #0d1517 55%, #050a0b 100%)",
-          fontFamily: "YekanBakh",
+          fontFamily: "Peyda",
           direction: "rtl",
         }}
       >
@@ -93,8 +93,8 @@ export async function renderOgImage({
     {
       ...OG_SIZE,
       fonts: [
-        { name: "YekanBakh", data: bold, weight: 700, style: "normal" },
-        { name: "YekanBakh", data: medium, weight: 500, style: "normal" },
+        { name: "Peyda", data: bold, weight: 700, style: "normal" },
+        { name: "Peyda", data: medium, weight: 500, style: "normal" },
       ],
     },
   );

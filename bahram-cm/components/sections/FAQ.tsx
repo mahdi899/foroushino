@@ -42,7 +42,7 @@ export function FAQ() {
               <h2 className="mt-5 text-h2 text-balance">پرسش‌های قبل از ورود.</h2>
             </Reveal>
             <Reveal delay={0.16}>
-              <p className="mt-5 max-w-md text-base leading-relaxed text-bone-dim">
+              <p className="mt-5 max-w-md text-body text-bone-dim">
                 سوال دیگری داری؟ از بخش ارتباط در تماس باش.
               </p>
             </Reveal>

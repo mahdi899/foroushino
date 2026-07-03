@@ -34,10 +34,10 @@ export function PressPresenceChannelChip({ item }: { item: PressChannel }) {
         <Icon className={cn("size-[16px]", iconClass)} strokeWidth={1.5} />
       </span>
       <span className="flex min-w-0 flex-col items-start gap-0 text-start">
-        <span className="text-[0.88rem] font-medium leading-snug tracking-tight text-bone">
+        <span className="text-sm font-medium leading-snug tracking-tight text-bone">
           {item.label}
         </span>
-        <span className="text-[0.65rem] uppercase tracking-[0.2em] text-mist">{item.note}</span>
+        <span className="text-caption uppercase tracking-[0.2em] text-mist">{item.note}</span>
       </span>
     </span>
   );

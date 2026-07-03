@@ -41,11 +41,11 @@ export function Transformations() {
     <section className="bg-obsidian py-section">
       <div className="container-luxe">
         <Reveal>
-          <Eyebrow>قبل و بعد دانشجوها</Eyebrow>
+          <Eyebrow>رضایت دانشجوها</Eyebrow>
         </Reveal>
         <Reveal delay={0.08}>
           <h2 className="mt-5 max-w-3xl text-h2 text-balance">
-            نظر دانشجوهاست — از تجربه‌ی واقعی قبل و بعد مسیر.
+            رضایت واقعی — به زبان خود دانشجوها.
           </h2>
         </Reveal>
         <Reveal delay={0.16}>

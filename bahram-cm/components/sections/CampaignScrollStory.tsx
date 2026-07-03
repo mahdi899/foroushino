@@ -93,7 +93,7 @@ function StoryPathMobileSlider() {
                   <span className="inline-block rounded-pill bg-obsidian/80 px-2 py-1 font-display text-caption tabular-nums text-mist ring-1 ring-bone/[0.08]">
                     {stepNo}
                   </span>
-                  <p className="mt-3 text-[0.65rem] font-medium uppercase tracking-[0.28em] text-gold/90">
+                  <p className="mt-3 text-caption font-medium uppercase tracking-[0.28em] text-gold/90">
                     {frame.kicker}
                   </p>
                   <h3 className="mt-2 font-display text-[1rem] font-semibold text-balance text-bone sm:text-lg">
@@ -101,7 +101,7 @@ function StoryPathMobileSlider() {
                   </h3>
                 </div>
               </div>
-              <p className="text-[0.92rem] leading-[1.72] text-bone-dim sm:text-base sm:leading-relaxed">
+              <p className="text-sm text-bone-dim sm:text-body">
                 {frame.body}
               </p>
               <PhotoFrame
@@ -171,7 +171,7 @@ function StoryPathMobileSlider() {
         </button>
       </div>
 
-      <p className="mt-5 text-center text-[0.8rem] text-mist" aria-live="polite">
+      <p className="mt-5 text-center text-sm text-mist" aria-live="polite">
         اسلاید {toPersianDigits(String(activeIdx + 1))} از{" "}
         {toPersianDigits(String(site.story.length))}
       </p>
@@ -235,7 +235,7 @@ export function CampaignScrollStory() {
                       {frame.kicker}
                     </p>
                     <h3 className="mt-3 text-h3 text-balance">{frame.title}</h3>
-                    <p className="mt-5 max-w-2xl text-base leading-relaxed text-bone-dim md:text-lg">
+                    <p className="mt-5 max-w-2xl text-body text-bone-dim">
                       {frame.body}
                     </p>
                   </div>

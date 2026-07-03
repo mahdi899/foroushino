@@ -25,7 +25,7 @@ export function IconLabel({
     <span
       data-icon-label-tone={tone}
       className={cn(
-        "group inline-flex items-center gap-2 text-[0.95rem]",
+        "group inline-flex items-center gap-2 text-sm",
         colors[tone],
         className,
       )}

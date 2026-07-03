@@ -149,7 +149,7 @@ export default function SaatPage() {
                 </h1>
               </Reveal>
               <Reveal delay={0.2}>
-                <p className="mt-4 max-w-2xl text-base leading-relaxed text-bone-dim md:mt-7 md:text-lg">
+                <p className="mt-4 max-w-2xl text-body text-bone-dim md:mt-7">
                   سات فقط یک ابزار نیست؛ یک جریان کاری کامل برای تماس، پیگیری، ثبت فیدبک، سنجش
                   عملکرد و تبدیل لید به فروش است. اگر قرار است فروش تلفنی به‌صورت جدی،
                   ساختاریافته و روزانه پیش برود، سات همان جایی‌ست که این مسیر داخلش اتفاق

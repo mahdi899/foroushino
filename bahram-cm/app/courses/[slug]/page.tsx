@@ -122,7 +122,7 @@ export default async function CourseDetailPage({
                 href="/apply"
                 event="course_cta_click"
                 eventProps={{ course: course.slug, location: "hero" }}
-                variant="sales"
+                variant="primary"
                 size="lg"
               >
                 شروع این مسیر

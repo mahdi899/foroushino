@@ -36,7 +36,7 @@ export function Tabs({ tabs, className }: { tabs: Tab[]; className?: string }) {
               onClick={() => setActive(tab.id)}
               type="button"
               className={cn(
-                "relative rounded-pill px-3 py-2 text-[0.8125rem] transition-colors duration-300 sm:shrink-0 sm:px-4 sm:text-[0.92rem]",
+                "relative rounded-pill px-3 py-2 text-sm transition-colors duration-300 sm:shrink-0 sm:px-4",
                 "max-sm:flex-1 max-sm:min-w-0 max-sm:basis-0 max-sm:text-center max-sm:leading-snug",
                 selected
                   ? theme === "light"

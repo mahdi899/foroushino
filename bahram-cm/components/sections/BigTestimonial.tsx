@@ -146,15 +146,15 @@ export function BigTestimonial() {
                   <p className="font-display text-base font-semibold leading-snug text-balance text-bone sm:text-lg">
                     {t.name}
                   </p>
-                  <p className="text-[0.8125rem] leading-snug text-mist">{t.role}</p>
-                  <span className="mt-2 inline-flex w-fit items-center gap-1 rounded-pill border border-gold/20 bg-gold/[0.06] px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wider text-gold">
+                  <p className="text-sm leading-snug text-mist">{t.role}</p>
+                  <span className="mt-2 inline-flex w-fit items-center gap-1 rounded-pill border border-gold/20 bg-gold/[0.06] px-2 py-0.5 text-caption font-medium uppercase tracking-wider text-gold">
                     <Quote className="h-3 w-3" strokeWidth={1.6} aria-hidden />
                     تجربه
                   </span>
                 </div>
               </div>
 
-              <blockquote className="mt-5 border-t border-bone/10 pt-5 font-display text-[1.0625rem] font-medium leading-[1.65] text-balance text-bone sm:text-lg sm:leading-relaxed">
+              <blockquote className="mt-5 border-t border-bone/10 pt-5 font-display text-body font-medium text-balance text-bone sm:text-lg">
                 «{t.pull}»
               </blockquote>
 
@@ -170,7 +170,7 @@ export function BigTestimonial() {
                     <p className="mt-2 font-display text-base font-semibold leading-none tabular-nums text-bone num-latin sm:text-lg">
                       {m.value}
                     </p>
-                    <p className="mt-1.5 line-clamp-2 text-[0.65rem] leading-snug text-mist sm:text-caption">
+                    <p className="mt-1.5 line-clamp-2 text-caption leading-snug text-mist">
                       {m.label}
                     </p>
                   </div>
@@ -240,7 +240,7 @@ export function BigTestimonial() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8 }}
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                className="mt-6 font-display text-xl font-medium text-balance leading-relaxed text-bone md:text-2xl"
+                className="mt-6 font-display text-xl font-medium text-balance text-bone md:text-2xl"
               >
                 «{t.pull}»
               </motion.blockquote>

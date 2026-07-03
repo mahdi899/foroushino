@@ -20,7 +20,7 @@ const base =
 
 const variantStyles: Record<Variant, string> = {
   primary:
-    "neon-btn-primary rounded-pill bg-emerald hover:bg-emerald-glow hover:-translate-y-px active:translate-y-0",
+    "neon-btn-primary brand-cta rounded-pill font-semibold hover:-translate-y-px active:translate-y-0",
   ghost:
     "neon-btn-ghost rounded-pill border border-bone/15 text-bone hover:border-bone/35 hover:bg-bone/[0.03]",
   "gold-link":
@@ -32,8 +32,8 @@ const variantStyles: Record<Variant, string> = {
 };
 
 const sizeStyles: Record<Size, string> = {
-  sm: "h-9 min-h-9 px-4 text-[0.8125rem] gap-1.5",
-  md: "h-11 min-h-11 px-5 text-[0.95rem]",
+  sm: "h-9 min-h-9 px-4 text-sm gap-1.5",
+  md: "h-11 min-h-11 px-5 text-sm",
   lg: "h-14 min-h-14 px-7 text-base",
 };
 

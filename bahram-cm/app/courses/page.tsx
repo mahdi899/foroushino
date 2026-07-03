@@ -89,7 +89,7 @@ export default async function CoursesPage() {
               دوره‌ی پرچم‌دار کمپین‌نویسی، نقطه‌ی ورود به اکوسیستم آکادمی است.
             </p>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
-              <LinkButton href="/course/campaign-writing" variant="sales" size="lg" withArrow>
+              <LinkButton href="/course/campaign-writing" variant="primary" size="lg" withArrow>
                 دوره‌ی کمپین‌نویسی
               </LinkButton>
               <LinkButton href="/saat" variant="ghost" size="lg">

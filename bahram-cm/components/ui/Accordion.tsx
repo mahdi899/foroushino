@@ -63,7 +63,7 @@ export function Accordion({
                   transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
                   className="overflow-hidden"
                 >
-                  <div className="px-6 pb-6 text-base leading-relaxed text-bone-dim">
+                  <div className="px-6 pb-6 text-body text-bone-dim">
                     {item.answer}
                   </div>
                 </motion.div>

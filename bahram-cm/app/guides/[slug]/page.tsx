@@ -83,10 +83,10 @@ export default async function GuideDetailPage({
               مسیر کامل را در آکادمی و دوره‌ی کمپین‌نویسی ادامه بده.
             </p>
             <div className="mt-6 flex flex-wrap gap-4">
-              <LinkButton href="/courses" variant="sales" withArrow>
+              <LinkButton href="/courses" variant="primary" withArrow>
                 دیدن دوره‌ها
               </LinkButton>
-              <LinkButton href="/apply" variant="sales">
+              <LinkButton href="/apply" variant="primary">
                 درخواست عضویت
               </LinkButton>
             </div>

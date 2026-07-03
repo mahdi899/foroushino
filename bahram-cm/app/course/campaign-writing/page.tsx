@@ -121,7 +121,7 @@ export default function CourseCampaignWritingPage() {
               <Reveal>
                 <Badge
                   tone="gold"
-                  className="mb-1.5 gap-1.5 px-2.5 py-0.5 text-[0.65rem] leading-tight md:mb-6 md:gap-2 md:px-3 md:py-1 md:text-caption"
+                  className="mb-1.5 gap-1.5 px-2.5 py-0.5 text-caption leading-tight md:mb-6 md:gap-2 md:px-3 md:py-1"
                 >
                   <Sparkles className="h-3 w-3 shrink-0 md:h-3.5 md:w-3.5" strokeWidth={1.6} aria-hidden />
                   دوره پرچم‌دار · کمپین‌نویسی
@@ -140,7 +140,7 @@ export default function CourseCampaignWritingPage() {
                 </h1>
               </Reveal>
               <Reveal delay={0.2}>
-                <p className="mt-4 max-w-2xl text-[0.9rem] leading-relaxed text-bone-dim md:mt-7 md:text-base md:text-lg">
+                <p className="mt-4 max-w-2xl text-sm text-bone-dim md:mt-7 md:text-body">
                   ۱۰ فصل، تمرین اجرا، نقشه پیشرفت؛ گام اول قبل از آکادمی.
                 </p>
               </Reveal>
@@ -151,7 +151,7 @@ export default function CourseCampaignWritingPage() {
                     variant="sales"
                     size="lg"
                     withArrow
-                    className={cn("w-full min-w-0 sm:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-[0.9rem]")}
+                    className={cn("w-full min-w-0 sm:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm")}
                   >
                     ثبت‌نام در دوره
                   </LinkButton>
@@ -159,7 +159,7 @@ export default function CourseCampaignWritingPage() {
                     href="#curriculum"
                     variant="ghost"
                     size="lg"
-                    className={cn("w-full min-w-0 sm:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-[0.9rem]")}
+                    className={cn("w-full min-w-0 sm:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm")}
                   >
                     دیدنِ سرفصل‌ها
                   </LinkButton>
@@ -175,7 +175,7 @@ export default function CourseCampaignWritingPage() {
                   <IconLabel
                     icon={Video}
                     tone="emerald"
-                    className="shrink-0 text-[0.78rem] md:text-[0.95rem] [&_svg]:h-3.5 [&_svg]:w-3.5 md:[&_svg]:h-4 md:[&_svg]:w-4"
+                    className="shrink-0 text-sm [&_svg]:h-3.5 [&_svg]:w-3.5 md:[&_svg]:h-4 md:[&_svg]:w-4"
                   >
                     ۴۰+ ساعت ویدیو
                   </IconLabel>
@@ -185,7 +185,7 @@ export default function CourseCampaignWritingPage() {
                   <IconLabel
                     icon={Users}
                     tone="bone"
-                    className="shrink-0 text-[0.78rem] md:text-[0.95rem] [&_svg]:h-3.5 [&_svg]:w-3.5 md:[&_svg]:h-4 md:[&_svg]:w-4"
+                    className="shrink-0 text-sm [&_svg]:h-3.5 [&_svg]:w-3.5 md:[&_svg]:h-4 md:[&_svg]:w-4"
                   >
                     ۵۰٬۰۰۰+ دانشجو
                   </IconLabel>
@@ -195,7 +195,7 @@ export default function CourseCampaignWritingPage() {
                   <IconLabel
                     icon={Award}
                     tone="gold"
-                    className="shrink-0 text-[0.78rem] md:text-[0.95rem] [&_svg]:h-3.5 [&_svg]:w-3.5 md:[&_svg]:h-4 md:[&_svg]:w-4"
+                    className="shrink-0 text-sm [&_svg]:h-3.5 [&_svg]:w-3.5 md:[&_svg]:h-4 md:[&_svg]:w-4"
                   >
                     گواهی پایان مسیر
                   </IconLabel>
@@ -220,7 +220,7 @@ export default function CourseCampaignWritingPage() {
                       className="h-auto w-full"
                     />
                   </div>
-                  <span className="absolute -start-2 top-4 rounded-pill border border-gold/30 bg-charcoal/80 px-2.5 py-0.5 text-[0.65rem] text-gold backdrop-blur md:-start-3 md:top-6 md:px-3 md:py-1 md:text-caption">
+                  <span className="absolute -start-2 top-4 rounded-pill border border-gold/30 bg-charcoal/80 px-2.5 py-0.5 text-caption text-gold backdrop-blur md:-start-3 md:top-6 md:px-3 md:py-1">
                     Premium · ۱۰ فصل
                   </span>
                   <div className="absolute -end-5 -bottom-6 hidden w-36 rotate-[5deg] md:block">
@@ -249,8 +249,8 @@ export default function CourseCampaignWritingPage() {
               <div className="neon-surface-static flex items-center gap-2.5 rounded-card border border-bone/10 bg-charcoal/45 p-3 min-[400px]:gap-3 min-[400px]:p-4 min-[480px]:gap-4 min-[480px]:p-5">
                 <IconTile icon={s.icon} tone="emerald" size="sm" />
                 <div className="min-w-0">
-                  <p className="text-[0.95rem] font-semibold leading-tight text-bone min-[480px]:text-base min-[520px]:text-h3">{s.value}</p>
-                  <p className="text-[0.68rem] leading-snug text-mist min-[480px]:text-caption">{s.label}</p>
+                  <p className="text-sm font-semibold leading-tight text-bone min-[480px]:text-base min-[520px]:text-h3">{s.value}</p>
+                  <p className="text-caption leading-snug text-mist">{s.label}</p>
                 </div>
               </div>
             </Reveal>
@@ -295,7 +295,7 @@ export default function CourseCampaignWritingPage() {
             </h2>
           </Reveal>
           <Reveal delay={0.16}>
-            <p className="mt-4 max-w-2xl text-[0.9rem] text-bone-dim md:mt-5 md:text-base">
+            <p className="mt-4 max-w-2xl text-sm text-bone-dim md:mt-5 md:text-body">
               برای اجرا طراحی شده — نه تماشا.
             </p>
           </Reveal>
@@ -390,7 +390,7 @@ export default function CourseCampaignWritingPage() {
             </div>
             <div className="min-w-0 md:col-span-8">
               <Reveal>
-                <Eyebrow className="max-[639px]:text-[0.65rem]">مدرس مسیر</Eyebrow>
+                <Eyebrow>مدرس مسیر</Eyebrow>
               </Reveal>
               <Reveal delay={0.06}>
                 <h2 className="mt-2 text-h3 text-balance md:mt-4 md:text-h2">بهرام رستمی</h2>
@@ -549,16 +549,16 @@ export default function CourseCampaignWritingPage() {
               <h2 className="mt-5 max-w-full text-h2 text-balance md:mt-8 md:text-display">
                 مسیر، اینجا شروع می‌شود.
               </h2>
-              <p className="mt-4 max-w-2xl text-[0.9rem] text-bone-dim md:mt-6 md:text-base">
+              <p className="mt-4 max-w-2xl text-sm text-bone-dim md:mt-6 md:text-body">
                 قدم اول را بردار؛ بقیه کنار تو ساخته می‌شود.
               </p>
               <div className="mt-6 flex w-full max-w-md flex-col gap-2.5 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 md:mt-10">
                 <LinkButton
                   href="/apply"
-                  variant="sales"
+                  variant="primary"
                   size="lg"
                   withArrow
-                  className={cn("w-full min-w-0 sm:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-[0.9rem]")}
+                  className={cn("w-full min-w-0 sm:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm")}
                 >
                   شروع مسیر
                 </LinkButton>
@@ -593,7 +593,7 @@ function CurriculumGroup({
         <IconTile icon={Icon} tone="emerald" size="lg" />
         <h3 className="mt-3 text-h3 text-bone md:mt-6">{title}</h3>
         <p className="mt-2 text-sm text-bone-dim md:mt-3 md:text-base">هر فصل: درس کوتاه، تمرین، چک‌لیست خروجی.</p>
-        <p className="mt-3 inline-flex items-center gap-2 text-[0.7rem] text-gold md:mt-5 md:text-caption">
+        <p className="mt-3 inline-flex items-center gap-2 text-caption text-gold md:mt-5">
           <Headphones className="h-3 w-3 shrink-0 md:h-3.5 md:w-3.5" strokeWidth={1.6} aria-hidden />
           ویدیو · صدا · متن
         </p>

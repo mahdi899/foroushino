@@ -129,7 +129,7 @@ export default function MiniCoursesPage() {
                 </div>
                 <div className="flex flex-1 flex-col p-5 md:p-6">
                   <h2 className="text-h3 text-balance text-bone">{item.title}</h2>
-                  <p className="mt-3 grow leading-relaxed text-bone-dim">{item.body}</p>
+                  <p className="mt-3 grow text-bone-dim">{item.body}</p>
                   <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-bone/8 pt-5">
                     <Chip>
                       <Clock className="me-1.5 h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
@@ -159,7 +159,7 @@ export default function MiniCoursesPage() {
               برای شروع‌اند؛ عمق در دوره‌ی اصلی است.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-4 md:mt-10">
-              <LinkButton href="/course/campaign-writing" variant="sales" size="lg" withArrow>
+              <LinkButton href="/course/campaign-writing" variant="primary" size="lg" withArrow>
                 ورود به دوره‌ی اصلی
               </LinkButton>
               <LinkButton href="/courses" variant="ghost" size="lg">

@@ -37,7 +37,7 @@ export function TrackedCTA<E extends AnalyticsEventName>({
   const sizing = size === "lg" ? "h-12 px-7 text-base" : "h-11 px-5 text-sm";
   const looks: Record<Variant, string> = {
     primary:
-      "neon-btn-primary bg-emerald hover:bg-emerald-glow hover:-translate-y-px",
+      "neon-btn-primary brand-cta hover:-translate-y-px",
     ghost: "neon-btn-ghost border border-bone/20 text-bone hover:border-bone/40",
     sales: "sales-cta neon-btn-primary hover:-translate-y-px",
     vip: "neon-btn-primary neon-btn-vip shadow-gold hover:-translate-y-px",

@@ -17,7 +17,7 @@ export function CTAStack({ title, body, primary, secondary }: Props) {
             <h2 className="text-h2 text-balance">{title}</h2>
             <p className="mt-4 max-w-2xl text-bone-dim">{body}</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <LinkButton href={primary.href} variant="sales" withArrow size="lg">
+              <LinkButton href={primary.href} variant="primary" withArrow size="lg">
                 {primary.label}
               </LinkButton>
               {secondary ? (

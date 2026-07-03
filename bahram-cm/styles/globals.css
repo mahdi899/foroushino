@@ -33,25 +33,27 @@
   --color-veil: #33494d;
 
   /* --- Typography ---------------------------------------------------- */
-  --font-display: var(--font-yekan-bakh), "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-yekan-bakh), "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-peyda), "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-peyda), "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
   --font-latin: ui-sans-serif, system-ui, sans-serif;
 
-  /* Fluid type scale — strong hierarchy; tighter floor on narrow viewports */
+  /* Fluid type scale — readable floor; tighter line-height for Persian body */
   --text-display: clamp(2rem, 3.8vw + 1.15rem, 5.75rem);
-  --text-display--line-height: 1.04;
+  --text-display--line-height: 1.06;
   --text-display--letter-spacing: -0.024em;
   --text-h1: clamp(1.875rem, 2vw + 1.12rem, 4rem);
-  --text-h1--line-height: 1.08;
+  --text-h1--line-height: 1.1;
   --text-h1--letter-spacing: -0.018em;
   --text-h2: clamp(1.375rem, 1.35vw + 1rem, 3rem);
-  --text-h2--line-height: 1.12;
+  --text-h2--line-height: 1.18;
   --text-h2--letter-spacing: -0.014em;
   --text-h3: clamp(1.25rem, 0.55vw + 1.05rem, 1.875rem);
-  --text-h3--line-height: 1.28;
+  --text-h3--line-height: 1.32;
   --text-body: clamp(1rem, 0.2vw + 0.93rem, 1.125rem);
-  --text-body--line-height: 1.82;
-  --text-caption: clamp(0.75rem, 0.08vw + 0.72rem, 0.875rem);
+  --text-body--line-height: 1.65;
+  --text-sm: clamp(0.9375rem, 0.12vw + 0.9rem, 1rem);
+  --text-sm--line-height: 1.55;
+  --text-caption: clamp(0.8125rem, 0.1vw + 0.78rem, 0.875rem);
   --text-caption--line-height: 1.45;
 
   /* --- Spacing (section rhythm — denser on phone, full on desktop) -- */
@@ -247,7 +249,7 @@
   }
 
   :lang(fa) {
-    line-height: 1.9;
+    line-height: var(--text-body--line-height);
   }
 
   ::selection {
@@ -440,8 +442,8 @@
   /* Reading prose */
   .prose-luxe p {
     font-size: clamp(1rem, 0.22vw + 0.94rem, 1.125rem);
-    line-height: 1.92;
-    margin-bottom: 1.5rem;
+    line-height: 1.68;
+    margin-bottom: 1.25rem;
   }
   .prose-luxe h2 {
     font-size: var(--text-h2);
@@ -587,6 +589,12 @@
   }
 
   html:not([data-theme="light"]) .neon-btn-primary:not(.sales-cta):not(.neon-btn-vip) {
+    background: linear-gradient(
+      135deg,
+      var(--color-emerald-deep) 0%,
+      var(--color-emerald) 52%,
+      var(--color-emerald-glow) 100%
+    );
     box-shadow:
       0 0 0 1px var(--neon-accent-wire),
       0 0 22px rgba(0, 140, 150, 0.28),
@@ -594,6 +602,7 @@
   }
 
   html:not([data-theme="light"]) .neon-btn-primary:not(.sales-cta):not(.neon-btn-vip):hover {
+    background: linear-gradient(135deg, #006f75 0%, #008c96 46%, #25a0a6 100%);
     box-shadow:
       0 0 0 1px color-mix(in oklab, var(--neon-accent-strong) 42%, transparent),
       0 0 42px -6px var(--neon-accent-soft),
@@ -683,11 +692,18 @@
 
   /* Light theme: neutral lift + faint teal bloom */
   [data-theme="light"] .neon-btn-primary:not(.sales-cta):not(.neon-btn-vip) {
+    background: linear-gradient(
+      135deg,
+      var(--color-emerald-deep) 0%,
+      var(--color-emerald) 52%,
+      var(--color-emerald-glow) 100%
+    );
     box-shadow:
       0 10px 24px rgba(0, 111, 117, 0.24);
   }
 
   [data-theme="light"] .neon-btn-primary:not(.sales-cta):not(.neon-btn-vip):hover {
+    background: linear-gradient(135deg, #003b40 0%, #006f75 46%, #008c96 100%);
     box-shadow:
       0 12px 28px rgba(0, 111, 117, 0.28);
   }

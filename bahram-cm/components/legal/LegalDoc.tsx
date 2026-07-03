@@ -45,7 +45,7 @@ export function LegalDoc({
 
           {intro ? (
             <Reveal delay={0.06}>
-              <p className="mt-5 text-lg leading-relaxed text-bone-dim">{intro}</p>
+              <p className="mt-5 text-body text-bone-dim">{intro}</p>
             </Reveal>
           ) : null}
 
@@ -55,7 +55,7 @@ export function LegalDoc({
                 <section>
                   <h2 className="text-h3 text-balance text-bone">{s.heading}</h2>
                   {s.paragraphs?.map((p, j) => (
-                    <p key={j} className="mt-4 leading-relaxed text-bone-dim">
+                    <p key={j} className="mt-4 text-bone-dim">
                       {p}
                     </p>
                   ))}

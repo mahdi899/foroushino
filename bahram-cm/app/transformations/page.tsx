@@ -10,8 +10,8 @@ import { getTransformations } from "@/lib/content";
 import { caseStudyPortrait } from "@/lib/site-photo-paths";
 
 export const metadata: Metadata = buildMetadata({
-  title: "قبل و بعد دانشجوها",
-  description: "قبل و بعد واقعی دانشجوها؛ بدون ژست — مسیرهای تبدیل با کمپین و برند شخصی.",
+  title: "رضایت دانشجوها",
+  description: "رضایت واقعی دانشجوها؛ بدون ژست — تجربه‌های مسیر با کمپین و برند شخصی.",
   path: "/transformations",
 });
 
@@ -22,7 +22,7 @@ export default async function TransformationsPage() {
     <main id="main-content" className="relative min-w-0 max-w-full">
       <PageHero
         eyebrow="Case Studies"
-        title="قبل و بعد واقعی"
+        title="رضایت واقعی"
         description="از خاموشی تا کمپینی که دیده می‌شود."
       />
       <section className="py-section-sm">

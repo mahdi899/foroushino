@@ -59,7 +59,7 @@ export function FounderAside() {
               </h2>
             </Reveal>
             <Reveal delay={0.2}>
-              <p className="mt-4 max-w-2xl text-[0.9rem] leading-[1.65] text-bone-dim md:mt-5 md:text-base lg:mt-7 lg:text-lg">
+              <p className="mt-4 max-w-2xl text-sm text-bone-dim md:mt-5 md:text-body lg:mt-7">
                 <span className="lg:hidden">{site.founderAside.bodyMobile}</span>
                 <span className="hidden lg:inline">{site.founderAside.body}</span>
               </p>
@@ -78,7 +78,7 @@ export function FounderAside() {
                   variant="ghost"
                   withArrow
                   size="lg"
-                  className="max-lg:h-11 max-lg:min-h-11 max-lg:min-w-0 max-lg:flex-1 max-lg:px-5 max-lg:text-[0.88rem] w-auto lg:flex-none lg:max-w-none"
+                  className="max-lg:h-11 max-lg:min-h-11 max-lg:min-w-0 max-lg:flex-1 max-lg:px-5 max-lg:text-sm w-auto lg:flex-none lg:max-w-none"
                 >
                   درباره‌ی بهرام
                 </LinkButton>

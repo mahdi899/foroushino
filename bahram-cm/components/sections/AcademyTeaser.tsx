@@ -42,7 +42,7 @@ export function AcademyTeaser() {
           <Reveal>
             <Eyebrow
               dotClassName="bg-[var(--on-gold-ink-strong)]"
-              className="max-w-full rounded-pill border border-[var(--on-gold-border)] bg-[var(--on-gold-badge)] px-2.5 py-1 text-[0.62rem] text-[var(--on-gold-ink-strong)] shadow-[0_1px_0_rgba(255,255,255,0.35)_inset,0_6px_16px_-8px_rgba(5,10,11,0.18)] ring-1 ring-[color-mix(in_oklab,var(--on-gold-ink)_8%,transparent)] backdrop-blur-sm sm:px-3.5 sm:py-1.5 sm:text-caption"
+              className="max-w-full rounded-pill border border-[var(--on-gold-border)] bg-[var(--on-gold-badge)] px-2.5 py-1 text-caption text-[var(--on-gold-ink-strong)] shadow-[0_1px_0_rgba(255,255,255,0.35)_inset,0_6px_16px_-8px_rgba(5,10,11,0.18)] ring-1 ring-[color-mix(in_oklab,var(--on-gold-ink)_8%,transparent)] backdrop-blur-sm sm:px-3.5 sm:py-1.5"
             >
               {site.saat.eyebrow}
             </Eyebrow>
@@ -50,18 +50,18 @@ export function AcademyTeaser() {
           <Reveal delay={0.08}>
             <h2
               id="saat-teaser-heading"
-              className="mt-3 max-w-3xl bg-gradient-to-l from-[var(--on-gold-ink-strong)] via-[var(--on-gold-ink)] to-[var(--on-gold-ink-strong)] bg-clip-text text-h3 leading-[1.12] text-balance text-transparent md:leading-tight lg:mt-6 lg:text-h2"
+              className="mt-3 max-w-3xl bg-gradient-to-l from-[var(--on-gold-ink-strong)] via-[var(--on-gold-ink)] to-[var(--on-gold-ink-strong)] bg-clip-text text-h3 text-balance text-transparent lg:mt-6 lg:text-h2"
             >
               {site.saat.title}
             </h2>
           </Reveal>
           <Reveal delay={0.12}>
-            <p className="mt-3 max-w-2xl text-[0.88rem] font-medium leading-[1.55] text-[color-mix(in_oklab,var(--on-gold-ink)_88%,transparent)] md:mt-4 md:text-base md:leading-relaxed lg:mt-5">
+            <p className="mt-3 max-w-2xl text-sm font-medium text-[color-mix(in_oklab,var(--on-gold-ink)_88%,transparent)] md:mt-4 md:text-body lg:mt-5">
               {site.saat.subtitle}
             </p>
           </Reveal>
           <Reveal delay={0.16}>
-            <p className="mt-2 max-w-2xl text-[0.9rem] leading-[1.62] text-[color-mix(in_oklab,var(--on-gold-ink)_82%,transparent)] md:mt-4 md:text-base md:leading-relaxed lg:mt-5 lg:text-lg">
+            <p className="mt-2 max-w-2xl text-sm text-[color-mix(in_oklab,var(--on-gold-ink)_82%,transparent)] md:mt-4 md:text-body lg:mt-5">
               <span className="lg:hidden">{site.saat.bodyMobile}</span>
               <span className="hidden lg:inline">{site.saat.body}</span>
             </p>
@@ -87,7 +87,7 @@ export function AcademyTeaser() {
                     <IconLabel
                       icon={icon}
                       tone="gold"
-                      className="gap-1.5 text-[var(--on-gold-ink)] max-lg:gap-1 max-lg:text-[0.68rem] max-lg:leading-tight max-lg:[&_svg]:h-3.5 max-lg:[&_svg]:w-3.5 max-lg:[&_svg]:stroke-[1.5] lg:gap-2 lg:text-[0.95rem] lg:[&_svg]:h-4 lg:[&_svg]:w-4 lg:[&_svg]:stroke-[1.6]"
+                      className="gap-1.5 text-[var(--on-gold-ink)] max-lg:gap-1 max-lg:text-caption max-lg:leading-tight max-lg:[&_svg]:h-3.5 max-lg:[&_svg]:w-3.5 max-lg:[&_svg]:stroke-[1.5] lg:gap-2 lg:text-sm lg:[&_svg]:h-4 lg:[&_svg]:w-4 lg:[&_svg]:stroke-[1.6]"
                     >
                       {label}
                     </IconLabel>
@@ -105,7 +105,7 @@ export function AcademyTeaser() {
                 withArrow
                 className={cn(
                   "w-full min-w-0 lg:w-auto",
-                  "max-lg:h-11 max-lg:min-h-11 max-lg:text-[0.9rem]",
+                  "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm",
                 )}
               >
                 {site.saat.cta.label}
@@ -116,7 +116,7 @@ export function AcademyTeaser() {
                 size="lg"
                 className={cn(
                   "w-full min-w-0 lg:w-auto",
-                  "max-lg:h-11 max-lg:min-h-11 max-lg:text-[0.9rem]",
+                  "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm",
                   "border-emerald/30 !text-emerald-glow hover:border-emerald/45 hover:!bg-emerald/10",
                 )}
               >
@@ -167,7 +167,7 @@ export function AcademyTeaser() {
               </div>
 
               <div className="relative z-[4] mx-auto mt-4 flex justify-center px-2 sm:mt-6 lg:mt-10">
-                <span className="rounded-pill border border-[var(--on-gold-border)] bg-[color-mix(in_oklab,var(--on-gold-ink-strong)_90%,transparent)] px-3 py-1 text-[0.65rem] leading-none text-gold shadow-md shadow-black/12 backdrop-blur-md sm:text-caption">
+                <span className="rounded-pill border border-[var(--on-gold-border)] bg-[color-mix(in_oklab,var(--on-gold-ink-strong)_90%,transparent)] px-3 py-1 text-caption leading-none text-gold shadow-md shadow-black/12 backdrop-blur-md">
                   {site.tagline}
                 </span>
               </div>

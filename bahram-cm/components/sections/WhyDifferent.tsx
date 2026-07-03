@@ -73,13 +73,13 @@ export function WhyDifferent() {
                   <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-pill border border-bone/12 text-mist md:h-9 md:w-9">
                     <X className="h-3.5 w-3.5 md:h-4 md:w-4" strokeWidth={1.6} aria-hidden />
                   </span>
-                  <p className="text-sm leading-relaxed md:text-base">{r.left}</p>
+                  <p className="text-sm md:text-body">{r.left}</p>
                 </div>
                 <div className="flex items-start gap-3 border-t border-bone/6 p-4 text-bone md:gap-4 md:border-s md:border-t-0 md:p-7">
                   <span className="well-emerald-chip mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-pill bg-emerald-deep/50 ring-1 ring-emerald/30 text-emerald-glow md:h-9 md:w-9">
                     <Check className="h-3.5 w-3.5 md:h-4 md:w-4" strokeWidth={1.8} aria-hidden />
                   </span>
-                  <p className="text-sm font-medium leading-relaxed md:text-base">{r.right}</p>
+                  <p className="text-sm font-medium md:text-body">{r.right}</p>
                 </div>
               </div>
             </Reveal>

@@ -70,7 +70,7 @@ export function MobileMenu({ open, onClose }: Props) {
             className="absolute inset-y-0 end-0 flex h-full max-h-dvh w-[min(100%,360px)] flex-col overflow-hidden bg-obsidian shadow-veil sm:max-w-[380px]"
           >
             <header className="flex shrink-0 items-center justify-between px-4 py-3 sm:px-5 sm:py-3.5">
-              <span className="text-[0.6875rem] font-medium uppercase tracking-[0.22em] text-mist">
+              <span className="text-caption font-medium uppercase tracking-[0.22em] text-mist">
                 منو
               </span>
               <button
@@ -135,14 +135,14 @@ export function MobileMenu({ open, onClose }: Props) {
 
             <div className="shrink-0 border-t border-bone/5 px-4 py-3 sm:px-5 sm:py-4">
               <div className="mb-2.5 flex items-center justify-between gap-2 sm:mb-3">
-                <span className="text-[0.6875rem] font-medium uppercase tracking-[0.2em] text-mist">
+                <span className="text-caption font-medium uppercase tracking-[0.2em] text-mist">
                   حالت نمایش
                 </span>
                 <ThemeToggle compact />
               </div>
               <LinkButton
                 href={site.ctaPrimary.href}
-                variant="sales"
+                variant="primary"
                 size="md"
                 withArrow
                 className="w-full"

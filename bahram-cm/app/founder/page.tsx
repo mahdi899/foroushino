@@ -93,13 +93,13 @@ export default function FounderPage() {
                 </h1>
               </Reveal>
               <Reveal delay={0.2}>
-                <p className="mt-4 max-w-2xl text-base leading-relaxed text-bone-dim md:mt-7 md:text-lg">
+                <p className="mt-4 max-w-2xl text-body text-bone-dim md:mt-7">
                   بیش از ده سال آموزش و اجرا؛ تمرکز روی نسخه‌ی حرفه‌ای‌تر تو.
                 </p>
               </Reveal>
               <Reveal delay={0.28}>
                 <div className="mt-6 flex flex-wrap items-center gap-2.5 md:mt-10 md:gap-4">
-                  <LinkButton href="/course/campaign-writing" variant="sales" size="lg" withArrow>
+                  <LinkButton href="/course/campaign-writing" variant="primary" size="lg" withArrow>
                     شروع مسیر با کمپین‌نویسی
                   </LinkButton>
                   <LinkButton href="/saat" variant="ghost" size="lg">
@@ -180,7 +180,7 @@ export default function FounderPage() {
               <h2 className="mt-3 text-h3 text-balance md:mt-4 md:text-h2">«آموزش بدون اجرا، سرگرمی است.»</h2>
             </Reveal>
             <Reveal delay={0.18}>
-              <div className="mt-5 space-y-3 text-sm leading-relaxed text-bone-dim md:mt-7 md:space-y-4 md:text-base">
+              <div className="mt-5 space-y-3 text-sm text-bone-dim md:mt-7 md:space-y-4 md:text-body">
                 <p>
                   مشکل بازار کمبود اطلاعات نیست؛ کمبود ساختار و همراهی درست برای اجراست. کمپین‌نویسی و آکادمی برای همین ساخته
                   شده‌اند.
@@ -302,7 +302,7 @@ export default function FounderPage() {
                 از کمپین‌نویسی شروع کن؛ مسیر بعدی خودش مشخص می‌شود.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-3 md:mt-10 md:gap-4">
-                <LinkButton href="/course/campaign-writing" variant="sales" size="lg" withArrow>
+                <LinkButton href="/course/campaign-writing" variant="primary" size="lg" withArrow>
                   شروع مسیر
                 </LinkButton>
                 <Link

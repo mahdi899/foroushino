@@ -85,7 +85,7 @@ export function HeroCinematic() {
             <Reveal>
               <Badge
                 tone="emerald"
-                className="mb-1.5 gap-1.5 px-2.5 py-0.5 text-[0.65rem] leading-tight md:mb-7 md:gap-2 md:px-3 md:py-1 md:text-caption"
+                className="mb-1.5 gap-1.5 px-2.5 py-0.5 text-caption leading-tight md:mb-7 md:gap-2 md:px-3 md:py-1"
               >
                 <Sparkles className="h-3 w-3 shrink-0 md:h-3.5 md:w-3.5" strokeWidth={1.6} aria-hidden />
                 مسیر کمپین‌نویسی
@@ -98,7 +98,7 @@ export function HeroCinematic() {
               </h1>
             </Reveal>
             <Reveal delay={0.22}>
-              <p className="hidden max-w-2xl text-base leading-relaxed text-bone-dim md:mt-10 md:block md:text-lg">
+              <p className="hidden max-w-2xl text-body text-bone-dim md:mt-10 md:block">
                 {site.hero.sub}
               </p>
             </Reveal>
@@ -179,10 +179,10 @@ export function HeroCinematic() {
                   href={site.ctaPrimary.href}
                   event="homepage_cta_click"
                   eventProps={{ cta: "hero_primary", location: "hero" }}
-                  variant="sales"
+                  variant="primary"
                   withArrow
                   size="lg"
-                  className="h-12 min-h-12 w-full min-w-0 text-[0.95rem] sm:h-14 sm:min-h-14 sm:w-auto sm:min-w-48 sm:text-base"
+                  className="h-12 min-h-12 w-full min-w-0 text-sm sm:h-14 sm:min-h-14 sm:w-auto sm:min-w-48 sm:text-base"
                 >
                   {site.ctaPrimary.label}
                 </TrackedLinkButton>
@@ -192,7 +192,7 @@ export function HeroCinematic() {
                   eventProps={{ cta: "hero_saat", location: "hero" }}
                   variant="ghost"
                   size="lg"
-                  className="h-12 min-h-12 w-full min-w-0 text-[0.95rem] sm:h-14 sm:min-h-14 sm:w-auto sm:text-base"
+                  className="h-12 min-h-12 w-full min-w-0 text-sm sm:h-14 sm:min-h-14 sm:w-auto sm:text-base"
                 >
                   {site.ctaSecondary.label}
                 </TrackedLinkButton>
@@ -229,7 +229,7 @@ function TrustStat({
       </span>
       <div className="min-w-0">
         <p className="font-display text-lg leading-none text-bone num-latin sm:text-h3">{value}</p>
-        <p className="mt-0.5 text-[0.65rem] leading-snug text-mist sm:mt-1 sm:text-caption">{label}</p>
+        <p className="mt-0.5 text-caption leading-snug text-mist sm:mt-1">{label}</p>
       </div>
     </div>
   );
