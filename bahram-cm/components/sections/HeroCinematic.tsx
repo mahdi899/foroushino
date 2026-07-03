@@ -80,7 +80,7 @@ export function HeroCinematic() {
         style={{ background: "var(--hero-vignette)" }}
       />
 
-      <div className="container-luxe relative z-[3] min-h-0 pt-6 pb-16 md:pt-12 md:pb-28 lg:pt-16 lg:pb-36">
+      <div className="container-luxe relative z-[3] min-h-0 pt-8 pb-16 md:pt-14 md:pb-28 lg:pt-20 lg:pb-36">
         <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start lg:gap-x-8 lg:gap-y-10">
           {/* معرفی: موبایل اول، دسکتاپ ستون چپ ردیف اول */}
           <motion.div
