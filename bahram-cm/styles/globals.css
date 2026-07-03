@@ -493,6 +493,286 @@
     animation: float-slow 7s ease-in-out infinite;
   }
 
+  /* Hero — portrait glow, glass stats, CTA bloom */
+  .hero-portrait-glow > * {
+    border-color: color-mix(in oklab, var(--color-gold) 32%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--color-gold) 18%, transparent),
+      0 0 48px -8px color-mix(in oklab, var(--color-gold) 28%, transparent),
+      0 0 80px -20px color-mix(in oklab, var(--color-emerald-glow) 22%, transparent),
+      var(--shadow-frame-resolved);
+  }
+
+  .hero-portrait-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    border-radius: inherit;
+    background:
+      radial-gradient(
+        90% 70% at 50% 100%,
+        color-mix(in oklab, var(--color-emerald-deep) 55%, transparent) 0%,
+        transparent 62%
+      ),
+      linear-gradient(
+        180deg,
+        transparent 55%,
+        color-mix(in oklab, var(--color-emerald-deep) 38%, rgba(0, 0, 0, 0.55)) 100%
+      );
+    opacity: 0.72;
+  }
+
+  .hero-mini-card {
+    position: relative;
+    filter: drop-shadow(0 12px 28px rgba(5, 10, 11, 0.38));
+  }
+
+  .hero-mini-card > *:first-child {
+    border-color: color-mix(in oklab, var(--color-gold) 28%, transparent);
+  }
+
+  /* Hero photos — smart-gold neon rim via data-neon-tone */
+  html:not([data-theme="light"]) .hero-photo-neon[data-neon-tone="gold"] {
+    border-color: color-mix(in oklab, var(--neon-accent) 38%, transparent);
+    box-shadow:
+      0 0 0 1px var(--neon-accent-wire),
+      0 0 36px -12px var(--neon-accent-soft),
+      0 0 64px -28px var(--neon-accent-faint),
+      var(--shadow-frame-resolved);
+  }
+
+  html:not([data-theme="light"]) .hero-photo-neon[data-neon-tone="gold"]:hover {
+    border-color: color-mix(in oklab, var(--neon-accent-strong) 52%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--neon-accent-strong) 38%, transparent),
+      0 0 52px -10px var(--neon-accent-soft),
+      0 0 88px -24px var(--neon-accent-faint),
+      var(--shadow-frame-resolved);
+  }
+
+  [data-theme="light"] .hero-photo-neon[data-neon-tone="gold"] {
+    border-color: color-mix(in oklab, var(--color-gold) 42%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--color-gold) 24%, transparent),
+      0 14px 36px -18px rgba(11, 31, 34, 0.12),
+      var(--shadow-frame-resolved);
+  }
+
+  [data-theme="light"] .hero-photo-neon[data-neon-tone="gold"]:hover {
+    border-color: color-mix(in oklab, var(--color-gold) 58%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--color-gold) 32%, transparent),
+      0 0 32px -12px color-mix(in oklab, var(--color-gold) 22%, transparent),
+      0 18px 44px -18px rgba(11, 31, 34, 0.14),
+      var(--shadow-frame-resolved);
+  }
+
+  .hero-stats-glass {
+    position: relative;
+    overflow: hidden;
+    background-color: color-mix(in oklab, var(--color-charcoal) 72%, transparent);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid color-mix(in oklab, var(--color-emerald-glow) 24%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, var(--color-bone) 12%, transparent),
+      0 0 0 1px color-mix(in oklab, var(--color-emerald-glow) 10%, transparent),
+      0 24px 60px -28px rgba(5, 10, 11, 0.58),
+      0 0 48px -20px color-mix(in oklab, var(--color-emerald-glow) 22%, transparent);
+  }
+
+  .hero-stats-glass::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in oklab, var(--color-emerald-glow) 16%, transparent) 0%,
+        transparent 46%,
+        color-mix(in oklab, var(--color-emerald-deep) 18%, transparent) 100%
+      );
+    opacity: 0.9;
+  }
+
+  .hero-stats-glass::after {
+    content: "";
+    position: absolute;
+    inset-inline: 10%;
+    top: 0;
+    z-index: 0;
+    height: 1px;
+    pointer-events: none;
+    background: linear-gradient(
+      to right,
+      transparent,
+      color-mix(in oklab, var(--color-emerald-glow) 70%, transparent),
+      transparent
+    );
+    opacity: 0.75;
+  }
+
+  .hero-stats-glass > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .hero-stat-value {
+    background-image: linear-gradient(
+      135deg,
+      var(--color-bone) 0%,
+      var(--color-emerald-glow) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  [data-theme="light"] .hero-stat-value {
+    background-image: linear-gradient(
+      135deg,
+      var(--color-emerald-deep) 0%,
+      var(--color-emerald-glow) 100%
+    );
+  }
+
+  /* Hero headline — dark: white + brand teal; light: teal depth */
+  .hero-headline-gradient {
+    background-image: linear-gradient(
+      105deg,
+      var(--color-emerald-glow) 0%,
+      var(--color-bone) 38%,
+      var(--neon-accent-strong) 72%,
+      var(--color-emerald-glow) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  [data-theme="light"] .hero-headline-gradient {
+    background-image: linear-gradient(
+      to left,
+      var(--color-emerald-glow) 0%,
+      var(--color-emerald) 52%,
+      var(--color-emerald-deep) 100%
+    );
+  }
+
+  /* Manifesto — white editorial band (theme-independent surface) */
+  .manifesto-section {
+    background-color: #ffffff;
+    color: #0b1f22;
+  }
+
+  .manifesto-text {
+    color: #0b1f22;
+  }
+
+  .manifesto-text-dim {
+    color: #52676a;
+  }
+
+  .manifesto-text-muted {
+    color: #647e82;
+  }
+
+  .manifesto-line-accent {
+    background-image: linear-gradient(
+      to left,
+      #008c96 0%,
+      #006f75 52%,
+      #003b40 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .manifesto-editorial {
+    background-color: #f8fbfb;
+    border: 1px solid rgba(11, 31, 34, 0.08);
+    box-shadow: 0 18px 48px -32px rgba(11, 31, 34, 0.1);
+  }
+
+  .manifesto-accent-bar {
+    inset-inline-start: 0;
+    top: 12%;
+    bottom: 12%;
+    width: 2px;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      rgba(255, 176, 0, 0.55) 30%,
+      rgba(255, 176, 0, 0.55) 70%,
+      transparent
+    );
+  }
+
+  .manifesto-line-index {
+    font-family: var(--font-latin);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    color: rgba(0, 111, 117, 0.62);
+  }
+
+  .manifesto-photo-stack {
+    min-height: clamp(18rem, 42vw, 26rem);
+    padding-bottom: 0.5rem;
+  }
+
+  [data-theme="light"] .hero-stats-glass {
+    background-color: rgba(255, 255, 255, 0.78);
+    border-color: color-mix(in oklab, var(--color-emerald) 22%, transparent);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.98),
+      0 0 0 1px color-mix(in oklab, var(--color-emerald) 8%, transparent),
+      0 20px 52px -22px rgba(11, 31, 34, 0.12),
+      0 0 36px -18px color-mix(in oklab, var(--color-emerald-glow) 16%, transparent);
+  }
+
+  .hero-cta-glow {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--color-gold) 38%, transparent),
+      0 0 36px -4px color-mix(in oklab, var(--color-gold) 32%, transparent),
+      0 12px 36px -8px rgba(0, 111, 117, 0.38) !important;
+  }
+
+  .hero-cta-glow:hover {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--color-gold-soft) 48%, transparent),
+      0 0 52px color-mix(in oklab, var(--color-gold) 36%, transparent),
+      0 16px 44px -8px rgba(0, 111, 117, 0.42) !important;
+  }
+
+  .hero-ghost-cta {
+    background-color: color-mix(in oklab, var(--color-charcoal) 82%, transparent);
+    border-color: color-mix(in oklab, var(--color-emerald-glow) 28%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, var(--color-bone) 8%, transparent),
+      0 8px 28px -12px rgba(5, 10, 11, 0.45);
+  }
+
+  .hero-ghost-cta:hover {
+    border-color: color-mix(in oklab, var(--color-emerald-glow) 42%, transparent);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, var(--color-bone) 10%, transparent),
+      0 0 28px -8px color-mix(in oklab, var(--color-emerald-glow) 28%, transparent),
+      0 12px 32px -12px rgba(5, 10, 11, 0.5);
+  }
+
+  [data-theme="light"] .hero-ghost-cta {
+    background-color: rgba(255, 255, 255, 0.88);
+    border-color: rgba(11, 31, 34, 0.12);
+    color: var(--color-bone);
+  }
+
   /* Pulse ring for live badge */
   @keyframes pulse-ring {
     0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-emerald-glow) 50%, transparent); }
@@ -641,20 +921,36 @@
   }
 
   html:not([data-theme="light"]) .neon-btn-ghost {
-    transition-property: background-color, color, border-color, box-shadow, transform;
+    transition-property: background, color, border-color, box-shadow, transform;
+    transition-duration: 0.3s;
+    transition-timing-function: var(--ease-luxe);
   }
 
   html:not([data-theme="light"]) .neon-btn-ghost:hover {
-    background: rgba(0, 140, 150, 0.1);
-    border-color: rgba(0, 140, 150, 0.28);
+    background: linear-gradient(135deg, #003b40 0%, #006f75 50%, #25a0a6 100%);
+    border-color: color-mix(in oklab, #25a0a6 38%, transparent);
+    color: #ffffff;
     box-shadow:
-      0 0 0 1px var(--neon-accent-wire),
-      0 0 34px -12px var(--neon-accent-soft);
+      0 0 0 1px rgba(37, 160, 166, 0.24),
+      0 0 32px -8px rgba(0, 140, 150, 0.34),
+      0 10px 36px -12px rgba(0, 111, 117, 0.4);
+    transform: translateY(-1px);
+  }
+
+  [data-theme="light"] .neon-btn-ghost {
+    transition-property: background, color, border-color, box-shadow, transform;
+    transition-duration: 0.3s;
+    transition-timing-function: var(--ease-luxe);
   }
 
   [data-theme="light"] .neon-btn-ghost:hover {
-    background: rgba(0, 140, 150, 0.1);
-    border-color: rgba(0, 140, 150, 0.28);
+    background: linear-gradient(135deg, #003b40 0%, #005a61 46%, #008c96 100%);
+    border-color: color-mix(in oklab, #008c96 36%, transparent);
+    color: #ffffff;
+    box-shadow:
+      0 0 0 1px rgba(0, 140, 150, 0.18),
+      0 10px 28px rgba(0, 111, 117, 0.26);
+    transform: translateY(-1px);
   }
 
   /* Cards: glow only on hover */
@@ -914,4 +1210,73 @@ html[data-theme="light"] .neon-btn-vip:hover {
   box-shadow:
     0 10px 28px -10px rgba(11, 31, 34, 0.09),
     0 0 32px rgba(255, 176, 0, 0.24);
+}
+
+/*
+ * Brand primary CTA — Saat Teal gradient. Unlayered so light theme wins over @layer utilities.
+ */
+html[data-theme="light"] .neon-btn-primary.brand-cta,
+html[data-theme="light"] .neon-btn-primary:not(.sales-cta):not(.neon-btn-vip) {
+  background: linear-gradient(135deg, #003b40 0%, #006f75 52%, #008c96 100%);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(0, 111, 117, 0.24);
+}
+
+html[data-theme="light"] .neon-btn-primary.brand-cta:hover,
+html[data-theme="light"] .neon-btn-primary:not(.sales-cta):not(.neon-btn-vip):hover {
+  background: linear-gradient(135deg, #003b40 0%, #005a61 46%, #008c96 100%);
+  color: #ffffff;
+  box-shadow: 0 12px 28px rgba(0, 111, 117, 0.28);
+}
+
+html[data-theme="light"] .sales-cta {
+  background: linear-gradient(135deg, #ffb000 0%, #ff6b00 100%);
+  color: #1a1200;
+  box-shadow: 0 12px 28px rgba(255, 107, 0, 0.28);
+}
+
+html[data-theme="light"] .sales-cta:hover {
+  box-shadow: 0 16px 34px rgba(255, 107, 0, 0.32);
+}
+
+/* Academy teaser — ghost CTA on smart-gold band (unlayered, beats text-bone utilities) */
+.academy-teaser-luxe .teaser-ghost-cta {
+  border-color: color-mix(in oklab, #006f75 32%, transparent);
+  color: #003b40;
+  background: color-mix(in oklab, #006f75 7%, transparent);
+  transition-property: background, color, border-color, box-shadow, transform;
+  transition-duration: 0.3s;
+  transition-timing-function: var(--ease-luxe);
+}
+
+.academy-teaser-luxe .teaser-ghost-cta:hover {
+  background: linear-gradient(135deg, #003b40 0%, #006f75 50%, #25a0a6 100%);
+  border-color: color-mix(in oklab, #25a0a6 40%, transparent);
+  color: #ffffff;
+  box-shadow:
+    0 0 0 1px rgba(37, 160, 166, 0.24),
+    0 0 32px -8px rgba(0, 140, 150, 0.34),
+    0 10px 36px -12px rgba(0, 111, 117, 0.28);
+  transform: translateY(-1px);
+}
+
+html[data-theme="light"] .academy-teaser-luxe .teaser-ghost-cta:hover {
+  background: linear-gradient(135deg, #003b40 0%, #005a61 46%, #008c96 100%);
+  border-color: color-mix(in oklab, #008c96 36%, transparent);
+  box-shadow:
+    0 0 0 1px rgba(0, 140, 150, 0.18),
+    0 10px 28px rgba(0, 111, 117, 0.26);
+}
+
+/*
+ * Ghost CTA hover — unlayered brand gradient (light theme wins over utilities).
+ */
+html[data-theme="light"] .neon-btn-ghost:hover {
+  background: linear-gradient(135deg, #003b40 0%, #005a61 46%, #008c96 100%);
+  border-color: color-mix(in oklab, #008c96 36%, transparent);
+  color: #ffffff;
+  box-shadow:
+    0 0 0 1px rgba(0, 140, 150, 0.18),
+    0 10px 28px rgba(0, 111, 117, 0.26);
+  transform: translateY(-1px);
 }

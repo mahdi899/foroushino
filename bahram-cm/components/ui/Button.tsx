@@ -22,7 +22,7 @@ const variantStyles: Record<Variant, string> = {
   primary:
     "neon-btn-primary brand-cta rounded-pill font-semibold hover:-translate-y-px active:translate-y-0",
   ghost:
-    "neon-btn-ghost rounded-pill border border-bone/15 text-bone hover:border-bone/35 hover:bg-bone/[0.03]",
+    "neon-btn-ghost rounded-pill border border-bone/15 text-bone active:translate-y-0",
   "gold-link":
     "text-gold hover:text-gold-soft underline-offset-8 hover:underline decoration-gold/40",
   vip:

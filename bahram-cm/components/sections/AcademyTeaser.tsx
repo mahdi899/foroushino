@@ -115,9 +115,8 @@ export function AcademyTeaser() {
                 variant="ghost"
                 size="lg"
                 className={cn(
-                  "w-full min-w-0 lg:w-auto",
+                  "teaser-ghost-cta w-full min-w-0 lg:w-auto",
                   "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm",
-                  "border-emerald/30 !text-emerald-glow hover:border-emerald/45 hover:!bg-emerald/10",
                 )}
               >
                 {site.saat.ctaSecondary.label}

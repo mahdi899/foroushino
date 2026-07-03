@@ -26,9 +26,14 @@ export function HeroCinematic() {
     target: ref,
     offset: ["start start", "end start"],
   });
-  const yPortrait = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : -80]);
-  const ySecondary = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : -40]);
+  const yPortrait = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : -100]);
+  const ySecondary = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : -55]);
   const yHeadline = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : 60]);
+  const scalePortrait = useTransform(scrollYProgress, [0, 0.5, 1], [1, reduce ? 1 : 1.02, reduce ? 1 : 0.98]);
+  const hoverEase = [0.22, 1, 0.36, 1] as const;
+  const portraitHover = reduce ? undefined : { scale: 1.025, y: -10, transition: { duration: 0.45, ease: hoverEase } };
+  const miniHoverTop = reduce ? undefined : { scale: 1.07, rotate: 1, y: -12, transition: { duration: 0.45, ease: hoverEase } };
+  const miniHoverBottom = reduce ? undefined : { scale: 1.07, rotate: -1, y: -12, transition: { duration: 0.45, ease: hoverEase } };
 
   return (
     <section
@@ -75,8 +80,8 @@ export function HeroCinematic() {
         style={{ background: "var(--hero-vignette)" }}
       />
 
-      <div className="container-luxe relative z-[3] min-h-[100svh] pt-4 pb-14 md:pt-10 md:pb-28 lg:pt-14 lg:pb-36">
-        <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-12 lg:items-center lg:gap-16">
+      <div className="container-luxe relative z-[3] min-h-0 pt-6 pb-16 md:pt-12 md:pb-28 lg:pt-16 lg:pb-36">
+        <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start lg:gap-x-8 lg:gap-y-10">
           {/* معرفی: موبایل اول، دسکتاپ ستون چپ ردیف اول */}
           <motion.div
             className="min-w-0 text-center lg:col-span-7 lg:col-start-1 lg:row-start-1 lg:text-start"
@@ -85,96 +90,114 @@ export function HeroCinematic() {
             <Reveal>
               <Badge
                 tone="emerald"
-                className="mb-1.5 gap-1.5 px-2.5 py-0.5 text-caption leading-tight md:mb-7 md:gap-2 md:px-3 md:py-1"
+                className="mb-1.5 gap-1.5 px-2.5 py-0.5 text-caption leading-tight md:mb-3 md:gap-2 md:px-3 md:py-1"
               >
                 <Sparkles className="h-3 w-3 shrink-0 md:h-3.5 md:w-3.5" strokeWidth={1.6} aria-hidden />
                 مسیر کمپین‌نویسی
               </Badge>
             </Reveal>
             <Reveal delay={0.12}>
-              <h1 className="mt-2 max-lg:max-w-none whitespace-pre-line text-balance text-[clamp(1.35rem,4vw+0.55rem,2rem)] !font-black tracking-[-0.02em] text-bone max-lg:!leading-none md:mt-6 md:text-h1 md:tracking-[var(--text-h1--letter-spacing)]">
+              <h1 className="mt-2 max-lg:max-w-none whitespace-pre-line text-balance text-[clamp(1.35rem,4vw+0.55rem,2rem)] !font-black tracking-[-0.02em] text-bone max-lg:!leading-none md:mt-3 md:text-h1 md:tracking-[var(--text-h1--letter-spacing)]">
                 <span className="lg:hidden">{site.hero.headlineMobile}</span>
-                <span className="hidden lg:inline">{site.hero.headline}</span>
+                <span className="hero-headline-gradient hidden lg:inline lg:text-[clamp(2.15rem,2.6vw+1.1rem,3.5rem)] lg:leading-[1.24]">
+                  {site.hero.headline}
+                </span>
               </h1>
             </Reveal>
             <Reveal delay={0.22}>
-              <p className="hidden max-w-2xl text-body text-bone-dim md:mt-10 md:block">
+              <p className="hidden max-w-2xl text-body text-bone-dim md:mt-4 md:block">
                 {site.hero.sub}
               </p>
             </Reveal>
           </motion.div>
 
           {/* پرتره: موبایل بعد از تیتر، دسکتاپ ستون راست تمام قد */}
-          <div className="min-w-0 w-full lg:col-span-5 lg:col-start-8 lg:row-span-3 lg:row-start-1 lg:self-center">
+          <div className="min-w-0 w-full lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1 lg:self-start">
             <Reveal delay={0.18}>
-              <div className="relative mx-auto w-full max-w-[min(100%,17.5rem)] sm:max-w-md lg:max-w-none">
-                {/* Main portrait */}
-                <motion.div
-                  style={{ y: yPortrait }}
-                  className="relative z-[2]"
+              <div className="relative mx-auto w-full max-w-[min(100%,22rem)] md:max-w-none">
+                <div
+                  dir="ltr"
+                  className="flex items-center justify-center gap-2.5 sm:gap-3 md:gap-4 lg:gap-5"
                 >
-                  <PhotoFrame
-                    ratio="portrait"
-                    variant="radial"
-                    rounded="card-lg"
-                    badge="پرتره‌ی رسمی"
-                    label="بهرام رستمی"
-                    src={sitePhotos.portraitFounder}
-                    alt="بهرام رستمی"
-                    priority
-                  />
-                </motion.div>
+                  {/* پرتره اصلی — چپ */}
+                  <motion.div
+                    style={{ y: yPortrait, scale: scalePortrait }}
+                    whileHover={portraitHover}
+                    className="relative z-[2] min-w-0 w-full max-w-[min(100%,17rem)] sm:max-w-[15rem] md:max-w-[17rem] lg:max-w-[19rem]"
+                  >
+                    <PhotoFrame
+                      ratio="portrait"
+                      variant="radial"
+                      rounded="card-lg"
+                      badge="پرتره‌ی رسمی"
+                      label="بهرام رستمی"
+                      src={sitePhotos.portraitFounder}
+                      alt="بهرام رستمی"
+                      priority
+                      interactive
+                      neonTone="gold"
+                      className="aspect-[3/4]"
+                    />
+                  </motion.div>
 
-                {/* Secondary square — top-left */}
-                <motion.div
-                  style={{ y: ySecondary }}
-                  className="absolute -start-6 -top-8 z-[3] hidden w-44 rotate-[-4deg] md:block lg:-start-10 lg:w-48"
-                >
-                  <PhotoFrame
-                    ratio="square"
-                    variant="grid"
-                    rounded="card"
-                    label="لحظه‌ی استودیو"
-                    showIcon={false}
-                    src={sitePhotos.squareStudio}
-                    alt="لحظه‌ی استودیو"
-                  />
-                </motion.div>
-
-                {/* Tertiary landscape — bottom-right */}
-                <motion.div
-                  style={{ y: ySecondary }}
-                  className="absolute -end-6 -bottom-10 z-[3] hidden w-56 rotate-[3deg] md:block lg:-end-12 lg:w-64"
-                >
-                  <PhotoFrame
-                    ratio="landscape"
-                    variant="soft"
-                    rounded="card"
-                    label="نشست خصوصی"
-                    showIcon={false}
-                    src={sitePhotos.landscapeSession}
-                    alt="نشست خصوصی"
-                  />
-                </motion.div>
+                  {/* دو عکس کوچک — راست پرتره */}
+                  <div className="hidden shrink-0 flex-col gap-2.5 md:flex lg:gap-3">
+                    <motion.div
+                      style={{ y: ySecondary }}
+                      whileHover={miniHoverTop}
+                      className="w-[9rem] rotate-[-3deg] lg:w-[11rem]"
+                    >
+                      <PhotoFrame
+                        ratio="square"
+                        variant="grid"
+                        rounded="card"
+                        photoCaption="none"
+                        showIcon={false}
+                        interactive
+                        neonTone="gold"
+                        src={sitePhotos.squareStudio}
+                        alt="لحظه‌ی استودیو"
+                      />
+                    </motion.div>
+                    <motion.div
+                      style={{ y: ySecondary }}
+                      whileHover={miniHoverBottom}
+                      className="w-[9rem] rotate-[2deg] lg:w-[11rem]"
+                    >
+                      <PhotoFrame
+                        ratio="landscape"
+                        variant="soft"
+                        rounded="card"
+                        photoCaption="none"
+                        showIcon={false}
+                        interactive
+                        neonTone="gold"
+                        src={sitePhotos.landscapeSession}
+                        alt="نشست خصوصی"
+                      />
+                    </motion.div>
+                  </div>
+                </div>
 
                 {/* Floating accent */}
                 <motion.div
                   aria-hidden
-                  className="absolute -end-4 top-12 hidden h-24 w-24 rounded-pill bg-emerald-glow/15 blur-2xl md:block float-slow"
+                  className="pointer-events-none absolute -end-2 top-8 hidden h-20 w-20 rounded-pill bg-emerald-glow/15 blur-2xl md:block float-slow"
                 />
                 <motion.div
                   aria-hidden
-                  className="absolute -start-6 bottom-20 hidden h-28 w-28 rounded-pill bg-gold/15 blur-2xl md:block float-slow"
+                  className="pointer-events-none absolute -start-2 bottom-8 hidden h-24 w-24 rounded-pill bg-gold/15 blur-2xl md:block float-slow"
                   style={{ animationDelay: "1.6s" }}
                 />
               </div>
             </Reveal>
+
           </div>
 
           {/* CTAs و آمار اعتماد: موبایل بعد از تصویر، دسکتاپ ادامه‌ی ستون چپ */}
-          <div className="min-w-0 lg:col-span-7 lg:col-start-1 lg:row-start-2 lg:self-start">
+          <div className="min-w-0 lg:col-span-7 lg:col-start-1 lg:row-start-2 lg:self-start lg:-mt-1">
             <Reveal delay={0.3}>
-              <div className="flex w-full max-w-md flex-col gap-2.5 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+              <div className="flex w-full max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-stretch sm:gap-4">
                 <TrackedLinkButton
                   href={site.ctaPrimary.href}
                   event="homepage_cta_click"
@@ -182,7 +205,7 @@ export function HeroCinematic() {
                   variant="primary"
                   withArrow
                   size="lg"
-                  className="h-12 min-h-12 w-full min-w-0 text-sm sm:h-14 sm:min-h-14 sm:w-auto sm:min-w-48 sm:text-base"
+                  className="hero-cta-glow h-12 min-h-12 w-full min-w-0 px-8 text-sm shadow-lg sm:h-14 sm:min-h-14 sm:w-auto sm:min-w-52 sm:text-base"
                 >
                   {site.ctaPrimary.label}
                 </TrackedLinkButton>
@@ -192,7 +215,7 @@ export function HeroCinematic() {
                   eventProps={{ cta: "hero_saat", location: "hero" }}
                   variant="ghost"
                   size="lg"
-                  className="h-12 min-h-12 w-full min-w-0 text-sm sm:h-14 sm:min-h-14 sm:w-auto sm:text-base"
+                  className="hero-ghost-cta h-12 min-h-12 w-full min-w-0 px-8 text-sm backdrop-blur-md hover:-translate-y-px sm:h-14 sm:min-h-14 sm:w-auto sm:min-w-44 sm:text-base"
                 >
                   {site.ctaSecondary.label}
                 </TrackedLinkButton>
@@ -200,10 +223,10 @@ export function HeroCinematic() {
             </Reveal>
 
             <Reveal delay={0.4}>
-              <div className="mt-6 mx-auto grid max-w-2xl grid-cols-3 gap-1.5 border-t border-bone/8 pt-4 justify-items-center sm:gap-4 sm:pt-5 md:mt-16 md:pt-7">
-                <TrustStat icon={Users} value="۷۰۰K+" label="مخاطب" />
-                <TrustStat icon={GraduationCap} value="۵۰K+" label="دانشجو" />
-                <TrustStat icon={Mic2} value="۱۰+" label="سال تجربه" />
+              <div className="hero-stats-glass mt-5 mx-auto grid max-w-2xl grid-cols-3 gap-1 rounded-card-lg px-2 py-4 justify-items-stretch sm:mt-6 sm:gap-2 sm:px-4 sm:py-5 md:mt-8 lg:px-6">
+                <TrustStat divided icon={Users} value="700K+" label="مخاطب" />
+                <TrustStat divided icon={GraduationCap} value="50K+" label="دانشجو" />
+                <TrustStat icon={Mic2} value="10+" label="سال تجربه" />
               </div>
             </Reveal>
           </div>
@@ -217,19 +240,28 @@ function TrustStat({
   icon: Icon,
   value,
   label,
+  divided,
 }: {
   icon: typeof Users;
   value: string;
   label: string;
+  divided?: boolean;
 }) {
   return (
-    <div className="flex min-w-0 w-full flex-col items-center gap-1.5 text-center sm:flex-row sm:justify-center sm:gap-3">
-      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-pill border border-bone/12 bg-charcoal/55 text-emerald-glow sm:h-10 sm:w-10">
-        <Icon className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={1.5} aria-hidden />
+    <div
+      className={cn(
+        "flex min-w-0 w-full flex-col items-center gap-1.5 px-2 text-center sm:flex-row sm:justify-center sm:gap-3 sm:px-3",
+        divided && "border-e border-bone/10 last:border-e-0",
+      )}
+    >
+      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-pill border border-emerald-glow/35 bg-emerald-glow/10 text-emerald-glow shadow-[0_0_22px_-5px_color-mix(in_oklab,var(--color-emerald-glow)_50%,transparent)] sm:h-10 sm:w-10">
+        <Icon className="h-4 w-4 sm:h-[1.15rem] sm:w-[1.15rem]" strokeWidth={1.5} aria-hidden />
       </span>
       <div className="min-w-0">
-        <p className="font-display text-lg leading-none text-bone num-latin sm:text-h3">{value}</p>
-        <p className="mt-0.5 text-caption leading-snug text-mist sm:mt-1">{label}</p>
+        <p className="hero-stat-value font-display text-xl font-semibold leading-none num-latin sm:text-h3">
+          {value}
+        </p>
+        <p className="mt-1 text-caption leading-snug text-mist">{label}</p>
       </div>
     </div>
   );

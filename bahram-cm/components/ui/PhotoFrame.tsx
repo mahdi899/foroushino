@@ -40,6 +40,10 @@ type Props = {
   photoCaption?: "bottom" | "center" | "none";
   /** کلاس اضافه برای پاراگراف hint (مثلاً `max-md:hidden`) */
   hintClassName?: string;
+  /** هاور: زوم تصویر، glow قاب، lift */
+  interactive?: boolean;
+  /** حاشیه نئون — gold / emerald */
+  neonTone?: "gold" | "emerald";
 };
 
 /**
@@ -61,6 +65,8 @@ export function PhotoFrame({
   priority,
   photoCaption = "bottom",
   hintClassName,
+  interactive = false,
+  neonTone,
 }: Props) {
   const roundedClass =
     rounded === "card-lg"
@@ -87,12 +93,23 @@ export function PhotoFrame({
 
   return (
     <div
+      {...(neonTone ? { "data-neon-tone": neonTone } : {})}
       className={cn(
-        "group relative overflow-hidden border border-bone/10 shadow-frame",
+        "group relative overflow-hidden border shadow-frame",
+        neonTone === "gold" ? "border-gold/30" : "border-bone/10",
         ratioClass[ratio],
         !hasImage && variantClass[variant],
         hasImage && "bg-ink",
         roundedClass,
+        neonTone && "hero-photo-neon neon-surface-framed",
+        interactive &&
+          "transition-[transform,box-shadow,border-color] duration-500 ease-[var(--ease-luxe)] hover:-translate-y-1.5",
+        interactive &&
+          neonTone === "gold" &&
+          "hover:border-gold/55 hover:shadow-[0_24px_56px_-24px_rgba(5,10,11,0.55),0_0_40px_-8px_color-mix(in_oklab,var(--color-gold)_34%,transparent)]",
+        interactive &&
+          neonTone !== "gold" &&
+          "hover:border-emerald-glow/40 hover:shadow-[0_24px_56px_-24px_rgba(5,10,11,0.55),0_0_36px_-10px_color-mix(in_oklab,var(--color-emerald-glow)_30%,transparent)]",
         className,
       )}
       role="img"
@@ -107,12 +124,29 @@ export function PhotoFrame({
             priority={priority}
             loading={priority ? "eager" : undefined}
             sizes={sizes ?? defaultSizes}
-            className="object-cover"
+            className={cn(
+              "object-cover transition-transform duration-700 ease-[var(--ease-luxe)] will-change-transform",
+              interactive && "group-hover:scale-[1.08]",
+            )}
           />
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(80%_80%_at_50%_85%,rgba(0,0,0,0.65)_0%,transparent_55%),linear-gradient(180deg,rgba(0,0,0,0.2)_0%,transparent_40%)]"
+            className={cn(
+              "pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(80%_80%_at_50%_85%,rgba(0,0,0,0.65)_0%,transparent_55%),linear-gradient(180deg,rgba(0,0,0,0.2)_0%,transparent_40%)]",
+              interactive && "transition-opacity duration-500 group-hover:opacity-60",
+            )}
           />
+          {interactive ? (
+            <div
+              aria-hidden
+              className={cn(
+                "pointer-events-none absolute inset-0 z-[1] opacity-0 transition-opacity duration-500 group-hover:opacity-100",
+                neonTone === "gold"
+                  ? "bg-[radial-gradient(80%_60%_at_50%_20%,color-mix(in_oklab,var(--color-gold)_20%,transparent),transparent_70%)]"
+                  : "bg-[radial-gradient(80%_60%_at_50%_20%,color-mix(in_oklab,var(--color-emerald-glow)_22%,transparent),transparent_70%)]",
+              )}
+            />
+          ) : null}
         </>
       ) : (
         <>
@@ -138,19 +172,31 @@ export function PhotoFrame({
 
       <span
         aria-hidden
-        className="pointer-events-none absolute start-3 top-3 z-[3] h-5 w-5 border-s border-t border-gold/35"
+        className={cn(
+          "pointer-events-none absolute start-3 top-3 z-[3] h-5 w-5 border-s border-t border-gold/35",
+          interactive && (neonTone === "gold" ? "group-hover:border-gold/70" : "group-hover:border-emerald-glow/55"),
+        )}
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute end-3 top-3 z-[3] h-5 w-5 border-e border-t border-gold/35"
+        className={cn(
+          "pointer-events-none absolute end-3 top-3 z-[3] h-5 w-5 border-e border-t border-gold/35",
+          interactive && (neonTone === "gold" ? "group-hover:border-gold/70" : "group-hover:border-emerald-glow/55"),
+        )}
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute start-3 bottom-3 z-[3] h-5 w-5 border-s border-b border-gold/35"
+        className={cn(
+          "pointer-events-none absolute start-3 bottom-3 z-[3] h-5 w-5 border-s border-b border-gold/35",
+          interactive && (neonTone === "gold" ? "group-hover:border-gold/70" : "group-hover:border-emerald-glow/55"),
+        )}
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute end-3 bottom-3 z-[3] h-5 w-5 border-e border-b border-gold/35"
+        className={cn(
+          "pointer-events-none absolute end-3 bottom-3 z-[3] h-5 w-5 border-e border-b border-gold/35",
+          interactive && (neonTone === "gold" ? "group-hover:border-gold/70" : "group-hover:border-emerald-glow/55"),
+        )}
       />
 
       {badge ? (
