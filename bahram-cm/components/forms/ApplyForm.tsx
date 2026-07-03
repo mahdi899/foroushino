@@ -175,7 +175,7 @@ export function ApplyForm() {
         <button
           type="submit"
           disabled={submitting}
-          className="group neon-btn-primary inline-flex h-12 min-h-12 shrink-0 touch-manipulation items-center justify-center gap-2 rounded-pill bg-emerald px-7 font-semibold text-ink transition-[background-color,transform,box-shadow] duration-300 ease-[var(--ease-luxe)] hover:bg-emerald-glow hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald/50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="group neon-btn-primary inline-flex h-12 min-h-12 shrink-0 touch-manipulation items-center justify-center gap-2 rounded-pill bg-emerald px-7 font-semibold transition-[background-color,transform,box-shadow] duration-300 ease-[var(--ease-luxe)] hover:bg-emerald-glow hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald/50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? (
             <>

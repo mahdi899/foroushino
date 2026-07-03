@@ -219,8 +219,8 @@ function DesktopFlow() {
                             className={cn(
                               "pointer-events-none absolute inset-[-2px] rounded-[1.6rem]",
                               tone === "gold"
-                                ? "bg-[radial-gradient(circle_at_30%_-10%,rgba(232,204,154,0.22),transparent_58%)]"
-                                : "bg-[radial-gradient(circle_at_30%_-10%,rgba(77,212,168,0.18),transparent_58%)]",
+                                ? "bg-[radial-gradient(circle_at_30%_-10%,rgba(255,176,0,0.22),transparent_58%)]"
+                                : "bg-[radial-gradient(circle_at_30%_-10%,rgba(37,160,166,0.18),transparent_58%)]",
                             )}
                             animate={{ rotate: [-3.5, 2.8, -3.5] }}
                             transition={{ duration: 7 + i, repeat: Number.POSITIVE_INFINITY, ease: ease.luxe }}

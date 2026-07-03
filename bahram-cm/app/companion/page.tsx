@@ -89,7 +89,7 @@ export default function CompanionPage() {
             />
             <button
               type="button"
-              className="mt-4 inline-flex items-center gap-2 rounded-pill bg-emerald px-5 py-2.5 text-sm font-semibold text-ink transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-4 inline-flex items-center gap-2 rounded-pill bg-emerald px-5 py-2.5 text-sm font-semibold text-bone transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
               onClick={() => void load()}
               disabled={!canSubmit}
             >

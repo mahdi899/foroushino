@@ -24,8 +24,8 @@
   <g opacity="0.42">
     <circle cx="1280" cy="180" r="2" fill="#FFB000"/>
     <circle cx="1380" cy="240" r="1.5" fill="#FFB000"/>
-    <circle cx="1160" cy="120" r="1" fill="#5c6570"/>
+    <circle cx="1160" cy="120" r="1" fill="#647E82"/>
     <circle cx="220" cy="780" r="1.5" fill="#008C96"/>
-    <circle cx="340" cy="860" r="1" fill="#6b7380"/>
+    <circle cx="340" cy="860" r="1" fill="#647E82"/>
   </g>
 </svg>

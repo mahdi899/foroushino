@@ -7,7 +7,7 @@ import { useDataTheme } from "@/lib/useDataTheme";
 type Tone = "neutral" | "emerald" | "gold" | "sales";
 
 const emeraldDark =
-  "border-emerald/32 bg-emerald-deep/35 text-[#5fbdbe] shadow-[0_0_18px_rgba(0,140,150,0.18)]";
+  "border-emerald/32 bg-emerald-deep/35 text-emerald-glow shadow-[0_0_18px_rgba(0,140,150,0.18)]";
 const emeraldLight =
   "border-emerald/18 bg-emerald/[0.085] text-emerald-deep shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_22px_-14px_rgba(11,31,34,0.08)]";
 

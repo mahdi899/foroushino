@@ -50,13 +50,7 @@ export function HeroCinematic() {
           )}
         />
       </div>
-      <CursorGlow
-        color={
-          dataTheme === "light"
-            ? "rgba(20, 167, 132, 0.09)"
-            : "rgba(47, 176, 127, 0.18)"
-        }
-      />
+      <CursorGlow />
 
       {/* Animated gradient sheen */}
       <motion.div

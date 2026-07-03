@@ -41,7 +41,7 @@ export function AcademyTeaser() {
           <Reveal>
             <Eyebrow
               dotClassName="bg-bone"
-              className="max-w-full rounded-pill border border-bone/12 bg-[color-mix(in_oklab,var(--color-charcoal)_88%,var(--color-gold))] px-2.5 py-1 text-[0.62rem] text-bone shadow-[0_1px_0_rgba(244,239,232,0.055)_inset,0_6px_16px_-8px_rgba(7,10,15,0.36)] ring-1 ring-bone/[0.08] backdrop-blur-sm sm:px-3.5 sm:py-1.5 sm:text-caption"
+              className="max-w-full rounded-pill border border-bone/12 bg-[color-mix(in_oklab,var(--color-charcoal)_88%,var(--color-gold))] px-2.5 py-1 text-[0.62rem] text-bone shadow-[0_1px_0_rgba(234,251,251,0.055)_inset,0_6px_16px_-8px_rgba(5,10,11,0.36)] ring-1 ring-bone/[0.08] backdrop-blur-sm sm:px-3.5 sm:py-1.5 sm:text-caption"
             >
               {site.academy.eyebrow}
             </Eyebrow>

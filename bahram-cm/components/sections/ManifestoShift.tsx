@@ -22,7 +22,7 @@ export function ManifestoShift() {
     <section ref={ref} className="relative isolate overflow-hidden py-section-sm md:py-section">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_60%_at_15%_30%,rgba(14,59,44,0.25),transparent_70%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_60%_at_15%_30%,rgba(0,59,64,0.25),transparent_70%)]"
       />
       <div className="container-luxe relative">
         <div className="grid items-center gap-8 md:gap-14 lg:grid-cols-12 lg:gap-20">

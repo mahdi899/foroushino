@@ -85,7 +85,7 @@ export async function renderOgImage({
             paddingTop: 28,
           }}
         >
-          <div style={{ fontSize: 30, color: "#a9b3ad", fontWeight: 500 }}>بهرام رستمی</div>
+          <div style={{ fontSize: 30, color: "#95b4b8", fontWeight: 500 }}>بهرام رستمی</div>
           <div style={{ fontSize: 28, color: "#ffb000", fontWeight: 500 }}>{footer}</div>
         </div>
       </div>
