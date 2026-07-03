@@ -32,7 +32,7 @@ describe("buildMetadata", () => {
     const meta = buildMetadata({
       title: "t",
       description: "d",
-      path: "/companion",
+      path: "/apply",
       noIndex: true,
     });
     const robots = meta.robots as { index?: boolean };

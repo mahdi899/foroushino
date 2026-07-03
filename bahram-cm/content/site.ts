@@ -32,23 +32,23 @@ export type NavLink = { href: string; label: string; external?: boolean };
 export const site = {
   founder: "بهرام رستمی",
   founderLatin: "Bahram Rostami",
-  ecosystem: "آکادمی",
+  ecosystem: "سات",
   course: "کمپین‌نویسی",
   domain: "bahramrostami.com",
+  tagline: "سات | هر تماس، یه فروش",
 
   nav: [
     { href: "/course/campaign-writing", label: "کمپین‌نویسی" },
     { href: "/courses", label: "دوره‌ها" },
-    { href: "/academy", label: "آکادمی" },
+    { href: "/saat", label: "سات" },
     { href: "/transformations", label: "قبل و بعد دانشجوها" },
     { href: "/insights", label: "بلاگ" },
     { href: "/events", label: "رویدادها" },
-    { href: "/companion", label: "Companion" },
     { href: "/founder", label: "درباره‌ی بهرام" },
   ] satisfies NavLink[],
 
   ctaPrimary: { href: "/course/campaign-writing", label: "آغاز مسیر" },
-  ctaSecondary: { href: "/academy", label: "دیدنِ آکادمی" },
+  ctaSecondary: { href: "/saat", label: "دیدن سات" },
 
   hero: {
     headline: "از مخاطب تا کمپین،\nتا یک امپراتوری شخصی.",
@@ -86,13 +86,17 @@ export const site = {
     },
   ] satisfies StoryFrame[],
 
-  academy: {
-    eyebrow: "آکادمی طلایی · اکوسیستم خصوصی",
-    title: "پشتِ این در، یک آکادمی هست.",
-    /** نسخهٔ کوتاه برای موبایل — سکشن فشرده‌تر */
-    bodyMobile: "برای سازندگان؛ ورود دست‌چین، فضای خصوصی.",
-    body: "برای کسی که آماده‌ی اجراست؛ ورود انتخابی و خصوصی — نه فروش عمومی.",
-    cta: { href: "/academy", label: "دیدنِ آکادمی" },
+  saat: {
+    eyebrow: "سات · سیستم فروش تلفنی",
+    title: "پشت این پروژه، یک سیستم فروش تلفنی واقعی هست.",
+    subtitle:
+      "سات برای کسانی ساخته شده که می‌خواهند فروش را جدی، منظم و قابل‌اندازه‌گیری پیش ببرند.",
+    bodyMobile:
+      "مینی‌اپ عملیاتی برای تماس، لید، پیگیری و فروش — برای تیم فروش منظم و نتیجه‌محور.",
+    body: "یک مینی‌اپ عملیاتی برای مدیریت تماس، لید، پیگیری، فیدبک و فروش. از اولین تماس تا ثبت نتیجه، همه‌چیز در سات برای حرکت واقعی تیم فروش طراحی شده است.",
+    perks: ["لید و تماس", "پیگیری و فیدبک", "فروش و کمیسیون"] as const,
+    cta: { href: "/saat", label: "دیدن سات" },
+    ctaSecondary: { href: "/saat", label: "آشنایی با سیستم" },
   },
 
   transformations: [
@@ -166,8 +170,8 @@ export const site = {
           { href: "/course/campaign-writing", label: "کمپین‌نویسی" },
           { href: "/courses", label: "دوره‌ها" },
           { href: "/mini-courses", label: "مینی‌دوره‌ها" },
-          { href: "/academy", label: "آکادمی" },
-          { href: "/apply", label: "درخواست ارزیابی" },
+          { href: "/saat", label: "سات" },
+          { href: "/apply", label: "درخواست دسترسی" },
         ],
       },
       {

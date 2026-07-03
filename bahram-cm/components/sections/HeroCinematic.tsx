@@ -92,7 +92,7 @@ export function HeroCinematic() {
               </Badge>
             </Reveal>
             <Reveal delay={0.12}>
-              <h1 className="mt-2 max-lg:max-w-none whitespace-pre-line text-balance text-[clamp(1.35rem,4vw+0.55rem,2rem)] font-bold tracking-[-0.02em] text-bone max-lg:!leading-none md:mt-6 md:text-h1 md:tracking-[var(--text-h1--letter-spacing)] md:font-bold">
+              <h1 className="mt-2 max-lg:max-w-none whitespace-pre-line text-balance text-[clamp(1.35rem,4vw+0.55rem,2rem)] !font-black tracking-[-0.02em] text-bone max-lg:!leading-none md:mt-6 md:text-h1 md:tracking-[var(--text-h1--letter-spacing)]">
                 <span className="lg:hidden">{site.hero.headlineMobile}</span>
                 <span className="hidden lg:inline">{site.hero.headline}</span>
               </h1>
@@ -187,14 +187,14 @@ export function HeroCinematic() {
                   {site.ctaPrimary.label}
                 </TrackedLinkButton>
                 <TrackedLinkButton
-                  href="/academy"
+                  href={site.ctaSecondary.href}
                   event="homepage_cta_click"
-                  eventProps={{ cta: "hero_academy", location: "hero" }}
+                  eventProps={{ cta: "hero_saat", location: "hero" }}
                   variant="ghost"
                   size="lg"
                   className="h-12 min-h-12 w-full min-w-0 text-[0.95rem] sm:h-14 sm:min-h-14 sm:w-auto sm:text-base"
                 >
-                  دیدنِ آکادمی
+                  {site.ctaSecondary.label}
                 </TrackedLinkButton>
               </div>
             </Reveal>

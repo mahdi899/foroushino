@@ -12,7 +12,7 @@ import { ManifestoShift } from "@/components/sections/ManifestoShift";
 
 export const metadata: Metadata = buildMetadata({
   title: "مسیر رشد حرفه‌ای",
-  description: "مسیر کمپین‌نویسی و ورود به آکادمی — بهرام رستمی.",
+  description: "مسیر کمپین‌نویسی و سات — سیستم فروش تلفنی بهرام رستمی.",
   path: "/",
 });
 

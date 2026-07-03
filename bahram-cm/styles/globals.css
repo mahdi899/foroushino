@@ -551,6 +551,16 @@
     --neon-accent-wire: rgba(255, 107, 0, 0.22);
   }
 
+  /* Academy teaser — smart-gold band (theme-independent on-gold ink) */
+  .academy-teaser-luxe {
+    --on-gold-ink: #0b1f22;
+    --on-gold-ink-strong: #050a0b;
+    --on-gold-ink-muted: #52676a;
+    --on-gold-border: color-mix(in oklab, var(--on-gold-ink) 14%, transparent);
+    --on-gold-fill: color-mix(in oklab, var(--on-gold-ink) 6%, transparent);
+    --on-gold-badge: color-mix(in oklab, var(--on-gold-ink) 10%, var(--color-gold));
+  }
+
   /* Academy teaser: smart gold rim + bloom */
   html:not([data-theme="light"]) .academy-teaser-luxe,
   html:not([data-theme="light"]) .academy-teaser-luxe [data-neon-tone="gold"] {
@@ -561,14 +571,14 @@
     --neon-accent-wire: rgba(255, 176, 0, 0.22);
   }
 
-  html:not([data-theme="light"]) .academy-teaser-luxe .neon-btn-primary {
+  html:not([data-theme="light"]) .academy-teaser-luxe .neon-btn-primary.neon-btn-vip {
     box-shadow:
       0 0 0 1px var(--neon-accent-wire),
       0 0 26px -10px var(--neon-accent-soft),
       0 10px 40px -12px color-mix(in oklab, var(--neon-accent) 36%, rgba(5, 10, 11, 0.52));
   }
 
-  html:not([data-theme="light"]) .academy-teaser-luxe .neon-btn-primary:hover {
+  html:not([data-theme="light"]) .academy-teaser-luxe .neon-btn-primary.neon-btn-vip:hover {
     box-shadow:
       0 0 0 1px color-mix(in oklab, var(--neon-accent-strong) 40%, transparent),
       0 0 42px -6px var(--neon-accent-soft),
@@ -719,11 +729,11 @@
     color: var(--btn-primary-fg-hover);
   }
 
-  [data-theme="light"] .academy-teaser-luxe .neon-btn-primary {
+  [data-theme="light"] .academy-teaser-luxe .neon-btn-primary.neon-btn-vip {
     box-shadow: 0 10px 40px -12px color-mix(in oklab, var(--color-gold) 42%, rgba(11, 31, 34, 0.35));
   }
 
-  [data-theme="light"] .academy-teaser-luxe .neon-btn-primary:hover {
+  [data-theme="light"] .academy-teaser-luxe .neon-btn-primary.neon-btn-vip:hover {
     box-shadow: 0 14px 46px -11px color-mix(in oklab, var(--color-gold) 38%, rgba(11, 31, 34, 0.28));
   }
 

@@ -30,4 +30,4 @@ export const transitions = {
   }),
 };
 
-export const VIEWPORT_ONCE = { once: true, amount: 0.2 } as const;
+export const VIEWPORT_ONCE = { once: true, amount: 0 } as const;

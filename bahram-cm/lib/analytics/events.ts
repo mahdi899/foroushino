@@ -12,7 +12,6 @@ export type AnalyticsEventMap = {
   academy_apply_submit: { source: string };
   academy_apply_success: { source: string };
   academy_apply_error: { source: string; code?: string };
-  companion_access: { result: "success" | "error" };
   event_register_click: { event: string };
   content_view: { type: string; slug: string };
 };
@@ -24,5 +23,5 @@ export const FUNNEL = {
   awareness: ["content_view", "homepage_cta_click"],
   interest: ["course_cta_click"],
   intent: ["newsletter_signup", "event_register_click"],
-  action: ["academy_apply_submit", "academy_apply_success", "companion_access"],
+  action: ["academy_apply_submit", "academy_apply_success"],
 } as const;

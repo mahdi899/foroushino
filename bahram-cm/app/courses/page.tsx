@@ -92,8 +92,8 @@ export default async function CoursesPage() {
               <LinkButton href="/course/campaign-writing" variant="sales" size="lg" withArrow>
                 دوره‌ی کمپین‌نویسی
               </LinkButton>
-              <LinkButton href="/academy" variant="ghost" size="lg">
-                آشنایی با آکادمی
+              <LinkButton href="/saat" variant="ghost" size="lg">
+                آشنایی با سات
               </LinkButton>
             </div>
           </div>

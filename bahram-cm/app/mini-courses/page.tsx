@@ -166,10 +166,10 @@ export default function MiniCoursesPage() {
                 همه‌ی دوره‌ها
               </LinkButton>
               <Link
-                href="/academy"
+                href="/saat"
                 className="inline-flex items-center gap-2 text-gold transition-colors hover:text-gold-soft"
               >
-                آشنایی با آکادمی
+                آشنایی با سات
                 <ArrowLeft className="rtl-flip h-4 w-4" aria-hidden />
               </Link>
             </div>

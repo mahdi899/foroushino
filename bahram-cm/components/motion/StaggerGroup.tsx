@@ -1,7 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion, type Variants } from "framer-motion";
-import type { ReactNode } from "react";
+import { motion, useInView, useReducedMotion, type Variants } from "framer-motion";
+import { useRef, type ReactNode } from "react";
 import { ease, dur, VIEWPORT_ONCE } from "./easings";
 
 type Props = {
@@ -17,7 +17,9 @@ export function StaggerGroup({
   stagger = 0.08,
   delay = 0,
 }: Props) {
+  const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
+  const inView = useInView(ref, VIEWPORT_ONCE);
 
   const parent: Variants = {
     hidden: {},
@@ -31,10 +33,10 @@ export function StaggerGroup({
 
   return (
     <motion.div
+      ref={ref}
       className={className}
       initial="hidden"
-      whileInView="show"
-      viewport={VIEWPORT_ONCE}
+      animate={reduce || inView ? "show" : "hidden"}
       variants={parent}
     >
       {children}

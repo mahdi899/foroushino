@@ -102,8 +102,8 @@ export default function FounderPage() {
                   <LinkButton href="/course/campaign-writing" variant="sales" size="lg" withArrow>
                     شروع مسیر با کمپین‌نویسی
                   </LinkButton>
-                  <LinkButton href="/academy" variant="ghost" size="lg">
-                    آشنایی با آکادمی
+                  <LinkButton href="/saat" variant="ghost" size="lg">
+                    آشنایی با سات
                   </LinkButton>
                 </div>
               </Reveal>

@@ -1,7 +1,7 @@
 "use client";
 
-import { motion, useReducedMotion, type Variants } from "framer-motion";
-import type { ReactNode } from "react";
+import { motion, useInView, useReducedMotion, type Variants } from "framer-motion";
+import { useRef, type ReactNode } from "react";
 import { ease, dur, VIEWPORT_ONCE } from "./easings";
 
 type Props = {
@@ -19,7 +19,9 @@ export function Reveal({
   as = "div",
   className,
 }: Props) {
+  const ref = useRef<HTMLElement>(null);
   const reduce = useReducedMotion();
+  const inView = useInView(ref, VIEWPORT_ONCE);
 
   const variants: Variants = {
     hidden: { opacity: 0, y: reduce ? 0 : y },
@@ -34,10 +36,10 @@ export function Reveal({
 
   return (
     <Component
+      ref={ref}
       className={className}
       initial="hidden"
-      whileInView="show"
-      viewport={VIEWPORT_ONCE}
+      animate={reduce || inView ? "show" : "hidden"}
       variants={variants}
     >
       {children}
