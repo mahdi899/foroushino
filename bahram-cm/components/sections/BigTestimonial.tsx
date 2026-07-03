@@ -90,7 +90,7 @@ export function BigTestimonial() {
     >
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_60%_at_80%_10%,rgba(47,176,127,0.12),transparent_70%),radial-gradient(50%_40%_at_10%_90%,rgba(197,164,107,0.11),transparent_70%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_60%_at_80%_10%,rgba(0,140,150,0.12),transparent_70%),radial-gradient(50%_40%_at_10%_90%,rgba(255,176,0,0.11),transparent_70%)]"
       />
       <div className="container-luxe relative">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between lg:gap-6">

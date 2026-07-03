@@ -6,7 +6,7 @@ import { ease, dur, VIEWPORT_ONCE } from "@/components/motion/easings";
 import { cn } from "@/lib/cn";
 
 const PELLET =
-  "absolute start-1/2 top-1/2 z-[1] h-[5px] w-[5px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold shadow-[0_0_12px_2px_rgba(197,164,107,0.48)]";
+  "absolute start-1/2 top-1/2 z-[1] h-[5px] w-[5px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gold shadow-[0_0_12px_2px_rgba(255,176,0,0.48)]";
 
 /** A hairline divider with an optional gold pellet centered on it. */
 export function Divider({

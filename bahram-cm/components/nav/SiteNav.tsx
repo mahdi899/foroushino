@@ -73,7 +73,7 @@ export function SiteNav() {
                 href={site.ctaPrimary.href}
                 event="homepage_cta_click"
                 eventProps={{ cta: "nav_primary", location: "nav" }}
-                variant="primary"
+                variant="sales"
                 size="sm"
                 withArrow
               >

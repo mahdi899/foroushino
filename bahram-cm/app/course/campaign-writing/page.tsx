@@ -148,6 +148,7 @@ export default function CourseCampaignWritingPage() {
                 <div className="mx-auto mt-6 flex w-full max-w-md flex-col gap-2.5 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 md:mt-10 md:mx-0">
                   <LinkButton
                     href="#enroll"
+                    variant="sales"
                     size="lg"
                     withArrow
                     className={cn("w-full min-w-0 sm:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-[0.9rem]")}
@@ -541,7 +542,7 @@ export default function CourseCampaignWritingPage() {
           <div className="neon-cta-slab relative overflow-hidden rounded-card border border-emerald/25 bg-gradient-to-b from-emerald-deep/40 via-charcoal/70 to-ink p-5 sm:p-8 md:p-14">
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_70%_at_85%_10%,rgba(47,176,127,0.22),transparent_70%)]"
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_70%_at_85%_10%,rgba(0,140,150,0.22),transparent_70%)]"
             />
             <div className="relative">
               <IconTile icon={Compass} tone="gold" size="lg" className="max-sm:scale-90" />
@@ -554,6 +555,7 @@ export default function CourseCampaignWritingPage() {
               <div className="mt-6 flex w-full max-w-md flex-col gap-2.5 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 md:mt-10">
                 <LinkButton
                   href="/apply"
+                  variant="sales"
                   size="lg"
                   withArrow
                   className={cn("w-full min-w-0 sm:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-[0.9rem]")}
@@ -650,7 +652,7 @@ function PricingCard({
       {highlighted ? (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_60%_at_85%_5%,rgba(47,176,127,0.22),transparent_70%)]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_60%_at_85%_5%,rgba(0,140,150,0.22),transparent_70%)]"
         />
       ) : null}
       <div className="relative flex items-center justify-between">
@@ -685,7 +687,7 @@ function PricingCard({
       <div className="relative mt-6 flex-1 sm:mt-8" />
       <LinkButton
         href={cta.href}
-        variant={highlighted ? "primary" : "ghost"}
+        variant={highlighted ? "sales" : "ghost"}
         withArrow
         className="relative w-full"
       >

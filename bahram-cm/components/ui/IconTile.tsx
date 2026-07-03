@@ -9,13 +9,13 @@ const tones: Record<Tone, { ring: string; fg: string; bg: string; aura: string }
     ring: "ring-emerald/30",
     fg: "text-emerald-glow",
     bg: "bg-emerald-deep/40",
-    aura: "shadow-[0_0_40px_-12px_rgba(47,176,127,0.55)]",
+    aura: "shadow-[0_0_40px_-12px_rgba(0,140,150,0.42)]",
   },
   gold: {
     ring: "ring-gold/25",
     fg: "text-gold",
     bg: "bg-gold/[0.08]",
-    aura: "shadow-[0_0_40px_-12px_rgba(197,164,107,0.58)]",
+    aura: "shadow-[0_0_40px_-12px_rgba(255,176,0,0.42)]",
   },
   bone: {
     ring: "ring-bone/10",

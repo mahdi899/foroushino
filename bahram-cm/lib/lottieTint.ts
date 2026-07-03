@@ -15,11 +15,11 @@ export function brandRgbForLottie(
   const dark = theme === "dark";
   switch (tone) {
     case "gold":
-      return dark ? hexToRgb01("#c5a46b") : hexToRgb01("#6e5a3a");
+      return dark ? hexToRgb01("#ffb000") : hexToRgb01("#7a4f00");
     case "bone":
-      return dark ? hexToRgb01("#f4efe8") : hexToRgb01("#0b1016");
+      return dark ? hexToRgb01("#eafbfb") : hexToRgb01("#0b1f22");
     default:
-      return dark ? hexToRgb01("#4dd4a8") : hexToRgb01("#1e9d75");
+      return dark ? hexToRgb01("#25a0a6") : hexToRgb01("#006f75");
   }
 }
 

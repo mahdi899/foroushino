@@ -4,7 +4,7 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { liveIconArrow } from "@/lib/iconMotion";
 
-type Variant = "primary" | "ghost" | "gold-link" | "vip";
+type Variant = "primary" | "ghost" | "gold-link" | "vip" | "sales";
 type Size = "sm" | "md" | "lg";
 
 type BaseProps = {
@@ -26,7 +26,9 @@ const variantStyles: Record<Variant, string> = {
   "gold-link":
     "text-gold hover:text-gold-soft underline-offset-8 hover:underline decoration-gold/40",
   vip:
-    "neon-btn-primary rounded-pill bg-gold font-semibold text-neutral-950 shadow-gold hover:bg-gold-soft hover:text-neutral-950 hover:-translate-y-px active:translate-y-0",
+    "neon-btn-primary neon-btn-vip rounded-pill font-semibold shadow-gold hover:-translate-y-px active:translate-y-0",
+  sales:
+    "sales-cta neon-btn-primary rounded-pill font-semibold hover:-translate-y-px active:translate-y-0",
 };
 
 const sizeStyles: Record<Size, string> = {
@@ -34,6 +36,12 @@ const sizeStyles: Record<Size, string> = {
   md: "h-11 min-h-11 px-5 text-[0.95rem]",
   lg: "h-14 min-h-14 px-7 text-base",
 };
+
+function neonToneAttr(variant: Variant) {
+  if (variant === "vip") return { "data-neon-tone": "gold" as const };
+  if (variant === "sales") return { "data-neon-tone": "sales" as const };
+  return {};
+}
 
 function arrowClasses(size: Size) {
   if (size === "sm") return liveIconArrow("rtl-flip h-3.5 w-3.5");
@@ -53,7 +61,7 @@ export function LinkButton({
 }: LinkButtonProps) {
   return (
     <Link
-      {...(variant === "vip" ? { "data-neon-tone": "gold" } : {})}
+      {...neonToneAttr(variant)}
       className={cn(
         base,
         variant !== "gold-link" && sizeStyles[size],
@@ -82,7 +90,7 @@ export function Button({
 }: ButtonProps) {
   return (
     <button
-      {...(variant === "vip" ? { "data-neon-tone": "gold" } : {})}
+      {...neonToneAttr(variant)}
       className={cn(
         base,
         variant !== "gold-link" && sizeStyles[size],

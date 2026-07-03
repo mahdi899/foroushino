@@ -11,7 +11,7 @@ export function NewsletterCTA() {
         <div className="neon-surface-static relative overflow-hidden rounded-card border border-bone/10 bg-charcoal/40 p-8 md:p-12">
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_60%_at_85%_10%,rgba(47,176,127,0.18),transparent_70%)]"
+            className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_60%_at_85%_10%,rgba(0,140,150,0.18),transparent_70%)]"
           />
           <div className="relative grid gap-10 md:grid-cols-12 md:items-center">
             <div className="md:col-span-7">

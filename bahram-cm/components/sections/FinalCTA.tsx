@@ -16,7 +16,7 @@ export function FinalCTA() {
             aria-hidden
             className="pointer-events-none absolute inset-0 overflow-hidden rounded-card"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(70%_70%_at_85%_10%,rgba(47,176,127,0.22),transparent_70%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(70%_70%_at_85%_10%,rgba(0,140,150,0.22),transparent_70%)]" />
           </div>
           <div className="relative z-[1] grid items-start gap-5 md:gap-10 lg:grid-cols-12 lg:items-center lg:gap-x-14 lg:gap-y-8">
             <div className="min-w-0 lg:col-span-7 lg:row-start-1">
@@ -79,6 +79,7 @@ export function FinalCTA() {
                   href={site.finalCta.cta.href}
                   event="homepage_cta_click"
                   eventProps={{ cta: "final_primary", location: "final_cta" }}
+                  variant="sales"
                   size="lg"
                   withArrow
                   className="h-12 min-h-12 w-full min-w-0 px-5 text-[0.88rem] md:h-14 md:min-h-14 md:w-auto md:shrink-0 md:px-7 md:text-base"
@@ -89,10 +90,10 @@ export function FinalCTA() {
                   href="/apply"
                   event="homepage_cta_click"
                   eventProps={{ cta: "final_apply", location: "final_cta" }}
-                  variant="ghost"
+                  variant="sales"
                   size="lg"
                   withArrow
-                  className="h-12 min-h-12 w-full min-w-0 border-gold/35 px-5 text-[0.88rem] text-gold hover:border-gold/50 hover:bg-gold/[0.06] hover:text-gold-soft md:h-14 md:min-h-14 md:w-auto md:shrink-0 md:px-7 md:text-base"
+                  className="h-12 min-h-12 w-full min-w-0 px-5 text-[0.88rem] md:h-14 md:min-h-14 md:w-auto md:shrink-0 md:px-7 md:text-base"
                 >
                   درخواست ورود به آکادمی
                 </TrackedLinkButton>

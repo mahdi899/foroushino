@@ -185,6 +185,7 @@ export function HeroCinematic() {
                   href={site.ctaPrimary.href}
                   event="homepage_cta_click"
                   eventProps={{ cta: "hero_primary", location: "hero" }}
+                  variant="sales"
                   withArrow
                   size="lg"
                   className="h-12 min-h-12 w-full min-w-0 text-[0.95rem] sm:h-14 sm:min-h-14 sm:w-auto sm:min-w-48 sm:text-base"

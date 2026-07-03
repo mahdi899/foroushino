@@ -9,44 +9,44 @@ const covers = [
   `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800">
   <defs>
     <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0e3b2c"/>
-      <stop offset="100%" stop-color="#0e1214"/>
+      <stop offset="0%" stop-color="#003B40"/>
+      <stop offset="100%" stop-color="#0D1517"/>
     </linearGradient>
   </defs>
   <rect width="1200" height="800" fill="url(#g1)"/>
-  <g stroke="#2fb07f" stroke-opacity="0.5" fill="none" stroke-width="2">
+  <g stroke="#008C96" stroke-opacity="0.5" fill="none" stroke-width="2">
     <path d="M0 640 Q360 480 600 620 T1200 560"/>
     <path d="M0 560 Q360 400 600 540 T1200 480" stroke-opacity="0.35" stroke-width="1.5"/>
   </g>
-  <text x="72" y="140" fill="#c9a24a" font-size="26" font-family="system-ui,sans-serif" letter-spacing="0.35em">VOICE</text>
+  <text x="72" y="140" fill="#FFB000" font-size="26" font-family="system-ui,sans-serif" letter-spacing="0.35em">VOICE</text>
 </svg>`,
   `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800">
   <defs>
     <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0e1214"/>
-      <stop offset="100%" stop-color="#0e3b2c"/>
+      <stop offset="0%" stop-color="#0D1517"/>
+      <stop offset="100%" stop-color="#003B40"/>
     </linearGradient>
   </defs>
   <rect width="1200" height="800" fill="url(#g2)"/>
-  <g stroke="#c9a24a" stroke-opacity="0.35" fill="none" stroke-width="2">
+  <g stroke="#FFB000" stroke-opacity="0.35" fill="none" stroke-width="2">
     <circle cx="960" cy="200" r="120"/>
     <circle cx="960" cy="200" r="200" stroke-opacity="0.2"/>
     <circle cx="960" cy="200" r="280" stroke-opacity="0.12"/>
   </g>
-  <text x="72" y="140" fill="#c9a24a" font-size="26" font-family="system-ui,sans-serif" letter-spacing="0.35em">CAMPAIGN</text>
+  <text x="72" y="140" fill="#FFB000" font-size="26" font-family="system-ui,sans-serif" letter-spacing="0.35em">CAMPAIGN</text>
 </svg>`,
   `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800">
   <defs>
     <linearGradient id="g3" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#0e1214"/>
-      <stop offset="100%" stop-color="#1a1410"/>
+      <stop offset="0%" stop-color="#0D1517"/>
+      <stop offset="100%" stop-color="#142326"/>
     </linearGradient>
   </defs>
   <rect width="1200" height="800" fill="url(#g3)"/>
-  <g stroke="#2fb07f" stroke-opacity="0.4" fill="none" stroke-width="2.5">
+  <g stroke="#008C96" stroke-opacity="0.4" fill="none" stroke-width="2.5">
     <path d="M80 720 L200 620 L320 660 L440 560 L560 600 L680 480 L800 520 L920 400 L1040 440 L1120 320"/>
   </g>
-  <text x="72" y="140" fill="#c9a24a" font-size="26" font-family="system-ui,sans-serif" letter-spacing="0.35em">IDENTITY</text>
+  <text x="72" y="140" fill="#FFB000" font-size="26" font-family="system-ui,sans-serif" letter-spacing="0.35em">IDENTITY</text>
 </svg>`,
 ];
 

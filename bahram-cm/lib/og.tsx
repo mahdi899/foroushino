@@ -43,7 +43,7 @@ export async function renderOgImage({
           justifyContent: "space-between",
           padding: "72px 80px",
           background:
-            "radial-gradient(120% 120% at 85% 0%, #123129 0%, #0a0f0d 55%, #070a09 100%)",
+            "radial-gradient(120% 120% at 85% 0%, #003b40 0%, #0d1517 55%, #050a0b 100%)",
           fontFamily: "YekanBakh",
           direction: "rtl",
         }}
@@ -54,12 +54,12 @@ export async function renderOgImage({
               width: 18,
               height: 18,
               borderRadius: 999,
-              background: "#2fb07f",
-              boxShadow: "0 0 28px 4px rgba(47,176,127,0.6)",
+              background: "#008c96",
+              boxShadow: "0 0 28px 4px rgba(0,140,150,0.42)",
             }}
           />
           {eyebrow ? (
-            <div style={{ fontSize: 30, color: "#c5a46b", fontWeight: 500 }}>{eyebrow}</div>
+            <div style={{ fontSize: 30, color: "#ffb000", fontWeight: 500 }}>{eyebrow}</div>
           ) : null}
         </div>
 
@@ -69,7 +69,7 @@ export async function renderOgImage({
             fontSize: 68,
             lineHeight: 1.25,
             fontWeight: 700,
-            color: "#f4f1ea",
+            color: "#eafbfb",
             maxWidth: 980,
           }}
         >
@@ -81,12 +81,12 @@ export async function renderOgImage({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            borderTop: "1px solid rgba(244,241,234,0.12)",
+            borderTop: "1px solid rgba(234,251,251,0.12)",
             paddingTop: 28,
           }}
         >
           <div style={{ fontSize: 30, color: "#a9b3ad", fontWeight: 500 }}>بهرام رستمی</div>
-          <div style={{ fontSize: 28, color: "#c5a46b", fontWeight: 500 }}>{footer}</div>
+          <div style={{ fontSize: 28, color: "#ffb000", fontWeight: 500 }}>{footer}</div>
         </div>
       </div>
     ),

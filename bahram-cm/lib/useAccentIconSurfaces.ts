@@ -12,24 +12,24 @@ export function useStepFigureIconClasses(tone: "emerald" | "gold", compact: bool
     if (theme === "light") {
       return cn(
         size,
-        "bg-gold/[0.11] text-gold shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_26px_-18px_rgba(92,77,50,0.1)]",
+        "bg-gold/[0.11] text-gold shadow-[inset_0_1px_0_rgba(255,255,255,0.88),0_8px_26px_-18px_rgba(255,176,0,0.1)]",
       );
     }
     return cn(
       size,
-      "bg-gold/[0.09] text-gold shadow-[0_12px_40px_-24px_rgba(197,164,107,0.62)]",
+      "bg-gold/[0.09] text-gold shadow-[0_12px_40px_-24px_rgba(255,176,0,0.42)]",
     );
   }
 
   if (theme === "light") {
     return cn(
       size,
-      "bg-emerald/[0.11] text-emerald-deep ring-1 ring-emerald/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_28px_-20px_rgba(15,23,42,0.08)]",
+      "bg-emerald/[0.11] text-emerald-deep ring-1 ring-emerald/18 shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_8px_28px_-20px_rgba(11,31,34,0.08)]",
     );
   }
   return cn(
     size,
-    "bg-emerald-deep/50 text-emerald-glow shadow-[0_12px_40px_-24px_rgba(23,138,104,0.45)]",
+    "bg-emerald-deep/50 text-emerald-glow shadow-[0_12px_40px_-24px_rgba(0,140,150,0.38)]",
   );
 }
 
@@ -41,7 +41,7 @@ export function useChannelChipIconShell(isJade: boolean): { shell: string; iconC
     if (theme === "light") {
       return {
         shell:
-          "bg-gradient-to-br from-emerald/[0.16] to-charcoal shadow-[0_8px_20px_-14px_rgba(15,23,42,0.08)] ring-emerald/18",
+          "bg-gradient-to-br from-emerald/[0.16] to-charcoal shadow-[0_8px_20px_-14px_rgba(11,31,34,0.08)] ring-emerald/18",
         iconClass: "text-emerald-deep",
       };
     }
@@ -55,7 +55,7 @@ export function useChannelChipIconShell(isJade: boolean): { shell: string; iconC
   if (theme === "light") {
     return {
       shell:
-        "bg-gradient-to-br from-charcoal to-charcoal-2 shadow-[0_8px_20px_-14px_rgba(15,23,42,0.06)] ring-gold/28",
+        "bg-gradient-to-br from-charcoal to-charcoal-2 shadow-[0_8px_20px_-14px_rgba(11,31,34,0.06)] ring-gold/28",
       iconClass: "text-gold",
     };
   }

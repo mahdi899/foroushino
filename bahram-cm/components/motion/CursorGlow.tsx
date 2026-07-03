@@ -23,7 +23,7 @@ type Props = {
  */
 export function CursorGlow({
   size = 520,
-  color = "rgba(47,176,127,0.18)",
+  color = "rgba(0,140,150,0.18)",
   className,
 }: Props) {
   const reduce = useReducedMotion();

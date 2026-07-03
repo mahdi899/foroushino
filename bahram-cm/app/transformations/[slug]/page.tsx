@@ -104,7 +104,7 @@ export default async function TransformationDetailPage({
             <p className="text-caption uppercase tracking-[0.25em] text-gold">آماده‌ی مسیر خودت هستی؟</p>
             <h2 className="mt-3 text-h2 text-balance">مسیر همین‌جا شروع می‌شود.</h2>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
-              <LinkButton href="/course/campaign-writing" size="lg" withArrow>
+              <LinkButton href="/course/campaign-writing" variant="sales" size="lg" withArrow>
                 شروع از کمپین‌نویسی
               </LinkButton>
               <Link

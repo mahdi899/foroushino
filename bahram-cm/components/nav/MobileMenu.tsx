@@ -142,7 +142,7 @@ export function MobileMenu({ open, onClose }: Props) {
               </div>
               <LinkButton
                 href={site.ctaPrimary.href}
-                variant="primary"
+                variant="sales"
                 size="md"
                 withArrow
                 className="w-full"

@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="'EÌ1 G.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="'Eï¿½1 G.">
   <defs>
     <linearGradient id="av2-bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#146b4f"/>
-      <stop offset="100%" stop-color="#0e1214"/>
+      <stop offset="0%" stop-color="#008C96"/>
+      <stop offset="100%" stop-color="#0D1517"/>
     </linearGradient>
   </defs>
   <rect width="200" height="200" rx="100" fill="url(#av2-bg)"/>
@@ -11,5 +11,5 @@
   <path d="M66 64 C 70 44 130 44 134 64 L 130 80 L 70 80 Z" fill="#0a0807"/>
   <path d="M80 92 L 90 96 L 80 100 Z" fill="#0a0807"/>
   <path d="M120 92 L 110 96 L 120 100 Z" fill="#0a0807"/>
-  <circle cx="140" cy="180" r="3" fill="#c9a24a"/>
+  <circle cx="140" cy="180" r="3" fill="#FFB000"/>
 </svg>

@@ -159,7 +159,7 @@ export default function MiniCoursesPage() {
               برای شروع‌اند؛ عمق در دوره‌ی اصلی است.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-4 md:mt-10">
-              <LinkButton href="/course/campaign-writing" size="lg" withArrow>
+              <LinkButton href="/course/campaign-writing" variant="sales" size="lg" withArrow>
                 ورود به دوره‌ی اصلی
               </LinkButton>
               <LinkButton href="/courses" variant="ghost" size="lg">

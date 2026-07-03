@@ -11,7 +11,7 @@ export function IconLabel({
 }: {
   icon: LucideIcon;
   children: ReactNode;
-  tone?: "bone" | "gold" | "emerald" | "mist";
+  tone?: "bone" | "gold" | "emerald" | "mist" | "sales";
   className?: string;
 }) {
   const colors: Record<string, string> = {
@@ -19,6 +19,7 @@ export function IconLabel({
     gold: "text-gold",
     emerald: "text-emerald-glow",
     mist: "text-mist",
+    sales: "text-sales-soft",
   };
   return (
     <span

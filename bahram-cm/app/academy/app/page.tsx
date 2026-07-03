@@ -75,7 +75,7 @@ export default function AcademyAppPage() {
               </Reveal>
               <Reveal delay={0.28}>
                 <div className="mt-6 flex flex-wrap items-center gap-2.5 md:mt-10 md:gap-4">
-                  <LinkButton href="/apply" size="lg" withArrow>
+                  <LinkButton href="/apply" variant="sales" size="lg" withArrow>
                     درخواست ورود
                   </LinkButton>
                   <LinkButton href="/academy" variant="ghost" size="lg">
@@ -170,7 +170,7 @@ export default function AcademyAppPage() {
           <div className="neon-cta-slab relative overflow-hidden rounded-card border border-emerald/25 bg-gradient-to-b from-emerald-deep/40 via-charcoal/70 to-ink p-5 sm:p-8 md:p-14">
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_70%_at_85%_10%,rgba(47,176,127,0.22),transparent_70%)]"
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_70%_at_85%_10%,rgba(0,140,150,0.22),transparent_70%)]"
             />
             <div className="relative">
               <IconTile icon={Sparkles} tone="gold" size="lg" />
@@ -181,7 +181,7 @@ export default function AcademyAppPage() {
                 فقط برای اعضا؛ بعد از مسیر و تأیید.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-3 md:mt-10 md:gap-4">
-                <LinkButton href="/apply" size="lg" withArrow>
+                <LinkButton href="/apply" variant="sales" size="lg" withArrow>
                   درخواست ورود
                 </LinkButton>
                 <Link

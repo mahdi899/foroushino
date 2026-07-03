@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="F'2FÌF ©.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="F'2Fï¿½F ï¿½.">
   <defs>
     <linearGradient id="av3-bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#2a1f1a"/>
-      <stop offset="100%" stop-color="#0e1214"/>
+      <stop offset="100%" stop-color="#0D1517"/>
     </linearGradient>
   </defs>
   <rect width="200" height="200" rx="100" fill="url(#av3-bg)"/>
@@ -10,5 +10,5 @@
   <path d="M40 200 C 60 140 140 140 160 200 Z" fill="#1c2226"/>
   <path d="M60 80 C 60 50 140 50 140 80 C 140 100 130 120 100 120 C 70 120 60 100 60 80 Z" fill="#0a0807"/>
   <ellipse cx="100" cy="120" rx="40" ry="8" fill="#0a0807"/>
-  <circle cx="100" cy="180" r="3" fill="#c9a24a"/>
+  <circle cx="100" cy="180" r="3" fill="#FFB000"/>
 </svg>

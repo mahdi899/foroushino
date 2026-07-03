@@ -99,7 +99,7 @@ export default function FounderPage() {
               </Reveal>
               <Reveal delay={0.28}>
                 <div className="mt-6 flex flex-wrap items-center gap-2.5 md:mt-10 md:gap-4">
-                  <LinkButton href="/course/campaign-writing" size="lg" withArrow>
+                  <LinkButton href="/course/campaign-writing" variant="sales" size="lg" withArrow>
                     شروع مسیر با کمپین‌نویسی
                   </LinkButton>
                   <LinkButton href="/academy" variant="ghost" size="lg">
@@ -237,13 +237,13 @@ export default function FounderPage() {
                     >
                       <span
                         aria-hidden
-                        className="inline-flex h-2 w-2 shrink-0 rounded-full bg-gold shadow-[0_0_12px_2px_rgba(197,164,107,0.55)] md:hidden"
+                        className="inline-flex h-2 w-2 shrink-0 rounded-full bg-gold shadow-[0_0_12px_2px_rgba(255,176,0,0.55)] md:hidden"
                       />
                       <p className="font-display text-lg font-semibold num-latin text-gold md:text-h3">{m.year}</p>
                     </div>
                     <div className="hidden md:col-span-2 md:flex md:items-center md:justify-center">
                       <span className="relative inline-flex h-9 w-9 items-center justify-center rounded-pill bg-charcoal ring-1 ring-gold/40">
-                        <span className="h-1.5 w-1.5 rounded-full bg-gold shadow-[0_0_12px_2px_rgba(197,164,107,0.55)]" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-gold shadow-[0_0_12px_2px_rgba(255,176,0,0.55)]" />
                       </span>
                     </div>
                     <div className={`md:col-span-5 ${i % 2 === 0 ? "" : "md:order-1 md:text-end"}`}>
@@ -291,7 +291,7 @@ export default function FounderPage() {
           <div className="neon-cta-slab relative overflow-hidden rounded-card border border-emerald/25 bg-gradient-to-b from-emerald-deep/40 via-charcoal/70 to-ink p-5 sm:p-8 md:p-14">
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_70%_at_85%_10%,rgba(47,176,127,0.22),transparent_70%)]"
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_70%_at_85%_10%,rgba(0,140,150,0.22),transparent_70%)]"
             />
             <div className="relative">
               <IconTile icon={Compass} tone="gold" size="lg" />
@@ -302,7 +302,7 @@ export default function FounderPage() {
                 از کمپین‌نویسی شروع کن؛ مسیر بعدی خودش مشخص می‌شود.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-3 md:mt-10 md:gap-4">
-                <LinkButton href="/course/campaign-writing" size="lg" withArrow>
+                <LinkButton href="/course/campaign-writing" variant="sales" size="lg" withArrow>
                   شروع مسیر
                 </LinkButton>
                 <Link

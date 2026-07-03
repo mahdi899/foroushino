@@ -4,18 +4,21 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { useDataTheme } from "@/lib/useDataTheme";
 
-type Tone = "neutral" | "emerald" | "gold";
+type Tone = "neutral" | "emerald" | "gold" | "sales";
 
 const emeraldDark =
-  "border-emerald/30 bg-emerald-deep/35 text-emerald-glow shadow-[0_0_24px_-12px_rgba(47,176,127,0.6)]";
-/** Paper chip: no neon glow; tint + deep green type (Tailwind wins over layered CSS). */
+  "border-emerald/32 bg-emerald-deep/35 text-[#5fbdbe] shadow-[0_0_18px_rgba(0,140,150,0.18)]";
 const emeraldLight =
-  "border-emerald/22 bg-emerald/[0.085] text-emerald-deep shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_22px_-14px_rgba(15,23,42,0.08)]";
+  "border-emerald/18 bg-emerald/[0.085] text-emerald-deep shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_7px_22px_-14px_rgba(11,31,34,0.08)]";
 
-const neutralTone = "border-bone/12 bg-bone/[0.03] text-bone-dim";
-const goldDark = "border-gold/30 bg-gold/[0.08] text-gold";
+const neutralTone =
+  "border-border-soft bg-bone/[0.03] text-bone-dim";
+const goldDark = "border-gold/30 bg-gold/[0.10] text-gold-soft";
 const goldLight =
-  "border-gold/26 bg-gold/[0.11] text-gold shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_7px_22px_-14px_rgba(92,77,50,0.09)]";
+  "border-gold/24 bg-gold/[0.13] text-[#7a4f00] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_7px_22px_-14px_rgba(255,176,0,0.09)]";
+
+const salesDark = "border-sales/32 bg-sales/[0.12] text-sales-soft";
+const salesLight = "border-sales/22 bg-sales/[0.11] text-[#b84300]";
 
 export function Badge({
   children,
@@ -32,6 +35,7 @@ export function Badge({
     neutral: neutralTone,
     emerald: theme === "light" ? emeraldLight : emeraldDark,
     gold: theme === "light" ? goldLight : goldDark,
+    sales: theme === "light" ? salesLight : salesDark,
   };
 
   return (

@@ -122,6 +122,7 @@ export default async function CourseDetailPage({
                 href="/apply"
                 event="course_cta_click"
                 eventProps={{ course: course.slug, location: "hero" }}
+                variant="sales"
                 size="lg"
               >
                 شروع این مسیر
@@ -292,7 +293,7 @@ export default async function CourseDetailPage({
                       event="course_cta_click"
                       eventProps={{ course: course.slug, tier: tier.name, location: "pricing" }}
                       size="lg"
-                      variant={tier.highlighted ? "primary" : "ghost"}
+                      variant={tier.highlighted ? "sales" : "ghost"}
                       className="w-full"
                     >
                       ثبت‌نام

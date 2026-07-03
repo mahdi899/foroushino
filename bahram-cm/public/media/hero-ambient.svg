@@ -1,20 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" role="img" aria-label="">
   <defs>
     <radialGradient id="ha-1" cx="80%" cy="0%" r="70%">
-      <stop offset="0%" stop-color="#2fb07f" stop-opacity="0.35"/>
-      <stop offset="60%" stop-color="#0e3b2c" stop-opacity="0.15"/>
-      <stop offset="100%" stop-color="#07090a" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#008C96" stop-opacity="0.35"/>
+      <stop offset="60%" stop-color="#003B40" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#050A0B" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="ha-2" cx="10%" cy="90%" r="60%">
-      <stop offset="0%" stop-color="#146b4f" stop-opacity="0.22"/>
-      <stop offset="100%" stop-color="#07090a" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#008C96" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#050A0B" stop-opacity="0"/>
     </radialGradient>
     <linearGradient id="ha-3" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#07090a"/>
-      <stop offset="100%" stop-color="#0e1214"/>
+      <stop offset="0%" stop-color="#050A0B"/>
+      <stop offset="100%" stop-color="#0D1517"/>
     </linearGradient>
     <pattern id="ha-grid" width="48" height="48" patternUnits="userSpaceOnUse">
-      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#f4efe6" stroke-opacity="0.025" stroke-width="0.6"/>
+      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#EAFBFB" stroke-opacity="0.025" stroke-width="0.6"/>
     </pattern>
   </defs>
   <rect width="1600" height="1000" fill="url(#ha-3)"/>
@@ -22,10 +22,10 @@
   <rect width="1600" height="1000" fill="url(#ha-1)"/>
   <rect width="1600" height="1000" fill="url(#ha-2)"/>
   <g opacity="0.55">
-    <circle cx="1280" cy="180" r="2" fill="#c9a24a"/>
-    <circle cx="1380" cy="240" r="1.5" fill="#c9a24a"/>
-    <circle cx="1160" cy="120" r="1" fill="#f4efe6"/>
-    <circle cx="220" cy="780" r="1.5" fill="#2fb07f"/>
-    <circle cx="340" cy="860" r="1" fill="#f4efe6"/>
+    <circle cx="1280" cy="180" r="2" fill="#FFB000"/>
+    <circle cx="1380" cy="240" r="1.5" fill="#FFB000"/>
+    <circle cx="1160" cy="120" r="1" fill="#EAFBFB"/>
+    <circle cx="220" cy="780" r="1.5" fill="#008C96"/>
+    <circle cx="340" cy="860" r="1" fill="#EAFBFB"/>
   </g>
 </svg>

@@ -101,6 +101,7 @@ export default async function EventDetailPage({
                 href={event.registerUrl ?? "/apply"}
                 event="event_register_click"
                 eventProps={{ event: event.slug }}
+                variant="sales"
                 size="lg"
                 withArrow
                 {...(event.registerUrl ? { target: "_blank", rel: "noopener noreferrer" } : {})}

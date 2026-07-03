@@ -198,7 +198,7 @@ export default function ApplyPage() {
             <h2 className="mt-4 text-h2 text-balance">از کمپین‌نویسی شروع کن.</h2>
             <p className="mt-4 text-bone-dim">اول از کمپین‌نویسی.</p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <LinkButton href="/course/campaign-writing" size="lg" withArrow>
+              <LinkButton href="/course/campaign-writing" variant="sales" size="lg" withArrow>
                 مسیر کمپین‌نویسی
               </LinkButton>
               <Link

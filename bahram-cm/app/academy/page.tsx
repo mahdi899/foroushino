@@ -397,7 +397,7 @@ export default function AcademyPage() {
                 کمپین‌نویسی، گام آشنایی؛ بعد، ارزیابی برای ورود.
               </p>
               <div className="mt-6 flex flex-wrap items-center gap-3 md:mt-10 md:gap-4">
-                <LinkButton href="/course/campaign-writing" variant="vip" size="lg" withArrow>
+                <LinkButton href="/course/campaign-writing" variant="sales" size="lg" withArrow>
                   شروع از کمپین‌نویسی
                 </LinkButton>
                 <Link

@@ -33,8 +33,8 @@ export function StatCard({
         className={cn(
           "pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100",
           tone === "gold"
-            ? "bg-[radial-gradient(125%_90%_at_100%_0%,rgba(197,164,107,0.14),transparent_55%)]"
-            : "bg-[radial-gradient(125%_90%_at_100%_0%,rgba(23,138,104,0.12),transparent_55%)]",
+            ? "bg-[radial-gradient(125%_90%_at_100%_0%,rgba(255,176,0,0.14),transparent_55%)]"
+            : "bg-[radial-gradient(125%_90%_at_100%_0%,rgba(0,140,150,0.12),transparent_55%)]",
         )}
       />
       <div className="relative z-[1] flex min-h-full flex-1 flex-col gap-5">

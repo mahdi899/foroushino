@@ -1,32 +1,36 @@
 @import "tailwindcss";
 
 /* =====================================================================
-   Design Tokens — Bahram Rostami public site
+   Design Tokens — Saat / Bahram public site
    Theme-aware: both light & dark share token NAMES; values swap at runtime.
+   emerald* = Saat Teal (token names kept for minimal JSX churn)
    ===================================================================== */
 
 @theme {
-  /* --- Colors (default = dark — pearl smoke / ink) ------------------ */
-  /* Blue-ink blacks: depth without flat gray */
-  --color-ink: #070a0f;
-  --color-obsidian: #0c1017;
-  --color-charcoal: #141a22;
-  --color-charcoal-2: #1b232d;
+  /* --- Colors (default = dark — deep teal ink) ---------------------- */
+  --color-ink: #050a0b;
+  --color-obsidian: #020607;
+  --color-charcoal: #0d1517;
+  --color-charcoal-2: #142326;
 
-  /* Jade + mint highlight — jewelled, not neon */
-  --color-emerald-deep: #0b3d2e;
-  --color-emerald: #178a68;
-  --color-emerald-glow: #4dd4a8;
+  /* Saat Teal — brand, trust, technology */
+  --color-emerald-deep: #003b40;
+  --color-emerald: #008c96;
+  --color-emerald-glow: #25a0a6;
 
-  /* Warm pearl text on dark */
-  --color-bone: #f4efe8;
-  --color-bone-dim: #d6cfc4;
-  --color-mist: #8f98a3;
-  --color-veil: #55606b;
+  /* Smart Gold — revenue, premium, value */
+  --color-gold: #ffb000;
+  --color-gold-soft: #ffe08a;
 
-  /* Champagne / brushed gold — quiet luxury: warm pearl, less yellow than classic #d4af37 */
-  --color-gold: #c5a46b;
-  --color-gold-soft: #eee2c8;
+  /* Sales Orange — conversion, urgency */
+  --color-sales: #ff6b00;
+  --color-sales-soft: #ffa24d;
+
+  /* Text hierarchy */
+  --color-bone: #eafbfb;
+  --color-bone-dim: #95b4b8;
+  --color-mist: #5f7f83;
+  --color-veil: #33494d;
 
   /* --- Typography ---------------------------------------------------- */
   --font-display: var(--font-yekan-bakh), "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
@@ -88,101 +92,100 @@
 */
 @layer theme {
   :root {
-    /* Rim light + depth — slight cool pearl on the edge */
+    --color-border-soft: rgba(234, 251, 251, 0.09);
+    --color-border-strong: rgba(234, 251, 251, 0.2);
+
     --shadow-veil-resolved:
-      0 1px 0 rgba(232, 240, 255, 0.055) inset,
-      0 28px 70px -24px rgba(0, 0, 0, 0.58);
+      inset 0 1px 0 rgba(234, 251, 251, 0.06),
+      0 18px 44px rgba(2, 6, 7, 0.55);
     --shadow-aura-resolved:
-      0 0 140px -12px rgba(77, 212, 168, 0.28),
-      0 0 80px -20px rgba(197, 164, 107, 0.12);
+      0 0 32px rgba(0, 140, 150, 0.18),
+      0 0 48px rgba(255, 176, 0, 0.1);
     --shadow-gold-resolved:
-      0 0 0 1px rgba(238, 226, 200, 0.2),
-      0 16px 48px -18px rgba(197, 164, 107, 0.26);
+      0 0 0 1px rgba(255, 176, 0, 0.22),
+      0 0 32px rgba(255, 176, 0, 0.18);
     --shadow-frame-resolved:
-      0 1px 0 rgba(232, 240, 255, 0.06) inset,
-      0 36px 90px -32px rgba(0, 0, 0, 0.68);
+      0 24px 80px rgba(2, 6, 7, 0.62);
     --hero-vignette:
       radial-gradient(
         120% 90% at 50% -15%,
-        rgba(77, 212, 168, 0.07) 0%,
+        rgba(37, 160, 166, 0.08) 0%,
         transparent 52%
       ),
       radial-gradient(
         80% 60% at 50% 0%,
         transparent 0%,
-        rgba(7, 10, 15, 0.72) 80%
+        rgba(5, 10, 11, 0.72) 80%
       );
 
-    /* HeroCinematic animated sheen — tokenized so light mode stays airy (no muddy green wash) */
     --hero-sheen-gradient:
       linear-gradient(
         115deg,
-        color-mix(in oklab, rgb(20 107 79) 8%, transparent) 0%,
+        color-mix(in oklab, rgb(0 140 150) 8%, transparent) 0%,
         transparent 30%,
-        color-mix(in oklab, rgb(197 164 107) 9%, transparent) 55%,
+        color-mix(in oklab, rgb(255 176 0) 9%, transparent) 55%,
         transparent 80%
       );
 
-    /* Primary CTA label: bone on teal; hover flips to ink on mint (see .neon-btn-primary rules) */
     --btn-primary-fg: var(--color-bone);
     --btn-primary-fg-hover: var(--color-ink);
 
-    /* Neon accents (dark only — “neon morphism” rim + bloom, 2024–2025 trend) */
-    --neon-accent: #48f0c8;
-    --neon-accent-strong: color-mix(in oklab, #48f0c8 55%, #7dfce6);
-    --neon-accent-soft: color-mix(in oklab, var(--neon-accent) 32%, transparent);
-    --neon-accent-faint: color-mix(in oklab, var(--neon-accent) 14%, transparent);
-    --neon-accent-wire: color-mix(in oklab, var(--neon-accent) 24%, transparent);
+    /* Neon accents (dark only — Saat Teal + Gold, not cyber mint) */
+    --neon-accent: #25a0a6;
+    --neon-accent-strong: #5fbdbe;
+    --neon-accent-soft: rgba(37, 160, 166, 0.28);
+    --neon-accent-faint: rgba(37, 160, 166, 0.12);
+    --neon-accent-wire: rgba(37, 160, 166, 0.22);
   }
 
   [data-theme="light"] {
     color-scheme: light;
 
-    /*
-     * Light = cool editorial paper + pure white lifts (contrast with dark’s warm pearl).
-     * Avoid muddy beige / brown secondary text — same luxury discipline as dark tokens.
-     */
-    --color-ink: #e8eaef;
-    --color-obsidian: #d9dde5;
+    --color-ink: #f8fbfb;
+    --color-obsidian: #f2f7f7;
     --color-charcoal: #ffffff;
-    --color-charcoal-2: #f2f4f8;
+    --color-charcoal-2: #f2f7f7;
 
-    --color-emerald-deep: #0a3f32;
-    /* CTA green: slightly brighter on paper so it doesn’t read as a heavy slab */
-    --color-emerald: #0d7a62;
-    --color-emerald-glow: #14a884;
+    --color-emerald-deep: #003b40;
+    --color-emerald: #006f75;
+    --color-emerald-glow: #008c96;
 
-    --color-bone: #0b0f14;
-    --color-bone-dim: #2f3842;
-    --color-mist: #55606c;
-    --color-veil: #7d8793;
+    --color-gold: #ffb000;
+    --color-gold-soft: #ffe08a;
 
-    --color-gold: #5c4d32;
-    --color-gold-soft: #c9b08c;
+    --color-sales: #ff6b00;
+    --color-sales-soft: #ffa24d;
+
+    --color-bone: #0b1f22;
+    --color-bone-dim: #52676a;
+    --color-mist: #647e82;
+    --color-veil: #8ba8ac;
+
+    --color-border-soft: rgba(11, 31, 34, 0.09);
+    --color-border-strong: rgba(11, 31, 34, 0.18);
 
     --shadow-veil-resolved:
-      0 1px 0 rgba(255, 255, 255, 0.98) inset,
-      0 18px 48px -22px rgba(15, 23, 42, 0.1);
+      inset 0 1px 0 rgba(255, 255, 255, 0.85),
+      0 18px 44px rgba(11, 31, 34, 0.1);
     --shadow-aura-resolved:
-      0 0 72px -20px rgba(20, 167, 132, 0.12),
-      0 0 44px -24px rgba(92, 77, 50, 0.07);
+      0 0 30px rgba(0, 111, 117, 0.12),
+      0 0 40px rgba(255, 176, 0, 0.08);
     --shadow-gold-resolved:
-      0 0 0 1px rgba(92, 77, 50, 0.12),
-      0 14px 40px -18px rgba(92, 77, 50, 0.14);
+      0 0 0 1px rgba(255, 176, 0, 0.28),
+      0 18px 38px rgba(255, 176, 0, 0.14);
     --shadow-frame-resolved:
-      0 1px 0 rgba(255, 255, 255, 0.95) inset,
-      0 26px 68px -30px rgba(15, 23, 42, 0.12);
+      0 24px 70px rgba(11, 31, 34, 0.14);
 
     --hero-vignette:
       radial-gradient(
         120% 90% at 50% -15%,
-        rgba(20, 167, 132, 0.05) 0%,
+        rgba(0, 140, 150, 0.05) 0%,
         transparent 50%
       ),
       radial-gradient(
         80% 60% at 50% 0%,
         transparent 0%,
-        rgba(216, 222, 232, 0.75) 80%
+        rgba(242, 247, 247, 0.75) 80%
       );
 
     --hero-sheen-gradient:
@@ -194,7 +197,7 @@
         transparent 82%
       );
 
-    --btn-primary-fg: #fafdfb;
+    --btn-primary-fg: #ffffff;
     --btn-primary-fg-hover: #ffffff;
 
     --neon-accent: transparent;
@@ -247,7 +250,7 @@
   }
 
   ::selection {
-    background-color: color-mix(in oklab, var(--color-emerald-glow) 35%, transparent);
+    background-color: rgba(255, 176, 0, 0.32);
     color: var(--color-bone);
   }
 
@@ -300,30 +303,35 @@
     background: linear-gradient(
       to left,
       transparent,
-      color-mix(in oklab, var(--color-gold) 60%, transparent) 30%,
-      color-mix(in oklab, var(--color-gold) 60%, transparent) 70%,
+      rgba(255, 176, 0, 0.65) 30%,
+      rgba(255, 176, 0, 0.65) 70%,
       transparent
     );
   }
 
   .glass {
-    background-color: color-mix(in oklab, var(--color-charcoal) 60%, transparent);
-    backdrop-filter: blur(24px) saturate(140%);
-    -webkit-backdrop-filter: blur(24px) saturate(140%);
-    border: 1px solid color-mix(in oklab, var(--color-bone) 6%, transparent);
+    background-color: rgba(13, 21, 23, 0.66);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid rgba(234, 251, 251, 0.08);
+  }
+
+  [data-theme="light"] .glass {
+    background-color: rgba(255, 255, 255, 0.76);
+    border: 1px solid rgba(11, 31, 34, 0.08);
   }
 
   .wash-emerald {
     background:
       radial-gradient(
-        80% 60% at 85% 0%,
-        color-mix(in oklab, var(--color-emerald-deep) 50%, transparent) 0%,
-        transparent 60%
+        circle at 30% 20%,
+        rgba(0, 140, 150, 0.22) 0%,
+        transparent 38%
       ),
       radial-gradient(
-        50% 40% at 10% 100%,
-        color-mix(in oklab, var(--color-emerald-deep) 30%, transparent) 0%,
-        transparent 70%
+        circle at 80% 80%,
+        rgba(255, 176, 0, 0.12) 0%,
+        transparent 34%
       );
   }
 
@@ -416,20 +424,16 @@
   .placeholder-radial {
     background:
       radial-gradient(
-        60% 60% at 50% 40%,
-        color-mix(in oklab, var(--color-emerald-deep) 60%, transparent) 0%,
-        transparent 70%
+        circle at 30% 20%,
+        rgba(0, 140, 150, 0.22) 0%,
+        transparent 32%
       ),
       radial-gradient(
-        80% 60% at 80% 90%,
-        color-mix(in oklab, var(--color-gold) 25%, transparent) 0%,
-        transparent 70%
+        circle at 70% 80%,
+        rgba(255, 107, 0, 0.14) 0%,
+        transparent 34%
       ),
-      linear-gradient(
-        135deg,
-        color-mix(in oklab, var(--color-obsidian) 100%, transparent) 0%,
-        color-mix(in oklab, var(--color-charcoal) 100%, transparent) 100%
-      );
+      var(--color-surface);
   }
 
   /* Reading prose */
@@ -528,32 +532,39 @@
   }
 
   /*
-   * Neon edge + bloom (dark theme only). Trending “neon morphism” looks:
-   * thin luminous rim, layered outer glow — cyan for emerald/bone, amber for gold.
+   * Neon edge + bloom (dark theme only). Saat Teal + Smart Gold + Sales Orange.
    */
   html:not([data-theme="light"]) [data-neon-tone="gold"] {
-    --neon-accent: #d4c4a3;
-    --neon-accent-strong: color-mix(in oklab, #ebe0cc 52%, #a89470);
-    --neon-accent-soft: color-mix(in oklab, var(--neon-accent) 30%, transparent);
-    --neon-accent-faint: color-mix(in oklab, var(--neon-accent) 13%, transparent);
-    --neon-accent-wire: color-mix(in oklab, var(--neon-accent) 26%, transparent);
+    --neon-accent: #ffb000;
+    --neon-accent-strong: #ffe08a;
+    --neon-accent-soft: rgba(255, 176, 0, 0.24);
+    --neon-accent-faint: rgba(255, 176, 0, 0.12);
+    --neon-accent-wire: rgba(255, 176, 0, 0.22);
   }
 
-  /* Academy teaser: antique gold rim + bloom (no emerald spill — luxe slab) */
+  html:not([data-theme="light"]) [data-neon-tone="sales"] {
+    --neon-accent: #ff6b00;
+    --neon-accent-strong: #ffa24d;
+    --neon-accent-soft: rgba(255, 107, 0, 0.24);
+    --neon-accent-faint: rgba(255, 107, 0, 0.12);
+    --neon-accent-wire: rgba(255, 107, 0, 0.22);
+  }
+
+  /* Academy teaser: smart gold rim + bloom */
   html:not([data-theme="light"]) .academy-teaser-luxe,
   html:not([data-theme="light"]) .academy-teaser-luxe [data-neon-tone="gold"] {
-    --neon-accent: #8b7a58;
-    --neon-accent-strong: color-mix(in oklab, #c5a46b 50%, #3a3224);
-    --neon-accent-soft: color-mix(in oklab, var(--neon-accent) 22%, transparent);
-    --neon-accent-faint: color-mix(in oklab, var(--neon-accent) 8%, transparent);
-    --neon-accent-wire: color-mix(in oklab, var(--neon-accent) 16%, transparent);
+    --neon-accent: #ffb000;
+    --neon-accent-strong: #ffe08a;
+    --neon-accent-soft: rgba(255, 176, 0, 0.24);
+    --neon-accent-faint: rgba(255, 176, 0, 0.12);
+    --neon-accent-wire: rgba(255, 176, 0, 0.22);
   }
 
   html:not([data-theme="light"]) .academy-teaser-luxe .neon-btn-primary {
     box-shadow:
       0 0 0 1px var(--neon-accent-wire),
       0 0 26px -10px var(--neon-accent-soft),
-      0 10px 40px -12px color-mix(in oklab, var(--neon-accent) 36%, rgba(7, 10, 15, 0.52));
+      0 10px 40px -12px color-mix(in oklab, var(--neon-accent) 36%, rgba(5, 10, 11, 0.52));
   }
 
   html:not([data-theme="light"]) .academy-teaser-luxe .neon-btn-primary:hover {
@@ -561,22 +572,52 @@
       0 0 0 1px color-mix(in oklab, var(--neon-accent-strong) 40%, transparent),
       0 0 42px -6px var(--neon-accent-soft),
       0 0 78px -20px var(--neon-accent-faint),
-      0 12px 46px -10px color-mix(in oklab, var(--neon-accent) 30%, rgba(7, 10, 15, 0.45));
+      0 12px 46px -10px color-mix(in oklab, var(--neon-accent) 30%, rgba(5, 10, 11, 0.45));
   }
 
-  html:not([data-theme="light"]) .neon-btn-primary {
+  html:not([data-theme="light"]) .neon-btn-primary:not(.sales-cta):not(.neon-btn-vip) {
     box-shadow:
       0 0 0 1px var(--neon-accent-wire),
-      0 0 26px -10px var(--neon-accent-soft),
-      0 10px 40px -12px rgba(20, 107, 79, 0.58);
+      0 0 22px rgba(0, 140, 150, 0.28),
+      0 10px 40px -12px rgba(0, 111, 117, 0.42);
   }
 
-  html:not([data-theme="light"]) .neon-btn-primary:hover {
+  html:not([data-theme="light"]) .neon-btn-primary:not(.sales-cta):not(.neon-btn-vip):hover {
     box-shadow:
       0 0 0 1px color-mix(in oklab, var(--neon-accent-strong) 42%, transparent),
       0 0 42px -6px var(--neon-accent-soft),
       0 0 78px -20px var(--neon-accent-faint),
-      0 12px 46px -10px rgba(18, 95, 72, 0.52);
+      0 12px 46px -10px rgba(0, 111, 117, 0.38);
+  }
+
+  html:not([data-theme="light"]) .neon-btn-vip {
+    background: linear-gradient(135deg, #ffb000 0%, #ffe08a 100%);
+    color: #1a1200;
+    box-shadow:
+      0 0 0 1px rgba(255, 176, 0, 0.22),
+      0 0 24px rgba(255, 176, 0, 0.26);
+  }
+
+  html:not([data-theme="light"]) .neon-btn-vip:hover {
+    box-shadow:
+      0 0 0 1px rgba(255, 224, 138, 0.32),
+      0 0 32px rgba(255, 176, 0, 0.32),
+      0 12px 40px -10px rgba(255, 176, 0, 0.22);
+  }
+
+  html:not([data-theme="light"]) .sales-cta {
+    background: linear-gradient(135deg, #ffb000 0%, #ff6b00 100%);
+    color: #1a1200;
+    box-shadow:
+      0 0 24px rgba(255, 176, 0, 0.24),
+      0 16px 38px rgba(255, 107, 0, 0.22);
+  }
+
+  html:not([data-theme="light"]) .sales-cta:hover {
+    box-shadow:
+      0 0 0 1px rgba(255, 107, 0, 0.28),
+      0 0 32px rgba(255, 176, 0, 0.28),
+      0 20px 44px rgba(255, 107, 0, 0.26);
   }
 
   html:not([data-theme="light"]) .neon-btn-ghost {
@@ -584,9 +625,16 @@
   }
 
   html:not([data-theme="light"]) .neon-btn-ghost:hover {
+    background: rgba(0, 140, 150, 0.1);
+    border-color: rgba(0, 140, 150, 0.28);
     box-shadow:
       0 0 0 1px var(--neon-accent-wire),
       0 0 34px -12px var(--neon-accent-soft);
+  }
+
+  [data-theme="light"] .neon-btn-ghost:hover {
+    background: rgba(0, 140, 150, 0.1);
+    border-color: rgba(0, 140, 150, 0.28);
   }
 
   /* Cards: glow only on hover */
@@ -622,34 +670,60 @@
       var(--shadow-aura-resolved);
   }
 
-  /* Light theme: neutral lift + faint mint (avoid heavy forest-green bloom under the button) */
-  [data-theme="light"] .neon-btn-primary {
+  /* Light theme: neutral lift + faint teal bloom */
+  [data-theme="light"] .neon-btn-primary:not(.sales-cta):not(.neon-btn-vip) {
     box-shadow:
-      0 6px 22px -8px rgba(15, 23, 42, 0.11),
-      0 2px 10px -4px color-mix(in oklab, var(--color-emerald-glow) 16%, transparent);
+      0 10px 24px rgba(0, 111, 117, 0.24);
   }
 
-  [data-theme="light"] .neon-btn-primary:hover {
+  [data-theme="light"] .neon-btn-primary:not(.sales-cta):not(.neon-btn-vip):hover {
     box-shadow:
-      0 10px 30px -10px rgba(15, 23, 42, 0.1),
-      0 4px 14px -4px color-mix(in oklab, var(--color-emerald-glow) 20%, transparent);
+      0 12px 28px rgba(0, 111, 117, 0.28);
   }
 
-  /* Emerald primary only — VIP/gold keeps its own `text-neutral-950` */
-  .neon-btn-primary:not([data-neon-tone="gold"]) {
+  [data-theme="light"] .neon-btn-vip {
+    background: linear-gradient(135deg, #ffb000 0%, #ffe08a 100%);
+    color: #1a1200;
+    box-shadow:
+      0 6px 22px -8px rgba(11, 31, 34, 0.1),
+      0 0 24px rgba(255, 176, 0, 0.2);
+  }
+
+  [data-theme="light"] .neon-btn-vip:hover {
+    box-shadow:
+      0 10px 28px -10px rgba(11, 31, 34, 0.09),
+      0 0 32px rgba(255, 176, 0, 0.24);
+  }
+
+  [data-theme="light"] .sales-cta {
+    background: linear-gradient(135deg, #ffb000 0%, #ff6b00 100%);
+    color: #1a1200;
+    box-shadow: 0 12px 28px rgba(255, 107, 0, 0.28);
+  }
+
+  [data-theme="light"] .sales-cta:hover {
+    box-shadow: 0 16px 34px rgba(255, 107, 0, 0.32);
+  }
+
+  [data-theme="light"] .sales-cta:focus-visible {
+    outline-color: var(--color-gold);
+  }
+
+  /* Teal primary only — VIP/sales keep their own label colors */
+  .neon-btn-primary:not([data-neon-tone="gold"]):not([data-neon-tone="sales"]):not(.neon-btn-vip):not(.sales-cta) {
     color: var(--btn-primary-fg);
   }
 
-  .neon-btn-primary:not([data-neon-tone="gold"]):hover {
+  .neon-btn-primary:not([data-neon-tone="gold"]):not([data-neon-tone="sales"]):not(.neon-btn-vip):not(.sales-cta):hover {
     color: var(--btn-primary-fg-hover);
   }
 
   [data-theme="light"] .academy-teaser-luxe .neon-btn-primary {
-    box-shadow: 0 10px 40px -12px color-mix(in oklab, var(--color-gold) 42%, rgba(24, 20, 16, 0.35));
+    box-shadow: 0 10px 40px -12px color-mix(in oklab, var(--color-gold) 42%, rgba(11, 31, 34, 0.35));
   }
 
   [data-theme="light"] .academy-teaser-luxe .neon-btn-primary:hover {
-    box-shadow: 0 14px 46px -11px color-mix(in oklab, var(--color-gold) 38%, rgba(24, 20, 16, 0.28));
+    box-shadow: 0 14px 46px -11px color-mix(in oklab, var(--color-gold) 38%, rgba(11, 31, 34, 0.28));
   }
 
   [data-theme="light"] .neon-surface-static {
@@ -685,7 +759,7 @@
   }
 
   [data-theme="light"] .neon-cta-slab:hover {
-    box-shadow: 0 18px 50px -20px rgba(40, 36, 48, 0.12);
+    box-shadow: 0 18px 50px -20px rgba(11, 31, 34, 0.12);
   }
 
   /* Pinned / hero panels that use --shadow-frame */
@@ -746,7 +820,7 @@ html[data-theme="light"] .icon-tile[data-icon-tile-tone="emerald"] {
   box-shadow:
     inset 0 0 0 1px color-mix(in oklab, var(--color-emerald) 22%, var(--color-obsidian)),
     inset 0 1px 0 color-mix(in oklab, white 88%, transparent),
-    0 12px 36px -18px rgba(15, 23, 42, 0.1);
+    0 12px 36px -18px rgba(11, 31, 34, 0.1);
 }
 
 html[data-theme="light"] .icon-tile[data-icon-tile-tone="emerald"] svg {
@@ -758,7 +832,7 @@ html[data-theme="light"] .icon-tile[data-icon-tile-tone="gold"] {
   box-shadow:
     inset 0 0 0 1px color-mix(in oklab, var(--color-gold) 28%, var(--color-obsidian)),
     inset 0 1px 0 color-mix(in oklab, white 90%, transparent),
-    0 12px 36px -18px rgba(92, 77, 50, 0.12);
+    0 12px 36px -18px rgba(255, 176, 0, 0.12);
 }
 
 html[data-theme="light"] .icon-tile[data-icon-tile-tone="bone"] {
@@ -797,20 +871,20 @@ html[data-theme="light"] .well-emerald-chip svg {
 }
 
 /*
- * VIP / gold primary CTA — light: champagne slab + ink type (token `bg-gold` is too dark for a pill).
+ * VIP / gold primary CTA — gradient slab + ink type on bright gold.
  */
-html[data-theme="light"] .neon-btn-primary[data-neon-tone="gold"] {
-  background-color: color-mix(in oklab, var(--color-gold-soft) 48%, var(--color-gold));
-  color: var(--color-bone);
+html[data-theme="light"] .neon-btn-primary[data-neon-tone="gold"],
+html[data-theme="light"] .neon-btn-vip {
+  background: linear-gradient(135deg, #ffb000 0%, #ffe08a 100%);
+  color: #1a1200;
   box-shadow:
-    0 6px 22px -8px rgba(15, 23, 42, 0.1),
-    0 2px 10px -4px color-mix(in oklab, var(--color-gold) 18%, rgba(15, 23, 42, 0.04));
+    0 6px 22px -8px rgba(11, 31, 34, 0.1),
+    0 0 24px rgba(255, 176, 0, 0.2);
 }
 
-html[data-theme="light"] .neon-btn-primary[data-neon-tone="gold"]:hover {
-  background-color: color-mix(in oklab, var(--color-gold-soft) 62%, var(--color-charcoal));
-  color: var(--color-bone);
+html[data-theme="light"] .neon-btn-primary[data-neon-tone="gold"]:hover,
+html[data-theme="light"] .neon-btn-vip:hover {
   box-shadow:
-    0 10px 28px -10px rgba(15, 23, 42, 0.09),
-    0 3px 12px -4px color-mix(in oklab, var(--color-gold) 14%, transparent);
+    0 10px 28px -10px rgba(11, 31, 34, 0.09),
+    0 0 32px rgba(255, 176, 0, 0.24);
 }

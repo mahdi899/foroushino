@@ -1,20 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" role="img" aria-label="">
   <defs>
     <radialGradient id="hal-1" cx="82%" cy="0%" r="72%">
-      <stop offset="0%" stop-color="#14a884" stop-opacity="0.14"/>
-      <stop offset="55%" stop-color="#0d7a62" stop-opacity="0.05"/>
-      <stop offset="100%" stop-color="#e8eaef" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#25A0A6" stop-opacity="0.14"/>
+      <stop offset="55%" stop-color="#006F75" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#F8FBFB" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="hal-2" cx="12%" cy="92%" r="62%">
-      <stop offset="0%" stop-color="#c9b08c" stop-opacity="0.1"/>
-      <stop offset="100%" stop-color="#e8eaef" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#FFE08A" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#F8FBFB" stop-opacity="0"/>
     </radialGradient>
     <linearGradient id="hal-3" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#f1f3f7"/>
-      <stop offset="100%" stop-color="#e4e8ef"/>
+      <stop offset="0%" stop-color="#F2F7F7"/>
+      <stop offset="100%" stop-color="#F2F7F7"/>
     </linearGradient>
     <pattern id="hal-grid" width="48" height="48" patternUnits="userSpaceOnUse">
-      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#0b0f14" stroke-opacity="0.035" stroke-width="0.6"/>
+      <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#0B1F22" stroke-opacity="0.035" stroke-width="0.6"/>
     </pattern>
   </defs>
   <rect width="1600" height="1000" fill="url(#hal-3)"/>
@@ -22,10 +22,10 @@
   <rect width="1600" height="1000" fill="url(#hal-1)"/>
   <rect width="1600" height="1000" fill="url(#hal-2)"/>
   <g opacity="0.42">
-    <circle cx="1280" cy="180" r="2" fill="#b8985c"/>
-    <circle cx="1380" cy="240" r="1.5" fill="#a88a55"/>
+    <circle cx="1280" cy="180" r="2" fill="#FFB000"/>
+    <circle cx="1380" cy="240" r="1.5" fill="#FFB000"/>
     <circle cx="1160" cy="120" r="1" fill="#5c6570"/>
-    <circle cx="220" cy="780" r="1.5" fill="#2a9d7a"/>
+    <circle cx="220" cy="780" r="1.5" fill="#008C96"/>
     <circle cx="340" cy="860" r="1" fill="#6b7380"/>
   </g>
 </svg>
