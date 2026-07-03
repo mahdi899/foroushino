@@ -664,54 +664,12 @@
     );
   }
 
-  /* Manifesto — white editorial band (theme-independent surface) */
-  .manifesto-section {
-    background-color: #ffffff;
-    color: #0b1f22;
-  }
-
-  .manifesto-text {
-    color: #0b1f22;
-  }
-
-  .manifesto-text-dim {
-    color: #52676a;
-  }
-
-  .manifesto-text-muted {
-    color: #647e82;
-  }
-
-  .manifesto-line-accent {
-    background-image: linear-gradient(
-      to left,
-      #008c96 0%,
-      #006f75 52%,
-      #003b40 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-
-  .manifesto-editorial {
-    background-color: #f8fbfb;
-    border: 1px solid rgba(11, 31, 34, 0.08);
-    box-shadow: 0 18px 48px -32px rgba(11, 31, 34, 0.1);
-  }
-
+  /* Manifesto — layout (theme colors unlayered below) */
   .manifesto-accent-bar {
     inset-inline-start: 0;
     top: 12%;
     bottom: 12%;
     width: 2px;
-    background: linear-gradient(
-      to bottom,
-      transparent,
-      rgba(255, 176, 0, 0.55) 30%,
-      rgba(255, 176, 0, 0.55) 70%,
-      transparent
-    );
   }
 
   .manifesto-line-index {
@@ -719,12 +677,36 @@
     font-size: 0.6875rem;
     font-weight: 600;
     letter-spacing: 0.22em;
-    color: rgba(0, 111, 117, 0.62);
   }
 
   .manifesto-photo-stack {
     min-height: clamp(18rem, 42vw, 26rem);
     padding-bottom: 0.5rem;
+  }
+
+  /* How it works — outcome chips readable on light cards */
+  .how-outcome-chip--emerald {
+    border-color: color-mix(in oklab, var(--color-emerald-glow) 22%, transparent);
+    background-color: color-mix(in oklab, var(--color-emerald-glow) 8%, transparent);
+    color: color-mix(in oklab, var(--color-emerald-glow) 92%, var(--color-bone));
+  }
+
+  .how-outcome-chip--gold {
+    border-color: color-mix(in oklab, var(--color-gold) 28%, transparent);
+    background-color: color-mix(in oklab, var(--color-gold) 10%, transparent);
+    color: var(--color-gold);
+  }
+
+  [data-theme="light"] .how-outcome-chip--emerald {
+    border-color: color-mix(in oklab, var(--color-emerald) 32%, transparent);
+    background-color: color-mix(in oklab, var(--color-emerald-glow) 12%, white);
+    color: var(--color-emerald-deep);
+  }
+
+  [data-theme="light"] .how-outcome-chip--gold {
+    border-color: color-mix(in oklab, var(--color-gold) 42%, transparent);
+    background-color: color-mix(in oklab, var(--color-gold) 16%, white);
+    color: #8a5800;
   }
 
   [data-theme="light"] .hero-stats-glass {
@@ -1135,6 +1117,122 @@
 }
 
 /*
+ * ManifestoShift — unlayered theme surfaces (utilities layer loses cascade for bg).
+ */
+html:not([data-theme="light"]) .manifesto-section {
+  border-top: 1px solid rgba(234, 251, 251, 0.08);
+  background-color: #020607;
+  color: #eafbfb;
+}
+
+html:not([data-theme="light"]) .manifesto-text {
+  color: #eafbfb;
+}
+
+html:not([data-theme="light"]) .manifesto-text-dim {
+  color: #95b4b8;
+}
+
+html:not([data-theme="light"]) .manifesto-text-muted {
+  color: #647e82;
+}
+
+html:not([data-theme="light"]) .manifesto-line-accent {
+  background-image: linear-gradient(
+    105deg,
+    #25a0a6 0%,
+    #eafbfb 38%,
+    #5fbdbe 72%,
+    #25a0a6 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html:not([data-theme="light"]) .manifesto-editorial {
+  background-color: rgba(13, 21, 23, 0.88);
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
+  border: 1px solid rgba(234, 251, 251, 0.1);
+  box-shadow:
+    inset 0 1px 0 rgba(234, 251, 251, 0.06),
+    0 24px 64px -36px rgba(2, 6, 7, 0.62);
+}
+
+html:not([data-theme="light"]) .manifesto-accent-bar {
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(255, 176, 0, 0.55) 30%,
+    rgba(37, 160, 166, 0.45) 70%,
+    transparent
+  );
+}
+
+html:not([data-theme="light"]) .manifesto-line-index {
+  color: rgba(255, 176, 0, 0.58);
+}
+
+html:not([data-theme="light"]) .manifesto-signature {
+  border-top: 1px solid rgba(234, 251, 251, 0.1);
+}
+
+html[data-theme="light"] .manifesto-section {
+  border-top: 1px solid rgba(11, 31, 34, 0.08);
+  background-color: #ffffff;
+  color: #0b1f22;
+}
+
+html[data-theme="light"] .manifesto-text {
+  color: #0b1f22;
+}
+
+html[data-theme="light"] .manifesto-text-dim {
+  color: #52676a;
+}
+
+html[data-theme="light"] .manifesto-text-muted {
+  color: #647e82;
+}
+
+html[data-theme="light"] .manifesto-line-accent {
+  background-image: linear-gradient(
+    to left,
+    #008c96 0%,
+    #006f75 52%,
+    #003b40 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html[data-theme="light"] .manifesto-editorial {
+  background-color: #f8fbfb;
+  border: 1px solid rgba(11, 31, 34, 0.08);
+  box-shadow: 0 18px 48px -32px rgba(11, 31, 34, 0.1);
+}
+
+html[data-theme="light"] .manifesto-accent-bar {
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(255, 176, 0, 0.55) 30%,
+    rgba(255, 176, 0, 0.55) 70%,
+    transparent
+  );
+}
+
+html[data-theme="light"] .manifesto-line-index {
+  color: rgba(0, 111, 117, 0.62);
+}
+
+html[data-theme="light"] .manifesto-signature {
+  border-top: 1px solid rgba(11, 31, 34, 0.08);
+}
+
+/*
  * IconTile must stay a Server Component (Lucide icons are functions — not serializable
  * to Client Components). Light styling lives here, unlayered, so it wins over @layer utilities.
  */
@@ -1237,6 +1335,148 @@ html[data-theme="light"] .sales-cta {
 
 html[data-theme="light"] .sales-cta:hover {
   box-shadow: 0 16px 34px rgba(255, 107, 0, 0.32);
+}
+
+/* Academy teaser — editorial panel on gold band */
+.academy-teaser-editorial {
+  border: 1px solid color-mix(in oklab, var(--on-gold-ink) 4%, transparent);
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in oklab, white 22%, transparent) 0%,
+      color-mix(in oklab, white 12%, transparent) 55%,
+      color-mix(in oklab, var(--on-gold-ink) 2%, transparent) 100%
+    );
+  backdrop-filter: blur(12px) saturate(112%);
+  -webkit-backdrop-filter: blur(12px) saturate(112%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 16px 48px -36px rgba(5, 10, 11, 0.14);
+}
+
+.academy-teaser-editorial-glow {
+  inset-inline-end: -12%;
+  top: -28%;
+  width: min(52%, 16rem);
+  height: 72%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.22) 0%,
+    transparent 68%
+  );
+  opacity: 0.55;
+}
+
+.academy-teaser-accent-bar {
+  inset-inline-start: 0;
+  top: 8%;
+  bottom: 8%;
+  width: 2px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(0, 140, 150, 0.55) 38%,
+    rgba(5, 10, 11, 0.42) 62%,
+    transparent
+  );
+}
+
+.academy-teaser-copy {
+  padding-inline-end: 0.25rem;
+}
+
+.academy-teaser-features {
+  border-top: 1px solid color-mix(in oklab, var(--on-gold-ink) 5%, transparent);
+  padding-block: 1.125rem;
+}
+
+.academy-teaser-actions {
+  border-top: 1px solid color-mix(in oklab, var(--on-gold-ink) 5%, transparent);
+  padding-top: 1.25rem;
+}
+
+.academy-teaser-feature-index {
+  color: color-mix(in oklab, var(--on-gold-ink) 48%, transparent);
+  font-family: var(--font-latin);
+}
+
+@media (min-width: 640px) {
+  .academy-teaser-features {
+    --academy-feature-gap: 1.5rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding-block: 1.25rem;
+  }
+
+  .academy-teaser-feature {
+    position: relative;
+  }
+
+  .academy-teaser-feature:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    inset-inline-end: calc(var(--academy-feature-gap) / -2);
+    top: 0.625rem;
+    bottom: 0.625rem;
+    width: 1px;
+    background: color-mix(in oklab, var(--on-gold-ink) 5%, transparent);
+  }
+
+  .academy-teaser-actions {
+    padding-top: 1.375rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .academy-teaser-features {
+    --academy-feature-gap: 2rem;
+    padding-block: 1.375rem;
+  }
+
+  .academy-teaser-actions {
+    padding-top: 1.5rem;
+  }
+}
+
+/* Academy teaser — eyebrow inside editorial panel */
+.academy-teaser-luxe .academy-teaser-editorial .academy-teaser-eyebrow {
+  border: none;
+  background: transparent;
+  padding: 0;
+  backdrop-filter: none;
+  box-shadow: none;
+  color: var(--on-gold-ink-muted);
+}
+
+.academy-teaser-luxe .academy-teaser-editorial .academy-teaser-eyebrow > span:first-child {
+  background: var(--on-gold-ink-strong);
+}
+
+.academy-teaser-luxe .academy-teaser-editorial .academy-teaser-eyebrow > span:last-child {
+  color: var(--on-gold-ink-muted);
+  font-weight: 600;
+  letter-spacing: 0.22em;
+}
+
+/* Academy teaser — eyebrow on gold band (frosted pill, matches perk chips) */
+.academy-teaser-luxe .academy-teaser-eyebrow {
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--on-gold-border);
+  background: color-mix(in oklab, white 44%, transparent);
+  padding: 0.25rem 0.75rem;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--on-gold-ink-strong);
+  backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.58);
+}
+
+.academy-teaser-luxe .academy-teaser-eyebrow > span:first-child {
+  background: var(--on-gold-ink-strong);
+}
+
+.academy-teaser-luxe .academy-teaser-eyebrow > span:last-child {
+  color: var(--on-gold-ink-strong);
+  font-weight: 600;
 }
 
 /* Academy teaser — ghost CTA on smart-gold band (unlayered, beats text-bone utilities) */

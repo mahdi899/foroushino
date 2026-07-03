@@ -84,6 +84,13 @@ function FlowGlowRail({ reduceMotion }: { reduceMotion: boolean }) {
 
 type StepTone = "emerald" | "gold";
 
+function outcomeChipClass(tone: StepTone) {
+  return cn(
+    "how-outcome-chip max-w-full truncate px-3 py-1 text-caption whitespace-nowrap",
+    tone === "gold" ? "how-outcome-chip--gold" : "how-outcome-chip--emerald",
+  );
+}
+
 function StepCard({
   step,
   tone,
@@ -125,14 +132,7 @@ function StepCard({
       <div className={cn("relative z-[1] flex flex-col", stretch && "min-h-0 flex-1")}>
         <p className="text-caption tracking-wide text-mist/95">{step.phaseLabel}</p>
         <div className="mt-3 min-w-0">
-          <Chip
-            className={cn(
-              "max-w-full truncate px-3 py-1 text-caption whitespace-nowrap",
-              tone === "gold"
-                ? "border-gold/[0.16] bg-gold/[0.055] text-gold-soft/90"
-                : "border-emerald-glow/15 bg-emerald-glow/[0.05] text-emerald-glow/88",
-            )}
-          >
+          <Chip className={outcomeChipClass(tone)}>
             خروجی: {step.outcome}
           </Chip>
         </div>
@@ -154,7 +154,7 @@ function DesktopFlow() {
   const reduceMotion = useReducedMotion() ?? false;
 
   return (
-    <div className="relative mt-16 hidden lg:mt-24 lg:block">
+    <div className="relative mt-10 hidden lg:mt-14 lg:block">
       <motion.div
         aria-hidden
         className={cn(
@@ -319,14 +319,7 @@ function MobileFlow() {
                     className="overflow-hidden"
                   >
                     <div className="space-y-3 border-t border-bone/[0.06] bg-obsidian/30 px-3 py-3 sm:px-4">
-                      <Chip
-                        className={cn(
-                          "w-fit max-w-full truncate px-2.5 py-1 text-caption",
-                          tone === "gold"
-                            ? "border-gold/[0.16] bg-gold/[0.055] text-gold-soft/90"
-                            : "border-emerald-glow/15 bg-emerald-glow/[0.05] text-emerald-glow/88",
-                        )}
-                      >
+                      <Chip className={cn(outcomeChipClass(tone), "w-fit max-w-full truncate px-2.5 py-1 text-caption")}>
                         خروجی: {step.outcome}
                       </Chip>
                       <p className="text-sm text-bone-dim sm:text-body">
@@ -350,15 +343,17 @@ export function HowItWorks() {
       <div aria-hidden className="pointer-events-none absolute inset-0 opacity-75 bg-gradient-to-b from-ink/40 via-transparent to-ink/50" />
 
       <div className="container-luxe relative">
-        <div className="max-w-3xl">
-          <Reveal>
-            <Eyebrow>چطور کار می‌کند</Eyebrow>
-          </Reveal>
-          <Reveal delay={0.08}>
-            <h2 className="mt-4 text-h2 text-balance md:mt-6">چهار مرحله، یک تبدیل.</h2>
-          </Reveal>
-          <Reveal delay={0.16}>
-            <p className="mt-4 max-w-2xl text-sm text-bone-dim md:mt-6 md:text-base lg:text-lg">
+        <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
+          <div className="min-w-0 lg:flex-1">
+            <Reveal>
+              <Eyebrow>چطور کار می‌کند</Eyebrow>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <h2 className="mt-2 text-h2 text-balance md:mt-3">چهار مرحله، یک تبدیل.</h2>
+            </Reveal>
+          </div>
+          <Reveal delay={0.16} className="lg:max-w-sm lg:shrink-0 xl:max-w-md">
+            <p className="text-sm leading-relaxed text-bone-dim md:text-base">
               <span className="lg:hidden">هر مرحله یک خروجی مشخص؛ برای جزئیات، ردیف را باز کن.</span>
               <span className="hidden lg:inline">هر مرحله خروجی روشن دارد و به مرحله‌ی بعد وصل می‌شود.</span>
             </p>

@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  motion,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-} from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Crown, Eye, Megaphone, MessageCircle } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { site } from "@/content/site";
@@ -107,13 +102,14 @@ function StoryPathMobileSlider() {
               <PhotoFrame
                 ratio="ultrawide"
                 variant="radial"
-                rounded="card"
-                label={`مرحله ${stepNo}`}
+                rounded="card-lg"
                 showIcon={false}
                 src={sitePhotos.storyStep[i]!}
                 alt={`تصویر ${frame.title}`}
                 photoCaption="none"
-                className="border-bone/10"
+                neonTone="gold"
+                interactive
+                className="w-full border-bone/10"
               />
             </article>
           );
@@ -181,9 +177,6 @@ function StoryPathMobileSlider() {
 
 export function CampaignScrollStory() {
   const ref = useRef<HTMLDivElement>(null);
-  const reduce = useReducedMotion();
-  const { scrollYProgress } = useScroll({ target: ref });
-  const titleY = useTransform(scrollYProgress, [0, 1], [reduce ? 0 : 30, reduce ? 0 : -30]);
 
   const lastIndex = site.story.length - 1;
 
@@ -194,61 +187,79 @@ export function CampaignScrollStory() {
       aria-label="نقشه مسیر کمپین"
     >
       <div className="container-luxe">
-        <motion.div style={{ y: titleY }} className="max-w-3xl">
-          <Eyebrow>نقشه‌ی مسیر</Eyebrow>
-          <h2 className="mt-4 text-h2 text-balance md:mt-6">کمپین‌نویسی؛ تغییر هویت، نه فقط مهارت.</h2>
-          <p className="mt-4 max-w-2xl text-sm text-bone-dim md:mt-6 md:text-base lg:text-lg">
+        <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
+          <div className="min-w-0 lg:flex-1">
+            <Eyebrow>نقشه‌ی مسیر</Eyebrow>
+            <h2 className="mt-2 text-h2 text-balance md:mt-3">
+              کمپین‌نویسی؛ تغییر هویت، نه فقط مهارت.
+            </h2>
+          </div>
+          <p className="text-sm leading-relaxed text-bone-dim md:text-base lg:max-w-sm lg:shrink-0 xl:max-w-md">
             <span className="lg:hidden">چهار گام؛ بکش یا با فلش جابه‌جا شو.</span>
             <span className="hidden lg:inline">چهار مرحله؛ همان نقشه‌ی دوره.</span>
           </p>
-        </motion.div>
+        </div>
 
         <StoryPathMobileSlider />
 
-        <div className="mt-10 hidden space-y-10 lg:mt-20 lg:block">
+        <div className="mt-10 hidden space-y-8 lg:mt-14 lg:block lg:space-y-10">
           {site.story.map((frame, i) => {
             const Icon = icons[i] ?? Eye;
             const reverse = i % 2 === 1;
-            const tone = i === 3 ? "gold" : "emerald";
+            const tone: StoryTone = i === 3 ? "gold" : "emerald";
             const stepNo = toPersianDigits(String(i + 1).padStart(2, "0"));
             const isLast = i === lastIndex;
             return (
               <article
                 key={frame.title}
-                className={
-                  "group overflow-hidden rounded-card-lg border border-bone/10 bg-charcoal/70 p-5 shadow-veil backdrop-blur-2xl sm:p-6 md:p-10 " +
-                  (isLast ? "relative" : "md:sticky md:top-24")
-                }
+                className={cn(
+                  "group overflow-hidden rounded-card-lg border border-bone/10 bg-charcoal/70 shadow-veil backdrop-blur-2xl",
+                  "p-5 sm:p-6 md:p-8 lg:p-9",
+                  isLast ? "relative" : "md:sticky md:top-24",
+                )}
                 style={{ zIndex: 10 + i }}
               >
-                <div
-                  className={
-                    "grid items-center gap-8 md:gap-10 lg:gap-14 " +
-                    (reverse ? "md:grid-cols-12" : "md:grid-cols-12")
-                  }
-                >
-                  <div className={"md:col-span-7 " + (reverse ? "md:order-2" : "")}>
-                    <div className="w-fit">
-                      <StepFigure stepNo={stepNo} icon={Icon} tone={tone} />
-                    </div>
-                    <p className="mt-7 text-caption uppercase tracking-[0.3em] text-gold">
-                      {frame.kicker}
-                    </p>
-                    <h3 className="mt-3 text-h3 text-balance">{frame.title}</h3>
-                    <p className="mt-5 max-w-2xl text-body text-bone-dim">
-                      {frame.body}
-                    </p>
-                  </div>
-                  <div className={"md:col-span-5 " + (reverse ? "md:order-1" : "")}>
+                <div className="grid items-stretch gap-8 md:grid-cols-12 md:gap-10 lg:gap-12">
+                  <div className={cn("md:col-span-7", reverse && "md:order-2")}>
                     <PhotoFrame
-                      ratio="landscape"
+                      ratio="ultrawide"
                       variant="radial"
-                      rounded="card"
-                      label={`مرحله ${stepNo}`}
+                      rounded="card-lg"
                       showIcon={false}
                       src={sitePhotos.storyStep[i]!}
                       alt={`تصویر ${frame.title}`}
+                      photoCaption="none"
+                      neonTone="gold"
+                      interactive
+                      className="w-full"
                     />
+                  </div>
+
+                  <div
+                    className={cn(
+                      "relative flex min-h-full flex-col justify-center md:col-span-5",
+                      reverse && "md:order-1",
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute -start-1 top-0 font-display text-[clamp(3.5rem,8vw,5.5rem)] font-medium leading-none tabular-nums text-bone/[0.045] select-none md:-top-2"
+                    >
+                      {stepNo}
+                    </span>
+
+                    <div className="relative z-[1]">
+                      <StepFigure stepNo={stepNo} icon={Icon} tone={tone} />
+                      <p className="mt-5 text-caption font-medium uppercase tracking-[0.28em] text-gold">
+                        {frame.kicker}
+                      </p>
+                      <h3 className="mt-3 max-w-xl text-h3 text-balance text-bone lg:text-h2 lg:leading-tight">
+                        {frame.title}
+                      </h3>
+                      <p className="mt-4 max-w-xl text-body leading-relaxed text-bone-dim md:mt-5">
+                        {frame.body}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </article>

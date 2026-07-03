@@ -120,9 +120,9 @@ export function BigTestimonial() {
         </div>
 
         <div className="mt-6 md:mt-8 lg:hidden">
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" initial={false}>
             <motion.article
-              key={t.name + "-mobile"}
+              key={index}
               initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8 }}
@@ -203,79 +203,68 @@ export function BigTestimonial() {
           </AnimatePresence>
         </div>
 
-        <div className="mt-8 hidden items-center gap-8 md:mt-14 md:gap-10 lg:grid lg:grid-cols-12 lg:gap-14">
-          {/* Portrait */}
-          <div className="lg:col-span-5">
-            <AnimatePresence mode="wait">
+        <div className="mt-8 hidden md:mt-14 lg:block">
+          <div className="relative min-h-[20rem] overflow-hidden lg:min-h-[22rem]">
+            <AnimatePresence mode="wait" initial={false}>
               <motion.div
-                key={t.name + "-photo"}
-                initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 1.02 }}
-                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                key={index}
+                initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, y: -12 }}
+                transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
+                className="grid items-center gap-8 md:gap-10 lg:grid-cols-12 lg:gap-14"
               >
-                <PhotoFrame
-                  ratio="portrait"
-                  variant="radial"
-                  rounded="card-lg"
-                  label={t.name}
-                  badge={t.role}
-                  src={t.photo}
-                  alt={t.photoAlt}
-                />
+                <div className="lg:col-span-5 lg:self-center">
+                  <div className="mx-auto w-full max-w-md lg:max-w-none">
+                    <PhotoFrame
+                      ratio="landscape"
+                      variant="radial"
+                      rounded="card-lg"
+                      label={t.name}
+                      badge={t.role}
+                      src={t.photo}
+                      alt={t.photoAlt}
+                    />
+                  </div>
+                </div>
+
+                <div className="lg:col-span-7">
+                  <Badge tone="gold">
+                    <Quote className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
+                    نقل‌قول کلیدی
+                  </Badge>
+                  <blockquote className="mt-6 font-display text-xl font-medium text-balance text-bone md:text-2xl">
+                    «{t.pull}»
+                  </blockquote>
+
+                  <div className="mt-10 grid gap-3 sm:grid-cols-3">
+                    {t.metrics.map((m) => (
+                      <div
+                        key={m.label}
+                        className="neon-surface-static rounded-card border border-bone/10 bg-charcoal/45 p-5"
+                      >
+                        <span className={metricIconDesktop}>
+                          <m.icon className="h-4 w-4" strokeWidth={1.6} aria-hidden />
+                        </span>
+                        <p className="mt-4 font-display text-h3 leading-none text-bone num-latin">
+                          {m.value}
+                        </p>
+                        <p className="mt-2 text-caption text-mist">{m.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </motion.div>
             </AnimatePresence>
-          </div>
 
-          {/* Quote + metrics */}
-          <div className="lg:col-span-7">
-            <Badge tone="gold">
-              <Quote className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
-              نقل‌قول کلیدی
-            </Badge>
-            <AnimatePresence mode="wait">
-              <motion.blockquote
-                key={t.name + "-quote"}
-                initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8 }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                className="mt-6 font-display text-xl font-medium text-balance text-bone md:text-2xl"
-              >
-                «{t.pull}»
-              </motion.blockquote>
-            </AnimatePresence>
-
-            <div className="mt-10 grid gap-3 sm:grid-cols-3">
-              <AnimatePresence>
-                {t.metrics.map((m, i) => (
-                  <motion.div
-                    key={t.name + m.label}
-                    initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8 }}
-                    transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1], delay: i * 0.06 }}
-                    className="neon-surface-static rounded-card border border-bone/10 bg-charcoal/45 p-5"
-                  >
-                    <span className={metricIconDesktop}>
-                      <m.icon className="h-4 w-4" strokeWidth={1.6} aria-hidden />
-                    </span>
-                    <p className="mt-4 font-display text-h3 leading-none text-bone num-latin">
-                      {m.value}
-                    </p>
-                    <p className="mt-2 text-caption text-mist">{m.label}</p>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-
-            <div className="mt-10 flex items-center gap-3">
+            <div className="mt-8 flex items-center gap-3 lg:mt-10">
               {testimonials.map((_, i) => (
                 <button
                   key={i}
                   type="button"
                   onClick={() => setIndex(i)}
                   aria-label={`نمایش نظر ${i + 1}`}
+                  aria-current={i === index ? "true" : undefined}
                   className={
                     "h-1.5 rounded-full transition-all duration-500 " +
                     (i === index ? "w-8 bg-emerald-glow" : "w-3 bg-bone/15 hover:bg-bone/30")
