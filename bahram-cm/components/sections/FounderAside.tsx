@@ -1,84 +1,65 @@
 import Image from "next/image";
-import { Quote } from "lucide-react";
 import { site } from "@/content/site";
 import { Reveal } from "@/components/motion/Reveal";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { LinkButton } from "@/components/ui/Button";
-import { PhotoFrame } from "@/components/ui/PhotoFrame";
 import { sitePhotos } from "@/lib/site-photo-paths";
 
 export function FounderAside() {
   return (
-    <section className="py-9 md:py-section">
+    <section className="py-7 md:py-9 lg:py-10" aria-labelledby="founder-aside-heading">
       <div className="container-luxe">
-        <div className="grid items-stretch gap-5 lg:grid-cols-12 lg:gap-14">
-          {/* Portrait + secondary frames */}
+        <div className="grid items-center gap-6 sm:gap-7 lg:grid-cols-12 lg:gap-8 xl:gap-9">
           <Reveal className="lg:col-span-5">
-            <div className="relative max-lg:mx-auto max-lg:w-full max-lg:max-w-[12.75rem] sm:max-lg:max-w-[13.25rem]">
-              <div
-                aria-hidden
-                className="absolute -inset-4 -z-[1] rounded-card-lg bg-emerald-deep/30 blur-3xl lg:-inset-6"
-              />
-              <PhotoFrame
-                ratio="portrait"
-                variant="radial"
-                rounded="card-lg"
-                badge="پرتره — Founder"
-                label="بهرام رستمی"
-                className="shadow-frame max-lg:!rounded-card"
-                sizes="(max-width: 1023px) 220px, 420px"
+            <div className="relative aspect-[25/24] w-full overflow-hidden rounded-card-lg border border-bone/10 shadow-frame max-lg:rounded-card">
+              <Image
                 src={sitePhotos.portraitFounder}
-                alt="بهرام رستمی"
+                alt={site.founderAside.title}
+                fill
+                className="object-cover object-[center_18%]"
+                sizes="(max-width: 1023px) 100vw, 42vw"
               />
-              {/* Secondary square */}
-              <div className="absolute -end-6 -bottom-6 hidden w-40 md:block">
-                <PhotoFrame
-                  ratio="square"
-                  variant="grid"
-                  rounded="card"
-                  label="بک‌استیج"
-                  showIcon={false}
-                  className="rotate-[3deg]"
-                  src={sitePhotos.squareBackstage}
-                  alt="بک‌استیج"
-                />
-              </div>
             </div>
           </Reveal>
 
-          <div className="min-w-0 lg:col-span-7">
+          <div className="flex min-w-0 flex-col justify-center lg:col-span-7">
             <Reveal>
               <Eyebrow>{site.founderAside.eyebrow}</Eyebrow>
             </Reveal>
-            <Reveal delay={0.08}>
-              <Quote className="mt-4 hidden h-9 w-9 text-gold/50 lg:mt-7 lg:block" strokeWidth={1.3} aria-hidden />
-            </Reveal>
-            <Reveal delay={0.14}>
-              <h2 className="mt-3 max-w-3xl text-balance font-display text-lg font-semibold leading-snug text-bone md:text-xl lg:mt-4 lg:text-h2 lg:font-normal lg:leading-tight">
-                «آموزش نمایشی نمی‌خواهم؛ مسیر ساختاری می‌خواهم.»
+            <Reveal delay={0.06}>
+              <h2
+                id="founder-aside-heading"
+                className="mt-2.5 font-display text-xl font-semibold tracking-[-0.02em] text-bone md:text-2xl"
+              >
+                {site.founderAside.title}
               </h2>
             </Reveal>
-            <Reveal delay={0.2}>
-              <p className="mt-4 max-w-2xl text-sm text-bone-dim md:mt-5 md:text-body lg:mt-7">
+            <Reveal delay={0.12}>
+              <blockquote className="founder-aside-quote mt-3 max-w-[34rem] text-pretty font-display text-base font-medium leading-[1.55] text-bone md:mt-3.5 md:text-lg">
+                «آموزش نمایشی نمی‌خواهم؛ مسیر ساختاری می‌خواهم.»
+              </blockquote>
+            </Reveal>
+            <Reveal delay={0.18}>
+              <p className="mt-3 max-w-xl text-sm leading-[1.75] text-bone-dim md:mt-3.5 md:text-body">
                 <span className="lg:hidden">{site.founderAside.bodyMobile}</span>
                 <span className="hidden lg:inline">{site.founderAside.body}</span>
               </p>
             </Reveal>
-            <Reveal delay={0.26}>
-              <div className="mt-5 flex w-full flex-row flex-nowrap items-center justify-start gap-2 border-t border-bone/8 pt-4 sm:gap-3 sm:pt-6 lg:mt-9 lg:gap-6 lg:pt-8">
+            <Reveal delay={0.24}>
+              <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-bone/8 pt-4 sm:gap-4 md:mt-5">
                 <Image
                   src="/media/signature.png"
                   alt="امضای بهرام"
-                  width={200}
-                  height={70}
-                  className="h-auto w-[min(5.75rem,30vw)] max-w-[115px] shrink-0 object-contain object-start sm:max-w-[140px] sm:w-[min(9rem,38vw)] md:max-w-[180px] lg:w-[200px] lg:max-w-none"
+                  width={180}
+                  height={63}
+                  className="h-auto w-[min(5rem,28vw)] max-w-[96px] shrink-0 object-contain object-start sm:max-w-[120px] md:max-w-[148px] lg:max-w-[168px]"
                 />
                 <LinkButton
                   href="/founder"
                   variant="ghost"
                   withArrow
-                  size="lg"
-                  className="max-lg:h-11 max-lg:min-h-11 max-lg:min-w-0 max-lg:flex-1 max-lg:px-5 max-lg:text-sm w-auto lg:flex-none lg:max-w-none"
+                  size="md"
+                  className="max-lg:flex-1 max-lg:min-w-0 sm:max-lg:flex-none"
                 >
                   درباره‌ی بهرام
                 </LinkButton>

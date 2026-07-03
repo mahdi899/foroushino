@@ -339,8 +339,7 @@ function MobileFlow() {
 
 export function HowItWorks() {
   return (
-    <section className="relative isolate overflow-hidden bg-obsidian py-section-sm md:py-section">
-      <div aria-hidden className="pointer-events-none absolute inset-0 opacity-75 bg-gradient-to-b from-ink/40 via-transparent to-ink/50" />
+    <section className="relative isolate overflow-hidden py-section-sm md:py-section">
 
       <div className="container-luxe relative">
         <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-end lg:justify-between lg:gap-10">

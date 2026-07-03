@@ -1,13 +1,10 @@
 "use client";
 
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
-import Image from "next/image";
 import { useRef } from "react";
 import { GraduationCap, Mic2, Sparkles, Users } from "lucide-react";
 import { site } from "@/content/site";
 import { cn } from "@/lib/cn";
-import { useDataTheme } from "@/lib/useDataTheme";
-import { CursorGlow } from "@/components/motion/CursorGlow";
 import { Reveal } from "@/components/motion/Reveal";
 import { TrackedLinkButton } from "@/components/analytics/TrackedLinkButton";
 import { Badge } from "@/components/ui/Badge";
@@ -16,11 +13,6 @@ import { sitePhotos } from "@/lib/site-photo-paths";
 
 export function HeroCinematic() {
   const ref = useRef<HTMLDivElement>(null);
-  const dataTheme = useDataTheme();
-  const ambientSrc =
-    dataTheme === "light"
-      ? "/media/hero-ambient-light.svg"
-      : "/media/hero-ambient.svg";
   const reduce = useReducedMotion();
   const { scrollYProgress } = useScroll({
     target: ref,
@@ -39,48 +31,9 @@ export function HeroCinematic() {
     <section
       ref={ref}
       aria-label="معرفی"
-      className="relative isolate overflow-hidden bg-ink"
+      className="relative isolate overflow-hidden"
     >
-      {/* Ambient layer */}
-      <div aria-hidden className="absolute inset-0">
-        <Image
-          key={ambientSrc}
-          src={ambientSrc}
-          alt=""
-          fill
-          priority
-          className={cn(
-            "object-cover",
-            dataTheme === "light" ? "opacity-100" : "opacity-[0.92]",
-          )}
-        />
-      </div>
-      <CursorGlow />
-
-      {/* Animated gradient sheen */}
-      <motion.div
-        aria-hidden
-        className="absolute inset-0 z-[1]"
-        animate={
-          reduce
-            ? undefined
-            : { backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }
-        }
-        transition={{ duration: 22, repeat: Infinity, ease: "linear" }}
-        style={{
-          backgroundImage: "var(--hero-sheen-gradient)",
-          backgroundSize: "200% 200%",
-        }}
-      />
-
-      {/* Hero vignette */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-[1]"
-        style={{ background: "var(--hero-vignette)" }}
-      />
-
-      <div className="container-luxe relative z-[3] min-h-0 pt-8 pb-16 md:pt-14 md:pb-28 lg:pt-20 lg:pb-36">
+      <div className="container-luxe relative min-h-0 pt-8 pb-10 md:pt-14 md:pb-14 lg:pt-20 lg:pb-16">
         <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start lg:gap-x-8 lg:gap-y-10">
           {/* معرفی: موبایل اول، دسکتاپ ستون چپ ردیف اول */}
           <motion.div

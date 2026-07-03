@@ -1,301 +1,180 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Quote, TrendingUp, Users, Wallet } from "lucide-react";
-import { useEffect, useState } from "react";
+import Image from "next/image";
+import { useState } from "react";
+import { site } from "@/content/site";
 import { Reveal } from "@/components/motion/Reveal";
-import { Eyebrow } from "@/components/ui/Eyebrow";
-import { Badge } from "@/components/ui/Badge";
-import { PhotoFrame } from "@/components/ui/PhotoFrame";
-import { useEmeraldMetricIconClasses } from "@/lib/useAccentIconSurfaces";
+import { caseStudyPortrait } from "@/lib/site-photo-paths";
 
-import { sitePhotos } from "@/lib/site-photo-paths";
-
-type T = {
+type ResultItem = {
+  slug: string;
   name: string;
   role: string;
+  after: string;
+  quote: string;
+  metric: { value: string; label: string };
   photo: string;
-  photoAlt: string;
-  pull: string;
-  metrics: { icon: typeof Users; label: string; value: string }[];
 };
 
-const AUTO_ADVANCE_MS = 7000;
+const resultMeta = [
+  {
+    quote: "برای اولین بار محتوایم مسیر پیوسته گرفت؛ سه ماه بعد، لیست انتظار.",
+    metric: { value: "۴.۲×", label: "درآمد ماهانه" },
+  },
+  {
+    quote: "از پشت نمونه‌کارها بیرون آمدم؛ الان صدای حرفه‌ای خودم را می‌سازم.",
+    metric: { value: "۵×", label: "نقش رسانه‌ای" },
+  },
+  {
+    quote: "از جلسات تک‌نفره به گروه‌های پر رسیدم؛ کمپین برایم ساختار شد.",
+    metric: { value: "۶×", label: "ظرفیت گروه" },
+  },
+  {
+    quote: "سات فروش را برایم قابل پیگیری کرد؛ هر تماس یک قدم مشخص دارد.",
+    metric: { value: "۳.۵×", label: "نرخ تبدیل" },
+  },
+] as const;
 
-const testimonials: T[] = [
-  {
-    name: "سارا ر.",
-    role: "مشاور کسب‌وکار",
-    photo: sitePhotos.testimonialPortrait[0],
-    photoAlt: "پرتره‌ی سارا - مشاور کسب‌وکار",
-    pull:
-      "برای اولین بار محتوایم مسیر پیوسته گرفت؛ سه ماه بعد، لیست انتظار.",
-    metrics: [
-      { icon: TrendingUp, label: "رشد دنبال‌کننده", value: "۴.۲×" },
-      { icon: Wallet, label: "درآمد ماهانه", value: "۳.۸×" },
-      { icon: Users, label: "لیست انتظار", value: "۹۰+" },
-    ],
-  },
-  {
-    name: "امیر ه.",
-    role: "طراح تجربه",
-    photo: sitePhotos.testimonialPortrait[1],
-    photoAlt: "پرتره‌ی امیر - طراح تجربه",
-    pull: "از پشت نمونه‌کارها بیرون آمدم؛ الان صدای حرفه‌ای خودم را می‌سازم.",
-    metrics: [
-      { icon: TrendingUp, label: "نقش رسانه‌ای", value: "۵×" },
-      { icon: Users, label: "مخاطب فعال", value: "۱۸K+" },
-      { icon: Wallet, label: "پروژه‌ها", value: "Premium" },
-    ],
-  },
-  {
-    name: "نازنین ک.",
-    role: "مربی تغذیه",
-    photo: sitePhotos.testimonialPortrait[2],
-    photoAlt: "پرتره‌ی نازنین - مربی تغذیه",
-    pull: "از جلسات تک‌نفره به گروه‌های پر رسیدم؛ کمپین برایم ساختار شد.",
-    metrics: [
-      { icon: TrendingUp, label: "ظرفیت گروه", value: "۶×" },
-      { icon: Wallet, label: "فروش فصلی", value: "۴.۵×" },
-      { icon: Users, label: "لیست انتظار", value: "۳ماه" },
-    ],
-  },
-];
+const results: ResultItem[] = site.transformations.map((item, i) => ({
+  slug: item.slug,
+  name: item.name,
+  role: item.role,
+  after: item.after,
+  quote: resultMeta[i]!.quote,
+  metric: resultMeta[i]!.metric,
+  photo: caseStudyPortrait(item.slug),
+}));
 
 export function BigTestimonial() {
-  const [index, setIndex] = useState(0);
-  const [pauseAuto, setPauseAuto] = useState(false);
+  const [active, setActive] = useState(0);
   const reduce = useReducedMotion();
-  const t = testimonials[index]!;
-  const metricIconMobile = useEmeraldMetricIconClasses("mobile");
-  const metricIconDesktop = useEmeraldMetricIconClasses("desktop");
-
-  const goto = (n: number) => {
-    setIndex((n + testimonials.length) % testimonials.length);
-  };
-
-  useEffect(() => {
-    if (reduce || pauseAuto) return;
-    const id = window.setInterval(() => {
-      setIndex((i) => (i + 1) % testimonials.length);
-    }, AUTO_ADVANCE_MS);
-    return () => clearInterval(id);
-  }, [reduce, pauseAuto]);
+  const featured = results[active]!;
 
   return (
     <section
-      className="relative isolate overflow-hidden py-section-sm md:py-section"
-      onMouseEnter={() => setPauseAuto(true)}
-      onMouseLeave={() => setPauseAuto(false)}
+      aria-labelledby="student-results-heading"
+      className="relative isolate overflow-hidden pt-10 pb-8 md:pt-12 md:pb-10 lg:pt-16"
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_60%_at_80%_10%,rgba(0,140,150,0.12),transparent_70%),radial-gradient(50%_40%_at_10%_90%,rgba(255,176,0,0.11),transparent_70%)]"
-      />
       <div className="container-luxe relative">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between lg:gap-6">
-          <div>
-            <Reveal>
-              <Eyebrow>نظر دانشجوها</Eyebrow>
-            </Reveal>
-            <Reveal delay={0.06}>
-              <h2 className="mt-3 max-w-3xl text-h2 text-balance md:mt-4">صدای کسانی که مسیر را جدی گرفتند.</h2>
-            </Reveal>
-          </div>
-          <Reveal delay={0.12}>
-            <div className="hidden items-center justify-end gap-3 lg:flex">
-              <span className="text-caption text-mist num-latin tabular-nums">
-                {String(index + 1).padStart(2, "0")} / {String(testimonials.length).padStart(2, "0")}
-              </span>
-              <div className="flex items-center gap-2">
-                <NavBtn ariaLabel="قبلی" onClick={() => goto(index - 1)}>
-                  <ArrowRight className="rtl-flip h-4 w-4" aria-hidden />
-                </NavBtn>
-                <NavBtn ariaLabel="بعدی" onClick={() => goto(index + 1)}>
-                  <ArrowLeft className="rtl-flip h-4 w-4" aria-hidden />
-                </NavBtn>
-              </div>
-            </div>
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between md:gap-6">
+          <Reveal>
+            <h2
+              id="student-results-heading"
+              className="max-w-xl text-balance font-display text-h3 text-bone md:text-h2"
+            >
+              {site.studentResults.title}
+            </h2>
+          </Reveal>
+          <Reveal delay={0.06}>
+            <p className="max-w-md text-sm text-bone-dim md:text-end md:text-body">
+              {site.studentResults.lead}
+            </p>
           </Reveal>
         </div>
 
-        <div className="mt-6 md:mt-8 lg:hidden">
+        <div className="mt-5 grid gap-3 lg:mt-6 lg:grid-cols-12 lg:items-stretch lg:gap-4">
           <AnimatePresence mode="wait" initial={false}>
             <motion.article
-              key={index}
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 10 }}
+              key={featured.slug}
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={reduce ? { opacity: 0 } : { opacity: 0, y: -8 }}
-              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-              className="relative"
+              exit={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="student-result-featured overflow-hidden rounded-card-lg lg:col-span-8 lg:min-h-[12rem]"
             >
-              <div className="flex gap-4 sm:items-center sm:gap-5">
-                <div className="w-[6.75rem] shrink-0 sm:w-[7.25rem]">
-                  <PhotoFrame
-                    ratio="square"
-                    variant="radial"
-                    rounded="card"
-                    src={t.photo}
-                    alt={t.photoAlt}
-                    photoCaption="none"
-                    showIcon={false}
-                    className="border-bone/10 shadow-none"
+              <div className="flex h-full min-h-[11.5rem] sm:min-h-[12rem]">
+                <div className="student-result-featured-media relative w-[52%] max-w-[22rem] shrink-0 overflow-hidden sm:max-w-[24rem]">
+                  <Image
+                    src={featured.photo}
+                    alt={`پرتره ${featured.name}`}
+                    fill
+                    priority
+                    className="object-cover object-top"
+                    sizes="(max-width: 640px) 52vw, 384px"
+                  />
+                  <div
+                    aria-hidden
+                    className="absolute inset-0 bg-gradient-to-l from-black/45 via-black/15 to-transparent"
+                  />
+                  <span
+                    aria-hidden
+                    className="student-result-featured-accent pointer-events-none absolute inset-y-0 start-0 w-[3px]"
                   />
                 </div>
-                <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-                  <p className="font-display text-base font-semibold leading-snug text-balance text-bone sm:text-lg">
-                    {t.name}
-                  </p>
-                  <p className="text-sm leading-snug text-mist">{t.role}</p>
-                  <span className="mt-2 inline-flex w-fit items-center gap-1 rounded-pill border border-gold/20 bg-gold/[0.06] px-2 py-0.5 text-caption font-medium uppercase tracking-wider text-gold">
-                    <Quote className="h-3 w-3" strokeWidth={1.6} aria-hidden />
-                    تجربه
-                  </span>
-                </div>
-              </div>
 
-              <blockquote className="mt-5 border-t border-bone/10 pt-5 font-display text-body font-medium text-balance text-bone sm:text-lg">
-                «{t.pull}»
-              </blockquote>
+                <div className="flex min-w-0 flex-1 flex-col justify-between gap-3 p-4 sm:p-5">
+                  <blockquote className="font-display text-sm font-medium leading-relaxed text-balance text-bone sm:text-base">
+                    «{featured.quote}»
+                  </blockquote>
 
-              <div className="mt-5 grid grid-cols-3 gap-2">
-                {t.metrics.map((m) => (
-                  <div
-                    key={t.name + m.label}
-                    className="rounded-xl border border-bone/[0.07] bg-transparent p-2.5 sm:p-3"
-                  >
-                    <span className={metricIconMobile}>
-                      <m.icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" strokeWidth={1.6} aria-hidden />
-                    </span>
-                    <p className="mt-2 font-display text-base font-semibold leading-none tabular-nums text-bone num-latin sm:text-lg">
-                      {m.value}
-                    </p>
-                    <p className="mt-1.5 line-clamp-2 text-caption leading-snug text-mist">
-                      {m.label}
-                    </p>
+                  <div className="flex items-end justify-between gap-3 border-t border-bone/8 pt-3">
+                    <div className="min-w-0">
+                      <p className="font-display text-sm font-semibold text-bone sm:text-base">
+                        {featured.name}
+                      </p>
+                      <p className="mt-0.5 text-caption text-mist">{featured.role}</p>
+                      <p className="mt-2 line-clamp-2 text-caption leading-snug text-emerald-glow">
+                        {featured.after}
+                      </p>
+                    </div>
+                    <div className="student-result-metric-highlight shrink-0 rounded-[0.875rem] px-3 py-2 text-end">
+                      <p className="font-display text-xl font-semibold leading-none text-bone num-latin sm:text-2xl">
+                        {featured.metric.value}
+                      </p>
+                      <p className="mt-1 text-caption text-bone-dim">{featured.metric.label}</p>
+                    </div>
                   </div>
-                ))}
-              </div>
-
-              <div className="mt-5 flex items-center justify-between gap-2 border-t border-bone/10 pt-4">
-                <NavBtn ariaLabel="نظر قبلی" onClick={() => goto(index - 1)}>
-                  <ArrowRight className="rtl-flip h-4 w-4" aria-hidden />
-                </NavBtn>
-                <div className="flex flex-1 justify-center gap-2 px-2">
-                  {testimonials.map((_, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => setIndex(i)}
-                      aria-label={`نمایش نظر ${i + 1}`}
-                      className={
-                        "h-2 rounded-full transition-all duration-500 " +
-                        (i === index ? "w-7 bg-emerald-glow" : "w-2 bg-bone/20 hover:bg-bone/35")
-                      }
-                    />
-                  ))}
                 </div>
-                <NavBtn ariaLabel="نظر بعدی" onClick={() => goto(index + 1)}>
-                  <ArrowLeft className="rtl-flip h-4 w-4" aria-hidden />
-                </NavBtn>
               </div>
             </motion.article>
           </AnimatePresence>
-        </div>
 
-        <div className="mt-8 hidden md:mt-14 lg:block">
-          <div className="relative min-h-[20rem] overflow-hidden lg:min-h-[22rem]">
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={index}
-                initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={reduce ? { opacity: 0 } : { opacity: 0, y: -12 }}
-                transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
-                className="grid items-center gap-8 md:gap-10 lg:grid-cols-12 lg:gap-14"
-              >
-                <div className="lg:col-span-5 lg:self-center">
-                  <div className="mx-auto w-full max-w-md lg:max-w-none">
-                    <PhotoFrame
-                      ratio="landscape"
-                      variant="radial"
-                      rounded="card-lg"
-                      label={t.name}
-                      badge={t.role}
-                      src={t.photo}
-                      alt={t.photoAlt}
+          <div className="flex gap-2 overflow-x-auto pb-1 lg:col-span-4 lg:h-auto lg:min-h-[12rem] lg:flex-col lg:gap-2 lg:overflow-visible lg:pb-0">
+            {results.map((item, index) => {
+              const isActive = index === active;
+              return (
+                <button
+                  key={item.slug}
+                  type="button"
+                  onClick={() => setActive(index)}
+                  aria-current={isActive ? "true" : undefined}
+                  className={
+                    "student-result-picker group relative flex min-w-[13.5rem] shrink-0 items-center gap-2.5 overflow-hidden rounded-card p-2.5 text-start transition-[transform,box-shadow,border-color,opacity] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-glow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink lg:min-h-0 lg:min-w-0 lg:flex-1 lg:gap-3 lg:p-2.5 " +
+                    (isActive
+                      ? "student-result-picker--active opacity-100"
+                      : "opacity-88 hover:-translate-y-0.5 hover:opacity-100")
+                  }
+                >
+                  <div className="relative h-[3.5rem] w-[2.875rem] shrink-0 overflow-hidden rounded-[0.75rem] lg:h-full lg:max-h-[4.25rem] lg:w-[3.5rem]">
+                    <Image
+                      src={item.photo}
+                      alt=""
+                      fill
+                      className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.04]"
+                      sizes="80px"
+                    />
+                    <div
+                      aria-hidden
+                      className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"
                     />
                   </div>
-                </div>
-
-                <div className="lg:col-span-7">
-                  <Badge tone="gold">
-                    <Quote className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
-                    نقل‌قول کلیدی
-                  </Badge>
-                  <blockquote className="mt-6 font-display text-xl font-medium text-balance text-bone md:text-2xl">
-                    «{t.pull}»
-                  </blockquote>
-
-                  <div className="mt-10 grid gap-3 sm:grid-cols-3">
-                    {t.metrics.map((m) => (
-                      <div
-                        key={m.label}
-                        className="neon-surface-static rounded-card border border-bone/10 bg-charcoal/45 p-5"
-                      >
-                        <span className={metricIconDesktop}>
-                          <m.icon className="h-4 w-4" strokeWidth={1.6} aria-hidden />
-                        </span>
-                        <p className="mt-4 font-display text-h3 leading-none text-bone num-latin">
-                          {m.value}
-                        </p>
-                        <p className="mt-2 text-caption text-mist">{m.label}</p>
-                      </div>
-                    ))}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-display text-sm font-semibold text-bone">{item.name}</p>
+                    <p className="mt-0.5 truncate text-caption text-mist">{item.role}</p>
+                    <p className="mt-1.5 font-display text-sm font-semibold text-gold num-latin">
+                      {item.metric.value}
+                      <span className="me-1.5 text-caption font-normal text-mist">
+                        {item.metric.label}
+                      </span>
+                    </p>
                   </div>
-                </div>
-              </motion.div>
-            </AnimatePresence>
-
-            <div className="mt-8 flex items-center gap-3 lg:mt-10">
-              {testimonials.map((_, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setIndex(i)}
-                  aria-label={`نمایش نظر ${i + 1}`}
-                  aria-current={i === index ? "true" : undefined}
-                  className={
-                    "h-1.5 rounded-full transition-all duration-500 " +
-                    (i === index ? "w-8 bg-emerald-glow" : "w-3 bg-bone/15 hover:bg-bone/30")
-                  }
-                />
-              ))}
-            </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
     </section>
-  );
-}
-
-function NavBtn({
-  children,
-  onClick,
-  ariaLabel,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  ariaLabel: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={ariaLabel}
-      className="inline-flex h-11 w-11 items-center justify-center rounded-pill border border-bone/15 bg-charcoal/55 text-bone-dim transition-colors hover:border-bone/30 hover:text-bone"
-    >
-      {children}
-    </button>
   );
 }

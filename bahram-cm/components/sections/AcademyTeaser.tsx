@@ -1,98 +1,65 @@
-import { Phone, ClipboardList, TrendingUp } from "lucide-react";
+import { BarChart3, Bell, Coins, Phone } from "lucide-react";
+import Image from "next/image";
 import { site } from "@/content/site";
 import { Reveal } from "@/components/motion/Reveal";
 import { LinkButton } from "@/components/ui/Button";
-import { Eyebrow } from "@/components/ui/Eyebrow";
-import { PhotoFrame } from "@/components/ui/PhotoFrame";
 import { sitePhotos } from "@/lib/site-photo-paths";
 
-const PERK_ICONS = [Phone, ClipboardList, TrendingUp] as const;
+const metrics = [
+  { icon: BarChart3, label: "گزارش فروش", value: "۳۲ تماس موفق" },
+  { icon: Bell, label: "یادآوری پیگیری", value: "۴ مورد امروز" },
+  { icon: Coins, label: "کمیسیون", value: "۲,۴۵۰,۰۰۰ ت" },
+] as const;
 
 export function AcademyTeaser() {
-  const perks = site.saat.perks.map((label, i) => ({
-    icon: PERK_ICONS[i] ?? Phone,
-    label,
-  }));
+  const [titleBrand, titleTagline] = site.saat.teaserTitle.split("|").map((part) => part.trim());
 
   return (
     <section
       aria-labelledby="saat-teaser-heading"
-      className="academy-teaser-luxe relative isolate overflow-hidden border-t border-[var(--on-gold-border)] bg-gradient-to-br from-gold via-[#ffc108] to-gold-soft py-7 md:py-9 lg:py-10"
+      className="academy-teaser-luxe relative isolate py-8 md:py-10 lg:py-12"
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_55%_at_0%_100%,color-mix(in_oklab,var(--on-gold-ink)_6%,transparent),transparent_60%)]"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-white/50 to-transparent"
-      />
+      <div className="container-luxe">
+        <Reveal>
+          <div className="academy-teaser-banner relative overflow-hidden rounded-card-lg bg-gradient-to-br from-gold via-[#ffc108] to-gold-soft p-5 md:p-7 lg:p-8 xl:p-10">
+            <div
+              aria-hidden
+              className="academy-teaser-waves pointer-events-none absolute inset-0"
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-white/45 to-transparent"
+            />
 
-      <div className="container-luxe relative">
-        <div className="grid min-w-0 items-stretch gap-7 lg:grid-cols-12 lg:gap-8 xl:gap-12">
-          <div className="min-w-0 lg:col-span-6 xl:col-span-7">
-            <div className="academy-teaser-editorial relative overflow-hidden rounded-card-lg p-5 md:p-7 lg:p-8">
-              <span
-                aria-hidden
-                className="academy-teaser-accent-bar pointer-events-none absolute"
-              />
-              <span
-                aria-hidden
-                className="academy-teaser-editorial-glow pointer-events-none absolute"
-              />
-
-              <div className="academy-teaser-copy relative z-[1]">
-                <Reveal>
-                  <Eyebrow className="academy-teaser-eyebrow">{site.saat.eyebrow}</Eyebrow>
-                </Reveal>
-                <div className="mt-4 grid gap-4 lg:mt-5 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)] lg:items-end lg:gap-7">
-                  <Reveal delay={0.05}>
-                    <h2
-                      id="saat-teaser-heading"
-                      className="max-w-[22ch] text-balance font-display text-[clamp(1.625rem,2vw+1rem,2.5rem)] font-black leading-[1.32] tracking-[-0.018em] text-[var(--on-gold-ink-strong)] md:leading-[1.36]"
-                    >
-                      {site.saat.teaserTitle}
-                    </h2>
-                  </Reveal>
-                  <Reveal delay={0.08}>
-                    <p className="max-w-[38ch] text-pretty text-sm font-medium leading-[1.7] text-[var(--on-gold-ink-muted)] lg:text-[0.9375rem] lg:leading-[1.75]">
-                      {site.saat.teaserLead}
-                    </p>
-                  </Reveal>
-                </div>
-              </div>
-
-              <Reveal delay={0.12}>
-                <ul className="academy-teaser-features relative z-[1] mt-5 grid grid-cols-1 gap-2.5 sm:mt-6 sm:grid-cols-3 sm:gap-6 lg:mt-7 lg:gap-8">
-                  {perks.map(({ icon: Icon, label }, index) => (
-                    <li
-                      key={label}
-                      className="academy-teaser-feature flex min-h-[4.75rem] min-w-0 flex-col justify-center gap-2.5 rounded-[0.875rem] border border-[color-mix(in_oklab,var(--on-gold-ink)_8%,transparent)] bg-[color-mix(in_oklab,white_24%,transparent)] px-3.5 py-3 sm:min-h-[5.25rem] sm:rounded-none sm:border-0 sm:bg-transparent sm:px-0 sm:py-2 lg:min-h-[5.5rem]"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="academy-teaser-feature-index num-latin shrink-0 text-[0.6875rem] font-semibold tracking-[0.2em]">
-                          {String(index + 1).padStart(2, "0")}
-                        </span>
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--on-gold-border)] bg-[color-mix(in_oklab,white_46%,transparent)] text-[var(--on-gold-ink-strong)] shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]">
-                          <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                        </span>
-                      </div>
-                      <span className="min-w-0 text-sm font-semibold leading-snug text-[var(--on-gold-ink-strong)]">
-                        {label}
+            <div className="relative grid items-center gap-8 lg:grid-cols-12 lg:gap-6 xl:gap-8">
+              <div className="academy-teaser-copy flex min-w-0 flex-col justify-center lg:col-span-6 lg:pe-2 xl:pe-4">
+                <div className="academy-teaser-copy-header">
+                  <span className="academy-teaser-eyebrow inline-flex w-fit items-center rounded-pill border border-[var(--on-gold-border)] bg-[color-mix(in_oklab,white_42%,transparent)] px-3 py-1 text-caption font-semibold tracking-[0.16em] text-[var(--on-gold-ink-strong)] shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
+                    {site.saat.eyebrow}
+                  </span>
+                  <h2
+                    id="saat-teaser-heading"
+                    className="mt-4 font-display font-black leading-[1.15] tracking-[-0.022em] text-[var(--on-gold-ink-strong)]"
+                  >
+                    <span className="block text-[clamp(1.75rem,2.2vw+1rem,2.625rem)]">{titleBrand}</span>
+                    {titleTagline ? (
+                      <span className="mt-1 block text-[clamp(1.125rem,1.2vw+0.82rem,1.625rem)] font-bold leading-[1.35] text-[var(--on-gold-ink-strong)]">
+                        {titleTagline}
                       </span>
-                    </li>
-                  ))}
-                </ul>
-              </Reveal>
+                    ) : null}
+                  </h2>
+                  <p className="mt-4 max-w-[36ch] text-pretty text-sm font-medium leading-[1.8] text-[var(--on-gold-ink-muted)] md:text-[0.9375rem]">
+                    {site.saat.teaserLead}
+                  </p>
+                </div>
 
-              <Reveal delay={0.16}>
-                <div className="academy-teaser-actions relative z-[1] mt-5 flex flex-col gap-2.5 sm:mt-6 sm:flex-row sm:items-center sm:gap-3 lg:mt-7">
+                <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
                   <LinkButton
                     href={site.saat.cta.href}
                     variant="primary"
                     size="lg"
                     withArrow
-                    className="h-11 min-h-11 w-full min-w-0 text-sm font-semibold sm:w-auto"
+                    className="w-full px-8 font-semibold sm:w-auto"
                   >
                     {site.saat.cta.label}
                   </LinkButton>
@@ -100,73 +67,59 @@ export function AcademyTeaser() {
                     href={site.saat.ctaSecondary.href}
                     variant="ghost"
                     size="lg"
-                    className="teaser-ghost-cta h-11 min-h-11 w-full min-w-0 text-sm font-semibold sm:w-auto"
+                    className="teaser-ghost-cta w-full px-8 font-semibold sm:w-auto"
                   >
                     {site.saat.ctaSecondary.label}
                   </LinkButton>
                 </div>
-              </Reveal>
-            </div>
-          </div>
+              </div>
 
-          <div className="flex min-w-0 items-center justify-center lg:col-span-6 lg:justify-end xl:col-span-5">
-            <Reveal delay={0.1}>
-              <div
-                dir="ltr"
-                className="flex items-center justify-center gap-2.5 sm:gap-3 md:gap-4"
-              >
-                <div className="relative w-[13.5rem] sm:w-[15rem] lg:w-[16.5rem] xl:w-[17.5rem]">
+              <div className="flex flex-col gap-3 lg:col-span-3 lg:gap-3.5">
+                {metrics.map(({ icon: Icon, label, value }) => (
+                  <div key={label} className="academy-teaser-metric flex items-center gap-3 rounded-[1.125rem] px-4 py-3.5 sm:py-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-[var(--on-gold-ink-strong)]">{label}</p>
+                      <p className="mt-1 text-xs font-medium text-[var(--on-gold-ink-muted)] sm:text-[0.8125rem]">
+                        {value}
+                      </p>
+                    </div>
+                    <span className="academy-teaser-metric-icon inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl">
+                      <Icon className="h-5 w-5" strokeWidth={1.6} aria-hidden />
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="relative flex items-center justify-center lg:col-span-3 lg:justify-end">
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.22),transparent_62%)]"
+                />
+                <div dir="ltr" className="relative w-[min(100%,14.5rem)] sm:w-[15.5rem] lg:w-[14.75rem] xl:w-[15.5rem]">
                   <div
                     aria-hidden
-                    className="pointer-events-none absolute -inset-5 rounded-[2rem] bg-[var(--on-gold-ink)]/12 blur-3xl"
+                    className="pointer-events-none absolute -inset-6 rounded-[2.5rem] bg-[var(--on-gold-ink)]/10 blur-3xl"
                   />
-                  <PhotoFrame
-                    ratio="story"
-                    variant="radial"
-                    rounded="card-lg"
-                    badge="سات"
-                    interactive
-                    neonTone="gold"
-                    className="relative z-[1] w-full shadow-[0_28px_64px_-24px_rgba(5,10,11,0.45)]"
-                    src={sitePhotos.academyStory}
-                    alt="پیش‌نمایش مینی‌اپ سات روی موبایل"
-                    photoCaption="none"
-                    sizes="(max-width: 768px) 45vw, 280px"
-                  />
-                </div>
-
-                <div className="hidden shrink-0 flex-col gap-3 sm:flex md:gap-3.5 lg:gap-4">
-                  <div className="w-[8.5rem] rotate-[-4deg] md:w-[9.25rem] lg:w-[10.25rem] xl:w-[11rem]">
-                    <PhotoFrame
-                      ratio="square"
-                      variant="soft"
-                      rounded="card"
-                      photoCaption="none"
-                      showIcon={false}
-                      interactive
-                      neonTone="gold"
-                      src={sitePhotos.academyAccent}
-                      alt="فضای تیم فروش"
-                    />
-                  </div>
-                  <div className="w-[8.5rem] rotate-[3deg] md:w-[9.25rem] lg:w-[10.25rem] xl:w-[11rem]">
-                    <PhotoFrame
-                      ratio="landscape"
-                      variant="grid"
-                      rounded="card"
-                      photoCaption="none"
-                      showIcon={false}
-                      interactive
-                      neonTone="gold"
-                      src={sitePhotos.squareBackstage}
-                      alt="پشت صحنه فروش"
-                    />
+                  <div className="academy-teaser-phone relative overflow-hidden rounded-[1.75rem] shadow-[0_28px_64px_-24px_rgba(5,10,11,0.42)] ring-1 ring-white/35">
+                    <div className="relative aspect-[9/19] w-full">
+                      <Image
+                        src={sitePhotos.academyStory}
+                        alt="پیش‌نمایش مینی‌اپ سات روی موبایل"
+                        fill
+                        className="object-cover object-top"
+                        sizes="(max-width: 768px) 55vw, 300px"
+                      />
+                    </div>
+                    <span className="absolute start-3 top-3 inline-flex items-center gap-1.5 rounded-pill bg-white/92 px-2.5 py-1 text-[0.6875rem] font-bold text-[var(--on-gold-ink-strong)] shadow-sm backdrop-blur-sm">
+                      <Phone className="h-3 w-3" strokeWidth={2} aria-hidden />
+                      سات
+                    </span>
                   </div>
                 </div>
               </div>
-            </Reveal>
+            </div>
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   );

@@ -1,271 +1,180 @@
-"use client";
-
-import { useReducedMotion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Crown, Eye, Megaphone, MessageCircle } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import Image from "next/image";
+import { ArrowLeft, Briefcase, GraduationCap, Wallet } from "lucide-react";
+import { Fragment } from "react";
 import { site } from "@/content/site";
+import { Reveal } from "@/components/motion/Reveal";
+import { TrackedLinkButton } from "@/components/analytics/TrackedLinkButton";
 import { Eyebrow } from "@/components/ui/Eyebrow";
-import { PhotoFrame } from "@/components/ui/PhotoFrame";
-import { StepFigure } from "@/components/ui/StepFigure";
 import { sitePhotos } from "@/lib/site-photo-paths";
 import { toPersianDigits } from "@/lib/persian";
-import { cn } from "@/lib/cn";
 
-const icons = [Eye, MessageCircle, Megaphone, Crown];
+const stepIcons = [GraduationCap, Wallet, Briefcase] as const;
+const stepTags = ["آموزش", "درآمد ماهانه", "پروژه"] as const;
 
-type StoryTone = "emerald" | "gold";
+const stepsGridClass =
+  "sm:grid-cols-[minmax(0,1fr)_2.75rem_minmax(0,1fr)_2.75rem_minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)_3rem_minmax(0,1fr)]";
 
-function StoryPathMobileSlider() {
-  const reduceMotion = useReducedMotion() ?? false;
-  const baseId = useId();
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const [activeIdx, setActiveIdx] = useState(0);
-  const lastIndex = site.story.length - 1;
-
-  useEffect(() => {
-    const root = scrollerRef.current;
-    if (!root) return;
-
-    const slides = Array.from(root.querySelectorAll("[data-story-slide-index]"));
-
-    const obs = new IntersectionObserver(
-      (entries) => {
-        const best = entries
-          .filter((e) => e.isIntersecting && e.intersectionRatio > 0.25)
-          .sort((a, b) => (b.intersectionRatio ?? 0) - (a.intersectionRatio ?? 0))[0];
-        const el = best?.target;
-        if (!(el instanceof HTMLElement)) return;
-        const raw = el.dataset.storySlideIndex;
-        if (raw == null) return;
-        const idx = Number.parseInt(raw, 10);
-        if (!Number.isNaN(idx)) setActiveIdx(idx);
-      },
-      {
-        root,
-        rootMargin: "0px -12% 0px -12%",
-        threshold: [0.2, 0.35, 0.55, 0.75],
-      },
-    );
-
-    slides.forEach((slide) => obs.observe(slide));
-    return () => obs.disconnect();
-  }, []);
-
-  const scrollToSlide = (i: number) => {
-    const root = scrollerRef.current;
-    const target = root?.querySelector<HTMLElement>(
-      `[data-story-slide-index="${i}"]`,
-    );
-    target?.scrollIntoView({
-      behavior: reduceMotion ? "auto" : "smooth",
-      block: "nearest",
-      inline: "center",
-    });
-  };
+function StepIcon({ index }: { index: number }) {
+  const Icon = stepIcons[index] ?? GraduationCap;
 
   return (
-    <div className="relative mx-auto mt-8 max-w-xl lg:hidden" dir="rtl">
-      <div
-        ref={scrollerRef}
-        className="flex snap-x snap-mandatory gap-0 overflow-x-auto overflow-y-visible pb-1 pt-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        aria-label="گام‌های مسیر کمپین‌نویسی"
-      >
-        {site.story.map((frame, i) => {
-          const Icon = icons[i] ?? Eye;
-          const tone: StoryTone = i === 3 ? "gold" : "emerald";
-          const stepNo = toPersianDigits(String(i + 1).padStart(2, "0"));
-
-          return (
-            <article
-              key={frame.title}
-              id={`${baseId}-slide-${i}`}
-              data-story-slide-index={i}
-              className="max-w-[100%] min-w-[100%] shrink-0 snap-center space-y-4 rounded-card-lg border border-bone/10 bg-charcoal/70 p-4 shadow-veil backdrop-blur-xl sm:p-5"
-            >
-              <div className="flex items-start gap-3">
-                <StepFigure icon={Icon} tone={tone} compact />
-                <div className="min-w-0 flex-1 text-start leading-tight">
-                  <span className="inline-block rounded-pill bg-obsidian/80 px-2 py-1 font-display text-caption tabular-nums text-mist ring-1 ring-bone/[0.08]">
-                    {stepNo}
-                  </span>
-                  <p className="mt-3 text-caption font-medium uppercase tracking-[0.28em] text-gold/90">
-                    {frame.kicker}
-                  </p>
-                  <h3 className="mt-2 font-display text-[1rem] font-semibold text-balance text-bone sm:text-lg">
-                    {frame.title}
-                  </h3>
-                </div>
-              </div>
-              <p className="text-sm text-bone-dim sm:text-body">
-                {frame.body}
-              </p>
-              <PhotoFrame
-                ratio="ultrawide"
-                variant="radial"
-                rounded="card-lg"
-                showIcon={false}
-                src={sitePhotos.storyStep[i]!}
-                alt={`تصویر ${frame.title}`}
-                photoCaption="none"
-                neonTone="gold"
-                interactive
-                className="w-full border-bone/10"
-              />
-            </article>
-          );
-        })}
-      </div>
-
-      <div className="mt-6 flex items-center justify-center gap-6">
-        <button
-          type="button"
-          aria-label="گام قبلی"
-          disabled={activeIdx <= 0}
-          onClick={() => scrollToSlide(activeIdx - 1)}
-          className={cn(
-            "flex size-10 items-center justify-center rounded-pill border border-bone/15 text-bone outline-none transition-[background,color,border-color,opacity] duration-300 ease-[var(--ease-luxe)]",
-            "enabled:hover:bg-bone/[0.05] enabled:hover:border-bone/35",
-            "focus-visible:ring-2 focus-visible:ring-emerald-glow/45 focus-visible:ring-offset-2 focus-visible:ring-offset-charcoal",
-            "disabled:cursor-not-allowed disabled:opacity-35",
-          )}
-        >
-          <ChevronRight className="size-5" aria-hidden strokeWidth={1.5} />
-        </button>
-
-        <div className="flex items-center gap-2" aria-label="انتخاب گام">
-          {site.story.map((frame, i) => (
-            <button
-              key={frame.title}
-              type="button"
-              id={`${baseId}-dot-${i}`}
-              aria-label={`گام ${toPersianDigits(String(i + 1))}: ${frame.title}`}
-              onClick={() => scrollToSlide(i)}
-              className={cn(
-                "h-2.5 shrink-0 rounded-full outline-none transition-[width,background,color] duration-300 ease-[var(--ease-luxe)]",
-                "focus-visible:ring-2 focus-visible:ring-emerald-glow/45 focus-visible:ring-offset-2 focus-visible:ring-offset-obsidian",
-                activeIdx === i
-                  ? "w-8 bg-emerald-glow"
-                  : "w-2.5 bg-bone/25 hover:bg-bone/45",
-              )}
-            />
-          ))}
-        </div>
-
-        <button
-          type="button"
-          aria-label="گام بعدی"
-          disabled={activeIdx >= lastIndex}
-          onClick={() => scrollToSlide(activeIdx + 1)}
-          className={cn(
-            "flex size-10 items-center justify-center rounded-pill border border-bone/15 text-bone outline-none transition-[background,color,border-color,opacity] duration-300 ease-[var(--ease-luxe)]",
-            "enabled:hover:bg-bone/[0.05] enabled:hover:border-bone/35",
-            "focus-visible:ring-2 focus-visible:ring-emerald-glow/45 focus-visible:ring-offset-2 focus-visible:ring-offset-charcoal",
-            "disabled:cursor-not-allowed disabled:opacity-35",
-          )}
-        >
-          <ChevronLeft className="size-5" aria-hidden strokeWidth={1.5} />
-        </button>
-      </div>
-
-      <p className="mt-5 text-center text-sm text-mist" aria-live="polite">
-        اسلاید {toPersianDigits(String(activeIdx + 1))} از{" "}
-        {toPersianDigits(String(site.story.length))}
-      </p>
-    </div>
+    <span className="campaign-journey-step-icon inline-flex h-14 w-14 items-center justify-center rounded-2xl sm:h-16 sm:w-16 lg:h-[4.5rem] lg:w-[4.5rem]">
+      <Icon className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={1.55} aria-hidden />
+    </span>
   );
 }
 
 export function CampaignScrollStory() {
-  const ref = useRef<HTMLDivElement>(null);
-
-  const lastIndex = site.story.length - 1;
+  const { campaignJourney } = site;
+  const steps = campaignJourney.steps;
 
   return (
     <section
-      ref={ref}
-      className="relative bg-obsidian pt-section-sm pb-section-sm md:pt-section"
-      aria-label="نقشه مسیر کمپین"
+      aria-labelledby="campaign-journey-heading"
+      className="relative pt-4 pb-8 md:pt-6 md:pb-10 lg:pt-8"
     >
       <div className="container-luxe">
-        <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
-          <div className="min-w-0 lg:flex-1">
-            <Eyebrow>نقشه‌ی مسیر</Eyebrow>
-            <h2 className="mt-2 text-h2 text-balance md:mt-3">
-              کمپین‌نویسی؛ تغییر هویت، نه فقط مهارت.
-            </h2>
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between md:gap-8">
+          <div className="min-w-0">
+            <Reveal>
+              <Eyebrow>{campaignJourney.eyebrow}</Eyebrow>
+            </Reveal>
+            <Reveal delay={0.05}>
+              <h2
+                id="campaign-journey-heading"
+                className="mt-2 max-w-2xl text-balance font-display text-h3 text-bone md:mt-2.5 md:text-h2"
+              >
+                {campaignJourney.title}
+              </h2>
+            </Reveal>
           </div>
-          <p className="text-sm leading-relaxed text-bone-dim md:text-base lg:max-w-sm lg:shrink-0 xl:max-w-md">
-            <span className="lg:hidden">چهار گام؛ بکش یا با فلش جابه‌جا شو.</span>
-            <span className="hidden lg:inline">چهار مرحله؛ همان نقشه‌ی دوره.</span>
-          </p>
+          <Reveal delay={0.08}>
+            <p className="max-w-md text-sm text-bone-dim md:text-end md:text-body">
+              {campaignJourney.lead}
+            </p>
+          </Reveal>
         </div>
 
-        <StoryPathMobileSlider />
+        <Reveal delay={0.1}>
+          <div className="campaign-journey-stage group/stage mt-5 md:mt-6">
+            <div className="grid lg:min-h-[30rem] lg:grid-cols-12 lg:items-stretch xl:min-h-[32rem]">
+              <figure className="campaign-journey-photo relative m-4 aspect-[5/4] min-h-[14rem] overflow-hidden rounded-card-lg sm:m-5 sm:min-h-[16rem] lg:col-span-6 lg:m-0 lg:aspect-auto lg:min-h-full lg:self-stretch lg:rounded-e-none lg:rounded-s-card-lg">
+                <Image
+                  src={sitePhotos.courseBackstage}
+                  alt="مسیر دوره کمپین‌نویسی"
+                  fill
+                  className="object-cover object-center transition-transform duration-700 ease-out group-hover/stage:scale-[1.04]"
+                  sizes="(max-width: 1023px) 100vw, 50vw"
+                />
+                <span
+                  aria-hidden
+                  className="campaign-journey-photo-accent pointer-events-none absolute inset-y-4 start-0 w-1.5 rounded-full lg:inset-y-0 lg:end-0 lg:start-auto lg:w-2"
+                />
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent lg:bg-gradient-to-l lg:from-transparent lg:via-transparent lg:to-black/20"
+                />
+              </figure>
 
-        <div className="mt-10 hidden space-y-8 lg:mt-14 lg:block lg:space-y-10">
-          {site.story.map((frame, i) => {
-            const Icon = icons[i] ?? Eye;
-            const reverse = i % 2 === 1;
-            const tone: StoryTone = i === 3 ? "gold" : "emerald";
-            const stepNo = toPersianDigits(String(i + 1).padStart(2, "0"));
-            const isLast = i === lastIndex;
-            return (
-              <article
-                key={frame.title}
-                className={cn(
-                  "group overflow-hidden rounded-card-lg border border-bone/10 bg-charcoal/70 shadow-veil backdrop-blur-2xl",
-                  "p-5 sm:p-6 md:p-8 lg:p-9",
-                  isLast ? "relative" : "md:sticky md:top-24",
-                )}
-                style={{ zIndex: 10 + i }}
-              >
-                <div className="grid items-stretch gap-8 md:grid-cols-12 md:gap-10 lg:gap-12">
-                  <div className={cn("md:col-span-7", reverse && "md:order-2")}>
-                    <PhotoFrame
-                      ratio="ultrawide"
-                      variant="radial"
-                      rounded="card-lg"
-                      showIcon={false}
-                      src={sitePhotos.storyStep[i]!}
-                      alt={`تصویر ${frame.title}`}
-                      photoCaption="none"
-                      neonTone="gold"
-                      interactive
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div
-                    className={cn(
-                      "relative flex min-h-full flex-col justify-center md:col-span-5",
-                      reverse && "md:order-1",
-                    )}
-                  >
-                    <span
+              <div className="flex min-h-0 flex-col px-4 pb-5 sm:px-5 sm:pb-6 lg:col-span-6 lg:min-h-full lg:px-6 lg:py-7 lg:ps-5 xl:px-8 xl:py-8">
+                <div className="flex flex-1 items-center py-2 sm:py-3 lg:py-0">
+                  <div className="campaign-journey-steps w-full">
+                    <div
                       aria-hidden
-                      className="pointer-events-none absolute -start-1 top-0 font-display text-[clamp(3.5rem,8vw,5.5rem)] font-medium leading-none tabular-nums text-bone/[0.045] select-none md:-top-2"
+                      className={
+                        "campaign-journey-icon-rail hidden sm:grid sm:items-center " + stepsGridClass
+                      }
                     >
-                      {stepNo}
-                    </span>
+                      {steps.map((step, i) => {
+                        const isLast = i === steps.length - 1;
 
-                    <div className="relative z-[1]">
-                      <StepFigure stepNo={stepNo} icon={Icon} tone={tone} />
-                      <p className="mt-5 text-caption font-medium uppercase tracking-[0.28em] text-gold">
-                        {frame.kicker}
-                      </p>
-                      <h3 className="mt-3 max-w-xl text-h3 text-balance text-bone lg:text-h2 lg:leading-tight">
-                        {frame.title}
-                      </h3>
-                      <p className="mt-4 max-w-xl text-body leading-relaxed text-bone-dim md:mt-5">
-                        {frame.body}
-                      </p>
+                        return (
+                          <Fragment key={`${step.title}-rail`}>
+                            <div
+                              data-step={i}
+                              className={
+                                "campaign-journey-rail-step flex cursor-default justify-center px-2 lg:px-3 " +
+                                (isLast ? "campaign-journey-step--active" : "")
+                              }
+                            >
+                              <StepIcon index={i} />
+                            </div>
+
+                            {i < steps.length - 1 ? (
+                              <div className="campaign-journey-step-connector flex items-center justify-center">
+                                <span className="campaign-journey-step-connector-pill inline-flex h-9 w-9 items-center justify-center rounded-full">
+                                  <ArrowLeft className="h-4 w-4" strokeWidth={1.65} />
+                                </span>
+                              </div>
+                            ) : null}
+                          </Fragment>
+                        );
+                      })}
                     </div>
+
+                    <ol className="grid grid-cols-1 gap-y-10 sm:mt-5 sm:grid-cols-3 sm:gap-y-0 lg:mt-6">
+                      {steps.map((step, i) => {
+                        const stepNo = toPersianDigits(String(i + 1));
+                        const isLast = i === steps.length - 1;
+
+                        return (
+                          <li
+                            key={step.title}
+                            data-step={i}
+                            className={
+                              "campaign-journey-step relative flex cursor-default flex-col items-center px-1 py-3 text-center sm:px-2 sm:py-4 lg:px-3 " +
+                              (isLast ? "campaign-journey-step--active" : "")
+                            }
+                          >
+                            <span className="campaign-journey-step-index sm:hidden num-latin">
+                              {stepNo}
+                            </span>
+
+                            <div className="sm:hidden">
+                              <StepIcon index={i} />
+                            </div>
+
+                            <p className="campaign-journey-step-tag mt-5 font-display text-xl font-semibold leading-tight text-bone sm:mt-0 lg:text-[1.375rem] xl:text-2xl">
+                              {stepTags[i]}
+                            </p>
+                            <h3 className="mt-2.5 max-w-[12rem] text-sm leading-relaxed text-bone-dim lg:text-[0.9375rem]">
+                              {step.title}
+                            </h3>
+                          </li>
+                        );
+                      })}
+                    </ol>
                   </div>
                 </div>
-              </article>
-            );
-          })}
-        </div>
+
+                <div className="campaign-journey-footer mt-5 flex shrink-0 flex-col gap-4 pt-2 sm:mt-6 sm:flex-row sm:items-center sm:justify-between lg:mt-0 lg:pt-4">
+                  <p className="text-caption leading-relaxed text-mist">
+                    یادگیری ساختاریافته
+                    <span aria-hidden className="mx-1.5 text-gold/60">
+                      →
+                    </span>
+                    درآمد ماهانه
+                    <span aria-hidden className="mx-1.5 text-gold/60">
+                      →
+                    </span>
+                    پروژه
+                  </p>
+                  <TrackedLinkButton
+                    href={campaignJourney.cta.href}
+                    event="homepage_cta_click"
+                    eventProps={{ cta: "campaign_journey", location: "campaign_journey" }}
+                    variant="primary"
+                    withArrow
+                    size="lg"
+                    className="w-full shrink-0 sm:w-auto"
+                  >
+                    {campaignJourney.cta.label}
+                  </TrackedLinkButton>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Reveal>
       </div>
     </section>
   );

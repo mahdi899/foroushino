@@ -33,39 +33,6 @@ export function useStepFigureIconClasses(tone: "emerald" | "gold", compact: bool
   );
 }
 
-/** PressPresenceMarquee channel icon capsule. */
-export function useChannelChipIconShell(isJade: boolean): { shell: string; iconClass: string } {
-  const theme = useDataTheme();
-
-  if (isJade) {
-    if (theme === "light") {
-      return {
-        shell:
-          "bg-gradient-to-br from-emerald/[0.16] to-charcoal shadow-[0_8px_20px_-14px_rgba(11,31,34,0.08)] ring-emerald/18",
-        iconClass: "text-emerald-deep",
-      };
-    }
-    return {
-      shell:
-        "bg-gradient-to-br from-emerald-deep/75 to-charcoal shadow-[0_0_22px_-8px_color-mix(in_oklab,var(--color-emerald-glow)_38%,transparent)] ring-emerald-glow/22",
-      iconClass: "text-emerald-glow",
-    };
-  }
-
-  if (theme === "light") {
-    return {
-      shell:
-        "bg-gradient-to-br from-charcoal to-charcoal-2 shadow-[0_8px_20px_-14px_rgba(11,31,34,0.06)] ring-gold/28",
-      iconClass: "text-gold",
-    };
-  }
-  return {
-    shell:
-      "bg-gradient-to-br from-charcoal to-charcoal-2 shadow-[0_0_20px_-10px_color-mix(in_oklab,var(--color-gold)_32%,transparent)] ring-gold/22",
-    iconClass: "text-gold-soft",
-  };
-}
-
 /** BigTestimonial metric row icon wells. */
 export function useEmeraldMetricIconClasses(layout: "mobile" | "desktop") {
   const theme = useDataTheme();

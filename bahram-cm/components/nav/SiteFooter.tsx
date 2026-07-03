@@ -9,7 +9,7 @@ export function SiteFooter() {
   const year = toPersianDigits(new Date().getFullYear());
 
   return (
-    <footer className="relative border-t border-bone/5 bg-obsidian">
+    <footer className="relative border-t border-bone/5">
       <div className="container-luxe py-6 md:py-20">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-12 md:gap-12">
           <div className="md:col-span-5">

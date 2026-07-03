@@ -5,8 +5,7 @@ import { CampaignScrollStory } from "@/components/sections/CampaignScrollStory";
 import { FinalCTA } from "@/components/sections/FinalCTA";
 import { FounderAside } from "@/components/sections/FounderAside";
 import { HeroCinematic } from "@/components/sections/HeroCinematic";
-import { HowItWorks } from "@/components/sections/HowItWorks";
-import { InstagramBand } from "@/components/sections/InstagramBand";
+import { MainPaths } from "@/components/sections/MainPaths";
 import { AcademyTeaser } from "@/components/sections/AcademyTeaser";
 import { ManifestoShift } from "@/components/sections/ManifestoShift";
 
@@ -21,11 +20,10 @@ export default function HomePage() {
     <main id="main-content" className="relative min-w-0 max-w-full">
       <HeroCinematic />
       <ManifestoShift />
-      <HowItWorks />
+      <MainPaths />
       <CampaignScrollStory />
       <BigTestimonial />
       <AcademyTeaser />
-      <InstagramBand />
       <FounderAside />
       <FinalCTA />
     </main>

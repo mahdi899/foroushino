@@ -103,6 +103,7 @@ const caseStudyPortraitBySlugInner = {
   "sara-r": sitePhotos.testimonialPortrait[0]!,
   "amir-h": sitePhotos.testimonialPortrait[1]!,
   "nazanin-k": sitePhotos.testimonialPortrait[2]!,
+  "reza-m": sitePhotos.social[3]!,
 } as const;
 
 /** استخر پرتره‌ها برای داستان‌هایی که نگاشتِ اختصاصی ندارند (انتخاب قطعی بر اساس slug) */
