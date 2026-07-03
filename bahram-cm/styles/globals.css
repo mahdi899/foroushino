@@ -222,6 +222,7 @@
   html {
     /* Non-static positioning: document scroll root for Framer Motion `useScroll` + offset math */
     position: relative;
+    font-family: var(--font-body);
     background-color: var(--color-ink);
     color: var(--color-bone);
     -webkit-font-smoothing: antialiased;

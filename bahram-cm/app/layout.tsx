@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { fontVariables } from "@/lib/fonts";
+import { fontClassName, fontVariable } from "@/lib/fonts";
 import { defaultMetadata } from "@/lib/seo";
 import {
   courseJsonLd,
@@ -23,11 +23,17 @@ export default function RootLayout({
   const ld = [personJsonLd(), organizationJsonLd(), courseJsonLd(), websiteJsonLd()];
 
   return (
-    <html lang="fa" dir="rtl" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html
+      lang="fa"
+      dir="rtl"
+      data-scroll-behavior="smooth"
+      className={fontVariable}
+      suppressHydrationWarning
+    >
       <head>
         <ThemeScript />
       </head>
-      <body className={`${fontVariables} antialiased`}>
+      <body className={`${fontClassName} antialiased`}>
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-[100] focus:rounded-pill focus:bg-emerald focus:px-4 focus:py-2 focus:text-bone"
