@@ -1,151 +1,207 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { buildMetadata } from "@/lib/seo";
 import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Award,
-  BookOpenCheck,
-  Briefcase,
-  CalendarClock,
+  Check,
   CheckCircle2,
   Compass,
   Eye,
   FileText,
-  Headphones,
   Layers,
-  LineChart,
   Megaphone,
-  MessageCircle,
-  Mic2,
-  Quote,
-  Sparkles,
-  Star,
+  MessageSquare,
+  PenLine,
+  Route,
   Target,
-  Trophy,
-  Users,
-  Video,
-  Wallet,
+  UserSearch,
+  X,
 } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
-import { CampaignWritingTestimonials } from "@/components/sections/CampaignWritingTestimonials";
+import { CampaignLearnScroll } from "@/components/sections/CampaignLearnScroll";
 import { Accordion } from "@/components/ui/Accordion";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
-import { FeatureCard } from "@/components/ui/FeatureCard";
-import { IconLabel } from "@/components/ui/IconLabel";
 import { IconTile } from "@/components/ui/IconTile";
 import { PhotoFrame } from "@/components/ui/PhotoFrame";
-import { Tabs } from "@/components/ui/Tabs";
 import { cn } from "@/lib/cn";
+import { formatFa } from "@/lib/persian";
 import { pageHeroBackdropPhoto, sitePhotos } from "@/lib/site-photo-paths";
 
+const COURSE_PRICE = 28_900_000;
+
 export const metadata: Metadata = buildMetadata({
-  title: "کمپین‌نویسی · دوره پرچم‌دار",
-  description: "۱۰ فصل ساختاری؛ از محتوا تا کمپین. ورود به آکادمی جدا و انتخابی.",
+  title: "دوره شغل کمپین‌نویسی",
+  description:
+    "از نوشتن پیام فروش تا ساختن کمپین واقعی — یاد بگیر مخاطب را بشناسی، پیام بسازی، اعتماد ایجاد کنی و مسیر فروش طراحی کنی.",
   path: "/course/campaign-writing",
 });
 
-const chapters = [
-  { id: "ch1", n: "۰۱", title: "نگاه حرفه‌ای", body: "زاویه دید و تمایز اولیه‌ی برند." },
-  { id: "ch2", n: "۰۲", title: "پیام مرکزی", body: "ایده به پیام روشن و تکرارپذیر." },
-  { id: "ch3", n: "۰۳", title: "روایت بازار", body: "شنونده، بافت فرهنگی، رقبا." },
-  { id: "ch4", n: "۰۴", title: "معماری کمپین", body: "روایت در زمان؛ اوج و سکوت." },
-  { id: "ch5", n: "۰۵", title: "تولید محتوا", body: "قطعات کمپین؛ نوشتار، تصویر، صدا." },
-  { id: "ch6", n: "۰۶", title: "پیشنهاد فروش", body: "از کمپین به پیشنهاد شفاف." },
-  { id: "ch7", n: "۰۷", title: "معماری اعتماد", body: "لایه‌های اعتماد در طول مسیر." },
-  { id: "ch8", n: "۰۸", title: "اجرا و پخش", body: "زمان‌بندی، کانال‌ها، ریتم." },
-  { id: "ch9", n: "۰۹", title: "اندازه‌گیری و بازخورد", body: "شاخص‌های واقعی؛ فراتر از لایک." },
-  { id: "ch10", n: "۱۰", title: "تبدیل به سیستم", body: "از یک کمپین موفق به سیستم رشد." },
+const learnItems = [
+  {
+    text: "قبل از نوشتن، مخاطب را تحلیل کنی.",
+    image: sitePhotos.storyStep[0]!,
+    alt: "تحلیل مخاطب",
+  },
+  {
+    text: "پیام اصلی کمپین را بسازی.",
+    image: sitePhotos.manifestoPortraitA,
+    alt: "طراحی پیام کمپین",
+  },
+  {
+    text: "تیتر، متن تبلیغاتی، پیشنهاد فروش و دعوت به اقدام بنویسی.",
+    image: sitePhotos.courseBackstage,
+    alt: "نوشتن متن تبلیغاتی",
+  },
+  {
+    text: "سناریوی فروش طراحی کنی.",
+    image: sitePhotos.storyStep[1]!,
+    alt: "سناریوی فروش",
+  },
+  {
+    text: "لید را پیگیری کنی و مسیر تصمیم‌گیری مخاطب را کامل‌تر کنی.",
+    image: sitePhotos.landscapeSession,
+    alt: "پیگیری لید",
+  },
 ];
 
 const whoFor = [
-  { icon: Briefcase, title: "صاحبان حرفه و کسب‌وکار", body: "محصول دارند؛ روایت متمایز می‌خواهند." },
-  { icon: Mic2, title: "مشاوران و مربی‌ها", body: "می‌خواهند مرجع حوزه‌شان شوند." },
-  { icon: Megaphone, title: "خالقان محتوا", body: "از پراکندگی به کمپین حرفه‌ای." },
-  { icon: Users, title: "تیم‌های مارکتینگ", body: "چارچوب مشترک برای طراحی کمپین." },
+  {
+    icon: Megaphone,
+    title: "ورود به تبلیغات و فروش",
+    body: "برای کسانی که می‌خواهند وارد دنیای تبلیغات، فروش و کمپین شوند.",
+    image: sitePhotos.social[0]!,
+  },
+  {
+    icon: PenLine,
+    title: "علاقه به نوشتن و بازاریابی",
+    body: "برای کسانی که به نوشتن، بازاریابی و فروش علاقه دارند.",
+    image: sitePhotos.social[1]!,
+  },
+  {
+    icon: Target,
+    title: "مهارت کاربردی",
+    body: "برای کسانی که می‌خواهند یک مهارت کاربردی یاد بگیرند.",
+    image: sitePhotos.social[2]!,
+  },
+  {
+    icon: Route,
+    title: "مسیر فروش واقعی",
+    body: "برای کسانی که می‌خواهند بفهمند چطور از یک پیام ساده، یک مسیر فروش ساخته می‌شود.",
+    image: sitePhotos.social[3]!,
+  },
 ];
 
-const youGet = [
-  { icon: Video, title: "۱۰ فصل ویدیویی", body: "۴۰+ ساعت؛ ضبط استودیویی." },
-  { icon: BookOpenCheck, title: "تمرین‌های اجرا", body: "هر فصل، خروجی عملی." },
-  { icon: FileText, title: "قالب‌ها و چک‌لیست‌ها", body: "برای طراحی، اجرا، ارزیابی." },
-  { icon: LineChart, title: "نقشه‌ی پیشرفت", body: "پیگیری مسیر و اجرا." },
-  { icon: MessageCircle, title: "انجمن خصوصی دانشجوها", body: "بازخورد از هم‌مسیرها." },
-  { icon: Award, title: "گواهی پایان مسیر", body: "قدم برای ارزیابی آکادمی." },
+const outcomes = [
+  "یک محصول را تحلیل کنی.",
+  "مخاطب هدف را بهتر بشناسی.",
+  "پیام تبلیغاتی دقیق‌تر بنویسی.",
+  "پیشنهاد فروش جذاب‌تری طراحی کنی.",
+  "برای کمپین، ساختار و مسیر مشخص بسازی.",
+  "متن‌هایی بنویسی که فقط زیبا نیستند؛ هدفمند هستند.",
 ];
 
-const stats = [
-  { icon: Users, value: "۵۰٬۰۰۰+", label: "دانشجو در مسیر" },
-  { icon: Star, value: "۴٫۸ / ۵", label: "میانگین رضایت" },
-  { icon: CalendarClock, value: "۴۰+ ساعت", label: "محتوای ساختاری" },
-  { icon: Trophy, value: "۱۰ فصل", label: "مسیر فصل‌بندی‌شده" },
+const learningPath = [
+  {
+    n: "۱",
+    title: "شناخت کمپین",
+    body: "درک می‌کنی کمپین چیست، چرا بعضی پیام‌ها می‌فروشند و بعضی فقط دیده می‌شوند.",
+    icon: Eye,
+    image: sitePhotos.storyStep[0]!,
+  },
+  {
+    n: "۲",
+    title: "شناخت مخاطب",
+    body: "یاد می‌گیری چطور نیاز، ترس، تردید و انگیزه مخاطب را پیدا کنی.",
+    icon: UserSearch,
+    image: sitePhotos.storyStep[1]!,
+  },
+  {
+    n: "۳",
+    title: "طراحی پیام فروش",
+    body: "یاد می‌گیری پیام اصلی کمپین را بسازی؛ پیامی که ساده، شفاف و قانع‌کننده باشد.",
+    icon: MessageSquare,
+    image: sitePhotos.manifestoPortraitA,
+  },
+  {
+    n: "۴",
+    title: "نوشتن متن تبلیغاتی",
+    body: "تیتر، متن کوتاه، متن معرفی، CTA و پیام‌های فروش را تمرین می‌کنی.",
+    icon: PenLine,
+    image: sitePhotos.courseBackstage,
+  },
+  {
+    n: "۵",
+    title: "ساخت پیشنهاد فروش",
+    body: "یاد می‌گیری چطور محصول را به شکلی ارائه کنی که مخاطب دلیل واضحی برای خرید داشته باشد.",
+    icon: FileText,
+    image: sitePhotos.storyStep[2]!,
+  },
+  {
+    n: "۶",
+    title: "سناریوی فروش و پیگیری",
+    body: "می‌فهمی بعد از دیده شدن کمپین، چطور مسیر ارتباط، تماس، پیگیری و تصمیم‌گیری مخاطب را کامل کنی.",
+    icon: Layers,
+    image: sitePhotos.landscapeSession,
+  },
 ];
 
 const faqs = [
   {
-    question: "آیا این دوره پیش‌نیاز دارد؟",
-    answer: "نه؛ از نگاه و پیام شروع می‌کنیم. پیشینه‌ی محتوا یا فروش کمک می‌کند.",
+    question: "آیا پیش‌نیاز خاصی لازم است؟",
+    answer:
+      "نیازی نیست از قبل متخصص تبلیغات باشی. این دوره از پایه شروع می‌شود و مرحله‌به‌مرحله تو را وارد فضای واقعی کمپین‌نویسی می‌کند.",
   },
   {
     question: "خروجی نهایی دوره چیست؟",
-    answer: "طرح کمپین اجرایی؛ پیام، نقشه محتوا، پیشنهاد، شاخص‌ها.",
+    answer:
+      "هدف دوره این است که فقط متن ننویسی؛ بتوانی یک مسیر فروش طراحی کنی — از تحلیل مخاطب تا پیام، پیشنهاد، کمپین و پیگیری.",
   },
   {
-    question: "تفاوت با دوره‌های محتوا چیست؟",
-    answer: "تمرکز روی کمپین است نه پست تکی؛ روایت بلندمدت و اعتماد.",
+    question: "تفاوت این دوره با دوره‌های محتوا چیست؟",
+    answer:
+      "اینجا فقط درباره نوشتن متن حرف نمی‌زنیم. کمپین‌نویسی را به عنوان یک مهارت اجرایی یاد می‌گیری؛ مهارتی که به فروش، ارتباط با مشتری، پیشنهادسازی و نتیجه گرفتن وصل است.",
   },
   {
-    question: "آیا بعد از دوره وارد آکادمی می‌شوم؟",
-    answer: "نه خودکار؛ ورود با ارزیابی و تناسب دوطرفه.",
-  },
-  {
-    question: "ضمانت بازگشت وجه دارد؟",
-    answer: "بله؛ طبق سیاست رسمی در همان بازه‌ی ابتدایی.",
+    question: "قیمت دوره چقدر است؟",
+    answer: `قیمت دوره ${formatFa(COURSE_PRICE)} تومان است.`,
   },
 ];
 
 export default function CourseCampaignWritingPage() {
+  const priceLabel = `${formatFa(COURSE_PRICE)} تومان`;
+
   return (
-    <main id="main-content" className="relative min-w-0 max-w-full">
+    <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip">
       {/* HERO */}
       <section className="relative isolate overflow-hidden bg-ink">
         <div aria-hidden className="absolute inset-0">
           <Image src={pageHeroBackdropPhoto} alt="" fill priority className="object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-b from-ink/50 via-ink/75 to-ink" />
+          <div className="absolute inset-0 bg-gradient-to-b from-ink/55 via-ink/82 to-ink" />
         </div>
-        <div className="container-luxe relative z-[2] min-w-0 py-section-sm md:py-section">
-          <div className="grid min-w-0 items-center gap-6 md:grid-cols-12 md:gap-10 lg:gap-12">
-            <div className="min-w-0 text-center md:col-span-7 md:text-start">
+        <div className="container-luxe relative z-[2] min-w-0 py-8 sm:py-12 md:py-20 lg:py-24">
+          <div className="grid min-w-0 items-center gap-6 sm:gap-8 md:grid-cols-12 md:gap-10 lg:gap-14">
+            <div className="min-w-0 text-center max-md:order-2 md:col-span-7 md:text-start">
               <Reveal>
-                <Badge
-                  tone="gold"
-                  className="mb-1.5 gap-1.5 px-2.5 py-0.5 text-caption leading-tight md:mb-6 md:gap-2 md:px-3 md:py-1"
-                >
-                  <Sparkles className="h-3 w-3 shrink-0 md:h-3.5 md:w-3.5" strokeWidth={1.6} aria-hidden />
-                  دوره پرچم‌دار · کمپین‌نویسی
-                </Badge>
+                <Eyebrow>دوره شغل کمپین‌نویسی</Eyebrow>
               </Reveal>
-              <div className="flex justify-center md:justify-start">
-                <Reveal delay={0.06}>
-                  <Eyebrow>اولین در</Eyebrow>
-                </Reveal>
-              </div>
-              <Reveal delay={0.12}>
-                <h1 className="mt-3 max-w-full min-w-0 text-h1 text-balance md:mt-6 md:text-display">
-                  از تولیدکننده‌ی محتوا،
+              <Reveal delay={0.08}>
+                <h1 className="mt-3 max-w-xl text-[clamp(1.625rem,6vw,2.25rem)] font-display leading-[1.12] text-balance md:mt-5 md:text-h1 lg:text-display">
+                  کمپین بساز
                   <br />
-                  به معمارِ کمپین.
+                  که نتیجه بدهد
                 </h1>
               </Reveal>
-              <Reveal delay={0.2}>
-                <p className="mt-4 max-w-2xl text-sm text-bone-dim md:mt-7 md:text-body">
-                  ۱۰ فصل، تمرین اجرا، نقشه پیشرفت؛ گام اول قبل از آکادمی.
+              <Reveal delay={0.14}>
+                <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-bone-dim sm:mt-4 md:mx-0 md:mt-6 md:max-w-lg md:text-body">
+                  از شناخت مخاطب تا پیام فروش و مسیر فروش — گام‌به‌گام.
                 </p>
               </Reveal>
-              <Reveal delay={0.28}>
-                <div className="mx-auto mt-6 flex w-full max-w-md flex-col gap-2.5 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 md:mt-10 md:mx-0">
+              <Reveal delay={0.2}>
+                <div className="mx-auto mt-5 flex w-full flex-col gap-2.5 sm:mt-7 sm:max-w-none sm:flex-row sm:items-center sm:justify-center sm:gap-3 md:mt-9 md:mx-0 md:justify-start">
                   <LinkButton
                     href="#enroll"
                     variant="sales"
@@ -153,380 +209,339 @@ export default function CourseCampaignWritingPage() {
                     withArrow
                     className={cn("w-full min-w-0 sm:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm")}
                   >
-                    ثبت‌نام در دوره
+                    شروع یادگیری
                   </LinkButton>
                   <LinkButton
-                    href="#curriculum"
+                    href="#path"
                     variant="ghost"
                     size="lg"
                     className={cn("w-full min-w-0 sm:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm")}
                   >
-                    دیدنِ سرفصل‌ها
+                    مسیر دوره
                   </LinkButton>
                 </div>
               </Reveal>
-              <Reveal delay={0.36}>
-                <div
-                  className={cn(
-                    "mx-auto mt-6 flex max-w-full flex-nowrap items-center gap-x-3 overflow-x-auto border-t border-bone/8 pt-4 [-ms-overflow-style:none] [scrollbar-width:none] md:mx-0 md:mt-10 md:flex-wrap md:gap-x-7 md:overflow-visible md:pt-6",
-                    "[&::-webkit-scrollbar]:hidden",
-                  )}
-                >
-                  <IconLabel
-                    icon={Video}
-                    tone="emerald"
-                    className="shrink-0 text-sm [&_svg]:h-3.5 [&_svg]:w-3.5 md:[&_svg]:h-4 md:[&_svg]:w-4"
-                  >
-                    ۴۰+ ساعت ویدیو
-                  </IconLabel>
-                  <span className="hidden shrink-0 text-bone/20 md:inline" aria-hidden>
-                    ·
-                  </span>
-                  <IconLabel
-                    icon={Users}
-                    tone="bone"
-                    className="shrink-0 text-sm [&_svg]:h-3.5 [&_svg]:w-3.5 md:[&_svg]:h-4 md:[&_svg]:w-4"
-                  >
-                    ۵۰٬۰۰۰+ دانشجو
-                  </IconLabel>
-                  <span className="hidden shrink-0 text-bone/20 md:inline" aria-hidden>
-                    ·
-                  </span>
-                  <IconLabel
-                    icon={Award}
-                    tone="gold"
-                    className="shrink-0 text-sm [&_svg]:h-3.5 [&_svg]:w-3.5 md:[&_svg]:h-4 md:[&_svg]:w-4"
-                  >
-                    گواهی پایان مسیر
-                  </IconLabel>
-                </div>
-              </Reveal>
             </div>
 
-            <div className="min-w-0 md:col-span-5">
-              <Reveal delay={0.2}>
-                <div className="relative mx-auto w-full max-w-[min(100%,22rem)] md:mx-0 md:max-w-none">
-                  <div
-                    aria-hidden
-                    className="absolute -inset-6 -z-[1] rounded-card-lg bg-emerald-deep/40 blur-3xl md:-inset-8"
-                  />
-                  <div className="neon-surface-framed overflow-hidden rounded-card-lg border border-bone/12 bg-charcoal/40">
-                    <Image
-                      src={sitePhotos.manifestoLandscape}
-                      alt="پیش‌نمایش دوره"
-                      width={900}
-                      height={700}
-                      sizes="(max-width: 768px) min(100vw - 2rem, 22rem), (max-width: 1024px) 40vw, 33vw"
-                      className="h-auto w-full"
-                    />
-                  </div>
-                  <span className="absolute -start-2 top-4 rounded-pill border border-gold/30 bg-charcoal/80 px-2.5 py-0.5 text-caption text-gold backdrop-blur md:-start-3 md:top-6 md:px-3 md:py-1">
-                    Premium · ۱۰ فصل
-                  </span>
-                  <div className="absolute -end-5 -bottom-6 hidden w-36 rotate-[5deg] md:block">
-                    <PhotoFrame
-                      ratio="square"
-                      variant="grid"
-                      rounded="card"
-                      label="پشت صحنه"
-                      showIcon={false}
-                      src={sitePhotos.courseBackstage}
-                      alt="پشت صحنه‌ی دوره"
-                    />
-                  </div>
-                </div>
+            <div className="min-w-0 max-md:order-1 md:col-span-5">
+              <Reveal delay={0.12}>
+                <HeroPhoto />
               </Reveal>
             </div>
           </div>
         </div>
       </section>
 
-      {/* STATS BAR */}
-      <section className="bg-obsidian py-6 md:py-12">
-        <div className="container-luxe grid grid-cols-1 gap-2 min-[400px]:grid-cols-2 lg:grid-cols-4 lg:gap-3">
-          {stats.map((s) => (
-            <Reveal key={s.label}>
-              <div className="neon-surface-static flex items-center gap-2.5 rounded-card border border-bone/10 bg-charcoal/45 p-3 min-[400px]:gap-3 min-[400px]:p-4 min-[480px]:gap-4 min-[480px]:p-5">
-                <IconTile icon={s.icon} tone="emerald" size="sm" />
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold leading-tight text-bone min-[480px]:text-base min-[520px]:text-h3">{s.value}</p>
-                  <p className="text-caption leading-snug text-mist">{s.label}</p>
-                </div>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </section>
+      {/* WHY IMPORTANT */}
+      <ImageSplitSection
+        id="why"
+        eyebrow="چرا مهم است؟"
+        title="چرا کمپین‌نویسی مهم است؟"
+        image={sitePhotos.manifestoLandscape}
+        imageAlt="فضای کار کمپین‌نویسی"
+        imagePosition="start"
+        tone="emerald"
+      >
+        <p>
+          خیلی از کسب‌وکارها محصول خوبی دارند، اما نمی‌دانند چطور آن را درست معرفی کنند. مشکل
+          همیشه محصول نیست؛ گاهی پیام اشتباه است، پیشنهاد واضح نیست، مسیر فروش کامل نیست یا
+          مخاطب دلیل کافی برای خرید پیدا نمی‌کند.
+        </p>
+        <p className="mt-4 font-medium text-bone md:mt-5">
+          کمپین‌نویس کسی است که این مسیر را می‌سازد.
+        </p>
+        <p className="mt-3 text-bone-dim md:mt-4">
+          او می‌فهمد مخاطب چه می‌خواهد، چه تردیدی دارد، چرا باید اعتماد کند و چه چیزی او را به
+          اقدام می‌رساند.
+        </p>
+      </ImageSplitSection>
 
-      {/* WHO IS THIS FOR */}
-      <section className="py-section-sm">
-        <div className="container-luxe">
-          <Reveal>
-            <Eyebrow>این دوره برای کیست</Eyebrow>
-          </Reveal>
-          <Reveal delay={0.08}>
-            <h2 className="mt-4 max-w-3xl text-h2 text-balance md:mt-5">برای کسی که پشت پیامش می‌ایستد.</h2>
-          </Reveal>
-          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 md:mt-10 lg:grid-cols-4">
-            {whoFor.map((item, i) => (
-              <Reveal key={item.title} delay={i * 0.06}>
-                <FeatureCard
-                  icon={item.icon}
-                  title={item.title}
-                  description={item.body}
-                  tone={i % 2 === 0 ? "emerald" : "gold"}
-                  className="p-4 sm:p-6"
-                />
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
+      <CampaignLearnScroll items={learnItems} />
 
-      {/* CURRICULUM TABS */}
-      <section id="curriculum" className="bg-obsidian py-section-sm md:py-section">
+      {/* WHO IS IT FOR */}
+      <section className="py-10 md:py-section-sm">
         <div className="container-luxe min-w-0">
           <Reveal>
-            <Eyebrow>سرفصل کامل دوره</Eyebrow>
+            <Eyebrow>مخاطب دوره</Eyebrow>
           </Reveal>
           <Reveal delay={0.08}>
             <h2 className="mt-4 max-w-3xl text-h2 text-balance md:mt-5">
-              ده فصل، یک مسیر منسجم.
+              این دوره برای چه کسانی مناسب است؟
             </h2>
           </Reveal>
-          <Reveal delay={0.16}>
-            <p className="mt-4 max-w-2xl text-sm text-bone-dim md:mt-5 md:text-body">
-              برای اجرا طراحی شده — نه تماشا.
+          <Reveal delay={0.14}>
+            <p className="mt-4 max-w-2xl text-sm text-bone-dim md:text-body">
+              نیازی نیست از قبل متخصص تبلیغات باشی. این دوره از پایه شروع می‌شود و
+              مرحله‌به‌مرحله تو را وارد فضای واقعی کمپین‌نویسی می‌کند.
             </p>
           </Reveal>
-
-          <div className="mt-6 md:mt-12">
-            <Tabs
-              tabs={[
-                {
-                  id: "vision",
-                  label: "بخش ۱ · نگاه",
-                  shortLabel: "نگاه",
-                  content: (
-                    <CurriculumGroup
-                      icon={Eye}
-                      title="پایه‌گذاری نگاه و پیام"
-                      chapters={chapters.slice(0, 3)}
-                    />
-                  ),
-                },
-                {
-                  id: "design",
-                  label: "بخش ۲ · طراحی",
-                  shortLabel: "طراحی",
-                  content: (
-                    <CurriculumGroup
-                      icon={Layers}
-                      title="معماری کمپین و پیشنهاد"
-                      chapters={chapters.slice(3, 7)}
-                    />
-                  ),
-                },
-                {
-                  id: "execute",
-                  label: "بخش ۳ · اجرا",
-                  shortLabel: "اجرا",
-                  content: (
-                    <CurriculumGroup
-                      icon={Target}
-                      title="اجرا، اندازه‌گیری و سیستم‌سازی"
-                      chapters={chapters.slice(7)}
-                    />
-                  ),
-                },
-              ]}
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* WHAT YOU GET */}
-      <section className="py-section-sm">
-        <div className="container-luxe">
-          <Reveal>
-            <Eyebrow>چه چیز در اختیار توست</Eyebrow>
-          </Reveal>
-          <Reveal delay={0.08}>
-            <h2 className="mt-4 max-w-3xl text-h2 text-balance md:mt-5">ویدیو + ابزار اجرا.</h2>
-          </Reveal>
-          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 md:mt-10 lg:grid-cols-3">
-            {youGet.map((item, i) => (
-              <Reveal key={item.title} delay={i * 0.05}>
-                <FeatureCard
-                  icon={item.icon}
-                  title={item.title}
-                  description={item.body}
-                  tone={i === 5 ? "gold" : "emerald"}
-                  className="p-4 sm:p-6"
-                />
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5 md:mt-10">
+            {whoFor.map((item, i) => (
+              <Reveal key={item.title} delay={i * 0.06}>
+                <AudienceCard {...item} tone={i % 2 === 0 ? "emerald" : "gold"} />
               </Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/* INSTRUCTOR */}
-      <section className="py-section-sm">
-        <div className="container-luxe">
-          <div className="neon-surface-static grid grid-cols-1 gap-5 rounded-card border border-bone/10 bg-charcoal/45 p-5 max-[639px]:grid-cols-[108px_minmax(0,1fr)] max-[639px]:items-start md:grid-cols-12 md:gap-10 md:p-10">
-            <div className="md:col-span-4">
-              <Reveal>
-                <PhotoFrame
-                  ratio="portrait"
-                  variant="radial"
-                  rounded="card"
-                  badge="پرتره‌ی رسمی"
-                  label="بهرام رستمی"
-                  className="border-bone/10 shadow-none neon-surface-framed"
-                  src={sitePhotos.portraitFounder}
-                  alt="بهرام رستمی"
-                />
+      {/* OUTCOMES */}
+      <ImageSplitSection
+        eyebrow="بعد از دوره"
+        title="بعد از دوره چه توانایی‌هایی داری؟"
+        image={sitePhotos.academyStory}
+        imageAlt="خروجی یادگیری کمپین‌نویسی"
+        imagePosition="end"
+        tone="gold"
+        className="bg-obsidian"
+      >
+        <ul className="space-y-3 md:space-y-3.5">
+          {outcomes.map((item) => (
+            <li key={item} className="flex items-start gap-3 text-sm text-bone-dim md:text-base">
+              <CheckCircle2
+                className="mt-0.5 h-4 w-4 shrink-0 text-emerald-glow md:h-[1.125rem] md:w-[1.125rem]"
+                strokeWidth={1.6}
+                aria-hidden
+              />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </ImageSplitSection>
+
+      {/* LEARNING PATH */}
+      <section id="path" className="scroll-mt-20 py-10 md:py-section-sm lg:py-section">
+        <div className="container-luxe min-w-0">
+          <Reveal>
+            <Eyebrow>مسیر یادگیری</Eyebrow>
+          </Reveal>
+          <Reveal delay={0.08}>
+            <h2 className="mt-4 max-w-3xl text-h2 text-balance md:mt-5">مسیر یادگیری دوره</h2>
+          </Reveal>
+          <Reveal delay={0.14}>
+            <p className="mt-4 max-w-2xl text-sm text-bone-dim md:text-body">
+              شش گام از شناخت کمپین تا سناریوی فروش و پیگیری — هر مرحله با تمرین و خروجی عملی.
+            </p>
+          </Reveal>
+
+          <div className="mt-6 space-y-4 sm:space-y-5 md:mt-12 md:space-y-8">
+            {learningPath.map((step, i) => (
+              <Reveal key={step.title} delay={i * 0.04}>
+                <LearningPathRow step={step} reverse={i % 2 === 1} />
               </Reveal>
-            </div>
-            <div className="min-w-0 md:col-span-8">
-              <Reveal>
-                <Eyebrow>مدرس مسیر</Eyebrow>
-              </Reveal>
-              <Reveal delay={0.06}>
-                <h2 className="mt-2 text-h3 text-balance md:mt-4 md:text-h2">بهرام رستمی</h2>
-              </Reveal>
-              <Reveal delay={0.12}>
-                <p className="mt-1.5 text-sm leading-snug text-gold md:mt-2 md:text-base">
-                  معمار مسیر رشد حرفه‌ای · بنیان‌گذار آکادمی
-                </p>
-              </Reveal>
-              <Reveal delay={0.18}>
-                <Quote
-                  className="mt-4 h-5 w-5 text-gold/50 max-[639px]:mt-3 md:mt-6 md:h-7 md:w-7"
-                  strokeWidth={1.4}
-                  aria-hidden
-                />
-              </Reveal>
-              <Reveal delay={0.22}>
-                <p className="mt-2 text-lg font-medium leading-snug text-balance text-bone md:mt-3 md:text-h3">
-                  «بدون ساختار روایت، اجرا نمی‌چسبد.»
-                </p>
-              </Reveal>
-              <Reveal delay={0.28}>
-                <p className="mt-3 text-sm text-bone-dim md:mt-5 md:text-base">۱۰+ سال آموزش و اجرا؛ تمرکز بر نسخه‌ی حرفه‌ای‌تر تو.</p>
-              </Reveal>
-              <Reveal delay={0.34}>
-                <div className="mt-4 flex flex-wrap gap-2 md:mt-7 md:gap-3">
-                  <Badge tone="emerald">۷۰۰٬۰۰۰+ مخاطب</Badge>
-                  <Badge tone="gold">۵۰٬۰۰۰+ دانشجو</Badge>
-                  <Badge>۱۰+ سال تجربه</Badge>
-                </div>
-              </Reveal>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* TESTIMONIAL */}
-      <section className="bg-obsidian py-section-sm">
-        <div className="container-luxe">
-          <Reveal>
-            <Eyebrow>صدای واقعی دانشجوها</Eyebrow>
-          </Reveal>
-          <CampaignWritingTestimonials
-            items={[
-              {
-                avatar: sitePhotos.testimonialPortrait[0]!,
-                name: "سارا ر.",
-                role: "مشاور کسب‌وکار",
-                quote: "اولین بار مسیر پیوسته گرفتم؛ سه ماه بعد، لیست انتظار.",
-              },
-              {
-                avatar: sitePhotos.testimonialPortrait[1]!,
-                name: "امیر ه.",
-                role: "طراح تجربه",
-                quote: "از پشت نمونه‌کارها بیرون آمدم؛ الان صدای حرفه‌ای خودم را می‌سازم.",
-              },
-              {
-                avatar: sitePhotos.testimonialPortrait[2]!,
-                name: "نازنین ک.",
-                role: "مربی تغذیه",
-                quote: "از جلسات تک‌نفره به گروه‌های پر رسیدم؛ کمپین برایم ساختار شد.",
-              },
-            ]}
-          />
-        </div>
-      </section>
-
-      {/* PRICING / ENROLL */}
-      <section id="enroll" className="py-section-sm md:py-section">
+      {/* DIFFERENCE */}
+      <section className="bg-obsidian py-10 md:py-section-sm lg:py-section">
         <div className="container-luxe min-w-0">
-          <Reveal>
-            <Eyebrow>ثبت‌نام در مسیر</Eyebrow>
-          </Reveal>
-          <Reveal delay={0.08}>
-            <h2 className="mt-4 max-w-3xl text-h2 text-balance md:mt-5">سرمایه روی نسخه‌ی حرفه‌ای‌تر خودت.</h2>
-          </Reveal>
-
-          <div className="mt-6 grid gap-4 md:mt-10 md:gap-5 lg:grid-cols-3">
+          <div className="max-w-3xl">
             <Reveal>
-              <PricingCard
-                tone="bone"
-                tier="پایه"
-                badge="ورود سریع"
-                price="—"
-                description="مسیر ۱۰ فصلی، تمرین‌ها و قالب‌ها."
-                features={["۱۰ فصل ویدیویی", "تمرین‌ها و چک‌لیست‌ها", "دسترسی دائم"]}
-                cta={{ href: "/apply", label: "شروع از همینجا" }}
-              />
+              <Eyebrow>تفاوت دوره</Eyebrow>
             </Reveal>
-            <Reveal delay={0.07}>
-              <PricingCard
-                tone="emerald"
-                tier="حرفه‌ای"
-                badge="پیشنهاد ما"
-                price="—"
-                description="مسیر اصلی + انجمن خصوصی + بازخورد."
-                features={[
-                  "همه‌ی موارد پایه",
-                  "انجمن خصوصی دانشجوها",
-                  "جلسات ماهانه پرسش و پاسخ",
-                  "اولویت در ارزیابی آکادمی",
-                ]}
-                cta={{ href: "/apply", label: "ثبت‌نام در مسیر حرفه‌ای" }}
-                highlighted
-              />
+            <Reveal delay={0.08}>
+              <h2 className="mt-4 text-h2 text-balance md:mt-6">این دوره چه تفاوتی دارد؟</h2>
             </Reveal>
-            <Reveal delay={0.14}>
-              <PricingCard
-                tone="gold"
-                tier="آکادمی"
-                badge="انتخابی"
-                price="گفت‌وگو"
-                description="آکادمی پس از ارزیابی؛ ورود انتخابی."
-                features={["مسیر + منتور", "اتاق رشد و اپ خصوصی", "ورود با ارزیابی"]}
-                cta={{ href: "/academy", label: "آشنایی با آکادمی" }}
-              />
+            <Reveal delay={0.12}>
+              <p className="mt-4 max-w-2xl text-sm text-bone-dim md:text-base">
+                اینجا فقط درباره نوشتن متن حرف نمی‌زنیم. کمپین‌نویسی را به عنوان یک مهارت اجرایی
+                یاد می‌گیری؛ مهارتی که به فروش، ارتباط با مشتری، پیشنهادسازی و نتیجه گرفتن وصل
+                است.
+              </p>
             </Reveal>
+          </div>
+
+          <div className="neon-surface-framed mt-6 overflow-hidden rounded-card-lg border border-bone/10 bg-charcoal/40 md:mt-12">
+            <div className="grid grid-cols-1 border-b border-bone/8 md:grid-cols-2">
+              <div className="p-4 text-bone-dim sm:p-5 md:p-9">
+                <p className="text-[0.65rem] uppercase tracking-[0.18em] text-mist sm:text-caption sm:tracking-[0.3em]">
+                  فقط نوشتن
+                </p>
+                <p className="mt-2 font-display text-sm font-semibold leading-snug text-bone sm:text-base md:mt-3 md:text-xl">
+                  متن زیبا بدون مسیر فروش
+                </p>
+              </div>
+              <div className="relative border-t border-bone/8 bg-gradient-to-br from-gold/[0.12] via-gold/[0.04] to-transparent p-4 sm:p-5 md:border-s md:border-t-0 md:p-9">
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_50%_at_100%_0%,color-mix(in_oklab,var(--color-gold)_22%,transparent),transparent_65%)]"
+                />
+                <p className="relative text-[0.65rem] uppercase tracking-[0.18em] text-gold sm:text-caption sm:tracking-[0.3em]">
+                  کمپین‌نویسی
+                </p>
+                <p className="relative mt-2 font-display text-sm font-semibold leading-snug text-bone sm:text-base md:mt-3 md:text-xl">
+                  مهارت اجرایی با نتیجه واقعی
+                </p>
+              </div>
+            </div>
+
+            {[
+              {
+                left: "فقط تیتر و متن می‌نویسی.",
+                right: "مخاطب را تحلیل می‌کنی و پیام اصلی می‌سازی.",
+              },
+              {
+                left: "پیشنهاد فروش مبهم می‌ماند.",
+                right: "پیشنهاد جذاب با دلیل واضح برای خرید طراحی می‌کنی.",
+              },
+              {
+                left: "کمپین دیده می‌شود اما نتیجه نمی‌دهد.",
+                right: "مسیر ارتباط، پیگیری و تصمیم‌گیری را کامل می‌کنی.",
+              },
+            ].map((row) => (
+              <div
+                key={row.left}
+                className="grid grid-cols-1 border-b border-bone/6 last:border-b-0 md:grid-cols-2"
+              >
+                <div className="flex items-start gap-2.5 p-3.5 text-bone-dim sm:gap-3 sm:p-4 md:gap-4 md:p-7">
+                  <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-pill border border-bone/12 text-mist sm:h-8 sm:w-8 md:h-9 md:w-9">
+                    <X className="h-3.5 w-3.5 md:h-4 md:w-4" strokeWidth={1.6} aria-hidden />
+                  </span>
+                  <p className="min-w-0 flex-1 text-sm leading-relaxed md:text-body">{row.left}</p>
+                </div>
+                <div className="relative flex items-start gap-2.5 border-t border-bone/6 bg-gradient-to-br from-gold/[0.07] via-transparent to-transparent p-3.5 text-bone sm:gap-3 sm:p-4 md:gap-4 md:border-s md:border-t-0 md:p-7">
+                  <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-pill border border-gold/35 bg-gold/[0.12] text-gold shadow-[0_0_16px_-4px_color-mix(in_oklab,var(--color-gold)_40%,transparent)] sm:h-8 sm:w-8 md:h-9 md:w-9">
+                    <Check className="h-3.5 w-3.5 md:h-4 md:w-4" strokeWidth={1.8} aria-hidden />
+                  </span>
+                  <p className="min-w-0 flex-1 text-sm font-medium leading-relaxed text-bone md:text-body">
+                    {row.right}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
 
           <Reveal delay={0.2}>
-            <p className="mt-6 inline-flex items-center gap-2 text-caption text-mist md:mt-8">
-              <Wallet className="h-4 w-4 text-gold" strokeWidth={1.5} aria-hidden />
-              قیمت دقیق در صفحه‌ی ثبت‌نام نهایی اعلام می‌شود.
+            <p className="mt-6 max-w-2xl text-sm text-bone-dim md:mt-8 md:text-base">
+              تمرکز دوره روی این است که بتوانی برای یک محصول واقعی، پیام واقعی و مسیر فروش واقعی
+              طراحی کنی.
             </p>
           </Reveal>
+        </div>
+      </section>
+
+      {/* NOT JUST WRITING */}
+      <section className="py-10 md:py-section-sm">
+        <div className="container-luxe min-w-0">
+          <div className="neon-cta-slab relative overflow-hidden rounded-card border border-emerald/25 bg-gradient-to-b from-emerald-deep/40 via-charcoal/70 to-ink p-4 sm:p-8 md:p-14">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_70%_at_85%_10%,rgba(0,140,150,0.22),transparent_70%)]"
+            />
+            <div className="relative grid gap-6 sm:gap-8 md:grid-cols-12 md:items-center md:gap-10">
+              <div className="md:col-span-7">
+                <IconTile icon={PenLine} tone="gold" size="lg" />
+                <h2 className="mt-4 text-h3 text-balance sm:mt-5 md:mt-6 md:text-h2">
+                  اگر می‌خواهی فقط بنویسی، این دوره کافی نیست
+                </h2>
+                <p className="mt-4 max-w-2xl text-sm text-bone-dim md:text-body">
+                  این دوره برای کسی است که می‌خواهد بفهمد چرا یک متن می‌فروشد، چرا یک پیشنهاد
+                  جذاب می‌شود، چرا یک مخاطب اعتماد می‌کند و چطور می‌شود از توجه مخاطب، یک اقدام
+                  واقعی ساخت.
+                </p>
+                <p className="mt-4 font-medium text-bone md:mt-5">
+                  اگر دنبال یک مهارت جدی در تبلیغات و فروش هستی، کمپین‌نویسی نقطه شروع قدرتمندی
+                  است.
+                </p>
+              </div>
+              <div className="md:col-span-5">
+                <PhotoFrame
+                  ratio="landscape"
+                  variant="grid"
+                  rounded="card-lg"
+                  label="کمپین واقعی"
+                  src={sitePhotos.squareBackstage}
+                  alt="پشت صحنه طراحی کمپین"
+                  className="border-bone/12 shadow-none neon-surface-framed"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* PRICING */}
+      <section id="enroll" className="scroll-mt-20 bg-obsidian py-10 md:py-section-sm lg:py-section">
+        <div className="container-luxe min-w-0">
+          <Reveal>
+            <Eyebrow>ثبت‌نام</Eyebrow>
+          </Reveal>
+          <Reveal delay={0.08}>
+            <h2 className="mt-4 max-w-3xl text-h2 text-balance md:mt-5">
+              سرمایه‌گذاری روی مهارت فروش‌ساز
+            </h2>
+          </Reveal>
+          <Reveal delay={0.14}>
+            <p className="mt-4 max-w-2xl text-sm text-bone-dim md:text-body">
+              این دوره برای شروع یک مسیر تازه طراحی شده؛ مسیری که از شناخت مخاطب شروع می‌شود و
+              به ساختن پیام، پیشنهاد، کمپین و فروش می‌رسد.
+            </p>
+          </Reveal>
+
+          <div className="mt-8 md:mt-10">
+            <Reveal delay={0.1}>
+              <article
+                data-neon-tone="emerald"
+                className="neon-cta-slab relative mx-auto max-w-2xl overflow-hidden rounded-card-lg border border-emerald/40 bg-gradient-to-b from-emerald-deep/35 via-charcoal/65 to-ink p-5 sm:p-8 md:p-10"
+              >
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_60%_at_85%_5%,rgba(0,140,150,0.22),transparent_70%)]"
+                />
+                <div className="relative">
+                  <Badge tone="emerald">دوره کمپین‌نویسی</Badge>
+                  <h3 className="mt-4 text-h3 text-bone md:mt-5">مسیر کامل از پایه تا اجرا</h3>
+                  <p className="mt-2 text-sm text-bone-dim md:text-base">
+                    شش مرحله یادگیری، تمرین عملی و طراحی مسیر فروش واقعی.
+                  </p>
+                  <p className="relative mt-5 break-words text-[clamp(1.25rem,5vw,2rem)] font-semibold leading-tight text-bone num-latin md:mt-8 md:text-h2">
+                    {priceLabel}
+                  </p>
+                  <ul className="relative mt-6 space-y-2.5 md:mt-7 md:space-y-3">
+                    {[
+                      "شناخت کمپین و مخاطب",
+                      "طراحی پیام و متن تبلیغاتی",
+                      "ساخت پیشنهاد فروش",
+                      "سناریوی فروش و پیگیری لید",
+                    ].map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-sm text-bone-dim md:text-base">
+                        <CheckCircle2
+                          className="mt-0.5 h-4 w-4 shrink-0 text-emerald-glow"
+                          strokeWidth={1.6}
+                          aria-hidden
+                        />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <LinkButton
+                    href="/apply"
+                    variant="sales"
+                    withArrow
+                    size="lg"
+                    className="relative mt-8 w-full md:mt-10"
+                  >
+                    ورود به دوره کمپین‌نویسی
+                  </LinkButton>
+                </div>
+              </article>
+            </Reveal>
+          </div>
         </div>
       </section>
 
       {/* FAQ */}
-      <section className="py-section-sm">
-        <div className="container-luxe">
+      <section className="py-10 md:py-section-sm">
+        <div className="container-luxe min-w-0">
           <Reveal>
             <Eyebrow>سوالات متداول</Eyebrow>
           </Reveal>
           <Reveal delay={0.08}>
-            <h2 className="mt-4 max-w-3xl text-h2 text-balance md:mt-5">پرسش‌های کلیدی قبل از ثبت‌نام.</h2>
+            <h2 className="mt-4 max-w-3xl text-h2 text-balance md:mt-5">
+              پرسش‌های کلیدی قبل از ثبت‌نام
+            </h2>
           </Reveal>
           <div className="mt-6 md:mt-10">
             <Reveal>
@@ -537,38 +552,73 @@ export default function CourseCampaignWritingPage() {
       </section>
 
       {/* FINAL CTA */}
-      <section className="py-section-sm md:py-section-xl">
+      <section className="py-10 md:py-section-sm lg:py-section-xl">
         <div className="container-luxe min-w-0">
-          <div className="neon-cta-slab relative overflow-hidden rounded-card border border-emerald/25 bg-gradient-to-b from-emerald-deep/40 via-charcoal/70 to-ink p-5 sm:p-8 md:p-14">
+          <div className="neon-cta-slab relative overflow-hidden rounded-card border border-emerald/25 bg-gradient-to-b from-emerald-deep/40 via-charcoal/70 to-ink p-4 sm:p-6 md:p-14">
             <div
               aria-hidden
               className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_70%_at_85%_10%,rgba(0,140,150,0.22),transparent_70%)]"
             />
-            <div className="relative">
-              <IconTile icon={Compass} tone="gold" size="lg" className="max-sm:scale-90" />
-              <h2 className="mt-5 max-w-full text-h2 text-balance md:mt-8 md:text-display">
-                مسیر، اینجا شروع می‌شود.
-              </h2>
-              <p className="mt-4 max-w-2xl text-sm text-bone-dim md:mt-6 md:text-body">
-                قدم اول را بردار؛ بقیه کنار تو ساخته می‌شود.
-              </p>
-              <div className="mt-6 flex w-full max-w-md flex-col gap-2.5 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 md:mt-10">
-                <LinkButton
-                  href="/apply"
-                  variant="primary"
-                  size="lg"
-                  withArrow
-                  className={cn("w-full min-w-0 sm:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm")}
-                >
-                  شروع مسیر
-                </LinkButton>
-                <Link
-                  href="/academy"
-                  className="inline-flex items-center justify-center gap-2 text-gold transition-colors hover:text-gold-soft sm:justify-start"
-                >
-                  آشنایی با آکادمی
-                  <ArrowLeft className="rtl-flip h-4 w-4" aria-hidden />
-                </Link>
+            <div className="relative flex flex-col gap-5 sm:gap-6 md:grid md:grid-cols-12 md:items-center md:gap-10">
+              <div className="order-2 min-w-0 text-center md:order-1 md:col-span-7 md:text-start">
+                <div className="flex justify-center md:justify-start">
+                  <IconTile icon={Compass} tone="gold" size="lg" className="max-sm:scale-90" />
+                </div>
+                <h2 className="mt-4 max-w-full text-[clamp(1.25rem,5.5vw,1.75rem)] font-display leading-snug text-balance sm:text-h3 md:mt-8 md:text-h2 lg:text-display">
+                  آماده‌ای کمپین‌نویسی را جدی یاد بگیری؟
+                </h2>
+                <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-bone-dim sm:mt-4 md:mx-0 md:mt-6 md:max-w-2xl md:text-body">
+                  این دوره برای شروع یک مسیر تازه طراحی شده؛ مسیری که از شناخت مخاطب شروع
+                  می‌شود و به ساختن پیام، پیشنهاد، کمپین و فروش می‌رسد.
+                </p>
+                <div className="mx-auto mt-5 flex w-full max-w-sm flex-col gap-2.5 sm:mt-6 md:mx-0 md:mt-10 md:max-w-none md:flex-row md:flex-wrap md:items-center md:gap-4">
+                  <LinkButton
+                    href="/apply"
+                    variant="primary"
+                    size="lg"
+                    withArrow
+                    className={cn("w-full min-w-0 md:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm")}
+                  >
+                    شروع مسیر کمپین‌نویسی
+                  </LinkButton>
+                  <Link
+                    href="#enroll"
+                    className="inline-flex w-full items-center justify-center gap-2 py-2 text-sm text-gold transition-colors hover:text-gold-soft md:w-auto md:justify-start md:py-0"
+                  >
+                    مشاهده قیمت
+                    <ArrowLeft className="rtl-flip h-4 w-4 shrink-0" aria-hidden />
+                  </Link>
+                </div>
+              </div>
+              <div className="order-1 min-w-0 md:order-2 md:col-span-5">
+                <div className="relative mx-auto w-full max-w-[10.5rem] sm:max-w-[12rem] md:max-w-sm md:ms-auto md:me-0 lg:max-w-none">
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute -inset-4 -z-[1] hidden rounded-card-lg bg-emerald-deep/35 blur-2xl md:block md:-inset-6 md:blur-3xl"
+                  />
+                  <PhotoFrame
+                    ratio="square"
+                    variant="radial"
+                    rounded="card-lg"
+                    badge="مسیر جدید"
+                    label="کمپین‌نویسی"
+                    src={sitePhotos.manifestoPortraitB}
+                    alt="شروع مسیر کمپین‌نویسی"
+                    className="border-bone/12 neon-surface-framed md:hidden"
+                    photoCaption="none"
+                  />
+                  <PhotoFrame
+                    ratio="portrait"
+                    variant="radial"
+                    rounded="card-lg"
+                    badge="مسیر جدید"
+                    label="کمپین‌نویسی"
+                    src={sitePhotos.manifestoPortraitB}
+                    alt="شروع مسیر کمپین‌نویسی"
+                    className="hidden border-bone/12 neon-surface-framed md:block"
+                    photoCaption="none"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -578,121 +628,176 @@ export default function CourseCampaignWritingPage() {
   );
 }
 
-function CurriculumGroup({
-  icon: Icon,
-  title,
-  chapters: list,
-}: {
-  icon: typeof Eye;
-  title: string;
-  chapters: { id: string; n: string; title: string; body: string }[];
-}) {
+function HeroPhoto() {
   return (
-    <div className="neon-surface-static grid gap-4 rounded-card border border-bone/10 bg-charcoal/40 p-4 md:grid-cols-12 md:gap-6 md:p-8">
-      <div className="md:col-span-4">
-        <IconTile icon={Icon} tone="emerald" size="lg" />
-        <h3 className="mt-3 text-h3 text-bone md:mt-6">{title}</h3>
-        <p className="mt-2 text-sm text-bone-dim md:mt-3 md:text-base">هر فصل: درس کوتاه، تمرین، چک‌لیست خروجی.</p>
-        <p className="mt-3 inline-flex items-center gap-2 text-caption text-gold md:mt-5">
-          <Headphones className="h-3 w-3 shrink-0 md:h-3.5 md:w-3.5" strokeWidth={1.6} aria-hidden />
-          ویدیو · صدا · متن
-        </p>
-      </div>
-      <div className="md:col-span-8">
-        <ul className="space-y-2 md:space-y-3">
-          {list.map((c) => (
-            <li
-              key={c.id}
-              className="flex items-start gap-2.5 rounded-tile border border-bone/8 bg-ink/40 p-3 md:gap-4 md:p-4"
-            >
-              <span className="num-latin shrink-0 rounded-pill border border-bone/15 px-2.5 py-1 text-caption text-bone-dim">
-                {c.n}
-              </span>
-              <div>
-                <p className="text-bone">{c.title}</p>
-                <p className="mt-1 text-caption text-mist">{c.body}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
+    <div className="relative mx-auto w-full max-w-[min(100%,18rem)] sm:max-w-xs md:mx-0 md:max-w-none">
+      <div className="overflow-hidden rounded-card-lg border border-bone/12 bg-charcoal/30">
+        <Image
+          src={sitePhotos.manifestoLandscape}
+          alt="دوره کمپین‌نویسی"
+          width={900}
+          height={700}
+          sizes="(max-width: 768px) min(100vw - 2rem, 20rem), (max-width: 1024px) 40vw, 33vw"
+          className="h-auto w-full"
+          priority
+        />
       </div>
     </div>
   );
 }
 
-function PricingCard({
-  tone,
-  tier,
-  badge,
-  price,
-  description,
-  features,
-  cta,
-  highlighted = false,
+function ImageSplitSection({
+  id,
+  eyebrow,
+  title,
+  image,
+  imageAlt,
+  imagePosition = "start",
+  tone = "emerald",
+  className,
+  children,
 }: {
-  tone: "bone" | "emerald" | "gold";
-  tier: string;
-  badge: string;
-  price: string;
-  description: string;
-  features: string[];
-  cta: { href: string; label: string };
-  highlighted?: boolean;
+  id?: string;
+  eyebrow: string;
+  title: string;
+  image: string;
+  imageAlt: string;
+  imagePosition?: "start" | "end";
+  tone?: "emerald" | "gold";
+  className?: string;
+  children: ReactNode;
+}) {
+  const imageFirst = imagePosition === "start";
+
+  return (
+    <section id={id} className={cn("py-10 md:py-section-sm lg:py-section", className)}>
+      <div className="container-luxe min-w-0">
+        <div
+          className={cn(
+            "grid items-center gap-5 sm:gap-6 md:grid-cols-12 md:gap-10 lg:gap-14",
+            !imageFirst && "md:[&>div:first-child]:order-2 md:[&>div:last-child]:order-1",
+          )}
+        >
+          <div className={cn("max-md:order-2 md:col-span-5", !imageFirst && "md:order-2")}>
+            <Reveal delay={imageFirst ? 0.1 : 0}>
+              <div className="relative overflow-hidden rounded-card-lg border border-bone/10">
+                <div className="relative aspect-[16/10] sm:aspect-[5/4] md:aspect-[4/5] lg:aspect-[5/6]">
+                  <Image
+                    src={image}
+                    alt={imageAlt}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 40vw"
+                  />
+                  <div
+                    aria-hidden
+                    className={cn(
+                      "absolute inset-0",
+                      tone === "gold"
+                        ? "bg-gradient-to-t from-ink/60 via-ink/10 to-gold/10"
+                        : "bg-gradient-to-t from-ink/60 via-ink/10 to-emerald/10",
+                    )}
+                  />
+                </div>
+              </div>
+            </Reveal>
+          </div>
+          <div className={cn("max-md:order-1 md:col-span-7", !imageFirst && "md:order-1")}>
+            <Reveal delay={imageFirst ? 0 : 0.1}>
+              <Eyebrow>{eyebrow}</Eyebrow>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <h2 className="mt-3 max-w-2xl text-h2 text-balance md:mt-5">{title}</h2>
+            </Reveal>
+            <Reveal delay={0.14}>
+              <div className="mt-4 max-w-2xl text-sm leading-relaxed text-bone-dim md:mt-6 md:text-body">
+                {children}
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AudienceCard({
+  icon: Icon,
+  title,
+  body,
+  image,
+  tone,
+}: {
+  icon: typeof Megaphone;
+  title: string;
+  body: string;
+  image: string;
+  tone: "emerald" | "gold";
 }) {
   return (
-    <article
-      data-neon-tone={tone === "gold" ? "gold" : "emerald"}
-      className={
-        "relative flex h-full flex-col overflow-hidden rounded-card border p-4 sm:p-6 md:p-7 " +
-        (highlighted
-          ? "neon-cta-slab border-emerald/40 bg-gradient-to-b from-emerald-deep/35 via-charcoal/65 to-ink"
-          : "neon-surface-hover border-bone/10 bg-charcoal/45")
-      }
-    >
-      {highlighted ? (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_60%_at_85%_5%,rgba(0,140,150,0.22),transparent_70%)]"
-        />
-      ) : null}
-      <div className="relative flex items-center justify-between">
-        <Badge tone={tone === "bone" ? "neutral" : tone}>{badge}</Badge>
-        <CheckCircle2
-          className={
-            tone === "emerald"
-              ? "h-5 w-5 text-emerald-glow"
-              : tone === "gold"
-                ? "h-5 w-5 text-gold"
-                : "h-5 w-5 text-mist"
-          }
-          strokeWidth={1.5}
-          aria-hidden
-        />
+    <article className="group relative min-h-[10.5rem] overflow-hidden rounded-card-lg border border-bone/10 sm:min-h-[12rem]">
+      <Image
+        src={image}
+        alt=""
+        fill
+        className="object-cover transition-transform duration-700 group-hover:scale-105"
+        sizes="(max-width: 640px) 100vw, 50vw"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/75 to-ink/20" />
+      <div
+        aria-hidden
+        className={cn(
+          "absolute inset-0 opacity-60",
+          tone === "gold"
+            ? "bg-gradient-to-br from-gold/20 via-transparent to-transparent"
+            : "bg-gradient-to-br from-emerald-glow/18 via-transparent to-transparent",
+        )}
+      />
+      <div className="relative flex h-full min-h-[10.5rem] flex-col justify-end gap-2.5 p-4 sm:min-h-[12rem] sm:gap-3 sm:p-5 md:p-6">
+        <IconTile icon={Icon} tone={tone} size="sm" />
+        <h3 className="text-base font-semibold leading-snug text-bone sm:text-lg">{title}</h3>
+        <p className="text-sm leading-relaxed text-bone-dim">{body}</p>
       </div>
-      <h3 className="relative mt-4 text-h3 text-bone sm:mt-6">{tier}</h3>
-      <p className="relative mt-2 text-bone-dim">{description}</p>
-      <p className="relative mt-5 text-h2 text-bone sm:mt-7">{price}</p>
-      <ul className="relative mt-5 space-y-2.5 sm:mt-7 sm:space-y-3">
-        {features.map((f) => (
-          <li key={f} className="flex items-start gap-2 text-bone-dim">
-            <CheckCircle2
-              className="mt-0.5 h-4 w-4 shrink-0 text-emerald-glow"
-              strokeWidth={1.6}
-              aria-hidden
-            />
-            <span>{f}</span>
-          </li>
-        ))}
-      </ul>
-      <div className="relative mt-6 flex-1 sm:mt-8" />
-      <LinkButton
-        href={cta.href}
-        variant={highlighted ? "sales" : "ghost"}
-        withArrow
-        className="relative w-full"
+    </article>
+  );
+}
+
+function LearningPathRow({
+  step,
+  reverse,
+}: {
+  step: (typeof learningPath)[number];
+  reverse?: boolean;
+}) {
+  const Icon = step.icon;
+
+  return (
+    <article className="neon-surface-static overflow-hidden rounded-card-lg border border-bone/10 bg-charcoal/40">
+      <div
+        className={cn(
+          "grid md:grid-cols-12 md:items-stretch",
+          reverse && "md:[&>div:first-child]:order-2",
+        )}
       >
-        {cta.label}
-      </LinkButton>
+        <div className={cn("relative min-h-[10rem] sm:min-h-[12rem] md:col-span-5 md:min-h-[14rem]", reverse && "md:order-2")}>
+          <Image
+            src={step.image}
+            alt={step.title}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 42vw"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-ink/50 via-transparent to-transparent md:bg-gradient-to-l md:from-ink/40 md:via-transparent md:to-transparent" />
+          <span className="absolute start-3 top-3 rounded-pill border border-bone/20 bg-charcoal/80 px-2.5 py-0.5 text-caption text-bone backdrop-blur sm:start-4 sm:top-4 sm:px-3 sm:py-1">
+            مرحله {step.n}
+          </span>
+        </div>
+        <div className={cn("flex flex-col justify-center p-4 sm:p-5 md:col-span-7 md:p-8", reverse && "md:order-1")}>
+          <IconTile icon={Icon} tone="emerald" size="md" />
+          <h3 className="mt-3 text-lg font-semibold text-bone sm:mt-4 sm:text-h3 md:mt-5">{step.title}</h3>
+          <p className="mt-2 text-sm leading-relaxed text-bone-dim md:mt-3 md:text-base">{step.body}</p>
+        </div>
+      </div>
     </article>
   );
 }

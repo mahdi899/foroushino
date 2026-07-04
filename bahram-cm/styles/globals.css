@@ -728,6 +728,54 @@
     height: clamp(210vh, 250vh, 290vh);
   }
 
+  .course-learn-scroll-track {
+    height: clamp(230vh, 280vh, 320vh);
+  }
+
+  .sat-flow-scroll-track {
+    height: clamp(300vh, 360vh, 420vh);
+  }
+
+  .sat-wap-scroll-track {
+    height: clamp(113vh, 133vh, 154vh);
+  }
+
+  .sat-flow-sticky-stage {
+    display: flex;
+    min-height: calc(100dvh - 3.5rem);
+    align-items: center;
+  }
+
+  @media (min-width: 768px) {
+    .sat-flow-sticky-stage {
+      min-height: calc(100dvh - 4rem);
+    }
+  }
+
+  .sat-wap-sticky-stage {
+    display: flex;
+    min-height: calc(100dvh - 3.5rem);
+    align-items: center;
+  }
+
+  @media (min-width: 768px) {
+    .sat-wap-sticky-stage {
+      min-height: calc(100dvh - 4rem);
+    }
+  }
+
+  .course-learn-sticky-stage {
+    display: flex;
+    min-height: calc(100dvh - 3.5rem);
+    align-items: center;
+  }
+
+  @media (min-width: 768px) {
+    .course-learn-sticky-stage {
+      min-height: calc(100dvh - 4rem);
+    }
+  }
+
   .campaign-journey-sticky-stage {
     display: flex;
     min-height: calc(100dvh - 3.5rem);
