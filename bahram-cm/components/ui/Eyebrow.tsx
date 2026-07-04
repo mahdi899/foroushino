@@ -9,25 +9,31 @@ export function Eyebrow({
   children,
   className,
   dotClassName,
+  withDot = true,
   as: Tag = "p",
 }: {
   children: ReactNode;
   className?: string;
   /** Override the leading dot color (e.g. on gold surfaces). */
   dotClassName?: string;
+  /** When false, render label only (e.g. beside a shared rail dot). */
+  withDot?: boolean;
   as?: "p" | "span" | "div";
 }) {
   return (
     <Tag
       className={cn(
-        "inline-flex items-center gap-2.5 text-caption uppercase tracking-[0.25em] text-gold",
+        withDot ? "inline-flex items-center gap-2.5" : "block",
+        "text-caption uppercase tracking-[0.25em] text-gold",
         className,
       )}
     >
-      <span
-        aria-hidden
-        className={cn("inline-block h-[5px] w-[5px] rounded-full bg-gold", dotClassName)}
-      />
+      {withDot ? (
+        <span
+          aria-hidden
+          className={cn("inline-block h-[5px] w-[5px] rounded-full bg-gold", dotClassName)}
+        />
+      ) : null}
       <span className="font-medium">{children}</span>
     </Tag>
   );

@@ -40,6 +40,8 @@ type Props = {
   photoCaption?: "bottom" | "center" | "none";
   /** کلاس اضافه برای پاراگراف hint (مثلاً `max-md:hidden`) */
   hintClassName?: string;
+  /** کلاس اضافه برای برچسب نام روی عکس */
+  labelClassName?: string;
   /** هاور: زوم تصویر، glow قاب، lift */
   interactive?: boolean;
   /** حاشیه نئون — gold / emerald */
@@ -65,6 +67,7 @@ export function PhotoFrame({
   priority,
   photoCaption = "bottom",
   hintClassName,
+  labelClassName,
   interactive = false,
   neonTone,
 }: Props) {
@@ -226,6 +229,7 @@ export function PhotoFrame({
               className={cn(
                 "text-caption uppercase tracking-[0.28em]",
                 hasImage ? "text-gold drop-shadow-[0_2px_12px_rgba(0,0,0,0.75)]" : "text-gold",
+                labelClassName,
               )}
             >
               {label}

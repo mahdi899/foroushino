@@ -84,6 +84,7 @@ export function HeroCinematic() {
                       rounded="card-lg"
                       badge="پرتره‌ی رسمی"
                       label="بهرام رستمی"
+                      labelClassName="hero-founder-label inline-flex w-fit rounded-pill border border-bone/12 bg-ink/78 px-3 py-1.5 normal-case text-sm font-medium tracking-normal text-bone-dim shadow-[0_10px_28px_-14px_rgba(0,0,0,0.75)] backdrop-blur-md drop-shadow-none"
                       src={sitePhotos.portraitFounder}
                       alt="بهرام رستمی"
                       priority

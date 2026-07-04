@@ -73,7 +73,7 @@ export function BigTestimonial() {
           </Reveal>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:mt-6 lg:grid-cols-12 lg:items-stretch lg:gap-4">
+        <div className="mt-5 flex flex-col gap-3 lg:mt-6 lg:flex-row lg:items-stretch lg:gap-4">
           <AnimatePresence mode="wait" initial={false}>
             <motion.article
               key={featured.slug}
@@ -81,17 +81,17 @@ export function BigTestimonial() {
               animate={{ opacity: 1, y: 0 }}
               exit={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="student-result-featured overflow-hidden rounded-card-lg lg:col-span-8 lg:min-h-[12rem]"
+              className="student-result-featured flex min-h-[9.5rem] min-w-0 flex-[8] overflow-hidden rounded-card-lg sm:min-h-[10rem] lg:min-h-0"
             >
-              <div className="flex h-full min-h-[11.5rem] sm:min-h-[12rem]">
-                <div className="student-result-featured-media relative w-[52%] max-w-[22rem] shrink-0 overflow-hidden sm:max-w-[24rem]">
+              <div className="flex h-full min-h-[9.5rem] w-full sm:min-h-[10rem]">
+                <div className="student-result-featured-media relative w-[34%] max-w-[9.5rem] shrink-0 self-stretch overflow-hidden sm:max-w-[11rem] lg:max-w-[12rem]">
                   <Image
                     src={featured.photo}
                     alt={`پرتره ${featured.name}`}
                     fill
                     priority
                     className="object-cover object-top"
-                    sizes="(max-width: 640px) 52vw, 384px"
+                    sizes="(max-width: 640px) 34vw, 192px"
                   />
                   <div
                     aria-hidden
@@ -103,8 +103,8 @@ export function BigTestimonial() {
                   />
                 </div>
 
-                <div className="flex min-w-0 flex-1 flex-col justify-between gap-3 p-4 sm:p-5">
-                  <blockquote className="font-display text-sm font-medium leading-relaxed text-balance text-bone sm:text-base">
+                <div className="flex h-full min-w-0 flex-1 flex-col justify-between gap-3 p-4 sm:p-4 lg:p-5">
+                  <blockquote className="flex-1 font-display text-[1.0625rem] font-normal leading-[1.75] text-balance text-bone sm:text-lg lg:text-[1.25rem] lg:leading-[1.7]">
                     «{featured.quote}»
                   </blockquote>
 
@@ -130,29 +130,34 @@ export function BigTestimonial() {
             </motion.article>
           </AnimatePresence>
 
-          <div className="flex gap-2 overflow-x-auto pb-1 lg:col-span-4 lg:h-auto lg:min-h-[12rem] lg:flex-col lg:gap-2 lg:overflow-visible lg:pb-0">
+          <div
+            role="listbox"
+            aria-label="انتخاب دانشجو"
+            className="grid h-full min-h-[9.5rem] min-w-0 flex-[4] grid-cols-2 grid-rows-2 gap-2 auto-rows-fr sm:min-h-[10rem] sm:gap-2.5 lg:min-h-0 lg:gap-2"
+          >
             {results.map((item, index) => {
               const isActive = index === active;
               return (
                 <button
                   key={item.slug}
                   type="button"
+                  role="option"
+                  aria-selected={isActive}
                   onClick={() => setActive(index)}
-                  aria-current={isActive ? "true" : undefined}
                   className={
-                    "student-result-picker group relative flex min-w-[13.5rem] shrink-0 items-center gap-2.5 overflow-hidden rounded-card p-2.5 text-start transition-[transform,box-shadow,border-color,opacity] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-glow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink lg:min-h-0 lg:min-w-0 lg:flex-1 lg:gap-3 lg:p-2.5 " +
+                    "student-result-picker group relative flex h-full min-h-0 min-w-0 items-center gap-2 overflow-hidden rounded-card p-2 text-start transition-[transform,box-shadow,border-color,opacity] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-glow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink sm:gap-2.5 sm:p-2.5 " +
                     (isActive
                       ? "student-result-picker--active opacity-100"
                       : "opacity-88 hover:-translate-y-0.5 hover:opacity-100")
                   }
                 >
-                  <div className="relative h-[3.5rem] w-[2.875rem] shrink-0 overflow-hidden rounded-[0.75rem] lg:h-full lg:max-h-[4.25rem] lg:w-[3.5rem]">
+                  <div className="relative h-10 w-8 shrink-0 overflow-hidden rounded-[0.65rem] sm:h-11 sm:w-9">
                     <Image
                       src={item.photo}
                       alt=""
                       fill
                       className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.04]"
-                      sizes="80px"
+                      sizes="72px"
                     />
                     <div
                       aria-hidden
@@ -160,11 +165,15 @@ export function BigTestimonial() {
                     />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-display text-sm font-semibold text-bone">{item.name}</p>
-                    <p className="mt-0.5 truncate text-caption text-mist">{item.role}</p>
-                    <p className="mt-1.5 font-display text-sm font-semibold text-gold num-latin">
+                    <p className="truncate font-display text-xs font-semibold text-bone sm:text-sm">
+                      {item.name}
+                    </p>
+                    <p className="mt-0.5 truncate text-[0.6875rem] text-mist sm:text-caption">
+                      {item.role}
+                    </p>
+                    <p className="mt-1 font-display text-xs font-semibold text-gold num-latin sm:text-sm">
                       {item.metric.value}
-                      <span className="me-1.5 text-caption font-normal text-mist">
+                      <span className="me-1 text-[0.6875rem] font-normal text-mist sm:text-caption">
                         {item.metric.label}
                       </span>
                     </p>
