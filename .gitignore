@@ -1,7 +1,9 @@
 node_modules/
+vendor/
 dist/
 .next/
 out/
+build/
 *.local
 .DS_Store
 *.tsbuildinfo
