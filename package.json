@@ -2,10 +2,10 @@
   "name": "mini-call-center",
   "private": true,
   "scripts": {
-    "dev": "concurrently -k -n saat,website -c cyan,magenta \"npm run dev --prefix saat/frontend\" \"npm run dev --prefix bahram-cm\"",
+    "dev": "concurrently -k -n saat,website -c cyan,magenta \"npm run dev --prefix saat/frontend\" \"npm run dev --prefix bahram-cm/frontend\"",
     "dev:saat": "npm run dev --prefix saat/frontend",
-    "dev:website": "npm run dev --prefix bahram-cm",
-    "install:all": "npm install --prefix saat/frontend && npm install --prefix bahram-cm"
+    "dev:website": "npm run dev --prefix bahram-cm/frontend",
+    "install:all": "npm install --prefix saat/frontend && npm install --prefix bahram-cm/frontend"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
