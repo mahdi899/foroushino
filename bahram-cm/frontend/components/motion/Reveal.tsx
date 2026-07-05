@@ -19,7 +19,7 @@ export function Reveal({
   as = "div",
   className,
 }: Props) {
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
   const inView = useInView(ref, VIEWPORT_ONCE);
 
@@ -36,7 +36,7 @@ export function Reveal({
 
   return (
     <Component
-      ref={ref}
+      ref={ref as never}
       className={className}
       initial="hidden"
       animate={reduce || inView ? "show" : "hidden"}

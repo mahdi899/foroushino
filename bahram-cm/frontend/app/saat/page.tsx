@@ -98,29 +98,29 @@ const wapPillars: SatWapPillar[] = [
   {
     icon: "book-open",
     tag: "آموزش",
-    title: "یادگیری قبل از اجرا",
-    description: "کمپین‌نویسی، فروش تلفنی و سناریونویسی — پایه‌ی ورود به میدان فروش.",
+    title: "اول یاد بگیر",
+    description: "کمپین‌نویسی، فروش تلفنی و نوشتن سناریو — قبل از هر تماسی.",
     image: sitePhotos.courseBackstage,
     alt: "آموزش کمپین‌نویسی",
-    chips: ["کمپین‌نویسی", "فروش تلفنی", "سناریونویسی"],
+    chips: ["کمپین‌نویسی", "فروش تلفنی", "سناریو"],
   },
   {
     icon: "smartphone",
     tag: "اجرا",
-    title: "سیستم عملیاتی سات",
-    description: "لید، تماس، فیدبک و پیگیری در یک سیستم — جایی که آموزش وارد عمل می‌شود.",
+    title: "با اپ سات کار کن",
+    description: "سرنخ، تماس، ثبت نتیجه و پیگیری — همه در یک اپ.",
     image: sitePhotos.academyStory,
-    alt: "مینی‌اپ سات",
-    chips: ["لید", "تماس", "فیدبک", "پیگیری"],
+    alt: "اپ سات",
+    chips: ["سرنخ", "تماس", "پیگیری"],
   },
   {
     icon: "network",
-    tag: "شبکه",
-    title: "فروش و درآمد",
-    description: "ورود به شبکه فروش، مسیر کمیسیون و ارزیابی عملکرد واقعی.",
+    tag: "درآمد",
+    title: "بفروش و درآمد بگیر",
+    description: "به تیم فروش وصل می‌شوی و درآمدت بر اساس فروش واقعی محاسبه می‌شود.",
     image: sitePhotos.manifestoLandscape,
-    alt: "شبکه فروش",
-    chips: ["شبکه فروش", "کمیسیون", "ارزیابی"],
+    alt: "تیم فروش و درآمد",
+    chips: ["فروش", "درآمد", "ارزیابی"],
   },
 ];
 
@@ -282,7 +282,6 @@ export default function SaatPage() {
         <p className="mt-4 font-medium text-bone">سات مسیر بعد از آموزش را واضح می‌کند.</p>
       </VisualSplitSection>
 
-      {/* مسیر کاربر — اسکرول‌درایون */}
       <SatFlowScroll steps={flowSteps} />
 
       {/* نگاهی به سات */}
@@ -314,7 +313,6 @@ export default function SaatPage() {
         </div>
       </section>
 
-      {/* مسیر WAP — اسکرول‌درایون و المان‌محور */}
       <SatWapScroll pillars={wapPillars} price={WAP_PRICE} />
 
       {/* سات فقط اپ نیست */}
@@ -411,7 +409,7 @@ export default function SaatPage() {
                     href="/saat#wap"
                     className="inline-flex items-center gap-2 text-gold transition-colors hover:text-gold-soft"
                   >
-                    مسیر WAP
+                    مسیر ورود
                     <ArrowLeft className="rtl-flip h-4 w-4" aria-hidden />
                   </Link>
                 </div>
