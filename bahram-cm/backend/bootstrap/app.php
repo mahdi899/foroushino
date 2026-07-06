@@ -16,7 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Next.js proxies /admin (and related paths) with X-Forwarded-* headers.
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Public API errors always use the { error: { code, message_fa, details? } } envelope.

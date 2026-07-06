@@ -29,6 +29,18 @@ npm run dev
 
 سایت روی <http://localhost:3000> بالا می‌آید.
 
+**پنل مدیریت (Filament)** از همان دامنه سایت در دسترس است — نیازی به باز کردن پورت بک‌اند نیست:
+
+| | آدرس |
+|--|------|
+| ورود پنل | <http://localhost:3000/admin/login> |
+| داشبورد | <http://localhost:3000/admin> |
+
+کاربر پیش‌فرض (بعد از `php artisan db:seed` در `backend/`):  
+ایمیل `admin@bahram.local` — رمز `password`
+
+در `.env.local` فرانت‌اند، `BACKEND_PROXY_URL` آدرس داخلی Laravel است (مثلاً `http://127.0.0.1:8010`) و API از همان origin سایت (`/api/...`) پروکسی می‌شود.
+
 ```bash
 npm run verify   # lint + typecheck + validate images/imports
 npm run build
@@ -48,7 +60,8 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 در `.env.local` فرانت‌اند:
 
 ```
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+BACKEND_PROXY_URL=http://127.0.0.1:8010
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
