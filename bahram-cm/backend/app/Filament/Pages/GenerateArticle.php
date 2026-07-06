@@ -27,6 +27,8 @@ class GenerateArticle extends Page
 
     protected static ?int $navigationSort = 3;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     /**
      * @var array<string, mixed>
      */

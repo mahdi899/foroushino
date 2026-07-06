@@ -8,6 +8,19 @@ import {
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
+  // /manage is only for Filament embed + assets — users always use /admin
+  if (pathname === '/manage' || pathname === '/manage/') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/admin';
+    return NextResponse.redirect(url);
+  }
+
+  if (pathname === '/manage/login') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/admin/login';
+    return NextResponse.redirect(url);
+  }
+
   if (!shouldProxyToBackend(pathname)) {
     return NextResponse.next();
   }
@@ -48,11 +61,12 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/admin",
-    "/admin/:path*",
+    "/manage",
+    "/manage/:path*",
     "/filament/:path*",
     "/storage/:path*",
     "/api/:path*",
+    "/cdn/:path*",
     "/css/:path*",
     "/js/:path*",
     "/fonts/:path*",

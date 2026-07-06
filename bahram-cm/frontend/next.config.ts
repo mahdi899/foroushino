@@ -15,6 +15,12 @@ function backendImagePattern() {
         port: url.port || "",
         pathname: "/storage/**",
       },
+      {
+        protocol: url.protocol.replace(":", "") as "http" | "https",
+        hostname: url.hostname,
+        port: url.port || "",
+        pathname: "/cdn/**",
+      },
     ];
   } catch {
     return [];
@@ -27,11 +33,14 @@ const config: NextConfig = {
   async redirects() {
     return [
       { source: "/academy/app", destination: "/saat", permanent: true },
+      { source: "/manage", destination: "/admin", permanent: false },
+      { source: "/manage/login", destination: "/admin/login", permanent: false },
     ];
   },
-  /** Required for next-mdx-remote under Turbopack (Next.js 16 dev). */
   transpilePackages: ["next-mdx-remote"],
   images: {
+    loader: "custom",
+    loaderFile: "./lib/imageLoader.ts",
     formats: ["image/avif", "image/webp"],
     remotePatterns: backendImagePattern(),
   },

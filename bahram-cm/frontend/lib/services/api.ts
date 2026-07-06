@@ -83,8 +83,13 @@ export async function postJson<T>(
       let message = "ارسال انجام نشد. لطفاً دوباره تلاش کن.";
       let code: string | undefined;
       try {
-        const payload = (await res.json()) as BackendError;
+        const payload = (await res.json()) as BackendError & {
+          errors?: Record<string, string[]>;
+          message?: string;
+        };
         if (payload?.error?.message_fa) message = payload.error.message_fa;
+        else if (payload?.errors?.captcha?.[0]) message = payload.errors.captcha[0];
+        else if (payload?.message) message = payload.message;
         code = payload?.error?.code;
       } catch {
         // non-JSON error body — keep default message

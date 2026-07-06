@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -18,9 +17,11 @@ import { Reveal } from "@/components/motion/Reveal";
 import { Accordion } from "@/components/ui/Accordion";
 import { Badge } from "@/components/ui/Badge";
 import { Eyebrow } from "@/components/ui/Eyebrow";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { courseJsonLd } from "@/lib/jsonld";
 import { getCourseBySlug, getCourses } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
+import { resolveMediaAlt } from "@/lib/media/alt";
 import { courseCoverPhotos } from "@/lib/site-photo-paths";
 
 const covers = courseCoverPhotos;
@@ -58,7 +59,15 @@ export default async function CourseDetailPage({
   const all = await getCourses();
   const idx = all.findIndex((c) => c.slug === slug);
   const cover = covers[idx % covers.length]!;
+  const coverAlt = await resolveMediaAlt(cover, `کاور ${course.title}`);
   const related = all.filter((c) => c.slug !== slug).slice(0, 3);
+  const relatedCovers = await Promise.all(
+    related.map(async (c, i) => ({
+      slug: c.slug,
+      src: covers[(idx + i + 1) % covers.length]!,
+      alt: await resolveMediaAlt(covers[(idx + i + 1) % covers.length]!, `کاور ${c.title}`),
+    })),
+  );
 
   const jsonLd = {
     ...courseJsonLd(),
@@ -78,7 +87,15 @@ export default async function CourseDetailPage({
       {/* HERO */}
       <section className="relative isolate overflow-hidden bg-ink">
         <div aria-hidden className="absolute inset-0 opacity-55">
-          <Image src={cover} alt="" fill priority sizes="100vw" className="object-cover" />
+          <SiteImage
+            src={cover}
+            alt={coverAlt}
+            fallbackAlt={`کاور ${course.title}`}
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
+          />
           <div className="absolute inset-0 bg-gradient-to-b from-ink/60 via-ink/75 to-ink" />
         </div>
         <div className="container-luxe relative z-[2] max-w-4xl min-w-0 py-section-sm">
@@ -332,15 +349,18 @@ export default async function CourseDetailPage({
             <p className="text-caption uppercase tracking-[0.25em] text-gold">دوره‌های مرتبط</p>
             <h2 className="mt-4 text-h2 text-balance">مسیرهای بعدی.</h2>
             <div className="mt-7 grid gap-5 md:mt-10 md:grid-cols-3">
-              {related.map((c, i) => (
+              {related.map((c, i) => {
+                const thumb = relatedCovers[i]!;
+                return (
                 <Link
                   key={c.slug}
                   href={`/courses/${c.slug}`}
                   className="neon-surface-hover group block h-full overflow-hidden rounded-card border border-bone/10 bg-charcoal/45 p-6 transition-colors hover:border-bone/25"
                 >
-                  <Image
-                    src={covers[(idx + i + 1) % covers.length]!}
-                    alt=""
+                  <SiteImage
+                    src={thumb.src}
+                    alt={thumb.alt}
+                    fallbackAlt={`کاور ${c.title}`}
                     width={64}
                     height={64}
                     className="h-12 w-12 rounded-tile object-cover"
@@ -348,7 +368,8 @@ export default async function CourseDetailPage({
                   <h3 className="mt-4 text-h3 text-balance text-bone">{c.title}</h3>
                   <p className="mt-2 text-bone-dim">{c.subtitle}</p>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>

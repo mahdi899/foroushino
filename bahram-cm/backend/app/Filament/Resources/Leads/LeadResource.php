@@ -27,6 +27,8 @@ class LeadResource extends Resource
 
     protected static ?int $navigationSort = 7;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     public static function canCreate(): bool
     {
         return false;

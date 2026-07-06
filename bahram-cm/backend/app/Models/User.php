@@ -49,4 +49,9 @@ class User extends Authenticatable implements FilamentUser
     {
         return (bool) $this->is_admin;
     }
+
+    public function hasPermission(string $permission): bool
+    {
+        return (bool) $this->is_admin;
+    }
 }

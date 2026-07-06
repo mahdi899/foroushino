@@ -8,20 +8,26 @@ import {
   personJsonLd,
   websiteJsonLd,
 } from "@/lib/jsonld";
-import { Analytics } from "@/components/analytics/Analytics";
-import { ChatWidget } from "@/components/chat/ChatWidget";
+import { AdminAwareChrome } from "@/components/layout/AdminAwareChrome";
+import { SiteChatbotGate } from "@/components/chatbot/SiteChatbotGate";
+import { PerformanceProvider } from "@/components/performance/PerformanceProvider";
+import { getPublicChatbotConfig } from "@/lib/chatbot/public";
+import { getPublicPerfConfig } from "@/lib/cache/public";
 import { GrainOverlay } from "@/components/motion/GrainOverlay";
-import { SiteNav } from "@/components/nav/SiteNav";
-import { SiteFooter } from "@/components/nav/SiteFooter";
 import { ThemeScript } from "@/components/theme/ThemeScript";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = defaultMetadata;
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const ld = [personJsonLd(), organizationJsonLd(), courseJsonLd(), websiteJsonLd()];
+  const [chatbotConfig, perfConfig] = await Promise.all([
+    getPublicChatbotConfig(),
+    getPublicPerfConfig(),
+  ]);
+  const chatbotAiAvailable = chatbotConfig.enabled && (chatbotConfig.ai_available ?? false);
 
   return (
     <html
@@ -42,14 +48,13 @@ export default function RootLayout({
           پرش به محتوای اصلی
         </a>
         <GrainOverlay />
-        <SiteNav />
-        <div className="relative z-[2] min-w-0 max-w-full pt-14 md:pt-16">{children}</div>
-        <SiteFooter />
+        <PerformanceProvider config={perfConfig}>
+          <AdminAwareChrome>{children}</AdminAwareChrome>
+        </PerformanceProvider>
+        <SiteChatbotGate config={chatbotConfig} aiAvailable={chatbotAiAvailable} />
         <Script id="jsonld-site" type="application/ld+json">
           {JSON.stringify(ld)}
         </Script>
-        <ChatWidget />
-        <Analytics />
       </body>
     </html>
   );

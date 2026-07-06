@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import Image from "next/image";
 import { ImageIcon } from "lucide-react";
+import { AppImage } from "@/components/ui/AppImage";
 import { cn } from "@/lib/cn";
 
 type Variant = "radial" | "grid" | "soft" | "outline";
@@ -120,12 +120,11 @@ export function PhotoFrame({
     >
       {hasImage ? (
         <>
-          <Image
+          <AppImage
             src={src!}
             alt={aria}
             fill
             priority={priority}
-            loading={priority ? "eager" : undefined}
             sizes={sizes ?? defaultSizes}
             className={cn(
               "object-cover transition-transform duration-700 ease-[var(--ease-luxe)] will-change-transform",

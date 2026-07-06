@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Calendar, Pencil } from "lucide-react";
 import { ContentViewTracker } from "@/components/analytics/ContentViewTracker";
 import { Reveal } from "@/components/motion/Reveal";
 import { NewsletterCTA } from "@/components/sections/NewsletterCTA";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { getArticleBySlug } from "@/lib/services/articles";
 import { articleJsonLd, breadcrumbJsonLd } from "@/lib/jsonld";
 import { formatDateFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 export const revalidate = 300;
 
@@ -71,7 +72,14 @@ export default async function ArticleDetailPage({
       <section className="relative isolate overflow-hidden bg-ink">
         {post.featured_image ? (
           <div aria-hidden className="absolute inset-0 opacity-60">
-            <Image src={post.featured_image} alt="" fill priority className="object-cover" />
+            <SiteImage
+              src={resolveMediaUrl(post.featured_image)}
+              alt={post.featured_image_alt}
+              fallbackAlt={post.title}
+              fill
+              priority
+              className="object-cover"
+            />
             <div className="absolute inset-0 bg-gradient-to-b from-ink/55 via-ink/70 to-ink" />
           </div>
         ) : null}

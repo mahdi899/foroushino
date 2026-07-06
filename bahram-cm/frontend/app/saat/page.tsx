@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { buildMetadata } from "@/lib/seo";
-import Image from "next/image";
+import { SiteImage } from "@/components/ui/SiteImage";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -466,7 +466,7 @@ function VisualSplitSection({
         >
           <Reveal className="md:col-span-5 lg:col-span-6">
             <div className="relative aspect-[4/3] overflow-hidden rounded-card-lg border border-bone/10">
-              <Image src={image} alt={imageAlt} fill className="object-cover" sizes="(max-width: 768px) 100vw, 45vw" />
+              <SiteImage src={image} alt={imageAlt} fallbackAlt={imageAlt} fill className="object-cover" sizes="(max-width: 768px) 100vw, 45vw" />
               <div className="absolute inset-0 bg-gradient-to-t from-ink/50 via-transparent to-transparent" />
             </div>
           </Reveal>
@@ -504,9 +504,10 @@ function WhoForCard({
 }) {
   return (
     <article className="group relative aspect-[8/5] w-full overflow-hidden rounded-card-lg border border-bone/10">
-      <Image
+      <SiteImage
         src={image}
-        alt=""
+        alt={title}
+        fallbackAlt={title}
         fill
         className="object-cover transition-transform duration-700 group-hover:scale-105"
         sizes="(max-width: 640px) 50vw, 25vw"

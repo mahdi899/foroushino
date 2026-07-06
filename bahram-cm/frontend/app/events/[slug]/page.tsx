@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Calendar, MapPin, PlayCircle, Radio } from "lucide-react";
@@ -8,9 +7,11 @@ import { TrackedLinkButton } from "@/components/analytics/TrackedLinkButton";
 import { MdxBody } from "@/components/mdx/MdxBody";
 import { Reveal } from "@/components/motion/Reveal";
 import { Badge } from "@/components/ui/Badge";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { getEventBySlug, getEvents } from "@/lib/content";
 import { formatDateFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
+import { resolveMediaAlt } from "@/lib/media/alt";
 import { eventCoverPhotos } from "@/lib/site-photo-paths";
 
 const covers = eventCoverPhotos;
@@ -48,6 +49,7 @@ export default async function EventDetailPage({
   const all = await getEvents();
   const idx = all.findIndex((e) => e.slug === slug);
   const cover = covers[idx % covers.length]!;
+  const coverAlt = await resolveMediaAlt(cover, `کاور ${event.title}`);
   const live = event.status === "upcoming";
 
   return (
@@ -55,7 +57,14 @@ export default async function EventDetailPage({
       <ContentViewTracker type="event" slug={event.slug} />
       <section className="relative isolate overflow-hidden bg-ink">
         <div aria-hidden className="absolute inset-0">
-          <Image src={cover} alt="" fill priority className="object-cover opacity-80" />
+          <SiteImage
+            src={cover}
+            alt={coverAlt}
+            fallbackAlt={`کاور ${event.title}`}
+            fill
+            priority
+            className="object-cover opacity-80"
+          />
           <div className="absolute inset-0 bg-gradient-to-b from-ink/55 via-ink/75 to-ink" />
         </div>
         <div className="container-luxe relative z-[2] max-w-4xl min-w-0 py-section-sm">

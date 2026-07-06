@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\RequiresCaptcha;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreLeadRequest extends FormRequest
 {
+    use RequiresCaptcha;
+
     public function authorize(): bool
     {
         return true;
@@ -23,13 +26,19 @@ class StoreLeadRequest extends FormRequest
             'source' => ['nullable', 'string', 'max:100'],
             'message' => ['nullable', 'string', 'max:2000'],
             'page_url' => ['nullable', 'string', 'max:500'],
-            // Honeypot field: real users never fill this hidden input.
-            'website' => ['prohibited'],
+            ...$this->captchaRules(),
         ];
+    }
+
+    protected function captchaFormKey(): string
+    {
+        return $this->input('source') === 'web_newsletter' ? 'newsletter' : 'leads';
     }
 
     public function withValidator($validator): void
     {
+        $this->appendCaptchaValidation($validator);
+
         $validator->after(function ($validator) {
             if (blank($this->input('name')) && blank($this->input('phone')) && blank($this->input('email'))) {
                 $validator->errors()->add('name', 'حداقل یکی از فیلدهای نام، شماره تماس یا ایمیل باید تکمیل شود.');
@@ -40,7 +49,7 @@ class StoreLeadRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'website.prohibited' => 'درخواست نامعتبر است.',
+            'website' => 'درخواست نامعتبر است.',
         ];
     }
 }

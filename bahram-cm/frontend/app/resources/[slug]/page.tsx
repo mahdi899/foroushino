@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Download } from "lucide-react";
@@ -8,8 +7,10 @@ import { MdxBody } from "@/components/mdx/MdxBody";
 import { Reveal } from "@/components/motion/Reveal";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { getResourceBySlug, getResources } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
+import { resolveMediaAlt } from "@/lib/media/alt";
 import { resourceCoverPhotos } from "@/lib/site-photo-paths";
 
 const covers = resourceCoverPhotos;
@@ -47,6 +48,7 @@ export default async function ResourceDetailPage({
   const all = await getResources();
   const idx = all.findIndex((r) => r.slug === slug);
   const cover = covers[idx % covers.length]!;
+  const coverAlt = await resolveMediaAlt(cover, `کاور ${item.title}`);
   const related = all.filter((r) => r.slug !== slug).slice(0, 3);
 
   return (
@@ -54,7 +56,15 @@ export default async function ResourceDetailPage({
       <ContentViewTracker type="resource" slug={item.slug} />
       <section className="relative isolate overflow-hidden bg-ink">
         <div aria-hidden className="absolute inset-0 opacity-50">
-          <Image src={cover} alt="" fill priority sizes="100vw" className="object-cover" />
+          <SiteImage
+            src={cover}
+            alt={coverAlt}
+            fallbackAlt={`کاور ${item.title}`}
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
+          />
           <div className="absolute inset-0 bg-gradient-to-b from-ink/60 via-ink/75 to-ink" />
         </div>
         <div className="container-luxe relative z-[2] max-w-3xl min-w-0 py-section-sm">

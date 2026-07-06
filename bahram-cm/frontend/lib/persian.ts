@@ -10,34 +10,14 @@ export function formatFa(n: number): string {
   return toPersianDigits(n.toLocaleString("en-US")).replace(/,/g, "٬");
 }
 
-/** Format a date (YYYY-MM-DD) as a Persian-friendly short string. */
+/** Format an ISO date as a Persian (Jalali) date string, e.g. «۶ فروردین ۱۴۰۵». */
 export function formatDateFa(iso: string): string {
-  const months = [
-    "فروردین",
-    "اردیبهشت",
-    "خرداد",
-    "تیر",
-    "مرداد",
-    "شهریور",
-    "مهر",
-    "آبان",
-    "آذر",
-    "دی",
-    "بهمن",
-    "اسفند",
-  ];
-  // Convert Gregorian -> Jalali via Intl (uses Persian calendar)
   const d = new Date(iso);
-  const fmt = new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+  if (Number.isNaN(d.getTime())) return iso;
+
+  return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
     day: "numeric",
-    month: "numeric",
+    month: "long",
     year: "numeric",
-  });
-  const parts = fmt.formatToParts(d);
-  const day = parts.find((p) => p.type === "day")?.value ?? "";
-  const monthIdx = Number(
-    parts.find((p) => p.type === "month")?.value ?? "1",
-  ) - 1;
-  const year = parts.find((p) => p.type === "year")?.value ?? "";
-  return `${day} ${months[monthIdx] ?? ""} ${year}`;
+  }).format(d);
 }

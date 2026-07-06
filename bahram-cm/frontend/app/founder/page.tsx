@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { buildMetadata } from "@/lib/seo";
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -23,6 +22,8 @@ import { FeatureCard } from "@/components/ui/FeatureCard";
 import { IconLabel } from "@/components/ui/IconLabel";
 import { IconTile } from "@/components/ui/IconTile";
 import { PhotoFrame } from "@/components/ui/PhotoFrame";
+import { SiteImage } from "@/components/ui/SiteImage";
+import { resolveMediaAlt } from "@/lib/media/alt";
 import { pageHeroBackdropPhoto, sitePhotos } from "@/lib/site-photo-paths";
 
 export const metadata: Metadata = buildMetadata({
@@ -64,13 +65,22 @@ const milestones = [
   { year: "۲۰۲۶", title: "اپ خصوصی آکادمی", body: "تجربه یکپارچه برای اعضا." },
 ];
 
-export default function FounderPage() {
+export default async function FounderPage() {
+  const heroAlt = await resolveMediaAlt(pageHeroBackdropPhoto, "جلسه آموزشی آکادمی بهرام");
+
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       {/* HERO */}
       <section className="relative isolate overflow-hidden bg-ink">
         <div aria-hidden className="absolute inset-0">
-          <Image src={pageHeroBackdropPhoto} alt="" fill priority className="object-cover" />
+          <SiteImage
+            src={pageHeroBackdropPhoto}
+            alt={heroAlt}
+            fallbackAlt="جلسه آموزشی آکادمی بهرام"
+            fill
+            priority
+            className="object-cover"
+          />
           <div className="absolute inset-0 bg-gradient-to-b from-ink/50 via-ink/78 to-ink" />
         </div>
         <div className="container-luxe relative z-[2] py-section-sm md:py-section">
@@ -192,9 +202,10 @@ export default function FounderPage() {
             </Reveal>
             <Reveal delay={0.26}>
               <div className="mt-6 flex flex-col items-start gap-3 border-t border-bone/8 pt-5 sm:flex-row sm:items-center sm:gap-5 md:mt-10 md:gap-6 md:pt-6">
-                <Image
+                <SiteImage
                   src="/media/signature.svg"
                   alt="امضای بهرام"
+                  fallbackAlt="امضای بهرام"
                   width={200}
                   height={70}
                   className="max-w-[min(100%,11rem)] sm:max-w-none"

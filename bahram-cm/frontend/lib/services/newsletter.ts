@@ -7,6 +7,7 @@
  * of faking success.
  */
 import { postJson, type ApiResult } from "./api";
+import type { CaptchaPayload } from "@/lib/captcha/types";
 
 export type NewsletterResult = {
   id: number;
@@ -25,11 +26,17 @@ export function isValidEmail(email: string): boolean {
 export async function subscribeNewsletter(
   email: string,
   source = "web_newsletter",
+  captcha?: CaptchaPayload | null,
+  website?: string,
 ): Promise<ApiResult<NewsletterResult>> {
   const result = await postJson<LeadResponse>("/leads", {
     email: email.trim(),
     source,
     page_url: typeof window !== "undefined" ? window.location.href : undefined,
+    captcha_token: captcha?.captcha_token,
+    captcha_id: captcha?.captcha_id,
+    captcha_answer: captcha?.captcha_answer,
+    website: website || undefined,
   });
 
   if (!result.ok) return result;

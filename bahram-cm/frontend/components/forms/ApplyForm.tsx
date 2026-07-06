@@ -4,6 +4,7 @@ import { ArrowLeft, Loader2, Mail, Phone, User2 } from "lucide-react";
 import { useId, useState } from "react";
 import { track } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
+import { useFormSecurity } from "@/components/captcha/FormCaptcha";
 import {
   submitLead,
   validateLead,
@@ -26,6 +27,8 @@ const ROLE_OPTIONS = [
 
 export function ApplyForm() {
   const formId = useId();
+  const { captchaField, honeypotField, captchaRequired, captchaReady, securityLoading, getSecurityPayload } =
+    useFormSecurity('leads');
   const [values, setValues] = useState<LeadInput>({
     name: "",
     phone: "",
@@ -56,7 +59,21 @@ export function ApplyForm() {
     setServerError(null);
     track("academy_apply_submit", { source: SOURCE });
 
-    const result = await submitLead({ ...values, source: SOURCE });
+    const { captcha, website } = getSecurityPayload();
+    if (captchaRequired && !captcha) {
+      setStatus("error");
+      setServerError("لطفاً تأیید امنیتی را تکمیل کن.");
+      return;
+    }
+
+    const result = await submitLead({
+      ...values,
+      source: SOURCE,
+      captcha_token: captcha?.captcha_token,
+      captcha_id: captcha?.captcha_id,
+      captcha_answer: captcha?.captcha_answer,
+      website,
+    });
     if (result.ok) {
       setStatus("success");
       track("academy_apply_success", { source: SOURCE });
@@ -90,7 +107,8 @@ export function ApplyForm() {
   const submitting = status === "submitting";
 
   return (
-    <form className="mt-8 grid gap-5" onSubmit={onSubmit} noValidate>
+    <form className="relative mt-8 grid gap-5" onSubmit={onSubmit} noValidate>
+      {honeypotField}
       <TextField
         id={`${formId}-name`}
         label="نام و نام خانوادگی"
@@ -161,6 +179,13 @@ export function ApplyForm() {
         error={errors.notes}
       />
 
+      {captchaRequired ? (
+        <div className="rounded-card border border-bone/10 bg-charcoal/35 px-4 py-3">
+          <p className="mb-2 text-caption text-mist">تأیید امنیتی</p>
+          {captchaField}
+        </div>
+      ) : null}
+
       {status === "error" && serverError ? (
         <p
           role="alert"
@@ -174,7 +199,7 @@ export function ApplyForm() {
       <div className="mt-2 flex flex-wrap items-center gap-4">
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || securityLoading || !captchaReady}
           className="group neon-btn-primary inline-flex h-12 min-h-12 shrink-0 touch-manipulation items-center justify-center gap-2 rounded-pill bg-emerald px-7 font-semibold transition-[background-color,transform,box-shadow] duration-300 ease-[var(--ease-luxe)] hover:bg-emerald-glow hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald/50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? (

@@ -26,6 +26,13 @@
   --color-sales: #ff6b00;
   --color-sales-soft: #ffa24d;
 
+  /* Semantic aliases (chatbot + CTAs) */
+  --color-primary: var(--color-emerald);
+  --color-accent: var(--color-emerald-glow);
+  --color-accent-bright: var(--color-gold);
+  --color-success: #16a34a;
+  --color-error: #dc2626;
+
   /* Text hierarchy */
   --color-bone: #eafbfb;
   --color-bone-dim: #95b4b8;
@@ -312,6 +319,65 @@
     );
   }
 
+  .bg-gradient-ai {
+    background-image: linear-gradient(
+      135deg,
+      var(--color-emerald-deep) 0%,
+      var(--color-emerald) 52%,
+      var(--color-emerald-glow) 100%
+    );
+  }
+
+  .bg-gradient-operator {
+    background-image: linear-gradient(
+      135deg,
+      var(--color-gold) 0%,
+      var(--color-sales) 100%
+    );
+  }
+
+  .shadow-glow {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--color-emerald) 18%, transparent),
+      0 0 24px color-mix(in oklab, var(--color-emerald) 28%, transparent);
+  }
+
+  .shadow-premium {
+    box-shadow:
+      0 18px 44px -28px rgba(2, 6, 7, 0.55),
+      0 4px 16px -8px rgba(2, 6, 7, 0.35);
+  }
+
+  [data-theme="light"] .shadow-premium {
+    box-shadow:
+      0 18px 44px -28px rgba(11, 31, 34, 0.12),
+      0 4px 16px -8px rgba(11, 31, 34, 0.08);
+  }
+
+  .shadow-floating {
+    box-shadow:
+      0 12px 32px -16px rgba(2, 6, 7, 0.62),
+      0 2px 8px -4px rgba(2, 6, 7, 0.35);
+  }
+
+  [data-theme="light"] .shadow-floating {
+    box-shadow:
+      0 12px 32px -16px rgba(11, 31, 34, 0.1),
+      0 2px 8px -4px rgba(11, 31, 34, 0.06);
+  }
+
+  .shadow-soft {
+    box-shadow: 0 8px 24px rgba(2, 6, 7, 0.28);
+  }
+
+  [data-theme="light"] .shadow-soft {
+    box-shadow: 0 8px 24px rgba(11, 31, 34, 0.08);
+  }
+
+  .ease-premium {
+    transition-timing-function: var(--ease-luxe);
+  }
+
   .glass {
     background-color: rgba(13, 21, 23, 0.66);
     backdrop-filter: blur(18px) saturate(140%);
@@ -466,6 +532,73 @@
     color: var(--color-bone);
     font-family: var(--font-display);
     font-weight: 600;
+  }
+
+  /* Insight article — blurred hero + floating card */
+  .insight-hero-backdrop {
+    position: relative;
+    min-height: 11rem;
+    overflow: hidden;
+    background: var(--color-ink);
+  }
+  @media (min-width: 768px) {
+    .insight-hero-backdrop {
+      min-height: 14rem;
+    }
+  }
+
+  html:not([data-theme="light"]) .insight-hero-backdrop-overlay {
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--color-ink) 35%, transparent) 0%,
+      color-mix(in oklab, var(--color-ink) 72%, transparent) 55%,
+      var(--color-ink) 100%
+    );
+  }
+
+  html[data-theme="light"] .insight-hero-backdrop-overlay {
+    background: linear-gradient(
+      180deg,
+      rgba(255, 252, 245, 0.55) 0%,
+      rgba(255, 248, 236, 0.82) 50%,
+      #f8fbfb 100%
+    );
+  }
+
+  html:not([data-theme="light"]) .insight-article-float {
+    border: 1px solid color-mix(in oklab, var(--color-bone) 10%, transparent);
+    background: color-mix(in oklab, var(--color-charcoal) 92%, transparent);
+    backdrop-filter: blur(14px);
+    box-shadow: var(--shadow-frame-resolved);
+  }
+
+  html[data-theme="light"] .insight-article-float {
+    border: 1px solid rgba(255, 176, 0, 0.16);
+    background: linear-gradient(165deg, #fffdf7 0%, #ffffff 52%, #f7fbfb 100%);
+    box-shadow:
+      0 28px 64px rgba(120, 72, 16, 0.08),
+      0 0 0 1px rgba(255, 176, 0, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  html[data-theme="light"] .insight-article-float .insight-breadcrumb-link {
+    color: #c87800;
+  }
+
+  html[data-theme="light"] .insight-article-float .insight-breadcrumb-link:hover {
+    color: #ffb000;
+  }
+
+  html[data-theme="light"] .insight-article-float .insight-breadcrumb-current {
+    color: #7a6550;
+  }
+
+  html[data-theme="light"] .insight-article-float .insight-breadcrumb-sep {
+    color: rgba(122, 101, 80, 0.45);
+  }
+
+  html[data-theme="light"] .insight-article-body {
+    border-top-color: rgba(255, 176, 0, 0.12);
   }
 
   /* Floating shimmer animation for premium cards */
@@ -2170,4 +2303,31 @@ html[data-theme="light"] .neon-btn-ghost:hover {
     0 0 0 1px rgba(0, 140, 150, 0.18),
     0 10px 28px rgba(0, 111, 117, 0.26);
   transform: translateY(-1px);
+}
+
+/* iOS-style thin scrollbar for chatbot / compact panels */
+.chatbot-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.14) transparent;
+}
+.chatbot-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.chatbot-scroll::-webkit-scrollbar-track {
+  margin-block: 4px;
+  background: transparent;
+}
+.chatbot-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.1);
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+.chatbot-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+  background-clip: padding-box;
+}
+.chatbot-scroll::-webkit-scrollbar-thumb:active {
+  background: rgba(0, 0, 0, 0.26);
+  background-clip: padding-box;
 }

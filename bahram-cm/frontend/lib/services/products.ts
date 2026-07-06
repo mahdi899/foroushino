@@ -11,6 +11,7 @@ export type ProductListItem = {
   sale_price: number | null;
   effective_price: number;
   featured_image: string | null;
+  featured_image_alt?: string | null;
 };
 
 export type ProductDetail = ProductListItem & {

@@ -1,7 +1,7 @@
 import type { MDXComponents } from "mdx/types";
-import Image from "next/image";
 import Link from "next/link";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { cn } from "@/lib/cn";
 
 /**
@@ -125,9 +125,10 @@ export const mdxComponents: MDXComponents = {
   ),
   img: ({ src, alt = "" }: ComponentPropsWithoutRef<"img">) => (
     <span className="my-7 block overflow-hidden rounded-card border border-bone/10">
-      <Image
+      <SiteImage
         src={typeof src === "string" ? src : ""}
         alt={alt}
+        fallbackAlt="تصویر مقاله"
         width={1200}
         height={675}
         sizes="(max-width: 768px) 100vw, 768px"

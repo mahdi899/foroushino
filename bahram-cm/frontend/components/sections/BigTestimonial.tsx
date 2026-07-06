@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import Image from "next/image";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { useState } from "react";
 import { site } from "@/content/site";
 import { Reveal } from "@/components/motion/Reveal";
@@ -85,9 +85,10 @@ export function BigTestimonial() {
             >
               <div className="flex h-full min-h-[9.5rem] w-full sm:min-h-[10rem]">
                 <div className="student-result-featured-media relative w-[34%] max-w-[9.5rem] shrink-0 self-stretch overflow-hidden sm:max-w-[11rem] lg:max-w-[12rem]">
-                  <Image
+                  <SiteImage
                     src={featured.photo}
                     alt={`پرتره ${featured.name}`}
+                    fallbackAlt={`پرتره ${featured.name}`}
                     fill
                     priority
                     className="object-cover object-top"
@@ -152,9 +153,10 @@ export function BigTestimonial() {
                   }
                 >
                   <div className="relative h-10 w-8 shrink-0 overflow-hidden rounded-[0.65rem] sm:h-11 sm:w-9">
-                    <Image
+                    <SiteImage
                       src={item.photo}
-                      alt=""
+                      alt={`پرتره ${item.name}`}
+                      fallbackAlt={`پرتره ${item.name}`}
                       fill
                       className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.04]"
                       sizes="72px"

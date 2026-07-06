@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Clock, GraduationCap } from "lucide-react";
 import { PageHero } from "@/components/blocks/PageHero";
 import { SocialProofStats } from "@/components/sections/SocialProofStats";
 import { Reveal } from "@/components/motion/Reveal";
 import { Badge } from "@/components/ui/Badge";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { site } from "@/content/site";
 import { buildMetadata } from "@/lib/seo";
+import { resolveMediaAlt } from "@/lib/media/alt";
 import { sitePhotos } from "@/lib/site-photo-paths";
 
 export const metadata: Metadata = buildMetadata({
@@ -37,7 +38,14 @@ const courses = site.mainPaths.items.map((item, i) => ({
   ...courseMeta[i]!,
 }));
 
-export default function CoursesPage() {
+export default async function CoursesPage() {
+  const courseCards = await Promise.all(
+    courses.map(async (course) => ({
+      ...course,
+      imageAlt: await resolveMediaAlt(course.image, `کاور ${course.label}`),
+    })),
+  );
+
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       <PageHero
@@ -51,16 +59,17 @@ export default function CoursesPage() {
       <section className="py-section-sm">
         <div className="container-luxe">
           <div className="mx-auto grid max-w-4xl gap-5 md:grid-cols-2 md:gap-6">
-            {courses.map((course, i) => (
+            {courseCards.map((course, i) => (
               <Reveal key={course.href} delay={i * 0.06}>
                 <Link
                   href={course.href}
                   className="neon-surface-hover group block h-full overflow-hidden rounded-card border border-bone/10 bg-charcoal/45 transition-colors hover:border-bone/25"
                 >
                   <div className="relative aspect-[3/2] overflow-hidden">
-                    <Image
+                    <SiteImage
                       src={course.image}
-                      alt=""
+                      alt={course.imageAlt}
+                      fallbackAlt={`کاور ${course.label}`}
                       fill
                       sizes="(max-width: 768px) 100vw, 50vw"
                       className="object-cover transition-transform duration-700 ease-[var(--ease-luxe)] group-hover:scale-[1.04]"

@@ -28,6 +28,8 @@ class AiSettings extends Page
 
     protected static ?int $navigationSort = 4;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     /**
      * @var array<string, mixed>
      */

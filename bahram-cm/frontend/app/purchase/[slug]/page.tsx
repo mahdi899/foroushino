@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, BadgePercent } from "lucide-react";
 import { PurchaseForm } from "@/components/forms/PurchaseForm";
 import { Reveal } from "@/components/motion/Reveal";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { getProductBySlug } from "@/lib/services/products";
 import { formatFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
@@ -67,9 +67,10 @@ export default async function PurchasePage({
                 <div className="neon-surface-static overflow-hidden rounded-card border border-bone/10 bg-charcoal/45">
                   {product.featured_image ? (
                     <div className="relative aspect-[3/2]">
-                      <Image
+                      <SiteImage
                         src={product.featured_image}
-                        alt=""
+                        alt={product.featured_image_alt}
+                        fallbackAlt={product.title}
                         fill
                         sizes="(max-width: 768px) 100vw, 40vw"
                         className="object-cover"

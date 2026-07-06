@@ -26,6 +26,8 @@ class ChatbotSettingsPage extends Page
 
     protected static ?int $navigationSort = 12;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     /**
      * @var array<string, mixed>
      */

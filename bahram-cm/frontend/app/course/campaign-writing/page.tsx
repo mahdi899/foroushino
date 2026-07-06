@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { buildMetadata } from "@/lib/seo";
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -27,7 +26,9 @@ import { LinkButton } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { IconTile } from "@/components/ui/IconTile";
 import { PhotoFrame } from "@/components/ui/PhotoFrame";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { cn } from "@/lib/cn";
+import { resolveMediaAlt } from "@/lib/media/alt";
 import { formatFa } from "@/lib/persian";
 import { pageHeroBackdropPhoto, sitePhotos } from "@/lib/site-photo-paths";
 
@@ -171,15 +172,23 @@ const faqs = [
   },
 ];
 
-export default function CourseCampaignWritingPage() {
+export default async function CourseCampaignWritingPage() {
   const priceLabel = `${formatFa(COURSE_PRICE)} تومان`;
+  const heroAlt = await resolveMediaAlt(pageHeroBackdropPhoto, "دوره کمپین‌نویسی آکادمی بهرام");
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip">
       {/* HERO */}
       <section className="relative isolate overflow-hidden bg-ink">
         <div aria-hidden className="absolute inset-0">
-          <Image src={pageHeroBackdropPhoto} alt="" fill priority className="object-cover" />
+          <SiteImage
+            src={pageHeroBackdropPhoto}
+            alt={heroAlt}
+            fallbackAlt="دوره کمپین‌نویسی آکادمی بهرام"
+            fill
+            priority
+            className="object-cover"
+          />
           <div className="absolute inset-0 bg-gradient-to-b from-ink/55 via-ink/82 to-ink" />
         </div>
         <div className="container-luxe relative z-[2] min-w-0 py-8 sm:py-12 md:py-20 lg:py-24">
@@ -632,9 +641,10 @@ function HeroPhoto() {
   return (
     <div className="relative mx-auto w-full max-w-[min(100%,18rem)] sm:max-w-xs md:mx-0 md:max-w-none">
       <div className="overflow-hidden rounded-card-lg border border-bone/12 bg-charcoal/30">
-        <Image
+        <SiteImage
           src={sitePhotos.manifestoLandscape}
           alt="دوره کمپین‌نویسی"
+          fallbackAlt="دوره کمپین‌نویسی"
           width={900}
           height={700}
           sizes="(max-width: 768px) min(100vw - 2rem, 20rem), (max-width: 1024px) 40vw, 33vw"
@@ -682,9 +692,10 @@ function ImageSplitSection({
             <Reveal delay={imageFirst ? 0.1 : 0}>
               <div className="relative overflow-hidden rounded-card-lg border border-bone/10">
                 <div className="relative aspect-[16/10] sm:aspect-[5/4] md:aspect-[4/5] lg:aspect-[5/6]">
-                  <Image
+                  <SiteImage
                     src={image}
                     alt={imageAlt}
+                    fallbackAlt={imageAlt}
                     fill
                     className="object-cover"
                     sizes="(max-width: 768px) 100vw, 40vw"
@@ -736,9 +747,10 @@ function AudienceCard({
 }) {
   return (
     <article className="group relative min-h-[10.5rem] overflow-hidden rounded-card-lg border border-bone/10 sm:min-h-[12rem]">
-      <Image
+      <SiteImage
         src={image}
-        alt=""
+        alt={title}
+        fallbackAlt={title}
         fill
         className="object-cover transition-transform duration-700 group-hover:scale-105"
         sizes="(max-width: 640px) 100vw, 50vw"
@@ -780,9 +792,10 @@ function LearningPathRow({
         )}
       >
         <div className={cn("relative min-h-[10rem] sm:min-h-[12rem] md:col-span-5 md:min-h-[14rem]", reverse && "md:order-2")}>
-          <Image
+          <SiteImage
             src={step.image}
             alt={step.title}
+            fallbackAlt={step.title}
             fill
             className="object-cover"
             sizes="(max-width: 768px) 100vw, 42vw"

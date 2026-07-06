@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Quote } from "lucide-react";
@@ -9,8 +8,10 @@ import { Reveal } from "@/components/motion/Reveal";
 import { LinkButton } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { getTransformationBySlug, getTransformations } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
+import { resolveMediaAlt } from "@/lib/media/alt";
 import { caseStudyPortrait, pageHeroBackdropPhoto } from "@/lib/site-photo-paths";
 
 export async function generateStaticParams() {
@@ -44,13 +45,21 @@ export default async function TransformationDetailPage({
   if (!item) notFound();
 
   const avatar = caseStudyPortrait(item.slug);
+  const heroAlt = await resolveMediaAlt(pageHeroBackdropPhoto, `داستان ${item.name}`);
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       <ContentViewTracker type="transformation" slug={item.slug} />
       <section className="relative isolate overflow-hidden bg-ink py-section-sm">
         <div aria-hidden className="absolute inset-0">
-          <Image src={pageHeroBackdropPhoto} alt="" fill priority className="object-cover" />
+          <SiteImage
+            src={pageHeroBackdropPhoto}
+            alt={heroAlt}
+            fallbackAlt={`داستان ${item.name}`}
+            fill
+            priority
+            className="object-cover"
+          />
           <div className="absolute inset-0 bg-gradient-to-b from-ink/55 via-ink/72 to-ink" />
         </div>
         <div className="container-luxe relative z-[2] max-w-4xl min-w-0">

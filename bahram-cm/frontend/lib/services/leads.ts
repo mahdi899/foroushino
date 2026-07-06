@@ -8,6 +8,10 @@ export type LeadInput = {
   role?: string;
   notes?: string;
   source?: string;
+  captcha_token?: string;
+  captcha_id?: string;
+  captcha_answer?: string;
+  website?: string;
 };
 
 export type LeadResult = {
@@ -58,6 +62,10 @@ export async function submitLead(input: LeadInput): Promise<ApiResult<LeadResult
     message: buildMessage(input),
     source: input.source ?? "web_apply",
     page_url: typeof window !== "undefined" ? window.location.href : undefined,
+    captcha_token: input.captcha_token,
+    captcha_id: input.captcha_id,
+    captcha_answer: input.captcha_answer,
+    website: input.website || undefined,
   });
 
   if (!result.ok) return result;

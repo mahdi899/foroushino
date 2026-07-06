@@ -26,8 +26,10 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('admin')
-            ->path('admin')
+            ->path('manage')
             ->login()
+            ->navigation(false)
+            ->darkMode(true)
             ->brandName('پنل مدیریت بهرام')
             ->sidebarCollapsibleOnDesktop()
             ->colors([

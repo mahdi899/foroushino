@@ -3,10 +3,10 @@ import {
   getCourses,
   getEvents,
   getGuides,
-  getInsights,
   getResources,
   getTransformations,
 } from "@/lib/content";
+import { getArticles } from "@/lib/services/articles";
 import { SITE } from "@/lib/seo";
 
 /** Static routes with their relative priority + change cadence. */
@@ -33,8 +33,15 @@ const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitem
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
-  const [insights, transformations, events, courses, resources, guides] = await Promise.all([
-    getInsights(),
+  const articlesResult = await getArticles(1, 100);
+  const insights = articlesResult.ok
+    ? articlesResult.data.items.map((item) => ({
+        slug: item.slug,
+        date: item.published_at ?? undefined,
+      }))
+    : [];
+
+  const [transformations, events, courses, resources, guides] = await Promise.all([
     getTransformations(),
     getEvents(),
     getCourses(),

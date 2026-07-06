@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\ArticleRevision;
 use App\Services\ArticleSeoAnalyzerService;
+use App\Support\ArticleSlug;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Sluggable\HasSlug;
 use Spatie\Sluggable\SlugOptions;
 use Stevebauman\Purify\Facades\Purify;
@@ -13,6 +17,9 @@ use Stevebauman\Purify\Facades\Purify;
 class Article extends Model
 {
     use HasSlug;
+    use SoftDeletes;
+
+    public const TRASH_RETENTION_HOURS = 24;
 
     protected $fillable = [
         'title',
@@ -20,6 +27,8 @@ class Article extends Model
         'excerpt',
         'content',
         'featured_image',
+        'reading_time',
+        'kicker',
         'meta_title',
         'meta_description',
         'focus_keyword',
@@ -45,6 +54,7 @@ class Article extends Model
         return SlugOptions::create()
             ->generateSlugsFrom('title')
             ->saveSlugsTo('slug')
+            ->usingSlugGenerator(fn (string $string, string $separator): string => ArticleSlug::normalize($string, $string))
             ->doNotGenerateSlugsOnUpdate();
     }
 
@@ -56,6 +66,11 @@ class Article extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
+    }
+
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(ArticleRevision::class)->orderByDesc('revision_number');
     }
 
     public function scopePublished(Builder $query): Builder

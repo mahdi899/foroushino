@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Setting;
+use App\Services\CaptchaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -15,6 +17,16 @@ class LeadTest extends TestCase
         parent::setUp();
         // Avoid cross-test rate-limit bleed (RateLimiter uses the cache store, which persists across tests).
         Cache::flush();
+        $this->disableCaptchaForTests();
+    }
+
+    private function disableCaptchaForTests(): void
+    {
+        Setting::query()->updateOrCreate(
+            ['group' => 'captcha', 'key' => 'config'],
+            ['value' => ['enabled' => false, 'honeypot_enabled' => true]],
+        );
+        CaptchaService::forgetCachedConfig();
     }
 
     public function test_a_lead_can_be_created_via_the_public_api(): void

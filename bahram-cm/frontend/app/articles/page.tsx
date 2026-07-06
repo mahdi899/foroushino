@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Calendar, Pencil } from "lucide-react";
 import { PageHero } from "@/components/blocks/PageHero";
 import { Reveal } from "@/components/motion/Reveal";
 import { NewsletterCTA } from "@/components/sections/NewsletterCTA";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { getArticles } from "@/lib/services/articles";
 import { formatDateFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 export const metadata: Metadata = buildMetadata({
   title: "مقالات",
@@ -17,7 +18,15 @@ export const metadata: Metadata = buildMetadata({
 
 export const revalidate = 300;
 
-function ArticleCover({ src }: { src: string | null }) {
+function ArticleCover({
+  src,
+  alt,
+  title,
+}: {
+  src: string | null;
+  alt?: string | null;
+  title?: string;
+}) {
   if (!src) {
     return (
       <div
@@ -27,9 +36,10 @@ function ArticleCover({ src }: { src: string | null }) {
     );
   }
   return (
-    <Image
-      src={src}
-      alt=""
+    <SiteImage
+      src={resolveMediaUrl(src)}
+      alt={alt}
+      fallbackAlt={title ? `کاور ${title}` : "کاور مقاله"}
       fill
       sizes="(max-width: 768px) 100vw, 33vw"
       className="object-cover transition-transform duration-700 ease-[var(--ease-luxe)] group-hover:scale-[1.04]"
@@ -72,7 +82,11 @@ export default async function ArticlesPage({
                     className="neon-surface-hover group block h-full overflow-hidden rounded-card border border-bone/10 bg-charcoal/45 transition-colors hover:border-bone/25"
                   >
                     <div className="relative aspect-[3/2] overflow-hidden">
-                      <ArticleCover src={post.featured_image} />
+                      <ArticleCover
+                        src={post.featured_image}
+                        alt={post.featured_image_alt}
+                        title={post.title}
+                      />
                     </div>
                     <div className="p-5 md:p-6">
                       <p className="inline-flex items-center gap-2 text-caption text-gold">

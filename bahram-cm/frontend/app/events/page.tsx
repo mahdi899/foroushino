@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { buildMetadata } from "@/lib/seo";
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Calendar, MapPin, PlayCircle, Radio } from "lucide-react";
 import { PageHero } from "@/components/blocks/PageHero";
 import { Reveal } from "@/components/motion/Reveal";
 import { Badge } from "@/components/ui/Badge";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { getEvents } from "@/lib/content";
 import { formatDateFa } from "@/lib/persian";
+import { resolveMediaAlt } from "@/lib/media/alt";
 import { eventCoverPhotos } from "@/lib/site-photo-paths";
 
 export const metadata: Metadata = buildMetadata({
@@ -37,11 +38,17 @@ export default async function EventsPage() {
             <p className="text-caption uppercase tracking-[0.25em] text-gold">در پیشِ رو</p>
             <h2 className="mt-4 text-h2 text-balance">نشست‌های زنده‌ی پیش رو.</h2>
             <div className="mt-7 grid gap-5 md:mt-10 md:grid-cols-2">
-              {upcoming.map((event, i) => (
-                <Reveal key={event.slug} delay={i * 0.07}>
-                  <EventCard event={event} cover={covers[i % covers.length]!} live />
-                </Reveal>
-              ))}
+              {await Promise.all(
+                upcoming.map(async (event, i) => {
+                  const cover = covers[i % covers.length]!;
+                  const coverAlt = await resolveMediaAlt(cover, `کاور ${event.title}`);
+                  return (
+                    <Reveal key={event.slug} delay={i * 0.07}>
+                      <EventCard event={event} cover={cover} coverAlt={coverAlt} live />
+                    </Reveal>
+                  );
+                }),
+              )}
             </div>
           </div>
         </section>
@@ -53,11 +60,17 @@ export default async function EventsPage() {
             <p className="text-caption uppercase tracking-[0.25em] text-gold">آرشیو</p>
             <h2 className="mt-4 text-h2 text-balance">نشست‌های ضبط‌شده.</h2>
             <div className="mt-7 grid gap-5 md:mt-10 md:grid-cols-2 lg:grid-cols-3">
-              {archive.map((event, i) => (
-                <Reveal key={event.slug} delay={i * 0.06}>
-                  <EventCard event={event} cover={covers[(i + 1) % covers.length]!} />
-                </Reveal>
-              ))}
+              {await Promise.all(
+                archive.map(async (event, i) => {
+                  const cover = covers[(i + 1) % covers.length]!;
+                  const coverAlt = await resolveMediaAlt(cover, `کاور ${event.title}`);
+                  return (
+                    <Reveal key={event.slug} delay={i * 0.06}>
+                      <EventCard event={event} cover={cover} coverAlt={coverAlt} />
+                    </Reveal>
+                  );
+                }),
+              )}
             </div>
           </div>
         </section>
@@ -69,10 +82,12 @@ export default async function EventsPage() {
 function EventCard({
   event,
   cover,
+  coverAlt,
   live = false,
 }: {
   event: { slug: string; title: string; date: string; place: string; summary: string; status: string };
   cover: string;
+  coverAlt: string;
   live?: boolean;
 }) {
   return (
@@ -81,9 +96,10 @@ function EventCard({
       className="neon-surface-hover group block h-full overflow-hidden rounded-card border border-bone/10 bg-charcoal/45 transition-colors hover:border-bone/25"
     >
       <div className="relative aspect-[16/9] overflow-hidden">
-        <Image
+        <SiteImage
           src={cover}
-          alt=""
+          alt={coverAlt}
+          fallbackAlt={`کاور ${event.title}`}
           fill
           sizes="(max-width: 768px) 100vw, 50vw"
           className="object-cover transition-transform duration-700 ease-[var(--ease-luxe)] group-hover:scale-[1.04]"

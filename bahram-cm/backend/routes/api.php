@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\ArticleController;
 use App\Http\Controllers\Api\ChatbotController;
 use App\Http\Controllers\Api\FaqController;
 use App\Http\Controllers\Api\LeadController;
+use App\Http\Controllers\Api\MediaAltController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ZarinpalController;
@@ -14,6 +15,8 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
+Route::prefix('v1')->group(base_path('routes/api_v1.php'));
+
 /*
 |--------------------------------------------------------------------------
 | Public API (consumed by the Next.js frontend)
@@ -22,6 +25,9 @@ Route::get('/user', function (Request $request) {
 
 // FAQ
 Route::get('/faqs', [FaqController::class, 'index']);
+
+// Media alt (public SEO / accessibility lookup)
+Route::get('/media/alt', [MediaAltController::class, 'show'])->middleware('throttle:120,1');
 
 // Articles
 Route::get('/articles', [ArticleController::class, 'index']);

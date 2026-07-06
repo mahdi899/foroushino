@@ -17,8 +17,17 @@ export type AnalyticsEventMap = {
   checkout_start: { product: string };
   checkout_success: { product: string; order?: string };
   checkout_error: { product: string; code?: string };
-  chatbot_open: Record<string, never>;
+  whatsapp_click: { from?: string };
+  call_click: { from?: string };
+  consultation_click: { from?: string };
+  chatbot_open: { session?: string };
+  chatbot_message: { session?: string };
   chatbot_message_sent: { session_id: string };
+  chatbot_cta: { type: string };
+  chatbot_rating: { rating: number; session?: string };
+  chatbot_reply_mode: { mode: string; session?: string };
+  chatbot_reply_mode_switch: { mode: string; session?: string };
+  chatbot_phone_saved: { session?: string };
 };
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;

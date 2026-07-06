@@ -1,42 +1,46 @@
 /**
- * مرکز پوشه‌ی عکس‌های سایت: فایل‌ها در `public/media/site-photos/` هستند.
- * برای عوض کردن تصویر، همان نام فایل را نگه دار یا این مسیرها را به‌روز کن.
+ * مرکز پوشه‌ی عکس‌های سایت — پس از `php artisan media:import-site` از کتابخانه رسانه resolve می‌شوند.
  */
+import { resolveMediaUrl } from '@/lib/mediaUrl';
+
+function photo(path: string): string {
+  return resolveMediaUrl(path);
+}
+
 export const sitePhotos = {
-  portraitFounder: "/media/site-photos/portrait-founder.jpg",
-  squareStudio: "/media/site-photos/square-studio.jpg",
-  landscapeSession: "/media/site-photos/landscape-session.jpg",
+  portraitFounder: photo("/media/site-photos/portrait-founder.jpg"),
+  squareStudio: photo("/media/site-photos/square-studio.jpg"),
+  landscapeSession: photo("/media/site-photos/landscape-session.jpg"),
   social: [
-    "/media/site-photos/social-01.jpg",
-    "/media/site-photos/social-02.jpg",
-    "/media/site-photos/social-03.jpg",
-    "/media/site-photos/social-04.jpg",
-    "/media/site-photos/social-05.jpg",
-    "/media/site-photos/social-06.jpg",
+    photo("/media/site-photos/social-01.jpg"),
+    photo("/media/site-photos/social-02.jpg"),
+    photo("/media/site-photos/social-03.jpg"),
+    photo("/media/site-photos/social-04.jpg"),
+    photo("/media/site-photos/social-05.jpg"),
+    photo("/media/site-photos/social-06.jpg"),
   ],
-  manifestoPortraitA: "/media/site-photos/manifesto-portrait-a.jpg",
-  manifestoPortraitB: "/media/site-photos/manifesto-portrait-b.jpg",
-  manifestoLandscape: "/media/site-photos/manifesto-landscape.jpg",
-  ctaPortrait: "/media/site-photos/cta-portrait.jpg",
-  ctaSquare: "/media/site-photos/cta-square.jpg",
+  manifestoPortraitA: photo("/media/site-photos/manifesto-portrait-a.jpg"),
+  manifestoPortraitB: photo("/media/site-photos/manifesto-portrait-b.jpg"),
+  manifestoLandscape: photo("/media/site-photos/manifesto-landscape.jpg"),
+  ctaPortrait: photo("/media/site-photos/cta-portrait.jpg"),
+  ctaSquare: photo("/media/site-photos/cta-square.jpg"),
   testimonialPortrait: [
-    "/media/site-photos/testimonial-01.jpg",
-    "/media/site-photos/testimonial-02.jpg",
-    "/media/site-photos/testimonial-03.jpg",
+    photo("/media/site-photos/testimonial-01.jpg"),
+    photo("/media/site-photos/testimonial-02.jpg"),
+    photo("/media/site-photos/testimonial-03.jpg"),
   ],
-  academyStory: "/media/site-photos/academy-story.jpg",
-  academyAccent: "/media/site-photos/academy-accent.jpg",
-  /** نماهای اپ (تا جایگزینی با اسکرین‌شات اختصاصی، از نزدیک‌ترین عکس‌های مرتبط استفاده می‌شود) */
-  academyAppHome: "/media/site-photos/academy-story.jpg",
-  academyAppPath: "/media/site-photos/story-step-02.jpg",
-  academyAppAtelier: "/media/site-photos/square-backstage.jpg",
-  squareBackstage: "/media/site-photos/square-backstage.jpg",
-  courseBackstage: "/media/site-photos/course-backstage.jpg",
+  academyStory: photo("/media/site-photos/academy-story.jpg"),
+  academyAccent: photo("/media/site-photos/academy-accent.jpg"),
+  academyAppHome: photo("/media/site-photos/academy-story.jpg"),
+  academyAppPath: photo("/media/site-photos/story-step-02.jpg"),
+  academyAppAtelier: photo("/media/site-photos/square-backstage.jpg"),
+  squareBackstage: photo("/media/site-photos/square-backstage.jpg"),
+  courseBackstage: photo("/media/site-photos/course-backstage.jpg"),
   storyStep: [
-    "/media/site-photos/story-step-01.jpg",
-    "/media/site-photos/story-step-02.jpg",
-    "/media/site-photos/story-step-03.jpg",
-    "/media/site-photos/story-step-04.jpg",
+    photo("/media/site-photos/story-step-01.jpg"),
+    photo("/media/site-photos/story-step-02.jpg"),
+    photo("/media/site-photos/story-step-03.jpg"),
+    photo("/media/site-photos/story-step-04.jpg"),
   ],
 } as const;
 

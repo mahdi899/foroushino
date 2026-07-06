@@ -7,6 +7,7 @@ use App\Http\Resources\ArticleDetailResource;
 use App\Http\Resources\ArticleListResource;
 use App\Models\Article;
 use App\Support\ApiResponse;
+use App\Support\ArticleSlug;
 use Illuminate\Http\Request;
 
 class ArticleController extends Controller
@@ -33,7 +34,7 @@ class ArticleController extends Controller
     {
         $article = Article::query()
             ->published()
-            ->where('slug', $slug)
+            ->whereIn('slug', ArticleSlug::lookupCandidates($slug))
             ->first();
 
         if (! $article) {
