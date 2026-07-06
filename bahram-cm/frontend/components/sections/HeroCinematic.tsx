@@ -1,7 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
-import { useRef } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { GraduationCap, Mic2, Sparkles, Users } from "lucide-react";
 import { site } from "@/content/site";
 import { cn } from "@/lib/cn";
@@ -12,16 +11,7 @@ import { PhotoFrame } from "@/components/ui/PhotoFrame";
 import { sitePhotos } from "@/lib/site-photo-paths";
 
 export function HeroCinematic() {
-  const ref = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
-  });
-  const yPortrait = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : -100]);
-  const ySecondary = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : -55]);
-  const yHeadline = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : 60]);
-  const scalePortrait = useTransform(scrollYProgress, [0, 0.5, 1], [1, reduce ? 1 : 1.02, reduce ? 1 : 0.98]);
   const hoverEase = [0.22, 1, 0.36, 1] as const;
   const portraitHover = reduce ? undefined : { scale: 1.025, y: -10, transition: { duration: 0.45, ease: hoverEase } };
   const miniHoverTop = reduce ? undefined : { scale: 1.07, rotate: 1, y: -12, transition: { duration: 0.45, ease: hoverEase } };
@@ -29,17 +19,12 @@ export function HeroCinematic() {
 
   return (
     <section
-      ref={ref}
       aria-label="معرفی"
       className="relative isolate overflow-hidden"
     >
       <div className="container-luxe relative min-h-0 pt-8 pb-10 md:pt-14 md:pb-14 lg:pt-20 lg:pb-16">
         <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start lg:gap-x-8 lg:gap-y-10">
-          {/* معرفی: موبایل اول، دسکتاپ ستون چپ ردیف اول */}
-          <motion.div
-            className="min-w-0 text-center lg:col-span-7 lg:col-start-1 lg:row-start-1 lg:text-start"
-            style={{ y: yHeadline }}
-          >
+          <div className="min-w-0 text-center lg:col-span-7 lg:col-start-1 lg:row-start-1 lg:text-start">
             <Reveal>
               <Badge
                 tone="emerald"
@@ -62,9 +47,8 @@ export function HeroCinematic() {
                 {site.hero.sub}
               </p>
             </Reveal>
-          </motion.div>
+          </div>
 
-          {/* پرتره: موبایل بعد از تیتر، دسکتاپ ستون راست تمام قد */}
           <div className="min-w-0 w-full lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1 lg:self-start">
             <Reveal delay={0.18}>
               <div className="relative mx-auto w-full max-w-[min(100%,22rem)] md:max-w-none">
@@ -72,9 +56,7 @@ export function HeroCinematic() {
                   dir="ltr"
                   className="flex items-center justify-center gap-2.5 sm:gap-3 md:gap-4 lg:gap-5"
                 >
-                  {/* پرتره اصلی — چپ */}
                   <motion.div
-                    style={{ y: yPortrait, scale: scalePortrait }}
                     whileHover={portraitHover}
                     className="relative z-[2] min-w-0 w-full max-w-[min(100%,17rem)] sm:max-w-[15rem] md:max-w-[17rem] lg:max-w-[19rem]"
                   >
@@ -94,10 +76,8 @@ export function HeroCinematic() {
                     />
                   </motion.div>
 
-                  {/* دو عکس کوچک — راست پرتره */}
                   <div className="hidden shrink-0 flex-col gap-2.5 md:flex lg:gap-3">
                     <motion.div
-                      style={{ y: ySecondary }}
                       whileHover={miniHoverTop}
                       className="w-[9rem] rotate-[-3deg] lg:w-[11rem]"
                     >
@@ -114,7 +94,6 @@ export function HeroCinematic() {
                       />
                     </motion.div>
                     <motion.div
-                      style={{ y: ySecondary }}
                       whileHover={miniHoverBottom}
                       className="w-[9rem] rotate-[2deg] lg:w-[11rem]"
                     >
@@ -133,7 +112,6 @@ export function HeroCinematic() {
                   </div>
                 </div>
 
-                {/* Floating accent */}
                 <motion.div
                   aria-hidden
                   className="pointer-events-none absolute -end-2 top-8 hidden h-20 w-20 rounded-pill bg-emerald-glow/15 blur-2xl md:block float-slow"
@@ -148,7 +126,6 @@ export function HeroCinematic() {
 
           </div>
 
-          {/* CTAs و آمار اعتماد: موبایل بعد از تصویر، دسکتاپ ادامه‌ی ستون چپ */}
           <div className="min-w-0 lg:col-span-7 lg:col-start-1 lg:row-start-2 lg:self-start lg:-mt-1">
             <Reveal delay={0.3}>
               <div className="flex w-full max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-stretch sm:gap-4">

@@ -2,16 +2,7 @@
 
 import Image from "next/image";
 import { ArrowLeft, Briefcase, GraduationCap, Wallet } from "lucide-react";
-import { Fragment, useRef, useState } from "react";
-import {
-  AnimatePresence,
-  motion,
-  useMotionValueEvent,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-  type MotionValue,
-} from "framer-motion";
+import { Fragment } from "react";
 import { site } from "@/content/site";
 import { cn } from "@/lib/cn";
 import { Reveal } from "@/components/motion/Reveal";
@@ -40,12 +31,6 @@ const stepsGridClass =
 const iconRowClass =
   "flex h-14 w-full shrink-0 items-center justify-center sm:h-16 lg:h-[4.5rem]";
 
-function scrollStepIndex(progress: number): number {
-  if (progress < 0.3) return 0;
-  if (progress < 0.62) return 1;
-  return 2;
-}
-
 function StepIcon({ index }: { index: number }) {
   const Icon = stepIcons[index] ?? GraduationCap;
 
@@ -59,24 +44,14 @@ function StepIcon({ index }: { index: number }) {
 function CampaignJourneyStep({
   index,
   step,
-  isLit,
-  isActive,
 }: {
   index: number;
   step: (typeof site.campaignJourney.steps)[number];
-  isLit: boolean;
-  isActive: boolean;
 }) {
   return (
-    <motion.article
+    <article
       data-step={index}
-      className={cn(
-        "campaign-journey-step flex min-w-0 flex-col items-center px-1 text-center sm:px-2 lg:px-3",
-        isLit && "campaign-journey-step--lit",
-        isActive && "campaign-journey-step--active",
-      )}
-      animate={{ opacity: isLit ? 1 : 0.42, y: isLit ? 0 : 6 }}
-      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      className="campaign-journey-step campaign-journey-step--lit campaign-journey-step--active flex min-w-0 flex-col items-center px-1 text-center sm:px-2 lg:px-3"
     >
       <div className={iconRowClass}>
         <StepIcon index={index} />
@@ -87,18 +62,17 @@ function CampaignJourneyStep({
       <h3 className="mt-2.5 w-full max-w-[13rem] text-sm leading-relaxed text-bone-dim lg:max-w-[14rem] lg:text-[0.9375rem]">
         {step.title}
       </h3>
-    </motion.article>
+    </article>
   );
 }
 
-function CampaignJourneyConnector({ isLit }: { isLit: boolean }) {
+function CampaignJourneyConnector() {
   return (
     <div
       aria-hidden
       className={cn(
-        "campaign-journey-step-connector hidden min-w-0 sm:flex",
+        "campaign-journey-step-connector campaign-journey-step-connector--lit hidden min-w-0 sm:flex",
         iconRowClass,
-        isLit && "campaign-journey-step-connector--lit",
       )}
     >
       <span className="campaign-journey-step-connector-pill inline-flex h-9 w-9 items-center justify-center rounded-full">
@@ -108,41 +82,16 @@ function CampaignJourneyConnector({ isLit }: { isLit: boolean }) {
   );
 }
 
-function CampaignJourneyPhoto({
-  activeStep,
-  photoScale,
-}: {
-  activeStep: number;
-  photoScale?: MotionValue<number>;
-}) {
-  const reduce = useReducedMotion();
-  const photoIndex = Math.min(Math.max(activeStep, 0), stepPhotos.length - 1);
-
+function CampaignJourneyPhoto() {
   return (
     <figure className="campaign-journey-photo relative m-4 aspect-[5/4] min-h-[14rem] overflow-hidden rounded-card-lg sm:m-5 sm:min-h-[16rem] lg:col-span-6 lg:m-0 lg:aspect-auto lg:min-h-full lg:self-stretch lg:rounded-e-none lg:rounded-s-card-lg">
-      <motion.div
-        className="absolute inset-0"
-        style={photoScale && !reduce ? { scale: photoScale } : undefined}
-      >
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={photoIndex}
-            className="absolute inset-0"
-            initial={reduce ? false : { opacity: 0, scale: 1.05 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={reduce ? undefined : { opacity: 0, scale: 0.97 }}
-            transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <Image
-              src={stepPhotos[photoIndex]!}
-              alt={stepPhotoAlts[photoIndex]!}
-              fill
-              className="object-cover object-center"
-              sizes="(max-width: 1023px) 100vw, 50vw"
-            />
-          </motion.div>
-        </AnimatePresence>
-      </motion.div>
+      <Image
+        src={stepPhotos[0]!}
+        alt={stepPhotoAlts[0]!}
+        fill
+        className="object-cover object-center"
+        sizes="(max-width: 1023px) 100vw, 50vw"
+      />
       <span
         aria-hidden
         className="campaign-journey-photo-accent pointer-events-none absolute inset-y-4 start-0 z-[2] w-1.5 rounded-full lg:inset-y-0 lg:end-0 lg:start-auto lg:w-2"
@@ -155,22 +104,14 @@ function CampaignJourneyPhoto({
   );
 }
 
-function CampaignJourneyStage({
-  activeStep,
-  photoScale,
-}: {
-  activeStep: number;
-  photoScale?: MotionValue<number>;
-}) {
+function CampaignJourneyStage() {
   const { campaignJourney } = site;
   const steps = campaignJourney.steps;
-  const reduce = useReducedMotion();
-  const resolvedStep = reduce ? steps.length - 1 : activeStep;
 
   return (
-    <div className="campaign-journey-stage group/stage">
+    <div className="campaign-journey-stage group/stage overflow-hidden rounded-card-lg border border-bone/10 bg-charcoal/30 shadow-[0_28px_56px_-36px_rgba(0,0,0,0.75)]">
       <div className="grid lg:min-h-[30rem] lg:grid-cols-12 lg:items-stretch xl:min-h-[32rem]">
-        <CampaignJourneyPhoto activeStep={resolvedStep} photoScale={photoScale} />
+        <CampaignJourneyPhoto />
 
         <div className="flex min-h-0 flex-col justify-center px-4 py-5 sm:px-5 sm:py-6 lg:col-span-6 lg:min-h-full lg:px-6 lg:py-7 lg:ps-5 xl:px-8 xl:py-8">
           <div
@@ -178,19 +119,11 @@ function CampaignJourneyStage({
               "campaign-journey-steps grid w-full grid-cols-1 gap-y-10 sm:grid sm:items-start sm:gap-y-0",
               stepsGridClass,
             )}
-            aria-live="polite"
           >
             {steps.map((step, i) => (
               <Fragment key={step.title}>
-                <CampaignJourneyStep
-                  index={i}
-                  step={step}
-                  isLit={resolvedStep >= i}
-                  isActive={resolvedStep === i}
-                />
-                {i < steps.length - 1 ? (
-                  <CampaignJourneyConnector isLit={resolvedStep > i} />
-                ) : null}
+                <CampaignJourneyStep index={i} step={step} />
+                {i < steps.length - 1 ? <CampaignJourneyConnector /> : null}
               </Fragment>
             ))}
           </div>
@@ -236,63 +169,22 @@ function CampaignJourneyHeader() {
   );
 }
 
-function CampaignJourneyScrollStage() {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [activeStep, setActiveStep] = useState(0);
-
-  const { scrollYProgress } = useScroll({
-    target: scrollRef,
-    offset: ["start start", "end end"],
-  });
-
-  const photoScale = useTransform(scrollYProgress, [0, 1], [1, 1.06]);
-  const scrollHintOpacity = useTransform(scrollYProgress, [0, 0.1, 0.88, 1], [1, 0.55, 0.55, 0]);
-
-  useMotionValueEvent(scrollYProgress, "change", (value) => {
-    setActiveStep(scrollStepIndex(value));
-  });
-
-  return (
-    <div ref={scrollRef} className="campaign-journey-scroll-track relative">
-      <div className="campaign-journey-sticky-stage sticky top-14 md:top-16">
-        <div className="container-luxe py-4 md:py-5">
-          <CampaignJourneyHeader />
-          <div className="mt-4 md:mt-5">
-            <CampaignJourneyStage activeStep={activeStep} photoScale={photoScale} />
-          </div>
-          <motion.p
-            aria-hidden
-            className="campaign-journey-scroll-hint mt-3 text-center text-caption text-mist/70"
-            style={{ opacity: scrollHintOpacity }}
-          >
-            اسکرول کنید — مراحل یکی‌یکی روشن می‌شوند
-          </motion.p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function CampaignScrollStory() {
-  const reduce = useReducedMotion();
-
   return (
     <section
       aria-labelledby="campaign-journey-heading"
       className="relative pt-4 pb-8 md:pt-6 md:pb-10 lg:pt-8"
     >
-      {reduce ? (
-        <Reveal delay={0.1}>
-          <div className="container-luxe">
-            <CampaignJourneyHeader />
-            <div className="mt-5 md:mt-6">
-              <CampaignJourneyStage activeStep={site.campaignJourney.steps.length - 1} />
-            </div>
+      <div className="container-luxe">
+        <Reveal>
+          <CampaignJourneyHeader />
+        </Reveal>
+        <Reveal delay={0.1} y={24}>
+          <div className="mt-5 md:mt-6">
+            <CampaignJourneyStage />
           </div>
         </Reveal>
-      ) : (
-        <CampaignJourneyScrollStage />
-      )}
+      </div>
     </section>
   );
 }

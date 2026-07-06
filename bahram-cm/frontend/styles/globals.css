@@ -222,7 +222,7 @@
 
 @layer base {
   html {
-    /* Non-static positioning: document scroll root for Framer Motion `useScroll` + offset math */
+    /* Non-static positioning: document scroll root */
     position: relative;
     font-family: var(--font-body);
     background-color: var(--color-ink);
@@ -685,107 +685,6 @@
     font-size: clamp(3.25rem, 7vw, 5rem);
     color: var(--color-gold);
     opacity: 0.92;
-  }
-
-  .manifesto-scroll-track {
-    height: clamp(200vh, 240vh, 280vh);
-  }
-
-  .manifesto-progress-rail {
-    background: color-mix(in oklab, var(--color-bone) 12%, transparent);
-    border-radius: 999px;
-    min-height: clamp(7rem, 18vh, 10rem);
-  }
-
-  .manifesto-progress-fill {
-    background: linear-gradient(
-      to bottom,
-      var(--color-emerald-glow),
-      var(--color-gold)
-    );
-    box-shadow: 0 0 12px color-mix(in oklab, var(--color-gold) 35%, transparent);
-  }
-
-  .manifesto-ambient-glow {
-    background:
-      radial-gradient(
-        ellipse 55% 45% at 72% 38%,
-        color-mix(in oklab, var(--color-emerald-glow) 22%, transparent),
-        transparent 68%
-      ),
-      radial-gradient(
-        ellipse 40% 35% at 18% 72%,
-        color-mix(in oklab, var(--color-gold) 14%, transparent),
-        transparent 70%
-      );
-  }
-
-  .manifesto-line-accent {
-    box-shadow: 0 0 14px color-mix(in oklab, var(--color-gold) 40%, transparent);
-  }
-
-  .campaign-journey-scroll-track {
-    height: clamp(210vh, 250vh, 290vh);
-  }
-
-  .course-learn-scroll-track {
-    height: clamp(230vh, 280vh, 320vh);
-  }
-
-  .sat-flow-scroll-track {
-    height: clamp(300vh, 360vh, 420vh);
-  }
-
-  .sat-wap-scroll-track {
-    height: clamp(113vh, 133vh, 154vh);
-  }
-
-  .sat-flow-sticky-stage {
-    display: flex;
-    min-height: calc(100dvh - 3.5rem);
-    align-items: center;
-  }
-
-  @media (min-width: 768px) {
-    .sat-flow-sticky-stage {
-      min-height: calc(100dvh - 4rem);
-    }
-  }
-
-  .sat-wap-sticky-stage {
-    display: flex;
-    min-height: calc(100dvh - 3.5rem);
-    align-items: center;
-  }
-
-  @media (min-width: 768px) {
-    .sat-wap-sticky-stage {
-      min-height: calc(100dvh - 4rem);
-    }
-  }
-
-  .course-learn-sticky-stage {
-    display: flex;
-    min-height: calc(100dvh - 3.5rem);
-    align-items: center;
-  }
-
-  @media (min-width: 768px) {
-    .course-learn-sticky-stage {
-      min-height: calc(100dvh - 4rem);
-    }
-  }
-
-  .campaign-journey-sticky-stage {
-    display: flex;
-    min-height: calc(100dvh - 3.5rem);
-    align-items: center;
-  }
-
-  @media (min-width: 768px) {
-    .campaign-journey-sticky-stage {
-      min-height: calc(100dvh - 4rem);
-    }
   }
 
   /* How it works — outcome chips readable on light cards */
