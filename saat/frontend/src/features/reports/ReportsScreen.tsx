@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Phone, Target, CheckCircle2, Flame, BarChart3 } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Phone, Target, CheckCircle2, Flame, BarChart3, TriangleAlert, ChevronLeft, BadgeDollarSign } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
@@ -8,12 +9,24 @@ import { StatTile } from '@/components/domain/StatTile'
 import { LeaderboardRow } from '@/components/domain/LeaderboardRow'
 import { InsightCard } from '@/components/domain/InsightCard'
 import { FunnelCard, SourceCard, TeamCard } from './widgets'
-import { funnel, sourcePerf, teamRows, managerInsights } from '@/data/reports'
-import { toFa } from '@/lib/format'
+import {
+  computeFunnel,
+  computeManagerInsights,
+  computeSourcePerf,
+  computeTeamRows,
+  overdueFollowupsList,
+  pendingConfirmationSales,
+  weakAgents,
+} from '@/lib/reportUtils'
+import { formatMoney, toFa } from '@/lib/format'
 
 export function ReportsScreen() {
+  const navigate = useNavigate()
   const agents = useStore((s) => s.agents)
+  const teams = useStore((s) => s.teams)
   const leads = useStore((s) => s.leads)
+  const followups = useStore((s) => s.followups)
+  const sales = useStore((s) => s.sales)
   const [tab, setTab] = useState('overview')
 
   const teamAgents = agents.filter((a) => a.role === 'agent')
@@ -24,6 +37,26 @@ export function ReportsScreen() {
   )
   const hotLeads = leads.filter((l) => l.temperature === 'hot').length
   const ranked = [...teamAgents].sort((a, b) => b.callsToday - a.callsToday)
+
+  const funnel = useMemo(() => computeFunnel(leads), [leads])
+  const sourcePerf = useMemo(() => computeSourcePerf(leads), [leads])
+  const teamRows = useMemo(() => computeTeamRows(agents, teams), [agents, teams])
+  const weak = useMemo(() => weakAgents(agents), [agents])
+  const overdue = useMemo(() => overdueFollowupsList(followups), [followups])
+  const pendingSales = useMemo(() => pendingConfirmationSales(sales), [sales])
+  const wonCount = leads.filter((l) => l.stage === 'won').length
+
+  const insights = useMemo(
+    () =>
+      computeManagerInsights({
+        teamRows,
+        sourcePerf,
+        weak,
+        overdueCount: overdue.length,
+        pendingSales: pendingSales.length,
+      }),
+    [teamRows, sourcePerf, weak, overdue.length, pendingSales.length],
+  )
 
   return (
     <Page>
@@ -57,14 +90,55 @@ export function ReportsScreen() {
               <StatTile icon={<Target size={18} />} value={`${toFa(avgConversion)}٪`} label="نرخ تبدیل" tone="secondary" />
               <StatTile icon={<Flame size={18} />} value={hotLeads} label="لید داغ" tone="accent" />
             </div>
+
+            {pendingSales.length > 0 && (
+              <button
+                onClick={() => navigate('/sales')}
+                className="flex w-full items-center gap-3 rounded-2xl bg-warning-50 p-4 text-right"
+              >
+                <BadgeDollarSign size={20} className="shrink-0 text-warning-600" />
+                <span className="flex-1 text-[13px] font-extrabold text-warning-700">
+                  {toFa(pendingSales.length)} فروش در صف تایید توست
+                </span>
+                <ChevronLeft size={16} className="shrink-0 text-warning-400" />
+              </button>
+            )}
+
             <section>
               <h2 className="mb-3 text-[15px] font-extrabold text-neutral-900">بینش‌های مدیریتی</h2>
               <div className="space-y-2.5">
-                {managerInsights.map((ins) => (
+                {insights.map((ins) => (
                   <InsightCard key={ins.id} tone={ins.tone} title={ins.title} body={ins.body} />
                 ))}
               </div>
             </section>
+
+            {weak.length > 0 && (
+              <section>
+                <h2 className="mb-3 flex items-center gap-1.5 text-[15px] font-extrabold text-neutral-900">
+                  <TriangleAlert size={16} className="text-warning-500" />
+                  کارشناسان نیازمند بررسی
+                </h2>
+                <div className="space-y-2">
+                  {weak.map((a, i) => (
+                    <LeaderboardRow key={a.id} agent={a} rank={i + 1} metric={a.callsToday} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {overdue.length > 0 && (
+              <button
+                onClick={() => navigate('/followups')}
+                className="flex w-full items-center gap-3 rounded-2xl bg-error-50 p-4 text-right"
+              >
+                <TriangleAlert size={20} className="shrink-0 text-error-600" />
+                <span className="flex-1 text-[13px] font-extrabold text-error-700">
+                  {toFa(overdue.length)} پیگیری عقب‌افتاده در کل تیم
+                </span>
+                <ChevronLeft size={16} className="shrink-0 text-error-400" />
+              </button>
+            )}
           </>
         )}
 
@@ -73,7 +147,10 @@ export function ReportsScreen() {
             <FunnelCard funnel={funnel} />
             <div className="grid grid-cols-2 gap-2.5">
               <StatTile icon={<Target size={18} />} value={`${toFa(avgConversion)}٪`} label="نرخ تبدیل کل" tone="secondary" />
-              <StatTile icon={<CheckCircle2 size={18} />} value={toFa(41)} label="فروش موفق" tone="success" />
+              <StatTile icon={<CheckCircle2 size={18} />} value={toFa(wonCount)} label="فروش موفق" tone="success" />
+            </div>
+            <div className="rounded-2xl bg-primary-50 p-4 text-[12px] font-bold leading-6 text-primary-700">
+              مجموع ارزش فروش‌های تاییدشده: {formatMoney(sales.filter((s) => s.status === 'confirmed').reduce((sum, s) => sum + s.amount, 0))} تومان
             </div>
           </>
         )}

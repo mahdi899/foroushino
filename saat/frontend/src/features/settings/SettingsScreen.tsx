@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import {
   Bell,
@@ -7,6 +8,10 @@ import {
   Trash2,
   WifiOff,
   ChevronLeft,
+  LogOut,
+  ShieldCheck,
+  EyeOff,
+  TimerOff,
   type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
@@ -15,17 +20,28 @@ import { TopBar } from '@/components/layout/TopBar'
 import { OfflineState } from '@/components/ui/States'
 import { roleLabels } from '@/data/labels'
 import { Chip } from '@/components/ui/Chip'
+import { toFa } from '@/lib/format'
 import type { Role } from '@/types'
 import { cn } from '@/lib/cn'
 
 const roles: Role[] = ['agent', 'leader', 'supervisor', 'manager']
+const lockOptions = [1, 5, 15]
 
 export function SettingsScreen() {
+  const navigate = useNavigate()
   const role = useStore((s) => s.role)
   const setRole = useStore((s) => s.setRole)
   const pushToast = useStore((s) => s.pushToast)
+  const darkMode = useStore((s) => s.darkMode)
+  const toggleDarkMode = useStore((s) => s.toggleDarkMode)
+  const maskPhoneNumbers = useStore((s) => s.maskPhoneNumbers)
+  const setMaskPhoneNumbers = useStore((s) => s.setMaskPhoneNumbers)
+  const autoLockEnabled = useStore((s) => s.autoLockEnabled)
+  const autoLockMinutes = useStore((s) => s.autoLockMinutes)
+  const setAutoLock = useStore((s) => s.setAutoLock)
+  const logout = useStore((s) => s.logout)
   const [offline, setOffline] = useState(false)
-  const [toggles, setToggles] = useState({ notif: true, haptic: true, dark: false })
+  const [toggles, setToggles] = useState({ notif: true, haptic: true })
 
   if (offline) {
     return (
@@ -43,7 +59,6 @@ export function SettingsScreen() {
   const switches: { icon: LucideIcon; label: string; key: keyof typeof toggles }[] = [
     { icon: Bell, label: 'اعلان‌ها', key: 'notif' },
     { icon: Vibrate, label: 'لرزش لمسی', key: 'haptic' },
-    { icon: Moon, label: 'حالت تیره', key: 'dark' },
   ]
 
   return (
@@ -63,6 +78,13 @@ export function SettingsScreen() {
 
         <Section title="عمومی">
           <div className="overflow-hidden rounded-2xl">
+            <div className="flex items-center gap-3 border-b border-border/60 py-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-100 text-neutral-500">
+                <Moon size={18} />
+              </span>
+              <span className="flex-1 text-[14px] font-bold text-neutral-800">حالت تیره</span>
+              <Toggle on={darkMode} onToggle={toggleDarkMode} />
+            </div>
             {switches.map((s, i) => (
               <div
                 key={s.key}
@@ -77,21 +99,50 @@ export function SettingsScreen() {
                 <span className="flex-1 text-[14px] font-bold text-neutral-800">{s.label}</span>
                 <Toggle
                   on={toggles[s.key]}
-                  onToggle={() => {
-                    setToggles((t) => {
-                      const next = { ...t, [s.key]: !t[s.key] }
-                      if (s.key === 'dark') {
-                        document.documentElement.setAttribute(
-                          'data-theme',
-                          next.dark ? 'dark' : 'light',
-                        )
-                      }
-                      return next
-                    })
-                  }}
+                  onToggle={() => setToggles((t) => ({ ...t, [s.key]: !t[s.key] }))}
                 />
               </div>
             ))}
+          </div>
+        </Section>
+
+        <Section title="حریم خصوصی و امنیت">
+          <div className="overflow-hidden rounded-2xl">
+            <div className="flex items-center gap-3 border-b border-border/60 py-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-100 text-neutral-500">
+                <EyeOff size={18} />
+              </span>
+              <span className="flex-1 text-[14px] font-bold text-neutral-800">پنهان‌سازی شماره لیدها</span>
+              <Toggle on={maskPhoneNumbers} onToggle={() => setMaskPhoneNumbers(!maskPhoneNumbers)} />
+            </div>
+            <div className="flex items-center gap-3 py-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-neutral-100 text-neutral-500">
+                <TimerOff size={18} />
+              </span>
+              <span className="flex-1 text-[14px] font-bold text-neutral-800">قفل خودکار در عدم فعالیت</span>
+              <Toggle on={autoLockEnabled} onToggle={() => setAutoLock(!autoLockEnabled)} />
+            </div>
+            {autoLockEnabled && (
+              <div className="flex items-center gap-2 pb-3">
+                {lockOptions.map((m) => (
+                  <Chip
+                    key={m}
+                    active={autoLockMinutes === m}
+                    tone="primary"
+                    onClick={() => setAutoLock(true, m)}
+                  >
+                    {toFa(m)} دقیقه
+                  </Chip>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="mt-3 flex items-start gap-2.5 rounded-xl bg-primary-50 p-3">
+            <ShieldCheck size={16} className="mt-0.5 shrink-0 text-primary-600" />
+            <p className="text-[11.5px] font-bold leading-6 text-primary-700">
+              اطلاعات مشتریان محرمانه است. از اشتراک‌گذاری شماره، یادداشت یا اطلاعات لیدها بیرون از این برنامه
+              خودداری کن.
+            </p>
           </div>
         </Section>
 
@@ -135,6 +186,17 @@ export function SettingsScreen() {
             <ChevronLeft size={18} className="text-neutral-300" />
           </button>
         </Section>
+
+        <button
+          onClick={() => {
+            logout()
+            navigate('/login', { replace: true })
+          }}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-error-50 py-3.5 text-sm font-extrabold text-error-600"
+        >
+          <LogOut size={18} />
+          خروج از حساب
+        </button>
 
         <p className="text-center text-[11px] font-bold text-neutral-300">سات · نسخه ۱.۰.۰</p>
       </div>

@@ -1,4 +1,4 @@
-import { MapPin, Phone, Clock, Flame, Sun, Snowflake } from 'lucide-react'
+import { MapPin, Phone, Clock, Flame, Sun, Snowflake, Lock, Info, Undo2 } from 'lucide-react'
 import type { Lead, LeadSource, Temperature } from '@/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { PriorityBadge } from './Badges'
@@ -10,6 +10,8 @@ interface LeadCardProps {
   lead: Lead
   onClick?: () => void
   onCall?: () => void
+  onQuickView?: () => void
+  lockedByName?: string
 }
 
 const sourceTone = Object.fromEntries(
@@ -44,18 +46,23 @@ const tempTheme: Record<
 const tempIcon = { hot: Flame, warm: Sun, cold: Snowflake }
 const tempLabel = { hot: 'داغ', warm: 'گرم', cold: 'سرد' }
 
-export function LeadCard({ lead, onClick, onCall }: LeadCardProps) {
+export function LeadCard({ lead, onClick, onCall, onQuickView, lockedByName }: LeadCardProps) {
   const SourceIcon = sourceIcon[lead.source]
   const TempIcon = tempIcon[lead.temperature]
   const theme = tempTheme[lead.temperature]
   const overdue =
     lead.nextFollowupAt != null && new Date(lead.nextFollowupAt).getTime() < Date.now()
   const followupToday = lead.nextFollowupAt != null && isToday(lead.nextFollowupAt)
+  const lockedByOther = !!lockedByName
+  const returned = !!lead.returnedToPool
 
   return (
     <div
       onClick={onClick}
-      className="group relative cursor-pointer overflow-hidden rounded-[22px] border border-border/50 bg-surface shadow-card transition-transform active:scale-[0.985]"
+      className={cn(
+        'group relative cursor-pointer overflow-hidden rounded-[22px] border bg-surface shadow-card transition-transform active:scale-[0.985]',
+        lockedByOther ? 'border-error-200/70' : 'border-border/50',
+      )}
     >
       <div className={cn('pointer-events-none absolute -left-8 -top-8 h-28 w-28 rounded-full blur-2xl', theme.glow)} />
       <div
@@ -102,21 +109,51 @@ export function LeadCard({ lead, onClick, onCall }: LeadCardProps) {
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              onCall?.()
-            }}
-            aria-label={`تماس با ${lead.firstName} ${lead.lastName}`}
-            className={cn(
-              'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-transform active:scale-90',
-              theme.callBtn,
+          <div className="flex shrink-0 items-center gap-1.5">
+            {onQuickView && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onQuickView()
+                }}
+                aria-label="پیش‌نمایش سریع"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-neutral-500 transition-transform active:scale-90"
+              >
+                <Info size={16} strokeWidth={2.25} />
+              </button>
             )}
-          >
-            <Phone size={19} strokeWidth={2.25} />
-          </button>
+            <button
+              type="button"
+              disabled={lockedByOther}
+              onClick={(e) => {
+                e.stopPropagation()
+                onCall?.()
+              }}
+              aria-label={`تماس با ${lead.firstName} ${lead.lastName}`}
+              className={cn(
+                'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-transform active:scale-90',
+                lockedByOther ? 'bg-neutral-100 text-neutral-300' : theme.callBtn,
+              )}
+            >
+              {lockedByOther ? <Lock size={17} strokeWidth={2.25} /> : <Phone size={19} strokeWidth={2.25} />}
+            </button>
+          </div>
         </div>
+
+        {lockedByOther && (
+          <p className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-error-50 px-2.5 py-1.5 text-[11px] font-extrabold text-error-600">
+            <Lock size={12} />
+            قفل توسط {lockedByName}
+          </p>
+        )}
+
+        {returned && (
+          <p className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-neutral-100 px-2.5 py-1.5 text-[11px] font-extrabold text-neutral-500">
+            <Undo2 size={12} />
+            برگشت‌خورده به صف عمومی
+          </p>
+        )}
 
         {lead.lastNote && (
           <p className="mt-2.5 line-clamp-1 border-r-2 border-neutral-200 pr-2.5 text-[11px] leading-5 text-neutral-400">

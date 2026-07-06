@@ -10,6 +10,11 @@ import {
   Target,
   HelpCircle,
   ShieldCheck,
+  Activity,
+  BadgeDollarSign,
+  WalletCards,
+  GraduationCap,
+  History,
   type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
@@ -32,8 +37,19 @@ export function ProfileScreen() {
   ]
 
   const menu: { icon: LucideIcon; label: string; onClick: () => void }[] = [
+    ...(agent.role === 'agent'
+      ? [{ icon: Activity, label: 'وضعیت کاری من', onClick: () => navigate('/work-status') }]
+      : []),
+    { icon: BadgeDollarSign, label: 'فروش‌های من', onClick: () => navigate('/sales') },
+    ...(agent.role === 'agent'
+      ? [{ icon: WalletCards, label: 'درآمد من', onClick: () => navigate('/wallet') }]
+      : []),
     { icon: Trophy, label: 'عملکرد و دستاوردها', onClick: () => navigate('/performance') },
+    ...(agent.role === 'agent'
+      ? [{ icon: GraduationCap, label: 'آموزش و اسکریپت فروش', onClick: () => navigate('/training') }]
+      : []),
     { icon: Bell, label: 'اعلان‌ها', onClick: () => navigate('/notifications') },
+    { icon: History, label: 'تاریخچه فعالیت', onClick: () => navigate('/activity') },
     { icon: Settings, label: 'تنظیمات', onClick: () => navigate('/settings') },
     { icon: ShieldCheck, label: 'حریم خصوصی', onClick: () => navigate('/settings') },
     { icon: HelpCircle, label: 'راهنما و پشتیبانی', onClick: () => navigate('/settings') },

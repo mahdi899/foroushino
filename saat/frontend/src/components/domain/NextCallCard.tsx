@@ -1,20 +1,23 @@
 import { Phone, Clock, Target, NotebookPen, ChevronDown, TrendingUp, type LucideIcon } from 'lucide-react'
-import type { Lead } from '@/types'
+import type { Lead, SuggestReason } from '@/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { ContactStatusBadge } from './Badges'
-import { sourceIcon, sourceIconClass } from './icons'
+import { sourceIcon, sourceIconClass, suggestReasonIcon, suggestReasonChipLabel } from './icons'
 import { sourceLabels } from '@/data/labels'
-import { formatPhone } from '@/lib/format'
-import { toFa } from '@/lib/format'
+import { formatPhone, maskPhone, toFa } from '@/lib/format'
+import { useStore } from '@/store/useStore'
 
 interface NextCallCardProps {
   lead: Lead
+  reason?: SuggestReason
   onCall: () => void
   onDetails: () => void
 }
 
-export function NextCallCard({ lead, onCall, onDetails }: NextCallCardProps) {
+export function NextCallCard({ lead, reason, onCall, onDetails }: NextCallCardProps) {
   const SourceIcon = sourceIcon[lead.source]
+  const ReasonIcon = reason ? suggestReasonIcon[reason] : null
+  const maskPhoneNumbers = useStore((s) => s.maskPhoneNumbers)
 
   return (
     <div className="rounded-[28px] bg-surface p-5 shadow-card border border-border/60">
@@ -23,6 +26,12 @@ export function NextCallCard({ lead, onCall, onDetails }: NextCallCardProps) {
           <Target size={15} className="text-primary-500" />
           سرنخ بعدی
         </span>
+        {reason && ReasonIcon && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1.5 text-[11px] font-extrabold text-primary-700 ring-1 ring-primary-100/80">
+            <ReasonIcon size={12} strokeWidth={2.5} />
+            {suggestReasonChipLabel[reason]}
+          </span>
+        )}
       </div>
 
       <div className="flex items-center justify-between gap-3">
@@ -39,7 +48,7 @@ export function NextCallCard({ lead, onCall, onDetails }: NextCallCardProps) {
             >
               <Phone size={13} strokeWidth={2.25} className="shrink-0 text-primary-500" />
               <span className="truncate text-[13px] font-extrabold tabular-nums tracking-wide text-primary-700">
-                {formatPhone(lead.phone)}
+                {maskPhoneNumbers ? maskPhone(lead.phone) : formatPhone(lead.phone)}
               </span>
             </div>
           </div>

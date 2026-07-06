@@ -38,6 +38,58 @@ export type CallResult =
   | 'needs_info'
   | 'not_decision_maker'
   | 'call_later'
+  | 'duplicate'
+  | 'price_objection'
+  | 'bad_timing'
+  | 'incomplete_call'
+
+// Full systemic lifecycle status of a lead (spec §2)
+export type LeadStatus =
+  | 'new'
+  | 'assigned'
+  | 'queued'
+  | 'locked'
+  | 'in_call'
+  | 'contacted'
+  | 'follow_up_required'
+  | 'follow_up_overdue'
+  | 'consultation_scheduled'
+  | 'payment_pending'
+  | 'payment_submitted'
+  | 'sale_pending_confirmation'
+  | 'won'
+  | 'lost'
+  | 'no_answer'
+  | 'unreachable'
+  | 'wrong_number'
+  | 'duplicate'
+  | 'do_not_call'
+  | 'returned_to_pool'
+  | 'needs_supervisor_review'
+
+// What the system should do next after a call result (spec §6)
+export type NextAction =
+  | 'schedule_retry'
+  | 'create_follow_up'
+  | 'create_payment_pending_sale'
+  | 'create_sale_pending_confirmation'
+  | 'schedule_consultation'
+  | 'mark_do_not_call'
+  | 'close_lead'
+  | 'mark_duplicate'
+  | 'needs_review'
+  | 'none'
+
+// Why the smart engine suggested this lead now (spec §3)
+export type SuggestReason =
+  | 'overdue_follow_up'
+  | 'today_follow_up'
+  | 'hot_in_window'
+  | 'interested_needs_follow_up'
+  | 'fresh_high_prob'
+  | 'warm'
+  | 'cold'
+  | 'from_pool'
 
 export type Objection =
   | 'price'
@@ -77,6 +129,25 @@ export interface Lead {
   rating: number
   assignedAgentId: string
   avatar?: string | null
+  // lifecycle & ownership (spec §2)
+  status?: LeadStatus
+  ownerId?: string | null
+  lockedBy?: string | null
+  lockedUntil?: string | null
+  returnedToPool?: boolean
+  doNotCall?: boolean
+  duplicateOfId?: string | null
+  productId?: string
+  campaignId?: string
+  statusHistory?: LeadStatusEvent[]
+}
+
+export interface LeadStatusEvent {
+  id: string
+  status: LeadStatus
+  at: string
+  byAgentId: string
+  note?: string
 }
 
 export interface Call {
@@ -91,8 +162,17 @@ export interface Call {
   createdAt: string
 }
 
-export type FollowupStatus = 'pending' | 'done' | 'overdue'
-export type FollowupKind = 'call' | 'message' | 'reminder' | 'meeting'
+export type FollowupStatus = 'pending' | 'done' | 'overdue' | 'cancelled' | 'snoozed'
+export type FollowupKind =
+  | 'call'
+  | 'message'
+  | 'reminder'
+  | 'meeting'
+  | 'payment'
+  | 'consultation'
+  | 'info'
+  | 'decision'
+  | 'custom'
 
 export interface Followup {
   id: string
@@ -103,6 +183,9 @@ export interface Followup {
   dueAt: string
   status: FollowupStatus
   priority: Priority
+  note?: string
+  createdFromCallId?: string | null
+  completedAt?: string | null
 }
 
 export interface Agent {
@@ -142,13 +225,216 @@ export interface AppNotification {
   id: string
   title: string
   body: string
-  kind: 'lead' | 'followup' | 'achievement' | 'system'
+  kind:
+    | 'lead'
+    | 'followup'
+    | 'achievement'
+    | 'system'
+    | 'sale'
+    | 'commission'
+    | 'payout'
+    | 'quality'
+    | 'shift'
   createdAt: string
   read: boolean
+  href?: string
 }
 
 export interface ScriptStep {
   id: string
   title: string
   body: string
+}
+
+// ---------------------------------------------------------------------------
+// Sales operations domain (spec §8, §9)
+// ---------------------------------------------------------------------------
+
+export type SaleStatus =
+  | 'draft'
+  | 'payment_pending'
+  | 'payment_submitted'
+  | 'pending_confirmation'
+  | 'confirmed'
+  | 'rejected'
+  | 'cancelled'
+  | 'refunded'
+
+export interface Sale {
+  id: string
+  leadId: string
+  agentId: string
+  teamId: string
+  productId: string
+  amount: number
+  status: SaleStatus
+  paymentMethod?: PaymentMethod | null
+  createdAt: string
+  submittedAt?: string | null
+  confirmedAt?: string | null
+  rejectedAt?: string | null
+  rejectionReason?: string | null
+  confirmedBy?: string | null
+}
+
+export type PaymentMethod = 'card' | 'gateway' | 'installment' | 'cash'
+export type PaymentStatus = 'submitted' | 'verified' | 'rejected'
+
+export interface Payment {
+  id: string
+  saleId: string
+  amount: number
+  method: PaymentMethod
+  referenceNumber: string
+  status: PaymentStatus
+  submittedAt: string
+  verifiedAt?: string | null
+  rejectedReason?: string | null
+}
+
+export type CommissionStatus =
+  | 'pending'
+  | 'approved'
+  | 'available'
+  | 'rejected'
+  | 'paid'
+  | 'reversed'
+
+export interface Commission {
+  id: string
+  saleId: string
+  agentId: string
+  productId: string
+  leadId: string
+  saleAmount: number
+  commissionRate: number
+  commissionAmount: number
+  status: CommissionStatus
+  createdAt: string
+  availableAt?: string | null
+  approvedAt?: string | null
+  rejectionReason?: string | null
+}
+
+export interface Wallet {
+  balanceAvailable: number
+  balancePending: number
+  balanceLocked: number
+  totalEarned: number
+  totalPaid: number
+}
+
+export type WalletTxType =
+  | 'commission_pending'
+  | 'commission_approved'
+  | 'commission_available'
+  | 'payout_requested'
+  | 'payout_paid'
+  | 'payout_rejected'
+  | 'reversal'
+  | 'adjustment'
+
+export interface WalletTransaction {
+  id: string
+  type: WalletTxType
+  amount: number
+  description: string
+  referenceType?: 'commission' | 'payout' | 'sale' | null
+  referenceId?: string | null
+  createdAt: string
+}
+
+export type PayoutStatus = 'requested' | 'approved' | 'paid' | 'rejected' | 'cancelled'
+
+export interface PayoutRequest {
+  id: string
+  agentId: string
+  amount: number
+  status: PayoutStatus
+  requestedAt: string
+  processedAt?: string | null
+  rejectionReason?: string | null
+}
+
+// ---------------------------------------------------------------------------
+// Shift & availability (spec §1)
+// ---------------------------------------------------------------------------
+
+export type Availability =
+  | 'available'
+  | 'in_call'
+  | 'on_break'
+  | 'doing_follow_up'
+  | 'offline'
+
+export interface WorkSession {
+  startedAt: string | null
+  endedAt: string | null
+  totalBreakSeconds: number
+  totalCallSeconds: number
+}
+
+// ---------------------------------------------------------------------------
+// Products & campaigns (spec §15)
+// ---------------------------------------------------------------------------
+
+export interface Product {
+  id: string
+  name: string
+  price: number
+  category: string
+  commissionRate: number
+  isActive: boolean
+}
+
+export interface Campaign {
+  id: string
+  name: string
+  productId: string
+  isActive: boolean
+}
+
+// ---------------------------------------------------------------------------
+// Training & objection library (spec §12, §14)
+// ---------------------------------------------------------------------------
+
+export interface ScriptDoc {
+  id: string
+  productId: string
+  title: string
+  stage: string
+  content: string
+}
+
+export interface ObjectionDoc {
+  id: string
+  productId: string
+  key: Objection
+  title: string
+  suggestedResponse: string
+  category: string
+}
+
+// ---------------------------------------------------------------------------
+// Activity log & performance (spec §11)
+// ---------------------------------------------------------------------------
+
+export type ActivityKind =
+  | 'call'
+  | 'result'
+  | 'follow_up'
+  | 'sale'
+  | 'payment'
+  | 'commission'
+  | 'shift'
+  | 'lead'
+  | 'payout'
+
+export interface ActivityLog {
+  id: string
+  agentId: string
+  kind: ActivityKind
+  title: string
+  meta?: string
+  createdAt: string
 }

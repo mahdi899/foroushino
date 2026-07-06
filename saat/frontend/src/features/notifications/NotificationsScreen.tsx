@@ -1,5 +1,17 @@
 import { useEffect } from 'react'
-import { Flame, Clock, Award, Bell, CheckCheck, type LucideIcon } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import {
+  Flame,
+  Clock,
+  Award,
+  Bell,
+  CheckCheck,
+  BadgeDollarSign,
+  Wallet,
+  ShieldAlert,
+  PlayCircle,
+  type LucideIcon,
+} from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
@@ -13,9 +25,15 @@ const kindConfig: Record<AppNotification['kind'], { icon: LucideIcon; bg: string
   followup: { icon: Clock, bg: 'bg-warning-50', fg: 'text-warning-600' },
   achievement: { icon: Award, bg: 'bg-secondary-50', fg: 'text-secondary-600' },
   system: { icon: Bell, bg: 'bg-primary-50', fg: 'text-primary-600' },
+  sale: { icon: BadgeDollarSign, bg: 'bg-success-50', fg: 'text-success-600' },
+  commission: { icon: Wallet, bg: 'bg-success-50', fg: 'text-success-600' },
+  payout: { icon: Wallet, bg: 'bg-primary-50', fg: 'text-primary-600' },
+  quality: { icon: ShieldAlert, bg: 'bg-error-50', fg: 'text-error-600' },
+  shift: { icon: PlayCircle, bg: 'bg-cold-50', fg: 'text-cold-600' },
 }
 
 export function NotificationsScreen() {
+  const navigate = useNavigate()
   const notifications = useStore((s) => s.notifications)
   const markAllRead = useStore((s) => s.markAllRead)
 
@@ -42,10 +60,12 @@ export function NotificationsScreen() {
           notifications.map((n) => {
             const { icon: Icon, bg, fg } = kindConfig[n.kind]
             return (
-              <div
+              <button
                 key={n.id}
+                onClick={() => n.href && navigate(n.href)}
+                disabled={!n.href}
                 className={cn(
-                  'flex items-start gap-3 rounded-2xl p-3.5 border',
+                  'flex w-full items-start gap-3 rounded-2xl p-3.5 border text-right',
                   n.read ? 'bg-surface border-border/60' : 'bg-primary-50/40 border-primary-100',
                 )}
               >
@@ -60,7 +80,7 @@ export function NotificationsScreen() {
                   <p className="mt-0.5 text-xs leading-5 text-neutral-500">{n.body}</p>
                   <p className="mt-1 text-[10px] font-bold text-neutral-300">{relativeDayTime(n.createdAt)}</p>
                 </div>
-              </div>
+              </button>
             )
           })
         )}

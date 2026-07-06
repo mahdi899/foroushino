@@ -9,6 +9,7 @@ import {
   websiteJsonLd,
 } from "@/lib/jsonld";
 import { Analytics } from "@/components/analytics/Analytics";
+import { ChatWidget } from "@/components/chat/ChatWidget";
 import { GrainOverlay } from "@/components/motion/GrainOverlay";
 import { SiteNav } from "@/components/nav/SiteNav";
 import { SiteFooter } from "@/components/nav/SiteFooter";
@@ -47,6 +48,7 @@ export default function RootLayout({
         <Script id="jsonld-site" type="application/ld+json">
           {JSON.stringify(ld)}
         </Script>
+        <ChatWidget />
         <Analytics />
       </body>
     </html>

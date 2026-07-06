@@ -1,17 +1,20 @@
 /** Newsletter subscription service.
  *
- * Targets the backend `/leads/newsletter` endpoint. If no backend is configured
- * at build/runtime the call still returns a structured failure the UI can show,
- * so the form degrades gracefully instead of faking success.
+ * Targets the Laravel backend's `/api/leads` endpoint (source `web_newsletter`),
+ * so newsletter sign-ups show up alongside other leads in the admin dashboard.
+ * If no backend is configured at build/runtime the call still returns a
+ * structured failure the UI can show, so the form degrades gracefully instead
+ * of faking success.
  */
 import { postJson, type ApiResult } from "./api";
 
 export type NewsletterResult = {
   id: number;
-  email: string;
   status: string;
   created_at: string;
 };
+
+type LeadResponse = { data: NewsletterResult };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -23,8 +26,12 @@ export async function subscribeNewsletter(
   email: string,
   source = "web_newsletter",
 ): Promise<ApiResult<NewsletterResult>> {
-  return postJson<NewsletterResult>("/leads/newsletter", {
+  const result = await postJson<LeadResponse>("/leads", {
     email: email.trim(),
     source,
+    page_url: typeof window !== "undefined" ? window.location.href : undefined,
   });
+
+  if (!result.ok) return result;
+  return { ok: true, data: result.data.data };
 }

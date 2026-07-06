@@ -2,9 +2,13 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\Availability;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -13,7 +17,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasRoles, Notifiable;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -24,6 +28,19 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'phone',
+        'avatar',
+        'telegram_id',
+        'team_id',
+        'level',
+        'points',
+        'streak',
+        'call_goal',
+        'sale_goal',
+        'availability',
+        'availability_changed_at',
+        'is_active',
+        'mask_phone_numbers',
     ];
 
     /**
@@ -46,6 +63,95 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'availability' => Availability::class,
+            'availability_changed_at' => 'datetime',
+            'is_active' => 'boolean',
+            'mask_phone_numbers' => 'boolean',
         ];
+    }
+
+    public function team(): BelongsTo
+    {
+        return $this->belongsTo(Team::class);
+    }
+
+    public function ledTeam(): HasOne
+    {
+        return $this->hasOne(Team::class, 'leader_id');
+    }
+
+    public function assignedLeads(): HasMany
+    {
+        return $this->hasMany(Lead::class, 'assigned_agent_id');
+    }
+
+    public function calls(): HasMany
+    {
+        return $this->hasMany(Call::class, 'agent_id');
+    }
+
+    public function followUps(): HasMany
+    {
+        return $this->hasMany(FollowUp::class, 'agent_id');
+    }
+
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class, 'agent_id');
+    }
+
+    public function commissions(): HasMany
+    {
+        return $this->hasMany(Commission::class, 'agent_id');
+    }
+
+    public function wallet(): HasOne
+    {
+        return $this->hasOne(Wallet::class);
+    }
+
+    public function walletTransactions(): HasMany
+    {
+        return $this->hasMany(WalletTransaction::class);
+    }
+
+    public function payoutRequests(): HasMany
+    {
+        return $this->hasMany(PayoutRequest::class);
+    }
+
+    public function appNotifications(): HasMany
+    {
+        return $this->hasMany(AppNotification::class);
+    }
+
+    public function activityLogs(): HasMany
+    {
+        return $this->hasMany(ActivityLog::class);
+    }
+
+    public function dailyTargets(): HasMany
+    {
+        return $this->hasMany(DailyTarget::class);
+    }
+
+    public function workSessions(): HasMany
+    {
+        return $this->hasMany(UserWorkSession::class);
+    }
+
+    public function performanceSnapshots(): HasMany
+    {
+        return $this->hasMany(PerformanceSnapshot::class);
+    }
+
+    public function achievements(): HasMany
+    {
+        return $this->hasMany(UserAchievement::class);
+    }
+
+    public function lockedLeads(): HasMany
+    {
+        return $this->hasMany(Lead::class, 'locked_by');
     }
 }

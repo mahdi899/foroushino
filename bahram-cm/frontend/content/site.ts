@@ -242,6 +242,7 @@ export const site = {
         title: "محتوا",
         links: [
           { href: "/insights", label: "بلاگ" },
+          { href: "/articles", label: "مقالات" },
           { href: "/guides", label: "راهنماها" },
           { href: "/resources", label: "منابع" },
           { href: "/transformations", label: "رضایت دانشجوها" },

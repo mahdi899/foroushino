@@ -15,8 +15,8 @@ test('health endpoint returns service status', function (): void {
             'message' => 'Saat backend is running',
             'data' => [
                 'app' => 'Saat',
-                'queue' => 'redis',
-                'broadcast' => 'reverb',
+                'queue' => config('queue.default'),
+                'broadcast' => config('broadcasting.default'),
             ],
         ])
         ->assertJsonStructure([

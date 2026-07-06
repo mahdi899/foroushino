@@ -1,5 +1,14 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  readonly VITE_API_MODE?: 'mock' | 'http'
+  readonly VITE_API_BASE_URL?: string
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv
+}
+
 interface TelegramWebApp {
   ready: () => void
   expand: () => void
@@ -12,6 +21,8 @@ interface TelegramWebApp {
     notificationOccurred: (type: 'error' | 'success' | 'warning') => void
     selectionChanged: () => void
   }
+  /** Raw signed query string sent as-is to the backend for verification. */
+  initData?: string
   initDataUnsafe?: {
     user?: {
       id: number

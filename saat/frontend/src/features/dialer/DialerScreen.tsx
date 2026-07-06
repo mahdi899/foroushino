@@ -8,17 +8,25 @@ import {
   NotebookPen,
   BookOpen,
   Volume2,
-  UserPlus,
+  ClipboardList,
   PhoneOff,
   ChevronDown,
   MoreVertical,
+  MapPin,
+  AlertCircle,
+  MessageSquareWarning,
+  Wallet,
+  History,
+  Clock,
+  type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Avatar } from '@/components/ui/Avatar'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { SalesScriptSheet } from '@/components/domain/SalesScriptSheet'
-import { ContactStatusBadge } from '@/components/domain/Badges'
-import { formatDuration, formatPhone } from '@/lib/format'
+import { ContactStatusBadge, SourceChip } from '@/components/domain/Badges'
+import { objectionLabels } from '@/data/labels'
+import { formatDuration, formatPhone, toFa } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
 
@@ -27,11 +35,12 @@ export function DialerScreen() {
   const navigate = useNavigate()
   const lead = useStore((s) => s.leads.find((l) => l.id === id))
   const endCall = useStore((s) => s.endCall)
+  const updateLeadNote = useStore((s) => s.updateLeadNote)
 
   const [seconds, setSeconds] = useState(0)
   const [muted, setMuted] = useState(false)
   const [speaker, setSpeaker] = useState(false)
-  const [sheet, setSheet] = useState<null | 'note' | 'keypad'>(null)
+  const [sheet, setSheet] = useState<null | 'note' | 'keypad' | 'summary'>(null)
   const [note, setNote] = useState('')
   const [scriptOpen, setScriptOpen] = useState(false)
 
@@ -68,7 +77,10 @@ export function DialerScreen() {
           <span className="h-2 w-2 animate-pulse rounded-full bg-success-500" />
           در حال تماس
         </span>
-        <button className="flex h-10 w-10 items-center justify-center rounded-full bg-surface shadow-card text-neutral-500">
+        <button
+          onClick={() => setSheet('summary')}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-surface shadow-card text-neutral-500"
+        >
           <MoreVertical size={20} />
         </button>
       </div>
@@ -121,7 +133,14 @@ export function DialerScreen() {
                 onClick={() => { haptic('light'); setMuted((v) => !v) }}
               />
               <ControlButton icon={<Grid3x3 size={22} />} label="صفحه کلید" onClick={() => setSheet('keypad')} />
-              <ControlButton icon={<NotebookPen size={22} />} label="یادداشت" onClick={() => setSheet('note')} />
+              <ControlButton
+                icon={<NotebookPen size={22} />}
+                label="یادداشت"
+                onClick={() => {
+                  setNote(lead.lastNote ?? '')
+                  setSheet('note')
+                }}
+              />
               <ControlButton
                 icon={<BookOpen size={22} />}
                 label="اسکریپت"
@@ -136,10 +155,10 @@ export function DialerScreen() {
                 onClick={() => { haptic('light'); setSpeaker((v) => !v) }}
               />
               <ControlButton
-                icon={<UserPlus size={22} />}
-                label="پیگیری بعدی"
+                icon={<ClipboardList size={22} />}
+                label="خلاصه سرنخ"
                 tone="accent"
-                onClick={() => navigate(`/call-result/${lead.id}`)}
+                onClick={() => setSheet('summary')}
               />
             </div>
 
@@ -179,7 +198,10 @@ export function DialerScreen() {
           className="w-full rounded-2xl border border-border bg-neutral-50 p-4 text-sm font-bold text-neutral-800 outline-none focus:border-primary-400"
         />
         <button
-          onClick={() => setSheet(null)}
+          onClick={() => {
+            updateLeadNote(lead.id, note)
+            setSheet(null)
+          }}
           className="mt-3 h-12 w-full rounded-2xl bg-primary-600 text-sm font-extrabold text-white"
         >
           ذخیره یادداشت
@@ -189,7 +211,77 @@ export function DialerScreen() {
       <BottomSheet open={sheet === 'keypad'} onClose={() => setSheet(null)} title="صفحه کلید">
         <Keypad />
       </BottomSheet>
+
+      <BottomSheet open={sheet === 'summary'} onClose={() => setSheet(null)} title="خلاصه سرنخ">
+        <div className="space-y-3 pb-1 pt-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <ContactStatusBadge temperature={lead.temperature} size="sm" />
+            <SourceChip source={lead.source} size="sm" />
+            <span className="rounded-full bg-primary-50 px-2.5 py-1 text-[11px] font-extrabold text-primary-700">
+              {toFa(lead.conversionProbability)}٪ احتمال
+            </span>
+          </div>
+
+          {lead.city && (
+            <p className="flex items-center gap-1.5 text-[12px] font-bold text-neutral-500">
+              <MapPin size={13} className="shrink-0 text-neutral-400" />
+              {lead.city}
+            </p>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <SummaryField icon={Clock} label="بهترین زمان تماس" value={lead.bestCallTime || '-'} />
+            <SummaryField icon={History} label="تعداد تلاش" value={toFa(lead.callCount)} />
+            {lead.budget && <SummaryField icon={Wallet} label="بودجه حدودی" value={lead.budget} />}
+          </div>
+
+          {lead.painPoint && (
+            <SummaryField icon={AlertCircle} label="نیاز اصلی مشتری" value={lead.painPoint} tone="warning" full />
+          )}
+          {lead.objection && (
+            <SummaryField
+              icon={MessageSquareWarning}
+              label="اعتراض احتمالی"
+              value={objectionLabels[lead.objection]}
+              tone="error"
+              full
+            />
+          )}
+          {lead.lastNote && (
+            <SummaryField icon={NotebookPen} label="آخرین یادداشت" value={lead.lastNote} full />
+          )}
+        </div>
+      </BottomSheet>
     </motion.div>
+  )
+}
+
+function SummaryField({
+  icon: Icon,
+  label,
+  value,
+  tone = 'primary',
+  full,
+}: {
+  icon: LucideIcon
+  label: string
+  value: string
+  tone?: 'primary' | 'warning' | 'error'
+  full?: boolean
+}) {
+  const toneClass = {
+    primary: 'text-primary-600',
+    warning: 'text-warning-600',
+    error: 'text-error-600',
+  }[tone]
+  return (
+    <div className={cn('rounded-xl bg-neutral-50 px-3 py-2', full && 'col-span-2')}>
+      <p className="mb-0.5 flex items-center gap-1 text-[10px] font-bold text-neutral-400">
+        <Icon size={11} className={toneClass} />
+        {label}
+      </p>
+      <p className="text-[12px] font-extrabold leading-5 text-neutral-800">{value}</p>
+    </div>
   )
 }
 

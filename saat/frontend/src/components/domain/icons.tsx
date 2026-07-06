@@ -25,9 +25,26 @@ import {
   Phone,
   Rocket,
   Gem,
+  Copy,
+  BadgeDollarSign,
+  CalendarClock,
+  CircleSlash,
+  Headset,
+  Coffee,
+  ClipboardCheck,
+  MoonStar,
+  AlarmClockCheck,
+  Sparkle,
+  ThermometerSun,
+  Layers,
+  Wallet as WalletIcon,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Undo2,
+  SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react'
-import type { CallResult, LeadSource } from '@/types'
+import type { Availability, CallResult, LeadSource, SuggestReason, WalletTxType } from '@/types'
 
 export const sourceIcon: Record<LeadSource, LucideIcon> = {
   instagram: Instagram,
@@ -85,6 +102,10 @@ export const resultIcon: Record<CallResult, LucideIcon> = {
   needs_info: Info,
   not_decision_maker: Users,
   call_later: PhoneForwarded,
+  duplicate: Copy,
+  price_objection: BadgeDollarSign,
+  bad_timing: CalendarClock,
+  incomplete_call: CircleSlash,
 }
 
 export type ResultTone = 'hot' | 'success' | 'warning' | 'primary' | 'secondary' | 'error' | 'neutral'
@@ -104,6 +125,80 @@ export const resultTone: Record<CallResult, ResultTone> = {
   needs_info: 'cold' as ResultTone,
   not_decision_maker: 'warning',
   call_later: 'primary',
+  duplicate: 'neutral',
+  price_objection: 'warning',
+  bad_timing: 'primary',
+  incomplete_call: 'error',
+}
+
+export const availabilityIcon: Record<Availability, LucideIcon> = {
+  available: Headset,
+  in_call: Phone,
+  on_break: Coffee,
+  doing_follow_up: ClipboardCheck,
+  offline: MoonStar,
+}
+
+export type AvailabilityTone = 'success' | 'primary' | 'warning' | 'secondary' | 'neutral'
+
+export const availabilityTone: Record<Availability, AvailabilityTone> = {
+  available: 'success',
+  in_call: 'primary',
+  on_break: 'warning',
+  doing_follow_up: 'secondary',
+  offline: 'neutral',
+}
+
+export const availabilityDotClass: Record<Availability, string> = {
+  available: 'bg-success-500',
+  in_call: 'bg-primary-500',
+  on_break: 'bg-warning-500',
+  doing_follow_up: 'bg-secondary-500',
+  offline: 'bg-neutral-300',
+}
+
+export const suggestReasonIcon: Record<SuggestReason, LucideIcon> = {
+  overdue_follow_up: AlarmClockCheck,
+  today_follow_up: CalendarCheck,
+  hot_in_window: Flame,
+  interested_needs_follow_up: Sparkle,
+  fresh_high_prob: Rocket,
+  warm: ThermometerSun,
+  cold: Layers,
+  from_pool: Users,
+}
+
+export const suggestReasonChipLabel: Record<SuggestReason, string> = {
+  overdue_follow_up: 'پیگیری عقب‌افتاده',
+  today_follow_up: 'بهترین زمان تماس',
+  hot_in_window: 'لید داغ',
+  interested_needs_follow_up: 'نزدیک به خرید',
+  fresh_high_prob: 'تازه ثبت‌شده',
+  warm: 'احتمال بالا',
+  cold: 'لید سرد',
+  from_pool: 'از صف عمومی',
+}
+
+export const walletTxIcon: Record<WalletTxType, LucideIcon> = {
+  commission_pending: Clock,
+  commission_approved: ClipboardCheck,
+  commission_available: WalletIcon,
+  payout_requested: ArrowUpCircle,
+  payout_paid: ArrowDownCircle,
+  payout_rejected: Undo2,
+  reversal: Undo2,
+  adjustment: SlidersHorizontal,
+}
+
+export const walletTxTone: Record<WalletTxType, ResultTone> = {
+  commission_pending: 'warning',
+  commission_approved: 'primary',
+  commission_available: 'success',
+  payout_requested: 'primary',
+  payout_paid: 'success',
+  payout_rejected: 'error',
+  reversal: 'error',
+  adjustment: 'neutral',
 }
 
 export const achievementIcon: Record<string, LucideIcon> = {

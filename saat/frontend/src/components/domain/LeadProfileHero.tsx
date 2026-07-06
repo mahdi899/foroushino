@@ -4,7 +4,8 @@ import type { Lead, Temperature } from '@/types'
 import { Avatar } from '@/components/ui/Avatar'
 import { ContactStatusBadge, PriorityBadge, SourceChip } from './Badges'
 import { sourceBadgeClass, sourceIcon } from './icons'
-import { formatPhone, toFa } from '@/lib/format'
+import { formatPhone, maskPhone, toFa } from '@/lib/format'
+import { useStore } from '@/store/useStore'
 import { cn } from '@/lib/cn'
 
 const sourceBadgeTone = sourceBadgeClass
@@ -56,6 +57,7 @@ const heroTheme: Record<Temperature, HeroTheme> = {
 export function LeadProfileHero({ lead }: { lead: Lead }) {
   const theme = heroTheme[lead.temperature]
   const SourceIcon = sourceIcon[lead.source]
+  const maskPhoneNumbers = useStore((s) => s.maskPhoneNumbers)
 
   return (
     <motion.div
@@ -113,7 +115,9 @@ export function LeadProfileHero({ lead }: { lead: Lead }) {
           <div className="mt-4 flex w-full items-center justify-center gap-4 rounded-2xl bg-neutral-50 px-4 py-2.5">
             <span className={cn('inline-flex items-center gap-1.5 text-[13px] font-bold', theme.phone)}>
               <Phone size={14} className="shrink-0 opacity-70" />
-              <span className="ltr-nums tabular-nums">{formatPhone(lead.phone)}</span>
+              <span className="ltr-nums tabular-nums">
+                {maskPhoneNumbers ? maskPhone(lead.phone) : formatPhone(lead.phone)}
+              </span>
             </span>
             {lead.city && (
               <>

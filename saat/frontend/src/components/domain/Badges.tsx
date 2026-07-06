@@ -1,8 +1,8 @@
-import { Flame, Snowflake, Sun, Star } from 'lucide-react'
+import { Flame, Snowflake, Sun, Star, Lock } from 'lucide-react'
 import { Badge } from '@/components/ui/Badge'
 import { sourceIcon, sourceIconClass } from './icons'
-import { sourceLabels, temperatureLabels } from '@/data/labels'
-import type { LeadSource, Priority, Temperature } from '@/types'
+import { sourceLabels, temperatureLabels, leadStatusLabels, leadStatusTone } from '@/data/labels'
+import type { LeadSource, LeadStatus, Priority, Temperature } from '@/types'
 import { cn } from '@/lib/cn'
 
 const tempIcon = {
@@ -40,6 +40,22 @@ export function SourceChip({ source, size = 'md' }: { source: LeadSource; size?:
       <Icon size={size === 'sm' ? 12 : 14} className={sourceIconColor[source]} />
       {sourceLabels[source]}
     </span>
+  )
+}
+
+export function LeadStatusBadge({ status, size = 'md' }: { status: LeadStatus; size?: 'sm' | 'md' }) {
+  return (
+    <Badge tone={leadStatusTone[status]} size={size}>
+      {leadStatusLabels[status]}
+    </Badge>
+  )
+}
+
+export function LockBadge({ agentName, size = 'md' }: { agentName?: string; size?: 'sm' | 'md' }) {
+  return (
+    <Badge tone="error" size={size} icon={<Lock size={size === 'sm' ? 11 : 13} />}>
+      {agentName ? `قفل توسط ${agentName}` : 'قفل شده'}
+    </Badge>
   )
 }
 

@@ -5,17 +5,19 @@ import { Page } from '@/components/layout/Page'
 import { AppHeader } from './AppHeader'
 import { NextCallCard } from '@/components/domain/NextCallCard'
 import { EmptyState } from '@/components/ui/States'
-import { getNextLead } from '@/lib/leadUtils'
+import { getSuggestion } from '@/lib/leadUtils'
 import { toFa } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
 
 export function HomeScreen() {
   const navigate = useNavigate()
   const leads = useStore((s) => s.leads)
+  const followups = useStore((s) => s.followups)
   const agent = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
   const startCall = useStore((s) => s.startCall)
 
-  const nextLead = getNextLead(leads)
+  const suggestion = getSuggestion(leads, followups)
+  const nextLead = suggestion?.lead ?? null
   const remaining = agent ? Math.max(0, agent.callGoal - agent.callsToday) : 0
   const goalPct = agent?.callGoal ? Math.round((agent.callsToday / agent.callGoal) * 100) : 0
   const goalComplete = remaining === 0 && (agent?.callGoal ?? 0) > 0
@@ -89,6 +91,7 @@ export function HomeScreen() {
         {nextLead ? (
           <NextCallCard
             lead={nextLead}
+            reason={suggestion?.reason}
             onCall={() => {
               haptic('medium')
               startCall(nextLead.id)

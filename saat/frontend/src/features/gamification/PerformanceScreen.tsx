@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Flame,
   Target,
@@ -11,6 +12,12 @@ import {
   Sparkles,
   Zap,
   Crown,
+  ThermometerSun,
+  AlarmClock,
+  NotebookPen,
+  BadgeDollarSign,
+  ChevronLeft,
+  Gauge,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
@@ -21,14 +28,22 @@ import { AchievementBadge, AchievementBadgeIcon } from '@/components/domain/Achi
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { achievements } from '@/data/mock'
-import { toFa } from '@/lib/format'
+import { overdueFollowups } from '@/lib/leadUtils'
+import { formatDuration, formatMoney, toFa } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { haptic } from '@/lib/telegram'
 import type { Agent, Achievement } from '@/types'
 
 export function PerformanceScreen() {
+  const navigate = useNavigate()
   const agents = useStore((s) => s.agents)
   const me = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
+  const myId = useStore((s) => s.currentAgentId)
+  const calls = useStore((s) => s.calls.filter((c) => c.agentId === myId))
+  const leads = useStore((s) => s.leads)
+  const followups = useStore((s) => s.followups.filter((f) => f.agentId === myId))
+  const sales = useStore((s) => s.sales.filter((sl) => sl.agentId === myId))
+  const commissions = useStore((s) => s.commissions.filter((c) => c.agentId === myId))
   const [selectedAch, setSelectedAch] = useState<Achievement | null>(null)
 
   const teamAgents = useMemo(
@@ -40,6 +55,72 @@ export function PerformanceScreen() {
   )
   const podium = teamAgents.slice(0, 3)
   const rest = teamAgents.slice(3, 5)
+
+  const quality = useMemo(() => {
+    const totalCalls = calls.length
+    const answered = calls.filter((c) => c.result !== 'no_answer' && c.result !== 'unavailable').length
+    const answerRate = totalCalls ? Math.round((answered / totalCalls) * 100) : 0
+    const avgTalkSec = totalCalls ? Math.round(calls.reduce((sum, c) => sum + c.durationSec, 0) / totalCalls) : 0
+    const goodNotes = calls.filter((c) => c.note && c.note.trim().length >= 12).length
+    const noteQuality = totalCalls ? Math.round((goodNotes / totalCalls) * 100) : 0
+    const hotLeads = leads.filter((l) => l.assignedAgentId === myId && l.temperature === 'hot').length
+    const overdue = overdueFollowups(followups).length
+    const confirmedSales = sales.filter((s) => s.status === 'confirmed').length
+    const approvedCommission = commissions
+      .filter((c) => c.status === 'approved' || c.status === 'available' || c.status === 'paid')
+      .reduce((sum, c) => sum + c.commissionAmount, 0)
+    const teamAvgCalls = teamAgents.length
+      ? Math.round(teamAgents.reduce((s, a) => s + a.callsToday, 0) / teamAgents.length)
+      : 0
+    return {
+      totalCalls,
+      answerRate,
+      avgTalkSec,
+      noteQuality,
+      hotLeads,
+      overdue,
+      confirmedSales,
+      approvedCommission,
+      teamAvgCalls,
+    }
+  }, [calls, leads, followups, sales, commissions, myId, teamAgents])
+
+  const nextAction = useMemo(() => {
+    if (quality.overdue > 0)
+      return {
+        icon: AlarmClock,
+        text: `${toFa(quality.overdue)} پیگیری عقب‌افتاده داری؛ همین حالا انجامشون بده.`,
+        href: '/followups',
+        cta: 'رفتن به پیگیری‌ها',
+      }
+    if (quality.hotLeads > 0)
+      return {
+        icon: ThermometerSun,
+        text: `${toFa(quality.hotLeads)} لید داغ منتظر تماس توئه.`,
+        href: '/leads?temp=hot',
+        cta: 'مشاهده لیدهای داغ',
+      }
+    if (quality.noteQuality < 50 && quality.totalCalls > 0)
+      return {
+        icon: NotebookPen,
+        text: 'کیفیت یادداشت تماس‌هات پایینه؛ جزئیات بیشتری ثبت کن تا پیگیری راحت‌تر بشه.',
+        href: '/home',
+        cta: 'شروع تماس بعدی',
+      }
+    if (me && me.callsToday < me.callGoal)
+      return {
+        icon: Phone,
+        text: `${toFa(me.callGoal - me.callsToday)} تماس دیگه تا رسیدن به هدف امروز مونده.`,
+        href: '/home',
+        cta: 'ادامه تماس‌ها',
+      }
+    return {
+      icon: Sparkles,
+      text: 'عملکرد امروزت عالیه! همین روند رو ادامه بده.',
+      href: '/home',
+      cta: 'بازگشت به خانه',
+    }
+  }, [quality, me])
 
   if (!me) return null
   const goalPct = me.callGoal ? Math.round((me.callsToday / me.callGoal) * 100) : 0
@@ -86,6 +167,10 @@ export function PerformanceScreen() {
                     {toFa(me.streak)} روز
                   </span>
                 )}
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[11px] font-bold text-white/90 backdrop-blur-sm">
+                  <Crown size={13} className="text-primary-200" />
+                  سطح {toFa(me.level)}
+                </span>
               </div>
 
               <div className="mt-4 max-w-[210px]">
@@ -128,9 +213,61 @@ export function PerformanceScreen() {
             <StatTile variant="compact" icon={<Phone size={18} />} value={me.callsToday} label="تماس‌ها" />
             <StatTile variant="compact" icon={<CheckCircle2 size={18} />} value={me.successfulToday} label="موفق" tone="success" />
             <StatTile variant="compact" icon={<Target size={18} />} value={`${toFa(me.conversionRate)}٪`} label="نرخ تبدیل" tone="secondary" />
-            <StatTile variant="compact" icon={<Clock size={18} />} value="۲:۴۵" label="زمان مکالمه" tone="accent" />
+            <StatTile
+              variant="compact"
+              icon={<Clock size={18} />}
+              value={formatDuration(quality.avgTalkSec)}
+              label="میانگین مکالمه"
+              tone="accent"
+            />
           </div>
         </section>
+
+        <section>
+          <h2 className="mb-3 flex items-center gap-1.5 text-[15px] font-extrabold text-neutral-900">
+            <Gauge size={16} className="text-secondary-500" />
+            کیفیت تماس و پیگیری
+          </h2>
+          <div className="grid grid-cols-2 gap-2.5">
+            <QualityTile icon={CheckCircle2} label="نرخ پاسخ‌دهی" value={`${toFa(quality.answerRate)}٪`} tone="success" />
+            <QualityTile icon={NotebookPen} label="کیفیت یادداشت" value={`${toFa(quality.noteQuality)}٪`} tone="secondary" />
+            <QualityTile icon={ThermometerSun} label="لیدهای داغ من" value={toFa(quality.hotLeads)} tone="hot" warn={quality.hotLeads > 0} />
+            <QualityTile
+              icon={AlarmClock}
+              label="پیگیری عقب‌افتاده"
+              value={toFa(quality.overdue)}
+              tone="warning"
+              warn={quality.overdue > 0}
+            />
+          </div>
+          <div className="mt-2.5 grid grid-cols-2 gap-2.5">
+            <QualityTile icon={Trophy} label="فروش تاییدشده" value={toFa(quality.confirmedSales)} tone="primary" />
+            <QualityTile
+              icon={BadgeDollarSign}
+              label="پورسانت تاییدشده"
+              value={`${formatMoney(quality.approvedCommission)} ت`}
+              tone="success"
+              small
+            />
+          </div>
+          <p className="mt-2.5 px-1 text-[11px] font-bold text-neutral-400">
+            میانگین تماس امروز تیم: {toFa(quality.teamAvgCalls)} تماس · تو {me.callsToday >= quality.teamAvgCalls ? 'بالاتر' : 'پایین‌تر'} از میانگینی
+          </p>
+        </section>
+
+        <button
+          onClick={() => navigate(nextAction.href)}
+          className="flex w-full items-center gap-3 rounded-2xl bg-gradient-to-l from-primary-600 to-primary-500 p-4 text-right text-white shadow-float"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
+            <nextAction.icon size={18} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[11px] font-bold text-white/70">الان چه کاری بکنم؟</span>
+            <span className="mt-0.5 block truncate text-[13px] font-extrabold">{nextAction.text}</span>
+          </span>
+          <ChevronLeft size={18} className="shrink-0 text-white/70" />
+        </button>
 
         <section>
           <h2 className="mb-3 flex items-center gap-1.5 text-[15px] font-extrabold text-neutral-900">
@@ -185,12 +322,16 @@ export function PerformanceScreen() {
           </div>
         </section>
 
-        <div className="flex items-center gap-3 rounded-2xl bg-primary-50 p-4">
+        <button
+          onClick={() => navigate('/training')}
+          className="flex items-center gap-3 rounded-2xl bg-primary-50 p-4 text-right"
+        >
           <Sparkles size={20} className="shrink-0 text-primary-600" />
-          <p className="text-[13px] font-bold text-neutral-700">
-            عملکرد امروز ۸٪ بهتر از میانگین هفتگیته، به همین روند ادامه بده
+          <p className="flex-1 text-[13px] font-bold text-neutral-700">
+            آموزش، اسکریپت فروش و پاسخ به اعتراض‌ها رو مرور کن
           </p>
-        </div>
+          <ChevronLeft size={16} className="shrink-0 text-primary-300" />
+        </button>
       </div>
 
       <AchievementSheet ach={selectedAch} onClose={() => setSelectedAch(null)} />
@@ -223,6 +364,48 @@ function AchievementSheet({
         </div>
       )}
     </BottomSheet>
+  )
+}
+
+function QualityTile({
+  icon: Icon,
+  label,
+  value,
+  tone,
+  warn,
+  small,
+}: {
+  icon: typeof Clock
+  label: string
+  value: string | number
+  tone: 'success' | 'secondary' | 'hot' | 'warning' | 'primary'
+  warn?: boolean
+  small?: boolean
+}) {
+  const toneClass = {
+    success: 'bg-success-50 text-success-600',
+    secondary: 'bg-secondary-50 text-secondary-600',
+    hot: 'bg-hot-50 text-hot-600',
+    warning: 'bg-warning-50 text-warning-600',
+    primary: 'bg-primary-50 text-primary-600',
+  }[tone]
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2.5 rounded-2xl border p-3',
+        warn ? 'border-warning-200 bg-warning-50/40' : 'border-border/60 bg-surface',
+      )}
+    >
+      <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', toneClass)}>
+        <Icon size={16} />
+      </span>
+      <div className="min-w-0">
+        <p className={cn('font-black tabular-nums text-neutral-900', small ? 'text-[12.5px]' : 'text-[15px]')}>
+          {value}
+        </p>
+        <p className="truncate text-[10.5px] font-bold text-neutral-400">{label}</p>
+      </div>
+    </div>
   )
 }
 

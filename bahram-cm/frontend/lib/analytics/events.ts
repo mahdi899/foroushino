@@ -14,6 +14,11 @@ export type AnalyticsEventMap = {
   academy_apply_error: { source: string; code?: string };
   event_register_click: { event: string };
   content_view: { type: string; slug: string };
+  checkout_start: { product: string };
+  checkout_success: { product: string; order?: string };
+  checkout_error: { product: string; code?: string };
+  chatbot_open: Record<string, never>;
+  chatbot_message_sent: { session_id: string };
 };
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;
@@ -22,6 +27,6 @@ export type AnalyticsEventName = keyof AnalyticsEventMap;
 export const FUNNEL = {
   awareness: ["content_view", "homepage_cta_click"],
   interest: ["course_cta_click"],
-  intent: ["newsletter_signup", "event_register_click"],
-  action: ["academy_apply_submit", "academy_apply_success"],
+  intent: ["newsletter_signup", "event_register_click", "checkout_start"],
+  action: ["academy_apply_submit", "academy_apply_success", "checkout_success"],
 } as const;

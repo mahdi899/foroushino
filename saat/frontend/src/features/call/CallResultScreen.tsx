@@ -1,7 +1,18 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { PhoneCall, Check, NotebookPen, Star, ArrowLeft } from 'lucide-react'
+import {
+  PhoneCall,
+  Check,
+  NotebookPen,
+  Star,
+  ArrowLeft,
+  Wallet,
+  CalendarClock,
+  Sparkles,
+  Home,
+  MessageCircleWarning,
+} from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
@@ -11,51 +22,55 @@ import { Avatar } from '@/components/ui/Avatar'
 import { FeedbackResultCard } from '@/components/domain/FeedbackResultCard'
 import { FollowupPicker, buildFollowupIso } from '@/components/domain/FollowupPicker'
 import { ContactStatusBadge } from '@/components/domain/Badges'
+import { suggestReasonIcon, suggestReasonChipLabel } from '@/components/domain/icons'
 import { EmptyState } from '@/components/ui/States'
-import { objectionLabels, resultToStage } from '@/data/labels'
-import { getNextLeadAfter } from '@/lib/leadUtils'
-import { formatPhone } from '@/lib/format'
+import {
+  objectionLabels,
+  resultToStage,
+  resultToNextAction,
+  nextActionLabels,
+  resultHint,
+  followupKindLabels,
+} from '@/data/labels'
+import { routeCallResult } from '@/services/logic'
+import { objectionsLibrary } from '@/data/mockExtra'
+import { formatPhone, toFa } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
-import type { CallResult, Objection } from '@/types'
+import type { CallResultOutcome } from '@/services/client'
+import type { CallResult, FollowupKind, Objection } from '@/types'
 
 const resultOrder: CallResult[] = [
-  'interested',
   'very_hot',
+  'interested',
   'needs_followup',
   'meeting_set',
   'payment_pending',
   'registered',
+  'call_later',
   'no_answer',
   'unavailable',
-  'wrong_number',
-  'not_interested',
-  'do_not_disturb',
+  'bad_timing',
   'needs_info',
   'not_decision_maker',
-  'call_later',
+  'price_objection',
+  'not_interested',
+  'wrong_number',
+  'duplicate',
+  'do_not_disturb',
+  'incomplete_call',
 ]
 
 const objectionOrder: Objection[] = ['price', 'time', 'trust', 'need_more_info', 'thinking', 'no_budget']
 
-const needsFollowup: CallResult[] = [
-  'interested',
-  'very_hot',
-  'needs_followup',
-  'meeting_set',
-  'payment_pending',
-  'needs_info',
-  'call_later',
-  'no_answer',
-  'unavailable',
-]
+const followupKindOrder: FollowupKind[] = ['call', 'message', 'reminder', 'meeting', 'consultation', 'info']
 
 export function CallResultScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
   const lead = useStore((s) => s.leads.find((l) => l.id === id))
-  const leads = useStore((s) => s.leads)
+  const products = useStore((s) => s.products)
   const lastCallDuration = useStore((s) => s.lastCallDuration)
-  const logCall = useStore((s) => s.logCall)
+  const submitCallResult = useStore((s) => s.submitCallResult)
   const startCall = useStore((s) => s.startCall)
   const pushToast = useStore((s) => s.pushToast)
 
@@ -63,9 +78,14 @@ export function CallResultScreen() {
   const [rating, setRating] = useState(0)
   const [note, setNote] = useState('')
   const [objection, setObjection] = useState<Objection | null>(null)
+  const [followupKind, setFollowupKind] = useState<FollowupKind>('call')
   const [dayOffset, setDayOffset] = useState<number>(1)
   const [hour, setHour] = useState<number>(10)
-  const [saved, setSaved] = useState(false)
+  const [saleAmount, setSaleAmount] = useState<number | null>(null)
+  const [outcome, setOutcome] = useState<CallResultOutcome | null>(null)
+
+  const routed = useMemo(() => (result ? routeCallResult(result) : null), [result])
+  const product = products.find((p) => p.id === (lead?.productId ?? products[0]?.id))
 
   if (!lead) {
     return (
@@ -76,13 +96,15 @@ export function CallResultScreen() {
     )
   }
 
-  const showFollowup = result ? needsFollowup.includes(result) : false
-  const nextLead = getNextLeadAfter(leads, lead.id)
+  const showFollowup = !!routed?.createsFollowup
+  const showSale = !!routed?.createsSale
+  const showObjection =
+    result === 'price_objection' || result === 'not_interested' || result === 'needs_info' || result === 'not_decision_maker'
 
   const save = () => {
     if (!result) return
     haptic('success')
-    logCall({
+    const out = submitCallResult({
       leadId: lead.id,
       result,
       note,
@@ -90,9 +112,11 @@ export function CallResultScreen() {
       nextStage: resultToStage[result] ?? null,
       rating,
       followupAt: showFollowup ? buildFollowupIso(dayOffset, hour) : null,
+      followupKind: showFollowup ? followupKind : undefined,
       durationSec: lastCallDuration,
+      saleAmount: showSale ? (saleAmount ?? product?.price ?? undefined) : undefined,
     })
-    setSaved(true)
+    setOutcome(out)
   }
 
   return (
@@ -122,10 +146,30 @@ export function CallResultScreen() {
               onClick={() => {
                 haptic('selection')
                 setResult(r)
+                setSaleAmount(null)
               }}
             />
           ))}
         </div>
+
+        <AnimatePresence>
+          {result && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden rounded-2xl border border-primary-100 bg-primary-50/60 p-4"
+            >
+              <p className="flex items-center gap-1.5 text-[12px] font-extrabold text-primary-700">
+                <Sparkles size={14} />
+                {nextActionLabels[resultToNextAction[result]]}
+              </p>
+              {resultHint[result] && (
+                <p className="mt-1 text-[11px] font-bold text-primary-500/80">{resultHint[result]}</p>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="rounded-2xl bg-surface p-4 shadow-card border border-border/60">
           <p className="mb-2.5 text-[13px] font-extrabold text-neutral-900">امتیاز سرنخ</p>
@@ -142,6 +186,35 @@ export function CallResultScreen() {
         </div>
 
         <AnimatePresence>
+          {showSale && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden rounded-2xl bg-surface p-4 shadow-card border border-border/60"
+            >
+              <p className="mb-2.5 flex items-center gap-1.5 text-[13px] font-extrabold text-neutral-900">
+                <Wallet size={15} className="text-success-500" />
+                مبلغ فروش ({product?.name ?? 'محصول'})
+              </p>
+              <div dir="ltr" className="flex h-12 items-center gap-2 rounded-xl border border-border bg-neutral-50 px-3.5">
+                <input
+                  inputMode="numeric"
+                  value={toFa(String(saleAmount ?? product?.price ?? 0))}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/[^\d۰-۹]/g, '')
+                    const en = digits.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+                    setSaleAmount(Number(en) || 0)
+                  }}
+                  className="h-full min-w-0 flex-1 bg-transparent text-left text-[15px] font-extrabold tabular-nums text-neutral-900 outline-none"
+                />
+                <span className="shrink-0 text-[12px] font-bold text-neutral-400">تومان</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
           {showFollowup && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
@@ -149,6 +222,17 @@ export function CallResultScreen() {
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden rounded-2xl bg-surface p-4 shadow-card border border-border/60"
             >
+              <p className="mb-2.5 flex items-center gap-1.5 text-[13px] font-extrabold text-neutral-900">
+                <CalendarClock size={15} className="text-primary-500" />
+                زمان پیگیری بعدی
+              </p>
+              <div className="mb-3 flex flex-wrap gap-2">
+                {followupKindOrder.map((k) => (
+                  <Chip key={k} active={followupKind === k} onClick={() => setFollowupKind(k)}>
+                    {followupKindLabels[k]}
+                  </Chip>
+                ))}
+              </div>
               <FollowupPicker
                 dayOffset={dayOffset}
                 hour={hour}
@@ -173,20 +257,32 @@ export function CallResultScreen() {
           />
         </div>
 
-        <div>
-          <p className="mb-2 text-[13px] font-extrabold text-neutral-900">دلیل مخالفت (اختیاری)</p>
-          <div className="flex flex-wrap gap-2">
-            {objectionOrder.map((o) => (
-              <Chip
-                key={o}
-                active={objection === o}
-                onClick={() => setObjection((prev) => (prev === o ? null : o))}
-              >
-                {objectionLabels[o]}
-              </Chip>
-            ))}
+        {showObjection && (
+          <div>
+            <p className="mb-2 text-[13px] font-extrabold text-neutral-900">دلیل مخالفت</p>
+            <div className="flex flex-wrap gap-2">
+              {objectionOrder.map((o) => (
+                <Chip
+                  key={o}
+                  active={objection === o}
+                  onClick={() => setObjection((prev) => (prev === o ? null : o))}
+                >
+                  {objectionLabels[o]}
+                </Chip>
+              ))}
+            </div>
+
+            {objection && (
+              <div className="mt-2.5 flex items-start gap-2.5 rounded-xl bg-warning-50 p-3">
+                <MessageCircleWarning size={15} className="mt-0.5 shrink-0 text-warning-600" />
+                <p className="text-[12px] font-bold leading-6 text-warning-700">
+                  {objectionsLibrary.find((o) => o.key === objection)?.suggestedResponse ??
+                    'یادت باشه با آرامش به دلیل مخالفت گوش بده و راهکار مشخص بده.'}
+                </p>
+              </div>
+            )}
           </div>
-        </div>
+        )}
       </div>
 
       <div className="absolute inset-x-0 bottom-0 z-20 border-t border-border/60 bg-surface/90 glass px-4 pt-3 pb-[calc(14px+var(--safe-bottom))]">
@@ -196,12 +292,13 @@ export function CallResultScreen() {
       </div>
 
       <AnimatePresence>
-        {saved && (
+        {outcome && (
           <SuccessOverlay
+            outcome={outcome}
             onNext={() => {
-              if (nextLead) {
-                startCall(nextLead.id)
-                navigate(`/dialer/${nextLead.id}`, { replace: true })
+              if (outcome.suggestion) {
+                startCall(outcome.suggestion.lead.id)
+                navigate(`/dialer/${outcome.suggestion.lead.id}`, { replace: true })
               } else {
                 navigate('/home', { replace: true })
               }
@@ -210,7 +307,6 @@ export function CallResultScreen() {
               pushToast('نتیجه تماس ثبت شد')
               navigate('/home', { replace: true })
             }}
-            next={nextLead}
           />
         )}
       </AnimatePresence>
@@ -219,14 +315,17 @@ export function CallResultScreen() {
 }
 
 function SuccessOverlay({
+  outcome,
   onNext,
   onHome,
-  next,
 }: {
+  outcome: CallResultOutcome
   onNext: () => void
   onHome: () => void
-  next: ReturnType<typeof getNextLeadAfter>
 }) {
+  const next = outcome.suggestion?.lead ?? null
+  const ReasonIcon = outcome.suggestion ? suggestReasonIcon[outcome.suggestion.reason] : null
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -250,16 +349,26 @@ function SuccessOverlay({
       >
         ثبت شد، عالی بود
       </motion.h2>
-      <p className="mt-1 text-sm font-bold text-neutral-400">یک قدم به هدف امروز نزدیک‌تر شدی</p>
+      <p className="mt-1.5 max-w-[260px] text-center text-[13px] font-bold leading-6 text-neutral-500">
+        {outcome.nextActionLabel}
+      </p>
 
       {next && (
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="mt-7 w-full rounded-3xl bg-neutral-50 p-4 border border-border/60"
+          className="mt-6 w-full rounded-3xl bg-neutral-50 p-4 border border-border/60"
         >
-          <p className="mb-3 text-center text-xs font-bold text-neutral-400">سرنخ بعدی پیشنهادی</p>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-bold text-neutral-400">سرنخ بعدی پیشنهادی</p>
+            {ReasonIcon && outcome.suggestion && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-[10px] font-extrabold text-primary-700">
+                <ReasonIcon size={11} />
+                {suggestReasonChipLabel[outcome.suggestion.reason]}
+              </span>
+            )}
+          </div>
           <div className="flex items-center justify-between gap-3">
             <Avatar
               id={next.id}
@@ -286,7 +395,7 @@ function SuccessOverlay({
       )}
 
       <div className="mt-6 w-full space-y-2.5">
-        <Button full size="lg" icon={<PhoneCall size={18} />} onClick={onNext}>
+        <Button full size="lg" icon={next ? <PhoneCall size={18} /> : <Home size={18} />} onClick={onNext}>
           {next ? 'تماس بعدی رو شروع کن' : 'بازگشت به خانه'}
         </Button>
         {next && (

@@ -1,9 +1,10 @@
 /**
- * Shared client for the Academy backend (FastAPI).
+ * Shared client for the Laravel backend (bahram-cm).
  *
- * All public-facing form submissions go through here so the base URL, error
- * shape, and timeout behaviour are consistent. The backend returns typed domain
- * errors as `{ error: { code, message_fa, details } }`.
+ * All public-facing form submissions and content reads go through here so the
+ * base URL, error shape, and timeout behaviour are consistent. The backend
+ * returns a standardized envelope: `{ data: ... }` on success and
+ * `{ error: { code, message_fa, details } }` on failure.
  */
 
 export const API_BASE_URL = (
@@ -27,7 +28,7 @@ export async function getJson<T>(
 ): Promise<ApiResult<T>> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const url = `${API_BASE_URL}/api/v1${path.startsWith("/") ? path : `/${path}`}`;
+  const url = `${API_BASE_URL}/api${path.startsWith("/") ? path : `/${path}`}`;
 
   try {
     const res = await fetch(url, { signal: controller.signal, cache: "no-store" });
@@ -67,7 +68,7 @@ export async function postJson<T>(
 ): Promise<ApiResult<T>> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
-  const url = `${API_BASE_URL}/api/v1${path.startsWith("/") ? path : `/${path}`}`;
+  const url = `${API_BASE_URL}/api${path.startsWith("/") ? path : `/${path}`}`;
 
   try {
     const res = await fetch(url, {

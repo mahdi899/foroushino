@@ -16,6 +16,8 @@ export type LeadResult = {
   created_at: string;
 };
 
+type LeadResponse = { data: LeadResult };
+
 export type FieldErrors = Partial<Record<keyof LeadInput, string>>;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -40,13 +42,24 @@ export function validateLead(input: LeadInput): FieldErrors {
   return errors;
 }
 
+/** Folds the role select + free-text notes into the backend's single `message` field. */
+function buildMessage(input: LeadInput): string | null {
+  const parts: string[] = [];
+  if (input.role?.trim()) parts.push(`حوزه‌ی فعالیت: ${input.role.trim()}`);
+  if (input.notes?.trim()) parts.push(input.notes.trim());
+  return parts.length ? parts.join("\n\n") : null;
+}
+
 export async function submitLead(input: LeadInput): Promise<ApiResult<LeadResult>> {
-  return postJson<LeadResult>("/leads/apply", {
+  const result = await postJson<LeadResponse>("/leads", {
     name: input.name.trim(),
     phone: input.phone.trim(),
     email: input.email.trim(),
-    role: input.role?.trim() || null,
-    notes: input.notes?.trim() || null,
+    message: buildMessage(input),
     source: input.source ?? "web_apply",
+    page_url: typeof window !== "undefined" ? window.location.href : undefined,
   });
+
+  if (!result.ok) return result;
+  return { ok: true, data: result.data.data };
 }

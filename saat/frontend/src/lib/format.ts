@@ -8,6 +8,16 @@ export function toEn(input: string): string {
   return input.replace(/[۰-۹]/g, (d) => String(FA_DIGITS.indexOf(d)))
 }
 
+export function maskPhone(phone: string): string {
+  const clean = phone.replace(/\D/g, '')
+  if (clean.length >= 7) {
+    const start = clean.slice(0, 4)
+    const end = clean.slice(-2)
+    return toFa(`${start}***${end}`)
+  }
+  return toFa(phone)
+}
+
 export function formatPhone(phone: string): string {
   const clean = phone.replace(/\D/g, '')
   if (clean.length === 11 && clean.startsWith('09')) {
@@ -23,6 +33,20 @@ export function formatDuration(totalSec: number): string {
   const m = Math.floor(totalSec / 60)
   const s = totalSec % 60
   return toFa(`${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`)
+}
+
+export function formatHms(totalSec: number): string {
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec % 3600) / 60)
+  const s = totalSec % 60
+  if (h > 0) {
+    return toFa(`${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`)
+  }
+  return formatDuration(totalSec)
+}
+
+export function formatMoney(amount: number): string {
+  return toFa(Math.round(amount).toLocaleString('en-US'))
 }
 
 const WEEKDAYS = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه']
