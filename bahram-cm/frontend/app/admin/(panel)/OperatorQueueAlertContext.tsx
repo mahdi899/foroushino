@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { usePathname } from 'next/navigation';
 import { fetchChatbotOperatorQueueCount } from './chatbot/actions';
 
 interface OperatorQueueAlertContextValue {
@@ -15,8 +14,6 @@ const POLL_ACTIVE_MS = 30_000;
 const POLL_IDLE_MS = 90_000;
 
 export function OperatorQueueAlertProvider({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const shouldPoll = pathname === '/admin' || pathname.startsWith('/admin/chatbot');
   const [pendingCount, setPendingCount] = useState(0);
   const pendingRef = useRef(0);
 
@@ -32,12 +29,6 @@ export function OperatorQueueAlertProvider({ children }: { children: React.React
   }, []);
 
   useEffect(() => {
-    if (!shouldPoll) {
-      pendingRef.current = 0;
-      setPendingCount(0);
-      return;
-    }
-
     let timerId = 0;
 
     const schedule = () => {
@@ -66,7 +57,7 @@ export function OperatorQueueAlertProvider({ children }: { children: React.React
       window.clearTimeout(timerId);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [refreshPendingCount, shouldPoll]);
+  }, [refreshPendingCount]);
 
   const value = useMemo(
     () => ({ pendingCount, refreshPendingCount }),

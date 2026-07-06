@@ -13,6 +13,8 @@ import {
 } from './actions';
 import { MediaOptimizeModal } from './MediaOptimizeModal';
 import type { MediaOptimizePreview } from '@/lib/admin/mediaOptimize';
+import { MediaPreview } from '@/components/admin/MediaPreview';
+import { MediaZoomOverlay } from '@/components/admin/MediaZoomOverlay';
 import { resolveMediaUrl } from '@/lib/mediaUrl';
 
 interface MediaEditModalProps {
@@ -58,15 +60,6 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
     setConfirmOptimize(false);
     setOptimizePreview(null);
   }, [item]);
-
-  useEffect(() => {
-    if (!zoomOpen) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setZoomOpen(false);
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [zoomOpen]);
 
   if (!item) return null;
 
@@ -204,36 +197,56 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
           </div>
 
           <div className="p-4">
-            <div className="relative mx-auto mb-4 w-fit max-w-full">
-              <button
-                type="button"
-                onClick={() => setZoomOpen(true)}
-                className="relative block max-w-full cursor-zoom-in border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-                aria-label="بزرگ‌نمایی"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={resolveMediaUrl(previewUrl || item.url)}
-                  alt={alt || title || item.label}
-                  className="block max-h-72 max-w-full"
-                />
-                <span className="pointer-events-none absolute left-1.5 top-1.5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                  <Maximize2 className="h-5 w-5" strokeWidth={2} />
-                </span>
-              </button>
+            <div className="mx-auto mb-4 w-full max-w-sm">
+              <MediaPreview
+                src={previewUrl || item.url}
+                persistSrc={item.persistSrc}
+                legacyPath={item.legacyPath}
+                alt={alt || title || item.label}
+              />
 
-              {canOptimize && (
+              <div className="mt-3 flex flex-nowrap items-stretch gap-2">
                 <button
                   type="button"
-                  disabled={busy || optimizing || confirmingOptimize}
-                  onClick={() => setConfirmOptimize(true)}
-                  className="absolute right-1.5 top-1.5 grid h-9 w-9 place-items-center rounded-lg border border-white/30 bg-primary-dark/85 text-white shadow-soft backdrop-blur-sm transition hover:bg-primary-dark disabled:opacity-60"
-                  aria-label="بهینه‌سازی تصویر"
-                  title="بهینه‌سازی تصویر"
+                  onClick={() => setZoomOpen(true)}
+                  className="btn btn-secondary min-w-0 flex-1 justify-center py-1.5 text-caption whitespace-nowrap"
                 >
-                  {optimizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" strokeWidth={2} />}
+                  <Maximize2 className="h-3.5 w-3.5 shrink-0" />
+                  بزرگ‌نمایی
                 </button>
-              )}
+                {canOptimize && (
+                  <button
+                    type="button"
+                    disabled={busy || optimizing || confirmingOptimize}
+                    onClick={() => setConfirmOptimize(true)}
+                    className="btn btn-secondary min-w-0 flex-1 justify-center py-1.5 text-caption whitespace-nowrap"
+                  >
+                    {optimizing ? (
+                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                    ) : (
+                      <Wand2 className="h-3.5 w-3.5 shrink-0" />
+                    )}
+                    بهینه‌سازی
+                  </button>
+                )}
+                <a
+                  href={resolveMediaUrl(previewUrl || item.url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary min-w-0 flex-1 justify-center py-1.5 text-caption whitespace-nowrap"
+                >
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                  باز کردن
+                </a>
+                <button
+                  type="button"
+                  onClick={copyUrl}
+                  className="btn btn-secondary min-w-0 flex-1 justify-center py-1.5 text-caption whitespace-nowrap"
+                >
+                  <Copy className="h-3.5 w-3.5 shrink-0" />
+                  {copied ? 'کپی شد' : 'کپی لینک'}
+                </button>
+              </div>
             </div>
 
             {confirmOptimize && (
@@ -321,17 +334,6 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
               )
             )}
 
-            <div className="mb-4 flex flex-wrap gap-2">
-              <button type="button" onClick={copyUrl} className="btn btn-secondary py-1.5 text-caption">
-                <Copy className="h-3.5 w-3.5" />
-                {copied ? 'کپی شد' : 'کپی لینک'}
-              </button>
-              <a href={resolveMediaUrl(previewUrl || item.url)} target="_blank" rel="noopener noreferrer" className="btn btn-secondary py-1.5 text-caption">
-                <ExternalLink className="h-3.5 w-3.5" />
-                باز کردن
-              </a>
-            </div>
-
             {notice && <p className="mb-2 text-small text-success">{notice}</p>}
             {error && <p className="mb-2 text-small text-error">{error}</p>}
 
@@ -359,27 +361,13 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
         </div>
 
         {zoomOpen && (
-          <div
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
-            onClick={() => setZoomOpen(false)}
-            role="presentation"
-          >
-            <button
-              type="button"
-              onClick={() => setZoomOpen(false)}
-              className="absolute left-4 top-4 z-10 p-1 text-white/80 hover:text-white"
-              aria-label="بستن"
-            >
-              <X className="h-6 w-6" />
-            </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={resolveMediaUrl(previewUrl || item.url)}
-              alt={alt || title || item.label}
-              className="max-h-[90vh] max-w-full object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
+          <MediaZoomOverlay
+            src={previewUrl || item.url}
+            persistSrc={item.persistSrc}
+            legacyPath={item.legacyPath}
+            alt={alt || title || item.label}
+            onClose={() => setZoomOpen(false)}
+          />
         )}
       </div>
 

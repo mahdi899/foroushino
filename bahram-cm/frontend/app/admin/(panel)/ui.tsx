@@ -15,14 +15,20 @@ export function AdminPage({
 }) {
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5">
-        <div>
-          <h1 className="text-h2 font-extrabold text-primary-dark">{title}</h1>
-          {desc && <p className="mt-1.5 text-small text-text-muted">{desc}</p>}
+      <div className="mb-5 border-b border-border pb-4 sm:mb-6 sm:pb-5">
+        <div className="grid gap-3 sm:grid-cols-2 sm:items-end sm:gap-4">
+          <div className="min-w-0 text-end sm:col-start-1 sm:row-start-1">
+            <h1 className="text-h3 font-extrabold text-primary-dark sm:text-h2">{title}</h1>
+            {desc && <p className="mt-1 text-caption text-text-muted sm:mt-1.5 sm:text-small">{desc}</p>}
+          </div>
+          {action ? (
+            <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:col-start-2 sm:row-start-1 sm:justify-self-end">
+              {action}
+            </div>
+          ) : null}
         </div>
-        {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
       </div>
-      {children}
+      <div className="min-w-0">{children}</div>
     </div>
   );
 }
@@ -30,7 +36,7 @@ export function AdminPage({
 export function StatCard({ label, value, icon, hint }: { label: string; value: string | number; icon: string; hint?: string }) {
   const Cmp = (Icons as unknown as Record<string, Icons.LucideIcon>)[icon] ?? Icons.Circle;
   return (
-    <div className="card flex items-center gap-4 p-5">
+    <div className="card flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5">
       <span className="grid h-12 w-12 place-items-center rounded-lg bg-surface-soft text-accent">
         <Cmp className="h-6 w-6" strokeWidth={1.5} />
       </span>

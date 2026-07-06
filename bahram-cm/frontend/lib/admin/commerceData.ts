@@ -4,6 +4,7 @@ import type {
   AdminFaq,
   AdminOrder,
   AdminProduct,
+  AdminStudentTestimonial,
   PaymentSettingsData,
   SmsSpotplayerSettingsData,
 } from './commerceTypes';
@@ -12,6 +13,7 @@ export type {
   AdminFaq,
   AdminOrder,
   AdminProduct,
+  AdminStudentTestimonial,
   PaymentSettingsData,
   SmsSpotplayerSettingsData,
 } from './commerceTypes';
@@ -74,6 +76,24 @@ export async function getFaqs(): Promise<{ items: AdminFaq[]; error: string | nu
 export async function getFaq(id: number): Promise<AdminFaq | null> {
   try {
     const res = await adminFetch<{ data: AdminFaq }>(`/faqs/${id}`);
+    return res.data;
+  } catch {
+    return null;
+  }
+}
+
+export async function getStudentTestimonials(): Promise<{ items: AdminStudentTestimonial[]; error: string | null }> {
+  try {
+    const res = await adminFetch<{ data: AdminStudentTestimonial[] }>('/student-testimonials', { query: { per_page: 200 } });
+    return { items: res.data, error: null };
+  } catch (e) {
+    return { items: [], error: commerceErrorMessage(e) };
+  }
+}
+
+export async function getStudentTestimonial(id: number): Promise<AdminStudentTestimonial | null> {
+  try {
+    const res = await adminFetch<{ data: AdminStudentTestimonial }>(`/student-testimonials/${id}`);
     return res.data;
   } catch {
     return null;

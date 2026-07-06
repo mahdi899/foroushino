@@ -9,6 +9,7 @@ export interface SeoData {
   description: string | null;
   canonical: string | null;
   robots: string;
+  focus_keyword?: string | null;
 }
 
 export async function getRobotsTxtConfig(): Promise<RobotsTxtConfig | null> {
@@ -62,6 +63,7 @@ export async function saveSeo(type: string, id: string, data: SeoData): Promise<
         description: data.description || null,
         canonical: data.canonical || null,
         robots: data.robots || 'index,follow',
+        focus_keyword: data.focus_keyword?.trim() || null,
       },
     });
     revalidateTag('seo', 'max');

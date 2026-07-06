@@ -14,7 +14,9 @@ export function chatbotThemeClasses(theme: DataTheme) {
     thread: light ? 'bg-charcoal/[0.06]' : 'bg-ink/50',
     tabBar: light ? 'bg-charcoal/[0.04]' : 'bg-ink/50',
     headerDefault: 'bg-gradient-ai text-white',
-    headerOperator: 'bg-gradient-operator text-white',
+    headerOperator: light
+      ? 'bg-gradient-operator text-white'
+      : 'bg-gradient-operator-dark text-bone',
     bubbleUser: 'rounded-br-sm bg-gradient-ai text-white',
     bubbleBot: light
       ? 'rounded-bl-sm border border-bone/12 bg-white text-bone ring-1 ring-bone/10'
@@ -26,8 +28,10 @@ export function chatbotThemeClasses(theme: DataTheme) {
       ? 'rounded-bl-sm border border-gold/35 bg-gold/[0.08] text-bone shadow-[inset_3px_0_0_0_var(--color-gold)]'
       : 'rounded-bl-sm border border-gold/30 bg-gold/[0.1] text-bone shadow-[inset_3px_0_0_0_var(--color-gold)]',
     operatorLabel: light ? 'text-gold' : 'text-gold-soft',
-    operatorAvatar: 'bg-gradient-operator text-white',
-    operatorAvatarRing: 'bg-gradient-operator ring-2 ring-gold-soft/35 text-white',
+    operatorAvatar: light ? 'bg-gradient-operator text-white' : 'bg-gradient-operator-dark text-bone',
+    operatorAvatarRing: light
+      ? 'bg-gradient-operator ring-2 ring-gold-soft/35 text-white'
+      : 'bg-gradient-operator-dark ring-2 ring-gold/20 text-bone',
     operatorDot: 'bg-gold',
     operatorQuoteIcon: light ? 'text-gold/80' : 'text-gold-soft/90',
     operatorQuoteText: light ? 'text-bone/75' : 'text-bone/70',

@@ -1,12 +1,13 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useLayoutEffect, useMemo, useState } from 'react';
 
 export type AdminTheme = 'light' | 'dark';
 
 interface AdminThemeContextValue {
   theme: AdminTheme;
   sidebarCollapsed: boolean;
+  mounted: boolean;
   setTheme: (theme: AdminTheme) => void;
   toggleTheme: () => void;
   setSidebarCollapsed: (value: boolean) => void;
@@ -20,52 +21,64 @@ const SIDEBAR_KEY = 'bahram-admin-sidebar';
 
 function readTheme(): AdminTheme {
   if (typeof window === 'undefined') return 'light';
-  const fromDom = document.getElementById('admin-root')?.getAttribute('data-admin-theme');
-  if (fromDom === 'dark' || fromDom === 'light') return fromDom;
   return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
 }
 
 function readSidebar(): boolean {
   if (typeof window === 'undefined') return false;
-  const fromDom = document.getElementById('admin-root')?.getAttribute('data-sidebar-collapsed');
-  if (fromDom === '1') return true;
   return localStorage.getItem(SIDEBAR_KEY) === '1';
 }
 
+function applyThemeToRoot(theme: AdminTheme) {
+  document.getElementById('admin-root')?.setAttribute('data-admin-theme', theme);
+}
+
+function applySidebarToRoot(collapsed: boolean) {
+  const root = document.getElementById('admin-root');
+  if (!root) return;
+  if (collapsed) root.setAttribute('data-sidebar-collapsed', '1');
+  else root.removeAttribute('data-sidebar-collapsed');
+}
+
 export function AdminThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<AdminTheme>(readTheme);
-  const [sidebarCollapsed, setSidebarCollapsedState] = useState(readSidebar);
+  const [theme, setThemeState] = useState<AdminTheme>('light');
+  const [sidebarCollapsed, setSidebarCollapsedState] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  useEffect(() => {
-    const root = document.getElementById('admin-root');
-    root?.setAttribute('data-admin-theme', theme);
-    localStorage.setItem(THEME_KEY, theme);
-  }, [theme]);
-
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const initialTheme = readTheme();
+    const initialSidebar = readSidebar();
+    setThemeState(initialTheme);
+    setSidebarCollapsedState(initialSidebar);
+    applyThemeToRoot(initialTheme);
+    applySidebarToRoot(initialSidebar);
     document.documentElement.removeAttribute('data-admin-theme');
+    setMounted(true);
   }, []);
 
-  useEffect(() => {
-    const root = document.getElementById('admin-root');
-    if (sidebarCollapsed) {
-      root?.setAttribute('data-sidebar-collapsed', '1');
-    } else {
-      root?.removeAttribute('data-sidebar-collapsed');
-    }
+  useLayoutEffect(() => {
+    if (!mounted) return;
+    applyThemeToRoot(theme);
+    localStorage.setItem(THEME_KEY, theme);
+  }, [theme, mounted]);
+
+  useLayoutEffect(() => {
+    if (!mounted) return;
+    applySidebarToRoot(sidebarCollapsed);
     localStorage.setItem(SIDEBAR_KEY, sidebarCollapsed ? '1' : '0');
-  }, [sidebarCollapsed]);
+  }, [sidebarCollapsed, mounted]);
 
   const value = useMemo(
     () => ({
       theme,
       sidebarCollapsed,
+      mounted,
       setTheme: setThemeState,
       toggleTheme: () => setThemeState((t) => (t === 'dark' ? 'light' : 'dark')),
       setSidebarCollapsed: setSidebarCollapsedState,
       toggleSidebar: () => setSidebarCollapsedState((v) => !v),
     }),
-    [theme, sidebarCollapsed],
+    [theme, sidebarCollapsed, mounted],
   );
 
   return <AdminThemeContext.Provider value={value}>{children}</AdminThemeContext.Provider>;

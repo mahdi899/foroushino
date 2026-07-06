@@ -196,7 +196,9 @@ function mapAdminMediaRow(m: {
 }): AdminMediaItem {
   const ref = m.url || m.legacy_path || '';
   const persistSrc = persistMediaUrl(ref);
-  const displayUrl = normalizeAdminMediaUrl(m.view_url || resolveMediaUrl(persistSrc));
+  const displayUrl =
+    normalizeAdminMediaUrl(m.legacy_path) ||
+    normalizeAdminMediaUrl(m.view_url || resolveMediaUrl(persistSrc));
   return {
     id: m.id,
     url: displayUrl,

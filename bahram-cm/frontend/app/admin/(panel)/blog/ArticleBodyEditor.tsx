@@ -52,6 +52,7 @@ type EditorMode = 'visual' | 'html';
 interface ArticleBodyEditorProps {
   value: string;
   onChange: (html: string) => void;
+  label?: string;
   placeholder?: string;
   aiPrompt?: string;
 }
@@ -124,6 +125,7 @@ function ToolbarButton({
 export function ArticleBodyEditor({
   value,
   onChange,
+  label = 'متن مقاله',
   placeholder = 'متن مقاله را بنویسید…',
   aiPrompt,
 }: ArticleBodyEditorProps) {
@@ -502,7 +504,7 @@ export function ArticleBodyEditor({
   return (
     <ArticleVideoEditContext.Provider value={videoEditContextValue}>
     <div>
-      <label className="field-label">متن مقاله</label>
+      <label className="field-label">{label}</label>
       <div className="rounded-lg border border-border bg-surface">
         {toolbar}
         <div className="min-h-[20rem]">

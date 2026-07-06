@@ -1,13 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import { site } from "@/content/site";
 import { cn } from "@/lib/cn";
 import { Reveal } from "@/components/motion/Reveal";
 import { Eyebrow } from "@/components/ui/Eyebrow";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { sitePhotos } from "@/lib/site-photo-paths";
 
-const photoClass = "manifesto-photo overflow-hidden rounded-card-lg";
+const photoClass = "manifesto-photo relative w-full overflow-hidden rounded-card-lg";
 const LINES = site.manifesto;
 const manifestoLineClass =
   "text-[clamp(1.3125rem,1.55vw+0.95rem,1.9375rem)] leading-[1.42]";
@@ -21,39 +21,36 @@ function ManifestoPhotoStack() {
       />
 
       <div className="relative z-[2] w-[58%] max-w-[14rem] rotate-[-2deg] sm:max-w-[15rem] lg:max-w-none">
-        <div className={photoClass}>
-          <Image
+        <div className={`${photoClass} aspect-[4/5]`}>
+          <SiteImage
             src={sitePhotos.manifestoPortraitA}
             alt="نشست خصوصی"
-            width={320}
-            height={400}
-            className="aspect-[4/5] h-auto w-full object-cover"
+            fill
+            className="object-cover"
             sizes="(max-width: 1023px) 200px, 260px"
           />
         </div>
       </div>
 
       <div className="absolute end-0 top-[14%] z-[3] w-[46%] max-w-[11rem] rotate-[5deg] sm:max-w-[12rem] lg:max-w-none">
-        <div className={photoClass}>
-          <Image
+        <div className={`${photoClass} aspect-[4/5]`}>
+          <SiteImage
             src={sitePhotos.manifestoPortraitB}
             alt="پشت صحنه"
-            width={260}
-            height={325}
-            className="aspect-[4/5] h-auto w-full object-cover"
+            fill
+            className="object-cover"
             sizes="(max-width: 1023px) 160px, 210px"
           />
         </div>
       </div>
 
       <div className="relative z-[4] mt-[-2.5rem] ms-[8%] w-[88%] rotate-[1deg] sm:mt-[-3rem] lg:mt-[-3.5rem]">
-        <div className={photoClass}>
-          <Image
+        <div className={`${photoClass} aspect-[16/10]`}>
+          <SiteImage
             src={sitePhotos.manifestoLandscape}
             alt="استودیوی آکادمی"
-            width={480}
-            height={300}
-            className="aspect-[16/10] h-auto w-full object-cover"
+            fill
+            className="object-cover"
             sizes="(max-width: 1023px) 300px, 400px"
           />
         </div>
@@ -104,11 +101,13 @@ export function ManifestoShift() {
 
               <Reveal delay={0.3}>
                 <div className="manifesto-signature mt-8 md:mt-10">
-                  <Image
+                  <SiteImage
                     src="/media/signature.png"
                     alt="امضای بهرام رستمی"
+                    fallbackAlt="امضای بهرام رستمی"
                     width={168}
                     height={58}
+                    wrapperClassName="leading-none"
                     className="h-auto w-[min(6.5rem,32vw)] object-contain object-start opacity-70 md:w-[min(7.5rem,28vw)] md:opacity-75"
                   />
                 </div>

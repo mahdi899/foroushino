@@ -1,6 +1,6 @@
 import { API_ORIGIN, ASSET_ORIGIN, MEDIA_ORIGIN } from '@/lib/api/config';
 import { siteConfig } from '@/config/site';
-import { resolveLegacyStoragePath } from '@/lib/media/legacyMap';
+import { legacyPublicPathFromStorage, resolveLegacyStoragePath } from '@/lib/media/legacyMap';
 
 function siteOrigin(): string {
   return (process.env.NEXT_PUBLIC_SITE_URL || siteConfig.url).replace(/\/+$/, '');
@@ -109,6 +109,20 @@ export const mediaReference = persistMediaUrl;
 export function resolveMediaUrl(url: string | null | undefined): string {
   if (!url?.trim()) return '';
 
+  const trimmed = url.trim();
+
+  // Local dev without CDN: bundled assets live under Next `public/`.
+  if (isDev && !MEDIA_ORIGIN) {
+    if (trimmed.startsWith('/media/') || trimmed.startsWith('/images/')) {
+      const mapped = resolveLegacyStoragePath(trimmed);
+      if (mapped) return mapped;
+      return trimmed;
+    }
+    if (trimmed.startsWith('/storage/')) {
+      return legacyPublicPathFromStorage(trimmed) ?? trimmed;
+    }
+  }
+
   const ref = persistMediaUrl(url);
   if (!ref) return '';
 
@@ -140,11 +154,42 @@ export function resolveMediaUrl(url: string | null | undefined): string {
   return ref;
 }
 
-/** Normalize admin thumbnail URLs — always same-origin /storage in dev (never 127.0.0.1:8010). */
+/** Prefer bundled `/public/media` for imported site assets in admin thumbnails. */
+function adminPublicAssetPath(ref: string | null | undefined): string | null {
+  if (!ref?.trim()) return null;
+
+  const trimmed = ref.trim();
+  if (trimmed.startsWith('/media/') || trimmed.startsWith('/images/')) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith('/storage/')) {
+    return legacyPublicPathFromStorage(trimmed) ?? publicMediaFallbackFromStorage(trimmed);
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.pathname.startsWith('/media/') || parsed.pathname.startsWith('/images/')) {
+      return parsed.pathname;
+    }
+    if (parsed.pathname.startsWith('/storage/')) {
+      return legacyPublicPathFromStorage(parsed.pathname) ?? publicMediaFallbackFromStorage(parsed.pathname);
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return publicMediaFallbackFromStorage(trimmed);
+}
+
+/** Normalize admin thumbnail URLs — same-origin, prefer public bundle for legacy site assets. */
 export function normalizeAdminMediaUrl(url: string | null | undefined): string {
   if (!url?.trim()) return '';
 
   const trimmed = url.trim();
+  const publicAsset = adminPublicAssetPath(trimmed);
+  if (publicAsset) return publicAsset;
+
   if (trimmed.startsWith('/')) {
     return resolveMediaUrl(trimmed);
   }
@@ -156,6 +201,8 @@ export function normalizeAdminMediaUrl(url: string | null | undefined): string {
         parsed.hostname === 'localhost' ||
         parsed.hostname === '127.0.0.1';
       if (local) {
+        const fromPath = adminPublicAssetPath(parsed.pathname);
+        if (fromPath) return fromPath;
         return resolveMediaUrl(parsed.pathname);
       }
     }
@@ -174,18 +221,95 @@ export function adminMediaThumbFallbacks(item: {
 }): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
-  const add = (candidate?: string | null) => {
+
+  const addRaw = (candidate?: string | null) => {
+    if (!candidate?.trim()) return;
+    const value = candidate.trim();
+    if (seen.has(value)) return;
+    seen.add(value);
+    out.push(value);
+  };
+
+  const addResolved = (candidate?: string | null) => {
     const normalized = normalizeAdminMediaUrl(candidate);
     if (!normalized || seen.has(normalized)) return;
     seen.add(normalized);
     out.push(normalized);
   };
 
-  add(item.src);
-  add(resolveMediaUrl(item.persistSrc));
-  if (item.legacyPath) {
-    add(item.legacyPath);
-    add(resolveMediaUrl(item.legacyPath));
+  // 1. Next.js `/public` bundle — reliable for imported site SVGs/JPGs
+  addRaw(item.legacyPath);
+  addRaw(adminPublicAssetPath(item.persistSrc));
+  addRaw(adminPublicAssetPath(item.src));
+
+  // 2. Normalized display URL + storage/CDN copies
+  addResolved(item.src);
+  addResolved(item.persistSrc);
+
+  // 3. Raw storage path for uploads without a public mirror
+  if (item.persistSrc.startsWith('/storage/')) {
+    addRaw(item.persistSrc);
+  }
+
+  return out;
+}
+
+/** When storage copy is missing, fall back to Next.js `/public/media/…` asset. */
+function publicMediaFallbackFromStorage(ref: string | null | undefined): string | null {
+  if (!ref?.trim()) return null;
+
+  const normalized = ref.startsWith('/storage/') ? ref : persistMediaUrl(ref);
+  if (!normalized?.startsWith('/storage/')) return null;
+
+  const legacy = legacyPublicPathFromStorage(normalized);
+  if (legacy) return legacy;
+
+  const relative = normalized.replace(/^\/storage\/media\//, '');
+  return `/media/${relative.replace(/^site\//, '')}`;
+}
+
+/** Ordered fallbacks for public-site images (storage/CDN → public bundle). */
+export function siteMediaFallbacks(src: string | null | undefined): string[] {
+  if (!src?.trim()) return [];
+
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const add = (candidate?: string | null) => {
+    if (!candidate?.trim() || seen.has(candidate)) return;
+    seen.add(candidate);
+    out.push(candidate);
+  };
+
+  const raw = src.trim();
+  add(resolveMediaUrl(raw));
+  add(raw);
+
+  const persisted = persistMediaUrl(raw);
+  if (persisted !== raw) {
+    add(resolveMediaUrl(persisted));
+    add(persisted);
+  }
+
+  if (raw.startsWith('/media/') || raw.startsWith('/images/')) {
+    add(raw);
+  }
+
+  const legacyFromStorage = persisted.startsWith('/storage/')
+    ? legacyPublicPathFromStorage(persisted)
+    : null;
+  if (legacyFromStorage) add(legacyFromStorage);
+
+  const publicFallback = publicMediaFallbackFromStorage(persisted);
+  if (publicFallback) add(publicFallback);
+
+  if (raw.includes('signature.png') || persisted.includes('signature.png')) {
+    add('/media/signature.svg');
+  }
+  if (raw.includes('signature.svg') || persisted.includes('signature.svg')) {
+    add('/media/signature.png');
+  }
+  if (raw.includes('portrait-founder') || persisted.includes('portrait-founder')) {
+    add('/media/founder-portrait.svg');
   }
 
   return out;

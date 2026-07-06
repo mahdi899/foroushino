@@ -3,12 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight, Loader2, Search, Sparkles, Trash2, Upload } from 'lucide-react';
 import { cn, toFa } from '@/lib/utils';
-import { resolveMediaUrl, persistMediaUrl } from '@/lib/mediaUrl';
 import { MediaThumb } from '@/components/admin/MediaThumb';
-import { ADMIN_GALLERY_CATEGORIES } from '@/lib/admin/galleryImages';
 import {
   buildUnifiedGallery,
-  filterUnifiedGallery,
   findUnifiedByPersistSrc,
   type UnifiedMediaItem,
 } from '@/lib/admin/unifiedGallery';
@@ -37,15 +34,15 @@ interface MediaLibraryGridProps {
     lastPage: number;
     total: number;
     search: string;
-    category: string;
     loading?: boolean;
     error?: string;
     onSearchChange: (q: string) => void;
-    onCategoryChange: (cat: string) => void;
     onPageChange: (page: number) => void;
   };
   /** Bump to refresh trash badge count (e.g. after delete). */
   trashRefreshSignal?: number;
+  /** `above-card`: toolbar sits outside the white card (gallery page). */
+  toolbarPlacement?: 'inside' | 'above-card';
 }
 
 /** Rough ETA from file size — API has no byte progress. */
@@ -68,6 +65,7 @@ export function MediaLibraryGrid({
   gridClassName,
   paginated,
   trashRefreshSignal = 0,
+  toolbarPlacement = 'inside',
 }: MediaLibraryGridProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -79,18 +77,11 @@ export function MediaLibraryGrid({
   const [optimizePreview, setOptimizePreview] = useState<MediaOptimizePreview | null>(null);
   const [optimizeAlt, setOptimizeAlt] = useState('');
   const [confirming, setConfirming] = useState(false);
-  const [localCategory, setLocalCategory] = useState<(typeof ADMIN_GALLERY_CATEGORIES)[number]>('همه');
   const [trashOpen, setTrashOpen] = useState(false);
   const { count: trashCount, refresh: refreshTrashCount } = useMediaTrashCount(trashRefreshSignal);
 
-  const category = paginated?.category ?? localCategory;
-  const setCategory = paginated?.onCategoryChange ?? setLocalCategory;
-
   const items = useMemo(() => buildUnifiedGallery(uploaded), [uploaded]);
-  const filtered = useMemo(
-    () => (paginated ? items : filterUnifiedGallery(items, category)),
-    [items, category, paginated],
-  );
+  const filtered = items;
   const selected = selectedUrl ? findUnifiedByPersistSrc(items, selectedUrl) : undefined;
 
   function clearUploadProgressTimer() {
@@ -199,97 +190,91 @@ export function MediaLibraryGrid({
     onManage?.(item);
   }
 
-  return (
-    <div className={className}>
-      <div className="border-b border-border px-4 py-3">
-        <div className="admin-media-toolbar mb-3 flex flex-col gap-2.5 sm:flex-row sm:items-center" dir="rtl">
-          {paginated && (
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-              <input
-                type="search"
-                value={paginated.search}
-                onChange={(e) => paginated.onSearchChange(e.target.value)}
-                placeholder="جستجو در عنوان یا توضیحات…"
-                className="field-input w-full border-transparent bg-surface py-2.5 pl-3 pr-9 text-small shadow-none focus:border-primary/30"
-              />
-            </div>
-          )}
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <label
-              className={cn(
-                'admin-upload-btn btn btn-primary relative min-w-[9.5rem] justify-center overflow-hidden px-6 py-2.5 text-small shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98]',
-                uploading && 'is-uploading pointer-events-none',
-              )}
-            >
-              <span
-                aria-hidden
-                className="absolute inset-y-0 left-0 bg-white/25 transition-[width] duration-150 ease-out"
-                style={{ width: uploading ? `${uploadProgress}%` : '0%' }}
-              />
-              <span className="relative z-10 flex items-center gap-2">
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                {uploading ? 'بهینه‌سازی…' : 'آپلود تصویر'}
-              </span>
-              <input
-                ref={inputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp,.heic"
-                className="hidden"
-                onChange={onFile}
-                disabled={uploading}
-              />
-            </label>
-            {showAiGenerate && onAiGenerate && (
-              <button
-                type="button"
-                onClick={onAiGenerate}
-                disabled={aiLoading}
-                className="btn btn-secondary shrink-0 justify-center px-4 py-2.5 text-caption"
-              >
-                {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                تولید AI
-              </button>
-            )}
-          </div>
-        </div>
-        <div className="-mx-1 overflow-x-auto px-1 pb-1">
-            <div className="flex w-max min-w-full gap-1.5 sm:flex-wrap">
-              {ADMIN_GALLERY_CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategory(cat)}
-                  className={cn(
-                    'shrink-0 rounded-pill px-3 py-1.5 text-caption font-medium transition whitespace-nowrap',
-                    category === cat ? 'bg-primary text-on-primary' : 'bg-surface-soft text-text-muted hover:bg-accent-soft',
-                  )}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-          </div>
-        {uploadError && <p className="mt-2 text-caption text-error">{uploadError}</p>}
-        {mode === 'manage' && (
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-caption text-text-muted">روی هر تصویر کلیک کنید — ویرایش alt، عنوان یا حذف</p>
-            <button
-              type="button"
-              onClick={() => setTrashOpen(true)}
-              className="relative inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-caption text-text-muted transition hover:bg-surface-soft hover:text-text"
-              aria-label="سطل زباله"
-            >
-              <Trash2 className="h-4 w-4" />
-              سطل زباله
-              {trashCount > 0 && (
-                <span className="absolute -left-0.5 -top-0.5 h-2.5 w-2.5 animate-pulse rounded-full bg-red-500 ring-2 ring-surface" />
-              )}
-            </button>
+  const toolbarBlock = (
+    <div
+      className={cn(
+        toolbarPlacement === 'above-card' ? 'mb-4' : 'border-b border-border px-4 py-3',
+      )}
+    >
+      <div
+        className={cn(
+          'admin-media-toolbar flex flex-col gap-2.5 sm:flex-row sm:items-center',
+          toolbarPlacement === 'inside' && 'mb-3',
+        )}
+      >
+        {paginated && (
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" aria-hidden />
+            <input
+              type="search"
+              value={paginated.search}
+              onChange={(e) => paginated.onSearchChange(e.target.value)}
+              placeholder="جستجو در عنوان یا توضیحات…"
+              className="field-input field-input--icon-start w-full border-transparent bg-surface text-small shadow-none focus:border-primary/30"
+            />
           </div>
         )}
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <label
+            className={cn(
+              'admin-upload-btn btn btn-primary relative min-w-[9.5rem] justify-center overflow-hidden px-6 py-2.5 text-small shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98]',
+              uploading && 'is-uploading pointer-events-none',
+            )}
+          >
+            <span
+              aria-hidden
+              className="absolute inset-y-0 left-0 bg-white/25 transition-[width] duration-150 ease-out"
+              style={{ width: uploading ? `${uploadProgress}%` : '0%' }}
+            />
+            <span className="relative z-10 flex items-center gap-2">
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              {uploading ? 'بهینه‌سازی…' : 'آپلود تصویر'}
+            </span>
+            <input
+              ref={inputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp,.heic"
+              className="hidden"
+              onChange={onFile}
+              disabled={uploading}
+            />
+          </label>
+          {showAiGenerate && onAiGenerate && (
+            <button
+              type="button"
+              onClick={onAiGenerate}
+              disabled={aiLoading}
+              className="btn btn-secondary shrink-0 justify-center px-4 py-2.5 text-caption"
+            >
+              {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              تولید AI
+            </button>
+          )}
+        </div>
       </div>
+      {uploadError && <p className="mt-2 text-caption text-error">{uploadError}</p>}
+      {mode === 'manage' && (
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-caption text-text-muted">روی هر تصویر کلیک کنید — ویرایش alt، عنوان یا حذف</p>
+          <button
+            type="button"
+            onClick={() => setTrashOpen(true)}
+            className="relative inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-caption text-text-muted transition hover:bg-surface-soft hover:text-text"
+            aria-label="سطل زباله"
+          >
+            <Trash2 className="h-4 w-4" />
+            سطل زباله
+            {trashCount > 0 && (
+              <span className="absolute -left-0.5 -top-0.5 h-2.5 w-2.5 animate-pulse rounded-full bg-red-500 ring-2 ring-surface" />
+            )}
+          </button>
+        </div>
+      )}
+    </div>
+  );
 
+  const gridBody = (
+    <>
       {paginated?.loading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -306,7 +291,7 @@ export function MediaLibraryGrid({
             </>
           ) : (
             <p className="text-small text-text-muted">
-              {paginated?.search.trim() ? 'نتیجه‌ای برای جستجو یافت نشد.' : 'تصویری در این دسته نیست.'}
+              {paginated?.search.trim() ? 'نتیجه‌ای برای جستجو یافت نشد.' : 'هنوز تصویری آپلود نشده.'}
             </p>
           )}
         </div>
@@ -349,7 +334,6 @@ export function MediaLibraryGrid({
                 </div>
                 <div className="absolute inset-x-0 bottom-0 z-[5] bg-black/75 px-1.5 py-1">
                   <p className="truncate text-[10px] text-white">{item.label}</p>
-                  <p className="text-[9px] text-white/70">{item.category}</p>
                 </div>
                 {isSelected && mode === 'pick' && (
                   <span className="absolute inset-0 z-[15] flex items-center justify-center bg-primary/35">
@@ -402,6 +386,17 @@ export function MediaLibraryGrid({
           )}
         </div>
       )}
+    </>
+  );
+
+  return (
+    <div className={className}>
+      {toolbarPlacement === 'above-card' && toolbarBlock}
+
+      <div className={cn(toolbarPlacement === 'above-card' && 'card overflow-hidden')}>
+        {toolbarPlacement === 'inside' && toolbarBlock}
+        {gridBody}
+      </div>
 
       <MediaOptimizeModal
         preview={optimizePreview}

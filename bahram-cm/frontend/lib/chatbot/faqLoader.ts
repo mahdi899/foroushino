@@ -1,4 +1,5 @@
 import type { FaqGroup } from '@/lib/data/chatbotFaq';
+import { backendProxyUrl } from '@/lib/backend-proxy';
 
 export type PublicFaq = {
   id: number;
@@ -11,19 +12,26 @@ export type PublicFaq = {
 const UNCategorized_KEY = '__general__';
 const DEFAULT_GROUP_TITLE = 'سوالات متداول';
 
+function parsePublicFaqsPayload(json: unknown): PublicFaq[] {
+  if (!json || typeof json !== 'object') return [];
+  const data = (json as { data?: unknown }).data;
+  if (!Array.isArray(data)) return [];
+  return data.filter(
+    (item): item is PublicFaq =>
+      Boolean(item) &&
+      typeof item === 'object' &&
+      typeof (item as PublicFaq).question === 'string' &&
+      typeof (item as PublicFaq).answer === 'string',
+  );
+}
+
 /** Same-origin public API — proxied to Laravel; works on any deployed domain. */
 export function resolvePublicFaqsUrl(): string {
   if (typeof window !== 'undefined') {
     return new URL('/api/faqs', window.location.origin).toString();
   }
 
-  const backend = (
-    process.env.BACKEND_PROXY_URL ??
-    process.env.API_INTERNAL_URL ??
-    'http://127.0.0.1:8010'
-  ).replace(/\/+$/, '');
-
-  return `${backend}/api/faqs`;
+  return `${backendProxyUrl()}/api/faqs`;
 }
 
 export function groupFaqsByCategory(faqs: PublicFaq[]): FaqGroup[] {
@@ -51,6 +59,27 @@ export function groupFaqsByCategory(faqs: PublicFaq[]): FaqGroup[] {
     .map(({ order: _order, ...group }) => group);
 }
 
+/** Load active FAQs from admin → commerce → FAQs (server). */
+export async function loadChatbotFaqGroupsServer(): Promise<FaqGroup[]> {
+  try {
+    const res = await fetch(resolvePublicFaqsUrl(), {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      next: { tags: ['public-faqs'] },
+    });
+
+    if (!res.ok) return [];
+
+    const json = await res.json();
+    const faqs = parsePublicFaqsPayload(json);
+    if (faqs.length === 0) return [];
+
+    return groupFaqsByCategory(faqs);
+  } catch {
+    return [];
+  }
+}
+
 /** Load active FAQs from the same source as admin → commerce → FAQs. */
 export async function loadChatbotFaqGroups(): Promise<FaqGroup[]> {
   try {
@@ -62,8 +91,8 @@ export async function loadChatbotFaqGroups(): Promise<FaqGroup[]> {
 
     if (!res.ok) return [];
 
-    const json = (await res.json()) as { data?: PublicFaq[] };
-    const faqs = json.data ?? [];
+    const json = await res.json();
+    const faqs = parsePublicFaqsPayload(json);
     if (faqs.length === 0) return [];
 
     return groupFaqsByCategory(faqs);

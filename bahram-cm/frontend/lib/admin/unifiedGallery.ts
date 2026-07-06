@@ -1,5 +1,6 @@
 import { persistMediaUrl, resolveMediaUrl, normalizeAdminMediaUrl } from '@/lib/mediaUrl';
 import type { AdminMediaItem } from '@/lib/admin/mediaTypes';
+import { buildStaticGallery } from '@/lib/admin/galleryImages';
 
 export type UnifiedMediaItem = {
   key: string;
@@ -23,7 +24,10 @@ export function buildUnifiedGallery(uploaded: AdminMediaItem[]): UnifiedMediaIte
     seen.add(persistSrc);
     items.push({
       key: `media-${row.id}`,
-      src: normalizeAdminMediaUrl(row.url) || resolveMediaUrl(persistSrc),
+      src:
+        normalizeAdminMediaUrl(row.legacyPath ?? row.url) ||
+        normalizeAdminMediaUrl(row.url) ||
+        resolveMediaUrl(persistSrc),
       persistSrc,
       label: row.label,
       category: row.category || 'آپلود شده',
@@ -31,6 +35,20 @@ export function buildUnifiedGallery(uploaded: AdminMediaItem[]): UnifiedMediaIte
       id: row.id,
       mime: row.mime,
       adminItem: row,
+    });
+  }
+
+  for (const staticItem of buildStaticGallery()) {
+    const persistSrc = persistMediaUrl(staticItem.src);
+    if (!persistSrc || seen.has(persistSrc)) continue;
+    seen.add(persistSrc);
+    items.push({
+      key: `static-${staticItem.src}`,
+      src: staticItem.src,
+      persistSrc,
+      label: staticItem.label,
+      category: staticItem.category,
+      kind: 'static',
     });
   }
 

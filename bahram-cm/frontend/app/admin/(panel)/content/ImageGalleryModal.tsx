@@ -32,7 +32,6 @@ export function ImageGalleryModal({
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [category, setCategory] = useState('همه');
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [mounted, setMounted] = useState(false);
@@ -46,10 +45,10 @@ export function ImageGalleryModal({
     return () => window.clearTimeout(t);
   }, [search]);
 
-  const loadPage = useCallback(async (p: number, q: string, cat: string) => {
+  const loadPage = useCallback(async (p: number, q: string) => {
     setLoading(true);
     setLoadError('');
-    const res = await listGalleryMediaPage({ page: p, search: q, category: cat, perPage: 25 });
+    const res = await listGalleryMediaPage({ page: p, search: q, perPage: 25 });
     setUploaded(res.items);
     setPage(res.page);
     setLastPage(res.lastPage);
@@ -60,8 +59,8 @@ export function ImageGalleryModal({
 
   useEffect(() => {
     if (!open) return;
-    void loadPage(1, debouncedSearch, category);
-  }, [open, debouncedSearch, category, loadPage]);
+    void loadPage(1, debouncedSearch);
+  }, [open, debouncedSearch, loadPage]);
 
   if (!open || !mounted) return null;
 
@@ -74,11 +73,6 @@ export function ImageGalleryModal({
 
   function onSearchChange(q: string) {
     setSearch(q);
-    setPage(1);
-  }
-
-  function onCategoryChange(cat: string) {
-    setCategory(cat);
     setPage(1);
   }
 
@@ -111,18 +105,16 @@ export function ImageGalleryModal({
             mode="pick"
             selectedUrl={normalizedValue}
             onSelect={handleSelect}
-            onUploaded={() => void loadPage(1, debouncedSearch, category)}
+            onUploaded={() => void loadPage(1, debouncedSearch)}
             paginated={{
               page,
               lastPage,
               total,
               search,
-              category,
               loading,
               error: loadError,
               onSearchChange,
-              onCategoryChange,
-              onPageChange: (p) => void loadPage(p, debouncedSearch, category),
+              onPageChange: (p) => void loadPage(p, debouncedSearch),
             }}
           />
         </div>

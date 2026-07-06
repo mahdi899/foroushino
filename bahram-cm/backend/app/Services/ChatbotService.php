@@ -502,10 +502,9 @@ class ChatbotService
         $log = ChatbotLog::query()
             ->where('id', $logId)
             ->where('session_id', $sessionId)
-            ->where('question', '!=', '—')
             ->first();
 
-        if (! $log) {
+        if (! $log || ! $this->isRateableLog($log)) {
             return ['ok' => false];
         }
 
@@ -540,10 +539,9 @@ class ChatbotService
         $ratedLog = ChatbotLog::query()
             ->where('id', $ratedLogId)
             ->where('session_id', $sessionId)
-            ->where('question', '!=', '—')
             ->first();
 
-        if (! $ratedLog) {
+        if (! $ratedLog || ! $this->isRateableLog($ratedLog)) {
             return ['ok' => false, 'reason' => 'not_found'];
         }
 
@@ -1031,6 +1029,7 @@ class ChatbotService
                 'operator_avatar_url' => $meta['operator_avatar_url'] ?? null,
                 'reply_to_log_id' => $replyToLogId,
                 'reply_to_preview' => $this->replyTargetPreviewForLog($replyToLogId, $log->session_id),
+                'rating' => isset($meta['rating']) ? (int) $meta['rating'] : null,
                 'created_at' => $log->created_at?->toIso8601String(),
             ];
         }
@@ -1346,5 +1345,16 @@ class ChatbotService
             ->delete();
 
         return $deleted;
+    }
+
+    private function isRateableLog(ChatbotLog $log): bool
+    {
+        $meta = is_array($log->metadata) ? $log->metadata : [];
+
+        if (($meta['event'] ?? null) === 'operator_reply') {
+            return trim((string) $log->answer) !== '' && trim((string) $log->answer) !== '—';
+        }
+
+        return $log->question !== '—' && trim((string) $log->answer) !== '';
     }
 }

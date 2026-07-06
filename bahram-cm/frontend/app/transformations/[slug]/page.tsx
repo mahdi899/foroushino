@@ -28,8 +28,8 @@ export async function generateMetadata({
   const item = await getTransformationBySlug(slug);
   if (!item) return {};
   return buildMetadata({
-    title: `داستان ${item.name}`,
-    description: item.summary,
+    title: item.metaTitle ?? `داستان ${item.name}`,
+    description: item.metaDescription ?? item.summary,
     path: `/transformations/${item.slug}`,
     type: "article",
   });
@@ -44,7 +44,7 @@ export default async function TransformationDetailPage({
   const item = await getTransformationBySlug(slug);
   if (!item) notFound();
 
-  const avatar = caseStudyPortrait(item.slug);
+  const avatar = item.portrait_image || caseStudyPortrait(item.slug);
   const heroAlt = await resolveMediaAlt(pageHeroBackdropPhoto, `داستان ${item.name}`);
 
   return (

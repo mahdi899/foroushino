@@ -125,7 +125,7 @@ function LoginForm() {
 
 export default function AdminLogin() {
   return (
-    <div className="grid min-h-screen place-items-center bg-ink p-4">
+    <div className="admin-main-scroll grid h-full place-items-center bg-ink p-4">
       <Suspense>
         <LoginForm />
       </Suspense>

@@ -13,17 +13,29 @@ type Props = {
   form: ImageOptimizerForm;
   view: ImageOptimizerView | null;
   testing: 'tinify' | 'resmush' | null;
-  onChange: (form: ImageOptimizerForm) => void;
+  saving?: boolean;
+  onChange: React.Dispatch<React.SetStateAction<ImageOptimizerForm>>;
+  onSave?: () => void;
   onTest: (target: 'tinify' | 'resmush') => void;
 };
 
-export function ImageOptimizerSettingsSection({ form, view, testing, onChange, onTest }: Props) {
+export function ImageOptimizerSettingsSection({
+  form,
+  view,
+  testing,
+  saving = false,
+  onChange,
+  onSave,
+  onTest,
+}: Props) {
   const tinifyOk = view?.tinify_configured ?? false;
   const resmushOk = view?.resmush_configured ?? false;
   const qualityValue = normalizeResmushQuality(form.resmushQuality);
+  const savedQuality = view ? normalizeResmushQuality(view.resmush_quality) : null;
+  const qualityDirty = savedQuality !== null && savedQuality !== qualityValue;
 
   function patch(partial: Partial<ImageOptimizerForm>) {
-    onChange({ ...form, ...partial });
+    onChange((prev) => ({ ...prev, ...partial }));
   }
 
   return (
@@ -121,24 +133,48 @@ export function ImageOptimizerSettingsSection({ form, view, testing, onChange, o
 
             <div className="mt-4 flex flex-col gap-4">
               <div>
-                <label className="field-label" htmlFor="resmush-quality">
-                  کیفیت فشرده‌سازی
-                </label>
-                <select
-                  id="resmush-quality"
-                  className="field-input cursor-pointer"
-                  dir="ltr"
-                  value={String(qualityValue)}
-                  onChange={(e) => patch({ resmushQuality: normalizeResmushQuality(e.target.value) })}
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <label className="field-label mb-0">کیفیت فشرده‌سازی</label>
+                  {savedQuality !== null && (
+                    <span className="text-caption text-text-muted" dir="ltr">
+                      ذخیره‌شده: {savedQuality}
+                      {qualityDirty ? ' · تغییر ذخیره‌نشده' : null}
+                    </span>
+                  )}
+                </div>
+                <div
+                  className="grid grid-cols-4 gap-2 sm:grid-cols-8"
+                  role="radiogroup"
+                  aria-label="کیفیت فشرده‌سازی"
                 >
-                  {RESMUSH_QUALITY_OPTIONS.map((q) => (
-                    <option key={q} value={String(q)}>
-                      {q} — {q >= 90 ? 'کیفیت بالا' : q >= 80 ? 'متعادل (پیشنهادی)' : 'فشرده‌تر'}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-caption text-text-muted">
-                  عدد بالاتر = کیفیت بهتر و حجم بیشتر. برای کیفیت بالا <strong>۹۵</strong> را انتخاب کنید.
+                  {RESMUSH_QUALITY_OPTIONS.map((q) => {
+                    const active = qualityValue === q;
+                    return (
+                      <button
+                        key={q}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => patch({ resmushQuality: q })}
+                        className={`rounded-lg border px-2 py-2 text-caption transition-colors ${
+                          active
+                            ? 'border-accent bg-accent-soft text-primary-dark'
+                            : 'border-border bg-surface text-text hover:border-accent/40'
+                        }`}
+                        dir="ltr"
+                      >
+                        {q}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-caption text-text-muted">
+                  {qualityValue >= 90
+                    ? 'کیفیت بالا — حجم بیشتر'
+                    : qualityValue >= 80
+                      ? 'متعادل (پیشنهادی)'
+                      : 'فشرده‌تر — حجم کمتر'}
+                  . برای کیفیت بالا <strong dir="ltr">95</strong> را انتخاب کنید.
                 </p>
               </div>
               <div>
@@ -173,9 +209,22 @@ export function ImageOptimizerSettingsSection({ form, view, testing, onChange, o
           </div>
         </div>
 
-        <p className="mt-4 text-caption text-text-muted">
-          پس از تغییر کیفیت یا کلیدها، دکمه <strong>ذخیره</strong> بالای صفحه را بزنید. اگر در مدال بهینه‌سازی «بدون
-          بهبود» می‌بینید، یعنی فایل از قبل بهینه است یا موتورها در دسترس نبودند.
+        <p className="mt-4 flex flex-wrap items-center gap-3 text-caption text-text-muted">
+          <span>
+            پس از تغییر کیفیت یا کلیدها، دکمه <strong>ذخیره</strong> بالای صفحه را بزنید. اگر در مدال بهینه‌سازی «بدون
+            بهبود» می‌بینید، یعنی فایل از قبل بهینه است یا موتورها در دسترس نبودند.
+          </span>
+          {onSave ? (
+            <button
+              type="button"
+              disabled={saving || testing !== null}
+              onClick={onSave}
+              className="btn btn-secondary px-4 py-1.5 text-caption"
+            >
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              ذخیره این بخش
+            </button>
+          ) : null}
         </p>
       </div>
     </div>

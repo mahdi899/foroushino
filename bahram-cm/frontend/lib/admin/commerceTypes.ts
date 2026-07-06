@@ -49,6 +49,25 @@ export interface AdminFaq {
   created_at: string | null;
 }
 
+export interface AdminStudentTestimonial {
+  id: number;
+  slug: string;
+  name: string;
+  role: string;
+  before_text: string;
+  after_text: string;
+  summary: string;
+  meta_title: string | null;
+  meta_description: string | null;
+  metric_label: string | null;
+  metric_value: string | null;
+  body: string;
+  portrait_image: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string | null;
+}
+
 export interface PaymentSettingsData {
   sandbox_mode: boolean;
   callback_url: string | null;

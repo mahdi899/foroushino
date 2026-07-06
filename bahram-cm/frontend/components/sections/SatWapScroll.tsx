@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { SiteImage } from "@/components/ui/SiteImage";
 import {
   BookOpen,
   Network,
@@ -41,7 +41,7 @@ function WapPillarCard({ pillar }: { pillar: SatWapPillar }) {
     <article className="group overflow-hidden rounded-card-lg border border-bone/10 bg-charcoal/35 shadow-[0_24px_48px_-32px_rgba(0,0,0,0.65)] transition-colors duration-500 hover:border-gold/22">
       <div className="grid lg:grid-cols-12 lg:items-stretch">
         <figure className="relative aspect-[5/4] min-h-[11rem] overflow-hidden lg:col-span-5 lg:aspect-auto lg:min-h-[14rem]">
-          <Image
+          <SiteImage
             src={pillar.image}
             alt={pillar.alt}
             fill

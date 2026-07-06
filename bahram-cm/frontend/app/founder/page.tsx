@@ -208,6 +208,7 @@ export default async function FounderPage() {
                   fallbackAlt="امضای بهرام"
                   width={200}
                   height={70}
+                  wrapperClassName="leading-none"
                   className="max-w-[min(100%,11rem)] sm:max-w-none"
                 />
                 <span className="text-caption text-mist">بهرام</span>

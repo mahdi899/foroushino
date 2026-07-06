@@ -10,7 +10,10 @@ import { cn } from '@/lib/utils';
 import { logoutAction } from '@/lib/auth/actions';
 import { AdminFocusProvider, useAdminFocus } from './AdminFocusContext';
 import { useAdminTheme } from './AdminThemeContext';
+import { AdminThemeToggle } from './AdminThemeToggle';
 import { OperatorQueueAlertProvider, useOperatorQueueAlert } from './OperatorQueueAlertContext';
+import { AdminSaveBarProvider } from './AdminSaveBarContext';
+import { AdminHeaderSaveBar } from './AdminHeaderSaveBar';
 
 function NavIcon({ name, className }: { name: string; className?: string }) {
   const Cmp = (Icons as unknown as Record<string, Icons.LucideIcon>)[name] ?? Icons.Circle;
@@ -21,7 +24,9 @@ export function AdminShell({ children, user }: { children: React.ReactNode; user
   return (
     <AdminFocusProvider>
       <OperatorQueueAlertProvider>
-        <AdminShellInner user={user}>{children}</AdminShellInner>
+        <AdminSaveBarProvider>
+          <AdminShellInner user={user}>{children}</AdminShellInner>
+        </AdminSaveBarProvider>
       </OperatorQueueAlertProvider>
     </AdminFocusProvider>
   );
@@ -31,14 +36,19 @@ function AdminShellInner({ children, user }: { children: React.ReactNode; user?:
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { focusMode, setFocusMode } = useAdminFocus();
-  const { theme, toggleTheme, sidebarCollapsed, toggleSidebar } = useAdminTheme();
+  const { sidebarCollapsed, toggleSidebar } = useAdminTheme();
   const { pendingCount } = useOperatorQueueAlert();
 
   const sidebarW = sidebarCollapsed ? 'w-[68px]' : 'w-64';
   const mainMr = sidebarCollapsed ? 'lg:mr-[68px]' : 'lg:mr-64';
 
   return (
-    <div className={cn('min-h-screen bg-bg', focusMode && 'fixed inset-0 z-[60] overflow-y-auto')}>
+    <div
+      className={cn(
+        'admin-shell bg-bg',
+        focusMode && 'fixed inset-0 z-[60] flex h-dvh max-h-dvh flex-col overflow-hidden',
+      )}
+    >
       {!focusMode && (
         <aside
           className={cn(
@@ -59,7 +69,7 @@ function AdminShellInner({ children, user }: { children: React.ReactNode; user?:
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2">
+          <nav className="admin-sidebar-nav flex-1 overflow-y-auto overflow-x-hidden p-2">
             {adminNav.map((group) => (
               <div key={group.group} className="mb-3">
                 {!sidebarCollapsed && (
@@ -71,7 +81,7 @@ function AdminShellInner({ children, user }: { children: React.ReactNode; user?:
                   {group.items.map((item) => {
                     const active = isAdminNavActive(pathname, item.href, item.matchPrefix);
                     const isChatbotNav = item.href === '/admin/chatbot';
-                    const showQueueAlert = isChatbotNav && pendingCount > 0 && !pathname.startsWith('/admin/chatbot');
+                    const showQueueAlert = isChatbotNav && pendingCount > 0;
                     return (
                       <li key={item.href}>
                         <Link
@@ -83,7 +93,7 @@ function AdminShellInner({ children, user }: { children: React.ReactNode; user?:
                             'admin-nav-item flex items-center rounded-lg text-small font-medium',
                             sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-2.5 py-2',
                             active ? '' : 'text-text hover:bg-surface-soft hover:text-primary',
-                            showQueueAlert && 'animate-admin-queue-blink bg-amber-500/10 ring-1 ring-amber-400/50',
+                            showQueueAlert && 'admin-nav-queue-alert',
                           )}
                         >
                           <span className="relative shrink-0">
@@ -131,23 +141,14 @@ function AdminShellInner({ children, user }: { children: React.ReactNode; user?:
                 </>
               )}
             </button>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              title={theme === 'dark' ? 'حالت روشن' : 'حالت تاریک'}
-              className="flex w-full items-center justify-center gap-2 rounded-lg px-2.5 py-2 text-caption text-text-muted transition hover:bg-surface-soft hover:text-primary"
-            >
-              {theme === 'dark' ? <Icons.Sun className="h-4 w-4" /> : <Icons.Moon className="h-4 w-4" />}
-              {!sidebarCollapsed && <span>{theme === 'dark' ? 'حالت روشن' : 'حالت تاریک'}</span>}
-            </button>
           </div>
         </aside>
       )}
 
-      <div className={cn('admin-main min-h-screen', focusMode ? '' : mainMr)}>
+      <div className={cn('admin-main', focusMode ? 'min-w-0 flex-1' : mainMr)}>
         {!focusMode && (
-          <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-surface/90 px-4 backdrop-blur-md lg:px-6">
-            <div className="flex items-center gap-2">
+          <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-surface/90 px-3 backdrop-blur-md sm:px-4 lg:px-6">
+            <div className="flex min-w-0 items-center gap-1 sm:gap-2">
               <button
                 type="button"
                 className="rounded-lg p-2 text-text-muted transition hover:bg-surface-soft hover:text-primary lg:hidden"
@@ -165,30 +166,38 @@ function AdminShellInner({ children, user }: { children: React.ReactNode; user?:
                 <Icons.PanelRightClose className={cn('h-5 w-5 transition', sidebarCollapsed && 'rotate-180')} />
               </button>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3">
-              {user && (
-                <span className="hidden max-w-[140px] truncate text-small text-text-muted sm:inline">{user.name}</span>
-              )}
+            <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-3">
+              <div className="admin-header-user-chip flex items-center gap-1.5 rounded-pill py-0.5 pe-1 ps-2 sm:ps-2.5">
+                {user ? (
+                  <span className="hidden max-w-[88px] truncate text-small font-medium text-text sm:inline sm:max-w-[120px] md:max-w-[140px]">
+                    {user.name}
+                  </span>
+                ) : null}
+                <AdminThemeToggle />
+              </div>
               <Link
                 href="/"
                 target="_blank"
-                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-caption text-text-muted transition hover:bg-surface-soft hover:text-primary"
+                className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-caption text-text-muted transition hover:bg-surface-soft hover:text-primary sm:px-2.5"
               >
                 <Icons.ExternalLink className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">مشاهده سایت</span>
               </Link>
-              <form action={logoutAction}>
-                <button type="submit" className="btn btn-secondary px-3 py-1.5 text-caption">
-                  <Icons.LogOut className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">خروج</span>
-                </button>
-              </form>
+              <div className="flex items-center gap-1.5">
+                <form action={logoutAction}>
+                  <button type="submit" className="btn btn-secondary px-2.5 py-1.5 text-caption sm:px-3">
+                    <Icons.LogOut className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">خروج</span>
+                  </button>
+                </form>
+                <AdminHeaderSaveBar />
+              </div>
             </div>
           </header>
         )}
 
         {focusMode && (
-          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface/95 px-4 py-2 backdrop-blur">
+          <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-2 border-b border-border bg-surface/95 px-3 py-2 backdrop-blur sm:px-4">
             <p className="text-small font-semibold text-primary-dark">حالت فوکوس — ویرایش مقاله</p>
             <button type="button" onClick={() => setFocusMode(false)} className="btn btn-secondary px-3 py-1.5 text-small">
               <Icons.Minimize2 className="h-4 w-4" />
@@ -197,7 +206,7 @@ function AdminShellInner({ children, user }: { children: React.ReactNode; user?:
           </div>
         )}
 
-        <div className={cn('p-4 lg:p-7', focusMode && 'p-4 lg:p-6')}>{children}</div>
+        <div className={cn('admin-main-scroll p-3 sm:p-4 lg:p-7', focusMode && 'lg:p-6')}>{children}</div>
       </div>
 
       {mobileOpen && !focusMode && (

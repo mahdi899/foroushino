@@ -9,7 +9,10 @@ export type FormSecurityPayload = {
   website?: string;
 };
 
-export function useFormSecurity(target: FormSecurityTarget, options?: { captchaTight?: boolean }) {
+export function useFormSecurity(
+  target: FormSecurityTarget,
+  options?: { captchaTight?: boolean; captchaStacked?: boolean },
+) {
   const captchaGate = useCaptchaGate();
   const captchaRef = useRef<CaptchaFieldHandle>(null);
   const honeypotId = useId();
@@ -19,6 +22,7 @@ export function useFormSecurity(target: FormSecurityTarget, options?: { captchaT
   const honeypotEnabled = captchaGate.config?.honeypot_enabled ?? true;
   const captchaReady = !captchaRequired || captchaGate.fieldReady;
   const securityLoading = captchaGate.loading;
+  const stacked = options?.captchaStacked ?? false;
 
   const getSecurityPayload = (): FormSecurityPayload => ({
     captcha: captchaRequired ? captchaRef.current?.getPayload() ?? null : null,
@@ -48,9 +52,9 @@ export function useFormSecurity(target: FormSecurityTarget, options?: { captchaT
       variant="site"
       compact
       inline
-      tight={options?.captchaTight}
-      pillEmbed={options?.captchaTight}
-      className={options?.captchaTight ? 'shrink-0' : undefined}
+      tight={stacked || options?.captchaTight}
+      pillEmbed={!stacked && !!options?.captchaTight}
+      className={stacked ? 'w-full' : options?.captchaTight ? 'shrink-0' : undefined}
       {...captchaGate.fieldProps}
     />
   ) : null;

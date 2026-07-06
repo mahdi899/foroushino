@@ -11,11 +11,21 @@ import {
 import { AdminAwareChrome } from "@/components/layout/AdminAwareChrome";
 import { SiteChatbotGate } from "@/components/chatbot/SiteChatbotGate";
 import { PerformanceProvider } from "@/components/performance/PerformanceProvider";
+import { loadChatbotFaqGroupsServer } from "@/lib/chatbot/faqLoader";
 import { getPublicChatbotConfig } from "@/lib/chatbot/public";
 import { getPublicPerfConfig } from "@/lib/cache/public";
 import { GrainOverlay } from "@/components/motion/GrainOverlay";
-import { ThemeScript } from "@/components/theme/ThemeScript";
 import "@/styles/globals.css";
+
+const THEME_BOOT_SCRIPT = `(() => {
+  try {
+    var s = localStorage.getItem('bahram-theme');
+    var t = s === 'light' || s === 'dark' ? s : 'dark';
+    document.documentElement.setAttribute('data-theme', t);
+  } catch (_) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();`;
 
 export const metadata: Metadata = defaultMetadata;
 
@@ -23,9 +33,10 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const ld = [personJsonLd(), organizationJsonLd(), courseJsonLd(), websiteJsonLd()];
-  const [chatbotConfig, perfConfig] = await Promise.all([
+  const [chatbotConfig, perfConfig, chatbotFaqs] = await Promise.all([
     getPublicChatbotConfig(),
     getPublicPerfConfig(),
+    loadChatbotFaqGroupsServer(),
   ]);
   const chatbotAiAvailable = chatbotConfig.enabled && (chatbotConfig.ai_available ?? false);
 
@@ -38,7 +49,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <ThemeScript />
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>
       <body className={`${fontClassName} antialiased`} suppressHydrationWarning>
         <a
@@ -51,7 +62,7 @@ export default async function RootLayout({
         <PerformanceProvider config={perfConfig}>
           <AdminAwareChrome>{children}</AdminAwareChrome>
         </PerformanceProvider>
-        <SiteChatbotGate config={chatbotConfig} aiAvailable={chatbotAiAvailable} />
+        <SiteChatbotGate config={chatbotConfig} aiAvailable={chatbotAiAvailable} faqGroups={chatbotFaqs} />
         <Script id="jsonld-site" type="application/ld+json">
           {JSON.stringify(ld)}
         </Script>

@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { Reveal } from "@/components/motion/Reveal";
 import { PhotoFrame } from "@/components/ui/PhotoFrame";
 import { cn } from "@/lib/cn";
@@ -54,7 +54,7 @@ function EmeraldSlide({ item, compact }: { item: AcademyShowcaseSlideData; compa
           data-neon-tone="emerald"
           className="neon-surface-static overflow-hidden rounded-[38px] border border-bone/12 bg-ink"
         >
-          <Image
+          <SiteImage
             src={item.src}
             alt={item.alt ?? item.title}
             width={420}

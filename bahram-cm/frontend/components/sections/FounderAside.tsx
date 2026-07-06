@@ -1,8 +1,8 @@
-import Image from "next/image";
 import { site } from "@/content/site";
 import { Reveal } from "@/components/motion/Reveal";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { LinkButton } from "@/components/ui/Button";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { sitePhotos } from "@/lib/site-photo-paths";
 
 export function FounderAside() {
@@ -12,7 +12,7 @@ export function FounderAside() {
         <div className="grid items-center gap-6 sm:gap-7 lg:grid-cols-12 lg:gap-8 xl:gap-9">
           <Reveal className="lg:col-span-5">
             <div className="relative aspect-[25/24] w-full overflow-hidden rounded-card-lg border border-bone/10 shadow-frame max-lg:rounded-card">
-              <Image
+              <SiteImage
                 src={sitePhotos.portraitFounder}
                 alt={site.founderAside.title}
                 fill
@@ -47,11 +47,13 @@ export function FounderAside() {
             </Reveal>
             <Reveal delay={0.24}>
               <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-bone/8 pt-4 sm:gap-4 md:mt-5">
-                <Image
+                <SiteImage
                   src="/media/signature.png"
                   alt="امضای بهرام"
+                  fallbackAlt="امضای بهرام"
                   width={180}
                   height={63}
+                  wrapperClassName="leading-none"
                   className="h-auto w-[min(5rem,28vw)] max-w-[96px] shrink-0 object-contain object-start sm:max-w-[120px] md:max-w-[148px] lg:max-w-[168px]"
                 />
                 <LinkButton

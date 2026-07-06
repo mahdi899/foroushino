@@ -311,6 +311,149 @@ export function scoreArticleSeo(input: {
   return { score, checks, stats, grade };
 }
 
+/** Live SEO scoring for static site pages (admin meta editor). */
+export function scorePageSeo(input: {
+  pageLabel: string;
+  pagePath: string;
+  focusKeyword?: string | null;
+  metaTitle: string;
+  metaDescription: string;
+  canonical?: string | null;
+  robots?: string;
+}): SeoScoreResult {
+  const kw = (input.focusKeyword ?? '').trim();
+  const title = input.metaTitle || input.pageLabel || '';
+  const desc = input.metaDescription || '';
+  const kwLower = kw.toLowerCase();
+  const titleLower = title.toLowerCase();
+  const descLower = desc.toLowerCase();
+  const pathLower = input.pagePath.toLowerCase();
+
+  const inTitle = kw ? titleLower.includes(kwLower) : false;
+  const inDesc = kw ? descLower.includes(kwLower) : false;
+  const inPath = kw
+    ? pathLower.includes(kwLower.replace(/\s+/g, '-')) || pathLower.includes(kwLower.replace(/\s+/g, ''))
+    : false;
+
+  const titleLen = title.length;
+  const descLen = desc.length;
+  const isIndexable = !input.robots || /index/i.test(input.robots);
+  const canonical = (input.canonical ?? '').trim();
+  let canonicalValid = false;
+  if (canonical) {
+    try {
+      const parsed = new URL(canonical);
+      canonicalValid = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      canonicalValid = false;
+    }
+  }
+
+  const checks: SeoCheck[] = [
+    {
+      id: 'focus',
+      group: 'keyword',
+      label: 'کلمه کلیدی اصلی',
+      status: statusFrom(!!kw),
+      hint: kw ? `Focus: «${kw}»` : 'کلمه کلیدی را در بخش SEO وارد کنید',
+    },
+    {
+      id: 'title-kw',
+      group: 'keyword',
+      label: 'کلمه کلیدی در عنوان SEO',
+      status: statusFrom(!kw || inTitle, !kw),
+      hint: inTitle ? 'کلمه کلیدی در meta title هست' : 'کلمه کلیدی را نزدیک ابتدای عنوان SEO بگذارید',
+    },
+    {
+      id: 'desc-kw',
+      group: 'keyword',
+      label: 'کلمه کلیدی در Meta Description',
+      status: statusFrom(!kw || inDesc, !kw),
+      hint: inDesc ? 'کلمه کلیدی در توضیحات متا هست' : 'کلمه کلیدی را یک‌بار در meta description بگنجانید',
+    },
+    {
+      id: 'path-kw',
+      group: 'keyword',
+      label: 'مسیر URL مرتبط',
+      status: statusFrom(!kw || inPath, !kw),
+      hint: inPath ? 'مسیر صفحه با کلمه کلیدی هم‌خوان است' : 'در صورت امکان مسیر صفحه را نزدیک کلمه کلیدی نگه دارید',
+    },
+    {
+      id: 'title-len',
+      group: 'technical',
+      label: 'طول عنوان SEO',
+      status: statusFrom(titleLen >= 30 && titleLen <= 60, titleLen > 0 && titleLen <= 70),
+      hint: `${titleLen} کاراکتر — هدف ۳۰–۶۰`,
+    },
+    {
+      id: 'desc-len',
+      group: 'technical',
+      label: 'طول Meta Description',
+      status: statusFrom(descLen >= 120 && descLen <= 160, descLen >= 80 && descLen <= 170),
+      hint: `${descLen} کاراکتر — هدف ۱۲۰–۱۶۰`,
+    },
+    {
+      id: 'robots',
+      group: 'technical',
+      label: 'ایندکس در موتور جستجو',
+      status: statusFrom(isIndexable),
+      hint: isIndexable ? 'robots: index — قابل ایندکس' : 'robots روی noindex است — برای انتشار index,follow بگذارید',
+    },
+    {
+      id: 'canonical',
+      group: 'technical',
+      label: 'Canonical URL',
+      status: statusFrom(!canonical || canonicalValid, Boolean(canonical)),
+      hint: canonical
+        ? canonicalValid
+          ? 'آدرس canonical معتبر است'
+          : 'آدرس canonical باید با http:// یا https:// شروع شود'
+        : 'canonical خالی است — پیش‌فرض همان URL صفحه است',
+    },
+    {
+      id: 'page-label',
+      group: 'content',
+      label: 'عنوان صفحه در متا',
+      status: statusFrom(Boolean(title.trim())),
+      hint: title.trim() ? `عنوان: ${title.trim()}` : 'Meta Title را پر کنید',
+    },
+    {
+      id: 'page-desc',
+      group: 'content',
+      label: 'توضیحات snippet',
+      status: statusFrom(descLen >= 100, descLen >= 60),
+      hint:
+        descLen >= 100
+          ? `${descLen} کاراکتر — مناسب snippet گوگل`
+          : 'توضیحات ۱۰۰+ کاراکتر برای CTR بهتر بنویسید',
+    },
+  ];
+
+  const weights = { good: 1, ok: 0.55, bad: 0 };
+  const score = Math.round((checks.reduce((s, c) => s + weights[c.status], 0) / checks.length) * 100);
+
+  const grade: SeoScoreResult['grade'] =
+    score >= 85 ? 'excellent' : score >= 70 ? 'good' : score >= 50 ? 'fair' : 'poor';
+
+  const stats: SeoArticleStats = {
+    wordCount: countWords(desc),
+    readingMinutes: 1,
+    h2Count: 0,
+    h3Count: 0,
+    internalLinks: 0,
+    externalLinks: 0,
+    imageCount: 0,
+    imagesWithAlt: 0,
+    keywordCount: kw ? (inTitle ? 1 : 0) + (inDesc ? 1 : 0) + (inPath ? 1 : 0) : 0,
+    keywordDensity: 0,
+    titleLength: titleLen,
+    descLength: descLen,
+    slugLength: input.pagePath.length,
+  };
+
+  return { score, checks, stats, grade };
+}
+
 export const SEO_CHECK_GROUPS: { id: SeoCheck['group']; label: string }[] = [
   { id: 'keyword', label: 'کلمه کلیدی' },
   { id: 'technical', label: 'فنی / متا' },

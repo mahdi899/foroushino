@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { SiteImage } from "@/components/ui/SiteImage";
 import Link from "next/link";
 import { ArrowLeft, PencilLine, Phone, Shield, Target, Zap } from "lucide-react";
 import { site } from "@/content/site";
@@ -166,7 +166,7 @@ function PathCard({
       className="main-path-card group relative block min-h-[17.5rem] overflow-hidden rounded-card-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-glow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink md:min-h-[15.5rem] lg:min-h-[16.25rem]"
     >
       <div className="main-path-card-media absolute inset-y-0 end-0 w-[min(52%,15.5rem)] sm:w-[min(54%,17rem)] md:w-[48%] lg:w-[46%]">
-        <Image
+        <SiteImage
           src={image}
           alt={imageAlt}
           fill

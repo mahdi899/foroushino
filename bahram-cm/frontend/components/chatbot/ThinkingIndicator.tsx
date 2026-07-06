@@ -36,8 +36,8 @@ function OperatorWaitIcon({ light }: { light: boolean }) {
   return (
     <div
       className={cn(
-        'relative grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-operator text-white',
-        light && 'ring-1 ring-gold/25',
+        'relative grid h-7 w-7 shrink-0 place-items-center rounded-full text-white',
+        light ? 'bg-gradient-operator ring-1 ring-gold/25' : 'bg-gradient-operator-dark text-bone ring-1 ring-gold/15',
       )}
     >
       <motion.div

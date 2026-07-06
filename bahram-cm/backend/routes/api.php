@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ArticleController;
 use App\Http\Controllers\Api\ChatbotController;
 use App\Http\Controllers\Api\FaqController;
+use App\Http\Controllers\Api\StudentTestimonialController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\MediaAltController;
 use App\Http\Controllers\Api\OrderController;
@@ -25,6 +26,10 @@ Route::prefix('v1')->group(base_path('routes/api_v1.php'));
 
 // FAQ
 Route::get('/faqs', [FaqController::class, 'index']);
+
+// Student testimonials (transformations / case studies)
+Route::get('/transformations', [StudentTestimonialController::class, 'index']);
+Route::get('/transformations/{slug}', [StudentTestimonialController::class, 'show'])->where('slug', '[^/]+');
 
 // Media alt (public SEO / accessibility lookup)
 Route::get('/media/alt', [MediaAltController::class, 'show'])->middleware('throttle:120,1');

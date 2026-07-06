@@ -245,14 +245,14 @@ function OperatorAvatar({
   }
 
   return (
-    <span className={cn(className, 'grid place-items-center bg-gradient-operator text-white')}>
+    <span className={cn(className, 'grid place-items-center')}>
       <User className={iconClassName ?? 'h-[18px] w-[18px]'} />
     </span>
   );
 }
 
-const OPERATOR_AVATAR_RING =
-  'relative shrink-0 overflow-hidden rounded-full bg-gradient-operator ring-2 ring-gold-soft/35 text-white shadow-[0_1px_3px_rgba(0,0,0,0.12)]';
+const OPERATOR_AVATAR_RING_BASE =
+  'relative shrink-0 overflow-hidden rounded-full shadow-[0_1px_3px_rgba(0,0,0,0.12)]';
 
 const OPERATOR_STACK_MAX = 4;
 const OPERATOR_STACK_SIZE_PX = 44;
@@ -275,9 +275,11 @@ function pickRandomProfiles(
 function OperatorAvatarStack({
   profiles,
   maxVisible = OPERATOR_STACK_MAX,
+  ringClass,
 }: {
   profiles: ChatbotOperatorProfile[];
   maxVisible?: number;
+  ringClass: string;
 }) {
   const profileKey = profiles.map((p) => p.id).join('\0');
   const visible = useMemo(
@@ -287,7 +289,7 @@ function OperatorAvatarStack({
 
   if (visible.length === 0) {
     return (
-      <span className={cn('grid h-11 w-11 place-items-center text-white', OPERATOR_AVATAR_RING)}>
+      <span className={cn('grid h-11 w-11 place-items-center', OPERATOR_AVATAR_RING_BASE, ringClass)}>
         <User className="h-[18px] w-[18px]" />
       </span>
     );
@@ -298,7 +300,7 @@ function OperatorAvatarStack({
       <OperatorAvatar
         name={visible[0].name}
         avatarUrl={visible[0].avatar_url}
-        className={cn('h-11 w-11 rounded-full', OPERATOR_AVATAR_RING)}
+        className={cn('h-11 w-11 rounded-full', OPERATOR_AVATAR_RING_BASE, ringClass)}
         iconClassName="h-[18px] w-[18px]"
       />
     );
@@ -316,7 +318,7 @@ function OperatorAvatarStack({
       {visible.map((profile, index) => (
         <div
           key={profile.id}
-          className={cn('h-11 w-11', OPERATOR_AVATAR_RING, index > 0 && OPERATOR_STACK_OVERLAP)}
+          className={cn('h-11 w-11', OPERATOR_AVATAR_RING_BASE, ringClass, index > 0 && OPERATOR_STACK_OVERLAP)}
           style={{ zIndex: visible.length - index }}
         >
           <OperatorAvatar
@@ -402,6 +404,7 @@ export function FloatingChatbot({ config, faqGroups: initialFaqGroups, aiAvailab
   const [tab, setTab] = useState<AssistantTab>(defaultTab);
   const [faqGroups, setFaqGroups] = useState<FaqGroup[]>(initialFaqGroups);
   const [faqLoading, setFaqLoading] = useState(false);
+  const faqFetchAttemptedRef = useRef(false);
   const [messages, setMessages] = useState<ChatbotMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -772,7 +775,17 @@ export function FloatingChatbot({ config, faqGroups: initialFaqGroups, aiAvailab
   }, [chatEnabled]);
 
   useEffect(() => {
-    if (!lazyLoadFaqs || tab !== 'faq' || faqGroups.length > 0 || faqLoading) return;
+    if (initialFaqGroups.length > 0) {
+      setFaqGroups(initialFaqGroups);
+    }
+  }, [initialFaqGroups]);
+
+  useEffect(() => {
+    if (!lazyLoadFaqs || tab !== 'faq') return;
+    if (faqGroups.length > 0) return;
+    if (faqFetchAttemptedRef.current) return;
+
+    faqFetchAttemptedRef.current = true;
     let active = true;
     setFaqLoading(true);
     void loadChatbotFaqGroups()
@@ -785,7 +798,7 @@ export function FloatingChatbot({ config, faqGroups: initialFaqGroups, aiAvailab
     return () => {
       active = false;
     };
-  }, [lazyLoadFaqs, tab, faqGroups.length, faqLoading]);
+  }, [lazyLoadFaqs, tab, faqGroups.length]);
 
   useEffect(() => {
     if (!chatEnabled || !needsOperatorPoll) return;
@@ -816,6 +829,7 @@ export function FloatingChatbot({ config, faqGroups: initialFaqGroups, aiAvailab
           operatorAvatarUrl: reply.operator_avatar_url ?? undefined,
           replyToLogId: reply.reply_to_log_id ?? undefined,
           replyToPreview: reply.reply_to_preview ?? undefined,
+          ...(reply.rating ? { rating: reply.rating } : {}),
           typing: true,
         });
       }
@@ -1358,15 +1372,28 @@ export function FloatingChatbot({ config, faqGroups: initialFaqGroups, aiAvailab
           />
           <div
             className={cn(
-              'relative z-10 shrink-0 border-b border-white/10 px-3 py-2 sm:px-4',
+              'relative z-10 shrink-0 border-b px-3 py-2 sm:px-4',
               headerShowsOperator && tab === 'chat' && chatEnabled
-                ? chatTheme.headerOperator
-                : chatTheme.headerDefault,
+                ? cn(
+                    chatTheme.headerOperator,
+                    dataTheme === 'dark' ? 'border-gold/10' : 'border-white/10',
+                  )
+                : cn(chatTheme.headerDefault, 'border-white/10'),
             )}
           >
             <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-              <div className="absolute -left-10 -top-10 h-28 w-28 rounded-full bg-white/10 blur-2xl" />
-              <div className="absolute -bottom-8 -right-6 h-24 w-24 rounded-full bg-accent-bright/25 blur-2xl" />
+              <div
+                className={cn(
+                  'absolute -left-10 -top-10 h-28 w-28 rounded-full blur-2xl',
+                  headerShowsOperator && dataTheme === 'dark' ? 'bg-gold/6' : 'bg-white/10',
+                )}
+              />
+              <div
+                className={cn(
+                  'absolute -bottom-8 -right-6 h-24 w-24 rounded-full blur-2xl',
+                  headerShowsOperator && dataTheme === 'dark' ? 'bg-gold/8' : 'bg-accent-bright/25',
+                )}
+              />
             </div>
             <div className="relative">
               <div className="flex min-h-12 items-center justify-between gap-2">
@@ -1400,7 +1427,7 @@ export function FloatingChatbot({ config, faqGroups: initialFaqGroups, aiAvailab
                     {tab === 'chat' ? (
                       headerShowsOperator ? (
                         headerShowsOperatorStack ? (
-                          <OperatorAvatarStack profiles={config.operator_profiles} />
+                          <OperatorAvatarStack profiles={config.operator_profiles} ringClass={chatTheme.operatorAvatarRing} />
                         ) : (
                           <OperatorAvatar
                             name={activeOperatorPresentation?.name ?? 'اپراتور'}
@@ -1580,16 +1607,16 @@ export function FloatingChatbot({ config, faqGroups: initialFaqGroups, aiAvailab
                           })()}
                         </div>
                         {msg.role === 'assistant' &&
-                          msg.isAiReply === true &&
                           msg.logId &&
                           !msg.pending &&
                           !msg.typing &&
                           !msg.error &&
-                          !msg.fromOperator &&
                           !msg.isOperatorAck &&
-                          msg.id !== 'welcome' && (
+                          msg.id !== 'welcome' &&
+                          (msg.isAiReply === true || msg.fromOperator) && (
                             <ChatMessageRating
                               value={msg.rating}
+                              prompt={msg.fromOperator ? 'پاسخ اپراتور چطور بود؟' : undefined}
                               onRate={(rating) => void handleRate(msg.id, msg.logId!, rating)}
                             />
                           )}

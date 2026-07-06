@@ -2,10 +2,10 @@
 
 import NextImage, { type ImageProps } from 'next/image';
 import { ImageIcon } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GRAY_BLUR_DATA_URL } from '@/lib/imagePlaceholder';
 import { IMAGE_SIZES } from '@/lib/imageSizes';
-import { resolveMediaUrl } from '@/lib/mediaUrl';
+import { resolveMediaUrl, siteMediaFallbacks } from '@/lib/mediaUrl';
 import { useLazyImages } from '@/components/performance/PerformanceProvider';
 import { cn } from '@/lib/utils';
 
@@ -51,9 +51,29 @@ export function AppImage({
   const shouldDefer = !priority && lazyImages;
   const [inView, setInView] = useState(!shouldDefer);
   const [loaded, setLoaded] = useState(false);
+  const [fallbackIndex, setFallbackIndex] = useState(0);
   const hostRef = useRef<HTMLSpanElement>(null);
   const showShell = shouldDefer && (!inView || !loaded);
-  const resolvedSrc = typeof src === 'string' ? resolveMediaUrl(src) : src;
+
+  const fallbacks = useMemo(
+    () => (typeof src === 'string' ? siteMediaFallbacks(src) : []),
+    [src],
+  );
+
+  useEffect(() => {
+    setFallbackIndex(0);
+    setLoaded(false);
+  }, [src]);
+
+  const resolvedSrc =
+    typeof src === 'string'
+      ? fallbacks[fallbackIndex] ?? resolveMediaUrl(src)
+      : src;
+
+  const handleImageError = useCallback(() => {
+    setLoaded(false);
+    setFallbackIndex((prev) => (prev + 1 < fallbacks.length ? prev + 1 : prev));
+  }, [fallbacks.length]);
 
   useEffect(() => {
     if (!shouldDefer) {
@@ -95,6 +115,7 @@ export function AppImage({
     inView ? (
       <NextImage
         {...props}
+        key={typeof resolvedSrc === 'string' ? resolvedSrc : undefined}
         src={resolvedSrc}
         fill={fill}
         sizes={sizes ?? (fill ? IMAGE_SIZES.fillDefault : undefined)}
@@ -111,6 +132,7 @@ export function AppImage({
           className,
         )}
         onLoad={handleLoad}
+        onError={handleImageError}
       />
     ) : null;
 
@@ -127,7 +149,11 @@ export function AppImage({
   return (
     <span
       ref={hostRef}
-      className={cn('relative inline-block overflow-hidden bg-zinc-200', wrapperClassName)}
+      className={cn(
+        'relative inline-block overflow-hidden',
+        showShell && 'bg-zinc-200',
+        wrapperClassName,
+      )}
     >
       {shell}
       {image}

@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Save } from 'lucide-react';
 import { AdminPage } from '../ui';
+import { useAdminSaveBar } from '../AdminSaveBarContext';
 import { siteConfig } from '@/config/site';
 import {
   getSiteSettings,
@@ -66,6 +67,23 @@ export default function SettingsPage() {
   const [imageOptimizerForm, setImageOptimizerForm] = useState<ImageOptimizerForm>(DEFAULT_IMAGE_OPTIMIZER_FORM);
   const [imageOptimizerView, setImageOptimizerView] = useState<ImageOptimizerView | null>(null);
   const [imageOptimizerTesting, setImageOptimizerTesting] = useState<'tinify' | 'resmush' | null>(null);
+  const [imageOptimizerSaving, setImageOptimizerSaving] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const baselineRef = useRef('');
+
+  const settingsSnapshot = useMemo(
+    () =>
+      JSON.stringify({
+        data,
+        captchaForm,
+        trackingForm,
+        integrationsForm,
+        imageOptimizerForm,
+      }),
+    [data, captchaForm, trackingForm, integrationsForm, imageOptimizerForm],
+  );
+
+  const isDirty = hydrated && settingsSnapshot !== baselineRef.current;
 
   useEffect(() => {
     void Promise.all([
@@ -76,7 +94,15 @@ export default function SettingsPage() {
       loadImageOptimizerSettingsPanel(),
     ])
       .then(([site, captcha, tracking, integrations, imageOptimizer]) => {
-        if (site && Object.keys(site).length) setData((v) => ({ ...v, ...site }));
+        const loadedData = {
+          phone: siteConfig.contact.phone,
+          whatsapp: siteConfig.contact.whatsapp,
+          email: siteConfig.contact.email,
+          address: siteConfig.location.address,
+          mapUrl: siteConfig.location.mapUrl,
+          ...(site && Object.keys(site).length ? site : {}),
+        };
+        setData(loadedData);
         setCaptchaForm(captcha.form);
         setCaptchaMeta({
           hasSecretKey: captcha.meta.hasSecretKey,
@@ -95,6 +121,14 @@ export default function SettingsPage() {
         setIntegrationsView(integrations.view);
         setImageOptimizerForm(imageOptimizer.form);
         setImageOptimizerView(imageOptimizer.view);
+        baselineRef.current = JSON.stringify({
+          data: loadedData,
+          captchaForm: captcha.form,
+          trackingForm: tracking.form,
+          integrationsForm: integrations.form,
+          imageOptimizerForm: imageOptimizer.form,
+        });
+        setHydrated(true);
       })
       .catch(() => {});
   }, []);
@@ -147,6 +181,24 @@ export default function SettingsPage() {
       setImageOptimizerView(view);
     }
     return res;
+  }
+
+  async function handleSaveImageOptimizerSection() {
+    setImageOptimizerSaving(true);
+    setStatusMessage('');
+    const res = await saveImageOptimizerOnly();
+    setImageOptimizerSaving(false);
+    if (res.ok) {
+      setStatus('saved');
+      setStatusMessage('تنظیمات بهینه‌سازی تصویر ذخیره شد.');
+    } else {
+      setStatus('error');
+      setStatusMessage(res.error ?? 'ذخیره تنظیمات بهینه‌سازی تصویر ناموفق بود.');
+    }
+    setTimeout(() => {
+      setStatus('idle');
+      setStatusMessage('');
+    }, 2800);
   }
 
   async function handleTestIntegration(target: 'webhook' | 'cloudflare') {
@@ -209,6 +261,21 @@ export default function SettingsPage() {
       setStatusMessage('');
     }, 2800);
   }
+
+  useEffect(() => {
+    if (status === 'saved') {
+      baselineRef.current = settingsSnapshot;
+    }
+  }, [status, settingsSnapshot]);
+
+  useAdminSaveBar({
+    dirty: isDirty,
+    onSave: save,
+    saving: status === 'loading',
+    label: 'ذخیره تغییرات',
+    message: status !== 'idle' && status !== 'loading' ? statusMessage : undefined,
+    messageTone: status === 'error' ? 'error' : 'success',
+  });
 
   function field(key: keyof typeof data, label: string, dir?: string) {
     return (
@@ -285,7 +352,9 @@ export default function SettingsPage() {
           form={imageOptimizerForm}
           view={imageOptimizerView}
           testing={imageOptimizerTesting}
+          saving={imageOptimizerSaving}
           onChange={setImageOptimizerForm}
+          onSave={() => void handleSaveImageOptimizerSection()}
           onTest={(target) => void handleTestImageOptimizer(target)}
         />
 

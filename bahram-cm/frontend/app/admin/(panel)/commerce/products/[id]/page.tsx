@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation';
-import { AdminPage } from '../../../ui';
 import { getProduct } from '@/lib/admin/commerceData';
 import { ProductForm } from '../ProductForm';
 
@@ -10,9 +9,5 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   const product = await getProduct(Number(id));
   if (!product) notFound();
 
-  return (
-    <AdminPage title={`ویرایش: ${product.title}`} desc="ویرایش اطلاعات محصول">
-      <ProductForm product={product} />
-    </AdminPage>
-  );
+  return <ProductForm product={product} />;
 }

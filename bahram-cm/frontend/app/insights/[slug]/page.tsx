@@ -77,6 +77,8 @@ export default async function InsightDetailPage({
     ]),
   ];
 
+  const coverSrc = post.featured_image ? resolveMediaUrl(post.featured_image) : null;
+
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       <ContentViewTracker type="insight" slug={post.slug} />
@@ -87,84 +89,102 @@ export default async function InsightDetailPage({
       />
 
       <section className="relative isolate overflow-hidden bg-ink">
-        {post.featured_image ? (
-          <div aria-hidden className="absolute inset-0 opacity-60">
+        {coverSrc ? (
+          <div className="insight-hero-stage">
             <SiteImage
-              src={resolveMediaUrl(post.featured_image)}
-              alt={post.featured_image_alt}
-              fallbackAlt={post.title}
+              src={coverSrc}
+              alt=""
               fill
               priority
+              sizes="100vw"
               className="object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-ink/55 via-ink/70 to-ink" />
-          </div>
-        ) : null}
-        <div className="container-luxe relative z-[2] max-w-4xl min-w-0 py-section-sm">
-          <Reveal>
-            <nav
-              aria-label="مسیر صفحه"
-              className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-caption"
-            >
-              <Link
-                href="/insights"
-                className="shrink-0 text-gold transition-colors hover:text-gold-soft"
-              >
-                بلاگ
-              </Link>
-              <ChevronLeft className="rtl-flip h-3.5 w-3.5 shrink-0 text-mist/50" aria-hidden />
-              <span className="min-w-0 truncate text-mist">{post.kicker || "مقاله"}</span>
-            </nav>
-          </Reveal>
-          <Reveal delay={0.08}>
-            <h1 className="mt-4 max-w-full min-w-0 text-h1 text-balance text-bone md:mt-5 md:text-display">
-              {post.title}
-            </h1>
-          </Reveal>
-          {(post.published_at || post.reading_time) && (
-            <Reveal delay={0.14}>
-              <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 text-caption text-mist">
-                {post.published_at ? (
-                  <time dateTime={post.published_at} className="inline-flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
-                    {formatDateFa(post.published_at)}
-                  </time>
-                ) : null}
-                {post.reading_time ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
-                    {post.reading_time}
-                  </span>
-                ) : null}
+            <div className="insight-hero-stage-bottom-fade" aria-hidden />
+
+            <div className="container-luxe relative z-[3] mx-auto max-w-4xl min-w-0 pt-section-sm">
+              <Reveal>
+                <nav aria-label="مسیر صفحه" className="insight-hero-breadcrumb">
+                  <Link href="/insights" className="insight-hero-breadcrumb-link">
+                    بلاگ
+                  </Link>
+                  <ChevronLeft className="insight-hero-breadcrumb-sep rtl-flip h-3.5 w-3.5" aria-hidden />
+                  <span className="insight-hero-breadcrumb-current">{post.kicker || "مقاله"}</span>
+                </nav>
+              </Reveal>
+            </div>
+
+            <Reveal delay={0.08}>
+              <div className="insight-hero-stage-content">
+                <div className="insight-hero-stage-content-inner container-luxe mx-auto max-w-[45rem] min-w-0">
+                  <h1 className="insight-hero-cover-title max-w-full min-w-0 text-h2 text-balance md:text-h1">
+                    {post.title}
+                  </h1>
+                  {(post.published_at || post.reading_time) && (
+                    <div className="insight-hero-meta mt-4 md:mt-5">
+                      {post.published_at ? (
+                        <time dateTime={post.published_at} className="inline-flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
+                          {formatDateFa(post.published_at)}
+                        </time>
+                      ) : null}
+                      {post.reading_time ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
+                          {post.reading_time}
+                        </span>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
               </div>
             </Reveal>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="container-luxe relative z-[2] mx-auto max-w-4xl min-w-0 pb-8 pt-section-sm md:pb-10">
+            <Reveal>
+              <nav aria-label="مسیر صفحه" className="insight-hero-breadcrumb">
+                <Link href="/insights" className="insight-hero-breadcrumb-link">
+                  بلاگ
+                </Link>
+                <ChevronLeft className="insight-hero-breadcrumb-sep rtl-flip h-3.5 w-3.5" aria-hidden />
+                <span className="insight-hero-breadcrumb-current">{post.kicker || "مقاله"}</span>
+              </nav>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <h1 className="mt-4 max-w-full min-w-0 text-h1 text-balance text-bone md:mt-5 md:text-display">
+                {post.title}
+              </h1>
+            </Reveal>
+            {(post.published_at || post.reading_time) && (
+              <Reveal delay={0.14}>
+                <div className="insight-hero-meta insight-hero-meta--page mt-7">
+                  {post.published_at ? (
+                    <time dateTime={post.published_at} className="inline-flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
+                      {formatDateFa(post.published_at)}
+                    </time>
+                  ) : null}
+                  {post.reading_time ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
+                      {post.reading_time}
+                    </span>
+                  ) : null}
+                </div>
+              </Reveal>
+            )}
+          </div>
+        )}
+
+        <div className="insight-hero-section-fade" aria-hidden />
       </section>
 
       <section className="py-section-sm">
-        <div className="container-luxe max-w-3xl min-w-0">
-          <div className="flex flex-col gap-8 md:gap-10">
-            {post.featured_image ? (
-              <Reveal delay={0.06}>
-                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-card border border-bone/10 bg-charcoal/40">
-                  <SiteImage
-                    src={resolveMediaUrl(post.featured_image)}
-                    alt={post.featured_image_alt}
-                    fallbackAlt={post.title}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 768px"
-                    className="object-cover"
-                    priority
-                  />
-                </div>
-              </Reveal>
-            ) : null}
-            <article
-              className="prose-luxe text-bone-dim"
-              dangerouslySetInnerHTML={{ __html: post.content }}
-            />
-          </div>
+        <div className="insight-article-wrap">
+          <article
+            className="prose-luxe insight-article-prose text-bone-dim"
+            dangerouslySetInnerHTML={{ __html: post.content }}
+          />
         </div>
       </section>
 

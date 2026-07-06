@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import { SiteImage } from "@/components/ui/SiteImage";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -107,7 +107,7 @@ export default function MiniCoursesPage() {
                 className="neon-surface-hover group relative flex h-full flex-col overflow-hidden rounded-card border border-bone/10 bg-charcoal/55 transition-colors hover:border-bone/25"
               >
                 <div className="relative aspect-[16/10] shrink-0 overflow-hidden">
-                  <Image
+                  <SiteImage
                     src={item.image}
                     alt={item.imageAlt}
                     fill

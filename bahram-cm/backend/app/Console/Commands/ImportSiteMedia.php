@@ -41,7 +41,7 @@ class ImportSiteMedia extends Command
             $filename = $file->getFilename();
             $storagePath = $destDir.'/'.$filename;
 
-            if (! File::exists(storage_path('app/public/'.$storagePath))) {
+            if (! File::exists(storage_path('app/public/'.$storagePath)) || $this->option('force')) {
                 File::ensureDirectoryExists(storage_path('app/public/'.$destDir));
                 File::copy($file->getPathname(), storage_path('app/public/'.$storagePath));
             }

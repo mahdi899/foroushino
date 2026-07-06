@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { ArrowLeft, Briefcase, GraduationCap, Wallet } from "lucide-react";
 import { Fragment } from "react";
 import { site } from "@/content/site";
@@ -85,7 +85,7 @@ function CampaignJourneyConnector() {
 function CampaignJourneyPhoto() {
   return (
     <figure className="campaign-journey-photo relative m-4 aspect-[5/4] min-h-[14rem] overflow-hidden rounded-card-lg sm:m-5 sm:min-h-[16rem] lg:col-span-6 lg:m-0 lg:aspect-auto lg:min-h-full lg:self-stretch lg:rounded-e-none lg:rounded-s-card-lg">
-      <Image
+      <SiteImage
         src={stepPhotos[0]!}
         alt={stepPhotoAlts[0]!}
         fill

@@ -1,5 +1,5 @@
 import { BarChart3, Bell, Coins, Phone } from "lucide-react";
-import Image from "next/image";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { site } from "@/content/site";
 import { Reveal } from "@/components/motion/Reveal";
 import { LinkButton } from "@/components/ui/Button";
@@ -114,7 +114,7 @@ export function AcademyTeaser() {
                   />
                   <div className="academy-teaser-phone relative overflow-hidden rounded-[1.75rem] ring-1 ring-bone/10">
                     <div className="relative aspect-[9/19] w-full">
-                      <Image
+                      <SiteImage
                         src={sitePhotos.academyStory}
                         alt="پیش‌نمایش مینی‌اپ سات روی موبایل"
                         fill

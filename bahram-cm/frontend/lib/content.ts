@@ -2,6 +2,13 @@
 import path from "node:path";
 import { cache } from "react";
 import matter from "gray-matter";
+import {
+  getTransformationBySlugFromApi,
+  getTransformationsFromApi,
+  getTransformationsPageFromApi,
+  type TransformationApiRecord,
+} from "./services/transformations";
+import type { PaginationMeta } from "./services/articles";
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                       */
@@ -26,6 +33,9 @@ export type TransformationRecord = {
   summary: string;
   metricLabel?: string;
   metricValue?: string;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  portrait_image?: string;
   body: string;
 };
 
@@ -150,7 +160,24 @@ export async function getInsightBySlug(slug: string) {
 /*  Transformations                                                             */
 /* -------------------------------------------------------------------------- */
 
-export const getTransformations = cache(async (): Promise<TransformationRecord[]> => {
+function mapApiTransformation(d: TransformationApiRecord): TransformationRecord {
+  return {
+    slug: d.slug,
+    name: d.name,
+    role: d.role,
+    before: d.before,
+    after: d.after,
+    summary: d.summary,
+    metricLabel: d.metricLabel ?? undefined,
+    metricValue: d.metricValue ?? undefined,
+    metaTitle: d.metaTitle ?? undefined,
+    metaDescription: d.metaDescription ?? undefined,
+    portrait_image: d.portrait_image ?? undefined,
+    body: d.body,
+  };
+}
+
+const getTransformationsFromMdx = cache(async (): Promise<TransformationRecord[]> => {
   const docs = await readCollection("transformations");
   return docs.map((d) => ({
     slug: d.slug,
@@ -165,8 +192,51 @@ export const getTransformations = cache(async (): Promise<TransformationRecord[]
   }));
 });
 
+export const getTransformations = cache(async (): Promise<TransformationRecord[]> => {
+  const api = await getTransformationsFromApi();
+  if (api.ok && api.data.length > 0) {
+    return api.data.map(mapApiTransformation);
+  }
+  return getTransformationsFromMdx();
+});
+
+export const TRANSFORMATIONS_PER_PAGE = 9;
+
+export async function getTransformationsPage(
+  page = 1,
+  perPage = TRANSFORMATIONS_PER_PAGE,
+): Promise<{ items: TransformationRecord[]; meta: PaginationMeta }> {
+  const api = await getTransformationsPageFromApi(page, perPage);
+  if (api.ok && api.data.meta.total > 0) {
+    return {
+      items: api.data.items.map(mapApiTransformation),
+      meta: api.data.meta,
+    };
+  }
+
+  const all = await getTransformationsFromMdx();
+  const total = all.length;
+  const lastPage = Math.max(1, Math.ceil(total / perPage));
+  const safePage = Math.min(Math.max(1, page), lastPage);
+  const start = (safePage - 1) * perPage;
+
+  return {
+    items: all.slice(start, start + perPage),
+    meta: {
+      current_page: safePage,
+      last_page: lastPage,
+      per_page: perPage,
+      total,
+    },
+  };
+}
+
 export async function getTransformationBySlug(slug: string) {
-  return (await getTransformations()).find((x) => x.slug === slug) ?? null;
+  const api = await getTransformationBySlugFromApi(slug);
+  if (api.ok && api.data) {
+    return mapApiTransformation(api.data);
+  }
+  return (await getTransformationsFromMdx()).find((x) => x.slug === slug) ?? null;
 }
 
 /* -------------------------------------------------------------------------- */

@@ -1,8 +1,8 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { adminFetch } from '@/lib/auth/session';
-import type { AdminFaq, AdminOrder, AdminProduct, PaymentSettingsData, SmsSpotplayerSettingsData } from '@/lib/admin/commerceTypes';
+import type { AdminFaq, AdminOrder, AdminProduct, AdminStudentTestimonial, PaymentSettingsData, SmsSpotplayerSettingsData } from '@/lib/admin/commerceTypes';
 
 export async function loadPaymentSettingsAction(): Promise<PaymentSettingsData | null> {
   try {
@@ -26,8 +26,12 @@ function revalidateCommerce() {
   revalidatePath('/admin/commerce/products');
   revalidatePath('/admin/commerce/orders');
   revalidatePath('/admin/commerce/faqs');
+  revalidatePath('/admin/commerce/testimonials');
   revalidatePath('/admin/commerce/payment-settings');
   revalidatePath('/admin/commerce/sms-spotplayer-settings');
+  revalidatePath('/transformations');
+  revalidateTag('public-faqs');
+  revalidateTag('public-transformations');
 }
 
 export async function saveProduct(
@@ -124,6 +128,50 @@ export async function deleteFaq(id: number): Promise<{ ok: boolean; error?: stri
     return { ok: true };
   } catch {
     return { ok: false, error: 'حذف سوال ناموفق بود.' };
+  }
+}
+
+export async function saveStudentTestimonial(
+  input: {
+    slug: string;
+    name: string;
+    role?: string;
+    before_text: string;
+    after_text: string;
+    summary: string;
+    metric_label?: string | null;
+    metric_value?: string | null;
+    body: string;
+    portrait_image?: string | null;
+    meta_title?: string | null;
+    meta_description?: string | null;
+    sort_order?: number;
+    is_active?: boolean;
+  },
+  id?: number,
+): Promise<{ ok: boolean; id?: number; error?: string }> {
+  try {
+    if (id) {
+      await adminFetch(`/student-testimonials/${id}`, { method: 'PATCH', body: input });
+      revalidateCommerce();
+      return { ok: true, id };
+    }
+    const res = await adminFetch<{ data: { id: number } }>('/student-testimonials', { method: 'POST', body: input });
+    revalidateCommerce();
+    return { ok: true, id: res.data.id };
+  } catch (e) {
+    const err = e as Error & { payload?: { message?: string } };
+    return { ok: false, error: err.payload?.message ?? 'ذخیره نظر دانشجو ناموفق بود.' };
+  }
+}
+
+export async function deleteStudentTestimonial(id: number): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await adminFetch(`/student-testimonials/${id}`, { method: 'DELETE' });
+    revalidateCommerce();
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'حذف نظر دانشجو ناموفق بود.' };
   }
 }
 

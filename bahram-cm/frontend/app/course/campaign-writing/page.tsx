@@ -205,7 +205,7 @@ export default async function CourseCampaignWritingPage() {
                 </h1>
               </Reveal>
               <Reveal delay={0.14}>
-                <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-bone-dim sm:mt-4 md:mx-0 md:mt-6 md:max-w-lg md:text-body">
+                <p className="hero-subtext mx-auto mt-3 max-w-md text-sm leading-relaxed sm:mt-4 md:mx-0 md:mt-6 md:max-w-lg md:text-body">
                   از شناخت مخاطب تا پیام فروش و مسیر فروش — گام‌به‌گام.
                 </p>
               </Reveal>
@@ -639,18 +639,20 @@ export default async function CourseCampaignWritingPage() {
 
 function HeroPhoto() {
   return (
-    <div className="relative mx-auto w-full max-w-[min(100%,18rem)] sm:max-w-xs md:mx-0 md:max-w-none">
-      <div className="overflow-hidden rounded-card-lg border border-bone/12 bg-charcoal/30">
-        <SiteImage
-          src={sitePhotos.manifestoLandscape}
-          alt="دوره کمپین‌نویسی"
-          fallbackAlt="دوره کمپین‌نویسی"
-          width={900}
-          height={700}
-          sizes="(max-width: 768px) min(100vw - 2rem, 20rem), (max-width: 1024px) 40vw, 33vw"
-          className="h-auto w-full"
-          priority
-        />
+    <div className="relative mx-auto w-full max-w-[min(100%,20rem)] sm:max-w-sm md:mx-0 md:max-w-none">
+      <div className="hero-photo-frame">
+        <div className="relative aspect-[16/10] w-full">
+          <SiteImage
+            src="/media/site-photos/manifesto-landscape.jpg"
+            alt="دوره کمپین‌نویسی"
+            fallbackAlt="دوره کمپین‌نویسی"
+            fill
+            sizes="(max-width: 768px) min(100vw - 2rem, 20rem), (max-width: 1024px) 40vw, 33vw"
+            className="object-contain"
+            wrapperClassName="!bg-transparent"
+            priority
+          />
+        </div>
       </div>
     </div>
   );

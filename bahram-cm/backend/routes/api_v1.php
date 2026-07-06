@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\MediaConfigController;
 use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\MediaOptimizeController;
 use App\Http\Controllers\Api\V1\SettingController;
+use App\Http\Controllers\Api\V1\StudentTestimonialController;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Session\Middleware\StartSession;
@@ -103,6 +104,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('faqs/{faq}', [FaqController::class, 'show'])->whereNumber('faq');
     Route::match(['put', 'patch'], 'faqs/{faq}', [FaqController::class, 'update'])->whereNumber('faq');
     Route::delete('faqs/{faq}', [FaqController::class, 'destroy'])->whereNumber('faq');
+
+    Route::get('student-testimonials', [StudentTestimonialController::class, 'index']);
+    Route::post('student-testimonials', [StudentTestimonialController::class, 'store']);
+    Route::get('student-testimonials/{studentTestimonial}', [StudentTestimonialController::class, 'show'])->whereNumber('studentTestimonial');
+    Route::match(['put', 'patch'], 'student-testimonials/{studentTestimonial}', [StudentTestimonialController::class, 'update'])->whereNumber('studentTestimonial');
+    Route::delete('student-testimonials/{studentTestimonial}', [StudentTestimonialController::class, 'destroy'])->whereNumber('studentTestimonial');
 
     Route::get('manage/payment-settings', [CommercePaymentSettingsController::class, 'show']);
     Route::put('manage/payment-settings', [CommercePaymentSettingsController::class, 'update']);

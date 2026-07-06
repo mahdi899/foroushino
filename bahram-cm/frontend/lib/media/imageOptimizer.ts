@@ -27,7 +27,13 @@ export async function saveImageOptimizerSettingsAction(
     });
     return { ok: true, data: res.data };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'خطا در ذخیره تنظیمات' };
+    const payload =
+      e && typeof e === 'object' && 'payload' in e
+        ? (e as { payload?: { message?: string; errors?: Record<string, string[]> } }).payload
+        : undefined;
+    const firstFieldError = payload?.errors ? Object.values(payload.errors).flat()[0] : undefined;
+    const message = firstFieldError ?? payload?.message ?? (e instanceof Error ? e.message : 'خطا در ذخیره تنظیمات');
+    return { ok: false, error: message };
   }
 }
 

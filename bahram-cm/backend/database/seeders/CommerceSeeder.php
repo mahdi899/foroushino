@@ -124,5 +124,7 @@ class CommerceSeeder extends Seeder
 
         // Keep pending order without a completed payment row.
         Payment::query()->where('order_id', $pendingOrder->id)->delete();
+
+        $this->call(StudentTestimonialSeeder::class);
     }
 }

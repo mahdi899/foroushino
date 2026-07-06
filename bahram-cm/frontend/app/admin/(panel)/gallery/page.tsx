@@ -15,7 +15,6 @@ export default function AdminGalleryPage() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [category, setCategory] = useState<string>('همه');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [editItem, setEditItem] = useState<AdminMediaItem | null>(null);
@@ -27,10 +26,10 @@ export default function AdminGalleryPage() {
     return () => window.clearTimeout(t);
   }, [search]);
 
-  const loadPage = useCallback(async (p: number, q: string, cat: string) => {
+  const loadPage = useCallback(async (p: number, q: string) => {
     setLoading(true);
     setLoadError('');
-    const res = await listGalleryMediaPage({ page: p, search: q, category: cat, perPage: 25 });
+    const res = await listGalleryMediaPage({ page: p, search: q, perPage: 25 });
     setUploaded(res.items);
     setPage(res.page);
     setLastPage(res.lastPage);
@@ -40,15 +39,15 @@ export default function AdminGalleryPage() {
   }, []);
 
   useEffect(() => {
-    void loadPage(1, debouncedSearch, category);
-  }, [debouncedSearch, category, loadPage]);
+    void loadPage(1, debouncedSearch);
+  }, [debouncedSearch, loadPage]);
 
   function goToPage(p: number) {
-    void loadPage(p, debouncedSearch, category);
+    void loadPage(p, debouncedSearch);
   }
 
   async function reload() {
-    await loadPage(page, debouncedSearch, category);
+    await loadPage(page, debouncedSearch);
   }
 
   function onManage(item: UnifiedMediaItem) {
@@ -64,11 +63,6 @@ export default function AdminGalleryPage() {
     setPage(1);
   }
 
-  function onCategoryChange(cat: string) {
-    setCategory(cat);
-    setPage(1);
-  }
-
   return (
     <div>
       <div className="mb-6 border-b border-border pb-5">
@@ -79,27 +73,24 @@ export default function AdminGalleryPage() {
         </p>
       </div>
 
-      <div className="card overflow-hidden">
-        <MediaLibraryGrid
-          uploaded={uploaded}
-          mode="manage"
-          onManage={onManage}
-          onUploaded={() => void loadPage(1, debouncedSearch, category)}
+      <MediaLibraryGrid
+        uploaded={uploaded}
+        mode="manage"
+        toolbarPlacement="above-card"
+        onManage={onManage}
+          onUploaded={() => void loadPage(1, debouncedSearch)}
           trashRefreshSignal={trashRefresh}
           paginated={{
             page,
             lastPage,
             total,
             search,
-            category,
             loading,
             error: loadError,
             onSearchChange,
-            onCategoryChange: (cat) => onCategoryChange(cat),
             onPageChange: goToPage,
           }}
-        />
-      </div>
+      />
 
       <MediaEditModal
         item={editItem}

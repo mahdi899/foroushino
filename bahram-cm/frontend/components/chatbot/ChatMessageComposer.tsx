@@ -5,17 +5,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUp,
-  BookOpen,
-  Hand,
-  Heart,
-  Laugh,
   Loader2,
-  MessageCircle,
-  Smile,
-  Sparkles,
-  Star,
-  ThumbsUp,
-  type LucideIcon,
 } from 'lucide-react';
 import { CHAT_TEXT_FONT, QUICK_EMOJIS } from '@/lib/chatbot/emojiFont';
 import { chatbotThemeClasses } from '@/lib/chatbot/themeClasses';
@@ -26,23 +16,7 @@ const MIN_HEIGHT_PX = 36;
 const MAX_HEIGHT_PX = 88;
 const EMOJI_PANEL_Z = 10001;
 
-const QUICK_EMOJI_ICON: Record<
-  string,
-  { Icon: LucideIcon; className: string; filled?: boolean }
-> = {
-  '😊': { Icon: Smile, className: 'text-amber-500' },
-  '🙂': { Icon: Smile, className: 'text-amber-400' },
-  '😁': { Icon: Laugh, className: 'text-amber-500' },
-  '🙏': { Icon: Hand, className: 'text-gold' },
-  '❤️': { Icon: Heart, className: 'text-red-500', filled: true },
-  '👍': { Icon: ThumbsUp, className: 'text-emerald' },
-  '📚': { Icon: BookOpen, className: 'text-gold' },
-  '✨': { Icon: Sparkles, className: 'text-gold' },
-  '💚': { Icon: Heart, className: 'text-emerald', filled: true },
-  '⭐': { Icon: Star, className: 'text-gold', filled: true },
-  '👋': { Icon: Hand, className: 'text-amber-500' },
-  '💬': { Icon: MessageCircle, className: 'text-emerald' },
-};
+const EMOJI_PICKER_ICON = QUICK_EMOJIS[0]?.src ?? '/icons/emoji/smile.svg';
 
 interface PanelPosition {
   left: number;
@@ -191,33 +165,31 @@ export function ChatMessageComposer({
               aria-label="ایموجی سریع"
             >
               <div className="relative px-2 pb-2 pt-1.5">
-                <div className="grid grid-cols-6 gap-1">
-                  {QUICK_EMOJIS.map((emoji) => {
-                    const visual = QUICK_EMOJI_ICON[emoji.char] ?? {
-                      Icon: Smile,
-                      className: 'text-amber-500',
-                    };
-                    const { Icon, className, filled } = visual;
-                    return (
-                      <button
-                        key={emoji.char}
-                        type="button"
-                        onPointerDown={(e) => e.preventDefault()}
-                        onClick={() => insertAtCursor(emoji.char)}
-                        className={cn(
-                          'grid h-10 w-full place-items-center rounded-xl transition active:scale-90',
-                          chatTheme.composerEmojiCell,
-                        )}
-                        aria-label={`افزودن ${emoji.label}`}
-                      >
-                        <Icon
-                          className={cn('h-[18px] w-[18px]', className, filled && 'fill-current')}
-                          strokeWidth={1.75}
-                          aria-hidden
-                        />
-                      </button>
-                    );
-                  })}
+                <div className="grid grid-cols-6 gap-0.5">
+                  {QUICK_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji.char}
+                      type="button"
+                      onPointerDown={(e) => e.preventDefault()}
+                      onClick={() => insertAtCursor(emoji.char)}
+                      className={cn(
+                        'grid h-11 w-full place-items-center rounded-xl transition active:scale-90',
+                        chatTheme.composerEmojiCell,
+                      )}
+                      aria-label={`افزودن ${emoji.label}`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={emoji.src}
+                        alt=""
+                        aria-hidden
+                        width={30}
+                        height={30}
+                        draggable={false}
+                        className="h-[30px] w-[30px] shrink-0 select-none"
+                      />
+                    </button>
+                  ))}
                 </div>
               </div>
             </motion.div>
@@ -253,7 +225,15 @@ export function ChatMessageComposer({
             aria-expanded={emojiOpen}
             aria-pressed={emojiOpen}
           >
-            <Smile className={cn('h-[18px] w-[18px]', emojiOpen ? 'text-emerald' : chatTheme.composerToolbarIcon)} strokeWidth={1.75} />
+            <img
+              src={EMOJI_PICKER_ICON}
+              alt=""
+              aria-hidden
+              width={20}
+              height={20}
+              draggable={false}
+              className="h-5 w-5 shrink-0 select-none"
+            />
           </button>
 
           <textarea

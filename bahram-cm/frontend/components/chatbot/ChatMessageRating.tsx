@@ -8,9 +8,11 @@ interface ChatMessageRatingProps {
   value?: number;
   onRate: (rating: number) => void | Promise<void>;
   disabled?: boolean;
+  /** Shown under the stars — defaults to generic copy. */
+  prompt?: string;
 }
 
-export function ChatMessageRating({ value, onRate, disabled }: ChatMessageRatingProps) {
+export function ChatMessageRating({ value, onRate, disabled, prompt }: ChatMessageRatingProps) {
   const [hover, setHover] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
@@ -28,7 +30,9 @@ export function ChatMessageRating({ value, onRate, disabled }: ChatMessageRating
 
   return (
     <div className="mt-1.5 flex items-center justify-end gap-1.5" dir="rtl">
-      <span className="text-[9px] text-text-muted">{value ? 'ممنون از امتیاز شما' : 'این پاسخ چطور بود؟'}</span>
+      <span className="text-[9px] text-text-muted">
+        {value ? 'ممنون از امتیاز شما' : (prompt ?? 'این پاسخ چطور بود؟')}
+      </span>
       <div
         className="flex items-center gap-0.5"
         onMouseLeave={() => !value && setHover(0)}

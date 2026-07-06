@@ -17,6 +17,7 @@ import {
 import { siteConfig } from '@/config/site';
 import {
   scoreArticleSeo,
+  scorePageSeo,
   seoScoreBg,
   seoScoreColor,
   seoGradeLabel,
@@ -33,20 +34,27 @@ import { SeoFixModal } from './SeoFixModal';
 
 interface SeoScorePanelProps {
   title: string;
-  excerpt: string;
-  body: string;
-  slug: string;
+  excerpt?: string;
+  body?: string;
+  slug?: string;
   focusKeyword: string;
   metaTitle: string;
   metaDescription: string;
   coverUrl?: string;
   categoryName?: string;
   robots?: string;
+  canonical?: string;
   indexNotifyMessage?: string | null;
   categories?: ApiCategory[];
   onApplyFix?: (patch: SeoFixPatch) => void;
   /** sidebar: sticky in right column; inline: full-width below editor (focus mode) */
   variant?: 'sidebar' | 'inline';
+  /** Public path segment before slug, e.g. `/insights` or `/transformations` */
+  publicBasePath?: string;
+  /** Static site page meta editor */
+  mode?: 'article' | 'page';
+  pagePath?: string;
+  pageLabel?: string;
 }
 
 function StatusIcon({ status }: { status: 'good' | 'ok' | 'bad' }) {
@@ -74,7 +82,30 @@ function CharMeter({ label, length, min, max }: { label: string; length: number;
 }
 
 export function SeoScorePanel(props: SeoScorePanelProps) {
-  const { score, checks, stats, grade } = scoreArticleSeo(props);
+  const mode = props.mode ?? 'article';
+  const { score, checks, stats, grade } =
+    mode === 'page'
+      ? scorePageSeo({
+          pageLabel: props.pageLabel ?? props.title,
+          pagePath: props.pagePath ?? '/',
+          focusKeyword: props.focusKeyword,
+          metaTitle: props.metaTitle,
+          metaDescription: props.metaDescription,
+          canonical: props.canonical,
+          robots: props.robots,
+        })
+      : scoreArticleSeo({
+          title: props.title,
+          excerpt: props.excerpt ?? '',
+          body: props.body ?? '',
+          slug: props.slug ?? '',
+          focusKeyword: props.focusKeyword,
+          metaTitle: props.metaTitle,
+          metaDescription: props.metaDescription,
+          coverUrl: props.coverUrl,
+          categoryName: props.categoryName,
+          robots: props.robots,
+        });
   const variant = props.variant ?? 'sidebar';
   const [copied, setCopied] = useState(false);
   const [previewTab, setPreviewTab] = useState<'google' | 'social'>('google');
@@ -94,7 +125,12 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
     [props],
   );
 
-  const publicUrl = props.slug ? `${siteConfig.url}/insights/${props.slug}` : '';
+  const publicUrl =
+    mode === 'page'
+      ? props.canonical?.trim() || (props.pagePath ? `${siteConfig.url}${props.pagePath}` : '')
+      : props.slug
+        ? `${siteConfig.url}${props.publicBasePath ?? '/insights'}/${props.slug}`
+        : '';
   const coverPreviewUrl = resolveMediaUrl(props.coverUrl);
   const domain = useMemo(() => {
     try {
@@ -159,7 +195,8 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
 
       {badCount > 0 && (
         <p className="rounded-md bg-surface/80 px-2 py-1.5 text-[11px] text-text-muted">
-          {badCount} مورد نیاز به اصلاح · {okCount} قابل بهبود — روی ✦ کلیک کنید
+          {badCount} مورد نیاز به اصلاح · {okCount} قابل بهبود
+          {mode === 'article' && props.onApplyFix ? ' — روی ✦ کلیک کنید' : ''}
         </p>
       )}
 
@@ -174,27 +211,33 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
       <div className="rounded-lg border border-border bg-surface/90 p-3">
         <p className="mb-2 flex items-center gap-1.5 text-caption font-semibold text-primary-dark">
           <BarChart3 className="h-3.5 w-3.5" />
-          ابزار نویسنده
+          {mode === 'page' ? 'خلاصه متا' : 'ابزار نویسنده'}
         </p>
-        <div className="grid grid-cols-2 gap-2 text-[11px]">
-          <div className="flex items-center gap-1.5 rounded-md bg-surface-soft px-2 py-1.5">
-            <FileText className="h-3 w-3 text-text-muted" />
-            <span>{stats.wordCount} کلمه</span>
+        {mode === 'article' ? (
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <div className="flex items-center gap-1.5 rounded-md bg-surface-soft px-2 py-1.5">
+              <FileText className="h-3 w-3 text-text-muted" />
+              <span>{stats.wordCount} کلمه</span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-md bg-surface-soft px-2 py-1.5">
+              <Clock className="h-3 w-3 text-text-muted" />
+              <span>{stats.readingMinutes} دقیقه مطالعه</span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-md bg-surface-soft px-2 py-1.5">
+              <Link2 className="h-3 w-3 text-text-muted" />
+              <span>{stats.internalLinks} لینک داخلی</span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-md bg-surface-soft px-2 py-1.5">
+              <span className="text-text-muted">H2/H3</span>
+              <span>{stats.h2Count}/{stats.h3Count}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 rounded-md bg-surface-soft px-2 py-1.5">
-            <Clock className="h-3 w-3 text-text-muted" />
-            <span>{stats.readingMinutes} دقیقه مطالعه</span>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-md bg-surface-soft px-2 py-1.5">
-            <Link2 className="h-3 w-3 text-text-muted" />
-            <span>{stats.internalLinks} لینک داخلی</span>
-          </div>
-          <div className="flex items-center gap-1.5 rounded-md bg-surface-soft px-2 py-1.5">
-            <span className="text-text-muted">H2/H3</span>
-            <span>{stats.h2Count}/{stats.h3Count}</span>
-          </div>
-        </div>
-        {props.focusKeyword.trim() && (
+        ) : (
+          <p className="text-[11px] text-text-muted" dir="ltr">
+            {props.pagePath ?? '/'}
+          </p>
+        )}
+        {mode === 'article' && props.focusKeyword.trim() && (
           <p className="mt-2 text-[11px] text-text-muted">
             تراکم «{props.focusKeyword}»:{' '}
             <span className={stats.keywordDensity >= 0.4 && stats.keywordDensity <= 2.5 ? 'text-success' : 'text-warning'}>
@@ -237,7 +280,7 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
             <p className="mb-1.5 text-[11px] font-semibold text-primary-dark">{group.label}</p>
             <ul className="space-y-1.5">
               {group.items.map((c) => {
-                const clickable = c.status !== 'good' && Boolean(props.onApplyFix);
+                const clickable = mode === 'article' && c.status !== 'good' && Boolean(props.onApplyFix);
                 return (
                   <li key={c.id}>
                     <button
@@ -285,9 +328,11 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
         <div className="p-3">
           {previewTab === 'google' ? (
             <>
-              <p className="truncate text-[13px] text-[#1a0dab]">{props.metaTitle || props.title || 'عنوان مقاله'}</p>
+              <p className="truncate text-[13px] text-[#1a0dab]">{props.metaTitle || props.title || (mode === 'page' ? props.pageLabel : 'عنوان')}</p>
               <p className="text-[12px] text-[#006621]" dir="ltr">
-                {domain} › blog › {props.slug || '…'}
+                {mode === 'page'
+                  ? `${domain}${props.pagePath ?? '/'}`
+                  : `${domain} › ${(props.publicBasePath ?? '/insights').replace(/^\//, '')} › ${props.slug || '…'}`}
               </p>
               <p className="line-clamp-2 text-[12px] text-text-muted">
                 {props.metaDescription || props.excerpt || 'توضیحات متا…'}
@@ -319,14 +364,16 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
         </div>
       </div>
 
-      <SeoFixModal
-        open={Boolean(fixCheck)}
-        check={fixCheck}
-        article={articleContext}
-        categories={props.categories ?? []}
-        onClose={() => setFixCheck(null)}
-        onApply={(patch) => props.onApplyFix?.(patch)}
-      />
+      {mode === 'article' && (
+        <SeoFixModal
+          open={Boolean(fixCheck)}
+          check={fixCheck}
+          article={articleContext}
+          categories={props.categories ?? []}
+          onClose={() => setFixCheck(null)}
+          onApply={(patch) => props.onApplyFix?.(patch)}
+        />
+      )}
     </div>
   );
 }
