@@ -9,7 +9,7 @@ app/          صفحات Next.js
 components/   کامپوننت‌های UI
 content/      محتوای MDX (دوره‌ها، مقالات، رویدادها، …)
 backend/      FastAPI — فرم Apply و Newsletter
-docs/         راهنمای deploy و چک‌لیست‌ها
+docs/         راهنمای deploy، چک‌لیست‌ها، و [راهنمای توسعه از 71020d2](docs/DEVELOPMENT-GUIDE-SINCE-71020d2.md)
 public/       رسانه و فونت‌ها
 ```
 
