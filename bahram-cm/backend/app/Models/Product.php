@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ProductType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,6 +13,16 @@ use Stevebauman\Purify\Facades\Purify;
 class Product extends Model
 {
     use HasSlug;
+
+    /**
+     * New, forward-looking product types. `normal`/`package` remain valid
+     * legacy values already used by existing products.
+     */
+    public const TYPE_COURSE_SPOTPLAYER = ProductType::CourseSpotplayer->value;
+
+    public const TYPE_MANUAL_SERVICE = ProductType::ManualService->value;
+
+    public const TYPE_EVENT = ProductType::Event->value;
 
     protected $fillable = [
         'title',
@@ -51,6 +62,11 @@ class Product extends Model
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class);
+    }
+
+    public function courseAccesses(): HasMany
+    {
+        return $this->hasMany(CourseAccess::class);
     }
 
     public function scopeActive(Builder $query): Builder

@@ -1,0 +1,71 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Notification;
+use App\Services\AudienceSegmentService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class NotificationAdminController extends Controller
+{
+    public function __construct(private readonly AudienceSegmentService $segments)
+    {
+    }
+
+    public function index(Request $request): JsonResponse
+    {
+        $notifications = Notification::query()->withCount('recipients')->orderByDesc('id')
+            ->paginate((int) $request->input('per_page', 30));
+
+        return response()->json([
+            'data' => $notifications->getCollection()->map(fn (Notification $n) => [
+                'id' => $n->id,
+                'title' => $n->title,
+                'body' => $n->body,
+                'type' => $n->type,
+                'link' => $n->link,
+                'recipients_count' => $n->recipients_count,
+                'created_at' => $n->created_at?->toIso8601String(),
+            ]),
+            'meta' => ['current_page' => $notifications->currentPage(), 'last_page' => $notifications->lastPage(), 'total' => $notifications->total()],
+        ]);
+    }
+
+    /** Compose and broadcast an in-app notification to a segment of students. */
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'body' => ['required', 'string', 'max:2000'],
+            'type' => ['nullable', 'string', 'max:50'],
+            'link' => ['nullable', 'string', 'max:255'],
+            'segment' => ['required', 'string', 'in:'.implode(',', array_keys(AudienceSegmentService::SEGMENTS))],
+        ]);
+
+        $recipients = $this->segments->resolve($data['segment']);
+
+        $notification = DB::transaction(function () use ($data, $recipients, $request) {
+            $notification = Notification::create([
+                'title' => $data['title'],
+                'body' => $data['body'],
+                'type' => $data['type'] ?? 'general',
+                'link' => $data['link'] ?? null,
+                'created_by' => $request->user()->id,
+            ]);
+
+            $notification->recipients()->createMany(
+                $recipients->map(fn ($user) => ['user_id' => $user->id])->all()
+            );
+
+            return $notification;
+        });
+
+        return response()->json(['data' => [
+            'id' => $notification->id,
+            'recipients_count' => $recipients->count(),
+        ]], 201);
+    }
+}

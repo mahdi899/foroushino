@@ -33,6 +33,21 @@ export const adminNav: {
     ],
   },
   {
+    group: 'آکادمی و باشگاه مشتریان',
+    items: [
+      { href: '/admin/academy/students', label: 'دانشجویان', icon: 'Users', matchPrefix: true },
+      { href: '/admin/academy/course-accesses', label: 'دسترسی دوره‌ها', icon: 'KeyRound' },
+      { href: '/admin/academy/seminars', label: 'سمینارها', icon: 'CalendarDays', matchPrefix: true },
+      { href: '/admin/academy/referrals', label: 'معرفی و کش‌بک', icon: 'Gift' },
+      { href: '/admin/academy/cashback-payouts', label: 'واریز کش‌بک', icon: 'Wallet' },
+      { href: '/admin/academy/sat-applications', label: 'درخواست‌های سات', icon: 'GraduationCap' },
+      { href: '/admin/academy/tickets', label: 'تیکت‌های پشتیبانی', icon: 'LifeBuoy', matchPrefix: true },
+      { href: '/admin/academy/notifications', label: 'اعلان‌ها', icon: 'Bell' },
+      { href: '/admin/academy/sms', label: 'مرکز پیامک', icon: 'MessageCircle' },
+      { href: '/admin/academy/imports', label: 'ورود اطلاعات', icon: 'FileUp' },
+    ],
+  },
+  {
     group: 'سئو و تنظیمات',
     items: [
       { href: '/admin/seo', label: 'سئو و تحلیل', icon: 'Search', matchPrefix: true },

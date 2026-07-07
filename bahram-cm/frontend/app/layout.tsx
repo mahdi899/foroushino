@@ -43,14 +43,15 @@ export default async function RootLayout({
   const ld = [personJsonLd(), organizationJsonLd(), courseJsonLd(), websiteJsonLd()];
   const pathname = (await headers()).get("x-pathname") ?? "";
   const isAdminRoute = pathname.startsWith("/admin");
+  const isBareShellRoute = isAdminRoute || pathname.startsWith("/panel");
 
   const [chatbotConfig, perfConfig] = await Promise.all([
-    isAdminRoute ? Promise.resolve(EMPTY_CHATBOT_PUBLIC) : getPublicChatbotConfig(),
+    isBareShellRoute ? Promise.resolve(EMPTY_CHATBOT_PUBLIC) : getPublicChatbotConfig(),
     getPublicPerfConfig(),
   ]);
   const chatbotAiAvailable = chatbotConfig.enabled && (chatbotConfig.ai_available ?? false);
 
-  if (!isAdminRoute && (perfConfig.developer_mode || perfConfig.page_cache === false)) {
+  if (!isBareShellRoute && (perfConfig.developer_mode || perfConfig.page_cache === false)) {
     unstable_noStore();
   }
 
@@ -80,7 +81,7 @@ export default async function RootLayout({
         <PerformanceProvider config={perfConfig}>
           <AdminAwareChrome>{children}</AdminAwareChrome>
         </PerformanceProvider>
-        {!isAdminRoute && chatbotConfig.enabled ? (
+        {!isBareShellRoute && chatbotConfig.enabled ? (
           <SiteChatbotEntry
             config={chatbotConfig}
             aiAvailable={chatbotAiAvailable}

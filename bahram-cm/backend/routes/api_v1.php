@@ -2,6 +2,16 @@
 
 use App\Http\Controllers\Admin\LeadExportController;
 use App\Http\Controllers\Admin\OrderExportController;
+use App\Http\Controllers\Api\V1\Admin\CashbackPayoutAdminController;
+use App\Http\Controllers\Api\V1\Admin\CourseAccessController as AdminCourseAccessController;
+use App\Http\Controllers\Api\V1\Admin\ImportAdminController;
+use App\Http\Controllers\Api\V1\Admin\NotificationAdminController;
+use App\Http\Controllers\Api\V1\Admin\ReferralAdminController;
+use App\Http\Controllers\Api\V1\Admin\SatApplicationAdminController;
+use App\Http\Controllers\Api\V1\Admin\SeminarAdminController;
+use App\Http\Controllers\Api\V1\Admin\SmsAdminController;
+use App\Http\Controllers\Api\V1\Admin\StudentController as AdminStudentController;
+use App\Http\Controllers\Api\V1\Admin\TicketAdminController;
 use App\Http\Controllers\Api\V1\ArticleAdminController;
 use App\Http\Controllers\Api\V1\ArticleRevisionController;
 use App\Http\Controllers\Api\V1\AuthController;
@@ -19,16 +29,81 @@ use App\Http\Controllers\Api\V1\MediaConfigController;
 use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\MediaOptimizeController;
 use App\Http\Controllers\Api\V1\SettingController;
+use App\Http\Controllers\Api\V1\Student\AuthController as StudentAuthController;
+use App\Http\Controllers\Api\V1\Student\CashbackPayoutController as StudentCashbackPayoutController;
+use App\Http\Controllers\Api\V1\Student\CertificateDownloadController;
+use App\Http\Controllers\Api\V1\Student\CourseController as StudentCourseController;
+use App\Http\Controllers\Api\V1\Student\DashboardController as StudentDashboardController;
+use App\Http\Controllers\Api\V1\Student\NotificationController as StudentNotificationController;
+use App\Http\Controllers\Api\V1\Student\OrderController as StudentOrderController;
+use App\Http\Controllers\Api\V1\Student\ProfileController as StudentProfileController;
+use App\Http\Controllers\Api\V1\Student\ReferralController as StudentReferralController;
+use App\Http\Controllers\Api\V1\Student\SatApplicationController as StudentSatApplicationController;
+use App\Http\Controllers\Api\V1\Student\SeminarAssetDownloadController;
+use App\Http\Controllers\Api\V1\Student\SeminarController as StudentSeminarController;
+use App\Http\Controllers\Api\V1\Student\TicketController as StudentTicketController;
 use App\Http\Controllers\Api\V1\StudentTestimonialController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('auth/login', [AuthController::class, 'login']);
 
+/*
+|--------------------------------------------------------------------------
+| Student Academy Portal API (mobile + OTP identity, separate from admin)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('student')->group(function () {
+    Route::post('auth/send-otp', [StudentAuthController::class, 'sendOtp']);
+    Route::post('auth/verify-otp', [StudentAuthController::class, 'verifyOtp']);
+    Route::post('auth/login-password', [StudentAuthController::class, 'loginPassword']);
+
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('auth/logout', [StudentAuthController::class, 'logout']);
+        Route::get('me', [StudentAuthController::class, 'me']);
+
+        Route::get('dashboard', [StudentDashboardController::class, 'index']);
+        Route::post('dashboard/steps/{step}', [StudentDashboardController::class, 'markStep']);
+
+        Route::get('profile', [StudentProfileController::class, 'show']);
+        Route::put('profile', [StudentProfileController::class, 'update']);
+
+        Route::get('courses', [StudentCourseController::class, 'index']);
+        Route::get('orders', [StudentOrderController::class, 'index']);
+
+        Route::get('seminars', [StudentSeminarController::class, 'index']);
+        Route::get('seminars/{seminar}', [StudentSeminarController::class, 'show']);
+
+        Route::get('referrals', [StudentReferralController::class, 'show']);
+
+        Route::get('cashback-payouts', [StudentCashbackPayoutController::class, 'index']);
+        Route::post('cashback-payouts', [StudentCashbackPayoutController::class, 'store']);
+
+        Route::get('sat-application', [StudentSatApplicationController::class, 'show']);
+        Route::post('sat-application', [StudentSatApplicationController::class, 'store']);
+
+        Route::get('tickets', [StudentTicketController::class, 'index']);
+        Route::get('tickets/{ticket}', [StudentTicketController::class, 'show']);
+        Route::post('tickets', [StudentTicketController::class, 'store']);
+        Route::post('tickets/{ticket}/messages', [StudentTicketController::class, 'storeMessage']);
+
+        Route::get('notifications', [StudentNotificationController::class, 'index']);
+        Route::post('notifications/{notification}/read', [StudentNotificationController::class, 'markRead']);
+    });
+});
+
+// Secure, short-lived signed links for seminar assets/certificates — never public direct links.
+Route::get('student/seminar-assets/{asset}/download', SeminarAssetDownloadController::class)
+    ->name('student.seminar-assets.download')
+    ->middleware('signed');
+Route::get('student/certificates/{certificate}/download', CertificateDownloadController::class)
+    ->name('student.certificates.download')
+    ->middleware('signed');
+
 Route::get('media/config', [MediaConfigController::class, 'config']);
 Route::get('media/optimize-preview/{session}/{variant}', [MediaOptimizeController::class, 'previewFile'])
     ->name('media.optimize.preview');
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('auth/logout', [AuthController::class, 'logout']);
     Route::get('auth/me', [AuthController::class, 'me']);
 
@@ -125,6 +200,56 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('panel/chatbot/sessions/{sessionId}/reply', [ChatbotController::class, 'adminOperatorReply']);
     Route::get('panel/chatbot/export', [ChatbotController::class, 'adminExport']);
     Route::delete('panel/chatbot/sessions', [ChatbotController::class, 'adminDeleteSessions']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Student Academy Portal — Admin extensions (Phase 5)
+    |--------------------------------------------------------------------------
+    */
+    Route::get('students', [AdminStudentController::class, 'index']);
+    Route::get('students/{student}', [AdminStudentController::class, 'show'])->whereNumber('student');
+    Route::patch('students/{student}', [AdminStudentController::class, 'update'])->whereNumber('student');
+
+    Route::get('course-accesses', [AdminCourseAccessController::class, 'index']);
+    Route::post('course-accesses', [AdminCourseAccessController::class, 'store']);
+    Route::patch('course-accesses/{courseAccess}', [AdminCourseAccessController::class, 'update'])->whereNumber('courseAccess');
+
+    Route::get('seminars', [SeminarAdminController::class, 'index']);
+    Route::post('seminars', [SeminarAdminController::class, 'store']);
+    Route::get('seminars/{seminar:id}', [SeminarAdminController::class, 'show'])->whereNumber('seminar');
+    Route::patch('seminars/{seminar:id}', [SeminarAdminController::class, 'update'])->whereNumber('seminar');
+    Route::post('seminars/{seminar:id}/attendees', [SeminarAdminController::class, 'addAttendee'])->whereNumber('seminar');
+    Route::patch('seminars/{seminar:id}/attendees/{attendee}', [SeminarAdminController::class, 'updateAttendee'])->whereNumber(['seminar', 'attendee']);
+    Route::post('seminars/{seminar:id}/assets', [SeminarAdminController::class, 'uploadAsset'])->whereNumber('seminar');
+    Route::delete('seminars/{seminar:id}/assets/{asset}', [SeminarAdminController::class, 'deleteAsset'])->whereNumber(['seminar', 'asset']);
+    Route::post('seminars/{seminar:id}/certificates', [SeminarAdminController::class, 'issueCertificate'])->whereNumber('seminar');
+
+    Route::get('referrals', [ReferralAdminController::class, 'index']);
+    Route::get('referral-codes', [ReferralAdminController::class, 'codes']);
+    Route::patch('referrals/{referral}', [ReferralAdminController::class, 'update'])->whereNumber('referral');
+
+    Route::get('cashback-payouts', [CashbackPayoutAdminController::class, 'index']);
+    Route::get('cashback-payouts/{payout}', [CashbackPayoutAdminController::class, 'show'])->whereNumber('payout');
+    Route::patch('cashback-payouts/{payout}', [CashbackPayoutAdminController::class, 'update'])->whereNumber('payout');
+
+    Route::get('sat-applications', [SatApplicationAdminController::class, 'index']);
+    Route::patch('sat-applications/{satApplication}', [SatApplicationAdminController::class, 'update'])->whereNumber('satApplication');
+
+    Route::get('tickets', [TicketAdminController::class, 'index']);
+    Route::get('tickets/{ticket}', [TicketAdminController::class, 'show'])->whereNumber('ticket');
+    Route::patch('tickets/{ticket}', [TicketAdminController::class, 'update'])->whereNumber('ticket');
+    Route::post('tickets/{ticket}/messages', [TicketAdminController::class, 'storeMessage'])->whereNumber('ticket');
+
+    Route::get('notifications', [NotificationAdminController::class, 'index']);
+    Route::post('notifications', [NotificationAdminController::class, 'store']);
+
+    Route::get('sms/segments', [SmsAdminController::class, 'segments']);
+    Route::post('sms/send', [SmsAdminController::class, 'send']);
+    Route::get('sms/logs', [SmsAdminController::class, 'logs']);
+    Route::post('sms/test', [SmsAdminController::class, 'test']);
+
+    Route::post('imports/students/preview', [ImportAdminController::class, 'preview']);
+    Route::post('imports/students/commit', [ImportAdminController::class, 'commit']);
 });
 
 Route::get('cache/public', [CacheController::class, 'publicConfig']);

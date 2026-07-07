@@ -12,6 +12,22 @@ type Status = "idle" | "submitting" | "error";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[+]?[\d\s()-]{6,20}$/;
+const REFERRAL_COOKIE = "bahram_ref";
+
+/** Captures `?ref=` (Customer Club referral links) into a short-lived cookie so
+ * it survives if the buyer navigates a bit before completing checkout. */
+function captureReferralCode(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+
+  const fromUrl = new URLSearchParams(window.location.search).get("ref")?.trim();
+  if (fromUrl) {
+    document.cookie = `${REFERRAL_COOKIE}=${encodeURIComponent(fromUrl)};path=/;max-age=${60 * 60 * 24 * 30}`;
+    return fromUrl;
+  }
+
+  const match = document.cookie.match(new RegExp(`(?:^|; )${REFERRAL_COOKIE}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : undefined;
+}
 
 export function PurchaseForm({ product }: { product: ProductDetail }) {
   const formId = useId();
@@ -41,6 +57,7 @@ export function PurchaseForm({ product }: { product: ProductDetail }) {
       customer_name: name.trim(),
       customer_phone: phone.trim(),
       customer_email: email.trim() || undefined,
+      ref: captureReferralCode(),
     });
 
     if (!orderResult.ok) {

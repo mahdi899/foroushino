@@ -23,6 +23,7 @@ class StoreOrderRequest extends FormRequest
             'customer_email' => ['nullable', 'email', 'max:255'],
             'customer_national_code' => ['nullable', 'string', 'max:20'],
             'customer_extra_data' => ['nullable', 'array'],
+            'ref' => ['nullable', 'string', 'max:20'],
         ];
     }
 }

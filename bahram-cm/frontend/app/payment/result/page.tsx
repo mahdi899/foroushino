@@ -63,12 +63,21 @@ export default async function PaymentResultPage({
                 </p>
               ) : null}
               <div className="mt-8 flex flex-wrap justify-center gap-4">
-                <Link
-                  href="/"
-                  className="neon-btn-primary inline-flex h-11 items-center justify-center rounded-pill bg-emerald px-6 font-semibold hover:bg-emerald-glow"
-                >
-                  بازگشت به خانه
-                </Link>
+                {status === "success" ? (
+                  <Link
+                    href="/panel"
+                    className="neon-btn-primary inline-flex h-11 items-center justify-center rounded-pill bg-emerald px-6 font-semibold hover:bg-emerald-glow"
+                  >
+                    ورود به پنل کاربری
+                  </Link>
+                ) : (
+                  <Link
+                    href="/"
+                    className="neon-btn-primary inline-flex h-11 items-center justify-center rounded-pill bg-emerald px-6 font-semibold hover:bg-emerald-glow"
+                  >
+                    بازگشت به خانه
+                  </Link>
+                )}
                 {status !== "success" ? (
                   <Link
                     href="/apply"
