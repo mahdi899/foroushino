@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { CDN_STATIC_IMMUTABLE } from "./lib/cache/cdnHeaders";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
+const disableImageOptimization = process.env.NEXT_PUBLIC_DISABLE_IMAGE_OPTIMIZATION === "1";
 
 /** Allow next/image to optimize media served by the Laravel backend (CDN + storage). */
 function backendImagePattern() {
@@ -72,9 +73,10 @@ const config: NextConfig = {
   },
   transpilePackages: ["next-mdx-remote"],
   images: {
+    unoptimized: disableImageOptimization,
     loader: "custom",
     loaderFile: "./lib/imageLoader.ts",
-    formats: ["image/avif", "image/webp"],
+    formats: disableImageOptimization ? undefined : ["image/avif", "image/webp"],
     remotePatterns: backendImagePattern(),
   },
   experimental: {

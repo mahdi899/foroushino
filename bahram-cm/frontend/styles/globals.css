@@ -1140,6 +1140,156 @@
     box-shadow: var(--shadow-frame-resolved);
   }
 
+  /* Hero — light mode panel (same width as manifesto-panel inside container-luxe) */
+  .hero-light-section {
+    --hero-light-image-max-h: 580px;
+  }
+
+  @media (max-width: 767px) {
+    .hero-light-section {
+      --hero-light-image-max-h: min(82svh, 620px);
+    }
+  }
+
+  @media (min-width: 768px) {
+    .hero-light-section {
+      --hero-light-image-max-h: 660px;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .hero-light-section {
+      --hero-light-image-max-h: 760px;
+    }
+  }
+
+  .hero-light-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: clamp(22rem, 50vw, var(--hero-light-image-max-h));
+  }
+
+  @media (max-width: 767px) {
+    .hero-light-panel {
+      min-height: min(82svh, 620px);
+    }
+  }
+
+  .hero-light-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  .hero-light-grid-bg {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    will-change: transform, opacity;
+  }
+
+  .hero-light-grid-img {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: var(--hero-light-image-max-h);
+    object-fit: contain;
+    object-position: bottom left;
+    transform: translateX(-1.75rem);
+    transform-origin: bottom left;
+  }
+
+  @media (max-width: 767px) {
+    .hero-light-content {
+      justify-content: flex-end;
+      padding-bottom: 1.25rem;
+    }
+
+    .hero-light-grid-bg {
+      align-items: stretch;
+      justify-content: center;
+    }
+
+    .hero-light-grid-img {
+      width: 100%;
+      height: 100%;
+      max-height: none;
+      object-fit: cover;
+      object-position: bottom center;
+      transform: none;
+    }
+
+    .hero-light-section .hero-panel-headline,
+    .hero-light-section .hero-panel-headline span,
+    .hero-light-section .hero-panel-sub,
+    .hero-light-section .hero-stat-label {
+      color: #fff;
+    }
+
+    .hero-light-section .hero-headline-gradient,
+    .hero-light-section .hero-stat-value {
+      background-image: none;
+      -webkit-background-clip: unset;
+      background-clip: unset;
+      color: #fff;
+    }
+
+    .hero-light-section .hero-panel-badge {
+      border-color: rgba(255, 255, 255, 0.38);
+      background-color: rgba(255, 255, 255, 0.14);
+      color: #fff;
+    }
+
+    .hero-light-section .hero-stat-icon {
+      border-color: rgba(255, 255, 255, 0.38);
+      background-color: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+
+    .hero-light-section .hero-stats-glass {
+      width: fit-content;
+      padding: 0.75rem 0.625rem;
+    }
+
+    .hero-light-section .hero-stat-item {
+      gap: 0.5rem;
+      padding-inline: 0.5rem;
+    }
+
+    .hero-light-section .hero-stat-icon {
+      height: 2rem;
+      width: 2rem;
+    }
+
+    .hero-light-section .hero-stat-icon svg {
+      height: 1rem;
+      width: 1rem;
+    }
+
+    .hero-light-section .hero-stat-value {
+      font-size: 1.125rem;
+    }
+
+    .hero-light-section .hero-stat-label {
+      margin-top: 0.25rem;
+      font-size: 0.75rem;
+    }
+  }
+
+  html[data-theme="light"] .hero-light-panel {
+    border: 1px solid rgba(11, 31, 34, 0.07);
+    box-shadow: 0 14px 44px -32px rgba(11, 31, 34, 0.1);
+  }
+
+  html:not([data-theme="light"]) .hero-light-panel {
+    border: 1px solid rgba(234, 251, 251, 0.08);
+    box-shadow: 0 14px 44px -32px rgba(2, 6, 7, 0.45);
+  }
+
   /* Manifesto — layout (theme colors unlayered below) */
   .manifesto-photo-stack {
     min-height: clamp(16rem, 52vw, 26rem);

@@ -1,5 +1,6 @@
 import type { PublicPerfConfig } from './types';
 import { DEFAULT_PUBLIC_PERF } from './types';
+import { isCacheDisabled } from '@/lib/perfFlags';
 
 let cached: { at: number; config: PublicPerfConfig } | null = null;
 const TTL_MS = 60_000;
@@ -13,6 +14,10 @@ function apiBase(): string {
 
 /** Lightweight perf flags for middleware (cached ~60s). */
 export async function getMiddlewarePerfConfig(): Promise<PublicPerfConfig> {
+  if (isCacheDisabled()) {
+    return DEFAULT_PUBLIC_PERF;
+  }
+
   if (cached && Date.now() - cached.at < TTL_MS) {
     return cached.config;
   }
