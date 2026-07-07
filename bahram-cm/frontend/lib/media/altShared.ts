@@ -1,7 +1,7 @@
 import { SITE_MEDIA } from '@/config/media';
 import { persistMediaUrl } from '@/lib/mediaUrl';
 
-/** Alt from static SITE_MEDIA config (SVG placeholders in /public/media). */
+/** Alt from static SITE_MEDIA config (gallery storage paths). */
 export function staticAltForSrc(src: string | null | undefined): string | null {
   if (!src?.trim()) return null;
 

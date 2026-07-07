@@ -1,7 +1,5 @@
-/** Paths forwarded from the Next.js site to the Laravel backend (API + Filament embed + assets). */
+/** Paths forwarded from the Next.js site to the Laravel backend (API + media). */
 const BACKEND_PREFIXES = [
-  "/manage/",
-  "/filament/",
   "/storage/",
   "/api/",
   "/cdn/",
@@ -9,7 +7,6 @@ const BACKEND_PREFIXES = [
   "/js/",
   "/fonts/",
 ];
-const LIVEWIRE_PREFIX = /^\/livewire-[a-f0-9]+(?:\/|$)/;
 
 export function shouldProxyToBackend(pathname: string): boolean {
   if (
@@ -21,11 +18,7 @@ export function shouldProxyToBackend(pathname: string): boolean {
     return false;
   }
 
-  if (BACKEND_PREFIXES.some((prefix) => pathname === prefix.replace(/\/$/, "") || pathname.startsWith(prefix))) {
-    return true;
-  }
-
-  return LIVEWIRE_PREFIX.test(pathname);
+  return BACKEND_PREFIXES.some((prefix) => pathname === prefix.replace(/\/$/, "") || pathname.startsWith(prefix));
 }
 
 export function backendProxyUrl(): string {

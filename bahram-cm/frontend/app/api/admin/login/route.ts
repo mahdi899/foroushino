@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
 import { SERVER_API_URL } from '@/lib/api/config';
 import { ADMIN_TOKEN_COOKIE } from '@/lib/auth/session';
 
@@ -7,14 +6,6 @@ const LOGIN_URLS = [
   SERVER_API_URL,
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1',
 ].filter((url, index, arr) => arr.indexOf(url) === index);
-
-function forwardSetCookies(from: Response, to: NextResponse) {
-  const anyHeaders = from.headers as Headers & { getSetCookie?: () => string[] };
-  const setCookies = anyHeaders.getSetCookie?.() ?? [];
-  for (const cookie of setCookies) {
-    to.headers.append('Set-Cookie', cookie);
-  }
-}
 
 async function tryLogin(
   email: string,
@@ -114,19 +105,6 @@ export async function POST(req: Request) {
     path: '/',
     maxAge: 60 * 60 * 24 * 7,
   });
-
-  try {
-    const sessionRes = await fetch(`${SERVER_API_URL.replace(/\/$/, '')}/auth/web-session`, {
-      method: 'POST',
-      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
-      cache: 'no-store',
-    });
-    if (sessionRes.ok) {
-      forwardSetCookies(sessionRes, out);
-    }
-  } catch {
-    /* commerce embed can call /api/admin/filament-session later */
-  }
 
   return out;
 }

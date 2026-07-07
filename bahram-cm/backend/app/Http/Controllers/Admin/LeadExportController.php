@@ -5,12 +5,16 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Support\Csv;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LeadExportController extends Controller
 {
-    public function __invoke(): StreamedResponse
+    public function __invoke(Request $request): StreamedResponse
     {
+        $user = $request->user();
+        abort_if($user === null || ! $user->is_admin, 403);
+
         $rows = Lead::query()
             ->orderByDesc('created_at')
             ->cursor()

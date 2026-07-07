@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { NOT_FOUND_IMAGE } from "@/config/media";
 
 export const SITE = {
   name: "بهرام رستمی",
@@ -46,7 +47,7 @@ export const defaultMetadata: Metadata = {
       "از مخاطب تا کمپین تا امپراتوری شخصی — مسیر رشد حرفه‌ای.",
     images: [
       {
-        url: "/media/og-default.svg",
+        url: NOT_FOUND_IMAGE,
         width: 1200,
         height: 630,
         alt: "بهرام رستمی",
@@ -59,7 +60,7 @@ export const defaultMetadata: Metadata = {
     creator: SITE.twitter,
     title: "بهرام رستمی — معمار مسیر رشد حرفه‌ای",
     description: "از مخاطب تا کمپین تا امپراتوری شخصی.",
-    images: ["/media/og-default.svg"],
+    images: [NOT_FOUND_IMAGE],
   },
   robots: {
     index: true,

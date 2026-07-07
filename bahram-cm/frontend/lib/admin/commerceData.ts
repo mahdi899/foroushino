@@ -102,7 +102,7 @@ export async function getStudentTestimonial(id: number): Promise<AdminStudentTes
 
 export async function getPaymentSettings(): Promise<PaymentSettingsData | null> {
   try {
-    const res = await adminFetch<{ data: PaymentSettingsData }>('/manage/payment-settings');
+    const res = await adminFetch<{ data: PaymentSettingsData }>('/panel/payment-settings');
     return res.data;
   } catch {
     return null;
@@ -111,7 +111,7 @@ export async function getPaymentSettings(): Promise<PaymentSettingsData | null> 
 
 export async function getSmsSpotplayerSettings(): Promise<SmsSpotplayerSettingsData | null> {
   try {
-    const res = await adminFetch<{ data: SmsSpotplayerSettingsData }>('/manage/sms-spotplayer-settings');
+    const res = await adminFetch<{ data: SmsSpotplayerSettingsData }>('/panel/sms-spotplayer-settings');
     return res.data;
   } catch {
     return null;

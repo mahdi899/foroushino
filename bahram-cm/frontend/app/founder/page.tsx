@@ -25,6 +25,7 @@ import { PhotoFrame } from "@/components/ui/PhotoFrame";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { resolveMediaAlt } from "@/lib/media/alt";
 import { pageHeroBackdropPhoto, sitePhotos } from "@/lib/site-photo-paths";
+import { siteStorageMedia } from "@/config/media";
 
 export const metadata: Metadata = buildMetadata({
   title: "بهرام رستمی · معمار مسیر رشد حرفه‌ای",
@@ -203,7 +204,7 @@ export default async function FounderPage() {
             <Reveal delay={0.26}>
               <div className="mt-6 flex flex-col items-start gap-3 border-t border-bone/8 pt-5 sm:flex-row sm:items-center sm:gap-5 md:mt-10 md:gap-6 md:pt-6">
                 <SiteImage
-                  src="/media/signature.svg"
+                  src={siteStorageMedia('signature.svg')}
                   alt="امضای بهرام"
                   fallbackAlt="امضای بهرام"
                   width={200}

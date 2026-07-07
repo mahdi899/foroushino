@@ -6,7 +6,7 @@ import type { ApiArticle } from '@/lib/api/types';
 
 export async function getAdminArticles(): Promise<ApiArticle[]> {
   try {
-    const res = await adminFetch<{ data: ApiArticle[] }>('/manage/articles');
+    const res = await adminFetch<{ data: ApiArticle[] }>('/panel/articles');
     return res.data;
   } catch {
     return [];
@@ -15,7 +15,7 @@ export async function getAdminArticles(): Promise<ApiArticle[]> {
 
 export async function getTrashedArticles(): Promise<ApiArticle[]> {
   try {
-    const res = await adminFetch<{ data: ApiArticle[] }>('/manage/articles/trash');
+    const res = await adminFetch<{ data: ApiArticle[] }>('/panel/articles/trash');
     return res.data;
   } catch {
     return [];

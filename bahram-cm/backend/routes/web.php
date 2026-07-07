@@ -1,7 +1,5 @@
 <?php
 
-use App\Http\Controllers\Admin\LeadExportController;
-use App\Http\Controllers\Admin\OrderExportController;
 use App\Http\Controllers\MediaDeliveryController;
 use App\Models\SeoSetting;
 use App\Services\SitemapService;
@@ -19,11 +17,6 @@ Route::get('/cdn/{path}', [MediaDeliveryController::class, 'show'])
 Route::get('/cdn/media/{path}', [MediaDeliveryController::class, 'show'])
     ->where('path', '.*')
     ->name('cdn.media.legacy');
-
-Route::middleware(['web', 'auth'])->prefix('manage')->name('admin.')->group(function () {
-    Route::get('/leads/export', LeadExportController::class)->name('leads.export');
-    Route::get('/orders/export', OrderExportController::class)->name('orders.export');
-});
 
 Route::get('/sitemap.xml', function (SitemapService $sitemap) {
     return response($sitemap->current(), 200, [

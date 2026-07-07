@@ -643,7 +643,7 @@ function HeroPhoto() {
       <div className="hero-photo-frame">
         <div className="relative aspect-[16/10] w-full">
           <SiteImage
-            src="/media/site-photos/manifesto-landscape.jpg"
+            src={sitePhotos.manifestoLandscape}
             alt="دوره کمپین‌نویسی"
             fallbackAlt="دوره کمپین‌نویسی"
             fill

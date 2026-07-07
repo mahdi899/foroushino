@@ -12,7 +12,7 @@ import type { ApiArticle, ApiCase, ApiDoctor } from '@/lib/api/types';
 
 export async function getAdminArticles(): Promise<ApiArticle[]> {
   try {
-    const res = await adminFetch<{ data: ApiArticle[] }>('/manage/articles');
+    const res = await adminFetch<{ data: ApiArticle[] }>('/panel/articles');
     return res.data;
   } catch {
     return [];
@@ -30,7 +30,7 @@ export async function getAdminArticle(slug: string): Promise<ApiArticle | null> 
 
 export async function getAdminArticleById(id: number): Promise<ApiArticle | null> {
   try {
-    const res = await adminFetch<{ data: ApiArticle }>(`/manage/articles/${id}`);
+    const res = await adminFetch<{ data: ApiArticle }>(`/panel/articles/${id}`);
     return res.data;
   } catch {
     return null;
@@ -86,7 +86,7 @@ export async function deleteArticle(
 
 export async function getTrashedArticles(): Promise<ApiArticle[]> {
   try {
-    const res = await adminFetch<{ data: ApiArticle[] }>('/manage/articles/trash');
+    const res = await adminFetch<{ data: ApiArticle[] }>('/panel/articles/trash');
     return res.data;
   } catch {
     return [];
@@ -110,7 +110,7 @@ export async function restoreArticle(id: number): Promise<{ ok: boolean; error?:
 
 export async function getAdminCases(): Promise<ApiCase[]> {
   try {
-    const res = await adminFetch<{ data: ApiCase[] }>('/manage/cases');
+    const res = await adminFetch<{ data: ApiCase[] }>('/panel/cases');
     return res.data;
   } catch {
     return [];
@@ -156,7 +156,7 @@ export async function createCase(payload: {
 
 export async function getAdminDoctors(): Promise<ApiDoctor[]> {
   try {
-    const res = await adminFetch<{ data: ApiDoctor[] }>('/manage/doctors');
+    const res = await adminFetch<{ data: ApiDoctor[] }>('/panel/doctors');
     return res.data;
   } catch {
     return [];

@@ -45,7 +45,6 @@ function LoginForm() {
       setPending(false);
       return;
     }
-    await fetch('/api/admin/filament-session', { method: 'POST' }).catch(() => {});
     const from = String(form.get('from') || '/admin');
     router.push(from.startsWith('/admin') ? from : '/admin');
     router.refresh();

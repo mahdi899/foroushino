@@ -26,5 +26,6 @@ export {
 
 export { coalesceAlt, staticAltForSrc } from '@/lib/media/altShared';
 export { resolveMediaAlt } from '@/lib/media/alt';
+export { mediaPathToStorage, resolveLegacyStoragePath } from '@/lib/media/legacyMap';
 
 export { default as bahramImageLoader } from '@/lib/imageLoader';

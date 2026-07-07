@@ -53,10 +53,11 @@ const config: NextConfig = {
   async redirects() {
     return [
       { source: "/academy/app", destination: "/saat", permanent: true },
-      { source: "/manage", destination: "/admin", permanent: false },
-      { source: "/manage/login", destination: "/admin/login", permanent: false },
       { source: "/blog", destination: "/insights", permanent: true },
       { source: "/blog/:slug", destination: "/insights/:slug", permanent: true },
+      { source: "/admin/media", destination: "/admin/gallery", permanent: false },
+      { source: "/admin/faq", destination: "/admin/commerce/faqs", permanent: false },
+      { source: "/admin/testimonials", destination: "/admin/commerce/testimonials", permanent: false },
     ];
   },
   async headers() {
@@ -68,7 +69,6 @@ const config: NextConfig = {
       { source: "/_next/static/:path*", headers: immutable },
       { source: "/fonts/:path*", headers: immutable },
       { source: "/icons/:path*", headers: immutable },
-      { source: "/media/:path*", headers: immutable },
     ];
   },
   transpilePackages: ["next-mdx-remote"],

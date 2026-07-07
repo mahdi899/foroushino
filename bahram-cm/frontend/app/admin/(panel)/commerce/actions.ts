@@ -7,7 +7,7 @@ import type { AdminFaq, AdminOrder, AdminProduct, AdminStudentTestimonial, Payme
 
 export async function loadPaymentSettingsAction(): Promise<PaymentSettingsData | null> {
   try {
-    const res = await adminFetch<{ data: PaymentSettingsData }>('/manage/payment-settings');
+    const res = await adminFetch<{ data: PaymentSettingsData }>('/panel/payment-settings');
     return res.data;
   } catch {
     return null;
@@ -16,7 +16,7 @@ export async function loadPaymentSettingsAction(): Promise<PaymentSettingsData |
 
 export async function loadSmsSpotplayerSettingsAction(): Promise<SmsSpotplayerSettingsData | null> {
   try {
-    const res = await adminFetch<{ data: SmsSpotplayerSettingsData }>('/manage/sms-spotplayer-settings');
+    const res = await adminFetch<{ data: SmsSpotplayerSettingsData }>('/panel/sms-spotplayer-settings');
     return res.data;
   } catch {
     return null;
@@ -185,7 +185,7 @@ export async function savePaymentSettings(
   data: Partial<PaymentSettingsData> & { zarinpal_merchant_id?: string },
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await adminFetch('/manage/payment-settings', { method: 'PUT', body: data });
+    await adminFetch('/panel/payment-settings', { method: 'PUT', body: data });
     revalidateCommerce();
     return { ok: true };
   } catch {
@@ -197,7 +197,7 @@ export async function saveSmsSpotplayerSettings(
   data: Partial<SmsSpotplayerSettingsData> & { sms_api_key?: string; spotplayer_api_key?: string },
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    await adminFetch('/manage/sms-spotplayer-settings', { method: 'PUT', body: data });
+    await adminFetch('/panel/sms-spotplayer-settings', { method: 'PUT', body: data });
     revalidateCommerce();
     return { ok: true };
   } catch {
@@ -207,7 +207,7 @@ export async function saveSmsSpotplayerSettings(
 
 export async function testSmsSettings(): Promise<{ ok: boolean; message?: string; error?: string }> {
   try {
-    const res = await adminFetch<{ ok: boolean; message: string }>('/manage/sms-spotplayer-settings/test-sms', {
+    const res = await adminFetch<{ ok: boolean; message: string }>('/panel/sms-spotplayer-settings/test-sms', {
       method: 'POST',
     });
     return { ok: res.ok, message: res.message };
@@ -220,7 +220,7 @@ export async function testSmsSettings(): Promise<{ ok: boolean; message?: string
 export async function testSpotplayerSettings(): Promise<{ ok: boolean; message?: string; error?: string }> {
   try {
     const res = await adminFetch<{ ok: boolean; message: string }>(
-      '/manage/sms-spotplayer-settings/test-spotplayer',
+      '/panel/sms-spotplayer-settings/test-spotplayer',
       { method: 'POST' },
     );
     return { ok: res.ok, message: res.message };

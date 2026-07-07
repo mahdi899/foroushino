@@ -1,4 +1,6 @@
 import { SITE } from "./seo";
+import { FOUNDER_IMAGE, LOGO_IMAGE } from "@/config/media";
+import { resolveSitemapImageUrl } from "@/lib/mediaUrl";
 
 export function personJsonLd() {
   return {
@@ -7,7 +9,7 @@ export function personJsonLd() {
     name: "بهرام رستمی",
     alternateName: "Bahram Rostami",
     url: SITE.url,
-    image: `${SITE.url}/media/founder-portrait.svg`,
+    image: resolveSitemapImageUrl(FOUNDER_IMAGE),
     jobTitle: "معمار مسیر رشد حرفه‌ای",
     description:
       "بنیان‌گذار آکادمی و مدرس مسیر کمپین‌نویسی؛ بیش از ۵۰ هزار دانشجو در بازار فارسی.",
@@ -26,7 +28,7 @@ export function organizationJsonLd() {
     name: "آکادمی",
     alternateName: "Academy",
     url: SITE.url,
-    logo: `${SITE.url}/media/logo.svg`,
+    logo: resolveSitemapImageUrl(LOGO_IMAGE),
     founder: {
       "@type": "Person",
       name: "بهرام رستمی",
@@ -80,7 +82,7 @@ export function articleJsonLd({
     publisher: {
       "@type": "Organization",
       name: SITE.ecosystem,
-      logo: { "@type": "ImageObject", url: `${SITE.url}/media/logo.svg` },
+      logo: { "@type": "ImageObject", url: resolveSitemapImageUrl(LOGO_IMAGE) },
     },
   };
 }

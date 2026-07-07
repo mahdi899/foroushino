@@ -22,7 +22,6 @@ export const STATIC_CONTENT_PREFIXES = [
 /** Always dynamic — never ISR HTML cache. */
 export const DYNAMIC_ROUTE_PREFIXES = [
   '/admin',
-  '/manage',
   '/purchase',
   '/apply',
   '/api/admin',

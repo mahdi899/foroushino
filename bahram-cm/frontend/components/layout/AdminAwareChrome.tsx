@@ -8,9 +8,8 @@ import { SiteNav } from '@/components/nav/SiteNav';
 export function AdminAwareChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin');
-  const isFilament = pathname?.startsWith('/manage');
 
-  if (isAdmin || isFilament) {
+  if (isAdmin) {
     return <>{children}</>;
   }
 

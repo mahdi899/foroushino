@@ -6,6 +6,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { sitePhotos } from "@/lib/site-photo-paths";
+import { siteStorageMedia } from "@/config/media";
 
 const photoClass = "manifesto-photo relative w-full overflow-hidden rounded-card-lg";
 const LINES = site.manifesto;
@@ -102,7 +103,7 @@ export function ManifestoShift() {
               <Reveal delay={0.3}>
                 <div className="manifesto-signature mt-8 md:mt-10">
                   <SiteImage
-                    src="/media/signature.png"
+                    src={siteStorageMedia('signature.png')}
                     alt="امضای بهرام رستمی"
                     fallbackAlt="امضای بهرام رستمی"
                     width={168}

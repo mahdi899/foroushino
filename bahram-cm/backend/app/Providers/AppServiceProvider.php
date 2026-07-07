@@ -2,7 +2,6 @@
 
 namespace App\Providers;
 
-use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -17,8 +16,6 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        Authenticate::redirectUsing(fn () => route('filament.admin.auth.login'));
-
         RateLimiter::for('leads', function (Request $request) {
             return [
                 Limit::perMinute(5)->by($request->ip()),

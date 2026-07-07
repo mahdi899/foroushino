@@ -9,8 +9,8 @@ async function proxyGet(path: string) {
 export async function GET() {
   try {
     const [statusRes, settingsRes] = await Promise.all([
-      adminFetch<{ data: unknown }>('/manage/cache/status'),
-      adminFetch<{ data: Record<string, unknown> }>('/manage/cache/settings'),
+      adminFetch<{ data: unknown }>('/panel/cache/status'),
+      adminFetch<{ data: Record<string, unknown> }>('/panel/cache/settings'),
     ]);
     return NextResponse.json({ status: statusRes.data, settings: settingsRes.data });
   } catch (e) {

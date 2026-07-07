@@ -5,7 +5,7 @@ import type { CacheIntegrationsForm, CacheIntegrationsView } from './integration
 
 export async function loadCacheIntegrations(): Promise<CacheIntegrationsView | null> {
   try {
-    const res = await adminFetch<{ data: CacheIntegrationsView }>('/manage/cache/integrations');
+    const res = await adminFetch<{ data: CacheIntegrationsView }>('/panel/cache/integrations');
     return res.data;
   } catch {
     return null;
@@ -16,7 +16,7 @@ export async function saveCacheIntegrationsAction(
   form: CacheIntegrationsForm,
 ): Promise<{ ok: boolean; data?: CacheIntegrationsView; error?: string }> {
   try {
-    const res = await adminFetch<{ data: CacheIntegrationsView }>('/manage/cache/integrations', {
+    const res = await adminFetch<{ data: CacheIntegrationsView }>('/panel/cache/integrations', {
       method: 'PUT',
       body: {
         revalidate_webhook_url: form.revalidateWebhookUrl.trim(),
@@ -36,7 +36,7 @@ export async function testCacheIntegrationAction(
 ): Promise<{ ok: boolean; message: string }> {
   try {
     const res = await adminFetch<{ data: { ok: boolean; message: string } }>(
-      '/manage/cache/integrations/test',
+      '/panel/cache/integrations/test',
       { method: 'POST', body: { target } },
     );
     return res.data;

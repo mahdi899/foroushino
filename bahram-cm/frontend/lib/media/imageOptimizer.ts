@@ -5,7 +5,7 @@ import type { ImageOptimizerForm, ImageOptimizerView } from './imageOptimizer.ty
 
 export async function loadImageOptimizerSettings(): Promise<ImageOptimizerView | null> {
   try {
-    const res = await adminFetch<{ data: ImageOptimizerView }>('/manage/settings/image-optimizer');
+    const res = await adminFetch<{ data: ImageOptimizerView }>('/panel/settings/image-optimizer');
     return res.data;
   } catch {
     return null;
@@ -16,7 +16,7 @@ export async function saveImageOptimizerSettingsAction(
   form: ImageOptimizerForm,
 ): Promise<{ ok: boolean; data?: ImageOptimizerView; error?: string }> {
   try {
-    const res = await adminFetch<{ data: ImageOptimizerView }>('/manage/settings/image-optimizer', {
+    const res = await adminFetch<{ data: ImageOptimizerView }>('/panel/settings/image-optimizer', {
       method: 'PUT',
       body: {
         tinify_key_input: form.tinifyKeyInput.trim(),
@@ -42,7 +42,7 @@ export async function testImageOptimizerAction(
 ): Promise<{ ok: boolean; message: string }> {
   try {
     const res = await adminFetch<{ data: { ok: boolean; message: string } }>(
-      '/manage/settings/image-optimizer/test',
+      '/panel/settings/image-optimizer/test',
       { method: 'POST', body: { target } },
     );
     return res.data;

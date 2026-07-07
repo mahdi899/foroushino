@@ -1,43 +1,45 @@
+import { siteStorageMedia } from '@/config/media';
+
 /**
- * مرکز پوشه‌ی عکس‌های سایت — مسیرهای portable نگه داشته می‌شوند تا
- * ابتدا از `/public/media` (سریع) و در صورت نیاز از Laravel CDN لود شوند.
+ * Site photo paths — canonical gallery storage (`/storage/media/site/*`).
+ * Managed via admin gallery; legacy `/media/*` URLs redirect here.
  */
 export const sitePhotos = {
-  heroLightGrid: "/media/2026/07/01kwycnpwd57yxx2ddjmnvhp55.webp",
-  heroLightGridMobile: "/media/2026/07/01kwyecgnr5hzcdbwa9rwzgbwn.webp",
-  portraitFounder: "/media/site-photos/portrait-founder.jpg",
-  squareStudio: "/media/site-photos/square-studio.jpg",
-  landscapeSession: "/media/site-photos/landscape-session.jpg",
+  heroLightGrid: siteStorageMedia('01kwycnpwd57yxx2ddjmnvhp55.webp'),
+  heroLightGridMobile: siteStorageMedia('01kwyecgnr5hzcdbwa9rwzgbwn.webp'),
+  portraitFounder: siteStorageMedia('portrait-founder.jpg'),
+  squareStudio: siteStorageMedia('square-studio.jpg'),
+  landscapeSession: siteStorageMedia('landscape-session.jpg'),
   social: [
-    "/media/site-photos/social-01.jpg",
-    "/media/site-photos/social-02.jpg",
-    "/media/site-photos/social-03.jpg",
-    "/media/site-photos/social-04.jpg",
-    "/media/site-photos/social-05.jpg",
-    "/media/site-photos/social-06.jpg",
+    siteStorageMedia('social-01.jpg'),
+    siteStorageMedia('social-02.jpg'),
+    siteStorageMedia('social-03.jpg'),
+    siteStorageMedia('social-04.jpg'),
+    siteStorageMedia('social-05.jpg'),
+    siteStorageMedia('social-06.jpg'),
   ],
-  manifestoPortraitA: "/media/site-photos/manifesto-portrait-a.jpg",
-  manifestoPortraitB: "/media/site-photos/manifesto-portrait-b.jpg",
-  manifestoLandscape: "/media/site-photos/manifesto-landscape.jpg",
-  ctaPortrait: "/media/site-photos/cta-portrait.jpg",
-  ctaSquare: "/media/site-photos/cta-square.jpg",
+  manifestoPortraitA: siteStorageMedia('manifesto-portrait-a.jpg'),
+  manifestoPortraitB: siteStorageMedia('manifesto-portrait-b.jpg'),
+  manifestoLandscape: siteStorageMedia('manifesto-landscape.jpg'),
+  ctaPortrait: siteStorageMedia('cta-portrait.jpg'),
+  ctaSquare: siteStorageMedia('cta-square.jpg'),
   testimonialPortrait: [
-    "/media/site-photos/testimonial-01.jpg",
-    "/media/site-photos/testimonial-02.jpg",
-    "/media/site-photos/testimonial-03.jpg",
+    siteStorageMedia('testimonial-01.jpg'),
+    siteStorageMedia('testimonial-02.jpg'),
+    siteStorageMedia('testimonial-03.jpg'),
   ],
-  academyStory: "/media/site-photos/academy-story.jpg",
-  academyAccent: "/media/site-photos/academy-accent.jpg",
-  academyAppHome: "/media/site-photos/academy-story.jpg",
-  academyAppPath: "/media/site-photos/story-step-02.jpg",
-  academyAppAtelier: "/media/site-photos/square-backstage.jpg",
-  squareBackstage: "/media/site-photos/square-backstage.jpg",
-  courseBackstage: "/media/site-photos/course-backstage.jpg",
+  academyStory: siteStorageMedia('academy-story.jpg'),
+  academyAccent: siteStorageMedia('academy-accent.jpg'),
+  academyAppHome: siteStorageMedia('academy-story.jpg'),
+  academyAppPath: siteStorageMedia('story-step-02.jpg'),
+  academyAppAtelier: siteStorageMedia('square-backstage.jpg'),
+  squareBackstage: siteStorageMedia('square-backstage.jpg'),
+  courseBackstage: siteStorageMedia('course-backstage.jpg'),
   storyStep: [
-    "/media/site-photos/story-step-01.jpg",
-    "/media/site-photos/story-step-02.jpg",
-    "/media/site-photos/story-step-03.jpg",
-    "/media/site-photos/story-step-04.jpg",
+    siteStorageMedia('story-step-01.jpg'),
+    siteStorageMedia('story-step-02.jpg'),
+    siteStorageMedia('story-step-03.jpg'),
+    siteStorageMedia('story-step-04.jpg'),
   ],
 } as const;
 

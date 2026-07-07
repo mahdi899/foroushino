@@ -32,7 +32,7 @@ type Props = {
   className?: string;
   children?: ReactNode;
   showIcon?: boolean;
-  /** مسیر عکس واقعی داخل `public` — مثلاً `/media/site-photos/hero.jpg` */
+  /** Gallery storage path — e.g. `/storage/media/site/hero.jpg` */
   src?: string;
   alt?: string;
   sizes?: string;

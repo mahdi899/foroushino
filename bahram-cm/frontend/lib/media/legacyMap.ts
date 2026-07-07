@@ -14,6 +14,51 @@ export function resolveLegacyStoragePath(legacyPath: string): string | null {
   return GENERATED_LEGACY_MAP[legacyPath] ?? LEGACY_MAP_LOWER[legacyPath.toLowerCase()] ?? null;
 }
 
+/**
+ * Canonical storage reference for any legacy public media path.
+ * `/media/avatar-sara.svg` → `/storage/media/site/avatar-sara.svg`
+ * `/media/site-photos/foo.jpg` → `/storage/media/site/foo.jpg`
+ */
+export function mediaPathToStorage(path: string): string {
+  const trimmed = path.trim();
+  if (!trimmed) return trimmed;
+  if (trimmed.startsWith('/storage/')) return trimmed;
+
+  let legacyPath = trimmed;
+  try {
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      const parsed = new URL(trimmed);
+      if (parsed.pathname.startsWith('/storage/')) return parsed.pathname;
+      if (parsed.pathname.startsWith('/cdn/media/')) {
+        return parsed.pathname.replace(/^\/cdn\//, '/storage/');
+      }
+      legacyPath = parsed.pathname;
+    }
+  } catch {
+    /* keep trimmed */
+  }
+
+  if (legacyPath.startsWith('/cdn/media/')) {
+    return legacyPath.replace(/^\/cdn\//, '/storage/');
+  }
+
+  if (!legacyPath.startsWith('/media/') && !legacyPath.startsWith('/images/')) {
+    return trimmed;
+  }
+
+  const mapped = resolveLegacyStoragePath(legacyPath);
+  if (mapped) return mapped;
+
+  let relative = legacyPath.replace(/^\/(?:media|images)\//, '');
+  if (relative.startsWith('site-photos/')) {
+    relative = relative.slice('site-photos/'.length);
+  } else if (relative.includes('/')) {
+    relative = relative.split('/').pop() ?? relative;
+  }
+
+  return `/storage/media/site/${relative}`;
+}
+
 /** Reverse map — `/storage/media/site/foo.jpg` → `/media/site-photos/foo.jpg`. */
 export function legacyPublicPathFromStorage(storagePath: string): string | null {
   if (!storagePath.startsWith('/storage/')) return null;

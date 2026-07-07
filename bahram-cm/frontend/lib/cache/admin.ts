@@ -94,8 +94,8 @@ function isrScope(scope: string, extra?: { tags?: string[]; paths?: string[] }):
 export async function loadCachePanel(): Promise<CachePanelData> {
   try {
     const [statusRes, settingsRes] = await Promise.all([
-      adminFetch<{ data: Partial<CacheStatus> }>('/manage/cache/status'),
-      adminFetch<{ data: Record<string, unknown> }>('/manage/cache/settings'),
+      adminFetch<{ data: Partial<CacheStatus> }>('/panel/cache/status'),
+      adminFetch<{ data: Record<string, unknown> }>('/panel/cache/settings'),
     ]);
     const settings = normalizeSettings(settingsRes.data);
     return {
@@ -136,7 +136,7 @@ export async function saveCacheSettingsAction(settings: Partial<CacheSettings>):
   error?: string;
 }> {
   try {
-    const res = await adminFetch<{ data: Record<string, unknown> }>('/manage/cache/settings', {
+    const res = await adminFetch<{ data: Record<string, unknown> }>('/panel/cache/settings', {
       method: 'PUT',
       body: settings,
     });
@@ -156,7 +156,7 @@ export async function purgeCacheAction(options: {
   const isr = isrScope(options.scope, options);
 
     try {
-    const res = await adminFetch<{ data: unknown }>('/manage/cache/purge', {
+    const res = await adminFetch<{ data: unknown }>('/panel/cache/purge', {
       method: 'POST',
       body: options,
     });
@@ -202,7 +202,7 @@ export async function purgeIsrOnlyAction(options: {
 
 export async function clearPurgeLogAction(): Promise<{ ok: boolean; error?: string }> {
   try {
-    await adminFetch('/manage/cache/purge-log', { method: 'DELETE' });
+    await adminFetch('/panel/cache/purge-log', { method: 'DELETE' });
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'خطا در پاک کردن لاگ' };
@@ -218,7 +218,7 @@ export async function toggleDeveloperModeAction(enable: boolean): Promise<{
   try {
     const res = await adminFetch<{
       data: { settings?: Record<string, unknown>; cloudflare_dev_mode?: boolean };
-    }>('/manage/cache/developer-mode', {
+    }>('/panel/cache/developer-mode', {
       method: 'POST',
       body: { enable },
     });

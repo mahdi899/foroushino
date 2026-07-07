@@ -8,6 +8,7 @@ import { buildCdnCacheControl, buildPublicCacheControl, CDN_MEDIA_EDGE } from "@
 import { getMiddlewarePerfConfig } from "@/lib/cache/middlewarePerf";
 import { isLongCacheMediaPath } from "@/lib/cache/cdnHeaders";
 import { isStaticContentPath } from "@/lib/cache/staticScope";
+import { mediaPathToStorage } from "@/lib/media/legacyMap";
 
 function isPublicHtmlDocument(pathname: string): boolean {
   if (!isStaticContentPath(pathname)) {
@@ -41,17 +42,14 @@ async function applyPublicCacheHeaders(response: NextResponse, pathname: string)
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  // /manage is only for Filament embed + assets — users always use /admin
-  if (pathname === '/manage' || pathname === '/manage/') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/admin';
-    return NextResponse.redirect(url);
-  }
-
-  if (pathname === '/manage/login') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/admin/login';
-    return NextResponse.redirect(url);
+  // Legacy Next `/public/media/*` → gallery storage (Laravel `/storage/media/site/*`).
+  if (pathname.startsWith('/media/') || pathname.startsWith('/images/')) {
+    const storagePath = mediaPathToStorage(pathname);
+    if (storagePath !== pathname) {
+      const url = request.nextUrl.clone();
+      url.pathname = storagePath;
+      return NextResponse.redirect(url, 308);
+    }
   }
 
   if (!shouldProxyToBackend(pathname)) {
@@ -100,9 +98,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/manage",
-    "/manage/:path*",
-    "/filament/:path*",
     "/storage/:path*",
     "/api/:path*",
     "/cdn/:path*",

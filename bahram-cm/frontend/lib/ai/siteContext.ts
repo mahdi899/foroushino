@@ -108,7 +108,7 @@ export async function getAiSiteContext(): Promise<AiSiteContext> {
 
 async function loadBlogArticlesForAi(): Promise<{ slug: string; title: string; excerpt: string }[]> {
   try {
-    const res = await adminFetch<{ data: ApiArticle[] }>('/manage/articles', {
+    const res = await adminFetch<{ data: ApiArticle[] }>('/panel/articles', {
       query: { per_page: 50, status: 'active' },
     });
     const fromApi = res.data

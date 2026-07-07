@@ -4,6 +4,7 @@ import { Eyebrow } from "@/components/ui/Eyebrow";
 import { LinkButton } from "@/components/ui/Button";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { sitePhotos } from "@/lib/site-photo-paths";
+import { siteStorageMedia } from "@/config/media";
 
 export function FounderAside() {
   return (
@@ -48,7 +49,7 @@ export function FounderAside() {
             <Reveal delay={0.24}>
               <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-bone/8 pt-4 sm:gap-4 md:mt-5">
                 <SiteImage
-                  src="/media/signature.png"
+                  src={siteStorageMedia('signature.png')}
                   alt="امضای بهرام"
                   fallbackAlt="امضای بهرام"
                   width={180}

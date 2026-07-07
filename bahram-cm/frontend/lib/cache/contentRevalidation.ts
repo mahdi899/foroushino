@@ -12,7 +12,7 @@ async function isAutoPurgeOnSaveEnabled(): Promise<boolean> {
   }
 
   try {
-    const res = await adminFetch<{ data: Record<string, unknown> }>('/manage/cache/settings');
+    const res = await adminFetch<{ data: Record<string, unknown> }>('/panel/cache/settings');
     const raw = res.data?.auto_purge_on_save;
     const enabled = raw === true || raw === '1' || raw === 1;
     autoPurgeCache = { at: Date.now(), enabled };

@@ -24,7 +24,7 @@ export function SiteChatbotEntry({
   deferWidget,
 }: SiteChatbotEntryProps) {
   const pathname = usePathname();
-  if (pathname?.startsWith('/admin') || pathname?.startsWith('/manage')) return null;
+  if (pathname?.startsWith('/admin')) return null;
   if (!config.enabled) return null;
 
   return (

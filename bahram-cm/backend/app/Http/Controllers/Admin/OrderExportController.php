@@ -5,12 +5,16 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Support\Csv;
+use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OrderExportController extends Controller
 {
-    public function __invoke(): StreamedResponse
+    public function __invoke(Request $request): StreamedResponse
     {
+        $user = $request->user();
+        abort_if($user === null || ! $user->is_admin, 403);
+
         $rows = Order::query()
             ->with('product')
             ->orderByDesc('created_at')

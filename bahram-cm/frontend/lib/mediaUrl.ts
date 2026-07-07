@@ -1,6 +1,6 @@
 import { API_ORIGIN, ASSET_ORIGIN, MEDIA_ORIGIN } from '@/lib/api/config';
 import { siteConfig } from '@/config/site';
-import { legacyPublicPathFromStorage, resolveLegacyStoragePath } from '@/lib/media/legacyMap';
+import { mediaPathToStorage } from '@/lib/media/legacyMap';
 import { isImageOptimizationDisabled } from '@/lib/perfFlags';
 
 function siteOrigin(): string {
@@ -50,8 +50,6 @@ function normalizeAbsoluteStorage(url: string): string {
   return url;
 }
 
-const isDev = process.env.NODE_ENV === 'development';
-
 /** Origin for a portable reference path. */
 function originForReference(ref: string): string | null {
   if (MEDIA_ORIGIN) return MEDIA_ORIGIN;
@@ -72,8 +70,42 @@ export const CDN_DELIVERY_ORIGIN: string = (
   API_ORIGIN
 ).replace(/\/+$/, '');
 
+function canonicalStorageRef(url: string | null | undefined): string {
+  if (!url?.trim()) return '';
+  let trimmed = url.trim();
+  const unwrapped = unwrapNextImageProxy(trimmed);
+  if (!unwrapped) return '';
+  trimmed = unwrapped;
+  return mediaPathToStorage(trimmed);
+}
+
+function isSvgMediaRef(ref: string): boolean {
+  return /\.svg(\?|#|$)/i.test(ref);
+}
+
+/** Portable `/storage/...` reference for admin gallery URLs (incl. `/cdn/` delivery paths). */
+function adminStorageRef(url: string | null | undefined): string {
+  const ref = canonicalStorageRef(url);
+  if (ref.startsWith('/storage/')) return ref;
+  return persistMediaUrl(url);
+}
+
+function addStorageDeliveryUrls(out: string[], ref: string, seen: Set<string>) {
+  const add = (candidate?: string | null) => {
+    if (!candidate?.trim() || seen.has(candidate)) return;
+    seen.add(candidate);
+    out.push(candidate);
+  };
+
+  if (!ref.startsWith('/storage/media/')) return;
+
+  add(`${CDN_DELIVERY_ORIGIN}/cdn/${ref.slice('/storage/'.length)}`);
+  add(resolveMediaUrl(ref));
+  add(ref);
+}
+
 /**
- * Portable path for DB / HTML — never store absolute CDN URLs.
+ * Portable path for DB / HTML — never store absolute CDN URLs or legacy `/media/*`.
  * Mirrors backend `App\Support\MediaUrl::reference()`.
  */
 export function persistMediaUrl(url: string | null | undefined): string {
@@ -84,15 +116,15 @@ export function persistMediaUrl(url: string | null | undefined): string {
   if (!unwrapped) return '';
   trimmed = unwrapped;
 
-  if (trimmed.startsWith('/images/') || trimmed.startsWith('/media/')) {
-    return resolveLegacyStoragePath(trimmed) ?? trimmed;
-  }
-
   if (trimmed.startsWith('/api/files/')) {
     return `/storage/${trimmed.replace(/^\/api\/files\//, '')}`;
   }
 
   if (trimmed.startsWith('/storage/')) return trimmed;
+
+  if (trimmed.startsWith('/cdn/media/')) {
+    return trimmed.replace(/^\/cdn\//, '/storage/');
+  }
 
   const storagePath = storagePathFromUrl(trimmed);
   if (storagePath) return `/storage/${storagePath}`;
@@ -101,14 +133,21 @@ export function persistMediaUrl(url: string | null | undefined): string {
     try {
       const parsed = new URL(trimmed);
       if (parsed.pathname.startsWith('/storage/')) return parsed.pathname;
-      if (parsed.pathname.startsWith('/images/')) return parsed.pathname;
+      if (parsed.pathname.startsWith('/cdn/media/')) {
+        return parsed.pathname.replace(/^\/cdn\//, '/storage/');
+      }
+      if (parsed.pathname.startsWith('/media/') || parsed.pathname.startsWith('/images/')) {
+        return mediaPathToStorage(parsed.pathname);
+      }
     } catch {
       /* keep */
     }
     return trimmed;
   }
 
-  if (trimmed.startsWith('/')) return trimmed;
+  if (trimmed.startsWith('/')) {
+    return mediaPathToStorage(trimmed);
+  }
 
   return `/storage/${trimmed.replace(/^\/+/, '')}`;
 }
@@ -123,20 +162,6 @@ export const mediaReference = persistMediaUrl;
 export function resolveMediaUrl(url: string | null | undefined): string {
   if (!url?.trim()) return '';
 
-  const trimmed = url.trim();
-
-  // Local dev without CDN: bundled assets live under Next `public/`.
-  if (isDev && !MEDIA_ORIGIN) {
-    if (trimmed.startsWith('/media/') || trimmed.startsWith('/images/')) {
-      const mapped = resolveLegacyStoragePath(trimmed);
-      if (mapped) return mapped;
-      return trimmed;
-    }
-    if (trimmed.startsWith('/storage/')) {
-      return legacyPublicPathFromStorage(trimmed) ?? trimmed;
-    }
-  }
-
   const ref = persistMediaUrl(url);
   if (!ref) return '';
 
@@ -144,20 +169,7 @@ export function resolveMediaUrl(url: string | null | undefined): string {
     return normalizeAbsoluteStorage(ref);
   }
 
-  if (ref.startsWith('/images/') || ref.startsWith('/media/')) {
-    // Dev: serve from Next public when unmapped. Prod: unified storage/CDN.
-    const mapped = resolveLegacyStoragePath(ref);
-    if (mapped) {
-      const mappedOrigin = originForReference(mapped);
-      if (mappedOrigin) return `${mappedOrigin}${mapped}`;
-    }
-    if (isDev && !MEDIA_ORIGIN && ref.startsWith('/media/')) return ref;
-    if (MEDIA_ORIGIN) return `${MEDIA_ORIGIN}${ref}`;
-    return ref;
-  }
-
   if (ref.startsWith('/storage/')) {
-    if (isDev && !MEDIA_ORIGIN) return ref;
     if (MEDIA_ORIGIN) return `${MEDIA_ORIGIN}${ref}`;
     return ref;
   }
@@ -168,63 +180,17 @@ export function resolveMediaUrl(url: string | null | undefined): string {
   return ref;
 }
 
-/** Prefer bundled `/public/media` for imported site assets in admin thumbnails. */
-function adminPublicAssetPath(ref: string | null | undefined): string | null {
-  if (!ref?.trim()) return null;
-
-  const trimmed = ref.trim();
-  if (trimmed.startsWith('/media/') || trimmed.startsWith('/images/')) {
-    return trimmed;
-  }
-
-  if (trimmed.startsWith('/storage/')) {
-    return legacyPublicPathFromStorage(trimmed) ?? publicMediaFallbackFromStorage(trimmed);
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.pathname.startsWith('/media/') || parsed.pathname.startsWith('/images/')) {
-      return parsed.pathname;
-    }
-    if (parsed.pathname.startsWith('/storage/')) {
-      return legacyPublicPathFromStorage(parsed.pathname) ?? publicMediaFallbackFromStorage(parsed.pathname);
-    }
-  } catch {
-    /* ignore */
-  }
-
-  return publicMediaFallbackFromStorage(trimmed);
-}
-
-/** Normalize admin thumbnail URLs — same-origin, prefer public bundle for legacy site assets. */
+/** Normalize admin thumbnail URLs — same-origin gallery storage via Next proxy. */
 export function normalizeAdminMediaUrl(url: string | null | undefined): string {
   if (!url?.trim()) return '';
 
-  const trimmed = url.trim();
-  const publicAsset = adminPublicAssetPath(trimmed);
-  if (publicAsset) return publicAsset;
+  const ref = adminStorageRef(url);
+  if (ref.startsWith('/storage/')) return ref;
 
-  if (trimmed.startsWith('/')) {
-    return resolveMediaUrl(trimmed);
-  }
+  const persisted = persistMediaUrl(url);
+  if (persisted.startsWith('/storage/')) return persisted;
 
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.pathname.startsWith('/storage/') || parsed.pathname.startsWith('/media/') || parsed.pathname.startsWith('/images/')) {
-      const local =
-        parsed.hostname === 'localhost' ||
-        parsed.hostname === '127.0.0.1';
-      if (local) {
-        const fromPath = adminPublicAssetPath(parsed.pathname);
-        if (fromPath) return fromPath;
-        return resolveMediaUrl(parsed.pathname);
-      }
-    }
-  } catch {
-    /* fall through */
-  }
-
-  return resolveMediaUrl(trimmed);
+  return ref || persisted;
 }
 
 /** Build ordered fallback URLs for admin gallery thumbnails. */
@@ -236,71 +202,56 @@ export function adminMediaThumbFallbacks(item: {
   const seen = new Set<string>();
   const out: string[] = [];
 
-  const addRaw = (candidate?: string | null) => {
-    if (!candidate?.trim()) return;
-    const value = candidate.trim();
-    if (seen.has(value)) return;
-    seen.add(value);
-    out.push(value);
-  };
-
-  const addResolved = (candidate?: string | null) => {
+  const add = (candidate?: string | null) => {
     const normalized = normalizeAdminMediaUrl(candidate);
     if (!normalized || seen.has(normalized)) return;
     seen.add(normalized);
     out.push(normalized);
   };
 
-  // 1. Next.js `/public` bundle — reliable for imported site SVGs/JPGs
-  addRaw(item.legacyPath);
-  addRaw(adminPublicAssetPath(item.persistSrc));
-  addRaw(adminPublicAssetPath(item.src));
+  const addRaw = (candidate: string) => {
+    if (!candidate || seen.has(candidate)) return;
+    seen.add(candidate);
+    out.push(candidate);
+  };
 
-  // 2. Normalized display URL + storage/CDN copies
-  addResolved(item.src);
-  addResolved(item.persistSrc);
+  const ref = adminStorageRef(item.persistSrc || item.src || item.legacyPath);
 
-  // 3. Raw storage path for uploads without a public mirror
-  if (item.persistSrc.startsWith('/storage/')) {
-    addRaw(item.persistSrc);
+  // Same-origin storage first — required for SVG and avoids localhost → 127.0.0.1 blocks.
+  if (ref.startsWith('/storage/media/')) {
+    add(ref);
+  }
+
+  add(item.persistSrc);
+  add(item.src);
+  add(item.legacyPath);
+
+  // Raster only: same-origin CDN resize (still proxied by Next middleware).
+  if (ref.startsWith('/storage/media/') && !isSvgMediaRef(ref)) {
+    addRaw(`/cdn/${ref.slice('/storage/'.length)}`);
   }
 
   return out;
 }
 
-/** When storage copy is missing, fall back to Next.js `/public/media/…` asset. */
-function publicMediaFallbackFromStorage(ref: string | null | undefined): string | null {
-  if (!ref?.trim()) return null;
-
-  const normalized = ref.startsWith('/storage/') ? ref : persistMediaUrl(ref);
-  if (!normalized?.startsWith('/storage/')) return null;
-
-  const legacy = legacyPublicPathFromStorage(normalized);
-  if (legacy) return legacy;
-
-  const relative = normalized.replace(/^\/storage\/media\//, '');
-  return `/media/${relative.replace(/^site\//, '')}`;
-}
-
-/** Best first URL for a site photo — CDN when mapped, otherwise local `/media`. */
+/** Best first URL for a site photo — gallery storage / CDN. */
 export function primarySiteImageSrc(src: string | null | undefined): string {
   if (!src?.trim()) return '';
-  const raw = src.trim();
+  const ref = canonicalStorageRef(src);
+  if (!ref) return src.trim();
 
   if (isImageOptimizationDisabled()) {
-    if (raw.startsWith('/media/') || raw.startsWith('/images/')) return raw;
-    const mapped = resolveLegacyStoragePath(raw);
-    if (mapped) return legacyPublicPathFromStorage(mapped) ?? raw;
-    return raw;
+    return ref;
   }
 
-  const mapped = resolveLegacyStoragePath(raw);
-  if (mapped) return resolveMediaUrl(mapped);
-  if (raw.startsWith('/storage/')) return resolveMediaUrl(raw);
-  return raw;
+  if (ref.startsWith('/storage/media/')) {
+    return `${CDN_DELIVERY_ORIGIN}/cdn/${ref.slice('/storage/'.length)}`;
+  }
+
+  return resolveMediaUrl(ref);
 }
 
-/** Ordered fallbacks for public-site images (CDN when mapped → local bundle). */
+/** Ordered fallbacks for public-site images (CDN → storage). */
 export function siteMediaFallbacks(src: string | null | undefined): string[] {
   if (!src?.trim()) return [];
 
@@ -312,60 +263,18 @@ export function siteMediaFallbacks(src: string | null | undefined): string[] {
     out.push(candidate);
   };
 
-  const raw = src.trim();
-  const mapped = resolveLegacyStoragePath(raw);
+  const ref = canonicalStorageRef(src);
+  if (!ref) return [src.trim()];
 
   if (isImageOptimizationDisabled()) {
-    if (raw.startsWith('/media/') || raw.startsWith('/images/')) {
-      add(raw);
-    }
-    if (mapped) {
-      add(legacyPublicPathFromStorage(mapped));
-      add(mapped);
-    }
-    return out.length > 0 ? out : [raw];
+    add(ref);
+    add(resolveMediaUrl(ref));
+    return out.length > 0 ? out : [src.trim()];
   }
 
-  // 0. Direct CDN delivery (gallery storage) — fastest when backend is up
-  if (raw.startsWith('/storage/media/')) {
-    add(`${CDN_DELIVERY_ORIGIN}/cdn/${raw.slice('/storage/'.length)}`);
-    add(raw);
-  }
+  addStorageDeliveryUrls(out, ref, seen);
 
-  // 1. CDN/storage — actual file for imported site photos
-  if (mapped) {
-    add(`${CDN_DELIVERY_ORIGIN}/cdn/${mapped.slice('/storage/'.length)}`);
-    add(resolveMediaUrl(mapped));
-    add(mapped);
-  }
-
-  // 2. Local Next.js `/public` path
-  if (raw.startsWith('/media/') || raw.startsWith('/images/')) {
-    add(raw);
-  }
-
-  const persisted = persistMediaUrl(raw);
-  if (persisted !== raw && !mapped) {
-    add(resolveMediaUrl(persisted));
-    add(persisted);
-  }
-
-  const legacyFromStorage = persisted.startsWith('/storage/')
-    ? legacyPublicPathFromStorage(persisted)
-    : null;
-  if (legacyFromStorage) add(legacyFromStorage);
-
-  const publicFallback = publicMediaFallbackFromStorage(persisted);
-  if (publicFallback) add(publicFallback);
-
-  if (raw.includes('portrait-founder') || persisted.includes('portrait-founder')) {
-    add('/media/founder-portrait.svg');
-  }
-  if (raw.includes('signature.png') || persisted.includes('signature.png')) {
-    add('/media/signature.svg');
-  }
-
-  return out;
+  return out.length > 0 ? out : [resolveMediaUrl(ref)];
 }
 
 export function rewriteArticleBodyMediaUrls(html: string): string {

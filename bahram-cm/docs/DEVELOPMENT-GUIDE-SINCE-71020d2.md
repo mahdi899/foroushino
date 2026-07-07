@@ -136,11 +136,16 @@ GET  /api/student-testimonials
 ### ادمین — `backend/routes/api_v1.php` (پیشوند `/api/v1`)
 
 ```
-GET/PATCH  /api/v1/manage/cache/*
+GET/PATCH  /api/v1/panel/cache/*
 POST       /api/v1/articles
-GET        /api/v1/manage/articles
+GET        /api/v1/panel/articles
+GET        /api/v1/panel/leads/export
+GET        /api/v1/panel/orders/export
 ...
 ```
+
+**احراز هویت ادمین (headless):** پنل Next فقط با توکن Sanctum (`adminFetch` + کوکی `bahram_admin_token`) کار می‌کند.  
+پل web-session قدیمی (`auth/web-session` و `/api/admin/filament-session`) همراه با Filament حذف شده است — commerce، محصولات، سفارش‌ها و FAQ همگی از همان API v1 با Bearer token استفاده می‌کنند.
 
 ### فرانت‌اند — انتخاب fetch
 
@@ -223,8 +228,8 @@ Seeder: `php artisan db:seed --class=CacheIntegrationsSeeder`
 ### جریان URL
 
 ```
-/media/site-photos/*  → legacy map → /storage/media/site/*
-/storage/media/*      → Laravel MediaDeliveryController
+/media/site-photos/*  → /storage/media/site/*  (redirect + legacyMap)
+/storage/media/*      → Laravel MediaDeliveryController (gallery)
 /cdn/media/*          → نسخهٔ resize شده
 ```
 

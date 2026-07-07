@@ -42,7 +42,7 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const ld = [personJsonLd(), organizationJsonLd(), courseJsonLd(), websiteJsonLd()];
   const pathname = (await headers()).get("x-pathname") ?? "";
-  const isAdminRoute = pathname.startsWith("/admin") || pathname.startsWith("/manage");
+  const isAdminRoute = pathname.startsWith("/admin");
 
   const [chatbotConfig, perfConfig] = await Promise.all([
     isAdminRoute ? Promise.resolve(EMPTY_CHATBOT_PUBLIC) : getPublicChatbotConfig(),

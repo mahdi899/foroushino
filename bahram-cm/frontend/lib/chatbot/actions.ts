@@ -606,7 +606,7 @@ export async function pollChatbotUpdates(input: {
 
 export async function fetchChatbotSessionThread(sessionId: string): Promise<ChatbotThreadItem[]> {
   const res = await adminFetch<{ data: ChatbotThreadItem[] }>(
-    `/manage/chatbot/sessions/${sessionId}/thread`,
+    `/panel/chatbot/sessions/${sessionId}/thread`,
   );
   return res.data;
 }
@@ -619,7 +619,7 @@ export async function replyToChatbotSession(input: {
 }): Promise<{ ok: boolean }> {
   try {
     await adminFetch<{ data: { id: number } }>(
-      `/manage/chatbot/sessions/${input.sessionId}/reply`,
+      `/panel/chatbot/sessions/${input.sessionId}/reply`,
       {
         method: 'POST',
         body: {
@@ -639,7 +639,7 @@ export async function fetchChatbotLogs(query: {
   page?: number;
   q?: string;
 }): Promise<ChatbotLogsResponse> {
-  return adminFetch<ChatbotLogsResponse>('/manage/chatbot/logs', {
+  return adminFetch<ChatbotLogsResponse>('/panel/chatbot/logs', {
     query: {
       page: query.page ?? 1,
       per_page: 20,
@@ -652,7 +652,7 @@ export async function fetchChatbotSessions(query: {
   page?: number;
   q?: string;
 }): Promise<ChatbotSessionsResponse> {
-  return adminFetch<ChatbotSessionsResponse>('/manage/chatbot/sessions', {
+  return adminFetch<ChatbotSessionsResponse>('/panel/chatbot/sessions', {
     query: {
       page: query.page ?? 1,
       per_page: 20,
@@ -666,7 +666,7 @@ export async function fetchChatbotOperatorQueue(query: {
   q?: string;
   per_page?: number;
 }): Promise<ChatbotOperatorQueueResponse> {
-  return adminFetch<ChatbotOperatorQueueResponse>('/manage/chatbot/operator-queue', {
+  return adminFetch<ChatbotOperatorQueueResponse>('/panel/chatbot/operator-queue', {
     query: {
       page: query.page ?? 1,
       per_page: query.per_page ?? 20,
@@ -681,14 +681,14 @@ export async function fetchChatbotOperatorQueueCount(): Promise<number> {
 }
 
 export async function exportChatbotLogs(q?: string): Promise<ChatbotExportRow[]> {
-  const res = await adminFetch<{ data: ChatbotExportRow[] }>('/manage/chatbot/export', {
+  const res = await adminFetch<{ data: ChatbotExportRow[] }>('/panel/chatbot/export', {
     query: { q: q?.trim() || undefined },
   });
   return res.data;
 }
 
 export async function deleteChatbotSessions(sessionIds: string[]): Promise<number> {
-  const res = await adminFetch<{ data: { deleted: number } }>('/manage/chatbot/sessions', {
+  const res = await adminFetch<{ data: { deleted: number } }>('/panel/chatbot/sessions', {
     method: 'DELETE',
     body: { session_ids: sessionIds },
   });
