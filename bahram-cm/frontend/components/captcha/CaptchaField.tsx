@@ -323,7 +323,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
       {mode === 'math' && (
         <div
           className={cn(
-            'relative z-20 flex min-w-0 flex-nowrap items-center gap-1.5',
+            'relative z-20 flex w-full min-w-0 flex-nowrap items-center gap-1.5',
             siteInline ? 'max-w-full' : inline ? 'text-[12px]' : 'w-full text-small',
           )}
           dir="ltr"
@@ -383,19 +383,26 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
               }
             }}
             className={cn(
-              'shrink-0 px-2 outline-none',
+              'min-w-0 px-2 outline-none',
               siteTight
                 ? pillEmbed
-                  ? 'h-7 w-10 border-0 border-b border-bone/20 bg-transparent text-center text-[10px] text-bone placeholder:text-mist focus:border-emerald/50 focus:outline-none'
-                  : 'h-7 w-11 rounded-pill border border-bone/12 bg-transparent text-center text-[10px] text-bone placeholder:text-mist focus:border-emerald/40'
+                  ? 'h-7 w-10 shrink-0 border-0 border-b border-bone/20 bg-transparent text-center text-[10px] text-bone placeholder:text-mist focus:border-emerald/50 focus:outline-none'
+                  : 'h-7 w-11 shrink-0 rounded-pill border border-bone/12 bg-transparent text-center text-[10px] text-bone placeholder:text-mist focus:border-emerald/40'
                 : siteInline
-                  ? 'h-8 w-14 rounded-pill border border-bone/12 bg-transparent text-center text-xs text-bone placeholder:text-mist focus:border-emerald/40 focus:ring-1 focus:ring-emerald/20'
+                  ? 'h-8 min-w-[4.5rem] flex-1 rounded-pill border border-bone/12 bg-charcoal/50 px-2.5 text-start text-xs text-bone placeholder:text-mist focus:border-emerald/40 focus:ring-1 focus:ring-emerald/20'
                   : inline
-                    ? 'h-9 w-16 rounded-full border border-white/75 bg-white/55 text-center text-[14px] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md focus:border-[#007aff]/40 focus:ring-2 focus:ring-[#007aff]/15'
-                    : 'field-input h-9 w-24 py-0 text-small',
+                    ? 'h-9 w-16 shrink-0 rounded-full border border-white/75 bg-white/55 text-center text-[14px] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md focus:border-[#007aff]/40 focus:ring-2 focus:ring-[#007aff]/15'
+                    : 'field-input h-9 w-24 shrink-0 py-0 text-small',
             )}
-            placeholder={inline ? '؟' : 'پاسخ'}
+            placeholder={
+              siteInline && inline && !pillEmbed
+                ? 'جواب را بنویسید'
+                : inline
+                  ? '؟'
+                  : 'پاسخ'
+            }
             aria-label="پاسخ کپچا"
+            title={siteInline && inline && !pillEmbed ? 'جواب سؤال ریاضی را وارد کنید' : undefined}
             disabled={mathLoading || !mathId}
           />
         </div>

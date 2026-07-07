@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { unstable_noStore } from "next/cache";
-import Script from "next/script";
 import { headers } from "next/headers";
 import { fontClassName, fontVariable } from "@/lib/fonts";
 import { defaultMetadata } from "@/lib/seo";
@@ -64,12 +63,13 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <script
+          id="theme-boot"
+          dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }}
+        />
         <MediaPreconnect />
       </head>
       <body className={`${fontClassName} min-w-0 overflow-x-clip antialiased`} suppressHydrationWarning>
-        <Script id="theme-boot" strategy="beforeInteractive">
-          {THEME_BOOT_SCRIPT}
-        </Script>
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-[100] focus:rounded-pill focus:bg-emerald focus:px-4 focus:py-2 focus:text-bone"
@@ -88,9 +88,11 @@ export default async function RootLayout({
             deferWidget={perfConfig.lazy_load_chatbot !== false}
           />
         ) : null}
-        <Script id="jsonld-site" type="application/ld+json">
-          {JSON.stringify(ld)}
-        </Script>
+        <script
+          id="jsonld-site"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }}
+        />
       </body>
     </html>
   );

@@ -106,6 +106,7 @@ class DatabaseSeeder extends Seeder
 
         SpotplayerSetting::current();
 
+        $this->call(CacheIntegrationsSeeder::class);
         $this->call(CommerceSeeder::class);
     }
 }

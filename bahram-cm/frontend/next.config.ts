@@ -53,6 +53,8 @@ const config: NextConfig = {
       { source: "/academy/app", destination: "/saat", permanent: true },
       { source: "/manage", destination: "/admin", permanent: false },
       { source: "/manage/login", destination: "/admin/login", permanent: false },
+      { source: "/blog", destination: "/insights", permanent: true },
+      { source: "/blog/:slug", destination: "/insights/:slug", permanent: true },
     ];
   },
   transpilePackages: ["next-mdx-remote"],

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   Bot,
@@ -38,6 +38,7 @@ import {
   type CacheStatus,
 } from '@/lib/cache/types';
 import { PERFORMANCE_PRESETS, type PerformancePresetId } from '@/lib/cache/presets';
+import { useCachePanel } from '@/hooks/useCachePanel';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -62,12 +63,10 @@ const FALLBACK_STATUS: CacheStatus = {
 };
 
 export default function CacheAdminPage() {
+  const { status: remoteStatus, settings: remoteSettings, backendOk, backendError, loading, refresh } =
+    useCachePanel();
   const [tab, setTab] = useState<Tab>('dashboard');
-  const [status, setStatus] = useState<CacheStatus>(FALLBACK_STATUS);
   const [settings, setSettings] = useState<CacheSettings>(DEFAULT_CACHE_SETTINGS);
-  const [backendOk, setBackendOk] = useState(true);
-  const [backendError, setBackendError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [purging, setPurging] = useState<string | null>(null);
   const [customPath, setCustomPath] = useState('/');
@@ -75,6 +74,14 @@ export default function CacheAdminPage() {
   const [devModeToggling, setDevModeToggling] = useState(false);
   const [clearingLog, setClearingLog] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const status = remoteStatus ?? FALLBACK_STATUS;
+
+  useEffect(() => {
+    if (remoteSettings) {
+      setSettings(remoteSettings);
+    }
+  }, [remoteSettings]);
 
   async function handleDeveloperMode(enable: boolean) {
     setDevModeToggling(true);
@@ -116,35 +123,6 @@ export default function CacheAdminPage() {
       setMessage(res.error ?? 'خطا در اعمال پروفایل');
     }
   }
-
-  const refresh = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/admin/cache/panel', { cache: 'no-store' });
-      const json = (await res.json()) as {
-        status?: CacheStatus;
-        settings?: Partial<CacheSettings>;
-        error?: string;
-      };
-      if (!res.ok) {
-        throw new Error(json.error || 'اتصال به Laravel برقرار نیست');
-      }
-      setStatus({ ...FALLBACK_STATUS, ...(json.status ?? {}) });
-      setSettings({ ...DEFAULT_CACHE_SETTINGS, ...(json.settings ?? {}) });
-      setBackendOk(true);
-      setBackendError(null);
-    } catch (e) {
-      setBackendOk(false);
-      setBackendError(e instanceof Error ? e.message : 'خطا در بارگذاری پنل کش');
-      setMessage('خطا در بارگذاری پنل کش — پاک‌سازی ISR از Next.js و تنظیمات محلی همچنان کار می‌کند.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   async function handleSave() {
     setSaving(true);
@@ -592,7 +570,7 @@ export default function CacheAdminPage() {
               <input
                 className="field-input flex-1"
                 dir="ltr"
-                placeholder="/blog/my-post"
+                placeholder="/insights/my-post"
                 value={customPath}
                 onChange={(e) => setCustomPath(e.target.value)}
               />

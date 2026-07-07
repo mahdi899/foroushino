@@ -14,5 +14,5 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const user = await getCurrentUser();
   if (!user) redirect('/admin/login');
 
-  return <AdminShell user={{ name: user.name, email: user.email }}>{children}</AdminShell>;
+  return <AdminShell>{children}</AdminShell>;
 }

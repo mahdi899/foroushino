@@ -1,4 +1,7 @@
-/** Short two-tone ping — returns false if autoplay blocked. */
+/**
+ * Chatbot notification tones — synthesized in-browser via Web Audio API.
+ * No external URLs or CDN assets; works fully offline within the app bundle.
+ */
 export async function playChatbotNotificationTone(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
 

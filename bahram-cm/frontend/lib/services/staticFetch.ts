@@ -4,11 +4,8 @@ import { getRevalidateSeconds, type RevalidateKey } from '@/lib/cache/revalidate
 import type { ApiResult } from './api';
 
 function publicApiBase(): string {
-  const internal = process.env.API_INTERNAL_URL?.replace(/\/+$/, '');
-  if (internal) {
-    return internal.endsWith('/api') ? internal : `${internal}/api`;
-  }
   const backend = (process.env.BACKEND_PROXY_URL ?? 'http://127.0.0.1:8010').replace(/\/+$/, '');
+  // Public ISR reads use routes/api.php (`/api/articles`, …) — not the v1 admin prefix.
   return `${backend}/api`;
 }
 

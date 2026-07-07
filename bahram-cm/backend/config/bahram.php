@@ -21,8 +21,8 @@ return [
     ],
 
     'revalidate' => [
-        'webhook_url' => env('REVALIDATE_WEBHOOK_URL'),
-        'secret' => env('REVALIDATE_SECRET'),
+        'webhook_url' => env('REVALIDATE_WEBHOOK_URL') ?: rtrim((string) env('FRONTEND_URL', 'http://localhost:3000'), '/').'/api/revalidate',
+        'secret' => env('REVALIDATE_SECRET', 'bahram-dev-revalidate-secret'),
     ],
 
     'cloudflare' => [

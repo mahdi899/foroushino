@@ -17,7 +17,7 @@ class StudentTestimonialController extends Controller
         $slugFilter = $request->filled('slug') ? $request->string('slug')->toString() : '';
         $cacheKey = 'public_transformations:index:'.$page.':'.$perPage.':'.md5($slugFilter);
 
-        return RuntimeCache::remember($cacheKey, 300, function () use ($request, $perPage) {
+        return RuntimeCache::remember($cacheKey, 3600, function () use ($request, $perPage) {
             $items = StudentTestimonial::query()
                 ->active()
                 ->ordered()
@@ -25,20 +25,20 @@ class StudentTestimonialController extends Controller
                 ->paginate($perPage);
 
             return StudentTestimonialResource::collection($items);
-        });
+        }, 'testimonials');
     }
 
     public function show(string $slug)
     {
         $cacheKey = 'public_transformations:show:'.$slug;
 
-        return RuntimeCache::remember($cacheKey, 300, function () use ($slug) {
+        return RuntimeCache::remember($cacheKey, 3600, function () use ($slug) {
             $item = StudentTestimonial::query()
                 ->active()
                 ->where('slug', $slug)
                 ->firstOrFail();
 
             return new StudentTestimonialResource($item);
-        });
+        }, 'testimonials');
     }
 }

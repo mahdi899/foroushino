@@ -45,8 +45,13 @@ class CacheIntegrationService
         }
 
         $env = trim((string) config('bahram.revalidate.webhook_url', ''));
+        if ($env !== '') {
+            return $env;
+        }
 
-        return $env !== '' ? $env : null;
+        $frontend = rtrim((string) config('bahram.frontend_url', ''), '/');
+
+        return $frontend !== '' ? $frontend.'/api/revalidate' : null;
     }
 
     public function revalidateSecret(): ?string
@@ -88,6 +93,22 @@ class CacheIntegrationService
     public function webhookConfigured(): bool
     {
         return (bool) ($this->revalidateWebhookUrl() && $this->revalidateSecret());
+    }
+
+    /** Persist default ISR webhook credentials in local dev when missing. */
+    public function ensureLocalDefaults(): void
+    {
+        if (! app()->environment('local') || $this->webhookConfigured()) {
+            return;
+        }
+
+        $frontend = rtrim((string) config('bahram.frontend_url', 'http://localhost:3000'), '/');
+        $secret = trim((string) config('bahram.revalidate.secret', ''));
+
+        $this->update([
+            'revalidate_webhook_url' => $frontend.'/api/revalidate',
+            'revalidate_secret_input' => $secret !== '' ? $secret : 'bahram-dev-revalidate-secret',
+        ]);
     }
 
     public function cloudflareConfigured(): bool

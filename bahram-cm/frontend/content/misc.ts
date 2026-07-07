@@ -127,6 +127,6 @@ export const mainNav = [
   { href: '/pricing', label: 'قیمت‌ها' },
   { href: '/cases', label: 'نمونه کارها' },
   { href: '/doctors', label: 'تیم آترین' },
-  { href: '/blog', label: 'مجله' },
+  { href: '/insights', label: 'مجله' },
   { href: '/contact', label: 'تماس' },
 ];

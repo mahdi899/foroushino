@@ -25,13 +25,13 @@ class FaqController extends Controller
         $category = $request->filled('category') ? $request->string('category')->toString() : null;
         $cacheKey = 'public.faqs'.($category ? ".{$category}" : '');
 
-        $faqs = RuntimeCache::remember($cacheKey, 300, function () use ($category) {
+        $faqs = RuntimeCache::remember($cacheKey, 3600, function () use ($category) {
             return Faq::query()
                 ->active()
                 ->ordered()
                 ->when($category, fn ($q) => $q->where('category', $category))
                 ->get();
-        });
+        }, 'faqs');
 
         return FaqResource::collection($faqs)
             ->response()

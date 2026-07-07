@@ -270,15 +270,19 @@ class MediaService
 
     private function forgetAltCache(Media $media): void
     {
-        $resolver = app(MediaAltResolver::class);
+        $altResolver = app(MediaAltResolver::class);
+        $metaResolver = app(MediaMetadataResolver::class);
         if ($media->url) {
-            $resolver->forget($media->url);
+            $altResolver->forget($media->url);
+            $metaResolver->forget($media->url);
         }
         if ($media->path) {
-            $resolver->forget('/storage/'.$media->path);
+            $altResolver->forget('/storage/'.$media->path);
+            $metaResolver->forget('/storage/'.$media->path);
         }
         if ($media->legacy_path) {
-            $resolver->forget($media->legacy_path);
+            $altResolver->forget($media->legacy_path);
+            $metaResolver->forget($media->legacy_path);
         }
     }
 

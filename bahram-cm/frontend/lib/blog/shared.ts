@@ -16,6 +16,4 @@ export interface BlogPost {
   body?: string;
 }
 
-export function blogCategoryPath(slug: string): string {
-  return `/blog/${slug}`;
-}
+export { BLOG_INDEX_PATH, articlePublicPath, blogCategoryPath } from './paths';

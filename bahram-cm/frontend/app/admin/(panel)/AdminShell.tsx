@@ -19,19 +19,19 @@ function NavIcon({ name, className }: { name: string; className?: string }) {
   return <AdminLucideIcon name={name} className={cn('h-[18px] w-[18px] shrink-0', className)} />;
 }
 
-export function AdminShell({ children, user }: { children: React.ReactNode; user?: { name: string; email: string } }) {
+export function AdminShell({ children }: { children: React.ReactNode }) {
   return (
     <AdminFocusProvider>
       <OperatorQueueAlertProvider>
         <AdminSaveBarProvider>
-          <AdminShellInner user={user}>{children}</AdminShellInner>
+          <AdminShellInner>{children}</AdminShellInner>
         </AdminSaveBarProvider>
       </OperatorQueueAlertProvider>
     </AdminFocusProvider>
   );
 }
 
-function AdminShellInner({ children, user }: { children: React.ReactNode; user?: { name: string; email: string } }) {
+function AdminShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { focusMode, setFocusMode } = useAdminFocus();
@@ -170,12 +170,7 @@ function AdminShellInner({ children, user }: { children: React.ReactNode; user?:
               </button>
             </div>
             <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-3">
-              <div className="admin-header-user-chip flex items-center gap-1.5 rounded-pill py-0.5 pe-1 ps-2 sm:ps-2.5">
-                {user ? (
-                  <span className="hidden max-w-[88px] truncate text-small font-medium text-text sm:inline sm:max-w-[120px] md:max-w-[140px]">
-                    {user.name}
-                  </span>
-                ) : null}
+              <div className="admin-header-user-chip flex items-center gap-1.5 rounded-pill p-0.5">
                 <AdminThemeToggle />
               </div>
               <Link

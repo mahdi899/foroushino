@@ -186,7 +186,7 @@ export function BlogCategoriesManager({ onCategoriesChange, compact }: BlogCateg
                   <div className="min-w-0">
                     <p className="text-small font-medium text-text">{category.name}</p>
                     <p className="truncate font-mono text-caption text-text-muted" dir="ltr">
-                      /blog/{category.slug}
+                      slug: {category.slug}
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-1">

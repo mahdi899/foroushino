@@ -197,6 +197,8 @@ class CacheService
 
     public function status(): array
     {
+        $this->integrations->ensureLocalDefaults();
+
         $driver = config('cache.default');
         $settings = $this->getSettings();
 

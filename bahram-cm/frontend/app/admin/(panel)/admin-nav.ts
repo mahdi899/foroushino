@@ -46,10 +46,10 @@ export const adminNav: {
 export function isAdminNavActive(pathname: string, href: string, matchPrefix?: boolean): boolean {
   if (pathname === href) return true;
   if (href === '/admin/blog/new') {
-    return pathname === '/admin/blog/new' || /^\/admin\/blog\/\d+/.test(pathname);
+    return pathname === '/admin/blog/new';
   }
   if (href === '/admin/blog') {
-    return pathname === '/admin/blog';
+    return pathname === '/admin/blog' || /^\/admin\/blog\/\d+/.test(pathname);
   }
   if (href === '/admin/chatbot') {
     return pathname === '/admin/chatbot' || pathname.startsWith('/admin/chatbot/');

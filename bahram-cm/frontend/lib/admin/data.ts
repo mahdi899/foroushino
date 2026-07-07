@@ -1,45 +1,11 @@
 import 'server-only';
 import { adminFetch } from '@/lib/auth/session';
+import { EMPTY_DASHBOARD_SUMMARY, type DashboardSummary } from './dashboardTypes';
 import { EMPTY_GA4_DASHBOARD, type Ga4DashboardData } from './ga4';
 
-export interface DashboardChatbotStats {
-  enabled: boolean;
-  pending_operator: number;
-  sessions: number;
-}
+export type { DashboardChatbotStats, DashboardRecentLead, DashboardSummary } from './dashboardTypes';
 
-export interface DashboardSummary {
-  leads: number;
-  new_leads: number;
-  products: number;
-  orders: number;
-  pending_orders: number;
-  articles: number;
-  published_articles: number;
-  media: number;
-  chatbot: DashboardChatbotStats;
-  recent_leads: {
-    id: number;
-    name: string;
-    phone: string;
-    status: string;
-    status_label: string;
-    created_at: string;
-  }[];
-}
-
-const EMPTY_SUMMARY: DashboardSummary = {
-  leads: 0,
-  new_leads: 0,
-  products: 0,
-  orders: 0,
-  pending_orders: 0,
-  articles: 0,
-  published_articles: 0,
-  media: 0,
-  chatbot: { enabled: false, pending_operator: 0, sessions: 0 },
-  recent_leads: [],
-};
+const EMPTY_SUMMARY = EMPTY_DASHBOARD_SUMMARY;
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   try {

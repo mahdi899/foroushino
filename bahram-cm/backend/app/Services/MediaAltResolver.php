@@ -62,6 +62,66 @@ class MediaAltResolver
         }
     }
 
+    /**
+     * Preload alt text for many media refs in one query (avoids N+1 on article lists).
+     *
+     * @param  list<string|null>  $references
+     */
+    public function warmReferences(array $references): void
+    {
+        $pending = [];
+
+        foreach ($references as $reference) {
+            $ref = MediaUrl::reference($reference);
+            if ($ref === null || trim($ref) === '') {
+                continue;
+            }
+            if (Cache::has($this->cacheKey($ref))) {
+                continue;
+            }
+            $diskPath = ltrim(str_replace('/storage/', '', $ref), '/');
+            $pending[$ref] = [
+                'disk_path' => $diskPath,
+                'basename' => basename($diskPath),
+            ];
+        }
+
+        if ($pending === []) {
+            return;
+        }
+
+        $diskPaths = array_values(array_unique(array_column($pending, 'disk_path')));
+        $refs = array_keys($pending);
+
+        $rows = Media::query()
+            ->where('is_private', false)
+            ->where(function ($q) use ($refs, $diskPaths) {
+                $q->whereIn('url', $refs)
+                    ->orWhereIn('path', $diskPaths);
+                foreach ($refs as $ref) {
+                    $basename = basename(ltrim(str_replace('/storage/', '', $ref), '/'));
+                    $q->orWhere('legacy_path', $ref)
+                        ->orWhere('legacy_path', '/images/'.$basename)
+                        ->orWhere('legacy_path', '/media/'.$basename);
+                }
+            })
+            ->orderByDesc('id')
+            ->get();
+
+        foreach ($pending as $ref => $meta) {
+            $media = $rows->first(function (Media $row) use ($ref, $meta) {
+                return $row->url === $ref
+                    || $row->path === $meta['disk_path']
+                    || $row->legacy_path === $ref
+                    || $row->legacy_path === '/images/'.$meta['basename']
+                    || $row->legacy_path === '/media/'.$meta['basename'];
+            });
+
+            $alt = is_string($media?->alt_fa) && trim($media->alt_fa) !== '' ? trim($media->alt_fa) : null;
+            Cache::put($this->cacheKey($ref), $alt, self::CACHE_TTL);
+        }
+    }
+
     private function cacheKey(string $ref): string
     {
         return 'media_alt:'.md5($ref);
