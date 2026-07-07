@@ -75,12 +75,13 @@ export function Table({ head, children }: { head: string[]; children: React.Reac
   );
 }
 
-export function Badge({ children, tone = 'default' }: { children: React.ReactNode; tone?: 'default' | 'success' | 'warning' | 'accent' }) {
+export function Badge({ children, tone = 'default' }: { children: React.ReactNode; tone?: 'default' | 'success' | 'warning' | 'accent' | 'danger' }) {
   const tones = {
     default: 'bg-surface-soft text-text-muted',
     success: 'bg-success/10 text-success',
     warning: 'bg-warning/10 text-warning',
     accent: 'bg-accent-soft text-accent',
+    danger: 'bg-danger/10 text-danger',
   };
   return <span className={cn('inline-block rounded-pill px-2.5 py-0.5 text-caption font-medium', tones[tone])}>{children}</span>;
 }

@@ -291,25 +291,30 @@ export default function CacheAdminPage() {
 
       {!loading && tab === 'dashboard' && (
         <div className="space-y-6">
+          {(() => {
+            const cacheLive = !status.developer_mode;
+            return (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatusCard
               icon={Zap}
               label="کش صفحه ISR"
               value={status.modules?.page_cache ? 'فعال' : 'غیرفعال'}
               hint={status.next_webhook_configured ? 'Webhook متصل' : 'Webhook تنظیم نشده'}
-              ok={status.next_webhook_configured}
+              ok={cacheLive && !!status.modules?.page_cache && status.next_webhook_configured}
             />
             <StatusCard
               icon={Database}
               label="کش Laravel"
               value={status.laravel_cache_driver}
               hint={status.modules?.object_cache ? 'فعال' : 'غیرفعال'}
+              ok={cacheLive && !!status.modules?.object_cache}
             />
             <StatusCard
               icon={Globe}
               label="کش مرورگر"
               value={status.modules?.browser_cache ? 'فعال' : 'غیرفعال'}
               hint={`TTL: ${formatTtl(settings.browser_cache_ttl)}`}
+              ok={cacheLive && !!status.modules?.browser_cache}
             />
             <StatusCard
               icon={Cloud}
@@ -319,6 +324,8 @@ export default function CacheAdminPage() {
               ok={status.cloudflare_configured}
             />
           </div>
+            );
+          })()}
 
           <div>
             <h2 className="mb-3 text-h3 font-bold text-primary-dark">TTL کش محتوا (ISR)</h2>
@@ -605,12 +612,14 @@ export default function CacheAdminPage() {
               value={status.next_webhook_configured ? 'پیکربندی شده' : 'تنظیم نشده'}
               hint="مدیریت از تنظیمات سایت"
               href="/admin/settings#cache-integrations"
+              ok={status.next_webhook_configured}
             />
             <InfoCard
               icon={Database}
               title="درایور کش Laravel"
               value={status.laravel_cache_driver}
               hint="برای production پیشنهاد: redis"
+              ok={isLaravelCacheDriverOk(status.laravel_cache_driver)}
             />
             <InfoCard
               icon={Cloud}
@@ -618,12 +627,14 @@ export default function CacheAdminPage() {
               value={status.cloudflare_configured ? 'فعال' : 'غیرفعال'}
               hint="مدیریت از تنظیمات سایت"
               href="/admin/settings#cache-integrations"
+              ok={status.cloudflare_configured}
             />
             <InfoCard
               icon={Globe}
               title="اتصال API"
               value={backendOk ? 'متصل' : 'قطع'}
               hint={backendOk ? 'Laravel پاسخ می‌دهد' : (backendError ?? 'بررسی کنید سرور بک‌اند روشن باشد')}
+              ok={backendOk}
             />
           </div>
 
@@ -733,6 +744,11 @@ function PurgeLogRow({ entry }: { entry: CachePurgeLogEntry }) {
   );
 }
 
+function isLaravelCacheDriverOk(driver: string | undefined): boolean {
+  const normalized = (driver ?? '').trim().toLowerCase();
+  return normalized !== '' && normalized !== 'array';
+}
+
 function StatusCard({
   icon: Icon,
   label,
@@ -744,13 +760,13 @@ function StatusCard({
   label: string;
   value: string;
   hint?: string;
-  ok?: boolean;
+  ok: boolean;
 }) {
   return (
     <div className="card p-4">
       <div className="mb-2 flex items-center justify-between">
         <Icon className="h-5 w-5 text-accent" strokeWidth={1.6} />
-        {ok !== undefined && <Badge tone={ok ? 'success' : 'warning'}>{ok ? 'OK' : '!'}</Badge>}
+        <Badge tone={ok ? 'success' : 'danger'}>{ok ? 'OK' : 'OFF'}</Badge>
       </div>
       <p className="text-caption text-text-muted">{label}</p>
       <p className="mt-1 font-bold text-primary-dark">{value}</p>
@@ -765,18 +781,23 @@ function InfoCard({
   value,
   hint,
   href,
+  ok,
 }: {
   icon: typeof Server;
   title: string;
   value: string;
   hint: string;
   href?: string;
+  ok: boolean;
 }) {
   return (
     <div className="card p-4">
-      <div className="mb-2 flex items-center gap-2">
-        <Icon className="h-5 w-5 text-accent" strokeWidth={1.6} />
-        <p className="font-semibold text-primary-dark">{title}</p>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Icon className="h-5 w-5 shrink-0 text-accent" strokeWidth={1.6} />
+          <p className="font-semibold text-primary-dark">{title}</p>
+        </div>
+        <Badge tone={ok ? 'success' : 'danger'}>{ok ? 'OK' : 'OFF'}</Badge>
       </div>
       <p className="text-small font-medium">{value}</p>
       <p className="mt-1 text-caption text-text-muted">{hint}</p>
