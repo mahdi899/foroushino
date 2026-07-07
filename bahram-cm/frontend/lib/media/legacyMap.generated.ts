@@ -28,6 +28,8 @@ export const GENERATED_LEGACY_MAP: Record<string, string> = {
   "/media/site-photos/course-backstage.jpg": "/storage/media/site/course-backstage.jpg",
   "/media/site-photos/cta-portrait.jpg": "/storage/media/site/cta-portrait.jpg",
   "/media/site-photos/cta-square.jpg": "/storage/media/site/cta-square.jpg",
+  "/media/site-photos/hero-background.png": "/storage/media/site/hero-background.png",
+  "/media/site-photos/hero-bahram-rostami.png": "/storage/media/site/hero-bahram-rostami.png",
   "/media/site-photos/landscape-session.jpg": "/storage/media/site/landscape-session.jpg",
   "/media/site-photos/manifesto-landscape.jpg": "/storage/media/site/manifesto-landscape.jpg",
   "/media/site-photos/manifesto-portrait-a.jpg": "/storage/media/site/manifesto-portrait-a.jpg",

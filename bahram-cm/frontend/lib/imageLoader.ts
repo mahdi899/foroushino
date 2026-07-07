@@ -1,9 +1,41 @@
 import type { ImageLoaderProps } from 'next/image';
 import { CDN_DELIVERY_ORIGIN } from '@/lib/mediaUrl';
-import { resolveLegacyStoragePath } from '@/lib/media/legacyMap';
+import { legacyPublicPathFromStorage, resolveLegacyStoragePath } from '@/lib/media/legacyMap';
 import { MAX_IMAGE_DELIVERY_WIDTH } from '@/lib/imageSizes';
+import { isImageOptimizationDisabled } from '@/lib/perfFlags';
 
 const DELIVERY_ORIGIN = CDN_DELIVERY_ORIGIN;
+
+/** Return the original public asset URL — no resize, no WebP/AVIF conversion. */
+function rawPublicImageUrl(src: string): string {
+  if (src.startsWith('/media/') || src.startsWith('/images/')) {
+    return src;
+  }
+
+  if (src.startsWith('/storage/')) {
+    return legacyPublicPathFromStorage(src) ?? src;
+  }
+
+  const mapped = resolveLegacyStoragePath(src);
+  if (mapped) {
+    return legacyPublicPathFromStorage(mapped) ?? src;
+  }
+
+  try {
+    const parsed = new URL(src);
+    const fromPath = resolveLegacyStoragePath(parsed.pathname);
+    if (fromPath) {
+      return legacyPublicPathFromStorage(fromPath) ?? parsed.pathname;
+    }
+    if (parsed.pathname.startsWith('/media/') || parsed.pathname.startsWith('/images/')) {
+      return parsed.pathname;
+    }
+  } catch {
+    /* relative path */
+  }
+
+  return src;
+}
 
 /** Extract `media/YYYY/MM/file.webp` from a portable or absolute storage URL. */
 function extractStoragePath(src: string): string | null {
@@ -55,6 +87,10 @@ function isLocalStaticAsset(src: string): boolean {
  * Local /images/* and /icons/* use the Next.js image optimizer.
  */
 export default function bahramImageLoader({ src, width, quality }: ImageLoaderProps): string {
+  if (isImageOptimizationDisabled()) {
+    return rawPublicImageUrl(src);
+  }
+
   const storagePath = extractStoragePath(src);
 
   if (storagePath && width > 0) {

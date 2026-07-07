@@ -1,6 +1,7 @@
 import { API_ORIGIN, ASSET_ORIGIN, MEDIA_ORIGIN } from '@/lib/api/config';
 import { siteConfig } from '@/config/site';
 import { legacyPublicPathFromStorage, resolveLegacyStoragePath } from '@/lib/media/legacyMap';
+import { isImageOptimizationDisabled } from '@/lib/perfFlags';
 
 function siteOrigin(): string {
   return (process.env.NEXT_PUBLIC_SITE_URL || siteConfig.url).replace(/\/+$/, '');
@@ -285,6 +286,14 @@ function publicMediaFallbackFromStorage(ref: string | null | undefined): string 
 export function primarySiteImageSrc(src: string | null | undefined): string {
   if (!src?.trim()) return '';
   const raw = src.trim();
+
+  if (isImageOptimizationDisabled()) {
+    if (raw.startsWith('/media/') || raw.startsWith('/images/')) return raw;
+    const mapped = resolveLegacyStoragePath(raw);
+    if (mapped) return legacyPublicPathFromStorage(mapped) ?? raw;
+    return raw;
+  }
+
   const mapped = resolveLegacyStoragePath(raw);
   if (mapped) return resolveMediaUrl(mapped);
   if (raw.startsWith('/storage/')) return resolveMediaUrl(raw);
@@ -305,6 +314,17 @@ export function siteMediaFallbacks(src: string | null | undefined): string[] {
 
   const raw = src.trim();
   const mapped = resolveLegacyStoragePath(raw);
+
+  if (isImageOptimizationDisabled()) {
+    if (raw.startsWith('/media/') || raw.startsWith('/images/')) {
+      add(raw);
+    }
+    if (mapped) {
+      add(legacyPublicPathFromStorage(mapped));
+      add(mapped);
+    }
+    return out.length > 0 ? out : [raw];
+  }
 
   // 0. Direct CDN delivery (gallery storage) — fastest when backend is up
   if (raw.startsWith('/storage/media/')) {

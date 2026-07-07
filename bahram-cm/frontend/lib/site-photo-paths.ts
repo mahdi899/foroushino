@@ -3,6 +3,8 @@
  * ابتدا از `/public/media` (سریع) و در صورت نیاز از Laravel CDN لود شوند.
  */
 export const sitePhotos = {
+  heroLightGrid: "/media/2026/07/01kwycnpwd57yxx2ddjmnvhp55.webp",
+  heroLightGridMobile: "/media/2026/07/01kwyecgnr5hzcdbwa9rwzgbwn.webp",
   portraitFounder: "/media/site-photos/portrait-founder.jpg",
   squareStudio: "/media/site-photos/square-studio.jpg",
   landscapeSession: "/media/site-photos/landscape-session.jpg",
