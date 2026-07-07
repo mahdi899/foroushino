@@ -7,6 +7,7 @@ use App\Http\Requests\V1\StoreMediaRequest;
 use App\Http\Requests\V1\UpdateMediaRequest;
 use App\Http\Resources\V1\MediaResource;
 use App\Models\Media;
+use App\Services\ContentPublishService;
 use App\Services\MediaService;
 use App\Support\ApiQuery;
 use Illuminate\Http\JsonResponse;
@@ -17,8 +18,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MediaController extends Controller
 {
-    public function __construct(private readonly MediaService $service)
-    {
+    public function __construct(
+        private readonly MediaService $service,
+        private readonly ContentPublishService $publish,
+    ) {
     }
 
     public function index(Request $request): AnonymousResourceCollection
@@ -81,6 +84,8 @@ class MediaController extends Controller
             $request->input('category'),
         );
 
+        $this->publish->revalidateMedia($media->original_filename ?? $media->path);
+
         return response()->json(['data' => new MediaResource($media)], 201);
     }
 
@@ -94,6 +99,8 @@ class MediaController extends Controller
             $request->validated('category'),
         );
 
+        $this->publish->revalidateMedia($media->original_filename ?? $media->path);
+
         return response()->json(['data' => new MediaResource($media)]);
     }
 
@@ -103,6 +110,7 @@ class MediaController extends Controller
         abort_unless(! $medium->is_private, 403);
 
         $this->service->trash($medium);
+        $this->publish->revalidateMedia($medium->original_filename ?? $medium->path);
 
         return response()->json([
             'data' => [
@@ -121,6 +129,7 @@ class MediaController extends Controller
         abort_unless($request->user()?->hasPermission('media.write'), 403);
 
         $media = $this->service->restore($id);
+        $this->publish->revalidateMedia($media->original_filename ?? $media->path);
 
         return response()->json(['data' => new MediaResource($media)]);
     }

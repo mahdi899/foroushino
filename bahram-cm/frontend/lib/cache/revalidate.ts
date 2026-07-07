@@ -24,7 +24,7 @@ export async function getRevalidateSeconds(key: RevalidateKey): Promise<number> 
 
   const { getPublicPerfConfig } = await import('./public');
   const cfg = await getPublicPerfConfig();
-  if (cfg.developer_mode) return DEV_TTL;
+  if (cfg.developer_mode || cfg.page_cache === false) return 0;
 
   const map: Record<RevalidateKey, number> = {
     articles: cfg.ttls.articles,

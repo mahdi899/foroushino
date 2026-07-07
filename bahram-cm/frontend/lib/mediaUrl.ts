@@ -59,6 +59,19 @@ function originForReference(ref: string): string | null {
 }
 
 /**
+ * Direct origin for /cdn/ resized delivery — bypasses Next.js middleware when set.
+ * Set NEXT_PUBLIC_CDN_ORIGIN=http://127.0.0.1:8010 in dev for faster image bytes.
+ */
+export const CDN_DELIVERY_ORIGIN: string = (
+  process.env.NEXT_PUBLIC_CDN_ORIGIN ||
+  process.env.NEXT_PUBLIC_MEDIA_URL ||
+  process.env.NEXT_PUBLIC_ASSET_URL ||
+  MEDIA_ORIGIN ||
+  ASSET_ORIGIN ||
+  API_ORIGIN
+).replace(/\/+$/, '');
+
+/**
  * Portable path for DB / HTML — never store absolute CDN URLs.
  * Mirrors backend `App\Support\MediaUrl::reference()`.
  */
@@ -268,7 +281,17 @@ function publicMediaFallbackFromStorage(ref: string | null | undefined): string 
   return `/media/${relative.replace(/^site\//, '')}`;
 }
 
-/** Ordered fallbacks for public-site images (storage/CDN → public bundle). */
+/** Best first URL for a site photo — CDN when mapped, otherwise local `/media`. */
+export function primarySiteImageSrc(src: string | null | undefined): string {
+  if (!src?.trim()) return '';
+  const raw = src.trim();
+  const mapped = resolveLegacyStoragePath(raw);
+  if (mapped) return resolveMediaUrl(mapped);
+  if (raw.startsWith('/storage/')) return resolveMediaUrl(raw);
+  return raw;
+}
+
+/** Ordered fallbacks for public-site images (CDN when mapped → local bundle). */
 export function siteMediaFallbacks(src: string | null | undefined): string[] {
   if (!src?.trim()) return [];
 
@@ -281,17 +304,30 @@ export function siteMediaFallbacks(src: string | null | undefined): string[] {
   };
 
   const raw = src.trim();
-  add(resolveMediaUrl(raw));
-  add(raw);
+  const mapped = resolveLegacyStoragePath(raw);
 
-  const persisted = persistMediaUrl(raw);
-  if (persisted !== raw) {
-    add(resolveMediaUrl(persisted));
-    add(persisted);
+  // 0. Direct CDN delivery (gallery storage) — fastest when backend is up
+  if (raw.startsWith('/storage/media/')) {
+    add(`${CDN_DELIVERY_ORIGIN}/cdn/${raw.slice('/storage/'.length)}`);
+    add(raw);
   }
 
+  // 1. CDN/storage — actual file for imported site photos
+  if (mapped) {
+    add(`${CDN_DELIVERY_ORIGIN}/cdn/${mapped.slice('/storage/'.length)}`);
+    add(resolveMediaUrl(mapped));
+    add(mapped);
+  }
+
+  // 2. Local Next.js `/public` path
   if (raw.startsWith('/media/') || raw.startsWith('/images/')) {
     add(raw);
+  }
+
+  const persisted = persistMediaUrl(raw);
+  if (persisted !== raw && !mapped) {
+    add(resolveMediaUrl(persisted));
+    add(persisted);
   }
 
   const legacyFromStorage = persisted.startsWith('/storage/')
@@ -302,14 +338,11 @@ export function siteMediaFallbacks(src: string | null | undefined): string[] {
   const publicFallback = publicMediaFallbackFromStorage(persisted);
   if (publicFallback) add(publicFallback);
 
-  if (raw.includes('signature.png') || persisted.includes('signature.png')) {
-    add('/media/signature.svg');
-  }
-  if (raw.includes('signature.svg') || persisted.includes('signature.svg')) {
-    add('/media/signature.png');
-  }
   if (raw.includes('portrait-founder') || persisted.includes('portrait-founder')) {
     add('/media/founder-portrait.svg');
+  }
+  if (raw.includes('signature.png') || persisted.includes('signature.png')) {
+    add('/media/signature.svg');
   }
 
   return out;

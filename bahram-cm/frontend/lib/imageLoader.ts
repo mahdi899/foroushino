@@ -1,8 +1,9 @@
 import type { ImageLoaderProps } from 'next/image';
-import { API_ORIGIN, ASSET_ORIGIN, MEDIA_ORIGIN } from '@/lib/api/config';
+import { CDN_DELIVERY_ORIGIN } from '@/lib/mediaUrl';
+import { resolveLegacyStoragePath } from '@/lib/media/legacyMap';
 import { MAX_IMAGE_DELIVERY_WIDTH } from '@/lib/imageSizes';
 
-const DELIVERY_ORIGIN = (MEDIA_ORIGIN || ASSET_ORIGIN || API_ORIGIN).replace(/\/+$/, '');
+const DELIVERY_ORIGIN = CDN_DELIVERY_ORIGIN;
 
 /** Extract `media/YYYY/MM/file.webp` from a portable or absolute storage URL. */
 function extractStoragePath(src: string): string | null {
@@ -10,10 +11,19 @@ function extractStoragePath(src: string): string | null {
     return src.slice('/storage/'.length);
   }
 
+  const legacyMapped = resolveLegacyStoragePath(src);
+  if (legacyMapped?.startsWith('/storage/media/')) {
+    return legacyMapped.slice('/storage/'.length);
+  }
+
   try {
     const parsed = new URL(src);
     if (parsed.pathname.startsWith('/storage/media/')) {
       return parsed.pathname.slice('/storage/'.length);
+    }
+    const fromPath = resolveLegacyStoragePath(parsed.pathname);
+    if (fromPath?.startsWith('/storage/media/')) {
+      return fromPath.slice('/storage/'.length);
     }
   } catch {
     /* relative or invalid — passthrough below */
@@ -31,7 +41,7 @@ function nextOptimizedLocalUrl(src: string, width: number, quality: number): str
   const params = new URLSearchParams({
     url: src,
     w: String(cappedWidth(width)),
-    q: String(quality ?? 85),
+    q: String(quality ?? 80),
   });
   return `/_next/image?${params}`;
 }
@@ -50,13 +60,13 @@ export default function bahramImageLoader({ src, width, quality }: ImageLoaderPr
   if (storagePath && width > 0) {
     const params = new URLSearchParams({
       w: String(cappedWidth(width)),
-      q: String(quality ?? 85),
+      q: String(quality ?? 80),
     });
     return `${DELIVERY_ORIGIN}/cdn/${storagePath}?${params}`;
   }
 
   if (isLocalStaticAsset(src) && width > 0) {
-    return nextOptimizedLocalUrl(src, width, quality ?? 85);
+    return nextOptimizedLocalUrl(src, width, quality ?? 80);
   }
 
   return src;

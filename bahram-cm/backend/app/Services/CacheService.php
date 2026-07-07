@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Support\RuntimeCache;
 
 /**
  * LiteSpeed-style cache orchestration: ISR purge (Next.js), Laravel object cache,
@@ -17,6 +18,9 @@ class CacheService
     /** Max purge audit entries kept in settings (older rows are dropped). */
     public const PURGE_LOG_LIMIT = 10;
 
+    /** Actor label for automatic content-save purges (shown in admin panel). */
+    public const AUTO_PURGE_ACTOR = 'ربات';
+
     /** All ISR tags used by the Next.js frontend. */
     public const ISR_TAGS = [
         'articles',
@@ -28,8 +32,20 @@ class CacheService
         'seo',
         'redirects',
         'faqs',
+        'public-faqs',
         'testimonials',
         'chatbot',
+    ];
+
+    public const WARM_PATHS = [
+        '/',
+        '/insights',
+        '/articles',
+        '/transformations',
+        '/faq',
+        '/courses',
+        '/sitemap.xml',
+        '/robots.txt',
     ];
 
     public const DEFAULT_SETTINGS = [
@@ -119,6 +135,7 @@ class CacheService
         }
 
         Cache::forget('cache.public.config');
+        RuntimeCache::forget('cache.public.config');
 
         return $this->getSettings();
     }
@@ -126,15 +143,17 @@ class CacheService
     /** Public-safe config for Next.js middleware (no secrets). */
     public function publicConfig(): array
     {
-        return Cache::remember('cache.public.config', 60, function () {
-            $s = $this->getSettings();
+        $settings = $this->getSettings();
+        $ttl = max(30, (int) ($settings['api_cache_ttl'] ?? 60));
 
-            if ($s['developer_mode'] ?? false) {
+        return RuntimeCache::remember('cache.public.config', $ttl, function () use ($settings) {
+            if ($settings['developer_mode'] ?? false) {
                 return [
                     'developer_mode' => true,
                     'page_cache' => false,
                     'browser_cache' => false,
                     'browser_cache_ttl' => 60,
+                    'cdn_html_cache' => false,
                     'lazy_load_images' => false,
                     'lazy_load_chatbot' => false,
                     'defer_analytics' => false,
@@ -154,22 +173,23 @@ class CacheService
 
             return [
                 'developer_mode' => false,
-                'page_cache' => (bool) ($s['page_cache'] ?? true),
-                'browser_cache' => (bool) ($s['browser_cache'] ?? true),
-                'browser_cache_ttl' => (int) ($s['browser_cache_ttl'] ?? 3600),
-                'lazy_load_images' => (bool) ($s['lazy_load_images'] ?? true),
-                'lazy_load_chatbot' => (bool) ($s['lazy_load_chatbot'] ?? true),
-                'defer_analytics' => (bool) ($s['defer_analytics'] ?? true),
-                'defer_below_fold' => (bool) ($s['defer_below_fold'] ?? true),
-                'prefetch_links' => (bool) ($s['prefetch_links'] ?? false),
+                'page_cache' => (bool) ($settings['page_cache'] ?? true),
+                'browser_cache' => (bool) ($settings['browser_cache'] ?? true),
+                'browser_cache_ttl' => (int) ($settings['browser_cache_ttl'] ?? 3600),
+                'cdn_html_cache' => (bool) ($settings['cdn_html_cache'] ?? false),
+                'lazy_load_images' => (bool) ($settings['lazy_load_images'] ?? true),
+                'lazy_load_chatbot' => (bool) ($settings['lazy_load_chatbot'] ?? true),
+                'defer_analytics' => (bool) ($settings['defer_analytics'] ?? true),
+                'defer_below_fold' => (bool) ($settings['defer_below_fold'] ?? true),
+                'prefetch_links' => (bool) ($settings['prefetch_links'] ?? false),
                 'ttls' => [
-                    'articles' => (int) ($s['ttl_articles'] ?? 300),
-                    'cases' => (int) ($s['ttl_cases'] ?? 600),
-                    'doctors' => (int) ($s['ttl_doctors'] ?? 3600),
-                    'services' => (int) ($s['ttl_services'] ?? 3600),
-                    'settings' => (int) ($s['ttl_settings'] ?? 3600),
-                    'pricing' => (int) ($s['ttl_pricing'] ?? 600),
-                    'home' => (int) ($s['ttl_home'] ?? 600),
+                    'articles' => (int) ($settings['ttl_articles'] ?? 300),
+                    'cases' => (int) ($settings['ttl_cases'] ?? 600),
+                    'doctors' => (int) ($settings['ttl_doctors'] ?? 3600),
+                    'services' => (int) ($settings['ttl_services'] ?? 3600),
+                    'settings' => (int) ($settings['ttl_settings'] ?? 3600),
+                    'pricing' => (int) ($settings['ttl_pricing'] ?? 600),
+                    'home' => (int) ($settings['ttl_home'] ?? 600),
                 ],
             ];
         });
@@ -227,7 +247,7 @@ class CacheService
         switch ($scope) {
             case 'all':
                 $result['isr']['tags'] = self::ISR_TAGS;
-                $result['isr']['paths'] = ['/', '/blog', '/cases', '/pricing', '/sitemap.xml', '/robots.txt'];
+                $result['isr']['paths'] = self::WARM_PATHS;
                 if ($settings['object_cache'] ?? true) {
                     Cache::flush();
                     $result['laravel'] = true;
@@ -245,8 +265,10 @@ class CacheService
                 break;
 
             case 'laravel':
-                Cache::flush();
-                $result['laravel'] = true;
+                if ($settings['object_cache'] ?? true) {
+                    Cache::flush();
+                    $result['laravel'] = true;
+                }
                 break;
 
             case 'cloudflare':
@@ -270,13 +292,35 @@ class CacheService
 
         $warm = $options['warm'] ?? ($settings['warm_cache_after_purge'] ?? false);
         if ($warm && ($result['isr']['paths'] !== [] || $scope === 'all')) {
-            $urls = $this->warmUrls($result['isr']['paths'] ?: ['/', '/blog', '/cases', '/pricing']);
+            $urls = $this->warmUrls($result['isr']['paths'] ?: self::WARM_PATHS);
             $result['warmed'] = $urls;
         }
 
-        $this->appendPurgeLog($scope, $result, $actor);
+        $this->appendPurgeLog($scope, $result, $actor, false, null);
 
         return $result;
+    }
+
+    /**
+     * Record ISR purge triggered automatically after content/media save (no Laravel flush).
+     */
+    public function logAutoPurge(string $label, array $tags, array $paths = []): void
+    {
+        $this->appendPurgeLog('auto', [
+            'isr' => ['tags' => array_values(array_unique($tags)), 'paths' => array_values(array_unique($paths))],
+            'laravel' => false,
+            'cloudflare' => false,
+        ], self::AUTO_PURGE_ACTOR, true, $label);
+    }
+
+    public function clearPurgeLog(): void
+    {
+        \App\Models\Setting::updateOrCreate(
+            ['group' => self::GROUP, 'key' => 'purge_log'],
+            ['value' => []]
+        );
+        Cache::forget('cache.public.config');
+        RuntimeCache::forget('cache.public.config');
     }
 
     /**
@@ -312,6 +356,7 @@ class CacheService
 
             Cache::flush();
             Cache::forget('cache.public.config');
+        RuntimeCache::forget('cache.public.config');
 
             $cloudflare = $this->setCloudflareDevelopmentMode(true);
             $purge = $this->purge('all', ['warm' => false], $actor);
@@ -339,6 +384,7 @@ class CacheService
 
         Cache::flush();
         Cache::forget('cache.public.config');
+        RuntimeCache::forget('cache.public.config');
 
         $cloudflare = $this->setCloudflareDevelopmentMode(false);
         $purge = $this->purge('isr', [], $actor);
@@ -549,20 +595,28 @@ class CacheService
                 ['value' => $log]
             );
             Cache::forget('cache.public.config');
+        RuntimeCache::forget('cache.public.config');
         }
 
         return $log;
     }
 
     /** @param  array<string, mixed>  $result */
-    private function appendPurgeLog(string $scope, array $result, ?string $actor): void
-    {
+    private function appendPurgeLog(
+        string $scope,
+        array $result,
+        ?string $actor,
+        bool $auto = false,
+        ?string $label = null,
+    ): void {
         $existing = $this->settings->group(self::GROUP);
         $log = $this->decodePurgeLog($existing['purge_log'] ?? null);
         array_unshift($log, [
             'at' => now()->toIso8601String(),
             'scope' => $scope,
             'actor' => $actor,
+            'auto' => $auto,
+            'label' => $label,
             'tags' => $result['isr']['tags'] ?? [],
             'paths' => $result['isr']['paths'] ?? [],
             'laravel' => $result['laravel'] ?? false,
@@ -575,5 +629,6 @@ class CacheService
             ['value' => $log]
         );
         Cache::forget('cache.public.config');
+        RuntimeCache::forget('cache.public.config');
     }
 }

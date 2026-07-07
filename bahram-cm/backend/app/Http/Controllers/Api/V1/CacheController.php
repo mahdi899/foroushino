@@ -99,6 +99,13 @@ class CacheController extends Controller
         return response()->json(['data' => $result]);
     }
 
+    public function clearPurgeLog(): JsonResponse
+    {
+        $this->cache->clearPurgeLog();
+
+        return response()->json(['data' => ['ok' => true]]);
+    }
+
     public function integrations(): JsonResponse
     {
         return response()->json(['data' => $this->cache->integrationsAdminView()]);

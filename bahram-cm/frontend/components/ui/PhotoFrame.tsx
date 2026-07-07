@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ImageIcon } from "lucide-react";
 import { AppImage } from "@/components/ui/AppImage";
+import { primarySiteImageSrc } from "@/lib/mediaUrl";
 import { cn } from "@/lib/cn";
 
 type Variant = "radial" | "grid" | "soft" | "outline";
@@ -85,6 +86,7 @@ export function PhotoFrame({
   const hasImage = Boolean(src);
   const displayIcon = hasImage ? false : showIcon;
   const aria = alt ?? label ?? "تصویر";
+  const imageSrc = hasImage ? primarySiteImageSrc(src) || src! : undefined;
   const defaultSizes =
     ratio === "landscape"
       ? "(max-width: 768px) 100vw, 560px"
@@ -121,7 +123,7 @@ export function PhotoFrame({
       {hasImage ? (
         <>
           <AppImage
-            src={src!}
+            src={imageSrc!}
             alt={aria}
             fill
             priority={priority}

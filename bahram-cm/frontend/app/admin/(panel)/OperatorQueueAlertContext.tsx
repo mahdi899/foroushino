@@ -10,8 +10,9 @@ interface OperatorQueueAlertContextValue {
 
 const OperatorQueueAlertContext = createContext<OperatorQueueAlertContextValue | null>(null);
 
-const POLL_ACTIVE_MS = 30_000;
-const POLL_IDLE_MS = 90_000;
+const POLL_ACTIVE_MS = 45_000;
+const POLL_IDLE_MS = 120_000;
+const BOOT_DEFER_MS = 4_000;
 
 export function OperatorQueueAlertProvider({ children }: { children: React.ReactNode }) {
   const [pendingCount, setPendingCount] = useState(0);
@@ -30,6 +31,8 @@ export function OperatorQueueAlertProvider({ children }: { children: React.React
 
   useEffect(() => {
     let timerId = 0;
+    let bootTimerId = 0;
+    let cancelled = false;
 
     const schedule = () => {
       window.clearTimeout(timerId);
@@ -39,13 +42,26 @@ export function OperatorQueueAlertProvider({ children }: { children: React.React
           ? POLL_ACTIVE_MS
           : POLL_IDLE_MS;
       timerId = window.setTimeout(async () => {
-        if (!document.hidden) await refreshPendingCount();
-        schedule();
+        if (!document.hidden && !cancelled) await refreshPendingCount();
+        if (!cancelled) schedule();
       }, delay);
     };
 
-    void refreshPendingCount();
-    schedule();
+    const startPolling = () => {
+      if (cancelled) return;
+      void refreshPendingCount();
+      schedule();
+    };
+
+    if (typeof window.requestIdleCallback === 'function') {
+      const idleId = window.requestIdleCallback(() => startPolling(), { timeout: BOOT_DEFER_MS });
+      bootTimerId = window.setTimeout(() => {
+        window.cancelIdleCallback(idleId);
+        startPolling();
+      }, BOOT_DEFER_MS);
+    } else {
+      bootTimerId = window.setTimeout(startPolling, BOOT_DEFER_MS);
+    }
 
     const onVisibility = () => {
       if (!document.hidden) void refreshPendingCount();
@@ -54,7 +70,9 @@ export function OperatorQueueAlertProvider({ children }: { children: React.React
     document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
+      cancelled = true;
       window.clearTimeout(timerId);
+      window.clearTimeout(bootTimerId);
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [refreshPendingCount]);

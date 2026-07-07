@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\StudentTestimonial;
+use App\Services\ContentPublishService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -11,6 +12,8 @@ use Illuminate\Validation\Rule;
 
 class StudentTestimonialController extends Controller
 {
+    public function __construct(private readonly ContentPublishService $publish) {}
+
     public function index(Request $request): JsonResponse
     {
         $query = StudentTestimonial::query()->ordered();
@@ -41,20 +44,29 @@ class StudentTestimonialController extends Controller
     {
         $data = $this->validateTestimonial($request);
         $item = StudentTestimonial::create($data);
+        $this->publish->revalidateTestimonials($item->slug);
 
         return response()->json(['data' => $this->payload($item)], 201);
     }
 
     public function update(Request $request, StudentTestimonial $studentTestimonial): JsonResponse
     {
+        $previousSlug = $studentTestimonial->slug;
         $studentTestimonial->update($this->validateTestimonial($request, true, $studentTestimonial->id));
+        $fresh = $studentTestimonial->fresh();
+        $this->publish->revalidateTestimonials(
+            $fresh?->slug,
+            $previousSlug !== $fresh?->slug ? $previousSlug : null,
+        );
 
-        return response()->json(['data' => $this->payload($studentTestimonial->fresh())]);
+        return response()->json(['data' => $this->payload($fresh)]);
     }
 
     public function destroy(StudentTestimonial $studentTestimonial): JsonResponse
     {
+        $slug = $studentTestimonial->slug;
         $studentTestimonial->delete();
+        $this->publish->revalidateTestimonials($slug);
 
         return response()->json(null, 204);
     }

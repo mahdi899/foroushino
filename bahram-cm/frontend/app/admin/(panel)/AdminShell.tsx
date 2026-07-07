@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import * as Icons from 'lucide-react';
 import { adminNav, isAdminNavActive } from './admin-nav';
 import { BrandMark } from '@/components/layout/Header';
+import { AdminLucideIcon } from '@/lib/admin/lucide-icons';
 import { cn } from '@/lib/utils';
 import { logoutAction } from '@/lib/auth/actions';
 import { AdminFocusProvider, useAdminFocus } from './AdminFocusContext';
@@ -16,8 +16,7 @@ import { AdminSaveBarProvider } from './AdminSaveBarContext';
 import { AdminHeaderSaveBar } from './AdminHeaderSaveBar';
 
 function NavIcon({ name, className }: { name: string; className?: string }) {
-  const Cmp = (Icons as unknown as Record<string, Icons.LucideIcon>)[name] ?? Icons.Circle;
-  return <Cmp className={cn('h-[18px] w-[18px] shrink-0', className)} strokeWidth={1.6} />;
+  return <AdminLucideIcon name={name} className={cn('h-[18px] w-[18px] shrink-0', className)} />;
 }
 
 export function AdminShell({ children, user }: { children: React.ReactNode; user?: { name: string; email: string } }) {
@@ -133,10 +132,10 @@ function AdminShellInner({ children, user }: { children: React.ReactNode; user?:
               className="flex w-full items-center justify-center gap-2 rounded-lg px-2.5 py-2 text-caption text-text-muted transition hover:bg-surface-soft hover:text-primary"
             >
               {sidebarCollapsed ? (
-                <Icons.PanelRightOpen className="h-4 w-4" />
+                <AdminLucideIcon name="PanelRightOpen" className="h-4 w-4" strokeWidth={2} />
               ) : (
                 <>
-                  <Icons.PanelRightClose className="h-4 w-4" />
+                  <AdminLucideIcon name="PanelRightClose" className="h-4 w-4" strokeWidth={2} />
                   <span>جمع کردن منو</span>
                 </>
               )}
@@ -147,7 +146,7 @@ function AdminShellInner({ children, user }: { children: React.ReactNode; user?:
 
       <div className={cn('admin-main', focusMode ? 'min-w-0 flex-1' : mainMr)}>
         {!focusMode && (
-          <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-surface/90 px-3 backdrop-blur-md sm:px-4 lg:px-6">
+          <header className="sticky top-0 z-30 flex h-14 shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b border-border bg-surface/90 px-3 backdrop-blur-md sm:gap-2 sm:px-4 lg:flex-nowrap lg:px-6">
             <div className="flex min-w-0 items-center gap-1 sm:gap-2">
               <button
                 type="button"
@@ -155,7 +154,7 @@ function AdminShellInner({ children, user }: { children: React.ReactNode; user?:
                 onClick={() => setMobileOpen((v) => !v)}
                 aria-label="منو"
               >
-                <Icons.Menu className="h-5 w-5" />
+                <AdminLucideIcon name="Menu" className="h-5 w-5" strokeWidth={2} />
               </button>
               <button
                 type="button"
@@ -163,7 +162,11 @@ function AdminShellInner({ children, user }: { children: React.ReactNode; user?:
                 onClick={toggleSidebar}
                 aria-label="جمع/باز کردن منو"
               >
-                <Icons.PanelRightClose className={cn('h-5 w-5 transition', sidebarCollapsed && 'rotate-180')} />
+                <AdminLucideIcon
+                  name="PanelRightClose"
+                  className={cn('h-5 w-5 transition', sidebarCollapsed && 'rotate-180')}
+                  strokeWidth={2}
+                />
               </button>
             </div>
             <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-3">
@@ -180,13 +183,13 @@ function AdminShellInner({ children, user }: { children: React.ReactNode; user?:
                 target="_blank"
                 className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-caption text-text-muted transition hover:bg-surface-soft hover:text-primary sm:px-2.5"
               >
-                <Icons.ExternalLink className="h-3.5 w-3.5" />
+                <AdminLucideIcon name="ExternalLink" className="h-3.5 w-3.5" strokeWidth={2} />
                 <span className="hidden sm:inline">مشاهده سایت</span>
               </Link>
               <div className="flex items-center gap-1.5">
                 <form action={logoutAction}>
                   <button type="submit" className="btn btn-secondary px-2.5 py-1.5 text-caption sm:px-3">
-                    <Icons.LogOut className="h-3.5 w-3.5" />
+                    <AdminLucideIcon name="LogOut" className="h-3.5 w-3.5" strokeWidth={2} />
                     <span className="hidden sm:inline">خروج</span>
                   </button>
                 </form>
@@ -200,7 +203,7 @@ function AdminShellInner({ children, user }: { children: React.ReactNode; user?:
           <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-2 border-b border-border bg-surface/95 px-3 py-2 backdrop-blur sm:px-4">
             <p className="text-small font-semibold text-primary-dark">حالت فوکوس — ویرایش مقاله</p>
             <button type="button" onClick={() => setFocusMode(false)} className="btn btn-secondary px-3 py-1.5 text-small">
-              <Icons.Minimize2 className="h-4 w-4" />
+              <AdminLucideIcon name="Minimize2" className="h-4 w-4" strokeWidth={2} />
               خروج از فوکوس
             </button>
           </div>

@@ -12,7 +12,7 @@ import type { ArticlePayload } from '@/lib/admin/articleTypes';
 import { getBlogCategories } from './actions';
 import type { ApiCategory } from '@/lib/api/types';
 import type { AiArticleResult } from '@/lib/admin/blogAiTypes';
-import { ArticleBodyEditor } from './ArticleBodyEditor';
+import { ArticleBodyEditor } from './ArticleBodyEditorLazy';
 import { AiArticleAssistant } from './AiArticleAssistant';
 import { SeoScorePanel } from './SeoScorePanel';
 import { DeleteArticleModal } from './DeleteArticleModal';

@@ -9,6 +9,9 @@ import { getProductBySlug } from "@/lib/services/products";
 import { formatFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function generateMetadata({
   params,
 }: {

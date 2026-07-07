@@ -26,7 +26,7 @@ const stepPhotoAlts = [
 ] as const;
 
 const stepsGridClass =
-  "sm:grid-cols-[minmax(0,1fr)_2.75rem_minmax(0,1fr)_2.75rem_minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)_3rem_minmax(0,1fr)]";
+  "md:grid-cols-[minmax(0,1fr)_2.75rem_minmax(0,1fr)_2.75rem_minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)_3rem_minmax(0,1fr)]";
 
 const iconRowClass =
   "flex h-14 w-full shrink-0 items-center justify-center sm:h-16 lg:h-[4.5rem]";
@@ -56,7 +56,7 @@ function CampaignJourneyStep({
       <div className={iconRowClass}>
         <StepIcon index={index} />
       </div>
-      <p className="campaign-journey-step-tag mt-4 w-full font-display text-xl font-semibold leading-tight text-bone lg:text-[1.375rem] xl:text-2xl">
+      <p className="campaign-journey-step-tag mt-4 w-full font-display text-lg font-semibold leading-tight text-bone sm:text-xl lg:text-[1.375rem] xl:text-2xl">
         {stepTags[index]}
       </p>
       <h3 className="mt-2.5 w-full max-w-[13rem] text-sm leading-relaxed text-bone-dim lg:max-w-[14rem] lg:text-[0.9375rem]">
@@ -71,7 +71,7 @@ function CampaignJourneyConnector() {
     <div
       aria-hidden
       className={cn(
-        "campaign-journey-step-connector campaign-journey-step-connector--lit hidden min-w-0 sm:flex",
+        "campaign-journey-step-connector campaign-journey-step-connector--lit hidden min-w-0 md:flex",
         iconRowClass,
       )}
     >
@@ -116,7 +116,7 @@ function CampaignJourneyStage() {
         <div className="flex min-h-0 flex-col justify-center px-4 py-5 sm:px-5 sm:py-6 lg:col-span-6 lg:min-h-full lg:px-6 lg:py-7 lg:ps-5 xl:px-8 xl:py-8">
           <div
             className={cn(
-              "campaign-journey-steps grid w-full grid-cols-1 gap-y-10 sm:grid sm:items-start sm:gap-y-0",
+              "campaign-journey-steps grid w-full grid-cols-1 gap-y-8 md:grid md:items-start md:gap-y-0",
               stepsGridClass,
             )}
           >
@@ -137,7 +137,7 @@ function CampaignJourneyStage() {
             variant="primary"
             withArrow
             size="lg"
-            className="h-[4.25rem] min-h-[4.25rem] w-full max-w-md px-10 text-xl font-semibold sm:w-auto sm:min-w-[22rem]"
+            className="h-12 min-h-12 w-full max-w-md px-6 text-base font-semibold md:h-14 md:min-h-14 md:text-lg"
           >
             {campaignJourney.cta.label}
           </TrackedLinkButton>

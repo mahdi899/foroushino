@@ -28,7 +28,7 @@ export function SiteFooter() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-x-3 gap-y-5 md:col-span-7 md:grid-cols-3 md:gap-x-8 md:gap-y-8">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 md:col-span-7 md:gap-x-8 md:gap-y-8">
             {site.footer.columns.map((col) => (
               <div key={col.title} className="min-w-0">
                 <h3 className="text-caption font-medium uppercase leading-tight tracking-[0.12em] text-gold md:tracking-[0.2em]">

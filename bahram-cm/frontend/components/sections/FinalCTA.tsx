@@ -18,7 +18,7 @@ export function FinalCTA() {
               <div className="flex min-w-0 flex-col gap-2 lg:flex-row lg:items-center lg:gap-5 xl:gap-6">
                 <h2
                   id="final-cta-heading"
-                  className="shrink-0 font-display text-lg font-bold leading-snug tracking-[-0.02em] text-white sm:text-xl lg:whitespace-nowrap"
+                  className="shrink-0 font-display text-lg font-bold leading-snug tracking-[-0.02em] text-white sm:text-xl xl:whitespace-nowrap"
                 >
                   {title}
                 </h2>

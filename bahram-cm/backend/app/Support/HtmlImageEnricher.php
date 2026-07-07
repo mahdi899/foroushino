@@ -3,15 +3,19 @@
 namespace App\Support;
 
 use App\Services\MediaAltResolver;
+use App\Services\MediaMetadataResolver;
 
 final class HtmlImageEnricher
 {
-    public function __construct(private readonly MediaAltResolver $altResolver)
-    {
+    public function __construct(
+        private readonly MediaAltResolver $altResolver,
+        private readonly MediaMetadataResolver $metadataResolver,
+    ) {
     }
 
     /**
-     * Resolve media URLs and inject alt + lazy-loading attributes on inline images.
+     * Resolve media URLs and inject alt, dimensions, and lazy-loading on inline images.
+     * Portable /storage/... refs in DB are resolved at read time for static HTML output.
      */
     public function enrich(string $html): string
     {
@@ -28,15 +32,26 @@ final class HtmlImageEnricher
                     return $matches[0];
                 }
 
+                $reference = MediaUrl::reference($src) ?? $src;
                 $resolvedSrc = MediaUrl::resolve($src) ?? $src;
                 $attrs = $this->setAttr($attrs, 'src', $resolvedSrc);
 
+                $meta = $this->metadataResolver->lookup($reference);
+
                 $existingAlt = $this->attrValue($attrs, 'alt');
+                $altFromMeta = is_array($meta) ? ($meta['alt'] ?? null) : null;
                 $alt = $existingAlt !== null && trim($existingAlt) !== ''
                     ? trim($existingAlt)
-                    : $this->altResolver->resolve($src);
+                    : ($altFromMeta ?: $this->altResolver->resolve($src));
 
                 $attrs = $this->setAttr($attrs, 'alt', $alt);
+
+                if ($this->attrValue($attrs, 'width') === null && is_array($meta) && ($meta['width'] ?? null)) {
+                    $attrs = $this->setAttr($attrs, 'width', (string) $meta['width']);
+                }
+                if ($this->attrValue($attrs, 'height') === null && is_array($meta) && ($meta['height'] ?? null)) {
+                    $attrs = $this->setAttr($attrs, 'height', (string) $meta['height']);
+                }
 
                 if ($this->attrValue($attrs, 'loading') === null) {
                     $attrs .= ' loading="lazy"';

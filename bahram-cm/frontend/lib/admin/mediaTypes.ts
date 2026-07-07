@@ -1,5 +1,11 @@
 /** Shared media library types (kept outside "use server" modules for Next.js bundler). */
 
+export type MediaPickMeta = {
+  persistSrc?: string;
+  width?: number | null;
+  height?: number | null;
+};
+
 export interface AdminMediaItem {
   id: number;
   url: string;
@@ -8,6 +14,8 @@ export interface AdminMediaItem {
   label: string;
   category: string;
   mime?: string | null;
+  width?: number | null;
+  height?: number | null;
 }
 
 export interface AdminMediaPageResult {

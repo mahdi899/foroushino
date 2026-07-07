@@ -116,7 +116,7 @@ function WapHeader() {
 
 function WapStack({ pillars, price }: { pillars: SatWapPillar[]; price: number }) {
   return (
-    <div className="container-luxe min-w-0 px-4 py-section-sm sm:px-0 md:py-section">
+    <div className="container-luxe min-w-0 py-section-sm md:py-section">
       <WapHeader />
       <div className="mt-6 flex flex-col gap-5 md:mt-8 md:gap-6">
         {pillars.map((pillar, i) => (

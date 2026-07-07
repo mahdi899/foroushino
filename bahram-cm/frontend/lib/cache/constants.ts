@@ -9,8 +9,19 @@ export const CACHE_ISR_TAGS = [
   'seo',
   'redirects',
   'faqs',
+  'public-faqs',
+  'public-transformations',
   'testimonials',
   'chatbot',
 ] as const;
 
-export const CACHE_WARM_PATHS = ['/', '/blog', '/cases', '/pricing', '/sitemap.xml', '/robots.txt'] as const;
+export const CACHE_WARM_PATHS = [
+  '/',
+  '/insights',
+  '/articles',
+  '/transformations',
+  '/faq',
+  '/courses',
+  '/sitemap.xml',
+  '/robots.txt',
+] as const;

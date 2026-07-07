@@ -7,7 +7,7 @@ import { ExternalLink, Loader2, Maximize2, Save, Trash2 } from 'lucide-react';
 import { AdminPage } from '../../ui';
 import { useAdminFocus } from '../../AdminFocusContext';
 import { CoverImageField } from '../../content/CoverImageField';
-import { ArticleBodyEditor } from '../../blog/ArticleBodyEditor';
+import { ArticleBodyEditor } from '../../blog/ArticleBodyEditorLazy';
 import { SeoScorePanel } from '../../blog/SeoScorePanel';
 import { saveProduct, deleteProduct } from '../actions';
 import type { AdminProduct } from '@/lib/admin/commerceTypes';

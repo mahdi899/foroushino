@@ -16,7 +16,9 @@ class ChatbotController extends Controller
 
     public function config(): JsonResponse
     {
-        return response()->json(['data' => $this->chatbot->publicConfig()]);
+        return response()
+            ->json(['data' => $this->chatbot->publicConfig()])
+            ->header('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
     }
 
     /** Resolved chatbot AI runtime for Next.js server actions (server-to-server only). */

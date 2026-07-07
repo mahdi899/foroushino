@@ -4,6 +4,38 @@ import {
   rewriteProxyLocation,
   shouldProxyToBackend,
 } from "@/lib/backend-proxy";
+import { buildCdnCacheControl, buildPublicCacheControl } from "@/lib/cache/headers";
+import { getMiddlewarePerfConfig } from "@/lib/cache/middlewarePerf";
+import { isStaticContentPath } from "@/lib/cache/staticScope";
+
+function isPublicHtmlDocument(pathname: string): boolean {
+  if (!isStaticContentPath(pathname)) {
+    return false;
+  }
+  if (pathname.startsWith("/_next") || pathname.includes(".")) {
+    return false;
+  }
+  return true;
+}
+
+async function applyPublicCacheHeaders(response: NextResponse, pathname: string): Promise<NextResponse> {
+  if (!isPublicHtmlDocument(pathname)) {
+    return response;
+  }
+
+  try {
+    const perf = await getMiddlewarePerfConfig();
+    response.headers.set("Cache-Control", buildPublicCacheControl(perf));
+    const cdn = buildCdnCacheControl(perf);
+    if (cdn) {
+      response.headers.set("CDN-Cache-Control", cdn);
+    }
+  } catch {
+    /* keep default Next headers */
+  }
+
+  return response;
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
@@ -22,7 +54,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!shouldProxyToBackend(pathname)) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    response.headers.set("x-pathname", pathname);
+    return applyPublicCacheHeaders(response, pathname);
   }
 
   const backendOrigin = backendProxyUrl();

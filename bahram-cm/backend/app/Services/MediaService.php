@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\Storage;
 
 class MediaService
 {
+    public function __construct(private readonly MediaDeliveryService $delivery)
+    {
+    }
+
     /** Store an admin media-library file on the configured public disk. */
     public function storePublic(
         UploadedFile $file,
@@ -47,6 +51,7 @@ class MediaService
         ]);
 
         LegacyMediaMap::flush();
+        $this->delivery->prewarmStandardWidths($path);
 
         return $media;
     }
@@ -92,6 +97,7 @@ class MediaService
         ]);
 
         LegacyMediaMap::flush();
+        $this->delivery->prewarmStandardWidths($path);
 
         return $media;
     }

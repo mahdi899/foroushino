@@ -14,10 +14,10 @@ const manifestoLineClass =
 
 function ManifestoPhotoStack() {
   return (
-    <div className="manifesto-photo-stack relative mx-auto w-full max-w-md lg:max-w-none lg:ms-auto">
+    <div className="manifesto-photo-stack relative mx-auto w-full max-w-md overflow-hidden lg:max-w-none lg:ms-auto">
       <div
         aria-hidden
-        className="manifesto-dot-grid pointer-events-none absolute inset-[-6%] -z-[1]"
+        className="manifesto-dot-grid pointer-events-none absolute inset-[-3%] -z-[1] sm:inset-[-6%]"
       />
 
       <div className="relative z-[2] w-[58%] max-w-[14rem] rotate-[-2deg] sm:max-w-[15rem] lg:max-w-none">
@@ -67,7 +67,7 @@ export function ManifestoShift() {
     >
       <div className="container-luxe">
         <div className="manifesto-panel overflow-hidden rounded-card-lg">
-          <div className="grid items-center gap-10 p-6 md:gap-12 md:p-10 lg:grid-cols-12 lg:gap-14 lg:p-12 xl:gap-16 xl:p-14">
+          <div className="grid items-center gap-8 p-4 sm:p-6 md:gap-12 md:p-10 lg:grid-cols-12 lg:gap-14 lg:p-12 xl:gap-16 xl:p-14">
             <div className="flex flex-col justify-center lg:order-2 lg:col-span-7">
               <Reveal>
                 <Eyebrow>{site.manifestoEyebrow}</Eyebrow>

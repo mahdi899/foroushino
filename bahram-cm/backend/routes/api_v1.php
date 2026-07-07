@@ -77,6 +77,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('manage/cache/settings', [CacheController::class, 'settings']);
     Route::put('manage/cache/settings', [CacheController::class, 'updateSettings']);
     Route::post('manage/cache/purge', [CacheController::class, 'purge']);
+    Route::delete('manage/cache/purge-log', [CacheController::class, 'clearPurgeLog']);
     Route::post('manage/cache/developer-mode', [CacheController::class, 'developerMode']);
     Route::get('manage/cache/integrations', [CacheController::class, 'integrations']);
     Route::put('manage/cache/integrations', [CacheController::class, 'updateIntegrations']);

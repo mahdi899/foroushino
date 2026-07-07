@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   AlertTriangle,
+  Bot,
   Code2,
   Cloud,
   Database,
@@ -12,12 +13,14 @@ import {
   RefreshCw,
   Save,
   Server,
+  Sparkles,
   Trash2,
   Zap,
 } from 'lucide-react';
-import { AdminPage, Badge, Table } from '../ui';
+import { AdminPage, Badge } from '../ui';
 import {
   applyPerformancePresetAction,
+  clearPurgeLogAction,
   purgeCacheAction,
   purgeIsrOnlyAction,
   saveCacheSettingsAction,
@@ -30,6 +33,7 @@ import {
   DEFAULT_CACHE_SETTINGS,
   TTL_FIELDS,
   formatTtl,
+  type CachePurgeLogEntry,
   type CacheSettings,
   type CacheStatus,
 } from '@/lib/cache/types';
@@ -69,6 +73,7 @@ export default function CacheAdminPage() {
   const [customPath, setCustomPath] = useState('/');
   const [applyingPreset, setApplyingPreset] = useState<PerformancePresetId | null>(null);
   const [devModeToggling, setDevModeToggling] = useState(false);
+  const [clearingLog, setClearingLog] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   async function handleDeveloperMode(enable: boolean) {
@@ -184,13 +189,26 @@ export default function CacheAdminPage() {
     }
   }
 
+  async function handleClearPurgeLog() {
+    setClearingLog(true);
+    setMessage(null);
+    const res = await clearPurgeLogAction();
+    setClearingLog(false);
+    if (res.ok) {
+      setMessage('لاگ پاک‌سازی‌ها خالی شد.');
+      await refresh();
+    } else {
+      setMessage(res.error ?? 'خطا در پاک کردن لاگ');
+    }
+  }
+
   function toggleSetting(key: keyof CacheSettings) {
     if (key === 'performance_preset' || key === 'purge_log' || key === 'developer_mode') return;
     if (typeof DEFAULT_CACHE_SETTINGS[key] === 'number') return;
     setSettings((s) => ({ ...s, [key]: !s[key] }));
   }
 
-  const purgeLog = status.purge_log ?? [];
+  const purgeLog = (status.purge_log ?? []).slice(0, 10);
 
   return (
     <AdminPage
@@ -348,34 +366,12 @@ export default function CacheAdminPage() {
             </div>
           </div>
 
-          {purgeLog.length > 0 && (
-            <div>
-              <h2 className="mb-3 text-h3 font-bold text-primary-dark">آخرین پاک‌سازی‌ها</h2>
-              <Table head={['زمان', 'نوع', 'جزئیات', 'کاربر']}>
-                {purgeLog.map((entry, i) => {
-                  const tags = entry.tags ?? [];
-                  const paths = entry.paths ?? [];
-                  return (
-                    <tr key={`${entry.at}-${i}`}>
-                      <td className="px-4 py-3 text-caption text-text-muted" dir="ltr">
-                        {entry.at ? new Date(entry.at).toLocaleString('fa-IR') : '—'}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge tone="accent">{entry.scope}</Badge>
-                      </td>
-                      <td className="px-4 py-3 text-caption text-text-muted">
-                        {tags.length > 0 && <span>tags: {tags.join(', ')} </span>}
-                        {paths.length > 0 && <span>paths: {paths.join(', ')}</span>}
-                        {entry.laravel && ' · Laravel'}
-                        {entry.cloudflare && ' · CF'}
-                      </td>
-                      <td className="px-4 py-3 text-caption">{entry.actor ?? '—'}</td>
-                    </tr>
-                  );
-                })}
-              </Table>
-            </div>
-          )}
+          <PurgeLogSection
+            entries={purgeLog}
+            clearing={clearingLog}
+            disabled={!backendOk}
+            onClear={() => void handleClearPurgeLog()}
+          />
         </div>
       )}
 
@@ -384,28 +380,28 @@ export default function CacheAdminPage() {
           <p className="text-small text-text-muted">
             یک پروفایل آماده انتخاب کنید — تمام تنظیمات کش، بارگذاری و TTL به‌صورت خودکار اعمال می‌شود.
           </p>
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             {PERFORMANCE_PRESETS.map((preset) => {
               const active = settings.performance_preset === preset.id;
               return (
                 <div
                   key={preset.id}
                   className={cn(
-                    'rounded-xl border p-5 transition',
+                    'rounded-xl border p-4 transition',
                     active ? 'border-accent bg-accent-soft/30' : 'border-border bg-surface',
                   )}
                 >
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <h3 className="font-bold text-primary-dark">{preset.label}</h3>
+                    <h3 className="text-small font-bold text-primary-dark">{preset.label}</h3>
                     {active && <Badge tone="success">فعال</Badge>}
                   </div>
                   <p className="text-caption leading-6 text-text-muted">{preset.description}</p>
-                  <p className="mt-2 text-caption text-accent">{preset.hint}</p>
+                  <p className="mt-1.5 text-caption text-accent">{preset.hint}</p>
                   <button
                     type="button"
                     disabled={!backendOk || applyingPreset !== null}
                     onClick={() => void handleApplyPreset(preset.id)}
-                    className="btn btn-primary mt-4 w-full px-4 py-2 text-small"
+                    className="btn btn-primary mt-3 w-full px-3 py-2 text-caption"
                   >
                     {applyingPreset === preset.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -429,8 +425,8 @@ export default function CacheAdminPage() {
           </p>
           {CACHE_MODULE_GROUPS.map((group) => (
             <div key={group.id}>
-              <h2 className="mb-3 text-h3 font-bold text-primary-dark">{group.label}</h2>
-              <div className="grid gap-3 lg:grid-cols-2">
+              <h2 className="mb-2 text-small font-bold text-primary-dark">{group.label}</h2>
+              <div className="grid gap-2.5 sm:grid-cols-2">
                 {CACHE_MODULES.filter((m) => m.group === group.id).map((mod) => {
                   const key = mod.settingKey;
                   const enabled = Boolean(settings[key]);
@@ -438,13 +434,13 @@ export default function CacheAdminPage() {
                     <label
                       key={mod.id}
                       className={cn(
-                        'flex cursor-pointer items-start justify-between gap-4 rounded-xl border border-border p-4 transition',
+                        'flex cursor-pointer items-start justify-between gap-3 rounded-lg border border-border p-3 transition',
                         mod.builtin ? 'opacity-75' : 'hover:border-accent/40',
                       )}
                     >
                       <div className="min-w-0">
-                        <p className="font-semibold text-primary-dark">{mod.label}</p>
-                        <p className="mt-1 text-caption leading-6 text-text-muted">{mod.description}</p>
+                        <p className="text-small font-semibold text-primary-dark">{mod.label}</p>
+                        <p className="mt-0.5 text-caption leading-5 text-text-muted">{mod.description}</p>
                         {mod.builtin && <Badge tone="default">داخلی Next.js</Badge>}
                       </div>
                       <input
@@ -662,6 +658,100 @@ export default function CacheAdminPage() {
         </div>
       )}
     </AdminPage>
+  );
+}
+
+function PurgeLogSection({
+  entries,
+  clearing,
+  disabled,
+  onClear,
+}: {
+  entries: CachePurgeLogEntry[];
+  clearing: boolean;
+  disabled: boolean;
+  onClear: () => void;
+}) {
+  return (
+    <div>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-small font-bold text-primary-dark">آخرین پاک‌سازی‌ها</h2>
+          <p className="text-caption text-text-muted">حداکثر ۱۰ مورد اخیر</p>
+        </div>
+        <button
+          type="button"
+          onClick={onClear}
+          disabled={clearing || disabled || entries.length === 0}
+          className="btn btn-secondary px-3 py-1.5 text-caption"
+        >
+          {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+          پاک کردن لاگ
+        </button>
+      </div>
+      <ul className="space-y-2">
+        {entries.length === 0 ? (
+          <li className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-caption text-text-muted">
+            هنوز پاک‌سازی ثبت نشده.
+          </li>
+        ) : (
+          entries.map((entry, i) => <PurgeLogRow key={`${entry.at}-${i}`} entry={entry} />)
+        )}
+      </ul>
+    </div>
+  );
+}
+
+function isAutoPurgeEntry(entry: CachePurgeLogEntry): boolean {
+  return Boolean(entry.auto) || entry.scope === 'auto' || entry.actor === 'ربات';
+}
+
+function PurgeLogRow({ entry }: { entry: CachePurgeLogEntry }) {
+  const auto = isAutoPurgeEntry(entry);
+  const tags = entry.tags ?? [];
+  const paths = entry.paths ?? [];
+  const detailParts: string[] = [];
+  if (entry.label) detailParts.push(entry.label);
+  if (tags.length > 0) detailParts.push(`tags: ${tags.join(', ')}`);
+  if (paths.length > 0) detailParts.push(`paths: ${paths.slice(0, 3).join(', ')}${paths.length > 3 ? '…' : ''}`);
+  if (entry.laravel) detailParts.push('Laravel');
+  if (entry.cloudflare) detailParts.push('CF');
+
+  return (
+    <li
+      className={cn(
+        'rounded-lg border p-3 transition',
+        auto
+          ? 'border-accent/30 bg-gradient-to-l from-accent-soft/45 via-violet-500/[0.06] to-cyan-500/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]'
+          : 'border-border bg-surface',
+      )}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <span
+            className={cn(
+              'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border',
+              auto
+                ? 'border-accent/35 bg-gradient-to-br from-accent/20 to-violet-500/15 text-accent'
+                : 'border-border bg-surface-soft text-text-muted',
+            )}
+            aria-hidden
+          >
+            {auto ? <Bot className="h-4 w-4" strokeWidth={1.7} /> : <Sparkles className="h-3.5 w-3.5" strokeWidth={1.6} />}
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={auto ? 'accent' : 'default'}>{auto ? 'خودکار' : entry.scope}</Badge>
+              <span className="text-caption font-medium text-primary-dark">{entry.actor ?? '—'}</span>
+            </div>
+            <p className="mt-1 text-caption leading-5 text-text-muted">{detailParts.join(' · ') || '—'}</p>
+          </div>
+        </div>
+        <time className="shrink-0 text-caption text-text-muted" dir="ltr" dateTime={entry.at}>
+          {entry.at ? new Date(entry.at).toLocaleString('fa-IR') : '—'}
+        </time>
+      </div>
+    </li>
   );
 }
 

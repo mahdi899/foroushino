@@ -114,13 +114,13 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
   const articleContext: SeoFixArticleContext = useMemo(
     () => ({
       title: props.title,
-      excerpt: props.excerpt,
-      body: props.body,
-      slug: props.slug,
+      excerpt: props.excerpt ?? '',
+      body: props.body ?? '',
+      slug: props.slug ?? '',
       focusKeyword: props.focusKeyword,
       metaTitle: props.metaTitle,
       metaDescription: props.metaDescription,
-      categoryName: props.categoryName,
+      categoryName: props.categoryName ?? '',
     }),
     [props],
   );

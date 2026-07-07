@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { buildMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -47,15 +47,15 @@ export default async function TransformationsPage({
                     href={`/transformations/${item.slug}`}
                     className="neon-surface-hover group block h-full overflow-hidden rounded-card border border-bone/10 bg-charcoal/55 p-5 transition-colors hover:border-bone/25 md:p-6"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-3">
                         <Avatar src={portraitSrc(item)} alt={item.name} size={52} />
-                        <div>
-                          <h2 className="text-h3 leading-tight">{item.name}</h2>
+                        <div className="min-w-0">
+                          <h2 className="truncate text-h3 leading-tight sm:whitespace-normal">{item.name}</h2>
                           <p className="text-caption text-gold">{item.role}</p>
                         </div>
                       </div>
-                      <Badge tone="emerald">دانشجو</Badge>
+                      <Badge tone="emerald" className="shrink-0">دانشجو</Badge>
                     </div>
 
                     <dl className="mt-6 grid gap-3 text-caption">

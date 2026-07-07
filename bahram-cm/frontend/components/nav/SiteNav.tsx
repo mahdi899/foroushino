@@ -8,12 +8,14 @@ import { site } from "@/content/site";
 import { navLinkMatches } from "@/lib/nav-active";
 import { TrackedLinkButton } from "@/components/analytics/TrackedLinkButton";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { usePrefetchLinks } from "@/components/performance/PerformanceProvider";
 import { Logo } from "./Logo";
 import { MobileMenu } from "./MobileMenu";
 import { cn } from "@/lib/cn";
 
 export function SiteNav() {
   const pathname = usePathname();
+  const prefetchLinks = usePrefetchLinks();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -34,8 +36,10 @@ export function SiteNav() {
             : "bg-transparent",
         )}
       >
-        <div className="container-luxe flex h-14 items-center justify-between md:h-16">
-          <Logo size="sm" />
+        <div className="container-luxe flex h-14 min-w-0 items-center justify-between gap-2 md:h-16">
+          <div className="min-w-0 shrink">
+            <Logo size="sm" />
+          </div>
 
           <nav
             aria-label="ناوبری اصلی"
@@ -47,6 +51,7 @@ export function SiteNav() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  prefetch={prefetchLinks}
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "group relative whitespace-nowrap rounded-md px-2 pt-1.5 pb-3 text-sm font-medium leading-snug transition-colors duration-300 xl:px-2.5 xl:pb-3.5",

@@ -2,6 +2,7 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { adminFetch } from '@/lib/auth/session';
+import { revalidateArticleSurfaces, revalidatePublicContent, revalidateTestimonialSurfaces } from '@/lib/cache/contentRevalidation';
 import { mediaAltNeedsFix, suggestMediaAltWithAi, filenameToFallbackAlt } from '@/lib/ai/mediaAlt';
 import { persistMediaUrl, resolveMediaUrl, normalizeAdminMediaUrl } from '@/lib/mediaUrl';
 import { notifySearchCrawlers, type CrawlerNotifyResult } from '@/lib/seo/notifyCrawlers';
@@ -51,17 +52,7 @@ export async function saveArticle(
       savedSlug = savedSlug ?? res.data.slug;
     }
 
-    revalidateTag('seo', 'max');
-    revalidatePath('/admin/blog');
-    revalidatePath('/admin/blog/new');
-    revalidatePath('/insights');
-    revalidatePath('/articles');
-    revalidatePath('/sitemap.xml');
-    revalidatePath('/sitemaps');
-    if (savedSlug) {
-      revalidatePath(`/insights/${savedSlug}`);
-      revalidatePath(`/articles/${savedSlug}`);
-    }
+    await revalidateArticleSurfaces(savedSlug);
 
     let crawlNotify: CrawlerNotifyResult | undefined;
     if (payload.status === 'active' && savedSlug) {
@@ -193,6 +184,8 @@ function mapAdminMediaRow(m: {
   alt_fa?: string | null;
   category?: string | null;
   mime?: string | null;
+  width?: number | null;
+  height?: number | null;
 }): AdminMediaItem {
   const ref = m.url || m.legacy_path || '';
   const persistSrc = persistMediaUrl(ref);
@@ -207,6 +200,8 @@ function mapAdminMediaRow(m: {
     label: m.alt_fa?.trim() || 'آپلود شده',
     category: m.category?.trim() || 'آپلود شده',
     mime: m.mime,
+    width: m.width ?? null,
+    height: m.height ?? null,
   };
 }
 

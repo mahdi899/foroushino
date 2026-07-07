@@ -4,14 +4,17 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\UpdateSettingRequest;
+use App\Services\ContentPublishService;
 use App\Services\SettingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SettingController extends Controller
 {
-    public function __construct(private readonly SettingService $service)
-    {
+    public function __construct(
+        private readonly SettingService $service,
+        private readonly ContentPublishService $publish,
+    ) {
     }
 
     public function publicIndex(): JsonResponse
@@ -28,6 +31,9 @@ class SettingController extends Controller
 
     public function update(UpdateSettingRequest $request, string $group): JsonResponse
     {
-        return response()->json(['data' => $this->service->updateGroup($group, $request->validated()['values'])]);
+        $data = $this->service->updateGroup($group, $request->validated()['values']);
+        $this->publish->revalidateSiteSettings($group);
+
+        return response()->json(['data' => $data]);
     }
 }

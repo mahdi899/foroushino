@@ -6,8 +6,9 @@ import { analyticsConfig } from "@/lib/analytics";
  * is set, so local/dev builds ship zero analytics JS. Plausible is the default;
  * GA4 loads only when a measurement ID is provided.
  */
-export function Analytics() {
+export function Analytics({ defer = true }: { defer?: boolean }) {
   const { plausibleDomain, plausibleSrc, gaMeasurementId } = analyticsConfig;
+  const strategy = defer ? "lazyOnload" : "afterInteractive";
 
   return (
     <>
@@ -16,7 +17,7 @@ export function Analytics() {
           defer
           data-domain={plausibleDomain}
           src={plausibleSrc}
-          strategy="afterInteractive"
+          strategy={strategy}
         />
       ) : null}
 
@@ -24,9 +25,9 @@ export function Analytics() {
         <>
           <Script
             src={`https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`}
-            strategy="afterInteractive"
+            strategy={strategy}
           />
-          <Script id="ga4-init" strategy="afterInteractive">
+          <Script id="ga4-init" strategy={strategy}>
             {`window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());

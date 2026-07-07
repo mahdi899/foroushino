@@ -1,35 +1,20 @@
 'use client';
 
 import NextImage, { type ImageProps } from 'next/image';
-import { ImageIcon } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { GRAY_BLUR_DATA_URL } from '@/lib/imagePlaceholder';
 import { IMAGE_SIZES } from '@/lib/imageSizes';
-import { resolveMediaUrl, siteMediaFallbacks } from '@/lib/mediaUrl';
+import { primarySiteImageSrc, siteMediaFallbacks } from '@/lib/mediaUrl';
 import { useLazyImages } from '@/components/performance/PerformanceProvider';
 import { cn } from '@/lib/utils';
 
 export type AppImageProps = ImageProps & {
-  /** Extra classes on the non-fill wrapper span. */
   wrapperClassName?: string;
-  /** IntersectionObserver root margin — load slightly before entering viewport. */
-  rootMargin?: string;
 };
 
-function ImagePlaceholder({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn('flex items-center justify-center bg-zinc-200', className)}
-      aria-hidden
-    >
-      <ImageIcon className="h-7 w-7 text-zinc-400/90" strokeWidth={1.25} />
-    </div>
-  );
-}
-
 /**
- * Site-wide lazy image: placeholder shell, IntersectionObserver gate, smooth fade-in on load.
- * Use `priority` only for above-the-fold LCP images (hero, article cover).
+ * Site-wide image — native lazy loading (no double IntersectionObserver gate).
+ * Use `priority` for above-the-fold LCP images only.
  */
 export function AppImage({
   priority = false,
@@ -44,21 +29,22 @@ export function AppImage({
   fill,
   sizes,
   src,
-  rootMargin = '240px 0px',
   ...props
 }: AppImageProps) {
   const lazyImages = useLazyImages();
-  const shouldDefer = !priority && lazyImages;
-  const [inView, setInView] = useState(!shouldDefer);
-  const [loaded, setLoaded] = useState(false);
+  const nativeLazy = !priority && lazyImages;
+  const [loaded, setLoaded] = useState(priority);
   const [fallbackIndex, setFallbackIndex] = useState(0);
-  const hostRef = useRef<HTMLSpanElement>(null);
-  const showShell = shouldDefer && (!inView || !loaded);
 
-  const fallbacks = useMemo(
-    () => (typeof src === 'string' ? siteMediaFallbacks(src) : []),
-    [src],
-  );
+  const fallbacks = useMemo(() => {
+    if (typeof src !== 'string') return [];
+    const ordered = siteMediaFallbacks(src);
+    const primary = primarySiteImageSrc(src);
+    if (primary && !ordered.includes(primary)) {
+      return [primary, ...ordered];
+    }
+    return ordered.length > 0 ? ordered : primary ? [primary] : [src];
+  }, [src]);
 
   useEffect(() => {
     setFallbackIndex(0);
@@ -66,37 +52,12 @@ export function AppImage({
   }, [src]);
 
   const resolvedSrc =
-    typeof src === 'string'
-      ? fallbacks[fallbackIndex] ?? resolveMediaUrl(src)
-      : src;
+    typeof src === 'string' ? (fallbacks[fallbackIndex] ?? primarySiteImageSrc(src) ?? src) : src;
 
   const handleImageError = useCallback(() => {
     setLoaded(false);
     setFallbackIndex((prev) => (prev + 1 < fallbacks.length ? prev + 1 : prev));
   }, [fallbacks.length]);
-
-  useEffect(() => {
-    if (!shouldDefer) {
-      setInView(true);
-      return;
-    }
-
-    const node = hostRef.current;
-    if (!node) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          setInView(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin, threshold: 0.01 },
-    );
-
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [shouldDefer, rootMargin]);
 
   const handleLoad = useCallback(
     (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
@@ -106,56 +67,54 @@ export function AppImage({
     [onLoad],
   );
 
-  const useBlur = placeholder !== 'empty';
-  const shell = showShell ? (
-    <ImagePlaceholder className={cn('absolute inset-0 z-[1]', fill ? '' : 'min-h-[inherit]')} />
-  ) : null;
+  const useBlur = !priority && placeholder !== 'empty';
+  const showPlaceholder = !priority && !loaded && nativeLazy;
 
-  const image =
-    inView ? (
-      <NextImage
-        {...props}
-        key={typeof resolvedSrc === 'string' ? resolvedSrc : undefined}
-        src={resolvedSrc}
-        fill={fill}
-        sizes={sizes ?? (fill ? IMAGE_SIZES.fillDefault : undefined)}
-        priority={priority}
-        loading={priority ? undefined : (loading ?? 'lazy')}
-        fetchPriority={priority ? 'high' : (fetchPriority ?? 'auto')}
-        decoding={decoding}
-        placeholder={useBlur ? 'blur' : 'empty'}
-        blurDataURL={useBlur ? (blurDataURL ?? GRAY_BLUR_DATA_URL) : undefined}
-        className={cn(
-          'transition-opacity duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0',
-          showShell ? 'opacity-0' : 'opacity-100',
-          fill && 'z-[2]',
-          className,
-        )}
-        onLoad={handleLoad}
-        onError={handleImageError}
-      />
-    ) : null;
+  const image = (
+    <NextImage
+      {...props}
+      key={typeof resolvedSrc === 'string' ? resolvedSrc : undefined}
+      src={resolvedSrc}
+      fill={fill}
+      sizes={sizes ?? (fill ? IMAGE_SIZES.fillDefault : undefined)}
+      priority={priority}
+      loading={priority ? undefined : nativeLazy ? 'lazy' : 'eager'}
+      fetchPriority={priority ? 'high' : nativeLazy ? 'low' : 'auto'}
+      decoding={decoding}
+      placeholder={useBlur ? 'blur' : 'empty'}
+      blurDataURL={useBlur ? (blurDataURL ?? GRAY_BLUR_DATA_URL) : undefined}
+      className={cn(
+        priority ? '' : 'transition-opacity duration-200 ease-out motion-reduce:duration-0',
+        !priority && !loaded ? 'opacity-0' : 'opacity-100',
+        className,
+      )}
+      onLoad={handleLoad}
+      onError={handleImageError}
+    />
+  );
 
   if (fill) {
     return (
-      <>
-        <span ref={hostRef} className="absolute inset-0 z-0 pointer-events-none" aria-hidden />
-        {shell}
+      <span
+        className={cn(
+          'absolute inset-0 z-[2] overflow-hidden',
+          showPlaceholder && 'bg-zinc-200/80',
+          wrapperClassName,
+        )}
+      >
         {image}
-      </>
+      </span>
     );
   }
 
   return (
     <span
-      ref={hostRef}
       className={cn(
         'relative inline-block overflow-hidden',
-        showShell && 'bg-zinc-200',
+        showPlaceholder && 'bg-zinc-200/80',
         wrapperClassName,
       )}
     >
-      {shell}
       {image}
     </span>
   );

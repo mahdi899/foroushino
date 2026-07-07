@@ -49,6 +49,8 @@ export interface CachePurgeLogEntry {
   at: string;
   scope: string;
   actor?: string;
+  auto?: boolean;
+  label?: string;
   tags: string[];
   paths: string[];
   laravel: boolean;
@@ -79,6 +81,7 @@ export interface PublicPerfConfig {
   page_cache: boolean;
   browser_cache: boolean;
   browser_cache_ttl: number;
+  cdn_html_cache: boolean;
   lazy_load_images: boolean;
   lazy_load_chatbot: boolean;
   defer_analytics: boolean;
@@ -101,7 +104,7 @@ export const CACHE_MODULES: CacheModule[] = [
     settingKey: 'page_cache',
     group: 'cache',
     label: 'کش صفحه (ISR)',
-    description: 'ذخیره HTML صفحات عمومی در سرور Next.js',
+    description: 'HTML مقالات، برگه‌ها، نظرات و محتوای عمومی — نه فرم خرید/چت',
   },
   {
     id: 'object_cache',
@@ -143,7 +146,7 @@ export const CACHE_MODULES: CacheModule[] = [
     settingKey: 'lazy_load_chatbot',
     group: 'loading',
     label: 'بارگذاری تنبل چت‌بات',
-    description: 'چت‌بات کامل فقط پس از کلیک کاربر لود می‌شود',
+    description: 'چت‌بات کامل پس از لود شدن صفحه (و در حالت idle مرورگر) خودکار لود می‌شود',
   },
   {
     id: 'defer_below_fold',
@@ -198,6 +201,8 @@ export const CACHE_TAG_GROUPS: CacheTagGroup[] = [
   { id: 'settings', label: 'تنظیمات سایت', tags: ['settings'], ttlKey: 'ttl_settings', fallbackSeconds: REVALIDATE.settings },
   { id: 'pricing', label: 'قیمت‌ها', tags: ['pricing'], ttlKey: 'ttl_pricing', fallbackSeconds: REVALIDATE.pricing },
   { id: 'seo', label: 'سئو و سایت‌مپ', tags: ['seo', 'redirects'], ttlKey: 'ttl_settings', fallbackSeconds: 3600 },
+  { id: 'faqs', label: 'سوالات متداول', tags: ['faqs', 'public-faqs'], ttlKey: 'ttl_settings', fallbackSeconds: 300 },
+  { id: 'testimonials', label: 'نظرات / تبدیل‌ها', tags: ['testimonials', 'public-transformations'], ttlKey: 'ttl_cases', fallbackSeconds: 600 },
   { id: 'chatbot', label: 'چت‌بات', tags: ['chatbot'], ttlKey: 'ttl_settings', fallbackSeconds: 300 },
 ];
 
@@ -240,6 +245,7 @@ export const DEFAULT_PUBLIC_PERF: PublicPerfConfig = {
   page_cache: true,
   browser_cache: true,
   browser_cache_ttl: 3600,
+  cdn_html_cache: false,
   lazy_load_images: true,
   lazy_load_chatbot: true,
   defer_analytics: true,

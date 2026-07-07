@@ -73,7 +73,7 @@ export function BigTestimonial() {
           </Reveal>
         </div>
 
-        <div className="mt-5 flex flex-col gap-3 lg:mt-6 lg:flex-row lg:items-stretch lg:gap-4">
+        <div className="mt-5 flex min-w-0 flex-col gap-4 lg:mt-6 lg:flex-row lg:items-stretch lg:gap-4">
           <AnimatePresence mode="wait" initial={false}>
             <motion.article
               key={featured.slug}
@@ -81,10 +81,10 @@ export function BigTestimonial() {
               animate={{ opacity: 1, y: 0 }}
               exit={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
               transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-              className="student-result-featured flex min-h-[9.5rem] min-w-0 flex-[8] overflow-hidden rounded-card-lg sm:min-h-[10rem] lg:min-h-0"
+              className="student-result-featured flex min-w-0 flex-[8] flex-col overflow-hidden rounded-card-lg sm:min-h-[10rem] sm:flex-row lg:min-h-0"
             >
-              <div className="flex h-full min-h-[9.5rem] w-full sm:min-h-[10rem]">
-                <div className="student-result-featured-media relative w-[34%] max-w-[9.5rem] shrink-0 self-stretch overflow-hidden sm:max-w-[11rem] lg:max-w-[12rem]">
+              <div className="flex min-h-0 w-full flex-col sm:min-h-[10rem] sm:flex-row">
+                <div className="student-result-featured-media relative aspect-[4/3] w-full max-w-none shrink-0 overflow-hidden sm:aspect-auto sm:w-[34%] sm:max-w-[11rem] sm:self-stretch lg:max-w-[12rem]">
                   <SiteImage
                     src={featured.photo}
                     alt={`پرتره ${featured.name}`}
@@ -134,7 +134,7 @@ export function BigTestimonial() {
           <div
             role="listbox"
             aria-label="انتخاب دانشجو"
-            className="grid h-full min-h-[9.5rem] min-w-0 flex-[4] grid-cols-2 grid-rows-2 gap-2 auto-rows-fr sm:min-h-[10rem] sm:gap-2.5 lg:min-h-0 lg:gap-2"
+            className="grid h-full min-h-0 min-w-0 flex-[4] grid-cols-1 grid-rows-4 gap-2 min-[400px]:grid-cols-2 min-[400px]:grid-rows-2 sm:min-h-[10rem] sm:gap-2.5 lg:min-h-0 lg:gap-2"
           >
             {results.map((item, index) => {
               const isActive = index === active;

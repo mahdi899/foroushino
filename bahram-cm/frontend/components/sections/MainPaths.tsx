@@ -163,9 +163,9 @@ function PathCard({
     <Link
       href={href}
       data-path-tone={tone}
-      className="main-path-card group relative block min-h-[17.5rem] overflow-hidden rounded-card-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-glow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink md:min-h-[15.5rem] lg:min-h-[16.25rem]"
+      className="main-path-card group relative flex min-h-0 flex-col overflow-hidden rounded-card-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-glow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink md:block md:min-h-[15.5rem] lg:min-h-[16.25rem]"
     >
-      <div className="main-path-card-media absolute inset-y-0 end-0 w-[min(52%,15.5rem)] sm:w-[min(54%,17rem)] md:w-[48%] lg:w-[46%]">
+      <div className="main-path-card-media relative aspect-[16/10] w-full overflow-hidden md:absolute md:inset-y-0 md:end-0 md:aspect-auto md:w-[48%] lg:w-[46%]">
         <SiteImage
           src={image}
           alt={imageAlt}
@@ -188,7 +188,7 @@ function PathCard({
         />
       </div>
 
-      <div className="main-path-card-body relative z-[1] flex min-h-[17.5rem] flex-col justify-between gap-5 p-5 pe-[42%] sm:pe-[44%] md:min-h-[15.5rem] md:p-6 md:pe-[50%] lg:min-h-[16.25rem] lg:p-7 lg:pe-[48%]">
+      <div className="main-path-card-body relative z-[1] flex flex-1 flex-col justify-between gap-5 p-5 md:min-h-[15.5rem] md:p-6 md:pe-[50%] lg:min-h-[16.25rem] lg:p-7 lg:pe-[48%]">
         <div className="min-w-0">
           <span
             className={cn(

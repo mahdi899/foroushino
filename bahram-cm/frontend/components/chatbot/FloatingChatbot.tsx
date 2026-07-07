@@ -125,6 +125,7 @@ interface FloatingChatbotProps {
   faqGroups: FaqGroup[];
   aiAvailable: boolean;
   lazyLoadFaqs?: boolean;
+  initialOpen?: boolean;
 }
 
 type AssistantTab = 'chat' | 'contact' | 'faq';
@@ -395,12 +396,18 @@ function ReplyModeSwitch({
   );
 }
 
-export function FloatingChatbot({ config, faqGroups: initialFaqGroups, aiAvailable, lazyLoadFaqs }: FloatingChatbotProps) {
+export function FloatingChatbot({
+  config,
+  faqGroups: initialFaqGroups,
+  aiAvailable,
+  lazyLoadFaqs,
+  initialOpen = false,
+}: FloatingChatbotProps) {
   const chatEnabled = config.enabled;
   const defaultTab: AssistantTab = chatEnabled ? 'chat' : 'contact';
   const operatorMode = chatEnabled && !aiAvailable;
 
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [tab, setTab] = useState<AssistantTab>(defaultTab);
   const [faqGroups, setFaqGroups] = useState<FaqGroup[]>(initialFaqGroups);
   const [faqLoading, setFaqLoading] = useState(false);

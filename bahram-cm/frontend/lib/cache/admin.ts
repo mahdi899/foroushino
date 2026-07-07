@@ -155,11 +155,14 @@ export async function purgeCacheAction(options: {
 }): Promise<{ ok: boolean; source?: 'laravel' | 'local'; data?: unknown; error?: string }> {
   const isr = isrScope(options.scope, options);
 
-  try {
+    try {
     const res = await adminFetch<{ data: unknown }>('/manage/cache/purge', {
       method: 'POST',
       body: options,
     });
+    if (isr.tags.length > 0 || isr.paths.length > 0) {
+      await purgeIsrLocal(isr.tags, isr.paths);
+    }
     return { ok: true, source: 'laravel', data: res.data };
   } catch (laravelErr) {
     const needsIsr = isr.tags.length > 0 || isr.paths.length > 0;
@@ -195,6 +198,15 @@ export async function purgeIsrOnlyAction(options: {
   const paths = options.all ? [...CACHE_WARM_PATHS] : (options.paths ?? []);
   await purgeIsrLocal(tags, paths);
   return { ok: true, tags, paths };
+}
+
+export async function clearPurgeLogAction(): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await adminFetch('/manage/cache/purge-log', { method: 'DELETE' });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'خطا در پاک کردن لاگ' };
+  }
 }
 
 export async function toggleDeveloperModeAction(enable: boolean): Promise<{

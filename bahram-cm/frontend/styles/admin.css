@@ -52,7 +52,7 @@ body:has(.admin-root) {
 .admin-root .admin-main-scroll {
   min-height: 0;
   flex: 1;
-  overflow-x: hidden;
+  overflow-x: auto;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;

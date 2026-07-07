@@ -35,7 +35,7 @@ export function HeroCinematic() {
               </Badge>
             </Reveal>
             <Reveal delay={0.12}>
-              <h1 className="mt-2 max-lg:max-w-none whitespace-pre-line text-balance text-[clamp(1.35rem,4vw+0.55rem,2rem)] !font-black tracking-[-0.02em] text-bone max-lg:!leading-none md:mt-3 md:text-h1 md:tracking-[var(--text-h1--letter-spacing)]">
+              <h1 className="mt-2 whitespace-pre-line text-balance text-[clamp(1.25rem,5.5vw,2rem)] font-black leading-[1.15] tracking-[-0.02em] text-bone md:mt-3 md:text-h1 md:leading-[var(--text-h1--line-height)] md:tracking-[var(--text-h1--letter-spacing)]">
                 <span className="lg:hidden">{site.hero.headlineMobile}</span>
                 <span className="hero-headline-gradient hidden lg:inline lg:text-[clamp(2.15rem,2.6vw+1.1rem,3.5rem)] lg:leading-[1.24]">
                   {site.hero.headline}
@@ -43,7 +43,7 @@ export function HeroCinematic() {
               </h1>
             </Reveal>
             <Reveal delay={0.22}>
-              <p className="hidden max-w-2xl text-body text-bone-dim md:mt-4 md:block">
+              <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-bone-dim sm:text-body md:mt-4 lg:mx-0">
                 {site.hero.sub}
               </p>
             </Reveal>
@@ -70,6 +70,7 @@ export function HeroCinematic() {
                       src={sitePhotos.portraitFounder}
                       alt="بهرام رستمی"
                       priority
+                      sizes="(max-width:640px) 92vw, (max-width:1024px) 45vw, 448px"
                       interactive
                       neonTone="gold"
                       className="aspect-[3/4]"
@@ -128,7 +129,7 @@ export function HeroCinematic() {
 
           <div className="min-w-0 lg:col-span-7 lg:col-start-1 lg:row-start-2 lg:self-start lg:-mt-1">
             <Reveal delay={0.3}>
-              <div className="flex w-full max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:flex-wrap sm:items-stretch sm:gap-4">
+              <div className="flex w-full max-w-md flex-col gap-3 md:max-w-none md:flex-row md:flex-wrap md:items-stretch md:gap-4">
                 <TrackedLinkButton
                   href={site.ctaPrimary.href}
                   event="homepage_cta_click"
@@ -136,7 +137,7 @@ export function HeroCinematic() {
                   variant="primary"
                   withArrow
                   size="lg"
-                  className="hero-cta-glow h-12 min-h-12 w-full min-w-0 px-8 text-sm shadow-lg sm:h-14 sm:min-h-14 sm:w-auto sm:min-w-52 sm:text-base"
+                  className="hero-cta-glow h-12 min-h-12 w-full min-w-0 px-6 text-sm shadow-lg md:h-14 md:min-h-14 md:w-auto md:min-w-52 md:px-8 md:text-base"
                 >
                   {site.ctaPrimary.label}
                 </TrackedLinkButton>
@@ -146,7 +147,7 @@ export function HeroCinematic() {
                   eventProps={{ cta: "hero_saat", location: "hero" }}
                   variant="ghost"
                   size="lg"
-                  className="hero-ghost-cta h-12 min-h-12 w-full min-w-0 px-8 text-sm backdrop-blur-md hover:-translate-y-px sm:h-14 sm:min-h-14 sm:w-auto sm:min-w-44 sm:text-base"
+                  className="hero-ghost-cta h-12 min-h-12 w-full min-w-0 px-6 text-sm backdrop-blur-md hover:-translate-y-px md:h-14 md:min-h-14 md:w-auto md:min-w-44 md:px-8 md:text-base"
                 >
                   {site.ctaSecondary.label}
                 </TrackedLinkButton>
@@ -154,7 +155,7 @@ export function HeroCinematic() {
             </Reveal>
 
             <Reveal delay={0.4}>
-              <div className="hero-stats-glass mt-5 mx-auto grid max-w-2xl grid-cols-3 gap-1 rounded-card-lg px-2 py-4 justify-items-stretch sm:mt-6 sm:gap-2 sm:px-4 sm:py-5 md:mt-8 lg:px-6">
+              <div className="hero-stats-glass mt-5 mx-auto grid max-w-2xl grid-cols-1 gap-2 rounded-card-lg px-3 py-4 min-[380px]:grid-cols-3 min-[380px]:gap-1 justify-items-stretch sm:mt-6 sm:gap-2 sm:px-4 sm:py-5 md:mt-8 lg:px-6">
                 <TrustStat divided icon={Users} value="700K+" label="مخاطب" />
                 <TrustStat divided icon={GraduationCap} value="50K+" label="دانشجو" />
                 <TrustStat icon={Mic2} value="10+" label="سال تجربه" />
@@ -182,14 +183,15 @@ function TrustStat({
     <div
       className={cn(
         "flex min-w-0 w-full flex-col items-center gap-1.5 px-2 text-center sm:flex-row sm:justify-center sm:gap-3 sm:px-3",
-        divided && "border-e border-bone/10 last:border-e-0",
+        divided &&
+          "border-b border-bone/10 last:border-b-0 min-[380px]:border-b-0 min-[380px]:border-e min-[380px]:last:border-e-0",
       )}
     >
       <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-pill border border-emerald-glow/35 bg-emerald-glow/10 text-emerald-glow shadow-[0_0_22px_-5px_color-mix(in_oklab,var(--color-emerald-glow)_50%,transparent)] sm:h-10 sm:w-10">
         <Icon className="h-4 w-4 sm:h-[1.15rem] sm:w-[1.15rem]" strokeWidth={1.5} aria-hidden />
       </span>
       <div className="min-w-0">
-        <p className="hero-stat-value font-display text-xl font-semibold leading-none num-latin sm:text-h3">
+        <p className="hero-stat-value font-display text-lg font-semibold leading-none num-latin min-[380px]:text-xl sm:text-h3">
           {value}
         </p>
         <p className="mt-1 text-caption leading-snug text-mist">{label}</p>

@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Faq;
+use App\Services\ContentPublishService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class FaqController extends Controller
 {
+    public function __construct(private readonly ContentPublishService $publish) {}
     public function index(Request $request): JsonResponse
     {
         $query = Faq::query()->ordered();
@@ -43,6 +45,7 @@ class FaqController extends Controller
     {
         $data = $this->validateFaq($request);
         $faq = Faq::create($data);
+        $this->forgetPublicFaqCache();
 
         return response()->json(['data' => $this->payload($faq)], 201);
     }
@@ -50,6 +53,7 @@ class FaqController extends Controller
     public function update(Request $request, Faq $faq): JsonResponse
     {
         $faq->update($this->validateFaq($request, true));
+        $this->forgetPublicFaqCache();
 
         return response()->json(['data' => $this->payload($faq->fresh())]);
     }
@@ -57,6 +61,7 @@ class FaqController extends Controller
     public function destroy(Faq $faq): JsonResponse
     {
         $faq->delete();
+        $this->forgetPublicFaqCache();
 
         return response()->json(null, 204);
     }
@@ -86,5 +91,10 @@ class FaqController extends Controller
             'sort_order' => ['sometimes', 'integer', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
+    }
+
+    private function forgetPublicFaqCache(): void
+    {
+        $this->publish->revalidateFaqs();
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Services\ContentPublishService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -11,6 +12,8 @@ use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
+    public function __construct(private readonly ContentPublishService $publish) {}
+
     public function index(Request $request): JsonResponse
     {
         $query = Product::query()->orderByDesc('id');
@@ -56,6 +59,7 @@ class ProductController extends Controller
         }
 
         $product = Product::create($data);
+        $this->publish->revalidateProducts($product->slug);
 
         return response()->json(['data' => $this->payload($product)], 201);
     }
@@ -64,13 +68,16 @@ class ProductController extends Controller
     {
         $data = $this->validateProduct($request, $product);
         $product->update($data);
+        $this->publish->revalidateProducts($product->slug);
 
         return response()->json(['data' => $this->payload($product->fresh())]);
     }
 
     public function destroy(Product $product): JsonResponse
     {
+        $slug = $product->slug;
         $product->delete();
+        $this->publish->revalidateProducts($slug);
 
         return response()->json(null, 204);
     }

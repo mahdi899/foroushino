@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { resolveMediaUrl } from '@/lib/mediaUrl';
 import { findUnifiedByPersistSrc } from '@/lib/admin/unifiedGallery';
-import type { AdminMediaItem } from '@/lib/admin/mediaTypes';
+import type { MediaPickMeta } from '@/lib/admin/mediaTypes';
 import { listGalleryMediaPage } from '../gallery/actions';
 import { MediaLibraryGrid } from './MediaLibraryGrid';
 
@@ -13,7 +13,7 @@ interface ImageGalleryModalProps {
   open: boolean;
   onClose: () => void;
   value: string;
-  onSelect: (url: string, label: string) => void;
+  onSelect: (url: string, label: string, meta?: MediaPickMeta) => void;
   title?: string;
   alt?: string;
 }
@@ -66,8 +66,8 @@ export function ImageGalleryModal({
 
   const normalizedValue = value ? resolveMediaUrl(value) : '';
 
-  function handleSelect(url: string, label: string) {
-    onSelect(url, label || alt || title);
+  function handleSelect(url: string, label: string, meta?: MediaPickMeta) {
+    onSelect(url, label || alt || title, meta);
     onClose();
   }
 

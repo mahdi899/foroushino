@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\ArticleAdminResource;
 use App\Models\Article;
 use App\Services\ArticleRevisionService;
+use App\Services\ContentPublishService;
 use App\Support\ArticleSlug;
 use App\Support\MediaUrl;
 use Illuminate\Http\JsonResponse;
@@ -15,6 +16,8 @@ use Illuminate\Validation\Rule;
 
 class ArticleAdminController extends Controller
 {
+    public function __construct(private readonly ContentPublishService $publish) {}
+
     public function index(Request $request): JsonResponse
     {
         $query = Article::query()->orderByDesc('updated_at');
@@ -79,26 +82,43 @@ class ArticleAdminController extends Controller
     {
         $data = $this->validatePayload($request);
         $article = Article::create($data);
+        $fresh = $article->fresh();
 
-        return response()->json(['data' => new ArticleAdminResource($article->fresh())], 201);
+        if ($fresh && $fresh->status === 'published') {
+            $this->publish->revalidateArticles($fresh->slug);
+        }
+
+        return response()->json(['data' => new ArticleAdminResource($fresh)], 201);
     }
 
     public function update(Request $request, Article $article): JsonResponse
     {
         $data = $this->validatePayload($request, $article);
         $wasDraft = $article->status === 'draft';
+        $previousSlug = $article->slug;
         $article->update($data);
+        $fresh = $article->fresh();
 
-        if ($wasDraft && $article->fresh()->status === 'published') {
+        if ($wasDraft && $fresh && $fresh->status === 'published') {
             app(ArticleRevisionService::class)->purgeForArticle($article);
         }
 
-        return response()->json(['data' => new ArticleAdminResource($article->fresh())]);
+        if ($fresh && $fresh->status === 'published') {
+            $this->publish->revalidateArticles($fresh->slug, $previousSlug !== $fresh->slug ? $previousSlug : null);
+        }
+
+        return response()->json(['data' => new ArticleAdminResource($fresh)]);
     }
 
     public function destroy(Article $article): JsonResponse
     {
+        $slug = $article->slug;
+        $wasPublished = $article->status === 'published';
         $article->delete();
+
+        if ($wasPublished) {
+            $this->publish->revalidateArticles($slug);
+        }
 
         return response()->json([
             'data' => [

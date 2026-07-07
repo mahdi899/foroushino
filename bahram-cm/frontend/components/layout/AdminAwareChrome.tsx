@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Analytics } from '@/components/analytics/Analytics';
+import { AnalyticsGate } from '@/components/analytics/AnalyticsGate';
 import { SiteFooter } from '@/components/nav/SiteFooter';
 import { SiteNav } from '@/components/nav/SiteNav';
 
@@ -17,9 +17,9 @@ export function AdminAwareChrome({ children }: { children: React.ReactNode }) {
   return (
     <>
       <SiteNav />
-      <div className="relative z-[2] min-w-0 max-w-full pt-14 md:pt-16">{children}</div>
+      <div className="relative z-[2] min-w-0 w-full max-w-full overflow-x-clip pt-14 md:pt-16">{children}</div>
       <SiteFooter />
-      <Analytics />
+      <AnalyticsGate />
     </>
   );
 }

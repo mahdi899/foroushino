@@ -59,7 +59,7 @@ export function CampaignLearnScroll({ items }: { items: CampaignLearnItem[] }) {
         محتوای دوره
       </h2>
 
-      <div className="container-luxe min-w-0 px-4 sm:px-0">
+      <div className="container-luxe min-w-0">
         <Reveal>
           <LearnSectionHeader total={items.length} />
         </Reveal>

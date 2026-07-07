@@ -1,5 +1,6 @@
 import type { FaqGroup } from '@/lib/data/chatbotFaq';
 import { backendProxyUrl } from '@/lib/backend-proxy';
+import { unstable_cache } from 'next/cache';
 
 export type PublicFaq = {
   id: number;
@@ -60,12 +61,12 @@ export function groupFaqsByCategory(faqs: PublicFaq[]): FaqGroup[] {
 }
 
 /** Load active FAQs from admin → commerce → FAQs (server). */
-export async function loadChatbotFaqGroupsServer(): Promise<FaqGroup[]> {
+async function fetchChatbotFaqGroupsServer(): Promise<FaqGroup[]> {
   try {
     const res = await fetch(resolvePublicFaqsUrl(), {
       method: 'GET',
       headers: { Accept: 'application/json' },
-      next: { tags: ['public-faqs'] },
+      next: { revalidate: 300, tags: ['public-faqs'] },
     });
 
     if (!res.ok) return [];
@@ -78,6 +79,15 @@ export async function loadChatbotFaqGroupsServer(): Promise<FaqGroup[]> {
   } catch {
     return [];
   }
+}
+
+const cachedChatbotFaqGroups = unstable_cache(fetchChatbotFaqGroupsServer, ['chatbot-faq-groups'], {
+  revalidate: 300,
+  tags: ['public-faqs'],
+});
+
+export async function loadChatbotFaqGroupsServer(): Promise<FaqGroup[]> {
+  return cachedChatbotFaqGroups();
 }
 
 /** Load active FAQs from the same source as admin → commerce → FAQs. */

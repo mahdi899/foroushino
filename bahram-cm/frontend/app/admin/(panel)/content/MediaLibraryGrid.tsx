@@ -11,7 +11,7 @@ import {
 } from '@/lib/admin/unifiedGallery';
 import type { MediaOptimizePreview } from '@/lib/admin/mediaOptimize';
 import { filenameToFallbackAlt } from '@/lib/ai/mediaAlt';
-import type { AdminMediaItem } from '@/lib/admin/mediaTypes';
+import type { AdminMediaItem, MediaPickMeta } from '@/lib/admin/mediaTypes';
 import { confirmGalleryUpload, discardGalleryOptimize, previewGalleryOptimize } from '../gallery/actions';
 import { MediaOptimizeModal } from '../gallery/MediaOptimizeModal';
 import { MediaTrashModal, useMediaTrashCount } from '../gallery/MediaTrashModal';
@@ -20,7 +20,7 @@ interface MediaLibraryGridProps {
   uploaded: AdminMediaItem[];
   mode: 'pick' | 'manage';
   selectedUrl?: string;
-  onSelect?: (url: string, label: string) => void;
+  onSelect?: (url: string, label: string, meta?: MediaPickMeta) => void;
   onManage?: (item: UnifiedMediaItem) => void;
   onUploaded?: () => void;
   showAiGenerate?: boolean;
@@ -171,7 +171,11 @@ export function MediaLibraryGrid({
     setOptimizePreview(null);
     onUploaded?.();
     if (mode === 'pick' && onSelect) {
-      onSelect(res.item.persistSrc, res.item.label);
+      onSelect(res.item.persistSrc, res.item.label, {
+        persistSrc: res.item.persistSrc,
+        width: res.item.width,
+        height: res.item.height,
+      });
     }
   }
 
@@ -184,7 +188,11 @@ export function MediaLibraryGrid({
 
   function onItemClick(item: UnifiedMediaItem) {
     if (mode === 'pick' && onSelect) {
-      onSelect(item.persistSrc, item.label);
+      onSelect(item.persistSrc, item.label, {
+        persistSrc: item.persistSrc,
+        width: item.adminItem?.width,
+        height: item.adminItem?.height,
+      });
       return;
     }
     onManage?.(item);

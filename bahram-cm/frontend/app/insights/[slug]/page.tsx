@@ -13,8 +13,7 @@ import { formatDateFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const revalidate = 300;
 
 export async function generateStaticParams() {
   const result = await getArticles(1);
@@ -151,7 +150,7 @@ export default async function InsightDetailPage({
               </nav>
             </Reveal>
             <Reveal delay={0.08}>
-              <h1 className="mt-4 max-w-full min-w-0 text-h1 text-balance text-bone md:mt-5 md:text-display">
+              <h1 className="mt-4 max-w-full min-w-0 text-h2 text-balance text-bone sm:text-h1 md:mt-5 lg:text-display">
                 {post.title}
               </h1>
             </Reveal>

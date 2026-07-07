@@ -81,6 +81,7 @@ class ImportSiteMedia extends Command
 
         LegacyMediaMap::flush();
         $this->call('media:export-legacy-map');
+        $this->call('media:prewarm-variants');
 
         $this->info("Imported {$imported} site media files.");
 

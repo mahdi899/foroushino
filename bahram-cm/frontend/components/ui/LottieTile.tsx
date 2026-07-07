@@ -1,6 +1,6 @@
 "use client";
 
-import Lottie from "lottie-react";
+import dynamic from "next/dynamic";
 import { useMemo, useSyncExternalStore } from "react";
 import { cn } from "@/lib/cn";
 import {
@@ -8,6 +8,8 @@ import {
   type LottieBrandTone,
   type LottieThemeMode,
 } from "@/lib/lottieTint";
+
+const Lottie = dynamic(() => import("lottie-react"), { ssr: false });
 
 const tones: Record<
   LottieBrandTone,

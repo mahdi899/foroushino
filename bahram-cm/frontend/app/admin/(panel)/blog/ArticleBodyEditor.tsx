@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
@@ -40,7 +39,8 @@ import { linkAttrsFromEditor, parseLinkRel, type LinkEditorValues } from '@/lib/
 import { useAdminFocus } from '../AdminFocusContext';
 import { ImageGalleryModal } from '../content/ImageGalleryModal';
 import { AiImagePromptModal } from '../content/AiImagePromptModal';
-import { resolveMediaUrl } from '@/lib/mediaUrl';
+import { resolveMediaUrl, persistMediaUrl } from '@/lib/mediaUrl';
+import { ArticleImage } from './ArticleImageExtension';
 import { ArticleVideoExtension } from './ArticleVideoExtension';
 import { ArticleVideoEditContext, type VideoEditRequest } from './ArticleVideoEditContext';
 import { VideoInsertModal } from './VideoInsertModal';
@@ -161,7 +161,7 @@ export function ArticleBodyEditor({
         isAllowedUri: (url, ctx) =>
           url.startsWith('/') || url.startsWith('#') || url.startsWith('mailto:') || url.startsWith('tel:') || ctx.defaultValidate(url),
       }),
-      Image.configure({ HTMLAttributes: { class: 'rounded-lg max-w-full h-auto my-4' } }),
+      ArticleImage.configure({ HTMLAttributes: { class: 'rounded-lg max-w-full h-auto my-4' } }),
       Table.configure({ resizable: false }),
       TableRow,
       TableHeader,
@@ -285,11 +285,27 @@ export function ArticleBodyEditor({
     setLinkNeedsSelection(false);
   }, [editor, restoreLinkSelection]);
 
-  const insertAiImage = useCallback(
-    (url: string, alt: string) => {
-      editor?.chain().focus().setImage({ src: resolveMediaUrl(url), alt }).run();
+  const insertArticleImage = useCallback(
+    (url: string, alt: string, width?: number | null, height?: number | null) => {
+      const src = persistMediaUrl(url) || url;
+      editor
+        ?.chain()
+        .focus()
+        .setImage({
+          src,
+          alt,
+          ...(width && height ? { width: String(width), height: String(height) } : {}),
+        })
+        .run();
     },
     [editor],
+  );
+
+  const insertAiImage = useCallback(
+    (url: string, alt: string) => {
+      insertArticleImage(url, alt);
+    },
+    [insertArticleImage],
   );
 
   const insertVideo = useCallback(
@@ -540,8 +556,8 @@ export function ArticleBodyEditor({
         open={galleryOpen}
         onClose={() => setGalleryOpen(false)}
         value=""
-        onSelect={(src, label) => {
-          editor?.chain().focus().setImage({ src, alt: label }).run();
+        onSelect={(src, label, meta) => {
+          insertArticleImage(meta?.persistSrc || src, label, meta?.width, meta?.height);
           setGalleryOpen(false);
         }}
         title="درج تصویر در متن"

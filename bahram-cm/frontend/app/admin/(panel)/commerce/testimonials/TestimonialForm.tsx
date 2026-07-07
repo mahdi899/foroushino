@@ -10,7 +10,7 @@ import type { SeoFixPatch } from '@/lib/ai/seoFix';
 import { AdminPage } from '../../ui';
 import { useAdminFocus } from '../../AdminFocusContext';
 import { CoverImageField } from '../../content/CoverImageField';
-import { ArticleBodyEditor } from '../../blog/ArticleBodyEditor';
+import { ArticleBodyEditor } from '../../blog/ArticleBodyEditorLazy';
 import { SeoScorePanel } from '../../blog/SeoScorePanel';
 
 export function TestimonialForm({ testimonial }: { testimonial?: AdminStudentTestimonial }) {

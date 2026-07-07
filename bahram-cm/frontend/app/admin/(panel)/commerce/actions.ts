@@ -2,6 +2,7 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { adminFetch } from '@/lib/auth/session';
+import { revalidatePublicContent, revalidateTestimonialSurfaces } from '@/lib/cache/contentRevalidation';
 import type { AdminFaq, AdminOrder, AdminProduct, AdminStudentTestimonial, PaymentSettingsData, SmsSpotplayerSettingsData } from '@/lib/admin/commerceTypes';
 
 export async function loadPaymentSettingsAction(): Promise<PaymentSettingsData | null> {
@@ -23,15 +24,18 @@ export async function loadSmsSpotplayerSettingsAction(): Promise<SmsSpotplayerSe
 }
 
 function revalidateCommerce() {
-  revalidatePath('/admin/commerce/products');
-  revalidatePath('/admin/commerce/orders');
-  revalidatePath('/admin/commerce/faqs');
-  revalidatePath('/admin/commerce/testimonials');
-  revalidatePath('/admin/commerce/payment-settings');
-  revalidatePath('/admin/commerce/sms-spotplayer-settings');
-  revalidatePath('/transformations');
-  revalidateTag('public-faqs');
-  revalidateTag('public-transformations');
+  void revalidatePublicContent(() => {
+    revalidatePath('/admin/commerce/products');
+    revalidatePath('/admin/commerce/orders');
+    revalidatePath('/admin/commerce/faqs');
+    revalidatePath('/admin/commerce/testimonials');
+    revalidatePath('/admin/commerce/payment-settings');
+    revalidatePath('/admin/commerce/sms-spotplayer-settings');
+    revalidatePath('/transformations');
+    revalidateTag('public-faqs', 'max');
+    revalidateTag('public-transformations', 'max');
+    revalidateTag('faqs', 'max');
+  });
 }
 
 export async function saveProduct(
@@ -154,10 +158,12 @@ export async function saveStudentTestimonial(
     if (id) {
       await adminFetch(`/student-testimonials/${id}`, { method: 'PATCH', body: input });
       revalidateCommerce();
+      await revalidateTestimonialSurfaces(input.slug);
       return { ok: true, id };
     }
     const res = await adminFetch<{ data: { id: number } }>('/student-testimonials', { method: 'POST', body: input });
     revalidateCommerce();
+    await revalidateTestimonialSurfaces(input.slug);
     return { ok: true, id: res.data.id };
   } catch (e) {
     const err = e as Error & { payload?: { message?: string } };

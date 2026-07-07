@@ -8,6 +8,7 @@ use App\Http\Resources\ArticleListResource;
 use App\Models\Article;
 use App\Support\ApiResponse;
 use App\Support\ArticleSlug;
+use App\Support\RuntimeCache;
 use Illuminate\Http\Request;
 
 class ArticleController extends Controller
@@ -17,14 +18,18 @@ class ArticleController extends Controller
      */
     public function index(Request $request)
     {
+        $page = max(1, (int) $request->integer('page', 1));
         $perPage = min((int) $request->integer('per_page', 12), 50) ?: 12;
+        $cacheKey = 'public_articles:index:'.$page.':'.$perPage;
 
-        $articles = Article::query()
-            ->published()
-            ->orderByDesc('published_at')
-            ->paginate($perPage);
+        return RuntimeCache::remember($cacheKey, 300, function () use ($request, $perPage) {
+            $articles = Article::query()
+                ->published()
+                ->orderByDesc('published_at')
+                ->paginate($perPage, ['*'], 'page', max(1, (int) $request->integer('page', 1)));
 
-        return ArticleListResource::collection($articles);
+            return ArticleListResource::collection($articles);
+        });
     }
 
     /**
@@ -32,15 +37,20 @@ class ArticleController extends Controller
      */
     public function show(string $slug)
     {
-        $article = Article::query()
-            ->published()
-            ->whereIn('slug', ArticleSlug::lookupCandidates($slug))
-            ->first();
+        $normalized = ArticleSlug::normalize($slug);
+        $cacheKey = 'public_articles:show:'.$normalized;
 
-        if (! $article) {
-            return ApiResponse::error('article_not_found', 'مقاله مورد نظر یافت نشد.', 404);
-        }
+        return RuntimeCache::remember($cacheKey, 300, function () use ($slug) {
+            $article = Article::query()
+                ->published()
+                ->whereIn('slug', ArticleSlug::lookupCandidates($slug))
+                ->first();
 
-        return ArticleDetailResource::make($article);
+            if (! $article) {
+                return ApiResponse::error('article_not_found', 'مقاله مورد نظر یافت نشد.', 404);
+            }
+
+            return ArticleDetailResource::make($article);
+        });
     }
 }

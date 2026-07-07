@@ -128,7 +128,7 @@ export function SatFlowScroll({ steps }: { steps: SatFlowStep[] }) {
         مسیر کاربر در سات
       </h2>
 
-      <div className="container-luxe min-w-0 px-4 sm:px-0">
+      <div className="container-luxe min-w-0">
         <Reveal>
           <FlowHeader />
         </Reveal>

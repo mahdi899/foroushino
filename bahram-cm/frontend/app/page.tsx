@@ -1,13 +1,10 @@
 import type { Metadata } from "next";
+import { getPublicPerfConfig } from "@/lib/cache/public";
 import { buildMetadata } from "@/lib/seo";
-import { BigTestimonial } from "@/components/sections/BigTestimonial";
-import { CampaignScrollStory } from "@/components/sections/CampaignScrollStory";
-import { FinalCTA } from "@/components/sections/FinalCTA";
-import { FounderAside } from "@/components/sections/FounderAside";
-import { HeroCinematic } from "@/components/sections/HeroCinematic";
-import { MainPaths } from "@/components/sections/MainPaths";
-import { AcademyTeaser } from "@/components/sections/AcademyTeaser";
-import { ManifestoShift } from "@/components/sections/ManifestoShift";
+import { HomeBelowFoldSections } from "@/components/home/HomeBelowFoldSections";
+import bahramImageLoader from "@/lib/imageLoader";
+import { primarySiteImageSrc } from "@/lib/mediaUrl";
+import { sitePhotos } from "@/lib/site-photo-paths";
 
 export const metadata: Metadata = buildMetadata({
   title: "مسیر رشد حرفه‌ای",
@@ -15,17 +12,18 @@ export const metadata: Metadata = buildMetadata({
   path: "/",
 });
 
-export default function HomePage() {
+function heroPreloadHref(): string {
+  const src = primarySiteImageSrc(sitePhotos.portraitFounder);
+  return bahramImageLoader({ src, width: 448, quality: 80 });
+}
+
+export default async function HomePage() {
+  const perf = await getPublicPerfConfig();
+
   return (
-    <main id="main-content" className="relative min-w-0 max-w-full">
-      <HeroCinematic />
-      <ManifestoShift />
-      <MainPaths />
-      <CampaignScrollStory />
-      <BigTestimonial />
-      <AcademyTeaser />
-      <FounderAside />
-      <FinalCTA />
-    </main>
+    <>
+      <link rel="preload" as="image" href={heroPreloadHref()} fetchPriority="high" />
+      <HomeBelowFoldSections deferBelowFold={perf.defer_below_fold !== false} />
+    </>
   );
 }

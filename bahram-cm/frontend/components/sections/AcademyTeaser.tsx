@@ -22,7 +22,7 @@ export function AcademyTeaser() {
     >
       <div className="container-luxe">
         <Reveal>
-          <div className="academy-teaser-banner relative overflow-hidden rounded-card-lg p-5 md:p-7 lg:p-8 xl:p-10">
+          <div className="academy-teaser-banner relative overflow-hidden rounded-card-lg p-4 sm:p-5 md:p-7 lg:p-8 xl:p-10">
             <div
               aria-hidden
               className="academy-teaser-accent-bar pointer-events-none absolute inset-y-6 start-0 z-[2] w-[3px] rounded-full lg:inset-y-8"
@@ -40,7 +40,7 @@ export function AcademyTeaser() {
               className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-gold/25 to-transparent"
             />
 
-            <div className="relative grid items-center gap-8 lg:grid-cols-12 lg:gap-6 xl:gap-8">
+            <div className="relative grid min-w-0 items-center gap-6 sm:gap-8 lg:grid-cols-12 lg:gap-6 xl:gap-8">
               <div className="academy-teaser-copy flex min-w-0 flex-col justify-center ps-1 lg:col-span-6 lg:pe-2 lg:ps-2 xl:pe-4">
                 <div className="academy-teaser-copy-header">
                   <Eyebrow dotClassName="bg-emerald-glow">{site.saat.eyebrow}</Eyebrow>

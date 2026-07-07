@@ -79,7 +79,7 @@ export default async function TransformationDetailPage({
             <div className="mt-5 flex flex-wrap items-center gap-4 md:mt-6 md:gap-5">
               <Avatar src={avatar} alt={item.name} size={84} className="max-md:scale-90" />
               <div className="min-w-0">
-                <h1 className="text-h1 text-balance md:text-display">{item.name}</h1>
+                <h1 className="text-h2 text-balance sm:text-h1 lg:text-display">{item.name}</h1>
                 <p className="mt-2 text-gold">{item.role}</p>
               </div>
             </div>
