@@ -30,6 +30,8 @@ export const PERFORMANCE_PRESETS: PerformancePreset[] = [
       prefetch_links: false,
       warm_cache_after_purge: true,
       auto_purge_on_save: true,
+      cdn_html_cache: true,
+      cloudflare_auto_purge: true,
       ttl_articles: 900,
       ttl_cases: 1800,
       ttl_services: 7200,
@@ -48,6 +50,8 @@ export const PERFORMANCE_PRESETS: PerformancePreset[] = [
     settings: {
       ...DEFAULT_CACHE_SETTINGS,
       performance_preset: 'balanced',
+      cdn_html_cache: true,
+      cloudflare_auto_purge: true,
       ttl_articles: 300,
       ttl_cases: 600,
       ttl_services: 3600,

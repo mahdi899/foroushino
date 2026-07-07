@@ -4,8 +4,9 @@ import {
   rewriteProxyLocation,
   shouldProxyToBackend,
 } from "@/lib/backend-proxy";
-import { buildCdnCacheControl, buildPublicCacheControl } from "@/lib/cache/headers";
+import { buildCdnCacheControl, buildPublicCacheControl, CDN_MEDIA_EDGE } from "@/lib/cache/headers";
 import { getMiddlewarePerfConfig } from "@/lib/cache/middlewarePerf";
+import { isLongCacheMediaPath } from "@/lib/cache/cdnHeaders";
 import { isStaticContentPath } from "@/lib/cache/staticScope";
 
 function isPublicHtmlDocument(pathname: string): boolean {
@@ -84,6 +85,10 @@ export async function middleware(request: NextRequest) {
   const location = responseHeaders.get("location");
   if (location) {
     responseHeaders.set("location", rewriteProxyLocation(location, publicOrigin, backendOrigin));
+  }
+
+  if (isLongCacheMediaPath(pathname) && !responseHeaders.has("CDN-Cache-Control")) {
+    responseHeaders.set("CDN-Cache-Control", CDN_MEDIA_EDGE);
   }
 
   return new NextResponse(backendResponse.body, {

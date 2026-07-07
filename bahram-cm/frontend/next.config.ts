@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { CDN_STATIC_IMMUTABLE } from "./lib/cache/cdnHeaders";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -55,6 +56,18 @@ const config: NextConfig = {
       { source: "/manage/login", destination: "/admin/login", permanent: false },
       { source: "/blog", destination: "/insights", permanent: true },
       { source: "/blog/:slug", destination: "/insights/:slug", permanent: true },
+    ];
+  },
+  async headers() {
+    const immutable = [
+      { key: "Cache-Control", value: CDN_STATIC_IMMUTABLE },
+      { key: "CDN-Cache-Control", value: CDN_STATIC_IMMUTABLE },
+    ];
+    return [
+      { source: "/_next/static/:path*", headers: immutable },
+      { source: "/fonts/:path*", headers: immutable },
+      { source: "/icons/:path*", headers: immutable },
+      { source: "/media/:path*", headers: immutable },
     ];
   },
   transpilePackages: ["next-mdx-remote"],

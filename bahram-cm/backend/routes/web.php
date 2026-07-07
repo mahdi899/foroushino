@@ -26,12 +26,20 @@ Route::middleware(['web', 'auth'])->prefix('manage')->name('admin.')->group(func
 });
 
 Route::get('/sitemap.xml', function (SitemapService $sitemap) {
-    return response($sitemap->current(), 200, ['Content-Type' => 'application/xml']);
+    return response($sitemap->current(), 200, [
+        'Content-Type' => 'application/xml',
+        'Cache-Control' => 'public, max-age=3600, stale-while-revalidate=7200',
+        'CDN-Cache-Control' => 'public, max-age=3600',
+    ]);
 });
 
 Route::get('/robots.txt', function () {
     $settings = SeoSetting::current();
     $content = filled($settings->robots_txt) ? $settings->robots_txt : app(SitemapService::class)->defaultRobotsTxt();
 
-    return response($content, 200, ['Content-Type' => 'text/plain']);
+    return response($content, 200, [
+        'Content-Type' => 'text/plain',
+        'Cache-Control' => 'public, max-age=3600, stale-while-revalidate=7200',
+        'CDN-Cache-Control' => 'public, max-age=3600',
+    ]);
 });

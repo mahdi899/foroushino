@@ -974,7 +974,9 @@ export function FloatingChatbot({
             typing: true,
           }),
       );
-      setReplyModeModalOpen(true);
+      if (!operatorActive) {
+        setReplyModeModalOpen(true);
+      }
       revealPanelForReply();
       return;
     }
@@ -1182,7 +1184,7 @@ export function FloatingChatbot({
       }
       track('chatbot_rating', { rating, session: sessionId });
 
-      if (res.lowRating && !operatorActive) {
+      if (res.lowRating) {
         lowRatingFeedbackRef.current = { logId };
         setAwaitingLowRatingFeedback(true);
         void playChatbotReplyTone();
@@ -1198,7 +1200,7 @@ export function FloatingChatbot({
         );
       }
     },
-    [sessionId, revealPanelForReply, operatorActive],
+    [sessionId, revealPanelForReply],
   );
 
   const showQuickPrompts =

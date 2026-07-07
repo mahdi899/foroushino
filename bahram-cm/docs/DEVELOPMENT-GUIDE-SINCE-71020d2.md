@@ -419,7 +419,9 @@ Encountered a script tag while rendering React component
 bahram-cm/
 ├── docs/
 │   ├── DEPLOYMENT.md
-│   └── DEVELOPMENT-GUIDE-SINCE-71020d2.md   ← این فایل
+│   ├── CDN-DEPLOYMENT.md              ← راهنمای CDN + Cloudflare
+│   ├── cloudflare-cache-rules.example.json
+│   └── DEVELOPMENT-GUIDE-SINCE-71020d2.md
 ├── frontend/
 │   ├── lib/services/staticFetch.ts          ISR fetch
 │   ├── lib/cache/                           کش فرانت

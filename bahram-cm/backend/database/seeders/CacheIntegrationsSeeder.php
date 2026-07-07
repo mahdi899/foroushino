@@ -16,14 +16,24 @@ class CacheIntegrationsSeeder extends Seeder
         $secret = trim((string) config('bahram.revalidate.secret', ''))
             ?: 'bahram-dev-revalidate-secret';
 
+        $zoneId = trim((string) config('bahram.cloudflare.zone_id', ''));
+        $cfToken = trim((string) config('bahram.cloudflare.api_token', ''));
+
+        $value = [
+            'revalidate_webhook_url' => $webhookUrl,
+            'revalidate_secret' => $secret,
+        ];
+
+        if ($zoneId !== '') {
+            $value['cloudflare_zone_id'] = $zoneId;
+        }
+        if ($cfToken !== '') {
+            $value['cloudflare_api_token'] = $cfToken;
+        }
+
         Setting::query()->updateOrCreate(
             ['group' => CacheIntegrationService::GROUP, 'key' => CacheIntegrationService::KEY],
-            [
-                'value' => [
-                    'revalidate_webhook_url' => $webhookUrl,
-                    'revalidate_secret' => $secret,
-                ],
-            ],
+            ['value' => $value],
         );
 
         CacheIntegrationService::forgetCachedConfig();

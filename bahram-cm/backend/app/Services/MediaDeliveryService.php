@@ -227,10 +227,13 @@ class MediaDeliveryService
     private function fileResponse(string $path, string $mime): BinaryFileResponse
     {
         $maxAge = (int) config('bahram.media_cache_max_age', 31536000);
+        $cacheControl = 'public, max-age='.$maxAge.', immutable';
+        $cdnControl = 'public, max-age='.$maxAge.', immutable';
 
         return response()->file($path, [
             'Content-Type' => $mime,
-            'Cache-Control' => 'public, max-age='.$maxAge.', immutable',
+            'Cache-Control' => $cacheControl,
+            'CDN-Cache-Control' => $cdnControl,
         ]);
     }
 }

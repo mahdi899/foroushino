@@ -1,68 +1,89 @@
 # Deployment Guide — Bahram CM
 
-This guide covers deploying the Next.js frontend (project root) and the FastAPI
-backend (`backend/`). CI runs lint, typecheck, image/import validation, unit
-tests and a production build on every push and PR (see
-`.github/workflows/ci.yml`).
+این راهنما deploy **Next.js** (`frontend/`) و **Laravel** (`backend/`) را شرح می‌دهد.
 
-## 1. Prerequisites
+**CDN و Cloudflare:** [`CDN-DEPLOYMENT.md`](CDN-DEPLOYMENT.md)
+
+CI در `.github/workflows/ci.yml` lint، typecheck و build را اجرا می‌کند.
+
+---
+
+## 1. پیش‌نیازها
 
 - Node.js 20+
-- Python 3.11+
-- A reachable backend API (FastAPI) with the `leads` tables migrated
-- (Optional) Plausible domain or GA4 measurement ID for analytics
-- (Optional) Sanity project for the CMS abstraction
+- PHP 8.2+، Composer
+- MySQL + Redis
+- (اختیاری) Cloudflare برای edge CDN
+- (اختیاری) Plausible / GA4
 
-## 2. Frontend (project root)
+---
+
+## 2. Frontend (`frontend/`)
 
 ### Environment
 
-Copy `.env.example` to `.env.local` (dev) or set the variables in your host:
+کپی `.env.example` → `.env.local` (dev) یا تنظیم در هاست:
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `NEXT_PUBLIC_API_BASE_URL` | yes | Backend base URL (no trailing slash) |
-| `NEXT_PUBLIC_SITE_URL` | yes (prod) | Canonical site URL for SEO/sitemap/OG |
-| `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` | no | Enables Plausible analytics |
-| `NEXT_PUBLIC_PLAUSIBLE_SRC` | no | Self-hosted Plausible script URL |
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | no | Enables GA4 analytics |
-| `NEXT_PUBLIC_SANITY_PROJECT_ID` | no | Switches content layer to Sanity |
+| `NEXT_PUBLIC_API_BASE_URL` | yes | URL عمومی سایت/API |
+| `NEXT_PUBLIC_SITE_URL` | yes (prod) | URL کانونیکال SEO |
+| `BACKEND_PROXY_URL` | yes | Origin Laravel برای proxy |
+| `NEXT_PUBLIC_CDN_ORIGIN` | yes | Origin تصاویر resize |
+| `REVALIDATE_SECRET` | yes | Webhook ISR (مشترک با Laravel) |
+| `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` | no | Plausible |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | no | GA4 |
 
 ### Build & run
 
 ```bash
+cd frontend
 npm ci
-npm run verify   # lint + typecheck + validate:images + check-imports
+npm run verify
 npm run build
-npm start        # serves the production build
+npm start
 ```
 
-### Recommended hosts
+**Vercel:** root = `bahram-cm/frontend`، env vars را اضافه کنید.
 
-- **Vercel**: set the project root to this repository root, add the env vars, deploy.
-- **Container**: `next build` then `next start` behind a reverse proxy.
+---
 
 ## 3. Backend (`backend/`)
 
 ```bash
 cd backend
-cp .env.example .env   # fill DATABASE_URL, REDIS_URL, SECRET_KEY, CORS_ORIGINS
-pip install -e .
-alembic upgrade head
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+cp .env.example .env
+composer install
+php artisan migrate
+php artisan db:seed --class=CacheIntegrationsSeeder
+php artisan serve --host=0.0.0.0 --port=8010
 ```
 
-Ensure `CORS_ORIGINS` includes the deployed frontend origin so the Apply and
-Newsletter forms can POST to `/api/v1/leads/*`.
+متغیرهای مهم:
+
+| Variable | Purpose |
+| --- | --- |
+| `APP_URL` | URL عمومی Laravel |
+| `FRONTEND_URL` | URL Next.js (purge + sitemap) |
+| `MEDIA_URL` | URL CDN رسانه |
+| `REVALIDATE_SECRET` | مشترک با Next |
+| `REVALIDATE_WEBHOOK_URL` | `{SITE}/api/revalidate` |
+| `CLOUDFLARE_ZONE_ID` / `CLOUDFLARE_API_TOKEN` | Purge edge |
+| `CACHE_STORE=redis` | Object cache |
+
+---
 
 ## 4. Post-deploy checklist
 
-See `docs/reports/launch-checklist.md` for the full pre-launch checklist.
-Quick smoke test:
+1. `/admin/cache` → پریست **متعادل** یا **حداکثر سرعت**
+2. Cloudflare Cache Rules — [`cloudflare-cache-rules.example.json`](cloudflare-cache-rules.example.json)
+3. Submit Apply / Newsletter → ردیف در DB
+4. `/sitemap.xml` و `/insights/{slug}` درست لود شوند
+5. ذخیره مقاله → HTML به‌روز (ISR + Cloudflare purge)
+6. Badge **Cloudflare → OK** در پنل کش
 
-1. Submit the Apply form → expect success state + a row in `leads`.
-2. Submit the newsletter → expect success state + a row in `newsletter_subscribers`.
-3. Visit `/sitemap.xml` → confirm static + dynamic routes appear.
-4. Visit `/courses`, `/resources`, `/guides` and a few detail pages.
-5. Visit `/<route>/opengraph-image` renders Persian text correctly.
-6. Confirm analytics events fire (Plausible/GA4 realtime) on CTA clicks.
+جزئیات CDN: [`CDN-DEPLOYMENT.md`](CDN-DEPLOYMENT.md)
+
+---
+
+*آخرین به‌روزرسانی: ۱۴۰۵/۰۴/۱۷*

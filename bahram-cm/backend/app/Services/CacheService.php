@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Support\CdnUrls;
 use App\Support\RuntimeCache;
 
 /**
@@ -255,7 +256,7 @@ class CacheService
                     $result['laravel'] = true;
                 }
                 if ($settings['cloudflare_auto_purge'] ?? false) {
-                    $result['cloudflare'] = $this->purgeCloudflare();
+                    $result['cloudflare'] = $this->purgeCloudflare(['purge_everything' => true]);
                 }
                 break;
 
@@ -274,7 +275,10 @@ class CacheService
                 break;
 
             case 'cloudflare':
-                $result['cloudflare'] = $this->purgeCloudflare();
+                $paths = $options['paths'] ?? [];
+                $result['cloudflare'] = $paths !== []
+                    ? $this->purgeCloudflare(['paths' => $paths])
+                    : $this->purgeCloudflare(['purge_everything' => true]);
                 break;
 
             default:
@@ -290,6 +294,9 @@ class CacheService
 
         if ($result['isr']['tags'] !== [] || $result['isr']['paths'] !== []) {
             $this->revalidation->trigger($result['isr']['tags'], $result['isr']['paths']);
+            if (($settings['cloudflare_auto_purge'] ?? false) && $result['isr']['paths'] !== []) {
+                $result['cloudflare'] = $this->purgeCloudflare(['paths' => $result['isr']['paths']]);
+            }
         }
 
         $warm = $options['warm'] ?? ($settings['warm_cache_after_purge'] ?? false);
@@ -306,13 +313,33 @@ class CacheService
     /**
      * Record ISR purge triggered automatically after content/media save (no Laravel flush).
      */
-    public function logAutoPurge(string $label, array $tags, array $paths = []): void
+    public function logAutoPurge(string $label, array $tags, array $paths = [], bool $cloudflare = false): void
     {
         $this->appendPurgeLog('auto', [
             'isr' => ['tags' => array_values(array_unique($tags)), 'paths' => array_values(array_unique($paths))],
             'laravel' => false,
-            'cloudflare' => false,
+            'cloudflare' => $cloudflare,
         ], self::AUTO_PURGE_ACTOR, true, $label);
+    }
+
+    /** Purge Cloudflare cache for public site paths (used after content save). */
+    public function purgeCloudflareForPaths(array $paths): bool
+    {
+        if ($paths === [] || ! $this->cloudflareConfigured()) {
+            return false;
+        }
+
+        return $this->purgeCloudflare(['paths' => $paths]);
+    }
+
+    /** Purge resized/original media under /cdn/media and /storage/media. */
+    public function purgeCloudflareMedia(): bool
+    {
+        if (! $this->cloudflareConfigured()) {
+            return false;
+        }
+
+        return $this->purgeCloudflare(['prefixes' => CdnUrls::mediaPurgePrefixes()]);
     }
 
     public function clearPurgeLog(): void
@@ -537,7 +564,10 @@ class CacheService
         return $this->integrations->verifyRevalidateSecret($secret);
     }
 
-    private function purgeCloudflare(): bool
+    /**
+     * @param  array{paths?: list<string>, prefixes?: list<string>, purge_everything?: bool}  $options
+     */
+    private function purgeCloudflare(array $options = []): bool
     {
         $zoneId = $this->integrations->cloudflareZoneId();
         $token = $this->integrations->cloudflareApiToken();
@@ -545,12 +575,53 @@ class CacheService
             return false;
         }
 
+        if ($options['purge_everything'] ?? false) {
+            return $this->cloudflarePurgeRequest($zoneId, $token, ['purge_everything' => true]);
+        }
+
+        $prefixes = array_values(array_filter($options['prefixes'] ?? []));
+        if ($prefixes !== []) {
+            $ok = true;
+            foreach (array_chunk($prefixes, 30) as $chunk) {
+                if (! $this->cloudflarePurgeRequest($zoneId, $token, ['prefixes' => $chunk])) {
+                    $ok = false;
+                }
+            }
+
+            return $ok;
+        }
+
+        $paths = array_values(array_filter($options['paths'] ?? []));
+        if ($paths === []) {
+            return false;
+        }
+
+        $urls = CdnUrls::purgeUrlsForPaths($paths);
+        if ($urls === []) {
+            return false;
+        }
+
+        $ok = true;
+        foreach (array_chunk($urls, 30) as $chunk) {
+            if (! $this->cloudflarePurgeRequest($zoneId, $token, ['files' => $chunk])) {
+                $ok = false;
+            }
+        }
+
+        return $ok;
+    }
+
+    /** @param  array<string, mixed>  $body */
+    private function cloudflarePurgeRequest(string $zoneId, string $token, array $body): bool
+    {
         try {
             $res = Http::withToken($token)
-                ->timeout(10)
-                ->post("https://api.cloudflare.com/client/v4/zones/{$zoneId}/purge_cache", [
-                    'purge_everything' => true,
-                ]);
+                ->timeout(15)
+                ->post("https://api.cloudflare.com/client/v4/zones/{$zoneId}/purge_cache", $body);
+
+            if (! $res->successful()) {
+                Log::info('[cloudflare-purge] failed: '.$res->body());
+            }
 
             return $res->successful();
         } catch (\Throwable $e) {

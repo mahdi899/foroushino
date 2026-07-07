@@ -65,6 +65,7 @@ class ContentPublishService
             ['settings', 'articles', 'cases', 'testimonials'],
             ['/', '/insights', '/transformations'],
             null,
+            purgeMediaCdn: true,
         );
     }
 
@@ -101,14 +102,30 @@ class ContentPublishService
     /**
      * @param  null|callable(): void  $afterForget
      */
-    private function purge(string $label, array $tags, array $paths, ?callable $afterForget): void
-    {
+    private function purge(
+        string $label,
+        array $tags,
+        array $paths,
+        ?callable $afterForget,
+        bool $purgeMediaCdn = false,
+    ): void {
         if (! $this->shouldAutoPurge()) {
             return;
         }
 
         $this->revalidation->trigger($tags, $paths);
-        $this->cacheService->logAutoPurge($label, $tags, $paths);
+
+        $settings = $this->cacheService->getSettings();
+        $cloudflare = false;
+        if ($settings['cloudflare_auto_purge'] ?? false) {
+            if ($purgeMediaCdn) {
+                $cloudflare = $this->cacheService->purgeCloudflareMedia();
+            } elseif ($paths !== []) {
+                $cloudflare = $this->cacheService->purgeCloudflareForPaths($paths);
+            }
+        }
+
+        $this->cacheService->logAutoPurge($label, $tags, $paths, $cloudflare);
 
         if ($afterForget) {
             $afterForget();

@@ -69,8 +69,10 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 جزئیات در [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
-- **Frontend:** Vercel یا هر هاست Node — روت پروژه همین پوشه
-- **Backend:** هر سرور Python — `backend/` با MySQL + Redis
+**CDN و Cloudflare:** [`docs/CDN-DEPLOYMENT.md`](docs/CDN-DEPLOYMENT.md)
+
+- **Frontend:** Vercel یا هر هاست Node — روت `bahram-cm/frontend`
+- **Backend:** Laravel — `bahram-cm/backend` با MySQL + Redis
 
 ## Companion
 

@@ -1,0 +1,40 @@
+[
+  {
+    "description": "Bypass admin panel — never cache authenticated HTML",
+    "expression": "(http.request.uri.path starts_with \"/admin\")",
+    "action": "bypass_cache"
+  },
+  {
+    "description": "Bypass dynamic APIs — forms, chat, captcha, revalidate",
+    "expression": "(http.request.uri.path starts_with \"/api/chatbot\") or (http.request.uri.path starts_with \"/api/captcha\") or (http.request.uri.path starts_with \"/api/revalidate\") or (http.request.uri.path starts_with \"/api/admin\") or (http.request.uri.path starts_with \"/purchase\") or (http.request.uri.path starts_with \"/apply\")",
+    "action": "bypass_cache"
+  },
+  {
+    "description": "Long-cache immutable media — /cdn and /storage/media",
+    "expression": "(http.request.uri.path starts_with \"/cdn/media\") or (http.request.uri.path starts_with \"/storage/media\")",
+    "action": "cache",
+    "action_parameters": {
+      "edge_ttl": { "mode": "override_origin", "default": 31536000 },
+      "browser_ttl": { "mode": "respect_origin" }
+    }
+  },
+  {
+    "description": "Next.js static chunks — hashed, immutable",
+    "expression": "(http.request.uri.path starts_with \"/_next/static\")",
+    "action": "cache",
+    "action_parameters": {
+      "edge_ttl": { "mode": "override_origin", "default": 31536000 },
+      "browser_ttl": { "mode": "respect_origin" }
+    }
+  },
+  {
+    "description": "Public HTML — respect CDN-Cache-Control from Next middleware",
+    "expression": "(http.request.uri.path eq \"/\") or (http.request.uri.path starts_with \"/insights\") or (http.request.uri.path starts_with \"/faq\") or (http.request.uri.path starts_with \"/courses\") or (http.request.uri.path starts_with \"/transformations\")",
+    "action": "cache",
+    "action_parameters": {
+      "cache": true,
+      "edge_ttl": { "mode": "respect_origin" },
+      "browser_ttl": { "mode": "respect_origin" }
+    }
+  }
+]
