@@ -52,9 +52,8 @@ class Article extends Model
     public function getSlugOptions(): SlugOptions
     {
         return SlugOptions::create()
-            ->generateSlugsFrom('title')
+            ->generateSlugsFrom(fn (self $article): string => ArticleSlug::normalize($article->slug, $article->title))
             ->saveSlugsTo('slug')
-            ->usingSlugGenerator(fn (string $string, string $separator): string => ArticleSlug::normalize($string, $string))
             ->doNotGenerateSlugsOnUpdate();
     }
 
