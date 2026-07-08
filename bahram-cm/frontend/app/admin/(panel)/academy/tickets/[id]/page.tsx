@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { AdminPage } from '../../../ui';
 import { getTicket } from '@/lib/admin/academyData';
-import { TicketDetailPanel } from '../TicketDetailPanel';
+import { TicketChatPanel } from '../TicketChatPanel';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,9 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
 
   return (
     <AdminPage title={`تیکت #${ticket.id}`} desc={ticket.subject}>
-      <TicketDetailPanel ticket={ticket} />
+      <div className="overflow-hidden rounded-xl border border-border">
+        <TicketChatPanel ticket={ticket} />
+      </div>
     </AdminPage>
   );
 }

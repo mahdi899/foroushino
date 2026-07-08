@@ -98,7 +98,7 @@ class FulfillOrderJob implements ShouldQueue
                             'course_access_id' => $courseAccess?->id,
                             'spotplayer_course_id' => $order->product?->spotplayer_course_id,
                             'license_key' => $licenseResponse['key'] ?? null,
-                            'license_url' => $licenseResponse['url'] ?? null,
+                            'license_url' => $this->normalizeSpotPlayerLicenseUrl($licenseResponse['url'] ?? null),
                             'status' => SpotplayerLicenseStatus::Active,
                             'raw_response' => $licenseResponse,
                         ]
@@ -140,5 +140,18 @@ class FulfillOrderJob implements ShouldQueue
         $order->update(['user_id' => $user->id]);
 
         return $user->id;
+    }
+
+    private function normalizeSpotPlayerLicenseUrl(?string $url): ?string
+    {
+        if (blank($url)) {
+            return null;
+        }
+
+        if (str_starts_with($url, '/')) {
+            return 'https://dl.spotplayer.ir'.$url;
+        }
+
+        return $url;
     }
 }

@@ -16,6 +16,8 @@ import type {
   AdminStudentDetail,
   AdminTicket,
   AdminTicketDetail,
+  AdminTicketReport,
+  AdminTicketUserGroup,
   PageMeta,
 } from './academyTypes';
 
@@ -129,10 +131,10 @@ export async function getSatApplications(params: { status?: string; page?: numbe
   }
 }
 
-export async function getTickets(params: { status?: string; page?: number } = {}) {
+export async function getTickets(params: { status?: string; user_id?: number; page?: number } = {}) {
   try {
     const res = await adminFetch<{ data: AdminTicket[]; meta: PageMeta }>('/tickets', {
-      query: { status: params.status, page: params.page },
+      query: { status: params.status, user_id: params.user_id, page: params.page },
     });
     return { items: res.data, meta: res.meta, error: null as string | null };
   } catch (e) {
@@ -146,6 +148,28 @@ export async function getTicket(id: number): Promise<AdminTicketDetail | null> {
     return res.data;
   } catch {
     return null;
+  }
+}
+
+export async function getTicketUserGroups(params: { search?: string; page?: number } = {}) {
+  try {
+    const res = await adminFetch<{ data: AdminTicketUserGroup[]; meta: PageMeta }>('/tickets/users', {
+      query: { search: params.search, page: params.page },
+    });
+    return { items: res.data, meta: res.meta, error: null as string | null };
+  } catch (e) {
+    return { items: [] as AdminTicketUserGroup[], meta: null, error: errorMessage(e) };
+  }
+}
+
+export async function getTicketReports(params: { from?: string; to?: string; status?: string; department?: string } = {}) {
+  try {
+    const res = await adminFetch<{ data: AdminTicketReport }>('/tickets/reports', {
+      query: { from: params.from, to: params.to, status: params.status, department: params.department },
+    });
+    return { data: res.data, error: null as string | null };
+  } catch (e) {
+    return { data: null as AdminTicketReport | null, error: errorMessage(e) };
   }
 }
 

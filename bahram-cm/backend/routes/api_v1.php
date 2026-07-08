@@ -70,6 +70,7 @@ Route::prefix('student')->group(function () {
         Route::put('profile', [StudentProfileController::class, 'update']);
 
         Route::get('courses', [StudentCourseController::class, 'index']);
+        Route::get('courses/{courseAccess}/player', [StudentCourseController::class, 'player'])->whereNumber('courseAccess');
         Route::get('orders', [StudentOrderController::class, 'index']);
 
         Route::get('seminars', [StudentSeminarController::class, 'index']);
@@ -245,6 +246,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     Route::get('tickets', [TicketAdminController::class, 'index']);
     Route::post('tickets', [TicketAdminController::class, 'store']);
+    Route::get('tickets/users', [TicketAdminController::class, 'users']);
+    Route::get('tickets/reports', [TicketAdminController::class, 'reports']);
     Route::get('tickets/{ticket}', [TicketAdminController::class, 'show'])->whereNumber('ticket');
     Route::patch('tickets/{ticket}', [TicketAdminController::class, 'update'])->whereNumber('ticket');
     Route::post('tickets/{ticket}/messages', [TicketAdminController::class, 'storeMessage'])->whereNumber('ticket');
