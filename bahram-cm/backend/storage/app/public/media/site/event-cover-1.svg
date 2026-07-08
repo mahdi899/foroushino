@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" role="img" aria-label="">
+  <defs>
+    <linearGradient id="ev1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0D1517"/>
+      <stop offset="100%" stop-color="#003B40"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="450" fill="url(#ev1)"/>
+  <g opacity="0.5" stroke="#008C96" fill="none">
+    <circle cx="620" cy="120" r="60"/>
+    <circle cx="620" cy="120" r="100" stroke-opacity="0.5"/>
+    <circle cx="620" cy="120" r="160" stroke-opacity="0.3"/>
+    <circle cx="620" cy="120" r="240" stroke-opacity="0.15"/>
+  </g>
+  <text x="60" y="100" fill="#FFB000" font-size="14" font-family="sans-serif" letter-spacing="6">UPCOMING � LIVE</text>
+  <text x="60" y="170" fill="#EAFBFB" font-size="44" font-family="sans-serif" font-weight="700">F43* '3*1'*��</text>
+  <text x="60" y="220" fill="#EAFBFB" font-size="44" font-family="sans-serif" font-weight="700">�E~�FFH�3�</text>
+  <text x="60" y="280" fill="#95B4B8" font-size="16" font-family="sans-serif">�� .1/'/ ���� � "FD'�F</text>
+</svg>

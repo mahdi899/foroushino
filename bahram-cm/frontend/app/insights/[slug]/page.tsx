@@ -11,7 +11,7 @@ import { getArticleBySlug, getArticles } from "@/lib/services/articles";
 import { articleJsonLd, breadcrumbJsonLd } from "@/lib/jsonld";
 import { formatDateFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
-import { resolveMediaUrl } from "@/lib/mediaUrl";
+import { resolveMediaUrl, rewriteArticleBodyMediaUrls } from "@/lib/mediaUrl";
 
 export const revalidate = 300;
 
@@ -187,7 +187,7 @@ export default async function InsightDetailPage({
         <div className="insight-article-wrap">
           <article
             className="prose-luxe insight-article-prose text-bone-dim"
-            dangerouslySetInnerHTML={{ __html: post.content }}
+            dangerouslySetInnerHTML={{ __html: rewriteArticleBodyMediaUrls(post.content) }}
           />
         </div>
       </section>

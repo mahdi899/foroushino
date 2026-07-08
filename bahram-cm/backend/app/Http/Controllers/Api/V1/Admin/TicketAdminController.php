@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Services\SmsService;
+use App\Support\Mobile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -24,6 +26,47 @@ class TicketAdminController extends Controller
             'data' => $tickets->getCollection()->map(fn (Ticket $t) => $this->listPayload($t)),
             'meta' => ['current_page' => $tickets->currentPage(), 'last_page' => $tickets->lastPage(), 'total' => $tickets->total()],
         ]);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'user_id' => ['required_without:mobile', 'integer', 'exists:users,id'],
+            'mobile' => ['required_without:user_id', 'string'],
+            'department' => ['nullable', 'string', 'max:120'],
+            'subject' => ['required', 'string', 'max:255'],
+            'message' => ['required', 'string', 'max:5000'],
+            'priority' => ['sometimes', 'string', 'in:low,normal,high'],
+        ]);
+
+        $student = isset($data['user_id'])
+            ? User::query()->findOrFail($data['user_id'])
+            : User::query()->where('mobile', Mobile::normalize($data['mobile']))->first();
+
+        if (! $student || $student->is_admin) {
+            return response()->json([
+                'error' => ['code' => 'student_not_found', 'message_fa' => 'دانشجویی با این مشخصات یافت نشد.'],
+            ], 422);
+        }
+
+        $ticket = $student->tickets()->create([
+            'department' => $data['department'] ?? null,
+            'subject' => $data['subject'],
+            'status' => 'waiting_user',
+            'priority' => $data['priority'] ?? 'normal',
+        ]);
+
+        $ticket->messages()->create([
+            'user_id' => $request->user()->id,
+            'message' => $data['message'],
+            'is_admin_reply' => true,
+        ]);
+
+        $ticket->load(['user', 'messages']);
+
+        app(SmsService::class)->sendTicketReply($ticket);
+
+        return response()->json(['data' => $this->listPayload($ticket)], 201);
     }
 
     public function show(Ticket $ticket): JsonResponse

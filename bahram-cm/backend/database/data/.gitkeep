@@ -1,0 +1,1 @@
+# Committed media metadata manifest — regenerate with: php artisan media:sync --export

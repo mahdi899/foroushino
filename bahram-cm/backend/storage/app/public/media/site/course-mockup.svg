@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 700" role="img" aria-label="�E~�FFH�3�">
+  <defs>
+    <linearGradient id="cm-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0D1517"/>
+      <stop offset="100%" stop-color="#003B40"/>
+    </linearGradient>
+    <linearGradient id="cm-card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#142326"/>
+      <stop offset="100%" stop-color="#0D1517"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="700" fill="url(#cm-bg)"/>
+  <g transform="translate(120,90)">
+    <rect width="660" height="520" rx="22" fill="url(#cm-card)" stroke="#EAFBFB" stroke-opacity="0.07"/>
+    <rect x="28" y="28" width="120" height="24" rx="12" fill="#FFB000" fill-opacity="0.15"/>
+    <text x="40" y="44" fill="#FFB000" font-size="11" font-family="sans-serif" letter-spacing="3">CAMPAIGN WRITING</text>
+    <text x="28" y="100" fill="#EAFBFB" font-size="34" font-family="sans-serif" font-weight="700">'2 E.'7( *' �E~�F</text>
+    <text x="28" y="138" fill="#95B4B8" font-size="16" font-family="sans-serif">3'.*'1� �� A5D ',1'� H'B9�</text>
+    <g transform="translate(28,180)">
+      <rect width="600" height="56" rx="12" fill="#0D1517" stroke="#EAFBFB" stroke-opacity="0.06"/>
+      <circle cx="34" cy="28" r="14" fill="#003B40" stroke="#008C96" stroke-opacity="0.6"/>
+      <text x="29" y="33" fill="#008C96" font-size="12" font-family="sans-serif">�</text>
+      <text x="62" y="34" fill="#EAFBFB" font-size="14" font-family="sans-serif">F�'G -1AG'�</text>
+      <text x="540" y="34" fill="#95B4B8" font-size="12" font-family="sans-serif">� /13</text>
+    </g>
+    <g transform="translate(28,250)">
+      <rect width="600" height="56" rx="12" fill="#0D1517" stroke="#EAFBFB" stroke-opacity="0.06"/>
+      <circle cx="34" cy="28" r="14" fill="#003B40" stroke="#008C96" stroke-opacity="0.6"/>
+      <text x="29" y="33" fill="#008C96" font-size="12" font-family="sans-serif">�</text>
+      <text x="62" y="34" fill="#EAFBFB" font-size="14" font-family="sans-serif">~�'E E*E'�2</text>
+      <text x="540" y="34" fill="#95B4B8" font-size="12" font-family="sans-serif">� /13</text>
+    </g>
+    <g transform="translate(28,320)">
+      <rect width="600" height="56" rx="12" fill="#0D1517" stroke="#EAFBFB" stroke-opacity="0.06"/>
+      <circle cx="34" cy="28" r="14" fill="#003B40" stroke="#008C96" stroke-opacity="0.6"/>
+      <text x="29" y="33" fill="#008C96" font-size="12" font-family="sans-serif">�</text>
+      <text x="62" y="34" fill="#EAFBFB" font-size="14" font-family="sans-serif">71'-� �E~�F</text>
+      <text x="540" y="34" fill="#95B4B8" font-size="12" font-family="sans-serif">� /13</text>
+    </g>
+    <g transform="translate(28,390)">
+      <rect width="600" height="56" rx="12" fill="#0D1517" stroke="#FFB000" stroke-opacity="0.4"/>
+      <circle cx="34" cy="28" r="14" fill="#FFB000" fill-opacity="0.18" stroke="#FFB000" stroke-opacity="0.6"/>
+      <text x="29" y="33" fill="#FFB000" font-size="12" font-family="sans-serif">�</text>
+      <text x="62" y="34" fill="#EAFBFB" font-size="14" font-family="sans-serif">',1' H *�1'1</text>
+      <text x="540" y="34" fill="#95B4B8" font-size="12" font-family="sans-serif">� /13</text>
+    </g>
+    <rect x="28" y="460" width="160" height="40" rx="20" fill="#008C96"/>
+    <text x="76" y="486" fill="#EAFBFB" font-size="13" font-family="sans-serif">":'2 E3�1 �</text>
+  </g>
+</svg>

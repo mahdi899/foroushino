@@ -78,6 +78,26 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 صفحه `/companion` به API اصلی Academy (اپ موبایل) وابسته است. اگر فقط سایت مارکتینگ را deploy می‌کنید، `NEXT_PUBLIC_API_BASE_URL` را به همان API اصلی تنظیم کنید یا این صفحه را غیرفعال نگه دارید.
 
+## همگام‌سازی کتابخانه رسانه (تیم)
+
+فایل‌های تصویر در `backend/storage/app/public/media/` داخل git track می‌شوند. متادیتا (alt، دسته‌بندی، …) در `backend/database/data/media_library.json` نگه‌داری می‌شود.
+
+**بعد از `git pull` (هم‌تیمی‌ها):**
+
+```bash
+cd backend
+php artisan storage:link
+php artisan media:sync
+```
+
+**بعد از آپلود تصویر جدید در پنل (قبل از commit):**
+
+```bash
+cd backend
+php artisan media:sync --export
+git add storage/app/public/media database/data/media_library.json frontend/lib/media/legacyMap.generated.ts
+```
+
 ## License
 
 Private. All rights reserved.

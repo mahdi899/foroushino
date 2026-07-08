@@ -1,7 +1,6 @@
 import { API_ORIGIN, ASSET_ORIGIN, MEDIA_ORIGIN } from '@/lib/api/config';
 import { siteConfig } from '@/config/site';
 import { mediaPathToStorage } from '@/lib/media/legacyMap';
-import { isImageOptimizationDisabled } from '@/lib/perfFlags';
 
 function siteOrigin(): string {
   return (process.env.NEXT_PUBLIC_SITE_URL || siteConfig.url).replace(/\/+$/, '');
@@ -90,18 +89,25 @@ function adminStorageRef(url: string | null | undefined): string {
   return persistMediaUrl(url);
 }
 
-function addStorageDeliveryUrls(out: string[], ref: string, seen: Set<string>) {
-  const add = (candidate?: string | null) => {
-    if (!candidate?.trim() || seen.has(candidate)) return;
-    seen.add(candidate);
-    out.push(candidate);
-  };
+function stripDeliveryQuery(url: string): string {
+  try {
+    const parsed = new URL(url, siteOrigin());
+    if (!parsed.searchParams.has('w') && !parsed.searchParams.has('q')) {
+      return url;
+    }
+    parsed.searchParams.delete('w');
+    parsed.searchParams.delete('q');
+    const query = parsed.searchParams.toString();
+    return `${parsed.pathname}${query ? `?${query}` : ''}${parsed.hash}`;
+  } catch {
+    return url.replace(/([?&])(w|q)=[^&]*/g, '').replace(/\?$/, '');
+  }
+}
 
-  if (!ref.startsWith('/storage/media/')) return;
-
-  add(`${CDN_DELIVERY_ORIGIN}/cdn/${ref.slice('/storage/'.length)}`);
-  add(resolveMediaUrl(ref));
-  add(ref);
+/** Normalize any stored or legacy delivery URL to a plain /storage reference. */
+export function normalizeImageSrc(url: string | null | undefined): string {
+  if (!url?.trim()) return '';
+  return persistMediaUrl(stripDeliveryQuery(url.trim()));
 }
 
 /**
@@ -209,12 +215,6 @@ export function adminMediaThumbFallbacks(item: {
     out.push(normalized);
   };
 
-  const addRaw = (candidate: string) => {
-    if (!candidate || seen.has(candidate)) return;
-    seen.add(candidate);
-    out.push(candidate);
-  };
-
   const ref = adminStorageRef(item.persistSrc || item.src || item.legacyPath);
 
   // Same-origin storage first — required for SVG and avoids localhost → 127.0.0.1 blocks.
@@ -226,32 +226,19 @@ export function adminMediaThumbFallbacks(item: {
   add(item.src);
   add(item.legacyPath);
 
-  // Raster only: same-origin CDN resize (still proxied by Next middleware).
-  if (ref.startsWith('/storage/media/') && !isSvgMediaRef(ref)) {
-    addRaw(`/cdn/${ref.slice('/storage/'.length)}`);
-  }
-
   return out;
 }
 
-/** Best first URL for a site photo — gallery storage / CDN. */
+/** Best first URL for a site photo — same-origin /storage path for Next.js optimizer. */
 export function primarySiteImageSrc(src: string | null | undefined): string {
   if (!src?.trim()) return '';
-  const ref = canonicalStorageRef(src);
+  const ref = normalizeImageSrc(src);
   if (!ref) return src.trim();
-
-  if (isImageOptimizationDisabled()) {
-    return ref;
-  }
-
-  if (ref.startsWith('/storage/media/')) {
-    return `${CDN_DELIVERY_ORIGIN}/cdn/${ref.slice('/storage/'.length)}`;
-  }
-
-  return resolveMediaUrl(ref);
+  if (ref.startsWith('/storage/')) return ref;
+  return resolveMediaUrl(ref) || ref;
 }
 
-/** Ordered fallbacks for public-site images (CDN → storage). */
+/** Ordered fallbacks for public-site images (storage → resolved origin). */
 export function siteMediaFallbacks(src: string | null | undefined): string[] {
   if (!src?.trim()) return [];
 
@@ -263,18 +250,18 @@ export function siteMediaFallbacks(src: string | null | undefined): string[] {
     out.push(candidate);
   };
 
-  const ref = canonicalStorageRef(src);
+  const ref = normalizeImageSrc(src);
   if (!ref) return [src.trim()];
 
-  if (isImageOptimizationDisabled()) {
+  if (ref.startsWith('/storage/')) {
     add(ref);
-    add(resolveMediaUrl(ref));
-    return out.length > 0 ? out : [src.trim()];
+    return out;
   }
 
-  addStorageDeliveryUrls(out, ref, seen);
+  add(ref);
+  add(resolveMediaUrl(ref));
 
-  return out.length > 0 ? out : [resolveMediaUrl(ref)];
+  return out.length > 0 ? out : [src.trim()];
 }
 
 export function rewriteArticleBodyMediaUrls(html: string): string {
@@ -282,7 +269,7 @@ export function rewriteArticleBodyMediaUrls(html: string): string {
 
   return html.replace(
     /(<img\b[^>]*\bsrc=["'])([^"']+)(["'])/gi,
-    (_match, pre, src, post) => `${pre}${resolveMediaUrl(src)}${post}`,
+    (_match, pre, src, post) => `${pre}${primarySiteImageSrc(src)}${post}`,
   );
 }
 

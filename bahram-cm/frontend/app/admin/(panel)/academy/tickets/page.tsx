@@ -1,6 +1,7 @@
 import { AdminPage, Badge, EditLink, Table } from '../../ui';
 import { getTickets } from '@/lib/admin/academyData';
 import { TICKET_PRIORITY_LABELS, TICKET_STATUS_LABELS, formatDateTime } from '@/lib/admin/academyTypes';
+import { CreateTicketForStudentForm } from './CreateTicketForStudentForm';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,6 +10,8 @@ export default async function TicketsPage() {
 
   return (
     <AdminPage title="تیکت‌های پشتیبانی" desc="پاسخ‌گویی به تیکت‌های دانشجویان">
+      <CreateTicketForStudentForm defaultOpen={tickets.length === 0} />
+
       {error && (
         <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-small text-error">{error}</div>
       )}

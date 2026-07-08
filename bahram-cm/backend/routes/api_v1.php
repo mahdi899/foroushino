@@ -244,6 +244,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::patch('sat-applications/{satApplication}', [SatApplicationAdminController::class, 'update'])->whereNumber('satApplication');
 
     Route::get('tickets', [TicketAdminController::class, 'index']);
+    Route::post('tickets', [TicketAdminController::class, 'store']);
     Route::get('tickets/{ticket}', [TicketAdminController::class, 'show'])->whereNumber('ticket');
     Route::patch('tickets/{ticket}', [TicketAdminController::class, 'update'])->whereNumber('ticket');
     Route::post('tickets/{ticket}/messages', [TicketAdminController::class, 'storeMessage'])->whereNumber('ticket');

@@ -2809,6 +2809,43 @@ html[data-theme="light"] .academy-teaser-phone {
     0 0 0 1px color-mix(in oklab, var(--color-gold) 22%, transparent);
 }
 
+@media (max-width: 1023px) {
+  .academy-teaser-phone {
+    transform: none;
+  }
+
+  .campaign-journey-stage .campaign-journey-footer {
+    padding-top: 1.25rem;
+  }
+}
+
+@media (max-width: 639px) {
+  .academy-teaser-banner {
+    padding-inline: 1rem;
+    padding-block: 1.25rem;
+  }
+
+  .academy-teaser-copy-header h2 span {
+    word-break: break-word;
+  }
+
+  .campaign-journey-step h3 {
+    max-width: none;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1279px) {
+  .final-cta-band .final-cta-actions {
+    max-width: 32rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .final-cta-band .final-cta-actions {
+    min-width: min(100%, 22rem);
+  }
+}
+
 @media (min-width: 1024px) {
   .academy-teaser-phone {
     transform: rotate(-3deg);

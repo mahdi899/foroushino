@@ -26,17 +26,17 @@ const stepPhotoAlts = [
 ] as const;
 
 const stepsGridClass =
-  "md:grid-cols-[minmax(0,1fr)_2.75rem_minmax(0,1fr)_2.75rem_minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)_3rem_minmax(0,1fr)]";
+  "sm:grid-cols-3 sm:gap-x-2 sm:gap-y-5 md:grid-cols-[minmax(0,1fr)_2.25rem_minmax(0,1fr)_2.25rem_minmax(0,1fr)] md:gap-x-0 md:gap-y-0 lg:grid-cols-[minmax(0,1fr)_3rem_minmax(0,1fr)_3rem_minmax(0,1fr)]";
 
 const iconRowClass =
-  "flex h-14 w-full shrink-0 items-center justify-center sm:h-16 lg:h-[4.5rem]";
+  "flex h-12 w-12 shrink-0 items-center justify-center sm:mx-auto sm:h-14 sm:w-full md:h-16 lg:h-[4.5rem] lg:w-full";
 
 function StepIcon({ index }: { index: number }) {
   const Icon = stepIcons[index] ?? GraduationCap;
 
   return (
-    <span className="campaign-journey-step-icon inline-flex h-14 w-14 items-center justify-center rounded-2xl sm:h-16 sm:w-16 lg:h-[4.5rem] lg:w-[4.5rem]">
-      <Icon className="h-6 w-6 sm:h-7 sm:w-7" strokeWidth={1.55} aria-hidden />
+    <span className="campaign-journey-step-icon inline-flex h-12 w-12 items-center justify-center rounded-2xl sm:h-14 sm:w-14 md:h-16 md:w-16 lg:h-[4.5rem] lg:w-[4.5rem]">
+      <Icon className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7" strokeWidth={1.55} aria-hidden />
     </span>
   );
 }
@@ -51,17 +51,19 @@ function CampaignJourneyStep({
   return (
     <article
       data-step={index}
-      className="campaign-journey-step campaign-journey-step--lit campaign-journey-step--active flex min-w-0 flex-col items-center px-1 text-center sm:px-2 lg:px-3"
+      className="campaign-journey-step campaign-journey-step--lit campaign-journey-step--active flex min-w-0 flex-row items-center gap-3.5 border-b border-bone/10 pb-4 text-start last:border-b-0 last:pb-0 sm:flex-col sm:items-center sm:gap-0 sm:border-b-0 sm:px-1.5 sm:pb-0 sm:text-center md:px-2 lg:px-3"
     >
       <div className={iconRowClass}>
         <StepIcon index={index} />
       </div>
-      <p className="campaign-journey-step-tag mt-4 w-full font-display text-lg font-semibold leading-tight text-bone sm:text-xl lg:text-[1.375rem] xl:text-2xl">
-        {stepTags[index]}
-      </p>
-      <h3 className="mt-2.5 w-full max-w-[13rem] text-sm leading-relaxed text-bone-dim lg:max-w-[14rem] lg:text-[0.9375rem]">
-        {step.title}
-      </h3>
+      <div className="min-w-0 flex-1 sm:w-full sm:flex-none">
+        <p className="campaign-journey-step-tag font-display text-base font-semibold leading-snug text-bone sm:mt-4 sm:text-lg md:text-xl lg:mt-4 lg:text-[1.375rem] xl:text-2xl">
+          {stepTags[index]}
+        </p>
+        <h3 className="mt-1 text-sm leading-relaxed text-bone-dim sm:mt-2.5 sm:max-w-[13rem] sm:mx-auto md:max-w-[11rem] lg:max-w-[14rem] lg:text-[0.9375rem]">
+          {step.title}
+        </h3>
+      </div>
     </article>
   );
 }
@@ -84,7 +86,7 @@ function CampaignJourneyConnector() {
 
 function CampaignJourneyPhoto() {
   return (
-    <figure className="campaign-journey-photo relative m-4 aspect-[5/4] min-h-[14rem] overflow-hidden rounded-card-lg sm:m-5 sm:min-h-[16rem] lg:col-span-6 lg:m-0 lg:aspect-auto lg:min-h-full lg:self-stretch lg:rounded-e-none lg:rounded-s-card-lg">
+    <figure className="campaign-journey-photo relative mx-3 aspect-[16/10] max-h-[min(68vw,16.5rem)] w-[calc(100%-1.5rem)] overflow-hidden rounded-card sm:mx-4 sm:max-h-[min(72vw,18rem)] sm:w-[calc(100%-2rem)] md:mx-5 md:aspect-[5/4] md:max-h-[min(80vw,22rem)] lg:col-span-6 lg:m-0 lg:aspect-auto lg:max-h-none lg:min-h-full lg:w-auto lg:self-stretch lg:rounded-e-none lg:rounded-s-card-lg">
       <SiteImage
         src={stepPhotos[0]!}
         alt={stepPhotoAlts[0]!}
@@ -113,10 +115,10 @@ function CampaignJourneyStage() {
       <div className="grid lg:min-h-[30rem] lg:grid-cols-12 lg:items-stretch xl:min-h-[32rem]">
         <CampaignJourneyPhoto />
 
-        <div className="flex min-h-0 flex-col justify-center px-4 py-5 sm:px-5 sm:py-6 lg:col-span-6 lg:min-h-full lg:px-6 lg:py-7 lg:ps-5 xl:px-8 xl:py-8">
+        <div className="flex min-h-0 flex-col justify-center px-3 py-4 sm:px-5 sm:py-5 md:px-5 md:py-6 lg:col-span-6 lg:min-h-full lg:px-6 lg:py-7 lg:ps-5 xl:px-8 xl:py-8">
           <div
             className={cn(
-              "campaign-journey-steps grid w-full grid-cols-1 gap-y-8 md:grid md:items-start md:gap-y-0",
+              "campaign-journey-steps grid w-full grid-cols-1 gap-y-0 sm:grid sm:items-start",
               stepsGridClass,
             )}
           >
@@ -129,7 +131,7 @@ function CampaignJourneyStage() {
           </div>
         </div>
 
-        <div className="campaign-journey-footer col-span-full flex justify-center px-4 pb-5 pt-8 sm:px-5 sm:pb-6 sm:pt-10 lg:px-6 lg:pb-7 lg:pt-12 xl:px-8">
+        <div className="campaign-journey-footer col-span-full flex justify-center px-3 pb-4 pt-5 sm:px-5 sm:pb-5 sm:pt-7 md:px-5 md:pb-6 md:pt-8 lg:px-6 lg:pb-7 lg:pt-10 xl:px-8">
           <TrackedLinkButton
             href={campaignJourney.cta.href}
             event="homepage_cta_click"
@@ -137,7 +139,7 @@ function CampaignJourneyStage() {
             variant="primary"
             withArrow
             size="lg"
-            className="h-12 min-h-12 w-full max-w-md px-6 text-base font-semibold md:h-14 md:min-h-14 md:text-lg"
+            className="h-11 min-h-11 w-full max-w-none px-5 text-sm font-semibold sm:max-w-md sm:text-base md:h-12 md:min-h-12 lg:h-14 lg:min-h-14 lg:text-lg"
           >
             {campaignJourney.cta.label}
           </TrackedLinkButton>

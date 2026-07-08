@@ -4,7 +4,7 @@ import NextImage, { type ImageProps } from 'next/image';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { GRAY_BLUR_DATA_URL } from '@/lib/imagePlaceholder';
 import { IMAGE_SIZES } from '@/lib/imageSizes';
-import { primarySiteImageSrc, siteMediaFallbacks } from '@/lib/mediaUrl';
+import { normalizeImageSrc, siteMediaFallbacks } from '@/lib/mediaUrl';
 import { useLazyImages } from '@/components/performance/PerformanceProvider';
 import { cn } from '@/lib/utils';
 
@@ -12,9 +12,13 @@ export type AppImageProps = ImageProps & {
   wrapperClassName?: string;
 };
 
+function isSvgSrc(src: string): boolean {
+  return /\.svg(\?|#|$)/i.test(src);
+}
+
 /**
- * Site-wide image — native lazy loading (no double IntersectionObserver gate).
- * Use `priority` for above-the-fold LCP images only.
+ * Site images via Next.js optimizer (`/_next/image`) — sized to viewport, cached on the
+ * Next server. Source stays `/storage/...` (no Laravel `/cdn/?w=&q=` resize).
  */
 export function AppImage({
   priority = false,
@@ -29,6 +33,8 @@ export function AppImage({
   fill,
   sizes,
   src,
+  unoptimized,
+  quality = 90,
   ...props
 }: AppImageProps) {
   const lazyImages = useLazyImages();
@@ -36,23 +42,25 @@ export function AppImage({
   const [loaded, setLoaded] = useState(priority);
   const [fallbackIndex, setFallbackIndex] = useState(0);
 
+  const srcString = typeof src === 'string' ? src : '';
+  const svg = srcString ? isSvgSrc(srcString) : false;
+
   const fallbacks = useMemo(() => {
-    if (typeof src !== 'string') return [];
-    const ordered = siteMediaFallbacks(src);
-    const primary = primarySiteImageSrc(src);
+    if (!srcString) return [];
+    const ordered = siteMediaFallbacks(srcString).map((url) => normalizeImageSrc(url) || url);
+    const primary = normalizeImageSrc(srcString) || srcString;
     if (primary && !ordered.includes(primary)) {
       return [primary, ...ordered];
     }
-    return ordered.length > 0 ? ordered : primary ? [primary] : [src];
-  }, [src]);
+    return ordered.length > 0 ? ordered : [srcString];
+  }, [srcString]);
 
   useEffect(() => {
     setFallbackIndex(0);
-    setLoaded(false);
-  }, [src]);
+    setLoaded(priority);
+  }, [srcString, priority]);
 
-  const resolvedSrc =
-    typeof src === 'string' ? (fallbacks[fallbackIndex] ?? primarySiteImageSrc(src) ?? src) : src;
+  const resolvedSrc = fallbacks[fallbackIndex] ?? normalizeImageSrc(srcString) ?? srcString;
 
   const handleImageError = useCallback(() => {
     setLoaded(false);
@@ -67,19 +75,22 @@ export function AppImage({
     [onLoad],
   );
 
-  const useBlur = !priority && placeholder !== 'empty';
+  const useBlur = !priority && !svg && placeholder !== 'empty';
   const showPlaceholder = !priority && !loaded && nativeLazy;
+  const skipOptimizer = svg || unoptimized;
 
   const image = (
     <NextImage
       {...props}
       key={typeof resolvedSrc === 'string' ? resolvedSrc : undefined}
-      src={resolvedSrc}
+      src={resolvedSrc || src}
       fill={fill}
       sizes={sizes ?? (fill ? IMAGE_SIZES.fillDefault : undefined)}
+      quality={quality}
+      unoptimized={skipOptimizer}
       priority={priority}
-      loading={priority ? undefined : nativeLazy ? 'lazy' : 'eager'}
-      fetchPriority={priority ? 'high' : nativeLazy ? 'low' : 'auto'}
+      loading={priority ? undefined : nativeLazy ? 'lazy' : loading}
+      fetchPriority={priority ? 'high' : nativeLazy ? 'low' : fetchPriority}
       decoding={decoding}
       placeholder={useBlur ? 'blur' : 'empty'}
       blurDataURL={useBlur ? (blurDataURL ?? GRAY_BLUR_DATA_URL) : undefined}
@@ -98,6 +109,7 @@ export function AppImage({
       <span
         className={cn(
           'absolute inset-0 z-[2] overflow-hidden',
+          '[&_img]:!inset-0 [&_img]:!h-full [&_img]:!w-full',
           showPlaceholder && 'bg-zinc-200/80',
           wrapperClassName,
         )}

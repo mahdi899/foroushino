@@ -40,8 +40,8 @@ export function AcademyTeaser() {
               className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-l from-transparent via-gold/25 to-transparent"
             />
 
-            <div className="relative grid min-w-0 items-center gap-6 sm:gap-8 lg:grid-cols-12 lg:gap-6 xl:gap-8">
-              <div className="academy-teaser-copy flex min-w-0 flex-col justify-center ps-1 lg:col-span-6 lg:pe-2 lg:ps-2 xl:pe-4">
+            <div className="relative grid min-w-0 grid-cols-1 gap-5 sm:gap-6 md:gap-8 lg:grid-cols-12 lg:items-center lg:gap-6 xl:gap-8">
+              <div className="academy-teaser-copy order-1 flex min-w-0 flex-col justify-center ps-1 lg:col-span-6 lg:pe-2 lg:ps-2 xl:pe-4">
                 <div className="academy-teaser-copy-header">
                   <Eyebrow dotClassName="bg-emerald-glow">{site.saat.eyebrow}</Eyebrow>
                   <h2
@@ -83,7 +83,7 @@ export function AcademyTeaser() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3 lg:col-span-3 lg:gap-3.5">
+              <div className="order-2 flex flex-col gap-3 sm:gap-3.5 lg:order-none lg:col-span-3">
                 {metrics.map(({ icon: Icon, label, value }) => (
                   <div
                     key={label}
@@ -102,12 +102,12 @@ export function AcademyTeaser() {
                 ))}
               </div>
 
-              <div className="relative flex items-center justify-center lg:col-span-3 lg:justify-end">
+              <div className="order-3 relative flex items-center justify-center py-1 sm:py-2 lg:order-none lg:col-span-3 lg:justify-end lg:py-0">
                 <div
                   aria-hidden
                   className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,color-mix(in_oklab,var(--color-emerald-glow)_14%,transparent),transparent_62%)]"
                 />
-                <div dir="ltr" className="relative w-[min(100%,14.5rem)] sm:w-[15.5rem] lg:w-[14.75rem] xl:w-[15.5rem]">
+                <div dir="ltr" className="relative w-[min(100%,11.5rem)] min-[400px]:w-[12.5rem] sm:w-[14rem] md:w-[15rem] lg:w-[14.75rem] xl:w-[15.5rem]">
                   <div
                     aria-hidden
                     className="pointer-events-none absolute -inset-6 rounded-[2.5rem] bg-emerald-glow/10 blur-3xl"
@@ -119,7 +119,7 @@ export function AcademyTeaser() {
                         alt="پیش‌نمایش مینی‌اپ سات روی موبایل"
                         fill
                         className="object-cover object-top"
-                        sizes="(max-width: 768px) 55vw, 300px"
+                        sizes="(max-width: 640px) 42vw, (max-width: 1023px) 28vw, 300px"
                       />
                     </div>
                     <span className="absolute start-3 top-3 inline-flex items-center gap-1.5 rounded-pill border border-bone/10 bg-charcoal/80 px-2.5 py-1 text-[0.6875rem] font-bold text-bone backdrop-blur-md">

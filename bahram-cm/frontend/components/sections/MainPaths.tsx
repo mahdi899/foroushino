@@ -165,7 +165,7 @@ function PathCard({
       data-path-tone={tone}
       className="main-path-card group relative flex min-h-0 flex-col overflow-hidden rounded-card-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-glow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink md:block md:min-h-[15.5rem] lg:min-h-[16.25rem]"
     >
-      <div className="main-path-card-media relative aspect-[16/10] w-full overflow-hidden md:absolute md:inset-y-0 md:end-0 md:aspect-auto md:w-[48%] lg:w-[46%]">
+      <div className="main-path-card-media relative aspect-[16/10] max-h-[min(56vw,11rem)] w-full overflow-hidden sm:max-h-[12.5rem] md:absolute md:inset-y-0 md:end-0 md:aspect-auto md:max-h-none md:w-[48%] lg:w-[46%]">
         <SiteImage
           src={image}
           alt={imageAlt}

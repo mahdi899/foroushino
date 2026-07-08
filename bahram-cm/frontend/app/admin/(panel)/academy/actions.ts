@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { adminFetch, getToken } from '@/lib/auth/session';
 import { SERVER_API_URL } from '@/lib/api/config';
-import type { AdminCashbackPayoutRevealed } from '@/lib/admin/academyTypes';
+import type { AdminCashbackPayoutRevealed, AdminStudent, PageMeta } from '@/lib/admin/academyTypes';
 
 function actionError(e: unknown, fallback: string): { ok: false; error: string } {
   const err = e as Error & { payload?: { error?: { message_fa?: string } } };
@@ -38,6 +38,30 @@ function revalidateAcademy() {
 }
 
 // Students
+export async function searchStudentsForPicker(input: { search?: string; page?: number } = {}) {
+  try {
+    const res = await adminFetch<{ data: AdminStudent[]; meta: PageMeta }>('/students', {
+      query: {
+        search: input.search?.trim() || undefined,
+        page: input.page ?? 1,
+        per_page: 20,
+      },
+    });
+    return {
+      ok: true as const,
+      items: res.data,
+      meta: res.meta,
+    };
+  } catch (e) {
+    return {
+      ok: false as const,
+      items: [] as AdminStudent[],
+      meta: null,
+      error: actionError(e, 'بارگذاری لیست دانشجوها ناموفق بود.').error,
+    };
+  }
+}
+
 export async function createStudent(input: {
   name: string;
   mobile: string;
@@ -204,6 +228,23 @@ export async function updateSatApplicationStatus(id: number, status: string, adm
 }
 
 // Tickets
+export async function createTicketForStudent(input: {
+  mobile?: string;
+  user_id?: number;
+  subject: string;
+  message: string;
+  department?: string;
+  priority?: string;
+}) {
+  try {
+    const res = await adminFetch<{ data: { id: number } }>('/tickets', { method: 'POST', body: input });
+    revalidateAcademy();
+    return { ok: true as const, id: res.data.id };
+  } catch (e) {
+    return actionError(e, 'ثبت تیکت برای دانشجو ناموفق بود.');
+  }
+}
+
 export async function replyToTicket(id: number, message: string) {
   try {
     await adminFetch(`/tickets/${id}/messages`, { method: 'POST', body: { message } });

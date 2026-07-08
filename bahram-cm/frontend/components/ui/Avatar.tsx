@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { AppImage } from "@/components/ui/AppImage";
 import { cn } from "@/lib/cn";
 
 export function Avatar({
@@ -20,7 +20,14 @@ export function Avatar({
       )}
       style={{ width: size, height: size }}
     >
-      <Image src={src} alt={alt} fill sizes={`${size}px`} className="object-cover" />
+      <AppImage
+        src={src}
+        alt={alt}
+        width={size}
+        height={size}
+        sizes={`${size}px`}
+        className="h-full w-full object-cover"
+      />
     </span>
   );
 }

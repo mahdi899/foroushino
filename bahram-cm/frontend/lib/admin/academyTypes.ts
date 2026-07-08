@@ -3,6 +3,10 @@ export type PageMeta = { current_page: number; last_page: number; total: number 
 export type AdminStudent = {
   id: number;
   name: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  display_name?: string;
+  avatar_url?: string | null;
   mobile: string | null;
   email: string | null;
   status: 'active' | 'suspended' | 'blocked';
@@ -14,11 +18,63 @@ export type AdminStudent = {
   created_at: string | null;
 };
 
+export type AdminStudentProfile = {
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  city: string | null;
+  age: number | null;
+  current_job: string | null;
+  instagram: string | null;
+  telegram: string | null;
+  experience_level: string | null;
+  income_goal: string | null;
+  avatar: string | null;
+  avatar_url: string | null;
+  updated_at: string | null;
+};
+
 export type AdminStudentDetail = AdminStudent & {
-  profile: Record<string, unknown> | null;
-  course_accesses: { id: number; product_title: string | null; status: string; activated_at: string | null }[];
-  orders: { id: number; order_number: string; final_amount: number; status: string }[];
-  sat_applications: { id: number; status: string }[];
+  display_name: string;
+  mobile_verified_at: string | null;
+  profile: AdminStudentProfile | null;
+  stats: {
+    orders_total: number;
+    orders_paid: number;
+    orders_unpaid: number;
+    course_accesses: number;
+    tickets: number;
+  };
+  course_accesses: {
+    id: number;
+    product_id: number | null;
+    product_title: string | null;
+    status: string;
+    access_type: string | null;
+    source: string | null;
+    activated_at: string | null;
+  }[];
+  orders: {
+    id: number;
+    order_number: string;
+    product_title: string | null;
+    amount: number;
+    discount_amount: number;
+    final_amount: number;
+    status: string;
+    payment_status: string | null;
+    created_at: string | null;
+    paid_at: string | null;
+  }[];
+  tickets: {
+    id: number;
+    subject: string;
+    department: string | null;
+    status: string;
+    created_at: string | null;
+    updated_at: string | null;
+  }[];
+  sat_applications: { id: number; status: string; created_at: string | null }[];
 };
 
 export type AdminCourseAccess = {

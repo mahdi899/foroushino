@@ -1,2 +1,5 @@
+# Ignore runtime uploads except the shared media library (tracked in git for team sync).
 *
 !.gitignore
+!media/
+!media/**

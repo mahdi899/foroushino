@@ -65,7 +65,7 @@ export function BigTestimonial() {
               className="student-result-featured flex min-w-0 flex-[8] flex-col overflow-hidden rounded-card-lg sm:min-h-[10rem] sm:flex-row lg:min-h-0"
             >
               <div className="flex min-h-0 w-full flex-col sm:min-h-[10rem] sm:flex-row">
-                <div className="student-result-featured-media relative aspect-[4/3] w-full max-w-none shrink-0 overflow-hidden sm:aspect-auto sm:w-[34%] sm:max-w-[11rem] sm:self-stretch lg:max-w-[12rem]">
+                <div className="student-result-featured-media relative aspect-[4/3] max-h-[min(70vw,12.5rem)] w-full max-w-none shrink-0 overflow-hidden sm:aspect-auto sm:max-h-none sm:w-[34%] sm:max-w-[11rem] sm:self-stretch lg:max-w-[12rem]">
                   <SiteImage
                     src={featured.photo}
                     alt={`پرتره ${featured.name}`}

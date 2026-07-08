@@ -20,6 +20,8 @@ export {
   resolveMediaUrl,
   resolveSitemapImageUrl,
   rewriteArticleBodyMediaUrls,
+  normalizeImageSrc,
+  primarySiteImageSrc,
   uploadOrigin,
   toStorageAbsoluteUrl,
 } from '@/lib/mediaUrl';

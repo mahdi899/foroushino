@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-label="">
+  <defs>
+    <linearGradient id="ic1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#003B40"/>
+      <stop offset="100%" stop-color="#0D1517"/>
+    </linearGradient>
+  </defs>
+  <rect width="600" height="400" fill="url(#ic1)"/>
+  <g stroke="#008C96" stroke-opacity="0.5" fill="none">
+    <path d="M0 280 Q 150 220 300 280 T 600 280" stroke-width="1.5"/>
+    <path d="M0 240 Q 150 180 300 240 T 600 240" stroke-width="1" stroke-opacity="0.3"/>
+    <path d="M0 200 Q 150 140 300 200 T 600 200" stroke-width="0.6" stroke-opacity="0.2"/>
+  </g>
+  <text x="40" y="80" fill="#FFB000" font-size="14" font-family="sans-serif" letter-spacing="6">VOICE</text>
+  <text x="40" y="140" fill="#EAFBFB" font-size="36" font-family="sans-serif" font-weight="700">5/' FG 31 H 5/'</text>
+</svg>

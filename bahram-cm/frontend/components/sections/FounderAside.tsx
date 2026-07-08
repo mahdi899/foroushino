@@ -12,13 +12,13 @@ export function FounderAside() {
       <div className="container-luxe">
         <div className="grid items-center gap-6 sm:gap-7 lg:grid-cols-12 lg:gap-8 xl:gap-9">
           <Reveal className="lg:col-span-5">
-            <div className="relative aspect-[25/24] w-full overflow-hidden rounded-card-lg border border-bone/10 shadow-frame max-lg:rounded-card">
+            <div className="relative mx-auto aspect-[3/4] w-full max-w-[min(100%,20rem)] max-h-[min(88vw,22rem)] overflow-hidden rounded-card-lg border border-bone/10 shadow-frame sm:max-w-md sm:max-h-[26rem] lg:mx-0 lg:max-w-none lg:aspect-[25/24] lg:max-h-none">
               <SiteImage
                 src={sitePhotos.portraitFounder}
                 alt={site.founderAside.title}
                 fill
                 className="object-cover object-[center_18%]"
-                sizes="(max-width: 1023px) 100vw, 42vw"
+                sizes="(max-width: 639px) 88vw, (max-width: 1023px) 70vw, 42vw"
               />
             </div>
           </Reveal>
