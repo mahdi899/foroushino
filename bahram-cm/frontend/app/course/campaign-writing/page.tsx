@@ -22,10 +22,13 @@ import { Reveal } from "@/components/motion/Reveal";
 import { CampaignLearnScroll } from "@/components/sections/CampaignLearnScroll";
 import { Accordion } from "@/components/ui/Accordion";
 import { Badge } from "@/components/ui/Badge";
+import { AddToCartButton } from "@/components/commerce/AddToCartButton";
 import { LinkButton } from "@/components/ui/Button";
+import { CAMPAIGN_WRITING_SLUG } from "@/lib/cart/constants";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { IconTile } from "@/components/ui/IconTile";
 import { PhotoFrame } from "@/components/ui/PhotoFrame";
+import { PageHeroBackdrop } from "@/components/blocks/PageHeroBackdrop";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { cn } from "@/lib/cn";
 import { resolveMediaAlt } from "@/lib/media/alt";
@@ -180,17 +183,12 @@ export default async function CourseCampaignWritingPage() {
     <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip">
       {/* HERO */}
       <section className="relative isolate overflow-hidden bg-ink">
-        <div aria-hidden className="absolute inset-0">
-          <SiteImage
-            src={pageHeroBackdropPhoto}
-            alt={heroAlt}
-            fallbackAlt="دوره کمپین‌نویسی آکادمی بهرام"
-            fill
-            priority
-            className="object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-ink/55 via-ink/82 to-ink" />
-        </div>
+        <PageHeroBackdrop
+          src={pageHeroBackdropPhoto}
+          alt={heroAlt}
+          fallbackAlt="دوره کمپین‌نویسی آکادمی بهرام"
+          priority
+        />
         <div className="container-luxe relative z-[2] min-w-0 py-8 sm:py-12 md:py-20 lg:py-24">
           <div className="grid min-w-0 items-center gap-6 sm:gap-8 md:grid-cols-12 md:gap-10 lg:gap-14">
             <div className="min-w-0 text-center max-md:order-2 md:col-span-7 md:text-start">
@@ -525,15 +523,16 @@ export default async function CourseCampaignWritingPage() {
                       </li>
                     ))}
                   </ul>
-                  <LinkButton
-                    href="/apply"
+                  <AddToCartButton
+                    productSlug={CAMPAIGN_WRITING_SLUG}
+                    location="campaign_writing_enroll"
                     variant="sales"
                     withArrow
                     size="lg"
                     className="relative mt-8 w-full md:mt-10"
                   >
                     ورود به دوره کمپین‌نویسی
-                  </LinkButton>
+                  </AddToCartButton>
                 </div>
               </article>
             </Reveal>
@@ -581,15 +580,16 @@ export default async function CourseCampaignWritingPage() {
                   می‌شود و به ساختن پیام، پیشنهاد، کمپین و فروش می‌رسد.
                 </p>
                 <div className="mx-auto mt-5 flex w-full max-w-sm flex-col gap-2.5 sm:mt-6 md:mx-0 md:mt-10 md:max-w-none md:flex-row md:flex-wrap md:items-center md:gap-4">
-                  <LinkButton
-                    href="/apply"
+                  <AddToCartButton
+                    productSlug={CAMPAIGN_WRITING_SLUG}
+                    location="campaign_writing_final_cta"
                     variant="primary"
                     size="lg"
                     withArrow
                     className={cn("w-full min-w-0 md:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm")}
                   >
                     شروع مسیر کمپین‌نویسی
-                  </LinkButton>
+                  </AddToCartButton>
                   <Link
                     href="#enroll"
                     className="inline-flex w-full items-center justify-center gap-2 py-2 text-sm text-gold transition-colors hover:text-gold-soft md:w-auto md:justify-start md:py-0"

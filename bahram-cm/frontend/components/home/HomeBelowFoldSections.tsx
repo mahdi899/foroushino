@@ -1,16 +1,12 @@
 import dynamic from 'next/dynamic';
 import { HeroCinematic } from '@/components/sections/HeroCinematic';
 import { MainPaths } from '@/components/sections/MainPaths';
-import { ManifestoShift } from '@/components/sections/ManifestoShift';
 import { CampaignScrollStory } from '@/components/sections/CampaignScrollStory';
 import { BigTestimonial } from '@/components/sections/BigTestimonial';
 import { AcademyTeaser } from '@/components/sections/AcademyTeaser';
 import { FounderAside } from '@/components/sections/FounderAside';
 import { FinalCTA } from '@/components/sections/FinalCTA';
 
-const ManifestoShiftLazy = dynamic(() =>
-  import('@/components/sections/ManifestoShift').then((m) => ({ default: m.ManifestoShift })),
-);
 const CampaignScrollStoryLazy = dynamic(() =>
   import('@/components/sections/CampaignScrollStory').then((m) => ({ default: m.CampaignScrollStory })),
 );
@@ -28,7 +24,6 @@ const FinalCTALazy = dynamic(() =>
 );
 
 export function HomeBelowFoldSections({ deferBelowFold }: { deferBelowFold: boolean }) {
-  const Manifesto = deferBelowFold ? ManifestoShiftLazy : ManifestoShift;
   const Campaign = deferBelowFold ? CampaignScrollStoryLazy : CampaignScrollStory;
   const Testimonial = deferBelowFold ? BigTestimonialLazy : BigTestimonial;
   const Academy = deferBelowFold ? AcademyTeaserLazy : AcademyTeaser;
@@ -38,7 +33,6 @@ export function HomeBelowFoldSections({ deferBelowFold }: { deferBelowFold: bool
   return (
     <main id="main-content" className="relative isolate min-w-0 w-full max-w-full overflow-x-clip">
       <HeroCinematic />
-      <Manifesto />
       <MainPaths />
       <Campaign />
       <Testimonial />

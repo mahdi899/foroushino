@@ -16,8 +16,8 @@ export default async function HomePage() {
 
   return (
     <>
-      <link rel="preload" as="image" href={resolveMediaUrl(sitePhotos.heroLightGridMobile)} media="(max-width: 767px)" fetchPriority="high" />
-      <link rel="preload" as="image" href={resolveMediaUrl(sitePhotos.heroLightGrid)} media="(min-width: 768px)" fetchPriority="high" />
+      <link rel="preload" as="image" href={resolveMediaUrl(sitePhotos.heroBackgroundMobile)} media="(max-width: 767px)" fetchPriority="high" />
+      <link rel="preload" as="image" href={resolveMediaUrl(sitePhotos.heroBackground)} media="(min-width: 768px)" fetchPriority="high" />
       <HomeBelowFoldSections deferBelowFold={perf.defer_below_fold !== false} />
     </>
   );

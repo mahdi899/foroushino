@@ -9,6 +9,7 @@ use App\Models\PaymentSetting;
 use App\Services\Exceptions\PaymentException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -22,6 +23,10 @@ class ZarinpalPaymentService
 
     public function request(Order $order): Payment
     {
+        if ($this->isDevMode()) {
+            return $this->requestInDevMode($order);
+        }
+
         $settings = PaymentSetting::current();
 
         if (! $settings->isReady()) {
@@ -90,6 +95,12 @@ class ZarinpalPaymentService
 
     public function getPaymentUrl(Payment $payment): string
     {
+        if ($this->isDevAuthority($payment->authority)) {
+            $callbackUrl = route('api.payments.zarinpal.callback');
+
+            return "{$callbackUrl}?Authority={$payment->authority}&Status=OK";
+        }
+
         $settings = PaymentSetting::current();
         $base = $settings->sandbox_mode ? 'https://sandbox.zarinpal.com' : 'https://www.zarinpal.com';
 
@@ -107,6 +118,10 @@ class ZarinpalPaymentService
             Log::channel('payment')->warning('Zarinpal callback received for unknown authority.', ['authority' => $authority]);
 
             return ['success' => false, 'message' => 'تراکنش یافت نشد.', 'ref_id' => null, 'order' => null];
+        }
+
+        if ($this->isDevAuthority($authority)) {
+            return $this->verifyInDevMode($payment);
         }
 
         $order = $payment->order;
@@ -177,6 +192,83 @@ class ZarinpalPaymentService
         FulfillOrderJob::dispatch($order->id);
 
         return ['success' => true, 'message' => 'پرداخت با موفقیت انجام شد.', 'ref_id' => $refId, 'order' => $order];
+    }
+
+    private function requestInDevMode(Order $order): Payment
+    {
+        $authority = 'DEV-'.strtoupper(Str::random(32));
+
+        $payment = Payment::create([
+            'order_id' => $order->id,
+            'gateway' => 'zarinpal',
+            'authority' => $authority,
+            'amount' => $order->final_amount,
+            'status' => 'pending',
+            'request_payload' => ['dev_mode' => true],
+        ]);
+
+        Log::channel('payment')->info('Dev-mode payment request created.', [
+            'order_id' => $order->id,
+            'authority' => $authority,
+        ]);
+
+        return $payment;
+    }
+
+    /**
+     * @return array{success: bool, message: string, ref_id: ?string, order: ?Order}
+     */
+    private function verifyInDevMode(Payment $payment): array
+    {
+        $order = $payment->order;
+
+        if ($payment->status === 'paid') {
+            return [
+                'success' => true,
+                'message' => 'این تراکنش قبلاً تایید شده است.',
+                'ref_id' => $payment->ref_id,
+                'order' => $order,
+            ];
+        }
+
+        $refId = 'DEV-'.random_int(100000, 999999);
+
+        $payment->update([
+            'status' => 'paid',
+            'ref_id' => $refId,
+            'paid_at' => now(),
+            'verify_payload' => ['dev_mode' => true, 'ref_id' => $refId],
+        ]);
+
+        $order->update([
+            'status' => 'paid',
+            'payment_status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        Log::channel('payment')->info('Dev-mode payment verified.', [
+            'order_id' => $order->id,
+            'ref_id' => $refId,
+        ]);
+
+        FulfillOrderJob::dispatch($order->id);
+
+        return [
+            'success' => true,
+            'message' => 'پرداخت با موفقیت انجام شد (حالت توسعه).',
+            'ref_id' => $refId,
+            'order' => $order,
+        ];
+    }
+
+    private function isDevMode(): bool
+    {
+        return config('bahram.payment.dev_mode') && app()->environment('local', 'testing');
+    }
+
+    private function isDevAuthority(?string $authority): bool
+    {
+        return $this->isDevMode() && is_string($authority) && str_starts_with($authority, 'DEV-');
     }
 
     private function apiBaseUrl(bool $sandbox): string

@@ -6,7 +6,6 @@ import { Reveal } from "@/components/motion/Reveal";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { sitePhotos } from "@/lib/site-photo-paths";
-import { siteStorageMedia } from "@/config/media";
 
 const photoClass = "manifesto-photo relative w-full overflow-hidden rounded-card-lg";
 const LINES = site.manifesto;
@@ -73,14 +72,6 @@ export function ManifestoShift() {
               <Reveal>
                 <Eyebrow>{site.manifestoEyebrow}</Eyebrow>
               </Reveal>
-              <Reveal delay={0.04}>
-                <span
-                  aria-hidden
-                  className="manifesto-quote-mark mt-5 block font-display leading-none select-none md:mt-6"
-                >
-                  &ldquo;
-                </span>
-              </Reveal>
 
               <div className="mt-5 space-y-4 md:mt-7 md:space-y-5">
                 {LINES.map((line, i) => (
@@ -99,20 +90,6 @@ export function ManifestoShift() {
                   </Reveal>
                 ))}
               </div>
-
-              <Reveal delay={0.3}>
-                <div className="manifesto-signature mt-8 md:mt-10">
-                  <SiteImage
-                    src={siteStorageMedia('signature.png')}
-                    alt="امضای بهرام رستمی"
-                    fallbackAlt="امضای بهرام رستمی"
-                    width={168}
-                    height={58}
-                    wrapperClassName="leading-none"
-                    className="h-auto w-[min(6.5rem,32vw)] object-contain object-start opacity-70 md:w-[min(7.5rem,28vw)] md:opacity-75"
-                  />
-                </div>
-              </Reveal>
             </div>
 
             <div className="lg:order-1 lg:col-span-5">

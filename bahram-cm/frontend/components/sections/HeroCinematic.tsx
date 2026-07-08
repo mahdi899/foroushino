@@ -8,12 +8,9 @@ import { Reveal } from "@/components/motion/Reveal";
 import { TrackedLinkButton } from "@/components/analytics/TrackedLinkButton";
 import { Badge } from "@/components/ui/Badge";
 import { sitePhotos } from "@/lib/site-photo-paths";
-import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { ease, dur } from "@/components/motion/easings";
 
 const LIGHT_PANEL_PAD = "px-4 pt-2 pb-5 sm:p-6 md:p-10 lg:p-12 xl:p-14";
-const HERO_LIGHT_DESKTOP = resolveMediaUrl(sitePhotos.heroLightGrid);
-const HERO_LIGHT_MOBILE = resolveMediaUrl(sitePhotos.heroLightGridMobile);
 
 export function HeroCinematic() {
   const reduce = useReducedMotion();
@@ -94,17 +91,18 @@ export function HeroCinematic() {
             transition={{ duration: dur.xl, ease: ease.luxe }}
             aria-hidden
           >
-            {/* eslint-disable-next-line @next/next/no-img-element -- raw hero background asset */}
-            <picture>
-              <source media="(max-width: 767px)" srcSet={HERO_LIGHT_MOBILE} />
+            {/* eslint-disable-next-line @next/next/no-img-element -- art-directed hero background */}
+            <picture className="hero-light-grid-picture">
+              <source media="(max-width: 767px)" srcSet={sitePhotos.heroBackgroundMobile} />
               <img
-                src={HERO_LIGHT_DESKTOP}
+                src={sitePhotos.heroBackground}
                 alt=""
                 className="hero-light-grid-img"
                 decoding="async"
                 fetchPriority="high"
               />
             </picture>
+            <div className="hero-light-grid-scrim" aria-hidden />
           </motion.div>
           <div className={cn("hero-light-content relative z-[1]", LIGHT_PANEL_PAD)}>{grid}</div>
         </div>

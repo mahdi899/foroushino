@@ -8,7 +8,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { LinkButton } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
-import { SiteImage } from "@/components/ui/SiteImage";
+import { PageHeroBackdrop } from "@/components/blocks/PageHeroBackdrop";
 import { getTransformationBySlug, getTransformations } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
 import { resolveMediaAlt } from "@/lib/media/alt";
@@ -51,17 +51,12 @@ export default async function TransformationDetailPage({
     <main id="main-content" className="relative min-w-0 max-w-full">
       <ContentViewTracker type="transformation" slug={item.slug} />
       <section className="relative isolate overflow-hidden bg-ink py-section-sm">
-        <div aria-hidden className="absolute inset-0">
-          <SiteImage
-            src={pageHeroBackdropPhoto}
-            alt={heroAlt}
-            fallbackAlt={`داستان ${item.name}`}
-            fill
-            priority
-            className="object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-ink/55 via-ink/72 to-ink" />
-        </div>
+        <PageHeroBackdrop
+          src={pageHeroBackdropPhoto}
+          alt={heroAlt}
+          fallbackAlt={`داستان ${item.name}`}
+          priority
+        />
         <div className="container-luxe relative z-[2] max-w-4xl min-w-0">
           <Reveal>
             <Link

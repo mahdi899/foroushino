@@ -35,6 +35,10 @@ return [
         'dev_code' => env('OTP_DEV_CODE', '12345'),
     ],
 
+    'payment' => [
+        'dev_mode' => filter_var(env('PAYMENT_DEV_MODE', false), FILTER_VALIDATE_BOOL),
+    ],
+
     'chatbot' => [
         'retention_days' => (int) env('CHATBOT_RETENTION_DAYS', 60),
     ],

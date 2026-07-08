@@ -17,6 +17,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { Accordion } from "@/components/ui/Accordion";
 import { Badge } from "@/components/ui/Badge";
 import { Eyebrow } from "@/components/ui/Eyebrow";
+import { PageHeroBackdrop } from "@/components/blocks/PageHeroBackdrop";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { courseJsonLd } from "@/lib/jsonld";
 import { getCourseBySlug, getCourses } from "@/lib/content";
@@ -86,18 +87,12 @@ export default async function CourseDetailPage({
 
       {/* HERO */}
       <section className="relative isolate overflow-hidden bg-ink">
-        <div aria-hidden className="absolute inset-0 opacity-55">
-          <SiteImage
-            src={cover}
-            alt={coverAlt}
-            fallbackAlt={`کاور ${course.title}`}
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-ink/60 via-ink/75 to-ink" />
-        </div>
+        <PageHeroBackdrop
+          src={cover}
+          alt={coverAlt}
+          fallbackAlt={`کاور ${course.title}`}
+          priority
+        />
         <div className="container-luxe relative z-[2] max-w-4xl min-w-0 py-section-sm">
           <Reveal>
             <Link

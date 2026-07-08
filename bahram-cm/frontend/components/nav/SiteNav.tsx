@@ -6,7 +6,8 @@ import { Menu } from "lucide-react";
 import { useEffect, useState } from "react";
 import { site } from "@/content/site";
 import { navLinkMatches } from "@/lib/nav-active";
-import { TrackedLinkButton } from "@/components/analytics/TrackedLinkButton";
+import { CartNavButton } from "@/components/commerce/CartNavButton";
+import { PanelNavButton } from "@/components/commerce/PanelNavButton";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { usePrefetchLinks } from "@/components/performance/PerformanceProvider";
 import { Logo } from "./Logo";
@@ -36,14 +37,14 @@ export function SiteNav() {
             : "bg-transparent",
         )}
       >
-        <div className="container-luxe flex h-14 min-w-0 items-center justify-between gap-2 md:h-16">
-          <div className="min-w-0 shrink">
+        <div className="container-luxe flex h-14 min-w-0 items-center gap-2 md:h-16 md:gap-3">
+          <div className="shrink-0">
             <Logo size="sm" />
           </div>
 
           <nav
             aria-label="ناوبری اصلی"
-            className="hidden items-center lg:flex lg:gap-5 xl:gap-[1.35rem]"
+            className="hidden min-w-0 flex-1 items-center justify-center gap-2 overflow-hidden lg:flex xl:gap-4 2xl:gap-5"
           >
             {site.nav.map((link) => {
               const active = navLinkMatches(pathname, link.href);
@@ -54,7 +55,7 @@ export function SiteNav() {
                   prefetch={prefetchLinks}
                   aria-current={active ? "page" : undefined}
                   className={cn(
-                    "group relative whitespace-nowrap rounded-md px-2 pt-1.5 pb-3 text-sm font-medium leading-snug transition-colors duration-300 xl:px-2.5 xl:pb-3.5",
+                    "group relative whitespace-nowrap rounded-md px-1.5 pt-1.5 pb-3 text-sm font-medium leading-snug transition-colors duration-300 xl:px-2.5 xl:pb-3.5",
                     active ? "text-bone" : "text-bone-dim/95 hover:text-bone",
                   )}
                 >
@@ -71,20 +72,10 @@ export function SiteNav() {
             })}
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-2.5">
-            <ThemeToggle compact className="hidden sm:inline-flex" />
-            <div className="hidden md:block">
-              <TrackedLinkButton
-                href={site.ctaPrimary.href}
-                event="homepage_cta_click"
-                eventProps={{ cta: "nav_primary", location: "nav" }}
-                variant="primary"
-                size="sm"
-                withArrow
-              >
-                {site.ctaPrimary.label}
-              </TrackedLinkButton>
-            </div>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+            <ThemeToggle compact className="hidden shrink-0 sm:inline-flex" />
+            <CartNavButton className="shrink-0" />
+            <PanelNavButton showLabel className="shrink-0" />
             <button
               type="button"
               onClick={() => setOpen(true)}

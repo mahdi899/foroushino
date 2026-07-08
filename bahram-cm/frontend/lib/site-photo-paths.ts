@@ -5,8 +5,12 @@ import { siteStorageMedia } from '@/config/media';
  * Managed via admin gallery; legacy `/media/*` URLs redirect here.
  */
 export const sitePhotos = {
-  heroLightGrid: siteStorageMedia('hero-background.png'),
-  heroLightGridMobile: siteStorageMedia('hero-bahram-rostami.png'),
+  heroBackground: '/storage/media/2026/07/01kwycnpwd57yxx2ddjmnvhp55.webp',
+  heroBackgroundMobile: '/storage/media/2026/07/01kwyecgnr5hzcdbwa9rwzgbwn.webp',
+  /** @deprecated use heroBackground */
+  heroLightGrid: '/storage/media/2026/07/01kwycnpwd57yxx2ddjmnvhp55.webp',
+  /** @deprecated use heroBackgroundMobile */
+  heroLightGridMobile: '/storage/media/2026/07/01kwyecgnr5hzcdbwa9rwzgbwn.webp',
   portraitFounder: siteStorageMedia('portrait-founder.jpg'),
   squareStudio: siteStorageMedia('square-studio.jpg'),
   landscapeSession: siteStorageMedia('landscape-session.jpg'),

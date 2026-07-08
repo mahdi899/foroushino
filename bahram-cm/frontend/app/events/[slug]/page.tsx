@@ -7,7 +7,7 @@ import { TrackedLinkButton } from "@/components/analytics/TrackedLinkButton";
 import { MdxBody } from "@/components/mdx/MdxBody";
 import { Reveal } from "@/components/motion/Reveal";
 import { Badge } from "@/components/ui/Badge";
-import { SiteImage } from "@/components/ui/SiteImage";
+import { PageHeroBackdrop } from "@/components/blocks/PageHeroBackdrop";
 import { getEventBySlug, getEvents } from "@/lib/content";
 import { formatDateFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
@@ -56,17 +56,12 @@ export default async function EventDetailPage({
     <main id="main-content" className="relative min-w-0 max-w-full">
       <ContentViewTracker type="event" slug={event.slug} />
       <section className="relative isolate overflow-hidden bg-ink">
-        <div aria-hidden className="absolute inset-0">
-          <SiteImage
-            src={cover}
-            alt={coverAlt}
-            fallbackAlt={`کاور ${event.title}`}
-            fill
-            priority
-            className="object-cover opacity-80"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-ink/55 via-ink/75 to-ink" />
-        </div>
+        <PageHeroBackdrop
+          src={cover}
+          alt={coverAlt}
+          fallbackAlt={`کاور ${event.title}`}
+          priority
+        />
         <div className="container-luxe relative z-[2] max-w-4xl min-w-0 py-section-sm">
           <Reveal>
             <Link

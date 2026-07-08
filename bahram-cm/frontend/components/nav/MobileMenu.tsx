@@ -8,8 +8,8 @@ import { useEffect } from "react";
 import { site } from "@/content/site";
 import { navLinkMatches } from "@/lib/nav-active";
 import { cn } from "@/lib/cn";
-import { LinkButton } from "@/components/ui/Button";
-import { Divider } from "@/components/ui/Divider";
+import { CartNavButton } from "@/components/commerce/CartNavButton";
+import { PanelNavButton } from "@/components/commerce/PanelNavButton";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 type Props = {
@@ -140,16 +140,10 @@ export function MobileMenu({ open, onClose }: Props) {
                 </span>
                 <ThemeToggle compact />
               </div>
-              <LinkButton
-                href={site.ctaPrimary.href}
-                variant="primary"
-                size="md"
-                withArrow
-                className="w-full"
-                onClick={onClose}
-              >
-                {site.ctaPrimary.label}
-              </LinkButton>
+              <div className="flex items-center gap-2">
+                <CartNavButton showLabel className="flex-1 justify-center" onNavigate={onClose} />
+                <PanelNavButton showLabel className="flex-1 justify-center" onNavigate={onClose} />
+              </div>
             </div>
           </motion.aside>
         </motion.div>

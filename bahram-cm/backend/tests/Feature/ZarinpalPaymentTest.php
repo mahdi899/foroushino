@@ -51,11 +51,43 @@ class ZarinpalPaymentTest extends TestCase
 
     public function test_request_throws_when_payment_gateway_is_not_configured(): void
     {
+        config(['bahram.payment.dev_mode' => false]);
+
         $order = $this->makeOrder();
 
         $this->expectException(PaymentException::class);
 
         app(ZarinpalPaymentService::class)->request($order);
+    }
+
+    public function test_request_in_dev_mode_skips_gateway_configuration_and_auto_verifies(): void
+    {
+        Queue::fake();
+        config(['bahram.payment.dev_mode' => true]);
+
+        $order = $this->makeOrder();
+        $service = app(ZarinpalPaymentService::class);
+        $payment = $service->request($order);
+
+        $this->assertSame('pending', $payment->status);
+        $this->assertStringStartsWith('DEV-', $payment->authority);
+        $this->assertStringContainsString(
+            'Authority='.$payment->authority,
+            $service->getPaymentUrl($payment),
+        );
+
+        $result = $service->verify($payment->authority);
+
+        $this->assertTrue($result['success']);
+        $this->assertStringStartsWith('DEV-', (string) $result['ref_id']);
+
+        $order->refresh();
+        $this->assertSame('paid', $order->status);
+        $this->assertSame('paid', $order->payment_status);
+
+        Queue::assertPushed(FulfillOrderJob::class, fn ($job) => $job->orderId === $order->id);
+
+        Http::assertNothingSent();
     }
 
     public function test_request_creates_a_pending_payment_and_returns_the_gateway_url(): void

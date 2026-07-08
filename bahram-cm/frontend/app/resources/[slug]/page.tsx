@@ -7,7 +7,7 @@ import { MdxBody } from "@/components/mdx/MdxBody";
 import { Reveal } from "@/components/motion/Reveal";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
-import { SiteImage } from "@/components/ui/SiteImage";
+import { PageHeroBackdrop } from "@/components/blocks/PageHeroBackdrop";
 import { getResourceBySlug, getResources } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
 import { resolveMediaAlt } from "@/lib/media/alt";
@@ -55,18 +55,12 @@ export default async function ResourceDetailPage({
     <main id="main-content" className="relative min-w-0 max-w-full">
       <ContentViewTracker type="resource" slug={item.slug} />
       <section className="relative isolate overflow-hidden bg-ink">
-        <div aria-hidden className="absolute inset-0 opacity-50">
-          <SiteImage
-            src={cover}
-            alt={coverAlt}
-            fallbackAlt={`کاور ${item.title}`}
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-ink/60 via-ink/75 to-ink" />
-        </div>
+        <PageHeroBackdrop
+          src={cover}
+          alt={coverAlt}
+          fallbackAlt={`کاور ${item.title}`}
+          priority
+        />
         <div className="container-luxe relative z-[2] max-w-3xl min-w-0 py-section-sm">
           <Reveal>
             <Link
