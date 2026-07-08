@@ -17,6 +17,9 @@ export interface StudentProfile {
   experience_level: string | null;
   income_goal: string | null;
   avatar: string | null;
+  avatar_url: string | null;
+  gravatar_url: string | null;
+  default_avatar_url: string | null;
 }
 
 export interface StudentUser {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
+import { ProfileAvatarField } from '@/components/student-panel/profile/ProfileAvatarField';
 import { updateProfileAction, type SimpleFormState } from '@/lib/student/panelActions';
 import type { StudentUser } from '@/lib/student/session';
 
@@ -12,6 +13,11 @@ export function ProfileForm({ user }: { user: StudentUser }) {
 
   return (
     <form action={action} className="flex flex-col gap-6">
+      <section className="flex flex-col gap-4 border-b border-border pb-6">
+        <h2 className="text-base font-bold text-text">تصویر پروفایل</h2>
+        <ProfileAvatarField user={user} />
+      </section>
+
       <section className="flex flex-col gap-4">
         <h2 className="text-base font-bold text-text">اطلاعات پایه</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

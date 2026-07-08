@@ -127,7 +127,7 @@ export function TicketChatPanel({ ticket: initial, compact = false }: { ticket: 
                   </div>
                 )}
                 <div className={`flex flex-col ${m.is_admin_reply ? 'items-end' : 'items-start'}`}>
-                  <div className={`max-w-[82%] rounded-2xl px-4 py-3 text-small shadow-sm ${m.is_admin_reply ? 'rounded-tr-md bg-accent text-white' : 'rounded-tl-md bg-surface text-text ring-1 ring-border'}`}>
+                  <div className={`max-w-[82%] rounded-2xl px-4 py-3 text-small shadow-sm ${m.is_admin_reply ? 'rounded-bl-md bg-accent text-white' : 'rounded-br-md bg-surface text-text ring-1 ring-border'}`}>
                     <p className="whitespace-pre-wrap leading-relaxed">{m.message}</p>
                     {m.has_attachment && <p className="mt-2 text-caption opacity-80">پیوست دارد</p>}
                   </div>

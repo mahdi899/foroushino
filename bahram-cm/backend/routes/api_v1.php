@@ -71,6 +71,7 @@ Route::prefix('student')->group(function () {
 
         Route::get('profile', [StudentProfileController::class, 'show']);
         Route::put('profile', [StudentProfileController::class, 'update']);
+        Route::post('profile/avatar', [StudentProfileController::class, 'updateAvatar']);
 
         Route::get('courses', [StudentCourseController::class, 'index']);
         Route::get('courses/{courseAccess}/player', [StudentCourseController::class, 'player'])->whereNumber('courseAccess');

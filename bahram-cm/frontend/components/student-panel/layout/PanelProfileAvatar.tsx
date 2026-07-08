@@ -1,36 +1,89 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
+import { useEffect, useMemo, useState } from 'react';
+import { primarySiteImageSrc } from '@/lib/mediaUrl';
 
 type Props = {
   avatar?: string | null;
-  seed: string;
+  avatarUrl?: string | null;
+  gravatarUrl?: string | null;
+  defaultAvatarUrl?: string | null;
   alt: string;
+  className?: string;
 };
 
-function AvatarPlaceholder() {
-  return <div className="h-full w-full bg-primary/10" aria-hidden />;
+function initialsFromName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`.toUpperCase();
+  }
+
+  return name.trim().slice(0, 2).toUpperCase() || '؟';
 }
 
-export function PanelProfileAvatar({ avatar, seed, alt }: Props) {
-  const avatarSrc = avatar?.trim();
-  const [fallbackSrc, setFallbackSrc] = useState<string | null>(null);
+function buildAvatarSources({
+  avatar,
+  avatarUrl,
+  gravatarUrl,
+  defaultAvatarUrl,
+}: Pick<Props, 'avatar' | 'avatarUrl' | 'gravatarUrl' | 'defaultAvatarUrl'>): string[] {
+  const sources: string[] = [];
+
+  const custom = avatarUrl?.trim() || avatar?.trim();
+  if (custom) {
+    sources.push(primarySiteImageSrc(custom) || custom);
+  }
+
+  const gravatar = gravatarUrl?.trim();
+  if (gravatar) {
+    sources.push(gravatar);
+  }
+
+  const fallback = defaultAvatarUrl?.trim();
+  if (fallback) {
+    sources.push(fallback);
+  }
+
+  return sources;
+}
+
+export function PanelProfileAvatar({
+  avatar,
+  avatarUrl,
+  gravatarUrl,
+  defaultAvatarUrl,
+  alt,
+  className,
+}: Props) {
+  const sources = useMemo(
+    () => buildAvatarSources({ avatar, avatarUrl, gravatarUrl, defaultAvatarUrl }),
+    [avatar, avatarUrl, gravatarUrl, defaultAvatarUrl],
+  );
+
+  const [sourceIndex, setSourceIndex] = useState(0);
 
   useEffect(() => {
-    if (avatarSrc) return;
-    setFallbackSrc(`https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(seed || 'student')}`);
-  }, [avatarSrc, seed]);
+    setSourceIndex(0);
+  }, [sources]);
+
+  const currentSrc = sources[sourceIndex];
+  const showImage = Boolean(currentSrc);
+  const initials = initialsFromName(alt);
 
   return (
-    <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-surface-soft ring-2 ring-border/80">
-      {avatarSrc ? (
-        <DirectMediaImg admin src={avatarSrc} alt={alt} className="h-full w-full object-cover" />
-      ) : fallbackSrc ? (
+    <div className={`h-9 w-9 shrink-0 overflow-hidden rounded-full bg-surface-soft ring-2 ring-border/80 ${className ?? ''}`}>
+      {showImage ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={fallbackSrc} alt={alt} className="h-full w-full object-cover" />
+        <img
+          src={currentSrc}
+          alt={alt}
+          className="h-full w-full object-cover"
+          onError={() => setSourceIndex((index) => index + 1)}
+        />
       ) : (
-        <AvatarPlaceholder />
+        <div className="flex h-full w-full items-center justify-center bg-primary/10 text-[11px] font-bold text-primary" aria-hidden>
+          {initials}
+        </div>
       )}
     </div>
   );

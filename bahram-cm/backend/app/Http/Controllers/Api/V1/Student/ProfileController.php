@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Student\UpdateProfileRequest;
 use App\Services\AdminTelegramLogService;
 use App\Support\ApiResponse;
+use App\Support\MediaUrl;
+use App\Support\StudentProfilePayload;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -35,12 +37,41 @@ class ProfileController extends Controller
 
         $profileFields = array_intersect_key($data, array_flip([
             'first_name', 'last_name', 'email', 'city', 'age',
-            'current_job', 'instagram', 'telegram', 'experience_level', 'income_goal',
+            'current_job', 'instagram', 'telegram', 'experience_level', 'income_goal', 'avatar',
         ]));
+
+        if (array_key_exists('avatar', $profileFields) && filled($profileFields['avatar'])) {
+            $profileFields['avatar'] = MediaUrl::reference((string) $profileFields['avatar']);
+        }
 
         if (! empty($profileFields)) {
             $user->profile()->updateOrCreate(['user_id' => $user->id], $profileFields);
         }
+
+        $user->refresh()->loadMissing('profile');
+
+        app(AdminTelegramLogService::class)->notifyProfileUpdated($user);
+
+        return ApiResponse::success($this->payload($user));
+    }
+
+    public function updateAvatar(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'avatar' => ['required', 'image', 'max:2048'],
+        ]);
+
+        $user = $request->user();
+        $file = $data['avatar'];
+        $directory = 'avatars/'.$user->id;
+        $filename = 'avatar.'.$file->getClientOriginalExtension();
+        $stored = $file->storeAs($directory, $filename, 'public');
+
+        $reference = MediaUrl::fromDiskPath($stored);
+        $user->profile()->updateOrCreate(
+            ['user_id' => $user->id],
+            ['avatar' => $reference],
+        );
 
         $user->refresh()->loadMissing('profile');
 
@@ -57,19 +88,7 @@ class ProfileController extends Controller
             'name' => $user->name,
             'mobile' => $user->mobile,
             'has_password' => filled($user->password),
-            'profile' => $user->profile ? [
-                'first_name' => $user->profile->first_name,
-                'last_name' => $user->profile->last_name,
-                'email' => $user->profile->email,
-                'city' => $user->profile->city,
-                'age' => $user->profile->age,
-                'current_job' => $user->profile->current_job,
-                'instagram' => $user->profile->instagram,
-                'telegram' => $user->profile->telegram,
-                'experience_level' => $user->profile->experience_level,
-                'income_goal' => $user->profile->income_goal,
-                'avatar' => $user->profile->avatar,
-            ] : null,
+            'profile' => StudentProfilePayload::fromUser($user),
         ];
     }
 }

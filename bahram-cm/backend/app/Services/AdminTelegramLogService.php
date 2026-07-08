@@ -33,7 +33,8 @@ class AdminTelegramLogService
             return;
         }
 
-        SendAdminTelegramLogJob::dispatch($eventKey, $context);
+        // Run after the HTTP response so admins get logs without requiring a queue worker.
+        SendAdminTelegramLogJob::dispatch($eventKey, $context)->afterResponse();
     }
 
     /** @param  array<string, mixed>  $context */
@@ -47,6 +48,8 @@ class AdminTelegramLogService
         if ($event && ! $event->is_enabled) {
             return false;
         }
+
+        $context = $this->resolveContext($context);
 
         $token = $this->botToken();
         $chatIds = $this->chatIds();
@@ -100,106 +103,115 @@ class AdminTelegramLogService
 
     public function notifyOrderCreated(Order $order): void
     {
-        $order->loadMissing('product');
-        $this->notify(AdminTelegramEventKey::OrderCreated, ['order' => $order]);
+        $this->notify(AdminTelegramEventKey::OrderCreated, ['order_id' => $order->id]);
     }
 
     public function notifyPaymentStarted(Order $order): void
     {
-        $order->loadMissing('product');
-        $this->notify(AdminTelegramEventKey::PaymentStarted, ['order' => $order]);
+        $this->notify(AdminTelegramEventKey::PaymentStarted, ['order_id' => $order->id]);
     }
 
     public function notifyOrderPaid(Order $order, ?string $refId = null): void
     {
-        $order->loadMissing('product');
-        $this->notify(AdminTelegramEventKey::OrderPaid, ['order' => $order, 'ref_id' => $refId]);
+        $this->notify(AdminTelegramEventKey::OrderPaid, ['order_id' => $order->id, 'ref_id' => $refId]);
     }
 
     public function notifyOrderFulfilled(Order $order): void
     {
-        $order->loadMissing('product');
-        $this->notify(AdminTelegramEventKey::OrderFulfilled, ['order' => $order]);
+        $this->notify(AdminTelegramEventKey::OrderFulfilled, ['order_id' => $order->id]);
     }
 
     public function notifyPaymentCancelled(Order $order): void
     {
-        $order->loadMissing('product');
-        $this->notify(AdminTelegramEventKey::PaymentCancelled, ['order' => $order]);
+        $this->notify(AdminTelegramEventKey::PaymentCancelled, ['order_id' => $order->id]);
     }
 
     public function notifyPaymentFailed(Order $order, ?string $reason = null): void
     {
-        $order->loadMissing('product');
-        $this->notify(AdminTelegramEventKey::PaymentFailed, ['order' => $order, 'reason' => $reason]);
+        $this->notify(AdminTelegramEventKey::PaymentFailed, ['order_id' => $order->id, 'reason' => $reason]);
     }
 
     /** @param  array<string, mixed>  $changes */
     public function notifyOrderUpdated(Order $order, array $changes): void
     {
-        $order->loadMissing('product');
-        $this->notify(AdminTelegramEventKey::OrderUpdated, ['order' => $order, 'changes' => $changes]);
+        $this->notify(AdminTelegramEventKey::OrderUpdated, ['order_id' => $order->id, 'changes' => $changes]);
     }
 
     public function notifyLicenseIssued(Order $order): void
     {
-        $order->loadMissing('product');
-        $this->notify(AdminTelegramEventKey::LicenseIssued, ['order' => $order]);
+        $this->notify(AdminTelegramEventKey::LicenseIssued, ['order_id' => $order->id]);
     }
 
     public function notifyProfileCompleted(Order $order): void
     {
-        $order->loadMissing('product');
-        $this->notify(AdminTelegramEventKey::ProfileCompleted, ['order' => $order]);
+        $this->notify(AdminTelegramEventKey::ProfileCompleted, ['order_id' => $order->id]);
     }
 
     public function notifyTicketCreated(Ticket $ticket): void
     {
         $ticket->loadMissing(['user', 'messages']);
         $this->notify(AdminTelegramEventKey::TicketCreated, [
-            'ticket' => $ticket,
+            'ticket_id' => $ticket->id,
             'message' => $ticket->messages->first()?->message,
         ]);
     }
 
     public function notifyTicketStudentReply(Ticket $ticket, string $message): void
     {
-        $ticket->loadMissing('user');
         $this->notify(AdminTelegramEventKey::TicketStudentReply, [
-            'ticket' => $ticket,
+            'ticket_id' => $ticket->id,
             'message' => $message,
         ]);
     }
 
     public function notifyTicketAdminReply(Ticket $ticket, string $message): void
     {
-        $ticket->loadMissing('user');
         $this->notify(AdminTelegramEventKey::TicketAdminReply, [
-            'ticket' => $ticket,
+            'ticket_id' => $ticket->id,
             'message' => $message,
         ]);
     }
 
     public function notifyStudentRegistered(User $user): void
     {
-        $this->notify(AdminTelegramEventKey::StudentRegistered, ['user' => $user]);
+        $this->notify(AdminTelegramEventKey::StudentRegistered, ['user_id' => $user->id]);
     }
 
     public function notifyStudentFirstLogin(User $user): void
     {
-        $this->notify(AdminTelegramEventKey::StudentFirstLogin, ['user' => $user]);
+        $this->notify(AdminTelegramEventKey::StudentFirstLogin, ['user_id' => $user->id]);
     }
 
     public function notifyProfileUpdated(User $user): void
     {
-        $user->loadMissing('profile');
-        $this->notify(AdminTelegramEventKey::ProfileUpdated, ['user' => $user]);
+        $this->notify(AdminTelegramEventKey::ProfileUpdated, ['user_id' => $user->id]);
     }
 
     public function notifySatApplicationSubmitted(SatApplication $application): void
     {
-        $application->loadMissing('user');
-        $this->notify(AdminTelegramEventKey::SatApplicationSubmitted, ['application' => $application]);
+        $this->notify(AdminTelegramEventKey::SatApplicationSubmitted, ['application_id' => $application->id]);
+    }
+
+    /** @param  array<string, mixed>  $context */
+    private function resolveContext(array $context): array
+    {
+        if (! isset($context['order']) && isset($context['order_id'])) {
+            $context['order'] = Order::query()->with('product')->find($context['order_id']);
+        }
+
+        if (! isset($context['ticket']) && isset($context['ticket_id'])) {
+            $context['ticket'] = Ticket::query()->with('user')->find($context['ticket_id']);
+        }
+
+        if (! isset($context['user']) && isset($context['user_id'])) {
+            $context['user'] = User::query()->with('profile')->find($context['user_id']);
+        }
+
+        if (! isset($context['application']) && isset($context['application_id'])) {
+            $context['application'] = SatApplication::query()->with('user')->find($context['application_id']);
+        }
+
+        return $context;
     }
 
     /** @param  array<string, mixed>  $context */
@@ -231,12 +243,6 @@ class AdminTelegramLogService
         };
 
         $lines = array_merge($lines, $body);
-
-        $entityLink = $this->entityAdminLink($eventKey, $context);
-        if ($entityLink !== null) {
-            $lines[] = '';
-            $lines[] = '<a href="'.$this->escape($entityLink).'">مشاهده در پنل ادمین</a>';
-        }
 
         $lines[] = '';
         $lines[] = '<i>'.JalaliDate::format().'</i>';
@@ -371,37 +377,6 @@ class AdminTelegramLogService
             $this->field('سن', $application->age !== null ? (string) $application->age : '—', true),
             $this->field('وضعیت', $application->status->value ?? (string) $application->status, true),
         ];
-    }
-
-    /** @param  array<string, mixed>  $context */
-    private function entityAdminLink(AdminTelegramEventKey $eventKey, array $context): ?string
-    {
-        $base = rtrim((string) config('app.frontend_url', 'http://localhost:3000'), '/');
-
-        return match ($eventKey) {
-            AdminTelegramEventKey::OrderCreated,
-            AdminTelegramEventKey::PaymentStarted,
-            AdminTelegramEventKey::OrderPaid,
-            AdminTelegramEventKey::OrderFulfilled,
-            AdminTelegramEventKey::PaymentCancelled,
-            AdminTelegramEventKey::PaymentFailed,
-            AdminTelegramEventKey::OrderUpdated,
-            AdminTelegramEventKey::LicenseIssued,
-            AdminTelegramEventKey::ProfileCompleted => isset($context['order']) && $context['order'] instanceof Order
-                ? "{$base}/admin/commerce/orders/{$context['order']->id}"
-                : null,
-            AdminTelegramEventKey::TicketCreated,
-            AdminTelegramEventKey::TicketStudentReply,
-            AdminTelegramEventKey::TicketAdminReply => isset($context['ticket']) && $context['ticket'] instanceof Ticket
-                ? "{$base}/admin/academy/tickets"
-                : null,
-            AdminTelegramEventKey::StudentRegistered,
-            AdminTelegramEventKey::StudentFirstLogin,
-            AdminTelegramEventKey::ProfileUpdated => isset($context['user']) && $context['user'] instanceof User
-                ? "{$base}/admin/academy/students/{$context['user']->id}"
-                : null,
-            AdminTelegramEventKey::SatApplicationSubmitted => "{$base}/admin/academy/sat-applications",
-        };
     }
 
     private function field(string $label, ?string $value, bool $ltr = false): string

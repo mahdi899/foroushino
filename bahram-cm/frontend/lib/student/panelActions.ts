@@ -43,6 +43,26 @@ export async function updateProfileAction(_prev: SimpleFormState, formData: Form
   return { success: 'پروفایل با موفقیت بروزرسانی شد.' };
 }
 
+export async function uploadProfileAvatarAction(formData: FormData): Promise<SimpleFormState> {
+  const file = formData.get('avatar');
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: 'فایل تصویر انتخاب نشده است.' };
+  }
+
+  const body = new FormData();
+  body.append('avatar', file);
+
+  try {
+    await studentFetch('/profile/avatar', { method: 'POST', body, isFormData: true });
+  } catch (err) {
+    return { error: extractError(err, 'بارگذاری تصویر پروفایل انجام نشد.') };
+  }
+
+  revalidatePath('/panel/profile');
+  revalidatePath('/panel');
+  return { success: 'تصویر پروفایل با موفقیت ذخیره شد.' };
+}
+
 export async function markOnboardingStepAction(step: string): Promise<void> {
   try {
     await studentFetch(`/dashboard/steps/${step}`, { method: 'POST' });

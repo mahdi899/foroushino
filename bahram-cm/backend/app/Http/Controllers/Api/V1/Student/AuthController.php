@@ -14,6 +14,7 @@ use App\Services\OtpService;
 use App\Services\StudentOnboardingService;
 use App\Support\ApiResponse;
 use App\Support\Mobile;
+use App\Support\StudentProfilePayload;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
@@ -158,19 +159,7 @@ class AuthController extends Controller
             'mobile' => $user->mobile,
             'has_password' => filled($user->password),
             'first_login_at' => $user->first_login_at?->toIso8601String(),
-            'profile' => $user->profile ? [
-                'first_name' => $user->profile->first_name,
-                'last_name' => $user->profile->last_name,
-                'email' => $user->profile->email,
-                'city' => $user->profile->city,
-                'age' => $user->profile->age,
-                'current_job' => $user->profile->current_job,
-                'instagram' => $user->profile->instagram,
-                'telegram' => $user->profile->telegram,
-                'experience_level' => $user->profile->experience_level,
-                'income_goal' => $user->profile->income_goal,
-                'avatar' => $user->profile->avatar,
-            ] : null,
+            'profile' => StudentProfilePayload::fromUser($user),
         ];
     }
 }

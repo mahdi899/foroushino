@@ -5,18 +5,13 @@ namespace App\Jobs;
 use App\Enums\AdminTelegramEventKey;
 use App\Services\AdminTelegramLogService;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class SendAdminTelegramLogJob implements ShouldQueue
+class SendAdminTelegramLogJob
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    public int $tries = 3;
-
-    public int $backoff = 15;
 
     /** @param  array<string, mixed>  $context */
     public function __construct(

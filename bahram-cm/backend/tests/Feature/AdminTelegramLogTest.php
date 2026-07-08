@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\SmsProvider;
 use App\Models\SmsSetting;
+use App\Models\Ticket;
 use App\Models\User;
 use App\Services\AdminTelegramLogService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -133,6 +134,36 @@ class AdminTelegramLogTest extends TestCase
 
         Http::assertSent(function ($request) {
             return str_contains($request->data()['text'] ?? '', '09125556677');
+        });
+    }
+
+    public function test_notify_ticket_created_sends_after_request_terminates(): void
+    {
+        Http::fake([
+            'api.telegram.org/*' => Http::response(['ok' => true, 'result' => ['message_id' => 4]]),
+        ]);
+
+        $user = User::create(['name' => 'دانشجو', 'mobile' => '09127778899', 'status' => 'active']);
+        $ticket = Ticket::create([
+            'user_id' => $user->id,
+            'department' => 'support',
+            'subject' => 'مشکل ورود',
+            'status' => 'open',
+            'priority' => 'normal',
+        ]);
+
+        app(AdminTelegramLogService::class)->notifyTicketCreated($ticket);
+
+        Http::assertNothingSent();
+
+        $this->app->terminate();
+
+        Http::assertSent(function ($request) {
+            $text = $request->data()['text'] ?? '';
+
+            return str_contains($request->url(), 'sendMessage')
+                && str_contains($text, 'تیکت جدید')
+                && str_contains($text, 'مشکل ورود');
         });
     }
 }

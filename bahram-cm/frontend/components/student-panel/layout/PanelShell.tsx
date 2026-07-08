@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { StudentUser } from '@/lib/student/session';
+import { PanelThemeProvider } from '@/app/panel/PanelThemeContext';
 import { PanelBottomNav } from './PanelBottomNav';
 import { PanelHeader } from './PanelHeader';
 import { PanelPwaRegistrar } from './PanelPwaRegistrar';
@@ -80,22 +81,24 @@ export function PanelShell({
   }
 
   return (
-    <div className="panel-shell">
-      <PanelPwaRegistrar />
-      <PanelSidebar
-        unreadCount={unreadCount}
-        mobileOpen={mobileOpen}
-        collapsed={sidebarCollapsed}
-        onClose={() => setMobileOpen(false)}
-        onToggleCollapse={toggleSidebarCollapsed}
-      />
+    <PanelThemeProvider>
+      <div className="panel-shell">
+        <PanelPwaRegistrar />
+        <PanelSidebar
+          unreadCount={unreadCount}
+          mobileOpen={mobileOpen}
+          collapsed={sidebarCollapsed}
+          onClose={() => setMobileOpen(false)}
+          onToggleCollapse={toggleSidebarCollapsed}
+        />
 
-      <div className="panel-main flex flex-col">
-        <PanelHeader user={user} unreadCount={unreadCount} onMenuOpen={() => setMobileOpen(true)} />
-        <main className="panel-main-content">{children}</main>
+        <div className="panel-main flex flex-col">
+          <PanelHeader user={user} unreadCount={unreadCount} onMenuOpen={() => setMobileOpen(true)} />
+          <main className="panel-main-content">{children}</main>
+        </div>
+
+        <PanelBottomNav unreadCount={unreadCount} onMenuOpen={() => setMobileOpen(true)} />
       </div>
-
-      <PanelBottomNav unreadCount={unreadCount} onMenuOpen={() => setMobileOpen(true)} />
-    </div>
+    </PanelThemeProvider>
   );
 }

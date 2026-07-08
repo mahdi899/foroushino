@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Bell, ChevronDown, LogOut, Menu } from 'lucide-react';
 import { PanelThemeToggle } from '@/app/panel/PanelThemeToggle';
 import { PanelProfileAvatar } from '@/components/student-panel/layout/PanelProfileAvatar';
+import { studentDefaultAvatarUrl } from '@/lib/student/avatar';
 import { logoutStudentAction } from '@/lib/student/actions';
 import { markAllNotificationsReadAction } from '@/lib/student/panelActions';
 import type { StudentUser } from '@/lib/student/session';
@@ -64,7 +65,9 @@ export function PanelHeader({
         >
           <PanelProfileAvatar
             avatar={user.profile?.avatar}
-            seed={user.name || user.mobile}
+            avatarUrl={user.profile?.avatar_url}
+            gravatarUrl={user.profile?.gravatar_url}
+            defaultAvatarUrl={user.profile?.default_avatar_url ?? studentDefaultAvatarUrl(user.id)}
             alt={displayName}
           />
           <div className="hidden min-w-0 text-right md:block">

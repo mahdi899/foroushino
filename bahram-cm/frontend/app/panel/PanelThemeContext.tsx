@@ -25,6 +25,14 @@ function applyThemeToRoot(theme: PanelTheme) {
   document.getElementById('panel-root')?.setAttribute('data-panel-theme', theme);
 }
 
+export function PanelThemeBoot() {
+  useLayoutEffect(() => {
+    applyThemeToRoot(readTheme());
+  }, []);
+
+  return null;
+}
+
 export function PanelThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<PanelTheme>('dark');
   const [mounted, setMounted] = useState(false);

@@ -32,9 +32,7 @@ export default async function PanelTicketDetailPage({ params }: { params: Promis
         {ticket.messages.map((message) => (
           <div
             key={message.id}
-            className={`max-w-[85%] rounded-2xl p-4 text-sm ${
-              message.is_admin_reply ? 'self-start bg-surface-soft text-text' : 'self-end bg-primary text-white'
-            }`}
+            className={`panel-ticket-bubble ${message.is_admin_reply ? 'panel-ticket-bubble--support' : 'panel-ticket-bubble--mine'}`}
           >
             {message.message}
           </div>

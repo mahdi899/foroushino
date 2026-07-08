@@ -1,7 +1,7 @@
 'use client';
 
 import { Moon, Sun } from 'lucide-react';
-import { usePanelTheme } from './PanelThemeContext';
+import { usePanelTheme } from '@/app/panel/PanelThemeContext';
 
 export function PanelThemeToggle() {
   const { theme, mounted, toggleTheme } = usePanelTheme();

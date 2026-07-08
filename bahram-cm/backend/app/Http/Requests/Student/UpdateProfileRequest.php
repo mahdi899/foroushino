@@ -26,6 +26,7 @@ class UpdateProfileRequest extends FormRequest
             'telegram' => ['sometimes', 'nullable', 'string', 'max:120'],
             'experience_level' => ['sometimes', 'nullable', 'string', 'max:120'],
             'income_goal' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'avatar' => ['sometimes', 'nullable', 'string', 'max:500'],
             'password' => ['sometimes', 'nullable', 'string', 'min:6', 'confirmed'],
         ];
     }

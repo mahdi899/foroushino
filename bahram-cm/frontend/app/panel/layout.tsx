@@ -1,6 +1,6 @@
 import '@/styles/panel.css';
 import type { Metadata, Viewport } from 'next';
-import { PanelThemeProvider } from './PanelThemeContext';
+import { PanelThemeBoot } from './PanelThemeContext';
 
 export const metadata: Metadata = {
   title: 'پنل کاربری | آکادمی بهرام رستمی',
@@ -29,10 +29,9 @@ export const viewport: Viewport = {
 
 export default function PanelRootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <PanelThemeProvider>
-      <div id="panel-root" className="panel-root" data-panel-theme="dark" dir="rtl" suppressHydrationWarning>
-        {children}
-      </div>
-    </PanelThemeProvider>
+    <div id="panel-root" className="panel-root" data-panel-theme="dark" dir="rtl" suppressHydrationWarning>
+      <PanelThemeBoot />
+      {children}
+    </div>
   );
 }
