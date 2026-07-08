@@ -485,56 +485,52 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 
 /* Standalone login screen (outside admin-shell flex tree) */
 .admin-root .admin-login-screen {
-  display: flex;
+  display: grid;
   width: 100%;
   min-height: 100dvh;
   min-width: 0;
-  align-items: center;
-  justify-content: center;
+  place-items: center;
   overflow-x: hidden;
   padding:
-    max(1rem, env(safe-area-inset-top, 0px))
-    max(1rem, env(safe-area-inset-right, 0px))
-    max(1rem, env(safe-area-inset-bottom, 0px))
-    max(1rem, env(safe-area-inset-left, 0px));
+    max(1.25rem, env(safe-area-inset-top, 0px))
+    max(1.25rem, env(safe-area-inset-right, 0px))
+    max(1.25rem, env(safe-area-inset-bottom, 0px))
+    max(1.25rem, env(safe-area-inset-left, 0px));
   background-color: var(--color-bg);
 }
 
-.admin-root .admin-login-screen__inner {
-  width: 100%;
-  max-width: 26rem;
+.admin-root .admin-login-card {
+  box-sizing: border-box;
+  width: min(100%, 24rem);
   min-width: 0;
   margin-inline: auto;
-  padding-block: 1.5rem;
-}
-
-@media (min-width: 640px) {
-  .admin-root .admin-login-screen__inner {
-    max-width: 28rem;
-    padding-block: 2rem;
-  }
-}
-
-.admin-root .admin-login-card {
-  width: 100%;
-  min-width: 0;
-  border-radius: 1rem;
+  border-radius: 24px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   box-shadow: var(--shadow-soft);
-  padding: 1.25rem;
+  padding: 1.5rem;
 }
 
 @media (min-width: 640px) {
   .admin-root .admin-login-card {
-    padding: 1.75rem;
+    width: min(100%, 26rem);
+    padding: 2rem;
   }
 }
 
 .admin-root .admin-login-captcha-row {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   gap: 0.75rem;
+  border-radius: 14px;
+}
+
+@media (min-width: 480px) {
+  .admin-root .admin-login-captcha-row {
+    flex-direction: row;
+    align-items: center;
+  }
 }
 
 .admin-root .admin-login-captcha {

@@ -7,6 +7,10 @@ export function PanelThemeToggle() {
   const { theme, mounted, toggleTheme } = usePanelTheme();
   const isDark = theme === 'dark';
 
+  if (!mounted) {
+    return <span aria-hidden className="panel-theme-toggle panel-theme-toggle-placeholder" />;
+  }
+
   return (
     <button
       type="button"
@@ -14,7 +18,6 @@ export function PanelThemeToggle() {
       className="panel-theme-toggle"
       aria-label="تغییر حالت روشن/تیره"
       aria-pressed={isDark}
-      style={!mounted ? { pointerEvents: 'none', opacity: 0.55 } : undefined}
     >
       <span className={`panel-theme-toggle-thumb${isDark ? ' panel-theme-toggle-thumb-dark' : ''}`}>
         {isDark ? <Moon size={14} /> : <Sun size={14} />}

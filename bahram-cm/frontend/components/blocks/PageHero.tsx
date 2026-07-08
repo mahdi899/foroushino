@@ -1,8 +1,8 @@
 ﻿import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Reveal } from "@/components/motion/Reveal";
 import { cn } from "@/lib/cn";
+import "@/styles/page-hero.css";
 
 type BackLink = {
   href: string;
@@ -19,37 +19,41 @@ type Props = {
 
 export function PageHero({ eyebrow, title, description, backLink, className }: Props) {
   return (
-    <section className={cn("page-hero", className)}>
-      <div className="page-hero__mesh" aria-hidden />
+    <section
+      className={cn(
+        "page-hero page-hero--listing border-b border-bone/8 bg-ink",
+        className,
+      )}
+    >
       <div className="container-luxe page-hero__container">
-        <div className="page-hero__content">
-          {backLink ? (
-            <Reveal>
-              <Link href={backLink.href} className="page-hero__back">
-                <ArrowLeft className="rtl-flip h-3.5 w-3.5" aria-hidden />
-                {backLink.label}
-              </Link>
+        {backLink ? (
+          <Reveal>
+            <Link
+              href={backLink.href}
+              className="page-hero__back mb-4 inline-flex items-center gap-2 text-caption text-gold transition-colors hover:text-gold-soft"
+            >
+              <ArrowLeft className="rtl-flip h-3.5 w-3.5" aria-hidden />
+              {backLink.label}
+            </Link>
+          </Reveal>
+        ) : null}
+
+        <div className="page-hero__inner mx-auto max-w-2xl text-center">
+          {eyebrow ? (
+            <Reveal delay={backLink ? 0.04 : 0}>
+              <p className="page-hero__eyebrow">{eyebrow}</p>
             </Reveal>
           ) : null}
 
-          <div className={cn("page-hero__main", backLink && "page-hero__main--with-back")}>
-            <div className="page-hero__primary">
-              {eyebrow ? (
-                <Reveal delay={backLink ? 0.04 : 0}>
-                  <Eyebrow>{eyebrow}</Eyebrow>
-                </Reveal>
-              ) : null}
-              <Reveal delay={backLink ? 0.08 : 0.06}>
-                <h1 className="page-hero__title">{title}</h1>
-              </Reveal>
-            </div>
+          <Reveal delay={backLink ? 0.08 : eyebrow ? 0.06 : 0}>
+            <h1 className="page-hero__title">{title}</h1>
+          </Reveal>
 
-            {description ? (
-              <Reveal delay={backLink ? 0.12 : 0.1}>
-                <p className="page-hero__desc">{description}</p>
-              </Reveal>
-            ) : null}
-          </div>
+          {description ? (
+            <Reveal delay={backLink ? 0.12 : eyebrow ? 0.1 : 0.06}>
+              <p className="page-hero__desc">{description}</p>
+            </Reveal>
+          ) : null}
         </div>
       </div>
     </section>
