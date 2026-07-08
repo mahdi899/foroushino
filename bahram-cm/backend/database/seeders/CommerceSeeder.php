@@ -119,6 +119,13 @@ class CommerceSeeder extends Seeder
                 'amount' => $paidOrder->final_amount,
                 'status' => 'paid',
                 'paid_at' => $paidOrder->paid_at,
+                'verify_payload' => [
+                    'data' => [
+                        'code' => 100,
+                        'ref_id' => 123456789,
+                        'card_pan' => '6104-33**-****-1234',
+                    ],
+                ],
             ],
         );
 

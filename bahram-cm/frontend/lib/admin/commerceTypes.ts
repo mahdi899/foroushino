@@ -39,6 +39,59 @@ export interface AdminOrder {
   payment_ref_id?: string | null;
 }
 
+export type AdminOrderPayment = {
+  id: number;
+  gateway: string;
+  gateway_label: string;
+  mode: 'sandbox' | 'live';
+  mode_label: string;
+  authority: string | null;
+  ref_id: string | null;
+  amount: number;
+  status: string;
+  card_pan?: string | null;
+  verify_code?: number | string | null;
+  paid_at: string | null;
+  created_at: string | null;
+};
+
+export type AdminOrderDetail = AdminOrder & {
+  user_id: number | null;
+  user_name: string | null;
+  user_mobile: string | null;
+  referral_code: string | null;
+  customer_extra_data: Record<string, unknown> | null;
+  product: {
+    id: number;
+    title: string;
+    spotplayer_course_id: string | null;
+    spotplayer_product_id: string | null;
+  } | null;
+  payments: AdminOrderPayment[];
+  spotplayer_license: {
+    id: number;
+    license_key: string | null;
+    license_url: string | null;
+    spotplayer_course_id: string | null;
+    device_limit: number | null;
+    status: string;
+  } | null;
+  course_access: {
+    id: number;
+    status: string;
+    source: string;
+    access_type: string;
+    activated_at: string | null;
+  } | null;
+  referral_conversion: {
+    id: number;
+    status: string;
+    cashback_amount: number;
+    referrer_name: string | null;
+    referrer_mobile: string | null;
+  } | null;
+};
+
 export interface AdminFaq {
   id: number;
   question: string;
@@ -106,6 +159,83 @@ export const PAYMENT_STATUS_LABELS: Record<string, string> = {
   failed: 'ناموفق',
 };
 
+export const PAYMENT_RECORD_STATUS_LABELS: Record<string, string> = {
+  pending: 'در انتظار',
+  paid: 'موفق',
+  failed: 'ناموفق',
+  canceled: 'لغوشده',
+};
+
+export const GATEWAY_LABELS: Record<string, string> = {
+  zarinpal: 'زرین‌پال',
+};
+
+export const COURSE_ACCESS_SOURCE_LABELS: Record<string, string> = {
+  zarinpal: 'خرید زرین‌پال',
+  manual: 'دستی ادمین',
+  import: 'Import',
+};
+
 export function formatToman(amount: number): string {
   return `${amount.toLocaleString('fa-IR')} تومان`;
 }
+
+export type OrderAnalyticsSlice = {
+  key: string;
+  label: string;
+  count: number;
+  amount?: number;
+};
+
+export type OrderAnalyticsDaily = {
+  date: string;
+  orders: number;
+  revenue: number;
+};
+
+export type OrderAnalyticsProduct = {
+  product_id: number;
+  title: string;
+  count: number;
+  revenue: number;
+};
+
+export type OrderAnalytics = {
+  period_days: number | null;
+  summary: {
+    total_orders: number;
+    paid_orders: number;
+    total_revenue: number;
+    pending_revenue: number;
+    avg_order_value: number;
+    conversion_rate: number;
+  };
+  fulfillment: {
+    licenses_issued: number;
+    sms_sent: number;
+    course_access_granted: number;
+    referral_orders: number;
+  };
+  by_status: OrderAnalyticsSlice[];
+  by_payment_status: OrderAnalyticsSlice[];
+  by_gateway: OrderAnalyticsSlice[];
+  by_gateway_mode: OrderAnalyticsSlice[];
+  daily: OrderAnalyticsDaily[];
+  by_product: OrderAnalyticsProduct[];
+  recent_transactions: {
+    id: number;
+    order_id: number;
+    order_number: string | null;
+    customer_name: string | null;
+    product_title: string | null;
+    gateway: string;
+    gateway_label: string;
+    mode: 'sandbox' | 'live';
+    mode_label: string;
+    authority: string | null;
+    ref_id: string | null;
+    card_pan?: string | null;
+    amount: number;
+    paid_at: string | null;
+  }[];
+};

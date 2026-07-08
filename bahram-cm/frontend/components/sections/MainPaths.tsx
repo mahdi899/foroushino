@@ -14,14 +14,14 @@ const pathMeta = [
   {
     icon: PencilLine,
     tone: "gold" as const,
-    image: sitePhotos.courseBackstage,
-    imageAlt: "پشت صحنه کمپین‌نویسی",
+    image: sitePhotos.mainPathCampaign,
+    imageAlt: "کارت مسیر کمپین‌نویسی — کمپین‌های ماندگار برای برندها و افراد",
   },
   {
     icon: Phone,
     tone: "teal" as const,
-    image: sitePhotos.landscapeSession,
-    imageAlt: "نشست فروش و تماس تلفنی",
+    image: sitePhotos.mainPathSaat,
+    imageAlt: "کارت مسیر سات — سیستم عملیاتی فروش",
   },
 ] as const;
 

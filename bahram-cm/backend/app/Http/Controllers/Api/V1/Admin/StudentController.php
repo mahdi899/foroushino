@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\Mobile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -35,6 +36,35 @@ class StudentController extends Controller
                 'total' => $students->total(),
             ],
         ]);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'mobile' => ['required', 'string'],
+            'email' => ['nullable', 'email', 'max:255', 'unique:users,email'],
+            'status' => ['sometimes', 'string', 'in:active,suspended,blocked'],
+        ]);
+
+        $mobile = Mobile::normalize($data['mobile']);
+        abort_if(! $mobile, 422, 'شماره موبایل معتبر نیست.');
+
+        abort_if(
+            User::query()->where('mobile', $mobile)->exists(),
+            422,
+            'این شماره موبایل قبلاً ثبت شده است.'
+        );
+
+        $student = User::query()->create([
+            'name' => $data['name'],
+            'mobile' => $mobile,
+            'email' => $data['email'] ?? null,
+            'status' => $data['status'] ?? 'active',
+            'is_admin' => false,
+        ]);
+
+        return response()->json(['data' => $this->listPayload($student)], 201);
     }
 
     public function show(User $student): JsonResponse

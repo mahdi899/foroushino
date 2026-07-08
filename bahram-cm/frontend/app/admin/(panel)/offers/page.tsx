@@ -3,8 +3,8 @@
 import { AdminCollection } from '../AdminCollection';
 
 const seed = [
-  { id: 'offer-1', title: 'مشاوره و طراحی لبخند رایگان', cta: 'رزرو مشاوره', href: '/consultation', active: true },
-  { id: 'offer-2', title: 'ایمپلنت اقساطی تا ۱۲ ماه', cta: 'مشاهده شرایط', href: '/lp/implant-installment', active: false },
+  { id: 'offer-1', title: 'مشاوره رایگان ثبت‌نام دوره', cta: 'ثبت‌نام', href: '/apply', active: true },
+  { id: 'offer-2', title: 'دوره نویسندگی کمپین', cta: 'مشاهده دوره‌ها', href: '/courses', active: false },
 ];
 
 export default function AdminOffers() {

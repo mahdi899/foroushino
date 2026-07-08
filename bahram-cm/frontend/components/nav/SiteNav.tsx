@@ -37,14 +37,14 @@ export function SiteNav() {
             : "bg-transparent",
         )}
       >
-        <div className="container-luxe flex h-14 min-w-0 items-center gap-2 md:h-16 md:gap-3">
-          <div className="shrink-0">
+        <div className="container-luxe flex h-14 min-w-0 items-center gap-1.5 sm:gap-2 md:h-16 md:gap-3">
+          <div className="min-w-0 shrink-0">
             <Logo size="sm" />
           </div>
 
           <nav
             aria-label="ناوبری اصلی"
-            className="hidden min-w-0 flex-1 items-center justify-center gap-2 overflow-hidden lg:flex xl:gap-4 2xl:gap-5"
+            className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-hidden lg:flex xl:gap-4 2xl:gap-5"
           >
             {site.nav.map((link) => {
               const active = navLinkMatches(pathname, link.href);
@@ -72,15 +72,18 @@ export function SiteNav() {
             })}
           </nav>
 
-          <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
+          <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2 md:gap-2.5">
             <ThemeToggle compact className="hidden shrink-0 sm:inline-flex" />
             <CartNavButton className="shrink-0" />
-            <PanelNavButton showLabel className="shrink-0" />
+            <PanelNavButton
+              showLabel
+              className="shrink-0 max-sm:h-10 max-sm:w-10 max-sm:px-0 [&>span]:hidden sm:[&>span]:inline"
+            />
             <button
               type="button"
               onClick={() => setOpen(true)}
               aria-label="باز کردن منو"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-pill border border-bone/10 text-bone hover:border-bone/30 lg:hidden"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-pill border border-bone/10 text-bone hover:border-bone/30 lg:hidden"
             >
               <Menu className="h-[1.125rem] w-[1.125rem]" aria-hidden strokeWidth={1.75} />
             </button>

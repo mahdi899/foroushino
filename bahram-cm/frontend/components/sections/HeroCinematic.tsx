@@ -7,6 +7,7 @@ import { cn } from "@/lib/cn";
 import { Reveal } from "@/components/motion/Reveal";
 import { TrackedLinkButton } from "@/components/analytics/TrackedLinkButton";
 import { Badge } from "@/components/ui/Badge";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { sitePhotos } from "@/lib/site-photo-paths";
 import { ease, dur } from "@/components/motion/easings";
 
@@ -91,17 +92,24 @@ export function HeroCinematic() {
             transition={{ duration: dur.xl, ease: ease.luxe }}
             aria-hidden
           >
-            {/* eslint-disable-next-line @next/next/no-img-element -- art-directed hero background */}
-            <picture className="hero-light-grid-picture">
-              <source media="(max-width: 767px)" srcSet={sitePhotos.heroBackgroundMobile} />
-              <img
-                src={sitePhotos.heroBackground}
-                alt=""
-                className="hero-light-grid-img"
-                decoding="async"
-                fetchPriority="high"
-              />
-            </picture>
+            <SiteImage
+              src={sitePhotos.heroBackgroundMobile}
+              alt=""
+              fill
+              priority
+              sizes="100vw"
+              wrapperClassName="hero-light-grid-picture md:hidden"
+              className="hero-light-grid-img"
+            />
+            <SiteImage
+              src={sitePhotos.heroBackground}
+              alt=""
+              fill
+              priority
+              sizes="100vw"
+              wrapperClassName="hero-light-grid-picture hidden md:block"
+              className="hero-light-grid-img"
+            />
             <div className="hero-light-grid-scrim" aria-hidden />
           </motion.div>
           <div className={cn("hero-light-content relative z-[1]", LIGHT_PANEL_PAD)}>{grid}</div>

@@ -62,8 +62,6 @@ export function LeadRow({ lead: initialLead }: { lead: LeadView }) {
   const [removed, setRemoved] = useState(false);
 
   const submittedRows = useMemo(() => buildLeadSubmittedRows(lead), [lead]);
-  const aiEstimate = lead.answers.find((a) => a.questionKey === 'ai_estimate')?.answerValue;
-  const formRows = submittedRows.filter((row) => row.label !== 'برآورد هوش مصنوعی');
 
   if (removed) return null;
 
@@ -220,30 +218,13 @@ export function LeadRow({ lead: initialLead }: { lead: LeadView }) {
                     />
                   ) : (
                     <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
-                      {formRows.map((row) => (
+                      {submittedRows.map((row) => (
                         <div key={row.label} className="min-w-0">
                           <dt className="text-caption text-text-muted">{row.label}</dt>
                           <dd className="mt-0.5 text-small font-medium text-text">{row.value}</dd>
                         </div>
                       ))}
                     </dl>
-                  )}
-
-                  {lead.formType === 'consultation' && !editing && (
-                    <div className="mt-4 border-t border-border pt-4">
-                      <p className="mb-2 text-small font-semibold text-primary-dark">برآورد هوش مصنوعی</p>
-                      {aiEstimate ? (
-                        <p className="whitespace-pre-wrap text-small leading-7 text-text">{aiEstimate}</p>
-                      ) : (
-                        <p className="text-caption leading-6 text-text-muted">
-                          برآورد هوشمند ثبت نشده. در{' '}
-                          <a href="/admin/ai/settings#ai-consultation" className="text-accent hover:underline">
-                            تنظیمات هوش مصنوعی
-                          </a>{' '}
-                          بخش «برآورد مشاوره» را فعال و کلید API را تنظیم کنید، سپس فرم مشاوره را دوباره تست کنید.
-                        </p>
-                      )}
-                    </div>
                   )}
                 </div>
 

@@ -18,9 +18,20 @@ class StudentTestimonialSeeder extends Seeder
             return;
         }
 
-        $sort = 0;
+        $featured = ['sara-r', 'amir-h', 'nazanin-k', 'reza-m'];
         $paths = File::glob($dir.'/*.mdx') ?: [];
-        sort($paths, SORT_STRING);
+        usort($paths, function (string $a, string $b) use ($featured): int {
+            $slugA = pathinfo($a, PATHINFO_FILENAME);
+            $slugB = pathinfo($b, PATHINFO_FILENAME);
+            $rankA = array_search($slugA, $featured, true);
+            $rankB = array_search($slugB, $featured, true);
+            $rankA = $rankA === false ? 100 + strcmp($slugA, $slugB) : $rankA;
+            $rankB = $rankB === false ? 100 + strcmp($slugA, $slugB) : $rankB;
+
+            return $rankA <=> $rankB;
+        });
+
+        $sort = 0;
 
         foreach ($paths as $path) {
             $slug = pathinfo($path, PATHINFO_FILENAME);

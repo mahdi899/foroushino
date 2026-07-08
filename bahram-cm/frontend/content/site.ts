@@ -18,7 +18,18 @@ export type Transformation = {
   before: string;
   after: string;
   oneLine: string;
+  quote: string;
+  metricLabel: string;
+  metricValue: string;
 };
+
+/** Featured on homepage (BigTestimonial) — keep in sync with MDX frontmatter. */
+export const FEATURED_TRANSFORMATION_SLUGS = [
+  "sara-r",
+  "amir-h",
+  "nazanin-k",
+  "reza-m",
+] as const;
 
 export type InsightStub = {
   slug: string;
@@ -155,33 +166,46 @@ export const site = {
       slug: "sara-r",
       name: "سارا ر.",
       role: "مشاور کسب‌وکار",
-      before: "مخاطبِ خاموش، درآمدِ ناپایدار",
-      after: "کمپینِ ماهانه، فهرستِ انتظار سه‌ماهه",
-      oneLine: "از مشاوره پراکنده به برند شخصی با کمپین ماهانه و لیست انتظار.",
+      before: "مخاطب خاموش، درآمد ناپایدار",
+      after: "کمپین ماهانه، لیست انتظار ۳ ماهه",
+      oneLine:
+        "با ساختن یک روایت منسجم و کمپین‌های ماهانه، مسیر جذب مشتری برای سارا قابل پیش‌بینی شد.",
+      quote: "اولین باری بود که می‌دانستم ماه بعد قرار است چه اتفاقی بیفتد.",
+      metricLabel: "لیست انتظار",
+      metricValue: "۳ ماه",
     },
     {
       slug: "amir-h",
       name: "امیر ه.",
       role: "طراح تجربه",
-      before: "مخفی پشتِ نمونه‌کارها",
-      after: "صدای حرفه‌ای در حوزه",
-      oneLine: "از طراح گمنام به صدای مرجع در تجربه‌ی کاربری.",
+      before: "پشتِ نمونه‌کارها پنهان",
+      after: "صدای مرجع در حوزه",
+      oneLine: "امیر با کمپین‌های موضوعی، مخاطب مناسب خود را پیدا کرد و جایگاه حرفه‌ای‌اش تثبیت شد.",
+      quote: "وقتی طرزِ فکرم را گفتم، آدم‌های درست پیدایم کردند.",
+      metricLabel: "پروژه‌های ورودی",
+      metricValue: "۴ برابر",
     },
     {
       slug: "nazanin-k",
       name: "نازنین ک.",
       role: "مربی تغذیه",
-      before: "مشتریانِ تک‌جلسه‌ای",
-      after: "برنامه‌های گروهیِ پر",
-      oneLine: "از جلسات تک‌نفره به برنامه‌های گروهی سه‌ماهه با لیست انتظار.",
+      before: "جلسات پراکنده",
+      after: "برنامه‌های گروهی پر",
+      oneLine: "نازنین با روایت تخصصی و پیام یکپارچه، از فروش تک‌جلسه‌ای به برنامه‌های گروهی رسید.",
+      quote: "دیگر وقتم را نمی‌فروشم؛ تحول می‌فروشم.",
+      metricLabel: "درآمد ماهانه",
+      metricValue: "۲.۵ برابر",
     },
     {
       slug: "reza-m",
       name: "رضا م.",
-      role: "مربی فروش",
-      before: "تماس‌های بدون ساختار",
-      after: "فروش ماهانهٔ پایدار",
-      oneLine: "از تماس‌های پراکنده به سیستم فروش منظم با سات.",
+      role: "مدرس زبان",
+      before: "قیمت‌گذاری بر اساس رقبا",
+      after: "جایگاه پریمیوم",
+      oneLine: "رضا با تثبیت تخصص و روایت متمایز، از رقابت قیمتی خارج شد و به جایگاه پریمیوم رسید.",
+      quote: "وقتی فهمیدم چه چیزی‌ام منحصربه‌فرد است، قیمت دیگر بحث نبود.",
+      metricLabel: "نرخ هر دوره",
+      metricValue: "۳ برابر",
     },
   ] satisfies Transformation[],
 

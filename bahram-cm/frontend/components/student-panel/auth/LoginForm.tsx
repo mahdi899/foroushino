@@ -2,31 +2,54 @@
 
 import { useActionState, useState } from 'react';
 import { sendOtpAction, verifyOtpAction, loginPasswordAction, type OtpAuthState, type PasswordAuthState } from '@/lib/student/actions';
+import { MobileField } from './MobileField';
 
 const OTP_INITIAL: OtpAuthState = { step: 'mobile' };
 const PASSWORD_INITIAL: PasswordAuthState = {};
 
 export function LoginForm() {
   const [mode, setMode] = useState<'otp' | 'password'>('otp');
+  const [otpMobileValid, setOtpMobileValid] = useState(false);
+  const [passwordMobileValid, setPasswordMobileValid] = useState(false);
+  const [otpSubmitAttempted, setOtpSubmitAttempted] = useState(false);
+  const [passwordSubmitAttempted, setPasswordSubmitAttempted] = useState(false);
   const [otpState, sendOtp] = useActionState(sendOtpAction, OTP_INITIAL);
   const [verifyState, verifyOtp] = useActionState(verifyOtpAction, OTP_INITIAL);
   const [passwordState, loginPassword] = useActionState(loginPasswordAction, PASSWORD_INITIAL);
 
   const state = verifyState.mobile ? verifyState : otpState;
 
+  function blockInvalidMobile(
+    e: React.FormEvent<HTMLFormElement>,
+    valid: boolean,
+    setAttempted: (value: boolean) => void,
+  ) {
+    if (!valid) {
+      e.preventDefault();
+      setAttempted(true);
+    }
+  }
+
   if (mode === 'password') {
     return (
-      <form action={loginPassword} className="flex flex-col gap-4">
-        <div>
-          <label className="field-label" htmlFor="mobile-pw">شماره موبایل</label>
-          <input id="mobile-pw" name="mobile" type="tel" inputMode="numeric" placeholder="09xxxxxxxxx" className="field-input" required dir="ltr" />
-        </div>
+      <form
+        action={loginPassword}
+        className="flex flex-col gap-4"
+        onSubmit={(e) => blockInvalidMobile(e, passwordMobileValid, setPasswordSubmitAttempted)}
+      >
+        <MobileField
+          id="mobile-pw"
+          onValidityChange={setPasswordMobileValid}
+          showErrors={passwordSubmitAttempted}
+        />
         <div>
           <label className="field-label" htmlFor="password">رمز عبور</label>
           <input id="password" name="password" type="password" className="field-input" required />
         </div>
         {passwordState.error ? <p className="text-sm text-error">{passwordState.error}</p> : null}
-        <button type="submit" className="btn btn-primary">ورود</button>
+        <button type="submit" className="btn btn-primary" disabled={!passwordMobileValid}>
+          ورود
+        </button>
         <button type="button" onClick={() => setMode('otp')} className="btn btn-ghost text-sm">
           ورود با کد یک‌بارمصرف
         </button>
@@ -52,13 +75,21 @@ export function LoginForm() {
   }
 
   return (
-    <form action={sendOtp} className="flex flex-col gap-4">
-      <div>
-        <label className="field-label" htmlFor="mobile">شماره موبایل</label>
-        <input id="mobile" name="mobile" type="tel" inputMode="numeric" placeholder="09xxxxxxxxx" className="field-input" required dir="ltr" autoFocus />
-      </div>
+    <form
+      action={sendOtp}
+      className="flex flex-col gap-4"
+      onSubmit={(e) => blockInvalidMobile(e, otpMobileValid, setOtpSubmitAttempted)}
+    >
+      <MobileField
+        id="mobile"
+        autoFocus
+        onValidityChange={setOtpMobileValid}
+        showErrors={otpSubmitAttempted}
+      />
       {otpState.error ? <p className="text-sm text-error">{otpState.error}</p> : null}
-      <button type="submit" className="btn btn-primary">دریافت کد ورود</button>
+      <button type="submit" className="btn btn-primary" disabled={!otpMobileValid}>
+        دریافت کد ورود
+      </button>
       <button type="button" onClick={() => setMode('password')} className="btn btn-ghost text-sm">
         ورود با رمز عبور
       </button>

@@ -7,11 +7,9 @@ import {
   DEFAULT_AI_CONFIG,
   DEFAULT_IMAGE_SETTINGS,
   DEFAULT_CHATBOT_AI_SETTINGS,
-  DEFAULT_CONSULTATION_AI_SETTINGS,
   defaultProviders,
   providerMeta,
   type AiChatbotSettings,
-  type AiConsultationSettings,
   type AiConfig,
   type AiConfigAdminView,
   type AiImageSettings,
@@ -53,23 +51,6 @@ function mergeConfig(raw: (Partial<AiConfig> & { openai?: Partial<AiProviderConf
       baseUrl: raw?.image?.baseUrl?.trim() || undefined,
     },
     chatbot: mergeChatbotConfig(raw?.chatbot),
-    consultation: mergeConsultationConfig(raw?.consultation),
-  };
-}
-
-function mergeConsultationConfig(raw: Partial<AiConsultationSettings> | null | undefined): AiConsultationSettings {
-  const provider = raw?.provider ?? DEFAULT_CONSULTATION_AI_SETTINGS.provider;
-  const meta = providerMeta(provider);
-  return {
-    enabled: raw?.enabled ?? DEFAULT_CONSULTATION_AI_SETTINGS.enabled,
-    provider,
-    model: raw?.model?.trim() || DEFAULT_CONSULTATION_AI_SETTINGS.model || meta.defaultModel,
-    baseUrl: raw?.baseUrl?.trim() || DEFAULT_CONSULTATION_AI_SETTINGS.baseUrl || meta.defaultBaseUrl,
-    temperature: Number.isFinite(raw?.temperature)
-      ? Math.min(2, Math.max(0, raw!.temperature!))
-      : DEFAULT_CONSULTATION_AI_SETTINGS.temperature,
-    apiKeys: raw?.apiKeys ?? {},
-    customInstructions: raw?.customInstructions?.trim() || '',
   };
 }
 
@@ -106,17 +87,6 @@ function chatbotEnvKeyFor(provider: AiProvider): string | null {
   return val || null;
 }
 
-function consultationEnvKeyFor(provider: AiProvider): string | null {
-  const dedicated: Record<AiProvider, string> = {
-    openai: 'CONSULTATION_OPENAI_API_KEY',
-    gemini: 'CONSULTATION_GEMINI_API_KEY',
-    anthropic: 'CONSULTATION_ANTHROPIC_API_KEY',
-    custom: 'CONSULTATION_CUSTOM_API_KEY',
-  };
-  const val = process.env[dedicated[provider]]?.trim();
-  return val || null;
-}
-
 function resolveChatbotApiKey(config: AiConfig, provider: AiProvider): {
   apiKey: string | null;
   keySource: 'panel' | 'env' | 'none';
@@ -124,17 +94,6 @@ function resolveChatbotApiKey(config: AiConfig, provider: AiProvider): {
   const panelKey = config.chatbot?.apiKeys?.[provider]?.trim();
   if (panelKey) return { apiKey: panelKey, keySource: 'panel' };
   const envKey = chatbotEnvKeyFor(provider);
-  if (envKey) return { apiKey: envKey, keySource: 'env' };
-  return { apiKey: null, keySource: 'none' };
-}
-
-function resolveConsultationApiKey(config: AiConfig, provider: AiProvider): {
-  apiKey: string | null;
-  keySource: 'panel' | 'env' | 'none';
-} {
-  const panelKey = config.consultation?.apiKeys?.[provider]?.trim();
-  if (panelKey) return { apiKey: panelKey, keySource: 'panel' };
-  const envKey = consultationEnvKeyFor(provider);
   if (envKey) return { apiKey: envKey, keySource: 'env' };
   return { apiKey: null, keySource: 'none' };
 }
@@ -184,10 +143,6 @@ export async function getAiConfigAdminView(): Promise<AiConfigAdminView> {
   const chatbotKey = chatbot.apiKeys?.[chatbot.provider]?.trim();
   const chatbotKeyResolved = resolveChatbotApiKey(config, chatbot.provider);
 
-  const consultation = config.consultation ?? { ...DEFAULT_CONSULTATION_AI_SETTINGS };
-  const consultationKey = consultation.apiKeys?.[consultation.provider]?.trim();
-  const consultationKeyResolved = resolveConsultationApiKey(config, consultation.provider);
-
   return {
     enabled: config.enabled,
     provider: config.provider,
@@ -210,13 +165,6 @@ export async function getAiConfigAdminView(): Promise<AiConfigAdminView> {
       apiKeyPreview: chatbotKey ? maskApiKey(chatbotKey) : null,
       envFallback: chatbotKeyResolved.keySource === 'env',
       keySource: chatbotKeyResolved.keySource,
-    },
-    consultation,
-    consultationKeys: {
-      hasApiKey: Boolean(consultationKey),
-      apiKeyPreview: consultationKey ? maskApiKey(consultationKey) : null,
-      envFallback: consultationKeyResolved.keySource === 'env',
-      keySource: consultationKeyResolved.keySource,
     },
   };
 }
@@ -315,64 +263,6 @@ function resolveChatbotRuntimeFromConfig(config: AiConfig): ResolvedAiRuntime {
   };
 }
 
-/** Runtime config for smart consultation estimate — uses consultation-only API keys. */
-export async function getResolvedConsultationAiRuntime(): Promise<ResolvedAiRuntime> {
-  const config = await getStoredAiConfig();
-  return resolveConsultationRuntimeFromConfig(config);
-}
-
-export async function getResolvedConsultationAiRuntimeFromDraft(input: {
-  enabled: boolean;
-  provider: AiProvider;
-  model: string;
-  baseUrl: string;
-  temperature: number;
-  apiKeyInput?: string;
-}): Promise<ResolvedAiRuntime> {
-  const stored = await getStoredAiConfig();
-  const provider = input.provider;
-  const draftKey = input.apiKeyInput?.trim();
-  const storedKey = stored.consultation?.apiKeys?.[provider]?.trim();
-  const envKey = consultationEnvKeyFor(provider);
-  const apiKey = draftKey || storedKey || envKey || null;
-  const keySource: AiConfigAdminView['consultationKeys']['keySource'] =
-    draftKey || storedKey ? 'panel' : envKey ? 'env' : 'none';
-  const meta = providerMeta(provider);
-
-  return {
-    enabled: input.enabled && Boolean(apiKey),
-    provider,
-    apiStyle: meta.apiStyle,
-    keySource,
-    active: {
-      model: input.model.trim() || meta.defaultModel,
-      baseUrl: input.baseUrl.trim() || meta.defaultBaseUrl,
-      temperature: input.temperature,
-      apiKey,
-    },
-  };
-}
-
-function resolveConsultationRuntimeFromConfig(config: AiConfig): ResolvedAiRuntime {
-  const consultation = config.consultation ?? { ...DEFAULT_CONSULTATION_AI_SETTINGS };
-  const provider = consultation.provider;
-  const meta = providerMeta(provider);
-  const { apiKey, keySource } = resolveConsultationApiKey(config, provider);
-
-  return {
-    enabled: consultation.enabled && Boolean(apiKey),
-    provider,
-    apiStyle: meta.apiStyle,
-    keySource,
-    active: {
-      model: consultation.model || meta.defaultModel,
-      baseUrl: consultation.baseUrl || meta.defaultBaseUrl,
-      temperature: consultation.temperature,
-      apiKey,
-    },
-  };
-}
-
 /** Runtime config for server-side article/text AI calls. */
 export async function getResolvedAiRuntime(): Promise<ResolvedAiRuntime> {
   const config = await getStoredAiConfig();
@@ -442,11 +332,6 @@ export interface SaveAiTextConfigInput {
 
 export interface SaveAiChatbotConfigInput {
   chatbot: Pick<AiChatbotSettings, 'provider' | 'model' | 'baseUrl' | 'temperature'>;
-  apiKeyInput?: string;
-}
-
-export interface SaveAiConsultationConfigInput {
-  consultation: Pick<AiConsultationSettings, 'enabled' | 'provider' | 'model' | 'baseUrl' | 'temperature' | 'customInstructions'>;
   apiKeyInput?: string;
 }
 
@@ -560,7 +445,6 @@ export async function saveAiTextConfig(input: SaveAiTextConfigInput): Promise<{ 
     providers,
     image: current.image ?? { ...DEFAULT_IMAGE_SETTINGS },
     chatbot: current.chatbot ?? { ...DEFAULT_CHATBOT_AI_SETTINGS },
-    consultation: current.consultation ?? { ...DEFAULT_CONSULTATION_AI_SETTINGS },
   };
 
   return saveSettingBlob(AI_GROUP, AI_KEY, config);
@@ -584,7 +468,7 @@ export async function saveAiImageConfig(input: SaveAiImageConfigInput): Promise<
   if (openaiInput) image.openaiApiKey = openaiInput;
   else if (prev.openaiApiKey) image.openaiApiKey = prev.openaiApiKey;
 
-  return saveSettingBlob(AI_GROUP, AI_KEY, { ...current, image, chatbot: current.chatbot ?? { ...DEFAULT_CHATBOT_AI_SETTINGS }, consultation: current.consultation ?? { ...DEFAULT_CONSULTATION_AI_SETTINGS } });
+  return saveSettingBlob(AI_GROUP, AI_KEY, { ...current, image, chatbot: current.chatbot ?? { ...DEFAULT_CHATBOT_AI_SETTINGS } });
 }
 
 export async function saveAiChatbotConfig(input: SaveAiChatbotConfigInput): Promise<{ ok: boolean; error?: string }> {
@@ -607,32 +491,7 @@ export async function saveAiChatbotConfig(input: SaveAiChatbotConfigInput): Prom
     apiKeys,
   };
 
-  return saveSettingBlob(AI_GROUP, AI_KEY, { ...current, chatbot, consultation: current.consultation ?? { ...DEFAULT_CONSULTATION_AI_SETTINGS } });
-}
-
-export async function saveAiConsultationConfig(input: SaveAiConsultationConfigInput): Promise<{ ok: boolean; error?: string }> {
-  const current = await getStoredAiConfig();
-  const prev = current.consultation ?? { ...DEFAULT_CONSULTATION_AI_SETTINGS };
-  const provider = input.consultation.provider;
-  const meta = providerMeta(provider);
-
-  const apiKeys: Partial<Record<AiProvider, string>> = { ...(prev.apiKeys ?? {}) };
-  const nextKey = input.apiKeyInput?.trim();
-  if (nextKey) apiKeys[provider] = nextKey;
-
-  const consultation: AiConsultationSettings = {
-    enabled: input.consultation.enabled,
-    provider,
-    model: input.consultation.model.trim() || meta.defaultModel,
-    baseUrl: input.consultation.baseUrl.trim() || meta.defaultBaseUrl,
-    temperature: Number.isFinite(input.consultation.temperature)
-      ? Math.min(2, Math.max(0, input.consultation.temperature))
-      : prev.temperature,
-    apiKeys,
-    customInstructions: input.consultation.customInstructions?.trim() || '',
-  };
-
-  return saveSettingBlob(AI_GROUP, AI_KEY, { ...current, consultation });
+  return saveSettingBlob(AI_GROUP, AI_KEY, { ...current, chatbot });
 }
 
 export async function saveAiConfig(input: SaveAiConfigInput): Promise<{ ok: boolean; error?: string }> {

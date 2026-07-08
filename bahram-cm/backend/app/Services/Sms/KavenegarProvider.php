@@ -3,25 +3,29 @@
 namespace App\Services\Sms;
 
 use App\Contracts\SmsProviderContract;
-use App\Models\SmsSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Adapter around the Kavenegar SMS API. Kept as an alternate driver option
- * behind the shared SmsProviderContract abstraction.
+ * Adapter around the Kavenegar SMS API.
  */
 class KavenegarProvider implements SmsProviderContract
 {
-    public function __construct(private readonly SmsSetting $settings) {}
+    public function __construct(private readonly SmsProviderConfig $config) {}
 
     public function send(string $mobile, string $message): array
     {
+        $apiKey = (string) $this->config->credentials;
+
+        if (blank($apiKey)) {
+            return ['success' => false, 'message' => 'کلید API کاوه‌نگار تنظیم نشده است.', 'raw' => null];
+        }
+
         try {
-            $response = Http::timeout(20)->get("https://api.kavenegar.com/v1/{$this->settings->sms_api_key}/sms/send.json", array_filter([
+            $response = Http::timeout(20)->get("https://api.kavenegar.com/v1/{$apiKey}/sms/send.json", array_filter([
                 'receptor' => $mobile,
-                'sender' => $this->settings->sms_sender_number,
+                'sender' => $this->config->senderNumber,
                 'message' => $message,
             ]));
         } catch (Throwable $e) {
@@ -44,7 +48,7 @@ class KavenegarProvider implements SmsProviderContract
 
     public function testConnection(): array
     {
-        if (blank($this->settings->sms_api_key)) {
+        if (blank($this->config->credentials)) {
             return ['success' => false, 'message' => 'کلید API کاوه‌نگار وارد نشده است.'];
         }
 

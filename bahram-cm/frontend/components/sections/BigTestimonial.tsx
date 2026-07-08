@@ -17,32 +17,13 @@ type ResultItem = {
   photo: string;
 };
 
-const resultMeta = [
-  {
-    quote: "برای اولین بار محتوایم مسیر پیوسته گرفت؛ سه ماه بعد، لیست انتظار.",
-    metric: { value: "۴.۲×", label: "درآمد ماهانه" },
-  },
-  {
-    quote: "از پشت نمونه‌کارها بیرون آمدم؛ الان صدای حرفه‌ای خودم را می‌سازم.",
-    metric: { value: "۵×", label: "نقش رسانه‌ای" },
-  },
-  {
-    quote: "از جلسات تک‌نفره به گروه‌های پر رسیدم؛ کمپین برایم ساختار شد.",
-    metric: { value: "۶×", label: "ظرفیت گروه" },
-  },
-  {
-    quote: "سات فروش را برایم قابل پیگیری کرد؛ هر تماس یک قدم مشخص دارد.",
-    metric: { value: "۳.۵×", label: "نرخ تبدیل" },
-  },
-] as const;
-
-const results: ResultItem[] = site.transformations.map((item, i) => ({
+const results: ResultItem[] = site.transformations.map((item) => ({
   slug: item.slug,
   name: item.name,
   role: item.role,
   after: item.after,
-  quote: resultMeta[i]!.quote,
-  metric: resultMeta[i]!.metric,
+  quote: item.quote,
+  metric: { value: item.metricValue, label: item.metricLabel },
   photo: caseStudyPortrait(item.slug),
 }));
 

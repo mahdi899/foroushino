@@ -97,6 +97,15 @@ export default async function TransformationDetailPage({
             </div>
           </Reveal>
 
+          {item.metricValue && item.metricLabel ? (
+            <Reveal delay={0.12}>
+              <div className="mt-6 inline-flex items-baseline gap-2 rounded-pill border border-gold/25 bg-gold/10 px-4 py-2">
+                <span className="font-display text-h3 font-semibold text-gold num-latin">{item.metricValue}</span>
+                <span className="text-caption text-bone-dim">{item.metricLabel}</span>
+              </div>
+            </Reveal>
+          ) : null}
+
           <Reveal delay={0.08}>
             <Quote className="mt-8 h-8 w-8 text-gold/50 md:mt-12" strokeWidth={1.4} aria-hidden />
           </Reveal>

@@ -5,12 +5,16 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Jobs\SendSmsJob;
 use App\Models\Order;
+use App\Models\Payment;
+use App\Services\OrderAnalyticsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
 {
+    public function __construct(private readonly OrderAnalyticsService $analytics) {}
+
     public function index(Request $request): JsonResponse
     {
         $query = Order::query()->with('product')->orderByDesc('id');
@@ -44,11 +48,28 @@ class OrderController extends Controller
         ]);
     }
 
+    public function analytics(Request $request): JsonResponse
+    {
+        $daysInput = $request->input('days');
+        $days = $daysInput === 'all' || $daysInput === null || $daysInput === ''
+            ? null
+            : max(1, min(365, (int) $daysInput));
+
+        return response()->json(['data' => $this->analytics->report($days)]);
+    }
+
     public function show(Order $order): JsonResponse
     {
-        $order->load(['product', 'payments']);
+        $order->load([
+            'product',
+            'payments' => fn ($q) => $q->orderByDesc('id'),
+            'spotplayerLicense',
+            'courseAccess',
+            'user:id,name,mobile',
+            'referralConversion.referrer:id,name,mobile',
+        ]);
 
-        return response()->json(['data' => $this->payload($order, true)]);
+        return response()->json(['data' => $this->detailedPayload($order)]);
     }
 
     public function update(Request $request, Order $order): JsonResponse
@@ -59,9 +80,16 @@ class OrderController extends Controller
         ]);
 
         $order->update($data);
-        $order->load(['product', 'payments']);
+        $order->load([
+            'product',
+            'payments' => fn ($q) => $q->orderByDesc('id'),
+            'spotplayerLicense',
+            'courseAccess',
+            'user:id,name,mobile',
+            'referralConversion.referrer:id,name,mobile',
+        ]);
 
-        return response()->json(['data' => $this->payload($order, true)]);
+        return response()->json(['data' => $this->detailedPayload($order)]);
     }
 
     public function resendSms(Order $order): JsonResponse
@@ -99,6 +127,72 @@ class OrderController extends Controller
             'paid_at' => $order->paid_at?->toIso8601String(),
             'created_at' => $order->created_at?->toIso8601String(),
             'payment_ref_id' => $latestPayment?->ref_id,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function detailedPayload(Order $order): array
+    {
+        return [
+            ...$this->payload($order, true),
+            'user_id' => $order->user_id,
+            'user_name' => $order->user?->name,
+            'user_mobile' => $order->user?->mobile,
+            'referral_code' => $order->referral_code,
+            'customer_extra_data' => $order->customer_extra_data,
+            'product' => $order->product ? [
+                'id' => $order->product->id,
+                'title' => $order->product->title,
+                'spotplayer_course_id' => $order->product->spotplayer_course_id,
+                'spotplayer_product_id' => $order->product->spotplayer_product_id,
+            ] : null,
+            'payments' => $order->payments->map(fn (Payment $p) => $this->paymentPayload($p))->values()->all(),
+            'spotplayer_license' => $order->spotplayerLicense ? [
+                'id' => $order->spotplayerLicense->id,
+                'license_key' => $order->spotplayerLicense->license_key,
+                'license_url' => $order->spotplayerLicense->license_url,
+                'spotplayer_course_id' => $order->spotplayerLicense->spotplayer_course_id,
+                'device_limit' => $order->spotplayerLicense->device_limit,
+                'status' => $order->spotplayerLicense->status->value,
+            ] : null,
+            'course_access' => $order->courseAccess ? [
+                'id' => $order->courseAccess->id,
+                'status' => $order->courseAccess->status->value,
+                'source' => $order->courseAccess->source->value,
+                'access_type' => $order->courseAccess->access_type,
+                'activated_at' => $order->courseAccess->activated_at?->toIso8601String(),
+            ] : null,
+            'referral_conversion' => $order->referralConversion ? [
+                'id' => $order->referralConversion->id,
+                'status' => $order->referralConversion->status->value,
+                'cashback_amount' => $order->referralConversion->cashback_amount,
+                'referrer_name' => $order->referralConversion->referrer?->name,
+                'referrer_mobile' => $order->referralConversion->referrer?->mobile,
+            ] : null,
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    private function paymentPayload(Payment $payment): array
+    {
+        $isSandbox = str_starts_with((string) $payment->authority, 'DEV-')
+            || data_get($payment->verify_payload, 'dev_mode')
+            || data_get($payment->request_payload, 'dev_mode');
+
+        return [
+            'id' => $payment->id,
+            'gateway' => $payment->gateway,
+            'gateway_label' => $payment->gateway === 'zarinpal' ? 'زرین‌پال' : $payment->gateway,
+            'mode' => $isSandbox ? 'sandbox' : 'live',
+            'mode_label' => $isSandbox ? 'تست / سندباکس' : 'واقعی',
+            'authority' => $payment->authority,
+            'ref_id' => $payment->ref_id,
+            'amount' => $payment->amount,
+            'status' => $payment->status,
+            'card_pan' => data_get($payment->verify_payload, 'data.card_pan'),
+            'verify_code' => data_get($payment->verify_payload, 'data.code'),
+            'paid_at' => $payment->paid_at?->toIso8601String(),
+            'created_at' => $payment->created_at?->toIso8601String(),
         ];
     }
 }

@@ -3,19 +3,20 @@ import { adminFetch } from '@/lib/auth/session';
 import type {
   AdminFaq,
   AdminOrder,
+  AdminOrderDetail,
   AdminProduct,
   AdminStudentTestimonial,
+  OrderAnalytics,
   PaymentSettingsData,
-  SmsSpotplayerSettingsData,
 } from './commerceTypes';
 
 export type {
   AdminFaq,
   AdminOrder,
+  AdminOrderDetail,
   AdminProduct,
   AdminStudentTestimonial,
   PaymentSettingsData,
-  SmsSpotplayerSettingsData,
 } from './commerceTypes';
 
 export { ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS, formatToman } from './commerceTypes';
@@ -55,12 +56,26 @@ export async function getOrders(): Promise<{ items: AdminOrder[]; error: string 
   }
 }
 
-export async function getOrder(id: number): Promise<AdminOrder | null> {
+export async function getOrder(id: number): Promise<AdminOrderDetail | null> {
   try {
-    const res = await adminFetch<{ data: AdminOrder }>(`/orders/${id}`);
+    const res = await adminFetch<{ data: AdminOrderDetail }>(`/orders/${id}`);
     return res.data;
   } catch {
     return null;
+  }
+}
+
+export async function getOrderAnalytics(days: number | 'all' = 30): Promise<{
+  data: OrderAnalytics | null;
+  error: string | null;
+}> {
+  try {
+    const res = await adminFetch<{ data: OrderAnalytics }>('/orders/analytics', {
+      query: { days: days === 'all' ? 'all' : days },
+    });
+    return { data: res.data, error: null };
+  } catch (e) {
+    return { data: null, error: commerceErrorMessage(e) };
   }
 }
 
@@ -103,15 +118,6 @@ export async function getStudentTestimonial(id: number): Promise<AdminStudentTes
 export async function getPaymentSettings(): Promise<PaymentSettingsData | null> {
   try {
     const res = await adminFetch<{ data: PaymentSettingsData }>('/panel/payment-settings');
-    return res.data;
-  } catch {
-    return null;
-  }
-}
-
-export async function getSmsSpotplayerSettings(): Promise<SmsSpotplayerSettingsData | null> {
-  try {
-    const res = await adminFetch<{ data: SmsSpotplayerSettingsData }>('/panel/sms-spotplayer-settings');
     return res.data;
   } catch {
     return null;

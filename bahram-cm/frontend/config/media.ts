@@ -11,8 +11,18 @@ export const FOUNDER_IMAGE = siteStorageMedia('founder-portrait.svg');
 export const LOGO_IMAGE = siteStorageMedia('logo.svg');
 
 export const SITE_MEDIA: Record<string, { src: string; label: string; category: string }> = {
-  'hero-ambient': { src: siteStorageMedia('hero-ambient.svg'), label: 'پس‌زمینه هیرو', category: 'صفحه اصلی' },
-  'hero-light': { src: siteStorageMedia('hero-ambient-light.svg'), label: 'هیرو روشن', category: 'صفحه اصلی' },
+  'hero-ambient': { src: siteStorageMedia('hero-ambient.svg'), label: 'پس‌زمینه هیرو (گرافیک)', category: 'صفحه اصلی' },
+  'hero-light': { src: siteStorageMedia('hero-ambient-light.svg'), label: 'هیرو روشن (گرافیک)', category: 'صفحه اصلی' },
+  'hero-background': {
+    src: '/storage/media/2026/07/01kwwk4bm4900qv599k0qxw4mw.jpg',
+    label: 'پس‌زمینه هیرو — دسکتاپ',
+    category: 'صفحه اصلی',
+  },
+  'hero-background-mobile': {
+    src: '/storage/media/2026/07/01kwwk58kyxqdhn3vz6aaz5610.jpg',
+    label: 'پس‌زمینه هیرو — موبایل',
+    category: 'صفحه اصلی',
+  },
   'founder': { src: siteStorageMedia('founder-portrait.svg'), label: 'تصویر بهرام', category: 'درباره' },
   'logo': { src: siteStorageMedia('logo.svg'), label: 'لوگو', category: 'برند' },
   'og-default': { src: siteStorageMedia('og-default.svg'), label: 'تصویر اشتراک‌گذاری', category: 'سئو' },

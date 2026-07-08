@@ -100,12 +100,13 @@ class DatabaseSeeder extends Seeder
         ]);
 
         SmsSetting::current()->update([
-            'sms_provider' => 'kavenegar',
+            'sms_provider' => 'melipayamak',
             'purchase_message_template' => 'کاربر عزیز، خرید شما با موفقیت ثبت شد. کد دسترسی شما: {code}',
         ]);
 
         SpotplayerSetting::current();
 
+        $this->call(SmsCenterSeeder::class);
         $this->call(CacheIntegrationsSeeder::class);
         $this->call(CommerceSeeder::class);
     }

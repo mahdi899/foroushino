@@ -3,7 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { adminFetch } from '@/lib/auth/session';
 import { aiChatCompletionWithRuntime } from '@/lib/ai/client';
-import { getAiConfigAdminView, getResolvedAiRuntimeFromDraft, getResolvedChatbotAiRuntimeFromDraft, getResolvedConsultationAiRuntimeFromDraft, getResolvedImageSettingsFromDraft, saveAiChatbotConfig, saveAiConsultationConfig, saveAiImageConfig, saveAiTextConfig, type SaveAiChatbotConfigInput, type SaveAiConsultationConfigInput, type SaveAiImageConfigInput, type SaveAiTextConfigInput } from '@/lib/ai/settings';
+import { getAiConfigAdminView, getResolvedAiRuntimeFromDraft, getResolvedChatbotAiRuntimeFromDraft, getResolvedImageSettingsFromDraft, saveAiChatbotConfig, saveAiImageConfig, saveAiTextConfig, type SaveAiChatbotConfigInput, type SaveAiImageConfigInput, type SaveAiTextConfigInput } from '@/lib/ai/settings';
 import { adminViewToForm } from '@/lib/captcha/form';
 import {
   getCaptchaConfigAdminView,
@@ -77,37 +77,6 @@ export async function persistAiChatbotSettings(
   const res = await saveAiChatbotConfig(input);
   if (res.ok) revalidateTag('settings', 'max');
   return res;
-}
-
-export async function persistAiConsultationSettings(
-  input: SaveAiConsultationConfigInput,
-): Promise<{ ok: boolean; error?: string }> {
-  const res = await saveAiConsultationConfig(input);
-  if (res.ok) revalidateTag('settings', 'max');
-  return res;
-}
-
-export async function testConsultationConnection(input: SaveAiConsultationConfigInput): Promise<
-  | { ok: true; model: string; provider: string }
-  | { ok: false; error: string; detail?: AiErrorDetail }
-> {
-  const runtime = await getResolvedConsultationAiRuntimeFromDraft({
-    enabled: input.consultation.enabled,
-    provider: input.consultation.provider,
-    model: input.consultation.model,
-    baseUrl: input.consultation.baseUrl,
-    temperature: input.consultation.temperature,
-    apiKeyInput: input.apiKeyInput,
-  });
-  const res = await aiChatCompletionWithRuntime(runtime, {
-    messages: [
-      { role: 'system', content: 'Reply with exactly: ok' },
-      { role: 'user', content: 'ping' },
-    ],
-    temperature: 0,
-  });
-  if (!res.ok) return { ok: false, error: res.error, detail: res.detail };
-  return { ok: true, model: res.model, provider: res.provider };
 }
 
 export async function testChatbotConnection(input: SaveAiChatbotConfigInput): Promise<
@@ -315,4 +284,9 @@ export async function fetchGeminiModels(input?: {
 
   const filter = input?.filter ?? 'all';
   return { ok: true, models: filterGeminiModels(res.models, filter) };
+}
+
+export async function loadSmsRoutingConfig() {
+  const { loadSmsCenterConfig } = await import('@/lib/admin/smsCenter');
+  return loadSmsCenterConfig();
 }

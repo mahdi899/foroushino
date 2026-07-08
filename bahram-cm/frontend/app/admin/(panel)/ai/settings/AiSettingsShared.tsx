@@ -8,7 +8,6 @@ import {
   Loader2,
   MessageSquare,
   Save,
-  Sparkles,
   Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,7 +16,6 @@ export const AI_SECTION_NAV = [
   { id: 'ai', label: 'متن و مقاله', icon: Bot },
   { id: 'ai-image', label: 'تولید تصویر', icon: ImageIcon },
   { id: 'ai-chatbot', label: 'چت‌بات', icon: MessageSquare },
-  { id: 'ai-consultation', label: 'برآورد مشاوره', icon: Sparkles },
 ] as const;
 
 export function AiOverviewCards({
@@ -26,7 +24,7 @@ export function AiOverviewCards({
   items: { label: string; value: string; ok: boolean; icon: LucideIcon }[];
 }) {
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
       {items.map((item) => {
         const Icon = item.icon;
         return (

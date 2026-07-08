@@ -51,18 +51,6 @@ export async function submitPricingLead(payload: PricingLeadPayload): Promise<{ 
   return res.data;
 }
 
-export async function saveConsultationEstimate(
-  leadId: number,
-  phone: string,
-  estimate: string,
-): Promise<void> {
-  // Called from server actions — use internal API URL, not browser public URL.
-  await apiFetch(`/leads/${leadId}/consultation-estimate`, {
-    method: 'POST',
-    body: { phone, estimate },
-  });
-}
-
 export async function uploadPhoto(file: File, leadId: number): Promise<{ id: number }> {
   const { PUBLIC_API_URL } = await import('./config');
   const fd = new FormData();

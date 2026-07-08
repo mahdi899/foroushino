@@ -4,8 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\SmsEventConfig;
+use App\Models\SmsProvider;
 use App\Models\SmsSetting;
 use App\Services\SmsService;
+use Database\Seeders\SmsCenterSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -13,6 +16,36 @@ use Tests\TestCase;
 class SmsServiceTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(SmsCenterSeeder::class);
+    }
+
+    private function configureKavenegar(): void
+    {
+        SmsProvider::query()->where('slug', 'kavenegar')->first()?->update([
+            'is_active' => true,
+            'credentials' => 'test-kavenegar-key',
+            'sender_number' => '10001234',
+        ]);
+
+        SmsSetting::current()->update([
+            'is_sms_active' => true,
+            'primary_provider_slug' => 'kavenegar',
+            'sms_provider' => 'kavenegar',
+            'sms_api_key' => 'test-kavenegar-key',
+            'sms_sender_number' => '10001234',
+            'fallback_enabled' => false,
+        ]);
+
+        SmsEventConfig::forKey('purchase_confirmation')?->update([
+            'is_enabled' => true,
+            'message_template' => 'سلام {name}، سفارش {order_number} با موفقیت ثبت شد.',
+            'fallback_enabled' => false,
+        ]);
+    }
 
     private function makeOrder(): Order
     {
@@ -38,12 +71,7 @@ class SmsServiceTest extends TestCase
 
     public function test_purchase_confirmation_sms_is_sent_when_configured(): void
     {
-        SmsSetting::current()->update([
-            'is_sms_active' => true,
-            'sms_api_key' => 'test-kavenegar-key',
-            'sms_sender_number' => '10001234',
-            'purchase_message_template' => 'سلام {name}، سفارش {order_number} با موفقیت ثبت شد.',
-        ]);
+        $this->configureKavenegar();
 
         Http::fake([
             'api.kavenegar.com/*' => Http::response([
@@ -76,10 +104,7 @@ class SmsServiceTest extends TestCase
 
     public function test_sms_send_failure_is_handled_gracefully(): void
     {
-        SmsSetting::current()->update([
-            'is_sms_active' => true,
-            'sms_api_key' => 'test-kavenegar-key',
-        ]);
+        $this->configureKavenegar();
 
         Http::fake([
             'api.kavenegar.com/*' => Http::response([

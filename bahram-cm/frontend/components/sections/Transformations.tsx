@@ -4,37 +4,13 @@ import { Reveal } from "@/components/motion/Reveal";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
-import { sitePhotos } from "@/lib/site-photo-paths";
+import { site } from "@/content/site";
+import { caseStudyPortrait } from "@/lib/site-photo-paths";
 
-const items = [
-  {
-    slug: "sara-r",
-    name: "سارا ر.",
-    role: "مشاور کسب‌وکار",
-    avatar: sitePhotos.testimonialPortrait[0]!,
-    before: "مخاطبِ خاموش، درآمدِ ناپایدار",
-    after: "کمپینِ ماهانه، فهرستِ انتظار سه‌ماهه",
-    one: "از مشاوره‌ی پراکنده، به یک برندِ شخصی با کمپینِ ماهانه و فهرستِ انتظار.",
-  },
-  {
-    slug: "amir-h",
-    name: "امیر ه.",
-    role: "طراح تجربه",
-    avatar: sitePhotos.testimonialPortrait[1]!,
-    before: "مخفی پشتِ نمونه‌کارها",
-    after: "صدای حرفه‌ای در حوزه",
-    one: "از طراحِ گمنام، به یکی از صداهای مرجعِ تجربه‌ی کاربری.",
-  },
-  {
-    slug: "nazanin-k",
-    name: "نازنین ک.",
-    role: "مربی تغذیه",
-    avatar: sitePhotos.testimonialPortrait[2]!,
-    before: "مشتریانِ تک‌جلسه‌ای",
-    after: "برنامه‌های گروهیِ پر",
-    one: "از جلسات تک‌نفره، به برنامه‌های گروهیِ سه‌ماهه با لیست انتظار.",
-  },
-];
+const items = site.transformations.map((item) => ({
+  ...item,
+  avatar: caseStudyPortrait(item.slug),
+}));
 
 export function Transformations() {
   return (
@@ -50,11 +26,11 @@ export function Transformations() {
         </Reveal>
         <Reveal delay={0.16}>
           <p className="mt-5 max-w-2xl text-bone-dim">
-            سه مثال کوتاه از کسانی که مسیر را جدی گرفتند و خروجی ساختاری به‌دست آوردند.
+            چهار مثال از کسانی که مسیر را جدی گرفتند و خروجی ساختاری به‌دست آوردند.
           </p>
         </Reveal>
 
-        <div className="mt-12 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 md:grid md:snap-none md:grid-cols-3 md:overflow-visible md:pb-0">
+        <div className="mt-12 flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 md:grid md:snap-none md:grid-cols-2 md:overflow-visible md:pb-0 lg:grid-cols-4">
           {items.map((item, idx) => (
             <Reveal
               key={item.slug}
@@ -84,7 +60,14 @@ export function Transformations() {
                   </div>
                 </dl>
 
-                <p className="mt-5 border-t border-bone/10 pt-5 text-bone-dim">{item.one}</p>
+                <p className="mt-5 border-t border-bone/10 pt-5 text-bone-dim">{item.oneLine}</p>
+
+                {item.metricValue && item.metricLabel ? (
+                  <p className="mt-4 font-display text-sm font-semibold text-gold num-latin">
+                    {item.metricValue}
+                    <span className="me-1 font-normal text-mist"> {item.metricLabel}</span>
+                  </p>
+                ) : null}
 
                 <Link
                   href={`/transformations/${item.slug}`}

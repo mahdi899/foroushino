@@ -131,8 +131,10 @@ export type AdminSmsLog = {
   mobile: string;
   user_name: string | null;
   message: string;
+  event_key: string | null;
   provider: string | null;
   status: string;
+  is_fallback_attempt?: boolean;
   sent_at: string | null;
   created_at: string | null;
 };

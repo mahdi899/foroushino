@@ -37,6 +37,30 @@ export function isValidIranMobile(input: string): boolean {
   return /^09\d{9}$/.test(digits);
 }
 
+/** Returns a user-facing error while typing, or null when input is empty or still valid-in-progress. */
+export function getIranMobileInputError(input: string): string | null {
+  const digits = sanitizePhoneInput(input);
+  if (!digits) return null;
+
+  if (digits.length > 11) {
+    return 'شماره موبایل باید ۱۱ رقم باشد';
+  }
+
+  if (digits[0] !== '0') {
+    return 'شماره موبایل باید با ۰۹ شروع شود';
+  }
+
+  if (digits.length >= 2 && digits[1] !== '9') {
+    return 'شماره موبایل باید با ۰۹ شروع شود';
+  }
+
+  if (digits.length < 11) {
+    return null;
+  }
+
+  return /^09\d{9}$/.test(digits) ? null : 'شماره موبایل نامعتبر است';
+}
+
 export function phoneSavedKey(sessionId: string): string {
   return `${PHONE_SAVED_PREFIX}${sessionId}`;
 }

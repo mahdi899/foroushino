@@ -3,20 +3,11 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { adminFetch } from '@/lib/auth/session';
 import { revalidatePublicContent, revalidateTestimonialSurfaces } from '@/lib/cache/contentRevalidation';
-import type { AdminFaq, AdminOrder, AdminProduct, AdminStudentTestimonial, PaymentSettingsData, SmsSpotplayerSettingsData } from '@/lib/admin/commerceTypes';
+import type { AdminFaq, AdminOrder, AdminProduct, AdminStudentTestimonial, PaymentSettingsData } from '@/lib/admin/commerceTypes';
 
 export async function loadPaymentSettingsAction(): Promise<PaymentSettingsData | null> {
   try {
     const res = await adminFetch<{ data: PaymentSettingsData }>('/panel/payment-settings');
-    return res.data;
-  } catch {
-    return null;
-  }
-}
-
-export async function loadSmsSpotplayerSettingsAction(): Promise<SmsSpotplayerSettingsData | null> {
-  try {
-    const res = await adminFetch<{ data: SmsSpotplayerSettingsData }>('/panel/sms-spotplayer-settings');
     return res.data;
   } catch {
     return null;
@@ -30,7 +21,6 @@ function revalidateCommerce() {
     revalidatePath('/admin/commerce/faqs');
     revalidatePath('/admin/commerce/testimonials');
     revalidatePath('/admin/commerce/payment-settings');
-    revalidatePath('/admin/commerce/sms-spotplayer-settings');
     revalidatePath('/transformations');
     revalidateTag('public-faqs', 'max');
     revalidateTag('public-transformations', 'max');
@@ -190,42 +180,5 @@ export async function savePaymentSettings(
     return { ok: true };
   } catch {
     return { ok: false, error: 'ذخیره تنظیمات پرداخت ناموفق بود.' };
-  }
-}
-
-export async function saveSmsSpotplayerSettings(
-  data: Partial<SmsSpotplayerSettingsData> & { sms_api_key?: string; spotplayer_api_key?: string },
-): Promise<{ ok: boolean; error?: string }> {
-  try {
-    await adminFetch('/panel/sms-spotplayer-settings', { method: 'PUT', body: data });
-    revalidateCommerce();
-    return { ok: true };
-  } catch {
-    return { ok: false, error: 'ذخیره تنظیمات ناموفق بود.' };
-  }
-}
-
-export async function testSmsSettings(): Promise<{ ok: boolean; message?: string; error?: string }> {
-  try {
-    const res = await adminFetch<{ ok: boolean; message: string }>('/panel/sms-spotplayer-settings/test-sms', {
-      method: 'POST',
-    });
-    return { ok: res.ok, message: res.message };
-  } catch (e) {
-    const err = e as Error & { payload?: { message?: string } };
-    return { ok: false, error: err.payload?.message ?? 'تست پیامک ناموفق بود.' };
-  }
-}
-
-export async function testSpotplayerSettings(): Promise<{ ok: boolean; message?: string; error?: string }> {
-  try {
-    const res = await adminFetch<{ ok: boolean; message: string }>(
-      '/panel/sms-spotplayer-settings/test-spotplayer',
-      { method: 'POST' },
-    );
-    return { ok: res.ok, message: res.message };
-  } catch (e) {
-    const err = e as Error & { payload?: { message?: string } };
-    return { ok: false, error: err.payload?.message ?? 'تست SpotPlayer ناموفق بود.' };
   }
 }

@@ -9,6 +9,9 @@ class SmsLog extends Model
 {
     protected $fillable = [
         'user_id',
+        'event_key',
+        'fallback_of_log_id',
+        'is_fallback_attempt',
         'mobile',
         'message',
         'provider',
@@ -20,10 +23,16 @@ class SmsLog extends Model
     protected $casts = [
         'sent_at' => 'datetime',
         'raw_response' => 'array',
+        'is_fallback_attempt' => 'boolean',
     ];
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function primaryLog(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'fallback_of_log_id');
     }
 }

@@ -119,6 +119,36 @@ body:has(.admin-root) {
   background: var(--color-accent-bright);
 }
 
+.admin-root .admin-nav-item.admin-nav-important:not([data-active='true']) {
+  color: #dc2626;
+  font-weight: 600;
+}
+.admin-root .admin-nav-item.admin-nav-important:not([data-active='true']) .admin-nav-icon {
+  color: #dc2626;
+}
+.admin-root .admin-nav-item.admin-nav-important:not([data-active='true']):hover {
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+}
+.admin-root .admin-nav-item.admin-nav-important[data-active='true'] {
+  background: #dc2626;
+  color: #fff;
+}
+.admin-root .admin-nav-item.admin-nav-important[data-active='true']::before {
+  background: #fecaca;
+}
+.admin-root[data-admin-theme='dark'] .admin-nav-item.admin-nav-important:not([data-active='true']) {
+  color: #f87171;
+}
+.admin-root[data-admin-theme='dark'] .admin-nav-item.admin-nav-important:not([data-active='true']):hover {
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+}
+.admin-root[data-admin-theme='dark'] .admin-nav-item.admin-nav-important[data-active='true'] {
+  background: rgba(220, 38, 38, 0.85);
+  color: #fff;
+}
+
 .admin-root[data-admin-theme='dark'] .admin-nav-item[data-active='true'] {
   background: rgba(212, 165, 116, 0.18);
   color: var(--color-primary-dark);

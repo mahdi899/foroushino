@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
+use App\Services\SmsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -53,6 +54,8 @@ class TicketAdminController extends Controller
 
         $ticket->update(['status' => 'answered']);
         $ticket->load(['user', 'messages']);
+
+        app(SmsService::class)->sendTicketReply($ticket);
 
         return response()->json(['data' => $this->listPayload($ticket)]);
     }

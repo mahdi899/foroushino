@@ -36,7 +36,7 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { focusMode, setFocusMode } = useAdminFocus();
   const { sidebarCollapsed, toggleSidebar } = useAdminTheme();
-  const { pendingCount } = useOperatorQueueAlert();
+  const { pendingCount, ticketPendingCount } = useOperatorQueueAlert();
 
   const sidebarW = sidebarCollapsed ? 'w-[68px]' : 'w-64';
   const mainMr = sidebarCollapsed ? 'lg:mr-[68px]' : 'lg:mr-64';
@@ -80,7 +80,14 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
                   {group.items.map((item) => {
                     const active = isAdminNavActive(pathname, item.href, item.matchPrefix);
                     const isChatbotNav = item.href === '/admin/chatbot';
-                    const showQueueAlert = isChatbotNav && pendingCount > 0;
+                    const isTicketsNav = item.href === '/admin/academy/tickets';
+                    const navAlertCount = isChatbotNav
+                      ? pendingCount
+                      : isTicketsNav
+                        ? ticketPendingCount
+                        : 0;
+                    const showQueueAlert = navAlertCount > 0;
+                    const isImportant = 'emphasis' in item && item.emphasis;
                     return (
                       <li key={item.href}>
                         <Link
@@ -93,6 +100,7 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
                             sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-2.5 py-2',
                             active ? '' : 'text-text hover:bg-surface-soft hover:text-primary',
                             showQueueAlert && 'admin-nav-queue-alert',
+                            isImportant && 'admin-nav-important',
                           )}
                         >
                           <span className="relative shrink-0">
@@ -109,7 +117,7 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
                               <span className="truncate">{item.label}</span>
                               {showQueueAlert && (
                                 <span className="mr-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
-                                  {pendingCount > 99 ? '99+' : pendingCount}
+                                  {navAlertCount > 99 ? '99+' : navAlertCount}
                                 </span>
                               )}
                             </>

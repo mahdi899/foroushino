@@ -1,14 +1,3 @@
-export const DEFAULT_CONSULTATION_SYSTEM_PROMPT = `You are a sales and personal-brand advisor for Bahram Rostami Academy.
-Write ONLY in Persian (Farsi). Be warm, professional, and concise.
-
-Rules:
-- This is initial guidance based on the visitor's answers — not a binding offer.
-- Base recommendations on Bahram's courses (campaign writing), Saat sales system, and academy programs.
-- Use the visitor's name naturally when appropriate.
-- Do NOT guarantee specific income or outcomes.
-- Output plain Persian text (no JSON, no markdown headings with #).
-- Structure: 2–4 short paragraphs covering suggested next step, relevant program, and how to apply or get in touch.`;
-
 export interface AiErrorDetail {
   summary: string;
   provider: string;
@@ -41,18 +30,6 @@ export interface AiChatbotSettings {
   apiKeys?: Partial<Record<AiProvider, string>>;
 }
 
-export interface AiConsultationSettings {
-  enabled: boolean;
-  provider: AiProvider;
-  model: string;
-  baseUrl: string;
-  temperature: number;
-  /** Consultation estimate-only API keys — separate from article/chatbot AI. */
-  apiKeys?: Partial<Record<AiProvider, string>>;
-  /** Optional extra instructions appended to the default estimate prompt. */
-  customInstructions?: string;
-}
-
 export interface AiConfig {
   enabled: boolean;
   /** Currently active provider used for article/text AI. */
@@ -62,8 +39,6 @@ export interface AiConfig {
   image?: AiImageSettings;
   /** Site chatbot — separate provider + API keys. */
   chatbot?: AiChatbotSettings;
-  /** Smart consultation estimate — separate provider + API keys. */
-  consultation?: AiConsultationSettings;
 }
 
 export type AiImageEngine = 'imagen' | 'gemini-native' | 'openai';
@@ -195,16 +170,6 @@ export const DEFAULT_CHATBOT_AI_SETTINGS: AiChatbotSettings = {
   apiKeys: {},
 };
 
-export const DEFAULT_CONSULTATION_AI_SETTINGS: AiConsultationSettings = {
-  enabled: true,
-  provider: 'gemini',
-  model: 'gemini-flash-latest',
-  baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-  temperature: 0.25,
-  apiKeys: {},
-  customInstructions: '',
-};
-
 export interface AiConfigAdminView {
   enabled: boolean;
   provider: AiProvider;
@@ -222,13 +187,6 @@ export interface AiConfigAdminView {
   };
   chatbot: AiChatbotSettings;
   chatbotKeys: {
-    hasApiKey: boolean;
-    apiKeyPreview: string | null;
-    envFallback: boolean;
-    keySource: 'panel' | 'env' | 'none';
-  };
-  consultation: AiConsultationSettings;
-  consultationKeys: {
     hasApiKey: boolean;
     apiKeyPreview: string | null;
     envFallback: boolean;
@@ -272,5 +230,4 @@ export const DEFAULT_AI_CONFIG: AiConfig = {
   providers: defaultProviders(),
   image: { ...DEFAULT_IMAGE_SETTINGS },
   chatbot: { ...DEFAULT_CHATBOT_AI_SETTINGS },
-  consultation: { ...DEFAULT_CONSULTATION_AI_SETTINGS },
 };

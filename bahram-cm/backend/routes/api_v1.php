@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\Admin\ReferralAdminController;
 use App\Http\Controllers\Api\V1\Admin\SatApplicationAdminController;
 use App\Http\Controllers\Api\V1\Admin\SeminarAdminController;
 use App\Http\Controllers\Api\V1\Admin\SmsAdminController;
+use App\Http\Controllers\Api\V1\Admin\SmsCenterConfigController;
 use App\Http\Controllers\Api\V1\Admin\StudentController as AdminStudentController;
 use App\Http\Controllers\Api\V1\Admin\TicketAdminController;
 use App\Http\Controllers\Api\V1\ArticleAdminController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\Api\V1\FaqController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\ImageOptimizerSettingsController;
+use App\Http\Controllers\Api\V1\SmsSpotplayerCredentialsController;
 use App\Http\Controllers\Api\V1\MediaConfigController;
 use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\MediaOptimizeController;
@@ -162,6 +164,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::delete('products/{product:id}', [ProductController::class, 'destroy'])->whereNumber('product');
 
     Route::get('orders', [OrderController::class, 'index']);
+    Route::get('orders/analytics', [OrderController::class, 'analytics']);
     Route::get('orders/{order}', [OrderController::class, 'show'])->whereNumber('order');
     Route::patch('orders/{order}', [OrderController::class, 'update'])->whereNumber('order');
     Route::post('orders/{order}/resend-sms', [OrderController::class, 'resendSms'])->whereNumber('order');
@@ -190,6 +193,10 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::put('panel/settings/image-optimizer', [ImageOptimizerSettingsController::class, 'update']);
     Route::post('panel/settings/image-optimizer/test', [ImageOptimizerSettingsController::class, 'test']);
 
+    Route::get('panel/settings/sms-spotplayer-credentials', [SmsSpotplayerCredentialsController::class, 'show']);
+    Route::put('panel/settings/sms-spotplayer-credentials', [SmsSpotplayerCredentialsController::class, 'update']);
+    Route::post('panel/settings/sms-spotplayer-credentials/test', [SmsSpotplayerCredentialsController::class, 'test']);
+
     Route::get('panel/leads/export', LeadExportController::class);
     Route::get('panel/orders/export', OrderExportController::class);
 
@@ -207,6 +214,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::get('students', [AdminStudentController::class, 'index']);
+    Route::post('students', [AdminStudentController::class, 'store']);
     Route::get('students/{student}', [AdminStudentController::class, 'show'])->whereNumber('student');
     Route::patch('students/{student}', [AdminStudentController::class, 'update'])->whereNumber('student');
 
@@ -247,6 +255,12 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('sms/send', [SmsAdminController::class, 'send']);
     Route::get('sms/logs', [SmsAdminController::class, 'logs']);
     Route::post('sms/test', [SmsAdminController::class, 'test']);
+
+    Route::get('sms/center-config', [SmsCenterConfigController::class, 'show']);
+    Route::put('sms/center-config/global', [SmsCenterConfigController::class, 'updateGlobal']);
+    Route::put('sms/center-config/providers/{slug}', [SmsCenterConfigController::class, 'updateProvider']);
+    Route::post('sms/center-config/providers/{slug}/test', [SmsCenterConfigController::class, 'testProvider']);
+    Route::put('sms/center-config/events/{eventKey}', [SmsCenterConfigController::class, 'updateEvent']);
 
     Route::post('imports/students/preview', [ImportAdminController::class, 'preview']);
     Route::post('imports/students/commit', [ImportAdminController::class, 'commit']);

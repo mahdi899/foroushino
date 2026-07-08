@@ -231,6 +231,29 @@
   cursor: not-allowed;
 }
 
+.panel-root .field-input--error {
+  border-color: #dc4f45;
+  background: rgba(220, 79, 69, 0.04);
+}
+
+.panel-root .field-input--error:focus {
+  border-color: #dc4f45;
+  box-shadow: 0 0 0 3px rgba(220, 79, 69, 0.15);
+}
+
+.panel-root[data-panel-theme='dark'] .field-input--error:focus {
+  border-color: #f08070;
+  box-shadow: 0 0 0 3px rgba(240, 128, 112, 0.15);
+}
+
+.panel-root .text-error {
+  color: #c0493f;
+}
+
+.panel-root[data-panel-theme='dark'] .text-error {
+  color: #f08070;
+}
+
 /* Badges */
 .panel-root .badge {
   display: inline-flex;

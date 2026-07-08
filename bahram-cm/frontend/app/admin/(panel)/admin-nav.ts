@@ -3,13 +3,15 @@ import { commerceModules } from '@/lib/admin/commerce';
 
 export const adminNav: {
   group: string;
-  items: { href: string; label: string; icon: string; matchPrefix?: boolean }[];
+  items: { href: string; label: string; icon: string; matchPrefix?: boolean; emphasis?: boolean }[];
 }[] = [
   {
     group: 'پیشخوان',
     items: [
       { href: '/admin', label: 'داشبورد', icon: 'LayoutDashboard' },
       { href: '/admin/chatbot', label: 'چت‌بات هوشمند', icon: 'MessageSquare', matchPrefix: true },
+      { href: '/admin/academy/tickets', label: 'تیکت‌های پشتیبانی', icon: 'LifeBuoy', matchPrefix: true },
+      { href: '/admin/academy/sms', label: 'مرکز پیامک', icon: 'MessageCircle', matchPrefix: true },
     ],
   },
   {
@@ -41,9 +43,7 @@ export const adminNav: {
       { href: '/admin/academy/referrals', label: 'معرفی و کش‌بک', icon: 'Gift' },
       { href: '/admin/academy/cashback-payouts', label: 'واریز کش‌بک', icon: 'Wallet' },
       { href: '/admin/academy/sat-applications', label: 'درخواست‌های سات', icon: 'GraduationCap' },
-      { href: '/admin/academy/tickets', label: 'تیکت‌های پشتیبانی', icon: 'LifeBuoy', matchPrefix: true },
       { href: '/admin/academy/notifications', label: 'اعلان‌ها', icon: 'Bell' },
-      { href: '/admin/academy/sms', label: 'مرکز پیامک', icon: 'MessageCircle' },
       { href: '/admin/academy/imports', label: 'ورود اطلاعات', icon: 'FileUp' },
     ],
   },
@@ -53,7 +53,7 @@ export const adminNav: {
       { href: '/admin/seo', label: 'سئو و تحلیل', icon: 'Search', matchPrefix: true },
       { href: '/admin/cache', label: 'کش و بهینه‌سازی', icon: 'Zap', matchPrefix: true },
       { href: '/admin/ai/settings', label: 'هوش مصنوعی', icon: 'Bot', matchPrefix: true },
-      { href: '/admin/settings', label: 'تنظیمات سایت', icon: 'Settings' },
+      { href: '/admin/settings', label: 'تنظیمات سایت', icon: 'Settings', emphasis: true },
     ],
   },
 ];
@@ -77,6 +77,9 @@ export function isAdminNavActive(pathname: string, href: string, matchPrefix?: b
   }
   if (href === '/admin/seo') {
     return pathname === '/admin/seo' || pathname.startsWith('/admin/seo/');
+  }
+  if (href === '/admin/commerce/orders') {
+    return pathname === '/admin/commerce/orders' || /^\/admin\/commerce\/orders\/\d+/.test(pathname);
   }
   if (href.startsWith('/admin/commerce/')) {
     return pathname === href || pathname.startsWith(`${href}/`);

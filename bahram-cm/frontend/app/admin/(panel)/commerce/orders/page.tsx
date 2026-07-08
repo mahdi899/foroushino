@@ -2,6 +2,7 @@ import { AdminPage, EditLink, Table } from '../../ui';
 import { formatToman, getOrders } from '@/lib/admin/commerceData';
 import { OrderStatusBadge } from './OrderDetailForm';
 import { PAYMENT_STATUS_LABELS } from '@/lib/admin/commerceTypes';
+import { OrdersSectionNav } from './OrdersSectionNav';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,7 @@ export default async function OrdersPage() {
 
   return (
     <AdminPage title="سفارش‌ها" desc="پیگیری پرداخت و تحویل سفارش‌ها">
+      <OrdersSectionNav active="list" />
       {error && (
         <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-small text-error">
           {error}

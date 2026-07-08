@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Send } from 'lucide-react';
 import { replyToTicket, updateTicketStatus } from '../actions';
+import { useOperatorQueueAlert } from '../../OperatorQueueAlertContext';
 import { TICKET_STATUS_LABELS, formatDateTime, type AdminTicketDetail } from '@/lib/admin/academyTypes';
 
 export function TicketDetailPanel({ ticket }: { ticket: AdminTicketDetail }) {
   const router = useRouter();
+  const { refreshPendingCount } = useOperatorQueueAlert();
   const [message, setMessage] = useState('');
   const [pending, setPending] = useState(false);
   const [statusPending, setStatusPending] = useState(false);
@@ -22,6 +24,7 @@ export function TicketDetailPanel({ ticket }: { ticket: AdminTicketDetail }) {
     setPending(false);
     if (res.ok) {
       setMessage('');
+      void refreshPendingCount();
       router.refresh();
     } else {
       setError(res.error ?? 'خطا');
@@ -45,6 +48,7 @@ export function TicketDetailPanel({ ticket }: { ticket: AdminTicketDetail }) {
               setStatusPending(true);
               void updateTicketStatus(ticket.id, value).then(() => {
                 setStatusPending(false);
+                void refreshPendingCount();
                 router.refresh();
               });
             }}

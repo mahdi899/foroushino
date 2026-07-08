@@ -70,6 +70,12 @@ export default async function TransformationsPage({
                     </dl>
 
                     <p className="mt-5 border-t border-bone/10 pt-5 text-bone-dim">{item.summary}</p>
+                    {item.metricValue && item.metricLabel ? (
+                      <p className="mt-4 font-display text-sm font-semibold text-gold num-latin">
+                        {item.metricValue}
+                        <span className="me-1 font-normal text-mist"> {item.metricLabel}</span>
+                      </p>
+                    ) : null}
                     <span className="mt-6 inline-flex items-center gap-2 text-gold">
                       مطالعه کامل
                       <ArrowLeft

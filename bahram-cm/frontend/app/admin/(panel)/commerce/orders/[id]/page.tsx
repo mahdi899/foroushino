@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation';
 import { AdminPage } from '../../../ui';
 import { getOrder } from '@/lib/admin/commerceData';
-import { OrderDetailForm } from '../OrderDetailForm';
+import { OrderDetailForm, OrderStatusBadge } from '../OrderDetailForm';
+import { OrdersSectionNav } from '../OrdersSectionNav';
+import { PAYMENT_STATUS_LABELS } from '@/lib/admin/commerceTypes';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +13,19 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   if (!order) notFound();
 
   return (
-    <AdminPage title={`سفارش ${order.order_number}`} desc="جزئیات و مدیریت وضعیت سفارش">
+    <AdminPage
+      title={`سفارش ${order.order_number}`}
+      desc={`${order.customer_name} · ${order.product_title ?? 'بدون محصول'}`}
+      action={
+        <div className="flex flex-wrap items-center gap-2">
+          <OrderStatusBadge status={order.status} />
+          <span className="text-caption text-text-muted">
+            {PAYMENT_STATUS_LABELS[order.payment_status] ?? order.payment_status}
+          </span>
+        </div>
+      }
+    >
+      <OrdersSectionNav active="list" />
       <OrderDetailForm order={order} />
     </AdminPage>
   );

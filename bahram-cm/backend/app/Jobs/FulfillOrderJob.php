@@ -114,6 +114,11 @@ class FulfillOrderJob implements ShouldQueue
             $order->update(['sms_sent_at' => now()]);
         }
 
+        $order->refresh();
+        if (filled($order->spotplayer_license_code)) {
+            $sms->sendLicenseCreated($order);
+        }
+
         $order->update(['status' => 'fulfilled']);
     }
 

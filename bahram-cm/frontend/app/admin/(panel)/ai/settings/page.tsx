@@ -1,17 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Bot, ImageIcon, Loader2, MessageSquare, Save, Sparkles } from 'lucide-react';
+import { Bot, ImageIcon, Loader2, MessageSquare, Save } from 'lucide-react';
 import { AdminPage } from '../../ui';
 import {
   loadAiSettings,
   persistAiChatbotSettings,
-  persistAiConsultationSettings,
   persistAiImageSettings,
   persistAiTextSettings,
   testAiConnection,
   testChatbotConnection,
-  testConsultationConnection,
   testAiImageGeneration,
 } from '../../settings/actions';
 import {
@@ -36,13 +34,6 @@ import {
   type AiChatbotSettingsForm,
   type AiChatbotSettingsMeta,
 } from './AiChatbotSettingsSection';
-import {
-  AiConsultationSettingsSection,
-  DEFAULT_AI_CONSULTATION_FORM,
-  DEFAULT_AI_CONSULTATION_META,
-  type AiConsultationSettingsForm,
-  type AiConsultationSettingsMeta,
-} from './AiConsultationSettingsSection';
 import { AiErrorModal } from '../../settings/AiErrorModal';
 import { AiOverviewCards, AiSettingsNav } from './AiSettingsShared';
 import { AI_PROVIDERS, providerMeta, type AiConfigAdminView, type AiErrorDetail, type AiProvider } from '@/lib/ai/types';
@@ -119,24 +110,6 @@ function viewToChatbotForm(view: AiConfigAdminView): { form: AiChatbotSettingsFo
   };
 }
 
-function viewToConsultationForm(view: AiConfigAdminView): {
-  form: AiConsultationSettingsForm;
-  meta: AiConsultationSettingsMeta;
-} {
-  return {
-    form: {
-      enabled: view.consultation.enabled,
-      provider: view.consultation.provider,
-      model: view.consultation.model,
-      baseUrl: view.consultation.baseUrl,
-      temperature: view.consultation.temperature,
-      apiKeyInput: '',
-      customInstructions: view.consultation.customInstructions ?? '',
-    },
-    meta: view.consultationKeys,
-  };
-}
-
 export default function AiSettingsPage() {
   const [textForm, setTextForm] = useState<AiSettingsForm>(DEFAULT_AI_FORM);
   const [textMeta, setTextMeta] = useState<AiSettingsMeta>(DEFAULT_AI_META);
@@ -144,8 +117,6 @@ export default function AiSettingsPage() {
   const [imageMeta, setImageMeta] = useState<AiImageSettingsMeta>(DEFAULT_AI_IMAGE_META);
   const [chatbotForm, setChatbotForm] = useState<AiChatbotSettingsForm>(DEFAULT_AI_CHATBOT_FORM);
   const [chatbotMeta, setChatbotMeta] = useState<AiChatbotSettingsMeta>(DEFAULT_AI_CHATBOT_META);
-  const [consultationForm, setConsultationForm] = useState<AiConsultationSettingsForm>(DEFAULT_AI_CONSULTATION_FORM);
-  const [consultationMeta, setConsultationMeta] = useState<AiConsultationSettingsMeta>(DEFAULT_AI_CONSULTATION_META);
 
   const [textSaveStatus, setTextSaveStatus] = useState<'idle' | 'loading' | 'saved' | 'error'>('idle');
   const [textSaveMessage, setTextSaveMessage] = useState('');
@@ -155,10 +126,6 @@ export default function AiSettingsPage() {
   const [chatbotSaveMessage, setChatbotSaveMessage] = useState('');
   const [chatbotTestStatus, setChatbotTestStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
   const [chatbotTestMessage, setChatbotTestMessage] = useState('');
-  const [consultationSaveStatus, setConsultationSaveStatus] = useState<'idle' | 'loading' | 'saved' | 'error'>('idle');
-  const [consultationSaveMessage, setConsultationSaveMessage] = useState('');
-  const [consultationTestStatus, setConsultationTestStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
-  const [consultationTestMessage, setConsultationTestMessage] = useState('');
 
   const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
@@ -178,23 +145,19 @@ export default function AiSettingsPage() {
       const text = viewToTextForm(view);
       const image = viewToImageForm(view);
       const chatbot = viewToChatbotForm(view);
-      const consultation = viewToConsultationForm(view);
       setTextForm(text.form);
       setTextMeta(text.meta);
       setImageForm(image.form);
       setImageMeta(image.meta);
       setChatbotForm(chatbot.form);
       setChatbotMeta(chatbot.meta);
-      setConsultationForm(consultation.form);
-      setConsultationMeta(consultation.meta);
     });
   }, []);
 
   useEffect(() => {
     const hash = window.location.hash.slice(1);
-    if (hash === 'ai' || hash === 'ai-image' || hash === 'ai-chatbot' || hash === 'ai-consultation') {
-      const id = hash === 'ai' ? 'ai' : hash;
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (hash === 'ai' || hash === 'ai-image' || hash === 'ai-chatbot') {
+      document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }, []);
 
@@ -203,15 +166,12 @@ export default function AiSettingsPage() {
     const text = viewToTextForm(view);
     const image = viewToImageForm(view);
     const chatbot = viewToChatbotForm(view);
-    const consultation = viewToConsultationForm(view);
     setTextForm({ ...text.form, provider: currentProvider });
     setTextMeta(text.meta);
     setImageForm(image.form);
     setImageMeta(image.meta);
     setChatbotForm(chatbot.form);
     setChatbotMeta(chatbot.meta);
-    setConsultationForm(consultation.form);
-    setConsultationMeta(consultation.meta);
   }
 
   async function saveTextOnly(): Promise<{ ok: boolean; error?: string }> {
@@ -285,47 +245,16 @@ export default function AiSettingsPage() {
     return res;
   }
 
-  async function saveConsultationOnly(): Promise<{ ok: boolean; error?: string }> {
-    setConsultationSaveStatus('loading');
-    setConsultationSaveMessage('');
-    const res = await persistAiConsultationSettings({
-      consultation: {
-        enabled: consultationForm.enabled,
-        provider: consultationForm.provider,
-        model: consultationForm.model,
-        baseUrl: consultationForm.baseUrl,
-        temperature: consultationForm.temperature,
-        customInstructions: consultationForm.customInstructions,
-      },
-      apiKeyInput: consultationForm.apiKeyInput || undefined,
-    });
-    if (res.ok) {
-      const view = await loadAiSettings();
-      const consultation = viewToConsultationForm(view);
-      setConsultationForm(consultation.form);
-      setConsultationMeta(consultation.meta);
-      setConsultationSaveStatus('saved');
-      setConsultationSaveMessage('تنظیمات برآورد مشاوره ذخیره شد.');
-      setTimeout(() => setConsultationSaveStatus('idle'), 2200);
-    } else {
-      setConsultationSaveStatus('error');
-      setConsultationSaveMessage(res.error ?? 'ذخیره ناموفق بود.');
-    }
-    return res;
-  }
-
   async function saveAll() {
-    const [textRes, imageRes, chatbotRes, consultationRes] = await Promise.all([
+    const [textRes, imageRes, chatbotRes] = await Promise.all([
       saveTextOnly(),
       saveImageOnly(),
       saveChatbotOnly(),
-      saveConsultationOnly(),
     ]);
-    if (textRes.ok && imageRes.ok && chatbotRes.ok && consultationRes.ok) {
+    if (textRes.ok && imageRes.ok && chatbotRes.ok) {
       setTextSaveMessage('همه تنظیمات AI ذخیره شد.');
       setImageSaveMessage('');
       setChatbotSaveMessage('');
-      setConsultationSaveMessage('');
     }
   }
 
@@ -425,35 +354,10 @@ export default function AiSettingsPage() {
     }
   }
 
-  async function handleTestConsultation() {
-    setConsultationTestStatus('loading');
-    setConsultationTestMessage('');
-    const res = await testConsultationConnection({
-      consultation: {
-        enabled: consultationForm.enabled,
-        provider: consultationForm.provider,
-        model: consultationForm.model,
-        baseUrl: consultationForm.baseUrl,
-        temperature: consultationForm.temperature,
-        customInstructions: consultationForm.customInstructions,
-      },
-      apiKeyInput: consultationForm.apiKeyInput || undefined,
-    });
-    if (res.ok) {
-      setConsultationTestStatus('ok');
-      setConsultationTestMessage(`اتصال برآورد مشاوره موفق — ${res.provider} / ${res.model}`);
-      await saveConsultationOnly();
-    } else {
-      setConsultationTestStatus('error');
-      setConsultationTestMessage(res.error);
-    }
-  }
-
   const saving =
     textSaveStatus === 'loading' ||
     imageSaveStatus === 'loading' ||
-    chatbotSaveStatus === 'loading' ||
-    consultationSaveStatus === 'loading';
+    chatbotSaveStatus === 'loading';
 
   const overviewItems = useMemo(() => {
     const textKeyOk =
@@ -464,8 +368,6 @@ export default function AiSettingsPage() {
       imageMeta.googleEnvFallback ||
       imageMeta.openaiEnvFallback;
     const chatbotKeyOk = chatbotMeta.hasApiKey || chatbotMeta.envFallback;
-    const consultationKeyOk =
-      consultationMeta.hasApiKey || consultationMeta.envFallback || textKeyOk;
 
     return [
       {
@@ -486,24 +388,13 @@ export default function AiSettingsPage() {
         ok: chatbotKeyOk,
         icon: MessageSquare,
       },
-      {
-        label: 'برآورد مشاوره',
-        value:
-          consultationForm.enabled && consultationKeyOk
-            ? 'فعال'
-            : consultationForm.enabled
-              ? 'نیاز به کلید'
-              : 'غیرفعال',
-        ok: Boolean(consultationForm.enabled && consultationKeyOk),
-        icon: Sparkles,
-      },
     ];
-  }, [textForm, textMeta, imageMeta, chatbotMeta, consultationForm, consultationMeta]);
+  }, [textForm, textMeta, imageMeta, chatbotMeta]);
 
   return (
     <AdminPage
       title="تنظیمات هوش مصنوعی"
-      desc="هر بخش سایت (مقاله، تصویر، چت‌بات، مشاوره) API و مدل جداگانه دارد."
+      desc="هر بخش سایت (مقاله، تصویر، چت‌بات) API و مدل جداگانه دارد."
       action={
         <button onClick={saveAll} disabled={saving} className="btn btn-primary gap-2 px-4 py-2 text-small">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
@@ -554,18 +445,6 @@ export default function AiSettingsPage() {
           saveMessage={chatbotSaveMessage}
           testStatus={chatbotTestStatus}
           testMessage={chatbotTestMessage}
-        />
-
-        <AiConsultationSettingsSection
-          form={consultationForm}
-          meta={consultationMeta}
-          onChange={setConsultationForm}
-          onSave={saveConsultationOnly}
-          onTest={handleTestConsultation}
-          saveStatus={consultationSaveStatus}
-          saveMessage={consultationSaveMessage}
-          testStatus={consultationTestStatus}
-          testMessage={consultationTestMessage}
         />
       </div>
 

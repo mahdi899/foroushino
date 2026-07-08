@@ -11,6 +11,10 @@ class SmsSetting extends Model
 
     protected $fillable = [
         'sms_provider',
+        'primary_provider_slug',
+        'fallback_provider_slug',
+        'fallback_delay_seconds',
+        'fallback_enabled',
         'sms_api_key',
         'sms_sender_number',
         'sms_pattern_code',
@@ -22,10 +26,23 @@ class SmsSetting extends Model
     protected $casts = [
         'sms_api_key' => 'encrypted',
         'is_sms_active' => 'boolean',
+        'fallback_enabled' => 'boolean',
     ];
 
     public function isReady(): bool
     {
-        return $this->is_sms_active && filled($this->sms_api_key);
+        if (! $this->is_sms_active) {
+            return false;
+        }
+
+        $slug = $this->primary_provider_slug ?? $this->sms_provider ?? 'melipayamak';
+
+        $provider = SmsProvider::query()->where('slug', $slug)->where('is_active', true)->first();
+
+        if ($provider?->isReady()) {
+            return true;
+        }
+
+        return filled($this->sms_api_key);
     }
 }

@@ -38,6 +38,27 @@ function revalidateAcademy() {
 }
 
 // Students
+export async function createStudent(input: {
+  name: string;
+  mobile: string;
+  email?: string;
+  status?: string;
+}): Promise<{ ok: true; id: number } | { ok: false; error: string }> {
+  try {
+    const res = await adminFetch<{ data: { id: number } }>('/students', { method: 'POST', body: input });
+    revalidateAcademy();
+    return { ok: true, id: res.data.id };
+  } catch (e) {
+    const err = e as Error & { payload?: { message?: string; errors?: Record<string, string[]> } };
+    const message =
+      err.payload?.errors?.mobile?.[0] ??
+      err.payload?.errors?.email?.[0] ??
+      err.payload?.message ??
+      'ثبت دانشجو ناموفق بود.';
+    return { ok: false, error: message };
+  }
+}
+
 export async function updateStudentStatus(id: number, status: string): Promise<{ ok: boolean; error?: string }> {
   try {
     await adminFetch(`/students/${id}`, { method: 'PATCH', body: { status } });
@@ -251,5 +272,17 @@ export async function commitStudentImport(formData: FormData) {
     return { ok: true as const, ...res.data };
   } catch (e) {
     return actionError(e, 'ثبت نهایی فایل ناموفق بود.');
+  }
+}
+
+/** Open tickets awaiting admin response — for sidebar alert badge. */
+export async function fetchPendingTicketsCount(): Promise<number> {
+  try {
+    const res = await adminFetch<{ data: unknown[]; meta: { total: number } }>('/tickets', {
+      query: { status: 'open', per_page: 1, page: 1 },
+    });
+    return res.meta?.total ?? 0;
+  } catch {
+    return 0;
   }
 }

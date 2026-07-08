@@ -55,6 +55,12 @@ class CommerceSmsSpotplayerController extends Controller
 
         if ($smsData !== []) {
             $sms->update($smsData);
+
+            if (array_key_exists('purchase_message_template', $smsData)) {
+                \App\Models\SmsEventConfig::forKey(\App\Enums\SmsEventKey::PurchaseConfirmation)?->update([
+                    'message_template' => $smsData['purchase_message_template'],
+                ]);
+            }
         }
 
         if ($spotData !== []) {
@@ -97,7 +103,7 @@ class CommerceSmsSpotplayerController extends Controller
         $spot = SpotplayerSetting::current();
 
         return [
-            'sms_provider' => $sms->sms_provider ?? 'kavenegar',
+            'sms_provider' => $sms->sms_provider ?? 'melipayamak',
             'sms_sender_number' => $sms->sms_sender_number,
             'sms_pattern_code' => $sms->sms_pattern_code,
             'is_sms_active' => $sms->is_sms_active,

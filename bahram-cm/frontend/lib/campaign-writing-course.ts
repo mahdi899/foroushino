@@ -74,28 +74,28 @@ export const campaignPathSteps: CampaignPathStep[] = [
     title: "طراحی پیام فروش",
     body: "یاد می‌گیری پیام اصلی کمپین را بسازی؛ پیامی که ساده، شفاف و قانع‌کننده باشد.",
     icon: "message-square",
-    image: sitePhotos.manifestoPortraitA,
+    image: sitePhotos.storyStep[2]!,
   },
   {
     n: "۴",
     title: "نوشتن متن تبلیغاتی",
     body: "تیتر، متن کوتاه، متن معرفی، CTA و پیام‌های فروش را تمرین می‌کنی.",
     icon: "pen-line",
-    image: sitePhotos.courseBackstage,
+    image: sitePhotos.storyStep[3]!,
   },
   {
     n: "۵",
     title: "ساخت پیشنهاد فروش",
     body: "یاد می‌گیری چطور محصول را به شکلی ارائه کنی که مخاطب دلیل واضحی برای خرید داشته باشد.",
     icon: "file-text",
-    image: sitePhotos.storyStep[2]!,
+    image: sitePhotos.storyStep[4]!,
   },
   {
     n: "۶",
     title: "سناریوی فروش و پیگیری",
     body: "می‌فهمی بعد از دیده شدن کمپین، چطور مسیر ارتباط، تماس، پیگیری و تصمیم‌گیری مخاطب را کامل کنی.",
     icon: "layers",
-    image: sitePhotos.landscapeSession,
+    image: sitePhotos.squareBackstage,
   },
 ];
 

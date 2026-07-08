@@ -10,6 +10,7 @@ import {
   loadCacheIntegrationsSettings,
   loadCaptchaSettings,
   loadImageOptimizerSettingsPanel,
+  loadSmsRoutingConfig,
   loadTrackingSettings,
   persistCacheIntegrationsSettings,
   persistCaptchaSettings,
@@ -36,6 +37,20 @@ import {
   type ImageOptimizerForm,
   type ImageOptimizerView,
 } from '@/lib/media/imageOptimizer.types';
+import {
+  loadSmsSpotplayerCredentialsSettings,
+  saveSmsSpotplayerCredentialsSettingsAction,
+  testSmsSpotplayerCredentialsAction,
+} from '@/lib/admin/smsSpotplayerCredentials';
+import {
+  credentialsViewToForm,
+  DEFAULT_SMS_SPOTPLAYER_CREDENTIALS_FORM,
+  type SmsSpotplayerCredentialsForm,
+  type SmsSpotplayerCredentialsView,
+} from '@/lib/admin/smsSpotplayerCredentials.types';
+import { SmsSpotplayerCredentialsSettingsSection } from './SmsSpotplayerCredentialsSettingsSection';
+import { SmsRoutingSettingsSection } from './SmsRoutingSettingsSection';
+import type { SmsCenterConfig } from '@/lib/admin/smsCenter.types';
 
 export default function SettingsPage() {
   const [data, setData] = useState({
@@ -68,6 +83,12 @@ export default function SettingsPage() {
   const [imageOptimizerView, setImageOptimizerView] = useState<ImageOptimizerView | null>(null);
   const [imageOptimizerTesting, setImageOptimizerTesting] = useState<'tinify' | 'resmush' | null>(null);
   const [imageOptimizerSaving, setImageOptimizerSaving] = useState(false);
+  const [credentialsForm, setCredentialsForm] = useState<SmsSpotplayerCredentialsForm>(
+    DEFAULT_SMS_SPOTPLAYER_CREDENTIALS_FORM,
+  );
+  const [credentialsView, setCredentialsView] = useState<SmsSpotplayerCredentialsView | null>(null);
+  const [credentialsTesting, setCredentialsTesting] = useState<'melipayamak' | 'kavenegar' | 'spotplayer' | null>(null);
+  const [smsRoutingConfig, setSmsRoutingConfig] = useState<SmsCenterConfig | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const baselineRef = useRef('');
 
@@ -79,8 +100,9 @@ export default function SettingsPage() {
         trackingForm,
         integrationsForm,
         imageOptimizerForm,
+        credentialsForm,
       }),
-    [data, captchaForm, trackingForm, integrationsForm, imageOptimizerForm],
+    [data, captchaForm, trackingForm, integrationsForm, imageOptimizerForm, credentialsForm],
   );
 
   const isDirty = hydrated && settingsSnapshot !== baselineRef.current;
@@ -92,8 +114,10 @@ export default function SettingsPage() {
       loadTrackingSettings(),
       loadCacheIntegrationsSettings(),
       loadImageOptimizerSettingsPanel(),
+      loadSmsSpotplayerCredentialsSettings(),
+      loadSmsRoutingConfig(),
     ])
-      .then(([site, captcha, tracking, integrations, imageOptimizer]) => {
+      .then(([site, captcha, tracking, integrations, imageOptimizer, credentials, smsRouting]) => {
         const loadedData = {
           phone: siteConfig.contact.phone,
           whatsapp: siteConfig.contact.whatsapp,
@@ -121,12 +145,17 @@ export default function SettingsPage() {
         setIntegrationsView(integrations.view);
         setImageOptimizerForm(imageOptimizer.form);
         setImageOptimizerView(imageOptimizer.view);
+        const credentialsFormLoaded = credentials ? credentialsViewToForm(credentials) : DEFAULT_SMS_SPOTPLAYER_CREDENTIALS_FORM;
+        setCredentialsForm(credentialsFormLoaded);
+        setCredentialsView(credentials);
+        setSmsRoutingConfig(smsRouting);
         baselineRef.current = JSON.stringify({
           data: loadedData,
           captchaForm: captcha.form,
           trackingForm: tracking.form,
           integrationsForm: integrations.form,
           imageOptimizerForm: imageOptimizer.form,
+          credentialsForm: credentialsFormLoaded,
         });
         setHydrated(true);
       })
@@ -171,6 +200,39 @@ export default function SettingsPage() {
       setIntegrationsView(view);
     }
     return res;
+  }
+
+  async function saveCredentialsOnly(): Promise<{ ok: boolean; error?: string }> {
+    const res = await saveSmsSpotplayerCredentialsSettingsAction(credentialsForm);
+    if (res.ok && res.data) {
+      setCredentialsView(res.data);
+      setCredentialsForm(credentialsViewToForm(res.data));
+    }
+    return res;
+  }
+
+  async function handleTestCredentials(target: 'melipayamak' | 'kavenegar' | 'spotplayer') {
+    setCredentialsTesting(target);
+    setStatusMessage('');
+    const saveRes = await saveCredentialsOnly();
+    if (!saveRes.ok) {
+      setCredentialsTesting(null);
+      setStatus('error');
+      setStatusMessage(saveRes.error ?? 'ذخیره کلیدها قبل از تست ناموفق بود.');
+      setTimeout(() => {
+        setStatus('idle');
+        setStatusMessage('');
+      }, 4000);
+      return;
+    }
+    const res = await testSmsSpotplayerCredentialsAction(target);
+    setCredentialsTesting(null);
+    setStatusMessage(res.message);
+    setStatus(res.ok ? 'saved' : 'error');
+    setTimeout(() => {
+      setStatus('idle');
+      setStatusMessage('');
+    }, 4000);
   }
 
   async function saveImageOptimizerOnly(): Promise<{ ok: boolean; error?: string }> {
@@ -230,16 +292,20 @@ export default function SettingsPage() {
   async function save() {
     setStatus('loading');
     setStatusMessage('');
-    const [siteRes, captchaRes, trackingRes, integrationsRes, imageOptimizerRes] = await Promise.all([
+    const [siteRes, captchaRes, trackingRes, integrationsRes, imageOptimizerRes, credentialsRes] = await Promise.all([
       saveSiteSettings(data),
       saveCaptchaOnly(),
       saveTrackingOnly(),
       saveIntegrationsOnly(),
       saveImageOptimizerOnly(),
+      saveCredentialsOnly(),
     ]);
-    if (siteRes.ok && captchaRes.ok && trackingRes.ok && integrationsRes.ok && imageOptimizerRes.ok) {
+    if (siteRes.ok && captchaRes.ok && trackingRes.ok && integrationsRes.ok && imageOptimizerRes.ok && credentialsRes.ok) {
       setStatus('saved');
       setStatusMessage('تنظیمات ذخیره شد.');
+    } else if (!credentialsRes.ok) {
+      setStatus('error');
+      setStatusMessage(credentialsRes.error ?? 'ذخیره کلیدهای ملی‌پیامک/SpotPlayer ناموفق بود.');
     } else if (!imageOptimizerRes.ok) {
       setStatus('error');
       setStatusMessage(imageOptimizerRes.error ?? 'ذخیره تنظیمات بهینه‌سازی تصویر ناموفق بود.');
@@ -294,7 +360,7 @@ export default function SettingsPage() {
   return (
     <AdminPage
       title="تنظیمات سایت"
-      desc="اطلاعات تماس، دسته‌بندی insights، کپچا، بهینه‌سازی تصویر، Webhook/Cloudflare و کلیدهای گوگل"
+      desc="اطلاعات تماس، کپچا، بهینه‌سازی، کلیدهای API، مسیردهی پیامک و SpotPlayer"
       action={
         <div className="flex flex-col items-end gap-1">
           <button onClick={save} className="btn btn-primary px-4 py-2 text-small">
@@ -365,6 +431,22 @@ export default function SettingsPage() {
           onChange={setIntegrationsForm}
           onTest={(target) => void handleTestIntegration(target)}
         />
+
+        <SmsSpotplayerCredentialsSettingsSection
+          form={credentialsForm}
+          view={credentialsView}
+          testing={credentialsTesting}
+          onChange={setCredentialsForm}
+          onTest={(target) => void handleTestCredentials(target)}
+        />
+
+        {smsRoutingConfig ? (
+          <SmsRoutingSettingsSection global={smsRoutingConfig.global} providers={smsRoutingConfig.providers} />
+        ) : (
+          <div id="sms-routing" className="card p-6 text-caption text-text-muted">
+            بارگذاری تنظیمات مسیردهی پیامک ناموفق بود. سرور لاراول را بررسی کنید.
+          </div>
+        )}
       </div>
     </AdminPage>
   );
