@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Student;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Student\StoreSatApplicationRequest;
+use App\Services\AdminTelegramLogService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,6 +38,8 @@ class SatApplicationController extends Controller
             'status' => 'received',
             'submitted_at' => now(),
         ]);
+
+        app(AdminTelegramLogService::class)->notifySatApplicationSubmitted($application->loadMissing('user'));
 
         return ApiResponse::success($this->payload($application), 201);
     }

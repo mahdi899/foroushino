@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { ExternalLink, Loader2, Route, Save, Send } from 'lucide-react';
-import type { SmsGlobalView, SmsProviderView } from '@/lib/admin/smsCenter.types';
+import type { AdminTelegramCategoryView, AdminTelegramEventView, SmsGlobalView, SmsProviderView } from '@/lib/admin/smsCenter.types';
 import { smsProvidersForChannel } from '@/lib/admin/smsCenter.types';
 import { saveSmsGlobalSettings, saveSmsProvider, testSmsProvider } from '@/lib/admin/smsCenter';
+import { AdminTelegramSettingsSection } from './AdminTelegramSettingsSection';
 import { Badge } from '../ui';
 
 function ProviderOptions({ providers }: { providers: SmsProviderView[] }) {
@@ -115,9 +116,13 @@ function ProviderCredentialRow({ provider }: { provider: SmsProviderView }) {
 export function SmsRoutingSettingsSection({
   global: initialGlobal,
   providers: initialProviders,
+  adminTelegramEvents = [],
+  adminTelegramCategories = [],
 }: {
   global: SmsGlobalView;
   providers: SmsProviderView[];
+  adminTelegramEvents?: AdminTelegramEventView[];
+  adminTelegramCategories?: AdminTelegramCategoryView[];
 }) {
   const [global, setGlobal] = useState(initialGlobal);
   const [globalPending, setGlobalPending] = useState(false);
@@ -237,6 +242,12 @@ export function SmsRoutingSettingsSection({
           </div>
         ))}
       </div>
+
+      <AdminTelegramSettingsSection
+        global={global}
+        events={adminTelegramEvents}
+        categories={adminTelegramCategories}
+      />
 
       {status ? <p className="text-caption text-text-muted">{status}</p> : null}
     </div>

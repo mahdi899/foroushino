@@ -57,6 +57,9 @@ interface ArticleBodyEditorProps {
   aiPrompt?: string;
 }
 
+const toolbarScrollClass =
+  'overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
+
 function EditorModeToggle({ mode, onChange }: { mode: EditorMode; onChange: (next: EditorMode) => void }) {
   return (
     <div
@@ -70,7 +73,7 @@ function EditorModeToggle({ mode, onChange }: { mode: EditorMode; onChange: (nex
         aria-selected={mode === 'visual'}
         onClick={() => onChange('visual')}
         className={cn(
-          'rounded-md px-3.5 py-1.5 text-caption font-bold transition',
+          'rounded-md px-2.5 py-1 text-caption font-bold transition sm:px-3.5 sm:py-1.5',
           mode === 'visual' ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-surface-soft hover:text-primary',
         )}
       >
@@ -82,7 +85,7 @@ function EditorModeToggle({ mode, onChange }: { mode: EditorMode; onChange: (nex
         aria-selected={mode === 'html'}
         onClick={() => onChange('html')}
         className={cn(
-          'rounded-md px-3.5 py-1.5 text-caption font-bold transition',
+          'rounded-md px-2.5 py-1 text-caption font-bold transition sm:px-3.5 sm:py-1.5',
           mode === 'html' ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-surface-soft hover:text-primary',
         )}
       >
@@ -413,115 +416,135 @@ export function ArticleBodyEditor({
   );
 
   const toolbar = useMemo(() => {
+    const visualToolbarButtons =
+      mode === 'visual' && editor ? (
+        <div className="flex w-max items-center gap-0.5">
+          <ToolbarButton active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} title="درشت">
+            <Bold className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()} title="کج">
+            <Italic className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()} title="زیرخط">
+            <UnderlineIcon className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()} title="خط‌خورده">
+            <Strikethrough className="h-4 w-4" />
+          </ToolbarButton>
+          <span className="mx-1 h-5 w-px shrink-0 bg-border" />
+          <ToolbarButton active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} title="سرتیتر ۲">
+            <Heading2 className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton active={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} title="سرتیتر ۳">
+            <Heading3 className="h-4 w-4" />
+          </ToolbarButton>
+          <span className="mx-1 h-5 w-px shrink-0 bg-border" />
+          <ToolbarButton active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()} title="لیست">
+            <List className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()} title="لیست شماره‌دار">
+            <ListOrdered className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()} title="نقل‌قول">
+            <Quote className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()} title="خط جداکننده">
+            <Minus className="h-4 w-4" />
+          </ToolbarButton>
+          <span className="mx-1 h-5 w-px shrink-0 bg-border" />
+          <ToolbarButton active={editor.isActive({ textAlign: 'right' })} onClick={() => editor.chain().focus().setTextAlign('right').run()} title="راست‌چین">
+            <AlignRight className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton active={editor.isActive({ textAlign: 'center' })} onClick={() => editor.chain().focus().setTextAlign('center').run()} title="وسط">
+            <AlignCenter className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton active={editor.isActive({ textAlign: 'justify' })} onClick={() => editor.chain().focus().setTextAlign('justify').run()} title="تمام‌عرض">
+            <AlignJustify className="h-4 w-4" />
+          </ToolbarButton>
+          <span className="mx-1 h-5 w-px shrink-0 bg-border" />
+          <ToolbarButton active={editor.isActive('link')} onClick={openLinkEditor} title="لینک">
+            <Link2 className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            active={editor.isActive('table')}
+            onClick={handleTableToolbar}
+            title={editor.isActive('table') ? 'مدیریت جدول' : 'درج جدول'}
+          >
+            <TableIcon className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton onClick={() => setGalleryOpen(true)} title="درج تصویر از گالری">
+            <ImageIcon className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            active={editor.isActive('articleVideo')}
+            onClick={handleVideoToolbar}
+            title={editor.isActive('articleVideo') ? 'ویرایش ویدیو' : 'درج ویدیو'}
+          >
+            <Video className="h-4 w-4" />
+          </ToolbarButton>
+          {aiPrompt !== undefined && (
+            <ToolbarButton
+              onClick={() => {
+                if (!aiPrompt.trim()) return;
+                setAiImageOpen(true);
+              }}
+              disabled={!aiPrompt?.trim()}
+              title="تولید تصویر با AI"
+            >
+              <Sparkles className="h-4 w-4" />
+            </ToolbarButton>
+          )}
+          <ToolbarButton active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()} title="بلوک کد">
+            <Code2 className="h-4 w-4" />
+          </ToolbarButton>
+          <span className="mx-1 h-5 w-px shrink-0 bg-border" />
+          <ToolbarButton onClick={() => editor.chain().focus().undo().run()} title="بازگشت">
+            <Undo2 className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton onClick={() => editor.chain().focus().redo().run()} title="از نو">
+            <Redo2 className="h-4 w-4" />
+          </ToolbarButton>
+        </div>
+      ) : null;
+
     return (
       <div
         className={cn(
-          'sticky z-20 flex flex-wrap items-center gap-2 border-b border-border bg-surface/95 px-2 py-1.5 shadow-sm backdrop-blur-sm',
+          'sticky z-20 border-b border-border bg-surface/95 shadow-sm backdrop-blur-sm',
           toolbarStickyTop,
         )}
       >
-        {mode === 'visual' && editor && (
-          <div className="flex flex-1 flex-wrap items-center gap-0.5">
-            <ToolbarButton active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} title="درشت">
-              <Bold className="h-4 w-4" />
-            </ToolbarButton>
-            <ToolbarButton active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()} title="کج">
-              <Italic className="h-4 w-4" />
-            </ToolbarButton>
-            <ToolbarButton active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()} title="زیرخط">
-              <UnderlineIcon className="h-4 w-4" />
-            </ToolbarButton>
-            <ToolbarButton active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()} title="خط‌خورده">
-              <Strikethrough className="h-4 w-4" />
-            </ToolbarButton>
-            <span className="mx-1 h-5 w-px bg-border" />
-            <ToolbarButton active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} title="سرتیتر ۲">
-              <Heading2 className="h-4 w-4" />
-            </ToolbarButton>
-            <ToolbarButton active={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} title="سرتیتر ۳">
-              <Heading3 className="h-4 w-4" />
-            </ToolbarButton>
-            <span className="mx-1 h-5 w-px bg-border" />
-            <ToolbarButton active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()} title="لیست">
-              <List className="h-4 w-4" />
-            </ToolbarButton>
-            <ToolbarButton active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()} title="لیست شماره‌دار">
-              <ListOrdered className="h-4 w-4" />
-            </ToolbarButton>
-            <ToolbarButton active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()} title="نقل‌قول">
-              <Quote className="h-4 w-4" />
-            </ToolbarButton>
-            <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()} title="خط جداکننده">
-              <Minus className="h-4 w-4" />
-            </ToolbarButton>
-            <span className="mx-1 h-5 w-px bg-border" />
-            <ToolbarButton active={editor.isActive({ textAlign: 'right' })} onClick={() => editor.chain().focus().setTextAlign('right').run()} title="راست‌چین">
-              <AlignRight className="h-4 w-4" />
-            </ToolbarButton>
-            <ToolbarButton active={editor.isActive({ textAlign: 'center' })} onClick={() => editor.chain().focus().setTextAlign('center').run()} title="وسط">
-              <AlignCenter className="h-4 w-4" />
-            </ToolbarButton>
-            <ToolbarButton active={editor.isActive({ textAlign: 'justify' })} onClick={() => editor.chain().focus().setTextAlign('justify').run()} title="تمام‌عرض">
-              <AlignJustify className="h-4 w-4" />
-            </ToolbarButton>
-            <span className="mx-1 h-5 w-px bg-border" />
-            <ToolbarButton active={editor.isActive('link')} onClick={openLinkEditor} title="لینک">
-              <Link2 className="h-4 w-4" />
-            </ToolbarButton>
-            <ToolbarButton
-              active={editor.isActive('table')}
-              onClick={handleTableToolbar}
-              title={editor.isActive('table') ? 'مدیریت جدول' : 'درج جدول'}
-            >
-              <TableIcon className="h-4 w-4" />
-            </ToolbarButton>
-            <ToolbarButton onClick={() => setGalleryOpen(true)} title="درج تصویر از گالری">
-              <ImageIcon className="h-4 w-4" />
-            </ToolbarButton>
-            <ToolbarButton
-              active={editor.isActive('articleVideo')}
-              onClick={handleVideoToolbar}
-              title={editor.isActive('articleVideo') ? 'ویرایش ویدیو' : 'درج ویدیو'}
-            >
-              <Video className="h-4 w-4" />
-            </ToolbarButton>
-            {aiPrompt !== undefined && (
-              <ToolbarButton
-                onClick={() => {
-                  if (!aiPrompt.trim()) return;
-                  setAiImageOpen(true);
-                }}
-                disabled={!aiPrompt?.trim()}
-                title="تولید تصویر با AI"
-              >
-                <Sparkles className="h-4 w-4" />
-              </ToolbarButton>
-            )}
-            <ToolbarButton active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()} title="بلوک کد">
-              <Code2 className="h-4 w-4" />
-            </ToolbarButton>
-            <span className="mx-1 h-5 w-px bg-border" />
-            <ToolbarButton onClick={() => editor.chain().focus().undo().run()} title="بازگشت">
-              <Undo2 className="h-4 w-4" />
-            </ToolbarButton>
-            <ToolbarButton onClick={() => editor.chain().focus().redo().run()} title="از نو">
-              <Redo2 className="h-4 w-4" />
-            </ToolbarButton>
-          </div>
+        <div className="flex items-center justify-between gap-2 px-2 py-1.5 sm:hidden">
+          {mode === 'html' ? (
+            <p className="min-w-0 truncate text-caption text-text-muted">ویرایش مستقیم HTML</p>
+          ) : (
+            <span className="text-caption font-semibold text-text-muted">ابزارهای ویرایش</span>
+          )}
+          <EditorModeToggle mode={mode} onChange={switchMode} />
+        </div>
+
+        <div className="hidden items-center gap-2 px-2 py-1.5 sm:flex">
+          {visualToolbarButtons && (
+            <div className={cn('min-w-0 flex-1', toolbarScrollClass)}>{visualToolbarButtons}</div>
+          )}
+          {mode === 'html' && (
+            <p className="min-w-0 flex-1 truncate text-caption text-text-muted">ویرایش مستقیم HTML</p>
+          )}
+          <EditorModeToggle mode={mode} onChange={switchMode} />
+        </div>
+
+        {visualToolbarButtons && (
+          <div className={cn('border-t border-border px-2 py-1.5 sm:hidden', toolbarScrollClass)}>{visualToolbarButtons}</div>
         )}
-        {mode === 'html' && (
-          <p className="flex-1 text-caption text-text-muted">ویرایش مستقیم HTML</p>
-        )}
-        <EditorModeToggle mode={mode} onChange={switchMode} />
       </div>
     );
   }, [editor, editorTick, mode, openLinkEditor, switchMode, aiPrompt, toolbarStickyTop, handleVideoToolbar, handleTableToolbar]);
 
   return (
     <ArticleVideoEditContext.Provider value={videoEditContextValue}>
-    <div>
+    <div className="min-w-0">
       <label className="field-label">{label}</label>
-      <div className="rounded-lg border border-border bg-surface">
+      <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface">
         {toolbar}
         <div className="min-h-[20rem]">
           {mode === 'visual' ? (

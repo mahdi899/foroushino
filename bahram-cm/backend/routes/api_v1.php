@@ -275,6 +275,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::put('sms/center-config/providers/{slug}', [SmsCenterConfigController::class, 'updateProvider']);
     Route::post('sms/center-config/providers/{slug}/test', [SmsCenterConfigController::class, 'testProvider']);
     Route::put('sms/center-config/events/{eventKey}', [SmsCenterConfigController::class, 'updateEvent']);
+    Route::put('sms/center-config/admin-telegram/events/{eventKey}', [SmsCenterConfigController::class, 'updateAdminTelegramEvent']);
+    Route::post('sms/center-config/admin-telegram/test', [SmsCenterConfigController::class, 'testAdminTelegram']);
 
     Route::post('imports/students/preview', [ImportAdminController::class, 'preview']);
     Route::post('imports/students/commit', [ImportAdminController::class, 'commit']);

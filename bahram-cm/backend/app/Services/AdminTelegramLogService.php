@@ -1,0 +1,489 @@
+<?php
+
+namespace App\Services;
+
+use App\Enums\AdminTelegramEventKey;
+use App\Jobs\SendAdminTelegramLogJob;
+use App\Models\AdminTelegramEventConfig;
+use App\Models\Order;
+use App\Models\SatApplication;
+use App\Models\SmsProvider;
+use App\Models\SmsSetting;
+use App\Models\Ticket;
+use App\Models\User;
+use App\Support\JalaliDate;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Throwable;
+
+/**
+ * Sends structured admin activity logs to Telegram chat(s) via the configured bot.
+ */
+class AdminTelegramLogService
+{
+    /** @param  array<string, mixed>  $context */
+    public function notify(AdminTelegramEventKey $eventKey, array $context = []): void
+    {
+        if (! $this->isGloballyEnabled()) {
+            return;
+        }
+
+        $event = AdminTelegramEventConfig::forKey($eventKey);
+        if ($event && ! $event->is_enabled) {
+            return;
+        }
+
+        SendAdminTelegramLogJob::dispatch($eventKey, $context);
+    }
+
+    /** @param  array<string, mixed>  $context */
+    public function sendNow(AdminTelegramEventKey $eventKey, array $context = []): bool
+    {
+        if (! $this->isGloballyEnabled()) {
+            return false;
+        }
+
+        $event = AdminTelegramEventConfig::forKey($eventKey);
+        if ($event && ! $event->is_enabled) {
+            return false;
+        }
+
+        $token = $this->botToken();
+        $chatIds = $this->chatIds();
+
+        if ($token === null || $chatIds === []) {
+            Log::channel('sms')->warning('Admin Telegram log skipped: bot or chat IDs not configured.', [
+                'event' => $eventKey->value,
+            ]);
+
+            return false;
+        }
+
+        $message = $this->buildMessage($eventKey, $context);
+        $sentAny = false;
+
+        foreach ($chatIds as $chatId) {
+            if ($this->postMessage($token, $chatId, $message)) {
+                $sentAny = true;
+            }
+        }
+
+        return $sentAny;
+    }
+
+    /** @return array{success: bool, message: string} */
+    public function sendTest(): array
+    {
+        $token = $this->botToken();
+        $chatIds = $this->chatIds();
+
+        if ($token === null) {
+            return ['success' => false, 'message' => 'توکن ربات تلگرام تنظیم نشده است.'];
+        }
+
+        if ($chatIds === []) {
+            return ['success' => false, 'message' => 'شناسه چت ادمین تنظیم نشده است.'];
+        }
+
+        $message = "پیام سفارشی هست از تیم توسعه‌دهنده 💖💖💖\n\n"
+            .'<i>'.JalaliDate::format().'</i>';
+
+        $sent = false;
+        foreach ($chatIds as $chatId) {
+            $sent = $this->postMessage($token, $chatId, $message) || $sent;
+        }
+
+        return $sent
+            ? ['success' => true, 'message' => 'پیام آزمایشی به '.count($chatIds).' چت ارسال شد.']
+            : ['success' => false, 'message' => 'ارسال پیام آزمایشی ناموفق بود.'];
+    }
+
+    public function notifyOrderCreated(Order $order): void
+    {
+        $order->loadMissing('product');
+        $this->notify(AdminTelegramEventKey::OrderCreated, ['order' => $order]);
+    }
+
+    public function notifyPaymentStarted(Order $order): void
+    {
+        $order->loadMissing('product');
+        $this->notify(AdminTelegramEventKey::PaymentStarted, ['order' => $order]);
+    }
+
+    public function notifyOrderPaid(Order $order, ?string $refId = null): void
+    {
+        $order->loadMissing('product');
+        $this->notify(AdminTelegramEventKey::OrderPaid, ['order' => $order, 'ref_id' => $refId]);
+    }
+
+    public function notifyOrderFulfilled(Order $order): void
+    {
+        $order->loadMissing('product');
+        $this->notify(AdminTelegramEventKey::OrderFulfilled, ['order' => $order]);
+    }
+
+    public function notifyPaymentCancelled(Order $order): void
+    {
+        $order->loadMissing('product');
+        $this->notify(AdminTelegramEventKey::PaymentCancelled, ['order' => $order]);
+    }
+
+    public function notifyPaymentFailed(Order $order, ?string $reason = null): void
+    {
+        $order->loadMissing('product');
+        $this->notify(AdminTelegramEventKey::PaymentFailed, ['order' => $order, 'reason' => $reason]);
+    }
+
+    /** @param  array<string, mixed>  $changes */
+    public function notifyOrderUpdated(Order $order, array $changes): void
+    {
+        $order->loadMissing('product');
+        $this->notify(AdminTelegramEventKey::OrderUpdated, ['order' => $order, 'changes' => $changes]);
+    }
+
+    public function notifyLicenseIssued(Order $order): void
+    {
+        $order->loadMissing('product');
+        $this->notify(AdminTelegramEventKey::LicenseIssued, ['order' => $order]);
+    }
+
+    public function notifyProfileCompleted(Order $order): void
+    {
+        $order->loadMissing('product');
+        $this->notify(AdminTelegramEventKey::ProfileCompleted, ['order' => $order]);
+    }
+
+    public function notifyTicketCreated(Ticket $ticket): void
+    {
+        $ticket->loadMissing(['user', 'messages']);
+        $this->notify(AdminTelegramEventKey::TicketCreated, [
+            'ticket' => $ticket,
+            'message' => $ticket->messages->first()?->message,
+        ]);
+    }
+
+    public function notifyTicketStudentReply(Ticket $ticket, string $message): void
+    {
+        $ticket->loadMissing('user');
+        $this->notify(AdminTelegramEventKey::TicketStudentReply, [
+            'ticket' => $ticket,
+            'message' => $message,
+        ]);
+    }
+
+    public function notifyTicketAdminReply(Ticket $ticket, string $message): void
+    {
+        $ticket->loadMissing('user');
+        $this->notify(AdminTelegramEventKey::TicketAdminReply, [
+            'ticket' => $ticket,
+            'message' => $message,
+        ]);
+    }
+
+    public function notifyStudentRegistered(User $user): void
+    {
+        $this->notify(AdminTelegramEventKey::StudentRegistered, ['user' => $user]);
+    }
+
+    public function notifyStudentFirstLogin(User $user): void
+    {
+        $this->notify(AdminTelegramEventKey::StudentFirstLogin, ['user' => $user]);
+    }
+
+    public function notifyProfileUpdated(User $user): void
+    {
+        $user->loadMissing('profile');
+        $this->notify(AdminTelegramEventKey::ProfileUpdated, ['user' => $user]);
+    }
+
+    public function notifySatApplicationSubmitted(SatApplication $application): void
+    {
+        $application->loadMissing('user');
+        $this->notify(AdminTelegramEventKey::SatApplicationSubmitted, ['application' => $application]);
+    }
+
+    /** @param  array<string, mixed>  $context */
+    private function buildMessage(AdminTelegramEventKey $eventKey, array $context): string
+    {
+        $lines = [
+            '<b>'.$eventKey->emoji().' '.$this->escape($eventKey->label()).'</b>',
+        ];
+
+        $lines[] = '';
+
+        $body = match ($eventKey) {
+            AdminTelegramEventKey::OrderCreated,
+            AdminTelegramEventKey::PaymentStarted,
+            AdminTelegramEventKey::OrderPaid,
+            AdminTelegramEventKey::OrderFulfilled,
+            AdminTelegramEventKey::PaymentCancelled,
+            AdminTelegramEventKey::PaymentFailed,
+            AdminTelegramEventKey::LicenseIssued,
+            AdminTelegramEventKey::ProfileCompleted => $this->orderLines($context['order'] ?? null, $context),
+            AdminTelegramEventKey::OrderUpdated => $this->orderUpdatedLines($context['order'] ?? null, $context['changes'] ?? []),
+            AdminTelegramEventKey::TicketCreated,
+            AdminTelegramEventKey::TicketStudentReply,
+            AdminTelegramEventKey::TicketAdminReply => $this->ticketLines($context['ticket'] ?? null, $context),
+            AdminTelegramEventKey::StudentRegistered,
+            AdminTelegramEventKey::StudentFirstLogin,
+            AdminTelegramEventKey::ProfileUpdated => $this->userLines($context['user'] ?? null),
+            AdminTelegramEventKey::SatApplicationSubmitted => $this->satLines($context['application'] ?? null),
+        };
+
+        $lines = array_merge($lines, $body);
+
+        $entityLink = $this->entityAdminLink($eventKey, $context);
+        if ($entityLink !== null) {
+            $lines[] = '';
+            $lines[] = '<a href="'.$this->escape($entityLink).'">مشاهده در پنل ادمین</a>';
+        }
+
+        $lines[] = '';
+        $lines[] = '<i>'.JalaliDate::format().'</i>';
+
+        return implode("\n", array_filter($lines, fn ($line) => $line !== null));
+    }
+
+    /** @param  array<string, mixed>  $context */
+    private function orderLines(?Order $order, array $context): array
+    {
+        if (! $order) {
+            return ['<i>اطلاعات سفارش در دسترس نیست.</i>'];
+        }
+
+        $lines = [
+            $this->field('شماره سفارش', $order->order_number),
+            $this->field('محصول', $order->product?->title ?? '—'),
+            $this->field('مبلغ', $this->formatToman($order->final_amount)),
+            $this->field('مشتری', $order->customer_name),
+            $this->field('موبایل', $order->customer_phone, true),
+        ];
+
+        if (filled($order->customer_email)) {
+            $lines[] = $this->field('ایمیل', $order->customer_email);
+        }
+
+        if (filled($order->referral_code)) {
+            $lines[] = $this->field('کد معرف', $order->referral_code, true);
+        }
+
+        $lines[] = $this->field('وضعیت', $order->status.' / '.$order->payment_status, true);
+
+        if (! empty($context['ref_id'])) {
+            $lines[] = $this->field('کد پیگیری', (string) $context['ref_id'], true);
+        }
+
+        if (! empty($context['reason'])) {
+            $lines[] = $this->field('علت', (string) $context['reason']);
+        }
+
+        if (filled($order->spotplayer_license_code)) {
+            $lines[] = $this->field('لایسنس', $order->spotplayer_license_code, true);
+        }
+
+        return $lines;
+    }
+
+    /** @param  array<string, mixed>  $changes */
+    private function orderUpdatedLines(?Order $order, array $changes): array
+    {
+        $lines = $this->orderLines($order, []);
+
+        if ($changes !== []) {
+            $lines[] = '';
+            $lines[] = '<b>تغییرات:</b>';
+            foreach ($changes as $field => $value) {
+                $lines[] = $this->field((string) $field, is_scalar($value) ? (string) $value : json_encode($value, JSON_UNESCAPED_UNICODE), true);
+            }
+        }
+
+        return $lines;
+    }
+
+    /** @param  array<string, mixed>  $context */
+    private function ticketLines(?Ticket $ticket, array $context): array
+    {
+        if (! $ticket) {
+            return ['<i>اطلاعات تیکت در دسترس نیست.</i>'];
+        }
+
+        $user = $ticket->user;
+        $lines = [
+            $this->field('شناسه', (string) $ticket->id, true),
+            $this->field('موضوع', $ticket->subject),
+            $this->field('دپارتمان', $ticket->department ?? '—'),
+            $this->field('اولویت', $ticket->priority->value ?? (string) $ticket->priority),
+            $this->field('وضعیت', $ticket->status->value ?? (string) $ticket->status, true),
+        ];
+
+        if ($user) {
+            $lines[] = $this->field('دانشجو', $user->name ?: '—');
+            $lines[] = $this->field('موبایل', $user->mobile ?? '—', true);
+        }
+
+        if (! empty($context['message'])) {
+            $lines[] = '';
+            $lines[] = '<b>متن پیام:</b>';
+            $lines[] = $this->escape($this->truncate((string) $context['message'], 500));
+        }
+
+        return $lines;
+    }
+
+    private function userLines(?User $user): array
+    {
+        if (! $user) {
+            return ['<i>اطلاعات کاربر در دسترس نیست.</i>'];
+        }
+
+        $profile = $user->profile;
+        $lines = [
+            $this->field('نام', $user->name ?: '—'),
+            $this->field('موبایل', $user->mobile ?? '—', true),
+        ];
+
+        if ($profile) {
+            $fullName = trim(implode(' ', array_filter([$profile->first_name, $profile->last_name])));
+            if ($fullName !== '') {
+                $lines[] = $this->field('نام کامل', $fullName);
+            }
+            if (filled($profile->email)) {
+                $lines[] = $this->field('ایمیل', $profile->email);
+            }
+            if (filled($profile->city)) {
+                $lines[] = $this->field('شهر', $profile->city);
+            }
+        }
+
+        return $lines;
+    }
+
+    private function satLines(?SatApplication $application): array
+    {
+        if (! $application) {
+            return ['<i>اطلاعات درخواست در دسترس نیست.</i>'];
+        }
+
+        return [
+            $this->field('نام', $application->name),
+            $this->field('موبایل', $application->mobile ?? '—', true),
+            $this->field('شهر', $application->city ?? '—'),
+            $this->field('سن', $application->age !== null ? (string) $application->age : '—', true),
+            $this->field('وضعیت', $application->status->value ?? (string) $application->status, true),
+        ];
+    }
+
+    /** @param  array<string, mixed>  $context */
+    private function entityAdminLink(AdminTelegramEventKey $eventKey, array $context): ?string
+    {
+        $base = rtrim((string) config('app.frontend_url', 'http://localhost:3000'), '/');
+
+        return match ($eventKey) {
+            AdminTelegramEventKey::OrderCreated,
+            AdminTelegramEventKey::PaymentStarted,
+            AdminTelegramEventKey::OrderPaid,
+            AdminTelegramEventKey::OrderFulfilled,
+            AdminTelegramEventKey::PaymentCancelled,
+            AdminTelegramEventKey::PaymentFailed,
+            AdminTelegramEventKey::OrderUpdated,
+            AdminTelegramEventKey::LicenseIssued,
+            AdminTelegramEventKey::ProfileCompleted => isset($context['order']) && $context['order'] instanceof Order
+                ? "{$base}/admin/commerce/orders/{$context['order']->id}"
+                : null,
+            AdminTelegramEventKey::TicketCreated,
+            AdminTelegramEventKey::TicketStudentReply,
+            AdminTelegramEventKey::TicketAdminReply => isset($context['ticket']) && $context['ticket'] instanceof Ticket
+                ? "{$base}/admin/academy/tickets"
+                : null,
+            AdminTelegramEventKey::StudentRegistered,
+            AdminTelegramEventKey::StudentFirstLogin,
+            AdminTelegramEventKey::ProfileUpdated => isset($context['user']) && $context['user'] instanceof User
+                ? "{$base}/admin/academy/students/{$context['user']->id}"
+                : null,
+            AdminTelegramEventKey::SatApplicationSubmitted => "{$base}/admin/academy/sat-applications",
+        };
+    }
+
+    private function field(string $label, ?string $value, bool $ltr = false): string
+    {
+        $safeValue = $this->escape($value ?? '—');
+
+        if ($ltr) {
+            $safeValue = '<code>'.$safeValue.'</code>';
+        }
+
+        return '<b>'.$this->escape($label).':</b> '.$safeValue;
+    }
+
+    private function formatToman(int $amount): string
+    {
+        return number_format($amount).' تومان';
+    }
+
+    private function escape(?string $value): string
+    {
+        return htmlspecialchars((string) $value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+
+    private function truncate(string $value, int $max): string
+    {
+        if (mb_strlen($value) <= $max) {
+            return $value;
+        }
+
+        return mb_substr($value, 0, $max - 1).'…';
+    }
+
+    private function isGloballyEnabled(): bool
+    {
+        return (bool) SmsSetting::current()->admin_telegram_enabled;
+    }
+
+    private function botToken(): ?string
+    {
+        $provider = SmsProvider::query()->where('slug', 'telegram')->first();
+        $token = trim((string) $provider?->credentials);
+
+        return $token !== '' ? $token : null;
+    }
+
+    /** @return list<string> */
+    private function chatIds(): array
+    {
+        $raw = (string) SmsSetting::current()->admin_telegram_chat_ids;
+        $parts = preg_split('/[\s,;]+/', $raw) ?: [];
+
+        return array_values(array_filter(array_map('trim', $parts), fn ($id) => $id !== ''));
+    }
+
+    private function postMessage(string $token, string $chatId, string $message): bool
+    {
+        try {
+            $response = Http::timeout(20)->post("https://api.telegram.org/bot{$token}/sendMessage", [
+                'chat_id' => $chatId,
+                'text' => $message,
+                'parse_mode' => 'HTML',
+                'disable_web_page_preview' => true,
+            ]);
+        } catch (Throwable $e) {
+            Log::channel('sms')->error('Admin Telegram log failed.', [
+                'chat_id' => $chatId,
+                'message' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+
+        $body = $response->json();
+        $ok = $response->successful() && data_get($body, 'ok') === true;
+
+        if (! $ok) {
+            Log::channel('sms')->error('Admin Telegram log rejected.', [
+                'chat_id' => $chatId,
+                'response' => $body,
+            ]);
+        }
+
+        return $ok;
+    }
+}

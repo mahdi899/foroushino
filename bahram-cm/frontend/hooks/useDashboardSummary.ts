@@ -13,7 +13,18 @@ async function fetchDashboardSummary(): Promise<DashboardSummary> {
     throw new Error(json.error || 'بارگذاری داشبورد ناموفق بود');
   }
 
-  return json.data ?? EMPTY_DASHBOARD_SUMMARY;
+  return json.data ? normalizeDashboardSummary(json.data) : EMPTY_DASHBOARD_SUMMARY;
+}
+
+function normalizeDashboardSummary(data: DashboardSummary): DashboardSummary {
+  return {
+    ...EMPTY_DASHBOARD_SUMMARY,
+    ...data,
+    chatbot: { ...EMPTY_DASHBOARD_SUMMARY.chatbot, ...data.chatbot },
+    academy: { ...EMPTY_DASHBOARD_SUMMARY.academy, ...data.academy },
+    recent_leads: data.recent_leads ?? [],
+    recent_tickets: data.recent_tickets ?? [],
+  };
 }
 
 /**

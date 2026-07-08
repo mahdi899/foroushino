@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Student;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Student\UpdateProfileRequest;
+use App\Services\AdminTelegramLogService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -42,6 +43,8 @@ class ProfileController extends Controller
         }
 
         $user->refresh()->loadMissing('profile');
+
+        app(AdminTelegramLogService::class)->notifyProfileUpdated($user);
 
         return ApiResponse::success($this->payload($user));
     }

@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 import { CartNavButton } from "@/components/commerce/CartNavButton";
 import { PanelNavButton } from "@/components/commerce/PanelNavButton";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { Divider } from "@/components/ui/Divider";
 
 type Props = {
   open: boolean;

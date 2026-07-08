@@ -2,7 +2,13 @@
 
 import { revalidatePath } from 'next/cache';
 import { adminFetch } from '@/lib/auth/session';
-import type { SmsCenterConfig, SmsEventView, SmsGlobalView, SmsProviderView } from '@/lib/admin/smsCenter.types';
+import type {
+  AdminTelegramEventView,
+  SmsCenterConfig,
+  SmsEventView,
+  SmsGlobalView,
+  SmsProviderView,
+} from '@/lib/admin/smsCenter.types';
 
 function actionError(e: unknown, fallback: string): { ok: false; error: string } {
   const err = e as Error & { payload?: { error?: { message_fa?: string }; message?: string } };
@@ -70,5 +76,31 @@ export async function saveSmsEvent(
     return { ok: true, data: res.data };
   } catch (e) {
     return actionError(e, 'ذخیره تنظیمات رویداد ناموفق بود.');
+  }
+}
+
+export async function saveAdminTelegramEvent(
+  eventKey: string,
+  input: { is_enabled?: boolean },
+): Promise<{ ok: boolean; data?: AdminTelegramEventView; error?: string }> {
+  try {
+    const res = await adminFetch<{ data: AdminTelegramEventView }>(`/sms/center-config/admin-telegram/events/${eventKey}`, {
+      method: 'PUT',
+      body: input,
+    });
+    revalidatePath('/admin/settings');
+    revalidatePath('/admin/academy/sms');
+    return { ok: true, data: res.data };
+  } catch (e) {
+    return actionError(e, 'ذخیره رویداد تلگرام ادمین ناموفق بود.');
+  }
+}
+
+export async function testAdminTelegram(): Promise<{ ok: boolean; message: string }> {
+  try {
+    const res = await adminFetch<{ ok: boolean; message: string }>('/sms/center-config/admin-telegram/test', { method: 'POST' });
+    return { ok: res.ok, message: res.message };
+  } catch (e) {
+    return { ok: false, message: actionError(e, 'تست لاگ تلگرام ناموفق بود.').error ?? 'خطا' };
   }
 }

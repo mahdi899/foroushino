@@ -107,6 +107,7 @@ class DatabaseSeeder extends Seeder
         SpotplayerSetting::current();
 
         $this->call(SmsCenterSeeder::class);
+        $this->call(AdminTelegramSeeder::class);
         $this->call(CacheIntegrationsSeeder::class);
         $this->call(CommerceSeeder::class);
     }

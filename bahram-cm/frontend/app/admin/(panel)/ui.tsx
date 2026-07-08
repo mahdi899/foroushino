@@ -33,9 +33,21 @@ export function AdminPage({
   );
 }
 
-export function StatCard({ label, value, icon, hint }: { label: string; value: string | number; icon: string; hint?: string }) {
-  return (
-    <div className="card flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5">
+export function StatCard({
+  label,
+  value,
+  icon,
+  hint,
+  href,
+}: {
+  label: string;
+  value: string | number;
+  icon: string;
+  hint?: string;
+  href?: string;
+}) {
+  const content = (
+    <div className={cn('card flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5', href && 'transition hover:border-accent')}>
       <span className="grid h-12 w-12 place-items-center rounded-lg bg-surface-soft text-accent">
         <AdminLucideIcon name={icon} className="h-6 w-6" strokeWidth={1.5} />
       </span>
@@ -46,6 +58,12 @@ export function StatCard({ label, value, icon, hint }: { label: string; value: s
       </div>
     </div>
   );
+
+  if (href) {
+    return <Link href={href}>{content}</Link>;
+  }
+
+  return content;
 }
 
 export function PersistNotice() {

@@ -8,6 +8,7 @@ use App\Jobs\SendSmsJob;
 use App\Models\CourseAccess;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Services\AdminTelegramLogService;
 use App\Services\OrderAnalyticsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -90,6 +91,13 @@ class OrderController extends Controller
             'payment_status' => ['sometimes', 'string', Rule::in(['pending', 'paid', 'failed'])],
         ]);
 
+        $changes = [];
+        foreach ($data as $field => $value) {
+            if ($order->getAttribute($field) !== $value) {
+                $changes[$field] = $value;
+            }
+        }
+
         $order->update($data);
         $order->load([
             'product',
@@ -99,6 +107,10 @@ class OrderController extends Controller
             'user:id,name,mobile',
             'referralConversion.referrer:id,name,mobile',
         ]);
+
+        if ($changes !== []) {
+            app(AdminTelegramLogService::class)->notifyOrderUpdated($order, $changes);
+        }
 
         return response()->json(['data' => $this->detailedPayload($order)]);
     }

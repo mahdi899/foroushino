@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Services\AdminTelegramLogService;
 use App\Services\InAppNotificationService;
 use App\Services\SmsService;
 use App\Support\Mobile;
@@ -71,6 +72,7 @@ class TicketAdminController extends Controller
 
         app(SmsService::class)->sendTicketReply($ticket);
         app(InAppNotificationService::class)->ticketReply($ticket);
+        app(AdminTelegramLogService::class)->notifyTicketAdminReply($ticket, $data['message']);
 
         return response()->json(['data' => $this->listPayload($ticket)], 201);
     }
@@ -107,6 +109,7 @@ class TicketAdminController extends Controller
 
         app(SmsService::class)->sendTicketReply($ticket);
         app(InAppNotificationService::class)->ticketReply($ticket);
+        app(AdminTelegramLogService::class)->notifyTicketAdminReply($ticket, $data['message']);
 
         return response()->json(['data' => $this->listPayload($ticket)]);
     }

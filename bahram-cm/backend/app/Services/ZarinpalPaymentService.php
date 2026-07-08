@@ -6,6 +6,7 @@ use App\Jobs\FulfillOrderJob;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentSetting;
+use App\Services\AdminTelegramLogService;
 use App\Services\Exceptions\PaymentException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -90,6 +91,8 @@ class ZarinpalPaymentService
             'authority' => $authority,
         ]);
 
+        app(AdminTelegramLogService::class)->notifyPaymentStarted($order);
+
         return $payment;
     }
 
@@ -169,6 +172,8 @@ class ZarinpalPaymentService
 
             $message = data_get($body, 'errors.message', 'پرداخت تایید نشد.');
 
+            app(AdminTelegramLogService::class)->notifyPaymentFailed($order->fresh('product'), $message);
+
             return ['success' => false, 'message' => $message, 'ref_id' => null, 'order' => $order];
         }
 
@@ -189,6 +194,8 @@ class ZarinpalPaymentService
             'ref_id' => $refId,
         ]);
 
+        app(AdminTelegramLogService::class)->notifyOrderPaid($order->fresh('product'), $refId !== null ? (string) $refId : null);
+
         $this->dispatchFulfillment($order->id);
 
         return ['success' => true, 'message' => 'پرداخت با موفقیت انجام شد.', 'ref_id' => $refId, 'order' => $order];
@@ -207,6 +214,7 @@ class ZarinpalPaymentService
 
         if ($payment->status === 'pending') {
             $payment->update(['status' => 'canceled']);
+            app(AdminTelegramLogService::class)->notifyPaymentCancelled($payment->order);
         }
 
         return $payment->order;

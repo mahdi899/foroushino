@@ -50,6 +50,7 @@ import {
 } from '@/lib/admin/smsSpotplayerCredentials.types';
 import { SmsSpotplayerCredentialsSettingsSection } from './SmsSpotplayerCredentialsSettingsSection';
 import { SmsRoutingSettingsSection } from './SmsRoutingSettingsSection';
+import { resolveSettingsScrollTarget, SETTINGS_CATEGORY_NAV, SettingsCategory, SiteSettingsNav } from './SiteSettingsShared';
 import type { SmsCenterConfig } from '@/lib/admin/smsCenter.types';
 
 export default function SettingsPage() {
@@ -343,6 +344,14 @@ export default function SettingsPage() {
     messageTone: status === 'error' ? 'error' : 'success',
   });
 
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    const target = resolveSettingsScrollTarget(hash);
+    if (!target) return;
+    document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
   function field(key: keyof typeof data, label: string, dir?: string) {
     return (
       <div>
@@ -373,80 +382,132 @@ export default function SettingsPage() {
         </div>
       }
     >
-      <div className="flex flex-col gap-6">
-        <div className="card p-6">
-          <h2 className="mb-4 text-h3 text-primary-dark">اطلاعات تماس</h2>
-          <p className="mb-4 text-caption text-text-muted">
-            در چت‌بات، فوتر و صفحات تماس استفاده می‌شود.
-          </p>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {field('phone', 'تلفن')}
-            {field('whatsapp', 'واتساپ')}
-            {field('email', 'ایمیل', 'ltr')}
-            {field('address', 'آدرس')}
-            {field('mapUrl', 'لینک نقشه', 'ltr')}
+      <SiteSettingsNav />
+
+      <div className="flex flex-col gap-10">
+        <SettingsCategory
+          id="contact"
+          icon={SETTINGS_CATEGORY_NAV[0].icon}
+          title="تماس و اطلاعات"
+          desc="شماره، ایمیل و آدرس — در چت‌بات، فوتر و صفحات تماس نمایش داده می‌شود."
+        >
+          <div id="site-contact" className="card p-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {field('phone', 'تلفن')}
+              {field('whatsapp', 'واتساپ')}
+              {field('email', 'ایمیل', 'ltr')}
+              {field('address', 'آدرس')}
+              {field('mapUrl', 'لینک نقشه', 'ltr')}
+            </div>
           </div>
-        </div>
+        </SettingsCategory>
 
-        <div className="card p-6">
-          <h2 className="mb-1 text-h3 text-primary-dark">دسته‌بندی insights</h2>
-          <p className="mb-4 text-caption text-text-muted">
-            دسته‌های مقالات — در ویرایشگر مقاله هم از «مدیریت دسته‌ها» قابل دسترسی است.
-          </p>
-          <BlogCategoriesManager />
-        </div>
-
-        <GoogleTrackingSettingsSection
-          form={trackingForm}
-          hasGa4ServiceAccount={trackingMeta.hasGa4ServiceAccount}
-          ga4ServiceAccountEmail={trackingMeta.ga4ServiceAccountEmail}
-          hasIndexNowKey={trackingMeta.hasIndexNowKey}
-          indexNowKeyPreview={trackingMeta.indexNowKeyPreview}
-          envFallback={trackingMeta.envFallback}
-          onChange={setTrackingForm}
-        />
-
-        <CaptchaSettingsSection
-          form={captchaForm}
-          hasSecretKey={captchaMeta.hasSecretKey}
-          secretKeyPreview={captchaMeta.secretKeyPreview}
-          envFallback={captchaMeta.envFallback}
-          onChange={setCaptchaForm}
-        />
-
-        <ImageOptimizerSettingsSection
-          form={imageOptimizerForm}
-          view={imageOptimizerView}
-          testing={imageOptimizerTesting}
-          saving={imageOptimizerSaving}
-          onChange={setImageOptimizerForm}
-          onSave={() => void handleSaveImageOptimizerSection()}
-          onTest={(target) => void handleTestImageOptimizer(target)}
-        />
-
-        <CacheIntegrationsSettingsSection
-          form={integrationsForm}
-          view={integrationsView}
-          testing={integrationsTesting}
-          onChange={setIntegrationsForm}
-          onTest={(target) => void handleTestIntegration(target)}
-        />
-
-        <SmsSpotplayerCredentialsSettingsSection
-          form={credentialsForm}
-          view={credentialsView}
-          testing={credentialsTesting}
-          onChange={setCredentialsForm}
-          onTest={(target) => void handleTestCredentials(target)}
-        />
-
-        {smsRoutingConfig ? (
-          <SmsRoutingSettingsSection global={smsRoutingConfig.global} providers={smsRoutingConfig.providers} />
-        ) : (
-          <div id="sms-routing" className="card p-6 text-caption text-text-muted">
-            بارگذاری تنظیمات مسیردهی پیامک ناموفق بود. سرور لاراول را بررسی کنید.
+        <SettingsCategory
+          id="content"
+          icon={SETTINGS_CATEGORY_NAV[1].icon}
+          title="محتوا و وبلاگ"
+          desc="دسته‌بندی مقالات insights و ساختار محتوای مجله."
+        >
+          <div id="blog-categories" className="card p-6">
+            <h3 className="mb-1 text-small font-semibold text-primary-dark">دسته‌بندی insights</h3>
+            <p className="mb-4 text-caption text-text-muted">
+              دسته‌های مقالات — در ویرایشگر مقاله هم از «مدیریت دسته‌ها» قابل دسترسی است.
+            </p>
+            <BlogCategoriesManager />
           </div>
-        )}
+        </SettingsCategory>
+
+        <SettingsCategory
+          id="gallery"
+          icon={SETTINGS_CATEGORY_NAV[2].icon}
+          title="گالری و تصاویر"
+          desc="بهینه‌سازی خودکار تصاویر هنگام آپلود در کتابخانه رسانه."
+        >
+          <ImageOptimizerSettingsSection
+            form={imageOptimizerForm}
+            view={imageOptimizerView}
+            testing={imageOptimizerTesting}
+            saving={imageOptimizerSaving}
+            onChange={setImageOptimizerForm}
+            onSave={() => void handleSaveImageOptimizerSection()}
+            onTest={(target) => void handleTestImageOptimizer(target)}
+          />
+        </SettingsCategory>
+
+        <SettingsCategory
+          id="sms"
+          icon={SETTINGS_CATEGORY_NAV[3].icon}
+          title="پیامک و پیام‌ها"
+          desc="کلیدهای API، مسیردهی پیامک، تلگرام و ارسال خودکار SpotPlayer."
+        >
+          <SmsSpotplayerCredentialsSettingsSection
+            form={credentialsForm}
+            view={credentialsView}
+            testing={credentialsTesting}
+            onChange={setCredentialsForm}
+            onTest={(target) => void handleTestCredentials(target)}
+          />
+
+          {smsRoutingConfig ? (
+            <SmsRoutingSettingsSection
+              global={smsRoutingConfig.global}
+              providers={smsRoutingConfig.providers}
+              adminTelegramEvents={smsRoutingConfig.admin_telegram_events ?? []}
+              adminTelegramCategories={smsRoutingConfig.admin_telegram_categories ?? []}
+            />
+          ) : (
+            <div id="sms-routing" className="card p-6 text-caption text-text-muted">
+              بارگذاری تنظیمات مسیردهی پیامک ناموفق بود. سرور لاراول را بررسی کنید.
+            </div>
+          )}
+        </SettingsCategory>
+
+        <SettingsCategory
+          id="seo"
+          icon={SETTINGS_CATEGORY_NAV[4].icon}
+          title="سئو و تحلیل"
+          desc="Google Analytics، Search Console و IndexNow برای رصد ترافیک و ایندکس."
+        >
+          <GoogleTrackingSettingsSection
+            form={trackingForm}
+            hasGa4ServiceAccount={trackingMeta.hasGa4ServiceAccount}
+            ga4ServiceAccountEmail={trackingMeta.ga4ServiceAccountEmail}
+            hasIndexNowKey={trackingMeta.hasIndexNowKey}
+            indexNowKeyPreview={trackingMeta.indexNowKeyPreview}
+            envFallback={trackingMeta.envFallback}
+            onChange={setTrackingForm}
+          />
+        </SettingsCategory>
+
+        <SettingsCategory
+          id="security"
+          icon={SETTINGS_CATEGORY_NAV[5].icon}
+          title="امنیت"
+          desc="کپچا برای محافظت از فرم‌های عمومی سایت."
+        >
+          <CaptchaSettingsSection
+            form={captchaForm}
+            hasSecretKey={captchaMeta.hasSecretKey}
+            secretKeyPreview={captchaMeta.secretKeyPreview}
+            envFallback={captchaMeta.envFallback}
+            onChange={setCaptchaForm}
+          />
+        </SettingsCategory>
+
+        <SettingsCategory
+          id="infrastructure"
+          icon={SETTINGS_CATEGORY_NAV[6].icon}
+          title="کش و زیرساخت"
+          desc="Webhook بازسازی کش و یکپارچگی Cloudflare."
+        >
+          <CacheIntegrationsSettingsSection
+            form={integrationsForm}
+            view={integrationsView}
+            testing={integrationsTesting}
+            onChange={setIntegrationsForm}
+            onTest={(target) => void handleTestIntegration(target)}
+          />
+        </SettingsCategory>
       </div>
     </AdminPage>
   );

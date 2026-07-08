@@ -7,6 +7,7 @@ use App\Http\Requests\Student\StoreTicketMessageRequest;
 use App\Http\Requests\Student\StoreTicketRequest;
 use App\Models\Ticket;
 use App\Support\ApiResponse;
+use App\Services\AdminTelegramLogService;
 use App\Services\InAppNotificationService;
 use App\Services\SmsService;
 use Illuminate\Http\JsonResponse;
@@ -59,6 +60,7 @@ class TicketController extends Controller
 
         app(SmsService::class)->sendTicketCreated($ticket);
         app(InAppNotificationService::class)->ticketCreated($ticket->loadMissing('user'));
+        app(AdminTelegramLogService::class)->notifyTicketCreated($ticket->loadMissing(['user', 'messages']));
 
         return ApiResponse::success($this->payload($ticket), 201);
     }
@@ -78,8 +80,12 @@ class TicketController extends Controller
             'is_admin_reply' => false,
         ]);
 
+        $message = (string) $request->string('message');
+
         $ticket->update(['status' => 'open']);
         $ticket->load('messages');
+
+        app(AdminTelegramLogService::class)->notifyTicketStudentReply($ticket->loadMissing('user'), $message);
 
         return ApiResponse::success($this->payload($ticket));
     }

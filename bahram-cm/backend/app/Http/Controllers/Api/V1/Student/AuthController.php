@@ -8,6 +8,7 @@ use App\Http\Requests\Student\LoginPasswordRequest;
 use App\Http\Requests\Student\SendOtpRequest;
 use App\Http\Requests\Student\VerifyOtpRequest;
 use App\Models\User;
+use App\Services\AdminTelegramLogService;
 use App\Services\Exceptions\OtpException;
 use App\Services\OtpService;
 use App\Services\StudentOnboardingService;
@@ -79,6 +80,10 @@ class AuthController extends Controller
             ['mobile' => $mobile],
             ['name' => 'دانشجو', 'status' => 'active']
         );
+
+        if ($user->wasRecentlyCreated) {
+            app(AdminTelegramLogService::class)->notifyStudentRegistered($user);
+        }
 
         if ($user->is_admin) {
             return ApiResponse::error('forbidden', 'این شماره متعلق به یک حساب مدیریتی است.', 403);

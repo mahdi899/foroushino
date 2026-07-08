@@ -2,10 +2,14 @@
 
 namespace App\Services;
 
+use App\Enums\AdminTelegramEventCategory;
+use App\Enums\AdminTelegramEventKey;
 use App\Enums\SmsChannelType;
 use App\Enums\SmsEventCategory;
 use App\Enums\SmsEventKey;
+use App\Models\AdminTelegramEventConfig;
 use App\Models\SmsEventConfig;
+use App\Services\AdminTelegramLogService;
 use App\Models\SmsProvider;
 use App\Models\SmsSetting;
 use App\Services\Sms\SmsProviderFactory;
@@ -26,6 +30,8 @@ class SmsCenterConfigService
             'fallback_delay_seconds' => $settings->fallback_delay_seconds ?? 20,
             'fallback_enabled' => $settings->fallback_enabled ?? true,
             'test_phone' => $settings->test_phone,
+            'admin_telegram_enabled' => (bool) $settings->admin_telegram_enabled,
+            'admin_telegram_chat_ids' => $settings->admin_telegram_chat_ids,
         ];
     }
 
@@ -40,6 +46,8 @@ class SmsCenterConfigService
             'fallback_delay_seconds',
             'fallback_enabled',
             'test_phone',
+            'admin_telegram_enabled',
+            'admin_telegram_chat_ids',
         ])));
 
         if (isset($input['primary_provider_slug'])) {
@@ -185,6 +193,62 @@ class SmsCenterConfigService
             'fallback_delay_seconds' => $event->fallback_delay_seconds,
             'placeholders' => $key?->placeholders() ?? [],
         ];
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function adminTelegramEventsView(): array
+    {
+        return AdminTelegramEventConfig::query()->orderBy('sort_order')->get()->map(function (AdminTelegramEventConfig $event) {
+            $key = $event->eventKey();
+
+            return [
+                'event_key' => $event->event_key,
+                'category' => $key?->category()->value ?? AdminTelegramEventCategory::Commerce->value,
+                'category_label' => $key?->category()->label() ?? AdminTelegramEventCategory::Commerce->label(),
+                'label_fa' => $event->label_fa,
+                'description' => $event->description,
+                'is_enabled' => $event->is_enabled,
+            ];
+        })->all();
+    }
+
+    /** @param  array<string, mixed>  $input */
+    public function updateAdminTelegramEvent(string $eventKey, array $input): array
+    {
+        $event = AdminTelegramEventConfig::query()->where('event_key', $eventKey)->firstOrFail();
+        $event->update(array_intersect_key($input, array_flip(['is_enabled'])));
+        $event->refresh();
+        $key = $event->eventKey();
+
+        return [
+            'event_key' => $event->event_key,
+            'category' => $key?->category()->value ?? AdminTelegramEventCategory::Commerce->value,
+            'category_label' => $key?->category()->label() ?? AdminTelegramEventCategory::Commerce->label(),
+            'label_fa' => $event->label_fa,
+            'description' => $event->description,
+            'is_enabled' => $event->is_enabled,
+        ];
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function adminTelegramCategoriesView(): array
+    {
+        return collect(AdminTelegramEventCategory::cases())
+            ->sortBy(fn (AdminTelegramEventCategory $c) => $c->sortOrder())
+            ->map(fn (AdminTelegramEventCategory $c) => [
+                'key' => $c->value,
+                'label' => $c->label(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /** @return array{ok: bool, message: string} */
+    public function testAdminTelegram(): array
+    {
+        $result = app(AdminTelegramLogService::class)->sendTest();
+
+        return ['ok' => $result['success'], 'message' => $result['message']];
     }
 
     /** @return list<array<string, mixed>> */

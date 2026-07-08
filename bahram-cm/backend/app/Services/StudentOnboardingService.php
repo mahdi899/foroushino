@@ -18,6 +18,7 @@ class StudentOnboardingService
     public function __construct(
         private readonly SmsService $sms,
         private readonly InAppNotificationService $notifications,
+        private readonly AdminTelegramLogService $adminTelegram,
     ) {}
 
     /** Idempotent: only fires side effects the very first time. */
@@ -37,6 +38,8 @@ class StudentOnboardingService
 
             $this->notifications->welcome($user);
         });
+
+        $this->adminTelegram->notifyStudentFirstLogin($user->fresh());
 
         if (filled($user->mobile)) {
             $this->sms->sendWelcome($user);

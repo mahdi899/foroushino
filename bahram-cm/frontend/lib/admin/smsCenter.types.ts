@@ -42,6 +42,22 @@ export type SmsGlobalView = {
   fallback_delay_seconds: number;
   fallback_enabled: boolean;
   test_phone: string | null;
+  admin_telegram_enabled: boolean;
+  admin_telegram_chat_ids: string | null;
+};
+
+export type AdminTelegramEventView = {
+  event_key: string;
+  category: string;
+  category_label: string;
+  label_fa: string;
+  description: string | null;
+  is_enabled: boolean;
+};
+
+export type AdminTelegramCategoryView = {
+  key: string;
+  label: string;
 };
 
 export type SmsCenterConfig = {
@@ -49,6 +65,8 @@ export type SmsCenterConfig = {
   providers: SmsProviderView[];
   events: SmsEventView[];
   event_categories: SmsEventCategoryView[];
+  admin_telegram_events: AdminTelegramEventView[];
+  admin_telegram_categories: AdminTelegramCategoryView[];
 };
 
 export type SmsProviderForm = {

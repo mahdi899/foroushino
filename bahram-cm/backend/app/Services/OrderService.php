@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\AdminTelegramLogService;
 use App\Support\Mobile;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -43,7 +44,7 @@ class OrderService
 
         $this->assertReferralCodeNotSelf($data['ref'] ?? null, $authenticatedUser);
 
-        return Order::create([
+        $order = Order::create([
             'user_id' => $userId,
             'order_number' => $this->generateOrderNumber(),
             'product_id' => $product->id,
@@ -59,6 +60,10 @@ class OrderService
             'status' => 'pending_payment',
             'payment_status' => 'pending',
         ]);
+
+        app(AdminTelegramLogService::class)->notifyOrderCreated($order->load('product'));
+
+        return $order;
     }
 
     /**
@@ -104,6 +109,8 @@ class OrderService
             'customer_name' => trim($data['customer_name']),
             'customer_email' => $data['customer_email'] ?? $order->customer_email,
         ]);
+
+        app(AdminTelegramLogService::class)->notifyProfileCompleted($order->fresh('product'));
 
         if ($order->user_id) {
             $user = User::query()->with('profile')->find($order->user_id);

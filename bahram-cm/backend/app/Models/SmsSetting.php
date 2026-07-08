@@ -20,6 +20,8 @@ class SmsSetting extends Model
         'sms_pattern_code',
         'is_sms_active',
         'test_phone',
+        'admin_telegram_enabled',
+        'admin_telegram_chat_ids',
         'purchase_message_template',
     ];
 
@@ -27,6 +29,7 @@ class SmsSetting extends Model
         'sms_api_key' => 'encrypted',
         'is_sms_active' => 'boolean',
         'fallback_enabled' => 'boolean',
+        'admin_telegram_enabled' => 'boolean',
     ];
 
     public function isReady(): bool

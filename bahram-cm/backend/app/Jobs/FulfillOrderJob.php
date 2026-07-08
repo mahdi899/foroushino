@@ -9,6 +9,7 @@ use App\Models\CourseAccess;
 use App\Models\Order;
 use App\Models\SpotplayerLicense;
 use App\Models\User;
+use App\Services\AdminTelegramLogService;
 use App\Services\Exceptions\SpotPlayerException;
 use App\Services\InAppNotificationService;
 use App\Services\ReferralService;
@@ -44,6 +45,7 @@ class FulfillOrderJob implements ShouldQueue
         SmsService $sms,
         ReferralService $referrals,
         InAppNotificationService $notifications,
+        AdminTelegramLogService $adminTelegram,
     ): void {
         $order = Order::query()->with('product')->find($this->orderId);
 
@@ -134,6 +136,7 @@ class FulfillOrderJob implements ShouldQueue
         $order->refresh();
         if (filled($order->spotplayer_license_code)) {
             $sms->sendLicenseCreated($order);
+            $adminTelegram->notifyLicenseIssued($order);
         }
 
         $spotPlayerProduct = filled($order->product?->spotplayer_course_id);
@@ -151,6 +154,8 @@ class FulfillOrderJob implements ShouldQueue
         if ($licenseReady && filled($order->spotplayer_license_code)) {
             $notifications->licenseReady($order);
         }
+
+        $adminTelegram->notifyOrderFulfilled($order);
     }
 
     /**
