@@ -16,8 +16,8 @@ export default async function HomePage() {
 
   return (
     <>
-      <link rel="preload" as="image" href={bahramImageLoader({ src: sitePhotos.heroBackgroundMobile, width: 768, quality: 80 })} media="(max-width: 767px)" fetchPriority="high" />
-      <link rel="preload" as="image" href={bahramImageLoader({ src: sitePhotos.heroBackground, width: 1920, quality: 80 })} media="(min-width: 768px)" fetchPriority="high" />
+      <link rel="preload" as="image" href={bahramImageLoader({ src: sitePhotos.heroBackgroundMobile, width: 768, quality: 80 })} media="(max-width: 1023px)" fetchPriority="high" />
+      <link rel="preload" as="image" href={bahramImageLoader({ src: sitePhotos.heroBackground, width: 1920, quality: 80 })} media="(min-width: 1024px)" fetchPriority="high" />
       <HomeBelowFoldSections deferBelowFold={perf.defer_below_fold !== false} />
     </>
   );

@@ -93,9 +93,9 @@ export default function MiniCoursesPage() {
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       <PageHero
-        eyebrow="مسیرهای کوتاه"
-        title="مینی‌دوره؛ حرکت سریع"
-        description="برای شروع کوتاه قبل از مسیر اصلی."
+        eyebrow="Mini Courses"
+        title="مینی‌دوره‌ها"
+        description="مسیرهای کوتاه برای ورود سریع؛ نقطه‌ی شروع قبل از مسیر اصلی."
       />
       <section className="py-section-sm">
         <div className="container-luxe grid gap-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3">

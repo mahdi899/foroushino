@@ -538,6 +538,11 @@
   border-color: var(--color-primary);
 }
 
+.panel-theme-toggle-placeholder {
+  pointer-events: none;
+  opacity: 0.55;
+}
+
 .panel-theme-toggle-thumb {
   position: absolute;
   top: 3px;

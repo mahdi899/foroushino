@@ -284,7 +284,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
     }
   }
 
-  const siteInline = variant === 'site' || (compact && inline);
+  const siteInline = variant === 'site' || (variant !== 'default' && compact && inline);
   const siteTight = siteInline && tight;
   const mathOnly = pillEmbed || (compact && inline);
 

@@ -147,12 +147,10 @@ function LoginFormFallback() {
 
 export default function AdminLogin() {
   return (
-    <div className="admin-login-screen">
-      <div className="admin-login-screen__inner">
-        <Suspense fallback={<LoginFormFallback />}>
-          <LoginForm />
-        </Suspense>
-      </div>
-    </div>
+    <main className="admin-login-screen">
+      <Suspense fallback={<LoginFormFallback />}>
+        <LoginForm />
+      </Suspense>
+    </main>
   );
 }

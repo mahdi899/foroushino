@@ -12,17 +12,17 @@ import { siteStorageMedia } from '@/config/media';
 
 export const sitePhotos = {
 
-  heroBackground: '/storage/media/2026/07/01kwwk4bm4900qv599k0qxw4mw.jpg',
+  heroBackground: '/storage/media/2026/07/01kwycnpwd57yxx2ddjmnvhp55.webp',
 
-  heroBackgroundMobile: '/storage/media/2026/07/01kwwk58kyxqdhn3vz6aaz5610.jpg',
+  heroBackgroundMobile: '/storage/media/2026/07/01kwyecgnr5hzcdbwa9rwzgbwn.webp',
 
   /** @deprecated use heroBackground */
 
-  heroLightGrid: '/storage/media/2026/07/01kwwk4bm4900qv599k0qxw4mw.jpg',
+  heroLightGrid: '/storage/media/2026/07/01kwycnpwd57yxx2ddjmnvhp55.webp',
 
   /** @deprecated use heroBackgroundMobile */
 
-  heroLightGridMobile: '/storage/media/2026/07/01kwwk58kyxqdhn3vz6aaz5610.jpg',
+  heroLightGridMobile: '/storage/media/2026/07/01kwyecgnr5hzcdbwa9rwzgbwn.webp',
 
   portraitFounder: siteStorageMedia('portrait-founder.webp'),
 

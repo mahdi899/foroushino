@@ -4,11 +4,11 @@ import { SiteImage } from "@/components/ui/SiteImage";
 import { ArrowLeft, Briefcase, GraduationCap, Wallet } from "lucide-react";
 import { Fragment } from "react";
 import { site } from "@/content/site";
-import { cn } from "@/lib/cn";
 import { Reveal } from "@/components/motion/Reveal";
 import { TrackedLinkButton } from "@/components/analytics/TrackedLinkButton";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { sitePhotos } from "@/lib/site-photo-paths";
+import "@/styles/campaign-journey.css";
 
 const stepIcons = [GraduationCap, Wallet, Briefcase] as const;
 const stepTags = ["آموزش", "درآمد ماهانه", "پروژه"] as const;
@@ -25,55 +25,36 @@ const stepPhotoAlts = [
   "پروژه‌های واقعی",
 ] as const;
 
+const iconRowClass =
+  "campaign-journey-step__icon-wrap flex h-12 w-12 shrink-0 items-center justify-center sm:mx-auto sm:h-14 sm:w-full md:h-16 lg:h-[4.5rem] lg:w-full";
+
 function StepIcon({ index }: { index: number }) {
   const Icon = stepIcons[index] ?? GraduationCap;
 
   return (
-    <span className="campaign-journey-step-icon inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl sm:h-12 sm:w-12 lg:h-14 lg:w-14 xl:h-16 xl:w-16">
-      <Icon className="h-5 w-5 sm:h-[1.35rem] sm:w-[1.35rem]" strokeWidth={1.55} aria-hidden />
+    <span className="campaign-journey-step-icon inline-flex h-12 w-12 items-center justify-center rounded-2xl sm:h-14 sm:w-14 md:h-16 md:w-16 lg:h-[4.5rem] lg:w-[4.5rem]">
+      <Icon className="h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7" strokeWidth={1.55} aria-hidden />
     </span>
   );
 }
 
 function CampaignJourneyStep({
   index,
-  step,
-  layout,
 }: {
   index: number;
-  step: (typeof site.campaignJourney.steps)[number];
-  layout: "list" | "rail";
 }) {
-  const isList = layout === "list";
-
   return (
     <article
       data-step={index}
-      className={cn(
-        "campaign-journey-step campaign-journey-step--lit campaign-journey-step--active min-w-0",
-        isList
-          ? "flex items-center gap-3 border-b border-bone/10 py-3.5 text-start last:border-b-0 sm:gap-4 sm:py-4"
-          : "flex flex-col items-center px-1 text-center sm:px-2",
-      )}
+      className="campaign-journey-step campaign-journey-step--lit campaign-journey-step--active min-w-0"
     >
-      <StepIcon index={index} />
-      <div className={cn("min-w-0", isList ? "flex-1" : "w-full")}>
-        <p
-          className={cn(
-            "campaign-journey-step-tag font-display font-semibold leading-snug text-bone",
-            isList ? "text-base sm:text-lg" : "mt-3 text-base sm:mt-4 sm:text-lg xl:text-xl",
-          )}
-        >
+      <div className={iconRowClass}>
+        <StepIcon index={index} />
+      </div>
+      <div className="campaign-journey-step__copy min-w-0">
+        <p className="campaign-journey-step-tag font-display font-semibold leading-snug text-bone">
           {stepTags[index]}
         </p>
-        <h3
-          className={cn(
-            "mt-1 text-sm leading-relaxed text-bone-dim",
-            isList ? "sm:text-[0.9375rem]" : "mx-auto mt-2 max-w-[12rem] sm:max-w-[13rem] xl:max-w-[14rem]",
-          )}
-        >
-          {step.title}
-        </h3>
       </div>
     </article>
   );
@@ -83,10 +64,10 @@ function CampaignJourneyConnector() {
   return (
     <div
       aria-hidden
-      className="campaign-journey-step-connector campaign-journey-step-connector--lit hidden min-w-0 items-center justify-center xl:flex"
+      className="campaign-journey-step-connector campaign-journey-step-connector--lit hidden min-w-0 md:flex"
     >
-      <span className="campaign-journey-step-connector-pill inline-flex h-8 w-8 items-center justify-center rounded-full xl:h-9 xl:w-9">
-        <ArrowLeft className="h-3.5 w-3.5 xl:h-4 xl:w-4" strokeWidth={1.65} />
+      <span className="campaign-journey-step-connector-pill inline-flex h-9 w-9 items-center justify-center rounded-full">
+        <ArrowLeft className="h-4 w-4" strokeWidth={1.65} />
       </span>
     </div>
   );
@@ -94,13 +75,12 @@ function CampaignJourneyConnector() {
 
 function CampaignJourneyPhoto() {
   return (
-    <figure className="campaign-journey-photo relative mx-3 h-[11.5rem] w-[calc(100%-1.5rem)] shrink-0 overflow-hidden rounded-card sm:mx-4 sm:h-[13.5rem] sm:w-[calc(100%-2rem)] md:mx-5 md:h-[15.5rem] lg:mx-0 lg:h-auto lg:min-h-[22rem] lg:w-full lg:rounded-e-none lg:rounded-s-card-lg xl:min-h-[26rem]">
+    <figure className="campaign-journey-photo relative shrink-0 overflow-hidden rounded-card lg:rounded-e-none lg:rounded-s-card-lg">
       <SiteImage
         src={stepPhotos[0]!}
         alt={stepPhotoAlts[0]!}
         fill
-        priority
-        className="object-cover object-center"
+        className="campaign-journey-photo__img object-cover object-center"
         sizes="(max-width: 1023px) 100vw, 50vw"
       />
       <span
@@ -121,49 +101,32 @@ function CampaignJourneyStage() {
 
   return (
     <div className="campaign-journey-stage group/stage overflow-hidden rounded-card-lg border border-bone/10 bg-charcoal/30 shadow-[0_28px_56px_-36px_rgba(0,0,0,0.75)]">
-      <div className="grid grid-cols-1 lg:grid-cols-2 lg:items-stretch">
+      <div className="campaign-journey-stage__grid">
         <CampaignJourneyPhoto />
 
-        <div className="flex min-w-0 flex-col">
-          <div className="flex flex-1 flex-col justify-center px-3 py-4 sm:px-5 sm:py-5 md:px-5 md:py-6 lg:px-6 lg:py-6 xl:px-8 xl:py-8">
-            {/* Mobile + tablet (stacked card): vertical list */}
-            <div className="campaign-journey-steps grid w-full min-w-0 grid-cols-1 gap-0 lg:hidden">
-              {steps.map((step, i) => (
-                <CampaignJourneyStep key={step.title} index={i} step={step} layout="list" />
-              ))}
-            </div>
-
-            {/* lg–xl: vertical list inside the narrow side column */}
-            <div className="campaign-journey-steps hidden w-full min-w-0 grid-cols-1 gap-0 lg:grid xl:hidden">
-              {steps.map((step, i) => (
-                <CampaignJourneyStep key={`lg-${step.title}`} index={i} step={step} layout="list" />
-              ))}
-            </div>
-
-            {/* xl+: horizontal step rail */}
-            <div className="campaign-journey-steps hidden w-full min-w-0 xl:grid xl:grid-cols-[minmax(0,1fr)_2.25rem_minmax(0,1fr)_2.25rem_minmax(0,1fr)] xl:items-start xl:gap-x-0">
-              {steps.map((step, i) => (
-                <Fragment key={`xl-${step.title}`}>
-                  <CampaignJourneyStep index={i} step={step} layout="rail" />
-                  {i < steps.length - 1 ? <CampaignJourneyConnector /> : null}
-                </Fragment>
-              ))}
-            </div>
+        <div className="flex min-h-0 flex-col justify-center px-3 py-4 sm:px-5 sm:py-5 md:px-5 md:py-6 lg:col-span-6 lg:min-h-full lg:px-6 lg:py-7 lg:ps-5 xl:px-8 xl:py-8">
+          <div className="campaign-journey-steps grid grid-cols-1 gap-y-0">
+            {steps.map((step, i) => (
+              <Fragment key={step.title}>
+                <CampaignJourneyStep index={i} />
+                {i < steps.length - 1 ? <CampaignJourneyConnector /> : null}
+              </Fragment>
+            ))}
           </div>
+        </div>
 
-          <div className="campaign-journey-footer flex justify-center border-t border-bone/10 px-3 py-4 sm:px-5 sm:py-5 lg:px-6 lg:py-6 xl:px-8">
-            <TrackedLinkButton
-              href={campaignJourney.cta.href}
-              event="homepage_cta_click"
-              eventProps={{ cta: "campaign_journey", location: "campaign_journey" }}
-              variant="primary"
-              withArrow
-              size="lg"
-              className="h-11 min-h-11 w-full max-w-lg px-5 text-sm font-semibold sm:text-base md:h-12 md:min-h-12 lg:max-w-none"
-            >
-              {campaignJourney.cta.label}
-            </TrackedLinkButton>
-          </div>
+        <div className="campaign-journey-footer flex justify-center border-t border-bone/10 px-3 pb-4 pt-5 sm:px-5 sm:pb-5 sm:pt-7 md:px-5 md:pb-6 md:pt-8 lg:px-6 lg:pb-7 lg:pt-10 xl:px-8">
+          <TrackedLinkButton
+            href={campaignJourney.cta.href}
+            event="homepage_cta_click"
+            eventProps={{ cta: "campaign_journey", location: "campaign_journey" }}
+            variant="primary"
+            withArrow
+            size="lg"
+            className="h-11 min-h-11 w-full max-w-none px-5 text-sm font-semibold sm:max-w-md sm:text-base md:h-12 md:min-h-12 lg:h-14 lg:min-h-14 lg:text-lg"
+          >
+            {campaignJourney.cta.label}
+          </TrackedLinkButton>
         </div>
       </div>
     </div>
@@ -196,7 +159,7 @@ export function CampaignScrollStory() {
   return (
     <section
       aria-labelledby="campaign-journey-heading"
-      className="relative pt-4 pb-8 md:pt-6 md:pb-10 lg:pt-8"
+      className="campaign-journey-section relative pt-4 pb-8 md:pt-6 md:pb-10 lg:pt-8"
     >
       <div className="container-luxe">
         <Reveal>
