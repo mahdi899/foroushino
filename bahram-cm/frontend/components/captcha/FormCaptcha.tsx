@@ -38,10 +38,10 @@ export function useFormSecurity(
       type="text"
       tabIndex={-1}
       autoComplete="off"
-      aria-hidden
+      aria-hidden="true"
       value={honeypot}
       onChange={(e) => setHoneypot(e.target.value)}
-      className="pointer-events-none absolute -left-[9999px] h-px w-px opacity-0"
+      className="absolute start-[-9999px] top-auto h-px w-px overflow-hidden opacity-0"
     />
   ) : null;
 

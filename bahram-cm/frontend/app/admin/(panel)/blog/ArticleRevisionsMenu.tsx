@@ -132,11 +132,11 @@ export function ArticleRevisionsMenu({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="btn btn-secondary px-3 py-2 text-small"
+        className="btn btn-secondary admin-toolbar-btn"
         title="تاریخچه نسخه‌ها"
       >
-        <GitBranch className="h-4 w-4" />
-        نسخه‌ها
+        <GitBranch className="h-3.5 w-3.5" />
+        <span className="hidden lg:inline">نسخه‌ها</span>
         {canUse && revisions.length > 0 && (
           <span className="mr-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
             {revisions.length}

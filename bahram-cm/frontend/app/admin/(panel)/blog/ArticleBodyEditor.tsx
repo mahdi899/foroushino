@@ -7,45 +7,66 @@ import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { Color } from '@tiptap/extension-color';
+import Highlight from '@tiptap/extension-highlight';
+import Subscript from '@tiptap/extension-subscript';
+import Superscript from '@tiptap/extension-superscript';
 import { Table } from '@tiptap/extension-table';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
+import type { Editor } from '@tiptap/react';
 import {
   AlignCenter,
   AlignJustify,
+  AlignLeft,
   AlignRight,
   Bold,
+  Code,
   Code2,
-  Heading2,
-  Heading3,
+  Eraser,
+  Highlighter,
   ImageIcon,
+  IndentDecrease,
+  IndentIncrease,
   Italic,
   Link2,
   List,
   ListOrdered,
   Minus,
+  Palette,
   Quote,
   Redo2,
   Sparkles,
   Strikethrough,
+  Subscript as SubscriptIcon,
+  Superscript as SuperscriptIcon,
   Table as TableIcon,
   Underline as UnderlineIcon,
   Undo2,
+  Unlink2,
   Video,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { linkAttrsFromEditor, parseLinkRel, type LinkEditorValues } from '@/lib/article/linkAttrs';
-import { useAdminFocus } from '../AdminFocusContext';
+import {
+  ARTICLE_HIGHLIGHT_SWATCHES,
+  ARTICLE_TEXT_COLOR_SWATCHES,
+  type EditorColorSwatch,
+} from '@/lib/article/editorColorTokens';
 import { ImageGalleryModal } from '../content/ImageGalleryModal';
 import { AiImagePromptModal } from '../content/AiImagePromptModal';
 import { resolveMediaUrl, persistMediaUrl } from '@/lib/mediaUrl';
 import { ArticleImage } from './ArticleImageExtension';
+import { ArticleTextColor } from './ArticleTextColorExtension';
+import { ArticleHighlight } from './ArticleHighlightExtension';
 import { ArticleVideoExtension } from './ArticleVideoExtension';
 import { ArticleVideoEditContext, type VideoEditRequest } from './ArticleVideoEditContext';
 import { VideoInsertModal } from './VideoInsertModal';
 import { LinkEditModal } from './LinkEditModal';
 import { TableEditorModal, type TableManageAction } from './TableEditorModal';
+import { useAdminFocus } from '../AdminFocusContext';
 
 type EditorMode = 'visual' | 'html';
 
@@ -57,8 +78,76 @@ interface ArticleBodyEditorProps {
   aiPrompt?: string;
 }
 
-const toolbarScrollClass =
-  'overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
+const toolbarRowClass = 'flex w-full min-w-0 flex-wrap items-center gap-1';
+
+function ToolbarRow({ children }: { children: React.ReactNode }) {
+  return <div className={toolbarRowClass}>{children}</div>;
+}
+
+const BLOCK_FORMATS = [
+  { value: 'p', label: 'پاراگراف' },
+  { value: 'h1', label: 'سرتیتر ۱' },
+  { value: 'h2', label: 'سرتیتر ۲' },
+  { value: 'h3', label: 'سرتیتر ۳' },
+  { value: 'h4', label: 'سرتیتر ۴' },
+  { value: 'h5', label: 'سرتیتر ۵' },
+  { value: 'h6', label: 'سرتیتر ۶' },
+] as const;
+
+function getBlockFormat(editor: Editor): string {
+  for (let level = 1; level <= 6; level += 1) {
+    if (editor.isActive('heading', { level })) return `h${level}`;
+  }
+  return 'p';
+}
+
+function applyBlockFormat(editor: Editor, format: string) {
+  const chain = editor.chain().focus();
+  if (format === 'p') {
+    chain.setParagraph().run();
+    return;
+  }
+  const level = Number(format.replace('h', '')) as 1 | 2 | 3 | 4 | 5 | 6;
+  chain.toggleHeading({ level }).run();
+}
+
+/** پاک‌سازی قالب‌بندی متن انتخاب‌شده یا پاراگراف جاری */
+function clearFormatting(editor: Editor) {
+  const { empty, $from } = editor.state.selection;
+  let chain = editor.chain().focus();
+
+  if (empty) {
+    const start = $from.start();
+    const end = $from.end();
+    if (start < end) {
+      chain = chain.setTextSelection({ from: start, to: end });
+    }
+  }
+
+  if (editor.isActive('blockquote')) {
+    chain = chain.toggleBlockquote();
+  }
+
+  if (editor.isActive('link')) {
+    chain = chain.extendMarkRange('link');
+  }
+
+  chain
+    .unsetAllMarks()
+    .unsetLink()
+    .unsetArticleTextColor()
+    .unsetArticleHighlight()
+    .unsetColor()
+    .unsetHighlight()
+    .unsetTextAlign()
+    .clearNodes()
+    .setParagraph()
+    .run();
+}
+
+function ToolbarSeparator() {
+  return <span className="mx-1 h-5 w-px shrink-0 bg-border" />;
+}
 
 function EditorModeToggle({ mode, onChange }: { mode: EditorMode; onChange: (next: EditorMode) => void }) {
   return (
@@ -91,6 +180,79 @@ function EditorModeToggle({ mode, onChange }: { mode: EditorMode; onChange: (nex
       >
         HTML
       </button>
+    </div>
+  );
+}
+
+function ToolbarFormatSelect({ editor }: { editor: Editor }) {
+  const value = getBlockFormat(editor);
+  return (
+    <select
+      aria-label="قالب متن"
+      value={value}
+      onChange={(e) => applyBlockFormat(editor, e.target.value)}
+      className="h-7 max-w-[7.5rem] shrink-0 rounded-md border border-border bg-surface px-2 text-caption text-text"
+    >
+      {BLOCK_FORMATS.map((item) => (
+        <option key={item.value} value={item.value}>
+          {item.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function ToolbarSwatchMenu({
+  title,
+  colors,
+  activeTone,
+  onPick,
+  children,
+}: {
+  title: string;
+  colors: ReadonlyArray<EditorColorSwatch>;
+  activeTone: string;
+  onPick: (value: string) => void;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  return (
+    <div className="relative shrink-0" ref={ref}>
+      <ToolbarButton active={Boolean(activeTone)} onClick={() => setOpen((current) => !current)} title={title}>
+        {children}
+      </ToolbarButton>
+      {open && (
+        <div className="absolute top-full z-30 mt-1 flex w-max flex-wrap gap-1 rounded-md border border-border bg-surface p-2 shadow-lg" style={{ right: 0 }}>
+          {colors.map((color) => (
+            <button
+              key={color.value || 'default'}
+              type="button"
+              title={color.label}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onPick(color.value);
+                setOpen(false);
+              }}
+              className={cn(
+                'h-5 w-5 rounded border border-border',
+                color.swatchClass,
+                color.value === activeTone && 'ring-2 ring-primary',
+              )}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -132,6 +294,7 @@ export function ArticleBodyEditor({
   placeholder = 'متن مقاله را بنویسید…',
   aiPrompt,
 }: ArticleBodyEditorProps) {
+  const { focusMode } = useAdminFocus();
   const [mode, setMode] = useState<EditorMode>('visual');
   const [htmlDraft, setHtmlDraft] = useState(value);
   const [galleryOpen, setGalleryOpen] = useState(false);
@@ -151,13 +314,18 @@ export function ArticleBodyEditor({
   const [editorTick, setEditorTick] = useState(0);
   const [tableModalOpen, setTableModalOpen] = useState(false);
   const [tableModalMode, setTableModalMode] = useState<'insert' | 'manage'>('insert');
-  const { focusMode } = useAdminFocus();
-  const toolbarStickyTop = focusMode ? 'top-11' : 'top-14';
 
   const editor = useEditor({
     extensions: [
-      StarterKit.configure({ heading: { levels: [2, 3] } }),
+      StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] } }),
       Underline,
+      TextStyle,
+      Color.configure({ types: [TextStyle.name] }),
+      Highlight.configure({ multicolor: true }),
+      ArticleTextColor,
+      ArticleHighlight,
+      Subscript,
+      Superscript,
       Link.configure({
         openOnClick: false,
         HTMLAttributes: { class: 'text-accent underline' },
@@ -418,7 +586,9 @@ export function ArticleBodyEditor({
   const toolbar = useMemo(() => {
     const visualToolbarButtons =
       mode === 'visual' && editor ? (
-        <div className="flex w-max items-center gap-0.5">
+        <ToolbarRow>
+          <ToolbarFormatSelect editor={editor} />
+          <ToolbarSeparator />
           <ToolbarButton active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} title="درشت">
             <Bold className="h-4 w-4" />
           </ToolbarButton>
@@ -431,19 +601,45 @@ export function ArticleBodyEditor({
           <ToolbarButton active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()} title="خط‌خورده">
             <Strikethrough className="h-4 w-4" />
           </ToolbarButton>
-          <span className="mx-1 h-5 w-px shrink-0 bg-border" />
-          <ToolbarButton active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} title="سرتیتر ۲">
-            <Heading2 className="h-4 w-4" />
+          <ToolbarButton active={editor.isActive('code')} onClick={() => editor.chain().focus().toggleCode().run()} title="کد درون‌خطی">
+            <Code className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton active={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} title="سرتیتر ۳">
-            <Heading3 className="h-4 w-4" />
+          <ToolbarButton active={editor.isActive('subscript')} onClick={() => editor.chain().focus().toggleSubscript().run()} title="زیرنویس">
+            <SubscriptIcon className="h-4 w-4" />
           </ToolbarButton>
-          <span className="mx-1 h-5 w-px shrink-0 bg-border" />
+          <ToolbarButton active={editor.isActive('superscript')} onClick={() => editor.chain().focus().toggleSuperscript().run()} title="بالانویس">
+            <SuperscriptIcon className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarSeparator />
+          <ToolbarButton active={editor.isActive('link')} onClick={openLinkEditor} title="لینک">
+            <Link2 className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton disabled={!editor.isActive('link')} onClick={removeLink} title="حذف لینک">
+            <Unlink2 className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton onClick={() => clearFormatting(editor)} title="پاک‌سازی قالب‌بندی">
+            <Eraser className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarSeparator />
           <ToolbarButton active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()} title="لیست">
             <List className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()} title="لیست شماره‌دار">
             <ListOrdered className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            disabled={!editor.can().sinkListItem('listItem')}
+            onClick={() => editor.chain().focus().sinkListItem('listItem').run()}
+            title="تورفتگی"
+          >
+            <IndentIncrease className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            disabled={!editor.can().liftListItem('listItem')}
+            onClick={() => editor.chain().focus().liftListItem('listItem').run()}
+            title="بیرون‌آمدگی"
+          >
+            <IndentDecrease className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()} title="نقل‌قول">
             <Quote className="h-4 w-4" />
@@ -451,20 +647,43 @@ export function ArticleBodyEditor({
           <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()} title="خط جداکننده">
             <Minus className="h-4 w-4" />
           </ToolbarButton>
-          <span className="mx-1 h-5 w-px shrink-0 bg-border" />
-          <ToolbarButton active={editor.isActive({ textAlign: 'right' })} onClick={() => editor.chain().focus().setTextAlign('right').run()} title="راست‌چین">
-            <AlignRight className="h-4 w-4" />
+          <ToolbarSeparator />
+          <ToolbarButton active={editor.isActive({ textAlign: 'left' })} onClick={() => editor.chain().focus().setTextAlign('left').run()} title="چپ‌چین">
+            <AlignLeft className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton active={editor.isActive({ textAlign: 'center' })} onClick={() => editor.chain().focus().setTextAlign('center').run()} title="وسط">
             <AlignCenter className="h-4 w-4" />
           </ToolbarButton>
+          <ToolbarButton active={editor.isActive({ textAlign: 'right' })} onClick={() => editor.chain().focus().setTextAlign('right').run()} title="راست‌چین">
+            <AlignRight className="h-4 w-4" />
+          </ToolbarButton>
           <ToolbarButton active={editor.isActive({ textAlign: 'justify' })} onClick={() => editor.chain().focus().setTextAlign('justify').run()} title="تمام‌عرض">
             <AlignJustify className="h-4 w-4" />
           </ToolbarButton>
-          <span className="mx-1 h-5 w-px shrink-0 bg-border" />
-          <ToolbarButton active={editor.isActive('link')} onClick={openLinkEditor} title="لینک">
-            <Link2 className="h-4 w-4" />
-          </ToolbarButton>
+          <ToolbarSeparator />
+          <ToolbarSwatchMenu
+            title="رنگ متن"
+            colors={ARTICLE_TEXT_COLOR_SWATCHES}
+            activeTone={(editor.getAttributes('articleTextColor').tone as string | undefined) ?? ''}
+            onPick={(value) => {
+              if (!value) editor.chain().focus().unsetArticleTextColor().run();
+              else editor.chain().focus().unsetColor().setArticleTextColor(value).run();
+            }}
+          >
+            <Palette className="h-4 w-4" />
+          </ToolbarSwatchMenu>
+          <ToolbarSwatchMenu
+            title="رنگ پس‌زمینه متن"
+            colors={ARTICLE_HIGHLIGHT_SWATCHES}
+            activeTone={(editor.getAttributes('articleHighlight').tone as string | undefined) ?? ''}
+            onPick={(value) => {
+              if (!value) editor.chain().focus().unsetArticleHighlight().run();
+              else editor.chain().focus().unsetHighlight().setArticleHighlight(value).run();
+            }}
+          >
+            <Highlighter className="h-4 w-4" />
+          </ToolbarSwatchMenu>
+          <ToolbarSeparator />
           <ToolbarButton
             active={editor.isActive('table')}
             onClick={handleTableToolbar}
@@ -497,24 +716,19 @@ export function ArticleBodyEditor({
           <ToolbarButton active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()} title="بلوک کد">
             <Code2 className="h-4 w-4" />
           </ToolbarButton>
-          <span className="mx-1 h-5 w-px shrink-0 bg-border" />
-          <ToolbarButton onClick={() => editor.chain().focus().undo().run()} title="بازگشت">
+          <ToolbarSeparator />
+          <ToolbarButton disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()} title="بازگشت">
             <Undo2 className="h-4 w-4" />
           </ToolbarButton>
-          <ToolbarButton onClick={() => editor.chain().focus().redo().run()} title="از نو">
+          <ToolbarButton disabled={!editor.can().redo()} onClick={() => editor.chain().focus().redo().run()} title="از نو">
             <Redo2 className="h-4 w-4" />
           </ToolbarButton>
-        </div>
+        </ToolbarRow>
       ) : null;
 
-    return (
-      <div
-        className={cn(
-          'sticky z-20 border-b border-border bg-surface/95 shadow-sm backdrop-blur-sm',
-          toolbarStickyTop,
-        )}
-      >
-        <div className="flex items-center justify-between gap-2 px-2 py-1.5 sm:hidden">
+    const toolbarChrome = (
+      <>
+        <div className="flex items-center justify-between gap-2 border-b border-border px-2 py-1.5 sm:hidden">
           {mode === 'html' ? (
             <p className="min-w-0 truncate text-caption text-text-muted">ویرایش مستقیم HTML</p>
           ) : (
@@ -523,30 +737,45 @@ export function ArticleBodyEditor({
           <EditorModeToggle mode={mode} onChange={switchMode} />
         </div>
 
-        <div className="hidden items-center gap-2 px-2 py-1.5 sm:flex">
-          {visualToolbarButtons && (
-            <div className={cn('min-w-0 flex-1', toolbarScrollClass)}>{visualToolbarButtons}</div>
-          )}
-          {mode === 'html' && (
-            <p className="min-w-0 flex-1 truncate text-caption text-text-muted">ویرایش مستقیم HTML</p>
-          )}
-          <EditorModeToggle mode={mode} onChange={switchMode} />
+        <div className="hidden sm:block">
+          <div className="flex flex-wrap items-center gap-2 px-2 py-1.5">
+            {visualToolbarButtons ? (
+              <div className="min-w-0 flex-1">{visualToolbarButtons}</div>
+            ) : mode === 'html' ? (
+              <p className="min-w-0 flex-1 truncate py-1 text-caption text-text-muted">ویرایش مستقیم HTML</p>
+            ) : null}
+            <EditorModeToggle mode={mode} onChange={switchMode} />
+          </div>
         </div>
 
-        {visualToolbarButtons && (
-          <div className={cn('border-t border-border px-2 py-1.5 sm:hidden', toolbarScrollClass)}>{visualToolbarButtons}</div>
+        {visualToolbarButtons && <div className="px-2 py-1.5 sm:hidden">{visualToolbarButtons}</div>}
+      </>
+    );
+
+    return (
+      <div
+        className={cn(
+          'article-editor-toolbar shrink-0 border-b border-border bg-surface shadow-sm',
+          focusMode ? 'article-editor-toolbar--focus' : 'rounded-t-lg',
         )}
+      >
+        {toolbarChrome}
       </div>
     );
-  }, [editor, editorTick, mode, openLinkEditor, switchMode, aiPrompt, toolbarStickyTop, handleVideoToolbar, handleTableToolbar]);
+  }, [editor, editorTick, mode, openLinkEditor, removeLink, switchMode, aiPrompt, handleVideoToolbar, handleTableToolbar, focusMode]);
 
   return (
     <ArticleVideoEditContext.Provider value={videoEditContextValue}>
     <div className="min-w-0">
       <label className="field-label">{label}</label>
-      <div className="min-w-0 overflow-hidden rounded-lg border border-border bg-surface">
+      <div
+        className={cn(
+          'article-editor-shell min-w-0 rounded-lg border border-border bg-surface',
+          focusMode && 'article-editor-shell--focus',
+        )}
+      >
         {toolbar}
-        <div className="min-h-[20rem]">
+        <div className="article-editor-body relative z-0 min-h-[20rem] rounded-b-lg bg-surface">
           {mode === 'visual' ? (
             <EditorContent editor={editor} />
           ) : (
@@ -630,6 +859,12 @@ export function ArticleBodyEditor({
       />
 
       <style jsx global>{`
+        .article-editor-visual h1 {
+          font-size: 1.75rem;
+          font-weight: 800;
+          color: #064c45;
+          margin: 1.5rem 0 0.875rem;
+        }
         .article-editor-visual h2 {
           font-size: 1.35rem;
           font-weight: 800;
@@ -641,6 +876,31 @@ export function ArticleBodyEditor({
           font-weight: 700;
           color: #064c45;
           margin: 1rem 0 0.5rem;
+        }
+        .article-editor-visual h4 {
+          font-size: 1rem;
+          font-weight: 700;
+          color: #064c45;
+          margin: 0.875rem 0 0.5rem;
+        }
+        .article-editor-visual h5 {
+          font-size: 0.9375rem;
+          font-weight: 700;
+          color: #064c45;
+          margin: 0.75rem 0 0.375rem;
+        }
+        .article-editor-visual h6 {
+          font-size: 0.875rem;
+          font-weight: 700;
+          color: #64748b;
+          margin: 0.75rem 0 0.375rem;
+        }
+        .article-editor-visual code {
+          border-radius: 0.25rem;
+          background: rgba(15, 23, 42, 0.08);
+          padding: 0.125rem 0.375rem;
+          font-family: ui-monospace, monospace;
+          font-size: 0.875em;
         }
         .article-editor-visual p {
           margin: 0.5rem 0;

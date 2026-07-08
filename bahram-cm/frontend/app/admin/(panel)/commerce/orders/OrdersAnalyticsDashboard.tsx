@@ -16,6 +16,7 @@ import {
   YAxis,
 } from 'recharts';
 import { Badge, StatCard, Table } from '../../ui';
+import { useAdminChartTheme } from '@/lib/admin/chartTheme';
 import { formatToman, type OrderAnalytics } from '@/lib/admin/commerceTypes';
 import { toFa } from '@/lib/utils';
 
@@ -27,8 +28,6 @@ const PERIODS = [
   { value: 'all', label: 'همه' },
 ] as const;
 
-const CHART_COLORS = ['#008c96', '#25a0a6', '#22c55e', '#f59e0b', '#ef4444', '#6366f1', '#c9a227', '#64748b'];
-
 function formatShortDate(date: string) {
   const [, month, day] = date.split('-');
   return `${month}/${day}`;
@@ -39,11 +38,13 @@ function ChartTooltip({
   payload,
   label,
   valueLabel = 'تعداد',
+  colors,
 }: {
   active?: boolean;
   payload?: { name: string; value: number; payload: { fill?: string } }[];
   label?: string;
   valueLabel?: string;
+  colors: string[];
 }) {
   if (!active || !payload?.length) return null;
 
@@ -52,7 +53,7 @@ function ChartTooltip({
       {label && <p className="mb-1 font-semibold text-primary-dark">{label}</p>}
       {payload.map((entry) => (
         <p key={entry.name} className="flex items-center gap-2 text-text">
-          <span className="h-2 w-2 rounded-full" style={{ background: entry.payload.fill ?? CHART_COLORS[0] }} />
+          <span className="h-2 w-2 rounded-full" style={{ background: entry.payload.fill ?? colors[0] }} />
           <span>{entry.name}:</span>
           <span className="font-semibold">{toFa(entry.value)}</span>
           {valueLabel === 'تومان' && <span className="text-text-muted">تومان</span>}
@@ -98,11 +99,13 @@ function DonutChartCard({
   subtitle,
   data,
   showAmount,
+  colors,
 }: {
   title: string;
   subtitle: string;
   data: { name: string; value: number; amount?: number }[];
   showAmount?: boolean;
+  colors: string[];
 }) {
   const total = data.reduce((sum, item) => sum + item.value, 0);
 
@@ -141,10 +144,10 @@ function DonutChartCard({
               stroke="none"
             >
               {data.map((_, index) => (
-                <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                <Cell key={index} fill={colors[index % colors.length]} />
               ))}
             </Pie>
-            <Tooltip content={<ChartTooltip valueLabel={showAmount ? 'تومان' : 'تعداد'} />} />
+            <Tooltip content={<ChartTooltip valueLabel={showAmount ? 'تومان' : 'تعداد'} colors={colors} />} />
           </PieChart>
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
@@ -161,7 +164,7 @@ function DonutChartCard({
               <span className="flex min-w-0 items-center gap-2">
                 <span
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ background: CHART_COLORS[index % CHART_COLORS.length] }}
+                  style={{ background: colors[index % colors.length] }}
                 />
                 <span className="truncate text-text">{item.name}</span>
               </span>
@@ -184,6 +187,7 @@ export function OrdersAnalyticsDashboard({
   data: OrderAnalytics;
   periodDays: number | 'all';
 }) {
+  const chartTheme = useAdminChartTheme();
   const periodValue = periodDays === 'all' ? 'all' : String(periodDays);
 
   const statusChartData = useMemo(
@@ -235,8 +239,8 @@ export function OrdersAnalyticsDashboard({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
+      <div className="admin-period-toolbar">
+        <div className="admin-period-segments" role="tablist" aria-label="بازه زمانی گزارش">
           {PERIODS.map((period) => {
             const href =
               period.value === 'all'
@@ -247,19 +251,18 @@ export function OrdersAnalyticsDashboard({
               <Link
                 key={period.value}
                 href={href}
-                className={`rounded-pill px-3.5 py-1.5 text-caption font-medium transition ${
-                  active
-                    ? 'bg-primary text-white shadow-soft'
-                    : 'border border-border bg-surface text-text-muted hover:border-primary/30 hover:text-primary-dark'
-                }`}
+                role="tab"
+                aria-selected={active}
+                data-active={active ? 'true' : undefined}
+                className="admin-period-btn"
               >
                 {period.label}
               </Link>
             );
           })}
         </div>
-        <p className="text-caption text-text-muted">
-          {data.period_days ? `بازه: ${toFa(data.period_days)} روز گذشته` : 'بازه: کل دوره'}
+        <p className="admin-period-summary">
+          {data.period_days ? `${toFa(data.period_days)} روز گذشته` : 'کل دوره'}
         </p>
       </div>
 
@@ -319,12 +322,14 @@ export function OrdersAnalyticsDashboard({
               subtitle="تفکیک تراکنش‌های موفق بر اساس درگاه"
               data={gatewayChartData}
               showAmount
+              colors={chartTheme.colors}
             />
             <DonutChartCard
               title="حالت درگاه (واقعی / تست)"
               subtitle="تفکیک پرداخت‌های زرین‌پال سندباکس و واقعی"
               data={gatewayModeChartData}
               showAmount
+              colors={chartTheme.colors}
             />
           </div>
 
@@ -334,11 +339,13 @@ export function OrdersAnalyticsDashboard({
               subtitle="سهم هر وضعیت از کل سفارش‌های ثبت‌شده"
               data={statusChartData}
               showAmount
+              colors={chartTheme.colors}
             />
             <DonutChartCard
               title="وضعیت پرداخت"
               subtitle="تفکیک بر اساس نتیجه درگاه پرداخت"
               data={paymentChartData}
+              colors={chartTheme.colors}
             />
           </div>
 
@@ -352,17 +359,17 @@ export function OrdersAnalyticsDashboard({
             <div className="h-72 w-full min-w-0" dir="ltr">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dailyChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridStroke} vertical={false} />
                   <XAxis
                     dataKey="label"
-                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tick={{ fontSize: 11, fill: chartTheme.tick }}
                     axisLine={false}
                     tickLine={false}
                     interval={dailyChartData.length > 20 ? Math.floor(dailyChartData.length / 10) : 0}
                   />
                   <YAxis
                     yAxisId="orders"
-                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tick={{ fontSize: 11, fill: chartTheme.tick }}
                     axisLine={false}
                     tickLine={false}
                     width={36}
@@ -370,7 +377,7 @@ export function OrdersAnalyticsDashboard({
                   <YAxis
                     yAxisId="revenue"
                     orientation="right"
-                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tick={{ fontSize: 11, fill: chartTheme.tick }}
                     axisLine={false}
                     tickLine={false}
                     width={48}
@@ -380,13 +387,13 @@ export function OrdersAnalyticsDashboard({
                   <Legend
                     verticalAlign="top"
                     height={36}
-                    formatter={(value) => <span className="text-caption text-text">{value}</span>}
+                    formatter={(value) => <span style={{ color: 'var(--color-text)' }}>{value}</span>}
                   />
                   <Bar
                     yAxisId="orders"
                     dataKey="orders"
                     name="تعداد سفارش"
-                    fill="#008c96"
+                    fill={chartTheme.barPrimary}
                     radius={[4, 4, 0, 0]}
                     maxBarSize={28}
                   />
@@ -394,7 +401,7 @@ export function OrdersAnalyticsDashboard({
                     yAxisId="revenue"
                     dataKey="revenue"
                     name="درآمد (تومان)"
-                    fill="#c9a227"
+                    fill={chartTheme.barSecondary}
                     radius={[4, 4, 0, 0]}
                     maxBarSize={28}
                   />
@@ -417,13 +424,13 @@ export function OrdersAnalyticsDashboard({
                     margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
                     barCategoryGap="18%"
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" horizontal={false} />
-                    <XAxis type="number" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.gridStroke} horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 11, fill: chartTheme.tick }} axisLine={false} tickLine={false} />
                     <YAxis
                       type="category"
                       dataKey="name"
                       width={120}
-                      tick={{ fontSize: 11, fill: '#334155' }}
+                      tick={{ fontSize: 11, fill: chartTheme.tickStrong }}
                       axisLine={false}
                       tickLine={false}
                     />
@@ -442,7 +449,7 @@ export function OrdersAnalyticsDashboard({
                     />
                     <Bar dataKey="count" name="تعداد سفارش" radius={[0, 6, 6, 0]} maxBarSize={22}>
                       {productChartData.map((_, index) => (
-                        <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        <Cell key={index} fill={chartTheme.colors[index % chartTheme.colors.length]} />
                       ))}
                     </Bar>
                   </BarChart>

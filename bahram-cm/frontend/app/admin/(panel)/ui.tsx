@@ -7,22 +7,64 @@ export function AdminPage({
   desc,
   action,
   children,
+  stackHeader = false,
+  compactHeader = false,
 }: {
   title: string;
   desc?: string;
   action?: React.ReactNode;
   children: React.ReactNode;
+  /** Keep title and toolbar stacked (full width) — use on dense editor toolbars */
+  stackHeader?: boolean;
+  /** Single-line compact header — title and actions on one row */
+  compactHeader?: boolean;
 }) {
   return (
-    <div>
-      <div className="mb-5 border-b border-border pb-4 sm:mb-6 sm:pb-5">
-        <div className="grid gap-3 sm:grid-cols-2 sm:items-end sm:gap-4">
-          <div className="min-w-0 text-end sm:col-start-1 sm:row-start-1">
-            <h1 className="text-h3 font-extrabold text-primary-dark sm:text-h2">{title}</h1>
-            {desc && <p className="mt-1 text-caption text-text-muted sm:mt-1.5 sm:text-small">{desc}</p>}
+    <div className="min-w-0">
+      <div className={cn('mb-5 border-b border-border pb-4', compactHeader ? 'sm:mb-4 sm:pb-3' : 'sm:mb-6 sm:pb-5')}>
+        <div
+          className={cn(
+            'flex min-w-0',
+            compactHeader
+              ? 'items-center justify-between gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+              : cn('flex-col gap-3', !stackHeader && 'lg:flex-row lg:items-end lg:justify-between lg:gap-4'),
+          )}
+        >
+          <div
+            className={cn(
+              compactHeader ? 'flex min-w-0 shrink-0 items-center gap-2' : 'min-w-0 w-full text-start',
+            )}
+          >
+            <h1
+              className={cn(
+                compactHeader
+                  ? 'whitespace-nowrap text-base font-extrabold text-primary-dark'
+                  : 'text-h3 font-extrabold text-primary-dark sm:text-h2',
+              )}
+            >
+              {title}
+            </h1>
+            {desc && (
+              <p
+                className={cn(
+                  compactHeader
+                    ? 'hidden min-w-0 truncate text-caption leading-snug text-text-muted md:block md:max-w-[14rem] lg:max-w-xs xl:max-w-sm'
+                    : 'mt-1 text-caption text-text-muted sm:mt-1.5 sm:text-small',
+                )}
+              >
+                {desc}
+              </p>
+            )}
           </div>
           {action ? (
-            <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:col-start-2 sm:row-start-1 sm:justify-self-end">
+            <div
+              className={cn(
+                'flex min-w-0 shrink-0 items-center',
+                !compactHeader && 'w-full max-w-full flex-col gap-2',
+                !compactHeader && !stackHeader && 'lg:w-auto lg:max-w-[min(100%,40rem)] lg:items-end',
+                !compactHeader && stackHeader && 'shrink-0',
+              )}
+            >
               {action}
             </div>
           ) : null}

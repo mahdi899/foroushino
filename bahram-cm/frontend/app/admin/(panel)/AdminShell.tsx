@@ -34,7 +34,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 function AdminShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { focusMode, setFocusMode } = useAdminFocus();
+  const { focusMode } = useAdminFocus();
   const { sidebarCollapsed, toggleSidebar } = useAdminTheme();
   const { pendingCount, ticketPendingCount } = useOperatorQueueAlert();
 
@@ -202,17 +202,7 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
           </header>
         )}
 
-        {focusMode && (
-          <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-2 border-b border-border bg-surface/95 px-3 py-2 backdrop-blur sm:px-4">
-            <p className="text-small font-semibold text-primary-dark">حالت فوکوس — ویرایش مقاله</p>
-            <button type="button" onClick={() => setFocusMode(false)} className="btn btn-secondary px-3 py-1.5 text-small">
-              <AdminLucideIcon name="Minimize2" className="h-4 w-4" strokeWidth={2} />
-              خروج از فوکوس
-            </button>
-          </div>
-        )}
-
-        <div className={cn('admin-main-scroll p-3 sm:p-4 lg:p-7', focusMode && 'lg:p-6')}>{children}</div>
+        <div className={cn('admin-main-scroll p-3 sm:p-4 lg:p-7', focusMode && 'flex-1 lg:px-8 lg:pb-5 lg:pt-0')}>{children}</div>
       </div>
 
       {mobileOpen && !focusMode && (

@@ -1,0 +1,213 @@
+/* =====================================================================
+   Article semantic colors — adapt to public site light/dark + admin editor
+   HTML: <span data-article-tc="gold"> / <mark data-article-hl="gold">
+   ===================================================================== */
+
+/* --- Text colors: site dark (default) -------------------------------- */
+.prose-luxe :where([data-article-tc='ink']),
+.article-editor-visual :where([data-article-tc='ink']) {
+  color: #eafbfb;
+}
+.prose-luxe :where([data-article-tc='brand']),
+.article-editor-visual :where([data-article-tc='brand']) {
+  color: #25a0a6;
+}
+.prose-luxe :where([data-article-tc='gold']),
+.article-editor-visual :where([data-article-tc='gold']) {
+  color: #ffe08a;
+}
+.prose-luxe :where([data-article-tc='muted']),
+.article-editor-visual :where([data-article-tc='muted']) {
+  color: #95b4b8;
+}
+.prose-luxe :where([data-article-tc='danger']),
+.article-editor-visual :where([data-article-tc='danger']) {
+  color: #f08070;
+}
+.prose-luxe :where([data-article-tc='info']),
+.article-editor-visual :where([data-article-tc='info']) {
+  color: #8ec5ff;
+}
+
+/* --- Text colors: site light ----------------------------------------- */
+html[data-theme='light'] .prose-luxe :where([data-article-tc='ink']) {
+  color: #0b1f22;
+}
+html[data-theme='light'] .prose-luxe :where([data-article-tc='brand']) {
+  color: #064c45;
+}
+html[data-theme='light'] .prose-luxe :where([data-article-tc='gold']) {
+  color: #a67c00;
+}
+html[data-theme='light'] .prose-luxe :where([data-article-tc='muted']) {
+  color: #52676a;
+}
+html[data-theme='light'] .prose-luxe :where([data-article-tc='danger']) {
+  color: #dc2626;
+}
+html[data-theme='light'] .prose-luxe :where([data-article-tc='info']) {
+  color: #2563eb;
+}
+
+/* --- Highlights: site dark ------------------------------------------- */
+.prose-luxe :where([data-article-hl='gold']),
+.article-editor-visual :where([data-article-hl='gold']) {
+  background-color: #3d3520;
+  color: #f5f0eb;
+}
+.prose-luxe :where([data-article-hl='green']),
+.article-editor-visual :where([data-article-hl='green']) {
+  background-color: #1e3329;
+  color: #eafbfb;
+}
+.prose-luxe :where([data-article-hl='blue']),
+.article-editor-visual :where([data-article-hl='blue']) {
+  background-color: #1c2d42;
+  color: #eafbfb;
+}
+.prose-luxe :where([data-article-hl='coral']),
+.article-editor-visual :where([data-article-hl='coral']) {
+  background-color: #3d2828;
+  color: #f5f0eb;
+}
+.prose-luxe :where([data-article-hl='amber']),
+.article-editor-visual :where([data-article-hl='amber']) {
+  background-color: #3d3020;
+  color: #f5f0eb;
+}
+
+/* --- Highlights: site light ------------------------------------------ */
+html[data-theme='light'] .prose-luxe :where([data-article-hl='gold']) {
+  background-color: #fef08a;
+  color: inherit;
+}
+html[data-theme='light'] .prose-luxe :where([data-article-hl='green']) {
+  background-color: #bbf7d0;
+  color: inherit;
+}
+html[data-theme='light'] .prose-luxe :where([data-article-hl='blue']) {
+  background-color: #bfdbfe;
+  color: inherit;
+}
+html[data-theme='light'] .prose-luxe :where([data-article-hl='coral']) {
+  background-color: #fbcfe8;
+  color: inherit;
+}
+html[data-theme='light'] .prose-luxe :where([data-article-hl='amber']) {
+  background-color: #fed7aa;
+  color: inherit;
+}
+
+/* --- Admin editor preview mirrors site theme per admin light/dark ----- */
+.admin-root[data-admin-theme='light'] .article-editor-visual :where([data-article-tc='ink']) {
+  color: #0b1f22;
+}
+.admin-root[data-admin-theme='light'] .article-editor-visual :where([data-article-tc='brand']) {
+  color: #064c45;
+}
+.admin-root[data-admin-theme='light'] .article-editor-visual :where([data-article-tc='gold']) {
+  color: #a67c00;
+}
+.admin-root[data-admin-theme='light'] .article-editor-visual :where([data-article-tc='muted']) {
+  color: #52676a;
+}
+.admin-root[data-admin-theme='light'] .article-editor-visual :where([data-article-tc='danger']) {
+  color: #dc2626;
+}
+.admin-root[data-admin-theme='light'] .article-editor-visual :where([data-article-tc='info']) {
+  color: #2563eb;
+}
+
+.admin-root[data-admin-theme='dark'] .article-editor-visual :where([data-article-tc='ink']) {
+  color: #eafbfb;
+}
+.admin-root[data-admin-theme='dark'] .article-editor-visual :where([data-article-tc='brand']) {
+  color: #25a0a6;
+}
+.admin-root[data-admin-theme='dark'] .article-editor-visual :where([data-article-tc='gold']) {
+  color: #ffe08a;
+}
+.admin-root[data-admin-theme='dark'] .article-editor-visual :where([data-article-tc='muted']) {
+  color: #95b4b8;
+}
+.admin-root[data-admin-theme='dark'] .article-editor-visual :where([data-article-tc='danger']) {
+  color: #f08070;
+}
+.admin-root[data-admin-theme='dark'] .article-editor-visual :where([data-article-tc='info']) {
+  color: #8ec5ff;
+}
+
+.admin-root[data-admin-theme='light'] .article-editor-visual :where([data-article-hl='gold']) {
+  background-color: #fef08a;
+  color: inherit;
+}
+.admin-root[data-admin-theme='light'] .article-editor-visual :where([data-article-hl='green']) {
+  background-color: #bbf7d0;
+  color: inherit;
+}
+.admin-root[data-admin-theme='light'] .article-editor-visual :where([data-article-hl='blue']) {
+  background-color: #bfdbfe;
+  color: inherit;
+}
+.admin-root[data-admin-theme='light'] .article-editor-visual :where([data-article-hl='coral']) {
+  background-color: #fbcfe8;
+  color: inherit;
+}
+.admin-root[data-admin-theme='light'] .article-editor-visual :where([data-article-hl='amber']) {
+  background-color: #fed7aa;
+  color: inherit;
+}
+
+.admin-root[data-admin-theme='dark'] .article-editor-visual :where([data-article-hl='gold']) {
+  background-color: #3d3520;
+  color: #f5f0eb;
+}
+.admin-root[data-admin-theme='dark'] .article-editor-visual :where([data-article-hl='green']) {
+  background-color: #1e3329;
+  color: #eafbfb;
+}
+.admin-root[data-admin-theme='dark'] .article-editor-visual :where([data-article-hl='blue']) {
+  background-color: #1c2d42;
+  color: #eafbfb;
+}
+.admin-root[data-admin-theme='dark'] .article-editor-visual :where([data-article-hl='coral']) {
+  background-color: #3d2828;
+  color: #f5f0eb;
+}
+.admin-root[data-admin-theme='dark'] .article-editor-visual :where([data-article-hl='amber']) {
+  background-color: #3d3020;
+  color: #f5f0eb;
+}
+
+/* --- Toolbar swatch previews ----------------------------------------- */
+.article-swatch-tc-ink { background-color: #0b1f22; }
+.article-swatch-tc-brand { background-color: #064c45; }
+.article-swatch-tc-gold { background-color: #c9a227; }
+.article-swatch-tc-muted { background-color: #64748b; }
+.article-swatch-tc-danger { background-color: #dc2626; }
+.article-swatch-tc-info { background-color: #2563eb; }
+
+.article-swatch-hl-gold { background-color: #fef08a; }
+.article-swatch-hl-green { background-color: #bbf7d0; }
+.article-swatch-hl-blue { background-color: #bfdbfe; }
+.article-swatch-hl-coral { background-color: #fbcfe8; }
+.article-swatch-hl-amber { background-color: #fed7aa; }
+
+.admin-root[data-admin-theme='dark'] .article-swatch-tc-ink { background-color: #eafbfb; }
+.admin-root[data-admin-theme='dark'] .article-swatch-tc-brand { background-color: #25a0a6; }
+.admin-root[data-admin-theme='dark'] .article-swatch-tc-gold { background-color: #ffe08a; }
+.admin-root[data-admin-theme='dark'] .article-swatch-tc-muted { background-color: #95b4b8; }
+.admin-root[data-admin-theme='dark'] .article-swatch-tc-danger { background-color: #f08070; }
+.admin-root[data-admin-theme='dark'] .article-swatch-tc-info { background-color: #8ec5ff; }
+
+.admin-root[data-admin-theme='dark'] .article-swatch-hl-gold { background-color: #3d3520; }
+.admin-root[data-admin-theme='dark'] .article-swatch-hl-green { background-color: #1e3329; }
+.admin-root[data-admin-theme='dark'] .article-swatch-hl-blue { background-color: #1c2d42; }
+.admin-root[data-admin-theme='dark'] .article-swatch-hl-coral { background-color: #3d2828; }
+.admin-root[data-admin-theme='dark'] .article-swatch-hl-amber { background-color: #3d3020; }
+
+.prose-luxe :where(mark[data-article-hl]),
+.article-editor-visual :where(mark[data-article-hl]) {
+  border-radius: 0.125rem;
+  padding: 0 0.125rem;
+}

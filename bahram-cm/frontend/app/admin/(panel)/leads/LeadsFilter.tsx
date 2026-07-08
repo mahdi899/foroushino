@@ -1,19 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { FORM_TYPE_FILTERS } from '@/lib/admin/formTypes';
 
-export function LeadsFilter() {
-  const searchParams = useSearchParams();
-  const current = searchParams.get('type') ?? '';
+type Props = {
+  currentType?: string;
+};
 
+export function LeadsFilter({ currentType = '' }: Props) {
   return (
     <div className="mb-5 flex flex-wrap gap-2">
       {FORM_TYPE_FILTERS.map((f) => {
         const href = f.value ? `/admin/leads?type=${f.value}` : '/admin/leads';
-        const active = current === f.value;
+        const active = currentType === f.value;
         return (
           <Link
             key={f.value || 'all'}

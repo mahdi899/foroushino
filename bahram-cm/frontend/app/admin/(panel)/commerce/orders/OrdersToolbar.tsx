@@ -3,8 +3,7 @@ import { Search } from 'lucide-react';
 import { OrdersExportButton } from './OrdersExportButton';
 import { ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS, PRODUCT_TYPE_LABELS } from '@/lib/admin/commerceTypes';
 
-const selectClass =
-  'field-input shrink-0 text-small py-2 w-[8.75rem] sm:w-[9.25rem]';
+const selectClass = 'field-input w-full min-w-0 py-2 text-small';
 
 export function OrdersToolbar({
   search,
@@ -20,11 +19,8 @@ export function OrdersToolbar({
   const hasFilters = Boolean(search?.trim() || status || paymentStatus || productType);
 
   return (
-    <form
-      className="flex w-full min-w-0 items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      method="get"
-    >
-      <div className="relative min-w-[11rem] flex-1 shrink">
+    <form method="get" className="flex w-full min-w-0 flex-col gap-2.5">
+      <div className="relative min-w-0 w-full">
         <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
         <input
           name="search"
@@ -34,47 +30,56 @@ export function OrdersToolbar({
         />
       </div>
 
-      <select name="status" defaultValue={status ?? ''} className={selectClass}>
-        <option value="">همه وضعیت‌ها</option>
-        {Object.entries(ORDER_STATUS_LABELS).map(([key, label]) => (
-          <option key={key} value={key}>
-            {label}
-          </option>
-        ))}
-      </select>
+      <div className="grid min-w-0 gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        <select name="status" defaultValue={status ?? ''} className={selectClass} aria-label="وضعیت سفارش">
+          <option value="">همه وضعیت‌ها</option>
+          {Object.entries(ORDER_STATUS_LABELS).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
 
-      <select name="payment_status" defaultValue={paymentStatus ?? ''} className={selectClass}>
-        <option value="">همه پرداخت‌ها</option>
-        {Object.entries(PAYMENT_STATUS_LABELS).map(([key, label]) => (
-          <option key={key} value={key}>
-            {label}
-          </option>
-        ))}
-      </select>
+        <select name="payment_status" defaultValue={paymentStatus ?? ''} className={selectClass} aria-label="وضعیت پرداخت">
+          <option value="">همه پرداخت‌ها</option>
+          {Object.entries(PAYMENT_STATUS_LABELS).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
 
-      <select name="product_type" defaultValue={productType ?? ''} className={`${selectClass} sm:w-[10rem]`}>
-        <option value="">همه محصولات</option>
-        {Object.entries(PRODUCT_TYPE_LABELS).map(([key, label]) => (
-          <option key={key} value={key}>
-            {label}
-          </option>
-        ))}
-      </select>
+        <select
+          name="product_type"
+          defaultValue={productType ?? ''}
+          className={`${selectClass} sm:col-span-2 xl:col-span-1`}
+          aria-label="نوع محصول"
+        >
+          <option value="">همه محصولات</option>
+          {Object.entries(PRODUCT_TYPE_LABELS).map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <button type="submit" className="btn btn-primary shrink-0 whitespace-nowrap px-3 py-2 text-small">
-        اعمال
-      </button>
-      {hasFilters ? (
-        <Link href="/admin/commerce/orders" className="btn btn-secondary shrink-0 whitespace-nowrap px-3 py-2 text-small">
-          پاک کردن
-        </Link>
-      ) : null}
-      <OrdersExportButton
-        search={search}
-        status={status}
-        paymentStatus={paymentStatus}
-        productType={productType}
-      />
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <button type="submit" className="btn btn-primary whitespace-nowrap px-3 py-2 text-small">
+          اعمال
+        </button>
+        {hasFilters ? (
+          <Link href="/admin/commerce/orders" className="btn btn-secondary whitespace-nowrap px-3 py-2 text-small">
+            پاک کردن
+          </Link>
+        ) : null}
+        <OrdersExportButton
+          search={search}
+          status={status}
+          paymentStatus={paymentStatus}
+          productType={productType}
+        />
+      </div>
     </form>
   );
 }

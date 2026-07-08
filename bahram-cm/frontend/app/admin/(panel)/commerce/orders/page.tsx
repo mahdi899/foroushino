@@ -30,20 +30,20 @@ export default async function OrdersPage({
   const hasFilters = Boolean(sp.search?.trim() || sp.status || sp.payment_status || sp.product_type);
 
   function ordersPageHref(page: number) {
-    const params = new URLSearchParams();
-    if (sp.search?.trim()) params.set('search', sp.search.trim());
-    if (sp.status) params.set('status', sp.status);
-    if (sp.payment_status) params.set('payment_status', sp.payment_status);
-    if (sp.product_type) params.set('product_type', sp.product_type);
-    if (page > 1) params.set('page', String(page));
-    const qs = params.toString();
+    const query = new URLSearchParams();
+    if (sp.search?.trim()) query.set('search', sp.search.trim());
+    if (sp.status) query.set('status', sp.status);
+    if (sp.payment_status) query.set('payment_status', sp.payment_status);
+    if (sp.product_type) query.set('product_type', sp.product_type);
+    if (page > 1) query.set('page', String(page));
+    const qs = query.toString();
     return qs ? `/admin/commerce/orders?${qs}` : '/admin/commerce/orders';
   }
 
   return (
     <div>
       <div className="mb-5 border-b border-border pb-4 sm:mb-6 sm:pb-5">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 shrink-0 text-end">
             <h1 className="text-h3 font-extrabold text-primary-dark sm:text-h2">سفارش‌ها</h1>
             <p className="mt-1 text-caption text-text-muted sm:mt-1.5 sm:text-small">
@@ -51,7 +51,7 @@ export default async function OrdersPage({
               {meta ? ` · ${meta.total.toLocaleString('fa-IR')} سفارش` : ''}
             </p>
           </div>
-          <div className="min-w-0 flex-1 xl:max-w-none">
+          <div className="min-w-0 w-full lg:max-w-2xl lg:flex-1 xl:max-w-3xl">
             <OrdersToolbar
             search={sp.search}
             status={sp.status}

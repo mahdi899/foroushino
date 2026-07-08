@@ -1,18 +1,17 @@
 'use client';
 
-import { Suspense, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { StudentAuthProvider, useStudentAuth } from './StudentAuthContext';
 import { StudentLoginModal } from './StudentLoginModal';
 
 function StudentAuthUrlSyncInner() {
-  const searchParams = useSearchParams();
   const router = useRouter();
   const { isLoggedIn } = useStudentAuth();
   const handledAuthRef = useRef(false);
 
   useEffect(() => {
-    const wantsPanelAuth = searchParams.get('auth') === 'panel';
+    const wantsPanelAuth = new URLSearchParams(window.location.search).get('auth') === 'panel';
 
     if (!wantsPanelAuth) {
       handledAuthRef.current = false;
@@ -29,7 +28,7 @@ function StudentAuthUrlSyncInner() {
       handledAuthRef.current = true;
       router.replace('/panel/login?redirect=%2Fpanel');
     }
-  }, [searchParams, router, isLoggedIn]);
+  }, [router, isLoggedIn]);
 
   return null;
 }
@@ -43,9 +42,7 @@ export function StudentAuthRoot({
 }) {
   return (
     <StudentAuthProvider initialLoggedIn={initialLoggedIn}>
-      <Suspense fallback={null}>
-        <StudentAuthUrlSyncInner />
-      </Suspense>
+      <StudentAuthUrlSyncInner />
       <StudentLoginModal />
       {children}
     </StudentAuthProvider>

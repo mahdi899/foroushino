@@ -10,6 +10,7 @@ import {
   TURNSTILE_SCRIPT_URL,
 } from '@/lib/captcha/config';
 import type { CaptchaMode, CaptchaPayload, CaptchaPublicConfig } from '@/lib/captcha/types';
+import { sanitizeNumericInput, isNumericInputKey } from '@/lib/captcha/numericInput';
 import { cn } from '@/lib/utils';
 
 interface TurnstileRenderOptions {
@@ -374,11 +375,16 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
           <input
             id={answerInputId}
             name={inline && variant !== 'admin' ? 'chatbot_captcha_answer' : undefined}
-            type="text"
+            type="tel"
             inputMode="numeric"
+            pattern="[0-9]*"
             autoComplete="off"
             value={mathAnswer}
-            onChange={(e) => setMathAnswer(e.target.value)}
+            onChange={(e) => setMathAnswer(sanitizeNumericInput(e.target.value))}
+            onPaste={(e) => {
+              e.preventDefault();
+              setMathAnswer(sanitizeNumericInput(e.clipboardData.getData('text')));
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault();
@@ -386,7 +392,12 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
                 if (mathId && trimmed) {
                   onMathSubmit?.({ captcha_id: mathId, captcha_answer: trimmed });
                 }
+                return;
               }
+              if (e.ctrlKey || e.metaKey || e.altKey) return;
+              const allowed = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End'];
+              if (allowed.includes(e.key)) return;
+              if (!isNumericInputKey(e.key)) e.preventDefault();
             }}
             className={cn(
               'min-w-0 px-2 outline-none',

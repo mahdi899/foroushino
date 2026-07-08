@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { BarChart3, FileText, Settings } from 'lucide-react';
 import { AdminPage } from '../ui';
 import { cn } from '@/lib/utils';
@@ -15,16 +15,19 @@ const TABS: { id: SeoTab; label: string; icon: typeof BarChart3 }[] = [
   { id: 'meta', label: 'ویرایش متا', icon: FileText },
 ];
 
-export function SeoHub({ analytics }: { analytics: React.ReactNode }) {
+export function SeoHub({
+  analytics,
+  initialTab = 'analytics',
+}: {
+  analytics: React.ReactNode;
+  initialTab?: SeoTab;
+}) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const tabParam = searchParams.get('tab');
-  const initialTab: SeoTab = tabParam === 'meta' ? 'meta' : 'analytics';
   const [tab, setTab] = useState<SeoTab>(initialTab);
 
   useEffect(() => {
-    setTab(tabParam === 'meta' ? 'meta' : 'analytics');
-  }, [tabParam]);
+    setTab(initialTab);
+  }, [initialTab]);
 
   const selectTab = useCallback(
     (next: SeoTab) => {

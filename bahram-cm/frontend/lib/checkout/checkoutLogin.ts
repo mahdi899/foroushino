@@ -1,15 +1,15 @@
 'use client';
 
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef } from 'react';
 import { useStudentAuthOptional } from '@/components/student-panel/auth/StudentAuthContext';
 
 export const CHECKOUT_AUTOPAY_PARAM = 'autopay';
 
 export function buildCheckoutLoginReturnUrl(pathname: string, search: string): string {
-  const params = new URLSearchParams(search);
-  params.set(CHECKOUT_AUTOPAY_PARAM, '1');
-  const qs = params.toString();
+  const query = new URLSearchParams(search);
+  query.set(CHECKOUT_AUTOPAY_PARAM, '1');
+  const qs = query.toString();
   return qs ? `${pathname}?${qs}` : `${pathname}?${CHECKOUT_AUTOPAY_PARAM}=1`;
 }
 
@@ -21,7 +21,6 @@ type CheckoutLoginGateOptions = {
 export function useCheckoutLoginGate(options?: CheckoutLoginGateOptions) {
   const auth = useStudentAuthOptional();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const isLoggedIn = options?.isLoggedIn ?? auth?.isLoggedIn ?? false;
 
@@ -32,7 +31,8 @@ export function useCheckoutLoginGate(options?: CheckoutLoginGateOptions) {
         return;
       }
 
-      const redirectTo = buildCheckoutLoginReturnUrl(pathname, searchParams.toString());
+      const search = typeof window !== 'undefined' ? window.location.search : '';
+      const redirectTo = buildCheckoutLoginReturnUrl(pathname, search);
 
       if (auth?.openLogin) {
         auth.openLogin({ redirectTo });
@@ -41,28 +41,28 @@ export function useCheckoutLoginGate(options?: CheckoutLoginGateOptions) {
 
       router.push(`/panel/login?redirect=${encodeURIComponent(redirectTo)}`);
     },
-    [auth, isLoggedIn, pathname, router, searchParams],
+    [auth, isLoggedIn, pathname, router],
   );
 
   return { isLoggedIn, requireLoginOr };
 }
 
 export function useCheckoutAutopay(isReady: boolean, onAutopay: () => void | Promise<void>) {
-  const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
   const triggered = useRef(false);
 
   useEffect(() => {
-    if (!isReady || triggered.current) return;
-    if (searchParams.get(CHECKOUT_AUTOPAY_PARAM) !== '1') return;
+    if (!isReady || triggered.current || typeof window === 'undefined') return;
+
+    const query = new URLSearchParams(window.location.search);
+    if (query.get(CHECKOUT_AUTOPAY_PARAM) !== '1') return;
 
     triggered.current = true;
-    const next = new URLSearchParams(searchParams.toString());
-    next.delete(CHECKOUT_AUTOPAY_PARAM);
-    const qs = next.toString();
+    query.delete(CHECKOUT_AUTOPAY_PARAM);
+    const qs = query.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
 
     void onAutopay();
-  }, [isReady, onAutopay, pathname, router, searchParams]);
+  }, [isReady, onAutopay, pathname, router]);
 }

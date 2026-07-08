@@ -95,13 +95,13 @@ export function AiArticleAssistant({ onApply }: AiArticleAssistantProps) {
   return (
     <>
       <div className="rounded-xl border border-accent/25 bg-gradient-to-l from-accent-soft/40 to-surface p-4">
-        <div className="mb-3 flex items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-white">
+        <div className="mb-3 flex min-w-0 items-start gap-2 sm:items-center">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary text-white">
             <Bot className="h-5 w-5" />
           </span>
-          <div>
+          <div className="min-w-0">
             <p className="text-small font-semibold text-primary-dark">دستیار هوشمند مقاله</p>
-            <p className="text-caption text-text-muted">
+            <p className="text-caption leading-relaxed text-text-muted">
               قبل از تولید، پرامپت، لینک‌های داخلی و دسته‌بندی را در پاپ‌آپ می‌بینید و تأیید می‌کنید.
             </p>
           </div>

@@ -27,6 +27,8 @@ export interface SeoScoreResult {
   checks: SeoCheck[];
   stats: SeoArticleStats;
   grade: 'excellent' | 'good' | 'fair' | 'poor';
+  /** True when article has no title/body/meta to score yet */
+  notStarted?: boolean;
 }
 
 function statusFrom(ok: boolean, warn?: boolean): SeoCheck['status'] {
@@ -88,6 +90,37 @@ function isLatinSlug(slug: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
 }
 
+function articleHasSeoContent(input: {
+  title: string;
+  excerpt?: string;
+  body?: string;
+  metaTitle: string;
+  metaDescription: string;
+}): boolean {
+  const title = (input.metaTitle || input.title || '').trim();
+  const excerpt = (input.excerpt ?? '').trim();
+  const desc = (input.metaDescription || '').trim();
+  const bodyWords = countWords(stripHtml(input.body ?? ''));
+  return title.length > 0 || excerpt.length > 0 || desc.length > 0 || bodyWords > 0;
+}
+
+function clampScore(score: number): number {
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+const SEO_SCORE_RED_HUE = 6;
+const SEO_SCORE_GREEN_HUE = 152;
+const SEO_SCORE_RED_MAX = 40;
+
+function scoreHue(score: number): number {
+  const s = clampScore(score);
+  if (s <= SEO_SCORE_RED_MAX) return SEO_SCORE_RED_HUE;
+
+  const t = (s - SEO_SCORE_RED_MAX) / (100 - SEO_SCORE_RED_MAX);
+  const smooth = t * t * (3 - 2 * t);
+  return SEO_SCORE_RED_HUE + smooth * (SEO_SCORE_GREEN_HUE - SEO_SCORE_RED_HUE);
+}
+
 /** Live SEO + GEO scoring for the article editor. */
 export function scoreArticleSeo(input: {
   title: string;
@@ -106,6 +139,42 @@ export function scoreArticleSeo(input: {
   const desc = input.metaDescription || input.excerpt || '';
   const bodyText = stripHtml(input.body ?? '');
   const wordCount = countWords(bodyText);
+
+  if (!articleHasSeoContent(input)) {
+    const html = parseHtmlStats(input.body ?? '');
+    const stats: SeoArticleStats = {
+      wordCount: 0,
+      readingMinutes: 0,
+      h2Count: html.h2Count,
+      h3Count: html.h3Count,
+      internalLinks: html.internalLinks,
+      externalLinks: html.externalLinks,
+      imageCount: html.imageCount,
+      imagesWithAlt: html.imagesWithAlt,
+      keywordCount: 0,
+      keywordDensity: 0,
+      titleLength: title.length,
+      descLength: desc.length,
+      slugLength: input.slug.length,
+    };
+
+    return {
+      score: 0,
+      notStarted: true,
+      grade: 'poor',
+      checks: [
+        {
+          id: 'not-started',
+          group: 'content',
+          label: 'شروع نوشتن',
+          status: 'bad',
+          hint: 'با نوشتن عنوان یا متن مقاله، امتیاز سئو محاسبه می‌شود',
+        },
+      ],
+      stats,
+    };
+  }
+
   const readingMinutes = Math.max(1, Math.ceil(wordCount / 200));
   const kwLower = kw.toLowerCase();
   const titleLower = title.toLowerCase();
@@ -143,42 +212,62 @@ export function scoreArticleSeo(input: {
       id: 'title-kw',
       group: 'keyword',
       label: 'کلمه کلیدی در عنوان SEO',
-      status: statusFrom(!kw || inTitle, !kw),
-      hint: inTitle ? 'کلمه کلیدی در meta title هست' : 'کلمه کلیدی را نزدیک ابتدای عنوان SEO بگذارید',
+      status: !kw ? 'ok' : statusFrom(inTitle),
+      hint: !kw
+        ? 'پس از تعیین کلمه کلیدی بررسی می‌شود'
+        : inTitle
+          ? 'کلمه کلیدی در meta title هست'
+          : 'کلمه کلیدی را نزدیک ابتدای عنوان SEO بگذارید',
     },
     {
       id: 'first-para-kw',
       group: 'keyword',
       label: 'کلمه کلیدی در پاراگراف اول',
-      status: statusFrom(!kw || inFirstPara, !kw),
-      hint: inFirstPara ? 'GEO: کلمه کلیدی در ابتدای مقاله هست' : 'برای GEO، کلمه کلیدی را در پاراگراف اول بگنجانید',
+      status: !kw ? 'ok' : statusFrom(inFirstPara),
+      hint: !kw
+        ? 'پس از تعیین کلمه کلیدی بررسی می‌شود'
+        : inFirstPara
+          ? 'GEO: کلمه کلیدی در ابتدای مقاله هست'
+          : 'برای GEO، کلمه کلیدی را در پاراگراف اول بگنجانید',
     },
     {
       id: 'h2-kw',
       group: 'keyword',
       label: 'کلمه کلیدی در یک H2',
-      status: statusFrom(!kw || inH2, !kw),
-      hint: inH2 ? 'کلمه کلیدی در یکی از عناوین H2 هست' : 'کلمه کلیدی را در حداقل یک H2 استفاده کنید',
+      status: !kw ? 'ok' : statusFrom(inH2),
+      hint: !kw
+        ? 'پس از تعیین کلمه کلیدی بررسی می‌شود'
+        : inH2
+          ? 'کلمه کلیدی در یکی از عناوین H2 هست'
+          : 'کلمه کلیدی را در حداقل یک H2 استفاده کنید',
     },
     {
       id: 'desc-kw',
       group: 'keyword',
       label: 'کلمه کلیدی در Meta Description',
-      status: statusFrom(!kw || inDesc, !kw),
-      hint: inDesc ? 'کلمه کلیدی در توضیحات متا هست' : 'کلمه کلیدی را یک‌بار در meta description بگنجانید',
+      status: !kw ? 'ok' : statusFrom(inDesc),
+      hint: !kw
+        ? 'پس از تعیین کلمه کلیدی بررسی می‌شود'
+        : inDesc
+          ? 'کلمه کلیدی در توضیحات متا هست'
+          : 'کلمه کلیدی را یک‌بار در meta description بگنجانید',
     },
     {
       id: 'slug-kw',
       group: 'keyword',
       label: 'اسلاگ مرتبط با کلمه کلیدی',
-      status: statusFrom(!kw || inSlug, !kw),
-      hint: inSlug ? 'اسلاگ با کلمه کلیدی هم‌خوان است' : 'اسلاگ لاتین نزدیک کلمه کلیدی تنظیم کنید',
+      status: !kw ? 'ok' : statusFrom(inSlug),
+      hint: !kw
+        ? 'پس از تعیین کلمه کلیدی بررسی می‌شود'
+        : inSlug
+          ? 'اسلاگ با کلمه کلیدی هم‌خوان است'
+          : 'اسلاگ لاتین نزدیک کلمه کلیدی تنظیم کنید',
     },
     {
       id: 'density',
       group: 'keyword',
       label: 'تراکم کلمه کلیدی',
-      status: statusFrom(!kw || (keywordDensity >= 0.4 && keywordDensity <= 2.5), !kw || keywordDensity > 0),
+      status: !kw ? 'ok' : statusFrom(keywordDensity >= 0.4 && keywordDensity <= 2.5, keywordDensity > 0),
       hint: kw
         ? `${keywordDensity.toFixed(1)}٪ — هدف ۰.۵ تا ۲.۵٪ (${countKeyword(bodyText, kw)} بار در متن)`
         : 'پس از تعیین کلمه کلیدی محاسبه می‌شود',
@@ -287,7 +376,7 @@ export function scoreArticleSeo(input: {
   ];
 
   const weights = { good: 1, ok: 0.55, bad: 0 };
-  const score = Math.round((checks.reduce((s, c) => s + weights[c.status], 0) / checks.length) * 100);
+  const score = clampScore((checks.reduce((s, c) => s + weights[c.status], 0) / checks.length) * 100);
 
   const grade: SeoScoreResult['grade'] =
     score >= 85 ? 'excellent' : score >= 70 ? 'good' : score >= 50 ? 'fair' : 'poor';
@@ -361,22 +450,34 @@ export function scorePageSeo(input: {
       id: 'title-kw',
       group: 'keyword',
       label: 'کلمه کلیدی در عنوان SEO',
-      status: statusFrom(!kw || inTitle, !kw),
-      hint: inTitle ? 'کلمه کلیدی در meta title هست' : 'کلمه کلیدی را نزدیک ابتدای عنوان SEO بگذارید',
+      status: !kw ? 'ok' : statusFrom(inTitle),
+      hint: !kw
+        ? 'پس از تعیین کلمه کلیدی بررسی می‌شود'
+        : inTitle
+          ? 'کلمه کلیدی در meta title هست'
+          : 'کلمه کلیدی را نزدیک ابتدای عنوان SEO بگذارید',
     },
     {
       id: 'desc-kw',
       group: 'keyword',
       label: 'کلمه کلیدی در Meta Description',
-      status: statusFrom(!kw || inDesc, !kw),
-      hint: inDesc ? 'کلمه کلیدی در توضیحات متا هست' : 'کلمه کلیدی را یک‌بار در meta description بگنجانید',
+      status: !kw ? 'ok' : statusFrom(inDesc),
+      hint: !kw
+        ? 'پس از تعیین کلمه کلیدی بررسی می‌شود'
+        : inDesc
+          ? 'کلمه کلیدی در توضیحات متا هست'
+          : 'کلمه کلیدی را یک‌بار در meta description بگنجانید',
     },
     {
       id: 'path-kw',
       group: 'keyword',
       label: 'مسیر URL مرتبط',
-      status: statusFrom(!kw || inPath, !kw),
-      hint: inPath ? 'مسیر صفحه با کلمه کلیدی هم‌خوان است' : 'در صورت امکان مسیر صفحه را نزدیک کلمه کلیدی نگه دارید',
+      status: !kw ? 'ok' : statusFrom(inPath),
+      hint: !kw
+        ? 'پس از تعیین کلمه کلیدی بررسی می‌شود'
+        : inPath
+          ? 'مسیر صفحه با کلمه کلیدی هم‌خوان است'
+          : 'در صورت امکان مسیر صفحه را نزدیک کلمه کلیدی نگه دارید',
     },
     {
       id: 'title-len',
@@ -430,7 +531,7 @@ export function scorePageSeo(input: {
   ];
 
   const weights = { good: 1, ok: 0.55, bad: 0 };
-  const score = Math.round((checks.reduce((s, c) => s + weights[c.status], 0) / checks.length) * 100);
+  const score = clampScore((checks.reduce((s, c) => s + weights[c.status], 0) / checks.length) * 100);
 
   const grade: SeoScoreResult['grade'] =
     score >= 85 ? 'excellent' : score >= 70 ? 'good' : score >= 50 ? 'fair' : 'poor';
@@ -466,6 +567,43 @@ export function seoScoreColor(score: number): string {
   if (score >= 75) return 'text-success';
   if (score >= 50) return 'text-warning';
   return 'text-error';
+}
+
+/** Smooth red → green panel surface for admin SEO score card */
+export function seoScoreSurfaceStyle(score: number, isDark = false): { backgroundColor: string; borderColor: string } {
+  if (score <= 0) {
+    return isDark
+      ? { backgroundColor: 'hsl(220 8% 13%)', borderColor: 'hsl(220 8% 22%)' }
+      : { backgroundColor: 'hsl(220 25% 97%)', borderColor: 'hsl(220 18% 88%)' };
+  }
+
+  const hue = scoreHue(score);
+  return isDark
+    ? {
+        backgroundColor: `hsl(${hue} 28% 14%)`,
+        borderColor: `hsl(${hue} 38% 26%)`,
+      }
+    : {
+        backgroundColor: `hsl(${hue} 68% 96%)`,
+        borderColor: `hsl(${hue} 52% 84%)`,
+      };
+}
+
+export function seoScoreTextStyle(score: number, isDark = false): { color: string } {
+  if (score <= 0) {
+    return { color: isDark ? 'hsl(220 8% 62%)' : 'hsl(220 12% 52%)' };
+  }
+
+  const hue = scoreHue(score);
+  return { color: isDark ? `hsl(${hue} 48% 68%)` : `hsl(${hue} 58% 36%)` };
+}
+
+export function seoScoreBarStyle(score: number): { backgroundColor: string; width: string } {
+  const hue = scoreHue(Math.max(score, 4));
+  return {
+    backgroundColor: `hsl(${hue} 62% 46%)`,
+    width: `${clampScore(score)}%`,
+  };
 }
 
 export function seoScoreBg(score: number): string {

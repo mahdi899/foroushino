@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ExternalLink, Loader2, Maximize2, Save, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 import { AdminPage } from '../ui';
 import { useAdminFocus } from '../AdminFocusContext';
 import { CoverImageField } from '../content/CoverImageField';
@@ -269,13 +270,14 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
 
   return (
     <AdminPage
+      compactHeader
       title={articleId ? 'ویرایش مقاله' : 'افزودن مقاله'}
-      desc="نوشتن مقاله با تحلیل زنده سئو و تولید تصویر AI"
+      desc="تو قهوه‌ات رو بخور؛ هوش پلاستیکی مینویسه"
       action={
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={toggleFocusMode} className="btn btn-secondary px-3 py-2 text-small" title="حالت فوکوس">
-            <Maximize2 className="h-4 w-4" />
-            {focusMode ? 'خروج فوکوس' : 'فوکوس'}
+        <div className="admin-article-toolbar">
+          <button type="button" onClick={toggleFocusMode} className="btn btn-secondary admin-toolbar-btn" title="حالت فوکوس">
+            <Maximize2 className="h-3.5 w-3.5" />
+            <span className="hidden lg:inline">{focusMode ? 'خروج' : 'فوکوس'}</span>
           </button>
           <ArticleRevisionsMenu
             articleId={selectedId}
@@ -287,23 +289,10 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
             onRestore={restoreRevision}
             onRevisionSaved={() => setRevisionRefreshKey((k) => k + 1)}
           />
-          <select
-            value={draft.status}
-            onChange={(e) => setDraft({ ...draft, status: e.target.value })}
-            className="btn btn-secondary min-w-[7.5rem] px-3 py-2 text-small"
-            aria-label="وضعیت مقاله"
-          >
-            <option value="draft">پیش‌نویس</option>
-            <option value="active">منتشر شده</option>
-          </select>
           {selectedId && draft.slug && (
-            <Link
-              href={`/insights/${draft.slug}`}
-              target="_blank"
-              className="btn btn-secondary px-3 py-2 text-small"
-            >
-              <ExternalLink className="h-4 w-4" />
-              نمایش
+            <Link href={`/insights/${draft.slug}`} target="_blank" className="btn btn-secondary admin-toolbar-btn">
+              <ExternalLink className="h-3.5 w-3.5" />
+              <span className="hidden lg:inline">نمایش</span>
             </Link>
           )}
           {selectedId && (
@@ -311,107 +300,149 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
               type="button"
               onClick={() => setDeleteModalOpen(true)}
               disabled={saving || deleting}
-              className="btn btn-secondary px-3 py-2 text-small text-error"
+              className="btn btn-secondary admin-toolbar-btn text-error"
               title="حذف مقاله"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3.5 w-3.5" />
+              <span className="hidden lg:inline">حذف</span>
             </button>
           )}
-          <button type="button" onClick={onSave} disabled={saving || !draft.title} className="btn btn-primary px-4 py-2 text-small">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          <select
+            value={draft.status}
+            onChange={(e) => setDraft({ ...draft, status: e.target.value })}
+            className="field-input admin-toolbar-select"
+            aria-label="وضعیت مقاله"
+          >
+            <option value="draft">پیش‌نویس</option>
+            <option value="active">منتشر شده</option>
+          </select>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving || !draft.title}
+            className="btn btn-primary admin-toolbar-btn whitespace-nowrap"
+          >
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
             ذخیره
           </button>
         </div>
       }
     >
-      <div className={focusMode ? 'grid gap-6' : 'grid gap-6 lg:grid-cols-[1fr_280px] lg:items-start'}>
+      <div
+        className={cn(
+          'admin-article-layout grid min-w-0 gap-4',
+          focusMode && 'admin-article-layout--focus',
+          focusMode ? 'grid-cols-1' : 'lg:grid-cols-[minmax(0,1fr)_minmax(0,280px)] lg:items-start lg:gap-5',
+        )}
+      >
         {loadError && (
-          <div className="rounded-lg border border-error/30 bg-error/5 px-4 py-3 text-small text-error lg:col-span-2">
+          <div
+            className={cn(
+              'rounded-lg border border-error/30 bg-error/5 px-4 py-3 text-small text-error',
+              !focusMode && 'lg:col-span-2',
+            )}
+          >
             {loadError}
           </div>
         )}
-        <div className="card space-y-4 p-5">
-          <AiArticleAssistant onApply={applyAiResult} />
-          <div>
-            <label className="field-label">عنوان مقاله</label>
-            <input
-              className="field-input"
-              value={draft.title}
-              onChange={(e) =>
-                setDraft({ ...draft, title: e.target.value, seo: { ...draft.seo, title: draft.seo?.title || e.target.value } })
-              }
-            />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="field-label">اسلاگ</label>
-              <input className="field-input" dir="ltr" value={draft.slug} onChange={(e) => setDraft({ ...draft, slug: e.target.value })} />
+
+        {focusMode ? (
+          <>
+            <div className="card article-editor-focus-card min-w-0 w-full px-4 pb-4 pt-0 sm:px-6 sm:pb-6 sm:pt-0">
+              <ArticleBodyEditor
+                value={draft.body ?? ''}
+                onChange={(body) => setDraft({ ...draft, body })}
+                aiPrompt={aiImagePrompt}
+              />
             </div>
-            <div>
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <label className="field-label mb-0">دسته‌بندی</label>
-                <button
-                  type="button"
-                  onClick={() => setCategoriesModalOpen(true)}
-                  className="text-caption font-semibold text-accent hover:underline"
-                >
-                  مدیریت دسته‌ها
-                </button>
-              </div>
-              <select
-                className="field-input"
-                value={draft.category_id ?? ''}
-                onChange={(e) =>
-                  setDraft({ ...draft, category_id: e.target.value ? Number(e.target.value) : null })
-                }
-              >
-                <option value="">بدون دسته</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="field-label">خلاصه</label>
-            <textarea className="field-input min-h-[4rem]" value={draft.excerpt} onChange={(e) => setDraft({ ...draft, excerpt: e.target.value })} />
-          </div>
-          <CoverImageField
-            label="تصویر شاخص"
-            value={draft.cover_url ?? ''}
-            onChange={(cover_url) => setDraft({ ...draft, cover_url })}
-            alt={draft.title || 'تصویر شاخص مقاله'}
-            aiPrompt={aiImagePrompt}
-          />
-          <ArticleBodyEditor
-            value={draft.body ?? ''}
-            onChange={(body) => setDraft({ ...draft, body })}
-            aiPrompt={aiImagePrompt}
-          />
-          <div className="border-t border-border pt-4">
-            <p className="mb-3 text-small font-semibold text-primary-dark">تنظیمات SEO</p>
-            <div className="mb-3">
-              <label className="field-label">کلمه کلیدی اصلی (Focus Keyword)</label>
-              <input className="field-input" value={focusKeyword} onChange={(e) => setFocusKeyword(e.target.value)} placeholder="مثلاً: آمادگی سات" />
-            </div>
-            <div className="grid gap-4">
+            <SeoScorePanel {...seoScorePanelProps} variant="inline" />
+          </>
+        ) : (
+          <>
+            <div className="card min-w-0 space-y-4 p-4 sm:p-5 lg:col-start-1">
+              <AiArticleAssistant onApply={applyAiResult} />
               <div>
-                <label className="field-label">Meta Title</label>
-                <input className="field-input" value={draft.seo?.title ?? ''} onChange={(e) => setDraft({ ...draft, seo: { ...draft.seo, title: e.target.value } })} />
+                <label className="field-label">عنوان مقاله</label>
+                <input
+                  className="field-input"
+                  value={draft.title}
+                  onChange={(e) =>
+                    setDraft({ ...draft, title: e.target.value, seo: { ...draft.seo, title: draft.seo?.title || e.target.value } })
+                  }
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="field-label">اسلاگ</label>
+                  <input className="field-input" dir="ltr" value={draft.slug} onChange={(e) => setDraft({ ...draft, slug: e.target.value })} />
+                </div>
+                <div>
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <label className="field-label mb-0">دسته‌بندی</label>
+                    <button
+                      type="button"
+                      onClick={() => setCategoriesModalOpen(true)}
+                      className="text-caption font-semibold text-accent hover:underline"
+                    >
+                      مدیریت دسته‌ها
+                    </button>
+                  </div>
+                  <select
+                    className="field-input"
+                    value={draft.category_id ?? ''}
+                    onChange={(e) =>
+                      setDraft({ ...draft, category_id: e.target.value ? Number(e.target.value) : null })
+                    }
+                  >
+                    <option value="">بدون دسته</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div>
-                <label className="field-label">Meta Description</label>
-                <textarea className="field-input min-h-[4rem]" value={draft.seo?.description ?? ''} onChange={(e) => setDraft({ ...draft, seo: { ...draft.seo, description: e.target.value } })} />
+                <label className="field-label">خلاصه</label>
+                <textarea className="field-input min-h-[4rem]" value={draft.excerpt} onChange={(e) => setDraft({ ...draft, excerpt: e.target.value })} />
+              </div>
+              <CoverImageField
+                label="تصویر شاخص"
+                value={draft.cover_url ?? ''}
+                onChange={(cover_url) => setDraft({ ...draft, cover_url })}
+                alt={draft.title || 'تصویر شاخص مقاله'}
+                aiPrompt={aiImagePrompt}
+              />
+              <ArticleBodyEditor
+                value={draft.body ?? ''}
+                onChange={(body) => setDraft({ ...draft, body })}
+                aiPrompt={aiImagePrompt}
+              />
+              <div className="border-t border-border pt-4">
+                <p className="mb-3 text-small font-semibold text-primary-dark">تنظیمات SEO</p>
+                <div className="mb-3">
+                  <label className="field-label">کلمه کلیدی اصلی (Focus Keyword)</label>
+                  <input className="field-input" value={focusKeyword} onChange={(e) => setFocusKeyword(e.target.value)} placeholder="مثلاً: آمادگی سات" />
+                </div>
+                <div className="grid gap-4">
+                  <div>
+                    <label className="field-label">Meta Title</label>
+                    <input className="field-input" value={draft.seo?.title ?? ''} onChange={(e) => setDraft({ ...draft, seo: { ...draft.seo, title: e.target.value } })} />
+                  </div>
+                  <div>
+                    <label className="field-label">Meta Description</label>
+                    <textarea className="field-input min-h-[4rem]" value={draft.seo?.description ?? ''} onChange={(e) => setDraft({ ...draft, seo: { ...draft.seo, description: e.target.value } })} />
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          {focusMode && <SeoScorePanel {...seoScorePanelProps} variant="inline" />}
-        </div>
-
-        {!focusMode && <SeoScorePanel {...seoScorePanelProps} variant="sidebar" />}
+            <div className="min-w-0 lg:col-start-2 lg:min-w-[280px]">
+              <SeoScorePanel {...seoScorePanelProps} variant="sidebar" />
+            </div>
+          </>
+        )}
       </div>
 
       <DeleteArticleModal

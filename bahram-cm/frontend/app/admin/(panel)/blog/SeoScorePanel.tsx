@@ -18,17 +18,19 @@ import { siteConfig } from '@/config/site';
 import {
   scoreArticleSeo,
   scorePageSeo,
-  seoScoreBg,
-  seoScoreColor,
   seoGradeLabel,
   SEO_CHECK_GROUPS,
   charBarStatus,
   charBarColor,
+  seoScoreSurfaceStyle,
+  seoScoreTextStyle,
+  seoScoreBarStyle,
   type SeoCheck,
 } from '@/lib/admin/seoScore';
 import type { SeoFixArticleContext, SeoFixPatch } from '@/lib/ai/seoFix';
 import type { ApiCategory } from '@/lib/api/types';
 import { cn } from '@/lib/utils';
+import { useAdminTheme } from '../AdminThemeContext';
 import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import { SeoFixModal } from './SeoFixModal';
 
@@ -83,7 +85,9 @@ function CharMeter({ label, length, min, max }: { label: string; length: number;
 
 export function SeoScorePanel(props: SeoScorePanelProps) {
   const mode = props.mode ?? 'article';
-  const { score, checks, stats, grade } =
+  const { theme } = useAdminTheme();
+  const isDark = theme === 'dark';
+  const result =
     mode === 'page'
       ? scorePageSeo({
           pageLabel: props.pageLabel ?? props.title,
@@ -106,6 +110,7 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
           categoryName: props.categoryName,
           robots: props.robots,
         });
+  const { score, checks, stats, grade, notStarted } = result;
   const variant = props.variant ?? 'sidebar';
   const [copied, setCopied] = useState(false);
   const [previewTab, setPreviewTab] = useState<'google' | 'social'>('google');
@@ -150,6 +155,9 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
 
   const badCount = checks.filter((c) => c.status === 'bad').length;
   const okCount = checks.filter((c) => c.status === 'ok').length;
+  const surfaceStyle = seoScoreSurfaceStyle(notStarted ? 0 : score, isDark);
+  const scoreTextStyle = seoScoreTextStyle(notStarted ? 0 : score, isDark);
+  const barStyle = seoScoreBarStyle(notStarted ? 0 : score);
 
   async function copyUrl() {
     if (!publicUrl) return;
@@ -167,32 +175,39 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
   return (
     <div
       className={cn(
-        'space-y-4 rounded-lg border p-4',
-        seoScoreBg(score),
-        variant === 'sidebar' && 'sticky top-20',
+        'space-y-4 rounded-lg border p-4 transition-[background-color,border-color] duration-300',
+        variant === 'sidebar' && 'lg:sticky lg:top-0',
         variant === 'inline' && 'mt-2',
       )}
+      style={surfaceStyle}
     >
       {/* Score header */}
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-small font-semibold text-primary-dark">تحلیل سئو</p>
-          <p className="text-[11px] text-text-muted">{seoGradeLabel(grade)} · {checks.length} معیار</p>
+          <p className="text-[11px] text-text-muted">
+            {notStarted ? 'منتظر محتوا' : `${seoGradeLabel(grade)} · ${checks.length} معیار`}
+          </p>
         </div>
         <div className="text-left">
-          <p className={`text-h2 font-extrabold leading-none ${seoScoreColor(score)}`}>{score}</p>
-          <p className="text-[10px] text-text-muted">از ۱۰۰</p>
+          <p className="text-h2 font-extrabold leading-none" style={scoreTextStyle}>
+            {notStarted ? '—' : score}
+          </p>
+          <p className="text-[10px] text-text-muted">{notStarted ? 'هنوز امتیازی نیست' : 'از ۱۰۰'}</p>
         </div>
       </div>
 
       <div className="h-2 overflow-hidden rounded-full bg-surface-soft">
-        <div
-          className={`h-full rounded-full transition-all ${score >= 75 ? 'bg-success' : score >= 50 ? 'bg-warning' : 'bg-error'}`}
-          style={{ width: `${score}%` }}
-        />
+        <div className="h-full rounded-full transition-all duration-300" style={barStyle} />
       </div>
 
-      {badCount > 0 && (
+      {notStarted ? (
+        <p className="rounded-md bg-surface/80 px-2 py-1.5 text-[11px] text-text-muted">
+          عنوان یا متن مقاله را بنویسید تا امتیاز سئو و چک‌لیست معیارها فعال شود.
+        </p>
+      ) : null}
+
+      {!notStarted && badCount > 0 && (
         <p className="rounded-md bg-surface/80 px-2 py-1.5 text-[11px] text-text-muted">
           {badCount} مورد نیاز به اصلاح · {okCount} قابل بهبود
           {mode === 'article' && props.onApplyFix ? ' — روی ✦ کلیک کنید' : ''}
@@ -220,7 +235,7 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
             </div>
             <div className="flex items-center gap-1.5 rounded-md bg-surface-soft px-2 py-1.5">
               <Clock className="h-3 w-3 text-text-muted" />
-              <span>{stats.readingMinutes} دقیقه مطالعه</span>
+              <span>{stats.wordCount > 0 ? `${stats.readingMinutes} دقیقه مطالعه` : '—'}</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-md bg-surface-soft px-2 py-1.5">
               <Link2 className="h-3 w-3 text-text-muted" />

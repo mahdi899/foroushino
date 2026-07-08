@@ -1,4 +1,3 @@
-import { Suspense } from 'react';
 import { getLeads } from '@/lib/admin/data';
 import { AdminPage, Table } from '../ui';
 import { LeadRow } from './LeadRow';
@@ -6,15 +5,18 @@ import { LeadsFilter } from './LeadsFilter';
 
 export const dynamic = 'force-dynamic';
 
-export default async function LeadsPage({ searchParams }: { searchParams: { type?: string } }) {
-  const formType = searchParams.type || undefined;
+export default async function LeadsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string }>;
+}) {
+  const sp = await searchParams;
+  const formType = sp.type || undefined;
   const leads = await getLeads({ form_type: formType });
 
   return (
     <AdminPage title="لیدها و فرم‌ها" desc="تمام فرم‌های پر شده در سایت — دسته‌بندی بر اساس نوع فرم">
-      <Suspense fallback={null}>
-        <LeadsFilter />
-      </Suspense>
+      <LeadsFilter currentType={sp.type ?? ''} />
       {leads.length > 0 ? (
         <Table head={['نام', 'تلفن', 'نوع فرم', 'علاقه', 'وضعیت', 'تاریخ', 'عملیات']}>
           {leads.map((l) => (
