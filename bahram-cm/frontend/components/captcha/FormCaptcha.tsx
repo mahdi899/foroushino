@@ -51,7 +51,7 @@ export function useFormSecurity(
       key={captchaGate.resetKey}
       active={configLoaded}
       siteKey={captchaGate.siteKey}
-      variant={admin ? 'default' : 'site'}
+      variant={admin ? 'admin' : 'site'}
       compact
       inline
       tight={!admin && (stacked || !!options?.captchaTight)}
@@ -68,6 +68,7 @@ export function useFormSecurity(
     captchaReady,
     securityLoading,
     getSecurityPayload,
+    resetCaptcha: captchaGate.reset,
   };
 }
 

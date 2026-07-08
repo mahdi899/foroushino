@@ -71,6 +71,7 @@ trait RequiresCaptcha
                 mathId: is_string($mathId) ? $mathId : null,
                 mathAnswer: $mathAnswer,
                 ip: $this->ip(),
+                allowIpTrust: false,
             );
 
             if (! $valid) {

@@ -1185,34 +1185,9 @@
     box-shadow: var(--shadow-frame-resolved);
   }
 
-  /* Hero — light mode panel (same width as manifesto-panel inside container-luxe) */
-  .hero-light-section {
-    --hero-min-h: clamp(26rem, 72svh, 38rem);
-  }
-
-  @media (min-width: 640px) {
-    .hero-light-section {
-      --hero-min-h: clamp(28rem, 68svh, 42rem);
-    }
-  }
-
-  @media (min-width: 1024px) {
-    .hero-light-section {
-      --hero-min-h: clamp(32rem, 62svh, 46rem);
-    }
-  }
-
-  @media (min-width: 1280px) {
-    .hero-light-section {
-      --hero-min-h: clamp(34rem, 58svh, 50rem);
-    }
-  }
-
+  /* Hero — light mode panel (height driven by hero-cinematic.css aspect-ratio media) */
   .hero-light-panel {
     position: relative;
-    display: flex;
-    flex-direction: column;
-    min-height: var(--hero-min-h);
     overflow: hidden;
   }
 
@@ -1220,7 +1195,6 @@
     position: relative;
     z-index: 1;
     display: flex;
-    flex: 1 1 auto;
     flex-direction: column;
     justify-content: flex-end;
     width: 100%;
@@ -1241,25 +1215,11 @@
   }
 
   .hero-light-grid-img {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    width: 100%;
+    width: auto;
     height: 100%;
-    object-fit: cover;
-    object-position: center 25%;
-  }
-
-  @media (max-width: 767px) {
-    .hero-light-grid-img {
-      object-position: 72% 22%;
-    }
-  }
-
-  @media (min-width: 1024px) {
-    .hero-light-grid-img {
-      object-position: center center;
-    }
+    max-height: 100%;
+    object-fit: contain;
+    object-position: center center;
   }
 
   .hero-light-grid-scrim {

@@ -27,7 +27,7 @@ const ROLE_OPTIONS = [
 
 export function ApplyForm() {
   const formId = useId();
-  const { captchaField, honeypotField, captchaRequired, captchaReady, securityLoading, getSecurityPayload } =
+  const { captchaField, honeypotField, captchaRequired, captchaReady, securityLoading, getSecurityPayload, resetCaptcha } =
     useFormSecurity('leads');
   const [values, setValues] = useState<LeadInput>({
     name: "",
@@ -81,6 +81,9 @@ export function ApplyForm() {
     } else {
       setStatus("error");
       setServerError(result.error);
+      if (captchaRequired && /تأیید امنیتی|کپچا/i.test(result.error)) {
+        resetCaptcha();
+      }
       track("academy_apply_error", { source: SOURCE, code: result.code });
     }
   }

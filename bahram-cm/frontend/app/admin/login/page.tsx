@@ -12,8 +12,15 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { captchaField, honeypotField, captchaRequired, captchaReady, securityLoading, getSecurityPayload } =
-    useFormSecurity('admin_login', { captchaAdmin: true });
+  const {
+    captchaField,
+    honeypotField,
+    captchaRequired,
+    captchaReady,
+    securityLoading,
+    getSecurityPayload,
+    resetCaptcha,
+  } = useFormSecurity('admin_login', { captchaAdmin: true });
 
   useEffect(() => {
     setMounted(true);
@@ -48,7 +55,11 @@ function LoginForm() {
     });
     if (!res.ok) {
       const json = await res.json().catch(() => ({}));
-      setError(json.error || 'ورود ناموفق بود.');
+      const message = json.error || 'ورود ناموفق بود.';
+      setError(message);
+      if (captchaRequired && /تأیید امنیتی|کپچا/i.test(message)) {
+        resetCaptcha();
+      }
       setPending(false);
       return;
     }

@@ -20,6 +20,21 @@ type BackendError = {
   error?: { code?: string; message_fa?: string; details?: unknown };
 };
 
+export function extractValidationMessage(payload: unknown, field: string): string | null {
+  if (!payload || typeof payload !== 'object') return null;
+
+  const legacy = (payload as { errors?: Record<string, string[]> }).errors;
+  if (legacy?.[field]?.[0]) return legacy[field][0]!;
+
+  const details = (payload as BackendError).error?.details;
+  if (details && typeof details === 'object' && field in details) {
+    const msgs = (details as Record<string, string[]>)[field];
+    if (Array.isArray(msgs) && typeof msgs[0] === 'string') return msgs[0];
+  }
+
+  return null;
+}
+
 const DEFAULT_TIMEOUT_MS = 15000;
 
 export async function getJson<T>(
@@ -87,7 +102,9 @@ export async function postJson<T>(
           errors?: Record<string, string[]>;
           message?: string;
         };
-        if (payload?.error?.message_fa) message = payload.error.message_fa;
+        const captchaMsg = extractValidationMessage(payload, 'captcha');
+        if (captchaMsg) message = captchaMsg;
+        else if (payload?.error?.message_fa) message = payload.error.message_fa;
         else if (payload?.errors?.captcha?.[0]) message = payload.errors.captcha[0];
         else if (payload?.message) message = payload.message;
         code = payload?.error?.code;

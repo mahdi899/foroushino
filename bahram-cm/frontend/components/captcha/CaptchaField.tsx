@@ -80,7 +80,7 @@ export interface CaptchaFieldProps {
   /** Single-row layout for chatbot footer */
   inline?: boolean;
   /** Matches site footer/newsletter pill forms (charcoal + bone) */
-  variant?: 'default' | 'site';
+  variant?: 'default' | 'site' | 'admin';
   onReadyChange?: (ready: boolean) => void;
   onPayloadChange?: (payload: CaptchaPayload | null) => void;
   /** Cloudflare Turnstile passed — verify on server before unlocking chat. */
@@ -284,7 +284,9 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
     }
   }
 
-  const siteInline = variant === 'site' || (variant !== 'default' && compact && inline);
+  const adminInline = variant === 'admin' && inline;
+  const siteInline =
+    variant === 'site' || (!adminInline && variant !== 'default' && compact && inline);
   const siteTight = siteInline && tight;
   const mathOnly = pillEmbed || (compact && inline);
 
@@ -338,9 +340,11 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
                   : 'rounded-pill border border-bone/12 bg-charcoal/40 px-2 py-0.5 text-[10px] text-bone'
                 : siteInline
                   ? 'rounded-pill border border-bone/12 bg-charcoal/40 px-2.5 py-1 text-xs text-bone'
-                  : inline
-                    ? 'rounded-full border border-white/70 bg-white/60 px-3 py-1.5 text-center text-[13px] text-primary-dark shadow-[0_1px_3px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md'
-                    : 'rounded-md bg-primary-soft/50 px-3 py-1.5 text-primary-dark',
+                  : adminInline
+                    ? 'rounded-full border border-border bg-primary-soft px-3 py-1.5 text-center text-[13px] text-primary-dark'
+                    : inline
+                      ? 'rounded-full border border-white/70 bg-white/60 px-3 py-1.5 text-center text-[13px] text-primary-dark shadow-[0_1px_3px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md'
+                      : 'rounded-md bg-primary-soft/50 px-3 py-1.5 text-primary-dark',
             )}
             dir="ltr"
             title={mathLoading ? undefined : `${mathQuestion} = ?`}
@@ -355,9 +359,11 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
               'inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap disabled:opacity-50',
               siteInline
                 ? 'rounded-pill p-1 text-mist hover:text-bone'
-                : inline
-                  ? 'rounded-full px-2 py-1 text-[#007aff] hover:bg-white/60'
-                  : 'text-caption font-medium text-accent hover:underline',
+                : adminInline
+                  ? 'rounded-md p-1.5 text-primary hover:bg-surface-soft'
+                  : inline
+                    ? 'rounded-full px-2 py-1 text-[#007aff] hover:bg-white/60'
+                    : 'text-caption font-medium text-accent hover:underline',
             )}
             aria-label="سؤال جدید"
             title="سؤال جدید"
@@ -367,7 +373,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
           </button>
           <input
             id={answerInputId}
-            name={inline ? 'chatbot_captcha_answer' : undefined}
+            name={inline && variant !== 'admin' ? 'chatbot_captcha_answer' : undefined}
             type="text"
             inputMode="numeric"
             autoComplete="off"
@@ -390,9 +396,11 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
                   : 'h-7 w-11 shrink-0 rounded-pill border border-bone/12 bg-transparent text-center text-[10px] text-bone placeholder:text-mist focus:border-emerald/40'
                 : siteInline
                   ? 'h-8 min-w-[4.5rem] flex-1 rounded-pill border border-bone/12 bg-charcoal/50 px-2.5 text-start text-xs text-bone placeholder:text-mist focus:border-emerald/40 focus:ring-1 focus:ring-emerald/20'
-                  : inline
-                    ? 'h-9 w-16 shrink-0 rounded-full border border-white/75 bg-white/55 text-center text-[14px] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md focus:border-[#007aff]/40 focus:ring-2 focus:ring-[#007aff]/15'
-                    : 'field-input h-9 w-24 shrink-0 py-0 text-small',
+                  : adminInline
+                    ? 'field-input h-9 min-h-11 min-w-[4.5rem] flex-1 shrink-0 py-0 text-center text-small placeholder:text-text-muted'
+                    : inline
+                      ? 'h-9 w-16 shrink-0 rounded-full border border-white/75 bg-white/55 text-center text-[14px] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md focus:border-[#007aff]/40 focus:ring-2 focus:ring-[#007aff]/15'
+                      : 'field-input h-9 w-24 shrink-0 py-0 text-small',
             )}
             placeholder={
               siteInline && inline && !pillEmbed

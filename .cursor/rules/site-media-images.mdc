@@ -1,0 +1,109 @@
+---
+description: جایگزینی تصاویر سایت — آپلود در کتابخانه رسانه و لینک استاتیک
+alwaysApply: true
+---
+
+# تصاویر سایت — کتابخانه رسانه و لینک استاتیک
+
+هر وقت تصویری در سایت (به‌خصوص `bahram-cm`) باید عوض، اضافه یا حذف شود، این ترتیب را رعایت کن. **هرگز** مسیر موقت، URL خارجی، فایل داخل `frontend/public/`، یا مسیر ULID مثل `/storage/media/2026/07/01k...` را مستقیم در کامپوننت نگذار.
+
+## ترتیب کار (الزامی)
+
+### ۱. آپلود در کتابخانه رسانه
+
+یکی از این دو روش:
+
+**الف) پنل ادمین (ترجیحی)**  
+`http://localhost:3000/admin` → کتابخانه رسانه / Media Library → آپلود
+
+**ب) فایل در storage (برای توسعه‌دهنده)**  
+فایل را با نام معنادار در این مسیر بگذار:
+
+```
+bahram-cm/backend/storage/app/public/media/site/<نام-فایل>.webp
+```
+
+- عکس‌های سایت ثابت → پوشه `media/site/`
+- ترجیحاً `webp` برای عکس؛ `svg` برای آیکون/گرافیک
+- نام فایل: `kebab-case` و توصیفی (مثال: `hero-background.webp`, `hero-background-mobile.webp`)
+
+### ۲. همگام‌سازی manifest
+
+```bash
+cd bahram-cm/backend
+php artisan storage:link   # فقط اگر لینک storage نبود
+php artisan media:sync --import
+php artisan media:sync --export
+```
+
+### ۳. لینک استاتیک در کد
+
+مسیر canonical را فقط از helperها بگیر:
+
+```ts
+import { siteStorageMedia } from '@/config/media';
+
+// عکس‌های پرکاربرد سایت → lib/site-photo-paths.ts
+heroBackground: siteStorageMedia('hero-background.webp'),
+
+// یا ثبت در config/media.ts → SITE_MEDIA
+'hero-background': {
+  src: siteStorageMedia('hero-background.webp'),
+  label: 'پس‌زمینه هیرو — دسکتاپ',
+  category: 'صفحه اصلی',
+},
+```
+
+کامپوننت‌ها از `sitePhotos` یا `SITE_MEDIA` import کنند — نه مسیر خام:
+
+```tsx
+// ✅
+import { sitePhotos } from '@/lib/site-photo-paths';
+<SiteImage src={sitePhotos.heroBackground} alt="..." />
+
+// ❌
+<SiteImage src="/storage/media/2026/07/01kwyc....webp" alt="..." />
+<img src="/media/site-photos/hero-background.jpg" />
+```
+
+### ۴. commit
+
+```bash
+git add bahram-cm/backend/storage/app/public/media \
+        bahram-cm/backend/database/data/media_library.json \
+        bahram-cm/frontend/lib/media/legacyMap.generated.ts \
+        bahram-cm/frontend/lib/site-photo-paths.ts \
+        bahram-cm/frontend/config/media.ts
+```
+
+## جایگزینی تصویر موجود
+
+1. فایل جدید را با **همان نام canonical** در `media/site/` جایگزین کن، یا نام جدید بگذار و مرجع کد را به‌روز کن.
+2. `media:sync --export` را اجرا کن.
+3. فقط اگر نام فایل عوض شد → `site-photo-paths.ts` / `SITE_MEDIA` / کامپوننت را به‌روز کن.
+4. اگر `legacy_path` قدیمی داشت، تداخل legacy map را برطرف کن (هر `legacy_path` فقط به یک فایل canonical اشاره کند).
+
+## ممنوع
+
+- قرار دادن عکس سایت در `bahram-cm/frontend/public/` (جز favicon و آیکون‌های ثابت UI)
+- hardcode مسیر `/storage/media/2026/...` (ULID) در TSX/TS
+- لینک مستقیم به Unsplash، CDN خارجی، یا `blob:` برای asset دائمی سایت
+- فراموش کردن `media_library.json` و `legacyMap.generated.ts` در commit
+
+## فایل‌های مرجع
+
+| فایل | نقش |
+|------|-----|
+| `bahram-cm/frontend/lib/site-photo-paths.ts` | عکس‌های ثابت صفحات سایت |
+| `bahram-cm/frontend/config/media.ts` | `siteStorageMedia()` و `SITE_MEDIA` |
+| `bahram-cm/backend/database/data/media_library.json` | متادیتای کتابخانه (alt، دسته، legacy) |
+| `bahram-cm/frontend/lib/media/legacyMap.generated.ts` | auto-generated — دستی ویرایش نکن |
+| `bahram-cm/README.md` بخش «همگام‌سازی کتابخانه رسانه» | چک‌لیست تیم |
+
+## بعد از pull (هم‌تیمی)
+
+```bash
+cd bahram-cm/backend
+php artisan storage:link
+php artisan media:sync
+```

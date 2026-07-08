@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SERVER_API_URL } from '@/lib/api/config';
+import { extractValidationMessage } from '@/lib/services/api';
 import { STUDENT_TOKEN_COOKIE } from './session';
 
 export interface OtpAuthState {
@@ -22,7 +23,7 @@ async function callStudentAuth(path: string, body: unknown): Promise<{ ok: boole
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const captchaMsg = json?.errors?.captcha?.[0];
+      const captchaMsg = extractValidationMessage(json, 'captcha');
       return { ok: false, message: captchaMsg ?? json?.error?.message_fa ?? 'خطایی رخ داد. دوباره تلاش کنید.' };
     }
     return { ok: true, data: json?.data };

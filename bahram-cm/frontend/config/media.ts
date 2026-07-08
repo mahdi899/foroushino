@@ -14,12 +14,12 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
   'hero-ambient': { src: siteStorageMedia('hero-ambient.svg'), label: 'پس‌زمینه هیرو (گرافیک)', category: 'صفحه اصلی' },
   'hero-light': { src: siteStorageMedia('hero-ambient-light.svg'), label: 'هیرو روشن (گرافیک)', category: 'صفحه اصلی' },
   'hero-background': {
-    src: '/storage/media/2026/07/01kwwk4bm4900qv599k0qxw4mw.jpg',
+    src: siteStorageMedia('hero-background.webp'),
     label: 'پس‌زمینه هیرو — دسکتاپ',
     category: 'صفحه اصلی',
   },
   'hero-background-mobile': {
-    src: '/storage/media/2026/07/01kwwk58kyxqdhn3vz6aaz5610.jpg',
+    src: siteStorageMedia('hero-background-mobile.webp'),
     label: 'پس‌زمینه هیرو — موبایل',
     category: 'صفحه اصلی',
   },

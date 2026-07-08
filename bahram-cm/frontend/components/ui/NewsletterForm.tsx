@@ -22,7 +22,7 @@ export function NewsletterForm({
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
-  const { captchaField, honeypotField, captchaRequired, captchaReady, securityLoading, getSecurityPayload } =
+  const { captchaField, honeypotField, captchaRequired, captchaReady, securityLoading, getSecurityPayload, resetCaptcha } =
     useFormSecurity('newsletter', { captchaStacked: true });
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -51,6 +51,9 @@ export function NewsletterForm({
     } else {
       setStatus('err');
       setMessage(result.error);
+      if (captchaRequired && /تأیید امنیتی|کپچا/i.test(result.error)) {
+        resetCaptcha();
+      }
     }
   };
 

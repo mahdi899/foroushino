@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import { GraduationCap, Mic2, Sparkles, Users } from "lucide-react";
 import { site } from "@/content/site";
 import { cn } from "@/lib/cn";
@@ -14,8 +14,7 @@ import "@/styles/hero-cinematic.css";
 const LIGHT_PANEL_PAD = "px-4 pt-2 pb-5 sm:px-6 sm:py-6 md:px-10 md:py-8 lg:px-12 lg:py-12 xl:px-14";
 
 export function HeroCinematic() {
-  const reduce = useReducedMotion();
-  const bgInitial = reduce ? false : { scale: 1.04 };
+  const bgInitial = false;
   const bgAnimate = { scale: 1 };
 
   const grid = (
@@ -82,34 +81,49 @@ export function HeroCinematic() {
     <section aria-label="معرفی" className="hero-light-section relative isolate pt-6 pb-4 md:pt-8 md:pb-6">
       <div className="container-luxe min-h-0">
         <div className="hero-light-panel relative overflow-hidden rounded-card-lg">
-          <motion.div
-            className="hero-light-grid-bg pointer-events-none absolute inset-0 z-0"
-            initial={bgInitial}
-            animate={bgAnimate}
-            transition={{ duration: dur.xl, ease: ease.luxe }}
-            aria-hidden
-          >
-            <SiteImage
-              src={sitePhotos.heroBackgroundMobile}
-              alt=""
-              fill
-              priority
-              sizes="100vw"
-              wrapperClassName="hero-light-grid-picture lg:hidden"
-              className="hero-light-grid-img"
-            />
-            <SiteImage
-              src={sitePhotos.heroBackground}
-              alt=""
-              fill
-              priority
-              sizes="100vw"
-              wrapperClassName="hero-light-grid-picture hidden lg:block"
-              className="hero-light-grid-img"
-            />
-            <div className="hero-light-grid-scrim" aria-hidden />
-          </motion.div>
-          <div className={cn("hero-light-content relative z-[1]", LIGHT_PANEL_PAD)}>{grid}</div>
+          <div className={cn("hero-light-content", LIGHT_PANEL_PAD)}>{grid}</div>
+
+          <div className="hero-light-media hero-light-media--mobile lg:hidden" aria-hidden>
+            <motion.div
+              className="hero-light-media-motion"
+              initial={bgInitial}
+              animate={bgAnimate}
+              transition={{ duration: dur.xl, ease: ease.luxe }}
+            >
+              <SiteImage
+                src={sitePhotos.heroBackgroundMobile}
+                alt=""
+                width={859}
+                height={1024}
+                priority
+                sizes="100vw"
+                wrapperClassName="hero-light-grid-picture"
+                className="hero-light-grid-img hero-light-grid-img--mobile"
+              />
+            </motion.div>
+            <div className="hero-light-grid-scrim" />
+          </div>
+
+          <div className="hero-light-media hero-light-media--desktop hidden lg:block" aria-hidden>
+            <motion.div
+              className="hero-light-media-motion"
+              initial={bgInitial}
+              animate={bgAnimate}
+              transition={{ duration: dur.xl, ease: ease.luxe }}
+            >
+              <SiteImage
+                src={sitePhotos.heroBackground}
+                alt=""
+                width={1920}
+                height={1080}
+                priority
+                sizes="(min-width: 1024px) 55vw, 0"
+                wrapperClassName="hero-light-grid-picture"
+                className="hero-light-grid-img hero-light-grid-img--desktop"
+              />
+            </motion.div>
+            <div className="hero-light-grid-scrim" />
+          </div>
         </div>
       </div>
     </section>

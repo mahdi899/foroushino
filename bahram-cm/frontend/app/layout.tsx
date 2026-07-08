@@ -20,7 +20,7 @@ import { getCurrentStudent } from "@/lib/student/session";
 import { StudentAuthRoot } from "@/components/student-panel/auth/StudentAuthRoot";
 import { ReferralCapture } from "@/components/commerce/ReferralCapture";
 import { GrainOverlay } from "@/components/motion/GrainOverlay";
-import { THEME_BOOT_SCRIPT } from "@/lib/theme-boot-script";
+import { ThemeBootScript } from "@/components/theme/ThemeBootScript";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = defaultMetadata;
@@ -66,9 +66,9 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }}
         />
         <MediaPreconnect />
-        <script id="theme-boot" dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>
       <body className={`${fontClassName} min-w-0 overflow-x-clip antialiased`} suppressHydrationWarning>
+        <ThemeBootScript />
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-[100] focus:rounded-pill focus:bg-emerald focus:px-4 focus:py-2 focus:text-bone"

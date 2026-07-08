@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { SERVER_API_URL } from '@/lib/api/config';
 import { ADMIN_TOKEN_COOKIE } from '@/lib/auth/session';
+import { extractValidationMessage } from '@/lib/services/api';
 
 const LOGIN_URLS = [
   SERVER_API_URL,
@@ -71,9 +72,9 @@ export async function POST(req: Request) {
     let backendMsg: string | null = null;
 
     if (body && typeof body === 'object') {
-      const errors = (body as { errors?: Record<string, string[]> }).errors;
-      if (errors?.captcha?.[0]) {
-        backendMsg = errors.captcha[0];
+      const captchaMsg = extractValidationMessage(body, 'captcha');
+      if (captchaMsg) {
+        backendMsg = captchaMsg;
       } else if (typeof (body as { message?: string }).message === 'string') {
         backendMsg = (body as { message?: string }).message ?? null;
       } else if (

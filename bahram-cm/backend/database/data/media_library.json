@@ -182,6 +182,36 @@
             "is_private": false
         },
         {
+            "path": "media/site/hero-background.webp",
+            "disk": "public",
+            "url": "/storage/media/site/hero-background.webp",
+            "type": "image",
+            "mime": "image/webp",
+            "size": 115712,
+            "width": null,
+            "height": null,
+            "alt_fa": "پس‌زمینه هیرو — دسکتاپ",
+            "original_filename": "hero-background.webp",
+            "category": "عکس‌های سایت",
+            "legacy_path": "/media/site-photos/hero-background.jpg",
+            "is_private": false
+        },
+        {
+            "path": "media/site/hero-background-mobile.webp",
+            "disk": "public",
+            "url": "/storage/media/site/hero-background-mobile.webp",
+            "type": "image",
+            "mime": "image/webp",
+            "size": 80314,
+            "width": null,
+            "height": null,
+            "alt_fa": "پس‌زمینه هیرو — موبایل",
+            "original_filename": "hero-background-mobile.webp",
+            "category": "عکس‌های سایت",
+            "legacy_path": "/media/site-photos/hero-background-mobile.jpg",
+            "is_private": false
+        },
+        {
             "path": "media/site/insight-cover-1.jpg",
             "disk": "public",
             "url": "/storage/media/site/insight-cover-1.jpg",
@@ -718,7 +748,7 @@
             "alt_fa": "پس‌زمینه هیرو — موبایل",
             "original_filename": "photo_2026-06-28_06-35-31.jpg",
             "category": "عکس‌های سایت",
-            "legacy_path": "/media/site-photos/hero-background-mobile.jpg",
+            "legacy_path": null,
             "is_private": false
         },
         {

@@ -48,9 +48,10 @@ export const GENERATED_LEGACY_MAP: Record<string, string> = {
   "/media/site-photos/testimonial-01.jpg": "/storage/media/site/testimonial-01.webp",
   "/media/site-photos/testimonial-02.jpg": "/storage/media/site/testimonial-02.webp",
   "/media/site-photos/testimonial-03.jpg": "/storage/media/site/testimonial-03.webp",
-  "/media/site-photos/hero-background-mobile.jpg": "/storage/media/2026/07/01kwwk58kyxqdhn3vz6aaz5610.jpg",
   "/media/site-photos/main-path-campaign.webp": "/storage/media/site/main-path-campaign.webp",
   "/media/site-photos/main-path-saat.webp": "/storage/media/site/main-path-saat.webp",
   "/media/site-photos/story-step-05.webp": "/storage/media/site/story-step-05.webp",
   "/media/site-photos/testimonial-04.webp": "/storage/media/site/testimonial-04.webp",
+  "/media/site-photos/hero-background.jpg": "/storage/media/site/hero-background.webp",
+  "/media/site-photos/hero-background-mobile.jpg": "/storage/media/site/hero-background-mobile.webp",
 };
