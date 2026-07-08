@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Order extends Model
 {
+    public const PLACEHOLDER_CUSTOMER_NAME = 'خریدار موقت';
+
     protected $fillable = [
         'user_id',
         'order_number',
@@ -65,7 +67,7 @@ class Order extends Model
 
     public function spotplayerLicense(): HasOne
     {
-        return $this->hasOne(SpotplayerLicense::class);
+        return $this->hasOne(SpotplayerLicense::class)->latestOfMany();
     }
 
     public function referralConversion(): HasOne
@@ -76,5 +78,14 @@ class Order extends Model
     public function isPaid(): bool
     {
         return in_array($this->status, ['paid', 'fulfilled'], true);
+    }
+
+    public function needsProfileCompletion(): bool
+    {
+        $name = trim((string) $this->customer_name);
+
+        return $name === ''
+            || $name === self::PLACEHOLDER_CUSTOMER_NAME
+            || $name === 'دانشجو';
     }
 }

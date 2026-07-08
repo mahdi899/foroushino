@@ -36,6 +36,12 @@ class SpotPlayerService
             throw new SpotPlayerException('محصول این سفارش به هیچ دوره‌ای در SpotPlayer متصل نیست.');
         }
 
+        $courseIds = $this->parseCourseIds((string) $product->spotplayer_course_id);
+
+        if ($courseIds === []) {
+            throw new SpotPlayerException('شناسه دوره SpotPlayer برای این محصول معتبر نیست.');
+        }
+
         $baseUrl = rtrim($settings->spotplayer_base_url ?: self::DEFAULT_BASE_URL, '/');
 
         try {
@@ -45,7 +51,7 @@ class SpotPlayerService
             ])
                 ->timeout(30)
                 ->post("{$baseUrl}/license/edit/", [
-                    'course' => [$product->spotplayer_course_id],
+                    'course' => $courseIds,
                     'name' => $order->customer_name,
                     'watermark' => [
                         'texts' => [['text' => $order->customer_phone]],
@@ -116,5 +122,16 @@ class SpotPlayerService
         }
 
         return ['success' => true, 'message' => 'اتصال به SpotPlayer برقرار شد (کلید API معتبر تشخیص داده شد).'];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function parseCourseIds(string $raw): array
+    {
+        return array_values(array_filter(array_map(
+            static fn (string $id) => trim($id),
+            preg_split('/\s*,\s*/', $raw) ?: []
+        )));
     }
 }

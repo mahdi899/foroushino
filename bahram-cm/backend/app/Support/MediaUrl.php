@@ -141,7 +141,17 @@ final class MediaUrl
             return null;
         }
 
-        return self::reference('/storage/'.ltrim($path, '/'));
+        $normalized = trim($path);
+
+        if (str_starts_with($normalized, '/storage/')) {
+            return self::reference($normalized);
+        }
+
+        if (str_starts_with($normalized, 'storage/')) {
+            return self::reference('/'.$normalized);
+        }
+
+        return self::reference('/storage/'.ltrim($normalized, '/'));
     }
 
     private static function normalizeAbsoluteStorage(string $url): string

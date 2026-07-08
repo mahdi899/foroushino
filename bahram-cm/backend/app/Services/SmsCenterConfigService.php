@@ -212,6 +212,10 @@ class SmsCenterConfigService
             return $username !== '' ? $username : 'ثبت‌شده';
         }
 
+        if ($provider->slug === 'bale_safir' && filled($provider->sender_number)) {
+            return 'bot_id: '.$provider->sender_number;
+        }
+
         $value = (string) $provider->credentials;
 
         return strlen($value) > 8 ? substr($value, 0, 6).'…' : 'ثبت‌شده';

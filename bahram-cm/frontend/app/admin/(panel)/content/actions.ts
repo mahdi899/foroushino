@@ -8,7 +8,7 @@ import { persistMediaUrl, resolveMediaUrl, normalizeAdminMediaUrl } from '@/lib/
 import { notifySearchCrawlers, type CrawlerNotifyResult } from '@/lib/seo/notifyCrawlers';
 import type { ArticlePayload } from '@/lib/admin/articleTypes';
 import type { AdminMediaItem, AdminMediaPageResult, AdminMediaTrashItem } from '@/lib/admin/mediaTypes';
-import type { ApiArticle, ApiCase, ApiDoctor } from '@/lib/api/types';
+import type { ApiArticle, ApiCase } from '@/lib/api/types';
 
 export async function getAdminArticles(): Promise<ApiArticle[]> {
   try {
@@ -151,28 +151,6 @@ export async function createCase(payload: {
     return res.data;
   } catch {
     return null;
-  }
-}
-
-export async function getAdminDoctors(): Promise<ApiDoctor[]> {
-  try {
-    const res = await adminFetch<{ data: ApiDoctor[] }>('/panel/doctors');
-    return res.data;
-  } catch {
-    return [];
-  }
-}
-
-export async function updateDoctor(
-  id: number,
-  payload: Partial<{ name_fa: string; title: string; bio: string; image_url: string }>,
-): Promise<boolean> {
-  try {
-    await adminFetch(`/doctors/${id}`, { method: 'PATCH', body: payload });
-    revalidatePath('/admin/doctors');
-    return true;
-  } catch {
-    return false;
   }
 }
 

@@ -32,7 +32,15 @@ class Product extends Model
         'short_description',
         'price',
         'sale_price',
+        'referral_cashback_enabled',
+        'referral_cashback_type',
+        'referral_cashback_value',
         'is_active',
+        'show_on_courses',
+        'featured_listing',
+        'course_level',
+        'course_duration',
+        'landing_href',
         'featured_image',
         'spotplayer_course_id',
         'spotplayer_product_id',
@@ -42,8 +50,12 @@ class Product extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'show_on_courses' => 'boolean',
+        'featured_listing' => 'boolean',
+        'referral_cashback_enabled' => 'boolean',
         'price' => 'integer',
         'sale_price' => 'integer',
+        'referral_cashback_value' => 'integer',
     ];
 
     public function getSlugOptions(): SlugOptions
@@ -74,6 +86,11 @@ class Product extends Model
         return $query->where('is_active', true);
     }
 
+    public function scopeListedOnCourses(Builder $query): Builder
+    {
+        return $query->where('show_on_courses', true);
+    }
+
     /**
      * Effective price the customer pays (sale price when set and lower).
      */
@@ -84,6 +101,30 @@ class Product extends Model
         }
 
         return (int) $this->price;
+    }
+
+    /**
+     * Cashback reward for referrers when this product is purchased.
+     * Basis amount is typically the order's final_amount (after discounts).
+     */
+    public function computeReferralCashback(int $basisAmount): int
+    {
+        if (! $this->referral_cashback_enabled) {
+            return 0;
+        }
+
+        $type = $this->referral_cashback_type;
+        $value = (int) ($this->referral_cashback_value ?? 0);
+
+        if ($value <= 0 || ! in_array($type, ['percent', 'fixed'], true)) {
+            return 0;
+        }
+
+        if ($type === 'percent') {
+            return (int) round($basisAmount * min($value, 100) / 100);
+        }
+
+        return $value;
     }
 
     protected static function booted(): void

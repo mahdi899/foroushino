@@ -31,7 +31,6 @@ export interface AiSiteContext {
     faqTopics: string[];
   }[];
   landingPages: { path: string; title: string; hook: string; service: string }[];
-  doctors: { slug: string; name: string; title: string; specialties: string[] }[];
   cases: { slug: string; title: string; service: string; summary: string }[];
   blogArticles: { slug: string; title: string; excerpt: string }[];
   globalFaqs: { q: string; a: string }[];
@@ -87,7 +86,6 @@ function buildBahramContext(blogArticles: { slug: string; title: string; excerpt
     sitemap,
     services,
     landingPages: [],
-    doctors: [],
     cases: site.transformations.map((t) => ({
       slug: t.slug,
       title: t.name,

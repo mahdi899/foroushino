@@ -86,14 +86,14 @@ export default async function CourseDetailPage({
       />
 
       {/* HERO */}
-      <section className="relative isolate overflow-hidden bg-ink">
+      <section className="page-hero page-hero--media relative isolate overflow-hidden bg-ink">
         <PageHeroBackdrop
           src={cover}
           alt={coverAlt}
           fallbackAlt={`کاور ${course.title}`}
           priority
         />
-        <div className="container-luxe relative z-[2] max-w-4xl min-w-0 py-section-sm">
+        <div className="container-luxe page-hero__container max-w-4xl min-w-0">
           <Reveal>
             <Link
               href="/courses"

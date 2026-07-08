@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import { BrandMark } from '@/components/layout/Header';
@@ -11,8 +11,15 @@ function LoginForm() {
   const params = useSearchParams();
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { captchaField, honeypotField, captchaRequired, captchaReady, securityLoading, getSecurityPayload } =
-    useFormSecurity('admin_login');
+    useFormSecurity('admin_login', { captchaAdmin: true });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const securityPending = mounted && (securityLoading || (captchaRequired && !captchaReady));
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -51,24 +58,21 @@ function LoginForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="relative w-full max-w-sm rounded-card border border-veil/30 bg-charcoal-2/80 p-8 shadow-veil backdrop-blur"
-    >
+    <form onSubmit={handleSubmit} className="admin-login-card relative">
       <input type="hidden" name="from" value={params.get('from') || '/admin'} />
       {honeypotField}
 
-      <div className="mb-6 flex flex-col items-center gap-3 text-center">
-        <BrandMark className="h-12 w-12" />
-        <div>
-          <h1 className="text-h3 text-bone">پنل مدیریت بهرام</h1>
-          <p className="text-sm text-mist">برای ادامه وارد شوید</p>
+      <div className="mb-5 flex flex-col items-center gap-3 text-center sm:mb-6">
+        <BrandMark className="h-10 w-10 sm:h-12 sm:w-12" />
+        <div className="min-w-0">
+          <h1 className="text-h3 text-text">پنل مدیریت بهرام</h1>
+          <p className="mt-1 text-sm text-text-muted">برای ادامه وارد شوید</p>
         </div>
       </div>
 
       <div className="space-y-4">
-        <div>
-          <label className="mb-1 block text-sm text-bone-dim" htmlFor="email">
+        <div className="min-w-0">
+          <label className="field-label" htmlFor="email">
             ایمیل
           </label>
           <input
@@ -76,14 +80,14 @@ function LoginForm() {
             name="email"
             type="email"
             required
-            className="w-full rounded-tile border border-veil/40 bg-ink px-3 py-2 text-bone"
+            className="field-input min-h-11 w-full"
             defaultValue="admin@bahram.local"
             dir="ltr"
             autoComplete="username"
           />
         </div>
-        <div>
-          <label className="mb-1 block text-sm text-bone-dim" htmlFor="password">
+        <div className="min-w-0">
+          <label className="field-label" htmlFor="password">
             رمز عبور
           </label>
           <input
@@ -91,7 +95,7 @@ function LoginForm() {
             name="password"
             type="password"
             required
-            className="w-full rounded-tile border border-veil/40 bg-ink px-3 py-2 text-bone"
+            className="field-input min-h-11 w-full"
             defaultValue="password"
             dir="ltr"
             autoComplete="current-password"
@@ -99,35 +103,56 @@ function LoginForm() {
         </div>
       </div>
 
-      {captchaRequired ? (
-        <div className="mt-4 rounded-tile border border-veil/25 bg-ink/50 px-3 py-2.5">
-          <div className="mb-1.5 flex items-center gap-1.5 text-[11px] text-mist">
-            <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-glow/80" aria-hidden />
-            <span>تأیید امنیتی</span>
+      {mounted && (captchaRequired || securityLoading) ? (
+        <div className="admin-login-captcha-row mt-4 min-w-0 rounded-tile border border-border bg-surface-soft px-3 py-2.5 sm:px-4">
+          <div className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-text-muted">
+            <ShieldCheck className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+            <span className="whitespace-nowrap">تأیید امنیتی</span>
           </div>
-          {captchaField}
+          <div className="admin-login-captcha min-w-0 flex-1">
+            {securityLoading ? (
+              <p className="text-xs text-text-muted">در حال بارگذاری…</p>
+            ) : (
+              captchaField
+            )}
+          </div>
         </div>
       ) : null}
 
-      {error && <p className="mt-3 text-sm text-sales">{error}</p>}
+      {error ? <p className="mt-3 text-sm text-error">{error}</p> : null}
+
       <button
         type="submit"
-        disabled={pending || securityLoading || !captchaReady}
-        className="mt-6 w-full rounded-pill bg-emerald px-4 py-3 font-semibold text-bone transition hover:bg-emerald-glow disabled:opacity-60"
+        disabled={pending || securityPending}
+        className="btn btn-primary mt-5 min-h-11 w-full sm:mt-6"
       >
         {pending ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : 'ورود'}
       </button>
-      <p className="mt-4 text-center text-caption text-mist">admin@bahram.local / password</p>
+
+      <p className="mt-4 break-all text-center text-caption text-text-muted sm:break-normal">
+        admin@bahram.local / password
+      </p>
     </form>
+  );
+}
+
+function LoginFormFallback() {
+  return (
+    <div className="admin-login-card flex min-h-[18rem] items-center justify-center">
+      <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden />
+      <span className="sr-only">در حال بارگذاری…</span>
+    </div>
   );
 }
 
 export default function AdminLogin() {
   return (
-    <div className="admin-main-scroll grid h-full place-items-center bg-ink p-4">
-      <Suspense>
-        <LoginForm />
-      </Suspense>
+    <div className="admin-login-screen">
+      <div className="admin-login-screen__inner">
+        <Suspense fallback={<LoginFormFallback />}>
+          <LoginForm />
+        </Suspense>
+      </div>
     </div>
   );
 }

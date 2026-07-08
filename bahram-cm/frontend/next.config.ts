@@ -61,6 +61,10 @@ const config: NextConfig = {
     ];
   },
   async headers() {
+    if (process.env.NODE_ENV !== "production") {
+      return [];
+    }
+
     const immutable = [
       { key: "Cache-Control", value: CDN_STATIC_IMMUTABLE },
       { key: "CDN-Cache-Control", value: CDN_STATIC_IMMUTABLE },
@@ -74,6 +78,8 @@ const config: NextConfig = {
   transpilePackages: ["next-mdx-remote"],
   images: {
     unoptimized: disableImageOptimization,
+    loader: "custom",
+    loaderFile: "./lib/imageLoader.ts",
     formats: disableImageOptimization ? undefined : ["image/avif", "image/webp"],
     qualities: [90, 75],
     minimumCacheTTL: 60 * 60 * 24 * 30,
@@ -84,6 +90,10 @@ const config: NextConfig = {
     remotePatterns: backendImagePattern(),
   },
   experimental: {
+    serverActions: {
+      // Default 1MB is too small for article HTML saves and media uploads.
+      bodySizeLimit: '10mb',
+    },
     optimizePackageImports: [
       "lucide-react",
       "framer-motion",

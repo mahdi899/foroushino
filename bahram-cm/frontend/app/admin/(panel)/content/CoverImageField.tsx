@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ImageIcon, Trash2 } from 'lucide-react';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import { resolveMediaUrl, persistMediaUrl } from '@/lib/mediaUrl';
 import { ImageGalleryModal } from './ImageGalleryModal';
 import { AiImageButton } from './AiImageButton';
@@ -44,9 +45,7 @@ export function CoverImageField({ label, value, onChange, alt, aiPrompt }: Cover
 
         <div className="overflow-hidden rounded-lg border border-border bg-surface-soft">
           {value ? (
-            // Native img preserves natural aspect ratio inside the preview box.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={resolveMediaUrl(value)} alt={alt ?? label} className="mx-auto block h-auto max-h-72 w-full object-contain" />
+            <DirectMediaImg admin src={value} alt={alt ?? label} className="mx-auto block h-auto max-h-72 w-full object-contain" />
           ) : (
             <div className="flex min-h-[10rem] items-center justify-center px-4 text-center text-caption text-text-muted">
               تصویر شاخص انتخاب نشده

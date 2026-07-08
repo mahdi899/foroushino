@@ -2,6 +2,7 @@
 
 
 
+import { persistMediaUrl } from '@/lib/mediaUrl';
 import { aiChatCompletion } from '@/lib/ai/client';
 
 import { generateAiImage } from '@/lib/ai/images';
@@ -91,7 +92,8 @@ function fallbackArticle(topic: string, description: string, keyword?: string): 
 
 function insertInlineImage(body: string, url: string, alt: string): string {
 
-  const figure = `<figure class="my-6"><img src="${url}" alt="${alt.replace(/"/g, '&quot;')}" class="rounded-lg max-w-full h-auto" /><figcaption class="mt-2 text-center text-caption text-text-muted">${alt}</figcaption></figure>`;
+  const storageUrl = persistMediaUrl(url) || url;
+  const figure = `<figure class="my-6"><img src="${storageUrl}" alt="${alt.replace(/"/g, '&quot;')}" class="rounded-lg max-w-full h-auto" /><figcaption class="mt-2 text-center text-caption text-text-muted">${alt}</figcaption></figure>`;
 
   const h2Close = body.indexOf('</h2>');
 

@@ -1,17 +1,18 @@
 import type { Metadata } from 'next';
 import { Bell, BellOff } from 'lucide-react';
 import { NotificationItem, type NotificationEntry } from '@/components/student-panel/notifications/NotificationItem';
-import { studentFetch } from '@/lib/student/session';
+import { markAllNotificationsReadQuiet, panelStudentFetch } from '@/lib/student/panelServer';
 
 export const metadata: Metadata = { title: 'اعلان‌ها | پنل کاربری', robots: { index: false, follow: false } };
 
 export default async function PanelNotificationsPage() {
-  const { data: notifications } = await studentFetch<{ data: NotificationEntry[] }>('/notifications');
+  await markAllNotificationsReadQuiet();
+  const { data: notifications } = await panelStudentFetch<{ data: NotificationEntry[] }>('/notifications');
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 sm:gap-5">
       <div className="flex items-center gap-3">
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary sm:h-12 sm:w-12">
           <Bell size={22} />
         </span>
         <div>

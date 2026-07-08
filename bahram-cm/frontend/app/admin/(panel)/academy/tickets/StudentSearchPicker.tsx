@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Loader2, Search, User, X } from 'lucide-react';
 import { searchStudentsForPicker } from '../actions';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import type { AdminStudent } from '@/lib/admin/academyTypes';
 
 export type SelectedStudent = {
@@ -220,8 +221,7 @@ export function StudentSearchPicker({ value, onChange, required }: StudentSearch
                         >
                           <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-surface-soft text-text-muted">
                             {student.avatar_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={student.avatar_url} alt="" className="h-full w-full object-cover" />
+                              <DirectMediaImg admin src={student.avatar_url} alt="" className="h-full w-full object-cover" />
                             ) : (
                               <User className="h-4 w-4" />
                             )}

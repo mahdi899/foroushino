@@ -70,19 +70,6 @@ export interface ApiFaq {
   order: number;
 }
 
-export interface ApiDoctor {
-  id: number;
-  slug: string;
-  name_fa: string;
-  title: string;
-  bio: string | null;
-  specialties: string[];
-  image_url: string | null;
-  order: number;
-  status: string;
-  seo?: ApiSeo | null;
-}
-
 export interface ApiCase {
   id: number;
   slug: string;

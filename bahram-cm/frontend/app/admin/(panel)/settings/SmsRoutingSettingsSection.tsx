@@ -28,6 +28,16 @@ function ProviderCredentialRow({ provider }: { provider: SmsProviderView }) {
   const [testing, setTesting] = useState(false);
   const [status, setStatus] = useState('');
 
+  const isBaleSafir = provider.slug === 'bale_safir';
+  const credentialPlaceholder = isBaleSafir
+    ? provider.has_credentials
+      ? `کلید API سفیر ذخیره‌شده (${provider.credential_hint ?? '••••'})`
+      : 'کلید API سفیر (api-access-key)'
+    : provider.has_credentials
+      ? `کلید ذخیره‌شده (${provider.credential_hint ?? '••••'})`
+      : 'کلید API / توکن ربات';
+  const senderPlaceholder = isBaleSafir ? 'شناسه بازو (bot_id)' : 'شماره فرستنده';
+
   if (provider.slug === 'melipayamak' || provider.slug === 'kavenegar') {
     return null;
   }
@@ -73,15 +83,15 @@ function ProviderCredentialRow({ provider }: { provider: SmsProviderView }) {
           className="field-input text-small"
           dir="ltr"
           type="password"
-          placeholder={provider.has_credentials ? `کلید ذخیره‌شده (${provider.credential_hint ?? '••••'})` : 'کلید API / توکن ربات'}
+          placeholder={credentialPlaceholder}
           value={credentials}
           onChange={(e) => setCredentials(e.target.value)}
         />
-        {provider.channel_type === 'sms' ? (
+        {provider.channel_type === 'sms' || isBaleSafir ? (
           <input
             className="field-input text-small"
             dir="ltr"
-            placeholder="شماره فرستنده"
+            placeholder={senderPlaceholder}
             value={sender}
             onChange={(e) => setSender(e.target.value)}
           />
@@ -130,7 +140,7 @@ export function SmsRoutingSettingsSection({
         <div>
           <h2 className="text-h3 text-primary-dark">مسیردهی پیامک</h2>
           <p className="mt-1 text-caption text-text-muted">
-            پنل اصلی، fallback و کلیدهای فراز / آی‌پی‌پنل / بله / تلگرام. کلید ملی‌پیامک و کاوه‌نگار در{' '}
+            پنل اصلی، fallback و کلیدهای فراز / آی‌پی‌پنل / سفیر بله / ربات بله / تلگرام. کلید ملی‌پیامک و کاوه‌نگار در{' '}
             <Link href="#sms-spotplayer-credentials" className="text-primary hover:underline">
               بخش بالا
             </Link>

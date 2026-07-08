@@ -90,6 +90,30 @@ class ZarinpalPaymentTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_dev_mode_uses_real_gateway_when_payment_settings_are_ready(): void
+    {
+        config(['bahram.payment.dev_mode' => true]);
+        $this->activateSandbox();
+        $order = $this->makeOrder();
+
+        Http::fake([
+            'sandbox.zarinpal.com/pg/v4/payment/request.json' => Http::response([
+                'data' => ['code' => 100, 'authority' => 'A00000000000000000000000000000000000'],
+                'errors' => [],
+            ], 200),
+        ]);
+
+        $service = app(ZarinpalPaymentService::class);
+        $payment = $service->request($order);
+
+        $this->assertSame('pending', $payment->status);
+        $this->assertStringStartsWith('A', $payment->authority);
+        $this->assertStringContainsString(
+            'sandbox.zarinpal.com/pg/StartPay/A00000000000000000000000000000000000',
+            $service->getPaymentUrl($payment),
+        );
+    }
+
     public function test_request_creates_a_pending_payment_and_returns_the_gateway_url(): void
     {
         $this->activateSandbox();
@@ -114,6 +138,10 @@ class ZarinpalPaymentTest extends TestCase
 
         Http::assertSent(fn ($request) => $request->url() === 'https://sandbox.zarinpal.com/pg/v4/payment/request.json'
             && $request['amount'] === 10_000_000 // Toman -> Rial conversion (x10)
+            && $request['metadata']['mobile'] === '09120000000'
+            && $request['metadata']['order_id'] === 'BC-TEST-0001'
+            && ! array_key_exists('email', $request['metadata'] ?? [])
+            && ! array_key_exists('card_pan', $request['metadata'] ?? [])
         );
     }
 
@@ -184,5 +212,21 @@ class ZarinpalPaymentTest extends TestCase
 
         $this->assertFalse($result['success']);
         $this->assertNull($result['order']);
+    }
+
+    public function test_cancel_by_authority_marks_pending_payment_as_canceled(): void
+    {
+        config(['bahram.payment.dev_mode' => true]);
+        $order = $this->makeOrder();
+        $service = app(ZarinpalPaymentService::class);
+        $payment = $service->request($order);
+
+        $resolved = $service->cancelByAuthority($payment->authority);
+
+        $this->assertNotNull($resolved);
+        $this->assertSame($order->id, $resolved->id);
+        $payment->refresh();
+        $this->assertSame('canceled', $payment->status);
+        $this->assertSame('pending_payment', $resolved->status);
     }
 }

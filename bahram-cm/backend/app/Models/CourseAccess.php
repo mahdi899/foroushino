@@ -45,7 +45,7 @@ class CourseAccess extends Model
 
     public function spotplayerLicense(): HasOne
     {
-        return $this->hasOne(SpotplayerLicense::class);
+        return $this->hasOne(SpotplayerLicense::class)->latestOfMany();
     }
 
     public function isActive(): bool

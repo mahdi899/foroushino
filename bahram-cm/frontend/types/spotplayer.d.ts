@@ -1,22 +1,35 @@
 declare global {
   interface SpotPlayerInstance {
-    Open(licenseKey: string, courseId: string, itemId?: string | number | null): Promise<void>;
+    Open(licenseKey: string, courseId?: string | null, itemId?: string | number | null): Promise<void>;
+    Stop(): Promise<void>;
+    Hide(): Promise<void>;
     Destroy?(): void;
   }
 
   interface SpotPlayerConstructor {
-    new (element: HTMLElement, syncUrl: string, autoOpen?: boolean): SpotPlayerInstance;
+    new (
+      element: HTMLElement,
+      cookieUrl: string,
+      side?: boolean,
+      cookieName?: string,
+    ): SpotPlayerInstance;
   }
 
   interface SpotPlayerCourseItem {
-    id: string | number;
+    _id?: string;
+    id?: string | number;
+    name?: string;
     title?: string;
     duration?: number;
-    type?: string;
+    type?: string | number;
+    access?: boolean;
+    items?: SpotPlayerCourseItem[];
   }
 
   interface SpotPlayerCourse {
-    id: string;
+    _id?: string;
+    id?: string;
+    name?: string;
     title?: string;
     items?: SpotPlayerCourseItem[];
   }

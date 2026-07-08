@@ -7,6 +7,7 @@ use App\Http\Resources\V1\ArticleAdminResource;
 use App\Models\Article;
 use App\Services\ArticleRevisionService;
 use App\Services\ContentPublishService;
+use App\Services\InAppNotificationService;
 use App\Support\ArticleSlug;
 use App\Support\MediaUrl;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,10 @@ use Illuminate\Validation\Rule;
 
 class ArticleAdminController extends Controller
 {
-    public function __construct(private readonly ContentPublishService $publish) {}
+    public function __construct(
+        private readonly ContentPublishService $publish,
+        private readonly InAppNotificationService $notifications,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -86,6 +90,7 @@ class ArticleAdminController extends Controller
 
         if ($fresh && $fresh->status === 'published') {
             $this->publish->revalidateArticles($fresh->slug);
+            $this->notifications->newArticle($fresh, $request->user()?->id);
         }
 
         return response()->json(['data' => new ArticleAdminResource($fresh)], 201);
@@ -105,6 +110,10 @@ class ArticleAdminController extends Controller
 
         if ($fresh && $fresh->status === 'published') {
             $this->publish->revalidateArticles($fresh->slug, $previousSlug !== $fresh->slug ? $previousSlug : null);
+
+            if ($wasDraft) {
+                $this->notifications->newArticle($fresh, $request->user()?->id);
+            }
         }
 
         return response()->json(['data' => new ArticleAdminResource($fresh)]);

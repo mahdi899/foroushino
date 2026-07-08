@@ -1,187 +1,203 @@
 "use client";
 
-import { Loader2, Mail, Phone, ShieldCheck, User2 } from "lucide-react";
-import { useId, useState } from "react";
+import { Loader2, Phone, ShieldCheck, User2 } from "lucide-react";
+import { Suspense, useCallback, useId, useMemo, useState } from "react";
 import { track } from "@/lib/analytics";
+import { useCheckoutAutopay, useCheckoutLoginGate } from "@/lib/checkout/checkoutLogin";
+import { startLoggedInCheckoutAction } from "@/lib/checkout/actions";
+import {
+  buildCustomerName,
+  prefillExtraFields,
+  productCheckoutFields,
+  productNeedsExtraForm,
+  type CheckoutField,
+} from "@/lib/checkout/productFields";
 import { cn } from "@/lib/cn";
-import { createOrder } from "@/lib/services/orders";
-import { requestZarinpalPayment } from "@/lib/services/payments";
+import { captureReferralCode } from "@/lib/referral/capture";
 import type { ProductDetail } from "@/lib/services/products";
+import type { StudentUser } from "@/lib/student/session";
 
 type Status = "idle" | "submitting" | "error";
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_RE = /^[+]?[\d\s()-]{6,20}$/;
-const REFERRAL_COOKIE = "bahram_ref";
+function ExtraFieldInput({
+  field,
+  value,
+  onChange,
+  error,
+  formId,
+}: {
+  field: CheckoutField;
+  value: string;
+  onChange: (value: string) => void;
+  error?: string;
+  formId: string;
+}) {
+  const id = `${formId}-${field.key}`;
 
-/** Captures `?ref=` (Customer Club referral links) into a short-lived cookie so
- * it survives if the buyer navigates a bit before completing checkout. */
-function captureReferralCode(): string | undefined {
-  if (typeof window === "undefined") return undefined;
-
-  const fromUrl = new URLSearchParams(window.location.search).get("ref")?.trim();
-  if (fromUrl) {
-    document.cookie = `${REFERRAL_COOKIE}=${encodeURIComponent(fromUrl)};path=/;max-age=${60 * 60 * 24 * 30}`;
-    return fromUrl;
+  if (field.type === "textarea") {
+    return (
+      <label htmlFor={id} className="block">
+        <span className="block text-caption text-bone">
+          {field.label}
+          {field.required ? " *" : ""}
+        </span>
+        <textarea
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={3}
+          className={cn(
+            "mt-2 block w-full rounded-tile border bg-ink/60 px-4 py-3 text-sm text-bone placeholder:text-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/40",
+            error ? "border-gold/60" : "border-bone/12 focus:border-emerald/40",
+          )}
+        />
+        {error ? (
+          <span role="alert" className="mt-1.5 block text-caption text-gold">
+            {error}
+          </span>
+        ) : null}
+      </label>
+    );
   }
 
-  const match = document.cookie.match(new RegExp(`(?:^|; )${REFERRAL_COOKIE}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : undefined;
+  return (
+    <label htmlFor={id} className="block">
+      <span className="block text-caption text-bone">
+        {field.label}
+        {field.required ? " *" : ""}
+      </span>
+      <input
+        id={id}
+        type={field.type === "number" ? "number" : "text"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={field.placeholder}
+        className={cn(
+          "mt-2 block h-12 w-full rounded-pill border bg-ink/60 px-4 text-bone placeholder:text-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/40",
+          error ? "border-gold/60" : "border-bone/12 focus:border-emerald/40",
+        )}
+      />
+      {error ? (
+        <span role="alert" className="mt-1.5 block text-caption text-gold">
+          {error}
+        </span>
+      ) : null}
+    </label>
+  );
 }
 
-export function PurchaseForm({ product }: { product: ProductDetail }) {
+function PurchaseFormInner({
+  product,
+  student,
+}: {
+  product: ProductDetail;
+  student: StudentUser | null;
+}) {
   const formId = useId();
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [errors, setErrors] = useState<{ name?: string; phone?: string; email?: string }>({});
+  const extraFields = useMemo(() => productCheckoutFields(product), [product]);
+  const needsExtra = productNeedsExtraForm(product);
+  const isLoggedIn = Boolean(student);
+  const buyerName = student ? buildCustomerName(student.profile, student.name) : "";
+
+  const [extra, setExtra] = useState<Record<string, string>>(() =>
+    prefillExtraFields(extraFields, student?.profile),
+  );
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<Status>("idle");
   const [serverError, setServerError] = useState<string | null>(null);
+  const { requireLoginOr } = useCheckoutLoginGate({ isLoggedIn });
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-
-    const found: typeof errors = {};
-    if (!name.trim() || name.trim().length < 2) found.name = "نام را کامل وارد کن.";
-    if (!phone.trim() || !PHONE_RE.test(phone.trim())) found.phone = "شماره تماس معتبر وارد کن.";
-    if (email.trim() && !EMAIL_RE.test(email.trim())) found.email = "ایمیل را درست وارد کن.";
-    setErrors(found);
-    if (Object.keys(found).length > 0) return;
+  const goToGateway = useCallback(async () => {
+    if (!student) return;
 
     setStatus("submitting");
     setServerError(null);
     track("checkout_start", { product: product.slug });
 
-    const orderResult = await createOrder({
+    const ref = captureReferralCode();
+    const extraPayload = Object.keys(extra).length ? extra : undefined;
+
+    const result = await startLoggedInCheckoutAction({
       product_id: product.id,
-      customer_name: name.trim(),
-      customer_phone: phone.trim(),
-      customer_email: email.trim() || undefined,
-      ref: captureReferralCode(),
+      ref,
+      customer_extra_data: extraPayload,
     });
 
-    if (!orderResult.ok) {
+    if (!result.ok) {
       setStatus("error");
-      setServerError(orderResult.error);
-      track("checkout_error", { product: product.slug, code: orderResult.code });
+      setServerError(result.error);
+      track("checkout_error", { product: product.slug });
       return;
     }
 
-    const paymentResult = await requestZarinpalPayment(orderResult.data.id);
+    track("checkout_success", { product: product.slug, order: result.order_number });
+    window.location.href = result.payment_url;
+  }, [extra, product, student]);
 
-    if (!paymentResult.ok) {
-      setStatus("error");
-      setServerError(paymentResult.error);
-      track("checkout_error", { product: product.slug, code: paymentResult.code });
-      return;
+  useCheckoutAutopay(isLoggedIn, goToGateway);
+
+  function validateExtraFields(): boolean {
+    const found: Record<string, string> = {};
+
+    for (const field of extraFields) {
+      if (field.required && !extra[field.key]?.trim()) {
+        found[field.key] = `${field.label} را وارد کن.`;
+      }
     }
 
-    track("checkout_success", {
-      product: product.slug,
-      order: orderResult.data.order_number,
-    });
-    window.location.href = paymentResult.data.payment_url;
+    setErrors(found);
+    return Object.keys(found).length === 0;
+  }
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!validateExtraFields()) return;
+
+    requireLoginOr(goToGateway);
   }
 
   const submitting = status === "submitting";
 
   return (
     <form className="grid gap-5" onSubmit={onSubmit} noValidate>
-      <label htmlFor={`${formId}-name`} className="block">
-        <span className="block text-caption text-bone">نام و نام خانوادگی</span>
-        <span className="relative mt-2 block">
-          <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-mist">
-            <User2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-          </span>
-          <input
-            id={`${formId}-name`}
-            name="name"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setErrors((er) => ({ ...er, name: undefined }));
-            }}
-            placeholder="مثال: بهرام رستمی"
-            autoComplete="name"
-            aria-invalid={errors.name ? true : undefined}
-            className={cn(
-              "block h-12 w-full rounded-pill border bg-ink/60 px-4 ps-10 text-bone placeholder:text-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/40",
-              errors.name ? "border-gold/60" : "border-bone/12 focus:border-emerald/40",
-            )}
-          />
-        </span>
-        {errors.name ? (
-          <span role="alert" className="mt-1.5 block text-caption text-gold">
-            {errors.name}
-          </span>
-        ) : null}
-      </label>
+      {isLoggedIn && student ? (
+        <div className="rounded-tile border border-bone/10 bg-ink/40 p-4">
+          <p className="text-caption text-mist">خریدار</p>
+          <div className="mt-3 space-y-2 text-sm">
+            <div className="flex items-center gap-2 text-bone">
+              <User2 className="h-4 w-4 shrink-0 text-emerald-glow" strokeWidth={1.5} aria-hidden />
+              <span>{buyerName}</span>
+            </div>
+            <div className="flex items-center gap-2 text-bone-dim" dir="ltr">
+              <Phone className="h-4 w-4 shrink-0 text-emerald-glow" strokeWidth={1.5} aria-hidden />
+              <span>{student.mobile}</span>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <p className="rounded-tile border border-bone/10 bg-ink/40 px-4 py-3 text-sm text-bone-dim">
+          برای ادامه پرداخت، با شماره موبایل خود وارد می‌شوی. کد تأیید در پاپ‌آپ نمایش داده می‌شود.
+        </p>
+      )}
 
-      <label htmlFor={`${formId}-phone`} className="block">
-        <span className="block text-caption text-bone">شماره تماس</span>
-        <span className="relative mt-2 block">
-          <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-mist">
-            <Phone className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-          </span>
-          <input
-            id={`${formId}-phone`}
-            name="phone"
-            type="tel"
-            inputMode="tel"
-            dir="ltr"
-            value={phone}
-            onChange={(e) => {
-              setPhone(e.target.value);
-              setErrors((er) => ({ ...er, phone: undefined }));
-            }}
-            placeholder="مثال: ۰۹۱۲۳۴۵۶۷۸۹"
-            autoComplete="tel"
-            aria-invalid={errors.phone ? true : undefined}
-            className={cn(
-              "block h-12 w-full rounded-pill border bg-ink/60 px-4 ps-10 text-bone placeholder:text-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/40",
-              errors.phone ? "border-gold/60" : "border-bone/12 focus:border-emerald/40",
-            )}
-          />
-        </span>
-        {errors.phone ? (
-          <span role="alert" className="mt-1.5 block text-caption text-gold">
-            {errors.phone}
-          </span>
-        ) : null}
-      </label>
-
-      <label htmlFor={`${formId}-email`} className="block">
-        <span className="block text-caption text-bone">ایمیل (اختیاری)</span>
-        <span className="relative mt-2 block">
-          <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-mist">
-            <Mail className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-          </span>
-          <input
-            id={`${formId}-email`}
-            name="email"
-            type="email"
-            inputMode="email"
-            dir="ltr"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setErrors((er) => ({ ...er, email: undefined }));
-            }}
-            placeholder="you@example.com"
-            autoComplete="email"
-            aria-invalid={errors.email ? true : undefined}
-            className={cn(
-              "block h-12 w-full rounded-pill border bg-ink/60 px-4 ps-10 text-bone placeholder:text-mist focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/40",
-              errors.email ? "border-gold/60" : "border-bone/12 focus:border-emerald/40",
-            )}
-          />
-        </span>
-        {errors.email ? (
-          <span role="alert" className="mt-1.5 block text-caption text-gold">
-            {errors.email}
-          </span>
-        ) : null}
-      </label>
+      {needsExtra ? (
+        <div className="grid gap-4 border-t border-bone/10 pt-4">
+          <h3 className="text-sm font-semibold text-bone">اطلاعات تکمیلی محصول</h3>
+          {extraFields.map((field) => (
+            <ExtraFieldInput
+              key={field.key}
+              field={field}
+              formId={formId}
+              value={extra[field.key] ?? ""}
+              error={errors[field.key]}
+              onChange={(value) => {
+                setExtra((prev) => ({ ...prev, [field.key]: value }));
+                setErrors((er) => ({ ...er, [field.key]: "" }));
+              }}
+            />
+          ))}
+        </div>
+      ) : null}
 
       {status === "error" && serverError ? (
         <p
@@ -213,5 +229,13 @@ export function PurchaseForm({ product }: { product: ProductDetail }) {
         پرداخت امن از طریق درگاه زرین‌پال
       </p>
     </form>
+  );
+}
+
+export function PurchaseForm(props: { product: ProductDetail; student: StudentUser | null }) {
+  return (
+    <Suspense fallback={<div className="h-32 animate-pulse rounded-card bg-charcoal/30" />}>
+      <PurchaseFormInner {...props} />
+    </Suspense>
   );
 }

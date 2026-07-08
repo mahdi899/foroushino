@@ -30,6 +30,10 @@ class SmsProvider extends Model
             return false;
         }
 
+        if ($this->slug === 'bale_safir') {
+            return filled($this->sender_number) && ctype_digit(trim((string) $this->sender_number));
+        }
+
         if ($this->channelType() === SmsChannelType::Sms) {
             return filled($this->sender_number) || in_array($this->slug, ['kavenegar'], true);
         }

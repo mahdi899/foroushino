@@ -1,12 +1,14 @@
 import type { ImageLoaderProps } from 'next/image';
-import { resolveMediaUrl } from '@/lib/mediaUrl';
-import { mediaPathToStorage } from '@/lib/media/legacyMap';
+import { primarySiteImageSrc } from '@/lib/mediaUrl';
 
-/** Passthrough loader — original files only, no ?w= / ?q= resize. */
+/**
+ * Next.js custom image loader — returns the canonical raw path only.
+ * Never rewrites to /cdn/media or appends ?w= / ?q= query params.
+ * See docs/MEDIA-URL-POLICY.md
+ */
 export default function bahramImageLoader({ src }: ImageLoaderProps): string {
-  const ref = mediaPathToStorage(src);
-  if (ref.startsWith('/storage/')) {
-    return resolveMediaUrl(ref) || ref;
+  if (typeof src !== 'string' || !src.trim()) {
+    return typeof src === 'string' ? src : '';
   }
-  return src;
+  return primarySiteImageSrc(src) || src;
 }

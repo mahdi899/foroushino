@@ -26,8 +26,21 @@
   color: var(--color-text);
 }
 
-html:has(.admin-root),
-body:has(.admin-root) {
+.admin-root:has(.admin-login-screen) {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+html:has(.admin-root .admin-login-screen),
+body:has(.admin-root .admin-login-screen) {
+  height: 100%;
+  overflow: auto;
+}
+
+html:has(.admin-root):not(:has(.admin-login-screen)),
+body:has(.admin-root):not(:has(.admin-login-screen)) {
   height: 100%;
   overflow: hidden;
 }
@@ -468,4 +481,81 @@ body:has(.admin-root) {
 .admin-root[data-admin-theme='dark'] .admin-media-preview {
   background-color: color-mix(in srgb, var(--color-surface-soft) 92%, #fff);
   border-color: var(--color-border);
+}
+
+/* Standalone login screen (outside admin-shell flex tree) */
+.admin-root .admin-login-screen {
+  display: flex;
+  width: 100%;
+  min-height: 100dvh;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+  padding:
+    max(1rem, env(safe-area-inset-top, 0px))
+    max(1rem, env(safe-area-inset-right, 0px))
+    max(1rem, env(safe-area-inset-bottom, 0px))
+    max(1rem, env(safe-area-inset-left, 0px));
+  background-color: var(--color-bg);
+}
+
+.admin-root .admin-login-screen__inner {
+  width: 100%;
+  max-width: 26rem;
+  min-width: 0;
+  margin-inline: auto;
+  padding-block: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .admin-root .admin-login-screen__inner {
+    max-width: 28rem;
+    padding-block: 2rem;
+  }
+}
+
+.admin-root .admin-login-card {
+  width: 100%;
+  min-width: 0;
+  border-radius: 1rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+  padding: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .admin-root .admin-login-card {
+    padding: 1.75rem;
+  }
+}
+
+.admin-root .admin-login-captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-root .admin-login-captcha {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.admin-root .admin-login-captcha > * {
+  max-width: 100%;
+}
+
+.admin-root .admin-login-captcha input {
+  height: 2.75rem;
+  min-width: 5.5rem;
+  flex: 1;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.admin-root .admin-login-captcha span[dir='ltr'] {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
 }

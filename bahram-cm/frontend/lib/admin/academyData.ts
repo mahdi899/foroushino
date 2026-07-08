@@ -5,6 +5,7 @@ import type {
   AdminCashbackPayout,
   AdminCashbackPayoutRevealed,
   AdminCourseAccess,
+  AdminSpotplayerLicense,
   AdminNotification,
   AdminReferralCode,
   AdminReferralConversion,
@@ -57,6 +58,17 @@ export async function getCourseAccesses(params: { page?: number } = {}) {
     return { items: res.data, meta: res.meta, error: null as string | null };
   } catch (e) {
     return { items: [] as AdminCourseAccess[], meta: null, error: errorMessage(e) };
+  }
+}
+
+export async function getSpotplayerLicenses(params: { page?: number; search?: string } = {}) {
+  try {
+    const res = await adminFetch<{ data: AdminSpotplayerLicense[]; meta: PageMeta }>('/spotplayer-licenses', {
+      query: { page: params.page, search: params.search },
+    });
+    return { items: res.data, meta: res.meta, error: null as string | null };
+  } catch (e) {
+    return { items: [] as AdminSpotplayerLicense[], meta: null, error: errorMessage(e) };
   }
 }
 

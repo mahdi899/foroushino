@@ -7,7 +7,6 @@ const DEV_TTL = 30;
 const FALLBACK_TTLS: Record<RevalidateKey, number> = {
   articles: REVALIDATE.articles,
   cases: REVALIDATE.cases,
-  doctors: REVALIDATE.doctors,
   services: REVALIDATE.services,
   settings: REVALIDATE.settings,
   pricing: REVALIDATE.pricing,
@@ -29,7 +28,6 @@ export async function getRevalidateSeconds(key: RevalidateKey): Promise<number> 
   const map: Record<RevalidateKey, number> = {
     articles: cfg.ttls.articles,
     cases: cfg.ttls.cases,
-    doctors: cfg.ttls.doctors,
     services: cfg.ttls.services,
     settings: cfg.ttls.settings,
     pricing: cfg.ttls.pricing,

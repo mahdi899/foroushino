@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { CheckCircle2, Circle } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { markOnboardingStepAction } from '@/lib/student/panelActions';
 
 export interface ChecklistItem {
@@ -14,17 +14,20 @@ export interface ChecklistItem {
 const CLICK_TRACKED = new Set(['telegram_channel', 'rubika_channel', 'telegram_bot', 'customer_club']);
 
 export function OnboardingChecklist({ items }: { items: ChecklistItem[] }) {
+  const pendingIndex = items.findIndex((item) => !item.done);
+
   return (
-    <ul className="flex flex-col divide-y divide-border">
-      {items.map((item) => {
+    <div className="panel-checklist-scroll -mx-1 px-1">
+      <ul className="flex flex-col divide-y divide-border">
+      {items.map((item, index) => {
         const content = (
-          <span className="checklist-item flex items-center gap-3 py-3" data-done={item.done}>
+          <span className="panel-checklist-item" data-done={item.done}>
             {item.done ? (
               <CheckCircle2 size={20} className="shrink-0 text-success" />
             ) : (
-              <Circle size={20} className="shrink-0 text-text-muted" />
+              <span className="panel-checklist-num">{index + 1}</span>
             )}
-            <span className="text-sm text-text">{item.label}</span>
+            <span className={`text-sm ${item.done ? 'text-text-muted line-through' : 'text-text'}`}>{item.label}</span>
           </span>
         );
 
@@ -34,6 +37,7 @@ export function OnboardingChecklist({ items }: { items: ChecklistItem[] }) {
 
         const isExternal = item.url.startsWith('http');
         const isTracked = CLICK_TRACKED.has(item.key);
+        const isNext = index === pendingIndex;
 
         return (
           <li key={item.key}>
@@ -44,13 +48,14 @@ export function OnboardingChecklist({ items }: { items: ChecklistItem[] }) {
               onClick={() => {
                 if (isTracked) void markOnboardingStepAction(item.key);
               }}
-              className="block hover:opacity-80"
+              className={`block rounded-lg transition ${isNext ? 'bg-primary/5 px-1 -mx-1' : 'hover:opacity-80'}`}
             >
               {content}
             </Link>
           </li>
         );
       })}
-    </ul>
+      </ul>
+    </div>
   );
 }

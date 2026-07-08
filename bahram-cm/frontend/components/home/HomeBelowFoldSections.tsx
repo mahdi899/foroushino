@@ -6,6 +6,7 @@ import { BigTestimonial } from '@/components/sections/BigTestimonial';
 import { AcademyTeaser } from '@/components/sections/AcademyTeaser';
 import { FounderAside } from '@/components/sections/FounderAside';
 import { FinalCTA } from '@/components/sections/FinalCTA';
+import { getCoursePathOverrides } from '@/lib/catalog/courseListings';
 
 const CampaignScrollStoryLazy = dynamic(() =>
   import('@/components/sections/CampaignScrollStory').then((m) => ({ default: m.CampaignScrollStory })),
@@ -23,7 +24,8 @@ const FinalCTALazy = dynamic(() =>
   import('@/components/sections/FinalCTA').then((m) => ({ default: m.FinalCTA })),
 );
 
-export function HomeBelowFoldSections({ deferBelowFold }: { deferBelowFold: boolean }) {
+export async function HomeBelowFoldSections({ deferBelowFold }: { deferBelowFold: boolean }) {
+  const pathOverrides = await getCoursePathOverrides();
   const Campaign = deferBelowFold ? CampaignScrollStoryLazy : CampaignScrollStory;
   const Testimonial = deferBelowFold ? BigTestimonialLazy : BigTestimonial;
   const Academy = deferBelowFold ? AcademyTeaserLazy : AcademyTeaser;
@@ -33,7 +35,7 @@ export function HomeBelowFoldSections({ deferBelowFold }: { deferBelowFold: bool
   return (
     <main id="main-content" className="relative isolate min-w-0 w-full max-w-full overflow-x-clip">
       <HeroCinematic />
-      <MainPaths />
+      <MainPaths pathOverrides={pathOverrides} />
       <Campaign />
       <Testimonial />
       <Academy />

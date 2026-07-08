@@ -11,17 +11,19 @@ export type FormSecurityPayload = {
 
 export function useFormSecurity(
   target: FormSecurityTarget,
-  options?: { captchaTight?: boolean; captchaStacked?: boolean },
+  options?: { captchaTight?: boolean; captchaStacked?: boolean; captchaAdmin?: boolean },
 ) {
   const captchaGate = useCaptchaGate();
   const captchaRef = useRef<CaptchaFieldHandle>(null);
   const honeypotId = useId();
   const [honeypot, setHoneypot] = useState('');
 
-  const captchaRequired = isFormProtected(captchaGate.config, target);
+  const configLoaded = !captchaGate.loading;
+  const captchaRequired = configLoaded && isFormProtected(captchaGate.config, target);
   const honeypotEnabled = captchaGate.config?.honeypot_enabled ?? true;
-  const captchaReady = !captchaRequired || captchaGate.fieldReady;
-  const securityLoading = captchaGate.loading;
+  const captchaReady = configLoaded && (!captchaRequired || captchaGate.fieldReady);
+  const securityLoading = !configLoaded;
+  const admin = options?.captchaAdmin ?? false;
   const stacked = options?.captchaStacked ?? false;
 
   const getSecurityPayload = (): FormSecurityPayload => ({
@@ -47,14 +49,14 @@ export function useFormSecurity(
     <CaptchaField
       ref={captchaRef}
       key={captchaGate.resetKey}
-      active={!captchaGate.loading}
+      active={configLoaded}
       siteKey={captchaGate.siteKey}
-      variant="site"
+      variant={admin ? 'default' : 'site'}
       compact
       inline
-      tight={stacked || options?.captchaTight}
-      pillEmbed={!stacked && !!options?.captchaTight}
-      className={stacked ? 'w-full' : options?.captchaTight ? 'shrink-0' : undefined}
+      tight={!admin && (stacked || !!options?.captchaTight)}
+      pillEmbed={!admin && !stacked && !!options?.captchaTight}
+      className={admin || stacked ? 'w-full min-w-0 flex-1' : options?.captchaTight ? 'shrink-0' : undefined}
       {...captchaGate.fieldProps}
     />
   ) : null;

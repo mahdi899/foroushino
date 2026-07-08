@@ -71,13 +71,19 @@ export async function middleware(request: NextRequest) {
     method: request.method,
     headers,
     redirect: "manual",
+    signal: AbortSignal.timeout(15_000),
   };
 
   if (request.method !== "GET" && request.method !== "HEAD") {
     init.body = await request.arrayBuffer();
   }
 
-  const backendResponse = await fetch(target, init);
+  let backendResponse: Response;
+  try {
+    backendResponse = await fetch(target, init);
+  } catch {
+    return new NextResponse("Backend unavailable", { status: 502 });
+  }
   const responseHeaders = new Headers(backendResponse.headers);
 
   const location = responseHeaders.get("location");

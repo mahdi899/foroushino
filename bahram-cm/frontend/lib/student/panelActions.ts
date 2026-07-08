@@ -100,6 +100,7 @@ export async function createTicketAction(_prev: SimpleFormState, formData: FormD
   }
 
   revalidatePath('/panel/support');
+  revalidatePath('/panel/notifications');
   return { success: 'تیکت شما با موفقیت ثبت شد.' };
 }
 
@@ -123,4 +124,15 @@ export async function markNotificationReadAction(notificationId: number): Promis
     // best effort
   }
   revalidatePath('/panel/notifications');
+  revalidatePath('/panel');
+}
+
+export async function markAllNotificationsReadAction(): Promise<void> {
+  try {
+    await studentFetch('/notifications/read-all', { method: 'POST' });
+  } catch {
+    // best effort
+  }
+  revalidatePath('/panel/notifications');
+  revalidatePath('/panel');
 }

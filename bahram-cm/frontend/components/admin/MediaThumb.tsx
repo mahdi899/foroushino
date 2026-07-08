@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { adminMediaThumbFallbacks } from '@/lib/mediaUrl';
+import { adminMediaThumbFallbacks, normalizeAdminMediaUrl } from '@/lib/mediaUrl';
 
 interface MediaThumbProps {
   src: string;
@@ -20,7 +20,7 @@ export function MediaThumb({ src, persistSrc, legacyPath, alt, className, style,
     [src, persistSrc, legacyPath],
   );
   const [index, setIndex] = useState(0);
-  const currentSrc = fallbacks[index] ?? src;
+  const currentSrc = normalizeAdminMediaUrl(fallbacks[index] ?? src);
 
   useEffect(() => {
     setIndex(0);

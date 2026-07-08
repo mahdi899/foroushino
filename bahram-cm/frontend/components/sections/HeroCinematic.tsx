@@ -4,7 +4,6 @@ import { motion, useReducedMotion } from "framer-motion";
 import { GraduationCap, Mic2, Sparkles, Users } from "lucide-react";
 import { site } from "@/content/site";
 import { cn } from "@/lib/cn";
-import { Reveal } from "@/components/motion/Reveal";
 import { TrackedLinkButton } from "@/components/analytics/TrackedLinkButton";
 import { Badge } from "@/components/ui/Badge";
 import { SiteImage } from "@/components/ui/SiteImage";
@@ -15,39 +14,32 @@ const LIGHT_PANEL_PAD = "px-4 pt-2 pb-5 sm:p-6 md:p-10 lg:p-12 xl:p-14";
 
 export function HeroCinematic() {
   const reduce = useReducedMotion();
-  const bgInitial = reduce ? false : { opacity: 0, scale: 1.04 };
-  const bgAnimate = { opacity: 1, scale: 1 };
+  const bgInitial = reduce ? false : { scale: 1.04 };
+  const bgAnimate = { scale: 1 };
 
   const grid = (
     <div className="grid min-w-0 grid-cols-1 gap-3.5 sm:gap-5 md:gap-6 lg:grid-cols-12 lg:items-start lg:gap-x-8 lg:gap-y-10">
       <div className="min-w-0 text-center lg:col-span-7 lg:col-start-1 lg:row-start-1 lg:text-start">
-        <Reveal>
-          <Badge
-            tone="emerald"
-            className="hero-panel-badge mx-auto mb-1 w-fit gap-1.5 px-2.5 py-1 text-xs leading-tight sm:mb-1.5 sm:text-caption md:mb-3 md:mx-0 md:gap-2 md:px-3 md:py-1"
-          >
-            <Sparkles className="h-3 w-3 shrink-0 sm:h-3 sm:w-3 md:h-3.5 md:w-3.5" strokeWidth={1.6} aria-hidden />
-            مسیر کمپین‌نویسی
-          </Badge>
-        </Reveal>
-        <Reveal delay={0.12}>
-          <h1 className="hero-panel-headline mt-1.5 whitespace-pre-line text-balance text-[clamp(1.15rem,5vw,1.75rem)] font-black leading-[1.15] tracking-[-0.02em] text-bone sm:mt-2 sm:text-[clamp(1.2rem,4.8vw,1.85rem)] md:mt-3 md:text-h1 md:leading-[var(--text-h1--line-height)] md:tracking-[var(--text-h1--letter-spacing)]">
-            <span className="lg:hidden">{site.hero.headlineMobile}</span>
-            <span className="hero-headline-gradient hidden lg:inline lg:text-[clamp(2.15rem,2.6vw+1.1rem,3.5rem)] lg:leading-[1.24]">
-              {site.hero.headline}
-            </span>
-          </h1>
-        </Reveal>
-        <Reveal delay={0.22}>
-          <p className="hero-panel-sub mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-bone-dim sm:mt-3 md:mt-4 lg:mx-0 md:text-body">
-            {site.hero.sub}
-          </p>
-        </Reveal>
+        <Badge
+          tone="emerald"
+          className="hero-panel-badge mx-auto mb-1 w-fit gap-1.5 px-2.5 py-1 text-xs leading-tight sm:mb-1.5 sm:text-caption md:mb-3 md:mx-0 md:gap-2 md:px-3 md:py-1"
+        >
+          <Sparkles className="h-3 w-3 shrink-0 sm:h-3 sm:w-3 md:h-3.5 md:w-3.5" strokeWidth={1.6} aria-hidden />
+          مسیر کمپین‌نویسی
+        </Badge>
+        <h1 className="hero-panel-headline mt-1.5 whitespace-pre-line text-balance text-[clamp(1.15rem,5vw,1.75rem)] font-black leading-[1.15] tracking-[-0.02em] text-bone sm:mt-2 sm:text-[clamp(1.2rem,4.8vw,1.85rem)] md:mt-3 md:text-h1 md:leading-[var(--text-h1--line-height)] md:tracking-[var(--text-h1--letter-spacing)]">
+          <span className="lg:hidden">{site.hero.headlineMobile}</span>
+          <span className="hero-headline-gradient hidden lg:inline lg:text-[clamp(2.15rem,2.6vw+1.1rem,3.5rem)] lg:leading-[1.24]">
+            {site.hero.headline}
+          </span>
+        </h1>
+        <p className="hero-panel-sub mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-bone-dim sm:mt-3 md:mt-4 lg:mx-0 md:text-body">
+          {site.hero.sub}
+        </p>
       </div>
 
       <div className="min-w-0 lg:col-span-12 lg:col-start-1 lg:row-start-2 lg:self-start">
-        <Reveal delay={0.3}>
-          <div className="mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-2 sm:gap-2.5 md:mx-0 md:w-full md:justify-start md:gap-4">
+        <div className="mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-2 sm:gap-2.5 md:mx-0 md:w-full md:justify-start md:gap-4">
             <TrackedLinkButton
               href={site.ctaPrimary.href}
               event="homepage_cta_click"
@@ -70,7 +62,6 @@ export function HeroCinematic() {
               {site.ctaSecondary.label}
             </TrackedLinkButton>
           </div>
-        </Reveal>
 
         <div className="hero-stats-glass mx-auto mt-4 grid w-fit max-w-full grid-cols-3 gap-1.5 rounded-card-lg px-2.5 py-3 sm:mt-5 sm:w-full sm:max-w-[485px] sm:gap-2 sm:px-4 sm:py-5 md:mt-8 lg:mx-0 lg:w-[485px] lg:px-6">
           <TrustStat divided icon={Users} value="700K+" label="مخاطب" />

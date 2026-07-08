@@ -9,10 +9,9 @@ const sections = [
   { key: 'pricing', label: 'قیمت شفاف', order: 4, visible: true },
   { key: 'beforeAfter', label: 'قبل و بعد', order: 5, visible: true },
   { key: 'technology', label: 'تکنولوژی', order: 6, visible: true },
-  { key: 'doctors', label: 'تیم پزشکان', order: 7, visible: true },
-  { key: 'testimonials', label: 'نظرات', order: 8, visible: true },
-  { key: 'localTrust', label: 'موقعیت و اعتماد', order: 9, visible: true },
-  { key: 'finalCta', label: 'فراخوان نهایی', order: 10, visible: true },
+  { key: 'testimonials', label: 'نظرات', order: 7, visible: true },
+  { key: 'localTrust', label: 'موقعیت و اعتماد', order: 8, visible: true },
+  { key: 'finalCta', label: 'فراخوان نهایی', order: 9, visible: true },
 ];
 
 export default function AdminHomepage() {

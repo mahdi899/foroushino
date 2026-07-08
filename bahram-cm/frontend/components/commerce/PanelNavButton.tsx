@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useStudentAuth } from "@/components/student-panel/auth/StudentAuthContext";
 
 const iconButtonClass =
   "inline-flex items-center justify-center rounded-pill border border-bone/10 text-bone transition-colors hover:border-bone/30 hover:text-emerald-glow";
@@ -14,10 +15,22 @@ type PanelNavButtonProps = {
 };
 
 export function PanelNavButton({ className, showLabel = true, onNavigate }: PanelNavButtonProps) {
+  const router = useRouter();
+  const { isLoggedIn, openLogin } = useStudentAuth();
+
+  function handleClick() {
+    onNavigate?.();
+    if (isLoggedIn) {
+      router.push("/panel");
+      return;
+    }
+    openLogin({ redirectTo: "/panel" });
+  }
+
   return (
-    <Link
-      href="/panel"
-      onClick={onNavigate}
+    <button
+      type="button"
+      onClick={handleClick}
       aria-label="پنل دانشجو"
       className={cn(
         iconButtonClass,
@@ -30,6 +43,6 @@ export function PanelNavButton({ className, showLabel = true, onNavigate }: Pane
       {showLabel ? (
         <span className="text-sm font-medium whitespace-nowrap">پنل دانشجو</span>
       ) : null}
-    </Link>
+    </button>
   );
 }

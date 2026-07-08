@@ -57,8 +57,9 @@ function originForReference(ref: string): string | null {
 }
 
 /**
- * Direct origin for /cdn/ resized delivery — bypasses Next.js middleware when set.
- * Set NEXT_PUBLIC_CDN_ORIGIN=http://127.0.0.1:8010 in dev for faster image bytes.
+ * Optional direct backend origin for preconnect hints (MediaPreconnect).
+ * NOT used for image URL rewriting — images always use raw `/storage/...` paths.
+ * See docs/MEDIA-URL-POLICY.md
  */
 export const CDN_DELIVERY_ORIGIN: string = (
   process.env.NEXT_PUBLIC_CDN_ORIGIN ||
@@ -126,7 +127,9 @@ export function persistMediaUrl(url: string | null | undefined): string {
     return `/storage/${trimmed.replace(/^\/api\/files\//, '')}`;
   }
 
-  if (trimmed.startsWith('/storage/')) return trimmed;
+  if (trimmed.startsWith('/storage/')) {
+    return trimmed.replace(/\/storage\/storage\//g, '/storage/');
+  }
 
   if (trimmed.startsWith('/cdn/media/')) {
     return trimmed.replace(/^\/cdn\//, '/storage/');
@@ -229,7 +232,7 @@ export function adminMediaThumbFallbacks(item: {
   return out;
 }
 
-/** Best first URL for a site photo — same-origin /storage path for Next.js optimizer. */
+/** Best first URL for a site photo — direct same-origin `/storage/...` path (no `/_next/image`). */
 export function primarySiteImageSrc(src: string | null | undefined): string {
   if (!src?.trim()) return '';
   const ref = normalizeImageSrc(src);
@@ -237,6 +240,18 @@ export function primarySiteImageSrc(src: string | null | undefined): string {
   if (ref.startsWith('/storage/')) return ref;
   return resolveMediaUrl(ref) || ref;
 }
+
+/** Known alternates when a canonical site asset is missing or fails to load. */
+const SITE_ASSET_FALLBACKS: Record<string, string[]> = {
+  '/storage/media/site/portrait-founder.webp': [
+    '/storage/media/site/portrait-founder.jpg',
+    '/storage/media/site/manifesto-portrait-a.jpg',
+    '/storage/media/site/founder-portrait.svg',
+  ],
+  '/storage/media/site/signature.png': [
+    '/storage/media/site/signature.svg',
+  ],
+};
 
 /** Ordered fallbacks for public-site images (storage → resolved origin). */
 export function siteMediaFallbacks(src: string | null | undefined): string[] {
@@ -255,6 +270,9 @@ export function siteMediaFallbacks(src: string | null | undefined): string[] {
 
   if (ref.startsWith('/storage/')) {
     add(ref);
+    for (const extra of SITE_ASSET_FALLBACKS[ref] ?? []) {
+      add(extra);
+    }
     return out;
   }
 
@@ -264,13 +282,27 @@ export function siteMediaFallbacks(src: string | null | undefined): string[] {
   return out.length > 0 ? out : [src.trim()];
 }
 
+/** Public display URL for `<img src>` — always same-origin `/storage/...` when possible. */
+export const mediaDisplaySrc = primarySiteImageSrc;
+
 export function rewriteArticleBodyMediaUrls(html: string): string {
   if (!html) return html;
 
-  return html.replace(
+  let out = html.replace(
     /(<img\b[^>]*\bsrc=["'])([^"']+)(["'])/gi,
     (_match, pre, src, post) => `${pre}${primarySiteImageSrc(src)}${post}`,
   );
+
+  // Unwrap legacy stored `/_next/image?url=...` references anywhere in HTML.
+  out = out.replace(/\/_next\/image\?url=([^"'&>\s]+)/gi, (_match, encoded: string) => {
+    try {
+      return primarySiteImageSrc(decodeURIComponent(encoded));
+    } catch {
+      return _match;
+    }
+  });
+
+  return out;
 }
 
 /**

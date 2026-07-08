@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BadgePercent } from "lucide-react";
+import { BadgePercent } from "lucide-react";
 import { PurchaseForm } from "@/components/forms/PurchaseForm";
+import { CheckoutReferralCodeField } from "@/components/commerce/CheckoutReferralCodeField";
+import { PageHero } from "@/components/blocks/PageHero";
 import { Reveal } from "@/components/motion/Reveal";
 import { SiteImage } from "@/components/ui/SiteImage";
+import { productNeedsExtraForm } from "@/lib/checkout/productFields";
+import { getCurrentStudent, studentFetch } from "@/lib/student/session";
 import { getProductBySlug } from "@/lib/services/products";
 import { formatFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
@@ -37,30 +40,22 @@ export default async function PurchasePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const result = await getProductBySlug(slug);
+  const [result, student] = await Promise.all([getProductBySlug(slug), getCurrentStudent()]);
+  const ownReferralCode = student
+    ? await studentFetch<{ data: { code: string } }>("/referrals")
+        .then((res) => res.data.code)
+        .catch(() => null)
+    : null;
   if (!result.ok) notFound();
 
   const product = result.data;
   const hasDiscount = product.sale_price !== null && product.effective_price < product.price;
+  const isLoggedIn = Boolean(student);
+  const needsExtra = productNeedsExtraForm(product);
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
-      <section className="relative overflow-x-clip overflow-y-visible bg-ink wash-emerald py-section-sm md:py-section">
-        <div className="container-luxe relative z-[2] min-w-0 max-w-full">
-          <Reveal>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 text-caption text-gold transition-colors hover:text-gold-soft"
-            >
-              <ArrowLeft className="rtl-flip h-3.5 w-3.5" aria-hidden />
-              بازگشت
-            </Link>
-          </Reveal>
-          <Reveal delay={0.08}>
-            <h1 className="mt-5 max-w-3xl text-h1 text-balance md:mt-6">تکمیل خرید</h1>
-          </Reveal>
-        </div>
-      </section>
+      <PageHero backLink={{ href: "/", label: "بازگشت" }} title="تکمیل خرید" />
 
       <section className="py-section-sm">
         <div className="container-luxe">
@@ -110,12 +105,19 @@ export default async function PurchasePage({
             <div className="md:col-span-7">
               <Reveal delay={0.08}>
                 <div className="neon-surface-static rounded-card border border-bone/10 bg-charcoal/45 p-6 md:p-8">
-                  <h2 className="text-h3 text-balance text-bone">اطلاعات خریدار</h2>
+                  <h2 className="text-h3 text-balance text-bone">
+                    {isLoggedIn ? "پرداخت" : "شروع پرداخت"}
+                  </h2>
                   <p className="mt-2 text-bone-dim">
-                    بعد از تکمیل فرم، به درگاه پرداخت امن زرین‌پال منتقل می‌شوی.
+                    {isLoggedIn
+                      ? needsExtra
+                        ? "در صورت نیاز فیلدهای تکمیلی را بررسی کن و به درگاه برو."
+                        : "با یک کلیک به درگاه پرداخت امن زرین‌پل منتقل می‌شوی."
+                      : "ابتدا با کد تأیید وارد می‌شوی، سپس به درگاه پرداخت منتقل می‌شوی."}
                   </p>
+                  <CheckoutReferralCodeField ownReferralCode={ownReferralCode} />
                   <div className="mt-6">
-                    <PurchaseForm product={product} />
+                    <PurchaseForm product={product} student={student} />
                   </div>
                 </div>
               </Reveal>

@@ -1,38 +1,43 @@
 import { type NextRequest, NextResponse } from 'next/server';
-
-const SPOTPLAYER_ORIGIN = 'https://app.spotplayer.ir';
+import {
+  isSpotPlayerCookieExpired,
+  spotPlayerCookieOptions,
+  syncSpotPlayerCookie,
+} from '@/lib/spotplayer/cookieSync';
+import { fetchSavedSpotPlayerX, persistSpotPlayerX, STUDENT_TOKEN_COOKIE } from '@/lib/spotplayer/persistSession';
 
 export async function GET(request: NextRequest) {
-  const currentX = request.cookies.get('X')?.value;
+  const studentToken = request.cookies.get(STUDENT_TOKEN_COOKIE)?.value;
+  let currentX = request.cookies.get('X')?.value;
+
+  // Restore the last synced SpotPlayer cookie for this account after re-login.
+  if ((!currentX || isSpotPlayerCookieExpired(currentX)) && studentToken) {
+    const savedX = await fetchSavedSpotPlayerX(studentToken);
+    if (savedX && !isSpotPlayerCookieExpired(savedX)) {
+      currentX = savedX;
+    }
+  }
+
   const response = new NextResponse(null, { status: 204 });
 
-  if (!currentX) {
-    return response;
+  const needsSync = !currentX || isSpotPlayerCookieExpired(currentX);
+  let nextX = currentX ?? null;
+
+  if (needsSync) {
+    try {
+      nextX = await syncSpotPlayerCookie(currentX);
+    } catch {
+      // Keep the current cookie if SpotPlayer is temporarily unreachable.
+    }
   }
 
-  let nextX = currentX;
+  if (nextX) {
+    response.cookies.set('X', nextX, spotPlayerCookieOptions);
 
-  try {
-    const upstream = await fetch(`${SPOTPLAYER_ORIGIN}/`, {
-      method: 'HEAD',
-      headers: { Cookie: `X=${currentX}` },
-      redirect: 'manual',
-      cache: 'no-store',
-    });
-    const setCookie = upstream.headers.get('set-cookie');
-    const match = setCookie?.match(/(?:^|;\s*)X=([^;]+)/);
-    if (match?.[1]) nextX = match[1];
-  } catch {
-    // Keep the current cookie if SpotPlayer is temporarily unreachable.
+    if (studentToken) {
+      void persistSpotPlayerX(studentToken, nextX);
+    }
   }
-
-  response.cookies.set('X', nextX, {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 7,
-  });
 
   return response;
 }

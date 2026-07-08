@@ -10,18 +10,19 @@ export function FounderAside() {
   return (
     <section className="py-7 md:py-9 lg:py-10" aria-labelledby="founder-aside-heading">
       <div className="container-luxe">
-        <div className="grid items-center gap-6 sm:gap-7 lg:grid-cols-12 lg:gap-8 xl:gap-9">
-          <Reveal className="lg:col-span-5">
-            <div className="relative mx-auto aspect-[3/4] w-full max-w-[min(100%,20rem)] max-h-[min(88vw,22rem)] overflow-hidden rounded-card-lg border border-bone/10 shadow-frame sm:max-w-md sm:max-h-[26rem] lg:mx-0 lg:max-w-none lg:aspect-[25/24] lg:max-h-none">
+        <div className="grid grid-cols-1 items-center gap-6 sm:gap-7 lg:grid-cols-12 lg:gap-8 xl:gap-9">
+          <div className="min-w-0 lg:col-span-5">
+            <div className="relative mx-auto aspect-[25/24] w-full max-w-sm overflow-hidden rounded-card-lg border border-bone/10 shadow-frame sm:max-w-md lg:mx-0 lg:max-w-none">
               <SiteImage
                 src={sitePhotos.portraitFounder}
                 alt={site.founderAside.title}
                 fill
+                priority
                 className="object-cover object-[center_18%]"
-                sizes="(max-width: 639px) 88vw, (max-width: 1023px) 70vw, 42vw"
+                sizes="(max-width: 639px) 92vw, (max-width: 1023px) 72vw, 40vw"
               />
             </div>
-          </Reveal>
+          </div>
 
           <div className="flex min-w-0 flex-col justify-center lg:col-span-7">
             <Reveal>
@@ -47,7 +48,7 @@ export function FounderAside() {
               </p>
             </Reveal>
             <Reveal delay={0.24}>
-              <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-bone/8 pt-4 sm:gap-4 md:mt-5">
+              <div className="mt-4 flex flex-col gap-3 border-t border-bone/8 pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 md:mt-5">
                 <SiteImage
                   src={siteStorageMedia('signature.png')}
                   alt="امضای بهرام"
@@ -62,7 +63,7 @@ export function FounderAside() {
                   variant="ghost"
                   withArrow
                   size="md"
-                  className="max-lg:flex-1 max-lg:min-w-0 sm:max-lg:flex-none"
+                  className="w-full sm:w-auto"
                 >
                   درباره‌ی بهرام
                 </LinkButton>

@@ -15,7 +15,7 @@ const PanelThemeContext = createContext<PanelThemeContextValue | null>(null);
 const THEME_KEY = 'bahram-panel-theme';
 
 function readTheme(): PanelTheme {
-  if (typeof window === 'undefined') return 'light';
+  if (typeof window === 'undefined') return 'dark';
   const stored = localStorage.getItem(THEME_KEY);
   if (stored === 'dark' || stored === 'light') return stored;
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -26,7 +26,7 @@ function applyThemeToRoot(theme: PanelTheme) {
 }
 
 export function PanelThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<PanelTheme>('light');
+  const [theme, setTheme] = useState<PanelTheme>('dark');
   const [mounted, setMounted] = useState(false);
 
   useLayoutEffect(() => {

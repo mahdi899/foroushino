@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Check, Copy, ExternalLink, Loader2, Save, Send } from 'lucide-react';
-import { resendOrderSms, updateOrder } from '../actions';
+import { Check, Copy, ExternalLink, KeyRound, Loader2, Save, Send } from 'lucide-react';
+import { fulfillOrder, resendOrderSms, updateOrder } from '../actions';
 import {
   COURSE_ACCESS_SOURCE_LABELS,
   ORDER_STATUS_LABELS,
@@ -22,7 +22,16 @@ function formatDateTime(value: string | null | undefined) {
   return new Date(value).toLocaleString('fa-IR', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-function CopyableValue({ value, label }: { value: string | null | undefined; label?: string }) {
+function CopyableValue({
+  value,
+  label,
+  full = false,
+}: {
+  value: string | null | undefined;
+  label?: string;
+  /** Show the full value (no truncate) — for long license keys. */
+  full?: boolean;
+}) {
   const [copied, setCopied] = useState(false);
 
   if (!value) return <span className="text-text-muted">—</span>;
@@ -34,14 +43,24 @@ function CopyableValue({ value, label }: { value: string | null | undefined; lab
   }
 
   return (
-    <div className="flex min-w-0 items-center gap-1.5">
-      <code className="min-w-0 flex-1 truncate rounded bg-surface-soft px-2 py-1 text-caption text-text" dir="ltr" title={value}>
+    <div className={cn('flex min-w-0 gap-1.5', full ? 'items-start' : 'items-center')}>
+      <code
+        className={cn(
+          'min-w-0 flex-1 rounded bg-surface-soft px-2 py-1 text-caption text-text',
+          full ? 'break-all whitespace-pre-wrap text-[11px] leading-relaxed' : 'truncate',
+        )}
+        dir="ltr"
+        title={value}
+      >
         {value}
       </code>
       <button
         type="button"
         onClick={() => void copy()}
-        className="shrink-0 rounded-md p-1.5 text-text-muted transition hover:bg-surface-soft hover:text-primary"
+        className={cn(
+          'shrink-0 rounded-md p-1.5 text-text-muted transition hover:bg-surface-soft hover:text-primary',
+          full && 'mt-0.5',
+        )}
         aria-label={label ? `کپی ${label}` : 'کپی'}
       >
         {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
@@ -130,6 +149,7 @@ export function OrderDetailForm({ order }: { order: AdminOrderDetail }) {
   const [paymentStatus, setPaymentStatus] = useState(order.payment_status);
   const [pending, setPending] = useState(false);
   const [smsPending, setSmsPending] = useState(false);
+  const [fulfillPending, setFulfillPending] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
@@ -156,8 +176,25 @@ export function OrderDetailForm({ order }: { order: AdminOrderDetail }) {
     else setError(res.error ?? 'خطا');
   }
 
+  async function onFulfill() {
+    setFulfillPending(true);
+    setError('');
+    setMessage('');
+    const res = await fulfillOrder(order.id);
+    setFulfillPending(false);
+    if (res.ok) {
+      setMessage(res.message ?? 'تحویل انجام شد.');
+      router.refresh();
+    } else {
+      setError(res.error ?? 'خطا');
+    }
+  }
+
   const paid = status === 'paid' || status === 'fulfilled';
   const licenseKey = order.spotplayer_license?.license_key ?? order.spotplayer_license_code;
+  const licenseUrl = order.spotplayer_license?.license_url ?? null;
+  const hasSpotPlayerProduct = Boolean(order.product?.spotplayer_course_id);
+  const needsFulfillment = paid && hasSpotPlayerProduct && (!licenseKey || !order.course_access);
 
   return (
     <form onSubmit={onSave} className="space-y-4">
@@ -229,35 +266,52 @@ export function OrderDetailForm({ order }: { order: AdminOrderDetail }) {
             )}
           </SectionCard>
 
-          <SectionCard title="تحویل دیجیتال">
+          <SectionCard title="تحویل دیجیتال (SpotPlayer)">
+            {needsFulfillment ? (
+              <div className="mb-4 rounded-lg border border-warning/30 bg-warning/8 px-3 py-2.5 text-caption text-text">
+                لایسنس یا دسترسی دوره هنوز کامل نشده است. با دکمهٔ «تولید لایسنس» می‌توانید برای این کاربر صادر کنید.
+              </div>
+            ) : null}
+
             <dl className="grid gap-3 sm:grid-cols-2">
-              <DetailItem label="کد لایسنس SpotPlayer (سفارش)">
-                <CopyableValue value={licenseKey} label="لایسنس" />
+              <DetailItem label="کد لایسنس SpotPlayer" className="sm:col-span-2">
+                <CopyableValue value={licenseKey} label="لایسنس" full />
               </DetailItem>
-              {order.spotplayer_license?.license_url && (
-                <DetailItem label="لینک لایسنس">
-                  <a
-                    href={order.spotplayer_license.license_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-accent hover:underline"
-                    dir="ltr"
-                  >
-                    باز کردن <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
+              <DetailItem label="لینک لایسنس" className="sm:col-span-2">
+                {licenseUrl ? (
+                  <div className="space-y-2">
+                    <CopyableValue value={licenseUrl} label="لینک لایسنس" full />
+                    <a
+                      href={licenseUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-accent hover:underline"
+                      dir="ltr"
+                    >
+                      باز کردن در SpotPlayer <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </div>
+                ) : (
+                  <span className="text-text-muted">—</span>
+                )}
+              </DetailItem>
+              {order.spotplayer_license?.spotplayer_license_id ? (
+                <DetailItem label="شناسه لایسنس در SpotPlayer" mono className="sm:col-span-2">
+                  <CopyableValue value={order.spotplayer_license.spotplayer_license_id} label="شناسه SpotPlayer" />
                 </DetailItem>
-              )}
-              {order.product?.spotplayer_course_id && (
-                <DetailItem label="شناسه دوره SpotPlayer" mono>
-                  {order.product.spotplayer_course_id}
+              ) : null}
+              {order.product?.spotplayer_course_id ? (
+                <DetailItem label="شناسه دوره محصول" mono className="sm:col-span-2">
+                  <CopyableValue value={order.product.spotplayer_course_id} label="شناسه دوره" />
                 </DetailItem>
-              )}
-              {order.product?.spotplayer_product_id && (
-                <DetailItem label="شناسه محصول SpotPlayer" mono>
-                  {order.product.spotplayer_product_id}
+              ) : null}
+              {order.spotplayer_license?.spotplayer_course_id &&
+                order.spotplayer_license.spotplayer_course_id !== order.product?.spotplayer_course_id ? (
+                <DetailItem label="شناسه دوره روی لایسنس" mono className="sm:col-span-2">
+                  {order.spotplayer_license.spotplayer_course_id}
                 </DetailItem>
-              )}
-              {order.spotplayer_license && (
+              ) : null}
+              {order.spotplayer_license ? (
                 <>
                   <DetailItem label="وضعیت لایسنس">
                     <Badge tone={order.spotplayer_license.status === 'active' ? 'success' : 'warning'}>
@@ -267,9 +321,15 @@ export function OrderDetailForm({ order }: { order: AdminOrderDetail }) {
                   <DetailItem label="محدودیت دستگاه">
                     {order.spotplayer_license.device_limit ?? '—'}
                   </DetailItem>
+                  <DetailItem label="زمان صدور لایسنس">
+                    {formatDateTime(order.spotplayer_license.created_at)}
+                  </DetailItem>
+                  <DetailItem label="آخرین به‌روزرسانی لایسنس">
+                    {formatDateTime(order.spotplayer_license.updated_at)}
+                  </DetailItem>
                 </>
-              )}
-              {order.course_access && (
+              ) : null}
+              {order.course_access ? (
                 <>
                   <DetailItem label="دسترسی دوره">
                     <Badge tone={order.course_access.status === 'active' ? 'success' : 'default'}>
@@ -279,13 +339,41 @@ export function OrderDetailForm({ order }: { order: AdminOrderDetail }) {
                   <DetailItem label="منبع دسترسی">
                     {COURSE_ACCESS_SOURCE_LABELS[order.course_access.source] ?? order.course_access.source}
                   </DetailItem>
+                  <DetailItem label="نوع دسترسی">{order.course_access.access_type}</DetailItem>
                   <DetailItem label="فعال‌سازی">{formatDateTime(order.course_access.activated_at)}</DetailItem>
                 </>
+              ) : (
+                <DetailItem label="دسترسی دوره">
+                  <span className="text-text-muted">صدور نشده</span>
+                </DetailItem>
               )}
+              <DetailItem label="وضعیت تحویل سفارش">
+                <Badge tone={order.status === 'fulfilled' ? 'success' : paid ? 'warning' : 'default'}>
+                  {ORDER_STATUS_LABELS[order.status] ?? order.status}
+                </Badge>
+              </DetailItem>
               <DetailItem label="ارسال پیامک">{formatDateTime(order.sms_sent_at)}</DetailItem>
               <DetailItem label="تاریخ پرداخت">{formatDateTime(order.paid_at)}</DetailItem>
               <DetailItem label="تاریخ ثبت">{formatDateTime(order.created_at)}</DetailItem>
             </dl>
+
+            {paid && hasSpotPlayerProduct ? (
+              <div className="mt-4 border-t border-border pt-4">
+                <button
+                  type="button"
+                  disabled={fulfillPending}
+                  onClick={() => void onFulfill()}
+                  className="btn btn-secondary w-full sm:w-auto"
+                >
+                  {fulfillPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <KeyRound className="h-4 w-4" />
+                  )}
+                  {licenseKey ? 'اجرای مجدد تحویل / تکمیل دسترسی' : 'تولید لایسنس و فعال‌سازی دسترسی'}
+                </button>
+              </div>
+            ) : null}
           </SectionCard>
 
           {order.referral_conversion && (

@@ -43,6 +43,9 @@ class CommercePaymentSettingsController extends Controller
     /** @return array<string, mixed> */
     private function payload(PaymentSetting $settings): array
     {
+        $defaultCallback = route('api.payments.zarinpal.callback');
+        $storedCallback = trim((string) $settings->callback_url);
+
         return [
             'sandbox_mode' => $settings->sandbox_mode,
             'callback_url' => $settings->callback_url,
@@ -50,7 +53,11 @@ class CommercePaymentSettingsController extends Controller
             'currency' => $settings->currency ?? 'IRT',
             'description_template' => $settings->description_template,
             'has_merchant_id' => filled($settings->zarinpal_merchant_id),
-            'default_callback_url' => route('api.payments.zarinpal.callback'),
+            'default_callback_url' => $defaultCallback,
+            'effective_callback_url' => $settings->resolvedCallbackUrl(),
+            'uses_custom_callback' => $storedCallback !== '' && $storedCallback !== $defaultCallback,
+            'app_url' => rtrim((string) config('app.url'), '/'),
+            'frontend_payment_result_url' => rtrim((string) config('app.frontend_url'), '/').'/payment/result',
         ];
     }
 }

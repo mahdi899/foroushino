@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\LeadExportController;
 use App\Http\Controllers\Admin\OrderExportController;
 use App\Http\Controllers\Api\V1\Admin\CashbackPayoutAdminController;
 use App\Http\Controllers\Api\V1\Admin\CourseAccessController as AdminCourseAccessController;
+use App\Http\Controllers\Api\V1\Admin\SpotplayerLicenseAdminController;
 use App\Http\Controllers\Api\V1\Admin\ImportAdminController;
 use App\Http\Controllers\Api\V1\Admin\NotificationAdminController;
 use App\Http\Controllers\Api\V1\Admin\ReferralAdminController;
@@ -43,6 +44,7 @@ use App\Http\Controllers\Api\V1\Student\ReferralController as StudentReferralCon
 use App\Http\Controllers\Api\V1\Student\SatApplicationController as StudentSatApplicationController;
 use App\Http\Controllers\Api\V1\Student\SeminarAssetDownloadController;
 use App\Http\Controllers\Api\V1\Student\SeminarController as StudentSeminarController;
+use App\Http\Controllers\Api\V1\Student\SpotPlayerSessionController as StudentSpotPlayerSessionController;
 use App\Http\Controllers\Api\V1\Student\TicketController as StudentTicketController;
 use App\Http\Controllers\Api\V1\StudentTestimonialController;
 use Illuminate\Support\Facades\Route;
@@ -56,6 +58,7 @@ Route::post('auth/login', [AuthController::class, 'login']);
 */
 Route::prefix('student')->group(function () {
     Route::post('auth/send-otp', [StudentAuthController::class, 'sendOtp']);
+    Route::post('auth/send-otp-bale', [StudentAuthController::class, 'sendOtpViaBale']);
     Route::post('auth/verify-otp', [StudentAuthController::class, 'verifyOtp']);
     Route::post('auth/login-password', [StudentAuthController::class, 'loginPassword']);
 
@@ -71,6 +74,8 @@ Route::prefix('student')->group(function () {
 
         Route::get('courses', [StudentCourseController::class, 'index']);
         Route::get('courses/{courseAccess}/player', [StudentCourseController::class, 'player'])->whereNumber('courseAccess');
+        Route::get('spotplayer-session', [StudentSpotPlayerSessionController::class, 'show']);
+        Route::put('spotplayer-session', [StudentSpotPlayerSessionController::class, 'update']);
         Route::get('orders', [StudentOrderController::class, 'index']);
 
         Route::get('seminars', [StudentSeminarController::class, 'index']);
@@ -89,7 +94,9 @@ Route::prefix('student')->group(function () {
         Route::post('tickets', [StudentTicketController::class, 'store']);
         Route::post('tickets/{ticket}/messages', [StudentTicketController::class, 'storeMessage']);
 
+        Route::get('notifications/unread-count', [StudentNotificationController::class, 'unreadCount']);
         Route::get('notifications', [StudentNotificationController::class, 'index']);
+        Route::post('notifications/read-all', [StudentNotificationController::class, 'markAllRead']);
         Route::post('notifications/{notification}/read', [StudentNotificationController::class, 'markRead']);
     });
 });
@@ -169,6 +176,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('orders/{order}', [OrderController::class, 'show'])->whereNumber('order');
     Route::patch('orders/{order}', [OrderController::class, 'update'])->whereNumber('order');
     Route::post('orders/{order}/resend-sms', [OrderController::class, 'resendSms'])->whereNumber('order');
+    Route::post('orders/{order}/fulfill', [OrderController::class, 'fulfill'])->whereNumber('order');
 
     Route::get('faqs', [FaqController::class, 'index']);
     Route::post('faqs', [FaqController::class, 'store']);
@@ -222,6 +230,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('course-accesses', [AdminCourseAccessController::class, 'index']);
     Route::post('course-accesses', [AdminCourseAccessController::class, 'store']);
     Route::patch('course-accesses/{courseAccess}', [AdminCourseAccessController::class, 'update'])->whereNumber('courseAccess');
+
+    Route::get('spotplayer-licenses', [SpotplayerLicenseAdminController::class, 'index']);
 
     Route::get('seminars', [SeminarAdminController::class, 'index']);
     Route::post('seminars', [SeminarAdminController::class, 'store']);

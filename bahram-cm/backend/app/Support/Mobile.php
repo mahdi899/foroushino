@@ -47,4 +47,15 @@ class Mobile
     {
         return static::normalize($raw) !== null;
     }
+
+    /** Mask for display after token auth, e.g. 0912***6789 */
+    public static function mask(?string $raw): ?string
+    {
+        $normalized = static::normalize($raw);
+        if (! $normalized) {
+            return null;
+        }
+
+        return substr($normalized, 0, 4).'***'.substr($normalized, -4);
+    }
 }

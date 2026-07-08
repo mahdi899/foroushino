@@ -54,7 +54,7 @@ import {
   wasChatbotNotifySoundPlayed,
 } from '@/lib/chatbot/notificationSound';
 import { resolveVisitorIpClient } from '@/lib/request/resolveVisitorIp.client';
-import { resolveMediaUrl } from '@/lib/mediaUrl';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import type {
   ChatbotCta,
   ChatbotMessage,
@@ -236,9 +236,8 @@ function OperatorAvatar({
 }) {
   if (avatarUrl) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={resolveMediaUrl(avatarUrl)}
+      <DirectMediaImg
+        src={avatarUrl}
         alt={name}
         className={cn(className, 'object-cover')}
       />

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Services\InAppNotificationService;
 use App\Services\SmsService;
 use App\Support\Mobile;
 use Illuminate\Http\JsonResponse;
@@ -69,6 +70,7 @@ class TicketAdminController extends Controller
         $ticket->load(['user', 'messages.user']);
 
         app(SmsService::class)->sendTicketReply($ticket);
+        app(InAppNotificationService::class)->ticketReply($ticket);
 
         return response()->json(['data' => $this->listPayload($ticket)], 201);
     }
@@ -104,6 +106,7 @@ class TicketAdminController extends Controller
         $ticket->load(['user', 'messages.user']);
 
         app(SmsService::class)->sendTicketReply($ticket);
+        app(InAppNotificationService::class)->ticketReply($ticket);
 
         return response()->json(['data' => $this->listPayload($ticket)]);
     }

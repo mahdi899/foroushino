@@ -167,5 +167,4 @@ export const SITEMAP_SECTION_LABELS: Record<string, string> = {
   landings: 'لندینگ‌ها',
   services: 'خدمات',
   cases: 'نمونه‌کارها',
-  doctors: 'پزشکان',
 };

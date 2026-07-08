@@ -32,21 +32,27 @@ export async function fetchCaptchaPublicConfig(): Promise<CaptchaPublicConfig> {
   if (configInflight) return configInflight;
 
   configInflight = (async () => {
-    const res = await fetch(`${captchaApiBase()}/config`, {
-      method: 'GET',
-      credentials: 'same-origin',
-      cache: 'no-store',
-    });
+    try {
+      const res = await fetch(`${captchaApiBase()}/config`, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        signal: AbortSignal.timeout(8_000),
+      });
 
-    if (!res.ok) {
+      if (!res.ok) {
+        configCache = fallbackCaptchaConfig();
+        return configCache;
+      }
+
+      const json = (await res.json()) as { data?: CaptchaPublicConfig };
+      const data = json.data ?? fallbackCaptchaConfig();
+      configCache = data;
+      return data;
+    } catch {
       configCache = fallbackCaptchaConfig();
       return configCache;
     }
-
-    const json = (await res.json()) as { data?: CaptchaPublicConfig };
-    const data = json.data ?? fallbackCaptchaConfig();
-    configCache = data;
-    return data;
   })().finally(() => {
     configInflight = null;
   });

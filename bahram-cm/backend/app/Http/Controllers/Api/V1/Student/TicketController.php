@@ -7,6 +7,7 @@ use App\Http\Requests\Student\StoreTicketMessageRequest;
 use App\Http\Requests\Student\StoreTicketRequest;
 use App\Models\Ticket;
 use App\Support\ApiResponse;
+use App\Services\InAppNotificationService;
 use App\Services\SmsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -57,6 +58,7 @@ class TicketController extends Controller
         $ticket->load('messages');
 
         app(SmsService::class)->sendTicketCreated($ticket);
+        app(InAppNotificationService::class)->ticketCreated($ticket->loadMissing('user'));
 
         return ApiResponse::success($this->payload($ticket), 201);
     }

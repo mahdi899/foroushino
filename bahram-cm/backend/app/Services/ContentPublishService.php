@@ -71,7 +71,7 @@ class ContentPublishService
 
     public function revalidateProducts(?string $slug = null): void
     {
-        $paths = ['/courses', '/mini-courses'];
+        $paths = ['/', '/courses', '/mini-courses'];
         if ($slug) {
             $paths[] = '/courses/'.$slug;
             $paths[] = '/purchase/'.$slug;

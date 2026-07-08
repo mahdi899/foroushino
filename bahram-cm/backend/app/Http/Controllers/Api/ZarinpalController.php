@@ -5,13 +5,19 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\Exceptions\PaymentException;
+use App\Services\OrderCompletionTokenService;
+use App\Services\PaymentReceiptTokenService;
 use App\Services\ZarinpalPaymentService;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 
 class ZarinpalController extends Controller
 {
-    public function __construct(private readonly ZarinpalPaymentService $zarinpal) {}
+    public function __construct(
+        private readonly ZarinpalPaymentService $zarinpal,
+        private readonly OrderCompletionTokenService $completionTokens,
+        private readonly PaymentReceiptTokenService $receiptTokens,
+    ) {}
 
     public function request(Request $request)
     {
@@ -19,7 +25,7 @@ class ZarinpalController extends Controller
             'order_id' => ['required', 'integer', 'exists:orders,id'],
         ]);
 
-        $order = Order::query()->findOrFail($data['order_id']);
+        $order = Order::query()->with('product')->findOrFail($data['order_id']);
 
         if ($order->isPaid()) {
             return ApiResponse::error('order_already_paid', 'این سفارش قبلاً پرداخت شده است.', 422);
@@ -42,17 +48,33 @@ class ZarinpalController extends Controller
         $authority = (string) $request->query('Authority', '');
         $status = (string) $request->query('Status', '');
 
-        $frontendUrl = rtrim((string) config('app.frontend_url'), '/');
-
         if ($status !== 'OK' || blank($authority)) {
-            return redirect()->away("{$frontendUrl}/payment/result?status=cancelled");
+            $order = $this->zarinpal->cancelByAuthority($authority);
+
+            return redirect()->away($this->paymentResultUrl('cancelled', $order));
         }
 
         $result = $this->zarinpal->verify($authority);
-
-        $orderNumber = $result['order']?->order_number;
+        $order = $result['order'];
         $queryStatus = $result['success'] ? 'success' : 'failed';
 
-        return redirect()->away("{$frontendUrl}/payment/result?status={$queryStatus}&order={$orderNumber}");
+        if ($result['success'] && $order?->needsProfileCompletion()) {
+            $completionToken = $this->completionTokens->issue($order);
+
+            return redirect()->away(
+                rtrim((string) config('app.frontend_url'), '/').'/payment/complete?token='.urlencode($completionToken),
+            );
+        }
+
+        return redirect()->away($this->paymentResultUrl($queryStatus, $order));
+    }
+
+    private function paymentResultUrl(string $status, ?Order $order): string
+    {
+        $order?->loadMissing('product');
+        $token = $this->receiptTokens->issue($order, $status);
+        $frontendUrl = rtrim((string) config('app.frontend_url'), '/');
+
+        return "{$frontendUrl}/payment/result?token=".urlencode($token);
     }
 }

@@ -50,14 +50,14 @@ export default async function TransformationDetailPage({
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       <ContentViewTracker type="transformation" slug={item.slug} />
-      <section className="relative isolate overflow-hidden bg-ink py-section-sm">
+      <section className="page-hero page-hero--media relative isolate overflow-hidden bg-ink">
         <PageHeroBackdrop
           src={pageHeroBackdropPhoto}
           alt={heroAlt}
           fallbackAlt={`داستان ${item.name}`}
           priority
         />
-        <div className="container-luxe relative z-[2] max-w-4xl min-w-0">
+        <div className="container-luxe page-hero__container max-w-4xl min-w-0">
           <Reveal>
             <Link
               href="/transformations"
@@ -68,10 +68,10 @@ export default async function TransformationDetailPage({
             </Link>
           </Reveal>
           <Reveal delay={0.06}>
-            <Badge tone="gold" className="mt-6 md:mt-8">داستان تبدیل</Badge>
+            <Badge tone="gold" className="mt-4 md:mt-5">داستان تبدیل</Badge>
           </Reveal>
           <Reveal delay={0.1}>
-            <div className="mt-5 flex flex-wrap items-center gap-4 md:mt-6 md:gap-5">
+            <div className="mt-3 flex flex-wrap items-center gap-4 md:mt-4 md:gap-5">
               <Avatar src={avatar} alt={item.name} size={84} className="max-md:scale-90" />
               <div className="min-w-0">
                 <h1 className="text-h2 text-balance sm:text-h1 lg:text-display">{item.name}</h1>

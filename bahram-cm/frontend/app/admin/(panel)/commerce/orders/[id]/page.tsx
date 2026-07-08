@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation';
 import { AdminPage } from '../../../ui';
 import { getOrder } from '@/lib/admin/commerceData';
 import { OrderDetailForm, OrderStatusBadge } from '../OrderDetailForm';
-import { OrdersSectionNav } from '../OrdersSectionNav';
 import { PAYMENT_STATUS_LABELS } from '@/lib/admin/commerceTypes';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +24,6 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
       }
     >
-      <OrdersSectionNav active="list" />
       <OrderDetailForm order={order} />
     </AdminPage>
   );

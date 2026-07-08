@@ -22,7 +22,8 @@ async function callStudentAuth(path: string, body: unknown): Promise<{ ok: boole
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      return { ok: false, message: json?.error?.message_fa ?? 'خطایی رخ داد. دوباره تلاش کنید.' };
+      const captchaMsg = json?.errors?.captcha?.[0];
+      return { ok: false, message: captchaMsg ?? json?.error?.message_fa ?? 'خطایی رخ داد. دوباره تلاش کنید.' };
     }
     return { ok: true, data: json?.data };
   } catch {
@@ -51,6 +52,13 @@ export async function sendOtpAction(_prev: OtpAuthState, formData: FormData): Pr
   return { step: 'otp', mobile, info: 'کد تایید برای شما پیامک شد.' };
 }
 
+export async function sendOtpViaBaleAction(mobile: string): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
+  const result = await callStudentAuth('/auth/send-otp-bale', { mobile: mobile.trim() });
+  if (!result.ok) return { ok: false, error: result.message ?? 'ارسال کد از طریق بله ناموفق بود.' };
+
+  return { ok: true, message: result.data?.message ?? 'کد تأیید از طریق سفیر بله ارسال شد.' };
+}
+
 export async function verifyOtpAction(_prev: OtpAuthState, formData: FormData): Promise<OtpAuthState> {
   const mobile = String(formData.get('mobile') ?? '').trim();
   const code = String(formData.get('code') ?? '').trim();
@@ -62,7 +70,7 @@ export async function verifyOtpAction(_prev: OtpAuthState, formData: FormData): 
   if (!result.ok) return { step: 'otp', mobile, error: result.message };
 
   await setStudentTokenCookie(result.data.token);
-  redirect('/panel');
+  redirect(resolveStudentLoginRedirect(formData));
 }
 
 export interface PasswordAuthState {
@@ -75,11 +83,27 @@ export async function loginPasswordAction(_prev: PasswordAuthState, formData: Fo
 
   if (!mobile || !password) return { error: 'شماره موبایل و رمز عبور را وارد کنید.' };
 
-  const result = await callStudentAuth('/auth/login-password', { mobile, password });
+  const result = await callStudentAuth('/auth/login-password', {
+    mobile,
+    password,
+    captcha_token: formData.get('captcha_token') || undefined,
+    captcha_id: formData.get('captcha_id') || undefined,
+    captcha_answer: formData.get('captcha_answer') ?? undefined,
+    website: formData.get('website') || undefined,
+  });
   if (!result.ok) return { error: result.message };
 
   await setStudentTokenCookie(result.data.token);
-  redirect('/panel');
+  redirect(resolveStudentLoginRedirect(formData));
+}
+
+function resolveStudentLoginRedirect(formData: FormData): string {
+  const redirectTo = String(formData.get('redirect_to') ?? '').trim();
+  if (redirectTo.startsWith('/') && !redirectTo.startsWith('//')) {
+    return redirectTo;
+  }
+
+  return '/panel';
 }
 
 export async function logoutStudentAction(): Promise<void> {
@@ -93,5 +117,7 @@ export async function logoutStudentAction(): Promise<void> {
     }).catch(() => {});
   }
   jar.delete(STUDENT_TOKEN_COOKIE);
-  redirect('/panel/login');
+  // SpotPlayer cookie `X` is intentionally kept in the browser and also stored per user
+  // on the server (spotplayer_x) so DRM session survives logout/login.
+  redirect('/');
 }

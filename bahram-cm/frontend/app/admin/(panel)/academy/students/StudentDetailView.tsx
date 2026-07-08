@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import Image from 'next/image';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import { BookOpen, LifeBuoy, Receipt, User as UserIcon } from 'lucide-react';
 import { Badge, EditLink, Table } from '../../ui';
 import {
@@ -123,7 +123,7 @@ export function StudentDetailView({ student }: { student: AdminStudentDetail }) 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
           <div className="relative mx-auto h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-border bg-surface-soft sm:mx-0">
             {avatarUrl ? (
-              <Image src={avatarUrl} alt={student.display_name} fill className="object-cover" sizes="80px" unoptimized />
+              <DirectMediaImg admin src={avatarUrl} alt={student.display_name} fill className="object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-text-muted">
                 <UserIcon size={32} />

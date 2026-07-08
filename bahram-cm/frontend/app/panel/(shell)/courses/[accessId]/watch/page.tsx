@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { studentFetch } from '@/lib/student/session';
+import { panelStudentFetch } from '@/lib/student/panelServer';
 import { WatchPageClient } from './WatchPageClient';
 
 export const metadata: Metadata = { title: 'تماشای دوره | پنل کاربری', robots: { index: false, follow: false } };
@@ -14,9 +14,19 @@ interface PlayerResponse {
   license_script_url?: string | null;
 }
 
-export default async function CourseWatchPage({ params }: { params: Promise<{ accessId: string }> }) {
+export default async function CourseWatchPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ accessId: string }>;
+  searchParams: Promise<{ license?: string }>;
+}) {
   const { accessId } = await params;
-  const { data } = await studentFetch<{ data: PlayerResponse }>(`/courses/${accessId}/player`);
+  const { license } = await searchParams;
+  const playerPath = license
+    ? `/courses/${accessId}/player?license_id=${encodeURIComponent(license)}`
+    : `/courses/${accessId}/player`;
+  const { data } = await panelStudentFetch<{ data: PlayerResponse }>(playerPath);
 
   if (!data) notFound();
 
@@ -34,6 +44,7 @@ export default async function CourseWatchPage({ params }: { params: Promise<{ ac
 
   return (
     <WatchPageClient
+      accessId={accessId}
       title={data.product_title ?? 'دوره'}
       licenseKey={data.license_key}
       courseId={data.spotplayer_course_id}

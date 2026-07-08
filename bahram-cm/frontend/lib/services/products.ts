@@ -12,6 +12,11 @@ export type ProductListItem = {
   effective_price: number;
   featured_image: string | null;
   featured_image_alt?: string | null;
+  show_on_courses?: boolean;
+  featured_listing?: boolean;
+  course_level?: string | null;
+  course_duration?: string | null;
+  landing_href?: string | null;
 };
 
 export type ProductDetail = ProductListItem & {
@@ -23,8 +28,9 @@ export type ProductDetail = ProductListItem & {
 type ListResponse<T> = { data: T[] };
 type SingleResponse<T> = { data: T };
 
-export async function getProducts(): Promise<ApiResult<ProductListItem[]>> {
-  const result = await getJson<ListResponse<ProductListItem>>("/products");
+export async function getProducts(options?: { listed?: boolean }): Promise<ApiResult<ProductListItem[]>> {
+  const query = options?.listed ? '?listed=1' : '';
+  const result = await getJson<ListResponse<ProductListItem>>(`/products${query}`);
   if (!result.ok) return result;
   return { ok: true, data: result.data.data };
 }

@@ -42,6 +42,7 @@ export async function adminFetch<T = unknown>(
     },
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     cache: 'no-store',
+    signal: AbortSignal.timeout(10_000),
   });
 
   if (!res.ok) {

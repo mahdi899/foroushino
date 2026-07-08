@@ -5,6 +5,7 @@ export async function GET() {
     const res = await fetch(`${SERVER_API_URL}/captcha/config`, {
       cache: 'no-store',
       headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(8_000),
     });
     const body = await res.text();
     return new Response(body, {

@@ -126,7 +126,6 @@ export const mainNav = [
   { href: '/cosmetic', label: 'خدمات زیبایی' },
   { href: '/pricing', label: 'قیمت‌ها' },
   { href: '/cases', label: 'نمونه کارها' },
-  { href: '/doctors', label: 'تیم آترین' },
   { href: '/insights', label: 'مجله' },
   { href: '/contact', label: 'تماس' },
 ];

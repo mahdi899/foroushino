@@ -8,9 +8,17 @@ export interface AdminProduct {
   price: number;
   sale_price: number | null;
   effective_price: number;
+  referral_cashback_enabled?: boolean;
+  referral_cashback_type?: 'percent' | 'fixed' | null;
+  referral_cashback_value?: number | null;
   is_active: boolean;
   featured_image: string | null;
   featured_image_url: string | null;
+  show_on_courses?: boolean;
+  featured_listing?: boolean;
+  course_level?: string | null;
+  course_duration?: string | null;
+  landing_href?: string | null;
   spotplayer_course_id: string | null;
   spotplayer_product_id: string | null;
   meta_title: string | null;
@@ -23,6 +31,7 @@ export interface AdminOrder {
   order_number: string;
   product_id: number;
   product_title: string | null;
+  product_type?: string | null;
   customer_name: string;
   customer_phone: string;
   customer_email: string | null;
@@ -73,8 +82,11 @@ export type AdminOrderDetail = AdminOrder & {
     license_key: string | null;
     license_url: string | null;
     spotplayer_course_id: string | null;
+    spotplayer_license_id?: string | null;
     device_limit: number | null;
     status: string;
+    created_at?: string | null;
+    updated_at?: string | null;
   } | null;
   course_access: {
     id: number;
@@ -129,6 +141,10 @@ export interface PaymentSettingsData {
   description_template: string | null;
   has_merchant_id: boolean;
   default_callback_url: string;
+  effective_callback_url?: string;
+  uses_custom_callback?: boolean;
+  app_url?: string;
+  frontend_payment_result_url?: string;
 }
 
 export interface SmsSpotplayerSettingsData {
@@ -157,6 +173,14 @@ export const PAYMENT_STATUS_LABELS: Record<string, string> = {
   pending: 'در انتظار',
   paid: 'پرداخت‌شده',
   failed: 'ناموفق',
+};
+
+export const PRODUCT_TYPE_LABELS: Record<string, string> = {
+  normal: 'عادی',
+  package: 'پکیج',
+  course_spotplayer: 'دوره SpotPlayer',
+  manual_service: 'خدمت دستی',
+  event: 'رویداد',
 };
 
 export const PAYMENT_RECORD_STATUS_LABELS: Record<string, string> = {

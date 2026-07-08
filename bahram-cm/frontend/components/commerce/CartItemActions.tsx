@@ -3,7 +3,6 @@
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LinkButton } from "@/components/ui/Button";
 import { removeFromCart } from "@/lib/cart/store.client";
 
 export function CartRemoveButton({ slug }: { slug: string }) {
@@ -31,10 +30,4 @@ export function CartRemoveButton({ slug }: { slug: string }) {
   );
 }
 
-export function CartCheckoutButton({ slug }: { slug: string }) {
-  return (
-    <LinkButton href={`/purchase/${slug}`} variant="primary" size="lg" withArrow className="w-full">
-      ادامه و پرداخت
-    </LinkButton>
-  );
-}
+export { CartPayButton } from "./CartPayButton";

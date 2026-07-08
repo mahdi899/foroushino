@@ -1,6 +1,9 @@
 /**
  * Single import point for all media URL logic.
  *
+ * POLICY: Images always use raw `/storage/media/...` paths — never `/cdn/media?w=&q=`.
+ * See docs/MEDIA-URL-POLICY.md — do not change URL shaping without explicit approval.
+ *
  * Configure once in .env:
  *   NEXT_PUBLIC_MEDIA_URL=https://cdn.example.com  (must match backend MEDIA_URL)
  *
@@ -22,6 +25,7 @@ export {
   rewriteArticleBodyMediaUrls,
   normalizeImageSrc,
   primarySiteImageSrc,
+  mediaDisplaySrc,
   uploadOrigin,
   toStorageAbsoluteUrl,
 } from '@/lib/mediaUrl';

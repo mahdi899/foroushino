@@ -28,8 +28,8 @@ import {
 } from '@/lib/admin/seoScore';
 import type { SeoFixArticleContext, SeoFixPatch } from '@/lib/ai/seoFix';
 import type { ApiCategory } from '@/lib/api/types';
-import { resolveMediaUrl } from '@/lib/mediaUrl';
 import { cn } from '@/lib/utils';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import { SeoFixModal } from './SeoFixModal';
 
 interface SeoScorePanelProps {
@@ -131,7 +131,6 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
       : props.slug
         ? `${siteConfig.url}${props.publicBasePath ?? '/insights'}/${props.slug}`
         : '';
-  const coverPreviewUrl = resolveMediaUrl(props.coverUrl);
   const domain = useMemo(() => {
     try {
       return new URL(siteConfig.url).hostname;
@@ -340,13 +339,14 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
             </>
           ) : (
             <>
-              {coverPreviewUrl ? (
+              {props.coverUrl ? (
                 <div className="relative mb-2 aspect-[1.91/1] max-h-28 overflow-hidden rounded-md border border-border bg-surface-soft">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={coverPreviewUrl}
+                  <DirectMediaImg
+                    admin
+                    src={props.coverUrl}
                     alt={props.metaTitle || props.title || 'تصویر شاخص'}
-                    className="absolute inset-0 h-full w-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                 </div>
               ) : (

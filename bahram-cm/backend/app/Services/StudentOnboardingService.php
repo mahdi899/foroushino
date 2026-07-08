@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Notification as NotificationModel;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +15,10 @@ class StudentOnboardingService
 {
     private const CLICK_TRACKED_STEPS = ['telegram_channel', 'rubika_channel', 'telegram_bot', 'customer_club'];
 
-    public function __construct(private readonly SmsService $sms) {}
+    public function __construct(
+        private readonly SmsService $sms,
+        private readonly InAppNotificationService $notifications,
+    ) {}
 
     /** Idempotent: only fires side effects the very first time. */
     public function handleFirstLogin(User $user): void
@@ -33,14 +35,7 @@ class StudentOnboardingService
 
             $user->update(['first_login_at' => now()]);
 
-            $notification = NotificationModel::create([
-                'title' => 'به آکادمی بهرام رستمی خوش آمدی!',
-                'body' => 'خوشحالیم که همراه ما هستی. از داشبورد پنل کاربری‌ات شروع کن.',
-                'type' => 'welcome',
-                'link' => '/panel',
-            ]);
-
-            $notification->recipients()->create(['user_id' => $user->id]);
+            $this->notifications->welcome($user);
         });
 
         if (filled($user->mobile)) {

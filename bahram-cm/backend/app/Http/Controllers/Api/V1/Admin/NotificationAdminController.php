@@ -5,15 +5,16 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Services\AudienceSegmentService;
+use App\Services\InAppNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class NotificationAdminController extends Controller
 {
-    public function __construct(private readonly AudienceSegmentService $segments)
-    {
-    }
+    public function __construct(
+        private readonly AudienceSegmentService $segments,
+        private readonly InAppNotificationService $notifications,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -47,21 +48,14 @@ class NotificationAdminController extends Controller
 
         $recipients = $this->segments->resolve($data['segment']);
 
-        $notification = DB::transaction(function () use ($data, $recipients, $request) {
-            $notification = Notification::create([
-                'title' => $data['title'],
-                'body' => $data['body'],
-                'type' => $data['type'] ?? 'general',
-                'link' => $data['link'] ?? null,
-                'created_by' => $request->user()->id,
-            ]);
-
-            $notification->recipients()->createMany(
-                $recipients->map(fn ($user) => ['user_id' => $user->id])->all()
-            );
-
-            return $notification;
-        });
+        $notification = $this->notifications->notifyUsers(
+            $recipients,
+            $data['title'],
+            $data['body'],
+            $data['type'] ?? 'general',
+            $data['link'] ?? null,
+            $request->user()->id,
+        );
 
         return response()->json(['data' => [
             'id' => $notification->id,

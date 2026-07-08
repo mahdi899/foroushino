@@ -26,6 +26,7 @@ class User extends Authenticatable
         'password',
         'is_admin',
         'status',
+        'spotplayer_x',
     ];
 
     /**
@@ -34,6 +35,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'spotplayer_x',
     ];
 
     /**

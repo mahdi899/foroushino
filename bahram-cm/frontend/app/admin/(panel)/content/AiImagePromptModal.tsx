@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Check, Loader2, Sparkles, X } from 'lucide-react';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import { resolveMediaUrl } from '@/lib/mediaUrl';
 import { generateImageForArticle, getAiImageSettingsPreview } from '../blog/actions';
 const DENTAL_IMAGE_PREFIX =
@@ -141,8 +142,7 @@ export function AiImagePromptModal({
                   <span className="text-caption">در حال تولید…</span>
                 </div>
               ) : previewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={previewUrl} alt={prompt} className="max-h-72 w-full object-contain" />
+                <DirectMediaImg admin src={previewUrl} alt={prompt} className="max-h-72 w-full object-contain" />
               ) : (
                 <p className="px-4 text-center text-caption text-text-muted">پس از تولید، تصویر اینجا نمایش داده می‌شود.</p>
               )}

@@ -77,7 +77,7 @@ export function SitemapOverview({ entries, baseUrl }: SitemapOverviewProps) {
       <p className="mt-3 text-caption text-text-muted">
         <strong>sitemap.xml</strong> فقط فهرست فایل‌هاست — محتوای واقعی (تصویر، ویدیو، News) داخل هر فایل فرعی مثل{' '}
         <span dir="ltr">articles-1.xml</span> است. ترتیب: مقالات → Google News → دسته‌ها → برگه‌ها → لندینگ → خدمات →
-        نمونه‌کار → پزشکان.
+        نمونه‌کار.
       </p>
     </div>
   );

@@ -47,12 +47,35 @@ export async function getProduct(id: number): Promise<AdminProduct | null> {
   }
 }
 
-export async function getOrders(): Promise<{ items: AdminOrder[]; error: string | null }> {
+export async function getOrders(filters?: {
+  search?: string;
+  status?: string;
+  payment_status?: string;
+  product_type?: string;
+  page?: number;
+  per_page?: number;
+}): Promise<{
+  items: AdminOrder[];
+  meta: { current_page: number; last_page: number; per_page: number; total: number } | null;
+  error: string | null;
+}> {
   try {
-    const res = await adminFetch<{ data: AdminOrder[] }>('/orders', { query: { per_page: 200 } });
-    return { items: res.data, error: null };
+    const res = await adminFetch<{
+      data: AdminOrder[];
+      meta: { current_page: number; last_page: number; per_page: number; total: number };
+    }>('/orders', {
+      query: {
+        per_page: filters?.per_page ?? 50,
+        page: filters?.page,
+        search: filters?.search,
+        status: filters?.status,
+        payment_status: filters?.payment_status,
+        product_type: filters?.product_type,
+      },
+    });
+    return { items: res.data, meta: res.meta, error: null };
   } catch (e) {
-    return { items: [], error: commerceErrorMessage(e) };
+    return { items: [], meta: null, error: commerceErrorMessage(e) };
   }
 }
 

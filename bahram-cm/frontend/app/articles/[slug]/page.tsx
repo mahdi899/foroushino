@@ -10,7 +10,7 @@ import { getArticleBySlug } from "@/lib/services/articles";
 import { articleJsonLd, breadcrumbJsonLd } from "@/lib/jsonld";
 import { formatDateFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
-import { resolveMediaUrl, rewriteArticleBodyMediaUrls } from "@/lib/mediaUrl";
+import { rewriteArticleBodyMediaUrls } from "@/lib/mediaUrl";
 
 export const revalidate = 300;
 
@@ -69,16 +69,16 @@ export default async function ArticleDetailPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <section className="relative isolate overflow-hidden bg-ink">
+      <section className="page-hero page-hero--media relative isolate overflow-hidden bg-ink">
         {post.featured_image ? (
           <PageHeroBackdrop
-            src={resolveMediaUrl(post.featured_image)}
+            src={post.featured_image}
             alt={post.featured_image_alt}
             fallbackAlt={post.title}
             priority
           />
         ) : null}
-        <div className="container-luxe relative z-[2] max-w-4xl min-w-0 py-section-sm">
+        <div className="container-luxe page-hero__container max-w-4xl min-w-0">
           <Reveal>
             <Link
               href="/articles"
@@ -89,13 +89,13 @@ export default async function ArticleDetailPage({
             </Link>
           </Reveal>
           <Reveal delay={0.06}>
-            <p className="mt-6 inline-flex items-center gap-2 text-caption uppercase tracking-[0.25em] text-gold md:mt-8">
+            <p className="mt-4 inline-flex items-center gap-2 text-caption uppercase tracking-[0.25em] text-gold md:mt-5">
               <Pencil className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
               مقاله
             </p>
           </Reveal>
           <Reveal delay={0.12}>
-            <h1 className="mt-4 max-w-full min-w-0 text-h1 text-balance md:mt-5 md:text-display">
+            <h1 className="mt-3 max-w-full min-w-0 text-h2 text-balance md:mt-4 md:text-h1">
               {post.title}
             </h1>
           </Reveal>

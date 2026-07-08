@@ -23,7 +23,7 @@ class ZarinpalPaymentService
 
     public function request(Order $order): Payment
     {
-        if ($this->isDevMode()) {
+        if ($this->shouldUseDevBypass()) {
             return $this->requestInDevMode($order);
         }
 
@@ -34,7 +34,7 @@ class ZarinpalPaymentService
         }
 
         $amount = $this->amountInRials($order->final_amount, $settings->currency);
-        $callbackUrl = $settings->callback_url ?: route('api.payments.zarinpal.callback');
+        $callbackUrl = $settings->resolvedCallbackUrl();
 
         $payload = [
             'merchant_id' => (string) $settings->zarinpal_merchant_id,
@@ -43,7 +43,7 @@ class ZarinpalPaymentService
             'description' => $this->buildDescription($order, $settings->description_template),
             'metadata' => array_filter([
                 'mobile' => $order->customer_phone,
-                'email' => $order->customer_email,
+                'order_id' => $order->order_number,
             ]),
         ];
 
@@ -189,9 +189,37 @@ class ZarinpalPaymentService
             'ref_id' => $refId,
         ]);
 
-        FulfillOrderJob::dispatch($order->id);
+        $this->dispatchFulfillment($order->id);
 
         return ['success' => true, 'message' => 'پرداخت با موفقیت انجام شد.', 'ref_id' => $refId, 'order' => $order];
+    }
+
+    public function cancelByAuthority(string $authority): ?Order
+    {
+        if (blank($authority)) {
+            return null;
+        }
+
+        $payment = Payment::query()->where('authority', $authority)->with('order.product')->first();
+        if (! $payment?->order) {
+            return null;
+        }
+
+        if ($payment->status === 'pending') {
+            $payment->update(['status' => 'canceled']);
+        }
+
+        return $payment->order;
+    }
+
+    private function shouldUseDevBypass(): bool
+    {
+        if (! $this->isDevMode()) {
+            return false;
+        }
+
+        // When the gateway is configured, always use sandbox/live — even locally.
+        return ! PaymentSetting::current()->isReady();
     }
 
     private function requestInDevMode(Order $order): Payment
@@ -251,7 +279,7 @@ class ZarinpalPaymentService
             'ref_id' => $refId,
         ]);
 
-        FulfillOrderJob::dispatch($order->id);
+        $this->dispatchFulfillment($order->id);
 
         return [
             'success' => true,
@@ -293,5 +321,17 @@ class ZarinpalPaymentService
             '{order_number}' => $order->order_number,
             '{product_title}' => $order->product?->title,
         ]);
+    }
+
+    /** Local dev runs fulfillment immediately — no queue worker required. */
+    private function dispatchFulfillment(int $orderId): void
+    {
+        if (app()->environment('local') && ! app()->runningUnitTests()) {
+            FulfillOrderJob::dispatchSync($orderId);
+
+            return;
+        }
+
+        FulfillOrderJob::dispatch($orderId);
     }
 }

@@ -32,6 +32,11 @@ class ProductListResource extends JsonResource
             'featured_image_alt' => $imageRef
                 ? $altResolver->resolve($imageRef, $this->title)
                 : null,
+            'show_on_courses' => (bool) $this->show_on_courses,
+            'featured_listing' => (bool) $this->featured_listing,
+            'course_level' => $this->course_level,
+            'course_duration' => $this->course_duration,
+            'landing_href' => $this->landing_href,
         ];
     }
 }

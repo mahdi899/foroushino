@@ -28,4 +28,11 @@ class PaymentSetting extends Model
     {
         return $this->is_active && filled($this->zarinpal_merchant_id);
     }
+
+    public function resolvedCallbackUrl(): string
+    {
+        $stored = trim((string) $this->callback_url);
+
+        return $stored !== '' ? $stored : route('api.payments.zarinpal.callback');
+    }
 }

@@ -6,6 +6,7 @@ use App\Contracts\SmsProviderContract;
 use App\Services\Sms\KavenegarProvider;
 use App\Services\Sms\MelipayamakProvider;
 use App\Services\Sms\Providers\BaleMessengerProvider;
+use App\Services\Sms\Providers\BaleSafirProvider;
 use App\Services\Sms\Providers\FarazSmsProvider;
 use App\Services\Sms\Providers\IppanelProvider;
 use App\Services\Sms\Providers\TelegramMessengerProvider;
@@ -21,6 +22,7 @@ class SmsProviderFactory
         'farazsms' => FarazSmsProvider::class,
         'ippanel' => IppanelProvider::class,
         'bale' => BaleMessengerProvider::class,
+        'bale_safir' => BaleSafirProvider::class,
         'telegram' => TelegramMessengerProvider::class,
     ];
 

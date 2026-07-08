@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ImageIcon, Trash2 } from 'lucide-react';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import { resolveMediaUrl, persistMediaUrl } from '@/lib/mediaUrl';
 import { ImageGalleryModal } from './ImageGalleryModal';
 
@@ -48,12 +49,7 @@ export function ImageUrlField({ label, value, onChange, alt, previewClassName }:
       </div>
       {value ? (
         <div className={previewBoxClass}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={resolveMediaUrl(value)}
-            alt={alt ?? label}
-            className="h-full w-full object-cover"
-          />
+          <DirectMediaImg admin src={value} alt={alt ?? label} fill className="object-cover" />
         </div>
       ) : (
         <p className="mt-2 text-caption text-text-muted">تصویری انتخاب نشده — از کتابخانه رسانه انتخاب کنید.</p>

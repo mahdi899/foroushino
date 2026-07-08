@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
-import { CheckCircle2, Clock, FileText, Trophy, XCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Briefcase, CheckCircle2, Clock, Crown, FileText, Search, Trophy, XCircle } from 'lucide-react';
+import { PanelPageHeader } from '@/components/student-panel/layout/PanelPageHeader';
 import { SatApplicationForm } from '@/components/student-panel/sat/SatApplicationForm';
-import { getCurrentStudent, studentFetch } from '@/lib/student/session';
+import { getCurrentStudent } from '@/lib/student/session';
+import { panelStudentFetch } from '@/lib/student/panelServer';
 
 export const metadata: Metadata = { title: 'سات | پنل کاربری', robots: { index: false, follow: false } };
 
@@ -14,73 +17,121 @@ interface SatApplication {
 }
 
 const STATUS: Record<string, { label: string; icon: typeof Clock; className: string }> = {
-  received: { label: 'دریافت‌شده', icon: Clock, className: 'bg-yellow-500/10 text-yellow-600' },
-  reviewing: { label: 'در حال بررسی', icon: Clock, className: 'bg-blue-500/10 text-blue-600' },
-  accepted: { label: 'پذیرفته‌شده', icon: CheckCircle2, className: 'bg-green-500/10 text-green-600' },
-  rejected: { label: 'رد شده', icon: XCircle, className: 'bg-red-500/10 text-red-600' },
+  received: { label: 'دریافت شد', icon: Briefcase, className: 'bg-green-500/10 text-green-400' },
+  reviewing: { label: 'در حال بررسی', icon: Search, className: 'bg-yellow-500/10 text-yellow-400' },
+  accepted: { label: 'پذیرفته شد', icon: CheckCircle2, className: 'bg-green-500/10 text-green-400' },
+  rejected: { label: 'رد شده', icon: XCircle, className: 'bg-red-500/10 text-red-400' },
 };
+
+const STEPS = [
+  { key: 'received', title: 'دریافت شد', desc: 'درخواست شما ثبت و در صف بررسی قرار گرفت.' },
+  { key: 'reviewing', title: 'در حال بررسی', desc: 'تیم آکادمی در حال ارزیابی اطلاعات شماست.' },
+  { key: 'accepted', title: 'پذیرفته شد', desc: 'نتیجه نهایی از طریق پنل و پیامک اطلاع‌رسانی می‌شود.' },
+] as const;
+
+function stepState(current: string | null, stepKey: string): 'done' | 'active' | 'pending' {
+  if (!current) return stepKey === 'received' ? 'pending' : 'pending';
+  const order = ['received', 'reviewing', 'accepted', 'rejected'];
+  const currentIdx = order.indexOf(current);
+  const stepIdx = order.indexOf(stepKey);
+  if (current === 'rejected' && stepKey === 'accepted') return 'pending';
+  if (stepIdx < currentIdx) return 'done';
+  if (stepIdx === currentIdx || (current === 'reviewing' && stepKey === 'reviewing')) return 'active';
+  if (current === 'accepted' && stepKey === 'accepted') return 'done';
+  return 'pending';
+}
 
 export default async function PanelSatPage() {
   const [user, { data: application }] = await Promise.all([
     getCurrentStudent(),
-    studentFetch<{ data: SatApplication | null }>('/sat-application'),
+    panelStudentFetch<{ data: SatApplication | null }>('/sat-application'),
   ]);
   const status = application ? (STATUS[application.status] ?? STATUS.received) : null;
+  const currentStatus = application?.status ?? null;
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-5">
-      <div className="flex items-center gap-3">
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary">
-          <Trophy size={22} />
-        </span>
-        <div>
-          <h1 className="text-xl font-bold text-text">سات</h1>
-          <p className="text-sm text-text-muted">درخواست همکاری با آکادمی</p>
-        </div>
-      </div>
+    <div className="mx-auto flex max-w-6xl flex-col gap-6">
+      <PanelPageHeader
+        icon={Trophy}
+        title="فرصت همکاری در سات"
+        description="اگر علاقه‌مند به همکاری با آکادمی هستی، فرم زیر را تکمیل کن."
+      />
 
-      <div className="card p-5">
-        <h2 className="mb-4 text-sm font-bold text-text">مراحل بررسی</h2>
-        <ol className="space-y-3">
-          {['ثبت درخواست', 'بررسی تیم آکادمی', 'اعلام نتیجه'].map((step, index) => (
-            <li key={step} className="flex items-start gap-3">
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</span>
-              <div>
-                <p className="text-sm font-semibold text-text">{step}</p>
-                <p className="text-xs text-text-muted">در این مرحله وضعیت از طریق پنل و پیامک اطلاع‌رسانی می‌شود.</p>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </div>
+      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+        <div className="flex flex-col gap-5">
+          {!application ? (
+            <div className="rounded-xl border border-amber-500/25 bg-amber-500/8 p-4 text-sm text-amber-200/90">
+              هنوز درخواستی ثبت نکرده‌ای. فرم زیر را تکمیل کن تا تیم ما بررسی کند.
+            </div>
+          ) : null}
 
-      {application ? (
-        <div className="card p-6">
-          <p className="mb-3 text-sm text-text-muted">وضعیت درخواست شما:</p>
-          {status && (
-            <div className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold ${status.className}`}>
-              <status.icon size={18} />
-              {status.label}
+          {application ? (
+            <div className="card p-6">
+              <p className="mb-3 text-sm text-text-muted">وضعیت درخواست شما:</p>
+              {status && (
+                <div className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold ${status.className}`}>
+                  <status.icon size={18} />
+                  {status.label}
+                </div>
+              )}
+              {application.submitted_at && (
+                <p className="mt-3 text-xs text-text-muted">
+                  ثبت شده در {new Date(application.submitted_at).toLocaleDateString('fa-IR')}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="card p-6">
+              <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-text">
+                <FileText size={16} className="text-primary" />
+                فرم درخواست سات
+              </h2>
+              <SatApplicationForm mobile={user?.mobile ?? ''} />
+              <p className="mt-4 text-[11px] leading-relaxed text-text-muted">
+                اطلاعات شما محرمانه نگه داشته می‌شود و فقط برای بررسی درخواست استفاده می‌شود.
+              </p>
             </div>
           )}
-          {application.submitted_at && <p className="mt-3 text-xs text-text-muted">ثبت شده در {new Date(application.submitted_at).toLocaleDateString('fa-IR')}</p>}
         </div>
-      ) : (
-        <div className="card p-6">
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-text">
-            <FileText size={16} className="text-primary" />
-            فرم درخواست همکاری
-          </h2>
-          <SatApplicationForm mobile={user?.mobile ?? ''} />
-        </div>
-      )}
 
-      <div className="card relative overflow-hidden p-5">
-        <h3 className="text-sm font-bold text-text">چرا سات؟</h3>
-        <p className="mt-2 text-xs leading-relaxed text-text-muted">
-          سات مسیر همکاری با آکادمی است؛ برای افرادی که می‌خواهند در رشد آموزش و جامعه دانشجویی نقش فعال داشته باشند.
-        </p>
-        <div className="absolute -bottom-8 -left-8 h-20 w-20 rounded-full bg-primary/10 blur-3xl" />
+        <aside className="flex flex-col gap-4">
+          <div className="card p-5">
+            <h2 className="mb-4 text-sm font-bold text-text">فرآیند بررسی درخواست</h2>
+            <ol className="panel-stepper-list space-y-4">
+              {STEPS.map((step, index) => (
+                <li key={step.key} className="panel-stepper-item" data-state={stepState(currentStatus, step.key)}>
+                  <span className="panel-stepper-item__dot">
+                    {stepState(currentStatus, step.key) === 'done' ? <CheckCircle2 size={14} /> : index + 1}
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-text">{step.title}</p>
+                    <p className="mt-0.5 text-xs text-text-muted">{step.desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="card relative overflow-hidden p-5">
+            <h3 className="text-sm font-bold text-text">یک قدم تا فرصت بهتر!</h3>
+            <p className="mt-2 text-xs leading-relaxed text-text-muted">
+              با تکمیل دوره‌های آکادمی، شانس پذیرش در سات بیشتر می‌شود.
+            </p>
+            <ul className="mt-3 space-y-2 text-xs text-text-muted">
+              {['دسترسی به محتوای تخصصی', 'گواهی معتبر', 'شبکه ارتباطی فعال'].map((item) => (
+                <li key={item} className="flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-success" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <Link href="/panel/courses" className="btn btn-primary mt-4 w-full text-xs">
+              <Crown size={14} />
+              مشاهده و تهیه دوره
+            </Link>
+            <div className="absolute -bottom-8 -left-8 h-20 w-20 rounded-full bg-primary/10 blur-3xl" />
+          </div>
+        </aside>
       </div>
     </div>
   );

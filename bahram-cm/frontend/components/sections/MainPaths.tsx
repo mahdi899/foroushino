@@ -27,10 +27,25 @@ const pathMeta = [
 
 const trustIcons = [Shield, Target, Zap] as const;
 
-export function MainPaths() {
+export function MainPaths({
+  pathOverrides = {},
+}: {
+  pathOverrides?: {
+    images?: Record<string, string>;
+    labels?: Record<string, string>;
+    taglines?: Record<string, string>;
+  };
+}) {
+  const pathImages = pathOverrides.images ?? {};
+  const pathLabels = pathOverrides.labels ?? {};
+  const pathTaglines = pathOverrides.taglines ?? {};
+
   const items = site.mainPaths.items.map((item, i) => ({
     ...item,
     ...pathMeta[i]!,
+    label: pathLabels[item.href] ?? item.label,
+    tagline: pathTaglines[item.href] ?? item.tagline,
+    image: pathImages[item.href] ?? pathMeta[i]!.image,
   }));
 
   return (

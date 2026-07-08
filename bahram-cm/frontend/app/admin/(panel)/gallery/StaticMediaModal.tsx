@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { Copy, ExternalLink, X } from 'lucide-react';
 import type { UnifiedMediaItem } from '@/lib/admin/unifiedGallery';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 
 interface StaticMediaModalProps {
   item: UnifiedMediaItem | null;
@@ -36,7 +36,7 @@ export function StaticMediaModal({ item, onClose }: StaticMediaModalProps) {
         </div>
         <div className="p-4">
           <div className="relative mx-auto mb-4 aspect-video w-full max-w-sm overflow-hidden rounded-lg border border-border bg-surface-soft">
-            <Image src={item.src} alt={item.label} fill sizes="400px" className="object-contain" unoptimized />
+            <DirectMediaImg admin src={item.src} alt={item.label} fill className="object-contain" />
           </div>
           <p className="field-label">عنوان</p>
           <p className="mb-3 text-small text-text">{item.label}</p>

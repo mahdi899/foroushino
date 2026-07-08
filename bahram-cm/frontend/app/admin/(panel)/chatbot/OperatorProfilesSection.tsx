@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Loader2, Plus, Save, Trash2, User } from 'lucide-react';
 import { ImageUrlField } from '../content/ImageUrlField';
-import { resolveMediaUrl } from '@/lib/mediaUrl';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import type { ChatbotOperatorProfile } from '@/lib/chatbot/types';
 
 function newProfileId(): string {
@@ -85,9 +85,9 @@ export function OperatorProfilesSection({
                 <div className="flex items-center gap-3">
                   <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-surface-soft ring-2 ring-border/60">
                     {profile.avatar_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={resolveMediaUrl(profile.avatar_url)}
+                      <DirectMediaImg
+                        admin
+                        src={profile.avatar_url}
                         alt={profile.name || 'اپراتور'}
                         className="h-full w-full object-cover"
                       />

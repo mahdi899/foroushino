@@ -12,6 +12,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import { rewriteOptimizePreviewUrl } from '@/lib/admin/mediaPreviewUrl';
 import type { MediaOptimizePreview, MediaOptimizeVariant } from '@/lib/admin/mediaOptimize';
 import { engineLabel, formatBytes } from '@/lib/admin/mediaOptimize';
@@ -77,7 +78,7 @@ function VariantCard({
       <div className="group relative aspect-[4/3] bg-zinc-200">
         <button type="button" onClick={onSelect} className="absolute inset-0 z-[1]" aria-label={`انتخاب ${title}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={previewSrc(variant.preview_url)} alt={title} className="h-full w-full object-contain" />
+          <DirectMediaImg admin src={previewSrc(variant.preview_url)} alt={title} className="h-full w-full object-contain" />
         </button>
         <button
           type="button"
@@ -160,10 +161,10 @@ function WipeCompare({
       onTouchEnd={() => (dragging.current = false)}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={previewSrc(optimized.preview_url)} alt="بهینه‌شده" className="absolute inset-0 h-full w-full object-contain" />
+      <DirectMediaImg admin src={previewSrc(optimized.preview_url)} alt="بهینه‌شده" fill className="object-contain" />
       <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={previewSrc(original.preview_url)} alt="اصلی" className="absolute inset-0 h-full w-full object-contain" />
+        <DirectMediaImg admin src={previewSrc(original.preview_url)} alt="اصلی" fill className="object-contain" />
       </div>
       <div className="pointer-events-none absolute inset-y-0 z-10 w-0.5 bg-white shadow-[0_0_8px_rgba(0,0,0,0.35)]" style={{ left: `${pos}%` }}>
         <div className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-primary text-white shadow-lg">
@@ -297,7 +298,7 @@ function PreviewOverlay({
                 </div>
                 <div className="relative min-h-[40vh] flex-1 overflow-hidden rounded-xl bg-zinc-900/50 sm:min-h-[55vh]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={previewSrc(variant.preview_url)} alt={label} className="absolute inset-0 h-full w-full object-contain" />
+                  <DirectMediaImg admin src={previewSrc(variant.preview_url)} alt={label} fill className="object-contain" />
                 </div>
               </div>
             ))}
@@ -310,7 +311,7 @@ function PreviewOverlay({
             </div>
             <div className="relative min-h-[50vh] flex-1 overflow-hidden rounded-xl bg-zinc-900/50 sm:min-h-[65vh]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={previewSrc(single.preview_url)} alt={singleLabel} className="absolute inset-0 h-full w-full object-contain" />
+              <DirectMediaImg admin src={previewSrc(single.preview_url)} alt={singleLabel} fill className="object-contain" />
             </div>
             <p className="mt-2 text-center text-[10px] text-white/50">← → برای جابجایی بین نسخه‌ها · Esc برای بستن</p>
           </div>

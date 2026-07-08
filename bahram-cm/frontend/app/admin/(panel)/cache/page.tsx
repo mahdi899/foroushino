@@ -641,7 +641,7 @@ export default function CacheAdminPage() {
           <div className="rounded-xl border border-border p-4 text-small text-text-muted">
             <p className="font-semibold text-primary-dark">تگ‌های ISR فعال</p>
             <p className="mt-2 font-mono text-caption" dir="ltr">
-              {(status.isr_tags ?? []).join(', ') || 'articles, cases, doctors, services, settings, pricing, seo, redirects, faqs, testimonials, chatbot'}
+              {(status.isr_tags ?? []).join(', ') || 'articles, cases, services, settings, pricing, seo, redirects, faqs, testimonials, chatbot'}
             </p>
           </div>
         </div>

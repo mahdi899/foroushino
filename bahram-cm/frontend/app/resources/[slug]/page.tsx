@@ -54,14 +54,14 @@ export default async function ResourceDetailPage({
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       <ContentViewTracker type="resource" slug={item.slug} />
-      <section className="relative isolate overflow-hidden bg-ink">
+      <section className="page-hero page-hero--media relative isolate overflow-hidden bg-ink">
         <PageHeroBackdrop
           src={cover}
           alt={coverAlt}
           fallbackAlt={`کاور ${item.title}`}
           priority
         />
-        <div className="container-luxe relative z-[2] max-w-3xl min-w-0 py-section-sm">
+        <div className="container-luxe page-hero__container max-w-3xl min-w-0">
           <Reveal>
             <Link
               href="/resources"
@@ -72,7 +72,7 @@ export default async function ResourceDetailPage({
             </Link>
           </Reveal>
           <Reveal delay={0.06}>
-            <div className="mt-6 md:mt-8">
+            <div className="mt-4 md:mt-5">
               <Badge tone="gold">{item.type}</Badge>
             </div>
           </Reveal>

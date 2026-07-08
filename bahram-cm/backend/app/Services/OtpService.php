@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\OtpPurpose;
 use App\Models\OtpCode;
 use App\Services\Exceptions\OtpException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -27,6 +28,8 @@ class OtpService
     private const MAX_PER_MOBILE_PER_HOUR = 5;
 
     private const MAX_PER_IP_PER_HOUR = 20;
+
+    private const BALE_RESEND_SECONDS = 30;
 
     public function __construct(private readonly SmsService $sms) {}
 
@@ -70,7 +73,47 @@ class OtpService
             RateLimiter::hit($ipKey, 3600);
         }
 
+        Cache::put($this->plainCodeCacheKey($mobile, $purpose), $code, now()->addMinutes(self::EXPIRES_IN_MINUTES));
+
         $this->sms->sendOtp($mobile, $code);
+    }
+
+    public function sendViaBaleSafir(string $mobile, OtpPurpose $purpose): void
+    {
+        if ($this->isDevMode()) {
+            return;
+        }
+
+        $code = Cache::get($this->plainCodeCacheKey($mobile, $purpose));
+
+        if (! is_string($code) || $code === '') {
+            throw new OtpException('کد فعالی برای ارسال از طریق بله یافت نشد. ابتدا «ارسال مجدد کد» را بزنید.');
+        }
+
+        $otp = OtpCode::query()
+            ->where('mobile', $mobile)
+            ->where('purpose', $purpose->value)
+            ->whereNull('used_at')
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $otp || $otp->isExpired()) {
+            Cache::forget($this->plainCodeCacheKey($mobile, $purpose));
+            throw new OtpException('کد تایید منقضی شده است. لطفاً دوباره درخواست دهید.');
+        }
+
+        $baleKey = "otp:bale:{$mobile}:{$purpose->value}";
+
+        if (RateLimiter::tooManyAttempts($baleKey, 1)) {
+            $seconds = RateLimiter::availableIn($baleKey);
+            throw new OtpException("لطفاً {$seconds} ثانیه دیگر دوباره از بله درخواست کنید.");
+        }
+
+        if (! $this->sms->sendOtpViaBaleSafir($mobile, $code)) {
+            throw new OtpException('ارسال کد از طریق سفیر بله ناموفق بود. تنظیمات سفیر بله را بررسی کنید.');
+        }
+
+        RateLimiter::hit($baleKey, self::BALE_RESEND_SECONDS);
     }
 
     public function verify(string $mobile, string $code, OtpPurpose $purpose): void
@@ -104,6 +147,12 @@ class OtpService
         }
 
         $otp->update(['used_at' => now()]);
+        Cache::forget($this->plainCodeCacheKey($mobile, $purpose));
+    }
+
+    private function plainCodeCacheKey(string $mobile, OtpPurpose $purpose): string
+    {
+        return "otp:plain:{$mobile}:{$purpose->value}";
     }
 
     private function isDevMode(): bool

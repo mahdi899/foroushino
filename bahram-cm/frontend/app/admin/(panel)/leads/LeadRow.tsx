@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, Loader2, Pencil, Trash2, X } from 'lucide-react';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import { Badge } from '../ui';
 import {
   buildLeadSubmittedRows,
@@ -240,8 +241,7 @@ export function LeadRow({ lead: initialLead }: { lead: LeadView }) {
                           rel="noopener noreferrer"
                           className="block overflow-hidden rounded-lg border border-border bg-surface"
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={photo.url} alt="عکس لید" className="h-24 w-24 object-cover" />
+                          <DirectMediaImg admin src={photo.url} alt="عکس لید" className="h-24 w-24 object-cover" />
                         </a>
                       ))}
                     </div>

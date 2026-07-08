@@ -76,15 +76,6 @@ export interface CaseContent {
   tags: string[];
 }
 
-export interface DoctorContent {
-  slug: string;
-  nameFa: string;
-  title: string;
-  bio: string;
-  specialties: string[];
-  image: string;
-}
-
 export interface ConsultationQuestion {
   key: string;
   question: string;

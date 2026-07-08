@@ -12,20 +12,20 @@ export function FinalCTA() {
         />
         <div className="container-luxe relative z-[1]">
           <Reveal>
-            <div className="final-cta-layout flex min-w-0 flex-col gap-5 sm:gap-6 xl:flex-row xl:items-center xl:justify-between xl:gap-8 2xl:gap-10">
-              <div className="final-cta-copy flex min-w-0 flex-col gap-2.5 sm:gap-3 2xl:max-w-[58%] 2xl:flex-row 2xl:items-center 2xl:gap-8">
+            <div className="final-cta-layout flex min-w-0 flex-col gap-5 sm:gap-6 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+              <div className="final-cta-copy flex min-w-0 flex-1 flex-col gap-2.5 sm:gap-3">
                 <h2
                   id="final-cta-heading"
-                  className="whitespace-pre-line text-balance font-display text-[1.0625rem] font-bold leading-[1.35] tracking-[-0.02em] text-white sm:text-lg md:text-xl 2xl:max-w-[11.5rem] 2xl:shrink-0"
+                  className="whitespace-pre-line text-balance font-display text-[1.0625rem] font-bold leading-[1.35] tracking-[-0.02em] text-white sm:text-lg md:text-xl"
                 >
                   {site.finalCta.title.trim()}
                 </h2>
-                <p className="min-w-0 text-pretty text-sm leading-[1.7] text-white/72 sm:text-[0.9375rem] md:text-base 2xl:max-w-[36ch] 2xl:border-s 2xl:border-white/12 2xl:ps-8">
+                <p className="min-w-0 text-pretty text-sm leading-[1.7] text-white/72 sm:text-[0.9375rem] md:text-base lg:max-w-[42rem]">
                   {site.finalCta.body}
                 </p>
               </div>
 
-              <div className="final-cta-actions grid w-full min-w-0 grid-cols-1 gap-2.5 min-[420px]:grid-cols-2 xl:w-auto xl:max-w-[26rem] xl:shrink-0 2xl:max-w-none 2xl:grid-cols-2">
+              <div className="final-cta-actions flex w-full min-w-0 shrink-0 flex-col gap-2.5 sm:max-w-md sm:flex-row sm:gap-3 lg:w-auto lg:max-w-[24rem] lg:flex-col xl:max-w-[26rem] xl:flex-row xl:gap-2.5">
                 <TrackedLinkButton
                   href={site.finalCta.cta.href}
                   event="homepage_cta_click"
@@ -33,7 +33,7 @@ export function FinalCTA() {
                   variant="vip"
                   size="md"
                   withArrow
-                  className="min-h-11 w-full justify-center px-3.5 text-center text-sm leading-snug sm:px-4 sm:text-[0.9375rem]"
+                  className="min-h-11 w-full justify-center px-3.5 text-center text-sm leading-snug sm:flex-1 sm:px-4 sm:text-[0.9375rem] lg:flex-none xl:flex-1"
                 >
                   {site.finalCta.cta.label}
                 </TrackedLinkButton>
@@ -44,7 +44,7 @@ export function FinalCTA() {
                   variant="vip"
                   size="md"
                   withArrow
-                  className="min-h-11 w-full justify-center px-3.5 text-center text-sm leading-snug sm:px-4 sm:text-[0.9375rem]"
+                  className="min-h-11 w-full justify-center px-3.5 text-center text-sm leading-snug sm:flex-1 sm:px-4 sm:text-[0.9375rem] lg:flex-none xl:flex-1"
                 >
                   درخواست ورود به آکادمی
                 </TrackedLinkButton>

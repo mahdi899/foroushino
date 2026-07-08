@@ -16,6 +16,9 @@ import { PerformanceProvider } from "@/components/performance/PerformanceProvide
 import { getPublicChatbotConfig } from "@/lib/chatbot/public";
 import { EMPTY_CHATBOT_PUBLIC } from "@/lib/chatbot/types";
 import { getPublicPerfConfig } from "@/lib/cache/public";
+import { getCurrentStudent } from "@/lib/student/session";
+import { StudentAuthRoot } from "@/components/student-panel/auth/StudentAuthRoot";
+import { ReferralCapture } from "@/components/commerce/ReferralCapture";
 import { GrainOverlay } from "@/components/motion/GrainOverlay";
 import { ThemeBootScript } from "@/components/theme/ThemeBootScript";
 import "@/styles/globals.css";
@@ -41,6 +44,8 @@ export default async function RootLayout({
     getPublicPerfConfig(),
   ]);
   const chatbotAiAvailable = chatbotConfig.enabled && (chatbotConfig.ai_available ?? false);
+  const studentUser = !isAdminRoute ? await getCurrentStudent() : null;
+  const studentLoggedIn = Boolean(studentUser);
 
   if (!isBareShellRoute && (perfConfig.developer_mode || perfConfig.page_cache === false)) {
     unstable_noStore();
@@ -70,18 +75,21 @@ export default async function RootLayout({
         >
           پرش به محتوای اصلی
         </a>
-        <GrainOverlay />
-        <PerformanceProvider config={perfConfig}>
-          <AdminAwareChrome>{children}</AdminAwareChrome>
-        </PerformanceProvider>
-        {!isBareShellRoute && chatbotConfig.enabled ? (
-          <SiteChatbotEntry
-            config={chatbotConfig}
-            aiAvailable={chatbotAiAvailable}
-            faqGroups={[]}
-            deferWidget={perfConfig.lazy_load_chatbot !== false}
-          />
-        ) : null}
+        {!isBareShellRoute ? <GrainOverlay /> : null}
+        {!isBareShellRoute ? <ReferralCapture /> : null}
+        <StudentAuthRoot initialLoggedIn={studentLoggedIn}>
+          <PerformanceProvider config={perfConfig}>
+            <AdminAwareChrome>{children}</AdminAwareChrome>
+          </PerformanceProvider>
+          {!isBareShellRoute && chatbotConfig.enabled ? (
+            <SiteChatbotEntry
+              config={chatbotConfig}
+              aiAvailable={chatbotAiAvailable}
+              faqGroups={[]}
+              deferWidget={perfConfig.lazy_load_chatbot !== false}
+            />
+          ) : null}
+        </StudentAuthRoot>
       </body>
     </html>
   );

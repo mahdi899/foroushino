@@ -1,4 +1,4 @@
-/** Shared `sizes` hints for next/image — keeps optimizer requests close to rendered width. */
+/** Shared `sizes` hints for responsive layout — used by AppImage fill layouts. */
 export const IMAGE_SIZES = {
   /** Article / blog in-content cover (~container-content). */
   blogCover: '(max-width:1024px) 100vw, 720px',

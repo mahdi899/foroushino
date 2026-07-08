@@ -5,19 +5,17 @@ namespace App\Services;
 use App\Enums\ReferralConversionStatus;
 use App\Models\CashbackPayout;
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\ReferralCode;
 use App\Models\ReferralConversion;
-use App\Models\Setting;
 use App\Models\User;
 
 /**
- * Referral code issuance and cashback bookkeeping. The cashback amount is
- * configurable via `settings` (group "referral") so it is never hardcoded.
+ * Referral code issuance and cashback bookkeeping. Cashback amount is defined
+ * per product (percent of order total or fixed Toman).
  */
 class ReferralService
 {
-    private const DEFAULT_CASHBACK_AMOUNT = 2_000_000;
-
     public function getOrCreateCode(User $user): ReferralCode
     {
         return $user->referralCode ?? ReferralCode::create([
@@ -26,19 +24,16 @@ class ReferralService
         ]);
     }
 
-    public function cashbackAmount(): int
+    public function cashbackAmountForOrder(Order $order): int
     {
-        $setting = Setting::query()->where('group', 'referral')->where('key', 'cashback_amount')->first();
+        $order->loadMissing('product');
+        $product = $order->product;
 
-        if (! $setting) {
-            $setting = Setting::create([
-                'group' => 'referral',
-                'key' => 'cashback_amount',
-                'value' => ['amount' => self::DEFAULT_CASHBACK_AMOUNT],
-            ]);
+        if (! $product instanceof Product) {
+            return 0;
         }
 
-        return (int) ($setting->value['amount'] ?? self::DEFAULT_CASHBACK_AMOUNT);
+        return $product->computeReferralCashback((int) $order->final_amount);
     }
 
     /**
@@ -66,14 +61,58 @@ class ReferralService
             return; // one conversion per order, at most
         }
 
+        $cashbackAmount = $this->cashbackAmountForOrder($order);
+
+        if ($cashbackAmount <= 0) {
+            return;
+        }
+
         ReferralConversion::create([
             'referrer_user_id' => $referralCode->user_id,
             'buyer_user_id' => $order->user_id,
             'order_id' => $order->id,
             'status' => ReferralConversionStatus::Pending,
-            'cashback_amount' => $this->cashbackAmount(),
+            'cashback_amount' => $cashbackAmount,
             'converted_at' => now(),
         ]);
+    }
+
+    /** @return array<int, array{title: string, slug: string, type: string, value: int, label: string}> */
+    public function activeCashbackProducts(): array
+    {
+        return Product::query()
+            ->where('is_active', true)
+            ->where('referral_cashback_enabled', true)
+            ->orderBy('title')
+            ->get()
+            ->map(fn (Product $product) => [
+                'title' => $product->title,
+                'slug' => $product->slug,
+                'type' => (string) $product->referral_cashback_type,
+                'value' => (int) $product->referral_cashback_value,
+                'label' => $this->formatCashbackLabel($product),
+            ])
+            ->values()
+            ->all();
+    }
+
+    public function formatCashbackLabel(Product $product): string
+    {
+        if (! $product->referral_cashback_enabled) {
+            return '';
+        }
+
+        $value = (int) ($product->referral_cashback_value ?? 0);
+
+        if ($product->referral_cashback_type === 'percent' && $value > 0) {
+            return "{$value}٪ از مبلغ خرید";
+        }
+
+        if ($product->referral_cashback_type === 'fixed' && $value > 0) {
+            return number_format($value).' تومان';
+        }
+
+        return '';
     }
 
     /** @return array{successful_purchases: int, payable_amount: int, paid_amount: int, pending_amount: int} */

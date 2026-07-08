@@ -178,13 +178,13 @@ export default function SaatPage() {
       {/* Hero */}
       <section
         aria-labelledby="saat-hero-heading"
-        className="relative isolate overflow-hidden border-b border-gold/15 bg-ink shadow-[inset_0_1px_0_color-mix(in_oklab,var(--color-gold)_18%,transparent)]"
+        className="page-hero relative isolate overflow-hidden border-b border-gold/15 bg-ink shadow-[inset_0_1px_0_color-mix(in_oklab,var(--color-gold)_18%,transparent)]"
       >
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(90%_55%_at_100%_-5%,color-mix(in_oklab,var(--color-gold)_24%,transparent),transparent_62%)]" />
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_42%_at_0%_100%,color-mix(in_oklab,var(--color-gold)_14%,transparent),transparent_70%)]" />
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-b from-gold/[0.08] via-transparent to-ink" />
 
-        <div className="container-luxe relative z-[2] py-section-sm md:py-section">
+        <div className="container-luxe page-hero__container relative z-[2]">
           <div className="grid items-center gap-8 md:grid-cols-12 md:gap-12 lg:gap-14">
             <div className="md:col-span-6 lg:col-span-5">
               <Reveal>

@@ -46,8 +46,9 @@ export default async function GuideDetailPage({
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       <ContentViewTracker type="guide" slug={item.slug} />
-      <section className="relative overflow-hidden bg-ink wash-emerald py-section-sm">
-        <div className="container-luxe relative z-[2] max-w-3xl min-w-0">
+      <section className="page-hero relative overflow-hidden bg-ink">
+        <div className="page-hero__mesh" aria-hidden />
+        <div className="container-luxe page-hero__container max-w-3xl min-w-0">
           <Reveal>
             <Link
               href="/guides"

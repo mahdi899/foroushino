@@ -2,7 +2,6 @@
 export const CACHE_ISR_TAGS = [
   'articles',
   'cases',
-  'doctors',
   'services',
   'settings',
   'pricing',

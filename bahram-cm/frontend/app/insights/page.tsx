@@ -9,7 +9,6 @@ import { SiteImage } from "@/components/ui/SiteImage";
 import { getArticles } from "@/lib/services/articles";
 import { formatDateFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
-import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 export const revalidate = 300;
 
@@ -38,7 +37,7 @@ function ArticleCover({
   }
   return (
     <SiteImage
-      src={resolveMediaUrl(src)}
+      src={src}
       alt={alt}
       fallbackAlt={title ? `کاور ${title}` : "کاور مقاله"}
       fill

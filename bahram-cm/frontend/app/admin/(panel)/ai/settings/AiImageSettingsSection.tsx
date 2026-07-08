@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ImageIcon, List } from 'lucide-react';
 import Link from 'next/link';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import {
   AI_IMAGE_ENGINES,
   AI_IMAGE_MODELS,
@@ -237,8 +238,7 @@ export function AiImageSettingsSection({
 
         {imageTestPreviewUrl && (
           <div className="overflow-hidden rounded-xl border border-border bg-surface-soft/40">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageTestPreviewUrl} alt="نتیجه تست" className="mx-auto max-h-52 w-full object-contain p-2" />
+            <DirectMediaImg admin src={imageTestPreviewUrl} alt="نتیجه تست" className="mx-auto max-h-52 w-full object-contain p-2" />
             <p className="border-t border-border px-3 py-2 text-center text-caption text-text-muted">
               <Link href="/admin/gallery" className="text-accent hover:text-primary">
                 مشاهده در گالری

@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\SpotplayerLicense;
 use App\Models\User;
 use App\Services\Exceptions\SpotPlayerException;
+use App\Services\InAppNotificationService;
 use App\Services\ReferralService;
 use App\Services\SmsService;
 use App\Services\SpotPlayerService;
@@ -38,8 +39,12 @@ class FulfillOrderJob implements ShouldQueue
 
     public function __construct(public int $orderId) {}
 
-    public function handle(SpotPlayerService $spotPlayer, SmsService $sms, ReferralService $referrals): void
-    {
+    public function handle(
+        SpotPlayerService $spotPlayer,
+        SmsService $sms,
+        ReferralService $referrals,
+        InAppNotificationService $notifications,
+    ): void {
         $order = Order::query()->with('product')->find($this->orderId);
 
         if (! $order || ! $order->isPaid()) {
@@ -55,14 +60,26 @@ class FulfillOrderJob implements ShouldQueue
         // SpotPlayer is an external HTTP call — issue it before opening the
         // DB transaction so we never hold a transaction open across I/O.
         $licenseResponse = null;
-        if ($userId && $order->product && filled($order->product->spotplayer_course_id) && blank($order->spotplayer_license_code)) {
-            try {
-                $licenseResponse = $spotPlayer->issueLicense($order);
-            } catch (SpotPlayerException $e) {
-                Log::channel('spotplayer')->error('Could not issue SpotPlayer license during fulfillment.', [
-                    'order_id' => $order->id,
-                    'message' => $e->getMessage(),
-                ]);
+        $needsSpotPlayerLicense = $userId
+            && $order->product
+            && filled($order->product->spotplayer_course_id)
+            && blank($order->spotplayer_license_code);
+
+        if ($needsSpotPlayerLicense) {
+            $licenseResponse = $this->reuseExistingLicense($userId, $order->product_id);
+
+            if (! $licenseResponse) {
+                try {
+                    $licenseResponse = $spotPlayer->issueLicense($order);
+                } catch (SpotPlayerException $e) {
+                    Log::channel('spotplayer')->error('Could not issue SpotPlayer license during fulfillment.', [
+                        'order_id' => $order->id,
+                        'message' => $e->getMessage(),
+                    ]);
+
+                    // SpotPlayer rejects duplicate watermark phones on the same course.
+                    $licenseResponse = $this->reuseExistingLicense($userId, $order->product_id);
+                }
             }
         }
 
@@ -119,7 +136,63 @@ class FulfillOrderJob implements ShouldQueue
             $sms->sendLicenseCreated($order);
         }
 
-        $order->update(['status' => 'fulfilled']);
+        $spotPlayerProduct = filled($order->product?->spotplayer_course_id);
+        $licenseReady = filled($order->spotplayer_license_code) || ! $spotPlayerProduct;
+
+        $order->update(['status' => $licenseReady ? 'fulfilled' : 'paid']);
+
+        // Older paid orders for the same user may have missed fulfillment.
+        if ($userId && $order->product_id && $licenseReady) {
+            $this->markSiblingPaidOrdersFulfilled($userId, (int) $order->product_id);
+        }
+
+        $order->loadMissing('product', 'user');
+        $notifications->orderPaid($order);
+        if ($licenseReady && filled($order->spotplayer_license_code)) {
+            $notifications->licenseReady($order);
+        }
+    }
+
+    /**
+     * @return array{_id?: string, key: string, url?: string}|null
+     */
+    private function reuseExistingLicense(int $userId, int $productId): ?array
+    {
+        $existing = SpotplayerLicense::query()
+            ->where('user_id', $userId)
+            ->where('product_id', $productId)
+            ->where('status', SpotplayerLicenseStatus::Active)
+            ->whereNotNull('license_key')
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $existing?->license_key) {
+            return null;
+        }
+
+        Log::channel('spotplayer')->info('Reusing existing SpotPlayer license for repeat purchase.', [
+            'user_id' => $userId,
+            'product_id' => $productId,
+            'source_order_id' => $existing->order_id,
+            'license_id' => data_get($existing->raw_response, '_id'),
+        ]);
+
+        return [
+            '_id' => data_get($existing->raw_response, '_id'),
+            'key' => $existing->license_key,
+            'url' => $this->licenseUrlToApiPath($existing->license_url),
+        ];
+    }
+
+    private function licenseUrlToApiPath(?string $licenseUrl): ?string
+    {
+        if (blank($licenseUrl)) {
+            return null;
+        }
+
+        $path = parse_url($licenseUrl, PHP_URL_PATH);
+
+        return is_string($path) && $path !== '' ? $path : null;
     }
 
     /** Last-resort user resolution for orders created before Phase-1 linkage existed. */
@@ -153,5 +226,14 @@ class FulfillOrderJob implements ShouldQueue
         }
 
         return $url;
+    }
+
+    private function markSiblingPaidOrdersFulfilled(int $userId, int $productId): void
+    {
+        Order::query()
+            ->where('user_id', $userId)
+            ->where('product_id', $productId)
+            ->where('status', 'paid')
+            ->update(['status' => 'fulfilled']);
     }
 }

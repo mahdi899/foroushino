@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
 import { Loader2, RotateCcw, Trash2, X } from 'lucide-react';
 import { getGalleryTrashCount, listGalleryTrash, restoreGalleryMedia } from './actions';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import type { AdminMediaTrashItem } from '@/lib/admin/mediaTypes';
 
 function formatRemaining(purgeAt: string): string {
@@ -96,7 +96,7 @@ export function MediaTrashModal({ open, onClose, onChanged }: MediaTrashModalPro
                   className="flex items-center gap-3 rounded-lg border border-border bg-surface-soft/50 p-2"
                 >
                   <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-md bg-surface">
-                    <Image src={item.url} alt={item.label} fill sizes="56px" className="object-cover" unoptimized />
+                    <DirectMediaImg admin src={item.url} alt={item.label} fill className="object-cover" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-small font-medium text-text">{item.label}</p>

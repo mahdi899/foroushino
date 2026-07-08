@@ -19,6 +19,15 @@ return Application::configure(basePath: dirname(__DIR__))
         // Next.js proxies /admin (and related paths) with X-Forwarded-* headers.
         $middleware->trustProxies(at: '*');
 
+        // API / JSON clients must get 401 — never redirect to a missing web `login` route.
+        $middleware->redirectGuestsTo(function (Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return null;
+            }
+
+            return null;
+        });
+
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);

@@ -12,10 +12,13 @@ class ProductController extends Controller
 {
     public function index()
     {
-        $products = Product::query()
-            ->active()
-            ->orderByDesc('created_at')
-            ->get();
+        $query = Product::query()->active()->orderByDesc('created_at');
+
+        if (filter_var(request()->input('listed'), FILTER_VALIDATE_BOOLEAN)) {
+            $query->listedOnCourses();
+        }
+
+        $products = $query->get();
 
         return ProductListResource::collection($products);
     }

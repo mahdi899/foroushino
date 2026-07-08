@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { TicketReplyForm } from '@/components/student-panel/support/TicketReplyForm';
-import { studentFetch } from '@/lib/student/session';
+import { panelStudentFetch } from '@/lib/student/panelServer';
 
 export const metadata: Metadata = { title: 'جزئیات تیکت | پنل کاربری', robots: { index: false, follow: false } };
 
@@ -20,7 +20,7 @@ interface TicketDetail {
 
 export default async function PanelTicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { data: ticket } = await studentFetch<{ data: TicketDetail }>(`/tickets/${id}`);
+  const { data: ticket } = await panelStudentFetch<{ data: TicketDetail }>(`/tickets/${id}`);
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">

@@ -1,48 +1,27 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowLeft, Clock, GraduationCap } from "lucide-react";
-import { PageHero } from "@/components/blocks/PageHero";
-import { SocialProofStats } from "@/components/sections/SocialProofStats";
-import { Reveal } from "@/components/motion/Reveal";
-import { Badge } from "@/components/ui/Badge";
-import { SiteImage } from "@/components/ui/SiteImage";
-import { site } from "@/content/site";
-import { buildMetadata } from "@/lib/seo";
-import { resolveMediaAlt } from "@/lib/media/alt";
-import { sitePhotos } from "@/lib/site-photo-paths";
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { ArrowLeft, Clock, GraduationCap } from 'lucide-react';
+import { PageHero } from '@/components/blocks/PageHero';
+import { SocialProofStats } from '@/components/sections/SocialProofStats';
+import { Reveal } from '@/components/motion/Reveal';
+import { Badge } from '@/components/ui/Badge';
+import { SiteImage } from '@/components/ui/SiteImage';
+import { getCourseCatalogCards } from '@/lib/catalog/courseListings';
+import { buildMetadata } from '@/lib/seo';
+import { resolveMediaAlt } from '@/lib/media/alt';
 
 export const metadata: Metadata = buildMetadata({
-  title: "دوره‌ها",
-  description: "دو مسیر اصلی آکادمی؛ کمپین‌نویسی و سات — هر کدام با خروجی مشخص.",
-  path: "/courses",
+  title: 'دوره‌ها',
+  description: 'دو مسیر اصلی آکادمی؛ کمپین‌نویسی و سات — هر کدام با خروجی مشخص.',
+  path: '/courses',
 });
 
-const courseMeta = [
-  {
-    level: "مسیر حرفه‌ای",
-    duration: "۱۰ فصل",
-    featured: true,
-    image: sitePhotos.courseBackstage,
-  },
-  {
-    level: "سیستم عملیاتی",
-    duration: "مسیر WAP",
-    featured: false,
-    image: sitePhotos.landscapeSession,
-  },
-] as const;
-
-const courses = site.mainPaths.items.map((item, i) => ({
-  ...item,
-  subtitle: `${item.tagline} — ${item.description}`,
-  ...courseMeta[i]!,
-}));
-
 export default async function CoursesPage() {
+  const courses = await getCourseCatalogCards();
   const courseCards = await Promise.all(
     courses.map(async (course) => ({
       ...course,
-      imageAlt: await resolveMediaAlt(course.image, `کاور ${course.label}`),
+      imageAlt: course.imageAlt || (await resolveMediaAlt(course.image, `کاور ${course.label}`)),
     })),
   );
 
@@ -82,7 +61,7 @@ export default async function CoursesPage() {
                   </div>
                   <div className="p-5 md:p-6">
                     <h2 className="text-h3 text-balance text-bone">{course.label}</h2>
-                    <p className="mt-2 text-bone-dim">{course.subtitle}</p>
+                    <p className="mt-2 text-bone-dim">{course.subtitle || course.tagline}</p>
                     <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-caption text-mist">
                       <span className="inline-flex items-center gap-1.5">
                         <GraduationCap className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />

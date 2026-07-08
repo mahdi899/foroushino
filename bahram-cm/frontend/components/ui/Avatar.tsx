@@ -23,10 +23,9 @@ export function Avatar({
       <AppImage
         src={src}
         alt={alt}
-        width={size}
-        height={size}
+        fill
         sizes={`${size}px`}
-        className="h-full w-full object-cover"
+        className="object-cover object-center"
       />
     </span>
   );

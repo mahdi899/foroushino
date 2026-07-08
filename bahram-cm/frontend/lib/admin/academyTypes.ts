@@ -88,6 +88,20 @@ export type AdminCourseAccess = {
   activated_at: string | null;
 };
 
+export type AdminSpotplayerLicense = {
+  id: number;
+  user_id: number | null;
+  user_name: string | null;
+  user_mobile: string | null;
+  order_id: number | null;
+  order_number: string | null;
+  product_title: string | null;
+  license_key: string | null;
+  status: string;
+  issued_at: string | null;
+  created_at: string | null;
+};
+
 export type AdminSeminar = {
   id: number;
   title: string;

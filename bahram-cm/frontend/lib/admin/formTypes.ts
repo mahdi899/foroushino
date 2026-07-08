@@ -6,7 +6,6 @@ export const FORM_TYPE_LABELS: Record<string, string> = {
   pricing: 'مشاور قیمت',
   blog: 'مقاله',
   case: 'نمونه کار',
-  doctor: 'پروفایل پزشک',
   landing: 'لندینگ',
   local_appointment: 'رزرو نوبت (صفحه اصلی)',
   chatbot: 'چت‌بات',

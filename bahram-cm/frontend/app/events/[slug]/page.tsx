@@ -55,14 +55,14 @@ export default async function EventDetailPage({
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       <ContentViewTracker type="event" slug={event.slug} />
-      <section className="relative isolate overflow-hidden bg-ink">
+      <section className="page-hero page-hero--media relative isolate overflow-hidden bg-ink">
         <PageHeroBackdrop
           src={cover}
           alt={coverAlt}
           fallbackAlt={`کاور ${event.title}`}
           priority
         />
-        <div className="container-luxe relative z-[2] max-w-4xl min-w-0 py-section-sm">
+        <div className="container-luxe page-hero__container max-w-4xl min-w-0">
           <Reveal>
             <Link
               href="/events"
@@ -73,7 +73,7 @@ export default async function EventDetailPage({
             </Link>
           </Reveal>
           <Reveal delay={0.06}>
-            <div className="mt-6 md:mt-8">
+            <div className="mt-4 md:mt-5">
               <Badge tone={live ? "emerald" : "neutral"}>
                 {live ? (
                   <Radio className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
@@ -85,7 +85,7 @@ export default async function EventDetailPage({
             </div>
           </Reveal>
           <Reveal delay={0.12}>
-            <h1 className="mt-4 max-w-full min-w-0 text-h1 text-balance md:mt-6 md:text-display">{event.title}</h1>
+            <h1 className="mt-3 max-w-full min-w-0 text-h2 text-balance md:mt-4 md:text-h1">{event.title}</h1>
           </Reveal>
           <Reveal delay={0.2}>
             <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 text-bone-dim">

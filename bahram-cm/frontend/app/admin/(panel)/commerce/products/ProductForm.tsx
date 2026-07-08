@@ -10,6 +10,7 @@ import { CoverImageField } from '../../content/CoverImageField';
 import { ArticleBodyEditor } from '../../blog/ArticleBodyEditorLazy';
 import { SeoScorePanel } from '../../blog/SeoScorePanel';
 import { saveProduct, deleteProduct } from '../actions';
+import { SpotPlayerProductSection } from './SpotPlayerProductSection';
 import type { AdminProduct } from '@/lib/admin/commerceTypes';
 import type { SeoFixPatch } from '@/lib/ai/seoFix';
 
@@ -21,10 +22,17 @@ const empty: Partial<AdminProduct> = {
   short_description: '',
   price: 0,
   sale_price: null,
+  referral_cashback_enabled: false,
+  referral_cashback_type: 'fixed',
+  referral_cashback_value: null,
   is_active: true,
   featured_image: '',
+  show_on_courses: false,
+  featured_listing: false,
+  course_level: '',
+  course_duration: '',
+  landing_href: '',
   spotplayer_course_id: '',
-  spotplayer_product_id: '',
   meta_title: '',
   meta_description: '',
 };
@@ -79,6 +87,17 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
       return;
     }
 
+    if (form.referral_cashback_enabled) {
+      if (!form.referral_cashback_type) {
+        setError('نوع کش‌بک معرفی را انتخاب کنید.');
+        return;
+      }
+      if (!form.referral_cashback_value || Number(form.referral_cashback_value) <= 0) {
+        setError('مبلغ یا درصد کش‌بک معرفی را وارد کنید.');
+        return;
+      }
+    }
+
     setPending(true);
     setError('');
     setMessage('');
@@ -92,10 +111,21 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
         short_description: form.short_description,
         price: Number(form.price) || 0,
         sale_price: form.sale_price ? Number(form.sale_price) : null,
+        referral_cashback_enabled: !!form.referral_cashback_enabled,
+        referral_cashback_type: form.referral_cashback_enabled
+          ? (form.referral_cashback_type as 'percent' | 'fixed') ?? 'fixed'
+          : null,
+        referral_cashback_value: form.referral_cashback_enabled
+          ? Number(form.referral_cashback_value) || null
+          : null,
         is_active: !!form.is_active,
         featured_image: form.featured_image || null,
-        spotplayer_course_id: form.spotplayer_course_id || null,
-        spotplayer_product_id: form.spotplayer_product_id || null,
+        show_on_courses: !!form.show_on_courses,
+        featured_listing: !!form.featured_listing,
+        course_level: form.course_level?.trim() || null,
+        course_duration: form.course_duration?.trim() || null,
+        landing_href: form.landing_href?.trim() || null,
+        spotplayer_course_id: form.spotplayer_course_id?.trim() || null,
         meta_title: form.meta_title || null,
         meta_description: form.meta_description || null,
       },
@@ -153,7 +183,17 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
               className="btn btn-secondary px-3 py-2 text-small"
             >
               <ExternalLink className="h-4 w-4" />
-              پیش‌نمایش
+              پیش‌نمایش خرید
+            </Link>
+          )}
+          {form.show_on_courses && (form.landing_href || form.slug) && (
+            <Link
+              href={form.landing_href?.trim() || `/course/${form.slug}`}
+              target="_blank"
+              className="btn btn-secondary px-3 py-2 text-small"
+            >
+              <ExternalLink className="h-4 w-4" />
+              صفحه دوره‌ها
             </Link>
           )}
           {product?.id && (
@@ -248,6 +288,71 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
               aiPrompt={aiImagePrompt}
             />
 
+            <div className="rounded-lg border border-border bg-surface/40 p-4 space-y-4">
+              <div>
+                <h3 className="text-small font-semibold text-primary-dark">نمایش در صفحه دوره‌ها</h3>
+                <p className="mt-1 text-caption text-text-muted">
+                  تصویر شاخص و متن‌های زیر روی کارت دوره در صفحه اصلی و /courses نمایش داده می‌شوند.
+                </p>
+              </div>
+
+              <label className="flex items-center gap-2 text-small text-text">
+                <input
+                  type="checkbox"
+                  checked={!!form.show_on_courses}
+                  onChange={(e) => patch({ show_on_courses: e.target.checked })}
+                  className="h-4 w-4 accent-[var(--color-primary)]"
+                />
+                نمایش در لیست دوره‌ها
+              </label>
+
+              {form.show_on_courses ? (
+                <>
+                  <label className="flex items-center gap-2 text-small text-text">
+                    <input
+                      type="checkbox"
+                      checked={!!form.featured_listing}
+                      onChange={(e) => patch({ featured_listing: e.target.checked })}
+                      className="h-4 w-4 accent-[var(--color-primary)]"
+                    />
+                    برچسب «پرچم‌دار»
+                  </label>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <label className="field-label">سطح / مسیر</label>
+                      <input
+                        className="field-input"
+                        value={form.course_level ?? ''}
+                        onChange={(e) => patch({ course_level: e.target.value })}
+                        placeholder="مثلاً: مسیر حرفه‌ای"
+                      />
+                    </div>
+                    <div>
+                      <label className="field-label">مدت / حجم</label>
+                      <input
+                        className="field-input"
+                        value={form.course_duration ?? ''}
+                        onChange={(e) => patch({ course_duration: e.target.value })}
+                        placeholder="مثلاً: ۱۰ فصل"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="field-label">لینک صفحه دوره</label>
+                    <input
+                      className="field-input"
+                      dir="ltr"
+                      value={form.landing_href ?? ''}
+                      onChange={(e) => patch({ landing_href: e.target.value })}
+                      placeholder="/course/campaign-writing"
+                    />
+                  </div>
+                </>
+              ) : null}
+            </div>
+
             <ArticleBodyEditor
               label="توضیحات کامل"
               value={form.description ?? ''}
@@ -285,26 +390,62 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
           </div>
 
           <div className="card p-5">
-            <h2 className="mb-4 text-h3 font-bold text-primary-dark">SpotPlayer</h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label>
-                <span className="field-label">شناسه دوره</span>
-                <input
-                  className="field-input"
-                  value={form.spotplayer_course_id ?? ''}
-                  onChange={(e) => patch({ spotplayer_course_id: e.target.value })}
-                />
-              </label>
-              <label>
-                <span className="field-label">شناسه محصول</span>
-                <input
-                  className="field-input"
-                  value={form.spotplayer_product_id ?? ''}
-                  onChange={(e) => patch({ spotplayer_product_id: e.target.value })}
-                />
-              </label>
-            </div>
+            <h2 className="mb-1 text-h3 font-bold text-primary-dark">کش‌بک معرفی</h2>
+            <p className="mb-4 text-caption text-text-muted">
+              مبلغ پاداش برای معرف وقتی این محصول با کد دعوت خریداری شود.
+            </p>
+
+            <label className="flex items-center gap-2 text-small text-text">
+              <input
+                type="checkbox"
+                checked={!!form.referral_cashback_enabled}
+                onChange={(e) => patch({ referral_cashback_enabled: e.target.checked })}
+                className="h-4 w-4 accent-[var(--color-primary)]"
+              />
+              فعال‌سازی کش‌بک برای این محصول
+            </label>
+
+            {form.referral_cashback_enabled ? (
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="field-label">نوع محاسبه</label>
+                  <select
+                    className="field-input"
+                    value={form.referral_cashback_type ?? 'fixed'}
+                    onChange={(e) =>
+                      patch({ referral_cashback_type: e.target.value as 'percent' | 'fixed' })
+                    }
+                  >
+                    <option value="fixed">مبلغ ثابت (تومان)</option>
+                    <option value="percent">درصد از مبلغ خرید</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="field-label">
+                    {form.referral_cashback_type === 'percent' ? 'درصد کش‌بک' : 'مبلغ کش‌بک (تومان)'}
+                  </label>
+                  <input
+                    className="field-input"
+                    type="number"
+                    min={1}
+                    max={form.referral_cashback_type === 'percent' ? 100 : undefined}
+                    value={form.referral_cashback_value ?? ''}
+                    onChange={(e) =>
+                      patch({
+                        referral_cashback_value: e.target.value ? Number(e.target.value) : null,
+                      })
+                    }
+                    placeholder={form.referral_cashback_type === 'percent' ? 'مثلاً ۱۰' : 'مثلاً ۲۰۰۰۰۰۰'}
+                  />
+                </div>
+              </div>
+            ) : null}
           </div>
+
+          <SpotPlayerProductSection
+            courseIds={form.spotplayer_course_id ?? ''}
+            onCourseIdsChange={(value) => patch({ spotplayer_course_id: value })}
+          />
 
           <div className="card space-y-4 p-5">
             <div className="border-b border-border pb-3">

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { FileDown, Award } from 'lucide-react';
-import { studentFetch } from '@/lib/student/session';
+import { panelStudentFetch } from '@/lib/student/panelServer';
 
 export const metadata: Metadata = { title: 'جزئیات سمینار | پنل کاربری', robots: { index: false, follow: false } };
 
@@ -16,7 +16,7 @@ interface SeminarDetail {
 
 export default async function PanelSeminarDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { data: seminar } = await studentFetch<{ data: SeminarDetail }>(`/seminars/${id}`);
+  const { data: seminar } = await panelStudentFetch<{ data: SeminarDetail }>(`/seminars/${id}`);
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">

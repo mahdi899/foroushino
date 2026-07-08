@@ -40,6 +40,27 @@ class AuthController extends Controller
         return ApiResponse::success(['mobile' => $mobile, 'expires_in' => 120]);
     }
 
+    public function sendOtpViaBale(SendOtpRequest $request): \Illuminate\Http\JsonResponse
+    {
+        $mobile = Mobile::normalize($request->string('mobile'));
+
+        if (! $mobile) {
+            return ApiResponse::error('invalid_mobile', 'شماره موبایل معتبر نیست.', 422);
+        }
+
+        try {
+            $this->otp->sendViaBaleSafir($mobile, OtpPurpose::Login);
+        } catch (OtpException $e) {
+            return ApiResponse::error('otp_bale_failed', $e->getMessage(), 429);
+        }
+
+        return ApiResponse::success([
+            'mobile' => $mobile,
+            'channel' => 'bale_safir',
+            'message' => 'کد تأیید از طریق سفیر بله ارسال شد.',
+        ]);
+    }
+
     public function verifyOtp(VerifyOtpRequest $request): \Illuminate\Http\JsonResponse
     {
         $mobile = Mobile::normalize($request->string('mobile'));

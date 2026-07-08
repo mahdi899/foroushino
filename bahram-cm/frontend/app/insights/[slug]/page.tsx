@@ -11,7 +11,7 @@ import { getArticleBySlug, getArticles } from "@/lib/services/articles";
 import { articleJsonLd, breadcrumbJsonLd } from "@/lib/jsonld";
 import { formatDateFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
-import { resolveMediaUrl, rewriteArticleBodyMediaUrls } from "@/lib/mediaUrl";
+import { rewriteArticleBodyMediaUrls } from "@/lib/mediaUrl";
 
 export const revalidate = 300;
 
@@ -76,7 +76,7 @@ export default async function InsightDetailPage({
     ]),
   ];
 
-  const coverSrc = post.featured_image ? resolveMediaUrl(post.featured_image) : null;
+  const coverSrc = post.featured_image ?? null;
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
@@ -206,7 +206,7 @@ export default async function InsightDetailPage({
                   <div className="relative aspect-[3/2] overflow-hidden">
                     {item.featured_image ? (
                       <SiteImage
-                        src={resolveMediaUrl(item.featured_image)}
+                        src={item.featured_image}
                         alt={item.featured_image_alt}
                         fallbackAlt={item.title}
                         fill

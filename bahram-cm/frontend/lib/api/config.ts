@@ -31,6 +31,5 @@ export const REVALIDATE = {
   settings: isDev ? devRevalidate : 3600,
   articles: isDev ? devRevalidate : 300,
   cases: isDev ? devRevalidate : 600,
-  doctors: isDev ? devRevalidate : 3600,
   pricing: isDev ? devRevalidate : 600,
 } as const;

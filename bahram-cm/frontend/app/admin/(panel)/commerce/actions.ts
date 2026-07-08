@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { adminFetch } from '@/lib/auth/session';
+import { adminFetch, getToken } from '@/lib/auth/session';
+import { SERVER_API_URL } from '@/lib/api/config';
 import { revalidatePublicContent, revalidateTestimonialSurfaces } from '@/lib/cache/contentRevalidation';
 import type { AdminFaq, AdminOrder, AdminProduct, AdminStudentTestimonial, PaymentSettingsData } from '@/lib/admin/commerceTypes';
 
@@ -16,6 +17,8 @@ export async function loadPaymentSettingsAction(): Promise<PaymentSettingsData |
 
 function revalidateCommerce() {
   void revalidatePublicContent(() => {
+    revalidatePath('/');
+    revalidatePath('/courses');
     revalidatePath('/admin/commerce/products');
     revalidatePath('/admin/commerce/orders');
     revalidatePath('/admin/commerce/faqs');
@@ -41,10 +44,18 @@ export async function saveProduct(
       short_description: input.short_description,
       price: input.price,
       sale_price: input.sale_price,
+      referral_cashback_enabled: input.referral_cashback_enabled ?? false,
+      referral_cashback_type: input.referral_cashback_enabled ? input.referral_cashback_type ?? null : null,
+      referral_cashback_value: input.referral_cashback_enabled ? input.referral_cashback_value ?? null : null,
       is_active: input.is_active ?? true,
       featured_image: input.featured_image,
+      show_on_courses: input.show_on_courses ?? false,
+      featured_listing: input.featured_listing ?? false,
+      course_level: input.course_level,
+      course_duration: input.course_duration,
+      landing_href: input.landing_href,
       spotplayer_course_id: input.spotplayer_course_id,
-      spotplayer_product_id: input.spotplayer_product_id,
+      spotplayer_product_id: null,
       meta_title: input.meta_title,
       meta_description: input.meta_description,
     };
@@ -94,6 +105,52 @@ export async function resendOrderSms(id: number): Promise<{ ok: boolean; message
   } catch (e) {
     const err = e as Error & { payload?: { message?: string } };
     return { ok: false, error: err.payload?.message ?? 'ارسال پیامک ناموفق بود.' };
+  }
+}
+
+export async function fulfillOrder(
+  id: number,
+): Promise<{ ok: boolean; message?: string; error?: string }> {
+  try {
+    const res = await adminFetch<{ ok: boolean; message: string }>(`/orders/${id}/fulfill`, { method: 'POST' });
+    revalidateCommerce();
+    revalidatePath(`/admin/commerce/orders/${id}`);
+    return { ok: res.ok, message: res.message };
+  } catch (e) {
+    const err = e as Error & { payload?: { message?: string } };
+    return { ok: false, error: err.payload?.message ?? 'تحویل سفارش ناموفق بود.' };
+  }
+}
+
+export async function exportOrdersCsv(filters?: {
+  search?: string;
+  status?: string;
+  payment_status?: string;
+  product_type?: string;
+}): Promise<{ ok: true; csv: string } | { ok: false; error: string }> {
+  try {
+    const token = await getToken();
+    const url = new URL(`${SERVER_API_URL}/panel/orders/export`);
+    if (filters?.search) url.searchParams.set('search', filters.search);
+    if (filters?.status) url.searchParams.set('status', filters.status);
+    if (filters?.payment_status) url.searchParams.set('payment_status', filters.payment_status);
+    if (filters?.product_type) url.searchParams.set('product_type', filters.product_type);
+
+    const res = await fetch(url, {
+      headers: {
+        Accept: 'text/csv',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      return { ok: false, error: 'خروجی گرفتن از سفارش‌ها ناموفق بود.' };
+    }
+
+    return { ok: true, csv: await res.text() };
+  } catch {
+    return { ok: false, error: 'خروجی گرفتن از سفارش‌ها ناموفق بود.' };
   }
 }
 

@@ -5,7 +5,6 @@ export * from './types';
 export * from './articles';
 export * from './services';
 export * from './cases';
-export * from './doctors';
 export * from './faqs';
 export * from './pricing';
 export * from './settings';

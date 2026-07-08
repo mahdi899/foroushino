@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, ShoppingBag } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
 import { CartAddFromQuery } from "@/components/commerce/CartAddFromQuery";
-import { CartCheckoutButton, CartRemoveButton } from "@/components/commerce/CartItemActions";
+import { CartPayButton, CartRemoveButton } from "@/components/commerce/CartItemActions";
+import { CheckoutReferralCodeField } from "@/components/commerce/CheckoutReferralCodeField";
+import { PageHero } from "@/components/blocks/PageHero";
 import { Reveal } from "@/components/motion/Reveal";
 import { LinkButton } from "@/components/ui/Button";
 import { SiteImage } from "@/components/ui/SiteImage";
+import { buildCustomerName } from "@/lib/checkout/productFields";
 import { getServerCartSlugs } from "@/lib/cart/server";
 import { formatFa } from "@/lib/persian";
 import { getProductBySlug, type ProductDetail } from "@/lib/services/products";
+import { getCurrentStudent, studentFetch } from "@/lib/student/session";
 import { buildMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
@@ -81,36 +85,26 @@ export default async function CartPage({
   searchParams: Promise<{ add?: string }>;
 }) {
   const { add } = await searchParams;
-  const cookieSlugs = await getServerCartSlugs();
+  const [cookieSlugs, student] = await Promise.all([getServerCartSlugs(), getCurrentStudent()]);
+  const ownReferralCode = student
+    ? await studentFetch<{ data: { code: string } }>("/referrals")
+        .then((res) => res.data.code)
+        .catch(() => null)
+    : null;
   const slugs = [...new Set([...cookieSlugs, ...(add ? [add] : [])])];
   const products = await loadCartProducts(slugs);
   const total = products.reduce((sum, product) => sum + product.effective_price, 0);
+  const buyerName = student ? buildCustomerName(student.profile, student.name) : null;
 
   return (
     <main id="main-content" className="relative min-w-0 w-full max-w-full overflow-x-clip">
       {add ? <CartAddFromQuery slug={add} /> : null}
 
-      <section className="relative overflow-x-clip bg-ink wash-emerald py-section-sm md:py-section">
-        <div className="container-luxe relative z-[2] min-w-0 max-w-full">
-          <Reveal>
-            <Link
-              href="/course/campaign-writing"
-              className="inline-flex items-center gap-2 text-caption text-gold transition-colors hover:text-gold-soft"
-            >
-              <ArrowLeft className="rtl-flip h-3.5 w-3.5" aria-hidden />
-              بازگشت به دوره
-            </Link>
-          </Reveal>
-          <Reveal delay={0.08}>
-            <h1 className="mt-5 max-w-3xl text-h1 text-balance md:mt-6">سبد خرید</h1>
-          </Reveal>
-          <Reveal delay={0.12}>
-            <p className="mt-3 max-w-2xl text-bone-dim">
-              محصولات انتخاب‌شده را مرور کن و برای تکمیل خرید به مرحله بعد برو.
-            </p>
-          </Reveal>
-        </div>
-      </section>
+      <PageHero
+        backLink={{ href: "/course/campaign-writing", label: "بازگشت به دوره" }}
+        title="سبد خرید"
+        description="محصولات انتخاب‌شده را مرور کن و برای تکمیل خرید به مرحله بعد برو."
+      />
 
       <section className="py-section-sm">
         <div className="container-luxe min-w-0 max-w-full">
@@ -144,6 +138,13 @@ export default async function CartPage({
               <div className="min-w-0 md:col-span-5 md:col-start-8">
                 <aside className="neon-surface-static w-full min-w-0 rounded-card border border-bone/10 bg-charcoal/45 p-5 sm:p-6 md:sticky md:top-24 md:p-8">
                   <h2 className="text-h3 text-bone">خلاصه سفارش</h2>
+                  {buyerName ? (
+                    <p className="mt-3 text-sm text-bone-dim">
+                      خریدار: <span className="font-medium text-bone">{buyerName}</span>
+                    </p>
+                  ) : null}
+
+                  <CheckoutReferralCodeField ownReferralCode={ownReferralCode} />
 
                   <ul className="mt-5 space-y-3 border-b border-bone/10 pb-5">
                     {products.map((product) => (
@@ -169,18 +170,24 @@ export default async function CartPage({
 
                   <div className="mt-8 w-full min-w-0">
                     {products.length === 1 ? (
-                      <CartCheckoutButton slug={products[0]!.slug} />
+                      <CartPayButton product={products[0]!} student={student} />
                     ) : (
                       <div className="space-y-3">
                         {products.map((product) => (
-                          <CartCheckoutButton key={product.slug} slug={product.slug} />
+                          <CartPayButton key={product.slug} product={product} student={student} />
                         ))}
                       </div>
                     )}
                   </div>
 
                   <p className="mt-4 text-center text-sm leading-relaxed text-mist">
-                    در مرحله بعد اطلاعات خریدار را وارد می‌کنی و به درگاه پرداخت منتقل می‌شوی.
+                    {student
+                      ? products.length === 1
+                        ? "با یک کلیک به درگاه پرداخت امن منتقل می‌شوی."
+                        : "برای هر محصول جداگانه پرداخت را تکمیل کن."
+                      : products.length === 1
+                        ? "ابتدا با کد تأیید وارد می‌شوی، سپس به درگاه پرداخت منتقل می‌شوی."
+                        : "برای هر محصول ابتدا وارد شو، سپس پرداخت را تکمیل کن."}
                   </p>
                 </aside>
               </div>

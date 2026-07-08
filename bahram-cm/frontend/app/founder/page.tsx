@@ -73,14 +73,14 @@ export default async function FounderPage() {
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       {/* HERO */}
-      <section className="relative isolate overflow-hidden bg-ink">
+      <section className="page-hero page-hero--media relative isolate overflow-hidden bg-ink">
         <PageHeroBackdrop
           src={pageHeroBackdropPhoto}
           alt={heroAlt}
           fallbackAlt="جلسه آموزشی آکادمی بهرام"
           priority
         />
-        <div className="container-luxe relative z-[2] py-section-sm md:py-section">
+        <div className="container-luxe page-hero__container">
           <div className="grid min-w-0 items-center gap-6 max-md:gap-8 md:grid-cols-12 md:gap-12">
             <div className="max-md:order-2 md:col-span-7">
               <Reveal>

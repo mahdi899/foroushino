@@ -1,0 +1,28 @@
+{
+  "name": "پنل آکادمی بهرام رستمی",
+  "short_name": "پنل آکادمی",
+  "description": "دوره‌ها، سمینارها، پشتیبانی و اعلان‌های آکادمی",
+  "start_url": "/panel",
+  "scope": "/panel",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "dir": "rtl",
+  "lang": "fa",
+  "background_color": "#090909",
+  "theme_color": "#090909",
+  "categories": ["education"],
+  "icons": [
+    {
+      "src": "/apple-touch-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

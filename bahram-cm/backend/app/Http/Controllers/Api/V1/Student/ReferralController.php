@@ -21,11 +21,12 @@ class ReferralController extends Controller
 
         $invitees = ReferralConversion::query()
             ->where('referrer_user_id', $user->id)
-            ->with('buyer')
+            ->with(['buyer', 'order.product'])
             ->orderByDesc('id')
             ->get()
             ->map(fn (ReferralConversion $conversion) => [
                 'buyer_name' => $conversion->buyer?->name,
+                'product_title' => $conversion->order?->product?->title,
                 'status' => $conversion->status->value,
                 'cashback_amount' => $conversion->cashback_amount,
                 'converted_at' => $conversion->converted_at?->toIso8601String(),
@@ -35,10 +36,11 @@ class ReferralController extends Controller
 
         return ApiResponse::success([
             'code' => $code->code,
-            'link' => "{$siteUrl}/purchase/campaign-writing?ref={$code->code}",
+            'link' => "{$siteUrl}/?ref={$code->code}",
             'is_active' => $code->is_active,
             'summary' => $summary,
             'invitees' => $invitees,
+            'cashback_products' => $this->referrals->activeCashbackProducts(),
         ]);
     }
 }

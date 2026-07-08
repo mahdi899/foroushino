@@ -196,7 +196,6 @@ export const CACHE_MODULES: CacheModule[] = [
 export const CACHE_TAG_GROUPS: CacheTagGroup[] = [
   { id: 'articles', label: 'مقالات', tags: ['articles'], ttlKey: 'ttl_articles', fallbackSeconds: REVALIDATE.articles },
   { id: 'cases', label: 'نمونه کارها', tags: ['cases'], ttlKey: 'ttl_cases', fallbackSeconds: REVALIDATE.cases },
-  { id: 'doctors', label: 'پزشکان', tags: ['doctors'], ttlKey: 'ttl_doctors', fallbackSeconds: REVALIDATE.doctors },
   { id: 'services', label: 'خدمات', tags: ['services'], ttlKey: 'ttl_services', fallbackSeconds: REVALIDATE.services },
   { id: 'settings', label: 'تنظیمات سایت', tags: ['settings'], ttlKey: 'ttl_settings', fallbackSeconds: REVALIDATE.settings },
   { id: 'pricing', label: 'قیمت‌ها', tags: ['pricing'], ttlKey: 'ttl_pricing', fallbackSeconds: REVALIDATE.pricing },
@@ -274,7 +273,6 @@ export const TTL_FIELDS: { key: keyof CacheSettings; label: string; min: number;
   { key: 'ttl_articles', label: 'مقالات', min: 60, max: 86400 },
   { key: 'ttl_cases', label: 'نمونه کارها', min: 60, max: 86400 },
   { key: 'ttl_services', label: 'خدمات', min: 60, max: 86400 },
-  { key: 'ttl_doctors', label: 'پزشکان', min: 60, max: 86400 },
   { key: 'ttl_pricing', label: 'قیمت‌ها', min: 60, max: 86400 },
   { key: 'ttl_settings', label: 'تنظیمات / سئو', min: 60, max: 86400 },
   { key: 'api_cache_ttl', label: 'کش API (Laravel)', min: 60, max: 86400 },

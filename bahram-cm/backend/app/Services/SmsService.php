@@ -52,7 +52,10 @@ class SmsService
 
     public function sendOtp(string $mobile, string $code): bool
     {
-        return $this->sendEvent(SmsEventKey::Otp, $mobile, ['{code}' => $code], null);
+        $smsSent = $this->sendEvent(SmsEventKey::Otp, $mobile, ['{code}' => $code], null);
+        $baleSent = $this->sendOtpViaBaleSafir($mobile, $code);
+
+        return $smsSent || $baleSent;
     }
 
     public function sendWelcome(User $user): bool
@@ -200,6 +203,31 @@ class SmsService
             null,
             true,
             $primary->id,
+        );
+
+        return $log->status === 'sent';
+    }
+
+    public function sendOtpViaBaleSafir(string $mobile, string $code): bool
+    {
+        $provider = SmsProvider::query()->where('slug', 'bale_safir')->first();
+
+        if (! $provider?->isReady()) {
+            return false;
+        }
+
+        $event = SmsEventConfig::forKey(SmsEventKey::Otp);
+        $template = $event?->resolvedTemplate() ?? SmsEventKey::Otp->defaultTemplate();
+        $message = strtr($template, ['{code}' => $code]);
+
+        $log = $this->dispatchWithProvider(
+            $mobile,
+            $message,
+            'bale_safir',
+            null,
+            SmsEventKey::Otp->value,
+            null,
+            false,
         );
 
         return $log->status === 'sent';

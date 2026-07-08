@@ -1,6 +1,5 @@
 import { AdminPage } from '../../../ui';
 import { getOrderAnalytics } from '@/lib/admin/commerceData';
-import { OrdersSectionNav } from '../OrdersSectionNav';
 import { OrdersAnalyticsDashboard } from '../OrdersAnalyticsDashboard';
 
 export const dynamic = 'force-dynamic';
@@ -23,8 +22,6 @@ export default async function OrdersReportsPage({
 
   return (
     <AdminPage title="گزارش سفارشات" desc="تحلیل نموداری فروش، وضعیت پرداخت و روند درآمد">
-      <OrdersSectionNav active="reports" />
-
       {error && (
         <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-small text-error">{error}</div>
       )}

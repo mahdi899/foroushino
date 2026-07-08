@@ -3,10 +3,11 @@ import { postJson, type ApiResult } from "./api";
 
 export type CreateOrderInput = {
   product_id: number;
-  customer_name: string;
+  customer_name?: string;
   customer_phone: string;
   customer_email?: string;
   customer_national_code?: string;
+  customer_extra_data?: Record<string, string>;
   /** Referral code captured from `?ref=` on the purchase link (Customer Club). */
   ref?: string;
 };

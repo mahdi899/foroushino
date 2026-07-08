@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Services\ContentPublishService;
+use App\Services\InAppNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -12,7 +13,10 @@ use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
-    public function __construct(private readonly ContentPublishService $publish) {}
+    public function __construct(
+        private readonly ContentPublishService $publish,
+        private readonly InAppNotificationService $notifications,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -60,17 +64,24 @@ class ProductController extends Controller
 
         $product = Product::create($data);
         $this->publish->revalidateProducts($product->slug);
+        $this->notifications->newProduct($product, $request->user()?->id);
 
         return response()->json(['data' => $this->payload($product)], 201);
     }
 
     public function update(Request $request, Product $product): JsonResponse
     {
+        $wasInactive = ! $product->is_active;
         $data = $this->validateProduct($request, $product);
         $product->update($data);
-        $this->publish->revalidateProducts($product->slug);
+        $fresh = $product->fresh();
+        $this->publish->revalidateProducts($fresh->slug);
 
-        return response()->json(['data' => $this->payload($product->fresh())]);
+        if ($wasInactive && $fresh->is_active) {
+            $this->notifications->newProduct($fresh, $request->user()?->id);
+        }
+
+        return response()->json(['data' => $this->payload($fresh)]);
     }
 
     public function destroy(Product $product): JsonResponse
@@ -95,7 +106,15 @@ class ProductController extends Controller
             'price' => $product->price,
             'sale_price' => $product->sale_price,
             'effective_price' => $product->effective_price,
+            'referral_cashback_enabled' => (bool) $product->referral_cashback_enabled,
+            'referral_cashback_type' => $product->referral_cashback_type,
+            'referral_cashback_value' => $product->referral_cashback_value,
             'is_active' => $product->is_active,
+            'show_on_courses' => (bool) $product->show_on_courses,
+            'featured_listing' => (bool) $product->featured_listing,
+            'course_level' => $product->course_level,
+            'course_duration' => $product->course_duration,
+            'landing_href' => $product->landing_href,
             'featured_image' => $product->featured_image,
             'featured_image_url' => $product->featured_image ? '/storage/'.$product->featured_image : null,
             'spotplayer_course_id' => $product->spotplayer_course_id,
@@ -123,7 +142,15 @@ class ProductController extends Controller
             'short_description' => ['sometimes', 'nullable', 'string', 'max:500'],
             'price' => [$product ? 'sometimes' : 'required', 'integer', 'min:0'],
             'sale_price' => ['sometimes', 'nullable', 'integer', 'min:0'],
+            'referral_cashback_enabled' => ['sometimes', 'boolean'],
+            'referral_cashback_type' => ['sometimes', 'nullable', 'string', Rule::in(['percent', 'fixed']), 'required_if:referral_cashback_enabled,true'],
+            'referral_cashback_value' => ['sometimes', 'nullable', 'integer', 'min:1', 'required_if:referral_cashback_enabled,true'],
             'is_active' => ['sometimes', 'boolean'],
+            'show_on_courses' => ['sometimes', 'boolean'],
+            'featured_listing' => ['sometimes', 'boolean'],
+            'course_level' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'course_duration' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'landing_href' => ['sometimes', 'nullable', 'string', 'max:255'],
             'featured_image' => ['sometimes', 'nullable', 'string', 'max:500'],
             'spotplayer_course_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'spotplayer_product_id' => ['sometimes', 'nullable', 'string', 'max:255'],

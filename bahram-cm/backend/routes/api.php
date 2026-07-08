@@ -44,6 +44,16 @@ Route::get('/products/{slug}', [ProductController::class, 'show']);
 
 // Orders
 Route::post('/orders', [OrderController::class, 'store']);
+Route::get('/orders/complete-profile', [OrderController::class, 'completeProfileContext'])
+    ->middleware('throttle:30,1');
+Route::get('/orders/payment-result', [OrderController::class, 'paymentResult'])
+    ->middleware('throttle:30,1');
+Route::post('/orders/complete-customer', [OrderController::class, 'completeCustomer'])
+    ->middleware('throttle:20,1');
+Route::post('/orders/post-payment-login/resend-otp', [OrderController::class, 'postPaymentResendOtp'])
+    ->middleware('throttle:10,1');
+Route::post('/orders/post-payment-login/verify-otp', [OrderController::class, 'postPaymentVerifyOtp'])
+    ->middleware('throttle:20,1');
 
 // Payments (Zarinpal)
 Route::post('/payments/zarinpal/request', [ZarinpalController::class, 'request']);

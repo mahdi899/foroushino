@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Reply, Send, User } from 'lucide-react';
 import { fetchChatbotSessionThread, replyToChatbotSession } from '@/lib/chatbot/actions';
 import type { ChatbotOperatorProfile, ChatbotThreadItem } from '@/lib/chatbot/types';
-import { resolveMediaUrl } from '@/lib/mediaUrl';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import { cn } from '@/lib/utils';
 
 const LAST_PROFILE_KEY = 'bahram_chatbot_last_operator_profile';
@@ -331,9 +331,9 @@ export function SessionOperatorPanel({
                   <div className="mb-1 flex items-center gap-2">
                     <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full bg-surface-soft ring-1 ring-accent/20">
                       {item.operator_avatar_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={resolveMediaUrl(item.operator_avatar_url)}
+                        <DirectMediaImg
+                          admin
+                          src={item.operator_avatar_url}
                           alt={item.operator_name ?? 'اپراتور'}
                           className="h-full w-full object-cover"
                         />
@@ -481,9 +481,9 @@ export function SessionOperatorPanel({
                   >
                     <span className="relative h-7 w-7 shrink-0 overflow-hidden rounded-full bg-surface-soft ring-1 ring-border/60">
                       {profile.avatar_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={resolveMediaUrl(profile.avatar_url)}
+                        <DirectMediaImg
+                          admin
+                          src={profile.avatar_url}
                           alt={profile.name}
                           className="h-full w-full object-cover"
                         />

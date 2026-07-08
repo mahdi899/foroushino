@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\CourseAccessService;
 use App\Support\MediaUrl;
 use App\Support\Mobile;
 use Illuminate\Http\JsonResponse;
@@ -74,9 +75,11 @@ class StudentController extends Controller
         return response()->json(['data' => $this->listPayload($student)], 201);
     }
 
-    public function show(User $student): JsonResponse
+    public function show(User $student, CourseAccessService $courseAccesses): JsonResponse
     {
         abort_if($student->is_admin, 404);
+
+        $courseAccesses->syncFromPaidOrders($student);
 
         $student->load([
             'profile',
