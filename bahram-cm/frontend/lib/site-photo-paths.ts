@@ -5,8 +5,8 @@ import { siteStorageMedia } from '@/config/media';
  * Managed via admin gallery; legacy `/media/*` URLs redirect here.
  */
 export const sitePhotos = {
-  heroLightGrid: siteStorageMedia('01kwycnpwd57yxx2ddjmnvhp55.webp'),
-  heroLightGridMobile: siteStorageMedia('01kwyecgnr5hzcdbwa9rwzgbwn.webp'),
+  heroLightGrid: siteStorageMedia('hero-background.png'),
+  heroLightGridMobile: siteStorageMedia('hero-bahram-rostami.png'),
   portraitFounder: siteStorageMedia('portrait-founder.jpg'),
   squareStudio: siteStorageMedia('square-studio.jpg'),
   landscapeSession: siteStorageMedia('landscape-session.jpg'),

@@ -32,6 +32,10 @@ class OtpService
 
     public function send(string $mobile, OtpPurpose $purpose, ?string $ip = null, ?string $userAgent = null): void
     {
+        if ($this->isDevMode()) {
+            return;
+        }
+
         $resendKey = "otp:resend:{$mobile}:{$purpose->value}";
         $mobileKey = "otp:mobile:{$mobile}";
         $ipKey = $ip ? "otp:ip:{$ip}" : null;
@@ -71,6 +75,10 @@ class OtpService
 
     public function verify(string $mobile, string $code, OtpPurpose $purpose): void
     {
+        if ($this->isDevMode() && hash_equals((string) config('bahram.otp.dev_code', '12345'), $code)) {
+            return;
+        }
+
         $otp = OtpCode::query()
             ->where('mobile', $mobile)
             ->where('purpose', $purpose->value)
@@ -96,5 +104,10 @@ class OtpService
         }
 
         $otp->update(['used_at' => now()]);
+    }
+
+    private function isDevMode(): bool
+    {
+        return config('bahram.otp.dev_mode') && app()->environment('local', 'testing');
     }
 }

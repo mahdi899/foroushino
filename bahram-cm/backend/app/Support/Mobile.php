@@ -28,10 +28,19 @@ class Mobile
         }
 
         if (! preg_match('/^09\d{9}$/', $digits)) {
+            if (static::isDevMode() && strlen($digits) >= 1) {
+                return '09'.str_pad(substr($digits, -9), 9, '0', STR_PAD_LEFT);
+            }
+
             return null;
         }
 
         return $digits;
+    }
+
+    private static function isDevMode(): bool
+    {
+        return config('bahram.otp.dev_mode') && app()->environment('local', 'testing');
     }
 
     public static function isValid(?string $raw): bool

@@ -23,7 +23,7 @@ function getServerSnapshot(): DataTheme {
   return "dark";
 }
 
-/** Reads `data-theme` on `<html>` (same source as `ThemeToggle` / `ThemeScript`). */
+/** Reads `data-theme` on `<html>` (same source as `ThemeToggle` / `ThemeBootScript`). */
 export function useDataTheme(): DataTheme {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

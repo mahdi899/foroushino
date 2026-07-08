@@ -17,17 +17,8 @@ import { getPublicChatbotConfig } from "@/lib/chatbot/public";
 import { EMPTY_CHATBOT_PUBLIC } from "@/lib/chatbot/types";
 import { getPublicPerfConfig } from "@/lib/cache/public";
 import { GrainOverlay } from "@/components/motion/GrainOverlay";
+import { ThemeBootScript } from "@/components/theme/ThemeBootScript";
 import "@/styles/globals.css";
-
-const THEME_BOOT_SCRIPT = `(() => {
-  try {
-    var s = localStorage.getItem('bahram-theme');
-    var t = s === 'light' || s === 'dark' ? s : 'dark';
-    document.documentElement.setAttribute('data-theme', t);
-  } catch (_) {
-    document.documentElement.setAttribute('data-theme', 'dark');
-  }
-})();`;
 
 export const metadata: Metadata = defaultMetadata;
 
@@ -65,12 +56,14 @@ export default async function RootLayout({
     >
       <head>
         <script
-          id="theme-boot"
-          dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }}
+          id="jsonld-site"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }}
         />
         <MediaPreconnect />
       </head>
       <body className={`${fontClassName} min-w-0 overflow-x-clip antialiased`} suppressHydrationWarning>
+        <ThemeBootScript />
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:start-4 focus:top-4 focus:z-[100] focus:rounded-pill focus:bg-emerald focus:px-4 focus:py-2 focus:text-bone"
@@ -89,11 +82,6 @@ export default async function RootLayout({
             deferWidget={perfConfig.lazy_load_chatbot !== false}
           />
         ) : null}
-        <script
-          id="jsonld-site"
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }}
-        />
       </body>
     </html>
   );

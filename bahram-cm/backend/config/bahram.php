@@ -30,6 +30,11 @@ return [
         'api_token' => env('CLOUDFLARE_API_TOKEN'),
     ],
 
+    'otp' => [
+        'dev_mode' => filter_var(env('OTP_DEV_MODE', false), FILTER_VALIDATE_BOOL),
+        'dev_code' => env('OTP_DEV_CODE', '12345'),
+    ],
+
     'chatbot' => [
         'retention_days' => (int) env('CHATBOT_RETENTION_DAYS', 60),
     ],
