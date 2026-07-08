@@ -161,13 +161,41 @@ export type AdminTicket = {
   department: string | null;
   status: 'open' | 'answered' | 'waiting_user' | 'closed';
   priority: 'low' | 'normal' | 'high';
+  user_id?: number;
   user_name: string | null;
   user_mobile: string | null;
+  created_at: string | null;
+  updated_at?: string | null;
+};
+
+export type AdminTicketMessage = {
+  id: number;
+  message: string;
+  is_admin_reply: boolean;
+  sender_name?: string | null;
+  has_attachment: boolean;
   created_at: string | null;
 };
 
 export type AdminTicketDetail = AdminTicket & {
-  messages: { id: number; message: string; is_admin_reply: boolean; has_attachment: boolean; created_at: string | null }[];
+  user_id: number;
+  messages: AdminTicketMessage[];
+};
+
+export type AdminTicketUserGroup = {
+  user_id: number;
+  name: string | null;
+  mobile: string | null;
+  tickets_count: number;
+  open_count: number;
+  last_ticket_at: string | null;
+};
+
+export type AdminTicketReport = {
+  summary: { total: number; open: number; answered: number; waiting_user: number; closed: number };
+  by_department: { department: string; count: number }[];
+  by_day: { date: string; created: number; closed: number }[];
+  top_users: { user_id: number; name: string | null; mobile: string | null; count: number }[];
 };
 
 export type AdminNotification = {

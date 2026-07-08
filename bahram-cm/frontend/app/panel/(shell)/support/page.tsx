@@ -162,7 +162,8 @@ export default async function PanelSupportPage() {
             </div>
 
             {tickets.length > 0 ? (
-              <div className="overflow-x-auto">
+              <>
+              <div className="hidden overflow-x-auto md:block">
                 <table className="panel-table">
                   <thead>
                     <tr>
@@ -202,6 +203,22 @@ export default async function PanelSupportPage() {
                   </tbody>
                 </table>
               </div>
+              <div className="space-y-2 p-4 md:hidden">
+                {tickets.map((ticket) => (
+                  <Link key={ticket.id} href={`/panel/support/${ticket.id}`} className="block rounded-xl border border-border bg-surface-soft p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-text">{ticket.subject}</p>
+                        <p className="mt-1 text-xs text-text-muted">#TK-{ticket.id} · {formatDate(ticket.created_at)}</p>
+                      </div>
+                      <span className={`badge shrink-0 ${STATUS_BADGES[ticket.status] ?? 'badge-neutral'}`}>
+                        {STATUS_LABELS[ticket.status] ?? ticket.status}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+              </>
             ) : (
               <div className="flex flex-col items-center gap-3 p-10 text-center">
                 <MessageSquare size={24} className="text-text-muted" />

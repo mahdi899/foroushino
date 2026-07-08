@@ -15,7 +15,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Badge, StatCard, Table } from '../../../ui';
+import { Badge, StatCard, Table } from '../../ui';
 import { formatToman, type OrderAnalytics } from '@/lib/admin/commerceTypes';
 import { toFa } from '@/lib/utils';
 

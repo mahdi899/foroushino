@@ -51,6 +51,7 @@ class SpotPlayerService
                         'texts' => [['text' => $order->customer_phone]],
                     ],
                     'payload' => $order->order_number,
+                    'device' => ['p6' => 1],
                 ]);
         } catch (Throwable $e) {
             Log::channel('spotplayer')->error('SpotPlayer request could not be sent.', [

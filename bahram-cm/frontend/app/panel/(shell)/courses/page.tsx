@@ -9,11 +9,11 @@ export const metadata: Metadata = { title: 'دوره من | پنل کاربری'
 
 interface CourseAccess {
   id: number;
-  product: { id: number; title: string; slug: string } | null;
+  product: { id: number; title: string; slug: string; spotplayer_course_id?: string | null } | null;
   status: string;
   is_active: boolean;
   activated_at: string | null;
-  spotplayer: { status: string; license_url: string | null } | null;
+  spotplayer: { status: string; license_url: string | null; spotplayer_course_id?: string | null } | null;
 }
 
 export default async function PanelCoursesPage() {
@@ -116,15 +116,13 @@ export default async function PanelCoursesPage() {
                 </div>
               </div>
               {activeCourse.is_active && activeCourse.spotplayer?.license_url ? (
-                <a
-                  href={activeCourse.spotplayer.license_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  href={`/panel/courses/${activeCourse.id}/watch`}
                   className="btn btn-primary w-full sm:w-auto"
                 >
                   <Play size={16} className="fill-current" />
-                  ورود به اسپات‌پلیر
-                </a>
+                  ورود به دوره
+                </Link>
               ) : (
                 <span className="text-xs text-text-muted bg-surface-soft px-3 py-2 rounded-xl text-center border border-border/40">
                   لینک دوره به‌زودی فعال می‌شود.
@@ -242,15 +240,13 @@ export default async function PanelCoursesPage() {
                   </span>
                 </div>
                 {course.is_active && course.spotplayer?.license_url ? (
-                  <a
-                    href={course.spotplayer.license_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <Link
+                    href={`/panel/courses/${course.id}/watch`}
                     className="btn btn-secondary text-xs py-1.5 px-3"
                   >
                     <ExternalLink size={12} />
                     ورود به دوره
-                  </a>
+                  </Link>
                 ) : (
                   <span className="text-[10px] text-text-muted">غیرفعال</span>
                 )}

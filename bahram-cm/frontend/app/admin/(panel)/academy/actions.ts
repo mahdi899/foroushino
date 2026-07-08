@@ -3,7 +3,15 @@
 import { revalidatePath } from 'next/cache';
 import { adminFetch, getToken } from '@/lib/auth/session';
 import { SERVER_API_URL } from '@/lib/api/config';
-import type { AdminCashbackPayoutRevealed, AdminStudent, PageMeta } from '@/lib/admin/academyTypes';
+import type {
+  AdminCashbackPayoutRevealed,
+  AdminStudent,
+  AdminTicket,
+  AdminTicketDetail,
+  AdminTicketReport,
+  AdminTicketUserGroup,
+  PageMeta,
+} from '@/lib/admin/academyTypes';
 
 function actionError(e: unknown, fallback: string): { ok: false; error: string } {
   const err = e as Error & { payload?: { error?: { message_fa?: string } } };
@@ -234,7 +242,6 @@ export async function createTicketForStudent(input: {
   subject: string;
   message: string;
   department?: string;
-  priority?: string;
 }) {
   try {
     const res = await adminFetch<{ data: { id: number } }>('/tickets', { method: 'POST', body: input });
@@ -245,11 +252,53 @@ export async function createTicketForStudent(input: {
   }
 }
 
+export async function fetchTicketUsers(input: { search?: string; page?: number } = {}) {
+  try {
+    const res = await adminFetch<{ data: AdminTicketUserGroup[]; meta: PageMeta }>('/tickets/users', {
+      query: { search: input.search?.trim() || undefined, page: input.page ?? 1 },
+    });
+    return { ok: true as const, items: res.data, meta: res.meta };
+  } catch (e) {
+    return { ok: false as const, items: [] as AdminTicketUserGroup[], meta: null, error: actionError(e, 'بارگذاری کاربران دارای تیکت ناموفق بود.').error };
+  }
+}
+
+export async function fetchTicketsByUser(userId: number) {
+  try {
+    const res = await adminFetch<{ data: AdminTicket[]; meta: PageMeta }>('/tickets', {
+      query: { user_id: userId, per_page: 50 },
+    });
+    return { ok: true as const, items: res.data, meta: res.meta };
+  } catch (e) {
+    return { ok: false as const, items: [] as AdminTicket[], meta: null, error: actionError(e, 'بارگذاری تیکت‌های کاربر ناموفق بود.').error };
+  }
+}
+
+export async function fetchTicketDetail(id: number) {
+  try {
+    const res = await adminFetch<{ data: AdminTicketDetail }>(`/tickets/${id}`);
+    return { ok: true as const, data: res.data };
+  } catch (e) {
+    return { ok: false as const, data: null, error: actionError(e, 'بارگذاری جزئیات تیکت ناموفق بود.').error };
+  }
+}
+
+export async function fetchTicketReports(input: { from?: string; to?: string; status?: string; department?: string } = {}) {
+  try {
+    const res = await adminFetch<{ data: AdminTicketReport }>('/tickets/reports', {
+      query: { from: input.from || undefined, to: input.to || undefined, status: input.status || undefined, department: input.department || undefined },
+    });
+    return { ok: true as const, data: res.data };
+  } catch (e) {
+    return { ok: false as const, data: null, error: actionError(e, 'بارگذاری گزارش تیکت ناموفق بود.').error };
+  }
+}
+
 export async function replyToTicket(id: number, message: string) {
   try {
     await adminFetch(`/tickets/${id}/messages`, { method: 'POST', body: { message } });
     revalidateAcademy();
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
     return actionError(e, 'ارسال پاسخ ناموفق بود.');
   }
@@ -259,7 +308,7 @@ export async function updateTicketStatus(id: number, status: string) {
   try {
     await adminFetch(`/tickets/${id}`, { method: 'PATCH', body: { status } });
     revalidateAcademy();
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
     return actionError(e, 'به‌روزرسانی وضعیت تیکت ناموفق بود.');
   }

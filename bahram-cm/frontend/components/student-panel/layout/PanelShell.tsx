@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import {
-  BadgeCheck, BookOpen, Gift, Home, LifeBuoy, LogOut, Menu, Bell, User as UserIcon, Receipt, X, GraduationCap, Search, Download, ChevronDown,
+  BadgeCheck, BookOpen, Gift, Home, LifeBuoy, LogOut, Menu, Bell, User as UserIcon, Receipt, X, GraduationCap, Search, Download,
 } from 'lucide-react';
 import { PanelThemeToggle } from '@/app/panel/PanelThemeToggle';
 import { logoutStudentAction } from '@/lib/student/actions';
@@ -19,6 +19,13 @@ const NAV_ITEMS = [
   { href: '/panel/sat', label: 'سات', icon: BadgeCheck },
   { href: '/panel/support', label: 'پشتیبانی', icon: LifeBuoy },
   { href: '/panel/notifications', label: 'اعلان‌ها', icon: Bell },
+  { href: '/panel/profile', label: 'پروفایل', icon: UserIcon },
+] as const;
+
+const BOTTOM_NAV_ITEMS = [
+  { href: '/panel', label: 'خانه', icon: Home, exact: true },
+  { href: '/panel/courses', label: 'دوره', icon: BookOpen },
+  { href: '/panel/support', label: 'پشتیبانی', icon: LifeBuoy },
   { href: '/panel/profile', label: 'پروفایل', icon: UserIcon },
 ] as const;
 
@@ -59,7 +66,10 @@ export function PanelShell({ user, children }: { user: StudentUser; children: Re
             </div>
 
             <nav className="flex flex-col gap-1">
-              {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => (
+              {NAV_ITEMS.map((item) => {
+                const { href, label, icon: Icon } = item;
+                const exact = 'exact' in item ? item.exact : undefined;
+                return (
                 <Link
                   key={href}
                   href={href}
@@ -70,7 +80,8 @@ export function PanelShell({ user, children }: { user: StudentUser; children: Re
                   <Icon size={18} />
                   {label}
                 </Link>
-              ))}
+                );
+              })}
             </nav>
           </div>
 
@@ -155,8 +166,26 @@ export function PanelShell({ user, children }: { user: StudentUser; children: Re
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-8">{children}</main>
+        <main className="flex-1 p-4 pb-24 md:p-8 md:pb-8">{children}</main>
       </div>
+
+      <nav className="panel-bottom-nav fixed inset-x-0 bottom-0 z-20 grid grid-cols-4 border-t border-border bg-surface md:hidden">
+        {BOTTOM_NAV_ITEMS.map((item) => {
+          const { href, label, icon: Icon } = item;
+          const exact = 'exact' in item ? item.exact : undefined;
+          const active = isActive(href, exact);
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors ${active ? 'text-primary' : 'text-text-muted'}`}
+            >
+              <Icon size={20} strokeWidth={active ? 2.4 : 1.8} />
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }
