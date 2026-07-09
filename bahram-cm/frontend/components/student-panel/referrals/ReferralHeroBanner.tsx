@@ -21,8 +21,8 @@ export function ReferralHeroBanner({ code, link }: { code: string; link: string 
       <div className="relative z-10 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
         <div>
           <div className="mb-3 flex items-center gap-2">
-            <span className="grid h-10 w-10 place-items-center rounded-xl" style={{ background: 'var(--color-gold-soft)', color: 'var(--color-gold)' }}>
-              <Gift size={20} />
+            <span className="panel-referral-hero__icon" aria-hidden>
+              <Gift size={20} strokeWidth={2} />
             </span>
             <span className="text-sm font-semibold text-text-muted">باشگاه مشتریان</span>
           </div>

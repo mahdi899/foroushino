@@ -32,17 +32,19 @@ function ProfileSection({
   icon: Icon,
   title,
   description,
+  tone,
   children,
 }: {
   icon: typeof UserRound;
   title: string;
   description: string;
+  tone: 'profile' | 'location' | 'social' | 'lock';
   children: React.ReactNode;
 }) {
   return (
     <section className="panel-profile-section">
       <header className="panel-profile-section__header">
-        <span className="panel-profile-section__icon" aria-hidden>
+        <span className={`panel-profile-section__icon panel-profile-section__icon--${tone}`} aria-hidden>
           <Icon size={18} strokeWidth={2} />
         </span>
         <div>
@@ -88,6 +90,7 @@ export function ProfileForm({ user }: { user: StudentUser }) {
             icon={UserRound}
             title="اطلاعات پایه"
             description="نام و راه‌های ارتباطی که در پنل و پشتیبانی استفاده می‌شود."
+            tone="profile"
           >
             <div className="panel-profile-grid">
               <div className="panel-profile-field">
@@ -148,6 +151,7 @@ export function ProfileForm({ user }: { user: StudentUser }) {
             icon={MapPin}
             title="وضعیت حرفه‌ای"
             description="به ما کمک کنید مسیر آموزشی مناسب‌تری پیشنهاد دهیم."
+            tone="location"
           >
             <div className="panel-profile-grid">
               <div className="panel-profile-field">
@@ -194,6 +198,7 @@ export function ProfileForm({ user }: { user: StudentUser }) {
             icon={Sparkles}
             title="شبکه‌های اجتماعی و اهداف"
             description="اختیاری — برای ارتباط بهتر و پیشنهادهای دقیق‌تر."
+            tone="social"
           >
             <div className="panel-profile-grid">
               <div className="panel-profile-field">
@@ -241,6 +246,7 @@ export function ProfileForm({ user }: { user: StudentUser }) {
             icon={Lock}
             title={user.has_password ? 'تغییر رمز عبور' : 'تنظیم رمز عبور'}
             description="برای ورود امن‌تر با ایمیل یا نام کاربری."
+            tone="lock"
           >
             <div className="panel-profile-grid panel-profile-grid--compact">
               <div className="panel-profile-field">

@@ -29,10 +29,9 @@ export function DashboardWelcome({
       <div className="panel-welcome__content relative z-10 max-w-2xl">
         <div className="flex items-start gap-3">
           <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-gold/20 shadow-glow"
-            style={{ background: 'var(--color-gold-soft)' }}
+            className="panel-welcome__icon flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
           >
-            <Sparkles size={22} style={{ color: 'var(--color-gold)' }} />
+            <Sparkles size={22} strokeWidth={2} />
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-bold leading-snug text-text sm:text-xl lg:text-2xl">
@@ -44,7 +43,7 @@ export function DashboardWelcome({
             </p>
           </div>
         </div>
-        <div className="mt-5 max-w-md">
+        <div className="mt-5 max-w-md panel-welcome-progress">
           <ProgressBar
             value={progress}
             label="پیشرفت شروع مسیر"

@@ -71,8 +71,7 @@ export function PanelAcademyLinkSheet({
           <div className="panel-academy-sheet__banner-main">
             {Icon ? (
               <div className="panel-academy-sheet__icon" aria-hidden>
-                <span className="panel-academy-sheet__icon-ring" />
-                <span className="panel-academy-sheet__icon-core">
+                <span className="panel-academy-sheet__icon-ring">
                   <Icon size={28} strokeWidth={2} />
                 </span>
               </div>

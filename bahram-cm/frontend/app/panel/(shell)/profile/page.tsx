@@ -15,8 +15,11 @@ export default async function PanelProfilePage() {
         icon={User}
         title="پروفایل"
         description="اطلاعات فردی و مسیر یادگیری خود را کامل نگه دارید."
+        variant="profile"
       />
-      <div className="card w-full p-5 sm:p-6 lg:p-8">{user ? <ProfileForm user={user} /> : null}</div>
+      <div className="card panel-profile-page w-full p-5 sm:p-6 lg:p-8">
+        {user ? <ProfileForm user={user} /> : null}
+      </div>
     </div>
   );
 }

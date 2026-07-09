@@ -50,11 +50,12 @@ export default async function PanelSupportPage() {
   const { data: tickets } = await panelStudentFetch<{ data: TicketListItem[] }>('/tickets');
 
   return (
-    <div className="panel-page-inner flex flex-col gap-6">
+    <div className="panel-page-inner panel-support-page flex flex-col gap-6">
       <PanelPageHeader
         icon={Headset}
         title="پشتیبانی"
         description="ما اینجا هستیم تا در مسیر یادگیری، همیشه همراه و پاسخگو باشیم."
+        variant="support"
       />
 
       <QuickContactCards />
@@ -63,7 +64,7 @@ export default async function PanelSupportPage() {
         <div className="flex flex-col gap-6 lg:col-span-2">
           <section className="panel-support-card card p-6">
             <header className="panel-support-card__header">
-              <span className="panel-support-card__icon">
+              <span className="panel-support-card__icon panel-support-card__icon--ticket">
                 <MessageSquare size={18} strokeWidth={2} />
               </span>
               <div>
@@ -76,7 +77,7 @@ export default async function PanelSupportPage() {
 
           <section className="panel-support-card card overflow-hidden">
             <header className="panel-support-card__header panel-support-card__header--soft">
-              <span className="panel-support-card__icon">
+              <span className="panel-support-card__icon panel-support-card__icon--history">
                 <Clock size={18} strokeWidth={2} />
               </span>
               <div>
@@ -100,7 +101,7 @@ export default async function PanelSupportPage() {
         <div className="flex flex-col gap-6">
           <section className="panel-support-card card p-6">
             <header className="panel-support-card__header panel-support-card__header--inline">
-              <span className="panel-support-card__icon">
+              <span className="panel-support-card__icon panel-support-card__icon--faq">
                 <HelpCircle size={18} strokeWidth={2} />
               </span>
               <div>

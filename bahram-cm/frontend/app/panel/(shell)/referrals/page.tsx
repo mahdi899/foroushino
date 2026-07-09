@@ -52,7 +52,7 @@ export default async function PanelReferralsPage() {
   ]);
 
   return (
-    <div className="panel-page-inner flex flex-col gap-5">
+    <div className="panel-page-inner panel-referrals-page flex flex-col gap-5">
       <ReferralHeroBanner code={referral.code} link={referral.link} />
 
       <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">
@@ -88,13 +88,13 @@ export default async function PanelReferralsPage() {
 
       <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
         <div className="flex flex-col gap-5">
-          <div className="card p-6">
+          <div className="card panel-referral-card p-6">
             <h2 className="mb-4 text-base font-bold text-text">درخواست واریز کش‌بک</h2>
             <CashbackPayoutForm payableAmount={referral.summary.payable_amount} />
           </div>
 
           {payouts.length > 0 ? (
-            <div className="card p-6">
+            <div className="card panel-referral-card p-6">
               <h2 className="mb-4 text-base font-bold text-text">درخواست‌های واریز</h2>
               <ul className="flex flex-col divide-y divide-border">
                 {payouts.map((p) => (
@@ -111,7 +111,7 @@ export default async function PanelReferralsPage() {
           ) : null}
 
           {referral.invitees.length > 0 ? (
-            <div className="card p-6">
+            <div className="card panel-referral-card p-6">
               <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-text">
                 <Users size={16} className="text-primary" />
                 وضعیت دعوت‌ها
@@ -174,7 +174,7 @@ export default async function PanelReferralsPage() {
         </div>
 
         <aside className="flex flex-col gap-4">
-          <div className="card p-5">
+          <div className="card panel-referral-aside-card p-5">
             <h3 className="mb-4 text-sm font-bold text-text">مبالغ کش‌بک محصولات</h3>
             {referral.cashback_products?.length ? (
               <ul className="space-y-3">
@@ -194,9 +194,11 @@ export default async function PanelReferralsPage() {
             )}
           </div>
 
-          <div className="card p-5">
+          <div className="card panel-referral-aside-card p-5">
             <div className="mb-3 flex items-center gap-2">
-              <CreditCard size={18} className="text-primary" />
+              <span className="panel-referral-aside-card__icon" aria-hidden>
+                <CreditCard size={16} strokeWidth={2} />
+              </span>
               <h3 className="text-sm font-bold text-text">شماره کارت واریز</h3>
             </div>
             <p className="text-xs leading-relaxed text-text-muted">
@@ -204,7 +206,7 @@ export default async function PanelReferralsPage() {
             </p>
           </div>
 
-          <div className="card p-5">
+          <div className="card panel-referral-aside-card p-5">
             <h3 className="mb-4 text-sm font-bold text-text">چطور کار می‌کند؟</h3>
             <ol className="space-y-4">
               {[

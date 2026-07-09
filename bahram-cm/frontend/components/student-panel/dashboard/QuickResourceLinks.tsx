@@ -8,6 +8,7 @@ import {
   type AcademyLinkKey,
 } from '@/components/student-panel/academy/academyLinkMeta';
 import { PanelAcademyLinkSheet } from '@/components/student-panel/academy/PanelAcademyLinkSheet';
+import { cn } from '@/lib/cn';
 
 export function QuickResourceLinks({
   urls,
@@ -27,9 +28,13 @@ export function QuickResourceLinks({
 
   return (
     <>
-      <div className="card p-5 text-right">
-        <h2 className="mb-4 text-base font-bold text-text">لینک‌های سریع و منابع</h2>
-        <div className="flex flex-col gap-2">
+      <div className="card panel-quick-links-section p-5 text-right">
+        <div className="panel-quick-links-section__header mb-4">
+          <h2 className="text-base font-bold text-text">لینک‌های سریع و منابع</h2>
+          <p className="mt-1 text-xs text-text-muted">دسترسی سریع به کانال‌ها و ربات دوره</p>
+        </div>
+
+        <div className="panel-quick-links-list flex flex-col gap-2">
           {ACADEMY_LINK_ORDER.map((key) => {
             const meta = ACADEMY_LINK_META[key];
             const Icon = meta.icon;
@@ -38,15 +43,18 @@ export function QuickResourceLinks({
                 key={key}
                 type="button"
                 onClick={() => setActiveKey(key)}
-                className="panel-link-row panel-link-row--action"
+                className={cn(
+                  'panel-link-row panel-link-row--action',
+                  `panel-link-row--${meta.variant}`,
+                )}
               >
-                <span className="flex items-center gap-3">
-                  <span className={`panel-link-row__icon ${meta.rowTone}`}>
+                <span className="panel-link-row__main flex items-center gap-3">
+                  <span className={cn('panel-link-row__icon', meta.rowTone)}>
                     <Icon size={16} strokeWidth={2} />
                   </span>
-                  {meta.quickLabel}
+                  <span className="panel-link-row__label">{meta.quickLabel}</span>
                 </span>
-                <ChevronLeft size={16} className="text-text-muted" />
+                <ChevronLeft size={16} className="panel-link-row__chevron shrink-0" />
               </button>
             );
           })}

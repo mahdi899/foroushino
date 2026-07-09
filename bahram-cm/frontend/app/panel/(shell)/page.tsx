@@ -74,19 +74,21 @@ export default async function PanelDashboardPage() {
         <QuickResourceLinks urls={academyUrls} />
       </section>
 
-      <section className="card flex flex-col gap-5 p-5 text-right sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <section className="card panel-onboarding-section flex flex-col gap-5 p-5 text-right sm:p-6">
+        <div className="panel-onboarding-section__header flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-bold text-text">چک‌لیست شروع</h2>
             <p className="mt-1 text-xs text-text-muted">مراحل اولیه برای شروع مسیر یادگیری در آکادمی</p>
           </div>
-          <span className="badge badge-neutral text-sm">{progress.toLocaleString('fa-IR')}٪</span>
+          <span className="panel-onboarding-section__badge">{progress.toLocaleString('fa-IR')}٪ تکمیل</span>
         </div>
         <OnboardingChecklist items={data.checklist} />
-        <ProgressBar
-          value={progress}
-          sublabel={`${doneCount.toLocaleString('fa-IR')} از ${data.checklist.length.toLocaleString('fa-IR')} مرحله تکمیل شد`}
-        />
+        <div className="panel-onboarding-progress">
+          <ProgressBar
+            value={progress}
+            sublabel={`${doneCount.toLocaleString('fa-IR')} از ${data.checklist.length.toLocaleString('fa-IR')} مرحله تکمیل شد`}
+          />
+        </div>
       </section>
     </div>
   );

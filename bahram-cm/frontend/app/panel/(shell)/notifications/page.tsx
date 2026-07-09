@@ -11,20 +11,23 @@ export default async function PanelNotificationsPage() {
   const { data: notifications } = await panelStudentFetch<{ data: NotificationEntry[] }>('/notifications');
 
   return (
-    <div className="panel-page-inner flex flex-col gap-4 sm:gap-5">
+    <div className="panel-page-inner panel-notifications-page flex flex-col gap-4 sm:gap-5">
       <PanelPageHeader
         icon={Bell}
         title="اعلان‌ها"
         description="پیام‌ها و اطلاع‌رسانی‌های آکادمی"
+        variant="notifications"
       />
 
       {notifications.length === 0 ? (
-        <div className="panel-empty-state card flex flex-col items-center gap-3 p-10 text-center">
-          <BellOff size={32} className="text-text-muted" />
+        <div className="panel-empty-state card panel-notifications-page__empty flex flex-col items-center gap-3 p-10 text-center">
+          <span className="panel-notifications-page__empty-icon" aria-hidden>
+            <BellOff size={28} strokeWidth={2} />
+          </span>
           <p className="text-sm text-text-muted">اعلانی وجود ندارد.</p>
         </div>
       ) : (
-        <ul className="panel-notification-list">
+        <ul className="panel-notification-list panel-notifications-page__list">
           {notifications.map((notification) => (
             <li key={notification.id} className="panel-notification-card">
               <NotificationItem notification={notification} />

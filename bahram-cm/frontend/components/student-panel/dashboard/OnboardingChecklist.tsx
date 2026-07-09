@@ -11,8 +11,9 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { PanelAcademyLinkSheet } from '@/components/student-panel/academy/PanelAcademyLinkSheet';
-import { ACADEMY_LINK_META } from '@/components/student-panel/academy/academyLinkMeta';
+import { ACADEMY_LINK_META, academyLinkMeta } from '@/components/student-panel/academy/academyLinkMeta';
 import { markOnboardingStepAction } from '@/lib/student/panelActions';
+import { cn } from '@/lib/cn';
 
 export interface ChecklistItem {
   key: string;
@@ -45,8 +46,34 @@ const STEP_ICONS: Record<string, LucideIcon> = {
   sat: Briefcase,
 };
 
+type StepTone = 'telegram' | 'rubika' | 'bot' | 'profile' | 'course' | 'club' | 'sat';
+
+function getStepTone(key: string): StepTone | null {
+  const meta = academyLinkMeta(key);
+  if (meta) return meta.variant;
+
+  const tones: Record<string, StepTone> = {
+    profile: 'profile',
+    course: 'course',
+    customer_club: 'club',
+    sat: 'sat',
+  };
+
+  return tones[key] ?? null;
+}
+
+function stepSurfaceClass(tone: StepTone | null, state: string) {
+  return cn(
+    'panel-onboarding-step__surface',
+    tone && `panel-onboarding-step__surface--${tone}`,
+    state === 'active' && 'panel-onboarding-step__surface--active',
+    state === 'done' && 'panel-onboarding-step__surface--done',
+  );
+}
+
 function StepVisual({ item, isNext }: { item: ChecklistItem; isNext: boolean }) {
   const Icon = STEP_ICONS[item.key] ?? User;
+  const tone = getStepTone(item.key);
 
   if (item.done) {
     return (
@@ -58,7 +85,11 @@ function StepVisual({ item, isNext }: { item: ChecklistItem; isNext: boolean }) 
 
   return (
     <span
-      className={`panel-onboarding-step__icon${isNext ? ' panel-onboarding-step__icon--active' : ''}`}
+      className={cn(
+        'panel-onboarding-step__icon',
+        tone && `panel-onboarding-step__icon--${tone}`,
+        isNext && 'panel-onboarding-step__icon--active',
+      )}
       aria-hidden
     >
       <Icon size={18} strokeWidth={2} />
@@ -78,6 +109,7 @@ function StepCard({
   onTrackedClick?: () => void;
 }) {
   const state = item.done ? 'done' : isNext ? 'active' : 'pending';
+  const tone = getStepTone(item.key);
 
   const body = (
     <>
@@ -93,12 +125,17 @@ function StepCard({
     </>
   );
 
-  const className = `panel-onboarding-step panel-onboarding-step--${state}`;
+  const className = cn(
+    'panel-onboarding-step',
+    `panel-onboarding-step--${state}`,
+    tone && `panel-onboarding-step--${tone}`,
+  );
+  const surfaceClass = stepSurfaceClass(tone, state);
 
   if (item.done) {
     return (
       <li className={className} data-state={state}>
-        {body}
+        <div className={surfaceClass}>{body}</div>
       </li>
     );
   }
@@ -106,7 +143,7 @@ function StepCard({
   if (EXTERNAL_SHEET_KEYS.has(item.key)) {
     return (
       <li className={className} data-state={state}>
-        <button type="button" onClick={onOpenSheet} className="panel-onboarding-step__link">
+        <button type="button" onClick={onOpenSheet} className={cn(surfaceClass, 'panel-onboarding-step__link')}>
           {body}
         </button>
       </li>
@@ -116,7 +153,7 @@ function StepCard({
   if (!item.url) {
     return (
       <li className={className} data-state={state}>
-        {body}
+        <div className={surfaceClass}>{body}</div>
       </li>
     );
   }
@@ -130,7 +167,7 @@ function StepCard({
         target={isExternal ? '_blank' : undefined}
         rel={isExternal ? 'noopener noreferrer' : undefined}
         onClick={onTrackedClick}
-        className="panel-onboarding-step__link"
+        className={cn(surfaceClass, 'panel-onboarding-step__link')}
       >
         {body}
       </Link>
