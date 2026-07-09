@@ -9,15 +9,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('chatbot_sessions', function (Blueprint $table) {
-            $table->string('visitor_phone', 30)->nullable()->after('page_url');
-            $table->unsignedBigInteger('lead_id')->nullable()->after('visitor_phone');
+            $table->foreign('lead_id')->references('id')->on('leads')->nullOnDelete();
         });
     }
 
     public function down(): void
     {
         Schema::table('chatbot_sessions', function (Blueprint $table) {
-            $table->dropColumn(['lead_id', 'visitor_phone']);
+            $table->dropForeign(['lead_id']);
         });
     }
 };
