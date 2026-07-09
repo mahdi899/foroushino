@@ -108,15 +108,10 @@ export function Table({
   return (
     <>
       {mobile ? <AdminTableCardList>{mobile}</AdminTableCardList> : null}
-      <div
-        className={cn(
-          'overflow-x-auto rounded-lg border border-border bg-surface',
-          mobile && 'hidden md:block',
-        )}
-      >
-        <table className="admin-text-body w-full min-w-[32rem] text-right">
+      <div className={cn('admin-table-wrap overflow-x-auto', mobile && 'hidden md:block')}>
+        <table className="admin-table admin-text-body w-full min-w-[32rem] text-right">
           <thead>
-            <tr className="border-b border-border bg-surface-soft/60 text-text-muted">
+            <tr>
               {head.map((h) => (
                 <th key={h} className="whitespace-nowrap px-4 py-3 font-semibold">
                   {h}
@@ -124,7 +119,7 @@ export function Table({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">{children}</tbody>
+          <tbody>{children}</tbody>
         </table>
       </div>
     </>

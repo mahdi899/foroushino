@@ -671,14 +671,64 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 }
 
 /* Tables + lists */
-.admin-root .divide-border > :not([hidden]) ~ :not([hidden]) {
-  border-color: var(--color-border);
+.admin-root {
+  --admin-border-section: color-mix(in srgb, var(--color-border) 50%, transparent);
+  --admin-border-row: color-mix(in srgb, var(--color-border) 38%, transparent);
 }
-.admin-root tbody tr:hover {
+
+.admin-root .divide-border > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--admin-border-row);
+}
+
+.admin-root .admin-table-wrap {
+  border-radius: 0.75rem;
+  border: 1px solid var(--admin-border-section);
+  background: var(--color-surface);
+}
+
+.admin-root .admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-root .admin-table thead th {
+  background: color-mix(in srgb, var(--color-surface-soft) 70%, transparent);
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--admin-border-section);
+}
+
+.admin-root .admin-table tbody td {
+  border-bottom: 1px solid var(--admin-border-row);
+}
+
+.admin-root .admin-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-root .admin-table tbody tr:hover {
   background: color-mix(in srgb, var(--color-surface-soft) 65%, transparent);
 }
-.admin-root[data-admin-theme='dark'] thead tr {
+
+.admin-root .admin-content-panel__body .admin-table-wrap,
+.admin-root .admin-dashboard-panel__body .admin-table-wrap {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.admin-root .admin-content-panel__body .admin-table thead th,
+.admin-root .admin-dashboard-panel__body .admin-table thead th {
+  background: color-mix(in srgb, var(--color-surface-soft) 55%, transparent);
+}
+
+.admin-root[data-admin-theme='dark'] .admin-table thead th {
   background: color-mix(in srgb, var(--color-surface-soft) 80%, transparent);
+}
+
+.admin-root[data-admin-theme='dark'] {
+  --admin-border-section: color-mix(in srgb, var(--color-border) 70%, transparent);
+  --admin-border-row: color-mix(in srgb, var(--color-border) 55%, transparent);
 }
 .admin-root .admin-nav-item:not([data-active='true']):hover {
   color: var(--color-primary);
@@ -1396,6 +1446,17 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 /* Mobile table cards */
 .admin-root .admin-table-card {
   border-radius: 1rem;
+  border-color: color-mix(in srgb, var(--color-primary) 10%, var(--color-border));
+}
+
+.admin-root .admin-table-card__footer,
+.admin-root .admin-table-card__expanded {
+  border-top: 1px solid var(--admin-border-row);
+}
+
+.admin-root .admin-content-panel__body .admin-table-card {
+  border-color: color-mix(in srgb, var(--color-primary) 8%, var(--admin-border-section));
+  box-shadow: none;
 }
 
 .admin-root .admin-table-card-list {
@@ -1855,7 +1916,7 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  border-bottom: 1px solid var(--admin-border-section);
   background: linear-gradient(
     180deg,
     color-mix(in srgb, var(--color-primary-soft) 65%, var(--color-surface)) 0%,
@@ -2748,7 +2809,7 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   justify-content: space-between;
   gap: 0.75rem 1rem;
   border-radius: 0.875rem;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 12%, var(--color-border));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 8%, var(--admin-border-section));
   background: linear-gradient(
     145deg,
     color-mix(in srgb, var(--color-primary-soft) 40%, var(--color-surface)) 0%,
@@ -2961,7 +3022,6 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   padding: 0;
 }
 
-.admin-root .admin-content-panel__body .overflow-x-auto,
 .admin-root .admin-content-panel__body > .admin-table-card-list {
   border: 0;
   border-radius: 0;
@@ -3027,7 +3087,7 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
+  border-bottom: 1px solid var(--admin-border-section);
   background: linear-gradient(
     180deg,
     color-mix(in srgb, var(--color-primary-soft) 65%, var(--color-surface)) 0%,

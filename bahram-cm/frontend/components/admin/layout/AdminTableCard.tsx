@@ -54,10 +54,12 @@ export function AdminTableCard({
               </div>
             ))}
           </dl>
-          {footer ? <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-3">{footer}</div> : null}
+          {footer ? (
+            <div className="admin-table-card__footer flex flex-wrap items-center justify-end gap-2 pt-3">{footer}</div>
+          ) : null}
         </div>
       </div>
-      {expanded ? <div className="border-t border-border bg-surface-soft/40 p-4">{expanded}</div> : null}
+      {expanded ? <div className="admin-table-card__expanded bg-surface-soft/40 p-4">{expanded}</div> : null}
     </article>
   );
 }
