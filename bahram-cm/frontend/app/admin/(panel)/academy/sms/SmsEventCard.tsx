@@ -1,35 +1,57 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, Loader2, Save } from 'lucide-react';
+import { ChevronDown, Loader2, Save, Send } from 'lucide-react';
 import type { SmsEventForm, SmsEventView, SmsProviderView } from '@/lib/admin/smsCenter.types';
 import { smsProvidersForChannel } from '@/lib/admin/smsCenter.types';
-import { saveSmsEvent } from '@/lib/admin/smsCenter';
+import { saveSmsEvent, testSmsEvent } from '@/lib/admin/smsCenter';
 import { Badge } from '../../ui';
+import { SmsEventTestModal } from './SmsEventTestModal';
 
 export function SmsEventCard({
   event,
   providers,
   initial,
+  defaultTestPhone,
 }: {
   event: SmsEventView;
   providers: SmsProviderView[];
   initial: SmsEventForm;
+  defaultTestPhone?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(initial);
   const [pending, setPending] = useState(false);
+  const [testPending, setTestPending] = useState(false);
+  const [testModalOpen, setTestModalOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [testFeedback, setTestFeedback] = useState<{ ok: boolean; text: string } | null>(null);
 
   const smsProviders = smsProvidersForChannel(providers, 'sms');
   const messengerProviders = smsProvidersForChannel(providers, 'messenger');
   const selectedProvider = [...smsProviders, ...messengerProviders].find((p) => p.slug === form.providerSlug);
 
+  async function onTest(phone: string) {
+    setTestPending(true);
+    setTestFeedback(null);
+    const res = await testSmsEvent(event.event_key, {
+      phone,
+      message_template: form.messageTemplate,
+      pattern_code: form.patternCode || null,
+      use_pattern: form.usePattern,
+      provider_slug: form.providerSlug || null,
+    });
+    setTestPending(false);
+    setTestModalOpen(false);
+    setTestFeedback({ ok: res.ok, text: res.message });
+  }
+
   async function onSave() {
     setPending(true);
     setMessage('');
     setError('');
+    setTestFeedback(null);
     const res = await saveSmsEvent(event.event_key, {
       is_enabled: form.isEnabled,
       message_template: form.messageTemplate,
@@ -146,15 +168,35 @@ export function SmsEventCard({
           </div>
 
           <div className="admin-sms-event__actions">
-            <button type="button" onClick={() => void onSave()} disabled={pending} className="btn btn-primary">
+            <button type="button" onClick={() => void onSave()} disabled={pending || testPending} className="btn btn-primary">
               {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               ذخیره رویداد
             </button>
+            <button type="button" onClick={() => setTestModalOpen(true)} disabled={pending || testPending} className="btn btn-secondary">
+              {testPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              تست
+            </button>
+            {testFeedback ? (
+              <span className={`admin-sms-hub__feedback admin-sms-hub__feedback--${testFeedback.ok ? 'success' : 'error'}`}>
+                {testFeedback.text}
+              </span>
+            ) : null}
             {message ? <span className="admin-sms-hub__feedback admin-sms-hub__feedback--success">{message}</span> : null}
             {error ? <span className="admin-sms-hub__feedback admin-sms-hub__feedback--error">{error}</span> : null}
           </div>
         </div>
       ) : null}
+
+      <SmsEventTestModal
+        open={testModalOpen}
+        eventLabel={event.label_fa}
+        defaultPhone={defaultTestPhone}
+        pending={testPending}
+        onClose={() => {
+          if (!testPending) setTestModalOpen(false);
+        }}
+        onSubmit={(phone) => void onTest(phone)}
+      />
     </div>
   );
 }

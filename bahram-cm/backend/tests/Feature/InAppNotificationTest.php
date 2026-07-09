@@ -94,6 +94,38 @@ class InAppNotificationTest extends TestCase
             ->assertJsonPath('data.unread_count', 1);
     }
 
+    public function test_student_can_list_unread_notifications_only(): void
+    {
+        $user = User::factory()->create(['mobile' => '09126667777', 'is_admin' => false]);
+        $readNotification = Notification::create([
+            'title' => 'خوانده‌شده',
+            'body' => 'متن',
+            'type' => InAppNotificationType::General->value,
+        ]);
+        $unreadNotification = Notification::create([
+            'title' => 'خوانده‌نشده',
+            'body' => 'متن',
+            'type' => InAppNotificationType::General->value,
+        ]);
+        NotificationRecipient::create([
+            'notification_id' => $readNotification->id,
+            'user_id' => $user->id,
+            'read_at' => now(),
+        ]);
+        NotificationRecipient::create([
+            'notification_id' => $unreadNotification->id,
+            'user_id' => $user->id,
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/v1/student/notifications?unread_only=1')
+            ->assertOk()
+            ->assertJsonPath('data.0.title', 'خوانده‌نشده')
+            ->assertJsonPath('meta.total', 1);
+    }
+
     public function test_student_can_mark_notification_as_read(): void
     {
         $user = User::factory()->create(['mobile' => '09127778888', 'is_admin' => false]);

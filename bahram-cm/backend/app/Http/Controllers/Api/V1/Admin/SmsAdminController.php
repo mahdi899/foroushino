@@ -7,6 +7,7 @@ use App\Models\SmsLog;
 use App\Services\AudienceSegmentService;
 use App\Services\SmsService;
 use App\Support\Mobile;
+use App\Support\SmsMessage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -55,6 +56,7 @@ class SmsAdminController extends Controller
         }
 
         abort_if(empty($recipients), 422, 'حداقل یک مخاطب (بخش یا شماره دستی) باید انتخاب شود.');
+        abort_unless(SmsMessage::hasOptOutSuffix($data['message']), 422, SmsMessage::optOutValidationMessage());
 
         $sent = 0;
         $failed = 0;
@@ -100,8 +102,15 @@ class SmsAdminController extends Controller
 
     public function test(Request $request): JsonResponse
     {
-        $data = $request->validate(['phone' => ['required', 'string']]);
+        $data = $request->validate([
+            'phone' => ['required', 'string'],
+            'message' => ['nullable', 'string', 'max:640'],
+        ]);
 
-        return response()->json(['data' => $this->sms->sendTest($data['phone'])]);
+        if (filled($data['message'] ?? null) && ! SmsMessage::hasOptOutSuffix($data['message'])) {
+            abort(422, SmsMessage::optOutValidationMessage());
+        }
+
+        return response()->json(['data' => $this->sms->sendTest($data['phone'], $data['message'] ?? null)]);
     }
 }

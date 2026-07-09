@@ -11,10 +11,12 @@ export function SmsEventsPanel({
   events,
   categories,
   providers,
+  defaultTestPhone,
 }: {
   events: SmsEventView[];
   categories: SmsEventCategoryView[];
   providers: SmsProviderView[];
+  defaultTestPhone?: string | null;
 }) {
   const grouped = groupEventsByCategory(events);
   const categoryLabels = new Map(categories.map((c) => [c.key, c.label]));
@@ -61,6 +63,7 @@ export function SmsEventsPanel({
                     event={event}
                     providers={providers}
                     initial={eventToForm(event)}
+                    defaultTestPhone={defaultTestPhone}
                   />
                 ))}
               </div>

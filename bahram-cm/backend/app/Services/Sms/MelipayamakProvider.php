@@ -18,7 +18,7 @@ class MelipayamakProvider implements SmsProviderContract
 {
     private const SEND_ENDPOINT = 'https://rest.payamak-panel.com/api/SendSMS/SendSMS';
     private const PATTERN_ENDPOINT = 'https://rest.payamak-panel.com/api/SendSMS/BaseServiceNumber';
-
+    // https://api.payamak-panel.com/post/send.asmx/SendByBaseNumber2?username=string&password=string&text=string&to=string&bo
     public function __construct(private readonly SmsProviderConfig $config) {}
 
     public function send(string $mobile, string $message): array

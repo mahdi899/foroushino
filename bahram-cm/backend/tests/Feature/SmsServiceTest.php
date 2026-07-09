@@ -117,4 +117,92 @@ class SmsServiceTest extends TestCase
 
         $this->assertFalse($sent);
     }
+
+    public function test_send_test_returns_provider_code_on_failure(): void
+    {
+        $this->configureKavenegar();
+
+        Http::fake([
+            'api.kavenegar.com/*' => Http::response([
+                'return' => ['status' => 418, 'message' => 'invalid receptor'],
+            ], 200),
+        ]);
+
+        $result = app(SmsService::class)->sendTest('09121112233');
+
+        $this->assertFalse($result['success']);
+        $this->assertSame('status: 418 · invalid receptor', $result['provider_code']);
+    }
+
+    public function test_send_test_returns_provider_code_on_success(): void
+    {
+        $this->configureKavenegar();
+
+        Http::fake([
+            'api.kavenegar.com/*' => Http::response([
+                'return' => ['status' => 200, 'message' => 'ok'],
+                'entries' => [],
+            ], 200),
+        ]);
+
+        $result = app(SmsService::class)->sendTest('09121112233');
+
+        $this->assertTrue($result['success']);
+        $this->assertSame('status: 200 · ok', $result['provider_code']);
+    }
+
+    public function test_send_event_test_returns_provider_response(): void
+    {
+        $this->configureKavenegar();
+
+        SmsSetting::current()->update(['test_phone' => '09121112233']);
+
+        Http::fake([
+            'api.kavenegar.com/*' => Http::response([
+                'return' => ['status' => 200, 'message' => 'ok'],
+                'entries' => [],
+            ], 200),
+        ]);
+
+        $result = app(SmsService::class)->sendEventTest(
+            \App\Enums\SmsEventKey::Otp,
+            ['message_template' => 'کد تست: {code}'],
+        );
+
+        $this->assertTrue($result['ok']);
+        $this->assertStringContainsString('status: 200 · ok', $result['message']);
+    }
+
+    public function test_send_event_test_requires_test_phone(): void
+    {
+        $this->configureKavenegar();
+
+        SmsSetting::current()->update(['test_phone' => null]);
+
+        $result = app(SmsService::class)->sendEventTest(\App\Enums\SmsEventKey::Otp);
+
+        $this->assertFalse($result['ok']);
+        $this->assertSame('شماره موبایل گیرنده را وارد کنید.', $result['message']);
+    }
+
+    public function test_send_event_test_accepts_phone_override(): void
+    {
+        $this->configureKavenegar();
+
+        SmsSetting::current()->update(['test_phone' => null]);
+
+        Http::fake([
+            'api.kavenegar.com/*' => Http::response([
+                'return' => ['status' => 200, 'message' => 'ok'],
+                'entries' => [],
+            ], 200),
+        ]);
+
+        $result = app(SmsService::class)->sendEventTest(
+            \App\Enums\SmsEventKey::Otp,
+            ['phone' => '09121112233', 'message_template' => 'کد تست: {code}'],
+        );
+
+        $this->assertTrue($result['ok']);
+    }
 }

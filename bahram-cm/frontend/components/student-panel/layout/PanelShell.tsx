@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import type { StudentUser } from '@/lib/student/session';
 import { PanelThemeProvider } from '@/app/panel/PanelThemeContext';
+import { PanelNotificationProvider } from '@/components/student-panel/notifications/PanelNotificationContext';
 import { PanelBottomNav } from './PanelBottomNav';
 import { PanelHeader } from './PanelHeader';
 import { PanelPwaRegistrar } from './PanelPwaRegistrar';
@@ -48,11 +49,16 @@ export function PanelShell({
   const pathname = usePathname();
   const mainRef = useRef<HTMLElement>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [liveUnreadCount, setLiveUnreadCount] = useState(unreadCount);
   const sidebarCollapsed = useSyncExternalStore(
     subscribeSidebarCollapsed,
     getSidebarCollapsedSnapshot,
     () => false,
   );
+
+  useEffect(() => {
+    setLiveUnreadCount(unreadCount);
+  }, [unreadCount]);
 
   useEffect(() => {
     const root = document.getElementById('panel-root');
@@ -90,30 +96,36 @@ export function PanelShell({
     setSidebarCollapsed(!sidebarCollapsed);
   }
 
+  const handleUnreadCountChange = useCallback((count: number) => {
+    setLiveUnreadCount(count);
+  }, []);
+
   return (
     <PanelThemeProvider>
-      <div className="panel-shell">
-        <PanelPwaRegistrar />
-        <PanelSidebar
-          unreadCount={unreadCount}
-          mobileOpen={mobileOpen}
-          collapsed={sidebarCollapsed}
-          onClose={() => setMobileOpen(false)}
-          onToggleCollapse={toggleSidebarCollapsed}
-        />
-
-        <div className="panel-main flex min-w-0 flex-col">
-          <PanelHeader
-            user={user}
-            unreadCount={unreadCount}
+      <PanelNotificationProvider initialUnreadCount={unreadCount} onUnreadCountChange={handleUnreadCountChange}>
+        <div className="panel-shell">
+          <PanelPwaRegistrar />
+          <PanelSidebar
+            unreadCount={liveUnreadCount}
+            mobileOpen={mobileOpen}
+            collapsed={sidebarCollapsed}
+            onClose={() => setMobileOpen(false)}
+            onToggleCollapse={toggleSidebarCollapsed}
           />
-          <main ref={mainRef} className="panel-main-content">
-            <div className="panel-page-wrap">{children}</div>
-          </main>
-        </div>
 
-        <PanelBottomNav unreadCount={unreadCount} onMenuOpen={() => setMobileOpen(true)} />
-      </div>
+          <div className="panel-main flex min-w-0 flex-col">
+            <PanelHeader
+              user={user}
+              unreadCount={liveUnreadCount}
+            />
+            <main ref={mainRef} className="panel-main-content">
+              <div className="panel-page-wrap">{children}</div>
+            </main>
+          </div>
+
+          <PanelBottomNav unreadCount={liveUnreadCount} onMenuOpen={() => setMobileOpen(true)} />
+        </div>
+      </PanelNotificationProvider>
     </PanelThemeProvider>
   );
 }

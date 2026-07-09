@@ -12,6 +12,7 @@ use App\Models\SmsSetting;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Services\Sms\SmsProviderFactory;
+use App\Support\SmsMessage;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -103,26 +104,104 @@ class SmsService
     }
 
     /**
-     * @return array{success: bool, message: string}
+     * @param  array<string, mixed>  $overrides
+     * @return array{ok: bool, message: string}
      */
-    public function sendTest(string $phone): array
+    public function sendEventTest(SmsEventKey $eventKey, array $overrides = []): array
     {
         $settings = SmsSetting::current();
 
         if (! $settings->is_sms_active) {
-            return ['success' => false, 'message' => 'سرویس پیامک غیرفعال است.'];
+            return ['ok' => false, 'message' => 'سرویس پیامک غیرفعال است.'];
+        }
+
+        $phone = filled($overrides['phone'] ?? null)
+            ? (string) $overrides['phone']
+            : $settings->test_phone;
+
+        if (blank($phone)) {
+            return ['ok' => false, 'message' => 'شماره موبایل گیرنده را وارد کنید.'];
+        }
+
+        $event = SmsEventConfig::forKey($eventKey);
+        $template = array_key_exists('message_template', $overrides)
+            ? (string) ($overrides['message_template'] ?? '')
+            : ($event?->resolvedTemplate() ?? $eventKey->defaultTemplate());
+
+        if (blank($template)) {
+            $template = $eventKey->defaultTemplate();
+        }
+
+        $variables = $this->sampleVariablesForEvent($eventKey, $phone);
+        $message = strtr($template, $variables);
+
+        $providerSlug = $overrides['provider_slug'] ?? $event?->provider_slug
+            ?: $settings->primary_provider_slug
+            ?: $settings->sms_provider
+            ?: 'melipayamak';
+
+        $usePattern = array_key_exists('use_pattern', $overrides)
+            ? (bool) $overrides['use_pattern']
+            : (bool) ($event?->use_pattern ?? false);
+        $patternCode = $overrides['pattern_code'] ?? $event?->pattern_code;
+        $patternCode = ($usePattern && filled($patternCode)) ? (string) $patternCode : null;
+
+        $providerMessage = $patternCode
+            ? $this->buildPatternText($eventKey, $variables)
+            : $message;
+
+        $log = $this->dispatchWithProvider(
+            $phone,
+            $message,
+            $providerSlug,
+            null,
+            $eventKey->value.'_test',
+            $patternCode,
+            false,
+            null,
+            $providerMessage,
+        );
+
+        $providerCode = $this->formatProviderCode($providerSlug, $log->raw_response);
+
+        if ($log->status === 'sent') {
+            $response = 'پیامک آزمایشی با موفقیت ارسال شد.';
+
+            return ['ok' => true, 'message' => filled($providerCode) ? $response.' · '.$providerCode : $response];
+        }
+
+        $response = 'ارسال پیامک آزمایشی ناموفق بود.';
+
+        return ['ok' => false, 'message' => filled($providerCode) ? $response.' · '.$providerCode : $response];
+    }
+
+    /**
+     * @return array{success: bool, message: string, provider_code: ?string}
+     */
+    public function sendTest(string $phone, ?string $message = null): array
+    {
+        $settings = SmsSetting::current();
+
+        if (! $settings->is_sms_active) {
+            return ['success' => false, 'message' => 'سرویس پیامک غیرفعال است.', 'provider_code' => null];
         }
 
         $slug = $settings->primary_provider_slug ?? $settings->sms_provider ?? 'melipayamak';
         $provider = $this->providers->make($slug);
 
         if (! $provider) {
-            return ['success' => false, 'message' => 'پنل پیامکی اصلی تنظیم نشده است.'];
+            return ['success' => false, 'message' => 'پنل پیامکی اصلی تنظیم نشده است.', 'provider_code' => null];
+        }
+
+        $text = filled($message) ? trim($message) : SmsMessage::DEFAULT_TEST_MESSAGE;
+
+        if (! SmsMessage::hasOptOutSuffix($text)) {
+            return ['success' => false, 'message' => SmsMessage::optOutValidationMessage(), 'provider_code' => null];
         }
 
         $log = $this->dispatchWithProvider(
             $phone,
-            'این یک پیامک آزمایشی از پنل مدیریت بهرام است.',
+            $text,
             $slug,
             null,
             'test',
@@ -130,9 +209,14 @@ class SmsService
             false,
         );
 
+        $providerCode = $this->formatProviderCode($slug, $log->raw_response);
+
         return [
             'success' => $log->status === 'sent',
-            'message' => $log->status === 'sent' ? 'پیامک آزمایشی با موفقیت ارسال شد.' : 'ارسال پیامک آزمایشی ناموفق بود. لاگ‌های سرویس پیامک را بررسی کنید.',
+            'message' => $log->status === 'sent'
+                ? 'پیامک آزمایشی با موفقیت ارسال شد.'
+                : 'ارسال پیامک آزمایشی ناموفق بود.',
+            'provider_code' => $providerCode,
         ];
     }
 
@@ -164,6 +248,9 @@ class SmsService
             ?: 'melipayamak';
 
         $patternCode = ($event?->use_pattern && filled($event->pattern_code)) ? $event->pattern_code : null;
+        $providerMessage = $patternCode
+            ? $this->buildPatternText($eventKey, $variables)
+            : $message;
 
         $log = $this->dispatchWithProvider(
             $mobile,
@@ -173,6 +260,8 @@ class SmsService
             $eventKey->value,
             $patternCode,
             false,
+            null,
+            $providerMessage,
         );
 
         $this->scheduleFallbackIfNeeded($settings, $event, $log);
@@ -258,6 +347,36 @@ class SmsService
         SmsFallbackJob::dispatch($log->id)->delay(now()->addSeconds(max(5, (int) $delay)));
     }
 
+    /** @return array<string, string> */
+    private function sampleVariablesForEvent(SmsEventKey $eventKey, string $testPhone): array
+    {
+        $samples = [
+            '{code}' => '12345',
+            '{name}' => 'کاربر تست',
+            '{phone}' => $testPhone,
+            '{order_number}' => 'BC-TEST-001',
+            '{product_title}' => 'دوره آزمایشی',
+            '{subject}' => 'موضوع تست',
+            '{ticket_id}' => '1001',
+            '{message}' => 'پیام آزمایشی از پنل مدیریت',
+        ];
+
+        return array_intersect_key($samples, array_flip($eventKey->placeholders()));
+    }
+
+    /**
+     * @param  array<string, string>  $variables
+     */
+    private function buildPatternText(SmsEventKey $eventKey, array $variables): string
+    {
+        $values = array_map(
+            fn (string $placeholder) => $variables[$placeholder] ?? '',
+            $eventKey->placeholders(),
+        );
+
+        return implode(';', $values);
+    }
+
     private function dispatchWithProvider(
         string $mobile,
         string $message,
@@ -267,6 +386,7 @@ class SmsService
         ?string $patternCode,
         bool $isFallback,
         ?int $fallbackOfLogId = null,
+        ?string $providerMessage = null,
     ): SmsLog {
         $log = SmsLog::create([
             'user_id' => $userId,
@@ -287,7 +407,7 @@ class SmsService
             return $log->fresh();
         }
 
-        $result = $provider->send($mobile, $message);
+        $result = $provider->send($mobile, $providerMessage ?? $message);
 
         $log->update([
             'status' => $result['success'] ? 'sent' : 'failed',
@@ -302,5 +422,40 @@ class SmsService
         }
 
         return $log->fresh();
+    }
+
+    /** @param  array<string, mixed>|null  $raw */
+    private function formatProviderCode(string $providerSlug, ?array $raw): ?string
+    {
+        if ($raw === null || $raw === []) {
+            return null;
+        }
+
+        if ($providerSlug === 'melipayamak') {
+            $parts = array_filter([
+                data_get($raw, 'RetStatus') !== null ? 'RetStatus: '.data_get($raw, 'RetStatus') : null,
+                filled(data_get($raw, 'Value')) ? 'Value: '.data_get($raw, 'Value') : null,
+                filled(data_get($raw, 'StrRetStatus')) ? (string) data_get($raw, 'StrRetStatus') : null,
+            ]);
+
+            return $parts !== [] ? implode(' · ', $parts) : null;
+        }
+
+        if ($providerSlug === 'kavenegar') {
+            $status = data_get($raw, 'return.status');
+            $message = data_get($raw, 'return.message');
+
+            if ($status === null) {
+                return null;
+            }
+
+            return filled($message)
+                ? 'status: '.$status.' · '.$message
+                : 'status: '.$status;
+        }
+
+        $encoded = json_encode($raw, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        return is_string($encoded) ? $encoded : null;
     }
 }
