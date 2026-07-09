@@ -63,7 +63,7 @@ function BaleSafirButton({
       onClick={() => void handleSendViaBale()}
       disabled={disabled || pending}
       className={cn(
-        'flex w-full items-center justify-center gap-3 rounded-pill border border-[#2BBAE8]/25 bg-[#2BBAE8]/10 px-3 py-2.5 text-[11px] font-medium text-bone transition',
+        'flex w-full items-center justify-center gap-3 rounded-pill border border-[#2BBAE8]/25 bg-[#2BBAE8]/10 px-3 py-2.5 panel-text-meta font-medium text-bone transition',
         'hover:border-[#2BBAE8]/45 hover:bg-[#2BBAE8]/15 disabled:cursor-not-allowed disabled:opacity-55',
       )}
     >
@@ -228,10 +228,10 @@ export function StudentLoginForm({
 
         <div className="text-center">
           <BrandMark className="mx-auto h-9 w-9 rounded-pill ring-bone/12" />
-          <h2 id="student-login-title" className="mt-2.5 font-display text-[15px] font-semibold text-bone">
+          <h2 id="student-login-title" className="panel-text-body-lg mt-2.5 font-display font-semibold text-bone">
             ورود به پنل دانشجویی
           </h2>
-          <p className="mt-0.5 flex items-center justify-center gap-1 text-[11px] text-mist">
+          <p className="mt-0.5 flex items-center justify-center gap-1 panel-text-meta text-mist">
             <ShieldCheck className="h-3 w-3 text-emerald-glow/80" strokeWidth={1.5} aria-hidden />
             ورود امن با پیامک یا بله
           </p>
@@ -255,7 +255,7 @@ export function StudentLoginForm({
               className="space-y-3"
             >
               <label className="block">
-                <span className="text-[11px] font-medium text-mist">شماره موبایل</span>
+                <span className="panel-text-meta font-medium text-mist">شماره موبایل</span>
                 <input
                   name="mobile"
                   type="tel"
@@ -276,13 +276,13 @@ export function StudentLoginForm({
                   aria-invalid={showPhoneError}
                 />
                 {showPhoneError ? (
-                  <p className="mt-1 text-[11px] text-gold" role="alert">
+                  <p className="mt-1 panel-text-meta text-gold" role="alert">
                     {phoneError}
                   </p>
                 ) : null}
               </label>
 
-              {otpState.error ? <p className="text-xs text-gold">{otpState.error}</p> : null}
+              {otpState.error ? <p className="panel-text-meta text-gold">{otpState.error}</p> : null}
 
               <button type="submit" disabled={!phoneValid || sendPending} className={btnPrimaryClass}>
                 {sendPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'دریافت کد'}
@@ -294,7 +294,7 @@ export function StudentLoginForm({
                   setPasswordError(null);
                   setStep('password');
                 }}
-                className="flex w-full items-center justify-center gap-1 py-0.5 text-[11px] text-mist transition hover:text-emerald-glow"
+                className="flex w-full items-center justify-center gap-1 py-0.5 panel-text-meta text-mist transition hover:text-emerald-glow"
               >
                 <KeyRound className="h-3 w-3" />
                 ورود با رمز عبور
@@ -317,7 +317,7 @@ export function StudentLoginForm({
 
               <div className="flex items-center justify-between gap-2 rounded-pill border border-bone/8 bg-ink/25 px-3 py-2">
                 <div className="min-w-0 text-start">
-                  <p className="text-[10px] text-mist">کد به</p>
+                  <p className="panel-text-caption text-mist">کد به</p>
                   <p className="truncate text-sm font-medium text-bone" dir="ltr">
                     {mobile}
                   </p>
@@ -328,7 +328,7 @@ export function StudentLoginForm({
                     setStep('mobile');
                     setOtpCode('');
                   }}
-                  className="inline-flex shrink-0 items-center gap-0.5 text-[11px] text-emerald-glow transition hover:text-emerald"
+                  className="inline-flex shrink-0 items-center gap-0.5 panel-text-meta text-emerald-glow transition hover:text-emerald"
                 >
                   <ArrowRight className="h-3 w-3 rtl-flip" />
                   ویرایش
@@ -354,7 +354,7 @@ export function StudentLoginForm({
                 />
 
                 {verifyState.error ? (
-                  <p className="text-center text-xs text-gold" role="alert">
+                  <p className="text-center panel-text-meta text-gold" role="alert">
                     {verifyState.error}
                   </p>
                 ) : null}
@@ -378,15 +378,15 @@ export function StudentLoginForm({
                 onError={(message) => setBaleError(message || null)}
               />
 
-              {otpInfo ? <p className="text-center text-xs text-mist">{otpInfo}</p> : null}
+              {otpInfo ? <p className="text-center panel-text-meta text-mist">{otpInfo}</p> : null}
 
               {baleError ? (
-                <p className="text-center text-xs text-gold" role="alert">
+                <p className="text-center panel-text-meta text-gold" role="alert">
                   {baleError}
                 </p>
               ) : null}
 
-              <p className="text-center text-[11px] text-mist">
+              <p className="text-center panel-text-meta text-mist">
                 {resendIn > 0 ? (
                   <>ارسال مجدد تا {resendIn.toLocaleString('fa-IR')} ثانیه</>
                 ) : (
@@ -417,7 +417,7 @@ export function StudentLoginForm({
               {passwordSecurity.honeypotField}
 
               <label className="block">
-                <span className="text-[11px] font-medium text-mist">شماره موبایل</span>
+                <span className="panel-text-meta font-medium text-mist">شماره موبایل</span>
                 <input
                   name="mobile"
                   type="tel"
@@ -432,7 +432,7 @@ export function StudentLoginForm({
               </label>
 
               <label className="block">
-                <span className="text-[11px] font-medium text-mist">رمز عبور</span>
+                <span className="panel-text-meta font-medium text-mist">رمز عبور</span>
                 <input
                   name="password"
                   type="password"
@@ -444,7 +444,7 @@ export function StudentLoginForm({
 
               {passwordSecurity.captchaField}
 
-              {passwordError ? <p className="text-xs text-gold">{passwordError}</p> : null}
+              {passwordError ? <p className="panel-text-meta text-gold">{passwordError}</p> : null}
 
               <button
                 type="submit"
@@ -464,7 +464,7 @@ export function StudentLoginForm({
                   setPasswordError(null);
                   setStep('mobile');
                 }}
-                className="flex w-full items-center justify-center gap-1 py-0.5 text-[11px] text-mist transition hover:text-emerald-glow"
+                className="flex w-full items-center justify-center gap-1 py-0.5 panel-text-meta text-mist transition hover:text-emerald-glow"
               >
                 ورود با کد یک‌بارمصرف
               </button>

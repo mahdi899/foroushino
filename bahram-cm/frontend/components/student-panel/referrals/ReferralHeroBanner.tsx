@@ -39,10 +39,10 @@ export function ReferralHeroBanner({ code, link }: { code: string; link: string 
 
       <div className="relative z-10 mt-6 grid gap-3 sm:grid-cols-2">
         <div className="panel-referral-hero__field">
-          <p className="mb-2 text-xs text-text-muted">کد اختصاصی شما</p>
+          <p className="panel-text-meta mb-2 text-text-muted">کد اختصاصی شما</p>
           <div className="flex items-center justify-between gap-2">
             <span className="font-mono text-lg font-bold text-text" dir="ltr">{code}</span>
-            <button type="button" onClick={() => copy(code, 'code')} className="btn btn-secondary min-h-9 py-1 text-xs">
+            <button type="button" onClick={() => copy(code, 'code')} className="btn btn-secondary panel-text-caption min-h-9 py-1">
               {copied === 'code' ? <Check size={14} /> : <Copy size={14} />}
               {copied === 'code' ? 'کپی شد' : 'کپی'}
             </button>
@@ -50,10 +50,10 @@ export function ReferralHeroBanner({ code, link }: { code: string; link: string 
         </div>
 
         <div className="panel-referral-hero__field">
-          <p className="mb-2 text-xs text-text-muted">لینک دعوت شما</p>
+          <p className="panel-text-meta mb-2 text-text-muted">لینک دعوت شما</p>
           <div className="flex items-center gap-2">
             <span className="min-w-0 flex-1 truncate text-sm text-text" dir="ltr">{link}</span>
-            <button type="button" onClick={() => copy(link, 'link')} className="btn btn-secondary min-h-9 shrink-0 py-1 text-xs">
+            <button type="button" onClick={() => copy(link, 'link')} className="btn btn-secondary panel-text-caption min-h-9 shrink-0 py-1">
               {copied === 'link' ? <Check size={14} /> : <Copy size={14} />}
             </button>
           </div>

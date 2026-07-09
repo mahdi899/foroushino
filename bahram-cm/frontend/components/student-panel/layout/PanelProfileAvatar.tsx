@@ -82,7 +82,7 @@ export function PanelProfileAvatar({
           onError={() => setSourceIndex((index) => index + 1)}
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-primary/10 text-[11px] font-bold text-primary" aria-hidden>
+        <div className="flex h-full w-full items-center justify-center bg-primary/10 panel-text-meta font-bold text-primary" aria-hidden>
           {initials}
         </div>
       )}

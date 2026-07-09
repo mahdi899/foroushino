@@ -20,7 +20,7 @@ export function CopyTextButton({
   const [copied, setCopied] = useState(false);
 
   if (!value?.trim()) {
-    return <span className="text-xs text-text-muted">—</span>;
+    return <span className="panel-text-meta text-text-muted">—</span>;
   }
 
   async function copy() {
@@ -34,7 +34,7 @@ export function CopyTextButton({
       {showValue ? (
         <code
           className={cn(
-            'min-w-0 flex-1 break-all rounded-lg border border-border/60 bg-surface-soft px-2.5 py-2 text-[11px] leading-relaxed text-text',
+            'panel-text-meta min-w-0 flex-1 break-all rounded-lg border border-border/60 bg-surface-soft px-2.5 py-2 leading-relaxed text-text',
             mono && 'font-mono',
           )}
           dir="ltr"
@@ -46,7 +46,7 @@ export function CopyTextButton({
         type="button"
         onClick={() => void copy()}
         className={cn(
-          'inline-flex shrink-0 items-center gap-1 rounded-lg border border-border/60 bg-surface px-2.5 py-2 text-[11px] font-medium text-text-muted transition hover:border-primary/30 hover:text-primary',
+          'panel-text-meta inline-flex shrink-0 items-center gap-1 rounded-lg border border-border/60 bg-surface px-2.5 py-2 font-medium text-text-muted transition hover:border-primary/30 hover:text-primary',
           !showValue && 'justify-center',
         )}
       >

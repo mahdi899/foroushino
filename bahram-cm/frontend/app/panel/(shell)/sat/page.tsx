@@ -75,19 +75,19 @@ export default async function PanelSatPage() {
                 </div>
               )}
               {application.submitted_at && (
-                <p className="mt-3 text-xs text-text-muted">
+                <p className="panel-card-subtext mt-3">
                   ثبت شده در {new Date(application.submitted_at).toLocaleDateString('fa-IR')}
                 </p>
               )}
             </div>
           ) : (
             <div className="card p-6">
-              <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-text">
+              <h2 className="panel-card-title mb-4 flex items-center gap-2">
                 <FileText size={16} className="text-primary" />
                 فرم درخواست سات
               </h2>
               <SatApplicationForm mobile={user?.mobile ?? ''} />
-              <p className="mt-4 text-[11px] leading-relaxed text-text-muted">
+              <p className="panel-card-subtext mt-4 leading-relaxed">
                 اطلاعات شما محرمانه نگه داشته می‌شود و فقط برای بررسی درخواست استفاده می‌شود.
               </p>
             </div>
@@ -96,7 +96,7 @@ export default async function PanelSatPage() {
 
         <aside className="flex flex-col gap-4">
           <div className="card p-5">
-            <h2 className="mb-4 text-sm font-bold text-text">فرآیند بررسی درخواست</h2>
+            <h2 className="panel-card-title mb-4">فرآیند بررسی درخواست</h2>
             <ol className="panel-stepper-list space-y-4">
               {STEPS.map((step, index) => (
                 <li key={step.key} className="panel-stepper-item" data-state={stepState(currentStatus, step.key)}>
@@ -104,8 +104,8 @@ export default async function PanelSatPage() {
                     {stepState(currentStatus, step.key) === 'done' ? <CheckCircle2 size={14} /> : index + 1}
                   </span>
                   <div>
-                    <p className="text-sm font-semibold text-text">{step.title}</p>
-                    <p className="mt-0.5 text-xs text-text-muted">{step.desc}</p>
+                    <p className="panel-stepper-item__title">{step.title}</p>
+                    <p className="panel-stepper-item__desc">{step.desc}</p>
                   </div>
                 </li>
               ))}
@@ -113,11 +113,11 @@ export default async function PanelSatPage() {
           </div>
 
           <div className="card relative overflow-hidden p-5">
-            <h3 className="text-sm font-bold text-text">یک قدم تا فرصت بهتر!</h3>
-            <p className="mt-2 text-xs leading-relaxed text-text-muted">
+            <h3 className="panel-card-title">یک قدم تا فرصت بهتر!</h3>
+            <p className="panel-card-text mt-2 leading-relaxed">
               با تکمیل دوره‌های آکادمی، شانس پذیرش در سات بیشتر می‌شود.
             </p>
-            <ul className="mt-3 space-y-2 text-xs text-text-muted">
+            <ul className="panel-card-text mt-3 space-y-2">
               {['دسترسی به محتوای تخصصی', 'گواهی معتبر', 'شبکه ارتباطی فعال'].map((item) => (
                 <li key={item} className="flex items-center gap-2">
                   <CheckCircle2 size={14} className="text-success" />
@@ -125,7 +125,7 @@ export default async function PanelSatPage() {
                 </li>
               ))}
             </ul>
-            <Link href="/panel/courses" className="btn btn-primary mt-4 w-full text-xs">
+            <Link href="/panel/courses" className="btn btn-primary panel-text-body mt-4 w-full">
               <Crown size={14} />
               مشاهده و تهیه دوره
             </Link>

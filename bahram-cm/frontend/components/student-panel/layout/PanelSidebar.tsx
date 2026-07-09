@@ -29,7 +29,7 @@ function PanelNavLinks({
   const itemClass =
     variant === 'mobile'
       ? 'panel-mobile-nav-tile'
-      : 'panel-nav-item relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-text-muted transition-colors duration-200';
+      : 'panel-nav-item relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-text-muted transition-colors duration-200';
 
   return (
     <>
@@ -77,11 +77,11 @@ function PanelNavLinks({
             data-active={active}
             className={itemClass}
           >
-            <Icon size={16} className="panel-nav-item__icon shrink-0" aria-hidden />
+            <Icon size={18} className="panel-nav-item__icon shrink-0" aria-hidden />
             <PanelNavLabel label={label} className="panel-nav-item__label flex-1" />
             {showBadge ? (
               <span
-                className="panel-nav-item__badge rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white"
+                className="panel-nav-item__badge rounded-full px-1.5 py-0.5 font-bold text-white"
                 style={{ background: 'var(--color-gold)' }}
               >
                 {unreadCount > 9 ? '9+' : unreadCount}
@@ -134,7 +134,7 @@ export function PanelSidebar({
             </span>
             <div className="min-w-0">
               <p className="text-sm font-bold text-text">منوی پنل</p>
-              <p className="text-[11px] text-text-muted">دسترسی سریع به بخش‌ها</p>
+              <p className="panel-text-meta text-text-muted">دسترسی سریع به بخش‌ها</p>
             </div>
           </div>
           <button
@@ -175,7 +175,7 @@ export function PanelSidebar({
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-glow">
                 <GraduationCap size={20} />
               </div>
-              <span className="panel-sidebar__brand-text truncate text-sm font-bold text-text sm:text-base">
+              <span className="panel-sidebar__brand-text truncate">
                 پنل آکادمی
               </span>
             </div>
@@ -193,7 +193,7 @@ export function PanelSidebar({
           </div>
 
           <div className="panel-sidebar__scroll">
-            <nav className="flex flex-col gap-0.5">
+            <nav className="flex flex-col gap-1">
               <PanelNavLinks
                 unreadCount={unreadCount}
                 isActive={isActive}

@@ -73,10 +73,10 @@ function PlatformTile({
         className={cn('h-10 w-10 shrink-0', comingSoon && 'text-text-muted/35')}
         muted={comingSoon}
       />
-      <span className={cn('text-[10px] font-medium leading-tight', comingSoon ? 'text-text-muted/45' : 'text-text')}>
+      <span className={cn('panel-text-caption font-medium leading-tight', comingSoon ? 'text-text-muted/45' : 'text-text')}>
         {label}
       </span>
-      {comingSoon ? <span className="text-[9px] leading-none text-text-muted/40">به‌زودی</span> : null}
+      {comingSoon ? <span className="panel-text-caption leading-none text-text-muted/40">به‌زودی</span> : null}
     </>
   );
 
@@ -104,7 +104,7 @@ function PlatformTile({
 export function SpotPlayerDownloadGrid() {
   return (
     <div className="card p-4">
-      <h3 className="mb-2 text-sm font-bold text-text">دانلود SpotPlayer</h3>
+      <h3 className="panel-card-title mb-2">دانلود SpotPlayer</h3>
       <div className="grid grid-cols-3 gap-0">
         {PLATFORMS.map((platform) => (
           <PlatformTile

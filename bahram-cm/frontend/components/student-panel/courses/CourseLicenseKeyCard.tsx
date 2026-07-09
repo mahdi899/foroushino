@@ -14,8 +14,8 @@ export function CourseLicenseKeyCard({ licenseKey }: { licenseKey: string | null
             <KeyRound size={15} />
           </span>
           <div className="min-w-0">
-            <h3 className="text-sm font-bold text-text">توکن لایسنس SpotPlayer</h3>
-            <p className="text-[11px] text-text-muted">برای ورود در اپلیکیشن SpotPlayer</p>
+            <h3 className="panel-card-title">توکن لایسنس SpotPlayer</h3>
+            <p className="panel-text-meta text-text-muted">برای ورود در اپلیکیشن SpotPlayer</p>
           </div>
         </div>
         <CopyTextButton value={licenseKey} label="کپی توکن" showValue={false} className="shrink-0" />

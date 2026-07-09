@@ -92,27 +92,27 @@ export function CourseAccessCard({
                 : 'غیرفعال'}
           </StatusBadge>
           {course.order_number ? (
-            <span className="text-[10px] font-medium text-text-muted num-latin" dir="ltr">
+            <span className="panel-text-caption font-medium text-text-muted num-latin" dir="ltr">
               {course.order_number}
             </span>
           ) : null}
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-text-muted">
+        <div className="panel-text-meta flex items-center gap-2 text-text-muted">
           <Calendar className="h-3.5 w-3.5 shrink-0 text-primary" />
           <span>تاریخ خرید: {formatDate(course.activated_at)}</span>
         </div>
 
         {licenseKey && showLicenseKey ? (
           <div className="rounded-xl border border-border/60 bg-surface-soft/60 p-3">
-            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium text-text-muted">
+            <div className="panel-text-meta mb-2 flex items-center gap-1.5 font-medium text-text-muted">
               <KeyRound className="h-3.5 w-3.5" />
               توکن لایسنس SpotPlayer
             </div>
             <CopyTextButton value={licenseKey} label="کپی توکن" showValue={false} className="w-full" />
           </div>
         ) : hasSpotPlayer ? (
-          <p className="rounded-xl border border-warning/20 bg-warning/5 px-3 py-2 text-[11px] leading-relaxed text-text-muted">
+          <p className="panel-text-meta rounded-xl border border-warning/20 bg-warning/5 px-3 py-2 leading-relaxed text-text-muted">
             لایسنس SpotPlayer این دوره در حال صدور است.
           </p>
         ) : null}
@@ -125,7 +125,7 @@ export function CourseAccessCard({
             تماشای دوره
           </Link>
         ) : (
-          <span className="flex w-full items-center justify-center rounded-xl border border-border/40 bg-surface-soft px-4 py-2.5 text-center text-xs text-text-muted">
+          <span className="panel-text-meta flex w-full items-center justify-center rounded-xl border border-border/40 bg-surface-soft px-4 py-2.5 text-center text-text-muted">
             {!hasSpotPlayer
               ? 'این محصول پخش آنلاین SpotPlayer ندارد'
               : course.is_active

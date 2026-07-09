@@ -57,19 +57,19 @@ export function CourseFeaturedHero({ course }: { course: StudentCourseAccess }) 
             <Calendar className="h-3.5 w-3.5" />
           </span>
           <div>
-            <p className="text-[10px] text-text-muted">تاریخ خرید</p>
-            <p className="text-xs font-bold text-text">{formatDate(course.activated_at)}</p>
+            <p className="panel-text-caption text-text-muted">تاریخ خرید</p>
+            <p className="panel-text-body font-bold text-text">{formatDate(course.activated_at)}</p>
           </div>
         </div>
         <div className="sm:px-3">
-          <p className="text-[10px] text-text-muted">وضعیت دوره</p>
-          <p className={`text-xs font-bold ${course.is_active ? 'text-primary' : 'text-text-muted'}`}>
+          <p className="panel-text-caption text-text-muted">وضعیت دوره</p>
+          <p className={`panel-text-body font-bold ${course.is_active ? 'text-primary' : 'text-text-muted'}`}>
             {course.is_active ? 'دسترسی فعال' : 'غیرفعال'}
           </p>
         </div>
         <div className="sm:px-3 sm:last:pe-0">
-          <p className="text-[10px] text-text-muted">نوع دسترسی</p>
-          <p className="text-xs font-bold text-text">دسترسی دائمی</p>
+          <p className="panel-text-caption text-text-muted">نوع دسترسی</p>
+          <p className="panel-text-body font-bold text-text">دسترسی دائمی</p>
         </div>
       </div>
     </>

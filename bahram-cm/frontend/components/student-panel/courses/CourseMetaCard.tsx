@@ -31,11 +31,11 @@ export function CourseMetaCard({
               <item.icon size={15} />
             </span>
             <div className="flex flex-col gap-0.5">
-              <span className="text-[10px] text-text-subtle">{item.label}</span>
+              <span className="panel-text-caption text-text-subtle">{item.label}</span>
               {item.label === 'وضعیت دوره' ? (
                 <StatusBadge variant={isActive ? 'success' : 'neutral'}>{item.value}</StatusBadge>
               ) : (
-                <span className={`text-xs font-bold ${item.highlight === false ? 'text-text-muted' : 'text-text'}`}>
+                <span className={`panel-text-body font-bold ${item.highlight === false ? 'text-text-muted' : 'text-text'}`}>
                   {item.value}
                 </span>
               )}

@@ -20,9 +20,9 @@ export function SpotPlayerBanner({
             </svg>
           </div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">SpotPlayer</p>
+            <p className="panel-text-caption font-semibold uppercase tracking-wider text-primary">SpotPlayer</p>
             <h3 className="mt-0.5 text-lg font-bold text-text">پلیر اختصاصی دوره</h3>
-            <p className="mt-1 max-w-md text-xs leading-relaxed text-text-muted">
+            <p className="panel-text-meta mt-1 max-w-md leading-relaxed text-text-muted">
               تمام محتوای این دوره در اسپات‌پلیر قابل مشاهده است. برای شروع، روی دکمه زیر کلیک کنید.
             </p>
           </div>
@@ -34,7 +34,7 @@ export function SpotPlayerBanner({
             ورود به SpotPlayer
           </Link>
         ) : (
-          <span className="rounded-xl border border-border/40 bg-surface-soft px-4 py-2.5 text-center text-xs text-text-muted">
+          <span className="panel-text-meta rounded-xl border border-border/40 bg-surface-soft px-4 py-2.5 text-center text-text-muted">
             لینک دوره به‌زودی فعال می‌شود.
           </span>
         )}

@@ -31,7 +31,7 @@ export function QuickResourceLinks({
       <div className="card panel-quick-links-section p-5 text-right">
         <div className="panel-quick-links-section__header mb-4">
           <h2 className="text-base font-bold text-text">لینک‌های سریع و منابع</h2>
-          <p className="mt-1 text-xs text-text-muted">دسترسی سریع به کانال‌ها و ربات دوره</p>
+          <p className="panel-section-subtitle">دسترسی سریع به کانال‌ها و ربات دوره</p>
         </div>
 
         <div className="panel-quick-links-list flex flex-col gap-2">

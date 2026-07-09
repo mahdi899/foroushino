@@ -12,12 +12,12 @@ export function CourseSideModules() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Headset size={15} />
           </div>
-          <h3 className="text-sm font-bold text-text">مشکل در دسترسی؟</h3>
+          <h3 className="panel-card-title">مشکل در دسترسی؟</h3>
         </div>
-        <p className="mb-3 text-xs leading-relaxed text-text-muted">
+        <p className="panel-card-text mb-3 leading-relaxed">
           اگر در ورود به اسپات‌پلیر یا مشاهده محتوا مشکلی دارید، تیم پشتیبانی آماده کمک است.
         </p>
-        <Link href="/panel/support" className="btn btn-primary w-full text-xs">
+        <Link href="/panel/support" className="btn btn-primary panel-text-body w-full">
           ثبت تیکت پشتیبانی
         </Link>
       </div>

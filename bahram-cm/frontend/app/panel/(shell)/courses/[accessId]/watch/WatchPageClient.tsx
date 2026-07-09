@@ -25,7 +25,7 @@ export function WatchPageClient({ accessId, title, licenseKey, courseId, license
   return (
     <div className="panel-page-inner flex flex-col gap-4">
       <SpotPlayerScript />
-      <div className="flex items-center gap-2 text-xs text-text-muted">
+      <div className="panel-card-subtext flex items-center gap-2">
         <Link href="/panel/courses" className="inline-flex items-center gap-1 hover:text-primary">
           <ArrowRight className="h-4 w-4" />
           دوره‌ها

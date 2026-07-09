@@ -28,7 +28,7 @@ export function PanelBottomNav({
           <Link
             key={href}
             href={href}
-            className={`relative flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium transition-all duration-300 ${
+            className={`relative flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 px-1 font-medium transition-all duration-300 ${
               active ? 'text-primary' : 'text-text-muted'
             }`}
           >
@@ -36,7 +36,7 @@ export function PanelBottomNav({
             <PanelNavLabel label={shortLabel ?? label} />
             {showBadge ? (
               <span
-                className="absolute end-2 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
+                className="panel-bottom-nav__badge absolute end-2 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-bold text-white"
                 style={{ background: 'var(--color-gold)' }}
               >
                 {unreadCount > 9 ? '9+' : unreadCount}
@@ -49,7 +49,7 @@ export function PanelBottomNav({
       <button
         type="button"
         onClick={onMenuOpen}
-        className="flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-medium text-text-muted transition-all duration-300 hover:text-primary"
+        className="flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 px-1 font-medium text-text-muted transition-all duration-300 hover:text-primary"
         aria-label="باز کردن منو"
       >
         <Menu size={20} strokeWidth={1.8} />

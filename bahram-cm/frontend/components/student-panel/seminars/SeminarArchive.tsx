@@ -26,7 +26,7 @@ export function SeminarFeaturedBanner({ seminar }: { seminar: SeminarListItem })
           <div>
             <StatusBadge variant="teal">سمینار فعال</StatusBadge>
             <h2 className="mt-2 text-base font-bold text-text">{seminar.title}</h2>
-            <div className="mt-2 flex flex-wrap gap-3 text-xs text-text-muted">
+            <div className="panel-text-meta mt-2 flex flex-wrap gap-3 text-text-muted">
               {seminar.location ? (
                 <span className="inline-flex items-center gap-1">
                   <MapPin size={14} />
@@ -50,7 +50,7 @@ export function SeminarVideoList({ seminars }: { seminars: SeminarListItem[] }) 
   return (
     <div className="card overflow-hidden">
       <div className="border-b border-border/60 p-4">
-        <h3 className="flex items-center gap-2 text-sm font-bold text-text">
+        <h3 className="panel-card-title flex items-center gap-2">
           <Video size={16} className="text-primary" />
           آرشیو ویدیوهای سمینار
         </h3>
@@ -68,7 +68,7 @@ export function SeminarVideoList({ seminars }: { seminars: SeminarListItem[] }) 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-text">{seminar.title}</p>
                 {seminar.date ? (
-                  <p className="mt-0.5 text-xs text-text-subtle">{new Date(seminar.date).toLocaleDateString('fa-IR')}</p>
+                  <p className="panel-text-caption mt-0.5 text-text-subtle">{new Date(seminar.date).toLocaleDateString('fa-IR')}</p>
                 ) : null}
               </div>
               <ChevronLeft size={16} className="shrink-0 text-text-muted" />

@@ -224,7 +224,7 @@ export function SpotPlayerLessonList({
         onError={() => setLoading(false)}
       />
       <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
-        <h2 className="flex items-center gap-2 text-sm font-bold text-text">
+        <h2 className="panel-card-title flex items-center gap-2">
           <BookOpen className="h-4 w-4 text-primary" />
           فهرست درس‌ها
         </h2>
@@ -256,7 +256,7 @@ export function SpotPlayerLessonList({
                   className="border-b border-border bg-surface-soft/50 px-4 py-2.5"
                   style={{ paddingRight: `${12 + lesson.depth * 12}px` }}
                 >
-                  <span className="text-xs font-bold leading-relaxed text-text">{lesson.title}</span>
+                  <span className="panel-text-body font-bold leading-relaxed text-text">{lesson.title}</span>
                 </li>
               );
             }

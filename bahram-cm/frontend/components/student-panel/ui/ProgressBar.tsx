@@ -12,7 +12,7 @@ export function ProgressBar({
   return (
     <div>
       {label || sublabel ? (
-        <div className="mb-2 flex items-center justify-between text-xs text-text-muted">
+        <div className="panel-text-meta mb-2 flex items-center justify-between text-text-muted">
           {label ? <span>{label}</span> : <span />}
           {sublabel ? <span>{sublabel}</span> : null}
         </div>

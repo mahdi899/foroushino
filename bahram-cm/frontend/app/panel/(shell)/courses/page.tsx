@@ -46,7 +46,7 @@ export default async function PanelCoursesPage() {
           </div>
           <div>
             <h2 className="text-base font-bold text-text">هیچ دوره‌ای یافت نشد</h2>
-            <p className="mt-2 text-xs text-text-muted">هنوز دوره‌ای برای شما فعال نشده است.</p>
+            <p className="panel-card-text mt-2">هنوز دوره‌ای برای شما فعال نشده است.</p>
           </div>
         </div>
       </div>
@@ -69,7 +69,7 @@ export default async function PanelCoursesPage() {
 
       <div className="card flex flex-col items-center gap-3 border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-4 sm:flex-row">
         <Shield size={18} className="shrink-0 text-primary" />
-        <p className="text-center text-xs leading-relaxed text-text-muted sm:text-right">
+        <p className="panel-card-text text-center leading-relaxed sm:text-right">
           محتوای دوره‌ها به صورت امن و اختصاصی ارائه می‌شود و امکان دانلود فایل‌های ویدئویی وجود ندارد.
         </p>
       </div>

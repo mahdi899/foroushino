@@ -24,8 +24,8 @@ export function StatCard({
         </span>
       ) : null}
       <div className="mt-2 sm:mt-3">{value}</div>
-      <p className="mt-1 text-xs text-text-muted">{label}</p>
-      {hint ? <p className="mt-1 text-[10px] text-text-subtle">{hint}</p> : null}
+      <p className="panel-text-caption mt-1 text-text-muted">{label}</p>
+      {hint ? <p className="panel-text-caption mt-1 text-text-subtle">{hint}</p> : null}
     </div>
   );
 }

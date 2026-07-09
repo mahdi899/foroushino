@@ -157,7 +157,7 @@ export default async function PanelReferralsPage() {
                         {STATUS_LABEL[invitee.status] ?? invitee.status}
                       </StatusBadge>
                     </div>
-                    <p className="mt-1 text-xs text-text-muted">{invitee.product_title ?? 'محصول نامشخص'}</p>
+                    <p className="panel-card-subtext mt-1">{invitee.product_title ?? 'محصول نامشخص'}</p>
                     <p className="mt-2 text-sm text-text-muted">
                       {invitee.cashback_amount.toLocaleString('fa-IR')} تومان کش‌بک
                     </p>
@@ -175,7 +175,7 @@ export default async function PanelReferralsPage() {
 
         <aside className="flex flex-col gap-4">
           <div className="card panel-referral-aside-card p-5">
-            <h3 className="mb-4 text-sm font-bold text-text">مبالغ کش‌بک محصولات</h3>
+            <h3 className="panel-card-title mb-4">مبالغ کش‌بک محصولات</h3>
             {referral.cashback_products?.length ? (
               <ul className="space-y-3">
                 {referral.cashback_products.map((product) => (
@@ -188,7 +188,7 @@ export default async function PanelReferralsPage() {
                 ))}
               </ul>
             ) : (
-              <p className="text-xs leading-relaxed text-text-muted">
+              <p className="panel-card-text leading-relaxed">
                 فعلاً محصولی با کش‌بک معرفی فعال نیست.
               </p>
             )}
@@ -199,15 +199,15 @@ export default async function PanelReferralsPage() {
               <span className="panel-referral-aside-card__icon" aria-hidden>
                 <CreditCard size={16} strokeWidth={2} />
               </span>
-              <h3 className="text-sm font-bold text-text">شماره کارت واریز</h3>
+              <h3 className="panel-card-title">شماره کارت واریز</h3>
             </div>
-            <p className="text-xs leading-relaxed text-text-muted">
+            <p className="panel-card-text leading-relaxed">
               برای دریافت کش‌بک، شماره کارت خود را هنگام ثبت درخواست واریز وارد کنید.
             </p>
           </div>
 
           <div className="card panel-referral-aside-card p-5">
-            <h3 className="mb-4 text-sm font-bold text-text">چطور کار می‌کند؟</h3>
+            <h3 className="panel-card-title mb-4">چطور کار می‌کند؟</h3>
             <ol className="space-y-4">
               {[
                 'لینک یا کد اختصاصی‌ات را با دوستان به اشتراک بگذار.',
@@ -216,7 +216,7 @@ export default async function PanelReferralsPage() {
               ].map((step, index) => (
                 <li key={step} className="panel-stepper-item" data-state="done">
                   <span className="panel-stepper-item__dot">{index + 1}</span>
-                  <p className="text-xs leading-relaxed text-text-muted">{step}</p>
+                  <p className="panel-card-text leading-relaxed">{step}</p>
                 </li>
               ))}
             </ol>

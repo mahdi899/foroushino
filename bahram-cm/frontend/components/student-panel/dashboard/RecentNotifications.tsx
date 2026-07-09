@@ -18,7 +18,7 @@ export function RecentNotifications({ notifications }: { notifications: Notifica
           </span>
           اعلان‌های اخیر
         </h2>
-        <Link href="/panel/notifications" className="panel-notifications-section__link inline-flex items-center gap-1 text-xs font-semibold transition">
+        <Link href="/panel/notifications" className="panel-notifications-section__link panel-text-caption inline-flex items-center gap-1 font-semibold transition">
           مشاهده همه
           <ChevronLeft className="h-3.5 w-3.5" />
         </Link>

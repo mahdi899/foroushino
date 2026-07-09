@@ -37,8 +37,8 @@ export function QuickContactCards() {
                 <channel.icon size={22} strokeWidth={2} />
               </span>
               <div>
-                <h3 className="text-sm font-bold text-text">{channel.title}</h3>
-                <p className="mt-1 text-[10px] text-text-muted">{channel.desc}</p>
+                <h3 className="panel-card-title">{channel.title}</h3>
+                <p className="panel-text-caption mt-1 text-text-muted">{channel.desc}</p>
               </div>
             </div>
             <span className={`panel-quick-contact-card__badge panel-quick-contact-card__badge--${channel.key}`}>
@@ -78,7 +78,7 @@ export function TicketHistoryTable({
           <Inbox size={22} strokeWidth={2} aria-hidden />
         </span>
         <p className="text-sm font-medium text-text">هنوز تیکتی ثبت نکرده‌اید</p>
-        <p className="max-w-xs text-xs leading-relaxed text-text-muted">
+        <p className="max-w-xs text-sm leading-relaxed text-text-muted">
           فرم بالا را پر کنید تا تیم پشتیبانی در اسرع وقت پاسخ دهد.
         </p>
       </div>

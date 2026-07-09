@@ -24,7 +24,7 @@ export function PanelTomanAmount({
       <span
         className={cn(
           'font-normal text-text-muted',
-          size === 'sm' ? 'text-[10px]' : 'text-[11px]',
+          size === 'sm' ? 'panel-text-caption' : 'panel-text-meta',
         )}
       >
         تومان

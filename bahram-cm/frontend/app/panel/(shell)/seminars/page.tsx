@@ -49,8 +49,8 @@ export default async function PanelSeminarsPage() {
             </div>
 
             <aside className="card p-5">
-              <h3 className="mb-3 text-sm font-bold text-text">نکات مهم</h3>
-              <ul className="space-y-3 text-xs leading-relaxed text-text-muted">
+              <h3 className="panel-card-title mb-3">نکات مهم</h3>
+              <ul className="panel-card-text space-y-3 leading-relaxed">
                 <li>ویدیوهای ضبط‌شده از صفحه جزئیات هر سمینار قابل مشاهده است.</li>
                 <li>گواهی حضور پس از تأیید تیم آکادمی فعال می‌شود.</li>
                 <li>برای رویدادهای حضوری، مکان و زمان در بنر سمینار نمایش داده می‌شود.</li>

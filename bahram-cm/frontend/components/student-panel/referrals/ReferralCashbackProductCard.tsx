@@ -23,12 +23,12 @@ export function ReferralCashbackProductCard({
           {isPercent ? (
             <>
               <span className="text-sm font-bold text-text">{value.toLocaleString('fa-IR')}</span>
-              <span className="text-[10px] font-normal text-text-muted">٪ کش‌بک</span>
+              <span className="panel-text-caption font-normal text-text-muted">٪ کش‌بک</span>
             </>
           ) : value > 0 ? (
             <PanelTomanAmount amount={value} size="sm" />
           ) : (
-            <span className="text-[11px] text-text-muted">—</span>
+            <span className="panel-text-meta text-text-muted">—</span>
           )}
         </div>
       </div>

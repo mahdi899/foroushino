@@ -33,7 +33,7 @@ export default async function PanelSeminarDetailPage({ params }: { params: Promi
             {seminar.assets.map((asset) => (
               <li key={asset.id} className="flex items-center justify-between gap-3 py-3">
                 <span className="text-sm text-text">{asset.title}</span>
-                <a href={asset.download_url} className="btn btn-secondary text-xs">
+                <a href={asset.download_url} className="btn btn-secondary panel-text-meta">
                   <FileDown size={16} />
                   دریافت
                 </a>
@@ -54,7 +54,7 @@ export default async function PanelSeminarDetailPage({ params }: { params: Promi
                   {cert.certificate_number ?? `گواهی #${cert.id}`}
                 </span>
                 {cert.download_url ? (
-                  <a href={cert.download_url} className="btn btn-secondary text-xs">
+                  <a href={cert.download_url} className="btn btn-secondary panel-text-meta">
                     <FileDown size={16} />
                     دریافت
                   </a>
