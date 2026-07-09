@@ -167,7 +167,12 @@ export function SmsCenterClient({
             </div>
           </div>
         ) : (
-          <SmsEventsPanel events={config.events} categories={config.event_categories} providers={config.providers} />
+          <SmsEventsPanel
+            events={config.events}
+            categories={config.event_categories}
+            providers={config.providers}
+            defaultTestPhone={config.global.test_phone}
+          />
         )
       ) : null}
 

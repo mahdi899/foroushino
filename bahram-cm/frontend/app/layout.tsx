@@ -60,6 +60,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <ThemeBootScript />
         <script
           id="jsonld-site"
           type="application/ld+json"
@@ -68,7 +69,6 @@ export default async function RootLayout({
         <MediaPreconnect />
       </head>
       <body className={`${fontClassName} min-w-0 overflow-x-clip antialiased`} suppressHydrationWarning>
-        <ThemeBootScript />
         {!isBareShellRoute ? <GrainOverlay /> : null}
         {!isBareShellRoute ? <ReferralCapture /> : null}
         <StudentAuthRoot initialLoggedIn={studentLoggedIn}>

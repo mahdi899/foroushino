@@ -58,6 +58,27 @@ export async function testSmsProvider(slug: string): Promise<{ ok: boolean; mess
   }
 }
 
+export async function testSmsEvent(
+  eventKey: string,
+  input: {
+    phone?: string;
+    message_template?: string;
+    pattern_code?: string | null;
+    use_pattern?: boolean;
+    provider_slug?: string | null;
+  },
+): Promise<{ ok: boolean; message: string }> {
+  try {
+    const res = await adminFetch<{ ok: boolean; message: string }>(`/sms/center-config/events/${eventKey}/test`, {
+      method: 'POST',
+      body: input,
+    });
+    return { ok: res.ok, message: res.message };
+  } catch (e) {
+    return { ok: false, message: actionError(e, 'تست رویداد پیامکی ناموفق بود.').error ?? 'خطا' };
+  }
+}
+
 export async function saveSmsEvent(
   eventKey: string,
   input: {

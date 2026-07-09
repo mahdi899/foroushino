@@ -336,13 +336,16 @@ export async function sendSms(input: { message: string; segment?: string; manual
   }
 }
 
-export async function testSms(phone: string) {
+export async function testSms(phone: string, message?: string) {
   try {
-    const res = await adminFetch<{ data: { success: boolean; message: string } }>('/sms/test', { method: 'POST', body: { phone } });
+    const res = await adminFetch<{ data: { success: boolean; message: string; provider_code?: string | null } }>('/sms/test', {
+      method: 'POST',
+      body: { phone, message: message?.trim() || undefined },
+    });
     if (res.data.success) {
-      return { ok: true as const, message: res.data.message };
+      return { ok: true as const, message: res.data.message, providerCode: res.data.provider_code ?? null };
     }
-    return { ok: false as const, error: res.data.message };
+    return { ok: false as const, error: res.data.message, providerCode: res.data.provider_code ?? null };
   } catch (e) {
     return actionError(e, 'تست پیامک ناموفق بود.');
   }

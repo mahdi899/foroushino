@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Enums\SmsEventKey;
 use App\Http\Controllers\Controller;
 use App\Models\AdminTelegramEventConfig;
+use App\Models\SmsEventConfig;
 use App\Services\SmsCenterConfigService;
+use App\Services\SmsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -65,6 +68,29 @@ class SmsCenterConfigController extends Controller
         );
 
         $result = $this->config->testProvider($slug);
+
+        return response()->json($result, $result['ok'] ? 200 : 422);
+    }
+
+    public function testEvent(Request $request, string $eventKey): JsonResponse
+    {
+        abort_unless(
+            SmsEventConfig::query()->where('event_key', $eventKey)->exists(),
+            404,
+        );
+
+        $key = SmsEventKey::tryFrom($eventKey);
+        abort_unless($key !== null, 404);
+
+        $data = $request->validate([
+            'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
+            'message_template' => ['sometimes', 'nullable', 'string', 'max:2000'],
+            'pattern_code' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'use_pattern' => ['sometimes', 'boolean'],
+            'provider_slug' => ['sometimes', 'nullable', 'string', Rule::exists('sms_providers', 'slug')],
+        ]);
+
+        $result = app(SmsService::class)->sendEventTest($key, $data);
 
         return response()->json($result, $result['ok'] ? 200 : 422);
     }
