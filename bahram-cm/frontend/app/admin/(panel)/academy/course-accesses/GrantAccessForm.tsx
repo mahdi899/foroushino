@@ -28,7 +28,7 @@ export function GrantAccessForm() {
       setProductId('');
       router.refresh();
     } else {
-      setError(res.error ?? 'خطا');
+      setError('error' in res ? (res.error ?? 'خطا') : 'خطا');
     }
   }
 
