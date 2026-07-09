@@ -33,8 +33,8 @@ export function WatchPageClient({ accessId, title, licenseKey, courseId, license
         <span>/</span>
         <span className="truncate text-text">{title}</span>
       </div>
-      <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
-        <div className="min-w-0 space-y-3">
+      <div className="panel-watch-layout">
+        <div className="panel-watch-layout__player min-w-0 space-y-3">
           <SpotPlayerEmbed
             licenseKey={licenseKey}
             courseId={courseId}

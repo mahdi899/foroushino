@@ -62,7 +62,7 @@ export function StatCard({
   const content = (
     <div
       className={cn(
-        'admin-stat-card flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5',
+        'admin-stat-card flex min-w-0 w-full items-stretch gap-3 p-3.5 sm:gap-3.5 sm:p-4',
         `admin-stat-card--${tone}`,
         href && 'admin-stat-card--link',
       )}
@@ -70,16 +70,20 @@ export function StatCard({
       <span className={cn('admin-stat-card__icon', `admin-stat-card__icon--${tone}`)}>
         <AdminLucideIcon name={icon} className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={1.75} />
       </span>
-      <div className="min-w-0">
+      <div className="admin-stat-card__body">
         <p className="admin-stat-card__label">{label}</p>
         <p className="admin-stat-card__value">{value}</p>
-        {hint ? <p className="admin-stat-card__hint">{hint}</p> : null}
+        <p className="admin-stat-card__hint">{hint ?? '\u00a0'}</p>
       </div>
     </div>
   );
 
   if (href) {
-    return <Link href={href}>{content}</Link>;
+    return (
+      <Link href={href} className="admin-stat-card-link">
+        {content}
+      </Link>
+    );
   }
 
   return content;

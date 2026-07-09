@@ -61,7 +61,7 @@ export default async function PanelCoursesPage() {
         description={`${courses.length.toLocaleString('fa-IR')} دوره با دسترسی فعال`}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="panel-card-grid">
         {renderCourseCards(courses)}
       </div>
 

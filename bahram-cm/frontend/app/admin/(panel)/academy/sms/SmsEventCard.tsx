@@ -48,29 +48,29 @@ export function SmsEventCard({
   }
 
   return (
-    <div className="rounded-lg border border-border/80 bg-surface-soft/30">
+    <div className="admin-sms-event">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-start justify-between gap-2 px-3 py-2 text-start"
+        className="admin-sms-event__head"
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-text-muted transition ${open ? '' : '-rotate-90'}`} />
-            <span className="text-small font-semibold text-primary-dark">{event.label_fa}</span>
+            <ChevronDown className={`admin-sms-event__chevron ${open ? '' : 'admin-sms-event__chevron--closed'}`} strokeWidth={2} />
+            <span className="admin-sms-event__title">{event.label_fa}</span>
             <Badge tone={form.isEnabled ? 'success' : 'default'}>{form.isEnabled ? 'فعال' : 'غیرفعال'}</Badge>
             {selectedProvider ? (
-              <span className="text-caption text-text-muted">{selectedProvider.label_fa}</span>
+              <span className="admin-sms-event__provider">{selectedProvider.label_fa}</span>
             ) : null}
           </div>
           {event.description && !open ? (
-            <p className="mt-0.5 truncate ps-5 text-caption text-text-muted">{event.description}</p>
+            <p className="admin-sms-event__desc">{event.description}</p>
           ) : null}
         </div>
       </button>
 
       {open ? (
-        <div className="space-y-2 border-t border-border/80 px-3 py-2.5">
+        <div className="admin-sms-event__body">
           {event.description ? <p className="text-caption text-text-muted">{event.description}</p> : null}
 
           <label className="flex items-center gap-2 text-caption">
@@ -125,7 +125,7 @@ export function SmsEventCard({
             </label>
           </div>
 
-          <div className="rounded-md border border-border/70 bg-surface px-2.5 py-2">
+          <div className="admin-sms-event__fallback">
             <label className="flex items-center gap-2 text-caption">
               <input type="checkbox" checked={form.fallbackEnabled} onChange={(e) => setForm((f) => ({ ...f, fallbackEnabled: e.target.checked }))} />
               fallback پنل جایگزین
@@ -145,13 +145,13 @@ export function SmsEventCard({
             ) : null}
           </div>
 
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => void onSave()} disabled={pending} className="btn btn-primary px-3 py-1.5 text-caption">
-              {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              ذخیره
+          <div className="admin-sms-event__actions">
+            <button type="button" onClick={() => void onSave()} disabled={pending} className="btn btn-primary">
+              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              ذخیره رویداد
             </button>
-            {message ? <span className="text-caption text-success">{message}</span> : null}
-            {error ? <span className="text-caption text-error">{error}</span> : null}
+            {message ? <span className="admin-sms-hub__feedback admin-sms-hub__feedback--success">{message}</span> : null}
+            {error ? <span className="admin-sms-hub__feedback admin-sms-hub__feedback--error">{error}</span> : null}
           </div>
         </div>
       ) : null}

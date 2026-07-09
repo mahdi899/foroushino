@@ -60,8 +60,8 @@ export default async function PanelSupportPage() {
 
       <QuickContactCards />
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="flex flex-col gap-6 lg:col-span-2">
+      <div className="panel-split-layout">
+        <div className="flex flex-col gap-6">
           <section className="panel-support-card card p-6">
             <header className="panel-support-card__header">
               <span className="panel-support-card__icon panel-support-card__icon--ticket">

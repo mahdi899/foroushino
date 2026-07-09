@@ -17,9 +17,7 @@ export default async function PanelProfilePage() {
         description="اطلاعات فردی و مسیر یادگیری خود را کامل نگه دارید."
         variant="profile"
       />
-      <div className="card panel-profile-page w-full p-5 sm:p-6 lg:p-8">
-        {user ? <ProfileForm user={user} /> : null}
-      </div>
+      {user ? <ProfileForm user={user} /> : null}
     </div>
   );
 }

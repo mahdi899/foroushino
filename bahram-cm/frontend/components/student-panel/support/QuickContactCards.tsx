@@ -24,7 +24,7 @@ const CHANNELS = [
 
 export function QuickContactCards() {
   return (
-    <div className="panel-quick-contact-grid grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="panel-quick-contact-grid">
       {CHANNELS.map((channel) => (
         <div
           key={channel.key}

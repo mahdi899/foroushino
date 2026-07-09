@@ -33,26 +33,28 @@ function ProfileSection({
   title,
   description,
   tone,
+  wide = false,
   children,
 }: {
   icon: typeof UserRound;
   title: string;
   description: string;
   tone: 'profile' | 'location' | 'social' | 'lock';
+  wide?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <section className="panel-profile-section">
+    <section className={`card panel-profile-section${wide ? ' panel-profile-section--wide' : ''}`}>
       <header className="panel-profile-section__header">
         <span className={`panel-profile-section__icon panel-profile-section__icon--${tone}`} aria-hidden>
-          <Icon size={18} strokeWidth={2} />
+          <Icon size={20} strokeWidth={2} />
         </span>
-        <div>
+        <div className="panel-profile-section__heading">
           <h2 className="panel-profile-section__title">{title}</h2>
           <p className="panel-profile-section__desc">{description}</p>
         </div>
       </header>
-      {children}
+      <div className="panel-profile-section__body">{children}</div>
     </section>
   );
 }
@@ -66,7 +68,7 @@ export function ProfileForm({ user }: { user: StudentUser }) {
     <form action={action} className="panel-profile-form">
       <div className="panel-profile-layout">
         <aside className="panel-profile-aside">
-          <div className="panel-profile-aside__card">
+          <div className="card panel-profile-aside__card">
             <ProfileAvatarField user={user} />
             <div className="panel-profile-progress">
               <div className="panel-profile-progress__meta">
@@ -83,16 +85,28 @@ export function ProfileForm({ user }: { user: StudentUser }) {
               </p>
             </div>
           </div>
+
+          <div className="card panel-profile-footer">
+            <div className="panel-profile-footer__messages">
+              {state.error ? <p className="text-sm text-error">{state.error}</p> : null}
+              {state.success ? <p className="text-sm text-success">{state.success}</p> : null}
+            </div>
+            <button type="submit" className="btn btn-primary panel-profile-footer__submit">
+              ذخیره تغییرات
+            </button>
+          </div>
         </aside>
 
         <div className="panel-profile-main">
+          <div className="panel-profile-sections">
           <ProfileSection
+            wide
             icon={UserRound}
             title="اطلاعات پایه"
             description="نام و راه‌های ارتباطی که در پنل و پشتیبانی استفاده می‌شود."
             tone="profile"
           >
-            <div className="panel-profile-grid">
+            <div className="panel-profile-grid panel-profile-grid--wide">
               <div className="panel-profile-field">
                 <label className="field-label" htmlFor="name">
                   نام نمایشی
@@ -269,13 +283,6 @@ export function ProfileForm({ user }: { user: StudentUser }) {
               </div>
             </div>
           </ProfileSection>
-
-          <div className="panel-profile-footer">
-            {state.error ? <p className="text-sm text-error">{state.error}</p> : null}
-            {state.success ? <p className="text-sm text-success">{state.success}</p> : null}
-            <button type="submit" className="btn btn-primary min-w-[10rem]">
-              ذخیره تغییرات
-            </button>
           </div>
         </div>
       </div>

@@ -57,7 +57,7 @@ export default async function PanelSatPage() {
         description="اگر علاقه‌مند به همکاری با آکادمی هستی، فرم زیر را تکمیل کن."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+      <div className="panel-aside-layout">
         <div className="flex flex-col gap-5">
           {!application ? (
             <div className="rounded-xl border border-border bg-surface-soft p-4 text-sm leading-relaxed text-text-muted">

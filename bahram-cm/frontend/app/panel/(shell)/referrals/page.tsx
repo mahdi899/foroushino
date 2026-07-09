@@ -55,7 +55,7 @@ export default async function PanelReferralsPage() {
     <div className="panel-page-inner panel-referrals-page flex flex-col gap-5">
       <ReferralHeroBanner code={referral.code} link={referral.link} />
 
-      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">
+      <div className="panel-stat-grid">
         <StatCard
           variant="gold"
           icon={Wallet}
@@ -86,7 +86,7 @@ export default async function PanelReferralsPage() {
         />
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
+      <div className="panel-aside-layout">
         <div className="flex flex-col gap-5">
           <div className="card panel-referral-card p-6">
             <h2 className="mb-4 text-base font-bold text-text">درخواست واریز کش‌بک</h2>

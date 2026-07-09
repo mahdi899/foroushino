@@ -15,7 +15,8 @@ export default async function SmsCenterPage() {
   return (
     <AdminPage
       title="مرکز پیامک"
-      desc="رویدادهای خودکار دسته‌بندی‌شده و ارسال هدفمند — مسیردهی پنل‌ها در تنظیمات سایت"
+      desc="رویدادهای خودکار، ارسال هدفمند و پیگیری لاگ پیامک"
+      icon="Smartphone"
     >
       <SmsCenterClient segments={segments} logs={logs} logsError={error ?? undefined} config={config} />
     </AdminPage>

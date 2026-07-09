@@ -42,7 +42,7 @@ export default async function PanelSeminarsPage() {
         <>
           <SeminarStatsRibbon total={seminars.length} recent={recentCount || Math.min(3, seminars.length)} />
 
-          <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+          <div className="panel-aside-layout">
             <div className="flex flex-col gap-5">
               {active ? <SeminarFeaturedBanner seminar={active} /> : null}
               <SeminarVideoList seminars={seminars} />

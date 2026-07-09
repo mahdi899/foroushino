@@ -9,8 +9,8 @@ export function SatApplicationForm({ mobile }: { mobile: string }) {
   const [state, action] = useActionState(submitSatApplicationAction, INITIAL);
 
   return (
-    <form action={action} className="flex flex-col gap-4">
-      <div>
+    <form action={action} className="panel-form-grid">
+      <div className="panel-form-grid__full">
         <label className="field-label" htmlFor="name">نام و نام خانوادگی</label>
         <input id="name" name="name" className="field-input" required />
       </div>
@@ -26,9 +26,9 @@ export function SatApplicationForm({ mobile }: { mobile: string }) {
         <label className="field-label" htmlFor="age">سن</label>
         <input id="age" name="age" type="number" min={10} max={120} className="field-input" />
       </div>
-      {state.error ? <p className="text-sm text-error">{state.error}</p> : null}
-      {state.success ? <p className="text-sm text-success">{state.success}</p> : null}
-      <button type="submit" className="btn btn-primary">ثبت درخواست</button>
+      {state.error ? <p className="panel-form-grid__full text-sm text-error">{state.error}</p> : null}
+      {state.success ? <p className="panel-form-grid__full text-sm text-success">{state.success}</p> : null}
+      <button type="submit" className="btn btn-primary panel-form-grid__full">ثبت درخواست</button>
     </form>
   );
 }

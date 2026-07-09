@@ -2,12 +2,20 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Send } from 'lucide-react';
+import { Loader2, Send, Smartphone } from 'lucide-react';
 import { sendSms, testSms } from '../actions';
 import type { AdminAudienceSegment } from '@/lib/admin/academyTypes';
 import type { SmsCenterConfig } from '@/lib/admin/smsCenter.types';
 
-export function SendSmsForm({ segments, config }: { segments: AdminAudienceSegment[]; config: SmsCenterConfig | null }) {
+export function SendSmsForm({
+  segments,
+  config,
+  embedded = false,
+}: {
+  segments: AdminAudienceSegment[];
+  config: SmsCenterConfig | null;
+  embedded?: boolean;
+}) {
   const router = useRouter();
   const [message, setMessage] = useState('');
   const [segment, setSegment] = useState('');
@@ -46,15 +54,18 @@ export function SendSmsForm({ segments, config }: { segments: AdminAudienceSegme
   }
 
   return (
-    <div className="card space-y-3 p-4">
+    <div className={embedded ? 'admin-sms-hub__send' : 'card space-y-3 p-4'}>
       {primary ? (
-        <p className="text-caption text-text-muted">
-          پنل فعال: <span className="font-medium text-primary-dark">{primary.label_fa}</span>
-          {primary.configured ? '' : ' · نیاز به تنظیم کلید'}
-        </p>
+        <div className="admin-sms-hub__provider-chip">
+          <Smartphone className="h-4 w-4 shrink-0 text-accent" strokeWidth={2} />
+          <span>
+            پنل فعال: <strong>{primary.label_fa}</strong>
+            {primary.configured ? '' : ' · نیاز به تنظیم کلید'}
+          </span>
+        </div>
       ) : null}
 
-      <form onSubmit={onSubmit} className="grid gap-2 md:grid-cols-2">
+      <form onSubmit={onSubmit} className="admin-sms-hub__send-form">
         <label className="md:col-span-2">
           <span className="field-label text-caption">متن پیام</span>
           <textarea required rows={2} value={message} onChange={(e) => setMessage(e.target.value)} className="field-input text-small" maxLength={640} />
@@ -74,27 +85,27 @@ export function SendSmsForm({ segments, config }: { segments: AdminAudienceSegme
           <span className="field-label text-caption">شماره‌های دستی</span>
           <input value={manualNumbers} onChange={(e) => setManualNumbers(e.target.value)} className="field-input text-small" dir="ltr" placeholder="0912..., 0913..." />
         </label>
-        <div className="flex items-end md:col-span-2">
-          <button type="submit" disabled={pending} className="btn btn-primary px-3 py-1.5 text-caption">
-            {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-            ارسال
+        <div className="admin-sms-hub__send-actions md:col-span-2">
+          <button type="submit" disabled={pending} className="btn btn-primary">
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            ارسال پیامک
           </button>
         </div>
       </form>
 
-      <div className="flex flex-wrap items-end gap-2 border-t border-border pt-2">
+      <div className="admin-sms-hub__send-test">
         <label>
           <span className="field-label text-caption">تست به شماره</span>
           <input value={testPhone} onChange={(e) => setTestPhone(e.target.value)} className="field-input text-small" dir="ltr" placeholder="09xxxxxxxxx" />
         </label>
-        <button type="button" onClick={() => void onTest()} disabled={testPending} className="btn btn-secondary px-3 py-1.5 text-caption">
-          {testPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-          تست
+        <button type="button" onClick={() => void onTest()} disabled={testPending} className="btn btn-secondary">
+          {testPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          ارسال تست
         </button>
       </div>
 
-      {result ? <p className="text-caption text-success">{result}</p> : null}
-      {error ? <p className="text-caption text-error">{error}</p> : null}
+      {result ? <p className="admin-sms-hub__feedback admin-sms-hub__feedback--success">{result}</p> : null}
+      {error ? <p className="admin-sms-hub__feedback admin-sms-hub__feedback--error">{error}</p> : null}
     </div>
   );
 }

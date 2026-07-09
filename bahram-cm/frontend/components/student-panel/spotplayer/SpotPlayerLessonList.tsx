@@ -247,7 +247,7 @@ export function SpotPlayerLessonList({
       ) : lessons.length === 0 ? (
         <p className="p-4 text-sm text-text-muted">لیست درس‌ها در دسترس نیست.</p>
       ) : (
-        <ul className="max-h-[28rem] overflow-y-auto">
+        <ul className="max-h-[min(28rem,calc(100dvh-8rem))] overflow-y-auto">
           {lessons.map((lesson) => {
             if (lesson.isSection) {
               return (

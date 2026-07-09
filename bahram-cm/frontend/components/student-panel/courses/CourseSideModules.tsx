@@ -4,7 +4,7 @@ import { SpotPlayerDownloadGrid } from '@/components/student-panel/courses/SpotP
 
 export function CourseSideModules() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div className="panel-side-modules">
       <SpotPlayerDownloadGrid />
 
       <div className="card p-4">

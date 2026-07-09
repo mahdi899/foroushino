@@ -56,7 +56,7 @@ export function ProfileAvatarField({ user }: { user: StudentUser }) {
           gravatarUrl={user.profile?.gravatar_url}
           defaultAvatarUrl={user.profile?.default_avatar_url ?? studentDefaultAvatarUrl(user.id, 192)}
           alt={displayName}
-          className="panel-profile-avatar__image !h-28 !w-28 !rounded-2xl !ring-0"
+          className="panel-profile-avatar__image !h-28 !w-28 sm:!h-32 sm:!w-32 !rounded-2xl !ring-0"
         />
         <span className="panel-profile-avatar__overlay">
           {pending ? (
@@ -68,6 +68,7 @@ export function ProfileAvatarField({ user }: { user: StudentUser }) {
       </button>
 
       <div className="panel-profile-avatar__copy">
+        <span className="panel-profile-avatar__badge">دانشجو</span>
         <p className="panel-profile-avatar__name">{displayName}</p>
         <p className="panel-profile-avatar__mobile" dir="ltr">
           {user.mobile}

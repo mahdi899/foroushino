@@ -13,11 +13,11 @@ export function CashbackPayoutForm({ payableAmount }: { payableAmount: number })
   }
 
   return (
-    <form action={action} className="flex flex-col gap-4">
-      <p className="text-sm text-text-muted">
+    <form action={action} className="panel-form-grid">
+      <p className="panel-form-grid__full text-sm text-text-muted">
         مبلغ قابل دریافت: <span className="font-bold text-text">{payableAmount.toLocaleString('fa-IR')} تومان</span>
       </p>
-      <div>
+      <div className="panel-form-grid__full">
         <label className="field-label" htmlFor="card_number">شماره کارت (۱۶ رقم)</label>
         <input
           id="card_number"
@@ -34,9 +34,9 @@ export function CashbackPayoutForm({ payableAmount }: { payableAmount: number })
         <label className="field-label" htmlFor="card_holder_name">نام صاحب کارت (اختیاری)</label>
         <input id="card_holder_name" name="card_holder_name" className="field-input" />
       </div>
-      {state.error ? <p className="text-sm text-error">{state.error}</p> : null}
-      {state.success ? <p className="text-sm text-success">{state.success}</p> : null}
-      <button type="submit" className="btn btn-primary">ثبت درخواست واریز</button>
+      {state.error ? <p className="panel-form-grid__full text-sm text-error">{state.error}</p> : null}
+      {state.success ? <p className="panel-form-grid__full text-sm text-success">{state.success}</p> : null}
+      <button type="submit" className="btn btn-primary panel-form-grid__full">ثبت درخواست واریز</button>
     </form>
   );
 }

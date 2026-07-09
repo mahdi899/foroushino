@@ -169,27 +169,27 @@ export function AdminDashboardClient() {
         </button>
       </div>
 
-      <section>
+      <section className="admin-dashboard-section">
         <h2 className="admin-dashboard-section__title">پیشخوان عملیاتی</h2>
-        <div className="admin-dashboard-kpi-grid admin-dashboard-kpi-grid--3">
+        <div className="admin-dashboard-kpi-grid">
           {frontDeskCards.map((c) => (
             <StatCard key={c.label} {...c} />
           ))}
         </div>
       </section>
 
-      <section>
+      <section className="admin-dashboard-section">
         <h2 className="admin-dashboard-section__title">آکادمی و باشگاه مشتریان</h2>
-        <div className="admin-dashboard-kpi-grid admin-dashboard-kpi-grid--5">
+        <div className="admin-dashboard-kpi-grid">
           {academyCards.map((c) => (
             <StatCard key={c.label} {...c} />
           ))}
         </div>
       </section>
 
-      <section>
+      <section className="admin-dashboard-section">
         <h2 className="admin-dashboard-section__title">فروش و محتوا</h2>
-        <div className="admin-dashboard-kpi-grid admin-dashboard-kpi-grid--4">
+        <div className="admin-dashboard-kpi-grid">
           {commerceCards.map((c) => (
             <StatCard key={c.label} {...c} />
           ))}

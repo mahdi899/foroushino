@@ -69,7 +69,7 @@ export default async function PanelDashboardPage() {
         courseActive={activeCourse?.is_active ?? false}
       />
 
-      <section className="grid gap-4 lg:grid-cols-2">
+      <section className="panel-dashboard-split">
         <RecentNotifications notifications={notifications} />
         <QuickResourceLinks urls={academyUrls} />
       </section>

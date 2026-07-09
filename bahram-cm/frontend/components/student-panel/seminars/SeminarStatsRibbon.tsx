@@ -3,7 +3,7 @@ import { StatCard } from '@/components/student-panel/ui/StatCard';
 
 export function SeminarStatsRibbon({ total, recent }: { total: number; recent: number }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="panel-stat-grid">
       <StatCard
         variant="gold"
         icon={CalendarDays}
