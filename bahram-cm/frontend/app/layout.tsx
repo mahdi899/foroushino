@@ -16,6 +16,7 @@ import { PerformanceProvider } from "@/components/performance/PerformanceProvide
 import { getPublicChatbotConfig } from "@/lib/chatbot/public";
 import { EMPTY_CHATBOT_PUBLIC } from "@/lib/chatbot/types";
 import { getPublicPerfConfig } from "@/lib/cache/public";
+import { getActiveSeminarPromo } from "@/lib/services/seminarPromo";
 import { getCurrentStudent } from "@/lib/student/session";
 import { StudentAuthRoot } from "@/components/student-panel/auth/StudentAuthRoot";
 import { ReferralCapture } from "@/components/commerce/ReferralCapture";
@@ -38,10 +39,12 @@ export default async function RootLayout({
   const pathname = (await headers()).get("x-pathname") ?? "";
   const isAdminRoute = pathname.startsWith("/admin");
   const isBareShellRoute = isAdminRoute || pathname.startsWith("/panel");
+  const hidePromoRoute = pathname.startsWith("/seminars/") || pathname.startsWith("/purchase/");
 
-  const [chatbotConfig, perfConfig] = await Promise.all([
+  const [chatbotConfig, perfConfig, seminarPromo] = await Promise.all([
     isBareShellRoute ? Promise.resolve(EMPTY_CHATBOT_PUBLIC) : getPublicChatbotConfig(),
     getPublicPerfConfig(),
+    isBareShellRoute || hidePromoRoute ? Promise.resolve(null) : getActiveSeminarPromo(),
   ]);
   const chatbotAiAvailable = chatbotConfig.enabled && (chatbotConfig.ai_available ?? false);
   const studentUser = !isAdminRoute ? await getCurrentStudent() : null;
@@ -73,7 +76,7 @@ export default async function RootLayout({
         {!isBareShellRoute ? <ReferralCapture /> : null}
         <StudentAuthRoot initialLoggedIn={studentLoggedIn}>
           <PerformanceProvider config={perfConfig}>
-            <AdminAwareChrome>{children}</AdminAwareChrome>
+            <AdminAwareChrome promo={seminarPromo}>{children}</AdminAwareChrome>
           </PerformanceProvider>
           {!isBareShellRoute && chatbotConfig.enabled ? (
             <SiteChatbotEntry

@@ -20,6 +20,7 @@ class ProductDetailResource extends JsonResource
             : null;
         $altResolver = app(MediaAltResolver::class);
         $enricher = app(HtmlImageEnricher::class);
+        $seminar = $this->seminar;
 
         return [
             'id' => $this->id,
@@ -42,6 +43,14 @@ class ProductDetailResource extends JsonResource
             'landing_href' => $this->landing_href,
             'meta_title' => $this->meta_title,
             'meta_description' => $this->meta_description,
+            'seminar' => $seminar ? [
+                'capacity' => $seminar->capacity,
+                'attendees_count' => $seminar->registeredCount(),
+                'remaining_seats' => $seminar->remainingSeats(),
+                'is_full' => $seminar->isFull(),
+                'date' => $seminar->date?->toIso8601String(),
+                'location' => $seminar->location,
+            ] : null,
         ];
     }
 }

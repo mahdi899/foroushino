@@ -6,6 +6,7 @@ use App\Enums\ProductType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\Sluggable\HasSlug;
 use Spatie\Sluggable\SlugOptions;
 use Stevebauman\Purify\Facades\Purify;
@@ -79,6 +80,11 @@ class Product extends Model
     public function courseAccesses(): HasMany
     {
         return $this->hasMany(CourseAccess::class);
+    }
+
+    public function seminar(): HasOne
+    {
+        return $this->hasOne(Seminar::class);
     }
 
     public function scopeActive(Builder $query): Builder

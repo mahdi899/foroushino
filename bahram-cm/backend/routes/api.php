@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\MediaAltController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\PublicSeminarController;
+use App\Http\Controllers\Api\SeminarPromoController;
 use App\Http\Controllers\Api\ZarinpalController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -41,6 +43,10 @@ Route::get('/articles/{slug}', [ArticleController::class, 'show']);
 // Products
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{slug}', [ProductController::class, 'show']);
+
+// Seminar promo banner (site-wide)
+Route::get('/seminars/promo', [SeminarPromoController::class, 'active']);
+Route::get('/seminars/{slug}', [PublicSeminarController::class, 'show'])->where('slug', '[^/]+');
 
 // Orders
 Route::post('/orders', [OrderController::class, 'store']);

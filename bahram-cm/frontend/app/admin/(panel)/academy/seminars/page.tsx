@@ -1,6 +1,6 @@
 import { AdminPage, EditLink, Table } from '../../ui';
 import { getSeminars } from '@/lib/admin/academyData';
-import { formatDateTime } from '@/lib/admin/academyTypes';
+import { formatDateTime, formatToman } from '@/lib/admin/academyTypes';
 import { CreateSeminarForm } from './CreateSeminarForm';
 
 export const dynamic = 'force-dynamic';
@@ -17,14 +17,19 @@ export default async function SeminarsPage() {
       )}
 
       {seminars.length > 0 ? (
-        <Table head={['عنوان', 'تاریخ', 'مکان', 'شرکت‌کنندگان', 'فایل‌ها', 'عملیات']}>
+        <Table head={['عنوان', 'تاریخ', 'قیمت', 'ظرفیت', 'شرکت‌کنندگان', 'عملیات']}>
           {seminars.map((s) => (
             <tr key={s.id} className="hover:bg-surface-soft/40">
-              <td className="px-4 py-3">{s.title}</td>
+              <td className="px-4 py-3">
+                <div>{s.title}</div>
+                {s.is_full ? <span className="text-caption text-error">ظرفیت پر</span> : null}
+              </td>
               <td className="whitespace-nowrap px-4 py-3 text-caption">{formatDateTime(s.date)}</td>
-              <td className="px-4 py-3">{s.location ?? '—'}</td>
+              <td className="whitespace-nowrap px-4 py-3 text-caption">{s.price ? formatToman(s.price) : '—'}</td>
+              <td className="px-4 py-3 text-caption">
+                {s.capacity != null ? `${s.attendees_count} / ${s.capacity}` : 'نامحدود'}
+              </td>
               <td className="px-4 py-3">{s.attendees_count}</td>
-              <td className="px-4 py-3">{s.assets_count}</td>
               <td className="px-4 py-3"><EditLink href={`/admin/academy/seminars/${s.id}`} /></td>
             </tr>
           ))}

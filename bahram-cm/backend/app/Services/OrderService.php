@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Seminar;
+use App\Models\SeminarAttendee;
 use App\Models\User;
 use App\Services\AdminTelegramLogService;
 use App\Support\Mobile;
@@ -32,11 +34,13 @@ class OrderService
             ]);
         }
 
+        $userId = $authenticatedUser?->id ?? $this->resolveUserId($phone);
+        $this->assertSeminarPurchaseAllowed($product, $userId, $phone);
+
         $amount = (int) $product->price;
         $finalAmount = (int) $product->effective_price;
         $discountAmount = max($amount - $finalAmount, 0);
 
-        $userId = $authenticatedUser?->id ?? $this->resolveUserId($phone);
         $name = trim((string) ($data['customer_name'] ?? ''));
         if ($name === '') {
             $name = Order::PLACEHOLDER_CUSTOMER_NAME;
@@ -180,6 +184,55 @@ class OrderService
         if ($ownCode && strcasecmp(trim($ref), $ownCode) === 0) {
             throw ValidationException::withMessages([
                 'ref' => 'نمی‌توانید از کد معرف خودتان استفاده کنید.',
+            ]);
+        }
+    }
+
+    private function assertSeminarPurchaseAllowed(Product $product, ?int $userId, string $phone): void
+    {
+        $seminar = Seminar::query()->where('product_id', $product->id)->first();
+
+        if (! $seminar) {
+            return;
+        }
+
+        if ($seminar->isFull()) {
+            throw ValidationException::withMessages([
+                'product_id' => 'ظرفیت این سمینار تکمیل شده است.',
+            ]);
+        }
+
+        if ($seminar->capacity) {
+            $pendingOrders = Order::query()
+                ->where('product_id', $product->id)
+                ->where('status', 'pending_payment')
+                ->count();
+
+            if (($seminar->registeredCount() + $pendingOrders) >= (int) $seminar->capacity) {
+                throw ValidationException::withMessages([
+                    'product_id' => 'ظرفیت این سمینار تکمیل شده است.',
+                ]);
+            }
+        }
+
+        if ($userId && SeminarAttendee::query()
+            ->where('seminar_id', $seminar->id)
+            ->where('user_id', $userId)
+            ->where('attendance_status', '!=', 'absent')
+            ->exists()) {
+            throw ValidationException::withMessages([
+                'product_id' => 'شما قبلاً در این سمینار ثبت‌نام کرده‌اید.',
+            ]);
+        }
+
+        $mobileUser = User::query()->where('mobile', $phone)->first();
+        if ($mobileUser && SeminarAttendee::query()
+            ->where('seminar_id', $seminar->id)
+            ->where('user_id', $mobileUser->id)
+            ->where('attendance_status', '!=', 'absent')
+            ->exists()) {
+            throw ValidationException::withMessages([
+                'product_id' => 'شما قبلاً در این سمینار ثبت‌نام کرده‌اید.',
             ]);
         }
     }

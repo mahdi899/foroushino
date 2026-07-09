@@ -52,6 +52,7 @@ export default async function PurchasePage({
   const hasDiscount = product.sale_price !== null && product.effective_price < product.price;
   const isLoggedIn = Boolean(student);
   const needsExtra = productNeedsExtraForm(product);
+  const seminarFull = product.seminar?.is_full ?? false;
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
@@ -97,6 +98,15 @@ export default async function PurchasePage({
                         قیمت ویژه
                       </div>
                     ) : null}
+                    {product.seminar ? (
+                      <p className="mt-4 text-sm text-bone-dim">
+                        {seminarFull
+                          ? 'ظرفیت این سمینار تکمیل شده است.'
+                          : product.seminar.remaining_seats != null
+                            ? `${formatFa(product.seminar.remaining_seats)} جای خالی باقی مانده`
+                            : 'ظرفیت نامحدود'}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               </Reveal>
@@ -109,16 +119,26 @@ export default async function PurchasePage({
                     {isLoggedIn ? "پرداخت" : "شروع پرداخت"}
                   </h2>
                   <p className="mt-2 text-bone-dim">
-                    {isLoggedIn
+                    {seminarFull
+                      ? 'فعلاً امکان ثبت‌نام وجود ندارد.'
+                      : isLoggedIn
                       ? needsExtra
                         ? "در صورت نیاز فیلدهای تکمیلی را بررسی کن و به درگاه برو."
                         : "با یک کلیک به درگاه پرداخت امن زرین‌پل منتقل می‌شوی."
                       : "ابتدا با کد تأیید وارد می‌شوی، سپس به درگاه پرداخت منتقل می‌شوی."}
                   </p>
+                  {seminarFull ? (
+                    <div className="mt-6 rounded-tile border border-gold/30 bg-gold/8 px-4 py-4 text-sm text-gold">
+                      ظرفیت سمینار تکمیل شده و امکان خرید وجود ندارد.
+                    </div>
+                  ) : (
+                    <>
                   <CheckoutReferralCodeField ownReferralCode={ownReferralCode} />
                   <div className="mt-6">
                     <PurchaseForm product={product} student={student} />
                   </div>
+                    </>
+                  )}
                 </div>
               </Reveal>
             </div>

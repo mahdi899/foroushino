@@ -23,6 +23,14 @@ export type ProductDetail = ProductListItem & {
   description: string | null;
   meta_title: string | null;
   meta_description: string | null;
+  seminar?: {
+    capacity: number | null;
+    attendees_count: number;
+    remaining_seats: number | null;
+    is_full: boolean;
+    date: string | null;
+    location: string | null;
+  } | null;
 };
 
 type ListResponse<T> = { data: T[] };

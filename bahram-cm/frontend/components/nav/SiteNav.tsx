@@ -31,7 +31,7 @@ export function SiteNav() {
     <>
       <header
         className={cn(
-          "fixed inset-x-0 top-0 z-40 transition-all duration-500 ease-[var(--ease-luxe)]",
+          "sticky top-0 inset-x-0 z-40 transition-all duration-500 ease-[var(--ease-luxe)]",
           scrolled
             ? "border-b border-bone/5 bg-ink/70 backdrop-blur-2xl"
             : "bg-transparent",

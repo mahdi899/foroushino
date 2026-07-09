@@ -123,7 +123,20 @@ export async function updateCourseAccessStatus(id: number, status: string) {
 }
 
 // Seminars
-export async function createSeminar(input: { title: string; date: string; location?: string; description?: string }) {
+export async function createSeminar(input: {
+  title: string;
+  date: string;
+  location?: string;
+  description?: string;
+  status?: string;
+  price?: number;
+  sale_price?: number | null;
+  capacity?: number | null;
+  banner_available?: string;
+  banner_full?: string;
+  cover_image?: string | null;
+  promo_enabled?: boolean;
+}) {
   try {
     const res = await adminFetch<{ data: { id: number } }>('/seminars', { method: 'POST', body: input });
     revalidateAcademy();

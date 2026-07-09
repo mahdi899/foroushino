@@ -27,6 +27,7 @@ class ProductController extends Controller
     {
         $product = Product::query()
             ->active()
+            ->with('seminar')
             ->where('slug', $slug)
             ->first();
 

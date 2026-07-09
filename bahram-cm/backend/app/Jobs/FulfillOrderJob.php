@@ -7,6 +7,9 @@ use App\Enums\CourseAccessStatus;
 use App\Enums\SpotplayerLicenseStatus;
 use App\Models\CourseAccess;
 use App\Models\Order;
+use App\Models\Product;
+use App\Models\Seminar;
+use App\Models\SeminarAttendee;
 use App\Models\SpotplayerLicense;
 use App\Models\User;
 use App\Services\AdminTelegramLogService;
@@ -88,8 +91,9 @@ class FulfillOrderJob implements ShouldQueue
         DB::transaction(function () use ($order, $userId, $licenseResponse, $referrals) {
             if ($userId) {
                 $courseAccess = null;
+                $isEventProduct = $order->product?->type === Product::TYPE_EVENT;
 
-                if ($order->product_id) {
+                if ($order->product_id && ! $isEventProduct) {
                     $courseAccess = CourseAccess::query()->firstOrCreate(
                         ['user_id' => $userId, 'product_id' => $order->product_id],
                         [
@@ -104,6 +108,10 @@ class FulfillOrderJob implements ShouldQueue
                     if ($courseAccess->status !== CourseAccessStatus::Active) {
                         $courseAccess->update(['status' => CourseAccessStatus::Active, 'activated_at' => now(), 'deactivated_at' => null]);
                     }
+                }
+
+                if ($isEventProduct) {
+                    $this->registerSeminarAttendee($order, $userId);
                 }
 
                 if ($licenseResponse) {
@@ -240,5 +248,31 @@ class FulfillOrderJob implements ShouldQueue
             ->where('product_id', $productId)
             ->where('status', 'paid')
             ->update(['status' => 'fulfilled']);
+    }
+
+    private function registerSeminarAttendee(Order $order, int $userId): void
+    {
+        $seminar = Seminar::query()
+            ->where('product_id', $order->product_id)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $seminar) {
+            return;
+        }
+
+        if ($seminar->isFull()) {
+            Log::channel('payment')->warning('Seminar capacity full during fulfillment.', [
+                'order_id' => $order->id,
+                'seminar_id' => $seminar->id,
+            ]);
+
+            return;
+        }
+
+        SeminarAttendee::query()->firstOrCreate(
+            ['seminar_id' => $seminar->id, 'user_id' => $userId],
+            ['attendance_status' => 'registered']
+        );
     }
 }
