@@ -1,10 +1,31 @@
 import type { NextConfig } from "next";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { CDN_STATIC_IMMUTABLE } from "./lib/cache/cdnHeaders";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const disableImageOptimization = process.env.NEXT_PUBLIC_DISABLE_IMAGE_OPTIMIZATION === "1";
+
+/** LAN IPs for mobile/tablet testing — Next.js blocks /_next/* without these in dev. */
+function localNetworkHosts(): string[] {
+  const hosts = new Set<string>();
+  for (const interfaces of Object.values(os.networkInterfaces())) {
+    for (const iface of interfaces ?? []) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        hosts.add(iface.address);
+      }
+    }
+  }
+  return [...hosts];
+}
+
+const allowedDevOrigins = [
+  ...localNetworkHosts(),
+  ...(process.env.ALLOWED_DEV_ORIGINS?.split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean) ?? []),
+];
 
 /** Allow next/image to fetch media from Laravel (proxied /storage and external CDN). */
 function backendImagePattern() {
@@ -48,6 +69,7 @@ function backendImagePattern() {
 }
 
 const config: NextConfig = {
+  allowedDevOrigins,
   reactStrictMode: true,
   poweredByHeader: false,
   async redirects() {
