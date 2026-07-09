@@ -156,3 +156,32 @@ export async function markAllNotificationsReadAction(): Promise<void> {
   revalidatePath('/panel/notifications');
   revalidatePath('/panel');
 }
+
+export interface PanelNotificationPayload {
+  id: number;
+  title: string;
+  body: string;
+  type?: string | null;
+  link: string | null;
+  read_at: string | null;
+  created_at: string | null;
+}
+
+export async function fetchUnreadNotificationCount(): Promise<number> {
+  try {
+    const res = await studentFetch<{ data: { unread_count: number } }>('/notifications/unread-count');
+    return res.data.unread_count;
+  } catch {
+    return 0;
+  }
+}
+
+export async function fetchRecentNotifications(perPage = 15, unreadOnly = false): Promise<PanelNotificationPayload[]> {
+  try {
+    const query = unreadOnly ? '&unread_only=1' : '';
+    const res = await studentFetch<{ data: PanelNotificationPayload[] }>(`/notifications?per_page=${perPage}${query}`);
+    return res.data ?? [];
+  } catch {
+    return [];
+  }
+}

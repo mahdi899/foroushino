@@ -14,10 +14,15 @@ class NotificationController extends Controller
     {
         $perPage = min(max((int) $request->input('per_page', 50), 1), 100);
 
-        $recipients = $request->user()->notificationRecipients()
+        $query = $request->user()->notificationRecipients()
             ->with('notification')
-            ->orderByDesc('id')
-            ->paginate($perPage);
+            ->orderByDesc('id');
+
+        if ($request->boolean('unread_only')) {
+            $query->whereNull('read_at');
+        }
+
+        $recipients = $query->paginate($perPage);
 
         return ApiResponse::success(
             $recipients->getCollection()->map(fn (NotificationRecipient $recipient) => $this->payload($recipient)),
