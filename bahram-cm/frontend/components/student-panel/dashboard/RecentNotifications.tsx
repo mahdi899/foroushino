@@ -1,40 +1,24 @@
 import Link from 'next/link';
-import { Bell, BookOpen, ChevronLeft, FileText, MessageSquare, Receipt, Sparkles, KeyRound } from 'lucide-react';
+import { Bell, ChevronLeft } from 'lucide-react';
 import type { NotificationEntry } from '@/components/student-panel/notifications/NotificationItem';
 import { formatRelativeTimeFa } from '@/components/student-panel/utils/relativeTime';
-import { StatusBadge } from '@/components/student-panel/ui/StatusBadge';
-
-const DOT_CYCLE: Array<'blue' | 'green' | 'orange'> = ['blue', 'green', 'orange'];
-
-function typeIcon(type: string | null | undefined) {
-  switch (type) {
-    case 'order_paid':
-      return Receipt;
-    case 'license_ready':
-      return KeyRound;
-    case 'ticket_created':
-    case 'ticket_reply':
-      return MessageSquare;
-    case 'product_new':
-      return Sparkles;
-    case 'article_new':
-      return FileText;
-    case 'welcome':
-      return BookOpen;
-    default:
-      return Bell;
-  }
-}
+import {
+  notificationTypeIcon,
+  notificationTypeLabel,
+  notificationTypeVariant,
+} from '@/components/student-panel/notifications/notificationMeta';
 
 export function RecentNotifications({ notifications }: { notifications: NotificationEntry[] }) {
   return (
-    <div className="card p-5 text-right">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="card p-5 text-right sm:p-6">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-base font-bold text-text">
-          <Bell size={17} className="text-primary" />
+          <span className="grid h-8 w-8 place-items-center rounded-xl bg-primary/10 text-primary">
+            <Bell size={16} />
+          </span>
           اعلان‌های اخیر
         </h2>
-        <Link href="/panel/notifications" className="inline-flex items-center gap-1 text-xs text-primary transition hover:underline">
+        <Link href="/panel/notifications" className="inline-flex items-center gap-1 text-xs font-semibold text-primary transition hover:underline">
           مشاهده همه
           <ChevronLeft className="h-3.5 w-3.5" />
         </Link>
@@ -44,46 +28,45 @@ export function RecentNotifications({ notifications }: { notifications: Notifica
         <p className="py-6 text-center text-sm text-text-muted">اعلانی وجود ندارد.</p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {notifications.map((notification, index) => {
-            const Icon = typeIcon(notification.type);
+          {notifications.map((notification) => {
+            const Icon = notificationTypeIcon(notification.type);
+            const typeVariant = notificationTypeVariant(notification.type);
+            const isUnread = !notification.read_at;
+
             const inner = (
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex min-w-0 flex-1 items-start gap-2.5">
-                  <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-                    <Icon size={15} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className={`text-sm ${notification.read_at ? 'text-text-muted' : 'font-semibold text-text'}`}>
-                      {notification.title}
-                    </p>
-                    <p className="mt-1 line-clamp-2 text-xs text-text-subtle">{notification.body}</p>
+              <article className={`panel-notification panel-notification--compact ${isUnread ? 'panel-notification--unread' : 'panel-notification--read'}`}>
+                <header className="panel-notification__header">
+                  <div className="panel-notification__lead">
+                    <span className={`panel-notification__icon panel-notification__icon--${typeVariant}`}>
+                      <Icon size={15} />
+                    </span>
+                    <span className={`panel-notification__chip panel-notification__chip--${typeVariant}`}>
+                      {notificationTypeLabel(notification.type)}
+                    </span>
                   </div>
-                </div>
-                <StatusBadge variant="neutral" dot={DOT_CYCLE[index % DOT_CYCLE.length]}>
-                  {formatRelativeTimeFa(notification.created_at)}
-                </StatusBadge>
-              </div>
+                  <time className="panel-notification__time" dateTime={notification.created_at ?? undefined}>
+                    {formatRelativeTimeFa(notification.created_at)}
+                  </time>
+                </header>
+                <h3 className="panel-notification__title">{notification.title}</h3>
+                <p className="panel-notification__text">{notification.body}</p>
+              </article>
             );
 
             return (
-              <li key={notification.id}>
+              <li key={notification.id} className="panel-notification-card">
                 {notification.link ? (
-                  <Link
-                    href={notification.link}
-                    className="block rounded-xl bg-surface-soft p-3 transition-all duration-300 hover:bg-surface-soft/80"
-                  >
+                  <Link href={notification.link} className="panel-notification-link">
                     {inner}
                   </Link>
                 ) : (
-                  <div className="rounded-xl bg-surface-soft p-3 transition-all duration-300 hover:bg-surface-soft/80">
-                    {inner}
-                  </div>
+                  <div className="panel-notification-link">{inner}</div>
                 )}
               </li>
             );
           })}
         </ul>
       )}
-    </div>
+    </section>
   );
 }

@@ -20,7 +20,7 @@ export interface PanelNavItem {
 
 export const PANEL_NAV_ITEMS: PanelNavItem[] = [
   { href: '/panel', label: 'خانه', icon: Home, exact: true },
-  { href: '/panel/courses', label: 'دوره‌ها', icon: BookOpen },
+  { href: '/panel/courses', label: 'دوره کمپین‌نویسی', icon: BookOpen },
   { href: '/panel/seminars', label: 'سمینارهای من', icon: CalendarDays },
   { href: '/panel/referrals', label: 'باشگاه مشتریان', icon: Gift },
   { href: '/panel/sat', label: 'سات', icon: Briefcase },
@@ -32,7 +32,7 @@ export const PANEL_NAV_ITEMS: PanelNavItem[] = [
 
 export const PANEL_BOTTOM_NAV_ITEMS: PanelNavItem[] = [
   { href: '/panel', label: 'خانه', icon: Home, exact: true },
-  { href: '/panel/courses', label: 'دوره‌ها', icon: BookOpen },
+  { href: '/panel/courses', label: 'دوره کمپین‌نویسی', icon: BookOpen },
   { href: '/panel/notifications', label: 'اعلان‌ها', icon: Bell },
   { href: '/panel/support', label: 'پشتیبانی', icon: LifeBuoy },
 ];

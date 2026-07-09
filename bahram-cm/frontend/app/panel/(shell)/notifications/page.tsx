@@ -24,11 +24,13 @@ export default async function PanelNotificationsPage() {
           <p className="text-sm text-text-muted">اعلانی وجود ندارد.</p>
         </div>
       ) : (
-        <div className="card w-full min-w-0 flex flex-col gap-1 p-1">
+        <ul className="panel-notification-list">
           {notifications.map((notification) => (
-            <NotificationItem key={notification.id} notification={notification} />
+            <li key={notification.id} className="panel-notification-card">
+              <NotificationItem notification={notification} />
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );

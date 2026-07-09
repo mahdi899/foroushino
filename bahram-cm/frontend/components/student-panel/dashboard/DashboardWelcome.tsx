@@ -56,7 +56,7 @@ export function DashboardWelcome({
       <div className="absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
       <div
         className="absolute -top-10 -right-10 h-28 w-28 rounded-full opacity-60 blur-3xl"
-        style={{ background: 'rgba(255,183,3,0.08)' }}
+        style={{ background: 'var(--color-gold-soft)' }}
       />
     </section>
   );

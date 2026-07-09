@@ -1,9 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { Bell, BookOpen, FileText, MessageSquare, Receipt, Sparkles, KeyRound } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { markNotificationReadAction } from '@/lib/student/panelActions';
 import { formatRelativeTimeFa } from '@/components/student-panel/utils/relativeTime';
+import {
+  notificationTypeIcon,
+  notificationTypeLabel,
+  notificationTypeVariant,
+} from '@/components/student-panel/notifications/notificationMeta';
 
 export interface NotificationEntry {
   id: number;
@@ -24,82 +29,46 @@ function formatDateTime(value: string | null | undefined) {
   }
 }
 
-function typeIcon(type: string | null | undefined) {
-  switch (type) {
-    case 'order_paid':
-      return Receipt;
-    case 'license_ready':
-      return KeyRound;
-    case 'ticket_created':
-    case 'ticket_reply':
-      return MessageSquare;
-    case 'product_new':
-      return Sparkles;
-    case 'article_new':
-      return FileText;
-    case 'welcome':
-      return BookOpen;
-    default:
-      return Bell;
-  }
-}
-
-function typeLabel(type: string | null | undefined) {
-  switch (type) {
-    case 'order_paid':
-      return 'سفارش';
-    case 'license_ready':
-      return 'لایسنس';
-    case 'ticket_created':
-      return 'تیکت';
-    case 'ticket_reply':
-      return 'پاسخ تیکت';
-    case 'product_new':
-      return 'محصول جدید';
-    case 'article_new':
-      return 'مطلب جدید';
-    case 'welcome':
-      return 'خوش‌آمد';
-    default:
-      return 'اعلان';
-  }
-}
-
 export function NotificationItem({ notification }: { notification: NotificationEntry }) {
-  const Icon = typeIcon(notification.type);
+  const Icon = notificationTypeIcon(notification.type);
   const isUnread = !notification.read_at;
+  const typeVariant = notificationTypeVariant(notification.type);
 
   const content = (
-    <>
-      <span
-        className={`mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-xl sm:h-10 sm:w-10 ${
-          isUnread ? 'bg-primary/10 text-primary' : 'bg-surface-soft text-text-muted'
-        }`}
-      >
-        <Icon size={18} />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <p className={`text-sm font-semibold leading-snug ${isUnread ? 'text-text' : 'text-text-muted'}`}>
-            {notification.title}
-          </p>
-          <span className="rounded-full bg-surface-soft px-2 py-0.5 text-[10px] text-text-muted">
-            {typeLabel(notification.type)}
+    <article
+      className={`panel-notification ${isUnread ? 'panel-notification--unread' : 'panel-notification--read'}`}
+    >
+      <header className="panel-notification__header">
+        <div className="panel-notification__lead">
+          <span className={`panel-notification__icon panel-notification__icon--${typeVariant}`}>
+            <Icon size={17} />
+          </span>
+          <span className={`panel-notification__chip panel-notification__chip--${typeVariant}`}>
+            {notificationTypeLabel(notification.type)}
           </span>
         </div>
-        <p className="mt-1 text-xs leading-relaxed text-text-muted">{notification.body}</p>
-        <p className="mt-2 text-[11px] text-text-subtle" title={formatDateTime(notification.created_at)}>
-          {formatDateTime(notification.created_at)}
-          <span className="mx-1.5 hidden text-border sm:inline">·</span>
-          <span className="hidden sm:inline">{formatRelativeTimeFa(notification.created_at)}</span>
-        </p>
-      </div>
-      {isUnread ? <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-primary" /> : null}
-    </>
-  );
+        <time className="panel-notification__time" dateTime={notification.created_at ?? undefined} title={formatDateTime(notification.created_at)}>
+          {formatRelativeTimeFa(notification.created_at)}
+        </time>
+      </header>
 
-  const className =
-    'flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-surface-soft/60 sm:p-4';
+      <div className="panel-notification__body">
+        <h3 className="panel-notification__title">{notification.title}</h3>
+        <p className="panel-notification__text">{notification.body}</p>
+      </div>
+
+      <footer className="panel-notification__footer">
+        <span className="panel-notification__datetime">{formatDateTime(notification.created_at)}</span>
+        {notification.link ? (
+          <span className="panel-notification__action">
+            مشاهده
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </span>
+        ) : null}
+        {isUnread ? <span className="panel-notification__dot" aria-hidden /> : null}
+      </footer>
+    </article>
+  );
 
   const markRead = () => {
     if (isUnread) void markNotificationReadAction(notification.id);
@@ -107,14 +76,14 @@ export function NotificationItem({ notification }: { notification: NotificationE
 
   if (notification.link) {
     return (
-      <Link href={notification.link} className={className} onClick={markRead}>
+      <Link href={notification.link} className="panel-notification-link" onClick={markRead}>
         {content}
       </Link>
     );
   }
 
   return (
-    <div className={className} onClick={markRead}>
+    <div className="panel-notification-link" onClick={markRead} role="button" tabIndex={0}>
       {content}
     </div>
   );

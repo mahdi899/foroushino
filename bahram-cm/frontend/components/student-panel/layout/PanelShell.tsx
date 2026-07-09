@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { usePathname } from 'next/navigation';
 import type { StudentUser } from '@/lib/student/session';
 import { PanelThemeProvider } from '@/app/panel/PanelThemeContext';
 import { PanelBottomNav } from './PanelBottomNav';
@@ -44,6 +45,8 @@ export function PanelShell({
   unreadCount?: number;
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const mainRef = useRef<HTMLElement>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const sidebarCollapsed = useSyncExternalStore(
     subscribeSidebarCollapsed,
@@ -76,6 +79,12 @@ export function PanelShell({
     return () => window.removeEventListener('keydown', onKey);
   }, [mobileOpen]);
 
+  useEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    main.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [pathname]);
+
   function toggleSidebarCollapsed() {
     setSidebarCollapsed(!sidebarCollapsed);
   }
@@ -99,7 +108,7 @@ export function PanelShell({
             mobileMenuOpen={mobileOpen}
             onMenuToggle={() => setMobileOpen((open) => !open)}
           />
-          <main className="panel-main-content">
+          <main ref={mainRef} className="panel-main-content">
             <div className="panel-page-wrap">{children}</div>
           </main>
         </div>
