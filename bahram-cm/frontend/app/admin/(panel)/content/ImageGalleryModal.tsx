@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { resolveMediaUrl } from '@/lib/mediaUrl';
 import { findUnifiedByPersistSrc } from '@/lib/admin/unifiedGallery';
-import type { MediaPickMeta } from '@/lib/admin/mediaTypes';
+import type { AdminMediaItem, MediaPickMeta } from '@/lib/admin/mediaTypes';
 import { listGalleryMediaPage } from '../gallery/actions';
 import { MediaLibraryGrid } from './MediaLibraryGrid';
 

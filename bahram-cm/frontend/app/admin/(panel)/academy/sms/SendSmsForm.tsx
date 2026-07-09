@@ -42,7 +42,7 @@ export function SendSmsForm({ segments, config }: { segments: AdminAudienceSegme
     setTestPending(true);
     const res = await testSms(testPhone);
     setTestPending(false);
-    setResult(res.message ?? (res.ok ? 'ارسال شد.' : 'ناموفق'));
+    setResult('message' in res ? (res.message ?? (res.ok ? 'ارسال شد.' : 'ناموفق')) : (res.ok ? 'ارسال شد.' : 'ناموفق'));
   }
 
   return (

@@ -146,7 +146,7 @@ export function buildSeoFixUserPrompt(
       blogArticles: [],
       sitemap: [],
       services: [],
-    } as AiSiteContext);
+    } as unknown as AiSiteContext);
 
   return [
     `SEO CHECK TO FIX: ${check.label} (id: ${check.id})`,

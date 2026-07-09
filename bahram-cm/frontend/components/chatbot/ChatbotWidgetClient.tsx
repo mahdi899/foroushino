@@ -24,7 +24,7 @@ interface ChatbotWidgetClientProps {
 function scheduleAfterPageLoad(run: () => void, lazy: boolean): () => void {
   let cancelled = false;
   let idleId: number | undefined;
-  let timerId: ReturnType<typeof setTimeout> | undefined;
+  let timerId: number | undefined;
 
   const start = () => {
     if (cancelled) return;

@@ -465,7 +465,7 @@ export function ArticleBodyEditor({
         .setImage({
           src,
           alt,
-          ...(width && height ? { width: String(width), height: String(height) } : {}),
+          ...(width && height ? { width, height } : {}),
         })
         .run();
     },

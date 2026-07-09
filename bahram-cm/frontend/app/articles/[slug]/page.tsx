@@ -73,7 +73,7 @@ export default async function ArticleDetailPage({
         {post.featured_image ? (
           <PageHeroBackdrop
             src={post.featured_image}
-            alt={post.featured_image_alt}
+            alt={post.featured_image_alt ?? undefined}
             fallbackAlt={post.title}
             priority
           />

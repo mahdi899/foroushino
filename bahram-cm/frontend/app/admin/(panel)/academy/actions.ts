@@ -79,7 +79,7 @@ export async function createStudent(input: {
   try {
     const res = await adminFetch<{ data: { id: number } }>('/students', { method: 'POST', body: input });
     revalidateAcademy();
-    return { ok: true, id: res.data.id };
+    return { ok: true as const, id: res.data.id };
   } catch (e) {
     const err = e as Error & { payload?: { message?: string; errors?: Record<string, string[]> } };
     const message =
@@ -95,7 +95,7 @@ export async function updateStudentStatus(id: number, status: string): Promise<{
   try {
     await adminFetch(`/students/${id}`, { method: 'PATCH', body: { status } });
     revalidateAcademy();
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
     return actionError(e, 'به‌روزرسانی وضعیت دانشجو ناموفق بود.');
   }
@@ -106,7 +106,7 @@ export async function grantCourseAccess(input: { mobile: string; name?: string; 
   try {
     await adminFetch('/course-accesses', { method: 'POST', body: input });
     revalidateAcademy();
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
     return actionError(e, 'اعطای دسترسی دوره ناموفق بود.');
   }
@@ -116,7 +116,7 @@ export async function updateCourseAccessStatus(id: number, status: string) {
   try {
     await adminFetch(`/course-accesses/${id}`, { method: 'PATCH', body: { status } });
     revalidateAcademy();
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
     return actionError(e, 'به‌روزرسانی دسترسی ناموفق بود.');
   }
@@ -127,7 +127,7 @@ export async function createSeminar(input: { title: string; date: string; locati
   try {
     const res = await adminFetch<{ data: { id: number } }>('/seminars', { method: 'POST', body: input });
     revalidateAcademy();
-    return { ok: true, id: res.data.id };
+    return { ok: true as const, id: res.data.id };
   } catch (e) {
     return actionError(e, 'ایجاد سمینار ناموفق بود.');
   }
@@ -137,7 +137,7 @@ export async function updateSeminar(id: number, input: Record<string, unknown>) 
   try {
     await adminFetch(`/seminars/${id}`, { method: 'PATCH', body: input });
     revalidateAcademy();
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
     return actionError(e, 'ذخیره سمینار ناموفق بود.');
   }
@@ -147,7 +147,7 @@ export async function addSeminarAttendee(seminarId: number, input: { mobile: str
   try {
     await adminFetch(`/seminars/${seminarId}/attendees`, { method: 'POST', body: input });
     revalidateAcademy();
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
     return actionError(e, 'افزودن شرکت‌کننده ناموفق بود.');
   }
@@ -157,7 +157,7 @@ export async function updateSeminarAttendee(seminarId: number, attendeeId: numbe
   try {
     await adminFetch(`/seminars/${seminarId}/attendees/${attendeeId}`, { method: 'PATCH', body: { attendance_status: status } });
     revalidateAcademy();
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
     return actionError(e, 'به‌روزرسانی وضعیت حضور ناموفق بود.');
   }
@@ -167,7 +167,7 @@ export async function uploadSeminarAsset(seminarId: number, formData: FormData) 
   try {
     await adminUpload(`/seminars/${seminarId}/assets`, formData);
     revalidateAcademy();
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
     return actionError(e, 'بارگذاری فایل سمینار ناموفق بود.');
   }
@@ -177,7 +177,7 @@ export async function deleteSeminarAsset(seminarId: number, assetId: number) {
   try {
     await adminFetch(`/seminars/${seminarId}/assets/${assetId}`, { method: 'DELETE' });
     revalidateAcademy();
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
     return actionError(e, 'حذف فایل ناموفق بود.');
   }
@@ -187,7 +187,7 @@ export async function issueSeminarCertificate(seminarId: number, formData: FormD
   try {
     await adminUpload(`/seminars/${seminarId}/certificates`, formData);
     revalidateAcademy();
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
     return actionError(e, 'صدور گواهی ناموفق بود.');
   }
@@ -198,7 +198,7 @@ export async function updateReferralConversionStatus(id: number, status: string)
   try {
     await adminFetch(`/referrals/${id}`, { method: 'PATCH', body: { status } });
     revalidateAcademy();
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
     return actionError(e, 'به‌روزرسانی وضعیت معرفی ناموفق بود.');
   }
@@ -208,7 +208,7 @@ export async function updateReferralConversionStatus(id: number, status: string)
 export async function revealCashbackPayout(id: number): Promise<{ ok: true; data: AdminCashbackPayoutRevealed } | { ok: false; error: string }> {
   try {
     const res = await adminFetch<{ data: AdminCashbackPayoutRevealed }>(`/cashback-payouts/${id}`);
-    return { ok: true, data: res.data };
+    return { ok: true as const, data: res.data };
   } catch (e) {
     return actionError(e, 'نمایش شماره کارت ناموفق بود.');
   }
@@ -218,7 +218,7 @@ export async function updateCashbackPayoutStatus(id: number, status: string, adm
   try {
     await adminFetch(`/cashback-payouts/${id}`, { method: 'PATCH', body: { status, admin_note: adminNote } });
     revalidateAcademy();
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
     return actionError(e, 'به‌روزرسانی وضعیت واریز ناموفق بود.');
   }
@@ -229,7 +229,7 @@ export async function updateSatApplicationStatus(id: number, status: string, adm
   try {
     await adminFetch(`/sat-applications/${id}`, { method: 'PATCH', body: { status, admin_note: adminNote } });
     revalidateAcademy();
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
     return actionError(e, 'به‌روزرسانی وضعیت سات ناموفق بود.');
   }
@@ -319,7 +319,7 @@ export async function sendNotification(input: { title: string; body: string; seg
   try {
     const res = await adminFetch<{ data: { id: number; recipients_count: number } }>('/notifications', { method: 'POST', body: input });
     revalidateAcademy();
-    return { ok: true, recipientsCount: res.data.recipients_count };
+    return { ok: true as const, recipientsCount: res.data.recipients_count };
   } catch (e) {
     return actionError(e, 'ارسال اعلان ناموفق بود.');
   }
@@ -330,7 +330,7 @@ export async function sendSms(input: { message: string; segment?: string; manual
   try {
     const res = await adminFetch<{ data: { total: number; sent: number; failed: number } }>('/sms/send', { method: 'POST', body: input });
     revalidateAcademy();
-    return { ok: true, ...res.data };
+    return { ok: true as const, ...res.data };
   } catch (e) {
     return actionError(e, 'ارسال پیامک ناموفق بود.');
   }
@@ -339,7 +339,10 @@ export async function sendSms(input: { message: string; segment?: string; manual
 export async function testSms(phone: string) {
   try {
     const res = await adminFetch<{ data: { success: boolean; message: string } }>('/sms/test', { method: 'POST', body: { phone } });
-    return { ok: res.data.success, message: res.data.message };
+    if (res.data.success) {
+      return { ok: true as const, message: res.data.message };
+    }
+    return { ok: false as const, error: res.data.message };
   } catch (e) {
     return actionError(e, 'تست پیامک ناموفق بود.');
   }
