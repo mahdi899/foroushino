@@ -23,18 +23,17 @@ class StudentTestimonialSeeder extends Seeder
         usort($paths, function (string $a, string $b) use ($featured): int {
             $slugA = pathinfo($a, PATHINFO_FILENAME);
             $slugB = pathinfo($b, PATHINFO_FILENAME);
-            $rankA = array_search($slugA, $featured, true);
-            $rankB = array_search($slugB, $featured, true);
-            $rankA = $rankA === false ? 100 + strcmp($slugA, $slugB) : $rankA;
-            $rankB = $rankB === false ? 100 + strcmp($slugA, $slugB) : $rankB;
 
-            return $rankA <=> $rankB;
+            return array_search($slugA, $featured, true) <=> array_search($slugB, $featured, true);
         });
 
         $sort = 0;
 
         foreach ($paths as $path) {
             $slug = pathinfo($path, PATHINFO_FILENAME);
+            if (! in_array($slug, $featured, true)) {
+                continue;
+            }
             $raw = File::get($path);
 
             if (! preg_match('/^---\s*\n(.*?)\n---\s*\n(.*)$/s', $raw, $m)) {
@@ -61,6 +60,10 @@ class StudentTestimonialSeeder extends Seeder
                 ],
             );
         }
+
+        StudentTestimonial::query()
+            ->whereNotIn('slug', $featured)
+            ->delete();
     }
 
     /** @return array<string, string> */

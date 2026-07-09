@@ -53,10 +53,15 @@ type ItemProps = {
 export function StaggerItem({ children, className, y = 24 }: ItemProps) {
   const reduce = useReducedMotion();
   const variants: Variants = {
-    hidden: { opacity: 0, y: reduce ? 0 : y },
+    hidden: {
+      opacity: 0,
+      y: reduce ? 0 : y,
+      scale: reduce ? 1 : 0.97,
+    },
     show: {
       opacity: 1,
       y: 0,
+      scale: 1,
       transition: { duration: dur.lg, ease: ease.luxe },
     },
   };

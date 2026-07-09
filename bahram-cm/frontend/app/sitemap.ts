@@ -4,7 +4,6 @@ import {
   getEvents,
   getGuides,
   getResources,
-  getTransformations,
 } from "@/lib/content";
 import { getArticles } from "@/lib/services/articles";
 import { SITE } from "@/lib/seo";
@@ -41,8 +40,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }))
     : [];
 
-  const [transformations, events, courses, resources, guides] = await Promise.all([
-    getTransformations(),
+  const [events, courses, resources, guides] = await Promise.all([
     getEvents(),
     getCourses(),
     getResources(),
@@ -71,7 +69,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticEntries,
     ...dynamic("/insights", insights, 0.6),
-    ...dynamic("/transformations", transformations, 0.6),
     ...dynamic("/events", events, 0.5),
     ...dynamic("/courses", courses, 0.7),
     ...dynamic("/resources", resources, 0.5),

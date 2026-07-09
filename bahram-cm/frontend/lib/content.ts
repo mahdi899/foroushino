@@ -5,10 +5,10 @@ import matter from "gray-matter";
 import {
   getTransformationBySlugFromApi,
   getTransformationsFromApi,
-  getTransformationsPageFromApi,
   type TransformationApiRecord,
 } from "./services/transformations";
 import type { PaginationMeta } from "./services/articles";
+import { sortFeaturedTransformations } from "./transformations/featured";
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                       */
@@ -195,9 +195,9 @@ const getTransformationsFromMdx = cache(async (): Promise<TransformationRecord[]
 export const getTransformations = cache(async (): Promise<TransformationRecord[]> => {
   const api = await getTransformationsFromApi();
   if (api.ok && api.data.length > 0) {
-    return api.data.map(mapApiTransformation);
+    return sortFeaturedTransformations(api.data.map(mapApiTransformation));
   }
-  return getTransformationsFromMdx();
+  return sortFeaturedTransformations(await getTransformationsFromMdx());
 });
 
 export const TRANSFORMATIONS_PER_PAGE = 9;
@@ -206,15 +206,7 @@ export async function getTransformationsPage(
   page = 1,
   perPage = TRANSFORMATIONS_PER_PAGE,
 ): Promise<{ items: TransformationRecord[]; meta: PaginationMeta }> {
-  const api = await getTransformationsPageFromApi(page, perPage);
-  if (api.ok && api.data.meta.total > 0) {
-    return {
-      items: api.data.items.map(mapApiTransformation),
-      meta: api.data.meta,
-    };
-  }
-
-  const all = await getTransformationsFromMdx();
+  const all = await getTransformations();
   const total = all.length;
   const lastPage = Math.max(1, Math.ceil(total / perPage));
   const safePage = Math.min(Math.max(1, page), lastPage);

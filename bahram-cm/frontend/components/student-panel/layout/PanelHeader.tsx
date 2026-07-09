@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bell, ChevronDown, LogOut, Menu } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Menu, X } from 'lucide-react';
 import { PanelThemeToggle } from '@/app/panel/PanelThemeToggle';
 import { PanelProfileAvatar } from '@/components/student-panel/layout/PanelProfileAvatar';
 import { studentDefaultAvatarUrl } from '@/lib/student/avatar';
@@ -13,11 +13,13 @@ import type { StudentUser } from '@/lib/student/session';
 export function PanelHeader({
   user,
   unreadCount = 0,
-  onMenuOpen,
+  mobileMenuOpen = false,
+  onMenuToggle,
 }: {
   user: StudentUser;
   unreadCount?: number;
-  onMenuOpen: () => void;
+  mobileMenuOpen?: boolean;
+  onMenuToggle: () => void;
 }) {
   const router = useRouter();
   const fullName = [user.profile?.first_name, user.profile?.last_name].filter(Boolean).join(' ').trim();
@@ -33,11 +35,17 @@ export function PanelHeader({
   }
 
   return (
-    <header className="panel-header flex items-center justify-between gap-2 border-b border-border bg-surface/80 py-3 backdrop-blur-md md:gap-4 md:px-6">
+    <header className="panel-header flex min-w-0 items-center justify-between gap-2 border-b border-border bg-surface/80 py-3 backdrop-blur-md lg:gap-4 lg:px-6">
       {/* RTL: start = right — actions stay on the right */}
-      <div className="flex items-center gap-2 md:gap-3">
-        <button type="button" className="btn-ghost md:hidden" onClick={onMenuOpen} aria-label="باز کردن منو">
-          <Menu size={22} />
+      <div className="flex min-w-0 shrink items-center gap-1.5 sm:gap-2 lg:gap-3">
+        <button
+          type="button"
+          className="btn-ghost lg:hidden"
+          onClick={onMenuToggle}
+          aria-label={mobileMenuOpen ? 'بستن منو' : 'باز کردن منو'}
+          aria-expanded={mobileMenuOpen}
+        >
+          {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
         <Link
           href="/panel/notifications"
@@ -58,10 +66,10 @@ export function PanelHeader({
       </div>
 
       {/* RTL: end = left — profile block on the left */}
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
         <Link
           href="/panel/profile"
-          className="group flex items-center gap-3 rounded-xl border border-border/40 bg-surface-soft/50 py-1.5 pe-2 ps-1.5 transition-all duration-300 hover:border-border hover:bg-surface-soft"
+          className="group flex min-w-0 items-center gap-2 rounded-xl border border-border/40 bg-surface-soft/50 py-1.5 pe-2 ps-1.5 transition-all duration-300 hover:border-border hover:bg-surface-soft sm:gap-3"
         >
           <PanelProfileAvatar
             avatar={user.profile?.avatar}
@@ -70,7 +78,7 @@ export function PanelHeader({
             defaultAvatarUrl={user.profile?.default_avatar_url ?? studentDefaultAvatarUrl(user.id)}
             alt={displayName}
           />
-          <div className="hidden min-w-0 text-right md:block">
+          <div className="hidden min-w-0 text-right lg:block">
             <div className="flex items-center gap-1 text-xs font-bold text-text">
               <span className="truncate">{displayName}</span>
               <ChevronDown size={14} className="shrink-0 text-text-muted transition-transform group-hover:translate-y-0.5" />

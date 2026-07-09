@@ -19,7 +19,7 @@ export function PanelBottomNav({
     exact ? pathname === href : pathname === href || pathname?.startsWith(`${href}/`);
 
   return (
-    <nav className="panel-bottom-nav fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-surface md:hidden">
+    <nav className="panel-bottom-nav fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-surface lg:hidden">
       {PANEL_BOTTOM_NAV_ITEMS.map((item) => {
         const { href, label, icon: Icon, exact } = item;
         const active = isActive(href, exact);

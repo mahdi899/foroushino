@@ -23,6 +23,8 @@
   --shadow-soft: 0 8px 24px rgba(0, 59, 64, 0.05);
   --shadow-glow: 0 0 15px rgba(0, 140, 150, 0.1);
 
+  width: 100%;
+  max-width: 100%;
   min-height: 100dvh;
   height: 100dvh;
   overflow: hidden;
@@ -77,6 +79,9 @@
 /* Layout Shell */
 .panel-shell {
   display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 100%;
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -85,6 +90,7 @@
 .panel-main {
   flex: 1;
   min-width: 0;
+  width: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -94,7 +100,7 @@
 .panel-bottom-nav {
   background: color-mix(in srgb, var(--color-surface) 94%, transparent);
   border-color: var(--color-border);
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.35rem);
   backdrop-filter: blur(16px);
 }
 
@@ -107,16 +113,27 @@
 
 .panel-main-content {
   flex: 1;
-  min-height: 0;
+  min-width: 0;
+  width: 100%;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-top: 1rem;
   padding-left: max(1rem, env(safe-area-inset-left, 0px));
   padding-right: max(1rem, env(safe-area-inset-right, 0px));
-  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
 }
 
-@media (min-width: 768px) {
+@media (min-width: 640px) {
+  .panel-main-content {
+    padding-top: 1.25rem;
+    padding-left: max(1.25rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1.25rem, env(safe-area-inset-right, 0px));
+  }
+}
+
+@media (min-width: 1024px) {
   .panel-main-content {
     padding: 2rem;
     padding-bottom: 2rem;
@@ -152,7 +169,7 @@
 
 /* Sidebar Styling */
 .panel-sidebar {
-  position: relative;
+  position: fixed;
   border-color: var(--color-border);
   background: var(--color-surface);
   box-shadow: var(--shadow-soft);
@@ -162,6 +179,7 @@
   max-height: 100dvh;
   overflow: hidden;
   flex-shrink: 0;
+  padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
 }
 
 .panel-sidebar__scroll {
@@ -638,7 +656,7 @@
 .panel-feature-card {
   position: relative;
   display: flex;
-  min-height: 220px;
+  min-height: 200px;
   flex-direction: column;
   overflow: hidden;
   border-radius: 1.25rem;
@@ -646,6 +664,12 @@
   padding: 1.25rem;
   color: #fff;
   transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+@media (min-width: 640px) {
+  .panel-feature-card {
+    min-height: 220px;
+  }
 }
 
 .panel-feature-card:hover {

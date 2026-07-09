@@ -10,15 +10,9 @@ final class StudentTestimonialPortraits
     /** @var array<string, string> */
     private const BY_SLUG = [
         'sara-r' => '/storage/media/site/testimonial-01.webp',
-        'amir-h' => '/storage/media/site/testimonial-02.webp',
-        'nazanin-k' => '/storage/media/site/testimonial-03.webp',
+        'amir-h' => '/storage/media/site/testimonial-03.webp',
+        'nazanin-k' => '/storage/media/site/testimonial-02.webp',
         'reza-m' => '/storage/media/site/testimonial-04.webp',
-        'kaveh-s' => '/storage/media/site/social-01.jpg',
-        'mahsa-t' => '/storage/media/site/social-02.jpg',
-        'parisa-n' => '/storage/media/site/social-03.jpg',
-        'omid-j' => '/storage/media/site/social-04.jpg',
-        'shabnam-a' => '/storage/media/site/social-05.jpg',
-        'niloofar-d' => '/storage/media/site/social-06.jpg',
     ];
 
     /** @var list<string> */

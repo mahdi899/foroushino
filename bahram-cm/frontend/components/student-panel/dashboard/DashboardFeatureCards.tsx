@@ -21,8 +21,8 @@ export function DashboardFeatureCards({
       : 'کش‌بک بر اساس محصول';
 
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
-      <Link href={courseHref} className="panel-feature-card panel-feature-card--teal group transition-all duration-300 hover:scale-[1.02]">
+    <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-3">
+      <Link href={courseHref} className="panel-feature-card panel-feature-card--teal group transition-all duration-300 hover:scale-[1.02] min-[420px]:col-span-2 lg:col-span-1">
         <div className="flex items-start justify-between gap-2">
           <span className="panel-feature-card__icon">
             <Play size={22} className="fill-current" />

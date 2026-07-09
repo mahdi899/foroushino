@@ -87,7 +87,7 @@ export function TicketHistoryTable({
 
   return (
     <>
-      <div className="hidden overflow-x-auto md:block">
+      <div className="hidden overflow-x-auto lg:block">
         <table className="panel-table">
           <thead>
             <tr>
@@ -128,7 +128,7 @@ export function TicketHistoryTable({
         </table>
       </div>
 
-      <div className="space-y-2 p-4 md:hidden">
+      <div className="space-y-2 p-4 lg:hidden">
         {tickets.map((ticket) => (
           <Link
             key={ticket.id}

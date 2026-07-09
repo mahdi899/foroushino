@@ -48,14 +48,11 @@ export async function revalidateArticleSurfaces(slug?: string | null): Promise<v
   });
 }
 
-export async function revalidateTestimonialSurfaces(slug?: string | null): Promise<void> {
+export async function revalidateTestimonialSurfaces(_slug?: string | null): Promise<void> {
   await revalidatePublicContent(() => {
     revalidateTag('testimonials', 'max');
     revalidateTag('public-transformations', 'max');
     revalidatePath('/admin/commerce/testimonials');
     revalidatePath('/transformations');
-    if (slug) {
-      revalidatePath(`/transformations/${slug}`);
-    }
   });
 }

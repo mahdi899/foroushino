@@ -39,7 +39,7 @@ export default async function PanelDashboardPage() {
   const courseHref = activeCourse ? `/panel/courses/${activeCourse.id}/watch` : '/panel/courses';
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6">
+    <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-5 sm:gap-6">
       <DashboardWelcome
         name={user?.profile?.first_name || user?.name || ''}
         doneCount={doneCount}

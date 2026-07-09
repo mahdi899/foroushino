@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronLeft, ChevronRight, GraduationCap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, GraduationCap, X } from 'lucide-react';
 import { AppDownloadCard } from '@/components/student-panel/ui/AppDownloadCard';
 import { cn } from '@/lib/cn';
 import { PanelNavLabel } from './PanelNavLabel';
@@ -30,17 +30,16 @@ export function PanelSidebar({
   return (
     <>
       {mobileOpen ? (
-        <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={onClose} aria-hidden />
+        <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={onClose} aria-hidden />
       ) : null}
 
       <aside
         className={cn(
-          'panel-sidebar fixed inset-y-0 right-0 z-40 shrink-0 border-l transition-all duration-300 md:static',
-          mobileOpen ? 'translate-x-0 w-64 p-4' : 'translate-x-full md:translate-x-0',
-          !mobileOpen &&
-            (collapsed
-              ? 'panel-sidebar--collapsed w-[4.5rem] p-2 md:w-[4.5rem]'
-              : 'w-64 p-4'),
+          'panel-sidebar fixed inset-y-0 right-0 z-40 shrink-0 border-l transition-transform duration-300 lg:translate-x-0',
+          mobileOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0',
+          mobileOpen || !collapsed
+            ? 'panel-sidebar--expanded w-64 p-4'
+            : 'panel-sidebar--collapsed w-[4.5rem] p-2',
         )}
       >
         <div className="flex h-full flex-col">
@@ -54,14 +53,23 @@ export function PanelSidebar({
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-glow">
                 <GraduationCap size={20} />
               </div>
-              <span className="panel-sidebar__brand-text truncate text-sm font-bold text-text md:text-base">
+              <span className="panel-sidebar__brand-text truncate text-sm font-bold text-text sm:text-base">
                 پنل آکادمی
               </span>
             </div>
-            <div className={cn('flex items-center gap-1', isDesktopCollapsed && 'md:mt-1')}>
+            <div className={cn('flex items-center gap-1', isDesktopCollapsed && 'lg:mt-1')}>
               <button
                 type="button"
-                className="panel-sidebar__toggle hidden md:inline-flex"
+                className="panel-sidebar__toggle lg:hidden"
+                onClick={onClose}
+                aria-label="بستن منو"
+                title="بستن منو"
+              >
+                <X size={18} />
+              </button>
+              <button
+                type="button"
+                className="panel-sidebar__toggle hidden lg:inline-flex"
                 onClick={onToggleCollapse}
                 aria-label={collapsed ? 'باز کردن منو' : 'جمع کردن منو'}
                 title={collapsed ? 'باز کردن منو' : 'جمع کردن منو'}

@@ -149,7 +149,7 @@ export function TestimonialForm({ testimonial }: { testimonial?: AdminStudentTes
           </button>
           {previewSlug && form.is_active && (
             <Link
-              href={`/transformations/${previewSlug}`}
+              href="/transformations"
               target="_blank"
               className="btn btn-secondary px-3 py-2 text-small"
             >
@@ -226,7 +226,7 @@ export function TestimonialForm({ testimonial }: { testimonial?: AdminStudentTes
                   required
                 />
                 <p className="mt-1 text-center text-caption text-muted md:text-start">
-                  آدرس صفحه: /transformations/{previewSlug || '…'}
+                  نظرها فقط در صفحه /transformations نمایش داده می‌شوند.
                 </p>
               </label>
 

@@ -13,10 +13,10 @@ export function DashboardWelcome({
   progress: number;
 }) {
   return (
-    <section className="panel-glass relative overflow-hidden p-5 sm:p-6">
+    <section className="panel-glass relative overflow-hidden p-4 sm:p-5 lg:p-6">
       <div className="relative z-10 max-w-2xl">
-        <div className="flex items-start gap-2">
-          <h1 className="text-xl font-bold text-text sm:text-2xl">
+        <div className="flex flex-wrap items-start gap-2">
+          <h1 className="text-lg font-bold leading-snug text-text sm:text-xl lg:text-2xl">
             سلام، به پنل آکادمی خوش اومدی 👋
           </h1>
           <Sparkles size={20} className="mt-1 shrink-0" style={{ color: 'var(--color-gold)' }} />

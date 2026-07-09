@@ -6,7 +6,8 @@ import { siteStorageMedia } from '@/config/media';
  */
 export const sitePhotos = {
   heroBackground: siteStorageMedia('hero-background.webp'),
-  heroBackgroundMobile: siteStorageMedia('hero-background-mobile.webp'),
+  /** گالری — background-mobile (مربع ۹۴۱px) */
+  heroBackgroundMobile: '/storage/media/2026/07/01kwyecgnr5hzcdbwa9rwzgbwn.webp',
   /** @deprecated use heroBackground */
   heroLightGrid: siteStorageMedia('hero-background.webp'),
   /** @deprecated use heroBackgroundMobile */
@@ -113,15 +114,9 @@ export const pageHeroBackdropPhoto = sitePhotos.landscapeSession;
 
 const caseStudyPortraitBySlugInner = {
   'sara-r': sitePhotos.testimonialPortrait[0]!,
-  'amir-h': sitePhotos.testimonialPortrait[1]!,
-  'nazanin-k': sitePhotos.testimonialPortrait[2]!,
+  'amir-h': sitePhotos.testimonialPortrait[2]!,
+  'nazanin-k': sitePhotos.testimonialPortrait[1]!,
   'reza-m': sitePhotos.testimonialPortrait[3]!,
-  'kaveh-s': sitePhotos.social[0]!,
-  'mahsa-t': sitePhotos.social[1]!,
-  'parisa-n': sitePhotos.social[2]!,
-  'omid-j': sitePhotos.social[3]!,
-  'shabnam-a': sitePhotos.social[4]!,
-  'niloofar-d': sitePhotos.social[5]!,
 } as const;
 
 /** استخر پرتره‌ها برای داستان‌هایی که نگاشتِ اختصاصی ندارند (انتخاب قطعی بر اساس slug) */

@@ -16,9 +16,9 @@ export function StatCard({
   hint?: string;
 }) {
   return (
-    <div className={`panel-stat-card panel-stat-card--${variant} p-4 transition-all duration-300 hover:scale-[1.02]`}>
+    <div className={`panel-stat-card panel-stat-card--${variant} p-3.5 sm:p-4 transition-all duration-300 hover:scale-[1.02]`}>
       {Icon ? <Icon size={18} className="text-primary" style={variant === 'gold' ? { color: 'var(--color-gold)' } : undefined} /> : null}
-      <p className="mt-3 text-2xl font-bold text-text">{value}</p>
+      <p className="mt-2 text-xl font-bold text-text sm:mt-3 sm:text-2xl">{value}</p>
       <p className="mt-1 text-xs text-text-muted">{label}</p>
       {hint ? <p className="mt-1 text-[10px] text-text-subtle">{hint}</p> : null}
     </div>

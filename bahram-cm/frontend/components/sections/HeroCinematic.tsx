@@ -27,7 +27,7 @@ export function HeroCinematic() {
           <Sparkles className="h-3 w-3 shrink-0 sm:h-3 sm:w-3 lg:h-3.5 lg:w-3.5" strokeWidth={1.6} aria-hidden />
           مسیر کمپین‌نویسی
         </Badge>
-        <h1 className="hero-panel-headline mt-1.5 whitespace-pre-line font-black tracking-[-0.02em] text-bone sm:mt-2 lg:mt-3">
+        <h1 className="hero-panel-headline mt-1.5 whitespace-pre-line font-black tracking-[-0.02em] sm:mt-2 lg:mt-3">
           <span
             className="hero-headline-mobile lg:hidden"
             style={{ fontSize: "var(--hero-headline-size, clamp(1.4rem, 6vw, 2rem))" }}
@@ -38,7 +38,7 @@ export function HeroCinematic() {
             {site.hero.headline}
           </span>
         </h1>
-        <p className="hero-panel-sub mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-bone-dim sm:mt-3 sm:text-base lg:mx-0 lg:mt-4 lg:text-body">
+        <p className="hero-panel-sub mx-auto mt-2 max-w-2xl text-sm leading-relaxed sm:mt-3 sm:text-base lg:mx-0 lg:mt-4 lg:text-body">
           {site.hero.sub}
         </p>
       </div>
@@ -93,8 +93,8 @@ export function HeroCinematic() {
               <SiteImage
                 src={sitePhotos.heroBackgroundMobile}
                 alt=""
-                width={859}
-                height={1024}
+                width={941}
+                height={941}
                 priority
                 sizes="100vw"
                 wrapperClassName="hero-light-grid-picture"
@@ -144,7 +144,7 @@ function TrustStat({
   return (
     <div
       className={cn(
-        "hero-stat-item flex min-w-0 flex-col items-center gap-1 px-1.5 text-center max-sm:w-fit max-sm:shrink-0 sm:flex-row sm:justify-center sm:gap-3 sm:px-3",
+        "hero-stat-item flex min-w-0 flex-1 flex-col items-center justify-center gap-1 px-1 text-center sm:flex-row sm:flex-none sm:justify-center sm:gap-3 sm:px-3",
         divided &&
           "max-sm:border-e max-sm:border-b-0 max-sm:last:border-e-0 border-b border-bone/10 last:border-b-0 min-[380px]:border-b-0 min-[380px]:border-e min-[380px]:last:border-e-0",
       )}
@@ -156,7 +156,7 @@ function TrustStat({
         <p className="hero-stat-value font-display text-lg font-semibold leading-none num-latin min-[380px]:text-xl sm:text-h3">
           {value}
         </p>
-        <p className="hero-stat-label mt-1 text-caption leading-snug text-mist">{label}</p>
+        <p className="hero-stat-label mt-1 text-caption leading-snug">{label}</p>
       </div>
     </div>
   );

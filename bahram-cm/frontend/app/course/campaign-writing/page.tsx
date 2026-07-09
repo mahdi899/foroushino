@@ -4,21 +4,25 @@ import type { LucideIcon } from "lucide-react";
 import { buildMetadata } from "@/lib/seo";
 import {
   ArrowLeft,
+  Award,
+  BookOpen,
   Check,
   CheckCircle2,
+  Clock,
   Compass,
   Eye,
-  Flag,
   GraduationCap,
+  Layers,
   MessageSquare,
   Package,
   PenLine,
   Phone,
   Repeat2,
   Route,
-  Search,
-  Tag,
+  Sparkles,
+  Target,
   UserSearch,
+  Users,
   X,
 } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
@@ -28,164 +32,217 @@ import { AddToCartButton } from "@/components/commerce/AddToCartButton";
 import { LinkButton } from "@/components/ui/Button";
 import { CAMPAIGN_WRITING_SLUG } from "@/lib/cart/constants";
 import { Eyebrow } from "@/components/ui/Eyebrow";
+import { FeatureCard } from "@/components/ui/FeatureCard";
+import { IconLabel } from "@/components/ui/IconLabel";
 import { IconTile } from "@/components/ui/IconTile";
 import { PhotoFrame } from "@/components/ui/PhotoFrame";
 import { PageHeroBackdrop } from "@/components/blocks/PageHeroBackdrop";
+import { CampaignWritingSocialProof } from "@/components/sections/CampaignWritingSocialProof";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { cn } from "@/lib/cn";
 import { resolveMediaAlt } from "@/lib/media/alt";
 import { formatFa, toPersianDigits } from "@/lib/persian";
+import { getProductBySlug } from "@/lib/services/products";
 import { pageHeroBackdropPhoto, sitePhotos } from "@/lib/site-photo-paths";
 import { site } from "@/content/site";
 
-const COURSE_PRICE = 28_900_000;
-const CURRICULUM_LENGTH = 8;
+const FALLBACK_PRICE = 28_900_000;
+const SECTION_COUNT = 5;
 
 export const metadata: Metadata = buildMetadata({
-  title: "دوره شغل کمپین‌نویسی",
+  title: "دوره کمپین‌نویسی",
   description:
-    "یاد بگیر چطور برای یک محصول، پیام فروش‌ساز طراحی کنی؛ از شناخت مخاطب و ساخت پیشنهاد تا نوشتن سناریو، پیگیری و تبدیل توجه مخاطب به اقدام.",
+    "یاد بگیر چطور تبلیغ بنویسی که بفروشد؛ از شناخت مشتری و پیام فروش تا پیشنهاد، مکالمه فروش و پیگیری.",
   path: "/course/campaign-writing",
 });
 
-const problemItems: { icon: LucideIcon; title: string }[] = [
-  { icon: MessageSquare, title: "پیام نامشخص" },
-  { icon: UserSearch, title: "مخاطب نامشخص" },
-  { icon: Tag, title: "پیشنهاد نامشخص" },
+const problemPoints = [
+  "تبلیغ می‌کند ولی نتیجه نمی‌گیرد.",
+  "پیام فروش درست ندارد.",
+  "مشتری خودش را نمی‌شناسد.",
+  "بدون برنامه تبلیغ می‌کند.",
 ];
 
-const flowSteps: { icon: LucideIcon; label: string }[] = [
-  { icon: Package, label: "شناخت محصول" },
-  { icon: UserSearch, label: "شناخت مخاطب" },
-  { icon: MessageSquare, label: "طراحی پیام" },
-  { icon: Tag, label: "ساخت پیشنهاد" },
-  { icon: PenLine, label: "نوشتن سناریو" },
-  { icon: Repeat2, label: "پیگیری" },
-  { icon: Flag, label: "اقدام" },
-];
-
-const outcomes = [
-  "تحلیل محصول و مزیت فروش",
-  "شناخت مخاطب و نیاز واقعی او",
-  "نوشتن پیام فروش‌ساز",
-  "طراحی پیشنهاد قانع‌کننده",
-  "نوشتن سناریوی تماس یا ارتباط",
-  "طراحی مسیر پیگیری",
-  "ساخت یک کمپین ساده، قابل اجرا و هدفمند",
-];
-
-const curriculum: { icon: LucideIcon; title: string; body: string }[] = [
+const whyCards: { icon: LucideIcon; title: string; body: string }[] = [
   {
-    icon: Eye,
-    title: "فصل ۱: شناخت کمپین",
-    body: "کمپین چیست، چه تفاوتی با یک تبلیغ ساده دارد و چرا بعضی پیام‌ها فقط دیده می‌شوند اما بعضی پیام‌ها می‌فروشند.",
+    icon: Layers,
+    title: "یادگیری ساختار کمپین",
+    body: "می‌فهمی کمپین از کجا شروع می‌شود، چطور پیش می‌رود و کجا باید به فروش برسد.",
   },
   {
     icon: UserSearch,
-    title: "فصل ۲: شناخت مخاطب",
-    body: "یاد می‌گیری نیاز، ترس، تردید، خواسته و انگیزه مخاطب را پیدا کنی.",
-  },
-  {
-    icon: Tag,
-    title: "فصل ۳: شناخت محصول و پیشنهاد فروش",
-    body: "یاد می‌گیری محصول را از نگاه فروش تحلیل کنی و پیشنهادی بسازی که دلیل خرید داشته باشد.",
+    title: "شناخت مشتری",
+    body: "نیاز، نگرانی و دلیل خرید مشتری را می‌فهمی تا حرفت به جای درست بنشیند.",
   },
   {
     icon: MessageSquare,
-    title: "فصل ۴: طراحی پیام فروش",
-    body: "یاد می‌گیری پیام اصلی کمپین را واضح، کوتاه، قانع‌کننده و قابل فهم بسازی.",
+    title: "نوشتن پیام فروش",
+    body: "پیام اصلی را ساده، روشن و قانع‌کننده می‌نویسی — نه فقط قشنگ.",
   },
   {
-    icon: PenLine,
-    title: "فصل ۵: نوشتن متن تبلیغاتی",
-    body: "نوشتن تیتر، متن معرفی، متن کوتاه تبلیغاتی، CTA و پیام‌های متناسب با کانال‌های مختلف.",
+    icon: Package,
+    title: "ساخت پیشنهاد خوب",
+    body: "پیشنهادی می‌سازی که دلیل خرید داشته باشد و مشتری راحت‌تر تصمیم بگیرد.",
+  },
+  {
+    icon: Route,
+    title: "پیگیری فروش",
+    body: "یاد می‌گیری بعد از اولین تماس چطور پیگیری کنی تا مشتری به خرید نزدیک‌تر شود.",
+  },
+];
+
+const curriculumSections: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  topics: string[];
+}[] = [
+  {
+    icon: Eye,
+    title: "بخش ۱ — شناخت کمپین",
+    description: "کمپین چیست، با یک تبلیغ ساده چه فرقی دارد و چرا بعضی پیام‌ها فقط دیده می‌شوند.",
+    topics: [
+      "کمپین برای فروش یعنی چه",
+      "فرق کمپین و تبلیغ پراکنده",
+      "چه چیزهایی در یک کمپین می‌آید",
+      "اشتباهات رایج در شروع",
+    ],
+  },
+  {
+    icon: UserSearch,
+    title: "بخش ۲ — شناخت مشتری",
+    description: "یاد می‌گیری مشتری را از نگاه فروش بشناسی، نه فقط از روی سن و شهر.",
+    topics: [
+      "نیاز و مشکل واقعی مشتری",
+      "نگرانی‌ها و تردیدهای خرید",
+      "حرف زدن با زبان خود مشتری",
+      "شناخت نوع مشتری",
+    ],
+  },
+  {
+    icon: MessageSquare,
+    title: "بخش ۳ — نوشتن پیام فروش",
+    description: "پیام اصلی کمپین را می‌نویسی؛ ساده، روشن و قابل استفاده.",
+    topics: [
+      "ساختار یک پیام فروش",
+      "تیتر و توضیح کوتاه",
+      "دعوت به خرید",
+      "پیام مناسب هر جا (اینستا، پیام، تماس)",
+    ],
+  },
+  {
+    icon: Package,
+    title: "بخش ۴ — ساخت پیشنهاد فروش",
+    description: "پیشنهادی می‌سازی که مشتری دلیل خرید داشته باشد.",
+    topics: [
+      "دیدن محصول از نگاه فروش",
+      "مزیت و تفاوت با بقیه",
+      "چیدن پیشنهاد خرید",
+      "جواب دادن به نگرانی قبل از خرید",
+    ],
   },
   {
     icon: Phone,
-    title: "فصل ۶: سناریوی فروش و تماس",
-    body: "یاد می‌گیری برای شروع مکالمه، پاسخ به اعتراض، پیگیری و بستن فروش سناریو طراحی کنی.",
+    title: "بخش ۵ — مکالمه فروش و پیگیری",
+    description: "یاد می‌گیری چطور حرف بزنی، پیگیری کنی و مشتری را به خرید نزدیک کنی.",
+    topics: [
+      "شروع مکالمه فروش",
+      "جواب دادن به اعتراض",
+      "پیگیری بعد از تماس",
+      "رساندن مشتری به خرید",
+    ],
+  },
+];
+
+const resultCards: { icon: LucideIcon; title: string; body: string }[] = [
+  {
+    icon: Compass,
+    title: "طراحی کمپین واقعی",
+    body: "می‌توانی برای یک محصول یا خدمت، یک کمپین ساده و قابل اجرا بسازی.",
+  },
+  {
+    icon: UserSearch,
+    title: "شناخت مشتری",
+    body: "می‌فهمی مشتری چه می‌خواهد، از چه می‌ترسد و چرا باید بخرد — نه با حدس.",
+  },
+  {
+    icon: PenLine,
+    title: "نوشتن پیام فروش",
+    body: "پیام اصلی را طوری می‌نویسی که مشتری دلیل ادامه دادن پیدا کند.",
+  },
+  {
+    icon: Package,
+    title: "ساخت پیشنهاد فروش",
+    body: "پیشنهادی می‌سازی که ارزش و دلیل خرید را روشن کند.",
   },
   {
     icon: Repeat2,
-    title: "فصل ۷: پیگیری و تبدیل لید",
-    body: "یاد می‌گیری چطور مخاطبی را که هنوز نخریده، درست پیگیری کنی و مسیر تصمیم‌گیری او را کامل‌تر کنی.",
+    title: "پیگیری تا خرید",
+    body: "مسیر پیگیری را می‌چینی تا مشتری احتمالی به خرید نزدیک‌تر شود.",
   },
-  {
-    icon: Flag,
-    title: "فصل ۸: اجرای کمپین واقعی",
-    body: "در پایان دوره باید بتوانی برای یک محصول، یک مسیر کمپین ساده و فروش‌محور طراحی کنی.",
-  },
-];
-
-const shallowCopywriting = [
-  "تمرکز روی جمله‌های قشنگ",
-  "بدون شناخت عمیق مخاطب",
-  "بدون مسیر پیگیری",
-  "بدون اتصال به فروش",
-];
-
-const salesCampaignWriting = [
-  "شناخت مخاطب",
-  "پیام هدفمند",
-  "پیشنهاد واضح",
-  "سناریوی فروش",
-  "پیگیری و اقدام",
 ];
 
 const whoFor = [
-  "می‌خواهی وارد دنیای فروش و تبلیغات شوی.",
-  "به نوشتن، مذاکره، کمپین و فروش علاقه داری.",
-  "از آموزش‌های پراکنده و تئوری خسته شده‌ای.",
-  "دنبال مهارتی هستی که قابل تمرین و اجرا باشد.",
+  "می‌خواهی کمپین‌نویسی یاد بگیری.",
+  "دنبال یک مهارت درآمدزا هستی.",
+  "در فروش، بازاریابی یا محتوا کار می‌کنی.",
+  "صاحب کسب‌وکار هستی.",
 ];
 
 const notFor = [
-  "اگر انتظار نتیجه بدون تمرین داری.",
-  "اگر علاقه‌ای به تحلیل مخاطب نداری.",
-  "اگر فقط دنبال چند جمله آماده تبلیغاتی هستی.",
+  "دنبال پول سریع بدون تمرین هستی.",
+  "فقط می‌خواهی تماشا کنی و تمرین نکنی.",
+  "حاضر نیستی روی تمرین‌ها وقت بگذاری.",
 ];
 
-const practicalPath: { icon: LucideIcon; label: string }[] = [
-  { icon: GraduationCap, label: "مفاهیم پایه" },
-  { icon: Search, label: "تحلیل محصول و مخاطب" },
-  { icon: MessageSquare, label: "ساخت پیام فروش" },
-  { icon: Tag, label: "طراحی پیشنهاد" },
-  { icon: PenLine, label: "نوشتن سناریو" },
-  { icon: Repeat2, label: "تمرین پیگیری" },
-  { icon: Flag, label: "کمپین نهایی" },
+const instructorHighlights = [
+  { icon: Users, tone: "bone" as const, label: "۷۰۰٬۰۰۰+ مخاطب" },
+  { icon: GraduationCap, tone: "emerald" as const, label: "۵۰٬۰۰۰+ دانشجو" },
+  { icon: Sparkles, tone: "gold" as const, label: "۱۰+ سال تجربه" },
+  { icon: Award, tone: "gold" as const, label: "آموزش با تمرین واقعی" },
 ];
 
 const faqs = [
   {
-    question: "آیا این دوره برای افراد مبتدی مناسب است؟",
+    question: "آیا برای شروع نیاز به تجربه دارم؟",
     answer:
-      "بله، دوره از پایه شروع می‌شود و مفاهیم کمپین‌نویسی را مرحله‌به‌مرحله توضیح می‌دهد.",
+      "نه. دوره از پایه شروع می‌شود و قدم‌به‌قدم پیش می‌رود. اگر قبلاً در فروش کار کرده‌ای، سریع‌تر جلو می‌روی.",
   },
   {
-    question: "آیا این دوره فقط درباره نوشتن متن تبلیغاتی است؟",
+    question: "دوره تمرین عملی دارد؟",
     answer:
-      "نه. متن تبلیغاتی فقط بخشی از دوره است. تمرکز اصلی روی طراحی پیام، پیشنهاد، سناریو، پیگیری و مسیر فروش است.",
+      "بله. تمرکز روی کار عملی است. تمرین داری و در پایان باید بتوانی یک کمپین واقعی طراحی کنی.",
   },
   {
-    question: "آیا بعد از دوره می‌توانم کمپین طراحی کنم؟",
+    question: "بعد از دوره پشتیبانی وجود دارد؟",
     answer:
-      "هدف دوره این است که بتوانی برای یک محصول یا خدمت، یک مسیر کمپین ساده، هدفمند و قابل اجرا طراحی کنی. کیفیت نتیجه به تمرین و اجرای تو بستگی دارد.",
+      "بله. بعد از ثبت‌نام به محتوای دوره دسترسی داری و در مسیر یادگیری همراهی می‌گیری.",
   },
   {
-    question: "آیا درآمد خاصی تضمین می‌شود؟",
+    question: "چطور وارد دوره شوم؟",
     answer:
-      "خیر. این دوره مهارت و مسیر اجرا را آموزش می‌دهد، اما نتیجه مالی به تمرین، پیگیری، شرایط بازار و عملکرد فرد بستگی دارد.",
+      "درخواست ورود را ثبت می‌کنی، پرداخت را انجام می‌دهی و دسترسی دوره برایت باز می‌شود.",
   },
   {
-    question: "این دوره چه تفاوتی با کپی‌رایتینگ دارد؟",
+    question: "آیا محدودیت ظرفیت دارد؟",
     answer:
-      "کپی‌رایتینگ بیشتر روی متن تمرکز دارد، اما کمپین‌نویسی فروش‌محور به مخاطب، پیشنهاد، پیام، سناریو، پیگیری و تبدیل توجه به اقدام نگاه می‌کند.",
+      "برای حفظ کیفیت، ظرفیت هر دوره محدود است. اگر آماده‌ای، بهتر است زودتر ثبت‌نام کنی.",
   },
 ];
 
 export default async function CourseCampaignWritingPage() {
-  const priceLabel = `${formatFa(COURSE_PRICE)} تومان`;
-  const heroAlt = await resolveMediaAlt(pageHeroBackdropPhoto, "دوره شغل کمپین‌نویسی آکادمی بهرام");
+  const productResult = await getProductBySlug(CAMPAIGN_WRITING_SLUG);
+  const product = productResult.ok ? productResult.data : null;
+  const coursePrice = product?.effective_price ?? FALLBACK_PRICE;
+  const hasDiscount =
+    product !== null && product.sale_price !== null && product.effective_price < product.price;
+  const originalPriceLabel =
+    hasDiscount && product ? `${formatFa(product.price)} تومان` : null;
+  const priceLabel = `${formatFa(coursePrice)} تومان`;
+  const purchaseSummary =
+    product?.short_description?.trim() ||
+    `${toPersianDigits(String(SECTION_COUNT))} بخش عملی — از شناخت مشتری تا طراحی یک کمپین واقعی.`;
+  const heroAlt = await resolveMediaAlt(pageHeroBackdropPhoto, "دوره کمپین‌نویسی");
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip pb-20 md:pb-0">
@@ -200,55 +257,62 @@ export default async function CourseCampaignWritingPage() {
           <div className="grid min-w-0 items-center gap-7 sm:gap-8 md:grid-cols-12 md:gap-10 lg:gap-16">
             <div className="min-w-0 text-center max-md:order-2 md:col-span-6 md:text-start">
               <Reveal>
-                <Eyebrow>دوره شغل کمپین‌نویسی</Eyebrow>
+                <Eyebrow>دوره حرفه‌ای</Eyebrow>
               </Reveal>
               <Reveal delay={0.08}>
-                <h1 className="mt-4 max-w-lg text-[clamp(1.875rem,7vw,2.75rem)] font-display leading-[1.15] text-balance md:mt-6 md:text-h1 lg:text-display">
-                  کمپین بنویس؛
-                  <br />
-                  فروش بساز
+                <h1 className="mt-4 max-w-xl text-[clamp(1.875rem,7vw,2.75rem)] font-display leading-[1.15] text-balance md:mt-6 md:text-h1 lg:text-display">
+                  دوره کمپین‌نویسی
                 </h1>
               </Reveal>
               <Reveal delay={0.14}>
                 <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-bone-dim sm:mt-5 md:mx-0 md:text-body">
-                  یاد بگیر چطور برای یک محصول، پیام فروش‌ساز طراحی کنی و مخاطب را از توجه به
-                  خرید نزدیک‌تر کنی.
+                  یاد بگیر چطور تبلیغ بنویسی که بفروشد — از شناخت مشتری تا پیام، پیشنهاد و
+                  پیگیری.
                 </p>
               </Reveal>
 
               <Reveal delay={0.2}>
-                <div className="mx-auto mt-7 flex w-full flex-col gap-2.5 sm:mt-8 sm:max-w-none sm:flex-row sm:items-center sm:justify-center sm:gap-3 md:mx-0 md:justify-start">
-                  <LinkButton
-                    href="#enroll"
-                    variant="sales"
-                    size="lg"
-                    withArrow
-                    className={cn("w-full min-w-0 sm:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm")}
-                  >
-                    شروع یادگیری کمپین‌نویسی
-                  </LinkButton>
+                <div className="mx-auto mt-6 flex flex-wrap items-center justify-center gap-2 sm:mt-7 md:mx-0 md:justify-start">
+                  <Badge tone="gold">
+                    <BookOpen className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
+                    {toPersianDigits(String(SECTION_COUNT))} بخش
+                  </Badge>
+                  <Badge tone="emerald">
+                    <Target className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
+                    مهارت درآمدزا
+                  </Badge>
+                  <Badge tone="neutral">
+                    <Clock className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
+                    تمرین عملی
+                  </Badge>
+                </div>
+              </Reveal>
+
+              <Reveal delay={0.26}>
+                <div className="mx-auto mt-7 sm:mt-8 md:mx-0">
                   <LinkButton
                     href="#curriculum"
                     variant="ghost"
                     size="lg"
-                    className={cn("w-full min-w-0 sm:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm")}
+                    withArrow
+                    className={cn(
+                      "w-full min-w-0 sm:w-auto",
+                      "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm",
+                    )}
                   >
                     مشاهده سرفصل‌ها
                   </LinkButton>
                 </div>
               </Reveal>
-
-              <Reveal delay={0.3}>
-                <p className="mt-4 text-sm text-bone-dim">
-                  قیمت دوره:{" "}
-                  <span className="font-semibold text-bone num-latin">{priceLabel}</span>
-                </p>
-              </Reveal>
             </div>
 
             <div className="min-w-0 max-md:order-1 md:col-span-6">
               <Reveal delay={0.12}>
-                <HeroPhoto />
+                <HeroPurchaseCard
+                  priceLabel={priceLabel}
+                  originalPriceLabel={originalPriceLabel}
+                  summary={purchaseSummary}
+                />
               </Reveal>
             </div>
           </div>
@@ -257,112 +321,119 @@ export default async function CourseCampaignWritingPage() {
 
       {/* 2. PROBLEM */}
       <ImageSplitSection
-        eyebrow="مشکل اصلی"
-        title="مشکل از نوشتن نیست؛ مشکل از نفروختن است"
+        eyebrow="معرفی مسئله"
+        title="مشکل از نبود تبلیغ نیست؛ مشکل از نبود برنامه فروش است"
         image={sitePhotos.manifestoLandscape}
-        imageAlt="فضای کار کمپین‌نویسی"
+        imageAlt="چالش کمپین‌نویسی بدون برنامه"
         imagePosition="start"
         tone="gold"
       >
         <p>
-          خیلی‌ها متن می‌نویسند، اما نمی‌دانند چطور مخاطب را به تصمیم نزدیک کنند. کمپین‌نویسی
-          یعنی شناخت مخاطب، ساخت پیام درست و چیدن مسیر تا جایی که مخاطب آماده اقدام شود.
+          خیلی‌ها تبلیغ می‌کنند و محتوا می‌سازند — اما نتیجه نمی‌گیرند. چون نمی‌دانند
+          مشتری‌شان کیست، چه می‌خواهد و چرا باید بخرد.
         </p>
-        <ul className="mt-6 flex flex-wrap gap-2.5">
-          {problemItems.map((item) => (
-            <li
-              key={item.title}
-              className="inline-flex items-center gap-2 rounded-pill border border-bone/12 bg-charcoal/40 py-2 pe-4 ps-3 text-sm text-bone"
-            >
-              <item.icon className="h-4 w-4 text-gold" strokeWidth={1.6} aria-hidden />
-              {item.title}
-            </li>
-          ))}
-        </ul>
-      </ImageSplitSection>
-
-      {/* 3. WHAT IS CAMPAIGN WRITING */}
-      <section className="bg-obsidian py-10 md:py-section-sm lg:py-section">
-        <div className="container-luxe min-w-0">
-          <div className="max-w-xl">
-            <Reveal>
-              <Eyebrow>تعریف دقیق</Eyebrow>
-            </Reveal>
-            <Reveal delay={0.08}>
-              <h2 className="mt-3 text-h2 text-balance md:mt-5">کمپین‌نویسی دقیقاً یعنی چه؟</h2>
-            </Reveal>
-            <Reveal delay={0.14}>
-              <p className="mt-4 text-sm leading-relaxed text-bone-dim md:mt-5 md:text-body">
-                کمپین‌نویسی یعنی طراحی مسیر قانع‌سازی؛ از شناخت مخاطب تا رساندنش به اقدام.
-              </p>
-            </Reveal>
-          </div>
-
-          <Reveal delay={0.2}>
-            <div className="mt-8 overflow-x-auto md:mt-12">
-              <div className="flex min-w-max items-center gap-2 md:min-w-0 md:flex-wrap md:justify-center md:gap-3">
-                {flowSteps.map((step, i) => (
-                  <div key={step.label} className="flex items-center gap-2 md:gap-3">
-                    <div className="flex w-[5.5rem] flex-col items-center gap-2.5 text-center sm:w-24">
-                      <IconTile icon={step.icon} tone={i % 2 === 0 ? "emerald" : "gold"} size="md" />
-                      <span className="text-xs font-medium leading-snug text-bone sm:text-sm">
-                        {step.label}
-                      </span>
-                    </div>
-                    {i < flowSteps.length - 1 ? (
-                      <ArrowLeft
-                        className="rtl-flip h-4 w-4 shrink-0 text-mist"
-                        strokeWidth={1.6}
-                        aria-hidden
-                      />
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* 4. OUTCOMES */}
-      <ImageSplitSection
-        eyebrow="خروجی دوره"
-        title="بعد از این دوره چه چیزی بلد می‌شوی؟"
-        image={sitePhotos.academyStory}
-        imageAlt="خروجی یادگیری کمپین‌نویسی"
-        imagePosition="end"
-        tone="emerald"
-        className="bg-obsidian"
-      >
-        <ul className="space-y-3 md:space-y-3.5">
-          {outcomes.map((item) => (
+        <ul className="mt-6 space-y-3">
+          {problemPoints.map((item) => (
             <li key={item} className="flex items-start gap-3 text-sm text-bone-dim md:text-base">
-              <CheckCircle2
-                className="mt-0.5 h-4 w-4 shrink-0 text-emerald-glow md:h-[1.125rem] md:w-[1.125rem]"
-                strokeWidth={1.6}
-                aria-hidden
-              />
+              <span className="mt-1 inline-flex h-2 w-2 shrink-0 rounded-full bg-gold/70" aria-hidden />
               <span>{item}</span>
             </li>
           ))}
         </ul>
       </ImageSplitSection>
 
+      {/* 3. ABOUT COURSE */}
+      <section className="bg-obsidian py-10 md:py-section-sm lg:py-section">
+        <div className="container-luxe min-w-0">
+          <div className="mx-auto max-w-3xl text-center">
+            <Reveal>
+              <Eyebrow className="justify-center">درباره دوره</Eyebrow>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <h2 className="mt-3 text-h2 text-balance md:mt-5">
+                کمپین‌نویسی را واقعاً یاد بگیر
+              </h2>
+            </Reveal>
+            <Reveal delay={0.14}>
+              <p className="mt-4 text-sm leading-relaxed text-bone-dim md:text-body">
+                این دوره فقط تماشا نیست. قدم‌به‌قدم یاد می‌گیری و در پایان یک کمپین واقعی
+                طراحی می‌کنی.
+              </p>
+            </Reveal>
+          </div>
+
+          <div className="mx-auto mt-8 max-w-3xl space-y-4 text-sm leading-relaxed text-bone-dim md:mt-10 md:space-y-5 md:text-body">
+            <Reveal delay={0.18}>
+              <p>
+                در این دوره یاد می‌گیری مشتری را بشناسی، پیام فروش بنویسی، پیشنهاد خوب بسازی
+                و بعد از تماس، درست پیگیری کنی.
+              </p>
+            </Reveal>
+            <Reveal delay={0.22}>
+              <p>
+                تمرکز روی نتیجه است: در پایان باید بتوانی برای یک محصول یا خدمت، یک کمپین
+                ساده و قابل اجرا طراحی کنی.
+              </p>
+            </Reveal>
+            <Reveal delay={0.26}>
+              <p>
+                اگر می‌خواهی از نوشتن پراکنده خارج شوی و تبلیغت واقعاً بفروشد، این دوره
+                نقطه شروع توست.
+              </p>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. WHY THIS COURSE */}
+      <section className="py-10 md:py-section-sm lg:py-section">
+        <div className="container-luxe min-w-0">
+          <div className="max-w-xl">
+            <Reveal>
+              <Eyebrow>چرا این دوره؟</Eyebrow>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <h2 className="mt-3 text-h2 text-balance md:mt-5">
+                پنج مهارت مهم که یاد می‌گیری
+              </h2>
+            </Reveal>
+            <Reveal delay={0.14}>
+              <p className="mt-4 text-sm leading-relaxed text-bone-dim md:mt-5 md:text-body">
+                هر بخش دوره روی یکی از کارهای اصلی کمپین فروش تمرکز دارد.
+              </p>
+            </Reveal>
+          </div>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 md:mt-10 lg:grid-cols-3 lg:gap-5">
+            {whyCards.map((card, i) => (
+              <Reveal key={card.title} delay={i * 0.06}>
+                <FeatureCard
+                  icon={card.icon}
+                  title={card.title}
+                  description={card.body}
+                  tone={i % 2 === 0 ? "emerald" : "gold"}
+                />
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* 5. CURRICULUM */}
-      <section id="curriculum" className="scroll-mt-20 py-10 md:py-section-sm lg:py-section">
+      <section id="curriculum" className="scroll-mt-20 bg-obsidian py-10 md:py-section-sm lg:py-section">
         <div className="container-luxe min-w-0">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <Reveal>
-                <Eyebrow>سرفصل‌ها</Eyebrow>
+                <Eyebrow>سرفصل‌های دوره</Eyebrow>
               </Reveal>
               <Reveal delay={0.08}>
-                <h2 className="mt-3 max-w-2xl text-h2 text-balance md:mt-5">مسیر یادگیری دوره</h2>
+                <h2 className="mt-3 max-w-2xl text-h2 text-balance md:mt-5">سرفصل‌های دوره</h2>
               </Reveal>
             </div>
             <Reveal delay={0.12}>
               <span className="text-sm text-gold num-latin">
-                {toPersianDigits(String(CURRICULUM_LENGTH))} فصل
+                {toPersianDigits(String(SECTION_COUNT))} بخش
               </span>
             </Reveal>
           </div>
@@ -370,9 +441,11 @@ export default async function CourseCampaignWritingPage() {
           <div className="mt-6 md:mt-9">
             <Reveal delay={0.1}>
               <Accordion
-                items={curriculum.map((chapter) => ({
-                  question: chapter.title,
-                  answer: chapter.body,
+                items={curriculumSections.map((section) => ({
+                  question: section.title,
+                  answer: (
+                    <SectionAnswer description={section.description} topics={section.topics} />
+                  ),
                 }))}
               />
             </Reveal>
@@ -380,147 +453,7 @@ export default async function CourseCampaignWritingPage() {
         </div>
       </section>
 
-      {/* 6. DIFFERENCE */}
-      <section className="bg-obsidian py-10 md:py-section-sm lg:py-section">
-        <div className="container-luxe min-w-0">
-          <div className="max-w-xl">
-            <Reveal>
-              <Eyebrow>تفاوت اصلی</Eyebrow>
-            </Reveal>
-            <Reveal delay={0.08}>
-              <h2 className="mt-3 text-h2 text-balance md:mt-5">
-                این دوره فقط کپی‌رایتینگ نیست
-              </h2>
-            </Reveal>
-            <Reveal delay={0.14}>
-              <p className="mt-4 text-sm leading-relaxed text-bone-dim md:mt-5 md:text-body">
-                تمرکز دوره روی اجرای واقعی است، نه فقط نوشتن متن زیبا.
-              </p>
-            </Reveal>
-          </div>
-
-          <div className="mt-6 grid grid-cols-1 gap-4 md:mt-10 md:grid-cols-2 md:gap-6">
-            <Reveal delay={0.1}>
-              <article className="h-full rounded-card-lg border border-bone/10 bg-charcoal/30 p-5 sm:p-6">
-                <p className="text-caption uppercase tracking-[0.22em] text-mist">
-                  کپی‌رایتینگ سطحی
-                </p>
-                <ul className="mt-4 space-y-3">
-                  {shallowCopywriting.map((item) => (
-                    <li key={item} className="flex items-start gap-2.5 text-sm text-bone-dim">
-                      <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-pill border border-bone/15 text-mist">
-                        <X className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
-                      </span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </article>
-            </Reveal>
-
-            <Reveal delay={0.16}>
-              <article
-                data-neon-tone="gold"
-                className="neon-surface-framed relative h-full overflow-hidden rounded-card-lg border border-gold/35 bg-gradient-to-br from-gold/[0.08] via-charcoal/40 to-charcoal/30 p-5 sm:p-6"
-              >
-                <p className="text-caption uppercase tracking-[0.22em] text-gold">
-                  کمپین‌نویسی فروش‌محور
-                </p>
-                <ul className="mt-4 space-y-3">
-                  {salesCampaignWriting.map((item) => (
-                    <li key={item} className="flex items-start gap-2.5 text-sm font-medium text-bone">
-                      <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-pill border border-gold/35 bg-gold/[0.12] text-gold">
-                        <Check className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden />
-                      </span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </article>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* 7 & 8. WHO IS IT FOR / NOT FOR EVERYONE */}
-      <ImageSplitSection
-        eyebrow="مخاطب دوره"
-        title="این دوره مناسب توست اگر…"
-        image={sitePhotos.courseBackstage}
-        imageAlt="پشت صحنه دوره کمپین‌نویسی"
-        imagePosition="start"
-        tone="emerald"
-      >
-        <ul className="space-y-3">
-          {whoFor.map((item) => (
-            <li key={item} className="flex items-start gap-3 text-sm text-bone-dim md:text-base">
-              <CheckCircle2
-                className="mt-0.5 h-4 w-4 shrink-0 text-emerald-glow"
-                strokeWidth={1.6}
-                aria-hidden
-              />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-
-        <div className="mt-8 rounded-card border border-bone/10 bg-charcoal/30 p-4 sm:p-5">
-          <p className="text-sm font-medium text-bone">این دوره برای همه نیست، برای تو ساخته شده اگر تمرین را جدی بگیری.</p>
-          <ul className="mt-3 space-y-2.5">
-            {notFor.map((item) => (
-              <li key={item} className="flex items-start gap-2.5 text-sm text-bone-dim">
-                <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-mist" strokeWidth={1.6} aria-hidden />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </ImageSplitSection>
-
-      {/* 9. PRACTICAL PATH */}
-      <section id="path" className="scroll-mt-20 bg-obsidian py-10 md:py-section-sm lg:py-section">
-        <div className="container-luxe min-w-0">
-          <div className="max-w-xl">
-            <Reveal>
-              <Eyebrow>مسیر اجرا</Eyebrow>
-            </Reveal>
-            <Reveal delay={0.08}>
-              <h2 className="mt-3 text-h2 text-balance md:mt-5">از یادگیری تا اجرا</h2>
-            </Reveal>
-            <Reveal delay={0.14}>
-              <p className="mt-4 text-sm leading-relaxed text-bone-dim md:mt-5 md:text-body">
-                در پایان فقط اطلاعات نداری؛ یک کمپین ساده و قابل اجرا طراحی می‌کنی.
-              </p>
-            </Reveal>
-          </div>
-
-          <Reveal delay={0.2}>
-            <div className="mt-8 overflow-x-auto md:mt-12">
-              <div className="flex min-w-max items-center gap-2 md:min-w-0 md:flex-wrap md:justify-center md:gap-3">
-                {practicalPath.map((step, i) => (
-                  <div key={step.label} className="flex items-center gap-2 md:gap-3">
-                    <div className="flex w-[5.5rem] flex-col items-center gap-2.5 text-center sm:w-24">
-                      <IconTile icon={step.icon} tone={i % 2 === 0 ? "gold" : "emerald"} size="md" />
-                      <span className="text-xs font-medium leading-snug text-bone sm:text-sm">
-                        {step.label}
-                      </span>
-                    </div>
-                    {i < practicalPath.length - 1 ? (
-                      <ArrowLeft
-                        className="rtl-flip h-4 w-4 shrink-0 text-mist"
-                        strokeWidth={1.6}
-                        aria-hidden
-                      />
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* 10. INSTRUCTOR / BRAND TRUST */}
+      {/* 6. INSTRUCTOR */}
       <section className="py-10 md:py-section-sm lg:py-section">
         <div className="container-luxe min-w-0">
           <div className="grid items-center gap-6 sm:gap-8 md:grid-cols-12 md:gap-10 lg:gap-14">
@@ -540,24 +473,131 @@ export default async function CourseCampaignWritingPage() {
             </div>
             <div className="max-md:order-1 md:col-span-8">
               <Reveal delay={0.08}>
-                <Eyebrow>اعتبار آموزش</Eyebrow>
+                <Eyebrow>معرفی مدرس</Eyebrow>
               </Reveal>
               <Reveal delay={0.12}>
                 <h2 className="mt-3 text-h2 text-balance md:mt-5">
-                  آموزش بر اساس تجربه واقعی فروش و کمپین
+                  {site.founder} — آموزش حاصل تجربه واقعی بازار
                 </h2>
               </Reveal>
               <Reveal delay={0.16}>
                 <p className="mt-4 max-w-xl text-sm leading-relaxed text-bone-dim md:mt-5 md:text-body">
-                  محتوای دوره بر پایه اجرای واقعی کمپین و فروش طراحی شده؛ نه فقط تئوری کتابی.
+                  {site.founderAside.body}
                 </p>
+              </Reveal>
+              <Reveal delay={0.2}>
+                <p className="mt-4 max-w-xl text-sm leading-relaxed text-bone-dim md:text-base">
+                  محتوای این دوره از تجربه واقعی فروش و کمپین ساخته شده — نه فقط حرف تئوری.
+                  هر بخش از کار واقعی بازار جمع‌بندی شده است.
+                </p>
+              </Reveal>
+              <Reveal delay={0.24}>
+                <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2.5 border-t border-bone/8 pt-4 md:mt-8 md:gap-x-6">
+                  {instructorHighlights.map((item) => (
+                    <IconLabel key={item.label} icon={item.icon} tone={item.tone}>
+                      {item.label}
+                    </IconLabel>
+                  ))}
+                </div>
+              </Reveal>
+              <Reveal delay={0.28}>
+                <div className="mt-5">
+                  <LinkButton href="/founder" variant="ghost" withArrow size="md">
+                    بیشتر درباره بهرام
+                  </LinkButton>
+                </div>
               </Reveal>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 11. FAQ */}
+      {/* 7. RESULTS AFTER COURSE */}
+      <section className="bg-obsidian py-10 md:py-section-sm lg:py-section">
+        <div className="container-luxe min-w-0">
+          <div className="max-w-xl">
+            <Reveal>
+              <Eyebrow>نتایج بعد از دوره</Eyebrow>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <h2 className="mt-3 text-h2 text-balance md:mt-5">بعد از دوره چه بلدی؟</h2>
+            </Reveal>
+            <Reveal delay={0.14}>
+              <p className="mt-4 text-sm leading-relaxed text-bone-dim md:mt-5 md:text-body">
+                تمرکز روی نتیجه واقعی است — نه فقط تماشای ویدیو.
+              </p>
+            </Reveal>
+          </div>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 md:mt-10 lg:grid-cols-3">
+            {resultCards.map((card, i) => (
+              <Reveal key={card.title} delay={i * 0.06}>
+                <article className="neon-surface-hover h-full rounded-card-lg border border-bone/10 bg-charcoal/40 p-5 sm:p-6">
+                  <IconTile icon={card.icon} tone={i % 2 === 0 ? "emerald" : "gold"} size="md" />
+                  <h3 className="mt-4 text-base font-semibold text-bone sm:text-lg">{card.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-bone-dim">{card.body}</p>
+                </article>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* 8. WHO IS IT FOR */}
+      <section className="py-10 md:py-section-sm lg:py-section">
+        <div className="container-luxe min-w-0">
+          <Reveal>
+            <Eyebrow>مخاطب دوره</Eyebrow>
+          </Reveal>
+          <Reveal delay={0.08}>
+            <h2 className="mt-3 max-w-2xl text-h2 text-balance md:mt-5">
+              این دوره مناسب چه کسانی است؟
+            </h2>
+          </Reveal>
+
+          <div className="mt-8 grid gap-4 md:mt-10 md:grid-cols-2 md:gap-6">
+            <Reveal delay={0.1}>
+              <article
+                data-neon-tone="emerald"
+                className="neon-surface-static h-full rounded-card-lg border border-emerald/25 bg-emerald-deep/10 p-5 sm:p-6"
+              >
+                <h3 className="text-base font-semibold text-bone sm:text-lg">مناسب توست اگر:</h3>
+                <ul className="mt-4 space-y-3">
+                  {whoFor.map((item) => (
+                    <li key={item} className="flex items-start gap-3 text-sm text-bone-dim md:text-base">
+                      <CheckCircle2
+                        className="mt-0.5 h-4 w-4 shrink-0 text-emerald-glow"
+                        strokeWidth={1.6}
+                        aria-hidden
+                      />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            </Reveal>
+
+            <Reveal delay={0.16}>
+              <article className="h-full rounded-card-lg border border-bone/10 bg-charcoal/30 p-5 sm:p-6">
+                <h3 className="text-base font-semibold text-bone sm:text-lg">مناسب تو نیست اگر:</h3>
+                <ul className="mt-4 space-y-3">
+                  {notFor.map((item) => (
+                    <li key={item} className="flex items-start gap-2.5 text-sm text-bone-dim md:text-base">
+                      <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-mist" strokeWidth={1.6} aria-hidden />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* 9. TESTIMONIALS */}
+      <CampaignWritingSocialProof />
+
+      {/* 10. FAQ */}
       <section className="bg-obsidian py-10 md:py-section-sm">
         <div className="container-luxe min-w-0">
           <Reveal>
@@ -565,7 +605,7 @@ export default async function CourseCampaignWritingPage() {
           </Reveal>
           <Reveal delay={0.08}>
             <h2 className="mt-3 max-w-3xl text-h2 text-balance md:mt-5">
-              پرسش‌های کلیدی قبل از ثبت‌نام
+              سؤال‌های مهم قبل از ثبت‌نام
             </h2>
           </Reveal>
           <div className="mt-6 md:mt-10">
@@ -576,17 +616,23 @@ export default async function CourseCampaignWritingPage() {
         </div>
       </section>
 
-      {/* PRICING / ENROLL */}
+      {/* ENROLL + 11. FINAL CTA */}
       <section id="enroll" className="scroll-mt-20 py-10 md:py-section-sm lg:py-section">
         <div className="container-luxe min-w-0">
           <div className="mx-auto max-w-2xl text-center">
             <Reveal>
-              <Eyebrow className="justify-center">ثبت‌نام</Eyebrow>
+              <Eyebrow className="justify-center">ثبت درخواست</Eyebrow>
             </Reveal>
             <Reveal delay={0.08}>
               <h2 className="mt-3 text-h2 text-balance md:mt-5">
-                سرمایه‌گذاری روی مهارت فروش‌ساز
+                آماده‌ای کمپین‌نویسی را جدی یاد بگیری؟
               </h2>
+            </Reveal>
+            <Reveal delay={0.14}>
+              <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-bone-dim md:text-body">
+                اگر آماده‌ای کمپین‌نویسی را جدی یاد بگیری و ازش درآمد بسازی، همین الان
+                ثبت‌نام کن.
+              </p>
             </Reveal>
           </div>
 
@@ -600,8 +646,7 @@ export default async function CourseCampaignWritingPage() {
         </div>
       </section>
 
-      {/* 12. FINAL CTA */}
-      <section className="bg-obsidian py-10 md:py-section-sm lg:py-section-xl">
+      <section className="bg-obsidian pb-10 md:pb-section-sm lg:pb-section-xl">
         <div className="container-luxe min-w-0">
           <div className="neon-cta-slab relative overflow-hidden rounded-card border border-emerald/25 bg-gradient-to-b from-emerald-deep/40 via-charcoal/70 to-ink p-4 sm:p-8 md:p-14">
             <div
@@ -611,11 +656,10 @@ export default async function CourseCampaignWritingPage() {
             <div className="relative flex flex-col items-center gap-5 text-center sm:gap-6 md:items-start md:text-start">
               <IconTile icon={Compass} tone="gold" size="lg" />
               <h2 className="max-w-2xl text-[clamp(1.25rem,5.5vw,1.75rem)] font-display leading-snug text-balance sm:text-h3 md:text-h2">
-                آماده‌ای کمپین‌نویسی را جدی یاد بگیری؟
+                قدم بعدی با توست
               </h2>
               <p className="max-w-xl text-sm leading-relaxed text-bone-dim md:text-body">
-                اگر می‌خواهی فقط متن ننویسی و یاد بگیری چطور پیام فروش‌ساز طراحی کنی، این دوره
-                نقطه شروع توست.
+                یک درخواست ورود ثبت کن و یادگیری کمپین‌نویسی را شروع کن.
               </p>
               <div className="mt-1 flex w-full max-w-sm flex-col gap-2.5 sm:mt-2 md:max-w-none md:flex-row md:flex-wrap md:items-center md:gap-4">
                 <AddToCartButton
@@ -624,15 +668,18 @@ export default async function CourseCampaignWritingPage() {
                   variant="primary"
                   size="lg"
                   withArrow
-                  className={cn("w-full min-w-0 md:w-auto", "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm")}
+                  className={cn(
+                    "w-full min-w-0 md:w-auto",
+                    "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm",
+                  )}
                 >
-                  شروع یادگیری کمپین‌نویسی
+                  ثبت درخواست ورود
                 </AddToCartButton>
                 <a
-                  href="#enroll"
+                  href="#curriculum"
                   className="inline-flex w-full items-center justify-center gap-2 py-2 text-sm text-gold transition-colors hover:text-gold-soft md:w-auto md:justify-start md:py-0"
                 >
-                  مشاهده قیمت
+                  مرور سرفصل‌ها
                   <ArrowLeft className="rtl-flip h-4 w-4 shrink-0" aria-hidden />
                 </a>
               </div>
@@ -646,21 +693,95 @@ export default async function CourseCampaignWritingPage() {
   );
 }
 
-function HeroPhoto() {
+function SectionAnswer({ description, topics }: { description: string; topics: string[] }) {
   return (
-    <div className="relative mx-auto w-full max-w-[min(100%,26rem)] sm:max-w-md md:mx-0 md:max-w-none">
-      <PhotoFrame
-        ratio="square"
-        variant="radial"
-        rounded="card-lg"
-        src={sitePhotos.mainPathCampaign}
-        alt="دوره شغل کمپین‌نویسی"
-        neonTone="gold"
-        interactive
-        photoCaption="none"
-        className="w-full"
-      />
+    <div className="space-y-4">
+      <p>{description}</p>
+      <ul className="space-y-2.5">
+        {topics.map((topic) => (
+          <li key={topic} className="flex items-start gap-2.5 text-sm md:text-base">
+            <Check
+              className="mt-0.5 h-4 w-4 shrink-0 text-emerald-glow"
+              strokeWidth={1.8}
+              aria-hidden
+            />
+            <span>{topic}</span>
+          </li>
+        ))}
+      </ul>
     </div>
+  );
+}
+
+function HeroPurchaseCard({
+  priceLabel,
+  originalPriceLabel,
+  summary,
+}: {
+  priceLabel: string;
+  originalPriceLabel: string | null;
+  summary: string;
+}) {
+  const perks = [
+    `${toPersianDigits(String(SECTION_COUNT))} بخش آموزشی`,
+    "تمرین عملی",
+    "مهارت درآمدزای کمپین‌نویسی",
+  ];
+
+  return (
+    <article
+      id="hero-purchase"
+      data-neon-tone="emerald"
+      className="neon-cta-slab relative mx-auto w-full max-w-md overflow-hidden rounded-card-lg border border-emerald/40 bg-gradient-to-b from-emerald-deep/35 via-charcoal/70 to-ink p-5 sm:p-6 md:mx-0 md:max-w-none md:p-7"
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_60%_at_85%_5%,rgba(0,140,150,0.22),transparent_70%)]"
+      />
+      <div className="relative">
+        <Badge tone="emerald">ثبت‌نام دوره</Badge>
+        <p className="mt-4 text-sm font-medium text-bone">دوره کمپین‌نویسی</p>
+
+        <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <p className="text-[clamp(1.5rem,6vw,2rem)] font-semibold leading-tight text-bone num-latin">
+            {priceLabel}
+          </p>
+          {originalPriceLabel ? (
+            <p className="text-sm text-mist line-through num-latin">{originalPriceLabel}</p>
+          ) : null}
+        </div>
+
+        <p className="mt-3 text-sm leading-relaxed text-bone-dim md:text-base">{summary}</p>
+
+        <ul className="mt-4 space-y-2 border-t border-bone/10 pt-4">
+          {perks.map((item) => (
+            <li key={item} className="flex items-start gap-2.5 text-sm text-bone-dim">
+              <CheckCircle2
+                className="mt-0.5 h-4 w-4 shrink-0 text-emerald-glow"
+                strokeWidth={1.6}
+                aria-hidden
+              />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+
+        <AddToCartButton
+          productSlug={CAMPAIGN_WRITING_SLUG}
+          location="campaign_writing_hero"
+          variant="sales"
+          withArrow
+          size="lg"
+          className="relative mt-6 w-full max-lg:h-11 max-lg:min-h-11 max-lg:text-sm"
+        >
+          ثبت درخواست ورود
+        </AddToCartButton>
+
+        <p className="mt-3 text-center text-caption text-mist">
+          با یک کلیک وارد مراحل خرید می‌شوی.
+        </p>
+      </div>
+    </article>
   );
 }
 
@@ -749,12 +870,12 @@ function EnrollCard({ priceLabel }: { priceLabel: string }) {
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_60%_at_85%_5%,rgba(0,140,150,0.22),transparent_70%)]"
       />
       <div className="relative text-center">
-        <Badge tone="emerald">دوره شغل کمپین‌نویسی</Badge>
+        <Badge tone="emerald">دوره کمپین‌نویسی</Badge>
         <p className="relative mt-5 break-words text-[clamp(1.25rem,5vw,1.875rem)] font-semibold leading-tight text-bone num-latin">
           {priceLabel}
         </p>
         <p className="mt-2 text-sm text-bone-dim md:text-base">
-          مسیر کامل از پایه تا اجرا؛ شناخت مخاطب، پیام، پیشنهاد، سناریو و پیگیری.
+          {toPersianDigits(String(SECTION_COUNT))} بخش — از شناخت مشتری تا طراحی کمپین واقعی.
         </p>
         <AddToCartButton
           productSlug={CAMPAIGN_WRITING_SLUG}
@@ -764,7 +885,7 @@ function EnrollCard({ priceLabel }: { priceLabel: string }) {
           size="lg"
           className="relative mx-auto mt-7 w-full max-w-xs md:mt-8"
         >
-          ثبت‌نام در دوره
+          ثبت درخواست ورود
         </AddToCartButton>
       </div>
     </article>
@@ -776,7 +897,7 @@ function MobileStickyEnroll({ priceLabel }: { priceLabel: string }) {
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-bone/10 bg-ink/95 px-4 py-3 backdrop-blur-md md:hidden">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-xs text-bone-dim">دوره شغل کمپین‌نویسی</p>
+          <p className="truncate text-xs text-bone-dim">دوره کمپین‌نویسی</p>
           <p className="text-sm font-semibold text-bone num-latin">{priceLabel}</p>
         </div>
         <AddToCartButton
@@ -786,7 +907,7 @@ function MobileStickyEnroll({ priceLabel }: { priceLabel: string }) {
           size="md"
           className="shrink-0"
         >
-          ثبت‌نام
+          درخواست ورود
         </AddToCartButton>
       </div>
     </div>

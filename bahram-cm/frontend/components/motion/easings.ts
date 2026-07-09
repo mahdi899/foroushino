@@ -30,4 +30,16 @@ export const transitions = {
   }),
 };
 
-export const VIEWPORT_ONCE = { once: true, amount: 0 } as const;
+/** Content blocks — trigger once a meaningful slice is on screen, not when peeking from below. */
+export const VIEWPORT_ONCE = {
+  once: true,
+  amount: 0.22,
+  margin: "0px 0px -10% 0px",
+} as const;
+
+/** Full sections — cinematic entrance when the section actually arrives in view. */
+export const VIEWPORT_SECTION = {
+  once: true,
+  amount: 0.15,
+  margin: "0px 0px -6% 0px",
+} as const;

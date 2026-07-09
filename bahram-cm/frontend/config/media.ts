@@ -19,7 +19,7 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
     category: 'صفحه اصلی',
   },
   'hero-background-mobile': {
-    src: siteStorageMedia('hero-background-mobile.webp'),
+    src: '/storage/media/2026/07/01kwyecgnr5hzcdbwa9rwzgbwn.webp',
     label: 'پس‌زمینه هیرو — موبایل',
     category: 'صفحه اصلی',
   },

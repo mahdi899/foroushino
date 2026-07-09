@@ -19,8 +19,8 @@ describe("content collections meet authoring targets", () => {
     }
   });
 
-  it("has at least 10 transformations", async () => {
-    expect((await getTransformations()).length).toBeGreaterThanOrEqual(10);
+  it("has exactly 4 featured transformations", async () => {
+    expect((await getTransformations()).length).toBe(4);
   });
 
   it("has at least 10 events", async () => {

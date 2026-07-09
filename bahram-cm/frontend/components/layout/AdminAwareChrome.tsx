@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { AnalyticsGate } from '@/components/analytics/AnalyticsGate';
+import { SmoothScroll } from '@/components/motion/SmoothScroll';
 import { SiteFooter } from '@/components/nav/SiteFooter';
 import { SiteNav } from '@/components/nav/SiteNav';
 
@@ -15,6 +16,7 @@ export function AdminAwareChrome({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <SmoothScroll />
       <SiteNav />
       <div className="relative z-[2] min-w-0 w-full max-w-full overflow-x-clip pt-14 md:pt-16">{children}</div>
       <SiteFooter />

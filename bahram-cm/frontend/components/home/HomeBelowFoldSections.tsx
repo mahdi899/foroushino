@@ -6,6 +6,7 @@ import { BigTestimonial } from '@/components/sections/BigTestimonial';
 import { AcademyTeaser } from '@/components/sections/AcademyTeaser';
 import { FounderAside } from '@/components/sections/FounderAside';
 import { FinalCTA } from '@/components/sections/FinalCTA';
+import { SectionReveal } from '@/components/motion/SectionReveal';
 import { getCoursePathOverrides } from '@/lib/catalog/courseListings';
 
 const CampaignScrollStoryLazy = dynamic(() =>
@@ -35,12 +36,24 @@ export async function HomeBelowFoldSections({ deferBelowFold }: { deferBelowFold
   return (
     <main id="main-content" className="relative isolate min-w-0 w-full max-w-full overflow-x-clip">
       <HeroCinematic />
-      <MainPaths pathOverrides={pathOverrides} />
-      <Campaign />
-      <Testimonial />
-      <Academy />
-      <Founder />
-      <CTA />
+      <SectionReveal>
+        <MainPaths pathOverrides={pathOverrides} />
+      </SectionReveal>
+      <SectionReveal>
+        <Campaign />
+      </SectionReveal>
+      <SectionReveal>
+        <Testimonial />
+      </SectionReveal>
+      <SectionReveal>
+        <Academy />
+      </SectionReveal>
+      <SectionReveal>
+        <Founder />
+      </SectionReveal>
+      <SectionReveal>
+        <CTA />
+      </SectionReveal>
     </main>
   );
 }
