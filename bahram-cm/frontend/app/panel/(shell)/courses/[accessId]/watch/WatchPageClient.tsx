@@ -23,7 +23,7 @@ export function WatchPageClient({ accessId, title, licenseKey, courseId, license
   };
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4">
+    <div className="panel-page-inner flex flex-col gap-4">
       <SpotPlayerScript />
       <div className="flex items-center gap-2 text-xs text-text-muted">
         <Link href="/panel/courses" className="inline-flex items-center gap-1 hover:text-primary">

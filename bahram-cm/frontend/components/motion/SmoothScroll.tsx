@@ -1,30 +1,50 @@
 "use client";
 
-import { useEffect } from "react";
+import { ReactLenis, useLenis } from "lenis/react";
+import { usePathname } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import "lenis/dist/lenis.css";
 
-/** Keeps native smooth scrolling active and handles in-page anchor jumps (fixed nav offset). */
-export function SmoothScroll() {
+const NAV_OFFSET = 72;
+
+const LENIS_OPTIONS = {
+  autoRaf: true,
+  lerp: 0.08,
+  smoothWheel: true,
+  wheelMultiplier: 0.85,
+  touchMultiplier: 1,
+  anchors: { offset: NAV_OFFSET },
+} as const;
+
+function LenisRouteSync() {
+  const pathname = usePathname();
+  const lenis = useLenis();
+
   useEffect(() => {
-    const root = document.documentElement;
-    root.style.scrollBehavior = "smooth";
-
-    const onClick = (event: MouseEvent) => {
-      const anchor = (event.target as Element | null)?.closest<HTMLAnchorElement>("a[href^='#']");
-      if (!anchor || anchor.target === "_blank" || event.defaultPrevented) return;
-
-      const hash = anchor.getAttribute("href");
-      if (!hash || hash === "#") return;
-
-      const target = document.querySelector(hash);
-      if (!target) return;
-
-      event.preventDefault();
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
-    };
-
-    document.addEventListener("click", onClick, { capture: true });
-    return () => document.removeEventListener("click", onClick, { capture: true });
-  }, []);
+    if (!lenis) return;
+    lenis.resize();
+  }, [pathname, lenis]);
 
   return null;
+}
+
+export function SmoothScroll({ children }: { children: ReactNode }) {
+  const reduce = usePrefersReducedMotion();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setReady(true);
+  }, []);
+
+  if (!ready || reduce) {
+    return <>{children}</>;
+  }
+
+  return (
+    <ReactLenis root options={LENIS_OPTIONS}>
+      <LenisRouteSync />
+      {children}
+    </ReactLenis>
+  );
 }

@@ -15,12 +15,11 @@ export function AdminAwareChrome({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <>
-      <SmoothScroll />
+    <SmoothScroll>
       <SiteNav />
       <div className="relative z-[2] min-w-0 w-full max-w-full overflow-x-clip pt-14 md:pt-16">{children}</div>
       <SiteFooter />
       <AnalyticsGate />
-    </>
+    </SmoothScroll>
   );
 }

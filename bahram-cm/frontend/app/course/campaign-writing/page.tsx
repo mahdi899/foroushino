@@ -249,10 +249,6 @@ export default async function CourseCampaignWritingPage() {
       {/* 1. HERO */}
       <section className="relative isolate overflow-hidden bg-ink">
         <PageHeroBackdrop src={pageHeroBackdropPhoto} alt={heroAlt} priority />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-ink/50 via-ink/65 to-ink/80"
-        />
         <div className="container-luxe relative z-[2] min-w-0 py-10 sm:py-14 md:py-20 lg:py-24">
           <div className="grid min-w-0 items-center gap-7 sm:gap-8 md:grid-cols-12 md:gap-10 lg:gap-16">
             <div className="min-w-0 text-center max-md:order-2 md:col-span-6 md:text-start">
@@ -827,13 +823,14 @@ function ImageSplitSection({
                     className="object-cover"
                     sizes="(max-width: 768px) 100vw, 40vw"
                   />
+                  <div aria-hidden className="photo-scrim-bottom" />
                   <div
                     aria-hidden
                     className={cn(
                       "absolute inset-0",
                       tone === "gold"
-                        ? "bg-gradient-to-t from-ink/60 via-ink/10 to-gold/10"
-                        : "bg-gradient-to-t from-ink/60 via-ink/10 to-emerald/10",
+                        ? "bg-gradient-to-t from-transparent via-transparent to-gold/10"
+                        : "bg-gradient-to-t from-transparent via-transparent to-emerald/10",
                     )}
                   />
                 </div>

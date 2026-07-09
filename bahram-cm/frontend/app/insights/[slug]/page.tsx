@@ -99,10 +99,7 @@ export default async function InsightDetailPage({
               wrapperClassName="absolute inset-0 z-0 overflow-hidden"
               className="object-cover blur-lg brightness-50 saturate-75"
             />
-            <div
-              aria-hidden
-              className="absolute inset-0 z-[1] bg-gradient-to-b from-ink/75 via-ink/92 to-ink"
-            />
+            <div aria-hidden className="page-hero-backdrop-scrim" />
             <div className="insight-hero-stage-bottom-fade" aria-hidden />
 
             <div className="container-luxe relative z-[3] mx-auto max-w-4xl min-w-0 pt-section-sm">

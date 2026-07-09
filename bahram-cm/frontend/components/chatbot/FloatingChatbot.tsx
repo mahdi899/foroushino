@@ -1468,6 +1468,7 @@ export function FloatingChatbot({
 
           <div
             ref={scrollRef}
+            data-lenis-prevent
             className={cn(
               'chatbot-scroll relative min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3',
               tab === 'chat' && chatEnabled ? cn('pb-1', chatTheme.thread) : cn('pb-2', chatTheme.tabBar),

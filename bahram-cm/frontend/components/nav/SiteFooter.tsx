@@ -1,9 +1,19 @@
 import Link from "next/link";
 import { site } from "@/content/site";
+import { SITE_MEDIA } from "@/config/media";
 import { Divider } from "@/components/ui/Divider";
-import { NewsletterForm } from "@/components/ui/NewsletterForm";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { Logo } from "./Logo";
 import { toPersianDigits } from "@/lib/persian";
+
+const TRUST_BADGE_MEDIA: Record<
+  (typeof site.footer.trustBadges)[number]["id"],
+  string
+> = {
+  enamad: SITE_MEDIA["trust-enamad"]!.src,
+  samandehi: SITE_MEDIA["trust-samandehi"]!.src,
+  zarinpal: SITE_MEDIA["trust-zarinpal"]!.src,
+};
 
 export function SiteFooter() {
   const year = toPersianDigits(new Date().getFullYear());
@@ -20,37 +30,81 @@ export function SiteFooter() {
             <p className="mt-2 hidden max-w-sm text-caption text-mist md:mt-3 md:block">
               کمپین‌نویسی، ورود به {site.ecosystem}.
             </p>
-            <div className="mt-5 max-w-none border-t border-bone/10 pt-5 md:mt-8 md:max-w-sm md:pt-8">
-              <p className="mb-1.5 text-caption uppercase leading-snug tracking-[0.14em] text-gold md:mb-3 md:tracking-[0.2em]">
-                خبرنامه
-              </p>
-              <NewsletterForm density="compact" className="w-full min-w-0" />
+            <div
+              className="mt-5 flex flex-wrap items-center gap-3 border-t border-bone/10 pt-5 md:mt-8 md:gap-4 md:pt-8"
+              aria-label="نشان‌های اعتماد"
+            >
+              {site.footer.trustBadges.map((badge) => {
+                const src = TRUST_BADGE_MEDIA[badge.id];
+                const image = (
+                  <SiteImage
+                    src={src}
+                    alt={badge.alt}
+                    width={72}
+                    height={72}
+                    className="h-[4.25rem] w-[4.25rem] rounded-xl border border-bone/10 bg-bone/5 object-contain p-2 transition-colors hover:border-bone/20 md:h-[4.75rem] md:w-[4.75rem]"
+                  />
+                );
+
+                return badge.href ? (
+                  <a
+                    key={badge.id}
+                    href={badge.href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="shrink-0"
+                    aria-label={badge.alt}
+                  >
+                    {image}
+                  </a>
+                ) : (
+                  <span key={badge.id} className="shrink-0">
+                    {image}
+                  </span>
+                );
+              })}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 md:col-span-7 md:gap-x-8 md:gap-y-8">
-            {site.footer.columns.map((col) => (
-              <div key={col.title} className="min-w-0">
-                <h3 className="text-caption font-medium uppercase leading-tight tracking-[0.12em] text-gold md:tracking-[0.2em]">
-                  {col.title}
-                </h3>
-                <ul className="mt-2 space-y-1 md:mt-5 md:space-y-3">
-                  {col.links.map((link) => (
-                    <li key={link.href}>
-                      <Link
-                        href={link.href}
-                        {...("external" in link && link.external
-                          ? { target: "_blank", rel: "noreferrer noopener" }
-                          : {})}
-                        className="text-sm leading-snug text-bone-dim transition-colors hover:text-bone"
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-5 md:col-span-7 md:gap-x-12 md:gap-y-8">
+            <div className="min-w-0">
+              <h3 className="text-caption font-medium uppercase leading-tight tracking-[0.12em] text-gold md:tracking-[0.2em]">
+                {site.footer.navTitle}
+              </h3>
+              <ul className="mt-2 space-y-1 md:mt-5 md:space-y-3">
+                {site.nav.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-sm leading-snug text-bone-dim transition-colors hover:text-bone"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="min-w-0">
+              <h3 className="text-caption font-medium uppercase leading-tight tracking-[0.12em] text-gold md:tracking-[0.2em]">
+                {site.footer.contactTitle}
+              </h3>
+              <ul className="mt-2 space-y-1 md:mt-5 md:space-y-3">
+                {site.footer.contact.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      {...("external" in link && link.external
+                        ? { target: "_blank", rel: "noreferrer noopener" }
+                        : {})}
+                      className="text-sm leading-snug text-bone-dim transition-colors hover:text-bone"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
 

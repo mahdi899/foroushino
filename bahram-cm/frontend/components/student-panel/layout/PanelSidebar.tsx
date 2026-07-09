@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronLeft, ChevronRight, GraduationCap, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, GraduationCap } from 'lucide-react';
 import { AppDownloadCard } from '@/components/student-panel/ui/AppDownloadCard';
 import { cn } from '@/lib/cn';
 import { PanelNavLabel } from './PanelNavLabel';
@@ -58,15 +58,6 @@ export function PanelSidebar({
               </span>
             </div>
             <div className={cn('flex items-center gap-1', isDesktopCollapsed && 'lg:mt-1')}>
-              <button
-                type="button"
-                className="panel-sidebar__toggle lg:hidden"
-                onClick={onClose}
-                aria-label="بستن منو"
-                title="بستن منو"
-              >
-                <X size={18} />
-              </button>
               <button
                 type="button"
                 className="panel-sidebar__toggle hidden lg:inline-flex"

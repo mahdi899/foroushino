@@ -115,7 +115,7 @@ export default function MiniCoursesPage() {
                     className="object-cover transition-transform duration-700 ease-[var(--ease-luxe)] group-hover:scale-[1.04]"
                     priority={i < 3}
                   />
-                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/20 to-transparent" />
+                  <div className="pointer-events-none absolute inset-0 photo-scrim-bottom-soft" aria-hidden />
                   <div className="absolute start-4 top-4">
                     <IconTile
                       icon={item.icon}

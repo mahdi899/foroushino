@@ -9,7 +9,7 @@ const RESOURCE_LINKS = [
 
 export function QuickResourceLinks() {
   return (
-    <div className="card p-5">
+    <div className="card p-5 text-right">
       <h2 className="mb-4 text-base font-bold text-text">لینک‌های سریع و منابع</h2>
       <div className="flex flex-col gap-2">
         {RESOURCE_LINKS.map((link) => (

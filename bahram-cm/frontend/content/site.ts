@@ -251,36 +251,17 @@ export const site = {
 
   footer: {
     tagline: "رشد حرفه‌ای، در یک اکوسیستم خصوصی.",
-    columns: [
-      {
-        title: "محصولات",
-        links: [
-          { href: "/course/campaign-writing", label: "کمپین‌نویسی" },
-          { href: "/courses", label: "دوره‌ها" },
-          { href: "/mini-courses", label: "مینی‌دوره‌ها" },
-          { href: "/saat", label: "سات" },
-          { href: "/apply", label: "درخواست دسترسی" },
-        ],
-      },
-      {
-        title: "محتوا",
-        links: [
-          { href: "/insights", label: "بلاگ" },
-          { href: "/articles", label: "مقالات" },
-          { href: "/guides", label: "راهنماها" },
-          { href: "/resources", label: "منابع" },
-          { href: "/transformations", label: "رضایت دانشجوها" },
-          { href: "/faq", label: "سوالات متداول" },
-        ],
-      },
-      {
-        title: "ارتباط",
-        links: [
-          { href: "https://instagram.com/bahramrostami", label: "اینستاگرام", external: true },
-          { href: "https://t.me/bahramrostami", label: "تلگرام", external: true },
-          { href: "mailto:hello@bahramrostami.com", label: "ایمیل" },
-        ],
-      },
+    navTitle: "صفحات",
+    contactTitle: "ارتباط",
+    contact: [
+      { href: "https://instagram.com/bahramrostami", label: "اینستاگرام", external: true },
+      { href: "https://t.me/bahramrostami", label: "تلگرام", external: true },
+      { href: "mailto:hello@bahramrostami.com", label: "ایمیل" },
+    ],
+    trustBadges: [
+      { id: "enamad", alt: "نماد اعتماد الکترونیکی", href: "https://trustseal.enamad.ir/" },
+      { id: "samandehi", alt: "ساماندهی", href: "https://samandehi.ir/" },
+      { id: "zarinpal", alt: "درگاه پرداخت زرین‌پال", href: "https://www.zarinpal.com/" },
     ],
   },
 } as const;

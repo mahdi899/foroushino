@@ -190,7 +190,7 @@ function PathCard({
         />
         <div
           aria-hidden
-          className="absolute inset-0 bg-gradient-to-r from-charcoal via-charcoal/72 to-transparent"
+          className="main-path-card-media-scrim"
         />
         <div
           aria-hidden

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" role="img" aria-label="3'E'F/GÌ">
+  <rect width="120" height="120" rx="12" fill="#f8fafc"/>
+  <rect x="4" y="4" width="112" height="112" rx="10" stroke="#cbd5e1" stroke-width="2"/>
+  <circle cx="60" cy="52" r="24" fill="#0f766e"/>
+  <path d="M48 52l8 8 16-16" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="60" y="92" text-anchor="middle" font-family="Tahoma, Arial, sans-serif" font-size="9" fill="#475569">Samandehi</text>
+</svg>

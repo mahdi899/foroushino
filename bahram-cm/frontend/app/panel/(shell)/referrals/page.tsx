@@ -50,7 +50,7 @@ export default async function PanelReferralsPage() {
   ]);
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-5">
+    <div className="panel-page-inner flex flex-col gap-5">
       <ReferralHeroBanner code={referral.code} link={referral.link} />
 
       <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">

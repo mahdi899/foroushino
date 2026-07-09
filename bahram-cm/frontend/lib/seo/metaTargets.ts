@@ -22,13 +22,6 @@ export const SEO_META_TARGETS: SeoMetaTarget[] = (() => {
     if (link.href.startsWith('/')) entries.set(link.href, link.label);
   }
 
-  for (const column of site.footer.columns) {
-    for (const link of column.links) {
-      if ('external' in link && link.external) continue;
-      if (link.href.startsWith('/')) entries.set(link.href, link.label);
-    }
-  }
-
   const extras: [string, string][] = [
     ['/academy', 'آکادمی'],
     ['/academy/app', 'اپ آکادمی'],

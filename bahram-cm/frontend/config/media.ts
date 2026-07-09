@@ -39,6 +39,9 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
   'avatar-amir': { src: siteStorageMedia('avatar-amir.svg'), label: 'آواتار امیر', category: 'رضایت' },
   'avatar-nazanin': { src: siteStorageMedia('avatar-nazanin.svg'), label: 'آواتار نازنین', category: 'رضایت' },
   'signature': { src: siteStorageMedia('signature.svg'), label: 'امضا', category: 'برند' },
+  'trust-enamad': { src: siteStorageMedia('trust-enamad.svg'), label: 'نماد اعتماد الکترونیکی', category: 'اعتماد' },
+  'trust-samandehi': { src: siteStorageMedia('trust-samandehi.svg'), label: 'ساماندهی', category: 'اعتماد' },
+  'trust-zarinpal': { src: siteStorageMedia('trust-zarinpal.svg'), label: 'زرین‌پال', category: 'اعتماد' },
 };
 
 export function resolveMainServiceImage(slug: string, fallback?: string | null): string {

@@ -105,7 +105,9 @@ export function PanelShell({
             mobileMenuOpen={mobileOpen}
             onMenuToggle={() => setMobileOpen((open) => !open)}
           />
-          <main className="panel-main-content">{children}</main>
+          <main className="panel-main-content">
+            <div className="panel-page-wrap">{children}</div>
+          </main>
         </div>
 
         <PanelBottomNav unreadCount={unreadCount} onMenuOpen={() => setMobileOpen(true)} />

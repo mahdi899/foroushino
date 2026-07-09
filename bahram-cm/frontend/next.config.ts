@@ -97,6 +97,7 @@ const config: NextConfig = {
     optimizePackageImports: [
       "lucide-react",
       "framer-motion",
+      "lenis",
       "lottie-react",
       "@tiptap/react",
       "@tiptap/starter-kit",

@@ -40,14 +40,7 @@ export function TransformationVoiceCard({ item, className, priority = false }: P
           sizes="(max-width: 640px) 88vw, (max-width: 1024px) 46vw, 320px"
         />
 
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-t from-ink via-ink/55 to-ink/5"
-        />
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-l from-ink/25 via-transparent to-transparent"
-        />
+        <div aria-hidden className="photo-scrim-portrait" />
 
         {item.metricValue && item.metricLabel ? (
           <div className="absolute top-3 start-3 z-10 rounded-pill border border-bone/15 bg-ink/75 px-3 py-1.5 backdrop-blur-sm">

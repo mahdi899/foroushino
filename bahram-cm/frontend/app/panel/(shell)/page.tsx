@@ -39,7 +39,7 @@ export default async function PanelDashboardPage() {
   const courseHref = activeCourse ? `/panel/courses/${activeCourse.id}/watch` : '/panel/courses';
 
   return (
-    <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-5 sm:gap-6">
+    <div className="panel-page-inner flex flex-col gap-5 sm:gap-6">
       <DashboardWelcome
         name={user?.profile?.first_name || user?.name || ''}
         doneCount={doneCount}
@@ -59,7 +59,7 @@ export default async function PanelDashboardPage() {
         <QuickResourceLinks />
       </section>
 
-      <section className="card flex flex-col p-5">
+      <section className="card flex flex-col p-5 text-right">
         <div className="mb-4 flex shrink-0 items-center justify-between">
           <h2 className="text-sm font-bold text-text">چک‌لیست شروع</h2>
           <span className="badge badge-neutral">{progress}%</span>

@@ -99,7 +99,7 @@ export function NotificationItem({ notification }: { notification: NotificationE
   );
 
   const className =
-    'flex items-start gap-3 border-b border-border p-3 transition-colors last:border-0 hover:bg-surface-soft/60 sm:p-4';
+    'flex items-start gap-3 rounded-xl p-3 transition-colors hover:bg-surface-soft/60 sm:p-4';
 
   const markRead = () => {
     if (isUnread) void markNotificationReadAction(notification.id);

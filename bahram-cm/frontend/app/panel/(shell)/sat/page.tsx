@@ -50,7 +50,7 @@ export default async function PanelSatPage() {
   const currentStatus = application?.status ?? null;
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6">
+    <div className="panel-page-inner flex flex-col gap-6">
       <PanelPageHeader
         icon={Trophy}
         title="فرصت همکاری در سات"
@@ -60,7 +60,7 @@ export default async function PanelSatPage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
         <div className="flex flex-col gap-5">
           {!application ? (
-            <div className="rounded-xl border border-amber-500/25 bg-amber-500/8 p-4 text-sm text-amber-200/90">
+            <div className="rounded-xl border border-border bg-surface-soft p-4 text-sm leading-relaxed text-text-muted">
               هنوز درخواستی ثبت نکرده‌ای. فرم زیر را تکمیل کن تا تیم ما بررسی کند.
             </div>
           ) : null}

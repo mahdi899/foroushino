@@ -18,7 +18,7 @@ export function OnboardingChecklist({ items }: { items: ChecklistItem[] }) {
 
   return (
     <div className="panel-checklist-scroll -mx-1 px-1">
-      <ul className="flex flex-col divide-y divide-border">
+      <ul className="panel-checklist-list flex flex-col gap-1">
       {items.map((item, index) => {
         const content = (
           <span className="panel-checklist-item" data-done={item.done}>
@@ -48,7 +48,7 @@ export function OnboardingChecklist({ items }: { items: ChecklistItem[] }) {
               onClick={() => {
                 if (isTracked) void markOnboardingStepAction(item.key);
               }}
-              className={`block rounded-lg transition ${isNext ? 'bg-primary/5 px-1 -mx-1' : 'hover:opacity-80'}`}
+              className={`block w-full rounded-lg text-right transition ${isNext ? 'bg-primary/5 px-1 -mx-1' : 'hover:opacity-80'}`}
             >
               {content}
             </Link>

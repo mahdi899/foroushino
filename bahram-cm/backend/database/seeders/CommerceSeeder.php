@@ -17,7 +17,7 @@ class CommerceSeeder extends Seeder
             [
                 'title' => 'دوره کمپین‌نویسی حرفه‌ای',
                 'type' => 'normal',
-                'short_description' => 'یادگیری اصول نوشتن کمپین‌های فروش مؤثر برای کسب‌وکارهای آنلاین.',
+                'short_description' => 'نوشتن کمپین فروش مؤثر',
                 'description' => '<p>در این دوره با ساختار کمپین، متن‌نویسی فروش و اجرای عملی آشنا می‌شوید.</p>',
                 'price' => 2_500_000,
                 'sale_price' => 1_990_000,

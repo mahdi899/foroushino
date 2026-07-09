@@ -26,7 +26,7 @@ export default async function PanelSeminarsPage() {
   }).length;
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-5">
+    <div className="panel-page-inner flex flex-col gap-5">
       <PanelPageHeader
         icon={CalendarDays}
         title="سمینارهای من"

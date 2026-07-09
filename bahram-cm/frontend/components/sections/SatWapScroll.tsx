@@ -48,7 +48,7 @@ function WapPillarCard({ pillar }: { pillar: SatWapPillar }) {
             className="object-cover object-center transition-transform duration-700 group-hover:scale-[1.03]"
             sizes="(max-width: 1023px) 100vw, 42vw"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-ink/60 via-ink/10 to-transparent lg:bg-gradient-to-l lg:from-transparent lg:via-transparent lg:to-ink/20" />
+          <div className="photo-scrim-side-start" aria-hidden />
         </figure>
 
         <div className="flex flex-col justify-center gap-3 p-5 lg:col-span-7 lg:p-6 xl:p-8">

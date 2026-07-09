@@ -12,7 +12,7 @@ export default async function PanelProfilePage() {
   const displayName = fullName || user?.name || 'دانشجو';
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-5">
+    <div className="panel-page-inner panel-page-inner--sm flex flex-col gap-5">
       <div className="flex items-center gap-3">
         {user ? (
           <PanelProfileAvatar

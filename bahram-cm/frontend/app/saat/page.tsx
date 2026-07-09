@@ -467,7 +467,7 @@ function VisualSplitSection({
           <Reveal className="md:col-span-5 lg:col-span-6">
             <div className="relative aspect-[4/3] overflow-hidden rounded-card-lg border border-bone/10">
               <SiteImage src={image} alt={imageAlt} fallbackAlt={imageAlt} fill className="object-cover" sizes="(max-width: 768px) 100vw, 45vw" />
-              <div className="absolute inset-0 bg-gradient-to-t from-ink/50 via-transparent to-transparent" />
+              <div className="photo-scrim-bottom-soft" aria-hidden />
             </div>
           </Reveal>
           <div className="md:col-span-7 lg:col-span-6">
@@ -512,7 +512,7 @@ function WhoForCard({
         className="object-cover transition-transform duration-700 group-hover:scale-105"
         sizes="(max-width: 640px) 50vw, 25vw"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/75 to-ink/20" />
+      <div className="photo-scrim-bottom-caption" aria-hidden />
       <div
         aria-hidden
         className={cn(

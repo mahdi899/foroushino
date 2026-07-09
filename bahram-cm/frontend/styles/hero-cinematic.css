@@ -14,6 +14,42 @@
   min-height: clamp(22rem, 50vw, var(--hero-light-image-max-h));
 }
 
+.hero-light-section .hero-light-panel--entrance::after {
+  content: "";
+  position: absolute;
+  inset: -20% -35%;
+  z-index: 3;
+  pointer-events: none;
+  background: var(--hero-sheen-gradient);
+  opacity: 0;
+  transform: translate3d(28%, 0, 0) skewX(-14deg);
+  animation: hero-entrance-sheen 1.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.45s;
+}
+
+@keyframes hero-entrance-sheen {
+  0% {
+    opacity: 0;
+    transform: translate3d(28%, 0, 0) skewX(-14deg);
+  }
+
+  38% {
+    opacity: 0.5;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(-32%, 0, 0) skewX(-14deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-light-section .hero-light-panel--entrance::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
 .hero-light-section .hero-light-content {
   position: relative;
   z-index: 2;

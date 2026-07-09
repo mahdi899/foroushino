@@ -88,6 +88,7 @@ export function MobileMenu({ open, onClose }: Props) {
 
             <nav
               className="flex min-h-0 flex-1 flex-col gap-0 overflow-y-auto overscroll-y-contain px-4 py-2 sm:px-5 sm:py-3"
+              data-lenis-prevent
               aria-label="لینک‌های اصلی"
             >
               {site.nav.map((link, i) => {

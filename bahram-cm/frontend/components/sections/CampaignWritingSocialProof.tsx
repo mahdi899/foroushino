@@ -36,10 +36,7 @@ export function CampaignWritingSocialProof() {
                     className="object-cover object-top"
                     sizes="(max-width: 640px) 88vw, (max-width: 1024px) 46vw, 280px"
                   />
-                  <div
-                    aria-hidden
-                    className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/20 to-transparent"
-                  />
+                  <div aria-hidden className="photo-scrim-bottom-caption" />
                   <div className="absolute inset-x-0 bottom-0 p-4">
                     <p className="font-display text-sm font-semibold text-bone">{item.name}</p>
                     <p className="text-caption text-gold">{item.role}</p>

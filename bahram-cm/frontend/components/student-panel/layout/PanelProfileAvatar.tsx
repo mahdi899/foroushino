@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { primarySiteImageSrc } from '@/lib/mediaUrl';
+import { cn } from '@/lib/cn';
 
 type Props = {
   avatar?: string | null;
@@ -71,7 +72,7 @@ export function PanelProfileAvatar({
   const initials = initialsFromName(alt);
 
   return (
-    <div className={`h-9 w-9 shrink-0 overflow-hidden rounded-full bg-surface-soft ring-2 ring-border/80 ${className ?? ''}`}>
+    <div className={cn('h-9 w-9 shrink-0 overflow-hidden rounded-full bg-surface-soft ring-2 ring-border/80', className)}>
       {showImage ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

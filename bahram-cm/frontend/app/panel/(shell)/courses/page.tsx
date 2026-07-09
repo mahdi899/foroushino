@@ -33,7 +33,7 @@ export default async function PanelCoursesPage() {
 
   if (courses.length === 0) {
     return (
-      <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <div className="panel-page-inner panel-page-inner--md flex flex-col gap-6">
         <h1 className="text-xl font-bold text-text">دوره‌های من</h1>
         <div className="card flex flex-col items-center gap-4 p-12 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -49,7 +49,7 @@ export default async function PanelCoursesPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6">
+    <div className="panel-page-inner flex flex-col gap-6">
       <div>
         <h1 className="text-xl font-bold text-text">دوره‌های من</h1>
         <p className="mt-1 text-sm text-text-muted">

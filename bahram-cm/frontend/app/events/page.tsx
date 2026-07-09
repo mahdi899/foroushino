@@ -104,7 +104,7 @@ function EventCard({
           sizes="(max-width: 768px) 100vw, 50vw"
           className="object-cover transition-transform duration-700 ease-[var(--ease-luxe)] group-hover:scale-[1.04]"
         />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink/85 to-transparent p-4">
+        <div className="absolute inset-x-0 bottom-0 photo-scrim-bottom-bar p-4">
           <Badge tone={live ? "emerald" : "neutral"}>
             {live ? (
               <Radio className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />

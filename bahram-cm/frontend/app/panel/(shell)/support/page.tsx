@@ -50,7 +50,7 @@ export default async function PanelSupportPage() {
   const { data: tickets } = await panelStudentFetch<{ data: TicketListItem[] }>('/tickets');
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-6">
+    <div className="panel-page-inner flex flex-col gap-6">
       <PanelPageHeader
         icon={Headset}
         title="پشتیبانی"

@@ -28,7 +28,7 @@ function typeIcon(type: string | null | undefined) {
 
 export function RecentNotifications({ notifications }: { notifications: NotificationEntry[] }) {
   return (
-    <div className="card p-5">
+    <div className="card p-5 text-right">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-base font-bold text-text">
           <Bell size={17} className="text-primary" />
@@ -70,12 +70,12 @@ export function RecentNotifications({ notifications }: { notifications: Notifica
                 {notification.link ? (
                   <Link
                     href={notification.link}
-                    className="block rounded-xl border border-border/60 bg-surface-soft p-3 transition-all duration-300 hover:border-primary/30"
+                    className="block rounded-xl bg-surface-soft p-3 transition-all duration-300 hover:bg-surface-soft/80"
                   >
                     {inner}
                   </Link>
                 ) : (
-                  <div className="rounded-xl border border-border/60 bg-surface-soft p-3 transition-all duration-300 hover:border-primary/30">
+                  <div className="rounded-xl bg-surface-soft p-3 transition-all duration-300 hover:bg-surface-soft/80">
                     {inner}
                   </div>
                 )}
