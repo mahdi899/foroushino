@@ -5,12 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Check, Copy, ExternalLink, KeyRound, Loader2, Save, Send } from 'lucide-react';
 import { fulfillOrder, resendOrderSms, updateOrder } from '../actions';
+import { AdminTomanAmount } from '@/components/admin/layout/AdminTomanAmount';
 import {
   COURSE_ACCESS_SOURCE_LABELS,
   ORDER_STATUS_LABELS,
   PAYMENT_RECORD_STATUS_LABELS,
   PAYMENT_STATUS_LABELS,
-  formatToman,
   type AdminOrderDetail,
   type AdminOrderPayment,
 } from '@/lib/admin/commerceTypes';
@@ -117,7 +117,7 @@ function PaymentRow({ payment }: { payment: AdminOrderPayment }) {
         <Badge tone="accent">{payment.gateway_label}</Badge>
         <Badge tone={payment.mode === 'sandbox' ? 'warning' : 'success'}>{payment.mode_label}</Badge>
         <Badge tone={tone}>{PAYMENT_RECORD_STATUS_LABELS[payment.status] ?? payment.status}</Badge>
-        <span className="ms-auto text-caption font-semibold text-primary">{formatToman(payment.amount)}</span>
+        <AdminTomanAmount amount={payment.amount} size="sm" amountClassName="text-primary" />
       </div>
       <dl className="grid gap-2 sm:grid-cols-2">
         <DetailItem label="Authority (کد تراکنش درگاه)">
@@ -206,7 +206,7 @@ export function OrderDetailForm({ order }: { order: AdminOrderDetail }) {
         <span className="text-caption text-text-muted" dir="ltr">
           {order.order_number}
         </span>
-        <span className="ms-auto text-caption font-semibold text-primary">{formatToman(order.final_amount)}</span>
+        <AdminTomanAmount amount={order.final_amount} size="sm" amountClassName="text-primary" className="ms-auto" />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
@@ -387,7 +387,9 @@ export function OrderDetailForm({ order }: { order: AdminOrderDetail }) {
                     </span>
                   )}
                 </DetailItem>
-                <DetailItem label="مبلغ کش‌بک">{formatToman(order.referral_conversion.cashback_amount)}</DetailItem>
+                <DetailItem label="مبلغ کش‌بک">
+                  <AdminTomanAmount amount={order.referral_conversion.cashback_amount} size="sm" />
+                </DetailItem>
                 <DetailItem label="وضعیت">
                   <Badge>{order.referral_conversion.status}</Badge>
                 </DetailItem>
@@ -401,15 +403,21 @@ export function OrderDetailForm({ order }: { order: AdminOrderDetail }) {
             <dl className="grid grid-cols-3 gap-2 text-center">
               <div className="rounded-lg bg-surface-soft p-2.5">
                 <dt className="admin-text-meta text-text-muted">مبلغ</dt>
-                <dd className="mt-1 text-caption font-semibold">{formatToman(order.amount)}</dd>
+                <dd className="mt-1 flex justify-center">
+                  <AdminTomanAmount amount={order.amount} size="sm" />
+                </dd>
               </div>
               <div className="rounded-lg bg-surface-soft p-2.5">
                 <dt className="admin-text-meta text-text-muted">تخفیف</dt>
-                <dd className="mt-1 text-caption font-semibold">{formatToman(order.discount_amount)}</dd>
+                <dd className="mt-1 flex justify-center">
+                  <AdminTomanAmount amount={order.discount_amount} size="sm" />
+                </dd>
               </div>
               <div className="rounded-lg bg-primary-soft p-2.5">
                 <dt className="admin-text-meta text-text-muted">نهایی</dt>
-                <dd className="mt-1 text-caption font-bold text-primary">{formatToman(order.final_amount)}</dd>
+                <dd className="mt-1 flex justify-center">
+                  <AdminTomanAmount amount={order.final_amount} size="sm" amountClassName="font-bold text-primary" />
+                </dd>
               </div>
             </dl>
           </SectionCard>

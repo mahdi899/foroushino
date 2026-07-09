@@ -329,16 +329,16 @@ export default function CacheAdminPage() {
 
           <div>
             <h2 className="mb-3 text-h3 font-bold text-primary-dark">TTL کش محتوا (ISR)</h2>
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full min-w-[320px] text-right text-small">
+            <div className="admin-table-wrap overflow-x-auto">
+              <table className="admin-table w-full min-w-[320px] text-right text-small">
                 <thead>
-                  <tr className="border-b border-border bg-surface-soft text-text-muted">
+                  <tr>
                     <th className="px-4 py-3 font-semibold">بخش</th>
                     <th className="px-4 py-3 font-semibold">تگ</th>
                     <th className="px-4 py-3 font-semibold">TTL</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody>
                   {CACHE_TAG_GROUPS.map((g) => (
                     <tr key={g.id}>
                       <td className="px-4 py-3 font-medium">{g.label}</td>

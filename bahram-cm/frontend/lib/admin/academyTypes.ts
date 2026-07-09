@@ -1,3 +1,5 @@
+import { formatPanelFa } from '@/lib/persian';
+
 export type PageMeta = { current_page: number; last_page: number; total: number };
 
 export type AdminStudent = {
@@ -284,7 +286,7 @@ export const TICKET_PRIORITY_LABELS: Record<string, string> = {
 
 export function formatToman(value: number | null | undefined): string {
   if (value === null || value === undefined) return '—';
-  return `${value.toLocaleString('fa-IR')} تومان`;
+  return `${formatPanelFa(value)} تومان`;
 }
 
 export function formatDate(value: string | null | undefined): string {

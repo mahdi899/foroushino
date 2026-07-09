@@ -1,3 +1,5 @@
+import { formatPanelFa } from '@/lib/persian';
+
 export interface AdminProduct {
   id: number;
   title: string;
@@ -201,7 +203,7 @@ export const COURSE_ACCESS_SOURCE_LABELS: Record<string, string> = {
 };
 
 export function formatToman(amount: number): string {
-  return `${amount.toLocaleString('fa-IR')} تومان`;
+  return `${formatPanelFa(amount)} تومان`;
 }
 
 export type OrderAnalyticsSlice = {

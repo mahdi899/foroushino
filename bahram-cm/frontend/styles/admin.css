@@ -709,6 +709,12 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   background: color-mix(in srgb, var(--color-surface-soft) 65%, transparent);
 }
 
+.admin-root .admin-amount {
+  font-variant-numeric: tabular-nums;
+  unicode-bidi: isolate;
+  letter-spacing: -0.01em;
+}
+
 .admin-root .admin-content-panel__body .admin-table-wrap,
 .admin-root .admin-dashboard-panel__body .admin-table-wrap {
   border: none;
@@ -796,12 +802,16 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 .admin-root[data-admin-theme='dark'] .bg-error\/5 { background: color-mix(in srgb, #f08070 8%, transparent); }
 .admin-root[data-admin-theme='dark'] .border-error\/30 { border-color: color-mix(in srgb, #f08070 30%, transparent); }
 
-/* Links inside admin */
-.admin-root a:not(.btn):not(.admin-nav-item) {
+/* Links inside admin — exclude tab/segment controls with their own color tokens */
+.admin-root a:not(.btn):not(.admin-nav-item):not(.admin-period-btn):not(.admin-dashboard-panel__action) {
   color: var(--color-accent);
 }
-.admin-root a:not(.btn):not(.admin-nav-item):hover {
+.admin-root a:not(.btn):not(.admin-nav-item):not(.admin-period-btn):not(.admin-dashboard-panel__action):hover {
   color: var(--color-primary);
+}
+.admin-root a.admin-period-btn[data-active='true'],
+.admin-root a.admin-period-btn[data-active='true']:hover {
+  color: #fff;
 }
 
 /* Header user + theme chip */
