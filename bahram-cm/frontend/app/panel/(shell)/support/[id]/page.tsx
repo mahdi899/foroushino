@@ -23,7 +23,7 @@ export default async function PanelTicketDetailPage({ params }: { params: Promis
   const { data: ticket } = await panelStudentFetch<{ data: TicketDetail }>(`/tickets/${id}`);
 
   return (
-    <div className="panel-page-inner panel-page-inner--sm flex flex-col gap-6">
+    <div className="panel-page-inner flex flex-col gap-6">
       <div className="card p-6">
         <h1 className="text-lg font-bold text-text">{ticket.subject}</h1>
       </div>

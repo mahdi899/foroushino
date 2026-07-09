@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bell, ChevronDown, LogOut, Menu, X } from 'lucide-react';
+import { Bell, ChevronDown, Home, LogOut, Menu, X } from 'lucide-react';
 import { PanelThemeToggle } from '@/app/panel/PanelThemeToggle';
 import { PanelProfileAvatar } from '@/components/student-panel/layout/PanelProfileAvatar';
 import { studentDefaultAvatarUrl } from '@/lib/student/avatar';
@@ -36,38 +36,16 @@ export function PanelHeader({
 
   return (
     <header className="panel-header border-b border-border bg-surface/80 py-3 backdrop-blur-md">
-      <div className="panel-header__trail">
-        <button
-          type="button"
-          className="btn-ghost lg:hidden"
-          onClick={onMenuToggle}
-          aria-label={mobileMenuOpen ? 'بستن منو' : 'باز کردن منو'}
-          aria-expanded={mobileMenuOpen}
-        >
-          {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
-        <PanelThemeToggle />
-        <form action={logoutStudentAction}>
-          <button type="submit" className="panel-header__logout" aria-label="خروج از حساب">
-            <LogOut size={16} />
-            <span className="hidden lg:inline">خروج</span>
-          </button>
-        </form>
-      </div>
-
       <div className="panel-header__lead">
         <Link
           href="/panel/notifications"
           onClick={handleNotificationsClick}
-          className="panel-header__icon-btn relative"
+          className="panel-header__icon-btn"
           aria-label="اعلان‌ها"
         >
           <Bell size={18} />
           {unreadCount > 0 ? (
-            <span
-              className="absolute -left-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-[#111] ring-2 ring-surface"
-              style={{ background: 'var(--color-gold)' }}
-            >
+            <span className="panel-header__badge" aria-hidden>
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           ) : null}
@@ -80,7 +58,7 @@ export function PanelHeader({
             gravatarUrl={user.profile?.gravatar_url}
             defaultAvatarUrl={user.profile?.default_avatar_url ?? studentDefaultAvatarUrl(user.id)}
             alt={displayName}
-            className="!h-10 !w-10"
+            className="!h-8 !w-8"
           />
           <span className="panel-header__profile-text">
             <span className="panel-header__profile-name">{displayName}</span>
@@ -90,6 +68,29 @@ export function PanelHeader({
           </span>
           <ChevronDown size={14} className="hidden shrink-0 text-text-muted md:block" aria-hidden />
         </Link>
+      </div>
+
+      <div className="panel-header__trail">
+        <button
+          type="button"
+          className="btn-ghost lg:hidden"
+          onClick={onMenuToggle}
+          aria-label={mobileMenuOpen ? 'بستن منو' : 'باز کردن منو'}
+          aria-expanded={mobileMenuOpen}
+        >
+          {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+        </button>
+        <PanelThemeToggle />
+        <Link href="/" className="panel-header__home" aria-label="بازگشت به صفحه اصلی سایت">
+          <Home size={16} />
+          <span className="hidden sm:inline">سایت</span>
+        </Link>
+        <form action={logoutStudentAction}>
+          <button type="submit" className="panel-header__logout" aria-label="خروج از حساب">
+            <LogOut size={16} />
+            <span className="hidden lg:inline">خروج</span>
+          </button>
+        </form>
       </div>
     </header>
   );

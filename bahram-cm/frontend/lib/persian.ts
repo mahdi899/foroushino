@@ -5,9 +5,14 @@ export function toPersianDigits(input: string | number): string {
   return String(input).replace(/[0-9]/g, (d) => FA_DIGITS[Number(d)]);
 }
 
-/** Format a number with Persian thousands separator (٬) + Persian digits. */
+/** Format a number with Persian digits and Persian comma (،) as thousands separator. */
 export function formatFa(n: number): string {
   return toPersianDigits(n.toLocaleString("en-US")).replace(/,/g, "٬");
+}
+
+/** Panel / price display — Persian digits + «،» (renders reliably in Peyda). */
+export function formatPanelFa(n: number): string {
+  return toPersianDigits(Math.round(n).toLocaleString("en-US")).replace(/,/g, "،");
 }
 
 /** Format an ISO date as a Persian (Jalali) date string, e.g. «۶ فروردین ۱۴۰۵». */

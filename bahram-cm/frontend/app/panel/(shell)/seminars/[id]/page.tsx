@@ -19,7 +19,7 @@ export default async function PanelSeminarDetailPage({ params }: { params: Promi
   const { data: seminar } = await panelStudentFetch<{ data: SeminarDetail }>(`/seminars/${id}`);
 
   return (
-    <div className="panel-page-inner panel-page-inner--md flex flex-col gap-6">
+    <div className="panel-page-inner flex flex-col gap-6">
       <div className="card p-6">
         <h1 className="text-xl font-bold text-text">{seminar.title}</h1>
         {seminar.location ? <p className="mt-2 text-sm text-text-muted">{seminar.location}</p> : null}

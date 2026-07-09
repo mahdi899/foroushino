@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, Receipt } from 'lucide-react';
+import { ChevronDown, CreditCard, Package, Receipt, UserRound } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { PanelTomanAmount } from '@/components/student-panel/ui/PanelTomanAmount';
 import { StatusBadge } from '@/components/student-panel/ui/StatusBadge';
 
 export interface StudentOrder {
@@ -60,6 +61,13 @@ const PAYMENT_RECORD_LABELS: Record<string, string> = {
   canceled: 'لغو‌شده',
 };
 
+function orderStatusVariant(status: string): 'success' | 'warning' | 'danger' | 'neutral' {
+  if (status === 'fulfilled' || status === 'paid') return 'success';
+  if (status === 'pending_payment') return 'warning';
+  if (status === 'failed' || status === 'cancelled') return 'danger';
+  return 'neutral';
+}
+
 function formatDateTime(value: string | null | undefined) {
   if (!value) return '—';
   try {
@@ -69,48 +77,69 @@ function formatDateTime(value: string | null | undefined) {
   }
 }
 
-function formatToman(amount: number) {
-  return `${amount.toLocaleString('fa-IR')} تومان`;
-}
-
 function DetailRow({ label, children, mono }: { label: string; children: React.ReactNode; mono?: boolean }) {
   return (
-    <div className="min-w-0">
-      <dt className="text-[11px] text-text-muted">{label}</dt>
-      <dd className={cn('mt-0.5 text-xs font-medium text-text', mono && 'font-mono')} dir={mono ? 'ltr' : undefined}>
+    <div className="panel-order-detail">
+      <dt className="panel-order-detail__label">{label}</dt>
+      <dd className={cn('panel-order-detail__value', mono && 'font-mono')} dir={mono ? 'ltr' : undefined}>
         {children}
       </dd>
     </div>
   );
 }
 
+function OrderSection({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: typeof Package;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="panel-order-section">
+      <header className="panel-order-section__header">
+        <Icon size={16} strokeWidth={2} aria-hidden />
+        <h3>{title}</h3>
+      </header>
+      {children}
+    </section>
+  );
+}
+
 function OrderDetails({ order }: { order: StudentOrder }) {
   return (
-    <div className="space-y-4 border-t border-border bg-surface-soft/40 px-4 py-4 sm:px-5">
-      <dl className="grid gap-3 sm:grid-cols-2">
-        <DetailRow label="شماره سفارش" mono>
-          {order.order_number}
-        </DetailRow>
-        <DetailRow label="تاریخ ثبت">{formatDateTime(order.created_at)}</DetailRow>
-        <DetailRow label="تاریخ پرداخت">{formatDateTime(order.paid_at)}</DetailRow>
-        <DetailRow label="وضعیت پرداخت">
-          {PAYMENT_STATUS_LABELS[order.payment_status] ?? order.payment_status}
-        </DetailRow>
-        <DetailRow label="مبلغ اصلی">{formatToman(order.amount)}</DetailRow>
-        <DetailRow label="تخفیف">
-          {order.discount_amount > 0 ? formatToman(order.discount_amount) : '—'}
-        </DetailRow>
-        <DetailRow label="مبلغ نهایی">{formatToman(order.final_amount)}</DetailRow>
-        {order.referral_code ? (
-          <DetailRow label="کد معرف" mono>
-            {order.referral_code}
+    <div className="panel-order-details">
+      <OrderSection icon={Package} title="جزئیات سفارش">
+        <dl className="panel-order-details__grid">
+          <DetailRow label="شماره سفارش" mono>
+            {order.order_number}
           </DetailRow>
-        ) : null}
-      </dl>
+          <DetailRow label="تاریخ ثبت">{formatDateTime(order.created_at)}</DetailRow>
+          <DetailRow label="تاریخ پرداخت">{formatDateTime(order.paid_at)}</DetailRow>
+          <DetailRow label="وضعیت پرداخت">
+            {PAYMENT_STATUS_LABELS[order.payment_status] ?? order.payment_status}
+          </DetailRow>
+          <DetailRow label="مبلغ اصلی">
+            <PanelTomanAmount amount={order.amount} size="sm" />
+          </DetailRow>
+          <DetailRow label="تخفیف">
+            {order.discount_amount > 0 ? <PanelTomanAmount amount={order.discount_amount} size="sm" /> : '—'}
+          </DetailRow>
+          <DetailRow label="مبلغ نهایی">
+            <PanelTomanAmount amount={order.final_amount} size="sm" />
+          </DetailRow>
+          {order.referral_code ? (
+            <DetailRow label="کد معرف" mono>
+              {order.referral_code}
+            </DetailRow>
+          ) : null}
+        </dl>
+      </OrderSection>
 
-      <div>
-        <h3 className="mb-2 text-xs font-bold text-text">اطلاعات خریدار</h3>
-        <dl className="grid gap-3 sm:grid-cols-2">
+      <OrderSection icon={UserRound} title="اطلاعات خریدار">
+        <dl className="panel-order-details__grid">
           <DetailRow label="نام">{order.customer_name ?? '—'}</DetailRow>
           <DetailRow label="موبایل" mono>
             {order.customer_phone ?? '—'}
@@ -126,37 +155,35 @@ function OrderDetails({ order }: { order: StudentOrder }) {
             </DetailRow>
           ) : null}
         </dl>
-      </div>
+      </OrderSection>
 
       {order.customer_extra_data && Object.keys(order.customer_extra_data).length > 0 ? (
-        <div>
-          <h3 className="mb-2 text-xs font-bold text-text">اطلاعات تکمیلی</h3>
-          <dl className="grid gap-3 sm:grid-cols-2">
+        <OrderSection icon={Receipt} title="اطلاعات تکمیلی">
+          <dl className="panel-order-details__grid">
             {Object.entries(order.customer_extra_data).map(([key, value]) => (
               <DetailRow key={key} label={key}>
                 {typeof value === 'object' ? JSON.stringify(value) : String(value ?? '—')}
               </DetailRow>
             ))}
           </dl>
-        </div>
+        </OrderSection>
       ) : null}
 
-      <div>
-        <h3 className="mb-2 text-xs font-bold text-text">پرداخت‌ها</h3>
+      <OrderSection icon={CreditCard} title="پرداخت‌ها">
         {order.payments?.length ? (
-          <div className="space-y-2">
+          <div className="panel-order-payments">
             {order.payments.map((payment, index) => (
-              <div key={`${payment.ref_id ?? 'payment'}-${index}`} className="rounded-xl border border-border bg-surface p-3">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                    {payment.gateway_label}
-                  </span>
-                  <span className="rounded-full bg-surface-soft px-2 py-0.5 text-[10px] text-text-muted">
-                    {payment.mode_label}
-                  </span>
-                  <span className="ms-auto text-xs font-bold text-text">{formatToman(payment.amount)}</span>
+              <div key={`${payment.ref_id ?? 'payment'}-${index}`} className="panel-order-payment">
+                <div className="panel-order-payment__head">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="panel-order-payment__chip panel-order-payment__chip--primary">
+                      {payment.gateway_label}
+                    </span>
+                    <span className="panel-order-payment__chip">{payment.mode_label}</span>
+                  </div>
+                  <PanelTomanAmount amount={payment.amount} size="sm" />
                 </div>
-                <dl className="grid gap-2 sm:grid-cols-2">
+                <dl className="panel-order-details__grid panel-order-details__grid--compact">
                   <DetailRow label="وضعیت تراکنش">
                     {PAYMENT_RECORD_LABELS[payment.status] ?? payment.status}
                   </DetailRow>
@@ -176,60 +203,66 @@ function OrderDetails({ order }: { order: StudentOrder }) {
             ))}
           </div>
         ) : (
-          <p className="text-xs text-text-muted">تراکنشی ثبت نشده است.</p>
+          <p className="text-sm text-text-muted">تراکنشی ثبت نشده است.</p>
         )}
-      </div>
+      </OrderSection>
     </div>
   );
 }
 
 export function StudentOrdersList({ orders }: { orders: StudentOrder[] }) {
-  const [openId, setOpenId] = useState<number | null>(null);
+  const [openId, setOpenId] = useState<number | null>(orders[0]?.id ?? null);
 
   if (orders.length === 0) {
     return (
-      <div className="card flex flex-col items-center gap-3 p-10 text-center">
-        <Receipt size={32} className="text-text-muted" />
-        <p className="text-sm text-text-muted">هنوز سفارشی ثبت نکرده‌اید.</p>
+      <div className="panel-empty-state card flex flex-col items-center gap-3 p-10 text-center">
+        <span className="panel-support-empty__icon">
+          <Receipt size={22} aria-hidden />
+        </span>
+        <p className="text-sm font-medium text-text">هنوز سفارشی ثبت نکرده‌اید</p>
+        <p className="max-w-xs text-xs leading-relaxed text-text-muted">پس از خرید دوره، جزئیات سفارش اینجا نمایش داده می‌شود.</p>
       </div>
     );
   }
 
   return (
-    <div className="card divide-y divide-border overflow-hidden">
+    <ul className="panel-order-list">
       {orders.map((order) => {
         const open = openId === order.id;
         return (
-          <div key={order.id}>
+          <li key={order.id} className={cn('panel-order-card card overflow-hidden', open && 'panel-order-card--open')}>
             <button
               type="button"
               onClick={() => setOpenId(open ? null : order.id)}
               aria-expanded={open}
-              className="flex w-full items-center justify-between gap-4 p-4 text-right transition hover:bg-surface-soft"
+              className="panel-order-card__trigger"
             >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-text">{order.product_title ?? 'محصول'}</p>
-                <p className="mt-1 text-xs text-text-muted" dir="ltr">
+              <span className="panel-order-card__icon" aria-hidden>
+                <Package size={18} strokeWidth={2} />
+              </span>
+              <span className="panel-order-card__main">
+                <span className="panel-order-card__title">{order.product_title ?? 'محصول'}</span>
+                <span className="panel-order-card__meta" dir="ltr">
                   {order.order_number}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <div className="text-left">
-                  <p className="text-sm font-bold text-text">{formatToman(order.final_amount)}</p>
-                  <StatusBadge variant={order.status === 'fulfilled' || order.status === 'paid' ? 'success' : 'neutral'}>
-                    {STATUS_LABELS[order.status] ?? order.status}
-                  </StatusBadge>
-                </div>
+                </span>
+              </span>
+              <span className="panel-order-card__trail">
+                <span className="panel-order-card__amount">
+                  <PanelTomanAmount amount={order.final_amount} size="sm" />
+                </span>
+                <StatusBadge variant={orderStatusVariant(order.status)}>
+                  {STATUS_LABELS[order.status] ?? order.status}
+                </StatusBadge>
                 <ChevronDown
-                  className={cn('h-5 w-5 text-text-muted transition-transform', open && 'rotate-180')}
+                  className={cn('panel-order-card__chevron', open && 'panel-order-card__chevron--open')}
                   aria-hidden
                 />
-              </div>
+              </span>
             </button>
             {open ? <OrderDetails order={order} /> : null}
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }

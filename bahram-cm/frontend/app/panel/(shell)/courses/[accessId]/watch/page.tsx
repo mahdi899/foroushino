@@ -32,7 +32,7 @@ export default async function CourseWatchPage({
 
   if (!data.available || !data.license_key || !data.spotplayer_course_id) {
     return (
-      <div className="panel-page-inner panel-page-inner--sm">
+      <div className="panel-page-inner">
         <div className="card p-8 text-center">
           <h1 className="mb-3 text-xl font-bold text-text">{data.product_title ?? 'دوره'}</h1>
           <p className="mb-5 text-sm text-text-muted">{data.message ?? 'دسترسی پخش داخل سایت برای این دوره فعال نیست.'}</p>

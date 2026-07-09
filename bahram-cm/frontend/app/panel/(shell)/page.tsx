@@ -59,18 +59,19 @@ export default async function PanelDashboardPage() {
         <QuickResourceLinks />
       </section>
 
-      <section className="card flex flex-col p-5 text-right">
-        <div className="mb-4 flex shrink-0 items-center justify-between">
-          <h2 className="text-sm font-bold text-text">چک‌لیست شروع</h2>
-          <span className="badge badge-neutral">{progress}%</span>
+      <section className="card flex flex-col gap-5 p-5 text-right sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-bold text-text">چک‌لیست شروع</h2>
+            <p className="mt-1 text-xs text-text-muted">مراحل اولیه برای شروع مسیر یادگیری در آکادمی</p>
+          </div>
+          <span className="badge badge-neutral text-sm">{progress.toLocaleString('fa-IR')}٪</span>
         </div>
         <OnboardingChecklist items={data.checklist} />
-        <div className="mt-4 shrink-0 border-t border-border pt-4">
-          <ProgressBar
-            value={progress}
-            sublabel={`${doneCount.toLocaleString('fa-IR')} از ${data.checklist.length.toLocaleString('fa-IR')} مرحله تکمیل شد`}
-          />
-        </div>
+        <ProgressBar
+          value={progress}
+          sublabel={`${doneCount.toLocaleString('fa-IR')} از ${data.checklist.length.toLocaleString('fa-IR')} مرحله تکمیل شد`}
+        />
       </section>
     </div>
   );

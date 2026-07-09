@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
-import { Headset, Heart, MessageSquare, Clock } from 'lucide-react';
+import { Headset, Heart, HelpCircle, MessageSquare, Clock } from 'lucide-react';
 import { PanelPageHeader } from '@/components/student-panel/layout/PanelPageHeader';
 import { NewTicketForm } from '@/components/student-panel/support/NewTicketForm';
+import { PanelFaqAccordion } from '@/components/student-panel/support/PanelFaqAccordion';
 import { QuickContactCards, TicketHistoryTable } from '@/components/student-panel/support/QuickContactCards';
-import { FaqAccordion } from '@/components/FaqAccordion';
 import { panelStudentFetch } from '@/lib/student/panelServer';
 
 export const metadata: Metadata = { title: 'پشتیبانی | پنل کاربری', robots: { index: false, follow: false } };
@@ -61,52 +61,71 @@ export default async function PanelSupportPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
-          <div className="card p-6">
-            <h2 className="mb-5 flex items-center gap-2 text-sm font-bold text-text">
-              <MessageSquare size={16} className="text-primary" />
-              ایجاد تیکت جدید
-            </h2>
+          <section className="panel-support-card card p-6">
+            <header className="panel-support-card__header">
+              <span className="panel-support-card__icon">
+                <MessageSquare size={18} strokeWidth={2} />
+              </span>
+              <div>
+                <h2 className="panel-support-card__title">ایجاد تیکت جدید</h2>
+                <p className="panel-support-card__desc">موضوع را کوتاه بنویسید تا سریع‌تر به دست تیم برسد.</p>
+              </div>
+            </header>
             <NewTicketForm />
-          </div>
+          </section>
 
-          <div className="card overflow-hidden">
-            <div className="border-b border-border/40 p-6 pb-4">
-              <h2 className="flex items-center gap-2 text-sm font-bold text-text">
-                <Clock size={16} className="text-primary" />
-                تیکت‌های من
-              </h2>
-            </div>
+          <section className="panel-support-card card overflow-hidden">
+            <header className="panel-support-card__header panel-support-card__header--soft">
+              <span className="panel-support-card__icon">
+                <Clock size={18} strokeWidth={2} />
+              </span>
+              <div>
+                <h2 className="panel-support-card__title">تیکت‌های من</h2>
+                <p className="panel-support-card__desc">
+                  {tickets.length > 0
+                    ? `${tickets.length.toLocaleString('fa-IR')} تیکت ثبت‌شده`
+                    : 'تاریخچه گفتگوهای پشتیبانی شما'}
+                </p>
+              </div>
+            </header>
             <TicketHistoryTable
               tickets={tickets}
               formatDate={formatDate}
               statusLabels={STATUS_LABELS}
               statusBadges={STATUS_BADGES}
             />
-          </div>
+          </section>
         </div>
 
         <div className="flex flex-col gap-6">
-          <div className="card p-6">
-            <h2 className="mb-4 flex items-center gap-2 text-sm font-bold text-text">
-              <Headset size={16} className="text-primary" />
-              سوالات متداول
-            </h2>
-            <FaqAccordion items={FAQS} compact />
-          </div>
-
-          <div className="card relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 to-accent/5 p-6">
-            <div className="relative z-10 mb-4 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Heart size={18} className="fill-current" />
+          <section className="panel-support-card card p-6">
+            <header className="panel-support-card__header panel-support-card__header--inline">
+              <span className="panel-support-card__icon">
+                <HelpCircle size={18} strokeWidth={2} />
+              </span>
+              <div>
+                <h2 className="panel-support-card__title">سوالات متداول</h2>
+                <p className="panel-support-card__desc">پاسخ سریع قبل از ثبت تیکت</p>
               </div>
-              <h3 className="text-xs font-bold text-text">خیالت راحت، ما همراهت هستیم</h3>
+            </header>
+            <PanelFaqAccordion items={FAQS} />
+          </section>
+
+          <section className="panel-support-reassurance card relative overflow-hidden p-6">
+            <div className="panel-support-reassurance__glow" aria-hidden />
+            <div className="relative z-10 flex items-start gap-3">
+              <span className="panel-support-reassurance__icon">
+                <Heart size={20} className="fill-current" aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <h3 className="panel-support-reassurance__title">خیالت راحت، ما همراهت هستیم</h3>
+                <p className="panel-support-reassurance__text">
+                  تیم پشتیبانی پنل آکادمی همه‌روزه آماده پاسخگویی به سوالات و رفع مشکلات شماست.
+                </p>
+                <p className="panel-support-reassurance__tagline">رضایت شما، اولویت ماست.</p>
+              </div>
             </div>
-            <p className="relative z-10 text-[11px] leading-relaxed text-text-muted">
-              تیم پشتیبانی پنل آکادمی همه‌روزه آماده پاسخگویی به سوالات و رفع مشکلات شماست.
-            </p>
-            <span className="relative z-10 mt-4 inline-block text-xs font-bold text-primary">رضایت شما، اولویت ماست.</span>
-            <div className="absolute -bottom-10 -left-10 h-28 w-28 rounded-full bg-primary/10 blur-2xl" />
-          </div>
+          </section>
         </div>
       </div>
     </div>

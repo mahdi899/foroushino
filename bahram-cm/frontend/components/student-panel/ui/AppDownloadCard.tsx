@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Download, Smartphone, X } from 'lucide-react';
+import { Download, Smartphone, Sparkles, X } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -51,19 +51,21 @@ export function AppDownloadCard({ compact = false }: { compact?: boolean }) {
   if (installed) {
     if (compact) {
       return (
-        <div
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"
-          title="اپلیکیشن نصب شده است"
-        >
-          <Smartphone size={18} />
+        <div className="panel-pwa-card panel-pwa-card--compact" title="اپلیکیشن نصب شده است">
+          <Smartphone size={18} aria-hidden />
         </div>
       );
     }
 
     return (
-      <div className="rounded-2xl border border-border/60 bg-surface-soft p-4 text-center">
-        <p className="text-xs font-semibold text-primary">اپلیکیشن نصب شده است</p>
-        <p className="mt-1 text-[10px] text-text-muted">پنل آکادمی روی دستگاه شما فعال است.</p>
+      <div className="panel-pwa-card panel-pwa-card--installed">
+        <span className="panel-pwa-card__icon panel-pwa-card__icon--success" aria-hidden>
+          <Smartphone size={20} />
+        </span>
+        <div>
+          <p className="panel-pwa-card__title">اپ نصب شده است</p>
+          <p className="panel-pwa-card__desc">پنل آکادمی روی دستگاه شما فعال است.</p>
+        </div>
       </div>
     );
   }
@@ -73,49 +75,55 @@ export function AppDownloadCard({ compact = false }: { compact?: boolean }) {
       <button
         type="button"
         onClick={() => void handleInstall()}
-        className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-surface-soft text-primary transition hover:border-primary/30 hover:bg-primary/10"
+        className="panel-pwa-card panel-pwa-card--compact panel-pwa-card--action"
         title="نصب اپلیکیشن پنل"
         aria-label="نصب اپلیکیشن پنل"
       >
-        <Smartphone size={18} />
+        <Smartphone size={18} aria-hidden />
       </button>
     );
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/10 to-accent/5 p-4">
-      <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-soft text-primary">
+    <div className="panel-pwa-card">
+      <div className="panel-pwa-card__glow" aria-hidden />
+      <div className="panel-pwa-card__head">
+        <span className="panel-pwa-card__icon" aria-hidden>
           <Smartphone size={20} />
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <span className="text-xs font-bold text-primary">نصب اپلیکیشن پنل</span>
-          <span className="text-[10px] leading-relaxed text-text-muted">
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="panel-pwa-card__title">نصب اپلیکیشن پنل</p>
+          <p className="panel-pwa-card__desc">
             پنل را مثل اپ روی گوشی نصب کن و سریع‌تر به دوره‌ها و اعلان‌ها دسترسی داشته باش.
-          </span>
-          {(installEvent || isIos) && (
-            <button
-              type="button"
-              onClick={() => void handleInstall()}
-              className="mt-1 flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-primary/15 py-2.5 text-xs font-semibold text-primary transition-all duration-300 hover:bg-primary/25 active:scale-[0.98]"
-            >
-              <Download size={14} />
-              {isIos && !installEvent ? 'راهنمای نصب iOS' : 'نصب روی گوشی'}
-            </button>
-          )}
-          {showIosHint ? (
-            <div className="rounded-xl border border-border/60 bg-surface/80 p-2.5 text-[10px] leading-relaxed text-text-muted">
-              <div className="mb-1 flex items-center justify-between">
-                <span className="font-semibold text-text">نصب در Safari</span>
-                <button type="button" onClick={() => setShowIosHint(false)} aria-label="بستن">
-                  <X size={12} />
-                </button>
-              </div>
-              دکمه Share را بزنید و گزینه «Add to Home Screen» را انتخاب کنید.
-            </div>
-          ) : null}
+          </p>
         </div>
       </div>
+
+      {(installEvent || isIos) && (
+        <button type="button" onClick={() => void handleInstall()} className="panel-pwa-card__cta">
+          <Download size={15} strokeWidth={2} aria-hidden />
+          {isIos && !installEvent ? 'راهنمای نصب iOS' : 'نصب روی گوشی'}
+        </button>
+      )}
+
+      {!installEvent && !isIos ? (
+        <div className="panel-pwa-card__hint">
+          <Sparkles size={12} aria-hidden />
+          <span>از مرورگر موبایل یا Chrome دسکتاپ قابل نصب است</span>
+        </div>
+      ) : null}
+
+      {showIosHint ? (
+        <div className="panel-pwa-card__ios">
+          <div className="panel-pwa-card__ios-head">
+            <span className="font-semibold text-text">نصب در Safari</span>
+            <button type="button" onClick={() => setShowIosHint(false)} aria-label="بستن">
+              <X size={14} />
+            </button>
+          </div>
+          <p>دکمه Share را بزنید و گزینه «Add to Home Screen» را انتخاب کنید.</p>
+        </div>
+      ) : null}
     </div>
   );
 }

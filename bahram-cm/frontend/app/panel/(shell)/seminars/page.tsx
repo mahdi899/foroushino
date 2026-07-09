@@ -34,7 +34,7 @@ export default async function PanelSeminarsPage() {
       />
 
       {seminars.length === 0 ? (
-        <div className="card flex flex-col items-center gap-3 p-10 text-center">
+        <div className="panel-empty-state card flex flex-col items-center gap-3 p-10 text-center">
           <CalendarDays size={32} className="text-text-muted" />
           <p className="text-sm text-text-muted">هنوز در سمیناری ثبت‌نام نکرده‌اید.</p>
         </div>

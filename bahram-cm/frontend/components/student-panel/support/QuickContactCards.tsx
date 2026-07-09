@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { MessageCircle, Send } from 'lucide-react';
+import { ChevronLeft, Inbox, MessageCircle, Send } from 'lucide-react';
 
 const CHANNELS = [
   {
@@ -79,76 +79,40 @@ export function TicketHistoryTable({
 }) {
   if (tickets.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 p-10 text-center">
-        <p className="text-xs text-text-muted">هنوز تیکتی ثبت نکرده‌اید.</p>
+      <div className="panel-empty-state flex flex-col items-center gap-3 px-6 py-10 text-center">
+        <span className="panel-support-empty__icon">
+          <Inbox size={22} aria-hidden />
+        </span>
+        <p className="text-sm font-medium text-text">هنوز تیکتی ثبت نکرده‌اید</p>
+        <p className="max-w-xs text-xs leading-relaxed text-text-muted">
+          فرم بالا را پر کنید تا تیم پشتیبانی در اسرع وقت پاسخ دهد.
+        </p>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="hidden overflow-x-auto lg:block">
-        <table className="panel-table">
-          <thead>
-            <tr>
-              <th>شناسه تیکت</th>
-              <th>موضوع</th>
-              <th>آخرین بروزرسانی</th>
-              <th>وضعیت</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tickets.map((ticket) => (
-              <tr key={ticket.id} className="group cursor-pointer">
-                <td className="text-xs font-semibold text-text-muted">
-                  <Link href={`/panel/support/${ticket.id}`} className="block">
-                    #TK-{ticket.id}
-                  </Link>
-                </td>
-                <td className="text-xs font-bold text-text transition-colors group-hover:text-primary">
-                  <Link href={`/panel/support/${ticket.id}`} className="block">
-                    {ticket.subject}
-                  </Link>
-                </td>
-                <td className="text-xs text-text-muted">
-                  <Link href={`/panel/support/${ticket.id}`} className="block">
-                    {formatDate(ticket.created_at)}
-                  </Link>
-                </td>
-                <td>
-                  <Link href={`/panel/support/${ticket.id}`} className="block">
-                    <span className={`badge ${statusBadges[ticket.status] ?? 'badge-neutral'}`}>
-                      {statusLabels[ticket.status] ?? ticket.status}
-                    </span>
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="space-y-2 p-4 lg:hidden">
-        {tickets.map((ticket) => (
-          <Link
-            key={ticket.id}
-            href={`/panel/support/${ticket.id}`}
-            className="block rounded-xl border border-border bg-surface-soft p-3 transition-all duration-300 hover:border-primary/30"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-text">{ticket.subject}</p>
-                <p className="mt-1 text-xs text-text-muted">
-                  #TK-{ticket.id} · {formatDate(ticket.created_at)}
-                </p>
-              </div>
-              <span className={`badge shrink-0 ${statusBadges[ticket.status] ?? 'badge-neutral'}`}>
+    <ul className="panel-ticket-list">
+      {tickets.map((ticket) => (
+        <li key={ticket.id}>
+          <Link href={`/panel/support/${ticket.id}`} className="panel-ticket-row">
+            <div className="panel-ticket-row__main">
+              <p className="panel-ticket-row__subject">{ticket.subject}</p>
+              <p className="panel-ticket-row__meta">
+                <span>#TK-{ticket.id}</span>
+                <span aria-hidden>·</span>
+                <span>{formatDate(ticket.created_at)}</span>
+              </p>
+            </div>
+            <div className="panel-ticket-row__trail">
+              <span className={`badge ${statusBadges[ticket.status] ?? 'badge-neutral'}`}>
                 {statusLabels[ticket.status] ?? ticket.status}
               </span>
+              <ChevronLeft size={14} className="text-text-muted" aria-hidden />
             </div>
           </Link>
-        ))}
-      </div>
-    </>
+        </li>
+      ))}
+    </ul>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Upload } from 'lucide-react';
+import { Camera, Loader2 } from 'lucide-react';
 import { PanelProfileAvatar } from '@/components/student-panel/layout/PanelProfileAvatar';
 import { studentDefaultAvatarUrl } from '@/lib/student/avatar';
 import { uploadProfileAvatarAction } from '@/lib/student/panelActions';
@@ -14,7 +14,8 @@ export function ProfileAvatarField({ user }: { user: StudentUser }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const fullName = [user.profile?.first_name, user.profile?.last_name].filter(Boolean).join(' ').trim();
-  const displayName = fullName || user.name;
+  const displayName = fullName || user.name || 'دانشجو';
+  const hasCustomAvatar = Boolean(user.profile?.avatar_url);
 
   async function onPick(file: File | undefined) {
     if (!file) return;
@@ -33,34 +34,49 @@ export function ProfileAvatarField({ user }: { user: StudentUser }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-      <PanelProfileAvatar
-        avatar={user.profile?.avatar}
-        avatarUrl={user.profile?.avatar_url}
-        gravatarUrl={user.profile?.gravatar_url}
-        defaultAvatarUrl={user.profile?.default_avatar_url ?? studentDefaultAvatarUrl(user.id, 128)}
-        alt={displayName}
-        className="h-16 w-16"
+    <div className="panel-profile-avatar">
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+        onChange={(e) => void onPick(e.target.files?.[0])}
       />
-      <div className="min-w-0">
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          className="hidden"
-          onChange={(e) => void onPick(e.target.files?.[0])}
+
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => inputRef.current?.click()}
+        className="panel-profile-avatar__trigger group"
+        aria-label={hasCustomAvatar ? 'تغییر تصویر پروفایل' : 'انتخاب تصویر پروفایل'}
+      >
+        <PanelProfileAvatar
+          avatar={user.profile?.avatar}
+          avatarUrl={user.profile?.avatar_url}
+          gravatarUrl={user.profile?.gravatar_url}
+          defaultAvatarUrl={user.profile?.default_avatar_url ?? studentDefaultAvatarUrl(user.id, 192)}
+          alt={displayName}
+          className="panel-profile-avatar__image !h-28 !w-28 !rounded-2xl !ring-0"
         />
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => inputRef.current?.click()}
-          className="btn btn-secondary px-3 py-1.5 text-caption"
-        >
-          {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-          {user.profile?.avatar_url ? 'تغییر تصویر پروفایل' : 'انتخاب تصویر پروفایل'}
-        </button>
-        <p className="mt-1.5 text-xs text-text-muted">JPG، PNG یا WebP — حداکثر ۲ مگابایت</p>
-        {error ? <p className="mt-1 text-xs text-error">{error}</p> : null}
+        <span className="panel-profile-avatar__overlay">
+          {pending ? (
+            <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
+          ) : (
+            <Camera className="h-6 w-6" aria-hidden />
+          )}
+        </span>
+      </button>
+
+      <div className="panel-profile-avatar__copy">
+        <p className="panel-profile-avatar__name">{displayName}</p>
+        <p className="panel-profile-avatar__mobile" dir="ltr">
+          {user.mobile}
+        </p>
+        <p className="panel-profile-avatar__hint">
+          {hasCustomAvatar ? 'برای تغییر، روی تصویر بزنید' : 'برای آپلود، روی تصویر بزنید'}
+        </p>
+        <p className="panel-profile-avatar__formats">JPG، PNG یا WebP — حداکثر ۲ مگابایت</p>
+        {error ? <p className="panel-profile-avatar__error">{error}</p> : null}
       </div>
     </div>
   );

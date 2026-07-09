@@ -5,6 +5,7 @@ import {
   type StudentCourseAccess,
 } from '@/components/student-panel/courses/CourseAccessCard';
 import { CourseSideModules } from '@/components/student-panel/courses/CourseSideModules';
+import { PanelPageHeader } from '@/components/student-panel/layout/PanelPageHeader';
 import { panelStudentFetch } from '@/lib/student/panelServer';
 
 export const dynamic = 'force-dynamic';
@@ -33,9 +34,13 @@ export default async function PanelCoursesPage() {
 
   if (courses.length === 0) {
     return (
-      <div className="panel-page-inner panel-page-inner--md flex flex-col gap-6">
-        <h1 className="text-xl font-bold text-text">دوره‌های من</h1>
-        <div className="card flex flex-col items-center gap-4 p-12 text-center">
+      <div className="panel-page-inner flex flex-col gap-6">
+        <PanelPageHeader
+          icon={BookOpen}
+          title="دوره‌های من"
+          description="دوره‌های فعال و محتوای آموزشی اختصاصی شما"
+        />
+        <div className="panel-empty-state card flex flex-col items-center gap-4 p-12 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <BookOpen size={32} />
           </div>
@@ -50,12 +55,11 @@ export default async function PanelCoursesPage() {
 
   return (
     <div className="panel-page-inner flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-bold text-text">دوره‌های من</h1>
-        <p className="mt-1 text-sm text-text-muted">
-          {courses.length.toLocaleString('fa-IR')} دوره با دسترسی فعال
-        </p>
-      </div>
+      <PanelPageHeader
+        icon={BookOpen}
+        title="دوره‌های من"
+        description={`${courses.length.toLocaleString('fa-IR')} دوره با دسترسی فعال`}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {renderCourseCards(courses)}

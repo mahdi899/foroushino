@@ -3,7 +3,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import type { StudentUser } from '@/lib/student/session';
 import { PanelThemeProvider } from '@/app/panel/PanelThemeContext';
-import { cn } from '@/lib/cn';
 import { PanelBottomNav } from './PanelBottomNav';
 import { PanelHeader } from './PanelHeader';
 import { PanelPwaRegistrar } from './PanelPwaRegistrar';
@@ -93,12 +92,7 @@ export function PanelShell({
           onToggleCollapse={toggleSidebarCollapsed}
         />
 
-        <div
-          className={cn(
-            'panel-main flex min-w-0 w-full flex-col',
-            sidebarCollapsed ? 'lg:mr-[4.5rem]' : 'lg:mr-64',
-          )}
-        >
+        <div className="panel-main flex min-w-0 flex-col">
           <PanelHeader
             user={user}
             unreadCount={unreadCount}

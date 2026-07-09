@@ -34,35 +34,24 @@ export function SiteFooter() {
               className="mt-5 flex flex-wrap items-center gap-3 border-t border-bone/10 pt-5 md:mt-8 md:gap-4 md:pt-8"
               aria-label="نشان‌های اعتماد"
             >
-              {site.footer.trustBadges.map((badge) => {
-                const src = TRUST_BADGE_MEDIA[badge.id];
-                const image = (
+              {site.footer.trustBadges.map((badge) => (
+                <a
+                  key={badge.id}
+                  href={badge.href}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="shrink-0"
+                  aria-label={badge.alt}
+                >
                   <SiteImage
-                    src={src}
+                    src={TRUST_BADGE_MEDIA[badge.id]}
                     alt={badge.alt}
                     width={72}
                     height={72}
                     className="h-[4.25rem] w-[4.25rem] rounded-xl border border-bone/10 bg-bone/5 object-contain p-2 transition-colors hover:border-bone/20 md:h-[4.75rem] md:w-[4.75rem]"
                   />
-                );
-
-                return badge.href ? (
-                  <a
-                    key={badge.id}
-                    href={badge.href}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="shrink-0"
-                    aria-label={badge.alt}
-                  >
-                    {image}
-                  </a>
-                ) : (
-                  <span key={badge.id} className="shrink-0">
-                    {image}
-                  </span>
-                );
-              })}
+                </a>
+              ))}
             </div>
           </div>
 

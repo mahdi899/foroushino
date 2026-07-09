@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { CheckCircle2, ChevronLeft, Clock, CreditCard, Gift, Users, Wallet } from 'lucide-react';
+import { CheckCircle2, Clock, CreditCard, Gift, LifeBuoy, Users, Wallet } from 'lucide-react';
 import { CashbackPayoutForm } from '@/components/student-panel/referrals/CashbackPayoutForm';
+import { ReferralCashbackProductCard } from '@/components/student-panel/referrals/ReferralCashbackProductCard';
 import { ReferralHeroBanner } from '@/components/student-panel/referrals/ReferralHeroBanner';
+import { PanelTomanAmount } from '@/components/student-panel/ui/PanelTomanAmount';
 import { StatCard } from '@/components/student-panel/ui/StatCard';
 import { StatusBadge } from '@/components/student-panel/ui/StatusBadge';
 import { panelStudentFetch } from '@/lib/student/panelServer';
@@ -57,25 +59,29 @@ export default async function PanelReferralsPage() {
         <StatCard
           variant="gold"
           icon={Wallet}
-          value={`${referral.summary.payable_amount.toLocaleString('fa-IR')} ت`}
+          value={<PanelTomanAmount amount={referral.summary.payable_amount} />}
           label="موجودی قابل برداشت"
         />
         <StatCard
           variant="blue"
           icon={Clock}
-          value={`${referral.summary.pending_amount.toLocaleString('fa-IR')} ت`}
+          value={<PanelTomanAmount amount={referral.summary.pending_amount} />}
           label="در انتظار واریز"
         />
         <StatCard
           variant="green"
           icon={CheckCircle2}
-          value={`${referral.summary.paid_amount.toLocaleString('fa-IR')} ت`}
+          value={<PanelTomanAmount amount={referral.summary.paid_amount} />}
           label="پرداخت‌شده"
         />
         <StatCard
           variant="teal"
           icon={Users}
-          value={referral.summary.successful_purchases.toLocaleString('fa-IR')}
+          value={
+            <span className="text-xl font-bold text-text sm:text-2xl">
+              {referral.summary.successful_purchases.toLocaleString('fa-IR')}
+            </span>
+          }
           label="دعوت موفق"
         />
       </div>
@@ -160,7 +166,7 @@ export default async function PanelReferralsPage() {
               </ul>
             </div>
           ) : (
-            <div className="card flex flex-col items-center gap-3 p-8 text-center">
+            <div className="panel-empty-state card flex flex-col items-center gap-3 p-8 text-center">
               <Gift size={30} style={{ color: 'var(--color-gold)' }} />
               <p className="text-sm text-text-muted">هنوز دعوت‌شده‌ای ثبت نشده است.</p>
             </div>
@@ -173,10 +179,12 @@ export default async function PanelReferralsPage() {
             {referral.cashback_products?.length ? (
               <ul className="space-y-3">
                 {referral.cashback_products.map((product) => (
-                  <li key={product.slug} className="rounded-xl bg-surface-soft px-3 py-2.5">
-                    <p className="text-xs font-semibold text-text">{product.title}</p>
-                    <p className="mt-1 text-[11px] text-text-muted">{product.label}</p>
-                  </li>
+                  <ReferralCashbackProductCard
+                    key={product.slug}
+                    title={product.title}
+                    type={product.type}
+                    value={product.value}
+                  />
                 ))}
               </ul>
             ) : (
@@ -210,9 +218,9 @@ export default async function PanelReferralsPage() {
                 </li>
               ))}
             </ol>
-            <Link href="/panel/support" className="mt-4 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+            <Link href="/panel/support" className="panel-cta-btn mt-4">
+              <LifeBuoy size={15} strokeWidth={2} />
               سوالی دارید؟
-              <ChevronLeft size={14} />
             </Link>
           </div>
         </aside>
