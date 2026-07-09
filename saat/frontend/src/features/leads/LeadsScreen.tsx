@@ -9,17 +9,18 @@ import { LeadCard } from '@/components/domain/LeadCard'
 import { LeadQuickViewSheet } from '@/components/domain/LeadQuickViewSheet'
 import { EmptyState } from '@/components/ui/States'
 import { isToday, isOverdue, toFa } from '@/lib/format'
-import { canCallLead } from '@/lib/leadUtils'
+import { canCallLead, filterLeadsForAgent } from '@/lib/leadUtils'
 import { haptic } from '@/lib/telegram'
 import type { Lead } from '@/types'
+import { DataGate } from '@/components/pwa/DataGate'
 
 type Filter = 'all' | 'hot' | 'warm' | 'cold' | 'today' | 'overdue'
 
 const filters: { id: Filter; label: string; icon?: typeof Flame; tone: ChipTone }[] = [
   { id: 'all', label: 'همه', tone: 'neutral' },
-  { id: 'hot', label: 'داغ', icon: Flame, tone: 'hot' },
-  { id: 'warm', label: 'گرم', icon: Sun, tone: 'warm' },
-  { id: 'cold', label: 'سرد', icon: Snowflake, tone: 'cold' },
+  { id: 'hot', label: 'خیلی جدی', icon: Flame, tone: 'hot' },
+  { id: 'warm', label: 'علاقه‌مند', icon: Sun, tone: 'warm' },
+  { id: 'cold', label: 'کم‌علاقه', icon: Snowflake, tone: 'cold' },
   { id: 'today', label: 'پیگیری امروز', icon: CalendarClock, tone: 'primary' },
   { id: 'overdue', label: 'عقب‌افتاده', icon: AlertTriangle, tone: 'error' },
 ]
@@ -27,9 +28,8 @@ const filters: { id: Filter; label: string; icon?: typeof Flame; tone: ChipTone 
 export function LeadsScreen() {
   const navigate = useNavigate()
   const leads = useStore((s) => s.leads)
-  const agents = useStore((s) => s.agents)
   const currentAgentId = useStore((s) => s.currentAgentId)
-  const startCall = useStore((s) => s.startCall)
+  const openCallMethodSheet = useStore((s) => s.openCallMethodSheet)
   const [searchParams] = useSearchParams()
   const tempParam = searchParams.get('temp')
   const initialFilter: Filter =
@@ -37,14 +37,19 @@ export function LeadsScreen() {
   const [filter, setFilter] = useState<Filter>(initialFilter)
   const [quickViewLead, setQuickViewLead] = useState<Lead | null>(null)
 
-  const lockedCount = useMemo(
-    () => leads.filter((l) => l.lockedBy === currentAgentId).length,
+  const visibleLeads = useMemo(
+    () => filterLeadsForAgent(leads, currentAgentId),
     [leads, currentAgentId],
   )
-  const returnedCount = useMemo(() => leads.filter((l) => l.returnedToPool).length, [leads])
+
+  const lockedCount = useMemo(
+    () => visibleLeads.filter((l) => l.lockedBy === currentAgentId).length,
+    [visibleLeads, currentAgentId],
+  )
+  const returnedCount = useMemo(() => visibleLeads.filter((l) => l.returnedToPool).length, [visibleLeads])
 
   const filtered = useMemo(() => {
-    return leads.filter((l) => {
+    return visibleLeads.filter((l) => {
       switch (filter) {
         case 'hot':
         case 'warm':
@@ -60,31 +65,25 @@ export function LeadsScreen() {
           return true
       }
     })
-  }, [leads, filter])
+  }, [visibleLeads, filter])
 
   const call = (lead: Lead) => {
     if (!canCallLead(lead, currentAgentId)) return
     haptic('medium')
-    startCall(lead.id)
-    navigate(`/dialer/${lead.id}`)
-  }
-
-  const agentName = (id: string | null) => {
-    const a = agents.find((x) => x.id === id)
-    return a ? `${a.firstName} ${a.lastName}` : undefined
+    openCallMethodSheet(lead)
   }
 
   return (
     <Page>
       <ScreenHeader
         sticky
+        subtitleInline
         title="سرنخ‌های من"
-        subtitle={`${toFa(leads.length)} سرنخ فعال`}
+        subtitle={`${toFa(visibleLeads.length)} سرنخ فعال`}
         icon={Users}
         iconTone="secondary"
-        className="pb-2"
       >
-        <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto overflow-y-visible px-1 py-1.5 no-scrollbar">
+        <div className="-mx-1 flex gap-2 overflow-x-auto overflow-y-visible px-1 py-1 no-scrollbar">
           {filters.map((f) => {
             const Icon = f.icon
             return (
@@ -102,22 +101,22 @@ export function LeadsScreen() {
         </div>
 
         {(lockedCount > 0 || returnedCount > 0) && (
-          <div className="mt-2.5 flex gap-2">
+          <div className="mt-2 flex gap-2">
             {lockedCount > 0 && (
               <button
                 onClick={() => navigate('/leads/locked')}
-                className="flex flex-1 items-center gap-1.5 rounded-xl bg-error-50 px-3 py-2 text-[11px] font-extrabold text-error-600"
+                className="glass-inset flex flex-1 items-center gap-1.5 rounded-2xl border-error-200/60 px-3 py-2.5 text-[12px] font-semibold text-error-600 dark:border-error-500/20"
               >
-                <Lock size={13} />
+                <Lock size={14} strokeWidth={2.25} />
                 {toFa(lockedCount)} لید قفل‌شده من
               </button>
             )}
             {returnedCount > 0 && (
               <button
                 onClick={() => navigate('/leads/returned')}
-                className="flex flex-1 items-center gap-1.5 rounded-xl bg-neutral-100 px-3 py-2 text-[11px] font-extrabold text-neutral-600"
+                className="glass-inset flex flex-1 items-center gap-1.5 rounded-2xl px-3 py-2.5 text-[12px] font-semibold text-[#8E8E93] dark:text-[#98989D]"
               >
-                <Undo2 size={13} />
+                <Undo2 size={14} strokeWidth={2.25} />
                 {toFa(returnedCount)} برگشت‌خورده
               </button>
             )}
@@ -125,7 +124,8 @@ export function LeadsScreen() {
         )}
       </ScreenHeader>
 
-      <div className="space-y-3 px-4 pt-3">
+      <DataGate mode="placeholder">
+      <div className="space-y-2 px-4 pt-2 pb-1">
         {filtered.length === 0 ? (
           <EmptyState
             title="سرنخی پیدا نشد"
@@ -140,13 +140,11 @@ export function LeadsScreen() {
               onClick={() => navigate(`/leads/${lead.id}`)}
               onCall={() => call(lead)}
               onQuickView={() => setQuickViewLead(lead)}
-              lockedByName={
-                lead.lockedBy && lead.lockedBy !== currentAgentId ? agentName(lead.lockedBy) : undefined
-              }
             />
           ))
         )}
       </div>
+      </DataGate>
 
       <LeadQuickViewSheet
         lead={quickViewLead}

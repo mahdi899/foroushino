@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Flame,
   Target,
@@ -18,6 +19,8 @@ import {
   BadgeDollarSign,
   ChevronLeft,
   Gauge,
+  BadgeCheck,
+  type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
@@ -28,11 +31,38 @@ import { AchievementBadge, AchievementBadgeIcon } from '@/components/domain/Achi
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { achievements } from '@/data/mock'
+import { roleLabels } from '@/data/labels'
 import { overdueFollowups } from '@/lib/leadUtils'
 import { formatDuration, formatMoney, toFa } from '@/lib/format'
 import { cn } from '@/lib/cn'
+import { DataGate } from '@/components/pwa/DataGate'
 import { haptic } from '@/lib/telegram'
 import type { Agent, Achievement } from '@/types'
+
+const TG = 'text-[#3390EC] dark:text-[#8774E1]'
+const OK = 'text-emerald-600 dark:text-emerald-400'
+const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
+
+const sectionStagger = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.07, delayChildren: 0.05 } },
+}
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: spring },
+}
+
+function SectionTitle({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
+  return (
+    <h2 className="mb-3 flex items-center gap-2 text-[15px] font-bold text-text">
+      <span className="icon-3d icon-3d-primary flex h-7 w-7 items-center justify-center">
+        <Icon size={14} className="text-white" strokeWidth={2.35} />
+      </span>
+      {children}
+    </h2>
+  )
+}
 
 export function PerformanceScreen() {
   const navigate = useNavigate()
@@ -127,6 +157,7 @@ export function PerformanceScreen() {
   const remaining = Math.max(0, me.callGoal - me.callsToday)
   const goalComplete = remaining === 0 && me.callGoal > 0
   const barPct = Math.min(goalPct, 100)
+  const NextIcon = nextAction.icon
 
   return (
     <Page>
@@ -137,162 +168,216 @@ export function PerformanceScreen() {
         iconTone="warning"
       />
 
-      <div className="flex flex-col gap-6 px-4">
-        <div
-          className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-primary-800 via-primary-600 to-primary-400 p-5 text-white shadow-float"
+      <DataGate mode="placeholder">
+      <motion.div variants={sectionStagger} initial="hidden" animate="show" className="flex flex-col gap-6 px-4 pb-6">
+        <motion.button
+          type="button"
+          variants={fadeUp}
+          whileTap={{ scale: 0.985 }}
+          onClick={() => {
+            haptic('light')
+            navigate('/profile')
+          }}
+          className={cn(
+            'glass-card relative flex w-full items-center gap-3 overflow-hidden rounded-[22px]',
+            'border border-white/60 p-3.5 text-right dark:border-white/10',
+          )}
         >
           <div className="pointer-events-none absolute inset-0">
-            <div className="absolute -left-16 -top-16 h-52 w-52 rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute -bottom-20 -right-10 h-48 w-48 rounded-full bg-primary-300/20 blur-3xl" />
-            <div
-              className="absolute inset-0 opacity-[0.06]"
-              style={{
-                backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)',
-                backgroundSize: '18px 18px',
-              }}
+            <div className="absolute -left-6 top-0 h-20 w-20 rounded-full bg-[#3390EC]/12 blur-2xl" />
+            <div className="absolute -right-4 bottom-0 h-16 w-16 rounded-full bg-[#8774E1]/10 blur-2xl" />
+            <div className="absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent dark:via-white/12" />
+          </div>
+
+          <Avatar
+            id={me.id}
+            first={me.firstName}
+            last={me.lastName}
+            src={me.avatar}
+            size={48}
+            ring
+          />
+
+          <div className="relative min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <p className="truncate text-[15px] font-bold text-text">
+                {me.firstName} {me.lastName}
+              </p>
+              <BadgeCheck size={15} className="shrink-0 text-primary-500" strokeWidth={2.5} />
+            </div>
+            <p className="mt-0.5 truncate text-[12px] font-medium text-text-muted">
+              {roleLabels[me.role]} · سطح {toFa(me.level)}
+            </p>
+          </div>
+
+          <span className="relative flex shrink-0 flex-col items-center gap-0.5 text-[10px] font-semibold text-text-soft">
+            <ChevronLeft size={16} className="opacity-50" strokeWidth={2.25} />
+            پروفایل
+          </span>
+        </motion.button>
+
+        <motion.div
+          variants={fadeUp}
+          className={cn(
+            'glass-hero relative overflow-hidden rounded-[26px] p-5',
+            goalComplete && 'glass-hero-success',
+          )}
+        >
+          <div className="pointer-events-none absolute inset-0">
+            <motion.div
+              animate={{ scale: [1, 1.08, 1], opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+              className={cn(
+                'absolute -left-14 -top-16 h-48 w-48 rounded-full blur-3xl',
+                goalComplete ? 'bg-emerald-400/24' : 'bg-[#3390EC]/20',
+              )}
             />
-            <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+            <motion.div
+              animate={{ scale: [1, 1.06, 1], opacity: [0.6, 0.9, 0.6] }}
+              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
+              className="absolute -bottom-16 -right-12 h-44 w-44 rounded-full bg-[#8774E1]/16 blur-3xl"
+            />
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/75 to-transparent dark:via-white/12" />
           </div>
 
           <div className="relative flex items-center gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-bold backdrop-blur-sm">
-                  <Target size={12} className="text-primary-200" />
+                <span
+                  className={cn(
+                    'glass-inset inline-flex items-center gap-1.5 rounded-full border px-3 py-1',
+                    'border-[#3390EC]/20 text-[11px] font-semibold dark:border-[#8774E1]/25',
+                    TG,
+                  )}
+                >
+                  <Target size={12} strokeWidth={2.35} />
                   هدف روزانه
                 </span>
                 {me.streak > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[11px] font-bold text-white/90 backdrop-blur-sm">
-                    <Flame size={13} className="text-primary-200" />
+                  <span className="glass-inset inline-flex items-center gap-1 rounded-full border border-orange-500/20 px-2.5 py-1 text-[11px] font-semibold text-orange-600 dark:text-orange-300">
+                    <Flame size={13} strokeWidth={2.35} />
                     {toFa(me.streak)} روز
                   </span>
                 )}
-                <span className="inline-flex items-center gap-1 rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[11px] font-bold text-white/90 backdrop-blur-sm">
-                  <Crown size={13} className="text-primary-200" />
+                <span className="glass-inset inline-flex items-center gap-1 rounded-full border border-white/55 px-2.5 py-1 text-[11px] font-semibold text-text-muted dark:border-white/10">
+                  <Crown size={13} className={TG} strokeWidth={2.35} />
                   سطح {toFa(me.level)}
                 </span>
               </div>
 
               <div className="mt-4 max-w-[210px]">
-                <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] font-bold">
-                  <span className="text-white/65">پیشرفت امروز</span>
-                  <span className="shrink-0 tabular-nums text-white/90">
+                <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] font-semibold">
+                  <span className="text-text-soft">پیشرفت امروز</span>
+                  <span className="shrink-0 tabular-nums text-text">
                     {toFa(me.callsToday)}
-                    <span className="text-white/50"> / </span>
+                    <span className="text-text-soft"> / </span>
                     {toFa(me.callGoal)}
                   </span>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-white/15">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-l from-primary-200 via-white to-primary-100 shadow-[0_0_10px_rgba(234,251,251,0.35)] transition-[width] duration-500 ease-out"
-                    style={{ width: `${barPct}%` }}
+                <div className="h-[5px] overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/10">
+                  <motion.div
+                    className={cn(
+                      'h-full rounded-full',
+                      goalComplete
+                        ? 'bg-gradient-to-l from-emerald-500 to-emerald-400'
+                        : 'bg-gradient-to-l from-[#3390EC] to-[#5EB0FF] dark:from-[#8774E1] dark:to-[#A894EE]',
+                    )}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${barPct}%` }}
+                    transition={{ duration: 0.55, ease: 'easeOut' }}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[20px] border border-white/20 bg-white/10 backdrop-blur-sm">
+            <div
+              className={cn(
+                'glass-inset relative flex h-[76px] w-[76px] shrink-0 items-center justify-center',
+                'rounded-[20px] border border-white/55 dark:border-white/10',
+              )}
+            >
               {goalComplete ? (
-                <CheckCircle2 size={36} className="text-primary-200" strokeWidth={2.25} />
+                <CheckCircle2 size={34} className={OK} strokeWidth={2.25} />
               ) : (
                 <div className="flex flex-col items-center">
-                  <span className="text-[28px] font-black tabular-nums leading-none">{toFa(remaining)}</span>
-                  <span className="mt-0.5 text-[10px] font-bold text-white/55">تماس مانده</span>
+                  <AnimatePresence mode="popLayout">
+                    <motion.span
+                      key={remaining}
+                      initial={{ y: 6, scale: 0.8, opacity: 0 }}
+                      animate={{ y: 0, scale: 1, opacity: 1 }}
+                      className={cn('text-[26px] font-black tabular-nums leading-none', TG)}
+                    >
+                      {toFa(remaining)}
+                    </motion.span>
+                  </AnimatePresence>
+                  <span className="mt-0.5 text-[10px] font-semibold text-text-soft">تماس مانده</span>
                 </div>
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        <section>
-          <h2 className="mb-3 flex items-center gap-1.5 text-[15px] font-extrabold text-neutral-900">
-            <TrendingUp size={16} className="text-primary-500" />
-            خلاصه عملکرد امروز
-          </h2>
+        <motion.section variants={fadeUp}>
+          <SectionTitle icon={TrendingUp}>خلاصه عملکرد امروز</SectionTitle>
           <div className="grid grid-cols-4 gap-2">
-            <StatTile variant="compact" icon={<Phone size={18} />} value={me.callsToday} label="تماس‌ها" />
-            <StatTile variant="compact" icon={<CheckCircle2 size={18} />} value={me.successfulToday} label="موفق" tone="success" />
-            <StatTile variant="compact" icon={<Target size={18} />} value={`${toFa(me.conversionRate)}٪`} label="نرخ تبدیل" tone="secondary" />
-            <StatTile
-              variant="compact"
-              icon={<Clock size={18} />}
-              value={formatDuration(quality.avgTalkSec)}
-              label="میانگین مکالمه"
-              tone="accent"
-            />
+            <StatTile variant="compact" icon={<Phone size={16} />} value={me.callsToday} label="تماس‌ها" />
+            <StatTile variant="compact" icon={<CheckCircle2 size={16} />} value={me.successfulToday} label="موفق" tone="success" />
+            <StatTile variant="compact" icon={<Target size={16} />} value={`${toFa(me.conversionRate)}٪`} label="نرخ تبدیل" tone="secondary" />
+            <StatTile variant="compact" icon={<Clock size={16} />} value={formatDuration(quality.avgTalkSec)} label="میانگین مکالمه" tone="accent" />
           </div>
-        </section>
+        </motion.section>
 
-        <section>
-          <h2 className="mb-3 flex items-center gap-1.5 text-[15px] font-extrabold text-neutral-900">
-            <Gauge size={16} className="text-secondary-500" />
-            کیفیت تماس و پیگیری
-          </h2>
+        <motion.section variants={fadeUp}>
+          <SectionTitle icon={Gauge}>کیفیت تماس و پیگیری</SectionTitle>
           <div className="grid grid-cols-2 gap-2.5">
-            <QualityTile icon={CheckCircle2} label="نرخ پاسخ‌دهی" value={`${toFa(quality.answerRate)}٪`} tone="success" />
-            <QualityTile icon={NotebookPen} label="کیفیت یادداشت" value={`${toFa(quality.noteQuality)}٪`} tone="secondary" />
-            <QualityTile icon={ThermometerSun} label="لیدهای داغ من" value={toFa(quality.hotLeads)} tone="hot" warn={quality.hotLeads > 0} />
-            <QualityTile
-              icon={AlarmClock}
-              label="پیگیری عقب‌افتاده"
-              value={toFa(quality.overdue)}
-              tone="warning"
-              warn={quality.overdue > 0}
-            />
+            <QualityTile icon={CheckCircle2} label="نرخ پاسخ‌دهی" value={`${toFa(quality.answerRate)}٪`} iconWrap="icon-3d-success" />
+            <QualityTile icon={NotebookPen} label="کیفیت یادداشت" value={`${toFa(quality.noteQuality)}٪`} iconWrap="icon-3d-warning" />
+            <QualityTile icon={ThermometerSun} label="لیدهای داغ من" value={toFa(quality.hotLeads)} iconWrap="icon-3d-primary" warn={quality.hotLeads > 0} />
+            <QualityTile icon={AlarmClock} label="پیگیری عقب‌افتاده" value={toFa(quality.overdue)} iconWrap="icon-3d-warning" warn={quality.overdue > 0} />
           </div>
           <div className="mt-2.5 grid grid-cols-2 gap-2.5">
-            <QualityTile icon={Trophy} label="فروش تاییدشده" value={toFa(quality.confirmedSales)} tone="primary" />
-            <QualityTile
-              icon={BadgeDollarSign}
-              label="پورسانت تاییدشده"
-              value={`${formatMoney(quality.approvedCommission)} ت`}
-              tone="success"
-              small
-            />
+            <QualityTile icon={Trophy} label="فروش تاییدشده" value={toFa(quality.confirmedSales)} iconWrap="icon-3d-primary" />
+            <QualityTile icon={BadgeDollarSign} label="پورسانت تاییدشده" value={`${formatMoney(quality.approvedCommission)} ت`} iconWrap="icon-3d-success" small />
           </div>
-          <p className="mt-2.5 px-1 text-[11px] font-bold text-neutral-400">
+          <p className="mt-2.5 px-1 text-[11px] font-semibold text-text-soft">
             میانگین تماس امروز تیم: {toFa(quality.teamAvgCalls)} تماس · تو {me.callsToday >= quality.teamAvgCalls ? 'بالاتر' : 'پایین‌تر'} از میانگینی
           </p>
-        </section>
+        </motion.section>
 
-        <button
+        <motion.button
+          variants={fadeUp}
+          type="button"
+          whileTap={{ scale: 0.985 }}
           onClick={() => navigate(nextAction.href)}
-          className="flex w-full items-center gap-3 rounded-2xl bg-gradient-to-l from-primary-600 to-primary-500 p-4 text-right text-white shadow-float"
+          className={cn(
+            'glass-card relative flex w-full items-center gap-3 overflow-hidden rounded-[22px]',
+            'border border-white/55 p-4 text-right dark:border-white/10',
+          )}
         >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15">
-            <nextAction.icon size={18} />
+          <div className="pointer-events-none absolute -left-8 top-0 h-24 w-24 rounded-full bg-[#3390EC]/12 blur-3xl" />
+          <span className="icon-3d icon-3d-primary relative flex h-10 w-10 shrink-0 items-center justify-center">
+            <NextIcon size={18} className="text-white" strokeWidth={2.35} />
           </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[11px] font-bold text-white/70">الان چه کاری بکنم؟</span>
-            <span className="mt-0.5 block truncate text-[13px] font-extrabold">{nextAction.text}</span>
+          <span className="relative min-w-0 flex-1">
+            <span className="block text-[11px] font-semibold text-text-soft">الان چه کاری بکنم؟</span>
+            <span className="mt-0.5 block truncate text-[13px] font-bold text-text">{nextAction.text}</span>
           </span>
-          <ChevronLeft size={18} className="shrink-0 text-white/70" />
-        </button>
+          <ChevronLeft size={18} className="relative shrink-0 text-text-soft opacity-45" strokeWidth={2.25} />
+        </motion.button>
 
-        <section>
-          <h2 className="mb-3 flex items-center gap-1.5 text-[15px] font-extrabold text-neutral-900">
-            <Trophy size={16} className="text-warning-500" />
-            برترین‌های تیم
-          </h2>
+        <motion.section variants={fadeUp}>
+          <SectionTitle icon={Trophy}>برترین‌های تیم</SectionTitle>
           <Podium podium={podium} meId={me.id} />
           <div className="mt-3 space-y-2">
             {rest.map((a, i) => (
-              <LeaderboardRow
-                key={a.id}
-                agent={a}
-                rank={i + 4}
-                highlight={a.id === me.id}
-              />
+              <LeaderboardRow key={a.id} agent={a} rank={i + 4} highlight={a.id === me.id} />
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        <section>
-          <h2 className="mb-3 flex items-center gap-1.5 text-[15px] font-extrabold text-neutral-900">
-            <Award size={16} className="text-secondary-500" />
-            دستاوردهای من
-          </h2>
-          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+        <motion.section variants={fadeUp}>
+          <SectionTitle icon={Award}>دستاوردهای من</SectionTitle>
+          <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar">
             {achievements.map((ach) => (
               <AchievementBadge
                 key={ach.id}
@@ -304,59 +389,67 @@ export function PerformanceScreen() {
               />
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        <section>
-          <h2 className="mb-3 flex items-center gap-1.5 text-[15px] font-extrabold text-neutral-900">
-            <Zap size={16} className="text-accent-500" />
-            چالش روزانه
-          </h2>
-          <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-secondary-500 to-secondary-600 p-5 text-white shadow-float">
-            <div className="flex items-center justify-between gap-4">
-              <p className="text-lg font-black">جایزه: ۵۰۰ امتیاز</p>
-              <p className="text-3xl font-black tabular-nums shrink-0">{toFa(2)}/{toFa(3)}</p>
+        <motion.section variants={fadeUp}>
+          <SectionTitle icon={Zap}>چالش روزانه</SectionTitle>
+          <div className="glass-card relative overflow-hidden rounded-[24px] border border-amber-500/20 p-5">
+            <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-amber-400/20 blur-3xl" />
+            <div className="relative flex items-center justify-between gap-4">
+              <p className="text-[17px] font-black text-text">جایزه: ۵۰۰ امتیاز</p>
+              <p className="shrink-0 text-[28px] font-black tabular-nums text-amber-600 dark:text-amber-400">
+                {toFa(2)}/{toFa(3)}
+              </p>
             </div>
-            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/20">
-              <div className="h-full w-2/3 rounded-full bg-white" />
+            <div className="relative mt-3 h-[5px] overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/10">
+              <motion.div
+                className="h-full w-2/3 rounded-full bg-gradient-to-l from-amber-400 to-amber-500"
+                initial={{ width: 0 }}
+                animate={{ width: '66.666%' }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
+              />
             </div>
           </div>
-        </section>
+        </motion.section>
 
-        <button
+        <motion.button
+          variants={fadeUp}
+          type="button"
+          whileTap={{ scale: 0.985 }}
           onClick={() => navigate('/training')}
-          className="flex items-center gap-3 rounded-2xl bg-primary-50 p-4 text-right"
+          className={cn(
+            'glass-inset flex items-center gap-3 rounded-[20px] border border-white/55 p-4 text-right',
+            'dark:border-white/10',
+          )}
         >
-          <Sparkles size={20} className="shrink-0 text-primary-600" />
-          <p className="flex-1 text-[13px] font-bold text-neutral-700">
+          <Sparkles size={20} className={cn('shrink-0', TG)} strokeWidth={2.25} />
+          <p className="flex-1 text-[13px] font-semibold text-text-muted">
             آموزش، اسکریپت فروش و پاسخ به اعتراض‌ها رو مرور کن
           </p>
-          <ChevronLeft size={16} className="shrink-0 text-primary-300" />
-        </button>
-      </div>
+          <ChevronLeft size={16} className="shrink-0 text-text-soft opacity-45" strokeWidth={2.25} />
+        </motion.button>
+      </motion.div>
+      </DataGate>
 
       <AchievementSheet ach={selectedAch} onClose={() => setSelectedAch(null)} />
     </Page>
   )
 }
 
-function AchievementSheet({
-  ach,
-  onClose,
-}: {
-  ach: Achievement | null
-  onClose: () => void
-}) {
+function AchievementSheet({ ach, onClose }: { ach: Achievement | null; onClose: () => void }) {
   return (
     <BottomSheet open={ach != null} onClose={onClose} title="دستاورد">
       {ach && (
         <div className="flex flex-col items-center pt-2 text-center">
           <AchievementBadgeIcon ach={ach} size="lg" />
-          <h3 className="mt-4 text-xl font-black text-neutral-900">{ach.title}</h3>
-          <p className="mt-2 text-[14px] leading-7 text-neutral-500">{ach.description}</p>
+          <h3 className="mt-4 text-xl font-black text-text">{ach.title}</h3>
+          <p className="mt-2 text-[14px] leading-7 text-text-muted">{ach.description}</p>
           <span
             className={cn(
-              'mt-4 inline-flex items-center rounded-full px-3 py-1.5 text-[12px] font-bold',
-              ach.unlocked ? 'bg-success-50 text-success-600' : 'bg-neutral-100 text-neutral-500',
+              'mt-4 inline-flex items-center rounded-full border px-3 py-1.5 text-[12px] font-bold',
+              ach.unlocked
+                ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                : 'glass-inset border-white/55 text-text-soft dark:border-white/10',
             )}
           >
             {ach.unlocked ? 'باز شده' : 'هنوز باز نشده'}
@@ -371,39 +464,30 @@ function QualityTile({
   icon: Icon,
   label,
   value,
-  tone,
+  iconWrap,
   warn,
   small,
 }: {
-  icon: typeof Clock
+  icon: LucideIcon
   label: string
   value: string | number
-  tone: 'success' | 'secondary' | 'hot' | 'warning' | 'primary'
+  iconWrap: string
   warn?: boolean
   small?: boolean
 }) {
-  const toneClass = {
-    success: 'bg-success-50 text-success-600',
-    secondary: 'bg-secondary-50 text-secondary-600',
-    hot: 'bg-hot-50 text-hot-600',
-    warning: 'bg-warning-50 text-warning-600',
-    primary: 'bg-primary-50 text-primary-600',
-  }[tone]
   return (
     <div
       className={cn(
-        'flex items-center gap-2.5 rounded-2xl border p-3',
-        warn ? 'border-warning-200 bg-warning-50/40' : 'border-border/60 bg-surface',
+        'glass-card flex items-center gap-2.5 rounded-[18px] border p-3',
+        warn ? 'border-amber-500/25 dark:border-amber-400/20' : 'border-white/55 dark:border-white/10',
       )}
     >
-      <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', toneClass)}>
-        <Icon size={16} />
+      <span className={cn('icon-3d flex h-9 w-9 shrink-0 items-center justify-center', iconWrap)}>
+        <Icon size={16} className="text-white" strokeWidth={2.35} />
       </span>
       <div className="min-w-0">
-        <p className={cn('font-black tabular-nums text-neutral-900', small ? 'text-[12.5px]' : 'text-[15px]')}>
-          {value}
-        </p>
-        <p className="truncate text-[10.5px] font-bold text-neutral-400">{label}</p>
+        <p className={cn('font-black tabular-nums text-text', small ? 'text-[12.5px]' : 'text-[15px]')}>{value}</p>
+        <p className="truncate text-[10.5px] font-semibold text-text-soft">{label}</p>
       </div>
     </div>
   )
@@ -416,28 +500,28 @@ function Podium({ podium, meId }: { podium: Agent[]; meId: string }) {
     1: {
       avatarSize: 56,
       stepHeight: 'h-[76px]',
-      step: 'border border-warning-200 border-b-0 border-t-4 border-t-warning-400 bg-warning-100',
-      rankText: 'text-warning-600',
+      step: 'border border-amber-400/30 bg-amber-400/12 dark:bg-amber-400/10',
+      rankText: 'text-amber-600 dark:text-amber-400',
       crown: true,
     },
     2: {
       avatarSize: 48,
       stepHeight: 'h-[56px]',
-      step: 'border border-neutral-200 border-b-0 border-t-4 border-t-neutral-400 bg-neutral-100',
-      rankText: 'text-neutral-500',
+      step: 'border border-white/55 bg-white/30 dark:border-white/10 dark:bg-white/[0.06]',
+      rankText: 'text-text-muted',
       crown: false,
     },
     3: {
       avatarSize: 44,
       stepHeight: 'h-[44px]',
-      step: 'border border-accent-200 border-b-0 border-t-4 border-t-accent-400 bg-accent-100',
-      rankText: 'text-accent-600',
+      step: 'border border-orange-400/25 bg-orange-400/10',
+      rankText: 'text-orange-600 dark:text-orange-400',
       crown: false,
     },
   } as const
 
   return (
-    <div className="rounded-3xl border border-border/60 bg-white p-4 pt-5 shadow-card">
+    <div className="glass-card rounded-[24px] border border-white/55 p-4 pt-5 dark:border-white/10">
       <div className="flex items-end justify-center gap-2">
         {order.map((idx, pos) => {
           const agent = podium[idx]
@@ -447,68 +531,37 @@ function Podium({ podium, meId }: { podium: Agent[]; meId: string }) {
           const isMe = agent.id === meId
 
           return (
-            <div
-              key={agent.id}
-              className="flex min-w-0 flex-1 flex-col items-center"
-            >
+            <div key={agent.id} className="flex min-w-0 flex-1 flex-col items-center">
               <div className="relative mb-2.5 flex flex-col items-center">
                 {cfg.crown && (
                   <div className="mb-1">
-                    <Crown size={17} className="text-warning-500" fill="currentColor" strokeWidth={1.5} />
+                    <Crown size={17} className="text-amber-500" fill="currentColor" strokeWidth={1.5} />
                   </div>
                 )}
-                <div
-                  className={cn(
-                    'rounded-full',
-                    isMe && 'ring-2 ring-primary-300 ring-offset-2 ring-offset-white',
-                  )}
-                >
-                  <Avatar
-                    id={agent.id}
-                    first={agent.firstName}
-                    last={agent.lastName}
-                    src={agent.avatar}
-                    size={cfg.avatarSize}
-                    ring
-                  />
+                <div className={cn('rounded-full', isMe && 'ring-2 ring-[#3390EC]/40 ring-offset-2 ring-offset-transparent')}>
+                  <Avatar id={agent.id} first={agent.firstName} last={agent.lastName} src={agent.avatar} size={cfg.avatarSize} ring />
                 </div>
               </div>
 
-              <p className="max-w-full truncate text-center text-[12px] font-extrabold text-neutral-800">
+              <p className="max-w-full truncate text-center text-[12px] font-bold text-text">
                 {agent.firstName}
-                {isMe && (
-                  <span className="mr-0.5 text-[10px] font-bold text-primary-600">(تو)</span>
-                )}
+                {isMe && <span className={cn('mr-0.5 text-[10px] font-semibold', TG)}>(تو)</span>}
               </p>
 
               <span
                 className={cn(
-                  'mt-1 inline-flex items-center gap-0.5 rounded-full border px-2 py-0.5 text-[10px] font-bold tabular-nums',
-                  isMe
-                    ? 'border-primary-100 bg-primary-50 text-primary-700'
-                    : 'border-border bg-neutral-50 text-neutral-500',
+                  'glass-inset mt-1 inline-flex items-center gap-0.5 rounded-full border px-2 py-0.5',
+                  'text-[10px] font-bold tabular-nums dark:border-white/10',
+                  isMe ? 'border-[#3390EC]/25 text-[#3390EC] dark:border-[#8774E1]/28 dark:text-[#8774E1]' : 'border-white/55 text-text-soft',
                 )}
               >
                 <Phone size={9} strokeWidth={2.5} />
                 {toFa(agent.callsToday)}
               </span>
 
-              <div
-                className={cn(
-                  'mt-2.5 w-full rounded-t-2xl shadow-[inset_0_2px_6px_rgba(2,6,7,0.04)]',
-                  cfg.stepHeight,
-                  cfg.step,
-                )}
-              >
+              <div className={cn('mt-2.5 w-full rounded-t-2xl backdrop-blur-sm', cfg.stepHeight, cfg.step)}>
                 <div className="flex h-full items-center justify-center">
-                  <span
-                    className={cn(
-                      'text-[28px] font-black tabular-nums leading-none',
-                      cfg.rankText,
-                    )}
-                  >
-                    {toFa(rank)}
-                  </span>
+                  <span className={cn('text-[28px] font-black tabular-nums leading-none', cfg.rankText)}>{toFa(rank)}</span>
                 </div>
               </div>
             </div>

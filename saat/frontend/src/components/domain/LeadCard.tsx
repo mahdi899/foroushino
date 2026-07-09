@@ -4,6 +4,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { PriorityBadge } from './Badges'
 import { sourceBadgeClass, sourceIcon } from './icons'
 import { relativeDayTime, isToday, toFa } from '@/lib/format'
+import { temperatureLabels } from '@/data/labels'
 import { cn } from '@/lib/cn'
 
 interface LeadCardProps {
@@ -18,33 +19,22 @@ const sourceTone = Object.fromEntries(
   Object.entries(sourceBadgeClass).map(([k, v]) => [k, `${v} text-white`]),
 ) as Record<LeadSource, string>
 
-const tempTheme: Record<
-  Temperature,
-  { glow: string; stripe: string; accent: string; callBtn: string }
-> = {
+const tempTheme: Record<Temperature, { glow: string; pill: string }> = {
   hot: {
-    glow: 'bg-hot-400/20',
-    stripe: 'from-hot-500 via-hot-400/60 to-transparent',
-    accent: 'text-hot-600',
-    callBtn: 'bg-gradient-to-br from-hot-500 to-hot-600 text-white shadow-[0_4px_16px_-4px_rgba(255,107,0,0.45)]',
+    glow: 'bg-hot-400/18',
+    pill: 'bg-hot-500/12 text-hot-600 dark:bg-hot-400/14 dark:text-hot-400',
   },
   warm: {
-    glow: 'bg-warm-400/15',
-    stripe: 'from-warm-500 via-warm-400/60 to-transparent',
-    accent: 'text-warm-600',
-    callBtn: 'bg-gradient-to-br from-warm-500 to-warm-600 text-white shadow-[0_4px_16px_-4px_rgba(255,176,0,0.4)]',
+    glow: 'bg-warm-400/14',
+    pill: 'bg-warm-500/12 text-warm-700 dark:bg-warm-400/14 dark:text-warm-400',
   },
   cold: {
-    glow: 'bg-cold-400/15',
-    stripe: 'from-cold-500 via-cold-400/60 to-transparent',
-    accent: 'text-cold-600',
-    callBtn:
-      'bg-gradient-to-br from-cold-500 to-cold-600 text-white shadow-[0_4px_16px_-4px_rgba(82,107,128,0.4)]',
+    glow: 'bg-cold-400/12',
+    pill: 'bg-cold-500/12 text-cold-600 dark:bg-cold-400/14 dark:text-cold-400',
   },
 }
 
 const tempIcon = { hot: Flame, warm: Sun, cold: Snowflake }
-const tempLabel = { hot: 'داغ', warm: 'گرم', cold: 'سرد' }
 
 export function LeadCard({ lead, onClick, onCall, onQuickView, lockedByName }: LeadCardProps) {
   const SourceIcon = sourceIcon[lead.source]
@@ -57,59 +47,59 @@ export function LeadCard({ lead, onClick, onCall, onQuickView, lockedByName }: L
   const returned = !!lead.returnedToPool
 
   return (
-    <div
+    <article
       onClick={onClick}
       className={cn(
-        'group relative cursor-pointer overflow-hidden rounded-[22px] border bg-surface shadow-card transition-transform active:scale-[0.985]',
-        lockedByOther ? 'border-error-200/70' : 'border-border/50',
+        'group glass-card relative cursor-pointer overflow-hidden rounded-[18px] border border-white/55',
+        'transition-transform active:scale-[0.99] dark:border-white/10',
+        lockedByOther && 'ring-1 ring-error-400/25',
       )}
     >
-      <div className={cn('pointer-events-none absolute -left-8 -top-8 h-28 w-28 rounded-full blur-2xl', theme.glow)} />
-      <div
-        className={cn(
-          'pointer-events-none absolute inset-y-0 right-0 w-[5px] bg-gradient-to-b',
-          theme.stripe,
-        )}
-      />
+      <div className={cn('pointer-events-none absolute -left-6 -top-6 h-24 w-24 rounded-full blur-2xl', theme.glow)} />
+      <div className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent dark:via-white/12" />
 
-      <div className="relative p-4 pr-5">
-        <div className="flex items-start gap-3">
+      <div className="relative p-3">
+        <div className="flex items-start gap-2.5">
           <div className="relative shrink-0">
             <Avatar
               id={lead.id}
               first={lead.firstName}
               last={lead.lastName}
               src={lead.avatar}
-              size={52}
+              size={48}
               ring
             />
             <span
               className={cn(
-                'absolute -bottom-0.5 -left-0.5 flex h-[22px] w-[22px] items-center justify-center rounded-full ring-2 ring-white',
+                'absolute -bottom-0.5 -left-0.5 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white dark:ring-[#232E38]',
                 sourceTone[lead.source],
               )}
             >
-              <SourceIcon size={11} strokeWidth={2.5} />
+              <SourceIcon size={10} strokeWidth={2.5} />
             </span>
           </div>
 
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h3 className="truncate text-[16px] font-extrabold leading-snug text-neutral-900">
+          <div className="min-w-0 flex-1 pt-0.5">
+            <div className="flex items-center gap-1.5">
+              <h3 className="truncate text-[15px] font-bold leading-snug text-text">
                 {lead.firstName} {lead.lastName}
               </h3>
               {lead.priority > 1 && <PriorityBadge priority={lead.priority} />}
             </div>
 
             {lead.city && (
-              <p className="mt-1 flex items-center gap-1 text-[11px] font-bold text-neutral-400">
-                <MapPin size={11} className="shrink-0" strokeWidth={2.25} />
+              <p className="mt-0.5 flex items-center gap-1 text-[11px] font-medium text-text-soft">
+                <MapPin size={10} className="shrink-0 opacity-70" strokeWidth={2.25} />
                 <span className="truncate">{lead.city}</span>
               </p>
             )}
+
+            {lead.lastNote && (
+              <p className="mt-1 line-clamp-1 text-[11px] leading-5 text-text-muted">{lead.lastNote}</p>
+            )}
           </div>
 
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1">
             {onQuickView && (
               <button
                 type="button"
@@ -118,9 +108,9 @@ export function LeadCard({ lead, onClick, onCall, onQuickView, lockedByName }: L
                   onQuickView()
                 }}
                 aria-label="پیش‌نمایش سریع"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-neutral-100 text-neutral-500 transition-transform active:scale-90"
+                className="glass-inset flex h-8 w-8 items-center justify-center rounded-full border border-white/50 text-text-soft dark:border-white/10"
               >
-                <Info size={16} strokeWidth={2.25} />
+                <Info size={14} strokeWidth={2.25} />
               </button>
             )}
             <button
@@ -132,57 +122,64 @@ export function LeadCard({ lead, onClick, onCall, onQuickView, lockedByName }: L
               }}
               aria-label={`تماس با ${lead.firstName} ${lead.lastName}`}
               className={cn(
-                'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl transition-transform active:scale-90',
-                lockedByOther ? 'bg-neutral-100 text-neutral-300' : theme.callBtn,
+                'flex h-9 w-9 items-center justify-center rounded-full transition-transform active:scale-90',
+                lockedByOther
+                  ? 'glass-inset text-text-soft'
+                  : cn(
+                      'bg-[#3390EC] text-white shadow-[0_4px_14px_rgba(51,144,236,0.32)]',
+                      'dark:bg-[#8774E1] dark:shadow-[0_4px_14px_rgba(135,116,225,0.28)]',
+                    ),
               )}
             >
-              {lockedByOther ? <Lock size={17} strokeWidth={2.25} /> : <Phone size={19} strokeWidth={2.25} />}
+              {lockedByOther ? (
+                <Lock size={15} strokeWidth={2.25} />
+              ) : (
+                <Phone size={16} strokeWidth={2.35} />
+              )}
             </button>
           </div>
         </div>
 
-        {lockedByOther && (
-          <p className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-error-50 px-2.5 py-1.5 text-[11px] font-extrabold text-error-600">
-            <Lock size={12} />
-            قفل توسط {lockedByName}
-          </p>
-        )}
-
-        {returned && (
-          <p className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-neutral-100 px-2.5 py-1.5 text-[11px] font-extrabold text-neutral-500">
-            <Undo2 size={12} />
-            برگشت‌خورده به صف عمومی
-          </p>
-        )}
-
-        {lead.lastNote && (
-          <p className="mt-2.5 line-clamp-1 border-r-2 border-neutral-200 pr-2.5 text-[11px] leading-5 text-neutral-400">
-            {lead.lastNote}
-          </p>
+        {(lockedByOther || returned) && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {lockedByOther && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-error-400/25 bg-error-500/10 px-2 py-0.5 text-[10px] font-semibold text-error-600 dark:text-error-400">
+                <Lock size={10} />
+                قفل: {lockedByName}
+              </span>
+            )}
+            {returned && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/50 bg-white/35 px-2 py-0.5 text-[10px] font-semibold text-text-soft dark:border-white/10 dark:bg-white/[0.06]">
+                <Undo2 size={10} />
+                برگشت‌خورده
+              </span>
+            )}
+          </div>
         )}
 
         <div
           className={cn(
-            'mt-3 flex items-center justify-between gap-3 border-t border-border/50 pt-2.5',
-            overdue && 'border-error-100',
+            'mt-2 flex items-center justify-between gap-2 rounded-[12px] border border-white/45 px-2 py-1.5',
+            'glass-inset dark:border-white/10',
+            overdue && 'border-error-400/20 bg-error-500/[0.06]',
           )}
         >
-          <div className="flex min-w-0 items-center gap-2">
-            <span className={cn('inline-flex shrink-0 items-center gap-1 text-[11px] font-extrabold', theme.accent)}>
-              <TempIcon size={12} strokeWidth={2.25} />
-              {tempLabel[lead.temperature]}
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className={cn('inline-flex shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold', theme.pill)}>
+              <TempIcon size={10} strokeWidth={2.5} />
+              {temperatureLabels[lead.temperature]}
             </span>
 
             {lead.nextFollowupAt && (
               <>
-                <span className="h-3 w-px shrink-0 bg-neutral-200" aria-hidden />
+                <span className="h-2.5 w-px shrink-0 bg-black/10 dark:bg-white/10" aria-hidden />
                 <span
                   className={cn(
-                    'flex min-w-0 items-center gap-1 truncate text-[11px] font-bold',
-                    overdue ? 'text-error-600' : followupToday ? 'text-primary-700' : 'text-neutral-400',
+                    'flex min-w-0 items-center gap-0.5 truncate text-[10px] font-semibold',
+                    overdue ? 'text-error-600 dark:text-error-400' : followupToday ? 'text-[#3390EC] dark:text-[#8774E1]' : 'text-text-soft',
                   )}
                 >
-                  <Clock size={12} strokeWidth={2.25} className="shrink-0 opacity-60" />
+                  <Clock size={10} strokeWidth={2.25} className="shrink-0" />
                   <span className="truncate">{relativeDayTime(lead.nextFollowupAt)}</span>
                 </span>
               </>
@@ -191,18 +188,18 @@ export function LeadCard({ lead, onClick, onCall, onQuickView, lockedByName }: L
 
           <span
             className={cn(
-              'shrink-0 text-[11px] font-extrabold tabular-nums',
+              'shrink-0 rounded-md bg-white/40 px-1.5 py-0.5 text-[10px] font-bold tabular-nums dark:bg-white/[0.07]',
               lead.conversionProbability >= 70
-                ? 'text-primary-600'
+                ? 'text-[#3390EC] dark:text-[#8774E1]'
                 : lead.conversionProbability >= 40
-                  ? 'text-warm-600'
-                  : 'text-neutral-400',
+                  ? 'text-warm-600 dark:text-warm-400'
+                  : 'text-text-soft',
             )}
           >
             {toFa(lead.conversionProbability)}٪
           </span>
         </div>
       </div>
-    </div>
+    </article>
   )
 }

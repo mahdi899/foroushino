@@ -61,4 +61,60 @@ class TelegramAuthVerifier
             'photo_url' => $user['photo_url'] ?? null,
         ];
     }
+
+    /**
+     * @param  array<string, scalar|null>  $payload
+     * @return array{id: int, first_name: string, last_name: ?string, username: ?string, photo_url: ?string}
+     *
+     * @throws InvalidTelegramInitDataException
+     */
+    public function verifyWidget(array $payload): array
+    {
+        $botToken = (string) config('telegram.bot_token');
+
+        if ($botToken === '') {
+            throw new InvalidTelegramInitDataException('توکن ربات تلگرام تنظیم نشده است.');
+        }
+
+        $hash = $payload['hash'] ?? null;
+        if (! is_string($hash) || $hash === '') {
+            throw new InvalidTelegramInitDataException('امضای داده نامعتبر است.');
+        }
+
+        unset($payload['hash']);
+        $pairs = collect($payload)
+            ->filter(fn ($value) => $value !== null && $value !== '')
+            ->map(fn ($value) => is_bool($value) ? ($value ? 'true' : 'false') : (string) $value)
+            ->all();
+
+        ksort($pairs);
+        $dataCheckString = collect($pairs)
+            ->map(fn ($value, $key) => "{$key}={$value}")
+            ->implode("\n");
+
+        $secretKey = hash('sha256', $botToken, true);
+        $computedHash = hash_hmac('sha256', $dataCheckString, $secretKey);
+
+        if (! hash_equals($computedHash, $hash)) {
+            throw new InvalidTelegramInitDataException('امضای داده معتبر نیست.');
+        }
+
+        $authDate = (int) ($pairs['auth_date'] ?? 0);
+        $maxAge = (int) config('telegram.max_age', 86400);
+        if ($authDate === 0 || (time() - $authDate) > $maxAge) {
+            throw new InvalidTelegramInitDataException('داده ورود منقضی شده است، دوباره تلاش کنید.');
+        }
+
+        if (! isset($pairs['id'])) {
+            throw new InvalidTelegramInitDataException('اطلاعات کاربر تلگرام یافت نشد.');
+        }
+
+        return [
+            'id' => (int) $pairs['id'],
+            'first_name' => (string) ($pairs['first_name'] ?? ''),
+            'last_name' => $pairs['last_name'] ?? null,
+            'username' => $pairs['username'] ?? null,
+            'photo_url' => $pairs['photo_url'] ?? null,
+        ];
+    }
 }

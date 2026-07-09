@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { UserPlus, CalendarPlus, PhoneCall, type LucideIcon } from 'lucide-react'
+import { CalendarPlus, PhoneCall, type LucideIcon } from 'lucide-react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { useStore } from '@/store/useStore'
 import { getNextLead } from '@/lib/leadUtils'
@@ -12,7 +12,9 @@ interface QuickActionSheetProps {
 export function QuickActionSheet({ open, onClose }: QuickActionSheetProps) {
   const navigate = useNavigate()
   const leads = useStore((s) => s.leads)
-  const pushToast = useStore((s) => s.pushToast)
+  const followups = useStore((s) => s.followups)
+  const currentAgentId = useStore((s) => s.currentAgentId)
+  const openCallMethodSheet = useStore((s) => s.openCallMethodSheet)
 
   const actions: { icon: LucideIcon; label: string; desc: string; onClick: () => void }[] = [
     {
@@ -20,9 +22,9 @@ export function QuickActionSheet({ open, onClose }: QuickActionSheetProps) {
       label: 'شروع تماس بعدی',
       desc: 'بهترین سرنخ پیشنهادی',
       onClick: () => {
-        const next = getNextLead(leads)
+        const next = getNextLead(leads, followups, currentAgentId)
         onClose()
-        if (next) navigate(`/dialer/${next.id}`)
+        if (next) openCallMethodSheet(next)
       },
     },
     {
@@ -32,15 +34,6 @@ export function QuickActionSheet({ open, onClose }: QuickActionSheetProps) {
       onClick: () => {
         onClose()
         navigate('/followups?new=1')
-      },
-    },
-    {
-      icon: UserPlus,
-      label: 'ثبت سرنخ جدید',
-      desc: 'افزودن لید دستی',
-      onClick: () => {
-        onClose()
-        pushToast('ثبت سرنخ در نسخه دمو غیرفعال است', 'info')
       },
     },
   ]

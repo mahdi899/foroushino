@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
   Phone,
   MessageCircle,
@@ -36,6 +37,7 @@ import {
   thisWeekFollowups,
   criticalFollowups,
   doneFollowups,
+  filterFollowupsForAgent,
   getSuggestion,
 } from '@/lib/leadUtils'
 import { followupKindLabels } from '@/data/labels'
@@ -43,6 +45,7 @@ import { formatTime, toFa, relativeDay, relativeDayTime } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
 import type { Followup, FollowupKind, Lead } from '@/types'
 import { cn } from '@/lib/cn'
+import { DataGate } from '@/components/pwa/DataGate'
 
 const kindIcon: Record<FollowupKind, LucideIcon> = {
   call: Phone,
@@ -57,15 +60,25 @@ const kindIcon: Record<FollowupKind, LucideIcon> = {
 }
 
 const kindTheme: Record<FollowupKind, { accent: string; actionBtn: string }> = {
-  call: { accent: 'bg-success-500', actionBtn: 'bg-success-50 text-success-600' },
-  message: { accent: 'bg-secondary-500', actionBtn: 'bg-secondary-50 text-secondary-600' },
-  reminder: { accent: 'bg-accent-500', actionBtn: 'bg-accent-50 text-accent-600' },
-  meeting: { accent: 'bg-primary-500', actionBtn: 'bg-primary-50 text-primary-600' },
-  payment: { accent: 'bg-warning-500', actionBtn: 'bg-warning-50 text-warning-600' },
-  consultation: { accent: 'bg-primary-500', actionBtn: 'bg-primary-50 text-primary-600' },
-  info: { accent: 'bg-cold-500', actionBtn: 'bg-cold-50 text-cold-600' },
-  decision: { accent: 'bg-secondary-500', actionBtn: 'bg-secondary-50 text-secondary-600' },
-  custom: { accent: 'bg-neutral-400', actionBtn: 'bg-neutral-100 text-neutral-600' },
+  call: { accent: 'bg-emerald-500', actionBtn: 'glass-inset border border-emerald-500/20 text-emerald-600' },
+  message: { accent: 'bg-secondary-500', actionBtn: 'glass-inset border border-secondary-500/20 text-secondary-600' },
+  reminder: { accent: 'bg-accent-500', actionBtn: 'glass-inset border border-accent-500/20 text-accent-600' },
+  meeting: { accent: 'bg-[#3390EC]', actionBtn: 'glass-inset border border-[#3390EC]/20 text-[#3390EC] dark:text-[#8774E1]' },
+  payment: { accent: 'bg-warning-500', actionBtn: 'glass-inset border border-warning-500/20 text-warning-600' },
+  consultation: { accent: 'bg-primary-500', actionBtn: 'glass-inset border border-primary-500/20 text-primary-600' },
+  info: { accent: 'bg-cold-500', actionBtn: 'glass-inset border border-cold-500/20 text-cold-600' },
+  decision: { accent: 'bg-secondary-500', actionBtn: 'glass-inset border border-secondary-500/20 text-secondary-600' },
+  custom: { accent: 'bg-neutral-400', actionBtn: 'glass-inset border border-white/50 text-neutral-600' },
+}
+
+const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
+const fadeUp = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: spring },
+}
+const listStagger = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
 }
 
 type Bucket = 'today' | 'tomorrow' | 'overdue' | 'week' | 'critical' | 'done'
@@ -84,10 +97,11 @@ export function FollowupsScreen() {
   const [params, setParams] = useSearchParams()
   const followups = useStore((s) => s.followups)
   const leads = useStore((s) => s.leads)
+  const currentAgentId = useStore((s) => s.currentAgentId)
   const completeFollowup = useStore((s) => s.completeFollowup)
   const snoozeFollowup = useStore((s) => s.snoozeFollowup)
   const createFollowup = useStore((s) => s.createFollowup)
-  const startCall = useStore((s) => s.startCall)
+  const openCallMethodSheet = useStore((s) => s.openCallMethodSheet)
   const pushToast = useStore((s) => s.pushToast)
 
   const [bucket, setBucket] = useState<Bucket>('today')
@@ -104,12 +118,17 @@ export function FollowupsScreen() {
     }
   }, [params, setParams])
 
-  const today = useMemo(() => todayFollowups(followups), [followups])
-  const tomorrow = useMemo(() => tomorrowFollowups(followups), [followups])
-  const overdue = useMemo(() => overdueFollowups(followups), [followups])
-  const week = useMemo(() => thisWeekFollowups(followups), [followups])
-  const critical = useMemo(() => criticalFollowups(followups), [followups])
-  const done = useMemo(() => doneFollowups(followups), [followups])
+  const visibleFollowups = useMemo(
+    () => filterFollowupsForAgent(followups, leads, currentAgentId),
+    [followups, leads, currentAgentId],
+  )
+
+  const today = useMemo(() => todayFollowups(visibleFollowups), [visibleFollowups])
+  const tomorrow = useMemo(() => tomorrowFollowups(visibleFollowups), [visibleFollowups])
+  const overdue = useMemo(() => overdueFollowups(visibleFollowups), [visibleFollowups])
+  const week = useMemo(() => thisWeekFollowups(visibleFollowups), [visibleFollowups])
+  const critical = useMemo(() => criticalFollowups(visibleFollowups), [visibleFollowups])
+  const done = useMemo(() => doneFollowups(visibleFollowups), [visibleFollowups])
 
   const counts: Record<Bucket, number> = {
     today: today.length,
@@ -131,7 +150,7 @@ export function FollowupsScreen() {
 
   const list = listByBucket[bucket]
   const leadOf = (leadId: string) => leads.find((l) => l.id === leadId)
-  const suggestion = useMemo(() => getSuggestion(leads, followups), [leads, followups])
+  const suggestion = useMemo(() => getSuggestion(leads, followups, currentAgentId), [leads, followups, currentAgentId])
 
   const complete = (f: Followup) => {
     haptic('success')
@@ -141,8 +160,7 @@ export function FollowupsScreen() {
 
   const call = (lead: Lead) => {
     haptic('medium')
-    startCall(lead.id)
-    navigate(`/dialer/${lead.id}`)
+    openCallMethodSheet(lead)
   }
 
   const todayDate = new Date()
@@ -182,6 +200,7 @@ export function FollowupsScreen() {
         </div>
       </ScreenHeader>
 
+      <DataGate mode="placeholder">
       <div className="space-y-4 px-4 pt-3">
         {bucket === 'today' && (
           <div className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-400">
@@ -191,21 +210,27 @@ export function FollowupsScreen() {
         )}
 
         {suggestion && bucket !== 'done' && (
-          <button
+          <motion.button
+            variants={fadeUp}
+            whileTap={{ scale: 0.985 }}
             onClick={() => call(suggestion.lead)}
-            className="flex w-full items-center gap-3 rounded-2xl border border-primary-100 bg-primary-50/60 p-3.5 text-right"
+            className={cn(
+              'glass-card relative flex w-full items-center gap-3 overflow-hidden rounded-[22px]',
+              'border border-white/55 p-3.5 text-right dark:border-white/10',
+            )}
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-600 text-white">
-              <Sparkles size={16} />
+            <div className="pointer-events-none absolute -left-8 top-0 h-24 w-24 rounded-full bg-[#3390EC]/12 blur-2xl dark:bg-[#8774E1]/14" />
+            <span className="icon-3d icon-3d-primary relative flex h-10 w-10 shrink-0 items-center justify-center">
+              <Sparkles size={16} className="text-white" strokeWidth={2.35} />
             </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-extrabold text-primary-600">پیگیری بعدی پیشنهادی</p>
-              <p className="truncate text-[13px] font-extrabold text-neutral-900">
+            <div className="relative min-w-0 flex-1">
+              <p className="text-[11px] font-bold text-[#3390EC] dark:text-[#8774E1]">پیگیری بعدی پیشنهادی</p>
+              <p className="truncate text-[14px] font-bold text-text">
                 {suggestion.lead.firstName} {suggestion.lead.lastName}
               </p>
             </div>
-            <Phone size={17} className="shrink-0 text-primary-600" />
-          </button>
+            <Phone size={17} className="relative shrink-0 text-[#3390EC] dark:text-[#8774E1]" strokeWidth={2.35} />
+          </motion.button>
         )}
 
         {list.length === 0 ? (
@@ -214,7 +239,7 @@ export function FollowupsScreen() {
             description={bucket === 'done' ? 'پیگیری‌های انجام‌شده اینجا نمایش داده می‌شوند.' : 'وقت خوبیه برای تماس با سرنخ‌های جدید.'}
           />
         ) : (
-          <div className="space-y-3">
+          <motion.div variants={listStagger} initial="hidden" animate="show" className="space-y-3">
             {list.map((f) => {
               const lead = leadOf(f.leadId)
               if (!lead) return null
@@ -236,9 +261,10 @@ export function FollowupsScreen() {
                 />
               )
             })}
-          </div>
+          </motion.div>
         )}
       </div>
+      </DataGate>
 
       <Fab onClick={() => setCreateOpen(true)} />
 
@@ -305,10 +331,11 @@ function FollowupCard({
   const highPriority = followup.priority === 3
 
   return (
-    <div
+    <motion.div
+      variants={fadeUp}
       className={cn(
-        'relative flex items-center gap-2 overflow-hidden rounded-2xl border bg-surface py-3 pl-3 pr-2.5 shadow-card',
-        overdue ? 'border-error-200/70' : 'border-border/50',
+        'glass-card relative flex items-center gap-2 overflow-hidden rounded-[20px] border py-3 pl-3 pr-2.5',
+        overdue ? 'border-error-200/50 dark:border-error-500/20' : 'border-white/55 dark:border-white/10',
         done && 'opacity-70',
       )}
     >
@@ -390,7 +417,7 @@ function FollowupCard({
               type="button"
               onClick={onSnooze}
               aria-label="به تعویق انداختن"
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-neutral-400 transition-colors hover:bg-neutral-100 active:scale-90"
+              className="glass-inset flex h-9 w-9 items-center justify-center rounded-xl border border-white/50 text-text-soft transition-all active:scale-90 dark:border-white/10"
             >
               <Clock3 size={16} strokeWidth={2.25} />
             </button>
@@ -398,19 +425,19 @@ function FollowupCard({
               type="button"
               onClick={onComplete}
               aria-label="علامت‌گذاری انجام‌شده"
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-neutral-400 transition-colors hover:bg-success-50 hover:text-success-600 active:scale-90"
+              className="glass-inset flex h-9 w-9 items-center justify-center rounded-xl border border-white/50 text-text-soft transition-all hover:text-emerald-600 active:scale-90 dark:border-white/10"
             >
               <Check size={17} strokeWidth={2.25} />
             </button>
           </>
         )}
         {done && (
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-success-50 text-success-600">
+          <span className="glass-inset flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-500/20 text-emerald-600">
             <Check size={17} strokeWidth={2.25} />
           </span>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }
 

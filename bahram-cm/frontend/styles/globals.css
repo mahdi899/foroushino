@@ -41,8 +41,8 @@
   --color-veil: #33494d;
 
   /* --- Typography ---------------------------------------------------- */
-  --font-display: var(--font-peyda), "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-peyda), "Vazirmatn", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-iransans), "IRANSansXFaNum", ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-iransans), "IRANSansXFaNum", ui-sans-serif, system-ui, sans-serif;
   --font-latin: ui-sans-serif, system-ui, sans-serif;
 
   /* Fluid type scale — readable floor; tighter line-height for Persian body */

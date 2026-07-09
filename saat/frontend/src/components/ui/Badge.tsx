@@ -14,16 +14,16 @@ type Tone =
   | 'accent'
 
 const tones: Record<Tone, string> = {
-  hot: 'bg-hot-50 text-hot-600',
-  warm: 'bg-warm-50 text-warm-600',
-  cold: 'bg-cold-50 text-cold-600',
-  primary: 'bg-primary-50 text-primary-700',
-  success: 'bg-success-50 text-success-600',
-  warning: 'bg-warning-50 text-warning-600',
-  error: 'bg-error-50 text-error-600',
-  neutral: 'bg-neutral-100 text-neutral-600',
-  secondary: 'bg-secondary-50 text-secondary-600',
-  accent: 'bg-accent-50 text-accent-600',
+  hot: 'glass-inset border border-hot-100/50 text-hot-600 dark:border-hot-500/20',
+  warm: 'glass-inset border border-warm-100/50 text-warm-600 dark:border-warm-500/20',
+  cold: 'glass-inset border border-cold-100/50 text-cold-600 dark:border-cold-500/20',
+  primary: 'glass-inset border border-primary-200/50 text-primary-700 dark:border-primary-500/20',
+  success: 'glass-inset border border-success-200/50 text-success-600 dark:border-success-500/20',
+  warning: 'glass-inset border border-warning-200/50 text-warning-600 dark:border-warning-500/20',
+  error: 'glass-inset border border-error-200/50 text-error-600 dark:border-error-500/20',
+  neutral: 'glass-inset border border-white/50 text-[#8E8E93] dark:border-white/10 dark:text-[#98989D]',
+  secondary: 'glass-inset border border-secondary-200/50 text-secondary-600 dark:border-secondary-500/20',
+  accent: 'glass-inset border border-accent-200/50 text-accent-600 dark:border-accent-500/20',
 }
 
 interface BadgeProps {

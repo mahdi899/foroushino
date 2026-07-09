@@ -11,6 +11,7 @@ use App\Models\PayoutRequest;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
+use App\Support\PayoutRules;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -72,17 +73,14 @@ class WalletService
 
     public function requestPayout(User $user, float $amount): PayoutRequest
     {
-        if ($amount <= 0) {
-            throw new RuntimeException('مبلغ نامعتبر است.');
-        }
-
         return DB::transaction(function () use ($user, $amount) {
             $wallet = $this->ensureWallet($user)->fresh();
             $wallet = Wallet::query()->whereKey($wallet->id)->lockForUpdate()->first();
 
-            if ($amount > (float) $wallet->balance_available) {
-                throw new RuntimeException('مبلغ درخواستی بیشتر از موجودی قابل برداشت است.');
-            }
+            PayoutRules::assertValid($amount, (float) $wallet->balance_available);
+
+            $bankFee = PayoutRules::calculateBankFee($amount);
+            $netAmount = PayoutRules::netAmount($amount);
 
             $wallet->balance_available -= $amount;
             $wallet->balance_locked += $amount;
@@ -91,15 +89,22 @@ class WalletService
             $payout = PayoutRequest::query()->create([
                 'user_id' => $user->id,
                 'amount' => $amount,
+                'bank_fee' => $bankFee,
+                'net_amount' => $netAmount,
                 'status' => PayoutStatus::Requested,
                 'requested_at' => now(),
             ]);
+
+            $description = 'درخواست تسویه ثبت شد';
+            if ($bankFee > 0) {
+                $description .= ' — کارمزد بانکی '.number_format($bankFee).' تومان';
+            }
 
             WalletTransaction::query()->create([
                 'user_id' => $user->id,
                 'type' => WalletTxType::PayoutRequested,
                 'amount' => $amount,
-                'description' => 'درخواست تسویه ثبت شد',
+                'description' => $description,
                 'reference_type' => 'payout',
                 'reference_id' => $payout->id,
             ]);

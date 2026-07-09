@@ -3,6 +3,8 @@
 return [
     'bot_token' => env('TELEGRAM_BOT_TOKEN', ''),
 
+    'bot_username' => env('TELEGRAM_BOT_USERNAME', ''),
+
     /*
      * Maximum age (in seconds) an initData payload's auth_date may have before
      * it is rejected as stale (replay protection).

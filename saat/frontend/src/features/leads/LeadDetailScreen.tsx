@@ -13,7 +13,6 @@ import {
   Target,
   AlertCircle,
   MessageSquareWarning,
-  PhoneCall,
   NotebookPen,
   History,
   CalendarClock,
@@ -27,10 +26,9 @@ import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
 import { Button } from '@/components/ui/Button'
-import { BottomSheet } from '@/components/ui/BottomSheet'
-import { Chip } from '@/components/ui/Chip'
 import { LeadProfileHero } from '@/components/domain/LeadProfileHero'
 import { StageBar } from '@/components/domain/StageBar'
+import { LeadStatusSheet } from '@/components/domain/LeadStatusSheet'
 import { resultIcon } from '@/components/domain/icons'
 import { LeadStatusBadge } from '@/components/domain/Badges'
 import { EmptyState } from '@/components/ui/States'
@@ -38,27 +36,12 @@ import {
   experienceLabels,
   objectionLabels,
   resultLabels,
-  stageLabels,
-  temperatureLabels,
   leadStatusLabels,
 } from '@/data/labels'
 import { relativeDayTime, toFa, formatDuration } from '@/lib/format'
-import { canCallLead } from '@/lib/leadUtils'
+import { canCallLead, isLeadVisibleToAgent } from '@/lib/leadUtils'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
-import type { SaleStage, Temperature } from '@/types'
-
-const stageOptions: SaleStage[] = [
-  'new',
-  'first_call',
-  'interested',
-  'follow_up',
-  'meeting',
-  'payment_pending',
-  'won',
-  'lost',
-]
-const tempOptions: Temperature[] = ['hot', 'warm', 'cold']
 
 function DetailIconBox({
   icon: Icon,
@@ -68,7 +51,7 @@ function DetailIconBox({
   tone?: 'primary' | 'warning' | 'error' | 'accent'
 }) {
   const tones = {
-    primary: 'text-primary-600',
+    primary: 'text-[#3390EC] dark:text-[#8774E1]',
     warning: 'text-warning-600',
     error: 'text-error-600',
     accent: 'text-accent-600',
@@ -76,11 +59,11 @@ function DetailIconBox({
   return (
     <div
       className={cn(
-        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface shadow-sm',
+        'glass-inset flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/50 dark:border-white/10',
         tones[tone],
       )}
     >
-      <Icon size={15} />
+      <Icon size={15} strokeWidth={2.25} />
     </div>
   )
 }
@@ -97,9 +80,9 @@ function DetailSectionHeader({
   return (
     <div className="flex items-center gap-2">
       <DetailIconBox icon={icon} />
-      <p className="text-[13px] font-extrabold text-neutral-900">{title}</p>
+      <p className="text-[13px] font-bold text-neutral-900 dark:text-white">{title}</p>
       {count !== undefined && (
-        <span className="mr-auto rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-extrabold text-neutral-500 tabular-nums">
+        <span className="glass-inset mr-auto rounded-full border border-white/50 px-2 py-0.5 text-[10px] font-bold text-[#8E8E93] tabular-nums dark:border-white/10 dark:text-[#98989D]">
           {count}
         </span>
       )}
@@ -123,22 +106,22 @@ function DetailRow({
   sub?: ReactNode
 }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-xl bg-neutral-50 px-2.5 py-2">
+    <div className="glass-inset flex items-center gap-2.5 rounded-2xl border border-white/50 px-3 py-2.5 dark:border-white/10">
       <DetailIconBox icon={icon} tone={tone} />
       <div className="min-w-0 flex-1">
-        {label && <p className="text-[10px] font-bold text-neutral-400">{label}</p>}
+        {label && <p className="text-[10px] font-semibold text-[#8E8E93] dark:text-[#98989D]">{label}</p>}
         <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0 truncate text-[12px] font-extrabold text-neutral-800">{value}</div>
-          {meta && <span className="shrink-0 text-[10px] font-bold text-neutral-400 tabular-nums">{meta}</span>}
+          <div className="min-w-0 truncate text-[12px] font-bold text-neutral-800 dark:text-neutral-100">{value}</div>
+          {meta && <span className="shrink-0 text-[10px] font-semibold text-[#8E8E93] tabular-nums dark:text-[#98989D]">{meta}</span>}
         </div>
-        {sub && <p className="truncate text-[10px] font-bold text-neutral-400">{sub}</p>}
+        {sub && <p className="truncate text-[10px] font-semibold text-[#8E8E93] dark:text-[#98989D]">{sub}</p>}
       </div>
     </div>
   )
 }
 
 function DetailDivider() {
-  return <div className="h-px bg-border/60" />
+  return <div className="h-px bg-gradient-to-r from-transparent via-white/60 to-transparent dark:via-white/10" />
 }
 
 export function LeadDetailScreen() {
@@ -149,20 +132,17 @@ export function LeadDetailScreen() {
   const followups = useStore((s) => s.followups.filter((f) => f.leadId === id))
   const agents = useStore((s) => s.agents)
   const currentAgentId = useStore((s) => s.currentAgentId)
-  const startCall = useStore((s) => s.startCall)
-  const updateLeadStage = useStore((s) => s.updateLeadStage)
-  const updateLeadTemperature = useStore((s) => s.updateLeadTemperature)
+  const openCallMethodSheet = useStore((s) => s.openCallMethodSheet)
   const releaseLead = useStore((s) => s.releaseLead)
-  const returnLeadToPool = useStore((s) => s.returnLeadToPool)
   const reclaimLead = useStore((s) => s.reclaimLead)
   const pushToast = useStore((s) => s.pushToast)
   const [statusOpen, setStatusOpen] = useState(false)
 
-  if (!lead) {
+  if (!lead || !isLeadVisibleToAgent(lead, currentAgentId)) {
     return (
       <Page withNav={false}>
         <TopBar title="جزئیات سرنخ" />
-        <EmptyState title="سرنخ پیدا نشد" />
+        <EmptyState title="سرنخ پیدا نشد" description="این سرنخ در دسترس نیست یا توسط کارشناس دیگری قفل شده." />
       </Page>
     )
   }
@@ -189,9 +169,9 @@ export function LeadDetailScreen() {
         action={
           <button
             onClick={() => navigate(`/call-result/${lead.id}`)}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-surface shadow-card border border-border/60 text-neutral-600"
+            className="glass-inset flex h-9 w-9 items-center justify-center rounded-full text-neutral-600 shadow-sm transition-all active:scale-95 dark:text-neutral-300"
           >
-            <ClipboardList size={18} />
+            <ClipboardList size={18} strokeWidth={2.25} />
           </button>
         }
       />
@@ -204,8 +184,10 @@ export function LeadDetailScreen() {
         </div>
 
         {lockedByOther && (
-          <div className="flex items-center gap-3 rounded-2xl border border-error-200/70 bg-error-50 px-4 py-3.5">
-            <Lock size={18} className="shrink-0 text-error-600" />
+          <div className="glass-inset flex items-center gap-3 rounded-[22px] border border-error-200/60 px-4 py-3.5 dark:border-error-500/25">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-error-500/12 text-error-600">
+              <Lock size={18} strokeWidth={2.25} />
+            </div>
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-extrabold text-error-700">
                 {lockAgent ? `قفل توسط ${lockAgent.firstName} ${lockAgent.lastName}` : 'قفل شده توسط نیروی دیگر'}
@@ -224,7 +206,7 @@ export function LeadDetailScreen() {
               releaseLead(lead.id)
               pushToast('قفل لید آزاد شد')
             }}
-            className="flex items-center justify-center gap-1.5 rounded-2xl border border-border/60 bg-surface px-4 py-2.5 text-[12px] font-extrabold text-neutral-500"
+            className="glass-inset flex items-center justify-center gap-1.5 rounded-[22px] border border-white/50 px-4 py-2.5 text-[12px] font-bold text-[#8E8E93] transition-all active:scale-[0.98] dark:border-white/10 dark:text-[#98989D]"
           >
             <Unlock size={13} />
             آزاد کردن قفل این سرنخ
@@ -232,9 +214,11 @@ export function LeadDetailScreen() {
         )}
 
         {lead.returnedToPool && (
-          <div className="rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-3.5">
+          <div className="glass-card rounded-[22px] border border-white/55 p-4 dark:border-white/10">
             <div className="flex items-center gap-3">
-              <Undo2 size={18} className="shrink-0 text-neutral-500" />
+              <div className="glass-inset flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-neutral-500">
+                <Undo2 size={18} strokeWidth={2.25} />
+              </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[13px] font-extrabold text-neutral-700">این سرنخ به صف عمومی برگشته</p>
                 <p className="mt-0.5 text-[11px] font-bold text-neutral-400">
@@ -260,7 +244,7 @@ export function LeadDetailScreen() {
 
         <StageBar stage={lead.stage} />
 
-        <div className="space-y-3 rounded-3xl border border-border/60 bg-surface p-3 shadow-card">
+        <div className="glass-card space-y-3 rounded-[26px] border border-white/55 p-4 dark:border-white/10">
           <div className="grid grid-cols-2 gap-2">
             {info.map((item) => (
               <DetailRow key={item.label} icon={item.icon} label={item.label} value={item.value} />
@@ -348,12 +332,12 @@ export function LeadDetailScreen() {
                 count={toFa((lead.statusHistory ?? []).length)}
               />
               <div className="relative space-y-3 pr-2 pt-1">
-                <div className="absolute bottom-1 right-[15px] top-1 w-px bg-border" />
+                <div className="absolute bottom-1 right-[15px] top-1 w-px bg-gradient-to-b from-[#3390EC]/30 via-[#3390EC]/15 to-transparent" />
                 {[...(lead.statusHistory ?? [])]
                   .reverse()
                   .map((ev) => (
                     <div key={ev.id} className="relative flex items-start gap-3 pr-0">
-                      <span className="relative z-10 mt-0.5 flex h-[13px] w-[13px] shrink-0 items-center justify-center rounded-full border-2 border-surface bg-primary-500 shadow-sm" />
+                      <span className="relative z-10 mt-0.5 flex h-[13px] w-[13px] shrink-0 items-center justify-center rounded-full bg-[#3390EC] ring-2 ring-white/80 shadow-[0_0_8px_rgba(51,144,236,0.45)] dark:ring-black/30 dark:bg-[#8774E1]" />
                       <div className="min-w-0 flex-1 pb-0.5">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-[12px] font-extrabold text-neutral-800">
@@ -375,83 +359,37 @@ export function LeadDetailScreen() {
         </div>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 z-20 flex gap-2.5 border-t border-border/60 bg-surface/90 glass px-4 pt-3 pb-[calc(14px+var(--safe-bottom))]">
-        <Button variant="soft" size="lg" className="flex-1" onClick={() => setStatusOpen(true)} icon={<Repeat2 size={18} />}>
+      <div className="glass-header absolute inset-x-0 bottom-0 z-20 flex gap-2.5 px-4 pt-3 pb-[calc(14px+var(--safe-bottom))]">
+        <Button
+          variant="soft"
+          size="lg"
+          className="glass-inset flex-1 border border-white/55 text-neutral-700 shadow-sm dark:border-white/10 dark:text-neutral-200"
+          onClick={() => setStatusOpen(true)}
+          icon={<Repeat2 size={18} />}
+        >
           تغییر وضعیت
         </Button>
         <Button
           size="lg"
-          className="flex-[1.4]"
+          className="flex-[1.4] bg-[#3390EC] shadow-[0_4px_16px_-4px_rgba(51,144,236,0.55)] dark:bg-[#8774E1] dark:shadow-[0_4px_16px_-4px_rgba(135,116,225,0.55)]"
           disabled={!callable}
           icon={callable ? <Phone size={18} /> : <Lock size={18} />}
           onClick={() => {
             if (!callable) return
             haptic('medium')
-            startCall(lead.id)
-            navigate(`/dialer/${lead.id}`)
+            openCallMethodSheet(lead)
           }}
         >
           {callable ? 'تماس بگیر' : lockedByOther ? 'قفل شده' : 'برگشت‌خورده'}
         </Button>
       </div>
 
-      <BottomSheet open={statusOpen} onClose={() => setStatusOpen(false)} title="تغییر وضعیت سرنخ">
-        <div className="space-y-4 pt-1">
-          <div>
-            <p className="mb-2 text-xs font-bold text-neutral-500">سطح علاقه</p>
-            <div className="flex gap-2">
-              {tempOptions.map((t) => (
-                <Chip
-                  key={t}
-                  active={lead.temperature === t}
-                  onClick={() => {
-                    updateLeadTemperature(lead.id, t)
-                    pushToast('سطح علاقه به‌روزرسانی شد')
-                  }}
-                >
-                  {temperatureLabels[t]}
-                </Chip>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="mb-2 text-xs font-bold text-neutral-500">مرحله فروش</p>
-            <div className="flex flex-wrap gap-2">
-              {stageOptions.map((s) => (
-                <Chip
-                  key={s}
-                  active={lead.stage === s}
-                  onClick={() => {
-                    updateLeadStage(lead.id, s)
-                    pushToast('مرحله فروش به‌روزرسانی شد')
-                  }}
-                >
-                  {stageLabels[s]}
-                </Chip>
-              ))}
-            </div>
-          </div>
-          <Button full size="lg" icon={<PhoneCall size={18} />} onClick={() => setStatusOpen(false)}>
-            تایید
-          </Button>
-
-          {!lockedByOther && !lead.returnedToPool && lead.stage !== 'won' && lead.stage !== 'lost' && (
-            <button
-              onClick={() => {
-                haptic('warning')
-                returnLeadToPool(lead.id)
-                pushToast('لید به صف عمومی برگشت')
-                setStatusOpen(false)
-                navigate('/leads')
-              }}
-              className="flex w-full items-center justify-center gap-1.5 py-1 text-[13px] font-bold text-error-500"
-            >
-              <Undo2 size={15} />
-              بازگشت این سرنخ به صف عمومی
-            </button>
-          )}
-        </div>
-      </BottomSheet>
+      <LeadStatusSheet
+        lead={lead}
+        open={statusOpen}
+        onClose={() => setStatusOpen(false)}
+        onReturnedToPool={() => navigate('/leads')}
+      />
     </Page>
   )
 }

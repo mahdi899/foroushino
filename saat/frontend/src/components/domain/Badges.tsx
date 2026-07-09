@@ -33,8 +33,8 @@ export function SourceChip({ source, size = 'md' }: { source: LeadSource; size?:
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 font-bold text-neutral-500',
-        size === 'sm' ? 'text-[11px]' : 'text-xs',
+        'glass-inset inline-flex items-center gap-1 rounded-full border border-white/50 font-semibold text-[#8E8E93] dark:border-white/10 dark:text-[#98989D]',
+        size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs',
       )}
     >
       <Icon size={size === 'sm' ? 12 : 14} className={sourceIconColor[source]} />

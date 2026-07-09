@@ -91,8 +91,39 @@ it('allows a payout request within the available balance and locks the funds', f
     $payout = app(WalletService::class)->requestPayout($agent, 300_000);
 
     expect($payout->status->value)->toBe('requested');
+    expect((float) $payout->bank_fee)->toBe(500.0);
+    expect((float) $payout->net_amount)->toBe(299500.0);
 
     $wallet = $wallet->fresh();
     expect((float) $wallet->balance_available)->toBe(200000.0);
     expect((float) $wallet->balance_locked)->toBe(300000.0);
+});
+
+it('rejects payout amounts below the minimum or not aligned to step', function () {
+    $agent = makeAgent();
+    $wallet = app(WalletService::class)->ensureWallet($agent);
+    $wallet->balance_available = 500_000;
+    $wallet->save();
+
+    expect(fn () => app(WalletService::class)->requestPayout($agent, 50_000))
+        ->toThrow(RuntimeException::class);
+
+    expect(fn () => app(WalletService::class)->requestPayout($agent, 100_500))
+        ->toThrow(RuntimeException::class);
+});
+
+it('allows a full-balance payout even when the available balance is not aligned to step', function () {
+    $agent = makeAgent();
+    $wallet = app(WalletService::class)->ensureWallet($agent);
+    $wallet->balance_available = 456_789;
+    $wallet->save();
+
+    $payout = app(WalletService::class)->requestPayout($agent, 456_789);
+
+    expect($payout->status->value)->toBe('requested');
+    expect((float) $payout->amount)->toBe(456789.0);
+
+    $wallet = $wallet->fresh();
+    expect((float) $wallet->balance_available)->toBe(0.0);
+    expect((float) $wallet->balance_locked)->toBe(456789.0);
 });

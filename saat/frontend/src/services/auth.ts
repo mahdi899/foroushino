@@ -1,8 +1,6 @@
-// Sanctum token storage + the two login flows the backend exposes:
-//   - POST /auth/telegram   (real Telegram Mini App initData verification)
-//   - POST /auth/dev-login  (fallback used in the browser / during development)
 import { getTelegramInitData, isInTelegram } from '@/lib/telegram'
 import { http, API_BASE_URL } from './http'
+import type { Role } from '@/types'
 
 const TOKEN_KEY = 'saat_api_token'
 
@@ -37,25 +35,105 @@ export interface AuthenticatedUser {
   permissions: string[]
 }
 
+export interface TelegramWidgetUser {
+  id: number
+  first_name: string
+  last_name?: string
+  username?: string
+  photo_url?: string
+  auth_date: number
+  hash: string
+}
+
 interface LoginResponse {
   token: string
   user: AuthenticatedUser
 }
 
+export function mapAuthUserRole(roles: string[]): Role {
+  if (roles.includes('manager')) return 'manager'
+  if (roles.includes('supervisor')) return 'supervisor'
+  if (roles.includes('leader')) return 'leader'
+  return 'agent'
+}
+
+async function persistLoginResponse(response: LoginResponse): Promise<AuthenticatedUser> {
+  setToken(response.token)
+  return response.user
+}
+
 /**
- * Logs in with the real Telegram `initData` when running inside the Telegram
- * WebApp, otherwise falls back to the backend's `dev-login` endpoint (by role
- * or email) so the Mini App is also usable as a plain mobile web app in dev.
+ * Mini App login — requires signed Telegram WebApp initData.
+ */
+export async function loginWithTelegramWebApp(): Promise<AuthenticatedUser> {
+  const initData = getTelegramInitData()
+  if (!initData) {
+    throw new Error('داده ورود تلگرام در دسترس نیست. اپ را از داخل تلگرام باز کنید.')
+  }
+
+  const response = await http.post<LoginResponse>('/auth/telegram', { init_data: initData })
+  return persistLoginResponse(response)
+}
+
+/**
+ * Browser login via the official Telegram Login Widget callback payload.
+ */
+export async function loginWithTelegramWidget(user: TelegramWidgetUser): Promise<AuthenticatedUser> {
+  const response = await http.post<LoginResponse>('/auth/telegram-widget', user)
+  return persistLoginResponse(response)
+}
+
+export interface DemoAccount {
+  phone: string
+  otp: string
+  role: string
+  label: string
+}
+
+export interface PhoneOtpRequestResult {
+  channel: 'demo' | 'telegram'
+  hint?: string
+}
+
+export async function requestPhoneOtp(phone: string): Promise<PhoneOtpRequestResult> {
+  return http.post<PhoneOtpRequestResult>('/auth/phone-otp/request', { phone })
+}
+
+export async function fetchDemoAccounts(): Promise<DemoAccount[]> {
+  try {
+    return await http.get<DemoAccount[]>('/auth/demo-accounts')
+  } catch {
+    return []
+  }
+}
+
+export async function verifyPhoneOtp(phone: string, code: string): Promise<AuthenticatedUser> {
+  const response = await http.post<LoginResponse>('/auth/phone-otp/verify', { phone, code })
+  return persistLoginResponse(response)
+}
+
+export async function requestTelegramOtp(initData: string): Promise<void> {
+  await http.post<null>('/auth/telegram-otp/request', { init_data: initData })
+}
+
+export async function verifyTelegramOtp(initData: string, code: string): Promise<AuthenticatedUser> {
+  const response = await http.post<LoginResponse>('/auth/telegram-otp/verify', {
+    init_data: initData,
+    code,
+  })
+  return persistLoginResponse(response)
+}
+
+/**
+ * Dev-only fallback when not running inside Telegram.
  */
 export async function login(devFallback: { role?: string; email?: string } = {}): Promise<AuthenticatedUser> {
-  const initData = isInTelegram() ? getTelegramInitData() : null
+  if (isInTelegram()) {
+    return loginWithTelegramWebApp()
+  }
 
-  const { token, user } = initData
-    ? await http.post<LoginResponse>('/auth/telegram', { init_data: initData })
-    : await http.post<LoginResponse>('/auth/dev-login', devFallback)
-
-  setToken(token)
-  return user
+  const response = await http.post<LoginResponse>('/auth/dev-login', devFallback)
+  return persistLoginResponse(response)
 }
 
 export async function logout(): Promise<void> {
@@ -73,5 +151,7 @@ export async function fetchMe(): Promise<AuthenticatedUser> {
 export function isAuthenticated(): boolean {
   return !!getToken()
 }
+
+export const TELEGRAM_BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME ?? ''
 
 export { API_BASE_URL }

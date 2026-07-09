@@ -350,6 +350,8 @@ export interface PayoutRequest {
   id: string
   agentId: string
   amount: number
+  bankFee?: number
+  netAmount?: number
   status: PayoutStatus
   requestedAt: string
   processedAt?: string | null

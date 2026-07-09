@@ -8,7 +8,13 @@ use Illuminate\Support\Facades\Route;
 Route::get('/health', HealthController::class);
 
 Route::middleware('throttle:auth')->prefix('auth')->group(function (): void {
+    Route::get('/demo-accounts', [AuthController::class, 'demoAccounts']);
     Route::post('/telegram', [AuthController::class, 'telegram']);
+    Route::post('/telegram-widget', [AuthController::class, 'telegramWidget']);
+    Route::post('/telegram-otp/request', [AuthController::class, 'requestTelegramOtp']);
+    Route::post('/telegram-otp/verify', [AuthController::class, 'verifyTelegramOtp']);
+    Route::post('/phone-otp/request', [AuthController::class, 'requestPhoneOtp']);
+    Route::post('/phone-otp/verify', [AuthController::class, 'verifyPhoneOtp']);
     Route::post('/dev-login', [AuthController::class, 'devLogin']);
 });
 

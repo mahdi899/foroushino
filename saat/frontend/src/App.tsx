@@ -9,8 +9,8 @@ import {
 import { useStore } from '@/store/useStore'
 import { initTelegram } from '@/lib/telegram'
 import { BottomNav } from '@/components/layout/BottomNav'
-import { RoleSwitcher } from '@/components/layout/RoleSwitcher'
 import { QuickActionSheet } from '@/components/layout/QuickActionSheet'
+import { CallMethodSheet } from '@/components/domain/CallMethodSheet'
 import { ToastHost } from '@/components/ui/Toast'
 import { cn } from '@/lib/cn'
 
@@ -41,6 +41,10 @@ import { TrainingScreen } from '@/features/training/TrainingScreen'
 import { ObjectionsScreen } from '@/features/training/ObjectionsScreen'
 import { ActivityHistoryScreen } from '@/features/activity/ActivityHistoryScreen'
 import { AppLockScreen } from '@/components/domain/AppLockScreen'
+import { OfflineBanner } from '@/components/pwa/DataGate'
+import { InstallPrompt } from '@/components/pwa/InstallPrompt'
+import { SyncProvider } from '@/providers/SyncProvider'
+import { useStandalonePwa } from '@/lib/pwa'
 
 const NAV_ROUTES = ['/home', '/leads', '/followups', '/performance', '/reports', '/profile']
 
@@ -104,7 +108,7 @@ function Shell() {
       >
         <div className={lockScroll ? 'h-full' : 'h-full min-h-full'}>
           <Routes location={location} key={location.pathname.split('/').slice(0, 2).join('/')}>
-            <Route path="/splash" element={<SplashScreen />} />
+            <Route path="/" element={<SplashScreen />} />
             <Route path="/onboarding" element={<OnboardingScreen />} />
             <Route path="/login" element={<LoginScreen />} />
             <Route path="/shift-start" element={<RequireAuth><ShiftStartScreen /></RequireAuth>} />
@@ -141,18 +145,14 @@ function Shell() {
             <Route path="/activity" element={<RequireAuth><ActivityHistoryScreen /></RequireAuth>} />
             <Route path="/settings" element={<RequireAuth><SettingsScreen /></RequireAuth>} />
 
-            <Route path="*" element={<Navigate to={isAuthed ? '/home' : '/splash'} replace />} />
+            <Route path="*" element={<Navigate to={isAuthed ? '/home' : '/'} replace />} />
           </Routes>
         </div>
       </div>
 
-      {showNav && (
-        <>
-          <BottomNav onFabClick={() => setFabOpen(true)} />
-          <RoleSwitcher />
-        </>
-      )}
+      {showNav && <BottomNav onFabClick={() => setFabOpen(true)} />}
       <QuickActionSheet open={fabOpen} onClose={() => setFabOpen(false)} />
+      <CallMethodSheet />
       <ToastHost />
       <AutoLockWatcher />
       {isAuthed && isLocked && <AppLockScreen />}
@@ -161,17 +161,35 @@ function Shell() {
 }
 
 export default function App() {
+  const standalone = useStandalonePwa()
+
   useEffect(() => {
     initTelegram()
   }, [])
 
   return (
-    <div className="flex min-h-[100dvh] w-full items-center justify-center bg-neutral-200 sm:p-4">
-      <div className="relative h-[100dvh] w-full max-w-[440px] overflow-hidden bg-background sm:h-[896px] sm:max-h-[94vh] sm:rounded-[44px] sm:border-[8px] sm:border-neutral-900 sm:shadow-2xl">
-        <BrowserRouter>
-          <Shell />
-        </BrowserRouter>
+    <SyncProvider>
+      <div
+        className={cn(
+          'flex min-h-[100dvh] w-full items-center justify-center',
+          standalone ? 'bg-background' : 'bg-neutral-200 sm:p-4',
+        )}
+      >
+        <div
+          className={cn(
+            'relative overflow-hidden bg-background',
+            standalone
+              ? 'h-[100dvh] w-full'
+              : 'h-[100dvh] w-full max-w-[440px] sm:h-[896px] sm:max-h-[94vh] sm:rounded-[44px] sm:border-[8px] sm:border-neutral-900 sm:shadow-2xl',
+          )}
+        >
+          <OfflineBanner />
+          <BrowserRouter>
+            <Shell />
+          </BrowserRouter>
+          <InstallPrompt />
+        </div>
       </div>
-    </div>
+    </SyncProvider>
   )
 }

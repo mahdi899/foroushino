@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PayoutRequest extends Model
 {
     protected $fillable = [
-        'user_id', 'amount', 'status', 'requested_at', 'processed_at',
+        'user_id', 'amount', 'bank_fee', 'net_amount', 'status', 'requested_at', 'processed_at',
         'processed_by', 'rejection_reason',
     ];
 
@@ -17,6 +17,8 @@ class PayoutRequest extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'bank_fee' => 'decimal:2',
+            'net_amount' => 'decimal:2',
             'status' => PayoutStatus::class,
             'requested_at' => 'datetime',
             'processed_at' => 'datetime',

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
   GraduationCap,
   CheckSquare,
@@ -9,6 +10,7 @@ import {
   ShieldAlert,
   ChevronLeft,
   MessageCircleWarning,
+  type LucideIcon,
 } from 'lucide-react'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
@@ -24,6 +26,20 @@ import { cn } from '@/lib/cn'
 import { toFa } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
 
+const TG = 'text-[#3390EC] dark:text-[#8774E1]'
+const OK = 'text-emerald-600 dark:text-emerald-400'
+const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
+
+const sectionStagger = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.04 } },
+}
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: spring },
+}
+
 const stageLabels: Record<string, string> = {
   opening: 'شروع مکالمه',
   discovery: 'شناخت نیاز',
@@ -33,6 +49,51 @@ const stageLabels: Record<string, string> = {
 }
 
 const stages = ['opening', 'discovery', 'pitch', 'objection', 'closing']
+
+function SectionTitle({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
+  return (
+    <h2 className="mb-3 flex items-center gap-2 text-[14px] font-bold text-text">
+      <span className="icon-3d icon-3d-primary flex h-7 w-7 items-center justify-center">
+        <Icon size={14} className="text-white" strokeWidth={2.35} />
+      </span>
+      {children}
+    </h2>
+  )
+}
+
+function GlassLinkBtn({
+  icon: Icon,
+  label,
+  tone = 'primary',
+  onClick,
+}: {
+  icon: LucideIcon
+  label: string
+  tone?: 'primary' | 'warning'
+  onClick: () => void
+}) {
+  const tones = {
+    primary: 'border-white/55 dark:border-white/10',
+    warning: 'border-amber-500/25 bg-amber-500/8 dark:border-amber-400/20',
+  }
+
+  return (
+    <motion.button
+      type="button"
+      variants={fadeUp}
+      whileTap={{ scale: 0.985 }}
+      onClick={onClick}
+      className={cn(
+        'glass-card flex w-full items-center gap-3 rounded-[20px] border p-4 text-right',
+        tones[tone],
+      )}
+    >
+      <Icon size={20} className={cn('shrink-0', tone === 'warning' ? 'text-amber-600 dark:text-amber-400' : TG)} strokeWidth={2.25} />
+      <span className="flex-1 text-[13px] font-bold text-text">{label}</span>
+      <ChevronLeft size={16} className="shrink-0 text-text-soft opacity-45" strokeWidth={2.25} />
+    </motion.button>
+  )
+}
 
 export function TrainingScreen() {
   const navigate = useNavigate()
@@ -54,57 +115,81 @@ export function TrainingScreen() {
     })
   }
 
+  const checkedCount = checked.size
+  const progressPct = startChecklist.length ? Math.round((checkedCount / startChecklist.length) * 100) : 0
+
   return (
     <Page withNav={false}>
       <ScreenHeader
         sticky
+        showBack
         title="آموزش و اسکریپت فروش"
         subtitle="چک‌لیست، اسکریپت، پاسخ اعتراض و قوانین"
         icon={GraduationCap}
         iconTone="secondary"
       />
 
-      <div className="space-y-6 px-4 pt-1">
-        <section>
-          <h2 className="mb-3 text-[14px] font-extrabold text-neutral-900">چک‌لیست شروع شیفت</h2>
-          <div className="overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-card">
+      <motion.div variants={sectionStagger} initial="hidden" animate="show" className="space-y-6 px-4 pt-1 pb-8">
+        <motion.section variants={fadeUp}>
+          <SectionTitle icon={CheckSquare}>چک‌لیست شروع شیفت</SectionTitle>
+          <div className="glass-card overflow-hidden rounded-[22px] border border-white/55 dark:border-white/10">
+            <div className="border-b border-white/40 px-4 py-3 dark:border-white/8">
+              <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold">
+                <span className="text-text-soft">پیشرفت آماده‌سازی</span>
+                <span className="tabular-nums text-text">
+                  {toFa(checkedCount)} / {toFa(startChecklist.length)}
+                </span>
+              </div>
+              <div className="h-[5px] overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/10">
+                <motion.div
+                  className="h-full rounded-full bg-gradient-to-l from-emerald-500 to-emerald-400"
+                  animate={{ width: `${progressPct}%` }}
+                  transition={{ duration: 0.4, ease: 'easeOut' }}
+                />
+              </div>
+            </div>
+
             {startChecklist.map((item, i) => {
               const isChecked = checked.has(item)
               return (
-                <button
+                <motion.button
                   key={item}
+                  type="button"
+                  whileTap={{ scale: 0.99 }}
                   onClick={() => toggle(item)}
                   className={cn(
-                    'flex w-full items-start gap-2.5 px-4 py-3.5 text-right',
-                    i < startChecklist.length - 1 && 'border-b border-border/60',
+                    'flex w-full items-start gap-3 px-4 py-3.5 text-right transition-colors',
+                    i < startChecklist.length - 1 && 'border-b border-white/40 dark:border-white/8',
+                    isChecked && 'bg-emerald-500/[0.06]',
                   )}
                 >
-                  {isChecked ? (
-                    <CheckSquare size={18} className="mt-0.5 shrink-0 text-success-500" />
-                  ) : (
-                    <Square size={18} className="mt-0.5 shrink-0 text-neutral-300" />
-                  )}
+                  <motion.span
+                    animate={{ scale: isChecked ? [1, 1.15, 1] : 1 }}
+                    transition={{ duration: 0.25 }}
+                    className="mt-0.5 shrink-0"
+                  >
+                    {isChecked ? (
+                      <CheckSquare size={18} className={OK} strokeWidth={2.35} />
+                    ) : (
+                      <Square size={18} className="text-text-soft opacity-50" strokeWidth={2.25} />
+                    )}
+                  </motion.span>
                   <span
                     className={cn(
-                      'flex-1 text-[12.5px] font-bold leading-6',
-                      isChecked ? 'text-neutral-400 line-through' : 'text-neutral-700',
+                      'flex-1 text-[13px] font-semibold leading-6',
+                      isChecked ? 'text-text-soft line-through' : 'text-text',
                     )}
                   >
                     {item}
                   </span>
-                </button>
+                </motion.button>
               )
             })}
           </div>
-        </section>
+        </motion.section>
 
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="flex items-center gap-1.5 text-[14px] font-extrabold text-neutral-900">
-              <MessagesSquare size={16} className="text-primary-500" />
-              اسکریپت فروش
-            </h2>
-          </div>
+        <motion.section variants={fadeUp}>
+          <SectionTitle icon={MessagesSquare}>اسکریپت فروش</SectionTitle>
           <div className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 py-0.5 no-scrollbar">
             <Chip active={stage === 'all'} tone="primary" onClick={() => setStage('all')}>
               همه
@@ -115,78 +200,95 @@ export function TrainingScreen() {
               </Chip>
             ))}
           </div>
-          <div className="space-y-2.5">
-            {filteredScripts.map((s) => (
-              <div key={s.id} className="rounded-2xl border border-border/60 bg-surface p-3.5 shadow-card">
+          <div className="space-y-3">
+            {filteredScripts.map((s, i) => (
+              <motion.div
+                key={s.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ ...spring, delay: i * 0.04 }}
+                className="glass-card rounded-[20px] border border-white/55 p-4 dark:border-white/10"
+              >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-[13px] font-extrabold text-neutral-900">{s.title}</p>
-                  <span className="shrink-0 rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-bold text-primary-600">
+                  <p className="text-[14px] font-bold text-text">{s.title}</p>
+                  <span
+                    className={cn(
+                      'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold',
+                      'border-[#3390EC]/22 bg-[#3390EC]/10 dark:border-[#8774E1]/28 dark:bg-[#8774E1]/12',
+                      TG,
+                    )}
+                  >
                     {stageLabels[s.stage] ?? s.stage}
                   </span>
                 </div>
-                <p className="mt-2 text-[12.5px] font-bold leading-7 text-neutral-600">{s.content}</p>
-              </div>
+                <p className="mt-2.5 text-[13px] font-medium leading-7 text-text-muted">{s.content}</p>
+              </motion.div>
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        <button
+        <GlassLinkBtn
+          icon={MessageCircleWarning}
+          tone="warning"
+          label="کتابخانه اعتراض‌ها و پاسخ‌های پیشنهادی"
           onClick={() => navigate('/training/objections')}
-          className="flex w-full items-center gap-3 rounded-2xl bg-warning-50 p-4 text-right"
-        >
-          <MessageCircleWarning size={20} className="shrink-0 text-warning-600" />
-          <span className="flex-1 text-[13px] font-extrabold text-warning-700">
-            کتابخانه اعتراض‌ها و پاسخ‌های پیشنهادی
-          </span>
-          <ChevronLeft size={16} className="shrink-0 text-warning-400" />
-        </button>
+        />
 
-        <section>
-          <h2 className="mb-3 flex items-center gap-1.5 text-[14px] font-extrabold text-neutral-900">
-            <Lightbulb size={16} className="text-accent-500" />
-            نکات موفقیت
-          </h2>
-          <div className="space-y-2">
-            {successTips.map((tip) => (
-              <div key={tip} className="flex items-start gap-2.5 rounded-2xl bg-accent-50 p-3.5">
-                <Lightbulb size={15} className="mt-0.5 shrink-0 text-accent-600" />
-                <p className="text-[12.5px] font-bold leading-6 text-accent-800">{tip}</p>
-              </div>
+        <motion.section variants={fadeUp}>
+          <SectionTitle icon={Lightbulb}>نکات موفقیت</SectionTitle>
+          <div className="space-y-2.5">
+            {successTips.map((tip, i) => (
+              <motion.div
+                key={tip}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ ...spring, delay: i * 0.05 }}
+                className={cn(
+                  'glass-inset flex items-start gap-3 rounded-[18px] border border-amber-500/20 p-3.5',
+                  'dark:border-amber-400/15',
+                )}
+              >
+                <Lightbulb size={16} className="mt-0.5 shrink-0 text-amber-500" strokeWidth={2.35} />
+                <p className="text-[13px] font-medium leading-6 text-text-muted">{tip}</p>
+              </motion.div>
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        <section>
-          <h2 className="mb-3 flex items-center gap-1.5 text-[14px] font-extrabold text-neutral-900">
-            <ShieldAlert size={16} className="text-error-500" />
-            قوانین تماس
-          </h2>
-          <div className="overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-card">
+        <motion.section variants={fadeUp}>
+          <SectionTitle icon={ShieldAlert}>قوانین تماس</SectionTitle>
+          <div className="glass-card overflow-hidden rounded-[22px] border border-white/55 dark:border-white/10">
             {callingRules.map((rule, i) => (
               <div
                 key={rule}
                 className={cn(
-                  'flex items-start gap-2.5 px-4 py-3.5',
-                  i < callingRules.length - 1 && 'border-b border-border/60',
+                  'flex items-start gap-3 px-4 py-3.5',
+                  i < callingRules.length - 1 && 'border-b border-white/40 dark:border-white/8',
                 )}
               >
-                <ShieldAlert size={14} className="mt-0.5 shrink-0 text-error-500" />
-                <p className="text-[12.5px] font-bold leading-6 text-neutral-700">{rule}</p>
+                <ShieldAlert size={15} className="mt-0.5 shrink-0 text-red-500" strokeWidth={2.35} />
+                <p className="text-[13px] font-medium leading-6 text-text-muted">{rule}</p>
               </div>
             ))}
           </div>
-        </section>
+        </motion.section>
 
-        <button
+        <motion.button
+          variants={fadeUp}
+          type="button"
+          whileTap={{ scale: 0.985 }}
           onClick={() => navigate('/wallet/rules')}
-          className="flex w-full items-center gap-3 rounded-2xl border border-dashed border-border p-4 text-right"
+          className={cn(
+            'glass-inset flex w-full items-center gap-3 rounded-[18px] border border-dashed',
+            'border-white/55 p-4 text-right dark:border-white/10',
+          )}
         >
-          <span className="flex-1 text-[12.5px] font-extrabold text-neutral-600">
+          <span className="flex-1 text-[13px] font-bold text-text-muted">
             قوانین پورسانت ({toFa(commissionRules.length)} قانون)
           </span>
-          <ChevronLeft size={16} className="shrink-0 text-neutral-300" />
-        </button>
-      </div>
+          <ChevronLeft size={16} className="shrink-0 text-text-soft opacity-45" strokeWidth={2.25} />
+        </motion.button>
+      </motion.div>
     </Page>
   )
 }

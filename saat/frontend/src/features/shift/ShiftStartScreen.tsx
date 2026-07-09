@@ -6,7 +6,7 @@ import { useStore } from '@/store/useStore'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { availabilityIcon } from '@/components/domain/icons'
-import { getSuggestion } from '@/lib/leadUtils'
+import { getSuggestion, filterLeadsForAgent } from '@/lib/leadUtils'
 import { availabilityLabels, roleLabels, suggestReasonLabels } from '@/data/labels'
 import { toFa, formatJalaliDate } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
@@ -18,6 +18,7 @@ const STATUS_OPTIONS: Availability[] = ['available', 'on_break', 'doing_follow_u
 export function ShiftStartScreen() {
   const navigate = useNavigate()
   const agent = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
+  const currentAgentId = useStore((s) => s.currentAgentId)
   const leads = useStore((s) => s.leads)
   const followups = useStore((s) => s.followups)
   const startShift = useStore((s) => s.startShift)
@@ -28,10 +29,13 @@ export function ShiftStartScreen() {
   const [chosen, setChosen] = useState<Availability>('available')
 
   const myLeads = useMemo(
-    () => leads.filter((l) => l.assignedAgentId === agent?.id && l.stage !== 'won' && l.stage !== 'lost'),
-    [leads, agent?.id],
+    () =>
+      filterLeadsForAgent(leads, currentAgentId).filter(
+        (l) => l.assignedAgentId === agent?.id && l.stage !== 'won' && l.stage !== 'lost',
+      ),
+    [leads, agent?.id, currentAgentId],
   )
-  const suggestion = useMemo(() => getSuggestion(leads, followups), [leads, followups])
+  const suggestion = useMemo(() => getSuggestion(leads, followups, currentAgentId), [leads, followups, currentAgentId])
 
   if (!agent) return null
 

@@ -141,10 +141,14 @@ export function mapWalletTransaction(dto: Dto): WalletTransaction {
 }
 
 export function mapPayoutRequest(dto: Dto): PayoutRequest {
+  const amount = Number(dto.amount ?? 0)
+  const bankFee = Number(dto.bank_fee ?? 0)
   return {
     id: id(dto.id),
     agentId: id(dto.user_id),
-    amount: Number(dto.amount ?? 0),
+    amount,
+    bankFee: bankFee || undefined,
+    netAmount: dto.net_amount != null ? Number(dto.net_amount) : bankFee > 0 ? amount - bankFee : undefined,
     status: dto.status ?? 'requested',
     requestedAt: dto.requested_at,
     processedAt: dto.processed_at ?? null,

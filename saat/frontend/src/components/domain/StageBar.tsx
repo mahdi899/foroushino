@@ -106,7 +106,7 @@ export function StageBar({ stage }: { stage: SaleStage }) {
 
   if (stage === 'lost') {
     return (
-      <div className="rounded-3xl border border-error-200 bg-gradient-to-br from-error-600 to-error-500 px-4 py-3 text-center text-sm font-bold text-white shadow-[0_10px_30px_-12px_rgba(201,54,59,0.45)]">
+      <div className="glass-inset rounded-[22px] border border-error-200/60 px-4 py-3 text-center text-sm font-bold text-error-600 dark:border-error-500/25">
         {stageLabels.lost}
       </div>
     )
@@ -129,58 +129,59 @@ export function StageBar({ stage }: { stage: SaleStage }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}
       className={cn(
-        'relative overflow-hidden rounded-3xl border p-4 text-white',
+        'stage-pipeline-card relative isolate overflow-hidden rounded-[26px] border border-white/30 p-4 text-white dark:border-white/10',
         theme.shell,
         theme.shadow,
       )}
     >
-      <div className={cn('pointer-events-none absolute inset-0 bg-gradient-to-l', theme.overlay)} />
+      <div className={cn('pointer-events-none absolute inset-0 bg-gradient-to-br opacity-80', theme.overlay)} />
       <div
         className={cn(
-          'pointer-events-none absolute -left-10 -top-10 h-32 w-32 rounded-full blur-3xl',
+          'pointer-events-none absolute -start-10 -top-10 h-32 w-32 rounded-full blur-3xl',
           theme.glow,
         )}
       />
       <div
         className={cn(
-          'pointer-events-none absolute -bottom-12 -right-8 h-28 w-28 rounded-full blur-3xl',
+          'pointer-events-none absolute -bottom-12 -end-8 h-28 w-28 rounded-full blur-3xl',
           isClosing ? 'bg-accent-400/15' : 'bg-white/8',
         )}
       />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
 
       <div className="relative space-y-3">
-        <div className="flex items-center gap-3.5">
+        <div className="flex items-center gap-3">
           <div
             className={cn(
-              'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-md ring-4',
-              isClosing
-                ? 'bg-white/25 text-white ring-white/30'
-                : 'bg-white/20 text-white ring-white/25',
+              'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/30 bg-white/20 shadow-md backdrop-blur-md',
+              isClosing ? 'text-white' : 'text-white',
             )}
           >
-            {isWon ? <Check size={24} strokeWidth={2.5} /> : <Icon size={22} strokeWidth={2.5} />}
+            {isWon ? <Check size={22} strokeWidth={2.5} /> : <Icon size={20} strokeWidth={2.5} />}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-bold text-white/70">مرحله فعلی</p>
-            <p className="mt-0.5 truncate text-[17px] font-extrabold leading-6 text-white">
+            <p className="text-[11px] font-bold text-white/75">مرحله فعلی</p>
+            <p className="mt-0.5 truncate text-[16px] font-extrabold leading-6 text-white">
               {stageLabels[currentStage]}
             </p>
           </div>
           {isClosing && !isWon && (
-            <span className="shrink-0 rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[10px] font-extrabold backdrop-blur-sm">
+            <span className="shrink-0 rounded-full border border-white/30 bg-white/18 px-2.5 py-1 text-[10px] font-bold backdrop-blur-md">
               نزدیک فروش
             </span>
           )}
           {isWon && (
-            <span className="shrink-0 rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-[10px] font-extrabold backdrop-blur-sm">
+            <span className="shrink-0 rounded-full border border-white/30 bg-white/18 px-2.5 py-1 text-[10px] font-bold backdrop-blur-md">
               🎉 موفق
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2.5 rounded-xl border border-white/20 bg-white/10 px-3 py-2.5 backdrop-blur-sm">
-          <span className="shrink-0 text-[11px] font-extrabold tabular-nums text-white/80">
+        <div
+          className="flex items-center gap-2.5 rounded-2xl border border-white/25 bg-black/10 px-3 py-2.5 backdrop-blur-md"
+          dir="ltr"
+        >
+          <span className="shrink-0 text-[11px] font-extrabold tabular-nums text-white/85">
             {toFa(currentIndex + 1)}/{toFa(total)}
           </span>
           <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-white/20">
@@ -196,22 +197,19 @@ export function StageBar({ stage }: { stage: SaleStage }) {
           </span>
         </div>
 
-        <div
-          className={cn(
-            'flex items-center gap-2 border-t border-white/20 pt-3 text-[11px] font-bold',
-            nextStage ? 'justify-between' : 'justify-end',
-          )}
-        >
-          {nextStage && (
-            <p className="min-w-0 truncate text-white/75">
+        <div className="flex items-center gap-2 border-t border-white/20 pt-3 text-[11px] font-bold">
+          {nextStage ? (
+            <p className="min-w-0 flex-1 truncate text-white/80">
               مرحله بعد:{' '}
               <span className="text-white">{stageLabels[nextStage]}</span>
             </p>
+          ) : (
+            <span className="flex-1" />
           )}
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="flex shrink-0 items-center gap-1 text-white/75 transition-opacity active:opacity-70"
+            className="flex shrink-0 items-center gap-1 whitespace-nowrap text-white/90 transition-opacity active:opacity-70"
           >
             {expanded ? 'بستن جزئیات' : 'نمایش همه مراحل'}
             <ChevronDown size={14} className={cn('transition-transform duration-200', expanded && 'rotate-180')} />

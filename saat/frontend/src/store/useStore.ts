@@ -23,6 +23,9 @@ import type {
   WalletTransaction,
   WorkSession,
 } from '@/types'
+import type { CallMethod } from '@/lib/call'
+import type { AuthenticatedUser } from '@/services/auth'
+import { clearToken, mapAuthUserRole } from '@/services/auth'
 import {
   agents as mockAgents,
   followups as mockFollowups,
@@ -48,11 +51,19 @@ import {
   computeCommission,
   routeCallResult,
   stageToStatus,
-  suggestNextAfter,
   uid,
   type Suggestion,
 } from '@/services/logic'
+import { getSuggestionAfter } from '@/lib/leadUtils'
 import type { CallResultInput, CallResultOutcome, FollowupInput } from '@/services/client'
+import {
+  calculateBankFee,
+  payoutNetAmount,
+  validatePayoutAmount,
+} from '@/lib/payoutRules'
+import type { SyncPayload } from '@/services/sync'
+
+const usesRemoteData = import.meta.env.VITE_API_MODE === 'http'
 
 export interface Toast {
   id: string
@@ -89,12 +100,14 @@ interface AppState {
 
   // transient call context
   activeCallLeadId: string | null
+  activeCallMethod: CallMethod | null
   lastCallDuration: number
   lastOutcome: CallResultOutcome | null
 
   // ui
   toasts: Toast[]
   darkMode: boolean
+  callMethodLead: Lead | null
 
   // security & privacy
   maskPhoneNumbers: boolean
@@ -102,10 +115,14 @@ interface AppState {
   autoLockMinutes: number
   isLocked: boolean
 
+  // remote data sync (http mode)
+  dataReady: boolean
+  dataSyncing: boolean
+
   // session actions
   login: (phone: string) => void
+  setSessionFromAuth: (user: AuthenticatedUser) => void
   logout: () => void
-  setRole: (role: Role) => void
 
   // shift actions
   startShift: () => void
@@ -122,7 +139,7 @@ interface AppState {
   updateLeadNote: (leadId: string, note: string) => void
 
   // call actions
-  startCall: (leadId: string) => void
+  startCall: (leadId: string, method?: CallMethod) => void
   endCall: (durationSec: number) => void
   submitCallResult: (input: CallResultInput) => CallResultOutcome
 
@@ -149,12 +166,19 @@ interface AppState {
   toggleDarkMode: () => void
   pushToast: (message: string, tone?: Toast['tone']) => void
   dismissToast: (id: string) => void
+  openCallMethodSheet: (lead: Lead) => void
+  closeCallMethodSheet: () => void
 
   // security & privacy
   setMaskPhoneNumbers: (on: boolean) => void
   setAutoLock: (enabled: boolean, minutes?: number) => void
   lockApp: () => void
   unlockApp: () => void
+
+  // sync
+  applySyncData: (payload: SyncPayload) => void
+  setDataReady: (ready: boolean) => void
+  setDataSyncing: (syncing: boolean) => void
 }
 
 function syncFollowupStatuses(followups: Followup[]): Followup[] {
@@ -284,20 +308,47 @@ export const useStore = create<AppState>()(
       activity: mockActivity,
 
       activeCallLeadId: null,
+      activeCallMethod: null,
       lastCallDuration: 0,
       lastOutcome: null,
 
       toasts: [],
       darkMode: false,
+      callMethodLead: null,
 
       maskPhoneNumbers: false,
       autoLockEnabled: false,
       autoLockMinutes: 5,
       isLocked: false,
 
+      dataReady: !usesRemoteData,
+      dataSyncing: false,
+
       login: (phone) => set({ isAuthed: true, phone }),
-      logout: () => set({ isAuthed: false, phone: '', availability: 'offline' }),
-      setRole: (role) => set({ role, currentAgentId: AGENT_MAP[role] }),
+      setSessionFromAuth: (user) => {
+        const role = mapAuthUserRole(user.roles)
+        set({
+          isAuthed: true,
+          phone: user.phone ?? user.email,
+          role,
+          currentAgentId: usesRemoteData ? String(user.id) : AGENT_MAP[role],
+          dataReady: !usesRemoteData,
+        })
+      },
+      logout: () => {
+        clearToken()
+        set({
+          isAuthed: false,
+          phone: '',
+          availability: 'offline',
+          role: 'agent',
+          currentAgentId: AGENT_MAP.agent,
+          workSession: null,
+          isLocked: false,
+          dataReady: !usesRemoteData,
+          dataSyncing: false,
+        })
+      },
 
       startShift: () =>
         set({
@@ -392,9 +443,10 @@ export const useStore = create<AppState>()(
           ),
         })),
 
-      startCall: (leadId) => {
+      startCall: (leadId, method = 'voip') => {
         set((state) => ({
           activeCallLeadId: leadId,
+          activeCallMethod: method,
           lastCallDuration: 0,
           availability: 'in_call',
           leads: state.leads.map((l) =>
@@ -537,7 +589,12 @@ export const useStore = create<AppState>()(
         ]
 
         const syncedFollowups = syncFollowupStatuses(followups)
-        const suggestion: Suggestion | null = suggestNextAfter(leads, syncedFollowups, input.leadId)
+        const suggestion: Suggestion | null = getSuggestionAfter(
+          leads,
+          syncedFollowups,
+          input.leadId,
+          agentId,
+        )
 
         const outcome: CallResultOutcome = {
           nextActionLabel: nextActionLabels[routed.nextAction],
@@ -555,6 +612,7 @@ export const useStore = create<AppState>()(
           activity,
           notifications,
           activeCallLeadId: null,
+          activeCallMethod: null,
           availability: 'available',
           lastOutcome: outcome,
         })
@@ -739,18 +797,22 @@ export const useStore = create<AppState>()(
 
       requestPayout: (amount) => {
         const state = get()
-        if (amount <= 0) return { ok: false, message: 'مبلغ نامعتبر است.' }
-        if (amount > state.wallet.balanceAvailable) {
-          return { ok: false, message: 'مبلغ درخواستی بیشتر از موجودی قابل برداشت است.' }
-        }
+        const validation = validatePayoutAmount(amount, state.wallet.balanceAvailable)
+        if (!validation.ok) return { ok: false, message: validation.message }
+
+        const bankFee = calculateBankFee(amount)
+        const netAmount = payoutNetAmount(amount)
         const nowIso = new Date().toISOString()
         const payout: PayoutRequest = {
           id: uid('po'),
           agentId: state.currentAgentId,
           amount,
+          bankFee,
+          netAmount,
           status: 'requested',
           requestedAt: nowIso,
         }
+        const feeNote = ` — کارمزد بانکی ${bankFee.toLocaleString('fa-IR')} تومان`
         set({
           payouts: [payout, ...state.payouts],
           wallet: {
@@ -763,7 +825,7 @@ export const useStore = create<AppState>()(
               id: uid('wt'),
               type: 'payout_requested',
               amount,
-              description: 'درخواست تسویه ثبت شد',
+              description: `درخواست تسویه ثبت شد${feeNote}`,
               referenceType: 'payout',
               referenceId: payout.id,
               createdAt: nowIso,
@@ -805,6 +867,9 @@ export const useStore = create<AppState>()(
       dismissToast: (id) =>
         set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
 
+      openCallMethodSheet: (lead) => set({ callMethodLead: lead }),
+      closeCallMethodSheet: () => set({ callMethodLead: null }),
+
       setMaskPhoneNumbers: (on) => set({ maskPhoneNumbers: on }),
       setAutoLock: (enabled, minutes) =>
         set((state) => ({ autoLockEnabled: enabled, autoLockMinutes: minutes ?? state.autoLockMinutes })),
@@ -812,6 +877,31 @@ export const useStore = create<AppState>()(
         if (get().autoLockEnabled) set({ isLocked: true })
       },
       unlockApp: () => set({ isLocked: false }),
+
+      applySyncData: (payload) =>
+        set((state) => ({
+          leads: hydrateLeads(payload.leads),
+          followups: syncFollowupStatuses(payload.followups),
+          sales: payload.sales,
+          payments: payload.payments,
+          commissions: payload.commissions,
+          wallet: payload.wallet,
+          walletTx: payload.walletTx,
+          payouts: payload.payouts,
+          products: payload.products,
+          notifications: payload.notifications,
+          availability: payload.availability,
+          currentAgentId: payload.agent.id,
+          agents: state.agents.some((agent) => agent.id === payload.agent.id)
+            ? state.agents.map((agent) =>
+                agent.id === payload.agent.id ? { ...agent, ...payload.agent } : agent,
+              )
+            : [...state.agents, payload.agent],
+          dataReady: true,
+          dataSyncing: false,
+        })),
+      setDataReady: (ready) => set({ dataReady: ready }),
+      setDataSyncing: (syncing) => set({ dataSyncing: syncing }),
     }),
     {
       name: 'saat-store',

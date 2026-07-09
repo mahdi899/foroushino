@@ -129,6 +129,40 @@ class UserSeeder extends Seeder
         // Wallets for admin/manager/leaders/supervisors too.
         User::query()->role([RoleName::Admin->value, RoleName::Manager->value, RoleName::Leader->value, RoleName::Supervisor->value])
             ->get()
-            ->each(fn (User $u) => Wallet::query()->firstOrCreate(['user_id' => $u->id]));
+            ->each(fn (User $u) =>         Wallet::query()->firstOrCreate(['user_id' => $u->id]));
+
+        $this->seedDemoAccounts($teams);
+    }
+
+    private function seedDemoAccounts($teams): void
+    {
+        if (! config('demo_auth.enabled', false)) {
+            return;
+        }
+
+        $teamId = $teams->first()?->id;
+        $roleMap = [
+            'agent' => RoleName::Agent,
+            'leader' => RoleName::Leader,
+            'supervisor' => RoleName::Supervisor,
+            'manager' => RoleName::Manager,
+        ];
+
+        foreach (config('demo_auth.accounts', []) as $phone => $account) {
+            $user = User::query()->firstOrCreate(
+                ['phone' => $phone],
+                [
+                    'name' => $account['name'],
+                    'email' => $account['email'],
+                    'password' => Hash::make('password'),
+                    'email_verified_at' => now(),
+                    'team_id' => in_array($account['role'], ['agent', 'leader', 'supervisor'], true) ? $teamId : null,
+                    'availability' => Availability::Available,
+                    'is_active' => true,
+                ],
+            );
+            $user->syncRoles([$roleMap[$account['role']]->value ?? RoleName::Agent->value]);
+            Wallet::query()->firstOrCreate(['user_id' => $user->id]);
+        }
     }
 }

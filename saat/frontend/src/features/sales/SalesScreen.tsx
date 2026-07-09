@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   BadgeDollarSign,
   Wallet,
@@ -10,6 +10,7 @@ import {
   Ban,
   Clock,
   ShieldCheck,
+  type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
@@ -17,7 +18,6 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { Chip, type ChipTone } from '@/components/ui/Chip'
 import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
-import { Button } from '@/components/ui/Button'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { SuccessScreen } from '@/components/ui/SuccessScreen'
@@ -26,12 +26,15 @@ import { PaymentSubmitSheet } from '@/components/domain/PaymentSubmitSheet'
 import { saleStatusLabels, saleStatusTone } from '@/data/labels'
 import { formatMoney, relativeDayTime, toFa } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
-import type { PaymentMethod, Sale, SaleStatus } from '@/types'
+import type { Lead, PaymentMethod, Product, Sale, SaleStatus } from '@/types'
 import { cn } from '@/lib/cn'
+import { DataGate } from '@/components/pwa/DataGate'
 
 type Filter = 'all' | SaleStatus
 
 const MANAGER_ROLES = ['leader', 'supervisor', 'manager']
+const TG = 'text-[#3390EC] dark:text-[#8774E1]'
+const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
 
 const filters: { id: Filter; label: string; tone: ChipTone }[] = [
   { id: 'all', label: 'همه', tone: 'neutral' },
@@ -41,6 +44,183 @@ const filters: { id: Filter; label: string; tone: ChipTone }[] = [
   { id: 'rejected', label: 'رد شده', tone: 'error' },
   { id: 'cancelled', label: 'کنسل شده', tone: 'neutral' },
 ]
+
+const statusGlow: Partial<Record<SaleStatus, string>> = {
+  confirmed: 'bg-emerald-400/16 dark:bg-emerald-400/12',
+  payment_pending: 'bg-amber-400/18 dark:bg-amber-400/12',
+  pending_confirmation: 'bg-[#3390EC]/14 dark:bg-[#8774E1]/14',
+  rejected: 'bg-red-400/14 dark:bg-red-400/10',
+  cancelled: 'bg-neutral-400/10',
+}
+
+const listStagger = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.06, delayChildren: 0.04 } },
+}
+
+const cardFadeUp = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: spring },
+}
+
+function GlassActionBtn({
+  label,
+  icon: Icon,
+  variant = 'primary',
+  className,
+  disabled,
+  onClick,
+}: {
+  label: string
+  icon: LucideIcon
+  variant?: 'primary' | 'danger' | 'soft'
+  className?: string
+  disabled?: boolean
+  onClick: () => void
+}) {
+  const styles = {
+    primary: cn(
+      'bg-[#3390EC] text-white shadow-[0_6px_20px_rgba(51,144,236,0.28)]',
+      'dark:bg-[#8774E1] dark:shadow-[0_6px_20px_rgba(135,116,225,0.24)]',
+    ),
+    danger: cn(
+      'border border-red-500/25 bg-red-500/10 text-red-600',
+      'dark:border-red-400/20 dark:text-red-400 dark:bg-red-500/12',
+    ),
+    soft: cn(
+      'glass-inset border border-white/55 text-text-muted',
+      'dark:border-white/10',
+    ),
+  }
+
+  return (
+    <motion.button
+      type="button"
+      whileTap={{ scale: disabled ? 1 : 0.97 }}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        disabled && 'pointer-events-none opacity-45',
+        'relative inline-flex h-9 flex-1 items-center justify-center gap-1.5 overflow-hidden',
+        'rounded-[13px] text-[12px] font-bold',
+        styles[variant],
+        className,
+      )}
+    >
+      {variant === 'primary' && (
+        <span className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/10" />
+      )}
+      <Icon size={14} strokeWidth={2.35} className="relative shrink-0" />
+      <span className="relative">{label}</span>
+    </motion.button>
+  )
+}
+
+function SaleCard({
+  sale,
+  lead,
+  product,
+  isManager,
+  onLeadClick,
+  onPay,
+  onCancel,
+  onConfirm,
+  onReject,
+}: {
+  sale: Sale
+  lead?: Lead
+  product?: Product
+  isManager: boolean
+  onLeadClick: () => void
+  onPay: () => void
+  onCancel: () => void
+  onConfirm: () => void
+  onReject: () => void
+}) {
+  const glow = statusGlow[sale.status]
+
+  return (
+    <motion.div
+      variants={cardFadeUp}
+      layout
+      className={cn(
+        'glass-card relative overflow-hidden rounded-[22px] border border-white/55 p-4',
+        'dark:border-white/10',
+      )}
+    >
+      <div className="pointer-events-none absolute inset-0">
+        {glow && (
+          <div className={cn('absolute -left-8 -top-8 h-28 w-28 rounded-full blur-3xl', glow)} />
+        )}
+        <div className="absolute -bottom-10 -right-8 h-24 w-24 rounded-full bg-[#8774E1]/8 blur-3xl" />
+        <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white/85 to-transparent dark:via-white/12" />
+      </div>
+
+      <button type="button" onClick={onLeadClick} className="relative flex w-full items-center gap-3 text-right">
+        {lead ? (
+          <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={48} ring />
+        ) : (
+          <span className="icon-3d icon-3d-primary flex h-12 w-12 shrink-0 items-center justify-center">
+            <BadgeDollarSign size={20} className="text-white" strokeWidth={2.25} />
+          </span>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-bold text-text">
+            {lead ? `${lead.firstName} ${lead.lastName}` : 'سرنخ نامشخص'}
+          </p>
+          <p className="mt-0.5 truncate text-[11px] font-semibold text-text-soft">
+            {product?.name ?? 'محصول'} · {relativeDayTime(sale.createdAt)}
+          </p>
+        </div>
+
+        <div className="shrink-0 text-left">
+          <p className={cn('text-[14px] font-black tabular-nums leading-none', TG)}>{formatMoney(sale.amount)}</p>
+          <Badge tone={saleStatusTone[sale.status]} size="sm" className="mt-1.5">
+            {saleStatusLabels[sale.status]}
+          </Badge>
+        </div>
+      </button>
+
+      {sale.status === 'rejected' && sale.rejectionReason && (
+        <div
+          className={cn(
+            'relative mt-3 rounded-[14px] border border-red-500/20 px-3 py-2',
+            'bg-red-500/8 text-[11px] font-semibold text-red-600 dark:text-red-400',
+          )}
+        >
+          دلیل رد: {sale.rejectionReason}
+        </div>
+      )}
+
+      {!isManager && sale.status === 'payment_pending' && (
+        <div className="relative mt-3 flex gap-2">
+          <GlassActionBtn label="لغو فروش" icon={Ban} variant="danger" onClick={onCancel} />
+          <GlassActionBtn label="ثبت پرداخت" icon={Wallet} variant="primary" onClick={onPay} />
+        </div>
+      )}
+
+      {!isManager && sale.status === 'pending_confirmation' && (
+        <div
+          className={cn(
+            'relative mt-3 flex items-center gap-2 rounded-[14px] border px-3 py-2',
+            'border-[#3390EC]/20 bg-[#3390EC]/8 dark:border-[#8774E1]/22 dark:bg-[#8774E1]/10',
+          )}
+        >
+          <Clock size={13} className={cn('shrink-0', TG)} strokeWidth={2.35} />
+          <p className={cn('text-[11px] font-bold', TG)}>در انتظار تایید سوپروایزر است</p>
+        </div>
+      )}
+
+      {isManager && sale.status === 'pending_confirmation' && (
+        <div className="relative mt-3 flex gap-2">
+          <GlassActionBtn label="رد فروش" icon={X} variant="danger" onClick={onReject} />
+          <GlassActionBtn label="تایید فروش" icon={Check} variant="primary" onClick={onConfirm} />
+        </div>
+      )}
+    </motion.div>
+  )
+}
 
 export function SalesScreen() {
   const navigate = useNavigate()
@@ -79,6 +259,8 @@ export function SalesScreen() {
     refunded: 0,
   }
 
+  const pendingPayCount = counts.payment_pending
+
   const leadOf = (id: string) => leads.find((l) => l.id === id)
   const productOf = (id: string) => products.find((p) => p.id === id)
 
@@ -86,6 +268,7 @@ export function SalesScreen() {
     <Page withNav={false}>
       <ScreenHeader
         sticky
+        showBack
         title="فروش‌های من"
         subtitle={`${toFa(visible.length)} فروش`}
         icon={BadgeDollarSign}
@@ -93,13 +276,24 @@ export function SalesScreen() {
         className="pb-2"
         action={
           !isManager && (
-            <button
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.96 }}
               onClick={() => navigate('/sales/pending-payments')}
-              className="flex h-10 items-center gap-1.5 rounded-full bg-warning-50 px-3 text-[11px] font-extrabold text-warning-700"
+              className={cn(
+                'glass-inset relative flex h-10 items-center gap-1.5 overflow-hidden rounded-full',
+                'border border-amber-500/25 px-3 text-[11px] font-bold text-amber-700',
+                'dark:border-amber-400/22 dark:text-amber-300',
+              )}
             >
-              <Wallet size={13} />
-              پرداخت‌های در انتظار
-            </button>
+              <Wallet size={14} strokeWidth={2.35} />
+              <span>پرداخت‌های در انتظار</span>
+              {pendingPayCount > 0 && (
+                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-black tabular-nums text-white">
+                  {toFa(pendingPayCount)}
+                </span>
+              )}
+            </motion.button>
           )
         }
       >
@@ -110,8 +304,8 @@ export function SalesScreen() {
               {counts[f.id] > 0 && (
                 <span
                   className={cn(
-                    'mr-0.5 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums',
-                    filter === f.id ? 'bg-white/25' : 'bg-black/5',
+                    'mr-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums',
+                    filter === f.id ? 'bg-white/25' : 'bg-black/[0.06] dark:bg-white/10',
                   )}
                 >
                   {toFa(counts[f.id])}
@@ -122,7 +316,13 @@ export function SalesScreen() {
         </div>
       </ScreenHeader>
 
-      <div className="space-y-3 px-4 pt-3">
+      <DataGate mode="placeholder">
+      <motion.div
+        variants={listStagger}
+        initial="hidden"
+        animate="show"
+        className="space-y-3 px-4 pt-3 pb-24"
+      >
         {filtered.length === 0 ? (
           <EmptyState title="فروشی پیدا نشد" description="فیلتر را تغییر بده." />
         ) : (
@@ -130,83 +330,23 @@ export function SalesScreen() {
             const lead = leadOf(sale.leadId)
             const product = productOf(sale.productId)
             return (
-              <div key={sale.id} className="rounded-2xl border border-border/60 bg-surface p-3.5 shadow-card">
-                <button
-                  onClick={() => lead && navigate(`/leads/${lead.id}`)}
-                  className="flex w-full items-center gap-3 text-right"
-                >
-                  {lead && (
-                    <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={44} />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13.5px] font-extrabold text-neutral-900">
-                      {lead ? `${lead.firstName} ${lead.lastName}` : 'سرنخ نامشخص'}
-                    </p>
-                    <p className="mt-0.5 truncate text-[11px] font-bold text-neutral-400">
-                      {product?.name ?? 'محصول'} · {relativeDayTime(sale.createdAt)}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-left">
-                    <p className="text-[13px] font-black tabular-nums text-neutral-900">
-                      {formatMoney(sale.amount)}
-                    </p>
-                    <Badge tone={saleStatusTone[sale.status]} size="sm" className="mt-1">
-                      {saleStatusLabels[sale.status]}
-                    </Badge>
-                  </div>
-                </button>
-
-                {sale.status === 'rejected' && sale.rejectionReason && (
-                  <p className="mt-2.5 rounded-lg bg-error-50 px-2.5 py-1.5 text-[11px] font-bold text-error-600">
-                    دلیل رد: {sale.rejectionReason}
-                  </p>
-                )}
-
-                {!isManager && sale.status === 'payment_pending' && (
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      variant="soft"
-                      size="sm"
-                      className="!bg-error-50 !text-error-600"
-                      icon={<Ban size={14} />}
-                      onClick={() => setCancelTarget(sale)}
-                    >
-                      لغو فروش
-                    </Button>
-                    <Button size="sm" className="flex-1" icon={<Wallet size={14} />} onClick={() => setPaySheet(sale)}>
-                      ثبت پرداخت
-                    </Button>
-                  </div>
-                )}
-
-                {!isManager && sale.status === 'pending_confirmation' && (
-                  <p className="mt-2.5 flex items-center gap-1.5 rounded-lg bg-primary-50 px-2.5 py-1.5 text-[11px] font-extrabold text-primary-600">
-                    <Clock size={12} />
-                    در انتظار تایید سوپروایزر است
-                  </p>
-                )}
-
-                {isManager && sale.status === 'pending_confirmation' && (
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      variant="soft"
-                      size="sm"
-                      className="flex-1 !bg-error-50 !text-error-600"
-                      icon={<X size={14} />}
-                      onClick={() => setRejectTarget(sale)}
-                    >
-                      رد فروش
-                    </Button>
-                    <Button size="sm" className="flex-1" icon={<Check size={14} />} onClick={() => setConfirmTarget(sale)}>
-                      تایید فروش
-                    </Button>
-                  </div>
-                )}
-              </div>
+              <SaleCard
+                key={sale.id}
+                sale={sale}
+                lead={lead}
+                product={product}
+                isManager={isManager}
+                onLeadClick={() => lead && navigate(`/leads/${lead.id}`)}
+                onPay={() => setPaySheet(sale)}
+                onCancel={() => setCancelTarget(sale)}
+                onConfirm={() => setConfirmTarget(sale)}
+                onReject={() => setRejectTarget(sale)}
+              />
             )
           })
         )}
-      </div>
+      </motion.div>
+      </DataGate>
 
       <PaymentSubmitSheet
         sale={paySheet}
@@ -245,24 +385,28 @@ export function SalesScreen() {
             onChange={(e) => setRejectReason(e.target.value)}
             placeholder="دلیل رد فروش را بنویس..."
             rows={3}
-            className="w-full resize-none rounded-xl border border-border bg-neutral-50 p-3 text-[13px] font-bold text-neutral-800 outline-none focus:border-primary-400"
+            className={cn(
+              'w-full resize-none rounded-[16px] border border-white/55 bg-white/40 p-3',
+              'text-[13px] font-semibold text-text outline-none backdrop-blur-xl',
+              'focus:border-[#3390EC]/40 dark:border-white/10 dark:bg-white/[0.06]',
+              'dark:focus:border-[#8774E1]/40',
+            )}
           />
-          <Button
-            full
-            size="lg"
-            className="!bg-error-600"
+          <GlassActionBtn
+            label="ثبت رد فروش"
+            icon={X}
+            variant="danger"
             disabled={!rejectReason.trim()}
+            className="!h-12 !w-full !flex-none !text-[14px]"
             onClick={() => {
-              if (!rejectTarget) return
+              if (!rejectTarget || !rejectReason.trim()) return
               haptic('warning')
               rejectSale(rejectTarget.id, rejectReason.trim())
               pushToast('فروش رد شد')
               setRejectTarget(null)
               setRejectReason('')
             }}
-          >
-            ثبت رد فروش
-          </Button>
+          />
         </div>
       </BottomSheet>
 
@@ -305,14 +449,25 @@ export function SalesScreen() {
       </AnimatePresence>
 
       {!isManager && (
-        <button
+        <motion.button
+          type="button"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...spring, delay: 0.2 }}
+          whileTap={{ scale: 0.97 }}
           onClick={() => navigate('/wallet')}
-          className="fixed inset-x-4 bottom-[calc(16px+var(--safe-bottom))] z-30 mx-auto flex h-12 max-w-[200px] items-center justify-center gap-1.5 rounded-2xl bg-neutral-900 text-[12.5px] font-extrabold text-white shadow-float"
+          className={cn(
+            'glass-fab fixed inset-x-4 bottom-[calc(16px+var(--safe-bottom))] z-30 mx-auto',
+            'flex h-[52px] max-w-[220px] items-center justify-center gap-2 rounded-[18px]',
+            'text-[13px] font-bold text-text',
+          )}
         >
-          <Wallet size={15} />
+          <span className="icon-3d icon-3d-primary flex h-8 w-8 items-center justify-center">
+            <Wallet size={15} className="text-white" strokeWidth={2.35} />
+          </span>
           مشاهده کیف پول
-          <ChevronLeft size={14} />
-        </button>
+          <ChevronLeft size={15} className="opacity-45" strokeWidth={2.35} />
+        </motion.button>
       )}
     </Page>
   )

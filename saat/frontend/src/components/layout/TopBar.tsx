@@ -13,30 +13,41 @@ interface TopBarProps {
 
 export function TopBar({ title, subtitle, onBack, action, transparent }: TopBarProps) {
   const navigate = useNavigate()
+
   return (
-    <div
+    <header
       className={cn(
-        'sticky top-0 z-20 flex items-center gap-2.5 px-4 pt-[calc(14px+var(--safe-top))] pb-3',
-        !transparent && 'bg-background/85 glass',
+        'sticky top-0 z-20 px-3 pt-[calc(6px+var(--safe-top))] pb-2.5',
+        !transparent && 'glass-header',
       )}
     >
-      <button
-        onClick={() => (onBack ? onBack() : navigate(-1))}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border border-border/70 bg-surface text-neutral-500 shadow-sm"
-      >
-        <ChevronRight size={18} strokeWidth={2.25} />
-      </button>
-      <div className="min-w-0 flex-1 text-center">
-        {title && (
-          <h1 className="truncate text-[15px] font-extrabold tracking-tight text-neutral-900">
-            {title}
-          </h1>
-        )}
-        {subtitle && (
-          <p className="truncate text-[11px] font-semibold text-neutral-400">{subtitle}</p>
-        )}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => (onBack ? onBack() : navigate(-1))}
+          aria-label="بازگشت"
+          className="glass-inset flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#3390EC] shadow-sm transition-all active:scale-95 dark:text-[#8774E1]"
+        >
+          <ChevronRight size={20} strokeWidth={2.25} />
+        </button>
+
+        <div className="min-w-0 flex-1 px-1 text-center">
+          {title && (
+            <h1 className="truncate text-[17px] font-bold leading-tight tracking-tight text-neutral-900 dark:text-white">
+              {title}
+            </h1>
+          )}
+          {subtitle && (
+            <p className="mt-0.5 truncate text-[13px] font-medium leading-none text-[#8E8E93] dark:text-[#98989D]">
+              {subtitle}
+            </p>
+          )}
+        </div>
+
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center">
+          {action ?? <span className="h-9 w-9 shrink-0" aria-hidden />}
+        </div>
       </div>
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center">{action}</div>
-    </div>
+    </header>
   )
 }

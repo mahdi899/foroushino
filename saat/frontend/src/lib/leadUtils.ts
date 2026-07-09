@@ -2,6 +2,25 @@ import type { Followup, Lead } from '@/types'
 import { isToday, isOverdue } from './format'
 import { rankSuggestions, isCallable, type Suggestion } from '@/services/logic'
 
+/** Leads locked by another agent must not appear in this agent's UI. */
+export function isLeadVisibleToAgent(lead: Lead, myAgentId: string): boolean {
+  if (lead.lockedBy && lead.lockedBy !== myAgentId) return false
+  return true
+}
+
+export function filterLeadsForAgent(leads: Lead[], myAgentId: string): Lead[] {
+  return leads.filter((l) => isLeadVisibleToAgent(l, myAgentId))
+}
+
+export function filterFollowupsForAgent(
+  followups: Followup[],
+  leads: Lead[],
+  myAgentId: string,
+): Followup[] {
+  const visibleIds = new Set(filterLeadsForAgent(leads, myAgentId).map((l) => l.id))
+  return followups.filter((f) => visibleIds.has(f.leadId))
+}
+
 // Can this agent call the lead right now? (not locked by someone else, not
 // returned to the pool waiting for reclaim, and generally callable.)
 export function canCallLead(lead: Lead, myAgentId: string): boolean {
@@ -11,23 +30,36 @@ export function canCallLead(lead: Lead, myAgentId: string): boolean {
 }
 
 // Backward-compatible helpers that now delegate to the smart suggestion engine.
-export function getNextLead(leads: Lead[], followups: Followup[] = []): Lead | null {
-  return rankSuggestions(leads, followups)[0]?.lead ?? null
+export function getNextLead(leads: Lead[], followups: Followup[] = [], myAgentId: string): Lead | null {
+  return rankSuggestions(filterLeadsForAgent(leads, myAgentId), followups)[0]?.lead ?? null
 }
 
 export function getNextLeadAfter(
   leads: Lead[],
   excludeId: string,
   followups: Followup[] = [],
+  myAgentId: string,
 ): Lead | null {
   return rankSuggestions(
-    leads.filter((l) => l.id !== excludeId),
+    filterLeadsForAgent(leads, myAgentId).filter((l) => l.id !== excludeId),
     followups,
   )[0]?.lead ?? null
 }
 
-export function getSuggestion(leads: Lead[], followups: Followup[]): Suggestion | null {
-  return rankSuggestions(leads, followups)[0] ?? null
+export function getSuggestion(leads: Lead[], followups: Followup[], myAgentId: string): Suggestion | null {
+  return rankSuggestions(filterLeadsForAgent(leads, myAgentId), followups)[0] ?? null
+}
+
+export function getSuggestionAfter(
+  leads: Lead[],
+  followups: Followup[],
+  excludeId: string,
+  myAgentId: string,
+): Suggestion | null {
+  return rankSuggestions(
+    filterLeadsForAgent(leads, myAgentId).filter((l) => l.id !== excludeId),
+    followups,
+  )[0] ?? null
 }
 
 export function todayFollowups(followups: Followup[]): Followup[] {

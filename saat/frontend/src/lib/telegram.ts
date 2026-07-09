@@ -38,6 +38,11 @@ export function haptic(
 }
 
 export function isInTelegram(): boolean {
+  return !!getTelegramInitData()
+}
+
+/** True when the Telegram WebApp SDK is present (may still lack signed initData outside Telegram). */
+export function hasTelegramWebApp(): boolean {
   return !!getWebApp()
 }
 

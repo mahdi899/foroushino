@@ -27,10 +27,10 @@ export function LeaderboardRow({
   return (
     <div
       className={cn(
-        'flex items-center gap-3 rounded-2xl p-3 border',
+        'flex items-center gap-3 rounded-[18px] border p-3',
         highlight
-          ? 'bg-primary-50 border-primary-200'
-          : 'bg-surface border-border/60 shadow-card',
+          ? 'glass-card border-[#3390EC]/25 dark:border-[#8774E1]/28'
+          : 'glass-inset border-white/55 dark:border-white/10',
       )}
     >
       <span

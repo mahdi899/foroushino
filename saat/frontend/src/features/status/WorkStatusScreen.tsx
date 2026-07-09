@@ -1,22 +1,184 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { PhoneCall, Target, Users, LogOut, Timer, PhoneOutgoing } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
+import {
+  PhoneCall,
+  Target,
+  Users,
+  LogOut,
+  Timer,
+  PhoneOutgoing,
+  ChevronLeft,
+  Sparkles,
+  type LucideIcon,
+} from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
-import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
-import { availabilityIcon } from '@/components/domain/icons'
+import {
+  availabilityDotClass,
+  availabilityIcon,
+  suggestReasonIcon,
+  suggestReasonChipLabel,
+} from '@/components/domain/icons'
 import { AvailabilitySheet } from '@/components/domain/AvailabilitySwitcher'
-import { getSuggestion } from '@/lib/leadUtils'
-import { availabilityLabels, suggestReasonLabels } from '@/data/labels'
+import { getSuggestion, filterLeadsForAgent } from '@/lib/leadUtils'
+import { availabilityLabels } from '@/data/labels'
 import { toFa, formatHms } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
 
+const TG = 'text-[#3390EC] dark:text-[#8774E1]'
+const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
+const SHIFT_GOAL_SEC = 8 * 3600
+
+type ShiftTier = 'early' | 'mid' | 'late' | 'premium'
+
+function getShiftTier(elapsedSec: number): ShiftTier {
+  if (elapsedSec >= SHIFT_GOAL_SEC) return 'premium'
+  const p = elapsedSec / SHIFT_GOAL_SEC
+  if (p < 0.33) return 'early'
+  if (p < 0.66) return 'mid'
+  return 'late'
+}
+
+const shiftHeroClass: Record<ShiftTier, string | null> = {
+  early: null,
+  mid: 'glass-hero-shift-mid',
+  late: 'glass-hero-success',
+  premium: 'glass-hero-premium',
+}
+
+const shiftGlowTop: Record<ShiftTier, string> = {
+  early: 'bg-[#3390EC]/22',
+  mid: 'bg-primary-400/26',
+  late: 'bg-emerald-400/28',
+  premium: 'bg-secondary-400/32',
+}
+
+const shiftGlowBottom: Record<ShiftTier, string> = {
+  early: 'bg-[#8774E1]/18',
+  mid: 'bg-emerald-300/16',
+  late: 'bg-emerald-300/18',
+  premium: 'bg-accent-400/22',
+}
+
+const shiftPulseBorder: Record<ShiftTier, string> = {
+  early: 'border-[#3390EC]/30',
+  mid: 'border-primary-400/32',
+  late: 'border-emerald-400/30',
+  premium: 'border-secondary-400/45',
+}
+
+function AnimatedShiftTimer({ totalSec }: { totalSec: number }) {
+  const chars = formatHms(totalSec).split('')
+  let digitIndex = 0
+
+  return (
+    <div className="ltr-nums flex items-center justify-center text-[36px] font-black tabular-nums leading-none tracking-tight text-text">
+      {chars.map((char, i) => {
+        const isDigit = /[۰-۹]/.test(char)
+        if (!isDigit) {
+          return (
+            <span key={`sep-${i}`} className="inline-block w-[0.28em] text-center opacity-75">
+              {char}
+            </span>
+          )
+        }
+        const position = digitIndex
+        digitIndex += 1
+        return <AnimatedDigit key={`d-${i}`} digit={char} position={position} />
+      })}
+    </div>
+  )
+}
+
+function AnimatedDigit({ digit, position }: { digit: string; position: number }) {
+  return (
+    <span className="relative inline-block h-[1em] w-[0.62em] overflow-hidden align-bottom">
+      <AnimatePresence mode="popLayout" initial={false}>
+        <motion.span
+          key={digit}
+          initial={{ y: -16, opacity: 0, filter: 'blur(2px)' }}
+          animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
+          exit={{ y: 16, opacity: 0, filter: 'blur(2px)' }}
+          transition={{
+            type: 'spring',
+            stiffness: 520,
+            damping: 32,
+            delay: position * 0.014,
+          }}
+          className="absolute inset-0 flex items-center justify-center"
+        >
+          {digit}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  )
+}
+
+const stagger = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.07, delayChildren: 0.05 },
+  },
+}
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: spring },
+}
+
+function StatTile({
+  icon: Icon,
+  iconWrap,
+  iconClass,
+  value,
+  label,
+  progress,
+}: {
+  icon: LucideIcon
+  iconWrap: string
+  iconClass: string
+  value: string
+  label: string
+  progress?: number
+}) {
+  return (
+    <motion.div
+      variants={fadeUp}
+      whileTap={{ scale: 0.97 }}
+      className={cn(
+        'glass-card relative overflow-hidden rounded-[22px] border border-white/55 p-4',
+        'dark:border-white/10',
+      )}
+    >
+      <div className="pointer-events-none absolute -left-6 -top-6 h-20 w-20 rounded-full bg-[#3390EC]/10 blur-2xl dark:bg-[#8774E1]/12" />
+      <span className={cn('icon-3d relative h-9 w-9', iconWrap)}>
+        <Icon size={16} className={iconClass} strokeWidth={2.35} />
+      </span>
+      <p className="relative mt-2.5 text-[22px] font-black tabular-nums leading-none text-text">{value}</p>
+      <p className="relative mt-1 text-[11px] font-semibold text-text-soft">{label}</p>
+      {progress != null && (
+        <div className="relative mt-2.5 h-[5px] overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/10">
+          <motion.div
+            className="h-full rounded-full bg-gradient-to-l from-[#3390EC] to-[#5EB0FF] dark:from-[#8774E1] dark:to-[#A894EE]"
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.min(100, progress)}%` }}
+            transition={{ duration: 0.55, ease: 'easeOut' }}
+          />
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
 export function WorkStatusScreen() {
   const navigate = useNavigate()
   const agent = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
+  const currentAgentId = useStore((s) => s.currentAgentId)
   const availability = useStore((s) => s.availability)
   const workSession = useStore((s) => s.workSession)
   const leads = useStore((s) => s.leads)
@@ -37,135 +199,269 @@ export function WorkStatusScreen() {
     : 0
 
   const myLeads = useMemo(
-    () => leads.filter((l) => l.assignedAgentId === agent?.id && l.stage !== 'won' && l.stage !== 'lost'),
-    [leads, agent?.id],
+    () =>
+      filterLeadsForAgent(leads, currentAgentId).filter(
+        (l) => l.assignedAgentId === agent?.id && l.stage !== 'won' && l.stage !== 'lost',
+      ),
+    [leads, agent?.id, currentAgentId],
   )
-  const suggestion = useMemo(() => getSuggestion(leads, followups), [leads, followups])
+  const suggestion = useMemo(() => getSuggestion(leads, followups, currentAgentId), [leads, followups, currentAgentId])
 
   if (!agent) return null
 
   const Icon = availabilityIcon[availability]
   const goalPct = agent.callGoal ? Math.round((agent.callsToday / agent.callGoal) * 100) : 0
+  const shiftActive = Boolean(workSession?.startedAt)
+  const shiftTier = shiftActive ? getShiftTier(elapsedSec) : 'early'
+  const shiftProgressPct = Math.min(100, Math.round((elapsedSec / SHIFT_GOAL_SEC) * 100))
+  const isPremiumShift = shiftTier === 'premium'
+  const ReasonIcon = suggestion ? suggestReasonIcon[suggestion.reason] : null
 
   return (
     <Page withNav={false}>
       <TopBar title="وضعیت کاری من" />
 
-      <div className="space-y-4 px-4">
-        <div className="rounded-3xl bg-gradient-to-br from-primary-700 via-primary-600 to-primary-400 p-5 text-white shadow-float">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => setStatusOpen(true)}
-              className="flex items-center gap-2 rounded-full bg-white/15 px-3.5 py-1.5 text-[12px] font-extrabold backdrop-blur-sm"
-            >
-              <Icon size={14} />
-              {availabilityLabels[availability]}
-            </button>
-            <div className="flex items-center gap-1.5 text-[11px] font-bold text-white/70">
-              <Timer size={13} />
-              {workSession?.startedAt ? 'در شیفت' : 'خارج از شیفت'}
-            </div>
+      <div className="space-y-5 px-4 pt-1 pb-6">
+        {/* Shift hero */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...spring, duration: 0.4 }}
+          className={cn(
+            'glass-hero relative overflow-hidden rounded-[26px] p-5 transition-[box-shadow,background] duration-700',
+            shiftActive && shiftHeroClass[shiftTier],
+          )}
+        >
+          <div className="pointer-events-none absolute inset-0">
+            <motion.div
+              animate={{ scale: [1, 1.08, 1], opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+              className={cn(
+                'absolute -left-14 -top-16 h-48 w-48 rounded-full blur-3xl transition-colors duration-700',
+                shiftActive ? shiftGlowTop[shiftTier] : 'bg-[#3390EC]/22',
+              )}
+            />
+            <motion.div
+              animate={{ scale: [1, 1.06, 1], opacity: [0.6, 0.9, 0.6] }}
+              transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 0.8 }}
+              className={cn(
+                'absolute -bottom-16 -right-12 h-44 w-44 rounded-full blur-3xl transition-colors duration-700',
+                shiftActive ? shiftGlowBottom[shiftTier] : 'bg-[#8774E1]/18',
+              )}
+            />
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/75 to-transparent dark:via-white/12" />
           </div>
 
-          {workSession?.startedAt ? (
-            <div className="mt-5 text-center">
-              <p className="text-[11px] font-bold text-white/60">مدت شیفت امروز</p>
-              <p className="mt-1 ltr-nums text-[34px] font-black tabular-nums leading-none">
-                {formatHms(elapsedSec)}
-              </p>
+          <div className="relative flex items-center justify-between gap-2">
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setStatusOpen(true)}
+              className={cn(
+                'glass-inset inline-flex max-w-[62%] items-center gap-2 rounded-full border px-3.5 py-2',
+                'border-white/55 text-[12px] font-bold text-text dark:border-white/10',
+              )}
+            >
+              <span
+                className={cn(
+                  'h-2 w-2 shrink-0 rounded-full ring-2 ring-white/70 dark:ring-black/20',
+                  availabilityDotClass[availability],
+                  shiftActive && availability === 'available' && 'notify-blink',
+                )}
+              />
+              <Icon size={14} className={cn('shrink-0', TG)} strokeWidth={2.35} />
+              <span className="truncate">{availabilityLabels[availability]}</span>
+            </motion.button>
+
+            <span
+              className={cn(
+                'glass-inset inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5',
+                'border-white/50 text-[11px] font-bold text-text-muted dark:border-white/10',
+                isPremiumShift && 'border-secondary-400/35 text-secondary-700 dark:text-secondary-300',
+              )}
+            >
+              <Timer
+                size={13}
+                className={cn(
+                  shiftActive && isPremiumShift && 'text-secondary-600 dark:text-secondary-400',
+                  shiftActive && !isPremiumShift && shiftTier === 'late' && 'text-emerald-500',
+                  shiftActive && !isPremiumShift && shiftTier !== 'late' && TG,
+                  !shiftActive && TG,
+                )}
+                strokeWidth={2.35}
+              />
+              {shiftActive ? (isPremiumShift ? 'شیفت پریمیوم' : 'در شیفت') : 'خارج از شیفت'}
+            </span>
+          </div>
+
+          {shiftActive ? (
+            <div className="relative mt-6 flex flex-col items-center">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-text-soft">
+                <Sparkles
+                  size={12}
+                  className={isPremiumShift ? 'text-secondary-600 dark:text-secondary-400' : TG}
+                  strokeWidth={2.25}
+                />
+                {isPremiumShift ? 'بیش از ۸ ساعت در شیفت' : `مدت شیفت امروز · ${toFa(shiftProgressPct)}٪ از ۸ ساعت`}
+              </span>
+
+              <div className="relative mt-3 flex h-[88px] w-[min(100%,280px)] items-center justify-center">
+                <motion.span
+                  className={cn(
+                    'pointer-events-none absolute inset-2 rounded-[22px] border-2 transition-colors duration-700',
+                    shiftActive ? shiftPulseBorder[shiftTier] : 'border-[#3390EC]/30',
+                  )}
+                  animate={{ scale: [1, 1.06, 1], opacity: [0.5, 0, 0.5] }}
+                  transition={{ duration: isPremiumShift ? 1.6 : 2.2, repeat: Infinity, ease: 'easeOut' }}
+                />
+                <div
+                  className={cn(
+                    'glass-inset relative flex h-full w-full items-center justify-center overflow-hidden rounded-[22px]',
+                    'border border-white/55 dark:border-white/10',
+                    isPremiumShift && 'glass-inset border-secondary-400/25',
+                  )}
+                >
+                  <AnimatedShiftTimer totalSec={elapsedSec} />
+                </div>
+              </div>
             </div>
           ) : (
-            <div className="mt-5 text-center">
-              <p className="text-[13px] font-bold text-white/70">هنوز شیفت را شروع نکرده‌ای</p>
-              <Button
-                size="sm"
-                variant="soft"
-                className="mt-3 !bg-white/15 !text-white"
+            <div className="relative mt-6 text-center">
+              <p className="text-[14px] font-bold text-text-muted">هنوز شیفت را شروع نکرده‌ای</p>
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.97 }}
                 onClick={() => navigate('/shift-start')}
+                className={cn(
+                  'relative mt-4 inline-flex h-11 items-center justify-center gap-2 overflow-hidden',
+                  'rounded-[14px] px-6 text-[14px] font-bold text-white',
+                  'bg-[#3390EC] shadow-[0_8px_24px_rgba(51,144,236,0.32)]',
+                  'dark:bg-[#8774E1] dark:shadow-[0_8px_24px_rgba(135,116,225,0.28)]',
+                )}
               >
-                شروع شیفت
-              </Button>
+                <span className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/10" />
+                <Sparkles size={16} strokeWidth={2.25} />
+                <span className="relative">شروع شیفت</span>
+              </motion.button>
             </div>
           )}
-        </div>
+        </motion.div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-border/60 bg-surface p-4">
-            <Target size={18} className="text-primary-500" />
-            <p className="mt-2 text-[20px] font-black tabular-nums text-neutral-900">
-              {toFa(agent.callsToday)} / {toFa(agent.callGoal)}
-            </p>
-            <p className="text-[11px] font-bold text-neutral-400">هدف تماس امروز</p>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-100">
-              <div
-                className="h-full rounded-full bg-primary-500 transition-[width] duration-500"
-                style={{ width: `${Math.min(100, goalPct)}%` }}
-              />
-            </div>
-          </div>
-          <div className="rounded-2xl border border-border/60 bg-surface p-4">
-            <Users size={18} className="text-secondary-500" />
-            <p className="mt-2 text-[20px] font-black tabular-nums text-neutral-900">{toFa(myLeads.length)}</p>
-            <p className="text-[11px] font-bold text-neutral-400">لید فعال تخصیص‌یافته</p>
-          </div>
-          <div className="rounded-2xl border border-border/60 bg-surface p-4">
-            <PhoneOutgoing size={18} className="text-success-500" />
-            <p className="mt-2 text-[20px] font-black tabular-nums text-neutral-900">
-              {formatHms(workSession?.totalCallSeconds ?? 0)}
-            </p>
-            <p className="text-[11px] font-bold text-neutral-400">زمان مکالمه امروز</p>
-          </div>
-          <div className="rounded-2xl border border-border/60 bg-surface p-4">
-            <Timer size={18} className="text-warning-500" />
-            <p className="mt-2 text-[20px] font-black tabular-nums text-neutral-900">
-              {toFa(agent.successfulToday)}
-            </p>
-            <p className="text-[11px] font-bold text-neutral-400">تماس موفق امروز</p>
-          </div>
-        </div>
+        {/* Stats grid */}
+        <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 gap-3">
+          <StatTile
+            icon={Target}
+            iconWrap="icon-3d-primary"
+            iconClass="text-white"
+            value={`${toFa(agent.callsToday)} / ${toFa(agent.callGoal)}`}
+            label="هدف تماس امروز"
+            progress={goalPct}
+          />
+          <StatTile
+            icon={Users}
+            iconWrap="icon-3d-warning"
+            iconClass="text-[#1A1200]"
+            value={toFa(myLeads.length)}
+            label="لید فعال تخصیص‌یافته"
+          />
+          <StatTile
+            icon={PhoneOutgoing}
+            iconWrap="icon-3d-success"
+            iconClass="text-white"
+            value={formatHms(workSession?.totalCallSeconds ?? 0)}
+            label="زمان مکالمه امروز"
+          />
+          <StatTile
+            icon={Timer}
+            iconWrap="icon-3d-primary"
+            iconClass="text-white"
+            value={toFa(agent.successfulToday)}
+            label="تماس موفق امروز"
+          />
+        </motion.div>
 
+        {/* Next call suggestion */}
         {suggestion && (
-          <button
+          <motion.button
+            type="button"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...spring, delay: 0.28 }}
+            whileTap={{ scale: 0.985 }}
             onClick={() => navigate(`/leads/${suggestion.lead.id}`)}
             className={cn(
-              'flex w-full items-center gap-3 rounded-2xl border border-border/60 bg-surface p-4 text-right',
+              'glass-card relative flex w-full items-center gap-3 overflow-hidden rounded-[24px]',
+              'border border-white/55 p-4 text-right dark:border-white/10',
             )}
           >
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute -right-8 top-0 h-28 w-28 rounded-full bg-[#8774E1]/12 blur-3xl" />
+              <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white/85 to-transparent dark:via-white/12" />
+            </div>
+
             <Avatar
               id={suggestion.lead.id}
               first={suggestion.lead.firstName}
               last={suggestion.lead.lastName}
               src={suggestion.lead.avatar}
-              size={44}
+              size={48}
+              ring
             />
-            <div className="min-w-0 flex-1">
-              <p className="mb-1 text-[11px] font-extrabold text-primary-600">تماس بعدی پیشنهادی</p>
-              <p className="truncate text-[14px] font-extrabold text-neutral-900">
+
+            <div className="relative min-w-0 flex-1">
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-full border px-2 py-0.5',
+                  'border-[#3390EC]/22 bg-[#3390EC]/10 text-[10px] font-semibold',
+                  'dark:border-[#8774E1]/28 dark:bg-[#8774E1]/12',
+                  TG,
+                )}
+              >
+                تماس بعدی پیشنهادی
+              </span>
+              <p className="mt-1.5 truncate text-[15px] font-bold text-text">
                 {suggestion.lead.firstName} {suggestion.lead.lastName}
               </p>
-              <p className="truncate text-[11px] font-bold text-neutral-400">
-                {suggestReasonLabels[suggestion.reason]}
-              </p>
+              {ReasonIcon && (
+                <span className="mt-1 inline-flex max-w-full items-center gap-1 text-[11px] font-semibold text-text-soft">
+                  <ReasonIcon size={12} strokeWidth={2.35} className={cn('shrink-0', TG)} />
+                  <span className="truncate">{suggestReasonChipLabel[suggestion.reason]}</span>
+                </span>
+              )}
             </div>
-            <PhoneCall size={18} className="shrink-0 text-primary-500" />
-          </button>
+
+            <span className="icon-3d icon-3d-primary relative flex h-10 w-10 shrink-0 items-center justify-center">
+              <PhoneCall size={18} className="text-white" strokeWidth={2.35} />
+            </span>
+            <ChevronLeft size={18} className="relative shrink-0 text-text-soft opacity-50" strokeWidth={2.25} />
+          </motion.button>
         )}
 
-        {workSession?.startedAt && (
-          <Button
-            full
-            size="lg"
-            variant="danger"
-            icon={<LogOut size={18} />}
+        {/* End shift */}
+        {shiftActive && (
+          <motion.button
+            type="button"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...spring, delay: 0.34 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => {
               haptic('warning')
               endShift()
               pushToast('شیفت پایان یافت')
               navigate('/profile', { replace: true })
             }}
+            className={cn(
+              'relative flex h-[54px] w-full items-center justify-center gap-2 overflow-hidden',
+              'rounded-[18px] border border-red-500/25 text-[15px] font-bold text-red-600',
+              'bg-red-500/10 backdrop-blur-xl dark:border-red-400/20 dark:text-red-400 dark:bg-red-500/14',
+              'shadow-[inset_0_0.5px_0_rgba(255,255,255,0.6),0_8px_24px_rgba(229,72,77,0.18)]',
+            )}
           >
-            پایان شیفت کاری
-          </Button>
+            <span className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/15 via-transparent to-red-900/5" />
+            <LogOut size={18} className="relative" strokeWidth={2.35} />
+            <span className="relative">پایان شیفت کاری</span>
+          </motion.button>
         )}
       </div>
 

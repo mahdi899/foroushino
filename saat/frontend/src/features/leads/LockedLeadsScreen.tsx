@@ -25,7 +25,7 @@ export function LockedLeadsScreen() {
   const currentAgentId = useStore((s) => s.currentAgentId)
   const leads = useStore((s) => s.leads.filter((l) => l.lockedBy === currentAgentId))
   const releaseLead = useStore((s) => s.releaseLead)
-  const startCall = useStore((s) => s.startCall)
+  const openCallMethodSheet = useStore((s) => s.openCallMethodSheet)
   const pushToast = useStore((s) => s.pushToast)
 
   return (
@@ -49,8 +49,7 @@ export function LockedLeadsScreen() {
               lockedUntil={lead.lockedUntil ?? null}
               onCall={() => {
                 haptic('medium')
-                startCall(lead.id)
-                navigate(`/dialer/${lead.id}`)
+                openCallMethodSheet(lead)
               }}
               onRelease={() => {
                 haptic('light')

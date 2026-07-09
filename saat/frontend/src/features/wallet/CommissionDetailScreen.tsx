@@ -1,13 +1,81 @@
 import { useNavigate, useParams } from 'react-router-dom'
-import { Percent, Calendar, Package, User, BadgeCheck, CircleAlert } from 'lucide-react'
+import { motion } from 'framer-motion'
+import {
+  Percent,
+  Calendar,
+  Package,
+  User,
+  BadgeCheck,
+  CircleAlert,
+  Sparkles,
+  ChevronLeft,
+  type LucideIcon,
+} from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
 import { Badge } from '@/components/ui/Badge'
 import { Avatar } from '@/components/ui/Avatar'
 import { EmptyState } from '@/components/ui/States'
-import { commissionStatusLabels } from '@/data/labels'
+import { commissionStatusLabels, commissionStatusTone } from '@/data/labels'
 import { formatMoney, formatJalaliDate, relativeDayTime } from '@/lib/format'
+import { cn } from '@/lib/cn'
+
+const OK = 'text-emerald-600 dark:text-emerald-400'
+const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: spring },
+}
+
+const stagger = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.07, delayChildren: 0.05 } },
+}
+
+function DetailRow({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3.5">
+      <span className="icon-3d icon-3d-primary flex h-8 w-8 shrink-0 items-center justify-center">
+        <Icon size={14} className="text-white" strokeWidth={2.35} />
+      </span>
+      <span className="flex-1 text-[12.5px] font-semibold text-text-soft">{label}</span>
+      <span className="text-[13px] font-bold text-text">{value}</span>
+    </div>
+  )
+}
+
+function InfoBanner({
+  icon: Icon,
+  tone,
+  children,
+}: {
+  icon: LucideIcon
+  tone: 'warning' | 'success' | 'error'
+  children: React.ReactNode
+}) {
+  const styles = {
+    warning: 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+    success: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+    error: 'border-red-500/25 bg-red-500/10 text-red-600 dark:text-red-400',
+  }
+  const iconClass = {
+    warning: 'text-amber-500',
+    success: OK,
+    error: 'text-red-500',
+  }
+
+  return (
+    <motion.div
+      variants={fadeUp}
+      className={cn('flex items-start gap-2.5 rounded-[18px] border p-3.5', styles[tone])}
+    >
+      <Icon size={16} className={cn('mt-0.5 shrink-0', iconClass[tone])} strokeWidth={2.35} />
+      <p className="text-[12px] font-semibold leading-6">{children}</p>
+    </motion.div>
+  )
+}
 
 export function CommissionDetailScreen() {
   const { id } = useParams<{ id: string }>()
@@ -37,83 +105,99 @@ export function CommissionDetailScreen() {
     <Page withNav={false}>
       <TopBar title="جزئیات پورسانت" subtitle={relativeDayTime(commission.createdAt)} />
 
-      <div className="space-y-4 px-4">
-        <div className="rounded-3xl bg-gradient-to-br from-success-600 to-success-500 p-5 text-center text-white shadow-float">
-          <p className="text-[12px] font-bold text-white/80">مبلغ پورسانت</p>
-          <p className="mt-1.5 text-3xl font-black tabular-nums">
-            {formatMoney(commission.commissionAmount)} <span className="text-sm font-bold">تومان</span>
+      <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-4 px-4 pb-6">
+        <motion.div
+          variants={fadeUp}
+          className="glass-hero glass-hero-success relative overflow-hidden rounded-[26px] p-5 text-center"
+        >
+          <div className="pointer-events-none absolute inset-0">
+            <motion.div
+              animate={{ scale: [1, 1.08, 1], opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute -left-14 -top-16 h-48 w-48 rounded-full bg-emerald-400/22 blur-3xl"
+            />
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/75 to-transparent dark:via-white/12" />
+          </div>
+
+          <p className="relative flex items-center justify-center gap-1.5 text-[12px] font-semibold text-text-soft">
+            <Sparkles size={13} className={OK} strokeWidth={2.25} />
+            مبلغ پورسانت
           </p>
-          <Badge tone="neutral" className="mt-3 !bg-white/20 !text-white">
+          <p className="relative mt-1.5 text-[32px] font-black tabular-nums leading-none text-text">
+            {formatMoney(commission.commissionAmount)}{' '}
+            <span className="text-[14px] font-bold text-text-muted">تومان</span>
+          </p>
+          <Badge tone={commissionStatusTone[commission.status]} className="relative mt-3">
             {commissionStatusLabels[commission.status]}
           </Badge>
-        </div>
+        </motion.div>
 
         {lead && (
-          <button
+          <motion.button
+            variants={fadeUp}
+            type="button"
+            whileTap={{ scale: 0.985 }}
             onClick={() => navigate(`/leads/${lead.id}`)}
-            className="flex w-full items-center gap-3 rounded-2xl border border-border/60 bg-surface p-3.5 text-right shadow-card"
+            className={cn(
+              'glass-card flex w-full items-center gap-3 rounded-[22px] border border-white/55 p-4 text-right',
+              'dark:border-white/10',
+            )}
           >
-            <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={44} />
+            <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={48} ring />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13.5px] font-extrabold text-neutral-900">
+              <p className="truncate text-[15px] font-bold text-text">
                 {lead.firstName} {lead.lastName}
               </p>
-              <p className="mt-0.5 truncate text-[11px] font-bold text-neutral-400">
+              <p className="mt-0.5 truncate text-[11px] font-semibold text-text-soft">
                 فروش به مبلغ {formatMoney(commission.saleAmount)} تومان
               </p>
             </div>
-          </button>
+            <ChevronLeft size={16} className="shrink-0 text-text-soft opacity-40" strokeWidth={2.25} />
+          </motion.button>
         )}
 
-        <div className="overflow-hidden rounded-2xl border border-border/60 bg-surface shadow-card">
+        <motion.div
+          variants={fadeUp}
+          className="glass-card overflow-hidden rounded-[22px] border border-white/55 dark:border-white/10"
+        >
           {rows.map((r, i) => (
-            <div
-              key={r.label}
-              className={
-                'flex items-center gap-3 px-4 py-3.5 ' + (i < rows.length - 1 ? 'border-b border-border/60' : '')
-              }
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-neutral-100 text-neutral-500">
-                <r.icon size={15} />
-              </span>
-              <span className="flex-1 text-[12.5px] font-bold text-neutral-500">{r.label}</span>
-              <span className="text-[13px] font-extrabold text-neutral-900">{r.value}</span>
+            <div key={r.label} className={i < rows.length - 1 ? 'border-b border-white/40 dark:border-white/8' : ''}>
+              <DetailRow icon={r.icon} label={r.label} value={r.value} />
             </div>
           ))}
-        </div>
+        </motion.div>
 
         {commission.status === 'pending' && (
-          <div className="flex items-start gap-2.5 rounded-2xl bg-warning-50 p-3.5">
-            <CircleAlert size={16} className="mt-0.5 shrink-0 text-warning-600" />
-            <p className="text-[12px] font-bold leading-6 text-warning-700">
-              این پورسانت هنوز معلق است و پس از بازه انتظار (سه روز) به‌صورت خودکار قابل برداشت می‌شود.
-            </p>
-          </div>
+          <InfoBanner icon={CircleAlert} tone="warning">
+            این پورسانت هنوز معلق است و پس از بازه انتظار (سه روز) به‌صورت خودکار قابل برداشت می‌شود.
+          </InfoBanner>
         )}
         {commission.status === 'available' && (
-          <div className="flex items-start gap-2.5 rounded-2xl bg-success-50 p-3.5">
-            <BadgeCheck size={16} className="mt-0.5 shrink-0 text-success-600" />
-            <p className="text-[12px] font-bold leading-6 text-success-700">
-              این پورسانت قابل برداشت است و می‌توانی برای آن درخواست تسویه ثبت کنی.
-            </p>
-          </div>
+          <InfoBanner icon={BadgeCheck} tone="success">
+            این پورسانت قابل برداشت است و می‌توانی برای آن درخواست تسویه ثبت کنی.
+          </InfoBanner>
         )}
         {commission.status === 'rejected' && commission.rejectionReason && (
-          <div className="flex items-start gap-2.5 rounded-2xl bg-error-50 p-3.5">
-            <CircleAlert size={16} className="mt-0.5 shrink-0 text-error-600" />
-            <p className="text-[12px] font-bold leading-6 text-error-700">{commission.rejectionReason}</p>
-          </div>
+          <InfoBanner icon={CircleAlert} tone="error">
+            {commission.rejectionReason}
+          </InfoBanner>
         )}
 
         {sale && (
-          <button
+          <motion.button
+            variants={fadeUp}
+            type="button"
+            whileTap={{ scale: 0.985 }}
             onClick={() => navigate('/sales')}
-            className="w-full rounded-2xl border border-dashed border-border py-3 text-center text-[12px] font-extrabold text-primary-600"
+            className={cn(
+              'glass-inset w-full rounded-[18px] border border-dashed border-white/55 py-3',
+              'text-center text-[12px] font-bold text-[#3390EC] dark:border-white/10 dark:text-[#8774E1]',
+            )}
           >
             مشاهده فروش مرتبط
-          </button>
+          </motion.button>
         )}
-      </div>
+      </motion.div>
     </Page>
   )
 }

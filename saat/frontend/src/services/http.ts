@@ -23,6 +23,13 @@ export class ApiError extends Error {
   }
 }
 
+export class NetworkError extends Error {
+  constructor(message = 'اتصال اینترنت برقرار نیست.') {
+    super(message)
+    this.name = 'NetworkError'
+  }
+}
+
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
   body?: unknown
@@ -55,7 +62,12 @@ export async function request<T = unknown>(path: string, options: RequestOptions
     payload = JSON.stringify(body)
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: payload })
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: payload })
+  } catch {
+    throw new NetworkError()
+  }
 
   let json: any = null
   try {

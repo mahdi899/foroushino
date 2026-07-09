@@ -1,0 +1,34 @@
+# ⏸ توسعه موقتاً متوقف — کد آماده است، main.dart در حالت PAUSED است.
+name: saat_mobile
+description: سات — اپ اندروید کارشناس فروش (تماس native، VoIP بعداً) [متوقف]
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  dio: ^5.7.0
+  flutter_secure_storage: ^9.2.4
+  provider: ^6.1.2
+  permission_handler: ^11.3.1
+  call_log: ^5.0.4
+  url_launcher: ^6.3.1
+  uuid: ^4.5.1
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/

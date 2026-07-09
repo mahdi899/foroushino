@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/cn'
 import { resolveAvatar } from '@/data/avatars'
 import { avatarGradients } from '@/lib/colors'
@@ -37,7 +38,14 @@ export function Avatar({
   ring,
 }: AvatarProps) {
   const [c1, c2] = gradient ?? pickColor(first + last)
-  const imageSrc = id ? resolveAvatar(id, src) : src
+  const imageSrc = id ? resolveAvatar(id, src) : src ?? null
+  const [imgFailed, setImgFailed] = useState(false)
+  const showPhoto = imageSrc && !imgFailed
+
+  useEffect(() => {
+    setImgFailed(false)
+  }, [imageSrc, id])
+
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <div
@@ -51,8 +59,13 @@ export function Avatar({
           fontSize: size * 0.36,
         }}
       >
-        {imageSrc ? (
-          <img src={imageSrc} alt="" className="w-full h-full object-cover" />
+        {showPhoto ? (
+          <img
+            src={imageSrc}
+            alt=""
+            className="w-full h-full object-cover"
+            onError={() => setImgFailed(true)}
+          />
         ) : (
           initials(first, last)
         )}

@@ -11,7 +11,8 @@ import type {
   FollowupInput,
 } from './client'
 import type { Availability, Followup, PaymentMethod } from '@/types'
-import { suggestNext, type Suggestion } from './logic'
+import { getSuggestion } from '@/lib/leadUtils'
+import type { Suggestion } from './logic'
 
 // small artificial latency so loading / optimistic states are exercised
 function delay<T>(value: T, ms = 120): Promise<T> {
@@ -24,8 +25,8 @@ export const mockClient: ApiClient = {
   setAvailability: (status: Availability) => delay(useStore.getState().setAvailability(status)),
 
   getNextLead: (): Promise<Suggestion | null> => {
-    const { leads, followups } = useStore.getState()
-    return delay(suggestNext(leads, followups))
+    const { leads, followups, currentAgentId } = useStore.getState()
+    return delay(getSuggestion(leads, followups, currentAgentId))
   },
   lockLead: (leadId: string) => delay(useStore.getState().lockLead(leadId)),
   releaseLead: (leadId: string) => delay(useStore.getState().releaseLead(leadId)),

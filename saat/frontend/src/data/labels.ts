@@ -30,9 +30,31 @@ export const sourceLabels: Record<LeadSource, string> = {
 }
 
 export const temperatureLabels: Record<Temperature, string> = {
-  hot: 'داغ',
-  warm: 'گرم',
-  cold: 'سرد',
+  hot: 'خیلی جدی',
+  warm: 'علاقه‌مند',
+  cold: 'کم‌علاقه',
+}
+
+/** Plain-language guide for agents when picking lead temperature. */
+export const temperatureGuide: Record<
+  Temperature,
+  { title: string; description: string; example: string }
+> = {
+  hot: {
+    title: 'خیلی جدی',
+    description: 'احتمال خرید بالاست؛ زود تماس بگیر.',
+    example: 'مثلاً: «همین هفته ثبت‌نام می‌کنم»',
+  },
+  warm: {
+    title: 'علاقه‌مند',
+    description: 'پیگیری می‌خواهد؛ هنوز تصمیم نهایی نگرفته.',
+    example: 'مثلاً: «با خانواده مشورت می‌کنم»',
+  },
+  cold: {
+    title: 'کم‌علاقه',
+    description: 'فعلاً اولویت پایین؛ زمان تماس بیشتری لازم است.',
+    example: 'مثلاً: «الان وقتش نیست»',
+  },
 }
 
 export const priorityLabels: Record<Priority, string> = {

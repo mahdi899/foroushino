@@ -9,6 +9,7 @@ import { StatTile } from '@/components/domain/StatTile'
 import { LeaderboardRow } from '@/components/domain/LeaderboardRow'
 import { InsightCard } from '@/components/domain/InsightCard'
 import { FunnelCard, SourceCard, TeamCard } from './widgets'
+import { DataGate } from '@/components/pwa/DataGate'
 import {
   computeFunnel,
   computeManagerInsights,
@@ -81,6 +82,7 @@ export function ReportsScreen() {
         </div>
       </ScreenHeader>
 
+      <DataGate mode="placeholder">
       <div className="space-y-5 px-4 pt-4">
         {tab === 'overview' && (
           <>
@@ -175,6 +177,7 @@ export function ReportsScreen() {
           </>
         )}
       </div>
+      </DataGate>
     </Page>
   )
 }

@@ -11,12 +11,12 @@ interface StatTileProps {
 }
 
 const toneIconMap = {
-  primary: 'bg-primary-50 text-primary-600',
-  success: 'bg-success-50 text-success-600',
-  warning: 'bg-warning-50 text-warning-600',
-  secondary: 'bg-secondary-50 text-secondary-600',
-  accent: 'bg-accent-50 text-accent-600',
-  cold: 'bg-cold-50 text-cold-600',
+  primary: 'icon-3d icon-3d-primary text-white',
+  success: 'icon-3d icon-3d-success text-white',
+  warning: 'icon-3d icon-3d-warning text-[#1A1200]',
+  secondary: 'icon-3d icon-3d-warning text-[#1A1200]',
+  accent: 'icon-3d icon-3d-primary text-white',
+  cold: 'icon-3d icon-3d-primary text-white',
 }
 
 export function StatTile({
@@ -30,19 +30,19 @@ export function StatTile({
 
   if (variant === 'compact') {
     return (
-      <div className="flex flex-col items-center rounded-2xl bg-surface p-3 text-center shadow-card border border-border/60">
-        <span
-          className={cn(
-            'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
-            toneIconMap[tone],
-          )}
-        >
+      <div
+        className={cn(
+          'glass-card flex flex-col items-center rounded-[18px] border border-white/55 p-3 text-center',
+          'dark:border-white/10',
+        )}
+      >
+        <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]', toneIconMap[tone])}>
           {icon}
         </span>
-        <p className="mt-2.5 text-[22px] font-black tabular-nums leading-none tracking-tight text-neutral-900">
+        <p className="mt-2.5 text-[20px] font-black tabular-nums leading-none tracking-tight text-text">
           {displayValue}
         </p>
-        <p className="mt-1 w-full truncate text-[10px] font-bold leading-tight text-neutral-400">{label}</p>
+        <p className="mt-1 w-full truncate text-[10px] font-semibold leading-tight text-text-soft">{label}</p>
       </div>
     )
   }

@@ -39,6 +39,16 @@ import { haptic } from '@/lib/telegram'
 import type { CallResultOutcome } from '@/services/client'
 import type { CallResult, FollowupKind, Objection } from '@/types'
 
+const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
+const fadeUp = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: spring },
+}
+const stagger = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { staggerChildren: 0.04, delayChildren: 0.03 } },
+}
+
 const resultOrder: CallResult[] = [
   'very_hot',
   'interested',
@@ -71,7 +81,7 @@ export function CallResultScreen() {
   const products = useStore((s) => s.products)
   const lastCallDuration = useStore((s) => s.lastCallDuration)
   const submitCallResult = useStore((s) => s.submitCallResult)
-  const startCall = useStore((s) => s.startCall)
+  const openCallMethodSheet = useStore((s) => s.openCallMethodSheet)
   const pushToast = useStore((s) => s.pushToast)
 
   const [result, setResult] = useState<CallResult | null>(null)
@@ -123,34 +133,56 @@ export function CallResultScreen() {
     <Page withNav={false} className="pb-28">
       <TopBar title="نتیجه تماس" />
 
-      <div className="space-y-5 px-4">
-        <div className="flex flex-col items-center text-center">
-          <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-primary-50">
-            <PhoneCall size={32} className="text-primary-600" />
-            <span className="absolute -bottom-1 -left-1 flex h-7 w-7 items-center justify-center rounded-full bg-success-500 text-white ring-4 ring-background">
-              <Check size={15} strokeWidth={3} />
+      <div className="space-y-4 px-4 pb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={spring}
+          className="glass-hero relative overflow-hidden rounded-[26px] p-5 text-center"
+        >
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute -left-10 top-0 h-32 w-32 rounded-full bg-[#3390EC]/14 blur-3xl dark:bg-[#8774E1]/16" />
+            <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white/85 to-transparent dark:via-white/12" />
+          </div>
+          <div className="relative mx-auto w-fit">
+            <Avatar
+              id={lead.id}
+              first={lead.firstName}
+              last={lead.lastName}
+              src={lead.avatar}
+              size={64}
+              ring
+            />
+            <span className="absolute -bottom-0.5 -left-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white ring-[3px] ring-background">
+              <Check size={13} strokeWidth={3} />
             </span>
           </div>
-          <h2 className="mt-3 text-lg font-extrabold text-neutral-900">
+          <h2 className="relative mt-3 text-[17px] font-bold text-text">
             تماس با {lead.firstName} {lead.lastName}
           </h2>
-          <p className="mt-0.5 text-[13px] font-bold text-neutral-400">نتیجه این تماس را ثبت کن</p>
-        </div>
+          <p className="relative mt-0.5 text-[13px] font-semibold text-text-soft">نتیجه این تماس را ثبت کن</p>
+        </motion.div>
 
-        <div className="grid grid-cols-3 gap-2.5">
+        <motion.div
+          variants={stagger}
+          initial="hidden"
+          animate="show"
+          className="grid grid-cols-2 gap-2"
+        >
           {resultOrder.map((r) => (
-            <FeedbackResultCard
-              key={r}
-              result={r}
-              selected={result === r}
-              onClick={() => {
-                haptic('selection')
-                setResult(r)
-                setSaleAmount(null)
-              }}
-            />
+            <motion.div key={r} variants={fadeUp} className="min-w-0">
+              <FeedbackResultCard
+                result={r}
+                selected={result === r}
+                onClick={() => {
+                  haptic('selection')
+                  setResult(r)
+                  setSaleAmount(null)
+                }}
+              />
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         <AnimatePresence>
           {result && (
@@ -158,9 +190,9 @@ export function CallResultScreen() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden rounded-2xl border border-primary-100 bg-primary-50/60 p-4"
+              className="glass-inset overflow-hidden rounded-[20px] border border-[#3390EC]/18 p-4 dark:border-[#8774E1]/20"
             >
-              <p className="flex items-center gap-1.5 text-[12px] font-extrabold text-primary-700">
+              <p className="flex items-center gap-1.5 text-[12px] font-bold text-[#3390EC] dark:text-[#8774E1]">
                 <Sparkles size={14} />
                 {nextActionLabels[resultToNextAction[result]]}
               </p>
@@ -171,8 +203,8 @@ export function CallResultScreen() {
           )}
         </AnimatePresence>
 
-        <div className="rounded-2xl bg-surface p-4 shadow-card border border-border/60">
-          <p className="mb-2.5 text-[13px] font-extrabold text-neutral-900">امتیاز سرنخ</p>
+        <div className="glass-card rounded-[22px] border border-white/55 p-4 dark:border-white/10">
+          <p className="mb-2.5 text-[13px] font-bold text-text">امتیاز سرنخ</p>
           <div className="flex justify-center gap-2">
             {[1, 2, 3, 4, 5].map((i) => (
               <button key={i} onClick={() => setRating(i)}>
@@ -191,13 +223,13 @@ export function CallResultScreen() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden rounded-2xl bg-surface p-4 shadow-card border border-border/60"
+              className="glass-card overflow-hidden rounded-[22px] border border-white/55 p-4 dark:border-white/10"
             >
-              <p className="mb-2.5 flex items-center gap-1.5 text-[13px] font-extrabold text-neutral-900">
-                <Wallet size={15} className="text-success-500" />
+              <p className="mb-2.5 flex items-center gap-1.5 text-[13px] font-bold text-text">
+                <Wallet size={15} className="text-emerald-600" strokeWidth={2.35} />
                 مبلغ فروش ({product?.name ?? 'محصول'})
               </p>
-              <div dir="ltr" className="flex h-12 items-center gap-2 rounded-xl border border-border bg-neutral-50 px-3.5">
+              <div dir="ltr" className="glass-inset flex h-12 items-center gap-2 rounded-xl border border-white/50 px-3.5 dark:border-white/10">
                 <input
                   inputMode="numeric"
                   value={toFa(String(saleAmount ?? product?.price ?? 0))}
@@ -220,10 +252,10 @@ export function CallResultScreen() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden rounded-2xl bg-surface p-4 shadow-card border border-border/60"
+              className="glass-card overflow-hidden rounded-[22px] border border-white/55 p-4 dark:border-white/10"
             >
-              <p className="mb-2.5 flex items-center gap-1.5 text-[13px] font-extrabold text-neutral-900">
-                <CalendarClock size={15} className="text-primary-500" />
+              <p className="mb-2.5 flex items-center gap-1.5 text-[13px] font-bold text-text">
+                <CalendarClock size={15} className="text-[#3390EC] dark:text-[#8774E1]" />
                 زمان پیگیری بعدی
               </p>
               <div className="mb-3 flex flex-wrap gap-2">
@@ -243,9 +275,9 @@ export function CallResultScreen() {
           )}
         </AnimatePresence>
 
-        <div className="rounded-2xl bg-surface p-4 shadow-card border border-border/60">
-          <p className="mb-2 flex items-center gap-1.5 text-[13px] font-extrabold text-neutral-900">
-            <NotebookPen size={15} className="text-primary-500" />
+        <div className="glass-card rounded-[22px] border border-white/55 p-4 dark:border-white/10">
+          <p className="mb-2 flex items-center gap-1.5 text-[13px] font-bold text-text">
+            <NotebookPen size={15} className="text-[#3390EC] dark:text-[#8774E1]" />
             یادداشت (اختیاری)
           </p>
           <textarea
@@ -253,7 +285,7 @@ export function CallResultScreen() {
             onChange={(e) => setNote(e.target.value)}
             placeholder="یادداشت خود را اینجا بنویس..."
             rows={2}
-            className="w-full resize-none rounded-xl border border-border bg-neutral-50 p-3 text-[13px] font-bold text-neutral-800 outline-none focus:border-primary-400"
+            className="w-full resize-none rounded-xl border border-white/50 bg-white/35 p-3 text-[13px] font-semibold text-text outline-none focus:border-[#3390EC]/40 dark:border-white/10 dark:bg-white/[0.06] dark:focus:border-[#8774E1]/40"
           />
         </div>
 
@@ -285,7 +317,7 @@ export function CallResultScreen() {
         )}
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 z-20 border-t border-border/60 bg-surface/90 glass px-4 pt-3 pb-[calc(14px+var(--safe-bottom))]">
+      <div className="glass-header absolute inset-x-0 bottom-0 z-20 border-t border-white/50 px-4 pt-3 pb-[calc(14px+var(--safe-bottom))] dark:border-white/10">
         <Button full size="lg" disabled={!result} onClick={save} icon={<Check size={19} />}>
           ذخیره و ثبت نتیجه
         </Button>
@@ -297,8 +329,7 @@ export function CallResultScreen() {
             outcome={outcome}
             onNext={() => {
               if (outcome.suggestion) {
-                startCall(outcome.suggestion.lead.id)
-                navigate(`/dialer/${outcome.suggestion.lead.id}`, { replace: true })
+                openCallMethodSheet(outcome.suggestion.lead)
               } else {
                 navigate('/home', { replace: true })
               }

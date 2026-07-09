@@ -35,6 +35,7 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="TELEGRAM_BOT_TOKEN" value="test-bot-token"/>
         <env name="DEV_LOGIN_ENABLED" value="true"/>
+        <env name="DEMO_OTP_ENABLED" value="true"/>
         <env name="REVERB_APP_ID" value="saat"/>
         <env name="REVERB_APP_KEY" value="saat-reverb-key"/>
         <env name="REVERB_APP_SECRET" value="saat-reverb-secret"/>

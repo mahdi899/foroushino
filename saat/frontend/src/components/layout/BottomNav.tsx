@@ -1,10 +1,13 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { LayoutGroup, motion } from 'framer-motion'
 import { Plus } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { navForRole } from '@/app/nav'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
+
+const ACTIVE = 'text-[#3390EC] dark:text-[#8774E1]'
+const INACTIVE = 'text-[#8E8E93] dark:text-[#98989D]'
 
 export function BottomNav({ onFabClick }: { onFabClick: () => void }) {
   const role = useStore((s) => s.role)
@@ -18,6 +21,7 @@ export function BottomNav({ onFabClick }: { onFabClick: () => void }) {
   const renderItem = (item: (typeof items)[number]) => {
     const active = location.pathname === item.path
     const Icon = item.icon
+
     return (
       <button
         key={item.path}
@@ -25,17 +29,27 @@ export function BottomNav({ onFabClick }: { onFabClick: () => void }) {
           haptic('selection')
           navigate(item.path)
         }}
-        className="flex flex-1 flex-col items-center gap-1 py-1"
+        className="relative flex min-w-0 flex-1 flex-col items-center justify-center gap-[3px] py-2"
       >
+        {active && (
+          <motion.span
+            layoutId="tg-nav-pill"
+            transition={{ type: 'spring', stiffness: 440, damping: 36 }}
+            className="absolute inset-x-1.5 inset-y-1 rounded-[18px] bg-[#3390EC]/12 dark:bg-[#8774E1]/16"
+          />
+        )}
         <Icon
-          size={22}
-          className={active ? 'text-primary-600' : 'text-neutral-400'}
-          strokeWidth={active ? 2.5 : 2}
+          size={24}
+          className={cn(
+            'relative z-[1] transition-colors duration-150',
+            active ? ACTIVE : INACTIVE,
+          )}
+          strokeWidth={active ? 2.25 : 1.85}
         />
         <span
           className={cn(
-            'text-[10px] font-bold',
-            active ? 'text-primary-700' : 'text-neutral-400',
+            'relative z-[1] max-w-full truncate px-0.5 text-[10px] leading-none transition-colors duration-150',
+            active ? cn('font-semibold', ACTIVE) : cn('font-medium', INACTIVE),
           )}
         >
           {item.label}
@@ -45,23 +59,32 @@ export function BottomNav({ onFabClick }: { onFabClick: () => void }) {
   }
 
   return (
-    <div className="absolute inset-x-0 bottom-0 z-30">
-      <div className="relative bg-surface shadow-nav border-t border-border/60 pb-[var(--safe-bottom)]">
-        <div className="flex h-[68px] items-center px-2">
-          {left.map(renderItem)}
-          <div className="w-16 shrink-0" />
-          {right.map(renderItem)}
-        </div>
-        <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3.5 pb-[calc(10px+var(--safe-bottom))]">
+      <div className="pointer-events-auto relative mx-auto w-full">
+        <LayoutGroup id="tg-bottom-nav">
+          <nav className="glass-nav flex h-[54px] items-stretch rounded-[27px] px-0.5">
+            {left.map(renderItem)}
+            <div className="w-[60px] shrink-0" aria-hidden />
+            {right.map(renderItem)}
+          </nav>
+        </LayoutGroup>
+
+        <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-[40%]">
           <motion.button
-            whileTap={{ scale: 0.9 }}
+            whileTap={{ scale: 0.92 }}
             onClick={() => {
               haptic('medium')
               onFabClick()
             }}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-white shadow-float ring-4 ring-background"
+            aria-label="عملیات سریع"
+            className={cn(
+              'glass-fab flex h-[52px] w-[52px] items-center justify-center rounded-full',
+              ACTIVE,
+            )}
           >
-            <Plus size={26} strokeWidth={2.5} />
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3390EC] text-white dark:bg-[#8774E1]">
+              <Plus size={22} strokeWidth={2.5} />
+            </span>
           </motion.button>
         </div>
       </div>
