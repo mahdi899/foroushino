@@ -17,6 +17,7 @@ export default function AdminCampaigns() {
     <AdminCollection
       title="کمپین‌ها"
       desc="منبع، کانال و وضعیت کمپین‌ها برای ردیابی UTM"
+      icon="TrendingUp"
       collectionKey="campaigns"
       idKey="slug"
       seed={seed}

@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
 import { FORM_TYPE_FILTERS } from '@/lib/admin/formTypes';
 
 type Props = {
@@ -9,24 +8,28 @@ type Props = {
 };
 
 export function LeadsFilter({ currentType = '' }: Props) {
+  const activeLabel = FORM_TYPE_FILTERS.find((f) => f.value === currentType)?.label ?? 'همه';
+
   return (
-    <div className="mb-5 flex flex-wrap gap-2">
-      {FORM_TYPE_FILTERS.map((f) => {
-        const href = f.value ? `/admin/leads?type=${f.value}` : '/admin/leads';
-        const active = currentType === f.value;
-        return (
-          <Link
-            key={f.value || 'all'}
-            href={href}
-            className={cn(
-              'rounded-pill px-3 py-1.5 text-caption font-medium transition-colors',
-              active ? 'bg-primary text-white' : 'bg-surface-soft text-text-muted hover:bg-accent-soft hover:text-primary',
-            )}
-          >
-            {f.label}
-          </Link>
-        );
-      })}
+    <div className="admin-period-toolbar admin-leads-filter">
+      <div className="admin-period-segments">
+        {FORM_TYPE_FILTERS.map((f) => {
+          const href = f.value ? `/admin/leads?type=${f.value}` : '/admin/leads';
+          const active = currentType === f.value;
+          return (
+            <Link
+              key={f.value || 'all'}
+              href={href}
+              className="admin-period-btn"
+              data-active={active ? 'true' : undefined}
+              aria-current={active ? 'page' : undefined}
+            >
+              {f.label}
+            </Link>
+          );
+        })}
+      </div>
+      <span className="admin-period-summary">فیلتر: {activeLabel}</span>
     </div>
   );
 }

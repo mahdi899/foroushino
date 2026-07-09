@@ -20,6 +20,8 @@ export default function AdminLocalSeo() {
     <AdminCollection
       title="سئوی محلی"
       desc="اطلاعات کسب‌وکار محلی برای اسکیمای LocalBusiness و گوگل مپ"
+      icon="MapPin"
+      headerVariant="seo"
       collectionKey="local-seo"
       idKey="id"
       seed={seed}

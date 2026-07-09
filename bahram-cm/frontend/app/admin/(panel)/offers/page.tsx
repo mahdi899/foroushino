@@ -12,6 +12,7 @@ export default function AdminOffers() {
     <AdminCollection
       title="بنرها و آفرها"
       desc="بنر آفر بالای سایت و آفرهای کمپین — قابل فعال/غیرفعال‌سازی"
+      icon="Megaphone"
       collectionKey="offers"
       idKey="id"
       seed={seed}

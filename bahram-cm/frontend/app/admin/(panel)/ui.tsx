@@ -89,14 +89,10 @@ export function StatCard({
   return content;
 }
 
+import { AdminPersistBanner } from '@/components/admin/layout/AdminPersistBanner';
+
 export function PersistNotice() {
-  return (
-    <div className="admin-card-text mb-5 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3">
-      <AdminLucideIcon name="Info" className="mt-0.5 h-4 w-4 shrink-0 text-warning" strokeWidth={2} />
-      محتوای نمونه از لایه content بارگذاری می‌شود. در محیط تولید با MySQL، این مدیریت مستقیماً روی
-      دیتابیس اعمال می‌شود (مدل‌های Prisma از قبل آماده‌اند).
-    </div>
-  );
+  return <AdminPersistBanner />;
 }
 
 export function Table({

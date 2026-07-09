@@ -9,10 +9,8 @@ import { AdminHeaderSaveBar } from '@/app/admin/(panel)/AdminHeaderSaveBar';
 export function AdminHeader() {
   return (
     <header className="admin-header admin-header--trail-only">
-      <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
-        <div className="admin-header-user-chip flex items-center gap-1.5 rounded-pill p-0.5">
-          <AdminThemeToggle />
-        </div>
+      <div className="admin-header__trail">
+        <AdminThemeToggle />
         <Link
           href="/"
           target="_blank"

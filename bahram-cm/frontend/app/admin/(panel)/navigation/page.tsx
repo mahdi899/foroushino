@@ -8,6 +8,7 @@ export default function AdminNavigation() {
     <AdminCollection
       title="منوها"
       desc="مدیریت آیتم‌های منوی اصلی"
+      icon="Menu"
       collectionKey="navigation"
       idKey="href"
       seed={mainNav.map((m, i) => ({ href: m.href, label: m.label, order: i + 1 }))}

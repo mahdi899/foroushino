@@ -15,6 +15,8 @@ export default function AdminUsers() {
     <AdminCollection
       title="کاربران و نقش‌ها"
       desc="مدیریت دسترسی تیم (RBAC) — مناسب اعضای غیرفنی"
+      icon="Users"
+      headerVariant="settings"
       collectionKey="users"
       idKey="email"
       seed={seed}

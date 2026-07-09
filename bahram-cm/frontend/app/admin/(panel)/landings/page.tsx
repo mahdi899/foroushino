@@ -8,6 +8,8 @@ export default function AdminLandings() {
     <AdminCollection
       title="لندینگ‌های کمپین"
       desc="هر لندینگ هوک بصری و آفر خودش را دارد — کنترل ایندکس‌شدن در سئو"
+      icon="LayoutDashboard"
+      headerVariant="seo"
       collectionKey="landings"
       idKey="slug"
       seed={landingPages.map((l) => ({

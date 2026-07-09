@@ -19,6 +19,8 @@ export default function AdminHomepage() {
     <AdminCollection
       title="بخش‌های صفحه اصلی"
       desc="ترتیب و نمایش بخش‌های صفحه اصلی"
+      icon="LayoutTemplate"
+      headerVariant="seo"
       collectionKey="homepage"
       idKey="key"
       seed={sections}

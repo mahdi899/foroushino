@@ -8,6 +8,7 @@ export default function AdminServices() {
     <AdminCollection
       title="خدمات"
       desc="مدیریت صفحات خدمت، عنوان، خلاصه و قیمت پایه"
+      icon="Layers"
       collectionKey="services"
       idKey="slug"
       seed={services.map((s) => ({
