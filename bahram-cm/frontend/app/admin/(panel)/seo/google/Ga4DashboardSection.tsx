@@ -21,7 +21,7 @@ function SessionsChart({ data }: { data: Ga4DashboardData['daily_sessions'] }) {
           const height = Math.max(4, Math.round((point.sessions / max) * 100));
           return (
             <div key={point.date} className="group flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
-              <span className="hidden text-[10px] text-text-muted group-hover:block">{toFa(point.sessions)}</span>
+              <span className="hidden admin-text-caption text-text-muted group-hover:block">{toFa(point.sessions)}</span>
               <div
                 className="w-full rounded-t bg-primary/80 transition group-hover:bg-primary"
                 style={{ height: `${height}%` }}

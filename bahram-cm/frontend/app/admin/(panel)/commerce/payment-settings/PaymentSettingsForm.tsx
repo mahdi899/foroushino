@@ -150,7 +150,7 @@ export function PaymentSettingsForm({ initial }: { initial: PaymentSettingsData 
 
             <ul className="list-disc space-y-1.5 ps-5 text-caption text-text-muted">
               <li>
-                پیش‌فرض از <code className="rounded bg-surface-soft px-1 py-0.5 text-[11px]">APP_URL</code>
+                پیش‌فرض از <code className="rounded bg-surface-soft px-1 py-0.5 admin-text-meta">APP_URL</code>
                 {form.app_url ? (
                   <>
                     {' '}

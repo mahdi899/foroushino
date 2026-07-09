@@ -89,7 +89,7 @@ export function LeadNotesPanel({
         <MessageSquarePlus className="h-4 w-4 text-primary" />
         <p className="text-small font-semibold text-primary-dark">یادداشت‌های داخلی</p>
         {notes.length > 0 && (
-          <span className="rounded-pill bg-primary-soft/60 px-2 py-0.5 text-[11px] font-medium text-primary">
+          <span className="rounded-pill bg-primary-soft/60 px-2 py-0.5 admin-text-meta font-medium text-primary">
             {notes.length}
           </span>
         )}
@@ -191,7 +191,7 @@ export function LeadNotesPanel({
                         </button>
                       </div>
                     </div>
-                    <p className="mt-2 text-[11px] text-text-muted">{formatNoteDate(note.createdAt)}</p>
+                    <p className="mt-2 admin-text-meta text-text-muted">{formatNoteDate(note.createdAt)}</p>
                   </>
                 )}
               </li>

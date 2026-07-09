@@ -86,7 +86,7 @@ export function SmsEventCard({
               value={form.messageTemplate}
               onChange={(e) => setForm((f) => ({ ...f, messageTemplate: e.target.value }))}
             />
-            <p className="mt-0.5 text-[11px] text-text-muted">{event.placeholders.join(' · ')}</p>
+            <p className="mt-0.5 admin-text-meta text-text-muted">{event.placeholders.join(' · ')}</p>
           </label>
 
           <label>

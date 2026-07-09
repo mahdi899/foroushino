@@ -96,7 +96,7 @@ export function AiChatbotSettingsSection({
             </AiSidebarHint>
           </AiSidebarCard>
           <AiSidebarCard title="Env اختیاری">
-            <p className="font-mono text-[11px] leading-5 text-text-muted" dir="ltr">
+            <p className="font-mono admin-text-meta leading-5 text-text-muted" dir="ltr">
               CHATBOT_GEMINI_API_KEY
               <br />
               CHATBOT_OPENAI_API_KEY

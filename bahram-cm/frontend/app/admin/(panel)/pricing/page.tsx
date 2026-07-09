@@ -122,7 +122,7 @@ export default function AdminPricingPage() {
                     <p className="font-semibold text-primary-dark">
                       {brand.name_fa}
                       {brand.badge && (
-                        <span className="ms-2 rounded-pill bg-secondary-soft px-2 py-0.5 text-[10px]">{brand.badge}</span>
+                        <span className="ms-2 rounded-pill bg-secondary-soft px-2 py-0.5 admin-text-caption">{brand.badge}</span>
                       )}
                     </p>
                     {brand.models.length > 0 && (

@@ -102,7 +102,7 @@ export function AiErrorModal({ open, onClose, detail, success }: AiErrorModalPro
                 {detail.endpoint && (
                   <div>
                     <dt className="mb-1 text-text-muted">Endpoint</dt>
-                    <dd className="break-all rounded-md bg-surface-soft px-2 py-1.5 font-mono text-[11px] text-text" dir="ltr">
+                    <dd className="break-all rounded-md bg-surface-soft px-2 py-1.5 font-mono admin-text-meta text-text" dir="ltr">
                       {detail.endpoint}
                     </dd>
                   </div>
@@ -129,7 +129,7 @@ export function AiErrorModal({ open, onClose, detail, success }: AiErrorModalPro
                 <p className="mb-2 text-caption font-semibold text-primary-dark">پاسخ کامل API</p>
                 <pre
                   dir="ltr"
-                  className="max-h-48 overflow-auto rounded-lg border border-border bg-surface-soft p-3 font-mono text-[11px] leading-relaxed text-text-muted"
+                  className="max-h-48 overflow-auto rounded-lg border border-border bg-surface-soft p-3 font-mono admin-text-meta leading-relaxed text-text-muted"
                 >
                   {detail.rawResponse}
                 </pre>

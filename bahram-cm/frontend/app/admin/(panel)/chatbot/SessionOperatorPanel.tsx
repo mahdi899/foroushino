@@ -264,51 +264,51 @@ export function SessionOperatorPanel({
                   )}
                 >
                   <div className="mb-1 flex items-center justify-between gap-2">
-                    <span className="text-[10px] font-semibold text-primary">کاربر</span>
+                    <span className="admin-text-caption font-semibold text-primary">کاربر</span>
                     <div className="flex items-center gap-1.5">
                       {item.low_rating_followup && (
-                        <span className="rounded-pill bg-error/15 px-2 py-0.5 text-[10px] font-medium text-error">
+                        <span className="rounded-pill bg-error/15 px-2 py-0.5 admin-text-caption font-medium text-error">
                           امتیاز پایین{item.rated_stars ? ` (${item.rated_stars}/5)` : ''}
                         </span>
                       )}
                       {item.requested_operator_name && (
-                        <span className="rounded-pill bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                        <span className="rounded-pill bg-primary/10 px-2 py-0.5 admin-text-caption font-medium text-primary">
                           درخواست: {item.requested_operator_name}
                         </span>
                       )}
                       {item.pending_operator && (
-                        <span className="rounded-pill bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning">
+                        <span className="rounded-pill bg-warning/15 px-2 py-0.5 admin-text-caption font-medium text-warning">
                           در انتظار پاسخ
                         </span>
                       )}
                       {wasReplied && !item.pending_operator && (
-                        <span className="rounded-pill bg-success/15 px-2 py-0.5 text-[10px] font-medium text-success">
+                        <span className="rounded-pill bg-success/15 px-2 py-0.5 admin-text-caption font-medium text-success">
                           پاسخ داده شد
                         </span>
                       )}
                       {isReplyTarget && (
-                        <span className="rounded-pill bg-accent/15 px-2 py-0.5 text-[10px] font-medium text-accent">
+                        <span className="rounded-pill bg-accent/15 px-2 py-0.5 admin-text-caption font-medium text-accent">
                           در حال پاسخ
                         </span>
                       )}
                     </div>
                   </div>
                   {item.low_rating_followup && item.rated_question && (
-                    <p className="mb-2 rounded-md bg-error/10 px-2 py-1.5 text-[10px] leading-relaxed text-text-muted">
+                    <p className="mb-2 rounded-md bg-error/10 px-2 py-1.5 admin-text-caption leading-relaxed text-text-muted">
                       <span className="font-semibold text-error">سؤال اصلی: </span>
                       {item.rated_question}
                     </p>
                   )}
                   <p className="leading-relaxed">{item.content}</p>
                   <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="text-[10px] text-text-muted">
+                    <span className="admin-text-caption text-text-muted">
                       {item.created_at ? new Date(item.created_at).toLocaleString('fa-IR') : ''}
                     </span>
                     <button
                       type="button"
                       onClick={() => selectReplyTarget(item.id)}
                       className={cn(
-                        'inline-flex items-center gap-1 text-[10px] font-medium hover:underline',
+                        'inline-flex items-center gap-1 admin-text-caption font-medium hover:underline',
                         isReplyTarget ? 'text-primary-dark' : 'text-accent',
                       )}
                     >
@@ -343,7 +343,7 @@ export function SessionOperatorPanel({
                         </div>
                       )}
                     </div>
-                    <p className="text-[10px] font-semibold text-accent">
+                    <p className="admin-text-caption font-semibold text-accent">
                       {item.operator_name ?? 'اپراتور'}
                     </p>
                   </div>
@@ -355,15 +355,15 @@ export function SessionOperatorPanel({
                     >
                       <Reply className="mt-0.5 h-3 w-3 shrink-0 scale-x-[-1] text-accent" />
                       <span className="min-w-0 flex-1">
-                        <span className="block text-[10px] font-semibold text-accent">در پاسخ به</span>
-                        <span className="mt-0.5 line-clamp-2 text-[10px] leading-relaxed text-text-muted">
+                        <span className="block admin-text-caption font-semibold text-accent">در پاسخ به</span>
+                        <span className="mt-0.5 line-clamp-2 admin-text-caption leading-relaxed text-text-muted">
                           {repliedToText}
                         </span>
                       </span>
                     </button>
                   )}
                   <p className="leading-relaxed">{item.content}</p>
-                  <p className="mt-1 text-[10px] text-text-muted">
+                  <p className="mt-1 admin-text-caption text-text-muted">
                     {item.created_at ? new Date(item.created_at).toLocaleString('fa-IR') : ''}
                   </p>
                 </div>
@@ -390,21 +390,21 @@ export function SessionOperatorPanel({
                 )}
               >
                 <div className="mb-1 flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-semibold text-primary">گفتگوی AI</span>
+                  <span className="admin-text-caption font-semibold text-primary">گفتگوی AI</span>
                   <div className="flex items-center gap-1.5">
                     {wasReplied && (
-                      <span className="rounded-pill bg-success/15 px-2 py-0.5 text-[10px] font-medium text-success">
+                      <span className="rounded-pill bg-success/15 px-2 py-0.5 admin-text-caption font-medium text-success">
                         پاسخ داده شد
                       </span>
                     )}
                     {isReplyTarget && (
-                      <span className="rounded-pill bg-accent/15 px-2 py-0.5 text-[10px] font-medium text-accent">
+                      <span className="rounded-pill bg-accent/15 px-2 py-0.5 admin-text-caption font-medium text-accent">
                         در حال پاسخ
                       </span>
                     )}
                   </div>
                 </div>
-                <p className="text-[10px] text-text-muted">
+                <p className="admin-text-caption text-text-muted">
                   {item.created_at ? new Date(item.created_at).toLocaleString('fa-IR') : ''}
                 </p>
                 <p className="mt-1">
@@ -418,7 +418,7 @@ export function SessionOperatorPanel({
                     type="button"
                     onClick={() => selectReplyTarget(item.id)}
                     className={cn(
-                      'inline-flex items-center gap-1 text-[10px] font-medium hover:underline',
+                      'inline-flex items-center gap-1 admin-text-caption font-medium hover:underline',
                       isReplyTarget ? 'text-primary-dark' : 'text-accent',
                     )}
                   >
@@ -435,7 +435,7 @@ export function SessionOperatorPanel({
       <form onSubmit={(e) => void handleSend(e)} className="rounded-lg border border-border bg-surface-soft/30 p-3">
         {replyToLogId && (
           <div className="mb-2 rounded-md border border-accent/20 bg-accent-soft/15 px-3 py-2">
-            <p className="flex items-center gap-1 text-[10px] font-medium text-accent">
+            <p className="flex items-center gap-1 admin-text-caption font-medium text-accent">
               <Reply className="h-3 w-3 shrink-0" />
               در حال پاسخ به پیام #{replyToLogId}
               <button
@@ -453,7 +453,7 @@ export function SessionOperatorPanel({
                 className="mt-1 flex w-full items-start gap-1.5 text-right transition hover:opacity-80"
               >
                 <Reply className="mt-0.5 h-3 w-3 shrink-0 scale-x-[-1] text-accent" />
-                <span className="line-clamp-2 text-[10px] leading-relaxed text-text-muted">
+                <span className="line-clamp-2 admin-text-caption leading-relaxed text-text-muted">
                   {replyTargetText}
                 </span>
               </button>
@@ -463,7 +463,7 @@ export function SessionOperatorPanel({
 
         {validProfiles.length > 0 ? (
           <div className="mb-3">
-            <p className="mb-2 text-[11px] font-medium text-text-muted">پاسخ به نام:</p>
+            <p className="mb-2 admin-text-meta font-medium text-text-muted">پاسخ به نام:</p>
             <div className="flex flex-wrap gap-2">
               {validProfiles.map((profile) => {
                 const active = selectedProfileId === profile.id;
@@ -473,7 +473,7 @@ export function SessionOperatorPanel({
                     type="button"
                     onClick={() => selectProfile(profile.id)}
                     className={cn(
-                      'inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[11px] font-medium transition',
+                      'inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 admin-text-meta font-medium transition',
                       active
                         ? 'border-accent bg-accent-soft/40 text-accent shadow-sm'
                         : 'border-border bg-surface text-text-muted hover:border-accent/30 hover:text-primary',
@@ -500,7 +500,7 @@ export function SessionOperatorPanel({
             </div>
           </div>
         ) : (
-          <p className="mb-3 rounded-md border border-dashed border-warning/30 bg-warning/10 px-3 py-2 text-[11px] text-text">
+          <p className="mb-3 rounded-md border border-dashed border-warning/30 bg-warning/10 px-3 py-2 admin-text-meta text-text">
             ابتدا در تب تنظیمات، پروفایل اپراتور بسازید تا نام و عکس برای کاربر نمایش داده شود.
           </p>
         )}
@@ -515,7 +515,7 @@ export function SessionOperatorPanel({
           disabled={sending}
         />
         <div className="mt-2 flex items-center justify-between gap-2">
-          {error && <p className="text-[10px] text-error">{error}</p>}
+          {error && <p className="admin-text-caption text-error">{error}</p>}
           <button
             type="submit"
             disabled={sending || !replyText.trim() || (validProfiles.length > 0 && !selectedProfileId)}

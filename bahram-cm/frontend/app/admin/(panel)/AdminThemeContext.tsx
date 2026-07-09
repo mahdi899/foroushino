@@ -21,7 +21,9 @@ const SIDEBAR_KEY = 'bahram-admin-sidebar';
 
 function readTheme(): AdminTheme {
   if (typeof window === 'undefined') return 'light';
-  return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
+  const stored = localStorage.getItem(THEME_KEY);
+  if (stored === 'dark' || stored === 'light') return stored;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 function readSidebar(): boolean {
@@ -38,6 +40,15 @@ function applySidebarToRoot(collapsed: boolean) {
   if (!root) return;
   if (collapsed) root.setAttribute('data-sidebar-collapsed', '1');
   else root.removeAttribute('data-sidebar-collapsed');
+}
+
+export function AdminThemeBoot() {
+  useLayoutEffect(() => {
+    applyThemeToRoot(readTheme());
+    applySidebarToRoot(readSidebar());
+  }, []);
+
+  return null;
 }
 
 export function AdminThemeProvider({ children }: { children: React.ReactNode }) {

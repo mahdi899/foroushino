@@ -116,7 +116,7 @@ export function AiImagePromptModal({
               <p className="field-label">پیش‌نمایش زنده پرامپت ارسالی</p>
               <pre
                 dir="ltr"
-                className="mt-1 max-h-40 overflow-auto rounded-lg border border-border bg-surface-soft p-3 font-mono text-[11px] leading-relaxed text-text-muted"
+                className="mt-1 max-h-40 overflow-auto rounded-lg border border-border bg-surface-soft p-3 font-mono admin-text-meta leading-relaxed text-text-muted"
               >
                 {livePrompt}
               </pre>

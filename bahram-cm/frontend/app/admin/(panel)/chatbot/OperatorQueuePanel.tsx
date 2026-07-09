@@ -138,7 +138,7 @@ export function OperatorQueuePanel({ operatorProfiles, onQueueChanged }: Operato
                     </td>
                     <td className="max-w-md px-4 py-3">
                       {item.low_rating_followup && item.rated_question && (
-                        <p className="mb-1 text-[10px] text-red-700">
+                        <p className="mb-1 admin-text-caption text-red-700">
                           <span className="font-semibold">سؤال اصلی: </span>
                           {item.rated_question}
                         </p>

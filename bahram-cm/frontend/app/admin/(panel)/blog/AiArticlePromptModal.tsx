@@ -122,7 +122,7 @@ function PromptLivePreview({
         <ul className="mt-2 max-h-36 space-y-1 overflow-y-auto text-caption">
           {selectedLinks.map((l) => (
             <li key={l.path} className="flex items-start gap-2 rounded-md bg-surface px-2 py-1">
-              <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary" dir="ltr">
+              <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 font-mono admin-text-caption text-primary" dir="ltr">
                 {l.path}
               </span>
               <span className="text-text">{l.label}</span>
@@ -330,7 +330,7 @@ export function AiArticlePromptModal({
                                 />
                                 <span className="min-w-0 flex-1">
                                   <span className="block text-caption font-medium text-text">{l.label}</span>
-                                  <span className="font-mono text-[11px] text-text-muted" dir="ltr">
+                                  <span className="font-mono admin-text-meta text-text-muted" dir="ltr">
                                     {l.path}
                                   </span>
                                 </span>

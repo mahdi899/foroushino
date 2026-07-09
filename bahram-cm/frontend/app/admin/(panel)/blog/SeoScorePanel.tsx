@@ -70,7 +70,7 @@ function CharMeter({ label, length, min, max }: { label: string; length: number;
   const pct = Math.min(100, Math.round((length / (max + 20)) * 100));
   return (
     <div>
-      <div className="mb-1 flex justify-between text-[11px]">
+      <div className="mb-1 flex justify-between admin-text-meta">
         <span className="text-text-muted">{label}</span>
         <span className={status === 'good' ? 'text-success' : status === 'ok' ? 'text-warning' : 'text-error'}>
           {length} / {min}–{max}
@@ -185,7 +185,7 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-small font-semibold text-primary-dark">تحلیل سئو</p>
-          <p className="text-[11px] text-text-muted">
+          <p className="admin-text-meta text-text-muted">
             {notStarted ? 'منتظر محتوا' : `${seoGradeLabel(grade)} · ${checks.length} معیار`}
           </p>
         </div>
@@ -193,7 +193,7 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
           <p className="text-h2 font-extrabold leading-none" style={scoreTextStyle}>
             {notStarted ? '—' : score}
           </p>
-          <p className="text-[10px] text-text-muted">{notStarted ? 'هنوز امتیازی نیست' : 'از ۱۰۰'}</p>
+          <p className="admin-text-caption text-text-muted">{notStarted ? 'هنوز امتیازی نیست' : 'از ۱۰۰'}</p>
         </div>
       </div>
 
@@ -202,20 +202,20 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
       </div>
 
       {notStarted ? (
-        <p className="rounded-md bg-surface/80 px-2 py-1.5 text-[11px] text-text-muted">
+        <p className="rounded-md bg-surface/80 px-2 py-1.5 admin-text-meta text-text-muted">
           عنوان یا متن مقاله را بنویسید تا امتیاز سئو و چک‌لیست معیارها فعال شود.
         </p>
       ) : null}
 
       {!notStarted && badCount > 0 && (
-        <p className="rounded-md bg-surface/80 px-2 py-1.5 text-[11px] text-text-muted">
+        <p className="rounded-md bg-surface/80 px-2 py-1.5 admin-text-meta text-text-muted">
           {badCount} مورد نیاز به اصلاح · {okCount} قابل بهبود
           {mode === 'article' && props.onApplyFix ? ' — روی ✦ کلیک کنید' : ''}
         </p>
       )}
 
       {props.indexNotifyMessage && (
-        <p className="flex items-start gap-1.5 rounded-md border border-success/40 bg-success/10 px-2 py-1.5 text-[11px] text-success">
+        <p className="flex items-start gap-1.5 rounded-md border border-success/40 bg-success/10 px-2 py-1.5 admin-text-meta text-success">
           <Globe className="mt-0.5 h-3.5 w-3.5 shrink-0" />
           {props.indexNotifyMessage}
         </p>
@@ -228,7 +228,7 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
           {mode === 'page' ? 'خلاصه متا' : 'ابزار نویسنده'}
         </p>
         {mode === 'article' ? (
-          <div className="grid grid-cols-2 gap-2 text-[11px]">
+          <div className="grid grid-cols-2 gap-2 admin-text-meta">
             <div className="flex items-center gap-1.5 rounded-md bg-surface-soft px-2 py-1.5">
               <FileText className="h-3 w-3 text-text-muted" />
               <span>{stats.wordCount} کلمه</span>
@@ -247,12 +247,12 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
             </div>
           </div>
         ) : (
-          <p className="text-[11px] text-text-muted" dir="ltr">
+          <p className="admin-text-meta text-text-muted" dir="ltr">
             {props.pagePath ?? '/'}
           </p>
         )}
         {mode === 'article' && props.focusKeyword.trim() && (
-          <p className="mt-2 text-[11px] text-text-muted">
+          <p className="mt-2 admin-text-meta text-text-muted">
             تراکم «{props.focusKeyword}»:{' '}
             <span className={stats.keywordDensity >= 0.4 && stats.keywordDensity <= 2.5 ? 'text-success' : 'text-warning'}>
               {stats.keywordDensity.toFixed(1)}٪
@@ -269,7 +269,7 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
               readOnly
               dir="ltr"
               value={publicUrl}
-              className="field-input min-w-0 flex-1 py-1 font-mono text-[10px]"
+              className="field-input min-w-0 flex-1 py-1 font-mono admin-text-caption"
             />
             <button type="button" onClick={copyUrl} className="btn btn-secondary shrink-0 px-2 py-1" title="کپی URL">
               {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
@@ -291,7 +291,7 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
       <div className="max-h-[340px] space-y-3 overflow-y-auto pe-1">
         {checksByGroup.map((group) => (
           <div key={group.id}>
-            <p className="mb-1.5 text-[11px] font-semibold text-primary-dark">{group.label}</p>
+            <p className="mb-1.5 admin-text-meta font-semibold text-primary-dark">{group.label}</p>
             <ul className="space-y-1.5">
               {group.items.map((c) => {
                 const clickable = mode === 'article' && c.status !== 'good' && Boolean(props.onApplyFix);
@@ -301,7 +301,7 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
                       type="button"
                       onClick={() => onCheckClick(c)}
                       disabled={!clickable}
-                      className={`flex w-full items-start gap-2 rounded-lg px-1 py-1 text-right text-[11px] transition ${
+                      className={`flex w-full items-start gap-2 rounded-lg px-1 py-1 text-right admin-text-meta transition ${
                         clickable ? 'cursor-pointer hover:bg-surface/80 hover:ring-1 hover:ring-accent/30' : 'cursor-default'
                       }`}
                       title={clickable ? 'کلیک برای اصلاح با AI' : undefined}
@@ -331,7 +331,7 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
               key={t}
               type="button"
               onClick={() => setPreviewTab(t)}
-              className={`flex-1 px-2 py-2 text-[11px] font-medium ${
+              className={`flex-1 px-2 py-2 admin-text-meta font-medium ${
                 previewTab === t ? 'bg-surface-soft text-primary-dark' : 'text-text-muted hover:text-text'
               }`}
             >
@@ -365,15 +365,15 @@ export function SeoScorePanel(props: SeoScorePanelProps) {
                   />
                 </div>
               ) : (
-                <div className="mb-2 flex h-20 items-center justify-center rounded-md border border-dashed border-border bg-surface-soft text-[11px] text-text-muted">
+                <div className="mb-2 flex h-20 items-center justify-center rounded-md border border-dashed border-border bg-surface-soft admin-text-meta text-text-muted">
                   تصویر شاخص برای OG
                 </div>
               )}
-              <p className="text-[10px] uppercase text-text-muted" dir="ltr">
+              <p className="admin-text-caption uppercase text-text-muted" dir="ltr">
                 {domain}
               </p>
               <p className="line-clamp-2 text-[13px] font-semibold text-text">{props.metaTitle || props.title || 'عنوان'}</p>
-              <p className="line-clamp-2 text-[11px] text-text-muted">{props.metaDescription || props.excerpt || '…'}</p>
+              <p className="line-clamp-2 admin-text-meta text-text-muted">{props.metaDescription || props.excerpt || '…'}</p>
             </>
           )}
         </div>

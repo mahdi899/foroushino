@@ -316,7 +316,7 @@ export default function ChatbotAdminPage() {
           >
             {TAB_LABELS[t]}
             {t === 'operator' && pendingCount > 0 && (
-              <span className="absolute -left-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
+              <span className="absolute -left-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 admin-text-caption font-bold text-white">
                 {pendingCount > 99 ? '99+' : pendingCount}
               </span>
             )}

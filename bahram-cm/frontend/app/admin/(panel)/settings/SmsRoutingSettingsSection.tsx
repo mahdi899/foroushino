@@ -99,15 +99,15 @@ function ProviderCredentialRow({ provider }: { provider: SmsProviderView }) {
         ) : null}
       </div>
       <div className="mt-2 flex gap-2">
-        <button type="button" onClick={() => void onSave()} disabled={pending} className="btn btn-secondary px-2 py-1 text-[11px]">
+        <button type="button" onClick={() => void onSave()} disabled={pending} className="btn btn-secondary px-2 py-1 admin-text-meta">
           {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
           ذخیره
         </button>
-        <button type="button" onClick={() => void onTest()} disabled={testing} className="btn btn-secondary px-2 py-1 text-[11px]">
+        <button type="button" onClick={() => void onTest()} disabled={testing} className="btn btn-secondary px-2 py-1 admin-text-meta">
           {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
           تست
         </button>
-        {status ? <span className="self-center text-[11px] text-text-muted">{status}</span> : null}
+        {status ? <span className="self-center admin-text-meta text-text-muted">{status}</span> : null}
       </div>
     </div>
   );
@@ -222,7 +222,7 @@ export function SmsRoutingSettingsSection({
                   <div className="flex items-center justify-between gap-2 px-2.5 py-2">
                     <div className="min-w-0">
                       <p className="truncate text-caption font-medium text-primary-dark">{provider.label_fa}</p>
-                      <p className="truncate text-[11px] text-text-muted" dir="ltr">
+                      <p className="truncate admin-text-meta text-text-muted" dir="ltr">
                         {provider.sender_number ? `از: ${provider.sender_number}` : provider.credential_hint ?? 'کلید تنظیم نشده'}
                       </p>
                     </div>

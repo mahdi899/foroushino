@@ -76,7 +76,7 @@ export function SeoMetaEditor() {
                 }`}
               >
                 <span className="truncate">{t.label}</span>
-                <span className="shrink-0 text-[11px] opacity-70" dir="ltr">
+                <span className="shrink-0 admin-text-meta opacity-70" dir="ltr">
                   {t.path}
                 </span>
               </button>

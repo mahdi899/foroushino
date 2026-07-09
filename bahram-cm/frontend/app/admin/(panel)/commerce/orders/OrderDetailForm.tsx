@@ -47,7 +47,7 @@ function CopyableValue({
       <code
         className={cn(
           'min-w-0 flex-1 rounded bg-surface-soft px-2 py-1 text-caption text-text',
-          full ? 'break-all whitespace-pre-wrap text-[11px] leading-relaxed' : 'truncate',
+          full ? 'break-all whitespace-pre-wrap admin-text-meta leading-relaxed' : 'truncate',
         )}
         dir="ltr"
         title={value}
@@ -82,7 +82,7 @@ function DetailItem({
 }) {
   return (
     <div className={cn('min-w-0', className)}>
-      <dt className="text-[11px] font-medium text-text-muted">{label}</dt>
+      <dt className="admin-text-meta font-medium text-text-muted">{label}</dt>
       <dd className={cn('mt-0.5 text-caption text-text', mono && 'font-mono')} dir={mono ? 'ltr' : undefined}>
         {children}
       </dd>
@@ -242,7 +242,7 @@ export function OrderDetailForm({ order }: { order: AdminOrderDetail }) {
             </dl>
             {order.customer_extra_data && Object.keys(order.customer_extra_data).length > 0 && (
               <div className="mt-3 border-t border-border pt-3">
-                <p className="mb-2 text-[11px] font-medium text-text-muted">اطلاعات تکمیلی فرم</p>
+                <p className="mb-2 admin-text-meta font-medium text-text-muted">اطلاعات تکمیلی فرم</p>
                 <dl className="grid gap-2 sm:grid-cols-2">
                   {Object.entries(order.customer_extra_data).map(([key, val]) => (
                     <DetailItem key={key} label={key}>
@@ -400,15 +400,15 @@ export function OrderDetailForm({ order }: { order: AdminOrderDetail }) {
           <SectionCard title="مبلغ">
             <dl className="grid grid-cols-3 gap-2 text-center">
               <div className="rounded-lg bg-surface-soft p-2.5">
-                <dt className="text-[11px] text-text-muted">مبلغ</dt>
+                <dt className="admin-text-meta text-text-muted">مبلغ</dt>
                 <dd className="mt-1 text-caption font-semibold">{formatToman(order.amount)}</dd>
               </div>
               <div className="rounded-lg bg-surface-soft p-2.5">
-                <dt className="text-[11px] text-text-muted">تخفیف</dt>
+                <dt className="admin-text-meta text-text-muted">تخفیف</dt>
                 <dd className="mt-1 text-caption font-semibold">{formatToman(order.discount_amount)}</dd>
               </div>
               <div className="rounded-lg bg-primary-soft p-2.5">
-                <dt className="text-[11px] text-text-muted">نهایی</dt>
+                <dt className="admin-text-meta text-text-muted">نهایی</dt>
                 <dd className="mt-1 text-caption font-bold text-primary">{formatToman(order.final_amount)}</dd>
               </div>
             </dl>

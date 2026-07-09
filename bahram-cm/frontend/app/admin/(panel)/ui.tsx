@@ -21,54 +21,59 @@ export function AdminPage({
 }) {
   return (
     <div className="min-w-0">
-      <div className={cn('mb-5 border-b border-border pb-4', compactHeader ? 'sm:mb-4 sm:pb-3' : 'sm:mb-6 sm:pb-5')}>
+      <div
+        className={cn(
+          compactHeader
+            ? 'mb-5 flex min-w-0 items-center justify-between gap-2 overflow-x-auto border-b border-border pb-4 [-ms-overflow-style:none] [scrollbar-width:none] sm:mb-4 sm:pb-3 [&::-webkit-scrollbar]:hidden'
+            : cn(
+                'admin-page-header',
+                stackHeader ? 'flex-col gap-3 sm:mb-5' : 'flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-4 sm:mb-6',
+              ),
+        )}
+      >
         <div
           className={cn(
-            'flex min-w-0',
             compactHeader
-              ? 'items-center justify-between gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
-              : cn('flex-col gap-3', !stackHeader && 'lg:flex-row lg:items-end lg:justify-between lg:gap-4'),
+              ? 'flex min-w-0 shrink-0 items-center gap-2'
+              : cn(
+                  'admin-page-header__body min-w-0 w-full text-start',
+                  !stackHeader && 'lg:flex-1',
+                ),
           )}
         >
-          <div
+          <h1
             className={cn(
-              compactHeader ? 'flex min-w-0 shrink-0 items-center gap-2' : 'min-w-0 w-full text-start',
+              compactHeader
+                ? 'whitespace-nowrap text-base font-extrabold text-text'
+                : 'admin-page-header__title text-h3 font-extrabold sm:text-h2',
             )}
           >
-            <h1
+            {title}
+          </h1>
+          {desc && (
+            <p
               className={cn(
                 compactHeader
-                  ? 'whitespace-nowrap text-base font-extrabold text-primary-dark'
-                  : 'text-h3 font-extrabold text-primary-dark sm:text-h2',
+                  ? 'admin-section-subtitle hidden min-w-0 truncate md:block md:max-w-[14rem] lg:max-w-xs xl:max-w-sm'
+                  : 'admin-page-header__desc admin-section-subtitle mt-1 sm:mt-1.5',
               )}
             >
-              {title}
-            </h1>
-            {desc && (
-              <p
-                className={cn(
-                  compactHeader
-                    ? 'hidden min-w-0 truncate text-caption leading-snug text-text-muted md:block md:max-w-[14rem] lg:max-w-xs xl:max-w-sm'
-                    : 'mt-1 text-caption text-text-muted sm:mt-1.5 sm:text-small',
-                )}
-              >
-                {desc}
-              </p>
-            )}
-          </div>
-          {action ? (
-            <div
-              className={cn(
-                'flex min-w-0 shrink-0 items-center',
-                !compactHeader && 'w-full max-w-full flex-col gap-2',
-                !compactHeader && !stackHeader && 'lg:w-auto lg:max-w-[min(100%,40rem)] lg:items-end',
-                !compactHeader && stackHeader && 'shrink-0',
-              )}
-            >
-              {action}
-            </div>
-          ) : null}
+              {desc}
+            </p>
+          )}
         </div>
+        {action ? (
+          <div
+            className={cn(
+              'admin-page-header__actions flex min-w-0 shrink-0 items-center',
+              !compactHeader && 'w-full max-w-full flex-col gap-2',
+              !compactHeader && !stackHeader && 'lg:w-auto lg:max-w-[min(100%,40rem)] lg:items-end',
+              !compactHeader && stackHeader && 'shrink-0',
+            )}
+          >
+            {action}
+          </div>
+        ) : null}
       </div>
       <div className="min-w-0">{children}</div>
     </div>
@@ -94,9 +99,9 @@ export function StatCard({
         <AdminLucideIcon name={icon} className="h-6 w-6" strokeWidth={1.5} />
       </span>
       <div>
-        <p className="text-small text-text-muted">{label}</p>
-        <p className="text-h2 font-extrabold leading-tight text-primary-dark">{value}</p>
-        {hint && <p className="text-caption text-text-muted">{hint}</p>}
+        <p className="admin-text-meta text-text-muted">{label}</p>
+        <p className="text-h2 font-extrabold leading-tight text-text">{value}</p>
+        {hint && <p className="admin-card-text">{hint}</p>}
       </div>
     </div>
   );
@@ -110,7 +115,7 @@ export function StatCard({
 
 export function PersistNotice() {
   return (
-    <div className="mb-5 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3 text-caption text-text-muted">
+    <div className="admin-card-text mb-5 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3">
       <AdminLucideIcon name="Info" className="mt-0.5 h-4 w-4 shrink-0 text-warning" strokeWidth={2} />
       محتوای نمونه از لایه content بارگذاری می‌شود. در محیط تولید با MySQL، این مدیریت مستقیماً روی
       دیتابیس اعمال می‌شود (مدل‌های Prisma از قبل آماده‌اند).
@@ -121,7 +126,7 @@ export function PersistNotice() {
 export function Table({ head, children }: { head: string[]; children: React.ReactNode }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-surface">
-      <table className="w-full min-w-[32rem] text-right text-small">
+      <table className="admin-text-body w-full min-w-[32rem] text-right">
         <thead>
           <tr className="border-b border-border bg-surface-soft/60 text-text-muted">
             {head.map((h) => (
@@ -143,7 +148,7 @@ export function Badge({ children, tone = 'default' }: { children: React.ReactNod
     accent: 'bg-accent-soft text-accent',
     danger: 'bg-danger/10 text-danger',
   };
-  return <span className={cn('inline-block rounded-pill px-2.5 py-0.5 text-caption font-medium', tones[tone])}>{children}</span>;
+  return <span className={cn('admin-text-meta inline-block rounded-pill px-2.5 py-0.5 font-medium', tones[tone])}>{children}</span>;
 }
 
 export function EditLink({ href }: { href: string }) {

@@ -341,7 +341,7 @@ export function MediaLibraryGrid({
                   />
                 </div>
                 <div className="absolute inset-x-0 bottom-0 z-[5] bg-black/75 px-1.5 py-1">
-                  <p className="truncate text-[10px] text-white">{item.label}</p>
+                  <p className="truncate admin-text-caption text-white">{item.label}</p>
                 </div>
                 {isSelected && mode === 'pick' && (
                   <span className="absolute inset-0 z-[15] flex items-center justify-center bg-primary/35">
@@ -349,7 +349,7 @@ export function MediaLibraryGrid({
                   </span>
                 )}
                 {mode === 'manage' && (
-                  <span className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-black/45 text-[11px] font-semibold text-white opacity-0 transition duration-200 group-hover:opacity-100">
+                  <span className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-black/45 admin-text-meta font-semibold text-white opacity-0 transition duration-200 group-hover:opacity-100">
                     مدیریت
                   </span>
                 )}

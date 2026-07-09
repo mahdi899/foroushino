@@ -481,7 +481,7 @@ export function OrdersAnalyticsDashboard({
                       <td className="px-3 py-2.5">
                         <Badge tone={tx.mode === 'sandbox' ? 'warning' : 'success'}>{tx.mode_label}</Badge>
                       </td>
-                      <td className="max-w-[120px] truncate px-3 py-2.5 font-mono text-[11px]" dir="ltr" title={tx.authority ?? ''}>
+                      <td className="max-w-[120px] truncate px-3 py-2.5 font-mono admin-text-meta" dir="ltr" title={tx.authority ?? ''}>
                         {tx.authority ?? '—'}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2.5 font-mono text-caption" dir="ltr">
@@ -519,7 +519,7 @@ export function OrdersAnalyticsDashboard({
                       <Badge tone="accent">{tx.gateway_label}</Badge>
                       <Badge tone={tx.mode === 'sandbox' ? 'warning' : 'success'}>{tx.mode_label}</Badge>
                     </div>
-                    <dl className="mt-2 grid gap-1 text-[11px] text-text-muted">
+                    <dl className="mt-2 grid gap-1 admin-text-meta text-text-muted">
                       <div className="flex justify-between gap-2" dir="ltr">
                         <span>Authority</span>
                         <span className="truncate font-mono text-text">{tx.authority ?? '—'}</span>

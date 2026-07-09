@@ -80,7 +80,7 @@ export function QuickSuggestionsSection({ suggestions, onChange }: QuickSuggesti
                     />
                     <span className="truncate">{preview}</span>
                     {!item.response.trim() && (
-                      <span className="shrink-0 rounded bg-warning/10 px-1.5 py-0.5 text-[10px] text-warning">
+                      <span className="shrink-0 rounded bg-warning/10 px-1.5 py-0.5 admin-text-caption text-warning">
                         بدون پاسخ
                       </span>
                     )}
@@ -88,7 +88,7 @@ export function QuickSuggestionsSection({ suggestions, onChange }: QuickSuggesti
                   <button
                     type="button"
                     onClick={() => removeSuggestion(item.id)}
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-text-muted transition hover:bg-red-50 hover:text-danger"
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-text-muted transition hover:bg-danger/10 hover:text-danger"
                     aria-label="حذف"
                   >
                     <Trash2 className="h-4 w-4" />

@@ -104,7 +104,7 @@ export function OperatorProfilesSection({
                     <button
                       type="button"
                       onClick={() => setExpandedId(expanded ? null : profile.id)}
-                      className="text-[11px] text-accent hover:underline"
+                      className="admin-text-meta text-accent hover:underline"
                     >
                       {expanded ? 'بستن' : 'ویرایش'}
                     </button>

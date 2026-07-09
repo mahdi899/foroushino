@@ -86,20 +86,20 @@ function VariantCard({
             e.stopPropagation();
             onZoom();
           }}
-          className="absolute left-2 top-2 z-[2] inline-flex items-center gap-1 rounded-lg bg-black/55 px-2 py-1 text-[10px] font-medium text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100 focus-visible:opacity-100"
+          className="absolute left-2 top-2 z-[2] inline-flex items-center gap-1 rounded-lg bg-black/55 px-2 py-1 admin-text-caption font-medium text-white opacity-0 backdrop-blur-sm transition group-hover:opacity-100 focus-visible:opacity-100"
           aria-label={`بزرگ‌نمایی ${title}`}
         >
           <Maximize2 className="h-3.5 w-3.5" />
           بزرگ‌نمایی
         </button>
         {selected && (
-          <span className="admin-badge-solid absolute right-2 top-2 z-[2] inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-[10px] font-semibold shadow-sm">
+          <span className="admin-badge-solid absolute right-2 top-2 z-[2] inline-flex items-center gap-1 rounded-pill px-2 py-0.5 admin-text-caption font-semibold shadow-sm">
             <Check className="h-3 w-3" />
             انتخاب شده
           </span>
         )}
         {recommended && !selected && (
-          <span className="admin-badge-accent absolute right-2 top-2 z-[2] rounded-pill px-2 py-0.5 text-[10px] font-medium shadow-sm">
+          <span className="admin-badge-accent absolute right-2 top-2 z-[2] rounded-pill px-2 py-0.5 admin-text-caption font-medium shadow-sm">
             پیشنهادی
           </span>
         )}
@@ -112,11 +112,11 @@ function VariantCard({
         <div className="flex items-center justify-between gap-2">
           <p className="text-small font-semibold text-primary-dark">{title}</p>
           {badge && (
-            <span className="shrink-0 rounded-pill bg-surface-soft px-2 py-0.5 text-[10px] text-text-muted">{badge}</span>
+            <span className="shrink-0 rounded-pill bg-surface-soft px-2 py-0.5 admin-text-caption text-text-muted">{badge}</span>
           )}
         </div>
         <VariantMeta variant={variant} />
-        <p className="text-[10px] text-text-muted">{variant.mime}</p>
+        <p className="admin-text-caption text-text-muted">{variant.mime}</p>
       </button>
     </div>
   );
@@ -171,8 +171,8 @@ function WipeCompare({
           <SlidersHorizontal className="h-4 w-4" />
         </div>
       </div>
-      <span className="pointer-events-none absolute left-3 top-3 rounded-pill bg-black/55 px-2 py-0.5 text-[10px] text-white">اصلی</span>
-      <span className="pointer-events-none absolute right-3 top-3 rounded-pill bg-black/55 px-2 py-0.5 text-[10px] text-white">بهینه</span>
+      <span className="pointer-events-none absolute left-3 top-3 rounded-pill bg-black/55 px-2 py-0.5 admin-text-caption text-white">اصلی</span>
+      <span className="pointer-events-none absolute right-3 top-3 rounded-pill bg-black/55 px-2 py-0.5 admin-text-caption text-white">بهینه</span>
     </div>
   );
 }
@@ -291,7 +291,7 @@ function PreviewOverlay({
                   <div className="flex items-center gap-2">
                     <p className="text-small font-semibold text-white">{label}</p>
                     {badge && (
-                      <span className="rounded-pill bg-white/15 px-2 py-0.5 text-[10px] text-white/90">{badge}</span>
+                      <span className="rounded-pill bg-white/15 px-2 py-0.5 admin-text-caption text-white/90">{badge}</span>
                     )}
                   </div>
                   <VariantMeta variant={variant} className="text-white/70" />
@@ -313,7 +313,7 @@ function PreviewOverlay({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <DirectMediaImg admin src={previewSrc(single.preview_url)} alt={singleLabel} fill className="object-contain" />
             </div>
-            <p className="mt-2 text-center text-[10px] text-white/50">← → برای جابجایی بین نسخه‌ها · Esc برای بستن</p>
+            <p className="mt-2 text-center admin-text-caption text-white/50">← → برای جابجایی بین نسخه‌ها · Esc برای بستن</p>
           </div>
         )}
       </div>

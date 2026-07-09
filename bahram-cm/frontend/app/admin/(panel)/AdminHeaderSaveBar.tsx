@@ -29,7 +29,7 @@ export function AdminHeaderSaveBar() {
           </button>
           {bar.message ? (
             <p
-              className={`max-w-[11rem] truncate text-end text-[10px] leading-snug ${
+              className={`max-w-[11rem] truncate text-end admin-text-caption leading-snug ${
                 bar.messageTone === 'error' ? 'text-error' : 'text-success'
               }`}
             >

@@ -138,7 +138,7 @@ export function ArticleRevisionsMenu({
         <GitBranch className="h-3.5 w-3.5" />
         <span className="hidden lg:inline">نسخه‌ها</span>
         {canUse && revisions.length > 0 && (
-          <span className="mr-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+          <span className="mr-1 rounded-full bg-primary/15 px-1.5 py-0.5 admin-text-caption font-semibold text-primary">
             {revisions.length}
           </span>
         )}
@@ -195,10 +195,10 @@ export function ArticleRevisionsMenu({
                     {committing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     ثبت
                   </button>
-                  <p className="mt-2 text-[10px] text-text-muted">
+                  <p className="mt-2 admin-text-caption text-text-muted">
                     نسخه در همین لیست پایین ذخیره می‌شود — دکمه «ذخیره» بالا فقط مقاله را روی سایت می‌نویسد.
                   </p>
-                  <p className="mt-1 text-[10px] text-text-muted">
+                  <p className="mt-1 admin-text-caption text-text-muted">
                     {autosaveSaving ? (
                       <span className="inline-flex items-center gap-1">
                         <Loader2 className="h-3 w-3 animate-spin" /> autosave…

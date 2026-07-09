@@ -87,7 +87,7 @@ export default async function OrdersPage({
                     <p className="mt-0.5 text-caption text-text-muted" dir="ltr">
                       {o.customer_phone}
                     </p>
-                    <p className="mt-0.5 font-mono text-[11px] text-text-muted" dir="ltr">
+                    <p className="mt-0.5 font-mono admin-text-meta text-text-muted" dir="ltr">
                       {o.order_number}
                     </p>
                   </td>

@@ -46,7 +46,7 @@ function AdminTelegramEventRow({ event }: { event: AdminTelegramEventView }) {
           <span className="text-caption font-medium text-primary-dark">{event.label_fa}</span>
           {pending ? <Loader2 className="h-3 w-3 animate-spin text-text-muted" /> : null}
         </span>
-        {event.description ? <span className="mt-0.5 block text-[11px] text-text-muted">{event.description}</span> : null}
+        {event.description ? <span className="mt-0.5 block admin-text-meta text-text-muted">{event.description}</span> : null}
       </span>
     </label>
   );
@@ -137,7 +137,7 @@ export function AdminTelegramSettingsSection({
           value={global.admin_telegram_chat_ids ?? ''}
           onChange={(e) => setGlobal((g) => ({ ...g, admin_telegram_chat_ids: e.target.value }))}
         />
-        <span className="mt-1 block text-[11px] text-text-muted">چند شناسه را با کاما یا خط جدید جدا کنید.</span>
+        <span className="mt-1 block admin-text-meta text-text-muted">چند شناسه را با کاما یا خط جدید جدا کنید.</span>
       </label>
 
       <div className="flex flex-wrap gap-2">
