@@ -78,13 +78,7 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
       )}
 
       <div className={cn('admin-main', focusMode && 'min-w-0 flex-1')}>
-        {!focusMode && (
-          <AdminHeader
-            sidebarCollapsed={sidebarCollapsed}
-            onMenuOpen={() => setMobileOpen(true)}
-            onToggleSidebar={toggleSidebar}
-          />
-        )}
+        {!focusMode && <AdminHeader />}
 
         <div className={cn('admin-main-scroll', focusMode && 'flex-1 lg:px-8 lg:pb-5 lg:pt-0')}>{children}</div>
       </div>

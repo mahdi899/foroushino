@@ -3,44 +3,12 @@
 import Link from 'next/link';
 import { AdminLucideIcon } from '@/lib/admin/lucide-icons';
 import { logoutAction } from '@/lib/auth/actions';
-import { cn } from '@/lib/utils';
 import { AdminThemeToggle } from '@/app/admin/(panel)/AdminThemeToggle';
 import { AdminHeaderSaveBar } from '@/app/admin/(panel)/AdminHeaderSaveBar';
 
-export function AdminHeader({
-  sidebarCollapsed,
-  onMenuOpen,
-  onToggleSidebar,
-}: {
-  sidebarCollapsed: boolean;
-  onMenuOpen: () => void;
-  onToggleSidebar: () => void;
-}) {
+export function AdminHeader() {
   return (
-    <header className="admin-header">
-      <div className="flex min-w-0 items-center gap-1 sm:gap-2">
-        <button
-          type="button"
-          className="admin-header__icon-btn lg:hidden"
-          onClick={onMenuOpen}
-          aria-label="منو"
-        >
-          <AdminLucideIcon name="Menu" className="h-5 w-5" strokeWidth={2} />
-        </button>
-        <button
-          type="button"
-          className="admin-header__icon-btn hidden lg:grid"
-          onClick={onToggleSidebar}
-          aria-label="جمع/باز کردن منو"
-        >
-          <AdminLucideIcon
-            name="PanelRightClose"
-            className={cn('h-5 w-5 transition', sidebarCollapsed && 'rotate-180')}
-            strokeWidth={2}
-          />
-        </button>
-      </div>
-
+    <header className="admin-header admin-header--trail-only">
       <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
         <div className="admin-header-user-chip flex items-center gap-1.5 rounded-pill p-0.5">
           <AdminThemeToggle />

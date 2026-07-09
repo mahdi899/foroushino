@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { Download, Loader2, MessageSquare, Save, Search, Star, Trash2 } from 'lucide-react';
 import { AdminPage, Badge, Table } from '../ui';
+import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
+import { AdminUnderlineTabBar } from '@/components/admin/layout/AdminTabBar';
 import { deleteChatbotSessions, exportChatbotLogs, fetchChatbotLogs, fetchChatbotSessions, loadChatbotSettings, saveChatbotConfig } from './actions';
 import { useOperatorQueueAlert } from '../OperatorQueueAlertContext';
 import { storedToForm } from '@/lib/chatbot/form';
@@ -282,6 +284,8 @@ export default function ChatbotAdminPage() {
 
   return (
     <AdminPage
+      icon="MessageSquare"
+      headerVariant="chatbot"
       title="چت‌بات هوشمند"
       desc="دستیار AI سایت — تنظیمات، محدودیت نرخ، و گزارش مکالمات"
       action={
@@ -304,25 +308,15 @@ export default function ChatbotAdminPage() {
         </div>
       }
     >
-      <div className="mb-6 flex gap-2 border-b border-border">
-        {(['settings', 'operator', 'sessions', 'logs'] as Tab[]).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={`relative border-b-2 px-4 py-2 text-small font-medium transition-colors ${
-              tab === t ? 'border-accent text-accent' : 'border-transparent text-text-muted hover:text-text'
-            }`}
-          >
-            {TAB_LABELS[t]}
-            {t === 'operator' && pendingCount > 0 && (
-              <span className="absolute -left-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 admin-text-caption font-bold text-white">
-                {pendingCount > 99 ? '99+' : pendingCount}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <AdminUnderlineTabBar
+        tabs={(['settings', 'operator', 'sessions', 'logs'] as Tab[]).map((t) => ({
+          id: t,
+          label: TAB_LABELS[t],
+          badge: t === 'operator' ? pendingCount : undefined,
+        }))}
+        active={tab}
+        onChange={(t) => setTab(t as Tab)}
+      />
 
       {saveMsg && (
         <p className={`mb-4 text-small ${saveMsg.includes('خطا') ? 'text-danger' : 'text-success'}`}>{saveMsg}</p>
@@ -547,7 +541,57 @@ export default function ChatbotAdminPage() {
                   </button>
                 )}
               </div>
-              <Table head={['', 'آخرین فعالیت', 'نام', 'IP', 'شماره تماس', 'اولین باز', 'تعداد پیام', '']}>
+              <Table
+                head={['', 'آخرین فعالیت', 'نام', 'IP', 'شماره تماس', 'اولین باز', 'تعداد پیام', '']}
+                mobile={sessions.map((s) => (
+                  <AdminTableCard
+                    key={s.session_id}
+                    leading={
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-accent"
+                        checked={selectedSessions.has(s.session_id)}
+                        onChange={() => toggleSessionSelected(s.session_id)}
+                        aria-label="انتخاب مکالمه"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    }
+                    title={s.visitor_name ?? 'مهمان'}
+                    fields={[
+                      {
+                        label: 'آخرین فعالیت',
+                        value: s.last_activity_at ? new Date(s.last_activity_at).toLocaleString('fa-IR') : '—',
+                      },
+                      { label: 'IP', value: s.ip_address ?? '—', mono: true },
+                      { label: 'شماره تماس', value: s.visitor_phone ?? '—', mono: true },
+                      {
+                        label: 'اولین باز',
+                        value: s.opened_at ? new Date(s.opened_at).toLocaleString('fa-IR') : '—',
+                      },
+                      { label: 'تعداد پیام', value: s.message_count },
+                    ]}
+                    footer={
+                      <button
+                        type="button"
+                        className="text-caption font-medium text-accent hover:underline"
+                        onClick={() => void toggleSessionDetail(s.session_id)}
+                      >
+                        {expandedSession === s.session_id ? 'بستن' : 'مشاهده مکالمه'}
+                      </button>
+                    }
+                    expanded={
+                      expandedSession === s.session_id ? (
+                        <SessionOperatorPanel
+                          sessionId={s.session_id}
+                          visitorPhone={s.visitor_phone}
+                          visitorName={s.visitor_name}
+                          operatorProfiles={operatorProfiles}
+                        />
+                      ) : undefined
+                    }
+                  />
+                ))}
+              >
                 {sessions.map((s) => (
                   <Fragment key={s.session_id}>
                     <tr className={selectedSessions.has(s.session_id) ? 'bg-accent-soft/20' : 'hover:bg-surface-soft/40'}>
@@ -659,7 +703,54 @@ export default function ChatbotAdminPage() {
             </div>
           ) : (
             <>
-              <Table head={['زمان', 'IP', 'سؤال', 'امتیاز', '']}>
+              <Table
+                head={['زمان', 'IP', 'سؤال', 'امتیاز', '']}
+                mobile={logs.map((log) => (
+                  <AdminTableCard
+                    key={log.id}
+                    title={
+                      log.metadata?.error ? (
+                        <span className="text-danger">{log.question}</span>
+                      ) : (
+                        log.question
+                      )
+                    }
+                    fields={[
+                      {
+                        label: 'زمان',
+                        value: log.created_at ? new Date(log.created_at).toLocaleString('fa-IR') : '—',
+                      },
+                      { label: 'IP', value: log.ip_address ?? '—', mono: true },
+                      {
+                        label: 'امتیاز',
+                        value: <LogStars rating={chatbotLogRating(log.metadata)} />,
+                      },
+                    ]}
+                    footer={
+                      <button
+                        type="button"
+                        className="text-caption font-medium text-accent hover:underline"
+                        onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}
+                      >
+                        {expandedId === log.id ? 'بستن' : 'جزئیات'}
+                      </button>
+                    }
+                    expanded={
+                      expandedId === log.id ? (
+                        <div className="space-y-2 admin-text-meta text-text-muted">
+                          <p>
+                            <span className="font-medium text-text">پاسخ: </span>
+                            {log.answer || '—'}
+                          </p>
+                          {log.metadata?.error ? (
+                            <p className="text-danger">{String(log.metadata.error)}</p>
+                          ) : null}
+                        </div>
+                      ) : undefined
+                    }
+                  />
+                ))}
+              >
                 {logs.map((log) => (
                   <Fragment key={log.id}>
                     <tr className="hover:bg-surface-soft/40">

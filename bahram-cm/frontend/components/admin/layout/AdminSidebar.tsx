@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { adminNav, isAdminNavActive } from '@/app/admin/(panel)/admin-nav';
 import { BrandMark } from '@/components/layout/Header';
 import { AdminLucideIcon } from '@/lib/admin/lucide-icons';
@@ -25,15 +26,36 @@ export function AdminSidebar({
   const pathname = usePathname();
 
   return (
-    <aside className={cn('admin-sidebar fixed inset-y-0 right-0 z-40 hidden flex-col overflow-hidden border-l border-border bg-surface shadow-soft lg:flex', collapsed && 'admin-sidebar--collapsed')}>
-      <div className={cn('flex shrink-0 items-center border-b border-border', collapsed ? 'justify-center p-3' : 'gap-2.5 p-4')}>
-        <BrandMark />
-        {!collapsed && (
-          <div className="min-w-0">
-            <p className="admin-sidebar__brand-text truncate">پنل بهرام</p>
-            <p className="admin-sidebar__brand-sub">مدیریت محتوا</p>
-          </div>
+    <aside
+      className={cn(
+        'admin-sidebar fixed inset-y-0 right-0 z-40 hidden flex-col overflow-hidden border-l border-border bg-surface shadow-soft lg:flex',
+        collapsed && 'admin-sidebar--collapsed',
+      )}
+    >
+      <div
+        className={cn(
+          'admin-sidebar__brand flex shrink-0 items-center border-b border-border',
+          collapsed ? 'flex-col justify-center gap-2 p-3' : 'justify-between gap-2 px-4 py-3',
         )}
+      >
+        <div className={cn('flex min-w-0 items-center gap-2.5', collapsed && 'justify-center')}>
+          <BrandMark />
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="admin-sidebar__brand-text truncate">پنل بهرام</p>
+              <p className="admin-sidebar__brand-sub">مدیریت محتوا</p>
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          className="admin-sidebar__toggle"
+          onClick={onToggleCollapse}
+          aria-label={collapsed ? 'باز کردن منو' : 'جمع کردن منو'}
+          title={collapsed ? 'باز کردن منو' : 'جمع کردن منو'}
+        >
+          {collapsed ? <ChevronLeft className="h-[18px] w-[18px]" strokeWidth={2} /> : <ChevronRight className="h-[18px] w-[18px]" strokeWidth={2} />}
+        </button>
       </div>
 
       <nav className="admin-sidebar-nav flex-1 overflow-y-auto overflow-x-hidden p-2">
@@ -87,24 +109,6 @@ export function AdminSidebar({
           </div>
         ))}
       </nav>
-
-      <div className={cn('shrink-0 border-t border-border p-2', collapsed ? 'flex flex-col items-center gap-1' : 'space-y-1')}>
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          title={collapsed ? 'باز کردن منو' : 'جمع کردن منو'}
-          className="admin-text-meta flex w-full items-center justify-center gap-2 rounded-lg px-2.5 py-2 text-text-muted transition hover:bg-surface-soft hover:text-primary"
-        >
-          {collapsed ? (
-            <AdminLucideIcon name="PanelRightOpen" className="h-4 w-4" strokeWidth={2} />
-          ) : (
-            <>
-              <AdminLucideIcon name="PanelRightClose" className="h-4 w-4" strokeWidth={2} />
-              <span>جمع کردن منو</span>
-            </>
-          )}
-        </button>
-      </div>
     </aside>
   );
 }

@@ -1,5 +1,6 @@
 import { getReports } from '@/lib/admin/data';
 import { AdminPage, StatCard, Table, Badge } from '../ui';
+import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
 import { toFa } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
@@ -9,7 +10,12 @@ export default async function ReportsPage() {
     await getReports();
 
   return (
-    <AdminPage title="گزارش‌ها و تحلیل" desc="مرور تبدیل و رویدادهای داخلی — ترافیک کامل در Google Analytics (Cloudflare Zaraz)">
+    <AdminPage
+      icon="BarChart3"
+      headerVariant="seo"
+      title="گزارش‌ها و تحلیل"
+      desc="مرور تبدیل و رویدادهای داخلی — ترافیک کامل در Google Analytics (Cloudflare Zaraz)"
+    >
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="کل رویدادها" value={toFa(total)} icon="Activity" />
         <StatCard label="سرنخ‌ها" value={toFa(leadCount)} icon="Inbox" />
@@ -19,9 +25,18 @@ export default async function ReportsPage() {
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <div>
-          <h2 className="mb-3 text-h3 text-primary-dark">رویدادها بر اساس نوع</h2>
+          <h2 className="mb-3 text-h3 text-text">رویدادها بر اساس نوع</h2>
           {byEvent.length ? (
-            <Table head={['رویداد', 'تعداد']}>
+            <Table
+              head={['رویداد', 'تعداد']}
+              mobile={byEvent.map((e) => (
+                <AdminTableCard
+                  key={e.type}
+                  title={<Badge tone="accent">{e.type}</Badge>}
+                  fields={[{ label: 'تعداد', value: toFa(e.count) }]}
+                />
+              ))}
+            >
               {byEvent.map((e) => (
                 <tr key={e.type}>
                   <td className="px-4 py-3"><Badge tone="accent">{e.type}</Badge></td>
@@ -34,9 +49,18 @@ export default async function ReportsPage() {
           )}
         </div>
         <div>
-          <h2 className="mb-3 text-h3 text-primary-dark">سرنخ‌ها بر اساس منبع</h2>
+          <h2 className="mb-3 text-h3 text-text">سرنخ‌ها بر اساس منبع</h2>
           {bySource.length ? (
-            <Table head={['منبع', 'تعداد']}>
+            <Table
+              head={['منبع', 'تعداد']}
+              mobile={bySource.map((s) => (
+                <AdminTableCard
+                  key={s.source}
+                  title={s.source}
+                  fields={[{ label: 'تعداد', value: toFa(s.count) }]}
+                />
+              ))}
+            >
               {bySource.map((s) => (
                 <tr key={s.source}>
                   <td className="px-4 py-3 text-text">{s.source}</td>

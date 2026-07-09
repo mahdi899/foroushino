@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Pencil, Plus, Save, Trash2, X } from 'lucide-react';
 import { AdminPage, PersistNotice, Table, Badge } from './ui';
+import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
 import { getSettingBlob, saveSettingBlob } from '@/lib/admin/settings';
 
 export type FieldType = 'text' | 'textarea' | 'number' | 'boolean' | 'select';
@@ -85,7 +86,46 @@ export function AdminCollection({ title, desc, collectionKey, fields, idKey, see
       <PersistNotice />
       {status === 'saved' && <p className="mb-3 text-small text-success">تغییرات ذخیره شد.</p>}
 
-      <Table head={[...columns.map((c) => c.label), 'عملیات']}>
+      <Table
+        head={[...columns.map((c) => c.label), 'عملیات']}
+        mobile={items.map((it, i) => (
+          <AdminTableCard
+            key={String(it[idKey] ?? i)}
+            title={String(it[columns[0]?.key ?? idKey] ?? '—')}
+            fields={columns.slice(1).map((c) => ({
+              label: c.label,
+              value:
+                c.badge ? (
+                  <Badge tone="accent">{String(it[c.key] ?? '—')}</Badge>
+                ) : c.type === 'boolean' ? (
+                  it[c.key] ? (
+                    <Badge tone="success">بله</Badge>
+                  ) : (
+                    <Badge>خیر</Badge>
+                  )
+                ) : (
+                  String(it[c.key] ?? '—')
+                ),
+            }))}
+            footer={
+              <div className="flex w-full items-center justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setEditing({ ...it });
+                    setIsNew(false);
+                  }}
+                  className="inline-flex items-center gap-1 text-accent hover:text-primary"
+                >
+                  <Pencil className="h-4 w-4" /> ویرایش
+                </button>
+                <button onClick={() => remove(it[idKey])} className="inline-flex items-center gap-1 text-error/80 hover:text-error">
+                  <Trash2 className="h-4 w-4" /> حذف
+                </button>
+              </div>
+            }
+          />
+        ))}
+      >
         {items.map((it, i) => (
           <tr key={String(it[idKey] ?? i)} className="hover:bg-surface-soft/40">
             {columns.map((c) => (

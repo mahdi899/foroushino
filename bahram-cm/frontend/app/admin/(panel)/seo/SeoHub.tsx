@@ -40,6 +40,8 @@ export function SeoHub({
 
   return (
     <AdminPage
+      icon="Search"
+      headerVariant="seo"
       title="سئو و تحلیل"
       desc="Google Analytics، Search Console، sitemap و ویرایش متا صفحات"
       action={
@@ -51,21 +53,23 @@ export function SeoHub({
         ) : undefined
       }
     >
-      <div className="mb-6 flex flex-wrap gap-1 rounded-lg border border-border bg-surface-soft p-1">
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => selectTab(id)}
-            className={cn(
-              'inline-flex flex-1 items-center justify-center gap-2 rounded-md px-3 py-2 text-small font-medium transition sm:flex-none',
-              tab === id ? 'bg-surface text-primary-dark shadow-sm' : 'text-text-muted hover:text-text',
-            )}
-          >
-            <Icon className="h-4 w-4" />
-            {label}
-          </button>
-        ))}
+      <div className="admin-tab-bar -mx-1 mb-6">
+        <div className="admin-tab-bar__scroll flex gap-1 overflow-x-auto rounded-lg border border-border bg-surface-soft p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => selectTab(id)}
+              className={cn(
+                'admin-tab-bar__btn inline-flex shrink-0 items-center justify-center gap-2 rounded-md px-3 py-2.5 text-small font-medium transition',
+                tab === id ? 'bg-surface text-text shadow-soft' : 'text-text-muted hover:bg-surface/60 hover:text-text',
+              )}
+            >
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="whitespace-nowrap">{label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {tab === 'analytics' ? analytics : <SeoMetaEditor />}

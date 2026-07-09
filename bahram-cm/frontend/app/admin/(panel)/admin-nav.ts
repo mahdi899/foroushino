@@ -20,6 +20,13 @@ export const adminNav: {
       { href: '/admin/gallery', label: 'کتابخانه رسانه', icon: 'Image' },
       { href: '/admin/blog/new', label: 'افزودن مقاله', icon: 'PenLine', matchPrefix: true },
       { href: '/admin/blog', label: 'مقالات', icon: 'Newspaper', matchPrefix: true },
+      { href: '/admin/homepage', label: 'بخش‌های صفحه اصلی', icon: 'LayoutTemplate', matchPrefix: true },
+      { href: '/admin/navigation', label: 'منوی سایت', icon: 'Menu', matchPrefix: true },
+      { href: '/admin/services', label: 'خدمات', icon: 'Briefcase', matchPrefix: true },
+      { href: '/admin/offers', label: 'پیشنهادها', icon: 'Tag', matchPrefix: true },
+      { href: '/admin/campaigns', label: 'کمپین‌ها', icon: 'Megaphone', matchPrefix: true },
+      { href: '/admin/landings', label: 'لندینگ‌ها', icon: 'Layers', matchPrefix: true },
+      { href: '/admin/local-seo', label: 'سئو محلی', icon: 'MapPin', matchPrefix: true },
     ],
   },
   {
@@ -32,6 +39,9 @@ export const adminNav: {
         icon: m.icon,
         matchPrefix: true,
       })),
+      { href: '/admin/pricing', label: 'متن‌های قیمت‌گذاری', icon: 'CircleDollarSign', matchPrefix: true },
+      { href: '/admin/installments', label: 'اقساط', icon: 'CalendarClock', matchPrefix: true },
+      { href: '/admin/cases', label: 'کیس‌ها', icon: 'FolderOpen', matchPrefix: true },
     ],
   },
   {
@@ -51,8 +61,12 @@ export const adminNav: {
     group: 'سئو و تنظیمات',
     items: [
       { href: '/admin/seo', label: 'سئو و تحلیل', icon: 'Search', matchPrefix: true },
+      { href: '/admin/reports', label: 'گزارش‌های داخلی', icon: 'BarChart3', matchPrefix: true },
+      { href: '/admin/audit', label: 'گزارش فعالیت', icon: 'ClipboardList', matchPrefix: true },
       { href: '/admin/cache', label: 'کش و بهینه‌سازی', icon: 'Zap', matchPrefix: true },
       { href: '/admin/ai/settings', label: 'هوش مصنوعی', icon: 'Bot', matchPrefix: true },
+      { href: '/admin/theme', label: 'تم سایت', icon: 'Palette', matchPrefix: true },
+      { href: '/admin/users', label: 'مدیران', icon: 'Shield', matchPrefix: true },
       { href: '/admin/settings', label: 'تنظیمات سایت', icon: 'Settings', emphasis: true },
     ],
   },
@@ -76,7 +90,7 @@ export function isAdminNavActive(pathname: string, href: string, matchPrefix?: b
     return pathname === '/admin/ai/settings' || pathname === '/admin/ai';
   }
   if (href === '/admin/seo') {
-    return pathname === '/admin/seo' || pathname.startsWith('/admin/seo/');
+    return pathname === '/admin/seo' || pathname.startsWith('/admin/seo/google');
   }
   if (href === '/admin/commerce/orders') {
     return pathname === '/admin/commerce/orders' || /^\/admin\/commerce\/orders\/\d+/.test(pathname);

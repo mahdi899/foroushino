@@ -369,6 +369,8 @@ export default function SettingsPage() {
 
   return (
     <AdminPage
+      icon="Settings"
+      headerVariant="settings"
       title="تنظیمات سایت"
       desc="اطلاعات تماس، کپچا، بهینه‌سازی، کلیدهای API، مسیردهی پیامک و SpotPlayer"
       action={

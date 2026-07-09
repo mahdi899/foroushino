@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { AdminPageHeader, type AdminPageHeaderVariant } from '@/components/admin/layout/AdminPageHeader';
+import { AdminTableCardList } from '@/components/admin/layout/AdminTableCard';
 import { AdminLucideIcon } from '@/lib/admin/lucide-icons';
 import { cn } from '@/lib/utils';
 
@@ -7,6 +9,8 @@ export function AdminPage({
   desc,
   action,
   children,
+  icon,
+  headerVariant = 'default',
   stackHeader = false,
   compactHeader = false,
 }: {
@@ -14,6 +18,8 @@ export function AdminPage({
   desc?: string;
   action?: React.ReactNode;
   children: React.ReactNode;
+  icon?: string;
+  headerVariant?: AdminPageHeaderVariant;
   /** Keep title and toolbar stacked (full width) — use on dense editor toolbars */
   stackHeader?: boolean;
   /** Single-line compact header — title and actions on one row */
@@ -21,60 +27,18 @@ export function AdminPage({
 }) {
   return (
     <div className="min-w-0">
-      <div
+      <AdminPageHeader
+        icon={icon}
+        title={title}
+        description={desc}
+        variant={headerVariant}
+        compact={compactHeader}
+        action={action}
         className={cn(
-          compactHeader
-            ? 'mb-5 flex min-w-0 items-center justify-between gap-2 overflow-x-auto border-b border-border pb-4 [-ms-overflow-style:none] [scrollbar-width:none] sm:mb-4 sm:pb-3 [&::-webkit-scrollbar]:hidden'
-            : cn(
-                'admin-page-header',
-                stackHeader ? 'flex-col gap-3 sm:mb-5' : 'flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-4 sm:mb-6',
-              ),
+          !compactHeader && (stackHeader ? 'mb-5 sm:mb-5' : 'mb-5 sm:mb-6'),
+          !compactHeader && stackHeader && 'flex-col gap-3',
         )}
-      >
-        <div
-          className={cn(
-            compactHeader
-              ? 'flex min-w-0 shrink-0 items-center gap-2'
-              : cn(
-                  'admin-page-header__body min-w-0 w-full text-start',
-                  !stackHeader && 'lg:flex-1',
-                ),
-          )}
-        >
-          <h1
-            className={cn(
-              compactHeader
-                ? 'whitespace-nowrap text-base font-extrabold text-text'
-                : 'admin-page-header__title text-h3 font-extrabold sm:text-h2',
-            )}
-          >
-            {title}
-          </h1>
-          {desc && (
-            <p
-              className={cn(
-                compactHeader
-                  ? 'admin-section-subtitle hidden min-w-0 truncate md:block md:max-w-[14rem] lg:max-w-xs xl:max-w-sm'
-                  : 'admin-page-header__desc admin-section-subtitle mt-1 sm:mt-1.5',
-              )}
-            >
-              {desc}
-            </p>
-          )}
-        </div>
-        {action ? (
-          <div
-            className={cn(
-              'admin-page-header__actions flex min-w-0 shrink-0 items-center',
-              !compactHeader && 'w-full max-w-full flex-col gap-2',
-              !compactHeader && !stackHeader && 'lg:w-auto lg:max-w-[min(100%,40rem)] lg:items-end',
-              !compactHeader && stackHeader && 'shrink-0',
-            )}
-          >
-            {action}
-          </div>
-        ) : null}
-      </div>
+      />
       <div className="min-w-0">{children}</div>
     </div>
   );
@@ -86,22 +50,30 @@ export function StatCard({
   icon,
   hint,
   href,
+  tone = 'teal',
 }: {
   label: string;
   value: string | number;
   icon: string;
   hint?: string;
   href?: string;
+  tone?: 'teal' | 'gold' | 'blue' | 'green' | 'amber';
 }) {
   const content = (
-    <div className={cn('card flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5', href && 'transition hover:border-accent')}>
-      <span className="grid h-12 w-12 place-items-center rounded-lg bg-surface-soft text-accent">
-        <AdminLucideIcon name={icon} className="h-6 w-6" strokeWidth={1.5} />
+    <div
+      className={cn(
+        'admin-stat-card flex min-w-0 items-center gap-3 p-4 sm:gap-4 sm:p-5',
+        `admin-stat-card--${tone}`,
+        href && 'admin-stat-card--link',
+      )}
+    >
+      <span className={cn('admin-stat-card__icon', `admin-stat-card__icon--${tone}`)}>
+        <AdminLucideIcon name={icon} className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={1.75} />
       </span>
-      <div>
-        <p className="admin-text-meta text-text-muted">{label}</p>
-        <p className="text-h2 font-extrabold leading-tight text-text">{value}</p>
-        {hint && <p className="admin-card-text">{hint}</p>}
+      <div className="min-w-0">
+        <p className="admin-stat-card__label">{label}</p>
+        <p className="admin-stat-card__value">{value}</p>
+        {hint ? <p className="admin-stat-card__hint">{hint}</p> : null}
       </div>
     </div>
   );
@@ -123,20 +95,39 @@ export function PersistNotice() {
   );
 }
 
-export function Table({ head, children }: { head: string[]; children: React.ReactNode }) {
+export function Table({
+  head,
+  children,
+  mobile,
+}: {
+  head: string[];
+  children: React.ReactNode;
+  /** Card list for viewports below `md` — avoids horizontal scroll */
+  mobile?: React.ReactNode;
+}) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-surface">
-      <table className="admin-text-body w-full min-w-[32rem] text-right">
-        <thead>
-          <tr className="border-b border-border bg-surface-soft/60 text-text-muted">
-            {head.map((h) => (
-              <th key={h} className="whitespace-nowrap px-4 py-3 font-semibold">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">{children}</tbody>
-      </table>
-    </div>
+    <>
+      {mobile ? <AdminTableCardList>{mobile}</AdminTableCardList> : null}
+      <div
+        className={cn(
+          'overflow-x-auto rounded-lg border border-border bg-surface',
+          mobile && 'hidden md:block',
+        )}
+      >
+        <table className="admin-text-body w-full min-w-[32rem] text-right">
+          <thead>
+            <tr className="border-b border-border bg-surface-soft/60 text-text-muted">
+              {head.map((h) => (
+                <th key={h} className="whitespace-nowrap px-4 py-3 font-semibold">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">{children}</tbody>
+        </table>
+      </div>
+    </>
   );
 }
 

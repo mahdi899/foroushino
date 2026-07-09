@@ -68,6 +68,8 @@ export default function ThemePage() {
 
   return (
     <AdminPage
+      icon="Palette"
+      headerVariant="settings"
       title="تم و توکن‌های طراحی"
       desc="رنگ‌ها را تغییر دهید؛ پیش‌نمایش زنده است."
       action={

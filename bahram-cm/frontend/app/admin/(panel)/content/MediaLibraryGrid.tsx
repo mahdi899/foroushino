@@ -231,7 +231,7 @@ export function MediaLibraryGrid({
           >
             <span
               aria-hidden
-              className="absolute inset-y-0 left-0 bg-white/25 transition-[width] duration-150 ease-out"
+              className="absolute inset-y-0 left-0 bg-surface/25 transition-[width] duration-150 ease-out"
               style={{ width: uploading ? `${uploadProgress}%` : '0%' }}
             />
             <span className="relative z-10 flex items-center gap-2">
@@ -324,7 +324,7 @@ export function MediaLibraryGrid({
                 )}
               >
                 <div
-                  className="relative aspect-square overflow-hidden bg-white"
+                  className="relative aspect-square overflow-hidden bg-surface-soft"
                   style={{
                     backgroundImage:
                       'linear-gradient(45deg,#ececee 25%,transparent 25%),linear-gradient(-45deg,#ececee 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#ececee 75%),linear-gradient(-45deg,transparent 75%,#ececee 75%)',

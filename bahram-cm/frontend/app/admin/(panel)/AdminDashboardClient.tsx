@@ -1,16 +1,31 @@
 'use client';
 
 import Link from 'next/link';
-import { Loader2, MessageSquare, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, Loader2, MessageSquare, RefreshCw } from 'lucide-react';
 import { useDashboardSummary } from '@/hooks/useDashboardSummary';
-import { AdminPage, StatCard, Table, Badge } from './ui';
+import { StatCard, Table, Badge } from './ui';
 import { DashboardAlerts } from './DashboardAlerts';
-import { adminNav } from './admin-nav';
+import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
+import { AdminLucideIcon } from '@/lib/admin/lucide-icons';
 import { toFa } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="mb-3 text-h3 text-primary-dark">{children}</h2>;
+const QUICK_LINKS = [
+  { href: '/admin/chatbot', label: 'چت‌بات', icon: 'MessageSquare', meta: 'صف اپراتور و تنظیمات' },
+  { href: '/admin/leads', label: 'لیدها', icon: 'Inbox', meta: 'فرم‌ها و سرنخ‌ها' },
+  { href: '/admin/commerce/orders', label: 'سفارشات', icon: 'ShoppingCart', meta: 'پیگیری پرداخت' },
+  { href: '/admin/academy/students', label: 'دانشجویان', icon: 'Users', meta: 'باشگاه مشتریان' },
+  { href: '/admin/gallery', label: 'رسانه', icon: 'Image', meta: 'کتابخانه تصاویر' },
+  { href: '/admin/settings', label: 'تنظیمات', icon: 'Settings', meta: 'پیکربندی سایت' },
+] as const;
+
+function SummaryTile({ href, label, value }: { href: string; label: string; value: React.ReactNode }) {
+  return (
+    <Link href={href} className="admin-dashboard-summary-tile">
+      <span className="admin-dashboard-summary-tile__value">{value}</span>
+      <span className="admin-dashboard-summary-tile__label">{label}</span>
+    </Link>
+  );
 }
 
 export function AdminDashboardClient() {
@@ -24,6 +39,7 @@ export function AdminDashboardClient() {
       icon: 'Bell',
       hint: `${toFa(stats.leads)} سرنخ کل`,
       href: '/admin/leads',
+      tone: 'gold' as const,
     },
     {
       label: 'صف چت‌بات',
@@ -31,6 +47,7 @@ export function AdminDashboardClient() {
       icon: 'MessageSquare',
       hint: stats.chatbot.enabled ? 'پیام منتظر اپراتور' : 'چت‌بات غیرفعال',
       href: '/admin/chatbot',
+      tone: 'teal' as const,
     },
     {
       label: 'تیکت باز',
@@ -38,23 +55,7 @@ export function AdminDashboardClient() {
       icon: 'LifeBuoy',
       hint: `${toFa(academy.tickets_total)} تیکت کل`,
       href: '/admin/academy/tickets',
-    },
-  ];
-
-  const commerceCards = [
-    {
-      label: 'سفارش‌ها',
-      value: toFa(stats.orders),
-      icon: 'Receipt',
-      hint: stats.pending_orders > 0 ? `${toFa(stats.pending_orders)} در انتظار پرداخت` : 'خریدهای ثبت‌شده',
-      href: '/admin/commerce/orders',
-    },
-    {
-      label: 'محصولات فعال',
-      value: toFa(stats.products),
-      icon: 'ShoppingBag',
-      hint: 'دوره‌ها و بسته‌ها',
-      href: '/admin/commerce/products',
+      tone: 'blue' as const,
     },
   ];
 
@@ -65,6 +66,7 @@ export function AdminDashboardClient() {
       icon: 'Users',
       hint: `${toFa(academy.active_students)} فعال`,
       href: '/admin/academy/students',
+      tone: 'teal' as const,
     },
     {
       label: 'دسترسی فعال',
@@ -72,6 +74,7 @@ export function AdminDashboardClient() {
       icon: 'KeyRound',
       hint: 'دوره‌های فعال‌شده',
       href: '/admin/academy/course-accesses',
+      tone: 'green' as const,
     },
     {
       label: 'سمینارها',
@@ -79,6 +82,7 @@ export function AdminDashboardClient() {
       icon: 'CalendarDays',
       hint: academy.upcoming_seminars > 0 ? `${toFa(academy.upcoming_seminars)} پیش‌رو` : 'رویدادهای ثبت‌شده',
       href: '/admin/academy/seminars',
+      tone: 'blue' as const,
     },
     {
       label: 'درخواست SAT',
@@ -86,6 +90,7 @@ export function AdminDashboardClient() {
       icon: 'GraduationCap',
       hint: 'در انتظار بررسی',
       href: '/admin/academy/sat-applications',
+      tone: 'amber' as const,
     },
     {
       label: 'کش‌بک معلق',
@@ -93,16 +98,34 @@ export function AdminDashboardClient() {
       icon: 'Wallet',
       hint: `${toFa(academy.referral_conversions)} معرفی موفق`,
       href: '/admin/academy/cashback-payouts',
+      tone: 'gold' as const,
     },
   ];
 
-  const contentCards = [
+  const commerceCards = [
+    {
+      label: 'سفارش‌ها',
+      value: toFa(stats.orders),
+      icon: 'Receipt',
+      hint: stats.pending_orders > 0 ? `${toFa(stats.pending_orders)} در انتظار پرداخت` : 'خریدهای ثبت‌شده',
+      href: '/admin/commerce/orders',
+      tone: 'gold' as const,
+    },
+    {
+      label: 'محصولات فعال',
+      value: toFa(stats.products),
+      icon: 'ShoppingBag',
+      hint: 'دوره‌ها و بسته‌ها',
+      href: '/admin/commerce/products',
+      tone: 'teal' as const,
+    },
     {
       label: 'مقالات',
       value: toFa(stats.articles),
       icon: 'Newspaper',
       hint: `${toFa(stats.published_articles)} منتشرشده`,
       href: '/admin/blog',
+      tone: 'blue' as const,
     },
     {
       label: 'رسانه',
@@ -110,75 +133,97 @@ export function AdminDashboardClient() {
       icon: 'Image',
       hint: 'فایل در کتابخانه',
       href: '/admin/gallery',
+      tone: 'green' as const,
     },
   ];
 
-  const quickNavGroups = adminNav.filter((g) => g.group !== 'پیشخوان');
-
   return (
-    <AdminPage
-      title="داشبورد"
-      desc="نمای کلی پنل مدیریت آکادمی بهرام"
-      action={
+    <div className={cn('admin-dashboard', loading && 'pointer-events-none opacity-60')}>
+      <DashboardAlerts />
+
+      {error ? (
+        <p className="text-small text-danger">
+          {error} — آمار پیش‌فرض نمایش داده می‌شود.
+        </p>
+      ) : null}
+
+      <div className="admin-dashboard-welcome">
+        <div className="admin-dashboard-welcome__lead">
+          <span className="admin-dashboard-welcome__icon">
+            <LayoutDashboard className="h-6 w-6" strokeWidth={2} />
+          </span>
+          <div className="min-w-0">
+            <h1 className="admin-dashboard-welcome__title">داشبورد مدیریت</h1>
+            <p className="admin-dashboard-welcome__desc">نمای کلی پیشخوان، آکادمی، فروش و محتوا</p>
+          </div>
+        </div>
         <button
           type="button"
           onClick={() => void refresh()}
           disabled={validating}
-          className="btn btn-secondary px-3 py-2 text-small"
+          className="btn btn-secondary shrink-0 px-3 py-2 text-small"
           title="بروزرسانی آمار"
         >
           {validating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           بروزرسانی
         </button>
-      }
-    >
-      <DashboardAlerts />
+      </div>
 
-      {error && (
-        <p className="mb-4 text-small text-danger">
-          {error} — آمار پیش‌فرض نمایش داده می‌شود.
-        </p>
-      )}
+      <section>
+        <h2 className="admin-dashboard-section__title">پیشخوان عملیاتی</h2>
+        <div className="admin-dashboard-kpi-grid admin-dashboard-kpi-grid--3">
+          {frontDeskCards.map((c) => (
+            <StatCard key={c.label} {...c} />
+          ))}
+        </div>
+      </section>
 
-      <div className={cn('space-y-8', loading && 'pointer-events-none opacity-60')}>
-        <section>
-          <SectionTitle>پیشخوان</SectionTitle>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {frontDeskCards.map((c) => (
-              <StatCard key={c.label} {...c} />
-            ))}
-          </div>
-        </section>
+      <section>
+        <h2 className="admin-dashboard-section__title">آکادمی و باشگاه مشتریان</h2>
+        <div className="admin-dashboard-kpi-grid admin-dashboard-kpi-grid--5">
+          {academyCards.map((c) => (
+            <StatCard key={c.label} {...c} />
+          ))}
+        </div>
+      </section>
 
-        <section>
-          <SectionTitle>آکادمی و باشگاه مشتریان</SectionTitle>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {academyCards.map((c) => (
-              <StatCard key={c.label} {...c} />
-            ))}
-          </div>
-        </section>
+      <section>
+        <h2 className="admin-dashboard-section__title">فروش و محتوا</h2>
+        <div className="admin-dashboard-kpi-grid admin-dashboard-kpi-grid--4">
+          {commerceCards.map((c) => (
+            <StatCard key={c.label} {...c} />
+          ))}
+        </div>
+      </section>
 
-        <section>
-          <SectionTitle>فروش و محتوا</SectionTitle>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[...commerceCards, ...contentCards].map((c) => (
-              <StatCard key={c.label} {...c} />
-            ))}
-          </div>
-        </section>
-
-        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <div className="space-y-6">
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-h3 text-primary-dark">آخرین سرنخ‌ها</h2>
-                <Link href="/admin/leads" className="text-small font-medium text-accent">
-                  مشاهده همه
-                </Link>
-              </div>
+      <div className="admin-dashboard-layout">
+        <div className="admin-dashboard-main">
+          <div className="admin-dashboard-panel">
+            <div className="admin-dashboard-panel__head">
+              <h2 className="admin-dashboard-panel__title">آخرین سرنخ‌ها</h2>
+              <Link href="/admin/leads" className="admin-dashboard-panel__action">
+                مشاهده همه
+              </Link>
+            </div>
+            <div className="admin-dashboard-panel__body">
               {stats.recent_leads.length > 0 ? (
-                <Table head={['نام', 'تلفن', 'وضعیت', 'تاریخ']}>
+                <Table
+                  head={['نام', 'تلفن', 'وضعیت', 'تاریخ']}
+                  mobile={stats.recent_leads.map((l) => (
+                    <AdminTableCard
+                      key={l.id}
+                      title={l.name}
+                      fields={[
+                        { label: 'تلفن', value: l.phone, mono: true },
+                        { label: 'وضعیت', value: <Badge tone={l.status === 'new' ? 'accent' : 'default'}>{l.status_label}</Badge> },
+                        {
+                          label: 'تاریخ',
+                          value: l.created_at ? new Date(l.created_at).toLocaleDateString('fa-IR') : '—',
+                        },
+                      ]}
+                    />
+                  ))}
+                >
                   {stats.recent_leads.map((l) => (
                     <tr key={l.id}>
                       <td className="px-4 py-3 font-medium text-text">{l.name}</td>
@@ -195,21 +240,43 @@ export function AdminDashboardClient() {
                   ))}
                 </Table>
               ) : (
-                <div className="card p-8 text-center text-small text-text-muted">
+                <div className="admin-dashboard-panel__body--padded text-center text-small text-text-muted">
                   هنوز سرنخی ثبت نشده است. با ارسال فرم از سایت یا چت‌بات، لیدها اینجا نمایش داده می‌شوند.
                 </div>
               )}
             </div>
+          </div>
 
-            <div>
-              <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-h3 text-primary-dark">تیکت‌های باز</h2>
-                <Link href="/admin/academy/tickets" className="text-small font-medium text-accent">
-                  مرکز تیکت
-                </Link>
-              </div>
+          <div className="admin-dashboard-panel">
+            <div className="admin-dashboard-panel__head">
+              <h2 className="admin-dashboard-panel__title">تیکت‌های باز</h2>
+              <Link href="/admin/academy/tickets" className="admin-dashboard-panel__action">
+                مرکز تیکت
+              </Link>
+            </div>
+            <div className="admin-dashboard-panel__body">
               {stats.recent_tickets.length > 0 ? (
-                <Table head={['موضوع', 'دانشجو', 'وضعیت', 'تاریخ']}>
+                <Table
+                  head={['موضوع', 'دانشجو', 'وضعیت', 'تاریخ']}
+                  mobile={stats.recent_tickets.map((t) => (
+                    <AdminTableCard
+                      key={t.id}
+                      title={
+                        <Link href={`/admin/academy/tickets/${t.id}`} className="text-accent hover:text-primary">
+                          {t.subject}
+                        </Link>
+                      }
+                      fields={[
+                        { label: 'دانشجو', value: t.student_name },
+                        { label: 'وضعیت', value: <Badge tone="warning">{t.status_label}</Badge> },
+                        {
+                          label: 'تاریخ',
+                          value: t.created_at ? new Date(t.created_at).toLocaleDateString('fa-IR') : '—',
+                        },
+                      ]}
+                    />
+                  ))}
+                >
                   {stats.recent_tickets.map((t) => (
                     <tr key={t.id}>
                       <td className="px-4 py-3">
@@ -228,118 +295,101 @@ export function AdminDashboardClient() {
                   ))}
                 </Table>
               ) : (
-                <div className="card p-8 text-center text-small text-text-muted">
+                <div className="admin-dashboard-panel__body--padded text-center text-small text-text-muted">
                   تیکت بازی در صف نیست. تیکت‌های جدید دانشجوها اینجا نمایش داده می‌شوند.
                 </div>
               )}
             </div>
           </div>
+        </div>
 
-          <div className="space-y-6">
-            <div>
-              <SectionTitle>چت‌بات هوشمند</SectionTitle>
-              <Link
-                href="/admin/chatbot"
-                className="card flex items-start gap-4 p-4 transition hover:border-accent"
-              >
-                <span
-                  className={cn(
-                    'grid h-11 w-11 shrink-0 place-items-center rounded-lg',
-                    stats.chatbot.pending_operator > 0 ? 'bg-amber-500/15 text-amber-600' : 'bg-surface-soft text-accent',
-                  )}
-                >
-                  <MessageSquare className="h-5 w-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-small font-semibold text-primary-dark">
-                    {stats.chatbot.enabled ? 'چت‌بات فعال' : 'چت‌بات غیرفعال'}
-                  </p>
-                  <p className="mt-1 text-caption text-text-muted">
-                    {stats.chatbot.pending_operator > 0
-                      ? `${toFa(stats.chatbot.pending_operator)} پیام در صف اپراتور`
-                      : 'پیامی در صف اپراتور نیست'}
-                  </p>
-                  <p className="mt-1 text-caption text-text-muted">
-                    {toFa(stats.chatbot.sessions)} مکالمه ثبت‌شده
-                  </p>
-                </div>
-                <span className="shrink-0 text-caption font-semibold text-accent">مدیریت ←</span>
-              </Link>
+        <aside className="admin-dashboard-aside">
+          <Link
+            href="/admin/chatbot"
+            className={cn(
+              'admin-dashboard-panel admin-dashboard-status-card',
+              stats.chatbot.pending_operator > 0
+                ? 'admin-dashboard-status-card--alert'
+                : 'admin-dashboard-status-card--teal',
+            )}
+          >
+            <span
+              className={cn(
+                'admin-dashboard-status-card__icon',
+                stats.chatbot.pending_operator > 0
+                  ? 'admin-dashboard-status-card__icon--alert'
+                  : 'admin-dashboard-status-card__icon--teal',
+              )}
+            >
+              <MessageSquare className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-small font-semibold text-text">
+                {stats.chatbot.enabled ? 'چت‌بات فعال' : 'چت‌بات غیرفعال'}
+              </p>
+              <p className="mt-1 text-caption text-text-muted">
+                {stats.chatbot.pending_operator > 0
+                  ? `${toFa(stats.chatbot.pending_operator)} پیام در صف اپراتور`
+                  : 'پیامی در صف اپراتور نیست'}
+                {' · '}
+                {toFa(stats.chatbot.sessions)} مکالمه
+              </p>
             </div>
+            <span className="admin-dashboard-status-card__action">مدیریت ←</span>
+          </Link>
 
-            <div>
-              <SectionTitle>خلاصه آکادمی</SectionTitle>
-              <div className="card divide-y divide-border p-0 text-small">
-                <Link href="/admin/academy/students" className="flex items-center justify-between px-4 py-3 transition hover:bg-surface-soft/50">
-                  <span className="text-text-muted">دانشجویان فعال</span>
-                  <span className="font-semibold text-primary-dark">{toFa(academy.active_students)}</span>
-                </Link>
-                <Link href="/admin/academy/course-accesses" className="flex items-center justify-between px-4 py-3 transition hover:bg-surface-soft/50">
-                  <span className="text-text-muted">دسترسی دوره فعال</span>
-                  <span className="font-semibold text-primary-dark">{toFa(academy.course_accesses_active)}</span>
-                </Link>
-                <Link href="/admin/academy/referrals" className="flex items-center justify-between px-4 py-3 transition hover:bg-surface-soft/50">
-                  <span className="text-text-muted">معرفی‌های موفق</span>
-                  <span className="font-semibold text-primary-dark">{toFa(academy.referral_conversions)}</span>
-                </Link>
-                <Link href="/admin/academy/notifications" className="flex items-center justify-between px-4 py-3 transition hover:bg-surface-soft/50">
-                  <span className="text-text-muted">اعلان‌های ارسالی</span>
-                  <span className="font-semibold text-primary-dark">{toFa(academy.notifications_sent)}</span>
-                </Link>
-                <Link href="/admin/academy/sms" className="flex items-center justify-between px-4 py-3 transition hover:bg-surface-soft/50">
-                  <span className="text-text-muted">مرکز پیامک</span>
-                  <span className="font-semibold text-accent">مدیریت ←</span>
-                </Link>
-              </div>
+          <div className="admin-dashboard-panel admin-dashboard-panel--quick">
+            <div className="admin-dashboard-panel__head">
+              <h2 className="admin-dashboard-panel__title">دسترسی سریع</h2>
             </div>
-
-            <div>
-              <SectionTitle>خلاصه فروش و محتوا</SectionTitle>
-              <div className="card divide-y divide-border p-0 text-small">
-                <Link href="/admin/commerce/orders" className="flex items-center justify-between px-4 py-3 transition hover:bg-surface-soft/50">
-                  <span className="text-text-muted">سفارش در انتظار پرداخت</span>
-                  <span className="font-semibold text-primary-dark">{toFa(stats.pending_orders)}</span>
-                </Link>
-                <Link href="/admin/blog" className="flex items-center justify-between px-4 py-3 transition hover:bg-surface-soft/50">
-                  <span className="text-text-muted">مقالات منتشرشده</span>
-                  <span className="font-semibold text-primary-dark">{toFa(stats.published_articles)}</span>
-                </Link>
-                <Link href="/admin/gallery" className="flex items-center justify-between px-4 py-3 transition hover:bg-surface-soft/50">
-                  <span className="text-text-muted">فایل‌های رسانه</span>
-                  <span className="font-semibold text-primary-dark">{toFa(stats.media)}</span>
-                </Link>
-                <Link href="/admin/commerce/orders/reports" className="flex items-center justify-between px-4 py-3 transition hover:bg-surface-soft/50">
-                  <span className="text-text-muted">گزارش سفارشات</span>
-                  <span className="font-semibold text-accent">مشاهده ←</span>
-                </Link>
-              </div>
-            </div>
-
-            <div>
-              <SectionTitle>دسترسی سریع</SectionTitle>
-              <div className="space-y-4">
-                {quickNavGroups.map((group) => (
-                  <div key={group.group}>
-                    <p className="mb-2 text-caption font-semibold text-text-muted">{group.group}</p>
-                    <div className="grid gap-2">
-                      {group.items.map((item) => (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          className="card flex items-center justify-between p-3 text-small font-medium text-text hover:border-accent"
-                        >
-                          {item.label}
-                          <span className="text-accent">←</span>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
+            <div className="admin-dashboard-panel__body admin-dashboard-panel__body--padded">
+              <div className="admin-dashboard-quick-grid">
+                {QUICK_LINKS.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="admin-dashboard-quick-link"
+                    title={item.meta}
+                  >
+                    <span className="admin-dashboard-quick-link__icon">
+                      <AdminLucideIcon name={item.icon} strokeWidth={2} />
+                    </span>
+                    <span className="admin-dashboard-quick-link__label">{item.label}</span>
+                  </Link>
                 ))}
               </div>
             </div>
           </div>
-        </div>
+
+          <div className="admin-dashboard-panel">
+            <div className="admin-dashboard-panel__head">
+              <h2 className="admin-dashboard-panel__title">خلاصه عملیاتی</h2>
+            </div>
+            <div className="admin-dashboard-panel__body admin-dashboard-panel__body--padded">
+              <div className="admin-dashboard-summary-split">
+                <div className="admin-dashboard-summary-group">
+                  <h3 className="admin-dashboard-summary-group__title">آکادمی</h3>
+                  <div className="admin-dashboard-summary-grid">
+                    <SummaryTile href="/admin/academy/students" label="دانشجویان فعال" value={toFa(academy.active_students)} />
+                    <SummaryTile href="/admin/academy/course-accesses" label="دسترسی دوره" value={toFa(academy.course_accesses_active)} />
+                    <SummaryTile href="/admin/academy/referrals" label="معرفی موفق" value={toFa(academy.referral_conversions)} />
+                    <SummaryTile href="/admin/academy/notifications" label="اعلان ارسالی" value={toFa(academy.notifications_sent)} />
+                  </div>
+                </div>
+                <div className="admin-dashboard-summary-group">
+                  <h3 className="admin-dashboard-summary-group__title">فروش و محتوا</h3>
+                  <div className="admin-dashboard-summary-grid">
+                    <SummaryTile href="/admin/commerce/orders" label="در انتظار پرداخت" value={toFa(stats.pending_orders)} />
+                    <SummaryTile href="/admin/blog" label="مقاله منتشرشده" value={toFa(stats.published_articles)} />
+                    <SummaryTile href="/admin/gallery" label="فایل رسانه" value={toFa(stats.media)} />
+                    <SummaryTile href="/admin/commerce/orders/reports" label="گزارش سفارش" value="←" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
-    </AdminPage>
+    </div>
   );
 }
