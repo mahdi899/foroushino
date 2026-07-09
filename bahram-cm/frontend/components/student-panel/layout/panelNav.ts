@@ -20,15 +20,15 @@ export interface PanelNavItem {
 }
 
 export const PANEL_NAV_ITEMS: PanelNavItem[] = [
-  { href: '/panel', label: 'خانه', icon: Home, exact: true },
-  { href: '/panel/courses', label: 'دوره کمپین‌نویسی', icon: BookOpen },
-  { href: '/panel/seminars', label: 'سمینارهای من', icon: CalendarDays },
-  { href: '/panel/referrals', label: 'باشگاه مشتریان', icon: Gift },
-  { href: '/panel/sat', label: 'سات', icon: Briefcase },
-  { href: '/panel/support', label: 'پشتیبانی', icon: LifeBuoy },
-  { href: '/panel/notifications', label: 'اعلان‌ها', icon: Bell },
-  { href: '/panel/profile', label: 'پروفایل', icon: UserIcon },
-  { href: '/panel/orders', label: 'سفارش‌های من', icon: Receipt },
+  { href: '/panel', label: 'خانه', shortLabel: 'خانه', icon: Home, exact: true },
+  { href: '/panel/courses', label: 'دوره کمپین‌نویسی', shortLabel: 'کمپین', icon: BookOpen },
+  { href: '/panel/seminars', label: 'سمینارهای من', shortLabel: 'سمینار', icon: CalendarDays },
+  { href: '/panel/referrals', label: 'باشگاه مشتریان', shortLabel: 'باشگاه', icon: Gift },
+  { href: '/panel/sat', label: 'سات', shortLabel: 'سات', icon: Briefcase },
+  { href: '/panel/support', label: 'پشتیبانی', shortLabel: 'پشتیبانی', icon: LifeBuoy },
+  { href: '/panel/notifications', label: 'اعلان‌ها', shortLabel: 'اعلان', icon: Bell },
+  { href: '/panel/profile', label: 'پروفایل', shortLabel: 'پروفایل', icon: UserIcon },
+  { href: '/panel/orders', label: 'سفارش‌های من', shortLabel: 'سفارش', icon: Receipt },
 ];
 
 export const PANEL_BOTTOM_NAV_ITEMS: PanelNavItem[] = [

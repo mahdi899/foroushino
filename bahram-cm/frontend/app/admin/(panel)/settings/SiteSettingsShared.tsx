@@ -31,6 +31,7 @@ const LEGACY_SECTION_TO_CATEGORY: Record<string, SettingsCategoryId> = {
   'image-optimizer': 'gallery',
   'sms-spotplayer-credentials': 'sms',
   'sms-routing': 'sms',
+  'academy-links': 'sms',
   'google-tracking': 'seo',
   captcha: 'security',
   'cache-integrations': 'infrastructure',

@@ -9,8 +9,8 @@ import { PanelNavLabel } from './PanelNavLabel';
 import { PANEL_NAV_ITEMS } from './panelNav';
 
 function useNavActive(pathname: string | null) {
-  return (href: string, exact?: boolean) =>
-    exact ? pathname === href : pathname === href || pathname?.startsWith(`${href}/`);
+  return (href: string, exact?: boolean): boolean =>
+    exact ? pathname === href : pathname === href || (pathname?.startsWith(`${href}/`) ?? false);
 }
 
 function PanelNavLinks({
@@ -28,15 +28,45 @@ function PanelNavLinks({
 }) {
   const itemClass =
     variant === 'mobile'
-      ? 'panel-mobile-nav-item relative flex min-h-[3rem] items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium text-text transition-colors duration-200'
-      : 'panel-nav-item relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-text transition-all duration-300';
+      ? 'panel-mobile-nav-tile'
+      : 'panel-nav-item relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] text-text-muted transition-colors duration-200';
 
   return (
     <>
       {PANEL_NAV_ITEMS.map((item) => {
-        const { href, label, icon: Icon, exact } = item;
+        const { href, label, shortLabel, icon: Icon, exact } = item;
         const active = isActive(href, exact);
         const showBadge = href === '/panel/notifications' && unreadCount > 0;
+        const mobileLabel = shortLabel ?? label;
+
+        if (variant === 'mobile') {
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={onNavigate}
+              data-active={active}
+              className={itemClass}
+            >
+              <span className="panel-mobile-nav-tile__icon-wrap">
+                <span
+                  className={cn(
+                    'panel-mobile-nav-tile__icon',
+                    active ? 'panel-mobile-nav-tile__icon--active' : '',
+                  )}
+                >
+                  <Icon size={18} strokeWidth={2} aria-hidden />
+                </span>
+                {showBadge ? (
+                  <span className="panel-mobile-nav-tile__badge">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                ) : null}
+              </span>
+              <span className="panel-mobile-nav-tile__label">{mobileLabel}</span>
+            </Link>
+          );
+        }
 
         return (
           <Link
@@ -47,14 +77,7 @@ function PanelNavLinks({
             data-active={active}
             className={itemClass}
           >
-            <span
-              className={cn(
-                'grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-transparent',
-                active ? 'bg-primary/12 text-primary' : 'bg-surface-soft text-text-muted',
-              )}
-            >
-              <Icon size={18} />
-            </span>
+            <Icon size={16} className="panel-nav-item__icon shrink-0" aria-hidden />
             <PanelNavLabel label={label} className="panel-nav-item__label flex-1" />
             {showBadge ? (
               <span
@@ -124,8 +147,8 @@ export function PanelSidebar({
           </button>
         </div>
 
-        <div className="panel-mobile-menu__scroll">
-          <nav className="flex flex-col gap-1.5">
+        <div className="panel-mobile-menu__body">
+          <nav className="panel-mobile-nav-grid">
             <PanelNavLinks unreadCount={unreadCount} isActive={isActive} onNavigate={onClose} variant="mobile" />
           </nav>
         </div>
@@ -170,7 +193,7 @@ export function PanelSidebar({
           </div>
 
           <div className="panel-sidebar__scroll">
-            <nav className="flex flex-col gap-1">
+            <nav className="flex flex-col gap-0.5">
               <PanelNavLinks
                 unreadCount={unreadCount}
                 isActive={isActive}

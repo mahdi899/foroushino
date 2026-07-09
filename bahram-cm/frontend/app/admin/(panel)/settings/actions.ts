@@ -59,6 +59,60 @@ export async function saveSiteSettings(values: Record<string, unknown>): Promise
   }
 }
 
+function readLinkUrl(data: Record<string, unknown>, key: string): string {
+  const value = data[key];
+  if (value && typeof value === 'object' && value !== null && 'url' in value) {
+    const url = (value as { url?: unknown }).url;
+    return typeof url === 'string' ? url : '';
+  }
+  return '';
+}
+
+export async function loadAcademyLinksSettings(): Promise<{
+  telegram_channel_url: string;
+  rubika_channel_url: string;
+  telegram_bot_url: string;
+}> {
+  try {
+    const res = await adminFetch<{ data: Record<string, unknown> }>('/settings/links');
+    const data = res.data ?? {};
+    return {
+      telegram_channel_url: readLinkUrl(data, 'telegram_channel'),
+      rubika_channel_url: readLinkUrl(data, 'rubika_channel'),
+      telegram_bot_url: readLinkUrl(data, 'telegram_bot'),
+    };
+  } catch {
+    return {
+      telegram_channel_url: '',
+      rubika_channel_url: '',
+      telegram_bot_url: '',
+    };
+  }
+}
+
+export async function saveAcademyLinksSettings(form: {
+  telegram_channel_url: string;
+  rubika_channel_url: string;
+  telegram_bot_url: string;
+}): Promise<{ ok: boolean }> {
+  try {
+    await adminFetch('/settings/links', {
+      method: 'PUT',
+      body: {
+        values: {
+          telegram_channel: { url: form.telegram_channel_url.trim() || null },
+          rubika_channel: { url: form.rubika_channel_url.trim() || null },
+          telegram_bot: { url: form.telegram_bot_url.trim() || null },
+        },
+      },
+    });
+    revalidateTag('settings', 'max');
+    return { ok: true };
+  } catch {
+    return { ok: false };
+  }
+}
+
 export async function loadAiSettings() {
   return getAiConfigAdminView();
 }

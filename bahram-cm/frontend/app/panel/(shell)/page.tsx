@@ -3,6 +3,7 @@ import { DashboardFeatureCards } from '@/components/student-panel/dashboard/Dash
 import { DashboardWelcome } from '@/components/student-panel/dashboard/DashboardWelcome';
 import { OnboardingChecklist, type ChecklistItem } from '@/components/student-panel/dashboard/OnboardingChecklist';
 import { QuickResourceLinks } from '@/components/student-panel/dashboard/QuickResourceLinks';
+import type { AcademyLinkKey } from '@/components/student-panel/academy/academyLinkMeta';
 import { RecentNotifications } from '@/components/student-panel/dashboard/RecentNotifications';
 import { ProgressBar } from '@/components/student-panel/ui/ProgressBar';
 import { panelStudentFetch } from '@/lib/student/panelServer';
@@ -38,6 +39,20 @@ export default async function PanelDashboardPage() {
   const notifications = notificationsRes.data.slice(0, 3);
   const courseHref = activeCourse ? `/panel/courses/${activeCourse.id}/watch` : '/panel/courses';
 
+  const academyUrls = data.checklist.reduce(
+    (acc, item) => {
+      if (item.key === 'telegram_channel' || item.key === 'rubika_channel' || item.key === 'telegram_bot') {
+        acc[item.key as AcademyLinkKey] = item.url;
+      }
+      return acc;
+    },
+    {
+      telegram_channel: null,
+      rubika_channel: null,
+      telegram_bot: null,
+    } as Record<AcademyLinkKey, string | null>,
+  );
+
   return (
     <div className="panel-page-inner flex flex-col gap-5 sm:gap-6">
       <DashboardWelcome
@@ -56,7 +71,7 @@ export default async function PanelDashboardPage() {
 
       <section className="grid gap-4 lg:grid-cols-2">
         <RecentNotifications notifications={notifications} />
-        <QuickResourceLinks />
+        <QuickResourceLinks urls={academyUrls} />
       </section>
 
       <section className="card flex flex-col gap-5 p-5 text-right sm:p-6">

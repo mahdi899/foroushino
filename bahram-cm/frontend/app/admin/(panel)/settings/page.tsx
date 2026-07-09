@@ -50,6 +50,7 @@ import {
 } from '@/lib/admin/smsSpotplayerCredentials.types';
 import { SmsSpotplayerCredentialsSettingsSection } from './SmsSpotplayerCredentialsSettingsSection';
 import { SmsRoutingSettingsSection } from './SmsRoutingSettingsSection';
+import { AcademyLinksSettingsSection } from './AcademyLinksSettingsSection';
 import { resolveSettingsScrollTarget, SETTINGS_CATEGORY_NAV, SettingsCategory, SiteSettingsNav } from './SiteSettingsShared';
 import type { SmsCenterConfig } from '@/lib/admin/smsCenter.types';
 
@@ -460,6 +461,8 @@ export default function SettingsPage() {
               بارگذاری تنظیمات مسیردهی پیامک ناموفق بود. سرور لاراول را بررسی کنید.
             </div>
           )}
+
+          <AcademyLinksSettingsSection />
         </SettingsCategory>
 
         <SettingsCategory
