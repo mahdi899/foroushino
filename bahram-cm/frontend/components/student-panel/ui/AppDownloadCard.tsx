@@ -8,7 +8,7 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-export function AppDownloadCard({ compact = false }: { compact?: boolean }) {
+export function AppDownloadCard({ compact = false, minimal = false }: { compact?: boolean; minimal?: boolean }) {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [showIosHint, setShowIosHint] = useState(false);
@@ -49,6 +49,8 @@ export function AppDownloadCard({ compact = false }: { compact?: boolean }) {
   };
 
   if (installed) {
+    if (minimal) return null;
+
     if (compact) {
       return (
         <div className="panel-pwa-card panel-pwa-card--compact" title="اپلیکیشن نصب شده است">
@@ -67,6 +69,26 @@ export function AppDownloadCard({ compact = false }: { compact?: boolean }) {
             <Smartphone size={24} strokeWidth={1.75} />
           </span>
         </div>
+      </div>
+    );
+  }
+
+  if (minimal) {
+    return (
+      <div className="panel-pwa-minimal">
+        <button type="button" onClick={() => void handleInstall()} className="panel-pwa-minimal__btn">
+          <Smartphone size={15} strokeWidth={2} aria-hidden />
+          <span>{isIos && !installEvent ? 'راهنمای نصب iOS' : 'نصب اپلیکیشن'}</span>
+          <Download size={14} strokeWidth={2} aria-hidden />
+        </button>
+        {showIosHint ? (
+          <p className="panel-pwa-minimal__hint">
+            Safari → Share → Add to Home Screen
+            <button type="button" onClick={() => setShowIosHint(false)} aria-label="بستن">
+              <X size={12} />
+            </button>
+          </p>
+        ) : null}
       </div>
     );
   }

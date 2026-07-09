@@ -14,6 +14,7 @@ import type { LucideIcon } from 'lucide-react';
 export interface PanelNavItem {
   href: string;
   label: string;
+  shortLabel?: string;
   icon: LucideIcon;
   exact?: boolean;
 }
@@ -32,7 +33,7 @@ export const PANEL_NAV_ITEMS: PanelNavItem[] = [
 
 export const PANEL_BOTTOM_NAV_ITEMS: PanelNavItem[] = [
   { href: '/panel', label: 'خانه', icon: Home, exact: true },
-  { href: '/panel/courses', label: 'دوره کمپین‌نویسی', icon: BookOpen },
+  { href: '/panel/courses', label: 'دوره کمپین‌نویسی', shortLabel: 'کمپین', icon: BookOpen },
   { href: '/panel/notifications', label: 'اعلان‌ها', icon: Bell },
   { href: '/panel/support', label: 'پشتیبانی', icon: LifeBuoy },
 ];

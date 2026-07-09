@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Bell, ChevronDown, Home, LogOut, Menu, X } from 'lucide-react';
+import { Bell, ChevronDown, Home, LogOut } from 'lucide-react';
 import { PanelThemeToggle } from '@/app/panel/PanelThemeToggle';
 import { PanelProfileAvatar } from '@/components/student-panel/layout/PanelProfileAvatar';
 import { studentDefaultAvatarUrl } from '@/lib/student/avatar';
@@ -13,13 +13,9 @@ import type { StudentUser } from '@/lib/student/session';
 export function PanelHeader({
   user,
   unreadCount = 0,
-  mobileMenuOpen = false,
-  onMenuToggle,
 }: {
   user: StudentUser;
   unreadCount?: number;
-  mobileMenuOpen?: boolean;
-  onMenuToggle: () => void;
 }) {
   const router = useRouter();
   const fullName = [user.profile?.first_name, user.profile?.last_name].filter(Boolean).join(' ').trim();
@@ -71,15 +67,6 @@ export function PanelHeader({
       </div>
 
       <div className="panel-header__trail">
-        <button
-          type="button"
-          className="btn-ghost lg:hidden"
-          onClick={onMenuToggle}
-          aria-label={mobileMenuOpen ? 'بستن منو' : 'باز کردن منو'}
-          aria-expanded={mobileMenuOpen}
-        >
-          {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
         <PanelThemeToggle />
         <Link href="/" className="panel-header__home" aria-label="بازگشت به صفحه اصلی سایت">
           <Home size={16} />

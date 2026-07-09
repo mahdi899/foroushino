@@ -83,6 +83,7 @@ export function PanelShell({
     const main = mainRef.current;
     if (!main) return;
     main.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    setMobileOpen(false);
   }, [pathname]);
 
   function toggleSidebarCollapsed() {
@@ -105,8 +106,6 @@ export function PanelShell({
           <PanelHeader
             user={user}
             unreadCount={unreadCount}
-            mobileMenuOpen={mobileOpen}
-            onMenuToggle={() => setMobileOpen((open) => !open)}
           />
           <main ref={mainRef} className="panel-main-content">
             <div className="panel-page-wrap">{children}</div>

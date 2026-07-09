@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { Briefcase, Crown, Gift, Play } from 'lucide-react';
 import { StatusBadge } from '@/components/student-panel/ui/StatusBadge';
 
@@ -7,6 +8,43 @@ interface DashboardFeatureCardsProps {
   courseHref: string;
   referralAmount?: number;
   courseActive?: boolean;
+}
+
+function FeatureCard({
+  href,
+  variant,
+  icon,
+  eyebrow,
+  title,
+  description,
+  cta,
+  badge,
+}: {
+  href: string;
+  variant: 'teal' | 'gold' | 'sat';
+  icon: ReactNode;
+  eyebrow: string;
+  title: string;
+  description: string;
+  cta: ReactNode;
+  badge?: ReactNode;
+}) {
+  return (
+    <Link href={href} className={`panel-feature-card panel-feature-card--${variant} group`}>
+      <div className="panel-feature-card__main">
+        <span className="panel-feature-card__icon">{icon}</span>
+        <div className="panel-feature-card__content">
+          <div className="panel-feature-card__meta">
+            <p className="panel-feature-card__eyebrow">{eyebrow}</p>
+            {badge}
+          </div>
+          <h3 className="panel-feature-card__title">{title}</h3>
+          <p className="panel-feature-card__desc">{description}</p>
+        </div>
+      </div>
+      <span className="panel-feature-card__cta">{cta}</span>
+    </Link>
+  );
 }
 
 export function DashboardFeatureCards({
@@ -21,59 +59,47 @@ export function DashboardFeatureCards({
       : 'کش‌بک بر اساس محصول';
 
   return (
-    <div className="grid grid-cols-1 gap-3 py-0.5 min-[420px]:grid-cols-2 lg:grid-cols-3">
-      <Link href={courseHref} className="panel-feature-card panel-feature-card--teal group min-[420px]:col-span-2 lg:col-span-1">
-        <div className="flex items-start justify-between gap-2">
-          <span className="panel-feature-card__icon">
-            <Play size={22} className="fill-current" />
-          </span>
-          {courseActive ? <StatusBadge variant="success">فعال</StatusBadge> : null}
-        </div>
-        <div className="mt-auto">
-          <p className="text-[11px] font-medium opacity-80">دوره فعال</p>
-          <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-snug">
-            {courseTitle ?? 'مشاهده دوره‌ها'}
-          </h3>
-          <p className="mt-2 text-[10px] leading-relaxed opacity-75">
-            تمام محتوای دوره از طریق SpotPlayer در دسترس است.
-          </p>
-          <span className="panel-feature-card__cta mt-4">
+    <div className="panel-feature-grid">
+      <FeatureCard
+        href={courseHref}
+        variant="teal"
+        icon={<Play size={22} className="fill-current" />}
+        eyebrow="دوره فعال"
+        title={courseTitle ?? 'مشاهده دوره‌ها'}
+        description="تمام محتوای دوره از طریق SpotPlayer در دسترس است."
+        badge={courseActive ? <StatusBadge variant="success">فعال</StatusBadge> : undefined}
+        cta={
+          <>
             <Play size={14} className="fill-current" />
             ورود به SpotPlayer
-          </span>
-        </div>
-      </Link>
+          </>
+        }
+      />
 
-      <Link href="/panel/referrals" className="panel-feature-card panel-feature-card--gold group">
-        <span className="panel-feature-card__icon">
-          <Crown size={22} />
-        </span>
-        <div className="mt-auto">
-          <p className="text-[11px] font-medium opacity-80">باشگاه VIP</p>
-          <h3 className="mt-1 text-sm font-bold leading-snug">{cashbackLabel}</h3>
-          <p className="mt-2 text-[10px] leading-relaxed opacity-75">
-            با هر معرفی موفق، پاداش نقدی دریافت کن.
-          </p>
-          <span className="panel-feature-card__cta mt-4">
+      <FeatureCard
+        href="/panel/referrals"
+        variant="gold"
+        icon={<Crown size={22} />}
+        eyebrow="باشگاه VIP"
+        title={cashbackLabel}
+        description="با هر معرفی موفق، پاداش نقدی دریافت کن."
+        cta={
+          <>
             <Gift size={14} />
             مشاهده باشگاه مشتریان
-          </span>
-        </div>
-      </Link>
+          </>
+        }
+      />
 
-      <Link href="/panel/sat" className="panel-feature-card panel-feature-card--sat group">
-        <span className="panel-feature-card__icon">
-          <Briefcase size={22} />
-        </span>
-        <div className="mt-auto">
-          <p className="text-[11px] font-medium opacity-80">همکاری شغلی</p>
-          <h3 className="mt-1 text-sm font-bold leading-snug">ثبت درخواست سات</h3>
-          <p className="mt-2 text-[10px] leading-relaxed opacity-75">
-            فرصت همکاری با آکادمی را از اینجا دنبال کن.
-          </p>
-          <span className="panel-feature-card__cta mt-4">ثبت درخواست</span>
-        </div>
-      </Link>
+      <FeatureCard
+        href="/panel/sat"
+        variant="sat"
+        icon={<Briefcase size={22} />}
+        eyebrow="همکاری شغلی"
+        title="ثبت درخواست سات"
+        description="فرصت همکاری با آکادمی را از اینجا دنبال کن."
+        cta="ثبت درخواست"
+      />
     </div>
   );
 }

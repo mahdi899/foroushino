@@ -21,7 +21,7 @@ export function PanelBottomNav({
   return (
     <nav className="panel-bottom-nav fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-surface lg:hidden">
       {PANEL_BOTTOM_NAV_ITEMS.map((item) => {
-        const { href, label, icon: Icon, exact } = item;
+        const { href, label, shortLabel, icon: Icon, exact } = item;
         const active = isActive(href, exact);
         const showBadge = href === '/panel/notifications' && unreadCount > 0;
         return (
@@ -33,7 +33,7 @@ export function PanelBottomNav({
             }`}
           >
             <Icon size={20} strokeWidth={active ? 2.4 : 1.8} />
-            <PanelNavLabel label={label} />
+            <PanelNavLabel label={shortLabel ?? label} />
             {showBadge ? (
               <span
                 className="absolute end-2 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
