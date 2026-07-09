@@ -14,6 +14,7 @@ interface SiteChatbotGateProps {
 export function SiteChatbotGate({ config, aiAvailable, faqGroups }: SiteChatbotGateProps) {
   const pathname = usePathname();
   if (pathname?.startsWith('/admin')) return null;
+  if (pathname?.startsWith('/panel')) return null;
   if (!config.enabled) return null;
 
   return <ChatbotWidgetClient config={config} aiAvailable={aiAvailable} faqGroups={faqGroups} />;

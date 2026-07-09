@@ -25,6 +25,7 @@ export function SiteChatbotEntry({
 }: SiteChatbotEntryProps) {
   const pathname = usePathname();
   if (pathname?.startsWith('/admin')) return null;
+  if (pathname?.startsWith('/panel')) return null;
   if (!config.enabled) return null;
 
   return (
