@@ -7,13 +7,19 @@ import { readReferralCode, setReferralCode } from "@/lib/referral/capture";
 
 type Props = {
   ownReferralCode?: string | null;
+  variant?: 'standalone' | 'panel';
+  onAppliedChange?: (code: string | null) => void;
 };
 
 function normalizeCode(value: string): string {
   return value.trim().toUpperCase();
 }
 
-export function CheckoutReferralCodeField({ ownReferralCode }: Props) {
+export function CheckoutReferralCodeField({
+  ownReferralCode,
+  variant = 'standalone',
+  onAppliedChange,
+}: Props) {
   const inputId = useId();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
@@ -23,10 +29,12 @@ export function CheckoutReferralCodeField({ ownReferralCode }: Props) {
   useEffect(() => {
     const stored = readReferralCode();
     if (stored) {
-      setApplied(normalizeCode(stored));
+      const normalized = normalizeCode(stored);
+      setApplied(normalized);
       setDraft(stored);
+      onAppliedChange?.(normalized);
     }
-  }, []);
+  }, [onAppliedChange]);
 
   function applyCode() {
     const next = normalizeCode(draft);
@@ -35,6 +43,7 @@ export function CheckoutReferralCodeField({ ownReferralCode }: Props) {
     if (!next) {
       setReferralCode("");
       setApplied(null);
+      onAppliedChange?.(null);
       return;
     }
 
@@ -46,10 +55,64 @@ export function CheckoutReferralCodeField({ ownReferralCode }: Props) {
     setReferralCode(next);
     setApplied(next);
     setDraft(next);
+    onAppliedChange?.(next);
   }
 
   function handleToggle() {
     setOpen((prev) => !prev);
+  }
+
+  const panelContent = (
+    <div className="space-y-2">
+      <label htmlFor={inputId} className="sr-only">
+        کد معرف
+      </label>
+      <div className="flex gap-2">
+        <input
+          id={inputId}
+          type="text"
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setError(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              applyCode();
+            }
+          }}
+          placeholder="مثلاً BRM-36363"
+          dir="ltr"
+          className="min-w-0 flex-1 rounded-tile border border-bone/12 bg-ink/60 px-3 py-2.5 text-sm text-bone placeholder:text-mist focus:border-emerald/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/30"
+        />
+        <button
+          type="button"
+          onClick={applyCode}
+          className="shrink-0 rounded-tile border border-emerald/30 bg-emerald/10 px-3 py-2.5 text-xs font-semibold text-emerald-glow transition hover:bg-emerald/15"
+        >
+          ثبت
+        </button>
+      </div>
+      {error ? (
+        <p role="alert" className="text-xs text-gold">
+          {error}
+        </p>
+      ) : applied ? (
+        <p className="flex items-center gap-1.5 text-xs text-emerald-glow">
+          <Check size={14} aria-hidden />
+          کد معرف ثبت شد.
+        </p>
+      ) : (
+        <p className="text-xs leading-relaxed text-mist">
+          اگر دوستی شما را معرفی کرده، کد او را وارد کن.
+        </p>
+      )}
+    </div>
+  );
+
+  if (variant === 'panel') {
+    return panelContent;
   }
 
   return (
@@ -82,52 +145,7 @@ export function CheckoutReferralCodeField({ ownReferralCode }: Props) {
         )}
       >
         <div className="overflow-hidden">
-          <div className="mt-3 space-y-2">
-            <label htmlFor={inputId} className="sr-only">
-              کد معرف
-            </label>
-            <div className="flex gap-2">
-              <input
-                id={inputId}
-                type="text"
-                value={draft}
-                onChange={(e) => {
-                  setDraft(e.target.value);
-                  setError(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    applyCode();
-                  }
-                }}
-                placeholder="مثلاً BRM-36363"
-                dir="ltr"
-                className="min-w-0 flex-1 rounded-tile border border-bone/12 bg-ink/60 px-3 py-2.5 text-sm text-bone placeholder:text-mist focus:border-emerald/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/30"
-              />
-              <button
-                type="button"
-                onClick={applyCode}
-                className="shrink-0 rounded-tile border border-emerald/30 bg-emerald/10 px-3 py-2.5 text-xs font-semibold text-emerald-glow transition hover:bg-emerald/15"
-              >
-                ثبت
-              </button>
-            </div>
-            {error ? (
-              <p role="alert" className="text-xs text-gold">
-                {error}
-              </p>
-            ) : applied ? (
-              <p className="flex items-center gap-1.5 text-xs text-emerald-glow">
-                <Check size={14} aria-hidden />
-                کد معرف ثبت شد.
-              </p>
-            ) : (
-              <p className="text-xs leading-relaxed text-mist">
-                اگر دوستی شما را معرفی کرده، کد او را وارد کن.
-              </p>
-            )}
-          </div>
+          <div className="mt-3">{panelContent}</div>
         </div>
       </div>
     </div>

@@ -23,7 +23,7 @@ import { captureReferralCode } from "@/lib/referral/capture";
 import { captureDiscountCode } from "@/lib/discount/capture";
 import type { ProductDetail } from "@/lib/services/products";
 import type { StudentUser } from "@/lib/student/session";
-import { OtpDigitInput } from "@/components/student-panel/auth/OtpDigitInput";
+import { GuestCheckoutOtpModal } from "@/components/forms/GuestCheckoutOtpModal";
 
 type Status = "idle" | "submitting" | "error";
 type GuestStep = "details" | "otp";
@@ -274,6 +274,15 @@ function PurchaseFormInner({
     setOtpCode("");
   }
 
+  function resetGuestOtp() {
+    setGuestStep("details");
+    setCheckoutToken(null);
+    setOtpCode("");
+    setOtpInfo(null);
+    setServerError(null);
+    setStatus("idle");
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!validateExtraFields()) return;
@@ -283,23 +292,32 @@ function PurchaseFormInner({
       return;
     }
 
-    if (guestStep === "otp") {
-      if (otpCode.length < 5) {
-        setServerError("کد تأیید ۵ رقمی را وارد کن.");
-        return;
-      }
-      await verifyGuestAndPay(otpCode);
-      return;
-    }
+    if (guestStep === "otp") return;
 
     if (!validateGuestFields()) return;
     await sendGuestOtp();
   }
 
   const submitting = status === "submitting";
-  const guestFieldsLocked = guestStep === "otp";
+  const otpModalOpen = guestStep === "otp";
   return (
-    <form className="grid gap-4" onSubmit={onSubmit} noValidate>
+    <>
+      <GuestCheckoutOtpModal
+        open={otpModalOpen}
+        phoneMasked={phoneMasked}
+        otpInfo={otpInfo}
+        otpCode={otpCode}
+        onOtpChange={setOtpCode}
+        onComplete={verifyGuestAndPay}
+        onResend={() => void handleResendOtp()}
+        onEditPhone={resetGuestOtp}
+        resendIn={resendIn}
+        submitting={submitting}
+        error={otpModalOpen ? serverError : null}
+        isFreeProduct={isFreeProduct}
+      />
+
+      <form className="grid gap-4" onSubmit={onSubmit} noValidate>
       {isLoggedIn && student ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-tile border border-bone/10 bg-ink/40 px-3 py-2.5">
           <div className="flex items-center gap-2 text-sm text-bone">
@@ -319,7 +337,6 @@ function PurchaseFormInner({
               id={`${formId}-guest-name`}
               type="text"
               value={guestName}
-              disabled={guestFieldsLocked}
               onChange={(e) => {                setGuestName(e.target.value);
                 setGuestErrors((prev) => ({ ...prev, name: undefined }));
               }}
@@ -343,7 +360,6 @@ function PurchaseFormInner({
               type="tel"
               inputMode="numeric"
               value={guestPhone}
-              disabled={guestFieldsLocked}
               onChange={(e) => {                setGuestPhone(sanitizePhoneInput(e.target.value));
                 setGuestErrors((prev) => ({ ...prev, phone: undefined }));
               }}
@@ -384,48 +400,7 @@ function PurchaseFormInner({
         </div>
       ) : null}
 
-      {guestStep === "otp" ? (
-        <div className="space-y-3 rounded-tile border border-bone/10 bg-ink/30 p-4">
-          <p className="text-sm text-bone-dim">
-            {otpInfo ?? (phoneMasked ? `کد تأیید به ${phoneMasked} ارسال شد.` : "کد تأیید را وارد کن.")}
-          </p>
-          <OtpDigitInput
-            value={otpCode}
-            onChange={setOtpCode}
-            onComplete={verifyGuestAndPay}
-            disabled={submitting}
-            error={Boolean(serverError)}
-            autoFocus
-            compact
-          />
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => void handleResendOtp()}
-              disabled={resendIn > 0 || submitting}
-              className="text-caption text-emerald-glow underline-offset-2 hover:underline disabled:opacity-50"
-            >
-              {resendIn > 0 ? `ارسال مجدد (${resendIn})` : "ارسال مجدد کد"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setGuestStep("details");
-                setCheckoutToken(null);
-                setOtpCode("");
-                setOtpInfo(null);
-                setServerError(null);
-                setStatus("idle");
-              }}
-              className="text-caption text-mist underline-offset-2 hover:underline"
-            >
-              ویرایش شماره
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {status === "error" && serverError ? (        <p
+      {!otpModalOpen && status === "error" && serverError ? (        <p
           role="alert"
           aria-live="assertive"
           className="rounded-tile border border-gold/30 bg-gold/8 px-4 py-3 text-sm text-gold"
@@ -436,20 +411,14 @@ function PurchaseFormInner({
 
       <button
         type="submit"
-        disabled={submitting}
+        disabled={submitting || otpModalOpen}
         className="group neon-btn-primary mt-1 inline-flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-pill bg-emerald px-7 font-semibold transition-[background-color,transform,box-shadow] duration-300 ease-[var(--ease-luxe)] hover:bg-emerald-glow hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald/50 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {submitting ? (
+        {submitting && !otpModalOpen ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            {guestStep === 'otp'
-              ? isFreeProduct
-                ? 'در حال ثبت سفارش…'
-                : 'در حال انتقال به درگاه…'
-              : 'در حال ارسال کد…'}
+            در حال ارسال کد…
           </>
-        ) : guestStep === 'otp' ? (
-          isFreeProduct ? 'تأیید کد و ثبت‌نام' : 'تأیید کد و پرداخت'
         ) : isFreeProduct ? (
           'ثبت‌نام رایگان'
         ) : (
@@ -462,6 +431,7 @@ function PurchaseFormInner({
         {isFreeProduct ? 'ثبت‌نام رایگان — بدون پرداخت آنلاین' : 'پرداخت امن از طریق درگاه زرین‌پال'}
       </p>
     </form>
+    </>
   );
 }
 

@@ -3,8 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { PurchaseForm } from "@/components/forms/PurchaseForm";
-import { CheckoutReferralCodeField } from "@/components/commerce/CheckoutReferralCodeField";
-import { CheckoutDiscountCodeField } from "@/components/commerce/CheckoutDiscountCodeField";
+import { CheckoutPromoCodeFields } from "@/components/commerce/CheckoutPromoCodeFields";
 import { CheckoutPriceSummary } from "@/components/commerce/CheckoutPriceSummary";
 import { CheckoutSidebar } from "@/components/commerce/CheckoutSidebar";
 import { LinkButton } from "@/components/ui/Button";
@@ -128,10 +127,13 @@ export default async function PurchasePage({
               <Reveal delay={0.08} className="flex h-full min-h-0 flex-col">
                 <CheckoutSidebar>
                   <aside className="neon-surface-static flex h-full min-h-0 w-full flex-col rounded-card border border-bone/10 bg-charcoal/45 p-5 sm:p-6 md:sticky md:top-24 md:p-6">
-                    <h2 className="text-h3 text-bone">خلاصه سفارش</h2>
+                    <h2 className="text-h3 text-balance text-bone">{product.title}</h2>
 
-                    <CheckoutReferralCodeField ownReferralCode={ownReferralCode} />
-                    <CheckoutDiscountCodeField productId={product.id} customerPhone={student?.mobile} />
+                    <CheckoutPromoCodeFields
+                      ownReferralCode={ownReferralCode}
+                      productId={product.id}
+                      customerPhone={student?.mobile}
+                    />
 
                     <CheckoutPriceSummary
                       products={[

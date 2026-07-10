@@ -33,24 +33,26 @@ export function CheckoutPriceSummary({ products }: Props) {
 
   return (
     <>
-      <ul className="mt-5 space-y-3 border-b border-bone/10 pb-5">
-        {products.map((product) => {
-          const discounted = productHasSaleDiscount(product);
-          return (
-            <li key={product.slug} className="flex w-full min-w-0 items-start justify-between gap-4 text-sm">
-              <span className="min-w-0 flex-1 leading-relaxed text-bone-dim">{product.title}</span>
-              <span className="shrink-0 text-end whitespace-nowrap">
-                <span className="block text-bone num-latin">{formatFa(product.effective_price)}</span>
-                {discounted ? (
-                  <span className="mt-0.5 block text-caption text-mist line-through num-latin">
-                    {formatFa(product.price)}
-                  </span>
-                ) : null}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+      {!isSingleProduct ? (
+        <ul className="mt-5 space-y-3 border-b border-bone/10 pb-5">
+          {products.map((product) => {
+            const discounted = productHasSaleDiscount(product);
+            return (
+              <li key={product.slug} className="flex w-full min-w-0 items-start justify-between gap-4 text-sm">
+                <span className="min-w-0 flex-1 leading-relaxed text-bone-dim">{product.title}</span>
+                <span className="shrink-0 text-end whitespace-nowrap">
+                  <span className="block text-bone num-latin">{formatFa(product.effective_price)}</span>
+                  {discounted ? (
+                    <span className="mt-0.5 block text-caption text-mist line-through num-latin">
+                      {formatFa(product.price)}
+                    </span>
+                  ) : null}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
 
       {totalDiscount > 0 ? (
         <div className="mt-5 space-y-2 border-b border-bone/10 pb-5 text-sm">

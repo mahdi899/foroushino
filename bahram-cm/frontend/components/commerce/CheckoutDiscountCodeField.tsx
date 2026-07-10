@@ -10,13 +10,20 @@ import { validateDiscountCode } from "@/lib/discount/validate";
 type Props = {
   productId: number;
   customerPhone?: string | null;
+  variant?: 'standalone' | 'panel';
+  onAppliedChange?: (code: string | null) => void;
 };
 
 function normalizeCode(value: string): string {
   return value.trim().toUpperCase();
 }
 
-export function CheckoutDiscountCodeField({ productId, customerPhone }: Props) {
+export function CheckoutDiscountCodeField({
+  productId,
+  customerPhone,
+  variant = 'standalone',
+  onAppliedChange,
+}: Props) {
   const inputId = useId();
   const discountCtx = useCheckoutDiscountOptional();
   const [open, setOpen] = useState(false);
@@ -28,12 +35,14 @@ export function CheckoutDiscountCodeField({ productId, customerPhone }: Props) {
   useEffect(() => {
     const stored = readDiscountCode();
     if (stored) {
-      setApplied(normalizeCode(stored));
+      const normalized = normalizeCode(stored);
+      setApplied(normalized);
       setDraft(stored);
+      onAppliedChange?.(normalized);
       void validateStoredCode(stored);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId]);
+  }, [productId, onAppliedChange]);
 
   async function validateStoredCode(code: string) {
     const result = await validateDiscountCode({
@@ -47,8 +56,10 @@ export function CheckoutDiscountCodeField({ productId, customerPhone }: Props) {
       discountCtx?.setPreview(result.data);
       setApplied(result.data.code);
       setError(null);
+      onAppliedChange?.(result.data.code);
     } else {
       discountCtx?.clearPreview();
+      onAppliedChange?.(null);
     }
   }
 
@@ -59,6 +70,7 @@ export function CheckoutDiscountCodeField({ productId, customerPhone }: Props) {
     if (!next) {
       setDiscountCode("");
       setApplied(null);
+      onAppliedChange?.(null);
       discountCtx?.clearPreview();
       return;
     }
@@ -81,6 +93,7 @@ export function CheckoutDiscountCodeField({ productId, customerPhone }: Props) {
     setDiscountCode(next, readDiscountViaLink());
     setApplied(result.data.code);
     setDraft(result.data.code);
+    onAppliedChange?.(result.data.code);
     discountCtx?.setPreview(result.data);
   }
 
@@ -89,6 +102,65 @@ export function CheckoutDiscountCodeField({ productId, customerPhone }: Props) {
   }
 
   const preview = discountCtx?.preview;
+
+  const panelContent = (
+    <div className="space-y-2">
+      <label htmlFor={inputId} className="sr-only">
+        کد تخفیف
+      </label>
+      <div className="flex gap-2">
+        <input
+          id={inputId}
+          type="text"
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setError(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void applyCode();
+            }
+          }}
+          placeholder="مثلاً SUMMER20"
+          dir="ltr"
+          className="min-w-0 flex-1 rounded-tile border border-bone/12 bg-ink/60 px-3 py-2.5 text-sm text-bone placeholder:text-mist focus:border-emerald/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/30"
+        />
+        <button
+          type="button"
+          onClick={() => void applyCode()}
+          disabled={pending}
+          className="shrink-0 rounded-tile border border-emerald/30 bg-emerald/10 px-3 py-2.5 text-xs font-semibold text-emerald-glow transition hover:bg-emerald/15 disabled:opacity-60"
+        >
+          {pending ? <Loader2 size={14} className="animate-spin" aria-hidden /> : "ثبت"}
+        </button>
+      </div>
+      {error ? (
+        <p role="alert" className="text-xs text-gold">
+          {error}
+        </p>
+      ) : applied && preview ? (
+        <p className="flex items-center gap-1.5 text-xs text-emerald-glow">
+          <Check size={14} aria-hidden />
+          کد تخفیف اعمال شد
+          {preview.coupon_discount > 0 ? (
+            <span className="text-mist">
+              (−<span className="num-latin">{preview.coupon_discount.toLocaleString("en-US")}</span> تومان)
+            </span>
+          ) : null}
+        </p>
+      ) : (
+        <p className="text-xs leading-relaxed text-mist">
+          اگر کد تخفیف داری، اینجا وارد کن.
+        </p>
+      )}
+    </div>
+  );
+
+  if (variant === 'panel') {
+    return panelContent;
+  }
 
   return (
     <div className="mt-4 border-t border-bone/10 pt-4">
@@ -120,58 +192,7 @@ export function CheckoutDiscountCodeField({ productId, customerPhone }: Props) {
         )}
       >
         <div className="overflow-hidden">
-          <div className="mt-3 space-y-2">
-            <label htmlFor={inputId} className="sr-only">
-              کد تخفیف
-            </label>
-            <div className="flex gap-2">
-              <input
-                id={inputId}
-                type="text"
-                value={draft}
-                onChange={(e) => {
-                  setDraft(e.target.value);
-                  setError(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    void applyCode();
-                  }
-                }}
-                placeholder="مثلاً SUMMER20"
-                dir="ltr"
-                className="min-w-0 flex-1 rounded-tile border border-bone/12 bg-ink/60 px-3 py-2.5 text-sm text-bone placeholder:text-mist focus:border-emerald/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/30"
-              />
-              <button
-                type="button"
-                onClick={() => void applyCode()}
-                disabled={pending}
-                className="shrink-0 rounded-tile border border-emerald/30 bg-emerald/10 px-3 py-2.5 text-xs font-semibold text-emerald-glow transition hover:bg-emerald/15 disabled:opacity-60"
-              >
-                {pending ? <Loader2 size={14} className="animate-spin" aria-hidden /> : "ثبت"}
-              </button>
-            </div>
-            {error ? (
-              <p role="alert" className="text-xs text-gold">
-                {error}
-              </p>
-            ) : applied && preview ? (
-              <p className="flex items-center gap-1.5 text-xs text-emerald-glow">
-                <Check size={14} aria-hidden />
-                کد تخفیف اعمال شد
-                {preview.coupon_discount > 0 ? (
-                  <span className="text-mist">
-                    (−<span className="num-latin">{preview.coupon_discount.toLocaleString("en-US")}</span> تومان)
-                  </span>
-                ) : null}
-              </p>
-            ) : (
-              <p className="text-xs leading-relaxed text-mist">
-                اگر کد تخفیف داری، اینجا وارد کن.
-              </p>
-            )}
-          </div>
+          <div className="mt-3">{panelContent}</div>
         </div>
       </div>
     </div>

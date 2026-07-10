@@ -3,8 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, ShoppingBag } from "lucide-react";
 import { CartAddFromQuery } from "@/components/commerce/CartAddFromQuery";
 import { CartPayButton, CartRemoveButton } from "@/components/commerce/CartItemActions";
-import { CheckoutReferralCodeField } from "@/components/commerce/CheckoutReferralCodeField";
-import { CheckoutDiscountCodeField } from "@/components/commerce/CheckoutDiscountCodeField";
+import { CheckoutPromoCodeFields } from "@/components/commerce/CheckoutPromoCodeFields";
 import { CheckoutPriceSummary } from "@/components/commerce/CheckoutPriceSummary";
 import { CheckoutSidebar } from "@/components/commerce/CheckoutSidebar";
 import { PurchaseForm } from "@/components/forms/PurchaseForm";
@@ -156,10 +155,12 @@ export default async function CartPage({
                 <div className="flex h-full min-w-0 flex-col md:col-span-5 md:col-start-8">
                   <CheckoutSidebar>
                     <aside className="neon-surface-static flex h-full min-h-0 w-full flex-col rounded-card border border-bone/10 bg-charcoal/45 p-5 sm:p-6 md:sticky md:top-24 md:p-6">
-                      <h2 className="text-h3 text-bone">خلاصه سفارش</h2>
+                      <h2 className="text-h3 text-balance text-bone">
+                        {products.length === 1 ? products[0]!.title : "خلاصه سفارش"}
+                      </h2>
 
-                      <CheckoutReferralCodeField ownReferralCode={ownReferralCode} />
-                      <CheckoutDiscountCodeField
+                      <CheckoutPromoCodeFields
+                        ownReferralCode={ownReferralCode}
                         productId={products[0]!.id}
                         customerPhone={student?.mobile}
                       />
