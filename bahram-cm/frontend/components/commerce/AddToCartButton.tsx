@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { track } from "@/lib/analytics";
+import { buildCartUrl } from "@/lib/cart/url";
+import { addToCart } from "@/lib/cart/store.client";
 import type { ComponentPropsWithoutRef } from "react";
 
 type AddToCartButtonProps = Omit<ComponentPropsWithoutRef<typeof Button>, "onClick"> & {
@@ -23,7 +25,8 @@ export function AddToCartButton({
 
     setBusy(true);
     track("course_cta_click", { course: productSlug, location });
-    window.location.assign(`/api/cart/add?slug=${encodeURIComponent(productSlug)}`);
+    addToCart(productSlug);
+    window.location.assign(buildCartUrl(window.location.origin));
   }
 
   return (

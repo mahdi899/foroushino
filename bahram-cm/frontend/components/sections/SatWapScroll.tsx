@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import { formatFa } from "@/lib/persian";
 import { Reveal } from "@/components/motion/Reveal";
-import { LinkButton } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 
 export type SatWapIconKey = "book-open" | "smartphone" | "network";
@@ -92,9 +91,6 @@ function WapPriceCard({ price }: { price: number }) {
         آموزش، اپ سات و همراهی تیم فروش — نه فقط یک دوره. نتیجه به تلاش و عملکرد هر فرد بستگی
         دارد.
       </p>
-      <LinkButton href="/apply" variant="vip" size="md" withArrow className="mt-4 w-full sm:w-auto">
-        بررسی شرایط ورود
-      </LinkButton>
     </div>
   );
 }

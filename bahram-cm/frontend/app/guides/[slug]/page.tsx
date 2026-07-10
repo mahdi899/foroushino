@@ -87,9 +87,6 @@ export default async function GuideDetailPage({
               <LinkButton href="/courses" variant="primary" withArrow>
                 دیدن دوره‌ها
               </LinkButton>
-              <LinkButton href="/apply" variant="primary">
-                درخواست عضویت
-              </LinkButton>
             </div>
           </div>
         </div>

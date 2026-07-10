@@ -101,6 +101,34 @@ export async function updateStudentStatus(id: number, status: string): Promise<{
   }
 }
 
+export async function exportStudentsCsv(filters?: {
+  search?: string;
+  status?: string;
+}): Promise<{ ok: true; csv: string } | { ok: false; error: string }> {
+  try {
+    const token = await getToken();
+    const url = new URL(`${SERVER_API_URL}/panel/students/export`);
+    if (filters?.search) url.searchParams.set('search', filters.search);
+    if (filters?.status) url.searchParams.set('status', filters.status);
+
+    const res = await fetch(url, {
+      headers: {
+        Accept: 'text/csv',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      cache: 'no-store',
+    });
+
+    if (!res.ok) {
+      return { ok: false, error: 'خروجی گرفتن از دانشجوها ناموفق بود.' };
+    }
+
+    return { ok: true, csv: await res.text() };
+  } catch {
+    return { ok: false, error: 'خروجی گرفتن از دانشجوها ناموفق بود.' };
+  }
+}
+
 // Course accesses
 export async function grantCourseAccess(input: { mobile: string; name?: string; product_id: number }) {
   try {

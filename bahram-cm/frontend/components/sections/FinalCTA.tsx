@@ -37,17 +37,6 @@ export function FinalCTA() {
                 >
                   {site.finalCta.cta.label}
                 </TrackedLinkButton>
-                <TrackedLinkButton
-                  href="/apply"
-                  event="homepage_cta_click"
-                  eventProps={{ cta: "final_apply", location: "final_cta" }}
-                  variant="vip"
-                  size="md"
-                  withArrow
-                  className="min-h-11 w-full justify-center px-3.5 text-center text-sm leading-snug sm:flex-1 sm:px-4 sm:text-[0.9375rem] lg:flex-none xl:flex-1"
-                >
-                  درخواست ورود به آکادمی
-                </TrackedLinkButton>
               </div>
             </div>
           </Reveal>

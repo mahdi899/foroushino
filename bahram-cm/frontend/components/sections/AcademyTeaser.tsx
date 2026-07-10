@@ -72,14 +72,6 @@ export function AcademyTeaser() {
                   >
                     {site.saat.cta.label}
                   </LinkButton>
-                  <LinkButton
-                    href={site.saat.ctaSecondary.href}
-                    variant="ghost"
-                    size="lg"
-                    className="w-full px-8 font-semibold sm:w-auto"
-                  >
-                    {site.saat.ctaSecondary.label}
-                  </LinkButton>
                 </div>
               </div>
 

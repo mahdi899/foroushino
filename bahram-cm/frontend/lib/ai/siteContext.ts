@@ -48,7 +48,7 @@ const CORE_PAGES: { path: string; label: string; kind: string }[] = [
   { path: '/articles', label: 'مقالات', kind: 'content' },
   { path: '/transformations', label: 'رضایت دانشجوها', kind: 'trust' },
   { path: '/founder', label: 'درباره بهرام', kind: 'trust' },
-  { path: '/apply', label: 'درخواست دسترسی', kind: 'conversion' },
+  { path: '/contact', label: 'تماس با ما', kind: 'support' },
   { path: '/faq', label: 'سوالات متداول', kind: 'support' },
 ];
 

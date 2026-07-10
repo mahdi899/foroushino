@@ -58,7 +58,7 @@ CONTENT QUALITY (mandatory):
 - Each h2 section must add unique value; no copy-paste between sections.
 - E-E-A-T: cite academy experience, courses, SAT prep, and real offerings from SITE CONTEXT.
 - Natural Persian (RTL); warm professional tone — trustworthy, never salesy or exaggerated.
-- Conclusion h2 with soft CTA linking to /apply or /courses or تماس — no pressure language.
+- Conclusion h2 with soft CTA linking to /courses or /course/campaign-writing or تماس — no pressure language.
 - Length: 1000–1500 words in body HTML (excluding related-articles block).
 `.trim();
 
@@ -125,7 +125,7 @@ export function buildAiArticleSystemPrompt(context: AiSiteContext): string {
     '- Intro: direct answer to main question (GEO snippet).',
     '- 5–7 h2 sections with depth; h3 subsections where helpful.',
     '- Internal links: 4–6 contextual <a href="/..."> ONLY to paths from internalLinkTargets.',
-    '- Link to relevant pages (/courses, /saat, /academy, /apply, /insights, related blog posts).',
+    '- Link to relevant pages (/courses, /saat, /academy, /course/campaign-writing, /insights, related blog posts).',
     '- Use real course names and offerings from context — never invent prices or guarantees.',
     '- Mention academy trust signals (experience, methodology, results) when relevant.',
     '- Final section in body: «مقالات مرتبط» with linked titles + summaries (see RELATED ARTICLES BLOCK).',

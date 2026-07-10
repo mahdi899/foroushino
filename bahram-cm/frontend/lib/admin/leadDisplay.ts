@@ -11,6 +11,7 @@ export const SERVICE_LABELS: Record<string, string> = {
 
 export const SOURCE_LABELS: Record<string, string> = {
   web_apply: 'درخواست دسترسی',
+  web_contact: 'تماس با ما',
   web_newsletter: 'خبرنامه',
   website: 'سایت',
   chatbot: 'چت‌بات',

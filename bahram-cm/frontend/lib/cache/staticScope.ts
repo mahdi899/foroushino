@@ -23,7 +23,6 @@ export const STATIC_CONTENT_PREFIXES = [
 export const DYNAMIC_ROUTE_PREFIXES = [
   '/admin',
   '/purchase',
-  '/apply',
   '/api/admin',
   '/api/captcha',
   '/api/chatbot',

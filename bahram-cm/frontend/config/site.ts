@@ -28,8 +28,12 @@ export const siteConfig = {
     { day: 'جمعه', open: 'تعطیل', close: '' },
   ],
   social: {
-    instagram: 'https://instagram.com/bahramrostami',
-    telegram: 'https://t.me/bahramrostami',
+    instagram: 'https://www.instagram.com/live_rostami/',
+    telegram: 'https://t.me/rostami_sup',
+    rubika: 'https://rubika.ir/rostami_sup',
+    instagramHandle: '@live_rostami',
+    telegramHandle: '@rostami_sup',
+    rubikaHandle: 'rostami_sup',
   },
   trust: {
     yearsExperience: '۱۰+',

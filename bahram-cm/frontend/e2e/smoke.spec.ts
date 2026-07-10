@@ -13,11 +13,6 @@ test.describe("public pages smoke", () => {
     await expect(firstCourse).toBeVisible();
   });
 
-  test("apply page shows the application form", async ({ page }) => {
-    await page.goto("/apply");
-    await expect(page.getByLabel(/نام/).first()).toBeVisible();
-  });
-
   test("sitemap is served", async ({ request }) => {
     const res = await request.get("/sitemap.xml");
     expect(res.status()).toBe(200);

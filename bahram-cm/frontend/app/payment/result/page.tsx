@@ -133,7 +133,7 @@ export default async function PaymentResultPage({
                 )}
                 {status !== "success" ? (
                   <Link
-                    href="/apply"
+                    href="mailto:hello@bahramrostami.com"
                     className="inline-flex h-11 items-center justify-center rounded-pill border border-bone/15 px-6 text-bone hover:border-bone/30"
                   >
                     تماس با پشتیبانی

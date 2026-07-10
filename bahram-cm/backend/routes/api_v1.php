@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\LeadExportController;
 use App\Http\Controllers\Admin\OrderExportController;
+use App\Http\Controllers\Admin\StudentExportController;
 use App\Http\Controllers\Api\V1\Admin\CashbackPayoutAdminController;
 use App\Http\Controllers\Api\V1\Admin\CourseAccessController as AdminCourseAccessController;
 use App\Http\Controllers\Api\V1\Admin\SpotplayerLicenseAdminController;
@@ -209,6 +210,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     Route::get('panel/leads/export', LeadExportController::class);
     Route::get('panel/orders/export', OrderExportController::class);
+    Route::get('panel/students/export', StudentExportController::class);
 
     Route::get('panel/chatbot/logs', [ChatbotController::class, 'adminLogs']);
     Route::get('panel/chatbot/sessions', [ChatbotController::class, 'adminSessions']);

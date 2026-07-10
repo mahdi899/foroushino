@@ -3,6 +3,7 @@ import { AdminPage, Badge, EditLink, Table } from '../../ui';
 import { getStudents } from '@/lib/admin/academyData';
 import { STUDENT_STATUS_LABELS, formatDate, type AdminStudent } from '@/lib/admin/academyTypes';
 import { CreateStudentForm } from './CreateStudentForm';
+import { StudentsExportButton } from './StudentsExportButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,8 +60,24 @@ export default async function StudentsPage({
 
   const hasFilters = Boolean(sp.search?.trim() || sp.status);
 
+  function studentsPageHref(page: number) {
+    const query = new URLSearchParams();
+    if (sp.search?.trim()) query.set('search', sp.search.trim());
+    if (sp.status) query.set('status', sp.status);
+    if (page > 1) query.set('page', String(page));
+    const qs = query.toString();
+    return qs ? `/admin/academy/students?${qs}` : '/admin/academy/students';
+  }
+
   return (
-    <AdminPage title="دانشجویان" desc="مدیریت حساب‌های دانشجویی آکادمی">
+    <AdminPage
+      title="دانشجویان"
+      desc={
+        meta
+          ? `${meta.total.toLocaleString('fa-IR')} دانشجو${hasFilters ? ' (فیلترشده)' : ''}`
+          : 'مدیریت حساب‌های دانشجویی آکادمی'
+      }
+    >
       <CreateStudentForm defaultOpen={students.length === 0} />
 
       <form className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center" method="get">
@@ -78,7 +95,7 @@ export default async function StudentsPage({
             </option>
           ))}
         </select>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button type="submit" className="btn btn-secondary flex-1 sm:flex-none">
             فیلتر
           </button>
@@ -87,6 +104,7 @@ export default async function StudentsPage({
               پاک کردن
             </Link>
           )}
+          {students.length > 0 ? <StudentsExportButton search={sp.search} status={sp.status} /> : null}
         </div>
       </form>
 
@@ -124,11 +142,30 @@ export default async function StudentsPage({
             ))}
           </div>
 
-          {meta && meta.last_page > 1 && (
+          {meta && meta.last_page > 1 ? (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-caption text-text-muted">
+              <span>
+                صفحه {meta.current_page.toLocaleString('fa-IR')} از {meta.last_page.toLocaleString('fa-IR')} — نمایش{' '}
+                {students.length.toLocaleString('fa-IR')} از {meta.total.toLocaleString('fa-IR')} دانشجو
+              </span>
+              <div className="flex gap-2">
+                {meta.current_page > 1 ? (
+                  <Link href={studentsPageHref(meta.current_page - 1)} className="btn btn-secondary px-3 py-1.5 text-caption">
+                    قبلی
+                  </Link>
+                ) : null}
+                {meta.current_page < meta.last_page ? (
+                  <Link href={studentsPageHref(meta.current_page + 1)} className="btn btn-secondary px-3 py-1.5 text-caption">
+                    بعدی
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+          ) : meta && meta.total > 0 ? (
             <p className="mt-3 text-caption text-text-muted">
-              صفحه {meta.current_page} از {meta.last_page} — مجموع {meta.total} دانشجو
+              {meta.total.toLocaleString('fa-IR')} دانشجو
             </p>
-          )}
+          ) : null}
         </>
       ) : (
         <div className="card p-8 text-center sm:p-10">

@@ -5,6 +5,8 @@
  * one-shot adapter swap; component code does not change.
  */
 
+import { siteConfig } from "@/config/site";
+
 export type StoryFrame = {
   kicker: string;
   title: string;
@@ -55,6 +57,7 @@ export const site = {
     { href: "/transformations", label: "رضایت دانشجوها" },
     { href: "/insights", label: "بلاگ" },
     { href: "/founder", label: "درباره‌ی بهرام" },
+    { href: "/contact", label: "تماس با ما" },
   ] satisfies NavLink[],
 
   ctaPrimary: { href: "/course/campaign-writing", label: "آغاز مسیر" },
@@ -157,8 +160,7 @@ export const site = {
       "سیستم عملیاتی فروش — لید، تماس، پیگیری و کمیسیون در یک مسیر واحد.",
     body: "سات یک سیستم عملیاتی فروش است که آموزش، لید، تماس، پیگیری، فیدبک و کمیسیون را به هم وصل می‌کند. اینجا کمپین‌نویسی وارد عمل می‌شود.",
     perks: ["لید و تماس", "پیگیری و فیدبک", "فروش و کمیسیون"] as const,
-    cta: { href: "/apply", label: "بررسی شرایط ورود" },
-    ctaSecondary: { href: "/apply", label: "درخواست مشاوره ورود" },
+    cta: { href: "/saat#wap", label: "بررسی شرایط ورود" },
   },
 
   transformations: [
@@ -249,14 +251,29 @@ export const site = {
     cta: { href: "/course/campaign-writing", label: "آغاز مسیر" },
   },
 
+  contactPage: {
+    title: "تماس با ما",
+    description: "سؤال، پیشنهاد یا درخواست همکاری — تیم ما در کوتاه‌ترین زمان پاسخ می‌دهد.",
+    channelsTitle: "راه‌های ارتباط",
+    formTitle: "ارسال پیام",
+    formLead: "فرم را پر کن تا به‌زودی با تو تماس بگیریم.",
+    topics: [
+      { value: "courses", label: "دوره‌ها و آموزش" },
+      { value: "saat", label: "سات و فروش" },
+      { value: "support", label: "پشتیبانی و دسترسی" },
+      { value: "other", label: "سایر موضوعات" },
+    ],
+  },
+
   footer: {
     tagline: "رشد حرفه‌ای، در یک اکوسیستم خصوصی.",
     navTitle: "صفحات",
     contactTitle: "ارتباط",
     contact: [
-      { href: "https://instagram.com/bahramrostami", label: "اینستاگرام", external: true },
-      { href: "https://t.me/bahramrostami", label: "تلگرام", external: true },
-      { href: "mailto:hello@bahramrostami.com", label: "ایمیل" },
+      { href: siteConfig.social.instagram, label: "اینستاگرام", external: true },
+      { href: siteConfig.social.telegram, label: "تلگرام", external: true },
+      { href: siteConfig.social.rubika, label: "روبیکا", external: true },
+      { href: `mailto:${siteConfig.contact.email}`, label: "ایمیل" },
     ],
     trustBadges: [
       { id: "enamad", alt: "نماد اعتماد الکترونیکی", href: "https://trustseal.enamad.ir/" },

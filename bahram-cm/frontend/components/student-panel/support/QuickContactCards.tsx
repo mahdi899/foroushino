@@ -1,5 +1,8 @@
+'use client';
+
 import Link from 'next/link';
-import { ChevronLeft, Inbox, MessageCircle, Send } from 'lucide-react';
+import { ChevronLeft, Inbox, MessageCircle, Radio, Send } from 'lucide-react';
+import { siteConfig } from '@/config/site';
 
 const CHANNELS = [
   {
@@ -7,18 +10,27 @@ const CHANNELS = [
     title: 'واتساپ پشتیبانی',
     desc: 'پاسخگویی سریع در واتساپ',
     hours: 'همه روزه ۹ تا ۲۱',
-    href: 'https://wa.me/',
+    href: `https://wa.me/${siteConfig.contact.whatsappRaw}`,
     icon: MessageCircle,
     cta: 'واتساپ',
   },
   {
     key: 'telegram',
     title: 'تلگرام پشتیبانی',
-    desc: 'پشتیبانی از طریق تلگرام',
+    desc: 'تیم پشتیبانی رستمی در تلگرام',
     hours: 'همه روزه ۹ تا ۲۱',
-    href: 'https://t.me/',
+    href: siteConfig.social.telegram,
     icon: Send,
     cta: 'تلگرام',
+  },
+  {
+    key: 'rubika',
+    title: 'روبیکا پشتیبانی',
+    desc: 'پیام مستقیم در روبیکا',
+    hours: 'همه روزه ۹ تا ۲۱',
+    href: siteConfig.social.rubika,
+    icon: Radio,
+    cta: 'روبیکا',
   },
 ] as const;
 

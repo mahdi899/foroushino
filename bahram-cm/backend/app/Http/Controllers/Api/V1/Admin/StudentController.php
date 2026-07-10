@@ -32,7 +32,7 @@ class StudentController extends Controller
             $query->where('status', $status);
         }
 
-        $perPage = min(max((int) $request->input('per_page', 20), 1), 20);
+        $perPage = min(max((int) $request->input('per_page', 50), 1), 50);
 
         $students = $query->with('profile')->orderByDesc('id')->paginate($perPage);
 

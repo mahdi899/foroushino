@@ -207,7 +207,7 @@ export default function SaatPage() {
               </Reveal>
               <Reveal delay={0.26}>
                 <div className="mt-6 flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:flex-wrap md:mt-9 md:gap-3">
-                  <LinkButton href="/apply" variant="vip" size="lg" withArrow className="w-full sm:w-auto">
+                  <LinkButton href="#wap" variant="vip" size="lg" withArrow className="w-full sm:w-auto">
                     بررسی شرایط ورود
                   </LinkButton>
                   <LinkButton
@@ -378,9 +378,6 @@ export default function SaatPage() {
               <p className="mt-4 max-w-xl text-sm text-bone-dim md:text-base">
                 برای کسی که فروش را جدی می‌گیرد — نه برای تماشای یک دوره ساده.
               </p>
-              <LinkButton href="/apply" variant="vip" size="md" withArrow className="mt-6">
-                درخواست مشاوره ورود
-              </LinkButton>
             </Reveal>
           </div>
         </div>
@@ -402,9 +399,6 @@ export default function SaatPage() {
                   کمپین‌نویسی را در یک سیستم واقعی اجرا کن.
                 </p>
                 <div className="mt-6 flex w-full flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:gap-3">
-                  <LinkButton href="/apply" variant="sales" size="lg" withArrow className="w-full sm:w-auto">
-                    درخواست مشاوره
-                  </LinkButton>
                   <Link
                     href="/saat#wap"
                     className="inline-flex items-center gap-2 text-gold transition-colors hover:text-gold-soft"

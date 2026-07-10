@@ -102,7 +102,7 @@ export default async function EventDetailPage({
           <Reveal delay={0.28}>
             <div className="mt-7 md:mt-10">
               <TrackedLinkButton
-                href={event.registerUrl ?? "/apply"}
+                href={event.registerUrl ?? "/courses"}
                 event="event_register_click"
                 eventProps={{ event: event.slug }}
                 variant="primary"

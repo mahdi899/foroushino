@@ -131,7 +131,7 @@ export default async function CourseDetailPage({
           <Reveal delay={0.3}>
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <TrackedCTA
-                href="/apply"
+                href="#pricing"
                 event="course_cta_click"
                 eventProps={{ course: course.slug, location: "hero" }}
                 variant="primary"
@@ -299,18 +299,6 @@ export default async function CourseDetailPage({
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-7">
-                    <TrackedCTA
-                      href="/apply"
-                      event="course_cta_click"
-                      eventProps={{ course: course.slug, tier: tier.name, location: "pricing" }}
-                      size="lg"
-                      variant={tier.highlighted ? "sales" : "ghost"}
-                      className="w-full"
-                    >
-                      ثبت‌نام
-                    </TrackedCTA>
-                  </div>
                 </div>
               ))}
             </div>

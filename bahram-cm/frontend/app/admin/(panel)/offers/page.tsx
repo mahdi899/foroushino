@@ -3,7 +3,7 @@
 import { AdminCollection } from '../AdminCollection';
 
 const seed = [
-  { id: 'offer-1', title: 'مشاوره رایگان ثبت‌نام دوره', cta: 'ثبت‌نام', href: '/apply', active: true },
+  { id: 'offer-1', title: 'مشاوره رایگان ثبت‌نام دوره', cta: 'ثبت‌نام', href: '/courses', active: true },
   { id: 'offer-2', title: 'دوره نویسندگی کمپین', cta: 'مشاهده دوره‌ها', href: '/courses', active: false },
 ];
 

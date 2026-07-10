@@ -11,7 +11,13 @@ export type FormSecurityPayload = {
 
 export function useFormSecurity(
   target: FormSecurityTarget,
-  options?: { captchaTight?: boolean; captchaStacked?: boolean; captchaAdmin?: boolean },
+  options?: {
+    captchaTight?: boolean;
+    captchaStacked?: boolean;
+    captchaAdmin?: boolean;
+    /** false = full-width block layout for multi-field forms (default true for inline rows). */
+    captchaInline?: boolean;
+  },
 ) {
   const captchaGate = useCaptchaGate();
   const captchaRef = useRef<CaptchaFieldHandle>(null);
@@ -25,6 +31,7 @@ export function useFormSecurity(
   const securityLoading = !configLoaded;
   const admin = options?.captchaAdmin ?? false;
   const stacked = options?.captchaStacked ?? false;
+  const inline = options?.captchaInline ?? true;
 
   const getSecurityPayload = (): FormSecurityPayload => ({
     captcha: captchaRequired ? captchaRef.current?.getPayload() ?? null : null,
@@ -53,10 +60,10 @@ export function useFormSecurity(
       siteKey={captchaGate.siteKey}
       variant={admin ? 'admin' : 'site'}
       compact
-      inline
+      inline={inline}
       tight={!admin && (stacked || !!options?.captchaTight)}
       pillEmbed={!admin && !stacked && !!options?.captchaTight}
-      className={admin || stacked ? 'w-full min-w-0 flex-1' : options?.captchaTight ? 'shrink-0' : undefined}
+      className={admin || stacked || !inline ? 'w-full min-w-0' : options?.captchaTight ? 'shrink-0' : undefined}
       {...captchaGate.fieldProps}
     />
   ) : null;

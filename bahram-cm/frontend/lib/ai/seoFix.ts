@@ -85,14 +85,14 @@ function instructionForCheck(check: SeoCheck, ctx: SeoFixArticleContext, context
     'slug-kw': `Suggest latin kebab-case slug related to keyword «${kw}» and topic (e.g. sat-prep-guide, campaign-writing-tips). Return slug only.`,
     density: `Adjust body HTML so focus keyword «${kw}» appears naturally 0.5–2.5% density — add or reduce usage without keyword stuffing. Return full updated body HTML.`,
     'title-len': `Adjust metaTitle to 30–60 Persian characters — compelling for ${brand}, includes keyword if possible.`,
-    'desc-len': `Adjust metaDescription to 120–160 Persian characters with keyword and soft CTA toward /apply or /courses.`,
+    'desc-len': `Adjust metaDescription to 120–160 Persian characters with keyword and soft CTA toward /courses or /course/campaign-writing.`,
     'slug-format': `Fix slug to latin kebab-case (a-z, 0-9, hyphens only), short and SEO-friendly — no Persian characters.`,
     'content-len': `Expand body HTML to at least 800 words with valuable Persian content about academy topics (h2 sections, lists). Keep existing good parts. Return full updated body HTML.`,
     excerpt: `Write excerpt 100–160 Persian characters — snippet-ready for GEO/AI citation, includes focus keyword once if set: «${kw}».`,
     headings: `Improve body HTML structure: add h2/h3 sections to reach 4–7 h2 headings total. Return full updated body HTML.`,
     'no-h1': `Remove any h1 tags from body HTML — convert to h2 if needed. Return full updated body HTML.`,
     'related-block': `Add final section h2 «مقالات مرتبط» with <ul><li> entries linking to REAL blog posts from this list (use /insights/{slug}):\n${blogPosts || '/insights — pick related topics from site'}\nEach li: <a href="/insights/...">title</a> — 1–2 sentence Persian summary. Return full updated body HTML.`,
-    'internal-links': `Add 4–6 contextual internal links in body HTML using ONLY these paths:\n${linkTargets}\nUse descriptive Persian anchor text about courses, SAT, campaign writing, apply. Never link to /blog/, /implant, /consultation, /pricing, or dental pages. Return full updated body HTML.`,
+    'internal-links': `Add 4–6 contextual internal links in body HTML using ONLY these paths:\n${linkTargets}\nUse descriptive Persian anchor text about courses, SAT, and campaign writing. Never link to /blog/, /implant, /consultation, /pricing, or dental pages. Return full updated body HTML.`,
     'img-alt': `Fix all img tags in body HTML — add descriptive Persian alt about academy/course context. Return full updated body HTML.`,
     category: `Pick the best Persian blog category name from the available categories list for this academy article topic.`,
   };
@@ -142,7 +142,7 @@ export function buildSeoFixUserPrompt(
     context ??
     ({
       brand: { name: 'بهرام رستمی', tagline: 'آکادمی بهرام', city: 'تهران' },
-      internalLinkTargets: ['/courses', '/saat', '/apply', '/insights', '/founder', '/course/campaign-writing'],
+      internalLinkTargets: ['/courses', '/saat', '/insights', '/founder', '/course/campaign-writing'],
       blogArticles: [],
       sitemap: [],
       services: [],

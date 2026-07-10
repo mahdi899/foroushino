@@ -1,4 +1,5 @@
 import { SITE } from "./seo";
+import { siteConfig } from "@/config/site";
 import { FOUNDER_IMAGE, LOGO_IMAGE } from "@/config/media";
 import { resolveSitemapImageUrl } from "@/lib/mediaUrl";
 
@@ -14,8 +15,9 @@ export function personJsonLd() {
     description:
       "بنیان‌گذار آکادمی و مدرس مسیر کمپین‌نویسی؛ بیش از ۵۰ هزار دانشجو در بازار فارسی.",
     sameAs: [
-      "https://www.instagram.com/bahramrostami",
-      "https://t.me/bahramrostami",
+      siteConfig.social.instagram,
+      siteConfig.social.telegram,
+      siteConfig.social.rubika,
       "https://www.youtube.com/@bahramrostami",
     ],
   };

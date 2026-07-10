@@ -33,7 +33,7 @@ function errorMessage(error: unknown): string {
 export async function getStudents(params: { search?: string; status?: string; page?: number } = {}) {
   try {
     const res = await adminFetch<{ data: AdminStudent[]; meta: PageMeta }>('/students', {
-      query: { search: params.search, status: params.status, page: params.page },
+      query: { search: params.search, status: params.status, page: params.page, per_page: 50 },
     });
     return { items: res.data, meta: res.meta, error: null as string | null };
   } catch (e) {

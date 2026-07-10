@@ -8,11 +8,14 @@ import {
   AlertCircle,
   Bot,
   HelpCircle,
+  Instagram,
   Loader2,
   MessageCircle,
   MessagesSquare,
   Phone,
+  Radio,
   Reply,
+  Send,
   Sparkles,
   Tag,
   User,
@@ -1681,6 +1684,48 @@ export function FloatingChatbot({
                   </span>
                 </a>
                 )}
+                <a
+                  href={siteConfig.social.telegram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={chatbotCtaButtonClass(chatTheme, 'link', true)}
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sky-500/15 text-sky-400 transition group-hover:scale-105">
+                    <Send className="h-4 w-4" />
+                  </span>
+                  <span className="flex-1">
+                    <span className={cn('block text-[13px] font-bold', chatTheme.body)}>تلگرام پشتیبانی</span>
+                    <span className={cn('text-[10px]', chatTheme.muted)}>{siteConfig.social.telegramHandle}</span>
+                  </span>
+                </a>
+                <a
+                  href={siteConfig.social.rubika}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={chatbotCtaButtonClass(chatTheme, 'link', true)}
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-violet-500/15 text-violet-300 transition group-hover:scale-105">
+                    <Radio className="h-4 w-4" />
+                  </span>
+                  <span className="flex-1">
+                    <span className={cn('block text-[13px] font-bold', chatTheme.body)}>روبیکا پشتیبانی</span>
+                    <span className={cn('text-[10px]', chatTheme.muted)}>{siteConfig.social.rubikaHandle}</span>
+                  </span>
+                </a>
+                <a
+                  href={siteConfig.social.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={chatbotCtaButtonClass(chatTheme, 'link', true)}
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-pink-500/15 text-pink-300 transition group-hover:scale-105">
+                    <Instagram className="h-4 w-4" />
+                  </span>
+                  <span className="flex-1">
+                    <span className={cn('block text-[13px] font-bold', chatTheme.body)}>اینستاگرام</span>
+                    <span className={cn('text-[10px]', chatTheme.muted)}>{siteConfig.social.instagramHandle}</span>
+                  </span>
+                </a>
                 {config.ctas.phone && (
                 <a
                   href={`tel:${siteConfig.contact.phoneRaw}`}
@@ -1696,17 +1741,6 @@ export function FloatingChatbot({
                   </span>
                 </a>
                 )}
-                {config.ctas.consultation && (
-                <Link href="/apply" className={chatbotCtaButtonClass(chatTheme, 'consultation', true)}>
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-ai text-white shadow-sm transition group-hover:scale-105">
-                    <Sparkles className="h-4 w-4" />
-                  </span>
-                  <span className="flex-1">
-                    <span className={cn('block text-[13px] font-bold', chatTheme.body)}>درخواست دسترسی</span>
-                    <span className={cn('text-[10px]', chatTheme.muted)}>ثبت درخواست دوره یا سات</span>
-                  </span>
-                </Link>
-                )}
                 {config.ctas.pricing && (
                   <Link href="/courses" className={chatbotCtaButtonClass(chatTheme, 'pricing', true)}>
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald/15 text-emerald transition group-hover:scale-105">
@@ -1718,6 +1752,15 @@ export function FloatingChatbot({
                     </span>
                   </Link>
                 )}
+                <Link href="/contact" className={chatbotCtaButtonClass(chatTheme, 'link', true)}>
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald/10 text-emerald transition group-hover:scale-105">
+                    <MessagesSquare className="h-4 w-4" />
+                  </span>
+                  <span className="flex-1">
+                    <span className={cn('block text-[13px] font-bold', chatTheme.body)}>فرم تماس</span>
+                    <span className={cn('text-[10px]', chatTheme.muted)}>ارسال پیام از سایت</span>
+                  </span>
+                </Link>
                 <Link href="/saat" className={chatbotCtaButtonClass(chatTheme, 'link', true)}>
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald/10 text-emerald transition group-hover:scale-105">
                     <Bot className="h-4 w-4" />
@@ -1873,19 +1916,6 @@ export function FloatingChatbot({
           <div className="relative px-2.5 pb-2.5 pt-1.5">
             <div className={cn('relative overflow-hidden rounded-[14px] p-1', chatTheme.composer)}>
               <div className="relative flex rounded-[10px] bg-bone/5 p-0.5">
-            {!chatEnabled && (
-              <Link
-                href="/apply"
-                onClick={() => {
-                  track('consultation_click', { from: 'assistant_tab' });
-                  setOpen(false);
-                }}
-                className={cn(TAB_ITEM_BASE, chatTheme.tabIdle)}
-              >
-                <Sparkles className="h-4 w-4" />
-                درخواست دسترسی
-              </Link>
-            )}
             {tabs.map((t) => {
               const active = tab === t;
               const Icon = t === 'chat' ? Bot : t === 'contact' ? Phone : HelpCircle;
@@ -1899,19 +1929,6 @@ export function FloatingChatbot({
                     <Icon className={cn('h-4 w-4', active && chatTheme.tabIconActive)} />
                     {t === 'chat' ? 'چت' : t === 'contact' ? 'تماس' : 'سوالات'}
                   </button>
-                  {t === 'chat' && (
-                    <Link
-                      href="/apply"
-                      onClick={() => {
-                        track('consultation_click', { from: 'assistant_tab' });
-                        setOpen(false);
-                      }}
-                      className={cn(TAB_ITEM_BASE, chatTheme.tabIdle)}
-                    >
-                      <Sparkles className="h-4 w-4" />
-                      مشاوره / ثبت‌نام
-                    </Link>
-                  )}
                 </span>
               );
             })}
