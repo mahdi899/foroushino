@@ -670,34 +670,41 @@ export default async function CourseCampaignWritingPage() {
       </section>
 
       {/* ENROLL */}
-      <section
-        id="enroll"
-        className="campaign-course-enroll relative scroll-mt-20 overflow-visible bg-ink py-12 sm:py-16 md:py-20 lg:py-24"
-      >
-        <div aria-hidden className="campaign-course-enroll-glow" />
-        <div className="container-luxe relative z-[1] min-w-0">
-          <div className="campaign-course-enroll-layout">
-            <Reveal>
-              <div className="campaign-course-enroll-copy">
-                <Eyebrow className="justify-center">ثبت‌نام</Eyebrow>
-                <h2 className="mt-3 text-h2 text-balance md:mt-4">
-                  آماده‌ای کمپین‌نویسی را جدی یاد بگیری؟
-                </h2>
-                <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-bone-dim md:text-body">
-                  {toPersianDigits(String(SECTION_COUNT))} بخش عملی — از شناخت مشتری تا طراحی
-                  کمپین واقعی.
-                </p>
-              </div>
-            </Reveal>
+      <section id="enroll" className="campaign-course-enroll scroll-mt-20">
+        <div className="campaign-course-enroll__surface relative overflow-hidden py-12 sm:py-16 md:py-20 lg:py-24">
+          <div
+            aria-hidden
+            className="campaign-course-enroll__ambient pointer-events-none absolute inset-0"
+          />
+          <div className="container-luxe relative z-[1] min-w-0">
+            <div className="campaign-course-enroll-layout">
+              <Reveal>
+                <div className="campaign-course-enroll-copy">
+                  <Eyebrow
+                    className="campaign-course-enroll__eyebrow justify-center"
+                    dotClassName="campaign-course-enroll__eyebrow-dot"
+                  >
+                    ثبت‌نام
+                  </Eyebrow>
+                  <h2 className="campaign-course-enroll__title mt-3 text-h2 text-balance md:mt-4">
+                    آماده‌ای کمپین‌نویسی را جدی یاد بگیری؟
+                  </h2>
+                  <p className="campaign-course-enroll__lead mx-auto mt-4 max-w-md text-sm leading-relaxed md:text-body">
+                    {toPersianDigits(String(SECTION_COUNT))} بخش عملی — از شناخت مشتری تا طراحی
+                    کمپین واقعی.
+                  </p>
+                </div>
+              </Reveal>
 
-            <Reveal delay={0.1}>
-              <EnrollCard
-                coursePrice={coursePrice}
-                originalPriceLabel={originalPriceLabel}
-                discountPercent={discountPercent}
-                alreadyPurchased={alreadyPurchased}
-              />
-            </Reveal>
+              <Reveal delay={0.1}>
+                <EnrollCard
+                  coursePrice={coursePrice}
+                  originalPriceLabel={originalPriceLabel}
+                  discountPercent={discountPercent}
+                  alreadyPurchased={alreadyPurchased}
+                />
+              </Reveal>
+            </div>
           </div>
         </div>
       </section>
@@ -814,7 +821,7 @@ function EnrollCard({
   alreadyPurchased: boolean;
 }) {
   return (
-    <div className="campaign-course-intro-price campaign-course-enroll-price">
+    <div className="campaign-course-intro-price campaign-course-enroll-price campaign-course-enroll-price-card">
       {discountPercent ? (
         <div className="campaign-course-intro-price-ribbon">
           {toPersianDigits(String(discountPercent))}٪ تخفیف ویژه
