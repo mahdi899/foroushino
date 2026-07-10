@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\InAppNotificationType;
 use App\Models\Article;
+use App\Models\MiniCourse;
 use App\Models\Notification as NotificationModel;
 use App\Models\NotificationRecipient;
 use App\Models\Order;
@@ -132,6 +133,20 @@ class InAppNotificationService
             "لایسنس «{$productTitle}» صادر شد. از بخش دوره‌ها می‌توانی مشاهده و پخش کنی.",
             InAppNotificationType::LicenseReady,
             '/panel/courses',
+        );
+    }
+
+    public function miniCourseEnrolled(User $user, MiniCourse $course, Order $order): NotificationRecipient
+    {
+        $orderNumber = $order->order_number ?? (string) $order->id;
+        $slug = $course->slug;
+
+        return $this->notifyUser(
+            $user,
+            'مینی‌دوره برای شما فعال شد',
+            "«{$course->title}» با شماره سفارش {$orderNumber} در پنل شما ثبت شد. از بخش دوره‌ها می‌توانی تماشا کنی.",
+            InAppNotificationType::MiniCourseEnrolled,
+            filled($slug) ? "/panel/mini-courses/{$slug}/watch" : '/panel/courses',
         );
     }
 

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, Clapperboard } from 'lucide-react';
 import { ArticleVideoEmbed } from '@/components/blog/ArticleVideoEmbed';
-import { PanelPageHeader } from '@/components/student-panel/layout/PanelPageHeader';
+import { parseAparatHash } from '@/lib/article/videoEmbed';
 import { panelStudentFetch } from '@/lib/student/panelServer';
 
 export const metadata: Metadata = {
@@ -42,31 +42,45 @@ export default async function MiniCourseWatchPage({ params }: PageProps) {
     );
   }
 
+  const aparatHash = parseAparatHash(data.aparat_hash) ?? data.aparat_hash;
+
   return (
     <div className="panel-page-inner flex flex-col gap-6">
-      <PanelPageHeader
-        icon={Clapperboard}
-        title={data.title}
-        description={data.subtitle ?? 'مینی‌دوره رایگان'}
-      />
+      <section className="panel-page-header panel-mini-watch-header">
+        <div className="panel-mini-watch-header__top">
+          <Link href="/panel/courses" className="panel-mini-watch-back">
+            <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+            بازگشت به دوره‌های من
+          </Link>
 
-      {data.enrollment_number ? (
-        <p className="panel-text-meta text-text-muted">
-          شماره سفارش:{' '}
-          <span className="num-latin font-medium text-text" dir="ltr">
-            {data.enrollment_number}
+          {data.enrollment_number ? (
+            <p className="panel-mini-watch-order">
+              شماره سفارش:{' '}
+              <span className="num-latin font-medium text-text" dir="ltr">
+                {data.enrollment_number}
+              </span>
+            </p>
+          ) : null}
+        </div>
+
+        <div className="panel-mini-watch-header__main">
+          <span className="panel-page-header__icon" aria-hidden>
+            <Clapperboard size={24} strokeWidth={2} />
           </span>
-        </p>
-      ) : null}
+          <div>
+            <h1 className="panel-page-header__title">{data.title}</h1>
+            {data.subtitle ? (
+              <p className="panel-page-header__desc">{data.subtitle}</p>
+            ) : (
+              <p className="panel-page-header__desc">مینی‌دوره رایگان</p>
+            )}
+          </div>
+        </div>
+      </section>
 
       <div className="card overflow-hidden p-0">
-        <ArticleVideoEmbed aparat={data.aparat_hash} eager />
+        <ArticleVideoEmbed aparat={aparatHash} active="aparat" eager className="my-0" />
       </div>
-
-      <Link href="/panel/courses" className="btn btn-ghost inline-flex w-fit items-center gap-2 self-start">
-        <ArrowRight className="h-4 w-4" aria-hidden />
-        بازگشت به دوره‌های من
-      </Link>
     </div>
   );
 }

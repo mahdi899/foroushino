@@ -50,17 +50,12 @@ export function CourseAccessCard({
   const title = course.product?.title ?? 'دوره';
   const image = course.product?.featured_image;
   const imageAlt = course.product?.featured_image_alt ?? title;
-  const isMiniCourse = course.course_type === 'mini';
-  const slug = course.product?.slug;
   const licenseKey = course.spotplayer?.license_key;
   const spotplayerCourseId = course.spotplayer?.spotplayer_course_id ?? course.product?.spotplayer_course_id;
   const hasSpotPlayer = Boolean(spotplayerCourseId);
-  const canWatch = isMiniCourse
-    ? Boolean(course.is_active && slug)
-    : Boolean(course.id) && course.is_active && Boolean(licenseKey) && hasSpotPlayer;
-  const watchHref = isMiniCourse && slug
-    ? `/panel/mini-courses/${slug}/watch`
-    : course.id && course.license_id
+  const canWatch = Boolean(course.id) && course.is_active && Boolean(licenseKey) && hasSpotPlayer;
+  const watchHref =
+    course.id && course.license_id
       ? `/panel/courses/${course.id}/watch?license=${course.license_id}`
       : course.id
         ? `/panel/courses/${course.id}/watch`
@@ -94,9 +89,7 @@ export function CourseAccessCard({
             {course.pending_activation
               ? 'در حال فعال‌سازی'
               : course.is_active
-                ? isMiniCourse
-                  ? 'مینی‌دوره فعال'
-                  : 'دسترسی فعال'
+                ? 'دسترسی فعال'
                 : 'غیرفعال'}
           </StatusBadge>
           {course.order_number ? (
@@ -108,10 +101,10 @@ export function CourseAccessCard({
 
         <div className="panel-text-meta flex items-center gap-2 text-text-muted">
           <Calendar className="h-3.5 w-3.5 shrink-0 text-primary" />
-          <span>{isMiniCourse ? 'تاریخ ثبت سفارش' : 'تاریخ خرید'}: {formatDate(course.activated_at)}</span>
+          <span>تاریخ خرید: {formatDate(course.activated_at)}</span>
         </div>
 
-        {!isMiniCourse && licenseKey && showLicenseKey ? (
+        {licenseKey && showLicenseKey ? (
           <div className="rounded-xl border border-border/60 bg-surface-soft/60 p-3">
             <div className="panel-text-meta mb-2 flex items-center gap-1.5 font-medium text-text-muted">
               <KeyRound className="h-3.5 w-3.5" />
@@ -119,7 +112,7 @@ export function CourseAccessCard({
             </div>
             <CopyTextButton value={licenseKey} label="کپی توکن" showValue={false} className="w-full" />
           </div>
-        ) : !isMiniCourse && hasSpotPlayer ? (
+        ) : hasSpotPlayer ? (
           <p className="panel-text-meta rounded-xl border border-warning/20 bg-warning/5 px-3 py-2 leading-relaxed text-text-muted">
             لایسنس SpotPlayer این دوره در حال صدور است.
           </p>
@@ -134,7 +127,7 @@ export function CourseAccessCard({
           </Link>
         ) : (
           <span className="panel-text-meta flex w-full items-center justify-center rounded-xl border border-border/40 bg-surface-soft px-4 py-2.5 text-center text-text-muted">
-            {!isMiniCourse && !hasSpotPlayer
+            {!hasSpotPlayer
               ? 'این محصول پخش آنلاین SpotPlayer ندارد'
               : course.is_active
                 ? 'لایسنس دوره به‌زودی فعال می‌شود'

@@ -51,6 +51,15 @@ class StudentMiniCourseEnrollmentTest extends TestCase
 
         $course->refresh();
         $this->assertNotNull($course->product_id);
+
+        $this->assertDatabaseHas('notifications', [
+            'type' => 'mini_course_enrolled',
+            'link' => '/panel/mini-courses/'.$course->slug.'/watch',
+        ]);
+        $this->assertDatabaseHas('notification_recipients', [
+            'user_id' => $user->id,
+            'read_at' => null,
+        ]);
     }
 
     public function test_enroll_is_idempotent(): void
@@ -75,6 +84,7 @@ class StudentMiniCourseEnrollmentTest extends TestCase
         $response->assertOk()->assertJsonPath('data.already_enrolled', true);
         $this->assertSame(1, MiniCourseEnrollment::query()->count());
         $this->assertSame(1, Order::query()->count());
+        $this->assertSame(1, \App\Models\Notification::query()->count());
     }
 
     public function test_enrolled_mini_course_appears_in_student_courses_and_orders(): void

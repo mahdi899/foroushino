@@ -1,4 +1,4 @@
-import { Bell, BookOpen, FileText, KeyRound, MessageSquare, Receipt, Sparkles } from 'lucide-react';
+import { Bell, BookOpen, Clapperboard, FileText, KeyRound, MessageSquare, Receipt, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 export function notificationTypeIcon(type: string | null | undefined): LucideIcon {
@@ -7,6 +7,8 @@ export function notificationTypeIcon(type: string | null | undefined): LucideIco
       return Receipt;
     case 'license_ready':
       return KeyRound;
+    case 'mini_course_enrolled':
+      return Clapperboard;
     case 'ticket_created':
     case 'ticket_reply':
       return MessageSquare;
@@ -27,6 +29,8 @@ export function notificationTypeLabel(type: string | null | undefined) {
       return 'سفارش';
     case 'license_ready':
       return 'لایسنس';
+    case 'mini_course_enrolled':
+      return 'مینی‌دوره';
     case 'ticket_created':
       return 'تیکت';
     case 'ticket_reply':
@@ -46,6 +50,7 @@ export function notificationTypeVariant(type: string | null | undefined): 'teal'
   switch (type) {
     case 'order_paid':
     case 'license_ready':
+    case 'mini_course_enrolled':
       return 'teal';
     case 'welcome':
       return 'gold';
