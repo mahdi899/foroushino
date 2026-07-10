@@ -94,7 +94,7 @@ export function AcademyTeaser() {
                 ))}
               </div>
 
-              <div className="order-3 relative flex items-center justify-center py-1 sm:py-2 lg:order-none lg:col-span-3 lg:justify-end lg:py-0">
+              <div className="order-3 relative hidden items-center justify-center py-1 sm:py-2 md:flex lg:order-none lg:col-span-3 lg:justify-end lg:py-0">
                 <div
                   aria-hidden
                   className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,color-mix(in_oklab,var(--color-emerald-glow)_14%,transparent),transparent_62%)]"

@@ -174,13 +174,13 @@ export function HeroCinematic() {
 
       <motion.div
         variants={entrance.group}
-        className="min-w-0 lg:col-span-12 lg:col-start-1 lg:row-start-2 lg:self-start"
+        className="min-w-0 w-full lg:col-span-12 lg:col-start-1 lg:row-start-2 lg:self-start"
       >
         <motion.div
           variants={entrance.item}
-          className="hero-actions mx-auto w-fit max-w-full sm:gap-2.5 lg:mx-0 lg:w-full lg:gap-4"
+          className="hero-actions mx-auto w-full max-w-full sm:gap-2.5 lg:mx-0 lg:w-full lg:gap-4"
         >
-          <NeonBorder>
+          <NeonBorder className="hero-actions-primary">
             <TrackedLinkButton
               href={site.ctaPrimary.href}
               event="homepage_cta_click"
@@ -188,7 +188,7 @@ export function HeroCinematic() {
               variant="primary"
               withArrow
               size="lg"
-              className="h-auto min-h-0 w-fit shrink-0 px-4 py-2.5 text-sm sm:h-11 sm:min-h-11 sm:px-5 lg:h-14 lg:min-h-14 lg:min-w-52 lg:w-auto lg:px-8 lg:text-base hover:!translate-y-0"
+              className="h-auto min-h-0 w-full min-w-0 px-4 py-2.5 text-sm sm:h-11 sm:min-h-11 sm:px-5 lg:h-14 lg:min-h-14 lg:min-w-52 lg:w-auto lg:shrink-0 lg:px-8 lg:text-base hover:!translate-y-0"
             >
               {site.ctaPrimary.label}
             </TrackedLinkButton>
@@ -199,7 +199,7 @@ export function HeroCinematic() {
             eventProps={{ cta: "hero_saat", location: "hero" }}
             variant="ghost"
             size="lg"
-            className="hero-ghost-cta h-auto min-h-0 w-fit shrink-0 px-4 py-2.5 text-sm backdrop-blur-md hover:-translate-y-px sm:h-11 sm:min-h-11 sm:px-5 lg:h-14 lg:min-h-14 lg:min-w-44 lg:w-auto lg:px-8 lg:text-base"
+            className="hero-ghost-cta h-auto min-h-0 w-full min-w-0 justify-center px-4 py-2.5 text-center text-sm backdrop-blur-md hover:-translate-y-px sm:h-11 sm:min-h-11 sm:px-5 lg:h-14 lg:min-h-14 lg:min-w-44 lg:w-auto lg:shrink-0 lg:px-8 lg:text-base"
           >
             {site.ctaSecondary.label}
           </TrackedLinkButton>
@@ -207,7 +207,7 @@ export function HeroCinematic() {
 
         <motion.div
           variants={entrance.statsGroup}
-          className="hero-stats-glass mx-auto mt-4 grid grid-cols-3 gap-1.5 rounded-card-lg px-2.5 py-3 sm:mt-5 sm:gap-2 sm:px-4 sm:py-5 lg:mt-8 lg:px-6"
+          className="hero-stats-glass mx-auto mt-4 grid w-full max-w-full grid-cols-3 gap-1.5 rounded-card-lg px-2.5 py-3 sm:mt-5 sm:gap-2 sm:px-4 sm:py-5 lg:mt-8 lg:w-auto lg:max-w-none lg:px-6"
         >
           <TrustStat divided icon={Users} value="700K+" label="مخاطب" variants={entrance.statItem} />
           <TrustStat divided icon={GraduationCap} value="50K+" label="دانشجو" variants={entrance.statItem} />
@@ -221,7 +221,7 @@ export function HeroCinematic() {
     <section aria-label="معرفی" className="hero-light-section relative isolate pt-6 pb-4 md:pt-8 md:pb-6">
       <div className="container-luxe min-h-0">
         <motion.div
-          className="hero-light-panel hero-light-panel--entrance relative overflow-hidden rounded-card-lg"
+          className="hero-light-panel hero-light-panel--entrance relative overflow-hidden lg:rounded-card-lg"
           initial="hidden"
           animate="show"
           variants={entrance.panel}
