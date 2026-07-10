@@ -110,5 +110,6 @@ class DatabaseSeeder extends Seeder
         $this->call(AdminTelegramSeeder::class);
         $this->call(CacheIntegrationsSeeder::class);
         $this->call(CommerceSeeder::class);
+        $this->call(SeminarSeeder::class);
     }
 }

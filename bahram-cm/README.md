@@ -98,6 +98,31 @@ php artisan media:sync --export
 git add storage/app/public/media database/data/media_library.json frontend/lib/media/legacyMap.generated.ts
 ```
 
+## import خریداران سمینار (تیم)
+
+خروجی CSV ووکامرس در `backend/database/data/woocommerce-seminar-orders-2026-07-10.csv` داخل git track می‌شود. دستور import **idempotent** است — اجرای مجدد رکورد تکراری نمی‌سازد.
+
+**بعد از `git pull` (هم‌تیمی‌ها):**
+
+```bash
+cd backend
+php artisan migrate
+php artisan db:seed          # سمینار + محصول را می‌سازد
+php artisan seminar:import-orders
+```
+
+فقط تست بدون ذخیره:
+
+```bash
+php artisan seminar:import-orders --dry-run
+```
+
+فایل CSV دیگر:
+
+```bash
+php artisan seminar:import-orders path/to/orders.csv
+```
+
 ## License
 
 Private. All rights reserved.
