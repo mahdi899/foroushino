@@ -2,6 +2,7 @@
 
 import { ArrowLeft, Loader2, MessageSquare, Phone, User2 } from "lucide-react";
 import { useId, useState } from "react";
+import { useFormSecurity } from "@/components/captcha/FormCaptcha";
 import { cn } from "@/lib/cn";
 import { submitContact, validateContact, type ContactFieldErrors } from "@/lib/services/leads";
 
@@ -18,6 +19,9 @@ export function ContactForm({ className }: { className?: string }) {
   const [status, setStatus] = useState<Status>("idle");
   const [feedback, setFeedback] = useState("");
   const [fieldErrors, setFieldErrors] = useState<ContactFieldErrors>({});
+
+  const { captchaField, honeypotField, captchaRequired, captchaReady, securityLoading, getSecurityPayload, resetCaptcha } =
+    useFormSecurity("leads", { captchaInline: false });
 
   const resetErrors = () => {
     if (Object.keys(fieldErrors).length) setFieldErrors({});
@@ -36,12 +40,23 @@ export function ContactForm({ className }: { className?: string }) {
       return;
     }
 
+    const { captcha, website } = getSecurityPayload();
+    if (captchaRequired && !captcha) {
+      setStatus("err");
+      setFeedback("لطفاً تأیید امنیتی را تکمیل کن.");
+      return;
+    }
+
     setStatus("loading");
     setFeedback("");
 
     const result = await submitContact({
       ...payload,
       source: "web_contact",
+      captcha_token: captcha?.captcha_token,
+      captcha_id: captcha?.captcha_id,
+      captcha_answer: captcha?.captcha_answer,
+      website,
     });
 
     if (result.ok) {
@@ -56,6 +71,9 @@ export function ContactForm({ className }: { className?: string }) {
 
     setStatus("err");
     setFeedback(result.error);
+    if (captchaRequired && /تأیید امنیتی|کپچا/i.test(result.error)) {
+      resetCaptcha();
+    }
   };
 
   return (
@@ -67,6 +85,8 @@ export function ContactForm({ className }: { className?: string }) {
       )}
       noValidate
     >
+      {honeypotField}
+
       <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <label htmlFor={`${formId}-name`} className="block min-w-0">
@@ -153,9 +173,18 @@ export function ContactForm({ className }: { className?: string }) {
           ) : null}
         </label>
 
+        {captchaRequired ? (
+          <div className="block min-w-0">
+            <span className="block text-caption text-bone">تأیید امنیتی *</span>
+            <div className="mt-2 min-w-0 rounded-tile border border-bone/12 bg-ink/60 px-3 py-3">
+              {captchaField}
+            </div>
+          </div>
+        ) : null}
+
         <button
           type="submit"
-          disabled={status === "loading"}
+          disabled={status === "loading" || securityLoading || !captchaReady}
           aria-busy={status === "loading"}
           className="group neon-btn-primary inline-flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-pill bg-emerald px-6 text-sm font-semibold transition-[background-color,transform,box-shadow] duration-300 ease-[var(--ease-luxe)] hover:bg-emerald-glow hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-70"
         >

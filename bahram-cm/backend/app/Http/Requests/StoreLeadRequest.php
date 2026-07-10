@@ -32,11 +32,7 @@ class StoreLeadRequest extends FormRequest
 
     protected function captchaFormKey(): string
     {
-        return match ($this->input('source')) {
-            'web_newsletter' => 'newsletter',
-            'web_contact' => 'contact',
-            default => 'leads',
-        };
+        return $this->input('source') === 'web_newsletter' ? 'newsletter' : 'leads';
     }
 
     public function withValidator($validator): void

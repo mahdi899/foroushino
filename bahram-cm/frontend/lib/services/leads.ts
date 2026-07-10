@@ -77,6 +77,10 @@ export type ContactInput = {
   phone: string;
   message: string;
   source?: string;
+  captcha_token?: string;
+  captcha_id?: string;
+  captcha_answer?: string;
+  website?: string;
 };
 
 export type ContactFieldErrors = Partial<Record<keyof ContactInput, string>>;
@@ -105,6 +109,10 @@ export async function submitContact(input: ContactInput): Promise<ApiResult<Lead
     message: input.message.trim(),
     source: input.source ?? "web_contact",
     page_url: typeof window !== "undefined" ? window.location.href : undefined,
+    captcha_token: input.captcha_token,
+    captcha_id: input.captcha_id,
+    captcha_answer: input.captcha_answer,
+    website: input.website || undefined,
   });
 
   if (!result.ok) return result;
