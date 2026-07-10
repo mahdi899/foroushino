@@ -129,7 +129,7 @@ export function SeminarSettingsPanel({ seminar }: SeminarSettingsPanelProps) {
         <div>
           <h3 className="text-small font-bold text-text">بنر — ظرفیت موجود</h3>
           <p className="mt-1 text-caption text-text-muted">
-            بنر دسکتاپ عریض (۱۹۲۰×۱۲۰) و بنر موبایل بلندتر (مثلاً ۷۵۰×۲۰۰). اگر موبایل خالی باشد، دسکتاپ
+            بنر دسکتاپ عریض (۱۹۲۰×۱۲۰) و بنر موبایل (۱۰۸۰×۲۸۰). اگر موبایل خالی باشد، دسکتاپ
             نمایش داده می‌شود.
           </p>
           <div className="mt-3 grid gap-4 lg:grid-cols-2">

@@ -26,6 +26,9 @@ class MiniCourseResource extends JsonResource
             'summary' => $this->summary,
             'description' => $enricher->enrich((string) ($this->description ?? '')),
             'thumbnail' => $thumbnail,
+            'thumbnail_mobile' => $this->thumbnail_mobile
+                ? (MediaUrl::resolve($this->thumbnail_mobile) ?? $this->thumbnail_mobile)
+                : null,
             'aparat_hash' => $this->aparat_hash,
             'level' => $this->level,
             'duration' => $this->duration,

@@ -21,6 +21,16 @@ export function resolveMiniCourseCover(slug: string, index = 0, thumbnail?: stri
   );
 }
 
+export function resolveMiniCourseCoverMobile(
+  slug: string,
+  index = 0,
+  thumbnailMobile?: string | null,
+  thumbnail?: string | null,
+): string {
+  if (thumbnailMobile?.trim()) return thumbnailMobile.trim();
+  return resolveMiniCourseCover(slug, index, thumbnail);
+}
+
 export type MiniCourseCardTone = 'gold' | 'teal';
 
 export function miniCourseCardTone(slug: string, index = 0): MiniCourseCardTone {

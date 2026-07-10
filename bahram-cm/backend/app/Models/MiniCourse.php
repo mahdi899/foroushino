@@ -18,6 +18,7 @@ class MiniCourse extends Model
         'summary',
         'description',
         'thumbnail',
+        'thumbnail_mobile',
         'aparat_hash',
         'level',
         'duration',

@@ -5,6 +5,7 @@ export type MiniCourseApiRecord = {
   summary?: string | null;
   description?: string | null;
   thumbnail?: string | null;
+  thumbnail_mobile?: string | null;
   aparat_hash?: string | null;
   level?: string | null;
   duration?: string | null;

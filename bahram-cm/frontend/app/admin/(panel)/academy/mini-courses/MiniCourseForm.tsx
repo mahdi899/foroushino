@@ -33,6 +33,7 @@ export function MiniCourseForm({
     summary: course?.summary ?? '',
     description: course?.description ?? '',
     thumbnail: course?.thumbnail ?? '',
+    thumbnail_mobile: course?.thumbnail_mobile ?? '',
     aparat_url: course?.aparat_url ?? course?.aparat_hash ?? '',
     level: course?.level ?? 'مقدماتی',
     duration: course?.duration ?? 'رایگان',
@@ -109,6 +110,7 @@ export function MiniCourseForm({
         summary: form.summary.trim() || null,
         description: form.description || null,
         thumbnail: form.thumbnail.trim() || null,
+        thumbnail_mobile: form.thumbnail_mobile.trim() || null,
         aparat_hash: aparatHash,
         level: form.level.trim() || null,
         duration: form.duration.trim() || null,
@@ -305,13 +307,20 @@ export function MiniCourseForm({
               )}
 
               <CoverImageField
-                label="تصویر تامبنیل (افقی ۱۶:۹)"
+                label="تصویر هیرو — دسکتاپ (افقی)"
                 value={form.thumbnail}
                 onChange={(url) => patch('thumbnail', url)}
-                alt={form.title || 'تامبنیل مینی‌دوره'}
+                alt={form.title || 'هیرو مینی‌دوره — دسکتاپ'}
+              />
+              <CoverImageField
+                label="تصویر هیرو — موبایل (۹:۱۶)"
+                value={form.thumbnail_mobile}
+                onChange={(url) => patch('thumbnail_mobile', url)}
+                alt={form.title || 'هیرو مینی‌دوره — موبایل'}
               />
               <p className="text-center text-caption text-text-muted md:text-start">
-                اگر تامبنیل خالی باشد، سایت از تصویر پیش‌فرض استفاده می‌کند.
+                اگر تصویر موبایل خالی باشد، همان تصویر دسکتاپ در موبایل نمایش داده می‌شود. برای کارت
+                دوره‌ها فقط تصویر دسکتاپ استفاده می‌شود.
               </p>
             </div>
 

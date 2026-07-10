@@ -10,8 +10,8 @@ type SitePromoBarProps = {
 
 /** Desktop wide strip — actual height follows intrinsic aspect ratio at 100vw. */
 const DESKTOP_BANNER = { width: 1920, height: 120 } as const;
-/** Mobile promo — taller strip for narrow screens. */
-const MOBILE_BANNER = { width: 750, height: 200 } as const;
+/** Mobile promo — taller strip for narrow screens (recommended: 1080×280). */
+const MOBILE_BANNER = { width: 1080, height: 280 } as const;
 
 function PromoBannerImage({
   src,

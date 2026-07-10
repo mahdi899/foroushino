@@ -3,9 +3,13 @@ import type { LucideIcon } from 'lucide-react';
 import { ArrowLeft, Clapperboard, Clock, PenLine, Sparkles } from 'lucide-react';
 import { MiniCourseEnrollCta } from '@/components/mini-courses/MiniCourseEnrollCta';
 import { Reveal } from '@/components/motion/Reveal';
-import { SiteImage } from '@/components/ui/SiteImage';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
 import { cn } from '@/lib/cn';
-import { miniCourseCardTone, resolveMiniCourseCover } from '@/lib/mini-courses/covers';
+import {
+  miniCourseCardTone,
+  resolveMiniCourseCover,
+  resolveMiniCourseCoverMobile,
+} from '@/lib/mini-courses/covers';
 import type { MiniCourseApiRecord } from '@/lib/services/miniCourses.types';
 
 const ICON_BY_SLUG: Record<string, LucideIcon> = {
@@ -20,6 +24,7 @@ function cardIcon(slug: string): LucideIcon {
 type MiniCourseDetailHeroProps = {
   course: MiniCourseApiRecord;
   imageAlt: string;
+  mobileImageAlt?: string;
   descriptionHtml?: string | null;
   isEnrolled: boolean;
   enrollmentNumber?: string | null;
@@ -28,11 +33,19 @@ type MiniCourseDetailHeroProps = {
 export function MiniCourseDetailHero({
   course,
   imageAlt,
+  mobileImageAlt,
   descriptionHtml,
   isEnrolled,
   enrollmentNumber,
 }: MiniCourseDetailHeroProps) {
-  const cover = resolveMiniCourseCover(course.slug, 0, course.thumbnail);
+  const desktopCover = resolveMiniCourseCover(course.slug, 0, course.thumbnail);
+  const mobileCover = resolveMiniCourseCoverMobile(
+    course.slug,
+    0,
+    course.thumbnail_mobile,
+    course.thumbnail,
+  );
+  const mobileAlt = mobileImageAlt ?? imageAlt;
   const tone = miniCourseCardTone(course.slug);
   const Icon = cardIcon(course.slug);
 
@@ -41,14 +54,28 @@ export function MiniCourseDetailHero({
       <section className="mini-course-detail-hero" aria-label="کاور مینی‌دوره">
         <Reveal className="h-full">
           <div className="mini-course-detail-hero__stage">
-            <SiteImage
-              src={cover}
-              alt={imageAlt}
-              fill
-              className="object-cover object-center"
-              sizes="100vw"
-              priority
-            />
+            <div className="absolute inset-0 z-0 overflow-hidden md:hidden">
+              <DirectMediaImg
+                src={mobileCover}
+                alt={mobileAlt}
+                fill
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+                className="object-cover object-[center_22%]"
+              />
+            </div>
+            <div className="absolute inset-0 z-0 hidden overflow-hidden md:block">
+              <DirectMediaImg
+                src={desktopCover}
+                alt={imageAlt}
+                fill
+                loading="eager"
+                fetchPriority="high"
+                decoding="async"
+                className="object-cover object-center"
+              />
+            </div>
             <div className="mini-course-detail-hero__scrim" aria-hidden />
             <Link
               href="/courses#mini-courses"

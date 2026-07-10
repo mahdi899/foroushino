@@ -1,4 +1,5 @@
 /** Purchasable products/packages service (used by the checkout flow). */
+import { cache } from "react";
 import { getJson, type ApiResult } from "./api";
 import { getStudentToken } from "@/lib/student/session";
 
@@ -45,9 +46,9 @@ export async function getProducts(options?: { listed?: boolean }): Promise<ApiRe
   return { ok: true, data: result.data.data };
 }
 
-export async function getProductBySlug(
+export const getProductBySlug = cache(async (
   slug: string,
-): Promise<ApiResult<ProductDetail>> {
+): Promise<ApiResult<ProductDetail>> => {
   const token = await getStudentToken().catch(() => undefined);
   const headers: HeadersInit = { Accept: "application/json" };
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -72,4 +73,4 @@ export async function getProductBySlug(
   } catch {
     return { ok: false, error: "ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کن." };
   }
-}
+});

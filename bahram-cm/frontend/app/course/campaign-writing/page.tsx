@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 import type { LucideIcon } from "lucide-react";
 import { buildMetadata } from "@/lib/seo";
 import {
@@ -32,13 +33,14 @@ import { CAMPAIGN_WRITING_SLUG } from "@/lib/cart/constants";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { FeatureCard } from "@/components/ui/FeatureCard";
 import { IconLabel } from "@/components/ui/IconLabel";
-import { IconTile } from "@/components/ui/IconTile";
 import { PhotoFrame } from "@/components/ui/PhotoFrame";
 import { CampaignWritingSocialProof } from "@/components/sections/CampaignWritingSocialProof";
 import { CampaignFaqPortraitSlider } from "@/components/sections/CampaignFaqPortraitSlider";
 import { SitePhotoHeroFrame } from "@/components/sections/SitePhotoHeroFrame";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { cn } from "@/lib/cn";
+import { coalesceAlt, staticAltForSrc } from "@/lib/media/altShared";
+import { primarySiteImageSrc } from "@/lib/mediaUrl";
 import { resolveMediaAlt } from "@/lib/media/alt";
 import { formatFa, toPersianDigits } from "@/lib/persian";
 import { getProductBySlug } from "@/lib/services/products";
@@ -47,6 +49,20 @@ import { site } from "@/content/site";
 
 const FALLBACK_PRICE = 28_900_000;
 const SECTION_COUNT = 5;
+
+const heroDesktopAlt = coalesceAlt(
+  staticAltForSrc(pageHeroBackdropPhoto),
+  "دوره کمپین‌نویسی",
+  pageHeroBackdropPhoto,
+);
+const heroMobileAlt = coalesceAlt(
+  staticAltForSrc(pageHeroBackdropPhotoMobile),
+  "دوره کمپین‌نویسی",
+  pageHeroBackdropPhotoMobile,
+);
+
+const heroPurchaseCtaClassName =
+  "h-12 min-h-12 w-full px-8 text-base font-bold shadow-gold sm:flex-1 sm:max-w-xs md:h-14 md:min-h-14 md:px-10 md:text-lg";
 
 export const dynamic = "force-dynamic";
 
@@ -231,40 +247,30 @@ const faqs = [
   },
 ];
 
-export default async function CourseCampaignWritingPage() {
-  const productResult = await getProductBySlug(CAMPAIGN_WRITING_SLUG);
-  const product = productResult.ok ? productResult.data : null;
-  const alreadyPurchased = product?.already_purchased ?? false;
-  const coursePrice = product?.effective_price ?? FALLBACK_PRICE;
-  const hasDiscount =
-    product !== null && product.sale_price !== null && product.effective_price < product.price;
-  const originalPriceLabel =
-    hasDiscount && product ? `${formatFa(product.price)} تومان` : null;
-  const priceLabel = `${formatFa(coursePrice)} تومان`;
-  const discountPercent =
-    hasDiscount && product
-      ? Math.round(((product.price - coursePrice) / product.price) * 100)
-      : null;
-  const heroAlt = await resolveMediaAlt(pageHeroBackdropPhoto, "دوره کمپین‌نویسی");
-  const heroMobileAlt = await resolveMediaAlt(pageHeroBackdropPhotoMobile, "دوره کمپین‌نویسی");
-  const faqSliderPhotos = await Promise.all(
-    [
-      sitePhotos.testimonialPortrait[0]!,
-      sitePhotos.testimonialPortrait[1]!,
-      sitePhotos.testimonialPortrait[2]!,
-      sitePhotos.manifestoPortraitA,
-      sitePhotos.manifestoPortraitB,
-    ].map((src, i) => resolveMediaAlt(src, `دانشجوی دوره کمپین‌نویسی ${i + 1}`).then((alt) => ({ src, alt }))),
-  );
-
+export default function CourseCampaignWritingPage() {
   return (
     <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip pb-20 md:pb-0">
+      <link
+        rel="preload"
+        as="image"
+        href={primarySiteImageSrc(pageHeroBackdropPhotoMobile)}
+        media="(max-width: 767px)"
+        fetchPriority="high"
+      />
+      <link
+        rel="preload"
+        as="image"
+        href={primarySiteImageSrc(pageHeroBackdropPhoto)}
+        media="(min-width: 768px)"
+        fetchPriority="high"
+      />
+
       {/* 1. HERO — full-width photo + purchase CTA */}
       <section className="campaign-course-hero relative isolate w-full overflow-hidden bg-ink">
         <SitePhotoHeroFrame
           desktopSrc={pageHeroBackdropPhoto}
           mobileSrc={pageHeroBackdropPhotoMobile}
-          desktopAlt={heroAlt}
+          desktopAlt={heroDesktopAlt}
           mobileAlt={heroMobileAlt}
         >
           <div className="absolute inset-x-0 bottom-6 z-10 flex flex-col items-center overflow-visible px-4 pb-8 pt-16 sm:bottom-4 sm:pb-7 sm:pt-24 md:bottom-0 md:pb-8 md:pt-28">
@@ -277,17 +283,23 @@ export default async function CourseCampaignWritingPage() {
               </div>
             </div>
             <div className="flex w-full max-w-lg flex-col gap-3 sm:max-w-xl sm:flex-row sm:items-stretch sm:justify-center md:max-w-2xl md:gap-4">
-              <ProductPurchaseCta
-                productSlug={CAMPAIGN_WRITING_SLUG}
-                alreadyPurchased={alreadyPurchased}
-                location="campaign_writing_hero"
-                variant="vip"
-                withArrow
-                size="lg"
-                className="h-12 min-h-12 w-full px-8 text-base font-bold shadow-gold sm:flex-1 sm:max-w-xs md:h-14 md:min-h-14 md:px-10 md:text-lg"
+              <Suspense
+                fallback={
+                  <ProductPurchaseCta
+                    productSlug={CAMPAIGN_WRITING_SLUG}
+                    alreadyPurchased={false}
+                    location="campaign_writing_hero"
+                    variant="vip"
+                    withArrow
+                    size="lg"
+                    className={heroPurchaseCtaClassName}
+                  >
+                    خرید
+                  </ProductPurchaseCta>
+                }
               >
-                خرید
-              </ProductPurchaseCta>
+                <CampaignWritingHeroPurchaseCta />
+              </Suspense>
               <LinkButton
                 href="#curriculum"
                 variant="ghost"
@@ -306,6 +318,58 @@ export default async function CourseCampaignWritingPage() {
         </SitePhotoHeroFrame>
       </section>
 
+      <Suspense fallback={null}>
+        <CampaignWritingPageContent />
+      </Suspense>
+    </main>
+  );
+}
+
+async function CampaignWritingHeroPurchaseCta() {
+  const productResult = await getProductBySlug(CAMPAIGN_WRITING_SLUG);
+  const alreadyPurchased = productResult.ok ? (productResult.data.already_purchased ?? false) : false;
+
+  return (
+    <ProductPurchaseCta
+      productSlug={CAMPAIGN_WRITING_SLUG}
+      alreadyPurchased={alreadyPurchased}
+      location="campaign_writing_hero"
+      variant="vip"
+      withArrow
+      size="lg"
+      className={heroPurchaseCtaClassName}
+    >
+      خرید
+    </ProductPurchaseCta>
+  );
+}
+
+async function CampaignWritingPageContent() {
+  const productResult = await getProductBySlug(CAMPAIGN_WRITING_SLUG);
+  const product = productResult.ok ? productResult.data : null;
+  const alreadyPurchased = product?.already_purchased ?? false;
+  const coursePrice = product?.effective_price ?? FALLBACK_PRICE;
+  const hasDiscount =
+    product !== null && product.sale_price !== null && product.effective_price < product.price;
+  const originalPriceLabel =
+    hasDiscount && product ? `${formatFa(product.price)} تومان` : null;
+  const priceLabel = `${formatFa(coursePrice)} تومان`;
+  const discountPercent =
+    hasDiscount && product
+      ? Math.round(((product.price - coursePrice) / product.price) * 100)
+      : null;
+  const faqSliderPhotos = await Promise.all(
+    [
+      sitePhotos.testimonialPortrait[0]!,
+      sitePhotos.testimonialPortrait[1]!,
+      sitePhotos.testimonialPortrait[2]!,
+      sitePhotos.manifestoPortraitA,
+      sitePhotos.manifestoPortraitB,
+    ].map((src, i) => resolveMediaAlt(src, `دانشجوی دوره کمپین‌نویسی ${i + 1}`).then((alt) => ({ src, alt }))),
+  );
+
+  return (
+    <>
       {/* 2. COURSE INTRO — price + highlights, open layout */}
       <section
         id="hero-purchase"
@@ -430,25 +494,25 @@ export default async function CourseCampaignWritingPage() {
       </section>
 
       {/* 4. WHY THIS COURSE */}
-      <section className="py-10 md:py-section-sm lg:py-section">
+      <section className="py-8 md:py-section-sm lg:py-section">
         <div className="container-luxe min-w-0">
           <div className="max-w-xl">
             <Reveal>
               <Eyebrow>چرا این دوره؟</Eyebrow>
             </Reveal>
             <Reveal delay={0.08}>
-              <h2 className="mt-3 text-h2 text-balance md:mt-5">
+              <h2 className="mt-2 text-h3 text-balance sm:mt-3 md:mt-5 md:text-h2">
                 پنج مهارت مهم که یاد می‌گیری
               </h2>
             </Reveal>
             <Reveal delay={0.14}>
-              <p className="mt-4 text-sm leading-relaxed text-bone-dim md:mt-5 md:text-body">
+              <p className="mt-3 text-sm leading-relaxed text-bone-dim md:mt-5 md:text-body">
                 هر بخش دوره روی یکی از کارهای اصلی کمپین فروش تمرکز دارد.
               </p>
             </Reveal>
           </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 md:mt-10 lg:grid-cols-3 lg:gap-5">
+          <div className="mt-5 grid gap-2.5 sm:mt-8 sm:grid-cols-2 sm:gap-4 md:mt-10 lg:grid-cols-3 lg:gap-5">
             {whyCards.map((card, i) => (
               <Reveal key={card.title} delay={i * 0.06}>
                 <FeatureCard
@@ -456,6 +520,7 @@ export default async function CourseCampaignWritingPage() {
                   title={card.title}
                   description={card.body}
                   tone={i % 2 === 0 ? "emerald" : "gold"}
+                  variant="compact"
                 />
               </Reveal>
             ))}
@@ -557,30 +622,33 @@ export default async function CourseCampaignWritingPage() {
       </section>
 
       {/* 7. RESULTS AFTER COURSE */}
-      <section className="bg-obsidian py-10 md:py-section-sm lg:py-section">
+      <section className="bg-obsidian py-8 md:py-section-sm lg:py-section">
         <div className="container-luxe min-w-0">
           <div className="max-w-xl">
             <Reveal>
               <Eyebrow>نتایج بعد از دوره</Eyebrow>
             </Reveal>
             <Reveal delay={0.08}>
-              <h2 className="mt-3 text-h2 text-balance md:mt-5">بعد از دوره چه بلدی؟</h2>
+              <h2 className="mt-2 text-h3 text-balance sm:mt-3 md:mt-5 md:text-h2">بعد از دوره چه بلدی؟</h2>
             </Reveal>
             <Reveal delay={0.14}>
-              <p className="mt-4 text-sm leading-relaxed text-bone-dim md:mt-5 md:text-body">
+              <p className="mt-3 text-sm leading-relaxed text-bone-dim md:mt-5 md:text-body">
                 تمرکز روی نتیجه واقعی است — نه فقط تماشای ویدیو.
               </p>
             </Reveal>
           </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 md:mt-10 lg:grid-cols-3">
+          <div className="mt-5 grid gap-2.5 sm:mt-8 sm:grid-cols-2 sm:gap-4 md:mt-10 lg:grid-cols-3 lg:gap-5">
             {resultCards.map((card, i) => (
               <Reveal key={card.title} delay={i * 0.06}>
-                <article className="neon-surface-hover h-full rounded-card-lg border border-bone/10 bg-charcoal/40 p-5 sm:p-6">
-                  <IconTile icon={card.icon} tone={i % 2 === 0 ? "emerald" : "gold"} size="md" />
-                  <h3 className="mt-4 text-base font-semibold text-bone sm:text-lg">{card.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-bone-dim">{card.body}</p>
-                </article>
+                <FeatureCard
+                  icon={card.icon}
+                  title={card.title}
+                  description={card.body}
+                  tone={i % 2 === 0 ? "emerald" : "gold"}
+                  variant="compact"
+                  className="rounded-card-lg bg-charcoal/40"
+                />
               </Reveal>
             ))}
           </div>
@@ -711,7 +779,7 @@ export default async function CourseCampaignWritingPage() {
       </section>
 
       <MobileStickyEnrollBar priceLabel={priceLabel} alreadyPurchased={alreadyPurchased} />
-    </main>
+    </>
   );
 }
 

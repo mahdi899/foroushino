@@ -115,7 +115,7 @@ export function BigTestimonial() {
           <div
             role="listbox"
             aria-label="انتخاب دانشجو"
-            className="grid h-full min-h-0 min-w-0 flex-[4] grid-cols-1 grid-rows-4 gap-2 min-[400px]:grid-cols-2 min-[400px]:grid-rows-2 sm:min-h-[10rem] sm:gap-2.5 lg:min-h-0 lg:gap-2"
+            className="grid h-full min-h-0 min-w-0 flex-[4] grid-cols-2 grid-rows-2 gap-2 sm:min-h-[10rem] sm:gap-2.5 lg:min-h-0 lg:gap-2"
           >
             {results.map((item, index) => {
               const isActive = index === active;

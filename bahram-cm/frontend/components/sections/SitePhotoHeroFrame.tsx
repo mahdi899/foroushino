@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { SiteImage } from "@/components/ui/SiteImage";
+import { DirectMediaImg } from "@/components/ui/DirectMediaImg";
 import { cn } from "@/lib/cn";
 
 type Props = {
@@ -33,24 +33,24 @@ export function SitePhotoHeroFrame({
       )}
     >
       <div className="absolute inset-0 z-0 overflow-hidden md:hidden">
-        <SiteImage
+        <DirectMediaImg
           src={mobileSrc}
           alt={mobileAltText}
-          fallbackAlt={mobileAltText}
           fill
-          priority
-          sizes="(max-width: 767px) 100vw, 0px"
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
           className={cn("object-cover object-[center_22%]", mobileImageClassName)}
         />
       </div>
       <div className="absolute inset-0 z-0 hidden overflow-hidden md:block">
-        <SiteImage
+        <DirectMediaImg
           src={desktopSrc}
           alt={desktopAlt}
-          fallbackAlt={desktopAlt}
           fill
-          priority
-          sizes="(min-width: 768px) 100vw, 0px"
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
           className={cn("object-cover object-center", desktopImageClassName)}
         />
       </div>

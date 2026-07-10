@@ -47,31 +47,40 @@ function resolveFlowIcon(key: SatFlowIconKey): LucideIcon {
   return flowIcons[key] ?? GraduationCap;
 }
 
-function FlowStepCard({ step, index }: { step: SatFlowStep; index: number }) {
+function FlowStepCard({
+  step,
+  index,
+  isLast,
+}: {
+  step: SatFlowStep;
+  index: number;
+  isLast: boolean;
+}) {
   const tone = index % 2 === 0 ? "emerald" : "gold";
   const Icon = resolveFlowIcon(step.icon);
 
   return (
     <article
       className={cn(
-        "group relative flex h-full flex-col rounded-card border border-bone/10 bg-charcoal/45 p-3.5 transition-colors duration-500 hover:border-bone/18 md:p-4",
+        "group relative flex rounded-card border border-bone/10 bg-charcoal/45 transition-colors duration-500 hover:border-bone/18",
+        "flex-row items-stretch gap-3 p-3 sm:flex-col sm:items-start sm:p-3.5 md:h-full md:p-4",
         tone === "emerald"
           ? "hover:ring-1 hover:ring-emerald/15"
           : "hover:ring-1 hover:ring-gold/15",
       )}
     >
-      <span
-        aria-hidden
-        className={cn(
-          "absolute inset-y-3 start-0 w-0.5 rounded-full",
-          tone === "emerald" ? "bg-emerald-glow/70" : "bg-gold/65",
-        )}
-      />
+      <div className="flex shrink-0 flex-col items-center sm:w-full sm:flex-row sm:items-start sm:justify-between sm:gap-2 sm:ps-2">
+        <span
+          aria-hidden
+          className={cn(
+            "absolute inset-y-3 start-0 hidden w-0.5 rounded-full sm:block",
+            tone === "emerald" ? "bg-emerald-glow/70" : "bg-gold/65",
+          )}
+        />
 
-      <div className="flex items-start justify-between gap-2 ps-2">
         <span
           className={cn(
-            "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-pill text-sm font-medium num-latin",
+            "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-pill text-xs font-medium num-latin sm:h-8 sm:w-8 sm:text-sm",
             tone === "emerald"
               ? "bg-emerald-deep/40 text-emerald-glow ring-1 ring-emerald/25"
               : "bg-gold/[0.1] text-gold ring-1 ring-gold/25",
@@ -79,9 +88,22 @@ function FlowStepCard({ step, index }: { step: SatFlowStep; index: number }) {
         >
           {toPersianDigits(String(index + 1))}
         </span>
+
+        {!isLast ? (
+          <span
+            aria-hidden
+            className={cn(
+              "mt-1.5 h-full min-h-8 w-px flex-1 bg-gradient-to-b sm:hidden",
+              tone === "emerald"
+                ? "from-emerald-glow/55 to-bone/10"
+                : "from-gold/55 to-bone/10",
+            )}
+          />
+        ) : null}
+
         <span
           className={cn(
-            "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ring-1",
+            "hidden shrink-0 items-center justify-center rounded-xl ring-1 sm:inline-flex sm:h-8 sm:w-8",
             tone === "emerald"
               ? "border border-emerald/20 bg-emerald-deep/25 text-emerald-glow ring-emerald/10"
               : "border border-gold/20 bg-gold/[0.08] text-gold ring-gold/10",
@@ -91,10 +113,28 @@ function FlowStepCard({ step, index }: { step: SatFlowStep; index: number }) {
         </span>
       </div>
 
-      <div className="mt-2.5 min-w-0 ps-2">
-        <h3 className="font-display text-lg font-semibold text-bone md:text-xl">{step.title}</h3>
-        <p className="mt-0.5 text-xs text-gold md:text-sm">{step.caption}</p>
-        <p className="mt-2 text-sm leading-relaxed text-bone-dim">
+      <div className="min-w-0 flex-1 sm:mt-2.5 sm:ps-2">
+        <div className="flex items-start gap-2">
+          <span
+            className={cn(
+              "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1 sm:hidden",
+              tone === "emerald"
+                ? "border border-emerald/20 bg-emerald-deep/25 text-emerald-glow ring-emerald/10"
+                : "border border-gold/20 bg-gold/[0.08] text-gold ring-gold/10",
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" strokeWidth={1.65} aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <h3 className="font-display text-base font-semibold leading-snug text-bone sm:text-lg md:text-xl">
+              {step.title}
+            </h3>
+            <p className="mt-0.5 text-[0.6875rem] leading-snug text-gold sm:text-xs md:text-sm">
+              {step.caption}
+            </p>
+          </div>
+        </div>
+        <p className="mt-2 text-sm leading-relaxed text-bone-dim sm:mt-2">
           <span className="sr-only">
             مرحله {toPersianDigits(String(index + 1))}: {step.title}.{" "}
           </span>
@@ -140,13 +180,16 @@ export function SatFlowScroll({ steps }: { steps: SatFlowStep[] }) {
               className="h-px bg-gradient-to-l from-emerald-glow/70 via-gold/50 to-emerald-glow/70"
             />
 
-            <ol className="grid grid-cols-2 gap-2.5 p-4 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4 md:gap-3.5 md:p-5">
+            <ol className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 sm:gap-3 sm:p-4 lg:grid-cols-3 xl:grid-cols-4 md:gap-3.5 md:p-5">
               {steps.map((step, i) => (
                 <li
                   key={step.title}
-                  className={cn("min-w-0", i === steps.length - 1 && "col-span-2 lg:col-span-1")}
+                  className={cn(
+                    "min-w-0",
+                    i === steps.length - 1 && steps.length % 2 === 1 && "sm:col-span-2 lg:col-span-1",
+                  )}
                 >
-                  <FlowStepCard step={step} index={i} />
+                  <FlowStepCard step={step} index={i} isLast={i === steps.length - 1} />
                 </li>
               ))}
             </ol>

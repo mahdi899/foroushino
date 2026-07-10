@@ -20,6 +20,9 @@ class PublicMiniCourseResource extends JsonResource
         $thumbnail = $this->thumbnail
             ? (MediaUrl::resolve($this->thumbnail) ?? $this->thumbnail)
             : null;
+        $thumbnailMobile = $this->thumbnail_mobile
+            ? (MediaUrl::resolve($this->thumbnail_mobile) ?? $this->thumbnail_mobile)
+            : null;
 
         return [
             'slug' => $this->slug,
@@ -28,6 +31,7 @@ class PublicMiniCourseResource extends JsonResource
             'summary' => $this->summary,
             'description' => $enricher->enrich((string) ($this->description ?? '')),
             'thumbnail' => $thumbnail,
+            'thumbnail_mobile' => $thumbnailMobile,
             'level' => $this->level,
             'duration' => $this->duration,
             'comments_enabled' => $this->comments_enabled,

@@ -50,6 +50,9 @@ export default async function MiniCourseDetailPage({ params }: PageProps) {
   const imageAlt = course.thumbnail
     ? await resolveMediaAlt(course.thumbnail, course.title)
     : course.title;
+  const mobileImageAlt = course.thumbnail_mobile
+    ? await resolveMediaAlt(course.thumbnail_mobile, course.title)
+    : imageAlt;
 
   const student = await getCurrentStudent();
   let isEnrolled = false;
@@ -73,6 +76,7 @@ export default async function MiniCourseDetailPage({ params }: PageProps) {
         <MiniCourseDetailHero
           course={course}
           imageAlt={imageAlt}
+          mobileImageAlt={mobileImageAlt}
           descriptionHtml={course.description}
           isEnrolled={isEnrolled}
           enrollmentNumber={enrollmentNumber}

@@ -2928,8 +2928,13 @@ html[data-theme="light"] .campaign-course-enroll__eyebrow-dot {
 }
 
 /* Campaign — mobile sticky purchase bar */
+:root {
+  --mobile-sticky-enroll-bar-height: 4.5625rem;
+}
+
 .mobile-sticky-enroll-bar {
   bottom: var(--site-bottom-nav-offset);
+  min-height: var(--mobile-sticky-enroll-bar-height);
   border-top: 1px solid rgba(0, 36, 40, 0.85);
   background: linear-gradient(135deg, #001a1d 0%, #003b40 48%, #005a61 100%);
   box-shadow:
@@ -2955,12 +2960,20 @@ html[data-theme="light"] .mobile-sticky-enroll-bar {
 
 /* Site — mobile bottom navigation */
 :root {
-  --site-bottom-nav-bar: 3.5rem;
+  --site-bottom-nav-bar: 3.75rem;
   --site-bottom-nav-offset: calc(
     var(--site-bottom-nav-bar) + max(env(safe-area-inset-bottom, 0px), 0.35rem)
   );
   --site-fab-gap: 1rem;
   --site-fab-bottom: calc(var(--site-bottom-nav-offset) + var(--site-fab-gap));
+}
+
+@media (max-width: 767px) {
+  :root:has(.mobile-sticky-enroll-bar:not([aria-hidden="true"])) {
+    --site-fab-bottom: calc(
+      var(--site-bottom-nav-offset) + var(--mobile-sticky-enroll-bar-height) + var(--site-fab-gap)
+    );
+  }
 }
 
 @media (min-width: 1024px) {
@@ -3086,6 +3099,14 @@ html[data-theme="light"] .site-bottom-nav__icon-shell--active {
 
 .site-chrome-body {
   padding-bottom: var(--site-bottom-nav-offset);
+}
+
+@media (max-width: 767px) {
+  .site-chrome-body:has(.mobile-sticky-enroll-bar) {
+    padding-bottom: calc(
+      var(--site-bottom-nav-offset) + var(--mobile-sticky-enroll-bar-height)
+    );
+  }
 }
 
 @media (min-width: 1024px) {
@@ -3896,14 +3917,23 @@ html:not([data-theme="light"]) .mini-course-card[data-mini-tone="gold"]:hover .m
 .mini-course-detail-hero__stage {
   position: relative;
   width: 100%;
-  height: clamp(15rem, 52vh, 30rem);
+  aspect-ratio: 9 / 16;
+  max-height: min(92vh, 44rem);
   overflow: hidden;
   background: color-mix(in oklab, var(--color-charcoal) 90%, transparent);
 }
 
 @media (min-width: 768px) {
   .mini-course-detail-hero__stage {
-    height: clamp(18rem, 56vh, 34rem);
+    aspect-ratio: 16 / 7.3;
+    max-height: min(66vh, 36rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .mini-course-detail-hero__stage {
+    aspect-ratio: 16 / 12.5;
+    max-height: min(82vh, 47rem);
   }
 }
 
@@ -3972,12 +4002,19 @@ html[data-theme="light"] .mini-course-detail-hero__badge {
 .mini-course-detail-hero__cta {
   position: absolute;
   inset-inline: 0;
-  bottom: 0;
+  bottom: clamp(4rem, 22vw, 6rem);
   z-index: 4;
   display: flex;
   justify-content: center;
-  padding: clamp(1.25rem, 4vw, 2rem) clamp(1rem, 4vw, 2rem)
-    clamp(1.5rem, 5vw, 2.35rem);
+  padding: 0 clamp(1rem, 4vw, 2rem);
+}
+
+@media (min-width: 768px) {
+  .mini-course-detail-hero__cta {
+    bottom: 0;
+    padding: clamp(1.25rem, 4vw, 2rem) clamp(1rem, 4vw, 2rem)
+      clamp(1.5rem, 5vw, 2.35rem);
+  }
 }
 
 .mini-course-detail-hero__cta-btn {

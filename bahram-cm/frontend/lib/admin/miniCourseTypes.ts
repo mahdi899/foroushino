@@ -6,6 +6,7 @@ export type AdminMiniCourse = {
   summary: string | null;
   description: string | null;
   thumbnail: string | null;
+  thumbnail_mobile: string | null;
   aparat_hash: string;
   aparat_url: string | null;
   level: string | null;
