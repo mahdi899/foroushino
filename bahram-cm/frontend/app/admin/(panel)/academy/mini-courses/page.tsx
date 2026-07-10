@@ -5,12 +5,19 @@ import { AdminListEmpty } from '@/components/admin/layout/AdminListEmpty';
 import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
 import { AdminPage, Badge, EditLink, Table } from '../../ui';
 import { getMiniCourses } from '@/lib/admin/miniCourseData';
+import { resolveMiniCourseCover } from '@/lib/mini-courses/covers';
+import { MiniCourseRowThumb } from './MiniCourseRowThumb';
 
 export const dynamic = 'force-dynamic';
 
 export default async function MiniCoursesAdminPage() {
   const { items, error } = await getMiniCourses();
   const activeCount = items.filter((c) => c.is_active).length;
+  const rows = items.map((course, index) => ({
+    course,
+    cover: resolveMiniCourseCover(course.slug, index, course.thumbnail),
+    index,
+  }));
 
   return (
     <AdminPage
@@ -37,48 +44,52 @@ export default async function MiniCoursesAdminPage() {
         >
           {items.length > 0 ? (
             <Table
-              head={['عنوان', 'اسلاگ', 'سطح', 'مدت', 'ترتیب', 'وضعیت', 'عملیات']}
-              mobile={items.map((c) => (
+              head={['', 'عنوان', 'اسلاگ', 'سطح', 'مدت', 'ترتیب', 'وضعیت', 'عملیات']}
+              mobile={rows.map(({ course, cover }) => (
                 <AdminTableCard
-                  key={c.id}
-                  title={c.title}
+                  key={course.id}
+                  leading={<MiniCourseRowThumb title={course.title} image={cover} />}
+                  title={course.title}
                   fields={[
-                    { label: 'اسلاگ', value: c.slug, mono: true },
-                    { label: 'سطح', value: c.level ?? '—' },
-                    { label: 'مدت', value: c.duration ?? '—' },
-                    { label: 'ترتیب', value: c.sort_order },
+                    { label: 'اسلاگ', value: course.slug, mono: true },
+                    { label: 'سطح', value: course.level ?? '—' },
+                    { label: 'مدت', value: course.duration ?? '—' },
+                    { label: 'ترتیب', value: course.sort_order },
                     {
                       label: 'وضعیت',
                       value: (
-                        <Badge tone={c.is_active ? 'success' : 'default'}>
-                          {c.is_active ? 'فعال' : 'غیرفعال'}
+                        <Badge tone={course.is_active ? 'success' : 'default'}>
+                          {course.is_active ? 'فعال' : 'غیرفعال'}
                         </Badge>
                       ),
                     },
                   ]}
-                  footer={<EditLink href={`/admin/academy/mini-courses/${c.id}`} />}
+                  footer={<EditLink href={`/admin/academy/mini-courses/${course.id}`} />}
                 />
               ))}
             >
-              {items.map((c) => (
-                <tr key={c.id} className="hover:bg-surface-soft/40">
+              {rows.map(({ course, cover }) => (
+                <tr key={course.id} className="hover:bg-surface-soft/40">
                   <td className="px-4 py-3">
-                    <p className="font-medium">{c.title}</p>
-                    {c.subtitle ? <p className="text-caption text-text-muted">{c.subtitle}</p> : null}
+                    <MiniCourseRowThumb title={course.title} image={cover} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="font-medium">{course.title}</p>
+                    {course.subtitle ? <p className="text-caption text-text-muted">{course.subtitle}</p> : null}
                   </td>
                   <td className="px-4 py-3 font-mono text-caption" dir="ltr">
-                    {c.slug}
+                    {course.slug}
                   </td>
-                  <td className="px-4 py-3 text-caption">{c.level ?? '—'}</td>
-                  <td className="px-4 py-3 text-caption">{c.duration ?? '—'}</td>
-                  <td className="px-4 py-3 text-caption">{c.sort_order}</td>
+                  <td className="px-4 py-3 text-caption">{course.level ?? '—'}</td>
+                  <td className="px-4 py-3 text-caption">{course.duration ?? '—'}</td>
+                  <td className="px-4 py-3 text-caption">{course.sort_order}</td>
                   <td className="px-4 py-3">
-                    <Badge tone={c.is_active ? 'success' : 'default'}>
-                      {c.is_active ? 'فعال' : 'غیرفعال'}
+                    <Badge tone={course.is_active ? 'success' : 'default'}>
+                      {course.is_active ? 'فعال' : 'غیرفعال'}
                     </Badge>
                   </td>
                   <td className="px-4 py-3">
-                    <EditLink href={`/admin/academy/mini-courses/${c.id}`} />
+                    <EditLink href={`/admin/academy/mini-courses/${course.id}`} />
                   </td>
                 </tr>
               ))}

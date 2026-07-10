@@ -111,5 +111,6 @@ class DatabaseSeeder extends Seeder
         $this->call(CacheIntegrationsSeeder::class);
         $this->call(CommerceSeeder::class);
         $this->call(SeminarSeeder::class);
+        $this->call(MiniCourseSeeder::class);
     }
 }

@@ -196,13 +196,13 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     Route::get('mini-courses', [MiniCourseController::class, 'index']);
     Route::post('mini-courses', [MiniCourseController::class, 'store']);
-    Route::get('mini-courses/{miniCourse}', [MiniCourseController::class, 'show'])->whereNumber('miniCourse');
-    Route::match(['put', 'patch'], 'mini-courses/{miniCourse}', [MiniCourseController::class, 'update'])->whereNumber('miniCourse');
-    Route::delete('mini-courses/{miniCourse}', [MiniCourseController::class, 'destroy'])->whereNumber('miniCourse');
-    Route::get('mini-courses/{miniCourse}/comments', [MiniCourseCommentController::class, 'index'])->whereNumber('miniCourse');
-    Route::match(['put', 'patch'], 'mini-courses/{miniCourse}/comments/{comment}', [MiniCourseCommentController::class, 'update'])
+    Route::get('mini-courses/{miniCourse:id}', [MiniCourseController::class, 'show'])->whereNumber('miniCourse');
+    Route::match(['put', 'patch'], 'mini-courses/{miniCourse:id}', [MiniCourseController::class, 'update'])->whereNumber('miniCourse');
+    Route::delete('mini-courses/{miniCourse:id}', [MiniCourseController::class, 'destroy'])->whereNumber('miniCourse');
+    Route::get('mini-courses/{miniCourse:id}/comments', [MiniCourseCommentController::class, 'index'])->whereNumber('miniCourse');
+    Route::match(['put', 'patch'], 'mini-courses/{miniCourse:id}/comments/{comment}', [MiniCourseCommentController::class, 'update'])
         ->whereNumber(['miniCourse', 'comment']);
-    Route::delete('mini-courses/{miniCourse}/comments/{comment}', [MiniCourseCommentController::class, 'destroy'])
+    Route::delete('mini-courses/{miniCourse:id}/comments/{comment}', [MiniCourseCommentController::class, 'destroy'])
         ->whereNumber(['miniCourse', 'comment']);
 
     Route::get('panel/payment-settings', [CommercePaymentSettingsController::class, 'show']);

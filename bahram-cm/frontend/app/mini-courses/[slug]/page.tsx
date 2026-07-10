@@ -10,7 +10,7 @@ import { LinkButton } from '@/components/ui/Button';
 import {
   getMiniCourseBySlugFromApi,
   getMiniCourseCommentsFromApi,
-} from '@/lib/services/miniCourses';
+} from '@/lib/services/miniCourses.server';
 import { resolveMediaAlt } from '@/lib/media/alt';
 import { buildMetadata } from '@/lib/seo';
 

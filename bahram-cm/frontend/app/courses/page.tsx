@@ -1,14 +1,12 @@
 import type { Metadata } from 'next';
 import { CourseCatalogGrid } from '@/components/sections/CourseCatalogGrid';
-import { MiniCourseCard } from '@/components/mini-courses/MiniCourseCard';
+import { MiniCoursesSection } from '@/components/mini-courses/MiniCoursesSection';
 import { SocialProofStats } from '@/components/sections/SocialProofStats';
-import { Reveal } from '@/components/motion/Reveal';
-import { Eyebrow } from '@/components/ui/Eyebrow';
 import { getCourseCatalogCards } from '@/lib/catalog/courseListings';
-import { getMiniCoursesFromApi } from '@/lib/services/miniCourses';
+import { resolveMiniCourseCover } from '@/lib/mini-courses/covers';
+import { getMiniCoursesFromApi } from '@/lib/services/miniCourses.server';
 import { buildMetadata } from '@/lib/seo';
 import { resolveMediaAlt } from '@/lib/media/alt';
-
 export const metadata: Metadata = buildMetadata({
   title: 'دوره‌ها',
   description: 'دو مسیر اصلی آکادمی؛ کمپین‌نویسی و سات — هر کدام با خروجی مشخص. مینی‌دوره‌های رایگان برای شروع سریع.',
@@ -30,15 +28,15 @@ export default async function CoursesPage() {
 
   const miniCourses = miniCoursesResult.ok ? miniCoursesResult.data : [];
   const miniCourseCards = await Promise.all(
-    miniCourses.map(async (course, i) => ({
-      course,
-      imageAlt: course.thumbnail
-        ? await resolveMediaAlt(course.thumbnail, course.title)
-        : course.title,
-      index: i,
-    })),
+    miniCourses.map(async (course, i) => {
+      const cover = resolveMiniCourseCover(course.slug, i, course.thumbnail);
+      return {
+        course,
+        imageAlt: await resolveMediaAlt(cover, course.title),
+        index: i,
+      };
+    }),
   );
-
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       <section className="courses-catalog main-paths-section relative isolate overflow-x-clip pt-8 pb-section-sm md:pt-10 md:pb-section lg:pt-12">
@@ -55,31 +53,7 @@ export default async function CoursesPage() {
         />
       </section>
 
-      {miniCourseCards.length > 0 ? (
-        <section id="mini-courses" className="border-t border-bone/8 py-section-sm">
-          <div className="container-luxe">
-            <Reveal>
-              <Eyebrow>Mini Courses</Eyebrow>
-              <h2 className="mt-4 text-h2 text-balance text-bone">مینی‌دوره‌ها</h2>
-              <p className="mt-4 max-w-2xl text-bone-dim">
-                ویدیوهای رایگان برای ورود سریع به تفکر کمپین‌محور — قبل از مسیر اصلی.
-              </p>
-            </Reveal>
-
-            <div className="mt-8 grid gap-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
-              {miniCourseCards.map(({ course, imageAlt, index }) => (
-                <MiniCourseCard
-                  key={course.slug}
-                  course={course}
-                  imageAlt={imageAlt}
-                  index={index}
-                  priority={index < 3}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
+      <MiniCoursesSection items={miniCourseCards} />
     </main>
   );
 }

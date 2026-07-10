@@ -43,20 +43,18 @@ function CommentRow({
   }
 
   return (
-    <div className={depth > 0 ? 'mr-6 border-r border-border pr-4' : ''}>
-      <div className="rounded-lg border border-border bg-surface-soft/40 p-4">
+    <div className={depth > 0 ? 'mr-4 border-r border-border pr-4' : ''}>
+      <div className="rounded-xl border border-border bg-surface-soft/50 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="font-medium">{comment.author_name}</p>
+            <p className="font-medium text-primary-dark">{comment.author_name}</p>
             {comment.author_email ? (
               <p className="text-caption text-text-muted" dir="ltr">
                 {comment.author_email}
               </p>
             ) : null}
             {comment.created_at ? (
-              <p className="mt-1 text-caption text-text-muted">
-                {formatPanelFa(comment.created_at)}
-              </p>
+              <p className="mt-1 text-caption text-text-muted">{formatPanelFa(comment.created_at)}</p>
             ) : null}
           </div>
           <Badge tone={statusTone(comment.status)}>
@@ -64,13 +62,13 @@ function CommentRow({
           </Badge>
         </div>
 
-        <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">{comment.body}</p>
+        <p className="mt-3 whitespace-pre-wrap text-small leading-relaxed text-text">{comment.body}</p>
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {comment.status !== 'approved' ? (
             <button
               type="button"
-              className="btn btn-sm btn-secondary"
+              className="btn btn-secondary px-3 py-1.5 text-caption"
               onClick={() => setStatus('approved')}
               disabled={pending}
             >
@@ -81,7 +79,7 @@ function CommentRow({
           {comment.status !== 'rejected' ? (
             <button
               type="button"
-              className="btn btn-sm btn-secondary"
+              className="btn btn-secondary px-3 py-1.5 text-caption"
               onClick={() => setStatus('rejected')}
               disabled={pending}
             >
@@ -91,7 +89,7 @@ function CommentRow({
           ) : null}
           <button
             type="button"
-            className="btn btn-sm btn-danger"
+            className="btn btn-secondary px-3 py-1.5 text-caption text-error"
             onClick={onDelete}
             disabled={pending}
           >
@@ -122,24 +120,26 @@ export function MiniCourseCommentsPanel({
   const pendingCount = comments.filter((c) => c.status === 'pending').length;
 
   return (
-    <section className="admin-dashboard-panel">
-      <div className="admin-dashboard-panel__head">
-        <h2 className="admin-dashboard-panel__title">نظرات</h2>
-        <p className="admin-dashboard-panel__summary">
+    <div className="card space-y-4 p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+        <h2 className="text-h3 font-bold text-primary-dark">نظرات</h2>
+        <p className="text-caption text-text-muted">
           {comments.length.toLocaleString('fa-IR')} نظر
-          {pendingCount > 0 ? ` · ${pendingCount.toLocaleString('fa-IR')} در انتظار تأیید` : ''}
+          {pendingCount > 0 ? ` · ${pendingCount.toLocaleString('fa-IR')} در انتظار` : ''}
         </p>
       </div>
-      <div className="admin-dashboard-panel__body space-y-4">
-        {error ? <div className="admin-form-error">{error}</div> : null}
-        {comments.length === 0 ? (
-          <p className="text-sm text-text-muted">هنوز نظری ثبت نشده.</p>
-        ) : (
-          comments.map((comment) => (
+
+      {error ? <p className="text-small text-error">{error}</p> : null}
+
+      {comments.length === 0 ? (
+        <p className="text-small text-text-muted">هنوز نظری ثبت نشده.</p>
+      ) : (
+        <div className="space-y-4">
+          {comments.map((comment) => (
             <CommentRow key={comment.id} courseId={courseId} comment={comment} />
-          ))
-        )}
-      </div>
-    </section>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

@@ -6,7 +6,7 @@ import {
   getResources,
 } from "@/lib/content";
 import { getArticles } from "@/lib/services/articles";
-import { getMiniCoursesFromApi } from "@/lib/services/miniCourses";
+import { getMiniCoursesFromApi } from "@/lib/services/miniCourses.server";
 import { SITE } from "@/lib/seo";
 
 /** Static routes with their relative priority + change cadence. */

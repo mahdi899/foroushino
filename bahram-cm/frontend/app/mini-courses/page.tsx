@@ -4,10 +4,10 @@ import { MiniCourseCard } from "@/components/mini-courses/MiniCourseCard";
 import { Reveal } from "@/components/motion/Reveal";
 import { LinkButton } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
-import { getMiniCoursesFromApi } from "@/lib/services/miniCourses";
+import { resolveMiniCourseCover } from "@/lib/mini-courses/covers";
+import { getMiniCoursesFromApi } from "@/lib/services/miniCourses.server";
 import { resolveMediaAlt } from "@/lib/media/alt";
 import { buildMetadata } from "@/lib/seo";
-
 export const metadata: Metadata = buildMetadata({
   title: "مینی‌دوره‌ها",
   description: "ویدیوهای رایگان برای ورود سریع به تفکر کمپین‌محور؛ نقطه‌ی شروع قبل از مسیر اصلی.",
@@ -19,15 +19,15 @@ export default async function MiniCoursesPage() {
   const miniCourses = result.ok ? result.data : [];
 
   const cards = await Promise.all(
-    miniCourses.map(async (course, i) => ({
-      course,
-      imageAlt: course.thumbnail
-        ? await resolveMediaAlt(course.thumbnail, course.title)
-        : course.title,
-      index: i,
-    })),
+    miniCourses.map(async (course, i) => {
+      const cover = resolveMiniCourseCover(course.slug, i, course.thumbnail);
+      return {
+        course,
+        imageAlt: await resolveMediaAlt(cover, course.title),
+        index: i,
+      };
+    }),
   );
-
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       <PageHero
@@ -37,7 +37,7 @@ export default async function MiniCoursesPage() {
       />
       <section className="py-section-sm">
         {cards.length > 0 ? (
-          <div className="container-luxe grid gap-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
+          <div className="container-luxe grid gap-4 md:grid-cols-2 md:gap-5 lg:gap-6">
             {cards.map(({ course, imageAlt, index }) => (
               <MiniCourseCard
                 key={course.slug}
@@ -45,8 +45,8 @@ export default async function MiniCoursesPage() {
                 imageAlt={imageAlt}
                 index={index}
                 priority={index < 3}
-              />
-            ))}
+                layout="grid"
+              />            ))}
           </div>
         ) : (
           <div className="container-luxe">
