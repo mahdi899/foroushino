@@ -5,8 +5,23 @@ import { adminFetch } from '@/lib/auth/session';
 import { revalidateMiniCourseSurfaces } from '@/lib/cache/contentRevalidation';
 
 function actionError(e: unknown, fallback: string): { ok: false; error: string } {
-  const err = e as Error & { payload?: { error?: { message_fa?: string } } };
-  return { ok: false, error: err.payload?.error?.message_fa ?? fallback };
+  const err = e as Error & {
+    payload?: {
+      error?: { message_fa?: string; details?: Record<string, string[]> };
+      message?: string;
+      errors?: Record<string, string[]>;
+    };
+  };
+  const payload = err.payload;
+  const details = payload?.error?.details ?? payload?.errors;
+  if (details && typeof details === 'object') {
+    const first = Object.values(details).flat().find((msg) => typeof msg === 'string' && msg.trim());
+    if (first) return { ok: false, error: first };
+  }
+  return {
+    ok: false,
+    error: payload?.error?.message_fa ?? payload?.message ?? fallback,
+  };
 }
 
 function revalidateAdmin() {
@@ -42,7 +57,7 @@ export async function saveMiniCourse(
     const res = await adminFetch<{ data: { id: number } }>('/mini-courses', { method: 'POST', body: input });
     revalidateAdmin();
     await revalidateMiniCourseSurfaces(input.slug);
-    return { ok: true, id: res.data.id };
+    return { ok: true, id: res.data?.id };
   } catch (e) {
     return actionError(e, 'ذخیره مینی‌دوره ناموفق بود.');
   }

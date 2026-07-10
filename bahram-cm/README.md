@@ -107,8 +107,9 @@ git add storage/app/public/media database/data/media_library.json frontend/lib/m
 ```bash
 cd backend
 php artisan migrate
-php artisan db:seed          # سمینار + محصول را می‌سازد
+php artisan db:seed          # سمینار + مینی‌دوره‌ها + محصول را می‌سازد
 php artisan seminar:import-orders
+php artisan media:sync       # تصاویر کاور مینی‌دوره‌ها و کتابخانه رسانه
 ```
 
 فقط تست بدون ذخیره:

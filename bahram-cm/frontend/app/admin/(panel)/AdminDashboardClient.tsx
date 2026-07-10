@@ -85,6 +85,14 @@ export function AdminDashboardClient() {
       tone: 'blue' as const,
     },
     {
+      label: 'مینی‌دوره‌ها',
+      value: '—',
+      icon: 'PlayCircle',
+      hint: 'ویدیو، تامبنیل و نظرات',
+      href: '/admin/academy/mini-courses',
+      tone: 'teal' as const,
+    },
+    {
       label: 'درخواست SAT',
       value: toFa(academy.sat_applications_pending),
       icon: 'GraduationCap',

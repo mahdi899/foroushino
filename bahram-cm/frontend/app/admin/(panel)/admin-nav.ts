@@ -90,6 +90,9 @@ export function isAdminNavActive(pathname: string, href: string, matchPrefix?: b
   if (href.startsWith('/admin/commerce/')) {
     return pathname === href || pathname.startsWith(`${href}/`);
   }
+  if (href === '/admin/academy/mini-courses') {
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
   if (!matchPrefix) return false;
   return pathname.startsWith(`${href}/`);
 }

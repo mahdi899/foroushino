@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { Loader2, MessageSquare } from 'lucide-react';
 import { useFormSecurity } from '@/components/captcha/FormCaptcha';
-import { submitMiniCourseComment } from '@/lib/services/miniCourses';
-import type { MiniCourseCommentRecord } from '@/lib/services/miniCourses';
+import {
+  submitMiniCourseComment,
+  type MiniCourseCommentRecord,
+} from '@/lib/services/miniCourses.client';
 import { formatPanelFa } from '@/lib/persian';
 
 function CommentItem({ comment, depth = 0 }: { comment: MiniCourseCommentRecord; depth?: number }) {
