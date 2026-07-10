@@ -1,12 +1,8 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { ArrowLeft, Clock, GraduationCap } from 'lucide-react';
-import { PageHero } from '@/components/blocks/PageHero';
+import { CourseCatalogGrid } from '@/components/sections/CourseCatalogGrid';
 import { MiniCourseCard } from '@/components/mini-courses/MiniCourseCard';
 import { SocialProofStats } from '@/components/sections/SocialProofStats';
 import { Reveal } from '@/components/motion/Reveal';
-import { Badge } from '@/components/ui/Badge';
-import { SiteImage } from '@/components/ui/SiteImage';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { getCourseCatalogCards } from '@/lib/catalog/courseListings';
 import { getMiniCoursesFromApi } from '@/lib/services/miniCourses';
@@ -45,64 +41,18 @@ export default async function CoursesPage() {
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
-      <PageHero
-        eyebrow="Courses"
-        title="دوره‌ها"
-        description="دو مسیر اصلی آکادمی؛ کمپین‌نویسی و سات — هر کدام با خروجی روشن. مینی‌دوره‌های رایگان برای شروع سریع."
-      />
-
-      <SocialProofStats className="pt-section-sm" />
-
-      <section className="py-section-sm">
-        <div className="container-luxe">
-          <div className="mx-auto grid max-w-4xl gap-5 md:grid-cols-2 md:gap-6">
-            {courseCards.map((course, i) => (
-              <Reveal key={course.href} delay={i * 0.06}>
-                <Link
-                  href={course.href}
-                  className="neon-surface-hover group block h-full overflow-hidden rounded-card border border-bone/10 bg-charcoal/45 transition-colors hover:border-bone/25"
-                >
-                  <div className="relative aspect-[3/2] overflow-hidden">
-                    <SiteImage
-                      src={course.image}
-                      alt={course.imageAlt}
-                      fallbackAlt={`کاور ${course.label}`}
-                      fill
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                      className="object-cover transition-transform duration-700 ease-[var(--ease-luxe)] group-hover:scale-[1.04]"
-                    />
-                    {course.featured ? (
-                      <span className="absolute end-3 top-3 z-[2]">
-                        <Badge tone="gold">پرچم‌دار</Badge>
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="p-5 md:p-6">
-                    <h2 className="text-h3 text-balance text-bone">{course.label}</h2>
-                    <p className="mt-2 text-bone-dim">{course.subtitle || course.tagline}</p>
-                    <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-caption text-mist">
-                      <span className="inline-flex items-center gap-1.5">
-                        <GraduationCap className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-                        {course.level}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <Clock className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-                        {course.duration}
-                      </span>
-                    </div>
-                    <span className="mt-6 inline-flex items-center gap-2 text-gold">
-                      {course.cta}
-                      <ArrowLeft
-                        className="rtl-flip h-4 w-4 transition-transform group-hover:-translate-x-0.5"
-                        aria-hidden
-                      />
-                    </span>
-                  </div>
-                </Link>
-              </Reveal>
-            ))}
-          </div>
+      <section className="courses-catalog main-paths-section relative isolate overflow-x-clip pt-8 pb-section-sm md:pt-10 md:pb-section lg:pt-12">
+        <div
+          aria-hidden
+          className="main-paths-section-ambient pointer-events-none absolute inset-0"
+        />
+        <div className="container-luxe relative">
+          <CourseCatalogGrid courses={courseCards} />
         </div>
+        <SocialProofStats
+          as="div"
+          className="relative mt-10 py-2 md:mt-12 md:py-4 lg:mt-14"
+        />
       </section>
 
       {miniCourseCards.length > 0 ? (
