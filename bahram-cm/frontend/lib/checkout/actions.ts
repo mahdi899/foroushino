@@ -95,15 +95,17 @@ export async function startLoggedInCheckoutAction(input: {
   return { ...payment, order_number: orderResult.order_number };
 }
 
-/** Guest buyer: phone-only (and optional extra form fields). */
+/** Guest buyer: name + phone (and optional extra form fields). */
 export async function startGuestCheckoutAction(input: {
   product_id: number;
+  customer_name: string;
   customer_phone: string;
   ref?: string;
   customer_extra_data?: Record<string, string>;
 }): Promise<CheckoutResult> {
   const orderResult = await createOrder({
     product_id: input.product_id,
+    customer_name: input.customer_name.trim(),
     customer_phone: input.customer_phone.trim(),
     customer_extra_data: input.customer_extra_data,
     ref: input.ref,
@@ -161,6 +163,46 @@ async function setStudentTokenCookie(token: string) {
     path: '/',
     maxAge: 60 * 60 * 24 * 30,
   });
+}
+
+export async function loginFromPaymentReceiptAction(receiptToken: string): Promise<
+  | { ok: true; needsProfileCompletion: false }
+  | { ok: true; needsProfileCompletion: true; completionToken: string }
+  | { ok: false; error: string }
+> {
+  const res = await fetch(`${publicApiBase()}/orders/payment-result/login`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: receiptToken }),
+    cache: 'no-store',
+  });
+
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return { ok: false, error: json?.error?.message_fa ?? 'ورود خودکار به پنل ناموفق بود.' };
+  }
+
+  if (json.data?.needs_profile_completion) {
+    const completionToken = json.data?.completion_token;
+    if (typeof completionToken !== 'string' || !completionToken) {
+      return { ok: false, error: 'لینک تکمیل اطلاعات دریافت نشد.' };
+    }
+
+    return {
+      ok: true,
+      needsProfileCompletion: true,
+      completionToken,
+    };
+  }
+
+  const token = json.data?.token;
+  if (typeof token !== 'string' || !token) {
+    return { ok: false, error: 'توکن ورود دریافت نشد.' };
+  }
+
+  await setStudentTokenCookie(token);
+
+  return { ok: true, needsProfileCompletion: false };
 }
 
 export async function postPaymentVerifyOtpAction(

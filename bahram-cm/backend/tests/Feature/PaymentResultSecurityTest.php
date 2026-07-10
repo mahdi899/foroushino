@@ -46,6 +46,44 @@ class PaymentResultSecurityTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_payment_result_login_issues_student_session_for_guest_order(): void
+    {
+        $product = Product::create([
+            'title' => 'دوره تست',
+            'slug' => 'campaign-writing',
+            'type' => 'normal',
+            'price' => 500000,
+            'is_active' => true,
+        ]);
+
+        $user = \App\Models\User::factory()->create([
+            'name' => 'دانشجو',
+            'mobile' => '09351234567',
+            'is_admin' => false,
+        ]);
+
+        $order = Order::create([
+            'user_id' => $user->id,
+            'order_number' => 'BC-260708-AUTO1',
+            'product_id' => $product->id,
+            'customer_name' => 'مهدی اکبری',
+            'customer_phone' => '09351234567',
+            'amount' => 500000,
+            'discount_amount' => 0,
+            'final_amount' => 500000,
+            'status' => 'paid',
+            'payment_status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        $token = app(PaymentReceiptTokenService::class)->issue($order, 'success');
+
+        $this->postJson('/api/orders/payment-result/login', ['token' => $token])
+            ->assertOk()
+            ->assertJsonPath('data.needs_profile_completion', false)
+            ->assertJsonStructure(['data' => ['token']]);
+    }
+
     private function paidOrder(): Order
     {
         $product = Product::create([

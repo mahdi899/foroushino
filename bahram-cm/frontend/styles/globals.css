@@ -2266,6 +2266,77 @@ html[data-theme="light"] .founder-cta-band__lead {
   color: rgba(234, 251, 251, 0.84);
 }
 
+.founder-milestones__list {
+  border-block: 1px solid color-mix(in oklab, var(--color-bone) 10%, transparent);
+}
+
+.founder-milestones__item + .founder-milestones__item {
+  border-top: 1px solid color-mix(in oklab, var(--color-bone) 8%, transparent);
+}
+
+.founder-milestones__rule {
+  height: 1px;
+  background: linear-gradient(
+    to left,
+    transparent,
+    color-mix(in oklab, var(--color-bone) 16%, transparent) 22%,
+    color-mix(in oklab, var(--color-bone) 16%, transparent) 78%,
+    transparent
+  );
+}
+
+html[data-theme="light"] .founder-milestones__list {
+  border-block-color: color-mix(in oklab, var(--color-ink) 10%, transparent);
+}
+
+html[data-theme="light"] .founder-milestones__item + .founder-milestones__item {
+  border-top-color: color-mix(in oklab, var(--color-ink) 8%, transparent);
+}
+
+.founder-letter-card {
+  box-shadow: 0 24px 64px -36px rgba(2, 6, 7, 0.62);
+}
+
+html[data-theme="light"] .founder-letter-card {
+  box-shadow: 0 20px 56px -32px rgba(11, 31, 34, 0.16);
+}
+
+.founder-letter-scrim {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(5, 10, 11, 0.96) 0%,
+    rgba(5, 10, 11, 0.82) 26%,
+    rgba(5, 10, 11, 0.42) 52%,
+    rgba(5, 10, 11, 0.14) 68%,
+    transparent 82%
+  );
+}
+
+.founder-letter-eyebrow {
+  color: rgba(255, 224, 138, 0.88);
+}
+
+.founder-letter-quote {
+  color: #f8fbfb;
+  text-shadow: 0 2px 28px rgba(0, 0, 0, 0.42);
+}
+
+.founder-letter-body {
+  color: rgba(234, 251, 251, 0.86);
+}
+
+.founder-letter-sign__mark {
+  filter: brightness(0) invert(1);
+  opacity: 0.9;
+}
+
+.founder-letter-sign__name {
+  color: rgba(234, 251, 251, 0.62);
+}
+
 /* Campaign course — open price + highlights strip */
 .campaign-course-intro {
   overflow: visible;
@@ -2590,12 +2661,9 @@ html[data-theme="light"] .campaign-course-intro-price-body:has(.campaign-course-
 }
 
 html[data-theme="light"] .campaign-course-intro-now__amount {
-  background-image: linear-gradient(
-    135deg,
-    var(--color-emerald-deep) 0%,
-    var(--color-gold) 50%,
-    var(--color-emerald) 100%
-  );
+  background-image: none;
+  -webkit-text-fill-color: var(--color-emerald-deep);
+  color: var(--color-emerald-deep);
 }
 
 html[data-theme="light"] .campaign-course-intro-now__unit {

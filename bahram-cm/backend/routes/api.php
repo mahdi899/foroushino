@@ -64,6 +64,8 @@ Route::get('/orders/complete-profile', [OrderController::class, 'completeProfile
     ->middleware('throttle:30,1');
 Route::get('/orders/payment-result', [OrderController::class, 'paymentResult'])
     ->middleware('throttle:30,1');
+Route::post('/orders/payment-result/login', [OrderController::class, 'paymentResultLogin'])
+    ->middleware('throttle:20,1');
 Route::post('/orders/complete-customer', [OrderController::class, 'completeCustomer'])
     ->middleware('throttle:20,1');
 Route::post('/orders/post-payment-login/resend-otp', [OrderController::class, 'postPaymentResendOtp'])

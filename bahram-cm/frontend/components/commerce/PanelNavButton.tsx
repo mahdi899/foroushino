@@ -16,7 +16,8 @@ type PanelNavButtonProps = {
 
 export function PanelNavButton({ className, showLabel = true, onNavigate }: PanelNavButtonProps) {
   const router = useRouter();
-  const { isLoggedIn, openLogin } = useStudentAuth();
+  const { isLoggedIn, displayName, openLogin } = useStudentAuth();
+  const label = isLoggedIn ? displayName ?? "دانشجو" : "ورود";
 
   function handleClick() {
     onNavigate?.();
@@ -31,7 +32,7 @@ export function PanelNavButton({ className, showLabel = true, onNavigate }: Pane
     <button
       type="button"
       onClick={handleClick}
-      aria-label="ورود"
+      aria-label={label}
       className={cn(
         iconButtonClass,
         "inline-flex shrink-0",
@@ -41,7 +42,7 @@ export function PanelNavButton({ className, showLabel = true, onNavigate }: Pane
     >
       <LayoutDashboard className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={1.75} aria-hidden />
       {showLabel ? (
-        <span className="text-sm font-medium whitespace-nowrap">ورود</span>
+        <span className="text-sm font-medium whitespace-nowrap">{label}</span>
       ) : null}
     </button>
   );

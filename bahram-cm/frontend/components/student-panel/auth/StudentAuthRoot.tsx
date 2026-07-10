@@ -36,12 +36,14 @@ function StudentAuthUrlSyncInner() {
 export function StudentAuthRoot({
   children,
   initialLoggedIn = false,
+  initialDisplayName = null,
 }: {
   children: React.ReactNode;
   initialLoggedIn?: boolean;
+  initialDisplayName?: string | null;
 }) {
   return (
-    <StudentAuthProvider initialLoggedIn={initialLoggedIn}>
+    <StudentAuthProvider initialLoggedIn={initialLoggedIn} initialDisplayName={initialDisplayName}>
       <StudentAuthUrlSyncInner />
       <StudentLoginModal />
       {children}

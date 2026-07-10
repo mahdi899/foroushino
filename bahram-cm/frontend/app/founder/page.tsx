@@ -8,7 +8,6 @@ import {
   GraduationCap,
   HandHeart,
   Lightbulb,
-  Quote,
   Rocket,
   Sparkles,
   Users,
@@ -55,12 +54,12 @@ const philosophy = [
 ];
 
 const milestones = [
-  { year: "۲۰۱۲", title: "آغاز تولید محتوا", body: "اولین گام‌ها در آموزش و مخاطب‌سازی." },
-  { year: "۲۰۱۶", title: "اولین مسیر آموزشی", body: "دوره‌های ساختاری بازاریابی محتوا." },
-  { year: "۲۰۱۹", title: "شکل‌گیری کمپین‌نویسی", body: "تجربه‌ها به نقشه‌ی ۱۰ فصل رسید." },
-  { year: "۲۰۲۲", title: "۵۰٬۰۰۰+ دانشجو", body: "گسترش جامعه فارسی‌زبان روی همین مسیر." },
-  { year: "۲۰۲۴", title: "تولد آکادمی", body: "اکوسیستم خصوصی برای رشد ساختاری." },
-  { year: "۲۰۲۶", title: "اپ خصوصی آکادمی", body: "تجربه یکپارچه برای اعضا." },
+  { year: "۲۰۱۲", title: "آغاز تولید محتوا" },
+  { year: "۲۰۱۶", title: "اولین مسیر آموزشی" },
+  { year: "۲۰۱۹", title: "شکل‌گیری کمپین‌نویسی" },
+  { year: "۲۰۲۲", title: "۵۰٬۰۰۰+ دانشجو" },
+  { year: "۲۰۲۴", title: "تولد آکادمی" },
+  { year: "۲۰۲۶", title: "اپ خصوصی آکادمی" },
 ];
 
 export default async function FounderPage() {
@@ -162,96 +161,73 @@ export default async function FounderPage() {
       </section>
 
       {/* PERSONAL LETTER */}
-      <section className="bg-obsidian py-section-sm md:py-section">
+      <section className="founder-letter bg-obsidian py-section-sm md:py-section">
         <div className="container-luxe">
-          <div className="neon-surface-static mx-auto max-w-4xl rounded-card border border-bone/10 bg-charcoal/45 p-5 sm:p-8 md:p-12">
-            <Reveal>
-              <Eyebrow>نامه‌ای از من</Eyebrow>
-            </Reveal>
-            <Reveal delay={0.08}>
-              <Quote className="mt-4 h-6 w-6 text-gold/50 md:mt-6 md:h-8 md:w-8" strokeWidth={1.4} aria-hidden />
-            </Reveal>
-            <Reveal delay={0.12}>
-              <h2 className="mt-3 text-h3 text-balance md:mt-4 md:text-h2">«آموزش بدون اجرا، سرگرمی است.»</h2>
-            </Reveal>
-            <Reveal delay={0.18}>
-              <div className="mt-5 space-y-3 text-sm text-bone-dim md:mt-7 md:space-y-4 md:text-body">
-                <p>
-                  مشکل بازار کمبود اطلاعات نیست؛ کمبود ساختار و همراهی درست برای اجراست. کمپین‌نویسی و آکادمی برای همین ساخته
-                  شده‌اند.
-                </p>
-                <p>
-                  اگر این نگاه را دوست داری، از کمپین‌نویسی شروع کن؛ اگر بعداً عمق بیشتری خواستی، در آکادمی می‌بینمت.
-                </p>
-              </div>
-            </Reveal>
-            <Reveal delay={0.26}>
-              <div className="mt-6 flex flex-col items-start gap-3 border-t border-bone/8 pt-5 sm:flex-row sm:items-center sm:gap-5 md:mt-10 md:gap-6 md:pt-6">
+          <Reveal>
+            <article className="founder-letter-card relative mx-auto max-w-4xl overflow-hidden rounded-card-lg border border-bone/10">
+              <div className="relative aspect-[4/5] min-h-[28rem] w-full sm:aspect-[16/11] sm:min-h-[24rem] md:aspect-[16/10] md:min-h-[26rem]">
                 <SiteImage
-                  src={siteStorageMedia('signature.svg')}
-                  alt="امضای بهرام"
-                  fallbackAlt="امضای بهرام"
-                  width={200}
-                  height={70}
-                  wrapperClassName="leading-none"
-                  className="max-w-[min(100%,11rem)] sm:max-w-none"
+                  src={sitePhotos.portraitFounder}
+                  alt={heroAlt}
+                  fallbackAlt="بهرام رستمی"
+                  fill
+                  className="object-cover object-[center_14%]"
+                  sizes="(max-width: 896px) 100vw, 896px"
                 />
-                <span className="text-caption text-mist">بهرام</span>
+                <div aria-hidden className="founder-letter-scrim" />
+                <div className="founder-letter-content absolute inset-0 z-10 flex flex-col justify-end p-6 sm:p-8 md:p-10">
+                  <p className="founder-letter-eyebrow text-caption uppercase tracking-[0.16em]">نامه‌ای از من</p>
+                  <h2 className="founder-letter-quote mt-3 max-w-2xl font-display text-h3 text-balance md:mt-4 md:text-h2">
+                    «آموزش بدون اجرا، سرگرمی است.»
+                  </h2>
+                  <div className="founder-letter-body mt-4 max-w-2xl space-y-3 text-sm leading-relaxed md:mt-6 md:space-y-3.5 md:text-base">
+                    <p>
+                      مشکل بازار کمبود اطلاعات نیست؛ کمبود ساختار و همراهی درست برای اجراست. کمپین‌نویسی و آکادمی برای همین
+                      ساخته شده‌اند.
+                    </p>
+                    <p>
+                      اگر این نگاه را دوست داری، از کمپین‌نویسی شروع کن؛ اگر بعداً عمق بیشتری خواستی، در آکادمی می‌بینمت.
+                    </p>
+                  </div>
+                  <div className="founder-letter-sign mt-6 flex items-center gap-4 border-t border-white/12 pt-5 md:mt-8 md:pt-6">
+                    <SiteImage
+                      src={siteStorageMedia("signature.svg")}
+                      alt="امضای بهرام"
+                      fallbackAlt="امضای بهرام"
+                      width={200}
+                      height={70}
+                      wrapperClassName="founder-letter-sign__mark leading-none"
+                      className="max-w-[min(100%,10.5rem)]"
+                    />
+                    <span className="founder-letter-sign__name text-caption">بهرام</span>
+                  </div>
+                </div>
               </div>
-            </Reveal>
-          </div>
+            </article>
+          </Reveal>
         </div>
       </section>
 
-      {/* MILESTONES TIMELINE */}
-      <section className="py-section-sm">
+      <section className="founder-milestones py-section-sm">
         <div className="container-luxe">
           <Reveal>
-            <Eyebrow>نقاط مهم مسیر</Eyebrow>
-          </Reveal>
-          <Reveal delay={0.08}>
-            <h2 className="mt-4 max-w-3xl text-h2 text-balance md:mt-5">
-              ده سال در یک خط.
-            </h2>
+            <div className="mx-auto max-w-xl text-center">
+              <p className="text-caption uppercase tracking-[0.16em] text-mist">نقاط مهم مسیر</p>
+              <h2 className="mt-2 font-display text-h3 text-bone md:text-h2">ده سال در یک خط</h2>
+            </div>
           </Reveal>
 
-          <ol
-            className={
-              "mt-8 space-y-5 md:relative md:mt-14 md:space-y-8 " +
-              "md:before:absolute md:before:start-1/2 md:before:top-2 md:before:bottom-2 md:before:w-px md:before:-translate-x-px " +
-              "md:before:bg-gradient-to-b md:before:from-gold/0 md:before:via-bone/10 md:before:to-gold/0"
-            }
-          >
+          <ol className="founder-milestones__list mx-auto mt-8 max-w-2xl md:mt-10">
             {milestones.map((m, i) => (
-              <li key={m.year} className="relative">
-                <Reveal delay={i * 0.05}>
-                  <div className="grid gap-3 md:grid-cols-12 md:items-center md:gap-4">
-                    <div
-                      className={
-                        "flex items-center gap-2 md:col-span-5 " +
-                        (i % 2 === 0 ? "md:justify-end md:text-end" : "md:order-3 md:justify-start md:text-start")
-                      }
-                    >
-                      <span
-                        aria-hidden
-                        className="inline-flex h-2 w-2 shrink-0 rounded-full bg-gold shadow-[0_0_12px_2px_rgba(255,176,0,0.55)] md:hidden"
-                      />
-                      <p className="font-display text-lg font-semibold num-latin text-gold md:text-h3">{m.year}</p>
-                    </div>
-                    <div className="hidden md:col-span-2 md:flex md:items-center md:justify-center">
-                      <span className="relative inline-flex h-9 w-9 items-center justify-center rounded-pill bg-charcoal ring-1 ring-gold/40">
-                        <span className="h-1.5 w-1.5 rounded-full bg-gold shadow-[0_0_12px_2px_rgba(255,176,0,0.55)]" />
-                      </span>
-                    </div>
-                    <div className={`md:col-span-5 ${i % 2 === 0 ? "" : "md:order-1 md:text-end"}`}>
-                      <article className="neon-surface-hover rounded-card border border-bone/10 bg-charcoal/45 p-4 md:p-5">
-                        <p className="text-lg font-semibold text-bone md:text-h3">{m.title}</p>
-                        <p className="mt-1.5 text-sm text-bone-dim md:mt-2 md:text-base">{m.body}</p>
-                      </article>
-                    </div>
-                  </div>
-                </Reveal>
-              </li>
+              <Reveal key={m.year} delay={i * 0.03}>
+                <li className="founder-milestones__item flex items-center justify-between gap-4 py-3.5 md:py-4">
+                  <span className="min-w-0 text-start text-sm text-bone md:text-base">{m.title}</span>
+                  <span className="founder-milestones__rule hidden flex-1 md:block" aria-hidden />
+                  <span className="founder-milestones__year shrink-0 text-end font-display text-sm font-semibold text-gold num-latin md:text-base">
+                    {m.year}
+                  </span>
+                </li>
+              </Reveal>
             ))}
           </ol>
         </div>

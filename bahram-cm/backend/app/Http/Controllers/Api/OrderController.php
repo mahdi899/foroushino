@@ -6,6 +6,7 @@ use App\Enums\OtpPurpose;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CompleteOrderCustomerRequest;
 use App\Http\Requests\StoreOrderRequest;
+use App\Models\Order;
 use App\Models\User;
 use App\Services\Exceptions\OtpException;
 use App\Services\OrderCompletionTokenService;
@@ -131,6 +132,66 @@ class OrderController extends Controller
         }
 
         return ApiResponse::success($result);
+    }
+
+    public function paymentResultLogin(Request $request)
+    {
+        $data = $request->validate([
+            'token' => ['required', 'string', 'max:1024'],
+        ]);
+
+        $result = $this->receiptTokens->resolve((string) $data['token']);
+        if (! $result || ($result['status'] ?? '') !== 'success') {
+            return ApiResponse::error(
+                'invalid_payment_receipt',
+                'لینک نتیجه پرداخت نامعتبر یا منقضی شده است.',
+                403,
+            );
+        }
+
+        $orderNumber = (string) ($result['order_number'] ?? '');
+        if ($orderNumber === '') {
+            return ApiResponse::error('order_not_found', 'سفارش مرتبط با این پرداخت یافت نشد.', 422);
+        }
+
+        $order = Order::query()->with(['user.profile', 'product'])->where('order_number', $orderNumber)->first();
+        if (! $order || ! $order->isPaid()) {
+            return ApiResponse::error('order_not_found', 'سفارش مرتبط با این پرداخت یافت نشد.', 422);
+        }
+
+        if ($order->needsProfileCompletion()) {
+            $completionToken = $this->completionTokens->issue($order);
+
+            return ApiResponse::success([
+                'needs_profile_completion' => true,
+                'completion_token' => $completionToken,
+            ]);
+        }
+
+        $user = $order->user;
+        if (! $user || $user->is_admin) {
+            return ApiResponse::error(
+                'panel_login_unavailable',
+                'ورود خودکار به پنل برای این سفارش در دسترس نیست.',
+                422,
+            );
+        }
+
+        $this->orders->syncLinkedUserFromOrder($order);
+
+        if ($user->mobile_verified_at === null) {
+            $user->update(['mobile_verified_at' => now()]);
+        }
+
+        $user->update(['last_login_at' => now()]);
+        $this->onboarding->handleFirstLogin($user);
+
+        $token = $user->createToken('student-panel', ['student'])->plainTextToken;
+
+        return ApiResponse::success([
+            'needs_profile_completion' => false,
+            'token' => $token,
+        ]);
     }
 
     public function postPaymentResendOtp(Request $request)

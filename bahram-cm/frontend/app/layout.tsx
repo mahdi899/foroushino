@@ -17,6 +17,7 @@ import { getPublicChatbotConfig } from "@/lib/chatbot/public";
 import { EMPTY_CHATBOT_PUBLIC } from "@/lib/chatbot/types";
 import { getPublicPerfConfig } from "@/lib/cache/public";
 import { getActiveSeminarPromo } from "@/lib/services/seminarPromo";
+import { getStudentDisplayName } from "@/lib/student/displayName";
 import { getCurrentStudent } from "@/lib/student/session";
 import { StudentAuthRoot } from "@/components/student-panel/auth/StudentAuthRoot";
 import { ReferralCapture } from "@/components/commerce/ReferralCapture";
@@ -51,6 +52,7 @@ export default async function RootLayout({
   const chatbotAiAvailable = chatbotConfig.enabled && (chatbotConfig.ai_available ?? false);
   const studentUser = !isAdminRoute ? await getCurrentStudent() : null;
   const studentLoggedIn = Boolean(studentUser);
+  const studentDisplayName = studentUser ? getStudentDisplayName(studentUser) : null;
 
   if (!isBareShellRoute && (perfConfig.developer_mode || perfConfig.page_cache === false)) {
     unstable_noStore();
@@ -80,7 +82,7 @@ export default async function RootLayout({
         <ThemeBoot />
         {!isBareShellRoute ? <GrainOverlay /> : null}
         {!isBareShellRoute ? <ReferralCapture /> : null}
-        <StudentAuthRoot initialLoggedIn={studentLoggedIn}>
+        <StudentAuthRoot initialLoggedIn={studentLoggedIn} initialDisplayName={studentDisplayName}>
           <PerformanceProvider config={perfConfig}>
             <AdminAwareChrome promo={seminarPromo}>{children}</AdminAwareChrome>
           </PerformanceProvider>

@@ -34,17 +34,17 @@ class OrderService
             ]);
         }
 
-        $userId = $authenticatedUser?->id ?? $this->resolveUserId($phone);
+        $name = trim((string) ($data['customer_name'] ?? ''));
+        if ($name === '') {
+            $name = Order::PLACEHOLDER_CUSTOMER_NAME;
+        }
+
+        $userId = $authenticatedUser?->id ?? $this->resolveUserId($phone, $name);
         $this->assertSeminarPurchaseAllowed($product, $userId, $phone);
 
         $amount = (int) $product->price;
         $finalAmount = (int) $product->effective_price;
         $discountAmount = max($amount - $finalAmount, 0);
-
-        $name = trim((string) ($data['customer_name'] ?? ''));
-        if ($name === '') {
-            $name = Order::PLACEHOLDER_CUSTOMER_NAME;
-        }
 
         $this->assertReferralCodeNotSelf($data['ref'] ?? null, $authenticatedUser);
 
@@ -135,12 +135,46 @@ class OrderService
         return $order->fresh();
     }
 
+    public function syncLinkedUserFromOrder(Order $order): void
+    {
+        if (! $order->user_id) {
+            return;
+        }
+
+        $user = User::query()->with('profile')->find($order->user_id);
+        if (! $user || $user->is_admin) {
+            return;
+        }
+
+        $customerName = trim((string) $order->customer_name);
+        if ($customerName === '' || $customerName === Order::PLACEHOLDER_CUSTOMER_NAME) {
+            return;
+        }
+
+        $parts = preg_split('/\s+/', $customerName, 2) ?: [];
+        $placeholderNames = ['', 'دانشجو', Order::PLACEHOLDER_CUSTOMER_NAME];
+
+        if (in_array(trim((string) $user->name), $placeholderNames, true)) {
+            $user->update(['name' => $customerName]);
+        }
+
+        if (! $user->profile?->first_name) {
+            $user->profile()->updateOrCreate(
+                ['user_id' => $user->id],
+                array_filter([
+                    'first_name' => $parts[0] ?? null,
+                    'last_name' => $parts[1] ?? null,
+                ], fn ($v) => $v !== null && $v !== ''),
+            );
+        }
+    }
+
   /**
      * Silently links the order to a student account (creating one if
      * needed) so that a paid order can grant a course_access/panel login,
      * without changing the guest-checkout UX.
      */
-    private function resolveUserId(string $rawPhone): ?int
+    private function resolveUserId(string $rawPhone, string $customerName = ''): ?int
     {
         $mobile = Mobile::normalize($rawPhone);
 
@@ -154,11 +188,28 @@ class OrderService
             return $user->is_admin ? null : $user->id;
         }
 
+        $displayName = trim($customerName);
+        if (
+            $displayName === ''
+            || $displayName === Order::PLACEHOLDER_CUSTOMER_NAME
+            || $displayName === 'دانشجو'
+        ) {
+            $displayName = 'دانشجو';
+        }
+
         $user = User::create([
-            'name' => 'دانشجو',
+            'name' => $displayName,
             'mobile' => $mobile,
             'status' => 'active',
         ]);
+
+        if ($displayName !== 'دانشجو') {
+            $parts = preg_split('/\s+/', $displayName, 2) ?: [];
+            $user->profile()->create(array_filter([
+                'first_name' => $parts[0] ?? null,
+                'last_name' => $parts[1] ?? null,
+            ], fn ($v) => $v !== null && $v !== ''));
+        }
 
         return $user->id;
     }

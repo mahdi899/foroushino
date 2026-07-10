@@ -8,11 +8,12 @@ type OpenLoginOptions = {
 
 type StudentAuthContextValue = {
   isLoggedIn: boolean;
+  displayName: string | null;
   loginOpen: boolean;
   redirectTo: string;
   openLogin: (options?: OpenLoginOptions) => void;
   closeLogin: () => void;
-  markLoggedIn: () => void;
+  markLoggedIn: (displayName?: string) => void;
   markLoggedOut: () => void;
 };
 
@@ -21,11 +22,14 @@ const StudentAuthContext = createContext<StudentAuthContextValue | null>(null);
 export function StudentAuthProvider({
   children,
   initialLoggedIn = false,
+  initialDisplayName = null,
 }: {
   children: React.ReactNode;
   initialLoggedIn?: boolean;
+  initialDisplayName?: string | null;
 }) {
   const [isLoggedIn, setIsLoggedIn] = useState(initialLoggedIn);
+  const [displayName, setDisplayName] = useState<string | null>(initialDisplayName);
   const [loginOpen, setLoginOpen] = useState(false);
   const [redirectTo, setRedirectTo] = useState('/panel');
 
@@ -38,18 +42,21 @@ export function StudentAuthProvider({
     setLoginOpen(false);
   }, []);
 
-  const markLoggedIn = useCallback(() => {
+  const markLoggedIn = useCallback((name?: string) => {
     setIsLoggedIn(true);
+    if (name) setDisplayName(name);
     setLoginOpen(false);
   }, []);
 
   const markLoggedOut = useCallback(() => {
     setIsLoggedIn(false);
+    setDisplayName(null);
   }, []);
 
   const value = useMemo(
     () => ({
       isLoggedIn,
+      displayName,
       loginOpen,
       redirectTo,
       openLogin,
@@ -57,7 +64,7 @@ export function StudentAuthProvider({
       markLoggedIn,
       markLoggedOut,
     }),
-    [isLoggedIn, loginOpen, redirectTo, openLogin, closeLogin, markLoggedIn, markLoggedOut],
+    [isLoggedIn, displayName, loginOpen, redirectTo, openLogin, closeLogin, markLoggedIn, markLoggedOut],
   );
 
   return <StudentAuthContext.Provider value={value}>{children}</StudentAuthContext.Provider>;

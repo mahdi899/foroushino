@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2, Clock, RotateCcw, XCircle } from "lucide-react";
 import { ClearCartOnPurchase } from "@/components/commerce/ClearCartOnPurchase";
+import { PaymentResultPanelButton } from "@/components/commerce/PaymentResultPanelButton";
 import { Reveal } from "@/components/motion/Reveal";
 import { getVerifiedPaymentResult, type PaymentResultStatus } from "@/lib/checkout/paymentResult";
+import { getCurrentStudent } from "@/lib/student/session";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
@@ -48,7 +50,10 @@ export default async function PaymentResultPage({
   searchParams: Promise<{ token?: string }>;
 }) {
   const { token } = await searchParams;
-  const verified = token ? await getVerifiedPaymentResult(token) : null;
+  const [verified, student] = await Promise.all([
+    token ? getVerifiedPaymentResult(token) : Promise.resolve(null),
+    getCurrentStudent(),
+  ]);
 
   if (!verified) {
     return (
@@ -108,12 +113,7 @@ export default async function PaymentResultPage({
               ) : null}
               <div className="mt-8 flex flex-wrap justify-center gap-4">
                 {status === "success" ? (
-                  <Link
-                    href="/panel"
-                    className="neon-btn-primary inline-flex h-11 items-center justify-center rounded-pill bg-emerald px-6 font-semibold hover:bg-emerald-glow"
-                  >
-                    ورود به پنل کاربری
-                  </Link>
+                  <PaymentResultPanelButton receiptToken={token!} isLoggedIn={Boolean(student)} />
                 ) : (
                   <>
                     <Link

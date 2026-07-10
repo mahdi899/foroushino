@@ -1,19 +1,46 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BadgePercent } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { PurchaseForm } from "@/components/forms/PurchaseForm";
 import { CheckoutReferralCodeField } from "@/components/commerce/CheckoutReferralCodeField";
-import { PageHero } from "@/components/blocks/PageHero";
 import { Reveal } from "@/components/motion/Reveal";
 import { SiteImage } from "@/components/ui/SiteImage";
-import { productNeedsExtraForm } from "@/lib/checkout/productFields";
 import { getCurrentStudent, studentFetch } from "@/lib/student/session";
-import { getProductBySlug } from "@/lib/services/products";
+import { getProductBySlug, type ProductDetail } from "@/lib/services/products";
 import { formatFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
+import { sitePhotos } from "@/lib/site-photo-paths";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+const purchaseImageFallback: Record<string, string> = {
+  "campaign-writing": sitePhotos.mainPathCampaign,
+  saat: sitePhotos.mainPathSaat,
+};
+
+function purchaseProductImage(product: ProductDetail): string {
+  return product.featured_image || purchaseImageFallback[product.slug] || sitePhotos.landscapeSession;
+}
+
+function purchaseProductImageAlt(product: ProductDetail): string {
+  return product.featured_image_alt?.trim() || `کاور ${product.title}`;
+}
+
+function productHasDiscount(product: ProductDetail): boolean {
+  return product.sale_price !== null && product.effective_price < product.price;
+}
+
+function purchaseBackLink(product: ProductDetail): { href: string; label: string } {
+  if (product.landing_href) {
+    return {
+      href: product.landing_href,
+      label: product.seminar ? "بازگشت به سمینار" : "بازگشت",
+    };
+  }
+  return { href: "/", label: "بازگشت" };
+}
 
 export async function generateMetadata({
   params,
@@ -49,97 +76,111 @@ export default async function PurchasePage({
   if (!result.ok) notFound();
 
   const product = result.data;
-  const hasDiscount = product.sale_price !== null && product.effective_price < product.price;
-  const isLoggedIn = Boolean(student);
-  const needsExtra = productNeedsExtraForm(product);
+  const hasDiscount = productHasDiscount(product);
+  const totalDiscount = hasDiscount ? product.price - product.effective_price : 0;
   const seminarFull = product.seminar?.is_full ?? false;
+  const backLink = purchaseBackLink(product);
 
   return (
-    <main id="main-content" className="relative min-w-0 max-w-full">
-      <PageHero backLink={{ href: "/", label: "بازگشت" }} title="تکمیل خرید" />
+    <main id="main-content" className="relative min-w-0 w-full max-w-full overflow-x-clip pt-8 md:pt-10 lg:pt-12">
+      <section className="pb-section-sm">
+        <div className="container-luxe min-w-0 max-w-full">
+          <Link
+            href={backLink.href}
+            className="mb-5 inline-flex shrink-0 items-center gap-2 text-caption text-gold transition-colors hover:text-gold-soft md:mb-6"
+          >
+            <ArrowLeft className="rtl-flip h-3.5 w-3.5" strokeWidth={1.8} aria-hidden />
+            {backLink.label}
+          </Link>
 
-      <section className="py-section-sm">
-        <div className="container-luxe">
-          <div className="grid gap-8 md:grid-cols-12 md:gap-10">
-            <div className="md:col-span-5">
-              <Reveal>
-                <div className="neon-surface-static overflow-hidden rounded-card border border-bone/10 bg-charcoal/45">
-                  {product.featured_image ? (
-                    <div className="relative aspect-[3/2]">
-                      <SiteImage
-                        src={product.featured_image}
-                        alt={product.featured_image_alt}
-                        fallbackAlt={product.title}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 40vw"
-                        className="object-cover"
-                      />
-                    </div>
-                  ) : null}
-                  <div className="p-6 md:p-8">
+          <div className="mx-auto grid w-full min-w-0 max-w-5xl grid-cols-1 gap-6 md:grid-cols-12 md:items-stretch md:gap-8">
+            <div className="flex h-full min-w-0 flex-col md:col-span-7 md:col-start-1">
+              <Reveal className="flex min-h-0 flex-1 flex-col">
+                <article className="neon-surface-static flex h-full min-h-0 flex-col overflow-hidden rounded-card border border-bone/10 bg-charcoal/45">
+                  <div className="relative aspect-[16/10] w-full min-h-[11rem] shrink-0 sm:aspect-[16/9] sm:min-h-[13rem] md:min-h-0 md:flex-1">
+                    <SiteImage
+                      src={purchaseProductImage(product)}
+                      alt={purchaseProductImageAlt(product)}
+                      fallbackAlt={product.title}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 42vw"
+                      className="object-cover"
+                    />
+                  </div>
+
+                  <div className="flex flex-col p-5 sm:p-6 md:flex-none">
                     <h2 className="text-h3 text-balance text-bone">{product.title}</h2>
                     {product.short_description ? (
-                      <p className="mt-3 text-bone-dim">{product.short_description}</p>
-                    ) : null}
-                    <div className="mt-6 flex items-baseline gap-3">
-                      <span className="text-h2 text-bone num-latin">
-                        {formatFa(product.effective_price)}
-                      </span>
-                      <span className="text-caption text-mist">تومان</span>
-                      {hasDiscount ? (
-                        <span className="text-caption text-mist line-through">
-                          {formatFa(product.price)}
-                        </span>
-                      ) : null}
-                    </div>
-                    {hasDiscount ? (
-                      <div className="mt-3 inline-flex items-center gap-1.5 rounded-pill border border-gold/30 bg-gold/8 px-3 py-1 text-caption text-gold">
-                        <BadgePercent className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
-                        قیمت ویژه
-                      </div>
+                      <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-bone-dim md:text-base">
+                        {product.short_description}
+                      </p>
                     ) : null}
                     {product.seminar ? (
                       <p className="mt-4 text-sm text-bone-dim">
                         {seminarFull
-                          ? 'ظرفیت این سمینار تکمیل شده است.'
+                          ? "ظرفیت این سمینار تکمیل شده است."
                           : product.seminar.remaining_seats != null
                             ? `${formatFa(product.seminar.remaining_seats)} جای خالی باقی مانده`
-                            : 'ظرفیت نامحدود'}
+                            : "ظرفیت نامحدود"}
                       </p>
                     ) : null}
                   </div>
-                </div>
+                </article>
               </Reveal>
             </div>
 
-            <div className="md:col-span-7">
-              <Reveal delay={0.08}>
-                <div className="neon-surface-static rounded-card border border-bone/10 bg-charcoal/45 p-6 md:p-8">
-                  <h2 className="text-h3 text-balance text-bone">
-                    {isLoggedIn ? "پرداخت" : "شروع پرداخت"}
-                  </h2>
-                  <p className="mt-2 text-bone-dim">
-                    {seminarFull
-                      ? 'فعلاً امکان ثبت‌نام وجود ندارد.'
-                      : isLoggedIn
-                      ? needsExtra
-                        ? "در صورت نیاز فیلدهای تکمیلی را بررسی کن و به درگاه برو."
-                        : "با یک کلیک به درگاه پرداخت امن زرین‌پل منتقل می‌شوی."
-                      : "ابتدا با کد تأیید وارد می‌شوی، سپس به درگاه پرداخت منتقل می‌شوی."}
-                  </p>
+            <div className="flex h-full min-w-0 flex-col md:col-span-5 md:col-start-8">
+              <Reveal delay={0.08} className="flex h-full min-h-0 flex-col">
+                <aside className="neon-surface-static flex h-full min-h-0 w-full flex-col rounded-card border border-bone/10 bg-charcoal/45 p-5 sm:p-6 md:sticky md:top-24 md:p-6">
+                  <h2 className="text-h3 text-bone">خلاصه سفارش</h2>
+
+                  <CheckoutReferralCodeField ownReferralCode={ownReferralCode} />
+
+                  <ul className="mt-5 space-y-3 border-b border-bone/10 pb-5">
+                    <li className="flex w-full min-w-0 items-start justify-between gap-4 text-sm">
+                      <span className="min-w-0 flex-1 leading-relaxed text-bone-dim">{product.title}</span>
+                      <span className="shrink-0 text-end whitespace-nowrap">
+                        <span className="block text-bone num-latin">{formatFa(product.effective_price)}</span>
+                        {hasDiscount ? (
+                          <span className="mt-0.5 block text-caption text-mist line-through num-latin">
+                            {formatFa(product.price)}
+                          </span>
+                        ) : null}
+                      </span>
+                    </li>
+                  </ul>
+
+                  {hasDiscount ? (
+                    <div className="mt-5 space-y-2 border-b border-bone/10 pb-5 text-sm">
+                      <div className="flex items-center justify-between gap-4 text-bone-dim">
+                        <span>قیمت اصلی</span>
+                        <span className="num-latin line-through">{formatFa(product.price)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-4 text-gold">
+                        <span>تخفیف</span>
+                        <span className="num-latin">−{formatFa(totalDiscount)}</span>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="mt-5 flex w-full min-w-0 items-center justify-between gap-4">
+                    <span className="shrink-0 text-bone">جمع کل</span>
+                    <div className="text-end">
+                      <span className="text-h2 text-bone num-latin">{formatFa(product.effective_price)}</span>
+                      <span className="ms-2 text-caption text-mist">تومان</span>
+                    </div>
+                  </div>
+
                   {seminarFull ? (
-                    <div className="mt-6 rounded-tile border border-gold/30 bg-gold/8 px-4 py-4 text-sm text-gold">
+                    <div className="mt-auto rounded-tile border border-gold/30 bg-gold/8 px-4 py-4 text-sm text-gold">
                       ظرفیت سمینار تکمیل شده و امکان خرید وجود ندارد.
                     </div>
                   ) : (
-                    <>
-                  <CheckoutReferralCodeField ownReferralCode={ownReferralCode} />
-                  <div className="mt-6">
-                    <PurchaseForm product={product} student={student} />
-                  </div>
-                    </>
+                    <div className="mt-auto w-full min-w-0 pt-6">
+                      <PurchaseForm product={product} student={student} />
+                    </div>
                   )}
-                </div>
+                </aside>
               </Reveal>
             </div>
           </div>
