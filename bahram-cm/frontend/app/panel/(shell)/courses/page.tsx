@@ -4,6 +4,7 @@ import {
   CourseAccessCard,
   type StudentCourseAccess,
 } from '@/components/student-panel/courses/CourseAccessCard';
+import { MiniCourseAccessCard } from '@/components/student-panel/courses/MiniCourseAccessCard';
 import { CourseSideModules } from '@/components/student-panel/courses/CourseSideModules';
 import { PanelPageHeader } from '@/components/student-panel/layout/PanelPageHeader';
 import { panelStudentFetch } from '@/lib/student/panelServer';
@@ -35,6 +36,15 @@ export const metadata: Metadata = {
 export default async function PanelCoursesPage() {
   const response = await panelStudentFetch<{ data: StudentCourseAccess[] }>('/courses');
   const courses = Array.isArray(response.data) ? response.data.filter(isActiveCourse) : [];
+  const mainCourses = courses.filter((course) => course.course_type !== 'mini');
+  const miniCourses = courses.filter((course) => course.course_type === 'mini');
+
+  const description =
+    mainCourses.length > 0 && miniCourses.length > 0
+      ? `${mainCourses.length.toLocaleString('fa-IR')} دوره اصلی و ${miniCourses.length.toLocaleString('fa-IR')} مینی‌دوره`
+      : mainCourses.length > 0
+        ? `${mainCourses.length.toLocaleString('fa-IR')} دوره با دسترسی فعال`
+        : `${miniCourses.length.toLocaleString('fa-IR')} مینی‌دوره فعال`;
 
   if (courses.length === 0) {
     return (
@@ -62,12 +72,27 @@ export default async function PanelCoursesPage() {
       <PanelPageHeader
         icon={BookOpen}
         title="دوره‌های من"
-        description={`${courses.length.toLocaleString('fa-IR')} دوره با دسترسی فعال`}
+        description={description}
       />
 
-      <div className="panel-card-grid">
-        {renderCourseCards(courses)}
-      </div>
+      {mainCourses.length > 0 ? (
+        <div className="panel-card-grid">{renderMainCourseCards(mainCourses)}</div>
+      ) : null}
+
+      {miniCourses.length > 0 ? (
+        <section className="panel-mini-course-section">
+          <header className="panel-mini-course-section__header">
+            <h2 className="panel-mini-course-section__title">مینی‌دوره‌های رایگان</h2>
+          </header>
+          <ul className="panel-mini-course-list">
+            {miniCourses.map((course) => (
+              <li key={course.list_key ?? `mini-${course.product?.slug}`}>
+                <MiniCourseAccessCard course={course} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <CourseSideModules />
 
@@ -81,7 +106,7 @@ export default async function PanelCoursesPage() {
   );
 }
 
-function renderCourseCards(courses: StudentCourseAccess[]) {
+function renderMainCourseCards(courses: StudentCourseAccess[]) {
   const seenLicenseKeys = new Set<string>();
 
   return courses.map((course) => {
