@@ -85,6 +85,21 @@ class ContentPublishService
         );
     }
 
+    public function revalidateMiniCourses(?string $slug = null, ?string $previousSlug = null): void
+    {
+        $paths = ['/courses', '/mini-courses', '/sitemap.xml'];
+        foreach (array_filter([$slug, $previousSlug]) as $s) {
+            $paths[] = '/mini-courses/'.$s;
+        }
+
+        $this->purge(
+            'ذخیره مینی‌دوره',
+            ['mini-courses', 'public-mini-courses'],
+            array_values(array_unique($paths)),
+            fn () => $this->forgetMiniCourseRuntimeCache($slug, $previousSlug),
+        );
+    }
+
     public function revalidateSiteSettings(string $group): void
     {
         if ($group === 'cache') {
@@ -177,6 +192,16 @@ class ContentPublishService
 
         foreach ($categories as $category) {
             RuntimeCache::forget("public.faqs.{$category}");
+        }
+    }
+
+    private function forgetMiniCourseRuntimeCache(?string $slug, ?string $previousSlug = null): void
+    {
+        RuntimeCache::forget('public_mini_courses:index');
+
+        foreach (array_filter([$slug, $previousSlug]) as $s) {
+            RuntimeCache::forget('public_mini_courses:show:'.$s);
+            RuntimeCache::forget('public_mini_courses:comments:'.$s);
         }
     }
 }

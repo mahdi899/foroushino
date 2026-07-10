@@ -32,6 +32,8 @@ use App\Http\Controllers\Api\V1\SmsSpotplayerCredentialsController;
 use App\Http\Controllers\Api\V1\MediaConfigController;
 use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\MediaOptimizeController;
+use App\Http\Controllers\Api\V1\MiniCourseCommentController;
+use App\Http\Controllers\Api\V1\MiniCourseController;
 use App\Http\Controllers\Api\V1\SettingController;
 use App\Http\Controllers\Api\V1\Student\AuthController as StudentAuthController;
 use App\Http\Controllers\Api\V1\Student\CashbackPayoutController as StudentCashbackPayoutController;
@@ -191,6 +193,17 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('student-testimonials/{studentTestimonial}', [StudentTestimonialController::class, 'show'])->whereNumber('studentTestimonial');
     Route::match(['put', 'patch'], 'student-testimonials/{studentTestimonial}', [StudentTestimonialController::class, 'update'])->whereNumber('studentTestimonial');
     Route::delete('student-testimonials/{studentTestimonial}', [StudentTestimonialController::class, 'destroy'])->whereNumber('studentTestimonial');
+
+    Route::get('mini-courses', [MiniCourseController::class, 'index']);
+    Route::post('mini-courses', [MiniCourseController::class, 'store']);
+    Route::get('mini-courses/{miniCourse}', [MiniCourseController::class, 'show'])->whereNumber('miniCourse');
+    Route::match(['put', 'patch'], 'mini-courses/{miniCourse}', [MiniCourseController::class, 'update'])->whereNumber('miniCourse');
+    Route::delete('mini-courses/{miniCourse}', [MiniCourseController::class, 'destroy'])->whereNumber('miniCourse');
+    Route::get('mini-courses/{miniCourse}/comments', [MiniCourseCommentController::class, 'index'])->whereNumber('miniCourse');
+    Route::match(['put', 'patch'], 'mini-courses/{miniCourse}/comments/{comment}', [MiniCourseCommentController::class, 'update'])
+        ->whereNumber(['miniCourse', 'comment']);
+    Route::delete('mini-courses/{miniCourse}/comments/{comment}', [MiniCourseCommentController::class, 'destroy'])
+        ->whereNumber(['miniCourse', 'comment']);
 
     Route::get('panel/payment-settings', [CommercePaymentSettingsController::class, 'show']);
     Route::put('panel/payment-settings', [CommercePaymentSettingsController::class, 'update']);
