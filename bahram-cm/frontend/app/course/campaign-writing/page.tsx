@@ -5,10 +5,8 @@ import { buildMetadata } from "@/lib/seo";
 import {
   ArrowLeft,
   Award,
-  BookOpen,
   Check,
   CheckCircle2,
-  Clock,
   Compass,
   Eye,
   GraduationCap,
@@ -20,7 +18,6 @@ import {
   Repeat2,
   Route,
   Sparkles,
-  Target,
   UserSearch,
   Users,
   X,
@@ -36,8 +33,8 @@ import { FeatureCard } from "@/components/ui/FeatureCard";
 import { IconLabel } from "@/components/ui/IconLabel";
 import { IconTile } from "@/components/ui/IconTile";
 import { PhotoFrame } from "@/components/ui/PhotoFrame";
-import { PageHeroBackdrop } from "@/components/blocks/PageHeroBackdrop";
 import { CampaignWritingSocialProof } from "@/components/sections/CampaignWritingSocialProof";
+import { CampaignFaqPortraitSlider } from "@/components/sections/CampaignFaqPortraitSlider";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { cn } from "@/lib/cn";
 import { resolveMediaAlt } from "@/lib/media/alt";
@@ -239,83 +236,131 @@ export default async function CourseCampaignWritingPage() {
   const originalPriceLabel =
     hasDiscount && product ? `${formatFa(product.price)} تومان` : null;
   const priceLabel = `${formatFa(coursePrice)} تومان`;
-  const purchaseSummary =
-    product?.short_description?.trim() ||
-    `${toPersianDigits(String(SECTION_COUNT))} بخش عملی — از شناخت مشتری تا طراحی یک کمپین واقعی.`;
+  const discountPercent =
+    hasDiscount && product
+      ? Math.round(((product.price - coursePrice) / product.price) * 100)
+      : null;
   const heroAlt = await resolveMediaAlt(pageHeroBackdropPhoto, "دوره کمپین‌نویسی");
+  const faqSliderPhotos = await Promise.all(
+    [
+      sitePhotos.testimonialPortrait[0]!,
+      sitePhotos.testimonialPortrait[1]!,
+      sitePhotos.testimonialPortrait[2]!,
+      sitePhotos.manifestoPortraitA,
+      sitePhotos.manifestoPortraitB,
+    ].map((src, i) => resolveMediaAlt(src, `دانشجوی دوره کمپین‌نویسی ${i + 1}`).then((alt) => ({ src, alt }))),
+  );
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip pb-20 md:pb-0">
-      {/* 1. HERO */}
-      <section className="relative isolate overflow-hidden bg-ink">
-        <PageHeroBackdrop src={pageHeroBackdropPhoto} alt={heroAlt} priority />
-        <div className="container-luxe relative z-[2] min-w-0 py-10 sm:py-14 md:py-20 lg:py-24">
-          <div className="grid min-w-0 items-center gap-7 sm:gap-8 md:grid-cols-12 md:gap-10 lg:gap-16">
-            <div className="min-w-0 text-center max-md:order-2 md:col-span-6 md:text-start">
-              <Reveal>
-                <Eyebrow>دوره حرفه‌ای</Eyebrow>
-              </Reveal>
-              <Reveal delay={0.08}>
-                <h1 className="mt-4 max-w-xl text-[clamp(1.875rem,7vw,2.75rem)] font-display leading-[1.15] text-balance md:mt-6 md:text-h1 lg:text-display">
-                  دوره کمپین‌نویسی
+      {/* 1. HERO — full-width photo + purchase CTA */}
+      <section className="campaign-course-hero relative isolate w-full overflow-hidden bg-ink">
+        <div className="relative aspect-[16/9] w-full min-h-[min(62vw,16rem)] sm:min-h-[18rem] md:min-h-[22rem] lg:min-h-[min(42vw,28rem)]">
+          <SiteImage
+            src={pageHeroBackdropPhoto}
+            alt={heroAlt}
+            fill
+            priority
+            className="object-cover object-center"
+            sizes="100vw"
+          />
+          <div aria-hidden className="photo-scrim-bottom-half" />
+          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center overflow-visible px-4 pb-6 pt-24 sm:pb-8 sm:pt-28 md:pb-10 md:pt-32">
+            <div className="campaign-course-hero-headline-outer">
+              <div className="campaign-course-hero-headline-wrap">
+                <h1 className="campaign-course-hero-headline">
+                  <span className="campaign-course-hero-eyebrow">دوره</span>
+                  <span className="campaign-course-hero-title">شغل کمپین نویسی</span>
                 </h1>
-              </Reveal>
-              <Reveal delay={0.14}>
-                <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-bone-dim sm:mt-5 md:mx-0 md:text-body">
-                  یاد بگیر چطور تبلیغ بنویسی که بفروشد — از شناخت مشتری تا پیام، پیشنهاد و
-                  پیگیری.
-                </p>
-              </Reveal>
-
-              <Reveal delay={0.2}>
-                <div className="mx-auto mt-6 flex flex-wrap items-center justify-center gap-2 sm:mt-7 md:mx-0 md:justify-start">
-                  <Badge tone="gold">
-                    <BookOpen className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
-                    {toPersianDigits(String(SECTION_COUNT))} بخش
-                  </Badge>
-                  <Badge tone="emerald">
-                    <Target className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
-                    مهارت درآمدزا
-                  </Badge>
-                  <Badge tone="neutral">
-                    <Clock className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
-                    تمرین عملی
-                  </Badge>
-                </div>
-              </Reveal>
-
-              <Reveal delay={0.26}>
-                <div className="mx-auto mt-7 sm:mt-8 md:mx-0">
-                  <LinkButton
-                    href="#curriculum"
-                    variant="ghost"
-                    size="lg"
-                    withArrow
-                    className={cn(
-                      "w-full min-w-0 sm:w-auto",
-                      "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm",
-                    )}
-                  >
-                    مشاهده سرفصل‌ها
-                  </LinkButton>
-                </div>
-              </Reveal>
+              </div>
             </div>
+            <div className="flex w-full max-w-lg flex-col gap-3 sm:max-w-xl sm:flex-row sm:items-stretch sm:justify-center md:max-w-2xl md:gap-4">
+              <AddToCartButton
+                productSlug={CAMPAIGN_WRITING_SLUG}
+                location="campaign_writing_hero"
+                variant="vip"
+                withArrow
+                size="lg"
+                className="h-12 min-h-12 w-full px-8 text-base font-bold shadow-gold sm:flex-1 sm:max-w-xs md:h-14 md:min-h-14 md:px-10 md:text-lg"
+              >
+                خرید
+              </AddToCartButton>
+              <LinkButton
+                href="#curriculum"
+                variant="ghost"
+                size="lg"
+                withArrow
+                className={cn(
+                  "h-12 min-h-12 w-full border-white/25 bg-black/30 text-white backdrop-blur-md",
+                  "hover:border-white/40 hover:bg-white/10 hover:text-white",
+                  "sm:flex-1 sm:max-w-xs md:h-14 md:min-h-14",
+                )}
+              >
+                مشاهده سرفصل‌ها
+              </LinkButton>
+            </div>
+          </div>
+        </div>
+      </section>
 
-            <div className="min-w-0 max-md:order-1 md:col-span-6">
-              <Reveal delay={0.12}>
-                <HeroPurchaseCard
-                  priceLabel={priceLabel}
-                  originalPriceLabel={originalPriceLabel}
-                  summary={purchaseSummary}
-                />
+      {/* 2. COURSE INTRO — price + highlights, open layout */}
+      <section
+        id="hero-purchase"
+        className="campaign-course-intro relative scroll-mt-20 overflow-visible bg-ink py-12 sm:py-16 md:py-20 lg:py-24"
+      >
+        <div aria-hidden className="campaign-course-intro-glow" />
+        <div className="container-luxe relative z-[1] min-w-0">
+          <div className="campaign-course-intro-layout">
+            <div className="campaign-course-intro-cluster">
+              <Reveal delay={0.1}>
+                <div className="campaign-course-intro-income-wrap">
+                  <p className="campaign-course-intro-income">
+                    <span className="campaign-course-intro-income__lead">درآمد</span>
+                    <span className="campaign-course-intro-income__range">
+                      {toPersianDigits("21")} تا {toPersianDigits("80")} میلیون
+                    </span>
+                    <span className="campaign-course-intro-income__tail">در ماه</span>
+                  </p>
+                  <p className="campaign-course-intro-students">
+                    <span className="campaign-course-intro-students__plus" aria-hidden>
+                      +
+                    </span>
+                    <span className="campaign-course-intro-students__count">
+                      {toPersianDigits("20")} هزار
+                    </span>
+                    <span className="campaign-course-intro-students__label">دانشجو</span>
+                  </p>
+                </div>
+              </Reveal>
+
+              <Reveal delay={0.16}>
+                <div className="campaign-course-intro-price">
+                  {discountPercent ? (
+                    <div className="campaign-course-intro-price-ribbon">
+                      {toPersianDigits(String(discountPercent))}٪ تخفیف ویژه
+                    </div>
+                  ) : null}
+
+                  <div className="campaign-course-intro-price-body">
+                    {originalPriceLabel ? (
+                      <p className="campaign-course-intro-was num-latin">{originalPriceLabel}</p>
+                    ) : null}
+
+                    <p className="campaign-course-intro-now">
+                      <span className="campaign-course-intro-now__amount num-latin">
+                        {formatFa(coursePrice)}
+                      </span>
+                      <span className="campaign-course-intro-now__unit">تومان</span>
+                    </p>
+                  </div>
+                </div>
               </Reveal>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 2. PROBLEM */}
+      {/* 3. PROBLEM */}
       <ImageSplitSection
         eyebrow="معرفی مسئله"
         title="مشکل از نبود تبلیغ نیست؛ مشکل از نبود برنامه فروش است"
@@ -594,92 +639,62 @@ export default async function CourseCampaignWritingPage() {
       <CampaignWritingSocialProof />
 
       {/* 10. FAQ */}
-      <section className="bg-obsidian py-10 md:py-section-sm">
+      <section className="bg-obsidian py-10 md:py-section-sm lg:py-section">
         <div className="container-luxe min-w-0">
-          <Reveal>
-            <Eyebrow>سوالات متداول</Eyebrow>
-          </Reveal>
-          <Reveal delay={0.08}>
-            <h2 className="mt-3 max-w-3xl text-h2 text-balance md:mt-5">
-              سؤال‌های مهم قبل از ثبت‌نام
-            </h2>
-          </Reveal>
-          <div className="mt-6 md:mt-10">
-            <Reveal>
-              <Accordion items={faqs} />
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* ENROLL + 11. FINAL CTA */}
-      <section id="enroll" className="scroll-mt-20 py-10 md:py-section-sm lg:py-section">
-        <div className="container-luxe min-w-0">
-          <div className="mx-auto max-w-2xl text-center">
-            <Reveal>
-              <Eyebrow className="justify-center">ثبت درخواست</Eyebrow>
-            </Reveal>
-            <Reveal delay={0.08}>
-              <h2 className="mt-3 text-h2 text-balance md:mt-5">
-                آماده‌ای کمپین‌نویسی را جدی یاد بگیری؟
-              </h2>
-            </Reveal>
-            <Reveal delay={0.14}>
-              <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-bone-dim md:text-body">
-                اگر آماده‌ای کمپین‌نویسی را جدی یاد بگیری و ازش درآمد بسازی، همین الان
-                ثبت‌نام کن.
-              </p>
-            </Reveal>
-          </div>
-
-          <div className="mt-8 md:mt-10">
-            <Reveal delay={0.1}>
-              <div className="mx-auto max-w-2xl">
-                <EnrollCard priceLabel={priceLabel} />
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-obsidian pb-10 md:pb-section-sm lg:pb-section-xl">
-        <div className="container-luxe min-w-0">
-          <div className="neon-cta-slab relative overflow-hidden rounded-card border border-emerald/25 bg-gradient-to-b from-emerald-deep/40 via-charcoal/70 to-ink p-4 sm:p-8 md:p-14">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_70%_at_85%_10%,rgba(0,140,150,0.22),transparent_70%)]"
-            />
-            <div className="relative flex flex-col items-center gap-5 text-center sm:gap-6 md:items-start md:text-start">
-              <IconTile icon={Compass} tone="gold" size="lg" />
-              <h2 className="max-w-2xl text-[clamp(1.25rem,5.5vw,1.75rem)] font-display leading-snug text-balance sm:text-h3 md:text-h2">
-                قدم بعدی با توست
-              </h2>
-              <p className="max-w-xl text-sm leading-relaxed text-bone-dim md:text-body">
-                یک درخواست ورود ثبت کن و یادگیری کمپین‌نویسی را شروع کن.
-              </p>
-              <div className="mt-1 flex w-full max-w-sm flex-col gap-2.5 sm:mt-2 md:max-w-none md:flex-row md:flex-wrap md:items-center md:gap-4">
-                <AddToCartButton
-                  productSlug={CAMPAIGN_WRITING_SLUG}
-                  location="campaign_writing_final_cta"
-                  variant="primary"
-                  size="lg"
-                  withArrow
-                  className={cn(
-                    "w-full min-w-0 md:w-auto",
-                    "max-lg:h-11 max-lg:min-h-11 max-lg:text-sm",
-                  )}
-                >
-                  ثبت درخواست ورود
-                </AddToCartButton>
-                <a
-                  href="#curriculum"
-                  className="inline-flex w-full items-center justify-center gap-2 py-2 text-sm text-gold transition-colors hover:text-gold-soft md:w-auto md:justify-start md:py-0"
-                >
-                  مرور سرفصل‌ها
-                  <ArrowLeft className="rtl-flip h-4 w-4 shrink-0" aria-hidden />
-                </a>
+          <div className="grid min-w-0 items-start gap-10 md:grid-cols-12 md:gap-10 lg:items-center lg:gap-14">
+            <div className="min-w-0 md:col-span-7">
+              <Reveal>
+                <Eyebrow>سوالات متداول</Eyebrow>
+              </Reveal>
+              <Reveal delay={0.08}>
+                <h2 className="mt-3 max-w-3xl text-h2 text-balance md:mt-5">
+                  سؤال‌های مهم قبل از ثبت‌نام
+                </h2>
+              </Reveal>
+              <div className="mt-6 md:mt-10">
+                <Reveal delay={0.12}>
+                  <Accordion items={faqs} />
+                </Reveal>
               </div>
             </div>
+
+            <div className="min-w-0 md:col-span-5">
+              <Reveal delay={0.16}>
+                <CampaignFaqPortraitSlider slides={faqSliderPhotos} />
+              </Reveal>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ENROLL */}
+      <section
+        id="enroll"
+        className="campaign-course-enroll relative scroll-mt-20 overflow-visible bg-ink py-12 sm:py-16 md:py-20 lg:py-24"
+      >
+        <div aria-hidden className="campaign-course-enroll-glow" />
+        <div className="container-luxe relative z-[1] min-w-0">
+          <div className="campaign-course-enroll-layout">
+            <Reveal>
+              <div className="campaign-course-enroll-copy">
+                <Eyebrow className="justify-center">ثبت‌نام</Eyebrow>
+                <h2 className="mt-3 text-h2 text-balance md:mt-4">
+                  آماده‌ای کمپین‌نویسی را جدی یاد بگیری؟
+                </h2>
+                <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-bone-dim md:text-body">
+                  {toPersianDigits(String(SECTION_COUNT))} بخش عملی — از شناخت مشتری تا طراحی
+                  کمپین واقعی.
+                </p>
+              </div>
+            </Reveal>
+
+            <Reveal delay={0.1}>
+              <EnrollCard
+                coursePrice={coursePrice}
+                originalPriceLabel={originalPriceLabel}
+                discountPercent={discountPercent}
+              />
+            </Reveal>
           </div>
         </div>
       </section>
@@ -706,78 +721,6 @@ function SectionAnswer({ description, topics }: { description: string; topics: s
         ))}
       </ul>
     </div>
-  );
-}
-
-function HeroPurchaseCard({
-  priceLabel,
-  originalPriceLabel,
-  summary,
-}: {
-  priceLabel: string;
-  originalPriceLabel: string | null;
-  summary: string;
-}) {
-  const perks = [
-    `${toPersianDigits(String(SECTION_COUNT))} بخش آموزشی`,
-    "تمرین عملی",
-    "مهارت درآمدزای کمپین‌نویسی",
-  ];
-
-  return (
-    <article
-      id="hero-purchase"
-      data-neon-tone="emerald"
-      className="neon-cta-slab relative mx-auto w-full max-w-md overflow-hidden rounded-card-lg border border-emerald/40 bg-gradient-to-b from-emerald-deep/35 via-charcoal/70 to-ink p-5 sm:p-6 md:mx-0 md:max-w-none md:p-7"
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_60%_at_85%_5%,rgba(0,140,150,0.22),transparent_70%)]"
-      />
-      <div className="relative">
-        <Badge tone="emerald">ثبت‌نام دوره</Badge>
-        <p className="mt-4 text-sm font-medium text-bone">دوره کمپین‌نویسی</p>
-
-        <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <p className="text-[clamp(1.5rem,6vw,2rem)] font-semibold leading-tight text-bone num-latin">
-            {priceLabel}
-          </p>
-          {originalPriceLabel ? (
-            <p className="text-sm text-mist line-through num-latin">{originalPriceLabel}</p>
-          ) : null}
-        </div>
-
-        <p className="mt-3 text-sm leading-relaxed text-bone-dim md:text-base">{summary}</p>
-
-        <ul className="mt-4 space-y-2 border-t border-bone/10 pt-4">
-          {perks.map((item) => (
-            <li key={item} className="flex items-start gap-2.5 text-sm text-bone-dim">
-              <CheckCircle2
-                className="mt-0.5 h-4 w-4 shrink-0 text-emerald-glow"
-                strokeWidth={1.6}
-                aria-hidden
-              />
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-
-        <AddToCartButton
-          productSlug={CAMPAIGN_WRITING_SLUG}
-          location="campaign_writing_hero"
-          variant="sales"
-          withArrow
-          size="lg"
-          className="relative mt-6 w-full max-lg:h-11 max-lg:min-h-11 max-lg:text-sm"
-        >
-          ثبت درخواست ورود
-        </AddToCartButton>
-
-        <p className="mt-3 text-center text-caption text-mist">
-          با یک کلیک وارد مراحل خرید می‌شوی.
-        </p>
-      </div>
-    </article>
   );
 }
 
@@ -856,36 +799,47 @@ function ImageSplitSection({
   );
 }
 
-function EnrollCard({ priceLabel }: { priceLabel: string }) {
+function EnrollCard({
+  coursePrice,
+  originalPriceLabel,
+  discountPercent,
+}: {
+  coursePrice: number;
+  originalPriceLabel: string | null;
+  discountPercent: number | null;
+}) {
   return (
-    <article
-      data-neon-tone="emerald"
-      className="neon-cta-slab relative overflow-hidden rounded-card-lg border border-emerald/40 bg-gradient-to-b from-emerald-deep/35 via-charcoal/65 to-ink p-5 sm:p-7 md:p-8"
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_60%_at_85%_5%,rgba(0,140,150,0.22),transparent_70%)]"
-      />
-      <div className="relative text-center">
-        <Badge tone="emerald">دوره کمپین‌نویسی</Badge>
-        <p className="relative mt-5 break-words text-[clamp(1.25rem,5vw,1.875rem)] font-semibold leading-tight text-bone num-latin">
-          {priceLabel}
+    <div className="campaign-course-intro-price campaign-course-enroll-price">
+      {discountPercent ? (
+        <div className="campaign-course-intro-price-ribbon">
+          {toPersianDigits(String(discountPercent))}٪ تخفیف ویژه
+        </div>
+      ) : null}
+
+      <div className="campaign-course-intro-price-body">
+        {originalPriceLabel ? (
+          <p className="campaign-course-intro-was num-latin">{originalPriceLabel}</p>
+        ) : null}
+
+        <p className="campaign-course-intro-now">
+          <span className="campaign-course-intro-now__amount num-latin">
+            {formatFa(coursePrice)}
+          </span>
+          <span className="campaign-course-intro-now__unit">تومان</span>
         </p>
-        <p className="mt-2 text-sm text-bone-dim md:text-base">
-          {toPersianDigits(String(SECTION_COUNT))} بخش — از شناخت مشتری تا طراحی کمپین واقعی.
-        </p>
+
         <AddToCartButton
           productSlug={CAMPAIGN_WRITING_SLUG}
           location="campaign_writing_enroll"
-          variant="sales"
+          variant="vip"
           withArrow
           size="lg"
-          className="relative mx-auto mt-7 w-full max-w-xs md:mt-8"
+          className="campaign-course-price-cta h-12 min-h-12 w-full font-bold shadow-gold md:h-14 md:min-h-14"
         >
-          ثبت درخواست ورود
+          خرید
         </AddToCartButton>
       </div>
-    </article>
+    </div>
   );
 }
 
@@ -904,7 +858,7 @@ function MobileStickyEnroll({ priceLabel }: { priceLabel: string }) {
           size="md"
           className="shrink-0"
         >
-          درخواست ورود
+          خرید
         </AddToCartButton>
       </div>
     </div>
