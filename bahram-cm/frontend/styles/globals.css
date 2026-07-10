@@ -3033,19 +3033,92 @@ html[data-theme="light"] .main-path-card-featured-badge {
   background:
     radial-gradient(
       ellipse 42% 80% at 14% 0%,
-      color-mix(in oklab, var(--color-emerald-glow) 11%, transparent),
+      color-mix(in oklab, var(--color-emerald-glow) 6%, transparent),
       transparent 72%
     ),
     radial-gradient(
       ellipse 42% 80% at 86% 0%,
-      color-mix(in oklab, var(--color-gold) 10%, transparent),
+      color-mix(in oklab, var(--color-gold) 5%, transparent),
       transparent 72%
     );
-  opacity: 0.8;
+  opacity: 0.45;
 }
 
 html[data-theme="light"] .mini-courses-section-ambient {
-  opacity: 0.5;
+  opacity: 0.28;
+}
+
+html:not([data-theme="light"]) .mini-course-card--compact {
+  border: 1px solid color-mix(in oklab, var(--color-bone) 6%, transparent);
+  background-color: color-mix(in oklab, var(--color-charcoal) 28%, transparent);
+  box-shadow: none;
+}
+
+html:not([data-theme="light"]) .mini-course-card--compact:hover {
+  transform: none;
+  border-color: color-mix(in oklab, var(--color-bone) 10%, transparent);
+  background-color: color-mix(in oklab, var(--color-charcoal) 36%, transparent);
+}
+
+html:not([data-theme="light"]) .mini-course-card--compact[data-mini-tone="gold"],
+html:not([data-theme="light"]) .mini-course-card--compact[data-mini-tone="teal"],
+html:not([data-theme="light"]) .mini-course-card--compact[data-mini-tone="gold"]:hover,
+html:not([data-theme="light"]) .mini-course-card--compact[data-mini-tone="teal"]:hover {
+  box-shadow: none;
+  transform: none;
+}
+
+html[data-theme="light"] .mini-course-card--compact {
+  border: 1px solid color-mix(in oklab, var(--color-emerald) 8%, transparent);
+  background: color-mix(in oklab, white 72%, transparent);
+  box-shadow: none;
+}
+
+html[data-theme="light"] .mini-course-card--compact:hover {
+  transform: none;
+  border-color: color-mix(in oklab, var(--color-emerald) 12%, transparent);
+  box-shadow: none;
+}
+
+.mini-course-card-play--compact::before {
+  width: 1.85rem;
+  height: 1.85rem;
+  border-color: rgba(234, 251, 251, 0.2);
+  background: rgba(2, 6, 7, 0.34);
+  box-shadow: none;
+}
+
+.mini-course-card--compact:hover .mini-course-card-play--compact::before {
+  transform: none;
+  background: rgba(2, 6, 7, 0.42);
+}
+
+.mini-course-card-free--compact {
+  top: 0.5rem;
+  inset-inline-start: 0.5rem;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.mini-course-card-body--compact {
+  border-top: 1px solid color-mix(in oklab, var(--color-bone) 7%, transparent);
+}
+
+html[data-theme="light"] .mini-course-card-body--compact {
+  border-top-color: color-mix(in oklab, var(--color-emerald) 10%, transparent);
+}
+
+html[data-theme="light"] .mini-course-card-arrow {
+  border-color: color-mix(in oklab, var(--color-emerald) 12%, transparent);
+  background: color-mix(in oklab, white 70%, transparent);
+  color: var(--color-mist);
+}
+
+html[data-theme="light"] .mini-course-card--compact:hover .mini-course-card-arrow {
+  border-color: color-mix(in oklab, var(--color-emerald) 18%, transparent);
+  background: color-mix(in oklab, white 88%, transparent);
+  color: var(--color-emerald-deep);
 }
 
 html:not([data-theme="light"]) .mini-course-card {

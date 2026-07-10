@@ -7,7 +7,7 @@ import {
   submitMiniCourseComment,
   type MiniCourseCommentRecord,
 } from '@/lib/services/miniCourses.client';
-import { formatPanelFa } from '@/lib/persian';
+import { formatDateFa } from '@/lib/persian';
 
 function CommentItem({ comment, depth = 0 }: { comment: MiniCourseCommentRecord; depth?: number }) {
   return (
@@ -17,7 +17,7 @@ function CommentItem({ comment, depth = 0 }: { comment: MiniCourseCommentRecord;
           <p className="font-medium text-bone">{comment.author_name}</p>
           {comment.created_at ? (
             <time className="text-caption text-mist" dateTime={comment.created_at}>
-              {formatPanelFa(comment.created_at)}
+              {formatDateFa(comment.created_at)}
             </time>
           ) : null}
         </header>
