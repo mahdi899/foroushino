@@ -1941,6 +1941,31 @@ html[data-theme="light"] .photo-scrim-bottom-caption {
   );
 }
 
+.photo-scrim-bottom-half {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(5, 10, 11, 0.82) 0%,
+    rgba(5, 10, 11, 0.48) 28%,
+    rgba(5, 10, 11, 0.22) 42%,
+    rgba(5, 10, 11, 0.06) 48%,
+    transparent 50%
+  );
+}
+
+html[data-theme="light"] .photo-scrim-bottom-half {
+  background: linear-gradient(
+    to top,
+    rgba(5, 10, 11, 0.72) 0%,
+    rgba(5, 10, 11, 0.38) 28%,
+    rgba(5, 10, 11, 0.16) 42%,
+    rgba(5, 10, 11, 0.04) 48%,
+    transparent 50%
+  );
+}
+
 .main-path-card-media-scrim {
   pointer-events: none;
   position: absolute;
