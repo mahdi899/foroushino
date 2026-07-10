@@ -21,7 +21,9 @@ import { getCurrentStudent } from "@/lib/student/session";
 import { StudentAuthRoot } from "@/components/student-panel/auth/StudentAuthRoot";
 import { ReferralCapture } from "@/components/commerce/ReferralCapture";
 import { GrainOverlay } from "@/components/motion/GrainOverlay";
-import { ThemeBootScript } from "@/components/theme/ThemeBootScript";
+import { cookies } from "next/headers";
+import { ThemeBoot } from "@/components/theme/ThemeBoot";
+import { DEFAULT_SITE_THEME, SITE_THEME_COOKIE_KEY, parseSiteTheme } from "@/lib/site-theme";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = defaultMetadata;
@@ -54,16 +56,19 @@ export default async function RootLayout({
     unstable_noStore();
   }
 
+  const initialTheme =
+    parseSiteTheme((await cookies()).get(SITE_THEME_COOKIE_KEY)?.value) ?? DEFAULT_SITE_THEME;
+
   return (
     <html
       lang="fa"
       dir="rtl"
+      data-theme={initialTheme}
       data-scroll-behavior="smooth"
       className={fontVariable}
       suppressHydrationWarning
     >
       <head>
-        <ThemeBootScript />
         <script
           id="jsonld-site"
           type="application/ld+json"
@@ -72,6 +77,7 @@ export default async function RootLayout({
         <MediaPreconnect />
       </head>
       <body className={`${fontClassName} min-w-0 overflow-x-clip antialiased`} suppressHydrationWarning>
+        <ThemeBoot />
         {!isBareShellRoute ? <GrainOverlay /> : null}
         {!isBareShellRoute ? <ReferralCapture /> : null}
         <StudentAuthRoot initialLoggedIn={studentLoggedIn}>

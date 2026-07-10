@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 import { ChevronLeft, Inbox, MessageCircle, Radio, Send } from 'lucide-react';
 import { siteConfig } from '@/config/site';
@@ -72,14 +70,21 @@ export function QuickContactCards() {
   );
 }
 
+function formatTicketDate(dateStr: string | null) {
+  if (!dateStr) return '—';
+  try {
+    return new Date(dateStr).toLocaleDateString('fa-IR');
+  } catch {
+    return '—';
+  }
+}
+
 export function TicketHistoryTable({
   tickets,
-  formatDate,
   statusLabels,
   statusBadges,
 }: {
   tickets: { id: number; subject: string; status: string; created_at: string | null }[];
-  formatDate: (d: string | null) => string;
   statusLabels: Record<string, string>;
   statusBadges: Record<string, string>;
 }) {
@@ -107,7 +112,7 @@ export function TicketHistoryTable({
               <p className="panel-ticket-row__meta">
                 <span>#TK-{ticket.id}</span>
                 <span aria-hidden>·</span>
-                <span>{formatDate(ticket.created_at)}</span>
+                <span>{formatTicketDate(ticket.created_at)}</span>
               </p>
             </div>
             <div className="panel-ticket-row__trail">

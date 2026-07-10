@@ -71,7 +71,7 @@ import { loadChatbotFaqGroups } from '@/lib/chatbot/faqLoader';
 import { track } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
 import { useDataTheme } from '@/lib/useDataTheme';
-import { chatbotThemeClasses, chatbotCtaButtonClass } from '@/lib/chatbot/themeClasses';
+import { chatbotThemeClasses, chatbotCtaButtonClass, type ChatbotTheme } from '@/lib/chatbot/themeClasses';
 import { CHAT_GLASS_SURFACE } from '@/lib/chatbot/emojiFont';
 import { ChatRichText } from '@/components/chatbot/ChatRichText';
 
@@ -394,6 +394,137 @@ function ReplyModeSwitch({
         <User className="h-3.5 w-3.5 shrink-0" />
         {!vertical && 'اپراتور'}
       </button>
+    </div>
+  );
+}
+
+const LAUNCHER_LABEL_VISIBLE_MS = 4_500;
+const LAUNCHER_LABEL_HIDDEN_MS = 2_800;
+
+function ChatbotFloatingLauncher({
+  assistantName,
+  open,
+  chatTheme,
+  onOpen,
+  onToggle,
+}: {
+  assistantName: string;
+  open: boolean;
+  chatTheme: ChatbotTheme;
+  onOpen: () => void;
+  onToggle: () => void;
+}) {
+  const primaryLabel = assistantName.trim() || 'از من بپرس!';
+  const hints = useMemo(
+    () => Array.from(new Set([primaryLabel, 'سوال داری؟ بپرس'])),
+    [primaryLabel],
+  );
+  const [hintIndex, setHintIndex] = useState(0);
+  const [labelVisible, setLabelVisible] = useState(true);
+  const [hovered, setHovered] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setLabelVisible(false);
+      return;
+    }
+
+    if (hovered) {
+      setLabelVisible(true);
+      return;
+    }
+
+    let cancelled = false;
+    let timeoutId = 0;
+
+    const schedule = (fn: () => void, delay: number) => {
+      timeoutId = window.setTimeout(() => {
+        if (!cancelled) fn();
+      }, delay);
+    };
+
+    const runCycle = () => {
+      setLabelVisible(true);
+      schedule(() => {
+        setLabelVisible(false);
+        schedule(() => {
+          setHintIndex((index) => (index + 1) % hints.length);
+          runCycle();
+        }, LAUNCHER_LABEL_HIDDEN_MS);
+      }, LAUNCHER_LABEL_VISIBLE_MS);
+    };
+
+    runCycle();
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [open, hovered, hints.length]);
+
+  const showLabel = !open && labelVisible;
+
+  return (
+    <div
+      className="pointer-events-auto flex items-center gap-3"
+      dir="ltr"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <AnimatePresence mode="wait">
+        {showLabel ? (
+          <motion.button
+            key={hints[hintIndex]}
+            type="button"
+            onClick={onOpen}
+            dir="rtl"
+            initial={{ opacity: 0, x: 18, scale: 0.9, filter: 'blur(4px)' }}
+            animate={{ opacity: 1, x: 0, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, x: 12, scale: 0.94, filter: 'blur(3px)' }}
+            transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+            className={cn(
+              'relative overflow-hidden rounded-pill border px-4 py-2.5 text-[12px] font-bold shadow-floating backdrop-blur-md transition-transform hover:scale-[1.03] active:scale-95',
+              'border-emerald/25',
+              chatTheme.launcherPill,
+            )}
+          >
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 rounded-pill bg-gradient-to-l from-emerald/[0.14] via-transparent to-gold/[0.1]"
+            />
+            <span className="relative z-10 whitespace-nowrap">{hints[hintIndex]}</span>
+          </motion.button>
+        ) : null}
+      </AnimatePresence>
+
+      <motion.button
+        type="button"
+        onClick={onToggle}
+        aria-label={open ? 'بستن پنل پشتیبانی' : 'پشتیبانی و تماس'}
+        animate={open ? { scale: 1 } : { scale: [1, 1.045, 1] }}
+        transition={
+          open
+            ? { duration: 0.2 }
+            : { duration: 2.8, repeat: Infinity, ease: 'easeInOut' }
+        }
+        className={cn(
+          'relative grid h-14 w-14 shrink-0 place-items-center rounded-full text-white shadow-premium transition-shadow hover:shadow-glow active:scale-95',
+          chatTheme.launcherRing,
+          'ring-4',
+          open ? 'bg-primary' : 'bg-gradient-ai shadow-glow',
+        )}
+      >
+        {!open ? (
+          <span
+            aria-hidden
+            className="absolute top-0 right-0 z-20 flex h-3.5 w-3.5 translate-x-[18%] -translate-y-[18%]"
+          >
+            <span className="absolute inset-0 rounded-full bg-gold/45 animate-ping" />
+            <span className="relative block h-full w-full rounded-full bg-gold shadow-[0_0_8px_rgba(255,176,0,0.55)] ring-[2.5px] ring-white" />
+          </span>
+        ) : null}
+        {open ? <X className="relative z-10 h-6 w-6" /> : <MessagesSquare className="relative z-10 h-6 w-6" />}
+      </motion.button>
     </div>
   );
 }
@@ -1938,51 +2069,13 @@ export function FloatingChatbot({
           </div>
         </div>
 
-        <div className="pointer-events-auto flex items-center gap-2.5" dir="ltr">
-          {!open && (
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              dir="rtl"
-              className={cn(
-                'animate-float-slow rounded-pill px-3.5 py-2 text-[11px] font-bold backdrop-blur-sm transition-transform hover:scale-105 active:scale-95',
-                chatTheme.launcherPill,
-              )}
-            >
-              {config.assistant_name?.trim() || 'از من بپرس!'} ✨
-            </button>
-          )}
-          <div className="relative shrink-0">
-            {!open && (
-              <>
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute inset-0 rounded-full bg-accent-bright/25 animate-ping"
-                />
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute -bottom-0.5 -left-0.5 z-10 flex h-3 w-3 items-center justify-center"
-                >
-                  <span className="absolute h-2.5 w-2.5 animate-chat-notify-pulse rounded-full bg-accent-bright/55" />
-                  <span className="relative h-2 w-2 rounded-full bg-accent-bright ring-2 ring-white/90" />
-                </span>
-              </>
-            )}
-            <button
-              type="button"
-              onClick={() => setOpen((v) => !v)}
-              aria-label={open ? 'بستن پنل پشتیبانی' : 'پشتیبانی و تماس'}
-              className={cn(
-                'relative grid h-14 w-14 place-items-center rounded-full text-white shadow-premium transition-transform hover:scale-105 active:scale-95',
-                chatTheme.launcherRing,
-                'ring-4',
-                open ? 'bg-primary' : 'bg-gradient-ai shadow-glow',
-              )}
-            >
-              {open ? <X className="h-6 w-6" /> : <MessagesSquare className="h-6 w-6" />}
-            </button>
-          </div>
-        </div>
+        <ChatbotFloatingLauncher
+          assistantName={config.assistant_name ?? ''}
+          open={open}
+          chatTheme={chatTheme}
+          onOpen={() => setOpen(true)}
+          onToggle={() => setOpen((v) => !v)}
+        />
       </div>
     </div>
   );

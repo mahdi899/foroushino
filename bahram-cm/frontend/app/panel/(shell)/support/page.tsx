@@ -37,15 +37,6 @@ const FAQS = [
   { q: 'حساب کاربری و ورود به پنل', a: 'با شماره موبایلی که ثبت‌نام کرده‌اید وارد پنل شوید.' },
 ];
 
-function formatDate(dateStr: string | null) {
-  if (!dateStr) return '—';
-  try {
-    return new Date(dateStr).toLocaleDateString('fa-IR');
-  } catch {
-    return '—';
-  }
-}
-
 export default async function PanelSupportPage() {
   const { data: tickets } = await panelStudentFetch<{ data: TicketListItem[] }>('/tickets');
 
@@ -91,7 +82,6 @@ export default async function PanelSupportPage() {
             </header>
             <TicketHistoryTable
               tickets={tickets}
-              formatDate={formatDate}
               statusLabels={STATUS_LABELS}
               statusBadges={STATUS_BADGES}
             />

@@ -5,9 +5,16 @@ import { Moon, Sun } from "lucide-react";
 import { startTransition, useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 
-type Theme = "light" | "dark";
+type Theme = SiteTheme;
 
-const STORAGE_KEY = "bahram-theme";
+import {
+  SITE_THEME_STORAGE_KEY,
+  parseSiteTheme,
+  siteThemeCookieValue,
+  type SiteTheme,
+} from "@/lib/site-theme";
+
+const STORAGE_KEY = SITE_THEME_STORAGE_KEY;
 
 function readTheme(): Theme {
   if (typeof document === "undefined") return "dark";
@@ -60,6 +67,7 @@ export function ThemeToggle({
     document.documentElement.setAttribute("data-theme", next);
     try {
       localStorage.setItem(STORAGE_KEY, next);
+      document.cookie = siteThemeCookieValue(next);
     } catch {
       /* noop */
     }
