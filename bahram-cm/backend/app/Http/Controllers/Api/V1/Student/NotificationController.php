@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Student;
 
+use App\Enums\InAppNotificationType;
 use App\Http\Controllers\Controller;
 use App\Models\NotificationRecipient;
 use App\Support\ApiResponse;
@@ -75,7 +76,8 @@ class NotificationController extends Controller
             'link' => $recipient->notification->link,
             'read_at' => $recipient->read_at?->toIso8601String(),
             'created_at' => $recipient->created_at?->toIso8601String(),
-            'show_toast' => filled($recipient->notification->created_by),
+            'show_toast' => filled($recipient->notification->created_by)
+                || InAppNotificationType::showsToastFor($recipient->notification->type),
         ];
     }
 }

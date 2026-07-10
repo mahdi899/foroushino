@@ -119,8 +119,27 @@ class InAppNotificationTest extends TestCase
         $this->withToken($token)
             ->getJson('/api/v1/student/notifications')
             ->assertOk()
-            ->assertJsonFragment(['title' => 'خوش‌آمد', 'show_toast' => false])
+            ->assertJsonFragment(['title' => 'خوش‌آمد', 'show_toast' => true])
             ->assertJsonFragment(['title' => 'اعلان مدیریت', 'show_toast' => true]);
+    }
+
+    public function test_mini_course_enrollment_notification_is_toastable(): void
+    {
+        $student = User::factory()->create(['mobile' => '09129990001', 'is_admin' => false]);
+        $notification = Notification::create([
+            'title' => 'مینی‌دوره برای شما فعال شد',
+            'body' => 'ثبت شد.',
+            'type' => InAppNotificationType::MiniCourseEnrolled->value,
+            'link' => '/panel/mini-courses/test/watch',
+        ]);
+        NotificationRecipient::create(['notification_id' => $notification->id, 'user_id' => $student->id]);
+
+        $token = $student->createToken('test')->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/v1/student/notifications')
+            ->assertOk()
+            ->assertJsonFragment(['type' => 'mini_course_enrolled', 'show_toast' => true]);
     }
 
     public function test_student_can_list_unread_notifications_only(): void

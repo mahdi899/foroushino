@@ -13,4 +13,25 @@ enum InAppNotificationType: string
     case TicketReply = 'ticket_reply';
     case ProductNew = 'product_new';
     case ArticleNew = 'article_new';
+
+    public function showsToast(): bool
+    {
+        return match ($this) {
+            self::Welcome,
+            self::OrderPaid,
+            self::LicenseReady,
+            self::MiniCourseEnrolled,
+            self::TicketReply => true,
+            default => false,
+        };
+    }
+
+    public static function showsToastFor(?string $type): bool
+    {
+        if (! filled($type)) {
+            return false;
+        }
+
+        return self::tryFrom($type)?->showsToast() ?? false;
+    }
 }

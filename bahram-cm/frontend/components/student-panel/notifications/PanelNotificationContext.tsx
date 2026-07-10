@@ -12,7 +12,7 @@ import { shouldShowNotificationToast } from '@/components/student-panel/notifica
 
 const POLL_ACTIVE_MS = 8_000;
 const POLL_IDLE_MS = 30_000;
-const BASELINE_STORAGE_KEY = 'panel-notification-toast-baseline-v2';
+const BASELINE_STORAGE_KEY = 'panel-notification-toast-baseline-v3';
 
 interface PanelNotificationContextValue {
   unreadCount: number;
@@ -42,6 +42,12 @@ function writeStoredBaseline(id: number) {
 
 function maxNotificationId(notifications: PanelNotificationPayload[]): number {
   return notifications.reduce((max, item) => Math.max(max, item.id), 0);
+}
+
+function maxReadNotificationId(notifications: PanelNotificationPayload[]): number {
+  return notifications
+    .filter((item) => item.read_at)
+    .reduce((max, item) => Math.max(max, item.id), 0);
 }
 
 export function PanelNotificationProvider({
@@ -152,6 +158,25 @@ export function PanelNotificationProvider({
 
         const maxId = maxNotificationId(notifications);
         if (knownMaxIdRef.current <= 0) {
+          // Only suppress toasts for notifications the user already read in past sessions.
+          const readBaseline = maxReadNotificationId(notifications);
+          knownMaxIdRef.current = readBaseline;
+          writeStoredBaseline(readBaseline);
+        }
+
+        const freshOnBootstrap = notifications
+          .filter(
+            (item) =>
+              shouldShowNotificationToast(item) &&
+              !item.read_at &&
+              item.id > knownMaxIdRef.current &&
+              !toastedIdsRef.current.has(item.id),
+          )
+          .sort((a, b) => a.id - b.id);
+
+        pushToasts(freshOnBootstrap);
+
+        if (maxId > knownMaxIdRef.current) {
           knownMaxIdRef.current = maxId;
           writeStoredBaseline(maxId);
         }
