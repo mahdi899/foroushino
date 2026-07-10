@@ -1524,7 +1524,7 @@ export function FloatingChatbot({
   return (
     <div
       dir="ltr"
-      className="pointer-events-none fixed bottom-20 left-0 right-0 z-[9999] flex justify-end px-4 lg:bottom-6 lg:px-6"
+      className="pointer-events-none fixed bottom-[var(--site-fab-bottom)] left-0 right-0 z-[9999] flex justify-end px-4 lg:bottom-6 lg:px-6"
     >
       <div className="relative flex flex-col items-end">
         <div

@@ -28,10 +28,10 @@ export function AdminAwareChrome({
     <SmoothScroll>
       {promo && !hidePromo ? <SitePromoBar promo={promo} /> : null}
       <SiteNav />
-      <div className="relative z-[2] min-w-0 w-full max-w-full">
+      <div className="site-chrome-body relative z-[2] min-w-0 w-full max-w-full">
         {children}
+        <SiteFooter />
       </div>
-      <SiteFooter />
       <AnalyticsGate />
     </SmoothScroll>
   );

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useLenis } from "lenis/react";
 import { usePathname } from "next/navigation";
-import { Menu } from "lucide-react";
 import { useEffect, useState } from "react";
 import { site } from "@/content/site";
 import { navLinkMatches } from "@/lib/nav-active";
@@ -12,6 +11,7 @@ import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { usePrefetchLinks } from "@/components/performance/PerformanceProvider";
 import { Logo } from "./Logo";
 import { MobileMenu } from "./MobileMenu";
+import { SiteBottomNav } from "./SiteBottomNav";
 import { cn } from "@/lib/cn";
 
 const SCROLL_ON = 20;
@@ -27,6 +27,10 @@ export function SiteNav() {
   const lenis = useLenis();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const onScroll = (y: number) => {
@@ -50,14 +54,14 @@ export function SiteNav() {
     <>
       <header
         className={cn(
-          "sticky top-0 inset-x-0 z-40 transition-[background-color,backdrop-filter] duration-500 ease-[var(--ease-luxe)]",
+          "sticky top-0 inset-x-0 z-40 hidden transition-[background-color,backdrop-filter] duration-500 ease-[var(--ease-luxe)] lg:block",
           "after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-border-soft after:transition-opacity after:duration-500 after:ease-[var(--ease-luxe)]",
           scrolled
             ? "bg-ink/70 backdrop-blur-2xl after:opacity-100"
             : "bg-transparent after:opacity-0",
         )}
       >
-        <div className="container-luxe flex h-14 min-w-0 items-center gap-1.5 sm:gap-2 md:h-16 md:gap-3">
+        <div className="container-luxe flex h-16 min-w-0 items-center gap-3">
           <div className="flex h-10 min-w-0 shrink-0 items-center">
             <Logo size="sm" />
           </div>
@@ -92,24 +96,14 @@ export function SiteNav() {
             })}
           </nav>
 
-          <div className="ms-auto flex h-10 shrink-0 items-center gap-1 sm:gap-2 md:gap-2.5">
-            <ThemeToggle compact className="hidden shrink-0 sm:inline-flex" />
-            <PanelNavButton
-              showLabel
-              className="shrink-0 max-sm:h-10 max-sm:w-10 max-sm:px-0 [&>span]:hidden sm:[&>span]:inline"
-            />
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              aria-label="باز کردن منو"
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-pill border border-bone/10 text-bone hover:border-bone/30 lg:hidden"
-            >
-              <Menu className="h-[1.125rem] w-[1.125rem]" aria-hidden strokeWidth={1.75} />
-            </button>
+          <div className="ms-auto flex h-10 shrink-0 items-center gap-2.5">
+            <ThemeToggle compact className="shrink-0" />
+            <PanelNavButton showLabel className="shrink-0" />
           </div>
         </div>
       </header>
 
+      <SiteBottomNav menuOpen={open} onMenuOpen={() => setOpen(true)} />
       <MobileMenu open={open} onClose={() => setOpen(false)} />
     </>
   );

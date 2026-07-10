@@ -16,7 +16,7 @@ export function MobileStickyEnrollBar({ priceLabel, alreadyPurchased }: Props) {
   return (
     <div
       className={cn(
-        "mobile-sticky-enroll-bar fixed inset-x-0 bottom-0 z-40 px-4 py-3 transition-transform duration-150 ease-out md:hidden",
+        "mobile-sticky-enroll-bar fixed inset-x-0 z-40 px-4 py-3 transition-transform duration-150 ease-out md:hidden",
         visible ? "translate-y-0" : "pointer-events-none translate-y-full",
       )}
       aria-hidden={!visible}

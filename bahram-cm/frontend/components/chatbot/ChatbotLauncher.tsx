@@ -28,7 +28,7 @@ export function ChatbotLauncher({ config, onActivate, loading = false }: Chatbot
   const scrollRevealed = useMobileScrollReveal();
 
   return (
-    <div className="pointer-events-none fixed bottom-[5.25rem] right-4 z-40 flex flex-col items-end gap-2.5 lg:bottom-6 lg:right-6">
+    <div className="pointer-events-none fixed bottom-[var(--site-fab-bottom)] right-4 z-40 flex flex-col items-end gap-2.5 lg:bottom-6 lg:right-6">
       <div
         className={cn(
           'pointer-events-auto flex items-center gap-2.5',

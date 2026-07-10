@@ -22,7 +22,7 @@ export function AcademyTeaser() {
     >
       <div className="container-luxe">
         <Reveal>
-          <div className="academy-teaser-banner relative overflow-hidden rounded-card-lg p-4 sm:p-5 md:p-7 lg:p-8 xl:p-10">
+          <div className="academy-teaser-banner relative overflow-hidden p-4 sm:p-5 md:p-7 lg:rounded-card-lg lg:p-8 xl:p-10">
             <div
               aria-hidden
               className="academy-teaser-accent-bar pointer-events-none absolute inset-y-6 start-0 z-[2] w-[3px] rounded-full lg:inset-y-8"
