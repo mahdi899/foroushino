@@ -72,10 +72,6 @@ export const defaultMetadata: Metadata = {
       "max-snippet": -1,
     },
   },
-  icons: {
-    icon: "/favicon.svg",
-    apple: "/apple-touch-icon.svg",
-  },
 };
 
 const DEFAULT_KEYWORDS = [

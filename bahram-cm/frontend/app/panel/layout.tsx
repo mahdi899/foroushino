@@ -13,7 +13,8 @@ export const metadata: Metadata = {
     title: 'پنل آکادمی',
   },
   icons: {
-    apple: '/apple-touch-icon.svg',
+    icon: '/icon',
+    apple: '/apple-icon',
   },
 };
 
