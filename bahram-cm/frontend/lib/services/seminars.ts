@@ -7,6 +7,7 @@ export type PublicSeminar = {
   slug: string;
   description: string | null;
   cover_image: string | null;
+  cover_image_mobile: string | null;
   date: string | null;
   location: string | null;
   price: number | null;

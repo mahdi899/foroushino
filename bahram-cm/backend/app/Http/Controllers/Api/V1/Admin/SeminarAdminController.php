@@ -46,6 +46,7 @@ class SeminarAdminController extends Controller
             ...$this->listPayload($seminar),
             'description' => $seminar->description,
             'cover_image' => $seminar->cover_image,
+            'cover_image_mobile' => $seminar->cover_image_mobile,
             'attendees' => $seminar->attendees->map(fn (SeminarAttendee $a) => [
                 'id' => $a->id,
                 'user_id' => $a->user_id,
@@ -180,6 +181,7 @@ class SeminarAdminController extends Controller
             'location' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'cover_image' => ['nullable', 'string', 'max:500'],
+            'cover_image_mobile' => ['nullable', 'string', 'max:500'],
             'status' => ['nullable', 'string', 'in:draft,published'],
             'price' => ['nullable', 'integer', 'min:0'],
             'sale_price' => ['nullable', 'integer', 'min:0'],
@@ -193,7 +195,7 @@ class SeminarAdminController extends Controller
 
         $data = $request->validate($rules);
 
-        foreach (['banner_available', 'banner_available_mobile', 'banner_full', 'banner_full_mobile', 'cover_image'] as $imageKey) {
+        foreach (['banner_available', 'banner_available_mobile', 'banner_full', 'banner_full_mobile', 'cover_image', 'cover_image_mobile'] as $imageKey) {
             if (array_key_exists($imageKey, $data) && filled($data[$imageKey])) {
                 $data[$imageKey] = MediaUrl::reference($data[$imageKey]) ?? $data[$imageKey];
             }
@@ -226,6 +228,7 @@ class SeminarAdminController extends Controller
             'banner_full' => $s->banner_full,
             'banner_full_mobile' => $s->banner_full_mobile,
             'cover_image' => $s->cover_image,
+            'cover_image_mobile' => $s->cover_image_mobile,
             'promo_enabled' => (bool) $s->promo_enabled,
             'product_id' => $s->product_id,
             'product_slug' => $s->purchaseSlug(),

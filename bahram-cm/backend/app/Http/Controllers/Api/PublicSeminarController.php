@@ -34,6 +34,9 @@ class PublicSeminarController extends Controller
         }
 
         $coverRef = filled($seminar->cover_image) ? MediaUrl::fromDiskPath($seminar->cover_image) : null;
+        $coverMobileRef = filled($seminar->cover_image_mobile)
+            ? MediaUrl::fromDiskPath($seminar->cover_image_mobile)
+            : null;
         $price = (int) ($seminar->price ?? 0);
         $salePrice = $seminar->sale_price !== null ? (int) $seminar->sale_price : null;
         $effectivePrice = $salePrice !== null && $salePrice > 0 && $salePrice < $price ? $salePrice : $price;
@@ -49,6 +52,7 @@ class PublicSeminarController extends Controller
             'slug' => $seminar->slug,
             'description' => $seminar->description,
             'cover_image' => $coverRef ? MediaUrl::resolve($coverRef) : null,
+            'cover_image_mobile' => $coverMobileRef ? MediaUrl::resolve($coverMobileRef) : null,
             'date' => $seminar->date?->toIso8601String(),
             'location' => $seminar->location,
             'price' => $price > 0 ? $price : null,

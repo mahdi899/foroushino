@@ -20,6 +20,7 @@ class Seminar extends Model
         'location',
         'description',
         'cover_image',
+        'cover_image_mobile',
         'status',
         'product_id',
         'price',

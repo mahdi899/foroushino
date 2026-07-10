@@ -119,6 +119,7 @@ export type AdminSeminar = {
   banner_full: string | null;
   banner_full_mobile: string | null;
   cover_image: string | null;
+  cover_image_mobile: string | null;
   promo_enabled: boolean;
   product_id: number | null;
   product_slug: string | null;
@@ -131,6 +132,7 @@ export type AdminSeminar = {
 export type AdminSeminarDetail = AdminSeminar & {
   description: string | null;
   cover_image?: string | null;
+  cover_image_mobile?: string | null;
   attendees: { id: number; user_id: number; name: string | null; mobile: string | null; attendance_status: string }[];
   assets: { id: number; title: string; type: string; is_downloadable: boolean }[];
   certificates: { id: number; user_name: string | null; certificate_number: string; issued_at: string | null }[];

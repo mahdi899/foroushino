@@ -4,10 +4,11 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { SeminarIntroBand } from '@/components/seminars/SeminarIntroBand';
 import { Reveal } from '@/components/motion/Reveal';
-import { SiteImage } from '@/components/ui/SiteImage';
+import { SitePhotoHeroFrame } from '@/components/sections/SitePhotoHeroFrame';
 import { getPublicSeminarBySlug } from '@/lib/services/seminars';
 import { buildMetadata } from '@/lib/seo';
-import { resolveMediaAlt } from '@/lib/media/alt';
+import { coalesceAlt, staticAltForSrc } from '@/lib/media/altShared';
+import { primarySiteImageSrc } from '@/lib/mediaUrl';
 import { sitePhotos } from '@/lib/site-photo-paths';
 
 export const dynamic = 'force-dynamic';
@@ -41,24 +42,35 @@ export default async function PublicSeminarPage({
   if (!result.ok) notFound();
 
   const seminar = result.data;
-  const heroImage = seminar.cover_image || sitePhotos.landscapeSession;
-  const coverAlt = await resolveMediaAlt(heroImage, seminar.title);
+  const heroDesktop = seminar.cover_image || sitePhotos.landscapeSession;
+  const heroMobile = seminar.cover_image_mobile || seminar.cover_image || sitePhotos.landscapeSession;
+  const heroDesktopAlt = coalesceAlt(staticAltForSrc(heroDesktop), seminar.title, heroDesktop);
+  const heroMobileAlt = coalesceAlt(staticAltForSrc(heroMobile), seminar.title, heroMobile);
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip bg-ink pb-10 md:pb-14">
-      <section className="campaign-course-hero relative isolate w-full overflow-hidden bg-ink">
-        <div className="relative aspect-[16/4.6] w-full min-h-[min(32vw,8.25rem)] sm:min-h-[9.25rem] md:min-h-[11.5rem] lg:min-h-[min(21vw,14.25rem)]">
-          <SiteImage
-            src={heroImage}
-            alt={coverAlt}
-            fallbackAlt={seminar.title}
-            fill
-            priority
-            className="object-cover object-center"
-            sizes="100vw"
-          />
-          <div aria-hidden className="photo-scrim-bottom-half" />
+      <link
+        rel="preload"
+        as="image"
+        href={primarySiteImageSrc(heroMobile)}
+        media="(max-width: 767px)"
+        fetchPriority="high"
+      />
+      <link
+        rel="preload"
+        as="image"
+        href={primarySiteImageSrc(heroDesktop)}
+        media="(min-width: 768px)"
+        fetchPriority="high"
+      />
 
+      <section className="campaign-course-hero relative isolate w-full overflow-hidden bg-ink">
+        <SitePhotoHeroFrame
+          desktopSrc={heroDesktop}
+          mobileSrc={heroMobile}
+          desktopAlt={heroDesktopAlt}
+          mobileAlt={heroMobileAlt}
+        >
           <div className="absolute inset-x-0 top-0 z-20 px-4 pt-4 sm:px-6 sm:pt-6">
             <Link
               href="/"
@@ -69,7 +81,7 @@ export default async function PublicSeminarPage({
             </Link>
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center overflow-visible px-4 pb-3 pt-10 sm:pb-4 sm:pt-12 md:pb-6 md:pt-14">
+          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center overflow-visible px-4 pb-3 pt-10 sm:pb-4 sm:pt-12 md:bottom-0 md:pb-6 md:pt-14">
             <div className="campaign-course-hero-headline-outer">
               <div className="campaign-course-hero-headline-wrap">
                 <h1 className="campaign-course-hero-headline">
@@ -79,7 +91,7 @@ export default async function PublicSeminarPage({
               </div>
             </div>
           </div>
-        </div>
+        </SitePhotoHeroFrame>
       </section>
 
       <SeminarIntroBand seminar={seminar} />

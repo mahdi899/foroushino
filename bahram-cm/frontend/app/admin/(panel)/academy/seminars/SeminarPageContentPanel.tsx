@@ -16,6 +16,7 @@ export function SeminarPageContentPanel({ seminar }: SeminarPageContentPanelProp
   const router = useRouter();
   const [description, setDescription] = useState(seminar.description ?? '');
   const [coverImage, setCoverImage] = useState(seminar.cover_image ?? '');
+  const [coverImageMobile, setCoverImageMobile] = useState(seminar.cover_image_mobile ?? '');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -29,6 +30,7 @@ export function SeminarPageContentPanel({ seminar }: SeminarPageContentPanelProp
     const res = await updateSeminar(seminar.id, {
       description: description || null,
       cover_image: coverImage || null,
+      cover_image_mobile: coverImageMobile || null,
     });
 
     setPending(false);
@@ -60,11 +62,20 @@ export function SeminarPageContentPanel({ seminar }: SeminarPageContentPanelProp
       </div>
 
       <CoverImageField
-        label="تصویر شاخص صفحه سمینار"
+        label="تصویر هیرو — دسکتاپ (افقی)"
         value={coverImage}
         onChange={setCoverImage}
-        alt={seminar.title}
+        alt={`${seminar.title} — هیرو دسکتاپ`}
       />
+      <CoverImageField
+        label="تصویر هیرو — موبایل (۹:۱۶)"
+        value={coverImageMobile}
+        onChange={setCoverImageMobile}
+        alt={`${seminar.title} — هیرو موبایل`}
+      />
+      <p className="text-caption text-text-muted">
+        اگر تصویر موبایل خالی باشد، همان تصویر دسکتاپ در موبایل نمایش داده می‌شود.
+      </p>
 
       <label>
         <span className="field-label">توضیحات سمینار</span>

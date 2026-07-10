@@ -165,6 +165,7 @@ export async function createSeminar(input: {
   banner_full?: string;
   banner_full_mobile?: string;
   cover_image?: string | null;
+  cover_image_mobile?: string | null;
   promo_enabled?: boolean;
 }) {
   try {
