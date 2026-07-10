@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 type OpenLoginOptions = {
   redirectTo?: string;
@@ -32,6 +32,19 @@ export function StudentAuthProvider({
   const [displayName, setDisplayName] = useState<string | null>(initialDisplayName);
   const [loginOpen, setLoginOpen] = useState(false);
   const [redirectTo, setRedirectTo] = useState('/panel');
+
+  useEffect(() => {
+    if (!initialLoggedIn) {
+      setIsLoggedIn(false);
+      setDisplayName(null);
+      return;
+    }
+
+    setIsLoggedIn(true);
+    if (initialDisplayName) {
+      setDisplayName(initialDisplayName);
+    }
+  }, [initialLoggedIn, initialDisplayName]);
 
   const openLogin = useCallback((options?: OpenLoginOptions) => {
     setRedirectTo(options?.redirectTo ?? '/panel');

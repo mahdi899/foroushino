@@ -6,6 +6,7 @@ import { Bell, ChevronDown, Home, LogOut } from 'lucide-react';
 import { PanelThemeToggle } from '@/app/panel/PanelThemeToggle';
 import { PanelProfileAvatar } from '@/components/student-panel/layout/PanelProfileAvatar';
 import { studentDefaultAvatarUrl } from '@/lib/student/avatar';
+import { useStudentAuth } from '@/components/student-panel/auth/StudentAuthContext';
 import { logoutStudentAction } from '@/lib/student/actions';
 import { markAllNotificationsReadAction } from '@/lib/student/panelActions';
 import type { StudentUser } from '@/lib/student/session';
@@ -18,6 +19,7 @@ export function PanelHeader({
   unreadCount?: number;
 }) {
   const router = useRouter();
+  const { markLoggedOut } = useStudentAuth();
   const fullName = [user.profile?.first_name, user.profile?.last_name].filter(Boolean).join(' ').trim();
   const displayName = fullName || user.name || 'دانشجو';
   const profileSubtitle = fullName ? 'دانشجو' : user.mobile;
@@ -73,7 +75,12 @@ export function PanelHeader({
           <span className="hidden sm:inline">سایت</span>
         </Link>
         <form action={logoutStudentAction}>
-          <button type="submit" className="panel-header__logout" aria-label="خروج از حساب">
+          <button
+            type="submit"
+            className="panel-header__logout"
+            aria-label="خروج از حساب"
+            onClick={() => markLoggedOut()}
+          >
             <LogOut size={16} />
             <span className="hidden lg:inline">خروج</span>
           </button>
