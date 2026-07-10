@@ -13,6 +13,7 @@ class MiniCourseEnrollmentService
 {
     public function __construct(
         private readonly MiniCourseProductService $products,
+        private readonly InAppNotificationService $notifications,
     ) {}
 
     public function enroll(User $user, MiniCourse $course): MiniCourseEnrollment
@@ -32,13 +33,17 @@ class MiniCourseEnrollmentService
 
             $order = $this->createFreeOrder($user, $course);
 
-            return MiniCourseEnrollment::query()->create([
+            $enrollment = MiniCourseEnrollment::query()->create([
                 'mini_course_id' => $course->id,
                 'user_id' => $user->id,
                 'order_id' => $order->id,
                 'enrollment_number' => $order->order_number,
                 'enrolled_at' => now(),
             ]);
+
+            $this->notifications->miniCourseEnrolled($user, $course, $order);
+
+            return $enrollment;
         });
     }
 

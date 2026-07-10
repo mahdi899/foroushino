@@ -8,6 +8,7 @@ enum InAppNotificationType: string
     case General = 'general';
     case OrderPaid = 'order_paid';
     case LicenseReady = 'license_ready';
+    case MiniCourseEnrolled = 'mini_course_enrolled';
     case TicketCreated = 'ticket_created';
     case TicketReply = 'ticket_reply';
     case ProductNew = 'product_new';

@@ -61,6 +61,12 @@ export function VideoEmbedFrame({ src, title, kind, eager = false, iframeAllow }
     return () => window.clearTimeout(timer);
   }, [shouldMount, loaded, src]);
 
+  useEffect(() => {
+    if (!shouldMount || loaded || kind !== 'iframe') return;
+    const timer = window.setTimeout(() => setLoaded(true), 2_500);
+    return () => window.clearTimeout(timer);
+  }, [shouldMount, loaded, kind, src]);
+
   return (
     <div ref={ref} className="relative aspect-video bg-primary-dark/[0.04]">
       {(!shouldMount || !loaded) && (
@@ -87,7 +93,7 @@ export function VideoEmbedFrame({ src, title, kind, eager = false, iframeAllow }
             'absolute inset-0 h-full w-full transition-opacity duration-300',
             loaded ? 'opacity-100' : 'opacity-0',
           )}
-          loading="lazy"
+          loading={eager ? 'eager' : 'lazy'}
           allow={iframeAllow}
           allowFullScreen
           onLoad={() => setLoaded(true)}
