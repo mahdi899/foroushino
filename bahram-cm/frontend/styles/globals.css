@@ -2454,6 +2454,104 @@ html[data-theme="light"] .campaign-course-enroll-glow {
   );
 }
 
+.courses-stats-strip__panel {
+  overflow: hidden;
+  border-radius: var(--radius-card-lg, 1.5rem);
+  border: 1px solid color-mix(in oklab, var(--color-bone) 10%, transparent);
+  background: color-mix(in oklab, var(--color-charcoal) 38%, transparent);
+  padding: clamp(1.35rem, 3vw, 2rem);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.courses-stats-strip__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem 1rem;
+}
+
+@media (min-width: 1024px) {
+  .courses-stats-strip__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+  }
+}
+
+.courses-stats-strip__item {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-inline: clamp(0.5rem, 1.5vw, 1rem);
+  text-align: center;
+}
+
+@media (min-width: 1024px) {
+  .courses-stats-strip__item {
+    padding-block: 0.25rem;
+    padding-inline: clamp(0.75rem, 1.5vw, 1.25rem);
+  }
+
+  .courses-stats-strip__item:not(:last-child) {
+    border-inline-end: 1px solid color-mix(in oklab, var(--color-bone) 10%, transparent);
+  }
+}
+
+.courses-stats-strip__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--color-gold) 22%, transparent);
+  background: color-mix(in oklab, var(--color-gold) 7%, transparent);
+  color: var(--color-gold-soft);
+}
+
+.courses-stats-strip__value {
+  margin-top: 0.85rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 2.8vw, 2rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--color-bone);
+}
+
+.courses-stats-strip__label {
+  margin-top: 0.5rem;
+  max-width: 11rem;
+  font-size: clamp(0.75rem, 1.4vw, 0.875rem);
+  line-height: 1.45;
+  color: var(--color-bone-dim);
+}
+
+html[data-theme="light"] .courses-stats-strip__panel {
+  border-color: color-mix(in oklab, var(--color-emerald) 14%, transparent);
+  background: color-mix(in oklab, white 78%, transparent);
+  box-shadow: var(--shadow-veil-resolved);
+}
+
+html[data-theme="light"] .courses-stats-strip__icon {
+  border-color: color-mix(in oklab, var(--color-gold) 28%, transparent);
+  background: color-mix(in oklab, var(--color-gold) 10%, white);
+  color: var(--color-gold);
+}
+
+html[data-theme="light"] .courses-stats-strip__value {
+  color: var(--color-emerald-deep);
+}
+
+html[data-theme="light"] .courses-stats-strip__label {
+  color: var(--color-mist);
+}
+
+html[data-theme="light"] .courses-stats-strip__item:not(:last-child) {
+  border-inline-end-color: color-mix(in oklab, var(--color-emerald) 12%, transparent);
+}
+
 .main-path-card-media-scrim {
   pointer-events: none;
   position: absolute;
@@ -2473,6 +2571,34 @@ html[data-theme="light"] .main-path-card-media-scrim {
     rgba(255, 255, 255, 0.22) 28%,
     transparent 54%
   );
+}
+
+.main-path-card-featured-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  border-radius: var(--radius-pill, 9999px);
+  padding: 0.3125rem 0.6875rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 176, 0, 0.42);
+  background: linear-gradient(135deg, var(--color-gold) 0%, var(--color-gold-soft) 100%);
+  color: #1a1200;
+  box-shadow:
+    0 0 0 1px rgba(255, 176, 0, 0.16),
+    0 6px 18px -8px rgba(255, 176, 0, 0.42);
+}
+
+html[data-theme="light"] .main-path-card-featured-badge {
+  border-color: rgba(196, 118, 0, 0.38);
+  background: linear-gradient(135deg, #ffd875 0%, #fff0c2 100%);
+  color: #4a2f00;
+  box-shadow:
+    0 0 0 1px rgba(255, 176, 0, 0.22),
+    0 6px 16px -8px rgba(255, 176, 0, 0.28);
 }
 
 .photo-scrim-bottom-soft {
