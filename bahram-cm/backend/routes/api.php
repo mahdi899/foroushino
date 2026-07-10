@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\ChatbotController;
 use App\Http\Controllers\Api\FaqController;
 use App\Http\Controllers\Api\StudentTestimonialController;
 use App\Http\Controllers\Api\LeadController;
+use App\Http\Controllers\Api\MiniCourseCommentController;
+use App\Http\Controllers\Api\MiniCourseController;
 use App\Http\Controllers\Api\MediaAltController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
@@ -43,6 +45,14 @@ Route::get('/articles/{slug}', [ArticleController::class, 'show']);
 // Products
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/{slug}', [ProductController::class, 'show']);
+
+// Mini courses (free Aparat videos)
+Route::get('/mini-courses', [MiniCourseController::class, 'index']);
+Route::get('/mini-courses/{slug}', [MiniCourseController::class, 'show'])->where('slug', '[^/]+');
+Route::get('/mini-courses/{slug}/comments', [MiniCourseController::class, 'comments'])->where('slug', '[^/]+');
+Route::post('/mini-courses/{slug}/comments', [MiniCourseCommentController::class, 'store'])
+    ->where('slug', '[^/]+')
+    ->middleware('throttle:leads');
 
 // Seminar promo banner (site-wide)
 Route::get('/seminars/promo', [SeminarPromoController::class, 'active']);

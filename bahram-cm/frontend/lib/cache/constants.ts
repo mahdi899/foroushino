@@ -11,6 +11,8 @@ export const CACHE_ISR_TAGS = [
   'public-faqs',
   'public-transformations',
   'testimonials',
+  'mini-courses',
+  'public-mini-courses',
   'chatbot',
 ] as const;
 

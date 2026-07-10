@@ -42,6 +42,7 @@ export const adminNav: {
       { href: '/admin/academy/students', label: 'دانشجویان', icon: 'Users', matchPrefix: true },
       { href: '/admin/academy/course-accesses', label: 'دسترسی دوره‌ها', icon: 'KeyRound' },
       { href: '/admin/academy/seminars', label: 'سمینارها', icon: 'CalendarDays', matchPrefix: true },
+      { href: '/admin/academy/mini-courses', label: 'مینی‌دوره‌ها', icon: 'PlayCircle', matchPrefix: true },
       { href: '/admin/academy/referrals', label: 'معرفی و کش‌بک', icon: 'Gift' },
       { href: '/admin/academy/cashback-payouts', label: 'واریز کش‌بک', icon: 'Wallet' },
       { href: '/admin/academy/sat-applications', label: 'درخواست‌های سات', icon: 'GraduationCap' },

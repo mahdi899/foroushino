@@ -56,3 +56,16 @@ export async function revalidateTestimonialSurfaces(_slug?: string | null): Prom
     revalidatePath('/transformations');
   });
 }
+
+export async function revalidateMiniCourseSurfaces(_slug?: string | null): Promise<void> {
+  await revalidatePublicContent(() => {
+    revalidateTag('mini-courses', 'max');
+    revalidateTag('public-mini-courses', 'max');
+    revalidatePath('/admin/academy/mini-courses');
+    revalidatePath('/courses');
+    revalidatePath('/mini-courses');
+    if (_slug) {
+      revalidatePath(`/mini-courses/${_slug}`);
+    }
+  });
+}

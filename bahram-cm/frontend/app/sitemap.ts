@@ -6,6 +6,7 @@ import {
   getResources,
 } from "@/lib/content";
 import { getArticles } from "@/lib/services/articles";
+import { getMiniCoursesFromApi } from "@/lib/services/miniCourses";
 import { SITE } from "@/lib/seo";
 
 /** Static routes with their relative priority + change cadence. */
@@ -40,12 +41,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }))
     : [];
 
-  const [events, courses, resources, guides] = await Promise.all([
+  const [events, courses, resources, guides, miniCoursesResult] = await Promise.all([
     getEvents(),
     getCourses(),
     getResources(),
     getGuides(),
+    getMiniCoursesFromApi(),
   ]);
+
+  const miniCourses = miniCoursesResult.ok
+    ? miniCoursesResult.data.map((c) => ({ slug: c.slug }))
+    : [];
 
   const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((r) => ({
     url: `${SITE.url}${r.path}`,
@@ -71,6 +77,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...dynamic("/insights", insights, 0.6),
     ...dynamic("/events", events, 0.5),
     ...dynamic("/courses", courses, 0.7),
+    ...dynamic("/mini-courses", miniCourses, 0.6),
     ...dynamic("/resources", resources, 0.5),
     ...dynamic("/guides", guides, 0.5),
   ];
