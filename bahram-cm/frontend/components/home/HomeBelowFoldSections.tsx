@@ -26,7 +26,7 @@ const FinalCTALazy = dynamic(() =>
 );
 
 export async function HomeBelowFoldSections({ deferBelowFold }: { deferBelowFold: boolean }) {
-  const pathOverrides = await getCoursePathOverrides();
+  const { images: pathImages } = await getCoursePathOverrides();
   const Campaign = deferBelowFold ? CampaignScrollStoryLazy : CampaignScrollStory;
   const Testimonial = deferBelowFold ? BigTestimonialLazy : BigTestimonial;
   const Academy = deferBelowFold ? AcademyTeaserLazy : AcademyTeaser;
@@ -37,7 +37,7 @@ export async function HomeBelowFoldSections({ deferBelowFold }: { deferBelowFold
     <main id="main-content" className="relative isolate min-w-0 w-full max-w-full overflow-x-clip">
       <HeroCinematic />
       <SectionReveal>
-        <MainPaths pathOverrides={pathOverrides} />
+        <MainPaths pathOverrides={{ images: pathImages }} />
       </SectionReveal>
       <SectionReveal>
         <Campaign />

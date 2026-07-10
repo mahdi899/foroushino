@@ -2,7 +2,7 @@
 
 import { SiteImage } from "@/components/ui/SiteImage";
 import Link from "next/link";
-import { ArrowLeft, PencilLine, Phone, Shield, Target, Zap } from "lucide-react";
+import { ArrowLeft, PencilLine, Phone } from "lucide-react";
 import { site } from "@/content/site";
 import { cn } from "@/lib/cn";
 import { liveIconArrow } from "@/lib/iconMotion";
@@ -14,37 +14,33 @@ const pathMeta = [
   {
     icon: PencilLine,
     tone: "gold" as const,
+    label: "کمپین نویسی",
+    tagline: "درآمد ۲۱ تا ۸۰ میلیون",
     image: sitePhotos.mainPathCampaign,
-    imageAlt: "کارت مسیر کمپین‌نویسی — کمپین‌های ماندگار برای برندها و افراد",
+    imageAlt: "کارت مسیر کمپین‌نویسی — کمپین نویسی با درآمد ۲۱ تا ۸۰ میلیون",
   },
   {
     icon: Phone,
     tone: "teal" as const,
+    label: "سات",
+    tagline: "انقلابی در فروش تلفنی",
     image: sitePhotos.mainPathSaat,
-    imageAlt: "کارت مسیر سات — سیستم عملیاتی فروش",
+    imageAlt: "کارت مسیر سات — انقلابی در فروش تلفنی",
   },
 ] as const;
-
-const trustIcons = [Shield, Target, Zap] as const;
 
 export function MainPaths({
   pathOverrides = {},
 }: {
   pathOverrides?: {
     images?: Record<string, string>;
-    labels?: Record<string, string>;
-    taglines?: Record<string, string>;
   };
 }) {
   const pathImages = pathOverrides.images ?? {};
-  const pathLabels = pathOverrides.labels ?? {};
-  const pathTaglines = pathOverrides.taglines ?? {};
 
   const items = site.mainPaths.items.map((item, i) => ({
     ...item,
     ...pathMeta[i]!,
-    label: pathLabels[item.href] ?? item.label,
-    tagline: pathTaglines[item.href] ?? item.tagline,
     image: pathImages[item.href] ?? pathMeta[i]!.image,
   }));
 
@@ -59,22 +55,17 @@ export function MainPaths({
       />
 
       <div className="container-luxe relative">
-        <div className="max-w-2xl">
+        <div className="mx-auto max-w-2xl text-center">
           <Reveal>
-            <Eyebrow>{site.mainPaths.eyebrow}</Eyebrow>
+            <Eyebrow className="justify-center">{site.mainPaths.eyebrow}</Eyebrow>
           </Reveal>
           <Reveal delay={0.06}>
             <h2
               id="main-paths-heading"
-              className="mt-2 max-w-xl text-balance font-display text-h3 text-bone md:mt-2.5 md:text-h2"
+              className="mx-auto mt-2 max-w-xl text-balance font-display text-xl text-bone md:mt-2.5 md:text-h3"
             >
               {site.mainPaths.title}
             </h2>
-          </Reveal>
-          <Reveal delay={0.1}>
-            <p className="mt-3 max-w-lg text-sm leading-relaxed text-bone-dim md:text-body">
-              {site.mainPaths.lead}
-            </p>
           </Reveal>
         </div>
 
@@ -86,70 +77,9 @@ export function MainPaths({
               </Reveal>
             ))}
           </div>
-
-          <Reveal delay={0.24}>
-            <MainPathsFork />
-          </Reveal>
-
-          <Reveal delay={0.28}>
-            <ul
-              dir="ltr"
-              className="main-paths-trust mt-2 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 md:mt-3 md:gap-x-12"
-            >
-              {site.mainPaths.trust.map((item, i) => {
-                const Icon = trustIcons[i]!;
-                return (
-                  <li key={item.label} className="inline-flex items-center gap-2.5 text-caption text-bone-dim">
-                    <span className="main-paths-trust-icon inline-flex h-8 w-8 items-center justify-center rounded-full">
-                      <Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-                    </span>
-                    <span>{item.label}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </Reveal>
         </div>
       </div>
     </section>
-  );
-}
-
-function MainPathsFork() {
-  return (
-    <div aria-hidden className="main-paths-fork pointer-events-none relative mx-auto -mt-1 h-14 w-full max-w-[min(100%,42rem)] md:h-16">
-      <svg
-        viewBox="0 0 640 72"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-full w-full"
-        preserveAspectRatio="none"
-      >
-        <defs>
-          <linearGradient id="main-paths-fork-gold" x1="640" y1="0" x2="320" y2="72" gradientUnits="userSpaceOnUse">
-            <stop stopColor="var(--color-gold)" stopOpacity="0.55" />
-            <stop offset="1" stopColor="var(--color-gold)" stopOpacity="0.08" />
-          </linearGradient>
-          <linearGradient id="main-paths-fork-teal" x1="0" y1="0" x2="320" y2="72" gradientUnits="userSpaceOnUse">
-            <stop stopColor="var(--color-emerald-glow)" stopOpacity="0.55" />
-            <stop offset="1" stopColor="var(--color-emerald-glow)" stopOpacity="0.08" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M 72 4 C 140 8, 220 28, 320 64"
-          stroke="url(#main-paths-fork-teal)"
-          strokeWidth="1.5"
-          className="main-paths-fork-arm"
-        />
-        <path
-          d="M 568 4 C 500 8, 420 28, 320 64"
-          stroke="url(#main-paths-fork-gold)"
-          strokeWidth="1.5"
-          className="main-paths-fork-arm"
-        />
-        <circle cx="320" cy="64" r="3.5" className="main-paths-fork-node-end" />
-      </svg>
-    </div>
   );
 }
 
@@ -157,7 +87,6 @@ function PathCard({
   href,
   label,
   tagline,
-  description,
   cta,
   icon: Icon,
   tone,
@@ -167,7 +96,6 @@ function PathCard({
   href: string;
   label: string;
   tagline: string;
-  description: string;
   cta: string;
   icon: typeof PencilLine;
   tone: "gold" | "teal";
@@ -178,9 +106,9 @@ function PathCard({
     <Link
       href={href}
       data-path-tone={tone}
-      className="main-path-card group relative flex min-h-0 flex-col overflow-hidden rounded-card-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-glow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink md:block md:min-h-[15.5rem] lg:min-h-[16.25rem]"
+      className="main-path-card group relative flex min-h-0 flex-col overflow-hidden rounded-card-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-glow/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink md:block md:min-h-[22.5rem] lg:min-h-[23.5rem]"
     >
-      <div className="main-path-card-media relative aspect-[16/10] max-h-[min(56vw,11rem)] w-full overflow-hidden sm:max-h-[12.5rem] md:absolute md:inset-y-0 md:end-0 md:aspect-auto md:max-h-none md:w-[48%] lg:w-[46%]">
+      <div className="main-path-card-media relative aspect-[16/13] max-h-[min(73vw,15.75rem)] w-full overflow-hidden sm:max-h-[17.875rem] md:absolute md:inset-y-0 md:end-0 md:aspect-auto md:max-h-none md:w-[48%] lg:w-[46%]">
         <SiteImage
           src={image}
           alt={imageAlt}
@@ -188,22 +116,9 @@ function PathCard({
           className="object-cover transition-transform duration-700 ease-[var(--ease-luxe)] group-hover:scale-[1.05]"
           sizes="(max-width: 767px) 50vw, 280px"
         />
-        <div
-          aria-hidden
-          className="main-path-card-media-scrim"
-        />
-        <div
-          aria-hidden
-          className={cn(
-            "absolute inset-0 opacity-70 mix-blend-soft-light",
-            tone === "gold"
-              ? "bg-gradient-to-br from-gold/18 via-transparent to-transparent"
-              : "bg-gradient-to-br from-emerald-glow/16 via-transparent to-transparent",
-          )}
-        />
       </div>
 
-      <div className="main-path-card-body relative z-[1] flex flex-1 flex-col justify-between gap-5 p-5 md:min-h-[15.5rem] md:p-6 md:pe-[50%] lg:min-h-[16.25rem] lg:p-7 lg:pe-[48%]">
+      <div className="main-path-card-body relative z-[1] flex flex-1 flex-col justify-between gap-5 p-5 md:min-h-[22.5rem] md:p-6 md:pe-[50%] lg:min-h-[23.5rem] lg:p-7 lg:pe-[48%]">
         <div className="min-w-0">
           <span
             className={cn(
@@ -215,24 +130,23 @@ function PathCard({
           >
             <Icon className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.65} aria-hidden />
           </span>
-          <h3 className="mt-4 font-display text-xl font-semibold leading-tight text-bone lg:text-[1.4rem]">
+          <h3 className="mt-4 font-display text-[1.65rem] font-bold leading-[1.12] tracking-[-0.02em] text-bone md:text-[1.85rem] lg:text-[2.125rem]">
             {label}
           </h3>
           <p
             className={cn(
-              "mt-2 text-sm font-semibold leading-snug",
+              "mt-2.5 text-xl font-bold leading-snug tracking-[-0.01em] md:text-[1.35rem] lg:text-2xl",
               tone === "gold" ? "text-gold" : "text-emerald-glow",
             )}
           >
             {tagline}
           </p>
-          <p className="mt-2 text-caption leading-relaxed text-bone-dim">{description}</p>
         </div>
 
         <div className="flex justify-start">
-          <span className="main-path-card-cta inline-flex shrink-0 items-center gap-2 rounded-pill px-4 py-2.5 text-caption font-semibold md:gap-2.5 md:px-5">
+          <span className="main-path-card-cta inline-flex min-h-11 min-w-[10.5rem] shrink-0 items-center justify-center gap-2.5 rounded-pill px-6 py-3 text-sm font-semibold transition-[background,box-shadow,transform] duration-300 ease-[var(--ease-luxe)] md:min-h-12 md:min-w-[12.5rem] md:gap-3 md:px-8 md:text-body">
             <span>{cta}</span>
-            <ArrowLeft className={liveIconArrow("h-3.5 w-3.5")} strokeWidth={2.2} aria-hidden />
+            <ArrowLeft className={liveIconArrow("h-4 w-4")} strokeWidth={2.2} aria-hidden />
           </span>
         </div>
       </div>

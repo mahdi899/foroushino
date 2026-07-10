@@ -57,7 +57,7 @@ function buildBahramContext(blogArticles: { slug: string; title: string; excerpt
   const services = site.mainPaths.items.map((item) => ({
     slug: item.href.replace(/^\//, ''),
     title: item.label,
-    summary: item.description,
+    summary: item.tagline,
     priceFrom: null,
     lines: [{ name: item.tagline, priceFrom: null }],
     faqTopics: [],

@@ -66,7 +66,7 @@ export async function getCourseCatalogCards(): Promise<CourseCatalogCard[]> {
       href: item.href,
       label: product?.title?.trim() || item.label,
       tagline: product?.short_description?.trim() || item.tagline,
-      subtitle: product?.short_description?.trim() || `${item.tagline} — ${item.description}`,
+      subtitle: product?.short_description?.trim() || item.tagline,
       cta: item.cta,
       level: meta.level,
       duration: meta.duration,

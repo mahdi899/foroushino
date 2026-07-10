@@ -133,17 +133,15 @@ export const site = {
     items: [
       {
         href: "/course/campaign-writing",
-        label: "کمپین‌نویسی",
-        tagline: "کمپین‌ها و پیام‌های ماندگار",
-        description: "برای برندها و افراد",
-        cta: "آغاز مسیر",
+        label: "کمپین نویسی",
+        tagline: "درآمد ۲۱ تا ۸۰ میلیون",
+        cta: "ورود",
       },
       {
         href: "/saat",
         label: "سات",
-        tagline: "سیستم عملیاتی فروش",
-        description: "پل بین آموزش کمپین‌نویسی و فروش واقعی",
-        cta: "بررسی شرایط ورود",
+        tagline: "انقلابی در فروش تلفنی",
+        cta: "ثبت نام",
       },
     ],
   },
