@@ -133,14 +133,14 @@ export function BigTestimonial() {
                       : "opacity-88 hover:-translate-y-0.5 hover:opacity-100")
                   }
                 >
-                  <div className="relative h-10 w-8 shrink-0 overflow-hidden rounded-[0.65rem] sm:h-11 sm:w-9">
+                  <div className="relative h-12 w-10 shrink-0 overflow-hidden rounded-[0.75rem] sm:h-14 sm:w-11 md:h-16 md:w-12">
                     <SiteImage
                       src={item.photo}
                       alt={`پرتره ${item.name}`}
                       fallbackAlt={`پرتره ${item.name}`}
                       fill
                       className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.04]"
-                      sizes="72px"
+                      sizes="96px"
                     />
                     <div
                       aria-hidden
@@ -153,12 +153,6 @@ export function BigTestimonial() {
                     </p>
                     <p className="mt-0.5 truncate text-[0.6875rem] text-mist sm:text-caption">
                       {item.role}
-                    </p>
-                    <p className="mt-1 font-display text-xs font-semibold text-gold num-latin sm:text-sm">
-                      {item.metric.value}
-                      <span className="me-1 text-[0.6875rem] font-normal text-mist sm:text-caption">
-                        {item.metric.label}
-                      </span>
                     </p>
                   </div>
                 </button>

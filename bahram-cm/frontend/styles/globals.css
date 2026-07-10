@@ -2551,19 +2551,14 @@ html[data-theme="light"] .transformation-voice-quote-mark {
 html:not([data-theme="light"]) .campaign-journey-stage {
   border: none;
   background: transparent;
-  box-shadow: none;
+  box-shadow:
+    0 0 56px -4px rgba(255, 176, 0, 0.1),
+    0 0 120px -10px rgba(255, 176, 0, 0.04),
+    0 28px 56px -36px rgba(0, 0, 0, 0.75);
 }
 
 html:not([data-theme="light"]) .campaign-journey-photo {
-  box-shadow:
-    inset 0 0 0 1px rgba(234, 251, 251, 0.08),
-    0 16px 40px -24px rgba(2, 6, 7, 0.55);
-}
-
-@media (min-width: 1024px) {
-  html:not([data-theme="light"]) .campaign-journey-photo {
-    box-shadow: none;
-  }
+  box-shadow: none;
 }
 
 html:not([data-theme="light"]) .campaign-journey-photo-accent {
@@ -2590,10 +2585,6 @@ html[data-theme="light"] .campaign-journey-photo-accent {
     0 0 14px rgba(0, 140, 150, 0.32),
     0 0 24px rgba(0, 111, 117, 0.18);
   transition: box-shadow 0.45s var(--ease-luxe);
-}
-
-html:not([data-theme="light"]) .campaign-journey-step {
-  background-color: transparent;
 }
 
 html:not([data-theme="light"]) .campaign-journey-step-tag {
@@ -2700,23 +2691,14 @@ html:not([data-theme="light"]) .campaign-journey-footer {
 html[data-theme="light"] .campaign-journey-stage {
   border: none;
   background: transparent;
-  box-shadow: none;
+  box-shadow:
+    0 0 56px -4px rgba(255, 176, 0, 0.08),
+    0 0 112px -10px rgba(255, 176, 0, 0.035),
+    0 20px 48px -28px rgba(11, 31, 34, 0.16);
 }
 
 html[data-theme="light"] .campaign-journey-photo {
-  box-shadow:
-    inset 0 0 0 1px rgba(11, 31, 34, 0.08),
-    0 14px 36px -22px rgba(11, 31, 34, 0.14);
-}
-
-@media (min-width: 1024px) {
-  html[data-theme="light"] .campaign-journey-photo {
-    box-shadow: none;
-  }
-}
-
-html[data-theme="light"] .campaign-journey-step {
-  background-color: transparent;
+  box-shadow: none;
 }
 
 html[data-theme="light"] .campaign-journey-step-tag {
@@ -3133,10 +3115,6 @@ html[data-theme="light"] .academy-teaser-phone {
   .academy-teaser-phone {
     transform: none;
   }
-
-  .campaign-journey-stage .campaign-journey-footer {
-    padding-top: 1.25rem;
-  }
 }
 
 @media (max-width: 639px) {
@@ -3151,10 +3129,6 @@ html[data-theme="light"] .academy-teaser-phone {
 
   .campaign-journey-step h3 {
     max-width: none;
-  }
-
-  .campaign-journey-photo {
-    max-width: 100%;
   }
 
   .final-cta-band .final-cta-actions {
@@ -3173,20 +3147,12 @@ html[data-theme="light"] .academy-teaser-phone {
     min-width: min(100%, 18rem);
     max-width: 24rem;
   }
-
-  .campaign-journey-stage .campaign-journey-photo {
-    min-height: 22rem;
-  }
 }
 
 @media (min-width: 1280px) {
   .final-cta-band .final-cta-actions {
     min-width: min(100%, 22rem);
     max-width: 26rem;
-  }
-
-  .campaign-journey-stage .campaign-journey-photo {
-    min-height: 26rem;
   }
 }
 
