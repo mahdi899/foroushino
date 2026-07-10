@@ -4304,12 +4304,34 @@ html:not([data-theme="light"]) .payment-result-card .payment-result-card__primar
   background: linear-gradient(135deg, var(--color-emerald-glow) 0%, var(--color-emerald) 100%);
   color: #041214;
   box-shadow: 0 12px 28px -12px rgba(37, 160, 166, 0.45);
+  transition:
+    background 0.3s var(--ease-luxe),
+    box-shadow 0.3s var(--ease-luxe),
+    transform 0.3s var(--ease-luxe);
+}
+
+html:not([data-theme="light"]) .payment-result-card .payment-result-card__primary.neon-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2ec4cb 0%, var(--color-emerald-glow) 52%, #5ed4d9 100%);
+  color: #041214;
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--color-emerald-glow) 38%, transparent),
+    0 16px 36px -10px rgba(37, 160, 166, 0.58);
+  transform: translateY(-1px);
 }
 
 html:not([data-theme="light"]) .payment-result-card--failed .payment-result-card__primary.neon-btn-primary {
   background: linear-gradient(135deg, #ffb000 0%, #ffe08a 100%);
   color: #1a1200;
   box-shadow: 0 12px 28px -12px rgba(255, 176, 0, 0.28);
+}
+
+html:not([data-theme="light"]) .payment-result-card--failed .payment-result-card__primary.neon-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ffc233 0%, #ffe9a8 100%);
+  color: #1a1200;
+  box-shadow:
+    0 0 0 1px rgba(255, 224, 138, 0.34),
+    0 16px 36px -10px rgba(255, 176, 0, 0.38);
+  transform: translateY(-1px);
 }
 
 html:not([data-theme="light"]) .payment-result-card .payment-result-card__secondary {
@@ -4321,11 +4343,29 @@ html:not([data-theme="light"]) .payment-result-card .payment-result-card__second
 html[data-theme="light"] .payment-result-card .payment-result-card__primary.neon-btn-primary {
   background: linear-gradient(135deg, var(--color-emerald) 0%, var(--color-emerald-glow) 100%);
   color: #f8fbfb;
+  transition:
+    background 0.3s var(--ease-luxe),
+    box-shadow 0.3s var(--ease-luxe),
+    transform 0.3s var(--ease-luxe);
+}
+
+html[data-theme="light"] .payment-result-card .payment-result-card__primary.neon-btn-primary:hover {
+  background: linear-gradient(135deg, #008c96 0%, #25a0a6 100%);
+  color: #f8fbfb;
+  box-shadow: 0 14px 32px -12px rgba(0, 111, 117, 0.28);
+  transform: translateY(-1px);
 }
 
 html[data-theme="light"] .payment-result-card--failed .payment-result-card__primary.neon-btn-primary {
   background: linear-gradient(135deg, #c44f35 0%, #e07058 100%);
   color: #fff8f5;
+}
+
+html[data-theme="light"] .payment-result-card--failed .payment-result-card__primary.neon-btn-primary:hover {
+  background: linear-gradient(135deg, #d45a42 0%, #e88470 100%);
+  color: #fff8f5;
+  box-shadow: 0 14px 32px -12px rgba(196, 79, 53, 0.28);
+  transform: translateY(-1px);
 }
 
 html[data-theme="light"] .payment-result-card .payment-result-card__secondary {
