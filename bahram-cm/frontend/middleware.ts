@@ -10,6 +10,16 @@ import { isLongCacheMediaPath } from "@/lib/cache/cdnHeaders";
 import { isStaticContentPath } from "@/lib/cache/staticScope";
 import { mediaPathToStorage } from "@/lib/media/legacyMap";
 
+const STUDENT_TOKEN_COOKIE = "bahram_student_token";
+
+function isMiniCourseDetailPath(pathname: string): boolean {
+  return /^\/mini-courses\/[^/]+$/.test(pathname);
+}
+
+function hasStudentSession(request: NextRequest): boolean {
+  return Boolean(request.cookies.get(STUDENT_TOKEN_COOKIE)?.value);
+}
+
 function isPublicHtmlDocument(pathname: string): boolean {
   if (!isStaticContentPath(pathname)) {
     return false;
@@ -20,8 +30,18 @@ function isPublicHtmlDocument(pathname: string): boolean {
   return true;
 }
 
-async function applyPublicCacheHeaders(response: NextResponse, pathname: string): Promise<NextResponse> {
+async function applyPublicCacheHeaders(
+  response: NextResponse,
+  pathname: string,
+  request: NextRequest,
+): Promise<NextResponse> {
   if (!isPublicHtmlDocument(pathname)) {
+    return response;
+  }
+
+  if (hasStudentSession(request) && isMiniCourseDetailPath(pathname)) {
+    response.headers.set("Cache-Control", "private, no-store, must-revalidate");
+    response.headers.delete("CDN-Cache-Control");
     return response;
   }
 
@@ -55,7 +75,7 @@ export async function middleware(request: NextRequest) {
   if (!shouldProxyToBackend(pathname)) {
     const response = NextResponse.next();
     response.headers.set("x-pathname", pathname);
-    return applyPublicCacheHeaders(response, pathname);
+    return applyPublicCacheHeaders(response, pathname, request);
   }
 
   const backendOrigin = backendProxyUrl();

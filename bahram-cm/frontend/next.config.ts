@@ -116,6 +116,10 @@ const config: NextConfig = {
       // Default 1MB is too small for article HTML saves and media uploads.
       bodySizeLimit: '10mb',
     },
+    staleTimes: {
+      dynamic: 0,
+      static: 180,
+    },
     optimizePackageImports: [
       "lucide-react",
       "framer-motion",

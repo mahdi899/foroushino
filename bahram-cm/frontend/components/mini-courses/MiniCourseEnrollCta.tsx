@@ -1,8 +1,10 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { CheckCircle2 } from 'lucide-react';
 import { Button, LinkButton } from '@/components/ui/Button';
+import { fetchMiniCourseEnrollmentStatus } from '@/lib/mini-courses/enrollmentClient';
 import { miniCoursePurchasePath } from '@/lib/mini-courses/purchase';
 
 type MiniCourseEnrollCtaProps = {
@@ -14,22 +16,85 @@ type MiniCourseEnrollCtaProps = {
 
 export function MiniCourseEnrollCta({
   slug,
-  isEnrolled,
-  enrollmentNumber,
+  isEnrolled: initialIsEnrolled,
+  enrollmentNumber: initialEnrollmentNumber,
   variant = 'default',
 }: MiniCourseEnrollCtaProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const purchasePath = miniCoursePurchasePath(slug);
+  const panelHref = '/panel/courses';
   const isOverlay = variant === 'overlay';
   const isHero = variant === 'hero' || isOverlay;
+
+  const [isEnrolled, setIsEnrolled] = useState(initialIsEnrolled);
+  const [enrollmentNumber, setEnrollmentNumber] = useState(initialEnrollmentNumber ?? null);
+  const [statusReady, setStatusReady] = useState(initialIsEnrolled);
+
+  const syncEnrollmentStatus = useCallback(async () => {
+    const status = await fetchMiniCourseEnrollmentStatus(slug);
+    setIsEnrolled(status.enrolled);
+    setEnrollmentNumber(status.enrollmentNumber);
+    setStatusReady(true);
+
+    if (status.enrolled) {
+      router.refresh();
+    }
+  }, [router, slug]);
+
+  useEffect(() => {
+    void syncEnrollmentStatus();
+  }, [pathname, slug, syncEnrollmentStatus]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        void syncEnrollmentStatus();
+      }
+    };
+
+    const onPageShow = () => {
+      void syncEnrollmentStatus();
+    };
+
+    const onFocus = () => {
+      void syncEnrollmentStatus();
+    };
+
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('pageshow', onPageShow);
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('pageshow', onPageShow);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [syncEnrollmentStatus]);
 
   const goToCheckout = () => {
     router.push(purchasePath);
   };
 
-  if (isEnrolled) {
-    const panelHref = '/panel/courses';
+  const showEnrolled = statusReady ? isEnrolled : initialIsEnrolled;
 
+  if (!statusReady && !initialIsEnrolled && isOverlay) {
+    return (
+      <Button
+        type="button"
+        variant="primary"
+        size="lg"
+        withArrow
+        className="mini-course-detail-hero__cta-btn"
+        disabled
+        aria-busy="true"
+      >
+        در حال بررسی وضعیت…
+      </Button>
+    );
+  }
+
+  if (showEnrolled) {
     if (isOverlay) {
       return (
         <LinkButton

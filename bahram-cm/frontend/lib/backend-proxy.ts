@@ -14,7 +14,8 @@ export function shouldProxyToBackend(pathname: string): boolean {
     pathname.startsWith('/api/captcha') ||
     pathname.startsWith('/api/chatbot') ||
     pathname.startsWith('/api/revalidate') ||
-    pathname.startsWith('/api/cart')
+    pathname.startsWith('/api/cart') ||
+    pathname.startsWith('/api/student')
   ) {
     return false;
   }

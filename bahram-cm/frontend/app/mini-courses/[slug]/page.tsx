@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { unstable_noStore } from 'next/cache';
 import { MiniCourseComments } from '@/components/mini-courses/MiniCourseComments';
 import { MiniCourseDetailHero } from '@/components/mini-courses/MiniCourseDetailHero';
 import {
@@ -13,6 +14,8 @@ import { getCurrentStudent, studentFetch } from '@/lib/student/session';
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
+
+export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -33,6 +36,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function MiniCourseDetailPage({ params }: PageProps) {
+  unstable_noStore();
   const { slug } = await params;
   const [courseResult, commentsResult] = await Promise.all([
     getMiniCourseBySlugFromApi(slug),
