@@ -40,7 +40,7 @@ export type InsightStub = {
   title: string;
 };
 
-export type NavLink = { href: string; label: string; external?: boolean };
+export type NavLink = { href: string; label: string; shortLabel?: string; external?: boolean };
 
 export const site = {
   founder: "بهرام رستمی",
@@ -51,13 +51,13 @@ export const site = {
   tagline: "سات؛ هر تماس، یک فرصت فروش",
 
   nav: [
-    { href: "/course/campaign-writing", label: "کمپین‌نویسی" },
+    { href: "/course/campaign-writing", label: "کمپین‌نویسی", shortLabel: "کمپین" },
     { href: "/courses", label: "دوره‌ها" },
     { href: "/saat", label: "سات" },
-    { href: "/transformations", label: "رضایت دانشجوها" },
+    { href: "/transformations", label: "رضایت دانشجوها", shortLabel: "رضایت" },
     { href: "/insights", label: "بلاگ" },
-    { href: "/founder", label: "درباره‌ی بهرام" },
-    { href: "/contact", label: "تماس با ما" },
+    { href: "/founder", label: "درباره‌ی بهرام", shortLabel: "بهرام" },
+    { href: "/contact", label: "تماس با ما", shortLabel: "تماس" },
   ] satisfies NavLink[],
 
   ctaPrimary: { href: "/course/campaign-writing", label: "آغاز مسیر" },

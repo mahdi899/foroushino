@@ -46,6 +46,13 @@ export function PathCard({
           className="object-cover transition-transform duration-700 ease-[var(--ease-luxe)] group-hover:scale-[1.05]"
           sizes="(max-width: 767px) 50vw, 280px"
         />
+        {featured ? (
+          <span className="absolute end-3 top-3 z-[2]">
+            <span className="main-path-card-featured-badge shadow-[0_4px_14px_-4px_rgba(0,0,0,0.45)]">
+              پرچم‌دار
+            </span>
+          </span>
+        ) : null}
       </div>
 
       <div className="main-path-card-body relative z-[1] flex flex-1 flex-col justify-between gap-5 p-5 md:min-h-[22.5rem] md:p-6 md:pe-[50%] lg:min-h-[23.5rem] lg:p-7 lg:pe-[48%]">
@@ -61,9 +68,6 @@ export function PathCard({
             >
               <Icon className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.65} aria-hidden />
             </span>
-            {featured ? (
-              <span className="main-path-card-featured-badge">پرچم‌دار</span>
-            ) : null}
           </div>
           <h3 className="mt-4 font-display text-[1.65rem] font-bold leading-[1.12] tracking-[-0.02em] text-bone md:text-[1.85rem] lg:text-[2.125rem]">
             {label}

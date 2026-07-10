@@ -98,8 +98,9 @@ export function ThemeToggle({
         <motion.span
           className={cn(
             "absolute inset-y-0 start-0 z-10 flex w-1/2 items-center justify-center rounded-pill",
-            "bg-bone shadow-[0_2px_6px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.55)]",
-            isLight ? "ring-1 ring-gold/20" : "ring-1 ring-black/5",
+            isLight
+              ? "bg-white shadow-[0_1px_4px_rgba(11,31,34,0.1),inset_0_1px_0_rgba(255,255,255,0.95)] ring-1 ring-black/[0.06]"
+              : "bg-[#1a2426] shadow-[0_1px_4px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.06)] ring-1 ring-white/[0.08]",
           )}
           initial={false}
           animate={{ x: thumbOffset(isLight) }}
@@ -111,7 +112,7 @@ export function ThemeToggle({
         >
           <Icon
             size={size.icon}
-            className={isLight ? "text-gold" : "text-emerald-deep"}
+            className={isLight ? "text-gold/80" : "text-mist/70"}
             strokeWidth={2}
             aria-hidden
           />

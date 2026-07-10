@@ -55,9 +55,13 @@ class CaptchaService
         return true;
     }
 
-    /** @param  'newsletter'|'leads'|'admin_login'  $form */
+    /** @param  'newsletter'|'leads'|'admin_login'|'contact'  $form */
     public function isFormProtected(string $form): bool
     {
+        if ($form === 'contact') {
+            return false;
+        }
+
         if (! $this->isEnabled()) {
             return false;
         }
