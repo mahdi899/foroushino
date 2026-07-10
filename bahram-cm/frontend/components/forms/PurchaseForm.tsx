@@ -109,6 +109,7 @@ function PurchaseFormInner({
   const extraFields = useMemo(() => productCheckoutFields(product), [product]);
   const needsExtra = productNeedsExtraForm(product);
   const isLoggedIn = Boolean(student);
+  const isFreeProduct = product.effective_price <= 0;
   const buyerName = student ? buildCustomerName(student.profile, student.name) : "";
 
   const [extra, setExtra] = useState<Record<string, string>>(() =>
@@ -441,17 +442,24 @@ function PurchaseFormInner({
         {submitting ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            {guestStep === "otp" ? "در حال انتقال به درگاه…" : "در حال ارسال کد…"}
+            {guestStep === 'otp'
+              ? isFreeProduct
+                ? 'در حال ثبت سفارش…'
+                : 'در حال انتقال به درگاه…'
+              : 'در حال ارسال کد…'}
           </>
-        ) : guestStep === "otp" ? (
-          "تأیید کد و پرداخت"
+        ) : guestStep === 'otp' ? (
+          isFreeProduct ? 'تأیید کد و ثبت‌نام' : 'تأیید کد و پرداخت'
+        ) : isFreeProduct ? (
+          'ثبت‌نام رایگان'
         ) : (
-          "پرداخت امن و ادامه"
-        )}      </button>
+          'پرداخت امن و ادامه'
+        )}
+      </button>
 
       <p className="flex items-center justify-center gap-2 text-caption text-mist">
         <ShieldCheck className="h-3.5 w-3.5 text-emerald-glow" strokeWidth={1.5} aria-hidden />
-        پرداخت امن از طریق درگاه زرین‌پال
+        {isFreeProduct ? 'ثبت‌نام رایگان — بدون پرداخت آنلاین' : 'پرداخت امن از طریق درگاه زرین‌پال'}
       </p>
     </form>
   );

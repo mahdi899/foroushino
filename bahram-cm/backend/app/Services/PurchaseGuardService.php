@@ -3,7 +3,10 @@
 namespace App\Services;
 
 use App\Enums\CourseAccessStatus;
+use App\Enums\ProductType;
 use App\Models\CourseAccess;
+use App\Models\MiniCourse;
+use App\Models\MiniCourseEnrollment;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Seminar;
@@ -23,6 +26,10 @@ class PurchaseGuardService
             return true;
         }
 
+        if ($this->hasMiniCourseEnrollment($product, $userId)) {
+            return true;
+        }
+
         if ($userId && CourseAccess::query()
             ->where('user_id', $userId)
             ->where('product_id', $product->id)
@@ -32,6 +39,23 @@ class PurchaseGuardService
         }
 
         return $this->isRegisteredSeminarAttendee($product, $userId, $phone);
+    }
+
+    private function hasMiniCourseEnrollment(Product $product, ?int $userId): bool
+    {
+        if (! $userId || $product->type !== ProductType::MiniCourse->value) {
+            return false;
+        }
+
+        $courseId = MiniCourse::query()->where('product_id', $product->id)->value('id');
+        if (! $courseId) {
+            return false;
+        }
+
+        return MiniCourseEnrollment::query()
+            ->where('user_id', $userId)
+            ->where('mini_course_id', $courseId)
+            ->exists();
     }
 
     /**

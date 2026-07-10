@@ -1,7 +1,7 @@
 'use server';
 
 import { buildCustomerName } from '@/lib/checkout/productFields';
-import { INVALID_PAYMENT_GATEWAY_URL_MESSAGE, isZarinpalGatewayUrl } from '@/lib/checkout/paymentGateway';
+import { INVALID_PAYMENT_GATEWAY_URL_MESSAGE, isCheckoutRedirectUrl } from '@/lib/checkout/paymentGateway';
 import { getCurrentStudent, getStudentToken } from '@/lib/student/session';
 
 type CheckoutResult =
@@ -31,14 +31,14 @@ async function requestPayment(orderId: number, token?: string): Promise<Checkout
   }
 
   const paymentUrl = json?.data?.payment_url;
-  if (typeof paymentUrl !== 'string' || !isZarinpalGatewayUrl(paymentUrl)) {
+  if (typeof paymentUrl !== 'string' || !isCheckoutRedirectUrl(paymentUrl)) {
     return { ok: false, error: INVALID_PAYMENT_GATEWAY_URL_MESSAGE };
   }
 
   return {
     ok: true,
     payment_url: paymentUrl,
-    order_number: '',
+    order_number: (json.data?.order_number as string) ?? '',
   };
 }
 
@@ -182,7 +182,7 @@ export async function verifyGuestCheckoutAndPayAction(input: {
   }
 
   const paymentUrl = json?.data?.payment_url;
-  if (typeof paymentUrl !== 'string' || !isZarinpalGatewayUrl(paymentUrl)) {
+  if (typeof paymentUrl !== 'string' || !isCheckoutRedirectUrl(paymentUrl)) {
     return { ok: false, error: INVALID_PAYMENT_GATEWAY_URL_MESSAGE };
   }
 

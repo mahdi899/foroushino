@@ -8,6 +8,7 @@ use App\Http\Requests\SendGuestCheckoutOtpRequest;
 use App\Http\Requests\VerifyGuestCheckoutRequest;
 use App\Services\Exceptions\OtpException;
 use App\Services\Exceptions\PaymentException;
+use App\Services\FreeOrderCheckoutService;
 use App\Services\GuestCheckoutTokenService;
 use App\Services\OrderService;
 use App\Services\OtpService;
@@ -24,6 +25,7 @@ class GuestCheckoutController extends Controller
         private readonly GuestCheckoutTokenService $checkoutTokens,
         private readonly OtpService $otp,
         private readonly OrderService $orders,
+        private readonly FreeOrderCheckoutService $freeCheckout,
         private readonly ZarinpalPaymentService $zarinpal,
     ) {}
 
@@ -131,13 +133,23 @@ class GuestCheckoutController extends Controller
             );
         }
 
+        $this->checkoutTokens->revoke($checkoutToken);
+
+        if ($this->freeCheckout->isFree($order)) {
+            $result = $this->freeCheckout->complete($order);
+
+            return ApiResponse::success([
+                'payment_url' => $result['payment_url'],
+                'order_number' => $result['order_number'],
+                'authority' => null,
+            ]);
+        }
+
         try {
             $payment = $this->zarinpal->request($order);
         } catch (PaymentException $e) {
             return ApiResponse::error('payment_gateway_error', $e->getMessage(), 502);
         }
-
-        $this->checkoutTokens->revoke($checkoutToken);
 
         return ApiResponse::success([
             'payment_url' => $this->zarinpal->getPaymentUrl($payment),

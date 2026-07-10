@@ -29,12 +29,13 @@ function purchaseProductImageAlt(product: ProductDetail): string {
 
 function purchaseBackLink(product: ProductDetail): { href: string; label: string } {
   if (product.landing_href) {
+    const isMiniCourse = product.type === 'mini_course';
     return {
       href: product.landing_href,
-      label: product.seminar ? "بازگشت به سمینار" : "بازگشت",
+      label: isMiniCourse ? 'بازگشت به مینی‌دوره' : product.seminar ? 'بازگشت به سمینار' : 'بازگشت',
     };
   }
-  return { href: "/", label: "بازگشت" };
+  return { href: '/', label: 'بازگشت' };
 }
 
 export async function generateMetadata({

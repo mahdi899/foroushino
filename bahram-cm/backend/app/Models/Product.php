@@ -100,6 +100,11 @@ class Product extends Model
         return $this->seminar()->exists();
     }
 
+    public function isMiniCourseProduct(): bool
+    {
+        return $this->type === ProductType::MiniCourse->value;
+    }
+
     public function miniCourse(): HasOne
     {
         return $this->hasOne(MiniCourse::class);

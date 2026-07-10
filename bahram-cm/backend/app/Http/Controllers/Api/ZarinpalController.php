@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\Exceptions\PaymentException;
+use App\Services\FreeOrderCheckoutService;
 use App\Services\OrderCompletionTokenService;
 use App\Services\PaymentReceiptTokenService;
 use App\Services\ZarinpalPaymentService;
@@ -15,6 +16,7 @@ class ZarinpalController extends Controller
 {
     public function __construct(
         private readonly ZarinpalPaymentService $zarinpal,
+        private readonly FreeOrderCheckoutService $freeCheckout,
         private readonly OrderCompletionTokenService $completionTokens,
         private readonly PaymentReceiptTokenService $receiptTokens,
     ) {}
@@ -29,6 +31,16 @@ class ZarinpalController extends Controller
 
         if ($order->isPaid()) {
             return ApiResponse::error('order_already_paid', 'این سفارش قبلاً پرداخت شده است.', 422);
+        }
+
+        if ($this->freeCheckout->isFree($order)) {
+            $result = $this->freeCheckout->complete($order);
+
+            return ApiResponse::success([
+                'payment_url' => $result['payment_url'],
+                'authority' => null,
+                'order_number' => $result['order_number'],
+            ]);
         }
 
         try {

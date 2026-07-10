@@ -1,15 +1,12 @@
 'use client';
 
-import { useCallback, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2 } from 'lucide-react';
-import { useStudentAuthOptional } from '@/components/student-panel/auth/StudentAuthContext';
 import { Button, LinkButton } from '@/components/ui/Button';
-import { enrollMiniCourseAction } from '@/lib/student/miniCourseActions';
+import { miniCoursePurchasePath } from '@/lib/mini-courses/purchase';
 
 type MiniCourseEnrollCtaProps = {
   slug: string;
-  isLoggedIn: boolean;
   isEnrolled: boolean;
   enrollmentNumber?: string | null;
   variant?: 'default' | 'hero' | 'overlay';
@@ -17,25 +14,18 @@ type MiniCourseEnrollCtaProps = {
 
 export function MiniCourseEnrollCta({
   slug,
-  isLoggedIn,
   isEnrolled,
   enrollmentNumber,
   variant = 'default',
 }: MiniCourseEnrollCtaProps) {
-  const [pending, startTransition] = useTransition();
   const router = useRouter();
-  const auth = useStudentAuthOptional();
-  const redirectTo = `/mini-courses/${slug}`;
+  const purchasePath = miniCoursePurchasePath(slug);
   const isOverlay = variant === 'overlay';
   const isHero = variant === 'hero' || isOverlay;
 
-  const openLoginModal = useCallback(() => {
-    if (auth?.openLogin) {
-      auth.openLogin({ redirectTo });
-      return;
-    }
-    router.push(`/panel/login?redirect=${encodeURIComponent(redirectTo)}`);
-  }, [auth, redirectTo, router]);
+  const goToCheckout = () => {
+    router.push(purchasePath);
+  };
 
   if (isEnrolled) {
     const panelHref = '/panel/courses';
@@ -77,38 +67,6 @@ export function MiniCourseEnrollCta({
     );
   }
 
-  if (!isLoggedIn) {
-    if (isOverlay) {
-      return (
-        <Button
-          type="button"
-          variant="primary"
-          size="lg"
-          withArrow
-          className="mini-course-detail-hero__cta-btn"
-          onClick={openLoginModal}
-        >
-          شرکت در مینی‌دوره
-        </Button>
-      );
-    }
-
-    return (
-      <div className="flex flex-col gap-4">
-        {!isHero ? (
-          <p className="text-sm leading-relaxed text-bone-dim">
-            برای شرکت در این مینی‌دوره رایگان، ابتدا وارد حساب کاربری شوید یا ثبت‌نام کنید.
-          </p>
-        ) : null}
-        <div className="flex flex-wrap gap-3">
-          <Button type="button" variant="primary" size="lg" withArrow onClick={openLoginModal}>
-            شرکت در مینی‌دوره
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   if (isOverlay) {
     return (
       <Button
@@ -116,18 +74,10 @@ export function MiniCourseEnrollCta({
         variant="primary"
         size="lg"
         withArrow
-        disabled={pending}
         className="mini-course-detail-hero__cta-btn"
-        onClick={() => {
-          startTransition(async () => {
-            const result = await enrollMiniCourseAction(slug);
-            if (result?.ok === false) {
-              window.alert(result.message);
-            }
-          });
-        }}
+        onClick={goToCheckout}
       >
-        {pending ? 'در حال فعال‌سازی…' : 'شرکت در مینی‌دوره'}
+        شرکت در مینی‌دوره
       </Button>
     );
   }
@@ -136,27 +86,12 @@ export function MiniCourseEnrollCta({
     <div className="flex flex-col gap-4">
       {!isHero ? (
         <p className="text-sm leading-relaxed text-bone-dim">
-          با زدن دکمه زیر، این مینی‌دوره برای شما فعال می‌شود و در بخش «دوره‌های من» پنل نمایش داده
-          می‌شود.
+          برای شرکت در این مینی‌دوره رایگان، ثبت‌نام را از صفحه سفارش تکمیل کنید.
         </p>
       ) : null}
       <div className="flex flex-wrap gap-3">
-        <Button
-          type="button"
-          variant="primary"
-          size="lg"
-          withArrow
-          disabled={pending}
-          onClick={() => {
-            startTransition(async () => {
-              const result = await enrollMiniCourseAction(slug);
-              if (result?.ok === false) {
-                window.alert(result.message);
-              }
-            });
-          }}
-        >
-          {pending ? 'در حال فعال‌سازی…' : 'شرکت در مینی‌دوره'}
+        <Button type="button" variant="primary" size="lg" withArrow onClick={goToCheckout}>
+          شرکت در مینی‌دوره
         </Button>
       </div>
     </div>

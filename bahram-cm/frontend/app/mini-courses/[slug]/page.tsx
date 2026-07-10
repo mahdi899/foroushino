@@ -70,7 +70,6 @@ export default async function MiniCourseDetailPage({ params }: PageProps) {
           course={course}
           imageAlt={imageAlt}
           descriptionHtml={course.description}
-          isLoggedIn={Boolean(student)}
           isEnrolled={isEnrolled}
           enrollmentNumber={enrollmentNumber}
         />

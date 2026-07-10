@@ -55,6 +55,30 @@ class MiniCourseEnrollmentService
             ->exists();
     }
 
+    public function enrollFromPaidOrder(Order $order): ?MiniCourseEnrollment
+    {
+        $order->loadMissing('product.miniCourse', 'user');
+
+        $course = $order->product?->miniCourse;
+        $user = $order->user;
+
+        if (! $course || ! $user) {
+            return null;
+        }
+
+        return MiniCourseEnrollment::query()->firstOrCreate(
+            [
+                'user_id' => $user->id,
+                'mini_course_id' => $course->id,
+            ],
+            [
+                'order_id' => $order->id,
+                'enrollment_number' => $order->order_number,
+                'enrolled_at' => now(),
+            ],
+        );
+    }
+
     private function createFreeOrder(User $user, MiniCourse $course): Order
     {
         $user->loadMissing('profile');

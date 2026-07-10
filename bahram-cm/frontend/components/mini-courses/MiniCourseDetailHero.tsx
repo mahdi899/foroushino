@@ -21,7 +21,6 @@ type MiniCourseDetailHeroProps = {
   course: MiniCourseApiRecord;
   imageAlt: string;
   descriptionHtml?: string | null;
-  isLoggedIn: boolean;
   isEnrolled: boolean;
   enrollmentNumber?: string | null;
 };
@@ -30,7 +29,6 @@ export function MiniCourseDetailHero({
   course,
   imageAlt,
   descriptionHtml,
-  isLoggedIn,
   isEnrolled,
   enrollmentNumber,
 }: MiniCourseDetailHeroProps) {
@@ -65,7 +63,6 @@ export function MiniCourseDetailHero({
             <div className="mini-course-detail-hero__cta">
               <MiniCourseEnrollCta
                 slug={course.slug}
-                isLoggedIn={isLoggedIn}
                 isEnrolled={isEnrolled}
                 enrollmentNumber={enrollmentNumber}
                 variant="overlay"
