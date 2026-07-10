@@ -21,6 +21,7 @@ type Props = {
   phoneMasked: string | null;
   initialEmail?: string | null;
   student: StudentUser | null;
+  embedded?: boolean;
 };
 
 type SuccessState = {
@@ -29,12 +30,75 @@ type SuccessState = {
   otpSent: boolean;
 };
 
+const fieldClass =
+  "payment-complete-form__input block h-12 w-full rounded-pill border bg-ink/60 px-4 ps-10 text-bone focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/40";
+
+function NameEmailFieldsRow({
+  formId,
+  name,
+  email,
+  errors,
+  onNameChange,
+  onEmailChange,
+}: {
+  formId: string;
+  name: string;
+  email: string;
+  errors: Record<string, string>;
+  onNameChange: (value: string) => void;
+  onEmailChange: (value: string) => void;
+}) {
+  return (
+    <div className="payment-complete-form__fields-row">
+      <label htmlFor={`${formId}-name`} className="payment-complete-form__field min-w-0">
+        <span className="payment-complete-form__label">نام و نام خانوادگی</span>
+        <span className="relative mt-2 block">
+          <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-mist">
+            <User2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+          </span>
+          <input
+            id={`${formId}-name`}
+            value={name}
+            onChange={(e) => onNameChange(e.target.value)}
+            autoFocus
+            className={cn(fieldClass, errors.name ? "border-gold/60" : "border-bone/12")}
+          />
+        </span>
+      </label>
+
+      <label htmlFor={`${formId}-email`} className="payment-complete-form__field min-w-0">
+        <span className="payment-complete-form__label">ایمیل (اختیاری)</span>
+        <span className="relative mt-2 block">
+          <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-mist">
+            <Mail className="h-4 w-4" strokeWidth={1.5} aria-hidden />
+          </span>
+          <input
+            id={`${formId}-email`}
+            type="email"
+            dir="ltr"
+            value={email}
+            onChange={(e) => onEmailChange(e.target.value)}
+            className={cn(fieldClass, "border-bone/12")}
+          />
+        </span>
+      </label>
+
+      {errors.name ? (
+        <span className="payment-complete-form__field-error payment-complete-form__field-error--span">
+          {errors.name}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 export function PaymentCompleteForm({
   completionToken,
   orderNumber,
   phoneMasked,
   initialEmail,
   student,
+  embedded = false,
 }: Props) {
   const formId = useId();
   const auth = useStudentAuthOptional();
@@ -99,14 +163,15 @@ export function PaymentCompleteForm({
 
   if (success) {
     return (
-      <div className="rounded-tile border border-emerald/25 bg-emerald/8 px-4 py-4 text-sm text-bone">
+      <div className="payment-complete-form__success">
         {loggedIn || !success.postLoginToken ? (
-          <PaymentCompleteLoggedInSuccess phoneMasked={success.phoneMasked} />
+          <PaymentCompleteLoggedInSuccess phoneMasked={success.phoneMasked} embedded={embedded} />
         ) : (
           <PaymentCompleteLoginStep
             postLoginToken={success.postLoginToken}
             phoneMasked={success.phoneMasked}
             otpSent={success.otpSent}
+            embedded={embedded}
           />
         )}
       </div>
@@ -115,33 +180,38 @@ export function PaymentCompleteForm({
 
   if (loggedIn && hasCompleteName) {
     return (
-      <div className="space-y-4 text-sm text-bone">
-        <div className="rounded-tile border border-bone/10 bg-ink/40 p-4">
-          <p className="text-caption text-mist">اطلاعات حساب شما</p>
-          <div className="mt-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <User2 className="h-4 w-4 text-emerald-glow" strokeWidth={1.5} aria-hidden />
+      <div className="payment-complete-form">
+        <div className="payment-complete-form__meta">
+          <p className="payment-complete-form__meta-label">اطلاعات حساب شما</p>
+          <div className="payment-complete-form__meta-rows">
+            <div className="payment-complete-form__meta-row">
+              <User2 className="h-4 w-4 shrink-0 text-emerald-glow" strokeWidth={1.5} aria-hidden />
               <span>{profileName}</span>
             </div>
             {student?.mobile ? (
-              <div className="flex items-center gap-2 text-bone-dim" dir="ltr">
-                <Phone className="h-4 w-4 text-emerald-glow" strokeWidth={1.5} aria-hidden />
+              <div className="payment-complete-form__meta-row text-bone-dim" dir="ltr">
+                <Phone className="h-4 w-4 shrink-0 text-emerald-glow" strokeWidth={1.5} aria-hidden />
                 <span>{student.mobile}</span>
               </div>
             ) : null}
           </div>
         </div>
-        <p className="text-caption text-mist">
-          شماره سفارش: <span className="num-latin text-bone-dim">{orderNumber}</span>
-        </p>
+
+        {!embedded ? (
+          <p className="text-caption text-mist">
+            شماره سفارش: <span className="num-latin text-bone-dim">{orderNumber}</span>
+          </p>
+        ) : null}
+
         {submitting ? (
-          <div className="flex items-center justify-center gap-2 py-4 text-bone-dim">
+          <div className="payment-complete-form__loading">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             در حال فعال‌سازی دسترسی…
           </div>
         ) : null}
+
         {serverError ? (
-          <p role="alert" className="rounded-tile border border-gold/30 bg-gold/8 px-4 py-3 text-gold">
+          <p role="alert" className="payment-complete-form__error">
             {serverError}
           </p>
         ) : null}
@@ -151,66 +221,31 @@ export function PaymentCompleteForm({
 
   if (loggedIn && student) {
     return (
-      <form className="grid gap-4" onSubmit={onSubmit} noValidate>
-        <div className="rounded-tile border border-bone/10 bg-ink/40 p-4">
-          <p className="text-caption text-mist">اطلاعات حساب شما</p>
-          <div className="mt-3 space-y-2 text-sm">
-            {student.mobile ? (
-              <div className="flex items-center gap-2 text-bone-dim" dir="ltr">
-                <Phone className="h-4 w-4 text-emerald-glow" strokeWidth={1.5} aria-hidden />
-                <span>{student.mobile}</span>
-              </div>
-            ) : null}
-            <p className="text-caption text-mist">
-              شماره سفارش: <span className="num-latin text-bone-dim">{orderNumber}</span>
-            </p>
-          </div>
+      <form className="payment-complete-form" onSubmit={onSubmit} noValidate>
+        <div className="payment-complete-form__meta">
+          <p className="payment-complete-form__meta-label">اطلاعات حساب شما</p>
+          {student.mobile ? (
+            <div className="payment-complete-form__meta-row text-bone-dim" dir="ltr">
+              <Phone className="h-4 w-4 shrink-0 text-emerald-glow" strokeWidth={1.5} aria-hidden />
+              <span>{student.mobile}</span>
+            </div>
+          ) : null}
         </div>
 
-        <p className="text-sm text-bone-dim">فقط نام خود را وارد کن تا دسترسی‌ات فعال شود.</p>
-
-        <label htmlFor={`${formId}-name`} className="block">
-          <span className="block text-caption text-bone">نام و نام خانوادگی</span>
-          <span className="relative mt-2 block">
-            <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-mist">
-              <User2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-            </span>
-            <input
-              id={`${formId}-name`}
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                setErrors((er) => ({ ...er, name: "" }));
-              }}
-              autoFocus
-              className={cn(
-                "block h-12 w-full rounded-pill border bg-ink/60 px-4 ps-10 text-bone focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/40",
-                errors.name ? "border-gold/60" : "border-bone/12",
-              )}
-            />
-          </span>
-          {errors.name ? <span className="mt-1.5 block text-caption text-gold">{errors.name}</span> : null}
-        </label>
-
-        <label htmlFor={`${formId}-email`} className="block">
-          <span className="block text-caption text-bone">ایمیل (اختیاری)</span>
-          <span className="relative mt-2 block">
-            <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-mist">
-              <Mail className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-            </span>
-            <input
-              id={`${formId}-email`}
-              type="email"
-              dir="ltr"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="block h-12 w-full rounded-pill border border-bone/12 bg-ink/60 px-4 ps-10 text-bone focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/40"
-            />
-          </span>
-        </label>
+        <NameEmailFieldsRow
+          formId={formId}
+          name={name}
+          email={email}
+          errors={errors}
+          onNameChange={(value) => {
+            setName(value);
+            setErrors((er) => ({ ...er, name: "" }));
+          }}
+          onEmailChange={setEmail}
+        />
 
         {serverError ? (
-          <p role="alert" className="rounded-tile border border-gold/30 bg-gold/8 px-4 py-3 text-gold">
+          <p role="alert" className="payment-complete-form__error">
             {serverError}
           </p>
         ) : null}
@@ -218,7 +253,7 @@ export function PaymentCompleteForm({
         <button
           type="submit"
           disabled={submitting}
-          className="neon-btn-primary inline-flex h-12 w-full items-center justify-center gap-2 rounded-pill bg-emerald px-6 font-semibold hover:bg-emerald-glow disabled:opacity-60"
+          className="payment-result-card__primary payment-complete-form__submit neon-btn-primary inline-flex h-12 w-full items-center justify-center gap-2 rounded-pill font-semibold disabled:opacity-60"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           ذخیره و ادامه
@@ -228,67 +263,37 @@ export function PaymentCompleteForm({
   }
 
   return (
-    <form className="grid gap-4" onSubmit={onSubmit} noValidate>
-      <p className="text-sm text-bone-dim">فقط نام خود را وارد کن تا دسترسی‌ات فعال شود.</p>
-
+    <form className="payment-complete-form" onSubmit={onSubmit} noValidate>
       {phoneMasked ? (
-        <div className="flex items-center gap-3 rounded-tile border border-bone/10 bg-ink/40 px-4 py-3 text-sm">
-          <Phone className="h-4 w-4 shrink-0 text-emerald-glow" strokeWidth={1.5} aria-hidden />
-          <div className="min-w-0">
-            <p className="text-caption text-mist">شماره ثبت‌شده در خرید</p>
-            <p className="mt-0.5 font-medium text-bone" dir="ltr">
-              {phoneMasked}
-            </p>
+        <div className="payment-complete-form__meta">
+          <p className="payment-complete-form__meta-label">شماره ثبت‌شده در خرید</p>
+          <div className="payment-complete-form__meta-row font-medium text-bone" dir="ltr">
+            <Phone className="h-4 w-4 shrink-0 text-emerald-glow" strokeWidth={1.5} aria-hidden />
+            <span>{phoneMasked}</span>
           </div>
         </div>
       ) : null}
 
-      <p className="text-caption text-mist">
-        شماره سفارش: <span className="num-latin text-bone-dim">{orderNumber}</span>
-      </p>
+      {!embedded ? (
+        <p className="text-caption text-mist">
+          شماره سفارش: <span className="num-latin text-bone-dim">{orderNumber}</span>
+        </p>
+      ) : null}
 
-      <label htmlFor={`${formId}-name`} className="block">
-        <span className="block text-caption text-bone">نام و نام خانوادگی</span>
-        <span className="relative mt-2 block">
-          <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-mist">
-            <User2 className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-          </span>
-          <input
-            id={`${formId}-name`}
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setErrors((er) => ({ ...er, name: "" }));
-            }}
-            autoFocus
-            className={cn(
-              "block h-12 w-full rounded-pill border bg-ink/60 px-4 ps-10 text-bone focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/40",
-              errors.name ? "border-gold/60" : "border-bone/12",
-            )}
-          />
-        </span>
-        {errors.name ? <span className="mt-1.5 block text-caption text-gold">{errors.name}</span> : null}
-      </label>
-
-      <label htmlFor={`${formId}-email`} className="block">
-        <span className="block text-caption text-bone">ایمیل (اختیاری)</span>
-        <span className="relative mt-2 block">
-          <span className="pointer-events-none absolute inset-y-0 start-3 flex items-center text-mist">
-            <Mail className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-          </span>
-          <input
-            id={`${formId}-email`}
-            type="email"
-            dir="ltr"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="block h-12 w-full rounded-pill border border-bone/12 bg-ink/60 px-4 ps-10 text-bone focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/40"
-          />
-        </span>
-      </label>
+      <NameEmailFieldsRow
+        formId={formId}
+        name={name}
+        email={email}
+        errors={errors}
+        onNameChange={(value) => {
+          setName(value);
+          setErrors((er) => ({ ...er, name: "" }));
+        }}
+        onEmailChange={setEmail}
+      />
 
       {serverError ? (
-        <p role="alert" className="rounded-tile border border-gold/30 bg-gold/8 px-4 py-3 text-gold">
+        <p role="alert" className="payment-complete-form__error">
           {serverError}
         </p>
       ) : null}
@@ -296,7 +301,7 @@ export function PaymentCompleteForm({
       <button
         type="submit"
         disabled={submitting}
-        className="neon-btn-primary inline-flex h-12 w-full items-center justify-center gap-2 rounded-pill bg-emerald px-6 font-semibold hover:bg-emerald-glow disabled:opacity-60"
+        className="payment-result-card__primary payment-complete-form__submit neon-btn-primary inline-flex h-12 w-full items-center justify-center gap-2 rounded-pill font-semibold disabled:opacity-60"
       >
         {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
         ذخیره و ادامه

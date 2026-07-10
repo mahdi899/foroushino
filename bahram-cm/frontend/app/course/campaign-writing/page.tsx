@@ -403,27 +403,27 @@ export default async function CourseCampaignWritingPage() {
                 طراحی می‌کنی.
               </p>
             </Reveal>
-          </div>
 
-          <div className="mx-auto mt-8 max-w-3xl space-y-4 text-sm leading-relaxed text-bone-dim md:mt-10 md:space-y-5 md:text-body">
-            <Reveal delay={0.18}>
-              <p>
-                در این دوره یاد می‌گیری مشتری را بشناسی، پیام فروش بنویسی، پیشنهاد خوب بسازی
-                و بعد از تماس، درست پیگیری کنی.
-              </p>
-            </Reveal>
-            <Reveal delay={0.22}>
-              <p>
-                تمرکز روی نتیجه است: در پایان باید بتوانی برای یک محصول یا خدمت، یک کمپین
-                ساده و قابل اجرا طراحی کنی.
-              </p>
-            </Reveal>
-            <Reveal delay={0.26}>
-              <p>
-                اگر می‌خواهی از نوشتن پراکنده خارج شوی و تبلیغت واقعاً بفروشد، این دوره
-                نقطه شروع توست.
-              </p>
-            </Reveal>
+            <div className="mt-8 space-y-4 text-sm leading-relaxed text-bone-dim md:mt-10 md:space-y-5 md:text-body">
+              <Reveal delay={0.18}>
+                <p>
+                  در این دوره یاد می‌گیری مشتری را بشناسی، پیام فروش بنویسی، پیشنهاد خوب بسازی
+                  و بعد از تماس، درست پیگیری کنی.
+                </p>
+              </Reveal>
+              <Reveal delay={0.22}>
+                <p>
+                  تمرکز روی نتیجه است: در پایان باید بتوانی برای یک محصول یا خدمت، یک کمپین
+                  ساده و قابل اجرا طراحی کنی.
+                </p>
+              </Reveal>
+              <Reveal delay={0.26}>
+                <p>
+                  اگر می‌خواهی از نوشتن پراکنده خارج شوی و تبلیغت واقعاً بفروشد، این دوره
+                  نقطه شروع توست.
+                </p>
+              </Reveal>
+            </div>
           </div>
         </div>
       </section>

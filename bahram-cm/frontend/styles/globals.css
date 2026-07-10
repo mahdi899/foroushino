@@ -3276,6 +3276,553 @@ html:not([data-theme="light"]) .mini-course-card[data-mini-tone="gold"]:hover .m
   transform: translateY(-1px);
 }
 
+/* Payment result — success / failed / cancelled receipt card */
+.payment-result-section {
+  position: relative;
+}
+
+.payment-result-card {
+  position: relative;
+  width: 100%;
+}
+
+.payment-result-card__surface {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-card-lg, 1.5rem);
+  border: 1px solid transparent;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.payment-result-card__ambient {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.payment-result-card__content {
+  position: relative;
+  z-index: 1;
+  padding: clamp(1.75rem, 4vw, 2.5rem) clamp(1.35rem, 3.5vw, 2rem)
+    clamp(1.85rem, 4vw, 2.35rem);
+  text-align: center;
+}
+
+.payment-result-card__icon-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin-inline: auto;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.payment-result-card__icon {
+  width: 2rem;
+  height: 2rem;
+}
+
+.payment-result-card__eyebrow {
+  margin-top: 1.15rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.payment-result-card__title {
+  margin-top: 0.75rem;
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 3.2vw, 1.75rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.payment-result-card__body {
+  margin-top: 0.85rem;
+  margin-inline: auto;
+  max-width: 24rem;
+  font-size: 0.92rem;
+  line-height: 1.75;
+}
+
+.payment-result-card__order {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  margin-top: 1.35rem;
+  padding: 0.65rem 1rem;
+  border-radius: 0.85rem;
+  border: 1px solid transparent;
+  min-width: min(100%, 14rem);
+}
+
+.payment-result-card__order-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.payment-result-card__order-value {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.payment-result-card__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
+  margin-top: 1.65rem;
+}
+
+@media (min-width: 480px) {
+  .payment-result-card__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .payment-result-card__actions > * {
+    flex: 0 1 auto;
+  }
+}
+
+.payment-result-card__form {
+  margin-top: 1.35rem;
+  width: 100%;
+  text-align: start;
+}
+
+.payment-complete-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.payment-complete-form__meta {
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in oklab, var(--color-bone) 10%, transparent);
+  background: color-mix(in oklab, var(--color-bone) 4%, transparent);
+  padding: 0.85rem 1rem;
+}
+
+.payment-complete-form__meta-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-mist);
+}
+
+.payment-complete-form__meta-rows {
+  margin-top: 0.65rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.payment-complete-form__meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.92rem;
+}
+
+.payment-complete-form__field {
+  display: block;
+  min-width: 0;
+}
+
+.payment-complete-form__fields-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.payment-complete-form__field-error--span {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 420px) {
+  .payment-complete-form__fields-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.payment-complete-form__label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-bone);
+}
+
+.payment-complete-form__field-error {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--color-gold);
+}
+
+.payment-complete-form__error {
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in oklab, var(--color-gold) 28%, transparent);
+  background: color-mix(in oklab, var(--color-gold) 8%, transparent);
+  padding: 0.75rem 0.9rem;
+  font-size: 0.86rem;
+  color: var(--color-gold);
+}
+
+.payment-complete-form__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  font-size: 0.9rem;
+  color: var(--color-bone-dim);
+}
+
+.payment-complete-form__success {
+  text-align: center;
+}
+
+.payment-complete-form__success-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+}
+
+.payment-complete-form__success-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.payment-complete-form__success-title {
+  font-family: var(--font-display);
+  font-size: clamp(1rem, 2.2vw, 1.15rem);
+  font-weight: 800;
+  line-height: 1.35;
+  color: var(--color-emerald-glow);
+}
+
+.payment-complete-form__success-body {
+  max-width: 22rem;
+  font-size: 0.9rem;
+  line-height: 1.75;
+  color: var(--color-bone-dim);
+}
+
+.payment-complete-form__success-hint {
+  font-size: 0.78rem;
+  color: var(--color-mist);
+}
+
+.payment-complete-form__success-phone {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.65rem 1rem;
+  border-radius: 0.85rem;
+  border: 1px solid color-mix(in oklab, var(--color-bone) 10%, transparent);
+  background: color-mix(in oklab, var(--color-bone) 4%, transparent);
+  min-width: min(100%, 14rem);
+}
+
+.payment-complete-form__success-phone-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-mist);
+}
+
+.payment-complete-form__success-phone-value {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--color-bone);
+}
+
+.payment-complete-form__otp-wrap {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}
+
+.payment-complete-form__otp-actions {
+  width: 100%;
+}
+
+.payment-complete-form__success-state .payment-complete-form__submit {
+  margin-top: 0.15rem;
+}
+
+html[data-theme="light"] .payment-complete-form__success-title {
+  color: var(--color-emerald-deep);
+}
+
+html[data-theme="light"] .payment-complete-form__success-phone {
+  border-color: color-mix(in oklab, var(--color-emerald) 12%, transparent);
+  background: color-mix(in oklab, white 72%, transparent);
+}
+
+html[data-theme="light"] .payment-complete-form__success-phone-value {
+  color: var(--color-emerald-deep);
+}
+
+.payment-complete-form__submit {
+  margin-top: 0.25rem;
+}
+
+html[data-theme="light"] .payment-complete-form__meta {
+  border-color: color-mix(in oklab, var(--color-emerald) 12%, transparent);
+  background: color-mix(in oklab, white 78%, transparent);
+}
+
+html[data-theme="light"] .payment-complete-form__input {
+  border-color: color-mix(in oklab, var(--color-emerald) 14%, transparent);
+  background: color-mix(in oklab, white 88%, transparent);
+  color: var(--color-emerald-deep);
+}
+
+html:not([data-theme="light"]) .payment-result-card--success .payment-result-card__ambient {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 18%, rgba(37, 160, 166, 0.18), transparent 72%),
+    radial-gradient(ellipse 80% 60% at 50% 100%, rgba(37, 160, 166, 0.06), transparent 78%);
+}
+
+html:not([data-theme="light"]) .payment-result-card--success .payment-result-card__surface {
+  border-color: rgba(37, 160, 166, 0.22);
+  background: color-mix(in oklab, var(--color-charcoal) 42%, var(--color-ink));
+  box-shadow:
+    inset 0 1px 0 rgba(180, 255, 248, 0.06),
+    0 24px 56px -32px rgba(0, 0, 0, 0.55);
+}
+
+html:not([data-theme="light"]) .payment-result-card--success .payment-result-card__icon-wrap {
+  border-color: rgba(37, 160, 166, 0.35);
+  background: rgba(37, 160, 166, 0.12);
+  box-shadow: 0 0 32px -8px rgba(37, 160, 166, 0.45);
+  color: var(--color-emerald-glow);
+}
+
+html:not([data-theme="light"]) .payment-result-card--failed .payment-result-card__ambient {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 18%, rgba(255, 120, 90, 0.12), transparent 72%),
+    radial-gradient(ellipse 80% 60% at 50% 100%, rgba(255, 176, 0, 0.07), transparent 78%);
+}
+
+html:not([data-theme="light"]) .payment-result-card--failed .payment-result-card__surface {
+  border-color: rgba(255, 140, 100, 0.2);
+  background: color-mix(in oklab, var(--color-charcoal) 40%, var(--color-ink));
+}
+
+html:not([data-theme="light"]) .payment-result-card--failed .payment-result-card__icon-wrap {
+  border-color: rgba(255, 140, 100, 0.32);
+  background: rgba(255, 100, 70, 0.1);
+  box-shadow: 0 0 28px -10px rgba(255, 120, 90, 0.35);
+  color: #ffb48a;
+}
+
+html:not([data-theme="light"]) .payment-result-card--cancelled .payment-result-card__ambient,
+html:not([data-theme="light"]) .payment-result-card--invalid .payment-result-card__ambient {
+  background: radial-gradient(ellipse 90% 70% at 50% 24%, rgba(180, 190, 195, 0.08), transparent 78%);
+}
+
+html:not([data-theme="light"]) .payment-result-card--cancelled .payment-result-card__surface,
+html:not([data-theme="light"]) .payment-result-card--invalid .payment-result-card__surface {
+  border-color: color-mix(in oklab, var(--color-bone) 10%, transparent);
+  background: color-mix(in oklab, var(--color-charcoal) 34%, var(--color-ink));
+}
+
+html:not([data-theme="light"]) .payment-result-card--cancelled .payment-result-card__icon-wrap,
+html:not([data-theme="light"]) .payment-result-card--invalid .payment-result-card__icon-wrap {
+  border-color: color-mix(in oklab, var(--color-bone) 16%, transparent);
+  background: color-mix(in oklab, var(--color-bone) 6%, transparent);
+  color: var(--color-mist);
+}
+
+html:not([data-theme="light"]) .payment-result-card--success .payment-result-card__eyebrow {
+  color: rgba(180, 245, 238, 0.78);
+}
+
+html:not([data-theme="light"]) .payment-result-card--success .payment-result-card__title {
+  color: #f0faf8;
+}
+
+html:not([data-theme="light"]) .payment-result-card--success .payment-result-card__body {
+  color: rgba(220, 245, 240, 0.78);
+}
+
+html:not([data-theme="light"]) .payment-result-card--failed .payment-result-card__eyebrow {
+  color: rgba(255, 200, 170, 0.82);
+}
+
+html:not([data-theme="light"]) .payment-result-card--failed .payment-result-card__title {
+  color: #fff3eb;
+}
+
+html:not([data-theme="light"]) .payment-result-card--failed .payment-result-card__body {
+  color: rgba(255, 220, 200, 0.76);
+}
+
+html:not([data-theme="light"]) .payment-result-card--cancelled .payment-result-card__eyebrow,
+html:not([data-theme="light"]) .payment-result-card--invalid .payment-result-card__eyebrow {
+  color: var(--color-mist);
+}
+
+html:not([data-theme="light"]) .payment-result-card--cancelled .payment-result-card__title,
+html:not([data-theme="light"]) .payment-result-card--invalid .payment-result-card__title {
+  color: var(--color-bone);
+}
+
+html:not([data-theme="light"]) .payment-result-card--cancelled .payment-result-card__body,
+html:not([data-theme="light"]) .payment-result-card--invalid .payment-result-card__body {
+  color: var(--color-bone-dim);
+}
+
+html:not([data-theme="light"]) .payment-result-card__order {
+  border-color: color-mix(in oklab, var(--color-bone) 10%, transparent);
+  background: color-mix(in oklab, var(--color-bone) 4%, transparent);
+}
+
+html:not([data-theme="light"]) .payment-result-card__order-label {
+  color: var(--color-mist);
+}
+
+html:not([data-theme="light"]) .payment-result-card__order-value {
+  color: var(--color-bone);
+}
+
+html[data-theme="light"] .payment-result-card--success .payment-result-card__ambient {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 18%, rgba(0, 140, 150, 0.1), transparent 72%),
+    radial-gradient(ellipse 80% 60% at 50% 100%, rgba(0, 111, 117, 0.05), transparent 78%);
+}
+
+html[data-theme="light"] .payment-result-card--success .payment-result-card__surface {
+  border-color: rgba(0, 111, 117, 0.18);
+  background: color-mix(in oklab, white 90%, #e8f6f6);
+  box-shadow: 0 20px 48px -28px rgba(11, 31, 34, 0.14);
+}
+
+html[data-theme="light"] .payment-result-card--success .payment-result-card__icon-wrap {
+  border-color: rgba(0, 111, 117, 0.22);
+  background: rgba(0, 140, 150, 0.1);
+  color: var(--color-emerald-deep);
+}
+
+html[data-theme="light"] .payment-result-card--failed .payment-result-card__ambient {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 18%, rgba(220, 80, 60, 0.08), transparent 72%),
+    radial-gradient(ellipse 80% 60% at 50% 100%, rgba(255, 176, 0, 0.06), transparent 78%);
+}
+
+html[data-theme="light"] .payment-result-card--failed .payment-result-card__surface {
+  border-color: rgba(200, 90, 70, 0.16);
+  background: color-mix(in oklab, white 92%, #fff1eb);
+}
+
+html[data-theme="light"] .payment-result-card--failed .payment-result-card__icon-wrap {
+  border-color: rgba(200, 90, 70, 0.22);
+  background: rgba(220, 90, 70, 0.08);
+  color: #c44f35;
+}
+
+html[data-theme="light"] .payment-result-card--cancelled .payment-result-card__surface,
+html[data-theme="light"] .payment-result-card--invalid .payment-result-card__surface {
+  border-color: color-mix(in oklab, var(--color-emerald) 12%, transparent);
+  background: color-mix(in oklab, white 88%, transparent);
+  box-shadow: var(--shadow-veil-resolved);
+}
+
+html[data-theme="light"] .payment-result-card--cancelled .payment-result-card__icon-wrap,
+html[data-theme="light"] .payment-result-card--invalid .payment-result-card__icon-wrap {
+  border-color: color-mix(in oklab, var(--color-emerald) 14%, transparent);
+  background: color-mix(in oklab, white 80%, transparent);
+  color: var(--color-mist);
+}
+
+html[data-theme="light"] .payment-result-card--success .payment-result-card__title {
+  color: var(--color-emerald-deep);
+}
+
+html[data-theme="light"] .payment-result-card--success .payment-result-card__body {
+  color: var(--color-mist);
+}
+
+html[data-theme="light"] .payment-result-card--failed .payment-result-card__title {
+  color: #8a2e1c;
+}
+
+html[data-theme="light"] .payment-result-card--failed .payment-result-card__body {
+  color: var(--color-mist);
+}
+
+html[data-theme="light"] .payment-result-card--cancelled .payment-result-card__title,
+html[data-theme="light"] .payment-result-card--invalid .payment-result-card__title {
+  color: var(--color-emerald-deep);
+}
+
+html[data-theme="light"] .payment-result-card__order {
+  border-color: color-mix(in oklab, var(--color-emerald) 12%, transparent);
+  background: color-mix(in oklab, white 72%, transparent);
+}
+
+html[data-theme="light"] .payment-result-card__order-label {
+  color: var(--color-mist);
+}
+
+html[data-theme="light"] .payment-result-card__order-value {
+  color: var(--color-emerald-deep);
+}
+
+html:not([data-theme="light"]) .payment-result-card .payment-result-card__primary.neon-btn-primary {
+  background: linear-gradient(135deg, var(--color-emerald-glow) 0%, var(--color-emerald) 100%);
+  color: #041214;
+  box-shadow: 0 12px 28px -12px rgba(37, 160, 166, 0.45);
+}
+
+html:not([data-theme="light"]) .payment-result-card--failed .payment-result-card__primary.neon-btn-primary {
+  background: linear-gradient(135deg, #ffb000 0%, #ffe08a 100%);
+  color: #1a1200;
+  box-shadow: 0 12px 28px -12px rgba(255, 176, 0, 0.28);
+}
+
+html:not([data-theme="light"]) .payment-result-card .payment-result-card__secondary {
+  border: 1px solid color-mix(in oklab, var(--color-bone) 16%, transparent);
+  background: color-mix(in oklab, var(--color-bone) 4%, transparent);
+  color: var(--color-bone);
+}
+
+html[data-theme="light"] .payment-result-card .payment-result-card__primary.neon-btn-primary {
+  background: linear-gradient(135deg, var(--color-emerald) 0%, var(--color-emerald-glow) 100%);
+  color: #f8fbfb;
+}
+
+html[data-theme="light"] .payment-result-card--failed .payment-result-card__primary.neon-btn-primary {
+  background: linear-gradient(135deg, #c44f35 0%, #e07058 100%);
+  color: #fff8f5;
+}
+
+html[data-theme="light"] .payment-result-card .payment-result-card__secondary {
+  border-color: color-mix(in oklab, var(--color-emerald) 16%, transparent);
+  background: color-mix(in oklab, white 80%, transparent);
+  color: var(--color-emerald-deep);
+}
+
 .photo-scrim-bottom-soft {
   pointer-events: none;
   position: absolute;
