@@ -42,6 +42,7 @@ use App\Http\Controllers\Api\V1\Student\CertificateDownloadController;
 use App\Http\Controllers\Api\V1\Student\CourseController as StudentCourseController;
 use App\Http\Controllers\Api\V1\Student\DashboardController as StudentDashboardController;
 use App\Http\Controllers\Api\V1\Student\MiniCourseController as StudentMiniCourseController;
+use App\Http\Controllers\Api\V1\Student\NotificationController as StudentNotificationController;
 use App\Http\Controllers\Api\V1\Student\OrderController as StudentOrderController;
 use App\Http\Controllers\Api\V1\Student\ProfileController as StudentProfileController;
 use App\Http\Controllers\Api\V1\Student\ReferralController as StudentReferralController;
