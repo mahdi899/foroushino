@@ -1,5 +1,5 @@
 import { AdminPage } from '../../../ui';
-import { DiscountCodeForm } from './DiscountCodeForm';
+import { DiscountCodeForm } from '../DiscountCodeForm';
 import { getProducts } from '@/lib/admin/commerceData';
 
 export const dynamic = 'force-dynamic';

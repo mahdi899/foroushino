@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { Copy, Loader2, Save, Trash2 } from 'lucide-react';
 import { JalaliDateTimeField } from '@/components/admin/JalaliDateTimeField';
-import { deleteDiscountCode, saveDiscountCode } from '../../actions';
+import { deleteDiscountCode, saveDiscountCode } from '../actions';
 import type { AdminDiscountCode, AdminDiscountRestriction, AdminDiscountType, AdminProduct } from '@/lib/admin/commerceTypes';
 import { DISCOUNT_RESTRICTION_LABELS, DISCOUNT_TYPE_LABELS } from '@/lib/admin/commerceTypes';
 
@@ -32,7 +32,7 @@ export function DiscountCodeForm({
     starts_at: code?.starts_at ?? '',
     ends_at: code?.ends_at ?? '',
     max_uses: code?.max_uses ?? null,
-    max_uses_per_user: code?.max_uses_per_user ?? 1,
+    max_uses_per_user: code?.max_uses_per_user ?? null,
     min_order_amount: code?.min_order_amount ?? null,
     max_discount_amount: code?.max_discount_amount ?? null,
     requires_link: code?.requires_link ?? false,

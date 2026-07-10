@@ -1,5 +1,11 @@
 import { Bell, BookOpen, Clapperboard, FileText, KeyRound, MessageSquare, Receipt, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import type { PanelNotificationPayload } from '@/lib/student/panelActions';
+
+/** Only admin-composed broadcasts should surface as panel popups. */
+export function shouldShowNotificationToast(notification: PanelNotificationPayload): boolean {
+  return notification.show_toast === true;
+}
 
 export function notificationTypeIcon(type: string | null | undefined): LucideIcon {
   switch (type) {

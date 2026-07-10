@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { cache } from 'react';
+import sharp from 'sharp';
 import { ImageResponse } from 'next/og';
 import { siteStorageMedia } from '@/config/media';
 
@@ -16,7 +17,8 @@ const portraitPath = path.join(
 
 const loadPortraitDataUrl = cache(async (): Promise<string> => {
   const bytes = await fs.readFile(portraitPath);
-  return `data:image/webp;base64,${bytes.toString('base64')}`;
+  const png = await sharp(bytes).png().toBuffer();
+  return `data:image/png;base64,${png.toString('base64')}`;
 });
 
 export async function renderSiteFavicon(size: number): Promise<ImageResponse> {

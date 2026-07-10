@@ -8,7 +8,7 @@ import {
   type PanelNotificationPayload,
 } from '@/lib/student/panelActions';
 import { NotificationToastStack } from '@/components/student-panel/notifications/NotificationToastStack';
-import { shouldShowNotificationToast } from '@/components/student-panel/notifications/notificationToast';
+import { shouldShowNotificationToast } from '@/components/student-panel/notifications/notificationMeta';
 
 const POLL_ACTIVE_MS = 8_000;
 const POLL_IDLE_MS = 30_000;

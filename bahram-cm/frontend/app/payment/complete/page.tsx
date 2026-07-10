@@ -30,7 +30,8 @@ export default async function PaymentCompletePage({
 
   const studentName = student ? buildCustomerName(student.profile, student.name) : "";
   const loggedInWithProfile = Boolean(student && isCompleteCustomerName(studentName));
-  const hasValidProfile = Boolean(profile && token);
+  const validProfile = profile && token ? profile : null;
+  const hasValidProfile = validProfile !== null;
 
   const body = !hasValidProfile
     ? "این صفحه فقط از طریق بازگشت موفق از درگاه پرداخت در دسترس است."
@@ -42,7 +43,7 @@ export default async function PaymentCompletePage({
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
-      {hasValidProfile ? <ClearCartOnPurchase productSlug={profile.product_slug} /> : null}
+      {validProfile ? <ClearCartOnPurchase productSlug={validProfile.product_slug} /> : null}
 
       <section className="payment-result-section py-12 md:py-16 lg:py-20">
         <div className="container-luxe flex justify-center">
@@ -53,16 +54,16 @@ export default async function PaymentCompletePage({
               title={hasValidProfile ? "پرداخت موفق بود" : "لینک نامعتبر یا منقضی شده"}
               body={body}
               icon={hasValidProfile ? CheckCircle2 : XCircle}
-              orderNumber={hasValidProfile ? profile.order_number : null}
+              orderNumber={validProfile ? validProfile.order_number : null}
               slot="form"
             >
-              {hasValidProfile ? (
+              {validProfile ? (
                 <PaymentCompleteForm
                   embedded
-                  completionToken={token}
-                  orderNumber={profile.order_number}
-                  phoneMasked={profile.customer_phone_masked}
-                  initialEmail={profile.customer_email}
+                  completionToken={token!}
+                  orderNumber={validProfile.order_number}
+                  phoneMasked={validProfile.customer_phone_masked}
+                  initialEmail={validProfile.customer_email}
                   student={student}
                 />
               ) : (

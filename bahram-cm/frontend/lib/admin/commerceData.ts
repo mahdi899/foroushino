@@ -1,6 +1,7 @@
 import 'server-only';
 import { adminFetch } from '@/lib/auth/session';
 import type {
+  AdminDiscountCode,
   AdminFaq,
   AdminOrder,
   AdminOrderDetail,
@@ -11,6 +12,7 @@ import type {
 } from './commerceTypes';
 
 export type {
+  AdminDiscountCode,
   AdminFaq,
   AdminOrder,
   AdminOrderDetail,
