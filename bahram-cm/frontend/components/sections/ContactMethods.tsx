@@ -1,13 +1,7 @@
-import {
-  Instagram,
-  Radio,
-  Send,
-  type LucideIcon,
-} from "lucide-react";
+import { Instagram, Radio, Send, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { site } from "@/content/site";
-import { Reveal } from "@/components/motion/Reveal";
 import { cn } from "@/lib/cn";
 
 type Channel = {
@@ -29,14 +23,14 @@ function buildChannels(): Channel[] {
     },
     {
       icon: Send,
-      label: "تلگرام پشتیبانی",
+      label: "تلگرام",
       value: siteConfig.social.telegramHandle,
       href: siteConfig.social.telegram,
       external: true,
     },
     {
       icon: Radio,
-      label: "روبیکا پشتیبانی",
+      label: "روبیکا",
       value: siteConfig.social.rubikaHandle,
       href: siteConfig.social.rubika,
       external: true,
@@ -48,41 +42,41 @@ export function ContactMethods({ className }: { className?: string }) {
   const channels = buildChannels();
 
   return (
-    <div className={cn("space-y-4", className)}>
-      <Reveal>
-        <div className="neon-surface-static rounded-card border border-bone/10 bg-charcoal/45 p-5 md:p-6">
-          <h2 className="text-h3 text-bone">{site.contactPage.channelsTitle}</h2>
-          <p className="mt-2 text-sm leading-relaxed text-bone-dim md:text-base">
-            از هر مسیر راحت‌تری پیام بده — تیم پشتیبانی پاسخ می‌دهد.
-          </p>
-        </div>
-      </Reveal>
+    <aside
+      className={cn(
+        "contact-methods neon-surface-static flex h-full flex-col rounded-card-lg border border-bone/10 bg-charcoal/45 p-5 md:p-6",
+        className,
+      )}
+      aria-label={site.contactPage.channelsTitle}
+    >
+      <h2 className="font-display text-lg font-semibold text-bone md:text-xl">
+        {site.contactPage.channelsTitle}
+      </h2>
+      <p className="mt-2 text-sm leading-relaxed text-bone-dim">
+        از هر مسیر راحت‌تری پیام بده — تیم پشتیبانی پاسخ می‌دهد.
+      </p>
 
-      <ul className="space-y-3">
-        {channels.map((channel, i) => (
-          <Reveal key={channel.label} delay={0.04 + i * 0.04}>
-            <li>
-              <Link
-                href={channel.href}
-                {...(channel.external ? { target: "_blank", rel: "noreferrer noopener" } : {})}
-                className="neon-surface-hover group flex items-start gap-4 rounded-card border border-bone/10 bg-charcoal/45 p-4 transition-colors hover:border-bone/20 md:p-5"
-              >
-                <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-pill border border-gold/25 bg-gold/[0.06] text-gold transition-colors group-hover:border-gold/40">
-                  <channel.icon className="h-5 w-5" strokeWidth={1.6} aria-hidden />
+      <ul className="mt-5 space-y-2.5 md:mt-6">
+        {channels.map((channel) => (
+          <li key={channel.label}>
+            <Link
+              href={channel.href}
+              {...(channel.external ? { target: "_blank", rel: "noreferrer noopener" } : {})}
+              className="contact-methods__link group flex items-center gap-3 rounded-tile border border-bone/8 bg-ink/35 px-3.5 py-3 transition-colors hover:border-emerald/25 hover:bg-ink/50 md:gap-4 md:px-4 md:py-3.5"
+            >
+              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-pill border border-gold/22 bg-gold/[0.07] text-gold transition-colors group-hover:border-gold/38">
+                <channel.icon className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.65} aria-hidden />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-caption text-mist">{channel.label}</span>
+                <span className="mt-0.5 block truncate text-sm font-medium text-bone num-latin md:text-[0.9375rem]">
+                  {channel.value}
                 </span>
-                <span className="min-w-0 pt-0.5">
-                  <span className="block text-caption uppercase tracking-[0.14em] text-mist">
-                    {channel.label}
-                  </span>
-                  <span className="mt-1 block text-sm font-medium text-bone num-latin md:text-base">
-                    {channel.value}
-                  </span>
-                </span>
-              </Link>
-            </li>
-          </Reveal>
+              </span>
+            </Link>
+          </li>
         ))}
       </ul>
-    </div>
+    </aside>
   );
 }

@@ -79,7 +79,7 @@ export function SiteNav() {
                     active ? "text-bone" : "text-bone-dim/95 hover:text-bone",
                   )}
                 >
-                  {link.label}
+                  {link.shortLabel ?? link.label}
                   <span
                     aria-hidden
                     className={cn(

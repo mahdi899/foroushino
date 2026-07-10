@@ -52,10 +52,10 @@ export function TransformationVoiceCard({
         <div aria-hidden className={scrimClass} />
 
         {showMetric && item.metricValue && item.metricLabel ? (
-          <div className="absolute top-3 start-3 z-10 rounded-pill border border-bone/15 bg-ink/75 px-3 py-1.5 backdrop-blur-sm">
-            <p className="font-display text-sm font-semibold text-gold num-latin">
+          <div className="transformation-voice-metric absolute top-3 start-3 z-10">
+            <p className="transformation-voice-metric-value num-latin">
               {item.metricValue}
-              <span className="me-1 font-normal text-mist"> {item.metricLabel}</span>
+              <span className="transformation-voice-metric-label me-1"> {item.metricLabel}</span>
             </p>
           </div>
         ) : null}
@@ -76,7 +76,7 @@ export function TransformationVoiceCard({
           ) : null}
           <blockquote
             className={cn(
-              'font-display font-normal text-bone text-pretty',
+              'transformation-voice-quote font-display font-normal text-pretty',
               scrim === 'bottom-half'
                 ? 'text-sm leading-[1.65] sm:text-[0.9375rem]'
                 : 'mt-1 text-[1.05rem] leading-[1.72] sm:text-lg md:text-[1.125rem]',
@@ -87,17 +87,17 @@ export function TransformationVoiceCard({
 
           <div
             className={cn(
-              'flex flex-wrap items-baseline gap-x-2 gap-y-0.5',
-              scrim === 'bottom-half'
-                ? 'mt-3 border-t border-bone/12 pt-3'
-                : 'mt-4 border-t border-bone/12 pt-4',
+              'transformation-voice-caption flex flex-wrap items-baseline gap-x-2 gap-y-0.5',
+              scrim === 'bottom-half' ? 'mt-3 pt-3' : 'mt-4 pt-4',
             )}
           >
-            <p className="font-display text-sm font-semibold text-bone sm:text-base">{item.name}</p>
-            <span className="text-mist" aria-hidden>
+            <p className="transformation-voice-name font-display text-sm font-semibold sm:text-base">
+              {item.name}
+            </p>
+            <span className="transformation-voice-sep" aria-hidden>
               ·
             </span>
-            <p className="text-caption text-gold">{item.role}</p>
+            <p className="transformation-voice-role text-caption">{item.role}</p>
           </div>
         </div>
       </div>

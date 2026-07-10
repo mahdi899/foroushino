@@ -12,7 +12,7 @@ function portraitSrc(item: { slug: string }) {
 
 export const metadata: Metadata = buildMetadata({
   title: "رضایت دانشجوها",
-  description: "نظر واقعی دانشجوها به زبان خودشان — بدون ژست بازاریابی.",
+  description: "پرتره و روایت واقعی دانشجوها — بی‌واسطه و بدون ژست بازاریابی.",
   path: "/transformations",
 });
 
@@ -22,11 +22,12 @@ export default async function TransformationsPage() {
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       <PageHero
+        borderless
         eyebrow="رضایت دانشجوها"
-        title="به زبان خودشان"
-        description="عکس و حرف واقعی — نه خلاصهٔ بازاریابی."
+        title="حرف خودشان، نه حرف ما"
+        description="هر کارت یک آدم واقعی با عکس و جمله‌ای که خودش گفته — بدون فیلتر و بدون شعار."
       />
-      <section className="py-section-sm">
+      <section className="pb-section-sm pt-4 md:pt-6">
         <div className="container-luxe">
           {cases.length === 0 ? (
             <p className="text-center text-bone-dim">هنوز نظری ثبت نشده است.</p>

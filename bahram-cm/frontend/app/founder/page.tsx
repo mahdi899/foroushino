@@ -8,28 +8,24 @@ import {
   GraduationCap,
   HandHeart,
   Lightbulb,
-  Mic2,
   Quote,
   Rocket,
   Sparkles,
   Users,
 } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
-import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { FeatureCard } from "@/components/ui/FeatureCard";
 import { IconLabel } from "@/components/ui/IconLabel";
-import { IconTile } from "@/components/ui/IconTile";
-import { PhotoFrame } from "@/components/ui/PhotoFrame";
-import { PageHeroBackdrop } from "@/components/blocks/PageHeroBackdrop";
 import { SiteImage } from "@/components/ui/SiteImage";
+import { cn } from "@/lib/cn";
 import { resolveMediaAlt } from "@/lib/media/alt";
-import { pageHeroBackdropPhoto, sitePhotos } from "@/lib/site-photo-paths";
+import { sitePhotos } from "@/lib/site-photo-paths";
 import { siteStorageMedia } from "@/config/media";
 
 export const metadata: Metadata = buildMetadata({
-  title: "بهرام رستمی · معمار مسیر رشد حرفه‌ای",
+  title: "بهرام رستمی · امپراطوری فروش",
   description: "فلسفه و مسیر بهرام رستمی؛ بنیان‌گذار آکادمی و مدرس کمپین‌نویسی.",
   path: "/founder",
   type: "profile",
@@ -68,82 +64,74 @@ const milestones = [
 ];
 
 export default async function FounderPage() {
-  const heroAlt = await resolveMediaAlt(pageHeroBackdropPhoto, "جلسه آموزشی آکادمی بهرام");
+  const heroAlt = await resolveMediaAlt(sitePhotos.portraitFounder, "بهرام رستمی");
 
   return (
-    <main id="main-content" className="relative min-w-0 max-w-full">
-      {/* HERO */}
-      <section className="page-hero page-hero--media relative isolate overflow-hidden bg-ink">
-        <PageHeroBackdrop
-          src={pageHeroBackdropPhoto}
-          alt={heroAlt}
-          fallbackAlt="جلسه آموزشی آکادمی بهرام"
-          priority
-        />
-        <div className="container-luxe page-hero__container">
-          <div className="grid min-w-0 items-center gap-6 max-md:gap-8 md:grid-cols-12 md:gap-12">
-            <div className="max-md:order-2 md:col-span-7">
-              <Reveal>
-                <Badge tone="emerald" className="mb-4 md:mb-6">
-                  <Mic2 className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
-                  Founder · معلم · سازنده
-                </Badge>
-              </Reveal>
-              <Reveal delay={0.06}>
-                <Eyebrow>درباره‌ی بهرام</Eyebrow>
-              </Reveal>
-              <Reveal delay={0.12}>
-                <h1 className="mt-4 max-w-full min-w-0 text-h1 text-balance md:mt-6 md:text-display">
-                  بهرام رستمی — معمارِ
-                  <br />
-                  مسیرِ رشدِ حرفه‌ای.
+    <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip">
+      <section className="founder-hero relative isolate w-full overflow-hidden bg-ink">
+        <div className="relative aspect-[16/9] w-full min-h-[min(62vw,16rem)] sm:min-h-[18rem] md:min-h-[22rem] lg:min-h-[min(42vw,28rem)]">
+          <SiteImage
+            src={sitePhotos.portraitFounder}
+            alt={heroAlt}
+            fallbackAlt="بهرام رستمی"
+            fill
+            priority
+            className="object-cover object-[center_18%]"
+            sizes="100vw"
+          />
+          <div aria-hidden className="photo-scrim-bottom-half" />
+          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center overflow-visible px-4 pb-6 pt-24 sm:pb-8 sm:pt-28 md:pb-10 md:pt-32">
+            <div className="founder-hero-headline-outer">
+              <div className="founder-hero-headline-wrap">
+                <h1 className="founder-hero-headline">
+                  <span className="founder-hero-title">بهرام رستمی</span>
+                  <span className="founder-hero-tagline">امپراطوری فروش</span>
                 </h1>
-              </Reveal>
-              <Reveal delay={0.2}>
-                <p className="mt-4 max-w-2xl text-body text-bone-dim md:mt-7">
-                  بیش از ده سال آموزش و اجرا؛ تمرکز روی نسخه‌ی حرفه‌ای‌تر تو.
-                </p>
-              </Reveal>
-              <Reveal delay={0.28}>
-                <div className="mt-6 flex flex-wrap items-center gap-2.5 md:mt-10 md:gap-4">
-                  <LinkButton href="/course/campaign-writing" variant="primary" size="lg" withArrow>
-                    شروع مسیر با کمپین‌نویسی
-                  </LinkButton>
-                  <LinkButton href="/saat" variant="ghost" size="lg">
-                    آشنایی با سات
-                  </LinkButton>
-                </div>
-              </Reveal>
-              <Reveal delay={0.36}>
-                <div className="mt-6 flex flex-wrap gap-x-4 gap-y-2.5 border-t border-bone/8 pt-4 md:mt-12 md:gap-x-7 md:gap-y-3 md:pt-6">
-                  <IconLabel icon={Users} tone="bone">۷۰۰٬۰۰۰+ مخاطب</IconLabel>
-                  <IconLabel icon={GraduationCap} tone="emerald">۵۰٬۰۰۰+ دانشجو</IconLabel>
-                  <IconLabel icon={Sparkles} tone="gold">۱۰+ سال تجربه</IconLabel>
-                </div>
-              </Reveal>
+              </div>
             </div>
-
-            <div className="max-md:order-1 md:col-span-5">
-              <Reveal delay={0.2}>
-                <div className="relative mx-auto max-w-md max-md:max-w-[15rem] md:ms-auto md:me-0 md:max-w-md">
-                  <div
-                    aria-hidden
-                    className="absolute -inset-5 -z-[1] rounded-card bg-emerald-deep/35 blur-2xl"
-                  />
-                  <PhotoFrame
-                    ratio="portrait"
-                    variant="radial"
-                    rounded="card-lg"
-                    badge="پرتره‌ی رسمی"
-                    label="بهرام رستمی"
-                    className="border-bone/12 shadow-none neon-surface-framed"
-                    src={sitePhotos.portraitFounder}
-                    alt="بهرام رستمی"
-                  />
-                </div>
-              </Reveal>
+            <div className="flex w-full max-w-lg flex-col gap-3 sm:max-w-xl sm:flex-row sm:items-stretch sm:justify-center md:max-w-2xl md:gap-4">
+              <LinkButton
+                href="/course/campaign-writing"
+                variant="vip"
+                size="lg"
+                withArrow
+                className="h-12 min-h-12 w-full px-8 text-base font-bold shadow-gold sm:flex-1 sm:max-w-xs md:h-14 md:min-h-14 md:px-10 md:text-lg"
+              >
+                شروع مسیر با کمپین‌نویسی
+              </LinkButton>
+              <LinkButton
+                href="/saat"
+                variant="ghost"
+                size="lg"
+                withArrow
+                className={cn(
+                  "h-12 min-h-12 w-full border-white/25 bg-black/30 text-white backdrop-blur-md",
+                  "hover:border-white/40 hover:bg-white/10 hover:text-white",
+                  "sm:flex-1 sm:max-w-xs md:h-14 md:min-h-14",
+                )}
+              >
+                آشنایی با سات
+              </LinkButton>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="founder-hero-stats bg-ink py-6 md:py-8">
+        <div className="container-luxe">
+          <Reveal>
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3 md:gap-x-10">
+              <IconLabel icon={Users} tone="bone">
+                ۷۰۰٬۰۰۰+ مخاطب
+              </IconLabel>
+              <IconLabel icon={GraduationCap} tone="emerald">
+                ۵۰٬۰۰۰+ دانشجو
+              </IconLabel>
+              <IconLabel icon={Sparkles} tone="gold">
+                ۱۰+ سال تجربه
+              </IconLabel>
+            </div>
+          </Reveal>
         </div>
       </section>
 
@@ -294,35 +282,42 @@ export default async function FounderPage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-section">
-        <div className="container-luxe">
-          <div className="neon-cta-slab relative overflow-hidden rounded-card border border-emerald/25 bg-gradient-to-b from-emerald-deep/40 via-charcoal/70 to-ink p-5 sm:p-8 md:p-14">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_70%_at_85%_10%,rgba(0,140,150,0.22),transparent_70%)]"
-            />
-            <div className="relative">
-              <IconTile icon={Compass} tone="gold" size="lg" />
-              <h2 className="mt-5 max-w-full text-h3 text-balance md:mt-8 md:text-h2 lg:text-display">
-                اگر این نگاه با تو هم‌خوان است،
-              </h2>
-              <p className="mt-4 max-w-2xl text-sm text-bone-dim md:mt-6 md:text-base">
-                از کمپین‌نویسی شروع کن؛ مسیر بعدی خودش مشخص می‌شود.
-              </p>
-              <div className="mt-6 flex flex-wrap items-center gap-3 md:mt-10 md:gap-4">
-                <LinkButton href="/course/campaign-writing" variant="primary" size="lg" withArrow>
-                  شروع مسیر
-                </LinkButton>
-                <Link
-                  href="/insights"
-                  className="inline-flex items-center gap-2 text-gold transition-colors hover:text-gold-soft"
+      <section className="founder-cta-band" aria-labelledby="founder-cta-heading">
+        <div className="founder-cta-band__surface relative overflow-hidden py-12 sm:py-14 md:py-16 lg:py-20">
+          <div aria-hidden className="founder-cta-band__ambient pointer-events-none absolute inset-0" />
+          <div className="container-luxe relative z-[1]">
+            <Reveal>
+              <div className="founder-cta-band__inner mx-auto max-w-3xl text-center md:max-w-4xl">
+                <h2
+                  id="founder-cta-heading"
+                  className="founder-cta-band__title font-display text-h2 text-balance md:text-display"
                 >
-                  رفتن به بلاگ
-                  <ArrowLeft className="rtl-flip h-4 w-4" aria-hidden />
-                </Link>
+                  اگر این نگاه با تو هم‌خوان است،
+                  <span className="mt-2 block text-[0.92em] font-bold">قدم بعدی را بردار.</span>
+                </h2>
+                <p className="founder-cta-band__lead mx-auto mt-4 max-w-2xl text-sm leading-relaxed md:mt-6 md:text-base">
+                  از کمپین‌نویسی شروع کن؛ مسیر بعدی خودش روشن می‌شود.
+                </p>
+                <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center md:mt-10">
+                  <LinkButton
+                    href="/course/campaign-writing"
+                    variant="primary"
+                    size="lg"
+                    withArrow
+                    className="founder-cta-band__primary h-12 min-h-12 w-full sm:max-w-[14rem]"
+                  >
+                    شروع مسیر
+                  </LinkButton>
+                  <Link
+                    href="/insights"
+                    className="founder-cta-band__secondary inline-flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-pill border px-6 text-sm font-semibold transition-colors sm:max-w-[14rem]"
+                  >
+                    رفتن به بلاگ
+                    <ArrowLeft className="rtl-flip h-4 w-4" aria-hidden />
+                  </Link>
+                </div>
               </div>
-            </div>
+            </Reveal>
           </div>
         </div>
       </section>

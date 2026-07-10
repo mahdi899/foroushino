@@ -1,5 +1,13 @@
 /* Listing page hero — minimal, centered (imported by PageHero). */
 
+.page-hero.page-hero--borderless {
+  border-bottom: none;
+}
+
+.page-hero--listing.page-hero--borderless .page-hero__container {
+  padding-bottom: clamp(1.5rem, 2.5vw + 0.75rem, 2.5rem);
+}
+
 .page-hero--listing .page-hero__container {
   padding-top: clamp(2.75rem, 4.5vw + 1rem, 4rem);
   padding-bottom: clamp(1.5rem, 2.5vw + 0.5rem, 2.25rem);

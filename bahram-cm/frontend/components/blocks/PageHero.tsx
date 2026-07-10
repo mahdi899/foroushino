@@ -14,14 +14,23 @@ type Props = {
   title: string;
   description?: string;
   backLink?: BackLink;
+  borderless?: boolean;
   className?: string;
 };
 
-export function PageHero({ eyebrow, title, description, backLink, className }: Props) {
+export function PageHero({
+  eyebrow,
+  title,
+  description,
+  backLink,
+  borderless = false,
+  className,
+}: Props) {
   return (
     <section
       className={cn(
-        "page-hero page-hero--listing border-b border-bone/8 bg-ink",
+        "page-hero page-hero--listing bg-ink",
+        borderless ? "page-hero--borderless" : "border-b border-bone/8",
         className,
       )}
     >

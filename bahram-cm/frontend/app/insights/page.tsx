@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Calendar, Pencil } from "lucide-react";
-import { PageHero } from "@/components/blocks/PageHero";
 import { Reveal } from "@/components/motion/Reveal";
 import { NewsletterCTA } from "@/components/sections/NewsletterCTA";
 import { Badge } from "@/components/ui/Badge";
@@ -53,13 +52,7 @@ export default async function InsightsPage() {
   const [featured, ...rest] = items;
 
   return (
-    <main id="main-content" className="relative min-w-0 max-w-full">
-      <PageHero
-        eyebrow="Insights"
-        title="بلاگ"
-        description="تیز کردن نگاه؛ از پیام تا اسکلت کمپین."
-      />
-
+    <main id="main-content" className="relative min-w-0 max-w-full pt-8 md:pt-10 lg:pt-12">
       {!result.ok ? (
         <section className="py-section-sm">
           <div className="container-luxe">

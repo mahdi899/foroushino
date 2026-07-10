@@ -1916,8 +1916,51 @@ html[data-theme="light"] .photo-scrim-side-start {
 
 html[data-theme="light"] .photo-scrim-portrait {
   background:
-    linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.55) 100%),
-    linear-gradient(270deg, rgba(255, 255, 255, 0.06) 0%, transparent 42%);
+    linear-gradient(180deg, rgba(5, 10, 11, 0.06) 0%, rgba(5, 10, 11, 0.55) 42%, rgba(5, 10, 11, 0.92) 100%),
+    linear-gradient(270deg, rgba(5, 10, 11, 0.2) 0%, transparent 52%);
+}
+
+.transformation-voice-metric {
+  border-radius: var(--radius-pill, 9999px);
+  border: 1px solid rgba(234, 251, 251, 0.16);
+  background: rgba(5, 10, 11, 0.74);
+  padding: 0.375rem 0.75rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 8px 22px -14px rgba(2, 6, 7, 0.55);
+}
+
+.transformation-voice-metric-value {
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #ffe08a;
+}
+
+.transformation-voice-metric-label {
+  font-weight: 400;
+  color: #95b4b8;
+}
+
+.transformation-voice-quote {
+  color: #eafbfb;
+}
+
+.transformation-voice-name {
+  color: #eafbfb;
+}
+
+.transformation-voice-role {
+  color: #ffe08a;
+}
+
+.transformation-voice-sep {
+  color: rgba(234, 251, 251, 0.42);
+}
+
+.transformation-voice-caption {
+  border-top: 1px solid rgba(234, 251, 251, 0.14);
 }
 
 .photo-scrim-bottom-caption {
@@ -2072,6 +2115,155 @@ html[data-theme="light"] .campaign-course-hero-title {
     var(--color-gold-soft, #e8d5a8) 68%,
     #ffffff 100%
   );
+}
+
+/* Founder page — cinematic full-bleed hero */
+.founder-hero .photo-scrim-bottom-half {
+  background: linear-gradient(
+    to top,
+    rgba(5, 10, 11, 0.94) 0%,
+    rgba(5, 10, 11, 0.66) 34%,
+    rgba(5, 10, 11, 0.3) 52%,
+    rgba(5, 10, 11, 0.08) 62%,
+    transparent 72%
+  );
+}
+
+.founder-hero-headline-outer {
+  margin-inline: auto;
+  margin-bottom: clamp(1rem, 2.8vw, 1.625rem);
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 2px 0 rgba(255, 255, 255, 0.14))
+    drop-shadow(0 8px 32px rgba(0, 0, 0, 0.78))
+    drop-shadow(0 22px 56px rgba(0, 0, 0, 0.42));
+}
+
+.founder-hero-headline-wrap {
+  overflow: visible;
+  animation: campaign-hero-fade-blur-in 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.12s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .founder-hero-headline-wrap {
+    animation: none;
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+
+.founder-hero-headline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.28em;
+  overflow: visible;
+  padding: 0.1em 0.06em 0.22em;
+  text-align: center;
+}
+
+.founder-hero-title {
+  display: inline-block;
+  overflow: visible;
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 6.2vw + 0.35rem, 4.5rem);
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  text-wrap: nowrap;
+  background-image: linear-gradient(
+    168deg,
+    #ffffff 6%,
+    #f7f2ea 38%,
+    var(--color-gold-soft, #e8d5a8) 68%,
+    #ffffff 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.founder-hero-tagline {
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 3.2vw + 0.25rem, 2.35rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  color: rgba(255, 224, 138, 0.96);
+  text-shadow: 0 2px 24px rgba(255, 176, 0, 0.28);
+}
+
+html[data-theme="light"] .founder-hero-title {
+  background-image: linear-gradient(
+    168deg,
+    #ffffff 6%,
+    #f7f2ea 38%,
+    var(--color-gold-soft, #e8d5a8) 68%,
+    #ffffff 100%
+  );
+}
+
+html[data-theme="light"] .founder-hero-tagline {
+  color: rgba(255, 224, 138, 0.94);
+}
+
+.founder-hero-stats {
+  border-bottom: 1px solid color-mix(in oklab, var(--color-bone) 8%, transparent);
+}
+
+.founder-cta-band__surface {
+  border-block: 1px solid transparent;
+}
+
+.founder-cta-band__ambient {
+  background:
+    radial-gradient(ellipse 80% 120% at 18% 50%, rgba(255, 176, 0, 0.16), transparent 58%),
+    radial-gradient(ellipse 70% 100% at 88% 40%, rgba(255, 224, 138, 0.1), transparent 62%);
+}
+
+html:not([data-theme="light"]) .founder-cta-band__surface {
+  border-block-color: rgba(255, 176, 0, 0.18);
+  background: linear-gradient(
+    128deg,
+    #140d00 0%,
+    #3a2500 26%,
+    #6b4500 52%,
+    #241600 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 224, 138, 0.08);
+}
+
+html:not([data-theme="light"]) .founder-cta-band__title {
+  color: #fff8eb;
+}
+
+html:not([data-theme="light"]) .founder-cta-band__lead {
+  color: rgba(255, 236, 198, 0.82);
+}
+
+html[data-theme="light"] .founder-cta-band__ambient {
+  background:
+    radial-gradient(ellipse 78% 120% at 16% 50%, rgba(0, 140, 150, 0.14), transparent 58%),
+    radial-gradient(ellipse 72% 100% at 90% 42%, rgba(255, 176, 0, 0.1), transparent 62%);
+}
+
+html[data-theme="light"] .founder-cta-band__surface {
+  border-block-color: rgba(0, 111, 117, 0.22);
+  background: linear-gradient(128deg, #003b40 0%, #006f75 46%, #004a50 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+html[data-theme="light"] .founder-cta-band__title {
+  color: #f8fbfb;
+}
+
+html[data-theme="light"] .founder-cta-band__lead {
+  color: rgba(234, 251, 251, 0.84);
 }
 
 /* Campaign course — open price + highlights strip */
@@ -2568,16 +2760,19 @@ html[data-theme="light"] .courses-stats-strip__item:not(:last-child) {
   color: #1a1200;
   box-shadow:
     0 0 0 1px rgba(255, 176, 0, 0.16),
-    0 6px 18px -8px rgba(255, 176, 0, 0.42);
+    0 6px 18px -8px rgba(255, 176, 0, 0.42),
+    0 2px 8px -2px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(4px);
 }
 
 html[data-theme="light"] .main-path-card-featured-badge {
-  border-color: rgba(196, 118, 0, 0.38);
-  background: linear-gradient(135deg, #ffd875 0%, #fff0c2 100%);
-  color: #4a2f00;
+  border-color: rgba(196, 118, 0, 0.45);
+  background: linear-gradient(135deg, #ffc233 0%, #ffe9a8 100%);
+  color: #3d2600;
   box-shadow:
-    0 0 0 1px rgba(255, 176, 0, 0.22),
-    0 6px 16px -8px rgba(255, 176, 0, 0.28);
+    0 0 0 1px rgba(255, 176, 0, 0.28),
+    0 6px 16px -8px rgba(255, 176, 0, 0.35),
+    0 2px 8px -2px rgba(11, 31, 34, 0.18);
 }
 
 .mini-courses-section-ambient {
@@ -3325,19 +3520,23 @@ html:not([data-theme="light"]) .transformation-voice-quote-mark {
 }
 
 html[data-theme="light"] .transformation-voice-card {
-  border-color: rgba(11, 31, 34, 0.08);
+  border-color: rgba(11, 31, 34, 0.1);
   background-color: #ffffff;
-  box-shadow: 0 14px 40px -28px rgba(11, 31, 34, 0.14);
+  box-shadow:
+    0 16px 44px -28px rgba(11, 31, 34, 0.16),
+    0 0 0 1px rgba(11, 31, 34, 0.04);
 }
 
 html[data-theme="light"] .transformation-voice-card:hover {
-  border-color: rgba(0, 111, 117, 0.22);
-  box-shadow: 0 18px 48px -26px rgba(11, 31, 34, 0.16);
+  border-color: rgba(0, 111, 117, 0.24);
+  box-shadow:
+    0 20px 52px -26px rgba(11, 31, 34, 0.18),
+    0 0 0 1px rgba(0, 111, 117, 0.08);
 }
 
 html[data-theme="light"] .transformation-voice-quote-mark {
   font-size: clamp(2.25rem, 6vw, 3.25rem);
-  color: #ffb000;
+  color: rgba(255, 176, 0, 0.82);
 }
 
 html:not([data-theme="light"]) .campaign-journey-stage {
@@ -3802,6 +4001,69 @@ html[data-theme="light"] .neon-btn-primary:not(.sales-cta):not(.neon-btn-vip):ho
   background: linear-gradient(135deg, #003b40 0%, #005a61 46%, #008c96 100%);
   color: #ffffff;
   box-shadow: 0 12px 28px rgba(0, 111, 117, 0.28);
+}
+
+/* Founder CTA band — high-contrast buttons (unlayered; overrides brand teal on light band). */
+html:not([data-theme="light"]) .founder-cta-band .founder-cta-band__primary.neon-btn-primary {
+  background: linear-gradient(135deg, #f8fbfb 0%, #dcefed 100%);
+  color: #0b1f22;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.42),
+    0 12px 32px -12px rgba(0, 0, 0, 0.42);
+}
+
+html:not([data-theme="light"]) .founder-cta-band .founder-cta-band__primary.neon-btn-primary:hover {
+  background: #ffffff;
+  color: #0b1f22;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55),
+    0 16px 40px -12px rgba(0, 0, 0, 0.48);
+}
+
+html:not([data-theme="light"]) .founder-cta-band .founder-cta-band__secondary {
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+html:not([data-theme="light"]) .founder-cta-band .founder-cta-band__secondary:hover {
+  border-color: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+html[data-theme="light"] .founder-cta-band .founder-cta-band__primary.neon-btn-primary {
+  background: linear-gradient(135deg, #ffb000 0%, #ffe08a 100%);
+  color: #1a1200;
+  box-shadow:
+    0 0 0 1px rgba(255, 224, 138, 0.45),
+    0 12px 30px -10px rgba(0, 0, 0, 0.28),
+    0 0 28px rgba(255, 176, 0, 0.22);
+}
+
+html[data-theme="light"] .founder-cta-band .founder-cta-band__primary.neon-btn-primary:hover {
+  background: linear-gradient(135deg, #ffc233 0%, #fff0c2 100%);
+  color: #1a1200;
+  box-shadow:
+    0 0 0 1px rgba(255, 224, 138, 0.55),
+    0 14px 36px -10px rgba(0, 0, 0, 0.3),
+    0 0 36px rgba(255, 176, 0, 0.28);
+}
+
+html[data-theme="light"] .founder-cta-band .founder-cta-band__secondary {
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+html[data-theme="light"] .founder-cta-band .founder-cta-band__secondary:hover {
+  border-color: #ffffff;
+  background: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
 }
 
 html[data-theme="light"] .sales-cta {
