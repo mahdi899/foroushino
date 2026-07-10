@@ -4,6 +4,9 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { PurchaseForm } from "@/components/forms/PurchaseForm";
 import { CheckoutReferralCodeField } from "@/components/commerce/CheckoutReferralCodeField";
+import { CheckoutDiscountCodeField } from "@/components/commerce/CheckoutDiscountCodeField";
+import { CheckoutPriceSummary } from "@/components/commerce/CheckoutPriceSummary";
+import { CheckoutSidebar } from "@/components/commerce/CheckoutSidebar";
 import { LinkButton } from "@/components/ui/Button";
 import { Reveal } from "@/components/motion/Reveal";
 import { SiteImage } from "@/components/ui/SiteImage";
@@ -11,26 +14,17 @@ import { getCurrentStudent, studentFetch } from "@/lib/student/session";
 import { getProductBySlug, type ProductDetail } from "@/lib/services/products";
 import { formatFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
-import { sitePhotos } from "@/lib/site-photo-paths";
+import { resolveProductFeaturedImage } from "@/lib/catalog/productFeaturedImage";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const purchaseImageFallback: Record<string, string> = {
-  "campaign-writing": sitePhotos.mainPathCampaign,
-  saat: sitePhotos.mainPathSaat,
-};
-
 function purchaseProductImage(product: ProductDetail): string {
-  return product.featured_image || purchaseImageFallback[product.slug] || sitePhotos.landscapeSession;
+  return resolveProductFeaturedImage(product);
 }
 
 function purchaseProductImageAlt(product: ProductDetail): string {
   return product.featured_image_alt?.trim() || `کاور ${product.title}`;
-}
-
-function productHasDiscount(product: ProductDetail): boolean {
-  return product.sale_price !== null && product.effective_price < product.price;
 }
 
 function purchaseBackLink(product: ProductDetail): { href: string; label: string } {
@@ -78,8 +72,6 @@ export default async function PurchasePage({
 
   const product = result.data;
   const alreadyPurchased = product.already_purchased ?? false;
-  const hasDiscount = productHasDiscount(product);
-  const totalDiscount = hasDiscount ? product.price - product.effective_price : 0;
   const seminarFull = product.seminar?.is_full ?? false;
   const backLink = purchaseBackLink(product);
 
@@ -133,45 +125,23 @@ export default async function PurchasePage({
 
             <div className="flex h-full min-w-0 flex-col md:col-span-5 md:col-start-8">
               <Reveal delay={0.08} className="flex h-full min-h-0 flex-col">
-                <aside className="neon-surface-static flex h-full min-h-0 w-full flex-col rounded-card border border-bone/10 bg-charcoal/45 p-5 sm:p-6 md:sticky md:top-24 md:p-6">
-                  <h2 className="text-h3 text-bone">خلاصه سفارش</h2>
+                <CheckoutSidebar>
+                  <aside className="neon-surface-static flex h-full min-h-0 w-full flex-col rounded-card border border-bone/10 bg-charcoal/45 p-5 sm:p-6 md:sticky md:top-24 md:p-6">
+                    <h2 className="text-h3 text-bone">خلاصه سفارش</h2>
 
-                  <CheckoutReferralCodeField ownReferralCode={ownReferralCode} />
+                    <CheckoutReferralCodeField ownReferralCode={ownReferralCode} />
+                    <CheckoutDiscountCodeField productId={product.id} customerPhone={student?.mobile} />
 
-                  <ul className="mt-5 space-y-3 border-b border-bone/10 pb-5">
-                    <li className="flex w-full min-w-0 items-start justify-between gap-4 text-sm">
-                      <span className="min-w-0 flex-1 leading-relaxed text-bone-dim">{product.title}</span>
-                      <span className="shrink-0 text-end whitespace-nowrap">
-                        <span className="block text-bone num-latin">{formatFa(product.effective_price)}</span>
-                        {hasDiscount ? (
-                          <span className="mt-0.5 block text-caption text-mist line-through num-latin">
-                            {formatFa(product.price)}
-                          </span>
-                        ) : null}
-                      </span>
-                    </li>
-                  </ul>
-
-                  {hasDiscount ? (
-                    <div className="mt-5 space-y-2 border-b border-bone/10 pb-5 text-sm">
-                      <div className="flex items-center justify-between gap-4 text-bone-dim">
-                        <span>قیمت اصلی</span>
-                        <span className="num-latin line-through">{formatFa(product.price)}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-4 text-gold">
-                        <span>تخفیف</span>
-                        <span className="num-latin">−{formatFa(totalDiscount)}</span>
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <div className="mt-5 flex w-full min-w-0 items-center justify-between gap-4">
-                    <span className="shrink-0 text-bone">جمع کل</span>
-                    <div className="text-end">
-                      <span className="text-h2 text-bone num-latin">{formatFa(product.effective_price)}</span>
-                      <span className="ms-2 text-caption text-mist">تومان</span>
-                    </div>
-                  </div>
+                    <CheckoutPriceSummary
+                      products={[
+                        {
+                          slug: product.slug,
+                          title: product.title,
+                          price: product.price,
+                          effective_price: product.effective_price,
+                        },
+                      ]}
+                    />
 
                   {alreadyPurchased ? (
                     <div className="mt-auto space-y-4 pt-6">
@@ -191,7 +161,8 @@ export default async function PurchasePage({
                       <PurchaseForm product={product} student={student} />
                     </div>
                   )}
-                </aside>
+                  </aside>
+                </CheckoutSidebar>
               </Reveal>
             </div>
           </div>

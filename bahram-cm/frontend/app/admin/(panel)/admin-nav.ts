@@ -12,6 +12,7 @@ export const adminNav: {
       { href: '/admin/chatbot', label: 'چت‌بات هوشمند', icon: 'MessageSquare', matchPrefix: true },
       { href: '/admin/academy/tickets', label: 'تیکت‌های پشتیبانی', icon: 'LifeBuoy', matchPrefix: true },
       { href: '/admin/academy/sms', label: 'مرکز پیامک', icon: 'MessageCircle', matchPrefix: true },
+      { href: '/admin/academy/notifications', label: 'اعلان‌ها', icon: 'Bell' },
     ],
   },
   {
@@ -20,7 +21,6 @@ export const adminNav: {
       { href: '/admin/gallery', label: 'کتابخانه رسانه', icon: 'Image' },
       { href: '/admin/blog/new', label: 'افزودن مقاله', icon: 'PenLine', matchPrefix: true },
       { href: '/admin/blog', label: 'مقالات', icon: 'Newspaper', matchPrefix: true },
-      { href: '/admin/local-seo', label: 'سئو محلی', icon: 'MapPin', matchPrefix: true },
     ],
   },
   {
@@ -46,7 +46,6 @@ export const adminNav: {
       { href: '/admin/academy/referrals', label: 'معرفی و کش‌بک', icon: 'Gift' },
       { href: '/admin/academy/cashback-payouts', label: 'واریز کش‌بک', icon: 'Wallet' },
       { href: '/admin/academy/sat-applications', label: 'درخواست‌های سات', icon: 'GraduationCap' },
-      { href: '/admin/academy/notifications', label: 'اعلان‌ها', icon: 'Bell' },
       { href: '/admin/academy/imports', label: 'ورود اطلاعات', icon: 'FileUp' },
     ],
   },
@@ -54,7 +53,6 @@ export const adminNav: {
     group: 'سئو و تنظیمات',
     items: [
       { href: '/admin/seo', label: 'سئو و تحلیل', icon: 'Search', matchPrefix: true },
-      { href: '/admin/reports', label: 'گزارش‌های داخلی', icon: 'BarChart3', matchPrefix: true },
       { href: '/admin/audit', label: 'گزارش فعالیت', icon: 'ClipboardList', matchPrefix: true },
       { href: '/admin/cache', label: 'کش و بهینه‌سازی', icon: 'Zap', matchPrefix: true },
       { href: '/admin/ai/settings', label: 'هوش مصنوعی', icon: 'Bot', matchPrefix: true },

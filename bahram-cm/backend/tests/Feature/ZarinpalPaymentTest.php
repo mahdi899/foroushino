@@ -51,8 +51,6 @@ class ZarinpalPaymentTest extends TestCase
 
     public function test_request_throws_when_payment_gateway_is_not_configured(): void
     {
-        config(['bahram.payment.dev_mode' => false]);
-
         $order = $this->makeOrder();
 
         $this->expectException(PaymentException::class);
@@ -60,34 +58,15 @@ class ZarinpalPaymentTest extends TestCase
         app(ZarinpalPaymentService::class)->request($order);
     }
 
-    public function test_request_in_dev_mode_skips_gateway_configuration_and_auto_verifies(): void
+    public function test_request_throws_in_dev_mode_when_payment_gateway_is_not_configured(): void
     {
-        Queue::fake();
         config(['bahram.payment.dev_mode' => true]);
 
         $order = $this->makeOrder();
-        $service = app(ZarinpalPaymentService::class);
-        $payment = $service->request($order);
 
-        $this->assertSame('pending', $payment->status);
-        $this->assertStringStartsWith('DEV-', $payment->authority);
-        $this->assertStringContainsString(
-            'Authority='.$payment->authority,
-            $service->getPaymentUrl($payment),
-        );
+        $this->expectException(PaymentException::class);
 
-        $result = $service->verify($payment->authority);
-
-        $this->assertTrue($result['success']);
-        $this->assertStringStartsWith('DEV-', (string) $result['ref_id']);
-
-        $order->refresh();
-        $this->assertSame('paid', $order->status);
-        $this->assertSame('paid', $order->payment_status);
-
-        Queue::assertPushed(FulfillOrderJob::class, fn ($job) => $job->orderId === $order->id);
-
-        Http::assertNothingSent();
+        app(ZarinpalPaymentService::class)->request($order);
     }
 
     public function test_dev_mode_uses_real_gateway_when_payment_settings_are_ready(): void
@@ -216,8 +195,15 @@ class ZarinpalPaymentTest extends TestCase
 
     public function test_cancel_by_authority_marks_pending_payment_as_canceled(): void
     {
-        config(['bahram.payment.dev_mode' => true]);
+        $this->activateSandbox();
         $order = $this->makeOrder();
+
+        Http::fake([
+            'sandbox.zarinpal.com/pg/v4/payment/request.json' => Http::response([
+                'data' => ['code' => 100, 'authority' => 'A33333333333333333333333333333333333'],
+            ], 200),
+        ]);
+
         $service = app(ZarinpalPaymentService::class);
         $payment = $service->request($order);
 

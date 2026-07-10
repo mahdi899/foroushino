@@ -146,3 +146,23 @@ export async function getPaymentSettings(): Promise<PaymentSettingsData | null> 
     return null;
   }
 }
+
+export async function getDiscountCodes(): Promise<{ items: AdminDiscountCode[]; error: string | null }> {
+  try {
+    const res = await adminFetch<{ data: AdminDiscountCode[] }>('/discount-codes', {
+      query: { per_page: 200 },
+    });
+    return { items: res.data, error: null };
+  } catch (e) {
+    return { items: [], error: commerceErrorMessage(e) };
+  }
+}
+
+export async function getDiscountCode(id: number): Promise<AdminDiscountCode | null> {
+  try {
+    const res = await adminFetch<{ data: AdminDiscountCode }>(`/discount-codes/${id}`);
+    return res.data;
+  } catch {
+    return null;
+  }
+}

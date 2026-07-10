@@ -42,6 +42,11 @@ class CourseAccessService
                 continue;
             }
 
+            $product = $order->product;
+            if ($product instanceof Product && $product->isSeminarProduct()) {
+                continue;
+            }
+
             if (! $order->user_id) {
                 $order->update(['user_id' => $user->id]);
             }
@@ -65,12 +70,22 @@ class CourseAccessService
                 $license->update(['user_id' => $user->id]);
             }
 
+            $product = $license->product;
+            if ($product instanceof Product && $product->isSeminarProduct()) {
+                continue;
+            }
+
             $this->ensureAccessForProduct($user, (int) $license->product_id, $license->order);
         }
     }
 
     private function ensureAccessForProduct(User $user, int $productId, ?Order $order): void
     {
+        $product = $order?->product ?? Product::query()->find($productId);
+        if ($product instanceof Product && $product->isSeminarProduct()) {
+            return;
+        }
+
         $access = CourseAccess::query()->firstOrCreate(
             ['user_id' => $user->id, 'product_id' => $productId],
             [
@@ -112,7 +127,13 @@ class CourseAccessService
             })
             ->orderByDesc('paid_at')
             ->orderByDesc('id')
-            ->get();
+            ->get()
+            ->filter(function (Order $order) {
+                $product = $order->product;
+
+                return ! ($product instanceof Product && $product->isSeminarProduct());
+            })
+            ->values();
     }
 
   public function resolveLicense(User $user, Product $product, ?CourseAccess $access = null, ?Order $order = null): ?SpotplayerLicense

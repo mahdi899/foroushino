@@ -3,8 +3,9 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { adminFetch, getToken } from '@/lib/auth/session';
 import { SERVER_API_URL } from '@/lib/api/config';
+import { resolveProductSiteFeaturedImage } from '@/lib/catalog/productFeaturedImage';
 import { revalidatePublicContent, revalidateTestimonialSurfaces } from '@/lib/cache/contentRevalidation';
-import type { AdminFaq, AdminOrder, AdminProduct, AdminStudentTestimonial, PaymentSettingsData } from '@/lib/admin/commerceTypes';
+import type { AdminFaq, AdminOrder, AdminProduct, AdminStudentTestimonial, PaymentSettingsData, AdminDiscountCode } from '@/lib/admin/commerceTypes';
 
 export async function loadPaymentSettingsAction(): Promise<PaymentSettingsData | null> {
   try {
@@ -24,11 +25,39 @@ function revalidateCommerce() {
     revalidatePath('/admin/commerce/faqs');
     revalidatePath('/admin/commerce/testimonials');
     revalidatePath('/admin/commerce/payment-settings');
+    revalidatePath('/admin/commerce/discount-codes');
     revalidatePath('/transformations');
     revalidateTag('public-faqs', 'max');
     revalidateTag('public-transformations', 'max');
     revalidateTag('faqs', 'max');
   });
+}
+
+export async function syncProductFeaturedImageFromSite(
+  id: number,
+): Promise<{ ok: boolean; featured_image?: string; error?: string }> {
+  try {
+    const res = await adminFetch<{ data: AdminProduct }>(`/products/${id}`);
+    const product = res.data;
+    if (product.featured_image?.trim()) {
+      return { ok: true, featured_image: product.featured_image };
+    }
+
+    const featured_image = resolveProductSiteFeaturedImage({
+      slug: product.slug,
+      landing_href: product.landing_href,
+    });
+
+    await adminFetch(`/products/${id}`, {
+      method: 'PATCH',
+      body: { featured_image },
+    });
+    revalidateCommerce();
+    return { ok: true, featured_image };
+  } catch (e) {
+    const err = e as Error & { payload?: { message?: string } };
+    return { ok: false, error: err.payload?.message ?? 'همگام‌سازی تصویر شاخص ناموفق بود.' };
+  }
 }
 
 export async function saveProduct(
@@ -237,5 +266,56 @@ export async function savePaymentSettings(
     return { ok: true };
   } catch {
     return { ok: false, error: 'ذخیره تنظیمات پرداخت ناموفق بود.' };
+  }
+}
+
+export async function saveDiscountCode(
+  input: Omit<AdminDiscountCode, 'id' | 'uses_count' | 'created_at' | 'updated_at' | 'products' | 'users'>,
+  id?: number,
+): Promise<{ ok: boolean; id?: number; error?: string }> {
+  try {
+    const body = {
+      code: input.code,
+      title: input.title,
+      description: input.description,
+      discount_type: input.discount_type,
+      discount_value: input.discount_value,
+      is_active: input.is_active,
+      starts_at: input.starts_at,
+      ends_at: input.ends_at,
+      max_uses: input.max_uses,
+      max_uses_per_user: input.max_uses_per_user,
+      min_order_amount: input.min_order_amount,
+      max_discount_amount: input.max_discount_amount,
+      requires_link: input.requires_link,
+      restriction: input.restriction,
+      product_ids: input.product_ids,
+      user_ids: input.user_ids,
+    };
+
+    if (id) {
+      await adminFetch(`/discount-codes/${id}`, { method: 'PATCH', body });
+      revalidateCommerce();
+      return { ok: true, id };
+    }
+
+    const res = await adminFetch<{ data: { id: number } }>('/discount-codes', { method: 'POST', body });
+    revalidateCommerce();
+    return { ok: true, id: res.data.id };
+  } catch (e) {
+    const err = e as Error & { payload?: { message?: string; errors?: Record<string, string[]> } };
+    const firstError = err.payload?.errors ? Object.values(err.payload.errors)[0]?.[0] : undefined;
+    return { ok: false, error: firstError ?? err.payload?.message ?? 'ذخیره کد تخفیف ناموفق بود.' };
+  }
+}
+
+export async function deleteDiscountCode(id: number): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await adminFetch(`/discount-codes/${id}`, { method: 'DELETE' });
+    revalidateCommerce();
+    return { ok: true };
+  } catch (e) {
+    const err = e as Error & { payload?: { message?: string } };
+    return { ok: false, error: err.payload?.message ?? 'حذف کد تخفیف ناموفق بود.' };
   }
 }

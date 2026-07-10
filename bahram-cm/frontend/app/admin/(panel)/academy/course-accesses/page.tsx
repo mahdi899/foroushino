@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { AdminPage, Table } from '../../ui';
 import { getSpotplayerLicenses } from '@/lib/admin/academyData';
+import { getProducts } from '@/lib/admin/commerceData';
 import { formatDateTime } from '@/lib/admin/academyTypes';
 import { GrantAccessForm } from './GrantAccessForm';
 import { LicenseKeyCopyButton } from './LicenseKeyCopyButton';
@@ -13,14 +14,17 @@ export default async function CourseAccessesPage({
   searchParams: Promise<{ page?: string; search?: string }>;
 }) {
   const sp = await searchParams;
-  const { items: licenses, meta, error } = await getSpotplayerLicenses({
-    page: sp.page ? Number(sp.page) : undefined,
-    search: sp.search,
-  });
+  const [{ items: licenses, meta, error }, { items: products }] = await Promise.all([
+    getSpotplayerLicenses({
+      page: sp.page ? Number(sp.page) : undefined,
+      search: sp.search,
+    }),
+    getProducts(),
+  ]);
 
   return (
     <AdminPage title="دسترسی به دوره‌ها" desc="اعطا و مدیریت دسترسی دستی دانشجویان به دوره‌ها">
-      <GrantAccessForm />
+      <GrantAccessForm products={products} />
 
       <div className="mt-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">

@@ -165,6 +165,7 @@ export interface PanelNotificationPayload {
   link: string | null;
   read_at: string | null;
   created_at: string | null;
+  show_toast?: boolean;
 }
 
 export async function fetchUnreadNotificationCount(): Promise<number> {

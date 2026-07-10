@@ -6,6 +6,7 @@ import { track } from "@/lib/analytics";
 import { useCheckoutAutopay, useCheckoutLoginGate } from "@/lib/checkout/checkoutLogin";
 import { startLoggedInCheckoutAction } from "@/lib/checkout/actions";
 import { captureReferralCode } from "@/lib/referral/capture";
+import { captureDiscountCode } from "@/lib/discount/capture";
 import {
   prefillExtraFields,
   productCheckoutFields,
@@ -35,9 +36,13 @@ function CartPayButtonInner({ product, student }: Props) {
       ? prefillExtraFields(extraFields, student.profile)
       : undefined;
 
+    const discount = captureDiscountCode();
+
     const result = await startLoggedInCheckoutAction({
       product_id: product.id,
       ref: captureReferralCode(),
+      coupon: discount.code,
+      coupon_via_link: discount.viaLink,
       customer_extra_data: extraPayload && Object.keys(extraPayload).length ? extraPayload : undefined,
     });
 

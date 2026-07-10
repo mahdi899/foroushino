@@ -13,6 +13,7 @@ use App\Models\SeminarAttendee;
 use App\Models\SpotplayerLicense;
 use App\Models\User;
 use App\Services\AdminTelegramLogService;
+use App\Services\DiscountService;
 use App\Services\Exceptions\SpotPlayerException;
 use App\Services\InAppNotificationService;
 use App\Services\ReferralService;
@@ -47,6 +48,7 @@ class FulfillOrderJob implements ShouldQueue
         SpotPlayerService $spotPlayer,
         SmsService $sms,
         ReferralService $referrals,
+        DiscountService $discounts,
         InAppNotificationService $notifications,
         AdminTelegramLogService $adminTelegram,
     ): void {
@@ -91,9 +93,10 @@ class FulfillOrderJob implements ShouldQueue
         DB::transaction(function () use ($order, $userId, $licenseResponse, $referrals) {
             if ($userId) {
                 $courseAccess = null;
-                $isEventProduct = $order->product?->type === Product::TYPE_EVENT;
+                $order->loadMissing('product.seminar');
+                $isSeminarProduct = $order->product?->isSeminarProduct() ?? false;
 
-                if ($order->product_id && ! $isEventProduct) {
+                if ($order->product_id && ! $isSeminarProduct) {
                     $courseAccess = CourseAccess::query()->firstOrCreate(
                         ['user_id' => $userId, 'product_id' => $order->product_id],
                         [
@@ -110,7 +113,7 @@ class FulfillOrderJob implements ShouldQueue
                     }
                 }
 
-                if ($isEventProduct) {
+                if ($isSeminarProduct) {
                     $this->registerSeminarAttendee($order, $userId);
                 }
 
@@ -135,6 +138,7 @@ class FulfillOrderJob implements ShouldQueue
 
             // Referral conversion + cashback are only ever created for a paid order.
             $referrals->createConversionIfEligible($order, $order->referral_code);
+            $discounts->recordUsage($order);
         });
 
         if ($sms->sendPurchaseConfirmation($order->fresh('product'))) {

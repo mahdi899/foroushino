@@ -4,29 +4,10 @@ import { useActionState, useMemo } from 'react';
 import { Lock, MapPin, Sparkles, UserRound } from 'lucide-react';
 import { ProfileAvatarField } from '@/components/student-panel/profile/ProfileAvatarField';
 import { updateProfileAction, type SimpleFormState } from '@/lib/student/panelActions';
+import { profileCompletion } from '@/lib/student/profileCompletion';
 import type { StudentUser } from '@/lib/student/session';
 
 const INITIAL: SimpleFormState = {};
-
-function profileCompletion(user: StudentUser): number {
-  const profile = user.profile;
-  const checks = [
-    Boolean(profile?.avatar_url || profile?.avatar),
-    Boolean(user.name?.trim()),
-    Boolean(profile?.first_name?.trim()),
-    Boolean(profile?.last_name?.trim()),
-    Boolean(profile?.email?.trim()),
-    Boolean(profile?.city?.trim()),
-    Boolean(profile?.age),
-    Boolean(profile?.current_job?.trim()),
-    Boolean(profile?.instagram?.trim()),
-    Boolean(profile?.telegram?.trim()),
-    Boolean(profile?.experience_level?.trim()),
-    Boolean(profile?.income_goal?.trim()),
-  ];
-  const done = checks.filter(Boolean).length;
-  return Math.round((done / checks.length) * 100);
-}
 
 function ProfileSection({
   icon: Icon,
@@ -69,7 +50,7 @@ export function ProfileForm({ user }: { user: StudentUser }) {
       <div className="panel-profile-layout">
         <aside className="panel-profile-aside">
           <div className="card panel-profile-aside__card">
-            <ProfileAvatarField user={user} />
+            <ProfileAvatarField user={user} profileCompletion={completion} />
             <div className="panel-profile-progress">
               <div className="panel-profile-progress__meta">
                 <span className="panel-profile-progress__label">تکمیل پروفایل</span>

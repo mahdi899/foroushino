@@ -1,77 +1,74 @@
-import type { ComponentType } from 'react';
+import { siteStorageMedia } from '@/config/media';
 import { cn } from '@/lib/cn';
-import {
-  AndroidLogo,
-  AppleLogo,
-  IosLogo,
-  UbuntuLogo,
-  WebLogo,
-  WindowsLogo,
-} from '@/components/student-panel/courses/PlatformBrandIcons';
 
-type PlatformIcon = ComponentType<{ className?: string; muted?: boolean }>;
+const SPOTPLAYER_PLATFORM_ICON_BASE = 'https://app.spotplayer.ir/assets/img/platform';
 
 const PLATFORMS: {
   id: string;
   label: string;
-  Icon: PlatformIcon;
+  logo: string;
   href?: string;
   comingSoon?: boolean;
 }[] = [
   {
     id: 'windows',
     label: 'Windows',
-    Icon: WindowsLogo,
+    logo: siteStorageMedia('platform-windows.svg'),
     href: 'https://app.spotplayer.ir/assets/bin/spotplayer/setup.exe',
   },
   {
     id: 'macos',
     label: 'MacOS',
-    Icon: AppleLogo,
+    logo: `${SPOTPLAYER_PLATFORM_ICON_BASE}/mac.png`,
     href: 'https://app.spotplayer.ir/assets/bin/spotplayer/setup.dmg',
   },
   {
     id: 'android',
     label: 'Android',
-    Icon: AndroidLogo,
+    logo: `${SPOTPLAYER_PLATFORM_ICON_BASE}/android.png`,
     href: 'https://app.spotplayer.ir/assets/bin/spotplayer/setup.apk',
   },
   {
     id: 'web',
     label: 'Web',
-    Icon: WebLogo,
+    logo: `${SPOTPLAYER_PLATFORM_ICON_BASE}/web.png`,
     href: 'https://app.spotplayer.ir/',
   },
   {
     id: 'ios',
     label: 'iOS',
-    Icon: IosLogo,
+    logo: `${SPOTPLAYER_PLATFORM_ICON_BASE}/ios.png`,
     comingSoon: true,
   },
   {
     id: 'ubuntu',
     label: 'Ubuntu',
-    Icon: UbuntuLogo,
+    logo: `${SPOTPLAYER_PLATFORM_ICON_BASE}/ubuntu.png`,
     comingSoon: true,
   },
 ];
 
 function PlatformTile({
   label,
-  Icon,
+  logo,
   href,
   comingSoon,
 }: {
   label: string;
-  Icon: PlatformIcon;
+  logo: string;
   href?: string;
   comingSoon?: boolean;
 }) {
   const body = (
     <>
-      <Icon
-        className={cn('h-10 w-10 shrink-0', comingSoon && 'text-text-muted/35')}
-        muted={comingSoon}
+      <img
+        src={logo}
+        alt=""
+        width={40}
+        height={40}
+        className={cn('h-10 w-10 shrink-0 object-contain', comingSoon && 'opacity-35 grayscale')}
+        loading="lazy"
+        decoding="async"
       />
       <span className={cn('panel-text-caption font-medium leading-tight', comingSoon ? 'text-text-muted/45' : 'text-text')}>
         {label}
@@ -110,7 +107,7 @@ export function SpotPlayerDownloadGrid() {
           <PlatformTile
             key={platform.id}
             label={platform.label}
-            Icon={platform.Icon}
+            logo={platform.logo}
             href={platform.href}
             comingSoon={platform.comingSoon}
           />

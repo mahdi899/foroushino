@@ -1,10 +1,15 @@
 "use client";
 
 import { Loader2, Phone, ShieldCheck, User2 } from "lucide-react";
-import { Suspense, useCallback, useId, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useId, useMemo, useState } from "react";
 import { track } from "@/lib/analytics";
 import { useCheckoutAutopay, useCheckoutLoginGate } from "@/lib/checkout/checkoutLogin";
-import { startGuestCheckoutAction, startLoggedInCheckoutAction } from "@/lib/checkout/actions";
+import {
+  resendGuestCheckoutOtpAction,
+  sendGuestCheckoutOtpAction,
+  startLoggedInCheckoutAction,
+  verifyGuestCheckoutAndPayAction,
+} from "@/lib/checkout/actions";
 import {
   buildCustomerName,
   prefillExtraFields,
@@ -15,11 +20,15 @@ import {
 import { cn } from "@/lib/cn";
 import { getIranMobileInputError, isValidIranMobile, normalizeIranMobile, sanitizePhoneInput } from "@/lib/chatbot/phone";
 import { captureReferralCode } from "@/lib/referral/capture";
+import { captureDiscountCode } from "@/lib/discount/capture";
 import type { ProductDetail } from "@/lib/services/products";
 import type { StudentUser } from "@/lib/student/session";
+import { OtpDigitInput } from "@/components/student-panel/auth/OtpDigitInput";
 
 type Status = "idle" | "submitting" | "error";
+type GuestStep = "details" | "otp";
 
+const OTP_RESEND_SECONDS = 60;
 function ExtraFieldInput({
   field,
   value,
@@ -107,6 +116,12 @@ function PurchaseFormInner({
   );
   const [guestName, setGuestName] = useState("");
   const [guestPhone, setGuestPhone] = useState("");
+  const [guestStep, setGuestStep] = useState<GuestStep>("details");
+  const [checkoutToken, setCheckoutToken] = useState<string | null>(null);
+  const [phoneMasked, setPhoneMasked] = useState<string | null>(null);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpInfo, setOtpInfo] = useState<string | null>(null);
+  const [resendIn, setResendIn] = useState(0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [guestErrors, setGuestErrors] = useState<{ name?: string; phone?: string }>({});
   const [status, setStatus] = useState<Status>("idle");
@@ -121,11 +136,14 @@ function PurchaseFormInner({
     track("checkout_start", { product: product.slug });
 
     const ref = captureReferralCode();
+    const discount = captureDiscountCode();
     const extraPayload = Object.keys(extra).length ? extra : undefined;
 
     const result = await startLoggedInCheckoutAction({
       product_id: product.id,
       ref,
+      coupon: discount.code,
+      coupon_via_link: discount.viaLink,
       customer_extra_data: extraPayload,
     });
 
@@ -142,8 +160,13 @@ function PurchaseFormInner({
 
   useCheckoutAutopay(isLoggedIn, goToGateway);
 
-  function validateExtraFields(): boolean {
-    const found: Record<string, string> = {};
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = window.setInterval(() => setResendIn((prev) => (prev > 0 ? prev - 1 : 0)), 1000);
+    return () => window.clearInterval(timer);
+  }, [resendIn]);
+
+  function validateExtraFields(): boolean {    const found: Record<string, string> = {};
 
     for (const field of extraFields) {
       if (field.required && !extra[field.key]?.trim()) {
@@ -165,19 +188,22 @@ function PurchaseFormInner({
     return Object.keys(found).length === 0;
   }
 
-  const goToGatewayGuest = useCallback(async () => {
+  const sendGuestOtp = useCallback(async () => {
     setStatus("submitting");
     setServerError(null);
-    track("checkout_start", { product: product.slug });
+    setOtpInfo(null);
 
     const ref = captureReferralCode();
+    const discount = captureDiscountCode();
     const extraPayload = Object.keys(extra).length ? extra : undefined;
 
-    const result = await startGuestCheckoutAction({
+    const result = await sendGuestCheckoutOtpAction({
       product_id: product.id,
       customer_name: guestName.trim(),
       customer_phone: normalizeIranMobile(guestPhone),
       ref,
+      coupon: discount.code,
+      coupon_via_link: discount.viaLink,
       customer_extra_data: extraPayload,
     });
 
@@ -188,9 +214,64 @@ function PurchaseFormInner({
       return;
     }
 
-    track("checkout_success", { product: product.slug, order: result.order_number });
-    window.location.href = result.payment_url;
+    setCheckoutToken(result.checkout_token);
+    setPhoneMasked(result.customer_phone_masked);
+    setGuestStep("otp");
+    setOtpCode("");
+    setOtpInfo(
+      result.customer_phone_masked
+        ? `کد تأیید به ${result.customer_phone_masked} پیامک شد.`
+        : "کد تأیید برای شما پیامک شد.",
+    );
+    setResendIn(OTP_RESEND_SECONDS);
+    setStatus("idle");
   }, [extra, guestName, guestPhone, product]);
+
+  const verifyGuestAndPay = useCallback(
+    async (code: string) => {
+      if (!checkoutToken || status === "submitting") return;
+
+      setStatus("submitting");
+      setServerError(null);
+      track("checkout_start", { product: product.slug });
+
+      const result = await verifyGuestCheckoutAndPayAction({
+        checkout_token: checkoutToken,
+        code,
+      });
+
+      if (!result.ok) {
+        setStatus("error");
+        setServerError(result.error);
+        setOtpCode("");
+        track("checkout_error", { product: product.slug });
+        return;
+      }
+
+      track("checkout_success", { product: product.slug, order: result.order_number });
+      window.location.href = result.payment_url;
+    },
+    [checkoutToken, product, status],
+  );
+
+  async function handleResendOtp() {
+    if (!checkoutToken || resendIn > 0 || status === "submitting") return;
+
+    setStatus("submitting");
+    setServerError(null);
+
+    const result = await resendGuestCheckoutOtpAction(checkoutToken);
+    setStatus("idle");
+
+    if (!result.ok) {
+      setServerError(result.error);
+      return;
+    }
+
+    setOtpInfo("کد جدید ارسال شد.");
+    setResendIn(OTP_RESEND_SECONDS);
+    setOtpCode("");
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -201,12 +282,21 @@ function PurchaseFormInner({
       return;
     }
 
+    if (guestStep === "otp") {
+      if (otpCode.length < 5) {
+        setServerError("کد تأیید ۵ رقمی را وارد کن.");
+        return;
+      }
+      await verifyGuestAndPay(otpCode);
+      return;
+    }
+
     if (!validateGuestFields()) return;
-    await goToGatewayGuest();
+    await sendGuestOtp();
   }
 
   const submitting = status === "submitting";
-
+  const guestFieldsLocked = guestStep === "otp";
   return (
     <form className="grid gap-4" onSubmit={onSubmit} noValidate>
       {isLoggedIn && student ? (
@@ -228,8 +318,8 @@ function PurchaseFormInner({
               id={`${formId}-guest-name`}
               type="text"
               value={guestName}
-              onChange={(e) => {
-                setGuestName(e.target.value);
+              disabled={guestFieldsLocked}
+              onChange={(e) => {                setGuestName(e.target.value);
                 setGuestErrors((prev) => ({ ...prev, name: undefined }));
               }}
               autoComplete="name"
@@ -252,8 +342,8 @@ function PurchaseFormInner({
               type="tel"
               inputMode="numeric"
               value={guestPhone}
-              onChange={(e) => {
-                setGuestPhone(sanitizePhoneInput(e.target.value));
+              disabled={guestFieldsLocked}
+              onChange={(e) => {                setGuestPhone(sanitizePhoneInput(e.target.value));
                 setGuestErrors((prev) => ({ ...prev, phone: undefined }));
               }}
               autoComplete="tel"
@@ -293,8 +383,48 @@ function PurchaseFormInner({
         </div>
       ) : null}
 
-      {status === "error" && serverError ? (
-        <p
+      {guestStep === "otp" ? (
+        <div className="space-y-3 rounded-tile border border-bone/10 bg-ink/30 p-4">
+          <p className="text-sm text-bone-dim">
+            {otpInfo ?? (phoneMasked ? `کد تأیید به ${phoneMasked} ارسال شد.` : "کد تأیید را وارد کن.")}
+          </p>
+          <OtpDigitInput
+            value={otpCode}
+            onChange={setOtpCode}
+            onComplete={verifyGuestAndPay}
+            disabled={submitting}
+            error={Boolean(serverError)}
+            autoFocus
+            compact
+          />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => void handleResendOtp()}
+              disabled={resendIn > 0 || submitting}
+              className="text-caption text-emerald-glow underline-offset-2 hover:underline disabled:opacity-50"
+            >
+              {resendIn > 0 ? `ارسال مجدد (${resendIn})` : "ارسال مجدد کد"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setGuestStep("details");
+                setCheckoutToken(null);
+                setOtpCode("");
+                setOtpInfo(null);
+                setServerError(null);
+                setStatus("idle");
+              }}
+              className="text-caption text-mist underline-offset-2 hover:underline"
+            >
+              ویرایش شماره
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {status === "error" && serverError ? (        <p
           role="alert"
           aria-live="assertive"
           className="rounded-tile border border-gold/30 bg-gold/8 px-4 py-3 text-sm text-gold"
@@ -311,12 +441,13 @@ function PurchaseFormInner({
         {submitting ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            در حال انتقال به درگاه پرداخت…
+            {guestStep === "otp" ? "در حال انتقال به درگاه…" : "در حال ارسال کد…"}
           </>
+        ) : guestStep === "otp" ? (
+          "تأیید کد و پرداخت"
         ) : (
           "پرداخت امن و ادامه"
-        )}
-      </button>
+        )}      </button>
 
       <p className="flex items-center justify-center gap-2 text-caption text-mist">
         <ShieldCheck className="h-3.5 w-3.5 text-emerald-glow" strokeWidth={1.5} aria-hidden />

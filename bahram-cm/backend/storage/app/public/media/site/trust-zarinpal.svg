@@ -1,7 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" role="img" aria-label="21ÌF~'D">
-  <rect width="120" height="120" rx="12" fill="#f8fafc"/>
-  <rect x="4" y="4" width="112" height="112" rx="10" stroke="#cbd5e1" stroke-width="2"/>
-  <rect x="28" y="36" width="64" height="48" rx="10" fill="#ffd54f"/>
-  <text x="60" y="66" text-anchor="middle" font-family="Tahoma, Arial, sans-serif" font-size="14" font-weight="700" fill="#1f2937">ZP</text>
-  <text x="60" y="92" text-anchor="middle" font-family="Tahoma, Arial, sans-serif" font-size="9" fill="#475569">Zarinpal</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" role="img" aria-label="????????">
+  <rect width="120" height="120" rx="10" fill="#ffffff"/>
+  <rect x="8" y="22" width="104" height="68" rx="12" fill="#FFCC00"/>
+  <rect x="8" y="22" width="104" height="68" rx="12" stroke="#E6B800" stroke-width="1.5"/>
+  <text x="60" y="52" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="700" fill="#1A1A1A">ZarinPal</text>
+  <text x="60" y="70" text-anchor="middle" font-family="Tahoma, Arial, sans-serif" font-size="12" font-weight="700" fill="#1A1A1A">????????</text>
+  <text x="60" y="104" text-anchor="middle" font-family="Tahoma, Arial, sans-serif" font-size="8" fill="#64748b">????? ?????? ???</text>
 </svg>

@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\CourseAccessService;
 use App\Support\MediaUrl;
 use App\Support\Mobile;
+use App\Support\StudentAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -147,9 +149,13 @@ class StudentController extends Controller
         abort_if($student->is_admin, 404);
 
         $data = $request->validate([
-            'status' => ['sometimes', 'string', 'in:active,suspended,blocked'],
+            'status' => ['sometimes', 'string', 'in:active,blocked'],
             'name' => ['sometimes', 'string', 'max:255'],
         ]);
+
+        if (isset($data['status']) && $data['status'] === UserStatus::Blocked->value) {
+            StudentAccess::revokeTokens($student);
+        }
 
         $student->update($data);
 

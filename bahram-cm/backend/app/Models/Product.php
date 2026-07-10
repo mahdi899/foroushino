@@ -87,6 +87,19 @@ class Product extends Model
         return $this->hasOne(Seminar::class);
     }
 
+    public function isSeminarProduct(): bool
+    {
+        if ($this->type === self::TYPE_EVENT) {
+            return true;
+        }
+
+        if ($this->relationLoaded('seminar')) {
+            return $this->seminar !== null;
+        }
+
+        return $this->seminar()->exists();
+    }
+
     public function miniCourse(): HasOne
     {
         return $this->hasOne(MiniCourse::class);

@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\MiniCourseCommentController;
 use App\Http\Controllers\Api\MiniCourseController;
 use App\Http\Controllers\Api\MediaAltController;
+use App\Http\Controllers\Api\DiscountCodeController;
+use App\Http\Controllers\Api\GuestCheckoutController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PublicSeminarController;
@@ -60,6 +62,8 @@ Route::get('/seminars/{slug}', [PublicSeminarController::class, 'show'])->where(
 
 // Orders
 Route::post('/orders', [OrderController::class, 'store']);
+Route::post('/discount-codes/validate', [DiscountCodeController::class, 'validateCode'])
+    ->middleware('throttle:30,1');
 Route::get('/orders/complete-profile', [OrderController::class, 'completeProfileContext'])
     ->middleware('throttle:30,1');
 Route::get('/orders/payment-result', [OrderController::class, 'paymentResult'])
@@ -67,6 +71,12 @@ Route::get('/orders/payment-result', [OrderController::class, 'paymentResult'])
 Route::post('/orders/payment-result/login', [OrderController::class, 'paymentResultLogin'])
     ->middleware('throttle:20,1');
 Route::post('/orders/complete-customer', [OrderController::class, 'completeCustomer'])
+    ->middleware('throttle:20,1');
+Route::post('/orders/guest-checkout/send-otp', [GuestCheckoutController::class, 'sendOtp'])
+    ->middleware('throttle:10,1');
+Route::post('/orders/guest-checkout/resend-otp', [GuestCheckoutController::class, 'resendOtp'])
+    ->middleware('throttle:10,1');
+Route::post('/orders/guest-checkout/verify-and-pay', [GuestCheckoutController::class, 'verifyAndPay'])
     ->middleware('throttle:20,1');
 Route::post('/orders/post-payment-login/resend-otp', [OrderController::class, 'postPaymentResendOtp'])
     ->middleware('throttle:10,1');

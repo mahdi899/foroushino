@@ -235,6 +235,129 @@
 
 .panel-header__profile > :first-child {
   flex-shrink: 0;
+  overflow: visible;
+}
+
+/* Premium avatar ring — site neon beam (teal + gold strip, no glow bloom) */
+@property --panel-avatar-ring-angle {
+  syntax: '<angle>';
+  initial-value: 210deg;
+  inherits: false;
+}
+
+.panel-profile-avatar-halo {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5px;
+  border-radius: 999px;
+  overflow: visible;
+}
+
+.panel-profile-avatar-halo--plain {
+  padding: 0;
+}
+
+.panel-profile-avatar-halo--squircle {
+  border-radius: 1rem;
+}
+
+.panel-profile-avatar-halo__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.panel-profile-avatar-halo__ring::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 210%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: conic-gradient(
+    from var(--panel-avatar-ring-angle),
+    transparent 0deg,
+    transparent 248deg,
+    color-mix(in srgb, var(--color-primary) 88%, transparent) 286deg,
+    var(--color-gold) 316deg,
+    color-mix(in srgb, var(--color-accent-bright) 90%, transparent) 344deg,
+    transparent 360deg
+  );
+  animation: panel-avatar-ring-beam 4.2s linear infinite;
+}
+
+.panel-profile-avatar-halo .panel-profile-avatar__inner {
+  position: relative;
+  z-index: 1;
+}
+
+.panel-profile-avatar-halo:not(.panel-profile-avatar-halo--plain) .panel-profile-avatar__inner {
+  box-shadow: 0 0 0 2px var(--color-surface);
+}
+
+.panel-profile-avatar__verified {
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #1d9bf0;
+  transform: translate(-22%, 22%);
+  filter: drop-shadow(0 1px 3px rgba(29, 155, 240, 0.45)) drop-shadow(0 1px 2px rgba(0, 59, 64, 0.2));
+  pointer-events: none;
+  line-height: 0;
+}
+
+.panel-profile-avatar__verified svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+  stroke: #fff;
+}
+
+@keyframes panel-avatar-ring-beam {
+  to {
+    --panel-avatar-ring-angle: 570deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-profile-avatar-halo__ring::before {
+    animation: none;
+    --panel-avatar-ring-angle: 300deg;
+  }
+}
+
+.panel-header__profile .panel-profile-avatar-halo {
+  padding: 2px;
+}
+
+.panel-header__profile .panel-profile-avatar-halo .panel-profile-avatar__inner {
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--color-surface-soft) 80%, transparent);
+}
+
+.panel-header__profile .panel-profile-avatar__verified {
+  width: 1.0625rem;
+  height: 1.0625rem;
+  transform: translate(-20%, 20%);
+}
+
+.panel-profile-avatar__trigger .panel-profile-avatar__verified {
+  width: 2rem;
+  height: 2rem;
+  transform: translate(-18%, 18%);
 }
 
 .panel-header__icon-btn {
@@ -288,6 +411,7 @@
   flex-shrink: 1;
   align-items: center;
   gap: 0.5rem;
+  overflow: visible;
   border-radius: 0.75rem;
   border: 1px solid color-mix(in srgb, var(--color-border) 40%, transparent);
   background: color-mix(in srgb, var(--color-surface-soft) 80%, transparent);
@@ -3143,7 +3267,7 @@
 
 .panel-profile-aside__card {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 1.25rem;
   padding: 1.25rem;
 }
@@ -3387,6 +3511,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
+  overflow: visible;
 }
 
 @media (min-width: 1024px) {
@@ -3415,6 +3540,9 @@
 .panel-profile-avatar__trigger {
   position: relative;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
   border: none;
   background: transparent;
   padding: 0;
@@ -3436,16 +3564,37 @@
   border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
 }
 
+.panel-profile-avatar__trigger .panel-profile-avatar-halo {
+  padding: 3px;
+}
+
+.panel-profile-avatar__trigger .panel-profile-avatar-halo .panel-profile-avatar__inner {
+  box-shadow: 0 0 0 3px var(--color-surface);
+}
+
 .panel-profile-avatar__overlay {
   position: absolute;
-  inset: 0;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
   display: grid;
+  width: 7rem;
+  height: 7rem;
   place-items: center;
-  border-radius: 1rem;
+  border-radius: 50%;
   background: rgba(0, 0, 0, 0.42);
   color: #fff;
   opacity: 0;
+  transform: translate(-50%, -50%);
   transition: opacity 180ms ease;
+  pointer-events: none;
+}
+
+@media (min-width: 640px) {
+  .panel-profile-avatar__overlay {
+    width: 8rem;
+    height: 8rem;
+  }
 }
 
 .panel-profile-avatar__trigger:hover .panel-profile-avatar__overlay,
@@ -5064,6 +5213,47 @@
 
 .panel-root[data-panel-theme='dark'] .panel-notification-link:hover {
   border-color: color-mix(in srgb, var(--color-primary) 32%, var(--color-border));
+}
+
+/* Premium gradient border — confirmed payments only (Telegram / Google style). */
+.panel-notification-link--premium {
+  position: relative;
+  border-color: transparent;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.panel-notification-link--premium::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(
+    135deg,
+    #6ea8fe 0%,
+    #7dd3b0 28%,
+    #f6d889 56%,
+    #f08ec2 82%,
+    #9b8cff 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.panel-notification-link--premium:hover {
+  box-shadow: var(--shadow-soft), 0 0 0 1px color-mix(in srgb, var(--color-primary) 12%, transparent);
+}
+
+.panel-root[data-panel-theme='dark'] .panel-notification-link--premium {
+  background: var(--color-surface);
 }
 
 .panel-notification-toast-overlay {

@@ -8,6 +8,7 @@ import {
   type PanelNotificationPayload,
 } from '@/lib/student/panelActions';
 import { NotificationToastStack } from '@/components/student-panel/notifications/NotificationToastStack';
+import { shouldShowNotificationToast } from '@/components/student-panel/notifications/notificationToast';
 
 const POLL_ACTIVE_MS = 8_000;
 const POLL_IDLE_MS = 30_000;
@@ -73,15 +74,16 @@ export function PanelNotificationProvider({
   );
 
   const pushToasts = useCallback((fresh: PanelNotificationPayload[]) => {
-    if (fresh.length === 0) return;
+    const toastable = fresh.filter(shouldShowNotificationToast);
+    if (toastable.length === 0) return;
 
-    for (const item of fresh) {
+    for (const item of toastable) {
       toastedIdsRef.current.add(item.id);
     }
 
     setToasts((prev) => {
       const existing = new Set(prev.map((item) => item.id));
-      return [...prev, ...fresh.filter((item) => !existing.has(item.id))].slice(-4);
+      return [...prev, ...toastable.filter((item) => !existing.has(item.id))].slice(-4);
     });
   }, []);
 
@@ -98,12 +100,18 @@ export function PanelNotificationProvider({
 
       const baseline = knownMaxIdRef.current;
       let fresh = notifications
-        .filter((item) => !item.read_at && item.id > baseline && !toastedIdsRef.current.has(item.id))
+        .filter(
+          (item) =>
+            shouldShowNotificationToast(item) &&
+            !item.read_at &&
+            item.id > baseline &&
+            !toastedIdsRef.current.has(item.id),
+        )
         .sort((a, b) => a.id - b.id);
 
       if (fresh.length === 0 && count > lastUnreadCountRef.current) {
         const newestUnread = notifications
-          .filter((item) => !item.read_at && !toastedIdsRef.current.has(item.id))
+          .filter((item) => shouldShowNotificationToast(item) && !item.read_at && !toastedIdsRef.current.has(item.id))
           .sort((a, b) => b.id - a.id)[0];
 
         if (newestUnread && newestUnread.id > baseline) {

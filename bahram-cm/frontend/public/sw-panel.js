@@ -1,5 +1,5 @@
 const CACHE = 'bahram-panel-v2';
-const PRECACHE = ['/panel-manifest.webmanifest', '/favicon.svg', '/apple-touch-icon.svg'];
+const PRECACHE = ['/panel-manifest.webmanifest', '/icon', '/apple-icon'];
 
 function isPanelScope(url) {
   return url.pathname.startsWith('/panel');

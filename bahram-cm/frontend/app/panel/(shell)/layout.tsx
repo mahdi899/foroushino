@@ -3,15 +3,16 @@ import { redirect } from 'next/navigation';
 import { PanelShell } from '@/components/student-panel/layout/PanelShell';
 import { panelLoginRedirectTarget } from '@/lib/student/panelAuth';
 import { panelStudentFetch } from '@/lib/student/panelServer';
-import { getCurrentStudent } from '@/lib/student/session';
+import { resolvePanelAccess } from '@/lib/student/session';
 
 export default async function PanelShellLayout({ children }: { children: React.ReactNode }) {
-  const user = await getCurrentStudent();
+  const { user, blocked } = await resolvePanelAccess();
 
   if (!user) {
     const pathname = (await headers()).get('x-pathname') ?? '/panel';
     const redirectTo = panelLoginRedirectTarget(pathname);
-    redirect(`/panel/login?redirect=${encodeURIComponent(redirectTo)}`);
+    const blockedQuery = blocked ? '&blocked=1' : '';
+    redirect(`/panel/login?redirect=${encodeURIComponent(redirectTo)}${blockedQuery}`);
   }
 
   const notificationsRes = await panelStudentFetch<{ data: { unread_count: number } }>('/notifications/unread-count').catch(() => ({

@@ -1,19 +1,8 @@
 import Link from "next/link";
 import { site } from "@/content/site";
-import { SITE_MEDIA } from "@/config/media";
 import { Divider } from "@/components/ui/Divider";
-import { SiteImage } from "@/components/ui/SiteImage";
 import { Logo } from "./Logo";
 import { toPersianDigits } from "@/lib/persian";
-
-const TRUST_BADGE_MEDIA: Record<
-  (typeof site.footer.trustBadges)[number]["id"],
-  string
-> = {
-  enamad: SITE_MEDIA["trust-enamad"]!.src,
-  samandehi: SITE_MEDIA["trust-samandehi"]!.src,
-  zarinpal: SITE_MEDIA["trust-zarinpal"]!.src,
-};
 
 export function SiteFooter() {
   const year = toPersianDigits(new Date().getFullYear());
@@ -31,7 +20,7 @@ export function SiteFooter() {
               کمپین‌نویسی، ورود به {site.ecosystem}.
             </p>
             <div
-              className="mt-5 flex flex-wrap items-center gap-3 border-t border-bone/10 pt-5 md:mt-8 md:gap-4 md:pt-8"
+              className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-bone/10 pt-5 md:mt-8 md:gap-x-5 md:pt-8"
               aria-label="نشان‌های اعتماد"
             >
               {site.footer.trustBadges.map((badge) => (
@@ -40,16 +29,9 @@ export function SiteFooter() {
                   href={badge.href}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="shrink-0"
-                  aria-label={badge.alt}
+                  className="text-sm text-bone-dim transition-colors hover:text-bone"
                 >
-                  <SiteImage
-                    src={TRUST_BADGE_MEDIA[badge.id]}
-                    alt={badge.alt}
-                    width={72}
-                    height={72}
-                    className="h-[4.25rem] w-[4.25rem] rounded-xl border border-bone/10 bg-bone/5 object-contain p-2 transition-colors hover:border-bone/20 md:h-[4.75rem] md:w-[4.75rem]"
-                  />
+                  {badge.alt}
                 </a>
               ))}
             </div>

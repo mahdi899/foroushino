@@ -80,13 +80,27 @@ export async function studentFetch<T = unknown>(
   return res.status === 204 ? (undefined as T) : ((await res.json()) as T);
 }
 
-/** Resolve the current student; returns null when unauthenticated. */
+/** Resolve the current student; returns null when unauthenticated or blocked. */
 export const getCurrentStudent = cache(async (): Promise<StudentUser | null> => {
-  if (!(await getStudentToken())) return null;
+  const result = await resolvePanelAccess();
+  return result.user;
+});
+
+export const resolvePanelAccess = cache(async (): Promise<{ user: StudentUser | null; blocked: boolean }> => {
+  if (!(await getStudentToken())) {
+    return { user: null, blocked: false };
+  }
+
   try {
     const res = await studentFetch<{ data: StudentUser }>('/me');
-    return res.data;
-  } catch {
-    return null;
+    return { user: res.data, blocked: false };
+  } catch (e) {
+    const err = e as Error & { status?: number; payload?: { error?: { code?: string } } };
+    if (err.status === 403 && err.payload?.error?.code === 'account_blocked') {
+      const jar = await cookies();
+      jar.delete(STUDENT_TOKEN_COOKIE);
+      return { user: null, blocked: true };
+    }
+    return { user: null, blocked: false };
   }
 });

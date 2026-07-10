@@ -1246,12 +1246,33 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   font-size: var(--admin-text-caption);
   font-weight: 600;
   line-height: var(--admin-line-height-caption);
+  overflow: visible;
 }
 
 .admin-root .admin-bottom-nav__badge {
-  font-size: var(--admin-text-caption);
+  font-size: 0.625rem;
   font-weight: 700;
   line-height: 1;
+  animation: admin-bottom-nav-badge-blink 1.15s ease-in-out infinite;
+}
+
+@keyframes admin-bottom-nav-badge-blink {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+
+  50% {
+    opacity: 0.35;
+    transform: translateX(-50%) scale(0.9);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-root .admin-bottom-nav__badge {
+    animation: none;
+  }
 }
 
 /* Mobile menu bottom sheet */

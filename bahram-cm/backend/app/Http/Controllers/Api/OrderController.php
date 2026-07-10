@@ -17,6 +17,7 @@ use App\Services\PostPaymentLoginTokenService;
 use App\Services\StudentOnboardingService;
 use App\Support\ApiResponse;
 use App\Support\Mobile;
+use App\Support\StudentAccess;
 use Illuminate\Http\Request;
 use Laravel\Sanctum\PersonalAccessToken;
 
@@ -177,6 +178,10 @@ class OrderController extends Controller
             );
         }
 
+        if (StudentAccess::isBlocked($user)) {
+            return StudentAccess::blockedResponse();
+        }
+
         $this->orders->syncLinkedUserFromOrder($order);
 
         if ($user->mobile_verified_at === null) {
@@ -207,6 +212,10 @@ class OrderController extends Controller
 
         [, $mobile] = $resolved;
 
+        if ($blocked = StudentAccess::blockedResponseForMobile($mobile)) {
+            return $blocked;
+        }
+
         try {
             $this->otp->send($mobile, OtpPurpose::Login, $request->ip(), $request->userAgent());
         } catch (OtpException $e) {
@@ -229,6 +238,10 @@ class OrderController extends Controller
         }
 
         [$user, $mobile] = $resolved;
+
+        if (StudentAccess::isBlocked($user)) {
+            return StudentAccess::blockedResponse();
+        }
 
         try {
             $this->otp->verify($mobile, (string) $data['code'], OtpPurpose::Login);
