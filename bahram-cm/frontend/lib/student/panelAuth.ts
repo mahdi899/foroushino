@@ -2,10 +2,11 @@
 export function panelLoginRedirectTarget(value: string | null | undefined): string {
   const trimmed = (value ?? '').trim();
   if (
-    trimmed.startsWith('/panel') &&
+    trimmed &&
     !trimmed.startsWith('//') &&
     !trimmed.includes('\\') &&
-    !trimmed.startsWith('/panel/login')
+    !trimmed.startsWith('/panel/login') &&
+    (trimmed.startsWith('/panel') || trimmed.startsWith('/mini-courses/'))
   ) {
     return trimmed;
   }

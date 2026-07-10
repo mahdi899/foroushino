@@ -14,6 +14,7 @@ export function useFormSecurity(
   options?: {
     captchaTight?: boolean;
     captchaStacked?: boolean;
+    captchaBand?: boolean;
     captchaAdmin?: boolean;
     /** false = full-width block layout for multi-field forms (default true for inline rows). */
     captchaInline?: boolean;
@@ -31,6 +32,7 @@ export function useFormSecurity(
   const securityLoading = !configLoaded;
   const admin = options?.captchaAdmin ?? false;
   const stacked = options?.captchaStacked ?? false;
+  const band = options?.captchaBand ?? false;
   const inline = options?.captchaInline ?? true;
 
   const getSecurityPayload = (): FormSecurityPayload => ({
@@ -61,7 +63,7 @@ export function useFormSecurity(
       variant={admin ? 'admin' : 'site'}
       compact
       inline={inline}
-      tight={!admin && (stacked || !!options?.captchaTight)}
+      tight={!admin && !band && (stacked || !!options?.captchaTight)}
       pillEmbed={!admin && !stacked && !!options?.captchaTight}
       className={admin || stacked || !inline ? 'w-full min-w-0' : options?.captchaTight ? 'shrink-0' : undefined}
       {...captchaGate.fieldProps}

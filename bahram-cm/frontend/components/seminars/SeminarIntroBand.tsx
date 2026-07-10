@@ -5,7 +5,6 @@ import { formatDateFa, formatFa } from "@/lib/persian";
 import type { PublicSeminar } from "@/lib/services/seminars";
 
 function capacityLabel(seminar: PublicSeminar): string {
-  if (seminar.is_full) return "ظرفیت تکمیل شده";
   if (seminar.remaining_seats != null) {
     return `${formatFa(seminar.remaining_seats)} جای خالی`;
   }
@@ -43,16 +42,12 @@ export function SeminarIntroBand({ seminar }: { seminar: PublicSeminar }) {
                   <span className="min-w-0">{seminar.location}</span>
                 </li>
               ) : null}
-              <li
-                className={
-                  seminar.is_full
-                    ? "inline-flex min-w-0 items-center gap-2 rounded-pill border border-gold/30 bg-gold/10 px-3.5 py-2 text-sm text-gold sm:px-4"
-                    : "inline-flex min-w-0 items-center gap-2 rounded-pill border border-bone/12 bg-charcoal/45 px-3.5 py-2 text-sm text-bone-dim sm:px-4"
-                }
-              >
-                <Users className="h-4 w-4 shrink-0 text-gold" strokeWidth={1.5} aria-hidden />
-                <span className="min-w-0">{capacityLabel(seminar)}</span>
-              </li>
+              {!seminar.is_full ? (
+                <li className="inline-flex min-w-0 items-center gap-2 rounded-pill border border-bone/12 bg-charcoal/45 px-3.5 py-2 text-sm text-bone-dim sm:px-4">
+                  <Users className="h-4 w-4 shrink-0 text-gold" strokeWidth={1.5} aria-hidden />
+                  <span className="min-w-0">{capacityLabel(seminar)}</span>
+                </li>
+              ) : null}
             </ul>
 
             <div className="flex flex-col items-center gap-6 border-t border-bone/10 pt-6 sm:flex-row sm:items-end sm:justify-between sm:gap-8 sm:pt-8">

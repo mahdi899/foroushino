@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\MiniCourseCommentResource;
-use App\Http\Resources\MiniCourseResource;
+use App\Http\Resources\PublicMiniCourseResource;
 use App\Models\MiniCourse;
 use App\Models\MiniCourseComment;
 use App\Support\RuntimeCache;
@@ -22,7 +22,7 @@ class MiniCourseController extends Controller
                 ->ordered()
                 ->get();
 
-            return MiniCourseResource::collection($items);
+            return PublicMiniCourseResource::collection($items);
         }, 'mini-courses');
     }
 
@@ -36,7 +36,7 @@ class MiniCourseController extends Controller
                 ->where('slug', $slug)
                 ->firstOrFail();
 
-            return new MiniCourseResource($item);
+            return new PublicMiniCourseResource($item);
         }, 'mini-courses');
     }
 

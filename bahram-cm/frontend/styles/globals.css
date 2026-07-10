@@ -2266,6 +2266,167 @@ html[data-theme="light"] .founder-cta-band__lead {
   color: rgba(234, 251, 251, 0.84);
 }
 
+/* Newsletter CTA — full-bleed brand gradient band */
+.newsletter-cta-band__surface {
+  border-block: 1px solid color-mix(in oklab, var(--color-emerald-glow) 24%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-bone) 10%, transparent);
+}
+
+html:not([data-theme="light"]) .newsletter-cta-band__surface {
+  border-block-color: color-mix(in oklab, var(--color-emerald-glow) 18%, transparent);
+  background: linear-gradient(
+    135deg,
+    var(--color-obsidian) 0%,
+    #021a18 20%,
+    var(--color-emerald-deep) 46%,
+    #0a4f47 72%,
+    #063530 100%
+  );
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-emerald-glow) 8%, transparent);
+}
+
+html[data-theme="light"] .newsletter-cta-band__surface {
+  border-block-color: color-mix(in oklab, var(--color-emerald) 22%, transparent);
+  background: linear-gradient(
+    128deg,
+    var(--color-emerald-deep) 0%,
+    var(--color-emerald) 46%,
+    #004a50 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.newsletter-cta-band__ambient {
+  background:
+    radial-gradient(
+      ellipse 78% 120% at 14% 50%,
+      color-mix(in oklab, var(--color-gold) 14%, transparent),
+      transparent 58%
+    ),
+    radial-gradient(
+      ellipse 72% 100% at 90% 42%,
+      color-mix(in oklab, var(--color-emerald-glow) 12%, transparent),
+      transparent 62%
+    );
+}
+
+.newsletter-cta-band__layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(1.5rem, 4vw, 2.25rem);
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .newsletter-cta-band__layout {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: clamp(2rem, 5vw, 3.5rem);
+    text-align: start;
+  }
+
+  .newsletter-cta-band__form-wrap {
+    max-width: 22rem;
+    flex-shrink: 0;
+  }
+}
+
+.newsletter-cta-band__copy {
+  min-width: 0;
+  max-width: 28rem;
+}
+
+.newsletter-cta-band__eyebrow,
+.newsletter-cta-band__eyebrow span[aria-hidden] {
+  color: var(--color-gold-soft);
+}
+
+.newsletter-cta-band__title {
+  color: #f8fbfb;
+}
+
+.newsletter-cta-band__lead {
+  color: rgba(234, 251, 251, 0.84);
+}
+
+.newsletter-form__shell--band {
+  border-color: color-mix(in oklab, var(--color-emerald-deep) 10%, white);
+  background: color-mix(in oklab, white 94%, var(--color-emerald-glow));
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, white 80%, var(--color-emerald-glow)) inset,
+    0 12px 30px -16px color-mix(in oklab, var(--color-emerald-deep) 28%, transparent);
+  color: var(--color-emerald-deep);
+}
+
+.newsletter-form__shell--band .newsletter-form__icon {
+  color: color-mix(in oklab, var(--color-emerald-deep) 42%, transparent);
+}
+
+.newsletter-form__input--band {
+  color: var(--color-emerald-deep);
+}
+
+.newsletter-form__input--band::placeholder {
+  color: color-mix(in oklab, var(--color-emerald-deep) 42%, transparent);
+}
+
+.newsletter-form__shell--band .text-mist,
+.newsletter-form__shell--band .text-bone-dim,
+.newsletter-form__shell--band label,
+.newsletter-form__shell--band button[type="button"] {
+  color: color-mix(in oklab, var(--color-emerald-deep) 72%, transparent);
+}
+
+.newsletter-form__shell--band span[class*="rounded-pill"],
+.newsletter-form__shell--band input[type="tel"] {
+  border-color: color-mix(in oklab, var(--color-emerald) 16%, transparent) !important;
+  background: color-mix(in oklab, white 88%, var(--color-emerald-glow)) !important;
+  color: var(--color-emerald-deep) !important;
+}
+
+.newsletter-form__captcha [class*="flex-nowrap"] {
+  width: 100%;
+  gap: 0.65rem;
+}
+
+.newsletter-form__captcha-shell {
+  min-height: 3.25rem;
+}
+
+.newsletter-form__captcha span[class*="rounded-pill"] {
+  font-size: 0.8125rem !important;
+  font-weight: 600;
+  padding: 0.5rem 0.85rem !important;
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.newsletter-form__captcha input[type="tel"] {
+  height: 2.75rem !important;
+  min-height: 2.75rem !important;
+  width: auto !important;
+  min-width: 5.5rem !important;
+  flex: 1 1 7rem !important;
+  font-size: 0.875rem !important;
+  padding-inline: 0.85rem !important;
+  text-align: start !important;
+}
+
+.newsletter-form__captcha input[type="tel"]::placeholder {
+  color: color-mix(in oklab, var(--color-emerald-deep) 38%, transparent) !important;
+}
+
+.newsletter-form__status--ok {
+  color: var(--color-gold-soft);
+}
+
+.newsletter-form__status--err {
+  color: var(--color-gold);
+}
+
 .founder-milestones__list {
   border-block: 1px solid color-mix(in oklab, var(--color-bone) 10%, transparent);
 }

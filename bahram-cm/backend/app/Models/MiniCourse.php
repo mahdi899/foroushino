@@ -42,6 +42,11 @@ class MiniCourse extends Model
         return $this->hasMany(MiniCourseComment::class);
     }
 
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(MiniCourseEnrollment::class);
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);

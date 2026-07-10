@@ -155,7 +155,7 @@ export function MiniCourseCard({
 
           <div className="flex justify-start">
             <span className="main-path-card-cta mini-course-card-cta inline-flex min-h-11 min-w-[10.5rem] shrink-0 items-center justify-center gap-2.5 rounded-pill px-6 py-3 text-sm font-semibold transition-[background,box-shadow,transform] duration-300 ease-[var(--ease-luxe)] md:min-h-12 md:min-w-[12rem] md:gap-3 md:px-7 md:text-body">
-              <span>مشاهده ویدیو</span>
+              <span>شروع دوره رایگان</span>
               <ArrowLeft className={liveIconArrow('h-4 w-4')} strokeWidth={2.2} aria-hidden />
             </span>
           </div>

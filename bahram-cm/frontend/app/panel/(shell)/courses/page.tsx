@@ -11,6 +11,10 @@ import { panelStudentFetch } from '@/lib/student/panelServer';
 export const dynamic = 'force-dynamic';
 
 function isActiveCourse(course: StudentCourseAccess): boolean {
+  if (course.course_type === 'mini') {
+    return Boolean(course.is_active);
+  }
+
   if (!course.is_active || course.pending_activation) {
     return false;
   }

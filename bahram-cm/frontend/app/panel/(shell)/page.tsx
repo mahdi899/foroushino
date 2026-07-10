@@ -18,7 +18,8 @@ interface DashboardResponse {
 
 interface CourseAccess {
   id: number;
-  product: { title: string } | null;
+  course_type?: 'product' | 'mini';
+  product: { title: string; slug?: string } | null;
   is_active: boolean;
 }
 
@@ -37,7 +38,13 @@ export default async function PanelDashboardPage() {
   const progress = data.checklist.length ? Math.round((doneCount / data.checklist.length) * 100) : 0;
   const activeCourse = coursesRes.data.find((course) => course.is_active) ?? coursesRes.data[0] ?? null;
   const notifications = notificationsRes.data.slice(0, 3);
-  const courseHref = activeCourse ? `/panel/courses/${activeCourse.id}/watch` : '/panel/courses';
+  const courseHref = activeCourse
+    ? activeCourse.course_type === 'mini' && activeCourse.product?.slug
+      ? `/panel/mini-courses/${activeCourse.product.slug}/watch`
+      : activeCourse.id
+        ? `/panel/courses/${activeCourse.id}/watch`
+        : '/panel/courses'
+    : '/panel/courses';
 
   const academyUrls = data.checklist.reduce(
     (acc, item) => {

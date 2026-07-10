@@ -106,6 +106,11 @@ class User extends Authenticatable
         return $this->hasMany(SeminarAttendee::class);
     }
 
+    public function miniCourseEnrollments(): HasMany
+    {
+        return $this->hasMany(MiniCourseEnrollment::class);
+    }
+
     public function satApplications(): HasMany
     {
         return $this->hasMany(SatApplication::class);
