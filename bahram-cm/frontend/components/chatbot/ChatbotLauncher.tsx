@@ -1,6 +1,8 @@
 'use client';
 
 import type { ChatbotPublicConfig } from '@/lib/chatbot/types';
+import { cn } from '@/lib/utils';
+import { mobileScrollRevealClass, useMobileScrollReveal } from '@/lib/useMobileScrollReveal';
 
 interface ChatbotLauncherProps {
   config: ChatbotPublicConfig;
@@ -23,15 +25,22 @@ function ChatIcon() {
 /** Minimal floating launcher — no heavy deps; paints on first frame. */
 export function ChatbotLauncher({ config, onActivate, loading = false }: ChatbotLauncherProps) {
   const label = config.assistant_name?.trim() || 'از من بپرس!';
+  const scrollRevealed = useMobileScrollReveal();
 
   return (
     <div className="pointer-events-none fixed bottom-[5.25rem] right-4 z-40 flex flex-col items-end gap-2.5 lg:bottom-6 lg:right-6">
-      <div className="pointer-events-auto flex items-center gap-2.5" dir="ltr">
+      <div
+        className={cn(
+          'pointer-events-auto flex items-center gap-2.5',
+          mobileScrollRevealClass(scrollRevealed),
+        )}
+        dir="ltr"
+      >
         <button
           type="button"
           onClick={onActivate}
           dir="rtl"
-          className="rounded-pill border border-border bg-surface/95 px-3.5 py-2 text-[11px] font-bold text-primary shadow-floating backdrop-blur-sm transition-transform hover:scale-105 active:scale-95"
+          className="hidden rounded-pill border border-border bg-surface/95 px-3.5 py-2 text-[11px] font-bold text-primary shadow-floating backdrop-blur-sm transition-transform hover:scale-105 active:scale-95 lg:inline-flex"
         >
           {label}
         </button>

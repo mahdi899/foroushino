@@ -7,17 +7,21 @@ import { siteStorageMedia } from '@/config/media';
 export const sitePhotos = {
   heroBackground: siteStorageMedia('hero-background.webp'),
   /** گالری — background-mobile (مربع ۹۴۱px) */
-  heroBackgroundMobile: '/storage/media/2026/07/01kwyecgnr5hzcdbwa9rwzgbwn.webp',
+  heroBackgroundMobile: siteStorageMedia('hero-background-mobile.webp'),
   /** @deprecated use heroBackground */
   heroLightGrid: siteStorageMedia('hero-background.webp'),
   /** @deprecated use heroBackgroundMobile */
   heroLightGridMobile: siteStorageMedia('hero-background-mobile.webp'),
 
   portraitFounder: siteStorageMedia('portrait-founder.webp'),
+  /** هیرو صفحه بنیان‌گذار — موبایل (۹:۱۶) */
+  portraitFounderMobile: siteStorageMedia('portrait-founder-mobile.webp'),
   mainPathCampaign: siteStorageMedia('main-path-campaign.webp'),
   mainPathSaat: siteStorageMedia('main-path-saat.webp'),
   squareStudio: siteStorageMedia('square-studio.jpg'),
   landscapeSession: siteStorageMedia('landscape-session.webp'),
+  /** هیرو دوره کمپین‌نویسی — موبایل (۹:۱۶) */
+  campaignWritingHeroMobile: siteStorageMedia('campaign-writing-hero-mobile.webp'),
   social: [
     siteStorageMedia('social-01.jpg'),
     siteStorageMedia('social-02.jpg'),
@@ -111,6 +115,8 @@ export const resourceCoverPhotos = [
 
 /** پس‌زمینه‌ی سکشن‌های قهرمان با عکس واقعی */
 export const pageHeroBackdropPhoto = sitePhotos.landscapeSession;
+/** هیرو دوره کمپین‌نویسی — موبایل (۹:۱۶) */
+export const pageHeroBackdropPhotoMobile = sitePhotos.campaignWritingHeroMobile;
 
 const caseStudyPortraitBySlugInner = {
   'sara-r': sitePhotos.testimonialPortrait[0]!,

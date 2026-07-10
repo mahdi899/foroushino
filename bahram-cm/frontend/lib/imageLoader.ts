@@ -6,9 +6,12 @@ import { primarySiteImageSrc } from '@/lib/mediaUrl';
  * Never rewrites to /cdn/media or appends ?w= / ?q= query params.
  * See docs/MEDIA-URL-POLICY.md
  */
-export default function bahramImageLoader({ src }: ImageLoaderProps): string {
+export default function bahramImageLoader({ src, width }: ImageLoaderProps): string {
   if (typeof src !== 'string' || !src.trim()) {
     return typeof src === 'string' ? src : '';
   }
-  return primarySiteImageSrc(src) || src;
+  const resolved = primarySiteImageSrc(src) || src;
+  // Passthrough storage assets — no resize CDN; width satisfies Next.js fill loader contract.
+  void width;
+  return resolved;
 }

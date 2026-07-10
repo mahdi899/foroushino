@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useInView, useReducedMotion, type Variants } from "framer-motion";
-import { useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ease, dur, VIEWPORT_ONCE } from "./easings";
 
 type Props = {
@@ -20,8 +20,16 @@ export function Reveal({
   className,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  const reduce = useReducedMotion();
+  const prefersReducedMotion = useReducedMotion();
+  const [motionReady, setMotionReady] = useState(false);
   const inView = useInView(ref, VIEWPORT_ONCE);
+
+  useEffect(() => {
+    setMotionReady(true);
+  }, []);
+
+  // SSR + first paint: no transform (matches reduced-motion) to avoid hydration mismatch.
+  const reduce = !motionReady || prefersReducedMotion;
 
   const variants: Variants = {
     hidden: {

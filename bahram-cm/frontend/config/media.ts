@@ -20,9 +20,29 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
     category: 'صفحه اصلی',
   },
   'hero-background-mobile': {
-    src: '/storage/media/2026/07/01kwyecgnr5hzcdbwa9rwzgbwn.webp',
+    src: siteStorageMedia('hero-background-mobile.webp'),
     label: 'پس‌زمینه هیرو — موبایل',
     category: 'صفحه اصلی',
+  },
+  'portrait-founder': {
+    src: siteStorageMedia('portrait-founder.webp'),
+    label: 'هیرو بنیان‌گذار — دسکتاپ',
+    category: 'درباره',
+  },
+  'portrait-founder-mobile': {
+    src: siteStorageMedia('portrait-founder-mobile.webp'),
+    label: 'هیرو بنیان‌گذار — موبایل',
+    category: 'درباره',
+  },
+  'campaign-writing-hero': {
+    src: siteStorageMedia('landscape-session.webp'),
+    label: 'هیرو کمپین‌نویسی — دسکتاپ',
+    category: 'دوره‌ها',
+  },
+  'campaign-writing-hero-mobile': {
+    src: siteStorageMedia('campaign-writing-hero-mobile.webp'),
+    label: 'هیرو کمپین‌نویسی — موبایل',
+    category: 'دوره‌ها',
   },
   'founder': { src: siteStorageMedia('founder-portrait.svg'), label: 'تصویر بهرام', category: 'درباره' },
   'logo': { src: siteStorageMedia('logo.svg'), label: 'لوگو', category: 'برند' },

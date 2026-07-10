@@ -71,6 +71,7 @@ import type { FaqGroup } from '@/lib/data/chatbotFaq';
 import { loadChatbotFaqGroups } from '@/lib/chatbot/faqLoader';
 import { track } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
+import { mobileScrollRevealClass, useMobileScrollReveal } from '@/lib/useMobileScrollReveal';
 import { useDataTheme } from '@/lib/useDataTheme';
 import { chatbotThemeClasses, chatbotCtaButtonClass, type ChatbotTheme } from '@/lib/chatbot/themeClasses';
 import { CHAT_GLASS_SURFACE } from '@/lib/chatbot/emojiFont';
@@ -417,6 +418,7 @@ function ChatbotFloatingLauncher({
   onToggle: () => void;
 }) {
   const lenis = useLenis();
+  const scrollRevealed = useMobileScrollReveal();
   const primaryLabel = assistantName.trim() || 'از من بپرس!';
   const hints = useMemo(
     () => Array.from(new Set([primaryLabel, 'سوال داری؟ بپرس'])),
@@ -503,10 +505,14 @@ function ChatbotFloatingLauncher({
   }, [open, hovered, hints.length, scrollActive]);
 
   const showLabel = !open && labelVisible;
+  const showLauncher = open || scrollRevealed;
 
   return (
     <div
-      className="pointer-events-auto flex items-center gap-3"
+      className={cn(
+        "pointer-events-auto flex items-center gap-3",
+        mobileScrollRevealClass(showLauncher),
+      )}
       dir="ltr"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -523,7 +529,7 @@ function ChatbotFloatingLauncher({
             exit={{ opacity: 0, x: 12, scale: 0.94, filter: 'blur(3px)' }}
             transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
             className={cn(
-              'relative overflow-hidden rounded-pill border px-4 py-2.5 text-[12px] font-bold shadow-floating backdrop-blur-md transition-transform hover:scale-[1.03] active:scale-95',
+              'relative hidden overflow-hidden rounded-pill border px-4 py-2.5 text-[12px] font-bold shadow-floating backdrop-blur-md transition-transform hover:scale-[1.03] active:scale-95 lg:inline-flex',
               'border-emerald/25',
               chatTheme.launcherPill,
             )}

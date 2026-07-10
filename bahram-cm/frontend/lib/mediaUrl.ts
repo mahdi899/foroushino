@@ -248,6 +248,14 @@ const SITE_ASSET_FALLBACKS: Record<string, string[]> = {
     '/storage/media/site/manifesto-portrait-a.jpg',
     '/storage/media/site/founder-portrait.svg',
   ],
+  '/storage/media/site/portrait-founder-mobile.webp': [
+    '/storage/media/site/portrait-founder.webp',
+    '/storage/media/site/portrait-founder.jpg',
+  ],
+  '/storage/media/site/campaign-writing-hero-mobile.webp': [
+    '/storage/media/site/landscape-session.webp',
+    '/storage/media/site/landscape-session.jpg',
+  ],
   '/storage/media/site/signature.png': [
     '/storage/media/site/signature.svg',
   ],

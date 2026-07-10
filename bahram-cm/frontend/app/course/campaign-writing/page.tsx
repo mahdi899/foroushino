@@ -25,6 +25,7 @@ import {
 import { Reveal } from "@/components/motion/Reveal";
 import { Accordion } from "@/components/ui/Accordion";
 import { Badge } from "@/components/ui/Badge";
+import { MobileStickyEnrollBar } from "@/components/commerce/MobileStickyEnrollBar";
 import { ProductPurchaseCta } from "@/components/commerce/ProductPurchaseCta";
 import { LinkButton } from "@/components/ui/Button";
 import { CAMPAIGN_WRITING_SLUG } from "@/lib/cart/constants";
@@ -35,16 +36,19 @@ import { IconTile } from "@/components/ui/IconTile";
 import { PhotoFrame } from "@/components/ui/PhotoFrame";
 import { CampaignWritingSocialProof } from "@/components/sections/CampaignWritingSocialProof";
 import { CampaignFaqPortraitSlider } from "@/components/sections/CampaignFaqPortraitSlider";
+import { SitePhotoHeroFrame } from "@/components/sections/SitePhotoHeroFrame";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { cn } from "@/lib/cn";
 import { resolveMediaAlt } from "@/lib/media/alt";
 import { formatFa, toPersianDigits } from "@/lib/persian";
 import { getProductBySlug } from "@/lib/services/products";
-import { pageHeroBackdropPhoto, sitePhotos } from "@/lib/site-photo-paths";
+import { pageHeroBackdropPhoto, pageHeroBackdropPhotoMobile, sitePhotos } from "@/lib/site-photo-paths";
 import { site } from "@/content/site";
 
 const FALLBACK_PRICE = 28_900_000;
 const SECTION_COUNT = 5;
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = buildMetadata({
   title: "دوره کمپین‌نویسی",
@@ -242,6 +246,7 @@ export default async function CourseCampaignWritingPage() {
       ? Math.round(((product.price - coursePrice) / product.price) * 100)
       : null;
   const heroAlt = await resolveMediaAlt(pageHeroBackdropPhoto, "دوره کمپین‌نویسی");
+  const heroMobileAlt = await resolveMediaAlt(pageHeroBackdropPhotoMobile, "دوره کمپین‌نویسی");
   const faqSliderPhotos = await Promise.all(
     [
       sitePhotos.testimonialPortrait[0]!,
@@ -256,17 +261,13 @@ export default async function CourseCampaignWritingPage() {
     <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip pb-20 md:pb-0">
       {/* 1. HERO — full-width photo + purchase CTA */}
       <section className="campaign-course-hero relative isolate w-full overflow-hidden bg-ink">
-        <div className="relative aspect-[16/9] w-full min-h-[min(62vw,16rem)] sm:min-h-[18rem] md:min-h-[22rem] lg:min-h-[min(42vw,28rem)]">
-          <SiteImage
-            src={pageHeroBackdropPhoto}
-            alt={heroAlt}
-            fill
-            priority
-            className="object-cover object-center"
-            sizes="100vw"
-          />
-          <div aria-hidden className="photo-scrim-bottom-half" />
-          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center overflow-visible px-4 pb-6 pt-24 sm:pb-8 sm:pt-28 md:pb-10 md:pt-32">
+        <SitePhotoHeroFrame
+          desktopSrc={pageHeroBackdropPhoto}
+          mobileSrc={pageHeroBackdropPhotoMobile}
+          desktopAlt={heroAlt}
+          mobileAlt={heroMobileAlt}
+        >
+          <div className="absolute inset-x-0 bottom-6 z-10 flex flex-col items-center overflow-visible px-4 pb-8 pt-16 sm:bottom-4 sm:pb-7 sm:pt-24 md:bottom-0 md:pb-8 md:pt-28">
             <div className="campaign-course-hero-headline-outer">
               <div className="campaign-course-hero-headline-wrap">
                 <h1 className="campaign-course-hero-headline">
@@ -302,7 +303,7 @@ export default async function CourseCampaignWritingPage() {
               </LinkButton>
             </div>
           </div>
-        </div>
+        </SitePhotoHeroFrame>
       </section>
 
       {/* 2. COURSE INTRO — price + highlights, open layout */}
@@ -709,7 +710,7 @@ export default async function CourseCampaignWritingPage() {
         </div>
       </section>
 
-      <MobileStickyEnroll priceLabel={priceLabel} alreadyPurchased={alreadyPurchased} />
+      <MobileStickyEnrollBar priceLabel={priceLabel} alreadyPurchased={alreadyPurchased} />
     </main>
   );
 }
@@ -848,35 +849,6 @@ function EnrollCard({
           withArrow
           size="lg"
           className="campaign-course-price-cta h-12 min-h-12 w-full font-bold shadow-gold md:h-14 md:min-h-14"
-        >
-          خرید
-        </ProductPurchaseCta>
-      </div>
-    </div>
-  );
-}
-
-function MobileStickyEnroll({
-  priceLabel,
-  alreadyPurchased,
-}: {
-  priceLabel: string;
-  alreadyPurchased: boolean;
-}) {
-  return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-bone/10 bg-ink/95 px-4 py-3 backdrop-blur-md md:hidden">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate text-xs text-bone-dim">دوره کمپین‌نویسی</p>
-          <p className="text-sm font-semibold text-bone num-latin">{priceLabel}</p>
-        </div>
-        <ProductPurchaseCta
-          productSlug={CAMPAIGN_WRITING_SLUG}
-          alreadyPurchased={alreadyPurchased}
-          location="campaign_writing_mobile_bar"
-          variant="sales"
-          size="md"
-          className="shrink-0"
         >
           خرید
         </ProductPurchaseCta>

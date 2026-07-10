@@ -14,6 +14,26 @@
   min-height: clamp(22rem, 50vw, var(--hero-light-image-max-h));
 }
 
+/* Mobile / tablet — no image or edge fade */
+@media (max-width: 1023px) {
+  .hero-light-section .hero-light-panel::before {
+    content: none;
+  }
+
+  .hero-light-section .hero-light-grid-picture {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .hero-light-section .hero-light-image-fade {
+    display: none;
+  }
+
+  html[data-theme="light"] .hero-light-section .hero-light-grid-scrim {
+    background: transparent;
+  }
+}
+
 .hero-light-section .hero-light-panel--entrance::after {
   content: "";
   position: absolute;
@@ -384,6 +404,89 @@ html[data-theme="light"] .hero-light-section .hero-stats-glass::after {
 @media (min-width: 1024px) {
   .hero-light-section {
     --hero-light-image-max-h: 760px;
+  }
+
+  .hero-light-section .hero-light-panel {
+    border: none;
+  }
+
+  /* Soft inset ring — fades out toward bottom */
+  .hero-light-section .hero-light-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-bone) 7%, transparent);
+    -webkit-mask-image: linear-gradient(
+      180deg,
+      #000 0%,
+      #000 80%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      180deg,
+      #000 0%,
+      #000 80%,
+      transparent 100%
+    );
+  }
+
+  html[data-theme="light"] .hero-light-section .hero-light-panel::before {
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-bone) 4%, transparent);
+  }
+
+  .hero-light-section .hero-light-media--desktop .hero-light-grid-picture {
+    -webkit-mask-image: linear-gradient(
+      180deg,
+      #000 0%,
+      #000 84%,
+      color-mix(in srgb, #000 50%, transparent) 94%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      180deg,
+      #000 0%,
+      #000 84%,
+      color-mix(in srgb, #000 50%, transparent) 94%,
+      transparent 100%
+    );
+  }
+
+  .hero-light-section .hero-light-image-fade {
+    display: block;
+    pointer-events: none;
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    z-index: 2;
+    height: 22%;
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      color-mix(in oklab, var(--color-ink) 42%, transparent) 72%,
+      var(--color-ink) 100%
+    );
+  }
+
+  html[data-theme="light"] .hero-light-section .hero-light-image-fade {
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      color-mix(in oklab, var(--color-ink) 28%, transparent) 78%,
+      var(--color-ink) 100%
+    );
+  }
+
+  html[data-theme="light"] .hero-light-section .hero-light-grid-scrim {
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      color-mix(in oklab, var(--color-ink) 6%, transparent) 62%,
+      color-mix(in oklab, var(--color-ink) 38%, transparent) 88%,
+      var(--color-ink) 100%
+    );
   }
 
   .hero-light-section .hero-light-content {

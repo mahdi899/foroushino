@@ -166,7 +166,7 @@ export function HeroCinematic() {
         </motion.h1>
         <motion.p
           variants={entrance.item}
-          className="hero-panel-sub mx-auto mt-2 max-w-2xl text-sm leading-relaxed sm:mt-3 sm:text-base lg:mx-0 lg:mt-4 lg:text-body"
+          className="hero-panel-sub mx-auto mt-2 hidden max-w-2xl text-sm leading-relaxed sm:mt-3 sm:text-base md:block lg:mx-0 lg:mt-4 lg:text-body"
         >
           {site.hero.sub}
         </motion.p>
@@ -252,6 +252,7 @@ export function HeroCinematic() {
               animate="show"
               variants={entrance.scrim}
             />
+            <div className="hero-light-image-fade" aria-hidden />
           </div>
 
           <div className="hero-light-media hero-light-media--desktop hidden lg:block" aria-hidden>
@@ -278,6 +279,7 @@ export function HeroCinematic() {
               animate="show"
               variants={entrance.scrim}
             />
+            <div className="hero-light-image-fade" aria-hidden />
           </div>
         </motion.div>
       </div>

@@ -17,6 +17,7 @@ import { LinkButton } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { FeatureCard } from "@/components/ui/FeatureCard";
 import { IconLabel } from "@/components/ui/IconLabel";
+import { SitePhotoHeroFrame } from "@/components/sections/SitePhotoHeroFrame";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { cn } from "@/lib/cn";
 import { resolveMediaAlt } from "@/lib/media/alt";
@@ -64,22 +65,19 @@ const milestones = [
 
 export default async function FounderPage() {
   const heroAlt = await resolveMediaAlt(sitePhotos.portraitFounder, "بهرام رستمی");
+  const heroMobileAlt = await resolveMediaAlt(sitePhotos.portraitFounderMobile, "بهرام رستمی");
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip">
       <section className="founder-hero relative isolate w-full overflow-hidden bg-ink">
-        <div className="relative aspect-[16/9] w-full min-h-[min(62vw,16rem)] sm:min-h-[18rem] md:min-h-[22rem] lg:min-h-[min(42vw,28rem)]">
-          <SiteImage
-            src={sitePhotos.portraitFounder}
-            alt={heroAlt}
-            fallbackAlt="بهرام رستمی"
-            fill
-            priority
-            className="object-cover object-[center_18%]"
-            sizes="100vw"
-          />
-          <div aria-hidden className="photo-scrim-bottom-half" />
-          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center overflow-visible px-4 pb-6 pt-24 sm:pb-8 sm:pt-28 md:pb-10 md:pt-32">
+        <SitePhotoHeroFrame
+          desktopSrc={sitePhotos.portraitFounder}
+          mobileSrc={sitePhotos.portraitFounderMobile}
+          desktopAlt={heroAlt}
+          mobileAlt={heroMobileAlt}
+          desktopImageClassName="object-[center_18%]"
+        >
+          <div className="absolute inset-x-0 bottom-6 z-10 flex flex-col items-center overflow-visible px-4 pb-8 pt-16 sm:bottom-4 sm:pb-7 sm:pt-24 md:bottom-0 md:pb-8 md:pt-28">
             <div className="founder-hero-headline-outer">
               <div className="founder-hero-headline-wrap">
                 <h1 className="founder-hero-headline">
@@ -113,7 +111,7 @@ export default async function FounderPage() {
               </LinkButton>
             </div>
           </div>
-        </div>
+        </SitePhotoHeroFrame>
       </section>
 
       <section className="founder-hero-stats bg-ink py-6 md:py-8">

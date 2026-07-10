@@ -7,6 +7,8 @@ import { primarySiteImageSrc, siteMediaFallbacks } from '@/lib/mediaUrl';
 import { useLazyImages } from '@/components/performance/PerformanceProvider';
 import { cn } from '@/lib/utils';
 
+const disableImageOptimization = process.env.NEXT_PUBLIC_DISABLE_IMAGE_OPTIMIZATION === '1';
+
 export type AppImageProps = ImageProps & {
   wrapperClassName?: string;
 };
@@ -52,6 +54,11 @@ export function AppImage({
   const resolvedSrc =
     typeof src === 'string' ? (fallbacks[fallbackIndex] ?? primarySiteImageSrc(src) ?? src) : src;
 
+  const unoptimized =
+    disableImageOptimization ||
+    (typeof resolvedSrc === 'string' &&
+      (resolvedSrc.startsWith('/storage/') || resolvedSrc.includes('/storage/media/')));
+
   const handleImageError = useCallback(
     (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
       setFallbackIndex((prev) => (prev + 1 < fallbacks.length ? prev + 1 : prev));
@@ -79,6 +86,7 @@ export function AppImage({
       fetchPriority={priority ? 'high' : nativeLazy ? 'low' : 'auto'}
       decoding={decoding}
       placeholder="empty"
+      unoptimized={unoptimized}
       className={cn(
         fill && 'object-cover',
         className,
