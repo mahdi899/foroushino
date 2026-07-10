@@ -511,6 +511,7 @@ function ChatbotFloatingLauncher({
     <div
       className={cn(
         "pointer-events-auto flex items-center gap-3",
+        open && "max-lg:hidden",
         mobileScrollRevealClass(showLauncher),
       )}
       dir="ltr"
@@ -638,6 +639,19 @@ export function FloatingChatbot({
 
   useEffect(() => {
     openRef.current = open;
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const isMobile = window.matchMedia('(max-width: 1023px)').matches;
+    if (!isMobile) return;
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
   }, [open]);
 
   useEffect(() => {
@@ -1530,11 +1544,13 @@ export function FloatingChatbot({
         <div
           aria-hidden={!open}
           className={cn(
-            'absolute bottom-full right-0 mb-3 flex h-[min(82vh,34rem)] w-[min(100vw-2rem,22rem)] flex-col overflow-hidden rounded-lg border shadow-premium transition-all duration-300 ease-premium sm:w-[24rem]',
+            'flex flex-col overflow-hidden border shadow-premium transition-all duration-300 ease-premium',
+            'max-lg:fixed max-lg:inset-0 max-lg:z-[10000] max-lg:h-[100dvh] max-lg:w-full max-lg:max-w-none max-lg:rounded-none max-lg:border-0 max-lg:pt-[env(safe-area-inset-top,0px)] max-lg:pb-[env(safe-area-inset-bottom,0px)]',
+            'lg:absolute lg:bottom-full lg:right-0 lg:mb-3 lg:h-[min(82vh,34rem)] lg:w-[min(100vw-2rem,22rem)] lg:rounded-lg xl:w-[24rem]',
             chatTheme.panel,
             open
               ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
-              : 'pointer-events-none invisible translate-y-4 scale-95 opacity-0',
+              : 'pointer-events-none invisible opacity-0 max-lg:translate-y-full max-lg:scale-100 lg:translate-y-4 lg:scale-95',
           )}
         >
           <ChatbotPhoneModal
