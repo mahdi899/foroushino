@@ -20,7 +20,11 @@ export function SeminarSettingsPanel({ seminar }: SeminarSettingsPanelProps) {
   const [status, setStatus] = useState(seminar.status ?? 'draft');
   const [promoEnabled, setPromoEnabled] = useState(seminar.promo_enabled);
   const [bannerAvailable, setBannerAvailable] = useState(seminar.banner_available ?? '');
+  const [bannerAvailableMobile, setBannerAvailableMobile] = useState(
+    seminar.banner_available_mobile ?? '',
+  );
   const [bannerFull, setBannerFull] = useState(seminar.banner_full ?? '');
+  const [bannerFullMobile, setBannerFullMobile] = useState(seminar.banner_full_mobile ?? '');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -42,7 +46,9 @@ export function SeminarSettingsPanel({ seminar }: SeminarSettingsPanelProps) {
       status,
       promo_enabled: promoEnabled,
       banner_available: bannerAvailable || null,
+      banner_available_mobile: bannerAvailableMobile || null,
       banner_full: bannerFull || null,
+      banner_full_mobile: bannerFullMobile || null,
     });
 
     setPending(false);
@@ -119,19 +125,46 @@ export function SeminarSettingsPanel({ seminar }: SeminarSettingsPanelProps) {
         </label>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <CoverImageField
-          label="بنر عریض — ظرفیت موجود"
-          value={bannerAvailable}
-          onChange={setBannerAvailable}
-          alt={`${seminar.title} — ثبت‌نام`}
-        />
-        <CoverImageField
-          label="بنر عریض — ظرفیت تکمیل"
-          value={bannerFull}
-          onChange={setBannerFull}
-          alt={`${seminar.title} — تکمیل ظرفیت`}
-        />
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-small font-bold text-text">بنر — ظرفیت موجود</h3>
+          <p className="mt-1 text-caption text-text-muted">
+            بنر دسکتاپ عریض (۱۹۲۰×۱۲۰) و بنر موبایل بلندتر (مثلاً ۷۵۰×۲۰۰). اگر موبایل خالی باشد، دسکتاپ
+            نمایش داده می‌شود.
+          </p>
+          <div className="mt-3 grid gap-4 lg:grid-cols-2">
+            <CoverImageField
+              label="دسکتاپ — ظرفیت موجود"
+              value={bannerAvailable}
+              onChange={setBannerAvailable}
+              alt={`${seminar.title} — ثبت‌نام`}
+            />
+            <CoverImageField
+              label="موبایل — ظرفیت موجود"
+              value={bannerAvailableMobile}
+              onChange={setBannerAvailableMobile}
+              alt={`${seminar.title} — ثبت‌نام (موبایل)`}
+            />
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-small font-bold text-text">بنر — ظرفیت تکمیل</h3>
+          <div className="mt-3 grid gap-4 lg:grid-cols-2">
+            <CoverImageField
+              label="دسکتاپ — ظرفیت تکمیل"
+              value={bannerFull}
+              onChange={setBannerFull}
+              alt={`${seminar.title} — تکمیل ظرفیت`}
+            />
+            <CoverImageField
+              label="موبایل — ظرفیت تکمیل"
+              value={bannerFullMobile}
+              onChange={setBannerFullMobile}
+              alt={`${seminar.title} — تکمیل ظرفیت (موبایل)`}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="rounded-xl border border-border bg-surface-soft px-4 py-3 text-small text-text-muted">

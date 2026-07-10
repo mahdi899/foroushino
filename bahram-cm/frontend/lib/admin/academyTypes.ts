@@ -115,7 +115,9 @@ export type AdminSeminar = {
   sale_price: number | null;
   capacity: number | null;
   banner_available: string | null;
+  banner_available_mobile: string | null;
   banner_full: string | null;
+  banner_full_mobile: string | null;
   cover_image: string | null;
   promo_enabled: boolean;
   product_id: number | null;

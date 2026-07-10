@@ -26,7 +26,9 @@ class Seminar extends Model
         'sale_price',
         'capacity',
         'banner_available',
+        'banner_available_mobile',
         'banner_full',
+        'banner_full_mobile',
         'promo_enabled',
     ];
 

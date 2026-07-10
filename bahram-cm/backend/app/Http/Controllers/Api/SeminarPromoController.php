@@ -27,11 +27,16 @@ class SeminarPromoController extends Controller
 
         $isFull = $seminar->isFull();
         $bannerPath = $isFull ? $seminar->banner_full : $seminar->banner_available;
+        $bannerMobilePath = $isFull ? $seminar->banner_full_mobile : $seminar->banner_available_mobile;
         $bannerRef = filled($bannerPath) ? MediaUrl::fromDiskPath($bannerPath) : null;
 
         if (! $bannerRef) {
             return response()->json(['data' => null]);
         }
+
+        $bannerMobileRef = filled($bannerMobilePath)
+            ? MediaUrl::fromDiskPath($bannerMobilePath)
+            : $bannerRef;
 
         $slug = $seminar->purchaseSlug();
 
@@ -39,6 +44,7 @@ class SeminarPromoController extends Controller
             'seminar_id' => $seminar->id,
             'title' => $seminar->title,
             'banner_url' => MediaUrl::resolve($bannerRef),
+            'banner_url_mobile' => MediaUrl::resolve($bannerMobileRef),
             'banner_alt' => $seminar->title,
             'link' => '/seminars/'.$seminar->slug,
             'variant' => $isFull ? 'full' : 'available',

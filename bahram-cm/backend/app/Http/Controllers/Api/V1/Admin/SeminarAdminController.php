@@ -185,13 +185,15 @@ class SeminarAdminController extends Controller
             'sale_price' => ['nullable', 'integer', 'min:0'],
             'capacity' => ['nullable', 'integer', 'min:1'],
             'banner_available' => ['nullable', 'string', 'max:500'],
+            'banner_available_mobile' => ['nullable', 'string', 'max:500'],
             'banner_full' => ['nullable', 'string', 'max:500'],
+            'banner_full_mobile' => ['nullable', 'string', 'max:500'],
             'promo_enabled' => ['nullable', 'boolean'],
         ];
 
         $data = $request->validate($rules);
 
-        foreach (['banner_available', 'banner_full', 'cover_image'] as $imageKey) {
+        foreach (['banner_available', 'banner_available_mobile', 'banner_full', 'banner_full_mobile', 'cover_image'] as $imageKey) {
             if (array_key_exists($imageKey, $data) && filled($data[$imageKey])) {
                 $data[$imageKey] = MediaUrl::reference($data[$imageKey]) ?? $data[$imageKey];
             }
@@ -220,7 +222,9 @@ class SeminarAdminController extends Controller
             'sale_price' => $s->sale_price,
             'capacity' => $s->capacity,
             'banner_available' => $s->banner_available,
+            'banner_available_mobile' => $s->banner_available_mobile,
             'banner_full' => $s->banner_full,
+            'banner_full_mobile' => $s->banner_full_mobile,
             'cover_image' => $s->cover_image,
             'promo_enabled' => (bool) $s->promo_enabled,
             'product_id' => $s->product_id,

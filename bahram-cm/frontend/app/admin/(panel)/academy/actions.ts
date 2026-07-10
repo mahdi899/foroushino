@@ -161,7 +161,9 @@ export async function createSeminar(input: {
   sale_price?: number | null;
   capacity?: number | null;
   banner_available?: string;
+  banner_available_mobile?: string;
   banner_full?: string;
+  banner_full_mobile?: string;
   cover_image?: string | null;
   promo_enabled?: boolean;
 }) {

@@ -4,6 +4,7 @@ export type SeminarPromo = {
   seminar_id: number;
   title: string;
   banner_url: string;
+  banner_url_mobile: string;
   banner_alt: string;
   link: string | null;
   variant: 'available' | 'full';
