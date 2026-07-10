@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2, Clock, RotateCcw, XCircle } from "lucide-react";
 import { ClearCartOnPurchase } from "@/components/commerce/ClearCartOnPurchase";
+import { PaymentResultCard } from "@/components/commerce/PaymentResultCard";
 import { PaymentResultPanelButton } from "@/components/commerce/PaymentResultPanelButton";
 import { Reveal } from "@/components/motion/Reveal";
+import { LinkButton } from "@/components/ui/Button";
 import { getVerifiedPaymentResult, type PaymentResultStatus } from "@/lib/checkout/paymentResult";
 import { getCurrentStudent } from "@/lib/student/session";
 import { buildMetadata } from "@/lib/seo";
@@ -17,25 +19,34 @@ export const metadata: Metadata = buildMetadata({
 
 const COPY: Record<
   PaymentResultStatus,
-  { title: string; body: string; icon: typeof CheckCircle2; tone: string }
+  {
+    eyebrow: string;
+    title: string;
+    body: string;
+    icon: typeof CheckCircle2;
+    tone: "success" | "failed" | "cancelled";
+  }
 > = {
   success: {
+    eyebrow: "تبریک",
     title: "پرداخت با موفقیت انجام شد",
-    body: "سفارش شما ثبت شد. اطلاعات دسترسی/پیامک تأییدیه به‌زودی برایت ارسال می‌شود.",
+    body: "سفارش شما ثبت شد. اطلاعات دسترسی و پیامک تأیید به‌زودی برایت ارسال می‌شود.",
     icon: CheckCircle2,
-    tone: "text-emerald-glow",
+    tone: "success",
   },
   failed: {
+    eyebrow: "متأسفیم",
     title: "پرداخت ناموفق بود",
-    body: "متأسفانه پرداخت انجام نشد. می‌توانی دوباره تلاش کنی یا با پشتیبانی تماس بگیری.",
+    body: "تراکنش از سمت بانک تأیید نشد. می‌توانی دوباره تلاش کنی یا با پشتیبانی تماس بگیری.",
     icon: XCircle,
-    tone: "text-gold",
+    tone: "failed",
   },
   cancelled: {
+    eyebrow: "انصراف",
     title: "پرداخت لغو شد",
-    body: "از درگاه پرداخت برگشتی و تراکنش انجام نشد. سفارش هنوز باز است — هر زمان آماده بودی می‌توانی دوباره پرداخت کنی.",
+    body: "از درگاه برگشتی و پرداخت انجام نشد. سفارش هنوز باز است — هر زمان آماده بودی می‌توانی دوباره پرداخت کنی.",
     icon: Clock,
-    tone: "text-mist",
+    tone: "cancelled",
   },
 };
 
@@ -55,92 +66,63 @@ export default async function PaymentResultPage({
     getCurrentStudent(),
   ]);
 
-  if (!verified) {
-    return (
-      <main id="main-content" className="relative min-w-0 max-w-full">
-        <section className="py-section">
-          <div className="container-luxe flex justify-center">
-            <Reveal>
-              <div className="neon-surface-static max-w-xl rounded-card border border-bone/10 bg-charcoal/45 p-8 text-center md:p-12">
-                <XCircle className="mx-auto h-12 w-12 text-gold" strokeWidth={1.4} aria-hidden />
-                <h1 className="mt-6 text-h2 text-balance text-bone">لینک نامعتبر یا منقضی شده</h1>
-                <p className="mt-4 text-bone-dim">
-                  این صفحه فقط از طریق بازگشت از درگاه پرداخت در دسترس است. اگر تازه پرداخت کرده‌ای، از
-                  لینک بازگشت درگاه استفاده کن؛ در غیر این صورت می‌توانی دوباره پرداخت کنی یا وارد پنل
-                  شوی.
-                </p>
-                <div className="mt-8 flex flex-wrap justify-center gap-4">
-                  <Link
-                    href="/cart"
-                    className="neon-btn-primary inline-flex h-11 items-center justify-center rounded-pill bg-emerald px-6 font-semibold hover:bg-emerald-glow"
-                  >
-                    بازگشت به سبد خرید
-                  </Link>
-                  <Link
-                    href="/panel"
-                    className="inline-flex h-11 items-center justify-center rounded-pill border border-bone/15 px-6 text-bone hover:border-bone/30"
-                  >
-                    ورود به پنل
-                  </Link>
-                </div>
-              </div>
-            </Reveal>
-          </div>
-        </section>
-      </main>
-    );
-  }
-
-  const { status, order_number: order, product_slug: product } = verified;
-  const copy = COPY[status];
-  const Icon = copy.icon;
-  const payAgainHref = retryHref(product);
-
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
-      {status === "success" ? <ClearCartOnPurchase productSlug={product} /> : null}
-      <section className="py-section">
+      {verified?.status === "success" ? (
+        <ClearCartOnPurchase productSlug={verified.product_slug} />
+      ) : null}
+
+      <section className="payment-result-section py-12 md:py-16 lg:py-20">
         <div className="container-luxe flex justify-center">
-          <Reveal>
-            <div className="neon-surface-static max-w-xl rounded-card border border-bone/10 bg-charcoal/45 p-8 text-center md:p-12">
-              <Icon className={`mx-auto h-12 w-12 ${copy.tone}`} strokeWidth={1.4} aria-hidden />
-              <h1 className="mt-6 text-h2 text-balance text-bone">{copy.title}</h1>
-              <p className="mt-4 text-bone-dim">{copy.body}</p>
-              {order ? (
-                <p className="mt-5 text-caption text-mist">
-                  شماره سفارش: <span className="num-latin text-bone">{order}</span>
-                </p>
-              ) : null}
-              <div className="mt-8 flex flex-wrap justify-center gap-4">
-                {status === "success" ? (
+          <Reveal className="w-full max-w-lg">
+            {!verified ? (
+              <PaymentResultCard
+                tone="invalid"
+                eyebrow="خطا"
+                title="لینک نامعتبر یا منقضی شده"
+                body="این صفحه فقط از طریق بازگشت از درگاه پرداخت در دسترس است. اگر تازه پرداخت کرده‌ای از لینک درگاه استفاده کن؛ در غیر این صورت می‌توانی دوباره پرداخت کنی."
+                icon={XCircle}
+              >
+                <LinkButton href="/cart" variant="primary" size="lg" className="payment-result-card__primary">
+                  بازگشت به سبد خرید
+                </LinkButton>
+                <LinkButton href="/panel" variant="ghost" size="lg" className="payment-result-card__secondary">
+                  ورود به پنل
+                </LinkButton>
+              </PaymentResultCard>
+            ) : (
+              <PaymentResultCard
+                tone={COPY[verified.status].tone}
+                eyebrow={COPY[verified.status].eyebrow}
+                title={COPY[verified.status].title}
+                body={COPY[verified.status].body}
+                icon={COPY[verified.status].icon}
+                orderNumber={verified.order_number}
+              >
+                {verified.status === "success" ? (
                   <PaymentResultPanelButton receiptToken={token!} isLoggedIn={Boolean(student)} />
                 ) : (
                   <>
                     <Link
-                      href={payAgainHref}
-                      className="neon-btn-primary inline-flex h-11 items-center justify-center gap-2 rounded-pill bg-emerald px-6 font-semibold hover:bg-emerald-glow"
+                      href={retryHref(verified.product_slug)}
+                      className="payment-result-card__primary neon-btn-primary inline-flex h-12 min-h-12 items-center justify-center gap-2 rounded-pill px-7 text-sm font-semibold md:text-body"
                     >
                       <RotateCcw className="h-4 w-4" aria-hidden />
                       پرداخت مجدد
                     </Link>
-                    <Link
-                      href="/"
-                      className="inline-flex h-11 items-center justify-center rounded-pill border border-bone/15 px-6 text-bone hover:border-bone/30"
-                    >
+                    <LinkButton href="/" variant="ghost" size="lg" className="payment-result-card__secondary">
                       بازگشت به خانه
+                    </LinkButton>
+                    <Link
+                      href="mailto:hello@bahramrostami.com"
+                      className="payment-result-card__secondary inline-flex h-12 min-h-12 items-center justify-center rounded-pill border px-7 text-sm font-semibold md:text-body"
+                    >
+                      تماس با پشتیبانی
                     </Link>
                   </>
                 )}
-                {status !== "success" ? (
-                  <Link
-                    href="mailto:hello@bahramrostami.com"
-                    className="inline-flex h-11 items-center justify-center rounded-pill border border-bone/15 px-6 text-bone hover:border-bone/30"
-                  >
-                    تماس با پشتیبانی
-                  </Link>
-                ) : null}
-              </div>
-            </div>
+              </PaymentResultCard>
+            )}
           </Reveal>
         </div>
       </section>

@@ -16,38 +16,35 @@ export function MiniCoursesSection({ items }: { items: MiniCourseItem[] }) {
     <section
       id="mini-courses"
       aria-labelledby="mini-courses-heading"
-      className="mini-courses-section relative isolate overflow-x-clip border-t border-bone/8 py-section-sm md:py-section"
+      className="mini-courses-section relative isolate overflow-x-clip py-10 md:py-12"
     >
       <div
         aria-hidden
-        className="mini-courses-section-ambient pointer-events-none absolute inset-x-0 top-0 h-[min(48vw,24rem)]"
+        className="mini-courses-section-ambient pointer-events-none absolute inset-x-0 top-0 h-[min(28vw,12rem)]"
       />
 
       <div className="container-luxe relative">
-        <div className="mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-xl text-center">
           <Reveal>
-            <Eyebrow className="justify-center">Mini Courses</Eyebrow>
+            <Eyebrow className="mini-courses-section__eyebrow justify-center text-[0.65rem] tracking-[0.22em] text-mist">
+              Mini Courses
+            </Eyebrow>
           </Reveal>
           <Reveal delay={0.06}>
             <h2
               id="mini-courses-heading"
-              className="mx-auto mt-3 max-w-xl text-balance font-display text-xl text-bone md:text-h2"
+              className="mini-courses-section__title mx-auto mt-2 max-w-md text-balance font-display text-lg font-semibold text-bone-dim md:text-xl"
             >
               مینی‌دوره‌ها
             </h2>
-          </Reveal>
-          <Reveal delay={0.1}>
-            <p className="mx-auto mt-4 max-w-2xl text-bone-dim">
-              ویدیوهای کوتاه و رایگان برای ورود سریع به تفکر کمپین‌محور — قبل از مسیر اصلی.
-            </p>
           </Reveal>
         </div>
 
         <div
           className={
             items.length === 1
-              ? 'relative mx-auto mt-8 max-w-3xl md:mt-10'
-              : 'relative mt-8 grid items-stretch gap-4 md:mt-10 md:grid-cols-2 md:gap-5 lg:gap-6'
+              ? 'relative mx-auto mt-5 max-w-md md:mt-6'
+              : 'relative mt-5 grid items-stretch gap-3 md:mt-6 md:grid-cols-2 md:gap-4'
           }
         >
           {items.map(({ course, imageAlt, index }) => (
@@ -57,7 +54,7 @@ export function MiniCoursesSection({ items }: { items: MiniCourseItem[] }) {
               imageAlt={imageAlt}
               index={index}
               priority={index < 2}
-              layout="catalog"
+              layout="compact"
             />
           ))}
         </div>

@@ -4,12 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Stevebauman\Purify\Facades\Purify;
 
 class MiniCourse extends Model
 {
     protected $fillable = [
+        'product_id',
         'slug',
         'title',
         'subtitle',
@@ -40,6 +42,16 @@ class MiniCourse extends Model
     public function comments(): HasMany
     {
         return $this->hasMany(MiniCourseComment::class);
+    }
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function enrollments(): HasMany
+    {
+        return $this->hasMany(MiniCourseEnrollment::class);
     }
 
     public function scopeActive(Builder $query): Builder

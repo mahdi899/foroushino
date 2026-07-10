@@ -49,7 +49,7 @@ export function PaymentResultPanelButton({ receiptToken, isLoggedIn }: Props) {
     return (
       <Link
         href="/panel"
-        className="neon-btn-primary inline-flex h-11 items-center justify-center rounded-pill bg-emerald px-6 font-semibold hover:bg-emerald-glow"
+        className="payment-result-card__primary neon-btn-primary inline-flex h-12 min-h-12 items-center justify-center rounded-pill px-7 text-sm font-semibold md:text-body"
       >
         ورود به پنل کاربری
       </Link>
@@ -57,12 +57,12 @@ export function PaymentResultPanelButton({ receiptToken, isLoggedIn }: Props) {
   }
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex w-full flex-col items-center gap-3">
       <button
         type="button"
         onClick={() => void enterPanel()}
         disabled={busy}
-        className="neon-btn-primary inline-flex h-11 items-center justify-center gap-2 rounded-pill bg-emerald px-6 font-semibold hover:bg-emerald-glow disabled:cursor-not-allowed disabled:opacity-60"
+        className="payment-result-card__primary neon-btn-primary inline-flex h-12 min-h-12 items-center justify-center gap-2 rounded-pill px-7 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60 md:text-body"
       >
         {busy ? (
           <>

@@ -1,52 +1,36 @@
-import { Sparkles, Clock, Lock } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
 import { Eyebrow } from "@/components/ui/Eyebrow";
-import { IconLabel } from "@/components/ui/IconLabel";
 import { NewsletterForm } from "@/components/ui/NewsletterForm";
 
 export function NewsletterCTA() {
   return (
-    <section className="py-section">
-      <div className="container-luxe">
-        <div className="neon-surface-static relative overflow-hidden rounded-card border border-bone/10 bg-charcoal/40 p-8 md:p-12">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_60%_at_85%_10%,rgba(0,140,150,0.18),transparent_70%)]"
-          />
-          <div className="relative grid gap-10 md:grid-cols-12 md:items-center">
-            <div className="md:col-span-7">
-              <Reveal>
-                <Eyebrow>یادداشت‌های هفتگی</Eyebrow>
-              </Reveal>
-              <Reveal delay={0.08}>
-                <h2 className="mt-5 text-h2 text-balance">
-                  هر هفته یک نگاه تازه، مستقیم در صندوق ایمیلت.
-                </h2>
-              </Reveal>
-              <Reveal delay={0.16}>
-                <p className="mt-4 max-w-xl text-bone-dim">
-                  بدون تبلیغ، بدون اسپم، بدون قول‌های توخالی. فقط مشاهده‌های حرفه‌ای از جنس کمپین، مسیر و رشد.
-                </p>
-              </Reveal>
-              <Reveal delay={0.22}>
-                <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3">
-                  <IconLabel icon={Sparkles} tone="emerald">
-                    تحلیل‌های انحصاری
-                  </IconLabel>
-                  <IconLabel icon={Clock} tone="bone">
-                    یک‌بار در هفته
-                  </IconLabel>
-                  <IconLabel icon={Lock} tone="gold">
-                    حریم خصوصی کامل
-                  </IconLabel>
-                </div>
-              </Reveal>
-            </div>
-            <div className="md:col-span-5">
-              <Reveal delay={0.12}>
-                <NewsletterForm />
-              </Reveal>
-            </div>
+    <section className="newsletter-cta-band" aria-labelledby="newsletter-cta-heading">
+        <div className="newsletter-cta-band__surface relative overflow-hidden py-10 sm:py-12 md:py-14 lg:py-16">
+        <div
+          aria-hidden
+          className="newsletter-cta-band__ambient pointer-events-none absolute inset-0"
+        />
+
+        <div className="container-luxe relative z-[1] min-w-0">
+          <div className="newsletter-cta-band__layout">
+            <Reveal className="newsletter-cta-band__copy">
+              <Eyebrow className="newsletter-cta-band__eyebrow justify-center md:justify-start">
+                یادداشت‌های هفتگی
+              </Eyebrow>
+              <h2
+                id="newsletter-cta-heading"
+                className="newsletter-cta-band__title mt-3 text-balance font-display text-xl font-bold md:mt-4 md:text-h2"
+              >
+                هر هفته، یک نگاه تازه.
+              </h2>
+              <p className="newsletter-cta-band__lead mx-auto mt-3 max-w-md text-sm leading-relaxed md:mx-0 md:text-body">
+                کمپین و رشد حرفه‌ای — مستقیم در ایمیل، بدون اسپم.
+              </p>
+            </Reveal>
+
+            <Reveal delay={0.08} className="newsletter-cta-band__form-wrap w-full min-w-0">
+              <NewsletterForm tone="band" />
+            </Reveal>
           </div>
         </div>
       </div>

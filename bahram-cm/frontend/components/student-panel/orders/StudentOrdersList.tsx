@@ -220,7 +220,7 @@ export function StudentOrdersList({ orders }: { orders: StudentOrder[] }) {
           <Receipt size={22} aria-hidden />
         </span>
         <p className="text-sm font-medium text-text">هنوز سفارشی ثبت نکرده‌اید</p>
-        <p className="max-w-xs text-sm leading-relaxed text-text-muted">پس از خرید دوره، جزئیات سفارش اینجا نمایش داده می‌شود.</p>
+        <p className="max-w-xs text-sm leading-relaxed text-text-muted">پس از خرید یا ثبت‌نام در دوره‌های رایگان، جزئیات سفارش اینجا نمایش داده می‌شود.</p>
       </div>
     );
   }

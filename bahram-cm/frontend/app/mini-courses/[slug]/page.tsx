@@ -2,19 +2,21 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { ArticleVideoEmbed } from '@/components/blog/ArticleVideoEmbed';
 import { MiniCourseComments } from '@/components/mini-courses/MiniCourseComments';
+import { MiniCourseEnrollCta } from '@/components/mini-courses/MiniCourseEnrollCta';
 import { Reveal } from '@/components/motion/Reveal';
 import { SiteImage } from '@/components/ui/SiteImage';
-import { LinkButton } from '@/components/ui/Button';
 import {
   getMiniCourseBySlugFromApi,
   getMiniCourseCommentsFromApi,
 } from '@/lib/services/miniCourses.server';
 import { resolveMediaAlt } from '@/lib/media/alt';
 import { buildMetadata } from '@/lib/seo';
+import { getCurrentStudent, studentFetch } from '@/lib/student/session';
 
-type PageProps = { params: Promise<{ slug: string }> };
+type PageProps = {
+  params: Promise<{ slug: string }>;
+};
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -49,6 +51,22 @@ export default async function MiniCourseDetailPage({ params }: PageProps) {
     ? await resolveMediaAlt(course.thumbnail, course.title)
     : course.title;
 
+  const student = await getCurrentStudent();
+  let isEnrolled = false;
+  let enrollmentNumber: string | null = null;
+
+  if (student) {
+    try {
+      const status = await studentFetch<{
+        data: { enrolled: boolean; order_number?: string | null; enrollment_number?: string | null };
+      }>(`/mini-courses/${encodeURIComponent(slug)}`);
+      isEnrolled = status.data.enrolled;
+      enrollmentNumber = status.data.order_number ?? status.data.enrollment_number ?? null;
+    } catch {
+      isEnrolled = false;
+    }
+  }
+
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       <section className="border-b border-bone/8 py-section-sm">
@@ -69,21 +87,28 @@ export default async function MiniCourseDetailPage({ params }: PageProps) {
             {course.summary ? <p className="mt-3 text-bone-dim">{course.summary}</p> : null}
           </Reveal>
 
-          <Reveal delay={0.1}>
-            <div className="mt-8 overflow-hidden rounded-card border border-bone/10 bg-charcoal/35">
-              <ArticleVideoEmbed aparat={course.aparat_hash} eager />
+          <Reveal delay={0.08}>
+            <div className="mt-8 rounded-card-lg border border-emerald-glow/25 bg-gradient-to-br from-charcoal/80 via-charcoal/60 to-emerald-glow/5 p-5 md:p-6">
+              <MiniCourseEnrollCta
+                slug={course.slug}
+                isLoggedIn={Boolean(student)}
+                isEnrolled={isEnrolled}
+                enrollmentNumber={enrollmentNumber}
+              />
             </div>
           </Reveal>
 
           {course.thumbnail ? (
-            <Reveal delay={0.12} className="mt-6 hidden">
-              <SiteImage
-                src={course.thumbnail}
-                alt={imageAlt}
-                width={1200}
-                height={675}
-                className="rounded-card"
-              />
+            <Reveal delay={0.1}>
+              <div className="mt-8 overflow-hidden rounded-card border border-bone/10 bg-charcoal/35">
+                <SiteImage
+                  src={course.thumbnail}
+                  alt={imageAlt}
+                  width={1200}
+                  height={675}
+                  className="h-auto w-full object-cover"
+                />
+              </div>
             </Reveal>
           ) : null}
 
@@ -95,17 +120,6 @@ export default async function MiniCourseDetailPage({ params }: PageProps) {
               />
             </Reveal>
           ) : null}
-
-          <Reveal delay={0.18}>
-            <div className="mt-10 flex flex-wrap gap-4">
-              <LinkButton href="/course/campaign-writing" variant="primary" withArrow>
-                ورود به دوره اصلی
-              </LinkButton>
-              <LinkButton href="/courses" variant="ghost">
-                همه دوره‌ها
-              </LinkButton>
-            </div>
-          </Reveal>
         </div>
       </section>
 

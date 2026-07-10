@@ -41,7 +41,7 @@ use App\Http\Controllers\Api\V1\Student\CashbackPayoutController as StudentCashb
 use App\Http\Controllers\Api\V1\Student\CertificateDownloadController;
 use App\Http\Controllers\Api\V1\Student\CourseController as StudentCourseController;
 use App\Http\Controllers\Api\V1\Student\DashboardController as StudentDashboardController;
-use App\Http\Controllers\Api\V1\Student\NotificationController as StudentNotificationController;
+use App\Http\Controllers\Api\V1\Student\MiniCourseController as StudentMiniCourseController;
 use App\Http\Controllers\Api\V1\Student\OrderController as StudentOrderController;
 use App\Http\Controllers\Api\V1\Student\ProfileController as StudentProfileController;
 use App\Http\Controllers\Api\V1\Student\ReferralController as StudentReferralController;
@@ -79,6 +79,9 @@ Route::prefix('student')->group(function () {
 
         Route::get('courses', [StudentCourseController::class, 'index']);
         Route::get('courses/{courseAccess}/player', [StudentCourseController::class, 'player'])->whereNumber('courseAccess');
+        Route::post('mini-courses/{slug}/enroll', [StudentMiniCourseController::class, 'enroll']);
+        Route::get('mini-courses/{slug}', [StudentMiniCourseController::class, 'show']);
+        Route::get('mini-courses/{slug}/player', [StudentMiniCourseController::class, 'player']);
         Route::get('spotplayer-session', [StudentSpotPlayerSessionController::class, 'show']);
         Route::put('spotplayer-session', [StudentSpotPlayerSessionController::class, 'update']);
         Route::get('orders', [StudentOrderController::class, 'index']);

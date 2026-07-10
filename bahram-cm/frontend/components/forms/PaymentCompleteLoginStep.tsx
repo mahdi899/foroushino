@@ -14,9 +14,15 @@ type Props = {
   postLoginToken: string;
   phoneMasked: string | null;
   otpSent: boolean;
+  embedded?: boolean;
 };
 
-export function PaymentCompleteLoginStep({ postLoginToken, phoneMasked, otpSent }: Props) {
+export function PaymentCompleteLoginStep({
+  postLoginToken,
+  phoneMasked,
+  otpSent,
+  embedded = false,
+}: Props) {
   const router = useRouter();
   const { markLoggedIn } = useStudentAuth();
   const [code, setCode] = useState('');
@@ -71,30 +77,34 @@ export function PaymentCompleteLoginStep({ postLoginToken, phoneMasked, otpSent 
   }
 
   return (
-    <div className="space-y-4">
-      <p className="font-semibold text-emerald-glow">اطلاعات با موفقیت ثبت شد.</p>
-      <p className="text-sm text-bone-dim">
-        برای ورود به پنل، کد تأیید ارسال‌شده{phoneMasked ? ` به ${phoneMasked}` : ''} را وارد کن.
-      </p>
+    <div className={embedded ? "payment-complete-form__success-state" : "space-y-4"}>
+      <div className="payment-complete-form__success-copy">
+        <p className="payment-complete-form__success-title">اطلاعات با موفقیت ثبت شد.</p>
+        <p className="payment-complete-form__success-body">
+          برای ورود به پنل، کد تأیید ارسال‌شده{phoneMasked ? ` به ${phoneMasked}` : ""} را وارد کن.
+        </p>
+      </div>
 
-      {info ? <p className="text-caption text-mist">{info}</p> : null}
+      {info ? <p className="payment-complete-form__success-hint">{info}</p> : null}
 
-      <OtpDigitInput
-        value={code}
-        onChange={setCode}
-        onComplete={verifyOtp}
-        disabled={verifying}
-        error={Boolean(error)}
-        autoFocus
-      />
+      <div className="payment-complete-form__otp-wrap">
+        <OtpDigitInput
+          value={code}
+          onChange={setCode}
+          onComplete={verifyOtp}
+          disabled={verifying}
+          error={Boolean(error)}
+          autoFocus
+        />
+      </div>
 
       {error ? (
-        <p role="alert" className="rounded-tile border border-gold/30 bg-gold/8 px-4 py-3 text-sm text-gold">
+        <p role="alert" className="payment-complete-form__error">
           {error}
         </p>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="payment-complete-form__otp-actions flex flex-wrap items-center justify-center gap-3">
         <button
           type="button"
           onClick={handleResend}
@@ -117,21 +127,32 @@ export function PaymentCompleteLoginStep({ postLoginToken, phoneMasked, otpSent 
 
 type LoggedInSuccessProps = {
   phoneMasked: string | null;
+  embedded?: boolean;
 };
 
-export function PaymentCompleteLoggedInSuccess({ phoneMasked }: LoggedInSuccessProps) {
+export function PaymentCompleteLoggedInSuccess({
+  phoneMasked,
+  embedded = false,
+}: LoggedInSuccessProps) {
   return (
-    <div className="space-y-3">
-      <p className="font-semibold text-emerald-glow">اطلاعات با موفقیت ثبت شد.</p>
-      <p className="text-sm text-bone-dim">اکنون می‌توانی وارد پنل کاربری شوی.</p>
+    <div className={embedded ? "payment-complete-form__success-state" : "space-y-3"}>
+      <div className="payment-complete-form__success-copy">
+        <p className="payment-complete-form__success-title">اطلاعات با موفقیت ثبت شد.</p>
+        <p className="payment-complete-form__success-body">اکنون می‌توانی وارد پنل کاربری شوی.</p>
+      </div>
+
       {phoneMasked ? (
-        <p className="text-caption text-mist">
-          شماره ثبت‌شده: <span dir="ltr">{phoneMasked}</span>
-        </p>
+        <div className="payment-complete-form__success-phone">
+          <span className="payment-complete-form__success-phone-label">شماره ثبت‌شده</span>
+          <span className="payment-complete-form__success-phone-value num-latin" dir="ltr">
+            {phoneMasked}
+          </span>
+        </div>
       ) : null}
+
       <Link
         href="/panel"
-        className="neon-btn-primary mt-2 inline-flex h-11 items-center justify-center rounded-pill bg-emerald px-6 font-semibold hover:bg-emerald-glow"
+        className="payment-result-card__primary payment-complete-form__submit neon-btn-primary inline-flex h-12 w-full max-w-[14rem] items-center justify-center rounded-pill font-semibold"
       >
         ورود به پنل
       </Link>

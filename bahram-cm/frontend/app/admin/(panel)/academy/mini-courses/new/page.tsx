@@ -1,4 +1,4 @@
-import { MiniCourseForm } from './MiniCourseForm';
+import { MiniCourseForm } from '../MiniCourseForm';
 
 export const dynamic = 'force-dynamic';
 

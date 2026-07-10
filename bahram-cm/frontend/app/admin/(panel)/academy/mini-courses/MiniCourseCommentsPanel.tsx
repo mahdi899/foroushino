@@ -7,7 +7,7 @@ import { deleteMiniCourseComment, updateMiniCourseComment } from './actions';
 import type { AdminMiniCourseComment } from '@/lib/admin/miniCourseTypes';
 import { MINI_COURSE_COMMENT_STATUS_LABELS } from '@/lib/admin/miniCourseTypes';
 import { Badge } from '../../ui';
-import { formatPanelFa } from '@/lib/persian';
+import { formatDateFa } from '@/lib/persian';
 
 function statusTone(status: AdminMiniCourseComment['status']) {
   if (status === 'approved') return 'success' as const;
@@ -54,7 +54,7 @@ function CommentRow({
               </p>
             ) : null}
             {comment.created_at ? (
-              <p className="mt-1 text-caption text-text-muted">{formatPanelFa(comment.created_at)}</p>
+              <p className="mt-1 text-caption text-text-muted">{formatDateFa(comment.created_at)}</p>
             ) : null}
           </div>
           <Badge tone={statusTone(comment.status)}>

@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\MiniCourse;
+use App\Services\MiniCourseProductService;
 use Illuminate\Database\Seeder;
 
 class MiniCourseSeeder extends Seeder
@@ -37,13 +38,15 @@ class MiniCourseSeeder extends Seeder
         ];
 
         foreach ($courses as $course) {
-            MiniCourse::query()->updateOrCreate(
+            $item = MiniCourse::query()->updateOrCreate(
                 ['slug' => $course['slug']],
                 array_merge($course, [
                     'is_active' => true,
                     'comments_enabled' => true,
                 ]),
             );
+
+            app(MiniCourseProductService::class)->syncProduct($item);
         }
     }
 }

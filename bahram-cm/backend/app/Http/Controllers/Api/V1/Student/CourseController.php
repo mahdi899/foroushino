@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api\V1\Student;
 
 use App\Enums\CourseAccessStatus;
+use App\Enums\ProductType;
 use App\Enums\SpotplayerLicenseStatus;
 use App\Http\Controllers\Controller;
 use App\Models\CourseAccess;
+use App\Models\MiniCourseEnrollment;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\SpotplayerLicense;
@@ -80,6 +82,7 @@ class CourseController extends Controller
     {
         $mobile = Mobile::normalize($user->mobile);
         $altResolver = app(MediaAltResolver::class);
+        $miniCourseProductIds = $this->miniCourseProductIdsForUser($user);
 
         $accesses = $user->courseAccesses()
             ->with(['product.seminar'])
@@ -107,7 +110,7 @@ class CourseController extends Controller
             }
 
             $product = $license->product;
-            if (! $product instanceof Product || $product->isSeminarProduct()) {
+            if (! $product instanceof Product || $product->isSeminarProduct() || $this->isMiniCourseProduct($product, $miniCourseProductIds)) {
                 continue;
             }
 
@@ -125,7 +128,7 @@ class CourseController extends Controller
             }
 
             $product = $order->product;
-            if (! $product instanceof Product || $product->isSeminarProduct()) {
+            if (! $product instanceof Product || $product->isSeminarProduct() || $this->isMiniCourseProduct($product, $miniCourseProductIds)) {
                 continue;
             }
 
@@ -141,7 +144,7 @@ class CourseController extends Controller
 
         foreach ($accesses as $access) {
             $product = $access->product;
-            if (! $product instanceof Product || $product->isSeminarProduct()) {
+            if (! $product instanceof Product || $product->isSeminarProduct() || $this->isMiniCourseProduct($product, $miniCourseProductIds)) {
                 continue;
             }
 
@@ -150,6 +153,84 @@ class CourseController extends Controller
             }
 
             $items[] = $this->formatAccessItem($access, $product, $altResolver);
+        }
+
+        foreach ($this->listMiniCourseItems($user, $altResolver) as $miniItem) {
+            $items[] = $miniItem;
+        }
+
+        return $items;
+    }
+
+    /** @return \Illuminate\Support\Collection<int, int> */
+    private function miniCourseProductIdsForUser(User $user)
+    {
+        return MiniCourseEnrollment::query()
+            ->where('user_id', $user->id)
+            ->whereHas('miniCourse', fn ($q) => $q->whereNotNull('product_id'))
+            ->with('miniCourse:id,product_id')
+            ->get()
+            ->pluck('miniCourse.product_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+    }
+
+    /** @param  \Illuminate\Support\Collection<int, int>  $miniCourseProductIds */
+    private function isMiniCourseProduct(Product $product, $miniCourseProductIds): bool
+    {
+        if ($miniCourseProductIds->contains($product->id)) {
+            return true;
+        }
+
+        return $product->type === ProductType::MiniCourse->value;
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function listMiniCourseItems(User $user, MediaAltResolver $altResolver): array
+    {
+        $enrollments = MiniCourseEnrollment::query()
+            ->with(['miniCourse', 'order'])
+            ->where('user_id', $user->id)
+            ->orderByDesc('enrolled_at')
+            ->get();
+
+        $items = [];
+        foreach ($enrollments as $enrollment) {
+            $course = $enrollment->miniCourse;
+            if (! $course || ! $course->is_active) {
+                continue;
+            }
+
+            $imageRef = $course->thumbnail
+                ? MediaUrl::fromDiskPath($course->thumbnail)
+                : null;
+
+            $items[] = [
+                'list_key' => 'mini-'.$enrollment->id,
+                'id' => $enrollment->id,
+                'course_type' => 'mini',
+                'license_id' => null,
+                'order_id' => $enrollment->order_id,
+                'product' => [
+                    'id' => $course->id,
+                    'title' => $course->title,
+                    'slug' => $course->slug,
+                    'featured_image' => $imageRef ? MediaUrl::resolve($imageRef, absolute: false) : null,
+                    'featured_image_alt' => $imageRef
+                        ? $altResolver->resolve($imageRef, $course->title)
+                        : $course->title,
+                    'spotplayer_course_id' => null,
+                ],
+                'status' => 'active',
+                'access_type' => 'lifetime',
+                'activated_at' => $enrollment->enrolled_at?->toIso8601String(),
+                'is_active' => true,
+                'pending_activation' => false,
+                'order_number' => $enrollment->order?->order_number ?? $enrollment->enrollment_number,
+                'spotplayer' => null,
+            ];
         }
 
         return $items;
@@ -252,6 +333,7 @@ class CourseController extends Controller
         return [
             'list_key' => $listKey,
             'id' => $access?->id,
+            'course_type' => 'product',
             'license_id' => $licenseId,
             'order_id' => $orderId,
             'product' => [

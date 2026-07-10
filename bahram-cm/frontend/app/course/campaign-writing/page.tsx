@@ -25,7 +25,7 @@ import {
 import { Reveal } from "@/components/motion/Reveal";
 import { Accordion } from "@/components/ui/Accordion";
 import { Badge } from "@/components/ui/Badge";
-import { AddToCartButton } from "@/components/commerce/AddToCartButton";
+import { ProductPurchaseCta } from "@/components/commerce/ProductPurchaseCta";
 import { LinkButton } from "@/components/ui/Button";
 import { CAMPAIGN_WRITING_SLUG } from "@/lib/cart/constants";
 import { Eyebrow } from "@/components/ui/Eyebrow";
@@ -230,6 +230,7 @@ const faqs = [
 export default async function CourseCampaignWritingPage() {
   const productResult = await getProductBySlug(CAMPAIGN_WRITING_SLUG);
   const product = productResult.ok ? productResult.data : null;
+  const alreadyPurchased = product?.already_purchased ?? false;
   const coursePrice = product?.effective_price ?? FALLBACK_PRICE;
   const hasDiscount =
     product !== null && product.sale_price !== null && product.effective_price < product.price;
@@ -275,8 +276,9 @@ export default async function CourseCampaignWritingPage() {
               </div>
             </div>
             <div className="flex w-full max-w-lg flex-col gap-3 sm:max-w-xl sm:flex-row sm:items-stretch sm:justify-center md:max-w-2xl md:gap-4">
-              <AddToCartButton
+              <ProductPurchaseCta
                 productSlug={CAMPAIGN_WRITING_SLUG}
+                alreadyPurchased={alreadyPurchased}
                 location="campaign_writing_hero"
                 variant="vip"
                 withArrow
@@ -284,7 +286,7 @@ export default async function CourseCampaignWritingPage() {
                 className="h-12 min-h-12 w-full px-8 text-base font-bold shadow-gold sm:flex-1 sm:max-w-xs md:h-14 md:min-h-14 md:px-10 md:text-lg"
               >
                 خرید
-              </AddToCartButton>
+              </ProductPurchaseCta>
               <LinkButton
                 href="#curriculum"
                 variant="ghost"
@@ -401,27 +403,27 @@ export default async function CourseCampaignWritingPage() {
                 طراحی می‌کنی.
               </p>
             </Reveal>
-          </div>
 
-          <div className="mx-auto mt-8 max-w-3xl space-y-4 text-sm leading-relaxed text-bone-dim md:mt-10 md:space-y-5 md:text-body">
-            <Reveal delay={0.18}>
-              <p>
-                در این دوره یاد می‌گیری مشتری را بشناسی، پیام فروش بنویسی، پیشنهاد خوب بسازی
-                و بعد از تماس، درست پیگیری کنی.
-              </p>
-            </Reveal>
-            <Reveal delay={0.22}>
-              <p>
-                تمرکز روی نتیجه است: در پایان باید بتوانی برای یک محصول یا خدمت، یک کمپین
-                ساده و قابل اجرا طراحی کنی.
-              </p>
-            </Reveal>
-            <Reveal delay={0.26}>
-              <p>
-                اگر می‌خواهی از نوشتن پراکنده خارج شوی و تبلیغت واقعاً بفروشد، این دوره
-                نقطه شروع توست.
-              </p>
-            </Reveal>
+            <div className="mt-8 space-y-4 text-sm leading-relaxed text-bone-dim md:mt-10 md:space-y-5 md:text-body">
+              <Reveal delay={0.18}>
+                <p>
+                  در این دوره یاد می‌گیری مشتری را بشناسی، پیام فروش بنویسی، پیشنهاد خوب بسازی
+                  و بعد از تماس، درست پیگیری کنی.
+                </p>
+              </Reveal>
+              <Reveal delay={0.22}>
+                <p>
+                  تمرکز روی نتیجه است: در پایان باید بتوانی برای یک محصول یا خدمت، یک کمپین
+                  ساده و قابل اجرا طراحی کنی.
+                </p>
+              </Reveal>
+              <Reveal delay={0.26}>
+                <p>
+                  اگر می‌خواهی از نوشتن پراکنده خارج شوی و تبلیغت واقعاً بفروشد، این دوره
+                  نقطه شروع توست.
+                </p>
+              </Reveal>
+            </div>
           </div>
         </div>
       </section>
@@ -668,38 +670,46 @@ export default async function CourseCampaignWritingPage() {
       </section>
 
       {/* ENROLL */}
-      <section
-        id="enroll"
-        className="campaign-course-enroll relative scroll-mt-20 overflow-visible bg-ink py-12 sm:py-16 md:py-20 lg:py-24"
-      >
-        <div aria-hidden className="campaign-course-enroll-glow" />
-        <div className="container-luxe relative z-[1] min-w-0">
-          <div className="campaign-course-enroll-layout">
-            <Reveal>
-              <div className="campaign-course-enroll-copy">
-                <Eyebrow className="justify-center">ثبت‌نام</Eyebrow>
-                <h2 className="mt-3 text-h2 text-balance md:mt-4">
-                  آماده‌ای کمپین‌نویسی را جدی یاد بگیری؟
-                </h2>
-                <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-bone-dim md:text-body">
-                  {toPersianDigits(String(SECTION_COUNT))} بخش عملی — از شناخت مشتری تا طراحی
-                  کمپین واقعی.
-                </p>
-              </div>
-            </Reveal>
+      <section id="enroll" className="campaign-course-enroll scroll-mt-20">
+        <div className="campaign-course-enroll__surface relative overflow-hidden py-12 sm:py-16 md:py-20 lg:py-24">
+          <div
+            aria-hidden
+            className="campaign-course-enroll__ambient pointer-events-none absolute inset-0"
+          />
+          <div className="container-luxe relative z-[1] min-w-0">
+            <div className="campaign-course-enroll-layout">
+              <Reveal>
+                <div className="campaign-course-enroll-copy">
+                  <Eyebrow
+                    className="campaign-course-enroll__eyebrow justify-center"
+                    dotClassName="campaign-course-enroll__eyebrow-dot"
+                  >
+                    ثبت‌نام
+                  </Eyebrow>
+                  <h2 className="campaign-course-enroll__title mt-3 text-h2 text-balance md:mt-4">
+                    آماده‌ای کمپین‌نویسی را جدی یاد بگیری؟
+                  </h2>
+                  <p className="campaign-course-enroll__lead mx-auto mt-4 max-w-md text-sm leading-relaxed md:text-body">
+                    {toPersianDigits(String(SECTION_COUNT))} بخش عملی — از شناخت مشتری تا طراحی
+                    کمپین واقعی.
+                  </p>
+                </div>
+              </Reveal>
 
-            <Reveal delay={0.1}>
-              <EnrollCard
-                coursePrice={coursePrice}
-                originalPriceLabel={originalPriceLabel}
-                discountPercent={discountPercent}
-              />
-            </Reveal>
+              <Reveal delay={0.1}>
+                <EnrollCard
+                  coursePrice={coursePrice}
+                  originalPriceLabel={originalPriceLabel}
+                  discountPercent={discountPercent}
+                  alreadyPurchased={alreadyPurchased}
+                />
+              </Reveal>
+            </div>
           </div>
         </div>
       </section>
 
-      <MobileStickyEnroll priceLabel={priceLabel} />
+      <MobileStickyEnroll priceLabel={priceLabel} alreadyPurchased={alreadyPurchased} />
     </main>
   );
 }
@@ -803,13 +813,15 @@ function EnrollCard({
   coursePrice,
   originalPriceLabel,
   discountPercent,
+  alreadyPurchased,
 }: {
   coursePrice: number;
   originalPriceLabel: string | null;
   discountPercent: number | null;
+  alreadyPurchased: boolean;
 }) {
   return (
-    <div className="campaign-course-intro-price campaign-course-enroll-price">
+    <div className="campaign-course-intro-price campaign-course-enroll-price campaign-course-enroll-price-card">
       {discountPercent ? (
         <div className="campaign-course-intro-price-ribbon">
           {toPersianDigits(String(discountPercent))}٪ تخفیف ویژه
@@ -828,8 +840,9 @@ function EnrollCard({
           <span className="campaign-course-intro-now__unit">تومان</span>
         </p>
 
-        <AddToCartButton
+        <ProductPurchaseCta
           productSlug={CAMPAIGN_WRITING_SLUG}
+          alreadyPurchased={alreadyPurchased}
           location="campaign_writing_enroll"
           variant="vip"
           withArrow
@@ -837,13 +850,19 @@ function EnrollCard({
           className="campaign-course-price-cta h-12 min-h-12 w-full font-bold shadow-gold md:h-14 md:min-h-14"
         >
           خرید
-        </AddToCartButton>
+        </ProductPurchaseCta>
       </div>
     </div>
   );
 }
 
-function MobileStickyEnroll({ priceLabel }: { priceLabel: string }) {
+function MobileStickyEnroll({
+  priceLabel,
+  alreadyPurchased,
+}: {
+  priceLabel: string;
+  alreadyPurchased: boolean;
+}) {
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-bone/10 bg-ink/95 px-4 py-3 backdrop-blur-md md:hidden">
       <div className="flex items-center justify-between gap-3">
@@ -851,15 +870,16 @@ function MobileStickyEnroll({ priceLabel }: { priceLabel: string }) {
           <p className="truncate text-xs text-bone-dim">دوره کمپین‌نویسی</p>
           <p className="text-sm font-semibold text-bone num-latin">{priceLabel}</p>
         </div>
-        <AddToCartButton
+        <ProductPurchaseCta
           productSlug={CAMPAIGN_WRITING_SLUG}
+          alreadyPurchased={alreadyPurchased}
           location="campaign_writing_mobile_bar"
           variant="sales"
           size="md"
           className="shrink-0"
         >
           خرید
-        </AddToCartButton>
+        </ProductPurchaseCta>
       </div>
     </div>
   );

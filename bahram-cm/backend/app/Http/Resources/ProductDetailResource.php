@@ -43,6 +43,7 @@ class ProductDetailResource extends JsonResource
             'landing_href' => $this->landing_href,
             'meta_title' => $this->meta_title,
             'meta_description' => $this->meta_description,
+            'already_purchased' => (bool) $request->attributes->get('already_purchased', false),
             'seminar' => $seminar ? [
                 'capacity' => $seminar->capacity,
                 'attendees_count' => $seminar->registeredCount(),
