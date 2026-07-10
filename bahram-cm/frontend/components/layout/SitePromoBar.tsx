@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { SiteImage } from '@/components/ui/SiteImage';
 import type { SeminarPromo } from '@/lib/services/seminarPromo';
@@ -9,29 +8,22 @@ type SitePromoBarProps = {
   promo: SeminarPromo;
 };
 
-const DEFAULT_ASPECT_RATIO = 1920 / 120;
+/** Hint for Next/Image — actual height follows intrinsic aspect ratio at 100vw. */
+const BANNER_WIDTH = 1920;
+const BANNER_HEIGHT = 120;
 
 export function SitePromoBar({ promo }: SitePromoBarProps) {
-  const [aspectRatio, setAspectRatio] = useState(DEFAULT_ASPECT_RATIO);
-
   const content = (
-    <div
-      className="relative w-full overflow-hidden bg-ink"
-      style={{ aspectRatio }}
-    >
+    <div className="relative w-full overflow-hidden bg-ink">
       <SiteImage
         src={promo.banner_url}
         alt={promo.banner_alt}
-        fill
+        width={BANNER_WIDTH}
+        height={BANNER_HEIGHT}
         sizes="100vw"
-        className="object-contain object-center"
+        className="block h-auto w-full"
+        wrapperClassName="block w-full"
         priority
-        onLoad={(event) => {
-          const { naturalWidth, naturalHeight } = event.currentTarget;
-          if (naturalWidth > 0 && naturalHeight > 0) {
-            setAspectRatio(naturalWidth / naturalHeight);
-          }
-        }}
       />
     </div>
   );

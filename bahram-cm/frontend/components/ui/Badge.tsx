@@ -13,7 +13,8 @@ const emeraldLight =
 
 const neutralTone =
   "border-border-soft bg-bone/[0.03] text-bone-dim";
-const goldDark = "border-gold/30 bg-gold/[0.10] text-gold-soft";
+const goldDark =
+  "border-gold/30 bg-gold/[0.10] text-gold-soft shadow-[0_0_18px_rgba(255,176,0,0.18)]";
 const goldLight =
   "border-gold/24 bg-gold/[0.13] text-[#7a4f00] shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_7px_22px_-14px_rgba(255,176,0,0.09)]";
 

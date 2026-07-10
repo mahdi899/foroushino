@@ -5,6 +5,7 @@ import { GraduationCap, Mic2, Sparkles, Users } from "lucide-react";
 import { site } from "@/content/site";
 import { cn } from "@/lib/cn";
 import { TrackedLinkButton } from "@/components/analytics/TrackedLinkButton";
+import { NeonBorder } from "@/components/ui/NeonBorder";
 import { Badge } from "@/components/ui/Badge";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { sitePhotos } from "@/lib/site-photo-paths";
@@ -142,7 +143,7 @@ export function HeroCinematic() {
       >
         <motion.div variants={entrance.item}>
           <Badge
-            tone="emerald"
+            tone="gold"
             className="hero-panel-badge mx-auto mb-1 w-fit gap-1.5 px-2.5 py-1 text-xs leading-tight sm:mb-1.5 sm:text-caption lg:mx-0 lg:mb-3 lg:gap-2 lg:px-3 lg:py-1"
           >
             <Sparkles className="h-3 w-3 shrink-0 sm:h-3 sm:w-3 lg:h-3.5 lg:w-3.5" strokeWidth={1.6} aria-hidden />
@@ -179,17 +180,19 @@ export function HeroCinematic() {
           variants={entrance.item}
           className="hero-actions mx-auto w-fit max-w-full sm:gap-2.5 lg:mx-0 lg:w-full lg:gap-4"
         >
-          <TrackedLinkButton
-            href={site.ctaPrimary.href}
-            event="homepage_cta_click"
-            eventProps={{ cta: "hero_primary", location: "hero" }}
-            variant="primary"
-            withArrow
-            size="lg"
-            className="hero-cta-glow h-auto min-h-0 w-fit shrink-0 px-4 py-2.5 text-sm shadow-lg sm:h-11 sm:min-h-11 sm:px-5 lg:h-14 lg:min-h-14 lg:min-w-52 lg:w-auto lg:px-8 lg:text-base"
-          >
-            {site.ctaPrimary.label}
-          </TrackedLinkButton>
+          <NeonBorder>
+            <TrackedLinkButton
+              href={site.ctaPrimary.href}
+              event="homepage_cta_click"
+              eventProps={{ cta: "hero_primary", location: "hero" }}
+              variant="primary"
+              withArrow
+              size="lg"
+              className="h-auto min-h-0 w-fit shrink-0 px-4 py-2.5 text-sm sm:h-11 sm:min-h-11 sm:px-5 lg:h-14 lg:min-h-14 lg:min-w-52 lg:w-auto lg:px-8 lg:text-base hover:!translate-y-0"
+            >
+              {site.ctaPrimary.label}
+            </TrackedLinkButton>
+          </NeonBorder>
           <TrackedLinkButton
             href={site.ctaSecondary.href}
             event="homepage_cta_click"

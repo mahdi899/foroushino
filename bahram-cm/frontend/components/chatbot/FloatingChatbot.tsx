@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { useLenis } from 'lenis/react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   AlertCircle,
@@ -400,6 +401,7 @@ function ReplyModeSwitch({
 
 const LAUNCHER_LABEL_VISIBLE_MS = 4_500;
 const LAUNCHER_LABEL_HIDDEN_MS = 2_800;
+const LAUNCHER_SCROLL_IDLE_MS = 280;
 
 function ChatbotFloatingLauncher({
   assistantName,
@@ -414,6 +416,7 @@ function ChatbotFloatingLauncher({
   onOpen: () => void;
   onToggle: () => void;
 }) {
+  const lenis = useLenis();
   const primaryLabel = assistantName.trim() || 'از من بپرس!';
   const hints = useMemo(
     () => Array.from(new Set([primaryLabel, 'سوال داری؟ بپرس'])),
@@ -422,9 +425,46 @@ function ChatbotFloatingLauncher({
   const [hintIndex, setHintIndex] = useState(0);
   const [labelVisible, setLabelVisible] = useState(true);
   const [hovered, setHovered] = useState(false);
+  const [scrollActive, setScrollActive] = useState(false);
 
   useEffect(() => {
     if (open) {
+      setScrollActive(false);
+      return;
+    }
+
+    let idleTimer = 0;
+
+    const onScrollActivity = () => {
+      setScrollActive(true);
+      window.clearTimeout(idleTimer);
+      idleTimer = window.setTimeout(() => {
+        setScrollActive(false);
+      }, LAUNCHER_SCROLL_IDLE_MS);
+    };
+
+    if (lenis) {
+      lenis.on('scroll', onScrollActivity);
+      return () => {
+        lenis.off('scroll', onScrollActivity);
+        window.clearTimeout(idleTimer);
+      };
+    }
+
+    window.addEventListener('scroll', onScrollActivity, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScrollActivity);
+      window.clearTimeout(idleTimer);
+    };
+  }, [open, lenis]);
+
+  useEffect(() => {
+    if (open) {
+      setLabelVisible(false);
+      return;
+    }
+
+    if (scrollActive) {
       setLabelVisible(false);
       return;
     }
@@ -460,7 +500,7 @@ function ChatbotFloatingLauncher({
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [open, hovered, hints.length]);
+  }, [open, hovered, hints.length, scrollActive]);
 
   const showLabel = !open && labelVisible;
 
@@ -514,15 +554,6 @@ function ChatbotFloatingLauncher({
           open ? 'bg-primary' : 'bg-gradient-ai shadow-glow',
         )}
       >
-        {!open ? (
-          <span
-            aria-hidden
-            className="absolute top-0 right-0 z-20 flex h-3.5 w-3.5 translate-x-[18%] -translate-y-[18%]"
-          >
-            <span className="absolute inset-0 rounded-full bg-gold/45 animate-ping" />
-            <span className="relative block h-full w-full rounded-full bg-gold shadow-[0_0_8px_rgba(255,176,0,0.55)] ring-[2.5px] ring-white" />
-          </span>
-        ) : null}
         {open ? <X className="relative z-10 h-6 w-6" /> : <MessagesSquare className="relative z-10 h-6 w-6" />}
       </motion.button>
     </div>

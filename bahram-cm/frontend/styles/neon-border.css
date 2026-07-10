@@ -1,0 +1,198 @@
+/* =====================================================================
+   NeonBorder — invisible shell; beam spins in the padding gap OUTSIDE the button
+   ===================================================================== */
+
+@property --neon-border-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* Shell: only padding + radius — no bg, border, or shadow */
+.neon-border {
+  --neon-border-width: 3px;
+  --neon-border-speed: 3s;
+  --neon-beam-mid: var(--color-gold);
+  --neon-beam-hot: color-mix(in oklab, var(--color-gold-soft) 62%, #fff 38%);
+
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+  padding: var(--neon-border-width);
+  border-radius: 9999px;
+  background: transparent;
+  transition: transform 0.3s var(--ease-luxe);
+}
+
+.neon-border--hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+.neon-border--hover-lift:hover .neon-border__spin::before {
+  animation-duration: calc(var(--neon-border-speed) * 0.68);
+}
+
+.neon-border--hover-lift:hover .neon-border__btn.neon-btn-primary.brand-cta:not(.sales-cta):not(.neon-btn-vip) {
+  filter: brightness(1.06);
+}
+
+/* Spinner behind the button — visible only in the padding ring */
+.neon-border__spin {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.neon-border__spin::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 220%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: conic-gradient(
+    from var(--neon-border-angle),
+    transparent 0deg,
+    transparent 252deg,
+    color-mix(in oklab, var(--neon-beam-mid) 72%, transparent) 296deg,
+    var(--neon-beam-hot) 328deg,
+    color-mix(in oklab, var(--neon-beam-mid) 72%, transparent) 352deg,
+    transparent 360deg
+  );
+  animation: neon-border-beam var(--neon-border-speed) linear infinite;
+  will-change: transform;
+}
+
+.neon-border__btn {
+  position: relative;
+  z-index: 1;
+  border-radius: inherit;
+  transition:
+    background 0.35s var(--ease-luxe),
+    box-shadow 0.35s var(--ease-luxe),
+    color 0.25s var(--ease-luxe);
+}
+
+/* Teal CTA inside neon — label stays white in both themes */
+.neon-border .neon-border__btn.neon-btn-primary.brand-cta:not(.sales-cta):not(.neon-btn-vip),
+.neon-border .neon-border__btn.neon-btn-primary.brand-cta:not(.sales-cta):not(.neon-btn-vip):hover {
+  color: #ffffff;
+}
+
+.neon-border .neon-border__btn.neon-btn-primary.brand-cta:not(.sales-cta):not(.neon-btn-vip) svg {
+  color: inherit;
+}
+
+/* Remove static 1px rings — neon ring replaces them */
+.neon-border .neon-border__btn.neon-btn-primary:not(.sales-cta):not(.neon-btn-vip),
+html:not([data-theme="light"])
+  .neon-border
+  .neon-border__btn.neon-btn-primary:not(.sales-cta):not(.neon-btn-vip) {
+  box-shadow: 0 12px 36px -10px rgba(0, 111, 117, 0.38);
+}
+
+/* Dark — brighter face + gold bloom on hover */
+html:not([data-theme="light"])
+  .neon-border
+  .neon-border__btn.neon-btn-primary.brand-cta:not(.sales-cta):not(.neon-btn-vip):hover {
+  background: linear-gradient(135deg, #007980 0%, #00a0ab 50%, #30b8be 100%);
+  box-shadow:
+    0 0 30px -6px color-mix(in oklab, var(--color-gold) 34%, transparent),
+    0 18px 46px -12px rgba(0, 111, 117, 0.48);
+}
+
+html[data-theme="light"] .neon-border .neon-border__btn.neon-btn-primary.brand-cta,
+html[data-theme="light"]
+  .neon-border
+  .neon-border__btn.neon-btn-primary:not(.sales-cta):not(.neon-btn-vip) {
+  box-shadow: 0 10px 24px rgba(0, 111, 117, 0.22);
+}
+
+/* Light — deeper teal lift + soft gold halo */
+html[data-theme="light"]
+  .neon-border
+  .neon-border__btn.neon-btn-primary.brand-cta:not(.sales-cta):not(.neon-btn-vip):hover {
+  background: linear-gradient(135deg, #00464c 0%, #006f75 48%, #00939c 100%);
+  box-shadow:
+    0 0 26px -5px color-mix(in oklab, var(--color-gold) 30%, transparent),
+    0 14px 34px rgba(0, 111, 117, 0.3);
+}
+
+/* Optional soft gold bloom — on shell, not a dark layer */
+.neon-border--glow {
+  filter: drop-shadow(0 0 10px color-mix(in oklab, var(--color-gold) 22%, transparent));
+  transition: filter 0.35s var(--ease-luxe);
+}
+
+.neon-border--glow:hover {
+  filter:
+    drop-shadow(0 0 18px color-mix(in oklab, var(--color-gold) 38%, transparent))
+    drop-shadow(0 6px 22px rgba(0, 111, 117, 0.18));
+}
+
+@keyframes neon-border-beam {
+  to {
+    --neon-border-angle: 360deg;
+  }
+}
+
+@supports not (background: conic-gradient(from var(--neon-border-angle), red, blue)) {
+  .neon-border__spin::before {
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      transparent 252deg,
+      color-mix(in oklab, var(--neon-beam-mid) 72%, transparent) 296deg,
+      var(--neon-beam-hot) 328deg,
+      color-mix(in oklab, var(--neon-beam-mid) 72%, transparent) 352deg,
+      transparent 360deg
+    );
+    animation-name: neon-border-beam-fallback;
+  }
+
+  @keyframes neon-border-beam-fallback {
+    to {
+      transform: translate(-50%, -50%) rotate(360deg);
+    }
+  }
+}
+
+/* Tone presets */
+.neon-border--gold {
+  --neon-beam-mid: color-mix(in oklab, var(--color-gold) 88%, var(--color-gold-soft) 12%);
+  --neon-beam-hot: color-mix(in oklab, var(--color-gold-soft) 72%, #fff 28%);
+}
+
+.neon-border--sales {
+  --neon-beam-mid: var(--color-sales-soft);
+  --neon-beam-hot: var(--color-sales);
+}
+
+.neon-border--vip {
+  --neon-beam-mid: var(--color-gold);
+  --neon-beam-hot: var(--color-gold-soft);
+}
+
+html[data-theme="light"] .neon-border:not(.neon-border--sales):not(.neon-border--vip) {
+  --neon-beam-mid: color-mix(in oklab, var(--color-gold) 92%, #c9930a 8%);
+  --neon-beam-hot: color-mix(in oklab, var(--color-gold-soft) 68%, #fff 32%);
+}
+
+.neon-border--rounded {
+  border-radius: var(--radius-card-lg, 1rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neon-border__spin::before {
+    animation: none;
+    --neon-border-angle: 38deg;
+  }
+
+  .neon-border--hover-lift:hover {
+    transform: none;
+  }
+}

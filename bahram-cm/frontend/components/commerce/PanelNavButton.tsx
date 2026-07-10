@@ -31,7 +31,7 @@ export function PanelNavButton({ className, showLabel = true, onNavigate }: Pane
     <button
       type="button"
       onClick={handleClick}
-      aria-label="پنل دانشجو"
+      aria-label="ورود"
       className={cn(
         iconButtonClass,
         "inline-flex shrink-0",
@@ -41,7 +41,7 @@ export function PanelNavButton({ className, showLabel = true, onNavigate }: Pane
     >
       <LayoutDashboard className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={1.75} aria-hidden />
       {showLabel ? (
-        <span className="text-sm font-medium whitespace-nowrap">پنل دانشجو</span>
+        <span className="text-sm font-medium whitespace-nowrap">ورود</span>
       ) : null}
     </button>
   );
