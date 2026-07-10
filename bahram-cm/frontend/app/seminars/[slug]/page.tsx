@@ -1,12 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Calendar, MapPin } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import { SeminarIntroBand } from '@/components/seminars/SeminarIntroBand';
 import { Reveal } from '@/components/motion/Reveal';
 import { SiteImage } from '@/components/ui/SiteImage';
-import { SeminarRegisterCta } from '@/components/seminars/SeminarRegisterCta';
 import { getPublicSeminarBySlug } from '@/lib/services/seminars';
-import { formatDateFa } from '@/lib/persian';
 import { buildMetadata } from '@/lib/seo';
 import { resolveMediaAlt } from '@/lib/media/alt';
 import { sitePhotos } from '@/lib/site-photo-paths';
@@ -48,7 +47,7 @@ export default async function PublicSeminarPage({
   return (
     <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip bg-ink pb-10 md:pb-14">
       <section className="campaign-course-hero relative isolate w-full overflow-hidden bg-ink">
-        <div className="relative aspect-[16/9] w-full min-h-[min(62vw,16rem)] sm:min-h-[18rem] md:min-h-[22rem] lg:min-h-[min(42vw,28rem)]">
+        <div className="relative aspect-[16/4.6] w-full min-h-[min(32vw,8.25rem)] sm:min-h-[9.25rem] md:min-h-[11.5rem] lg:min-h-[min(21vw,14.25rem)]">
           <SiteImage
             src={heroImage}
             alt={coverAlt}
@@ -70,7 +69,7 @@ export default async function PublicSeminarPage({
             </Link>
           </div>
 
-          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center overflow-visible px-4 pb-6 pt-24 sm:pb-8 sm:pt-28 md:pb-10 md:pt-32">
+          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col items-center overflow-visible px-4 pb-3 pt-10 sm:pb-4 sm:pt-12 md:pb-6 md:pt-14">
             <div className="campaign-course-hero-headline-outer">
               <div className="campaign-course-hero-headline-wrap">
                 <h1 className="campaign-course-hero-headline">
@@ -79,37 +78,11 @@ export default async function PublicSeminarPage({
                 </h1>
               </div>
             </div>
-
-            {(seminar.date || seminar.location) && (
-              <ul className="mb-4 flex flex-wrap items-center justify-center gap-2 sm:mb-5 sm:gap-3">
-                {seminar.date ? (
-                  <li className="inline-flex min-w-0 items-center gap-2 rounded-pill border border-white/20 bg-black/30 px-3.5 py-2 text-sm text-white/90 backdrop-blur-md sm:px-4">
-                    <Calendar className="h-4 w-4 shrink-0 text-gold" strokeWidth={1.5} aria-hidden />
-                    <span className="min-w-0">{formatDateFa(seminar.date)}</span>
-                  </li>
-                ) : null}
-                {seminar.location ? (
-                  <li className="inline-flex min-w-0 items-center gap-2 rounded-pill border border-white/20 bg-black/30 px-3.5 py-2 text-sm text-white/90 backdrop-blur-md sm:px-4">
-                    <MapPin className="h-4 w-4 shrink-0 text-gold" strokeWidth={1.5} aria-hidden />
-                    <span className="min-w-0">{seminar.location}</span>
-                  </li>
-                ) : null}
-              </ul>
-            )}
-
-            <SeminarRegisterCta
-              variant="hero"
-              productSlug={seminar.product_slug}
-              isPurchasable={seminar.is_purchasable}
-              isFull={seminar.is_full}
-              price={seminar.price}
-              salePrice={seminar.sale_price}
-              effectivePrice={seminar.effective_price}
-              remainingSeats={seminar.remaining_seats}
-            />
           </div>
         </div>
       </section>
+
+      <SeminarIntroBand seminar={seminar} />
 
       <section id="seminar-about" className="relative scroll-mt-20 bg-ink py-12 sm:py-16 md:py-20 lg:py-24">
         <div className="container-luxe min-w-0 max-w-3xl">

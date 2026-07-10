@@ -4,12 +4,19 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Seminar;
+use App\Services\PurchaseGuardService;
 use App\Support\MediaUrl;
+use App\Support\OptionalStudent;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class PublicSeminarController extends Controller
 {
-    public function show(string $slug): JsonResponse
+    public function __construct(
+        private readonly PurchaseGuardService $purchaseGuard,
+    ) {}
+
+    public function show(string $slug, Request $request): JsonResponse
     {
         $seminar = Seminar::query()
             ->with('product')
@@ -30,6 +37,11 @@ class PublicSeminarController extends Controller
         $price = (int) ($seminar->price ?? 0);
         $salePrice = $seminar->sale_price !== null ? (int) $seminar->sale_price : null;
         $effectivePrice = $salePrice !== null && $salePrice > 0 && $salePrice < $price ? $salePrice : $price;
+        $student = OptionalStudent::from($request);
+        $product = $seminar->product;
+        $alreadyPurchased = $student && $product
+            ? $this->purchaseGuard->ownsProduct($student, (string) $student->mobile, $product)
+            : false;
 
         return response()->json(['data' => [
             'id' => $seminar->id,
@@ -48,6 +60,7 @@ class PublicSeminarController extends Controller
             'is_full' => $seminar->isFull(),
             'product_slug' => $seminar->purchaseSlug(),
             'is_purchasable' => $price > 0 && $seminar->product_id && $seminar->product?->is_active,
+            'already_purchased' => $alreadyPurchased,
         ]]);
     }
 }

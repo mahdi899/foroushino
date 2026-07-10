@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 import { formatFa } from "@/lib/persian";
 import { cn } from "@/lib/cn";
 
@@ -14,7 +15,8 @@ type SeminarRegisterCtaProps = {
   salePrice: number | null;
   effectivePrice: number | null;
   remainingSeats: number | null;
-  variant?: "card" | "hero";
+  alreadyPurchased?: boolean;
+  variant?: "card" | "hero" | "intro";
 };
 
 export function SeminarRegisterCta({
@@ -25,6 +27,7 @@ export function SeminarRegisterCta({
   salePrice,
   effectivePrice,
   remainingSeats,
+  alreadyPurchased = false,
   variant = "card",
 }: SeminarRegisterCtaProps) {
   const router = useRouter();
@@ -34,9 +37,42 @@ export function SeminarRegisterCta({
     price != null && salePrice != null && effectivePrice != null && effectivePrice < price;
 
   function onRegister() {
-    if (!productSlug || isFull || !isPurchasable || pending) return;
+    if (!productSlug || isFull || !isPurchasable || pending || alreadyPurchased) return;
     setPending(true);
     router.push(`/purchase/${productSlug}`);
+  }
+
+  if (alreadyPurchased) {
+    const panelLink = (
+      <Link
+        href="/panel"
+        className={cn(
+          variant === "hero" || variant === "intro"
+            ? "neon-btn-primary neon-btn-vip inline-flex h-12 min-h-12 w-full items-center justify-center rounded-pill px-8 text-base font-bold shadow-gold md:h-14 md:min-h-14 md:px-10 md:text-lg"
+            : "neon-btn-primary mt-4 inline-flex h-11 min-h-11 w-full items-center justify-center rounded-pill bg-emerald px-5 text-sm font-semibold hover:bg-emerald-glow sm:mt-6 sm:h-12 sm:min-h-12 sm:px-7 sm:text-base",
+        )}
+      >
+        مشاهده در پنل
+      </Link>
+    );
+
+    if (variant === "hero" || variant === "intro") {
+      return (
+        <div className={cn("flex w-full flex-col items-center gap-3", variant === "intro" && "sm:items-stretch")}>
+          <p className={cn("text-center text-sm sm:text-base", variant === "hero" ? "text-white/85" : "text-bone-dim")}>
+            شما قبلاً در این سمینار ثبت‌نام کرده‌اید.
+          </p>
+          {panelLink}
+        </div>
+      );
+    }
+
+    return (
+      <div className="neon-surface-static rounded-card border border-bone/10 bg-charcoal/45 p-4 sm:rounded-card-lg sm:p-6 md:p-8">
+        <p className="text-sm text-bone-dim sm:text-base">شما قبلاً در این سمینار ثبت‌نام کرده‌اید.</p>
+        {panelLink}
+      </div>
+    );
   }
 
   if (!isPurchasable) {
@@ -52,6 +88,36 @@ export function SeminarRegisterCta({
       <div className="text-sm text-bone-dim sm:text-base">
         ثبت‌نام آنلاین برای این سمینار فعال نیست.
       </div>
+    );
+  }
+
+  if (variant === "intro") {
+    if (isFull) {
+      return (
+        <div className="w-full rounded-pill border border-gold/30 bg-gold/8 px-5 py-3 text-center text-sm text-gold">
+          ظرفیت سمینار تکمیل شده است.
+        </div>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={onRegister}
+        disabled={pending}
+        className={cn(
+          "neon-btn-primary neon-btn-vip inline-flex h-12 min-h-12 w-full items-center justify-center gap-2 rounded-pill px-8 text-base font-bold shadow-gold transition-[background-color,transform,box-shadow] duration-300 ease-[var(--ease-luxe)] hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 disabled:cursor-not-allowed disabled:opacity-60 md:h-14 md:min-h-14 md:px-10 md:text-lg",
+        )}
+      >
+        {pending ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            در حال انتقال…
+          </>
+        ) : (
+          "ثبت‌نام و خرید"
+        )}
+      </button>
     );
   }
 

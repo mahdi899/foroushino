@@ -1,5 +1,6 @@
 /** Purchasable products/packages service (used by the checkout flow). */
 import { getJson, type ApiResult } from "./api";
+import { getStudentToken } from "@/lib/student/session";
 
 export type ProductListItem = {
   id: number;
@@ -23,6 +24,7 @@ export type ProductDetail = ProductListItem & {
   description: string | null;
   meta_title: string | null;
   meta_description: string | null;
+  already_purchased?: boolean;
   seminar?: {
     capacity: number | null;
     attendees_count: number;
@@ -46,9 +48,28 @@ export async function getProducts(options?: { listed?: boolean }): Promise<ApiRe
 export async function getProductBySlug(
   slug: string,
 ): Promise<ApiResult<ProductDetail>> {
-  const result = await getJson<SingleResponse<ProductDetail>>(
-    `/products/${encodeURIComponent(slug)}`,
-  );
-  if (!result.ok) return result;
-  return { ok: true, data: result.data.data };
+  const token = await getStudentToken().catch(() => undefined);
+  const headers: HeadersInit = { Accept: "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const path = `/products/${encodeURIComponent(slug)}`;
+  const base = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/+$/, "") || "http://localhost:3000";
+  const url = `${base}/api${path}`;
+
+  try {
+    const res = await fetch(url, { headers, cache: "no-store" });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({}));
+      return {
+        ok: false,
+        error: payload?.error?.message_fa ?? "درخواست انجام نشد. لطفاً دوباره تلاش کن.",
+        code: payload?.error?.code,
+        status: res.status,
+      };
+    }
+    const json = (await res.json()) as SingleResponse<ProductDetail>;
+    return { ok: true, data: json.data };
+  } catch {
+    return { ok: false, error: "ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کن." };
+  }
 }

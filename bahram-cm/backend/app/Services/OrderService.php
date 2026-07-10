@@ -8,12 +8,17 @@ use App\Models\Seminar;
 use App\Models\SeminarAttendee;
 use App\Models\User;
 use App\Services\AdminTelegramLogService;
+use App\Services\PurchaseGuardService;
 use App\Support\Mobile;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class OrderService
 {
+    public function __construct(
+        private readonly PurchaseGuardService $purchaseGuard,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $data
      */
@@ -40,6 +45,7 @@ class OrderService
         }
 
         $userId = $authenticatedUser?->id ?? $this->resolveUserId($phone, $name);
+        $this->purchaseGuard->assertCanPurchase($authenticatedUser, $phone, $product);
         $this->assertSeminarPurchaseAllowed($product, $userId, $phone);
 
         $amount = (int) $product->price;

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { PurchaseForm } from "@/components/forms/PurchaseForm";
 import { CheckoutReferralCodeField } from "@/components/commerce/CheckoutReferralCodeField";
+import { LinkButton } from "@/components/ui/Button";
 import { Reveal } from "@/components/motion/Reveal";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { getCurrentStudent, studentFetch } from "@/lib/student/session";
@@ -76,6 +77,7 @@ export default async function PurchasePage({
   if (!result.ok) notFound();
 
   const product = result.data;
+  const alreadyPurchased = product.already_purchased ?? false;
   const hasDiscount = productHasDiscount(product);
   const totalDiscount = hasDiscount ? product.price - product.effective_price : 0;
   const seminarFull = product.seminar?.is_full ?? false;
@@ -171,7 +173,16 @@ export default async function PurchasePage({
                     </div>
                   </div>
 
-                  {seminarFull ? (
+                  {alreadyPurchased ? (
+                    <div className="mt-auto space-y-4 pt-6">
+                      <div className="rounded-tile border border-emerald/25 bg-emerald/8 px-4 py-4 text-sm text-bone">
+                        شما قبلاً این محصول را خریداری کرده‌اید.
+                      </div>
+                      <LinkButton href="/panel" variant="primary" size="lg" withArrow className="w-full">
+                        مشاهده در پنل
+                      </LinkButton>
+                    </div>
+                  ) : seminarFull ? (
                     <div className="mt-auto rounded-tile border border-gold/30 bg-gold/8 px-4 py-4 text-sm text-gold">
                       ظرفیت سمینار تکمیل شده و امکان خرید وجود ندارد.
                     </div>

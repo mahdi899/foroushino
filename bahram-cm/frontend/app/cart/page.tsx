@@ -103,7 +103,9 @@ export default async function CartPage({
         .catch(() => null)
     : null;
   const slugs = [...new Set([...cookieSlugs, ...(add ? [add] : [])])];
-  const products = await loadCartProducts(slugs);
+  const loadedProducts = await loadCartProducts(slugs);
+  const products = loadedProducts.filter((product) => !product.already_purchased);
+  const ownedProducts = loadedProducts.filter((product) => product.already_purchased);
   const total = products.reduce((sum, product) => sum + product.effective_price, 0);
   const originalTotal = products.reduce((sum, product) => sum + product.price, 0);
   const totalDiscount = Math.max(0, originalTotal - total);
@@ -122,13 +124,22 @@ export default async function CartPage({
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-bone/12 bg-ink/50 text-emerald-glow">
                   <ShoppingBag className="h-6 w-6" strokeWidth={1.6} aria-hidden />
                 </div>
-                <h2 className="mt-5 text-h3 text-bone">سبد خرید شما خالی است</h2>
+                <h2 className="mt-5 text-h3 text-bone">
+                  {ownedProducts.length > 0 ? "این محصول را قبلاً خریده‌اید" : "سبد خرید شما خالی است"}
+                </h2>
                 <p className="mx-auto mt-3 max-w-md text-bone-dim">
-                  برای شروع خرید، از صفحه دوره محصول موردنظر را به سبد اضافه کن.
+                  {ownedProducts.length > 0
+                    ? "دسترسی شما فعال است. می‌توانی از پنل کاربری ادامه بدهی."
+                    : "برای شروع خرید، از صفحه دوره محصول موردنظر را به سبد اضافه کن."}
                 </p>
                 <div className="mt-8 flex justify-center">
-                  <LinkButton href="/course/campaign-writing" variant="primary" size="lg" withArrow>
-                    مشاهده دوره کمپین‌نویسی
+                  <LinkButton
+                    href={ownedProducts.length > 0 ? "/panel" : "/course/campaign-writing"}
+                    variant="primary"
+                    size="lg"
+                    withArrow
+                  >
+                    {ownedProducts.length > 0 ? "ورود به پنل" : "مشاهده دوره کمپین‌نویسی"}
                   </LinkButton>
                 </div>
               </div>
