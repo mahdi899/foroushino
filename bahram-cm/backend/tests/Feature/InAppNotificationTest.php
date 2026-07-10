@@ -94,6 +94,35 @@ class InAppNotificationTest extends TestCase
             ->assertJsonPath('data.unread_count', 1);
     }
 
+    public function test_student_notification_payload_marks_admin_broadcasts_for_toast(): void
+    {
+        $student = User::factory()->create(['mobile' => '09124445555', 'is_admin' => false]);
+        $admin = User::factory()->create(['is_admin' => true]);
+
+        $systemNotification = Notification::create([
+            'title' => 'خوش‌آمد',
+            'body' => 'خوش آمدی',
+            'type' => InAppNotificationType::Welcome->value,
+        ]);
+        $adminNotification = Notification::create([
+            'title' => 'اعلان مدیریت',
+            'body' => 'پیام ادمین',
+            'type' => InAppNotificationType::General->value,
+            'created_by' => $admin->id,
+        ]);
+
+        NotificationRecipient::create(['notification_id' => $systemNotification->id, 'user_id' => $student->id]);
+        NotificationRecipient::create(['notification_id' => $adminNotification->id, 'user_id' => $student->id]);
+
+        $token = $student->createToken('test')->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/v1/student/notifications')
+            ->assertOk()
+            ->assertJsonFragment(['title' => 'خوش‌آمد', 'show_toast' => false])
+            ->assertJsonFragment(['title' => 'اعلان مدیریت', 'show_toast' => true]);
+    }
+
     public function test_student_can_list_unread_notifications_only(): void
     {
         $user = User::factory()->create(['mobile' => '09126667777', 'is_admin' => false]);

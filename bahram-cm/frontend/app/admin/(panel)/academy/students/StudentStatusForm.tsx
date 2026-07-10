@@ -2,25 +2,33 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Save } from 'lucide-react';
+import { Ban, Loader2, ShieldCheck } from 'lucide-react';
 import { updateStudentStatus } from '../actions';
-import { STUDENT_STATUS_LABELS } from '@/lib/admin/academyTypes';
 
 export function StudentStatusForm({ studentId, initialStatus }: { studentId: number; initialStatus: string }) {
   const router = useRouter();
-  const [status, setStatus] = useState(initialStatus);
+  const isBlocked = initialStatus === 'blocked';
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  async function onSave(e: React.FormEvent) {
-    e.preventDefault();
+  async function toggleBlock() {
+    const nextStatus = isBlocked ? 'active' : 'blocked';
+    const confirmMessage = isBlocked
+      ? 'مسدودیت این حساب برداشته شود؟'
+      : 'این حساب مسدود شود؟ دانشجو دیگر نمی‌تواند وارد پنل شود.';
+
+    if (!confirm(confirmMessage)) return;
+
     setPending(true);
     setError('');
-    const res = await updateStudentStatus(studentId, status);
+    setMessage('');
+
+    const res = await updateStudentStatus(studentId, nextStatus);
     setPending(false);
+
     if (res.ok) {
-      setMessage('ذخیره شد.');
+      setMessage(isBlocked ? 'مسدودیت برداشته شد.' : 'حساب مسدود شد.');
       router.refresh();
     } else {
       setError(res.error ?? 'خطا');
@@ -28,21 +36,39 @@ export function StudentStatusForm({ studentId, initialStatus }: { studentId: num
   }
 
   return (
-    <form onSubmit={onSave} className="flex flex-wrap items-end gap-3">
-      <label>
-        <span className="field-label">وضعیت حساب</span>
-        <select className="field-input" value={status} onChange={(e) => setStatus(e.target.value)}>
-          {Object.entries(STUDENT_STATUS_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
-      </label>
-      <button type="submit" disabled={pending} className="btn btn-primary">
-        {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-        ذخیره
-      </button>
-      {message && <span className="text-small text-success">{message}</span>}
-      {error && <span className="text-small text-error">{error}</span>}
-    </form>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="field-label">وضعیت حساب</p>
+          <p className={`mt-1 text-small font-semibold ${isBlocked ? 'text-error' : 'text-success'}`}>
+            {isBlocked ? 'مسدود' : 'فعال'}
+          </p>
+          {isBlocked ? (
+            <p className="mt-1 text-caption text-text-muted">
+              ورود با OTP، رمز عبور و دسترسی به پنل برای این دانشجو غیرفعال است.
+            </p>
+          ) : null}
+        </div>
+
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => void toggleBlock()}
+          className={isBlocked ? 'btn btn-secondary' : 'btn btn-secondary text-error'}
+        >
+          {pending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : isBlocked ? (
+            <ShieldCheck className="h-4 w-4" />
+          ) : (
+            <Ban className="h-4 w-4" />
+          )}
+          {isBlocked ? 'رفع مسدودیت' : 'مسدود کردن حساب'}
+        </button>
+      </div>
+
+      {message ? <p className="text-small text-success">{message}</p> : null}
+      {error ? <p className="text-small text-error">{error}</p> : null}
+    </div>
   );
 }

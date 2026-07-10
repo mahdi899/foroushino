@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { primarySiteImageSrc } from '@/lib/mediaUrl';
 import { cn } from '@/lib/cn';
+import { ProfileVerifiedBadge } from '@/components/student-panel/layout/ProfileVerifiedBadge';
 
 type Props = {
   avatar?: string | null;
@@ -11,6 +12,7 @@ type Props = {
   defaultAvatarUrl?: string | null;
   alt: string;
   className?: string;
+  verified?: boolean;
 };
 
 function initialsFromName(name: string): string {
@@ -48,6 +50,10 @@ function buildAvatarSources({
   return sources;
 }
 
+export function hasUploadedProfileAvatar(avatar?: string | null, avatarUrl?: string | null): boolean {
+  return Boolean(avatarUrl?.trim() || avatar?.trim());
+}
+
 export function PanelProfileAvatar({
   avatar,
   avatarUrl,
@@ -55,6 +61,7 @@ export function PanelProfileAvatar({
   defaultAvatarUrl,
   alt,
   className,
+  verified = false,
 }: Props) {
   const sources = useMemo(
     () => buildAvatarSources({ avatar, avatarUrl, gravatarUrl, defaultAvatarUrl }),
@@ -70,15 +77,25 @@ export function PanelProfileAvatar({
   const currentSrc = sources[sourceIndex];
   const showImage = Boolean(currentSrc);
   const initials = initialsFromName(alt);
+  const hasCustomAvatar = hasUploadedProfileAvatar(avatar, avatarUrl);
+  const isSquircle = className?.includes('rounded-2xl');
+  const showPremiumRing = hasCustomAvatar;
+  const showFrame = showPremiumRing || verified;
 
-  return (
-    <div className={cn('h-9 w-9 shrink-0 overflow-hidden rounded-full bg-surface-soft ring-2 ring-border/80', className)}>
+  const avatarNode = (
+    <div
+      className={cn(
+        'panel-profile-avatar__inner h-9 w-9 shrink-0 overflow-hidden rounded-full bg-surface-soft',
+        !hasCustomAvatar && 'ring-2 ring-border/80',
+        className,
+      )}
+    >
       {showImage ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={currentSrc}
           alt={alt}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover object-center"
           onError={() => setSourceIndex((index) => index + 1)}
         />
       ) : (
@@ -86,6 +103,28 @@ export function PanelProfileAvatar({
           {initials}
         </div>
       )}
+    </div>
+  );
+
+  if (!showFrame) {
+    return avatarNode;
+  }
+
+  return (
+    <div
+      className={cn(
+        'panel-profile-avatar-halo',
+        isSquircle && 'panel-profile-avatar-halo--squircle',
+        !showPremiumRing && 'panel-profile-avatar-halo--plain',
+      )}
+    >
+      {showPremiumRing ? <span className="panel-profile-avatar-halo__ring" aria-hidden /> : null}
+      {avatarNode}
+      {verified ? (
+        <span className="panel-profile-avatar__verified" title="پروفایل تکمیل‌شده" aria-label="پروفایل تکمیل‌شده">
+          <ProfileVerifiedBadge />
+        </span>
+      ) : null}
     </div>
   );
 }

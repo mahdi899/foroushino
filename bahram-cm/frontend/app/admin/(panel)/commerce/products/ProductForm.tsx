@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
-import { ExternalLink, Loader2, Maximize2, Save, Trash2 } from 'lucide-react';
+import { ExternalLink, ImageIcon, Loader2, Maximize2, Save, Trash2 } from 'lucide-react';
 import { AdminPage } from '../../ui';
 import { useAdminFocus } from '../../AdminFocusContext';
 import { CoverImageField } from '../../content/CoverImageField';
@@ -13,6 +13,7 @@ import { saveProduct, deleteProduct } from '../actions';
 import { SpotPlayerProductSection } from './SpotPlayerProductSection';
 import type { AdminProduct } from '@/lib/admin/commerceTypes';
 import type { SeoFixPatch } from '@/lib/ai/seoFix';
+import { resolveProductSiteFeaturedImage } from '@/lib/catalog/productFeaturedImage';
 
 const empty: Partial<AdminProduct> = {
   title: '',
@@ -40,7 +41,16 @@ const empty: Partial<AdminProduct> = {
 export function ProductForm({ product }: { product?: AdminProduct }) {
   const router = useRouter();
   const { focusMode, toggleFocusMode } = useAdminFocus();
-  const [form, setForm] = useState({ ...empty, ...product });
+  const [form, setForm] = useState(() => {
+    const merged = { ...empty, ...product };
+    if (!merged.featured_image?.trim()) {
+      merged.featured_image = resolveProductSiteFeaturedImage({
+        slug: merged.slug,
+        landing_href: merged.landing_href,
+      });
+    }
+    return merged;
+  });
   const [focusKeyword, setFocusKeyword] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
@@ -51,6 +61,19 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
   }
 
   const aiImagePrompt = form.title || form.short_description || focusKeyword;
+
+  const siteFeaturedImage = useMemo(
+    () =>
+      resolveProductSiteFeaturedImage({
+        slug: form.slug,
+        landing_href: form.landing_href,
+      }),
+    [form.slug, form.landing_href],
+  );
+
+  const canSyncSiteImage =
+    !!siteFeaturedImage &&
+    (!form.featured_image?.trim() || form.featured_image.trim() !== siteFeaturedImage);
 
   const applySeoFix = useCallback((patch: SeoFixPatch) => {
     if (patch.focusKeyword) setFocusKeyword(patch.focusKeyword);
@@ -287,6 +310,16 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
               alt={form.title || 'تصویر محصول'}
               aiPrompt={aiImagePrompt}
             />
+            {canSyncSiteImage ? (
+              <button
+                type="button"
+                onClick={() => patch({ featured_image: siteFeaturedImage })}
+                className="inline-flex items-center gap-1.5 text-caption text-primary hover:underline"
+              >
+                <ImageIcon className="h-3.5 w-3.5" />
+                همگام‌سازی با تصویر سایت
+              </button>
+            ) : null}
 
             <div className="rounded-lg border border-border bg-surface/40 p-4 space-y-4">
               <div>

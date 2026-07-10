@@ -8,6 +8,7 @@ use App\Models\Seminar;
 use App\Models\SeminarAttendee;
 use App\Models\User;
 use App\Services\AdminTelegramLogService;
+use App\Services\DiscountService;
 use App\Support\Mobile;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -44,9 +45,30 @@ class OrderService
 
         $amount = (int) $product->price;
         $finalAmount = (int) $product->effective_price;
-        $discountAmount = max($amount - $finalAmount, 0);
+        $saleDiscount = max($amount - $finalAmount, 0);
 
         $this->assertReferralCodeNotSelf($data['ref'] ?? null, $authenticatedUser);
+
+        $couponDiscount = 0;
+        $discountCodeId = null;
+        $couponCode = null;
+
+        if (filled($data['coupon'] ?? null)) {
+            $discounts = app(DiscountService::class);
+            $preview = $discounts->preview(
+                (string) $data['coupon'],
+                $product,
+                $authenticatedUser,
+                $phone,
+                (bool) ($data['coupon_via_link'] ?? false),
+            );
+            $couponDiscount = $preview['coupon_discount'];
+            $finalAmount = $preview['final_amount'];
+            $discountCodeId = $preview['discount_code']->id;
+            $couponCode = $preview['discount_code']->normalizedCode();
+        }
+
+        $discountAmount = $saleDiscount + $couponDiscount;
 
         $order = Order::create([
             'user_id' => $userId,
@@ -58,8 +80,11 @@ class OrderService
             'customer_national_code' => $data['customer_national_code'] ?? null,
             'customer_extra_data' => $data['customer_extra_data'] ?? null,
             'referral_code' => $data['ref'] ?? null,
+            'discount_code_id' => $discountCodeId,
+            'coupon_code' => $couponCode,
             'amount' => $amount,
             'discount_amount' => $discountAmount,
+            'coupon_discount_amount' => $couponDiscount,
             'final_amount' => $finalAmount,
             'status' => 'pending_payment',
             'payment_status' => 'pending',

@@ -148,6 +148,16 @@ export async function fetchMe(): Promise<AuthenticatedUser> {
   return http.get<AuthenticatedUser>('/me')
 }
 
+export async function uploadAvatar(file: File): Promise<AuthenticatedUser> {
+  const form = new FormData()
+  form.append('avatar', file)
+  return http.postForm<AuthenticatedUser>('/me/avatar', form)
+}
+
+export async function removeAvatar(): Promise<AuthenticatedUser> {
+  return http.del<AuthenticatedUser>('/me/avatar')
+}
+
 export function isAuthenticated(): boolean {
   return !!getToken()
 }

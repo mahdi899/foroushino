@@ -21,6 +21,7 @@ import { getStudentDisplayName } from "@/lib/student/displayName";
 import { getCurrentStudent } from "@/lib/student/session";
 import { StudentAuthRoot } from "@/components/student-panel/auth/StudentAuthRoot";
 import { ReferralCapture } from "@/components/commerce/ReferralCapture";
+import { DiscountCapture } from "@/components/commerce/DiscountCapture";
 import { GrainOverlay } from "@/components/motion/GrainOverlay";
 import { cookies } from "next/headers";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
@@ -82,6 +83,7 @@ export default async function RootLayout({
         <ThemeBoot />
         {!isBareShellRoute ? <GrainOverlay /> : null}
         {!isBareShellRoute ? <ReferralCapture /> : null}
+        {!isBareShellRoute ? <DiscountCapture /> : null}
         <StudentAuthRoot initialLoggedIn={studentLoggedIn} initialDisplayName={studentDisplayName}>
           <PerformanceProvider config={perfConfig}>
             <AdminAwareChrome promo={seminarPromo}>{children}</AdminAwareChrome>

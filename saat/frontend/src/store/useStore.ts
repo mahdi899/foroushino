@@ -177,6 +177,7 @@ interface AppState {
 
   // sync
   applySyncData: (payload: SyncPayload) => void
+  setAgentAvatar: (avatar: string | null) => void
   setDataReady: (ready: boolean) => void
   setDataSyncing: (syncing: boolean) => void
 }
@@ -899,6 +900,12 @@ export const useStore = create<AppState>()(
             : [...state.agents, payload.agent],
           dataReady: true,
           dataSyncing: false,
+        })),
+      setAgentAvatar: (avatar) =>
+        set((state) => ({
+          agents: state.agents.map((agent) =>
+            agent.id === state.currentAgentId ? { ...agent, avatar } : agent,
+          ),
         })),
       setDataReady: (ready) => set({ dataReady: ready }),
       setDataSyncing: (syncing) => set({ dataSyncing: syncing }),

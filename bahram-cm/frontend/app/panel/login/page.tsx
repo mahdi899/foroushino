@@ -12,9 +12,9 @@ export const metadata: Metadata = {
 export default async function PanelLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ redirect?: string }>;
+  searchParams: Promise<{ redirect?: string; blocked?: string }>;
 }) {
-  const { redirect: redirectParam } = await searchParams;
+  const { redirect: redirectParam, blocked } = await searchParams;
   const redirectTo = panelLoginRedirectTarget(redirectParam);
   const user = await getCurrentStudent();
 
@@ -22,5 +22,5 @@ export default async function PanelLoginPage({
     redirect(redirectTo);
   }
 
-  return <PanelLoginView redirectTo={redirectTo} />;
+  return <PanelLoginView redirectTo={redirectTo} blocked={blocked === '1'} />;
 }

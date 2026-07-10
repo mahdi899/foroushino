@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Services\ContentPublishService;
 use App\Services\InAppNotificationService;
+use App\Support\MediaUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -61,6 +62,7 @@ class ProductController extends Controller
         if (blank($data['slug'] ?? null)) {
             $data['slug'] = Str::slug($data['title']);
         }
+        $data = $this->normalizeProductMedia($data);
 
         $product = Product::create($data);
         $this->publish->revalidateProducts($product->slug);
@@ -73,6 +75,7 @@ class ProductController extends Controller
     {
         $wasInactive = ! $product->is_active;
         $data = $this->validateProduct($request, $product);
+        $data = $this->normalizeProductMedia($data);
         $product->update($data);
         $fresh = $product->fresh();
         $this->publish->revalidateProducts($fresh->slug);
@@ -96,6 +99,10 @@ class ProductController extends Controller
     /** @return array<string, mixed> */
     private function payload(Product $product): array
     {
+        $imageRef = $product->featured_image
+            ? MediaUrl::fromDiskPath($product->featured_image)
+            : null;
+
         return [
             'id' => $product->id,
             'title' => $product->title,
@@ -115,8 +122,8 @@ class ProductController extends Controller
             'course_level' => $product->course_level,
             'course_duration' => $product->course_duration,
             'landing_href' => $product->landing_href,
-            'featured_image' => $product->featured_image,
-            'featured_image_url' => $product->featured_image ? '/storage/'.$product->featured_image : null,
+            'featured_image' => $imageRef,
+            'featured_image_url' => $imageRef,
             'spotplayer_course_id' => $product->spotplayer_course_id,
             'spotplayer_product_id' => $product->spotplayer_product_id,
             'meta_title' => $product->meta_title,
@@ -157,5 +164,28 @@ class ProductController extends Controller
             'meta_title' => ['sometimes', 'nullable', 'string', 'max:255'],
             'meta_description' => ['sometimes', 'nullable', 'string', 'max:500'],
         ]);
+    }
+
+    /** @param  array<string, mixed>  $data */
+    private function normalizeProductMedia(array $data): array
+    {
+        if (! array_key_exists('featured_image', $data)) {
+            return $data;
+        }
+
+        $data['featured_image'] = $this->normalizeFeaturedImagePath($data['featured_image']);
+
+        return $data;
+    }
+
+    private function normalizeFeaturedImagePath(mixed $url): ?string
+    {
+        if (! filled($url)) {
+            return null;
+        }
+
+        $ref = MediaUrl::reference((string) $url);
+
+        return $ref ?: null;
     }
 }

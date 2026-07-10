@@ -31,7 +31,7 @@ export function SiteFooter() {
               کمپین‌نویسی، ورود به {site.ecosystem}.
             </p>
             <div
-              className="mt-5 flex flex-wrap items-center gap-3 border-t border-bone/10 pt-5 md:mt-8 md:gap-4 md:pt-8"
+              className="mt-5 flex flex-wrap items-center gap-4 border-t border-bone/10 pt-5 md:mt-8 md:gap-5 md:pt-8"
               aria-label="نشان‌های اعتماد"
             >
               {site.footer.trustBadges.map((badge) => (
@@ -40,15 +40,16 @@ export function SiteFooter() {
                   href={badge.href}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="shrink-0"
+                  className="group shrink-0 rounded-xl border border-bone/10 bg-bone/[0.03] p-2 transition-colors hover:border-bone/25 hover:bg-bone/[0.06]"
                   aria-label={badge.alt}
+                  title={badge.alt}
                 >
                   <SiteImage
                     src={TRUST_BADGE_MEDIA[badge.id]}
                     alt={badge.alt}
-                    width={72}
-                    height={72}
-                    className="h-[4.25rem] w-[4.25rem] rounded-xl border border-bone/10 bg-bone/5 object-contain p-2 transition-colors hover:border-bone/20 md:h-[4.75rem] md:w-[4.75rem]"
+                    width={104}
+                    height={104}
+                    className="h-[5.5rem] w-[5.5rem] object-contain md:h-[6.5rem] md:w-[6.5rem]"
                   />
                 </a>
               ))}

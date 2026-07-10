@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { AdminPage, Badge, EditLink, Table } from '../../ui';
 import { getStudents } from '@/lib/admin/academyData';
 import { STUDENT_STATUS_LABELS, formatDate, type AdminStudent } from '@/lib/admin/academyTypes';
+import { cn } from '@/lib/utils';
 import { CreateStudentForm } from './CreateStudentForm';
 import { StudentsExportButton } from './StudentsExportButton';
 
@@ -14,14 +15,19 @@ function statusTone(status: AdminStudent['status']) {
 }
 
 function StudentMobileCard({ student }: { student: AdminStudent }) {
+  const blocked = student.status === 'blocked';
+
   return (
     <Link
       href={`/admin/academy/students/${student.id}`}
-      className="card block p-4 transition hover:border-accent/40 hover:shadow-soft"
+      className={cn(
+        'card block p-4 transition hover:border-accent/40 hover:shadow-soft',
+        blocked && 'border-error/30 bg-error/5',
+      )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-semibold text-primary-dark">{student.name}</p>
+          <p className={cn('truncate font-semibold', blocked ? 'text-error' : 'text-primary-dark')}>{student.name}</p>
           <p className="mt-1 text-caption text-text-muted" dir="ltr">
             {student.mobile ?? '—'}
           </p>
@@ -116,9 +122,14 @@ export default async function StudentsPage({
         <>
           <div className="hidden md:block">
             <Table head={['نام', 'موبایل', 'وضعیت', 'سفارش‌ها', 'دوره‌ها', 'اولین ورود', 'عملیات']}>
-              {students.map((s) => (
-                <tr key={s.id} className="hover:bg-surface-soft/40">
-                  <td className="px-4 py-3">{s.name}</td>
+              {students.map((s) => {
+                const blocked = s.status === 'blocked';
+                return (
+                <tr
+                  key={s.id}
+                  className={cn('hover:bg-surface-soft/40', blocked && 'bg-error/5')}
+                >
+                  <td className={cn('px-4 py-3', blocked && 'font-semibold text-error')}>{s.name}</td>
                   <td className="whitespace-nowrap px-4 py-3" dir="ltr">
                     {s.mobile ?? '—'}
                   </td>
@@ -132,7 +143,8 @@ export default async function StudentsPage({
                     <EditLink href={`/admin/academy/students/${s.id}`} />
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </Table>
           </div>
 

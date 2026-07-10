@@ -5,10 +5,17 @@ import { useRouter } from 'next/navigation';
 import { Camera, Loader2 } from 'lucide-react';
 import { PanelProfileAvatar } from '@/components/student-panel/layout/PanelProfileAvatar';
 import { studentDefaultAvatarUrl } from '@/lib/student/avatar';
+import { isProfileVerified, PROFILE_VERIFIED_THRESHOLD } from '@/lib/student/profileCompletion';
 import { uploadProfileAvatarAction } from '@/lib/student/panelActions';
 import type { StudentUser } from '@/lib/student/session';
 
-export function ProfileAvatarField({ user }: { user: StudentUser }) {
+export function ProfileAvatarField({
+  user,
+  profileCompletion,
+}: {
+  user: StudentUser;
+  profileCompletion?: number;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
@@ -16,6 +23,10 @@ export function ProfileAvatarField({ user }: { user: StudentUser }) {
   const fullName = [user.profile?.first_name, user.profile?.last_name].filter(Boolean).join(' ').trim();
   const displayName = fullName || user.name || 'دانشجو';
   const hasCustomAvatar = Boolean(user.profile?.avatar_url);
+  const verified =
+    profileCompletion !== undefined
+      ? profileCompletion >= PROFILE_VERIFIED_THRESHOLD
+      : isProfileVerified(user);
 
   async function onPick(file: File | undefined) {
     if (!file) return;
@@ -56,7 +67,8 @@ export function ProfileAvatarField({ user }: { user: StudentUser }) {
           gravatarUrl={user.profile?.gravatar_url}
           defaultAvatarUrl={user.profile?.default_avatar_url ?? studentDefaultAvatarUrl(user.id, 192)}
           alt={displayName}
-          className="panel-profile-avatar__image !h-28 !w-28 sm:!h-32 sm:!w-32 !rounded-2xl !ring-0"
+          className="panel-profile-avatar__image !h-28 !w-28 sm:!h-32 sm:!w-32 !rounded-full !ring-0"
+          verified={verified}
         />
         <span className="panel-profile-avatar__overlay">
           {pending ? (

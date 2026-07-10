@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\MeAvatarController;
 use App\Http\Controllers\Api\V1\MeController;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +21,8 @@ Route::middleware('throttle:auth')->prefix('auth')->group(function (): void {
 
 Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
     Route::get('/me', MeController::class);
+    Route::post('/me/avatar', [MeAvatarController::class, 'store']);
+    Route::delete('/me/avatar', [MeAvatarController::class, 'destroy']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
 
     require __DIR__.'/leads.php';

@@ -75,6 +75,7 @@ class NotificationController extends Controller
             'link' => $recipient->notification->link,
             'read_at' => $recipient->read_at?->toIso8601String(),
             'created_at' => $recipient->created_at?->toIso8601String(),
+            'show_toast' => filled($recipient->notification->created_by),
         ];
     }
 }

@@ -6,6 +6,7 @@ enum OtpPurpose: string
 {
     case Login = 'login';
     case VerifyMobile = 'verify_mobile';
+    case GuestCheckout = 'guest_checkout';
 
     public static function values(): array
     {

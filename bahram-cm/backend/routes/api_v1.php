@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\V1\ChatbotController;
 use App\Http\Controllers\Api\V1\CommercePaymentSettingsController;
 use App\Http\Controllers\Api\V1\CommerceSmsSpotplayerController;
 use App\Http\Controllers\Api\V1\DashboardController;
+use App\Http\Controllers\Api\V1\DiscountCodeAdminController;
 use App\Http\Controllers\Api\V1\FaqController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\ProductController;
@@ -65,7 +66,7 @@ Route::prefix('student')->group(function () {
     Route::post('auth/verify-otp', [StudentAuthController::class, 'verifyOtp']);
     Route::post('auth/login-password', [StudentAuthController::class, 'loginPassword']);
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'student.active'])->group(function () {
         Route::post('auth/logout', [StudentAuthController::class, 'logout']);
         Route::get('me', [StudentAuthController::class, 'me']);
 
@@ -187,6 +188,12 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('faqs/{faq}', [FaqController::class, 'show'])->whereNumber('faq');
     Route::match(['put', 'patch'], 'faqs/{faq}', [FaqController::class, 'update'])->whereNumber('faq');
     Route::delete('faqs/{faq}', [FaqController::class, 'destroy'])->whereNumber('faq');
+
+    Route::get('discount-codes', [DiscountCodeAdminController::class, 'index']);
+    Route::post('discount-codes', [DiscountCodeAdminController::class, 'store']);
+    Route::get('discount-codes/{discountCode}', [DiscountCodeAdminController::class, 'show'])->whereNumber('discountCode');
+    Route::match(['put', 'patch'], 'discount-codes/{discountCode}', [DiscountCodeAdminController::class, 'update'])->whereNumber('discountCode');
+    Route::delete('discount-codes/{discountCode}', [DiscountCodeAdminController::class, 'destroy'])->whereNumber('discountCode');
 
     Route::get('student-testimonials', [StudentTestimonialController::class, 'index']);
     Route::post('student-testimonials', [StudentTestimonialController::class, 'store']);

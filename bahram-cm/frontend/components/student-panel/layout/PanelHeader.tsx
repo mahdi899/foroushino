@@ -6,6 +6,7 @@ import { Bell, ChevronDown, Home, LogOut } from 'lucide-react';
 import { PanelThemeToggle } from '@/app/panel/PanelThemeToggle';
 import { PanelProfileAvatar } from '@/components/student-panel/layout/PanelProfileAvatar';
 import { studentDefaultAvatarUrl } from '@/lib/student/avatar';
+import { isProfileVerified } from '@/lib/student/profileCompletion';
 import { logoutStudentAction } from '@/lib/student/actions';
 import { markAllNotificationsReadAction } from '@/lib/student/panelActions';
 import type { StudentUser } from '@/lib/student/session';
@@ -55,6 +56,7 @@ export function PanelHeader({
             defaultAvatarUrl={user.profile?.default_avatar_url ?? studentDefaultAvatarUrl(user.id)}
             alt={displayName}
             className="!h-8 !w-8"
+            verified={isProfileVerified(user)}
           />
           <span className="panel-header__profile-text">
             <span className="panel-header__profile-name">{displayName}</span>

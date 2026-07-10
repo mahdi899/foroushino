@@ -21,8 +21,11 @@ class Order extends Model
         'customer_national_code',
         'customer_extra_data',
         'referral_code',
+        'discount_code_id',
+        'coupon_code',
         'amount',
         'discount_amount',
+        'coupon_discount_amount',
         'final_amount',
         'status',
         'payment_status',
@@ -35,6 +38,7 @@ class Order extends Model
         'customer_extra_data' => 'array',
         'amount' => 'integer',
         'discount_amount' => 'integer',
+        'coupon_discount_amount' => 'integer',
         'final_amount' => 'integer',
         'sms_sent_at' => 'datetime',
         'paid_at' => 'datetime',
@@ -73,6 +77,11 @@ class Order extends Model
     public function referralConversion(): HasOne
     {
         return $this->hasOne(ReferralConversion::class);
+    }
+
+    public function discountCode(): BelongsTo
+    {
+        return $this->belongsTo(DiscountCode::class);
     }
 
     public function isPaid(): bool

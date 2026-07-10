@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { markNotificationReadAction } from '@/lib/student/panelActions';
 import { formatRelativeTimeFa } from '@/components/student-panel/utils/relativeTime';
+import { isOrderPaidNotification } from '@/components/student-panel/notifications/notificationPremium';
 import {
   notificationTypeIcon,
   notificationTypeLabel,
@@ -33,6 +34,11 @@ export function NotificationItem({ notification }: { notification: NotificationE
   const Icon = notificationTypeIcon(notification.type);
   const isUnread = !notification.read_at;
   const typeVariant = notificationTypeVariant(notification.type);
+  const isPremium = isOrderPaidNotification(notification.type);
+
+  const linkClass = ['panel-notification-link', isPremium ? 'panel-notification-link--premium' : '']
+    .filter(Boolean)
+    .join(' ');
 
   const content = (
     <article
@@ -76,14 +82,14 @@ export function NotificationItem({ notification }: { notification: NotificationE
 
   if (notification.link) {
     return (
-      <Link href={notification.link} className="panel-notification-link" onClick={markRead}>
+      <Link href={notification.link} className={linkClass} onClick={markRead}>
         {content}
       </Link>
     );
   }
 
   return (
-    <div className="panel-notification-link" onClick={markRead} role="button" tabIndex={0}>
+    <div className={linkClass} onClick={markRead} role="button" tabIndex={0}>
       {content}
     </div>
   );

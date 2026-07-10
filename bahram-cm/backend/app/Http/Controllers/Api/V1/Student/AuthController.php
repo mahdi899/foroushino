@@ -14,6 +14,7 @@ use App\Services\OtpService;
 use App\Services\StudentOnboardingService;
 use App\Support\ApiResponse;
 use App\Support\Mobile;
+use App\Support\StudentAccess;
 use App\Support\StudentProfilePayload;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -33,6 +34,10 @@ class AuthController extends Controller
             return ApiResponse::error('invalid_mobile', 'شماره موبایل معتبر نیست.', 422);
         }
 
+        if ($blocked = StudentAccess::blockedResponseForMobile($mobile)) {
+            return $blocked;
+        }
+
         try {
             $this->otp->send($mobile, OtpPurpose::Login, $request->ip(), $request->userAgent());
         } catch (OtpException $e) {
@@ -48,6 +53,10 @@ class AuthController extends Controller
 
         if (! $mobile) {
             return ApiResponse::error('invalid_mobile', 'شماره موبایل معتبر نیست.', 422);
+        }
+
+        if ($blocked = StudentAccess::blockedResponseForMobile($mobile)) {
+            return $blocked;
         }
 
         try {
@@ -90,6 +99,10 @@ class AuthController extends Controller
             return ApiResponse::error('forbidden', 'این شماره متعلق به یک حساب مدیریتی است.', 403);
         }
 
+        if (StudentAccess::isBlocked($user)) {
+            return StudentAccess::blockedResponse();
+        }
+
         if ($user->mobile_verified_at === null) {
             $user->update(['mobile_verified_at' => now()]);
         }
@@ -115,6 +128,10 @@ class AuthController extends Controller
         }
 
         $user = User::query()->where('mobile', $mobile)->where('is_admin', false)->first();
+
+        if ($user && StudentAccess::isBlocked($user)) {
+            return StudentAccess::blockedResponse();
+        }
 
         if (! $user || blank($user->password) || ! Hash::check($request->string('password'), $user->password)) {
             return ApiResponse::error('invalid_credentials', 'شماره موبایل یا رمز عبور نادرست است.', 422);

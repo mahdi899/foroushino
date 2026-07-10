@@ -82,12 +82,12 @@ class CourseController extends Controller
         $altResolver = app(MediaAltResolver::class);
 
         $accesses = $user->courseAccesses()
-            ->with('product')
+            ->with(['product.seminar'])
             ->get()
             ->keyBy('product_id');
 
         $licenses = SpotplayerLicense::query()
-            ->with(['product', 'order', 'courseAccess'])
+            ->with(['product.seminar', 'order', 'courseAccess'])
             ->whereNotNull('license_key')
             ->where(function ($query) use ($user, $mobile) {
                 $query->where('user_id', $user->id);
@@ -107,7 +107,7 @@ class CourseController extends Controller
             }
 
             $product = $license->product;
-            if (! $product instanceof Product) {
+            if (! $product instanceof Product || $product->isSeminarProduct()) {
                 continue;
             }
 
@@ -125,7 +125,7 @@ class CourseController extends Controller
             }
 
             $product = $order->product;
-            if (! $product instanceof Product) {
+            if (! $product instanceof Product || $product->isSeminarProduct()) {
                 continue;
             }
 
@@ -141,7 +141,7 @@ class CourseController extends Controller
 
         foreach ($accesses as $access) {
             $product = $access->product;
-            if (! $product instanceof Product) {
+            if (! $product instanceof Product || $product->isSeminarProduct()) {
                 continue;
             }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Student;
 
 use App\Http\Controllers\Controller;
 use App\Models\Seminar;
+use App\Services\SeminarAccessService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,9 +12,10 @@ use Illuminate\Support\Facades\URL;
 
 class SeminarController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, SeminarAccessService $seminarAccess): JsonResponse
     {
         $user = $request->user();
+        $seminarAccess->syncFromPaidOrders($user);
 
         $seminars = Seminar::query()
             ->whereHas('attendees', fn ($q) => $q->where('user_id', $user->id))

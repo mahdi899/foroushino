@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
-import { BarChart3, Cloud, ExternalLink, TrendingUp } from 'lucide-react';
+import { Cloud, ExternalLink, TrendingUp } from 'lucide-react';
+import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
 import { Badge, StatCard, Table } from '../../ui';
 import { toFa } from '@/lib/utils';
 import { Ga4DashboardSection } from './Ga4DashboardSection';
@@ -16,8 +16,6 @@ interface GoogleAnalyticsPanelProps {
 }
 
 export function GoogleAnalyticsPanel({ reports, ga4, dashboardEmbedUrl, siteHostname }: GoogleAnalyticsPanelProps) {
-  const topEvents = reports.by_event.slice(0, 6);
-
   return (
     <div className="space-y-6 lg:col-span-2">
       <div className="card p-6">
@@ -59,10 +57,6 @@ export function GoogleAnalyticsPanel({ reports, ga4, dashboardEmbedUrl, siteHost
             <ExternalLink className="h-3.5 w-3.5" />
             Google Analytics
           </a>
-          <Link href="/admin/reports" className="btn btn-ghost py-1.5 text-caption">
-            <BarChart3 className="h-3.5 w-3.5" />
-            گزارش‌های داخلی
-          </Link>
         </div>
       </div>
 
@@ -86,10 +80,19 @@ export function GoogleAnalyticsPanel({ reports, ga4, dashboardEmbedUrl, siteHost
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div>
-          <h3 className="mb-3 text-small font-semibold text-primary-dark">رویدادهای پرتکرار</h3>
-          {topEvents.length ? (
-            <Table head={['رویداد', 'تعداد']}>
-              {topEvents.map((e) => (
+          <h3 className="mb-3 text-h3 text-text">رویدادها بر اساس نوع</h3>
+          {reports.by_event.length ? (
+            <Table
+              head={['رویداد', 'تعداد']}
+              mobile={reports.by_event.map((e) => (
+                <AdminTableCard
+                  key={e.type}
+                  title={<Badge tone="accent">{e.type}</Badge>}
+                  fields={[{ label: 'تعداد', value: toFa(e.count) }]}
+                />
+              ))}
+            >
+              {reports.by_event.map((e) => (
                 <tr key={e.type}>
                   <td className="px-4 py-3">
                     <Badge tone="accent">{e.type}</Badge>
@@ -103,9 +106,18 @@ export function GoogleAnalyticsPanel({ reports, ga4, dashboardEmbedUrl, siteHost
           )}
         </div>
         <div>
-          <h3 className="mb-3 text-small font-semibold text-primary-dark">سرنخ‌ها بر اساس منبع</h3>
+          <h3 className="mb-3 text-h3 text-text">سرنخ‌ها بر اساس منبع</h3>
           {reports.by_source.length ? (
-            <Table head={['منبع', 'تعداد']}>
+            <Table
+              head={['منبع', 'تعداد']}
+              mobile={reports.by_source.map((s) => (
+                <AdminTableCard
+                  key={s.source}
+                  title={s.source}
+                  fields={[{ label: 'تعداد', value: toFa(s.count) }]}
+                />
+              ))}
+            >
               {reports.by_source.map((s) => (
                 <tr key={s.source}>
                   <td className="px-4 py-3 text-text">{s.source}</td>

@@ -206,6 +206,46 @@ export function formatToman(amount: number): string {
   return `${formatPanelFa(amount)} تومان`;
 }
 
+export type AdminDiscountType = 'percent' | 'fixed';
+export type AdminDiscountRestriction = 'all' | 'specific_users' | 'prior_buyers' | 'specific_products';
+
+export interface AdminDiscountCode {
+  id: number;
+  code: string;
+  title: string;
+  description: string | null;
+  discount_type: AdminDiscountType;
+  discount_value: number;
+  is_active: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+  max_uses: number | null;
+  max_uses_per_user: number | null;
+  min_order_amount: number | null;
+  max_discount_amount: number | null;
+  requires_link: boolean;
+  restriction: AdminDiscountRestriction;
+  uses_count: number;
+  product_ids: number[];
+  products?: { id: number; title: string }[];
+  user_ids: number[];
+  users?: { id: number; name: string; mobile: string | null }[];
+  created_at: string | null;
+  updated_at?: string | null;
+}
+
+export const DISCOUNT_TYPE_LABELS: Record<AdminDiscountType, string> = {
+  percent: 'درصدی',
+  fixed: 'مبلغ ثابت (تومان)',
+};
+
+export const DISCOUNT_RESTRICTION_LABELS: Record<AdminDiscountRestriction, string> = {
+  all: 'همه کاربران',
+  specific_users: 'دانشجویان مشخص',
+  prior_buyers: 'خریداران قبلی',
+  specific_products: 'محصولات مشخص',
+};
+
 export type OrderAnalyticsSlice = {
   key: string;
   label: string;

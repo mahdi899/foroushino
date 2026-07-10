@@ -30,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'student.active' => \App\Http\Middleware\EnsureStudentIsActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

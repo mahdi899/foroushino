@@ -1,6 +1,7 @@
 'use server';
 
 import { buildCustomerName } from '@/lib/checkout/productFields';
+import { INVALID_PAYMENT_GATEWAY_URL_MESSAGE, isZarinpalGatewayUrl } from '@/lib/checkout/paymentGateway';
 import { getCurrentStudent, getStudentToken } from '@/lib/student/session';
 
 type CheckoutResult =
@@ -30,8 +31,8 @@ async function requestPayment(orderId: number, token?: string): Promise<Checkout
   }
 
   const paymentUrl = json?.data?.payment_url;
-  if (typeof paymentUrl !== 'string' || !paymentUrl.startsWith('http')) {
-    return { ok: false, error: 'آدرس درگاه پرداخت دریافت نشد. تنظیمات زرین‌پال را بررسی کنید.' };
+  if (typeof paymentUrl !== 'string' || !isZarinpalGatewayUrl(paymentUrl)) {
+    return { ok: false, error: INVALID_PAYMENT_GATEWAY_URL_MESSAGE };
   }
 
   return {
@@ -68,6 +69,8 @@ async function createOrder(
 export async function startLoggedInCheckoutAction(input: {
   product_id: number;
   ref?: string;
+  coupon?: string;
+  coupon_via_link?: boolean;
   customer_extra_data?: Record<string, string>;
 }): Promise<CheckoutResult> {
   const [user, token] = await Promise.all([getCurrentStudent(), getStudentToken()]);
@@ -83,6 +86,8 @@ export async function startLoggedInCheckoutAction(input: {
       customer_email: user.profile?.email ?? undefined,
       customer_extra_data: input.customer_extra_data,
       ref: input.ref,
+      coupon: input.coupon,
+      coupon_via_link: input.coupon_via_link,
     },
     token,
   );
@@ -95,28 +100,97 @@ export async function startLoggedInCheckoutAction(input: {
   return { ...payment, order_number: orderResult.order_number };
 }
 
-/** Guest buyer: name + phone (and optional extra form fields). */
-export async function startGuestCheckoutAction(input: {
+export async function sendGuestCheckoutOtpAction(input: {
   product_id: number;
   customer_name: string;
   customer_phone: string;
   ref?: string;
+  coupon?: string;
+  coupon_via_link?: boolean;
   customer_extra_data?: Record<string, string>;
-}): Promise<CheckoutResult> {
-  const orderResult = await createOrder({
-    product_id: input.product_id,
-    customer_name: input.customer_name.trim(),
-    customer_phone: input.customer_phone.trim(),
-    customer_extra_data: input.customer_extra_data,
-    ref: input.ref,
+}): Promise<
+  | { ok: true; checkout_token: string; customer_phone_masked: string | null }
+  | { ok: false; error: string }
+> {
+  const res = await fetch(`${publicApiBase()}/orders/guest-checkout/send-otp`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      product_id: input.product_id,
+      customer_name: input.customer_name.trim(),
+      customer_phone: input.customer_phone.trim(),
+      customer_extra_data: input.customer_extra_data,
+      ref: input.ref,
+      coupon: input.coupon,
+      coupon_via_link: input.coupon_via_link,
+    }),
+    cache: 'no-store',
   });
 
-  if (!orderResult.ok) return orderResult;
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return { ok: false, error: json?.error?.message_fa ?? 'ارسال کد تأیید ناموفق بود.' };
+  }
 
-  const payment = await requestPayment(orderResult.id);
-  if (!payment.ok) return payment;
+  const checkoutToken = json.data?.checkout_token;
+  if (typeof checkoutToken !== 'string' || !checkoutToken) {
+    return { ok: false, error: 'نشست خرید ایجاد نشد. دوباره تلاش کن.' };
+  }
 
-  return { ...payment, order_number: orderResult.order_number };
+  return {
+    ok: true,
+    checkout_token: checkoutToken,
+    customer_phone_masked: (json.data?.customer_phone_masked as string | null) ?? null,
+  };
+}
+
+export async function resendGuestCheckoutOtpAction(
+  checkoutToken: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const res = await fetch(`${publicApiBase()}/orders/guest-checkout/resend-otp`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ checkout_token: checkoutToken }),
+    cache: 'no-store',
+  });
+
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return { ok: false, error: json?.error?.message_fa ?? 'ارسال مجدد کد ناموفق بود.' };
+  }
+
+  return { ok: true };
+}
+
+export async function verifyGuestCheckoutAndPayAction(input: {
+  checkout_token: string;
+  code: string;
+}): Promise<CheckoutResult> {
+  const res = await fetch(`${publicApiBase()}/orders/guest-checkout/verify-and-pay`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      checkout_token: input.checkout_token,
+      code: input.code.trim(),
+    }),
+    cache: 'no-store',
+  });
+
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return { ok: false, error: json?.error?.message_fa ?? 'تأیید کد یا شروع پرداخت ناموفق بود.' };
+  }
+
+  const paymentUrl = json?.data?.payment_url;
+  if (typeof paymentUrl !== 'string' || !isZarinpalGatewayUrl(paymentUrl)) {
+    return { ok: false, error: INVALID_PAYMENT_GATEWAY_URL_MESSAGE };
+  }
+
+  return {
+    ok: true,
+    payment_url: paymentUrl,
+    order_number: (json.data?.order_number as string) ?? '',
+  };
 }
 
 export async function completeOrderProfileAction(input: {

@@ -1,6 +1,6 @@
 import { site } from '@/content/site';
 import { getProducts, type ProductListItem } from '@/lib/services/products';
-import { sitePhotos } from '@/lib/site-photo-paths';
+import { resolveProductFeaturedImage, resolveProductSiteFeaturedImage } from '@/lib/catalog/productFeaturedImage';
 
 export type CourseCatalogCard = {
   href: string;
@@ -16,8 +16,8 @@ export type CourseCatalogCard = {
 };
 
 const defaultPathImages: Record<string, string> = {
-  '/course/campaign-writing': sitePhotos.mainPathCampaign,
-  '/saat': sitePhotos.mainPathSaat,
+  '/course/campaign-writing': resolveProductSiteFeaturedImage({ slug: 'campaign-writing' }),
+  '/saat': resolveProductSiteFeaturedImage({ slug: 'saat' }),
 };
 
 const staticPathMeta: Record<string, { level: string; duration: string; featured: boolean }> = {
@@ -60,7 +60,7 @@ export async function getCourseCatalogCards(): Promise<CourseCatalogCard[]> {
       duration: '—',
       featured: false,
     };
-    const defaultImage = defaultPathImages[item.href] ?? sitePhotos.landscapeSession;
+    const defaultImage = defaultPathImages[item.href] ?? resolveProductSiteFeaturedImage({});
 
     return {
       href: item.href,
@@ -71,7 +71,11 @@ export async function getCourseCatalogCards(): Promise<CourseCatalogCard[]> {
       level: meta.level,
       duration: meta.duration,
       featured: meta.featured,
-      image: product?.featured_image || defaultImage,
+      image: resolveProductFeaturedImage({
+        featured_image: product?.featured_image,
+        slug: product?.slug,
+        landing_href: product?.landing_href,
+      }) || defaultImage,
       imageAlt: product?.featured_image_alt || `کاور ${product?.title?.trim() || item.label}`,
     };
   });

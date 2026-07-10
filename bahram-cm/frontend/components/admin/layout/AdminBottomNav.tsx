@@ -46,13 +46,15 @@ export function AdminBottomNav({
               active ? 'text-primary' : 'text-text-muted',
             )}
           >
-            <AdminLucideIcon name={item.icon} className="h-5 w-5" strokeWidth={active ? 2.4 : 1.8} />
+            <span className="relative inline-flex shrink-0">
+              <AdminLucideIcon name={item.icon} className="h-5 w-5" strokeWidth={active ? 2.4 : 1.8} />
+              {showBadge ? (
+                <span className="admin-bottom-nav__badge absolute -top-2 left-1/2 z-10 flex h-4 min-w-4 -translate-x-1/2 items-center justify-center rounded-full bg-amber-500 px-1 font-bold text-white ring-2 ring-surface">
+                  {badgeCount > 9 ? '9+' : badgeCount}
+                </span>
+              ) : null}
+            </span>
             <span>{item.shortLabel}</span>
-            {showBadge ? (
-              <span className="admin-bottom-nav__badge absolute end-2 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 font-bold text-white">
-                {badgeCount > 9 ? '9+' : badgeCount}
-              </span>
-            ) : null}
           </Link>
         );
       })}
