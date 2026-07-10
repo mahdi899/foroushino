@@ -87,6 +87,11 @@ class Product extends Model
         return $this->hasOne(Seminar::class);
     }
 
+    public function miniCourse(): HasOne
+    {
+        return $this->hasOne(MiniCourse::class);
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);

@@ -7,6 +7,7 @@ enum ProductType: string
     case CourseSpotplayer = 'course_spotplayer';
     case ManualService = 'manual_service';
     case Event = 'event';
+    case MiniCourse = 'mini_course';
 
     /** Legacy values kept for backward compatibility with existing products. */
     case Normal = 'normal';

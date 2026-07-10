@@ -10,6 +10,7 @@ class MiniCourseEnrollment extends Model
     protected $fillable = [
         'mini_course_id',
         'user_id',
+        'order_id',
         'enrollment_number',
         'enrolled_at',
     ];
@@ -26,5 +27,10 @@ class MiniCourseEnrollment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
     }
 }

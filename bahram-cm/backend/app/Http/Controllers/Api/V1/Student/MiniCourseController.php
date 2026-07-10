@@ -17,6 +17,7 @@ class MiniCourseController extends Controller
     {
         $course = MiniCourse::query()->active()->where('slug', $slug)->firstOrFail();
         $enrollment = MiniCourseEnrollment::query()
+            ->with('order')
             ->where('user_id', $request->user()->id)
             ->where('mini_course_id', $course->id)
             ->first();
@@ -26,6 +27,7 @@ class MiniCourseController extends Controller
             'title' => $course->title,
             'enrolled' => (bool) $enrollment,
             'enrollment_number' => $enrollment?->enrollment_number,
+            'order_number' => $enrollment?->order?->order_number ?? $enrollment?->enrollment_number,
             'enrolled_at' => $enrollment?->enrolled_at?->toIso8601String(),
         ]);
     }
@@ -33,11 +35,13 @@ class MiniCourseController extends Controller
     public function enroll(Request $request, string $slug, MiniCourseEnrollmentService $enrollments): JsonResponse
     {
         $course = MiniCourse::query()->active()->where('slug', $slug)->firstOrFail();
-        $enrollment = $enrollments->enroll($request->user(), $course);
+        $enrollment = $enrollments->enroll($request->user(), $course)->load('order');
 
         return ApiResponse::success([
             'enrollment_id' => $enrollment->id,
+            'order_id' => $enrollment->order_id,
             'enrollment_number' => $enrollment->enrollment_number,
+            'order_number' => $enrollment->order?->order_number ?? $enrollment->enrollment_number,
             'enrolled_at' => $enrollment->enrolled_at?->toIso8601String(),
             'slug' => $course->slug,
             'title' => $course->title,

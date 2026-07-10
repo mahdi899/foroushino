@@ -58,10 +58,10 @@ export default async function MiniCourseDetailPage({ params }: PageProps) {
   if (student) {
     try {
       const status = await studentFetch<{
-        data: { enrolled: boolean; enrollment_number?: string | null };
+        data: { enrolled: boolean; order_number?: string | null; enrollment_number?: string | null };
       }>(`/mini-courses/${encodeURIComponent(slug)}`);
       isEnrolled = status.data.enrolled;
-      enrollmentNumber = status.data.enrollment_number ?? null;
+      enrollmentNumber = status.data.order_number ?? status.data.enrollment_number ?? null;
     } catch {
       isEnrolled = false;
     }

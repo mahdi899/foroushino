@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Student;
 
 use App\Enums\CourseAccessStatus;
+use App\Enums\ProductType;
 use App\Enums\SpotplayerLicenseStatus;
 use App\Http\Controllers\Controller;
 use App\Models\CourseAccess;
@@ -81,6 +82,7 @@ class CourseController extends Controller
     {
         $mobile = Mobile::normalize($user->mobile);
         $altResolver = app(MediaAltResolver::class);
+        $miniCourseProductIds = $this->miniCourseProductIdsForUser($user);
 
         $accesses = $user->courseAccesses()
             ->with('product')
@@ -108,7 +110,7 @@ class CourseController extends Controller
             }
 
             $product = $license->product;
-            if (! $product instanceof Product) {
+            if (! $product instanceof Product || $this->isMiniCourseProduct($product, $miniCourseProductIds)) {
                 continue;
             }
 
@@ -126,7 +128,7 @@ class CourseController extends Controller
             }
 
             $product = $order->product;
-            if (! $product instanceof Product) {
+            if (! $product instanceof Product || $this->isMiniCourseProduct($product, $miniCourseProductIds)) {
                 continue;
             }
 
@@ -142,7 +144,7 @@ class CourseController extends Controller
 
         foreach ($accesses as $access) {
             $product = $access->product;
-            if (! $product instanceof Product) {
+            if (! $product instanceof Product || $this->isMiniCourseProduct($product, $miniCourseProductIds)) {
                 continue;
             }
 
@@ -160,11 +162,36 @@ class CourseController extends Controller
         return $items;
     }
 
+    /** @return \Illuminate\Support\Collection<int, int> */
+    private function miniCourseProductIdsForUser(User $user)
+    {
+        return MiniCourseEnrollment::query()
+            ->where('user_id', $user->id)
+            ->whereHas('miniCourse', fn ($q) => $q->whereNotNull('product_id'))
+            ->with('miniCourse:id,product_id')
+            ->get()
+            ->pluck('miniCourse.product_id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+    }
+
+    /** @param  \Illuminate\Support\Collection<int, int>  $miniCourseProductIds */
+    private function isMiniCourseProduct(Product $product, $miniCourseProductIds): bool
+    {
+        if ($miniCourseProductIds->contains($product->id)) {
+            return true;
+        }
+
+        return $product->type === ProductType::MiniCourse->value;
+    }
+
     /** @return list<array<string, mixed>> */
     private function listMiniCourseItems(User $user, MediaAltResolver $altResolver): array
     {
         $enrollments = MiniCourseEnrollment::query()
-            ->with('miniCourse')
+            ->with(['miniCourse', 'order'])
             ->where('user_id', $user->id)
             ->orderByDesc('enrolled_at')
             ->get();
@@ -185,7 +212,7 @@ class CourseController extends Controller
                 'id' => $enrollment->id,
                 'course_type' => 'mini',
                 'license_id' => null,
-                'order_id' => null,
+                'order_id' => $enrollment->order_id,
                 'product' => [
                     'id' => $course->id,
                     'title' => $course->title,
@@ -201,7 +228,7 @@ class CourseController extends Controller
                 'activated_at' => $enrollment->enrolled_at?->toIso8601String(),
                 'is_active' => true,
                 'pending_activation' => false,
-                'order_number' => $enrollment->enrollment_number,
+                'order_number' => $enrollment->order?->order_number ?? $enrollment->enrollment_number,
                 'spotplayer' => null,
             ];
         }

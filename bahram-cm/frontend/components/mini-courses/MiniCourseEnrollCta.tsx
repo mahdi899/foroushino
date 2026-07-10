@@ -30,7 +30,7 @@ export function MiniCourseEnrollCta({
         </div>
         {enrollmentNumber ? (
           <p className="text-sm text-bone-dim">
-            شماره ثبت‌نام:{' '}
+            شماره سفارش:{' '}
             <span className="num-latin font-medium text-bone" dir="ltr">
               {enrollmentNumber}
             </span>

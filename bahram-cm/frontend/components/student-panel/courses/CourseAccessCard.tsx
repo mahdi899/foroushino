@@ -101,7 +101,6 @@ export function CourseAccessCard({
           </StatusBadge>
           {course.order_number ? (
             <span className="panel-text-caption font-medium text-text-muted num-latin" dir="ltr">
-              {isMiniCourse ? 'ثبت‌نام: ' : ''}
               {course.order_number}
             </span>
           ) : null}
@@ -109,7 +108,7 @@ export function CourseAccessCard({
 
         <div className="panel-text-meta flex items-center gap-2 text-text-muted">
           <Calendar className="h-3.5 w-3.5 shrink-0 text-primary" />
-          <span>{isMiniCourse ? 'تاریخ ثبت‌نام' : 'تاریخ خرید'}: {formatDate(course.activated_at)}</span>
+          <span>{isMiniCourse ? 'تاریخ ثبت سفارش' : 'تاریخ خرید'}: {formatDate(course.activated_at)}</span>
         </div>
 
         {!isMiniCourse && licenseKey && showLicenseKey ? (

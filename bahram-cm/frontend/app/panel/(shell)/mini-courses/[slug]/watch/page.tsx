@@ -52,7 +52,7 @@ export default async function MiniCourseWatchPage({ params }: PageProps) {
 
       {data.enrollment_number ? (
         <p className="panel-text-meta text-text-muted">
-          شماره ثبت‌نام:{' '}
+          شماره سفارش:{' '}
           <span className="num-latin font-medium text-text" dir="ltr">
             {data.enrollment_number}
           </span>

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\MiniCourse;
 use App\Models\MiniCourseEnrollment;
+use App\Models\Order;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -31,14 +32,25 @@ class StudentMiniCourseEnrollmentTest extends TestCase
             ->assertJsonPath('data.slug', $course->slug)
             ->assertJsonPath('data.already_enrolled', false);
 
+        $orderNumber = $response->json('data.order_number');
+        $this->assertIsString($orderNumber);
+        $this->assertStringStartsWith('BC-', $orderNumber);
+
         $this->assertDatabaseHas('mini_course_enrollments', [
             'user_id' => $user->id,
             'mini_course_id' => $course->id,
         ]);
 
-        $enrollmentNumber = $response->json('data.enrollment_number');
-        $this->assertIsString($enrollmentNumber);
-        $this->assertStringStartsWith('MC-', $enrollmentNumber);
+        $this->assertDatabaseHas('orders', [
+            'user_id' => $user->id,
+            'order_number' => $orderNumber,
+            'final_amount' => 0,
+            'status' => 'fulfilled',
+            'payment_status' => 'paid',
+        ]);
+
+        $course->refresh();
+        $this->assertNotNull($course->product_id);
     }
 
     public function test_enroll_is_idempotent(): void
@@ -62,9 +74,10 @@ class StudentMiniCourseEnrollmentTest extends TestCase
 
         $response->assertOk()->assertJsonPath('data.already_enrolled', true);
         $this->assertSame(1, MiniCourseEnrollment::query()->count());
+        $this->assertSame(1, Order::query()->count());
     }
 
-    public function test_enrolled_mini_course_appears_in_student_courses_list(): void
+    public function test_enrolled_mini_course_appears_in_student_courses_and_orders(): void
     {
         $user = User::factory()->create(['mobile' => '09127778899']);
 
@@ -76,20 +89,41 @@ class StudentMiniCourseEnrollmentTest extends TestCase
             'sort_order' => 3,
         ]);
 
+        app(\App\Services\MiniCourseProductService::class)->syncProduct($course);
+        $course->refresh();
+
+        $order = Order::create([
+            'user_id' => $user->id,
+            'order_number' => 'BC-260710-TEST1',
+            'product_id' => $course->product_id,
+            'customer_name' => 'کاربر',
+            'customer_phone' => '09127778899',
+            'amount' => 0,
+            'discount_amount' => 0,
+            'final_amount' => 0,
+            'status' => 'fulfilled',
+            'payment_status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
         MiniCourseEnrollment::create([
             'mini_course_id' => $course->id,
             'user_id' => $user->id,
-            'enrollment_number' => 'MC-260710-TEST1',
+            'order_id' => $order->id,
+            'enrollment_number' => $order->order_number,
             'enrolled_at' => now(),
         ]);
 
-        $response = $this->actingAs($user, 'sanctum')->getJson('/api/v1/student/courses');
+        $coursesResponse = $this->actingAs($user, 'sanctum')->getJson('/api/v1/student/courses');
+        $coursesResponse->assertOk()->assertJsonCount(1, 'data');
+        $coursesResponse->assertJsonPath('data.0.course_type', 'mini');
+        $coursesResponse->assertJsonPath('data.0.product.title', 'مینی دوره تست');
+        $coursesResponse->assertJsonPath('data.0.order_number', 'BC-260710-TEST1');
 
-        $response->assertOk()->assertJsonCount(1, 'data');
-        $response->assertJsonPath('data.0.course_type', 'mini');
-        $response->assertJsonPath('data.0.product.title', 'مینی دوره تست');
-        $response->assertJsonPath('data.0.order_number', 'MC-260710-TEST1');
-        $response->assertJsonPath('data.0.is_active', true);
+        $ordersResponse = $this->actingAs($user, 'sanctum')->getJson('/api/v1/student/orders');
+        $ordersResponse->assertOk();
+        $ordersResponse->assertJsonPath('data.0.order_number', 'BC-260710-TEST1');
+        $ordersResponse->assertJsonPath('data.0.final_amount', 0);
     }
 
     public function test_player_requires_enrollment(): void
@@ -108,12 +142,7 @@ class StudentMiniCourseEnrollmentTest extends TestCase
             ->getJson('/api/v1/student/mini-courses/'.$course->slug.'/player')
             ->assertNotFound();
 
-        MiniCourseEnrollment::create([
-            'mini_course_id' => $course->id,
-            'user_id' => $user->id,
-            'enrollment_number' => 'MC-260710-LOCK1',
-            'enrolled_at' => now(),
-        ]);
+        app(\App\Services\MiniCourseEnrollmentService::class)->enroll($user, $course);
 
         $this->actingAs($user, 'sanctum')
             ->getJson('/api/v1/student/mini-courses/'.$course->slug.'/player')

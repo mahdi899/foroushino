@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\MiniCourse;
 use App\Services\ContentPublishService;
+use App\Services\MiniCourseProductService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -12,7 +13,10 @@ use Illuminate\Validation\Rule;
 
 class MiniCourseController extends Controller
 {
-    public function __construct(private readonly ContentPublishService $publish) {}
+    public function __construct(
+        private readonly ContentPublishService $publish,
+        private readonly MiniCourseProductService $products,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -44,6 +48,8 @@ class MiniCourseController extends Controller
     {
         $data = $this->validateCourse($request);
         $item = MiniCourse::create($data);
+        $this->products->syncProduct($item);
+        $item = $item->fresh();
         $this->publish->revalidateMiniCourses($item->slug);
 
         return response()->json(['data' => $this->payload($item)], 201);
@@ -54,6 +60,10 @@ class MiniCourseController extends Controller
         $previousSlug = $miniCourse->slug;
         $miniCourse->update($this->validateCourse($request, true, $miniCourse->id));
         $fresh = $miniCourse->fresh();
+        if ($fresh) {
+            $this->products->syncProduct($fresh);
+            $fresh = $fresh->fresh();
+        }
         $this->publish->revalidateMiniCourses(
             $fresh?->slug,
             $previousSlug !== $fresh?->slug ? $previousSlug : null,
