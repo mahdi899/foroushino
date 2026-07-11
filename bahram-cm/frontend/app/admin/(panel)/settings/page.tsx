@@ -80,7 +80,7 @@ export default function SettingsPage() {
   const [statusMessage, setStatusMessage] = useState('');
   const [integrationsForm, setIntegrationsForm] = useState<CacheIntegrationsForm>(DEFAULT_CACHE_INTEGRATIONS_FORM);
   const [integrationsView, setIntegrationsView] = useState<CacheIntegrationsView | null>(null);
-  const [integrationsTesting, setIntegrationsTesting] = useState<'webhook' | 'cloudflare' | null>(null);
+  const [integrationsTesting, setIntegrationsTesting] = useState<'webhook' | 'arvan' | 'cloudflare' | null>(null);
   const [imageOptimizerForm, setImageOptimizerForm] = useState<ImageOptimizerForm>(DEFAULT_IMAGE_OPTIMIZER_FORM);
   const [imageOptimizerView, setImageOptimizerView] = useState<ImageOptimizerView | null>(null);
   const [imageOptimizerTesting, setImageOptimizerTesting] = useState<'tinify' | 'resmush' | null>(null);
@@ -265,7 +265,7 @@ export default function SettingsPage() {
     }, 2800);
   }
 
-  async function handleTestIntegration(target: 'webhook' | 'cloudflare') {
+  async function handleTestIntegration(target: 'webhook' | 'arvan' | 'cloudflare') {
     setIntegrationsTesting(target);
     setStatusMessage('');
     const res = await testCacheIntegrationAction(target);
@@ -313,7 +313,7 @@ export default function SettingsPage() {
       setStatusMessage(imageOptimizerRes.error ?? 'ذخیره تنظیمات بهینه‌سازی تصویر ناموفق بود.');
     } else if (!integrationsRes.ok) {
       setStatus('error');
-      setStatusMessage(integrationsRes.error ?? 'ذخیره تنظیمات Webhook/Cloudflare ناموفق بود.');
+      setStatusMessage(integrationsRes.error ?? 'ذخیره تنظیمات Webhook/CDN ناموفق بود.');
     } else if (!trackingRes.ok) {
       setStatus('error');
       setStatusMessage(trackingRes.error ?? 'ذخیره تنظیمات گوگل ناموفق بود.');
@@ -503,7 +503,7 @@ export default function SettingsPage() {
           id="infrastructure"
           icon={SETTINGS_CATEGORY_NAV[6].icon}
           title="کش و زیرساخت"
-          desc="Webhook بازسازی کش و یکپارچگی Cloudflare."
+          desc="Webhook بازسازی کش و یکپارچگی Arvan CDN."
         >
           <CacheIntegrationsSettingsSection
             form={integrationsForm}

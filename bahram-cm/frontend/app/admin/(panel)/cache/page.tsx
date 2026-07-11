@@ -47,6 +47,10 @@ type Tab = 'dashboard' | 'profiles' | 'modules' | 'ttl' | 'purge' | 'advanced';
 const FALLBACK_STATUS: CacheStatus = {
   laravel_cache_driver: 'نامشخص',
   next_webhook_configured: false,
+  cdn_provider: 'none',
+  cdn_provider_label: 'غیرفعال',
+  cdn_configured: false,
+  arvan_configured: false,
   cloudflare_configured: false,
   developer_mode: false,
   cloudflare_dev_mode: null,
@@ -55,7 +59,7 @@ const FALLBACK_STATUS: CacheStatus = {
     object_cache: true,
     browser_cache: true,
     cdn_html_cache: false,
-    cloudflare_auto_purge: false,
+    cdn_auto_purge: false,
   },
   isr_tags: [],
   isr_ttls: {},
@@ -318,10 +322,10 @@ export default function CacheAdminPage() {
             />
             <StatusCard
               icon={Cloud}
-              label="Cloudflare"
-              value={status.cloudflare_configured ? 'متصل' : 'تنظیم نشده'}
-              hint={status.modules?.cloudflare_auto_purge ? 'Purge خودکار' : 'دستی'}
-              ok={status.cloudflare_configured}
+              label={`CDN: ${status.cdn_provider_label}`}
+              value={status.cdn_configured ? 'متصل' : status.cdn_provider === 'none' ? 'غیرفعال' : 'تنظیم نشده'}
+              hint={status.modules?.cdn_auto_purge ? 'Purge خودکار' : 'Purge دستی'}
+              ok={status.cdn_provider === 'none' ? false : status.cdn_configured}
             />
           </div>
             );
@@ -522,7 +526,7 @@ export default function CacheAdminPage() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <PurgeButton
               label="پاک‌سازی کامل"
-              desc="ISR + Laravel + Cloudflare (در صورت فعال بودن)"
+              desc={`ISR + Laravel + ${status.cdn_provider_label} (در صورت فعال بودن)`}
               loading={purging === 'all'}
               onClick={() => void handlePurge('all', { warm: settings.warm_cache_after_purge })}
               variant="danger"
@@ -540,10 +544,11 @@ export default function CacheAdminPage() {
               onClick={() => void handlePurge('laravel')}
             />
             <PurgeButton
-              label="فقط Cloudflare"
-              desc="Purge Everything"
-              loading={purging === 'cloudflare'}
-              onClick={() => void handlePurge('cloudflare')}
+              label={`Purge CDN (${status.cdn_provider_label})`}
+              desc="پاک‌سازی کش لبه — فقط ارائه‌دهنده فعال"
+              loading={purging === 'cdn'}
+              onClick={() => void handlePurge('cdn')}
+              disabled={status.cdn_provider === 'none'}
             />
             <PurgeButton
               label="ISR مستقیم (Next.js)"
@@ -623,11 +628,11 @@ export default function CacheAdminPage() {
             />
             <InfoCard
               icon={Cloud}
-              title="Cloudflare CDN"
-              value={status.cloudflare_configured ? 'فعال' : 'غیرفعال'}
-              hint="مدیریت از تنظیمات سایت"
+              title={`CDN فعال: ${status.cdn_provider_label}`}
+              value={status.cdn_configured ? 'متصل' : status.cdn_provider === 'none' ? 'خاموش' : 'ناقص'}
+              hint="انتخاب Arvan یا Cloudflare از تنظیمات سایت"
               href="/admin/settings#cache-integrations"
-              ok={status.cloudflare_configured}
+              ok={status.cdn_configured}
             />
             <InfoCard
               icon={Globe}
@@ -704,6 +709,7 @@ function PurgeLogRow({ entry }: { entry: CachePurgeLogEntry }) {
   if (tags.length > 0) detailParts.push(`tags: ${tags.join(', ')}`);
   if (paths.length > 0) detailParts.push(`paths: ${paths.slice(0, 3).join(', ')}${paths.length > 3 ? '…' : ''}`);
   if (entry.laravel) detailParts.push('Laravel');
+  if (entry.arvan) detailParts.push('Arvan');
   if (entry.cloudflare) detailParts.push('CF');
 
   return (
@@ -816,18 +822,20 @@ function PurgeButton({
   loading,
   onClick,
   variant,
+  disabled,
 }: {
   label: string;
   desc: string;
   loading: boolean;
   onClick: () => void;
   variant?: 'danger';
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={loading}
+      disabled={loading || disabled}
       className={cn(
         'rounded-xl border p-4 text-right transition hover:border-accent/50 disabled:opacity-60',
         variant === 'danger' ? 'border-danger/30 bg-danger/5' : 'border-border bg-surface',

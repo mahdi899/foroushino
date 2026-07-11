@@ -10,7 +10,7 @@ use App\Support\RuntimeCache;
 
 /**
  * LiteSpeed-style cache orchestration: ISR purge (Next.js), Laravel object cache,
- * optional Cloudflare CDN purge, settings, and purge audit log.
+ * optional Arvan / Cloudflare CDN purge, settings, and purge audit log.
  */
 class CacheService
 {
@@ -56,7 +56,7 @@ class CacheService
         'browser_cache' => true,
         'browser_cache_ttl' => 3600,
         'cdn_html_cache' => false,
-        'cloudflare_auto_purge' => false,
+        'cdn_auto_purge' => false,
         'lazy_load_images' => true,
         'lazy_load_chatbot' => true,
         'defer_analytics' => true,
@@ -113,6 +113,11 @@ class CacheService
         $stored = $this->settings->group(self::GROUP);
         $merged = array_merge(self::DEFAULT_SETTINGS, $stored);
         unset($merged['dev_mode_snapshot']);
+        if (! array_key_exists('cdn_auto_purge', $stored)) {
+            $legacy = filter_var($stored['arvan_auto_purge'] ?? false, FILTER_VALIDATE_BOOL)
+                || filter_var($stored['cloudflare_auto_purge'] ?? false, FILTER_VALIDATE_BOOL);
+            $merged['cdn_auto_purge'] = $legacy;
+        }
         $merged['developer_mode'] = filter_var($merged['developer_mode'] ?? false, FILTER_VALIDATE_BOOL);
         $merged['purge_log'] = $this->purgeLogEntries($stored['purge_log'] ?? null, true);
 
@@ -206,15 +211,21 @@ class CacheService
         return [
             'laravel_cache_driver' => $driver,
             'next_webhook_configured' => $this->integrations->webhookConfigured(),
+            'cdn_provider' => $this->integrations->cdnProvider(),
+            'cdn_provider_label' => $this->integrations->cdnProviderLabel(),
+            'cdn_configured' => $this->integrations->cdnActiveConfigured(),
+            'arvan_configured' => $this->integrations->arvanConfigured(),
             'cloudflare_configured' => $this->integrations->cloudflareConfigured(),
             'developer_mode' => (bool) ($settings['developer_mode'] ?? false),
-            'cloudflare_dev_mode' => $this->fetchCloudflareDevelopmentMode(),
+            'cloudflare_dev_mode' => $this->integrations->cdnProvider() === 'cloudflare'
+                ? $this->fetchCloudflareDevelopmentMode()
+                : null,
             'modules' => [
                 'page_cache' => (bool) ($settings['page_cache'] ?? true),
                 'object_cache' => (bool) ($settings['object_cache'] ?? true),
                 'browser_cache' => (bool) ($settings['browser_cache'] ?? true),
                 'cdn_html_cache' => (bool) ($settings['cdn_html_cache'] ?? false),
-                'cloudflare_auto_purge' => (bool) ($settings['cloudflare_auto_purge'] ?? false),
+                'cdn_auto_purge' => (bool) ($settings['cdn_auto_purge'] ?? false),
             ],
             'isr_tags' => self::ISR_TAGS,
             'isr_ttls' => [
@@ -241,6 +252,7 @@ class CacheService
             'scope' => $scope,
             'isr' => ['tags' => [], 'paths' => []],
             'laravel' => false,
+            'arvan' => false,
             'cloudflare' => false,
             'warmed' => [],
         ];
@@ -255,8 +267,10 @@ class CacheService
                     Cache::flush();
                     $result['laravel'] = true;
                 }
-                if ($settings['cloudflare_auto_purge'] ?? false) {
-                    $result['cloudflare'] = $this->purgeCloudflare(['purge_everything' => true]);
+                if ($this->shouldAutoPurgeCdn($settings)) {
+                    $cdn = $this->purgeActiveCdn(['purge_everything' => true]);
+                    $result['arvan'] = $cdn['arvan'];
+                    $result['cloudflare'] = $cdn['cloudflare'];
                 }
                 break;
 
@@ -272,6 +286,22 @@ class CacheService
                     Cache::flush();
                     $result['laravel'] = true;
                 }
+                break;
+
+            case 'cdn':
+                $paths = $options['paths'] ?? [];
+                $cdn = $paths !== []
+                    ? $this->purgeActiveCdn(['paths' => $paths])
+                    : $this->purgeActiveCdn(['purge_everything' => true]);
+                $result['arvan'] = $cdn['arvan'];
+                $result['cloudflare'] = $cdn['cloudflare'];
+                break;
+
+            case 'arvan':
+                $paths = $options['paths'] ?? [];
+                $result['arvan'] = $paths !== []
+                    ? $this->purgeArvan(['paths' => $paths])
+                    : $this->purgeArvan(['purge_everything' => true]);
                 break;
 
             case 'cloudflare':
@@ -294,8 +324,12 @@ class CacheService
 
         if ($result['isr']['tags'] !== [] || $result['isr']['paths'] !== []) {
             $this->revalidation->trigger($result['isr']['tags'], $result['isr']['paths']);
-            if (($settings['cloudflare_auto_purge'] ?? false) && $result['isr']['paths'] !== []) {
-                $result['cloudflare'] = $this->purgeCloudflare(['paths' => $result['isr']['paths']]);
+            if ($result['isr']['paths'] !== []) {
+                if ($this->shouldAutoPurgeCdn($settings)) {
+                    $cdn = $this->purgeActiveCdn(['paths' => $result['isr']['paths']]);
+                    $result['arvan'] = $cdn['arvan'];
+                    $result['cloudflare'] = $cdn['cloudflare'];
+                }
             }
         }
 
@@ -313,13 +347,107 @@ class CacheService
     /**
      * Record ISR purge triggered automatically after content/media save (no Laravel flush).
      */
-    public function logAutoPurge(string $label, array $tags, array $paths = [], bool $cloudflare = false): void
+    /**
+     * @param  array{arvan?: bool, cloudflare?: bool}  $cdn
+     */
+    public function logAutoPurge(string $label, array $tags, array $paths = [], array $cdn = []): void
     {
         $this->appendPurgeLog('auto', [
             'isr' => ['tags' => array_values(array_unique($tags)), 'paths' => array_values(array_unique($paths))],
             'laravel' => false,
-            'cloudflare' => $cloudflare,
+            'arvan' => (bool) ($cdn['arvan'] ?? false),
+            'cloudflare' => (bool) ($cdn['cloudflare'] ?? false),
         ], self::AUTO_PURGE_ACTOR, true, $label);
+    }
+
+    /**
+     * Purge CDN edge after content save when auto-purge modules are enabled.
+     *
+     * @return array{arvan: bool, cloudflare: bool}
+     */
+    public function purgeCdnOnAutoSave(array $paths, bool $purgeMedia = false): array
+    {
+        $settings = $this->getSettings();
+        if (! $this->shouldAutoPurgeCdn($settings)) {
+            return ['arvan' => false, 'cloudflare' => false];
+        }
+
+        if ($purgeMedia) {
+            return $this->purgeActiveCdnMedia();
+        }
+
+        if ($paths === []) {
+            return ['arvan' => false, 'cloudflare' => false];
+        }
+
+        return $this->purgeActiveCdn(['paths' => $paths]);
+    }
+
+    /**
+     * @param  array{paths?: list<string>, purge_everything?: bool}  $options
+     * @return array{arvan: bool, cloudflare: bool}
+     */
+    public function purgeActiveCdn(array $options = []): array
+    {
+        $provider = $this->integrations->activeCdnProvider();
+        $empty = ['arvan' => false, 'cloudflare' => false];
+
+        if ($provider === null) {
+            return $empty;
+        }
+
+        if ($provider === 'arvan') {
+            return ['arvan' => $this->purgeArvan($options), 'cloudflare' => false];
+        }
+
+        return ['arvan' => false, 'cloudflare' => $this->purgeCloudflare($options)];
+    }
+
+    /** @return array{arvan: bool, cloudflare: bool} */
+    public function purgeActiveCdnMedia(): array
+    {
+        $provider = $this->integrations->activeCdnProvider();
+        $empty = ['arvan' => false, 'cloudflare' => false];
+
+        if ($provider === 'arvan') {
+            return ['arvan' => $this->purgeArvanMedia(), 'cloudflare' => false];
+        }
+        if ($provider === 'cloudflare') {
+            return ['arvan' => false, 'cloudflare' => $this->purgeCloudflareMedia()];
+        }
+
+        return $empty;
+    }
+
+    private function shouldAutoPurgeCdn(array $settings): bool
+    {
+        return (bool) ($settings['cdn_auto_purge'] ?? false)
+            && $this->integrations->activeCdnProvider() !== null;
+    }
+
+    /** Purge Arvan CDN cache for public site paths (used after content save). */
+    public function purgeArvanForPaths(array $paths): bool
+    {
+        if ($paths === [] || ! $this->arvanConfigured()) {
+            return false;
+        }
+
+        return $this->purgeArvan(['paths' => $paths]);
+    }
+
+    /** Purge media on Arvan (cdn subdomain or media URLs). */
+    public function purgeArvanMedia(): bool
+    {
+        if (! $this->arvanConfigured()) {
+            return false;
+        }
+
+        $mediaDomain = $this->integrations->arvanMediaDomain();
+        if ($mediaDomain && $mediaDomain !== $this->integrations->arvanDomain()) {
+            return $this->arvanPurgeRequest($mediaDomain, ['purge_everything' => true]);
+        }
+
+        return $this->purgeArvan(['prefixes' => CdnUrls::mediaPurgePrefixes()]);
     }
 
     /** Purge Cloudflare cache for public site paths (used after content save). */
@@ -536,6 +664,11 @@ class CacheService
         return $this->integrations->cloudflareConfigured();
     }
 
+    private function arvanConfigured(): bool
+    {
+        return $this->integrations->arvanConfigured();
+    }
+
     public function integrationsAdminView(): array
     {
         return $this->integrations->adminView();
@@ -559,9 +692,105 @@ class CacheService
         return $this->integrations->testCloudflare();
     }
 
+    /** @return array{ok: bool, message: string, domain?: string} */
+    public function testArvanIntegration(): array
+    {
+        return $this->integrations->testArvan();
+    }
+
     public function verifyRevalidateSecret(string $secret): bool
     {
         return $this->integrations->verifyRevalidateSecret($secret);
+    }
+
+    /**
+     * @param  array{paths?: list<string>, prefixes?: list<string>, purge_everything?: bool}  $options
+     */
+    private function purgeArvan(array $options = []): bool
+    {
+        $domain = $this->integrations->arvanDomain();
+        $apiKey = $this->integrations->arvanApiKey();
+        if (! $domain || ! $apiKey) {
+            return false;
+        }
+
+        if ($options['purge_everything'] ?? false) {
+            return $this->arvanPurgeRequest($domain, ['purge_everything' => true]);
+        }
+
+        $prefixes = array_values(array_filter($options['prefixes'] ?? []));
+        if ($prefixes !== []) {
+            $urls = [];
+            foreach ($prefixes as $prefix) {
+                $urls[] = rtrim($prefix, '/').'/';
+            }
+
+            return $this->arvanPurgeRequest($domain, ['urls' => array_values(array_unique($urls))]);
+        }
+
+        $paths = array_values(array_filter($options['paths'] ?? []));
+        if ($paths === []) {
+            return false;
+        }
+
+        $urls = CdnUrls::purgeUrlsForPaths($paths);
+        if ($urls === []) {
+            return false;
+        }
+
+        $ok = true;
+        foreach (array_chunk($urls, 50) as $chunk) {
+            if (! $this->arvanPurgeRequest($domain, ['urls' => $chunk])) {
+                $ok = false;
+            }
+        }
+
+        return $ok;
+    }
+
+    /**
+     * @param  array{purge_everything?: bool, urls?: list<string>}  $options
+     */
+    private function arvanPurgeRequest(string $domain, array $options): bool
+    {
+        $apiKey = $this->integrations->arvanApiKey();
+        if (! $apiKey) {
+            return false;
+        }
+
+        $body = ($options['purge_everything'] ?? false)
+            ? ['purge' => 'all']
+            : ['purge' => 'individual', 'purge_urls' => array_values($options['urls'] ?? [])];
+
+        if (($body['purge'] ?? '') === 'individual' && ($body['purge_urls'] ?? []) === []) {
+            return false;
+        }
+
+        try {
+            $res = Http::withHeaders([
+                'Authorization' => 'Apikey '.$apiKey,
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+            ])
+                ->timeout(15)
+                ->withOptions(['allow_redirects' => false])
+                ->post(
+                    'https://napi.arvancloud.ir/cdn/4.0/domains/'.rawurlencode($domain).'/caching/purge',
+                    $body,
+                );
+
+            if (! $res->successful()) {
+                Log::info('[arvan-purge] failed: '.$res->body());
+
+                return false;
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::info('[arvan-purge] failed: '.$e->getMessage());
+
+            return false;
+        }
     }
 
     /**
@@ -693,7 +922,9 @@ class CacheService
             'tags' => $result['isr']['tags'] ?? [],
             'paths' => $result['isr']['paths'] ?? [],
             'laravel' => $result['laravel'] ?? false,
+            'arvan' => $result['arvan'] ?? false,
             'cloudflare' => $result['cloudflare'] ?? false,
+            'cdn_provider' => $this->integrations->activeCdnProvider(),
         ]);
         $log = array_slice($log, 0, self::PURGE_LOG_LIMIT);
 

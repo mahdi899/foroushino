@@ -130,16 +130,9 @@ class ContentPublishService
         $this->revalidation->trigger($tags, $paths);
 
         $settings = $this->cacheService->getSettings();
-        $cloudflare = false;
-        if ($settings['cloudflare_auto_purge'] ?? false) {
-            if ($purgeMediaCdn) {
-                $cloudflare = $this->cacheService->purgeCloudflareMedia();
-            } elseif ($paths !== []) {
-                $cloudflare = $this->cacheService->purgeCloudflareForPaths($paths);
-            }
-        }
+        $cdn = $this->cacheService->purgeCdnOnAutoSave($paths, $purgeMediaCdn);
 
-        $this->cacheService->logAutoPurge($label, $tags, $paths, $cloudflare);
+        $this->cacheService->logAutoPurge($label, $tags, $paths, $cdn);
 
         if ($afterForget) {
             $afterForget();

@@ -18,6 +18,9 @@ class CacheIntegrationsSeeder extends Seeder
 
         $zoneId = trim((string) config('bahram.cloudflare.zone_id', ''));
         $cfToken = trim((string) config('bahram.cloudflare.api_token', ''));
+        $arvanKey = trim((string) config('bahram.arvan.api_key', ''));
+        $arvanDomain = trim((string) config('bahram.arvan.domain', ''));
+        $arvanMedia = trim((string) config('bahram.arvan.media_domain', ''));
 
         $value = [
             'revalidate_webhook_url' => $webhookUrl,
@@ -29,6 +32,19 @@ class CacheIntegrationsSeeder extends Seeder
         }
         if ($cfToken !== '') {
             $value['cloudflare_api_token'] = $cfToken;
+        }
+        if ($arvanKey !== '') {
+            $value['arvan_api_key'] = $arvanKey;
+        }
+        if ($arvanDomain !== '') {
+            $value['arvan_domain'] = $arvanDomain;
+        }
+        if ($arvanMedia !== '') {
+            $value['arvan_media_domain'] = $arvanMedia;
+        }
+        $cdnProvider = strtolower(trim((string) config('bahram.cdn_provider', '')));
+        if (in_array($cdnProvider, ['arvan', 'cloudflare', 'none'], true)) {
+            $value['cdn_provider'] = $cdnProvider;
         }
 
         Setting::query()->updateOrCreate(

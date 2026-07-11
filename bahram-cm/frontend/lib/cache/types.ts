@@ -25,7 +25,7 @@ export interface CacheSettings {
   browser_cache: boolean;
   browser_cache_ttl: number;
   cdn_html_cache: boolean;
-  cloudflare_auto_purge: boolean;
+  cdn_auto_purge: boolean;
   lazy_load_images: boolean;
   lazy_load_chatbot: boolean;
   defer_analytics: boolean;
@@ -54,12 +54,18 @@ export interface CachePurgeLogEntry {
   tags: string[];
   paths: string[];
   laravel: boolean;
+  arvan: boolean;
   cloudflare: boolean;
+  cdn_provider?: 'arvan' | 'cloudflare' | null;
 }
 
 export interface CacheStatus {
   laravel_cache_driver: string;
   next_webhook_configured: boolean;
+  cdn_provider: 'arvan' | 'cloudflare' | 'none';
+  cdn_provider_label: string;
+  cdn_configured: boolean;
+  arvan_configured: boolean;
   cloudflare_configured: boolean;
   developer_mode: boolean;
   cloudflare_dev_mode: boolean | null;
@@ -125,14 +131,14 @@ export const CACHE_MODULES: CacheModule[] = [
     settingKey: 'cdn_html_cache',
     group: 'cache',
     label: 'کش CDN (HTML)',
-    description: 'کش لبه Cloudflare برای HTML — نیازمند DNS',
+    description: 'کش لبه CDN برای HTML — Arvan یا Cloudflare',
   },
   {
-    id: 'cloudflare_auto_purge',
-    settingKey: 'cloudflare_auto_purge',
+    id: 'cdn_auto_purge',
+    settingKey: 'cdn_auto_purge',
     group: 'cache',
-    label: 'پاک‌سازی خودکار Cloudflare',
-    description: 'هنگام Purge، کش CDN هم خالی شود',
+    label: 'پاک‌سازی خودکار CDN',
+    description: 'هنگام Purge یا ذخیره محتوا، کش لبه CDN فعال هم خالی شود',
   },
   {
     id: 'lazy_load_images',
@@ -220,7 +226,7 @@ export const DEFAULT_CACHE_SETTINGS: CacheSettings = {
   browser_cache: true,
   browser_cache_ttl: 3600,
   cdn_html_cache: false,
-  cloudflare_auto_purge: false,
+  cdn_auto_purge: false,
   lazy_load_images: true,
   lazy_load_chatbot: true,
   defer_analytics: true,

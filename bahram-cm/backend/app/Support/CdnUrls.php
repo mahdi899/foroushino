@@ -2,7 +2,7 @@
 
 namespace App\Support;
 
-/** Build absolute URLs for Cloudflare purge and warm-cache requests. */
+/** Build absolute URLs for CDN edge purge (Arvan / Cloudflare) and warm-cache requests. */
 final class CdnUrls
 {
     public static function siteOrigin(): string

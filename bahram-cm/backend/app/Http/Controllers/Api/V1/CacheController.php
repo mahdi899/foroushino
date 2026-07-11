@@ -36,6 +36,8 @@ class CacheController extends Controller
             'browser_cache' => 'sometimes|boolean',
             'browser_cache_ttl' => 'sometimes|integer|min:60|max:604800',
             'cdn_html_cache' => 'sometimes|boolean',
+            'cdn_auto_purge' => 'sometimes|boolean',
+            'arvan_auto_purge' => 'sometimes|boolean',
             'cloudflare_auto_purge' => 'sometimes|boolean',
             'lazy_load_images' => 'sometimes|boolean',
             'lazy_load_chatbot' => 'sometimes|boolean',
@@ -118,6 +120,10 @@ class CacheController extends Controller
             'revalidate_secret_input' => 'sometimes|nullable|string|max:256',
             'cloudflare_zone_id' => 'sometimes|nullable|string|max:64',
             'cloudflare_api_token_input' => 'sometimes|nullable|string|max:256',
+            'arvan_domain' => 'sometimes|nullable|string|max:128',
+            'arvan_media_domain' => 'sometimes|nullable|string|max:128',
+            'arvan_api_key_input' => 'sometimes|nullable|string|max:256',
+            'cdn_provider' => 'sometimes|nullable|string|in:arvan,cloudflare,none',
         ]);
 
         return response()->json(['data' => $this->cache->updateIntegrations($data)]);
@@ -126,12 +132,14 @@ class CacheController extends Controller
     public function testIntegrations(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'target' => 'required|string|in:webhook,cloudflare',
+            'target' => 'required|string|in:webhook,cloudflare,arvan',
         ]);
 
-        $result = $validated['target'] === 'webhook'
-            ? $this->cache->testWebhookIntegration()
-            : $this->cache->testCloudflareIntegration();
+        $result = match ($validated['target']) {
+            'webhook' => $this->cache->testWebhookIntegration(),
+            'arvan' => $this->cache->testArvanIntegration(),
+            default => $this->cache->testCloudflareIntegration(),
+        };
 
         return response()->json(['data' => $result]);
     }

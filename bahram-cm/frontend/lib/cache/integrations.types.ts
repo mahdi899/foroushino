@@ -1,10 +1,16 @@
-/** Cache integration settings (ISR webhook + Cloudflare CDN). */
+/** Cache integration settings (ISR webhook + Arvan / Cloudflare CDN). */
+
+export type CdnProvider = 'arvan' | 'cloudflare' | 'none';
 
 export type CacheIntegrationsEnvFallback = {
   revalidate_webhook_url: boolean;
   revalidate_secret: boolean;
+  arvan_domain: boolean;
+  arvan_media_domain: boolean;
+  arvan_api_key: boolean;
   cloudflare_zone_id: boolean;
   cloudflare_api_token: boolean;
+  cdn_provider: boolean;
 };
 
 export type CacheIntegrationsView = {
@@ -12,6 +18,15 @@ export type CacheIntegrationsView = {
   default_webhook_url: string;
   has_revalidate_secret: boolean;
   revalidate_secret_preview: string | null;
+  cdn_provider: CdnProvider;
+  cdn_provider_label: string;
+  cdn_active_configured: boolean;
+  active_cdn_provider: CdnProvider | null;
+  arvan_domain: string;
+  arvan_media_domain: string;
+  has_arvan_api_key: boolean;
+  arvan_api_key_preview: string | null;
+  arvan_configured: boolean;
   cloudflare_zone_id: string;
   has_cloudflare_api_token: boolean;
   cloudflare_api_token_preview: string | null;
@@ -23,6 +38,10 @@ export type CacheIntegrationsView = {
 export type CacheIntegrationsForm = {
   revalidateWebhookUrl: string;
   revalidateSecretInput: string;
+  cdnProvider: CdnProvider;
+  arvanDomain: string;
+  arvanMediaDomain: string;
+  arvanApiKeyInput: string;
   cloudflareZoneId: string;
   cloudflareApiTokenInput: string;
 };
@@ -30,6 +49,10 @@ export type CacheIntegrationsForm = {
 export const DEFAULT_CACHE_INTEGRATIONS_FORM: CacheIntegrationsForm = {
   revalidateWebhookUrl: '',
   revalidateSecretInput: '',
+  cdnProvider: 'arvan',
+  arvanDomain: 'fashio.ir',
+  arvanMediaDomain: 'cdn.fashio.ir',
+  arvanApiKeyInput: '',
   cloudflareZoneId: '',
   cloudflareApiTokenInput: '',
 };
@@ -38,7 +61,17 @@ export function integrationsViewToForm(view: CacheIntegrationsView): CacheIntegr
   return {
     revalidateWebhookUrl: view.revalidate_webhook_url,
     revalidateSecretInput: '',
+    cdnProvider: view.cdn_provider ?? 'none',
+    arvanDomain: view.arvan_domain,
+    arvanMediaDomain: view.arvan_media_domain,
+    arvanApiKeyInput: '',
     cloudflareZoneId: view.cloudflare_zone_id,
     cloudflareApiTokenInput: '',
   };
 }
+
+export const CDN_PROVIDER_OPTIONS: { id: CdnProvider; label: string; hint: string }[] = [
+  { id: 'arvan', label: 'ابر آروان', hint: 'پیشنهادی برای fashio.ir — CDN داخلی ایران' },
+  { id: 'cloudflare', label: 'Cloudflare', hint: 'CDN بین‌المللی — Zone ID + API Token' },
+  { id: 'none', label: 'غیرفعال', hint: 'فقط ISR و کش Laravel — بدون purge لبه' },
+];

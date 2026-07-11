@@ -21,6 +21,10 @@ export async function saveCacheIntegrationsAction(
       body: {
         revalidate_webhook_url: form.revalidateWebhookUrl.trim(),
         revalidate_secret_input: form.revalidateSecretInput.trim(),
+        arvan_domain: form.arvanDomain.trim(),
+        arvan_media_domain: form.arvanMediaDomain.trim(),
+        arvan_api_key_input: form.arvanApiKeyInput.trim(),
+        cdn_provider: form.cdnProvider,
         cloudflare_zone_id: form.cloudflareZoneId.trim(),
         cloudflare_api_token_input: form.cloudflareApiTokenInput.trim(),
       },
@@ -32,7 +36,7 @@ export async function saveCacheIntegrationsAction(
 }
 
 export async function testCacheIntegrationAction(
-  target: 'webhook' | 'cloudflare',
+  target: 'webhook' | 'arvan' | 'cloudflare',
 ): Promise<{ ok: boolean; message: string }> {
   try {
     const res = await adminFetch<{ data: { ok: boolean; message: string } }>(

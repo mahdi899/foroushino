@@ -34,6 +34,15 @@ return [
         'api_token' => env('CLOUDFLARE_API_TOKEN'),
     ],
 
+    'arvan' => [
+        'api_key' => env('ARVAN_API_KEY'),
+        'domain' => env('ARVAN_DOMAIN', 'fashio.ir'),
+        'media_domain' => env('ARVAN_MEDIA_DOMAIN', 'cdn.fashio.ir'),
+    ],
+
+    /** Active CDN edge provider: arvan | cloudflare | none */
+    'cdn_provider' => env('CDN_PROVIDER', 'arvan'),
+
     'otp' => [
         'dev_mode' => filter_var(env('OTP_DEV_MODE', false), FILTER_VALIDATE_BOOL),
         'dev_code' => env('OTP_DEV_CODE', '12345'),

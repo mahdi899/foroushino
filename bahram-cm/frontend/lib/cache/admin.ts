@@ -24,7 +24,12 @@ function normalizeSettings(raw: Record<string, unknown>): CacheSettings {
     browser_cache: parseBool(raw.browser_cache ?? DEFAULT_CACHE_SETTINGS.browser_cache),
     browser_cache_ttl: Number(raw.browser_cache_ttl ?? DEFAULT_CACHE_SETTINGS.browser_cache_ttl) || 3600,
     cdn_html_cache: parseBool(raw.cdn_html_cache ?? DEFAULT_CACHE_SETTINGS.cdn_html_cache),
-    cloudflare_auto_purge: parseBool(raw.cloudflare_auto_purge ?? DEFAULT_CACHE_SETTINGS.cloudflare_auto_purge),
+    cdn_auto_purge: parseBool(
+      raw.cdn_auto_purge
+        ?? raw.arvan_auto_purge
+        ?? raw.cloudflare_auto_purge
+        ?? DEFAULT_CACHE_SETTINGS.cdn_auto_purge,
+    ),
     lazy_load_images: parseBool(raw.lazy_load_images ?? DEFAULT_CACHE_SETTINGS.lazy_load_images),
     lazy_load_chatbot: parseBool(raw.lazy_load_chatbot ?? DEFAULT_CACHE_SETTINGS.lazy_load_chatbot),
     defer_analytics: parseBool(raw.defer_analytics ?? DEFAULT_CACHE_SETTINGS.defer_analytics),
@@ -50,6 +55,10 @@ function normalizeStatus(raw: Partial<CacheStatus> | null | undefined, settings:
   return {
     laravel_cache_driver: raw?.laravel_cache_driver ?? 'نامشخص',
     next_webhook_configured: raw?.next_webhook_configured ?? Boolean(process.env.REVALIDATE_SECRET),
+    cdn_provider: raw?.cdn_provider ?? 'none',
+    cdn_provider_label: raw?.cdn_provider_label ?? 'غیرفعال',
+    cdn_configured: raw?.cdn_configured ?? false,
+    arvan_configured: raw?.arvan_configured ?? false,
     cloudflare_configured: raw?.cloudflare_configured ?? false,
     developer_mode: parseBool(raw?.developer_mode ?? settings.developer_mode),
     cloudflare_dev_mode: raw?.cloudflare_dev_mode ?? null,
@@ -58,7 +67,12 @@ function normalizeStatus(raw: Partial<CacheStatus> | null | undefined, settings:
       object_cache: parseBool(modules.object_cache ?? settings.object_cache),
       browser_cache: parseBool(modules.browser_cache ?? settings.browser_cache),
       cdn_html_cache: parseBool(modules.cdn_html_cache ?? settings.cdn_html_cache),
-      cloudflare_auto_purge: parseBool(modules.cloudflare_auto_purge ?? settings.cloudflare_auto_purge),
+      cdn_auto_purge: parseBool(
+        modules.cdn_auto_purge
+          ?? modules.arvan_auto_purge
+          ?? modules.cloudflare_auto_purge
+          ?? settings.cdn_auto_purge,
+      ),
     },
     isr_tags: Array.isArray(raw?.isr_tags) ? raw.isr_tags : [...CACHE_ISR_TAGS],
     isr_ttls: raw?.isr_ttls ?? {},
