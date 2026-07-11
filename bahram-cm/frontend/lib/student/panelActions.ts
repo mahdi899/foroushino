@@ -18,7 +18,7 @@ function extractError(err: unknown, fallback: string): string {
 export async function updateProfileAction(_prev: SimpleFormState, formData: FormData): Promise<SimpleFormState> {
   const payload: Record<string, unknown> = {};
   for (const key of [
-    'name', 'first_name', 'last_name', 'email', 'city', 'age',
+    'name', 'email', 'age',
     'current_job', 'instagram', 'telegram', 'experience_level', 'income_goal',
   ]) {
     const value = formData.get(key);

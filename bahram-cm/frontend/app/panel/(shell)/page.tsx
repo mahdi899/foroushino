@@ -6,6 +6,7 @@ import { QuickResourceLinks } from '@/components/student-panel/dashboard/QuickRe
 import type { AcademyLinkKey } from '@/components/student-panel/academy/academyLinkMeta';
 import { RecentNotifications } from '@/components/student-panel/dashboard/RecentNotifications';
 import { ProgressBar } from '@/components/student-panel/ui/ProgressBar';
+import { getStudentDisplayName } from '@/lib/student/displayName';
 import { panelStudentFetch } from '@/lib/student/panelServer';
 import { getCurrentStudent } from '@/lib/student/session';
 import type { NotificationEntry } from '@/components/student-panel/notifications/NotificationItem';
@@ -63,7 +64,7 @@ export default async function PanelDashboardPage() {
   return (
     <div className="panel-page-inner flex flex-col gap-5 sm:gap-6">
       <DashboardWelcome
-        name={user?.profile?.first_name || user?.name || ''}
+        name={user ? getStudentDisplayName(user) : ''}
         doneCount={doneCount}
         totalCount={data.checklist.length}
         progress={progress}

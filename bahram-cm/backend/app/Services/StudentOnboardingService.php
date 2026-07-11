@@ -64,13 +64,17 @@ class StudentOnboardingService
     {
         $progress = $user->onboarding_progress ?? [];
         $profile = $user->profile;
+        $identity = $user->identityProfile;
         $links = $this->academyLinks();
+
+        $hasLegalName = (filled($identity?->first_name) && filled($identity?->last_name))
+            || (filled($profile?->first_name) && filled($profile?->last_name));
 
         return [
             [
                 'key' => 'profile',
                 'label' => 'تکمیل پروفایل',
-                'done' => filled($profile?->first_name) && filled($profile?->last_name),
+                'done' => $hasLegalName,
                 'url' => '/panel/profile',
             ],
             [

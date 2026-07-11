@@ -27,7 +27,7 @@ final class StudentProfilePayload
             'avatar_url' => null,
         ];
 
-        $data['gravatar_url'] = self::gravatarUrl($user->profile?->email);
+        $data['gravatar_url'] = null;
         $data['default_avatar_url'] = self::defaultAvatarUrl($user);
 
         return $data;
@@ -54,16 +54,6 @@ final class StudentProfilePayload
             'avatar' => $profile->avatar,
             'avatar_url' => $profile->avatar ? MediaUrl::resolve($profile->avatar) : null,
         ];
-    }
-
-    private static function gravatarUrl(?string $email): ?string
-    {
-        $email = strtolower(trim((string) $email));
-        if ($email === '') {
-            return null;
-        }
-
-        return 'https://www.gravatar.com/avatar/'.md5($email).'?s=160&d=404';
     }
 
     private static function defaultAvatarUrl(User $user): string

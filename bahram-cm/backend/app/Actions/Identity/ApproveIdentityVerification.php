@@ -20,6 +20,7 @@ class ApproveIdentityVerification
     public function __construct(
         private readonly AdminAuditLogger $audit,
         private readonly SmsService $sms,
+        private readonly SyncIdentityToUserProfile $syncProfile,
     ) {}
 
     public function __invoke(
@@ -82,6 +83,7 @@ class ApproveIdentityVerification
 
             $student = $submission->user()->first();
             if ($student) {
+                ($this->syncProfile)($student, $profile);
                 IdentityLevel2Approved::dispatch($student);
 
                 if ($student->mobile) {

@@ -3,6 +3,7 @@
 import { useActionState, useMemo } from 'react';
 import { Lock, MapPin, Sparkles, UserRound } from 'lucide-react';
 import { ProfileAvatarField } from '@/components/student-panel/profile/ProfileAvatarField';
+import { VerifiedIdentitySection } from '@/components/student-panel/profile/VerifiedIdentitySection';
 import { updateProfileAction, type SimpleFormState } from '@/lib/student/panelActions';
 import { profileCompletion } from '@/lib/student/profileCompletion';
 import type { StudentUser } from '@/lib/student/session';
@@ -84,7 +85,7 @@ export function ProfileForm({ user }: { user: StudentUser }) {
             wide
             icon={UserRound}
             title="اطلاعات پایه"
-            description="نام و راه‌های ارتباطی که در پنل و پشتیبانی استفاده می‌شود."
+            description="نام نمایشی و راه‌های ارتباطی که در پنل و پشتیبانی استفاده می‌شود."
             tone="profile"
           >
             <div className="panel-profile-grid panel-profile-grid--wide">
@@ -93,32 +94,11 @@ export function ProfileForm({ user }: { user: StudentUser }) {
                   نام نمایشی
                 </label>
                 <input id="name" name="name" defaultValue={user.name} className="field-input" />
+                <p className="panel-profile-field__hint">در هدر پنل و ارتباطات عمومی نمایش داده می‌شود.</p>
               </div>
               <div className="panel-profile-field">
                 <label className="field-label">شماره موبایل</label>
                 <input value={user.mobile} disabled className="field-input opacity-70" dir="ltr" />
-              </div>
-              <div className="panel-profile-field">
-                <label className="field-label" htmlFor="first_name">
-                  نام
-                </label>
-                <input
-                  id="first_name"
-                  name="first_name"
-                  defaultValue={profile?.first_name ?? ''}
-                  className="field-input"
-                />
-              </div>
-              <div className="panel-profile-field">
-                <label className="field-label" htmlFor="last_name">
-                  نام خانوادگی
-                </label>
-                <input
-                  id="last_name"
-                  name="last_name"
-                  defaultValue={profile?.last_name ?? ''}
-                  className="field-input"
-                />
               </div>
               <div className="panel-profile-field">
                 <label className="field-label" htmlFor="email">
@@ -133,14 +113,10 @@ export function ProfileForm({ user }: { user: StudentUser }) {
                   dir="ltr"
                 />
               </div>
-              <div className="panel-profile-field">
-                <label className="field-label" htmlFor="city">
-                  شهر
-                </label>
-                <input id="city" name="city" defaultValue={profile?.city ?? ''} className="field-input" />
-              </div>
             </div>
           </ProfileSection>
+
+          <VerifiedIdentitySection user={user} />
 
           <ProfileSection
             icon={MapPin}

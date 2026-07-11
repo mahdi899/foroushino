@@ -27,19 +27,13 @@ function initialsFromName(name: string): string {
 function buildAvatarSources({
   avatar,
   avatarUrl,
-  gravatarUrl,
   defaultAvatarUrl,
-}: Pick<Props, 'avatar' | 'avatarUrl' | 'gravatarUrl' | 'defaultAvatarUrl'>): string[] {
+}: Pick<Props, 'avatar' | 'avatarUrl' | 'defaultAvatarUrl'>): string[] {
   const sources: string[] = [];
 
   const custom = avatarUrl?.trim() || avatar?.trim();
   if (custom) {
     sources.push(primarySiteImageSrc(custom) || custom);
-  }
-
-  const gravatar = gravatarUrl?.trim();
-  if (gravatar) {
-    sources.push(gravatar);
   }
 
   const fallback = defaultAvatarUrl?.trim();
@@ -64,8 +58,8 @@ export function PanelProfileAvatar({
   verified = false,
 }: Props) {
   const sources = useMemo(
-    () => buildAvatarSources({ avatar, avatarUrl, gravatarUrl, defaultAvatarUrl }),
-    [avatar, avatarUrl, gravatarUrl, defaultAvatarUrl],
+    () => buildAvatarSources({ avatar, avatarUrl, defaultAvatarUrl }),
+    [avatar, avatarUrl, defaultAvatarUrl],
   );
 
   const [sourceIndex, setSourceIndex] = useState(0);

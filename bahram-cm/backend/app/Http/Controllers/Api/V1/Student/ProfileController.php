@@ -36,7 +36,7 @@ class ProfileController extends Controller
         }
 
         $profileFields = array_intersect_key($data, array_flip([
-            'first_name', 'last_name', 'email', 'city', 'age',
+            'email', 'age',
             'current_job', 'instagram', 'telegram', 'experience_level', 'income_goal', 'avatar',
         ]));
 

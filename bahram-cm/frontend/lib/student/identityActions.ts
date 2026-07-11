@@ -1,5 +1,6 @@
 'use server';
 
+import { apiErrorMessage } from '@/lib/api/errors';
 import { revalidatePath } from 'next/cache';
 import { studentFetch } from '@/lib/student/session';
 import { getStudentToken } from '@/lib/student/session';
@@ -14,11 +15,15 @@ export interface SimpleFormState {
 function extractError(err: unknown, fallback: string): string {
   const e = err as {
     status?: number;
-    payload?: { error?: { message_fa?: string }; errors?: Record<string, string[]>; message?: string };
+    payload?: { error?: { message_fa?: string; code?: string }; errors?: Record<string, string[]>; message?: string };
   };
-  if (e?.payload?.error?.message_fa) return e.payload.error.message_fa;
-  const firstFieldError = e?.payload?.errors ? Object.values(e.payload.errors)[0]?.[0] : undefined;
-  return firstFieldError ?? e?.payload?.message ?? fallback;
+  const message = apiErrorMessage(e?.payload, undefined, '');
+  if (message) return message;
+
+  if (e?.status === 405) return 'درخواست به API نامعتبر است. صفحه را رفرش کنید و دوباره تلاش کنید.';
+  if (e?.status === 404) return 'مسیر API یافت نشد. احتمالاً نسخه فرانت و بک‌اند هم‌خوان نیست.';
+
+  return fallback;
 }
 
 async function studentUpload<T>(path: string, formData: FormData): Promise<T> {
@@ -60,7 +65,6 @@ export async function fetchVideoPromptAction(): Promise<
   try {
     const res = await studentFetch<{ data: { text?: string; prompt?: string } }>(
       '/identity-verification/video-prompt',
-      { method: 'POST' },
     );
     const text = res.data.text ?? res.data.prompt ?? '';
     if (!text) return { ok: false, error: 'متن ویدیو دریافت نشد.' };
@@ -84,7 +88,7 @@ export async function saveIdentityDraftAction(
   };
 
   try {
-    await studentFetch('/identity-verification', { method: 'PUT', body: payload });
+    await studentFetch('/identity-verification/draft', { method: 'POST', body: payload });
   } catch (err) {
     return { error: extractError(err, 'ذخیره اطلاعات هویتی ناموفق بود.') };
   }

@@ -22,6 +22,15 @@ export interface StudentProfile {
   default_avatar_url: string | null;
 }
 
+/** Legal identity fields — source of truth for name/city after KYC flow starts. */
+export interface StudentIdentity {
+  first_name: string | null;
+  last_name: string | null;
+  city: string | null;
+  date_of_birth: string | null;
+  gender: string | null;
+}
+
 export interface StudentUser {
   id: number;
   name: string;
@@ -29,6 +38,7 @@ export interface StudentUser {
   has_password: boolean;
   first_login_at: string | null;
   profile: StudentProfile | null;
+  identity?: StudentIdentity | null;
   /** 1 = base, 2 = identity approved, 3 = identity + mobile ownership */
   verification_level?: number;
   identity_status?: string | null;

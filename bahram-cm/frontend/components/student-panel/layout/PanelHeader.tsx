@@ -7,6 +7,7 @@ import { PanelThemeToggle } from '@/app/panel/PanelThemeToggle';
 import { PanelProfileAvatar } from '@/components/student-panel/layout/PanelProfileAvatar';
 import { studentDefaultAvatarUrl } from '@/lib/student/avatar';
 import { useStudentAuth } from '@/components/student-panel/auth/StudentAuthContext';
+import { getStudentDisplayName, getStudentLegalName } from '@/lib/student/displayName';
 import { isProfileVerified } from '@/lib/student/profileCompletion';
 import { logoutStudentAction } from '@/lib/student/actions';
 import { markAllNotificationsReadAction } from '@/lib/student/panelActions';
@@ -21,9 +22,8 @@ export function PanelHeader({
 }) {
   const router = useRouter();
   const { markLoggedOut } = useStudentAuth();
-  const fullName = [user.profile?.first_name, user.profile?.last_name].filter(Boolean).join(' ').trim();
-  const displayName = fullName || user.name || 'دانشجو';
-  const profileSubtitle = fullName ? 'دانشجو' : user.mobile;
+  const displayName = getStudentDisplayName(user);
+  const profileSubtitle = getStudentLegalName(user) ? 'دانشجو' : user.mobile;
 
   async function handleNotificationsClick(e: React.MouseEvent<HTMLAnchorElement>) {
     if (unreadCount <= 0) return;
@@ -62,7 +62,7 @@ export function PanelHeader({
           />
           <span className="panel-header__profile-text">
             <span className="panel-header__profile-name">{displayName}</span>
-            <span className="panel-header__profile-role" dir={fullName ? undefined : 'ltr'}>
+            <span className="panel-header__profile-role" dir={getStudentLegalName(user) ? undefined : 'ltr'}>
               {profileSubtitle}
             </span>
           </span>

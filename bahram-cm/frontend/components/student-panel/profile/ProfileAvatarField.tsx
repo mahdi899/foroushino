@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Camera, Loader2 } from 'lucide-react';
 import { PanelProfileAvatar } from '@/components/student-panel/layout/PanelProfileAvatar';
 import { studentDefaultAvatarUrl } from '@/lib/student/avatar';
+import { getStudentDisplayName } from '@/lib/student/displayName';
 import { isProfileVerified, PROFILE_VERIFIED_THRESHOLD } from '@/lib/student/profileCompletion';
 import { uploadProfileAvatarAction } from '@/lib/student/panelActions';
 import type { StudentUser } from '@/lib/student/session';
@@ -20,8 +21,7 @@ export function ProfileAvatarField({
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
-  const fullName = [user.profile?.first_name, user.profile?.last_name].filter(Boolean).join(' ').trim();
-  const displayName = fullName || user.name || 'دانشجو';
+  const displayName = getStudentDisplayName(user);
   const hasCustomAvatar = Boolean(user.profile?.avatar_url);
   const verified =
     profileCompletion !== undefined

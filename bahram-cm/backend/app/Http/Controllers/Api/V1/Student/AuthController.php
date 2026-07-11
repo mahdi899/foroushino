@@ -189,6 +189,13 @@ class AuthController extends Controller
             'mobile_ownership_status' => $identity?->mobile_ownership_status?->value ?? 'not_started',
             'sat_membership_status' => $user->satMembership?->status?->value ?? 'inactive',
             'national_code_masked' => $identity?->maskNationalCode(),
+            'identity' => $identity ? [
+                'first_name' => $identity->first_name,
+                'last_name' => $identity->last_name,
+                'city' => $identity->city,
+                'date_of_birth' => $identity->date_of_birth?->toDateString(),
+                'gender' => $identity->gender,
+            ] : null,
         ];
     }
 }

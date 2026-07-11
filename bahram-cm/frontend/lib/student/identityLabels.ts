@@ -22,6 +22,17 @@ export const ACCOUNT_STATUS_HINT_FA: Record<number, string> = {
   3: 'حساب شما کاملاً تأیید شده و امکان برداشت فعال است.',
 };
 
+/** Contextual hints for the profile verification card (by identity workflow status). */
+export const IDENTITY_CARD_HINT_FA: Record<string, string> = {
+  not_started: ACCOUNT_STATUS_HINT_FA[1],
+  draft: 'فرآیند تأیید هویت نیمه‌کاره است. آن را تکمیل کنید تا پرونده برای بررسی ارسال شود.',
+  submitted: 'پرونده شما ثبت شده و در صف بررسی است. نتیجه از طریق اعلان به شما اطلاع داده می‌شود.',
+  under_review: 'تیم در حال بررسی مدارک شماست. لطفاً تا اعلام نتیجه صبور باشید.',
+  needs_correction: 'برخی موارد پرونده نیاز به اصلاح دارد. لطفاً مدارک را به‌روز و دوباره ارسال کنید.',
+  rejected: 'پرونده قبلی رد شده است. با اصلاح اطلاعات می‌توانید دوباره ارسال کنید.',
+  approved: ACCOUNT_STATUS_HINT_FA[2],
+};
+
 export const SAT_MEMBERSHIP_FA: Record<string, { label: string; hint: string }> = {
   inactive: {
     label: 'دسترسی سات قفل است',

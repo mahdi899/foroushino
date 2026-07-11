@@ -130,6 +130,9 @@ export function IdentityVerificationWizard({
       <div className="card p-5 sm:p-6">
         {step === 0 ? (
           <div className="panel-form-grid">
+            <p className="panel-form-grid__full text-sm leading-relaxed text-text-muted">
+              نام و شهر باید دقیقاً مطابق کارت ملی باشد. در صورت تمایل، نام نمایشی حساب به‌عنوان پیشنهاد اولیه پر شده است.
+            </p>
             <div>
               <label className="field-label" htmlFor="first_name">
                 نام
