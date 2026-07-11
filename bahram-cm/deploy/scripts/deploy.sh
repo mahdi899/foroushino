@@ -33,11 +33,12 @@ php artisan storage:link 2>/dev/null || true
 
 echo "==> Frontend build"
 cd "$APP_ROOT/frontend"
-npm ci
+if ! npm ci; then npm install --no-audit --no-fund; fi
 npm run build
 
 echo "==> Reload PM2 (Next.js)"
-pm2 reload deploy/pm2/ecosystem.config.cjs --update-env || pm2 start deploy/pm2/ecosystem.config.cjs
+PM2_CONFIG="$APP_ROOT/deploy/pm2/ecosystem.config.cjs"
+pm2 reload "$PM2_CONFIG" --update-env || pm2 start "$PM2_CONFIG"
 
 echo "==> Restart queue workers"
 sudo supervisorctl restart bahram-queue:*
