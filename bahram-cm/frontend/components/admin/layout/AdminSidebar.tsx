@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { adminNav, isAdminNavActive } from '@/app/admin/(panel)/admin-nav';
+import { adminNav, isAdminNavActive, type AdminNavItem } from '@/app/admin/(panel)/admin-nav';
 import { BrandMark } from '@/components/layout/Header';
 import { AdminLucideIcon } from '@/lib/admin/lucide-icons';
 import { cn } from '@/lib/utils';
@@ -13,11 +13,13 @@ function NavIcon({ name, className }: { name: string; className?: string }) {
 }
 
 export function AdminSidebar({
+  nav = adminNav,
   collapsed,
   onToggleCollapse,
   pendingCount,
   ticketPendingCount,
 }: {
+  nav?: { group: string; items: AdminNavItem[] }[];
   collapsed: boolean;
   onToggleCollapse: () => void;
   pendingCount: number;
@@ -59,7 +61,7 @@ export function AdminSidebar({
       </div>
 
       <nav className="admin-sidebar-nav flex-1 overflow-y-auto overflow-x-hidden p-2">
-        {adminNav.map((group) => (
+        {nav.map((group) => (
           <div key={group.group} className="mb-3">
             {!collapsed && <p className="admin-sidebar__group-label">{group.group}</p>}
             <ul className="space-y-0.5">

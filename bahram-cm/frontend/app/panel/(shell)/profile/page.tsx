@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import { User } from 'lucide-react';
 import { ProfileForm } from '@/components/student-panel/profile/ProfileForm';
+import { AccountVerificationCard } from '@/components/student-panel/profile/AccountVerificationCard';
+import { ReferenceChannelCard } from '@/components/student-panel/profile/ReferenceChannelCard';
+import { SatAccessCard } from '@/components/student-panel/profile/SatAccessCard';
 import { PanelPageHeader } from '@/components/student-panel/layout/PanelPageHeader';
 import { getCurrentStudent } from '@/lib/student/session';
 
@@ -17,7 +20,16 @@ export default async function PanelProfilePage() {
         description="اطلاعات فردی و مسیر یادگیری خود را کامل نگه دارید."
         variant="profile"
       />
-      {user ? <ProfileForm user={user} /> : null}
+      {user ? (
+        <>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <AccountVerificationCard user={user} />
+            <ReferenceChannelCard user={user} />
+            <SatAccessCard user={user} />
+          </div>
+          <ProfileForm user={user} />
+        </>
+      ) : null}
     </div>
   );
 }

@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CheckCircle2, Clock, CreditCard, Gift, LifeBuoy, Users, Wallet } from 'lucide-react';
-import { CashbackPayoutForm } from '@/components/student-panel/referrals/CashbackPayoutForm';
+import { WithdrawalVerificationModal } from '@/components/student-panel/referrals/WithdrawalVerificationModal';
 import { ReferralCashbackProductCard } from '@/components/student-panel/referrals/ReferralCashbackProductCard';
 import { ReferralHeroBanner } from '@/components/student-panel/referrals/ReferralHeroBanner';
 import { PanelTomanAmount } from '@/components/student-panel/ui/PanelTomanAmount';
 import { StatCard } from '@/components/student-panel/ui/StatCard';
 import { StatusBadge } from '@/components/student-panel/ui/StatusBadge';
 import { panelStudentFetch } from '@/lib/student/panelServer';
+import { getCurrentStudent } from '@/lib/student/session';
 
 export const metadata: Metadata = { title: 'باشگاه مشتریان | پنل کاربری', robots: { index: false, follow: false } };
 
@@ -46,10 +47,12 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default async function PanelReferralsPage() {
-  const [{ data: referral }, { data: payouts }] = await Promise.all([
+  const [user, { data: referral }, { data: payouts }] = await Promise.all([
+    getCurrentStudent(),
     panelStudentFetch<{ data: ReferralData }>('/referrals'),
     panelStudentFetch<{ data: Payout[] }>('/cashback-payouts'),
   ]);
+  const verificationLevel = user?.verification_level ?? 1;
 
   return (
     <div className="panel-page-inner panel-referrals-page flex flex-col gap-5">
@@ -90,7 +93,10 @@ export default async function PanelReferralsPage() {
         <div className="flex flex-col gap-5">
           <div className="card panel-referral-card p-6">
             <h2 className="mb-4 text-base font-bold text-text">درخواست واریز کش‌بک</h2>
-            <CashbackPayoutForm payableAmount={referral.summary.payable_amount} />
+            <WithdrawalVerificationModal
+              verificationLevel={verificationLevel}
+              payableAmount={referral.summary.payable_amount}
+            />
           </div>
 
           {payouts.length > 0 ? (

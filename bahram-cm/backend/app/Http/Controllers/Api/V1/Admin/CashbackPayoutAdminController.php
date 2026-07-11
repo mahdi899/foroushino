@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CashbackPayout;
+use App\Services\AdminAuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -26,13 +27,21 @@ class CashbackPayoutAdminController extends Controller
         ]);
     }
 
-    /** Reveals the full card number for an authorized admin — every reveal is logged. */
-    public function show(Request $request, CashbackPayout $payout): JsonResponse
+    /** Reveals the full card number for an authorized admin — every reveal is audited. */
+    public function show(Request $request, CashbackPayout $payout, AdminAuditLogger $audit): JsonResponse
     {
+        abort_unless(
+            $request->user()->hasPermission('finance.view_payout_card') || $request->user()->isSuperAdmin(),
+            403
+        );
+
+        $audit->log($request->user(), 'cashback_payout.card_revealed', $payout, [
+            'cashback_payout_id' => $payout->id,
+        ]);
+
         Log::channel('payment')->warning('Cashback payout card number revealed by admin.', [
             'cashback_payout_id' => $payout->id,
             'admin_id' => $request->user()->id,
-            'admin_email' => $request->user()->email,
         ]);
 
         return response()->json(['data' => [

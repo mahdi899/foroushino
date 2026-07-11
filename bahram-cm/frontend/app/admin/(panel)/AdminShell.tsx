@@ -1,35 +1,59 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AdminBottomNav } from '@/components/admin/layout/AdminBottomNav';
 import { AdminHeader } from '@/components/admin/layout/AdminHeader';
 import { AdminMobileMenu } from '@/components/admin/layout/AdminMobileMenu';
 import { AdminSidebar } from '@/components/admin/layout/AdminSidebar';
 import { cn } from '@/lib/utils';
+import { adminNav, filterAdminNav } from './admin-nav';
 import { AdminFocusProvider, useAdminFocus } from './AdminFocusContext';
 import { useAdminTheme } from './AdminThemeContext';
 import { OperatorQueueAlertProvider, useOperatorQueueAlert } from './OperatorQueueAlertContext';
 import { AdminSaveBarProvider } from './AdminSaveBarContext';
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({
+  children,
+  permissions = [],
+  isSuperAdmin = false,
+}: {
+  children: React.ReactNode;
+  permissions?: string[];
+  isSuperAdmin?: boolean;
+}) {
   return (
     <AdminFocusProvider>
       <OperatorQueueAlertProvider>
         <AdminSaveBarProvider>
-          <AdminShellInner>{children}</AdminShellInner>
+          <AdminShellInner permissions={permissions} isSuperAdmin={isSuperAdmin}>
+            {children}
+          </AdminShellInner>
         </AdminSaveBarProvider>
       </OperatorQueueAlertProvider>
     </AdminFocusProvider>
   );
 }
 
-function AdminShellInner({ children }: { children: React.ReactNode }) {
+function AdminShellInner({
+  children,
+  permissions,
+  isSuperAdmin,
+}: {
+  children: React.ReactNode;
+  permissions: string[];
+  isSuperAdmin: boolean;
+}) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { focusMode } = useAdminFocus();
   const { sidebarCollapsed, toggleSidebar } = useAdminTheme();
   const { pendingCount, ticketPendingCount } = useOperatorQueueAlert();
+
+  const nav = useMemo(
+    () => filterAdminNav(adminNav, { permissions, isSuperAdmin }),
+    [permissions, isSuperAdmin],
+  );
 
   useEffect(() => {
     setMobileOpen(false);
@@ -63,12 +87,14 @@ function AdminShellInner({ children }: { children: React.ReactNode }) {
       {!focusMode && (
         <>
           <AdminSidebar
+            nav={nav}
             collapsed={sidebarCollapsed}
             onToggleCollapse={toggleSidebar}
             pendingCount={pendingCount}
             ticketPendingCount={ticketPendingCount}
           />
           <AdminMobileMenu
+            nav={nav}
             open={mobileOpen}
             onClose={() => setMobileOpen(false)}
             pendingCount={pendingCount}

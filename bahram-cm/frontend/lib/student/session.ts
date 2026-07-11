@@ -29,6 +29,12 @@ export interface StudentUser {
   has_password: boolean;
   first_login_at: string | null;
   profile: StudentProfile | null;
+  /** 1 = base, 2 = identity approved, 3 = identity + mobile ownership */
+  verification_level?: number;
+  identity_status?: string | null;
+  mobile_ownership_status?: string | null;
+  sat_membership_status?: string | null;
+  national_code_masked?: string | null;
 }
 
 /** Read the student's Sanctum personal-access token from the httpOnly cookie. */

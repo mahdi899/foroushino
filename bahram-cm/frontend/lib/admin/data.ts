@@ -89,13 +89,33 @@ export interface AuditEntry {
   action: string;
   entity: string;
   entity_id: string | null;
+  actor_name?: string | null;
   created_at: string;
 }
 
+/** Legacy shape mapper — prefer getAdminAuditLogs from accessData for full fields. */
 export async function getAuditLogs(): Promise<AuditEntry[]> {
   try {
-    const res = await adminFetch<{ data: AuditEntry[] }>('/audit-logs');
-    return res.data;
+    const res = await adminFetch<{
+      data: Array<{
+        id: number;
+        action: string;
+        subject_type?: string | null;
+        subject_id?: number | string | null;
+        entity?: string;
+        entity_id?: string | null;
+        actor_name?: string | null;
+        created_at: string;
+      }>;
+    }>('/audit-logs');
+    return (res.data ?? []).map((l) => ({
+      id: l.id,
+      action: l.action,
+      entity: l.entity ?? l.subject_type ?? '—',
+      entity_id: l.entity_id ?? (l.subject_id != null ? String(l.subject_id) : null),
+      actor_name: l.actor_name ?? null,
+      created_at: l.created_at,
+    }));
   } catch {
     return [];
   }

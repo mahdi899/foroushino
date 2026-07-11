@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Enums\UserStatus;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Actions\Identity\RevealNationalCode;
+use App\Actions\Identity\RevealStudentMobile;
 use App\Services\CourseAccessService;
 use App\Support\MediaUrl;
 use App\Support\Mobile;
+use App\Support\SensitiveData;
 use App\Support\StudentAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,17 +19,27 @@ class StudentController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        abort_unless($request->user()->hasPermission('students.view'), 403);
+
         $query = User::query()->where('is_admin', false)->withCount(['orders', 'courseAccesses', 'tickets']);
 
         if ($search = $request->string('search')->trim()->toString()) {
-            $query->where(function ($q) use ($search) {
+            $normalizedMobile = Mobile::normalize($search);
+            $canSearchMobile = $request->user()->hasPermission('students.search_by_mobile');
+
+            $query->where(function ($q) use ($search, $normalizedMobile, $canSearchMobile) {
                 $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('mobile', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
                     ->orWhereHas('profile', function ($profile) use ($search) {
                         $profile->where('first_name', 'like', "%{$search}%")
                             ->orWhere('last_name', 'like', "%{$search}%");
                     });
+
+                if ($canSearchMobile && $normalizedMobile) {
+                    $q->orWhere('mobile', $normalizedMobile);
+                } elseif (! $normalizedMobile) {
+                    $q->orWhere('mobile', 'like', "%{$search}%");
+                }
             });
         }
 
@@ -36,10 +49,10 @@ class StudentController extends Controller
 
         $perPage = min(max((int) $request->input('per_page', 50), 1), 50);
 
-        $students = $query->with('profile')->orderByDesc('id')->paginate($perPage);
+        $students = $query->with(['profile', 'identityProfile'])->orderByDesc('id')->paginate($perPage);
 
         return response()->json([
-            'data' => $students->getCollection()->map(fn (User $u) => $this->listPayload($u)),
+            'data' => $students->getCollection()->map(fn (User $u) => $this->listPayload($u, $request->user())),
             'meta' => [
                 'current_page' => $students->currentPage(),
                 'last_page' => $students->lastPage(),
@@ -50,6 +63,8 @@ class StudentController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        abort_unless($request->user()->hasPermission('students.manage'), 403);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'mobile' => ['required', 'string'],
@@ -74,17 +89,26 @@ class StudentController extends Controller
             'is_admin' => false,
         ]);
 
-        return response()->json(['data' => $this->listPayload($student)], 201);
+        $student->identityProfile()->create([
+            'identity_status' => 'not_started',
+            'verification_level' => 1,
+            'mobile_ownership_status' => 'not_started',
+        ]);
+
+        return response()->json(['data' => $this->listPayload($student->fresh(['profile', 'identityProfile']), $request->user())], 201);
     }
 
-    public function show(User $student, CourseAccessService $courseAccesses): JsonResponse
+    public function show(Request $request, User $student, CourseAccessService $courseAccesses): JsonResponse
     {
+        abort_unless($request->user()->hasPermission('students.view'), 403);
         abort_if($student->is_admin, 404);
 
         $courseAccesses->syncFromPaidOrders($student);
 
         $student->load([
             'profile',
+            'identityProfile',
+            'satMembership',
             'courseAccesses.product',
             'orders' => fn ($q) => $q->with('product')->latest(),
             'tickets' => fn ($q) => $q->latest(),
@@ -93,12 +117,32 @@ class StudentController extends Controller
 
         $orders = $student->orders;
         $paidStatuses = ['paid', 'fulfilled'];
+        $identity = $student->identityProfile;
 
         return response()->json(['data' => [
-            ...$this->listPayload($student),
+            ...$this->listPayload($student, $request->user()),
             'mobile_verified_at' => $student->mobile_verified_at?->toIso8601String(),
             'display_name' => $this->displayName($student),
             'profile' => $this->profilePayload($student),
+            'identity' => $identity ? [
+                'verification_level' => $identity->verification_level,
+                'identity_status' => $identity->identity_status->value,
+                'mobile_ownership_status' => $identity->mobile_ownership_status->value,
+                'national_code_masked' => $identity->maskNationalCode(),
+                'first_name' => $identity->first_name,
+                'last_name' => $identity->last_name,
+                'city' => $identity->city,
+                'gender' => $identity->gender,
+                'date_of_birth' => $identity->date_of_birth?->toDateString(),
+                'ownership_failed_attempts' => $identity->ownership_failed_attempts,
+                'ownership_locked_at' => $identity->ownership_locked_at?->toIso8601String(),
+            ] : null,
+            'sat_membership' => $student->satMembership ? [
+                'status' => $student->satMembership->status->value,
+                'activated_at' => $student->satMembership->activated_at?->toIso8601String(),
+            ] : null,
+            'can_reveal_mobile' => $request->user()->hasPermission('students.view_full_mobile'),
+            'can_reveal_national_code' => $request->user()->hasPermission('identity.view_national_code'),
             'stats' => [
                 'orders_total' => $orders->count(),
                 'orders_paid' => $orders->whereIn('status', $paidStatuses)->count(),
@@ -144,8 +188,19 @@ class StudentController extends Controller
         ]]);
     }
 
+    public function revealMobile(Request $request, User $student, RevealStudentMobile $reveal): JsonResponse
+    {
+        return response()->json(['data' => $reveal($request->user(), $student)]);
+    }
+
+    public function revealNationalCode(Request $request, User $student, RevealNationalCode $reveal): JsonResponse
+    {
+        return response()->json(['data' => $reveal($request->user(), $student)]);
+    }
+
     public function update(Request $request, User $student): JsonResponse
     {
+        abort_unless($request->user()->hasPermission('students.manage'), 403);
         abort_if($student->is_admin, 404);
 
         $data = $request->validate([
@@ -159,13 +214,14 @@ class StudentController extends Controller
 
         $student->update($data);
 
-        return response()->json(['data' => $this->listPayload($student)]);
+        return response()->json(['data' => $this->listPayload($student->fresh(['profile', 'identityProfile']), $request->user())]);
     }
 
     /** @return array<string, mixed> */
-    private function listPayload(User $u): array
+    private function listPayload(User $u, User $actor): array
     {
         $profile = $u->relationLoaded('profile') ? $u->profile : null;
+        $identity = $u->relationLoaded('identityProfile') ? $u->identityProfile : null;
         $firstName = $profile?->first_name;
         $lastName = $profile?->last_name;
         $displayName = trim(implode(' ', array_filter([$firstName, $lastName])));
@@ -177,12 +233,15 @@ class StudentController extends Controller
             'last_name' => $lastName,
             'display_name' => $displayName !== '' ? $displayName : $u->name,
             'avatar_url' => $profile?->avatar ? MediaUrl::resolve($profile->avatar) : null,
-            'mobile' => $u->mobile,
+            'mobile_masked' => SensitiveData::maskMobile($u->mobile),
             'email' => $u->email,
             'status' => $u->status->value,
+            'verification_level' => $identity?->verification_level ?? 1,
+            'identity_status' => $identity?->identity_status?->value,
             'orders_count' => $u->orders_count ?? null,
             'course_accesses_count' => $u->course_accesses_count ?? null,
             'tickets_count' => $u->tickets_count ?? null,
+            'can_reveal_mobile' => $actor->hasPermission('students.view_full_mobile'),
             'first_login_at' => $u->first_login_at?->toIso8601String(),
             'last_login_at' => $u->last_login_at?->toIso8601String(),
             'created_at' => $u->created_at?->toIso8601String(),

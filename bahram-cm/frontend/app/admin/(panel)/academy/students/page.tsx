@@ -5,6 +5,7 @@ import { STUDENT_STATUS_LABELS, formatDate, type AdminStudent } from '@/lib/admi
 import { cn } from '@/lib/utils';
 import { CreateStudentForm } from './CreateStudentForm';
 import { StudentsExportButton } from './StudentsExportButton';
+import { RevealMobileButton } from './RevealMobileButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,10 @@ function statusTone(status: AdminStudent['status']) {
   if (status === 'active') return 'success' as const;
   if (status === 'suspended') return 'warning' as const;
   return 'danger' as const;
+}
+
+function maskedMobile(student: AdminStudent) {
+  return student.mobile_masked ?? student.mobile ?? null;
 }
 
 function StudentMobileCard({ student }: { student: AdminStudent }) {
@@ -29,7 +34,7 @@ function StudentMobileCard({ student }: { student: AdminStudent }) {
         <div className="min-w-0">
           <p className={cn('truncate font-semibold', blocked ? 'text-error' : 'text-primary-dark')}>{student.name}</p>
           <p className="mt-1 text-caption text-text-muted" dir="ltr">
-            {student.mobile ?? '—'}
+            {maskedMobile(student) ?? '—'}
           </p>
         </div>
         <Badge tone={statusTone(student.status)}>{STUDENT_STATUS_LABELS[student.status] ?? student.status}</Badge>
@@ -125,24 +130,25 @@ export default async function StudentsPage({
               {students.map((s) => {
                 const blocked = s.status === 'blocked';
                 return (
-                <tr
-                  key={s.id}
-                  className={cn('hover:bg-surface-soft/40', blocked && 'bg-error/5')}
-                >
-                  <td className={cn('px-4 py-3', blocked && 'font-semibold text-error')}>{s.name}</td>
-                  <td className="whitespace-nowrap px-4 py-3" dir="ltr">
-                    {s.mobile ?? '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge tone={statusTone(s.status)}>{STUDENT_STATUS_LABELS[s.status] ?? s.status}</Badge>
-                  </td>
-                  <td className="px-4 py-3">{s.orders_count ?? 0}</td>
-                  <td className="px-4 py-3">{s.course_accesses_count ?? 0}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-caption">{formatDate(s.first_login_at)}</td>
-                  <td className="px-4 py-3">
-                    <EditLink href={`/admin/academy/students/${s.id}`} />
-                  </td>
-                </tr>
+                  <tr key={s.id} className={cn('hover:bg-surface-soft/40', blocked && 'bg-error/5')}>
+                    <td className={cn('px-4 py-3', blocked && 'font-semibold text-error')}>{s.name}</td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <RevealMobileButton
+                        studentId={s.id}
+                        masked={maskedMobile(s)}
+                        canReveal={s.can_reveal_mobile}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge tone={statusTone(s.status)}>{STUDENT_STATUS_LABELS[s.status] ?? s.status}</Badge>
+                    </td>
+                    <td className="px-4 py-3">{s.orders_count ?? 0}</td>
+                    <td className="px-4 py-3">{s.course_accesses_count ?? 0}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-caption">{formatDate(s.first_login_at)}</td>
+                    <td className="px-4 py-3">
+                      <EditLink href={`/admin/academy/students/${s.id}`} />
+                    </td>
+                  </tr>
                 );
               })}
             </Table>
@@ -174,9 +180,7 @@ export default async function StudentsPage({
               </div>
             </div>
           ) : meta && meta.total > 0 ? (
-            <p className="mt-3 text-caption text-text-muted">
-              {meta.total.toLocaleString('fa-IR')} دانشجو
-            </p>
+            <p className="mt-3 text-caption text-text-muted">{meta.total.toLocaleString('fa-IR')} دانشجو</p>
           ) : null}
         </>
       ) : (

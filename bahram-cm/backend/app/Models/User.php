@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AdminRoleName;
 use App\Enums\UserStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,11 +11,12 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     /**
      * @var list<string>
@@ -57,7 +59,20 @@ class User extends Authenticatable
 
     public function hasPermission(string $permission): bool
     {
-        return (bool) $this->is_admin;
+        if (! $this->is_admin) {
+            return false;
+        }
+
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        return $this->can($permission);
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->is_admin && $this->hasRole(AdminRoleName::SuperAdmin->value);
     }
 
     /** A student is any non-admin account identified by mobile. */
@@ -69,6 +84,21 @@ class User extends Authenticatable
     public function profile(): HasOne
     {
         return $this->hasOne(UserProfile::class);
+    }
+
+    public function identityProfile(): HasOne
+    {
+        return $this->hasOne(UserIdentityProfile::class);
+    }
+
+    public function satMembership(): HasOne
+    {
+        return $this->hasOne(SatMembership::class);
+    }
+
+    public function identityVerificationSubmissions(): HasMany
+    {
+        return $this->hasMany(IdentityVerificationSubmission::class);
     }
 
     public function orders(): HasMany

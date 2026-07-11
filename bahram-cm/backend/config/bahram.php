@@ -57,4 +57,19 @@ return [
         'session_ttl_minutes' => (int) env('IMAGE_OPTIMIZER_SESSION_TTL', 30),
     ],
 
+    'identity' => [
+        'national_code_hmac_key' => env('IDENTITY_NATIONAL_CODE_HMAC_KEY', env('APP_KEY')),
+        'selfie_min_seconds' => 5,
+        'selfie_max_seconds' => 20,
+        'selfie_max_mb' => 25,
+        'national_card_max_mb' => 8,
+        'submit_cooldown_seconds' => 60,
+        'ownership_max_attempts' => 3,
+        'video_prompts' => [
+            'من درخواست تأیید حسابم را دارم.',
+            'این ویدیو را برای تأیید حسابم ضبط می‌کنم.',
+            'من صاحب این حساب کاربری هستم.',
+        ],
+    ],
+
 ];

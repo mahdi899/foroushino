@@ -10,6 +10,7 @@ export interface AdminUser {
   email: string;
   roles: string[];
   permissions: string[];
+  is_super_admin?: boolean;
 }
 
 /** Read the Sanctum personal-access token from the httpOnly cookie. */
@@ -68,6 +69,8 @@ export const getCurrentUser = cache(async (): Promise<AdminUser | null> => {
 /** Permission gate helper for server components / actions. */
 export function can(user: AdminUser | null, permission: string): boolean {
   if (!user) return false;
-  if (user.roles.includes('SUPER_ADMIN')) return true;
+  if (user.is_super_admin || user.roles.includes('super-admin') || user.roles.includes('SUPER_ADMIN')) {
+    return true;
+  }
   return user.permissions.includes(permission);
 }

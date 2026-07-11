@@ -3,16 +3,18 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Settings, X } from 'lucide-react';
-import { adminNav, isAdminNavActive } from '@/app/admin/(panel)/admin-nav';
+import { adminNav, isAdminNavActive, type AdminNavItem } from '@/app/admin/(panel)/admin-nav';
 import { AdminLucideIcon } from '@/lib/admin/lucide-icons';
 import { cn } from '@/lib/utils';
 
 export function AdminMobileMenu({
+  nav = adminNav,
   open,
   onClose,
   pendingCount,
   ticketPendingCount,
 }: {
+  nav?: { group: string; items: AdminNavItem[] }[];
   open: boolean;
   onClose: () => void;
   pendingCount: number;
@@ -52,7 +54,7 @@ export function AdminMobileMenu({
         </div>
 
         <div className="admin-mobile-menu__body">
-          {adminNav.map((group) => (
+          {nav.map((group) => (
             <div key={group.group} className="admin-mobile-nav-group">
               <p className="admin-mobile-nav-group__label">{group.group}</p>
               <ul className="space-y-0.5">

@@ -3,12 +3,17 @@
 use App\Http\Controllers\Admin\LeadExportController;
 use App\Http\Controllers\Admin\OrderExportController;
 use App\Http\Controllers\Admin\StudentExportController;
+use App\Http\Controllers\Api\V1\Admin\AuditLogAdminController;
 use App\Http\Controllers\Api\V1\Admin\CashbackPayoutAdminController;
 use App\Http\Controllers\Api\V1\Admin\CourseAccessController as AdminCourseAccessController;
+use App\Http\Controllers\Api\V1\Admin\IdentityArtifactController;
+use App\Http\Controllers\Api\V1\Admin\IdentityProviderAdminController;
+use App\Http\Controllers\Api\V1\Admin\IdentityVerificationAdminController;
 use App\Http\Controllers\Api\V1\Admin\SpotplayerLicenseAdminController;
 use App\Http\Controllers\Api\V1\Admin\ImportAdminController;
 use App\Http\Controllers\Api\V1\Admin\NotificationAdminController;
 use App\Http\Controllers\Api\V1\Admin\ReferralAdminController;
+use App\Http\Controllers\Api\V1\Admin\RoleAdminController;
 use App\Http\Controllers\Api\V1\Admin\SatApplicationAdminController;
 use App\Http\Controllers\Api\V1\Admin\SeminarAdminController;
 use App\Http\Controllers\Api\V1\Admin\SmsAdminController;
@@ -41,7 +46,9 @@ use App\Http\Controllers\Api\V1\Student\CashbackPayoutController as StudentCashb
 use App\Http\Controllers\Api\V1\Student\CertificateDownloadController;
 use App\Http\Controllers\Api\V1\Student\CourseController as StudentCourseController;
 use App\Http\Controllers\Api\V1\Student\DashboardController as StudentDashboardController;
+use App\Http\Controllers\Api\V1\Student\IdentityVerificationController as StudentIdentityVerificationController;
 use App\Http\Controllers\Api\V1\Student\MiniCourseController as StudentMiniCourseController;
+use App\Http\Controllers\Api\V1\Student\MobileOwnershipController as StudentMobileOwnershipController;
 use App\Http\Controllers\Api\V1\Student\NotificationController as StudentNotificationController;
 use App\Http\Controllers\Api\V1\Student\OrderController as StudentOrderController;
 use App\Http\Controllers\Api\V1\Student\ProfileController as StudentProfileController;
@@ -94,6 +101,17 @@ Route::prefix('student')->group(function () {
 
         Route::get('cashback-payouts', [StudentCashbackPayoutController::class, 'index']);
         Route::post('cashback-payouts', [StudentCashbackPayoutController::class, 'store']);
+
+        Route::get('identity-verification', [StudentIdentityVerificationController::class, 'show']);
+        Route::post('identity-verification/draft', [StudentIdentityVerificationController::class, 'draft']);
+        Route::post('identity-verification/artifacts', [StudentIdentityVerificationController::class, 'uploadArtifact']);
+        Route::get('identity-verification/video-prompt', [StudentIdentityVerificationController::class, 'videoPrompt']);
+        Route::post('identity-verification/submit', [StudentIdentityVerificationController::class, 'submit'])
+            ->middleware('throttle:identity-submit');
+
+        Route::get('mobile-ownership', [StudentMobileOwnershipController::class, 'show']);
+        Route::post('mobile-ownership/verify', [StudentMobileOwnershipController::class, 'verify'])
+            ->middleware('throttle:ownership-verify');
 
         Route::get('sat-application', [StudentSatApplicationController::class, 'show']);
         Route::post('sat-application', [StudentSatApplicationController::class, 'store']);
@@ -253,6 +271,36 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('students', [AdminStudentController::class, 'store']);
     Route::get('students/{student}', [AdminStudentController::class, 'show'])->whereNumber('student');
     Route::patch('students/{student}', [AdminStudentController::class, 'update'])->whereNumber('student');
+    Route::post('students/{student}/reveal-mobile', [AdminStudentController::class, 'revealMobile'])
+        ->middleware('throttle:identity-reveal')
+        ->whereNumber('student');
+    Route::post('students/{student}/reveal-national-code', [AdminStudentController::class, 'revealNationalCode'])
+        ->middleware('throttle:identity-reveal')
+        ->whereNumber('student');
+
+    Route::get('identity-verifications/dashboard', [IdentityVerificationAdminController::class, 'dashboard']);
+    Route::get('identity-verifications', [IdentityVerificationAdminController::class, 'index']);
+    Route::get('identity-verifications/next', [IdentityVerificationAdminController::class, 'next']);
+    Route::get('identity-verifications/{submission}', [IdentityVerificationAdminController::class, 'show'])->whereNumber('submission');
+    Route::post('identity-verifications/{submission}/approve', [IdentityVerificationAdminController::class, 'approve'])->whereNumber('submission');
+    Route::post('identity-verifications/{submission}/reject', [IdentityVerificationAdminController::class, 'reject'])->whereNumber('submission');
+    Route::post('identity-verifications/{submission}/request-correction', [IdentityVerificationAdminController::class, 'requestCorrection'])->whereNumber('submission');
+    Route::post('students/{student}/identity/unlock-ownership', [IdentityVerificationAdminController::class, 'unlockOwnership'])->whereNumber('student');
+    Route::post('students/{student}/identity/override-level', [IdentityVerificationAdminController::class, 'overrideLevel'])->whereNumber('student');
+    Route::get('identity-artifacts/{artifact}/stream', [IdentityArtifactController::class, 'stream'])->whereNumber('artifact');
+
+    Route::get('identity-providers', [IdentityProviderAdminController::class, 'index']);
+    Route::patch('identity-routes/{route}', [IdentityProviderAdminController::class, 'updateRoute'])->whereNumber('route');
+    Route::put('identity-providers/{slug}', [IdentityProviderAdminController::class, 'updateProvider']);
+    Route::post('identity-providers/{slug}/test', [IdentityProviderAdminController::class, 'testConnection']);
+
+    Route::get('roles', [RoleAdminController::class, 'index']);
+    Route::get('roles/admins', [RoleAdminController::class, 'admins']);
+    Route::match(['post', 'patch'], 'roles/admins/{admin}', [RoleAdminController::class, 'assignAdminRole'])->whereNumber('admin');
+    Route::post('roles', [RoleAdminController::class, 'store']);
+    Route::match(['put', 'patch'], 'roles/{role}', [RoleAdminController::class, 'update'])->whereNumber('role');
+
+    Route::get('audit-logs', [AuditLogAdminController::class, 'index']);
 
     Route::get('course-accesses', [AdminCourseAccessController::class, 'index']);
     Route::post('course-accesses', [AdminCourseAccessController::class, 'store']);

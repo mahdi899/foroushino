@@ -168,7 +168,14 @@ class AuthController extends Controller
     /** @return array<string, mixed> */
     private function userPayload(User $user): array
     {
-        $user->loadMissing('profile');
+        $user->loadMissing(['profile', 'identityProfile', 'satMembership']);
+
+        if (! $user->identityProfile) {
+            app(\App\Actions\Identity\EnsureIdentityProfile::class)($user);
+            $user->load('identityProfile');
+        }
+
+        $identity = $user->identityProfile;
 
         return [
             'id' => $user->id,
@@ -177,6 +184,11 @@ class AuthController extends Controller
             'has_password' => filled($user->password),
             'first_login_at' => $user->first_login_at?->toIso8601String(),
             'profile' => StudentProfilePayload::fromUser($user),
+            'verification_level' => (int) ($identity?->verification_level ?? 1),
+            'identity_status' => $identity?->identity_status?->value ?? 'not_started',
+            'mobile_ownership_status' => $identity?->mobile_ownership_status?->value ?? 'not_started',
+            'sat_membership_status' => $user->satMembership?->status?->value ?? 'inactive',
+            'national_code_masked' => $identity?->maskNationalCode(),
         ];
     }
 }

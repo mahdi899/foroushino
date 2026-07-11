@@ -31,6 +31,34 @@ class CashbackPayoutController extends Controller
     public function store(StoreCashbackPayoutRequest $request): JsonResponse
     {
         $user = $request->user();
+        $identity = $user->identityProfile;
+        $level = (int) ($identity?->verification_level ?? 1);
+
+        if ($level < 2) {
+            return ApiResponse::error(
+                'identity_required',
+                'برای برداشت، ابتدا باید حساب شما تأیید شود.',
+                422,
+            );
+        }
+
+        if ($level < 3) {
+            $ownership = $identity?->mobile_ownership_status?->value;
+            if ($ownership === 'locked') {
+                return ApiResponse::error(
+                    'ownership_locked',
+                    'تطبیق شماره موبایل قفل شده است. با پشتیبانی تماس بگیرید.',
+                    422,
+                );
+            }
+
+            return ApiResponse::error(
+                'ownership_required',
+                'برای برداشت، تطبیق شماره موبایل با کد ملی الزامی است.',
+                422,
+            );
+        }
+
         $summary = $this->referrals->summary($user);
 
         if ($summary['payable_amount'] <= 0) {

@@ -30,6 +30,9 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        $this->call(RolePermissionSeeder::class);
+        $this->call(IdentityProviderSeeder::class);
+
         // Settings singletons with Persian-friendly defaults.
         AiSetting::current();
 

@@ -1,0 +1,130 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { studentFetch } from '@/lib/student/session';
+import { getStudentToken } from '@/lib/student/session';
+import { SERVER_API_URL } from '@/lib/api/config';
+
+export interface SimpleFormState {
+  error?: string;
+  success?: string;
+  data?: Record<string, unknown>;
+}
+
+function extractError(err: unknown, fallback: string): string {
+  const e = err as {
+    status?: number;
+    payload?: { error?: { message_fa?: string }; errors?: Record<string, string[]>; message?: string };
+  };
+  if (e?.payload?.error?.message_fa) return e.payload.error.message_fa;
+  const firstFieldError = e?.payload?.errors ? Object.values(e.payload.errors)[0]?.[0] : undefined;
+  return firstFieldError ?? e?.payload?.message ?? fallback;
+}
+
+async function studentUpload<T>(path: string, formData: FormData): Promise<T> {
+  const token = await getStudentToken();
+  const url = `${SERVER_API_URL}/student${path.startsWith('/') ? path : `/${path}`}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: formData,
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const err = new Error(`Student API ${res.status}`) as Error & { status: number; payload?: unknown };
+    err.status = res.status;
+    err.payload = await res.json().catch(() => undefined);
+    throw err;
+  }
+  return (await res.json()) as T;
+}
+
+export async function getIdentityVerificationStateAction(): Promise<{
+  ok: true;
+  data: Record<string, unknown>;
+} | { ok: false; error: string }> {
+  try {
+    const res = await studentFetch<{ data: Record<string, unknown> }>('/identity-verification');
+    return { ok: true, data: res.data };
+  } catch (err) {
+    return { ok: false, error: extractError(err, 'دریافت وضعیت تأیید هویت ناموفق بود.') };
+  }
+}
+
+export async function fetchVideoPromptAction(): Promise<
+  { ok: true; text: string } | { ok: false; error: string }
+> {
+  try {
+    const res = await studentFetch<{ data: { text?: string; prompt?: string } }>(
+      '/identity-verification/video-prompt',
+      { method: 'POST' },
+    );
+    const text = res.data.text ?? res.data.prompt ?? '';
+    if (!text) return { ok: false, error: 'متن ویدیو دریافت نشد.' };
+    return { ok: true, text };
+  } catch (err) {
+    return { ok: false, error: extractError(err, 'دریافت متن ویدیو ناموفق بود.') };
+  }
+}
+
+export async function saveIdentityDraftAction(
+  _prev: SimpleFormState,
+  formData: FormData,
+): Promise<SimpleFormState> {
+  const payload = {
+    first_name: String(formData.get('first_name') ?? '').trim(),
+    last_name: String(formData.get('last_name') ?? '').trim(),
+    national_code: String(formData.get('national_code') ?? '').replace(/\D/g, ''),
+    date_of_birth: String(formData.get('date_of_birth') ?? ''),
+    gender: String(formData.get('gender') ?? ''),
+    city: String(formData.get('city') ?? '').trim(),
+  };
+
+  try {
+    await studentFetch('/identity-verification', { method: 'PUT', body: payload });
+  } catch (err) {
+    return { error: extractError(err, 'ذخیره اطلاعات هویتی ناموفق بود.') };
+  }
+
+  revalidatePath('/panel/identity-verification');
+  revalidatePath('/panel/profile');
+  return { success: 'اطلاعات هویتی ذخیره شد.', data: payload };
+}
+
+export async function submitIdentityVerificationAction(formData: FormData): Promise<SimpleFormState> {
+  try {
+    await studentUpload('/identity-verification/submit', formData);
+  } catch (err) {
+    return { error: extractError(err, 'ارسال پرونده تأیید هویت ناموفق بود.') };
+  }
+
+  revalidatePath('/panel/identity-verification');
+  revalidatePath('/panel/profile');
+  revalidatePath('/panel/referrals');
+  revalidatePath('/panel/sat');
+  return { success: 'پرونده شما با موفقیت ارسال شد و در صف بررسی قرار گرفت.' };
+}
+
+export async function verifyMobileOwnershipAction(): Promise<SimpleFormState> {
+  try {
+    const res = await studentFetch<{ data?: { result?: string; message?: string }; message?: string }>(
+      '/mobile-ownership/verify',
+      { method: 'POST' },
+    );
+    revalidatePath('/panel/profile');
+    revalidatePath('/panel/referrals');
+    const result = res.data?.result;
+    if (result === 'matched' || result === 'MATCHED') {
+      return { success: 'مالکیت شماره موبایل تأیید شد. اکنون می‌توانید درخواست واریز ثبت کنید.' };
+    }
+    if (result === 'mismatched' || result === 'MISMATCHED') {
+      return { error: res.data?.message ?? 'شماره موبایل با کد ملی مطابقت ندارد.' };
+    }
+    return { success: res.data?.message ?? res.message ?? 'درخواست تطبیق ثبت شد.' };
+  } catch (err) {
+    return { error: extractError(err, 'تأیید مالکیت شماره ناموفق بود.') };
+  }
+}

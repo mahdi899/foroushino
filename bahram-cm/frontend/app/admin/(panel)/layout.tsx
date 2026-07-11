@@ -14,5 +14,14 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const user = await getCurrentUser();
   if (!user) redirect('/admin/login');
 
-  return <AdminShell>{children}</AdminShell>;
+  return (
+    <AdminShell
+      permissions={user.permissions}
+      isSuperAdmin={Boolean(
+        user.is_super_admin || user.roles.includes('super-admin') || user.roles.includes('SUPER_ADMIN'),
+      )}
+    >
+      {children}
+    </AdminShell>
+  );
 }

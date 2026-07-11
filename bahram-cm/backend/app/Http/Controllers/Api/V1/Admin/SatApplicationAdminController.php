@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Enums\SatApplicationStatus;
+use App\Events\SatApplicationAccepted;
 use App\Http\Controllers\Controller;
 use App\Models\SatApplication;
 use Illuminate\Http\JsonResponse;
@@ -32,11 +34,20 @@ class SatApplicationAdminController extends Controller
             'admin_note' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $previous = $satApplication->status;
+
         $satApplication->update([
             'status' => $data['status'],
             'admin_note' => $data['admin_note'] ?? $satApplication->admin_note,
             'reviewed_at' => now(),
         ]);
+
+        $becameAccepted = $previous !== SatApplicationStatus::Accepted
+            && $satApplication->status === SatApplicationStatus::Accepted;
+
+        if ($becameAccepted && $satApplication->user) {
+            SatApplicationAccepted::dispatch($satApplication->user, $satApplication);
+        }
 
         return response()->json(['data' => $this->payload($satApplication)]);
     }

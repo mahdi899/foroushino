@@ -36,6 +36,8 @@ class StudentOnboardingService
 
             $user->update(['first_login_at' => now()]);
 
+            app(\App\Actions\Identity\EnsureIdentityProfile::class)($user);
+
             $this->notifications->welcome($user);
         });
 

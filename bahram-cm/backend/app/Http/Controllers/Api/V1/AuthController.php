@@ -63,18 +63,22 @@ class AuthController extends Controller
     /** @return array<string, mixed> */
     private function userPayload(User $user): array
     {
+        $roles = $user->getRoleNames()->values()->all();
+        $permissions = $user->isSuperAdmin()
+            ? $user->getAllPermissions()->pluck('name')->values()->all()
+            : $user->getAllPermissions()->pluck('name')->values()->all();
+
+        if ($user->isSuperAdmin() && $permissions === []) {
+            $permissions = \App\Support\PermissionCatalog::all();
+        }
+
         return [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'roles' => ['SUPER_ADMIN'],
-            'permissions' => [
-                'articles.read', 'articles.write',
-                'media.read', 'media.write',
-                'settings.read', 'settings.write',
-                'seo.read', 'seo.write',
-            ],
-            'is_super_admin' => true,
+            'roles' => $roles,
+            'permissions' => $permissions,
+            'is_super_admin' => $user->isSuperAdmin(),
         ];
     }
 }

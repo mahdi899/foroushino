@@ -9,9 +9,14 @@ export type AdminStudent = {
   last_name?: string | null;
   display_name?: string;
   avatar_url?: string | null;
-  mobile: string | null;
+  /** @deprecated Prefer mobile_masked — full mobile is only via Reveal */
+  mobile?: string | null;
+  mobile_masked?: string | null;
   email: string | null;
   status: 'active' | 'suspended' | 'blocked';
+  verification_level?: number;
+  identity_status?: string | null;
+  can_reveal_mobile?: boolean;
   orders_count?: number | null;
   course_accesses_count?: number | null;
   tickets_count?: number | null;
