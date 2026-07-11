@@ -41,11 +41,22 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             if ($e instanceof ValidationException) {
+                $errors = $e->errors();
+                $messageFa = 'اطلاعات ارسال‌شده معتبر نیست.';
+                if (isset($errors['coupon'][0])) {
+                    $messageFa = $errors['coupon'][0];
+                } elseif (count($errors) === 1) {
+                    $first = collect($errors)->flatten()->first();
+                    if (is_string($first) && $first !== '') {
+                        $messageFa = $first;
+                    }
+                }
+
                 return response()->json([
                     'error' => [
                         'code' => 'validation_error',
-                        'message_fa' => 'اطلاعات ارسال‌شده معتبر نیست.',
-                        'details' => $e->errors(),
+                        'message_fa' => $messageFa,
+                        'details' => $errors,
                     ],
                 ], 422);
             }

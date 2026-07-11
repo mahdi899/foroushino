@@ -155,12 +155,12 @@ export function HeroCinematic() {
           className="hero-panel-headline mt-1.5 whitespace-pre-line font-black tracking-[-0.02em] sm:mt-2 lg:mt-3"
         >
           <span
-            className="hero-headline-mobile lg:hidden"
+            className="hero-headline-mobile md:hidden"
             style={{ fontSize: "var(--hero-headline-size, clamp(1.4rem, 6vw, 2rem))" }}
           >
             {site.hero.headlineMobile}
           </span>
-          <span className="hero-headline-desktop hero-headline-gradient hidden lg:inline lg:text-[clamp(2.15rem,2.6vw+1.1rem,3.5rem)] lg:leading-[1.24]">
+          <span className="hero-headline-desktop hero-headline-gradient hidden md:inline lg:text-[clamp(2.15rem,2.6vw+1.1rem,3.5rem)] lg:leading-[1.24]">
             {site.hero.headline}
           </span>
         </motion.h1>
@@ -228,7 +228,7 @@ export function HeroCinematic() {
         >
           <div className={cn("hero-light-content", LIGHT_PANEL_PAD)}>{grid}</div>
 
-          <div className="hero-light-media hero-light-media--mobile lg:hidden" aria-hidden>
+          <div className="hero-light-media hero-light-media--mobile md:hidden" aria-hidden>
             <motion.div
               className="hero-light-media-motion"
               initial="hidden"
@@ -255,7 +255,7 @@ export function HeroCinematic() {
             <div className="hero-light-image-fade" aria-hidden />
           </div>
 
-          <div className="hero-light-media hero-light-media--desktop hidden lg:block" aria-hidden>
+          <div className="hero-light-media hero-light-media--desktop hidden md:block" aria-hidden>
             <motion.div
               className="hero-light-media-motion"
               initial="hidden"
@@ -268,7 +268,7 @@ export function HeroCinematic() {
                 width={1920}
                 height={1080}
                 priority
-                sizes="(min-width: 1024px) 55vw, 0"
+                sizes="(min-width: 768px) 100vw, 0"
                 wrapperClassName="hero-light-grid-picture"
                 className="hero-light-grid-img hero-light-grid-img--desktop"
               />

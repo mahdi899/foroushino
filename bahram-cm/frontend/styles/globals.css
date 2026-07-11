@@ -3066,6 +3066,7 @@ html[data-theme="light"] .site-bottom-nav {
   width: 2.125rem;
   height: 2.125rem;
   border-radius: 0.75rem;
+  color: var(--color-emerald-glow);
   border: 1px solid color-mix(in oklab, var(--color-emerald-glow) 14%, transparent);
   background: linear-gradient(
     145deg,
@@ -3079,12 +3080,18 @@ html[data-theme="light"] .site-bottom-nav {
 }
 
 html[data-theme="light"] .site-bottom-nav__icon-shell {
+  color: var(--color-emerald);
   border-color: color-mix(in oklab, var(--color-emerald-glow) 20%, transparent);
   background: linear-gradient(
     145deg,
     color-mix(in oklab, var(--color-emerald-glow) 10%, #ffffff) 0%,
     color-mix(in oklab, var(--color-emerald) 6%, #ffffff) 100%
   );
+}
+
+.site-bottom-nav__icon {
+  stroke: currentColor;
+  fill: none;
 }
 
 .site-bottom-nav__icon-shell--active {
