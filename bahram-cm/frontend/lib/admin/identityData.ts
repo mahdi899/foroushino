@@ -90,26 +90,42 @@ export async function getIdentityVerification(
   }
 }
 
+type IdentityProviderSettingsResponse = {
+  data: {
+    providers?: IdentityProviderConfig[];
+    routes?: IdentityRouteConfig[];
+  };
+};
+
+export async function fetchIdentityProviderSettings(): Promise<{
+  providers: IdentityProviderConfig[];
+  routes: IdentityRouteConfig[];
+  error: string | null;
+}> {
+  try {
+    const res = await adminFetch<IdentityProviderSettingsResponse>('/identity-providers');
+    return {
+      providers: res.data?.providers ?? [],
+      routes: res.data?.routes ?? [],
+      error: null,
+    };
+  } catch (e) {
+    return { providers: [], routes: [], error: errorMessage(e) };
+  }
+}
+
 export async function getIdentityProviders(): Promise<{
   items: IdentityProviderConfig[];
   error: string | null;
 }> {
-  try {
-    const res = await adminFetch<{ data: IdentityProviderConfig[] }>('/identity-providers');
-    return { items: res.data ?? [], error: null };
-  } catch (e) {
-    return { items: [], error: errorMessage(e) };
-  }
+  const { providers, error } = await fetchIdentityProviderSettings();
+  return { items: providers, error };
 }
 
 export async function getIdentityRoutes(): Promise<{
   items: IdentityRouteConfig[];
   error: string | null;
 }> {
-  try {
-    const res = await adminFetch<{ data: IdentityRouteConfig[] }>('/identity-routes');
-    return { items: res.data ?? [], error: null };
-  } catch (e) {
-    return { items: [], error: errorMessage(e) };
-  }
+  const { routes, error } = await fetchIdentityProviderSettings();
+  return { items: routes, error };
 }

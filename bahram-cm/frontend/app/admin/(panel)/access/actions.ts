@@ -31,6 +31,25 @@ export async function assignAdminRoleAction(
   }
 }
 
+export async function createAdminAction(input: {
+  name: string;
+  email: string;
+  password: string;
+  role: string;
+}): Promise<{ ok: true; name: string } | { ok: false; error: string }> {
+  try {
+    const res = await adminFetch<{ data: { name: string } }>('/roles/admins', {
+      method: 'POST',
+      body: input,
+    });
+    revalidatePath('/admin/users');
+    revalidatePath('/admin/access/roles');
+    return { ok: true, name: res.data.name };
+  } catch (e) {
+    return actionError(e, 'ساخت مدیر جدید ناموفق بود.');
+  }
+}
+
 export async function updateRolePermissionsAction(
   roleId: number,
   permissions: string[],

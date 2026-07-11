@@ -64,7 +64,7 @@ export async function reviewIdentityVerificationAction(
 }
 
 export async function updateIdentityProviderAction(
-  id: number,
+  slug: string,
   input: {
     is_enabled?: boolean;
     credentials?: Record<string, string>;
@@ -73,7 +73,7 @@ export async function updateIdentityProviderAction(
   },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    await adminFetch(`/identity-providers/${id}`, {
+    await adminFetch(`/identity-providers/${slug}`, {
       method: 'PUT',
       body: input,
     });
@@ -85,11 +85,11 @@ export async function updateIdentityProviderAction(
 }
 
 export async function testIdentityProviderAction(
-  id: number,
+  slug: string,
 ): Promise<{ ok: true; message?: string } | { ok: false; error: string }> {
   try {
     const res = await adminFetch<{ data?: { message?: string }; message?: string }>(
-      `/identity-providers/${id}/test`,
+      `/identity-providers/${slug}/test`,
       { method: 'POST' },
     );
     revalidatePath('/admin/settings/identity-providers');
@@ -109,7 +109,7 @@ export async function updateIdentityRouteAction(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     await adminFetch(`/identity-routes/${id}`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: input,
     });
     revalidatePath('/admin/settings/identity-providers');

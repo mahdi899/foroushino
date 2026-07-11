@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\RolePermissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 
 class RoleAdminController extends Controller
@@ -58,20 +59,27 @@ class RoleAdminController extends Controller
     {
         abort_unless($request->user()->hasPermission('roles.view') || $request->user()->isSuperAdmin(), 403);
 
-        $admins = User::query()
-            ->where('is_admin', true)
-            ->with('roles')
-            ->orderBy('id')
-            ->get()
-            ->map(fn (User $u) => [
-                'id' => $u->id,
-                'name' => $u->name,
-                'email' => $u->email,
-                'roles' => $u->getRoleNames()->values()->all(),
-                'is_super_admin' => $u->isSuperAdmin(),
-            ]);
+        return response()->json(['data' => $this->adminRows()]);
+    }
 
-        return response()->json(['data' => $admins]);
+    public function storeAdmin(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'email' => ['required', 'email', 'max:255'],
+            'password' => ['required', 'string', 'min:8', 'max:128'],
+            'role' => ['required', 'string', Rule::exists('roles', 'name')->where('guard_name', 'web')],
+        ]);
+
+        $admin = $this->roles->createAdmin(
+            $request->user(),
+            $data['name'],
+            $data['email'],
+            $data['password'],
+            $data['role'],
+        );
+
+        return response()->json(['data' => $this->adminPayload($admin)], 201);
     }
 
     public function assignAdminRole(Request $request, User $admin): JsonResponse
@@ -85,12 +93,31 @@ class RoleAdminController extends Controller
 
         $updated = $this->roles->assignRoleToAdmin($request->user(), $admin, $data['role']);
 
-        return response()->json(['data' => [
-            'id' => $updated->id,
-            'name' => $updated->name,
-            'email' => $updated->email,
-            'roles' => $updated->getRoleNames()->values()->all(),
-            'is_super_admin' => $updated->isSuperAdmin(),
-        ]]);
+        return response()->json(['data' => $this->adminPayload($updated)]);
+    }
+
+    /** @return list<array<string, mixed>> */
+    private function adminRows(): array
+    {
+        return User::query()
+            ->where('is_admin', true)
+            ->with('roles')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (User $u) => $this->adminPayload($u))
+            ->values()
+            ->all();
+    }
+
+    /** @return array<string, mixed> */
+    private function adminPayload(User $user): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'roles' => $user->getRoleNames()->values()->all(),
+            'is_super_admin' => $user->isSuperAdmin(),
+        ];
     }
 }

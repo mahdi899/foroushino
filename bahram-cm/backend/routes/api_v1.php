@@ -296,6 +296,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     Route::get('roles', [RoleAdminController::class, 'index']);
     Route::get('roles/admins', [RoleAdminController::class, 'admins']);
+    Route::post('roles/admins', [RoleAdminController::class, 'storeAdmin']);
     Route::match(['post', 'patch'], 'roles/admins/{admin}', [RoleAdminController::class, 'assignAdminRole'])->whereNumber('admin');
     Route::post('roles', [RoleAdminController::class, 'store']);
     Route::match(['put', 'patch'], 'roles/{role}', [RoleAdminController::class, 'update'])->whereNumber('role');

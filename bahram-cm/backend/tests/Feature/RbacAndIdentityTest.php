@@ -324,6 +324,59 @@ class RbacAndIdentityTest extends TestCase
         ])->assertForbidden();
     }
 
+    public function test_super_admin_can_create_admin_user_with_role(): void
+    {
+        $super = $this->makeAdmin(AdminRoleName::SuperAdmin);
+        Sanctum::actingAs($super);
+
+        $this->postJson('/api/v1/roles/admins', [
+            'name' => 'مالی جدید',
+            'email' => 'new.finance@bahram.test',
+            'password' => 'password123',
+            'role' => AdminRoleName::Finance->value,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.email', 'new.finance@bahram.test')
+            ->assertJsonPath('data.roles.0', 'finance');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'new.finance@bahram.test',
+            'is_admin' => true,
+        ]);
+
+        $this->assertDatabaseHas('admin_audit_logs', [
+            'actor_id' => $super->id,
+            'action' => 'admin.created',
+        ]);
+    }
+
+    public function test_support_cannot_create_admin_user(): void
+    {
+        $support = $this->makeAdmin(AdminRoleName::Support);
+        Sanctum::actingAs($support);
+
+        $this->postJson('/api/v1/roles/admins', [
+            'name' => 'مدیر تست',
+            'email' => 'blocked@bahram.test',
+            'password' => 'password123',
+            'role' => AdminRoleName::Finance->value,
+        ])->assertForbidden();
+    }
+
+    public function test_admin_cannot_create_super_admin_user(): void
+    {
+        $admin = $this->makeAdmin(AdminRoleName::Admin);
+        Sanctum::actingAs($admin);
+
+        $this->postJson('/api/v1/roles/admins', [
+            'name' => 'مدیر کل جدید',
+            'email' => 'blocked-super@bahram.test',
+            'password' => 'password123',
+            'role' => AdminRoleName::SuperAdmin->value,
+        ])->assertUnprocessable()
+            ->assertJsonPath('error.details.role.0', 'فقط مدیر کل می‌تواند مدیر کل جدید بسازد.');
+    }
+
     private function makeAdmin(AdminRoleName $role): User
     {
         $user = User::factory()->create([

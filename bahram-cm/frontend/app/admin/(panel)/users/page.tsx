@@ -1,10 +1,16 @@
 import { AdminPage, Badge, Table } from '../ui';
 import { getAdminUsers, getRoles } from '@/lib/admin/accessData';
+import { can, getCurrentUser } from '@/lib/auth/session';
 import { AdminRoleSelect } from './AdminRoleSelect';
+import { CreateAdminForm } from './CreateAdminForm';
 
 export const dynamic = 'force-dynamic';
 
 export default async function AdminUsersPage() {
+  const user = await getCurrentUser();
+  const canManage = can(user, 'roles.manage') || Boolean(user?.is_super_admin);
+  const isSuperAdmin = Boolean(user?.is_super_admin);
+
   const [{ items: admins, error }, { roles, error: rolesError }] = await Promise.all([
     getAdminUsers(),
     getRoles(),
@@ -15,13 +21,15 @@ export default async function AdminUsersPage() {
       icon="Shield"
       headerVariant="settings"
       title="مدیران"
-      desc="لیست مدیران و تخصیص نقش — تغییر نقش نیاز به تأیید دارد"
+      desc="ساخت مدیر جدید با ایمیل و رمز، و تخصیص نقش از بین نقش‌های تعریف‌شده"
     >
       {(error || rolesError) && (
         <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-small text-error">
           {error ?? rolesError}
         </div>
       )}
+
+      {canManage ? <CreateAdminForm roles={roles} isSuperAdmin={isSuperAdmin} /> : null}
 
       {admins.length > 0 ? (
         <Table head={['نام', 'ایمیل', 'نقش فعلی', 'تخصیص نقش']}>
@@ -52,7 +60,7 @@ export default async function AdminUsersPage() {
                 </div>
               </td>
               <td className="px-4 py-3">
-                <AdminRoleSelect admin={admin} roles={roles} />
+                <AdminRoleSelect admin={admin} roles={roles} canManage={canManage} />
               </td>
             </tr>
           ))}

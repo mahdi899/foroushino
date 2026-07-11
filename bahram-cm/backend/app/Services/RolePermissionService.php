@@ -105,6 +105,44 @@ class RolePermissionService
         return $this->rolePayload($role->load('permissions'));
     }
 
+    public function createAdmin(User $actor, string $name, string $email, string $password, string $roleName): User
+    {
+        $this->assertCanManageRoles($actor);
+
+        if ($roleName === AdminRoleName::SuperAdmin->value && ! $actor->isSuperAdmin()) {
+            throw ValidationException::withMessages([
+                'role' => ['فقط مدیر کل می‌تواند مدیر کل جدید بسازد.'],
+            ]);
+        }
+
+        Role::findByName($roleName, 'web');
+
+        if (User::query()->where('email', $email)->exists()) {
+            throw ValidationException::withMessages([
+                'email' => ['این ایمیل قبلاً ثبت شده است.'],
+            ]);
+        }
+
+        $admin = DB::transaction(function () use ($name, $email, $password, $roleName) {
+            $user = User::create([
+                'name' => $name,
+                'email' => $email,
+                'password' => $password,
+                'is_admin' => true,
+            ]);
+            $user->assignRole($roleName);
+
+            return $user;
+        });
+
+        $this->audit->log($actor, 'admin.created', $admin, [
+            'email' => $email,
+            'role' => $roleName,
+        ]);
+
+        return $admin->fresh();
+    }
+
     public function assignRoleToAdmin(User $actor, User $admin, string $roleName): User
     {
         $this->assertCanManageRoles($actor);

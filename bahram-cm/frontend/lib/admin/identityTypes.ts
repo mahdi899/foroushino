@@ -69,7 +69,6 @@ export type IdentityDashboardStats = {
 };
 
 export type IdentityProviderConfig = {
-  id: number;
   slug: string;
   label: string;
   capabilities: string[] | null;

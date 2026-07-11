@@ -50,7 +50,7 @@ class RolePermissionSeeder extends Seeder
             'tickets.view', 'tickets.manage',
             'orders.view', 'orders.manage',
             'settings.view', 'settings.manage',
-            'roles.view', 'permissions.view',
+            'roles.view', 'roles.manage', 'permissions.view',
             'audit.view',
             'identity_provider.view',
         ]);

@@ -36,7 +36,7 @@ function ProviderCard({
         credentials?: Record<string, string>;
       } = { is_enabled: enabled };
       if (apiKey.trim()) body.credentials = { api_key: apiKey.trim() };
-      const res = await updateIdentityProviderAction(provider.id, body);
+      const res = await updateIdentityProviderAction(provider.slug, body);
       if (!res.ok) {
         setError(res.error);
         return;
@@ -51,7 +51,7 @@ function ProviderCard({
     setMessage(null);
     setError(null);
     startTransition(async () => {
-      const res = await testIdentityProviderAction(provider.id);
+      const res = await testIdentityProviderAction(provider.slug);
       if (!res.ok) {
         setError(res.error);
         return;
@@ -95,11 +95,11 @@ function ProviderCard({
             فعال
           </label>
           <div>
-            <label className="field-label" htmlFor={`key-${provider.id}`}>
+            <label className="field-label" htmlFor={`key-${provider.slug}`}>
               کلید API (فقط در صورت تغییر وارد کنید)
             </label>
             <input
-              id={`key-${provider.id}`}
+              id={`key-${provider.slug}`}
               type="password"
               className="field-input"
               dir="ltr"
@@ -238,7 +238,7 @@ export function IdentityProvidersClient({
         <h2 className="mb-3 text-h3 text-primary-dark">سرویس‌ها</h2>
         <div className="grid gap-4 lg:grid-cols-2">
           {providers.map((p) => (
-            <ProviderCard key={p.id} provider={p} canManage={canManage} canTest={canTest} />
+            <ProviderCard key={p.slug} provider={p} canManage={canManage} canTest={canTest} />
           ))}
           {!providers.length ? (
             <div className="card p-6 text-small text-text-muted">هنوز سرویسی ثبت نشده است.</div>
