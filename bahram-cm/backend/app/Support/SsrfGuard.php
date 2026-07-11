@@ -76,6 +76,11 @@ final class SsrfGuard
             return "سرویس‌دهنده «{$slug}» از تنظیم آدرس پایه سفارشی پشتیبانی نمی‌کند.";
         }
 
+        // Telegram: allow any public HTTPS endpoint (e.g. Cloudflare Worker proxy).
+        if ($slug === 'telegram') {
+            return null;
+        }
+
         $allowedSuffixes = self::PROVIDER_ALLOWLIST[$slug] ?? [];
         if (empty($allowedSuffixes)) {
             return null;

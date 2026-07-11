@@ -12,7 +12,6 @@ use App\Models\SmsSetting;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Support\JalaliDate;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -66,7 +65,7 @@ class AdminTelegramLogService
         $sentAny = false;
 
         foreach ($chatIds as $chatId) {
-            if ($this->postMessage($token, $chatId, $message)) {
+            if ($this->telegramClient()->sendMessage($chatId, $message)) {
                 $sentAny = true;
             }
         }
@@ -93,7 +92,7 @@ class AdminTelegramLogService
 
         $sent = false;
         foreach ($chatIds as $chatId) {
-            $sent = $this->postMessage($token, $chatId, $message) || $sent;
+            $sent = $this->telegramClient()->sendMessage($chatId, $message) || $sent;
         }
 
         return $sent
@@ -129,7 +128,7 @@ class AdminTelegramLogService
 
         $sentAny = false;
         foreach ($chatIds as $chatId) {
-            if ($this->postMessage($token, $chatId, $message)) {
+            if ($this->telegramClient()->sendMessage($chatId, $message)) {
                 $sentAny = true;
             }
         }
@@ -473,34 +472,8 @@ class AdminTelegramLogService
         return array_values(array_filter(array_map('trim', $parts), fn ($id) => $id !== ''));
     }
 
-    private function postMessage(string $token, string $chatId, string $message): bool
+    private function telegramClient(): TelegramBotClient
     {
-        try {
-            $response = Http::timeout(20)->post("https://api.telegram.org/bot{$token}/sendMessage", [
-                'chat_id' => $chatId,
-                'text' => $message,
-                'parse_mode' => 'HTML',
-                'disable_web_page_preview' => true,
-            ]);
-        } catch (Throwable $e) {
-            Log::channel('sms')->error('Admin Telegram log failed.', [
-                'chat_id' => $chatId,
-                'message' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
-
-        $body = $response->json();
-        $ok = $response->successful() && data_get($body, 'ok') === true;
-
-        if (! $ok) {
-            Log::channel('sms')->error('Admin Telegram log rejected.', [
-                'chat_id' => $chatId,
-                'response' => $body,
-            ]);
-        }
-
-        return $ok;
+        return TelegramBotClient::fromAdminConfig();
     }
 }
