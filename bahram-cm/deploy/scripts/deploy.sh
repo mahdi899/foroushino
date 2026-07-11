@@ -10,7 +10,9 @@ echo "==> Pull latest code"
 GIT_ROOT="${GIT_ROOT:-/var/www/foroushino}"
 if [[ -d "${GIT_ROOT}/.git" ]]; then
   cd "$GIT_ROOT"
-  git pull --ff-only origin main
+  if ! git pull --ff-only origin main; then
+    echo "WARN: git pull failed (no credentials?) — continuing with existing tree"
+  fi
 fi
 APP_ROOT="${APP_ROOT:-/var/www/bahram-cm}"
 cd "$APP_ROOT"
