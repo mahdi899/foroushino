@@ -2,6 +2,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   base: './',
@@ -9,6 +12,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: 'auto',
       includeAssets: [
         'saat-logo.png',
         'pwa/icon-192.png',
@@ -83,5 +87,12 @@ export default defineConfig({
     host: true,
     port: 5173,
     strictPort: true,
+    watch: {
+      ignored: ['**/android/**', '**/dev-dist/**'],
+    },
+  },
+  optimizeDeps: {
+    entries: [path.resolve(__dirname, 'index.html')],
+    exclude: ['virtual:pwa-register'],
   },
 })
