@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic';
 
 type IdentityState = {
   identity_status?: string;
+  can_submit?: boolean;
   first_name?: string | null;
   last_name?: string | null;
   date_of_birth?: string | null;
@@ -73,6 +74,7 @@ export default async function IdentityVerificationPage() {
       />
       <IdentityVerificationWizard
         initialStatus={state?.identity_status ?? user?.identity_status}
+        initialCanSubmit={state?.can_submit ?? true}
         initialDraft={initialDraft}
         correctionItems={state?.required_corrections ?? null}
       />

@@ -32,19 +32,13 @@ class IdentityVerificationAdminController extends Controller
     {
         abort_unless($request->user()->hasPermission('identity.view'), 403);
 
+        $status = $request->string('status')->toString();
+
         $query = IdentityVerificationSubmission::query()
             ->with(['user:id,name,mobile', 'identityProfile'])
+            ->whereIn('id', $this->latestSubmissionIdsSubquery($status ?: null))
             ->orderByDesc('submitted_at')
             ->orderByDesc('id');
-
-        if ($status = $request->string('status')->toString()) {
-            $query->where('status', $status);
-        } else {
-            $query->whereIn('status', [
-                IdentityVerificationStatus::Submitted,
-                IdentityVerificationStatus::UnderReview,
-            ]);
-        }
 
         if ($request->boolean('ownership_locked')) {
             $query->whereHas(
@@ -216,10 +210,7 @@ class IdentityVerificationAdminController extends Controller
         $afterId = $request->integer('after_id');
 
         $next = IdentityVerificationSubmission::query()
-            ->whereIn('status', [
-                IdentityVerificationStatus::Submitted,
-                IdentityVerificationStatus::UnderReview,
-            ])
+            ->whereIn('id', $this->latestSubmissionIdsSubquery())
             ->when($afterId, fn ($q) => $q->where('id', '>', $afterId))
             ->orderBy('submitted_at')
             ->orderBy('id')
@@ -279,13 +270,15 @@ class IdentityVerificationAdminController extends Controller
     /** @return array<string, int> */
     private function dashboardStats(): array
     {
-        $counts = IdentityVerificationSubmission::query()
+        $queueSubmissionIds = $this->latestSubmissionIdsSubquery();
+        $queueRows = IdentityVerificationSubmission::query()
+            ->whereIn('id', $queueSubmissionIds)
             ->selectRaw('status, count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
 
-        $submitted = (int) ($counts->get(IdentityVerificationStatus::Submitted->value) ?? 0);
-        $underReview = (int) ($counts->get(IdentityVerificationStatus::UnderReview->value) ?? 0);
+        $submitted = (int) ($queueRows->get(IdentityVerificationStatus::Submitted->value) ?? 0);
+        $underReview = (int) ($queueRows->get(IdentityVerificationStatus::UnderReview->value) ?? 0);
         $queueTotal = UserIdentityProfile::query()
             ->whereIn('identity_status', [
                 IdentityVerificationStatus::Submitted,
@@ -293,18 +286,39 @@ class IdentityVerificationAdminController extends Controller
             ])
             ->count();
 
+        $allCounts = IdentityVerificationSubmission::query()
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
         return [
             'pending_review' => max($queueTotal, $submitted + $underReview),
             'submitted' => $submitted,
             'under_review' => $underReview,
-            'needs_correction' => (int) ($counts->get(IdentityVerificationStatus::NeedsCorrection->value) ?? 0),
-            'approved' => (int) ($counts->get(IdentityVerificationStatus::Approved->value) ?? 0),
-            'rejected' => (int) ($counts->get(IdentityVerificationStatus::Rejected->value) ?? 0),
+            'needs_correction' => (int) ($allCounts->get(IdentityVerificationStatus::NeedsCorrection->value) ?? 0),
+            'approved' => (int) ($allCounts->get(IdentityVerificationStatus::Approved->value) ?? 0),
+            'rejected' => (int) ($allCounts->get(IdentityVerificationStatus::Rejected->value) ?? 0),
             'queue_total' => $queueTotal,
             'ownership_locked' => UserIdentityProfile::query()
                 ->where('mobile_ownership_status', 'locked')
                 ->count(),
         ];
+    }
+
+    /** Latest submission row per student for the active admin queue/filter. */
+    private function latestSubmissionIdsSubquery(?string $status = null): \Illuminate\Database\Eloquent\Builder
+    {
+        return IdentityVerificationSubmission::query()
+            ->selectRaw('max(id) as id')
+            ->when(
+                $status,
+                fn ($q) => $q->where('status', $status),
+                fn ($q) => $q->whereIn('status', [
+                    IdentityVerificationStatus::Submitted,
+                    IdentityVerificationStatus::UnderReview,
+                ]),
+            )
+            ->groupBy('user_id');
     }
 
     /** @return array<string, mixed> */

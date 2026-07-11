@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Student;
 
 use App\Actions\Identity\EnsureIdentityProfile;
+use App\Actions\Identity\IdentitySubmissionGuard;
 use App\Actions\Identity\SubmitIdentityVerification;
 use App\Enums\IdentityArtifactType;
 use App\Enums\IdentityVerificationStatus;
@@ -45,12 +46,7 @@ class IdentityVerificationController extends Controller
             'city' => $profile->city,
             'required_corrections' => $latest?->required_corrections,
             'latest_submission' => $latest ? $this->submissionPayload($latest) : null,
-            'can_submit' => in_array($profile->identity_status, [
-                IdentityVerificationStatus::NotStarted,
-                IdentityVerificationStatus::Draft,
-                IdentityVerificationStatus::NeedsCorrection,
-                IdentityVerificationStatus::Rejected,
-            ], true),
+            'can_submit' => $this->canSubmit($profile, $user->id),
         ]);
     }
 
@@ -86,10 +82,14 @@ class IdentityVerificationController extends Controller
             return ApiResponse::error('duplicate_national_code', IdentityVerificationMessages::DUPLICATE_NATIONAL_CODE, 422);
         }
 
-        $profile = $ensure($user);
-
         try {
-            $submission = DB::transaction(function () use ($user, $profile, $data, $nationalCode) {
+            $submission = DB::transaction(function () use ($user, $ensure, $data, $nationalCode) {
+                $profile = $ensure($user);
+                /** @var UserIdentityProfile $profile */
+                $profile = UserIdentityProfile::query()->whereKey($profile->id)->lockForUpdate()->firstOrFail();
+
+                IdentitySubmissionGuard::ensureEditable($profile, $user->id);
+
                 $draft = IdentityVerificationSubmission::query()
                     ->where('user_id', $user->id)
                     ->where('status', IdentityVerificationStatus::Draft)
@@ -112,23 +112,28 @@ class IdentityVerificationController extends Controller
 
                 if ($draft) {
                     $draft->update($payload);
-
-                    return $draft->fresh();
+                    $submission = $draft->fresh();
+                } else {
+                    $submission = IdentityVerificationSubmission::query()->create($payload);
                 }
 
-                return IdentityVerificationSubmission::query()->create($payload);
-            });
+                $profile->fill([
+                    'first_name' => $data['first_name'],
+                    'last_name' => $data['last_name'],
+                    'national_code_encrypted' => NationalCode::encrypt($nationalCode),
+                    'national_code_hash' => NationalCode::hash($nationalCode),
+                    'date_of_birth' => $data['date_of_birth'],
+                    'gender' => $data['gender'],
+                    'city' => $data['city'],
+                    'identity_status' => IdentityVerificationStatus::Draft,
+                ])->save();
 
-            $profile->fill([
-                'first_name' => $data['first_name'],
-                'last_name' => $data['last_name'],
-                'national_code_encrypted' => NationalCode::encrypt($nationalCode),
-                'national_code_hash' => NationalCode::hash($nationalCode),
-                'date_of_birth' => $data['date_of_birth'],
-                'gender' => $data['gender'],
-                'city' => $data['city'],
-                'identity_status' => IdentityVerificationStatus::Draft,
-            ])->save();
+                return $submission;
+            });
+        } catch (ValidationException $e) {
+            $message = collect($e->errors())->flatten()->first() ?: IdentityVerificationMessages::STATUS_LOCKED;
+
+            return ApiResponse::error('status_locked', $message, 422, $e->errors());
         } catch (UniqueConstraintViolationException) {
             return ApiResponse::error('duplicate_national_code', IdentityVerificationMessages::DUPLICATE_NATIONAL_CODE, 422);
         }
@@ -166,6 +171,10 @@ class IdentityVerificationController extends Controller
 
         $user = $request->user();
         $profile = $ensure($user);
+
+        if (IdentitySubmissionGuard::isLocked($profile, $user->id)) {
+            return ApiResponse::error('status_locked', IdentityVerificationMessages::STATUS_LOCKED, 422);
+        }
 
         $submission = IdentityVerificationSubmission::query()
             ->where('user_id', $user->id)
@@ -236,9 +245,21 @@ class IdentityVerificationController extends Controller
         try {
             $submission = $submit($request->user(), $data);
         } catch (ValidationException $e) {
-            $message = collect($e->errors())->flatten()->first() ?: IdentityVerificationMessages::GENERIC_VALIDATION;
+            $errors = $e->errors();
 
-            return ApiResponse::error('validation_error', $message, 422, $e->errors());
+            if (isset($errors['status'])) {
+                return ApiResponse::error('status_locked', IdentityVerificationMessages::STATUS_LOCKED, 422, $errors);
+            }
+
+            if (isset($errors['cooldown'])) {
+                $message = $errors['cooldown'][0] ?? IdentityVerificationMessages::COOLDOWN;
+
+                return ApiResponse::error('cooldown', $message, 422, $errors);
+            }
+
+            $message = collect($errors)->flatten()->first() ?: IdentityVerificationMessages::GENERIC_VALIDATION;
+
+            return ApiResponse::error('validation_error', $message, 422, $errors);
         }
 
         return ApiResponse::success($this->submissionPayload($submission), 201);
@@ -269,6 +290,20 @@ class IdentityVerificationController extends Controller
                 ])->values()->all()
                 : [],
         ];
+    }
+
+    private function canSubmit(UserIdentityProfile $profile, int $userId): bool
+    {
+        if (IdentitySubmissionGuard::isLocked($profile, $userId)) {
+            return false;
+        }
+
+        return in_array($profile->identity_status, [
+            IdentityVerificationStatus::NotStarted,
+            IdentityVerificationStatus::Draft,
+            IdentityVerificationStatus::NeedsCorrection,
+            IdentityVerificationStatus::Rejected,
+        ], true);
     }
 
     private function statusLabel(IdentityVerificationStatus $status): string

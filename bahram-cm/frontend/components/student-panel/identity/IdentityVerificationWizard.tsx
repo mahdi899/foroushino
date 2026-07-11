@@ -29,15 +29,18 @@ type Draft = {
 
 export function IdentityVerificationWizard({
   initialStatus,
+  initialCanSubmit = true,
   initialDraft,
   correctionItems,
 }: {
   initialStatus?: string | null;
+  initialCanSubmit?: boolean;
   initialDraft?: Partial<Draft> | null;
   correctionItems?: string[] | null;
 }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
   const [draft, setDraft] = useState<Draft>({
     first_name: initialDraft?.first_name ?? '',
     last_name: initialDraft?.last_name ?? '',
@@ -54,12 +57,17 @@ export function IdentityVerificationWizard({
   const [pending, startTransition] = useTransition();
 
   const lockedStatuses = ['submitted', 'under_review', 'approved'];
-  if (initialStatus && lockedStatuses.includes(initialStatus) && initialStatus !== 'needs_correction') {
+  const isLocked =
+    submitted ||
+    initialCanSubmit === false ||
+    (initialStatus && lockedStatuses.includes(initialStatus) && initialStatus !== 'needs_correction');
+  if (isLocked) {
+    const status = submitted ? 'submitted' : initialStatus;
     return (
       <div className="card p-6">
-        <p className="text-sm text-text-muted">وضعیت پرونده: {identityStatusLabel(initialStatus)}</p>
+        <p className="text-sm text-text-muted">وضعیت پرونده: {identityStatusLabel(status ?? 'submitted')}</p>
         <p className="mt-2 text-sm leading-relaxed text-text">
-          {initialStatus === 'approved'
+          {status === 'approved'
             ? 'هویت شما تأیید شده است.'
             : 'پرونده شما در صف بررسی است و فعلاً قابل ویرایش نیست.'}
         </p>
@@ -121,6 +129,7 @@ export function IdentityVerificationWizard({
         setError(res.error);
         return;
       }
+      setSubmitted(true);
       router.refresh();
       router.push('/panel/profile');
     });

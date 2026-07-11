@@ -75,15 +75,7 @@ class SubmitIdentityVerification
                 ]);
             }
 
-            if (in_array($profile->identity_status, [
-                IdentityVerificationStatus::Submitted,
-                IdentityVerificationStatus::UnderReview,
-                IdentityVerificationStatus::Approved,
-            ], true)) {
-                throw ValidationException::withMessages([
-                    'status' => [IdentityVerificationMessages::STATUS_LOCKED],
-                ]);
-            }
+            IdentitySubmissionGuard::ensureEditable($profile, $user->id);
 
             $version = (int) IdentityVerificationSubmission::query()
                 ->where('user_id', $user->id)

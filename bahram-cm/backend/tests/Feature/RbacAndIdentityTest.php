@@ -169,6 +169,66 @@ class RbacAndIdentityTest extends TestCase
         $this->assertSame(2, (int) $profile->verification_level);
     }
 
+    public function test_draft_cannot_reset_submitted_identity_to_draft(): void
+    {
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09125556677']);
+        $this->makeSubmittedIdentity($student);
+        $profile = $student->fresh()->identityProfile;
+        $profile->update(['identity_status' => IdentityVerificationStatus::Submitted]);
+
+        Sanctum::actingAs($student);
+
+        $this->postJson('/api/v1/student/identity-verification/draft', $this->identityDraftPayload())
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'status_locked');
+
+        $profile->refresh();
+        $this->assertSame(IdentityVerificationStatus::Submitted, $profile->identity_status);
+        $this->assertSame(
+            1,
+            IdentityVerificationSubmission::query()
+                ->where('user_id', $student->id)
+                ->where('status', IdentityVerificationStatus::Submitted)
+                ->count(),
+        );
+    }
+
+    public function test_submit_is_blocked_when_active_submission_exists(): void
+    {
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09126667788']);
+        $this->makeSubmittedIdentity($student);
+        $profile = $student->fresh()->identityProfile;
+        $profile->update(['identity_status' => IdentityVerificationStatus::Draft]);
+
+        Sanctum::actingAs($student);
+
+        $this->postJson('/api/v1/student/identity-verification/submit', $this->identityDraftPayload())
+            ->assertStatus(422)
+            ->assertJsonPath('error.code', 'status_locked');
+
+        $this->assertSame(
+            1,
+            IdentityVerificationSubmission::query()
+                ->where('user_id', $student->id)
+                ->where('status', IdentityVerificationStatus::Submitted)
+                ->count(),
+        );
+    }
+
+    public function test_identity_show_reports_can_submit_false_when_queue_is_active(): void
+    {
+        $student = User::factory()->create(['is_admin' => false, 'mobile' => '09127778899']);
+        $this->makeSubmittedIdentity($student);
+        $profile = $student->fresh()->identityProfile;
+        $profile->update(['identity_status' => IdentityVerificationStatus::Draft]);
+
+        Sanctum::actingAs($student);
+
+        $this->getJson('/api/v1/student/identity-verification')
+            ->assertOk()
+            ->assertJsonPath('data.can_submit', false);
+    }
+
     public function test_sat_accepted_plus_level_1_does_not_activate_membership(): void
     {
         $student = User::factory()->create(['is_admin' => false, 'mobile' => '09124445566']);
@@ -409,6 +469,19 @@ class RbacAndIdentityTest extends TestCase
             'expected_video_text' => 'من صاحب این حساب کاربری هستم.',
             'submitted_at' => now(),
         ]);
+    }
+
+    /** @return array<string, string> */
+    private function identityDraftPayload(): array
+    {
+        return [
+            'first_name' => 'علی',
+            'last_name' => 'تستی',
+            'national_code' => '0010350829',
+            'date_of_birth' => '1990-01-01',
+            'gender' => 'male',
+            'city' => 'تهران',
+        ];
     }
 
     private function makeLevel2Student(string $mobile): User
