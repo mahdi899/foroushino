@@ -50,7 +50,7 @@ export function CreateStudentForm({ defaultOpen = true }: { defaultOpen?: boolea
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="btn btn-primary mb-4 w-full sm:w-auto">
+      <button type="button" onClick={() => setOpen(true)} className="btn btn-primary w-full sm:w-auto">
         <UserPlus className="h-4 w-4" />
         دانشجوی جدید
       </button>
@@ -58,12 +58,9 @@ export function CreateStudentForm({ defaultOpen = true }: { defaultOpen?: boolea
   }
 
   return (
-    <form onSubmit={onSubmit} className="card mb-5 space-y-4 p-4 sm:p-6">
+    <form onSubmit={onSubmit} className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-h3 font-bold text-primary-dark">ثبت دانشجوی جدید</h2>
-          <p className="mt-1 text-caption text-text-muted">حساب با موبایل ایجاد می‌شود؛ دانشجو می‌تواند با OTP وارد پنل شود.</p>
-        </div>
+        <p className="text-caption text-text-muted">حساب با موبایل ایجاد می‌شود؛ دانشجو می‌تواند با OTP وارد پنل شود.</p>
         <button type="button" onClick={() => setOpen(false)} className="btn btn-secondary text-caption sm:hidden">
           بستن
         </button>

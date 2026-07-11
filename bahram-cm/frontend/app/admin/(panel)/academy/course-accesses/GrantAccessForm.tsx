@@ -64,7 +64,7 @@ export function GrantAccessForm({ products }: { products: AdminProduct[] }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="card mb-6 grid gap-3 p-6 md:grid-cols-3">
+    <form onSubmit={onSubmit} className="grid gap-3 md:grid-cols-3">
       <div className="md:col-span-1">
         <StudentSearchPicker value={student} onChange={handleStudentChange} required />
       </div>

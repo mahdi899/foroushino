@@ -12,10 +12,10 @@ export default async function RolesPage() {
 
   return (
     <AdminPage
-      icon="KeyRound"
+      icon="Shield"
       headerVariant="settings"
       title="نقش‌ها و دسترسی‌ها"
-      desc="تعریف دسترسی هر نقش بر اساس ماژول‌های سیستم"
+      desc="تعریف دسترسی هر نقش بر اساس ماژول‌های سیستم — هر بخش با رنگ و آیکن جداگانه"
     >
       {error ? (
         <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-small text-error">

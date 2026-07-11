@@ -1,5 +1,8 @@
 import Link from 'next/link';
-import { AdminPage, Badge, EditLink, Table } from '../../ui';
+import { AdminContentPanel } from '@/components/admin/layout/AdminContentPanel';
+import { AdminListEmpty } from '@/components/admin/layout/AdminListEmpty';
+import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
+import { AdminPage, Badge, EditLink, StatCard, Table } from '../../ui';
 import { getStudents } from '@/lib/admin/academyData';
 import { STUDENT_STATUS_LABELS, formatDate, type AdminStudent } from '@/lib/admin/academyTypes';
 import { cn } from '@/lib/utils';
@@ -17,44 +20,6 @@ function statusTone(status: AdminStudent['status']) {
 
 function maskedMobile(student: AdminStudent) {
   return student.mobile_masked ?? student.mobile ?? null;
-}
-
-function StudentMobileCard({ student }: { student: AdminStudent }) {
-  const blocked = student.status === 'blocked';
-
-  return (
-    <Link
-      href={`/admin/academy/students/${student.id}`}
-      className={cn(
-        'card block p-4 transition hover:border-accent/40 hover:shadow-soft',
-        blocked && 'border-error/30 bg-error/5',
-      )}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className={cn('truncate font-semibold', blocked ? 'text-error' : 'text-primary-dark')}>{student.name}</p>
-          <p className="mt-1 text-caption text-text-muted" dir="ltr">
-            {maskedMobile(student) ?? '—'}
-          </p>
-        </div>
-        <Badge tone={statusTone(student.status)}>{STUDENT_STATUS_LABELS[student.status] ?? student.status}</Badge>
-      </div>
-      <dl className="mt-3 grid grid-cols-3 gap-2 border-t border-border pt-3 text-caption">
-        <div>
-          <dt className="text-text-muted">سفارش</dt>
-          <dd className="mt-0.5 font-medium text-text">{student.orders_count ?? 0}</dd>
-        </div>
-        <div>
-          <dt className="text-text-muted">دوره</dt>
-          <dd className="mt-0.5 font-medium text-text">{student.course_accesses_count ?? 0}</dd>
-        </div>
-        <div>
-          <dt className="text-text-muted">اولین ورود</dt>
-          <dd className="mt-0.5 font-medium text-text">{formatDate(student.first_login_at)}</dd>
-        </div>
-      </dl>
-    </Link>
-  );
 }
 
 export default async function StudentsPage({
@@ -83,123 +48,196 @@ export default async function StudentsPage({
   return (
     <AdminPage
       title="دانشجویان"
-      desc={
-        meta
-          ? `${meta.total.toLocaleString('fa-IR')} دانشجو${hasFilters ? ' (فیلترشده)' : ''}`
-          : 'مدیریت حساب‌های دانشجویی آکادمی'
-      }
+      desc="مدیریت حساب‌های دانشجویی آکادمی"
+      icon="Users"
+      headerVariant="academy"
     >
-      <CreateStudentForm defaultOpen={students.length === 0} />
-
-      <form className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center" method="get">
-        <input
-          name="search"
-          defaultValue={sp.search}
-          placeholder="جستجو با نام، موبایل یا ایمیل"
-          className="field-input w-full sm:max-w-xs"
-        />
-        <select name="status" defaultValue={sp.status ?? ''} className="field-input w-full sm:max-w-[10rem]">
-          <option value="">همه وضعیت‌ها</option>
-          {Object.entries(STUDENT_STATUS_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </select>
-        <div className="flex flex-wrap gap-2">
-          <button type="submit" className="btn btn-secondary flex-1 sm:flex-none">
-            فیلتر
-          </button>
-          {hasFilters && (
-            <Link href="/admin/academy/students" className="btn btn-secondary flex-1 sm:flex-none">
-              پاک کردن
-            </Link>
-          )}
-          {students.length > 0 ? <StudentsExportButton search={sp.search} status={sp.status} /> : null}
-        </div>
-      </form>
-
-      {error && (
-        <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-small text-error">{error}</div>
-      )}
-
-      {students.length > 0 ? (
-        <>
-          <div className="hidden md:block">
-            <Table head={['نام', 'موبایل', 'وضعیت', 'سفارش‌ها', 'دوره‌ها', 'اولین ورود', 'عملیات']}>
-              {students.map((s) => {
-                const blocked = s.status === 'blocked';
-                return (
-                  <tr key={s.id} className={cn('hover:bg-surface-soft/40', blocked && 'bg-error/5')}>
-                    <td className={cn('px-4 py-3', blocked && 'font-semibold text-error')}>{s.name}</td>
-                    <td className="whitespace-nowrap px-4 py-3">
-                      <RevealMobileButton
-                        studentId={s.id}
-                        masked={maskedMobile(s)}
-                        canReveal={s.can_reveal_mobile}
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Badge tone={statusTone(s.status)}>{STUDENT_STATUS_LABELS[s.status] ?? s.status}</Badge>
-                    </td>
-                    <td className="px-4 py-3">{s.orders_count ?? 0}</td>
-                    <td className="px-4 py-3">{s.course_accesses_count ?? 0}</td>
-                    <td className="whitespace-nowrap px-4 py-3 text-caption">{formatDate(s.first_login_at)}</td>
-                    <td className="px-4 py-3">
-                      <EditLink href={`/admin/academy/students/${s.id}`} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </Table>
+      <div className="admin-content-list">
+        {meta ? (
+          <div className="mb-5 grid gap-3 sm:grid-cols-3">
+            <StatCard
+              label="کل دانشجویان"
+              value={meta.total.toLocaleString('fa-IR')}
+              icon="Users"
+              tone="teal"
+            />
+            <StatCard
+              label="نتیجه جستجو"
+              value={students.length.toLocaleString('fa-IR')}
+              icon="Search"
+              tone="blue"
+              hint={hasFilters ? 'فیلتر فعال' : 'صفحه جاری'}
+            />
+            <StatCard
+              label="ورود دسته‌ای"
+              value="گروهی"
+              icon="FileUp"
+              tone="gold"
+              href="/admin/academy/imports"
+              hint="CSV / Excel"
+            />
           </div>
+        ) : null}
 
-          <div className="space-y-3 md:hidden">
-            {students.map((s) => (
-              <StudentMobileCard key={s.id} student={s} />
+        <AdminContentPanel title="ثبت دانشجوی جدید" className="mb-5">
+          <CreateStudentForm defaultOpen={students.length === 0} />
+        </AdminContentPanel>
+
+        <form className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center" method="get">
+          <input
+            name="search"
+            defaultValue={sp.search}
+            placeholder="جستجو با نام، موبایل یا ایمیل"
+            className="field-input w-full sm:max-w-xs"
+          />
+          <select name="status" defaultValue={sp.status ?? ''} className="field-input w-full sm:max-w-[10rem]">
+            <option value="">همه وضعیت‌ها</option>
+            {Object.entries(STUDENT_STATUS_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
             ))}
+          </select>
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" className="btn btn-secondary flex-1 sm:flex-none">
+              فیلتر
+            </button>
+            {hasFilters && (
+              <Link href="/admin/academy/students" className="btn btn-secondary flex-1 sm:flex-none">
+                پاک کردن
+              </Link>
+            )}
+            {students.length > 0 ? <StudentsExportButton search={sp.search} status={sp.status} /> : null}
           </div>
+        </form>
 
-          {meta && meta.last_page > 1 ? (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-caption text-text-muted">
-              <span>
-                صفحه {meta.current_page.toLocaleString('fa-IR')} از {meta.last_page.toLocaleString('fa-IR')} — نمایش{' '}
-                {students.length.toLocaleString('fa-IR')} از {meta.total.toLocaleString('fa-IR')} دانشجو
-              </span>
-              <div className="flex gap-2">
-                {meta.current_page > 1 ? (
-                  <Link href={studentsPageHref(meta.current_page - 1)} className="btn btn-secondary px-3 py-1.5 text-caption">
-                    قبلی
+        {error ? <div className="admin-content-list__error">{error}</div> : null}
+
+        <AdminContentPanel
+          title="فهرست دانشجویان"
+          summary={
+            meta ? (
+              <>
+                {meta.total.toLocaleString('fa-IR')} دانشجو
+                {hasFilters ? ' (فیلترشده)' : ''}
+              </>
+            ) : undefined
+          }
+        >
+          {students.length > 0 ? (
+            <>
+              <Table
+                head={['نام', 'موبایل', 'وضعیت', 'سفارش‌ها', 'دوره‌ها', 'اولین ورود', 'عملیات']}
+                mobile={students.map((s) => {
+                  const blocked = s.status === 'blocked';
+                  return (
+                    <AdminTableCard
+                      key={s.id}
+                      title={
+                        <Link
+                          href={`/admin/academy/students/${s.id}`}
+                          className={cn('font-semibold hover:text-accent', blocked && 'text-error')}
+                        >
+                          {s.name}
+                        </Link>
+                      }
+                      fields={[
+                        {
+                          label: 'موبایل',
+                          value: maskedMobile(s) ?? '—',
+                          mono: true,
+                        },
+                        {
+                          label: 'وضعیت',
+                          value: (
+                            <Badge tone={statusTone(s.status)}>{STUDENT_STATUS_LABELS[s.status] ?? s.status}</Badge>
+                          ),
+                        },
+                        { label: 'سفارش', value: s.orders_count ?? 0 },
+                        { label: 'دوره', value: s.course_accesses_count ?? 0 },
+                        { label: 'اولین ورود', value: formatDate(s.first_login_at) },
+                      ]}
+                      footer={<EditLink href={`/admin/academy/students/${s.id}`} />}
+                      className={blocked ? 'border-error/30 bg-error/5' : undefined}
+                    />
+                  );
+                })}
+              >
+                {students.map((s) => {
+                  const blocked = s.status === 'blocked';
+                  return (
+                    <tr key={s.id} className={cn('hover:bg-surface-soft/40', blocked && 'bg-error/5')}>
+                      <td className={cn('px-4 py-3', blocked && 'font-semibold text-error')}>{s.name}</td>
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <RevealMobileButton
+                          studentId={s.id}
+                          masked={maskedMobile(s)}
+                          canReveal={s.can_reveal_mobile}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge tone={statusTone(s.status)}>{STUDENT_STATUS_LABELS[s.status] ?? s.status}</Badge>
+                      </td>
+                      <td className="px-4 py-3">{s.orders_count ?? 0}</td>
+                      <td className="px-4 py-3">{s.course_accesses_count ?? 0}</td>
+                      <td className="whitespace-nowrap px-4 py-3 text-caption">{formatDate(s.first_login_at)}</td>
+                      <td className="px-4 py-3">
+                        <EditLink href={`/admin/academy/students/${s.id}`} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </Table>
+
+              {meta && meta.last_page > 1 ? (
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-caption text-text-muted">
+                  <span>
+                    صفحه {meta.current_page.toLocaleString('fa-IR')} از {meta.last_page.toLocaleString('fa-IR')} — نمایش{' '}
+                    {students.length.toLocaleString('fa-IR')} از {meta.total.toLocaleString('fa-IR')} دانشجو
+                  </span>
+                  <div className="flex gap-2">
+                    {meta.current_page > 1 ? (
+                      <Link
+                        href={studentsPageHref(meta.current_page - 1)}
+                        className="btn btn-secondary px-3 py-1.5 text-caption"
+                      >
+                        قبلی
+                      </Link>
+                    ) : null}
+                    {meta.current_page < meta.last_page ? (
+                      <Link
+                        href={studentsPageHref(meta.current_page + 1)}
+                        className="btn btn-secondary px-3 py-1.5 text-caption"
+                      >
+                        بعدی
+                      </Link>
+                    ) : null}
+                  </div>
+                </div>
+              ) : meta && meta.total > 0 ? (
+                <p className="mt-3 text-caption text-text-muted">{meta.total.toLocaleString('fa-IR')} دانشجو</p>
+              ) : null}
+            </>
+          ) : (
+            <AdminListEmpty
+              icon="Users"
+              title={hasFilters ? 'دانشجویی با این فیلتر پیدا نشد' : 'هنوز دانشجویی ثبت نشده'}
+              description={
+                hasFilters
+                  ? 'فیلتر را تغییر دهید یا فرم بالا را برای ثبت دانشجوی جدید پر کنید.'
+                  : 'با فرم بالا اولین دانشجو را ثبت کنید یا از بخش Import وارد کنید.'
+              }
+              action={
+                !hasFilters ? (
+                  <Link href="/admin/academy/imports" className="btn btn-secondary">
+                    ورود دسته‌ای (Import)
                   </Link>
-                ) : null}
-                {meta.current_page < meta.last_page ? (
-                  <Link href={studentsPageHref(meta.current_page + 1)} className="btn btn-secondary px-3 py-1.5 text-caption">
-                    بعدی
-                  </Link>
-                ) : null}
-              </div>
-            </div>
-          ) : meta && meta.total > 0 ? (
-            <p className="mt-3 text-caption text-text-muted">{meta.total.toLocaleString('fa-IR')} دانشجو</p>
-          ) : null}
-        </>
-      ) : (
-        <div className="card p-8 text-center sm:p-10">
-          <p className="text-h3 text-primary-dark">
-            {hasFilters ? 'دانشجویی با این فیلتر پیدا نشد' : 'هنوز دانشجویی ثبت نشده'}
-          </p>
-          <p className="mt-2 text-small text-text-muted">
-            {hasFilters
-              ? 'فیلتر را تغییر دهید یا فرم بالا را برای ثبت دانشجوی جدید پر کنید.'
-              : 'با فرم بالا اولین دانشجو را ثبت کنید یا از بخش Import وارد کنید.'}
-          </p>
-          {!hasFilters && (
-            <Link href="/admin/academy/imports" className="btn btn-secondary mt-4 inline-flex">
-              ورود دسته‌ای (Import)
-            </Link>
+                ) : undefined
+              }
+            />
           )}
-        </div>
-      )}
+        </AdminContentPanel>
+      </div>
     </AdminPage>
   );
 }
