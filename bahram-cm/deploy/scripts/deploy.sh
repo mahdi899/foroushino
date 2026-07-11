@@ -7,7 +7,13 @@ APP_ROOT="${APP_ROOT:-/var/www/bahram-cm}"
 cd "$APP_ROOT"
 
 echo "==> Pull latest code"
-git pull --ff-only origin main
+GIT_ROOT="${GIT_ROOT:-/var/www/foroushino}"
+if [[ -d "${GIT_ROOT}/.git" ]]; then
+  cd "$GIT_ROOT"
+  git pull --ff-only origin main
+fi
+APP_ROOT="${APP_ROOT:-/var/www/bahram-cm}"
+cd "$APP_ROOT"
 
 echo "==> Backend dependencies"
 cd "$APP_ROOT/backend"

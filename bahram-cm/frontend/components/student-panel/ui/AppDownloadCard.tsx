@@ -12,8 +12,11 @@ export function AppDownloadCard({ compact = false, minimal = false }: { compact?
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [showIosHint, setShowIosHint] = useState(false);
+  const [isIos, setIsIos] = useState(false);
 
   useEffect(() => {
+    setIsIos(/iphone|ipad|ipod/i.test(navigator.userAgent));
+
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
@@ -30,9 +33,6 @@ export function AppDownloadCard({ compact = false, minimal = false }: { compact?
     window.addEventListener('beforeinstallprompt', onInstall);
     return () => window.removeEventListener('beforeinstallprompt', onInstall);
   }, []);
-
-  const isIos =
-    typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
 
   const handleInstall = async () => {
     if (installEvent) {

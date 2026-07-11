@@ -25,8 +25,8 @@ export function AdminLoginForm({ redirectFrom }: Props) {
   const [pending, setPending] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [resendIn, setResendIn] = useState(0);
-  const [email, setEmail] = useState('admin@bahram.local');
-  const [password, setPassword] = useState('password');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const {
     captchaField,
     honeypotField,
