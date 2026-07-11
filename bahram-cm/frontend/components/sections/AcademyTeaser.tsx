@@ -94,7 +94,7 @@ export function AcademyTeaser() {
             </div>
 
             <div className="relative grid min-w-0 grid-cols-1 gap-5 overflow-visible sm:gap-8 lg:grid-cols-2 lg:items-center lg:gap-10 xl:gap-14">
-              <div className="academy-teaser-copy order-2 flex min-w-0 flex-col justify-center lg:order-1 lg:pe-2 xl:pe-4">
+              <div className="academy-teaser-copy order-2 flex min-w-0 flex-col items-center justify-center lg:order-1 lg:items-stretch lg:pe-2 xl:pe-4">
                 <div className="academy-teaser-copy-header w-full max-w-none text-center lg:text-start">
                   <Eyebrow
                     dotClassName="bg-emerald-glow"
@@ -120,13 +120,13 @@ export function AcademyTeaser() {
                   </p>
                 </div>
 
-                <div className="mt-5 flex flex-col gap-3 sm:mt-6 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4 lg:mt-8">
+                <div className="mt-5 flex w-full flex-col items-center gap-3 sm:mt-6 md:items-start lg:mt-8">
                   <LinkButton
                     href={site.saat.cta.href}
                     variant="primary"
                     size="lg"
                     withArrow
-                    className="w-full px-8 font-semibold sm:w-auto"
+                    className="w-full justify-center px-8 font-semibold md:w-auto md:justify-start"
                   >
                     {site.saat.cta.label}
                   </LinkButton>
