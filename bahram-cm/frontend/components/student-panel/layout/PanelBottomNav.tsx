@@ -3,14 +3,41 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu } from 'lucide-react';
-import { PanelNavLabel } from './PanelNavLabel';
+import type { LucideIcon } from 'lucide-react';
+import { cn } from '@/lib/cn';
 import { PANEL_BOTTOM_NAV_ITEMS } from './panelNav';
+
+function NavIcon({
+  icon: Icon,
+  active,
+}: {
+  icon: LucideIcon;
+  active: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        'site-bottom-nav__icon-shell',
+        active && 'site-bottom-nav__icon-shell--active',
+      )}
+    >
+      <Icon
+        size={18}
+        strokeWidth={active ? 2.35 : 1.9}
+        className="site-bottom-nav__icon"
+        aria-hidden
+      />
+    </span>
+  );
+}
 
 export function PanelBottomNav({
   unreadCount = 0,
+  menuOpen = false,
   onMenuOpen,
 }: {
   unreadCount?: number;
+  menuOpen?: boolean;
   onMenuOpen: () => void;
 }) {
   const pathname = usePathname();
@@ -19,29 +46,34 @@ export function PanelBottomNav({
     exact ? pathname === href : pathname === href || pathname?.startsWith(`${href}/`);
 
   return (
-    <nav className="panel-bottom-nav fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-surface lg:hidden">
+    <nav
+      aria-label="ناوبری پنل"
+      className="site-bottom-nav panel-bottom-nav fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 lg:hidden"
+    >
       {PANEL_BOTTOM_NAV_ITEMS.map((item) => {
-        const { href, label, shortLabel, icon: Icon, exact } = item;
+        const { href, label, shortLabel, icon, exact } = item;
         const active = isActive(href, exact);
         const showBadge = href === '/panel/notifications' && unreadCount > 0;
+
         return (
           <Link
             key={href}
             href={href}
-            className={`relative flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 px-1 font-medium transition-all duration-300 ${
-              active ? 'text-primary' : 'text-text-muted'
-            }`}
+            aria-current={active ? 'page' : undefined}
+            className={cn(
+              'site-bottom-nav__item relative flex min-h-[3.75rem] flex-col items-center justify-center gap-0.5 px-1',
+              active && 'site-bottom-nav__item--active',
+            )}
           >
-            <Icon size={20} strokeWidth={active ? 2.4 : 1.8} />
-            <PanelNavLabel label={shortLabel ?? label} />
-            {showBadge ? (
-              <span
-                className="panel-bottom-nav__badge absolute end-2 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 font-bold text-white"
-                style={{ background: 'var(--color-gold)' }}
-              >
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            ) : null}
+            <span className="panel-bottom-nav__icon-wrap">
+              <NavIcon icon={icon} active={active} />
+              {showBadge ? (
+                <span className="panel-bottom-nav__badge" aria-hidden>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              ) : null}
+            </span>
+            <span className="site-bottom-nav__label">{shortLabel ?? label}</span>
           </Link>
         );
       })}
@@ -49,11 +81,15 @@ export function PanelBottomNav({
       <button
         type="button"
         onClick={onMenuOpen}
-        className="flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 px-1 font-medium text-text-muted transition-all duration-300 hover:text-primary"
+        aria-expanded={menuOpen}
         aria-label="باز کردن منو"
+        className={cn(
+          'site-bottom-nav__item flex min-h-[3.75rem] flex-col items-center justify-center gap-0.5 px-1',
+          menuOpen && 'site-bottom-nav__item--active',
+        )}
       >
-        <Menu size={20} strokeWidth={1.8} />
-        <span>منو</span>
+        <NavIcon icon={Menu} active={menuOpen} />
+        <span className="site-bottom-nav__label">منو</span>
       </button>
     </nav>
   );

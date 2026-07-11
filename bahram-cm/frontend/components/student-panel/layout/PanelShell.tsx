@@ -125,7 +125,11 @@ export function PanelShell({
             </main>
           </div>
 
-          <PanelBottomNav unreadCount={liveUnreadCount} onMenuOpen={() => setMobileOpen(true)} />
+          <PanelBottomNav
+            unreadCount={liveUnreadCount}
+            menuOpen={mobileOpen}
+            onMenuOpen={() => setMobileOpen(true)}
+          />
         </div>
         </PanelNotificationProvider>
       </PanelToastProvider>
