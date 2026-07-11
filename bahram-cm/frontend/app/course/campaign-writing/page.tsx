@@ -572,7 +572,7 @@ async function CampaignWritingPageContent() {
                   ratio="square"
                   variant="radial"
                   rounded="card-lg"
-                  src={sitePhotos.portraitFounder}
+                  src={sitePhotos.founderAsidePortrait}
                   alt={site.founder}
                   label={site.founder}
                   className="mx-auto max-w-[14rem] border-bone/12 md:mx-0 md:max-w-none"

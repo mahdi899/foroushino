@@ -6,6 +6,7 @@ export function storedToForm(stored: ChatbotStoredConfig): ChatbotSettingsForm {
     enabled: stored.enabled,
     assistantName: stored.assistant_name,
     welcomeMessage: stored.welcome_message,
+    welcomeVideoUrl: stored.welcome_video_url ?? '',
     systemPromptExtra: stored.system_prompt_extra,
     rateLimitPerMinute: stored.rate_limit_per_minute,
     rateLimitPerHour: stored.rate_limit_per_hour,

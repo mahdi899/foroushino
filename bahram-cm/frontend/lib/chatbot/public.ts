@@ -14,6 +14,7 @@ function mapPublicToStored(pub: ChatbotPublicConfig): ChatbotStoredConfig {
     enabled: pub.enabled,
     assistant_name: pub.assistant_name,
     welcome_message: pub.welcome_message,
+    welcome_video_url: pub.welcome_video_url?.trim() ?? '',
     system_prompt_extra: pub.system_prompt_extra?.trim() ?? '',
     require_captcha: pub.require_captcha,
     honeypot_enabled: pub.honeypot_enabled ?? DEFAULT_CHATBOT_CONFIG.honeypot_enabled,

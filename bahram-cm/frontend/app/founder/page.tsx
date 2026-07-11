@@ -64,14 +64,15 @@ const milestones = [
 ];
 
 export default async function FounderPage() {
-  const heroAlt = await resolveMediaAlt(sitePhotos.portraitFounder, "بهرام رستمی");
+  const heroAlt = await resolveMediaAlt(sitePhotos.founderHeroDesktop, "بهرام رستمی");
   const heroMobileAlt = await resolveMediaAlt(sitePhotos.portraitFounderMobile, "بهرام رستمی");
+  const letterAlt = await resolveMediaAlt(sitePhotos.founderLetter, "بهرام رستمی — نامه");
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip">
       <section className="founder-hero relative isolate w-full overflow-hidden bg-ink">
         <SitePhotoHeroFrame
-          desktopSrc={sitePhotos.portraitFounder}
+          desktopSrc={sitePhotos.founderHeroDesktop}
           mobileSrc={sitePhotos.portraitFounderMobile}
           desktopAlt={heroAlt}
           mobileAlt={heroMobileAlt}
@@ -165,8 +166,8 @@ export default async function FounderPage() {
             <article className="founder-letter-card relative mx-auto max-w-4xl overflow-hidden rounded-card-lg border border-bone/10">
               <div className="relative aspect-[4/5] min-h-[28rem] w-full sm:aspect-[16/11] sm:min-h-[24rem] md:aspect-[16/10] md:min-h-[26rem]">
                 <SiteImage
-                  src={sitePhotos.portraitFounder}
-                  alt={heroAlt}
+                  src={sitePhotos.founderLetter}
+                  alt={letterAlt}
                   fallbackAlt="بهرام رستمی"
                   fill
                   className="object-cover object-[center_14%]"

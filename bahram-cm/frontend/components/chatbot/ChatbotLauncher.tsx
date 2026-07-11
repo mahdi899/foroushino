@@ -1,14 +1,17 @@
 'use client';
 
+import { motion } from 'framer-motion';
 import type { ChatbotPublicConfig } from '@/lib/chatbot/types';
 import { cn } from '@/lib/utils';
-import { mobileScrollRevealClass, useMobileScrollReveal } from '@/lib/useMobileScrollReveal';
+import { useMobileScrollReveal } from '@/lib/useMobileScrollReveal';
 
 interface ChatbotLauncherProps {
   config: ChatbotPublicConfig;
   onActivate: () => void;
   loading?: boolean;
 }
+
+const LAUNCHER_ENTRANCE_EASE = [0.22, 1, 0.36, 1] as const;
 
 function ChatIcon() {
   return (
@@ -29,12 +32,19 @@ export function ChatbotLauncher({ config, onActivate, loading = false }: Chatbot
 
   return (
     <div className="pointer-events-none fixed bottom-[var(--site-fab-bottom)] right-4 z-40 flex flex-col items-end gap-2.5 lg:bottom-6 lg:right-6">
-      <div
+      <motion.div
         className={cn(
-          'pointer-events-auto flex items-center gap-2.5',
-          mobileScrollRevealClass(scrollRevealed),
+          'flex items-center gap-2.5',
+          scrollRevealed ? 'pointer-events-auto' : 'max-lg:pointer-events-none',
         )}
         dir="ltr"
+        initial={false}
+        animate={
+          scrollRevealed
+            ? { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }
+            : { opacity: 0, y: 24, scale: 0.9, filter: 'blur(6px)' }
+        }
+        transition={{ duration: 0.45, ease: LAUNCHER_ENTRANCE_EASE }}
       >
         <button
           type="button"
@@ -60,7 +70,7 @@ export function ChatbotLauncher({ config, onActivate, loading = false }: Chatbot
             <ChatIcon />
           )}
         </button>
-      </div>
+      </motion.div>
     </div>
   );
 }

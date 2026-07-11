@@ -70,6 +70,7 @@ export function loadChatHistory(sessionId: string): ChatbotMessage[] {
           : {}),
         ...(m.isAiReply || m.id.startsWith('a-') ? { isAiReply: true } : {}),
         ...(m.isOperatorAck || m.id.startsWith('ack-') ? { isOperatorAck: true } : {}),
+        ...(m.videoUrl ? { videoUrl: m.videoUrl } : {}),
       })),
     );
   } catch {

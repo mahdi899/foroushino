@@ -1025,6 +1025,12 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   backdrop-filter: none !important;
 }
 
+.admin-root[data-admin-theme='dark'] .admin-login-captcha span[dir='ltr'] {
+  background: var(--color-surface-soft) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-border) !important;
+}
+
 .admin-root .admin-login-captcha button[type='button'] {
   color: var(--color-primary) !important;
 }

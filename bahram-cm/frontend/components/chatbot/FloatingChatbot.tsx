@@ -71,7 +71,7 @@ import type { FaqGroup } from '@/lib/data/chatbotFaq';
 import { loadChatbotFaqGroups } from '@/lib/chatbot/faqLoader';
 import { track } from '@/lib/analytics';
 import { cn } from '@/lib/utils';
-import { mobileScrollRevealClass, useMobileScrollReveal } from '@/lib/useMobileScrollReveal';
+import { useMobileScrollReveal } from '@/lib/useMobileScrollReveal';
 import { useDataTheme } from '@/lib/useDataTheme';
 import { chatbotThemeClasses, chatbotCtaButtonClass, type ChatbotTheme } from '@/lib/chatbot/themeClasses';
 import { CHAT_GLASS_SURFACE } from '@/lib/chatbot/emojiFont';
@@ -403,6 +403,7 @@ function ReplyModeSwitch({
 const LAUNCHER_LABEL_VISIBLE_MS = 4_500;
 const LAUNCHER_LABEL_HIDDEN_MS = 2_800;
 const LAUNCHER_SCROLL_IDLE_MS = 280;
+const LAUNCHER_ENTRANCE_EASE = [0.22, 1, 0.36, 1] as const;
 
 function ChatbotFloatingLauncher({
   assistantName,
@@ -508,13 +509,20 @@ function ChatbotFloatingLauncher({
   const showLauncher = open || scrollRevealed;
 
   return (
-    <div
+    <motion.div
       className={cn(
-        "pointer-events-auto flex items-center gap-3",
-        open && "max-lg:hidden",
-        mobileScrollRevealClass(showLauncher),
+        'flex items-center gap-3',
+        open && 'max-lg:hidden',
+        showLauncher ? 'pointer-events-auto' : 'max-lg:pointer-events-none',
       )}
       dir="ltr"
+      initial={false}
+      animate={
+        showLauncher
+          ? { opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }
+          : { opacity: 0, y: 24, scale: 0.9, filter: 'blur(6px)' }
+      }
+      transition={{ duration: 0.45, ease: LAUNCHER_ENTRANCE_EASE }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -528,7 +536,7 @@ function ChatbotFloatingLauncher({
             initial={{ opacity: 0, x: 18, scale: 0.9, filter: 'blur(4px)' }}
             animate={{ opacity: 1, x: 0, scale: 1, filter: 'blur(0px)' }}
             exit={{ opacity: 0, x: 12, scale: 0.94, filter: 'blur(3px)' }}
-            transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.38, ease: LAUNCHER_ENTRANCE_EASE }}
             className={cn(
               'relative hidden overflow-hidden rounded-pill border px-4 py-2.5 text-[12px] font-bold shadow-floating backdrop-blur-md transition-transform hover:scale-[1.03] active:scale-95 lg:inline-flex',
               'border-emerald/25',
@@ -563,7 +571,7 @@ function ChatbotFloatingLauncher({
       >
         {open ? <X className="relative z-10 h-6 w-6" /> : <MessagesSquare className="relative z-10 h-6 w-6" />}
       </motion.button>
-    </div>
+    </motion.div>
   );
 }
 

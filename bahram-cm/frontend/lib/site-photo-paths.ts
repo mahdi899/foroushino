@@ -14,8 +14,14 @@ export const sitePhotos = {
   heroLightGridMobile: siteStorageMedia('hero-background-mobile.webp'),
 
   portraitFounder: siteStorageMedia('portrait-founder.webp'),
+  /** کارت «درباره بهرام» در صفحه اصلی — جدا از هیرو صفحه بنیان‌گذار */
+  founderAsidePortrait: siteStorageMedia('founder-aside-portrait.webp'),
+  /** هیرو صفحه بنیان‌گذار — دسکتاپ */
+  founderHeroDesktop: siteStorageMedia('founder-hero-desktop.webp'),
   /** هیرو صفحه بنیان‌گذار — موبایل (۹:۱۶) */
   portraitFounderMobile: siteStorageMedia('portrait-founder-mobile.webp'),
+  /** پس‌زمینه کارت نامه بنیان‌گذار */
+  founderLetter: siteStorageMedia('founder-letter.webp'),
   mainPathCampaign: siteStorageMedia('main-path-campaign.webp'),
   mainPathSaat: siteStorageMedia('main-path-saat.webp'),
   squareStudio: siteStorageMedia('square-studio.jpg'),
@@ -43,11 +49,14 @@ export const sitePhotos = {
   ],
   academyStory: siteStorageMedia('academy-story.webp'),
   academyAccent: siteStorageMedia('academy-accent.jpg'),
-  academyAppHome: siteStorageMedia('academy-story.webp'),
+  /** پیش‌نمایش مینی‌اپ سات در بنر آکادمی */
+  academyAppHome: siteStorageMedia('academy-app-home.webp'),
   academyAppPath: siteStorageMedia('story-step-02.webp'),
   academyAppAtelier: siteStorageMedia('square-backstage.webp'),
   squareBackstage: siteStorageMedia('square-backstage.webp'),
   courseBackstage: siteStorageMedia('course-backstage.webp'),
+  /** ویدیوی خوش‌آمد چت‌بات — آپلود در کتابخانه رسانه */
+  chatbotWelcomeVideo: siteStorageMedia('chatbot-welcome.mp4'),
   storyStep: [
     siteStorageMedia('story-step-01.webp'),
     siteStorageMedia('story-step-02.webp'),

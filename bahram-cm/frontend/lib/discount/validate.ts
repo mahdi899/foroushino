@@ -1,3 +1,5 @@
+import { apiErrorMessage } from "@/lib/api/errors";
+
 export type DiscountPreview = {
   code: string;
   title: string;
@@ -41,12 +43,10 @@ export async function validateDiscountCode(input: {
 
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const message =
-      json?.error?.message_fa ??
-      json?.errors?.coupon?.[0] ??
-      json?.message ??
-      "کد تخفیف معتبر نیست.";
-    return { ok: false, error: message };
+    return {
+      ok: false,
+      error: apiErrorMessage(json, "coupon", "کد تخفیف معتبر نیست."),
+    };
   }
 
   return { ok: true, data: json.data as DiscountPreview };

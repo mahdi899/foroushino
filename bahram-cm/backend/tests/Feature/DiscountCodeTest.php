@@ -65,6 +65,53 @@ class DiscountCodeTest extends TestCase
         app(DiscountService::class)->preview('OLD', $product, null, null, false);
     }
 
+    public function test_starts_at_honors_tehran_timezone_from_admin_input(): void
+    {
+        $product = Product::create([
+            'title' => 'دوره تست',
+            'type' => 'package',
+            'price' => 500_000,
+            'is_active' => true,
+        ]);
+
+        DiscountCode::create([
+            'code' => 'SOON',
+            'title' => 'آینده',
+            'discount_type' => DiscountType::Fixed,
+            'discount_value' => 50_000,
+            'is_active' => true,
+            'starts_at' => now('Asia/Tehran')->addHour(),
+            'restriction' => DiscountRestriction::All,
+        ]);
+
+        $this->expectException(ValidationException::class);
+        app(DiscountService::class)->preview('SOON', $product, null, null, false);
+    }
+
+    public function test_starts_at_in_past_allows_discount(): void
+    {
+        $product = Product::create([
+            'title' => 'دوره تست',
+            'type' => 'package',
+            'price' => 500_000,
+            'is_active' => true,
+        ]);
+
+        DiscountCode::create([
+            'code' => 'LIVE',
+            'title' => 'فعال',
+            'discount_type' => DiscountType::Fixed,
+            'discount_value' => 50_000,
+            'is_active' => true,
+            'starts_at' => now('Asia/Tehran')->subMinute(),
+            'restriction' => DiscountRestriction::All,
+        ]);
+
+        $preview = app(DiscountService::class)->preview('LIVE', $product, null, null, false);
+
+        $this->assertSame(50_000, $preview['coupon_discount']);
+    }
+
     public function test_per_user_limit_is_enforced(): void
     {
         $user = User::create([
