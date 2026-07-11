@@ -325,6 +325,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
 
       {mode === 'math' && (
         <div
+          data-captcha-math
           className={cn(
             'relative z-20 flex w-full min-w-0 flex-nowrap items-center gap-1.5',
             siteInline ? 'max-w-full' : inline ? 'text-[12px]' : 'w-full text-small',
@@ -334,18 +335,18 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
         >
           <span
             className={cn(
-              'shrink-0 whitespace-nowrap font-semibold tabular-nums',
+              'captcha-math-question shrink-0 whitespace-nowrap font-semibold tabular-nums',
               siteTight
                 ? pillEmbed
-                  ? 'px-0.5 text-[10px] text-mist'
-                  : 'rounded-pill border border-bone/12 bg-charcoal/40 px-2 py-0.5 text-[10px] text-bone'
+                  ? 'px-0.5 text-[10px] text-bone-dim'
+                  : 'rounded-pill border border-bone/18 bg-charcoal-2 px-2 py-0.5 text-[10px] text-bone'
                 : siteInline
-                  ? 'rounded-pill border border-bone/12 bg-charcoal/40 px-2.5 py-1 text-xs text-bone'
+                  ? 'rounded-pill border border-bone/18 bg-charcoal-2 px-2.5 py-1 text-xs text-bone'
                   : adminInline
                     ? 'rounded-full border border-border bg-primary-soft px-3 py-1.5 text-center text-[13px] text-primary-dark'
                     : inline
-                      ? 'rounded-full border border-white/70 bg-white/60 px-3 py-1.5 text-center text-[13px] text-primary-dark shadow-[0_1px_3px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md'
-                      : 'rounded-md bg-primary-soft/50 px-3 py-1.5 text-primary-dark',
+                      ? 'rounded-full border border-white/70 bg-white/60 px-3 py-1.5 text-center text-[13px] text-emerald-deep shadow-[0_1px_3px_rgba(0,0,0,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md'
+                      : 'rounded-md border border-bone/15 bg-charcoal-2 px-3 py-1.5 text-bone',
             )}
             dir="ltr"
             title={mathLoading ? undefined : `${mathQuestion} = ?`}
@@ -400,18 +401,18 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
               if (!isNumericInputKey(e.key)) e.preventDefault();
             }}
             className={cn(
-              'min-w-0 px-2 outline-none',
+              'captcha-math-answer min-w-0 px-2 outline-none',
               siteTight
                 ? pillEmbed
                   ? 'h-7 w-10 shrink-0 border-0 border-b border-bone/20 bg-transparent text-center text-[10px] text-bone placeholder:text-mist focus:border-emerald/50 focus:outline-none'
-                  : 'h-7 w-11 shrink-0 rounded-pill border border-bone/12 bg-transparent text-center text-[10px] text-bone placeholder:text-mist focus:border-emerald/40'
+                  : 'h-7 w-11 shrink-0 rounded-pill border border-bone/18 bg-charcoal-2/80 text-center text-[10px] text-bone placeholder:text-mist focus:border-emerald/40'
                 : siteInline
-                  ? 'h-8 min-w-[4.5rem] flex-1 rounded-pill border border-bone/12 bg-charcoal/50 px-2.5 text-start text-xs text-bone placeholder:text-mist focus:border-emerald/40 focus:ring-1 focus:ring-emerald/20'
+                  ? 'h-8 min-w-[4.5rem] flex-1 rounded-pill border border-bone/18 bg-charcoal-2/80 px-2.5 text-start text-xs text-bone placeholder:text-mist focus:border-emerald/40 focus:ring-1 focus:ring-emerald/20'
                   : adminInline
                     ? 'field-input h-9 min-h-11 min-w-[4.5rem] flex-1 shrink-0 py-0 text-center text-small placeholder:text-text-muted'
                     : inline
-                      ? 'h-9 w-16 shrink-0 rounded-full border border-white/75 bg-white/55 text-center text-[14px] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md focus:border-[#007aff]/40 focus:ring-2 focus:ring-[#007aff]/15'
-                      : 'field-input h-9 w-24 shrink-0 py-0 text-small',
+                      ? 'h-9 w-16 shrink-0 rounded-full border border-white/75 bg-white/55 text-center text-[14px] text-emerald-deep shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md focus:border-[#007aff]/40 focus:ring-2 focus:ring-[#007aff]/15'
+                      : 'h-9 w-24 shrink-0 rounded-md border border-bone/15 bg-charcoal-2/80 py-0 text-small text-bone placeholder:text-mist',
             )}
             placeholder={
               siteInline && inline && !pillEmbed

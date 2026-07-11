@@ -2453,6 +2453,51 @@ html[data-theme="light"] .newsletter-cta-band__surface {
   color: color-mix(in oklab, var(--color-emerald-deep) 38%, transparent) !important;
 }
 
+/* Math captcha — readable numbers in dark site theme */
+html:not([data-theme="light"]) [data-captcha-math] .captcha-math-question {
+  color: var(--color-bone) !important;
+  background-color: var(--color-charcoal-2) !important;
+  border-color: color-mix(in oklab, var(--color-bone) 22%, transparent) !important;
+}
+
+html:not([data-theme="light"]) [data-captcha-math] .captcha-math-answer {
+  color: var(--color-bone) !important;
+  background-color: color-mix(in oklab, var(--color-charcoal-2) 92%, var(--color-ink)) !important;
+  border-color: color-mix(in oklab, var(--color-bone) 20%, transparent) !important;
+}
+
+html:not([data-theme="light"]) [data-captcha-math] .captcha-math-answer::placeholder {
+  color: var(--color-mist) !important;
+}
+
+html:not([data-theme="light"]) [data-captcha-math] button[type="button"] {
+  color: var(--color-bone-dim) !important;
+}
+
+html:not([data-theme="light"]) [data-captcha-math] button[type="button"]:hover:not(:disabled) {
+  color: var(--color-bone) !important;
+}
+
+/* Newsletter band keeps light pills on dark CTA sections */
+html:not([data-theme="light"]) .newsletter-form__shell--band [data-captcha-math] .captcha-math-question,
+html:not([data-theme="light"]) .newsletter-form__shell--band [data-captcha-math] .captcha-math-answer {
+  color: var(--color-emerald-deep) !important;
+  background: color-mix(in oklab, white 88%, var(--color-emerald-glow)) !important;
+  border-color: color-mix(in oklab, var(--color-emerald) 16%, transparent) !important;
+}
+
+html:not([data-theme="light"]) .newsletter-form__shell--band [data-captcha-math] .captcha-math-answer::placeholder {
+  color: color-mix(in oklab, var(--color-emerald-deep) 38%, transparent) !important;
+}
+
+html:not([data-theme="light"]) .newsletter-form__shell--band [data-captcha-math] button[type="button"] {
+  color: color-mix(in oklab, var(--color-emerald-deep) 72%, transparent) !important;
+}
+
+html:not([data-theme="light"]) .newsletter-form__shell--band [data-captcha-math] button[type="button"]:hover:not(:disabled) {
+  color: var(--color-emerald-deep) !important;
+}
+
 .newsletter-form__status--ok {
   color: var(--color-gold-soft);
 }
@@ -5290,6 +5335,138 @@ html[data-theme="light"] .main-paths-trust-icon {
   color: var(--color-mist);
 }
 
+/* Footer — trust badge tiles (eNamad, Samandehi, Zarinpal) */
+.footer-trust-badges {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.footer-trust-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.footer-trust-badge__surface {
+  position: relative;
+  display: inline-flex;
+  min-width: 7.25rem;
+  height: 5.75rem;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 1rem;
+  padding: 0.45rem;
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
+}
+
+.footer-trust-badge__surface::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(
+      ellipse 90% 70% at 12% 0%,
+      color-mix(in oklab, var(--color-emerald-glow) 16%, transparent),
+      transparent 68%
+    ),
+    radial-gradient(
+      ellipse 80% 65% at 88% 100%,
+      color-mix(in oklab, var(--color-gold) 14%, transparent),
+      transparent 70%
+    );
+  opacity: 0.9;
+}
+
+html:not([data-theme="light"]) .footer-trust-badge__surface {
+  border: 1px solid rgba(234, 251, 251, 0.1);
+  background-color: rgba(13, 21, 23, 0.82);
+  box-shadow:
+    0 14px 36px -24px rgba(2, 6, 7, 0.72),
+    inset 0 1px 0 rgba(255, 176, 0, 0.07);
+}
+
+html[data-theme="light"] .footer-trust-badge__surface {
+  border: 1px solid rgba(11, 31, 34, 0.08);
+  background-color: #f5f5f3;
+  box-shadow:
+    0 12px 30px -22px rgba(11, 31, 34, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.footer-trust-badge__inner {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.72rem;
+  padding: 0.5rem 0.625rem;
+}
+
+html:not([data-theme="light"]) .footer-trust-badge__inner {
+  border: 1px solid rgba(11, 31, 34, 0.06);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(245, 247, 247, 0.96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+html[data-theme="light"] .footer-trust-badge__inner {
+  border: 1px solid rgba(11, 31, 34, 0.06);
+  background: linear-gradient(180deg, #ffffff 0%, #f8f9f9 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.footer-trust-badge:hover .footer-trust-badge__surface {
+  transform: translateY(-2px);
+}
+
+html:not([data-theme="light"]) .footer-trust-badge:hover .footer-trust-badge__surface {
+  border-color: rgba(234, 251, 251, 0.16);
+  box-shadow:
+    0 18px 42px -22px rgba(2, 6, 7, 0.78),
+    inset 0 1px 0 rgba(255, 176, 0, 0.1);
+}
+
+html[data-theme="light"] .footer-trust-badge:hover .footer-trust-badge__surface {
+  border-color: rgba(11, 31, 34, 0.12);
+  box-shadow:
+    0 16px 34px -20px rgba(11, 31, 34, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.footer-trust-badge__img {
+  height: 3.375rem;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+@media (min-width: 640px) {
+  .footer-trust-badges {
+    gap: 1rem;
+  }
+
+  .footer-trust-badge__surface {
+    min-width: 7.75rem;
+    height: 6.125rem;
+    padding: 0.5rem;
+  }
+
+  .footer-trust-badge__img {
+    height: 3.625rem;
+  }
+}
+
 html:not([data-theme="light"]) .student-result-card {
   border: 1px solid rgba(234, 251, 251, 0.08);
   background-color: rgba(13, 21, 23, 0.72);
@@ -6050,20 +6227,26 @@ html[data-theme="light"] .academy-teaser-metric-icon {
 }
 
 .academy-teaser-copy-header {
-  max-width: 34rem;
+  max-width: none;
+}
+
+@media (min-width: 1024px) {
+  .academy-teaser-copy {
+    padding-inline-start: 0;
+  }
+
+  .academy-teaser-copy-header {
+    max-width: 34rem;
+  }
 }
 
 .academy-teaser-phone {
   transform: rotate(-4deg);
-  box-shadow:
-    0 24px 56px -28px rgba(2, 6, 7, 0.55),
-    0 0 0 1px color-mix(in oklab, var(--color-gold) 18%, transparent);
 }
 
-html[data-theme="light"] .academy-teaser-phone {
-  box-shadow:
-    0 18px 44px -24px rgba(11, 31, 34, 0.14),
-    0 0 0 1px color-mix(in oklab, var(--color-gold) 22%, transparent);
+.academy-teaser-phone__screen img {
+  object-fit: contain !important;
+  object-position: top center;
 }
 
 @media (max-width: 1023px) {

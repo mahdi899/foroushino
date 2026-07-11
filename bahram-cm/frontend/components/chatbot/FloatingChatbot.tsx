@@ -70,8 +70,9 @@ import { activeQuickSuggestions, resolveQuickSuggestions } from '@/lib/chatbot/q
 import type { FaqGroup } from '@/lib/data/chatbotFaq';
 import { loadChatbotFaqGroups } from '@/lib/chatbot/faqLoader';
 import { track } from '@/lib/analytics';
+import { resolveMediaUrl } from '@/lib/mediaUrl';
+import { sitePhotos } from '@/lib/site-photo-paths';
 import { cn } from '@/lib/utils';
-import { mobileScrollRevealClass, useMobileScrollReveal } from '@/lib/useMobileScrollReveal';
 import { useDataTheme } from '@/lib/useDataTheme';
 import { chatbotThemeClasses, chatbotCtaButtonClass, type ChatbotTheme } from '@/lib/chatbot/themeClasses';
 import { CHAT_GLASS_SURFACE } from '@/lib/chatbot/emojiFont';
@@ -404,21 +405,40 @@ const LAUNCHER_LABEL_VISIBLE_MS = 4_500;
 const LAUNCHER_LABEL_HIDDEN_MS = 2_800;
 const LAUNCHER_SCROLL_IDLE_MS = 280;
 
+function ChatbotMessageVideo({ src }: { src: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+
+  return (
+    <div className="mb-2 overflow-hidden rounded-md bg-black/[0.04]">
+      <video
+        src={src}
+        controls
+        playsInline
+        preload="metadata"
+        className="max-h-44 w-full object-contain"
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
+}
+
 function ChatbotFloatingLauncher({
   assistantName,
   open,
   chatTheme,
+  hasNewMessage,
   onOpen,
   onToggle,
 }: {
   assistantName: string;
   open: boolean;
   chatTheme: ChatbotTheme;
+  hasNewMessage: boolean;
   onOpen: () => void;
   onToggle: () => void;
 }) {
   const lenis = useLenis();
-  const scrollRevealed = useMobileScrollReveal();
   const primaryLabel = assistantName.trim() || 'از من بپرس!';
   const hints = useMemo(
     () => Array.from(new Set([primaryLabel, 'سوال داری؟ بپرس'])),
@@ -466,6 +486,11 @@ function ChatbotFloatingLauncher({
       return;
     }
 
+    if (hasNewMessage) {
+      setLabelVisible(true);
+      return;
+    }
+
     if (scrollActive) {
       setLabelVisible(false);
       return;
@@ -502,17 +527,16 @@ function ChatbotFloatingLauncher({
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [open, hovered, hints.length, scrollActive]);
+  }, [open, hovered, hints.length, scrollActive, hasNewMessage]);
 
   const showLabel = !open && labelVisible;
-  const showLauncher = open || scrollRevealed;
+  const labelText = hasNewMessage ? 'پیام جدیدی دارید' : hints[hintIndex];
 
   return (
     <div
       className={cn(
         "pointer-events-auto flex items-center gap-3",
         open && "max-lg:hidden",
-        mobileScrollRevealClass(showLauncher),
       )}
       dir="ltr"
       onMouseEnter={() => setHovered(true)}
@@ -521,7 +545,7 @@ function ChatbotFloatingLauncher({
       <AnimatePresence mode="wait">
         {showLabel ? (
           <motion.button
-            key={hints[hintIndex]}
+            key={labelText}
             type="button"
             onClick={onOpen}
             dir="rtl"
@@ -530,16 +554,19 @@ function ChatbotFloatingLauncher({
             exit={{ opacity: 0, x: 12, scale: 0.94, filter: 'blur(3px)' }}
             transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
             className={cn(
-              'relative hidden overflow-hidden rounded-pill border px-4 py-2.5 text-[12px] font-bold shadow-floating backdrop-blur-md transition-transform hover:scale-[1.03] active:scale-95 lg:inline-flex',
-              'border-emerald/25',
+              'relative overflow-hidden rounded-pill border px-3 py-2 text-[11px] font-bold shadow-floating backdrop-blur-md transition-transform hover:scale-[1.03] active:scale-95 sm:px-4 sm:py-2.5 sm:text-[12px]',
+              hasNewMessage ? 'inline-flex border-accent/35 bg-accent/10 text-accent' : 'hidden border-emerald/25 lg:inline-flex',
               chatTheme.launcherPill,
             )}
           >
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-0 rounded-pill bg-gradient-to-l from-emerald/[0.14] via-transparent to-gold/[0.1]"
+              className={cn(
+                'pointer-events-none absolute inset-0 rounded-pill bg-gradient-to-l via-transparent',
+                hasNewMessage ? 'from-accent/[0.12] to-gold/[0.08]' : 'from-emerald/[0.14] to-gold/[0.1]',
+              )}
             />
-            <span className="relative z-10 whitespace-nowrap">{hints[hintIndex]}</span>
+            <span className="relative z-10 whitespace-nowrap">{labelText}</span>
           </motion.button>
         ) : null}
       </AnimatePresence>
@@ -547,7 +574,13 @@ function ChatbotFloatingLauncher({
       <motion.button
         type="button"
         onClick={onToggle}
-        aria-label={open ? 'بستن پنل پشتیبانی' : 'پشتیبانی و تماس'}
+        aria-label={
+          open
+            ? 'بستن پنل پشتیبانی'
+            : hasNewMessage
+              ? 'پیام جدیدی دارید — پشتیبانی و تماس'
+              : 'پشتیبانی و تماس'
+        }
         animate={open ? { scale: 1 } : { scale: [1, 1.045, 1] }}
         transition={
           open
@@ -561,6 +594,12 @@ function ChatbotFloatingLauncher({
           open ? 'bg-primary' : 'bg-gradient-ai shadow-glow',
         )}
       >
+        {!open && hasNewMessage ? (
+          <span
+            aria-hidden
+            className="absolute -right-0.5 -top-0.5 z-20 h-3 w-3 rounded-full bg-accent ring-2 ring-white"
+          />
+        ) : null}
         {open ? <X className="relative z-10 h-6 w-6" /> : <MessagesSquare className="relative z-10 h-6 w-6" />}
       </motion.button>
     </div>
@@ -584,6 +623,7 @@ export function FloatingChatbot({
   const [faqLoading, setFaqLoading] = useState(false);
   const faqFetchAttemptedRef = useRef(false);
   const [messages, setMessages] = useState<ChatbotMessage[]>([]);
+  const [hasNewMessage, setHasNewMessage] = useState(false);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [sessionId] = useState(getSessionId);
@@ -621,6 +661,12 @@ export function FloatingChatbot({
   const dataTheme = useDataTheme();
   const chatTheme = useMemo(() => chatbotThemeClasses(dataTheme), [dataTheme]);
 
+  const welcomeVideoUrl = useMemo(() => {
+    const configured = config.welcome_video_url?.trim();
+    if (configured) return resolveMediaUrl(configured);
+    return sitePhotos.chatbotWelcomeVideo;
+  }, [config.welcome_video_url]);
+
   const quickSuggestions = useMemo(
     () =>
       activeQuickSuggestions(
@@ -639,6 +685,7 @@ export function FloatingChatbot({
 
   useEffect(() => {
     openRef.current = open;
+    if (open) setHasNewMessage(false);
   }, [open]);
 
   useEffect(() => {
@@ -805,21 +852,20 @@ export function FloatingChatbot({
     if (stored.length > 0) {
       setMessages(stored);
       setInitialized(true);
+      return;
     }
-  }, [sessionId]);
 
-  useEffect(() => {
-    if (open && !initialized) {
-      setMessages([
-        {
-          id: 'welcome',
-          role: 'assistant',
-          content: config.welcome_message,
-        },
-      ]);
-      setInitialized(true);
-    }
-  }, [open, initialized, config.welcome_message]);
+    setMessages([
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: config.welcome_message,
+        videoUrl: welcomeVideoUrl,
+      },
+    ]);
+    setInitialized(true);
+    setHasNewMessage(true);
+  }, [sessionId, config.welcome_message, welcomeVideoUrl]);
 
   useEffect(() => {
     if (!initialized || messages.length === 0) return;
@@ -959,11 +1005,10 @@ export function FloatingChatbot({
     [messages],
   );
 
-  const revealPanelForReply = useCallback(() => {
+  const notifyNewMessageIfClosed = useCallback(() => {
     if (openRef.current) return;
-    setOpen(true);
-    if (chatEnabled) setTab('chat');
-  }, [chatEnabled]);
+    setHasNewMessage(true);
+  }, []);
 
   useEffect(() => {
     if (initialFaqGroups.length > 0) {
@@ -1028,7 +1073,7 @@ export function FloatingChatbot({
       if (newMessages.length === 0) return;
 
       void playChatbotReplyTone();
-      revealPanelForReply();
+      notifyNewMessageIfClosed();
       setMessages((prev) => {
         const existing = new Set(prev.map((m) => m.id));
         const toAdd = newMessages.filter((m) => !existing.has(m.id));
@@ -1068,7 +1113,7 @@ export function FloatingChatbot({
       window.clearTimeout(timerId);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [chatEnabled, needsOperatorPoll, sessionId, revealPanelForReply, open, tab]);
+  }, [chatEnabled, needsOperatorPoll, sessionId, notifyNewMessageIfClosed, open, tab]);
 
   const send = useCallback(async (overrideText?: string) => {
     const text = (overrideText ?? input).trim();
@@ -1161,7 +1206,7 @@ export function FloatingChatbot({
       if (!operatorActive) {
         setReplyModeModalOpen(true);
       }
-      revealPanelForReply();
+      notifyNewMessageIfClosed();
       return;
     }
 
@@ -1201,7 +1246,7 @@ export function FloatingChatbot({
                 typing: true,
               }),
           );
-          revealPanelForReply();
+          notifyNewMessageIfClosed();
           return;
         }
 
@@ -1269,7 +1314,7 @@ export function FloatingChatbot({
               typing: true,
             }),
         );
-        revealPanelForReply();
+        notifyNewMessageIfClosed();
         return;
       }
 
@@ -1321,7 +1366,7 @@ export function FloatingChatbot({
             typing: true,
           });
       });
-      revealPanelForReply();
+      notifyNewMessageIfClosed();
       return;
     }
 
@@ -1346,7 +1391,7 @@ export function FloatingChatbot({
           typing: true,
         });
     });
-    revealPanelForReply();
+    notifyNewMessageIfClosed();
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== pendingId && m.id !== userMsg.id));
       if (!overrideText) setInput(text);
@@ -1354,7 +1399,7 @@ export function FloatingChatbot({
     } finally {
       setSending(false);
     }
-  }, [input, sending, messages, sessionId, honeypot, captcha, showCaptcha, config, revealPanelForReply, operatorActive, dismissVisitorIntro]);
+  }, [input, sending, messages, sessionId, honeypot, captcha, showCaptcha, config, notifyNewMessageIfClosed, operatorActive, dismissVisitorIntro]);
 
   const handleRate = useCallback(
     async (messageId: string, logId: number, rating: number) => {
@@ -1372,7 +1417,7 @@ export function FloatingChatbot({
         lowRatingFeedbackRef.current = { logId };
         setAwaitingLowRatingFeedback(true);
         void playChatbotReplyTone();
-        revealPanelForReply();
+        notifyNewMessageIfClosed();
         setMessages((prev) =>
           prev.concat({
             id: `lr-ask-${Date.now()}`,
@@ -1384,7 +1429,7 @@ export function FloatingChatbot({
         );
       }
     },
-    [sessionId, revealPanelForReply],
+    [sessionId, notifyNewMessageIfClosed],
   );
 
   const showQuickPrompts =
@@ -1743,6 +1788,7 @@ export function FloatingChatbot({
                             />
                           ) : (
                             <div className="text-right" dir="rtl">
+                              {msg.videoUrl ? <ChatbotMessageVideo src={msg.videoUrl} /> : null}
                               <ChatRichText text={msg.content} />
                             </div>
                           )}
@@ -2126,6 +2172,7 @@ export function FloatingChatbot({
           assistantName={config.assistant_name ?? ''}
           open={open}
           chatTheme={chatTheme}
+          hasNewMessage={hasNewMessage}
           onOpen={() => setOpen(true)}
           onToggle={() => setOpen((v) => !v)}
         />

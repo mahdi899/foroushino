@@ -110,7 +110,8 @@ class ChatbotService
             'enabled' => (bool) ($stored['enabled'] ?? false),
             'assistant_name' => trim((string) ($stored['assistant_name'] ?? 'دستیار بهرام')) ?: 'دستیار بهرام',
             'welcome_message' => trim((string) ($stored['welcome_message'] ?? ''))
-                ?: 'سلام! من دستیار هوشمند آکادمی بهرام هستم. درباره دوره‌ها، سات یا مسیر رشد حرفه‌ای سوالی دارید؟',
+                ?: 'آیا سوالی دارید؟ من دستیار آکادمی بهرام هستم و خوشحال می‌شوم کمکتان کنم.',
+            'welcome_video_url' => trim((string) ($stored['welcome_video_url'] ?? '')),
             'system_prompt_extra' => trim((string) ($stored['system_prompt_extra'] ?? '')),
             'rate_limit_per_minute' => $this->normalizeRateLimit($stored['rate_limit_per_minute'] ?? null, 3),
             'rate_limit_per_hour' => $this->normalizeRateLimit($stored['rate_limit_per_hour'] ?? null, 10),
@@ -214,6 +215,7 @@ class ChatbotService
             'enabled' => $config['enabled'],
             'assistant_name' => $config['assistant_name'],
             'welcome_message' => $config['welcome_message'],
+            'welcome_video_url' => $config['welcome_video_url'] ?: null,
             'require_captcha' => $config['require_captcha'],
             'captcha' => $captcha,
             'ctas' => [

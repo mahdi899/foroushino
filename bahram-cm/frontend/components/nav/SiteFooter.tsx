@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Instagram, Mail, Radio, Send, type LucideIcon } from "lucide-react";
 import { site } from "@/content/site";
+import { SITE_MEDIA } from "@/config/media";
 import { Divider } from "@/components/ui/Divider";
+import { DirectMediaImg } from "@/components/ui/DirectMediaImg";
 import { Logo } from "./Logo";
 import { toPersianDigits } from "@/lib/persian";
 
@@ -32,20 +34,36 @@ export function SiteFooter() {
               کمپین‌نویسی، ورود به {site.ecosystem}.
             </p>
             <div
-              className="mt-8 hidden flex-row flex-wrap gap-x-5 gap-y-2 border-t border-bone/10 pt-8 md:flex"
+              className="footer-trust-badges mt-8 hidden border-t border-bone/10 pt-8 md:flex"
               aria-label="نشان‌های اعتماد"
             >
-              {site.footer.trustBadges.map((badge) => (
-                <a
-                  key={badge.id}
-                  href={badge.href}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="text-sm text-bone-dim transition-colors hover:text-bone"
-                >
-                  {badge.alt}
-                </a>
-              ))}
+              {site.footer.trustBadges.map((badge) => {
+                const src = SITE_MEDIA[`trust-${badge.id}`]?.src;
+                return (
+                  <a
+                    key={badge.id}
+                    href={badge.href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="footer-trust-badge group"
+                    title={badge.alt}
+                  >
+                    {src ? (
+                      <span className="footer-trust-badge__surface">
+                        <span className="footer-trust-badge__inner">
+                          <DirectMediaImg
+                            src={src}
+                            alt={badge.alt}
+                            className="footer-trust-badge__img"
+                          />
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="footer-trust-badge__surface text-xs text-mist">{badge.alt}</span>
+                    )}
+                  </a>
+                );
+              })}
             </div>
           </div>
 

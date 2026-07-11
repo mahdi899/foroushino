@@ -1,8 +1,6 @@
 'use client';
 
 import type { ChatbotPublicConfig } from '@/lib/chatbot/types';
-import { cn } from '@/lib/utils';
-import { mobileScrollRevealClass, useMobileScrollReveal } from '@/lib/useMobileScrollReveal';
 
 interface ChatbotLauncherProps {
   config: ChatbotPublicConfig;
@@ -25,17 +23,10 @@ function ChatIcon() {
 /** Minimal floating launcher — no heavy deps; paints on first frame. */
 export function ChatbotLauncher({ config, onActivate, loading = false }: ChatbotLauncherProps) {
   const label = config.assistant_name?.trim() || 'از من بپرس!';
-  const scrollRevealed = useMobileScrollReveal();
 
   return (
     <div className="pointer-events-none fixed bottom-[var(--site-fab-bottom)] right-4 z-40 flex flex-col items-end gap-2.5 lg:bottom-6 lg:right-6">
-      <div
-        className={cn(
-          'pointer-events-auto flex items-center gap-2.5',
-          mobileScrollRevealClass(scrollRevealed),
-        )}
-        dir="ltr"
-      >
+      <div className="pointer-events-auto flex items-center gap-2.5" dir="ltr">
         <button
           type="button"
           onClick={onActivate}

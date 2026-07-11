@@ -2,6 +2,8 @@ export interface ChatbotStoredConfig {
   enabled: boolean;
   assistant_name: string;
   welcome_message: string;
+  /** Canonical media path or URL for proactive welcome video (e.g. /storage/media/site/chatbot-welcome.mp4). */
+  welcome_video_url?: string;
   system_prompt_extra: string;
   rate_limit_per_minute: number;
   rate_limit_per_hour: number;
@@ -22,6 +24,7 @@ export interface ChatbotSettingsForm {
   enabled: boolean;
   assistantName: string;
   welcomeMessage: string;
+  welcomeVideoUrl: string;
   systemPromptExtra: string;
   rateLimitPerMinute: number;
   rateLimitPerHour: number;
@@ -54,6 +57,7 @@ export interface ChatbotPublicConfig {
   enabled: boolean;
   assistant_name: string;
   welcome_message: string;
+  welcome_video_url?: string;
   require_captcha: boolean;
   captcha: {
     enabled: boolean;
@@ -84,6 +88,8 @@ export interface ChatbotMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  /** Optional inline video attachment (welcome or rich reply). */
+  videoUrl?: string;
   ctas?: ChatbotCta[];
   pending?: boolean;
   /** Assistant reply is being revealed with a typing animation. */
@@ -243,8 +249,8 @@ export function chatbotLogRating(metadata: Record<string, unknown> | null | unde
 export const DEFAULT_CHATBOT_CONFIG: ChatbotStoredConfig = {
   enabled: true,
   assistant_name: 'دستیار بهرام',
-  welcome_message:
-    'سلام! من دستیار هوشمند آکادمی بهرام هستم. درباره دوره‌ها، سات یا مسیر رشد حرفه‌ای سوالی دارید؟',
+  welcome_message: 'آیا سوالی دارید؟ من دستیار آکادمی بهرام هستم و خوشحال می‌شوم کمکتان کنم.',
+  welcome_video_url: '',
   system_prompt_extra: '',
   rate_limit_per_minute: 3,
   rate_limit_per_hour: 10,

@@ -14,7 +14,7 @@ export function FounderAside() {
           <div className="min-w-0 lg:col-span-5">
             <div className="relative mx-auto aspect-[25/24] w-full max-w-sm overflow-hidden rounded-card-lg border border-bone/10 shadow-frame sm:max-w-md lg:mx-0 lg:max-w-none">
               <SiteImage
-                src={sitePhotos.portraitFounder}
+                src={sitePhotos.founderAsidePortrait}
                 alt={site.founderAside.title}
                 fill
                 priority

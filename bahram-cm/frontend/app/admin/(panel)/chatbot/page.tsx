@@ -355,6 +355,21 @@ export default function ChatbotAdminPage() {
               />
             </div>
             <div>
+              <label className="field-label" htmlFor="cb-welcome-video">ویدیوی خوش‌آمد (اختیاری)</label>
+              <input
+                id="cb-welcome-video"
+                className="field-input mt-1"
+                dir="ltr"
+                placeholder="/storage/media/site/chatbot-welcome.mp4"
+                value={form.welcomeVideoUrl}
+                onChange={(e) => setForm({ ...form, welcomeVideoUrl: e.target.value })}
+              />
+              <p className="mt-1 text-caption text-text-muted">
+                فایل را در کتابخانه رسانه آپلود کنید. اگر خالی باشد از مسیر پیش‌فرض{' '}
+                <code className="text-[11px]">chatbot-welcome.mp4</code> استفاده می‌شود.
+              </p>
+            </div>
+            <div>
               <label className="field-label" htmlFor="cb-extra">دستورالعمل اضافی AI</label>
               <textarea
                 id="cb-extra"

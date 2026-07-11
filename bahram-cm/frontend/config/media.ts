@@ -26,12 +26,27 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
   },
   'portrait-founder': {
     src: siteStorageMedia('portrait-founder.webp'),
+    label: 'پرتره بنیان‌گذار',
+    category: 'درباره',
+  },
+  'founder-hero-desktop': {
+    src: siteStorageMedia('founder-hero-desktop.webp'),
     label: 'هیرو بنیان‌گذار — دسکتاپ',
+    category: 'درباره',
+  },
+  'founder-aside-portrait': {
+    src: siteStorageMedia('founder-aside-portrait.webp'),
+    label: 'کارت بنیان‌گذار — صفحه اصلی',
     category: 'درباره',
   },
   'portrait-founder-mobile': {
     src: siteStorageMedia('portrait-founder-mobile.webp'),
     label: 'هیرو بنیان‌گذار — موبایل',
+    category: 'درباره',
+  },
+  'founder-letter': {
+    src: siteStorageMedia('founder-letter.webp'),
+    label: 'پس‌زمینه نامه بنیان‌گذار',
     category: 'درباره',
   },
   'campaign-writing-hero': {
@@ -49,6 +64,11 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
   'og-default': { src: siteStorageMedia('og-default.svg'), label: 'تصویر اشتراک‌گذاری', category: 'سئو' },
   'course-mockup': { src: siteStorageMedia('course-mockup.svg'), label: 'ماکاپ دوره', category: 'دوره‌ها' },
   'app-home': { src: siteStorageMedia('app-home.svg'), label: 'اپ — صفحه اصلی', category: 'سات' },
+  'academy-app-home': {
+    src: siteStorageMedia('academy-app-home.webp'),
+    label: 'پیش‌نمایش مینی‌اپ سات',
+    category: 'سات',
+  },
   'app-path': { src: siteStorageMedia('app-path.svg'), label: 'اپ — مسیر', category: 'سات' },
   'app-atelier': { src: siteStorageMedia('app-atelier.svg'), label: 'اپ — آتلیه', category: 'سات' },
   'insight-1': { src: siteStorageMedia('insight-cover-1.svg'), label: 'کاور بلاگ ۱', category: 'بلاگ' },
@@ -60,9 +80,9 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
   'avatar-amir': { src: siteStorageMedia('avatar-amir.svg'), label: 'آواتار امیر', category: 'رضایت' },
   'avatar-nazanin': { src: siteStorageMedia('avatar-nazanin.svg'), label: 'آواتار نازنین', category: 'رضایت' },
   'signature': { src: siteStorageMedia('signature.svg'), label: 'امضا', category: 'برند' },
-  'trust-enamad': { src: siteStorageMedia('trust-enamad.svg'), label: 'نماد اعتماد الکترونیکی', category: 'اعتماد' },
-  'trust-samandehi': { src: siteStorageMedia('trust-samandehi.svg'), label: 'ساماندهی', category: 'اعتماد' },
-  'trust-zarinpal': { src: siteStorageMedia('trust-zarinpal.svg'), label: 'زرین‌پال', category: 'اعتماد' },
+  'trust-enamad': { src: siteStorageMedia('trust-enamad.webp'), label: 'نماد اعتماد الکترونیکی', category: 'اعتماد' },
+  'trust-samandehi': { src: siteStorageMedia('trust-samandehi.webp'), label: 'ساماندهی', category: 'اعتماد' },
+  'trust-zarinpal': { src: siteStorageMedia('trust-zarinpal.webp'), label: 'زرین‌پال', category: 'اعتماد' },
 };
 
 export function resolveMainServiceImage(slug: string, fallback?: string | null): string {
