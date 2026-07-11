@@ -9,6 +9,14 @@ import { IdentityReviewActions } from '../IdentityReviewActions';
 
 export const dynamic = 'force-dynamic';
 
+function statusTone(status: string): 'default' | 'success' | 'warning' | 'accent' | 'danger' {
+  if (status === 'approved') return 'success';
+  if (status === 'rejected') return 'danger';
+  if (status === 'needs_correction') return 'warning';
+  if (status === 'submitted' || status === 'under_review') return 'accent';
+  return 'default';
+}
+
 export default async function IdentityVerificationDetailPage({
   params,
 }: {
@@ -42,9 +50,12 @@ export default async function IdentityVerificationDetailPage({
           <div className="space-y-5">
             <div className="card p-5">
               <div className="mb-4 flex flex-wrap items-center gap-2">
-                <Badge tone="accent">{IDENTITY_STATUS_LABELS[item.status] ?? item.status}</Badge>
+                <Badge tone={statusTone(item.status)}>{IDENTITY_STATUS_LABELS[item.status] ?? item.status}</Badge>
                 {item.submitted_at ? (
                   <span className="text-caption text-text-muted">ارسال: {formatDate(item.submitted_at)}</span>
+                ) : null}
+                {item.reviewed_at ? (
+                  <span className="text-caption text-text-muted">بررسی: {formatDate(item.reviewed_at)}</span>
                 ) : null}
               </div>
               <dl className="grid gap-3 sm:grid-cols-2 text-small">
@@ -87,7 +98,12 @@ export default async function IdentityVerificationDetailPage({
               <div className="card p-5">
                 <h2 className="mb-3 text-h3 text-primary-dark">مدارک</h2>
                 <ul className="space-y-4">
-                  {item.artifacts.map((art) => (
+                  {item.artifacts.map((art) => {
+                    const mediaUrl = art.stream_url ?? art.view_url ?? null;
+                    const isVideo =
+                      art.mime_type?.startsWith('video/') || art.type === 'selfie_video';
+
+                    return (
                     <li key={art.id} className="rounded-lg border border-border p-3">
                       <p className="mb-2 text-caption text-text-muted">
                         {art.type === 'national_card_front'
@@ -96,22 +112,27 @@ export default async function IdentityVerificationDetailPage({
                             ? 'ویدیوی سلفی'
                             : art.type}
                       </p>
-                      {art.mime_type?.startsWith('video/') || art.type === 'selfie_video' ? (
-                        <video
-                          controls
-                          className="max-h-80 w-full rounded-lg bg-black"
-                          src={art.stream_url ?? art.view_url ?? undefined}
-                        />
+                      {mediaUrl ? (
+                        isVideo ? (
+                          <video
+                            controls
+                            className="max-h-80 w-full rounded-lg bg-black"
+                            src={mediaUrl}
+                          />
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={mediaUrl}
+                            alt={art.original_name ?? art.type}
+                            className="max-h-80 rounded-lg object-contain"
+                          />
+                        )
                       ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={art.view_url ?? art.stream_url ?? ''}
-                          alt={art.original_name ?? art.type}
-                          className="max-h-80 rounded-lg object-contain"
-                        />
+                        <p className="text-small text-text-muted">فایل مدرک در دسترس نیست.</p>
                       )}
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               </div>
             ) : (
@@ -128,7 +149,15 @@ export default async function IdentityVerificationDetailPage({
                 <ul className="space-y-3">
                   {item.reviews.map((r) => (
                     <li key={r.id} className="border-b border-border pb-3 text-small last:border-0">
-                      <p className="font-medium">{r.action}</p>
+                      <p className="font-medium">
+                        {r.action === 'approve'
+                          ? 'تأیید'
+                          : r.action === 'reject'
+                            ? 'رد'
+                            : r.action === 'request_correction'
+                              ? 'درخواست اصلاح'
+                              : r.action}
+                      </p>
                       {r.reviewer_note ? <p className="text-text-muted">{r.reviewer_note}</p> : null}
                       <p className="text-caption text-text-muted">
                         {r.reviewer_name ?? '—'} · {formatDate(r.created_at)}

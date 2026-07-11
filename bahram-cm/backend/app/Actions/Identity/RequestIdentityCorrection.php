@@ -11,6 +11,7 @@ use App\Models\IdentityVerificationSubmission;
 use App\Models\User;
 use App\Models\UserIdentityProfile;
 use App\Services\AdminAuditLogger;
+use App\Services\InAppNotificationService;
 use App\Services\SmsService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -20,6 +21,7 @@ class RequestIdentityCorrection
     public function __construct(
         private readonly AdminAuditLogger $audit,
         private readonly SmsService $sms,
+        private readonly InAppNotificationService $notifications,
     ) {}
 
     /**
@@ -77,13 +79,17 @@ class RequestIdentityCorrection
             ]);
 
             $student = $submission->user;
-            if ($student?->mobile) {
-                $this->sms->sendEvent(
-                    SmsEventKey::IdentityVerificationNeedsCorrection,
-                    $student->mobile,
-                    ['{name}' => $student->name ?: $submission->first_name],
-                    $student->id,
-                );
+            if ($student) {
+                $this->notifications->identityNeedsCorrection($student);
+
+                if ($student->mobile) {
+                    $this->sms->sendEvent(
+                        SmsEventKey::IdentityVerificationNeedsCorrection,
+                        $student->mobile,
+                        ['{name}' => $student->name ?: $submission->first_name],
+                        $student->id,
+                    );
+                }
             }
 
             return $submission->fresh(['artifacts', 'reviews']);

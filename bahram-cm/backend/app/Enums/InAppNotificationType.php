@@ -13,6 +13,9 @@ enum InAppNotificationType: string
     case TicketReply = 'ticket_reply';
     case ProductNew = 'product_new';
     case ArticleNew = 'article_new';
+    case IdentityApproved = 'identity_approved';
+    case IdentityRejected = 'identity_rejected';
+    case IdentityNeedsCorrection = 'identity_needs_correction';
 
     public function showsToast(): bool
     {
@@ -21,7 +24,10 @@ enum InAppNotificationType: string
             self::OrderPaid,
             self::LicenseReady,
             self::MiniCourseEnrolled,
-            self::TicketReply => true,
+            self::TicketReply,
+            self::IdentityApproved,
+            self::IdentityRejected,
+            self::IdentityNeedsCorrection => true,
             default => false,
         };
     }

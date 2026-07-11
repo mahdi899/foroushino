@@ -4,15 +4,6 @@ import { siteConfig } from '@/config/site';
 
 const CHANNELS = [
   {
-    key: 'whatsapp',
-    title: 'واتساپ پشتیبانی',
-    desc: 'پاسخگویی سریع در واتساپ',
-    hours: 'همه روزه ۹ تا ۲۱',
-    href: `https://wa.me/${siteConfig.contact.whatsappRaw}`,
-    icon: MessageCircle,
-    cta: 'واتساپ',
-  },
-  {
     key: 'telegram',
     title: 'تلگرام پشتیبانی',
     desc: 'تیم پشتیبانی رستمی در تلگرام',
@@ -20,6 +11,15 @@ const CHANNELS = [
     href: siteConfig.social.telegram,
     icon: Send,
     cta: 'تلگرام',
+  },
+  {
+    key: 'whatsapp',
+    title: 'واتساپ پشتیبانی',
+    desc: 'پاسخگویی سریع در واتساپ',
+    hours: 'همه روزه ۹ تا ۲۱',
+    href: `https://wa.me/${siteConfig.contact.whatsappRaw}`,
+    icon: MessageCircle,
+    cta: 'واتساپ',
   },
   {
     key: 'rubika',

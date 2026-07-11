@@ -211,7 +211,7 @@ function OrderDetails({ order }: { order: StudentOrder }) {
 }
 
 export function StudentOrdersList({ orders }: { orders: StudentOrder[] }) {
-  const [openId, setOpenId] = useState<number | null>(orders[0]?.id ?? null);
+  const [openId, setOpenId] = useState<number | null>(null);
 
   if (orders.length === 0) {
     return (

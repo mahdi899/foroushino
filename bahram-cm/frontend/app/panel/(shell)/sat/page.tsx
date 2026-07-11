@@ -62,31 +62,31 @@ export default async function PanelSatPage() {
         description="اگر علاقه‌مند به همکاری با آکادمی هستی، فرم زیر را تکمیل کن."
       />
 
-      <div
-        className={`card flex items-start gap-3 p-5 ${
-          membershipActive ? 'border-[#008c96]/30 bg-[#008c96]/5' : 'border-border'
-        }`}
-      >
-        <span className="mt-0.5 text-primary">
-          {membershipActive ? <Trophy size={22} /> : <Lock size={22} />}
-        </span>
-        <div>
-          <p className="font-bold text-text">{membershipMeta.label}</p>
-          <p className="mt-1 text-sm leading-relaxed text-text-muted">{membershipMeta.hint}</p>
-          {acceptedButLocked ? (
-            <p className="mt-2 text-sm text-text">
-              درخواست شما پذیرفته شده، اما دسترسی هنوز قفل است. برای فعال‌سازی،{' '}
-              <Link href="/panel/identity-verification" className="font-medium text-primary underline">
-                هویت خود را تأیید کنید
-              </Link>
-              .
-            </p>
-          ) : null}
-        </div>
-      </div>
-
       <div className="panel-aside-layout">
         <div className="flex flex-col gap-5">
+          <div
+            className={`card flex items-start gap-3 p-5 ${
+              membershipActive ? 'border-[#008c96]/30 bg-[#008c96]/5' : 'border-border'
+            }`}
+          >
+            <span className="mt-0.5 text-primary">
+              {membershipActive ? <Trophy size={22} /> : <Lock size={22} />}
+            </span>
+            <div>
+              <p className="font-bold text-text">{membershipMeta.label}</p>
+              <p className="mt-1 text-sm leading-relaxed text-text-muted">{membershipMeta.hint}</p>
+              {acceptedButLocked ? (
+                <p className="mt-2 text-sm text-text">
+                  درخواست شما پذیرفته شده، اما دسترسی هنوز قفل است. برای فعال‌سازی،{' '}
+                  <Link href="/panel/identity-verification" className="font-medium text-primary underline">
+                    هویت خود را تأیید کنید
+                  </Link>
+                  .
+                </p>
+              ) : null}
+            </div>
+          </div>
+
           {!application ? (
             <div className="rounded-xl border border-border bg-surface-soft p-4 text-sm leading-relaxed text-text-muted">
               هنوز درخواستی ثبت نکرده‌ای. فرم زیر را تکمیل کن تا تیم ما بررسی کند.

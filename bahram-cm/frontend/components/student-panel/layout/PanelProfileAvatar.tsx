@@ -13,6 +13,7 @@ type Props = {
   alt: string;
   className?: string;
   verified?: boolean;
+  verifiedLabel?: string;
 };
 
 function initialsFromName(name: string): string {
@@ -56,6 +57,7 @@ export function PanelProfileAvatar({
   alt,
   className,
   verified = false,
+  verifiedLabel = 'پروفایل تکمیل‌شده',
 }: Props) {
   const sources = useMemo(
     () => buildAvatarSources({ avatar, avatarUrl, defaultAvatarUrl }),
@@ -115,7 +117,7 @@ export function PanelProfileAvatar({
       {showPremiumRing ? <span className="panel-profile-avatar-halo__ring" aria-hidden /> : null}
       {avatarNode}
       {verified ? (
-        <span className="panel-profile-avatar__verified" title="پروفایل تکمیل‌شده" aria-label="پروفایل تکمیل‌شده">
+        <span className="panel-profile-avatar__verified" title={verifiedLabel} aria-label={verifiedLabel}>
           <ProfileVerifiedBadge />
         </span>
       ) : null}

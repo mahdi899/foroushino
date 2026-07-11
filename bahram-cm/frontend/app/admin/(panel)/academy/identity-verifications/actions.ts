@@ -50,10 +50,28 @@ export async function reviewIdentityVerificationAction(
     correction_items?: string[];
   },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const path =
+    input.action === 'approve'
+      ? `/identity-verifications/${id}/approve`
+      : input.action === 'reject'
+        ? `/identity-verifications/${id}/reject`
+        : `/identity-verifications/${id}/request-correction`;
+
+  const body =
+    input.action === 'approve'
+      ? { note: input.reviewer_note }
+      : input.action === 'reject'
+        ? { note: input.reviewer_note, reason_code: input.reason_code }
+        : {
+            note: input.reviewer_note,
+            reason_code: input.reason_code,
+            correction_items: input.correction_items ?? [],
+          };
+
   try {
-    await adminFetch(`/identity-verifications/${id}`, {
-      method: 'PATCH',
-      body: input,
+    await adminFetch(path, {
+      method: 'POST',
+      body,
     });
     revalidatePath('/admin/academy/identity-verifications');
     revalidatePath(`/admin/academy/identity-verifications/${id}`);
@@ -123,7 +141,7 @@ export async function unlockOwnershipVerificationAction(
   studentId: number,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    await adminFetch(`/students/${studentId}/unlock-ownership`, { method: 'POST' });
+    await adminFetch(`/students/${studentId}/identity/unlock-ownership`, { method: 'POST' });
     revalidatePath('/admin/academy/identity-verifications');
     return { ok: true };
   } catch (e) {

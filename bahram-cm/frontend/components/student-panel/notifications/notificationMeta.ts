@@ -1,4 +1,4 @@
-import { Bell, BookOpen, Clapperboard, FileText, KeyRound, MessageSquare, Receipt, Sparkles } from 'lucide-react';
+import { Bell, BookOpen, Clapperboard, FileText, KeyRound, MessageSquare, Receipt, ShieldCheck, Sparkles } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { PanelNotificationPayload } from '@/lib/student/panelActions';
 
@@ -8,6 +8,9 @@ const TOASTABLE_SYSTEM_TYPES = new Set([
   'license_ready',
   'mini_course_enrolled',
   'ticket_reply',
+  'identity_approved',
+  'identity_rejected',
+  'identity_needs_correction',
 ]);
 
 /** Admin broadcasts and selected system events surface as panel popups. */
@@ -33,6 +36,10 @@ export function notificationTypeIcon(type: string | null | undefined): LucideIco
       return FileText;
     case 'welcome':
       return BookOpen;
+    case 'identity_approved':
+    case 'identity_rejected':
+    case 'identity_needs_correction':
+      return ShieldCheck;
     default:
       return Bell;
   }
@@ -56,6 +63,12 @@ export function notificationTypeLabel(type: string | null | undefined) {
       return 'مطلب جدید';
     case 'welcome':
       return 'خوش‌آمد';
+    case 'identity_approved':
+      return 'تأیید هویت';
+    case 'identity_rejected':
+      return 'رد هویت';
+    case 'identity_needs_correction':
+      return 'اصلاح مدارک';
     default:
       return 'اعلان';
   }
@@ -72,6 +85,12 @@ export function notificationTypeVariant(type: string | null | undefined): 'teal'
     case 'ticket_created':
     case 'ticket_reply':
       return 'success';
+    case 'identity_approved':
+      return 'success';
+    case 'identity_rejected':
+      return 'neutral';
+    case 'identity_needs_correction':
+      return 'gold';
     default:
       return 'neutral';
   }

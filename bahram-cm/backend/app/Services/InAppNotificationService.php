@@ -218,6 +218,39 @@ class InAppNotificationService
         );
     }
 
+    public function identityApproved(User $user): NotificationRecipient
+    {
+        return $this->notifyUser(
+            $user,
+            'هویت شما تأیید شد',
+            'پرونده تأیید هویت شما بررسی و تأیید شد. اکنون می‌توانید از امکانات ویژه حساب استفاده کنید.',
+            InAppNotificationType::IdentityApproved,
+            '/panel/profile',
+        );
+    }
+
+    public function identityRejected(User $user): NotificationRecipient
+    {
+        return $this->notifyUser(
+            $user,
+            'پرونده تأیید هویت رد شد',
+            'متأسفانه پرونده تأیید هویت شما تأیید نشد. برای اطلاعات بیشتر با پشتیبانی تماس بگیرید.',
+            InAppNotificationType::IdentityRejected,
+            '/panel/identity-verification',
+        );
+    }
+
+    public function identityNeedsCorrection(User $user): NotificationRecipient
+    {
+        return $this->notifyUser(
+            $user,
+            'اصلاح مدارک تأیید هویت',
+            'برخی موارد پرونده شما نیاز به اصلاح دارد. لطفاً مدارک را به‌روز و دوباره ارسال کنید.',
+            InAppNotificationType::IdentityNeedsCorrection,
+            '/panel/identity-verification',
+        );
+    }
+
     private function orderUser(Order $order): ?User
     {
         if (! $order->user_id) {

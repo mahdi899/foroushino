@@ -61,11 +61,14 @@ export type IdentityVerificationDetail = IdentityVerificationListItem & {
 export type IdentityDashboardStats = {
   pending_review: number;
   needs_correction: number;
-  approved_today?: number;
-  rejected_today?: number;
   ownership_locked: number;
+  queue_total?: number;
   submitted?: number;
   under_review?: number;
+  approved?: number;
+  rejected?: number;
+  approved_today?: number;
+  rejected_today?: number;
 };
 
 export type IdentityProviderConfig = {

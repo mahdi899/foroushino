@@ -11,6 +11,7 @@ use App\Models\IdentityVerificationSubmission;
 use App\Models\User;
 use App\Models\UserIdentityProfile;
 use App\Services\AdminAuditLogger;
+use App\Services\InAppNotificationService;
 use App\Services\SmsService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -21,6 +22,7 @@ class ApproveIdentityVerification
         private readonly AdminAuditLogger $audit,
         private readonly SmsService $sms,
         private readonly SyncIdentityToUserProfile $syncProfile,
+        private readonly InAppNotificationService $notifications,
     ) {}
 
     public function __invoke(
@@ -85,6 +87,7 @@ class ApproveIdentityVerification
             if ($student) {
                 ($this->syncProfile)($student, $profile);
                 IdentityLevel2Approved::dispatch($student);
+                $this->notifications->identityApproved($student);
 
                 if ($student->mobile) {
                     $this->sms->sendEvent(

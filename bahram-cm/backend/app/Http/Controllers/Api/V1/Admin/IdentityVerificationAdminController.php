@@ -25,27 +25,7 @@ class IdentityVerificationAdminController extends Controller
     {
         abort_unless($request->user()->hasPermission('identity.view'), 403);
 
-        $counts = IdentityVerificationSubmission::query()
-            ->selectRaw('status, count(*) as total')
-            ->groupBy('status')
-            ->pluck('total', 'status');
-
-        return response()->json(['data' => [
-            'submitted' => (int) ($counts[IdentityVerificationStatus::Submitted->value] ?? 0),
-            'under_review' => (int) ($counts[IdentityVerificationStatus::UnderReview->value] ?? 0),
-            'needs_correction' => (int) ($counts[IdentityVerificationStatus::NeedsCorrection->value] ?? 0),
-            'approved' => (int) ($counts[IdentityVerificationStatus::Approved->value] ?? 0),
-            'rejected' => (int) ($counts[IdentityVerificationStatus::Rejected->value] ?? 0),
-            'queue_total' => UserIdentityProfile::query()
-                ->whereIn('identity_status', [
-                    IdentityVerificationStatus::Submitted,
-                    IdentityVerificationStatus::UnderReview,
-                ])
-                ->count(),
-            'ownership_locked' => UserIdentityProfile::query()
-                ->where('mobile_ownership_status', 'locked')
-                ->count(),
-        ]]);
+        return response()->json(['data' => $this->dashboardStats()]);
     }
 
     public function index(Request $request): JsonResponse
@@ -64,6 +44,13 @@ class IdentityVerificationAdminController extends Controller
                 IdentityVerificationStatus::Submitted,
                 IdentityVerificationStatus::UnderReview,
             ]);
+        }
+
+        if ($request->boolean('ownership_locked')) {
+            $query->whereHas(
+                'identityProfile',
+                fn ($q) => $q->where('mobile_ownership_status', 'locked'),
+            );
         }
 
         if ($search = $request->string('search')->trim()->toString()) {
@@ -85,6 +72,7 @@ class IdentityVerificationAdminController extends Controller
                 'last_page' => $page->lastPage(),
                 'total' => $page->total(),
             ],
+            'stats' => $this->dashboardStats(),
         ]);
     }
 
@@ -119,6 +107,7 @@ class IdentityVerificationAdminController extends Controller
                 'type' => $a->type->value,
                 'mime_type' => $a->mime_type,
                 'size_bytes' => $a->size_bytes,
+                'original_name' => $a->original_name,
             ]),
             'reviews' => $submission->reviews->map(fn ($r) => [
                 'id' => $r->id,
@@ -287,6 +276,37 @@ class IdentityVerificationAdminController extends Controller
         ]]);
     }
 
+    /** @return array<string, int> */
+    private function dashboardStats(): array
+    {
+        $counts = IdentityVerificationSubmission::query()
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $submitted = (int) ($counts->get(IdentityVerificationStatus::Submitted->value) ?? 0);
+        $underReview = (int) ($counts->get(IdentityVerificationStatus::UnderReview->value) ?? 0);
+        $queueTotal = UserIdentityProfile::query()
+            ->whereIn('identity_status', [
+                IdentityVerificationStatus::Submitted,
+                IdentityVerificationStatus::UnderReview,
+            ])
+            ->count();
+
+        return [
+            'pending_review' => max($queueTotal, $submitted + $underReview),
+            'submitted' => $submitted,
+            'under_review' => $underReview,
+            'needs_correction' => (int) ($counts->get(IdentityVerificationStatus::NeedsCorrection->value) ?? 0),
+            'approved' => (int) ($counts->get(IdentityVerificationStatus::Approved->value) ?? 0),
+            'rejected' => (int) ($counts->get(IdentityVerificationStatus::Rejected->value) ?? 0),
+            'queue_total' => $queueTotal,
+            'ownership_locked' => UserIdentityProfile::query()
+                ->where('mobile_ownership_status', 'locked')
+                ->count(),
+        ];
+    }
+
     /** @return array<string, mixed> */
     private function listPayload(IdentityVerificationSubmission $s): array
     {
@@ -303,6 +323,8 @@ class IdentityVerificationAdminController extends Controller
             'reviewed_at' => $s->reviewed_at?->toIso8601String(),
             'user_name' => $s->user?->name,
             'mobile_masked' => SensitiveData::maskMobile($s->user?->mobile),
+            'user_mobile_masked' => SensitiveData::maskMobile($s->user?->mobile),
+            'ownership_locked' => $s->identityProfile?->mobile_ownership_status?->value === 'locked',
         ];
     }
 }

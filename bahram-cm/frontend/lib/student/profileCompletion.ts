@@ -1,4 +1,5 @@
 import type { StudentUser } from '@/lib/student/session';
+import { resolveProfileAge } from '@/lib/student/age';
 
 export const PROFILE_VERIFIED_THRESHOLD = 80;
 
@@ -17,7 +18,7 @@ export function profileCompletion(user: StudentUser): number {
   if (lastName) score += 8;
   if (profile?.email?.trim()) score += 12;
   if (city) score += 5;
-  if (profile?.age) score += 3;
+  if (resolveProfileAge(user)) score += 3;
   if (profile?.current_job?.trim()) score += 3;
   if (profile?.experience_level?.trim()) score += 2;
   if (profile?.instagram?.trim()) score += 1;

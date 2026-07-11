@@ -11,6 +11,7 @@ use App\Models\IdentityVerificationSubmission;
 use App\Models\User;
 use App\Models\UserIdentityProfile;
 use App\Services\AdminAuditLogger;
+use App\Services\InAppNotificationService;
 use App\Services\SmsService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -20,6 +21,7 @@ class RejectIdentityVerification
     public function __construct(
         private readonly AdminAuditLogger $audit,
         private readonly SmsService $sms,
+        private readonly InAppNotificationService $notifications,
     ) {}
 
     public function __invoke(
@@ -71,13 +73,17 @@ class RejectIdentityVerification
             ]);
 
             $student = $submission->user;
-            if ($student?->mobile) {
-                $this->sms->sendEvent(
-                    SmsEventKey::IdentityVerificationRejected,
-                    $student->mobile,
-                    ['{name}' => $student->name ?: $submission->first_name],
-                    $student->id,
-                );
+            if ($student) {
+                $this->notifications->identityRejected($student);
+
+                if ($student->mobile) {
+                    $this->sms->sendEvent(
+                        SmsEventKey::IdentityVerificationRejected,
+                        $student->mobile,
+                        ['{name}' => $student->name ?: $submission->first_name],
+                        $student->id,
+                    );
+                }
             }
 
             return $submission->fresh(['artifacts', 'reviews']);

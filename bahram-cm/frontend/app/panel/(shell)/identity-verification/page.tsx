@@ -69,6 +69,7 @@ export default async function IdentityVerificationPage() {
         icon={ShieldCheck}
         title="تأیید هویت"
         description="اطلاعات رسمی و مدارک خود را مرحله‌به‌مرحله تکمیل کنید تا حساب شما تأیید شود."
+        backLink={{ href: '/panel/profile', label: 'بازگشت به پروفایل' }}
       />
       <IdentityVerificationWizard
         initialStatus={state?.identity_status ?? user?.identity_status}

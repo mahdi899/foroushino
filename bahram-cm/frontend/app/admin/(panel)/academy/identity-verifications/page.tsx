@@ -27,7 +27,10 @@ export default async function IdentityVerificationsPage({
     page: sp.page ? Number(sp.page) : undefined,
   });
 
-  const pending = stats?.pending_review ?? stats?.under_review ?? stats?.submitted ?? 0;
+  const pending =
+    stats?.pending_review ??
+    stats?.queue_total ??
+    ((stats?.submitted ?? 0) + (stats?.under_review ?? 0));
   const correction = stats?.needs_correction ?? 0;
   const locked = stats?.ownership_locked ?? 0;
 

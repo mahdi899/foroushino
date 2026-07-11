@@ -1,35 +1,42 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Camera, Loader2 } from 'lucide-react';
-import { PanelProfileAvatar } from '@/components/student-panel/layout/PanelProfileAvatar';
+import { BadgeCheck, Camera, Loader2 } from 'lucide-react';
+import { PanelProfileAvatar, hasUploadedProfileAvatar } from '@/components/student-panel/layout/PanelProfileAvatar';
+import { ProfileAvatarUploadSheet } from '@/components/student-panel/profile/ProfileAvatarUploadSheet';
+import { type AccountTier } from '@/lib/student/accountTier';
 import { studentDefaultAvatarUrl } from '@/lib/student/avatar';
 import { getStudentDisplayName } from '@/lib/student/displayName';
 import { isProfileVerified, PROFILE_VERIFIED_THRESHOLD } from '@/lib/student/profileCompletion';
 import { uploadProfileAvatarAction } from '@/lib/student/panelActions';
 import type { StudentUser } from '@/lib/student/session';
+import { cn } from '@/lib/cn';
 
 export function ProfileAvatarField({
   user,
   profileCompletion,
+  accountTier,
 }: {
   user: StudentUser;
   profileCompletion?: number;
+  accountTier: AccountTier;
 }) {
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const displayName = getStudentDisplayName(user);
-  const hasCustomAvatar = Boolean(user.profile?.avatar_url);
-  const verified =
+  const hasCustomAvatar = hasUploadedProfileAvatar(user.profile?.avatar, user.profile?.avatar_url);
+  const profileVerified =
     profileCompletion !== undefined
       ? profileCompletion >= PROFILE_VERIFIED_THRESHOLD
       : isProfileVerified(user);
+  const identityVerified = accountTier.level >= 2;
+  const verified = profileVerified || identityVerified;
+  const verifiedLabel = identityVerified ? 'هویت تأییدشده' : 'پروفایل تکمیل‌شده';
 
-  async function onPick(file: File | undefined) {
-    if (!file) return;
+  async function onConfirm(file: File) {
     setPending(true);
     setError('');
     const formData = new FormData();
@@ -40,57 +47,84 @@ export function ProfileAvatarField({
       setError(res.error);
       return;
     }
+    setSheetOpen(false);
     router.refresh();
-    if (inputRef.current) inputRef.current.value = '';
+  }
+
+  function handleOpenSheet() {
+    setError('');
+    setSheetOpen(true);
   }
 
   return (
-    <div className="panel-profile-avatar">
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
-        className="hidden"
-        onChange={(e) => void onPick(e.target.files?.[0])}
-      />
+    <>
+      <div className="panel-profile-avatar panel-profile-avatar--aside">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={handleOpenSheet}
+          className="panel-profile-avatar__trigger group"
+          aria-label={hasCustomAvatar ? 'تغییر تصویر پروفایل' : 'انتخاب تصویر پروفایل'}
+        >
+          <PanelProfileAvatar
+            avatar={user.profile?.avatar}
+            avatarUrl={user.profile?.avatar_url}
+            gravatarUrl={user.profile?.gravatar_url}
+            defaultAvatarUrl={user.profile?.default_avatar_url ?? studentDefaultAvatarUrl(user.id, 256)}
+            alt={displayName}
+            className="panel-profile-avatar__image panel-profile-avatar__image--aside !rounded-full !ring-0"
+            verified={verified}
+            verifiedLabel={verifiedLabel}
+          />
+          <span className="panel-profile-avatar__overlay">
+            {pending ? (
+              <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
+            ) : (
+              <Camera className="h-6 w-6" aria-hidden />
+            )}
+          </span>
+        </button>
 
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => inputRef.current?.click()}
-        className="panel-profile-avatar__trigger group"
-        aria-label={hasCustomAvatar ? 'تغییر تصویر پروفایل' : 'انتخاب تصویر پروفایل'}
-      >
-        <PanelProfileAvatar
-          avatar={user.profile?.avatar}
-          avatarUrl={user.profile?.avatar_url}
-          gravatarUrl={user.profile?.gravatar_url}
-          defaultAvatarUrl={user.profile?.default_avatar_url ?? studentDefaultAvatarUrl(user.id, 192)}
-          alt={displayName}
-          className="panel-profile-avatar__image !h-28 !w-28 sm:!h-32 sm:!w-32 !rounded-full !ring-0"
-          verified={verified}
-        />
-        <span className="panel-profile-avatar__overlay">
-          {pending ? (
-            <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
-          ) : (
-            <Camera className="h-6 w-6" aria-hidden />
-          )}
-        </span>
-      </button>
-
-      <div className="panel-profile-avatar__copy">
-        <span className="panel-profile-avatar__badge">دانشجو</span>
-        <p className="panel-profile-avatar__name">{displayName}</p>
-        <p className="panel-profile-avatar__mobile" dir="ltr">
-          {user.mobile}
-        </p>
-        <p className="panel-profile-avatar__hint">
-          {hasCustomAvatar ? 'برای تغییر، روی تصویر بزنید' : 'برای آپلود، روی تصویر بزنید'}
-        </p>
-        <p className="panel-profile-avatar__formats">JPG، PNG یا WebP — حداکثر ۲ مگابایت</p>
-        {error ? <p className="panel-profile-avatar__error">{error}</p> : null}
+        <div className="panel-profile-avatar__copy">
+          <span
+            className={cn(
+              'panel-profile-avatar__badge',
+              accountTier.variant === 'identity' && 'panel-profile-avatar__badge--tier-2',
+              accountTier.variant === 'full' && 'panel-profile-avatar__badge--tier-3',
+            )}
+          >
+            {accountTier.variant !== 'base' ? (
+              <BadgeCheck className="panel-profile-avatar__badge-icon" aria-hidden size={12} strokeWidth={2.5} />
+            ) : null}
+            {accountTier.badge}
+          </span>
+          <p className="panel-profile-avatar__name">{displayName}</p>
+          <p className="panel-profile-avatar__mobile" dir="ltr">
+            {user.mobile}
+          </p>
+          {!hasCustomAvatar ? (
+            <p className="panel-profile-avatar__hint panel-profile-avatar__hint--empty">
+              هنوز عکسی نگذاشته‌اید — برای آپلود بزنید
+            </p>
+          ) : null}
+        </div>
       </div>
-    </div>
+
+      <ProfileAvatarUploadSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        displayName={displayName}
+        hasCustomAvatar={hasCustomAvatar}
+        avatar={user.profile?.avatar}
+        avatarUrl={user.profile?.avatar_url}
+        gravatarUrl={user.profile?.gravatar_url}
+        defaultAvatarUrl={user.profile?.default_avatar_url ?? studentDefaultAvatarUrl(user.id, 192)}
+        verified={verified}
+        verifiedLabel={verifiedLabel}
+        pending={pending}
+        error={error}
+        onConfirm={(file) => void onConfirm(file)}
+      />
+    </>
   );
 }
