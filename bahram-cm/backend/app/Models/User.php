@@ -28,6 +28,8 @@ class User extends Authenticatable
         'password',
         'status',
         'spotplayer_x',
+        'is_admin',
+        'mobile_verified_at',
     ];
 
     /**

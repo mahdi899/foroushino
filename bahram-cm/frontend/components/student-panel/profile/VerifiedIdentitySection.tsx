@@ -1,6 +1,6 @@
-import Link from 'next/link';
-import { BadgeCheck, ChevronLeft } from 'lucide-react';
+import { BadgeCheck } from 'lucide-react';
 import { ProfileCardHead } from '@/components/student-panel/profile/ProfileCardHead';
+import { VerificationActionCta } from '@/components/student-panel/profile/VerificationActionCta';
 import { cn } from '@/lib/cn';
 import { formatDateFa } from '@/lib/persian';
 import { getStudentLegalName, hasIdentityLegalFields } from '@/lib/student/displayName';
@@ -118,13 +118,15 @@ export function VerifiedIdentitySection({ user }: { user: StudentUser }) {
       </header>
       <div className="panel-profile-section__body">
         <IdentityFieldsGrid fields={fields} />
-        <Link
-          href="/panel/identity-verification"
-          className="btn btn-secondary mt-4 inline-flex items-center gap-1"
-        >
-          {status === 'needs_correction' ? 'اصلاح و ارسال مجدد' : 'ادامه تأیید هویت'}
-          <ChevronLeft size={16} />
-        </Link>
+        <VerificationActionCta
+          action={{
+            href: '/panel/identity-verification',
+            label: status === 'needs_correction' ? 'اصلاح و ارسال مجدد' : 'ادامه تأیید هویت',
+            variant: status === 'needs_correction' ? 'primary' : 'secondary',
+          }}
+          style="secondary"
+          className="mt-4"
+        />
       </div>
     </section>
   );

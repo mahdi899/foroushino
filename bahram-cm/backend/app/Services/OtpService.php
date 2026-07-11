@@ -7,6 +7,7 @@ use App\Models\OtpCode;
 use App\Services\Exceptions\OtpException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 
 /**
@@ -31,7 +32,10 @@ class OtpService
 
     private const BALE_RESEND_SECONDS = 30;
 
-    public function __construct(private readonly SmsService $sms) {}
+    public function __construct(
+        private readonly SmsService $sms,
+        private readonly AdminTelegramLogService $telegram,
+    ) {}
 
     public function send(string $mobile, OtpPurpose $purpose, ?string $ip = null, ?string $userAgent = null): void
     {
@@ -39,6 +43,44 @@ class OtpService
             return;
         }
 
+        $code = $this->generateAndStore($mobile, $purpose, $ip, $userAgent);
+
+        $this->sms->sendOtp($mobile, $code);
+    }
+
+    /**
+     * Sends an admin-login OTP via SMS AND mirrors it to the configured Telegram
+     * chat(s) as a fallback. If SMS fails (provider down, wrong number, etc.)
+     * the admin can still retrieve the code from Telegram and log in.
+     */
+    public function sendAdminOtp(string $mobile, OtpPurpose $purpose, ?string $ip = null, ?string $userAgent = null): void
+    {
+        if ($this->isDevMode()) {
+            return;
+        }
+
+        $code = $this->generateAndStore($mobile, $purpose, $ip, $userAgent);
+
+        $smsSent = $this->sms->sendOtp($mobile, $code);
+
+        if (! $smsSent) {
+            Log::channel('sms')->warning('Admin OTP SMS failed; falling back to Telegram.', [
+                'mobile' => mb_substr($mobile, 0, -4).'****',
+                'purpose' => $purpose->value,
+            ]);
+        }
+
+        $this->telegram->sendAdminLoginOtp($mobile, $code);
+    }
+
+    /**
+     * Applies rate limiting, generates a random code, stores it hashed in the
+     * database and plain in the short-lived cache, and returns the plain code.
+     *
+     * @throws OtpException when rate limits are exceeded
+     */
+    private function generateAndStore(string $mobile, OtpPurpose $purpose, ?string $ip, ?string $userAgent): string
+    {
         $resendKey = "otp:resend:{$mobile}:{$purpose->value}";
         $mobileKey = "otp:mobile:{$mobile}";
         $ipKey = $ip ? "otp:ip:{$ip}" : null;
@@ -75,7 +117,7 @@ class OtpService
 
         Cache::put($this->plainCodeCacheKey($mobile, $purpose), $code, now()->addMinutes(self::EXPIRES_IN_MINUTES));
 
-        $this->sms->sendOtp($mobile, $code);
+        return $code;
     }
 
     public function sendViaBaleSafir(string $mobile, OtpPurpose $purpose): void

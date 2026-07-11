@@ -8,6 +8,7 @@ use App\Enums\MobileOwnershipStatus;
 use App\Enums\OwnershipVerificationResult;
 use App\Http\Controllers\Controller;
 use App\Support\ApiResponse;
+use App\Support\MobileClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -26,11 +27,17 @@ class MobileOwnershipController extends Controller
             'locked_at' => $profile->ownership_locked_at?->toIso8601String(),
             'verified_at' => $profile->mobile_ownership_verified_at?->toIso8601String(),
             'verification_level' => $profile->verification_level,
+            'requires_phone' => true,
+            'is_phone_client' => MobileClient::isPhone($request->userAgent()),
         ]);
     }
 
     public function verify(Request $request, VerifyMobileOwnership $verify): JsonResponse
     {
+        if ($deny = MobileClient::denyUnlessPhone($request)) {
+            return $deny;
+        }
+
         try {
             $outcome = $verify($request->user());
         } catch (ValidationException $e) {

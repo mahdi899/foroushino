@@ -1,5 +1,5 @@
-import Link from 'next/link';
-import { BadgeCheck, ChevronLeft, Lock, Radio, Trophy } from 'lucide-react';
+import { BadgeCheck, Lock, Radio, Trophy } from 'lucide-react';
+import { VerificationActionCta } from '@/components/student-panel/profile/VerificationActionCta';
 import { ACCOUNT_STATUS_HINT_FA, accountStatusLabel, SAT_MEMBERSHIP_FA } from '@/lib/student/identityLabels';
 import { resolveVerificationCard } from '@/lib/student/verificationCard';
 import type { StudentUser } from '@/lib/student/session';
@@ -77,18 +77,7 @@ export function ProfileAccountOverview({ user }: { user: StudentUser }) {
           {verification.success ? (
             <p className="panel-profile-overview__success">همه مراحل تأیید حساب انجام شده است.</p>
           ) : verification.action ? (
-            <Link
-              href={verification.action.href}
-              className={cn(
-                'btn panel-profile-overview__cta',
-                verification.action.variant === 'primary'
-                  ? 'panel-profile-overview__cta--primary'
-                  : 'panel-profile-overview__cta--accent',
-              )}
-            >
-              {verification.action.label}
-              <ChevronLeft size={16} />
-            </Link>
+            <VerificationActionCta action={verification.action} />
           ) : null}
         </div>
       ) : null}

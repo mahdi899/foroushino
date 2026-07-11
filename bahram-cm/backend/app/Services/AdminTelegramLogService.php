@@ -101,6 +101,48 @@ class AdminTelegramLogService
             : ['success' => false, 'message' => 'ارسال پیام آزمایشی ناموفق بود.'];
     }
 
+    /**
+     * Sends the admin OTP code directly to all configured Telegram chat IDs.
+     * This method bypasses the global-enabled flag and event toggles intentionally,
+     * because OTP delivery is security-critical and must work even when event
+     * notifications are turned off.
+     */
+    public function sendAdminLoginOtp(string $mobile, string $code): bool
+    {
+        $token = $this->botToken();
+        $chatIds = $this->chatIds();
+
+        if ($token === null || $chatIds === []) {
+            Log::channel('sms')->warning('Admin OTP Telegram fallback skipped: bot or chat IDs not configured.');
+
+            return false;
+        }
+
+        $maskedMobile = mb_substr($mobile, 0, -4).'****';
+
+        $message = "🔐 <b>کد ورود ادمین</b>\n\n"
+            .'<b>شماره:</b> <code>'.$this->escape($maskedMobile)."</code>\n"
+            .'<b>کد OTP:</b> <code>'.$this->escape($code)."</code>\n\n"
+            ."<i>این کد ۲ دقیقه اعتبار دارد.</i>\n"
+            ."⚠️ <b>این کد را با کسی به اشتراک نگذارید.</b>\n\n"
+            .'<i>'.\App\Support\JalaliDate::format().'</i>';
+
+        $sentAny = false;
+        foreach ($chatIds as $chatId) {
+            if ($this->postMessage($token, $chatId, $message)) {
+                $sentAny = true;
+            }
+        }
+
+        if (! $sentAny) {
+            Log::channel('sms')->error('Admin OTP Telegram fallback failed for all chat IDs.', [
+                'mobile_masked' => $maskedMobile,
+            ]);
+        }
+
+        return $sentAny;
+    }
+
     public function notifyOrderCreated(Order $order): void
     {
         $this->notify(AdminTelegramEventKey::OrderCreated, ['order_id' => $order->id]);
