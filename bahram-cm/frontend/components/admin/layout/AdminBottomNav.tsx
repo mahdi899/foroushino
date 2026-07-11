@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu } from 'lucide-react';
 import { AdminLucideIcon } from '@/lib/admin/lucide-icons';
 import { cn } from '@/lib/utils';
 import { isAdminNavActive } from '@/app/admin/(panel)/admin-nav';
@@ -14,19 +13,47 @@ const ADMIN_BOTTOM_NAV_ITEMS = [
   { href: '/admin/leads', label: 'لیدها', shortLabel: 'لید', icon: 'Inbox' },
 ] as const;
 
+function NavIcon({
+  name,
+  active,
+}: {
+  name: string;
+  active: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        'site-bottom-nav__icon-shell',
+        active && 'site-bottom-nav__icon-shell--active',
+      )}
+    >
+      <AdminLucideIcon
+        name={name}
+        className="site-bottom-nav__icon h-[18px] w-[18px]"
+        strokeWidth={active ? 2.35 : 1.9}
+      />
+    </span>
+  );
+}
+
 export function AdminBottomNav({
   pendingCount,
   ticketPendingCount,
+  menuOpen = false,
   onMenuOpen,
 }: {
   pendingCount: number;
   ticketPendingCount: number;
+  menuOpen?: boolean;
   onMenuOpen: () => void;
 }) {
   const pathname = usePathname();
 
   return (
-    <nav className="admin-bottom-nav lg:hidden">
+    <nav
+      aria-label="ناوبری مدیریت"
+      className="site-bottom-nav admin-bottom-nav fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 lg:hidden"
+    >
       {ADMIN_BOTTOM_NAV_ITEMS.map((item) => {
         const active =
           item.href === '/admin'
@@ -41,20 +68,21 @@ export function AdminBottomNav({
           <Link
             key={item.href}
             href={item.href}
+            aria-current={active ? 'page' : undefined}
             className={cn(
-              'relative flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 px-1 font-medium transition-all duration-300',
-              active ? 'text-primary' : 'text-text-muted',
+              'site-bottom-nav__item relative flex min-h-[3.75rem] flex-col items-center justify-center gap-0.5 px-1',
+              active && 'site-bottom-nav__item--active',
             )}
           >
-            <span className="relative inline-flex shrink-0">
-              <AdminLucideIcon name={item.icon} className="h-5 w-5" strokeWidth={active ? 2.4 : 1.8} />
+            <span className="admin-bottom-nav__icon-wrap">
+              <NavIcon name={item.icon} active={active} />
               {showBadge ? (
-                <span className="admin-bottom-nav__badge absolute -top-2 left-1/2 z-10 flex h-4 min-w-4 -translate-x-1/2 items-center justify-center rounded-full bg-amber-500 px-1 font-bold text-white ring-2 ring-surface">
+                <span className="admin-bottom-nav__badge" aria-hidden>
                   {badgeCount > 9 ? '9+' : badgeCount}
                 </span>
               ) : null}
             </span>
-            <span>{item.shortLabel}</span>
+            <span className="site-bottom-nav__label">{item.shortLabel}</span>
           </Link>
         );
       })}
@@ -62,11 +90,15 @@ export function AdminBottomNav({
       <button
         type="button"
         onClick={onMenuOpen}
-        className="flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 px-1 font-medium text-text-muted transition-all duration-300 hover:text-primary"
+        aria-expanded={menuOpen}
         aria-label="باز کردن منو"
+        className={cn(
+          'site-bottom-nav__item flex min-h-[3.75rem] flex-col items-center justify-center gap-0.5 px-1',
+          menuOpen && 'site-bottom-nav__item--active',
+        )}
       >
-        <Menu size={20} strokeWidth={1.8} />
-        <span>منو</span>
+        <NavIcon name="Menu" active={menuOpen} />
+        <span className="site-bottom-nav__label">منو</span>
       </button>
     </nav>
   );

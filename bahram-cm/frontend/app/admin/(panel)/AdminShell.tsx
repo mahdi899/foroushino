@@ -113,6 +113,7 @@ function AdminShellInner({
         <AdminBottomNav
           pendingCount={pendingCount}
           ticketPendingCount={ticketPendingCount}
+          menuOpen={mobileOpen}
           onMenuOpen={() => setMobileOpen(true)}
         />
       )}
