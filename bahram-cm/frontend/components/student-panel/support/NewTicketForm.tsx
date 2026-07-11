@@ -2,11 +2,17 @@
 
 import { useActionState } from 'react';
 import { createTicketAction, type SimpleFormState } from '@/lib/student/panelActions';
+import { usePanelFormFeedback } from '@/lib/student/usePanelFormFeedback';
 
 const INITIAL: SimpleFormState = {};
 
 export function NewTicketForm() {
   const [state, action] = useActionState(createTicketAction, INITIAL);
+
+  usePanelFormFeedback(state, {
+    successTitle: 'تیکت ارسال شد',
+    errorTitle: 'ارسال ناموفق',
+  });
 
   return (
     <form action={action} className="panel-form-grid">
@@ -27,8 +33,6 @@ export function NewTicketForm() {
         <label className="field-label" htmlFor="message">پیام</label>
         <textarea id="message" name="message" rows={5} className="field-input" required />
       </div>
-      {state.error ? <p className="panel-form-grid__full text-sm text-error">{state.error}</p> : null}
-      {state.success ? <p className="panel-form-grid__full text-sm text-success">{state.success}</p> : null}
       <button type="submit" className="btn btn-primary panel-form-grid__full">ارسال تیکت</button>
     </form>
   );

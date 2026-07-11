@@ -2,11 +2,17 @@
 
 import { useActionState } from 'react';
 import { requestCashbackPayoutAction, type SimpleFormState } from '@/lib/student/panelActions';
+import { usePanelFormFeedback } from '@/lib/student/usePanelFormFeedback';
 
 const INITIAL: SimpleFormState = {};
 
 export function CashbackPayoutForm({ payableAmount }: { payableAmount: number }) {
   const [state, action] = useActionState(requestCashbackPayoutAction, INITIAL);
+
+  usePanelFormFeedback(state, {
+    successTitle: 'درخواست ثبت شد',
+    errorTitle: 'ثبت ناموفق',
+  });
 
   if (payableAmount <= 0) {
     return <p className="text-sm text-text-muted">در حال حاضر مبلغی برای درخواست واریز وجود ندارد.</p>;
@@ -34,8 +40,6 @@ export function CashbackPayoutForm({ payableAmount }: { payableAmount: number })
         <label className="field-label" htmlFor="card_holder_name">نام صاحب کارت (اختیاری)</label>
         <input id="card_holder_name" name="card_holder_name" className="field-input" />
       </div>
-      {state.error ? <p className="panel-form-grid__full text-sm text-error">{state.error}</p> : null}
-      {state.success ? <p className="panel-form-grid__full text-sm text-success">{state.success}</p> : null}
       <button type="submit" className="btn btn-primary panel-form-grid__full">ثبت درخواست واریز</button>
     </form>
   );

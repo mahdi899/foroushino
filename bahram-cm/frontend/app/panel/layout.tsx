@@ -1,6 +1,8 @@
 import '@/styles/panel.css';
 import type { Metadata, Viewport } from 'next';
+import { cookies } from 'next/headers';
 import { PanelThemeBoot } from './PanelThemeContext';
+import { DEFAULT_SITE_THEME, SITE_THEME_COOKIE_KEY, parseSiteTheme } from '@/lib/site-theme';
 
 export const metadata: Metadata = {
   title: 'پنل کاربری | آکادمی بهرام رستمی',
@@ -28,9 +30,18 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function PanelRootLayout({ children }: { children: React.ReactNode }) {
+export default async function PanelRootLayout({ children }: { children: React.ReactNode }) {
+  const initialTheme =
+    parseSiteTheme((await cookies()).get(SITE_THEME_COOKIE_KEY)?.value) ?? DEFAULT_SITE_THEME;
+
   return (
-    <div id="panel-root" className="panel-root" data-panel-theme="dark" dir="rtl" suppressHydrationWarning>
+    <div
+      id="panel-root"
+      className="panel-root"
+      data-panel-theme={initialTheme}
+      dir="rtl"
+      suppressHydrationWarning
+    >
       <PanelThemeBoot />
       {children}
     </div>

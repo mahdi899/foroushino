@@ -2,11 +2,17 @@
 
 import { useActionState } from 'react';
 import { submitSatApplicationAction, type SimpleFormState } from '@/lib/student/panelActions';
+import { usePanelFormFeedback } from '@/lib/student/usePanelFormFeedback';
 
 const INITIAL: SimpleFormState = {};
 
 export function SatApplicationForm({ mobile }: { mobile: string }) {
   const [state, action] = useActionState(submitSatApplicationAction, INITIAL);
+
+  usePanelFormFeedback(state, {
+    successTitle: 'درخواست ثبت شد',
+    errorTitle: 'ثبت ناموفق',
+  });
 
   return (
     <form action={action} className="panel-form-grid">
@@ -26,8 +32,6 @@ export function SatApplicationForm({ mobile }: { mobile: string }) {
         <label className="field-label" htmlFor="age">سن</label>
         <input id="age" name="age" type="number" min={10} max={120} className="field-input" />
       </div>
-      {state.error ? <p className="panel-form-grid__full text-sm text-error">{state.error}</p> : null}
-      {state.success ? <p className="panel-form-grid__full text-sm text-success">{state.success}</p> : null}
       <button type="submit" className="btn btn-primary panel-form-grid__full">ثبت درخواست</button>
     </form>
   );

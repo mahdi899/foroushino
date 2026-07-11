@@ -5,14 +5,9 @@ import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { useDataTheme } from "@/lib/useDataTheme";
 import {
-  SITE_THEME_STORAGE_KEY,
-  siteThemeCookieValue,
+  applyResolvedTheme,
   type SiteTheme,
 } from "@/lib/site-theme";
-
-type Theme = SiteTheme;
-
-const STORAGE_KEY = SITE_THEME_STORAGE_KEY;
 
 const SIZES = {
   compact: {
@@ -46,14 +41,8 @@ export function ThemeToggle({
   const Icon = isLight ? Sun : Moon;
 
   const toggle = () => {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", next);
-    try {
-      localStorage.setItem(STORAGE_KEY, next);
-      document.cookie = siteThemeCookieValue(next);
-    } catch {
-      /* noop */
-    }
+    const next: SiteTheme = theme === "dark" ? "light" : "dark";
+    applyResolvedTheme(next);
   };
 
   return (

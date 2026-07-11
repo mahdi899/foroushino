@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Loader2, X } from 'lucide-react';
 import { CashbackPayoutForm } from './CashbackPayoutForm';
 import { verifyMobileOwnershipAction } from '@/lib/student/identityActions';
+import { usePanelToast } from '@/components/student-panel/ui/PanelToastContext';
 
 export function WithdrawalVerificationModal({
   verificationLevel,
@@ -15,8 +16,7 @@ export function WithdrawalVerificationModal({
 }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { showToast } = usePanelToast();
 
   if (payableAmount <= 0) {
     return <p className="text-sm text-text-muted">در حال حاضر مبلغی برای درخواست واریز وجود ندارد.</p>;
@@ -60,22 +60,23 @@ export function WithdrawalVerificationModal({
                 <p className="text-sm leading-relaxed text-text-muted">
                   هویت شما تأیید شده است. برای برداشت، باید مطابقت شماره موبایل با کد ملی تأیید شود. اطلاعات از پرونده تأییدشده شما استفاده می‌شود.
                 </p>
-                {message ? <p className="text-sm text-success">{message}</p> : null}
-                {error ? <p className="text-sm text-error">{error}</p> : null}
                 <button
                   type="button"
                   className="btn btn-primary w-full justify-center"
                   disabled={pending}
                   onClick={() => {
-                    setError(null);
-                    setMessage(null);
                     startTransition(async () => {
                       const res = await verifyMobileOwnershipAction();
-                      if (res.error) setError(res.error);
-                      else {
-                        setMessage(res.success ?? 'انجام شد.');
-                        window.location.reload();
+                      if (res.error) {
+                        showToast({ tone: 'error', title: 'تأیید ناموفق', message: res.error });
+                        return;
                       }
+                      showToast({
+                        tone: 'success',
+                        title: 'تأیید شد',
+                        message: res.success ?? 'مالکیت شماره موبایل تأیید شد.',
+                      });
+                      window.setTimeout(() => window.location.reload(), 700);
                     });
                   }}
                 >

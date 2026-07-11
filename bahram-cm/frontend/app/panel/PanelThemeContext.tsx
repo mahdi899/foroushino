@@ -1,8 +1,13 @@
 'use client';
 
 import { createContext, useContext, useLayoutEffect, useMemo, useState } from 'react';
+import {
+  applyResolvedTheme,
+  readResolvedTheme,
+  type SiteTheme,
+} from '@/lib/site-theme';
 
-export type PanelTheme = 'light' | 'dark';
+export type PanelTheme = SiteTheme;
 
 interface PanelThemeContextValue {
   theme: PanelTheme;
@@ -12,22 +17,9 @@ interface PanelThemeContextValue {
 
 const PanelThemeContext = createContext<PanelThemeContextValue | null>(null);
 
-const THEME_KEY = 'bahram-panel-theme';
-
-function readTheme(): PanelTheme {
-  if (typeof window === 'undefined') return 'dark';
-  const stored = localStorage.getItem(THEME_KEY);
-  if (stored === 'dark' || stored === 'light') return stored;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
-function applyThemeToRoot(theme: PanelTheme) {
-  document.getElementById('panel-root')?.setAttribute('data-panel-theme', theme);
-}
-
 export function PanelThemeBoot() {
   useLayoutEffect(() => {
-    applyThemeToRoot(readTheme());
+    applyResolvedTheme(readResolvedTheme());
   }, []);
 
   return null;
@@ -38,16 +30,15 @@ export function PanelThemeProvider({ children }: { children: React.ReactNode }) 
   const [mounted, setMounted] = useState(false);
 
   useLayoutEffect(() => {
-    const initial = readTheme();
+    const initial = readResolvedTheme();
     setTheme(initial);
-    applyThemeToRoot(initial);
+    applyResolvedTheme(initial);
     setMounted(true);
   }, []);
 
   useLayoutEffect(() => {
     if (!mounted) return;
-    applyThemeToRoot(theme);
-    localStorage.setItem(THEME_KEY, theme);
+    applyResolvedTheme(theme);
   }, [theme, mounted]);
 
   const value = useMemo(

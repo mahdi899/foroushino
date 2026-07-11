@@ -10,6 +10,7 @@ import { VerifiedIdentitySection } from '@/components/student-panel/profile/Veri
 import { resolveAccountTier } from '@/lib/student/accountTier';
 import { cn } from '@/lib/cn';
 import { updateProfileAction, type SimpleFormState } from '@/lib/student/panelActions';
+import { usePanelFormFeedback } from '@/lib/student/usePanelFormFeedback';
 import {
   buildProfileFormSnapshot,
   isProfileFormDirty,
@@ -28,6 +29,11 @@ export function ProfileForm({ user }: { user: StudentUser }) {
   const completion = useMemo(() => profileCompletion(user), [user]);
   const accountTier = useMemo(() => resolveAccountTier(user), [user]);
   const initialSnapshot = useMemo(() => buildProfileFormSnapshot(user), [user]);
+
+  usePanelFormFeedback(state, {
+    successTitle: 'ذخیره شد',
+    errorTitle: 'ذخیره ناموفق',
+  });
 
   const syncDirtyState = useCallback(() => {
     const form = formRef.current;
@@ -87,10 +93,6 @@ export function ProfileForm({ user }: { user: StudentUser }) {
             </div>
 
             <div className="card panel-profile-footer">
-              <div className="panel-profile-footer__messages">
-                {state.error ? <p className="text-sm text-error">{state.error}</p> : null}
-                {state.success ? <p className="text-sm text-success">{state.success}</p> : null}
-              </div>
               <button
                 type="submit"
                 className={cn(

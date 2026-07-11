@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import type { StudentUser } from '@/lib/student/session';
 import { PanelThemeProvider } from '@/app/panel/PanelThemeContext';
 import { PanelNotificationProvider } from '@/components/student-panel/notifications/PanelNotificationContext';
+import { PanelToastProvider } from '@/components/student-panel/ui/PanelToastContext';
 import { PanelBottomNav } from './PanelBottomNav';
 import { PanelHeader } from './PanelHeader';
 import { PanelPwaRegistrar } from './PanelPwaRegistrar';
@@ -102,7 +103,8 @@ export function PanelShell({
 
   return (
     <PanelThemeProvider>
-      <PanelNotificationProvider initialUnreadCount={unreadCount} onUnreadCountChange={handleUnreadCountChange}>
+      <PanelToastProvider>
+        <PanelNotificationProvider initialUnreadCount={unreadCount} onUnreadCountChange={handleUnreadCountChange}>
         <div className="panel-shell">
           <PanelPwaRegistrar />
           <PanelSidebar
@@ -125,7 +127,8 @@ export function PanelShell({
 
           <PanelBottomNav unreadCount={liveUnreadCount} onMenuOpen={() => setMobileOpen(true)} />
         </div>
-      </PanelNotificationProvider>
+        </PanelNotificationProvider>
+      </PanelToastProvider>
     </PanelThemeProvider>
   );
 }
