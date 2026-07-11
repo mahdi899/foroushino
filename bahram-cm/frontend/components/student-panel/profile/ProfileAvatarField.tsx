@@ -8,7 +8,6 @@ import { ProfileAvatarUploadSheet } from '@/components/student-panel/profile/Pro
 import { type AccountTier } from '@/lib/student/accountTier';
 import { studentDefaultAvatarUrl } from '@/lib/student/avatar';
 import { getStudentDisplayName } from '@/lib/student/displayName';
-import { isProfileVerified, PROFILE_VERIFIED_THRESHOLD } from '@/lib/student/profileCompletion';
 import { uploadProfileAvatarAction } from '@/lib/student/panelActions';
 import type { StudentUser } from '@/lib/student/session';
 import { cn } from '@/lib/cn';
@@ -28,13 +27,9 @@ export function ProfileAvatarField({
   const [error, setError] = useState('');
   const displayName = getStudentDisplayName(user);
   const hasCustomAvatar = hasUploadedProfileAvatar(user.profile?.avatar, user.profile?.avatar_url);
-  const profileVerified =
-    profileCompletion !== undefined
-      ? profileCompletion >= PROFILE_VERIFIED_THRESHOLD
-      : isProfileVerified(user);
   const identityVerified = accountTier.level >= 2;
-  const verified = profileVerified || identityVerified;
-  const verifiedLabel = identityVerified ? 'هویت تأییدشده' : 'پروفایل تکمیل‌شده';
+  const verified = identityVerified;
+  const verifiedLabel = 'هویت تأییدشده';
 
   async function onConfirm(file: File) {
     setPending(true);

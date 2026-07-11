@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { BadgeCheck, ChevronLeft, Lock, Radio, Trophy } from 'lucide-react';
-import { accountStatusLabel, SAT_MEMBERSHIP_FA } from '@/lib/student/identityLabels';
+import { ACCOUNT_STATUS_HINT_FA, accountStatusLabel, SAT_MEMBERSHIP_FA } from '@/lib/student/identityLabels';
 import { resolveVerificationCard } from '@/lib/student/verificationCard';
 import type { StudentUser } from '@/lib/student/session';
 import { cn } from '@/lib/cn';
@@ -10,14 +10,16 @@ function StatusChip({
   title,
   subtitle,
   tone = 'default',
+  className,
 }: {
   icon: typeof BadgeCheck;
   title: string;
   subtitle?: string;
   tone?: 'default' | 'success' | 'muted' | 'locked';
+  className?: string;
 }) {
   return (
-    <div className={cn('panel-profile-chip', `panel-profile-chip--${tone}`)}>
+    <div className={cn('panel-profile-chip', `panel-profile-chip--${tone}`, className)}>
       <span className="panel-profile-chip__icon" aria-hidden>
         <Icon size={16} strokeWidth={2} />
       </span>
@@ -35,7 +37,10 @@ export function ProfileAccountOverview({ user }: { user: StudentUser }) {
   const satMeta = SAT_MEMBERSHIP_FA[satStatus] ?? SAT_MEMBERSHIP_FA.inactive;
   const verification = resolveVerificationCard(user);
   const identityVerified = level >= 2;
+  const identityStatus = user.identity_status ?? 'not_started';
+  const showAccountHintInChip = level === 1 && identityStatus === 'not_started';
   const showReferenceChip = !identityVerified;
+  const footerHint = verification.hint && !showAccountHintInChip ? verification.hint : null;
 
   return (
     <section className="card panel-profile-overview panel-profile-overview--in-grid">
@@ -43,8 +48,15 @@ export function ProfileAccountOverview({ user }: { user: StudentUser }) {
         <StatusChip
           icon={BadgeCheck}
           title={accountStatusLabel(level)}
-          subtitle={verification.success ? 'کامل' : undefined}
+          subtitle={
+            showAccountHintInChip
+              ? ACCOUNT_STATUS_HINT_FA[1]
+              : verification.success
+                ? 'کامل'
+                : undefined
+          }
           tone={level >= 3 ? 'success' : identityVerified ? 'success' : 'default'}
+          className={showAccountHintInChip ? 'panel-profile-chip--account' : undefined}
         />
         {showReferenceChip ? (
           <StatusChip icon={Lock} title="کانال مرجع" subtitle="پس از تأیید هویت" tone="locked" />
@@ -59,11 +71,9 @@ export function ProfileAccountOverview({ user }: { user: StudentUser }) {
         />
       </div>
 
-      {verification.hint || verification.action || verification.success ? (
+      {footerHint || verification.action || verification.success ? (
         <div className="panel-profile-overview__footer">
-          {verification.hint ? (
-            <p className="panel-profile-overview__hint">{verification.hint}</p>
-          ) : null}
+          {footerHint ? <p className="panel-profile-overview__hint">{footerHint}</p> : null}
           {verification.success ? (
             <p className="panel-profile-overview__success">همه مراحل تأیید حساب انجام شده است.</p>
           ) : verification.action ? (

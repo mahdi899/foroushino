@@ -1,9 +1,17 @@
 import { Sparkles } from 'lucide-react';
 import { ProfileCardHead } from '@/components/student-panel/profile/ProfileCardHead';
+import { ProfileIncomeGoalField } from '@/components/student-panel/profile/ProfileIncomeGoalField';
+import { ProfilePasswordFields } from '@/components/student-panel/profile/ProfilePasswordFields';
 import { shouldCollectProfileAge } from '@/lib/student/age';
 import type { StudentUser } from '@/lib/student/session';
 
-export function ProfileExtrasBundle({ user }: { user: StudentUser }) {
+export function ProfileExtrasBundle({
+  user,
+  onFieldChange,
+}: {
+  user: StudentUser;
+  onFieldChange?: () => void;
+}) {
   const profile = user.profile;
   const collectAge = shouldCollectProfileAge(user);
 
@@ -78,42 +86,12 @@ export function ProfileExtrasBundle({ user }: { user: StudentUser }) {
               placeholder="@username"
             />
           </div>
-          <div className="panel-profile-field">
-            <label className="field-label" htmlFor="income_goal">
-              هدف درآمدی
-            </label>
-            <input
-              id="income_goal"
-              name="income_goal"
-              defaultValue={profile?.income_goal ?? ''}
-              className="field-input"
-              placeholder="مثلاً: ۵۰ میلیون تومان"
-            />
-          </div>
+          <ProfileIncomeGoalField defaultValue={profile?.income_goal} onChange={onFieldChange} />
         </div>
 
         <div className="panel-profile-bundle__divider" aria-hidden />
 
-        <div className="panel-profile-grid panel-profile-grid--bundle-password">
-          <div className="panel-profile-field">
-            <label className="field-label" htmlFor="password">
-              رمز عبور جدید
-            </label>
-            <input id="password" name="password" type="password" className="field-input" autoComplete="new-password" />
-          </div>
-          <div className="panel-profile-field">
-            <label className="field-label" htmlFor="password_confirmation">
-              تکرار رمز عبور
-            </label>
-            <input
-              id="password_confirmation"
-              name="password_confirmation"
-              type="password"
-              className="field-input"
-              autoComplete="new-password"
-            />
-          </div>
-        </div>
+        <ProfilePasswordFields hasPassword={user.has_password} mobile={user.mobile} onFieldChange={onFieldChange} />
       </div>
     </section>
   );

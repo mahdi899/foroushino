@@ -8,7 +8,6 @@ import { PanelProfileAvatar } from '@/components/student-panel/layout/PanelProfi
 import { studentDefaultAvatarUrl } from '@/lib/student/avatar';
 import { useStudentAuth } from '@/components/student-panel/auth/StudentAuthContext';
 import { getStudentDisplayName, getStudentLegalName } from '@/lib/student/displayName';
-import { isProfileVerified } from '@/lib/student/profileCompletion';
 import { logoutStudentAction } from '@/lib/student/actions';
 import { markAllNotificationsReadAction } from '@/lib/student/panelActions';
 import type { StudentUser } from '@/lib/student/session';
@@ -24,6 +23,7 @@ export function PanelHeader({
   const { markLoggedOut } = useStudentAuth();
   const displayName = getStudentDisplayName(user);
   const profileSubtitle = getStudentLegalName(user) ? 'دانشجو' : user.mobile;
+  const identityVerified = (user.verification_level ?? 1) >= 2;
 
   async function handleNotificationsClick(e: React.MouseEvent<HTMLAnchorElement>) {
     if (unreadCount <= 0) return;
@@ -58,7 +58,8 @@ export function PanelHeader({
             defaultAvatarUrl={user.profile?.default_avatar_url ?? studentDefaultAvatarUrl(user.id)}
             alt={displayName}
             className="!h-8 !w-8"
-            verified={isProfileVerified(user)}
+            verified={identityVerified}
+            verifiedLabel="هویت تأییدشده"
           />
           <span className="panel-header__profile-text">
             <span className="panel-header__profile-name">{displayName}</span>

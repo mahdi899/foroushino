@@ -12,6 +12,7 @@ type OtpDigitInputProps = {
   error?: boolean;
   autoFocus?: boolean;
   compact?: boolean;
+  theme?: 'login' | 'panel';
 };
 
 export function OtpDigitInput({
@@ -23,6 +24,7 @@ export function OtpDigitInput({
   error = false,
   autoFocus = false,
   compact = false,
+  theme = 'login',
 }: OtpDigitInputProps) {
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
   const digits = value.padEnd(length, ' ').slice(0, length).split('').map((c) => (c === ' ' ? '' : c));
@@ -109,16 +111,26 @@ export function OtpDigitInput({
             disabled={disabled}
             aria-label={`رقم ${index + 1}`}
             className={cn(
-              'otp-cell border-2 bg-charcoal/70 text-center font-bold tabular-nums text-bone outline-none transition-all duration-200',
-              compact
-                ? 'h-11 w-9 rounded-lg text-lg'
-                : 'h-12 w-10 rounded-xl text-xl sm:h-14 sm:w-11 sm:rounded-2xl sm:text-2xl',
-              filled
-                ? 'border-emerald/45 bg-emerald/8'
-                : 'border-bone/12 hover:border-bone/22',
-              'focus:border-emerald-glow focus:bg-emerald/10 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-emerald-glow)_22%,transparent)]',
-              error && 'border-gold/55 focus:border-gold/70 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_18%,transparent)]',
-              disabled && 'cursor-not-allowed opacity-60',
+              theme === 'panel'
+                ? cn(
+                    'panel-otp-cell',
+                    compact && 'panel-otp-cell--compact',
+                    filled && 'panel-otp-cell--filled',
+                    error && 'panel-otp-cell--error',
+                    disabled && 'panel-otp-cell--disabled',
+                  )
+                : cn(
+                    'otp-cell border-2 bg-charcoal/70 text-center font-bold tabular-nums text-bone outline-none transition-all duration-200',
+                    compact
+                      ? 'h-11 w-9 rounded-lg text-lg'
+                      : 'h-12 w-10 rounded-xl text-xl sm:h-14 sm:w-11 sm:rounded-2xl sm:text-2xl',
+                    filled
+                      ? 'border-emerald/45 bg-emerald/8'
+                      : 'border-bone/12 hover:border-bone/22',
+                    'focus:border-emerald-glow focus:bg-emerald/10 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-emerald-glow)_22%,transparent)]',
+                    error && 'border-gold/55 focus:border-gold/70 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_18%,transparent)]',
+                    disabled && 'cursor-not-allowed opacity-60',
+                  ),
             )}
             onChange={(e) => handleDigitChange(index, e.target.value)}
             onKeyDown={(e) => handleKeyDown(index, e)}

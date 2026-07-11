@@ -83,6 +83,8 @@ Route::prefix('student')->group(function () {
 
         Route::get('profile', [StudentProfileController::class, 'show']);
         Route::put('profile', [StudentProfileController::class, 'update']);
+        Route::post('profile/password/send-otp', [StudentProfileController::class, 'sendPasswordChangeOtp']);
+        Route::put('profile/password', [StudentProfileController::class, 'updatePassword']);
         Route::post('profile/avatar', [StudentProfileController::class, 'updateAvatar']);
 
         Route::get('courses', [StudentCourseController::class, 'index']);

@@ -43,6 +43,38 @@ export async function updateProfileAction(_prev: SimpleFormState, formData: Form
   return { success: 'پروفایل با موفقیت بروزرسانی شد.' };
 }
 
+export async function sendPasswordChangeOtpAction(): Promise<SimpleFormState> {
+  try {
+    await studentFetch('/profile/password/send-otp', { method: 'POST' });
+  } catch (err) {
+    return { error: extractError(err, 'ارسال کد تأیید انجام نشد.') };
+  }
+
+  return { success: 'کد تأیید به شماره شما ارسال شد.' };
+}
+
+export async function changePasswordAction(_prev: SimpleFormState, formData: FormData): Promise<SimpleFormState> {
+  const payload = {
+    code: String(formData.get('code') ?? '').trim(),
+    password: String(formData.get('password') ?? ''),
+    password_confirmation: String(formData.get('password_confirmation') ?? ''),
+  };
+
+  if (!payload.code) {
+    return { error: 'کد تأیید را وارد کنید.' };
+  }
+
+  try {
+    await studentFetch('/profile/password', { method: 'PUT', body: payload });
+  } catch (err) {
+    return { error: extractError(err, 'تغییر رمز عبور انجام نشد.') };
+  }
+
+  revalidatePath('/panel/profile');
+  revalidatePath('/panel');
+  return { success: 'رمز عبور با موفقیت تغییر کرد.' };
+}
+
 export async function uploadProfileAvatarAction(formData: FormData): Promise<SimpleFormState> {
   const file = formData.get('avatar');
   if (!(file instanceof File) || file.size === 0) {

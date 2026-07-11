@@ -101,17 +101,17 @@ export function IdentityVerificationWizard({
 
   return (
     <div className="space-y-5">
-      <ol className="panel-stepper-list flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
+      <ol className="panel-stepper-list panel-stepper-list--wizard">
         {STEPS.map((label, index) => (
           <li
             key={label}
-            className="panel-stepper-item"
+            className="panel-stepper-item panel-stepper-item--wizard"
             data-state={index < step ? 'done' : index === step ? 'active' : 'pending'}
           >
             <span className="panel-stepper-item__dot">
               {index < step ? <CheckCircle2 size={14} /> : index + 1}
             </span>
-            <span className="panel-stepper-item__title text-sm">{label}</span>
+            <span className="panel-stepper-item__title">{label}</span>
           </li>
         ))}
       </ol>
