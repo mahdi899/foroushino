@@ -266,20 +266,20 @@ export function ProfilePasswordChangeSheet({ open, onClose, mobile, onSuccess }:
               </ul>
             ) : null}
           </form>
+        </div>
 
-          <div className="panel-academy-sheet__actions">
-            <button
-              type="submit"
-              form={formId}
-              className="panel-academy-sheet__cta"
-              disabled={!canSubmit}
-            >
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ذخیره رمز جدید'}
-            </button>
-            <button type="button" className="panel-academy-sheet__dismiss" onClick={handleClose} disabled={pending || sendingOtp}>
-              انصراف
-            </button>
-          </div>
+        <div className="panel-academy-sheet__actions panel-password-sheet__actions">
+          <button
+            type="submit"
+            form={formId}
+            className="panel-academy-sheet__cta"
+            disabled={!canSubmit}
+          >
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ذخیره رمز جدید'}
+          </button>
+          <button type="button" className="panel-academy-sheet__dismiss" onClick={handleClose} disabled={pending || sendingOtp}>
+            انصراف
+          </button>
         </div>
       </div>
     </>,

@@ -80,29 +80,30 @@ export function ProfileAvatarField({
           </span>
         </button>
 
-        <div className="panel-profile-avatar__copy">
-          <span
-            className={cn(
-              'panel-profile-avatar__badge',
-              accountTier.variant === 'identity' && 'panel-profile-avatar__badge--tier-2',
-              accountTier.variant === 'full' && 'panel-profile-avatar__badge--tier-3',
-            )}
-          >
-            {accountTier.variant !== 'base' ? (
+        <div className="panel-profile-avatar__meta">
+          {accountTier.variant !== 'base' ? (
+            <span
+              className={cn(
+                'panel-profile-avatar__badge',
+                accountTier.variant === 'identity' && 'panel-profile-avatar__badge--tier-2',
+                accountTier.variant === 'full' && 'panel-profile-avatar__badge--tier-3',
+              )}
+            >
               <BadgeCheck className="panel-profile-avatar__badge-icon" aria-hidden size={12} strokeWidth={2.5} />
-            ) : null}
-            {accountTier.badge}
-          </span>
+              {accountTier.badge}
+            </span>
+          ) : null}
           <p className="panel-profile-avatar__name">{displayName}</p>
           <p className="panel-profile-avatar__mobile" dir="ltr">
             {user.mobile}
           </p>
-          {!hasCustomAvatar ? (
-            <p className="panel-profile-avatar__hint panel-profile-avatar__hint--empty">
-              هنوز عکسی نگذاشته‌اید — برای آپلود بزنید
-            </p>
-          ) : null}
         </div>
+
+        {!hasCustomAvatar ? (
+          <p className="panel-profile-avatar__hint panel-profile-avatar__hint--empty">
+            هنوز عکسی نگذاشته‌اید — برای آپلود بزنید
+          </p>
+        ) : null}
       </div>
 
       <ProfileAvatarUploadSheet

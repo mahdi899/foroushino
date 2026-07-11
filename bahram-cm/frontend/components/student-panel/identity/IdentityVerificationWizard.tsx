@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { JalaliDateField } from '@/components/ui/JalaliDateField';
@@ -17,6 +17,7 @@ import {
 import { IdentityReviewStep } from './IdentityReviewStep';
 
 const STEPS = ['اطلاعات هویتی', 'تصویر کارت ملی', 'ویدیوی سلفی زنده', 'بازبینی و ارسال'] as const;
+const STEP_LABELS_SHORT = ['اطلاعات', 'کارت ملی', 'سلفی', 'بازبینی'] as const;
 
 type Draft = {
   first_name: string;
@@ -55,6 +56,11 @@ export function IdentityVerificationWizard({
   const [error, setError] = useState<string | null>(null);
   const [errorTitle, setErrorTitle] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    const main = document.querySelector<HTMLElement>('.panel-main-content');
+    main?.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [step]);
 
   const lockedStatuses = ['submitted', 'under_review', 'approved'];
   const isLocked =
@@ -136,7 +142,7 @@ export function IdentityVerificationWizard({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="panel-identity-wizard flex flex-col gap-4 sm:gap-5">
       <ol className="panel-stepper-list panel-stepper-list--wizard">
         {STEPS.map((label, index) => (
           <li
@@ -147,7 +153,8 @@ export function IdentityVerificationWizard({
             <span className="panel-stepper-item__dot">
               {index < step ? <CheckCircle2 size={14} /> : index + 1}
             </span>
-            <span className="panel-stepper-item__title">{label}</span>
+            <span className="panel-stepper-item__title panel-stepper-item__title--full">{label}</span>
+            <span className="panel-stepper-item__title panel-stepper-item__title--short">{STEP_LABELS_SHORT[index]}</span>
           </li>
         ))}
       </ol>
@@ -163,7 +170,7 @@ export function IdentityVerificationWizard({
         </div>
       ) : null}
 
-      <div className="card p-5 sm:p-6">
+      <div className="card panel-identity-wizard__card p-4 sm:p-6">
         {step === 0 ? (
           <div className="panel-form-grid">
             <p className="panel-form-grid__full text-sm leading-relaxed text-text-muted">

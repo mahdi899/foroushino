@@ -65,7 +65,7 @@ export default async function IdentityVerificationPage() {
   const initialDraft = buildIdentityDraft(state, user?.name, user?.profile);
 
   return (
-    <div className="panel-page-inner flex flex-col gap-5">
+    <div className="panel-page-inner panel-page-inner--identity flex flex-col gap-3 sm:gap-5">
       <PanelPageHeader
         icon={ShieldCheck}
         title="تأیید هویت"
