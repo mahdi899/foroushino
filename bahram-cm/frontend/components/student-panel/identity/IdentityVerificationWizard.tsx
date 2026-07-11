@@ -17,6 +17,7 @@ import {
 import { selfieVideoFileName } from '@/lib/media/recorder';
 import { maxBirthDateForMinAge, MIN_IDENTITY_AGE } from '@/lib/student/age';
 import { IdentityReviewStep } from './IdentityReviewStep';
+import { MobileOnlyGate } from './MobileOnlyGate';
 
 const STEPS = ['اطلاعات هویتی', 'تصویر کارت ملی', 'ویدیوی سلفی زنده', 'بازبینی و ارسال'] as const;
 const STEP_LABELS_SHORT = ['اطلاعات', 'کارت ملی', 'سلفی', 'بازبینی'] as const;
@@ -145,6 +146,7 @@ export function IdentityVerificationWizard({
   }
 
   return (
+    <MobileOnlyGate>
     <div className="panel-identity-wizard flex flex-col gap-4 sm:gap-5">
       <ol className="panel-stepper-list panel-stepper-list--wizard">
         {STEPS.map((label, index) => (
@@ -307,5 +309,6 @@ export function IdentityVerificationWizard({
         ) : null}
       </div>
     </div>
+    </MobileOnlyGate>
   );
 }

@@ -3569,6 +3569,20 @@
   transform: translateY(1px);
 }
 
+.panel-profile-overview__mobile-only {
+  width: 100%;
+}
+
+.panel-profile-overview__mobile-only-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+  font-size: var(--panel-text-meta);
+  line-height: 1.55;
+  color: var(--color-text-muted);
+}
+
 .panel-profile-overview__hint {
   flex: 1 1 100%;
   margin: 0;

@@ -11,6 +11,8 @@ export const IDENTITY_ERROR_BY_CODE: Record<string, string> = {
     'ابتدا مرحلهٔ «اطلاعات هویتی» را تکمیل و ذخیره کنید، سپس مدارک را بارگذاری کنید.',
   server_error:
     'در حال حاضر ارتباط با سرور برقرار نشد. چند لحظه بعد دوباره تلاش کنید؛ اگر ادامه داشت با پشتیبانی تماس بگیرید.',
+  mobile_only:
+    'تأیید هویت فقط از طریق گوشی موبایل امکان‌پذیر است. لطفاً پنل را روی گوشی خود باز کنید.',
 };
 
 export const IDENTITY_ERROR_TITLE_BY_CODE: Record<string, string> = {
@@ -21,6 +23,7 @@ export const IDENTITY_ERROR_TITLE_BY_CODE: Record<string, string> = {
   status_locked: 'پرونده در حال بررسی',
   artifacts: 'مدارک ناقص',
   server_error: 'خطای سرور',
+  mobile_only: 'فقط با گوشی موبایل',
 };
 
 export const IDENTITY_CLIENT_ERROR_TITLES = {

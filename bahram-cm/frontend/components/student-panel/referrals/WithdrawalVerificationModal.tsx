@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Loader2, X } from 'lucide-react';
 import { CashbackPayoutForm } from './CashbackPayoutForm';
 import { verifyMobileOwnershipAction } from '@/lib/student/identityActions';
+import { MOBILE_ONLY_IDENTITY_MESSAGE } from '@/lib/device/mobileClient';
+import { useIsPhoneClient } from '@/lib/device/useIsPhoneClient';
 import { usePanelToast } from '@/components/student-panel/ui/PanelToastContext';
 
 export function WithdrawalVerificationModal({
@@ -17,6 +19,7 @@ export function WithdrawalVerificationModal({
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const { showToast } = usePanelToast();
+  const isPhone = useIsPhoneClient();
 
   if (payableAmount <= 0) {
     return <p className="text-sm text-text-muted">در حال حاضر مبلغی برای درخواست واریز وجود ندارد.</p>;
@@ -51,8 +54,9 @@ export function WithdrawalVerificationModal({
                   برای دریافت کش‌بک، ابتدا هویت خود را تأیید کنید. پس از تأیید، می‌توانید مالکیت شماره موبایل را نیز تکمیل کنید.
                 </p>
                 <Link href="/panel/identity-verification" className="btn btn-primary w-full justify-center">
-                  رفتن به تأیید هویت
+                  رفتن به تأیید هویت (فقط گوشی)
                 </Link>
+                <p className="text-caption text-text-muted">تأیید هویت روی کامپیوتر امکان‌پذیر نیست.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -60,10 +64,15 @@ export function WithdrawalVerificationModal({
                 <p className="text-sm leading-relaxed text-text-muted">
                   هویت شما تأیید شده است. برای برداشت، باید مطابقت شماره موبایل با کد ملی تأیید شود. اطلاعات از پرونده تأییدشده شما استفاده می‌شود.
                 </p>
+                {isPhone === false ? (
+                  <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-text-muted">
+                    {MOBILE_ONLY_IDENTITY_MESSAGE}
+                  </p>
+                ) : null}
                 <button
                   type="button"
                   className="btn btn-primary w-full justify-center"
-                  disabled={pending}
+                  disabled={pending || isPhone === false}
                   onClick={() => {
                     startTransition(async () => {
                       const res = await verifyMobileOwnershipAction();

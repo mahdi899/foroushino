@@ -14,6 +14,7 @@ use App\Models\UserIdentityProfile;
 use App\Services\Identity\IdentityArtifactStorage;
 use App\Support\ApiResponse;
 use App\Support\IdentityVerificationMessages;
+use App\Support\MobileClient;
 use App\Support\NationalCode;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
@@ -47,11 +48,17 @@ class IdentityVerificationController extends Controller
             'required_corrections' => $latest?->required_corrections,
             'latest_submission' => $latest ? $this->submissionPayload($latest) : null,
             'can_submit' => $this->canSubmit($profile, $user->id),
+            'requires_phone' => true,
+            'is_phone_client' => MobileClient::isPhone($request->userAgent()),
         ]);
     }
 
     public function draft(Request $request, EnsureIdentityProfile $ensure): JsonResponse
     {
+        if ($deny = MobileClient::denyUnlessPhone($request)) {
+            return $deny;
+        }
+
         $maxBirthDate = now()->subYears(10)->toDateString();
 
         $data = $request->validate(
@@ -148,6 +155,10 @@ class IdentityVerificationController extends Controller
         EnsureIdentityProfile $ensure,
         IdentityArtifactStorage $storage,
     ): JsonResponse {
+        if ($deny = MobileClient::denyUnlessPhone($request)) {
+            return $deny;
+        }
+
         $data = $request->validate(
             [
                 'type' => ['required', 'string', 'in:national_card_front,selfie_video'],
@@ -232,6 +243,10 @@ class IdentityVerificationController extends Controller
 
     public function submit(Request $request, SubmitIdentityVerification $submit): JsonResponse
     {
+        if ($deny = MobileClient::denyUnlessPhone($request)) {
+            return $deny;
+        }
+
         $maxBirthDate = now()->subYears(10)->toDateString();
 
         $data = $request->validate(

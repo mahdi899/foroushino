@@ -53,7 +53,7 @@ class AuthController extends Controller
         Cache::put($this->adminLoginPendingKey($mobile), $user->id, self::ADMIN_LOGIN_PENDING_TTL_SECONDS);
 
         try {
-            $this->otp->send($mobile, OtpPurpose::AdminLogin, $request->ip(), $request->userAgent());
+            $this->otp->sendAdminOtp($mobile, OtpPurpose::AdminLogin, $request->ip(), $request->userAgent());
         } catch (OtpException $e) {
             Cache::forget($this->adminLoginPendingKey($mobile));
 
@@ -108,7 +108,7 @@ class AuthController extends Controller
         }
 
         try {
-            $this->otp->send($mobile, OtpPurpose::AdminLogin, $ip, $userAgent);
+            $this->otp->sendAdminOtp($mobile, OtpPurpose::AdminLogin, $ip, $userAgent);
         } catch (OtpException $e) {
             return ApiResponse::error('otp_rate_limited', $e->getMessage(), 429);
         }
