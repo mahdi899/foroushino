@@ -51,7 +51,7 @@ export function CreateSeminarForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="card mb-6 grid gap-3 p-6 md:grid-cols-4">
+    <form id="create-seminar" onSubmit={onSubmit} className="grid gap-3 md:grid-cols-4">
       <label className="md:col-span-2">
         <span className="field-label">عنوان سمینار</span>
         <input required value={title} onChange={(e) => setTitle(e.target.value)} className="field-input" />

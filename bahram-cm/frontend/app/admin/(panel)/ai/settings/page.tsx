@@ -395,6 +395,8 @@ export default function AiSettingsPage() {
     <AdminPage
       title="تنظیمات هوش مصنوعی"
       desc="هر بخش سایت (مقاله، تصویر، چت‌بات) API و مدل جداگانه دارد."
+      icon="Bot"
+      headerVariant="settings"
       action={
         <button onClick={saveAll} disabled={saving} className="btn btn-primary gap-2 px-4 py-2 text-small">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

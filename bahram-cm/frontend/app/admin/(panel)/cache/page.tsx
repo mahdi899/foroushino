@@ -4,19 +4,24 @@ import { useEffect, useState } from 'react';
 import {
   AlertTriangle,
   Bot,
+  CalendarClock,
   Code2,
   Cloud,
   Database,
   Globe,
   HardDrive,
+  Layers,
+  LayoutDashboard,
   Loader2,
   RefreshCw,
   Save,
   Server,
+  Settings,
   Sparkles,
   Trash2,
   Zap,
 } from 'lucide-react';
+import { AdminTabBar } from '@/components/admin/layout/AdminTabBar';
 import { AdminPage, Badge } from '../ui';
 import {
   applyPerformancePresetAction,
@@ -43,6 +48,15 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
 type Tab = 'dashboard' | 'profiles' | 'modules' | 'ttl' | 'purge' | 'advanced';
+
+const CACHE_TABS: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
+  { id: 'dashboard', label: 'داشبورد', icon: <LayoutDashboard className="h-4 w-4" /> },
+  { id: 'profiles', label: 'پروفایل سرعت', icon: <Sparkles className="h-4 w-4" /> },
+  { id: 'modules', label: 'ماژول‌ها', icon: <Layers className="h-4 w-4" /> },
+  { id: 'ttl', label: 'TTL کش', icon: <CalendarClock className="h-4 w-4" /> },
+  { id: 'purge', label: 'پاک‌سازی', icon: <Trash2 className="h-4 w-4" /> },
+  { id: 'advanced', label: 'پیشرفته', icon: <Settings className="h-4 w-4" /> },
+];
 
 const FALLBACK_STATUS: CacheStatus = {
   laravel_cache_driver: 'نامشخص',
@@ -196,6 +210,8 @@ export default function CacheAdminPage() {
     <AdminPage
       title="کش و بهینه‌سازی"
       desc="مدیریت کش صفحه، API، مرورگر و CDN — کنترل کامل از پنل ادمین"
+      icon="Zap"
+      headerVariant="settings"
       action={
         <div className="flex shrink-0 items-center gap-2">
           <button
@@ -262,30 +278,7 @@ export default function CacheAdminPage() {
         <p className={`mb-4 text-small ${message.includes('خطا') ? 'text-danger' : 'text-success'}`}>{message}</p>
       )}
 
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-border">
-        {(
-          [
-            ['dashboard', 'داشبورد'],
-            ['profiles', 'پروفایل سرعت'],
-            ['modules', 'ماژول‌ها'],
-            ['ttl', 'TTL کش'],
-            ['purge', 'پاک‌سازی'],
-            ['advanced', 'پیشرفته'],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setTab(id)}
-            className={cn(
-              'border-b-2 px-4 py-2 text-small font-medium transition-colors',
-              tab === id ? 'border-accent text-accent' : 'border-transparent text-text-muted hover:text-text',
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <AdminTabBar tabs={CACHE_TABS} active={tab} onChange={(id) => setTab(id as Tab)} />
 
       {loading && (
         <div className="flex justify-center py-12">

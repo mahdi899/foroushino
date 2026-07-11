@@ -21,7 +21,12 @@ export default async function OrdersReportsPage({
   const { data, error } = await getOrderAnalytics(periodDays);
 
   return (
-    <AdminPage title="گزارش سفارشات" desc="تحلیل نموداری فروش، وضعیت پرداخت و روند درآمد">
+    <AdminPage
+      title="گزارش سفارشات"
+      desc="تحلیل نموداری فروش، وضعیت پرداخت و روند درآمد"
+      icon="BarChart3"
+      headerVariant="commerce"
+    >
       {error && (
         <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-small text-error">{error}</div>
       )}

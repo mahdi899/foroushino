@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Copy, Loader2, RotateCcw, Save } from 'lucide-react';
+import { AdminContentPanel } from '@/components/admin/layout/AdminContentPanel';
 import type { PaymentSettingsData } from '@/lib/admin/commerceTypes';
 import { savePaymentSettings } from '../actions';
 
@@ -85,9 +86,8 @@ export function PaymentSettingsForm({ initial }: { initial: PaymentSettingsData 
   }
 
   return (
-    <form onSubmit={onSubmit} className="max-w-2xl space-y-6">
-      <div className="card p-6">
-        <h2 className="mb-4 text-h3 font-bold text-primary-dark">اتصال به زرین‌پال</h2>
+    <form onSubmit={onSubmit} className="max-w-3xl space-y-5">
+      <AdminContentPanel title="اتصال به زرین‌پال">
         <div className="space-y-4">
           <label>
             <span className="field-label">کد پذیرنده (Merchant ID)</span>
@@ -195,10 +195,9 @@ export function PaymentSettingsForm({ initial }: { initial: PaymentSettingsData 
             </select>
           </label>
         </div>
-      </div>
+      </AdminContentPanel>
 
-      <div className="card p-6">
-        <h2 className="mb-4 text-h3 font-bold text-primary-dark">توضیحات تراکنش</h2>
+      <AdminContentPanel title="توضیحات تراکنش">
         <label>
           <span className="field-label">قالب توضیحات پرداخت</span>
           <textarea
@@ -210,7 +209,7 @@ export function PaymentSettingsForm({ initial }: { initial: PaymentSettingsData 
           />
           <p className="mt-1 text-caption text-text-muted">متغیرها: {'{order_number}'}, {'{product_title}'}</p>
         </label>
-      </div>
+      </AdminContentPanel>
 
       {error && <p className="text-small text-error">{error}</p>}
       {message && <p className="text-small text-success">{message}</p>}
