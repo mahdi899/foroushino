@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { ExternalLink, Loader2, Route, Save, Send } from 'lucide-react';
 import type { AdminTelegramCategoryView, AdminTelegramEventView, SmsGlobalView, SmsProviderView } from '@/lib/admin/smsCenter.types';
-import { smsProvidersForChannel } from '@/lib/admin/smsCenter.types';
+import { SMS_PROVIDER_DEFAULT_BASE_URLS, smsProvidersForChannel } from '@/lib/admin/smsCenter.types';
 import { saveSmsGlobalSettings, saveSmsProvider, testSmsProvider } from '@/lib/admin/smsCenter';
 import { AdminTelegramSettingsSection } from './AdminTelegramSettingsSection';
 import { Badge } from '../ui';
@@ -25,11 +25,13 @@ function ProviderOptions({ providers }: { providers: SmsProviderView[] }) {
 function ProviderCredentialRow({ provider }: { provider: SmsProviderView }) {
   const [credentials, setCredentials] = useState('');
   const [sender, setSender] = useState(provider.sender_number ?? '');
+  const [baseUrl, setBaseUrl] = useState(provider.base_url ?? '');
   const [pending, setPending] = useState(false);
   const [testing, setTesting] = useState(false);
   const [status, setStatus] = useState('');
 
   const isBaleSafir = provider.slug === 'bale_safir';
+  const defaultBaseUrl = SMS_PROVIDER_DEFAULT_BASE_URLS[provider.slug];
   const credentialPlaceholder = isBaleSafir
     ? provider.has_credentials
       ? `کلید API سفیر ذخیره‌شده (${provider.credential_hint ?? '••••'})`
@@ -49,6 +51,7 @@ function ProviderCredentialRow({ provider }: { provider: SmsProviderView }) {
     const res = await saveSmsProvider(provider.slug, {
       credentials_input: credentials || undefined,
       sender_number: sender || undefined,
+      base_url: baseUrl.trim() || null,
       is_active: true,
     });
     setPending(false);
@@ -59,10 +62,15 @@ function ProviderCredentialRow({ provider }: { provider: SmsProviderView }) {
   async function onTest() {
     setTesting(true);
     setStatus('');
-    if (credentials.trim()) {
+    const shouldSave =
+      credentials.trim() !== '' ||
+      baseUrl.trim() !== (provider.base_url ?? '') ||
+      sender !== (provider.sender_number ?? '');
+    if (shouldSave) {
       const saveRes = await saveSmsProvider(provider.slug, {
-        credentials_input: credentials,
+        credentials_input: credentials || undefined,
         sender_number: sender || undefined,
+        base_url: baseUrl.trim() || null,
         is_active: true,
       });
       if (!saveRes.ok) {
@@ -98,6 +106,14 @@ function ProviderCredentialRow({ provider }: { provider: SmsProviderView }) {
           />
         ) : null}
       </div>
+      <input
+        className="field-input mt-2 w-full text-small"
+        dir="ltr"
+        type="url"
+        placeholder={defaultBaseUrl ? `base_url (پیش‌فرض: ${defaultBaseUrl})` : 'base_url (اختیاری)'}
+        value={baseUrl}
+        onChange={(e) => setBaseUrl(e.target.value)}
+      />
       <div className="mt-2 flex gap-2">
         <button type="button" onClick={() => void onSave()} disabled={pending} className="btn btn-secondary px-2 py-1 admin-text-meta">
           {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
@@ -223,7 +239,11 @@ export function SmsRoutingSettingsSection({
                     <div className="min-w-0">
                       <p className="truncate text-caption font-medium text-primary-dark">{provider.label_fa}</p>
                       <p className="truncate admin-text-meta text-text-muted" dir="ltr">
-                        {provider.sender_number ? `از: ${provider.sender_number}` : provider.credential_hint ?? 'کلید تنظیم نشده'}
+                        {provider.sender_number
+                          ? `از: ${provider.sender_number}`
+                          : provider.base_url
+                            ? provider.base_url
+                            : provider.credential_hint ?? 'کلید تنظیم نشده'}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">

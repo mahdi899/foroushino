@@ -19,8 +19,13 @@ class SmsAdminController extends Controller
     ) {
     }
 
-    public function segments(): JsonResponse
+    public function segments(Request $request): JsonResponse
     {
+        abort_unless(
+            $request->user()->hasPermission('sms.view') || $request->user()->isSuperAdmin(),
+            403,
+        );
+
         $data = collect(AudienceSegmentService::SEGMENTS)->map(fn ($label, $key) => [
             'key' => $key,
             'label' => $label,
@@ -32,6 +37,11 @@ class SmsAdminController extends Controller
 
     public function send(Request $request): JsonResponse
     {
+        abort_unless(
+            $request->user()->hasPermission('sms.manage') || $request->user()->isSuperAdmin(),
+            403,
+        );
+
         $data = $request->validate([
             'message' => ['required', 'string', 'max:640'],
             'segment' => ['nullable', 'string', 'in:'.implode(',', array_keys(AudienceSegmentService::SEGMENTS))],
@@ -75,6 +85,11 @@ class SmsAdminController extends Controller
 
     public function logs(Request $request): JsonResponse
     {
+        abort_unless(
+            $request->user()->hasPermission('sms.view') || $request->user()->isSuperAdmin(),
+            403,
+        );
+
         $query = SmsLog::query()->with('user')->orderByDesc('id');
 
         if ($status = $request->string('status')->toString()) {
@@ -102,6 +117,11 @@ class SmsAdminController extends Controller
 
     public function test(Request $request): JsonResponse
     {
+        abort_unless(
+            $request->user()->hasPermission('sms.manage') || $request->user()->isSuperAdmin(),
+            403,
+        );
+
         $data = $request->validate([
             'phone' => ['required', 'string'],
             'message' => ['nullable', 'string', 'max:640'],

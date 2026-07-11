@@ -16,7 +16,7 @@ use Throwable;
  */
 class FarazSmsProvider implements SmsProviderContract
 {
-    private const ENDPOINT = 'https://api.farazsms.com/v1/sms/send';
+    private const DEFAULT_BASE = 'https://api.farazsms.com';
 
     public function __construct(private readonly SmsProviderConfig $config) {}
 
@@ -31,7 +31,7 @@ class FarazSmsProvider implements SmsProviderContract
         try {
             $response = Http::timeout(20)
                 ->withToken($apiKey)
-                ->post(self::ENDPOINT, [
+                ->post($this->config->resolvedBase(self::DEFAULT_BASE).'/v1/sms/send', [
                     'recipient' => $mobile,
                     'sender' => $this->config->senderNumber,
                     'message' => $message,

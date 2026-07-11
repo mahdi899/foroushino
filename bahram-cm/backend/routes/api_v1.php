@@ -33,6 +33,7 @@ use App\Http\Controllers\Api\V1\DiscountCodeAdminController;
 use App\Http\Controllers\Api\V1\FaqController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\DatabaseBackupSettingsController;
 use App\Http\Controllers\Api\V1\ImageOptimizerSettingsController;
 use App\Http\Controllers\Api\V1\SmsSpotplayerCredentialsController;
 use App\Http\Controllers\Api\V1\MediaConfigController;
@@ -251,6 +252,13 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::put('panel/settings/image-optimizer', [ImageOptimizerSettingsController::class, 'update']);
     Route::post('panel/settings/image-optimizer/test', [ImageOptimizerSettingsController::class, 'test']);
 
+    Route::get('panel/settings/database-backup', [DatabaseBackupSettingsController::class, 'show']);
+    Route::put('panel/settings/database-backup', [DatabaseBackupSettingsController::class, 'update']);
+    Route::post('panel/settings/database-backup/run', [DatabaseBackupSettingsController::class, 'run']);
+    Route::get('panel/settings/database-backup/export', [DatabaseBackupSettingsController::class, 'export']);
+    Route::post('panel/settings/database-backup/import', [DatabaseBackupSettingsController::class, 'import']);
+    Route::post('panel/settings/database-backup/test-telegram', [DatabaseBackupSettingsController::class, 'testTelegram']);
+
     Route::get('panel/settings/sms-spotplayer-credentials', [SmsSpotplayerCredentialsController::class, 'show']);
     Route::put('panel/settings/sms-spotplayer-credentials', [SmsSpotplayerCredentialsController::class, 'update']);
     Route::post('panel/settings/sms-spotplayer-credentials/test', [SmsSpotplayerCredentialsController::class, 'test']);
@@ -366,6 +374,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 });
 
 Route::get('cache/public', [CacheController::class, 'publicConfig']);
+Route::get('settings', [SettingController::class, 'publicIndex']);
 
 Route::get('captcha/config', [CaptchaController::class, 'config'])->middleware('throttle:60,1');
 Route::get('captcha/math', [CaptchaController::class, 'math'])->middleware('throttle:120,1');

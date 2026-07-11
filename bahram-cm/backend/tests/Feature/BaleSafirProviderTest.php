@@ -69,6 +69,25 @@ class BaleSafirProviderTest extends TestCase
         });
     }
 
+    public function test_bale_safir_uses_custom_base_url(): void
+    {
+        $this->configureBaleSafir();
+
+        SmsProvider::query()->where('slug', 'bale_safir')->first()?->update([
+            'base_url' => 'https://custom-safir.example.com',
+        ]);
+
+        Http::fake([
+            'custom-safir.example.com/*' => Http::response(['message_id' => 'custom-msg-id'], 200),
+            'api.kavenegar.com/*' => Http::response(['return' => ['status' => 400, 'message' => 'fail']], 200),
+        ]);
+
+        $sent = app(SmsService::class)->sendOtp('09121112233', '54321');
+
+        $this->assertTrue($sent);
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'custom-safir.example.com/api/v3/send_message'));
+    }
+
     public function test_bale_safir_send_fails_without_bot_id(): void
     {
         SmsProvider::query()->where('slug', 'bale_safir')->first()?->update([

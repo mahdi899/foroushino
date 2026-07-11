@@ -51,8 +51,16 @@ import {
 import { SmsSpotplayerCredentialsSettingsSection } from './SmsSpotplayerCredentialsSettingsSection';
 import { SmsRoutingSettingsSection } from './SmsRoutingSettingsSection';
 import { AcademyLinksSettingsSection } from './AcademyLinksSettingsSection';
+import { DatabaseBackupSettingsSection } from './DatabaseBackupSettingsSection';
 import { resolveSettingsScrollTarget, SETTINGS_CATEGORY_NAV, SettingsCategory, SiteSettingsNav } from './SiteSettingsShared';
+import {
+  DEFAULT_DATABASE_BACKUP_FORM,
+  databaseBackupViewToForm,
+  type DatabaseBackupForm,
+  type DatabaseBackupView,
+} from '@/lib/admin/databaseBackup.types';
 import type { SmsCenterConfig } from '@/lib/admin/smsCenter.types';
+import { loadDatabaseBackupSettings } from '@/lib/admin/databaseBackup';
 
 export default function SettingsPage() {
   const [data, setData] = useState({
@@ -91,6 +99,8 @@ export default function SettingsPage() {
   const [credentialsView, setCredentialsView] = useState<SmsSpotplayerCredentialsView | null>(null);
   const [credentialsTesting, setCredentialsTesting] = useState<'melipayamak' | 'kavenegar' | 'spotplayer' | null>(null);
   const [smsRoutingConfig, setSmsRoutingConfig] = useState<SmsCenterConfig | null>(null);
+  const [databaseBackupForm, setDatabaseBackupForm] = useState<DatabaseBackupForm>(DEFAULT_DATABASE_BACKUP_FORM);
+  const [databaseBackupView, setDatabaseBackupView] = useState<DatabaseBackupView | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const baselineRef = useRef('');
 
@@ -118,8 +128,9 @@ export default function SettingsPage() {
       loadImageOptimizerSettingsPanel(),
       loadSmsSpotplayerCredentialsSettings(),
       loadSmsRoutingConfig(),
+      loadDatabaseBackupSettings(),
     ])
-      .then(([site, captcha, tracking, integrations, imageOptimizer, credentials, smsRouting]) => {
+      .then(([site, captcha, tracking, integrations, imageOptimizer, credentials, smsRouting, databaseBackup]) => {
         const loadedData = {
           phone: siteConfig.contact.phone,
           whatsapp: siteConfig.contact.whatsapp,
@@ -151,6 +162,10 @@ export default function SettingsPage() {
         setCredentialsForm(credentialsFormLoaded);
         setCredentialsView(credentials);
         setSmsRoutingConfig(smsRouting);
+        if (databaseBackup) {
+          setDatabaseBackupView(databaseBackup);
+          setDatabaseBackupForm(databaseBackupViewToForm(databaseBackup));
+        }
         baselineRef.current = JSON.stringify({
           data: loadedData,
           captchaForm: captcha.form,
@@ -503,7 +518,7 @@ export default function SettingsPage() {
           id="infrastructure"
           icon={SETTINGS_CATEGORY_NAV[6].icon}
           title="کش و زیرساخت"
-          desc="Webhook بازسازی کش و یکپارچگی Arvan CDN."
+          desc="Webhook بازسازی کش، یکپارچگی Arvan CDN و بکاپ دیتابیس."
         >
           <CacheIntegrationsSettingsSection
             form={integrationsForm}
@@ -511,6 +526,12 @@ export default function SettingsPage() {
             testing={integrationsTesting}
             onChange={setIntegrationsForm}
             onTest={(target) => void handleTestIntegration(target)}
+          />
+          <DatabaseBackupSettingsSection
+            form={databaseBackupForm}
+            view={databaseBackupView}
+            onChange={setDatabaseBackupForm}
+            onViewChange={setDatabaseBackupView}
           />
         </SettingsCategory>
       </div>

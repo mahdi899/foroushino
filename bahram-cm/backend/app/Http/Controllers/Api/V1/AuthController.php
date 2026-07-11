@@ -186,9 +186,7 @@ class AuthController extends Controller
     private function userPayload(User $user): array
     {
         $roles = $user->getRoleNames()->values()->all();
-        $permissions = $user->isSuperAdmin()
-            ? $user->getAllPermissions()->pluck('name')->values()->all()
-            : $user->getAllPermissions()->pluck('name')->values()->all();
+        $permissions = $user->getAllPermissions()->pluck('name')->values()->all();
 
         if ($user->isSuperAdmin() && $permissions === []) {
             $permissions = \App\Support\PermissionCatalog::all();

@@ -162,17 +162,4 @@ class CacheController extends Controller
         return response()->json(['data' => $result]);
     }
 
-    /** Server-to-server — Next.js validates webhook secret against panel-stored value. */
-    public function verifyRevalidateSecret(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'secret' => 'required|string|max:256',
-        ]);
-
-        if (! $this->cache->verifyRevalidateSecret($validated['secret'])) {
-            return response()->json(['message' => 'Unauthorized'], 401);
-        }
-
-        return response()->json(['ok' => true]);
-    }
 }

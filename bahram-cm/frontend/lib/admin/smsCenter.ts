@@ -37,7 +37,7 @@ export async function saveSmsGlobalSettings(input: Partial<SmsGlobalView>): Prom
 
 export async function saveSmsProvider(
   slug: string,
-  input: { sender_number?: string; is_active?: boolean; credentials_input?: string },
+  input: { sender_number?: string; base_url?: string | null; is_active?: boolean; credentials_input?: string },
 ): Promise<{ ok: boolean; data?: SmsProviderView; error?: string }> {
   try {
     const res = await adminFetch<{ data: SmsProviderView }>(`/sms/center-config/providers/${slug}`, { method: 'PUT', body: input });

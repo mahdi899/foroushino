@@ -10,6 +10,7 @@ import { buildMetadata } from '@/lib/seo';
 import { coalesceAlt, staticAltForSrc } from '@/lib/media/altShared';
 import { primarySiteImageSrc } from '@/lib/mediaUrl';
 import { sitePhotos } from '@/lib/site-photo-paths';
+import { sanitizeRichHtml } from '@/lib/sanitize';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -103,7 +104,7 @@ export default async function PublicSeminarPage({
             {seminar.description ? (
               <article
                 className="prose-luxe mt-5 text-sm leading-relaxed text-bone-dim sm:mt-6 sm:text-base"
-                dangerouslySetInnerHTML={{ __html: seminar.description }}
+                dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(seminar.description) }}
               />
             ) : (
               <p className="mt-5 text-sm text-bone-dim sm:mt-6 sm:text-base">

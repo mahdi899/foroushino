@@ -8,6 +8,7 @@ use App\Models\AdminTelegramEventConfig;
 use App\Models\SmsEventConfig;
 use App\Services\SmsCenterConfigService;
 use App\Services\SmsService;
+use App\Support\SsrfGuard;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -16,8 +17,13 @@ class SmsCenterConfigController extends Controller
 {
     public function __construct(private readonly SmsCenterConfigService $config) {}
 
-    public function show(): JsonResponse
+    public function show(Request $request): JsonResponse
     {
+        abort_unless(
+            $request->user()->hasPermission('sms.view') || $request->user()->isSuperAdmin(),
+            403,
+        );
+
         return response()->json(['data' => [
             'global' => $this->config->globalView(),
             'providers' => $this->config->providersView(),
@@ -30,6 +36,11 @@ class SmsCenterConfigController extends Controller
 
     public function updateGlobal(Request $request): JsonResponse
     {
+        abort_unless(
+            $request->user()->hasPermission('sms.manage') || $request->user()->isSuperAdmin(),
+            403,
+        );
+
         $data = $request->validate([
             'is_sms_active' => ['sometimes', 'boolean'],
             'primary_provider_slug' => ['sometimes', 'string', Rule::exists('sms_providers', 'slug')],
@@ -47,21 +58,41 @@ class SmsCenterConfigController extends Controller
     public function updateProvider(Request $request, string $slug): JsonResponse
     {
         abort_unless(
+            $request->user()->hasPermission('sms.manage') || $request->user()->isSuperAdmin(),
+            403,
+        );
+
+        abort_unless(
             \App\Models\SmsProvider::query()->where('slug', $slug)->exists(),
             404,
         );
 
         $data = $request->validate([
             'sender_number' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'base_url' => ['sometimes', 'nullable', 'string', 'max:500'],
             'is_active' => ['sometimes', 'boolean'],
             'credentials_input' => ['sometimes', 'nullable', 'string', 'max:500'],
         ]);
 
+        if (filled($data['base_url'] ?? null)) {
+            $urlError = SsrfGuard::validateProviderBaseUrl($slug, $data['base_url']);
+            if ($urlError !== null) {
+                return response()->json([
+                    'error' => ['code' => 'invalid_base_url', 'message_fa' => $urlError],
+                ], 422);
+            }
+        }
+
         return response()->json(['data' => $this->config->updateProvider($slug, $data)]);
     }
 
-    public function testProvider(string $slug): JsonResponse
+    public function testProvider(Request $request, string $slug): JsonResponse
     {
+        abort_unless(
+            $request->user()->hasPermission('sms.manage') || $request->user()->isSuperAdmin(),
+            403,
+        );
+
         abort_unless(
             \App\Models\SmsProvider::query()->where('slug', $slug)->exists(),
             404,
@@ -74,6 +105,11 @@ class SmsCenterConfigController extends Controller
 
     public function testEvent(Request $request, string $eventKey): JsonResponse
     {
+        abort_unless(
+            $request->user()->hasPermission('sms.manage') || $request->user()->isSuperAdmin(),
+            403,
+        );
+
         abort_unless(
             SmsEventConfig::query()->where('event_key', $eventKey)->exists(),
             404,
@@ -97,6 +133,11 @@ class SmsCenterConfigController extends Controller
 
     public function updateEvent(Request $request, string $eventKey): JsonResponse
     {
+        abort_unless(
+            $request->user()->hasPermission('sms.manage') || $request->user()->isSuperAdmin(),
+            403,
+        );
+
         $data = $request->validate([
             'is_enabled' => ['sometimes', 'boolean'],
             'message_template' => ['sometimes', 'nullable', 'string', 'max:2000'],
@@ -113,6 +154,11 @@ class SmsCenterConfigController extends Controller
     public function updateAdminTelegramEvent(Request $request, string $eventKey): JsonResponse
     {
         abort_unless(
+            $request->user()->hasPermission('sms.manage') || $request->user()->isSuperAdmin(),
+            403,
+        );
+
+        abort_unless(
             AdminTelegramEventConfig::query()->where('event_key', $eventKey)->exists(),
             404,
         );
@@ -124,8 +170,13 @@ class SmsCenterConfigController extends Controller
         return response()->json(['data' => $this->config->updateAdminTelegramEvent($eventKey, $data)]);
     }
 
-    public function testAdminTelegram(): JsonResponse
+    public function testAdminTelegram(Request $request): JsonResponse
     {
+        abort_unless(
+            $request->user()->hasPermission('sms.manage') || $request->user()->isSuperAdmin(),
+            403,
+        );
+
         $result = $this->config->testAdminTelegram();
 
         return response()->json($result, $result['ok'] ? 200 : 422);

@@ -67,6 +67,7 @@ class SmsCenterConfigService
             'channel_label' => $p->channelType()->label(),
             'docs_url' => $p->docs_url,
             'sender_number' => $p->sender_number,
+            'base_url' => $p->base_url,
             'is_active' => $p->is_active,
             'configured' => $p->isReady(),
             'has_credentials' => filled($p->credentials),
@@ -83,6 +84,10 @@ class SmsCenterConfigService
 
         if (array_key_exists('sender_number', $input)) {
             $patch['sender_number'] = $input['sender_number'];
+        }
+
+        if (array_key_exists('base_url', $input)) {
+            $patch['base_url'] = trim((string) $input['base_url']) ?: null;
         }
 
         if (array_key_exists('is_active', $input)) {
@@ -109,6 +114,7 @@ class SmsCenterConfigService
             'channel_label' => $fresh->channelType()->label(),
             'docs_url' => $fresh->docs_url,
             'sender_number' => $fresh->sender_number,
+            'base_url' => $fresh->base_url,
             'is_active' => $fresh->is_active,
             'configured' => $fresh->isReady(),
             'has_credentials' => filled($fresh->credentials),

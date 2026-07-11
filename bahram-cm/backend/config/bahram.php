@@ -17,7 +17,7 @@ return [
         'private_disk' => 'local',
         'max_image_kb' => (int) env('UPLOAD_MAX_IMAGE_KB', 8192),
         'signed_url_ttl_minutes' => (int) env('UPLOAD_SIGNED_TTL', 15),
-        'static_images_path' => env('STATIC_IMAGES_PATH', dirname(base_path()).'/../frontend/public/media'),
+        'static_images_path' => env('STATIC_IMAGES_PATH', dirname(base_path()).'/frontend/public/media'),
     ],
 
     'revalidate' => [
@@ -54,6 +54,11 @@ return [
 
     'chatbot' => [
         'retention_days' => (int) env('CHATBOT_RETENTION_DAYS', 60),
+    ],
+
+    'backup' => [
+        'mysqldump_path' => env('MYSQLDUMP_PATH'),
+        'mysql_path' => env('MYSQL_PATH'),
     ],
 
     'media_cache_max_age' => (int) env('MEDIA_CACHE_MAX_AGE', 31536000),

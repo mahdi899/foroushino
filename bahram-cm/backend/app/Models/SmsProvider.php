@@ -14,6 +14,7 @@ class SmsProvider extends Model
         'docs_url',
         'credentials',
         'sender_number',
+        'base_url',
         'is_active',
         'sort_order',
     ];
