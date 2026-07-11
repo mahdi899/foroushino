@@ -16,7 +16,7 @@ use Throwable;
  */
 class BaleSafirProvider implements SmsProviderContract
 {
-    private const SEND_URL = 'https://safir.bale.ai/api/v3/send_message';
+    private const DEFAULT_BASE = 'https://safir.bale.ai';
 
     public function __construct(private readonly SmsProviderConfig $config) {}
 
@@ -50,7 +50,7 @@ class BaleSafirProvider implements SmsProviderContract
                     'api-access-key' => $apiKey,
                     'Content-Type' => 'application/json',
                 ])
-                ->post(self::SEND_URL, [
+                ->post($this->config->resolvedBase(self::DEFAULT_BASE).'/api/v3/send_message', [
                     'request_id' => (string) Str::uuid(),
                     'bot_id' => $botId,
                     'phone_number' => $phone,

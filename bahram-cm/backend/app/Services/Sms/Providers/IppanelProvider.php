@@ -16,7 +16,7 @@ use Throwable;
  */
 class IppanelProvider implements SmsProviderContract
 {
-    private const ENDPOINT = 'https://api2.ippanel.com/api/v1/sms/send/webservice/single';
+    private const DEFAULT_BASE = 'https://api2.ippanel.com';
 
     public function __construct(private readonly SmsProviderConfig $config) {}
 
@@ -35,7 +35,7 @@ class IppanelProvider implements SmsProviderContract
         try {
             $response = Http::timeout(20)
                 ->withHeaders(['Authorization' => 'AccessKey '.$apiKey])
-                ->post(self::ENDPOINT, [
+                ->post($this->config->resolvedBase(self::DEFAULT_BASE).'/api/v1/sms/send/webservice/single', [
                     'recipient' => [$this->normalizeMobile($mobile)],
                     'sender' => $this->config->senderNumber,
                     'message' => $message,
@@ -67,7 +67,7 @@ class IppanelProvider implements SmsProviderContract
         try {
             $response = Http::timeout(20)
                 ->withHeaders(['Authorization' => 'AccessKey '.$apiKey])
-                ->post('https://api2.ippanel.com/api/v1/sms/pattern/send', [
+                ->post($this->config->resolvedBase(self::DEFAULT_BASE).'/api/v1/sms/pattern/send', [
                     'code' => $this->config->patternCode,
                     'recipient' => $this->normalizeMobile($mobile),
                     'variable' => ['message' => $message],

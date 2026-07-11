@@ -16,6 +16,8 @@ use Throwable;
  */
 class BaleMessengerProvider implements SmsProviderContract
 {
+    private const DEFAULT_BASE = 'https://tapi.bale.ai';
+
     public function __construct(private readonly SmsProviderConfig $config) {}
 
     public function send(string $mobile, string $message): array
@@ -33,7 +35,7 @@ class BaleMessengerProvider implements SmsProviderContract
         }
 
         try {
-            $response = Http::timeout(20)->post("https://tapi.bale.ai/bot{$token}/sendMessage", [
+            $response = Http::timeout(20)->post($this->botUrl('sendMessage'), [
                 'chat_id' => $chatId,
                 'text' => $message,
             ]);
@@ -61,7 +63,7 @@ class BaleMessengerProvider implements SmsProviderContract
         }
 
         try {
-            $response = Http::timeout(15)->get("https://tapi.bale.ai/bot{$token}/getMe");
+            $response = Http::timeout(15)->get($this->botUrl('getMe'));
             $body = $response->json();
 
             if ($response->successful() && data_get($body, 'ok') === true) {
@@ -88,5 +90,12 @@ class BaleMessengerProvider implements SmsProviderContract
         }
 
         return null;
+    }
+
+    private function botUrl(string $method): string
+    {
+        $token = trim((string) $this->config->credentials);
+
+        return $this->config->resolvedBase(self::DEFAULT_BASE).'/bot'.$token.'/'.$method;
     }
 }

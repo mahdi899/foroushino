@@ -29,9 +29,12 @@ class DatabaseSeeder extends Seeder
                 'mobile' => '09121000001',
                 'mobile_verified_at' => now(),
                 'password' => Hash::make('password'),
-                'is_admin' => true,
             ]
         );
+        if (! $admin->is_admin) {
+            $admin->is_admin = true;
+            $admin->save();
+        }
 
         $this->call(RolePermissionSeeder::class);
 

@@ -11,6 +11,7 @@ import {
   resolveMiniCourseCoverMobile,
 } from '@/lib/mini-courses/covers';
 import type { MiniCourseApiRecord } from '@/lib/services/miniCourses.types';
+import { sanitizeRichHtml } from '@/lib/sanitize';
 
 const ICON_BY_SLUG: Record<string, LucideIcon> = {
   'alfabe-kampain-nevisi': PenLine,
@@ -151,7 +152,7 @@ export function MiniCourseDetailHero({
               <h2 className="mini-course-detail__body-title">درباره این مینی‌دوره</h2>
               <article
                 className="prose-luxe text-bone-dim"
-                dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+                dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(descriptionHtml) }}
               />
             </div>
           </Reveal>

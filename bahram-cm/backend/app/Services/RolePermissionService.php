@@ -154,8 +154,9 @@ class RolePermissionService
                 'mobile' => $normalizedMobile,
                 'mobile_verified_at' => now(),
                 'password' => $password,
-                'is_admin' => true,
             ]);
+            $user->is_admin = true;
+            $user->save();
             $user->assignRole($roleName);
 
             return $user;

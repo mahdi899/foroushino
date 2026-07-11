@@ -7,6 +7,7 @@ export type SmsProviderView = {
   channel_label: string;
   docs_url: string | null;
   sender_number: string | null;
+  base_url: string | null;
   is_active: boolean;
   configured: boolean;
   has_credentials: boolean;
@@ -71,6 +72,7 @@ export type SmsCenterConfig = {
 
 export type SmsProviderForm = {
   senderNumber: string;
+  baseUrl: string;
   isActive: boolean;
   credentialsInput: string;
 };
@@ -129,7 +131,16 @@ export function eventToForm(event: SmsEventView): SmsEventForm {
 export function providerToForm(provider: SmsProviderView): SmsProviderForm {
   return {
     senderNumber: provider.sender_number ?? '',
+    baseUrl: provider.base_url ?? '',
     isActive: provider.is_active,
     credentialsInput: '',
   };
 }
+
+export const SMS_PROVIDER_DEFAULT_BASE_URLS: Partial<Record<string, string>> = {
+  farazsms: 'https://api.farazsms.com',
+  ippanel: 'https://api2.ippanel.com',
+  bale_safir: 'https://safir.bale.ai',
+  bale: 'https://tapi.bale.ai',
+  telegram: 'https://api.telegram.org',
+};

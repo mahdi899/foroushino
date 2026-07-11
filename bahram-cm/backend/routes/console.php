@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('chatbot:purge-old')->dailyAt('03:00');
+Schedule::command('backup:database')->everyMinute();

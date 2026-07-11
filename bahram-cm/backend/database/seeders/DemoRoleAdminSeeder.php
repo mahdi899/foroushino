@@ -34,9 +34,13 @@ class DemoRoleAdminSeeder extends Seeder
                     'mobile' => $mobile,
                     'mobile_verified_at' => now(),
                     'password' => Hash::make('password'),
-                    'is_admin' => true,
                 ],
             );
+
+            if (! $user->is_admin) {
+                $user->is_admin = true;
+                $user->save();
+            }
 
             $user->syncRoles([$role->value]);
         }

@@ -35,6 +35,7 @@ const LEGACY_SECTION_TO_CATEGORY: Record<string, SettingsCategoryId> = {
   'google-tracking': 'seo',
   captcha: 'security',
   'cache-integrations': 'infrastructure',
+  'database-backup': 'infrastructure',
 };
 
 export function resolveSettingsScrollTarget(hash: string): string | null {

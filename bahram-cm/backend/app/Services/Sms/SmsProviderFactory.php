@@ -50,6 +50,7 @@ class SmsProviderFactory
             credentials: $provider->credentials,
             senderNumber: $provider->sender_number,
             patternCode: $patternCode,
+            baseUrl: $provider->base_url,
         );
 
         return new $class($config);
