@@ -3,9 +3,11 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, Loader2 } from 'lucide-react';
+import { JalaliDateField } from '@/components/ui/JalaliDateField';
 import { LiveSelfieVideoStep } from './LiveSelfieVideoStep';
 import { saveIdentityDraftAction, submitIdentityVerificationAction } from '@/lib/student/identityActions';
 import { identityStatusLabel } from '@/lib/student/identityLabels';
+import { formatDateFa } from '@/lib/persian';
 
 const STEPS = ['اطلاعات هویتی', 'تصویر کارت ملی', 'ویدیوی سلفی زنده', 'بازبینی و ارسال'] as const;
 
@@ -168,16 +170,15 @@ export function IdentityVerificationWizard({
               />
             </div>
             <div>
-              <label className="field-label" htmlFor="date_of_birth">
+              <label className="field-label" htmlFor="date_of_birth" id="date_of_birth-label">
                 تاریخ تولد
               </label>
-              <input
+              <JalaliDateField
                 id="date_of_birth"
-                type="date"
-                className="field-input"
-                dir="ltr"
                 value={draft.date_of_birth}
-                onChange={(e) => setDraft((d) => ({ ...d, date_of_birth: e.target.value }))}
+                onChange={(date_of_birth) => setDraft((d) => ({ ...d, date_of_birth }))}
+                placeholder="مثال: ۱۳۷۵/۰۳/۱۵"
+                maxDate={new Date()}
                 required
               />
             </div>
@@ -267,6 +268,10 @@ export function IdentityVerificationWizard({
               <div>
                 <dt className="text-text-muted">کد ملی</dt>
                 <dd dir="ltr">{draft.national_code}</dd>
+              </div>
+              <div>
+                <dt className="text-text-muted">تاریخ تولد</dt>
+                <dd>{draft.date_of_birth ? formatDateFa(draft.date_of_birth) : '—'}</dd>
               </div>
               <div>
                 <dt className="text-text-muted">شهر</dt>
