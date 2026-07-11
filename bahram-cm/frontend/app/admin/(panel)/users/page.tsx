@@ -1,6 +1,8 @@
 import { AdminPage, Badge, Table } from '../ui';
 import { getAdminUsers, getRoles } from '@/lib/admin/accessData';
-import { can, getCurrentUser } from '@/lib/auth/session';
+import { displayAdminEmail } from '@/lib/admin/maskEmail';
+import { can, getCurrentUser, isSuperAdmin } from '@/lib/auth/session';
+import { AdminDeleteButton } from './AdminDeleteButton';
 import { AdminRoleSelect } from './AdminRoleSelect';
 import { CreateAdminForm } from './CreateAdminForm';
 
@@ -8,20 +10,25 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminUsersPage() {
   const user = await getCurrentUser();
-  const canManage = can(user, 'roles.manage') || Boolean(user?.is_super_admin);
-  const isSuperAdmin = Boolean(user?.is_super_admin);
+  const viewerIsSuperAdmin = isSuperAdmin(user);
+  const canViewEmail = can(user, 'admins.view_email');
+  const canCreate = can(user, 'admins.create');
+  const canAssignRole = can(user, 'admins.assign_role');
+  const canDelete = can(user, 'admins.delete');
 
   const [{ items: admins, error }, { roles, error: rolesError }] = await Promise.all([
     getAdminUsers(),
     getRoles(),
   ]);
 
+  const showDeleteColumn = canDelete;
+
   return (
     <AdminPage
       icon="Shield"
       headerVariant="settings"
       title="مدیران"
-      desc="ساخت مدیر جدید با ایمیل و رمز، و تخصیص نقش از بین نقش‌های تعریف‌شده"
+      desc="مدیریت حساب‌های ادمین — دسترسی‌ها از بخش نقش‌ها و دسترسی‌ها قابل تنظیم است"
     >
       {(error || rolesError) && (
         <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-small text-error">
@@ -29,10 +36,16 @@ export default async function AdminUsersPage() {
         </div>
       )}
 
-      {canManage ? <CreateAdminForm roles={roles} isSuperAdmin={isSuperAdmin} /> : null}
+      {canCreate ? <CreateAdminForm roles={roles} isSuperAdmin={viewerIsSuperAdmin} /> : null}
 
       {admins.length > 0 ? (
-        <Table head={['نام', 'ایمیل', 'نقش فعلی', 'تخصیص نقش']}>
+        <Table
+          head={
+            showDeleteColumn
+              ? ['نام', 'موبایل', 'ایمیل', 'نقش فعلی', 'تخصیص نقش', 'حذف']
+              : ['نام', 'موبایل', 'ایمیل', 'نقش فعلی', 'تخصیص نقش']
+          }
+        >
           {admins.map((admin) => (
             <tr key={admin.id} className="hover:bg-surface-soft/40">
               <td className="px-4 py-3 font-medium text-text">
@@ -44,7 +57,10 @@ export default async function AdminUsersPage() {
                 ) : null}
               </td>
               <td className="px-4 py-3 text-text-muted" dir="ltr">
-                {admin.email}
+                {admin.mobile ?? '—'}
+              </td>
+              <td className="px-4 py-3 text-text-muted" dir="ltr" title={canViewEmail ? admin.email : undefined}>
+                {displayAdminEmail(admin.email, canViewEmail)}
               </td>
               <td className="px-4 py-3">
                 <div className="flex flex-wrap gap-1">
@@ -60,8 +76,13 @@ export default async function AdminUsersPage() {
                 </div>
               </td>
               <td className="px-4 py-3">
-                <AdminRoleSelect admin={admin} roles={roles} canManage={canManage} />
+                <AdminRoleSelect admin={admin} roles={roles} canManage={canAssignRole} />
               </td>
+              {showDeleteColumn ? (
+                <td className="px-4 py-3">
+                  <AdminDeleteButton admin={admin} canManage={canDelete} />
+                </td>
+              ) : null}
             </tr>
           ))}
         </Table>

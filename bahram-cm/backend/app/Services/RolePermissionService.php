@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\AdminRoleName;
 use App\Models\User;
+use App\Support\Mobile;
 use App\Support\PermissionCatalog;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -115,9 +116,9 @@ class RolePermissionService
         return $this->rolePayload($role->load('permissions'));
     }
 
-    public function createAdmin(User $actor, string $name, string $email, string $password, string $roleName): User
+    public function createAdmin(User $actor, string $name, string $email, string $password, string $roleName, string $mobile): User
     {
-        $this->assertCanManageRoles($actor);
+        $this->assertAdminPermission($actor, 'admins.create');
 
         if ($roleName === AdminRoleName::SuperAdmin->value && ! $actor->isSuperAdmin()) {
             throw ValidationException::withMessages([
@@ -127,16 +128,31 @@ class RolePermissionService
 
         Role::findByName($roleName, 'web');
 
+        $normalizedMobile = Mobile::normalize($mobile);
+        if (! $normalizedMobile) {
+            throw ValidationException::withMessages([
+                'mobile' => ['شماره موبایل معتبر نیست.'],
+            ]);
+        }
+
         if (User::query()->where('email', $email)->exists()) {
             throw ValidationException::withMessages([
                 'email' => ['این ایمیل قبلاً ثبت شده است.'],
             ]);
         }
 
-        $admin = DB::transaction(function () use ($name, $email, $password, $roleName) {
+        if (User::query()->where('mobile', $normalizedMobile)->exists()) {
+            throw ValidationException::withMessages([
+                'mobile' => ['این شماره موبایل قبلاً ثبت شده است.'],
+            ]);
+        }
+
+        $admin = DB::transaction(function () use ($name, $email, $password, $roleName, $normalizedMobile) {
             $user = User::create([
                 'name' => $name,
                 'email' => $email,
+                'mobile' => $normalizedMobile,
+                'mobile_verified_at' => now(),
                 'password' => $password,
                 'is_admin' => true,
             ]);
@@ -147,6 +163,7 @@ class RolePermissionService
 
         $this->audit->log($actor, 'admin.created', $admin, [
             'email' => $email,
+            'mobile' => $normalizedMobile,
             'role' => $roleName,
         ]);
 
@@ -155,7 +172,7 @@ class RolePermissionService
 
     public function assignRoleToAdmin(User $actor, User $admin, string $roleName): User
     {
-        $this->assertCanManageRoles($actor);
+        $this->assertAdminPermission($actor, 'admins.assign_role');
 
         if (! $admin->is_admin) {
             throw ValidationException::withMessages(['user' => ['کاربر هدف ادمین نیست.']]);
@@ -181,6 +198,44 @@ class RolePermissionService
         ]);
 
         return $admin->fresh();
+    }
+
+    public function deleteAdmin(User $actor, User $admin): void
+    {
+        $this->assertAdminPermission($actor, 'admins.delete');
+
+        if (! $admin->is_admin) {
+            throw ValidationException::withMessages(['user' => ['کاربر هدف ادمین نیست.']]);
+        }
+
+        if ($admin->id === $actor->id) {
+            throw ValidationException::withMessages(['user' => ['نمی‌توانید حساب خود را حذف کنید.']]);
+        }
+
+        if ($admin->isSuperAdmin()) {
+            $this->assertNotLastSuperAdmin($admin);
+        }
+
+        DB::transaction(function () use ($actor, $admin): void {
+            $this->audit->log($actor, 'admin.deleted', $admin, [
+                'email' => $admin->email,
+                'mobile' => $admin->mobile,
+                'roles' => $admin->getRoleNames()->all(),
+            ]);
+
+            $admin->tokens()->delete();
+            $admin->syncRoles([]);
+            $admin->delete();
+        });
+    }
+
+    private function assertAdminPermission(User $actor, string $permission): void
+    {
+        if ($actor->isSuperAdmin() || $actor->hasPermission($permission)) {
+            return;
+        }
+
+        abort(403, 'اجازه دسترسی ندارید.');
     }
 
     private function assertCanManageRoles(User $actor): void

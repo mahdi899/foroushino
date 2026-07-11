@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { SERVER_API_URL } from '@/lib/api/config';
-import { ADMIN_TOKEN_COOKIE } from '@/lib/auth/session';
 import { extractValidationMessage } from '@/lib/services/api';
 
 const LOGIN_URLS = [
@@ -41,7 +40,7 @@ async function tryLogin(
       lastBody = await res.json().catch(() => null);
 
       if (res.ok) {
-        return { ok: true as const, json: lastBody as { token?: string } };
+        return { ok: true as const, json: lastBody as Record<string, unknown> };
       }
     } catch {
       continue;
@@ -68,44 +67,47 @@ export async function POST(req: Request) {
   });
 
   if (!result.ok) {
-    const body = result.body;
+    const payload = result.body;
     let backendMsg: string | null = null;
 
-    if (body && typeof body === 'object') {
-      const captchaMsg = extractValidationMessage(body, 'captcha');
+    if (payload && typeof payload === 'object') {
+      const captchaMsg = extractValidationMessage(payload, 'captcha');
       if (captchaMsg) {
         backendMsg = captchaMsg;
-      } else if (typeof (body as { message?: string }).message === 'string') {
-        backendMsg = (body as { message?: string }).message ?? null;
+      } else if (typeof (payload as { message?: string }).message === 'string') {
+        backendMsg = (payload as { message?: string }).message ?? null;
       } else if (
-        'error' in body &&
-        body.error &&
-        typeof body.error === 'object' &&
-        'message_fa' in body.error
+        'error' in payload &&
+        payload.error &&
+        typeof payload.error === 'object' &&
+        'message_fa' in payload.error
       ) {
-        backendMsg = String((body.error as { message_fa?: string }).message_fa);
+        backendMsg = String((payload.error as { message_fa?: string }).message_fa);
       }
     }
 
     return NextResponse.json(
       { error: backendMsg || 'ایمیل یا رمز عبور نادرست است.' },
-      { status: result.status === 422 ? 422 : 401 },
+      { status: result.status === 422 ? 422 : result.status === 429 ? 429 : 401 },
     );
   }
 
-  const token = result.json.token;
-  if (!token) {
+  const data = (result.json.data ?? {}) as {
+    otp_required?: boolean;
+    mobile?: string;
+    mobile_masked?: string;
+    expires_in?: number;
+  };
+
+  if (!data.otp_required || !data.mobile) {
     return NextResponse.json({ error: 'ورود ناموفق بود.' }, { status: 401 });
   }
 
-  const out = NextResponse.json({ ok: true });
-  out.cookies.set(ADMIN_TOKEN_COOKIE, token, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: 60 * 60 * 24 * 7,
+  return NextResponse.json({
+    ok: true,
+    otp_required: true,
+    mobile: data.mobile,
+    mobile_masked: data.mobile_masked ?? data.mobile,
+    expires_in: data.expires_in ?? 120,
   });
-
-  return out;
 }

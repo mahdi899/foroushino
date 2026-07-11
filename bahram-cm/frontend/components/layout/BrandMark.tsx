@@ -1,7 +1,5 @@
-'use client';
-
-import { AppImage } from '@/components/ui/AppImage';
-import { sitePhotos } from '@/lib/site-photo-paths';
+import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
+import { founderPortraitBrandDisplay, sitePhotos } from '@/lib/site-photo-paths';
 import { cn } from '@/lib/utils';
 
 export function BrandMark({ className }: { className?: string }) {
@@ -9,17 +7,18 @@ export function BrandMark({ className }: { className?: string }) {
     <div
       className={cn(
         'relative h-10 w-10 shrink-0 overflow-hidden rounded-xl ring-1 ring-border',
+        founderPortraitBrandDisplay.containerClass,
         className,
       )}
       aria-hidden
     >
-      <AppImage
-        src={sitePhotos.portraitFounder}
+      <DirectMediaImg
+        src={sitePhotos.founderAsidePortrait}
         alt=""
         fill
-        sizes="(max-width: 768px) 48px, 40px"
-        className="object-cover object-[center_20%]"
-        priority
+        loading="eager"
+        fetchPriority="high"
+        className={founderPortraitBrandDisplay.imageClass}
       />
     </div>
   );

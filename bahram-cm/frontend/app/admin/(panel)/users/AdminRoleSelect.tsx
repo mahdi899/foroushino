@@ -61,7 +61,7 @@ export function AdminRoleSelect({
       {admin.is_super_admin ? (
         <span className="text-caption text-text-muted">مدیر کل — نقش ثابت</span>
       ) : !canManage ? (
-        <span className="text-caption text-text-muted">بدون دسترسی ویرایش نقش</span>
+        <span className="text-caption text-text-muted">بدون دسترسی «تغییر نقش مدیر»</span>
       ) : null}
     </div>
   );

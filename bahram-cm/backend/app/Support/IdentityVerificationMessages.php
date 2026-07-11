@@ -58,6 +58,7 @@ final class IdentityVerificationMessages
             'national_code.max' => 'کد ملی باید ۱۰ رقم باشد.',
             'date_of_birth.required' => 'تاریخ تولد را انتخاب کنید.',
             'date_of_birth.date' => 'تاریخ تولد معتبر نیست. لطفاً دوباره انتخاب کنید.',
+            'date_of_birth.before_or_equal' => 'حداقل سن برای ثبت‌نام ۱۰ سال است. تاریخ تولد را اصلاح کنید.',
             'gender.required' => 'جنسیت را انتخاب کنید.',
             'city.required' => 'شهر محل سکونت را وارد کنید.',
             'city.max' => 'نام شهر نباید بیش از ۱۰۰ کاراکتر باشد.',

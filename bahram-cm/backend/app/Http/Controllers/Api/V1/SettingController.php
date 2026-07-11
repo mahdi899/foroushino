@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 
 class SettingController extends Controller
 {
+    /** Groups editable only by super-admin (site settings page). */
+    private const SUPER_ADMIN_GROUPS = ['site', 'links'];
+
     public function __construct(
         private readonly SettingService $service,
         private readonly ContentPublishService $publish,
@@ -24,7 +27,7 @@ class SettingController extends Controller
 
     public function show(Request $request, string $group): JsonResponse
     {
-        abort_unless($request->user()?->hasPermission('settings.read'), 403);
+        $this->assertCanReadSettingsGroup($request, $group);
 
         return response()->json(['data' => $this->service->group($group)]);
     }
@@ -35,5 +38,16 @@ class SettingController extends Controller
         $this->publish->revalidateSiteSettings($group);
 
         return response()->json(['data' => $data]);
+    }
+
+    private function assertCanReadSettingsGroup(Request $request, string $group): void
+    {
+        if (in_array($group, self::SUPER_ADMIN_GROUPS, true)) {
+            abort_unless($request->user()?->isSuperAdmin(), 403);
+
+            return;
+        }
+
+        abort_unless($request->user()?->hasPermission('settings.view'), 403);
     }
 }

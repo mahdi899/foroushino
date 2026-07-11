@@ -5,14 +5,15 @@ import sharp from 'sharp';
 import { ImageResponse } from 'next/og';
 import { siteStorageMedia } from '@/config/media';
 
-export const SITE_FAVICON_SRC = siteStorageMedia('portrait-founder.webp');
+export const SITE_FAVICON_SRC = siteStorageMedia('founder-aside-portrait.webp');
 
-/** Matches the founder portrait crop on the homepage hero block. */
+/** Matches FounderAside / BrandMark crop */
+export const SITE_FAVICON_OBJECT_FIT = 'cover' as const;
 export const SITE_FAVICON_OBJECT_POSITION = '50% 18%';
 
 const portraitPath = path.join(
   process.cwd(),
-  '../backend/storage/app/public/media/site/portrait-founder.webp',
+  '../backend/storage/app/public/media/site/founder-aside-portrait.webp',
 );
 
 const loadPortraitDataUrl = cache(async (): Promise<string> => {
@@ -54,7 +55,7 @@ export async function renderSiteFavicon(size: number): Promise<ImageResponse> {
             style={{
               width: '100%',
               height: '100%',
-              objectFit: 'cover',
+              objectFit: SITE_FAVICON_OBJECT_FIT,
               objectPosition: SITE_FAVICON_OBJECT_POSITION,
             }}
           />

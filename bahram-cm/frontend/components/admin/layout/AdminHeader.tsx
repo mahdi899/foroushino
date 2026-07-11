@@ -8,7 +8,10 @@ import { AdminHeaderSaveBar } from '@/app/admin/(panel)/AdminHeaderSaveBar';
 
 export function AdminHeader() {
   return (
-    <header className="admin-header admin-header--trail-only">
+    <header className="admin-header">
+      <div className="admin-header__lead lg:hidden">
+        <p className="admin-header__title truncate">پنل بهرام</p>
+      </div>
       <div className="admin-header__trail">
         <AdminThemeToggle />
         <Link

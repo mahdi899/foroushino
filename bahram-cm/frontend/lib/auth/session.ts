@@ -8,6 +8,7 @@ export interface AdminUser {
   id: number;
   name: string;
   email: string;
+  mobile?: string | null;
   roles: string[];
   permissions: string[];
   is_super_admin?: boolean;
@@ -67,9 +68,17 @@ export const getCurrentUser = cache(async (): Promise<AdminUser | null> => {
   }
 });
 /** Permission gate helper for server components / actions. */
+export function isSuperAdmin(user: AdminUser | null): boolean {
+  if (!user) return false;
+  return Boolean(
+    user.is_super_admin || user.roles.includes('super-admin') || user.roles.includes('SUPER_ADMIN'),
+  );
+}
+
+/** Permission gate helper for server components / actions. */
 export function can(user: AdminUser | null, permission: string): boolean {
   if (!user) return false;
-  if (user.is_super_admin || user.roles.includes('super-admin') || user.roles.includes('SUPER_ADMIN')) {
+  if (isSuperAdmin(user)) {
     return true;
   }
   return user.permissions.includes(permission);

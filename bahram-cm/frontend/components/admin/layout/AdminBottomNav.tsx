@@ -70,7 +70,7 @@ export function AdminBottomNav({
             href={item.href}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'site-bottom-nav__item relative flex min-h-[3.75rem] flex-col items-center justify-center gap-0.5 px-1',
+              'site-bottom-nav__item relative flex min-h-[3.75rem] min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 sm:px-1',
               active && 'site-bottom-nav__item--active',
             )}
           >
@@ -93,7 +93,7 @@ export function AdminBottomNav({
         aria-expanded={menuOpen}
         aria-label="باز کردن منو"
         className={cn(
-          'site-bottom-nav__item flex min-h-[3.75rem] flex-col items-center justify-center gap-0.5 px-1',
+          'site-bottom-nav__item flex min-h-[3.75rem] min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 sm:px-1',
           menuOpen && 'site-bottom-nav__item--active',
         )}
       >

@@ -109,10 +109,13 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
   ref,
 ) {
   const payloadRef = useRef<CaptchaPayload | null>(null);
+  const mathAnswerRef = useRef('');
+  const mathIdRef = useRef('');
+  const modeRef = useRef<CaptchaMode>('loading');
   const refreshTimerRef = useRef<number | null>(null);
   const recaptchaGenRef = useRef(0);
   const answerInputId = useId();
-  const recaptchaSiteKey = resolveRecaptchaSiteKey(siteKey);
+  const recaptchaSiteKey = variant === 'admin' ? siteKey.trim() : resolveRecaptchaSiteKey(siteKey);
 
   const [mode, setMode] = useState<CaptchaMode>('loading');
   const [mathQuestion, setMathQuestion] = useState('');
@@ -121,10 +124,23 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
   const [mathLoading, setMathLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  mathAnswerRef.current = mathAnswer;
+  mathIdRef.current = mathId;
+  modeRef.current = mode;
+
   useImperativeHandle(
     ref,
     () => ({
-      getPayload: (): CaptchaPayload | null => payloadRef.current,
+      getPayload: (): CaptchaPayload | null => {
+        if (modeRef.current === 'math') {
+          const trimmed = mathAnswerRef.current.trim();
+          if (mathIdRef.current && trimmed) {
+            return { captcha_id: mathIdRef.current, captcha_answer: trimmed };
+          }
+          return null;
+        }
+        return payloadRef.current;
+      },
     }),
     [],
   );
@@ -142,6 +158,20 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
       onReadyChange?.(ready);
     },
     [onReadyChange],
+  );
+
+  const syncMathPayload = useCallback(
+    (id: string, answer: string) => {
+      const trimmed = answer.trim();
+      if (id && trimmed) {
+        notifyReady(true);
+        notifyPayload({ captcha_id: id, captcha_answer: trimmed });
+        return;
+      }
+      notifyReady(false);
+      notifyPayload(null);
+    },
+    [notifyPayload, notifyReady],
   );
 
   const clearRefreshTimer = useCallback(() => {
@@ -257,20 +287,8 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
 
   useEffect(() => {
     if (mode !== 'math') return;
-
-    const trimmed = mathAnswer.trim();
-    if (!mathId || !trimmed) {
-      notifyReady(false);
-      notifyPayload(null);
-      return;
-    }
-
-    notifyReady(true);
-    notifyPayload({
-      captcha_id: mathId,
-      captcha_answer: trimmed,
-    });
-  }, [mathAnswer, mathId, mode, notifyPayload, notifyReady]);
+    syncMathPayload(mathId, mathAnswer);
+  }, [mathAnswer, mathId, mode, syncMathPayload]);
 
   async function refreshMathChallenge() {
     const gen = ++mathFetchGenRef.current;
@@ -385,10 +403,16 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
             pattern="[0-9]*"
             autoComplete="off"
             value={mathAnswer}
-            onChange={(e) => setMathAnswer(sanitizeNumericInput(e.target.value))}
+            onChange={(e) => {
+              const value = sanitizeNumericInput(e.target.value);
+              setMathAnswer(value);
+              syncMathPayload(mathId, value);
+            }}
             onPaste={(e) => {
               e.preventDefault();
-              setMathAnswer(sanitizeNumericInput(e.clipboardData.getData('text')));
+              const value = sanitizeNumericInput(e.clipboardData.getData('text'));
+              setMathAnswer(value);
+              syncMathPayload(mathId, value);
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {

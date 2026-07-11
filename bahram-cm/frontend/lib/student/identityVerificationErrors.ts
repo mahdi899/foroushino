@@ -1,4 +1,4 @@
-/** Persian error copy for the student identity verification flow. */
+import { isIdentityBirthDateAllowed } from '@/lib/student/age';
 
 export const IDENTITY_ERROR_BY_CODE: Record<string, string> = {
   invalid_national_code:
@@ -34,6 +34,7 @@ export const IDENTITY_CLIENT_ERRORS = {
   lastName: 'نام خانوادگی (مطابق کارت ملی) را وارد کنید.',
   nationalCodeLength: 'کد ملی باید ۱۰ رقم باشد.',
   dateOfBirth: 'تاریخ تولد را انتخاب کنید.',
+  dateOfBirthTooYoung: 'حداقل سن برای ثبت‌نام ۱۰ سال است. تاریخ تولد را اصلاح کنید.',
   gender: 'جنسیت را انتخاب کنید.',
   city: 'شهر محل سکونت را وارد کنید.',
   artifacts: 'برای ارسال پرونده، تصویر کارت ملی و ویدیوی سلفی را تکمیل کنید.',
@@ -162,6 +163,7 @@ export function validateIdentityStep1(draft: {
   if (!draft.last_name.trim()) return IDENTITY_CLIENT_ERRORS.lastName;
   if (draft.national_code.replace(/\D/g, '').length !== 10) return IDENTITY_CLIENT_ERRORS.nationalCodeLength;
   if (!draft.date_of_birth.trim()) return IDENTITY_CLIENT_ERRORS.dateOfBirth;
+  if (!isIdentityBirthDateAllowed(draft.date_of_birth)) return IDENTITY_CLIENT_ERRORS.dateOfBirthTooYoung;
   if (!draft.gender.trim()) return IDENTITY_CLIENT_ERRORS.gender;
   if (!draft.city.trim()) return IDENTITY_CLIENT_ERRORS.city;
   return null;

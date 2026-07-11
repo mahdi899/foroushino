@@ -34,7 +34,7 @@ export function PanelHeader({
   }
 
   return (
-    <header className="panel-header border-b border-border bg-surface/80 py-3 backdrop-blur-md">
+    <header className="panel-header">
       <div className="panel-header__lead">
         <Link
           href="/panel/notifications"

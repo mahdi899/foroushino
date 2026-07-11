@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { adminFetch } from '@/lib/auth/session';
+import { adminFetch, getCurrentUser, isSuperAdmin } from '@/lib/auth/session';
 import { aiChatCompletionWithRuntime } from '@/lib/ai/client';
 import { getAiConfigAdminView, getResolvedAiRuntimeFromDraft, getResolvedChatbotAiRuntimeFromDraft, getResolvedImageSettingsFromDraft, saveAiChatbotConfig, saveAiImageConfig, saveAiTextConfig, type SaveAiChatbotConfigInput, type SaveAiImageConfigInput, type SaveAiTextConfigInput } from '@/lib/ai/settings';
 import { adminViewToForm } from '@/lib/captcha/form';
@@ -40,7 +40,23 @@ import { filterGeminiModels, listGeminiModels, type GeminiModelInfo } from '@/li
 import { getStoredAiConfig } from '@/lib/ai/settings';
 import { providerMeta } from '@/lib/ai/types';
 
+function superAdminDenied(): { ok: false; error: string } {
+  return { ok: false, error: 'فقط مدیر کل به تنظیمات سایت دسترسی دارد.' };
+}
+
+async function assertSuperAdminForSiteSettings(): Promise<{ ok: false; error: string } | null> {
+  const user = await getCurrentUser();
+  if (!isSuperAdmin(user)) {
+    return superAdminDenied();
+  }
+
+  return null;
+}
+
 export async function getSiteSettings(): Promise<Record<string, unknown>> {
+  const denied = await assertSuperAdminForSiteSettings();
+  if (denied) return {};
+
   try {
     const res = await adminFetch<{ data: Record<string, unknown> }>('/settings/site');
     return res.data ?? {};
@@ -50,6 +66,9 @@ export async function getSiteSettings(): Promise<Record<string, unknown>> {
 }
 
 export async function saveSiteSettings(values: Record<string, unknown>): Promise<{ ok: boolean }> {
+  const denied = await assertSuperAdminForSiteSettings();
+  if (denied) return denied;
+
   try {
     await adminFetch('/settings/site', { method: 'PUT', body: { values } });
     revalidateTag('settings', 'max');
@@ -73,6 +92,15 @@ export async function loadAcademyLinksSettings(): Promise<{
   rubika_channel_url: string;
   telegram_bot_url: string;
 }> {
+  const denied = await assertSuperAdminForSiteSettings();
+  if (denied) {
+    return {
+      telegram_channel_url: '',
+      rubika_channel_url: '',
+      telegram_bot_url: '',
+    };
+  }
+
   try {
     const res = await adminFetch<{ data: Record<string, unknown> }>('/settings/links');
     const data = res.data ?? {};
@@ -95,6 +123,9 @@ export async function saveAcademyLinksSettings(form: {
   rubika_channel_url: string;
   telegram_bot_url: string;
 }): Promise<{ ok: boolean }> {
+  const denied = await assertSuperAdminForSiteSettings();
+  if (denied) return denied;
+
   try {
     await adminFetch('/settings/links', {
       method: 'PUT',

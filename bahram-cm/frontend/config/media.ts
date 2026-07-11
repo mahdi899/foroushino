@@ -6,7 +6,7 @@ export function siteStorageMedia(filename: string): string {
 }
 
 export const NOT_FOUND_IMAGE = siteStorageMedia('og-default.svg');
-export const SITE_FAVICON_IMAGE = siteStorageMedia('portrait-founder.webp');
+export const SITE_FAVICON_IMAGE = siteStorageMedia('founder-aside-portrait.webp');
 export const HERO_IMAGE = siteStorageMedia('hero-ambient.svg');
 export const FOUNDER_IMAGE = siteStorageMedia('founder-portrait.svg');
 export const LOGO_IMAGE = siteStorageMedia('logo.svg');

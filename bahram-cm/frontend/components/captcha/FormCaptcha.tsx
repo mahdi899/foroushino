@@ -35,10 +35,16 @@ export function useFormSecurity(
   const band = options?.captchaBand ?? false;
   const inline = options?.captchaInline ?? true;
 
-  const getSecurityPayload = (): FormSecurityPayload => ({
-    captcha: captchaRequired ? captchaRef.current?.getPayload() ?? null : null,
-    website: honeypotEnabled ? honeypot : undefined,
-  });
+  const getSecurityPayload = (): FormSecurityPayload => {
+    const captcha =
+      captchaRequired
+        ? captchaGate.fieldPayload ?? captchaRef.current?.getPayload() ?? null
+        : null;
+    return {
+      captcha,
+      website: honeypotEnabled ? honeypot : undefined,
+    };
+  };
 
   const honeypotField = honeypotEnabled ? (
     <input
@@ -59,7 +65,7 @@ export function useFormSecurity(
       ref={captchaRef}
       key={captchaGate.resetKey}
       active={configLoaded}
-      siteKey={captchaGate.siteKey}
+      siteKey={admin ? '' : captchaGate.siteKey}
       variant={admin ? 'admin' : 'site'}
       compact
       inline={inline}

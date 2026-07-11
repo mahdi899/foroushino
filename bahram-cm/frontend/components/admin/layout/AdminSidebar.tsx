@@ -45,7 +45,7 @@ export function AdminSidebar({
           {!collapsed && (
             <div className="min-w-0">
               <p className="admin-sidebar__brand-text truncate">پنل بهرام</p>
-              <p className="admin-sidebar__brand-sub">مدیریت محتوا</p>
+              <p className="admin-sidebar__brand-sub">پنل مدیریت</p>
             </div>
           )}
         </div>

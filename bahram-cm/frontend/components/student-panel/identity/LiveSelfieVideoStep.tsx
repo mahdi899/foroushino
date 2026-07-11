@@ -1,8 +1,22 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { Camera, CheckCircle2, Loader2, Mic, RefreshCw, Square, Video } from 'lucide-react';
 import { fetchVideoPromptAction } from '@/lib/student/identityActions';
+import {
+  MediaPermissionError,
+  mediaPermissionErrorMessage,
+  requestCameraAndMicrophone,
+  stopMediaStream,
+} from '@/lib/media/requestUserMedia';
+import {
+  createMediaRecorder,
+  createRecorderBlob,
+  isLiveMediaStream,
+  primeVideoElement,
+  recorderErrorMessage,
+  startMediaRecorder,
+} from '@/lib/media/recorder';
 
 const MIN_SEC = 5;
 const MAX_SEC = 20;
@@ -13,6 +27,78 @@ const TIPS = [
   'متن نمایش‌داده‌شده را با صدای واضح و رو به دوربین بخوانید.',
 ] as const;
 
+async function waitForVideoElement(
+  ref: RefObject<HTMLVideoElement | null>,
+  timeoutMs = 3000,
+): Promise<HTMLVideoElement> {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (ref.current) return ref.current;
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+  }
+  throw new Error('Video element not ready');
+}
+
+async function bindStreamToVideo(video: HTMLVideoElement, stream: MediaStream) {
+  video.srcObject = stream;
+  video.muted = true;
+  video.playsInline = true;
+  video.autoplay = true;
+
+  await Promise.race([
+    new Promise<void>((resolve) => {
+      if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+        resolve();
+        return;
+      }
+      const done = () => resolve();
+      video.addEventListener('loadedmetadata', done, { once: true });
+      video.addEventListener('loadeddata', done, { once: true });
+    }),
+    new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 1500);
+    }),
+  ]);
+
+  try {
+    await video.play();
+  } catch (firstErr) {
+    if (!video.paused) return;
+    try {
+      await video.play();
+    } catch {
+      throw firstErr;
+    }
+  }
+}
+
+function isMediaAccessError(err: unknown): boolean {
+  if (err instanceof MediaPermissionError) return true;
+  if (!(err instanceof DOMException)) return false;
+  return ['NotAllowedError', 'PermissionDeniedError', 'NotFoundError', 'DevicesNotFoundError', 'NotReadableError', 'TrackStartError'].includes(
+    err.name,
+  );
+}
+
+function cameraAttachErrorMessage(err: unknown): string {
+  if (err instanceof Error && err.message === 'MediaStream inactive') {
+    return 'اتصال دوربین قطع شده است. دوباره «اجازه دسترسی» را بزنید.';
+  }
+
+  const name = err instanceof DOMException ? err.name : '';
+  if (name === 'NotAllowedError') {
+    return 'مرورگر اجازهٔ پخش تصویر دوربین را نداد. دوباره «اجازه دسترسی» را بزنید.';
+  }
+
+  if (err instanceof Error && err.message === 'Video element not ready') {
+    return 'نمایش دوربین آماده نشد. صفحه را رفرش کنید و دوباره تلاش کنید.';
+  }
+
+  return 'اتصال به دوربین برقرار نشد. دوباره «اجازه دسترسی» را بزنید.';
+}
+
 type Props = {
   onRecorded: (blob: Blob) => void;
   onPrompt: (text: string) => void;
@@ -21,11 +107,19 @@ type Props = {
   onContinue: () => void;
 };
 
-export function LiveSelfieVideoStep({ onRecorded, onPrompt, hasRecording, onBack, onContinue }: Props) {
+export function LiveSelfieVideoStep({
+  onRecorded,
+  onPrompt,
+  hasRecording,
+  onBack,
+  onContinue,
+}: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playbackRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const mountedRef = useRef(true);
   const startedAtRef = useRef(0);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const maxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -34,6 +128,7 @@ export function LiveSelfieVideoStep({ onRecorded, onPrompt, hasRecording, onBack
   const [error, setError] = useState<string | null>(null);
   const [loadingPrompt, setLoadingPrompt] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+  const [requestingCamera, setRequestingCamera] = useState(false);
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -51,20 +146,53 @@ export function LiveSelfieVideoStep({ onRecorded, onPrompt, hasRecording, onBack
   }, []);
 
   const stopStream = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
+    stopMediaStream(streamRef.current);
     streamRef.current = null;
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setCameraReady(false);
+  }, []);
+
+  const attachStream = useCallback(async (stream: MediaStream) => {
+    if (!isLiveMediaStream(stream)) {
+      throw new Error('MediaStream inactive');
+    }
+
+    if (streamRef.current !== stream) {
+      stopMediaStream(streamRef.current);
+      streamRef.current = stream;
+    }
+
+    const video = await waitForVideoElement(videoRef);
+    await bindStreamToVideo(video, stream);
+    setCameraReady(true);
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       clearTimers();
-      stopStream();
+      window.setTimeout(() => {
+        if (!mountedRef.current) {
+          stopMediaStream(streamRef.current);
+          streamRef.current = null;
+        }
+      }, 0);
     };
-  }, [clearTimers, stopStream]);
+  }, [clearTimers]);
 
   useEffect(() => {
     if (!previewUrl) return;
     return () => URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
+  useEffect(() => {
+    if (!previewUrl || !playbackRef.current) return;
+    const video = playbackRef.current;
+    video.src = previewUrl;
+    return primeVideoElement(video);
   }, [previewUrl]);
 
   const loadPrompt = useCallback(async () => {
@@ -86,26 +214,30 @@ export function LiveSelfieVideoStep({ onRecorded, onPrompt, hasRecording, onBack
 
   async function startCamera() {
     setError(null);
+    setRequestingCamera(true);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user' },
-        audio: true,
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-      setCameraReady(true);
-    } catch {
-      setError('دسترسی به دوربین ممکن نشد. لطفاً مجوز دوربین و میکروفون را در مرورگر فعال کنید.');
+      stopStream();
+      const stream = await requestCameraAndMicrophone();
+      await attachStream(stream);
+    } catch (err) {
+      setError(isMediaAccessError(err) ? mediaPermissionErrorMessage(err) : cameraAttachErrorMessage(err));
+    } finally {
+      setRequestingCamera(false);
     }
+  }
+
+  function handleBack() {
+    stopStream();
+    onBack();
   }
 
   function finishRecording() {
     const recorder = mediaRecorderRef.current;
     if (!recorder || recorder.state === 'inactive') return;
     clearTimers();
+    if (recorder.state === 'recording') {
+      recorder.requestData();
+    }
     recorder.stop();
     setRecording(false);
   }
@@ -119,33 +251,32 @@ export function LiveSelfieVideoStep({ onRecorded, onPrompt, hasRecording, onBack
       setPreviewUrl(null);
     }
 
-    const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-      ? 'video/webm;codecs=vp9'
-      : MediaRecorder.isTypeSupported('video/webm')
-        ? 'video/webm'
-        : '';
-
     try {
-      const recorder = new MediaRecorder(streamRef.current, mime ? { mimeType: mime } : undefined);
+      const recorder = createMediaRecorder(streamRef.current);
+      const mimeType = recorder.mimeType;
       mediaRecorderRef.current = recorder;
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
       recorder.onstop = () => {
         const secs = Math.floor((Date.now() - startedAtRef.current) / 1000);
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'video/webm' });
+        const blob = createRecorderBlob(chunksRef.current, recorder.mimeType || mimeType);
+        if (blob.size === 0) {
+          setError('ضبط ویدیو انجام نشد. دوباره «شروع ضبط» را بزنید.');
+          setCameraReady(Boolean(streamRef.current && isLiveMediaStream(streamRef.current)));
+          return;
+        }
         if (secs < MIN_SEC) {
           setError(`ویدیو خیلی کوتاه است. حداقل ${MIN_SEC.toLocaleString('fa-IR')} ثانیه ضبط کنید.`);
-          void startCamera();
+          setCameraReady(Boolean(streamRef.current && isLiveMediaStream(streamRef.current)));
           return;
         }
         const url = URL.createObjectURL(blob);
         setPreviewUrl(url);
         onRecorded(blob);
         stopStream();
-        setCameraReady(false);
       };
-      recorder.start(200);
+      startMediaRecorder(recorder);
       startedAtRef.current = Date.now();
       setRecording(true);
       setElapsed(0);
@@ -153,8 +284,8 @@ export function LiveSelfieVideoStep({ onRecorded, onPrompt, hasRecording, onBack
         setElapsed(Math.floor((Date.now() - startedAtRef.current) / 1000));
       }, 250);
       maxTimerRef.current = setTimeout(() => finishRecording(), MAX_SEC * 1000);
-    } catch {
-      setError('ضبط ویدیو در این مرورگر پشتیبانی نمی‌شود.');
+    } catch (err) {
+      setError(recorderErrorMessage(err));
     }
   }
 
@@ -219,13 +350,17 @@ export function LiveSelfieVideoStep({ onRecorded, onPrompt, hasRecording, onBack
               <video
                 ref={videoRef}
                 muted
+                autoPlay
                 playsInline
                 className="panel-identity-selfie-video__live"
               />
               {!cameraReady ? (
                 <div className="panel-identity-selfie-video__placeholder">
                   <Camera size={28} strokeWidth={1.75} aria-hidden />
-                  <p>دوربین هنوز روشن نشده است</p>
+                  <p>برای ضبط ویدیو، دسترسی دوربین و میکروفون لازم است</p>
+                  <p className="panel-identity-selfie-video__placeholder-hint">
+                    با زدن دکمهٔ زیر، مرورگر از شما اجازه می‌خواهد.
+                  </p>
                 </div>
               ) : null}
               {recording ? (
@@ -237,7 +372,13 @@ export function LiveSelfieVideoStep({ onRecorded, onPrompt, hasRecording, onBack
             </div>
           ) : (
             <div className="panel-identity-selfie-video__viewport panel-identity-selfie-video__viewport--recorded">
-              <video src={previewUrl} controls className="panel-identity-selfie-video__playback" />
+              <video
+                ref={playbackRef}
+                controls
+                playsInline
+                preload="auto"
+                className="panel-identity-selfie-video__playback"
+              />
               <span className="panel-identity-selfie-video__recorded-badge">
                 <CheckCircle2 size={14} aria-hidden />
                 ضبط شد
@@ -253,10 +394,10 @@ export function LiveSelfieVideoStep({ onRecorded, onPrompt, hasRecording, onBack
                 type="button"
                 className="btn btn-primary"
                 onClick={() => void startCamera()}
-                disabled={!prompt || loadingPrompt}
+                disabled={!prompt || loadingPrompt || requestingCamera}
               >
-                <Camera size={16} aria-hidden />
-                روشن کردن دوربین
+                {requestingCamera ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Camera size={16} aria-hidden />}
+                {requestingCamera ? 'در انتظار تأیید دسترسی…' : 'اجازه دسترسی به دوربین و میکروفون'}
               </button>
             ) : null}
             {cameraReady && !recording ? (
@@ -287,7 +428,7 @@ export function LiveSelfieVideoStep({ onRecorded, onPrompt, hasRecording, onBack
       </div>
 
       <div className="panel-identity-step__actions">
-        <button type="button" className="btn btn-secondary" onClick={onBack}>
+        <button type="button" className="btn btn-secondary" onClick={handleBack}>
           قبلی
         </button>
         <button type="button" className="btn btn-primary" disabled={!hasRecording} onClick={onContinue}>

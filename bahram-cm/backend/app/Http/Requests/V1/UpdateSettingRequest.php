@@ -8,7 +8,17 @@ class UpdateSettingRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->hasPermission('settings.write');
+        $user = $this->user();
+        if (! $user) {
+            return false;
+        }
+
+        $group = (string) $this->route('group');
+        if (in_array($group, ['site', 'links'], true)) {
+            return $user->isSuperAdmin();
+        }
+
+        return $user->hasPermission('settings.manage');
     }
 
     public function rules(): array

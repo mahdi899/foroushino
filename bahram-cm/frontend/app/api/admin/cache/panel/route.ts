@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { adminFetch } from '@/lib/auth/session';
+import { adminFetch, can, getCurrentUser } from '@/lib/auth/session';
 
 async function proxyGet(path: string) {
   const res = await adminFetch<{ data: unknown }>(path);
@@ -7,6 +7,11 @@ async function proxyGet(path: string) {
 }
 
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!can(user, 'settings.manage')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   try {
     const [statusRes, settingsRes] = await Promise.all([
       adminFetch<{ data: unknown }>('/panel/cache/status'),

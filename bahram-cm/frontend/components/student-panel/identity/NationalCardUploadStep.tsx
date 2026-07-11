@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { CheckCircle2, CreditCard, ImagePlus, Trash2, Upload } from 'lucide-react';
+import { CheckCircle2, CreditCard, ImagePlus, Loader2, Trash2, Upload } from 'lucide-react';
 import { cn } from '@/lib/cn';
 
 const MAX_MB = 8;
@@ -25,9 +25,18 @@ type Props = {
   onFileChange: (file: File | null) => void;
   onBack: () => void;
   onContinue: () => void;
+  continueDisabled?: boolean;
+  continuePending?: boolean;
 };
 
-export function NationalCardUploadStep({ file, onFileChange, onBack, onContinue }: Props) {
+export function NationalCardUploadStep({
+  file,
+  onFileChange,
+  onBack,
+  onContinue,
+  continueDisabled = false,
+  continuePending = false,
+}: Props) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -190,8 +199,14 @@ export function NationalCardUploadStep({ file, onFileChange, onBack, onContinue 
         <button type="button" className="btn btn-secondary" onClick={onBack}>
           قبلی
         </button>
-        <button type="button" className="btn btn-primary" disabled={!file} onClick={onContinue}>
-          ادامه
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={!file || continueDisabled}
+          onClick={onContinue}
+        >
+          {continuePending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+          {continuePending ? 'در انتظار تأیید دسترسی…' : 'ادامه'}
         </button>
       </div>
     </div>

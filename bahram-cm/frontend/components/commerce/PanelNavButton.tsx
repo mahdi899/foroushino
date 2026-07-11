@@ -36,13 +36,13 @@ export function PanelNavButton({ className, showLabel = true, onNavigate }: Pane
       className={cn(
         iconButtonClass,
         "inline-flex shrink-0",
-        showLabel ? "h-10 gap-2 px-3" : "h-10 w-10",
+        showLabel ? "h-10 min-w-0 gap-2 px-3" : "h-10 w-10",
         className,
       )}
     >
       <LayoutDashboard className="h-[1.125rem] w-[1.125rem] shrink-0" strokeWidth={1.75} aria-hidden />
       {showLabel ? (
-        <span className="text-sm font-medium whitespace-nowrap">{label}</span>
+        <span className="min-w-0 truncate text-sm font-medium">{label}</span>
       ) : null}
     </button>
   );

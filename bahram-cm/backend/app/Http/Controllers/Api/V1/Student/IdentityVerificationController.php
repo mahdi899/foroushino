@@ -52,12 +52,14 @@ class IdentityVerificationController extends Controller
 
     public function draft(Request $request, EnsureIdentityProfile $ensure): JsonResponse
     {
+        $maxBirthDate = now()->subYears(10)->toDateString();
+
         $data = $request->validate(
             [
                 'first_name' => ['required', 'string', 'max:100'],
                 'last_name' => ['required', 'string', 'max:100'],
                 'national_code' => ['required', 'string', 'max:20'],
-                'date_of_birth' => ['required', 'date'],
+                'date_of_birth' => ['required', 'date', 'before_or_equal:'.$maxBirthDate],
                 'gender' => ['required', 'string', 'max:20'],
                 'city' => ['required', 'string', 'max:100'],
             ],
@@ -219,7 +221,7 @@ class IdentityVerificationController extends Controller
         $prompts = config('bahram.identity.video_prompts', []);
         $text = is_array($prompts) && $prompts !== []
             ? $prompts[array_rand($prompts)]
-            : 'من درخواست تأیید حسابم را دارم.';
+            : 'سلام؛ من دانشجوی آکادمی بهرام رستمی هستم و این ویدیو را برای تأیید هویت حساب کاربری‌ام در پنل آکادمی ضبط می‌کنم.';
 
         return ApiResponse::success([
             'text' => $text,
@@ -230,12 +232,14 @@ class IdentityVerificationController extends Controller
 
     public function submit(Request $request, SubmitIdentityVerification $submit): JsonResponse
     {
+        $maxBirthDate = now()->subYears(10)->toDateString();
+
         $data = $request->validate(
             [
                 'first_name' => ['required', 'string', 'max:100'],
                 'last_name' => ['required', 'string', 'max:100'],
                 'national_code' => ['required', 'string', 'max:20'],
-                'date_of_birth' => ['required', 'date'],
+                'date_of_birth' => ['required', 'date', 'before_or_equal:'.$maxBirthDate],
                 'gender' => ['required', 'string', 'max:20'],
                 'city' => ['required', 'string', 'max:100'],
                 'expected_video_text' => ['nullable', 'string', 'max:500'],

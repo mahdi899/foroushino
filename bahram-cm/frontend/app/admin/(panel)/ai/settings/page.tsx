@@ -289,7 +289,7 @@ export default function AiSettingsPage() {
           provider: textForm.provider,
           model: pf.model,
           endpoint: pf.baseUrl,
-          hints: ['مطمئن شوید Laravel روی پورت ۸۰۰۰ در حال اجراست.', 'دسترسی settings.write لازم است.'],
+          hints: ['مطمئن شوید Laravel روی پورت ۸۰۰۰ در حال اجراست.', 'دسترسی settings.manage لازم است.'],
         });
       }
       setErrorModalOpen(true);

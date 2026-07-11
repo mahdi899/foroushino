@@ -17,18 +17,24 @@ class CacheController extends Controller
         return response()->json(['data' => $this->cache->publicConfig()]);
     }
 
-    public function status(): JsonResponse
+    public function status(Request $request): JsonResponse
     {
+        abort_unless($request->user()?->hasPermission('settings.manage'), 403);
+
         return response()->json(['data' => $this->cache->status()]);
     }
 
-    public function settings(): JsonResponse
+    public function settings(Request $request): JsonResponse
     {
+        abort_unless($request->user()?->hasPermission('settings.manage'), 403);
+
         return response()->json(['data' => $this->cache->getSettings()]);
     }
 
     public function updateSettings(Request $request): JsonResponse
     {
+        abort_unless($request->user()?->hasPermission('settings.manage'), 403);
+
         $data = $request->validate([
             'performance_preset' => 'sometimes|string|in:aggressive,balanced,fresh',
             'page_cache' => 'sometimes|boolean',
@@ -62,6 +68,8 @@ class CacheController extends Controller
 
     public function developerMode(Request $request): JsonResponse
     {
+        abort_unless($request->user()?->hasPermission('settings.manage'), 403);
+
         $validated = $request->validate([
             'enable' => 'required|boolean',
         ]);
@@ -76,6 +84,8 @@ class CacheController extends Controller
 
     public function purge(Request $request): JsonResponse
     {
+        abort_unless($request->user()?->hasPermission('settings.manage'), 403);
+
         $validated = $request->validate([
             'scope' => 'required|string|max:120',
             'tags' => 'sometimes|array',
@@ -101,20 +111,26 @@ class CacheController extends Controller
         return response()->json(['data' => $result]);
     }
 
-    public function clearPurgeLog(): JsonResponse
+    public function clearPurgeLog(Request $request): JsonResponse
     {
+        abort_unless($request->user()?->hasPermission('settings.manage'), 403);
+
         $this->cache->clearPurgeLog();
 
         return response()->json(['data' => ['ok' => true]]);
     }
 
-    public function integrations(): JsonResponse
+    public function integrations(Request $request): JsonResponse
     {
+        abort_unless($request->user()?->hasPermission('settings.manage'), 403);
+
         return response()->json(['data' => $this->cache->integrationsAdminView()]);
     }
 
     public function updateIntegrations(Request $request): JsonResponse
     {
+        abort_unless($request->user()?->hasPermission('settings.manage'), 403);
+
         $data = $request->validate([
             'revalidate_webhook_url' => 'sometimes|nullable|string|max:512',
             'revalidate_secret_input' => 'sometimes|nullable|string|max:256',
@@ -131,6 +147,8 @@ class CacheController extends Controller
 
     public function testIntegrations(Request $request): JsonResponse
     {
+        abort_unless($request->user()?->hasPermission('settings.manage'), 403);
+
         $validated = $request->validate([
             'target' => 'required|string|in:webhook,cloudflare,arvan',
         ]);

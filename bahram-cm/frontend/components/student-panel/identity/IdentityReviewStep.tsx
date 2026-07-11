@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, ClipboardCheck, CreditCard, Loader2, Video } from 'lucide-react';
 import { formatDateFa } from '@/lib/persian';
+import { primeVideoElement } from '@/lib/media/recorder';
 
 const GENDER_FA: Record<string, string> = {
   male: 'مرد',
@@ -30,6 +31,7 @@ type Props = {
 export function IdentityReviewStep({ draft, cardFile, videoBlob, pending, onBack, onSubmit }: Props) {
   const [cardPreviewUrl, setCardPreviewUrl] = useState<string | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const reviewVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (!cardFile) {
@@ -52,6 +54,13 @@ export function IdentityReviewStep({ draft, cardFile, videoBlob, pending, onBack
     setVideoPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [videoBlob]);
+
+  useEffect(() => {
+    if (!videoPreviewUrl || !reviewVideoRef.current) return;
+    const video = reviewVideoRef.current;
+    video.src = videoPreviewUrl;
+    return primeVideoElement(video);
+  }, [videoPreviewUrl]);
 
   const identityFields = [
     { key: 'name', label: 'نام و نام خانوادگی', value: `${draft.first_name} ${draft.last_name}`.trim() },
@@ -115,7 +124,7 @@ export function IdentityReviewStep({ draft, cardFile, videoBlob, pending, onBack
           <article className="panel-identity-review__artifact">
             <div className="panel-identity-review__artifact-media panel-identity-review__artifact-media--video">
               {videoPreviewUrl ? (
-                <video src={videoPreviewUrl} muted playsInline />
+                <video ref={reviewVideoRef} muted playsInline preload="auto" controls />
               ) : (
                 <Video size={22} aria-hidden />
               )}

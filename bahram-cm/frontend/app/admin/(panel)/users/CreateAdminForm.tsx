@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2, ShieldPlus, UserPlus } from 'lucide-react';
 import { createAdminAction } from '../access/actions';
 import type { AdminRole } from '@/lib/admin/accessTypes';
+import { isValidIranMobile, sanitizePhoneInput } from '@/lib/chatbot/phone';
 
 type Props = {
   roles: AdminRole[];
@@ -16,6 +17,7 @@ export function CreateAdminForm({ roles, isSuperAdmin }: Props) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('');
   const [pending, setPending] = useState(false);
@@ -31,9 +33,16 @@ export function CreateAdminForm({ roles, isSuperAdmin }: Props) {
     setError('');
     setMessage('');
 
+    if (!isValidIranMobile(mobile)) {
+      setError('شماره موبایل معتبر نیست.');
+      setPending(false);
+      return;
+    }
+
     const res = await createAdminAction({
       name: name.trim(),
       email: email.trim(),
+      mobile: mobile.trim(),
       password,
       role: role || defaultRole,
     });
@@ -44,6 +53,7 @@ export function CreateAdminForm({ roles, isSuperAdmin }: Props) {
       setMessage(`مدیر «${res.name}» با نقش انتخاب‌شده ساخته شد.`);
       setName('');
       setEmail('');
+      setMobile('');
       setPassword('');
       setRole(defaultRole);
       router.refresh();
@@ -70,7 +80,7 @@ export function CreateAdminForm({ roles, isSuperAdmin }: Props) {
             افزودن مدیر
           </h2>
           <p className="mt-1 text-caption text-text-muted">
-            نام، ایمیل و رمز عبور را وارد کنید و یکی از نقش‌های تعریف‌شده را اختصاص دهید.
+            نام، ایمیل، شماره موبایل و رمز عبور را وارد کنید و یکی از نقش‌های تعریف‌شده را اختصاص دهید.
           </p>
         </div>
         <button type="button" onClick={() => setOpen(false)} className="btn btn-secondary text-caption">
@@ -101,6 +111,20 @@ export function CreateAdminForm({ roles, isSuperAdmin }: Props) {
             placeholder="admin@example.com"
             dir="ltr"
             autoComplete="off"
+          />
+        </label>
+        <label className="min-w-0">
+          <span className="field-label">شماره موبایل (ورود با OTP)</span>
+          <input
+            required
+            type="tel"
+            value={mobile}
+            onChange={(e) => setMobile(sanitizePhoneInput(e.target.value))}
+            className="field-input w-full"
+            placeholder="۰۹۱۲۱۲۳۴۵۶۷"
+            dir="ltr"
+            autoComplete="off"
+            inputMode="numeric"
           />
         </label>
         <label className="min-w-0">

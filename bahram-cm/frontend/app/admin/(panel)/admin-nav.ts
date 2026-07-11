@@ -9,6 +9,8 @@ export type AdminNavItem = {
   emphasis?: boolean;
   /** Spatie permission required to show this item. Super-admin always sees all. */
   permission?: string;
+  /** Only visible to super-admin (مدیر کل). */
+  superAdminOnly?: boolean;
 };
 
 export const adminNav: {
@@ -72,15 +74,15 @@ export const adminNav: {
     items: [
       { href: '/admin/seo', label: 'سئو و تحلیل', icon: 'Search', matchPrefix: true },
       { href: '/admin/audit', label: 'گزارش فعالیت', icon: 'ClipboardList', matchPrefix: true, permission: 'audit.view' },
-      { href: '/admin/cache', label: 'کش و بهینه‌سازی', icon: 'Zap', matchPrefix: true },
-      { href: '/admin/ai/settings', label: 'هوش مصنوعی', icon: 'Bot', matchPrefix: true },
+      { href: '/admin/cache', label: 'کش و بهینه‌سازی', icon: 'Zap', matchPrefix: true, permission: 'settings.manage' },
+      { href: '/admin/ai/settings', label: 'هوش مصنوعی', icon: 'Bot', matchPrefix: true, permission: 'settings.manage' },
       { href: '/admin/users', label: 'مدیران', icon: 'Shield', matchPrefix: true, permission: 'roles.view' },
       {
         href: '/admin/access/roles',
         label: 'نقش‌ها و دسترسی‌ها',
         icon: 'KeyRound',
         matchPrefix: true,
-        permission: 'roles.view',
+        superAdminOnly: true,
       },
       {
         href: '/admin/settings/identity-providers',
@@ -89,7 +91,7 @@ export const adminNav: {
         matchPrefix: true,
         permission: 'identity_provider.view',
       },
-      { href: '/admin/settings', label: 'تنظیمات سایت', icon: 'Settings', emphasis: true, permission: 'settings.view' },
+      { href: '/admin/settings', label: 'تنظیمات سایت', icon: 'Settings', emphasis: true, superAdminOnly: true },
     ],
   },
 ];
@@ -104,6 +106,7 @@ export function filterAdminNav(
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => {
+        if (item.superAdminOnly && !opts.isSuperAdmin) return false;
         if (!item.permission) return true;
         return opts.permissions.includes(item.permission);
       }),

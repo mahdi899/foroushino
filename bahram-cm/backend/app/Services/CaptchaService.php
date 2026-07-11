@@ -183,7 +183,9 @@ class CaptchaService
 
         if ($token !== null && $token !== '') {
             $verified = $this->verifyRecaptcha($token, $ip);
-        } elseif ($mathId !== null && $mathId !== '' && $mathAnswer !== null && $mathAnswer !== '') {
+        }
+
+        if (! $verified && $mathId !== null && $mathId !== '' && $mathAnswer !== null && $mathAnswer !== '') {
             $verified = $this->verifyMath($mathId, $mathAnswer);
         }
 

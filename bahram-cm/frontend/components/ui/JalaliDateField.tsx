@@ -1,7 +1,6 @@
 'use client';
 
 import DatePicker from 'react-multi-date-picker';
-import 'react-multi-date-picker/styles/colors/teal.css';
 import { CalendarDays } from 'lucide-react';
 import type DateObject from 'react-date-object';
 import {

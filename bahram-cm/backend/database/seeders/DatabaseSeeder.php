@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\AdminRoleName;
 use App\Models\AiSetting;
 use App\Models\ChatbotSetting;
 use App\Models\PaymentSetting;
@@ -21,16 +22,21 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Admin user for the dashboard.
-        User::query()->updateOrCreate(
+        $admin = User::query()->updateOrCreate(
             ['email' => 'admin@bahram.local'],
             [
                 'name' => 'مدیر بهرام',
+                'mobile' => '09121000001',
+                'mobile_verified_at' => now(),
                 'password' => Hash::make('password'),
                 'is_admin' => true,
             ]
         );
 
         $this->call(RolePermissionSeeder::class);
+
+        // Ensure the default admin always keeps super-admin (seeder may have run before this user existed).
+        $admin->syncRoles([AdminRoleName::SuperAdmin->value]);
         $this->call(IdentityProviderSeeder::class);
 
         // Settings singletons with Persian-friendly defaults.

@@ -38,6 +38,10 @@ class AuthController extends Controller
             return $blocked;
         }
 
+        if (User::query()->where('mobile', $mobile)->where('is_admin', true)->exists()) {
+            return ApiResponse::error('forbidden', 'این شماره متعلق به یک حساب مدیریتی است.', 403);
+        }
+
         try {
             $this->otp->send($mobile, OtpPurpose::Login, $request->ip(), $request->userAgent());
         } catch (OtpException $e) {
@@ -57,6 +61,10 @@ class AuthController extends Controller
 
         if ($blocked = StudentAccess::blockedResponseForMobile($mobile)) {
             return $blocked;
+        }
+
+        if (User::query()->where('mobile', $mobile)->where('is_admin', true)->exists()) {
+            return ApiResponse::error('forbidden', 'این شماره متعلق به یک حساب مدیریتی است.', 403);
         }
 
         try {

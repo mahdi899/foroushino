@@ -323,15 +323,7 @@ export function MediaLibraryGrid({
                   isSelected ? 'border-accent ring-2 ring-accent/30' : 'border-border hover:border-primary/40 hover:ring-2 hover:ring-primary/15',
                 )}
               >
-                <div
-                  className="relative aspect-square overflow-hidden bg-surface-soft"
-                  style={{
-                    backgroundImage:
-                      'linear-gradient(45deg,#ececee 25%,transparent 25%),linear-gradient(-45deg,#ececee 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#ececee 75%),linear-gradient(-45deg,transparent 75%,#ececee 75%)',
-                    backgroundSize: '12px 12px',
-                    backgroundPosition: '0 0,0 6px,6px -6px,-6px 0',
-                  }}
-                >
+                <div className="admin-media-thumb-frame relative aspect-square overflow-hidden">
                   <MediaThumb
                     src={item.src}
                     persistSrc={item.persistSrc}

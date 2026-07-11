@@ -192,6 +192,8 @@
 }
 
 .panel-header {
+  position: sticky;
+  top: 0;
   flex-shrink: 0;
   z-index: 25;
   display: flex;
@@ -202,9 +204,13 @@
   justify-content: space-between;
   gap: 0.75rem;
   overflow: visible;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  backdrop-filter: blur(16px);
   padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
   padding-left: max(1rem, env(safe-area-inset-left, 0px));
   padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  padding-bottom: 0.75rem;
 }
 
 /* RTL: lead = بالا سمت راست — زنگ + پروفایل */
@@ -221,6 +227,7 @@
 /* RTL: trail = بالا سمت چپ — منو، تم، سایت، خروج */
 .panel-header__trail {
   display: flex;
+  min-width: 0;
   flex-shrink: 0;
   align-items: center;
   justify-content: flex-end;
@@ -410,7 +417,7 @@
 .panel-header__profile {
   display: inline-flex;
   width: auto;
-  max-width: min(14rem, 42vw);
+  max-width: min(11rem, 38vw);
   min-width: 0;
   height: 2.5rem;
   flex-shrink: 1;
@@ -1254,19 +1261,19 @@
 .panel-mobile-menu {
   position: fixed;
   inset-inline: 0;
-  bottom: 0;
+  bottom: var(--panel-bottom-nav-offset);
   z-index: 50;
   display: flex;
-  max-height: min(72dvh, 28rem);
+  max-height: min(calc(72dvh - var(--panel-bottom-nav-bar)), 28rem);
   flex-direction: column;
   overflow: hidden;
   border-radius: 1.35rem 1.35rem 0 0;
   border-top: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
   background: var(--color-surface);
   box-shadow: 0 -18px 48px rgba(2, 6, 7, 0.28);
-  transform: translateY(105%);
+  transform: translateY(calc(105% + var(--panel-bottom-nav-offset)));
   transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
-  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.5rem);
+  padding-bottom: 0.5rem;
   pointer-events: none;
 }
 
@@ -5009,7 +5016,6 @@
 
 .panel-identity-review__artifact-media--video video {
   object-fit: cover;
-  transform: scaleX(-1);
 }
 
 .panel-identity-review__artifact-copy {
@@ -5120,9 +5126,10 @@
 
 .panel-identity-selfie-video__prompt-text {
   margin: 0;
-  font-size: 0.9375rem;
-  line-height: 1.7;
-  color: var(--color-text);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.75;
+  color: var(--color-error, #dc2626);
 }
 
 .panel-identity-selfie-video__prompt-btn {
@@ -5204,8 +5211,13 @@
   object-fit: cover;
 }
 
-.panel-identity-selfie-video__live {
-  transform: scaleX(-1);
+.panel-identity-selfie-video__playback {
+  background: #000;
+  object-fit: contain;
+}
+
+.panel-identity-selfie-video__viewport--recorded {
+  min-height: 11.5rem;
 }
 
 .panel-identity-selfie-video__placeholder {
@@ -5223,6 +5235,12 @@
 .panel-identity-selfie-video__placeholder p {
   margin: 0;
   font-size: 0.8125rem;
+}
+
+.panel-identity-selfie-video__placeholder-hint {
+  max-width: 16rem;
+  font-size: 0.75rem !important;
+  opacity: 0.82;
 }
 
 .panel-identity-selfie-video__recording-badge {
@@ -7928,14 +7946,23 @@ button.panel-notification-toast__card {
 .panel-root .rmdp-wrapper {
   direction: rtl;
   font-family: var(--font-body), sans-serif;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-soft, 0 12px 32px rgba(0, 59, 64, 0.12));
+  color: var(--color-text);
 }
 
 .panel-root .rmdp-calendar {
   border-radius: 16px;
-  border: 1px solid var(--color-border);
+  border: none;
   background: var(--color-surface);
-  box-shadow: var(--shadow-soft, 0 12px 32px rgba(0, 59, 64, 0.12));
   overflow: hidden;
+}
+
+.panel-root .rmdp-month-picker,
+.panel-root .rmdp-year-picker {
+  background-color: var(--color-surface);
+  color: var(--color-text);
 }
 
 .panel-root .rmdp-header-values,
@@ -7948,6 +7975,12 @@ button.panel-notification-toast__card {
   color: var(--color-text-muted);
   font-weight: 600;
   font-size: 0.75rem;
+}
+
+.panel-root .rmdp-day.rmdp-deactive,
+.panel-root .rmdp-day.rmdp-disabled {
+  color: var(--color-text-muted);
+  opacity: 0.55;
 }
 
 .panel-root .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span {
@@ -7972,20 +8005,50 @@ button.panel-notification-toast__card {
 }
 
 .panel-root .rmdp-arrow-container:hover {
-  background: var(--color-surface-soft);
+  background: var(--color-primary);
   box-shadow: none;
+}
+
+.panel-root .rmdp-arrow-container:hover .rmdp-arrow {
+  border-color: #fff;
 }
 
 .panel-root .rmdp-arrow {
   border-color: var(--color-text-muted);
 }
 
+.panel-root .rmdp-container .rmdp-ep-arrow::after {
+  background-color: var(--color-surface);
+}
+
+.panel-root .rmdp-container .rmdp-ep-arrow[direction='top'] {
+  border-bottom-color: var(--color-surface);
+}
+
+.panel-root .rmdp-container .rmdp-ep-arrow[direction='bottom'] {
+  border-top-color: var(--color-surface);
+}
+
+.panel-root .rmdp-container .rmdp-ep-arrow[direction='left'] {
+  border-right-color: var(--color-surface);
+}
+
+.panel-root .rmdp-container .rmdp-ep-arrow[direction='right'] {
+  border-left-color: var(--color-surface);
+}
+
 .panel-root[data-panel-theme='dark'] .rmdp-day.rmdp-today span {
+  background: var(--color-primary-soft);
   color: var(--color-text);
 }
 
 .panel-root[data-panel-theme='dark'] .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover {
+  background: var(--color-primary-soft);
   color: var(--color-text);
+}
+
+.panel-root[data-panel-theme='dark'] .rmdp-day.rmdp-selected span:not(.highlight) {
+  color: #fff;
 }
 
 /* Transient form feedback toasts */

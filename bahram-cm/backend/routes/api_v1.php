@@ -61,7 +61,10 @@ use App\Http\Controllers\Api\V1\Student\TicketController as StudentTicketControl
 use App\Http\Controllers\Api\V1\StudentTestimonialController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:admin-login');
+Route::post('auth/send-otp', [AuthController::class, 'sendOtp'])->middleware('throttle:10,1');
+Route::post('auth/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:10,1');
+Route::post('auth/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:20,1');
 
 /*
 |--------------------------------------------------------------------------
@@ -300,6 +303,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('roles/admins', [RoleAdminController::class, 'admins']);
     Route::post('roles/admins', [RoleAdminController::class, 'storeAdmin']);
     Route::match(['post', 'patch'], 'roles/admins/{admin}', [RoleAdminController::class, 'assignAdminRole'])->whereNumber('admin');
+    Route::delete('roles/admins/{admin}', [RoleAdminController::class, 'destroyAdmin'])->whereNumber('admin');
     Route::post('roles', [RoleAdminController::class, 'store']);
     Route::match(['put', 'patch'], 'roles/{role}', [RoleAdminController::class, 'update'])->whereNumber('role');
 

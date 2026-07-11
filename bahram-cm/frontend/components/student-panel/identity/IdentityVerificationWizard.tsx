@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { JalaliDateField } from '@/components/ui/JalaliDateField';
@@ -14,6 +14,8 @@ import {
   IDENTITY_CLIENT_ERROR_TITLES,
   validateIdentityStep1,
 } from '@/lib/student/identityVerificationErrors';
+import { selfieVideoFileName } from '@/lib/media/recorder';
+import { maxBirthDateForMinAge, MIN_IDENTITY_AGE } from '@/lib/student/age';
 import { IdentityReviewStep } from './IdentityReviewStep';
 
 const STEPS = ['اطلاعات هویتی', 'تصویر کارت ملی', 'ویدیوی سلفی زنده', 'بازبینی و ارسال'] as const;
@@ -56,6 +58,7 @@ export function IdentityVerificationWizard({
   const [error, setError] = useState<string | null>(null);
   const [errorTitle, setErrorTitle] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const maxBirthDate = useMemo(() => maxBirthDateForMinAge(MIN_IDENTITY_AGE), []);
 
   useEffect(() => {
     const main = document.querySelector<HTMLElement>('.panel-main-content');
@@ -126,7 +129,7 @@ export function IdentityVerificationWizard({
     const fd = new FormData();
     Object.entries(draft).forEach(([k, v]) => fd.set(k, v));
     fd.set('national_card', cardFile);
-    fd.set('selfie_video', videoBlob, 'selfie.webm');
+    fd.set('selfie_video', videoBlob, selfieVideoFileName(videoBlob));
     if (videoPrompt) fd.set('expected_video_text', videoPrompt);
     startTransition(async () => {
       const res = await submitIdentityVerificationAction(fd);
@@ -224,7 +227,7 @@ export function IdentityVerificationWizard({
                 value={draft.date_of_birth}
                 onChange={(date_of_birth) => setDraft((d) => ({ ...d, date_of_birth }))}
                 placeholder="مثال: ۱۳۷۵/۰۳/۱۵"
-                maxDate={new Date()}
+                maxDate={maxBirthDate}
                 required
               />
             </div>
@@ -268,10 +271,7 @@ export function IdentityVerificationWizard({
             file={cardFile}
             onFileChange={setCardFile}
             onBack={() => setStep(0)}
-            onContinue={() => {
-              setError(null);
-              setStep(2);
-            }}
+            onContinue={() => setStep(2)}
           />
         ) : null}
 

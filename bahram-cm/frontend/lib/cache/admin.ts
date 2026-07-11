@@ -122,7 +122,7 @@ export async function loadCachePanel(): Promise<CachePanelData> {
     const err = e as Error & { status?: number };
     const msg =
       err.status === 401 || err.status === 403
-        ? 'دسترسی به تنظیمات کش ندارید (settings.read)'
+        ? 'دسترسی به تنظیمات کش ندارید (settings.manage)'
         : err instanceof Error
           ? err.message
           : 'اتصال به API برقرار نشد';

@@ -62,6 +62,12 @@ final class PermissionCatalog
                 'permissions.view',
                 'permissions.manage',
             ],
+            'Admins' => [
+                'admins.view_email',
+                'admins.create',
+                'admins.assign_role',
+                'admins.delete',
+            ],
             'Support' => [
                 'tickets.view',
                 'tickets.manage',
@@ -142,6 +148,10 @@ final class PermissionCatalog
             'roles.manage' => 'مدیریت نقش‌ها',
             'permissions.view' => 'مشاهده دسترسی‌ها',
             'permissions.manage' => 'مدیریت دسترسی‌ها',
+            'admins.view_email' => 'مشاهده ایمیل مدیران',
+            'admins.create' => 'افزودن مدیر',
+            'admins.assign_role' => 'تغییر نقش مدیر',
+            'admins.delete' => 'حذف مدیر',
             'tickets.view' => 'مشاهده تیکت‌ها',
             'tickets.manage' => 'مدیریت تیکت‌ها',
             'orders.view' => 'مشاهده سفارش‌ها',

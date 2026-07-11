@@ -28,8 +28,13 @@ export type AdminUserRow = {
   id: number;
   name: string;
   email: string;
+  mobile?: string | null;
   roles: string[];
   is_super_admin: boolean;
+  can_view_email?: boolean;
+  can_create?: boolean;
+  can_assign_role?: boolean;
+  can_delete?: boolean;
 };
 
 export type AuditLogEntry = {
@@ -57,6 +62,7 @@ export const MODULE_LABELS_FA: Record<string, string> = {
   SMS: 'پیامک',
   Audit: 'ممیزی',
   'Roles & Permissions': 'نقش‌ها و دسترسی‌ها',
+  Admins: 'مدیران',
   Support: 'پشتیبانی',
   Orders: 'سفارش‌ها',
   Settings: 'تنظیمات',

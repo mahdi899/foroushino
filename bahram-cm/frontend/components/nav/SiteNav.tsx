@@ -21,6 +21,43 @@ function resolveScrolled(y: number, prev: boolean) {
   return prev ? y > SCROLL_OFF : y > SCROLL_ON;
 }
 
+function NavLink({
+  href,
+  label,
+  shortLabel,
+  active,
+  prefetch,
+}: {
+  href: string;
+  label: string;
+  shortLabel?: string;
+  active: boolean;
+  prefetch: boolean;
+}) {
+
+  return (
+    <Link
+      href={href}
+      prefetch={prefetch}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "group relative inline-flex h-10 min-w-0 max-w-full items-center whitespace-nowrap rounded-md px-1.5 pb-1 text-sm font-medium leading-none transition-colors duration-300 xl:px-2",
+        active ? "text-bone" : "text-bone-dim/95 hover:text-bone",
+      )}
+    >
+      <span className="truncate xl:hidden">{shortLabel ?? label}</span>
+      <span className="hidden truncate xl:inline">{label}</span>
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-gradient-to-l from-transparent via-emerald-glow to-transparent opacity-90 shadow-[0_0_14px_-2px_color-mix(in_oklab,var(--color-emerald-glow)_58%,transparent)] transition-[transform,opacity] duration-500 ease-[var(--ease-luxe)] xl:inset-x-2.5",
+          active ? "scale-x-100 opacity-100" : "scale-x-0 opacity-75 group-hover:scale-x-100 group-hover:opacity-100",
+        )}
+      />
+    </Link>
+  );
+}
+
 export function SiteNav() {
   const pathname = usePathname();
   const prefetchLinks = usePrefetchLinks();
@@ -50,55 +87,57 @@ export function SiteNav() {
     return () => window.removeEventListener("scroll", handleWindowScroll);
   }, [lenis]);
 
+  const headerSurface = scrolled
+    ? "bg-ink/70 backdrop-blur-2xl after:opacity-100"
+    : "bg-ink/55 backdrop-blur-xl lg:bg-transparent lg:backdrop-blur-none after:opacity-0 lg:after:opacity-0";
+
   return (
     <>
       <header
         className={cn(
-          "sticky top-0 inset-x-0 z-40 hidden transition-[background-color,backdrop-filter] duration-500 ease-[var(--ease-luxe)] lg:block",
+          "site-header sticky top-0 inset-x-0 z-40 transition-[background-color,backdrop-filter] duration-500 ease-[var(--ease-luxe)]",
           "after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-border-soft after:transition-opacity after:duration-500 after:ease-[var(--ease-luxe)]",
-          scrolled
-            ? "bg-ink/70 backdrop-blur-2xl after:opacity-100"
-            : "bg-transparent after:opacity-0",
+          headerSurface,
+          scrolled && "lg:after:opacity-100 lg:bg-ink/70 lg:backdrop-blur-2xl",
         )}
       >
-        <div className="container-luxe flex h-16 min-w-0 items-center gap-3">
+        <div className="site-header__mobile container-luxe flex h-14 min-w-0 items-center gap-3 lg:hidden">
+          <div className="flex min-w-0 shrink-0 items-center">
+            <Logo size="sm" />
+          </div>
+          <div className="ms-auto flex shrink-0 items-center gap-2">
+            <ThemeToggle compact className="shrink-0" />
+            <PanelNavButton showLabel={false} className="shrink-0" />
+          </div>
+        </div>
+
+        <div className="site-header__desktop container-luxe hidden h-16 min-w-0 items-center gap-2 lg:flex xl:gap-3">
           <div className="flex h-10 min-w-0 shrink-0 items-center">
             <Logo size="sm" />
           </div>
 
           <nav
             aria-label="ناوبری اصلی"
-            className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-hidden lg:flex xl:gap-2 2xl:gap-2.5"
+            className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 lg:flex xl:gap-1 2xl:gap-2"
           >
             {site.nav.map((link) => {
               const active = navLinkMatches(pathname, link.href);
               return (
-                <Link
+                <NavLink
                   key={link.href}
                   href={link.href}
+                  label={link.label}
+                  shortLabel={link.shortLabel}
+                  active={active}
                   prefetch={prefetchLinks}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "group relative inline-flex h-10 items-center whitespace-nowrap rounded-md px-1.5 pb-1 text-sm font-medium leading-none transition-colors duration-300 xl:px-2",
-                    active ? "text-bone" : "text-bone-dim/95 hover:text-bone",
-                  )}
-                >
-                  {link.shortLabel ?? link.label}
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "pointer-events-none absolute inset-x-2 bottom-0 h-[2px] rounded-full bg-gradient-to-l from-transparent via-emerald-glow to-transparent opacity-90 shadow-[0_0_14px_-2px_color-mix(in_oklab,var(--color-emerald-glow)_58%,transparent)] transition-[transform,opacity] duration-500 ease-[var(--ease-luxe)] xl:inset-x-2.5",
-                      active ? "scale-x-100 opacity-100" : "scale-x-0 opacity-75 group-hover:scale-x-100 group-hover:opacity-100",
-                    )}
-                  />
-                </Link>
+                />
               );
             })}
           </nav>
 
-          <div className="ms-auto flex h-10 shrink-0 items-center gap-2.5">
+          <div className="ms-auto flex h-10 min-w-0 shrink-0 items-center gap-2 xl:gap-2.5">
             <ThemeToggle compact className="shrink-0" />
-            <PanelNavButton showLabel className="shrink-0" />
+            <PanelNavButton showLabel className="max-w-[8.5rem] xl:max-w-[10rem]" />
           </div>
         </div>
       </header>

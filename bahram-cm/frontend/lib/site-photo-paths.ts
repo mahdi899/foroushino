@@ -66,6 +66,12 @@ export const sitePhotos = {
   ],
 } as const;
 
+/** BrandMark / favicon — same crop as FounderAside card */
+export const founderPortraitBrandDisplay = {
+  containerClass: 'bg-surface-soft',
+  imageClass: 'object-cover object-[center_18%]',
+} as const;
+
 /** کاور کارت‌ها و جزئیات بلاگ — همان عکس‌های اصلی سایت، چیده‌شده برای تنوع اندیس */
 export const insightCoverPhotos = [
   sitePhotos.storyStep[0]!,

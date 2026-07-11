@@ -1,6 +1,6 @@
 import { AdminPage } from '../../ui';
 import { getRoles } from '@/lib/admin/accessData';
-import { can, getCurrentUser } from '@/lib/auth/session';
+import { getCurrentUser, isSuperAdmin } from '@/lib/auth/session';
 import { RolePermissionsEditor } from './RolePermissionsEditor';
 
 export const dynamic = 'force-dynamic';
@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export default async function RolesPage() {
   const user = await getCurrentUser();
   const { roles, permissionGroups, error } = await getRoles();
-  const canManage = can(user, 'roles.manage') || can(user, 'permissions.manage');
+  const canManage = isSuperAdmin(user);
 
   return (
     <AdminPage

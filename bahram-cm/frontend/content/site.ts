@@ -52,7 +52,7 @@ export const site = {
 
   nav: [
     { href: "/course/campaign-writing", label: "کمپین‌نویسی", shortLabel: "کمپین" },
-    { href: "/courses", label: "دوره‌ها" },
+    { href: "/courses", label: "دوره‌ها", shortLabel: "دوره" },
     { href: "/saat", label: "سات" },
     { href: "/transformations", label: "رضایت دانشجوها", shortLabel: "رضایت" },
     { href: "/insights", label: "بلاگ" },
