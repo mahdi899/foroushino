@@ -5,7 +5,7 @@ import {
   getGuides,
   getResources,
 } from "@/lib/content";
-import { getArticles } from "@/lib/services/articles";
+import { getAllArticleSlugs } from "@/lib/services/articles";
 import { getMiniCoursesFromApi } from "@/lib/services/miniCourses.server";
 import { SITE } from "@/lib/seo";
 
@@ -33,13 +33,11 @@ const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitem
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
-  const articlesResult = await getArticles(1, 100);
-  const insights = articlesResult.ok
-    ? articlesResult.data.items.map((item) => ({
-        slug: item.slug,
-        date: item.published_at ?? undefined,
-      }))
-    : [];
+  const allArticles = await getAllArticleSlugs();
+  const insights = allArticles.map((item) => ({
+    slug: item.slug,
+    date: item.published_at ?? undefined,
+  }));
 
   const [events, courses, resources, guides, miniCoursesResult] = await Promise.all([
     getEvents(),

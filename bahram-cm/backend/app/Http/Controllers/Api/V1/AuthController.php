@@ -32,7 +32,7 @@ class AuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken('bahram-admin')->plainTextToken;
+        $token = $user->createToken('bahram-admin', ['*'], now()->addDays(7))->plainTextToken;
 
         return response()->json([
             'token' => $token,

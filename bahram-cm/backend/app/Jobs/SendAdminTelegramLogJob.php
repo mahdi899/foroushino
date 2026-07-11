@@ -5,11 +5,12 @@ namespace App\Jobs;
 use App\Enums\AdminTelegramEventKey;
 use App\Services\AdminTelegramLogService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class SendAdminTelegramLogJob
+class SendAdminTelegramLogJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 

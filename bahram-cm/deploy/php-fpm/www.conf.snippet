@@ -1,0 +1,23 @@
+; Bahram CM — PHP-FPM pool overrides
+; Append to /etc/php/8.2/fpm/pool.d/www.conf or create bahram.conf pool.
+;
+; pm.max_children formula: (Total RAM - 1GB) / avg PHP memory per request (~50MB)
+; Example 8GB server: (8192 - 1024) / 50 ≈ 140 → use 80–100 conservatively
+
+pm = dynamic
+pm.max_children = 80
+pm.start_servers = 10
+pm.min_spare_servers = 5
+pm.max_spare_servers = 20
+pm.max_requests = 500
+
+; Slow request logging
+request_slowlog_timeout = 5s
+slowlog = /var/log/php8.2-fpm-slow.log
+
+; OPcache (also set in php.ini for production)
+; opcache.enable=1
+; opcache.memory_consumption=256
+; opcache.max_accelerated_files=20000
+; opcache.validate_timestamps=0
+; opcache.revalidate_freq=0

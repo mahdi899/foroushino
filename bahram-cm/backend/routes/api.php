@@ -61,7 +61,7 @@ Route::get('/seminars/promo', [SeminarPromoController::class, 'active']);
 Route::get('/seminars/{slug}', [PublicSeminarController::class, 'show'])->where('slug', '[^/]+');
 
 // Orders
-Route::post('/orders', [OrderController::class, 'store']);
+Route::post('/orders', [OrderController::class, 'store'])->middleware('throttle:30,1');
 Route::post('/discount-codes/validate', [DiscountCodeController::class, 'validateCode'])
     ->middleware('throttle:30,1');
 Route::get('/orders/complete-profile', [OrderController::class, 'completeProfileContext'])
@@ -84,7 +84,8 @@ Route::post('/orders/post-payment-login/verify-otp', [OrderController::class, 'p
     ->middleware('throttle:20,1');
 
 // Payments (Zarinpal)
-Route::post('/payments/zarinpal/request', [ZarinpalController::class, 'request']);
+Route::post('/payments/zarinpal/request', [ZarinpalController::class, 'request'])
+    ->middleware('throttle:10,1');
 Route::get('/payments/zarinpal/callback', [ZarinpalController::class, 'callback'])->name('api.payments.zarinpal.callback');
 
 // Leads

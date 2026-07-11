@@ -19,7 +19,6 @@ export const CACHE_ISR_TAGS = [
 export const CACHE_WARM_PATHS = [
   '/',
   '/insights',
-  '/articles',
   '/transformations',
   '/faq',
   '/courses',

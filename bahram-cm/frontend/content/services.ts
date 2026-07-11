@@ -11,7 +11,7 @@ export const services: ServiceContent[] = [
     summary: 'کاشت دندان با دقت بالا، کیفیت ماندگار و ضمانت کتبی.',
     heroHeadline: 'ایمپلنتی مطمئن، طبیعی و ماندگار',
     heroSub: 'کاشت دندان با بررسی دقیق، درمان اصولی و هزینه‌ای شفاف.',
-    image: '/images/sevices headers/Implant 1.webp',
+    image: '/storage/media/site/hero-background.webp',
     priority: true,
     benefits: [
       { icon: 'ScanLine', title: 'کیفیت درمان', desc: 'برای هر بیمار، طرح درمان اختصاصی تهیه می‌شود.' },
@@ -101,7 +101,7 @@ export const services: ServiceContent[] = [
     summary: 'لمینت سرامیکی با ظاهری طبیعی، کیفیت ماندگار و طراحی متناسب با لبخند شما.',
     heroHeadline: 'لبخندی طبیعی با لمینت سرامیکی',
     heroSub: 'اصلاح رنگ، فرم و فاصله دندان‌ها با حفظ حداکثری ساختار طبیعی دندان.',
-    image: '/images/sevices headers/Laminate 1.webp',
+    image: '/storage/media/site/course-backstage.webp',
     priority: true,
     benefits: [
       { icon: 'Smile', title: 'ظاهر طبیعی', desc: 'هماهنگ با فرم صورت و لبخند شما.' },
@@ -192,7 +192,7 @@ export const services: ServiceContent[] = [
     summary: 'کامپوزیت، بلیچینگ و طراحی لبخند برای زیبایی متناسب.',
     heroHeadline: 'زیبایی لبخند، متناسب با چهره شما',
     heroSub: 'کامپوزیت، بلیچینگ و اصلاح طرح لبخند با نگاه هنری.',
-    image: '/images/sevices headers/Composite 1.webp',
+    image: '/storage/media/site/academy-story.webp',
     priority: false,
     benefits: [
       { icon: 'Palette', title: 'انتخاب رنگ دقیق', desc: 'هماهنگ با پوست و چهره.' },

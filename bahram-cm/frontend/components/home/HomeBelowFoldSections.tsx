@@ -1,29 +1,39 @@
 import dynamic from 'next/dynamic';
 import { HeroCinematic } from '@/components/sections/HeroCinematic';
 import { MainPaths } from '@/components/sections/MainPaths';
-import { CampaignScrollStory } from '@/components/sections/CampaignScrollStory';
-import { BigTestimonial } from '@/components/sections/BigTestimonial';
-import { AcademyTeaser } from '@/components/sections/AcademyTeaser';
-import { FounderAside } from '@/components/sections/FounderAside';
-import { FinalCTA } from '@/components/sections/FinalCTA';
 import { SectionReveal } from '@/components/motion/SectionReveal';
 import { getCoursePathOverrides } from '@/lib/catalog/courseListings';
 
-const CampaignScrollStoryLazy = dynamic(() =>
-  import('@/components/sections/CampaignScrollStory').then((m) => ({ default: m.CampaignScrollStory })),
+const SectionFallback = () => (
+  <div className="min-h-[40vh] animate-pulse bg-surface-muted/30" aria-hidden />
 );
-const BigTestimonialLazy = dynamic(() =>
-  import('@/components/sections/BigTestimonial').then((m) => ({ default: m.BigTestimonial })),
+
+const CampaignScrollStoryLazy = dynamic(
+  () => import('@/components/sections/CampaignScrollStory').then((m) => ({ default: m.CampaignScrollStory })),
+  { loading: SectionFallback },
 );
-const AcademyTeaserLazy = dynamic(() =>
-  import('@/components/sections/AcademyTeaser').then((m) => ({ default: m.AcademyTeaser })),
+const BigTestimonialLazy = dynamic(
+  () => import('@/components/sections/BigTestimonial').then((m) => ({ default: m.BigTestimonial })),
+  { loading: SectionFallback },
 );
-const FounderAsideLazy = dynamic(() =>
-  import('@/components/sections/FounderAside').then((m) => ({ default: m.FounderAside })),
+const AcademyTeaserLazy = dynamic(
+  () => import('@/components/sections/AcademyTeaser').then((m) => ({ default: m.AcademyTeaser })),
+  { loading: SectionFallback },
 );
-const FinalCTALazy = dynamic(() =>
-  import('@/components/sections/FinalCTA').then((m) => ({ default: m.FinalCTA })),
+const FounderAsideLazy = dynamic(
+  () => import('@/components/sections/FounderAside').then((m) => ({ default: m.FounderAside })),
+  { loading: SectionFallback },
 );
+const FinalCTALazy = dynamic(
+  () => import('@/components/sections/FinalCTA').then((m) => ({ default: m.FinalCTA })),
+  { loading: SectionFallback },
+);
+
+const CampaignScrollStory = CampaignScrollStoryLazy;
+const BigTestimonial = BigTestimonialLazy;
+const AcademyTeaser = AcademyTeaserLazy;
+const FounderAside = FounderAsideLazy;
+const FinalCTA = FinalCTALazy;
 
 export async function HomeBelowFoldSections({ deferBelowFold }: { deferBelowFold: boolean }) {
   const { images: pathImages } = await getCoursePathOverrides();

@@ -1,89 +1,187 @@
-# Deployment Guide — Bahram CM
+# Deployment Guide — Bahram CM (Ubuntu Self-hosted)
 
-این راهنما deploy **Next.js** (`frontend/`) و **Laravel** (`backend/`) را شرح می‌دهد.
+این راهنما deploy **Next.js** (`frontend/`) و **Laravel** (`backend/`) روی **Ubuntu + Nginx + PHP-FPM + PM2 + Redis + MySQL** را شرح می‌دهد.
 
-**CDN و Cloudflare:** [`CDN-DEPLOYMENT.md`](CDN-DEPLOYMENT.md)
+**فایل‌های زیرساخت:** [`deploy/`](../deploy/)  
+**CDN ابر آروان (fashio.ir):** [`ARVAN-CDN.md`](ARVAN-CDN.md)
 
-CI در `.github/workflows/ci.yml` lint، typecheck و build را اجرا می‌کند.
-
----
-
-## 1. پیش‌نیازها
-
-- Node.js 20+
-- PHP 8.2+، Composer
-- MySQL + Redis
-- (اختیاری) Cloudflare برای edge CDN
-- (اختیاری) Plausible / GA4
+CI در `.github/workflows/ci.yml` lint، typecheck، build و PHPUnit را اجرا می‌کند.
 
 ---
 
-## 2. Frontend (`frontend/`)
+## 1. پیش‌نیازهای سرور
 
-### Environment
-
-کپی `.env.example` → `.env.local` (dev) یا تنظیم در هاست:
-
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `NEXT_PUBLIC_API_BASE_URL` | yes | URL عمومی سایت/API |
-| `NEXT_PUBLIC_SITE_URL` | yes (prod) | URL کانونیکال SEO |
-| `BACKEND_PROXY_URL` | yes | Origin Laravel برای proxy |
-| `NEXT_PUBLIC_CDN_ORIGIN` | yes | Origin تصاویر resize |
-| `REVALIDATE_SECRET` | yes | Webhook ISR (مشترک با Laravel) |
-| `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` | no | Plausible |
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | no | GA4 |
-
-### Build & run
+| نرم‌افزار | نسخه |
+|-----------|------|
+| Ubuntu | 22.04 LTS یا 24.04 LTS |
+| Node.js | 20 LTS |
+| PHP | 8.2+ (extensions: mbstring, xml, curl, mysql, redis, gd, intl, zip, bcmath) |
+| Composer | 2.x |
+| MySQL | 8.0+ |
+| Redis | 7.x |
+| Nginx | 1.24+ |
+| PM2 | `npm i -g pm2` |
+| Supervisor | `apt install supervisor` |
+| Certbot | SSL (Let's Encrypt) |
 
 ```bash
-cd frontend
-npm ci
-npm run verify
-npm run build
-npm start
+# نمونه نصب پایه
+sudo apt update && sudo apt install -y nginx php8.2-fpm php8.2-mysql php8.2-redis \
+  php8.2-mbstring php8.2-xml php8.2-curl php8.2-gd php8.2-intl php8.2-zip php8.2-bcmath \
+  mysql-server redis-server supervisor certbot python3-certbot-nginx
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+sudo npm install -g pm2
 ```
 
-**Vercel:** root = `bahram-cm/frontend`، env vars را اضافه کنید.
+---
+
+## 2. Clone و ساختار
+
+```bash
+sudo mkdir -p /var/www
+sudo git clone <repo-url> /var/www/bahram-cm
+sudo chown -R www-data:www-data /var/www/bahram-cm
+```
 
 ---
 
 ## 3. Backend (`backend/`)
 
 ```bash
-cd backend
+cd /var/www/bahram-cm/backend
 cp .env.example .env
-composer install
-php artisan migrate
+# ویرایش .env — بخش PRODUCTION را ببینید
+composer install --no-dev --optimize-autoloader
+php artisan key:generate
+php artisan migrate --force
 php artisan db:seed --class=CacheIntegrationsSeeder
-php artisan serve --host=0.0.0.0 --port=8010
+php artisan storage:link
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+php artisan event:cache
 ```
 
-متغیرهای مهم:
+### متغیرهای مهم Production (fashio.ir)
+
+| Variable | مقدار پیشنهادی |
+|----------|----------------|
+| `APP_ENV` | `production` |
+| `APP_DEBUG` | `false` |
+| `APP_URL` | `http://127.0.0.1:8010` (فقط داخلی — **نه** api.fashio.ir) |
+| `FRONTEND_URL` | `https://fashio.ir` |
+| `CORS_ALLOWED_ORIGINS` | `https://fashio.ir` |
+| `MEDIA_URL` | `https://cdn.fashio.ir` |
+| `CACHE_STORE` | `redis` |
+| `QUEUE_CONNECTION` | `redis` |
+| `SESSION_DRIVER` | `redis` |
+| `SESSION_SECURE_COOKIE` | `true` |
+| `OTP_DEV_MODE` | `false` |
+| `LOG_LEVEL` | `warning` |
+| `REVALIDATE_SECRET` | secret قوی تصادفی |
+| `INTERNAL_API_SECRET` | secret جدا از REVALIDATE |
+| `RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` | Google reCAPTCHA v3 |
+
+> **مهم:** API عمومی (`api.fashio.ir`) باز نکنید. مرورگر فقط `https://fashio.ir/api/*` را صدا می‌زند؛ Next.js به `127.0.0.1:8010` پروکسی می‌کند.
+
+---
+
+## 4. Frontend (`frontend/`)
+
+```bash
+cd /var/www/bahram-cm/frontend
+cp .env.example .env.local
+# تنظیم env vars
+npm ci
+npm run verify
+npm run build
+pm2 start /var/www/bahram-cm/deploy/pm2/ecosystem.config.cjs
+pm2 save
+pm2 startup  # دستور systemd را اجرا کنید
+```
 
 | Variable | Purpose |
-| --- | --- |
-| `APP_URL` | URL عمومی Laravel |
-| `FRONTEND_URL` | URL Next.js (purge + sitemap) |
-| `MEDIA_URL` | URL CDN رسانه |
-| `REVALIDATE_SECRET` | مشترک با Next |
-| `REVALIDATE_WEBHOOK_URL` | `{SITE}/api/revalidate` |
-| `CLOUDFLARE_ZONE_ID` / `CLOUDFLARE_API_TOKEN` | Purge edge |
-| `CACHE_STORE=redis` | Object cache |
+|----------|---------|
+| `NEXT_PUBLIC_SITE_URL` | `https://fashio.ir` |
+| `NEXT_PUBLIC_API_BASE_URL` | `https://fashio.ir` (same-origin — نه subdomain جدا) |
+| `BACKEND_PROXY_URL` | `http://127.0.0.1:8010` (داخلی) |
+| `NEXT_PUBLIC_CDN_ORIGIN` | `https://cdn.fashio.ir` |
+| `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` | Google reCAPTCHA v3 |
+| `REVALIDATE_SECRET` | مشترک با Laravel |
 
 ---
 
-## 4. Post-deploy checklist
+## 5. Nginx (fashio.ir)
 
-1. `/admin/cache` → پریست **متعادل** یا **حداکثر سرعت**
-2. Cloudflare Cache Rules — [`cloudflare-cache-rules.example.json`](cloudflare-cache-rules.example.json)
-3. Submit Apply / Newsletter → ردیف در DB
-4. `/sitemap.xml` و `/insights/{slug}` درست لود شوند
-5. ذخیره مقاله → HTML به‌روز (ISR + Cloudflare purge)
-6. Badge **Cloudflare → OK** در پنل کش
+```bash
+sudo cp deploy/nginx/fashio.conf /etc/nginx/sites-available/fashio.conf
+sudo ln -sf /etc/nginx/sites-available/fashio.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
 
-جزئیات CDN: [`CDN-DEPLOYMENT.md`](CDN-DEPLOYMENT.md)
+# SSL
+sudo certbot --nginx -d fashio.ir -d www.fashio.ir -d cdn.fashio.ir
+```
+
+فایل `fashio.conf` فقط `fashio.ir` و `cdn.fashio.ir` را عمومی می‌کند؛ Laravel روی `127.0.0.1:8010` گوش می‌دهد.
 
 ---
 
-*آخرین به‌روزرسانی: ۱۴۰۵/۰۴/۱۷*
+## 6. Queue Workers (Supervisor)
+
+```bash
+sudo cp deploy/supervisor/bahram-queue.conf /etc/supervisor/conf.d/
+sudo supervisorctl reread && sudo supervisorctl update
+sudo supervisorctl status bahram-queue:*
+```
+
+---
+
+## 7. Laravel Scheduler (Cron)
+
+```bash
+sudo crontab -u www-data -e
+# اضافه کنید:
+* * * * * cd /var/www/bahram-cm/backend && php artisan schedule:run >> /dev/null 2>&1
+```
+
+---
+
+## 8. Deploy بعدی (به‌روزرسانی)
+
+```bash
+cd /var/www/bahram-cm
+chmod +x deploy/scripts/deploy.sh deploy/scripts/backup.sh
+./deploy/scripts/deploy.sh
+```
+
+---
+
+## 9. Backup روزانه
+
+```bash
+# Cron root یا www-data:
+0 3 * * * /var/www/bahram-cm/deploy/scripts/backup.sh
+```
+
+---
+
+## 10. Post-deploy checklist
+
+1. `/admin/cache` → پریست **حداکثر سرعت**
+2. Arvan CDN Cache Rules — [`ARVAN-CDN.md`](ARVAN-CDN.md)
+3. `GET /up` روی `127.0.0.1:8010` → 200 (Laravel داخلی)
+4. `GET https://fashio.ir` → 200 (Next.js)
+5. `GET https://fashio.ir/api/articles` → 200 (از همان دامنه)
+6. Submit فرم → reCAPTCHA + ردیف در DB
+7. `/sitemap.xml` کامل لود شود
+8. Queue workers در Supervisor: `RUNNING`
+9. Redis: `redis-cli ping` → `PONG`
+10. Backup تست‌شده
+11. Monitoring فعال (Sentry / uptime)
+
+جزئیات CDN: [`ARVAN-CDN.md`](ARVAN-CDN.md)
+
+---
+
+*آخرین به‌روزرسانی: ۱۴۰۵/۰۴/۲۰*

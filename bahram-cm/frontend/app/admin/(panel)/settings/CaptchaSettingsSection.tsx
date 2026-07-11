@@ -58,8 +58,8 @@ export function CaptchaSettingsSection({
         <div>
           <h2 className="text-h3 text-primary-dark">امنیت فرم‌ها و کپچا</h2>
           <p className="mt-1 text-small text-text-muted">
-            محافظت فرم‌های عمومی، خبرنامه، درخواست عضویت و ورود ادمین. در صورت خطای Turnstile، کپچای
-            ریاضی جایگزین می‌شود.
+            محافظت فرم‌های عمومی، خبرنامه، درخواست عضویت و ورود ادمین. Google reCAPTCHA v3 مخفی؛ در صورت
+            خطا، کپچای ریاضی جایگزین می‌شود.
           </p>
         </div>
       </div>
@@ -68,7 +68,7 @@ export function CaptchaSettingsSection({
         <ToggleRow
           checked={form.enabled}
           label="فعال‌سازی کپچا"
-          hint="کلید Turnstile یا کپچای ریاضی برای فرم‌های انتخاب‌شده"
+          hint="کلید reCAPTCHA v3 یا کپچای ریاضی برای فرم‌های انتخاب‌شده"
           onChange={(enabled) => patch({ enabled })}
         />
 
@@ -106,7 +106,7 @@ export function CaptchaSettingsSection({
 
         <div>
           <label className="field-label" htmlFor="captcha-site-key">
-            Site Key (Turnstile)
+            Site Key (reCAPTCHA v3)
           </label>
           <input
             id="captcha-site-key"
@@ -114,17 +114,17 @@ export function CaptchaSettingsSection({
             onChange={(e) => patch({ siteKey: e.target.value })}
             className="field-input"
             dir="ltr"
-            placeholder="0x4AAAAAAA..."
+            placeholder="6Lc..."
             disabled={!form.enabled}
           />
           {envFallback.siteKey && !form.siteKey.trim() && (
-            <p className="mt-1 text-caption text-text-muted">fallback از env: NEXT_PUBLIC_TURNSTILE_SITE_KEY</p>
+            <p className="mt-1 text-caption text-text-muted">fallback از env: NEXT_PUBLIC_RECAPTCHA_SITE_KEY</p>
           )}
         </div>
 
         <div>
           <label className="field-label" htmlFor="captcha-secret-key">
-            Secret Key (Turnstile)
+            Secret Key (reCAPTCHA v3)
           </label>
           <input
             id="captcha-secret-key"
@@ -133,7 +133,7 @@ export function CaptchaSettingsSection({
             onChange={(e) => patch({ secretKeyInput: e.target.value })}
             className="field-input"
             dir="ltr"
-            placeholder={hasSecretKey ? 'برای تغییر، کلید جدید وارد کنید' : '0x4AAAAAAA...'}
+            placeholder={hasSecretKey ? 'برای تغییر، کلید جدید وارد کنید' : '6Lc...'}
             disabled={!form.enabled}
             autoComplete="new-password"
           />
@@ -143,14 +143,14 @@ export function CaptchaSettingsSection({
             </p>
           )}
           {envFallback.secretKey && !hasSecretKey && !form.secretKeyInput.trim() && (
-            <p className="mt-1 text-caption text-text-muted">fallback از env: TURNSTILE_SECRET_KEY</p>
+            <p className="mt-1 text-caption text-text-muted">fallback از env: RECAPTCHA_SECRET_KEY</p>
           )}
         </div>
       </div>
 
       {!form.enabled && (
         <p className="mt-4 rounded-lg bg-surface-soft px-3 py-2 text-caption text-text-muted">
-          کپچا غیرفعال است — فرم‌ها بدون تأیید Turnstile/ریاضی ارسال می‌شوند (Honeypot در صورت فعال بودن
+          کپچا غیرفعال است — فرم‌ها بدون تأیید reCAPTCHA/ریاضی ارسال می‌شوند (Honeypot در صورت فعال بودن
           همچنان اعمال می‌شود).
         </p>
       )}

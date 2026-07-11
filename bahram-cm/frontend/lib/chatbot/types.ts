@@ -62,6 +62,8 @@ export interface ChatbotPublicConfig {
   captcha: {
     enabled: boolean;
     site_key: string;
+    has_recaptcha: boolean;
+    /** @deprecated Alias for has_recaptcha */
     has_turnstile: boolean;
   };
   ctas: {
@@ -271,7 +273,7 @@ export const EMPTY_CHATBOT_PUBLIC: ChatbotPublicConfig = {
   assistant_name: DEFAULT_CHATBOT_CONFIG.assistant_name,
   welcome_message: DEFAULT_CHATBOT_CONFIG.welcome_message,
   require_captcha: true,
-  captcha: { enabled: false, site_key: '', has_turnstile: false },
+  captcha: { enabled: false, site_key: '', has_recaptcha: false, has_turnstile: false },
   ctas: {
     consultation: true,
     whatsapp: true,

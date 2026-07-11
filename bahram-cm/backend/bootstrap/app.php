@@ -16,8 +16,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Next.js proxies /admin (and related paths) with X-Forwarded-* headers.
-        $middleware->trustProxies(at: '*');
+        // Trust only the local reverse proxy (Nginx) — set TRUSTED_PROXIES for Cloudflare.
+        $trusted = env('TRUSTED_PROXIES', '127.0.0.1');
+        $middleware->trustProxies(at: $trusted === '*' ? '*' : array_map('trim', explode(',', $trusted)));
+
+        $middleware->api(prepend: [
+            \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
+        ]);
 
         // API / JSON clients must get 401 — never redirect to a missing web `login` route.
         $middleware->redirectGuestsTo(function (Request $request) {

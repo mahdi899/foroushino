@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\ProductDetailResource;
 use App\Http\Resources\ProductListResource;
 use App\Models\Product;
+use App\Services\MediaAltResolver;
 use App\Services\PurchaseGuardService;
 use App\Support\ApiResponse;
+use App\Support\MediaUrl;
 use App\Support\OptionalStudent;
+use App\Support\RuntimeCache;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
@@ -17,29 +20,54 @@ class ProductController extends Controller
         private readonly PurchaseGuardService $purchaseGuard,
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
-        $query = Product::query()->active()->orderByDesc('created_at');
+        $listed = filter_var($request->input('listed'), FILTER_VALIDATE_BOOLEAN);
+        $cacheKey = 'public_products:index:'.($listed ? 'listed' : 'all');
 
-        if (filter_var(request()->input('listed'), FILTER_VALIDATE_BOOLEAN)) {
-            $query->listedOnCourses();
-        }
+        return RuntimeCache::remember($cacheKey, 3600, function () use ($listed) {
+            $query = Product::query()->active()->orderByDesc('created_at');
 
-        $products = $query->get();
+            if ($listed) {
+                $query->listedOnCourses();
+            }
 
-        return ProductListResource::collection($products);
+            $products = $query->get();
+
+            $refs = $products
+                ->pluck('featured_image')
+                ->filter()
+                ->map(fn (?string $path) => $path ? MediaUrl::fromDiskPath($path) : null)
+                ->filter()
+                ->values()
+                ->all();
+
+            app(MediaAltResolver::class)->warmReferences($refs);
+
+            return ProductListResource::collection($products);
+        }, 'services');
     }
 
     public function show(string $slug, Request $request)
     {
-        $product = Product::query()
-            ->active()
-            ->with('seminar')
-            ->where('slug', $slug)
-            ->first();
+        $cacheKey = 'public_products:show:'.$slug;
+
+        $product = RuntimeCache::remember($cacheKey, 3600, function () use ($slug) {
+            return Product::query()
+                ->active()
+                ->with('seminar')
+                ->where('slug', $slug)
+                ->first();
+        }, 'services');
 
         if (! $product) {
             return ApiResponse::error('product_not_found', 'محصول مورد نظر یافت نشد.', 404);
+        }
+
+        if ($product->featured_image) {
+            app(MediaAltResolver::class)->warmReferences([
+                MediaUrl::fromDiskPath($product->featured_image),
+            ]);
         }
 
         $student = OptionalStudent::from($request);

@@ -2,10 +2,35 @@ import type { NextConfig } from "next";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import bundleAnalyzer from "@next/bundle-analyzer";
 import { CDN_STATIC_IMMUTABLE } from "./lib/cache/cdnHeaders";
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 const disableImageOptimization = process.env.NEXT_PUBLIC_DISABLE_IMAGE_OPTIMIZATION === "1";
+
+const SECURITY_HEADERS = [
+  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains; preload" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  {
+    key: "Content-Security-Policy",
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://plausible.io https://www.googletagmanager.com https://www.google.com https://www.gstatic.com",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data:",
+      "connect-src 'self' https: wss:",
+      "frame-src 'self' https://www.aparat.com https://aparat.com https://www.google.com https://recaptcha.google.com",
+      "media-src 'self' blob: https:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; "),
+  },
+];
 
 /** LAN IPs for mobile/tablet testing — Next.js blocks /_next/* without these in dev. */
 function localNetworkHosts(): string[] {
@@ -77,6 +102,8 @@ const config: NextConfig = {
       { source: "/academy/app", destination: "/saat", permanent: true },
       { source: "/blog", destination: "/insights", permanent: true },
       { source: "/blog/:slug", destination: "/insights/:slug", permanent: true },
+      { source: "/articles", destination: "/insights", permanent: true },
+      { source: "/articles/:slug", destination: "/insights/:slug", permanent: true },
       { source: "/admin/media", destination: "/admin/gallery", permanent: false },
       { source: "/admin/faq", destination: "/admin/commerce/faqs", permanent: false },
       { source: "/admin/testimonials", destination: "/admin/commerce/testimonials", permanent: false },
@@ -92,6 +119,7 @@ const config: NextConfig = {
       { key: "CDN-Cache-Control", value: CDN_STATIC_IMMUTABLE },
     ];
     return [
+      { source: "/:path*", headers: SECURITY_HEADERS },
       { source: "/_next/static/:path*", headers: immutable },
       { source: "/fonts/:path*", headers: immutable },
       { source: "/icons/:path*", headers: immutable },
@@ -107,13 +135,13 @@ const config: NextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 30,
     localPatterns: [
       { pathname: "/storage/**" },
+      { pathname: "/cdn/**" },
       { pathname: "/media/**" },
     ],
     remotePatterns: backendImagePattern(),
   },
   experimental: {
     serverActions: {
-      // Default 1MB is too small for article HTML saves and media uploads.
       bodySizeLimit: '10mb',
     },
     staleTimes: {
@@ -148,4 +176,8 @@ const config: NextConfig = {
   },
 };
 
-export default config;
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+});
+
+export default withBundleAnalyzer(config);

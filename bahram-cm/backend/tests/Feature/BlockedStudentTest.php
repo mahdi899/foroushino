@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AdminRoleName;
 use App\Enums\UserStatus;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -11,6 +13,12 @@ use Tests\TestCase;
 class BlockedStudentTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(RolePermissionSeeder::class);
+    }
 
     public function test_blocked_student_cannot_send_otp(): void
     {
@@ -68,6 +76,7 @@ class BlockedStudentTest extends TestCase
     public function test_admin_blocking_revokes_tokens(): void
     {
         $admin = User::factory()->create(['is_admin' => true]);
+        $admin->assignRole(AdminRoleName::StudentManager->value);
         $student = User::create([
             'name' => 'دانشجو',
             'mobile' => '09126667788',

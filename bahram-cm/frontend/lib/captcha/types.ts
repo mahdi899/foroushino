@@ -9,13 +9,16 @@ export interface MathCaptchaChallenge {
   question: string;
 }
 
-export type CaptchaMode = 'loading' | 'turnstile' | 'math';
+export type CaptchaMode = 'loading' | 'recaptcha' | 'math';
 
 export type FormSecurityTarget = 'newsletter' | 'leads' | 'admin_login';
 
 export interface CaptchaPublicConfig {
   enabled: boolean;
   site_key: string;
+  /** Google reCAPTCHA v3 (invisible) configured */
+  has_recaptcha: boolean;
+  /** @deprecated Alias for has_recaptcha */
   has_turnstile: boolean;
   honeypot_enabled: boolean;
   protect_newsletter: boolean;

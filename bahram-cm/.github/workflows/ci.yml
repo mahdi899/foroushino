@@ -13,6 +13,9 @@ jobs:
   web:
     name: Web (lint · typecheck · validate · build · test)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
 
@@ -21,6 +24,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -46,21 +50,138 @@ jobs:
           NEXT_PUBLIC_SITE_URL: https://bahramrostami.com
 
   backend:
-    name: Backend (compile)
+    name: Backend (PHPUnit)
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: bahram_backend
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
         with:
-          python-version: "3.12"
+          php-version: "8.2"
+          extensions: mbstring, xml, curl, mysql, redis, gd, intl, zip, bcmath
+          coverage: none
 
-      - name: Install
-        run: pip install -e .
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist
 
-      - name: Byte-compile
-        run: python -m compileall -q app
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: bahram_backend
+          DB_USERNAME: root
+          DB_PASSWORD: password
+          REDIS_HOST: 127.0.0.1
+
+      - name: Run migrations
+        run: php artisan migrate --force
+        env:
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: bahram_backend
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      - name: PHPUnit
+        run: php artisan test
+        env:
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: bahram_backend
+          DB_USERNAME: root
+          DB_PASSWORD: password
+          REDIS_HOST: 127.0.0.1
+
+  e2e:
+    name: E2E (Playwright smoke)
+    runs-on: ubuntu-latest
+    needs: [web]
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+
+      - name: Run smoke tests
+        run: npm run test:e2e
+        env:
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+
+  lighthouse:
+    name: Lighthouse CI
+    runs-on: ubuntu-latest
+    needs: [web]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+
+      - name: Run Lighthouse CI
+        run: |
+          npm start &
+          sleep 8
+          npx --yes @lhci/cli@0.14.x autorun --config=lighthouserc.js
+        env:
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000

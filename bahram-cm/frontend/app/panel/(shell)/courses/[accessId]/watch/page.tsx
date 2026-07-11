@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { panelStudentFetch } from '@/lib/student/panelServer';
 import { WatchPageClient } from './WatchPageClient';
@@ -36,7 +37,7 @@ export default async function CourseWatchPage({
         <div className="card p-8 text-center">
           <h1 className="mb-3 text-xl font-bold text-text">{data.product_title ?? 'دوره'}</h1>
           <p className="mb-5 text-sm text-text-muted">{data.message ?? 'دسترسی پخش داخل سایت برای این دوره فعال نیست.'}</p>
-          <a href="/panel/support" className="btn btn-primary inline-flex">تماس با پشتیبانی</a>
+          <Link href="/panel/support" className="btn btn-primary inline-flex">تماس با پشتیبانی</Link>
         </div>
       </div>
     );

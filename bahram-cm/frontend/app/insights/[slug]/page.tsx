@@ -7,7 +7,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { NewsletterCTA } from "@/components/sections/NewsletterCTA";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { normalizeArticleSlugParam } from "@/lib/articleSlug";
-import { getArticleBySlug, getArticles } from "@/lib/services/articles";
+import { getArticleBySlug, getAllArticleSlugs, getArticles } from "@/lib/services/articles";
 import { articleJsonLd, breadcrumbJsonLd } from "@/lib/jsonld";
 import { formatDateFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
@@ -16,9 +16,8 @@ import { rewriteArticleBodyMediaUrls } from "@/lib/mediaUrl";
 export const revalidate = 300;
 
 export async function generateStaticParams() {
-  const result = await getArticles(1);
-  if (!result.ok) return [];
-  return result.data.items.map((item) => ({ slug: item.slug }));
+  const items = await getAllArticleSlugs();
+  return items.map((item) => ({ slug: item.slug }));
 }
 
 export async function generateMetadata({

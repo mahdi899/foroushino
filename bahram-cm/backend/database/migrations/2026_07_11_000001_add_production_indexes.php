@@ -1,0 +1,38 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('orders', function (Blueprint $table) {
+            $table->index('customer_phone');
+        });
+
+        Schema::table('articles', function (Blueprint $table) {
+            $table->index('deleted_at');
+        });
+
+        Schema::table('media', function (Blueprint $table) {
+            $table->index('deleted_at');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('orders', function (Blueprint $table) {
+            $table->dropIndex(['customer_phone']);
+        });
+
+        Schema::table('articles', function (Blueprint $table) {
+            $table->dropIndex(['deleted_at']);
+        });
+
+        Schema::table('media', function (Blueprint $table) {
+            $table->dropIndex(['deleted_at']);
+        });
+    }
+};

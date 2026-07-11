@@ -13,11 +13,11 @@ function maskSecret(value: string): string {
 }
 
 function envSiteKey(): string | null {
-  return process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() || null;
+  return process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY?.trim() || null;
 }
 
 function envSecretKey(): string | null {
-  return process.env.TURNSTILE_SECRET_KEY?.trim() || null;
+  return process.env.RECAPTCHA_SECRET_KEY?.trim() || null;
 }
 
 function mergeStored(raw: Partial<CaptchaStoredConfig> | null): CaptchaStoredConfig {

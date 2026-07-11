@@ -452,7 +452,7 @@ export default function ChatbotAdminPage() {
             <Toggle
               checked={form.requireCaptcha}
               onChange={(requireCaptcha) => setForm({ ...form, requireCaptcha })}
-              label="تأیید Captcha / Turnstile"
+              label="تأیید Captcha / reCAPTCHA"
               hint="جلوگیری از سوءاستفاده ربات‌ها"
             />
             <Toggle

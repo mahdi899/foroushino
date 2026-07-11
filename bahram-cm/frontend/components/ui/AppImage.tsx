@@ -54,10 +54,7 @@ export function AppImage({
   const resolvedSrc =
     typeof src === 'string' ? (fallbacks[fallbackIndex] ?? primarySiteImageSrc(src) ?? src) : src;
 
-  const unoptimized =
-    disableImageOptimization ||
-    (typeof resolvedSrc === 'string' &&
-      (resolvedSrc.startsWith('/storage/') || resolvedSrc.includes('/storage/media/')));
+  const unoptimized = disableImageOptimization;
 
   const handleImageError = useCallback(
     (event: React.SyntheticEvent<HTMLImageElement, Event>) => {

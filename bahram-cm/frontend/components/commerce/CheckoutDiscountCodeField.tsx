@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { readDiscountCode, readDiscountViaLink, setDiscountCode } from "@/lib/discount/capture";
@@ -32,19 +32,7 @@ export function CheckoutDiscountCodeField({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  useEffect(() => {
-    const stored = readDiscountCode();
-    if (stored) {
-      const normalized = normalizeCode(stored);
-      setApplied(normalized);
-      setDraft(stored);
-      onAppliedChange?.(normalized);
-      void validateStoredCode(stored);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId, onAppliedChange]);
-
-  async function validateStoredCode(code: string) {
+  const validateStoredCode = useCallback(async (code: string) => {
     const result = await validateDiscountCode({
       code,
       product_id: productId,
@@ -61,7 +49,18 @@ export function CheckoutDiscountCodeField({
       discountCtx?.clearPreview();
       onAppliedChange?.(null);
     }
-  }
+  }, [productId, customerPhone, discountCtx, onAppliedChange]);
+
+  useEffect(() => {
+    const stored = readDiscountCode();
+    if (stored) {
+      const normalized = normalizeCode(stored);
+      setApplied(normalized);
+      setDraft(stored);
+      onAppliedChange?.(normalized);
+      void validateStoredCode(stored);
+    }
+  }, [productId, onAppliedChange, validateStoredCode]);
 
   async function applyCode() {
     const next = normalizeCode(draft);

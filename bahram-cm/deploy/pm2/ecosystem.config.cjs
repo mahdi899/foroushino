@@ -1,0 +1,23 @@
+/** @type {import('pm2').StartOptions} */
+module.exports = {
+  apps: [
+    {
+      name: 'bahram-frontend',
+      cwd: '/var/www/bahram-cm/frontend',
+      script: 'node_modules/.bin/next',
+      args: 'start -p 3000',
+      instances: 2,
+      exec_mode: 'cluster',
+      autorestart: true,
+      max_memory_restart: '1G',
+      env: {
+        NODE_ENV: 'production',
+        PORT: 3000,
+      },
+      error_file: '/var/log/pm2/bahram-frontend-error.log',
+      out_file: '/var/log/pm2/bahram-frontend-out.log',
+      merge_logs: true,
+      time: true,
+    },
+  ],
+};

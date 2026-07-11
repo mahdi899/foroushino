@@ -93,7 +93,7 @@ export function StudentSearchPicker({ value, onChange, required }: StudentSearch
     onChange({
       id: student.id,
       display_name: studentDisplayName(student),
-      mobile: student.mobile,
+      mobile: student.mobile ?? null,
     });
     setOpen(false);
   }

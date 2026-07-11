@@ -56,6 +56,23 @@ export async function getArticles(
   return { ok: true, data: { items: result.data.data, meta: result.data.meta } };
 }
 
+/** Fetch all published article slugs (paginated) for sitemap / static params. */
+export async function getAllArticleSlugs(): Promise<ArticleListItem[]> {
+  const items: ArticleListItem[] = [];
+  let page = 1;
+  let lastPage = 1;
+
+  do {
+    const result = await getArticles(page, 50);
+    if (!result.ok) break;
+    items.push(...result.data.items);
+    lastPage = result.data.meta.last_page;
+    page += 1;
+  } while (page <= lastPage);
+
+  return items;
+}
+
 export async function getArticleBySlug(
   slug: string,
 ): Promise<ApiResult<ArticleDetail>> {

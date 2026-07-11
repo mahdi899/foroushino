@@ -6,7 +6,7 @@ import { Menu } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { navLinkMatches } from "@/lib/nav-active";
 import { cn } from "@/lib/cn";
-import { SITE_BOTTOM_NAV_ITEMS } from "./siteBottomNav";
+import { SITE_BOTTOM_NAV_ITEMS } from "./bottomNavItems";
 
 type Props = {
   menuOpen?: boolean;

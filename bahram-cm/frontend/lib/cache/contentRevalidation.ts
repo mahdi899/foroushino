@@ -38,12 +38,10 @@ export async function revalidateArticleSurfaces(slug?: string | null): Promise<v
     revalidatePath('/admin/blog');
     revalidatePath('/admin/blog/new');
     revalidatePath('/insights');
-    revalidatePath('/articles');
     revalidatePath('/sitemap.xml');
     revalidatePath('/sitemaps');
     if (slug) {
       revalidatePath(`/insights/${slug}`);
-      revalidatePath(`/articles/${slug}`);
     }
   });
 }

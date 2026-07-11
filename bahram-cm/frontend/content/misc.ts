@@ -105,7 +105,7 @@ export const blogPosts = [
     title: 'طراحی دیجیتال لبخند چیست و چه مزیتی دارد؟',
     excerpt: 'با DSD نتیجه نهایی لبخند را پیش از شروع درمان ببینید.',
     category: 'طراحی لبخند',
-    cover: '/images/journey/smart.webp',
+    cover: '/storage/media/site/insight-cover-1.svg',
     readingTime: '۵ دقیقه',
   },
   {
@@ -113,7 +113,7 @@ export const blogPosts = [
     title: 'ایمپلنت اقساطی؛ همه‌چیز درباره شرایط پرداخت',
     excerpt: 'پیش‌پرداخت، تعداد اقساط و نکات مهم پرداخت اقساطی ایمپلنت.',
     category: 'اقساط',
-    cover: '/images/journey/pay.webp',
+    cover: '/storage/media/site/academy-accent.jpg',
     readingTime: '۵ دقیقه',
   },
 ];

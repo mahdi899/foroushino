@@ -25,6 +25,10 @@ return [
         'secret' => env('REVALIDATE_SECRET', 'bahram-dev-revalidate-secret'),
     ],
 
+    'internal_api' => [
+        'secret' => env('INTERNAL_API_SECRET', env('REVALIDATE_SECRET', 'bahram-dev-internal-secret')),
+    ],
+
     'cloudflare' => [
         'zone_id' => env('CLOUDFLARE_ZONE_ID'),
         'api_token' => env('CLOUDFLARE_API_TOKEN'),

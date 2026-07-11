@@ -90,6 +90,16 @@ class RolePermissionService
             ]);
         }
 
+        if (! $actor->isSuperAdmin()) {
+            $requestedReserved = array_values(array_intersect(
+                $permissions,
+                PermissionCatalog::reservedForSuperAdmin(),
+            ));
+            if ($requestedReserved !== []) {
+                abort(403, 'اجازه دسترسی ندارید.');
+            }
+        }
+
         $permissions = $this->filterAssignablePermissions($actor, $permissions);
         $before = $role->permissions->pluck('name')->all();
 

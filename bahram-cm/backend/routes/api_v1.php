@@ -61,7 +61,7 @@ use App\Http\Controllers\Api\V1\Student\TicketController as StudentTicketControl
 use App\Http\Controllers\Api\V1\StudentTestimonialController;
 use Illuminate\Support\Facades\Route;
 
-Route::post('auth/login', [AuthController::class, 'login']);
+Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
 /*
 |--------------------------------------------------------------------------
@@ -69,10 +69,10 @@ Route::post('auth/login', [AuthController::class, 'login']);
 |--------------------------------------------------------------------------
 */
 Route::prefix('student')->group(function () {
-    Route::post('auth/send-otp', [StudentAuthController::class, 'sendOtp']);
-    Route::post('auth/send-otp-bale', [StudentAuthController::class, 'sendOtpViaBale']);
-    Route::post('auth/verify-otp', [StudentAuthController::class, 'verifyOtp']);
-    Route::post('auth/login-password', [StudentAuthController::class, 'loginPassword']);
+    Route::post('auth/send-otp', [StudentAuthController::class, 'sendOtp'])->middleware('throttle:10,1');
+    Route::post('auth/send-otp-bale', [StudentAuthController::class, 'sendOtpViaBale'])->middleware('throttle:10,1');
+    Route::post('auth/verify-otp', [StudentAuthController::class, 'verifyOtp'])->middleware('throttle:20,1');
+    Route::post('auth/login-password', [StudentAuthController::class, 'loginPassword'])->middleware('throttle:10,1');
 
     Route::middleware(['auth:sanctum', 'student.active'])->group(function () {
         Route::post('auth/logout', [StudentAuthController::class, 'logout']);

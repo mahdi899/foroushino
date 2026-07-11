@@ -12,11 +12,13 @@ async function sleep(ms: number): Promise<void> {
 }
 
 function fallbackCaptchaConfig(): CaptchaPublicConfig {
-  const envKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
+  const envKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY?.trim() ?? '';
+  const hasRecaptcha = Boolean(envKey);
   return {
     enabled: true,
     site_key: envKey,
-    has_turnstile: Boolean(envKey),
+    has_recaptcha: hasRecaptcha,
+    has_turnstile: hasRecaptcha,
     honeypot_enabled: true,
     protect_newsletter: true,
     protect_leads: true,

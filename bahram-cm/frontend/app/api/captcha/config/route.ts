@@ -20,8 +20,9 @@ export async function GET() {
       {
         data: {
           enabled: true,
-          site_key: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '',
-          has_turnstile: Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim()),
+          site_key: process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY?.trim() ?? '',
+          has_recaptcha: Boolean(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY?.trim()),
+          has_turnstile: Boolean(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY?.trim()),
         },
       },
       { status: 200 },

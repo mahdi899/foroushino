@@ -13,12 +13,15 @@ trait VerifiesInternalSecret
             return true;
         }
 
-        $secret = trim((string) config('bahram.revalidate.secret', ''));
+        $secret = trim((string) config('bahram.internal_api.secret', ''));
         if ($secret === '') {
             return false;
         }
 
-        $header = trim((string) $request->header('X-Revalidate-Secret', ''));
+        $header = trim((string) (
+            $request->header('X-Internal-Secret')
+            ?: $request->header('X-Revalidate-Secret')
+        ));
 
         return hash_equals($secret, $header);
     }

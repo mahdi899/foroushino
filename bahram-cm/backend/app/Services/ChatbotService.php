@@ -4,7 +4,11 @@ namespace App\Services;
 
 use App\Models\ChatbotLog;
 use App\Models\ChatbotSession;
+use App\Models\ChatbotSetting;
+use App\Models\ChatConversation;
+use App\Models\ChatMessage;
 use App\Models\Setting;
+use App\Services\Exceptions\AiServiceException;
 use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -1347,6 +1351,69 @@ class ChatbotService
             ->delete();
 
         return $deleted;
+    }
+
+    /** Public legacy API — AI/fallback reply stored in chat_conversations / chat_messages. */
+    public function reply(ChatConversation $conversation, string $message): ChatMessage
+    {
+        $settings = ChatbotSetting::current();
+
+        ChatMessage::query()->create([
+            'conversation_id' => $conversation->id,
+            'sender' => 'user',
+            'message' => $message,
+        ]);
+
+        if (filled($conversation->phone)) {
+            app(LeadService::class)->create([
+                'name' => $conversation->name,
+                'phone' => $conversation->phone,
+                'source' => 'chatbot',
+                'message' => $message,
+            ]);
+        }
+
+        $replyText = $this->resolveLegacyPublicReply($settings, $conversation);
+
+        return ChatMessage::query()->create([
+            'conversation_id' => $conversation->id,
+            'sender' => 'bot',
+            'message' => $replyText,
+        ]);
+    }
+
+    private function resolveLegacyPublicReply(ChatbotSetting $settings, ChatConversation $conversation): string
+    {
+        $fallback = trim((string) ($settings->fallback_message ?? ''))
+            ?: 'در حال حاضر امکان پاسخ‌گویی وجود ندارد.';
+
+        if (! $settings->is_enabled) {
+            return $fallback;
+        }
+
+        $ai = app(AIService::class);
+        if (! $ai->isConfigured()) {
+            return $fallback;
+        }
+
+        try {
+            $system = trim((string) ($settings->system_prompt ?? ''))
+                ?: 'You are a helpful Persian-speaking assistant for Bahram Academy.';
+
+            $history = $conversation->messages()->orderBy('id')->get();
+            $messages = [['role' => 'system', 'content' => $system]];
+
+            foreach ($history as $row) {
+                $messages[] = [
+                    'role' => $row->sender === 'user' ? 'user' : 'assistant',
+                    'content' => (string) $row->message,
+                ];
+            }
+
+            return $ai->chat($messages);
+        } catch (AiServiceException) {
+            return $fallback;
+        }
     }
 
     private function isRateableLog(ChatbotLog $log): bool

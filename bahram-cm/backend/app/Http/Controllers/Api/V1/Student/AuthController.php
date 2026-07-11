@@ -111,7 +111,7 @@ class AuthController extends Controller
 
         $this->onboarding->handleFirstLogin($user);
 
-        $token = $user->createToken('student-panel', ['student'])->plainTextToken;
+        $token = $user->createToken('student-panel', ['student'], now()->addDays(30))->plainTextToken;
 
         return ApiResponse::success([
             'token' => $token,
@@ -140,7 +140,7 @@ class AuthController extends Controller
         $user->update(['last_login_at' => now()]);
         $this->onboarding->handleFirstLogin($user);
 
-        $token = $user->createToken('student-panel', ['student'])->plainTextToken;
+        $token = $user->createToken('student-panel', ['student'], now()->addDays(30))->plainTextToken;
 
         return ApiResponse::success([
             'token' => $token,

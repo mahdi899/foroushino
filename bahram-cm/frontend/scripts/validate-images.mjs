@@ -2,13 +2,8 @@
 /**
  * Image reference validator.
  *
- * Scans the source tree for local image references (any string that points at a
- * file under `public/`, e.g. "/media/...") and asserts that the file actually
- * exists on disk. This prevents 404 images and, critically, catches
- * case-sensitivity mismatches that pass on Windows/macOS but break on Linux.
- *
- * Usage: node scripts/validate-images.mjs
- * Exits non-zero if any referenced asset is missing.
+ * Scans the source tree for local image references and asserts files exist on disk.
+ * Resolves legacy /media/* paths via legacyMap → backend storage.
  */
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
@@ -17,22 +12,22 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
 const PUBLIC_DIR = path.join(ROOT, "public");
+const STORAGE_DIR = path.resolve(ROOT, "..", "backend", "storage", "app", "public");
+const LEGACY_MAP_FILE = path.join(ROOT, "lib", "media", "legacyMap.generated.ts");
 
 const SCAN_DIRS = ["app", "components", "lib", "content"];
+const SKIP_FILES = new Set(["lib/media/legacyMap.generated.ts"]);
 const SCAN_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mdx", ".md"]);
 const IMAGE_EXT = new Set([
   ".jpg", ".jpeg", ".png", ".webp", ".avif", ".svg", ".gif", ".ico",
 ]);
 
-// Matches quoted strings that look like a public asset path: "/media/x.jpg"
-const REF_RE = /["'`](\/(?:media|lottie|fonts|images|assets)\/[^"'`]+?\.[a-zA-Z0-9]+)["'`]/g;
+const REF_RE = /["'`](\/(?:media|storage|lottie|fonts|images|assets)\/[^"'`]+?\.[a-zA-Z0-9]+)["'`]/g;
 
-/** Strip /* *​/ block comments from code files so example paths in JSDoc are ignored. */
 function stripBlockComments(text) {
   return text.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
-/** Recursively walk a directory, yielding file paths. */
 async function* walk(dir) {
   let entries = [];
   try {
@@ -51,17 +46,15 @@ async function* walk(dir) {
   }
 }
 
-/** Case-sensitive existence check (so Linux build failures are caught early). */
-async function existsCaseSensitive(absPath) {
+async function existsCaseSensitive(baseDir, relPath) {
+  const absPath = path.join(baseDir, relPath);
   try {
     await stat(absPath);
   } catch {
     return false;
   }
-  // Verify each path segment matches the real on-disk casing.
-  const rel = path.relative(PUBLIC_DIR, absPath);
-  const segments = rel.split(path.sep);
-  let current = PUBLIC_DIR;
+  const segments = relPath.split(path.sep).filter(Boolean);
+  let current = baseDir;
   for (const segment of segments) {
     const listing = await readdir(current);
     if (!listing.includes(segment)) return false;
@@ -70,12 +63,48 @@ async function existsCaseSensitive(absPath) {
   return true;
 }
 
+async function loadLegacyMap() {
+  const map = new Map();
+  try {
+    const text = await readFile(LEGACY_MAP_FILE, "utf8");
+    const re = /"(\/media\/[^"]+)":\s*"(\/storage\/[^"]+)"/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      map.set(m[1], m[2]);
+    }
+  } catch {
+    /* no legacy map */
+  }
+  return map;
+}
+
+function resolveRef(ref, legacyMap) {
+  return legacyMap.get(ref) ?? ref;
+}
+
+async function existsAsset(ref, legacyMap) {
+  const resolved = resolveRef(ref, legacyMap);
+  if (resolved.startsWith("/storage/")) {
+    const rel = resolved.replace(/^\/storage\//, "").split("/").join(path.sep);
+    try {
+      await stat(path.join(STORAGE_DIR, rel));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return existsCaseSensitive(PUBLIC_DIR, resolved.replace(/^\//, "").split("/").join(path.sep));
+}
+
 async function main() {
-  const refs = new Map(); // ref -> Set(sourceFiles)
+  const legacyMap = await loadLegacyMap();
+  const refs = new Map();
 
   for (const dirName of SCAN_DIRS) {
     const dir = path.join(ROOT, dirName);
     for await (const file of walk(dir)) {
+      const relFile = path.relative(ROOT, file).replace(/\\/g, "/");
+      if (SKIP_FILES.has(relFile)) continue;
       const ext = path.extname(file);
       if (!SCAN_EXT.has(ext)) continue;
       let text = await readFile(file, "utf8");
@@ -93,10 +122,14 @@ async function main() {
   }
 
   const missing = [];
+  const checked = new Set();
   for (const [ref, sources] of refs) {
-    const abs = path.join(PUBLIC_DIR, ref.replace(/^\//, ""));
-    if (!(await existsCaseSensitive(abs))) {
-      missing.push({ ref, sources: [...sources] });
+    const resolved = resolveRef(ref, legacyMap);
+    const key = resolved.startsWith("/storage/") ? resolved : ref;
+    if (checked.has(key)) continue;
+    checked.add(key);
+    if (!(await existsAsset(ref, legacyMap))) {
+      missing.push({ ref, resolved, sources: [...sources] });
     }
   }
 
@@ -107,8 +140,8 @@ async function main() {
   }
 
   console.error(`\nFAILED: ${missing.length}/${total} referenced image(s) missing:\n`);
-  for (const { ref, sources } of missing) {
-    console.error(`  - ${ref}`);
+  for (const { ref, resolved, sources } of missing) {
+    console.error(`  - ${ref}${resolved !== ref ? ` → ${resolved}` : ""}`);
     for (const s of sources) console.error(`      referenced in ${s}`);
   }
   console.error("");

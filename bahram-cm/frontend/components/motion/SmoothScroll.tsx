@@ -18,7 +18,7 @@ const LENIS_OPTIONS = {
   stopInertiaOnNavigate: true,
 } as const;
 
-function scrollToRouteTarget(lenis?: { scrollTo: (...args: unknown[]) => void }) {
+function scrollToRouteTarget(lenis?: { scrollTo: (target: string | number | HTMLElement, options?: object) => void }) {
   const hash = window.location.hash;
   if (hash) {
     const target = document.getElementById(hash.slice(1));
@@ -36,7 +36,7 @@ function scrollToRouteTarget(lenis?: { scrollTo: (...args: unknown[]) => void })
   lenis?.scrollTo(0, { immediate: true, force: true });
 }
 
-function useRouteScrollSync(lenis?: { resize?: () => void; scrollTo: (...args: unknown[]) => void }) {
+function useRouteScrollSync(lenis?: { resize?: () => void; scrollTo: (target: string | number | HTMLElement, options?: object) => void }) {
   const pathname = usePathname();
 
   useEffect(() => {

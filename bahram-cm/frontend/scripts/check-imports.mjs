@@ -21,7 +21,7 @@ const ROOT = path.resolve(__dirname, "..");
 
 const SCAN_DIRS = ["app", "components", "lib", "content"];
 const CODE_EXT = new Set([".ts", ".tsx", ".js", ".jsx"]);
-const RESOLVE_EXT = ["", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".json"];
+const RESOLVE_EXT = ["", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".json", ".d.ts"];
 const INDEX_FILES = ["index.ts", "index.tsx", "index.js", "index.jsx"];
 
 const IMPORT_RE =

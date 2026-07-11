@@ -18,10 +18,9 @@ class ContentPublishService
 
     public function revalidateArticles(?string $slug = null, ?string $previousSlug = null): void
     {
-        $paths = ['/insights', '/articles', '/sitemap.xml', '/sitemaps'];
+        $paths = ['/insights', '/sitemap.xml', '/sitemaps'];
         foreach (array_filter([$slug, $previousSlug]) as $s) {
             $paths[] = '/insights/'.$s;
-            $paths[] = '/articles/'.$s;
         }
 
         $this->purge(
@@ -81,7 +80,7 @@ class ContentPublishService
             'ذخیره محصول',
             ['pricing', 'services', 'settings'],
             array_values(array_unique($paths)),
-            null,
+            fn () => $this->forgetProductRuntimeCache($slug),
         );
     }
 
@@ -202,6 +201,16 @@ class ContentPublishService
         foreach (array_filter([$slug, $previousSlug]) as $s) {
             RuntimeCache::forget('public_mini_courses:show:'.$s);
             RuntimeCache::forget('public_mini_courses:comments:'.$s);
+        }
+    }
+
+    private function forgetProductRuntimeCache(?string $slug = null): void
+    {
+        RuntimeCache::forget('public_products:index:all');
+        RuntimeCache::forget('public_products:index:listed');
+
+        if ($slug) {
+            RuntimeCache::forget('public_products:show:'.$slug);
         }
     }
 }

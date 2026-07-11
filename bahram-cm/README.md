@@ -69,7 +69,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 جزئیات در [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
-**CDN و Cloudflare:** [`docs/CDN-DEPLOYMENT.md`](docs/CDN-DEPLOYMENT.md)
+**CDN (fashio.ir / Arvan):** [`docs/ARVAN-CDN.md`](docs/ARVAN-CDN.md)
 
 - **Frontend:** Vercel یا هر هاست Node — روت `bahram-cm/frontend`
 - **Backend:** Laravel — `bahram-cm/backend` با MySQL + Redis

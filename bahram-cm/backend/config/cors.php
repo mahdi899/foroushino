@@ -17,14 +17,21 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => array_values(array_filter(array_unique(array_merge(
-        array_map('trim', explode(',', (string) env('CORS_ALLOWED_ORIGINS', ''))),
-        [
-            env('FRONTEND_URL', 'http://localhost:3000'),
-            'http://localhost:3000',
-            'http://127.0.0.1:3000',
-        ]
-    )))),
+    'allowed_origins' => array_values(array_filter(array_unique(
+        env('APP_ENV') === 'production'
+            ? array_merge(
+                array_map('trim', explode(',', (string) env('CORS_ALLOWED_ORIGINS', ''))),
+                array_filter([env('FRONTEND_URL')]),
+            )
+            : array_merge(
+                array_map('trim', explode(',', (string) env('CORS_ALLOWED_ORIGINS', ''))),
+                [
+                    env('FRONTEND_URL', 'http://localhost:3000'),
+                    'http://localhost:3000',
+                    'http://127.0.0.1:3000',
+                ],
+            )
+    ))),
 
     'allowed_origins_patterns' => [],
 

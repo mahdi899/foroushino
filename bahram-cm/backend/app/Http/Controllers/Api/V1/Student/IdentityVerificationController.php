@@ -160,8 +160,12 @@ class IdentityVerificationController extends Controller
             ? (int) config('bahram.identity.selfie_max_mb', 25) * 1024
             : (int) config('bahram.identity.national_card_max_mb', 8) * 1024;
 
+        $mimeRules = $type === IdentityArtifactType::SelfieVideo
+            ? ['mimes:mp4,webm,mov,quicktime']
+            : ['mimes:jpg,jpeg,png,webp'];
+
         $request->validate(
-            ['file' => ["max:{$maxKb}"]],
+            ['file' => array_merge($mimeRules, ["max:{$maxKb}"])],
             [
                 'file.max' => $type === IdentityArtifactType::SelfieVideo
                     ? IdentityVerificationMessages::VIDEO_FILE_TOO_LARGE

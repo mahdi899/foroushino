@@ -88,7 +88,7 @@ class CaptchaService
             return $stored;
         }
 
-        $env = trim((string) config('services.turnstile.site_key', ''));
+        $env = trim((string) config('services.recaptcha.site_key', ''));
 
         return $env !== '' ? $env : null;
     }
@@ -100,7 +100,7 @@ class CaptchaService
             return $stored;
         }
 
-        $env = trim((string) config('services.turnstile.secret_key', ''));
+        $env = trim((string) config('services.recaptcha.secret_key', ''));
 
         return $env !== '' ? $env : null;
     }
@@ -109,6 +109,7 @@ class CaptchaService
      * @return array{
      *   enabled: bool,
      *   site_key: string,
+     *   has_recaptcha: bool,
      *   has_turnstile: bool,
      *   honeypot_enabled: bool,
      *   protect_newsletter: bool,
@@ -120,11 +121,13 @@ class CaptchaService
     {
         $enabled = $this->isEnabled();
         $siteKey = $this->siteKey() ?? '';
+        $hasRecaptcha = $enabled && $siteKey !== '';
 
         return [
             'enabled' => $enabled,
             'site_key' => $enabled ? $siteKey : '',
-            'has_turnstile' => $enabled && $siteKey !== '',
+            'has_recaptcha' => $hasRecaptcha,
+            'has_turnstile' => $hasRecaptcha,
             'honeypot_enabled' => $this->isHoneypotEnabled(),
             'protect_newsletter' => $this->isFormProtected('newsletter'),
             'protect_leads' => $this->isFormProtected('leads'),
@@ -179,7 +182,7 @@ class CaptchaService
         $verified = false;
 
         if ($token !== null && $token !== '') {
-            $verified = $this->verifyTurnstile($token, $ip);
+            $verified = $this->verifyRecaptcha($token, $ip);
         } elseif ($mathId !== null && $mathId !== '' && $mathAnswer !== null && $mathAnswer !== '') {
             $verified = $this->verifyMath($mathId, $mathAnswer);
         }
@@ -237,7 +240,7 @@ class CaptchaService
         return 'captcha:trusted:session:'.md5($sessionId);
     }
 
-    public function verifyTurnstile(string $token, ?string $ip = null): bool
+    public function verifyRecaptcha(string $token, ?string $ip = null): bool
     {
         $secret = $this->secretKey();
         if (! $secret) {
@@ -256,16 +259,33 @@ class CaptchaService
         try {
             $response = Http::asForm()
                 ->timeout(8)
-                ->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', $payload);
+                ->post('https://www.google.com/recaptcha/api/siteverify', $payload);
 
             if (! $response->successful()) {
                 return false;
             }
 
-            return (bool) $response->json('success');
+            if (! (bool) $response->json('success')) {
+                return false;
+            }
+
+            $threshold = (float) config('services.recaptcha.score_threshold', 0.5);
+            $score = $response->json('score');
+
+            if ($score === null) {
+                return true;
+            }
+
+            return (float) $score >= $threshold;
         } catch (\Throwable) {
             return false;
         }
+    }
+
+    /** @deprecated Use verifyRecaptcha */
+    public function verifyTurnstile(string $token, ?string $ip = null): bool
+    {
+        return $this->verifyRecaptcha($token, $ip);
     }
 
     public function verifyMath(string $id, mixed $answer): bool

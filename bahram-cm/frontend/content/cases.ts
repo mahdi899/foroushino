@@ -9,8 +9,8 @@ export const cases: CaseContent[] = [
     serviceLabel: 'ایمپلنت',
     summary: 'جایگزینی چند دندان از دست‌رفته با ایمپلنت و روکش سرامیکی.',
     duration: '۸ هفته',
-    before: '/images/samples/Before1.webp',
-    after: '/images/samples/After1.webp',
+    before: '/storage/media/site/social-01.jpg',
+    after: '/storage/media/site/social-02.jpg',
     tags: ['ایمپلنت'],
   },
   {
@@ -20,8 +20,8 @@ export const cases: CaseContent[] = [
     serviceLabel: 'لمینت',
     summary: 'اصلاح رنگ و فرم دندان‌ها با ۸ واحد لمینت سرامیکی و نتیجه‌ای طبیعی.',
     duration: '۳ جلسه',
-    before: '/images/samples/Before2.webp',
-    after: '/images/samples/After2.webp',
+    before: '/storage/media/site/social-03.jpg',
+    after: '/storage/media/site/social-04.jpg',
     tags: ['لمینت', 'طراحی لبخند'],
   },
   {
@@ -31,8 +31,8 @@ export const cases: CaseContent[] = [
     serviceLabel: 'کامپوزیت',
     summary: 'بستن فاصله و اصلاح فرم با کامپوزیت ونیر در یک جلسه.',
     duration: '۱ جلسه',
-    before: '/images/samples/Before1.webp',
-    after: '/images/samples/After1.webp',
+    before: '/storage/media/site/social-01.jpg',
+    after: '/storage/media/site/social-02.jpg',
     tags: ['کامپوزیت', 'زیبایی'],
   },
   {
@@ -42,8 +42,8 @@ export const cases: CaseContent[] = [
     serviceLabel: 'بلیچینگ',
     summary: 'بلیچینگ مطبی با نتیجه روشن‌تر و یکدست.',
     duration: '۱ جلسه',
-    before: '/images/samples/Before2.webp',
-    after: '/images/samples/After2.webp',
+    before: '/storage/media/site/social-03.jpg',
+    after: '/storage/media/site/social-04.jpg',
     tags: ['بلیچینگ', 'زیبایی'],
   },
   {
@@ -53,8 +53,8 @@ export const cases: CaseContent[] = [
     serviceLabel: 'ایمپلنت',
     summary: 'کاشت یک واحد ایمپلنت با روکش هماهنگ با دندان‌های طبیعی.',
     duration: '۶ هفته',
-    before: '/images/samples/Before1.webp',
-    after: '/images/samples/After1.webp',
+    before: '/storage/media/site/social-01.jpg',
+    after: '/storage/media/site/social-02.jpg',
     tags: ['ایمپلنت', 'زیبایی'],
   },
   {
@@ -64,8 +64,8 @@ export const cases: CaseContent[] = [
     serviceLabel: 'لمینت',
     summary: 'یکدست شدن رنگ و فرم دندان‌ها با لمینت سرامیکی.',
     duration: '۳ جلسه',
-    before: '/images/samples/Before2.webp',
-    after: '/images/samples/After2.webp',
+    before: '/storage/media/site/social-03.jpg',
+    after: '/storage/media/site/social-04.jpg',
     tags: ['لمینت', 'زیبایی'],
   },
 ];
@@ -96,8 +96,8 @@ export function pickHomepageCases(list: CaseContent[]): CaseContent[] {
 export function caseSampleImages(index: number): { before: string; after: string } {
   const pair = index % 2;
   return pair === 0
-    ? { before: '/images/samples/Before1.webp', after: '/images/samples/After1.webp' }
-    : { before: '/images/samples/Before2.webp', after: '/images/samples/After2.webp' };
+    ? { before: '/storage/media/site/social-01.jpg', after: '/storage/media/site/social-02.jpg' }
+    : { before: '/storage/media/site/social-03.jpg', after: '/storage/media/site/social-04.jpg' };
 }
 
 export function resolveCaseImages(slug: string, index = 0): { before: string; after: string } {

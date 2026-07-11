@@ -13,7 +13,12 @@ export interface OtpAuthState {
   info?: string;
 }
 
-async function callStudentAuth(path: string, body: unknown): Promise<{ ok: boolean; data?: any; message?: string }> {
+type StudentAuthPayload = {
+  token?: string;
+  message?: string;
+};
+
+async function callStudentAuth(path: string, body: unknown): Promise<{ ok: boolean; data?: StudentAuthPayload; message?: string }> {
   try {
     const res = await fetch(`${SERVER_API_URL}/student${path}`, {
       method: 'POST',
@@ -70,7 +75,10 @@ export async function verifyOtpAction(_prev: OtpAuthState, formData: FormData): 
   const result = await callStudentAuth('/auth/verify-otp', { mobile, code });
   if (!result.ok) return { step: 'otp', mobile, error: result.message };
 
-  await setStudentTokenCookie(result.data.token);
+  const token = result.data?.token;
+  if (!token) return { step: 'otp', mobile, error: 'پاسخ سرور نامعتبر بود.' };
+
+  await setStudentTokenCookie(token);
   redirect(resolveStudentLoginRedirect(formData));
 }
 
@@ -94,7 +102,10 @@ export async function loginPasswordAction(_prev: PasswordAuthState, formData: Fo
   });
   if (!result.ok) return { error: result.message };
 
-  await setStudentTokenCookie(result.data.token);
+  const token = result.data?.token;
+  if (!token) return { error: 'پاسخ سرور نامعتبر بود.' };
+
+  await setStudentTokenCookie(token);
   redirect(resolveStudentLoginRedirect(formData));
 }
 
