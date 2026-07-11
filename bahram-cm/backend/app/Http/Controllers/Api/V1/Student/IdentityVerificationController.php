@@ -9,9 +9,12 @@ use App\Enums\IdentityVerificationStatus;
 use App\Http\Controllers\Controller;
 use App\Models\IdentityVerificationArtifact;
 use App\Models\IdentityVerificationSubmission;
+use App\Models\UserIdentityProfile;
 use App\Services\Identity\IdentityArtifactStorage;
 use App\Support\ApiResponse;
+use App\Support\IdentityVerificationMessages;
 use App\Support\NationalCode;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -53,35 +56,70 @@ class IdentityVerificationController extends Controller
 
     public function draft(Request $request, EnsureIdentityProfile $ensure): JsonResponse
     {
-        $data = $request->validate([
-            'first_name' => ['required', 'string', 'max:100'],
-            'last_name' => ['required', 'string', 'max:100'],
-            'national_code' => ['required', 'string', 'max:20'],
-            'date_of_birth' => ['required', 'date'],
-            'gender' => ['required', 'string', 'max:20'],
-            'city' => ['required', 'string', 'max:100'],
-        ]);
+        $data = $request->validate(
+            [
+                'first_name' => ['required', 'string', 'max:100'],
+                'last_name' => ['required', 'string', 'max:100'],
+                'national_code' => ['required', 'string', 'max:20'],
+                'date_of_birth' => ['required', 'date'],
+                'gender' => ['required', 'string', 'max:20'],
+                'city' => ['required', 'string', 'max:100'],
+            ],
+            IdentityVerificationMessages::draftValidationMessages(),
+        );
 
         $nationalCode = NationalCode::normalize($data['national_code']);
         if (! NationalCode::isValid($nationalCode)) {
-            return ApiResponse::error('invalid_national_code', 'کد ملی معتبر نیست.', 422);
+            return ApiResponse::error('invalid_national_code', IdentityVerificationMessages::INVALID_NATIONAL_CODE, 422);
         }
 
+        $hash = NationalCode::hash($nationalCode);
+
         $user = $request->user();
+
+        $duplicate = UserIdentityProfile::query()
+            ->where('national_code_hash', $hash)
+            ->where('user_id', '!=', $user->id)
+            ->exists();
+
+        if ($duplicate) {
+            return ApiResponse::error('duplicate_national_code', IdentityVerificationMessages::DUPLICATE_NATIONAL_CODE, 422);
+        }
+
         $profile = $ensure($user);
 
-        $submission = DB::transaction(function () use ($user, $profile, $data, $nationalCode) {
-            $draft = IdentityVerificationSubmission::query()
-                ->where('user_id', $user->id)
-                ->where('status', IdentityVerificationStatus::Draft)
-                ->orderByDesc('id')
-                ->first();
+        try {
+            $submission = DB::transaction(function () use ($user, $profile, $data, $nationalCode) {
+                $draft = IdentityVerificationSubmission::query()
+                    ->where('user_id', $user->id)
+                    ->where('status', IdentityVerificationStatus::Draft)
+                    ->orderByDesc('id')
+                    ->first();
 
-            $payload = [
-                'user_id' => $user->id,
-                'identity_profile_id' => $profile->id,
-                'version' => $draft?->version ?? ((int) IdentityVerificationSubmission::query()->where('user_id', $user->id)->max('version') + 1),
-                'status' => IdentityVerificationStatus::Draft,
+                $payload = [
+                    'user_id' => $user->id,
+                    'identity_profile_id' => $profile->id,
+                    'version' => $draft?->version ?? ((int) IdentityVerificationSubmission::query()->where('user_id', $user->id)->max('version') + 1),
+                    'status' => IdentityVerificationStatus::Draft,
+                    'first_name' => $data['first_name'],
+                    'last_name' => $data['last_name'],
+                    'national_code_encrypted' => NationalCode::encrypt($nationalCode),
+                    'national_code_hash' => NationalCode::hash($nationalCode),
+                    'date_of_birth' => $data['date_of_birth'],
+                    'gender' => $data['gender'],
+                    'city' => $data['city'],
+                ];
+
+                if ($draft) {
+                    $draft->update($payload);
+
+                    return $draft->fresh();
+                }
+
+                return IdentityVerificationSubmission::query()->create($payload);
+            });
+
+            $profile->fill([
                 'first_name' => $data['first_name'],
                 'last_name' => $data['last_name'],
                 'national_code_encrypted' => NationalCode::encrypt($nationalCode),
@@ -89,27 +127,11 @@ class IdentityVerificationController extends Controller
                 'date_of_birth' => $data['date_of_birth'],
                 'gender' => $data['gender'],
                 'city' => $data['city'],
-            ];
-
-            if ($draft) {
-                $draft->update($payload);
-
-                return $draft->fresh();
-            }
-
-            return IdentityVerificationSubmission::query()->create($payload);
-        });
-
-        $profile->fill([
-            'first_name' => $data['first_name'],
-            'last_name' => $data['last_name'],
-            'national_code_encrypted' => NationalCode::encrypt($nationalCode),
-            'national_code_hash' => NationalCode::hash($nationalCode),
-            'date_of_birth' => $data['date_of_birth'],
-            'gender' => $data['gender'],
-            'city' => $data['city'],
-            'identity_status' => IdentityVerificationStatus::Draft,
-        ])->save();
+                'identity_status' => IdentityVerificationStatus::Draft,
+            ])->save();
+        } catch (UniqueConstraintViolationException) {
+            return ApiResponse::error('duplicate_national_code', IdentityVerificationMessages::DUPLICATE_NATIONAL_CODE, 422);
+        }
 
         return ApiResponse::success($this->submissionPayload($submission));
     }
@@ -119,20 +141,28 @@ class IdentityVerificationController extends Controller
         EnsureIdentityProfile $ensure,
         IdentityArtifactStorage $storage,
     ): JsonResponse {
-        $data = $request->validate([
-            'type' => ['required', 'string', 'in:national_card_front,selfie_video'],
-            'file' => ['required', 'file'],
-            'submission_id' => ['nullable', 'integer'],
-        ]);
+        $data = $request->validate(
+            [
+                'type' => ['required', 'string', 'in:national_card_front,selfie_video'],
+                'file' => ['required', 'file'],
+                'submission_id' => ['nullable', 'integer'],
+            ],
+            IdentityVerificationMessages::uploadValidationMessages(),
+        );
 
         $type = IdentityArtifactType::from($data['type']);
         $maxKb = $type === IdentityArtifactType::SelfieVideo
             ? (int) config('bahram.identity.selfie_max_mb', 25) * 1024
             : (int) config('bahram.identity.national_card_max_mb', 8) * 1024;
 
-        $request->validate([
-            'file' => ["max:{$maxKb}"],
-        ]);
+        $request->validate(
+            ['file' => ["max:{$maxKb}"]],
+            [
+                'file.max' => $type === IdentityArtifactType::SelfieVideo
+                    ? IdentityVerificationMessages::VIDEO_FILE_TOO_LARGE
+                    : IdentityVerificationMessages::CARD_FILE_TOO_LARGE,
+            ],
+        );
 
         $user = $request->user();
         $profile = $ensure($user);
@@ -147,7 +177,7 @@ class IdentityVerificationController extends Controller
             ->first();
 
         if (! $submission) {
-            return ApiResponse::error('draft_required', 'ابتدا پیش‌نویس اطلاعات را ذخیره کنید.', 422);
+            return ApiResponse::error('draft_required', IdentityVerificationMessages::DRAFT_REQUIRED, 422);
         }
 
         $stored = $storage->storeUploadedFile(
@@ -187,23 +217,26 @@ class IdentityVerificationController extends Controller
 
     public function submit(Request $request, SubmitIdentityVerification $submit): JsonResponse
     {
-        $data = $request->validate([
-            'first_name' => ['required', 'string', 'max:100'],
-            'last_name' => ['required', 'string', 'max:100'],
-            'national_code' => ['required', 'string', 'max:20'],
-            'date_of_birth' => ['required', 'date'],
-            'gender' => ['required', 'string', 'max:20'],
-            'city' => ['required', 'string', 'max:100'],
-            'expected_video_text' => ['nullable', 'string', 'max:500'],
-            'draft_submission_id' => ['nullable', 'integer'],
-            'national_card' => ['nullable', 'file'],
-            'selfie_video' => ['nullable', 'file'],
-        ]);
+        $data = $request->validate(
+            [
+                'first_name' => ['required', 'string', 'max:100'],
+                'last_name' => ['required', 'string', 'max:100'],
+                'national_code' => ['required', 'string', 'max:20'],
+                'date_of_birth' => ['required', 'date'],
+                'gender' => ['required', 'string', 'max:20'],
+                'city' => ['required', 'string', 'max:100'],
+                'expected_video_text' => ['nullable', 'string', 'max:500'],
+                'draft_submission_id' => ['nullable', 'integer'],
+                'national_card' => ['nullable', 'file'],
+                'selfie_video' => ['nullable', 'file'],
+            ],
+            IdentityVerificationMessages::submitValidationMessages(),
+        );
 
         try {
             $submission = $submit($request->user(), $data);
         } catch (ValidationException $e) {
-            $message = collect($e->errors())->flatten()->first() ?: 'اطلاعات نامعتبر است.';
+            $message = collect($e->errors())->flatten()->first() ?: IdentityVerificationMessages::GENERIC_VALIDATION;
 
             return ApiResponse::error('validation_error', $message, 422, $e->errors());
         }

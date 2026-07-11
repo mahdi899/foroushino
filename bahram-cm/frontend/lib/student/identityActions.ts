@@ -1,29 +1,21 @@
 'use server';
 
-import { apiErrorMessage } from '@/lib/api/errors';
 import { revalidatePath } from 'next/cache';
 import { studentFetch } from '@/lib/student/session';
 import { getStudentToken } from '@/lib/student/session';
 import { SERVER_API_URL } from '@/lib/api/config';
+import { resolveIdentityApiError, resolveIdentityApiErrorDetail } from '@/lib/student/identityVerificationErrors';
 
 export interface SimpleFormState {
   error?: string;
+  errorTitle?: string;
   success?: string;
   data?: Record<string, unknown>;
 }
 
-function extractError(err: unknown, fallback: string): string {
-  const e = err as {
-    status?: number;
-    payload?: { error?: { message_fa?: string; code?: string }; errors?: Record<string, string[]>; message?: string };
-  };
-  const message = apiErrorMessage(e?.payload, undefined, '');
-  if (message) return message;
-
-  if (e?.status === 405) return 'درخواست به API نامعتبر است. صفحه را رفرش کنید و دوباره تلاش کنید.';
-  if (e?.status === 404) return 'مسیر API یافت نشد. احتمالاً نسخه فرانت و بک‌اند هم‌خوان نیست.';
-
-  return fallback;
+function identityActionError(err: unknown, fallback: string): Pick<SimpleFormState, 'error' | 'errorTitle'> {
+  const detail = resolveIdentityApiErrorDetail(err, fallback);
+  return { error: detail.message, errorTitle: detail.title };
 }
 
 async function studentUpload<T>(path: string, formData: FormData): Promise<T> {
@@ -55,7 +47,7 @@ export async function getIdentityVerificationStateAction(): Promise<{
     const res = await studentFetch<{ data: Record<string, unknown> }>('/identity-verification');
     return { ok: true, data: res.data };
   } catch (err) {
-    return { ok: false, error: extractError(err, 'دریافت وضعیت تأیید هویت ناموفق بود.') };
+    return { ok: false, error: resolveIdentityApiError(err, 'دریافت وضعیت تأیید هویت ناموفق بود.') };
   }
 }
 
@@ -70,7 +62,7 @@ export async function fetchVideoPromptAction(): Promise<
     if (!text) return { ok: false, error: 'متن ویدیو دریافت نشد.' };
     return { ok: true, text };
   } catch (err) {
-    return { ok: false, error: extractError(err, 'دریافت متن ویدیو ناموفق بود.') };
+    return { ok: false, error: resolveIdentityApiError(err, 'دریافت متن ویدیو ناموفق بود.') };
   }
 }
 
@@ -90,7 +82,7 @@ export async function saveIdentityDraftAction(
   try {
     await studentFetch('/identity-verification/draft', { method: 'POST', body: payload });
   } catch (err) {
-    return { error: extractError(err, 'ذخیره اطلاعات هویتی ناموفق بود.') };
+    return identityActionError(err, 'ذخیره اطلاعات هویتی ناموفق بود.');
   }
 
   revalidatePath('/panel/identity-verification');
@@ -102,7 +94,7 @@ export async function submitIdentityVerificationAction(formData: FormData): Prom
   try {
     await studentUpload('/identity-verification/submit', formData);
   } catch (err) {
-    return { error: extractError(err, 'ارسال پرونده تأیید هویت ناموفق بود.') };
+    return identityActionError(err, 'ارسال پرونده تأیید هویت ناموفق بود.');
   }
 
   revalidatePath('/panel/identity-verification');
@@ -129,6 +121,6 @@ export async function verifyMobileOwnershipAction(): Promise<SimpleFormState> {
     }
     return { success: res.data?.message ?? res.message ?? 'درخواست تطبیق ثبت شد.' };
   } catch (err) {
-    return { error: extractError(err, 'تأیید مالکیت شماره ناموفق بود.') };
+    return identityActionError(err, 'تأیید مالکیت شماره ناموفق بود.');
   }
 }

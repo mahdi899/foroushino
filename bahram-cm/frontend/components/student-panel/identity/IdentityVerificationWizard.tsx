@@ -5,9 +5,16 @@ import { useRouter } from 'next/navigation';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { JalaliDateField } from '@/components/ui/JalaliDateField';
 import { LiveSelfieVideoStep } from './LiveSelfieVideoStep';
+import { NationalCardUploadStep } from './NationalCardUploadStep';
+import { IdentityVerificationFeedback } from './IdentityVerificationFeedback';
 import { saveIdentityDraftAction, submitIdentityVerificationAction } from '@/lib/student/identityActions';
 import { identityStatusLabel } from '@/lib/student/identityLabels';
-import { formatDateFa } from '@/lib/persian';
+import {
+  IDENTITY_CLIENT_ERRORS,
+  IDENTITY_CLIENT_ERROR_TITLES,
+  validateIdentityStep1,
+} from '@/lib/student/identityVerificationErrors';
+import { IdentityReviewStep } from './IdentityReviewStep';
 
 const STEPS = ['اطلاعات هویتی', 'تصویر کارت ملی', 'ویدیوی سلفی زنده', 'بازبینی و ارسال'] as const;
 
@@ -42,8 +49,8 @@ export function IdentityVerificationWizard({
   const [cardFile, setCardFile] = useState<File | null>(null);
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [videoPrompt, setVideoPrompt] = useState('');
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorTitle, setErrorTitle] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const lockedStatuses = ['submitted', 'under_review', 'approved'];
@@ -62,26 +69,46 @@ export function IdentityVerificationWizard({
 
   function saveStep1() {
     setError(null);
-    setMessage(null);
+    setErrorTitle(null);
+
+    const clientError = validateIdentityStep1(draft);
+    if (clientError) {
+      setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.step1);
+      setError(clientError);
+      return;
+    }
+
     const fd = new FormData();
     Object.entries(draft).forEach(([k, v]) => fd.set(k, v));
     startTransition(async () => {
       const res = await saveIdentityDraftAction({}, fd);
       if (res.error) {
+        setErrorTitle(res.errorTitle ?? null);
         setError(res.error);
         return;
       }
-      setMessage(res.success ?? null);
       setStep(1);
     });
   }
 
   function submitAll() {
-    if (!cardFile || !videoBlob) {
-      setError('تصویر کارت ملی و ویدیوی سلفی الزامی است.');
+    if (!cardFile && !videoBlob) {
+      setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.artifacts);
+      setError(IDENTITY_CLIENT_ERRORS.artifacts);
+      return;
+    }
+    if (!cardFile) {
+      setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.artifacts);
+      setError(IDENTITY_CLIENT_ERRORS.cardMissing);
+      return;
+    }
+    if (!videoBlob) {
+      setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.artifacts);
+      setError(IDENTITY_CLIENT_ERRORS.videoMissing);
       return;
     }
     setError(null);
+    setErrorTitle(null);
     const fd = new FormData();
     Object.entries(draft).forEach(([k, v]) => fd.set(k, v));
     fd.set('national_card', cardFile);
@@ -90,10 +117,10 @@ export function IdentityVerificationWizard({
     startTransition(async () => {
       const res = await submitIdentityVerificationAction(fd);
       if (res.error) {
+        setErrorTitle(res.errorTitle ?? null);
         setError(res.error);
         return;
       }
-      setMessage(res.success ?? 'ارسال شد.');
       router.refresh();
       router.push('/panel/profile');
     });
@@ -221,86 +248,47 @@ export function IdentityVerificationWizard({
         ) : null}
 
         {step === 1 ? (
-          <div className="space-y-4">
-            <p className="text-sm text-text-muted">تصویر واضح از روی کارت ملی را بارگذاری کنید.</p>
-            <input
-              type="file"
-              accept="image/*"
-              className="field-input"
-              onChange={(e) => setCardFile(e.target.files?.[0] ?? null)}
-            />
-            {cardFile ? <p className="text-sm text-success">فایل انتخاب شد: {cardFile.name}</p> : null}
-            <div className="flex gap-2">
-              <button type="button" className="btn btn-secondary" onClick={() => setStep(0)}>
-                قبلی
-              </button>
-              <button type="button" className="btn btn-primary" disabled={!cardFile} onClick={() => setStep(2)}>
-                ادامه
-              </button>
-            </div>
-          </div>
+          <NationalCardUploadStep
+            file={cardFile}
+            onFileChange={setCardFile}
+            onBack={() => setStep(0)}
+            onContinue={() => {
+              setError(null);
+              setStep(2);
+            }}
+          />
         ) : null}
 
         {step === 2 ? (
-          <div className="space-y-4">
-            <LiveSelfieVideoStep
-              onRecorded={(blob) => setVideoBlob(blob)}
-              onPrompt={(text) => setVideoPrompt(text)}
-            />
-            <div className="flex gap-2">
-              <button type="button" className="btn btn-secondary" onClick={() => setStep(1)}>
-                قبلی
-              </button>
-              <button type="button" className="btn btn-primary" disabled={!videoBlob} onClick={() => setStep(3)}>
-                ادامه
-              </button>
-            </div>
-          </div>
+          <LiveSelfieVideoStep
+            hasRecording={!!videoBlob}
+            onRecorded={(blob) => setVideoBlob(blob)}
+            onPrompt={(text) => setVideoPrompt(text)}
+            onBack={() => {
+              setError(null);
+              setStep(1);
+            }}
+            onContinue={() => {
+              setError(null);
+              setStep(3);
+            }}
+          />
         ) : null}
 
         {step === 3 ? (
-          <div className="space-y-4">
-            <h3 className="font-bold text-text">بازبینی نهایی</h3>
-            <dl className="grid gap-2 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-text-muted">نام</dt>
-                <dd>
-                  {draft.first_name} {draft.last_name}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-text-muted">کد ملی</dt>
-                <dd dir="ltr">{draft.national_code}</dd>
-              </div>
-              <div>
-                <dt className="text-text-muted">تاریخ تولد</dt>
-                <dd>{draft.date_of_birth ? formatDateFa(draft.date_of_birth) : '—'}</dd>
-              </div>
-              <div>
-                <dt className="text-text-muted">شهر</dt>
-                <dd>{draft.city}</dd>
-              </div>
-              <div>
-                <dt className="text-text-muted">مدارک</dt>
-                <dd>
-                  {cardFile ? 'کارت ملی ✓' : 'کارت ملی ✗'} · {videoBlob ? 'ویدیو ✓' : 'ویدیو ✗'}
-                </dd>
-              </div>
-            </dl>
-            <div className="flex gap-2">
-              <button type="button" className="btn btn-secondary" onClick={() => setStep(2)}>
-                قبلی
-              </button>
-              <button type="button" className="btn btn-primary" disabled={pending} onClick={submitAll}>
-                {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                ارسال برای بررسی
-              </button>
-            </div>
-          </div>
+          <IdentityReviewStep
+            draft={draft}
+            cardFile={cardFile}
+            videoBlob={videoBlob}
+            pending={pending}
+            onBack={() => setStep(2)}
+            onSubmit={submitAll}
+          />
         ) : null}
 
-        {error ? <p className="mt-4 text-sm text-error">{error}</p> : null}
-        {message ? <p className="mt-4 text-sm text-success">{message}</p> : null}
+        {error ? (
+          <IdentityVerificationFeedback error={error} errorTitle={errorTitle ?? undefined} />
+        ) : null}
       </div>
     </div>
   );

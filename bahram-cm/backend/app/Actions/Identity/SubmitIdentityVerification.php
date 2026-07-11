@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserIdentityProfile;
 use App\Services\Identity\IdentityArtifactStorage;
 use App\Services\SmsService;
+use App\Support\IdentityVerificationMessages;
 use App\Support\NationalCode;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -45,14 +46,14 @@ class SubmitIdentityVerification
         $cooldown = (int) config('bahram.identity.submit_cooldown_seconds', 60);
         if (Cache::has($cooldownKey)) {
             throw ValidationException::withMessages([
-                'cooldown' => ['لطفاً کمی صبر کنید و دوباره تلاش کنید.'],
+                'cooldown' => [IdentityVerificationMessages::COOLDOWN],
             ]);
         }
 
         $nationalCode = NationalCode::normalize($data['national_code'] ?? null);
         if (! NationalCode::isValid($nationalCode)) {
             throw ValidationException::withMessages([
-                'national_code' => ['کد ملی معتبر نیست.'],
+                'national_code' => [IdentityVerificationMessages::INVALID_NATIONAL_CODE],
             ]);
         }
 
@@ -70,7 +71,7 @@ class SubmitIdentityVerification
 
             if ($duplicate) {
                 throw ValidationException::withMessages([
-                    'national_code' => ['این کد ملی قبلاً برای حساب دیگری ثبت شده است.'],
+                    'national_code' => [IdentityVerificationMessages::DUPLICATE_NATIONAL_CODE],
                 ]);
             }
 
@@ -80,7 +81,7 @@ class SubmitIdentityVerification
                 IdentityVerificationStatus::Approved,
             ], true)) {
                 throw ValidationException::withMessages([
-                    'status' => ['در حال حاضر امکان ارسال مجدد وجود ندارد.'],
+                    'status' => [IdentityVerificationMessages::STATUS_LOCKED],
                 ]);
             }
 
@@ -117,7 +118,7 @@ class SubmitIdentityVerification
 
             if (! $hasCard || ! $hasVideo) {
                 throw ValidationException::withMessages([
-                    'artifacts' => ['تصویر کارت ملی و ویدیوی سلفی الزامی است.'],
+                    'artifacts' => [IdentityVerificationMessages::ARTIFACTS_REQUIRED],
                 ]);
             }
 
@@ -135,12 +136,16 @@ class SubmitIdentityVerification
 
             Cache::put($cooldownKey, true, $cooldown);
 
-            $this->sms->sendEvent(
-                SmsEventKey::IdentityVerificationSubmitted,
-                (string) $user->mobile,
-                ['{name}' => $user->name ?: $data['first_name']],
-                $user->id,
-            );
+            try {
+                $this->sms->sendEvent(
+                    SmsEventKey::IdentityVerificationSubmitted,
+                    (string) $user->mobile,
+                    ['{name}' => $user->name ?: $data['first_name']],
+                    $user->id,
+                );
+            } catch (\Throwable $e) {
+                report($e);
+            }
 
             return $submission->load('artifacts');
         });
