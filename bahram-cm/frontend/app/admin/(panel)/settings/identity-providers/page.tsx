@@ -14,7 +14,7 @@ export default async function IdentityProvidersPage() {
       icon="Cable"
       headerVariant="settings"
       title="سرویس‌های احراز هویت"
-      desc="پیکربندی مسیر قابلیت‌ها و کلید سرویس‌ها — مقادیر حساس هرگز نمایش داده نمی‌شوند"
+      desc="پیکربندی سرویس‌ها و مسیر Primary/Fallback — هر بخش با رنگ و آیکن جدا"
     >
       {error && (
         <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-small text-error">

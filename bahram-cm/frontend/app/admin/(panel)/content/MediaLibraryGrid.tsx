@@ -74,6 +74,8 @@ export function MediaLibraryGrid({
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState('');
+  const [uploadQueue, setUploadQueue] = useState<File[]>([]);
+  const [queueIndex, setQueueIndex] = useState(0);
   const [optimizePreview, setOptimizePreview] = useState<MediaOptimizePreview | null>(null);
   const [optimizeAlt, setOptimizeAlt] = useState('');
   const [confirming, setConfirming] = useState(false);
@@ -118,14 +120,15 @@ export function MediaLibraryGrid({
 
   useEffect(() => () => clearUploadProgressTimer(), []);
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setUploadError('فقط فایل تصویری مجاز است.');
-      if (inputRef.current) inputRef.current.value = '';
-      return;
-    }
+  function resetUploadQueue() {
+    setUploadQueue([]);
+    setQueueIndex(0);
+  }
+
+  async function previewFileAtIndex(index: number, files: File[]) {
+    const file = files[index];
+    if (!file) return false;
+
     setUploading(true);
     setUploadError('');
     startUploadProgress(file);
@@ -137,20 +140,63 @@ export function MediaLibraryGrid({
       if (!previewRes.ok) {
         setUploadError(
           previewRes.error ||
-            'بهینه‌سازی تصویر ناموفق بود. بک‌اند Laravel را بررسی کنید (php artisan serve --port=8010).',
+            `بهینه‌سازی «${file.name}» ناموفق بود. بک‌اند Laravel را بررسی کنید (php artisan serve --port=8010).`,
         );
         resetUploadProgress();
-        return;
+        return false;
       }
       finishUploadProgress();
       setOptimizeAlt(altSuggestion);
       setOptimizePreview(previewRes.preview);
+      setQueueIndex(index);
+      return true;
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'بهینه‌سازی ناموفق بود.');
       resetUploadProgress();
+      return false;
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const selected = e.target.files ? Array.from(e.target.files) : [];
+    if (!selected.length) return;
+
+    const images = selected.filter((file) => file.type.startsWith('image/'));
+    const skipped = selected.length - images.length;
+
+    if (!images.length) {
+      setUploadError('فقط فایل تصویری مجاز است.');
       if (inputRef.current) inputRef.current.value = '';
+      return;
+    }
+
+    if (skipped > 0) {
+      setUploadError(`${skipped.toLocaleString('fa-IR')} فایل غیرتصویری نادیده گرفته شد.`);
+    } else {
+      setUploadError('');
+    }
+
+    setUploadQueue(images);
+    setQueueIndex(0);
+    await previewFileAtIndex(0, images);
+
+    if (inputRef.current) inputRef.current.value = '';
+  }
+
+  async function continueUploadQueue(fromIndex: number) {
+    const nextIndex = fromIndex + 1;
+    if (nextIndex >= uploadQueue.length) {
+      resetUploadQueue();
+      setOptimizePreview(null);
+      return;
+    }
+
+    const ok = await previewFileAtIndex(nextIndex, uploadQueue);
+    if (!ok) {
+      resetUploadQueue();
+      setOptimizePreview(null);
     }
   }
 
@@ -168,7 +214,6 @@ export function MediaLibraryGrid({
       setUploadError(res.error);
       return;
     }
-    setOptimizePreview(null);
     onUploaded?.();
     if (mode === 'pick' && onSelect) {
       onSelect(res.item.persistSrc, res.item.label, {
@@ -177,6 +222,15 @@ export function MediaLibraryGrid({
         height: res.item.height,
       });
     }
+
+    const hasMore = uploadQueue.length > queueIndex + 1;
+    if (hasMore) {
+      await continueUploadQueue(queueIndex);
+      return;
+    }
+
+    resetUploadQueue();
+    setOptimizePreview(null);
   }
 
   function onOptimizeClose() {
@@ -184,6 +238,7 @@ export function MediaLibraryGrid({
       void discardGalleryOptimize(optimizePreview.session_id);
     }
     setOptimizePreview(null);
+    resetUploadQueue();
   }
 
   function onItemClick(item: UnifiedMediaItem) {
@@ -236,15 +291,20 @@ export function MediaLibraryGrid({
             />
             <span className="relative z-10 flex items-center gap-2">
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              {uploading ? 'بهینه‌سازی…' : 'آپلود تصویر'}
+              {uploading
+                ? uploadQueue.length > 1
+                  ? `بهینه‌سازی ${(queueIndex + 1).toLocaleString('fa-IR')} از ${uploadQueue.length.toLocaleString('fa-IR')}…`
+                  : 'بهینه‌سازی…'
+                : 'آپلود تصاویر'}
             </span>
             <input
               ref={inputRef}
               type="file"
+              multiple
               accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp,.heic"
               className="hidden"
               onChange={onFile}
-              disabled={uploading}
+              disabled={uploading || confirming}
             />
           </label>
           {showAiGenerate && onAiGenerate && (
@@ -261,6 +321,11 @@ export function MediaLibraryGrid({
         </div>
       </div>
       {uploadError && <p className="mt-2 text-caption text-error">{uploadError}</p>}
+      {uploadQueue.length > 1 && (uploading || optimizePreview) ? (
+        <p className="mt-2 text-caption text-text-muted">
+          {uploadQueue.length.toLocaleString('fa-IR')} تصویر انتخاب شده — پس از تأیید هر تصویر، تصویر بعدی نمایش داده می‌شود.
+        </p>
+      ) : null}
       {mode === 'manage' && (
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
           <p className="text-caption text-text-muted">روی هر تصویر کلیک کنید — ویرایش alt، عنوان یا حذف</p>
@@ -404,6 +469,14 @@ export function MediaLibraryGrid({
         busy={confirming}
         onClose={onOptimizeClose}
         onConfirmed={onOptimizeConfirm}
+        batchProgress={
+          uploadQueue.length > 1 ? { current: queueIndex + 1, total: uploadQueue.length } : undefined
+        }
+        saveLabel={
+          uploadQueue.length > queueIndex + 1
+            ? `ذخیره و تصویر بعد (${(queueIndex + 2).toLocaleString('fa-IR')} از ${uploadQueue.length.toLocaleString('fa-IR')})`
+            : undefined
+        }
       />
       {mode === 'manage' && (
         <MediaTrashModal

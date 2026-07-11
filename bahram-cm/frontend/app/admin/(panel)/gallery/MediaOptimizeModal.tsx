@@ -28,6 +28,8 @@ interface MediaOptimizeModalProps {
   dialogTitle?: string;
   /** Override primary action label. */
   saveLabel?: string;
+  /** Multi-upload batch position (1-based). */
+  batchProgress?: { current: number; total: number };
 }
 
 type OverlayMode = 'single' | 'compare';
@@ -329,6 +331,7 @@ export function MediaOptimizeModal({
   onConfirmed,
   dialogTitle = 'بهینه‌سازی تصویر',
   saveLabel,
+  batchProgress,
 }: MediaOptimizeModalProps) {
   const [variant, setVariant] = useState<'original' | 'optimized'>('optimized');
   const [title, setTitle] = useState('');
@@ -419,6 +422,11 @@ export function MediaOptimizeModal({
             <div>
               <p id="media-optimize-title" className="text-body font-bold text-primary-dark">
                 {dialogTitle}
+                {batchProgress && batchProgress.total > 1 ? (
+                  <span className="ms-2 rounded-full bg-accent/15 px-2.5 py-0.5 text-caption font-semibold text-accent">
+                    {batchProgress.current.toLocaleString('fa-IR')} از {batchProgress.total.toLocaleString('fa-IR')}
+                  </span>
+                ) : null}
               </p>
               <p className="mt-1 text-caption text-text-muted">
                 {preview.original_filename}
