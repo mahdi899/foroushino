@@ -4,8 +4,6 @@ import { revalidatePath } from 'next/cache';
 import { extractError, type SimpleFormState } from './panelFormUtils';
 import { studentFetch } from './session';
 
-export type { SimpleFormState };
-
 export async function updateProfileAction(_prev: SimpleFormState, formData: FormData): Promise<SimpleFormState> {
   const payload: Record<string, unknown> = {};
   for (const key of [

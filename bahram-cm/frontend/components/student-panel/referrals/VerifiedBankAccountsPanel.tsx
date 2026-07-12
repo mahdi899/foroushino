@@ -8,7 +8,7 @@ import {
   type BankAccountRules,
   type VerifiedBankAccount,
 } from '@/lib/student/bankAccountActions';
-import type { SimpleFormState } from '@/lib/student/panelActions';
+import type { SimpleFormState } from '@/lib/student/panelFormUtils';
 import { usePanelFormFeedback } from '@/lib/student/usePanelFormFeedback';
 import { usePanelToast } from '@/components/student-panel/ui/PanelToastContext';
 

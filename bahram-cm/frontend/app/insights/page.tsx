@@ -79,21 +79,16 @@ export default async function InsightsPage() {
                   </div>
                   <div className="flex min-w-0 flex-col justify-center p-5 md:col-span-5 md:p-10">
                     <Badge tone="gold">برجسته</Badge>
-                    <div className="mt-5 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-caption">
+                    <div className="mt-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-caption">
                       <span className="inline-flex items-center gap-2 text-gold">
                         <Pencil className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
                         مقاله
                       </span>
                       {featured.published_at ? (
-                        <>
-                          <span className="text-bone/15" aria-hidden>
-                            ·
-                          </span>
-                          <span className="inline-flex items-center gap-1.5 text-mist">
-                            <Calendar className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-                            {formatDateFa(featured.published_at)}
-                          </span>
-                        </>
+                        <span className="inline-flex items-center gap-1.5 text-mist">
+                          <Calendar className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                          {formatDateFa(featured.published_at)}
+                        </span>
                       ) : null}
                     </div>
                     <h2 className="mt-3 text-h2 text-balance text-bone">{featured.title}</h2>
@@ -133,21 +128,16 @@ export default async function InsightsPage() {
                       />
                     </div>
                     <div className="p-5 md:p-6">
-                    <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-caption">
+                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-caption">
                       <span className="inline-flex items-center gap-2 text-gold">
                         <Pencil className="h-3.5 w-3.5" strokeWidth={1.6} aria-hidden />
                         مقاله
                       </span>
                       {post.published_at ? (
-                        <>
-                          <span className="text-bone/15" aria-hidden>
-                            ·
-                          </span>
-                          <span className="inline-flex items-center gap-1.5 text-mist">
-                            <Calendar className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
-                            {formatDateFa(post.published_at)}
-                          </span>
-                        </>
+                        <span className="inline-flex items-center gap-1.5 text-mist">
+                          <Calendar className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden />
+                          {formatDateFa(post.published_at)}
+                        </span>
                       ) : null}
                     </div>
                     <h3 className="mt-3 text-h3 text-balance text-bone">{post.title}</h3>
