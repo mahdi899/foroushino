@@ -35,7 +35,7 @@ export function CopyTextButton({
         <code
           className={cn(
             'panel-text-meta min-w-0 flex-1 break-all rounded-lg border border-border/60 bg-surface-soft px-2.5 py-2 leading-relaxed text-text',
-            mono && 'font-mono',
+            mono && 'tabular-nums',
           )}
           dir="ltr"
         >

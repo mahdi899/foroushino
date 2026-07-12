@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect, useState } from "react";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { GraduationCap, Mic2, Sparkles, Users } from "lucide-react";
 import { site } from "@/content/site";
@@ -14,33 +15,46 @@ import "@/styles/hero-cinematic.css";
 
 const LIGHT_PANEL_PAD = "px-4 pt-2 pb-5 sm:px-6 sm:py-6 md:px-10 md:py-8 lg:px-12 lg:py-12 xl:px-14";
 
-function useHeroEntranceVariants() {
+const HERO_MOBILE_MQ = "(max-width: 1023px)";
+
+function useHeroLightEntrance() {
+  const [isLightEntrance, setIsLightEntrance] = useState(true);
+
+  useLayoutEffect(() => {
+    setIsLightEntrance(window.matchMedia(HERO_MOBILE_MQ).matches);
+  }, []);
+
+  return isLightEntrance;
+}
+
+function useHeroEntranceVariants(isLightEntrance: boolean) {
   const reduce = useReducedMotion();
+  const light = isLightEntrance && !reduce;
 
   const panel: Variants = {
     hidden: {
       opacity: reduce ? 1 : 0,
-      y: reduce ? 0 : 22,
-      scale: reduce ? 1 : 0.988,
+      y: reduce ? 0 : light ? 10 : 22,
+      scale: reduce || light ? 1 : 0.988,
     },
     show: {
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { duration: dur.xl, ease: ease.luxe },
+      transition: { duration: light ? dur.sm : dur.xl, ease: ease.luxe },
     },
   };
 
   const media: Variants = {
     hidden: {
       opacity: reduce ? 1 : 0,
-      scale: reduce ? 1 : 1.1,
+      scale: reduce ? 1 : light ? 1.03 : 1.1,
     },
     show: {
       opacity: 1,
       scale: 1,
       transition: {
-        duration: reduce ? 0 : 2.4,
+        duration: reduce ? 0 : light ? 1.1 : 2.4,
         ease: ease.luxe,
       },
     },
@@ -51,9 +65,9 @@ function useHeroEntranceVariants() {
     show: {
       opacity: 1,
       transition: {
-        duration: dur.lg,
+        duration: light ? dur.sm : dur.lg,
         ease: ease.enter,
-        delay: reduce ? 0 : 0.12,
+        delay: reduce ? 0 : light ? 0.04 : 0.12,
       },
     },
   };
@@ -62,8 +76,8 @@ function useHeroEntranceVariants() {
     hidden: {},
     show: {
       transition: {
-        staggerChildren: reduce ? 0 : 0.12,
-        delayChildren: reduce ? 0 : 0.32,
+        staggerChildren: reduce ? 0 : light ? 0.05 : 0.12,
+        delayChildren: reduce ? 0 : light ? 0.1 : 0.32,
       },
     },
   };
@@ -72,7 +86,7 @@ function useHeroEntranceVariants() {
     hidden: {},
     show: {
       transition: {
-        staggerChildren: reduce ? 0 : 0.09,
+        staggerChildren: reduce ? 0 : light ? 0.04 : 0.09,
       },
     },
   };
@@ -80,32 +94,32 @@ function useHeroEntranceVariants() {
   const item: Variants = {
     hidden: {
       opacity: reduce ? 1 : 0,
-      y: reduce ? 0 : 28,
-      filter: reduce ? "blur(0px)" : "blur(10px)",
+      y: reduce ? 0 : light ? 12 : 28,
+      filter: reduce || light ? "blur(0px)" : "blur(10px)",
     },
     show: {
       opacity: 1,
       y: 0,
       filter: "blur(0px)",
-      transition: { duration: dur.lg, ease: ease.luxe },
+      transition: { duration: light ? dur.sm : dur.lg, ease: ease.luxe },
     },
   };
 
   const statsGroup: Variants = {
     hidden: {
       opacity: reduce ? 1 : 0,
-      y: reduce ? 0 : 20,
-      filter: reduce ? "blur(0px)" : "blur(8px)",
+      y: reduce ? 0 : light ? 10 : 20,
+      filter: reduce || light ? "blur(0px)" : "blur(8px)",
     },
     show: {
       opacity: 1,
       y: 0,
       filter: "blur(0px)",
       transition: {
-        duration: dur.lg,
+        duration: light ? dur.sm : dur.lg,
         ease: ease.luxe,
-        staggerChildren: reduce ? 0 : 0.07,
-        delayChildren: reduce ? 0 : 0.06,
+        staggerChildren: reduce ? 0 : light ? 0.03 : 0.07,
+        delayChildren: reduce ? 0 : light ? 0.02 : 0.06,
       },
     },
   };
@@ -113,14 +127,14 @@ function useHeroEntranceVariants() {
   const statItem: Variants = {
     hidden: {
       opacity: reduce ? 1 : 0,
-      y: reduce ? 0 : 14,
-      scale: reduce ? 1 : 0.94,
+      y: reduce ? 0 : light ? 6 : 14,
+      scale: reduce || light ? 1 : 0.94,
     },
     show: {
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { duration: dur.md, ease: ease.luxe },
+      transition: { duration: light ? dur.xs : dur.md, ease: ease.luxe },
     },
   };
 
@@ -128,7 +142,8 @@ function useHeroEntranceVariants() {
 }
 
 export function HeroCinematic() {
-  const entrance = useHeroEntranceVariants();
+  const isLightEntrance = useHeroLightEntrance();
+  const entrance = useHeroEntranceVariants(isLightEntrance);
 
   const grid = (
     <motion.div

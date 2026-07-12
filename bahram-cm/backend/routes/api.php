@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\GuestCheckoutController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PublicSeminarController;
+use App\Http\Controllers\Api\ReferralCodeController;
 use App\Http\Controllers\Api\SeminarPromoController;
 use App\Http\Controllers\Api\ZarinpalController;
 use Illuminate\Http\Request;
@@ -63,6 +64,8 @@ Route::get('/seminars/{slug}', [PublicSeminarController::class, 'show'])->where(
 // Orders
 Route::post('/orders', [OrderController::class, 'store'])->middleware('throttle:30,1');
 Route::post('/discount-codes/validate', [DiscountCodeController::class, 'validateCode'])
+    ->middleware('throttle:30,1');
+Route::post('/referral-codes/validate', [ReferralCodeController::class, 'validateCode'])
     ->middleware('throttle:30,1');
 Route::get('/orders/complete-profile', [OrderController::class, 'completeProfileContext'])
     ->middleware('throttle:30,1');

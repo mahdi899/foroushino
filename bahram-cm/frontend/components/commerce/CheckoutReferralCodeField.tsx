@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { useCallback, useEffect, useId, useState } from "react";
+import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { readReferralCode, setReferralCode } from "@/lib/referral/capture";
+import { validateReferralCode } from "@/lib/referral/validate";
 
 type Props = {
   ownReferralCode?: string | null;
+  authToken?: string | null;
   variant?: 'standalone' | 'panel';
   onAppliedChange?: (code: string | null) => void;
 };
@@ -17,6 +19,7 @@ function normalizeCode(value: string): string {
 
 export function CheckoutReferralCodeField({
   ownReferralCode,
+  authToken,
   variant = 'standalone',
   onAppliedChange,
 }: Props) {
@@ -25,18 +28,37 @@ export function CheckoutReferralCodeField({
   const [draft, setDraft] = useState("");
   const [applied, setApplied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  const validateStoredCode = useCallback(async (code: string) => {
+    const result = await validateReferralCode({
+      code,
+      token: authToken ?? undefined,
+    });
+
+    if (result.ok) {
+      setApplied(result.data.code);
+      setError(null);
+      onAppliedChange?.(result.data.code);
+    } else {
+      setReferralCode("");
+      setApplied(null);
+      setDraft("");
+      onAppliedChange?.(null);
+    }
+  }, [authToken, onAppliedChange]);
 
   useEffect(() => {
     const stored = readReferralCode();
     if (stored) {
       const normalized = normalizeCode(stored);
-      setApplied(normalized);
       setDraft(stored);
       onAppliedChange?.(normalized);
+      void validateStoredCode(stored);
     }
-  }, [onAppliedChange]);
+  }, [authToken, onAppliedChange, validateStoredCode]);
 
-  function applyCode() {
+  async function applyCode() {
     const next = normalizeCode(draft);
     setError(null);
 
@@ -52,10 +74,22 @@ export function CheckoutReferralCodeField({
       return;
     }
 
-    setReferralCode(next);
-    setApplied(next);
-    setDraft(next);
-    onAppliedChange?.(next);
+    setPending(true);
+    const result = await validateReferralCode({
+      code: next,
+      token: authToken ?? undefined,
+    });
+    setPending(false);
+
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+
+    setReferralCode(result.data.code);
+    setApplied(result.data.code);
+    setDraft(result.data.code);
+    onAppliedChange?.(result.data.code);
   }
 
   function handleToggle() {
@@ -79,7 +113,7 @@ export function CheckoutReferralCodeField({
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              applyCode();
+              void applyCode();
             }
           }}
           placeholder="مثلاً BRM-36363"
@@ -88,10 +122,11 @@ export function CheckoutReferralCodeField({
         />
         <button
           type="button"
-          onClick={applyCode}
-          className="shrink-0 rounded-tile border border-emerald/30 bg-emerald/10 px-3 py-2.5 text-xs font-semibold text-emerald-glow transition hover:bg-emerald/15"
+          onClick={() => void applyCode()}
+          disabled={pending}
+          className="shrink-0 rounded-tile border border-emerald/30 bg-emerald/10 px-3 py-2.5 text-xs font-semibold text-emerald-glow transition hover:bg-emerald/15 disabled:opacity-60"
         >
-          ثبت
+          {pending ? <Loader2 size={14} className="animate-spin" aria-hidden /> : "ثبت"}
         </button>
       </div>
       {error ? (

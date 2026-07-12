@@ -53,7 +53,10 @@ class OrderService
         $finalAmount = (int) $product->effective_price;
         $saleDiscount = max($amount - $finalAmount, 0);
 
-        $this->assertReferralCodeNotSelf($data['ref'] ?? null, $authenticatedUser);
+        $validatedReferralCode = app(ReferralService::class)->validateForOrder(
+            $data['ref'] ?? null,
+            $authenticatedUser,
+        );
 
         $couponDiscount = 0;
         $discountCodeId = null;
@@ -85,7 +88,7 @@ class OrderService
             'customer_email' => $data['customer_email'] ?? null,
             'customer_national_code' => $data['customer_national_code'] ?? null,
             'customer_extra_data' => $data['customer_extra_data'] ?? null,
-            'referral_code' => $data['ref'] ?? null,
+            'referral_code' => $validatedReferralCode,
             'discount_code_id' => $discountCodeId,
             'coupon_code' => $couponCode,
             'amount' => $amount,
@@ -252,22 +255,6 @@ class OrderService
         } while (Order::query()->where('order_number', $number)->exists());
 
         return $number;
-    }
-
-    private function assertReferralCodeNotSelf(?string $ref, ?User $user): void
-    {
-        if (! filled($ref) || ! $user) {
-            return;
-        }
-
-        $user->loadMissing('referralCode');
-        $ownCode = $user->referralCode?->code;
-
-        if ($ownCode && strcasecmp(trim($ref), $ownCode) === 0) {
-            throw ValidationException::withMessages([
-                'ref' => 'نمی‌توانید از کد معرف خودتان استفاده کنید.',
-            ]);
-        }
     }
 
     private function assertSeminarPurchaseAllowed(Product $product, ?int $userId, string $phone): void

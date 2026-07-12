@@ -12,6 +12,7 @@ use App\Services\FreeOrderCheckoutService;
 use App\Services\GuestCheckoutTokenService;
 use App\Services\OrderService;
 use App\Services\OtpService;
+use App\Services\ReferralService;
 use App\Services\ZarinpalPaymentService;
 use App\Support\ApiResponse;
 use App\Support\Mobile;
@@ -27,6 +28,7 @@ class GuestCheckoutController extends Controller
         private readonly OrderService $orders,
         private readonly FreeOrderCheckoutService $freeCheckout,
         private readonly ZarinpalPaymentService $zarinpal,
+        private readonly ReferralService $referrals,
     ) {}
 
     public function sendOtp(SendGuestCheckoutOtpRequest $request)
@@ -47,7 +49,7 @@ class GuestCheckoutController extends Controller
             'customer_name' => trim((string) $data['customer_name']),
             'customer_phone' => $mobile,
             'customer_extra_data' => $data['customer_extra_data'] ?? null,
-            'ref' => $data['ref'] ?? null,
+            'ref' => $this->referrals->validateForOrder($data['ref'] ?? null, null),
             'coupon' => $data['coupon'] ?? null,
             'coupon_via_link' => (bool) ($data['coupon_via_link'] ?? false),
         ];

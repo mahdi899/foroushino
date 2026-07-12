@@ -205,6 +205,13 @@
   }
 }
 
+@media (max-width: 1023px) {
+  .hero-light-section .hero-light-panel--entrance::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-light-section .hero-light-panel--entrance::after {
     animation: none;

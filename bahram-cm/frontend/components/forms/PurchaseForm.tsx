@@ -19,8 +19,8 @@ import {
 } from "@/lib/checkout/productFields";
 import { cn } from "@/lib/cn";
 import { getIranMobileInputError, isValidIranMobile, normalizeIranMobile, sanitizePhoneInput } from "@/lib/chatbot/phone";
-import { captureReferralCode } from "@/lib/referral/capture";
 import { captureDiscountCode } from "@/lib/discount/capture";
+import { resolveReferralCodeForCheckout } from "@/lib/referral/validate";
 import type { ProductDetail } from "@/lib/services/products";
 import type { StudentUser } from "@/lib/student/session";
 import { GuestCheckoutOtpModal } from "@/components/forms/GuestCheckoutOtpModal";
@@ -136,7 +136,7 @@ function PurchaseFormInner({
     setServerError(null);
     track("checkout_start", { product: product.slug });
 
-    const ref = captureReferralCode();
+    const ref = await resolveReferralCodeForCheckout();
     const discount = captureDiscountCode();
     const extraPayload = Object.keys(extra).length ? extra : undefined;
 
@@ -194,7 +194,7 @@ function PurchaseFormInner({
     setServerError(null);
     setOtpInfo(null);
 
-    const ref = captureReferralCode();
+    const ref = await resolveReferralCodeForCheckout();
     const discount = captureDiscountCode();
     const extraPayload = Object.keys(extra).length ? extra : undefined;
 

@@ -5,7 +5,7 @@ import { Suspense, useCallback, useState } from "react";
 import { track } from "@/lib/analytics";
 import { useCheckoutAutopay, useCheckoutLoginGate } from "@/lib/checkout/checkoutLogin";
 import { startLoggedInCheckoutAction } from "@/lib/checkout/actions";
-import { captureReferralCode } from "@/lib/referral/capture";
+import { resolveReferralCodeForCheckout } from "@/lib/referral/validate";
 import { captureDiscountCode } from "@/lib/discount/capture";
 import {
   prefillExtraFields,
@@ -37,10 +37,11 @@ function CartPayButtonInner({ product, student }: Props) {
       : undefined;
 
     const discount = captureDiscountCode();
+    const ref = await resolveReferralCodeForCheckout();
 
     const result = await startLoggedInCheckoutAction({
       product_id: product.id,
-      ref: captureReferralCode(),
+      ref,
       coupon: discount.code,
       coupon_via_link: discount.viaLink,
       customer_extra_data: extraPayload && Object.keys(extraPayload).length ? extraPayload : undefined,

@@ -126,4 +126,88 @@ class OrderTest extends TestCase
         $response->assertJsonPath('error.details.ref.0', 'نمی‌توانید از کد معرف خودتان استفاده کنید.');
         $this->assertDatabaseCount('orders', 0);
     }
+
+    public function test_invalid_referral_code_is_rejected_on_order(): void
+    {
+        $product = Product::create([
+            'title' => 'دوره آزمایشی',
+            'type' => 'normal',
+            'price' => 500000,
+            'is_active' => true,
+        ]);
+
+        $response = $this->postJson('/api/orders', [
+            'product_id' => $product->id,
+            'customer_name' => 'کاربر تست',
+            'customer_phone' => '09120000000',
+            'ref' => 'BRM-99999',
+        ]);
+
+        $response->assertUnprocessable();
+        $response->assertJsonPath('error.details.ref.0', 'کد معرف معتبر نیست.');
+        $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_valid_referral_code_is_stored_on_order(): void
+    {
+        $product = Product::create([
+            'title' => 'دوره آزمایشی',
+            'type' => 'normal',
+            'price' => 500000,
+            'is_active' => true,
+        ]);
+
+        $referrer = \App\Models\User::factory()->create([
+            'mobile' => '09121111111',
+        ]);
+
+        ReferralCode::create([
+            'user_id' => $referrer->id,
+            'code' => 'BRM-54321',
+            'is_active' => true,
+        ]);
+
+        $response = $this->postJson('/api/orders', [
+            'product_id' => $product->id,
+            'customer_name' => 'کاربر تست',
+            'customer_phone' => '09120000000',
+            'ref' => 'brm-54321',
+        ]);
+
+        $response->assertCreated();
+        $this->assertDatabaseHas('orders', [
+            'product_id' => $product->id,
+            'referral_code' => 'BRM-54321',
+        ]);
+    }
+
+    public function test_referral_code_validate_endpoint_rejects_invalid_code(): void
+    {
+        $response = $this->postJson('/api/referral-codes/validate', [
+            'code' => 'BRM-00000',
+        ]);
+
+        $response->assertUnprocessable();
+        $response->assertJsonPath('error.details.ref.0', 'کد معرف معتبر نیست.');
+    }
+
+    public function test_referral_code_validate_endpoint_accepts_active_code(): void
+    {
+        $referrer = \App\Models\User::factory()->create([
+            'mobile' => '09123333333',
+        ]);
+
+        ReferralCode::create([
+            'user_id' => $referrer->id,
+            'code' => 'BRM-77777',
+            'is_active' => true,
+        ]);
+
+        $response = $this->postJson('/api/referral-codes/validate', [
+            'code' => 'brm-77777',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.code', 'BRM-77777');
+    }
 }

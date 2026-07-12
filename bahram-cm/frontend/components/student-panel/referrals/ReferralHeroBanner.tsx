@@ -41,7 +41,7 @@ export function ReferralHeroBanner({ code, link }: { code: string; link: string 
         <div className="panel-referral-hero__field">
           <p className="panel-text-meta mb-2 text-text-muted">کد اختصاصی شما</p>
           <div className="flex items-center justify-between gap-2">
-            <span className="font-mono text-lg font-bold text-text" dir="ltr">{code}</span>
+            <span className="tabular-nums text-lg font-bold text-text" dir="ltr">{code}</span>
             <button type="button" onClick={() => copy(code, 'code')} className="btn btn-secondary panel-text-caption min-h-9 py-1">
               {copied === 'code' ? <Check size={14} /> : <Copy size={14} />}
               {copied === 'code' ? 'کپی شد' : 'کپی'}

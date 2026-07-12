@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ReferralCode;
 use App\Models\ReferralConversion;
 use App\Models\User;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Referral code issuance and cashback bookkeeping. Cashback amount is defined
@@ -22,6 +23,62 @@ class ReferralService
             'user_id' => $user->id,
             'code' => ReferralCode::generateUniqueCode(),
         ]);
+    }
+
+    public function normalizeCode(?string $code): ?string
+    {
+        if (blank($code)) {
+            return null;
+        }
+
+        $normalized = strtoupper(trim($code));
+
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    public function resolveActiveCode(string $code): ?ReferralCode
+    {
+        $normalized = $this->normalizeCode($code);
+
+        if ($normalized === null) {
+            return null;
+        }
+
+        return ReferralCode::query()
+            ->where('code', $normalized)
+            ->where('is_active', true)
+            ->first();
+    }
+
+    /**
+     * Validates a referral code for checkout. Returns the normalized code, or
+     * null when no code was provided.
+     *
+     * @throws ValidationException
+     */
+    public function validateForOrder(?string $ref, ?User $user): ?string
+    {
+        $normalized = $this->normalizeCode($ref);
+
+        if ($normalized === null) {
+            return null;
+        }
+
+        $referralCode = $this->resolveActiveCode($normalized);
+
+        if (! $referralCode) {
+            throw ValidationException::withMessages([
+                'ref' => 'کد معرف معتبر نیست.',
+            ]);
+        }
+
+        if ($user && (int) $referralCode->user_id === (int) $user->id) {
+            throw ValidationException::withMessages([
+                'ref' => 'نمی‌توانید از کد معرف خودتان استفاده کنید.',
+            ]);
+        }
+
+        return $normalized;
     }
 
     public function cashbackAmountForOrder(Order $order): int

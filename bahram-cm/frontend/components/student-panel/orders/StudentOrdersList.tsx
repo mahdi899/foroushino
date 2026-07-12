@@ -81,7 +81,7 @@ function DetailRow({ label, children, mono }: { label: string; children: React.R
   return (
     <div className="panel-order-detail">
       <dt className="panel-order-detail__label">{label}</dt>
-      <dd className={cn('panel-order-detail__value', mono && 'font-mono')} dir={mono ? 'ltr' : undefined}>
+      <dd className={cn('panel-order-detail__value', mono && 'tabular-nums')} dir={mono ? 'ltr' : undefined}>
         {children}
       </dd>
     </div>
