@@ -48,17 +48,13 @@ class IdentityVerificationController extends Controller
             'required_corrections' => $latest?->required_corrections,
             'latest_submission' => $latest ? $this->submissionPayload($latest) : null,
             'can_submit' => $this->canSubmit($profile, $user->id),
-            'requires_phone' => true,
+            'requires_phone_for_selfie' => true,
             'is_phone_client' => MobileClient::isPhone($request->userAgent()),
         ]);
     }
 
     public function draft(Request $request, EnsureIdentityProfile $ensure): JsonResponse
     {
-        if ($deny = MobileClient::denyUnlessPhone($request)) {
-            return $deny;
-        }
-
         $maxBirthDate = now()->subYears(10)->toDateString();
 
         $data = $request->validate(
@@ -155,10 +151,6 @@ class IdentityVerificationController extends Controller
         EnsureIdentityProfile $ensure,
         IdentityArtifactStorage $storage,
     ): JsonResponse {
-        if ($deny = MobileClient::denyUnlessPhone($request)) {
-            return $deny;
-        }
-
         $data = $request->validate(
             [
                 'type' => ['required', 'string', 'in:national_card_front,selfie_video'],
@@ -169,6 +161,13 @@ class IdentityVerificationController extends Controller
         );
 
         $type = IdentityArtifactType::from($data['type']);
+
+        if ($type === IdentityArtifactType::SelfieVideo) {
+            if ($deny = MobileClient::denyUnlessPhone($request, MobileClient::SELFIE_MOBILE_ONLY_MESSAGE)) {
+                return $deny;
+            }
+        }
+
         $maxKb = $type === IdentityArtifactType::SelfieVideo
             ? (int) config('bahram.identity.selfie_max_mb', 25) * 1024
             : (int) config('bahram.identity.national_card_max_mb', 8) * 1024;
@@ -243,13 +242,15 @@ class IdentityVerificationController extends Controller
 
     public function submit(Request $request, SubmitIdentityVerification $submit): JsonResponse
     {
-        if ($deny = MobileClient::denyUnlessPhone($request)) {
+        if ($deny = MobileClient::denyUnlessPhone($request, MobileClient::SELFIE_MOBILE_ONLY_MESSAGE)) {
             return $deny;
         }
 
         $maxBirthDate = now()->subYears(10)->toDateString();
+        $payload = $this->mergeDraftSubmissionPayload($request->user()->id, $request->all());
 
-        $data = $request->validate(
+        $data = validator(
+            $payload,
             [
                 'first_name' => ['required', 'string', 'max:100'],
                 'last_name' => ['required', 'string', 'max:100'],
@@ -263,7 +264,7 @@ class IdentityVerificationController extends Controller
                 'selfie_video' => ['nullable', 'file'],
             ],
             IdentityVerificationMessages::submitValidationMessages(),
-        );
+        )->validate();
 
         try {
             $submission = $submit($request->user(), $data);
@@ -327,6 +328,47 @@ class IdentityVerificationController extends Controller
             IdentityVerificationStatus::NeedsCorrection,
             IdentityVerificationStatus::Rejected,
         ], true);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function mergeDraftSubmissionPayload(int $userId, array $payload): array
+    {
+        $draftId = $payload['draft_submission_id'] ?? null;
+        if (! $draftId) {
+            return $payload;
+        }
+
+        $draft = IdentityVerificationSubmission::query()
+            ->where('user_id', $userId)
+            ->whereKey((int) $draftId)
+            ->where('status', IdentityVerificationStatus::Draft)
+            ->first();
+
+        if (! $draft) {
+            return $payload;
+        }
+
+        foreach (['first_name', 'last_name', 'gender', 'city'] as $field) {
+            if (blank($payload[$field] ?? null) && filled($draft->{$field})) {
+                $payload[$field] = $draft->{$field};
+            }
+        }
+
+        if (blank($payload['date_of_birth'] ?? null) && $draft->date_of_birth) {
+            $payload['date_of_birth'] = $draft->date_of_birth->toDateString();
+        }
+
+        if (blank($payload['national_code'] ?? null)) {
+            $decrypted = NationalCode::decrypt($draft->national_code_encrypted);
+            if ($decrypted) {
+                $payload['national_code'] = $decrypted;
+            }
+        }
+
+        return $payload;
     }
 
     private function statusLabel(IdentityVerificationStatus $status): string

@@ -7,7 +7,12 @@ import { JalaliDateField } from '@/components/ui/JalaliDateField';
 import { LiveSelfieVideoStep } from './LiveSelfieVideoStep';
 import { NationalCardUploadStep } from './NationalCardUploadStep';
 import { IdentityVerificationFeedback } from './IdentityVerificationFeedback';
-import { saveIdentityDraftAction, submitIdentityVerificationAction } from '@/lib/student/identityActions';
+import { SelfieMobileHandoff } from './SelfieMobileHandoff';
+import {
+  saveIdentityDraftAction,
+  submitIdentityVerificationAction,
+  uploadIdentityArtifactAction,
+} from '@/lib/student/identityActions';
 import { identityStatusLabel } from '@/lib/student/identityLabels';
 import {
   IDENTITY_CLIENT_ERRORS,
@@ -17,7 +22,7 @@ import {
 import { selfieVideoFileName } from '@/lib/media/recorder';
 import { maxBirthDateForMinAge, MIN_IDENTITY_AGE } from '@/lib/student/age';
 import { IdentityReviewStep } from './IdentityReviewStep';
-import { MobileOnlyGate } from './MobileOnlyGate';
+import { useIsPhoneClient } from '@/lib/device/useIsPhoneClient';
 
 const STEPS = ['اطلاعات هویتی', 'تصویر کارت ملی', 'ویدیوی سلفی زنده', 'بازبینی و ارسال'] as const;
 const STEP_LABELS_SHORT = ['اطلاعات', 'کارت ملی', 'سلفی', 'بازبینی'] as const;
@@ -36,14 +41,21 @@ export function IdentityVerificationWizard({
   initialCanSubmit = true,
   initialDraft,
   correctionItems,
+  initialStep = 0,
+  cardUploadedOnServer = false,
+  draftSubmissionId = null,
 }: {
   initialStatus?: string | null;
   initialCanSubmit?: boolean;
   initialDraft?: Partial<Draft> | null;
   correctionItems?: string[] | null;
+  initialStep?: number;
+  cardUploadedOnServer?: boolean;
+  draftSubmissionId?: number | null;
 }) {
   const router = useRouter();
-  const [step, setStep] = useState(0);
+  const isPhone = useIsPhoneClient();
+  const [step, setStep] = useState(() => Math.min(Math.max(initialStep, 0), STEPS.length - 1));
   const [submitted, setSubmitted] = useState(false);
   const [draft, setDraft] = useState<Draft>({
     first_name: initialDraft?.first_name ?? '',
@@ -54,6 +66,8 @@ export function IdentityVerificationWizard({
     city: initialDraft?.city ?? '',
   });
   const [cardFile, setCardFile] = useState<File | null>(null);
+  const [cardReadyOnServer, setCardReadyOnServer] = useState(cardUploadedOnServer);
+  const [activeDraftSubmissionId, setActiveDraftSubmissionId] = useState<number | null>(draftSubmissionId);
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [videoPrompt, setVideoPrompt] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -105,17 +119,54 @@ export function IdentityVerificationWizard({
         setError(res.error);
         return;
       }
+      const submissionId = res.data?.draft_submission_id;
+      if (typeof submissionId === 'number') {
+        setActiveDraftSubmissionId(submissionId);
+      }
       setStep(1);
     });
   }
 
-  function submitAll() {
-    if (!cardFile && !videoBlob) {
+  function continueFromCard() {
+    setError(null);
+    setErrorTitle(null);
+
+    if (!cardFile && !cardReadyOnServer) {
       setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.artifacts);
-      setError(IDENTITY_CLIENT_ERRORS.artifacts);
+      setError(IDENTITY_CLIENT_ERRORS.cardMissing);
       return;
     }
+
+    if (!cardFile && cardReadyOnServer) {
+      setStep(2);
+      return;
+    }
+
     if (!cardFile) {
+      return;
+    }
+
+    const fd = new FormData();
+    fd.set('type', 'national_card_front');
+    fd.set('file', cardFile);
+    if (activeDraftSubmissionId) {
+      fd.set('submission_id', String(activeDraftSubmissionId));
+    }
+
+    startTransition(async () => {
+      const res = await uploadIdentityArtifactAction(fd);
+      if (res.error) {
+        setErrorTitle(res.errorTitle ?? null);
+        setError(res.error);
+        return;
+      }
+      setCardReadyOnServer(true);
+      setStep(2);
+    });
+  }
+
+  function submitAll() {
+    if (!cardReadyOnServer && !cardFile) {
       setErrorTitle(IDENTITY_CLIENT_ERROR_TITLES.artifacts);
       setError(IDENTITY_CLIENT_ERRORS.cardMissing);
       return;
@@ -129,9 +180,12 @@ export function IdentityVerificationWizard({
     setErrorTitle(null);
     const fd = new FormData();
     Object.entries(draft).forEach(([k, v]) => fd.set(k, v));
-    fd.set('national_card', cardFile);
+    if (cardFile) {
+      fd.set('national_card', cardFile);
+    }
     fd.set('selfie_video', videoBlob, selfieVideoFileName(videoBlob));
     if (videoPrompt) fd.set('expected_video_text', videoPrompt);
+    if (activeDraftSubmissionId) fd.set('draft_submission_id', String(activeDraftSubmissionId));
     startTransition(async () => {
       const res = await submitIdentityVerificationAction(fd);
       if (res.error) {
@@ -145,8 +199,11 @@ export function IdentityVerificationWizard({
     });
   }
 
+  const showSelfieHandoff = step === 2 && isPhone === false;
+  const showSelfieRecorder = step === 2 && isPhone === true;
+  const showSelfieLoading = step === 2 && isPhone === null;
+
   return (
-    <MobileOnlyGate>
     <div className="panel-identity-wizard flex flex-col gap-4 sm:gap-5">
       <ol className="panel-stepper-list panel-stepper-list--wizard">
         {STEPS.map((label, index) => (
@@ -269,15 +326,33 @@ export function IdentityVerificationWizard({
         ) : null}
 
         {step === 1 ? (
-          <NationalCardUploadStep
-            file={cardFile}
-            onFileChange={setCardFile}
-            onBack={() => setStep(0)}
-            onContinue={() => setStep(2)}
-          />
+          <>
+            {cardReadyOnServer && !cardFile ? (
+              <div className="mb-4 rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-text">
+                تصویر کارت ملی قبلاً بارگذاری شده است. در صورت نیاز می‌توانید تصویر جدید انتخاب کنید.
+              </div>
+            ) : null}
+            <NationalCardUploadStep
+              file={cardFile}
+              onFileChange={(file) => {
+                setCardFile(file);
+                if (file) setCardReadyOnServer(false);
+              }}
+              onBack={() => setStep(0)}
+              onContinue={continueFromCard}
+              continueDisabled={!cardFile && !cardReadyOnServer}
+              continuePending={pending}
+            />
+          </>
         ) : null}
 
-        {step === 2 ? (
+        {showSelfieHandoff ? <SelfieMobileHandoff onBack={() => setStep(1)} /> : null}
+
+        {showSelfieLoading ? (
+          <p className="text-sm text-text-muted">در حال بررسی دستگاه…</p>
+        ) : null}
+
+        {showSelfieRecorder ? (
           <LiveSelfieVideoStep
             hasRecording={!!videoBlob}
             onRecorded={(blob) => setVideoBlob(blob)}
@@ -297,6 +372,7 @@ export function IdentityVerificationWizard({
           <IdentityReviewStep
             draft={draft}
             cardFile={cardFile}
+            cardReadyOnServer={cardReadyOnServer}
             videoBlob={videoBlob}
             pending={pending}
             onBack={() => setStep(2)}
@@ -309,6 +385,5 @@ export function IdentityVerificationWizard({
         ) : null}
       </div>
     </div>
-    </MobileOnlyGate>
   );
 }

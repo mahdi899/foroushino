@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import type { StudentFormPrefill } from '@/lib/student/formPrefill';
 
 type OpenLoginOptions = {
   redirectTo?: string;
@@ -9,11 +10,12 @@ type OpenLoginOptions = {
 type StudentAuthContextValue = {
   isLoggedIn: boolean;
   displayName: string | null;
+  prefill: StudentFormPrefill | null;
   loginOpen: boolean;
   redirectTo: string;
   openLogin: (options?: OpenLoginOptions) => void;
   closeLogin: () => void;
-  markLoggedIn: (displayName?: string) => void;
+  markLoggedIn: (displayName?: string, prefill?: StudentFormPrefill | null) => void;
   markLoggedOut: () => void;
 };
 
@@ -23,13 +25,16 @@ export function StudentAuthProvider({
   children,
   initialLoggedIn = false,
   initialDisplayName = null,
+  initialPrefill = null,
 }: {
   children: React.ReactNode;
   initialLoggedIn?: boolean;
   initialDisplayName?: string | null;
+  initialPrefill?: StudentFormPrefill | null;
 }) {
   const [isLoggedIn, setIsLoggedIn] = useState(initialLoggedIn);
   const [displayName, setDisplayName] = useState<string | null>(initialDisplayName);
+  const [prefill, setPrefill] = useState<StudentFormPrefill | null>(initialPrefill);
   const [loginOpen, setLoginOpen] = useState(false);
   const [redirectTo, setRedirectTo] = useState('/panel');
 
@@ -37,6 +42,7 @@ export function StudentAuthProvider({
     if (!initialLoggedIn) {
       setIsLoggedIn(false);
       setDisplayName(null);
+      setPrefill(null);
       return;
     }
 
@@ -44,7 +50,8 @@ export function StudentAuthProvider({
     if (initialDisplayName) {
       setDisplayName(initialDisplayName);
     }
-  }, [initialLoggedIn, initialDisplayName]);
+    setPrefill(initialPrefill);
+  }, [initialLoggedIn, initialDisplayName, initialPrefill]);
 
   const openLogin = useCallback((options?: OpenLoginOptions) => {
     setRedirectTo(options?.redirectTo ?? '/panel');
@@ -55,21 +62,24 @@ export function StudentAuthProvider({
     setLoginOpen(false);
   }, []);
 
-  const markLoggedIn = useCallback((name?: string) => {
+  const markLoggedIn = useCallback((name?: string, nextPrefill?: StudentFormPrefill | null) => {
     setIsLoggedIn(true);
     if (name) setDisplayName(name);
+    if (nextPrefill !== undefined) setPrefill(nextPrefill);
     setLoginOpen(false);
   }, []);
 
   const markLoggedOut = useCallback(() => {
     setIsLoggedIn(false);
     setDisplayName(null);
+    setPrefill(null);
   }, []);
 
   const value = useMemo(
     () => ({
       isLoggedIn,
       displayName,
+      prefill,
       loginOpen,
       redirectTo,
       openLogin,
@@ -77,7 +87,7 @@ export function StudentAuthProvider({
       markLoggedIn,
       markLoggedOut,
     }),
-    [isLoggedIn, displayName, loginOpen, redirectTo, openLogin, closeLogin, markLoggedIn, markLoggedOut],
+    [isLoggedIn, displayName, prefill, loginOpen, redirectTo, openLogin, closeLogin, markLoggedIn, markLoggedOut],
   );
 
   return <StudentAuthContext.Provider value={value}>{children}</StudentAuthContext.Provider>;
@@ -93,4 +103,8 @@ export function useStudentAuth() {
     throw new Error('useStudentAuth must be used within StudentAuthProvider');
   }
   return ctx;
+}
+
+export function useStudentFormPrefill(): StudentFormPrefill | null {
+  return useStudentAuthOptional()?.prefill ?? null;
 }

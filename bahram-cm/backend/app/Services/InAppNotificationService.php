@@ -28,12 +28,14 @@ class InAppNotificationService
         InAppNotificationType|string $type,
         ?string $link = null,
         ?int $createdBy = null,
+        ?string $linkLabel = null,
     ): NotificationRecipient {
         $notification = NotificationModel::create([
             'title' => $title,
             'body' => $body,
             'type' => $type instanceof InAppNotificationType ? $type->value : $type,
             'link' => $link,
+            'link_label' => filled($link) ? $linkLabel : null,
             'created_by' => $createdBy,
         ]);
 
@@ -48,15 +50,17 @@ class InAppNotificationService
         InAppNotificationType|string $type,
         ?string $link = null,
         ?int $createdBy = null,
+        ?string $linkLabel = null,
     ): NotificationModel {
         $users = $users instanceof Collection ? $users : collect($users);
 
-        return DB::transaction(function () use ($users, $title, $body, $type, $link, $createdBy) {
+        return DB::transaction(function () use ($users, $title, $body, $type, $link, $createdBy, $linkLabel) {
             $notification = NotificationModel::create([
                 'title' => $title,
                 'body' => $body,
                 'type' => $type instanceof InAppNotificationType ? $type->value : $type,
                 'link' => $link,
+                'link_label' => filled($link) ? $linkLabel : null,
                 'created_by' => $createdBy,
             ]);
 
@@ -77,6 +81,7 @@ class InAppNotificationService
         InAppNotificationType|string $type = InAppNotificationType::General,
         ?string $link = null,
         ?int $createdBy = null,
+        ?string $linkLabel = null,
     ): NotificationModel {
         return $this->notifyUsers(
             $this->segments->resolve($segment),
@@ -85,6 +90,7 @@ class InAppNotificationService
             $type,
             $link,
             $createdBy,
+            $linkLabel,
         );
     }
 

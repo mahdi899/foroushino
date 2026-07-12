@@ -1,19 +1,10 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { extractError, type SimpleFormState } from './panelFormUtils';
 import { studentFetch } from './session';
 
-export interface SimpleFormState {
-  error?: string;
-  success?: string;
-}
-
-function extractError(err: unknown, fallback: string): string {
-  const e = err as { status?: number; payload?: { error?: { message_fa?: string }; errors?: Record<string, string[]> } };
-  if (e?.payload?.error?.message_fa) return e.payload.error.message_fa;
-  const firstFieldError = e?.payload?.errors ? Object.values(e.payload.errors)[0]?.[0] : undefined;
-  return firstFieldError ?? fallback;
-}
+export type { SimpleFormState };
 
 export async function updateProfileAction(_prev: SimpleFormState, formData: FormData): Promise<SimpleFormState> {
   const payload: Record<string, unknown> = {};
@@ -91,7 +82,7 @@ export async function uploadProfileAvatarAction(formData: FormData): Promise<Sim
   }
 
   revalidatePath('/panel/profile');
-  revalidatePath('/panel');
+  revalidatePath('/panel', 'layout');
   return { success: 'تصویر پروفایل با موفقیت ذخیره شد.' };
 }
 
@@ -124,8 +115,7 @@ export async function submitSatApplicationAction(_prev: SimpleFormState, formDat
 
 export async function requestCashbackPayoutAction(_prev: SimpleFormState, formData: FormData): Promise<SimpleFormState> {
   const payload = {
-    card_number: String(formData.get('card_number') ?? '').replace(/\D/g, ''),
-    card_holder_name: formData.get('card_holder_name') || null,
+    verified_bank_account_id: Number(formData.get('verified_bank_account_id')),
   };
 
   try {
@@ -195,6 +185,7 @@ export interface PanelNotificationPayload {
   body: string;
   type?: string | null;
   link: string | null;
+  link_label?: string | null;
   read_at: string | null;
   created_at: string | null;
   show_toast?: boolean;

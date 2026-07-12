@@ -18,6 +18,7 @@ export interface StudentProfile {
   income_goal: string | null;
   avatar: string | null;
   avatar_url: string | null;
+  avatar_version?: number | null;
   gravatar_url: string | null;
   default_avatar_url: string | null;
 }
@@ -43,6 +44,7 @@ export interface StudentUser {
   verification_level?: number;
   identity_status?: string | null;
   mobile_ownership_status?: string | null;
+  verified_bank_accounts_count?: number;
   sat_membership_status?: string | null;
   national_code_masked?: string | null;
 }

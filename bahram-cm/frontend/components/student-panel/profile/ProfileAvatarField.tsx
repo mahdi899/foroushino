@@ -10,6 +10,7 @@ import { studentDefaultAvatarUrl } from '@/lib/student/avatar';
 import { getStudentDisplayName } from '@/lib/student/displayName';
 import { uploadProfileAvatarAction } from '@/lib/student/panelActions';
 import type { StudentUser } from '@/lib/student/session';
+import { usePanelAvatarCache } from '@/components/student-panel/layout/PanelAvatarCacheContext';
 import { cn } from '@/lib/cn';
 
 export function ProfileAvatarField({
@@ -22,6 +23,7 @@ export function ProfileAvatarField({
   accountTier: AccountTier;
 }) {
   const router = useRouter();
+  const avatarCache = usePanelAvatarCache();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
@@ -43,6 +45,7 @@ export function ProfileAvatarField({
       return;
     }
     setSheetOpen(false);
+    avatarCache?.bumpAvatarCache();
     router.refresh();
   }
 
@@ -64,6 +67,7 @@ export function ProfileAvatarField({
           <PanelProfileAvatar
             avatar={user.profile?.avatar}
             avatarUrl={user.profile?.avatar_url}
+            avatarVersion={user.profile?.avatar_version}
             gravatarUrl={user.profile?.gravatar_url}
             defaultAvatarUrl={user.profile?.default_avatar_url ?? studentDefaultAvatarUrl(user.id, 256)}
             alt={displayName}

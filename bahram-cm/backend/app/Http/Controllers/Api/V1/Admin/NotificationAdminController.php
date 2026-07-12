@@ -8,6 +8,8 @@ use App\Services\AudienceSegmentService;
 use App\Services\InAppNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class NotificationAdminController extends Controller
 {
@@ -28,6 +30,7 @@ class NotificationAdminController extends Controller
                 'body' => $n->body,
                 'type' => $n->type,
                 'link' => $n->link,
+                'link_label' => $n->link_label,
                 'recipients_count' => $n->recipients_count,
                 'created_at' => $n->created_at?->toIso8601String(),
             ]),
@@ -42,9 +45,22 @@ class NotificationAdminController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string', 'max:2000'],
             'type' => ['nullable', 'string', 'max:50'],
-            'link' => ['nullable', 'string', 'max:255'],
-            'segment' => ['required', 'string', 'in:'.implode(',', array_keys(AudienceSegmentService::SEGMENTS))],
+            'link' => ['nullable', 'required_with:link_label', 'string', 'max:500'],
+            'link_label' => ['nullable', 'string', 'max:80'],
+            'segment' => ['required', 'string', Rule::in(array_keys(AudienceSegmentService::SEGMENTS))],
         ]);
+
+        $link = filled($data['link'] ?? null) ? trim($data['link']) : null;
+
+        if ($link !== null && ! preg_match('#^(https?://|/)#i', $link)) {
+            throw ValidationException::withMessages([
+                'link' => ['لینک باید با / یا http:// یا https:// شروع شود.'],
+            ]);
+        }
+
+        $linkLabel = filled($link) && filled($data['link_label'] ?? null)
+            ? trim($data['link_label'])
+            : null;
 
         $recipients = $this->segments->resolve($data['segment']);
 
@@ -53,8 +69,9 @@ class NotificationAdminController extends Controller
             $data['title'],
             $data['body'],
             $data['type'] ?? 'general',
-            $data['link'] ?? null,
+            $link,
             $request->user()->id,
+            $linkLabel,
         );
 
         return response()->json(['data' => [

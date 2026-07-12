@@ -42,6 +42,10 @@ class AuthController extends Controller
             return ApiResponse::error('forbidden', 'این شماره متعلق به یک حساب مدیریتی است.', 403);
         }
 
+        if (User::query()->where('mobile', $mobile)->where('is_sat_staff', true)->exists()) {
+            return ApiResponse::error('forbidden', 'این شماره متعلق به پرسنل سات است. از پنل سات وارد شوید.', 403);
+        }
+
         try {
             $this->otp->send($mobile, OtpPurpose::Login, $request->ip(), $request->userAgent());
         } catch (OtpException $e) {
@@ -65,6 +69,10 @@ class AuthController extends Controller
 
         if (User::query()->where('mobile', $mobile)->where('is_admin', true)->exists()) {
             return ApiResponse::error('forbidden', 'این شماره متعلق به یک حساب مدیریتی است.', 403);
+        }
+
+        if (User::query()->where('mobile', $mobile)->where('is_sat_staff', true)->exists()) {
+            return ApiResponse::error('forbidden', 'این شماره متعلق به پرسنل سات است. از پنل سات وارد شوید.', 403);
         }
 
         try {
@@ -103,8 +111,8 @@ class AuthController extends Controller
             app(AdminTelegramLogService::class)->notifyStudentRegistered($user);
         }
 
-        if ($user->is_admin) {
-            return ApiResponse::error('forbidden', 'این شماره متعلق به یک حساب مدیریتی است.', 403);
+        if ($user->is_admin || $user->is_sat_staff) {
+            return ApiResponse::error('forbidden', 'این شماره متعلق به حساب پرسنلی است.', 403);
         }
 
         if (StudentAccess::isBlocked($user)) {
@@ -135,7 +143,11 @@ class AuthController extends Controller
             return ApiResponse::error('invalid_mobile', 'شماره موبایل معتبر نیست.', 422);
         }
 
-        $user = User::query()->where('mobile', $mobile)->where('is_admin', false)->first();
+        $user = User::query()
+            ->where('mobile', $mobile)
+            ->where('is_admin', false)
+            ->where('is_sat_staff', false)
+            ->first();
 
         if ($user && StudentAccess::isBlocked($user)) {
             return StudentAccess::blockedResponse();
@@ -195,6 +207,7 @@ class AuthController extends Controller
             'verification_level' => (int) ($identity?->verification_level ?? 1),
             'identity_status' => $identity?->identity_status?->value ?? 'not_started',
             'mobile_ownership_status' => $identity?->mobile_ownership_status?->value ?? 'not_started',
+            'verified_bank_accounts_count' => $user->verifiedBankAccounts()->whereNotNull('verified_at')->count(),
             'sat_membership_status' => $user->satMembership?->status?->value ?? 'inactive',
             'national_code_masked' => $identity?->maskNationalCode(),
             'identity' => $identity ? [

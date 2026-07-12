@@ -14,8 +14,8 @@ import type { Suggestion } from './logic'
 const activeCallByLead = new Map<string, number>()
 
 export const httpClient: ApiClient = {
-  async startShift() {
-    await http.post('/shift/start')
+  async startShift(availability: Availability = 'available') {
+    await http.post('/shift/start', { availability })
   },
 
   async endShift() {

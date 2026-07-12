@@ -45,7 +45,7 @@ export const adminNav: {
         label: m.label,
         icon: m.icon,
         matchPrefix: true,
-        permission: 'orders.view' as string | undefined,
+        permission: m.permission,
       })),
       { href: '/admin/installments', label: 'اقساط', icon: 'CalendarClock', matchPrefix: true, permission: 'finance.view' },
     ],

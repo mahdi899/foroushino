@@ -18,6 +18,7 @@ class Notification extends Model
         'body',
         'type',
         'link',
+        'link_label',
         'created_by',
     ];
 

@@ -129,6 +129,26 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   }
 }
 
+.admin-root .admin-shell.fixed .admin-main-scroll {
+  padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+  padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 640px) {
+  .admin-root .admin-shell.fixed .admin-main-scroll {
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  }
+}
+@media (min-width: 1024px) {
+  .admin-root .admin-shell.fixed .admin-main-scroll {
+    padding-top: 0;
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+    padding-bottom: 1rem;
+  }
+}
+
 .admin-root .admin-article-toolbar {
   display: flex;
   flex-direction: row;
@@ -166,7 +186,10 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   width: 100%;
   max-width: none;
 }
-.admin-root .admin-article-layout--focus > .card {
+.admin-root .admin-article-layout--focus > .card,
+.admin-root .admin-article-layout--focus > .article-editor-focus-card {
+  width: 100%;
+  max-width: none;
   min-height: min(72dvh, 56rem);
 }
 .admin-root .admin-article-layout--focus > .article-editor-focus-card {
@@ -1114,6 +1137,12 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   .admin-root[data-sidebar-collapsed] .admin-main {
     margin-right: 4.25rem;
     width: calc(100% - 4.25rem);
+  }
+
+  /* Focus mode hides the sidebar — reclaim full viewport width */
+  .admin-root .admin-shell.fixed .admin-main {
+    margin-right: 0;
+    width: 100%;
   }
 }
 
@@ -3411,343 +3440,112 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   color: var(--color-text);
 }
 
-/* ============================================================
- * Testimonials admin — mobile story cards
- * ============================================================ */
-
-.admin-root .admin-testimonial-avatar {
-  display: flex;
-  height: 2.5rem;
-  width: 2.5rem;
-  flex-shrink: 0;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border-radius: 999px;
-}
-
-.admin-root .admin-testimonial-avatar--fallback {
-  background: linear-gradient(
-    145deg,
-    color-mix(in srgb, var(--color-gold) 18%, var(--color-surface-soft)) 0%,
-    var(--color-surface-soft) 100%
-  );
-  font-size: var(--admin-text-body);
-  font-weight: 800;
-  color: var(--color-primary);
-  border: 1px solid color-mix(in srgb, var(--color-gold) 28%, var(--color-border));
-}
-
-.admin-root .admin-testimonial-avatar--photo {
+/* Academy — optional link block in notification compose */
+.admin-root .admin-notification-compose-link {
   position: relative;
-  border: 2px solid color-mix(in srgb, var(--color-gold) 35%, var(--color-border));
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--color-primary) 14%, transparent);
-}
-
-.admin-root .admin-testimonial-card .admin-testimonial-avatar {
-  height: 3.25rem;
-  width: 3.25rem;
-}
-
-.admin-root .admin-testimonials-page__stats {
-  margin-bottom: 0.125rem;
-}
-
-.admin-root .admin-testimonials-page__cta {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  border-radius: 1rem;
-  border: 1px solid color-mix(in srgb, var(--color-gold) 32%, var(--color-border));
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-gold) 14%, var(--color-surface)) 0%,
-    color-mix(in srgb, var(--color-primary) 10%, var(--color-surface)) 55%,
-    var(--color-surface) 100%
-  );
-  padding: 0.875rem 1rem;
-  color: var(--color-text);
-  box-shadow: var(--shadow-soft);
-  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
-}
-
-.admin-root .admin-testimonials-page__cta:active {
-  transform: scale(0.985);
-}
-
-.admin-root .admin-testimonials-page__cta-icon {
-  display: grid;
-  height: 2.75rem;
-  width: 2.75rem;
-  flex-shrink: 0;
-  place-items: center;
-  border-radius: 0.875rem;
-  background: linear-gradient(145deg, var(--color-gold) 0%, #e8a317 100%);
-  color: #fff;
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-gold) 35%, transparent);
-}
-
-.admin-root .admin-testimonials-page .admin-table-card-list {
-  gap: 0.875rem;
-}
-
-.admin-root .admin-testimonial-card {
-  position: relative;
-  display: block;
   overflow: hidden;
-  border-radius: 1.125rem;
-  border: 1px solid color-mix(in srgb, var(--color-gold) 18%, var(--color-border));
-  background: linear-gradient(
-    165deg,
-    color-mix(in srgb, var(--color-gold-soft) 70%, var(--color-surface)) 0%,
-    var(--color-surface) 42%,
-    var(--color-surface) 100%
-  );
-  padding: 1rem;
-  box-shadow: var(--shadow-soft);
-  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, var(--color-border));
+  background:
+    radial-gradient(ellipse 85% 120% at 100% -15%, color-mix(in srgb, var(--color-primary) 16%, transparent) 0%, transparent 62%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-primary-soft) 90%, var(--color-surface)) 0%,
+      color-mix(in srgb, var(--color-surface-soft) 82%, var(--color-surface)) 100%
+    );
+  padding: 1rem 1.125rem;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 58%, transparent),
+    0 10px 24px color-mix(in srgb, var(--color-primary) 6%, transparent);
 }
 
-.admin-root .admin-testimonial-card:active {
-  transform: scale(0.985);
-}
-
-.admin-root .admin-testimonial-card__glow {
+.admin-root .admin-notification-compose-link::before {
+  content: '';
   position: absolute;
-  top: -2.5rem;
-  inset-inline-end: -1.5rem;
-  height: 6rem;
-  width: 6rem;
-  border-radius: 999px;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--color-gold) 22%, transparent) 0%,
-    transparent 72%
-  );
-  pointer-events: none;
+  inset: 0 auto auto 0;
+  height: 3px;
+  width: 100%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent-bright));
+  opacity: 0.85;
 }
 
-.admin-root .admin-testimonial-card__head {
+.admin-root[data-admin-theme='dark'] .admin-notification-compose-link {
+  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  background:
+    radial-gradient(ellipse 85% 120% at 100% -15%, color-mix(in srgb, var(--color-primary) 24%, transparent) 0%, transparent 62%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-primary-soft) 55%, var(--color-surface)) 0%,
+      color-mix(in srgb, var(--color-surface-soft) 68%, var(--color-surface)) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 7%, transparent),
+    0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.admin-root .admin-notification-compose-link__head {
   position: relative;
   z-index: 1;
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-}
-
-.admin-root .admin-testimonial-card__avatar-wrap {
-  position: relative;
-  flex-shrink: 0;
-}
-
-.admin-root .admin-testimonial-card__active-dot {
-  position: absolute;
-  bottom: 0.05rem;
-  inset-inline-end: 0.05rem;
-  height: 0.7rem;
-  width: 0.7rem;
-  border-radius: 999px;
-  border: 2px solid var(--color-surface);
-  background: #2f9e78;
-  box-shadow: 0 0 0 2px color-mix(in srgb, #2f9e78 25%, transparent);
-}
-
-.admin-root .admin-testimonial-card__name {
-  font-size: var(--admin-text-body-lg);
-  font-weight: 800;
-  line-height: 1.35;
-  color: var(--color-text);
-}
-
-.admin-root .admin-testimonial-card__role {
-  margin-top: 0.15rem;
-  font-size: var(--admin-text-caption);
-  color: var(--color-text-muted);
-}
-
-.admin-root .admin-testimonial-card__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.5rem;
-}
-
-.admin-root .admin-testimonial-card__chip {
-  display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--color-border) 80%, transparent);
-  background: color-mix(in srgb, var(--color-surface-soft) 80%, var(--color-surface));
-  padding: 0.15rem 0.5rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
+  gap: 0.625rem;
+  margin-bottom: 0.875rem;
 }
 
-.admin-root .admin-testimonial-card__chip--slug {
-  max-width: 100%;
-  font-family: ui-monospace, monospace;
-  color: var(--color-text);
-}
-
-.admin-root .admin-testimonial-card__status {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 0.3rem;
-  border-radius: 999px;
-  padding: 0.3rem 0.55rem;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.admin-root .admin-testimonial-card__status--active {
-  border: 1px solid color-mix(in srgb, #2f9e78 28%, transparent);
-  background: color-mix(in srgb, #2f9e78 12%, var(--color-surface));
-  color: #1f7a5c;
-}
-
-.admin-root .admin-testimonial-card__status--inactive {
-  border: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
-  background: var(--color-surface-soft);
-  color: var(--color-text-muted);
-}
-
-.admin-root .admin-testimonial-card__transform {
-  position: relative;
-  z-index: 1;
+.admin-root .admin-notification-compose-link__icon {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: stretch;
-  gap: 0.5rem;
-  margin-top: 0.875rem;
-}
-
-.admin-root .admin-testimonial-card__phase {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 0.35rem;
-  border-radius: 0.875rem;
-  padding: 0.625rem 0.65rem;
-}
-
-.admin-root .admin-testimonial-card__phase--before {
-  border: 1px solid color-mix(in srgb, #b8860b 22%, transparent);
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, #b8860b 10%, var(--color-surface)) 0%,
-    color-mix(in srgb, #b8860b 4%, var(--color-surface)) 100%
-  );
-}
-
-.admin-root .admin-testimonial-card__phase--after {
-  border: 1px solid color-mix(in srgb, var(--color-primary) 24%, transparent);
-  background: linear-gradient(
-    160deg,
-    color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)) 0%,
-    color-mix(in srgb, var(--color-primary) 4%, var(--color-surface)) 100%
-  );
-}
-
-.admin-root .admin-testimonial-card__phase-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.6875rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-}
-
-.admin-root .admin-testimonial-card__phase--before .admin-testimonial-card__phase-label {
-  color: #9a6f08;
-}
-
-.admin-root .admin-testimonial-card__phase--after .admin-testimonial-card__phase-label {
-  color: var(--color-primary);
-}
-
-.admin-root .admin-testimonial-card__phase-text {
-  font-size: var(--admin-text-caption);
-  line-height: 1.55;
-  color: var(--color-text);
-}
-
-.admin-root .admin-testimonial-card__arrow {
-  display: grid;
-  place-items: center;
-  align-self: center;
   height: 2rem;
   width: 2rem;
   flex-shrink: 0;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--color-gold) 30%, var(--color-border));
-  background: color-mix(in srgb, var(--color-gold-soft) 80%, var(--color-surface));
-  color: var(--color-gold);
+  place-items: center;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent-bright));
+  color: #fff;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--color-primary) 28%, transparent);
 }
 
-.admin-root .admin-testimonial-card__metric {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin-top: 0.75rem;
-  border-radius: 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--color-gold) 26%, transparent);
-  background: color-mix(in srgb, var(--color-gold-soft) 65%, var(--color-surface));
-  padding: 0.5rem 0.65rem;
-  font-size: var(--admin-text-caption);
+.admin-root .admin-notification-compose-link__title {
+  font-size: var(--admin-text-body);
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--color-primary-dark);
+}
+
+.admin-root[data-admin-theme='dark'] .admin-notification-compose-link__title {
   color: var(--color-text);
 }
 
-.admin-root .admin-testimonial-card__summary {
+.admin-root .admin-notification-compose-link__fields {
   position: relative;
   z-index: 1;
-  margin-top: 0.625rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .admin-root .admin-notification-compose-link__fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.admin-root .admin-notification-compose-link__hint {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-primary) 12%, var(--color-border));
   font-size: var(--admin-text-caption);
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--color-text-muted);
 }
 
-.admin-root .admin-testimonial-card__edit {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  width: 100%;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  margin-top: 0.875rem;
-  border-radius: 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-border));
-  background: color-mix(in srgb, var(--color-primary-soft) 75%, var(--color-surface));
-  padding: 0.625rem 0.75rem;
-  font-size: var(--admin-text-caption);
-  font-weight: 700;
-  color: var(--color-primary);
+.admin-root .admin-notification-compose-link .field-input:disabled {
+  background: color-mix(in srgb, var(--color-surface) 72%, var(--color-surface-soft));
+  border-color: color-mix(in srgb, var(--color-border) 88%, transparent);
+  color: var(--color-text-subtle);
 }
 
-.admin-root[data-admin-theme='dark'] .admin-testimonial-card {
-  border-color: color-mix(in srgb, var(--color-gold) 24%, var(--color-border));
-  background: linear-gradient(
-    165deg,
-    color-mix(in srgb, var(--color-gold) 8%, var(--color-surface)) 0%,
-    var(--color-surface) 48%,
-    var(--color-surface) 100%
-  );
+.admin-root[data-admin-theme='dark'] .admin-notification-compose-link .field-input:disabled {
+  background: color-mix(in srgb, var(--color-surface-soft) 55%, var(--color-surface));
 }
 
-.admin-root[data-admin-theme='dark'] .admin-testimonial-card__status--active {
-  color: #6fd4a8;
-}
-
-.admin-root[data-admin-theme='dark'] .admin-testimonial-card__phase--before .admin-testimonial-card__phase-label {
-  color: #e8c45a;
-}
-
-.admin-root[data-admin-theme='dark'] .admin-testimonials-page__cta {
-  border-color: color-mix(in srgb, var(--color-gold) 28%, var(--color-border));
-}

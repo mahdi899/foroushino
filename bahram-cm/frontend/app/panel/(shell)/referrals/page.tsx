@@ -2,12 +2,14 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CheckCircle2, Clock, CreditCard, Gift, LifeBuoy, Users, Wallet } from 'lucide-react';
 import { WithdrawalVerificationModal } from '@/components/student-panel/referrals/WithdrawalVerificationModal';
+import { VerifiedBankAccountsPanel } from '@/components/student-panel/referrals/VerifiedBankAccountsPanel';
 import { ReferralCashbackProductCard } from '@/components/student-panel/referrals/ReferralCashbackProductCard';
 import { ReferralHeroBanner } from '@/components/student-panel/referrals/ReferralHeroBanner';
 import { PanelTomanAmount } from '@/components/student-panel/ui/PanelTomanAmount';
 import { StatCard } from '@/components/student-panel/ui/StatCard';
 import { StatusBadge } from '@/components/student-panel/ui/StatusBadge';
 import { panelStudentFetch } from '@/lib/student/panelServer';
+import { getBankAccountRulesAction, getVerifiedBankAccountsAction } from '@/lib/student/bankAccountActions';
 import { getCurrentStudent } from '@/lib/student/session';
 
 export const metadata: Metadata = { title: 'باشگاه مشتریان | پنل کاربری', robots: { index: false, follow: false } };
@@ -47,12 +49,16 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default async function PanelReferralsPage() {
-  const [user, { data: referral }, { data: payouts }] = await Promise.all([
+  const [user, { data: referral }, { data: payouts }, bankAccountsResult, bankRules] = await Promise.all([
     getCurrentStudent(),
     panelStudentFetch<{ data: ReferralData }>('/referrals'),
     panelStudentFetch<{ data: Payout[] }>('/cashback-payouts'),
+    getVerifiedBankAccountsAction(),
+    getBankAccountRulesAction(),
   ]);
   const verificationLevel = user?.verification_level ?? 1;
+  const bankAccounts = bankAccountsResult.items;
+  const identityApproved = verificationLevel >= 2;
 
   return (
     <div className="panel-page-inner panel-referrals-page flex flex-col gap-5">
@@ -96,8 +102,20 @@ export default async function PanelReferralsPage() {
             <WithdrawalVerificationModal
               verificationLevel={verificationLevel}
               payableAmount={referral.summary.payable_amount}
+              bankAccounts={bankAccounts}
             />
           </div>
+
+          {identityApproved ? (
+            <div className="card panel-referral-card p-6">
+              <VerifiedBankAccountsPanel
+                accounts={bankAccounts}
+                rules={bankRules}
+                payableAmount={referral.summary.payable_amount}
+                identityApproved={identityApproved}
+              />
+            </div>
+          ) : null}
 
           {payouts.length > 0 ? (
             <div className="card panel-referral-card p-6">
@@ -208,7 +226,8 @@ export default async function PanelReferralsPage() {
               <h3 className="panel-card-title">شماره کارت واریز</h3>
             </div>
             <p className="panel-card-text leading-relaxed">
-              برای دریافت کش‌بک، شماره کارت خود را هنگام ثبت درخواست واریز وارد کنید.
+              کارت‌های تأییدشده شما برای واریز کش‌بک استفاده می‌شوند. هر احراز جدید{' '}
+              {bankRules.verification_fee.toLocaleString('fa-IR')} تومان کارمزد دارد.
             </p>
           </div>
 

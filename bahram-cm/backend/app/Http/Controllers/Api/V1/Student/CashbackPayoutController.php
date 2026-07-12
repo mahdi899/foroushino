@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Student;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Student\StoreCashbackPayoutRequest;
 use App\Models\CashbackPayout;
+use App\Models\VerifiedBankAccount;
 use App\Services\ReferralService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -42,19 +43,16 @@ class CashbackPayoutController extends Controller
             );
         }
 
-        if ($level < 3) {
-            $ownership = $identity?->mobile_ownership_status?->value;
-            if ($ownership === 'locked') {
-                return ApiResponse::error(
-                    'ownership_locked',
-                    'تطبیق شماره موبایل قفل شده است. با پشتیبانی تماس بگیرید.',
-                    422,
-                );
-            }
+        $bankAccount = VerifiedBankAccount::query()
+            ->where('user_id', $user->id)
+            ->whereKey($request->integer('verified_bank_account_id'))
+            ->whereNotNull('verified_at')
+            ->first();
 
+        if (! $bankAccount) {
             return ApiResponse::error(
-                'ownership_required',
-                'برای برداشت، تطبیق شماره موبایل با کد ملی الزامی است.',
+                'verified_bank_account_required',
+                'برای برداشت، ابتدا باید یک کارت بانکی تأییدشده انتخاب کنید.',
                 422,
             );
         }
@@ -67,11 +65,16 @@ class CashbackPayoutController extends Controller
 
         $payout = new CashbackPayout([
             'user_id' => $user->id,
+            'verified_bank_account_id' => $bankAccount->id,
             'amount' => $summary['payable_amount'],
-            'card_holder_name' => $request->input('card_holder_name'),
+            'card_holder_name' => $bankAccount->holder_name,
             'status' => 'pending',
         ]);
-        $payout->setCardNumber($request->string('card_number'));
+
+        if (filled($bankAccount->card_number_encrypted)) {
+            $payout->setCardNumber($bankAccount->card_number_encrypted);
+        }
+
         $payout->save();
 
         return ApiResponse::success([

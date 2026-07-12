@@ -7,6 +7,7 @@ import { PanelThemeProvider } from '@/app/panel/PanelThemeContext';
 import { PanelNotificationProvider } from '@/components/student-panel/notifications/PanelNotificationContext';
 import { PanelToastProvider } from '@/components/student-panel/ui/PanelToastContext';
 import { PanelBottomNav } from './PanelBottomNav';
+import { PanelAvatarCacheProvider } from './PanelAvatarCacheContext';
 import { PanelHeader } from './PanelHeader';
 import { PanelPwaRegistrar } from './PanelPwaRegistrar';
 import { PanelSidebar } from './PanelSidebar';
@@ -104,6 +105,7 @@ export function PanelShell({
   return (
     <PanelThemeProvider>
       <PanelToastProvider>
+        <PanelAvatarCacheProvider>
         <PanelNotificationProvider initialUnreadCount={unreadCount} onUnreadCountChange={handleUnreadCountChange}>
         <div className="panel-shell">
           <PanelPwaRegistrar />
@@ -132,6 +134,7 @@ export function PanelShell({
           />
         </div>
         </PanelNotificationProvider>
+        </PanelAvatarCacheProvider>
       </PanelToastProvider>
     </PanelThemeProvider>
   );

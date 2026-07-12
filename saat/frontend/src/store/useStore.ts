@@ -5,6 +5,7 @@ import type {
   Agent,
   AppNotification,
   Availability,
+  AvailabilityAutoReason,
   Call,
   Commission,
   Followup,
@@ -21,6 +22,7 @@ import type {
   Temperature,
   Wallet,
   WalletTransaction,
+  WorkDaySummary,
   WorkSession,
 } from '@/types'
 import type { CallMethod } from '@/lib/call'
@@ -62,6 +64,7 @@ import {
   validatePayoutAmount,
 } from '@/lib/payoutRules'
 import type { SyncPayload } from '@/services/sync'
+import { isProductiveAvailability } from '@/lib/shiftUtils'
 
 const usesRemoteData = import.meta.env.VITE_API_MODE === 'http'
 
@@ -80,7 +83,10 @@ interface AppState {
 
   // shift & availability
   availability: Availability
+  availabilityChangedAt: string | null
+  availabilityAutoReason: AvailabilityAutoReason | null
   workSession: WorkSession | null
+  workDaySummaries: WorkDaySummary[]
 
   // domain data
   agents: Agent[]
@@ -125,9 +131,19 @@ interface AppState {
   logout: () => void
 
   // shift actions
-  startShift: () => void
+  startShift: (initialAvailability?: Availability) => void
   endShift: () => void
-  setAvailability: (status: Availability) => void
+  setAvailability: (
+    status: Availability,
+    options?: { source?: 'manual' | 'auto'; autoReason?: AvailabilityAutoReason | null },
+  ) => void
+  applyShiftState: (payload: {
+    workSession: WorkSession | null
+    availability: Availability
+    availabilityChangedAt: string | null
+    availabilityAutoReason?: AvailabilityAutoReason | null
+    workDaySummaries?: WorkDaySummary[]
+  }) => void
 
   // lead ownership / lock
   lockLead: (leadId: string) => { ok: boolean; lockedByOther?: boolean }
@@ -248,6 +264,45 @@ function pushStatus(lead: Lead, status: LeadStatus, byAgentId: string, note?: st
   return { ...lead, status, statusHistory: [event, ...(lead.statusHistory ?? [])] }
 }
 
+function flushAvailabilitySegment(
+  state: Pick<AppState, 'availability' | 'availabilityChangedAt' | 'workSession'>,
+  nowMs: number,
+): Partial<Pick<AppState, 'workSession' | 'availabilityChangedAt'>> {
+  if (!state.workSession?.startedAt || state.workSession.endedAt) {
+    return {}
+  }
+
+  const elapsed = state.availabilityChangedAt
+    ? Math.max(0, Math.floor((nowMs - new Date(state.availabilityChangedAt).getTime()) / 1000))
+    : 0
+
+  if (elapsed === 0) {
+    return { availabilityChangedAt: new Date(nowMs).toISOString() }
+  }
+
+  if (isProductiveAvailability(state.availability)) {
+    return {
+      workSession: {
+        ...state.workSession,
+        totalProductiveSeconds: (state.workSession.totalProductiveSeconds ?? 0) + elapsed,
+      },
+      availabilityChangedAt: new Date(nowMs).toISOString(),
+    }
+  }
+
+  if (state.availability !== 'offline') {
+    return {
+      workSession: {
+        ...state.workSession,
+        totalBreakSeconds: state.workSession.totalBreakSeconds + elapsed,
+      },
+      availabilityChangedAt: new Date(nowMs).toISOString(),
+    }
+  }
+
+  return { availabilityChangedAt: new Date(nowMs).toISOString() }
+}
+
 const AGENT_MAP: Record<Role, string> = {
   agent: 'a-me',
   leader: 'a-leader',
@@ -262,6 +317,7 @@ type PersistedSlice = Pick<
   | 'role'
   | 'currentAgentId'
   | 'availability'
+  | 'availabilityChangedAt'
   | 'workSession'
   | 'leads'
   | 'calls'
@@ -291,7 +347,10 @@ export const useStore = create<AppState>()(
       currentAgentId: MY_AGENT_ID,
 
       availability: 'offline',
+      availabilityChangedAt: null,
+      availabilityAutoReason: null,
       workSession: null,
+      workDaySummaries: [],
 
       agents: mockAgents,
       teams: mockTeams,
@@ -342,33 +401,73 @@ export const useStore = create<AppState>()(
           isAuthed: false,
           phone: '',
           availability: 'offline',
+          availabilityChangedAt: null,
+          availabilityAutoReason: null,
           role: 'agent',
           currentAgentId: AGENT_MAP.agent,
           workSession: null,
+          workDaySummaries: [],
           isLocked: false,
           dataReady: !usesRemoteData,
           dataSyncing: false,
         })
       },
 
-      startShift: () =>
+      startShift: (initialAvailability = 'available') => {
+        const now = new Date().toISOString()
         set({
-          availability: 'available',
+          availability: initialAvailability,
+          availabilityChangedAt: now,
+          availabilityAutoReason: null,
           workSession: {
-            startedAt: new Date().toISOString(),
+            startedAt: now,
             endedAt: null,
             totalBreakSeconds: 0,
             totalCallSeconds: 0,
+            totalProductiveSeconds: 0,
           },
-        }),
+        })
+      },
       endShift: () =>
-        set((state) => ({
-          availability: 'offline',
-          workSession: state.workSession
-            ? { ...state.workSession, endedAt: new Date().toISOString() }
-            : null,
-        })),
-      setAvailability: (status) => set({ availability: status }),
+        set((state) => {
+          const nowMs = Date.now()
+          const flushed = flushAvailabilitySegment(state, nowMs)
+          const session = flushed.workSession ?? state.workSession
+
+          return {
+            ...flushed,
+            availability: 'offline',
+            availabilityChangedAt: new Date(nowMs).toISOString(),
+            availabilityAutoReason: null,
+            workSession: session ? { ...session, endedAt: new Date(nowMs).toISOString() } : null,
+          }
+        }),
+      setAvailability: (status, options) =>
+        set((state) => {
+          const nowMs = Date.now()
+          const flushed = flushAvailabilitySegment(state, nowMs)
+          const autoReason =
+            options?.source === 'manual'
+              ? null
+              : options?.autoReason !== undefined
+                ? options.autoReason
+                : state.availabilityAutoReason
+
+          return {
+            ...flushed,
+            availability: status,
+            availabilityChangedAt: new Date(nowMs).toISOString(),
+            availabilityAutoReason: autoReason,
+          }
+        }),
+      applyShiftState: (payload) =>
+        set({
+          workSession: payload.workSession,
+          availability: payload.availability,
+          availabilityChangedAt: payload.availabilityChangedAt,
+          availabilityAutoReason: payload.availabilityAutoReason ?? null,
+          ...(payload.workDaySummaries ? { workDaySummaries: payload.workDaySummaries } : {}),
+        }),
 
       lockLead: (leadId) => {
         const state = get()
@@ -445,26 +544,51 @@ export const useStore = create<AppState>()(
         })),
 
       startCall: (leadId, method = 'voip') => {
-        set((state) => ({
-          activeCallLeadId: leadId,
-          activeCallMethod: method,
-          lastCallDuration: 0,
-          availability: 'in_call',
-          leads: state.leads.map((l) =>
-            l.id === leadId
-              ? pushStatus({ ...l, lockedBy: state.currentAgentId }, 'in_call', state.currentAgentId)
-              : l,
-          ),
-        }))
+        set((state) => {
+          const nowMs = Date.now()
+          const flushed = flushAvailabilitySegment(state, nowMs)
+
+          return {
+            ...flushed,
+            activeCallLeadId: leadId,
+            activeCallMethod: method,
+            lastCallDuration: 0,
+            availability: 'in_call',
+            availabilityChangedAt: new Date(nowMs).toISOString(),
+            availabilityAutoReason: null,
+            leads: state.leads.map((l) =>
+              l.id === leadId
+                ? pushStatus({ ...l, lockedBy: state.currentAgentId }, 'in_call', state.currentAgentId)
+                : l,
+            ),
+          }
+        })
       },
       endCall: (durationSec) =>
-        set((state) => ({
-          lastCallDuration: durationSec,
-          availability: state.availability === 'in_call' ? 'available' : state.availability,
-          workSession: state.workSession
-            ? { ...state.workSession, totalCallSeconds: state.workSession.totalCallSeconds + durationSec }
-            : state.workSession,
-        })),
+        set((state) => {
+          const nowMs = Date.now()
+          const flushed = flushAvailabilitySegment(
+            { ...state, availability: 'in_call' },
+            nowMs,
+          )
+          const nextAvailability = 'available'
+
+          return {
+            ...flushed,
+            lastCallDuration: durationSec,
+            availability: nextAvailability,
+            availabilityChangedAt: new Date(nowMs).toISOString(),
+            availabilityAutoReason: null,
+            workSession:
+              flushed.workSession ?? state.workSession
+                ? {
+                    ...(flushed.workSession ?? state.workSession)!,
+                    totalCallSeconds:
+                      (flushed.workSession ?? state.workSession)!.totalCallSeconds + durationSec,
+                  }
+                : state.workSession,
+          }
+        }),
 
       submitCallResult: (input) => {
         const state = get()
@@ -604,7 +728,15 @@ export const useStore = create<AppState>()(
           suggestion,
         }
 
+        const nowMs = Date.now()
+        const flushed = flushAvailabilitySegment(
+          { ...state, availability: 'in_call' },
+          nowMs,
+        )
+        const sessionBase = flushed.workSession ?? state.workSession
+
         set({
+          ...flushed,
           calls: [call, ...state.calls],
           leads,
           followups: syncedFollowups,
@@ -614,7 +746,15 @@ export const useStore = create<AppState>()(
           notifications,
           activeCallLeadId: null,
           activeCallMethod: null,
-          availability: 'available',
+            availability: 'available',
+            availabilityChangedAt: new Date(nowMs).toISOString(),
+            availabilityAutoReason: null,
+            workSession: sessionBase
+            ? {
+                ...sessionBase,
+                totalCallSeconds: sessionBase.totalCallSeconds + input.durationSec,
+              }
+            : sessionBase,
           lastOutcome: outcome,
         })
 
@@ -892,6 +1032,10 @@ export const useStore = create<AppState>()(
           products: payload.products,
           notifications: payload.notifications,
           availability: payload.availability,
+          availabilityChangedAt: payload.availabilityChangedAt,
+          availabilityAutoReason: null,
+          workSession: payload.workSession,
+          workDaySummaries: payload.workDaySummaries,
           currentAgentId: payload.agent.id,
           agents: state.agents.some((agent) => agent.id === payload.agent.id)
             ? state.agents.map((agent) =>
@@ -930,7 +1074,9 @@ export const useStore = create<AppState>()(
             products: mockProducts,
             activity: mockActivity,
             availability: 'offline',
+            availabilityChangedAt: null,
             workSession: null,
+            workDaySummaries: [],
             darkMode: false,
           } as PersistedSlice
         }
@@ -950,6 +1096,7 @@ export const useStore = create<AppState>()(
         role: state.role,
         currentAgentId: state.currentAgentId,
         availability: state.availability,
+        availabilityChangedAt: state.availabilityChangedAt,
         workSession: state.workSession,
         leads: state.leads,
         calls: state.calls,

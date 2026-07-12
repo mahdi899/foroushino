@@ -4,10 +4,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { primarySiteImageSrc } from '@/lib/mediaUrl';
 import { cn } from '@/lib/cn';
 import { ProfileVerifiedBadge } from '@/components/student-panel/layout/ProfileVerifiedBadge';
+import { usePanelAvatarCache } from '@/components/student-panel/layout/PanelAvatarCacheContext';
+import { appendAvatarCacheBuster, resolveAvatarVersion } from '@/lib/student/avatarCache';
 
 type Props = {
   avatar?: string | null;
   avatarUrl?: string | null;
+  avatarVersion?: number | null;
   gravatarUrl?: string | null;
   defaultAvatarUrl?: string | null;
   alt: string;
@@ -29,12 +32,14 @@ function buildAvatarSources({
   avatar,
   avatarUrl,
   defaultAvatarUrl,
-}: Pick<Props, 'avatar' | 'avatarUrl' | 'defaultAvatarUrl'>): string[] {
+  avatarVersion,
+}: Pick<Props, 'avatar' | 'avatarUrl' | 'defaultAvatarUrl' | 'avatarVersion'>): string[] {
   const sources: string[] = [];
 
   const custom = avatarUrl?.trim() || avatar?.trim();
   if (custom) {
-    sources.push(primarySiteImageSrc(custom) || custom);
+    const resolved = primarySiteImageSrc(custom) || custom;
+    sources.push(appendAvatarCacheBuster(resolved, avatarVersion));
   }
 
   const fallback = defaultAvatarUrl?.trim();
@@ -52,6 +57,7 @@ export function hasUploadedProfileAvatar(avatar?: string | null, avatarUrl?: str
 export function PanelProfileAvatar({
   avatar,
   avatarUrl,
+  avatarVersion,
   gravatarUrl,
   defaultAvatarUrl,
   alt,
@@ -59,9 +65,12 @@ export function PanelProfileAvatar({
   verified = false,
   verifiedLabel = 'پروفایل تکمیل‌شده',
 }: Props) {
+  const avatarCache = usePanelAvatarCache();
+  const resolvedVersion = resolveAvatarVersion(avatarVersion, avatarCache?.cacheBuster ?? null);
+
   const sources = useMemo(
-    () => buildAvatarSources({ avatar, avatarUrl, defaultAvatarUrl }),
-    [avatar, avatarUrl, defaultAvatarUrl],
+    () => buildAvatarSources({ avatar, avatarUrl, defaultAvatarUrl, avatarVersion: resolvedVersion }),
+    [avatar, avatarUrl, defaultAvatarUrl, resolvedVersion],
   );
 
   const [sourceIndex, setSourceIndex] = useState(0);
@@ -89,6 +98,7 @@ export function PanelProfileAvatar({
       {showImage ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
+          key={currentSrc}
           src={currentSrc}
           alt={alt}
           className="h-full w-full object-cover object-center"

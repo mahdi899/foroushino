@@ -1,8 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ChevronLeft, Smartphone } from 'lucide-react';
-import { useIsPhoneClient } from '@/lib/device/useIsPhoneClient';
+import { ChevronLeft } from 'lucide-react';
 import type { VerificationCardAction } from '@/lib/student/verificationCard';
 import { cn } from '@/lib/cn';
 
@@ -15,23 +14,6 @@ export function VerificationActionCta({
   className?: string;
   style?: 'overview' | 'secondary';
 }) {
-  const isPhone = useIsPhoneClient();
-
-  if (isPhone === null) {
-    return null;
-  }
-
-  if (!isPhone) {
-    return (
-      <div className={cn('panel-profile-overview__mobile-only', className)}>
-        <p className="panel-profile-overview__mobile-only-text">
-          <Smartphone size={14} className="inline-block shrink-0" aria-hidden />
-          {action.label} — فقط از گوشی موبایل
-        </p>
-      </div>
-    );
-  }
-
   return (
     <Link
       href={action.href}

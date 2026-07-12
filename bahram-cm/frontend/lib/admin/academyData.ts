@@ -143,6 +143,25 @@ export async function getSatApplications(params: { status?: string; page?: numbe
   }
 }
 
+import type { AdminSatIntegrationConfig } from './academyTypes';
+
+export async function getSatIntegrationConfig() {
+  try {
+    const res = await adminFetch<{ data: { config: AdminSatIntegrationConfig } }>('/sat-integration');
+    return { config: res.data.config, error: null as string | null };
+  } catch (e) {
+    return {
+      config: {
+        enabled: false,
+        api_url: null,
+        api_token_set: false,
+        api_token_preview: null,
+      },
+      error: errorMessage(e),
+    };
+  }
+}
+
 export async function getTickets(params: { status?: string; user_id?: number; page?: number } = {}) {
   try {
     const res = await adminFetch<{ data: AdminTicket[]; meta: PageMeta }>('/tickets', {

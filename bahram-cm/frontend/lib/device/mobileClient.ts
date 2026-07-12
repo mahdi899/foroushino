@@ -1,6 +1,9 @@
 export const MOBILE_ONLY_IDENTITY_MESSAGE =
   'تأیید هویت فقط از طریق گوشی موبایل امکان‌پذیر است. لطفاً پنل کاربری را روی گوشی خود باز کنید.';
 
+export const SELFIE_MOBILE_ONLY_MESSAGE =
+  'ضبط ویدیوی سلفی فقط روی گوشی موبایل امکان‌پذیر است. لینک یا QR مرحله قبل را با گوشی خود باز کنید.';
+
 export function isPhoneClient(userAgent?: string): boolean {
   const ua = (userAgent ?? (typeof navigator !== 'undefined' ? navigator.userAgent : '')).trim();
   if (!ua) return false;

@@ -11,6 +11,8 @@ import type {
   Sale,
   Wallet,
   WalletTransaction,
+  WorkDaySummary,
+  WorkSession,
 } from '@/types'
 import { fetchMe } from './auth'
 import { http } from './http'
@@ -22,6 +24,8 @@ import {
   mapWallet,
   mapWalletTransaction,
   mapSale,
+  mapWorkDaySummary,
+  mapWorkSession,
   splitName,
   id,
 } from './mappers'
@@ -45,6 +49,9 @@ export interface SyncPayload {
   notifications: AppNotification[]
   agent: Agent
   availability: Availability
+  availabilityChangedAt: string | null
+  workSession: WorkSession | null
+  workDaySummaries: WorkDaySummary[]
 }
 
 function mapProduct(dto: Dto): Product {
@@ -83,32 +90,51 @@ function mapPaymentFromSale(dto: Dto): Payment | null {
   }
 }
 
+async function fetchShiftData(): Promise<{ shiftCurrentRaw: Dto; shiftHistoryRaw: Dto[] }> {
+  try {
+    const [shiftCurrentRaw, shiftHistoryRaw] = await Promise.all([
+      http.get<Dto>('/shift/current'),
+      http.get<Dto[]>('/shift/history?days=14'),
+    ])
+    return { shiftCurrentRaw, shiftHistoryRaw }
+  } catch {
+    // Shift endpoints must not block the rest of the app (e.g. pending migration).
+    return { shiftCurrentRaw: {}, shiftHistoryRaw: [] }
+  }
+}
+
 export async function syncAppData(): Promise<SyncPayload> {
   const [
-    me,
-    home,
-    leadsRaw,
-    followupsRaw,
-    salesRaw,
-    walletRaw,
-    walletTxRaw,
-    commissionsRaw,
-    payoutsRaw,
-    productsRaw,
-    notificationsRaw,
+    [
+      me,
+      home,
+      leadsRaw,
+      followupsRaw,
+      salesRaw,
+      walletRaw,
+      walletTxRaw,
+      commissionsRaw,
+      payoutsRaw,
+      productsRaw,
+      notificationsRaw,
+    ],
+    { shiftCurrentRaw, shiftHistoryRaw },
   ] = await Promise.all([
-    fetchMe(),
-    http.get<Dto>('/home/agent'),
-    // Backend validates per_page max=100 on /leads (IndexLeadRequest).
-    http.get<Dto[]>('/leads?per_page=100'),
-    http.get<Dto[]>('/followups?per_page=100'),
-    http.get<Dto[]>('/sales?per_page=100'),
-    http.get<Dto>('/wallet'),
-    http.get<Dto[]>('/wallet/transactions?per_page=100'),
-    http.get<Dto[]>('/wallet/commissions?per_page=100'),
-    http.get<Dto[]>('/wallet/payout-requests?per_page=50'),
-    http.get<Dto[]>('/products'),
-    http.get<Dto[]>('/notifications?per_page=50'),
+    Promise.all([
+      fetchMe(),
+      http.get<Dto>('/home/agent'),
+      // Backend validates per_page max=100 on /leads (IndexLeadRequest).
+      http.get<Dto[]>('/leads?per_page=100'),
+      http.get<Dto[]>('/followups?per_page=100'),
+      http.get<Dto[]>('/sales?per_page=100'),
+      http.get<Dto>('/wallet'),
+      http.get<Dto[]>('/wallet/transactions?per_page=100'),
+      http.get<Dto[]>('/wallet/commissions?per_page=100'),
+      http.get<Dto[]>('/wallet/payout-requests?per_page=50'),
+      http.get<Dto[]>('/products'),
+      http.get<Dto[]>('/notifications?per_page=50'),
+    ]),
+    fetchShiftData(),
   ])
 
   const target = (home.target as Dto) ?? {}
@@ -148,6 +174,9 @@ export async function syncAppData(): Promise<SyncPayload> {
     products: asArray<Dto>(productsRaw).map(mapProduct),
     notifications: asArray<Dto>(notificationsRaw).map(mapNotification),
     agent,
-    availability: ((home.availability as Availability) ?? me.availability ?? 'offline') as Availability,
+    availability: ((shiftCurrentRaw.availability as Availability) ?? (home.availability as Availability) ?? me.availability ?? 'offline') as Availability,
+    availabilityChangedAt: (shiftCurrentRaw.availability_changed_at as string) ?? null,
+    workSession: mapWorkSession(shiftCurrentRaw.session as Dto | null | undefined),
+    workDaySummaries: asArray<Dto>(shiftHistoryRaw).map(mapWorkDaySummary),
   }
 }

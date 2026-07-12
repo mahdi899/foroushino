@@ -22,13 +22,22 @@ type Draft = {
 type Props = {
   draft: Draft;
   cardFile: File | null;
+  cardReadyOnServer?: boolean;
   videoBlob: Blob | null;
   pending: boolean;
   onBack: () => void;
   onSubmit: () => void;
 };
 
-export function IdentityReviewStep({ draft, cardFile, videoBlob, pending, onBack, onSubmit }: Props) {
+export function IdentityReviewStep({
+  draft,
+  cardFile,
+  cardReadyOnServer = false,
+  videoBlob,
+  pending,
+  onBack,
+  onSubmit,
+}: Props) {
   const [cardPreviewUrl, setCardPreviewUrl] = useState<string | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const reviewVideoRef = useRef<HTMLVideoElement>(null);
@@ -61,6 +70,8 @@ export function IdentityReviewStep({ draft, cardFile, videoBlob, pending, onBack
     video.src = videoPreviewUrl;
     return primeVideoElement(video);
   }, [videoPreviewUrl]);
+
+  const cardReady = Boolean(cardFile || cardReadyOnServer);
 
   const identityFields = [
     { key: 'name', label: 'نام و نام خانوادگی', value: `${draft.first_name} ${draft.last_name}`.trim() },
@@ -108,6 +119,8 @@ export function IdentityReviewStep({ draft, cardFile, videoBlob, pending, onBack
               {cardPreviewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={cardPreviewUrl} alt="پیش‌نمایش کارت ملی" />
+              ) : cardReadyOnServer ? (
+                <CheckCircle2 size={22} aria-hidden />
               ) : (
                 <CreditCard size={22} aria-hidden />
               )}
@@ -144,7 +157,7 @@ export function IdentityReviewStep({ draft, cardFile, videoBlob, pending, onBack
         <button type="button" className="btn btn-secondary" onClick={onBack}>
           قبلی
         </button>
-        <button type="button" className="btn btn-primary" disabled={pending || !cardFile || !videoBlob} onClick={onSubmit}>
+        <button type="button" className="btn btn-primary" disabled={pending || !cardReady || !videoBlob} onClick={onSubmit}>
           {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           ارسال برای بررسی
         </button>

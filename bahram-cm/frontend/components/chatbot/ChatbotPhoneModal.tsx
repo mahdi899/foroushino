@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CheckCircle2, Loader2, Phone, X } from 'lucide-react';
+import { useStudentFormPrefill } from '@/components/student-panel/auth/StudentAuthContext';
 import { saveChatbotPhone } from '@/lib/chatbot/actions';
 import { isValidIranMobile, normalizeIranMobile, sanitizePhoneInput } from '@/lib/chatbot/phone';
 
@@ -19,6 +20,7 @@ export function ChatbotPhoneModal({
   sessionId,
   onSaved,
 }: ChatbotPhoneModalProps) {
+  const prefill = useStudentFormPrefill();
   const [phone, setPhone] = useState('');
   const [consent, setConsent] = useState(true);
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
@@ -26,11 +28,16 @@ export function ChatbotPhoneModal({
 
   useEffect(() => {
     if (!open) return;
+    if (prefill?.phone) {
+      onSaved(prefill.phone);
+      onClose();
+      return;
+    }
     setPhone('');
     setConsent(true);
     setStatus('idle');
     setError(null);
-  }, [open]);
+  }, [open, prefill, onSaved, onClose]);
 
   useEffect(() => {
     if (status !== 'done') return;

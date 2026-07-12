@@ -1,32 +1,31 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { Loader2, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { CashbackPayoutForm } from './CashbackPayoutForm';
-import { verifyMobileOwnershipAction } from '@/lib/student/identityActions';
-import { MOBILE_ONLY_IDENTITY_MESSAGE } from '@/lib/device/mobileClient';
-import { useIsPhoneClient } from '@/lib/device/useIsPhoneClient';
-import { usePanelToast } from '@/components/student-panel/ui/PanelToastContext';
+import type { VerifiedBankAccount } from '@/lib/student/bankAccountActions';
 
 export function WithdrawalVerificationModal({
   verificationLevel,
   payableAmount,
+  bankAccounts,
 }: {
   verificationLevel: number;
   payableAmount: number;
+  bankAccounts: VerifiedBankAccount[];
 }) {
   const [open, setOpen] = useState(false);
-  const [pending, startTransition] = useTransition();
-  const { showToast } = usePanelToast();
-  const isPhone = useIsPhoneClient();
 
   if (payableAmount <= 0) {
     return <p className="text-sm text-text-muted">در حال حاضر مبلغی برای درخواست واریز وجود ندارد.</p>;
   }
 
-  if (verificationLevel >= 3) {
-    return <CashbackPayoutForm payableAmount={payableAmount} />;
+  const identityApproved = verificationLevel >= 2;
+  const hasVerifiedCard = bankAccounts.length > 0;
+
+  if (identityApproved && hasVerifiedCard) {
+    return <CashbackPayoutForm payableAmount={payableAmount} accounts={bankAccounts} />;
   }
 
   return (
@@ -47,50 +46,24 @@ export function WithdrawalVerificationModal({
               <X size={18} />
             </button>
 
-            {verificationLevel < 2 ? (
+            {!identityApproved ? (
               <div className="space-y-3">
                 <h3 className="text-base font-bold text-text">تأیید حساب لازم است</h3>
                 <p className="text-sm leading-relaxed text-text-muted">
-                  برای دریافت کش‌بک، ابتدا هویت خود را تأیید کنید. پس از تأیید، می‌توانید مالکیت شماره موبایل را نیز تکمیل کنید.
+                  برای دریافت کش‌بک، ابتدا هویت خود را تأیید کنید. سپس می‌توانید کارت بانکی را با سرویس شاهکار احراز کنید.
                 </p>
                 <Link href="/panel/identity-verification" className="btn btn-primary w-full justify-center">
-                  رفتن به تأیید هویت (فقط گوشی)
+                  رفتن به تأیید هویت
                 </Link>
-                <p className="text-caption text-text-muted">تأیید هویت روی کامپیوتر امکان‌پذیر نیست.</p>
               </div>
             ) : (
               <div className="space-y-3">
-                <h3 className="text-base font-bold text-text">تأیید مالکیت شماره موبایل</h3>
+                <h3 className="text-base font-bold text-text">احراز کارت بانکی لازم است</h3>
                 <p className="text-sm leading-relaxed text-text-muted">
-                  هویت شما تأیید شده است. برای برداشت، باید مطابقت شماره موبایل با کد ملی تأیید شود. اطلاعات از پرونده تأییدشده شما استفاده می‌شود.
+                  هویت شما تأیید شده است. برای برداشت، ابتدا شماره کارت یا شبا را در بخش زیر ثبت و با شاهکار تأیید کنید.
                 </p>
-                {isPhone === false ? (
-                  <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-text-muted">
-                    {MOBILE_ONLY_IDENTITY_MESSAGE}
-                  </p>
-                ) : null}
-                <button
-                  type="button"
-                  className="btn btn-primary w-full justify-center"
-                  disabled={pending || isPhone === false}
-                  onClick={() => {
-                    startTransition(async () => {
-                      const res = await verifyMobileOwnershipAction();
-                      if (res.error) {
-                        showToast({ tone: 'error', title: 'تأیید ناموفق', message: res.error });
-                        return;
-                      }
-                      showToast({
-                        tone: 'success',
-                        title: 'تأیید شد',
-                        message: res.success ?? 'مالکیت شماره موبایل تأیید شد.',
-                      });
-                      window.setTimeout(() => window.location.reload(), 700);
-                    });
-                  }}
-                >
-                  {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                  تأیید مالکیت شماره
+                <button type="button" className="btn btn-primary w-full justify-center" onClick={() => setOpen(false)}>
+                  متوجه شدم
                 </button>
               </div>
             )}

@@ -59,9 +59,7 @@ export async function revalidateMiniCourseSurfaces(_slug?: string | null): Promi
   await revalidatePublicContent(() => {
     revalidateTag('mini-courses', 'max');
     revalidateTag('public-mini-courses', 'max');
-    revalidateTag('content-comments', 'max');
     revalidatePath('/admin/academy/mini-courses');
-    revalidatePath('/admin/content/comments');
     revalidatePath('/courses');
     revalidatePath('/mini-courses');
     if (_slug) {
@@ -70,30 +68,11 @@ export async function revalidateMiniCourseSurfaces(_slug?: string | null): Promi
   });
 }
 
-export async function revalidateContentCommentSurfaces(
-  type: string,
-  slug?: string | null,
-): Promise<void> {
+export async function revalidateFaqSurfaces(): Promise<void> {
   await revalidatePublicContent(() => {
-    revalidateTag('content-comments', 'max');
-    revalidatePath('/admin/content/comments');
-
-    if (type === 'course') {
-      revalidatePath('/courses');
-      if (slug) revalidatePath(`/courses/${slug}`);
-    } else if (type === 'mini_course') {
-      revalidateTag('mini-courses', 'max');
-      revalidatePath('/mini-courses');
-      if (slug) revalidatePath(`/mini-courses/${slug}`);
-    } else if (type === 'article') {
-      revalidateTag('articles', 'max');
-      revalidatePath('/insights');
-      if (slug) revalidatePath(`/insights/${slug}`);
-    } else if (type === 'seminar') {
-      revalidatePath('/seminars');
-      if (slug) revalidatePath(`/seminars/${slug}`);
-    } else if (type === 'campaign_writing') {
-      revalidatePath('/course/campaign-writing');
-    }
+    revalidateTag('faqs', 'max');
+    revalidateTag('public-faqs', 'max');
+    revalidatePath('/faq');
+    revalidatePath('/admin/commerce/faqs');
   });
 }

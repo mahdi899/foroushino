@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Calls;
 
 use App\Actions\Calls\SubmitCallResultAction;
+use App\Enums\Availability;
 use App\Enums\LeadStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Calls\StartCallRequest;
@@ -13,13 +14,17 @@ use App\Http\Resources\V1\LeadResource;
 use App\Http\Resources\V1\SaleResource;
 use App\Models\Call;
 use App\Models\Lead;
+use App\Services\Shift\ShiftTimeTracker;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CallController extends Controller
 {
-    public function __construct(private readonly SubmitCallResultAction $submitCallResult) {}
+    public function __construct(
+        private readonly SubmitCallResultAction $submitCallResult,
+        private readonly ShiftTimeTracker $shiftTracker,
+    ) {}
 
     public function start(StartCallRequest $request): JsonResponse
     {
@@ -37,6 +42,8 @@ class CallController extends Controller
         $lead->locked_until = now()->addMinutes(20);
         $lead->save();
 
+        $this->shiftTracker->changeAvailability($request->user(), Availability::InCall);
+
         return ApiResponse::success([
             'call' => new CallResource($call),
             'lead' => new LeadResource($lead),
@@ -48,6 +55,10 @@ class CallController extends Controller
         $this->authorize('view', $call->lead);
 
         $result = $this->submitCallResult->execute($call, $request->validated());
+
+        $duration = (int) ($request->validated()['duration_sec'] ?? 0);
+        $this->shiftTracker->addCallSeconds($request->user(), $duration);
+        $this->shiftTracker->changeAvailability($request->user(), Availability::Available);
 
         return ApiResponse::success([
             'call' => new CallResource($result['call']),

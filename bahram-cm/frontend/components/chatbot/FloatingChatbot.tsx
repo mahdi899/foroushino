@@ -26,6 +26,7 @@ import { CaptchaField, useCaptchaGate, type CaptchaFieldHandle } from '@/compone
 import { ChatMessageComposer } from '@/components/chatbot/ChatMessageComposer';
 import type { ChatbotReplyMode } from '@/components/chatbot/ChatbotReplyModeModal';
 import { ChatbotVisitorIntro } from '@/components/chatbot/ChatbotVisitorIntro';
+import { useStudentFormPrefill } from '@/components/student-panel/auth/StudentAuthContext';
 import { ChatMessageRating } from '@/components/chatbot/ChatMessageRating';
 import { ThinkingIndicator } from '@/components/chatbot/ThinkingIndicator';
 import { TypingText } from '@/components/chatbot/TypingText';
@@ -628,6 +629,7 @@ export function FloatingChatbot({
   const [visitorFirstName, setVisitorFirstName] = useState('');
   const [visitorLastName, setVisitorLastName] = useState('');
   const [showVisitorIntro, setShowVisitorIntro] = useState(false);
+  const studentPrefill = useStudentFormPrefill();
   const operatorActive =
     operatorMode || preferredReplyMode === 'operator';
   const showReplyModeSwitch = tab === 'chat' && chatEnabled;
@@ -696,17 +698,21 @@ export function FloatingChatbot({
 
   useEffect(() => {
     setCaptchaTrusted(isCaptchaTrusted());
-    setSavedPhone(loadSavedChatbotPhone(sessionId));
+    setSavedPhone(loadSavedChatbotPhone(sessionId) ?? studentPrefill?.phone ?? null);
     const savedName = loadSavedVisitorName(sessionId);
     const globalName = loadGlobalVisitorName();
-    setVisitorFirstName(savedName.firstName || globalName.firstName);
-    setVisitorLastName(savedName.lastName || globalName.lastName);
-    const shouldShowIntro = !hasVisitorIntroBeenShown();
+    const firstName = studentPrefill?.firstName || savedName.firstName || globalName.firstName;
+    const lastName = studentPrefill?.lastName || savedName.lastName || globalName.lastName;
+    setVisitorFirstName(firstName);
+    setVisitorLastName(lastName);
+
+    const hasKnownVisitor = Boolean(studentPrefill?.name || firstName || lastName);
+    const shouldShowIntro = !hasKnownVisitor && !hasVisitorIntroBeenShown();
     setShowVisitorIntro(shouldShowIntro);
     if (shouldShowIntro) {
       markVisitorIntroShown();
     }
-  }, [sessionId]);
+  }, [sessionId, studentPrefill]);
 
   const dismissVisitorIntro = useCallback(() => {
     setShowVisitorIntro(false);

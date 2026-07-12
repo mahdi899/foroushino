@@ -54,6 +54,7 @@ export function PanelHeader({
           <PanelProfileAvatar
             avatar={user.profile?.avatar}
             avatarUrl={user.profile?.avatar_url}
+            avatarVersion={user.profile?.avatar_version}
             gravatarUrl={user.profile?.gravatar_url}
             defaultAvatarUrl={user.profile?.default_avatar_url ?? studentDefaultAvatarUrl(user.id)}
             alt={displayName}

@@ -92,4 +92,9 @@ return [
         ],
     ],
 
+    'withdrawal' => [
+        'min_balance_for_verification' => (int) env('WITHDRAWAL_MIN_BALANCE_FOR_VERIFICATION', 100_000),
+        'verification_fee' => (int) env('WITHDRAWAL_VERIFICATION_FEE', 7_000),
+    ],
+
 ];

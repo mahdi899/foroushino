@@ -15,8 +15,9 @@ class StoreCashbackPayoutRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'card_number' => ['required', 'digits:16'],
-            'card_holder_name' => ['nullable', 'string', 'max:120'],
+            'card_number' => ['prohibited'],
+            'verified_bank_account_id' => ['required', 'integer', 'exists:verified_bank_accounts,id'],
+            'card_holder_name' => ['prohibited'],
         ];
     }
 }

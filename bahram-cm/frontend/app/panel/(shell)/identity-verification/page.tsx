@@ -12,6 +12,10 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
+type IdentityArtifact = {
+  type?: string;
+};
+
 type IdentityState = {
   identity_status?: string;
   can_submit?: boolean;
@@ -21,6 +25,10 @@ type IdentityState = {
   gender?: string | null;
   city?: string | null;
   required_corrections?: string[];
+  latest_submission?: {
+    id?: number;
+    artifacts?: IdentityArtifact[];
+  } | null;
 };
 
 function buildIdentityDraft(state: IdentityState | null, userName?: string, profile?: { first_name?: string | null; last_name?: string | null; city?: string | null } | null) {
@@ -46,8 +54,33 @@ function buildIdentityDraft(state: IdentityState | null, userName?: string, prof
   return draft;
 }
 
-export default async function IdentityVerificationPage() {
+function hasUploadedNationalCard(state: IdentityState | null): boolean {
+  const artifacts = state?.latest_submission?.artifacts ?? [];
+  return artifacts.some((artifact) => artifact.type === 'national_card_front');
+}
+
+function resolveInitialStep(
+  state: IdentityState | null,
+  resumeStep?: string,
+): number {
+  if (resumeStep === 'selfie') {
+    return 2;
+  }
+
+  if (state?.identity_status === 'draft' && hasUploadedNationalCard(state)) {
+    return 1;
+  }
+
+  return 0;
+}
+
+export default async function IdentityVerificationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ step?: string }>;
+}) {
   const user = await getCurrentStudent();
+  const params = await searchParams;
   let state: IdentityState | null = null;
 
   try {
@@ -63,6 +96,8 @@ export default async function IdentityVerificationPage() {
   }
 
   const initialDraft = buildIdentityDraft(state, user?.name, user?.profile);
+  const cardUploaded = hasUploadedNationalCard(state);
+  const initialStep = resolveInitialStep(state, params.step);
 
   return (
     <div className="panel-page-inner panel-page-inner--identity flex flex-col gap-3 sm:gap-5">
@@ -77,6 +112,9 @@ export default async function IdentityVerificationPage() {
         initialCanSubmit={state?.can_submit ?? true}
         initialDraft={initialDraft}
         correctionItems={state?.required_corrections ?? null}
+        initialStep={initialStep}
+        cardUploadedOnServer={cardUploaded}
+        draftSubmissionId={state?.latest_submission?.id ?? null}
       />
     </div>
   );

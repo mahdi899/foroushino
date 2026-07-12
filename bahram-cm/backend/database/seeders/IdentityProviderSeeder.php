@@ -9,6 +9,7 @@ use App\Services\Identity\Providers\ApiIrShahkarProvider;
 use App\Services\Identity\Providers\HodaProvider;
 use App\Services\Identity\Providers\ManualReviewProvider;
 use App\Services\Identity\Providers\UidEkycProvider;
+use App\Services\Identity\Providers\UidFinancialVerificationProvider;
 use App\Services\Identity\Providers\UidShahkarProvider;
 use Illuminate\Database\Seeder;
 
@@ -46,6 +47,22 @@ class IdentityProviderSeeder extends Seeder
                 'settings' => [
                     'base_url' => '',
                     'verify_path' => '/api/shahkar',
+                    'timeout' => 20,
+                ],
+            ],
+            [
+                'slug' => UidFinancialVerificationProvider::SLUG,
+                'label' => 'یوآیدی تطبیق کارت/شبا',
+                'capabilities' => [
+                    IdentityCapability::CardNationalCodeMatch->value,
+                    IdentityCapability::IbanNationalCodeMatch->value,
+                ],
+                'is_enabled' => false,
+                'settings' => [
+                    'base_url' => 'https://json-api.uid.ir',
+                    'card_verify_path' => '/api/validate/card/ownership',
+                    'iban_verify_path' => '/api/validate/iban/ownership',
+                    'card_info_path' => '/api/inquiry/card-info',
                     'timeout' => 20,
                 ],
             ],
@@ -108,6 +125,24 @@ class IdentityProviderSeeder extends Seeder
             [
                 'primary_provider' => ApiIrShahkarProvider::SLUG,
                 'fallback_provider' => UidShahkarProvider::SLUG,
+                'is_active' => true,
+            ],
+        );
+
+        IdentityVerificationRoute::query()->updateOrCreate(
+            ['capability' => IdentityCapability::CardNationalCodeMatch->value],
+            [
+                'primary_provider' => UidFinancialVerificationProvider::SLUG,
+                'fallback_provider' => null,
+                'is_active' => true,
+            ],
+        );
+
+        IdentityVerificationRoute::query()->updateOrCreate(
+            ['capability' => IdentityCapability::IbanNationalCodeMatch->value],
+            [
+                'primary_provider' => UidFinancialVerificationProvider::SLUG,
+                'fallback_provider' => null,
                 'is_active' => true,
             ],
         );

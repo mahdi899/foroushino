@@ -369,11 +369,26 @@ export type Availability =
   | 'doing_follow_up'
   | 'offline'
 
+export type AvailabilityAutoReason = 'follow_up_route' | 'away_from_app'
+
 export interface WorkSession {
+  id?: string
   startedAt: string | null
   endedAt: string | null
   totalBreakSeconds: number
   totalCallSeconds: number
+  totalProductiveSeconds: number
+}
+
+export interface WorkDaySummary {
+  date: string
+  sessionsCount: number
+  totalProductiveSeconds: number
+  totalBreakSeconds: number
+  totalCallSeconds: number
+  firstStartedAt: string | null
+  lastEndedAt: string | null
+  isOpen: boolean
 }
 
 // ---------------------------------------------------------------------------

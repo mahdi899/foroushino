@@ -1,7 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { ChevronLeft } from 'lucide-react';
 import { markNotificationReadAction } from '@/lib/student/panelActions';
 import { formatRelativeTimeFa } from '@/components/student-panel/utils/relativeTime';
 import { isOrderPaidNotification } from '@/components/student-panel/notifications/notificationPremium';
@@ -10,6 +8,7 @@ import {
   notificationTypeLabel,
   notificationTypeVariant,
 } from '@/components/student-panel/notifications/notificationMeta';
+import { NotificationLinkButton } from '@/components/student-panel/notifications/NotificationLinkButton';
 
 export interface NotificationEntry {
   id: number;
@@ -17,6 +16,7 @@ export interface NotificationEntry {
   body: string;
   type?: string | null;
   link: string | null;
+  link_label?: string | null;
   read_at: string | null;
   created_at: string | null;
 }
@@ -35,14 +35,32 @@ export function NotificationItem({ notification }: { notification: NotificationE
   const isUnread = !notification.read_at;
   const typeVariant = notificationTypeVariant(notification.type);
   const isPremium = isOrderPaidNotification(notification.type);
+  const hasLink = Boolean(notification.link?.trim());
 
-  const linkClass = ['panel-notification-link', isPremium ? 'panel-notification-link--premium' : '']
+  const cardClass = [
+    'panel-notification-link',
+    isPremium ? 'panel-notification-link--premium' : '',
+    hasLink ? '' : 'panel-notification-link--static',
+  ]
     .filter(Boolean)
     .join(' ');
 
-  const content = (
+  const markRead = () => {
+    if (isUnread) void markNotificationReadAction(notification.id);
+  };
+
+  return (
     <article
-      className={`panel-notification ${isUnread ? 'panel-notification--unread' : 'panel-notification--read'}`}
+      className={`${cardClass} panel-notification ${isUnread ? 'panel-notification--unread' : 'panel-notification--read'}`}
+      onClick={markRead}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          markRead();
+        }
+      }}
+      role="button"
+      tabIndex={0}
     >
       <header className="panel-notification__header">
         <div className="panel-notification__lead">
@@ -53,7 +71,11 @@ export function NotificationItem({ notification }: { notification: NotificationE
             {notificationTypeLabel(notification.type)}
           </span>
         </div>
-        <time className="panel-notification__time" dateTime={notification.created_at ?? undefined} title={formatDateTime(notification.created_at)}>
+        <time
+          className="panel-notification__time"
+          dateTime={notification.created_at ?? undefined}
+          title={formatDateTime(notification.created_at)}
+        >
           {formatRelativeTimeFa(notification.created_at)}
         </time>
       </header>
@@ -65,32 +87,19 @@ export function NotificationItem({ notification }: { notification: NotificationE
 
       <footer className="panel-notification__footer">
         <span className="panel-notification__datetime">{formatDateTime(notification.created_at)}</span>
-        {notification.link ? (
-          <span className="panel-notification__action">
-            مشاهده
-            <ChevronLeft className="h-3.5 w-3.5" />
-          </span>
-        ) : null}
-        {isUnread ? <span className="panel-notification__dot" aria-hidden /> : null}
+        <div className="panel-notification__footer-actions">
+          {hasLink && notification.link ? (
+            <span onClick={(event) => event.stopPropagation()}>
+              <NotificationLinkButton
+                link={notification.link}
+                linkLabel={notification.link_label}
+                onNavigate={markRead}
+              />
+            </span>
+          ) : null}
+          {isUnread ? <span className="panel-notification__dot" aria-hidden /> : null}
+        </div>
       </footer>
     </article>
-  );
-
-  const markRead = () => {
-    if (isUnread) void markNotificationReadAction(notification.id);
-  };
-
-  if (notification.link) {
-    return (
-      <Link href={notification.link} className={linkClass} onClick={markRead}>
-        {content}
-      </Link>
-    );
-  }
-
-  return (
-    <div className={linkClass} onClick={markRead} role="button" tabIndex={0}>
-      {content}
-    </div>
   );
 }

@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { adminFetch, getToken } from '@/lib/auth/session';
 import { SERVER_API_URL } from '@/lib/api/config';
 import { resolveProductSiteFeaturedImage } from '@/lib/catalog/productFeaturedImage';
-import { revalidatePublicContent, revalidateTestimonialSurfaces } from '@/lib/cache/contentRevalidation';
+import { revalidatePublicContent, revalidateTestimonialSurfaces, revalidateFaqSurfaces } from '@/lib/cache/contentRevalidation';
 import type { AdminFaq, AdminOrder, AdminProduct, AdminStudentTestimonial, PaymentSettingsData, AdminDiscountCode } from '@/lib/admin/commerceTypes';
 
 export async function loadPaymentSettingsAction(): Promise<PaymentSettingsData | null> {
@@ -20,6 +20,7 @@ function revalidateCommerce() {
   void revalidatePublicContent(() => {
     revalidatePath('/');
     revalidatePath('/courses');
+    revalidatePath('/faq');
     revalidatePath('/admin/commerce/products');
     revalidatePath('/admin/commerce/orders');
     revalidatePath('/admin/commerce/faqs');
@@ -191,13 +192,17 @@ export async function saveFaq(
     if (id) {
       await adminFetch(`/faqs/${id}`, { method: 'PATCH', body: input });
       revalidateCommerce();
+      await revalidateFaqSurfaces();
       return { ok: true, id };
     }
     const res = await adminFetch<{ data: { id: number } }>('/faqs', { method: 'POST', body: input });
     revalidateCommerce();
+    await revalidateFaqSurfaces();
     return { ok: true, id: res.data.id };
-  } catch {
-    return { ok: false, error: 'ذخیره سوال ناموفق بود.' };
+  } catch (e) {
+    const err = e as Error & { payload?: { message?: string; errors?: Record<string, string[]> } };
+    const firstError = err.payload?.errors ? Object.values(err.payload.errors)[0]?.[0] : undefined;
+    return { ok: false, error: firstError ?? err.payload?.message ?? 'ذخیره سوال ناموفق بود.' };
   }
 }
 
@@ -205,9 +210,24 @@ export async function deleteFaq(id: number): Promise<{ ok: boolean; error?: stri
   try {
     await adminFetch(`/faqs/${id}`, { method: 'DELETE' });
     revalidateCommerce();
+    await revalidateFaqSurfaces();
     return { ok: true };
   } catch {
     return { ok: false, error: 'حذف سوال ناموفق بود.' };
+  }
+}
+
+export async function reorderFaqs(
+  items: { id: number; sort_order: number }[],
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await adminFetch('/faqs/reorder', { method: 'POST', body: { items } });
+    revalidateCommerce();
+    await revalidateFaqSurfaces();
+    return { ok: true };
+  } catch (e) {
+    const err = e as Error & { payload?: { message?: string } };
+    return { ok: false, error: err.payload?.message ?? 'ذخیره ترتیب سوالات ناموفق بود.' };
   }
 }
 

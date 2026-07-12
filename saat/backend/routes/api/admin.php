@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Admin\CampaignController;
+use App\Http\Controllers\Api\V1\Admin\IntegrationTokenController;
 use App\Http\Controllers\Api\V1\Admin\ProductController;
 use Illuminate\Support\Facades\Route;
 
@@ -14,4 +15,8 @@ Route::prefix('admin')->middleware('throttle:writes')->group(function (): void {
     Route::post('/campaigns', [CampaignController::class, 'store']);
     Route::patch('/campaigns/{campaign}', [CampaignController::class, 'update']);
     Route::delete('/campaigns/{campaign}', [CampaignController::class, 'destroy']);
+
+    Route::get('/integration-tokens', [IntegrationTokenController::class, 'index']);
+    Route::post('/integration-tokens', [IntegrationTokenController::class, 'store']);
+    Route::delete('/integration-tokens/{integrationToken}', [IntegrationTokenController::class, 'destroy']);
 });

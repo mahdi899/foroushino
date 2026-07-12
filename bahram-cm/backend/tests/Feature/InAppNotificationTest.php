@@ -77,6 +77,7 @@ class InAppNotificationTest extends TestCase
             'body' => 'متن تست',
             'type' => InAppNotificationType::General->value,
             'link' => '/panel',
+            'link_label' => 'رفتن به پنل',
         ]);
         NotificationRecipient::create(['notification_id' => $notification->id, 'user_id' => $user->id]);
 
@@ -86,12 +87,60 @@ class InAppNotificationTest extends TestCase
             ->getJson('/api/v1/student/notifications')
             ->assertOk()
             ->assertJsonPath('data.0.title', 'تست')
+            ->assertJsonPath('data.0.link_label', 'رفتن به پنل')
             ->assertJsonPath('meta.total', 1);
 
         $this->withToken($token)
             ->getJson('/api/v1/student/notifications/unread-count')
             ->assertOk()
             ->assertJsonPath('data.unread_count', 1);
+    }
+
+    public function test_admin_can_broadcast_notification_with_optional_link(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $student = User::factory()->create(['mobile' => '09121110001', 'is_admin' => false]);
+
+        $token = $admin->createToken('test')->plainTextToken;
+
+        $this->withToken($token)
+            ->postJson('/api/v1/notifications', [
+                'title' => 'کانال تلگرام',
+                'body' => 'به کانال جدید ما بپیوندید.',
+                'segment' => 'all_students',
+                'link' => 'https://t.me/example_channel',
+                'link_label' => 'عضویت در کانال',
+            ])
+            ->assertCreated()
+            ->assertJsonStructure(['data' => ['id', 'recipients_count']]);
+
+        $this->assertDatabaseHas('notifications', [
+            'title' => 'کانال تلگرام',
+            'link' => 'https://t.me/example_channel',
+            'link_label' => 'عضویت در کانال',
+            'created_by' => $admin->id,
+        ]);
+
+        $this->assertDatabaseHas('notification_recipients', [
+            'user_id' => $student->id,
+        ]);
+    }
+
+    public function test_admin_notification_rejects_link_label_without_link(): void
+    {
+        $admin = User::factory()->create(['is_admin' => true]);
+        $token = $admin->createToken('test')->plainTextToken;
+
+        $this->withToken($token)
+            ->postJson('/api/v1/notifications', [
+                'title' => 'بدون لینک',
+                'body' => 'متن',
+                'segment' => 'all_students',
+                'link_label' => 'عضویت',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('error.code', 'validation_error')
+            ->assertJsonStructure(['error' => ['details' => ['link']]]);
     }
 
     public function test_student_notification_payload_marks_admin_broadcasts_for_toast(): void

@@ -20,7 +20,8 @@ function delay<T>(value: T, ms = 120): Promise<T> {
 }
 
 export const mockClient: ApiClient = {
-  startShift: () => delay(useStore.getState().startShift()),
+  startShift: (availability: Availability = 'available') =>
+    delay(useStore.getState().startShift(availability)),
   endShift: () => delay(useStore.getState().endShift()),
   setAvailability: (status: Availability) => delay(useStore.getState().setAvailability(status)),
 

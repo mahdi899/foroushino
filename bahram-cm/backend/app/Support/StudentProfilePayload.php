@@ -25,6 +25,7 @@ final class StudentProfilePayload
             'income_goal' => null,
             'avatar' => null,
             'avatar_url' => null,
+            'avatar_version' => null,
         ];
 
         $data['gravatar_url'] = null;
@@ -53,6 +54,7 @@ final class StudentProfilePayload
             'income_goal' => $profile->income_goal,
             'avatar' => $profile->avatar,
             'avatar_url' => $profile->avatar ? MediaUrl::resolve($profile->avatar) : null,
+            'avatar_version' => $profile->avatar ? $profile->updated_at?->getTimestamp() : null,
         ];
     }
 

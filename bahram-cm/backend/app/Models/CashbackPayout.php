@@ -10,6 +10,7 @@ class CashbackPayout extends Model
 {
     protected $fillable = [
         'user_id',
+        'verified_bank_account_id',
         'amount',
         'card_number_encrypted',
         'card_last4',
@@ -33,6 +34,11 @@ class CashbackPayout extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function verifiedBankAccount(): BelongsTo
+    {
+        return $this->belongsTo(VerifiedBankAccount::class);
     }
 
     /** Sets the encrypted card number and derives the masked last-4 digits. */
