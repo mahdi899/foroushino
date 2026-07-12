@@ -59,13 +59,51 @@ use App\Http\Controllers\Api\V1\Student\SeminarAssetDownloadController;
 use App\Http\Controllers\Api\V1\Student\SeminarController as StudentSeminarController;
 use App\Http\Controllers\Api\V1\Student\SpotPlayerSessionController as StudentSpotPlayerSessionController;
 use App\Http\Controllers\Api\V1\Student\TicketController as StudentTicketController;
-use App\Http\Controllers\Api\V1\StudentTestimonialController;
+use App\Http\Controllers\Api\V1\Sat\ActivityController as SatActivityController;
+use App\Http\Controllers\Api\V1\Sat\AuthController as SatAuthController;
+use App\Http\Controllers\Api\V1\Sat\CallController as SatCallController;
+use App\Http\Controllers\Api\V1\Sat\LeadController as SatLeadController;
+use App\Http\Controllers\Api\V1\Sat\StaffController as SatStaffController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:admin-login');
 Route::post('auth/send-otp', [AuthController::class, 'sendOtp'])->middleware('throttle:10,1');
 Route::post('auth/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:10,1');
 Route::post('auth/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:20,1');
+
+/*
+|--------------------------------------------------------------------------
+| SAT Call Center Portal (invite-only staff, no public registration)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('sat')->group(function () {
+    Route::post('auth/login', [SatAuthController::class, 'login'])->middleware('throttle:admin-login');
+    Route::post('auth/resend-otp', [SatAuthController::class, 'resendOtp'])->middleware('throttle:10,1');
+    Route::post('auth/verify-otp', [SatAuthController::class, 'verifyOtp'])->middleware('throttle:20,1');
+
+    Route::middleware(['auth:sanctum', 'sat.staff'])->group(function () {
+        Route::post('auth/logout', [SatAuthController::class, 'logout']);
+        Route::get('me', [SatAuthController::class, 'me']);
+
+        Route::get('staff', [SatStaffController::class, 'index']);
+        Route::post('staff', [SatStaffController::class, 'store']);
+        Route::patch('staff/{staff}', [SatStaffController::class, 'update'])->whereNumber('staff');
+
+        Route::get('leads', [SatLeadController::class, 'index']);
+        Route::post('leads', [SatLeadController::class, 'store']);
+        Route::get('leads/{lead}', [SatLeadController::class, 'show'])->whereNumber('lead');
+        Route::patch('leads/{lead}', [SatLeadController::class, 'update'])->whereNumber('lead');
+
+        Route::get('calls', [SatCallController::class, 'index']);
+        Route::post('calls', [SatCallController::class, 'store']);
+        Route::patch('calls/{call}/review', [SatCallController::class, 'review'])->whereNumber('call');
+
+        Route::get('activities', [SatActivityController::class, 'index']);
+        Route::post('activities', [SatActivityController::class, 'store']);
+        Route::post('activities/{activity}/approve', [SatActivityController::class, 'approve'])->whereNumber('activity');
+        Route::post('activities/{activity}/reject', [SatActivityController::class, 'reject'])->whereNumber('activity');
+    });
+});
 
 /*
 |--------------------------------------------------------------------------

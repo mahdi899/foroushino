@@ -34,6 +34,8 @@ class DatabaseSeeder extends Seeder
         );
 
         $this->call(RolePermissionSeeder::class);
+        $this->call(SatRolePermissionSeeder::class);
+        $this->call(DemoSatStaffSeeder::class);
 
         // Ensure the default admin always keeps super-admin (seeder may have run before this user existed).
         $admin->syncRoles([AdminRoleName::SuperAdmin->value]);

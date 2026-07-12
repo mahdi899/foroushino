@@ -241,6 +241,7 @@ export type AdminNotification = {
   body: string;
   type: string | null;
   link: string | null;
+  link_label: string | null;
   recipients_count: number;
   created_at: string | null;
 };

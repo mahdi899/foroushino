@@ -20,11 +20,20 @@ export default async function NotificationsPage() {
       )}
 
       {notifications.length > 0 ? (
-        <Table head={['عنوان', 'متن', 'تعداد گیرندگان', 'تاریخ ارسال']}>
+        <Table head={['عنوان', 'متن', 'لینک', 'تعداد گیرندگان', 'تاریخ ارسال']}>
           {notifications.map((n) => (
             <tr key={n.id} className="hover:bg-surface-soft/40">
               <td className="px-4 py-3">{n.title}</td>
               <td className="max-w-md truncate px-4 py-3 text-caption">{n.body}</td>
+              <td className="max-w-xs truncate px-4 py-3 text-caption">
+                {n.link ? (
+                  <span title={n.link}>
+                    {n.link_label ? `${n.link_label} → ${n.link}` : n.link}
+                  </span>
+                ) : (
+                  '—'
+                )}
+              </td>
               <td className="px-4 py-3">{n.recipients_count}</td>
               <td className="whitespace-nowrap px-4 py-3 text-caption">{formatDateTime(n.created_at)}</td>
             </tr>

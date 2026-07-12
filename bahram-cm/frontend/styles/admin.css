@@ -3302,3 +3302,113 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 .admin-root[data-admin-theme='dark'] .rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden) span:hover {
   color: var(--color-text);
 }
+
+/* Academy — optional link block in notification compose */
+.admin-root .admin-notification-compose-link {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, var(--color-border));
+  background:
+    radial-gradient(ellipse 85% 120% at 100% -15%, color-mix(in srgb, var(--color-primary) 16%, transparent) 0%, transparent 62%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-primary-soft) 90%, var(--color-surface)) 0%,
+      color-mix(in srgb, var(--color-surface-soft) 82%, var(--color-surface)) 100%
+    );
+  padding: 1rem 1.125rem;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 58%, transparent),
+    0 10px 24px color-mix(in srgb, var(--color-primary) 6%, transparent);
+}
+
+.admin-root .admin-notification-compose-link::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto auto 0;
+  height: 3px;
+  width: 100%;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent-bright));
+  opacity: 0.85;
+}
+
+.admin-root[data-admin-theme='dark'] .admin-notification-compose-link {
+  border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-border));
+  background:
+    radial-gradient(ellipse 85% 120% at 100% -15%, color-mix(in srgb, var(--color-primary) 24%, transparent) 0%, transparent 62%),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-primary-soft) 55%, var(--color-surface)) 0%,
+      color-mix(in srgb, var(--color-surface-soft) 68%, var(--color-surface)) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 7%, transparent),
+    0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.admin-root .admin-notification-compose-link__head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.875rem;
+}
+
+.admin-root .admin-notification-compose-link__icon {
+  display: grid;
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent-bright));
+  color: #fff;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--color-primary) 28%, transparent);
+}
+
+.admin-root .admin-notification-compose-link__title {
+  font-size: var(--admin-text-body);
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--color-primary-dark);
+}
+
+.admin-root[data-admin-theme='dark'] .admin-notification-compose-link__title {
+  color: var(--color-text);
+}
+
+.admin-root .admin-notification-compose-link__fields {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .admin-root .admin-notification-compose-link__fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.admin-root .admin-notification-compose-link__hint {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid color-mix(in srgb, var(--color-primary) 12%, var(--color-border));
+  font-size: var(--admin-text-caption);
+  line-height: 1.6;
+  color: var(--color-text-muted);
+}
+
+.admin-root .admin-notification-compose-link .field-input:disabled {
+  background: color-mix(in srgb, var(--color-surface) 72%, var(--color-surface-soft));
+  border-color: color-mix(in srgb, var(--color-border) 88%, transparent);
+  color: var(--color-text-subtle);
+}
+
+.admin-root[data-admin-theme='dark'] .admin-notification-compose-link .field-input:disabled {
+  background: color-mix(in srgb, var(--color-surface-soft) 55%, var(--color-surface));
+}
+

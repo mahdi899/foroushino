@@ -35,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'sat.staff' => \App\Http\Middleware\EnsureUserIsSatStaff::class,
             'student.active' => \App\Http\Middleware\EnsureStudentIsActive::class,
         ]);
     })

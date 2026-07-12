@@ -195,6 +195,7 @@ export interface PanelNotificationPayload {
   body: string;
   type?: string | null;
   link: string | null;
+  link_label?: string | null;
   read_at: string | null;
   created_at: string | null;
   show_toast?: boolean;

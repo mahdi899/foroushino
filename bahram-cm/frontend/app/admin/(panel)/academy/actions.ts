@@ -359,7 +359,14 @@ export async function updateTicketStatus(id: number, status: string) {
 }
 
 // Notifications
-export async function sendNotification(input: { title: string; body: string; segment: string; type?: string; link?: string }) {
+export async function sendNotification(input: {
+  title: string;
+  body: string;
+  segment: string;
+  type?: string;
+  link?: string;
+  link_label?: string;
+}) {
   try {
     const res = await adminFetch<{ data: { id: number; recipients_count: number } }>('/notifications', { method: 'POST', body: input });
     revalidateAcademy();
