@@ -94,7 +94,7 @@ export function ImageGalleryModal({
             <p className="text-small font-semibold text-primary-dark">{title}</p>
             <p className="text-caption text-text-muted">آپلود کنید یا روی تصویر کلیک کنید تا انتخاب شود</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-md p-1 text-text-muted hover:bg-surface-soft">
+          <button type="button" onClick={onClose} className="admin-icon-btn">
             <X className="h-5 w-5" />
           </button>
         </div>

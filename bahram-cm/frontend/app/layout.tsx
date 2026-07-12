@@ -23,6 +23,7 @@ import { StudentAuthRoot } from "@/components/student-panel/auth/StudentAuthRoot
 import { ReferralCapture } from "@/components/commerce/ReferralCapture";
 import { DiscountCapture } from "@/components/commerce/DiscountCapture";
 import { GrainOverlay } from "@/components/motion/GrainOverlay";
+import { SiteBootLoader } from "@/components/layout/SiteBootLoader";
 import { cookies } from "next/headers";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import { DEFAULT_SITE_THEME, SITE_THEME_COOKIE_KEY, parseSiteTheme } from "@/lib/site-theme";
@@ -81,6 +82,7 @@ export default async function RootLayout({
       </head>
       <body className={`${fontClassName} min-w-0 overflow-x-clip antialiased`} suppressHydrationWarning>
         <ThemeBoot />
+        {!isBareShellRoute ? <SiteBootLoader /> : null}
         {!isBareShellRoute ? <GrainOverlay /> : null}
         {!isBareShellRoute ? <ReferralCapture /> : null}
         {!isBareShellRoute ? <DiscountCapture /> : null}

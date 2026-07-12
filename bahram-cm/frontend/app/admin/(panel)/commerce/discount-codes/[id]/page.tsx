@@ -19,6 +19,7 @@ export default async function EditDiscountCodePage({ params }: { params: Promise
       desc={code.title}
       icon="TicketPercent"
       headerVariant="commerce"
+      backHref="/admin/commerce/discount-codes"
     >
       <DiscountCodeForm code={code} products={products} />
     </AdminPage>

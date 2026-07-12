@@ -2,7 +2,8 @@
 
 import { ReactLenis, useLenis } from "lenis/react";
 import { usePathname } from "next/navigation";
-import { useEffect, useLayoutEffect, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useState, type ReactNode } from "react";
+import { MOBILE_MOTION_MQ } from "@/hooks/useIsMobileMotion";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import "lenis/dist/lenis.css";
 
@@ -80,10 +81,25 @@ function LenisRouteScrollSync() {
   return null;
 }
 
+function useDisableSmoothScrollOnMobile(): boolean {
+  const [disabled, setDisabled] = useState(true);
+
+  useLayoutEffect(() => {
+    const mq = window.matchMedia(MOBILE_MOTION_MQ);
+    const sync = () => setDisabled(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  return disabled;
+}
+
 export function SmoothScroll({ children }: { children: ReactNode }) {
   const reduce = usePrefersReducedMotion();
+  const mobileNativeScroll = useDisableSmoothScrollOnMobile();
 
-  if (reduce) {
+  if (reduce || mobileNativeScroll) {
     return (
       <>
         <NativeRouteScrollSync />

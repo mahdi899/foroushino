@@ -89,7 +89,11 @@ export function TicketChatPanel({ ticket: initial, compact = false }: { ticket: 
   }
 
   return (
-    <div className={`flex min-h-0 flex-col overflow-hidden bg-bg ${compact ? 'h-[38rem]' : 'h-[calc(100vh-12rem)]'}`}>
+    <div
+      className={`admin-ticket-chat flex min-h-0 flex-col overflow-hidden bg-bg ${
+        compact ? 'h-full min-h-[min(68dvh,32rem)]' : 'h-[calc(100dvh-12rem)]'
+      }`}
+    >
       <div className="flex shrink-0 flex-wrap items-start justify-between gap-3 border-b border-border bg-surface px-4 py-3">
         <div className="min-w-0">
           <h2 className="text-small font-bold text-primary-dark">{ticket.subject}</h2>
@@ -149,7 +153,7 @@ export function TicketChatPanel({ ticket: initial, compact = false }: { ticket: 
           این تیکت بسته شده است.
         </div>
       ) : (
-        <form onSubmit={onReply} className="shrink-0 border-t border-border bg-surface p-3">
+        <form onSubmit={onReply} className="admin-ticket-chat__reply shrink-0 border-t border-border bg-surface p-3">
           {error && <p className="mb-2 text-caption text-error">{error}</p>}
           <div className="flex items-end gap-2">
             <textarea
@@ -166,8 +170,14 @@ export function TicketChatPanel({ ticket: initial, compact = false }: { ticket: 
               placeholder="پاسخ... Enter برای ارسال"
               disabled={pending}
             />
-            <button type="submit" disabled={pending || !message.trim()} className="btn btn-primary h-11 w-11 shrink-0 p-0" aria-label="ارسال">
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            <button
+              type="submit"
+              disabled={pending || !message.trim()}
+              className="btn btn-primary inline-flex h-11 shrink-0 items-center gap-1.5 px-3.5 sm:px-4"
+              aria-label="ارسال پاسخ"
+            >
+              {pending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+              <span>ارسال</span>
             </button>
           </div>
         </form>

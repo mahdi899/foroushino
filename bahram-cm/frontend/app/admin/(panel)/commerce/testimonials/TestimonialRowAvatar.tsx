@@ -12,7 +12,7 @@ export function TestimonialRowAvatar({
 }) {
   if (!portraitImage) {
     return (
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-soft text-caption font-bold text-primary">
+      <span className="admin-testimonial-avatar admin-testimonial-avatar--fallback">
         {name.trim().charAt(0) || '?'}
       </span>
     );
@@ -21,7 +21,7 @@ export function TestimonialRowAvatar({
   const src = normalizeAdminMediaUrl(portraitImage);
 
   return (
-    <span className="relative block h-10 w-10 shrink-0 overflow-hidden rounded-full ring-1 ring-border">
+    <span className="admin-testimonial-avatar admin-testimonial-avatar--photo">
       <MediaThumb
         src={src}
         persistSrc={portraitImage}

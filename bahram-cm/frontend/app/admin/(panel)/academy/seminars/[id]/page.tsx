@@ -16,7 +16,7 @@ export default async function SeminarDetailPage({ params }: { params: Promise<{ 
   if (!seminar) notFound();
 
   return (
-    <AdminPage title={seminar.title} desc={`${formatDateTime(seminar.date)} — ${seminar.location ?? ''}`}>
+    <AdminPage title={seminar.title} desc={`${formatDateTime(seminar.date)} — ${seminar.location ?? ''}`} backHref="/admin/academy/seminars">
       <div className="space-y-6">
         <SeminarPageContentPanel seminar={seminar} />
         <SeminarSettingsPanel seminar={seminar} />

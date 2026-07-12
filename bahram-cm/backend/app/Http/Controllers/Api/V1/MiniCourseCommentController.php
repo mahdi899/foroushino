@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\ContentComment;
 use App\Models\MiniCourse;
-use App\Models\MiniCourseComment;
 use App\Services\ContentPublishService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,8 +16,8 @@ class MiniCourseCommentController extends Controller
 
     public function index(Request $request, MiniCourse $miniCourse): JsonResponse
     {
-        $query = MiniCourseComment::query()
-            ->where('mini_course_id', $miniCourse->id)
+        $query = ContentComment::query()
+            ->forContent(ContentComment::TYPE_MINI_COURSE, $miniCourse->slug)
             ->topLevel()
             ->with(['replies' => fn ($q) => $q->orderBy('id')])
             ->orderByDesc('created_at');
@@ -29,7 +29,7 @@ class MiniCourseCommentController extends Controller
         $items = $query->paginate((int) $request->input('per_page', 50));
 
         return response()->json([
-            'data' => $items->getCollection()->map(fn (MiniCourseComment $c) => $this->payload($c)),
+            'data' => $items->getCollection()->map(fn (ContentComment $c) => $this->payload($c)),
             'meta' => [
                 'current_page' => $items->currentPage(),
                 'last_page' => $items->lastPage(),
@@ -39,45 +39,54 @@ class MiniCourseCommentController extends Controller
         ]);
     }
 
-    public function update(Request $request, MiniCourse $miniCourse, MiniCourseComment $comment): JsonResponse
+    public function update(Request $request, MiniCourse $miniCourse, ContentComment $contentComment): JsonResponse
     {
-        abort_unless($comment->mini_course_id === $miniCourse->id, 404);
+        abort_unless(
+            $contentComment->content_type === ContentComment::TYPE_MINI_COURSE
+            && $contentComment->content_slug === $miniCourse->slug,
+            404,
+        );
 
         $validated = $request->validate([
             'status' => ['sometimes', 'string', Rule::in(['pending', 'approved', 'rejected'])],
             'body' => ['sometimes', 'string', 'min:1', 'max:2000'],
         ]);
 
-        $comment->update($validated);
-        $this->publish->revalidateMiniCourses($miniCourse->slug);
+        $contentComment->update($validated);
+        $this->publish->revalidateContentComments(ContentComment::TYPE_MINI_COURSE, $miniCourse->slug);
 
-        return response()->json(['data' => $this->payload($comment->fresh('replies'))]);
+        return response()->json(['data' => $this->payload($contentComment->fresh('replies'))]);
     }
 
-    public function destroy(MiniCourse $miniCourse, MiniCourseComment $comment): JsonResponse
+    public function destroy(MiniCourse $miniCourse, ContentComment $contentComment): JsonResponse
     {
-        abort_unless($comment->mini_course_id === $miniCourse->id, 404);
+        abort_unless(
+            $contentComment->content_type === ContentComment::TYPE_MINI_COURSE
+            && $contentComment->content_slug === $miniCourse->slug,
+            404,
+        );
 
-        $comment->delete();
-        $this->publish->revalidateMiniCourses($miniCourse->slug);
+        $contentComment->delete();
+        $this->publish->revalidateContentComments(ContentComment::TYPE_MINI_COURSE, $miniCourse->slug);
 
         return response()->json(null, 204);
     }
 
     /** @return array<string, mixed> */
-    private function payload(MiniCourseComment $item): array
+    private function payload(ContentComment $item): array
     {
         return [
             'id' => $item->id,
-            'mini_course_id' => $item->mini_course_id,
+            'mini_course_id' => null,
             'author_name' => $item->author_name,
             'author_email' => $item->author_email,
+            'author_avatar_url' => $item->author_avatar_url,
             'body' => $item->body,
             'status' => $item->status,
             'parent_id' => $item->parent_id,
             'created_at' => $item->created_at?->toIso8601String(),
             'replies' => $item->relationLoaded('replies')
-                ? $item->replies->map(fn (MiniCourseComment $r) => $this->payload($r))->values()
+                ? $item->replies->map(fn (ContentComment $r) => $this->payload($r))->values()
                 : [],
         ];
     }

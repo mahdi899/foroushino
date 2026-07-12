@@ -76,7 +76,13 @@ export function AdminMobileMenu({
                           isImportant && !active && 'text-red-600',
                         )}
                       >
-                        <AdminLucideIcon name={item.icon} className="h-[18px] w-[18px] shrink-0" />
+                        <span className="admin-mobile-nav-item__icon">
+                          <AdminLucideIcon
+                            name={item.icon}
+                            size={18}
+                            strokeWidth={active ? 2.25 : 1.9}
+                          />
+                        </span>
                         <span className="min-w-0 flex-1 truncate">{item.label}</span>
                         {navAlertCount > 0 ? (
                           <span className="admin-nav-item__badge flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-white">

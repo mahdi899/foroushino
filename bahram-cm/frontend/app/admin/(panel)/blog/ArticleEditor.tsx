@@ -34,6 +34,7 @@ export const EMPTY_ARTICLE: ArticlePayload & { focusKeyword: string } = {
   excerpt: '',
   body: '',
   cover_url: '',
+  cover_url_mobile: '',
   reading_time: '۵ دقیقه',
   status: 'draft',
   focusKeyword: '',
@@ -71,6 +72,7 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
         excerpt: draft.excerpt ?? '',
         body: draft.body ?? '',
         cover_url: draft.cover_url ?? '',
+        cover_url_mobile: draft.cover_url_mobile ?? '',
         reading_time: draft.reading_time ?? '۵ دقیقه',
         status: draft.status ?? 'draft',
         category_id: draft.category_id ?? null,
@@ -111,6 +113,7 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
           excerpt: a.excerpt ?? '',
           body: a.body ?? '',
           cover_url: a.cover_url ?? '',
+          cover_url_mobile: a.cover_url_mobile ?? '',
           reading_time: a.reading_time ?? '۵ دقیقه',
           status: a.status,
           published_at: a.published_at,
@@ -157,6 +160,7 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
       excerpt: draft.excerpt,
       body: draft.body,
       cover_url: draft.cover_url,
+      cover_url_mobile: draft.cover_url_mobile,
       reading_time: draft.reading_time,
       status: draft.status,
       category_id: draft.category_id ?? null,
@@ -208,6 +212,7 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
       excerpt: restored.excerpt,
       body: restored.body,
       cover_url: restored.cover_url,
+      cover_url_mobile: restored.cover_url_mobile,
       reading_time: restored.reading_time,
       status: restored.status,
       category_id: restored.category_id,
@@ -271,6 +276,7 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
   return (
     <AdminPage
       compactHeader
+      backHref="/admin/blog"
       title={articleId ? 'ویرایش مقاله' : 'افزودن مقاله'}
       desc="تو قهوه‌ات رو بخور؛ هوش پلاستیکی مینویسه"
       action={
@@ -408,12 +414,23 @@ export function ArticleEditor({ articleId }: ArticleEditorProps) {
                 <textarea className="field-input min-h-[4rem]" value={draft.excerpt} onChange={(e) => setDraft({ ...draft, excerpt: e.target.value })} />
               </div>
               <CoverImageField
-                label="تصویر شاخص"
+                label="تصویر شاخص — دسکتاپ"
                 value={draft.cover_url ?? ''}
                 onChange={(cover_url) => setDraft({ ...draft, cover_url })}
-                alt={draft.title || 'تصویر شاخص مقاله'}
+                alt={draft.title || 'تصویر شاخص مقاله — دسکتاپ'}
                 aiPrompt={aiImagePrompt}
               />
+              <CoverImageField
+                label="تصویر شاخص — موبایل (۹:۱۶)"
+                value={draft.cover_url_mobile ?? ''}
+                onChange={(cover_url_mobile) => setDraft({ ...draft, cover_url_mobile })}
+                alt={draft.title || 'تصویر شاخص مقاله — موبایل'}
+                aiPrompt={aiImagePrompt}
+              />
+              <p className="text-caption text-text-muted">
+                اگر تصویر موبایل خالی باشد، همان تصویر دسکتاپ در هیرو موبایل نمایش داده می‌شود. در لیست
+                مقالات فقط تصویر دسکتاپ استفاده می‌شود.
+              </p>
               <ArticleBodyEditor
                 value={draft.body ?? ''}
                 onChange={(body) => setDraft({ ...draft, body })}

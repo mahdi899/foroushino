@@ -79,7 +79,10 @@ export async function getJson<T>(
 export async function postJson<T>(
   path: string,
   body: unknown,
-  { timeoutMs = DEFAULT_TIMEOUT_MS }: { timeoutMs?: number } = {},
+  {
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    headers: extraHeaders,
+  }: { timeoutMs?: number; headers?: Record<string, string> } = {},
 ): Promise<ApiResult<T>> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -88,7 +91,7 @@ export async function postJson<T>(
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...extraHeaders },
       body: JSON.stringify(body),
       signal: controller.signal,
       cache: "no-store",

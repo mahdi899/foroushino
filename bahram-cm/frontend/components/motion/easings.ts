@@ -14,6 +14,15 @@ export const dur = {
   xl: 1.4,
 } as const;
 
+/** Shorter durations for mobile — less GPU work, snappier feel. */
+export const durMobile = {
+  xs: 0.12,
+  sm: 0.22,
+  md: 0.38,
+  lg: 0.52,
+  xl: 0.72,
+} as const;
+
 export const transitions = {
   revealUp: {
     duration: dur.lg,
@@ -42,4 +51,17 @@ export const VIEWPORT_SECTION = {
   once: true,
   amount: 0.15,
   margin: "0px 0px -6% 0px",
+} as const;
+
+/** Mobile — trigger earlier with less scroll margin for faster perceived motion. */
+export const VIEWPORT_ONCE_MOBILE = {
+  once: true,
+  amount: 0.12,
+  margin: "0px 0px -4% 0px",
+} as const;
+
+export const VIEWPORT_SECTION_MOBILE = {
+  once: true,
+  amount: 0.1,
+  margin: "0px 0px -3% 0px",
 } as const;

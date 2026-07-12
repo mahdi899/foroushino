@@ -15,6 +15,8 @@ export type ArticleListItem = {
 
 export type ArticleDetail = ArticleListItem & {
   content: string;
+  featured_image_mobile?: string | null;
+  featured_image_mobile_alt?: string | null;
   meta_title: string | null;
   meta_description: string | null;
   canonical_url: string | null;

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, MessageSquarePlus } from 'lucide-react';
+import { Loader2, MessageSquarePlus, X } from 'lucide-react';
 import { createTicketForStudent } from '../actions';
 import { StudentSearchPicker, type SelectedStudent } from './StudentSearchPicker';
 
@@ -75,8 +75,8 @@ export function CreateTicketForStudentForm({ defaultOpen = false }: { defaultOpe
             بدون نیاز به ثبت تیکت توسط دانشجو؛ پیام در پنل دانشجو نمایش داده می‌شود.
           </p>
         </div>
-        <button type="button" onClick={() => setOpen(false)} className="btn btn-secondary text-caption sm:hidden">
-          بستن
+        <button type="button" onClick={() => setOpen(false)} className="admin-icon-btn" aria-label="بستن فرم">
+          <X className="h-5 w-5" />
         </button>
       </div>
 

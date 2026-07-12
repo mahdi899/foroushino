@@ -11,11 +11,8 @@ class ArticleAdminResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $cover = $this->featured_image
-            ? (str_starts_with($this->featured_image, '/storage/')
-                ? $this->featured_image
-                : MediaUrl::fromDiskPath($this->featured_image))
-            : null;
+        $cover = $this->resolveCoverUrl($this->featured_image);
+        $coverMobile = $this->resolveCoverUrl($this->featured_image_mobile);
 
         return [
             'id' => $this->id,
@@ -24,6 +21,7 @@ class ArticleAdminResource extends JsonResource
             'excerpt' => $this->excerpt,
             'body' => $this->content,
             'cover_url' => $cover,
+            'cover_url_mobile' => $coverMobile,
             'reading_time' => $this->reading_time,
             'kicker' => $this->kicker,
             'published_at' => $this->published_at?->toIso8601String(),
@@ -41,5 +39,16 @@ class ArticleAdminResource extends JsonResource
                 ? $this->deleted_at->copy()->addHours(\App\Models\Article::TRASH_RETENTION_HOURS)->toIso8601String()
                 : null,
         ];
+    }
+
+    private function resolveCoverUrl(?string $path): ?string
+    {
+        if (! $path) {
+            return null;
+        }
+
+        return str_starts_with($path, '/storage/')
+            ? $path
+            : MediaUrl::fromDiskPath($path);
     }
 }

@@ -40,11 +40,6 @@ class MiniCourse extends Model
         return 'slug';
     }
 
-    public function comments(): HasMany
-    {
-        return $this->hasMany(MiniCourseComment::class);
-    }
-
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);

@@ -95,7 +95,7 @@ export function AiImagePromptModal({
               </p>
             )}
           </div>
-          <button type="button" onClick={onClose} disabled={generating} className="rounded-lg p-1 text-text-muted hover:bg-surface-soft">
+          <button type="button" onClick={onClose} disabled={generating} className="admin-icon-btn">
             <X className="h-5 w-5" />
           </button>
         </div>

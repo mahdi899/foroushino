@@ -101,7 +101,7 @@ export function SeoFixModal({ open, check, article, categories, onClose, onApply
             <p className="font-semibold text-primary-dark">اصلاح سئو با AI</p>
             <p className="mt-0.5 text-small text-text-muted">{check.label}</p>
           </div>
-          <button type="button" onClick={onClose} disabled={loading} className="rounded-lg p-1 text-text-muted hover:bg-surface-soft">
+          <button type="button" onClick={onClose} disabled={loading} className="admin-icon-btn">
             <X className="h-5 w-5" />
           </button>
         </div>

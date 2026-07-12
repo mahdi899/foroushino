@@ -33,6 +33,7 @@ export const adminNav: {
       { href: '/admin/gallery', label: 'کتابخانه رسانه', icon: 'Image', permission: 'content.view' },
       { href: '/admin/blog/new', label: 'افزودن مقاله', icon: 'PenLine', matchPrefix: true, permission: 'content.manage' },
       { href: '/admin/blog', label: 'مقالات', icon: 'Newspaper', matchPrefix: true, permission: 'content.view' },
+      { href: '/admin/content/comments', label: 'نظرات محتوا', icon: 'MessageSquareQuote', matchPrefix: true, permission: 'content.view' },
     ],
   },
   {
@@ -121,6 +122,9 @@ export function isAdminNavActive(pathname: string, href: string, matchPrefix?: b
   }
   if (href === '/admin/blog') {
     return pathname === '/admin/blog' || /^\/admin\/blog\/\d+/.test(pathname);
+  }
+  if (href === '/admin/content/comments') {
+    return pathname === href || pathname.startsWith(`${href}/`);
   }
   if (href === '/admin/chatbot') {
     return pathname === '/admin/chatbot' || pathname.startsWith('/admin/chatbot/');

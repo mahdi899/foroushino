@@ -183,7 +183,7 @@ function ModalHeader({ title, desc, onClose }: { title: string; desc: string; on
         </p>
         <p className="mt-0.5 text-caption text-text-muted">{desc}</p>
       </div>
-      <button type="button" onClick={onClose} className="rounded-lg p-1 text-text-muted hover:bg-surface-soft">
+      <button type="button" onClick={onClose} className="admin-icon-btn">
         <X className="h-5 w-5" />
       </button>
     </div>

@@ -11,7 +11,7 @@ export default async function StudentDetailPage({ params }: { params: Promise<{ 
   if (!student) notFound();
 
   return (
-    <AdminPage title={student.display_name} desc={student.mobile ?? student.email ?? ''}>
+    <AdminPage title={student.display_name} desc={student.mobile ?? student.email ?? ''} backHref="/admin/academy/students">
       <StudentDetailView student={student} />
     </AdminPage>
   );

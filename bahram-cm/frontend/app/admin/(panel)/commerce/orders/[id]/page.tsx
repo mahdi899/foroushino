@@ -15,6 +15,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     <AdminPage
       title={`سفارش ${order.order_number}`}
       desc={`${order.customer_name} · ${order.product_title ?? 'بدون محصول'}`}
+      backHref="/admin/commerce/orders"
       action={
         <div className="flex flex-wrap items-center gap-2">
           <OrderStatusBadge status={order.status} />

@@ -19,6 +19,10 @@ class ArticleDetailResource extends JsonResource
             ? MediaUrl::fromDiskPath($this->featured_image)
             : null;
         $image = $imageRef ? MediaUrl::resolve($imageRef) : null;
+        $imageMobileRef = $this->featured_image_mobile
+            ? MediaUrl::fromDiskPath($this->featured_image_mobile)
+            : null;
+        $imageMobile = $imageMobileRef ? MediaUrl::resolve($imageMobileRef) : null;
         $altResolver = app(MediaAltResolver::class);
         $enricher = app(HtmlImageEnricher::class);
 
@@ -31,6 +35,10 @@ class ArticleDetailResource extends JsonResource
             'featured_image' => $image,
             'featured_image_alt' => $imageRef
                 ? $altResolver->resolve($imageRef, $this->title)
+                : null,
+            'featured_image_mobile' => $imageMobile,
+            'featured_image_mobile_alt' => $imageMobileRef
+                ? $altResolver->resolve($imageMobileRef, $this->title)
                 : null,
             'meta_title' => $this->meta_title,
             'meta_description' => $this->meta_description,

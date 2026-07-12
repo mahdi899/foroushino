@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { unstable_noStore } from 'next/cache';
-import { MiniCourseComments } from '@/components/mini-courses/MiniCourseComments';
+import { ContentCommentsSection } from '@/components/comments/ContentCommentsSection';
 import { MiniCourseDetailHero } from '@/components/mini-courses/MiniCourseDetailHero';
+import { buildCommentAuthorFromStudent } from '@/lib/contentComments/author';
 import {
   getMiniCourseBySlugFromApi,
-  getMiniCourseCommentsFromApi,
 } from '@/lib/services/miniCourses.server';
+import { getContentCommentsFromApi } from '@/lib/services/contentComments.server';
 import { resolveMediaAlt } from '@/lib/media/alt';
 import { buildMetadata } from '@/lib/seo';
 import { getCurrentStudent, studentFetch } from '@/lib/student/session';
@@ -40,7 +41,7 @@ export default async function MiniCourseDetailPage({ params }: PageProps) {
   const { slug } = await params;
   const [courseResult, commentsResult] = await Promise.all([
     getMiniCourseBySlugFromApi(slug),
-    getMiniCourseCommentsFromApi(slug),
+    getContentCommentsFromApi('mini_course', slug),
   ]);
 
   if (!courseResult.ok || !courseResult.data) notFound();
@@ -83,10 +84,12 @@ export default async function MiniCourseDetailPage({ params }: PageProps) {
         />
       </section>
 
-      <MiniCourseComments
+      <ContentCommentsSection
+        type="mini_course"
         slug={course.slug}
         enabled={course.comments_enabled}
         initialComments={comments}
+        initialAuthor={buildCommentAuthorFromStudent(student)}
       />
     </main>
   );

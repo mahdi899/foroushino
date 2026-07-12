@@ -37,7 +37,7 @@ export function DeleteArticleModal({ open, title, loading, onClose, onConfirm }:
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="rounded-lg p-1 text-text-muted hover:bg-surface-soft hover:text-text"
+            className="admin-icon-btn hover:text-text"
           >
             <X className="h-5 w-5" />
           </button>

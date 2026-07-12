@@ -30,7 +30,7 @@ export function StaticMediaModal({ item, onClose }: StaticMediaModalProps) {
       <div className="w-full max-w-lg overflow-hidden rounded-xl bg-surface shadow-premium" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <p className="text-small font-semibold text-primary-dark">جزئیات تصویر</p>
-          <button type="button" onClick={onClose} className="rounded-md p-1 text-text-muted hover:bg-surface-soft">
+          <button type="button" onClick={onClose} className="admin-icon-btn">
             <X className="h-5 w-5" />
           </button>
         </div>

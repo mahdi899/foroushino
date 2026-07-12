@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, Plus, UserPlus } from 'lucide-react';
+import { Loader2, Plus, UserPlus, X } from 'lucide-react';
 import { createStudent } from '../actions';
 import { STUDENT_STATUS_LABELS } from '@/lib/admin/academyTypes';
 
@@ -61,8 +61,8 @@ export function CreateStudentForm({ defaultOpen = true }: { defaultOpen?: boolea
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <p className="text-caption text-text-muted">حساب با موبایل ایجاد می‌شود؛ دانشجو می‌تواند با OTP وارد پنل شود.</p>
-        <button type="button" onClick={() => setOpen(false)} className="btn btn-secondary text-caption sm:hidden">
-          بستن
+        <button type="button" onClick={() => setOpen(false)} className="admin-icon-btn" aria-label="بستن فرم">
+          <X className="h-5 w-5" />
         </button>
       </div>
 

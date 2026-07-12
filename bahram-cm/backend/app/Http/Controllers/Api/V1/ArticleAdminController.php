@@ -163,6 +163,7 @@ class ArticleAdminController extends Controller
             'excerpt' => ['sometimes', 'nullable', 'string'],
             'body' => ['sometimes', 'nullable', 'string'],
             'cover_url' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'cover_url_mobile' => ['sometimes', 'nullable', 'string', 'max:500'],
             'reading_time' => ['sometimes', 'nullable', 'string', 'max:50'],
             'kicker' => ['sometimes', 'nullable', 'string', 'max:100'],
             'status' => ['sometimes', 'string', Rule::in(['active', 'draft', 'published'])],
@@ -197,6 +198,10 @@ class ArticleAdminController extends Controller
 
         if (array_key_exists('cover_url', $validated)) {
             $data['featured_image'] = $this->normalizeCoverPath($validated['cover_url']);
+        }
+
+        if (array_key_exists('cover_url_mobile', $validated)) {
+            $data['featured_image_mobile'] = $this->normalizeCoverPath($validated['cover_url_mobile']);
         }
 
         if (array_key_exists('reading_time', $validated)) {

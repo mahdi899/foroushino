@@ -1,10 +1,10 @@
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Sparkles } from 'lucide-react';
 import { AdminContentPanel } from '@/components/admin/layout/AdminContentPanel';
 import { AdminListEmpty } from '@/components/admin/layout/AdminListEmpty';
-import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
-import { AdminPage, Badge, EditLink, Table } from '../../ui';
+import { AdminPage, Badge, EditLink, StatCard, Table } from '../../ui';
 import { getStudentTestimonials } from '@/lib/admin/commerceData';
+import { TestimonialMobileCard } from './TestimonialMobileCard';
 import { TestimonialRowAvatar } from './TestimonialRowAvatar';
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +12,8 @@ export const dynamic = 'force-dynamic';
 export default async function TestimonialsPage() {
   const { items, error } = await getStudentTestimonials();
   const activeCount = items.filter((t) => t.is_active).length;
+  const inactiveCount = items.length - activeCount;
+  const withMetricCount = items.filter((t) => t.metric_value?.trim() || t.metric_label?.trim()).length;
 
   return (
     <AdminPage
@@ -20,12 +22,56 @@ export default async function TestimonialsPage() {
       icon="MessageSquareQuote"
       headerVariant="commerce"
       action={
-        <Link href="/admin/commerce/testimonials/new" className="btn btn-primary">
+        <Link href="/admin/commerce/testimonials/new" className="btn btn-primary hidden sm:inline-flex">
           <Plus className="h-4 w-4" /> نظر جدید
         </Link>
       }
     >
-      <div className="admin-content-list">
+      <div className="admin-content-list admin-testimonials-page">
+        {items.length > 0 ? (
+          <div className="admin-testimonials-page__stats admin-content-list__stats">
+            <StatCard
+              label="کل داستان‌ها"
+              value={items.length.toLocaleString('fa-IR')}
+              icon="MessageSquareQuote"
+              tone="gold"
+              hint="کارت تبدیل در سایت"
+            />
+            <StatCard
+              label="فعال در سایت"
+              value={activeCount.toLocaleString('fa-IR')}
+              icon="Sparkles"
+              tone="green"
+              hint="نمایش در صفحه transformations"
+            />
+            <StatCard
+              label="با متریک"
+              value={withMetricCount.toLocaleString('fa-IR')}
+              icon="TrendingUp"
+              tone="teal"
+              hint={
+                inactiveCount > 0
+                  ? `${inactiveCount.toLocaleString('fa-IR')} غیرفعال`
+                  : 'همه فعال‌اند'
+              }
+            />
+          </div>
+        ) : null}
+
+        <Link
+          href="/admin/commerce/testimonials/new"
+          className="admin-testimonials-page__cta sm:hidden"
+        >
+          <span className="admin-testimonials-page__cta-icon">
+            <Plus className="h-5 w-5" strokeWidth={2.25} aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1 text-start">
+            <span className="block text-sm font-bold">افزودن داستان جدید</span>
+            <span className="block text-xs opacity-90">کارت تبدیل برای صفحه رضایت دانشجوها</span>
+          </span>
+          <Sparkles className="h-5 w-5 shrink-0 opacity-80" aria-hidden />
+        </Link>
+
         {error ? (
           <div className="admin-content-list__error">{error}</div>
         ) : null}
@@ -42,35 +88,7 @@ export default async function TestimonialsPage() {
             <Table
               head={['', 'نام', 'اسلاگ', 'قبل → بعد', 'ترتیب', 'وضعیت', 'عملیات']}
               mobile={items.map((t) => (
-                <AdminTableCard
-                  key={t.id}
-                  leading={<TestimonialRowAvatar name={t.name} portraitImage={t.portrait_image} />}
-                  title={t.name}
-                  fields={[
-                    { label: 'نقش', value: t.role ?? '—' },
-                    { label: 'اسلاگ', value: t.slug, mono: true },
-                    {
-                      label: 'قبل → بعد',
-                      value: (
-                        <span className="line-clamp-2">
-                          <span className="text-text-muted">{t.before_text}</span>
-                          <span className="mx-1">→</span>
-                          <span>{t.after_text}</span>
-                        </span>
-                      ),
-                    },
-                    { label: 'ترتیب', value: t.sort_order },
-                    {
-                      label: 'وضعیت',
-                      value: (
-                        <Badge tone={t.is_active ? 'success' : 'default'}>
-                          {t.is_active ? 'فعال' : 'غیرفعال'}
-                        </Badge>
-                      ),
-                    },
-                  ]}
-                  footer={<EditLink href={`/admin/commerce/testimonials/${t.id}`} />}
-                />
+                <TestimonialMobileCard key={t.id} testimonial={t} />
               ))}
             >
               {items.map((t) => (
@@ -92,7 +110,9 @@ export default async function TestimonialsPage() {
                   </td>
                   <td className="px-4 py-3 text-caption">{t.sort_order}</td>
                   <td className="px-4 py-3">
-                    <Badge tone={t.is_active ? 'success' : 'default'}>{t.is_active ? 'فعال' : 'غیرفعال'}</Badge>
+                    <Badge tone={t.is_active ? 'success' : 'default'}>
+                      {t.is_active ? 'فعال' : 'غیرفعال'}
+                    </Badge>
                   </td>
                   <td className="px-4 py-3">
                     <EditLink href={`/admin/commerce/testimonials/${t.id}`} />

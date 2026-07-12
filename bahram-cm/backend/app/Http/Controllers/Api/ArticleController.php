@@ -64,10 +64,18 @@ class ArticleController extends Controller
             return ApiResponse::error('article_not_found', 'مقاله مورد نظر یافت نشد.', 404);
         }
 
-        if ($article->featured_image) {
-            app(MediaAltResolver::class)->warmReferences([
-                MediaUrl::fromDiskPath($article->featured_image),
-            ]);
+        $refs = collect([
+            $article->featured_image,
+            $article->featured_image_mobile,
+        ])
+            ->filter()
+            ->map(fn (string $path) => MediaUrl::fromDiskPath($path))
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($refs !== []) {
+            app(MediaAltResolver::class)->warmReferences($refs);
         }
 
         return ArticleDetailResource::make($article);

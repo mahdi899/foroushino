@@ -6578,3 +6578,107 @@ html[data-theme="light"] .chatbot-scroll:hover::-webkit-scrollbar-thumb {
 html[data-theme="light"] .chatbot-scroll::-webkit-scrollbar-thumb:active {
   background: color-mix(in oklab, var(--color-emerald) 38%, transparent);
 }
+
+/* ── Site loader & boot overlay ── */
+.site-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.site-loader--page {
+  min-height: 50vh;
+}
+
+.site-loader__ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.site-loader--sm .site-loader__ring { width: 1.75rem; height: 1.75rem; }
+.site-loader--md .site-loader__ring { width: 2.5rem; height: 2.5rem; }
+.site-loader--lg .site-loader__ring { width: 3.25rem; height: 3.25rem; }
+
+.site-loader__arc {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 2px solid color-mix(in oklab, var(--color-gold) 18%, transparent);
+  border-top-color: var(--color-gold);
+  animation: site-loader-spin 0.85s cubic-bezier(0.45, 0.05, 0.25, 1) infinite;
+}
+
+.site-loader__core {
+  width: 38%;
+  height: 38%;
+  border-radius: 999px;
+  background: radial-gradient(circle at 35% 35%, var(--color-gold-soft), var(--color-gold));
+  box-shadow: 0 0 18px color-mix(in oklab, var(--color-gold) 45%, transparent);
+  animation: site-loader-pulse 1.4s ease-in-out infinite;
+}
+
+.site-loader__label {
+  font-size: 0.875rem;
+  letter-spacing: 0.04em;
+  color: var(--color-mist);
+}
+
+.site-route-loading {
+  display: grid;
+  place-items: center;
+  min-height: 50vh;
+  padding: 2rem 1rem;
+}
+
+.site-route-loading--panel {
+  min-height: 40vh;
+}
+
+.site-boot-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  pointer-events: all;
+  transition: opacity 380ms ease, visibility 380ms ease;
+}
+
+.site-boot-loader--out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.site-boot-loader__backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%, color-mix(in oklab, var(--color-gold) 8%, transparent), transparent 70%),
+    color-mix(in oklab, var(--color-ink) 94%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.site-boot-loader .site-loader {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes site-loader-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes site-loader-pulse {
+  0%, 100% { transform: scale(0.92); opacity: 0.85; }
+  50% { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-loader__arc,
+  .site-loader__core {
+    animation: none;
+  }
+}

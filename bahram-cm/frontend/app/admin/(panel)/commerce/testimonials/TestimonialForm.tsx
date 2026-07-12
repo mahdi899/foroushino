@@ -136,6 +136,7 @@ export function TestimonialForm({ testimonial }: { testimonial?: AdminStudentTes
     <AdminPage
       title={testimonial ? `ویرایش: ${testimonial.name}` : 'نظر جدید'}
       desc={testimonial ? 'ویرایش داستان دانشجو' : 'افزودن داستان برای صفحه transformations'}
+      backHref="/admin/commerce/testimonials"
       action={
         <div className="flex flex-wrap gap-2">
           <button

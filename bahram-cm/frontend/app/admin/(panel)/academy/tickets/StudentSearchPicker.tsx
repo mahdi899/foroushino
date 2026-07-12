@@ -173,7 +173,7 @@ export function StudentSearchPicker({ value, onChange, required }: StudentSearch
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-md p-1 text-text-muted hover:bg-surface-soft"
+                className="admin-icon-btn"
                 aria-label="بستن"
               >
                 <X className="h-5 w-5" />

@@ -5,6 +5,7 @@ export interface ArticleRevisionSnapshot {
   excerpt: string;
   body: string;
   cover_url: string;
+  cover_url_mobile?: string;
   reading_time: string;
   status: string;
   category_id: number | null;
@@ -38,6 +39,7 @@ export function buildArticleRevisionSnapshot(input: {
   excerpt: string;
   body: string;
   cover_url: string;
+  cover_url_mobile?: string;
   reading_time: string;
   status: string;
   category_id: number | null;
@@ -55,6 +57,7 @@ export function buildArticleRevisionSnapshot(input: {
     excerpt: input.excerpt,
     body: input.body,
     cover_url: input.cover_url,
+    cover_url_mobile: input.cover_url_mobile ?? '',
     reading_time: input.reading_time,
     status: input.status,
     category_id: input.category_id,
@@ -75,6 +78,7 @@ export function snapshotToDraft(snapshot: ArticleRevisionSnapshot) {
     excerpt: snapshot.excerpt ?? '',
     body: snapshot.body ?? '',
     cover_url: snapshot.cover_url ?? '',
+    cover_url_mobile: snapshot.cover_url_mobile ?? '',
     reading_time: snapshot.reading_time ?? '۵ دقیقه',
     status: snapshot.status ?? 'draft',
     category_id: snapshot.category_id ?? null,

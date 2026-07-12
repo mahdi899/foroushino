@@ -11,7 +11,7 @@ export default async function EditFaqPage({ params }: { params: Promise<{ id: st
   if (!faq) notFound();
 
   return (
-    <AdminPage title="ویرایش سوال" desc={faq.question}>
+    <AdminPage title="ویرایش سوال" desc={faq.question} backHref="/admin/commerce/faqs">
       <FaqForm faq={faq} />
     </AdminPage>
   );

@@ -6,6 +6,7 @@ export interface ArticlePayload {
   excerpt?: string;
   body?: string;
   cover_url?: string;
+  cover_url_mobile?: string;
   reading_time?: string;
   status?: string;
   published_at?: string | null;

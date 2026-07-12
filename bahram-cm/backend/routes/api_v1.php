@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\V1\SmsSpotplayerCredentialsController;
 use App\Http\Controllers\Api\V1\MediaConfigController;
 use App\Http\Controllers\Api\V1\MediaController;
 use App\Http\Controllers\Api\V1\MediaOptimizeController;
+use App\Http\Controllers\Api\V1\ContentCommentAdminController;
 use App\Http\Controllers\Api\V1\MiniCourseCommentController;
 use App\Http\Controllers\Api\V1\MiniCourseController;
 use App\Http\Controllers\Api\V1\SettingController;
@@ -235,10 +236,16 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::match(['put', 'patch'], 'mini-courses/{miniCourse:id}', [MiniCourseController::class, 'update'])->whereNumber('miniCourse');
     Route::delete('mini-courses/{miniCourse:id}', [MiniCourseController::class, 'destroy'])->whereNumber('miniCourse');
     Route::get('mini-courses/{miniCourse:id}/comments', [MiniCourseCommentController::class, 'index'])->whereNumber('miniCourse');
-    Route::match(['put', 'patch'], 'mini-courses/{miniCourse:id}/comments/{comment}', [MiniCourseCommentController::class, 'update'])
-        ->whereNumber(['miniCourse', 'comment']);
-    Route::delete('mini-courses/{miniCourse:id}/comments/{comment}', [MiniCourseCommentController::class, 'destroy'])
-        ->whereNumber(['miniCourse', 'comment']);
+    Route::match(['put', 'patch'], 'mini-courses/{miniCourse:id}/comments/{contentComment}', [MiniCourseCommentController::class, 'update'])
+        ->whereNumber(['miniCourse', 'contentComment']);
+    Route::delete('mini-courses/{miniCourse:id}/comments/{contentComment}', [MiniCourseCommentController::class, 'destroy'])
+        ->whereNumber(['miniCourse', 'contentComment']);
+
+    Route::get('content-comments', [ContentCommentAdminController::class, 'index']);
+    Route::match(['put', 'patch'], 'content-comments/{contentComment}', [ContentCommentAdminController::class, 'update'])
+        ->whereNumber('contentComment');
+    Route::delete('content-comments/{contentComment}', [ContentCommentAdminController::class, 'destroy'])
+        ->whereNumber('contentComment');
 
     Route::get('panel/payment-settings', [CommercePaymentSettingsController::class, 'show']);
     Route::put('panel/payment-settings', [CommercePaymentSettingsController::class, 'update']);

@@ -93,9 +93,28 @@ class ContentPublishService
 
         $this->purge(
             'ذخیره مینی‌دوره',
-            ['mini-courses', 'public-mini-courses'],
+            ['mini-courses', 'public-mini-courses', 'content-comments'],
             array_values(array_unique($paths)),
             fn () => $this->forgetMiniCourseRuntimeCache($slug, $previousSlug),
+        );
+    }
+
+    public function revalidateContentComments(string $type, ?string $slug = null): void
+    {
+        $paths = match ($type) {
+            'course' => array_filter(['/courses', $slug ? '/courses/'.$slug : null]),
+            'mini_course' => array_filter(['/mini-courses', $slug ? '/mini-courses/'.$slug : null]),
+            'article' => array_filter(['/insights', $slug ? '/insights/'.$slug : null]),
+            'seminar' => array_filter(['/seminars', $slug ? '/seminars/'.$slug : null]),
+            'campaign_writing' => array_filter(['/course/campaign-writing']),
+            default => [],
+        };
+
+        $this->purge(
+            'تأیید یا ثبت نظر',
+            ['content-comments', 'mini-courses', 'public-mini-courses', 'articles'],
+            array_values(array_unique($paths)),
+            fn () => $this->forgetContentCommentRuntimeCache($type, $slug),
         );
     }
 
@@ -194,6 +213,18 @@ class ContentPublishService
         foreach (array_filter([$slug, $previousSlug]) as $s) {
             RuntimeCache::forget('public_mini_courses:show:'.$s);
             RuntimeCache::forget('public_mini_courses:comments:'.$s);
+            RuntimeCache::forget('public_content_comments:mini_course:'.$s);
+        }
+    }
+
+    private function forgetContentCommentRuntimeCache(string $type, ?string $slug = null): void
+    {
+        if ($slug) {
+            RuntimeCache::forget("public_content_comments:{$type}:{$slug}");
+        }
+
+        if ($type === 'mini_course' && $slug) {
+            RuntimeCache::forget('public_mini_courses:comments:'.$slug);
         }
     }
 

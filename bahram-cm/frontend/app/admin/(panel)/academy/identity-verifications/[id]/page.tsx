@@ -35,8 +35,10 @@ export default async function IdentityVerificationDetailPage({
       icon="ShieldCheck"
       title={item ? `بررسی پرونده #${item.id}` : 'بررسی پرونده'}
       desc={item ? `${item.first_name} ${item.last_name}` : undefined}
+      backHref="/admin/academy/identity-verifications"
+      backLabel="بازگشت به صف"
       action={
-        <Link href="/admin/academy/identity-verifications" className="btn btn-secondary">
+        <Link href="/admin/academy/identity-verifications" className="btn btn-secondary hidden lg:inline-flex">
           بازگشت به صف
         </Link>
       }

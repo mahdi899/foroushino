@@ -86,8 +86,8 @@ export function LinkEditModal({ open, initial, needsSelection = false, onClose, 
             </p>
             <p className="mt-1 text-caption text-text-muted">آدرس و ویژگی‌های SEO لینک را مشخص کنید</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-md p-1 text-text-muted hover:bg-surface-soft hover:text-primary">
-            <X className="h-4 w-4" />
+          <button type="button" onClick={onClose} className="admin-icon-btn hover:text-primary">
+            <X className="h-5 w-5" />
           </button>
         </div>
 

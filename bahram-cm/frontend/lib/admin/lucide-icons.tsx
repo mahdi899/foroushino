@@ -125,11 +125,13 @@ export function AdminLucideIcon({
   name,
   className,
   strokeWidth = 1.6,
+  size,
 }: {
   name: string;
   className?: string;
   strokeWidth?: number;
+  size?: number;
 }) {
   const Cmp = adminLucideIcons[name] ?? Circle;
-  return <Cmp className={cn(className)} strokeWidth={strokeWidth} />;
+  return <Cmp className={cn(className)} strokeWidth={strokeWidth} size={size} aria-hidden />;
 }

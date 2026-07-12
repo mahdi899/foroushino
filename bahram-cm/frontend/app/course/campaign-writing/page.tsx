@@ -44,6 +44,10 @@ import { primarySiteImageSrc } from "@/lib/mediaUrl";
 import { resolveMediaAlt } from "@/lib/media/alt";
 import { formatFa, toPersianDigits } from "@/lib/persian";
 import { getProductBySlug } from "@/lib/services/products";
+import { getContentCommentsFromApi } from "@/lib/services/contentComments.server";
+import { buildCommentAuthorFromStudent } from "@/lib/contentComments/author";
+import { getCurrentStudent } from "@/lib/student/session";
+import { ContentCommentsSection } from "@/components/comments/ContentCommentsSection";
 import { pageHeroBackdropPhoto, pageHeroBackdropPhotoMobile, sitePhotos } from "@/lib/site-photo-paths";
 import { site } from "@/content/site";
 
@@ -345,8 +349,13 @@ async function CampaignWritingHeroPurchaseCta() {
 }
 
 async function CampaignWritingPageContent() {
-  const productResult = await getProductBySlug(CAMPAIGN_WRITING_SLUG);
+  const [productResult, student, commentsResult] = await Promise.all([
+    getProductBySlug(CAMPAIGN_WRITING_SLUG),
+    getCurrentStudent(),
+    getContentCommentsFromApi('campaign_writing', CAMPAIGN_WRITING_SLUG),
+  ]);
   const product = productResult.ok ? productResult.data : null;
+  const comments = commentsResult.ok ? commentsResult.data : [];
   const alreadyPurchased = product?.already_purchased ?? false;
   const coursePrice = product?.effective_price ?? FALLBACK_PRICE;
   const hasDiscount =
@@ -708,6 +717,13 @@ async function CampaignWritingPageContent() {
 
       {/* 9. TESTIMONIALS */}
       <CampaignWritingSocialProof />
+
+      <ContentCommentsSection
+        type="campaign_writing"
+        slug={CAMPAIGN_WRITING_SLUG}
+        initialComments={comments}
+        initialAuthor={buildCommentAuthorFromStudent(student)}
+      />
 
       {/* 10. FAQ */}
       <section className="bg-obsidian py-10 md:py-section-sm lg:py-section">

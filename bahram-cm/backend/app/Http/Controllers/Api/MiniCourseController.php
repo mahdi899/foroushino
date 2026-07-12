@@ -3,16 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\MiniCourseCommentResource;
-use App\Http\Resources\PublicMiniCourseResource;
+use App\Http\Resources\ContentCommentResource;
+use App\Models\ContentComment;
 use App\Models\MiniCourse;
-use App\Models\MiniCourseComment;
 use App\Support\RuntimeCache;
-use Illuminate\Http\Request;
 
 class MiniCourseController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
         $cacheKey = 'public_mini_courses:index';
 
@@ -22,7 +20,7 @@ class MiniCourseController extends Controller
                 ->ordered()
                 ->get();
 
-            return PublicMiniCourseResource::collection($items);
+            return \App\Http\Resources\PublicMiniCourseResource::collection($items);
         }, 'mini-courses');
     }
 
@@ -36,7 +34,7 @@ class MiniCourseController extends Controller
                 ->where('slug', $slug)
                 ->firstOrFail();
 
-            return new PublicMiniCourseResource($item);
+            return new \App\Http\Resources\PublicMiniCourseResource($item);
         }, 'mini-courses');
     }
 
@@ -51,18 +49,18 @@ class MiniCourseController extends Controller
                 ->firstOrFail();
 
             if (! $course->comments_enabled) {
-                return MiniCourseCommentResource::collection(collect());
+                return ContentCommentResource::collection(collect());
             }
 
-            $comments = MiniCourseComment::query()
-                ->where('mini_course_id', $course->id)
+            $comments = ContentComment::query()
+                ->forContent(ContentComment::TYPE_MINI_COURSE, $slug)
                 ->approved()
                 ->topLevel()
                 ->with(['replies' => fn ($q) => $q->approved()->orderBy('id')])
                 ->orderByDesc('created_at')
                 ->get();
 
-            return MiniCourseCommentResource::collection($comments);
-        }, 'mini-courses');
+            return ContentCommentResource::collection($comments);
+        }, 'content-comments');
     }
 }

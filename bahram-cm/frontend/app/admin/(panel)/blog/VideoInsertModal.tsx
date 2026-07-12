@@ -84,7 +84,7 @@ export function VideoInsertModal({
               YouTube، آپارات یا لینک مستقیم mp4/webm — اگر هر دو پلتفرم را بدهید، سوئیچ زیر ویدیو نمایش داده می‌شود.
             </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-1 text-text-muted hover:bg-surface-soft">
+          <button type="button" onClick={onClose} className="admin-icon-btn">
             <X className="h-5 w-5" />
           </button>
         </div>

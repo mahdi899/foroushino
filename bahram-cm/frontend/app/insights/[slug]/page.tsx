@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Calendar, ChevronLeft, Clock } from "lucide-react";
 import { ContentViewTracker } from "@/components/analytics/ContentViewTracker";
+import { ContentCommentsSection } from "@/components/comments/ContentCommentsSection";
 import { Reveal } from "@/components/motion/Reveal";
 import { NewsletterCTA } from "@/components/sections/NewsletterCTA";
 import { SiteImage } from "@/components/ui/SiteImage";
@@ -10,9 +11,14 @@ import { normalizeArticleSlugParam } from "@/lib/articleSlug";
 import { getArticleBySlug, getAllArticleSlugs, getArticles } from "@/lib/services/articles";
 import { articleJsonLd, breadcrumbJsonLd } from "@/lib/jsonld";
 import { formatDateFa } from "@/lib/persian";
+import { cn } from "@/lib/utils";
 import { buildMetadata } from "@/lib/seo";
+import { primarySiteImageSrc } from "@/lib/mediaUrl";
 import { rewriteArticleBodyMediaUrls } from "@/lib/mediaUrl";
 import { sanitizeRichHtml } from "@/lib/sanitize";
+import { buildCommentAuthorFromStudent } from "@/lib/contentComments/author";
+import { getContentCommentsFromApi } from "@/lib/services/contentComments.server";
+import { getCurrentStudent } from "@/lib/student/session";
 
 export const revalidate = 300;
 
@@ -57,6 +63,11 @@ export default async function InsightDetailPage({
   }
 
   const listResult = await getArticles(1);
+  const [student, commentsResult] = await Promise.all([
+    getCurrentStudent(),
+    getContentCommentsFromApi('article', post.slug),
+  ]);
+  const comments = commentsResult.ok ? commentsResult.data : [];
   const related = listResult.ok
     ? listResult.data.items.filter((p) => p.slug !== post.slug).slice(0, 3)
     : [];
@@ -76,29 +87,65 @@ export default async function InsightDetailPage({
     ]),
   ];
 
-  const coverSrc = post.featured_image ?? null;
+  const coverDesktop = post.featured_image ?? null;
+  const coverMobile = post.featured_image_mobile || post.featured_image || null;
+  const hasHeroCover = Boolean(coverDesktop || coverMobile);
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       <ContentViewTracker type="insight" slug={post.slug} />
       {post.canonical_url ? <link rel="canonical" href={post.canonical_url} /> : null}
+      {coverMobile ? (
+        <link
+          rel="preload"
+          as="image"
+          href={primarySiteImageSrc(coverMobile)}
+          media="(max-width: 767px)"
+          fetchPriority="high"
+        />
+      ) : null}
+      {coverDesktop ? (
+        <link
+          rel="preload"
+          as="image"
+          href={primarySiteImageSrc(coverDesktop)}
+          media="(min-width: 768px)"
+          fetchPriority="high"
+        />
+      ) : null}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
       <section className="relative isolate overflow-hidden bg-ink">
-        {coverSrc ? (
+        {hasHeroCover ? (
           <div className="insight-hero-stage">
-            <SiteImage
-              src={coverSrc}
-              alt=""
-              fill
-              priority
-              sizes="100vw"
-              wrapperClassName="absolute inset-0 z-0 overflow-hidden"
-              className="object-cover blur-lg brightness-50 saturate-75"
-            />
+            {coverMobile ? (
+              <SiteImage
+                src={coverMobile}
+                alt=""
+                fill
+                priority
+                sizes="100vw"
+                wrapperClassName="absolute inset-0 z-0 overflow-hidden md:hidden"
+                className="object-cover blur-lg brightness-50 saturate-75"
+              />
+            ) : null}
+            {coverDesktop ? (
+              <SiteImage
+                src={coverDesktop}
+                alt=""
+                fill
+                priority
+                sizes="100vw"
+                wrapperClassName={cn(
+                  "absolute inset-0 z-0 overflow-hidden",
+                  coverMobile ? "hidden md:block" : "",
+                )}
+                className="object-cover blur-lg brightness-50 saturate-75"
+              />
+            ) : null}
             <div aria-hidden className="page-hero-backdrop-scrim" />
             <div className="insight-hero-stage-bottom-fade" aria-hidden />
 
@@ -221,6 +268,13 @@ export default async function InsightDetailPage({
           </div>
         </section>
       ) : null}
+
+      <ContentCommentsSection
+        type="article"
+        slug={post.slug}
+        initialComments={comments}
+        initialAuthor={buildCommentAuthorFromStudent(student)}
+      />
 
       <NewsletterCTA />
     </main>

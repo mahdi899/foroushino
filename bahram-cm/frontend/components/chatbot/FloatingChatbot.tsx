@@ -204,6 +204,11 @@ function headerFromLastReply(
   return aiPresentation;
 }
 
+/** Quick suggestions appear at conversation start — before any user message. */
+function isConversationStart(messages: ChatbotMessage[]): boolean {
+  return !messages.some((m) => m.role === 'user');
+}
+
 function latestReplyMessageKey(messages: ChatbotMessage[]): string | null {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const msg = messages[i];
@@ -1398,24 +1403,15 @@ export function FloatingChatbot({
   const showQuickPrompts =
     tab === 'chat' &&
     chatEnabled &&
-    !operatorActive &&
     !sending &&
-    !chatInputLocked &&
     quickSuggestions.length > 0 &&
-    messages.length === 1 &&
-    messages[0]?.id === 'welcome';
+    isConversationStart(messages);
 
   const sendQuickSuggestion = useCallback(
     (suggestion: ChatbotQuickSuggestion) => {
-      if (sending || chatInputLocked) return;
+      if (sending) return;
 
       dismissVisitorIntro();
-
-      if (showCaptcha) {
-        setErrorHint('ابتدا کپچا را درست حل و تأیید کنید.');
-        return;
-      }
-
       setErrorHint(null);
       track('chatbot_message', { session: sessionId });
 
@@ -1435,7 +1431,7 @@ export function FloatingChatbot({
         },
       ]);
     },
-    [sending, chatInputLocked, showCaptcha, sessionId, dismissVisitorIntro],
+    [sending, sessionId, dismissVisitorIntro],
   );
 
   const handleReplyModeSelect = useCallback((mode: ChatbotReplyMode) => {

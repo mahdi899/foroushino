@@ -29,8 +29,9 @@ function NavIcon({
     >
       <AdminLucideIcon
         name={name}
-        className="site-bottom-nav__icon h-[18px] w-[18px]"
+        size={18}
         strokeWidth={active ? 2.35 : 1.9}
+        className="site-bottom-nav__icon"
       />
     </span>
   );

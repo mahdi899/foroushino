@@ -521,7 +521,7 @@ export function SessionOperatorPanel({
             disabled={sending || !replyText.trim() || (validProfiles.length > 0 && !selectedProfileId)}
             className="btn btn-primary ms-auto inline-flex items-center gap-1.5 px-4 py-2 text-caption"
           >
-            {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+            {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
             ارسال پاسخ
           </button>
         </div>

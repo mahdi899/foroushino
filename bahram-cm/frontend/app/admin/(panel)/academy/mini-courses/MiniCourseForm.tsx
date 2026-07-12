@@ -162,6 +162,7 @@ export function MiniCourseForm({
       icon="PlayCircle"
       headerVariant="academy"
       stackHeader
+      backHref="/admin/academy/mini-courses"
       action={
         <div className="flex flex-wrap gap-2">
           <button

@@ -69,7 +69,7 @@ export function SmsEventTestModal({
             <p className="font-semibold text-primary-dark">تست رویداد پیامک</p>
             <p className="mt-0.5 text-caption text-text-muted">{eventLabel}</p>
           </div>
-          <button type="button" onClick={onClose} disabled={pending} className="rounded-lg p-1 text-text-muted hover:bg-surface-soft">
+          <button type="button" onClick={onClose} disabled={pending} className="admin-icon-btn">
             <X className="h-5 w-5" />
           </button>
         </div>

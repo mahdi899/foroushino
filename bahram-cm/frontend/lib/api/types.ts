@@ -33,6 +33,7 @@ export interface ApiArticle {
   excerpt: string | null;
   body?: string | null;
   cover_url: string | null;
+  cover_url_mobile?: string | null;
   reading_time: string | null;
   published_at: string | null;
   status: string;

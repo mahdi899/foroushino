@@ -22,9 +22,10 @@ export type AdminMiniCourse = {
 
 export type AdminMiniCourseComment = {
   id: number;
-  mini_course_id: number;
+  mini_course_id: number | null;
   author_name: string;
   author_email: string | null;
+  author_avatar_url?: string | null;
   body: string;
   status: 'pending' | 'approved' | 'rejected';
   parent_id: number | null;

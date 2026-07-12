@@ -2,7 +2,8 @@
 
 import { motion, useInView, useReducedMotion, type Variants } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ease, dur, VIEWPORT_ONCE } from "./easings";
+import { useIsMobileMotion } from "@/hooks/useIsMobileMotion";
+import { ease, dur, durMobile, VIEWPORT_ONCE, VIEWPORT_ONCE_MOBILE } from "./easings";
 
 type Props = {
   children: ReactNode;
@@ -21,8 +22,9 @@ export function Reveal({
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const prefersReducedMotion = useReducedMotion();
+  const isMobile = useIsMobileMotion();
   const [motionReady, setMotionReady] = useState(false);
-  const inView = useInView(ref, VIEWPORT_ONCE);
+  const inView = useInView(ref, isMobile ? VIEWPORT_ONCE_MOBILE : VIEWPORT_ONCE);
 
   useEffect(() => {
     setMotionReady(true);
@@ -30,18 +32,24 @@ export function Reveal({
 
   // SSR + first paint: no transform (matches reduced-motion) to avoid hydration mismatch.
   const reduce = !motionReady || prefersReducedMotion;
+  const light = isMobile && !reduce;
+  const travelY = reduce ? 0 : light ? Math.min(y, 14) : y;
 
   const variants: Variants = {
     hidden: {
       opacity: 0,
-      y: reduce ? 0 : y,
-      scale: reduce ? 1 : 0.97,
+      y: travelY,
+      scale: reduce || light ? 1 : 0.97,
     },
     show: {
       opacity: 1,
       y: 0,
       scale: 1,
-      transition: { duration: dur.lg, ease: ease.luxe, delay },
+      transition: {
+        duration: light ? durMobile.lg : dur.lg,
+        ease: ease.luxe,
+        delay: light ? delay * 0.5 : delay,
+      },
     },
   };
 

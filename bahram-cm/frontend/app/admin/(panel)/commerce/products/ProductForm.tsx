@@ -188,6 +188,7 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
     <AdminPage
       title={product ? `ویرایش: ${product.title}` : 'محصول جدید'}
       desc={product ? 'ویرایش اطلاعات محصول با ویرایشگر پیشرفته' : 'ایجاد دوره یا پکیج فروش'}
+      backHref="/admin/commerce/products"
       action={
         <div className="flex flex-wrap gap-2">
           <button

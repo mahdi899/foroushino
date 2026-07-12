@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AdminMobileBackLink } from '@/components/admin/layout/AdminMobileBackLink';
 import { AdminPageHeader, type AdminPageHeaderVariant } from '@/components/admin/layout/AdminPageHeader';
 import { AdminTableCardList } from '@/components/admin/layout/AdminTableCard';
 import { AdminLucideIcon } from '@/lib/admin/lucide-icons';
@@ -13,6 +14,8 @@ export function AdminPage({
   headerVariant = 'default',
   stackHeader = false,
   compactHeader = false,
+  backHref,
+  backLabel,
 }: {
   title: string;
   desc?: string;
@@ -24,9 +27,13 @@ export function AdminPage({
   stackHeader?: boolean;
   /** Single-line compact header — title and actions on one row */
   compactHeader?: boolean;
+  /** Mobile-only back link shown above the page header */
+  backHref?: string;
+  backLabel?: string;
 }) {
   return (
     <div className="min-w-0">
+      {backHref ? <AdminMobileBackLink href={backHref} label={backLabel} className="mb-3" /> : null}
       <AdminPageHeader
         icon={icon}
         title={title}

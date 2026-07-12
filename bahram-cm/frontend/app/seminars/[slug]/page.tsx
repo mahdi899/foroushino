@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { SeminarIntroBand } from '@/components/seminars/SeminarIntroBand';
+import { ContentCommentsSection } from '@/components/comments/ContentCommentsSection';
 import { Reveal } from '@/components/motion/Reveal';
 import { SitePhotoHeroFrame } from '@/components/sections/SitePhotoHeroFrame';
 import { getPublicSeminarBySlug } from '@/lib/services/seminars';
@@ -11,6 +12,9 @@ import { coalesceAlt, staticAltForSrc } from '@/lib/media/altShared';
 import { primarySiteImageSrc } from '@/lib/mediaUrl';
 import { sitePhotos } from '@/lib/site-photo-paths';
 import { sanitizeRichHtml } from '@/lib/sanitize';
+import { buildCommentAuthorFromStudent } from '@/lib/contentComments/author';
+import { getContentCommentsFromApi } from '@/lib/services/contentComments.server';
+import { getCurrentStudent } from '@/lib/student/session';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -39,10 +43,15 @@ export default async function PublicSeminarPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const result = await getPublicSeminarBySlug(slug);
+  const [result, student, commentsResult] = await Promise.all([
+    getPublicSeminarBySlug(slug),
+    getCurrentStudent(),
+    getContentCommentsFromApi('seminar', slug),
+  ]);
   if (!result.ok) notFound();
 
   const seminar = result.data;
+  const comments = commentsResult.ok ? commentsResult.data : [];
   const heroDesktop = seminar.cover_image || sitePhotos.landscapeSession;
   const heroMobile = seminar.cover_image_mobile || seminar.cover_image || sitePhotos.landscapeSession;
   const heroDesktopAlt = coalesceAlt(staticAltForSrc(heroDesktop), seminar.title, heroDesktop);
@@ -114,6 +123,13 @@ export default async function PublicSeminarPage({
           </Reveal>
         </div>
       </section>
+
+      <ContentCommentsSection
+        type="seminar"
+        slug={seminar.slug}
+        initialComments={comments}
+        initialAuthor={buildCommentAuthorFromStudent(student)}
+      />
     </main>
   );
 }

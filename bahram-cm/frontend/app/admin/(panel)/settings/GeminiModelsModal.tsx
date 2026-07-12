@@ -88,7 +88,7 @@ export function GeminiModelsModal({
               از Google AI Studio — فیلتر: {filterLabel}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-1 text-text-muted hover:bg-surface-soft hover:text-text">
+          <button type="button" onClick={onClose} className="admin-icon-btn hover:text-text">
             <X className="h-5 w-5" />
           </button>
         </div>

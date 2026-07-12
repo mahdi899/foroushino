@@ -5,6 +5,7 @@ import { SiteImage } from "@/components/ui/SiteImage";
 import { useState } from "react";
 import { site } from "@/content/site";
 import { Reveal } from "@/components/motion/Reveal";
+import { useIsMobileMotion } from "@/hooks/useIsMobileMotion";
 import { caseStudyPortrait } from "@/lib/site-photo-paths";
 
 type ResultItem = {
@@ -30,6 +31,8 @@ const results: ResultItem[] = site.transformations.map((item) => ({
 export function BigTestimonial() {
   const [active, setActive] = useState(0);
   const reduce = useReducedMotion();
+  const isMobile = useIsMobileMotion();
+  const light = isMobile && !reduce;
   const featured = results[active]!;
 
   return (
@@ -58,10 +61,10 @@ export function BigTestimonial() {
           <AnimatePresence mode="wait" initial={false}>
             <motion.article
               key={featured.slug}
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }}
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: light ? 4 : 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={reduce ? { opacity: 0 } : { opacity: 0, y: -6 }}
-              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              exit={reduce ? { opacity: 0 } : { opacity: 0, y: light ? -3 : -6 }}
+              transition={{ duration: light ? 0.22 : 0.35, ease: [0.16, 1, 0.3, 1] }}
               className="student-result-featured flex min-w-0 flex-[8] flex-col overflow-hidden rounded-card-lg sm:min-h-[10rem] sm:flex-row lg:min-h-0"
             >
               <div className="flex min-h-0 w-full flex-col sm:min-h-[10rem] sm:flex-row">

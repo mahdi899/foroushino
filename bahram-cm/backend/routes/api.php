@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ArticleController;
 use App\Http\Controllers\Api\ChatbotController;
+use App\Http\Controllers\Api\ContentCommentController;
 use App\Http\Controllers\Api\FaqController;
 use App\Http\Controllers\Api\StudentTestimonialController;
 use App\Http\Controllers\Api\LeadController;
@@ -54,6 +55,15 @@ Route::get('/mini-courses', [MiniCourseController::class, 'index']);
 Route::get('/mini-courses/{slug}', [MiniCourseController::class, 'show'])->where('slug', '[^/]+');
 Route::get('/mini-courses/{slug}/comments', [MiniCourseController::class, 'comments'])->where('slug', '[^/]+');
 Route::post('/mini-courses/{slug}/comments', [MiniCourseCommentController::class, 'store'])
+    ->where('slug', '[^/]+')
+    ->middleware('throttle:leads');
+
+// Unified content comments (course, article, seminar, mini_course)
+Route::get('/content/{type}/{slug}/comments', [ContentCommentController::class, 'index'])
+    ->where('type', 'course|mini_course|article|seminar|campaign_writing')
+    ->where('slug', '[^/]+');
+Route::post('/content/{type}/{slug}/comments', [ContentCommentController::class, 'store'])
+    ->where('type', 'course|mini_course|article|seminar|campaign_writing')
     ->where('slug', '[^/]+')
     ->middleware('throttle:leads');
 

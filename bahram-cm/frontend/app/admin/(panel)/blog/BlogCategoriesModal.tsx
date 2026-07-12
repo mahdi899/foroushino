@@ -35,7 +35,7 @@ export function BlogCategoriesModal({ open, onClose, onCategoriesChange }: BlogC
             </p>
             <p className="mt-0.5 text-caption text-text-muted">افزودن یا حذف دسته‌های مقالات</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-1 text-text-muted hover:bg-surface-soft">
+          <button type="button" onClick={onClose} className="admin-icon-btn" aria-label="بستن">
             <X className="h-5 w-5" />
           </button>
         </div>

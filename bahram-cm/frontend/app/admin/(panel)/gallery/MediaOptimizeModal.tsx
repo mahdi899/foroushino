@@ -439,7 +439,7 @@ export function MediaOptimizeModal({
                 )}
               </p>
             </div>
-            <button type="button" onClick={handleClose} disabled={disabled} className="rounded-md p-1 text-text-muted hover:bg-surface-soft" aria-label="بستن">
+            <button type="button" onClick={handleClose} disabled={disabled} className="admin-icon-btn" aria-label="بستن">
               <X className="h-5 w-5" />
             </button>
           </div>

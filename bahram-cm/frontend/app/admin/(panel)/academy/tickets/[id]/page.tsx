@@ -11,7 +11,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   if (!ticket) notFound();
 
   return (
-    <AdminPage title={`تیکت #${ticket.id}`} desc={ticket.subject}>
+    <AdminPage title={`تیکت #${ticket.id}`} desc={ticket.subject} backHref="/admin/academy/tickets">
       <div className="overflow-hidden rounded-xl border border-border">
         <TicketChatPanel ticket={ticket} />
       </div>

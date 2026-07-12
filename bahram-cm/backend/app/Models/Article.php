@@ -27,6 +27,7 @@ class Article extends Model
         'excerpt',
         'content',
         'featured_image',
+        'featured_image_mobile',
         'reading_time',
         'kicker',
         'meta_title',

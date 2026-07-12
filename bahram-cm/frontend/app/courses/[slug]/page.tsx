@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { ContentViewTracker } from "@/components/analytics/ContentViewTracker";
+import { ContentCommentsSection } from "@/components/comments/ContentCommentsSection";
 import { TrackedCTA } from "@/components/analytics/TrackedCTA";
 import { MdxBody } from "@/components/mdx/MdxBody";
 import { Reveal } from "@/components/motion/Reveal";
@@ -24,6 +25,9 @@ import { getCourseBySlug, getCourses } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
 import { resolveMediaAlt } from "@/lib/media/alt";
 import { courseCoverPhotos } from "@/lib/site-photo-paths";
+import { buildCommentAuthorFromStudent } from "@/lib/contentComments/author";
+import { getContentCommentsFromApi } from "@/lib/services/contentComments.server";
+import { getCurrentStudent } from "@/lib/student/session";
 
 const covers = courseCoverPhotos;
 
@@ -54,10 +58,14 @@ export default async function CourseDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const course = await getCourseBySlug(slug);
+  const [course, all, student, commentsResult] = await Promise.all([
+    getCourseBySlug(slug),
+    getCourses(),
+    getCurrentStudent(),
+    getContentCommentsFromApi('course', slug),
+  ]);
   if (!course) notFound();
-
-  const all = await getCourses();
+  const comments = commentsResult.ok ? commentsResult.data : [];
   const idx = all.findIndex((c) => c.slug === slug);
   const cover = covers[idx % covers.length]!;
   const coverAlt = await resolveMediaAlt(cover, `کاور ${course.title}`);
@@ -357,6 +365,13 @@ export default async function CourseDetailPage({
           </div>
         </section>
       ) : null}
+
+      <ContentCommentsSection
+        type="course"
+        slug={course.slug}
+        initialComments={comments}
+        initialAuthor={buildCommentAuthorFromStudent(student)}
+      />
     </main>
   );
 }

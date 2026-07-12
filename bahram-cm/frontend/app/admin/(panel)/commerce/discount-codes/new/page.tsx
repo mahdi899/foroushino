@@ -13,6 +13,7 @@ export default async function NewDiscountCodePage() {
       desc="تعریف کوپن تخفیف با محدودیت‌های دلخواه"
       icon="TicketPercent"
       headerVariant="commerce"
+      backHref="/admin/commerce/discount-codes"
     >
       <DiscountCodeForm products={products} />
     </AdminPage>
