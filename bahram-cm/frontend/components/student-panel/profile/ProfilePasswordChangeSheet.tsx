@@ -4,7 +4,8 @@ import { useActionState, useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, Eye, EyeOff, KeyRound, Loader2, X } from 'lucide-react';
 import { OtpDigitInput } from '@/components/student-panel/auth/OtpDigitInput';
-import { changePasswordAction, sendPasswordChangeOtpAction, type SimpleFormState } from '@/lib/student/panelActions';
+import { changePasswordAction, sendPasswordChangeOtpAction } from '@/lib/student/panelActions';
+import type { SimpleFormState } from '@/lib/student/panelFormUtils';
 import { cn } from '@/lib/cn';
 
 const INITIAL: SimpleFormState = {};

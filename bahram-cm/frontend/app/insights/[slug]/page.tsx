@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { Calendar, ChevronLeft, Clock } from "lucide-react";
 import { ContentViewTracker } from "@/components/analytics/ContentViewTracker";
+import { InsightAdjacentLink } from "@/components/blog/InsightAdjacentLink";
+import { InsightShareButton } from "@/components/blog/InsightShareButton";
 import { Reveal } from "@/components/motion/Reveal";
 import { NewsletterCTA } from "@/components/sections/NewsletterCTA";
 import { SiteImage } from "@/components/ui/SiteImage";
@@ -10,6 +11,7 @@ import { normalizeArticleSlugParam } from "@/lib/articleSlug";
 import { getArticleBySlug, getAllArticleSlugs, getArticles } from "@/lib/services/articles";
 import { ArticleBodyContent } from "@/components/blog/ArticleBodyContent";
 import { articleJsonLd, breadcrumbJsonLd } from "@/lib/jsonld";
+import { resolveArticleHeroExcerpt } from "@/lib/blog/heroExcerpt";
 import { formatDateFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
 
@@ -55,10 +57,14 @@ export default async function InsightDetailPage({
     redirect(`/insights/${encodeURIComponent(post.slug)}`);
   }
 
-  const listResult = await getArticles(1);
-  const related = listResult.ok
-    ? listResult.data.items.filter((p) => p.slug !== post.slug).slice(0, 3)
-    : [];
+  const listResult = await getArticles(1, 100);
+  const articles = listResult.ok ? listResult.data.items : [];
+  const currentIndex = articles.findIndex((item) => item.slug === post.slug);
+  const adjacentPrev =
+    currentIndex >= 0 && currentIndex < articles.length - 1 ? articles[currentIndex + 1] : null;
+  const adjacentNext = currentIndex > 0 ? articles[currentIndex - 1] : null;
+
+  const related = articles.filter((p) => p.slug !== post.slug).slice(0, 3);
 
   const jsonLd = [
     articleJsonLd({
@@ -76,6 +82,7 @@ export default async function InsightDetailPage({
   ];
 
   const coverSrc = post.featured_image ?? null;
+  const heroExcerpt = resolveArticleHeroExcerpt(post.excerpt, post.content, post.slug);
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
@@ -86,109 +93,87 @@ export default async function InsightDetailPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <section className="relative isolate overflow-hidden bg-ink">
-        {coverSrc ? (
-          <div className="insight-hero-stage insight-hero-stage--with-cover">
-            <SiteImage
-              src={coverSrc}
-              alt=""
-              fill
-              priority
-              sizes="100vw"
-              wrapperClassName="absolute inset-0 z-0 overflow-hidden"
-              className="object-cover blur-lg brightness-50 saturate-75"
-            />
-            <div aria-hidden className="insight-hero-backdrop-scrim" />
-            <div className="insight-hero-stage-bottom-fade" aria-hidden />
-
-            <div className="insight-hero-stage-stack container-luxe relative z-[3] mx-auto max-w-6xl min-w-0 pt-section-sm">
-              <Reveal>
-                <nav aria-label="مسیر صفحه" className="insight-hero-breadcrumb">
-                  <Link href="/insights" className="insight-hero-breadcrumb-link">
-                    بلاگ
-                  </Link>
-                  <ChevronLeft className="insight-hero-breadcrumb-sep rtl-flip h-3.5 w-3.5" aria-hidden />
-                  <span className="insight-hero-breadcrumb-current">{post.kicker || "مقاله"}</span>
-                </nav>
-              </Reveal>
-
-              <Reveal delay={0.06}>
-                <figure className="insight-hero-cover insight-hero-cover--featured">
+      <section className="insight-hero-split-section">
+        <div className="insight-hero-split container-luxe mx-auto max-w-6xl min-w-0">
+          <div className="insight-hero-split__grid">
+            {coverSrc ? (
+              <Reveal delay={0.04} className="insight-hero-split__media-wrap">
+                <figure className="insight-hero-split__media">
                   <SiteImage
                     src={coverSrc}
                     alt={post.featured_image_alt}
                     fallbackAlt={post.title}
                     fill
                     priority
-                    sizes="(max-width: 768px) 100vw, 45rem"
+                    sizes="(max-width: 1023px) 100vw, 42vw"
                     className="object-cover"
                   />
                 </figure>
               </Reveal>
-
-              <Reveal delay={0.1}>
-                <div className="insight-hero-stage-heading">
-                  <h1 className="insight-hero-cover-title max-w-full min-w-0 text-h2 text-balance md:text-h1">
-                    {post.title}
-                  </h1>
-                  {(post.published_at || post.reading_time) && (
-                    <div className="insight-hero-meta mt-4 md:mt-5">
-                      {post.published_at ? (
-                        <time dateTime={post.published_at} className="inline-flex items-center gap-1.5">
-                          <Calendar className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
-                          {formatDateFa(post.published_at)}
-                        </time>
-                      ) : null}
-                      {post.reading_time ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
-                          {post.reading_time}
-                        </span>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
+            ) : (
+              <Reveal delay={0.04} className="insight-hero-split__media-wrap">
+                <div
+                  aria-hidden
+                  className="insight-hero-split__media insight-hero-split__media--fallback"
+                />
               </Reveal>
-            </div>
-          </div>
-        ) : (
-          <div className="container-luxe relative z-[2] mx-auto max-w-6xl min-w-0 pb-8 pt-section-sm md:pb-10">
-            <Reveal>
-              <nav aria-label="مسیر صفحه" className="insight-hero-breadcrumb">
-                <Link href="/insights" className="insight-hero-breadcrumb-link">
-                  بلاگ
-                </Link>
-                <ChevronLeft className="insight-hero-breadcrumb-sep rtl-flip h-3.5 w-3.5" aria-hidden />
-                <span className="insight-hero-breadcrumb-current">{post.kicker || "مقاله"}</span>
-              </nav>
-            </Reveal>
-            <Reveal delay={0.08}>
-              <h1 className="mt-4 max-w-full min-w-0 text-h2 text-balance text-bone sm:text-h1 md:mt-5 lg:text-display">
-                {post.title}
-              </h1>
-            </Reveal>
-            {(post.published_at || post.reading_time) && (
-              <Reveal delay={0.14}>
-                <div className="insight-hero-meta insight-hero-meta--page mt-7">
+            )}
+
+            <Reveal className="insight-hero-split__content">
+              <div className="insight-hero-split__toolbar">
+                <div className="insight-hero-split__meta-row">
+                  <Link href="/insights" className="insight-hero-split__tag">
+                    <span className="insight-hero-split__tag-dot" aria-hidden />
+                    بلاگ
+                  </Link>
+                  {post.reading_time ? (
+                    <span className="insight-hero-split__meta-item">
+                      زمان مطالعه: {post.reading_time}
+                    </span>
+                  ) : null}
                   {post.published_at ? (
-                    <time dateTime={post.published_at} className="inline-flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
+                    <time dateTime={post.published_at} className="insight-hero-split__meta-item">
                       {formatDateFa(post.published_at)}
                     </time>
                   ) : null}
-                  {post.reading_time ? (
-                    <span className="inline-flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
-                      {post.reading_time}
-                    </span>
-                  ) : null}
                 </div>
-              </Reveal>
-            )}
-          </div>
-        )}
+                <InsightShareButton title={post.title} text={heroExcerpt} />
+              </div>
 
-        <div className="insight-hero-section-fade" aria-hidden />
+              <header className="insight-hero-split__heading">
+                <h1 className="insight-hero-split__title">
+                  {post.title}
+                </h1>
+                {heroExcerpt ? (
+                  <p className="insight-hero-split__excerpt">{heroExcerpt}</p>
+                ) : null}
+              </header>
+
+              {adjacentPrev || adjacentNext ? (
+                <nav aria-label="مقالات مجاور" className="insight-hero-adjacent-nav">
+                  {adjacentNext ? (
+                    <InsightAdjacentLink
+                      href={`/insights/${adjacentNext.slug}`}
+                      title={adjacentNext.title}
+                      direction="next"
+                    />
+                  ) : (
+                    <span className="insight-hero-adjacent insight-hero-adjacent--placeholder" aria-hidden />
+                  )}
+                  {adjacentPrev ? (
+                    <InsightAdjacentLink
+                      href={`/insights/${adjacentPrev.slug}`}
+                      title={adjacentPrev.title}
+                      direction="prev"
+                    />
+                  ) : (
+                    <span className="insight-hero-adjacent insight-hero-adjacent--placeholder" aria-hidden />
+                  )}
+                </nav>
+              ) : null}
+            </Reveal>
+          </div>
+        </div>
       </section>
 
       <section className="py-section-sm">

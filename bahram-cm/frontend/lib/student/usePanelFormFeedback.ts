@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { usePanelToast } from '@/components/student-panel/ui/PanelToastContext';
-import type { SimpleFormState } from '@/lib/student/panelActions';
+import type { SimpleFormState } from '@/lib/student/panelFormUtils';
 
 type Options = {
   successTitle?: string;

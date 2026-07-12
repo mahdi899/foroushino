@@ -3,6 +3,17 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Phone } from 'lucide-react';
+import { apiErrorMessage } from '@/lib/api/errors';
+
+function readResponseError(payload: unknown, fallback: string): string {
+  if (typeof payload === 'string' && payload.trim()) return payload;
+  if (payload && typeof payload === 'object' && 'error' in payload) {
+    const err = (payload as { error?: unknown }).error;
+    if (typeof err === 'string' && err.trim()) return err;
+    return apiErrorMessage(payload, undefined, fallback);
+  }
+  return fallback;
+}
 
 type Step = 'credentials' | 'otp';
 
@@ -40,7 +51,7 @@ export function SatLoginForm() {
     setPending(false);
 
     if (!res.ok) {
-      setError(json.error || 'ورود ناموفق بود.');
+      setError(readResponseError(json, 'ورود ناموفق بود.'));
       return;
     }
 
@@ -64,7 +75,7 @@ export function SatLoginForm() {
     setPending(false);
 
     if (!res.ok) {
-      setError(json.error || 'کد تأیید نامعتبر است.');
+      setError(readResponseError(json, 'کد تأیید نامعتبر است.'));
       return;
     }
 
@@ -85,7 +96,7 @@ export function SatLoginForm() {
     if (res.ok) setResendIn(RESEND_SECONDS);
     else {
       const json = await res.json().catch(() => ({}));
-      setError(json.error || 'ارسال مجدد ممکن نیست.');
+      setError(readResponseError(json, 'ارسال مجدد ممکن نیست.'));
     }
   }
 

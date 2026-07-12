@@ -1,7 +1,8 @@
 'use client';
 
 import { useActionState } from 'react';
-import { requestCashbackPayoutAction, type SimpleFormState } from '@/lib/student/panelActions';
+import { requestCashbackPayoutAction } from '@/lib/student/panelActions';
+import type { SimpleFormState } from '@/lib/student/panelFormUtils';
 import type { VerifiedBankAccount } from '@/lib/student/bankAccountActions';
 import { usePanelFormFeedback } from '@/lib/student/usePanelFormFeedback';
 

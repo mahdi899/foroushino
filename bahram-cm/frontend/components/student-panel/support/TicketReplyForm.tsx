@@ -1,7 +1,8 @@
 'use client';
 
 import { useActionState } from 'react';
-import { replyTicketAction, type SimpleFormState } from '@/lib/student/panelActions';
+import { replyTicketAction } from '@/lib/student/panelActions';
+import type { SimpleFormState } from '@/lib/student/panelFormUtils';
 import { usePanelFormFeedback } from '@/lib/student/usePanelFormFeedback';
 
 const INITIAL: SimpleFormState = {};

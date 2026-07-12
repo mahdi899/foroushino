@@ -9,7 +9,8 @@ import { ProfileExtrasBundle } from '@/components/student-panel/profile/ProfileE
 import { VerifiedIdentitySection } from '@/components/student-panel/profile/VerifiedIdentitySection';
 import { resolveAccountTier } from '@/lib/student/accountTier';
 import { cn } from '@/lib/cn';
-import { updateProfileAction, type SimpleFormState } from '@/lib/student/panelActions';
+import { updateProfileAction } from '@/lib/student/panelActions';
+import type { SimpleFormState } from '@/lib/student/panelFormUtils';
 import { usePanelFormFeedback } from '@/lib/student/usePanelFormFeedback';
 import {
   buildProfileFormSnapshot,
