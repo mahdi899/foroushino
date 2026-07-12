@@ -21,8 +21,7 @@ const ARTICLE_ALLOWED_ATTR: sanitizeHtml.IOptions['allowedAttributes'] = {
   img: ['src', 'srcset', 'alt', 'title', 'width', 'height', 'loading', 'decoding'],
   video: ['src', 'controls', 'autoplay', 'muted', 'loop', 'playsinline', 'preload', 'poster', 'width', 'height'],
   source: ['src', 'type'],
-  th: ['scope', 'colspan', 'rowspan'],
-  td: ['colspan', 'rowspan'],
+  div: ['class', 'data-atrin-video', 'data-youtube', 'data-aparat', 'data-direct', 'data-active'],
 };
 
 const ARTICLE_OPTIONS: sanitizeHtml.IOptions = {

@@ -18,6 +18,8 @@ class SatApplication extends Model
         'admin_note',
         'submitted_at',
         'reviewed_at',
+        'synced_to_sat_at',
+        'sat_sync_error',
     ];
 
     protected $casts = [
@@ -25,6 +27,7 @@ class SatApplication extends Model
         'status' => SatApplicationStatus::class,
         'submitted_at' => 'datetime',
         'reviewed_at' => 'datetime',
+        'synced_to_sat_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

@@ -14,4 +14,6 @@ enum IdentityCapability: string
     case FaceLiveness = 'FACE_LIVENESS';
     case FaceMatch = 'FACE_MATCH';
     case MobileNationalCodeMatch = 'MOBILE_NATIONAL_CODE_MATCH';
+    case CardNationalCodeMatch = 'CARD_NATIONAL_CODE_MATCH';
+    case IbanNationalCodeMatch = 'IBAN_NATIONAL_CODE_MATCH';
 }

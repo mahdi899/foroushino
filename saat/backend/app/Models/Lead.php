@@ -24,7 +24,7 @@ class Lead extends Model
         'last_call_at', 'call_count', 'last_note', 'conversion_probability', 'pain_point',
         'objection', 'next_followup_at', 'rating', 'assigned_agent_id', 'assigned_team_id',
         'locked_by', 'locked_until', 'returned_to_pool', 'do_not_call_at', 'duplicate_of_id',
-        'import_batch_id', 'metadata',
+        'import_batch_id', 'bahram_application_id', 'metadata',
     ];
 
     protected function casts(): array

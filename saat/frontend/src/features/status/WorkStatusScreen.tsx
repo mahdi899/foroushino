@@ -10,6 +10,8 @@ import {
   PhoneOutgoing,
   ChevronLeft,
   Sparkles,
+  CalendarDays,
+  Coffee,
   type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
@@ -25,9 +27,16 @@ import {
 import { AvailabilitySheet } from '@/components/domain/AvailabilitySwitcher'
 import { getSuggestion, filterLeadsForAgent } from '@/lib/leadUtils'
 import { availabilityLabels } from '@/data/labels'
-import { toFa, formatHms } from '@/lib/format'
+import { toFa, formatHms, formatJalaliShort } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
+import {
+  calcLiveBreakSeconds,
+  calcLiveProductiveSeconds,
+  isProductiveAvailability,
+  isShiftOpen,
+} from '@/lib/shiftUtils'
+import { performEndShift } from '@/services/shiftActions'
 
 const TG = 'text-[#3390EC] dark:text-[#8774E1]'
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
@@ -180,10 +189,11 @@ export function WorkStatusScreen() {
   const agent = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
   const currentAgentId = useStore((s) => s.currentAgentId)
   const availability = useStore((s) => s.availability)
+  const availabilityChangedAt = useStore((s) => s.availabilityChangedAt)
   const workSession = useStore((s) => s.workSession)
+  const workDaySummaries = useStore((s) => s.workDaySummaries)
   const leads = useStore((s) => s.leads)
   const followups = useStore((s) => s.followups)
-  const endShift = useStore((s) => s.endShift)
   const pushToast = useStore((s) => s.pushToast)
 
   const [statusOpen, setStatusOpen] = useState(false)
@@ -194,9 +204,20 @@ export function WorkStatusScreen() {
     return () => clearInterval(t)
   }, [])
 
-  const elapsedSec = workSession?.startedAt
-    ? Math.max(0, Math.floor((now - new Date(workSession.startedAt).getTime()) / 1000))
-    : 0
+  const productiveSec =
+    workSession && isShiftOpen(workSession)
+      ? calcLiveProductiveSeconds(workSession, availability, availabilityChangedAt, now)
+      : 0
+
+  const breakSec =
+    workSession && isShiftOpen(workSession)
+      ? calcLiveBreakSeconds(workSession, availability, availabilityChangedAt, now)
+      : 0
+
+  const recentWorkDays = useMemo(
+    () => workDaySummaries.filter((day) => day.sessionsCount > 0).slice(0, 7),
+    [workDaySummaries],
+  )
 
   const myLeads = useMemo(
     () =>
@@ -211,10 +232,11 @@ export function WorkStatusScreen() {
 
   const Icon = availabilityIcon[availability]
   const goalPct = agent.callGoal ? Math.round((agent.callsToday / agent.callGoal) * 100) : 0
-  const shiftActive = Boolean(workSession?.startedAt)
-  const shiftTier = shiftActive ? getShiftTier(elapsedSec) : 'early'
-  const shiftProgressPct = Math.min(100, Math.round((elapsedSec / SHIFT_GOAL_SEC) * 100))
+  const shiftActive = isShiftOpen(workSession)
+  const shiftTier = shiftActive ? getShiftTier(productiveSec) : 'early'
+  const shiftProgressPct = Math.min(100, Math.round((productiveSec / SHIFT_GOAL_SEC) * 100))
   const isPremiumShift = shiftTier === 'premium'
+  const timerRunning = shiftActive && isProductiveAvailability(availability)
   const ReasonIcon = suggestion ? suggestReasonIcon[suggestion.reason] : null
 
   return (
@@ -229,7 +251,8 @@ export function WorkStatusScreen() {
           transition={{ ...spring, duration: 0.4 }}
           className={cn(
             'glass-hero relative overflow-hidden rounded-[26px] p-5 transition-[box-shadow,background] duration-700',
-            shiftActive && shiftHeroClass[shiftTier],
+            availability === 'doing_follow_up' && 'border border-warning-300/45 bg-warning-50/75 dark:border-warning-400/25 dark:bg-warning-500/10',
+            shiftActive && availability !== 'doing_follow_up' && shiftHeroClass[shiftTier],
           )}
         >
           <div className="pointer-events-none absolute inset-0">
@@ -259,7 +282,9 @@ export function WorkStatusScreen() {
               onClick={() => setStatusOpen(true)}
               className={cn(
                 'glass-inset inline-flex max-w-[62%] items-center gap-2 rounded-full border px-3.5 py-2',
-                'border-white/55 text-[12px] font-bold text-text dark:border-white/10',
+                availability === 'doing_follow_up'
+                  ? 'border-warning-300/70 bg-warning-50/90 text-warning-900 dark:border-warning-400/30 dark:bg-warning-500/15 dark:text-warning-100'
+                  : 'border-white/55 text-[12px] font-bold text-text dark:border-white/10',
               )}
             >
               <span
@@ -302,8 +327,20 @@ export function WorkStatusScreen() {
                   className={isPremiumShift ? 'text-secondary-600 dark:text-secondary-400' : TG}
                   strokeWidth={2.25}
                 />
-                {isPremiumShift ? 'بیش از ۸ ساعت در شیفت' : `مدت شیفت امروز · ${toFa(shiftProgressPct)}٪ از ۸ ساعت`}
+                {isPremiumShift ? 'بیش از ۸ ساعت در شیفت' : `زمان مولد امروز · ${toFa(shiftProgressPct)}٪ از ۸ ساعت`}
               </span>
+              {!timerRunning && shiftActive && (
+                <span className="mt-1 text-[10px] font-semibold text-text-soft">
+                  {availability === 'on_break'
+                    ? 'در استراحت — تایمر متوقف است'
+                    : 'خارج از حالت آماده تماس — تایمر متوقف است'}
+                </span>
+              )}
+              {timerRunning && availability === 'doing_follow_up' && (
+                <span className="mt-1 text-[10px] font-semibold text-warning-700 dark:text-warning-300">
+                  مشغول پیگیری — زمان شیفت در حال ثبت است
+                </span>
+              )}
 
               <div className="relative mt-3 flex h-[88px] w-[min(100%,280px)] items-center justify-center">
                 <motion.span
@@ -321,7 +358,7 @@ export function WorkStatusScreen() {
                     isPremiumShift && 'glass-inset border-secondary-400/25',
                   )}
                 >
-                  <AnimatedShiftTimer totalSec={elapsedSec} />
+                  <AnimatedShiftTimer totalSec={productiveSec} />
                 </div>
               </div>
             </div>
@@ -372,12 +409,67 @@ export function WorkStatusScreen() {
             label="زمان مکالمه امروز"
           />
           <StatTile
+            icon={Coffee}
+            iconWrap="icon-3d-warning"
+            iconClass="text-[#1A1200]"
+            value={formatHms(breakSec)}
+            label="استراحت امروز"
+          />
+          <StatTile
             icon={Timer}
             iconWrap="icon-3d-primary"
             iconClass="text-white"
             value={toFa(agent.successfulToday)}
             label="تماس موفق امروز"
           />
+        </motion.div>
+
+        {/* Work days summary */}
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ ...spring, delay: 0.22 }}
+          className={cn(
+            'glass-card overflow-hidden rounded-[22px] border border-white/55 dark:border-white/10',
+          )}
+        >
+          <div className="flex items-center gap-2 border-b border-white/40 px-4 py-3.5 dark:border-white/8">
+            <span className="icon-3d icon-3d-primary flex h-8 w-8 items-center justify-center">
+              <CalendarDays size={15} className="text-white" strokeWidth={2.35} />
+            </span>
+            <div>
+              <p className="text-[14px] font-black text-text">خلاصه روزهای کاری</p>
+              <p className="text-[11px] font-semibold text-text-soft">۱۴ روز اخیر</p>
+            </div>
+          </div>
+
+          {recentWorkDays.length === 0 ? (
+            <p className="px-4 py-5 text-center text-[13px] font-semibold text-text-muted">
+              هنوز روز کاری ثبت نشده
+            </p>
+          ) : (
+            <div className="divide-y divide-white/35 dark:divide-white/8">
+              {recentWorkDays.map((day) => (
+                <div key={day.date} className="flex items-center justify-between gap-3 px-4 py-3.5">
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-bold text-text">
+                      {formatJalaliShort(new Date(`${day.date}T12:00:00`))}
+                      {day.isOpen ? ' · امروز' : ''}
+                    </p>
+                    <p className="mt-0.5 text-[11px] font-semibold text-text-soft">
+                      {toFa(day.sessionsCount)} شیفت · مکالمه {formatHms(day.totalCallSeconds)}
+                    </p>
+                  </div>
+                  <div className="text-left">
+                    <p className="ltr-nums text-[15px] font-black tabular-nums text-text">
+                      {formatHms(day.totalProductiveSeconds)}
+                    </p>
+                    <p className="text-[10px] font-semibold text-text-soft">زمان مولد</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         {/* Next call suggestion */}
@@ -447,9 +539,10 @@ export function WorkStatusScreen() {
             whileTap={{ scale: 0.98 }}
             onClick={() => {
               haptic('warning')
-              endShift()
-              pushToast('شیفت پایان یافت')
-              navigate('/profile', { replace: true })
+              void performEndShift().then(() => {
+                pushToast('شیفت پایان یافت')
+                navigate('/profile', { replace: true })
+              })
             }}
             className={cn(
               'relative flex h-[54px] w-full items-center justify-center gap-2 overflow-hidden',

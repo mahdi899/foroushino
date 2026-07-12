@@ -129,6 +129,26 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   }
 }
 
+.admin-root .admin-shell.fixed .admin-main-scroll {
+  padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+  padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 640px) {
+  .admin-root .admin-shell.fixed .admin-main-scroll {
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  }
+}
+@media (min-width: 1024px) {
+  .admin-root .admin-shell.fixed .admin-main-scroll {
+    padding-top: 0;
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+    padding-bottom: 1rem;
+  }
+}
+
 .admin-root .admin-article-toolbar {
   display: flex;
   flex-direction: row;
@@ -160,7 +180,10 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   width: 100%;
   max-width: none;
 }
-.admin-root .admin-article-layout--focus > .card {
+.admin-root .admin-article-layout--focus > .card,
+.admin-root .admin-article-layout--focus > .article-editor-focus-card {
+  width: 100%;
+  max-width: none;
   min-height: min(72dvh, 56rem);
 }
 .admin-root .admin-article-layout--focus > .article-editor-focus-card {
@@ -1104,6 +1127,12 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   .admin-root[data-sidebar-collapsed] .admin-main {
     margin-right: 4.25rem;
     width: calc(100% - 4.25rem);
+  }
+
+  /* Focus mode hides the sidebar — reclaim full viewport width */
+  .admin-root .admin-shell.fixed .admin-main {
+    margin-right: 0;
+    width: 100%;
   }
 }
 

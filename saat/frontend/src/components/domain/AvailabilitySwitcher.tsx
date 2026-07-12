@@ -7,9 +7,11 @@ import { availabilityLabels } from '@/data/labels'
 import { availabilityDotClass, availabilityIcon } from '@/components/domain/icons'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
+import { isShiftOpen } from '@/lib/shiftUtils'
+import { performSetAvailability } from '@/services/shiftActions'
 import type { Availability } from '@/types'
 
-const OPTIONS: Availability[] = ['available', 'on_break', 'doing_follow_up', 'offline']
+const OPTIONS: Availability[] = ['available', 'on_break', 'offline']
 
 export function AvailabilityPill() {
   const [open, setOpen] = useState(false)
@@ -17,7 +19,7 @@ export function AvailabilityPill() {
   const workSession = useStore((s) => s.workSession)
   const navigate = useNavigate()
 
-  if (!workSession?.startedAt) {
+  if (!isShiftOpen(workSession)) {
     return (
       <button
         onClick={() => navigate('/shift-start')}
@@ -45,7 +47,6 @@ export function AvailabilityPill() {
 
 export function AvailabilitySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const availability = useStore((s) => s.availability)
-  const setAvailability = useStore((s) => s.setAvailability)
   const pushToast = useStore((s) => s.pushToast)
   const navigate = useNavigate()
 
@@ -60,9 +61,10 @@ export function AvailabilitySheet({ open, onClose }: { open: boolean; onClose: (
               key={status}
               onClick={() => {
                 haptic('selection')
-                setAvailability(status)
-                pushToast(`وضعیت به «${availabilityLabels[status]}» تغییر کرد`, 'info')
-                onClose()
+                void performSetAvailability(status).then(() => {
+                  pushToast(`وضعیت به «${availabilityLabels[status]}» تغییر کرد`, 'info')
+                  onClose()
+                })
               }}
               className={cn(
                 'flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-right transition-colors',

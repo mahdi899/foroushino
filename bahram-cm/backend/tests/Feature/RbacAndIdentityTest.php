@@ -37,6 +37,8 @@ class RbacAndIdentityTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const PHONE_USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -202,7 +204,8 @@ class RbacAndIdentityTest extends TestCase
 
         Sanctum::actingAs($student);
 
-        $this->postJson('/api/v1/student/identity-verification/submit', $this->identityDraftPayload())
+        $this->withHeader('User-Agent', self::PHONE_USER_AGENT)
+            ->postJson('/api/v1/student/identity-verification/submit', $this->identityDraftPayload())
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'status_locked');
 
@@ -277,12 +280,18 @@ class RbacAndIdentityTest extends TestCase
     {
         $student = User::factory()->create(['is_admin' => false, 'mobile' => '09126667788']);
         app(EnsureIdentityProfile::class)($student);
+        $account = \App\Models\VerifiedBankAccount::query()->create([
+            'user_id' => $student->id,
+            'verification_fee' => 0,
+            'verified_at' => now(),
+        ]);
+        $account->setCardNumber('6037991234567890');
+        $account->save();
 
         Sanctum::actingAs($student);
 
         $this->postJson('/api/v1/student/cashback-payouts', [
-            'card_number' => '6037991234567890',
-            'card_holder_name' => 'تست',
+            'verified_bank_account_id' => $account->id,
         ])
             ->assertStatus(422)
             ->assertJsonPath('error.code', 'identity_required');

@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\Admin\NotificationAdminController;
 use App\Http\Controllers\Api\V1\Admin\ReferralAdminController;
 use App\Http\Controllers\Api\V1\Admin\RoleAdminController;
 use App\Http\Controllers\Api\V1\Admin\SatApplicationAdminController;
+use App\Http\Controllers\Api\V1\Admin\SatIntegrationAdminController;
 use App\Http\Controllers\Api\V1\Admin\SeminarAdminController;
 use App\Http\Controllers\Api\V1\Admin\SmsAdminController;
 use App\Http\Controllers\Api\V1\Admin\SmsCenterConfigController;
@@ -59,9 +60,12 @@ use App\Http\Controllers\Api\V1\Student\SeminarAssetDownloadController;
 use App\Http\Controllers\Api\V1\Student\SeminarController as StudentSeminarController;
 use App\Http\Controllers\Api\V1\Student\SpotPlayerSessionController as StudentSpotPlayerSessionController;
 use App\Http\Controllers\Api\V1\Student\TicketController as StudentTicketController;
+use App\Http\Controllers\Api\V1\Student\VerifiedBankAccountController as StudentVerifiedBankAccountController;
 use App\Http\Controllers\Api\V1\Sat\ActivityController as SatActivityController;
 use App\Http\Controllers\Api\V1\Sat\AuthController as SatAuthController;
 use App\Http\Controllers\Api\V1\Sat\CallController as SatCallController;
+use App\Http\Controllers\Api\V1\Sat\InboundApplicationController;
+use App\Http\Controllers\Api\V1\Sat\IntegrationTokenController;
 use App\Http\Controllers\Api\V1\Sat\LeadController as SatLeadController;
 use App\Http\Controllers\Api\V1\Sat\StaffController as SatStaffController;
 use Illuminate\Support\Facades\Route;
@@ -102,7 +106,21 @@ Route::prefix('sat')->group(function () {
         Route::post('activities', [SatActivityController::class, 'store']);
         Route::post('activities/{activity}/approve', [SatActivityController::class, 'approve'])->whereNumber('activity');
         Route::post('activities/{activity}/reject', [SatActivityController::class, 'reject'])->whereNumber('activity');
+
+        Route::get('integration-tokens', [IntegrationTokenController::class, 'index']);
+        Route::post('integration-tokens', [IntegrationTokenController::class, 'store']);
+        Route::delete('integration-tokens/{integrationToken}', [IntegrationTokenController::class, 'destroy'])->whereNumber('integrationToken');
     });
+});
+
+/*
+|--------------------------------------------------------------------------
+| SAT inbound integration (Bahram site → SAT, token auth, cross-domain)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('integrations/inbound')->middleware('sat.integration:inbound:applications')->group(function () {
+    Route::get('ping', [InboundApplicationController::class, 'ping']);
+    Route::post('applications', [InboundApplicationController::class, 'store']);
 });
 
 /*
@@ -145,6 +163,13 @@ Route::prefix('student')->group(function () {
 
         Route::get('cashback-payouts', [StudentCashbackPayoutController::class, 'index']);
         Route::post('cashback-payouts', [StudentCashbackPayoutController::class, 'store']);
+
+        Route::get('verified-bank-accounts', [StudentVerifiedBankAccountController::class, 'index']);
+        Route::get('verified-bank-accounts/rules', [StudentVerifiedBankAccountController::class, 'rules']);
+        Route::post('verified-bank-accounts', [StudentVerifiedBankAccountController::class, 'store'])
+            ->middleware('throttle:bank-account-verify');
+        Route::delete('verified-bank-accounts/{bankAccount}', [StudentVerifiedBankAccountController::class, 'destroy'])
+            ->whereNumber('bankAccount');
 
         Route::get('identity-verification', [StudentIdentityVerificationController::class, 'show']);
         Route::post('identity-verification/draft', [StudentIdentityVerificationController::class, 'draft']);
@@ -251,6 +276,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     Route::get('faqs', [FaqController::class, 'index']);
     Route::post('faqs', [FaqController::class, 'store']);
+    Route::post('faqs/reorder', [FaqController::class, 'reorder']);
     Route::get('faqs/{faq}', [FaqController::class, 'show'])->whereNumber('faq');
     Route::match(['put', 'patch'], 'faqs/{faq}', [FaqController::class, 'update'])->whereNumber('faq');
     Route::delete('faqs/{faq}', [FaqController::class, 'destroy'])->whereNumber('faq');
@@ -381,6 +407,10 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 
     Route::get('sat-applications', [SatApplicationAdminController::class, 'index']);
     Route::patch('sat-applications/{satApplication}', [SatApplicationAdminController::class, 'update'])->whereNumber('satApplication');
+    Route::get('sat-integration', [SatIntegrationAdminController::class, 'show']);
+    Route::patch('sat-integration', [SatIntegrationAdminController::class, 'update']);
+    Route::post('sat-integration/test', [SatIntegrationAdminController::class, 'test']);
+    Route::post('sat-applications/{satApplication}/resync', [SatIntegrationAdminController::class, 'resync'])->whereNumber('satApplication');
 
     Route::get('tickets', [TicketAdminController::class, 'index']);
     Route::post('tickets', [TicketAdminController::class, 'store']);

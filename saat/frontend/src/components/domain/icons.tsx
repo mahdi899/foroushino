@@ -145,7 +145,7 @@ export const availabilityTone: Record<Availability, AvailabilityTone> = {
   available: 'success',
   in_call: 'primary',
   on_break: 'warning',
-  doing_follow_up: 'secondary',
+  doing_follow_up: 'warning',
   offline: 'neutral',
 }
 
@@ -153,7 +153,7 @@ export const availabilityDotClass: Record<Availability, string> = {
   available: 'bg-success-500',
   in_call: 'bg-primary-500',
   on_break: 'bg-warning-500',
-  doing_follow_up: 'bg-secondary-500',
+  doing_follow_up: 'bg-warning-500',
   offline: 'bg-neutral-300',
 }
 

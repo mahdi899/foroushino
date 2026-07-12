@@ -190,6 +190,15 @@ export type AdminSatApplication = {
   admin_note: string | null;
   submitted_at: string | null;
   reviewed_at: string | null;
+  synced_to_sat_at: string | null;
+  sat_sync_error: string | null;
+};
+
+export type AdminSatIntegrationConfig = {
+  enabled: boolean;
+  api_url: string | null;
+  api_token_set: boolean;
+  api_token_preview: string | null;
 };
 
 export type AdminTicket = {

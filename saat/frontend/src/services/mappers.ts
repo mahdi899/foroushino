@@ -9,6 +9,8 @@ import type {
   Sale,
   Wallet,
   WalletTransaction,
+  WorkDaySummary,
+  WorkSession,
 } from '@/types'
 import type { Suggestion } from './logic'
 
@@ -162,5 +164,31 @@ export function mapSuggestion(dto: Dto | null | undefined): Suggestion | null {
     lead: mapLead(dto.lead),
     reason: dto.reason,
     score: 0,
+  }
+}
+
+export function mapWorkSession(dto: Dto | null | undefined): WorkSession | null {
+  if (!dto) return null
+
+  return {
+    id: dto.id != null ? id(dto.id) : undefined,
+    startedAt: dto.started_at ?? null,
+    endedAt: dto.ended_at ?? null,
+    totalBreakSeconds: Number(dto.total_break_seconds ?? 0),
+    totalCallSeconds: Number(dto.total_call_seconds ?? 0),
+    totalProductiveSeconds: Number(dto.total_productive_seconds ?? 0),
+  }
+}
+
+export function mapWorkDaySummary(dto: Dto): WorkDaySummary {
+  return {
+    date: dto.date,
+    sessionsCount: Number(dto.sessions_count ?? 0),
+    totalProductiveSeconds: Number(dto.total_productive_seconds ?? 0),
+    totalBreakSeconds: Number(dto.total_break_seconds ?? 0),
+    totalCallSeconds: Number(dto.total_call_seconds ?? 0),
+    firstStartedAt: dto.first_started_at ?? null,
+    lastEndedAt: dto.last_ended_at ?? null,
+    isOpen: !!dto.is_open,
   }
 }

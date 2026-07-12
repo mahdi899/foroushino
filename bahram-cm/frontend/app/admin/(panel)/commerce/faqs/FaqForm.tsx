@@ -65,7 +65,14 @@ export function FaqForm({ faq }: { faq?: AdminFaq }) {
       </label>
       <label>
         <span className="field-label">پاسخ *</span>
-        <textarea className="field-input" rows={5} value={form.answer} onChange={(e) => setForm((f) => ({ ...f, answer: e.target.value }))} required />
+        <textarea
+          className="field-input min-h-[140px] resize-y"
+          rows={6}
+          value={form.answer}
+          onChange={(e) => setForm((f) => ({ ...f, answer: e.target.value }))}
+          placeholder="پاسخ کامل سوال را اینجا بنویسید…"
+          required
+        />
       </label>
       <div className="grid gap-4 md:grid-cols-2">
         <label>
@@ -73,8 +80,17 @@ export function FaqForm({ faq }: { faq?: AdminFaq }) {
           <input className="field-input" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} />
         </label>
         <label>
-          <span className="field-label">ترتیب</span>
-          <input className="field-input" type="number" value={form.sort_order} onChange={(e) => setForm((f) => ({ ...f, sort_order: Number(e.target.value) }))} />
+          <span className="field-label">ترتیب نمایش</span>
+          <input
+            className="field-input"
+            type="number"
+            min={0}
+            value={form.sort_order}
+            onChange={(e) => setForm((f) => ({ ...f, sort_order: Number(e.target.value) }))}
+          />
+          <span className="mt-1 block text-caption text-text-muted">
+            برای مرتب‌سازی سریع‌تر، از فهرست سوالات با درگ‌اند‌دراپ استفاده کنید.
+          </span>
         </label>
       </div>
       <label className="flex items-center gap-2">

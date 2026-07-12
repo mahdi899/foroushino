@@ -2,11 +2,19 @@
 
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\Integrations\InboundApplicationController;
 use App\Http\Controllers\Api\V1\MeAvatarController;
 use App\Http\Controllers\Api\V1\MeController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', HealthController::class);
+
+Route::prefix('integrations/inbound')
+    ->middleware('integration.token:inbound:applications')
+    ->group(function (): void {
+        Route::get('/ping', [InboundApplicationController::class, 'ping']);
+        Route::post('/applications', [InboundApplicationController::class, 'store']);
+    });
 
 Route::middleware('throttle:auth')->prefix('auth')->group(function (): void {
     Route::get('/demo-accounts', [AuthController::class, 'demoAccounts']);

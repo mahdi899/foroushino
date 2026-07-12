@@ -8,11 +8,10 @@ import { NewsletterCTA } from "@/components/sections/NewsletterCTA";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { normalizeArticleSlugParam } from "@/lib/articleSlug";
 import { getArticleBySlug, getAllArticleSlugs, getArticles } from "@/lib/services/articles";
+import { ArticleBodyContent } from "@/components/blog/ArticleBodyContent";
 import { articleJsonLd, breadcrumbJsonLd } from "@/lib/jsonld";
 import { formatDateFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
-import { rewriteArticleBodyMediaUrls } from "@/lib/mediaUrl";
-import { sanitizeRichHtml } from "@/lib/sanitize";
 
 export const revalidate = 300;
 
@@ -89,7 +88,7 @@ export default async function InsightDetailPage({
 
       <section className="relative isolate overflow-hidden bg-ink">
         {coverSrc ? (
-          <div className="insight-hero-stage">
+          <div className="insight-hero-stage insight-hero-stage--with-cover">
             <SiteImage
               src={coverSrc}
               alt=""
@@ -99,10 +98,10 @@ export default async function InsightDetailPage({
               wrapperClassName="absolute inset-0 z-0 overflow-hidden"
               className="object-cover blur-lg brightness-50 saturate-75"
             />
-            <div aria-hidden className="page-hero-backdrop-scrim" />
+            <div aria-hidden className="insight-hero-backdrop-scrim" />
             <div className="insight-hero-stage-bottom-fade" aria-hidden />
 
-            <div className="container-luxe relative z-[3] mx-auto max-w-4xl min-w-0 pt-section-sm">
+            <div className="insight-hero-stage-stack container-luxe relative z-[3] mx-auto max-w-6xl min-w-0 pt-section-sm">
               <Reveal>
                 <nav aria-label="مسیر صفحه" className="insight-hero-breadcrumb">
                   <Link href="/insights" className="insight-hero-breadcrumb-link">
@@ -112,11 +111,23 @@ export default async function InsightDetailPage({
                   <span className="insight-hero-breadcrumb-current">{post.kicker || "مقاله"}</span>
                 </nav>
               </Reveal>
-            </div>
 
-            <Reveal delay={0.08}>
-              <div className="insight-hero-stage-content">
-                <div className="insight-hero-stage-content-inner container-luxe mx-auto max-w-[45rem] min-w-0">
+              <Reveal delay={0.06}>
+                <figure className="insight-hero-cover insight-hero-cover--featured">
+                  <SiteImage
+                    src={coverSrc}
+                    alt={post.featured_image_alt}
+                    fallbackAlt={post.title}
+                    fill
+                    priority
+                    sizes="(max-width: 768px) 100vw, 45rem"
+                    className="object-cover"
+                  />
+                </figure>
+              </Reveal>
+
+              <Reveal delay={0.1}>
+                <div className="insight-hero-stage-heading">
                   <h1 className="insight-hero-cover-title max-w-full min-w-0 text-h2 text-balance md:text-h1">
                     {post.title}
                   </h1>
@@ -137,11 +148,11 @@ export default async function InsightDetailPage({
                     </div>
                   )}
                 </div>
-              </div>
-            </Reveal>
+              </Reveal>
+            </div>
           </div>
         ) : (
-          <div className="container-luxe relative z-[2] mx-auto max-w-4xl min-w-0 pb-8 pt-section-sm md:pb-10">
+          <div className="container-luxe relative z-[2] mx-auto max-w-6xl min-w-0 pb-8 pt-section-sm md:pb-10">
             <Reveal>
               <nav aria-label="مسیر صفحه" className="insight-hero-breadcrumb">
                 <Link href="/insights" className="insight-hero-breadcrumb-link">
@@ -182,9 +193,9 @@ export default async function InsightDetailPage({
 
       <section className="py-section-sm">
         <div className="insight-article-wrap">
-          <article
+          <ArticleBodyContent
+            html={post.content}
             className="prose-luxe insight-article-prose text-bone-dim"
-            dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(rewriteArticleBodyMediaUrls(post.content)) }}
           />
         </div>
       </section>

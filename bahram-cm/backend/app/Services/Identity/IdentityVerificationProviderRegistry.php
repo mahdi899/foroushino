@@ -4,12 +4,14 @@ namespace App\Services\Identity;
 
 use App\Enums\IdentityCapability;
 use App\Models\IdentityVerificationRoute;
+use App\Services\Identity\Contracts\FinancialOwnershipVerificationProvider;
 use App\Services\Identity\Contracts\MobileOwnershipVerificationProvider;
 use App\Services\Identity\DTOs\MobileOwnershipVerificationResult;
 use App\Services\Identity\Providers\ApiIrShahkarProvider;
 use App\Services\Identity\Providers\HodaProvider;
 use App\Services\Identity\Providers\ManualReviewProvider;
 use App\Services\Identity\Providers\UidEkycProvider;
+use App\Services\Identity\Providers\UidFinancialVerificationProvider;
 use App\Services\Identity\Providers\UidShahkarProvider;
 use InvalidArgumentException;
 use RuntimeException;
@@ -23,6 +25,7 @@ class IdentityVerificationProviderRegistry
         ManualReviewProvider $manualReview,
         UidShahkarProvider $uidShahkar,
         ApiIrShahkarProvider $apiIrShahkar,
+        UidFinancialVerificationProvider $uidFinancial,
         UidEkycProvider $uidEkyc,
         HodaProvider $hoda,
     ) {
@@ -30,6 +33,7 @@ class IdentityVerificationProviderRegistry
             $manualReview->slug() => $manualReview,
             $uidShahkar->slug() => $uidShahkar,
             $apiIrShahkar->slug() => $apiIrShahkar,
+            $uidFinancial->slug() => $uidFinancial,
             $uidEkyc->slug() => $uidEkyc,
             $hoda->slug() => $hoda,
         ];
@@ -45,9 +49,7 @@ class IdentityVerificationProviderRegistry
     }
 
     /**
-     * Resolve primary (then fallback on technical failure only) for a capability.
-     *
-     * @return array{provider: MobileOwnershipVerificationProvider, result: MobileOwnershipVerificationResult, used_fallback: bool, route: ?IdentityVerificationRoute}
+     * @return array{provider: MobileOwnershipVerificationProvider|FinancialOwnershipVerificationProvider, result: MobileOwnershipVerificationResult, used_fallback: bool, route: ?IdentityVerificationRoute}
      */
     public function resolveForCapability(
         IdentityCapability $capability,
@@ -62,7 +64,7 @@ class IdentityVerificationProviderRegistry
             throw new RuntimeException("No active identity verification route for [{$capability->value}].");
         }
 
-        $primary = $this->resolveMobileProvider($route->primary_provider);
+        $primary = $this->resolveCapabilityProvider($capability, $route->primary_provider);
         $primaryResult = $verifyWith($primary);
 
         if (! $primaryResult instanceof MobileOwnershipVerificationResult) {
@@ -78,7 +80,7 @@ class IdentityVerificationProviderRegistry
             ];
         }
 
-        $fallback = $this->resolveMobileProvider($route->fallback_provider);
+        $fallback = $this->resolveCapabilityProvider($capability, $route->fallback_provider);
         $fallbackResult = $verifyWith($fallback);
 
         return [
@@ -89,12 +91,34 @@ class IdentityVerificationProviderRegistry
         ];
     }
 
+    public function resolveCapabilityProvider(
+        IdentityCapability $capability,
+        string $slug,
+    ): MobileOwnershipVerificationProvider|FinancialOwnershipVerificationProvider {
+        return match ($capability) {
+            IdentityCapability::CardNationalCodeMatch,
+            IdentityCapability::IbanNationalCodeMatch => $this->resolveFinancialProvider($slug),
+            default => $this->resolveMobileProvider($slug),
+        };
+    }
+
     public function resolveMobileProvider(string $slug): MobileOwnershipVerificationProvider
     {
         $provider = $this->resolve($slug);
 
         if (! $provider instanceof MobileOwnershipVerificationProvider) {
             throw new InvalidArgumentException("Provider [{$slug}] does not support mobile ownership verification.");
+        }
+
+        return $provider;
+    }
+
+    public function resolveFinancialProvider(string $slug): FinancialOwnershipVerificationProvider
+    {
+        $provider = $this->resolve($slug);
+
+        if (! $provider instanceof FinancialOwnershipVerificationProvider) {
+            throw new InvalidArgumentException("Provider [{$slug}] does not support financial ownership verification.");
         }
 
         return $provider;

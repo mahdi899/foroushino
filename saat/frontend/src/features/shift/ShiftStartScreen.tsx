@@ -11,6 +11,7 @@ import { availabilityLabels, roleLabels, suggestReasonLabels } from '@/data/labe
 import { toFa, formatJalaliDate } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
+import { performStartShift } from '@/services/shiftActions'
 import type { Availability } from '@/types'
 
 const STATUS_OPTIONS: Availability[] = ['available', 'on_break', 'doing_follow_up', 'offline']
@@ -21,8 +22,6 @@ export function ShiftStartScreen() {
   const currentAgentId = useStore((s) => s.currentAgentId)
   const leads = useStore((s) => s.leads)
   const followups = useStore((s) => s.followups)
-  const startShift = useStore((s) => s.startShift)
-  const setAvailability = useStore((s) => s.setAvailability)
   const pushToast = useStore((s) => s.pushToast)
 
   const [phase, setPhase] = useState<'summary' | 'status'>('summary')
@@ -43,10 +42,10 @@ export function ShiftStartScreen() {
 
   const confirmStart = () => {
     haptic('success')
-    startShift()
-    setAvailability(chosen)
-    pushToast('شیفت شروع شد، روز خوبی داشته باشی')
-    navigate('/home', { replace: true })
+    void performStartShift(chosen).then(() => {
+      pushToast('شیفت شروع شد، روز خوبی داشته باشی')
+      navigate('/home', { replace: true })
+    })
   }
 
   return (

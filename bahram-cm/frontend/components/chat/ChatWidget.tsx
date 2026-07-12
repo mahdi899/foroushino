@@ -2,6 +2,7 @@
 
 import { Loader2, MessageCircle, Send, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useStudentFormPrefill } from "@/components/student-panel/auth/StudentAuthContext";
 import { track } from "@/lib/analytics";
 import { cn } from "@/lib/cn";
 import {
@@ -33,6 +34,7 @@ function getOrCreateSessionId(): string {
  * never flashes on pages before the admin has turned the chatbot on.
  */
 export function ChatWidget() {
+  const prefill = useStudentFormPrefill();
   const [settings, setSettings] = useState<ChatbotSettings | null>(null);
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -43,6 +45,12 @@ export function ChatWidget() {
   const [error, setError] = useState<string | null>(null);
   const sessionIdRef = useRef("");
   const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!prefill) return;
+    if (prefill.name) setName(prefill.name);
+    if (prefill.phone) setPhone(prefill.phone);
+  }, [prefill]);
 
   useEffect(() => {
     sessionIdRef.current = getOrCreateSessionId();
@@ -80,8 +88,8 @@ export function ChatWidget() {
     const result = await sendChatbotMessage({
       session_id: sessionIdRef.current,
       message: text,
-      name: name.trim() || undefined,
-      phone: phone.trim() || undefined,
+      name: (prefill?.name || name).trim() || undefined,
+      phone: (prefill?.phone || phone).trim() || undefined,
     });
 
     setSending(false);
@@ -115,6 +123,7 @@ export function ChatWidget() {
           </div>
 
           {settings.collect_name_enabled || settings.collect_phone_enabled ? (
+            prefill ? null : (
             <div className="flex gap-2 border-b border-bone/10 px-4 py-2.5">
               {settings.collect_name_enabled ? (
                 <input
@@ -134,6 +143,7 @@ export function ChatWidget() {
                 />
               ) : null}
             </div>
+            )
           ) : null}
 
           <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">

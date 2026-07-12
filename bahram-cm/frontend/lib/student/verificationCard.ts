@@ -19,8 +19,9 @@ export type VerificationCardState = {
 export function resolveVerificationCard(user: StudentUser): VerificationCardState {
   const level = user.verification_level ?? 1;
   const status = user.identity_status ?? 'not_started';
+  const verifiedCards = user.verified_bank_accounts_count ?? 0;
 
-  if (level >= 3) {
+  if (level >= 2 && verifiedCards > 0) {
     return { hint: null, action: null, success: true };
   }
 
@@ -29,7 +30,7 @@ export function resolveVerificationCard(user: StudentUser): VerificationCardStat
       hint: null,
       action: {
         href: '/panel/referrals',
-        label: 'تأیید مالکیت شماره برای برداشت',
+        label: 'احراز کارت بانکی برای برداشت',
         variant: 'secondary',
       },
     };

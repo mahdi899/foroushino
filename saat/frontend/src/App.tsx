@@ -13,6 +13,7 @@ import { QuickActionSheet } from '@/components/layout/QuickActionSheet'
 import { CallMethodSheet } from '@/components/domain/CallMethodSheet'
 import { ToastHost } from '@/components/ui/Toast'
 import { cn } from '@/lib/cn'
+import { isShiftOpen } from '@/lib/shiftUtils'
 
 import { SplashScreen } from '@/features/auth/SplashScreen'
 import { OnboardingScreen } from '@/features/auth/OnboardingScreen'
@@ -44,6 +45,7 @@ import { AppLockScreen } from '@/components/domain/AppLockScreen'
 import { OfflineBanner } from '@/components/pwa/DataGate'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { SyncProvider } from '@/providers/SyncProvider'
+import { ShiftPresenceWatcher } from '@/providers/ShiftPresenceWatcher'
 import { useStandalonePwa } from '@/lib/pwa'
 
 const NAV_ROUTES = ['/home', '/leads', '/followups', '/performance', '/reports', '/profile']
@@ -56,7 +58,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 function RequireShift({ children }: { children: React.ReactNode }) {
   const role = useStore((s) => s.role)
-  const shiftStarted = useStore((s) => !!s.workSession?.startedAt)
+  const shiftStarted = useStore((s) => isShiftOpen(s.workSession))
   if (role === 'agent' && !shiftStarted) return <Navigate to="/shift-start" replace />
   return <>{children}</>
 }
@@ -91,6 +93,7 @@ function Shell() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const isAuthed = useStore((s) => s.isAuthed)
   const isLocked = useStore((s) => s.isLocked)
+  const availability = useStore((s) => s.availability)
   const [fabOpen, setFabOpen] = useState(false)
 
   const showNav = isAuthed && NAV_ROUTES.includes(location.pathname)
@@ -101,7 +104,12 @@ function Shell() {
   }, [location.pathname])
 
   return (
-    <main className="relative h-full overflow-hidden">
+    <main
+      className={cn(
+        'relative h-full overflow-hidden transition-colors duration-500',
+        availability === 'doing_follow_up' && 'bg-warning-50/55 dark:bg-warning-500/8',
+      )}
+    >
       <div
         ref={scrollRef}
         className={cn('h-full no-scrollbar', lockScroll ? 'overflow-hidden' : 'overflow-y-auto')}
@@ -155,6 +163,7 @@ function Shell() {
       <CallMethodSheet />
       <ToastHost />
       <AutoLockWatcher />
+      <ShiftPresenceWatcher />
       {isAuthed && isLocked && <AppLockScreen />}
     </main>
   )

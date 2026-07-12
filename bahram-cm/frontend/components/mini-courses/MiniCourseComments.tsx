@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { Loader2, MessageSquare } from 'lucide-react';
 import { useFormSecurity } from '@/components/captcha/FormCaptcha';
+import { LoggedInUserSummary } from '@/components/forms/LoggedInUserSummary';
+import { useStudentFormPrefill } from '@/components/student-panel/auth/StudentAuthContext';
 import {
   submitMiniCourseComment,
   type MiniCourseCommentRecord,
@@ -43,6 +45,7 @@ export function MiniCourseComments({
   enabled: boolean;
   initialComments: MiniCourseCommentRecord[];
 }) {
+  const prefill = useStudentFormPrefill();
   const [comments, setComments] = useState(initialComments);
   const [authorName, setAuthorName] = useState('');
   const [authorEmail, setAuthorEmail] = useState('');
@@ -64,7 +67,9 @@ export function MiniCourseComments({
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!authorName.trim() || !body.trim()) {
+    const resolvedName = prefill?.name || authorName.trim();
+    const resolvedEmail = prefill?.email || authorEmail.trim();
+    if (!resolvedName || !body.trim()) {
       setError('نام و متن نظر الزامی است.');
       return;
     }
@@ -79,8 +84,8 @@ export function MiniCourseComments({
 
     const security = getSecurityPayload();
     const result = await submitMiniCourseComment(slug, {
-      author_name: authorName.trim(),
-      author_email: authorEmail.trim() || undefined,
+      author_name: resolvedName,
+      author_email: resolvedEmail || undefined,
       body: body.trim(),
       ...security.captcha,
       website: security.website,
@@ -129,27 +134,33 @@ export function MiniCourseComments({
           {success ? <p className="mt-4 text-sm text-emerald-300">{success}</p> : null}
 
           <div className="mt-5 space-y-4">
-            <label className="block">
-              <span className="mb-1.5 block text-caption text-mist">نام</span>
-              <input
-                className="w-full rounded-lg border border-bone/15 bg-ink/60 px-4 py-3 text-bone outline-none transition-colors focus:border-gold/40"
-                value={authorName}
-                onChange={(e) => setAuthorName(e.target.value)}
-                maxLength={120}
-                required
-              />
-            </label>
+            {prefill ? (
+              <LoggedInUserSummary prefill={prefill} showEmail={Boolean(prefill.email)} />
+            ) : (
+              <>
+                <label className="block">
+                  <span className="mb-1.5 block text-caption text-mist">نام</span>
+                  <input
+                    className="w-full rounded-lg border border-bone/15 bg-ink/60 px-4 py-3 text-bone outline-none transition-colors focus:border-gold/40"
+                    value={authorName}
+                    onChange={(e) => setAuthorName(e.target.value)}
+                    maxLength={120}
+                    required
+                  />
+                </label>
 
-            <label className="block">
-              <span className="mb-1.5 block text-caption text-mist">ایمیل (اختیاری)</span>
-              <input
-                type="email"
-                className="w-full rounded-lg border border-bone/15 bg-ink/60 px-4 py-3 text-bone outline-none transition-colors focus:border-gold/40"
-                dir="ltr"
-                value={authorEmail}
-                onChange={(e) => setAuthorEmail(e.target.value)}
-              />
-            </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-caption text-mist">ایمیل (اختیاری)</span>
+                  <input
+                    type="email"
+                    className="w-full rounded-lg border border-bone/15 bg-ink/60 px-4 py-3 text-bone outline-none transition-colors focus:border-gold/40"
+                    dir="ltr"
+                    value={authorEmail}
+                    onChange={(e) => setAuthorEmail(e.target.value)}
+                  />
+                </label>
+              </>
+            )}
 
             <label className="block">
               <span className="mb-1.5 block text-caption text-mist">متن نظر</span>

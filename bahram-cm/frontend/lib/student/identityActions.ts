@@ -80,14 +80,29 @@ export async function saveIdentityDraftAction(
   };
 
   try {
-    await studentFetch('/identity-verification/draft', { method: 'POST', body: payload });
+    const res = await studentFetch<{ data: { id?: number } }>('/identity-verification/draft', { method: 'POST', body: payload });
+    const submissionId = res.data?.id;
+    revalidatePath('/panel/identity-verification');
+    revalidatePath('/panel/profile');
+    return {
+      success: 'اطلاعات هویتی ذخیره شد.',
+      data: { ...payload, ...(submissionId ? { draft_submission_id: submissionId } : {}) },
+    };
   } catch (err) {
     return identityActionError(err, 'ذخیره اطلاعات هویتی ناموفق بود.');
+  }
+}
+
+export async function uploadIdentityArtifactAction(formData: FormData): Promise<SimpleFormState> {
+  try {
+    await studentUpload<{ data: Record<string, unknown> }>('/identity-verification/artifacts', formData);
+  } catch (err) {
+    return identityActionError(err, 'بارگذاری مدرک ناموفق بود.');
   }
 
   revalidatePath('/panel/identity-verification');
   revalidatePath('/panel/profile');
-  return { success: 'اطلاعات هویتی ذخیره شد.', data: payload };
+  return { success: 'مدرک با موفقیت بارگذاری شد.' };
 }
 
 export async function submitIdentityVerificationAction(formData: FormData): Promise<SimpleFormState> {

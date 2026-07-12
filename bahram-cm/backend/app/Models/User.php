@@ -147,6 +147,11 @@ class User extends Authenticatable
         return $this->hasMany(CashbackPayout::class);
     }
 
+    public function verifiedBankAccounts(): HasMany
+    {
+        return $this->hasMany(VerifiedBankAccount::class);
+    }
+
     public function seminarAttendances(): HasMany
     {
         return $this->hasMany(SeminarAttendee::class);

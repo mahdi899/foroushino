@@ -10,6 +10,7 @@ import {
   UserCog,
   Users,
   Wallet,
+  Link as LinkIcon,
 } from 'lucide-react';
 import type { SatUser } from '@/lib/sat/session';
 import { filterSatNav } from './sat-nav';
@@ -21,6 +22,7 @@ const ICONS = {
   ClipboardList,
   UserCog,
   Wallet,
+  Link: LinkIcon,
 } as const;
 
 type Props = {

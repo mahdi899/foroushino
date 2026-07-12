@@ -7,6 +7,7 @@ import { AvailabilitySheet } from '@/components/domain/AvailabilitySwitcher'
 import { availabilityDotClass } from '@/components/domain/icons'
 import { availabilityLabels, roleLabels } from '@/data/labels'
 import { cn } from '@/lib/cn'
+import { isShiftOpen } from '@/lib/shiftUtils'
 
 export function AppHeader() {
   const navigate = useNavigate()
@@ -17,7 +18,7 @@ export function AppHeader() {
   const workSession = useStore((s) => s.workSession)
   if (!agent) return null
 
-  const shiftActive = Boolean(workSession?.startedAt)
+  const shiftActive = isShiftOpen(workSession)
   const showStatus = agent.role === 'agent'
 
   return (
@@ -64,9 +65,11 @@ export function AppHeader() {
                 onClick={() => (shiftActive ? setStatusOpen(true) : navigate('/shift-start'))}
                 className={cn(
                   'inline-flex h-9 max-w-full shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 shadow-sm transition-all active:scale-[0.97]',
-                  shiftActive
-                    ? 'glass-inset border-white/55 text-neutral-600 dark:border-white/10 dark:text-neutral-300'
-                    : 'border-warning-200/80 bg-warning-50/90 text-warning-700',
+                  shiftActive && availability === 'doing_follow_up'
+                    ? 'border-warning-300/80 bg-warning-50/95 text-warning-800 dark:border-warning-400/30 dark:bg-warning-500/15 dark:text-warning-200'
+                    : shiftActive
+                      ? 'glass-inset border-white/55 text-neutral-600 dark:border-white/10 dark:text-neutral-300'
+                      : 'border-warning-200/80 bg-warning-50/90 text-warning-700',
                 )}
               >
                 <span

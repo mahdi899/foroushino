@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Events\IdentityLevel2Approved;
 use App\Events\SatApplicationAccepted;
+use App\Listeners\PushSatApplicationToExternalListener;
 use App\Listeners\TryActivateSatMembershipListener;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -51,7 +52,12 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(10)->by((string) ($request->user()?->id ?: $request->ip()));
         });
 
+        RateLimiter::for('bank-account-verify', function (Request $request) {
+            return Limit::perMinute(5)->by((string) ($request->user()?->id ?: $request->ip()));
+        });
+
         Event::listen(IdentityLevel2Approved::class, TryActivateSatMembershipListener::class);
         Event::listen(SatApplicationAccepted::class, TryActivateSatMembershipListener::class);
+        Event::listen(SatApplicationAccepted::class, PushSatApplicationToExternalListener::class);
     }
 }

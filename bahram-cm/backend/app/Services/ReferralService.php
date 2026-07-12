@@ -172,7 +172,7 @@ class ReferralService
         return '';
     }
 
-    /** @return array{successful_purchases: int, payable_amount: int, paid_amount: int, pending_amount: int} */
+    /** @return array{successful_purchases: int, payable_amount: int, paid_amount: int, pending_amount: int, verification_fees: int} */
     public function summary(User $user): array
     {
         $approvedTotal = (int) ReferralConversion::query()
@@ -195,7 +195,11 @@ class ReferralService
             ->whereIn('status', ['pending', 'approved'])
             ->sum('amount');
 
-        $payable = max(0, $approvedTotal - $paidOut - $inFlightPayouts);
+        $verificationFees = (int) \App\Models\VerifiedBankAccount::query()
+            ->where('user_id', $user->id)
+            ->sum('verification_fee');
+
+        $payable = max(0, $approvedTotal - $paidOut - $inFlightPayouts - $verificationFees);
 
         $successfulPurchases = ReferralConversion::query()
             ->where('referrer_user_id', $user->id)
@@ -207,6 +211,7 @@ class ReferralService
             'payable_amount' => $payable,
             'paid_amount' => $paidOut,
             'pending_amount' => $pendingConversions + $inFlightPayouts,
+            'verification_fees' => $verificationFees,
         ];
     }
 }

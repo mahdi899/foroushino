@@ -207,6 +207,7 @@ class AuthController extends Controller
             'verification_level' => (int) ($identity?->verification_level ?? 1),
             'identity_status' => $identity?->identity_status?->value ?? 'not_started',
             'mobile_ownership_status' => $identity?->mobile_ownership_status?->value ?? 'not_started',
+            'verified_bank_accounts_count' => $user->verifiedBankAccounts()->whereNotNull('verified_at')->count(),
             'sat_membership_status' => $user->satMembership?->status?->value ?? 'inactive',
             'national_code_masked' => $identity?->maskNationalCode(),
             'identity' => $identity ? [

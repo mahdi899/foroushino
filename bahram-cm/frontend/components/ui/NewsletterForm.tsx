@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { track } from '@/lib/analytics';
 import { cn } from '@/lib/cn';
 import { useFormSecurity } from '@/components/captcha/FormCaptcha';
+import { useStudentFormPrefill } from '@/components/student-panel/auth/StudentAuthContext';
 import { isValidEmail, subscribeNewsletter } from '@/lib/services/newsletter';
 
 type Status = 'idle' | 'loading' | 'ok' | 'err';
@@ -22,7 +23,9 @@ export function NewsletterForm({
   /** `band`: روی باند متضاد خبرنامه */
   tone?: 'default' | 'band';
 }) {
-  const [email, setEmail] = useState('');
+  const prefill = useStudentFormPrefill();
+  const lockedEmail = prefill?.email ?? '';
+  const [email, setEmail] = useState(lockedEmail);
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
   const { captchaField, honeypotField, captchaRequired, captchaReady, securityLoading, getSecurityPayload, resetCaptcha } =
@@ -30,7 +33,8 @@ export function NewsletterForm({
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isValidEmail(email)) {
+    const resolvedEmail = lockedEmail || email;
+    if (!isValidEmail(resolvedEmail)) {
       setStatus('err');
       setMessage('ایمیل را درست وارد کن.');
       return;
@@ -45,11 +49,11 @@ export function NewsletterForm({
 
     setStatus('loading');
     setMessage('');
-    const result = await subscribeNewsletter(email, source, captcha, website);
+    const result = await subscribeNewsletter(resolvedEmail, source, captcha, website);
     if (result.ok) {
       setStatus('ok');
       setMessage('ثبت شد. مراقب صندوق ایمیل باش.');
-      setEmail('');
+      if (!lockedEmail) setEmail('');
       track('newsletter_signup', { source, status: result.data.status });
     } else {
       setStatus('err');
@@ -98,12 +102,14 @@ export function NewsletterForm({
               id="newsletter-email"
               type="email"
               required
-              value={email}
+              value={lockedEmail || email}
               onChange={(e) => {
+                if (lockedEmail) return;
                 setEmail(e.target.value);
                 if (status !== 'idle') setStatus('idle');
               }}
-              disabled={status === 'loading'}
+              disabled={status === 'loading' || Boolean(lockedEmail)}
+              readOnly={Boolean(lockedEmail)}
               placeholder="ایمیل تو"
               className={cn(
                 'w-full min-w-0 bg-transparent ps-9 pe-2 focus:outline-none',

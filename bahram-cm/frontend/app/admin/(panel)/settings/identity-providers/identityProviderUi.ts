@@ -45,6 +45,12 @@ const PROVIDER_UI: Record<string, ProviderUiConfig> = {
     border: 'border-violet-500/30',
     soft: 'bg-violet-500/8',
   },
+  'uid-financial': {
+    icon: ShieldCheck,
+    gradient: 'from-indigo-500 to-blue-600',
+    border: 'border-indigo-500/30',
+    soft: 'bg-indigo-500/8',
+  },
   'uid-ekyc': {
     icon: ScanFace,
     gradient: 'from-emerald-500 to-green-600',
@@ -89,6 +95,16 @@ const CAPABILITY_UI: Record<string, CapabilityUiConfig> = {
     icon: Smartphone,
     gradient: 'from-amber-500 to-orange-500',
     soft: 'bg-amber-500/8',
+  },
+  CARD_NATIONAL_CODE_MATCH: {
+    icon: ShieldCheck,
+    gradient: 'from-indigo-500 to-blue-600',
+    soft: 'bg-indigo-500/8',
+  },
+  IBAN_NATIONAL_CODE_MATCH: {
+    icon: ShieldCheck,
+    gradient: 'from-sky-500 to-indigo-600',
+    soft: 'bg-sky-500/8',
   },
 };
 

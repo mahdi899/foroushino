@@ -65,6 +65,8 @@ class SatApplicationAdminController extends Controller
             'admin_note' => $a->admin_note,
             'submitted_at' => $a->submitted_at?->toIso8601String(),
             'reviewed_at' => $a->reviewed_at?->toIso8601String(),
+            'synced_to_sat_at' => $a->synced_to_sat_at?->toIso8601String(),
+            'sat_sync_error' => $a->sat_sync_error,
         ];
     }
 }

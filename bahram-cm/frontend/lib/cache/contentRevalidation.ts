@@ -67,3 +67,12 @@ export async function revalidateMiniCourseSurfaces(_slug?: string | null): Promi
     }
   });
 }
+
+export async function revalidateFaqSurfaces(): Promise<void> {
+  await revalidatePublicContent(() => {
+    revalidateTag('faqs', 'max');
+    revalidateTag('public-faqs', 'max');
+    revalidatePath('/faq');
+    revalidatePath('/admin/commerce/faqs');
+  });
+}

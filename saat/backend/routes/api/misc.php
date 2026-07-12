@@ -19,6 +19,8 @@ Route::get('/scripts', [CatalogController::class, 'scripts']);
 Route::get('/objections', [CatalogController::class, 'objections']);
 
 Route::prefix('shift')->group(function (): void {
+    Route::get('/current', [ShiftController::class, 'current']);
+    Route::get('/history', [ShiftController::class, 'history']);
     Route::post('/start', [ShiftController::class, 'start'])->middleware('throttle:writes');
     Route::post('/end', [ShiftController::class, 'end'])->middleware('throttle:writes');
     Route::post('/availability', [ShiftController::class, 'setAvailability'])->middleware('throttle:writes');

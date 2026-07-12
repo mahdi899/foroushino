@@ -33,17 +33,25 @@ function StudentAuthUrlSyncInner() {
   return null;
 }
 
+import type { StudentFormPrefill } from '@/lib/student/formPrefill';
+
 export function StudentAuthRoot({
   children,
   initialLoggedIn = false,
   initialDisplayName = null,
+  initialPrefill = null,
 }: {
   children: React.ReactNode;
   initialLoggedIn?: boolean;
   initialDisplayName?: string | null;
+  initialPrefill?: StudentFormPrefill | null;
 }) {
   return (
-    <StudentAuthProvider initialLoggedIn={initialLoggedIn} initialDisplayName={initialDisplayName}>
+    <StudentAuthProvider
+      initialLoggedIn={initialLoggedIn}
+      initialDisplayName={initialDisplayName}
+      initialPrefill={initialPrefill}
+    >
       <StudentAuthUrlSyncInner />
       <StudentLoginModal />
       {children}

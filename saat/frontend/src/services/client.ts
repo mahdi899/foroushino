@@ -47,7 +47,7 @@ export interface CallResultOutcome {
 // Domain contract. The store delegates its mutations here.
 export interface ApiClient {
   // shift & availability (spec §1)
-  startShift(): Promise<void>
+  startShift(availability?: Availability): Promise<void>
   endShift(): Promise<void>
   setAvailability(status: Availability): Promise<void>
 

@@ -44,10 +44,30 @@ class FaqController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $this->validateFaq($request);
+        if (! array_key_exists('sort_order', $data)) {
+            $data['sort_order'] = (int) Faq::query()->max('sort_order') + 1;
+        }
         $faq = Faq::create($data);
         $this->forgetPublicFaqCache();
 
         return response()->json(['data' => $this->payload($faq)], 201);
+    }
+
+    public function reorder(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.id' => ['required', 'integer', 'exists:faqs,id'],
+            'items.*.sort_order' => ['required', 'integer', 'min:0'],
+        ]);
+
+        foreach ($data['items'] as $item) {
+            Faq::query()->whereKey($item['id'])->update(['sort_order' => $item['sort_order']]);
+        }
+
+        $this->forgetPublicFaqCache();
+
+        return response()->json(['ok' => true]);
     }
 
     public function update(Request $request, Faq $faq): JsonResponse

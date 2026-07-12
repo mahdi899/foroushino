@@ -19,6 +19,8 @@ class SatLead extends Model
         'assigned_to',
         'created_by',
         'marketing_lead_id',
+        'bahram_application_id',
+        'source',
         'meta',
     ];
 
