@@ -179,7 +179,7 @@ function SaleCard({
 
         <div className="min-w-0 flex-1">
           <p className="truncate text-[15px] font-bold text-text">
-            {lead ? `${lead.firstName} ${lead.lastName}` : 'سرنخ نامشخص'}
+            {lead ? `${lead.firstName} ${lead.lastName}` : 'مشتری نامشخص'}
           </p>
           <p className="mt-0.5 truncate text-[11px] font-semibold text-text-soft">
             {product?.name ?? 'محصول'} · {relativeDayTime(sale.createdAt)}

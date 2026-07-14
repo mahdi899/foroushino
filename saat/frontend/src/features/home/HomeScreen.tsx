@@ -322,9 +322,9 @@ export function HomeScreen() {
           />
         ) : (
           <EmptyState
-            title="سرنخی برای تماس نمانده"
-            description="همه سرنخ‌های امروزت را تماس گرفتی. کارت عالی بود."
-            action={{ label: 'دیدن همه سرنخ‌ها', onClick: () => navigate('/leads') }}
+            title="مشتری برای تماس نمانده"
+            description="همه مشتریان امروزت را تماس گرفتی. کارت عالی بود."
+            action={{ label: 'دیدن همه مشتریان', onClick: () => navigate('/leads') }}
           />
         )}
         </DataGate>

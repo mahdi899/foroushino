@@ -147,7 +147,7 @@ export function ManagementHome() {
         <div className="grid grid-cols-4 gap-2">
           <StatTile variant="compact" icon={<Phone size={18} />} value={totalCalls} label="تماس‌ها" />
           <StatTile variant="compact" icon={<Target size={18} />} value={`${toFa(avgConversion)}٪`} label="تبدیل" tone="secondary" />
-          <StatTile variant="compact" icon={<Flame size={18} />} value={hotLeads} label="لید داغ" tone="accent" />
+          <StatTile variant="compact" icon={<Flame size={18} />} value={hotLeads} label="مشتری داغ" tone="accent" />
           <StatTile variant="compact" icon={<AlertTriangle size={18} />} value={overdue.length} label="عقب‌افتاده" tone="warning" />
         </div>
 
@@ -210,7 +210,7 @@ export function ManagementHome() {
           >
             <UserPlus size={20} className="shrink-0 text-secondary-600" />
             <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
-              ورود سرنخ و تقسیم بین سرتیم‌ها
+              ورود مشتری و تقسیم بین سرتیم‌ها
             </span>
             <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
           </button>

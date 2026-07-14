@@ -81,7 +81,7 @@ class LeadController extends Controller
         $result = $this->assignNextLead->execute($request->user());
 
         if (! $result['lead']) {
-            return ApiResponse::error('در حال حاضر لید جدیدی برای تماس وجود ندارد.', status: 404, code: 'no_leads_available');
+            return ApiResponse::error('در حال حاضر مشتری جدیدی برای تماس وجود ندارد.', status: 404, code: 'no_leads_available');
         }
 
         return ApiResponse::success([
@@ -109,7 +109,7 @@ class LeadController extends Controller
         $lead->locked_until = null;
         $lead->save();
 
-        return ApiResponse::success(new LeadResource($lead), 'قفل لید آزاد شد');
+        return ApiResponse::success(new LeadResource($lead), 'قفل مشتری آزاد شد');
     }
 
     public function returnToPool(Request $request, Lead $lead): JsonResponse
@@ -132,7 +132,7 @@ class LeadController extends Controller
             ]);
         });
 
-        return ApiResponse::success(new LeadResource($lead), 'لید به استخر بازگشت');
+        return ApiResponse::success(new LeadResource($lead), 'مشتری به استخر بازگشت');
     }
 
     public function reclaim(Request $request, Lead $lead): JsonResponse
@@ -154,7 +154,7 @@ class LeadController extends Controller
             ]);
         });
 
-        return ApiResponse::success(new LeadResource($lead), 'لید دوباره به تو اختصاص داده شد');
+        return ApiResponse::success(new LeadResource($lead), 'مشتری دوباره به تو اختصاص داده شد');
     }
 
     public function locked(Request $request): JsonResponse
@@ -212,13 +212,13 @@ class LeadController extends Controller
 
         $lead->load(['product', 'assignedAgent']);
 
-        return ApiResponse::success(new LeadResource($lead), $existing ? 'این شماره قبلاً ثبت شده (تکراری).' : 'سرنخ ثبت شد.', status: $existing ? 200 : 201);
+        return ApiResponse::success(new LeadResource($lead), $existing ? 'این شماره قبلاً ثبت شده (تکراری).' : 'مشتری ثبت شد.', status: $existing ? 200 : 201);
     }
 
     public function autoAssign(Request $request, AutoAssignLeadsAction $action): JsonResponse
     {
         if (! $request->user()->can('leads.reassign')) {
-            return ApiResponse::error('اجازه تخصیص لید ندارید.', status: 403, code: 'forbidden');
+            return ApiResponse::error('اجازه تخصیص مشتری ندارید.', status: 403, code: 'forbidden');
         }
 
         $result = $action->execute(
@@ -233,7 +233,7 @@ class LeadController extends Controller
     public function distributeToTeams(Request $request, DistributeLeadsToTeamsAction $action): JsonResponse
     {
         if (! $request->user()->can('leads.reassign')) {
-            return ApiResponse::error('اجازه تقسیم لید ندارید.', status: 403, code: 'forbidden');
+            return ApiResponse::error('اجازه تقسیم مشتری ندارید.', status: 403, code: 'forbidden');
         }
 
         $request->validate([
@@ -248,13 +248,13 @@ class LeadController extends Controller
             $request->input('team_ids'),
         );
 
-        return ApiResponse::success($result, 'لیدها بین تیم‌ها تقسیم شدند');
+        return ApiResponse::success($result, 'مشتریان بین تیم‌ها تقسیم شدند');
     }
 
     public function import(Request $request, ImportLeadsAction $action): JsonResponse
     {
         if (! $request->user()->can('leads.import')) {
-            return ApiResponse::error('اجازه ورود لید ندارید.', status: 403, code: 'forbidden');
+            return ApiResponse::error('اجازه ورود مشتری ندارید.', status: 403, code: 'forbidden');
         }
 
         $request->validate([
@@ -275,7 +275,7 @@ class LeadController extends Controller
 
         $batch = $action->execute($rows, $request->user(), $file->getClientOriginalName());
 
-        return ApiResponse::success(new ImportBatchResource($batch), 'وارد کردن لیدها انجام شد');
+        return ApiResponse::success(new ImportBatchResource($batch), 'وارد کردن مشتریان انجام شد');
     }
 
     public function importBatch(Request $request, ImportBatch $importBatch): JsonResponse

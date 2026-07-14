@@ -83,9 +83,9 @@ export function LeadIntakeScreen() {
       setLastName('')
       setPhone('')
       setCity('')
-      pushToast('سرنخ ثبت شد.', 'success')
+      pushToast('مشتری ثبت شد.', 'success')
     } catch {
-      pushToast('ثبت سرنخ ناموفق بود.', 'error')
+      pushToast('ثبت مشتری ناموفق بود.', 'error')
     } finally {
       setBusy(null)
     }
@@ -98,7 +98,7 @@ export function LeadIntakeScreen() {
         const result = await importLeadsCsv(file)
         await refreshData()
         pushToast(
-          `${toFa(result.imported_count)} سرنخ جدید · ${toFa(result.duplicate_count)} تکراری`,
+          `${toFa(result.imported_count)} مشتری جدید · ${toFa(result.duplicate_count)} تکراری`,
           'success',
         )
       } else {
@@ -113,7 +113,7 @@ export function LeadIntakeScreen() {
 
   const onDistribute = async () => {
     if (poolCount === 0) {
-      pushToast('سرنخ بدون تیم برای تقسیم وجود ندارد.', 'info')
+      pushToast('مشتری بدون تیم برای تقسیم وجود ندارد.', 'info')
       return
     }
     if (teams.length === 0) {
@@ -127,15 +127,15 @@ export function LeadIntakeScreen() {
         const result = await distributeLeadsToTeams()
         await refreshData()
         pushToast(
-          `${toFa(result.distributed)} سرنخ بین ${toFa(result.teams)} تیم تقسیم شد.`,
+          `${toFa(result.distributed)} مشتری بین ${toFa(result.teams)} تیم تقسیم شد.`,
           'success',
         )
       } else {
         const count = distributeLeadsToTeamsLocal()
-        pushToast(`${toFa(count)} سرنخ بین سرتیم‌ها تقسیم شد.`, 'success')
+        pushToast(`${toFa(count)} مشتری بین سرتیم‌ها تقسیم شد.`, 'success')
       }
     } catch {
-      pushToast('تقسیم سرنخ‌ها ناموفق بود.', 'error')
+      pushToast('تقسیم مشتریان ناموفق بود.', 'error')
     } finally {
       setBusy(null)
     }
@@ -146,8 +146,8 @@ export function LeadIntakeScreen() {
       <ScreenHeader
         sticky
         showBack
-        title="ورود و تقسیم سرنخ"
-        subtitle="ثبت سرنخ جدید و توزیع بین سرتیم‌ها"
+        title="ورود و تقسیم مشتری"
+        subtitle="ثبت مشتری جدید و توزیع بین سرتیم‌ها"
         icon={UserPlus}
         iconTone="primary"
       />
@@ -163,7 +163,7 @@ export function LeadIntakeScreen() {
 
         {canManage && (
           <section className="space-y-3">
-            <h2 className="text-[15px] font-extrabold text-neutral-900">ثبت دستی سرنخ</h2>
+            <h2 className="text-[15px] font-extrabold text-neutral-900">ثبت دستی مشتری</h2>
             <label className="block">
               <span className="mb-1.5 block text-[12px] font-bold text-text-soft">نام</span>
               <input
@@ -204,7 +204,7 @@ export function LeadIntakeScreen() {
               className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 py-3.5 text-sm font-extrabold text-white disabled:opacity-50"
             >
               <UserPlus size={16} />
-              {busy === 'create' ? 'در حال ثبت…' : 'ثبت سرنخ'}
+              {busy === 'create' ? 'در حال ثبت…' : 'ثبت مشتری'}
             </button>
           </section>
         )}
@@ -242,7 +242,7 @@ export function LeadIntakeScreen() {
               تقسیم بین سرتیم‌ها
             </h2>
             <p className="text-[12px] font-semibold leading-6 text-text-soft">
-              سرنخ‌های بدون تیم به‌صورت مساوی بین تیم‌ها تقسیم می‌شوند. هر سرتیم سپس بین
+              مشتریان بدون تیم به‌صورت مساوی بین تیم‌ها تقسیم می‌شوند. هر سرتیم سپس بین
               کارشناسان خودش توزیع می‌کند.
             </p>
             <button
@@ -252,7 +252,7 @@ export function LeadIntakeScreen() {
               className="flex w-full items-center justify-center gap-2 rounded-2xl bg-secondary-600 py-3.5 text-sm font-extrabold text-white disabled:opacity-50"
             >
               <Share2 size={16} />
-              {busy === 'distribute' ? 'در حال تقسیم…' : `تقسیم ${toFa(poolCount)} سرنخ`}
+              {busy === 'distribute' ? 'در حال تقسیم…' : `تقسیم ${toFa(poolCount)} مشتری`}
             </button>
           </section>
         )}
@@ -262,7 +262,7 @@ export function LeadIntakeScreen() {
           onClick={() => navigate('/leads')}
           className="w-full py-2 text-center text-[12px] font-semibold text-text-soft"
         >
-          مشاهده لیست سرنخ‌ها
+          مشاهده لیست مشتریان
         </button>
       </div>
     </Page>

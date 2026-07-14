@@ -28,7 +28,7 @@ class AppSetting extends Model
     {
         return [
             'call_lock_minutes' => 30,
-            'min_call_duration_sec' => 90,
+            'min_call_duration_sec' => 0,
             'lead_pool_auto_return_hours' => 48,
             'payout_minimum_amount' => 100_000,
             'meli_pattern_course' => 11111,

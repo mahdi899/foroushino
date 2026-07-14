@@ -72,7 +72,7 @@ class AssignNextLeadAction
                     'lead_id' => $lead->id,
                     'status' => $lead->status,
                     'by_user_id' => $agent->id,
-                    'note' => $wasUnassigned ? 'واگذاری خودکار از استخر لیدها' : 'قفل شد برای تماس بعدی',
+                    'note' => $wasUnassigned ? 'واگذاری خودکار از استخر مشتریان' : 'قفل شد برای تماس بعدی',
                 ]);
 
                 return ['lead' => $lead, 'reason' => $this->reasonFor($lead)];

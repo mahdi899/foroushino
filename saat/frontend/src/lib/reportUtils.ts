@@ -110,7 +110,7 @@ export function computeManagerInsights(params: {
       id: 'best-source',
       tone: 'info',
       title: 'منبع پربازده',
-      body: `منبع با بیشترین حجم لید فعلاً فعال است؛ روی بودجه‌بندی آن تمرکز کن.`,
+      body: `منبع با بیشترین حجم مشتری فعلاً فعال است؛ روی بودجه‌بندی آن تمرکز کن.`,
     })
   }
 

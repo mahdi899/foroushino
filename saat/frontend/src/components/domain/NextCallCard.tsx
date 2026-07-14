@@ -73,7 +73,7 @@ export function NextCallCard({ lead, reason, onCall, onDetails, onSkip, canSkip 
       ? [
           {
             id: 'skip',
-            label: 'سرنخ بعدی',
+            label: 'مشتری بعدی',
             icon: SkipForward,
             onClick: () => {
               haptic('selection')
@@ -108,7 +108,7 @@ export function NextCallCard({ lead, reason, onCall, onDetails, onSkip, canSkip 
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#3390EC]/14 dark:bg-[#8774E1]/18">
             <Target size={13} className={TG} strokeWidth={2.35} />
           </span>
-          <span className="text-[12px] font-semibold tracking-tight text-text-muted">سرنخ بعدی</span>
+          <span className="text-[12px] font-semibold tracking-tight text-text-muted">مشتری بعدی</span>
         </div>
 
         {reason && ReasonIcon && (

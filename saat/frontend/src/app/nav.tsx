@@ -1,5 +1,6 @@
-import { Home, Users, ClipboardCheck, BarChart3, Radio, type LucideIcon } from 'lucide-react'
+import { Home, Users, ClipboardCheck, Radio, User, type LucideIcon } from 'lucide-react'
 import type { Role } from '@/types'
+import { LEADS_WORD } from '@/lib/leadLabels'
 import { isLeaderRole, isManagementRole, isManagerRole, isSupervisorRole } from '@/lib/roles'
 
 export interface NavItem {
@@ -8,39 +9,41 @@ export interface NavItem {
   icon: LucideIcon
 }
 
+const LEADS_NAV_LABEL = LEADS_WORD
+
 const agentNav: NavItem[] = [
   { path: '/home', label: 'خانه', icon: Home },
-  { path: '/leads', label: 'سرنخ‌ها', icon: Users },
+  { path: '/leads', label: LEADS_NAV_LABEL, icon: Users },
   { path: '/followups', label: 'پیگیری‌ها', icon: ClipboardCheck },
-  { path: '/performance', label: 'گزارش‌ها', icon: BarChart3 },
+  { path: '/profile', label: 'پروفایل', icon: User },
 ]
 
 const leaderNav: NavItem[] = [
   { path: '/home', label: 'خانه', icon: Home },
   { path: '/team', label: 'تیم من', icon: Radio },
-  { path: '/leads', label: 'سرنخ‌ها', icon: Users },
-  { path: '/reports', label: 'گزارش‌ها', icon: BarChart3 },
+  { path: '/leads', label: LEADS_NAV_LABEL, icon: Users },
+  { path: '/profile', label: 'پروفایل', icon: User },
 ]
 
 const supervisorNav: NavItem[] = [
   { path: '/home', label: 'خانه', icon: Home },
   { path: '/teams', label: 'تیم‌ها', icon: Radio },
-  { path: '/leads', label: 'سرنخ‌ها', icon: Users },
-  { path: '/reports', label: 'گزارش‌ها', icon: BarChart3 },
+  { path: '/leads', label: LEADS_NAV_LABEL, icon: Users },
+  { path: '/profile', label: 'پروفایل', icon: User },
 ]
 
 const managerNav: NavItem[] = [
   { path: '/home', label: 'خانه', icon: Home },
   { path: '/teams', label: 'تیم‌ها', icon: Radio },
-  { path: '/leads', label: 'سرنخ‌ها', icon: Users },
-  { path: '/reports', label: 'گزارش‌ها', icon: BarChart3 },
+  { path: '/leads', label: LEADS_NAV_LABEL, icon: Users },
+  { path: '/profile', label: 'پروفایل', icon: User },
 ]
 
 const managementNav: NavItem[] = [
   { path: '/home', label: 'خانه', icon: Home },
-  { path: '/leads', label: 'سرنخ‌ها', icon: Users },
+  { path: '/leads', label: LEADS_NAV_LABEL, icon: Users },
   { path: '/followups', label: 'پیگیری‌ها', icon: ClipboardCheck },
-  { path: '/reports', label: 'گزارش‌ها', icon: BarChart3 },
+  { path: '/profile', label: 'پروفایل', icon: User },
 ]
 
 export function navForRole(role: Role): NavItem[] {

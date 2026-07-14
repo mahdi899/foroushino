@@ -32,8 +32,8 @@ import { formatDuration, toFa } from '@/lib/format'
 import { leadDisplayCode } from '@/lib/leadCode'
 import { dialNativePhone } from '@/lib/call'
 import {
-  MIN_AGENT_CALL_DURATION_SEC,
   canEndAgentCall,
+  isMinCallDurationEnabled,
   remainingAgentCallSec,
 } from '@/lib/callPolicy'
 import { haptic } from '@/lib/telegram'
@@ -50,6 +50,7 @@ export function DialerScreen() {
   const endCall = useStore((s) => s.endCall)
   const updateLeadNote = useStore((s) => s.updateLeadNote)
   const pushToast = useStore((s) => s.pushToast)
+  const minCallDurationSec = useStore((s) => s.appSettings.minCallDurationSec)
 
   const isNativeCall = activeCallMethod === 'native'
   const nativeDialed = useRef(false)
@@ -82,14 +83,15 @@ export function DialerScreen() {
     return null
   }
 
-  const canEndCall = canEndAgentCall(seconds)
-  const remainingSec = remainingAgentCallSec(seconds)
+  const minCallEnabled = isMinCallDurationEnabled(minCallDurationSec)
+  const canEndCall = canEndAgentCall(seconds, minCallDurationSec)
+  const remainingSec = remainingAgentCallSec(seconds, minCallDurationSec)
 
   const hangUp = () => {
     if (!canEndCall) {
       haptic('error')
       pushToast(
-        `حداقل ${formatDuration(MIN_AGENT_CALL_DURATION_SEC)} تماس لازم است — ${formatDuration(remainingSec)} مانده.`,
+        `حداقل ${formatDuration(minCallDurationSec)} تماس لازم است — ${formatDuration(remainingSec)} مانده.`,
         'info',
       )
       return
@@ -111,10 +113,10 @@ export function DialerScreen() {
         <button
           type="button"
           onClick={hangUp}
-          disabled={!canEndCall}
+          disabled={minCallEnabled && !canEndCall}
           className={cn(
             'glass-inset flex h-10 w-10 items-center justify-center rounded-full text-text-soft transition-all',
-            canEndCall ? 'active:scale-95' : 'cursor-not-allowed opacity-45',
+            !minCallEnabled || canEndCall ? 'active:scale-95' : 'cursor-not-allowed opacity-45',
           )}
         >
           <ChevronDown size={22} strokeWidth={2.25} />
@@ -150,7 +152,7 @@ export function DialerScreen() {
           {lead.firstName} {lead.lastName}
         </h2>
         <p className="mt-1 text-sm font-bold text-text-soft">
-          کد سرنخ{' '}
+          کد مشتری{' '}
           <span dir="ltr" className="font-extrabold tracking-[0.14em] text-text tabular-nums">
             {leadDisplayCode(lead)}
           </span>
@@ -159,13 +161,13 @@ export function DialerScreen() {
           <span
             className={cn(
               'glass-inset inline-flex items-center gap-1 rounded-full border border-white/50 px-2.5 py-1 text-sm font-bold tabular-nums dark:border-white/10',
-              canEndCall ? 'text-emerald-600' : 'text-amber-600',
+              minCallEnabled && !canEndCall ? 'text-amber-600' : 'text-emerald-600',
             )}
           >
             <span
               className={cn(
                 'h-1.5 w-1.5 rounded-full',
-                canEndCall ? 'bg-emerald-500' : 'animate-pulse bg-amber-500',
+                minCallEnabled && !canEndCall ? 'animate-pulse bg-amber-500' : 'bg-emerald-500',
               )}
             />
             {formatDuration(seconds)}
@@ -218,12 +220,12 @@ export function DialerScreen() {
 
         <div className="mt-5 flex justify-center">
           <motion.button
-            whileTap={canEndCall ? { scale: 0.9 } : undefined}
+            whileTap={!minCallEnabled || canEndCall ? { scale: 0.9 } : undefined}
             onClick={hangUp}
-            disabled={!canEndCall}
+            disabled={minCallEnabled && !canEndCall}
             className={cn(
               'flex h-16 w-16 items-center justify-center rounded-full text-white shadow-[0_12px_30px_-8px_rgba(229,72,77,0.6)]',
-              canEndCall ? 'bg-error' : 'cursor-not-allowed bg-error/45',
+              !minCallEnabled || canEndCall ? 'bg-error' : 'cursor-not-allowed bg-error/45',
             )}
           >
             <PhoneOff size={24} />
@@ -259,7 +261,7 @@ export function DialerScreen() {
       <BottomSheet open={sheet === 'guide'} onClose={() => setSheet(null)} title="راهنما">
         <div className="space-y-5 pb-1 pt-1">
           <section className="space-y-3">
-            <p className="text-[11px] font-bold text-text-soft">خلاصه سرنخ</p>
+            <p className="text-[11px] font-bold text-text-soft">خلاصه مشتری</p>
             <div className="flex flex-wrap items-center gap-2">
               <ContactStatusBadge temperature={lead.temperature} size="sm" />
               <SourceChip source={lead.source} size="sm" />

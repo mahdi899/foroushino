@@ -155,7 +155,7 @@ class ReportsController extends Controller
                 $reasons[] = 'نرخ بالای تماس‌های خیلی کوتاه (کمتر از ۵ ثانیه)';
             }
             if (($row->duplicate_marks / $totalCalls) > 0.3) {
-                $reasons[] = 'نرخ بالای ثبت لید تکراری';
+                $reasons[] = 'نرخ بالای ثبت مشتری تکراری';
             }
             if (($row->dnd_marks / $totalCalls) > 0.3) {
                 $reasons[] = 'نرخ بالای ثبت عدم تماس مجدد';

@@ -18,6 +18,9 @@ import type {
   ExperienceLevel,
   FollowupKind,
 } from '@/types'
+import { LEAD_WORD, LEADS_WORD } from '@/lib/leadLabels'
+
+export { LEAD_WORD, LEADS_WORD }
 
 export const sourceLabels: Record<LeadSource, string> = {
   instagram: 'اینستاگرام',
@@ -64,7 +67,7 @@ export const priorityLabels: Record<Priority, string> = {
 }
 
 export const stageLabels: Record<SaleStage, string> = {
-  new: 'لید جدید',
+  new: `${LEAD_WORD} جدید`,
   first_call: 'تماس اول',
   interested: 'علاقه‌مند',
   follow_up: 'پیگیری',
@@ -115,10 +118,10 @@ export const resultHint: Partial<Record<CallResult, string>> = {
   meeting_set: 'جلسه در تقویم پیگیری ثبت می‌شود.',
   payment_pending: 'یک فروش در انتظار پرداخت ساخته می‌شود.',
   registered: 'فروش برای تایید ارسال می‌شود؛ پورسانت معلق می‌شود.',
-  do_not_disturb: 'لید از چرخه تماس خارج می‌شود.',
-  wrong_number: 'لید بسته می‌شود.',
-  duplicate: 'لید به‌عنوان تکراری علامت می‌خورد.',
-  not_interested: 'لید بسته می‌شود.',
+  do_not_disturb: `${LEAD_WORD} از چرخه تماس خارج می‌شود.`,
+  wrong_number: `${LEAD_WORD} بسته می‌شود.`,
+  duplicate: `${LEAD_WORD} به‌عنوان تکراری علامت می‌خورد.`,
+  not_interested: `${LEAD_WORD} بسته می‌شود.`,
   needs_info: 'یک پیگیری برای ارسال اطلاعات ساخته می‌شود.',
   price_objection: 'اعتراض قیمت ثبت و پیگیری ساخته می‌شود.',
   bad_timing: 'یک تلاش مجدد در زمان بهتر ثبت می‌شود.',
@@ -183,7 +186,7 @@ export const nextActionLabels: Record<NextAction, string> = {
   create_sale_pending_confirmation: 'فروش در انتظار تایید',
   schedule_consultation: 'تنظیم جلسه',
   mark_do_not_call: 'خروج از چرخه تماس',
-  close_lead: 'بستن لید',
+  close_lead: `بستن ${LEAD_WORD}`,
   mark_duplicate: 'علامت تکراری',
   needs_review: 'ارجاع به بررسی',
   none: '-',
@@ -192,11 +195,11 @@ export const nextActionLabels: Record<NextAction, string> = {
 export const suggestReasonLabels: Record<SuggestReason, string> = {
   overdue_follow_up: 'پیگیری عقب‌افتاده',
   today_follow_up: 'پیگیری امروز',
-  hot_in_window: 'لید داغ در بهترین زمان تماس',
+  hot_in_window: `${LEAD_WORD} داغ در بهترین زمان تماس`,
   interested_needs_follow_up: 'علاقه‌مند، نیاز به پیگیری',
   fresh_high_prob: 'تازه ثبت‌شده با احتمال تبدیل بالا',
-  warm: 'لید گرم',
-  cold: 'لید سرد',
+  warm: `${LEAD_WORD} گرم`,
+  cold: `${LEAD_WORD} سرد`,
   from_pool: 'از صف عمومی',
 }
 

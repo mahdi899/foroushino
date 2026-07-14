@@ -20,7 +20,7 @@ class SubmitCallResultRequest extends FormRequest
      */
     public function rules(): array
     {
-        $minDuration = (int) (AppSetting::allKeyed()['min_call_duration_sec'] ?? 90);
+        $minDuration = max(0, (int) (AppSetting::allKeyed()['min_call_duration_sec'] ?? 0));
 
         return [
             'result' => ['required', 'string', Rule::in(CallResult::values())],

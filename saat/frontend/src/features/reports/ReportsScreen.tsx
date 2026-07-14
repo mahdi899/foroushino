@@ -107,7 +107,7 @@ export function ReportsScreen() {
               <StatTile icon={<Phone size={18} />} value={totalCalls} label="تماس امروز" />
               <StatTile icon={<CheckCircle2 size={18} />} value={totalSuccess} label="تماس موفق" tone="success" />
               <StatTile icon={<Target size={18} />} value={`${toFa(avgConversion)}٪`} label="نرخ تبدیل" tone="secondary" />
-              <StatTile icon={<Flame size={18} />} value={hotLeads} label="لید داغ" tone="accent" />
+              <StatTile icon={<Flame size={18} />} value={hotLeads} label="مشتری داغ" tone="accent" />
             </div>
 
             {pendingSales.length > 0 && (

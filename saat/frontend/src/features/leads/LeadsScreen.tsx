@@ -96,8 +96,8 @@ export function LeadsScreen() {
       <ScreenHeader
         sticky
         subtitleInline
-        title={isTeamViewer ? 'سرنخ‌های تیم' : 'سرنخ‌های من'}
-        subtitle={`${toFa(visibleLeads.length)} سرنخ فعال`}
+        title={isTeamViewer ? 'مشتریان تیم' : 'مشتریان من'}
+        subtitle={`${toFa(visibleLeads.length)} مشتری فعال`}
         icon={Users}
         iconTone="secondary"
       >
@@ -125,7 +125,7 @@ export function LeadsScreen() {
             className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 px-3 py-2.5 text-[12px] font-extrabold text-white"
           >
             <UserPlus size={14} />
-            ورود و تقسیم سرنخ
+            ورود و تقسیم مشتری
           </button>
         )}
 
@@ -137,7 +137,7 @@ export function LeadsScreen() {
                 className="glass-inset flex flex-1 items-center gap-1.5 rounded-2xl border-error-200/60 px-3 py-2.5 text-[12px] font-semibold text-error-600 dark:border-error-500/20"
               >
                 <Lock size={14} strokeWidth={2.25} />
-                {toFa(lockedCount)} لید قفل‌شده من
+                {toFa(lockedCount)} مشتری قفل‌شده من
               </button>
             )}
             {returnedCount > 0 && (
@@ -157,7 +157,7 @@ export function LeadsScreen() {
       <div className="space-y-2 px-4 pt-2 pb-1">
         {filtered.length === 0 ? (
           <EmptyState
-            title="سرنخی پیدا نشد"
+            title="مشتری پیدا نشد"
             description="فیلتر را تغییر بده."
             action={{ label: 'پاک کردن فیلترها', onClick: () => setFilter('all') }}
           />

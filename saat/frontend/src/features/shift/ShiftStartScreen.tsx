@@ -80,7 +80,7 @@ export function ShiftStartScreen() {
           <div className="rounded-2xl border border-border/60 bg-surface p-4">
             <Users size={18} className="text-primary-500" />
             <p className="mt-2 text-[20px] font-black tabular-nums text-neutral-900">{toFa(myLeads.length)}</p>
-            <p className="text-[11px] font-bold text-neutral-400">لید فعال من</p>
+            <p className="text-[11px] font-bold text-neutral-400">مشتری فعال من</p>
           </div>
           <div className="rounded-2xl border border-border/60 bg-surface p-4">
             <Sparkles size={18} className="text-secondary-500" />

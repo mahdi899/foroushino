@@ -71,6 +71,10 @@ import type { SyncPayload } from '@/services/sync'
 import { isProductiveAvailability, mergeClosedSessionIntoDaySummaries } from '@/lib/shiftUtils'
 import { getManagedTeam } from '@/lib/teamUtils'
 import { syncAllAgentsDailyStats } from '@/lib/dailyGoal'
+import {
+  DEFAULT_RUNTIME_APP_SETTINGS,
+  type RuntimeAppSettings,
+} from '@/lib/appSettings'
 
 const usesRemoteData = import.meta.env.VITE_API_MODE === 'http'
 
@@ -112,6 +116,9 @@ interface AppState {
   products: Product[]
   activity: ActivityLog[]
   teamReports: TeamReport[]
+
+  // runtime config from management
+  appSettings: RuntimeAppSettings
 
   // transient call context
   activeCallLeadId: string | null
@@ -212,6 +219,7 @@ interface AppState {
 
   // sync
   applySyncData: (payload: SyncPayload) => void
+  setAppSettings: (settings: RuntimeAppSettings) => void
   upsertLead: (lead: Lead) => void
   setAgentAvatar: (avatar: string | null) => void
   setDataReady: (ready: boolean) => void
@@ -389,6 +397,7 @@ export const useStore = create<AppState>()(
       products: mockProducts,
       activity: mockActivity,
       teamReports: mockTeamReports,
+      appSettings: DEFAULT_RUNTIME_APP_SETTINGS,
 
       activeCallLeadId: null,
       activeCallMethod: null,
@@ -1254,6 +1263,8 @@ export const useStore = create<AppState>()(
       },
       unlockApp: () => set({ isLocked: false }),
 
+      setAppSettings: (appSettings) => set({ appSettings }),
+
       applySyncData: (payload) =>
         set((state) => {
           const mergedAgents = state.agents.some((agent) => agent.id === payload.agent.id)
@@ -1284,6 +1295,7 @@ export const useStore = create<AppState>()(
             permissions: resolvePermissions(payload.role, payload.permissions),
             agents: synced.agents,
             dailyStatsDate: synced.dailyStatsDate,
+            appSettings: payload.appSettings ?? state.appSettings,
             dataReady: true,
             dataSyncing: false,
           }

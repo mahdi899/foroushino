@@ -64,7 +64,7 @@ export function CallMethodSheet() {
     <BottomSheet
       open={open}
       onClose={handleClose}
-      title={showDetails ? 'جزئیات سرنخ' : 'روش تماس'}
+      title={showDetails ? 'جزئیات مشتری' : 'روش تماس'}
       className={showDetails ? 'max-h-[92%]' : undefined}
     >
       {lead && (
@@ -113,7 +113,7 @@ export function CallMethodSheet() {
                     <ScrollText size={20} strokeWidth={2.25} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-bold text-text">مشاهده جزئیات سرنخ</p>
+                    <p className="text-[15px] font-bold text-text">مشاهده جزئیات مشتری</p>
                     <p className="mt-0.5 text-[12px] font-medium text-text-muted">
                       قبل از تماس، اطلاعات کامل مشتری را ببین
                     </p>

@@ -441,7 +441,7 @@ export function WorkStatusScreen() {
             iconWrap="icon-3d-warning"
             iconClass="text-[#1A1200]"
             value={toFa(myLeads.length)}
-            label="لید فعال تخصیص‌یافته"
+            label="مشتری فعال تخصیص‌یافته"
           />
           <StatTile
             icon={PhoneOutgoing}

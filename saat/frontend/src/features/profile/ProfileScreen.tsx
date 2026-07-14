@@ -118,7 +118,7 @@ export function ProfileScreen() {
 
   return (
     <Page>
-      <TopBar title="پروفایل" onBack={() => navigate('/home')} />
+      <TopBar title="پروفایل" showBack={false} />
 
       <div className="space-y-4 px-4 pt-4">
         <div className="glass-card relative overflow-hidden rounded-[26px] border border-white/55 p-5 dark:border-white/10">

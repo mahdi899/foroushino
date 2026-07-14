@@ -102,7 +102,7 @@ export function SettingsScreen() {
         <SettingsSection title="حریم خصوصی و امنیت">
           <SettingsRow
             icon={EyeOff}
-            label="پنهان‌سازی شماره لیدها"
+            label="پنهان‌سازی شماره مشتریان"
             bordered
             trailing={<Toggle on disabled />}
           />
@@ -121,7 +121,7 @@ export function SettingsScreen() {
           <div className="mx-3.5 mb-3.5 flex items-start gap-2.5 rounded-[16px] border border-[#3390EC]/15 bg-[#3390EC]/8 p-3 dark:border-[#8774E1]/18 dark:bg-[#8774E1]/10">
             <ShieldCheck size={16} className={cn('mt-0.5 shrink-0', TG)} strokeWidth={2.35} />
             <p className="text-[11.5px] font-semibold leading-6 text-text-muted">
-              اطلاعات مشتریان محرمانه است. از اشتراک‌گذاری شماره، یادداشت یا اطلاعات لیدها بیرون از این
+              اطلاعات مشتریان محرمانه است. از اشتراک‌گذاری شماره، یادداشت یا اطلاعات مشتریان بیرون از این
               برنامه خودداری کن.
             </p>
           </div>

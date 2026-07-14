@@ -70,7 +70,7 @@ export const httpClient: ApiClient = {
   async submitCallResult(input: CallResultInput): Promise<CallResultOutcome> {
     const callId = activeCallByLead.get(input.leadId)
     if (callId === undefined) {
-      throw new Error('هیچ تماس فعالی برای این سرنخ یافت نشد. ابتدا تماس را شروع کن.')
+      throw new Error('هیچ تماس فعالی برای این مشتری یافت نشد. ابتدا تماس را شروع کن.')
     }
 
     const payload: Record<string, unknown> = {

@@ -55,7 +55,7 @@ import { SyncProvider } from '@/providers/SyncProvider'
 import { ShiftPresenceWatcher } from '@/providers/ShiftPresenceWatcher'
 import { useStandalonePwa } from '@/lib/pwa'
 
-const NAV_ROUTES = ['/home', '/leads', '/followups', '/performance', '/reports', '/profile', '/team', '/teams']
+const NAV_ROUTES = ['/home', '/leads', '/followups', '/profile', '/team', '/teams']
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const isAuthed = useStore((s) => s.isAuthed)

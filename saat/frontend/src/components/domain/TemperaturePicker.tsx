@@ -43,7 +43,7 @@ export function TemperaturePicker({ value, onChange }: TemperaturePickerProps) {
   return (
     <div className="space-y-2">
       <div>
-        <p className="text-[14px] font-bold text-text">چقدر این سرنخ جدیه؟</p>
+        <p className="text-[14px] font-bold text-text">چقدر این مشتری جدیه؟</p>
         <p className="mt-1 text-[12px] leading-relaxed text-text-muted">
           بر اساس آخرین صحبت، میزان علاقه و اولویت تماس بعدی را مشخص کن.
         </p>

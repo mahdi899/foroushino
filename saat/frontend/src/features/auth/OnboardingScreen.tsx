@@ -37,7 +37,7 @@ const slides = [
     accent: '#3390EC',
     accentDark: '#8774E1',
     title: 'تماس بعدی همیشه آماده‌ست',
-    body: 'سیستم بهترین سرنخ را برایت انتخاب می‌کند تا فقط روی فروش تمرکز کنی.',
+    body: 'سیستم بهترین مشتری را برایت انتخاب می‌کند تا فقط روی فروش تمرکز کنی.',
   },
   {
     id: 'quick-result',
@@ -98,7 +98,7 @@ function NextCallPreview() {
         <div className="relative mb-3 flex items-center justify-between">
           <span className="glass-inset inline-flex items-center gap-1.5 rounded-full border border-white/55 px-2.5 py-1 text-[10px] font-semibold text-[#707579] dark:border-white/10 dark:text-[#8E9396]">
             <Target size={11} className={TG} />
-            سرنخ بعدی
+            مشتری بعدی
           </span>
           <motion.span
             animate={{ scale: [1, 1.08, 1] }}

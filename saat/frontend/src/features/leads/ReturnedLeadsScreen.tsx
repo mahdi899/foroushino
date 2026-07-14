@@ -17,13 +17,13 @@ export function ReturnedLeadsScreen() {
 
   return (
     <Page withNav={false}>
-      <TopBar title="سرنخ‌های برگشت‌خورده" subtitle={`${toFa(leads.length)} لید در صف عمومی`} />
+      <TopBar title="مشتریان برگشت‌خورده" subtitle={`${toFa(leads.length)} مشتری در صف عمومی`} />
 
       <div className="space-y-3 px-4">
         {leads.length === 0 ? (
           <EmptyState
-            title="لید برگشت‌خورده‌ای نیست"
-            description="سرنخ‌هایی که بی‌پاسخ بمانند یا رها شوند، اینجا برای بازپس‌گیری نمایش داده می‌شوند."
+            title="مشتری برگشت‌خورده‌ای نیست"
+            description="مشتریانی که بی‌پاسخ بمانند یا رها شوند، اینجا برای بازپس‌گیری نمایش داده می‌شوند."
           />
         ) : (
           leads.map((lead) => {
@@ -54,10 +54,10 @@ export function ReturnedLeadsScreen() {
                   onClick={() => {
                     haptic('success')
                     reclaimLead(lead.id)
-                    pushToast('لید دوباره به تو اختصاص داده شد')
+                    pushToast('مشتری دوباره به تو اختصاص داده شد')
                   }}
                 >
-                  بازپس‌گیری این لید
+                  بازپس‌گیری این مشتری
                 </Button>
               </div>
             )

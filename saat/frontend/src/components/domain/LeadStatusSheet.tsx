@@ -38,13 +38,13 @@ export function LeadStatusSheet({ lead, open, onClose, onReturnedToPool }: LeadS
   const lockedByOther = !!lead.lockedBy && lead.lockedBy !== currentAgentId
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="تغییر وضعیت سرنخ">
+    <BottomSheet open={open} onClose={onClose} title="تغییر وضعیت مشتری">
       <div className="space-y-5 pt-1">
         <TemperaturePicker
           value={lead.temperature}
           onChange={(temp) => {
             updateLeadTemperature(lead.id, temp)
-            pushToast('میزان جدیت سرنخ به‌روز شد')
+            pushToast('میزان جدیت مشتری به‌روز شد')
           }}
         />
         <div>
@@ -73,7 +73,7 @@ export function LeadStatusSheet({ lead, open, onClose, onReturnedToPool }: LeadS
             onClick={() => {
               haptic('warning')
               returnLeadToPool(lead.id)
-              pushToast('لید به صف عمومی برگشت')
+              pushToast('مشتری به صف عمومی برگشت')
               onClose()
               if (onReturnedToPool) {
                 onReturnedToPool()
@@ -84,7 +84,7 @@ export function LeadStatusSheet({ lead, open, onClose, onReturnedToPool }: LeadS
             className="flex w-full items-center justify-center gap-1.5 py-1 text-[13px] font-bold text-error-500"
           >
             <Undo2 size={15} />
-            بازگشت این سرنخ به صف عمومی
+            بازگشت این مشتری به صف عمومی
           </button>
         )}
       </div>

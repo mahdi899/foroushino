@@ -1235,7 +1235,7 @@ export const achievements: Achievement[] = [
 export const notifications: AppNotification[] = [
   {
     id: 'n1',
-    title: 'لید داغ جدید',
+    title: 'مشتری داغ جدید',
     body: 'امیرحسین کاظمی برای تماس آماده‌ست.',
     kind: 'lead',
     createdAt: at(-1 * HOUR),

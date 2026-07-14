@@ -18,6 +18,10 @@ import type {
 import { fetchMe, mapAuthUserRole } from './auth'
 import { http } from './http'
 import {
+  mapRuntimeAppSettings,
+  type RuntimeAppSettings,
+} from '@/lib/appSettings'
+import {
   mapCommission,
   mapFollowup,
   mapLead,
@@ -55,6 +59,7 @@ export interface SyncPayload {
   availabilityChangedAt: string | null
   workSession: WorkSession | null
   workDaySummaries: WorkDaySummary[]
+  appSettings: RuntimeAppSettings
 }
 
 function mapProduct(dto: Dto): Product {
@@ -120,6 +125,7 @@ export async function syncAppData(): Promise<SyncPayload> {
       payoutsRaw,
       productsRaw,
       notificationsRaw,
+      appConfigRaw,
     ],
     { shiftCurrentRaw, shiftHistoryRaw },
   ] = await Promise.all([
@@ -136,6 +142,7 @@ export async function syncAppData(): Promise<SyncPayload> {
       http.get<Dto[]>('/wallet/payout-requests?per_page=50'),
       http.get<Dto[]>('/products'),
       http.get<Dto[]>('/notifications?per_page=50'),
+      http.get<Dto>('/app-config'),
     ]),
     fetchShiftData(),
   ])
@@ -192,5 +199,6 @@ export async function syncAppData(): Promise<SyncPayload> {
     availabilityChangedAt: (shiftCurrentRaw.availability_changed_at as string) ?? null,
     workSession: mapWorkSession(shiftCurrentRaw.session as Dto | null | undefined),
     workDaySummaries: asArray<Dto>(shiftHistoryRaw).map(mapWorkDaySummary),
+    appSettings: mapRuntimeAppSettings(appConfigRaw),
   }
 }

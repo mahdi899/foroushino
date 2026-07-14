@@ -90,7 +90,7 @@ export function SupervisorTeamsScreen() {
                 className="glass-inset col-span-2 flex items-center gap-2 rounded-[16px] border px-3 py-3 text-right"
               >
                 <UserPlus size={16} className="shrink-0 text-[#3390EC] dark:text-[#8774E1]" />
-                <span className="text-[12px] font-bold text-text">ورود و تقسیم سرنخ</span>
+                <span className="text-[12px] font-bold text-text">ورود و تقسیم مشتری</span>
               </button>
             )}
             <button

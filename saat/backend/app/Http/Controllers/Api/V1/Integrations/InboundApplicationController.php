@@ -70,7 +70,7 @@ class InboundApplicationController extends Controller
         return ApiResponse::success([
             'lead_id' => $lead->id,
             'duplicate' => false,
-        ], message: 'سرنخ با موفقیت ثبت شد.', status: 201);
+        ], message: 'مشتری با موفقیت ثبت شد.', status: 201);
     }
 
     private function normalizePhone(string $phone): string

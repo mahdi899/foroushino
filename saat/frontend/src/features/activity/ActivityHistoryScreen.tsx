@@ -29,7 +29,7 @@ const kindConfig: Record<ActivityKind, { icon: LucideIcon; bg: string; fg: strin
   payment: { icon: Wallet, bg: 'bg-success-50', fg: 'text-success-600', label: 'پرداخت' },
   commission: { icon: Wallet, bg: 'bg-success-50', fg: 'text-success-600', label: 'پورسانت' },
   shift: { icon: History, bg: 'bg-cold-50', fg: 'text-cold-600', label: 'شیفت' },
-  lead: { icon: Users, bg: 'bg-hot-50', fg: 'text-hot-600', label: 'لید' },
+  lead: { icon: Users, bg: 'bg-hot-50', fg: 'text-hot-600', label: 'مشتری' },
   payout: { icon: ArrowUpCircle, bg: 'bg-primary-50', fg: 'text-primary-600', label: 'تسویه' },
 }
 

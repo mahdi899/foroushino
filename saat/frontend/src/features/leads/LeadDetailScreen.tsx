@@ -148,8 +148,8 @@ export function LeadDetailScreen() {
   if (!lead || !isLeadInScope(lead, teams, agents, currentAgentId, role)) {
     return (
       <Page withNav={false}>
-        <TopBar title="جزئیات سرنخ" />
-        <EmptyState title="سرنخ پیدا نشد" description="این سرنخ در دسترس نیست یا توسط کارشناس دیگری قفل شده." />
+        <TopBar title="جزئیات مشتری" />
+        <EmptyState title="مشتری پیدا نشد" description="این مشتری در دسترس نیست یا توسط کارشناس دیگری قفل شده." />
       </Page>
     )
   }
@@ -203,7 +203,7 @@ export function LeadDetailScreen() {
                 {lockAgent ? `قفل توسط ${lockAgent.firstName} ${lockAgent.lastName}` : 'قفل شده توسط نیروی دیگر'}
               </p>
               <p className="mt-0.5 text-[11px] font-bold text-error-500">
-                تا آزاد شدن قفل صبر کن یا سراغ سرنخ بعدی برو.
+                تا آزاد شدن قفل صبر کن یا سراغ مشتری بعدی برو.
               </p>
             </div>
           </div>
@@ -214,12 +214,12 @@ export function LeadDetailScreen() {
             onClick={() => {
               haptic('light')
               releaseLead(lead.id)
-              pushToast('قفل لید آزاد شد')
+              pushToast('قفل مشتری آزاد شد')
             }}
             className="glass-inset flex items-center justify-center gap-1.5 rounded-[22px] border border-white/50 px-4 py-2.5 text-[12px] font-bold text-[#8E8E93] transition-all active:scale-[0.98] dark:border-white/10 dark:text-[#98989D]"
           >
             <Unlock size={13} />
-            آزاد کردن قفل این سرنخ
+            آزاد کردن قفل این مشتری
           </button>
         )}
 
@@ -230,7 +230,7 @@ export function LeadDetailScreen() {
                 <Undo2 size={18} strokeWidth={2.25} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-extrabold text-neutral-700">این سرنخ به صف عمومی برگشته</p>
+                <p className="text-[13px] font-extrabold text-neutral-700">این مشتری به صف عمومی برگشته</p>
                 <p className="mt-0.5 text-[11px] font-bold text-neutral-400">
                   برای تماس مجدد، ابتدا آن را بازپس بگیر.
                 </p>
@@ -244,10 +244,10 @@ export function LeadDetailScreen() {
               onClick={() => {
                 haptic('success')
                 reclaimLead(lead.id)
-                pushToast('لید دوباره به تو اختصاص داده شد')
+                pushToast('مشتری دوباره به تو اختصاص داده شد')
               }}
             >
-              بازپس‌گیری این لید
+              بازپس‌گیری این مشتری
             </Button>
           </div>
         )}
