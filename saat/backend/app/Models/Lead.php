@@ -18,7 +18,7 @@ class Lead extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'first_name', 'last_name', 'phone', 'normalized_phone', 'city', 'source',
+        'first_name', 'last_name', 'display_code', 'phone', 'normalized_phone', 'city', 'source',
         'temperature', 'priority', 'stage', 'status', 'product_id', 'campaign_id',
         'budget', 'job', 'experience', 'income_goal', 'interest_reason', 'best_call_time',
         'last_call_at', 'call_count', 'last_note', 'conversion_probability', 'pain_point',
@@ -122,6 +122,27 @@ class Lead extends Model
     {
         return $query->where(function (Builder $q): void {
             $q->whereNull('locked_by')->orWhere('locked_until', '<', now());
+        });
+    }
+
+    public static function displayCodeForId(int $id): string
+    {
+        return str_pad((string) $id, 4, '0', STR_PAD_LEFT);
+    }
+
+    public static function generateUniqueDisplayCode(): string
+    {
+        $maxId = (int) self::query()->max('id');
+
+        return self::displayCodeForId($maxId + 1);
+    }
+
+    protected static function booted(): void
+    {
+        static::created(function (Lead $lead): void {
+            if (blank($lead->display_code)) {
+                $lead->forceFill(['display_code' => self::displayCodeForId((int) $lead->id)])->saveQuietly();
+            }
         });
     }
 }

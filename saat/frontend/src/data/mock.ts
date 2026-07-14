@@ -1119,7 +1119,7 @@ const leadSeeds: LeadSeed[] = [
 export const leads: Lead[] = leadSeeds.map((seed) => ({
   ...seed,
   assignedAgentId: MY_AGENT_ID,
-  avatar: avatarUrl(seed.id),
+  avatar: seed.avatar ?? null,
 }))
 
 export const followups: Followup[] = [

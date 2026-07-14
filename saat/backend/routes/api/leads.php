@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Leads\LeadController;
+use App\Http\Controllers\Api\V1\Leads\LeadSmsController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('/sms/templates', [LeadSmsController::class, 'templates']);
 
 Route::prefix('leads')->group(function (): void {
     Route::get('/', [LeadController::class, 'index']);
@@ -16,4 +19,5 @@ Route::prefix('leads')->group(function (): void {
     Route::post('/{lead}/release', [LeadController::class, 'release'])->middleware('throttle:writes');
     Route::post('/{lead}/return-to-pool', [LeadController::class, 'returnToPool'])->middleware('throttle:writes');
     Route::post('/{lead}/reclaim', [LeadController::class, 'reclaim'])->middleware('throttle:writes');
+    Route::post('/{lead}/sms', [LeadSmsController::class, 'send'])->middleware('throttle:writes');
 });

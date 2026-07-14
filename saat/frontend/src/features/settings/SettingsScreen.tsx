@@ -8,6 +8,7 @@ import {
   Globe,
   Trash2,
   WifiOff,
+  UsersRound,
   ChevronLeft,
   LogOut,
   ShieldCheck,
@@ -23,6 +24,9 @@ import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
 import { OfflineState } from '@/components/ui/States'
 import { Chip } from '@/components/ui/Chip'
+import { DemoRolePopup } from '@/components/auth/DemoRoleSwitcher'
+import { useDemoMode } from '@/hooks/useDemoMode'
+import { roleLabels } from '@/data/labels'
 import { toFa } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
@@ -49,7 +53,10 @@ export function SettingsScreen() {
   const setAutoLock = useStore((s) => s.setAutoLock)
   const logout = useStore((s) => s.logout)
   const { canInstall, install, isInstalled } = useInstallPrompt()
+  const { enabled: demoEnabled } = useDemoMode()
+  const role = useStore((s) => s.role)
   const [offline, setOffline] = useState(false)
+  const [demoRoleOpen, setDemoRoleOpen] = useState(false)
   const [toggles, setToggles] = useState({ notif: true, haptic: true })
 
   if (offline) {
@@ -153,6 +160,15 @@ export function SettingsScreen() {
         </SettingsSection>
 
         <SettingsSection title="پیشرفته">
+          {demoEnabled && (
+            <NavRow
+              icon={UsersRound}
+              label="تغییر نقش دمو"
+              value={roleLabels[role]}
+              onClick={() => setDemoRoleOpen(true)}
+              bordered
+            />
+          )}
           <NavRow icon={WifiOff} label="نمایش حالت آفلاین" onClick={() => setOffline(true)} bordered />
           <NavRow
             icon={Trash2}
@@ -184,6 +200,8 @@ export function SettingsScreen() {
           سات · نسخه ۱.۰.۰
         </motion.p>
       </motion.div>
+
+      <DemoRolePopup open={demoRoleOpen} onClose={() => setDemoRoleOpen(false)} />
     </Page>
   )
 }

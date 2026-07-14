@@ -4,6 +4,7 @@ namespace App\Http\Requests\V1\Calls;
 
 use App\Enums\CallResult;
 use App\Enums\ObjectionKey;
+use App\Models\AppSetting;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,10 +20,12 @@ class SubmitCallResultRequest extends FormRequest
      */
     public function rules(): array
     {
+        $minDuration = (int) (AppSetting::allKeyed()['min_call_duration_sec'] ?? 90);
+
         return [
             'result' => ['required', 'string', Rule::in(CallResult::values())],
             'note' => ['nullable', 'string', 'max:2000'],
-            'duration_sec' => ['nullable', 'integer', 'min:0'],
+            'duration_sec' => ['nullable', 'integer', 'min:'.$minDuration],
             'objection' => ['nullable', 'string', Rule::in(ObjectionKey::values())],
             'rating' => ['nullable', 'integer', 'min:1', 'max:5'],
 

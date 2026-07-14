@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -41,6 +42,7 @@ class User extends Authenticatable
         'availability_changed_at',
         'is_active',
         'mask_phone_numbers',
+        'referral_code',
     ];
 
     /**
@@ -153,5 +155,35 @@ class User extends Authenticatable
     public function lockedLeads(): HasMany
     {
         return $this->hasMany(Lead::class, 'locked_by');
+    }
+
+    public function ensureReferralCode(): string
+    {
+        if (filled($this->referral_code)) {
+            return (string) $this->referral_code;
+        }
+
+        $code = self::generateUniqueReferralCode();
+        $this->forceFill(['referral_code' => $code])->save();
+
+        return $code;
+    }
+
+    public static function generateUniqueReferralCode(): string
+    {
+        do {
+            $code = strtoupper(Str::random(5));
+        } while (self::query()->where('referral_code', $code)->exists());
+
+        return $code;
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (User $user): void {
+            if (blank($user->referral_code)) {
+                $user->referral_code = self::generateUniqueReferralCode();
+            }
+        });
     }
 }

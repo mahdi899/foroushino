@@ -1106,7 +1106,7 @@ export const useStore = create<AppState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return
         state.agents = withAvatars(state.agents, mockAgents)
-        state.leads = hydrateLeads(withAvatars(state.leads, mockLeads))
+        state.leads = hydrateLeads(state.leads)
         if (state.darkMode) {
           document.documentElement.setAttribute('data-theme', 'dark')
         }

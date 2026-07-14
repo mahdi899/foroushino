@@ -3,7 +3,7 @@ import { Undo2, RotateCcw } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
-import { Avatar } from '@/components/ui/Avatar'
+import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/States'
 import { relativeDayTime, toFa } from '@/lib/format'
@@ -35,7 +35,7 @@ export function ReturnedLeadsScreen() {
                   onClick={() => navigate(`/leads/${lead.id}`)}
                   className="flex w-full items-center gap-3 text-right"
                 >
-                  <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={46} />
+                  <LeadAvatar lead={lead} size={46} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[14px] font-extrabold text-neutral-900">
                       {lead.firstName} {lead.lastName}

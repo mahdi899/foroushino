@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { BarChart3 } from 'lucide-react'
-import { formatHms, toFa } from '@/lib/format'
+import { formatDuration, formatHms, toFa } from '@/lib/format'
 import {
   WORK_PERIOD_LABELS,
   WORK_PERIODS,
   aggregateWorkPeriod,
+  getWorkPeriodDayEntries,
   workPeriodSpanDays,
   type WorkPeriod,
 } from '@/lib/workPeriodSummary'
@@ -22,6 +23,12 @@ interface WorkPeriodSummaryCardProps {
   nowMs: number
 }
 
+function formatShiftBrief(totalSec: number): string {
+  if (totalSec <= 0) return '—'
+  if (totalSec < 3600) return formatDuration(totalSec)
+  return formatHms(totalSec)
+}
+
 export function WorkPeriodSummaryCard({
   workDaySummaries,
   workSession,
@@ -31,18 +38,22 @@ export function WorkPeriodSummaryCard({
 }: WorkPeriodSummaryCardProps) {
   const [period, setPeriod] = useState<WorkPeriod>('daily')
 
-  const totals = useMemo(
-    () =>
-      aggregateWorkPeriod(workDaySummaries, period, {
-        workSession,
-        availability,
-        availabilityChangedAt,
-        nowMs,
-      }),
-    [workDaySummaries, period, workSession, availability, availabilityChangedAt, nowMs],
+  const live = useMemo(
+    () => ({ workSession, availability, availabilityChangedAt, nowMs }),
+    [workSession, availability, availabilityChangedAt, nowMs],
   )
 
-  const spanDays = workPeriodSpanDays(period, new Date(nowMs))
+  const totals = useMemo(
+    () => aggregateWorkPeriod(workDaySummaries, period, live),
+    [workDaySummaries, period, live],
+  )
+
+  const dayEntries = useMemo(
+    () => getWorkPeriodDayEntries(workDaySummaries, period, live),
+    [workDaySummaries, period, live],
+  )
+
+  const spanDays = workPeriodSpanDays(period)
 
   return (
     <motion.div
@@ -86,7 +97,58 @@ export function WorkPeriodSummaryCard({
         })}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 px-4 pb-3">
+      {period === 'weekly' && dayEntries.length > 0 && (
+        <div className="border-b border-white/35 px-4 pb-3 dark:border-white/8">
+          <p className="mb-2 text-[10px] font-semibold text-text-soft">شیفت روزانه · هفته جاری</p>
+          <div className="grid grid-cols-7 gap-1">
+            {dayEntries.map((day) => (
+              <div
+                key={day.date}
+                className={cn(
+                  'rounded-[10px] border px-1 py-2 text-center',
+                  day.hasWork
+                    ? 'border-[#3390EC]/25 bg-[#3390EC]/8 dark:border-[#8774E1]/25 dark:bg-[#8774E1]/10'
+                    : 'border-white/45 bg-white/25 dark:border-white/8 dark:bg-white/[0.03]',
+                )}
+              >
+                <p className="text-[10px] font-bold text-text-soft">{toFa(day.label)}</p>
+                <p className="mt-1 text-[10px] font-black tabular-nums leading-none text-text">
+                  {formatShiftBrief(day.productiveSeconds)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {period === '30d' && dayEntries.length > 0 && (
+        <div className="border-b border-white/35 px-4 pb-3 dark:border-white/8">
+          <p className="mb-2 text-[10px] font-semibold text-text-soft">شیفت روزانه · ۳۰ روز اخیر</p>
+          <div className="grid grid-cols-6 gap-1.5">
+            {dayEntries.map((day) => (
+              <div
+                key={day.date}
+                className={cn(
+                  'rounded-[9px] border px-1 py-1.5 text-center',
+                  day.hasWork
+                    ? 'border-[#3390EC]/25 bg-[#3390EC]/8 dark:border-[#8774E1]/25 dark:bg-[#8774E1]/10'
+                    : 'border-white/45 bg-white/25 dark:border-white/8 dark:bg-white/[0.03]',
+                )}
+              >
+                <p className="text-[10px] font-bold text-text-soft">
+                  {toFa(day.label)}
+                  {day.sublabel ? '·' : ''}
+                </p>
+                <p className="mt-0.5 text-[9px] font-black tabular-nums leading-none text-text">
+                  {formatShiftBrief(day.productiveSeconds)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-2 px-4 pb-3 pt-3">
         <MetricCell label="روز کاری" value={toFa(totals.workDays)} />
         <MetricCell label="تعداد شیفت" value={toFa(totals.sessionsCount)} />
         <MetricCell label="زمان مکالمه" value={formatHms(totals.totalCallSeconds)} />

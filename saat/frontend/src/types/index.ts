@@ -106,6 +106,7 @@ export interface Lead {
   id: string
   firstName: string
   lastName: string
+  displayCode?: string
   phone: string
   city: string
   source: LeadSource

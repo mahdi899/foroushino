@@ -1,34 +1,27 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { Check, UsersRound } from 'lucide-react'
-import { BottomSheet } from '@/components/ui/BottomSheet'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useDemoMode } from '@/hooks/useDemoMode'
 import { useStore } from '@/store/useStore'
 import { loginWithDemoAccount, type DemoAccount } from '@/services/auth'
 import { syncAppData } from '@/services/sync'
-import { roleLabels } from '@/data/labels'
 import { ApiError } from '@/services/http'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
-import type { Role } from '@/types'
 
-interface DemoRoleSwitcherProps {
-  className?: string
+interface DemoRolePopupProps {
+  open: boolean
+  onClose: () => void
 }
 
-export function DemoRoleSwitcher({ className }: DemoRoleSwitcherProps) {
+export function DemoRolePopup({ open, onClose }: DemoRolePopupProps) {
   const navigate = useNavigate()
-  const { enabled, accounts } = useDemoMode()
+  const { accounts } = useDemoMode()
   const role = useStore((s) => s.role)
   const setSessionFromAuth = useStore((s) => s.setSessionFromAuth)
   const applySyncData = useStore((s) => s.applySyncData)
   const pushToast = useStore((s) => s.pushToast)
-
-  const [open, setOpen] = useState(false)
   const [switching, setSwitching] = useState<string | null>(null)
-
-  if (!enabled) return null
 
   const handleSwitch = async (account: DemoAccount) => {
     if (account.role === role || switching) return
@@ -40,8 +33,8 @@ export function DemoRoleSwitcher({ className }: DemoRoleSwitcherProps) {
       setSessionFromAuth(user)
       const payload = await syncAppData()
       applySyncData(payload)
-      setOpen(false)
-      pushToast(`نقش فعال: ${account.label}`, 'success')
+      onClose()
+      pushToast(`نقش: ${account.label}`, 'success')
       navigate('/home', { replace: true })
     } catch (error) {
       haptic('error')
@@ -58,75 +51,69 @@ export function DemoRoleSwitcher({ className }: DemoRoleSwitcherProps) {
   }
 
   return (
-    <>
-      <motion.button
-        type="button"
-        whileTap={{ scale: 0.96 }}
-        onClick={() => setOpen(true)}
-        className={cn(
-          'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5',
-          'border-amber-300/70 bg-amber-50/95 text-[12px] font-bold text-amber-900',
-          'shadow-[0_6px_18px_rgba(245,158,11,0.18)] backdrop-blur-md',
-          'dark:border-amber-400/25 dark:bg-amber-500/12 dark:text-amber-100',
-          className,
-        )}
-      >
-        <UsersRound size={14} strokeWidth={2.35} />
-        <span>{roleLabels[role as Role]}</span>
-      </motion.button>
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.button
+            type="button"
+            aria-label="بستن"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => !switching && onClose()}
+            className="absolute inset-0 z-50 bg-black/25"
+          />
+          <motion.div
+            role="dialog"
+            aria-modal
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ duration: 0.18 }}
+            className={cn(
+              'absolute left-1/2 top-1/2 z-[60] w-[min(280px,calc(100%-32px))] -translate-x-1/2 -translate-y-1/2',
+              'rounded-[16px] border border-white/60 bg-white p-4 shadow-xl',
+              'dark:border-white/10 dark:bg-[#242F3D]',
+            )}
+          >
+            <p className="text-center text-[14px] font-bold text-text">تغییر نقش دمو</p>
 
-      <BottomSheet open={open} onClose={() => !switching && setOpen(false)} title="تغییر نقش دمو">
-        <p className="pb-3 text-[13px] font-medium leading-6 text-text-muted">
-          برای تست سریع UI هر نقش، یکی از حساب‌های دمو را انتخاب کن.
-        </p>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              {accounts.map((account) => {
+                const active = account.role === role
+                const busy = switching === account.phone
 
-        <div className="space-y-2">
-          {accounts.map((account) => {
-            const active = account.role === role
-            const busy = switching === account.phone
+                return (
+                  <button
+                    key={account.phone}
+                    type="button"
+                    disabled={!!switching}
+                    onClick={() => void handleSwitch(account)}
+                    className={cn(
+                      'rounded-full px-3 py-1.5 text-[12px] font-bold transition-colors',
+                      active
+                        ? 'bg-[#3390EC] text-white dark:bg-[#8774E1]'
+                        : 'bg-black/[0.06] text-text-muted active:bg-black/[0.1] dark:bg-white/10 dark:text-text-soft',
+                      busy && 'opacity-60',
+                    )}
+                  >
+                    {busy ? '…' : account.label}
+                  </button>
+                )
+              })}
+            </div>
 
-            return (
-              <button
-                key={account.phone}
-                type="button"
-                disabled={!!switching}
-                onClick={() => void handleSwitch(account)}
-                className={cn(
-                  'flex w-full items-center gap-3 rounded-[16px] border px-3.5 py-3 text-right transition-colors',
-                  active
-                    ? 'border-[#3390EC]/35 bg-[#3390EC]/10 dark:border-[#8774E1]/35 dark:bg-[#8774E1]/12'
-                    : 'border-white/55 bg-white/35 active:bg-white/70 dark:border-white/10 dark:bg-white/[0.04]',
-                  busy && 'opacity-70',
-                )}
-              >
-                <span
-                  className={cn(
-                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] text-[13px] font-black',
-                    active
-                      ? 'bg-[#3390EC] text-white dark:bg-[#8774E1]'
-                      : 'bg-black/[0.05] text-text-muted dark:bg-white/10',
-                  )}
-                >
-                  {account.label.slice(0, 1)}
-                </span>
-
-                <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-bold text-text">{account.label}</p>
-                  <p className="mt-0.5 text-[11px] font-semibold text-text-soft">
-                    {roleLabels[account.role as Role]}
-                  </p>
-                </div>
-
-                {active ? (
-                  <Check size={18} className="shrink-0 text-[#3390EC] dark:text-[#8774E1]" strokeWidth={2.5} />
-                ) : busy ? (
-                  <span className="text-[11px] font-semibold text-text-soft">…</span>
-                ) : null}
-              </button>
-            )
-          })}
-        </div>
-      </BottomSheet>
-    </>
+            <button
+              type="button"
+              disabled={!!switching}
+              onClick={onClose}
+              className="mt-4 w-full py-1 text-center text-[12px] font-semibold text-text-soft"
+            >
+              بستن
+            </button>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   )
 }

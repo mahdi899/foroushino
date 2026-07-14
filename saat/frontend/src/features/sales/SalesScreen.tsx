@@ -17,7 +17,7 @@ import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { Chip, type ChipTone } from '@/components/ui/Chip'
 import { Badge } from '@/components/ui/Badge'
-import { Avatar } from '@/components/ui/Avatar'
+import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { SuccessScreen } from '@/components/ui/SuccessScreen'
@@ -161,7 +161,7 @@ function SaleCard({
 
       <button type="button" onClick={onLeadClick} className="relative flex w-full items-center gap-3 text-right">
         {lead ? (
-          <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={48} ring />
+          <LeadAvatar lead={lead} size={48} ring />
         ) : (
           <span className="icon-3d icon-3d-primary flex h-12 w-12 shrink-0 items-center justify-center">
             <BadgeDollarSign size={20} className="text-white" strokeWidth={2.25} />
