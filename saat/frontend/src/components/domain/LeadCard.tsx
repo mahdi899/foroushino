@@ -1,4 +1,4 @@
-import { MapPin, Phone, Clock, Flame, Sun, Snowflake, Lock, Info, Undo2 } from 'lucide-react'
+import { MapPin, Phone, Clock, Flame, Sun, Snowflake, Lock, Info, Undo2, UserRound } from 'lucide-react'
 import type { Lead, LeadSource, Temperature } from '@/types'
 import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { PriorityBadge } from './Badges'
@@ -13,6 +13,7 @@ interface LeadCardProps {
   onCall?: () => void
   onQuickView?: () => void
   lockedByName?: string
+  assignedAgentLabel?: string | null
 }
 
 const sourceTone = Object.fromEntries(
@@ -36,7 +37,7 @@ const tempTheme: Record<Temperature, { glow: string; pill: string }> = {
 
 const tempIcon = { hot: Flame, warm: Sun, cold: Snowflake }
 
-export function LeadCard({ lead, onClick, onCall, onQuickView, lockedByName }: LeadCardProps) {
+export function LeadCard({ lead, onClick, onCall, onQuickView, lockedByName, assignedAgentLabel }: LeadCardProps) {
   const SourceIcon = sourceIcon[lead.source]
   const TempIcon = tempIcon[lead.temperature]
   const theme = tempTheme[lead.temperature]
@@ -133,8 +134,14 @@ export function LeadCard({ lead, onClick, onCall, onQuickView, lockedByName }: L
           </div>
         </div>
 
-        {(lockedByOther || returned) && (
+        {(lockedByOther || returned || assignedAgentLabel) && (
           <div className="mt-2 flex flex-wrap gap-1.5">
+            {assignedAgentLabel && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-[#3390EC]/20 bg-[#3390EC]/10 px-2 py-0.5 text-[10px] font-semibold text-[#3390EC] dark:text-[#8774E1]">
+                <UserRound size={10} />
+                {assignedAgentLabel}
+              </span>
+            )}
             {lockedByOther && (
               <span className="inline-flex items-center gap-1 rounded-full border border-error-400/25 bg-error-500/10 px-2 py-0.5 text-[10px] font-semibold text-error-600 dark:text-error-400">
                 <Lock size={10} />

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Mic,
@@ -39,11 +39,14 @@ import {
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
 import { collectLeadNotes } from '@/lib/leadNotes'
-import { performReconcileCall } from '@/services/callActions'
+import { performReconcileCall, getActiveCallId } from '@/services/callActions'
+import { saveCallSession } from '@/services/callSession'
 
 export function DialerScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const pendingMethod = (location.state as { method?: 'native' | 'voip' } | null)?.method
   const lead = useStore((s) => s.leads.find((l) => l.id === id))
   const calls = useStore((s) => s.calls.filter((c) => c.leadId === id))
   const followups = useStore((s) => s.followups.filter((f) => f.leadId === id))
@@ -55,7 +58,7 @@ export function DialerScreen() {
   const pushToast = useStore((s) => s.pushToast)
   const minCallDurationSec = useStore((s) => s.appSettings.minCallDurationSec)
 
-  const isNativeCall = activeCallMethod === 'native'
+  const isNativeCall = activeCallMethod === 'native' || pendingMethod === 'native'
   const nativeDialed = useRef(false)
 
   const [seconds, setSeconds] = useState(0)
@@ -72,8 +75,7 @@ export function DialerScreen() {
   useEffect(() => {
     if (!isNativeCall || !lead || nativeDialed.current) return
     nativeDialed.current = true
-    const timer = window.setTimeout(() => dialNativePhone(lead.phone), 280)
-    return () => window.clearTimeout(timer)
+    dialNativePhone(lead.phone)
   }, [isNativeCall, lead])
 
   const leadNotes = useMemo(
@@ -109,6 +111,12 @@ export function DialerScreen() {
       setActiveCallDraftNote(mergedNote)
     }
     endCall(seconds)
+    saveCallSession({
+      leadId: lead.id,
+      callId: getActiveCallId(lead.id),
+      durationSec: seconds,
+      endedAt: new Date().toISOString(),
+    })
     navigate(`/call-result/${lead.id}`, { replace: true })
   }
 

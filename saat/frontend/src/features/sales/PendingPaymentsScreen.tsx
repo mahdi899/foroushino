@@ -10,6 +10,7 @@ import { SuccessScreen } from '@/components/ui/SuccessScreen'
 import { EmptyState } from '@/components/ui/States'
 import { PaymentSubmitSheet } from '@/components/domain/PaymentSubmitSheet'
 import { formatMoney, relativeDayTime, toFa } from '@/lib/format'
+import { isSaleDisplayable, saleCustomerName, saleProductName } from '@/lib/saleDisplay'
 import { haptic } from '@/lib/telegram'
 import type { PaymentMethod, Sale } from '@/types'
 
@@ -37,17 +38,24 @@ export function PendingPaymentsScreen() {
             description="وقتی نتیجه تماس «پرداخت در انتظار» ثبت شود، اینجا نمایش داده می‌شود."
           />
         ) : (
-          sales.map((sale) => {
+          sales
+            .filter((sale) => {
+              const lead = leadOf(sale.leadId)
+              const product = productOf(sale.productId)
+              return isSaleDisplayable(sale, lead, product)
+            })
+            .map((sale) => {
             const lead = leadOf(sale.leadId)
             const product = productOf(sale.productId)
-            if (!lead) return null
+            const customerName = saleCustomerName(sale, lead)!
+            const productName = saleProductName(sale, product)!
             return (
               <div key={sale.id} className="rounded-2xl border border-warning-200/70 bg-warning-50/40 p-3.5 shadow-card">
                 <div className="flex items-center gap-3">
-                  <LeadAvatar lead={lead} size={44} />
+                  {lead ? <LeadAvatar lead={lead} size={44} /> : null}
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13.5px] font-extrabold text-neutral-900">
-                      {lead.firstName} {lead.lastName}
+                      {customerName}
                     </p>
                     <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] font-bold text-warning-600">
                       <Clock size={11} />
@@ -55,10 +63,10 @@ export function PendingPaymentsScreen() {
                     </p>
                   </div>
                   <p className="shrink-0 text-[13px] font-black tabular-nums text-neutral-900">
-                    {formatMoney(sale.amount)}
+                    {formatMoney(sale.amount)} <span className="text-[10px] font-bold text-neutral-400">تومان</span>
                   </p>
                 </div>
-                <p className="mt-2 truncate text-[11px] font-bold text-neutral-400">{product?.name ?? 'محصول'}</p>
+                <p className="mt-2 truncate text-[11px] font-bold text-neutral-400">{productName}</p>
                 <Button full size="sm" className="mt-3" icon={<Wallet size={14} />} onClick={() => setPaySheet(sale)}>
                   ثبت پرداخت این فروش
                 </Button>

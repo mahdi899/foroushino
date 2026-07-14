@@ -11,12 +11,9 @@ const configuredBaseUrl =
 
 /** In dev, same-origin `/api/v1` is proxied by Vite to Laravel (works from phone on LAN too). */
 function resolveDefaultApiBaseUrl(): string {
-  if (import.meta.env?.DEV) {
-    return '/api/v1'
-  }
   if (typeof window !== 'undefined') {
-    const { protocol, hostname } = window.location
-    return `${protocol}//${hostname}:8000/api/v1`
+    // Browser builds: same-origin API (dev proxy or production reverse proxy on 80/443).
+    return '/api/v1'
   }
   return 'http://localhost:8000/api/v1'
 }

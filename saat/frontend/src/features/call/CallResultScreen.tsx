@@ -35,8 +35,9 @@ import {
   followupKindLabels,
 } from '@/data/labels'
 import { routeCallResult } from '@/services/logic'
-import { performSubmitCallResult } from '@/services/callActions'
+import { performSubmitCallResult, getActiveCallId } from '@/services/callActions'
 import { ApiError } from '@/services/http'
+import { readCallSession } from '@/services/callSession'
 import { SwipeDispositionDeck } from '@/components/domain/SwipeDispositionDeck'
 import { LeadNotesStrip } from '@/components/domain/LeadNotesStrip'
 import { collectLeadNotes } from '@/lib/leadNotes'
@@ -109,6 +110,15 @@ export function CallResultScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [outcome, setOutcome] = useState<CallResultOutcome | null>(null)
 
+  const callSession = useMemo(() => readCallSession(), [activeCallLeadId, lastCallDuration])
+  const effectiveDuration =
+    lastCallDuration > 0 ? lastCallDuration : (callSession?.leadId === lead?.id ? callSession?.durationSec ?? 0 : 0)
+  const canRegisterResult =
+    !!outcome ||
+    activeCallLeadId === lead?.id ||
+    getActiveCallId(lead?.id ?? '') !== undefined ||
+    (callSession?.leadId === lead?.id && (callSession?.durationSec ?? 0) > 0)
+
   useEffect(() => {
     if (!lead || outcome || activeCallLeadId !== lead.id) return
     const draft = useStore.getState().activeCallDraftNote.trim()
@@ -135,7 +145,7 @@ export function CallResultScreen() {
     )
   }
 
-  if (!outcome && activeCallLeadId !== lead.id) {
+  if (!canRegisterResult) {
     return (
       <Page withNav={false}>
         <TopBar title="نتیجه تماس" />
@@ -158,7 +168,7 @@ export function CallResultScreen() {
 
   const save = async () => {
     if (!result || submitting) return
-    if (!canEndAgentCall(lastCallDuration, minCallDurationSec)) {
+    if (!canEndAgentCall(effectiveDuration, minCallDurationSec)) {
       pushToast(
         `حداقل مدت تماس ${formatDuration(minCallDurationSec)} است.`,
         'info',
@@ -178,7 +188,7 @@ export function CallResultScreen() {
         rating,
         followupAt: showFollowup ? buildFollowupIso(dayOffset, hour) : null,
         followupKind: showFollowup ? followupKind : undefined,
-        durationSec: lastCallDuration,
+        durationSec: effectiveDuration,
         saleAmount: showSale ? (saleAmount ?? product?.price ?? undefined) : undefined,
         advance: powerDialEnabled,
       })

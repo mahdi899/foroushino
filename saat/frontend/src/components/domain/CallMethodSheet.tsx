@@ -35,11 +35,12 @@ export function CallMethodSheet() {
   const beginCall = async (method: 'native' | 'voip') => {
     if (!lead || starting) return
     setStarting(true)
+    const leadId = lead.id
     try {
       haptic('medium')
       handleClose()
-      await performStartCall(lead.id, method)
-      navigate(`/dialer/${lead.id}`)
+      navigate(`/dialer/${leadId}`, { state: { method } })
+      await performStartCall(leadId, method)
     } catch (error) {
       const message =
         error instanceof ApiError
@@ -48,6 +49,7 @@ export function CallMethodSheet() {
             ? error.message
             : 'شروع تماس ناموفق بود. بعداً دوباره تلاش کن.'
       pushToast(message, 'error')
+      navigate(-1)
     } finally {
       setStarting(false)
     }

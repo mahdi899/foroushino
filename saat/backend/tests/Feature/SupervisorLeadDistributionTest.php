@@ -87,3 +87,40 @@ it('lets an agent in team B pull a lead assigned to their team', function () {
     expect($result['lead'])->not->toBeNull();
     expect($result['lead']->id)->toBe($lead->id);
 });
+
+it('lets a supervisor list all leads including unassigned pool leads', function () {
+    $supervisor = makeSupervisor();
+    $poolLead = makeLead(['status' => LeadStatus::New->value, 'assigned_agent_id' => null, 'assigned_team_id' => null]);
+
+    $response = $this->actingAs($supervisor, 'sanctum')->getJson('/api/v1/leads?per_page=50');
+
+    $response->assertOk();
+    expect(collect($response->json('data'))->pluck('id'))->toContain($poolLead->id);
+});
+
+it('lets a leader list team leads with assigned agent names', function () {
+    $team = makeTeam();
+    $leader = makeLeader(['team_id' => $team->id]);
+    $agent = makeAgent(['team_id' => $team->id, 'name' => 'کارشناس تست']);
+
+    $assigned = makeLead([
+        'assigned_team_id' => $team->id,
+        'assigned_agent_id' => $agent->id,
+        'status' => LeadStatus::Assigned->value,
+    ]);
+    $outside = makeLead([
+        'assigned_team_id' => null,
+        'assigned_agent_id' => null,
+        'status' => LeadStatus::New->value,
+    ]);
+
+    $response = $this->actingAs($leader, 'sanctum')->getJson('/api/v1/leads?per_page=50');
+
+    $response->assertOk();
+    $ids = collect($response->json('data'))->pluck('id');
+    expect($ids)->toContain($assigned->id);
+    expect($ids)->not->toContain($outside->id);
+
+    $row = collect($response->json('data'))->firstWhere('id', $assigned->id);
+    expect($row['assigned_agent_name'])->toBe('کارشناس تست');
+});

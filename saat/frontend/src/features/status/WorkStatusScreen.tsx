@@ -534,10 +534,9 @@ export function WorkStatusScreen() {
             whileTap={{ scale: 0.98 }}
             onClick={() => {
               haptic('warning')
-              void performEndShift().then(() => {
-                pushToast('شیفت پایان یافت')
-                navigate('/profile', { replace: true })
-              })
+              performEndShift()
+              pushToast('شیفت پایان یافت')
+              navigate('/profile', { replace: true })
             }}
             className={cn(
               'relative flex h-[54px] w-full items-center justify-center gap-2 overflow-hidden',

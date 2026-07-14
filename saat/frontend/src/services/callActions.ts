@@ -1,5 +1,4 @@
 import type { CallMethod } from '@/lib/call'
-import { dialNativePhone } from '@/lib/call'
 import { capabilitiesFromSettings, resolveCallMethod } from '@/lib/telephony'
 import { useStore } from '@/store/useStore'
 import { apiMode, api } from '@/services/index'
@@ -8,6 +7,7 @@ import { syncAppData } from '@/services/sync'
 import type { CallResultInput, CallResultOutcome } from '@/services/client'
 import { enqueueOfflineWrite, flushOfflineQueue } from '@/services/offlineQueue'
 import { clearActiveCall, getActiveCallId, registerActiveCall } from '@/services/activeCallRegistry'
+import { clearCallSession, saveCallSession } from '@/services/callSession'
 
 export { getActiveCallId }
 
@@ -29,16 +29,15 @@ export async function performStartCall(leadId: string, method?: CallMethod): Pro
     }>('/calls/start', { lead_id: Number(leadId), method: resolved })
 
     registerActiveCall(leadId, Number(data.call.id))
+    saveCallSession({ leadId, callId: Number(data.call.id) })
     state.startCall(leadId, resolved)
 
     if (data.lead) {
-      const payload = await syncAppData()
-      useStore.getState().applySyncData(payload)
-    }
-
-    if (resolved === 'native' && data.session?.dial_uri) {
-      const phone = data.session.dial_uri.replace(/^tel:/, '')
-      window.setTimeout(() => dialNativePhone(phone), 280)
+      void syncAppData()
+        .then((payload) => useStore.getState().applySyncData(payload))
+        .catch(() => {
+          // Call is live on the server; stale cache is fine until the next sync.
+        })
     }
   } catch (error) {
     if (error instanceof NetworkError) {
@@ -87,9 +86,9 @@ export async function performSubmitCallResult(input: CallResultInput): Promise<C
     useStore.setState({
       activeCallLeadId: null,
       activeCallMethod: null,
-      activeCallDraftNote: '',
       lastOutcome: outcome,
     })
+    clearCallSession()
 
     return outcome
   } catch (error) {

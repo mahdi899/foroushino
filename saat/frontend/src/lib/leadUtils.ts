@@ -1,4 +1,4 @@
-import type { Followup, Lead } from '@/types'
+import type { Agent, Followup, Lead } from '@/types'
 import { isToday, isOverdue } from './format'
 import { rankSuggestions, isCallable, type Suggestion } from '@/services/logic'
 
@@ -10,6 +10,17 @@ export function isLeadVisibleToAgent(lead: Lead, myAgentId: string): boolean {
 
 export function filterLeadsForAgent(leads: Lead[], myAgentId: string): Lead[] {
   return leads.filter((l) => isLeadVisibleToAgent(l, myAgentId))
+}
+
+/** Display name for the agent a lead is assigned to (management views). */
+export function assignedAgentLabel(lead: Lead, agents: Agent[]): string | null {
+  const fromApi = lead.assignedAgentName?.trim()
+  if (fromApi) return fromApi
+  if (!lead.assignedAgentId) return null
+  const agent = agents.find((a) => a.id === lead.assignedAgentId)
+  if (!agent) return null
+  const name = `${agent.firstName} ${agent.lastName}`.trim()
+  return name || null
 }
 
 export function filterFollowupsForAgent(

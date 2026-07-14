@@ -33,13 +33,7 @@ class LeadController extends Controller
 
         $query = Lead::query()->with(['product', 'assignedAgent']);
 
-        if (TeamScope::isOrgWide($user)) {
-            // full visibility
-        } elseif ($user->hasRole(RoleName::Leader->value)) {
-            $query->where('assigned_team_id', $user->team_id);
-        } else {
-            $query->where('assigned_agent_id', $user->id);
-        }
+        TeamScope::applyLeadQueryScope($query, $user);
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));

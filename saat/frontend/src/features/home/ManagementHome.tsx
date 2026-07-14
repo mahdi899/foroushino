@@ -229,7 +229,7 @@ export function ManagementHome() {
           </button>
         )}
 
-        {isSupervisor && canIntakeLeads && (
+        {(isSupervisor || isManager) && canIntakeLeads && (
           <button
             onClick={() => navigate('/leads/intake')}
             className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
@@ -278,6 +278,19 @@ export function ManagementHome() {
               همه تیم‌ها — نظارت لایو و گزارش‌ها
             </span>
             <ArrowLeft size={16} className="shrink-0 text-primary-400" />
+          </button>
+        )}
+
+        {isLeader && (
+          <button
+            onClick={() => navigate('/leads')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
+          >
+            <Users size={20} className="shrink-0 text-secondary-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
+              مشتریان تیم — کارشناس مسئول هر مشتری
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
           </button>
         )}
 

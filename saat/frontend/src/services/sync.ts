@@ -39,6 +39,7 @@ import {
   mapWallet,
   mapWalletTransaction,
   mapSale,
+  mapLeadFromSaleEmbed,
   mapWorkDaySummary,
   mapWorkSession,
   splitName,
@@ -200,12 +201,20 @@ export async function syncAppData(): Promise<SyncPayload> {
     callGoal: Number(target.call_goal ?? me.call_goal ?? 0),
   }
 
-  const sales = asArray<Dto>(salesRaw).map(mapSale)
-  const payments = asArray<Dto>(salesRaw)
+  const salesDtos = asArray<Dto>(salesRaw)
+  const sales = salesDtos.map(mapSale)
+  const payments = salesDtos
     .map(mapPaymentFromSale)
     .filter((payment): payment is Payment => payment !== null)
 
   const mappedLeads = asArray<Dto>(leadsRaw).map(mapLead)
+  for (const dto of salesDtos) {
+    if (!dto.lead || typeof dto.lead !== 'object') continue
+    const embedded = mapLeadFromSaleEmbed(dto.lead as Dto)
+    if (embedded && !mappedLeads.some((lead) => lead.id === embedded.id)) {
+      mappedLeads.push(embedded)
+    }
+  }
   const suggestedRaw = home.suggested_lead as Dto | null | undefined
   if (suggestedRaw && typeof suggestedRaw === 'object') {
     const suggested = mapLead(suggestedRaw)

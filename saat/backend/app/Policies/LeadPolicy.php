@@ -21,7 +21,7 @@ class LeadPolicy
         }
 
         if ($user->hasRole(RoleName::Leader->value)) {
-            return $lead->assigned_team_id === $user->team_id;
+            return TeamScope::leaderCanViewLead($user, $lead);
         }
 
         return $lead->assigned_agent_id === $user->id;

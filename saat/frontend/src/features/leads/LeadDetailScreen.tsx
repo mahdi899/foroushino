@@ -21,6 +21,7 @@ import {
   RotateCcw,
   Unlock,
   ListTree,
+  UserRound,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
@@ -39,7 +40,7 @@ import {
   leadStatusLabels,
 } from '@/data/labels'
 import { relativeDayTime, toFa, formatDuration } from '@/lib/format'
-import { canCallLead } from '@/lib/leadUtils'
+import { canCallLead, assignedAgentLabel as resolveAssignedAgentLabel } from '@/lib/leadUtils'
 import { isLeadInScope } from '@/lib/teamUtils'
 import { isManagementRole } from '@/lib/roles'
 import { haptic } from '@/lib/telegram'
@@ -166,6 +167,7 @@ export function LeadDetailScreen() {
   const lockedByOther = !!lead.lockedBy && lead.lockedBy !== currentAgentId
   const lockedByMe = !!lead.lockedBy && lead.lockedBy === currentAgentId
   const lockAgent = lockedByOther ? agents.find((a) => a.id === lead.lockedBy) : null
+  const ownerLabel = isTeamViewer ? resolveAssignedAgentLabel(lead, agents) : null
   const callable = !isTeamViewer && canCallLead(lead, currentAgentId) && !lead.returnedToPool
   const canRegisterResult = activeCallLeadId === lead.id
 
@@ -192,6 +194,20 @@ export function LeadDetailScreen() {
         <div className="flex items-center justify-center">
           {lead.status && <LeadStatusBadge status={lead.status} />}
         </div>
+
+        {isTeamViewer && (
+          <div className="glass-inset flex items-center gap-3 rounded-[22px] border border-white/50 px-4 py-3.5 dark:border-white/10">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#3390EC]/12 text-[#3390EC] dark:text-[#8774E1]">
+              <UserRound size={18} strokeWidth={2.25} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-bold text-text-soft">کارشناس مسئول</p>
+              <p className="text-[13px] font-extrabold text-text">
+                {ownerLabel ?? 'هنوز به کارشناسی اختصاص نیافته'}
+              </p>
+            </div>
+          </div>
+        )}
 
         {lockedByOther && (
           <div className="glass-inset flex items-center gap-3 rounded-[22px] border border-error-200/60 px-4 py-3.5 dark:border-error-500/25">

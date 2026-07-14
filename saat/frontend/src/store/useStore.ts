@@ -444,6 +444,10 @@ export const useStore = create<AppState>()(
         if (usesRemoteData) {
           const self = agentFromAuthenticatedUser(user)
           next.agents = [self]
+          next.sales = []
+          next.payments = []
+          next.leads = []
+          next.products = []
         }
 
         set(next)

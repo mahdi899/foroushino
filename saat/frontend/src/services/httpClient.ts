@@ -6,6 +6,7 @@ import type { Availability, Followup, NextAction, PaymentMethod } from '@/types'
 import { nextActionLabels } from '@/data/labels'
 import { ApiError, http, newIdempotencyKey } from './http'
 import { clearActiveCall, getActiveCallId, registerActiveCall } from './activeCallRegistry'
+import { readCallSession } from './callSession'
 import { mapFollowup, mapSuggestion } from './mappers'
 import type { Suggestion } from './logic'
 
@@ -15,8 +16,16 @@ async function resolveCallId(leadId: string): Promise<number> {
   const cached = getActiveCallId(leadId)
   if (cached !== undefined) return cached
 
+  const session = readCallSession()
+  if (session?.leadId === leadId && session.callId) {
+    registerActiveCall(leadId, session.callId)
+    return session.callId
+  }
+
   const calls = await http.get<CallSummary[]>(`/calls?lead_id=${Number(leadId)}`)
-  const open = calls.find((call) => call.result == null) ?? calls[0]
+  const open =
+    [...calls].reverse().find((call) => call.result == null) ??
+    [...calls].reverse()[0]
   if (!open?.id) {
     throw new Error('هیچ تماس فعالی برای این مشتری یافت نشد. ابتدا تماس را شروع کن.')
   }

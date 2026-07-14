@@ -129,6 +129,7 @@ export interface Lead {
   nextFollowupAt: string | null
   rating: number
   assignedAgentId: string
+  assignedAgentName?: string | null
   assignedTeamId?: string | null
   avatar?: string | null
   // lifecycle & ownership (spec §2)
@@ -304,6 +305,9 @@ export interface Sale {
   rejectedAt?: string | null
   rejectionReason?: string | null
   confirmedBy?: string | null
+  /** Populated from API embed when the lead is not in the synced leads list. */
+  leadName?: string | null
+  productName?: string | null
 }
 
 export type PaymentMethod = 'card' | 'gateway' | 'installment' | 'cash'

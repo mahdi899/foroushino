@@ -10,7 +10,7 @@ import { LeadCard } from '@/components/domain/LeadCard'
 import { LeadQuickViewSheet } from '@/components/domain/LeadQuickViewSheet'
 import { EmptyState } from '@/components/ui/States'
 import { isToday, isOverdue, toFa } from '@/lib/format'
-import { canCallLead, filterLeadsForAgent } from '@/lib/leadUtils'
+import { canCallLead, filterLeadsForAgent, assignedAgentLabel as resolveAssignedAgentLabel } from '@/lib/leadUtils'
 import { filterLeadsForScope } from '@/lib/teamUtils'
 import { isManagementRole } from '@/lib/roles'
 import { haptic } from '@/lib/telegram'
@@ -166,6 +166,11 @@ export function LeadsScreen() {
             <LeadCard
               key={lead.id}
               lead={lead}
+              assignedAgentLabel={
+                isTeamViewer
+                  ? resolveAssignedAgentLabel(lead, agents) ?? 'بدون کارشناس'
+                  : undefined
+              }
               onClick={() => navigate(`/leads/${lead.id}`)}
               onCall={isTeamViewer ? undefined : () => call(lead)}
               onQuickView={() => setQuickViewLead(lead)}

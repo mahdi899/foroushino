@@ -58,6 +58,7 @@ export function mapLead(dto: Dto): Lead {
     nextFollowupAt: dto.next_followup_at ?? null,
     rating: dto.rating ?? 0,
     assignedAgentId: id(dto.assigned_agent_id),
+    assignedAgentName: (dto.assigned_agent_name as string | null | undefined) ?? null,
     assignedTeamId: nullableId(dto.assigned_team_id),
     status: dto.status ?? undefined,
     ownerId: nullableId(dto.assigned_agent_id),
@@ -87,12 +88,15 @@ export function mapFollowup(dto: Dto): Followup {
 }
 
 export function mapSale(dto: Dto): Sale {
+  const embeddedLead = dto.lead as Dto | undefined
+  const embeddedProduct = dto.product as Dto | undefined
+
   return {
     id: id(dto.id),
-    leadId: id(dto.lead_id ?? dto.lead?.id),
+    leadId: id(dto.lead_id ?? embeddedLead?.id),
     agentId: id(dto.agent_id),
     teamId: id(dto.team_id),
-    productId: id(dto.product_id ?? dto.product?.id),
+    productId: id(dto.product_id ?? embeddedProduct?.id),
     amount: Number(dto.amount ?? 0),
     status: dto.status ?? 'draft',
     paymentMethod: dto.payment_method ?? null,
@@ -101,6 +105,50 @@ export function mapSale(dto: Dto): Sale {
     confirmedAt: dto.confirmed_at ?? null,
     rejectedAt: dto.rejected_at ?? null,
     rejectionReason: dto.rejection_reason ?? null,
+    leadName: typeof embeddedLead?.full_name === 'string' ? embeddedLead.full_name : null,
+    productName: typeof embeddedProduct?.name === 'string' ? embeddedProduct.name : null,
+  }
+}
+
+/** Minimal lead row from SaleResource embed — for cards when lead isn't in /leads sync. */
+export function mapLeadFromSaleEmbed(dto: Dto): Lead | null {
+  if (dto.id == null) return null
+
+  const { firstName, lastName } = splitName(dto.full_name)
+
+  return {
+    id: id(dto.id),
+    firstName,
+    lastName,
+    phone: dto.phone ?? '',
+    city: '',
+    source: 'website',
+    temperature: 'warm',
+    priority: 2,
+    stage: 'new',
+    product: '',
+    budget: '',
+    job: '',
+    experience: 'none',
+    incomeGoal: '',
+    interestReason: '',
+    bestCallTime: '',
+    lastCallAt: null,
+    callCount: 0,
+    lastNote: '',
+    conversionProbability: 0,
+    painPoint: '',
+    objection: null,
+    nextFollowupAt: null,
+    rating: 0,
+    assignedAgentId: '',
+    assignedTeamId: null,
+    ownerId: null,
+    lockedBy: null,
+    lockedUntil: null,
+    returnedToPool: false,
+    doNotCall: false,
+    duplicateOfId: null,
   }
 }
 

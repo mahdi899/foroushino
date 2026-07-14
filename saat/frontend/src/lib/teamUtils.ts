@@ -38,10 +38,18 @@ export function filterLeadsForScope(
     return leads
   }
 
+  const managedTeam = getManagedTeam(teams, userId, role)
+  if (managedTeam) {
+    const agentIds = new Set(managedTeam.agentIds)
+    return leads.filter(
+      (lead) =>
+        lead.assignedTeamId === managedTeam.id ||
+        (!!lead.assignedAgentId && agentIds.has(lead.assignedAgentId)),
+    )
+  }
+
   const agentIds = new Set(getTeamAgentIds(teams, agents, userId, role))
-  return leads.filter(
-    (lead) => !lead.assignedAgentId || agentIds.has(lead.assignedAgentId),
-  )
+  return leads.filter((lead) => !lead.assignedAgentId || agentIds.has(lead.assignedAgentId))
 }
 
 export function isLeadInScope(

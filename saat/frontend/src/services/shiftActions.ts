@@ -8,7 +8,6 @@ import { mapWorkDaySummary, mapWorkSession } from './mappers'
 type Dto = Record<string, unknown>
 
 const SHIFT_REFRESH_HISTORY_DAYS = 14
-const SHIFT_SYNC_HISTORY_DAYS = 90
 
 export async function refreshShiftFromServer(
   historyDays: number = SHIFT_REFRESH_HISTORY_DAYS,
