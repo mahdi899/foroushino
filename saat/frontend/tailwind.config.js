@@ -14,7 +14,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Vazirmatn', 'system-ui', 'sans-serif'],
+        sans: ['IRANSansXFaNum', 'Tahoma', 'system-ui', 'sans-serif'],
       },
       colors: {
         primary: {
