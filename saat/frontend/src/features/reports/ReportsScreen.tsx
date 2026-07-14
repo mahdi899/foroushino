@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Phone, Target, CheckCircle2, Flame, BarChart3, TriangleAlert, ChevronLeft, BadgeDollarSign, History } from 'lucide-react'
 import { useStore } from '@/store/useStore'
@@ -23,6 +23,8 @@ import {
   weakAgents,
 } from '@/lib/reportUtils'
 import { formatMoney, toFa } from '@/lib/format'
+import { apiMode } from '@/services'
+import { fetchReportsBundle, type ReportsApiPayload } from '@/services/reports'
 
 export function ReportsScreen() {
   const navigate = useNavigate()
@@ -36,6 +38,22 @@ export function ReportsScreen() {
   const teamReports = useStore((s) => s.teamReports)
   const canViewSystem = hasPermission(permissions, 'reports.view-all')
   const [tab, setTab] = useState('overview')
+  const [remoteReports, setRemoteReports] = useState<ReportsApiPayload | null>(null)
+
+  useEffect(() => {
+    if (apiMode !== 'http') return
+    let cancelled = false
+    fetchReportsBundle()
+      .then((payload) => {
+        if (!cancelled) setRemoteReports(payload)
+      })
+      .catch(() => {
+        if (!cancelled) setRemoteReports(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const tabs = useMemo(
     () =>
@@ -69,6 +87,8 @@ export function ReportsScreen() {
   const sourcePerf = useMemo(() => computeSourcePerf(leads), [leads])
   const teamRows = useMemo(() => computeTeamRows(agents, teams), [agents, teams])
   const weak = useMemo(() => weakAgents(agents), [agents])
+  const remoteWeakAgents = remoteReports?.weak_agents ?? []
+  const suspiciousAgents = remoteReports?.suspicious ?? []
   const overdue = useMemo(() => overdueFollowupsList(followups), [followups])
   const pendingSales = useMemo(() => pendingConfirmationSales(sales), [sales])
   const wonCount = leads.filter((l) => l.stage === 'won').length
@@ -134,6 +154,22 @@ export function ReportsScreen() {
               </div>
             </section>
 
+            {remoteWeakAgents.length > 0 && (
+              <section>
+                <h2 className="mb-3 flex items-center gap-1.5 text-[15px] font-extrabold text-neutral-900">
+                  <TriangleAlert size={16} className="text-warning-500" />
+                  کارشناسان ضعیف (API)
+                </h2>
+                <div className="space-y-2">
+                  {remoteWeakAgents.map((row) => (
+                    <div key={row.agent_id} className="glass-card rounded-2xl p-3 text-[13px] font-bold">
+                      {row.name} — {toFa(row.calls)} تماس / {toFa(row.success_rate)}٪ موفق
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {weak.length > 0 && (
               <section>
                 <h2 className="mb-3 flex items-center gap-1.5 text-[15px] font-extrabold text-neutral-900">
@@ -143,6 +179,19 @@ export function ReportsScreen() {
                 <div className="space-y-2">
                   {weak.map((a, i) => (
                     <LeaderboardRow key={a.id} agent={a} rank={i + 1} metric={a.callsToday} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {suspiciousAgents.length > 0 && (
+              <section>
+                <h2 className="mb-3 text-[15px] font-extrabold text-neutral-900">الگوهای مشکوک</h2>
+                <div className="space-y-2">
+                  {suspiciousAgents.map((row) => (
+                    <div key={`${row.agent_id}-${row.reason}`} className="glass-card rounded-2xl p-3 text-[12px] font-semibold">
+                      <span className="font-extrabold">{row.name}</span> — {row.reason}
+                    </div>
                   ))}
                 </div>
               </section>

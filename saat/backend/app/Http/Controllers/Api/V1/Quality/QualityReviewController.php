@@ -102,4 +102,32 @@ class QualityReviewController extends Controller
 
         return ApiResponse::success($task, 'وظیفه کوچینگ ایجاد شد', 201);
     }
+
+    public function updateCoachingTask(Request $request, CoachingTask $coachingTask): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless(
+            $user?->hasAnyRole([
+                RoleName::Supervisor->value,
+                RoleName::Manager->value,
+                RoleName::Admin->value,
+            ]) || $coachingTask->agent_id === $user?->id,
+            403,
+        );
+
+        $validated = $request->validate([
+            'status' => ['sometimes', 'string', 'in:open,completed,cancelled'],
+            'title' => ['sometimes', 'string', 'max:200'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'due_at' => ['sometimes', 'nullable', 'date'],
+        ]);
+
+        $coachingTask->fill($validated);
+        if (($validated['status'] ?? null) === 'completed') {
+            $coachingTask->completed_at = now();
+        }
+        $coachingTask->save();
+
+        return ApiResponse::success($coachingTask->fresh(), 'وظیفه کوچینگ به‌روزرسانی شد');
+    }
 }

@@ -8,6 +8,8 @@ export interface RuntimeAppSettings {
   defaultCallMethod: 'native' | 'voip'
   voipProvider: string
   voipFallbackToNative: boolean
+  powerDialDefault: boolean
+  qaSamplePercent: number
 }
 
 export const DEFAULT_RUNTIME_APP_SETTINGS: RuntimeAppSettings = {
@@ -20,6 +22,8 @@ export const DEFAULT_RUNTIME_APP_SETTINGS: RuntimeAppSettings = {
   defaultCallMethod: 'native',
   voipProvider: 'asterisk',
   voipFallbackToNative: true,
+  powerDialDefault: false,
+  qaSamplePercent: 10,
 }
 
 export function mapRuntimeAppSettings(dto: Record<string, unknown>): RuntimeAppSettings {
@@ -33,6 +37,8 @@ export function mapRuntimeAppSettings(dto: Record<string, unknown>): RuntimeAppS
     defaultCallMethod: dto.default_call_method === 'voip' ? 'voip' : 'native',
     voipProvider: String(dto.voip_provider ?? 'asterisk'),
     voipFallbackToNative: dto.voip_fallback_to_native !== false,
+    powerDialDefault: dto.power_dial_default === true,
+    qaSamplePercent: Math.max(0, Math.min(100, Number(dto.qa_sample_percent ?? 10))),
   }
 }
 
@@ -78,6 +84,16 @@ export const ADMIN_SETTING_LABELS: Record<string, { label: string; hint?: string
   lead_pool_auto_return_hours: {
     label: 'بازگشت خودکار به استخر',
     hint: 'ساعت',
+    type: 'number',
+  },
+  power_dial_default: {
+    label: 'پاور دیال پیش‌فرض',
+    hint: 'برای کارشناسان جدید فعال شود',
+    type: 'boolean',
+  },
+  qa_sample_percent: {
+    label: 'نمونه‌گیری QA',
+    hint: 'درصد تماس‌های موفق برای بررسی کیفیت',
     type: 'number',
   },
   payout_minimum_amount: {

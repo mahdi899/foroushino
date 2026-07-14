@@ -19,6 +19,8 @@ class AppConfigController extends Controller
             'min_call_duration_sec' => (int) ($settings['min_call_duration_sec'] ?? 0),
             'call_lock_minutes' => AppSetting::callLockMinutes(),
             'lead_pool_auto_return_hours' => (int) ($settings['lead_pool_auto_return_hours'] ?? 48),
+            'power_dial_default' => filter_var($settings['power_dial_default'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'qa_sample_percent' => (int) ($settings['qa_sample_percent'] ?? 10),
             'payout_minimum_amount' => (int) ($settings['payout_minimum_amount'] ?? 100_000),
             'native_call_enabled' => (bool) $telephony['native_call_enabled'],
             'voip_enabled' => (bool) $telephony['voip_enabled'],

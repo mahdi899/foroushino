@@ -26,6 +26,7 @@ export interface CallResultInput {
   durationSec: number
   saleAmount?: number
   idempotencyKey?: string
+  advance?: boolean
 }
 
 export interface FollowupInput {

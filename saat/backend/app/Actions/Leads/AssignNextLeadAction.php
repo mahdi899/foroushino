@@ -9,6 +9,7 @@ use App\Models\AppSetting;
 use App\Models\Lead;
 use App\Models\LeadStatusHistory;
 use App\Models\User;
+use App\Services\Campaign\CampaignDialingPolicy;
 use App\Support\LeadPriorityScore;
 use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Support\Facades\Cache;
@@ -34,6 +35,10 @@ use RuntimeException;
  */
 class AssignNextLeadAction
 {
+    public function __construct(
+        private readonly CampaignDialingPolicy $dialingPolicy,
+    ) {}
+
     /**
      * @return array{lead: ?Lead, reason: ?SuggestReason}
      */
@@ -99,7 +104,7 @@ class AssignNextLeadAction
     {
         $excluded = array_map(fn ($s) => $s->value, LeadStatus::excludedFromCycle());
 
-        return Lead::query()
+        $candidates = Lead::query()
             ->whereNotIn('status', $excluded)
             ->whereNull('do_not_call_at')
             ->where(function ($q): void {
@@ -122,9 +127,17 @@ class AssignNextLeadAction
             ->selectRaw('leads.*, ('.LeadPriorityScore::sqlExpression().') as priority_score')
             ->orderByDesc('priority_score')
             ->orderBy('id')
-            ->limit(1)
+            ->limit(25)
             ->lockForUpdate()
-            ->first();
+            ->get();
+
+        foreach ($candidates as $lead) {
+            if ($this->dialingPolicy->canDial($lead->loadMissing('campaign'))->allowed) {
+                return $lead;
+            }
+        }
+
+        return null;
     }
 
     private function reasonFor(Lead $lead): SuggestReason

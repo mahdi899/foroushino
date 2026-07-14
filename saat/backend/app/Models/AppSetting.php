@@ -35,6 +35,8 @@ class AppSetting extends Model
             'voip_provider' => 'asterisk',
             'voip_fallback_to_native' => true,
             'lead_pool_auto_return_hours' => 48,
+            'power_dial_default' => false,
+            'qa_sample_percent' => 10,
             'payout_minimum_amount' => 100_000,
             'meli_pattern_course' => 11111,
             'meli_pattern_channel' => 11111,

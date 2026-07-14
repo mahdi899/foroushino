@@ -10,6 +10,7 @@ use App\Models\Call;
 use App\Models\CallEvent;
 use App\Models\Lead;
 use App\Models\User;
+use App\Services\Campaign\CampaignDialingPolicy;
 use Illuminate\Support\Str;
 
 class CallOrchestrator
@@ -17,6 +18,7 @@ class CallOrchestrator
     public function __construct(
         private readonly VoipAdapter $voip,
         private readonly NativeSimAdapter $native,
+        private readonly CampaignDialingPolicy $dialingPolicy,
     ) {}
 
     /**
@@ -24,6 +26,9 @@ class CallOrchestrator
      */
     public function start(User $agent, Lead $lead, ?CallMethod $method = null): array
     {
+        $eligibility = $this->dialingPolicy->canDial($lead->loadMissing('campaign'));
+        abort_unless($eligibility->allowed, 422, $eligibility->reason ?? 'این مشتری در حال حاضر قابل تماس نیست.');
+
         $config = AppSetting::telephonyConfig();
         $method ??= CallMethod::tryFrom($config['default_call_method'] ?? 'native') ?? CallMethod::Native;
 

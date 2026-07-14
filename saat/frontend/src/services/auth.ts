@@ -51,7 +51,8 @@ interface LoginResponse {
 }
 
 export function mapAuthUserRole(roles: string[]): Role {
-  if (roles.includes('manager') || roles.includes('admin')) return 'manager'
+  if (roles.includes('admin')) return 'manager'
+  if (roles.includes('manager')) return 'manager'
   if (roles.includes('supervisor')) return 'supervisor'
   if (roles.includes('leader')) return 'leader'
   return 'agent'

@@ -26,6 +26,8 @@ class UpdateAppSettingsRequest extends FormRequest
             'settings.voip_provider' => ['sometimes', 'string', 'max:50'],
             'settings.voip_fallback_to_native' => ['sometimes', 'boolean'],
             'settings.lead_pool_auto_return_hours' => ['sometimes', 'integer', 'min:1', 'max:720'],
+            'settings.power_dial_default' => ['sometimes', 'boolean'],
+            'settings.qa_sample_percent' => ['sometimes', 'integer', 'min:0', 'max:100'],
             'settings.payout_minimum_amount' => ['sometimes', 'integer', 'min:0'],
             'settings.*' => ['nullable'],
         ];

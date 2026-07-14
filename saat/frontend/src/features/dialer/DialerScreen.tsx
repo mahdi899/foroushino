@@ -161,6 +161,20 @@ export function DialerScreen() {
             {leadDisplayCode(lead)}
           </span>
         </p>
+        <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2">
+          <ContactStatusBadge temperature={lead.temperature} />
+          <SourceChip source={lead.source} />
+          {lead.conversionProbability > 0 && (
+            <span className="rounded-full bg-[#3390EC]/12 px-2.5 py-1 text-[10px] font-extrabold text-[#3390EC] dark:bg-[#8774E1]/15 dark:text-[#8774E1]">
+              امتیاز لید {toFa(lead.conversionProbability)}
+            </span>
+          )}
+          {lead.callCount > 0 && (
+            <span className="rounded-full bg-black/[0.05] px-2.5 py-1 text-[10px] font-bold text-text-soft dark:bg-white/10">
+              {toFa(lead.callCount)} تماس قبلی
+            </span>
+          )}
+        </div>
         <div className="mt-2.5">
           <span
             className={cn(

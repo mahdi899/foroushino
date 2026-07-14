@@ -27,6 +27,11 @@ class LeadPriorityScore
             + (CASE temperature WHEN 'hot' THEN 3 WHEN 'warm' THEN 2 ELSE 1 END) * 30
             + priority * 20
             + conversion_probability
+            + COALESCE((
+                SELECT c.priority
+                FROM campaigns c
+                WHERE c.id = leads.campaign_id AND c.is_active = 1
+            ), 0) * 5
             SQL;
     }
 

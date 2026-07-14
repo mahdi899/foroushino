@@ -7,7 +7,7 @@ use App\Models\Call;
 use App\Models\Lead;
 use Illuminate\Support\Str;
 
-class VoipAdapter
+class VoipAdapter implements \App\Contracts\Telephony\VoipProviderInterface
 {
     /**
      * @return array<string, mixed>
@@ -39,5 +39,13 @@ class VoipAdapter
 
         // Provider-specific health checks can be plugged in here.
         return true;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function handleWebhook(array $payload): void
+    {
+        // Reserved for provider event ingestion (ringing, answered, hangup, recording URL).
     }
 }

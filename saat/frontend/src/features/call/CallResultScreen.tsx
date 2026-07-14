@@ -36,6 +36,7 @@ import {
 } from '@/data/labels'
 import { routeCallResult } from '@/services/logic'
 import { performSubmitCallResult } from '@/services/callActions'
+import { SwipeDispositionDeck } from '@/components/domain/SwipeDispositionDeck'
 import { objectionsLibrary } from '@/data/mockExtra'
 import { formatPhone, toFa } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
@@ -87,6 +88,9 @@ export function CallResultScreen() {
   const activeCallLeadId = useStore((s) => s.activeCallLeadId)
   const openCallMethodSheet = useStore((s) => s.openCallMethodSheet)
   const pushToast = useStore((s) => s.pushToast)
+  const powerDialEnabled = useStore((s) => s.powerDialEnabled)
+  const dispositionMode = useStore((s) => s.dispositionMode)
+  const setDispositionMode = useStore((s) => s.setDispositionMode)
 
   const [result, setResult] = useState<CallResult | null>(null)
   const [rating, setRating] = useState(0)
@@ -155,7 +159,13 @@ export function CallResultScreen() {
         followupKind: showFollowup ? followupKind : undefined,
         durationSec: lastCallDuration,
         saleAmount: showSale ? (saleAmount ?? product?.price ?? undefined) : undefined,
+        advance: powerDialEnabled,
       })
+      if (powerDialEnabled && out.suggestion?.lead) {
+        pushToast('تماس بعدی آماده است')
+        navigate(`/dialer/${out.suggestion.lead.id}`, { replace: true })
+        return
+      }
       setOutcome(out)
     } catch {
       pushToast('ثبت نتیجه ناموفق بود. در صف آفلاین ذخیره شد یا دوباره تلاش کن.', 'error')
@@ -191,6 +201,27 @@ export function CallResultScreen() {
           <p className="relative mt-0.5 text-[13px] font-semibold text-text-soft">نتیجه این تماس را ثبت کن</p>
         </motion.div>
 
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[13px] font-extrabold text-text">نتیجه تماس</p>
+          <div className="flex gap-2">
+            <Chip active={dispositionMode === 'grid'} onClick={() => setDispositionMode('grid')}>
+              شبکه
+            </Chip>
+            <Chip active={dispositionMode === 'swipe'} onClick={() => setDispositionMode('swipe')}>
+              سوایپ
+            </Chip>
+          </div>
+        </div>
+
+        {dispositionMode === 'swipe' ? (
+          <SwipeDispositionDeck
+            disabled={submitting}
+            onSelect={(nextResult) => {
+              setResult(nextResult)
+              setSaleAmount(null)
+            }}
+          />
+        ) : (
         <motion.div
           variants={stagger}
           initial="hidden"
@@ -211,6 +242,7 @@ export function CallResultScreen() {
             </motion.div>
           ))}
         </motion.div>
+        )}
 
         <AnimatePresence>
           {result && (

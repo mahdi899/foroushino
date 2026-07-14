@@ -14,6 +14,8 @@ import {
   FileText,
   Server,
   UserPlus,
+  ShieldCheck,
+  Activity,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
@@ -235,6 +237,32 @@ export function ManagementHome() {
             <UserPlus size={20} className="shrink-0 text-secondary-600" />
             <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
               ورود مشتری و تقسیم بین سرتیم‌ها
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
+          </button>
+        )}
+
+        {(isSupervisor || isManager) && (
+          <button
+            onClick={() => navigate('/live-ops')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
+          >
+            <Activity size={20} className="shrink-0 text-secondary-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
+              عملیات زنده — تماس‌های فعال و KPI
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
+          </button>
+        )}
+
+        {(isSupervisor || isManager) && (
+          <button
+            onClick={() => navigate('/qa')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
+          >
+            <ShieldCheck size={20} className="shrink-0 text-secondary-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
+              کنترل کیفیت تماس‌ها
             </span>
             <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
           </button>

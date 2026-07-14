@@ -13,6 +13,11 @@ import { isLeaderRole, isSupervisorRole } from '@/lib/roles'
 import { getManagedTeam } from '@/lib/teamUtils'
 import { toFa, formatIsoDateJalali } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
+import {
+  performApproveTeamReport,
+  performForwardTeamReport,
+  performSubmitTeamReport,
+} from '@/services/teamReportActions'
 import type { TeamReport, TeamReportStatus } from '@/types'
 import { cn } from '@/lib/cn'
 
@@ -33,9 +38,6 @@ export function TeamReportsScreen() {
   const currentAgentId = useStore((s) => s.currentAgentId)
   const teams = useStore((s) => s.teams)
   const teamReports = useStore((s) => s.teamReports)
-  const submitTeamReport = useStore((s) => s.submitTeamReport)
-  const approveTeamReport = useStore((s) => s.approveTeamReport)
-  const forwardTeamReport = useStore((s) => s.forwardTeamReport)
   const pushToast = useStore((s) => s.pushToast)
 
   const canSubmit = hasPermission(permissions, 'reports.submit-team')
@@ -97,7 +99,7 @@ export function TeamReportsScreen() {
               type="button"
               onClick={() => {
                 haptic('success')
-                submitTeamReport()
+                void performSubmitTeamReport().catch(() => pushToast('ارسال گزارش ناموفق بود', 'error'))
               }}
               className="rounded-full bg-[#3390EC] px-3 py-2 text-[11px] font-bold text-white dark:bg-[#8774E1]"
             >
@@ -219,7 +221,9 @@ export function TeamReportsScreen() {
         onConfirm={() => {
           if (!approveTarget) return
           haptic('success')
-          approveTeamReport(approveTarget.id)
+          void performApproveTeamReport(approveTarget.id).catch(() =>
+            pushToast('تایید گزارش ناموفق بود', 'error'),
+          )
           setApproveTarget(null)
         }}
       />
@@ -235,9 +239,10 @@ export function TeamReportsScreen() {
         onConfirm={() => {
           if (!forwardTarget) return
           haptic('success')
-          forwardTeamReport(forwardTarget.id)
+          void performForwardTeamReport(forwardTarget.id)
+            .then(() => pushToast('گزارش برای مدیریت ارسال شد'))
+            .catch(() => pushToast('ارسال گزارش ناموفق بود', 'error'))
           setForwardTarget(null)
-          pushToast('گزارش برای مدیریت ارسال شد')
         }}
       />
     </Page>

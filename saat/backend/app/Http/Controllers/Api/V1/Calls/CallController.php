@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Calls;
 
+use App\Actions\Leads\AssignNextLeadAction;
 use App\Actions\Calls\SubmitCallResultAction;
 use App\Enums\Availability;
 use App\Enums\CallMethod;
@@ -29,6 +30,7 @@ class CallController extends Controller
         private readonly SubmitCallResultAction $submitCallResult,
         private readonly ShiftTimeTracker $shiftTracker,
         private readonly CallOrchestrator $orchestrator,
+        private readonly AssignNextLeadAction $assignNextLead,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -94,13 +96,21 @@ class CallController extends Controller
         $this->shiftTracker->addCallSeconds($request->user(), $duration);
         $this->shiftTracker->changeAvailability($request->user(), Availability::Available);
 
-        return ApiResponse::success([
+        $payload = [
             'call' => new CallResource($result['call']),
             'lead' => new LeadResource($result['lead']),
             'follow_up' => $result['follow_up'] ? new FollowUpResource($result['follow_up']) : null,
             'sale' => $result['sale'] ? new SaleResource($result['sale']) : null,
             'next_action' => $result['next_action']->value,
-        ], 'نتیجه تماس ثبت شد');
+        ];
+
+        if ($request->boolean('advance')) {
+            $next = $this->assignNextLead->execute($request->user());
+            $payload['next_lead'] = $next['lead'] ? new LeadResource($next['lead']) : null;
+            $payload['next_reason'] = $next['reason']?->value;
+        }
+
+        return ApiResponse::success($payload, 'نتیجه تماس ثبت شد');
     }
 
     public function show(Request $request, Call $call): JsonResponse

@@ -91,22 +91,31 @@ export const httpClient: ApiClient = {
     if (input.saleAmount !== undefined) {
       payload.sale = { amount: input.saleAmount }
     }
+    if (input.advance) {
+      payload.advance = true
+    }
 
     const idempotencyKey = input.idempotencyKey ?? newIdempotencyKey()
     const data = await http.post<{
       follow_up: unknown | null
       sale: { id: string | number } | null
       next_action: string
+      next_lead?: unknown
+      next_reason?: string
     }>(`/calls/${callId}/result`, payload, idempotencyKey)
 
     activeCallByLead.delete(input.leadId)
 
     let suggestion: Suggestion | null = null
-    try {
-      const next = await http.post<{ lead: unknown; reason: string }>('/leads/next')
-      suggestion = mapSuggestion(next)
-    } catch (e) {
-      if (!(e instanceof ApiError && e.status === 404)) throw e
+    if (data.next_lead && data.next_reason) {
+      suggestion = mapSuggestion({ lead: data.next_lead, reason: data.next_reason })
+    } else if (input.advance) {
+      try {
+        const next = await http.post<{ lead: unknown; reason: string }>('/leads/next')
+        suggestion = mapSuggestion(next)
+      } catch (e) {
+        if (!(e instanceof ApiError && e.status === 404)) throw e
+      }
     }
 
     return {

@@ -121,6 +121,8 @@ interface AppState {
 
   // runtime config from management
   appSettings: RuntimeAppSettings
+  powerDialEnabled: boolean
+  dispositionMode: 'grid' | 'swipe'
 
   // transient call context
   activeCallLeadId: string | null
@@ -223,6 +225,8 @@ interface AppState {
   applySyncData: (payload: SyncPayload) => void
   mergeTeamLiveStats: (live: TeamLiveData) => void
   setAppSettings: (settings: RuntimeAppSettings) => void
+  setPowerDialEnabled: (enabled: boolean) => void
+  setDispositionMode: (mode: 'grid' | 'swipe') => void
   upsertLead: (lead: Lead) => void
   setAgentAvatar: (avatar: string | null) => void
   setDataReady: (ready: boolean) => void
@@ -401,6 +405,8 @@ export const useStore = create<AppState>()(
       activity: mockActivity,
       teamReports: mockTeamReports,
       appSettings: DEFAULT_RUNTIME_APP_SETTINGS,
+      powerDialEnabled: false,
+      dispositionMode: 'grid',
 
       activeCallLeadId: null,
       activeCallMethod: null,
@@ -1272,6 +1278,8 @@ export const useStore = create<AppState>()(
       unlockApp: () => set({ isLocked: false }),
 
       setAppSettings: (appSettings) => set({ appSettings }),
+      setPowerDialEnabled: (enabled) => set({ powerDialEnabled: enabled }),
+      setDispositionMode: (mode) => set({ dispositionMode: mode }),
 
       mergeTeamLiveStats: (live) =>
         set((state) => {
@@ -1347,6 +1355,8 @@ export const useStore = create<AppState>()(
             permissions: resolvePermissions(payload.role, payload.permissions),
             dailyStatsDate: synced.dailyStatsDate,
             appSettings: payload.appSettings ?? state.appSettings,
+            powerDialEnabled:
+              state.powerDialEnabled || (payload.appSettings?.powerDialDefault ?? false),
             dataReady: true,
             dataSyncing: false,
           }
@@ -1443,6 +1453,8 @@ export const useStore = create<AppState>()(
         activity: state.activity,
         agents: state.agents,
         darkMode: state.darkMode,
+        powerDialEnabled: state.powerDialEnabled,
+        dispositionMode: state.dispositionMode,
       }),
     },
   ),

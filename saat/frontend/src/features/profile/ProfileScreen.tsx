@@ -80,6 +80,8 @@ export function ProfileScreen() {
   const teams = useStore((s) => s.teams)
   const agent = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
   const logout = useStore((s) => s.logout)
+  const powerDialEnabled = useStore((s) => s.powerDialEnabled)
+  const setPowerDialEnabled = useStore((s) => s.setPowerDialEnabled)
   if (!agent) return null
 
   const agentLine = isAgentRole(role)
@@ -220,6 +222,29 @@ export function ProfileScreen() {
                   />
                 </div>
               </div>
+            )}
+
+            {agentLine && (
+              <button
+                type="button"
+                onClick={() => {
+                  haptic('selection')
+                  setPowerDialEnabled(!powerDialEnabled)
+                }}
+                className="mt-3 flex w-full items-center justify-between rounded-2xl border border-white/55 bg-white/30 px-4 py-3 dark:border-white/10 dark:bg-white/[0.04]"
+              >
+                <span className="text-[13px] font-extrabold text-text">پاور دیال</span>
+                <span
+                  className={cn(
+                    'rounded-full px-3 py-1 text-[11px] font-extrabold',
+                    powerDialEnabled
+                      ? 'bg-emerald-500/15 text-emerald-700'
+                      : 'bg-black/[0.06] text-text-soft dark:bg-white/10',
+                  )}
+                >
+                  {powerDialEnabled ? 'فعال' : 'غیرفعال'}
+                </span>
+              </button>
             )}
 
             <motion.button

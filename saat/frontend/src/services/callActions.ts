@@ -59,12 +59,15 @@ export async function performReconcileCall(
 }
 
 export async function performSubmitCallResult(input: CallResultInput): Promise<CallResultOutcome> {
+  const powerDialEnabled = useStore.getState().powerDialEnabled
+  const withAdvance = { ...input, advance: input.advance ?? powerDialEnabled }
+
   if (apiMode !== 'http') {
-    return useStore.getState().submitCallResult(input)
+    return useStore.getState().submitCallResult(withAdvance)
   }
 
   try {
-    const outcome = await api.submitCallResult(input)
+    const outcome = await api.submitCallResult(withAdvance)
     activeCallByLead.delete(input.leadId)
 
     const payload = await syncAppData()

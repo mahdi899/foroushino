@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Services\AchievementService;
 use App\Services\ActivityLogService;
 use App\Services\NotificationService;
+use App\Services\Quality\QaSampler;
 use App\Support\ResultRouting;
 use Illuminate\Support\Facades\DB;
 
@@ -32,6 +33,7 @@ class SubmitCallResultAction
         private readonly NotificationService $notifications,
         private readonly ActivityLogService $activity,
         private readonly AchievementService $achievements,
+        private readonly QaSampler $qaSampler,
     ) {}
 
     /**
@@ -144,6 +146,9 @@ class SubmitCallResultAction
 
             $agent->increment('points', self::POINTS_PER_CALL);
             $this->achievements->evaluateCounters($agent);
+
+            $call = $call->fresh();
+            $this->qaSampler->maybeSampleCall($call);
 
             broadcast(new CallResultSubmitted($call))->toOthers();
 

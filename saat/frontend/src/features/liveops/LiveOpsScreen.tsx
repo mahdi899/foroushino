@@ -1,12 +1,22 @@
 import { useEffect, useState } from 'react'
-import { Activity, PhoneCall, Users } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Activity, PhoneCall, Users, ChevronLeft } from 'lucide-react'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { DataGate } from '@/components/pwa/DataGate'
 import { fetchLiveOpsDashboard } from '@/services/reports'
-import { toFa } from '@/lib/format'
+import { toFa, formatPhone } from '@/lib/format'
+
+interface ActiveCall {
+  id: number
+  agent_id?: number
+  lead?: { first_name?: string; last_name?: string; phone?: string }
+  agent?: { name?: string }
+  started_at?: string
+}
 
 export function LiveOpsScreen() {
+  const navigate = useNavigate()
   const [data, setData] = useState<Awaited<ReturnType<typeof fetchLiveOpsDashboard>> | null>(null)
 
   useEffect(() => {
@@ -24,6 +34,7 @@ export function LiveOpsScreen() {
   }, [])
 
   const kpis = data?.kpis
+  const activeCalls = (data?.active_calls ?? []) as ActiveCall[]
 
   return (
     <Page>
@@ -36,11 +47,48 @@ export function LiveOpsScreen() {
             <KpiCard icon={Activity} label="AHT" value={`${toFa(kpis?.aht_sec ?? 0)}ث`} />
             <KpiCard icon={PhoneCall} label="فروش امروز" value={toFa(kpis?.sales_today ?? 0)} />
           </div>
-          <div className="glass-card rounded-2xl border border-white/55 p-4 dark:border-white/10">
+
+          <button
+            type="button"
+            onClick={() => navigate('/followups')}
+            className="glass-card w-full rounded-2xl border border-white/55 p-4 text-right dark:border-white/10"
+          >
             <p className="text-[12px] font-bold text-text-soft">صف و پیگیری</p>
             <p className="mt-2 text-[14px] font-extrabold text-text">
               {toFa(data?.queued_leads ?? 0)} لید در صف — {toFa(data?.overdue_followups ?? 0)} پیگیری معوق
             </p>
+            <p className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-primary-600">
+              مشاهده پیگیری‌ها
+              <ChevronLeft size={14} />
+            </p>
+          </button>
+
+          <div className="glass-card rounded-2xl border border-white/55 p-4 dark:border-white/10">
+            <p className="text-[12px] font-bold text-text-soft">تماس‌های فعال ({toFa(activeCalls.length)})</p>
+            <div className="mt-3 space-y-2">
+              {activeCalls.length === 0 ? (
+                <p className="text-[12px] font-semibold text-text-soft">الان تماس فعالی نیست.</p>
+              ) : (
+                activeCalls.slice(0, 8).map((call) => (
+                  <div
+                    key={call.id}
+                    className="flex items-center justify-between rounded-xl bg-white/35 px-3 py-2 dark:bg-white/[0.04]"
+                  >
+                    <div>
+                      <p className="text-[13px] font-extrabold text-text">
+                        {call.agent?.name ?? 'کارشناس'} → {call.lead?.first_name} {call.lead?.last_name}
+                      </p>
+                      <p className="ltr-nums text-[11px] font-bold text-text-soft">
+                        {call.lead?.phone ? formatPhone(call.lead.phone) : ''}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-extrabold text-emerald-700">
+                      در تماس
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </DataGate>

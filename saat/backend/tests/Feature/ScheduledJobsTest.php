@@ -55,3 +55,18 @@ it('leaves follow-ups that are not yet due untouched', function () {
     expect($followUp->fresh()->status)->toBe(FollowupStatus::Pending);
     expect($lead->fresh()->status)->toBe(LeadStatus::FollowUpRequired);
 });
+
+it('returns stale assigned leads to the shared pool', function () {
+    $agent = makeAgent();
+    $stale = makeLead([
+        'assigned_agent_id' => $agent->id,
+        'status' => 'assigned',
+        'last_call_at' => null,
+    ]);
+    $stale->forceFill(['updated_at' => now()->subHours(72)])->saveQuietly();
+
+    $this->artisan('leads:auto-return-stale')->assertSuccessful();
+
+    expect($stale->fresh()->status)->toBe(LeadStatus::ReturnedToPool);
+    expect($stale->fresh()->assigned_agent_id)->toBeNull();
+});

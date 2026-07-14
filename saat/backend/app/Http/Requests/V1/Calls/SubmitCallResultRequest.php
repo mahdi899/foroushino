@@ -40,6 +40,7 @@ class SubmitCallResultRequest extends FormRequest
             'sale.amount' => ['required_with:sale', 'numeric', 'min:0'],
             'sale.product_id' => ['nullable', 'integer', 'exists:products,id'],
             'sale.payment_method' => ['nullable', 'string'],
+            'advance' => ['sometimes', 'boolean'],
         ];
     }
 }
