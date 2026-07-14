@@ -29,7 +29,16 @@ class FamilyManagerApp extends StatelessWidget {
         builder: (context, child) {
           return Directionality(
             textDirection: TextDirection.rtl,
-            child: child ?? const SizedBox.shrink(),
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFFF4F8F8), Color(0xFFEEF6F6), Color(0xFFF8FBFB)],
+                ),
+              ),
+              child: child ?? const SizedBox.shrink(),
+            ),
           );
         },
         home: const _RootGate(),

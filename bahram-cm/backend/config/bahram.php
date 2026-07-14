@@ -48,6 +48,14 @@ return [
         'dev_code' => env('OTP_DEV_CODE', '12345'),
     ],
 
+    'admin_login' => [
+        // Production default: 3/hour per IP. Local dev gets a higher ceiling for UI testing.
+        'max_per_hour' => (int) env(
+            'ADMIN_LOGIN_MAX_PER_HOUR',
+            env('APP_ENV') === 'local' ? 60 : 3,
+        ),
+    ],
+
     'payment' => [
         'dev_mode' => filter_var(env('PAYMENT_DEV_MODE', false), FILTER_VALIDATE_BOOL),
     ],

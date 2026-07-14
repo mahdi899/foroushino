@@ -79,7 +79,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (numberValue) submit({ number: Number(numberValue) });
+            if (numberValue) submit({ option: numberValue });
           }}
           className="flex gap-2"
         >
@@ -159,7 +159,9 @@ export function ActionCard({ action }: { action: FamilyAction }) {
           <button
             type="button"
             disabled={pending || selected.length === 0}
-            onClick={() => submit(action.type === 'single_choice' ? { choice: selected[0] } : { choices: selected })}
+            onClick={() =>
+              submit(action.type === 'single_choice' ? { option: selected[0] } : { options: selected })
+            }
             className="w-full rounded-xl bg-gold py-2.5 text-sm font-semibold text-charcoal disabled:opacity-60"
           >
             ثبت پاسخ
@@ -167,11 +169,15 @@ export function ActionCard({ action }: { action: FamilyAction }) {
         </div>,
       );
 
-    case 'scale':
+    case 'scale': {
+      const min = typeof action.config?.min === 'number' ? action.config.min : 1;
+      const max = typeof action.config?.max === 'number' ? action.config.max : 10;
+      const values = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+
       return wrap(
         <div className="space-y-3">
           <div className="flex justify-between gap-1">
-            {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+            {values.map((n) => (
               <button
                 key={n}
                 type="button"
@@ -188,13 +194,14 @@ export function ActionCard({ action }: { action: FamilyAction }) {
           <button
             type="button"
             disabled={pending || scale === null}
-            onClick={() => submit({ scale })}
+            onClick={() => submit({ score: scale })}
             className="w-full rounded-xl bg-gold py-2.5 text-sm font-semibold text-charcoal disabled:opacity-60"
           >
             ثبت
           </button>
         </div>,
       );
+    }
 
     default:
       return null;

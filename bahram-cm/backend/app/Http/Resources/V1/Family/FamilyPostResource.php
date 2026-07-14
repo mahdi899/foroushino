@@ -23,8 +23,12 @@ class FamilyPostResource extends JsonResource
             'author' => [
                 'name' => $this->author?->name ?? 'بهرام',
             ],
-            'blocks' => FamilyPostBlockResource::collection($this->whenLoaded('blocks')),
-            'actions' => FamilyActionResource::collection($this->whenLoaded('actions')),
+            'blocks' => FamilyPostBlockResource::collection(
+                $this->relationLoaded('blocks') ? $this->blocks : collect(),
+            ),
+            'actions' => FamilyActionResource::collection(
+                $this->relationLoaded('actions') ? $this->actions : collect(),
+            ),
             'reply_context' => $this->when(
                 $this->relationLoaded('replyToComment') && $this->replyToComment,
                 fn () => [

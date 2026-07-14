@@ -3,8 +3,12 @@ import 'package:provider/provider.dart';
 
 import 'package:bahram_family_manager/config/app_config.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
+import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
+import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
+import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
+import 'package:bahram_family_manager/widgets/surfaces/app_card.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -47,14 +51,13 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!protected || !mounted) return;
       final challenge = await state.fetchMathChallenge();
       if (mounted) setState(() => _captcha = challenge);
-    } catch (_) {
-      // Captcha is a soft dependency — login must still work if this fails.
-    }
+    } catch (_) {}
   }
 
   Future<void> _submitCredentials() async {
+    if (_loading) return;
     if (_emailCtrl.text.trim().isEmpty || _passwordCtrl.text.isEmpty) {
-      _show('ایمیل و رمز عبور را کامل وارد کنید.');
+      showAppSnackBar(context, 'ایمیل و رمز عبور را کامل وارد کنید.');
       return;
     }
 
@@ -66,13 +69,15 @@ class _LoginScreenState extends State<LoginScreen> {
             captchaId: _captcha?.id,
             captchaAnswer: _captchaAnswerCtrl.text.isEmpty ? null : _captchaAnswerCtrl.text,
           );
+      if (!mounted) return;
       setState(() {
         _step = 1;
         _mobile = result.mobile;
         _mobileMasked = result.masked;
       });
     } catch (e) {
-      _show(messageOf(e));
+      if (!mounted) return;
+      showAppSnackBar(context, messageOf(e));
       await _maybeLoadCaptcha();
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -80,9 +85,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _verify() async {
+    if (_loading) return;
     final code = _otpCtrl.text.trim();
     if (code.length < 4) {
-      _show('کد ارسال‌شده را کامل وارد کنید.');
+      showAppSnackBar(context, 'کد ارسال‌شده را کامل وارد کنید.');
       return;
     }
     if (_mobile == null) return;
@@ -91,27 +97,27 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await context.read<AppState>().verifyOtp(mobile: _mobile!, code: code);
     } catch (e) {
-      _show(messageOf(e));
+      if (!mounted) return;
+      showAppSnackBar(context, messageOf(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _resend() async {
+    if (_loading) return;
     if (_mobile == null) return;
     setState(() => _loading = true);
     try {
       await context.read<AppState>().resendOtp(_mobile!);
-      _show('کد جدید ارسال شد.');
+      if (!mounted) return;
+      showAppSnackBar(context, 'کد جدید ارسال شد.');
     } catch (e) {
-      _show(messageOf(e));
+      if (!mounted) return;
+      showAppSnackBar(context, messageOf(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-  }
-
-  void _show(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -120,28 +126,42 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppSpacing.xxl),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 24),
-                  const Icon(Icons.family_restroom_rounded, size: 64, color: AppColors.primary),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.xxl),
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      gradient: AppGradients.primary,
+                      borderRadius: AppRadius.cardBorder,
+                      boxShadow: AppShadows.primaryGlow,
+                    ),
+                    child: const Icon(Icons.family_restroom_rounded, size: 40, color: Colors.white),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
                   Text(
                     AppConfig.appName,
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                    style: Theme.of(context).textTheme.headlineSmall,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xs),
                   const Text(
                     'ورود مخصوص بهرام و ادمین‌های مجاز',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: AppColors.textMuted),
                   ),
-                  const SizedBox(height: 32),
-                  if (_step == 0) ..._buildCredentialsStep() else ..._buildOtpStep(),
+                  const SizedBox(height: AppSpacing.xxl),
+                  AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: _step == 0 ? _buildCredentialsStep() : _buildOtpStep(),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -159,7 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
         textDirection: TextDirection.ltr,
         decoration: const InputDecoration(labelText: 'ایمیل ادمین'),
       ),
-      const SizedBox(height: 12),
+      const SizedBox(height: AppSpacing.md),
       TextField(
         controller: _passwordCtrl,
         obscureText: true,
@@ -168,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
         onSubmitted: (_) => _submitCredentials(),
       ),
       if (_captcha != null) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         Row(
           children: [
             Expanded(
@@ -177,7 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             SizedBox(
               width: 80,
               child: TextField(
@@ -190,13 +210,8 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
       ],
-      const SizedBox(height: 20),
-      FilledButton(
-        onPressed: _loading ? null : _submitCredentials,
-        child: _loading
-            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
-            : const Text('ورود'),
-      ),
+      const SizedBox(height: AppSpacing.xl),
+      PrimaryButton(label: 'ورود', loading: _loading, onPressed: _submitCredentials),
     ];
   }
 
@@ -206,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
         'کد تأیید به شماره ${_mobileMasked ?? ''} ارسال شد.',
         textAlign: TextAlign.center,
       ),
-      const SizedBox(height: 16),
+      const SizedBox(height: AppSpacing.lg),
       TextField(
         controller: _otpCtrl,
         keyboardType: TextInputType.number,
@@ -216,13 +231,8 @@ class _LoginScreenState extends State<LoginScreen> {
         decoration: const InputDecoration(labelText: 'کد تأیید', counterText: ''),
         onSubmitted: (_) => _verify(),
       ),
-      const SizedBox(height: 16),
-      FilledButton(
-        onPressed: _loading ? null : _verify,
-        child: _loading
-            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
-            : const Text('تأیید و ورود'),
-      ),
+      const SizedBox(height: AppSpacing.lg),
+      PrimaryButton(label: 'تأیید و ورود', loading: _loading, onPressed: _verify),
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

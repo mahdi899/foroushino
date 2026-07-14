@@ -12,7 +12,7 @@ final class FamilyMediaUrl
 
         $cdn = rtrim((string) config('family.media.cdn_url'), '/');
         if ($cdn === '') {
-            return null;
+            $cdn = rtrim((string) config('app.url'), '/').'/storage';
         }
 
         return $cdn.'/'.ltrim($storagePath, '/');

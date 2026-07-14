@@ -13,6 +13,7 @@ use App\Services\AdminAuditLogger;
 use App\Services\Family\FamilyNotificationService;
 use App\Services\Family\FamilyPostPublisher;
 use App\Support\ApiResponse;
+use App\Support\FamilyManagerPostPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -38,7 +39,10 @@ class PostController extends Controller
 
         $posts = $query->paginate(min(50, (int) $request->query('per_page', 20)));
 
-        return ApiResponse::success($posts->items(), 200, [
+        return ApiResponse::success(
+            collect($posts->items())->map(fn (FamilyPost $post) => FamilyManagerPostPresenter::present($post))->all(),
+            200,
+            [
             'current_page' => $posts->currentPage(),
             'last_page' => $posts->lastPage(),
             'total' => $posts->total(),
@@ -51,7 +55,7 @@ class PostController extends Controller
 
         $post = $this->publisher->createDraft($request->user(), $data);
 
-        return ApiResponse::success($post, 201);
+        return ApiResponse::success(FamilyManagerPostPresenter::present($post), 201);
     }
 
     /**
@@ -96,7 +100,7 @@ class PostController extends Controller
     {
         $post->load(['author:id,name', 'blocks.media', 'blocks.article', 'targets', 'actions.options']);
 
-        return ApiResponse::success($post);
+        return ApiResponse::success(FamilyManagerPostPresenter::present($post));
     }
 
     public function update(Request $request, FamilyPost $post): JsonResponse
@@ -107,7 +111,7 @@ class PostController extends Controller
 
         $updated = $this->publisher->updateDraft($request->user(), $post, $data);
 
-        return ApiResponse::success($updated);
+        return ApiResponse::success(FamilyManagerPostPresenter::present($updated));
     }
 
     public function publish(Request $request, FamilyPost $post): JsonResponse
@@ -123,7 +127,7 @@ class PostController extends Controller
             // fan-out over home-family members; kept out of the request cycle intentionally.
         }
 
-        return ApiResponse::success($published);
+        return ApiResponse::success(FamilyManagerPostPresenter::present($published));
     }
 
     public function archive(Request $request, FamilyPost $post): JsonResponse
@@ -135,7 +139,7 @@ class PostController extends Controller
 
         $this->audit->log($request->user(), 'family.post_archived', $post);
 
-        return ApiResponse::success($post);
+        return ApiResponse::success(FamilyManagerPostPresenter::present($post));
     }
 
     public function destroy(Request $request, FamilyPost $post): JsonResponse
@@ -178,6 +182,6 @@ class PostController extends Controller
             $this->notifications->bahramReplied($comment->user);
         }
 
-        return ApiResponse::success($published, 201);
+        return ApiResponse::success(FamilyManagerPostPresenter::present($published), 201);
     }
 }

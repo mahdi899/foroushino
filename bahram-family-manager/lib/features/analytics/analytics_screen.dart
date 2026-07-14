@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
+import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
+import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
+import 'package:bahram_family_manager/widgets/posts/post_list_tile.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -37,70 +40,72 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         onRefresh: () async => _load(),
         child: FutureBuilder<AnalyticsData>(
           future: _future,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
+          builder: (context, snapshot) => AsyncBody<AnalyticsData>(
+            snapshot: snapshot,
+            builder: (context, data) {
+              final totals = _Totals.fromDaily(data.daily);
+
               return ListView(
-                padding: const EdgeInsets.all(24),
-                children: [Text(messageOf(snapshot.error!), style: const TextStyle(color: AppColors.error))],
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    children: [7, 30, 90].map((d) {
+                      final selected = _days == d;
+                      return FilterChip(
+                        label: Text('${toFaDigits(d.toString())} روز'),
+                        selected: selected,
+                        onSelected: (_) {
+                          setState(() => _days = d);
+                          _load();
+                        },
+                        showCheckmark: false,
+                        selectedColor: AppColors.primarySoft,
+                        labelStyle: TextStyle(
+                          color: selected ? AppColors.primary : AppColors.textMuted,
+                          fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: AppSpacing.md,
+                    crossAxisSpacing: AppSpacing.md,
+                    childAspectRatio: 1.5,
+                    children: [
+                      StatCard(title: 'عضو جدید', value: totals.newMembers, icon: Icons.person_add_rounded, color: AppColors.primary),
+                      StatCard(title: 'پست منتشرشده', value: totals.postsPublished, icon: Icons.campaign_rounded, color: AppColors.accent),
+                      StatCard(title: 'واکنش', value: totals.reactions, icon: Icons.favorite_rounded, color: AppColors.error),
+                      StatCard(title: 'اکشن تکمیل‌شده', value: totals.actionsCompleted, icon: Icons.task_alt_rounded, color: AppColors.gold),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+                  _SectionTitle('منابع ورودی'),
+                  if (data.sources.isEmpty)
+                    const Text('داده‌ای موجود نیست.', style: TextStyle(color: AppColors.textMuted))
+                  else
+                    _BarList(
+                      items: data.sources.map((s) => (label: s.source, value: s.joins)).toList(),
+                      color: AppColors.primary,
+                    ),
+                  const SizedBox(height: AppSpacing.xl),
+                  _SectionTitle('رویدادهای ورودی'),
+                  if (data.entryEvents.isEmpty)
+                    const Text('داده‌ای موجود نیست.', style: TextStyle(color: AppColors.textMuted))
+                  else
+                    _BarList(
+                      items: data.entryEvents.map((e) => (label: e.name, value: e.joins)).toList(),
+                      color: AppColors.info,
+                    ),
+                ],
               );
-            }
-
-            final data = snapshot.data!;
-            final totals = _Totals.fromDaily(data.daily);
-
-            return ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                Wrap(
-                  spacing: 8,
-                  children: [7, 30, 90].map((d) {
-                    return ChoiceChip(
-                      label: Text('${toFaDigits(d.toString())} روز'),
-                      selected: _days == d,
-                      onSelected: (_) {
-                        setState(() => _days = d);
-                        _load();
-                      },
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
-                GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1.6,
-                  children: [
-                    _StatCard(title: 'عضو جدید', value: totals.newMembers),
-                    _StatCard(title: 'پست منتشرشده', value: totals.postsPublished),
-                    _StatCard(title: 'واکنش', value: totals.reactions),
-                    _StatCard(title: 'اکشن تکمیل‌شده', value: totals.actionsCompleted),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                _SectionTitle('منابع ورودی'),
-                if (data.sources.isEmpty)
-                  const Text('داده‌ای موجود نیست.', style: TextStyle(color: AppColors.textMuted))
-                else
-                  _BarList(
-                    items: data.sources.map((s) => (label: s.source, value: s.joins)).toList(),
-                  ),
-                const SizedBox(height: 20),
-                _SectionTitle('رویدادهای ورودی'),
-                if (data.entryEvents.isEmpty)
-                  const Text('داده‌ای موجود نیست.', style: TextStyle(color: AppColors.textMuted))
-                else
-                  _BarList(
-                    items: data.entryEvents.map((e) => (label: e.name, value: e.joins)).toList(),
-                  ),
-              ],
-            );
-          },
+            },
+          ),
         ),
       ),
     );
@@ -127,30 +132,6 @@ class _Totals {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.title, required this.value});
-
-  final String title;
-  final int value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(toFaDigits(value.toString()), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-            Text(title, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle(this.title);
 
@@ -159,16 +140,17 @@ class _SectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: Text(title, style: Theme.of(context).textTheme.titleMedium),
     );
   }
 }
 
 class _BarList extends StatelessWidget {
-  const _BarList({required this.items});
+  const _BarList({required this.items, required this.color});
 
   final List<({String label, int value})> items;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -178,7 +160,7 @@ class _BarList extends StatelessWidget {
       children: items.take(8).map((item) {
         final ratio = item.value / max;
         return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(bottom: AppSpacing.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -186,13 +168,18 @@ class _BarList extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(child: Text(item.label, overflow: TextOverflow.ellipsis)),
-                  Text(toFaDigits(item.value.toString()), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(toFaDigits(item.value.toString()), style: TextStyle(fontWeight: FontWeight.w700, color: color)),
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xs),
               ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: LinearProgressIndicator(value: ratio.clamp(0, 1), minHeight: 8),
+                borderRadius: BorderRadius.circular(AppRadius.tile),
+                child: LinearProgressIndicator(
+                  value: ratio.clamp(0, 1),
+                  minHeight: 8,
+                  backgroundColor: AppColors.border,
+                  color: color,
+                ),
               ),
             ],
           ),

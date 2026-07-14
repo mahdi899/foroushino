@@ -96,6 +96,7 @@ class FeedService
                 'blocks' => fn ($q) => $q->orderBy('position'),
                 'blocks.media',
                 'blocks.article:id,title,slug,excerpt,featured_image,status',
+                'actions.options',
             ])
             ->orderByDesc('published_at')
             ->orderByDesc('id')
