@@ -7,6 +7,7 @@ import { nextActionLabels } from '@/data/labels'
 import { ApiError, http, newIdempotencyKey } from './http'
 import { clearActiveCall, getActiveCallId, registerActiveCall } from './activeCallRegistry'
 import { readCallSession } from './callSession'
+import { patchCallResultData } from './patchCallWrite'
 import { mapFollowup, mapSuggestion } from './mappers'
 import type { Suggestion } from './logic'
 
@@ -117,6 +118,8 @@ export const httpClient: ApiClient = {
 
     const idempotencyKey = input.idempotencyKey ?? newIdempotencyKey()
     const data = await http.post<{
+      call?: unknown
+      lead?: unknown
       follow_up: unknown | null
       sale: { id: string | number } | null
       next_action: string
@@ -124,6 +127,7 @@ export const httpClient: ApiClient = {
       next_reason?: string
     }>(`/calls/${callId}/result`, payload, idempotencyKey)
 
+    patchCallResultData(data)
     clearActiveCall(input.leadId)
 
     const outcome: CallResultOutcome = {
@@ -141,13 +145,6 @@ export const httpClient: ApiClient = {
     try {
       if (data.next_lead && data.next_reason) {
         outcome.suggestion = mapSuggestion({ lead: data.next_lead, reason: data.next_reason })
-      } else if (input.advance) {
-        try {
-          const next = await http.post<{ lead: unknown; reason: string }>('/leads/next')
-          outcome.suggestion = mapSuggestion(next)
-        } catch (e) {
-          if (!(e instanceof ApiError && e.status === 404)) throw e
-        }
       }
     } catch {
       outcome.suggestion = null

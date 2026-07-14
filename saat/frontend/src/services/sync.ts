@@ -125,11 +125,11 @@ function mapPaymentFromSale(dto: Dto): Payment | null {
   }
 }
 
-async function fetchShiftData(): Promise<{ shiftCurrentRaw: Dto; shiftHistoryRaw: Dto[] }> {
+async function fetchShiftData(days = 90): Promise<{ shiftCurrentRaw: Dto; shiftHistoryRaw: Dto[] }> {
   try {
     const [shiftCurrentRaw, shiftHistoryRaw] = await Promise.all([
       http.get<Dto>('/shift/current'),
-      http.get<Dto[]>('/shift/history?days=90'),
+      http.get<Dto[]>(`/shift/history?days=${days}`),
     ])
     return { shiftCurrentRaw, shiftHistoryRaw }
   } catch {
@@ -140,6 +140,11 @@ async function fetchShiftData(): Promise<{ shiftCurrentRaw: Dto; shiftHistoryRaw
 export async function syncAppData(): Promise<SyncPayload> {
   const me = await fetchMe()
   const permissions = me.permissions ?? []
+  const role = mapAuthUserRole(me.roles)
+  const management = isManagementRole(role)
+  const leadsPage = management ? 100 : 50
+  const callsPage = management ? 100 : 30
+  const followupsPage = management ? 100 : 50
 
   const [
     home,
@@ -161,24 +166,24 @@ export async function syncAppData(): Promise<SyncPayload> {
     shiftData,
   ] = await Promise.all([
     http.get<Dto>('/home/agent'),
-    http.get<Dto[]>('/leads?per_page=100'),
-    http.get<Dto[]>('/followups?per_page=100'),
-    safeGet<Dto[]>('/calls?per_page=100'),
-    http.get<Dto[]>('/sales?per_page=100'),
+    http.get<Dto[]>(`/leads?per_page=${leadsPage}`),
+    http.get<Dto[]>(`/followups?per_page=${followupsPage}`),
+    safeGet<Dto[]>(`/calls?per_page=${callsPage}`),
+    http.get<Dto[]>(`/sales?per_page=${management ? 100 : 40}`),
     http.get<Dto>('/wallet'),
-    http.get<Dto[]>('/wallet/transactions?per_page=100'),
-    http.get<Dto[]>('/wallet/commissions?per_page=100'),
-    http.get<Dto[]>('/wallet/payout-requests?per_page=50'),
+    management ? http.get<Dto[]>('/wallet/transactions?per_page=100') : Promise.resolve([]),
+    management ? http.get<Dto[]>('/wallet/commissions?per_page=100') : Promise.resolve([]),
+    management ? http.get<Dto[]>('/wallet/payout-requests?per_page=50') : Promise.resolve([]),
     http.get<Dto[]>('/products'),
     http.get<Dto[]>('/notifications?per_page=50'),
     http.get<Dto>('/app-config'),
-    safeGet<Dto[]>('/activity'),
+    management ? safeGet<Dto[]>('/activity') : Promise.resolve(null),
     hasPermission(permissions, 'users.view') ? safeGet<Dto[]>('/admin/users') : Promise.resolve(null),
     hasPermission(permissions, 'users.view') ? safeGet<Dto[]>('/admin/teams') : Promise.resolve(null),
     hasPermission(permissions, 'reports.view-team') || hasPermission(permissions, 'reports.view-all')
       ? safeGet<Dto[]>('/team-reports')
       : Promise.resolve(null),
-    fetchShiftData(),
+    fetchShiftData(management ? 90 : 14),
   ])
 
   const target = (home.target as Dto) ?? {}
@@ -225,7 +230,6 @@ export async function syncAppData(): Promise<SyncPayload> {
 
   const adminUsers = asArray<Dto>(adminUsersRaw)
   const calls = asArray<Dto>(callsRaw).map(mapCall)
-  const role = mapAuthUserRole(me.roles)
   const teamLive = isManagementRole(role)
     ? await fetchTeamLive(me.team_id ? String(me.team_id) : null)
     : null
@@ -297,5 +301,14 @@ export async function syncAppData(): Promise<SyncPayload> {
     workSession: mapWorkSession(shiftData.shiftCurrentRaw.session as Dto | null | undefined),
     workDaySummaries: asArray<Dto>(shiftData.shiftHistoryRaw).map(mapWorkDaySummary),
     appSettings: mapRuntimeAppSettings(appConfigRaw),
+  }
+}
+
+/** Fetches fresh app data without throwing — safe after a successful write. */
+export async function trySyncAppData(): Promise<SyncPayload | null> {
+  try {
+    return await syncAppData()
+  } catch {
+    return null
   }
 }

@@ -3,7 +3,7 @@ import { capabilitiesFromSettings, resolveCallMethod } from '@/lib/telephony'
 import { useStore } from '@/store/useStore'
 import { apiMode, api } from '@/services/index'
 import { http, NetworkError } from '@/services/http'
-import { syncAppData } from '@/services/sync'
+import { patchCallStartData } from '@/services/patchCallWrite'
 import type { CallResultInput, CallResultOutcome } from '@/services/client'
 import { enqueueOfflineWrite, flushOfflineQueue } from '@/services/offlineQueue'
 import { clearActiveCall, getActiveCallId, registerActiveCall } from '@/services/activeCallRegistry'
@@ -31,14 +31,7 @@ export async function performStartCall(leadId: string, method?: CallMethod): Pro
     registerActiveCall(leadId, Number(data.call.id))
     saveCallSession({ leadId, callId: Number(data.call.id) })
     state.startCall(leadId, resolved)
-
-    if (data.lead) {
-      void syncAppData()
-        .then((payload) => useStore.getState().applySyncData(payload))
-        .catch(() => {
-          // Call is live on the server; stale cache is fine until the next sync.
-        })
-    }
+    patchCallStartData(data)
   } catch (error) {
     if (error instanceof NetworkError) {
       await enqueueOfflineWrite({
@@ -75,13 +68,6 @@ export async function performSubmitCallResult(input: CallResultInput): Promise<C
   try {
     const outcome = await api.submitCallResult(withAdvance)
     clearActiveCall(input.leadId)
-
-    try {
-      const payload = await syncAppData()
-      useStore.getState().applySyncData(payload)
-    } catch {
-      // Result was saved on the server; stale local cache is acceptable until next sync.
-    }
 
     useStore.setState({
       activeCallLeadId: null,

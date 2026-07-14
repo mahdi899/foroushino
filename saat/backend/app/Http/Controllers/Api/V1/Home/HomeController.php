@@ -33,9 +33,11 @@ class HomeController extends Controller
         $callsToday = $user->calls()->whereDate('created_at', $today)->count();
         $salesToday = $user->sales()->whereDate('created_at', $today)->count();
 
-        $target->calls_made = $callsToday;
-        $target->sales_made = $salesToday;
-        $target->save();
+        if ($target->calls_made !== $callsToday || $target->sales_made !== $salesToday) {
+            $target->calls_made = $callsToday;
+            $target->sales_made = $salesToday;
+            $target->save();
+        }
 
         $assignedCount = Lead::query()->where('assigned_agent_id', $user->id)
             ->whereNotIn('status', array_map(fn ($s) => $s->value, LeadStatus::excludedFromCycle()))

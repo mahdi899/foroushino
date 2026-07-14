@@ -110,24 +110,26 @@ class CampaignDialingPolicy
 
     private function dailyAttempts(Lead $lead): int
     {
-        return $lead->calls()
-            ->whereDate('created_at', today())
-            ->count();
+        if ($lead->last_call_at?->isToday()) {
+            return $lead->calls()->whereDate('created_at', today())->count();
+        }
+
+        return 0;
     }
 
     private function totalAttempts(Lead $lead): int
     {
-        return max($lead->call_count, $lead->calls()->count());
+        return (int) $lead->call_count;
     }
 
     private function isInCooldown(Lead $lead, Campaign $campaign): bool
     {
-        $lastCall = $lead->calls()->latest('created_at')->first();
+        $lastAt = $lead->last_call_at;
 
-        if (! $lastCall) {
+        if (! $lastAt) {
             return false;
         }
 
-        return $lastCall->created_at->gt(now()->subMinutes($campaign->retry_cooldown_minutes));
+        return $lastAt->gt(now()->subMinutes($campaign->retry_cooldown_minutes));
     }
 }

@@ -9,12 +9,12 @@ const configuredBaseUrl =
   import.meta.env?.VITE_API_BASE_URL ??
   (typeof process !== 'undefined' ? process.env?.VITE_API_BASE_URL : undefined)
 
-/** In dev, same-origin `/api/v1` is proxied by Vite to Laravel (works from phone on LAN too). */
+/** Browser default: same-origin `/api/v1` (Vite proxy in dev, reverse proxy in prod). */
 function resolveDefaultApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
-    // Browser builds: same-origin API (dev proxy or production reverse proxy on 80/443).
     return '/api/v1'
   }
+  // Node verify script only — not used in built PWA.
   return 'http://localhost:8000/api/v1'
 }
 
@@ -25,7 +25,9 @@ function networkErrorMessage(): string {
     return 'اتصال اینترنت برقرار نیست.'
   }
   if (API_BASE_URL.startsWith('/')) {
-    return 'ارتباط با سرور برقرار نشد. بک‌اند را با php artisan serve اجرا کن و Vite dev server را ری‌استارت کن.'
+    return import.meta.env?.DEV
+      ? 'ارتباط با سرور برقرار نشد. بک‌اند را با php artisan serve اجرا کن و Vite dev server را ری‌استارت کن.'
+      : 'ارتباط با سرور برقرار نشد. پروکسی API یا VITE_API_BASE_URL را بررسی کن.'
   }
   if (API_BASE_URL.includes('localhost') || API_BASE_URL.includes('127.0.0.1')) {
     return 'ارتباط با سرور برقرار نشد. بک‌اند را با php artisan serve اجرا کن.'

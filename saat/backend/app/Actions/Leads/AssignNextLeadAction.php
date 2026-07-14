@@ -104,30 +104,32 @@ class AssignNextLeadAction
     {
         $excluded = array_map(fn ($s) => $s->value, LeadStatus::excludedFromCycle());
 
-        $candidates = Lead::query()
-            ->whereNotIn('status', $excluded)
-            ->whereNull('do_not_call_at')
-            ->where(function ($q): void {
-                $q->whereNull('locked_by')->orWhere('locked_until', '<', now());
-            })
-            ->where(function ($q) use ($agent): void {
-                $q->where('assigned_agent_id', $agent->id)
-                    ->orWhere(function ($q2) use ($agent): void {
-                        $q2->whereNull('assigned_agent_id')
-                            ->where(function ($q3) use ($agent): void {
-                                if ($agent->team_id) {
-                                    $q3->whereNull('assigned_team_id')
-                                        ->orWhere('assigned_team_id', $agent->team_id);
-                                } else {
-                                    $q3->whereNull('assigned_team_id');
-                                }
-                            });
-                    });
-            })
+        $candidates = $this->dialingPolicy->applyCandidateConstraints(
+            Lead::query()
+                ->whereNotIn('status', $excluded)
+                ->whereNull('do_not_call_at')
+                ->where(function ($q): void {
+                    $q->whereNull('locked_by')->orWhere('locked_until', '<', now());
+                })
+                ->where(function ($q) use ($agent): void {
+                    $q->where('assigned_agent_id', $agent->id)
+                        ->orWhere(function ($q2) use ($agent): void {
+                            $q2->whereNull('assigned_agent_id')
+                                ->where(function ($q3) use ($agent): void {
+                                    if ($agent->team_id) {
+                                        $q3->whereNull('assigned_team_id')
+                                            ->orWhere('assigned_team_id', $agent->team_id);
+                                    } else {
+                                        $q3->whereNull('assigned_team_id');
+                                    }
+                                });
+                        });
+                }),
+        )
             ->selectRaw('leads.*, ('.LeadPriorityScore::sqlExpression().') as priority_score')
             ->orderByDesc('priority_score')
             ->orderBy('id')
-            ->limit(25)
+            ->limit(5)
             ->lockForUpdate()
             ->get();
 

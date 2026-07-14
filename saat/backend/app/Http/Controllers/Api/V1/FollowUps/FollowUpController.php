@@ -32,7 +32,15 @@ class FollowUpController extends Controller
             $query->where('status', '!=', FollowupStatus::Cancelled->value);
         }
 
-        $followUps = $query->orderBy('due_at')->limit(300)->get();
+        $followUps = $query
+            ->orderBy('due_at')
+            ->limit(min($request->integer('per_page', 50), $user->hasAnyRole([
+                RoleName::Manager->value,
+                RoleName::Admin->value,
+                RoleName::Supervisor->value,
+                RoleName::Leader->value,
+            ]) ? 200 : 80))
+            ->get();
 
         return ApiResponse::success(FollowUpResource::collection($followUps));
     }
