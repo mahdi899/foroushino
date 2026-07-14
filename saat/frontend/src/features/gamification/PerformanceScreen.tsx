@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Flame,
+  Star,
   Target,
   Phone,
   CheckCircle2,
@@ -166,6 +167,8 @@ export function PerformanceScreen() {
         subtitle="پیشرفت و دستاوردهای امروز"
         icon={Trophy}
         iconTone="warning"
+        showBack
+        onBack={() => navigate('/profile')}
       />
 
       <DataGate mode="placeholder">
@@ -206,7 +209,7 @@ export function PerformanceScreen() {
               <BadgeCheck size={15} className="shrink-0 text-primary-500" strokeWidth={2.5} />
             </div>
             <p className="mt-0.5 truncate text-[12px] font-medium text-text-muted">
-              {roleLabels[me.role]} · سطح {toFa(me.level)}
+              {roleLabels[me.role]} · {toFa(me.points)} امتیاز
             </p>
           </div>
 
@@ -260,8 +263,8 @@ export function PerformanceScreen() {
                   </span>
                 )}
                 <span className="glass-inset inline-flex items-center gap-1 rounded-full border border-white/55 px-2.5 py-1 text-[11px] font-semibold text-text-muted dark:border-white/10">
-                  <Crown size={13} className={TG} strokeWidth={2.35} />
-                  سطح {toFa(me.level)}
+                  <Star size={13} className={TG} strokeWidth={2.35} />
+                  {toFa(me.points)} امتیاز
                 </span>
               </div>
 

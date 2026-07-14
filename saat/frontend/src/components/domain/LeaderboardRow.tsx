@@ -47,7 +47,7 @@ export function LeaderboardRow({
           {agent.firstName} {agent.lastName}
           {highlight && <span className="mr-1 text-[11px] font-bold text-primary-600">(تو)</span>}
         </p>
-        <p className="text-[11px] font-bold text-neutral-400">سطح {toFa(agent.level)}</p>
+        <p className="text-[11px] font-bold text-neutral-400">{toFa(agent.points)} امتیاز</p>
       </div>
       <div className="text-left">
         <p className="text-base font-extrabold text-primary-700 tabular-nums">

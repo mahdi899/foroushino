@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Phone,
@@ -29,11 +29,14 @@ import {
   pendingConfirmationSales,
   weakAgents,
 } from '@/lib/reportUtils'
-import { getTeamAgentIds } from '@/lib/teamUtils'
-import { isLeaderRole, isManagerRole, isSupervisorRole } from '@/lib/roles'
+import { getManagedTeam, getTeamAgentIds } from '@/lib/teamUtils'
+import { isLeaderRole, isManagerRole, isSupervisorRole, isManagementRole } from '@/lib/roles'
 import { hasPermission } from '@/lib/permissions'
 import { roleLabels } from '@/data/labels'
+import { conversionRateFromStats } from '@/lib/dailyGoal'
 import { toFa } from '@/lib/format'
+import { apiMode } from '@/services'
+import { fetchTeamLive } from '@/services/teamLive'
 
 export function ManagementHome() {
   const navigate = useNavigate()
@@ -45,6 +48,7 @@ export function ManagementHome() {
   const leads = useStore((s) => s.leads)
   const followups = useStore((s) => s.followups)
   const sales = useStore((s) => s.sales)
+  const mergeTeamLiveStats = useStore((s) => s.mergeTeamLiveStats)
 
   const isLeader = isLeaderRole(role)
   const isSupervisor = isSupervisorRole(role)
@@ -57,13 +61,33 @@ export function ManagementHome() {
     hasPermission(permissions, 'leads.import') ||
     hasPermission(permissions, 'leads.reassign')
   const canReviewPayment = hasPermission(permissions, 'sales.review-payment')
+  const managedTeam = useMemo(
+    () => getManagedTeam(teams, currentAgentId, role),
+    [teams, currentAgentId, role],
+  )
+
+  useEffect(() => {
+    if (apiMode !== 'http' || !isManagementRole(role)) return
+
+    const refresh = async () => {
+      try {
+        const live = await fetchTeamLive(managedTeam?.id ?? null)
+        mergeTeamLiveStats(live)
+      } catch {
+        // Keep last synced snapshot.
+      }
+    }
+
+    void refresh()
+    const timer = window.setInterval(() => void refresh(), 15_000)
+    return () => window.clearInterval(timer)
+  }, [role, managedTeam?.id, mergeTeamLiveStats])
+
   const teamAgentIds = getTeamAgentIds(teams, agents, currentAgentId, role)
   const teamAgents = agents.filter((a) => teamAgentIds.includes(a.id) && a.role === 'agent')
   const totalCalls = teamAgents.reduce((sum, a) => sum + a.callsToday, 0)
   const totalSuccess = teamAgents.reduce((sum, a) => sum + a.successfulToday, 0)
-  const avgConversion = Math.round(
-    teamAgents.reduce((sum, a) => sum + a.conversionRate, 0) / (teamAgents.length || 1),
-  )
+  const avgConversion = conversionRateFromStats(totalCalls, totalSuccess)
   const hotLeads = leads.filter((l) => l.temperature === 'hot').length
 
   const teamRows = useMemo(() => computeTeamRows(agents, teams), [agents, teams])

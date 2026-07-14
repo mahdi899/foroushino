@@ -20,7 +20,7 @@ class TeamReportPolicy
             return false;
         }
 
-        if ($user->hasAnyRole([RoleName::Manager->value, RoleName::Admin::value, RoleName::Supervisor->value])) {
+        if ($user->hasAnyRole([RoleName::Manager->value, RoleName::Admin->value, RoleName::Supervisor->value])) {
             return true;
         }
 

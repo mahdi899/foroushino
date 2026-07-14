@@ -7,26 +7,62 @@ import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { LeadDetailsPanel } from '@/components/domain/LeadDetailsPanel'
 import { useStore } from '@/store/useStore'
 import { formatPhone, maskPhone } from '@/lib/format'
-import { isVoipCallEnabled } from '@/lib/call'
+import { isNativeCallEnabled, isVoipCallEnabled } from '@/lib/call'
+import { performStartCall } from '@/services/callActions'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
-
 const spring = { type: 'spring' as const, stiffness: 420, damping: 32 }
 
 export function CallMethodSheet() {
   const navigate = useNavigate()
   const lead = useStore((s) => s.callMethodLead)
   const close = useStore((s) => s.closeCallMethodSheet)
-  const startCall = useStore((s) => s.startCall)
-  const maskPhoneNumbers = useStore((s) => s.maskPhoneNumbers)
+  const appSettings = useStore((s) => s.appSettings)
+  const pushToast = useStore((s) => s.pushToast)
   const [showDetails, setShowDetails] = useState(false)
+  const [starting, setStarting] = useState(false)
 
   const open = lead !== null
+  const maskPhoneNumbers = useStore((s) => s.maskPhoneNumbers)
   const voipEnabled = isVoipCallEnabled()
+  const nativeEnabled = isNativeCallEnabled()
 
   useEffect(() => {
     if (!open) setShowDetails(false)
   }, [open])
+
+  const beginCall = async (method: 'native' | 'voip') => {
+    if (!lead || starting) return
+    setStarting(true)
+    try {
+      haptic('medium')
+      handleClose()
+      await performStartCall(lead.id, method)
+      navigate(`/dialer/${lead.id}`)
+    } catch {
+      pushToast('شروع تماس ناموفق بود. بعداً دوباره تلاش کن.', 'error')
+    } finally {
+      setStarting(false)
+    }
+  }
+
+  const handleNative = () => {
+    if (!nativeEnabled) {
+      pushToast('تماس سیم‌کارت از مدیریت غیرفعال شده.', 'info')
+      return
+    }
+    void beginCall('native')
+  }
+
+  const handleVoip = () => {
+    if (!voipEnabled) return
+    void beginCall('voip')
+  }
+
+  const handleShowDetails = () => {
+    haptic('light')
+    setShowDetails(true)
+  }
 
   const phoneLabel = lead
     ? maskPhoneNumbers
@@ -37,27 +73,6 @@ export function CallMethodSheet() {
   const handleClose = () => {
     setShowDetails(false)
     close()
-  }
-
-  const handleNative = () => {
-    if (!lead) return
-    haptic('medium')
-    handleClose()
-    startCall(lead.id, 'native')
-    navigate(`/dialer/${lead.id}`)
-  }
-
-  const handleVoip = () => {
-    if (!lead || !voipEnabled) return
-    haptic('medium')
-    handleClose()
-    startCall(lead.id, 'voip')
-    navigate(`/dialer/${lead.id}`)
-  }
-
-  const handleShowDetails = () => {
-    haptic('light')
-    setShowDetails(true)
   }
 
   return (
@@ -125,6 +140,7 @@ export function CallMethodSheet() {
                     type="button"
                     whileTap={{ scale: 0.98 }}
                     transition={spring}
+                    disabled={!nativeEnabled || starting}
                     onClick={handleNative}
                     className={cn(
                       'glass-card flex min-w-0 flex-col items-center gap-2 rounded-[18px] border border-white/60 p-3.5 text-center',
@@ -143,7 +159,7 @@ export function CallMethodSheet() {
                     type="button"
                     whileTap={{ scale: voipEnabled ? 0.98 : 1 }}
                     transition={spring}
-                    disabled={!voipEnabled}
+                    disabled={!voipEnabled || starting}
                     onClick={handleVoip}
                     className={cn(
                       'glass-inset flex min-w-0 flex-col items-center gap-2 rounded-[18px] border p-3.5 text-center',
@@ -171,7 +187,7 @@ export function CallMethodSheet() {
                         <p className="text-[14px] font-bold text-text">VoIP</p>
                         {!voipEnabled && (
                           <span className="rounded-full bg-[#FFB000]/15 px-1.5 py-0.5 text-[9px] font-bold text-[#B45309] dark:bg-[#FBBF24]/15 dark:text-[#FBBF24]">
-                            به‌زودی
+                            {appSettings.voipEnabled ? 'آفلاین' : 'غیرفعال'}
                           </span>
                         )}
                       </div>

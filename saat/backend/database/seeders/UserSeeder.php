@@ -159,9 +159,13 @@ class UserSeeder extends Seeder
                     'email_verified_at' => now(),
                     'team_id' => in_array($account['role'], ['agent', 'leader', 'supervisor'], true) ? $teamId : null,
                     'availability' => Availability::Available,
+                    'call_goal' => 25,
                     'is_active' => true,
                 ],
             );
+            if ($user->call_goal !== 25) {
+                $user->forceFill(['call_goal' => 25])->save();
+            }
             $user->syncRoles([$roleMap[$account['role']]->value ?? RoleName::Agent->value]);
             Wallet::query()->firstOrCreate(['user_id' => $user->id]);
         }

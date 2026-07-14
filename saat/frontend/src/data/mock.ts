@@ -48,7 +48,7 @@ export const agents: Agent[] = [
     conversionRate: 32,
     points: 2480,
     streak: 6,
-    callGoal: 18,
+    callGoal: 25,
     avatar: avatarUrl('a-me'),
   },
   {
@@ -64,7 +64,7 @@ export const agents: Agent[] = [
     conversionRate: 28,
     points: 2120,
     streak: 4,
-    callGoal: 18,
+    callGoal: 25,
     avatar: avatarUrl('a2'),
   },
   {
@@ -80,7 +80,7 @@ export const agents: Agent[] = [
     conversionRate: 24,
     points: 1980,
     streak: 2,
-    callGoal: 18,
+    callGoal: 25,
     avatar: avatarUrl('a3'),
   },
   {
@@ -96,7 +96,7 @@ export const agents: Agent[] = [
     conversionRate: 18,
     points: 1450,
     streak: 1,
-    callGoal: 18,
+    callGoal: 25,
     avatar: avatarUrl('a4'),
   },
   {
@@ -112,7 +112,7 @@ export const agents: Agent[] = [
     conversionRate: 16,
     points: 1180,
     streak: 0,
-    callGoal: 18,
+    callGoal: 25,
     avatar: avatarUrl('a5'),
   },
   {
@@ -128,7 +128,7 @@ export const agents: Agent[] = [
     conversionRate: 26,
     points: 1760,
     streak: 3,
-    callGoal: 18,
+    callGoal: 25,
     avatar: avatarUrl('a6'),
   },
   {
@@ -144,7 +144,7 @@ export const agents: Agent[] = [
     conversionRate: 14,
     points: 980,
     streak: 0,
-    callGoal: 18,
+    callGoal: 25,
     avatar: avatarUrl('a7'),
   },
   {
@@ -160,7 +160,7 @@ export const agents: Agent[] = [
     conversionRate: 34,
     points: 2610,
     streak: 7,
-    callGoal: 18,
+    callGoal: 25,
     avatar: avatarUrl('a8'),
   },
   {
@@ -176,7 +176,7 @@ export const agents: Agent[] = [
     conversionRate: 22,
     points: 1540,
     streak: 2,
-    callGoal: 18,
+    callGoal: 25,
     avatar: avatarUrl('a9'),
   },
   {

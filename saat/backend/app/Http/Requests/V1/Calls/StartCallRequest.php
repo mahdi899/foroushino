@@ -18,6 +18,7 @@ class StartCallRequest extends FormRequest
     {
         return [
             'lead_id' => ['required', 'integer', 'exists:leads,id'],
+            'method' => ['sometimes', 'string', 'in:native,voip'],
         ];
     }
 }

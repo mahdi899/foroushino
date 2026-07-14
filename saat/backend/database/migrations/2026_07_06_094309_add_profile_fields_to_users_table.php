@@ -15,7 +15,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('level')->default(1)->after('telegram_id');
             $table->unsignedInteger('points')->default(0)->after('level');
             $table->unsignedSmallInteger('streak')->default(0)->after('points');
-            $table->unsignedSmallInteger('call_goal')->default(40)->after('streak');
+            $table->unsignedSmallInteger('call_goal')->default(25)->after('streak');
             $table->unsignedSmallInteger('sale_goal')->default(3)->after('call_goal');
             $table->string('availability', 20)->default('offline')->after('sale_goal');
             $table->timestamp('availability_changed_at')->nullable()->after('availability');

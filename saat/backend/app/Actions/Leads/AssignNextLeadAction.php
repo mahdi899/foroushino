@@ -5,6 +5,7 @@ namespace App\Actions\Leads;
 use App\Enums\LeadStatus;
 use App\Enums\SuggestReason;
 use App\Events\LeadAssigned;
+use App\Models\AppSetting;
 use App\Models\Lead;
 use App\Models\LeadStatusHistory;
 use App\Models\User;
@@ -33,8 +34,6 @@ use RuntimeException;
  */
 class AssignNextLeadAction
 {
-    private const LOCK_MINUTES = 20;
-
     /**
      * @return array{lead: ?Lead, reason: ?SuggestReason}
      */
@@ -59,7 +58,7 @@ class AssignNextLeadAction
                 $lead->assigned_agent_id = $agent->id;
                 $lead->assigned_team_id = $lead->assigned_team_id ?? $agent->team_id;
                 $lead->locked_by = $agent->id;
-                $lead->locked_until = now()->addMinutes(self::LOCK_MINUTES);
+                $lead->locked_until = now()->addMinutes(AppSetting::callLockMinutes());
                 $lead->returned_to_pool = false;
 
                 if (in_array($lead->status, [LeadStatus::New, LeadStatus::Assigned, LeadStatus::ReturnedToPool], true)) {

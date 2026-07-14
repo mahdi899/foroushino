@@ -13,6 +13,7 @@ use App\Http\Requests\V1\Leads\IndexLeadRequest;
 use App\Http\Requests\V1\Leads\StoreLeadRequest;
 use App\Http\Resources\V1\ImportBatchResource;
 use App\Http\Resources\V1\LeadResource;
+use App\Models\AppSetting;
 use App\Models\ImportBatch;
 use App\Models\Lead;
 use App\Models\LeadStatusHistory;
@@ -95,7 +96,7 @@ class LeadController extends Controller
         $this->authorize('lock', $lead);
 
         $lead->locked_by = $request->user()->id;
-        $lead->locked_until = now()->addMinutes(20);
+        $lead->locked_until = now()->addMinutes(AppSetting::callLockMinutes());
         $lead->save();
 
         return ApiResponse::success(new LeadResource($lead), 'قفل تمدید شد');

@@ -39,6 +39,7 @@ import {
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
 import { collectLeadNotes } from '@/lib/leadNotes'
+import { performReconcileCall } from '@/services/callActions'
 
 export function DialerScreen() {
   const { id } = useParams()
@@ -97,6 +98,9 @@ export function DialerScreen() {
       return
     }
     haptic('heavy')
+    if (isNativeCall) {
+      void performReconcileCall(lead.id, 'answered')
+    }
     endCall(seconds)
     navigate(`/call-result/${lead.id}`, { replace: true })
   }

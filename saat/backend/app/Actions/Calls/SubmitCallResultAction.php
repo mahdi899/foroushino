@@ -64,6 +64,7 @@ class SubmitCallResultAction
                 'duration_sec' => $data['duration_sec'] ?? 0,
                 'objection' => $data['objection'] ?? null,
                 'ended_at' => now(),
+                'state' => \App\Enums\CallState::Dispositioned,
             ])->save();
 
             /** @var Lead $lead */

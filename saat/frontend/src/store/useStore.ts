@@ -68,9 +68,11 @@ import {
   validatePayoutAmount,
 } from '@/lib/payoutRules'
 import type { SyncPayload } from '@/services/sync'
+import type { TeamLiveData } from '@/services/teamLive'
+import { agentsFromTeamLive, mergeTeamLiveIntoAgents, teamsFromTeamLive } from '@/services/teamLive'
 import { isProductiveAvailability, mergeClosedSessionIntoDaySummaries } from '@/lib/shiftUtils'
 import { getManagedTeam } from '@/lib/teamUtils'
-import { syncAllAgentsDailyStats } from '@/lib/dailyGoal'
+import { mergeAgentDailyStats, syncAllAgentsDailyStats, syncCurrentAgentDailyStats, conversionRateFromStats } from '@/lib/dailyGoal'
 import {
   DEFAULT_RUNTIME_APP_SETTINGS,
   type RuntimeAppSettings,
@@ -219,6 +221,7 @@ interface AppState {
 
   // sync
   applySyncData: (payload: SyncPayload) => void
+  mergeTeamLiveStats: (live: TeamLiveData) => void
   setAppSettings: (settings: RuntimeAppSettings) => void
   upsertLead: (lead: Lead) => void
   setAgentAvatar: (avatar: string | null) => void
@@ -511,7 +514,12 @@ export const useStore = create<AppState>()(
         }),
       syncDailyAgentStats: () =>
         set((state) => {
-          const synced = syncAllAgentsDailyStats(state.agents, state.calls, state.dailyStatsDate)
+          const synced = syncCurrentAgentDailyStats(
+            state.agents,
+            state.calls,
+            state.currentAgentId,
+            state.dailyStatsDate,
+          )
           return { agents: synced.agents, dailyStatsDate: synced.dailyStatsDate }
         }),
 
@@ -522,7 +530,7 @@ export const useStore = create<AppState>()(
         if (lead.lockedBy && lead.lockedBy !== state.currentAgentId) {
           return { ok: false, lockedByOther: true }
         }
-        const until = new Date(Date.now() + 10 * 60_000).toISOString()
+        const until = new Date(Date.now() + state.appSettings.callLockMinutes * 60_000).toISOString()
         set({
           leads: state.leads.map((l) =>
             l.id === leadId
@@ -1265,18 +1273,58 @@ export const useStore = create<AppState>()(
 
       setAppSettings: (appSettings) => set({ appSettings }),
 
+      mergeTeamLiveStats: (live) =>
+        set((state) => {
+          const self = state.agents.find((agent) => agent.id === state.currentAgentId)
+          const baseAgents =
+            state.agents.some((agent) => agent.role === 'agent')
+              ? state.agents
+              : self
+                ? agentsFromTeamLive(live, self)
+                : state.agents
+
+          return {
+            agents: mergeTeamLiveIntoAgents(baseAgents, live),
+            teams:
+              state.teams.length > 0
+                ? state.teams
+                : teamsFromTeamLive(live, state.currentAgentId),
+          }
+        }),
+
       applySyncData: (payload) =>
         set((state) => {
-          const mergedAgents = state.agents.some((agent) => agent.id === payload.agent.id)
-            ? state.agents.map((agent) =>
-                agent.id === payload.agent.id ? { ...agent, ...payload.agent } : agent,
-              )
-            : [...state.agents, payload.agent]
-          const synced = syncAllAgentsDailyStats(mergedAgents, state.calls, state.dailyStatsDate)
+          const baseAgents =
+            payload.agents.length > 0
+              ? payload.agents.map((remote) =>
+                  remote.id === payload.agent.id
+                    ? mergeAgentDailyStats(remote, payload.agent)
+                    : remote,
+                )
+              : state.agents.some((agent) => agent.id === payload.agent.id)
+                ? state.agents.map((agent) =>
+                    agent.id === payload.agent.id
+                      ? mergeAgentDailyStats(agent, payload.agent)
+                      : agent,
+                  )
+                : [...state.agents, payload.agent]
+
+          const nextCalls = payload.calls ?? state.calls
+          const synced = syncCurrentAgentDailyStats(
+            baseAgents,
+            nextCalls,
+            payload.agent.id,
+            state.dailyStatsDate,
+          )
+          const agents = synced.agents.map((row) => ({
+            ...row,
+            conversionRate: conversionRateFromStats(row.callsToday, row.successfulToday),
+          }))
 
           return {
             leads: hydrateLeads(payload.leads),
             followups: syncFollowupStatuses(payload.followups),
+            calls: nextCalls,
             sales: payload.sales,
             payments: payload.payments,
             commissions: payload.commissions,
@@ -1285,6 +1333,10 @@ export const useStore = create<AppState>()(
             payouts: payload.payouts,
             products: payload.products,
             notifications: payload.notifications,
+            agents,
+            teams: payload.teams ?? state.teams,
+            teamReports: payload.teamReports ?? state.teamReports,
+            activity: payload.activity ?? state.activity,
             availability: payload.availability,
             availabilityChangedAt: payload.availabilityChangedAt,
             availabilityAutoReason: null,
@@ -1293,7 +1345,6 @@ export const useStore = create<AppState>()(
             currentAgentId: payload.agent.id,
             role: payload.role,
             permissions: resolvePermissions(payload.role, payload.permissions),
-            agents: synced.agents,
             dailyStatsDate: synced.dailyStatsDate,
             appSettings: payload.appSettings ?? state.appSettings,
             dataReady: true,
@@ -1352,13 +1403,15 @@ export const useStore = create<AppState>()(
         if (!state) return
         state.agents = withAvatars(state.agents, mockAgents)
         state.leads = hydrateLeads(state.leads)
-        const synced = syncAllAgentsDailyStats(
-          state.agents,
-          state.calls ?? [],
-          state.dailyStatsDate ?? null,
-        )
-        state.agents = synced.agents
-        state.dailyStatsDate = synced.dailyStatsDate
+        if (!usesRemoteData) {
+          const synced = syncAllAgentsDailyStats(
+            state.agents,
+            state.calls ?? [],
+            state.dailyStatsDate ?? null,
+          )
+          state.agents = synced.agents
+          state.dailyStatsDate = synced.dailyStatsDate
+        }
         state.maskPhoneNumbers = true
         state.autoLockEnabled = true
         state.autoLockMinutes = 5

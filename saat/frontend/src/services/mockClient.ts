@@ -34,7 +34,8 @@ export const mockClient: ApiClient = {
   returnLeadToPool: (leadId: string) => delay(useStore.getState().returnLeadToPool(leadId)),
   reclaimLead: (leadId: string) => delay(useStore.getState().reclaimLead(leadId)),
 
-  startCall: (leadId: string) => delay(useStore.getState().startCall(leadId)),
+  startCall: (leadId: string, method: 'native' | 'voip' = 'native') =>
+    delay(useStore.getState().startCall(leadId, method)),
   submitCallResult: (input: CallResultInput): Promise<CallResultOutcome> =>
     delay(useStore.getState().submitCallResult(input)),
 

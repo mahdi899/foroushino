@@ -74,6 +74,7 @@ class DemoAuthService
                 'email' => $account['email'],
                 'password' => Hash::make(Str::random(40)),
                 'availability' => Availability::Offline,
+                'call_goal' => 25,
                 'is_active' => true,
             ]);
             $user->save();

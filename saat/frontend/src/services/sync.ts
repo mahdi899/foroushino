@@ -1,7 +1,9 @@
 import type {
+  ActivityLog,
   Agent,
   AppNotification,
   Availability,
+  Call,
   Commission,
   Followup,
   Lead,
@@ -10,6 +12,8 @@ import type {
   Product,
   Role,
   Sale,
+  Team,
+  TeamReport,
   Wallet,
   WalletTransaction,
   WorkDaySummary,
@@ -21,11 +25,17 @@ import {
   mapRuntimeAppSettings,
   type RuntimeAppSettings,
 } from '@/lib/appSettings'
+import { hasPermission } from '@/lib/permissions'
 import {
+  mapActivity,
+  mapAgentFromAdmin,
+  mapCall,
   mapCommission,
   mapFollowup,
   mapLead,
   mapPayoutRequest,
+  mapTeamFromAdmin,
+  mapTeamReport,
   mapWallet,
   mapWalletTransaction,
   mapSale,
@@ -34,6 +44,9 @@ import {
   splitName,
   id,
 } from './mappers'
+import { syncAllAgentsDailyStats, conversionRateFromStats } from '@/lib/dailyGoal'
+import { isManagementRole } from '@/lib/roles'
+import { fetchTeamLive, mergeTeamLiveIntoAgents, agentsFromTeamLive, teamsFromTeamLive } from './teamLive'
 
 type Dto = Record<string, unknown>
 
@@ -41,9 +54,18 @@ function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : []
 }
 
+async function safeGet<T>(path: string): Promise<T | null> {
+  try {
+    return await http.get<T>(path)
+  } catch {
+    return null
+  }
+}
+
 export interface SyncPayload {
   leads: Lead[]
   followups: Followup[]
+  calls: Call[]
   sales: Sale[]
   payments: Payment[]
   commissions: Commission[]
@@ -52,6 +74,10 @@ export interface SyncPayload {
   payouts: PayoutRequest[]
   products: Product[]
   notifications: AppNotification[]
+  agents: Agent[]
+  teams: Team[]
+  teamReports: TeamReport[]
+  activity: ActivityLog[]
   agent: Agent
   role: Role
   permissions: string[]
@@ -106,51 +132,58 @@ async function fetchShiftData(): Promise<{ shiftCurrentRaw: Dto; shiftHistoryRaw
     ])
     return { shiftCurrentRaw, shiftHistoryRaw }
   } catch {
-    // Shift endpoints must not block the rest of the app (e.g. pending migration).
     return { shiftCurrentRaw: {}, shiftHistoryRaw: [] }
   }
 }
 
 export async function syncAppData(): Promise<SyncPayload> {
+  const me = await fetchMe()
+  const permissions = me.permissions ?? []
+
   const [
-    [
-      me,
-      home,
-      leadsRaw,
-      followupsRaw,
-      salesRaw,
-      walletRaw,
-      walletTxRaw,
-      commissionsRaw,
-      payoutsRaw,
-      productsRaw,
-      notificationsRaw,
-      appConfigRaw,
-    ],
-    { shiftCurrentRaw, shiftHistoryRaw },
+    home,
+    leadsRaw,
+    followupsRaw,
+    callsRaw,
+    salesRaw,
+    walletRaw,
+    walletTxRaw,
+    commissionsRaw,
+    payoutsRaw,
+    productsRaw,
+    notificationsRaw,
+    appConfigRaw,
+    activityRaw,
+    adminUsersRaw,
+    adminTeamsRaw,
+    teamReportsRaw,
+    shiftData,
   ] = await Promise.all([
-    Promise.all([
-      fetchMe(),
-      http.get<Dto>('/home/agent'),
-      // Backend validates per_page max=100 on /leads (IndexLeadRequest).
-      http.get<Dto[]>('/leads?per_page=100'),
-      http.get<Dto[]>('/followups?per_page=100'),
-      http.get<Dto[]>('/sales?per_page=100'),
-      http.get<Dto>('/wallet'),
-      http.get<Dto[]>('/wallet/transactions?per_page=100'),
-      http.get<Dto[]>('/wallet/commissions?per_page=100'),
-      http.get<Dto[]>('/wallet/payout-requests?per_page=50'),
-      http.get<Dto[]>('/products'),
-      http.get<Dto[]>('/notifications?per_page=50'),
-      http.get<Dto>('/app-config'),
-    ]),
+    http.get<Dto>('/home/agent'),
+    http.get<Dto[]>('/leads?per_page=100'),
+    http.get<Dto[]>('/followups?per_page=100'),
+    safeGet<Dto[]>('/calls?per_page=100'),
+    http.get<Dto[]>('/sales?per_page=100'),
+    http.get<Dto>('/wallet'),
+    http.get<Dto[]>('/wallet/transactions?per_page=100'),
+    http.get<Dto[]>('/wallet/commissions?per_page=100'),
+    http.get<Dto[]>('/wallet/payout-requests?per_page=50'),
+    http.get<Dto[]>('/products'),
+    http.get<Dto[]>('/notifications?per_page=50'),
+    http.get<Dto>('/app-config'),
+    safeGet<Dto[]>('/activity'),
+    hasPermission(permissions, 'users.view') ? safeGet<Dto[]>('/admin/users') : Promise.resolve(null),
+    hasPermission(permissions, 'users.view') ? safeGet<Dto[]>('/admin/teams') : Promise.resolve(null),
+    hasPermission(permissions, 'reports.view-team') || hasPermission(permissions, 'reports.view-all')
+      ? safeGet<Dto[]>('/team-reports')
+      : Promise.resolve(null),
     fetchShiftData(),
   ])
 
   const target = (home.target as Dto) ?? {}
   const { firstName, lastName } = splitName(me.name)
 
-  const agent: Agent = {
+  let agent: Agent = {
     id: String(me.id),
     firstName,
     lastName,
@@ -160,7 +193,7 @@ export async function syncAppData(): Promise<SyncPayload> {
     phone: me.phone ?? me.email,
     level: Number(home.level ?? me.level ?? 1),
     callsToday: Number(target.calls_made ?? 0),
-    successfulToday: Number(target.sales_made ?? 0),
+    successfulToday: 0,
     conversionRate: 0,
     points: Number(home.points ?? me.points ?? 0),
     streak: Number(home.streak ?? me.streak ?? 0),
@@ -181,9 +214,57 @@ export async function syncAppData(): Promise<SyncPayload> {
     }
   }
 
+  const adminUsers = asArray<Dto>(adminUsersRaw)
+  const calls = asArray<Dto>(callsRaw).map(mapCall)
+  const role = mapAuthUserRole(me.roles)
+  const teamLive = isManagementRole(role)
+    ? await fetchTeamLive(me.team_id ? String(me.team_id) : null)
+    : null
+
+  let agents: Agent[]
+  if (adminUsers.length > 0) {
+    agents = adminUsers.map(mapAgentFromAdmin)
+    if (teamLive) agents = mergeTeamLiveIntoAgents(agents, teamLive)
+  } else if (teamLive) {
+    agents = agentsFromTeamLive(teamLive, agent)
+  } else {
+    agents = [agent]
+  }
+
+  if (!isManagementRole(role)) {
+    const dailySynced = syncAllAgentsDailyStats([agent], calls, null)
+    agent = {
+      ...dailySynced.agents[0],
+      points: agent.points,
+      streak: agent.streak,
+      level: agent.level,
+      callGoal: agent.callGoal,
+      conversionRate: conversionRateFromStats(
+        dailySynced.agents[0].callsToday,
+        dailySynced.agents[0].successfulToday,
+      ),
+    }
+    agents = [agent]
+  }
+
+  const teams: Team[] =
+    asArray<Dto>(adminTeamsRaw).length > 0
+      ? asArray<Dto>(adminTeamsRaw).map((team) =>
+          mapTeamFromAdmin(
+            team,
+            agents
+              .filter((a) => a.teamId === id(team.id as string | number) && a.role === 'agent')
+              .map((a) => a.id),
+          ),
+        )
+      : teamLive
+        ? teamsFromTeamLive(teamLive, agent.id)
+        : []
+
   return {
     leads: mappedLeads,
     followups: asArray<Dto>(followupsRaw).map(mapFollowup),
+    calls,
     sales,
     payments,
     commissions: asArray<Dto>(commissionsRaw).map(mapCommission),
@@ -192,13 +273,20 @@ export async function syncAppData(): Promise<SyncPayload> {
     payouts: asArray<Dto>(payoutsRaw).map(mapPayoutRequest),
     products: asArray<Dto>(productsRaw).map(mapProduct),
     notifications: asArray<Dto>(notificationsRaw).map(mapNotification),
+    agents,
+    teams,
+    teamReports: asArray<Dto>(teamReportsRaw).map(mapTeamReport),
+    activity: asArray<Dto>(activityRaw).map(mapActivity),
     agent,
-    role: mapAuthUserRole(me.roles),
-    permissions: me.permissions ?? [],
-    availability: ((shiftCurrentRaw.availability as Availability) ?? (home.availability as Availability) ?? me.availability ?? 'offline') as Availability,
-    availabilityChangedAt: (shiftCurrentRaw.availability_changed_at as string) ?? null,
-    workSession: mapWorkSession(shiftCurrentRaw.session as Dto | null | undefined),
-    workDaySummaries: asArray<Dto>(shiftHistoryRaw).map(mapWorkDaySummary),
+    role,
+    permissions,
+    availability: ((shiftData.shiftCurrentRaw.availability as Availability) ??
+      (home.availability as Availability) ??
+      me.availability ??
+      'offline') as Availability,
+    availabilityChangedAt: (shiftData.shiftCurrentRaw.availability_changed_at as string) ?? null,
+    workSession: mapWorkSession(shiftData.shiftCurrentRaw.session as Dto | null | undefined),
+    workDaySummaries: asArray<Dto>(shiftData.shiftHistoryRaw).map(mapWorkDaySummary),
     appSettings: mapRuntimeAppSettings(appConfigRaw),
   }
 }

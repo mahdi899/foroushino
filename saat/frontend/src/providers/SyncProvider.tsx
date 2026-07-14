@@ -7,6 +7,7 @@ import { api, apiMode } from '@/services'
 import { syncAppData } from '@/services/sync'
 import { clearToken, fetchMe, isAuthenticated } from '@/services/auth'
 import { isAgentRole } from '@/lib/roles'
+import { flushOfflineQueue } from '@/services/offlineQueue'
 import { useStore } from '@/store/useStore'
 
 function syncErrorMessage(error: unknown): string {
@@ -52,6 +53,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           applySyncData(payload)
           lastErrorRef.current = null
+          void flushOfflineQueue()
 
           if (isAgentRole(role)) {
             const state = useStore.getState()

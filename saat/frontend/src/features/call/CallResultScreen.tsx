@@ -35,6 +35,7 @@ import {
   followupKindLabels,
 } from '@/data/labels'
 import { routeCallResult } from '@/services/logic'
+import { performSubmitCallResult } from '@/services/callActions'
 import { objectionsLibrary } from '@/data/mockExtra'
 import { formatPhone, toFa } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
@@ -84,7 +85,6 @@ export function CallResultScreen() {
   const lastCallDuration = useStore((s) => s.lastCallDuration)
   const minCallDurationSec = useStore((s) => s.appSettings.minCallDurationSec)
   const activeCallLeadId = useStore((s) => s.activeCallLeadId)
-  const submitCallResult = useStore((s) => s.submitCallResult)
   const openCallMethodSheet = useStore((s) => s.openCallMethodSheet)
   const pushToast = useStore((s) => s.pushToast)
 
@@ -96,6 +96,7 @@ export function CallResultScreen() {
   const [dayOffset, setDayOffset] = useState<number>(1)
   const [hour, setHour] = useState<number>(10)
   const [saleAmount, setSaleAmount] = useState<number | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const [outcome, setOutcome] = useState<CallResultOutcome | null>(null)
 
   const routed = useMemo(() => (result ? routeCallResult(result) : null), [result])
@@ -131,8 +132,8 @@ export function CallResultScreen() {
   const showObjection =
     result === 'price_objection' || result === 'not_interested' || result === 'needs_info' || result === 'not_decision_maker'
 
-  const save = () => {
-    if (!result) return
+  const save = async () => {
+    if (!result || submitting) return
     if (!canEndAgentCall(lastCallDuration, minCallDurationSec)) {
       pushToast(
         `حداقل مدت تماس ${formatDuration(minCallDurationSec)} است.`,
@@ -141,19 +142,26 @@ export function CallResultScreen() {
       return
     }
     haptic('success')
-    const out = submitCallResult({
-      leadId: lead.id,
-      result,
-      note,
-      objection,
-      nextStage: resultToStage[result] ?? null,
-      rating,
-      followupAt: showFollowup ? buildFollowupIso(dayOffset, hour) : null,
-      followupKind: showFollowup ? followupKind : undefined,
-      durationSec: lastCallDuration,
-      saleAmount: showSale ? (saleAmount ?? product?.price ?? undefined) : undefined,
-    })
-    setOutcome(out)
+    setSubmitting(true)
+    try {
+      const out = await performSubmitCallResult({
+        leadId: lead.id,
+        result,
+        note,
+        objection,
+        nextStage: resultToStage[result] ?? null,
+        rating,
+        followupAt: showFollowup ? buildFollowupIso(dayOffset, hour) : null,
+        followupKind: showFollowup ? followupKind : undefined,
+        durationSec: lastCallDuration,
+        saleAmount: showSale ? (saleAmount ?? product?.price ?? undefined) : undefined,
+      })
+      setOutcome(out)
+    } catch {
+      pushToast('ثبت نتیجه ناموفق بود. در صف آفلاین ذخیره شد یا دوباره تلاش کن.', 'error')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (

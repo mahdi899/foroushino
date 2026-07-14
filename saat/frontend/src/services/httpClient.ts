@@ -60,9 +60,10 @@ export const httpClient: ApiClient = {
     await http.post(`/leads/${leadId}/reclaim`)
   },
 
-  async startCall(leadId: string) {
+  async startCall(leadId: string, method: 'native' | 'voip' = 'native') {
     const data = await http.post<{ call: { id: number | string } }>('/calls/start', {
       lead_id: Number(leadId),
+      method,
     })
     activeCallByLead.set(leadId, Number(data.call.id))
   },

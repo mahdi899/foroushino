@@ -48,6 +48,9 @@ import { TeamReportsScreen } from '@/features/team/TeamReportsScreen'
 import { ActivityHistoryScreen } from '@/features/activity/ActivityHistoryScreen'
 import { StaffManagementScreen } from '@/features/admin/StaffManagementScreen'
 import { AdminSettingsScreen } from '@/features/admin/AdminSettingsScreen'
+import { LiveOpsScreen } from '@/features/liveops/LiveOpsScreen'
+import { QaReviewsScreen } from '@/features/qa/QaReviewsScreen'
+import { RequirePermission } from '@/components/auth/RequirePermission'
 import { AppLockScreen } from '@/components/domain/AppLockScreen'
 import { OfflineBanner } from '@/components/pwa/DataGate'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
@@ -151,7 +154,7 @@ function Shell() {
             <Route path="/teams" element={<RequireAuth><SupervisorTeamsScreen /></RequireAuth>} />
             <Route path="/team-reports" element={<RequireAuth><TeamReportsScreen /></RequireAuth>} />
             <Route path="/leads" element={<RequireAuth><LeadsScreen /></RequireAuth>} />
-            <Route path="/leads/intake" element={<RequireAuth><LeadIntakeScreen /></RequireAuth>} />
+            <Route path="/leads/intake" element={<RequireAuth><RequirePermission permission="leads.import"><LeadIntakeScreen /></RequirePermission></RequireAuth>} />
             <Route path="/leads/locked" element={<RequireAuth><LockedLeadsScreen /></RequireAuth>} />
             <Route path="/leads/returned" element={<RequireAuth><ReturnedLeadsScreen /></RequireAuth>} />
             <Route path="/leads/:id" element={<RequireAuth><LeadDetailScreen /></RequireAuth>} />
@@ -167,12 +170,14 @@ function Shell() {
             <Route path="/training/objections" element={<RequireAuth><ObjectionsScreen /></RequireAuth>} />
             <Route path="/performance" element={<RequireAuth><PerformanceScreen /></RequireAuth>} />
             <Route path="/reports" element={<RequireAuth><ReportsScreen /></RequireAuth>} />
+            <Route path="/live-ops" element={<RequireAuth><RequirePermission permission="reports.view"><LiveOpsScreen /></RequirePermission></RequireAuth>} />
+            <Route path="/qa" element={<RequireAuth><RequirePermission permission="training.manage"><QaReviewsScreen /></RequirePermission></RequireAuth>} />
             <Route path="/profile" element={<RequireAuth><ProfileScreen /></RequireAuth>} />
             <Route path="/notifications" element={<RequireAuth><NotificationsScreen /></RequireAuth>} />
             <Route path="/activity" element={<RequireAuth><ActivityHistoryScreen /></RequireAuth>} />
             <Route path="/settings" element={<RequireAuth><SettingsScreen /></RequireAuth>} />
-            <Route path="/admin/staff" element={<RequireAuth><StaffManagementScreen /></RequireAuth>} />
-            <Route path="/admin/settings" element={<RequireAuth><AdminSettingsScreen /></RequireAuth>} />
+            <Route path="/admin/staff" element={<RequireAuth><RequirePermission permission="users.view"><StaffManagementScreen /></RequirePermission></RequireAuth>} />
+            <Route path="/admin/settings" element={<RequireAuth><RequirePermission permission="admin.settings"><AdminSettingsScreen /></RequirePermission></RequireAuth>} />
 
             <Route path="*" element={<Navigate to={isAuthed ? '/home' : '/'} replace />} />
           </Routes>

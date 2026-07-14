@@ -7,6 +7,7 @@ import { Chip } from '@/components/ui/Chip'
 import { TemperaturePicker } from '@/components/domain/TemperaturePicker'
 import { stageLabels } from '@/data/labels'
 import { haptic } from '@/lib/telegram'
+import { performReturnLeadToPool } from '@/services/leadActions'
 import type { Lead, SaleStage } from '@/types'
 
 const stageOptions: SaleStage[] = [
@@ -32,7 +33,6 @@ export function LeadStatusSheet({ lead, open, onClose, onReturnedToPool }: LeadS
   const currentAgentId = useStore((s) => s.currentAgentId)
   const updateLeadStage = useStore((s) => s.updateLeadStage)
   const updateLeadTemperature = useStore((s) => s.updateLeadTemperature)
-  const returnLeadToPool = useStore((s) => s.returnLeadToPool)
   const pushToast = useStore((s) => s.pushToast)
 
   const lockedByOther = !!lead.lockedBy && lead.lockedBy !== currentAgentId
@@ -72,14 +72,15 @@ export function LeadStatusSheet({ lead, open, onClose, onReturnedToPool }: LeadS
           <button
             onClick={() => {
               haptic('warning')
-              returnLeadToPool(lead.id)
-              pushToast('مشتری به صف عمومی برگشت')
-              onClose()
-              if (onReturnedToPool) {
-                onReturnedToPool()
-              } else {
-                navigate('/leads')
-              }
+              void performReturnLeadToPool(lead.id).then(() => {
+                pushToast('مشتری به صف عمومی برگشت')
+                onClose()
+                if (onReturnedToPool) {
+                  onReturnedToPool()
+                } else {
+                  navigate('/leads')
+                }
+              })
             }}
             className="flex w-full items-center justify-center gap-1.5 py-1 text-[13px] font-bold text-error-500"
           >

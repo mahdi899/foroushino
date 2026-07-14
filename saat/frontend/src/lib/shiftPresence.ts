@@ -23,19 +23,22 @@ export function shouldApplyFollowUpRouteStatus(
   return true
 }
 
-export function shouldMarkAwayInCall(
+export function shouldMarkAwayFromApp(
   availability: Availability,
   activeCallLeadId: string | null,
 ): boolean {
   if (activeCallLeadId) return false
   return availability === 'available' || availability === 'doing_follow_up'
 }
-
 export function shouldRestoreOnReturn(
   availability: Availability,
   autoReason: AvailabilityAutoReason | null,
+  activeCallLeadId: string | null,
 ): Availability | null {
+  if (activeCallLeadId) return null
+  if (availability === 'doing_follow_up' && autoReason === 'follow_up_route') return null
   if (availability === 'doing_follow_up') return 'available'
-  if (availability === 'in_call' && autoReason === 'away_from_app') return 'available'
+  // Legacy: away-from-app used to set in_call before switching to doing_follow_up.
+  if (availability === 'in_call') return 'available'
   return null
 }

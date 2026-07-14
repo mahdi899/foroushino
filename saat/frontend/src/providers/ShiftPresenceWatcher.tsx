@@ -4,7 +4,7 @@ import { useStore } from '@/store/useStore'
 import { AWAY_CHECK_INTERVAL_MS, isFollowUpWorkRoute } from '@/lib/shiftRoutes'
 import {
   shouldApplyFollowUpRouteStatus,
-  shouldMarkAwayInCall,
+  shouldMarkAwayFromApp,
   shouldRestoreOnReturn,
 } from '@/lib/shiftPresence'
 import { isShiftOpen } from '@/lib/shiftUtils'
@@ -46,8 +46,8 @@ export function ShiftPresenceWatcher() {
       const state = useStore.getState()
       if (!isShiftOpen(state.workSession)) return
       if (document.visibilityState !== 'hidden') return
-      if (!shouldMarkAwayInCall(state.availability, state.activeCallLeadId)) return
-      void performAutoAvailability('in_call', 'away_from_app')
+      if (!shouldMarkAwayFromApp(state.availability, state.activeCallLeadId)) return
+      void performAutoAvailability('doing_follow_up', 'away_from_app')
     }
 
     const onVisibility = () => {
@@ -55,7 +55,11 @@ export function ShiftPresenceWatcher() {
       if (!isShiftOpen(state.workSession)) return
 
       if (document.visibilityState === 'visible') {
-        const next = shouldRestoreOnReturn(state.availability, state.availabilityAutoReason)
+        const next = shouldRestoreOnReturn(
+          state.availability,
+          state.availabilityAutoReason,
+          state.activeCallLeadId,
+        )
         if (next) void performAutoAvailability(next, null)
         return
       }

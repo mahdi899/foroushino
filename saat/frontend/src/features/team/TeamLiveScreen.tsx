@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -27,8 +27,13 @@ import { formatDuration, relativeDayTime, toFa } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { isLeaderRole, hasMultiTeamView } from '@/lib/roles'
 import { hasPermission } from '@/lib/permissions'
+import { apiMode } from '@/services'
+import { fetchTeamLive, type TeamLiveMember } from '@/services/teamLive'
+import type { Availability, Call } from '@/types'
 
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
+
+const LIVE_POLL_MS = 10_000
 
 export function TeamLiveScreen() {
   const navigate = useNavigate()
@@ -45,12 +50,9 @@ export function TeamLiveScreen() {
   const activeCallLeadId = useStore((s) => s.activeCallLeadId)
   const availability = useStore((s) => s.availability)
 
-  const [, setTick] = useState(Date.now())
-
-  useEffect(() => {
-    const timer = setInterval(() => setTick(Date.now()), 10_000)
-    return () => clearInterval(timer)
-  }, [])
+  const [liveMembers, setLiveMembers] = useState<TeamLiveMember[] | null>(null)
+  const [liveOnlineCount, setLiveOnlineCount] = useState<number | null>(null)
+  const [liveRecentCalls, setLiveRecentCalls] = useState<Call[] | null>(null)
 
   const team = useMemo(() => {
     if (selectedTeamId && hasMultiTeamView(role)) {
@@ -63,15 +65,72 @@ export function TeamLiveScreen() {
     if (team) return team.agentIds
     return getTeamAgentIds(teams, agents, currentAgentId, role)
   }, [team, teams, agents, currentAgentId, role])
-  const members = useMemo(
-    () => agents.filter((agent) => teamAgentIds.includes(agent.id)),
-    [agents, teamAgentIds],
-  )
 
-  const recentCalls = useMemo(
-    () => teamCallsToday(calls, teams, agents, currentAgentId, role).slice(0, 20),
-    [calls, teams, agents, currentAgentId, role],
-  )
+  const refreshTeamLive = useCallback(async () => {
+    if (apiMode !== 'http') return
+
+    try {
+      const live = await fetchTeamLive(team?.id ?? selectedTeamId)
+      setLiveMembers(live.members)
+      setLiveOnlineCount(live.onlineCount)
+      setLiveRecentCalls(live.recentCalls)
+    } catch {
+      // Keep last good snapshot; store fallback still renders.
+    }
+  }, [team?.id, selectedTeamId])
+
+  useEffect(() => {
+    if (apiMode !== 'http') return
+
+    void refreshTeamLive()
+    const timer = setInterval(() => void refreshTeamLive(), LIVE_POLL_MS)
+    return () => clearInterval(timer)
+  }, [refreshTeamLive])
+
+  const members = useMemo(() => {
+    if (liveMembers) {
+      return liveMembers.map((member) => ({
+        id: member.agentId,
+        firstName: member.firstName,
+        lastName: member.lastName,
+        avatar: member.avatar,
+        callsToday: member.callsToday,
+        availability: member.availability,
+        activeCallLeadId: member.activeCallLeadId,
+        activeCallLeadName: member.activeCallLeadName,
+      }))
+    }
+
+    return agents
+      .filter((agent) => teamAgentIds.includes(agent.id))
+      .map((agent) => ({
+        id: agent.id,
+        firstName: agent.firstName,
+        lastName: agent.lastName,
+        avatar: agent.avatar,
+        callsToday: agent.callsToday,
+        availability:
+          agent.id === currentAgentId
+            ? availability
+            : agent.callsToday > 0
+              ? ('available' as Availability)
+              : ('offline' as Availability),
+        activeCallLeadId: agent.id === currentAgentId ? activeCallLeadId : null,
+        activeCallLeadName: null as string | null,
+      }))
+  }, [
+    liveMembers,
+    agents,
+    teamAgentIds,
+    currentAgentId,
+    availability,
+    activeCallLeadId,
+  ])
+
+  const recentCalls = useMemo(() => {
+    if (liveRecentCalls) return liveRecentCalls
+    return teamCallsToday(calls, teams, agents, currentAgentId, role).slice(0, 20)
+  }, [liveRecentCalls, calls, teams, agents, currentAgentId, role])
 
   const paymentReviewCount = useMemo(
     () =>
@@ -83,13 +142,15 @@ export function TeamLiveScreen() {
   )
 
   const onlineCount = useMemo(() => {
+    if (liveOnlineCount !== null) return liveOnlineCount
+
     return members.filter((member) => {
       if (member.id === currentAgentId) {
         return availability !== 'offline'
       }
-      return member.callsToday > 0
+      return member.availability !== 'offline'
     }).length
-  }, [members, currentAgentId, availability])
+  }, [liveOnlineCount, members, currentAgentId, availability])
 
   const canReviewPayments = hasPermission(permissions, 'sales.review-payment')
 
@@ -151,12 +212,17 @@ export function TeamLiveScreen() {
           <div className="space-y-2.5">
             {members.map((member) => {
               const isSelf = member.id === currentAgentId
-              const memberAvailability = isSelf
-                ? availability
-                : member.callsToday > 0
-                  ? 'available'
-                  : 'offline'
-              const inCallLead = isSelf ? leadById(leads, activeCallLeadId ?? '') : undefined
+              const memberAvailability = isSelf ? availability : member.availability
+              const inCallLead = member.activeCallLeadId
+                ? leadById(leads, member.activeCallLeadId) ??
+                  (member.activeCallLeadName
+                    ? {
+                        id: member.activeCallLeadId,
+                        firstName: member.activeCallLeadName.split(' ')[0] ?? '',
+                        lastName: member.activeCallLeadName.split(' ').slice(1).join(' '),
+                      }
+                    : undefined)
+                : undefined
 
               return (
                 <div
@@ -214,7 +280,13 @@ export function TeamLiveScreen() {
           ) : (
             <div className="space-y-2">
               {recentCalls.map((call) => {
+                const liveAgent = liveMembers?.find((member) => member.agentId === call.agentId)
                 const agent = agentById(agents, call.agentId)
+                const agentLabel = agent
+                  ? `${agent.firstName} ${agent.lastName}`
+                  : liveAgent
+                    ? `${liveAgent.firstName} ${liveAgent.lastName}`
+                    : 'کارشناس'
                 const lead = leadById(leads, call.leadId)
                 return (
                   <button
@@ -228,7 +300,7 @@ export function TeamLiveScreen() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] font-bold text-text">
-                        {agent ? `${agent.firstName} ${agent.lastName}` : 'کارشناس'}
+                        {agentLabel}
                         <span className="text-text-soft"> → </span>
                         {lead ? `${lead.firstName} ${lead.lastName}` : 'مشتری'}
                       </p>

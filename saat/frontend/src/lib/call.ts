@@ -1,11 +1,22 @@
-/**
- * Call routing — native SIM dialer vs in-app VoIP.
- * Flip `VOIP_CALL_ENABLED` (or VITE_VOIP_CALL_ENABLED) when VoIP backend is ready.
- */
-export const VOIP_CALL_ENABLED =
-  import.meta.env.VITE_VOIP_CALL_ENABLED === 'true' || false
+import { capabilitiesFromSettings, isNativeAvailable, isVoipAvailable } from '@/lib/telephony'
+import { useStore } from '@/store/useStore'
+
+/** Runtime VoIP gate — admin toggle + health from app settings sync. */
+export function isVoipCallEnabled(): boolean {
+  const settings = useStore.getState().appSettings
+  return isVoipAvailable(capabilitiesFromSettings(settings))
+}
+
+export function isNativeCallEnabled(): boolean {
+  const settings = useStore.getState().appSettings
+  return isNativeAvailable(capabilitiesFromSettings(settings))
+}
 
 export type CallMethod = 'native' | 'voip'
+
+/** @deprecated env flag — prefer isVoipCallEnabled() from app settings */
+export const VOIP_CALL_ENABLED =
+  import.meta.env.VITE_VOIP_CALL_ENABLED === 'true' || false
 
 /** Normalize Iranian mobile numbers for tel: URIs. */
 export function toTelUri(phone: string): string {
@@ -23,8 +34,4 @@ export function dialNativePhone(phone: string): void {
   anchor.href = uri
   anchor.rel = 'noopener'
   anchor.click()
-}
-
-export function isVoipCallEnabled(): boolean {
-  return VOIP_CALL_ENABLED
 }

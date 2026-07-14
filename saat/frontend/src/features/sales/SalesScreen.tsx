@@ -26,15 +26,16 @@ import { PaymentSubmitSheet } from '@/components/domain/PaymentSubmitSheet'
 import { saleStatusLabels, saleStatusTone } from '@/data/labels'
 import { formatMoney, relativeDayTime, toFa } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
+import { performConfirmSale } from '@/services/saleActions'
 import type { Lead, PaymentMethod, Product, Sale, SaleStatus } from '@/types'
 import { cn } from '@/lib/cn'
 import { DataGate } from '@/components/pwa/DataGate'
-
-type Filter = 'all' | SaleStatus
-
 import { isManagementRole } from '@/lib/roles'
 import { hasPermission } from '@/lib/permissions'
 import { getTeamAgentIds } from '@/lib/teamUtils'
+
+type Filter = 'all' | SaleStatus
+
 const TG = 'text-[#3390EC] dark:text-[#8774E1]'
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
 
@@ -300,7 +301,6 @@ export function SalesScreen() {
   const products = useStore((s) => s.products)
   const submitPayment = useStore((s) => s.submitPayment)
   const forwardSaleForConfirmation = useStore((s) => s.forwardSaleForConfirmation)
-  const confirmSale = useStore((s) => s.confirmSale)
   const rejectSale = useStore((s) => s.rejectSale)
   const cancelSale = useStore((s) => s.cancelSale)
   const pushToast = useStore((s) => s.pushToast)
@@ -487,7 +487,7 @@ export function SalesScreen() {
         onConfirm={() => {
           if (!confirmTarget) return
           haptic('success')
-          confirmSale(confirmTarget.id)
+          void performConfirmSale(confirmTarget.id)
           setConfirmTarget(null)
           setSuccess('confirmed')
         }}

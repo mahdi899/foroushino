@@ -29,6 +29,11 @@ class AppSetting extends Model
         return [
             'call_lock_minutes' => 30,
             'min_call_duration_sec' => 0,
+            'native_call_enabled' => true,
+            'voip_enabled' => false,
+            'default_call_method' => 'native',
+            'voip_provider' => 'asterisk',
+            'voip_fallback_to_native' => true,
             'lead_pool_auto_return_hours' => 48,
             'payout_minimum_amount' => 100_000,
             'meli_pattern_course' => 11111,
@@ -67,6 +72,44 @@ class AppSetting extends Model
         }
 
         return $merged;
+    }
+
+    public static function int(string $key, int $default = 0): int
+    {
+        return (int) (self::allKeyed()[$key] ?? $default);
+    }
+
+    public static function bool(string $key, bool $default = false): bool
+    {
+        $value = self::allKeyed()[$key] ?? $default;
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    public static function string(string $key, string $default = ''): string
+    {
+        return (string) (self::allKeyed()[$key] ?? $default);
+    }
+
+    public static function callLockMinutes(): int
+    {
+        return max(1, self::int('call_lock_minutes', 30));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function telephonyConfig(): array
+    {
+        $settings = self::allKeyed();
+
+        return [
+            'native_call_enabled' => filter_var($settings['native_call_enabled'] ?? true, FILTER_VALIDATE_BOOLEAN),
+            'voip_enabled' => filter_var($settings['voip_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            'default_call_method' => (string) ($settings['default_call_method'] ?? 'native'),
+            'voip_provider' => (string) ($settings['voip_provider'] ?? 'asterisk'),
+            'voip_fallback_to_native' => filter_var($settings['voip_fallback_to_native'] ?? true, FILTER_VALIDATE_BOOLEAN),
+        ];
     }
 
     /**

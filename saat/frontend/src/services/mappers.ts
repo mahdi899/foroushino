@@ -194,3 +194,91 @@ export function mapWorkDaySummary(dto: Dto): WorkDaySummary {
     isOpen: !!dto.is_open,
   }
 }
+
+export function mapCall(dto: Dto): import('@/types').Call {
+  return {
+    id: id(dto.id),
+    leadId: id(dto.lead_id),
+    agentId: id(dto.agent_id),
+    result: dto.result ?? 'no_answer',
+    note: dto.note ?? '',
+    durationSec: Number(dto.duration_sec ?? 0),
+    objection: dto.objection ?? null,
+    nextStage: dto.next_stage ?? null,
+    createdAt: dto.started_at ?? dto.created_at ?? new Date().toISOString(),
+  }
+}
+
+export function mapActivity(dto: Dto): import('@/types').ActivityLog {
+  return {
+    id: id(dto.id),
+    agentId: id(dto.user_id),
+    kind: dto.kind ?? 'system',
+    title: dto.title ?? '',
+    meta: dto.meta ?? undefined,
+    createdAt: dto.created_at ?? new Date().toISOString(),
+  }
+}
+
+export function mapAgentFromAdmin(dto: Dto): import('@/types').Agent {
+  const { firstName, lastName } = splitName(dto.name as string)
+  const roles = (dto.roles as string[]) ?? []
+  const role = roles.includes('leader')
+    ? 'leader'
+    : roles.includes('supervisor')
+      ? 'supervisor'
+      : roles.includes('manager') || roles.includes('admin')
+        ? 'manager'
+        : 'agent'
+
+  return {
+    id: id(dto.id),
+    firstName,
+    lastName,
+    role: role as import('@/types').Agent['role'],
+    teamId: id(dto.team_id),
+    avatar: dto.avatar ?? null,
+    phone: dto.phone ?? dto.email ?? '',
+    level: Number(dto.level ?? 1),
+    callsToday: 0,
+    successfulToday: 0,
+    conversionRate: 0,
+    points: Number(dto.points ?? 0),
+    streak: Number(dto.streak ?? 0),
+    callGoal: Number(dto.call_goal ?? 0),
+  }
+}
+
+export function mapTeamFromAdmin(dto: Dto, memberIds: string[] = []): import('@/types').Team {
+  return {
+    id: id(dto.id),
+    name: dto.name ?? '',
+    leaderId: id(dto.leader_id),
+    agentIds: memberIds,
+  }
+}
+
+export function mapTeamReport(dto: Dto): import('@/types').TeamReport {
+  return {
+    id: id(dto.id),
+    teamId: id(dto.team_id),
+    teamName: dto.team_name ?? dto.team?.name ?? '',
+    reportDate: dto.report_date ?? '',
+    status: dto.status ?? 'submitted',
+    summary: dto.summary ?? {
+      calls_today: 0,
+      successful_today: 0,
+      conversion_rate: 0,
+      pending_confirmation: 0,
+      payment_submitted: 0,
+      active_agents: 0,
+    },
+    leaderNotes: dto.leader_notes ?? null,
+    supervisorNotes: dto.supervisor_notes ?? null,
+    submittedBy: id(dto.submitted_by),
+    submitterName: dto.submitter_name ?? undefined,
+    approvedAt: dto.approved_at ?? null,
+    forwardedAt: dto.forwarded_at ?? null,
+    createdAt: dto.created_at ?? new Date().toISOString(),
+  }
+}

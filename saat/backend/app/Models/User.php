@@ -20,6 +20,10 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, HasRoles, Notifiable, SoftDeletes;
 
+    protected $attributes = [
+        'call_goal' => 25,
+    ];
+
     /**
      * The attributes that are mass assignable.
      *

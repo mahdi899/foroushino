@@ -12,3 +12,4 @@ Schedule::command('leads:release-stale-locks')->everyFiveMinutes();
 Schedule::command('followups:mark-overdue')->everyFiveMinutes();
 Schedule::command('commissions:release-due')->hourly();
 Schedule::command('performance:snapshot')->dailyAt('23:55');
+Schedule::command('callcenter:process-sla')->everyTenMinutes();

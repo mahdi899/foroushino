@@ -7,9 +7,12 @@ import { Page } from '@/components/layout/Page'
 import { AppHeader } from './AppHeader'
 import { NextCallCard } from '@/components/domain/NextCallCard'
 import { GoalCelebration } from '@/components/domain/GoalCelebration'
+import { BreakOverlay } from '@/components/domain/BreakOverlay'
 import { EmptyState } from '@/components/ui/States'
 import { rankSuggestions } from '@/services/logic'
 import { filterLeadsForAgent } from '@/lib/leadUtils'
+import { isShiftOpen } from '@/lib/shiftUtils'
+import { performSetAvailability } from '@/services/shiftActions'
 import { toFa } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
@@ -110,8 +113,12 @@ export function HomeScreen() {
   const followups = useStore((s) => s.followups)
   const agent = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
   const currentAgentId = useStore((s) => s.currentAgentId)
+  const availability = useStore((s) => s.availability)
+  const workSession = useStore((s) => s.workSession)
   const openCallMethodSheet = useStore((s) => s.openCallMethodSheet)
   const syncDailyAgentStats = useStore((s) => s.syncDailyAgentStats)
+
+  const onBreak = availability === 'on_break' && isShiftOpen(workSession)
 
   const [celebrationVisible, setCelebrationVisible] = useState(false)
   const [skippedLeadIds, setSkippedLeadIds] = useState<string[]>([])
@@ -174,7 +181,13 @@ export function HomeScreen() {
     <Page>
       <AppHeader />
 
-      <div className="space-y-5 px-4 pt-2">
+      <div className="relative min-h-[calc(100dvh-88px)]">
+        <div
+          className={cn(
+            'space-y-5 px-4 pt-2 transition-[filter,opacity] duration-500',
+            onBreak && 'pointer-events-none select-none blur-[6px] opacity-[0.72] saturate-[0.92]',
+          )}
+        >
         <DataGate mode="placeholder">
         <div className={cn('relative overflow-visible', celebrationVisible && 'pb-4')}>
           <AnimatePresence>
@@ -328,6 +341,13 @@ export function HomeScreen() {
           />
         )}
         </DataGate>
+        </div>
+
+        <AnimatePresence>
+          {onBreak && (
+            <BreakOverlay onResume={() => void performSetAvailability('available')} />
+          )}
+        </AnimatePresence>
       </div>
     </Page>
   )

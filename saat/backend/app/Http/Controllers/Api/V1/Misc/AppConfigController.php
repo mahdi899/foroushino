@@ -13,10 +13,18 @@ class AppConfigController extends Controller
     public function __invoke(): JsonResponse
     {
         $settings = AppSetting::allKeyed();
+        $telephony = AppSetting::telephonyConfig();
 
         return ApiResponse::success([
             'min_call_duration_sec' => (int) ($settings['min_call_duration_sec'] ?? 0),
-            'call_lock_minutes' => (int) ($settings['call_lock_minutes'] ?? 30),
+            'call_lock_minutes' => AppSetting::callLockMinutes(),
+            'lead_pool_auto_return_hours' => (int) ($settings['lead_pool_auto_return_hours'] ?? 48),
+            'payout_minimum_amount' => (int) ($settings['payout_minimum_amount'] ?? 100_000),
+            'native_call_enabled' => (bool) $telephony['native_call_enabled'],
+            'voip_enabled' => (bool) $telephony['voip_enabled'],
+            'default_call_method' => (string) $telephony['default_call_method'],
+            'voip_provider' => (string) $telephony['voip_provider'],
+            'voip_fallback_to_native' => (bool) $telephony['voip_fallback_to_native'],
         ]);
     }
 }

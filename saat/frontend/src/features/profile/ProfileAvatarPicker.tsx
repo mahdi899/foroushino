@@ -163,9 +163,6 @@ export function ProfileAvatarPicker({
           </button>
         )}
       </div>
-      <p className="mt-2 text-center text-[11px] font-medium text-[#8E8E93] dark:text-[#98989D]">
-        JPG، PNG یا WebP — حداکثر ۲ مگابایت
-      </p>
     </div>
   )
 }

@@ -45,4 +45,8 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
     require __DIR__.'/team.php';
     require __DIR__.'/gamification.php';
     require __DIR__.'/admin.php';
+    require __DIR__.'/telephony.php';
+    require __DIR__.'/live-ops.php';
+    require __DIR__.'/quality.php';
+    require __DIR__.'/ai.php';
 });

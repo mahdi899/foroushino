@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Team;
 
+use App\Enums\CallResult;
 use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\CallResource;
@@ -24,7 +25,7 @@ class TeamController extends Controller
                 RoleName::Leader->value,
                 RoleName::Supervisor->value,
                 RoleName::Manager->value,
-                RoleName::Admin::value,
+                RoleName::Admin->value,
             ]),
             403,
             'اجازه دسترسی ندارید.',
@@ -45,6 +46,23 @@ class TeamController extends Controller
 
         $agents = $agentsQuery->get();
         $agentIds = $agents->pluck('id');
+        $today = today();
+        $positiveResults = array_map(fn (CallResult $result) => $result->value, CallResult::positive());
+
+        $callsTodayByAgent = Call::query()
+            ->selectRaw('agent_id, count(*) as total')
+            ->whereIn('agent_id', $agentIds)
+            ->where('created_at', '>=', $today)
+            ->groupBy('agent_id')
+            ->pluck('total', 'agent_id');
+
+        $successfulTodayByAgent = Call::query()
+            ->selectRaw('agent_id, count(*) as total')
+            ->whereIn('agent_id', $agentIds)
+            ->where('created_at', '>=', $today)
+            ->whereIn('result', $positiveResults)
+            ->groupBy('agent_id')
+            ->pluck('total', 'agent_id');
 
         $recentCalls = Call::query()
             ->with(['lead', 'agent'])
@@ -61,13 +79,15 @@ class TeamController extends Controller
             ->get()
             ->keyBy('agent_id');
 
-        $members = $agents->map(function (User $agent) use ($activeCalls) {
+        $members = $agents->map(function (User $agent) use ($activeCalls, $callsTodayByAgent, $successfulTodayByAgent) {
             $active = $activeCalls->get($agent->id);
 
             return [
                 'agent' => new UserResource($agent),
                 'availability' => $agent->availability?->value ?? 'offline',
                 'availability_changed_at' => $agent->availability_changed_at?->toIso8601String(),
+                'calls_today' => (int) ($callsTodayByAgent[$agent->id] ?? 0),
+                'successful_today' => (int) ($successfulTodayByAgent[$agent->id] ?? 0),
                 'active_call' => $active ? [
                     'lead_id' => $active->lead_id,
                     'lead_name' => $active->lead?->fullName(),
@@ -76,8 +96,13 @@ class TeamController extends Controller
             ];
         });
 
+        $onlineCount = $agents->filter(
+            fn (User $agent) => ($agent->availability?->value ?? 'offline') !== 'offline',
+        )->count();
+
         return ApiResponse::success([
             'team_id' => $teamId,
+            'online_count' => $onlineCount,
             'members' => $members,
             'recent_calls' => CallResource::collection($recentCalls),
         ]);

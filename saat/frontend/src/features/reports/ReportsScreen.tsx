@@ -93,6 +93,8 @@ export function ReportsScreen() {
         subtitle={canViewSystem ? 'تحلیل کل سازمان' : 'تحلیل عملکرد تیم'}
         icon={BarChart3}
         iconTone="primary"
+        showBack
+        onBack={() => navigate('/profile')}
       >
         <div className="mt-3">
           <SegmentedTabs value={tab} onChange={setTab} tabs={tabs} />

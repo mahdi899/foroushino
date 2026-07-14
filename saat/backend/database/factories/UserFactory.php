@@ -34,7 +34,7 @@ class UserFactory extends Factory
             'level' => fake()->numberBetween(1, 6),
             'points' => fake()->numberBetween(0, 4000),
             'streak' => fake()->numberBetween(0, 20),
-            'call_goal' => fake()->numberBetween(30, 60),
+            'call_goal' => 25,
             'sale_goal' => fake()->numberBetween(2, 6),
             'availability' => 'offline',
             'is_active' => true,

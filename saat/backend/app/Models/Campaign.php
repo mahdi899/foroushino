@@ -11,7 +11,11 @@ class Campaign extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'product_id', 'source', 'starts_at', 'ends_at', 'is_active'];
+    protected $fillable = [
+        'name', 'product_id', 'source', 'starts_at', 'ends_at', 'is_active',
+        'priority', 'max_daily_attempts', 'max_total_attempts', 'retry_cooldown_minutes',
+        'allowed_hours_start', 'allowed_hours_end', 'sla_callback_minutes',
+    ];
 
     protected function casts(): array
     {

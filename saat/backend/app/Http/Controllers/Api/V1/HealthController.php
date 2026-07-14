@@ -23,6 +23,7 @@ class HealthController extends Controller
                 'redis' => $redis,
                 'queue' => config('queue.default'),
                 'broadcast' => config('broadcasting.default'),
+                'telephony' => app(\App\Services\Telephony\VoipAdapter::class)->healthCheck() ? 'healthy' : 'degraded',
             ],
             message: 'Saat backend is running',
         );

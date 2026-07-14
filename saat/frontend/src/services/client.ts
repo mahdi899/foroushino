@@ -59,7 +59,7 @@ export interface ApiClient {
   reclaimLead(leadId: string): Promise<void>
 
   // calls & results (spec §5, §6)
-  startCall(leadId: string): Promise<void>
+  startCall(leadId: string, method?: 'native' | 'voip'): Promise<void>
   submitCallResult(input: CallResultInput): Promise<CallResultOutcome>
 
   // follow-ups (spec §7)

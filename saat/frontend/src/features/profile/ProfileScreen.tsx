@@ -1,11 +1,11 @@
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
   Settings,
   Bell,
-  Trophy,
   ChevronLeft,
   LogOut,
-  Star,
   Flame,
   Target,
   HelpCircle,
@@ -17,6 +17,9 @@ import {
   History,
   Server,
   Users,
+  BarChart3,
+  Phone,
+  CheckCircle2,
   type LucideIcon,
 } from 'lucide-react'
 import { isAgentRole, isManagementRole } from '@/lib/roles'
@@ -26,8 +29,11 @@ import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
 import { ProfileAvatarPicker } from '@/features/profile/ProfileAvatarPicker'
 import { roleLabels } from '@/data/labels'
+import { conversionRateFromStats } from '@/lib/dailyGoal'
+import { getTeamAgentIds } from '@/lib/teamUtils'
 import { toFa } from '@/lib/format'
 import { APP_VERSION_LABEL } from '@/lib/app'
+import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
 
 type StatTone = 'warning' | 'primary' | 'success'
@@ -69,6 +75,9 @@ export function ProfileScreen() {
   const navigate = useNavigate()
   const role = useStore((s) => s.role)
   const permissions = useStore((s) => s.permissions)
+  const currentAgentId = useStore((s) => s.currentAgentId)
+  const agents = useStore((s) => s.agents)
+  const teams = useStore((s) => s.teams)
   const agent = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
   const logout = useStore((s) => s.logout)
   if (!agent) return null
@@ -76,12 +85,38 @@ export function ProfileScreen() {
   const agentLine = isAgentRole(role)
   const management = isManagementRole(role)
   const canOpenAdminSettings = hasPermission(permissions, 'admin.settings')
+  const reportsPath = management ? '/reports' : '/performance'
 
-  const stats: { icon: LucideIcon; label: string; value: string; tone: StatTone }[] = [
-    { icon: Flame, label: 'streak', value: `${toFa(agent.streak)} روز`, tone: 'warning' },
-    { icon: Star, label: 'امتیاز', value: toFa(agent.points), tone: 'primary' },
-    { icon: Target, label: 'نرخ تبدیل', value: `${toFa(agent.conversionRate)}٪`, tone: 'success' },
-  ]
+  const profileStats = useMemo(() => {
+    if (management) {
+      const teamAgentIds = getTeamAgentIds(teams, agents, currentAgentId, role)
+      const teamAgents = agents.filter(
+        (member) => teamAgentIds.includes(member.id) && member.role === 'agent',
+      )
+      const calls = teamAgents.reduce((sum, member) => sum + member.callsToday, 0)
+      const successful = teamAgents.reduce((sum, member) => sum + member.successfulToday, 0)
+      const conversion = conversionRateFromStats(calls, successful)
+
+      return [
+        { icon: Phone, label: 'تماس تیم', value: toFa(calls), tone: 'primary' as const },
+        { icon: CheckCircle2, label: 'موفق تیم', value: toFa(successful), tone: 'success' as const },
+        { icon: Target, label: 'نرخ تبدیل', value: `${toFa(conversion)}٪`, tone: 'warning' as const },
+      ]
+    }
+
+    const calls = agent.callsToday
+    const successful = agent.successfulToday
+    const conversion =
+      agent.conversionRate > 0
+        ? agent.conversionRate
+        : conversionRateFromStats(calls, successful)
+
+    return [
+      { icon: Phone, label: 'تماس امروز', value: toFa(calls), tone: 'primary' as const },
+      { icon: CheckCircle2, label: 'موفق امروز', value: toFa(successful), tone: 'success' as const },
+      { icon: Target, label: 'نرخ تبدیل', value: `${toFa(conversion)}٪`, tone: 'warning' as const },
+    ]
+  }, [management, teams, agents, currentAgentId, role, agent])
 
   const menu: { icon: LucideIcon; label: string; onClick: () => void }[] = [
     ...(agentLine
@@ -91,11 +126,6 @@ export function ProfileScreen() {
     ...(agentLine
       ? [{ icon: WalletCards, label: 'درآمد من', onClick: () => navigate('/wallet') }]
       : []),
-    {
-      icon: Trophy,
-      label: management ? 'گزارش‌ها' : 'عملکرد و دستاوردها',
-      onClick: () => navigate(management ? '/reports' : '/performance'),
-    },
     ...(agentLine
       ? [{ icon: GraduationCap, label: 'آموزش و اسکریپت فروش', onClick: () => navigate('/training') }]
       : []),
@@ -138,21 +168,96 @@ export function ProfileScreen() {
             <h2 className="mt-1 text-[20px] font-bold tracking-tight text-neutral-900 dark:text-white">
               {agent.firstName} {agent.lastName}
             </h2>
-            <p className="mt-0.5 text-[13px] font-medium text-[#8E8E93] dark:text-[#98989D]">
-              {roleLabels[agent.role]} · سطح {toFa(agent.level)}
-            </p>
+            <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+              <p className="text-[13px] font-medium text-[#8E8E93] dark:text-[#98989D]">
+                {roleLabels[agent.role]}
+              </p>
+              {agentLine && agent.streak > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-orange-500/25 bg-orange-500/10 px-2.5 py-0.5 text-[11px] font-bold text-orange-600 dark:text-orange-300">
+                  <Flame size={12} strokeWidth={2.35} />
+                  {toFa(agent.streak)} روز متوالی
+                </span>
+              )}
+              {agentLine && agent.points > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-[#3390EC]/20 bg-[#3390EC]/10 px-2.5 py-0.5 text-[11px] font-bold text-[#3390EC] dark:border-[#8774E1]/25 dark:text-[#8774E1]">
+                  {toFa(agent.points)} امتیاز
+                </span>
+              )}
+            </div>
 
             <div className="glass-inset relative mt-4 flex w-full items-stretch rounded-2xl border border-white/50 px-1 py-3.5 dark:border-white/10">
-              {stats.map((s) => (
-                <div key={s.label} className="flex min-w-0 flex-1 flex-col items-center gap-1.5 px-1">
-                  <ProfileStatIcon icon={s.icon} tone={s.tone} />
-                  <span className="text-[15px] font-bold tabular-nums text-neutral-900 dark:text-white">{s.value}</span>
-                  <span className="text-[10px] font-semibold text-[#8E8E93] dark:text-[#98989D]">{s.label}</span>
+              {profileStats.map((stat) => (
+                <div key={stat.label} className="flex min-w-0 flex-1 flex-col items-center gap-1.5 px-1">
+                  <ProfileStatIcon icon={stat.icon} tone={stat.tone} />
+                  <span className="text-[15px] font-bold tabular-nums text-neutral-900 dark:text-white">
+                    {stat.value}
+                  </span>
+                  <span className="text-center text-[10px] font-semibold leading-tight text-[#8E8E93] dark:text-[#98989D]">
+                    {stat.label}
+                  </span>
                 </div>
               ))}
               <div className="pointer-events-none absolute inset-y-4 left-1/3 w-px -translate-x-1/2 bg-white/45 dark:bg-white/10" />
               <div className="pointer-events-none absolute inset-y-4 left-2/3 w-px -translate-x-1/2 bg-white/45 dark:bg-white/10" />
             </div>
+
+            {agentLine && agent.callGoal > 0 && (
+              <div className="mt-3 w-full">
+                <div className="mb-1.5 flex items-center justify-between text-[11px] font-semibold">
+                  <span className="text-[#8E8E93] dark:text-[#98989D]">پیشرفت هدف تماس امروز</span>
+                  <span className="tabular-nums text-neutral-900 dark:text-white">
+                    {toFa(agent.callsToday)}
+                    <span className="text-[#8E8E93] dark:text-[#98989D]"> / </span>
+                    {toFa(agent.callGoal)}
+                  </span>
+                </div>
+                <div className="h-[5px] overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-l from-[#3390EC] to-[#5EB0FF] dark:from-[#8774E1] dark:to-[#A894EE]"
+                    style={{
+                      width: `${Math.min(100, Math.round((agent.callsToday / agent.callGoal) * 100))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 28, delay: 0.12 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                haptic('medium')
+                navigate(reportsPath)
+              }}
+              className={cn(
+                'relative mt-3 flex w-full items-center gap-3 overflow-hidden rounded-2xl px-4 py-3.5',
+                'bg-gradient-to-l from-[#3390EC] to-[#5EB0FF] text-white',
+                'shadow-[0_10px_28px_-8px_rgba(51,144,236,0.65)]',
+                'dark:from-[#8774E1] dark:to-[#A894EE] dark:shadow-[0_10px_28px_-8px_rgba(135,116,225,0.55)]',
+              )}
+            >
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -left-6 top-1/2 h-24 w-24 -translate-y-1/2 rounded-full bg-white/20 blur-2xl"
+              />
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0 bg-[linear-gradient(105deg,transparent_40%,rgba(255,255,255,0.22)_50%,transparent_60%)]"
+              />
+              <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/20 ring-1 ring-white/30">
+                <BarChart3 size={20} strokeWidth={2.35} />
+              </span>
+              <span className="relative flex min-w-0 flex-1 flex-col items-start text-right">
+                <span className="text-[15px] font-extrabold leading-tight">گزارش‌ها</span>
+                <span className="text-[11px] font-semibold text-white/85">
+                  {management ? 'عملکرد تیم و آمار کلی' : 'عملکرد، دستاوردها و لیدربورد'}
+                </span>
+              </span>
+              <ChevronLeft size={20} strokeWidth={2.35} className="relative shrink-0 text-white/90" />
+            </motion.button>
           </div>
         </div>
 
@@ -186,7 +291,7 @@ export function ProfileScreen() {
           }}
           className="glass-inset flex w-full items-center justify-center gap-2 rounded-[22px] border border-error-200/60 py-3.5 text-sm font-bold text-error-600 transition-all active:scale-[0.98] dark:border-error-500/25"
         >
-          <LogOut size={18} strokeWidth={2.25} />
+          <LogOut size={18} strokeWidth={2.35} />
           خروج از حساب
         </button>
 
