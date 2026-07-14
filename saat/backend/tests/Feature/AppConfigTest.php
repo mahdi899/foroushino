@@ -22,6 +22,7 @@ it('exposes business calendar settings', function () {
         ->getJson('/api/v1/app-config')
         ->assertOk()
         ->assertJsonPath('data.business_timezone', 'Asia/Tehran')
+        ->assertJsonPath('data.agents_per_team', 15)
         ->assertJsonStructure(['data' => ['business_date']]);
 });
 

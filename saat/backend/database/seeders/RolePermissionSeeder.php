@@ -19,7 +19,7 @@ class RolePermissionSeeder extends Seeder
         'followups' => ['followups.view', 'followups.manage'],
         'sales' => ['sales.view', 'sales.view-own', 'sales.view-team', 'sales.manage', 'sales.confirm', 'sales.review-payment', 'sales.register-payment'],
         'wallet' => ['wallet.view', 'wallet.view-own', 'wallet.view-team', 'wallet.manage-payouts'],
-        'reports' => ['reports.view', 'reports.view-team', 'reports.view-all', 'reports.submit-team', 'reports.approve-team'],
+        'reports' => ['reports.view', 'reports.view-team', 'reports.view-all', 'reports.submit-team', 'reports.approve-team', 'reports.submit-agent', 'reports.approve-agent'],
         'users' => ['users.view', 'users.manage', 'teams.manage'],
         'training' => ['training.view', 'training.manage'],
         'admin' => ['admin.settings', 'admin.products'],
@@ -60,7 +60,7 @@ class RolePermissionSeeder extends Seeder
             'calls.view', 'followups.view',
             'sales.view', 'sales.view-team', 'sales.review-payment',
             'wallet.view', 'wallet.view-team',
-            'reports.view', 'reports.view-team', 'reports.submit-team',
+            'reports.view', 'reports.view-team', 'reports.submit-team', 'reports.approve-agent',
             'training.view',
         ]);
 
@@ -70,6 +70,7 @@ class RolePermissionSeeder extends Seeder
             'followups.view', 'followups.manage',
             'sales.view', 'sales.view-own', 'sales.manage',
             'wallet.view', 'wallet.view-own',
+            'reports.submit-agent',
             'training.view',
         ]);
     }

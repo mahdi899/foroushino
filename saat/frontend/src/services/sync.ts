@@ -14,6 +14,7 @@ import type {
   Sale,
   Team,
   TeamReport,
+  AgentReport,
   Wallet,
   WalletTransaction,
   WorkDaySummary,
@@ -36,6 +37,7 @@ import {
   mapPayoutRequest,
   mapTeamFromAdmin,
   mapTeamReport,
+  mapAgentReport,
   mapWallet,
   mapWalletTransaction,
   mapSale,
@@ -79,6 +81,7 @@ export interface SyncPayload {
   agents: Agent[]
   teams: Team[]
   teamReports: TeamReport[]
+  agentReports: AgentReport[]
   activity: ActivityLog[]
   agent: Agent
   role: Role
@@ -160,6 +163,11 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
   const permissions = me.permissions ?? []
   const role = mapAuthUserRole(me.roles)
   const management = isManagementRole(role)
+  const canViewTeamActivity =
+    management || hasPermission(permissions, 'reports.view-team')
+  const canViewAgentReports =
+    hasPermission(permissions, 'reports.submit-agent') ||
+    hasPermission(permissions, 'reports.approve-agent')
   const leadsPage = management ? 100 : 50
   const callsPage = management ? 100 : 30
   const followupsPage = management ? 100 : 50
@@ -181,6 +189,7 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
     adminUsersRaw,
     adminTeamsRaw,
     teamReportsRaw,
+    agentReportsRaw,
     shiftData,
   ] = await Promise.all([
     http.get<Dto>('/home/agent'),
@@ -194,12 +203,13 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
     http.get<Dto[]>('/products'),
     http.get<Dto[]>('/notifications?per_page=50'),
     http.get<Dto>('/app-config'),
-    management ? safeGet<Dto[]>('/activity') : Promise.resolve(null),
+    canViewTeamActivity ? safeGet<Dto[]>('/activity') : Promise.resolve(null),
     hasPermission(permissions, 'users.view') ? safeGet<Dto[]>('/admin/users') : Promise.resolve(null),
     hasPermission(permissions, 'users.view') ? safeGet<Dto[]>('/admin/teams') : Promise.resolve(null),
     hasPermission(permissions, 'reports.view')
       ? safeGet<Dto[]>('/team-reports?per_page=50')
       : Promise.resolve(null),
+    canViewAgentReports ? safeGet<Dto[]>('/agent-reports?per_page=50') : Promise.resolve(null),
     fetchShiftData(management ? 30 : 14),
   ])
 
@@ -240,7 +250,7 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
     }
   }
 
-  const adminUsers = asArray<Dto>(adminUsersRaw)
+  const adminUsers = asArray<Dto>(adminUsersRaw).filter((dto) => dto.is_active !== false)
   const calls = asArray<Dto>(callsRaw).map(mapCall)
   const teamLive = !skipTeamLiveOnSync && isManagementRole(role)
     ? await fetchTeamLive(me.team_id ? String(me.team_id) : null)
@@ -314,6 +324,7 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
     agents,
     teams,
     teamReports: asArray<Dto>(teamReportsRaw).map(mapTeamReport),
+    agentReports: asArray<Dto>(agentReportsRaw).map(mapAgentReport),
     activity: asArray<Dto>(activityRaw).map(mapActivity),
     agent,
     role,

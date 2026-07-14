@@ -242,6 +242,32 @@ export interface TeamReport {
   createdAt: string
 }
 
+export type AgentReportStatus = 'submitted' | 'approved' | 'rejected'
+
+export interface AgentReportSummary {
+  calls_today: number
+  successful_today: number
+  conversion_rate: number
+  followups_completed: number
+  sales_submitted: number
+}
+
+export interface AgentReport {
+  id: string
+  agentId: string
+  agentName?: string
+  teamId: string
+  teamName?: string
+  reportDate: string
+  status: AgentReportStatus
+  summary: AgentReportSummary
+  agentNotes?: string | null
+  leaderNotes?: string | null
+  approvedAt?: string | null
+  rejectedAt?: string | null
+  createdAt: string
+}
+
 export interface Achievement {
   id: string
   title: string

@@ -69,6 +69,19 @@ export function mapLead(dto: Dto): Lead {
     duplicateOfId: nullableId(dto.duplicate_of_id),
     productId: dto.product?.id !== undefined ? id(dto.product.id) : undefined,
     campaignId: dto.campaign_id !== undefined ? nullableId(dto.campaign_id) ?? undefined : undefined,
+    statusHistory: Array.isArray(dto.status_histories)
+      ? dto.status_histories.map(mapLeadStatusHistory)
+      : undefined,
+  }
+}
+
+export function mapLeadStatusHistory(dto: Dto): import('@/types').LeadStatusEvent {
+  return {
+    id: id(dto.id),
+    status: dto.status,
+    at: dto.created_at ?? new Date().toISOString(),
+    byAgentId: id(dto.by_user_id),
+    note: dto.note ?? undefined,
   }
 }
 
@@ -327,6 +340,30 @@ export function mapTeamReport(dto: Dto): import('@/types').TeamReport {
     submitterName: dto.submitter_name ?? undefined,
     approvedAt: dto.approved_at ?? null,
     forwardedAt: dto.forwarded_at ?? null,
+    createdAt: dto.created_at ?? new Date().toISOString(),
+  }
+}
+
+export function mapAgentReport(dto: Dto): import('@/types').AgentReport {
+  return {
+    id: id(dto.id),
+    agentId: id(dto.agent_id),
+    agentName: dto.agent_name ?? undefined,
+    teamId: id(dto.team_id),
+    teamName: dto.team_name ?? undefined,
+    reportDate: dto.report_date ?? '',
+    status: dto.status ?? 'submitted',
+    summary: dto.summary ?? {
+      calls_today: 0,
+      successful_today: 0,
+      conversion_rate: 0,
+      followups_completed: 0,
+      sales_submitted: 0,
+    },
+    agentNotes: dto.agent_notes ?? null,
+    leaderNotes: dto.leader_notes ?? null,
+    approvedAt: dto.approved_at ?? null,
+    rejectedAt: dto.rejected_at ?? null,
     createdAt: dto.created_at ?? new Date().toISOString(),
   }
 }

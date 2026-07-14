@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Admin\UpdateTeamRequest;
 use App\Http\Resources\V1\TeamAdminResource;
@@ -16,7 +17,15 @@ class TeamAdminController extends Controller
     {
         $this->authorizeView($request);
 
-        $query = Team::query()->with('leader')->withCount('members')->orderBy('name');
+        $query = Team::query()
+            ->with('leader')
+            ->withCount('members')
+            ->withCount([
+                'members as agents_count' => fn ($q) => $q
+                    ->role(RoleName::Agent->value)
+                    ->where('is_active', true),
+            ])
+            ->orderBy('name');
         $user = $request->user();
 
         if ($user && ! $user->can('reports.view-all') && $user->team_id) {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\V1;
 
+use App\Support\TeamCapacity;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,6 +22,8 @@ class TeamAdminResource extends JsonResource
             'leader_id' => $this->leader_id,
             'leader_name' => $this->whenLoaded('leader', fn () => $this->leader?->name),
             'members_count' => $this->whenCounted('members'),
+            'agents_count' => $this->whenCounted('agents_count'),
+            'agents_capacity' => TeamCapacity::AGENTS_PER_TEAM,
         ];
     }
 }

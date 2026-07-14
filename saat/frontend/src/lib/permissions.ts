@@ -31,12 +31,15 @@ const MANAGER_PERMISSIONS: string[] = [
 
 const MOCK_ROLE_PERMISSIONS: Partial<Record<Role, string[]>> = {
   leader: [
+    'leads.view',
+    'leads.view-team',
     'sales.view',
     'sales.view-team',
     'sales.review-payment',
     'reports.view',
     'reports.view-team',
     'reports.submit-team',
+    'reports.approve-agent',
   ],
   supervisor: [
     'leads.view',

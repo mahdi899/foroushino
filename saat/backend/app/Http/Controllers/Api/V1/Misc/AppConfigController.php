@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Support\ApiResponse;
 use App\Support\BusinessDate;
+use App\Support\TeamCapacity;
 use Illuminate\Http\JsonResponse;
 
 class AppConfigController extends Controller
@@ -30,6 +31,7 @@ class AppConfigController extends Controller
             'voip_fallback_to_native' => (bool) $telephony['voip_fallback_to_native'],
             'business_timezone' => BusinessDate::timezone(),
             'business_date' => BusinessDate::dateKey(),
+            'agents_per_team' => TeamCapacity::AGENTS_PER_TEAM,
         ]);
     }
 }

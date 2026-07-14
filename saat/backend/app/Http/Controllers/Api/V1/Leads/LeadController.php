@@ -11,12 +11,17 @@ use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Leads\IndexLeadRequest;
 use App\Http\Requests\V1\Leads\StoreLeadRequest;
-use App\Http\Resources\V1\ImportBatchResource;
-use App\Http\Resources\V1\LeadResource;
+use App\Http\Resources\V1\CallResource;
+use App\Http\Resources\V1\FollowUpResource;
+use App\Http\Resources\V1\LeadStatusHistoryResource;
+use App\Http\Resources\V1\SaleResource;
 use App\Models\AppSetting;
+use App\Models\Call;
+use App\Models\FollowUp;
 use App\Models\ImportBatch;
 use App\Models\Lead;
 use App\Models\LeadStatusHistory;
+use App\Models\Sale;
 use App\Support\ApiResponse;
 use App\Support\TeamScope;
 use Illuminate\Http\JsonResponse;
@@ -69,6 +74,46 @@ class LeadController extends Controller
         $lead->load(['product', 'campaign', 'assignedAgent', 'statusHistories.byUser']);
 
         return ApiResponse::success(new LeadResource($lead));
+    }
+
+    public function timeline(Request $request, Lead $lead): JsonResponse
+    {
+        $this->authorize('view', $lead);
+
+        $calls = Call::query()
+            ->with('agent')
+            ->where('lead_id', $lead->id)
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get();
+
+        $followups = FollowUp::query()
+            ->with('agent')
+            ->where('lead_id', $lead->id)
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get();
+
+        $statusHistories = LeadStatusHistory::query()
+            ->with('byUser')
+            ->where('lead_id', $lead->id)
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get();
+
+        $sales = Sale::query()
+            ->with(['agent', 'product'])
+            ->where('lead_id', $lead->id)
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
+
+        return ApiResponse::success([
+            'calls' => CallResource::collection($calls),
+            'followups' => FollowUpResource::collection($followups),
+            'status_histories' => LeadStatusHistoryResource::collection($statusHistories),
+            'sales' => SaleResource::collection($sales),
+        ]);
     }
 
     public function next(Request $request): JsonResponse

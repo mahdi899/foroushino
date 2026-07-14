@@ -20,6 +20,7 @@ import type {
   SaleStage,
   Team,
   TeamReport,
+  AgentReport,
   Temperature,
   Wallet,
   WalletTransaction,
@@ -49,6 +50,7 @@ import {
   PRODUCT_ID,
   sales as mockSales,
   teamReports as mockTeamReports,
+  agentReports as mockAgentReports,
   wallet as mockWallet,
   walletTransactions as mockWalletTx,
 } from '@/data/mockExtra'
@@ -121,6 +123,7 @@ interface AppState {
   products: Product[]
   activity: ActivityLog[]
   teamReports: TeamReport[]
+  agentReports: AgentReport[]
 
   // runtime config from management
   appSettings: RuntimeAppSettings
@@ -208,6 +211,13 @@ interface AppState {
   submitTeamReport: (leaderNotes?: string) => void
   approveTeamReport: (reportId: string, supervisorNotes?: string) => void
   forwardTeamReport: (reportId: string) => void
+
+  // agent reports
+  setAgentReports: (agentReports: AgentReport[]) => void
+  upsertAgentReport: (report: AgentReport) => void
+  submitAgentReport: (agentNotes?: string) => void
+  approveAgentReport: (reportId: string, leaderNotes?: string) => void
+  rejectAgentReport: (reportId: string, leaderNotes?: string) => void
 
   // wallet
   requestPayout: (amount: number) => { ok: boolean; message?: string }
@@ -412,6 +422,7 @@ export const useStore = create<AppState>()(
       products: mockProducts,
       activity: mockActivity,
       teamReports: mockTeamReports,
+      agentReports: mockAgentReports,
       appSettings: DEFAULT_RUNTIME_APP_SETTINGS,
       powerDialEnabled: false,
       dispositionMode: 'grid',
@@ -1208,6 +1219,97 @@ export const useStore = create<AppState>()(
           })
         }
         get().pushToast('گزارش برای مدیریت ارسال شد')
+      },
+
+      setAgentReports: (agentReports) => set({ agentReports }),
+
+      upsertAgentReport: (report) =>
+        set((state) => ({
+          agentReports: [
+            report,
+            ...state.agentReports.filter(
+              (row) =>
+                row.id !== report.id &&
+                !(row.agentId === report.agentId && row.reportDate === report.reportDate),
+            ),
+          ],
+        })),
+
+      submitAgentReport: (agentNotes) => {
+        const state = get()
+        const agent = state.agents.find((a) => a.id === state.currentAgentId)
+        if (!agent) return
+
+        const today = todayDateKey()
+        const report: AgentReport = {
+          id: uid('ar'),
+          agentId: state.currentAgentId,
+          agentName: agent ? `${agent.firstName} ${agent.lastName}` : undefined,
+          teamId: agent.teamId,
+          reportDate: today,
+          status: 'submitted',
+          summary: {
+            calls_today: agent.callsToday,
+            successful_today: agent.successfulToday,
+            conversion_rate: agent.conversionRate,
+            followups_completed: state.followups.filter(
+              (f) => f.agentId === state.currentAgentId && f.status === 'done',
+            ).length,
+            sales_submitted: state.sales.filter((s) => s.agentId === state.currentAgentId).length,
+          },
+          agentNotes: agentNotes ?? null,
+          createdAt: new Date().toISOString(),
+        }
+
+        set({
+          agentReports: [
+            report,
+            ...state.agentReports.filter(
+              (r) => !(r.agentId === state.currentAgentId && r.reportDate === today),
+            ),
+          ],
+        })
+        get().pushNotification({
+          title: 'گزارش روزانه ارسال شد',
+          body: 'گزارش امروزت برای لیدر ارسال شد.',
+          kind: 'system',
+          href: '/agent-reports',
+        })
+        get().pushToast('گزارش روزانه برای لیدر ارسال شد')
+      },
+
+      approveAgentReport: (reportId, leaderNotes) => {
+        const nowIso = new Date().toISOString()
+        set((state) => ({
+          agentReports: state.agentReports.map((report) =>
+            report.id === reportId
+              ? {
+                  ...report,
+                  status: 'approved' as const,
+                  leaderNotes: leaderNotes ?? null,
+                  approvedAt: nowIso,
+                }
+              : report,
+          ),
+        }))
+        get().pushToast('گزارش کارشناس تایید شد')
+      },
+
+      rejectAgentReport: (reportId, leaderNotes) => {
+        const nowIso = new Date().toISOString()
+        set((state) => ({
+          agentReports: state.agentReports.map((report) =>
+            report.id === reportId
+              ? {
+                  ...report,
+                  status: 'rejected' as const,
+                  leaderNotes: leaderNotes ?? null,
+                  rejectedAt: nowIso,
+                }
+              : report,
+          ),
+        }))
+        get().pushToast('گزارش کارشناس رد شد', 'info')
       },
 
       releaseCommission: (commissionId) => {

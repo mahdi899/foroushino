@@ -57,6 +57,9 @@ class LeadResource extends JsonResource
             'do_not_call' => $this->do_not_call_at !== null,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
+            'status_histories' => LeadStatusHistoryResource::collection(
+                $this->whenLoaded('statusHistories'),
+            ),
         ];
     }
 }

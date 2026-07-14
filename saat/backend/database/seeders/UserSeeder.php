@@ -7,17 +7,16 @@ use App\Enums\RoleName;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Support\TeamCapacity;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
-    private const AGENT_COUNT = 500;
-
     public function run(): void
     {
         $teams = Team::all();
+        $agentsPerTeam = TeamCapacity::AGENTS_PER_TEAM;
 
         $admin = User::query()->firstOrCreate(
             ['email' => 'admin@saat.local'],
@@ -27,6 +26,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
                 'availability' => Availability::Offline,
+                'is_active' => true,
             ]
         );
         $admin->syncRoles([RoleName::Manager->value]);
@@ -39,99 +39,104 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
                 'availability' => Availability::Available,
+                'is_active' => true,
             ]
         );
         $manager->syncRoles([RoleName::Manager->value]);
 
         foreach ($teams as $i => $team) {
-            $leader = User::factory()->create([
-                'name' => 'سرتیم '.$team->name,
-                'email' => 'leader'.($i + 1).'@saat.local',
-                'team_id' => $team->id,
-                'availability' => Availability::Available,
-            ]);
-            $leader->syncRoles([RoleName::Leader->value]);
+            $teamNum = $i + 1;
 
-            $supervisor = User::factory()->create([
-                'name' => 'ناظر '.$team->name,
-                'email' => 'supervisor'.($i + 1).'@saat.local',
-                'team_id' => $team->id,
-                'availability' => Availability::Available,
-            ]);
+            $leader = User::query()->firstOrCreate(
+                ['email' => "leader{$teamNum}@saat.local"],
+                [
+                    'name' => 'سرتیم '.$team->name,
+                    'phone' => sprintf('0912100%04d', $teamNum),
+                    'password' => Hash::make('password'),
+                    'email_verified_at' => now(),
+                    'team_id' => $team->id,
+                    'availability' => Availability::Available,
+                    'is_active' => true,
+                ]
+            );
+            $leader->syncRoles([RoleName::Leader->value]);
+            if ((int) $leader->team_id !== (int) $team->id) {
+                $leader->forceFill(['team_id' => $team->id, 'is_active' => true])->save();
+            }
+
+            $supervisor = User::query()->firstOrCreate(
+                ['email' => "supervisor{$teamNum}@saat.local"],
+                [
+                    'name' => 'ناظر '.$team->name,
+                    'phone' => sprintf('0912200%04d', $teamNum),
+                    'password' => Hash::make('password'),
+                    'email_verified_at' => now(),
+                    'team_id' => $team->id,
+                    'availability' => Availability::Available,
+                    'is_active' => true,
+                ]
+            );
             $supervisor->syncRoles([RoleName::Supervisor->value]);
+            if ((int) $supervisor->team_id !== (int) $team->id) {
+                $supervisor->forceFill(['team_id' => $team->id, 'is_active' => true])->save();
+            }
 
             $team->leader_id = $leader->id;
             $team->save();
+
+            $this->seedAgentsForTeam($team, $teamNum, $agentsPerTeam);
+            TeamCapacity::enforceForTeam($team->id);
         }
 
-        $this->command?->getOutput()->writeln('Seeding '.self::AGENT_COUNT.' agents...');
-
-        $agentRole = \Spatie\Permission\Models\Role::findByName(RoleName::Agent->value, 'web');
-        $teamIds = $teams->pluck('id')->all();
-        $teamCount = count($teamIds);
-        $chunkSize = 100;
-        $created = 0;
-
-        while ($created < self::AGENT_COUNT) {
-            $batchSize = min($chunkSize, self::AGENT_COUNT - $created);
-            $agents = User::factory()->count($batchSize)->make()->map(function (User $agent, int $idx) use ($teamIds, $teamCount, $created) {
-                $agent->team_id = $teamIds[($created + $idx) % $teamCount];
-                $agent->availability = fake()->randomElement(['available', 'on_break', 'doing_follow_up', 'offline', 'offline']);
-
-                return $agent;
-            });
-
-            $now = now()->format('Y-m-d H:i:s');
-            $rows = $agents->map(fn (User $a) => [
-                'name' => $a->name,
-                'email' => $a->email,
-                'phone' => $a->phone,
-                'email_verified_at' => $now,
-                'password' => $a->password,
-                'team_id' => $a->team_id,
-                'level' => $a->level,
-                'points' => $a->points,
-                'streak' => $a->streak,
-                'call_goal' => $a->call_goal,
-                'sale_goal' => $a->sale_goal,
-                'availability' => $a->availability instanceof \BackedEnum ? $a->availability->value : $a->availability,
-                'is_active' => $a->is_active,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ])->all();
-
-            DB::table('users')->insert($rows);
-
-            $insertedIds = User::query()->orderByDesc('id')->limit($batchSize)->pluck('id')->sort()->values();
-
-            $roleRows = $insertedIds->map(fn ($id) => [
-                'role_id' => $agentRole->id,
-                'model_type' => User::class,
-                'model_id' => $id,
-            ])->all();
-            DB::table('model_has_roles')->insert($roleRows);
-
-            $walletRows = $insertedIds->map(fn ($id) => [
-                'user_id' => $id,
-                'balance_available' => 0,
-                'balance_pending' => 0,
-                'balance_locked' => 0,
-                'total_earned' => 0,
-                'total_paid' => 0,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ])->all();
-            DB::table('wallets')->insert($walletRows);
-
-            $created += $batchSize;
-        }
-
-        // Wallets for admin/manager/leaders/supervisors too.
-        User::query()->role([RoleName::Admin->value, RoleName::Manager->value, RoleName::Leader->value, RoleName::Supervisor->value])
+        User::query()
+            ->role([RoleName::Admin->value, RoleName::Manager->value, RoleName::Leader->value, RoleName::Supervisor->value])
             ->get()
-            ->each(fn (User $u) =>         Wallet::query()->firstOrCreate(['user_id' => $u->id]));
+            ->each(fn (User $user) => Wallet::query()->firstOrCreate(['user_id' => $user->id]));
 
         $this->seedDemoAccounts($teams);
+
+        $totalAgents = $teams->count() * $agentsPerTeam;
+        $this->command?->getOutput()->writeln("Teams seeded with up to {$agentsPerTeam} active agents each ({$totalAgents} total capacity).");
+    }
+
+    private function seedAgentsForTeam(Team $team, int $teamNum, int $agentsPerTeam): void
+    {
+        $availabilities = [
+            Availability::Available,
+            Availability::OnBreak,
+            Availability::DoingFollowUp,
+            Availability::Offline,
+        ];
+
+        for ($slot = 1; $slot <= $agentsPerTeam; $slot++) {
+            $email = "agent{$teamNum}-{$slot}@saat.local";
+
+            $agent = User::query()->firstOrCreate(
+                ['email' => $email],
+                [
+                    'name' => fake()->name(),
+                    'phone' => sprintf('0913%02d%02d', $teamNum, $slot),
+                    'password' => Hash::make('password'),
+                    'email_verified_at' => now(),
+                    'team_id' => $team->id,
+                    'level' => fake()->numberBetween(1, 6),
+                    'points' => fake()->numberBetween(0, 4000),
+                    'streak' => fake()->numberBetween(0, 20),
+                    'call_goal' => 25,
+                    'sale_goal' => fake()->numberBetween(2, 6),
+                    'availability' => fake()->randomElement($availabilities),
+                    'is_active' => true,
+                ]
+            );
+
+            $agent->syncRoles([RoleName::Agent->value]);
+
+            if ((int) $agent->team_id !== (int) $team->id || ! $agent->is_active) {
+                $agent->forceFill(['team_id' => $team->id, 'is_active' => true])->save();
+            }
+
+            Wallet::query()->firstOrCreate(['user_id' => $agent->id]);
+        }
     }
 
     private function seedDemoAccounts($teams): void
@@ -161,13 +166,17 @@ class UserSeeder extends Seeder
                     'availability' => Availability::Available,
                     'call_goal' => 25,
                     'is_active' => true,
-                ],
+                ]
             );
             if ($user->call_goal !== 25) {
                 $user->forceFill(['call_goal' => 25])->save();
             }
             $user->syncRoles([$roleMap[$account['role']]->value ?? RoleName::Agent->value]);
             Wallet::query()->firstOrCreate(['user_id' => $user->id]);
+
+            if ($user->hasRole(RoleName::Agent->value) && $teamId) {
+                TeamCapacity::enforceForTeam((int) $teamId);
+            }
         }
     }
 }
