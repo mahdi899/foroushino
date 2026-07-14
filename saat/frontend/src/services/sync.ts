@@ -49,7 +49,7 @@ import {
 } from './mappers'
 import { syncAllAgentsDailyStats, conversionRateFromStats } from '@/lib/dailyGoal'
 import { todayDateKey } from '@/lib/businessDate'
-import { isLeaderRole, isManagementRole } from '@/lib/roles'
+import { hasMultiTeamView, isLeaderRole, isManagementRole, isSupervisorRole } from '@/lib/roles'
 import { fetchTeamLive, mergeTeamLiveIntoAgents, agentsFromTeamLive, teamsFromTeamLive } from './teamLive'
 
 type Dto = Record<string, unknown>
@@ -171,7 +171,7 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
   const leadsPage = management ? 100 : 50
   const callsPage = management ? 100 : 30
   const followupsPage = management ? 100 : 50
-  const skipTeamLiveOnSync = management && hasPermission(permissions, 'users.view')
+  const skipTeamLiveOnSync = hasMultiTeamView(role) && hasPermission(permissions, 'users.view')
 
   const [
     home,
@@ -182,6 +182,7 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
     walletTxRaw,
     commissionsRaw,
     payoutsRaw,
+    walletDetailRaw,
     productsRaw,
     notificationsRaw,
     appConfigRaw,
@@ -197,9 +198,10 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
     http.get<Dto[]>(`/followups?per_page=${followupsPage}`),
     safeGet<Dto[]>(`/calls?per_page=${callsPage}`),
     http.get<Dto[]>(`/sales?per_page=${management ? 100 : 40}`),
-    management ? http.get<Dto[]>('/wallet/transactions?per_page=100') : Promise.resolve([]),
-    management ? http.get<Dto[]>('/wallet/commissions?per_page=100') : Promise.resolve([]),
-    management ? http.get<Dto[]>('/wallet/payout-requests?per_page=50') : Promise.resolve([]),
+    safeGet<Dto[]>('/wallet/transactions?per_page=50'),
+    safeGet<Dto[]>('/wallet/commissions?per_page=50'),
+    safeGet<Dto[]>('/wallet/payout-requests'),
+    safeGet<Dto>('/wallet'),
     http.get<Dto[]>('/products'),
     http.get<Dto[]>('/notifications?per_page=50'),
     http.get<Dto>('/app-config'),
@@ -213,7 +215,7 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
     fetchShiftData(management ? 30 : 14),
   ])
 
-  const walletRaw = (home.wallet as Dto) ?? {}
+  const walletRaw = (walletDetailRaw as Dto | null) ?? (home.wallet as Dto) ?? {}
 
   const target = (home.target as Dto) ?? {}
   const { firstName, lastName } = splitName(me.name)
@@ -305,7 +307,7 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
         ? teamsFromTeamLive(teamLive, agent.id, me.team_name ?? 'تیم من')
         : []
 
-  if (teams.length === 0 && me.team_id && isLeaderRole(role)) {
+  if (teams.length === 0 && me.team_id && (isLeaderRole(role) || isSupervisorRole(role))) {
     teams = teamsFromAuthUser(me, agent.id, agents)
   }
 

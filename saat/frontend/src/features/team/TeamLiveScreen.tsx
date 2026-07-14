@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   BadgeDollarSign,
   ClipboardList,
+  FileText,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
@@ -153,6 +154,14 @@ export function TeamLiveScreen() {
   }, [liveOnlineCount, members, currentAgentId, availability])
 
   const canReviewPayments = hasPermission(permissions, 'sales.review-payment')
+  const canApproveAgentReports = hasPermission(permissions, 'reports.approve-agent')
+  const agentReports = useStore((s) => s.agentReports)
+  const pendingAgentReports = useMemo(() => {
+    if (!canApproveAgentReports) return 0
+    return agentReports.filter(
+      (report) => report.status === 'submitted' && teamAgentIds.includes(report.agentId),
+    ).length
+  }, [agentReports, canApproveAgentReports, teamAgentIds])
 
   return (
     <Page>
@@ -192,6 +201,25 @@ export function TeamLiveScreen() {
             >
               <ClipboardList size={16} className="shrink-0 text-[#3390EC] dark:text-[#8774E1]" />
               <span className="text-[12px] font-bold text-text">بررسی مشتریان</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/activity')}
+              className="glass-inset flex items-center gap-2 rounded-[16px] border px-3 py-3 text-right"
+            >
+              <FileText size={16} className="shrink-0 text-[#3390EC] dark:text-[#8774E1]" />
+              <span className="text-[12px] font-bold text-text">فعالیت تیم</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/agent-reports?inbox=1')}
+              className="glass-inset flex items-center gap-2 rounded-[16px] border px-3 py-3 text-right"
+            >
+              <ClipboardList size={16} className="shrink-0 text-warning-600" />
+              <span className="text-[12px] font-bold text-text">
+                گزارش کارشناسان
+                {pendingAgentReports > 0 ? ` (${toFa(pendingAgentReports)})` : ''}
+              </span>
             </button>
             <button
               type="button"

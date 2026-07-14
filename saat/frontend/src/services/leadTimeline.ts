@@ -12,8 +12,7 @@ export interface LeadTimeline {
 }
 
 export async function fetchLeadTimeline(leadId: string): Promise<LeadTimeline> {
-  const raw = await http.get<Dto>(`/leads/${leadId}/timeline`)
-  const data = (raw.data as Dto | undefined) ?? raw
+  const data = await http.get<Dto>(`/leads/${leadId}/timeline`)
 
   return {
     calls: Array.isArray(data.calls) ? data.calls.map((row) => mapCall(row as Dto)) : [],

@@ -11,29 +11,23 @@ use App\Events\SaleConfirmed;
 use App\Models\Commission;
 use App\Models\LeadStatusHistory;
 use App\Models\Sale;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\AchievementService;
 use App\Services\ActivityLogService;
 use App\Services\NotificationService;
-use App\Services\WalletService;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * Confirms a sale (manager/supervisor action): moves the sale to `confirmed`,
- * the lead to `won`, and — in the same DB transaction — creates the
- * commission (pending, held for a 3-day review window) and credits the
- * agent's wallet `balance_pending`. A sale never yields withdrawable money
- * directly; that only happens once the commission is later released.
+ * Confirms a sale: creates a commission awaiting team-leader approval.
+ * Funds enter the agent wallet only after leader then supervisor approve.
  */
 class ConfirmSaleAction
 {
-    private const HOLD_DAYS = 3;
-
     private const POINTS_PER_SALE = 50;
 
     public function __construct(
-        private readonly WalletService $wallet,
         private readonly NotificationService $notifications,
         private readonly ActivityLogService $activity,
         private readonly AchievementService $achievements,
@@ -76,21 +70,32 @@ class ConfirmSaleAction
                 'commission_rate' => $rate,
                 'commission_amount' => $commissionAmount,
                 'status' => CommissionStatus::Pending,
-                'available_at' => now()->addDays(self::HOLD_DAYS),
             ]);
-
-            $this->wallet->creditPending($commission);
 
             $this->activity->log($confirmedBy, ActivityKind::Sale, 'فروش تایید شد', "کارشناس #{$sale->agent_id}");
 
             $sale->agent->increment('points', self::POINTS_PER_SALE);
             $this->achievements->evaluateCounters($sale->agent);
 
+            $team = $sale->team_id
+                ? Team::query()->with('leader')->find($sale->team_id)
+                : Team::query()->where('id', $sale->agent->team_id)->with('leader')->first();
+
+            if ($team?->leader) {
+                $this->notifications->notify(
+                    $team->leader,
+                    NotificationKind::Commission,
+                    'پورسانت منتظر تایید لیدر',
+                    "پورسانت {$sale->agent->name} پس از تایید فروش ثبت شد.",
+                    '/wallet/approvals',
+                );
+            }
+
             $this->notifications->notify(
                 $sale->agent,
                 NotificationKind::Commission,
                 'فروش تایید شد',
-                'پورسانت به کیف پول (معلق) اضافه شد.',
+                'پورسانت در انتظار تایید لیدر و ناظر است.',
                 '/wallet',
             );
 

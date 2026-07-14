@@ -168,8 +168,19 @@ class UserSeeder extends Seeder
                     'is_active' => true,
                 ]
             );
+            $updates = [];
             if ($user->call_goal !== 25) {
-                $user->forceFill(['call_goal' => 25])->save();
+                $updates['call_goal'] = 25;
+            }
+            if (
+                $teamId
+                && in_array($account['role'], ['agent', 'leader', 'supervisor'], true)
+                && (int) $user->team_id !== (int) $teamId
+            ) {
+                $updates['team_id'] = $teamId;
+            }
+            if ($updates !== []) {
+                $user->forceFill($updates)->save();
             }
             $user->syncRoles([$roleMap[$account['role']]->value ?? RoleName::Agent->value]);
             Wallet::query()->firstOrCreate(['user_id' => $user->id]);

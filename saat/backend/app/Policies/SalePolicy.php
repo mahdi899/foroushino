@@ -20,8 +20,8 @@ class SalePolicy
             return true;
         }
 
-        if ($user->hasRole(RoleName::Leader->value)) {
-            return $sale->team_id === $user->team_id;
+        if ($user->hasAnyRole([RoleName::Leader->value, RoleName::Supervisor->value])) {
+            return $user->team_id !== null && $sale->team_id === $user->team_id;
         }
 
         return $sale->agent_id === $user->id;

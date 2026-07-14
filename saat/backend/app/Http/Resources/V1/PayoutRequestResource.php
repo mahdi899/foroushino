@@ -22,6 +22,12 @@ class PayoutRequestResource extends JsonResource
             'amount' => (string) $this->amount,
             'bank_fee' => (string) $this->bank_fee,
             'net_amount' => (string) ($this->net_amount ?? max(0, (float) $this->amount - (float) $this->bank_fee)),
+            'bank_card_masked' => $this->bank_card
+                ? \App\Services\WalletService::maskBankCard($this->bank_card)
+                : null,
+            'bank_sheba' => $this->bank_sheba
+                ? \App\Services\WalletService::formatSheba($this->bank_sheba)
+                : null,
             'status' => $this->status?->value,
             'requested_at' => $this->requested_at?->toIso8601String(),
             'processed_at' => $this->processed_at?->toIso8601String(),

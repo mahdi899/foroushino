@@ -206,6 +206,9 @@ export interface Agent {
   points: number
   streak: number
   callGoal: number
+  isActive?: boolean
+  bankCardMasked?: string | null
+  bankCardConfirmed?: boolean
 }
 
 export interface Team {
@@ -363,6 +366,7 @@ export interface Commission {
   id: string
   saleId: string
   agentId: string
+  agentName?: string
   productId: string
   leadId: string
   saleAmount: number
@@ -372,6 +376,7 @@ export interface Commission {
   createdAt: string
   availableAt?: string | null
   approvedAt?: string | null
+  leaderApprovedAt?: string | null
   rejectionReason?: string | null
 }
 
@@ -381,6 +386,9 @@ export interface Wallet {
   balanceLocked: number
   totalEarned: number
   totalPaid: number
+  bankCardMasked?: string | null
+  bankCardConfirmed?: boolean
+  bankShebaRegistered?: boolean
 }
 
 export type WalletTxType =
@@ -408,9 +416,12 @@ export type PayoutStatus = 'requested' | 'approved' | 'paid' | 'rejected' | 'can
 export interface PayoutRequest {
   id: string
   agentId: string
+  agentName?: string
   amount: number
   bankFee?: number
   netAmount?: number
+  bankCardMasked?: string | null
+  bankSheba?: string | null
   status: PayoutStatus
   requestedAt: string
   processedAt?: string | null

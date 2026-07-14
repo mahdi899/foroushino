@@ -11,6 +11,7 @@ use App\Http\Resources\V1\FollowUpResource;
 use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Support\ApiResponse;
+use App\Support\TeamScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -22,9 +23,7 @@ class FollowUpController extends Controller
         $user = $request->user();
         $query = FollowUp::query()->with('lead');
 
-        if (! $user->hasAnyRole([RoleName::Manager->value, RoleName::Admin->value, RoleName::Supervisor->value, RoleName::Leader->value])) {
-            $query->where('agent_id', $user->id);
-        }
+        TeamScope::applyFollowUpQueryScope($query, $user);
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));

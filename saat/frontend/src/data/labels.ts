@@ -226,8 +226,8 @@ export const saleStatusTone: Record<SaleStatus, 'neutral' | 'warning' | 'primary
 }
 
 export const commissionStatusLabels: Record<CommissionStatus, string> = {
-  pending: 'معلق',
-  approved: 'تایید شده',
+  pending: 'منتظر تایید لیدر',
+  approved: 'منتظر تایید ناظر',
   available: 'قابل برداشت',
   rejected: 'رد شده',
   paid: 'پرداخت شده',

@@ -33,13 +33,7 @@ class SaleController extends Controller
         $user = $request->user();
         $query = Sale::query()->with(['lead', 'product', 'agent']);
 
-        if (TeamScope::isOrgWide($user)) {
-            // full visibility
-        } elseif ($user->hasRole(RoleName::Leader->value)) {
-            $query->where('team_id', $user->team_id);
-        } else {
-            $query->where('agent_id', $user->id);
-        }
+        TeamScope::applySaleQueryScope($query, $user);
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));

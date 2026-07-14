@@ -14,7 +14,7 @@ class Commission extends Model
     protected $fillable = [
         'sale_id', 'agent_id', 'product_id', 'lead_id', 'sale_amount',
         'commission_rate', 'commission_amount', 'status', 'available_at',
-        'approved_at', 'rejection_reason',
+        'approved_at', 'leader_approved_by', 'leader_approved_at', 'rejection_reason',
     ];
 
     protected function casts(): array
@@ -26,6 +26,7 @@ class Commission extends Model
             'status' => CommissionStatus::class,
             'available_at' => 'datetime',
             'approved_at' => 'datetime',
+            'leader_approved_at' => 'datetime',
         ];
     }
 

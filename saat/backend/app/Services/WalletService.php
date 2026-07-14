@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Enums\CommissionStatus;
+use App\Enums\NotificationKind;
 use App\Enums\PayoutStatus;
+use App\Enums\RoleName;
 use App\Enums\WalletTxType;
 use App\Events\WalletUpdated;
 use App\Models\Commission;
@@ -17,11 +19,43 @@ use RuntimeException;
 
 class WalletService
 {
+    public function __construct(private readonly NotificationService $notifications) {}
+
     public function ensureWallet(User $user): Wallet
     {
         return Wallet::query()->firstOrCreate(['user_id' => $user->id]);
     }
 
+    public function creditAvailable(Commission $commission): void
+    {
+        if ($commission->status !== CommissionStatus::Approved) {
+            throw new RuntimeException('این پورسانت هنوز توسط لیدر تایید نشده است.');
+        }
+
+        DB::transaction(function () use ($commission): void {
+            $wallet = $this->ensureWallet($commission->agent);
+            $wallet->balance_available += $commission->commission_amount;
+            $wallet->total_earned += $commission->commission_amount;
+            $wallet->save();
+
+            $commission->status = CommissionStatus::Available;
+            $commission->available_at = now();
+            $commission->save();
+
+            WalletTransaction::query()->create([
+                'user_id' => $commission->agent_id,
+                'type' => WalletTxType::CommissionAvailable,
+                'amount' => $commission->commission_amount,
+                'description' => 'پورسانت به کیف پول اضافه شد',
+                'reference_type' => 'commission',
+                'reference_id' => $commission->id,
+            ]);
+
+            broadcast(new WalletUpdated($wallet->fresh()))->toOthers();
+        });
+    }
+
+    /** @deprecated Legacy auto-release path — prefer leader/supervisor approval flow. */
     public function creditPending(Commission $commission): void
     {
         DB::transaction(function () use ($commission): void {
@@ -43,7 +77,13 @@ class WalletService
 
     public function releaseToAvailable(Commission $commission): void
     {
-        if ($commission->status !== CommissionStatus::Pending && $commission->status !== CommissionStatus::Approved) {
+        if ($commission->status === CommissionStatus::Approved) {
+            $this->creditAvailable($commission);
+
+            return;
+        }
+
+        if ($commission->status !== CommissionStatus::Pending) {
             throw new RuntimeException('این پورسانت قابل آزادسازی نیست.');
         }
 
@@ -73,7 +113,22 @@ class WalletService
 
     public function requestPayout(User $user, float $amount): PayoutRequest
     {
-        return DB::transaction(function () use ($user, $amount) {
+        if (! $user->bank_card) {
+            throw new RuntimeException('ابتدا شماره کارت و شبا را در بخش درآمد من ثبت کن.');
+        }
+
+        if (! $user->bank_sheba) {
+            throw new RuntimeException('ابتدا شماره شبا را در بخش درآمد من ثبت کن.');
+        }
+
+        if ($user->bank_card_confirmed_at === null) {
+            throw new RuntimeException('شماره کارت هنوز توسط ناظر تایید نشده است.');
+        }
+
+        $normalizedCard = self::normalizeBankCard($user->bank_card);
+        $normalizedSheba = self::normalizeSheba($user->bank_sheba);
+
+        return DB::transaction(function () use ($user, $amount, $normalizedCard, $normalizedSheba) {
             $wallet = $this->ensureWallet($user)->fresh();
             $wallet = Wallet::query()->whereKey($wallet->id)->lockForUpdate()->first();
 
@@ -91,6 +146,8 @@ class WalletService
                 'amount' => $amount,
                 'bank_fee' => $bankFee,
                 'net_amount' => $netAmount,
+                'bank_card' => $normalizedCard,
+                'bank_sheba' => $normalizedSheba,
                 'status' => PayoutStatus::Requested,
                 'requested_at' => now(),
             ]);
@@ -111,8 +168,57 @@ class WalletService
 
             broadcast(new WalletUpdated($wallet->fresh()))->toOthers();
 
+            User::query()
+                ->role([RoleName::Supervisor->value, RoleName::Manager->value, RoleName::Admin->value])
+                ->where('is_active', true)
+                ->each(fn (User $supervisor) => $this->notifications->notify(
+                    $supervisor,
+                    NotificationKind::Payout,
+                    'درخواست تسویه جدید',
+                    "{$user->name} درخواست تسویه ".number_format($amount).' تومان ثبت کرد.',
+                    '/wallet/payouts',
+                ));
+
             return $payout;
         });
+    }
+
+    public static function normalizeBankCard(string $card): string
+    {
+        $digits = preg_replace('/\D/', '', $card) ?? '';
+        if (strlen($digits) !== 16) {
+            throw new RuntimeException('شماره کارت باید ۱۶ رقم باشد.');
+        }
+
+        return $digits;
+    }
+
+    public static function maskBankCard(string $card): string
+    {
+        $digits = preg_replace('/\D/', '', $card) ?? '';
+
+        return strlen($digits) >= 4 ? '****'.substr($digits, -4) : '****';
+    }
+
+    /** Normalize Iranian SHEBA to 24 digits (without IR prefix). */
+    public static function normalizeSheba(string $sheba): string
+    {
+        $raw = strtoupper(trim($sheba));
+        $raw = str_starts_with($raw, 'IR') ? substr($raw, 2) : $raw;
+        $digits = preg_replace('/\D/', '', $raw) ?? '';
+
+        if (strlen($digits) !== 24) {
+            throw new RuntimeException('شماره شبا باید ۲۴ رقم باشد (با یا بدون IR).');
+        }
+
+        return $digits;
+    }
+
+    public static function formatSheba(string $shebaDigits): string
+    {
+        $digits = preg_replace('/\D/', '', $shebaDigits) ?? '';
+
+        return 'IR'.$digits;
     }
 
     public function approvePayout(PayoutRequest $payout, User $processedBy): PayoutRequest

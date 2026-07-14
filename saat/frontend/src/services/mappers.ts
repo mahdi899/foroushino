@@ -12,6 +12,7 @@ import type {
   WorkDaySummary,
   WorkSession,
 } from '@/types'
+import { localizeActivityTitle, localizeStatusNote } from '@/lib/activityLabels'
 import type { Suggestion } from './logic'
 
 export function id(value: string | number | null | undefined): string {
@@ -81,7 +82,7 @@ export function mapLeadStatusHistory(dto: Dto): import('@/types').LeadStatusEven
     status: dto.status,
     at: dto.created_at ?? new Date().toISOString(),
     byAgentId: id(dto.by_user_id),
-    note: dto.note ?? undefined,
+    note: dto.note ? localizeStatusNote(String(dto.note)) : undefined,
   }
 }
 
@@ -170,6 +171,7 @@ export function mapCommission(dto: Dto): Commission {
     id: id(dto.id),
     saleId: id(dto.sale_id),
     agentId: id(dto.agent_id),
+    agentName: dto.agent_name ?? undefined,
     productId: id(dto.product_id),
     leadId: id(dto.lead_id),
     saleAmount: Number(dto.sale_amount ?? 0),
@@ -178,6 +180,7 @@ export function mapCommission(dto: Dto): Commission {
     status: dto.status ?? 'pending',
     availableAt: dto.available_at ?? null,
     approvedAt: dto.approved_at ?? null,
+    leaderApprovedAt: dto.leader_approved_at ?? null,
     rejectionReason: dto.rejection_reason ?? null,
     createdAt: dto.created_at,
   }
@@ -190,6 +193,9 @@ export function mapWallet(dto: Dto): Wallet {
     balanceLocked: Number(dto.balance_locked ?? 0),
     totalEarned: Number(dto.total_earned ?? 0),
     totalPaid: Number(dto.total_paid ?? 0),
+    bankCardMasked: (dto.bank_card_masked as string) ?? null,
+    bankCardConfirmed: dto.bank_card_confirmed != null ? !!dto.bank_card_confirmed : undefined,
+    bankShebaRegistered: dto.bank_sheba_registered != null ? !!dto.bank_sheba_registered : undefined,
   }
 }
 
@@ -211,9 +217,12 @@ export function mapPayoutRequest(dto: Dto): PayoutRequest {
   return {
     id: id(dto.id),
     agentId: id(dto.user_id),
+    agentName: dto.user_name ?? undefined,
     amount,
     bankFee: bankFee || undefined,
     netAmount: dto.net_amount != null ? Number(dto.net_amount) : bankFee > 0 ? amount - bankFee : undefined,
+    bankCardMasked: (dto.bank_card_masked as string) ?? null,
+    bankSheba: (dto.bank_sheba as string) ?? null,
     status: dto.status ?? 'requested',
     requestedAt: dto.requested_at,
     processedAt: dto.processed_at ?? null,
@@ -275,7 +284,7 @@ export function mapActivity(dto: Dto): import('@/types').ActivityLog {
     id: id(dto.id),
     agentId: id(dto.user_id),
     kind: dto.kind ?? 'system',
-    title: dto.title ?? '',
+    title: localizeActivityTitle(String(dto.title ?? '')),
     meta: dto.meta ?? undefined,
     createdAt: dto.created_at ?? new Date().toISOString(),
   }
@@ -307,6 +316,9 @@ export function mapAgentFromAdmin(dto: Dto): import('@/types').Agent {
     points: Number(dto.points ?? 0),
     streak: Number(dto.streak ?? 0),
     callGoal: Number(dto.call_goal ?? 0),
+    isActive: dto.is_active !== false,
+    bankCardMasked: (dto.bank_card_masked as string) ?? null,
+    bankCardConfirmed: dto.bank_card_confirmed != null ? !!dto.bank_card_confirmed : undefined,
   }
 }
 

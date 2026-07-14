@@ -84,14 +84,14 @@ class HomeController extends Controller
             return ApiResponse::error('اجازه دسترسی ندارید.', status: 403, code: 'forbidden');
         }
 
-        $isTeamScoped = $user->hasRole(RoleName::Leader->value) && $user->team_id;
+        $isTeamScoped = TeamScope::isTeamColony($user);
 
         $leadsQuery = Lead::query();
         $salesQuery = Sale::query();
         $agentsQuery = User::query()->role(RoleName::Agent->value);
 
-        if ($isTeamScoped) {
-            $leadsQuery->where('assigned_team_id', $user->team_id);
+        if ($isTeamScoped && $user->team_id) {
+            TeamScope::applyLeadQueryScope($leadsQuery, $user);
             $salesQuery->where('team_id', $user->team_id);
             $agentsQuery->where('team_id', $user->team_id);
         }
@@ -104,7 +104,7 @@ class HomeController extends Controller
         $pendingConfirmationCount = (clone $salesQuery)->where('status', 'pending_confirmation')->count();
         $activeAgents = (clone $agentsQuery)->where('is_active', true)->count();
         $onlineAgents = (clone $agentsQuery)->where('availability', '!=', 'offline')->count();
-        $teamsCount = Team::query()->count();
+        $teamsCount = $isTeamScoped && $user->team_id ? 1 : Team::query()->count();
 
         return ApiResponse::success([
             'pipeline' => $pipeline,

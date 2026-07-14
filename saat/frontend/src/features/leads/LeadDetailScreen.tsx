@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -41,10 +41,13 @@ import {
 } from '@/data/labels'
 import { relativeDayTime, toFa, formatDuration } from '@/lib/format'
 import { canCallLead, assignedAgentLabel as resolveAssignedAgentLabel } from '@/lib/leadUtils'
-import { isLeadInScope } from '@/lib/teamUtils'
+import { isLeadInScope, agentById } from '@/lib/teamUtils'
 import { isManagementRole } from '@/lib/roles'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
+import { apiMode } from '@/services'
+import { fetchLeadTimeline } from '@/services/leadTimeline'
+import type { Call, Followup, LeadStatusEvent, Sale } from '@/types'
 
 function DetailIconBox({
   icon: Icon,
@@ -131,8 +134,8 @@ export function LeadDetailScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
   const lead = useStore((s) => s.leads.find((l) => l.id === id))
-  const calls = useStore((s) => s.calls.filter((c) => c.leadId === id))
-  const followups = useStore((s) => s.followups.filter((f) => f.leadId === id))
+  const storeCalls = useStore((s) => s.calls.filter((c) => c.leadId === id))
+  const storeFollowups = useStore((s) => s.followups.filter((f) => f.leadId === id))
   const agents = useStore((s) => s.agents)
   const teams = useStore((s) => s.teams)
   const role = useStore((s) => s.role)
@@ -142,9 +145,39 @@ export function LeadDetailScreen() {
   const reclaimLead = useStore((s) => s.reclaimLead)
   const pushToast = useStore((s) => s.pushToast)
   const activeCallLeadId = useStore((s) => s.activeCallLeadId)
+  const sales = useStore((s) => s.sales)
   const [statusOpen, setStatusOpen] = useState(false)
+  const [timelineCalls, setTimelineCalls] = useState<Call[] | null>(null)
+  const [timelineFollowups, setTimelineFollowups] = useState<Followup[] | null>(null)
+  const [timelineStatusHistory, setTimelineStatusHistory] = useState<LeadStatusEvent[] | null>(null)
+  const [timelineSales, setTimelineSales] = useState<Sale[] | null>(null)
 
   const isTeamViewer = isManagementRole(role)
+  const calls = timelineCalls ?? storeCalls
+  const followups = timelineFollowups ?? storeFollowups
+  const leadSales = timelineSales ?? sales.filter((sale) => sale.leadId === id)
+  const statusHistory = timelineStatusHistory ?? lead?.statusHistory ?? []
+
+  useEffect(() => {
+    if (!isTeamViewer || !lead?.id || apiMode !== 'http') return
+
+    let cancelled = false
+    void fetchLeadTimeline(lead.id)
+      .then((timeline) => {
+        if (cancelled) return
+        setTimelineCalls(timeline.calls)
+        setTimelineFollowups(timeline.followups)
+        setTimelineStatusHistory(timeline.statusHistory)
+        setTimelineSales(timeline.sales)
+      })
+      .catch(() => {
+        // Keep store-backed fallback.
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [isTeamViewer, lead?.id])
 
   if (!lead || !isLeadInScope(lead, teams, agents, currentAgentId, role)) {
     return (
@@ -307,7 +340,7 @@ export function LeadDetailScreen() {
           <DetailDivider />
           <DetailSectionHeader
             icon={History}
-            title="تاریخچه تماس"
+            title={isTeamViewer ? 'فعالیت کارشناسان' : 'تاریخچه تماس'}
             count={toFa(calls.length || lead.callCount)}
           />
           {calls.length === 0 ? (
@@ -318,10 +351,15 @@ export function LeadDetailScreen() {
             <div className="space-y-2">
               {calls.map((c) => {
                 const Icon = resultIcon[c.result]
+                const callAgent = agentById(agents, c.agentId)
+                const agentLabel = callAgent
+                  ? `${callAgent.firstName} ${callAgent.lastName}`
+                  : null
                 return (
                   <DetailRow
                     key={c.id}
                     icon={Icon}
+                    label={isTeamViewer && agentLabel ? agentLabel : undefined}
                     value={resultLabels[c.result]}
                     meta={formatDuration(c.durationSec)}
                     sub={c.note ? c.note : relativeDayTime(c.createdAt)}
@@ -336,30 +374,61 @@ export function LeadDetailScreen() {
               <DetailDivider />
               <DetailSectionHeader icon={CalendarClock} title="پیگیری‌ها" count={toFa(followups.length)} />
               <div className="space-y-2">
-                {followups.map((f) => (
-                  <DetailRow
-                    key={f.id}
-                    icon={Repeat2}
-                    tone="accent"
-                    value={f.title}
-                    meta={relativeDayTime(f.dueAt)}
-                  />
-                ))}
+                {followups.map((f) => {
+                  const followupAgent = agentById(agents, f.agentId)
+                  const agentLabel = followupAgent
+                    ? `${followupAgent.firstName} ${followupAgent.lastName}`
+                    : null
+                  return (
+                    <DetailRow
+                      key={f.id}
+                      icon={Repeat2}
+                      tone="accent"
+                      label={isTeamViewer && agentLabel ? agentLabel : undefined}
+                      value={f.title}
+                      meta={relativeDayTime(f.dueAt)}
+                      sub={f.note}
+                    />
+                  )
+                })}
               </div>
             </>
           )}
 
-          {(lead.statusHistory ?? []).length > 0 && (
+          {isTeamViewer && leadSales.length > 0 && (
+            <>
+              <DetailDivider />
+              <DetailSectionHeader icon={Wallet} title="فروش‌ها" count={toFa(leadSales.length)} />
+              <div className="space-y-2">
+                {leadSales.map((sale) => {
+                  const saleAgent = agentById(agents, sale.agentId)
+                  return (
+                    <DetailRow
+                      key={sale.id}
+                      icon={Wallet}
+                      tone="accent"
+                      label={saleAgent ? `${saleAgent.firstName} ${saleAgent.lastName}` : undefined}
+                      value={sale.productName ?? 'فروش'}
+                      meta={relativeDayTime(sale.createdAt)}
+                      sub={sale.status}
+                    />
+                  )
+                })}
+              </div>
+            </>
+          )}
+
+          {statusHistory.length > 0 && (
             <>
               <DetailDivider />
               <DetailSectionHeader
                 icon={ListTree}
                 title="تاریخچه وضعیت"
-                count={toFa((lead.statusHistory ?? []).length)}
+                count={toFa(statusHistory.length)}
               />
               <div className="relative space-y-3 pr-2 pt-1">
                 <div className="absolute bottom-1 right-[15px] top-1 w-px bg-gradient-to-b from-[#3390EC]/30 via-[#3390EC]/15 to-transparent" />
-                {[...(lead.statusHistory ?? [])]
+                {[...statusHistory]
                   .reverse()
                   .map((ev) => (
                     <div key={ev.id} className="relative flex items-start gap-3 pr-0">

@@ -1,10 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   WalletCards,
   ArrowUpRight,
-  Clock,
   Lock,
   TrendingUp,
   CheckCheck,
@@ -33,6 +32,9 @@ import { canRequestPayout } from '@/lib/payoutRules'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
 import { DataGate } from '@/components/pwa/DataGate'
+import { apiMode } from '@/services'
+import { refreshWalletBundle, requestPayoutAmount } from '@/services/walletActions'
+import { WalletBankAccountSection } from '@/features/wallet/WalletBankAccountSection'
 
 type Tab = 'commissions' | 'transactions' | 'payouts'
 
@@ -93,15 +95,22 @@ export function WalletScreen() {
   const walletTx = useStore((s) => s.walletTx)
   const payouts = useStore((s) => s.payouts)
   const leads = useStore((s) => s.leads)
-  const requestPayout = useStore((s) => s.requestPayout)
   const pushToast = useStore((s) => s.pushToast)
 
   const [tab, setTab] = useState<Tab>('commissions')
   const [payoutOpen, setPayoutOpen] = useState(false)
   const [success, setSuccess] = useState(false)
 
+  useEffect(() => {
+    if (apiMode === 'http') {
+      void refreshWalletBundle().catch(() => {
+        pushToast('بارگذاری کیف پول ناموفق بود', 'error')
+      })
+    }
+  }, [pushToast])
+
   const leadOf = (id: string) => leads.find((l) => l.id === id)
-  const payoutReady = canRequestPayout(wallet.balanceAvailable)
+  const payoutReady = canRequestPayout(wallet.balanceAvailable) && !!wallet.bankCardConfirmed && !!wallet.bankShebaRegistered
 
   return (
     <Page withNav={false}>
@@ -154,8 +163,14 @@ export function WalletScreen() {
           <motion.button
             type="button"
             whileTap={{ scale: payoutReady ? 0.97 : 1 }}
-            disabled={!payoutReady}
-            onClick={() => setPayoutOpen(true)}
+            disabled={!canRequestPayout(wallet.balanceAvailable)}
+            onClick={() => {
+              if (!wallet.bankCardConfirmed || !wallet.bankShebaRegistered) {
+                pushToast('ابتدا کارت و شبا را در همین صفحه ثبت کن و منتظر تایید ناظر باش.', 'error')
+                return
+              }
+              setPayoutOpen(true)
+            }}
             className={cn(
               'relative mt-4 inline-flex h-10 items-center gap-2 overflow-hidden rounded-[14px] px-5',
               'text-[13px] font-bold text-white',
@@ -169,8 +184,17 @@ export function WalletScreen() {
           </motion.button>
         </motion.div>
 
-        <motion.div variants={listStagger} initial="hidden" animate="show" className="grid grid-cols-3 gap-2.5">
-          <BalanceStat icon={Clock} iconWrap="icon-3d-warning" label="پورسانت معلق" value={wallet.balancePending} />
+        {!wallet.bankCardConfirmed && (
+          <p className="rounded-[14px] border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+            {wallet.bankCardMasked
+              ? 'اطلاعات بانکی ثبت شده و منتظر تایید ناظر است.'
+              : 'برای تسویه، کارت و شبا را در بخش زیر ثبت کن.'}
+          </p>
+        )}
+
+        <WalletBankAccountSection />
+
+        <motion.div variants={listStagger} initial="hidden" animate="show" className="grid grid-cols-2 gap-2.5">
           <BalanceStat icon={Lock} iconWrap="icon-3d-primary" label="در حال تسویه" value={wallet.balanceLocked} />
           <BalanceStat icon={TrendingUp} iconWrap="icon-3d-success" label="کل درآمد" value={wallet.totalEarned} />
         </motion.div>
@@ -320,16 +344,19 @@ export function WalletScreen() {
         open={payoutOpen}
         onClose={() => setPayoutOpen(false)}
         balanceAvailable={wallet.balanceAvailable}
+        savedCardMasked={wallet.bankCardMasked}
+        bankCardConfirmed={!!wallet.bankCardConfirmed}
         onSubmit={(amount) => {
-          const res = requestPayout(amount)
-          if (res.ok) {
-            haptic('success')
-            setPayoutOpen(false)
-            setSuccess(true)
-          } else {
-            haptic('error')
-            pushToast(res.message ?? 'خطا در ثبت درخواست')
-          }
+          void requestPayoutAmount(amount)
+            .then(() => {
+              haptic('success')
+              setPayoutOpen(false)
+              setSuccess(true)
+            })
+            .catch((e: Error) => {
+              haptic('error')
+              pushToast(e.message ?? 'خطا در ثبت درخواست', 'error')
+            })
         }}
       />
 

@@ -29,6 +29,8 @@ class CommissionResource extends JsonResource
             'status' => $this->status?->value,
             'available_at' => $this->available_at?->toIso8601String(),
             'approved_at' => $this->approved_at?->toIso8601String(),
+            'leader_approved_at' => $this->leader_approved_at?->toIso8601String(),
+            'agent_name' => $this->whenLoaded('agent', fn () => $this->agent?->name),
             'rejection_reason' => $this->rejection_reason,
             'created_at' => $this->created_at?->toIso8601String(),
         ];

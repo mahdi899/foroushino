@@ -98,9 +98,17 @@ export function ManagementHome() {
   const overdue = useMemo(() => overdueFollowupsList(followups), [followups])
   const pendingSales = useMemo(() => pendingConfirmationSales(sales), [sales])
   const teamReports = useStore((s) => s.teamReports)
+  const agentReports = useStore((s) => s.agentReports)
   const pendingTeamReports = useMemo(
     () => teamReports.filter((r) => r.status === 'submitted').length,
     [teamReports],
+  )
+  const pendingAgentReports = useMemo(
+    () =>
+      agentReports.filter(
+        (r) => r.status === 'submitted' && teamAgentIds.includes(r.agentId),
+      ).length,
+    [agentReports, teamAgentIds],
   )
   const managerInbox = useMemo(
     () => teamReports.filter((r) => r.status === 'forwarded_to_manager').length,
@@ -281,6 +289,39 @@ export function ManagementHome() {
           </button>
         )}
 
+        {isLeader && hasPermission(permissions, 'commissions.approve-leader') && (
+          <button
+            onClick={() => navigate('/wallet/approvals')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-emerald-50 p-4 text-right"
+          >
+            <BadgeDollarSign size={20} className="shrink-0 text-emerald-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-emerald-800">تایید پورسانت کارشناسان</span>
+            <ArrowLeft size={16} className="shrink-0 text-emerald-400" />
+          </button>
+        )}
+
+        {isSupervisor && hasPermission(permissions, 'wallet.manage-payouts') && (
+          <button
+            onClick={() => navigate('/wallet/payouts')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-emerald-50 p-4 text-right"
+          >
+            <BadgeDollarSign size={20} className="shrink-0 text-emerald-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-emerald-800">صف پرداخت تسویه کارشناسان</span>
+            <ArrowLeft size={16} className="shrink-0 text-emerald-400" />
+          </button>
+        )}
+
+        {canManageStaff && hasPermission(permissions, 'users.manage-team') && (
+          <button
+            onClick={() => navigate('/admin/agents')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
+          >
+            <UserPlus size={20} className="shrink-0 text-primary-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">مدیریت کارشناسان</span>
+            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
+          </button>
+        )}
+
         {isLeader && (
           <button
             onClick={() => navigate('/leads')}
@@ -304,6 +345,46 @@ export function ManagementHome() {
               تیم من — وضعیت لایو کارشناسان
             </span>
             <ArrowLeft size={16} className="shrink-0 text-primary-400" />
+          </button>
+        )}
+
+        {isLeader && (
+          <button
+            onClick={() => navigate('/activity')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
+          >
+            <Activity size={20} className="shrink-0 text-secondary-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
+              فعالیت کارشناسان تیم
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
+          </button>
+        )}
+
+        {isLeader && (
+          <button
+            onClick={() => navigate('/agent-reports?inbox=1')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
+          >
+            <FileText size={20} className="shrink-0 text-secondary-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
+              تایید گزارش روزانه کارشناسان
+              {pendingAgentReports > 0 ? ` (${toFa(pendingAgentReports)})` : ''}
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
+          </button>
+        )}
+
+        {isLeader && pendingAgentReports > 0 && (
+          <button
+            onClick={() => navigate('/agent-reports?inbox=1')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-warning-50 p-4 text-right"
+          >
+            <FileText size={20} className="shrink-0 text-warning-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-warning-800">
+              {toFa(pendingAgentReports)} گزارش کارشناس منتظر تایید توست
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-warning-400" />
           </button>
         )}
 

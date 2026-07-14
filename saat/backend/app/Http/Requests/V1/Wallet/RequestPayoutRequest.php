@@ -33,8 +33,27 @@ class RequestPayoutRequest extends FormRequest
                 return;
             }
 
+            $user = $this->user();
+            if (! $user->bank_card) {
+                $validator->errors()->add('amount', 'ابتدا شماره کارت و شبا را در بخش درآمد من ثبت کن.');
+
+                return;
+            }
+
+            if (! $user->bank_sheba) {
+                $validator->errors()->add('amount', 'ابتدا شماره شبا را در بخش درآمد من ثبت کن.');
+
+                return;
+            }
+
+            if ($user->bank_card_confirmed_at === null) {
+                $validator->errors()->add('amount', 'شماره کارت هنوز توسط ناظر تایید نشده است.');
+
+                return;
+            }
+
             $amount = (float) $this->input('amount');
-            $wallet = app(WalletService::class)->ensureWallet($this->user());
+            $wallet = app(WalletService::class)->ensureWallet($user);
             $balance = (float) $wallet->balance_available;
 
             if (! PayoutRules::isStepCompliant($amount, $balance)) {

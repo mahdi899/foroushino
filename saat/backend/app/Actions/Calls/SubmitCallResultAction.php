@@ -140,10 +140,10 @@ class SubmitCallResultAction
                 'lead_id' => $lead->id,
                 'status' => $nextStatus,
                 'by_user_id' => $agent->id,
-                'note' => 'نتیجه تماس: '.$result->value,
+                'note' => 'نتیجه تماس: '.$result->label(),
             ]);
 
-            $this->activity->log($agent, ActivityKind::Result, 'ثبت نتیجه تماس: '.$result->value, $lead->fullName());
+            $this->activity->log($agent, ActivityKind::Result, 'ثبت نتیجه تماس: '.$result->label(), $lead->fullName());
 
             $agent->increment('points', self::POINTS_PER_CALL);
             $this->achievements->evaluateCounters($agent);

@@ -11,7 +11,7 @@ class LeadPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->can('leads.view');
+        return $user->can('leads.view') || $user->can('leads.view-team');
     }
 
     public function view(User $user, Lead $lead): bool
@@ -22,6 +22,10 @@ class LeadPolicy
 
         if ($user->hasRole(RoleName::Leader->value)) {
             return TeamScope::leaderCanViewLead($user, $lead);
+        }
+
+        if ($user->hasRole(RoleName::Supervisor->value)) {
+            return TeamScope::supervisorCanViewLead($user, $lead);
         }
 
         return $lead->assigned_agent_id === $user->id;

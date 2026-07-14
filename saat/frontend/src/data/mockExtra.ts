@@ -9,6 +9,7 @@ import type {
   Sale,
   ScriptDoc,
   TeamReport,
+  AgentReport,
   Wallet,
   WalletTransaction,
 } from '@/types'
@@ -85,6 +86,46 @@ export const teamReports: TeamReport[] = [
     submitterName: 'لیدر بتا',
     approvedAt: at(-1 * HOUR),
     createdAt: at(-3 * HOUR),
+  },
+]
+
+export const agentReports: AgentReport[] = [
+  {
+    id: 'ar-1',
+    agentId: 'a2',
+    agentName: 'کارشناس ۲',
+    teamId: 't1',
+    teamName: 'تیم آلفا',
+    reportDate: today,
+    status: 'submitted',
+    summary: {
+      calls_today: 14,
+      successful_today: 4,
+      conversion_rate: 28.6,
+      followups_completed: 2,
+      sales_submitted: 1,
+    },
+    agentNotes: 'روی مشتریان داغ تمرکز کردم.',
+    createdAt: at(-90 * 60_000),
+  },
+  {
+    id: 'ar-2',
+    agentId: MY_AGENT_ID,
+    agentName: 'من',
+    teamId: 't1',
+    teamName: 'تیم آلفا',
+    reportDate: today,
+    status: 'approved',
+    summary: {
+      calls_today: 11,
+      successful_today: 3,
+      conversion_rate: 27.3,
+      followups_completed: 1,
+      sales_submitted: 0,
+    },
+    leaderNotes: 'عملکرد خوب بود.',
+    approvedAt: at(-30 * 60_000),
+    createdAt: at(-2 * HOUR),
   },
 ]
 

@@ -23,6 +23,7 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { SuccessScreen } from '@/components/ui/SuccessScreen'
 import { EmptyState } from '@/components/ui/States'
 import { PaymentSubmitSheet } from '@/components/domain/PaymentSubmitSheet'
+import { SaleReviewSheet } from '@/components/domain/SaleReviewSheet'
 import { saleStatusLabels, saleStatusTone } from '@/data/labels'
 import { formatMoney, relativeDayTime, toFa } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
@@ -287,7 +288,7 @@ function SaleCard({
       {canConfirmSales && sale.status === 'pending_confirmation' && (
         <div className="relative mt-3 flex gap-2">
           <GlassActionBtn label="رد فروش" icon={X} variant="danger" onClick={onReject} />
-          <GlassActionBtn label="تایید فروش" icon={Check} variant="primary" onClick={onConfirm} />
+          <GlassActionBtn label="بررسی و تایید" icon={Check} variant="primary" onClick={onConfirm} />
         </div>
       )}
     </motion.div>
@@ -305,6 +306,9 @@ export function SalesScreen() {
   const sales = useStore((s) => s.sales)
   const leads = useStore((s) => s.leads)
   const products = useStore((s) => s.products)
+  const calls = useStore((s) => s.calls)
+  const followups = useStore((s) => s.followups)
+  const payments = useStore((s) => s.payments)
   const submitPayment = useStore((s) => s.submitPayment)
   const forwardSaleForConfirmation = useStore((s) => s.forwardSaleForConfirmation)
   const rejectSale = useStore((s) => s.rejectSale)
@@ -496,14 +500,22 @@ export function SalesScreen() {
         }}
       />
 
-      <ConfirmModal
+      <SaleReviewSheet
         open={!!confirmTarget}
-        title="تایید فروش"
-        description="با تایید این فروش، پورسانت به‌صورت معلق برای فروشنده ثبت می‌شود."
-        icon={ShieldCheck}
-        tone="success"
-        confirmLabel="تایید فروش"
-        onCancel={() => setConfirmTarget(null)}
+        sale={confirmTarget}
+        lead={confirmTarget ? leadOf(confirmTarget.leadId) : undefined}
+        product={confirmTarget ? productOf(confirmTarget.productId) : undefined}
+        agents={agents}
+        teams={teams}
+        calls={calls}
+        followups={followups}
+        sales={sales}
+        payments={payments}
+        onClose={() => setConfirmTarget(null)}
+        onReject={() => {
+          if (!confirmTarget) return
+          setRejectTarget(confirmTarget)
+        }}
         onConfirm={() => {
           if (!confirmTarget) return
           haptic('success')

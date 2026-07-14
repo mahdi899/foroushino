@@ -130,6 +130,9 @@ export function ProfileScreen() {
     ...(agentLine
       ? [{ icon: GraduationCap, label: 'آموزش و اسکریپت فروش', onClick: () => navigate('/training') }]
       : []),
+    ...(hasPermission(permissions, 'users.manage-team') || hasPermission(permissions, 'users.manage')
+      ? [{ icon: Users, label: 'مدیریت کارشناسان', onClick: () => navigate('/admin/agents') }]
+      : []),
     ...(canOpenAdminSettings || hasPermission(permissions, 'users.manage')
       ? [
           ...(hasPermission(permissions, 'users.manage')
@@ -275,7 +278,6 @@ export function ProfileScreen() {
             </motion.button>
           </div>
         </div>
-
         <div className="glass-card overflow-hidden rounded-[22px] border border-white/55 dark:border-white/10">
           {menu.map((item, i) => (
             <button

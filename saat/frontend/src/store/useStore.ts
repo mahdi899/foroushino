@@ -220,6 +220,13 @@ interface AppState {
   rejectAgentReport: (reportId: string, leaderNotes?: string) => void
 
   // wallet
+  setWalletMeta: (wallet: Wallet) => void
+  applyWalletData: (payload: {
+    wallet: Wallet
+    commissions: Commission[]
+    walletTx: WalletTransaction[]
+    payouts: PayoutRequest[]
+  }) => void
   requestPayout: (amount: number) => { ok: boolean; message?: string }
 
   // notifications
@@ -246,6 +253,7 @@ interface AppState {
   setPowerDialEnabled: (enabled: boolean) => void
   setDispositionMode: (mode: 'grid' | 'swipe') => void
   upsertLead: (lead: Lead) => void
+  upsertAgent: (agent: Agent) => void
   setAgentAvatar: (avatar: string | null) => void
   setDataReady: (ready: boolean) => void
   setDataSyncing: (syncing: boolean) => void
@@ -1343,6 +1351,22 @@ export const useStore = create<AppState>()(
         get().pushNotification({ title: 'پورسانت آزاد شد', body: 'پورسانت شما قابل برداشت شد.', kind: 'commission', href: '/wallet' })
       },
 
+      setWalletMeta: (wallet) => set({ wallet }),
+
+      applyWalletData: ({ wallet, commissions, walletTx, payouts }) =>
+        set((state) => ({
+          wallet,
+          commissions: [
+            ...state.commissions.filter((row) => row.agentId !== state.currentAgentId),
+            ...commissions,
+          ],
+          walletTx,
+          payouts: [
+            ...state.payouts.filter((row) => row.agentId !== state.currentAgentId),
+            ...payouts,
+          ],
+        })),
+
       requestPayout: (amount) => {
         const state = get()
         const validation = validatePayoutAmount(amount, state.wallet.balanceAvailable)
@@ -1497,6 +1521,7 @@ export const useStore = create<AppState>()(
             agents,
             teams: payload.teams ?? state.teams,
             teamReports: payload.teamReports ?? state.teamReports,
+            agentReports: payload.agentReports ?? state.agentReports,
             activity: payload.activity ?? state.activity,
             availability: payload.availability,
             availabilityChangedAt: payload.availabilityChangedAt,
@@ -1523,6 +1548,15 @@ export const useStore = create<AppState>()(
             leads: exists
               ? state.leads.map((l) => (l.id === hydrated.id ? { ...l, ...hydrated } : l))
               : [hydrated, ...state.leads],
+          }
+        }),
+      upsertAgent: (agent) =>
+        set((state) => {
+          const exists = state.agents.some((row) => row.id === agent.id)
+          return {
+            agents: exists
+              ? state.agents.map((row) => (row.id === agent.id ? { ...row, ...agent } : row))
+              : [...state.agents, agent],
           }
         }),
       setAgentAvatar: (avatar) =>

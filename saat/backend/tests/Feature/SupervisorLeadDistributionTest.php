@@ -88,14 +88,29 @@ it('lets an agent in team B pull a lead assigned to their team', function () {
     expect($result['lead']->id)->toBe($lead->id);
 });
 
-it('lets a supervisor list all leads including unassigned pool leads', function () {
-    $supervisor = makeSupervisor();
+it('limits a supervisor lead list to their team colony', function () {
+    $team = makeTeam();
+    $otherTeam = makeTeam();
+    $supervisor = makeSupervisor(['team_id' => $team->id]);
+    $agent = makeAgent(['team_id' => $team->id]);
+    $teamLead = makeLead([
+        'assigned_team_id' => $team->id,
+        'assigned_agent_id' => $agent->id,
+        'status' => LeadStatus::Assigned->value,
+    ]);
     $poolLead = makeLead(['status' => LeadStatus::New->value, 'assigned_agent_id' => null, 'assigned_team_id' => null]);
+    $otherTeamLead = makeLead([
+        'assigned_team_id' => $otherTeam->id,
+        'status' => LeadStatus::Assigned->value,
+    ]);
 
     $response = $this->actingAs($supervisor, 'sanctum')->getJson('/api/v1/leads?per_page=50');
 
     $response->assertOk();
-    expect(collect($response->json('data'))->pluck('id'))->toContain($poolLead->id);
+    $ids = collect($response->json('data'))->pluck('id');
+    expect($ids)->toContain($teamLead->id);
+    expect($ids)->not->toContain($poolLead->id);
+    expect($ids)->not->toContain($otherTeamLead->id);
 });
 
 it('lets a leader list team leads with assigned agent names', function () {

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\V1;
 
+use App\Services\WalletService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -24,6 +25,10 @@ class UserAdminResource extends JsonResource
             'team_name' => $this->whenLoaded('team', fn () => $this->team?->name),
             'is_active' => $this->is_active,
             'roles' => $this->getRoleNames(),
+            'bank_card_masked' => $this->bank_card
+                ? WalletService::maskBankCard($this->bank_card)
+                : null,
+            'bank_card_confirmed' => $this->bank_card_confirmed_at !== null,
         ];
     }
 }

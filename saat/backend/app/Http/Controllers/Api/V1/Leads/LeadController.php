@@ -13,6 +13,8 @@ use App\Http\Requests\V1\Leads\IndexLeadRequest;
 use App\Http\Requests\V1\Leads\StoreLeadRequest;
 use App\Http\Resources\V1\CallResource;
 use App\Http\Resources\V1\FollowUpResource;
+use App\Http\Resources\V1\ImportBatchResource;
+use App\Http\Resources\V1\LeadResource;
 use App\Http\Resources\V1\LeadStatusHistoryResource;
 use App\Http\Resources\V1\SaleResource;
 use App\Models\AppSetting;
@@ -214,8 +216,8 @@ class LeadController extends Controller
         $user = $request->user();
         $query = Lead::query()->where('returned_to_pool', true);
 
-        if (! $user->hasAnyRole([RoleName::Manager->value, RoleName::Admin->value, RoleName::Supervisor->value, RoleName::Leader->value])) {
-            $query->where('assigned_agent_id', $user->id);
+        if (! TeamScope::isOrgWide($user)) {
+            TeamScope::applyLeadQueryScope($query, $user);
         }
 
         $leads = $query->with('product')->orderByDesc('updated_at')->limit(100)->get();
