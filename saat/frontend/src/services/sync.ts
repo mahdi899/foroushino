@@ -138,10 +138,16 @@ async function fetchShiftData(days = 90): Promise<{ shiftCurrentRaw: Dto; shiftH
 }
 
 export async function syncAppData(): Promise<SyncPayload> {
+  // #region agent log
+  const _syncT0 = performance.now()
+  // #endregion
   const me = await fetchMe()
   const permissions = me.permissions ?? []
   const role = mapAuthUserRole(me.roles)
   const management = isManagementRole(role)
+  // #region agent log
+  fetch('http://127.0.0.1:7541/ingest/5e855e8d-e09f-4418-97d8-e130db1d617f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'90b576'},body:JSON.stringify({sessionId:'90b576',location:'sync.ts:syncAppData',message:'sync start',data:{role,management},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
   const leadsPage = management ? 100 : 50
   const callsPage = management ? 100 : 30
   const followupsPage = management ? 100 : 50
@@ -273,6 +279,10 @@ export async function syncAppData(): Promise<SyncPayload> {
       : teamLive
         ? teamsFromTeamLive(teamLive, agent.id)
         : []
+
+  // #region agent log
+  fetch('http://127.0.0.1:7541/ingest/5e855e8d-e09f-4418-97d8-e130db1d617f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'90b576'},body:JSON.stringify({sessionId:'90b576',location:'sync.ts:syncAppData',message:'sync done',data:{role,management,leads:mappedLeads.length,followups:asArray<Dto>(followupsRaw).length,calls:calls.length,ms:Math.round(performance.now()-_syncT0)},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
 
   return {
     leads: mappedLeads,

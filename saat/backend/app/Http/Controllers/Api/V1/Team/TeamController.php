@@ -73,6 +73,7 @@ class TeamController extends Controller
             ->get();
 
         $activeCalls = Call::query()
+            ->with('lead')
             ->whereIn('agent_id', $agentIds)
             ->whereNull('ended_at')
             ->latest('started_at')

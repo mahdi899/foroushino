@@ -111,8 +111,9 @@ export function CallResultScreen() {
   const [outcome, setOutcome] = useState<CallResultOutcome | null>(null)
 
   const callSession = useMemo(() => readCallSession(), [activeCallLeadId, lastCallDuration])
-  const effectiveDuration =
-    lastCallDuration > 0 ? lastCallDuration : (callSession?.leadId === lead?.id ? callSession?.durationSec ?? 0 : 0)
+  const sessionDuration =
+    callSession?.leadId === lead?.id ? (callSession?.durationSec ?? 0) : 0
+  const effectiveDuration = Math.max(lastCallDuration, sessionDuration)
   const canRegisterResult =
     !!outcome ||
     activeCallLeadId === lead?.id ||
@@ -167,8 +168,20 @@ export function CallResultScreen() {
     result === 'price_objection' || result === 'not_interested' || result === 'needs_info' || result === 'not_decision_maker'
 
   const save = async () => {
-    if (!result || submitting) return
-    if (!canEndAgentCall(effectiveDuration, minCallDurationSec)) {
+    if (submitting) return
+    if (!result) {
+      pushToast('اول نتیجه تماس را انتخاب کن.', 'info')
+      return
+    }
+
+    const latestSession = readCallSession()
+    const durationSec = Math.max(
+      effectiveDuration,
+      latestSession?.leadId === lead.id ? latestSession.durationSec ?? 0 : 0,
+    )
+    const endedViaDialer = latestSession?.leadId === lead.id && !!latestSession.endedAt
+
+    if (!endedViaDialer && !canEndAgentCall(durationSec, minCallDurationSec)) {
       pushToast(
         `حداقل مدت تماس ${formatDuration(minCallDurationSec)} است.`,
         'info',
@@ -188,7 +201,7 @@ export function CallResultScreen() {
         rating,
         followupAt: showFollowup ? buildFollowupIso(dayOffset, hour) : null,
         followupKind: showFollowup ? followupKind : undefined,
-        durationSec: effectiveDuration,
+        durationSec,
         saleAmount: showSale ? (saleAmount ?? product?.price ?? undefined) : undefined,
         advance: powerDialEnabled,
       })
@@ -211,7 +224,7 @@ export function CallResultScreen() {
   }
 
   return (
-    <Page withNav={false} className="pb-28">
+    <Page withNav={false} className="relative pb-28">
       <TopBar title="نتیجه تماس" />
 
       <div className="space-y-4 px-4 pb-6">
@@ -426,9 +439,20 @@ export function CallResultScreen() {
         )}
       </div>
 
-      <div className="glass-header absolute inset-x-0 bottom-0 z-20 border-t border-white/50 px-4 pt-3 pb-[calc(14px+var(--safe-bottom))] dark:border-white/10">
-        <Button full size="lg" disabled={!result} onClick={save} icon={<Check size={19} />}>
-          ذخیره و ثبت نتیجه
+      <div className="glass-header pointer-events-auto absolute inset-x-0 bottom-0 z-30 border-t border-white/50 px-4 pt-3 pb-[calc(14px+var(--safe-bottom))] dark:border-white/10">
+        {!result && (
+          <p className="mb-2 text-center text-[11px] font-bold text-text-soft">
+            برای ثبت، یکی از نتایج بالا را انتخاب کن
+          </p>
+        )}
+        <Button
+          full
+          size="lg"
+          disabled={!result || submitting}
+          onClick={() => void save()}
+          icon={<Check size={19} />}
+        >
+          {submitting ? 'در حال ثبت…' : 'ذخیره و ثبت نتیجه'}
         </Button>
       </div>
 

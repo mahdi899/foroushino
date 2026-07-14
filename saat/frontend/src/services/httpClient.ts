@@ -5,8 +5,7 @@ import type { ApiClient, CallResultInput, CallResultOutcome, FollowupInput } fro
 import type { Availability, Followup, NextAction, PaymentMethod } from '@/types'
 import { nextActionLabels } from '@/data/labels'
 import { ApiError, http, newIdempotencyKey } from './http'
-import { clearActiveCall, getActiveCallId, registerActiveCall } from './activeCallRegistry'
-import { readCallSession } from './callSession'
+import { clearActiveCall, registerActiveCall, waitForActiveCallId } from './activeCallRegistry'
 import { patchCallResultData } from './patchCallWrite'
 import { mapFollowup, mapSuggestion } from './mappers'
 import type { Suggestion } from './logic'
@@ -14,14 +13,8 @@ import type { Suggestion } from './logic'
 type CallSummary = { id: number | string; result: string | null }
 
 async function resolveCallId(leadId: string): Promise<number> {
-  const cached = getActiveCallId(leadId)
-  if (cached !== undefined) return cached
-
-  const session = readCallSession()
-  if (session?.leadId === leadId && session.callId) {
-    registerActiveCall(leadId, session.callId)
-    return session.callId
-  }
+  const waited = await waitForActiveCallId(leadId)
+  if (waited !== undefined) return waited
 
   const calls = await http.get<CallSummary[]>(`/calls?lead_id=${Number(leadId)}`)
   const open =

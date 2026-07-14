@@ -7,9 +7,10 @@ import { patchCallStartData } from '@/services/patchCallWrite'
 import type { CallResultInput, CallResultOutcome } from '@/services/client'
 import { enqueueOfflineWrite, flushOfflineQueue } from '@/services/offlineQueue'
 import { clearActiveCall, getActiveCallId, registerActiveCall } from '@/services/activeCallRegistry'
-import { clearCallSession, saveCallSession } from '@/services/callSession'
+import { clearCallSession, readCallSession, saveCallSession } from '@/services/callSession'
 
-export { getActiveCallId }
+export { getActiveCallId } from '@/services/activeCallRegistry'
+export { waitForActiveCallId } from '@/services/activeCallRegistry'
 
 export async function performStartCall(leadId: string, method?: CallMethod): Promise<void> {
   const state = useStore.getState()
@@ -28,9 +29,18 @@ export async function performStartCall(leadId: string, method?: CallMethod): Pro
       session?: { dial_uri?: string }
     }>('/calls/start', { lead_id: Number(leadId), method: resolved })
 
-    registerActiveCall(leadId, Number(data.call.id))
-    saveCallSession({ leadId, callId: Number(data.call.id) })
-    state.startCall(leadId, resolved)
+    const callId = Number(data.call.id)
+    registerActiveCall(leadId, callId)
+    saveCallSession({ leadId, callId })
+
+    const session = readCallSession()
+    const alreadyEnded =
+      session?.leadId === leadId && !!session?.endedAt && (session.durationSec ?? 0) > 0
+
+    // User may hang up (native SIM) before /calls/start returns — don't reset duration/note.
+    if (!alreadyEnded) {
+      state.startCall(leadId, resolved)
+    }
     patchCallStartData(data)
   } catch (error) {
     if (error instanceof NetworkError) {

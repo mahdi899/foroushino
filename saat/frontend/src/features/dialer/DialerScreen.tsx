@@ -39,7 +39,7 @@ import {
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
 import { collectLeadNotes } from '@/lib/leadNotes'
-import { performReconcileCall, getActiveCallId } from '@/services/callActions'
+import { performReconcileCall, getActiveCallId, waitForActiveCallId } from '@/services/callActions'
 import { saveCallSession } from '@/services/callSession'
 
 export function DialerScreen() {
@@ -92,7 +92,7 @@ export function DialerScreen() {
   const canEndCall = canEndAgentCall(seconds, minCallDurationSec)
   const remainingSec = remainingAgentCallSec(seconds, minCallDurationSec)
 
-  const hangUp = () => {
+  const hangUp = async () => {
     if (!canEndCall) {
       haptic('error')
       pushToast(
@@ -102,7 +102,8 @@ export function DialerScreen() {
       return
     }
     haptic('heavy')
-    if (isNativeCall) {
+    const callId = (await waitForActiveCallId(lead.id, 12_000)) ?? getActiveCallId(lead.id)
+    if (isNativeCall && callId) {
       void performReconcileCall(lead.id, 'answered')
     }
     const mergedNote = note.trim() || useStore.getState().activeCallDraftNote.trim()
@@ -113,7 +114,7 @@ export function DialerScreen() {
     endCall(seconds)
     saveCallSession({
       leadId: lead.id,
-      callId: getActiveCallId(lead.id),
+      callId,
       durationSec: seconds,
       endedAt: new Date().toISOString(),
     })

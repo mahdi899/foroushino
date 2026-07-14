@@ -60,7 +60,13 @@ export function SyncProvider({ children }: { children: ReactNode }) {
             const suggestion = getSuggestion(state.leads, state.followups, currentAgentId)
             if (!suggestion) {
               try {
+                // #region agent log
+                const _nextT0 = performance.now()
+                // #endregion
                 const pulled = await api.getNextLead()
+                // #region agent log
+                fetch('http://127.0.0.1:7541/ingest/5e855e8d-e09f-4418-97d8-e130db1d617f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'90b576'},body:JSON.stringify({sessionId:'90b576',location:'SyncProvider.tsx:getNextLead',message:'post-sync next lead',data:{ms:Math.round(performance.now()-_nextT0),gotLead:!!pulled?.lead},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
                 if (pulled?.lead) {
                   upsertLead(pulled.lead)
                 }

@@ -17,6 +17,7 @@ return new class extends Migration
         Schema::table('calls', function (Blueprint $table): void {
             $table->index(['lead_id', 'created_at'], 'calls_lead_created_idx');
             $table->index(['agent_id', 'ended_at'], 'calls_agent_ended_idx');
+            $table->index(['agent_id', 'created_at'], 'calls_agent_created_idx');
         });
 
         Schema::table('users', function (Blueprint $table): void {
@@ -33,6 +34,7 @@ return new class extends Migration
         Schema::table('calls', function (Blueprint $table): void {
             $table->dropIndex('calls_lead_created_idx');
             $table->dropIndex('calls_agent_ended_idx');
+            $table->dropIndex('calls_agent_created_idx');
         });
 
         Schema::table('leads', function (Blueprint $table): void {

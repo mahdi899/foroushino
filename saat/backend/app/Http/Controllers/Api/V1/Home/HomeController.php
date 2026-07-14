@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\V1\Home;
 use App\Enums\LeadStatus;
 use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\V1\LeadResource;
 use App\Models\DailyTarget;
 use App\Models\FollowUp;
 use App\Models\Lead;
@@ -14,7 +13,6 @@ use App\Models\Team;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Support\ApiResponse;
-use App\Support\LeadPriorityScore;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -22,6 +20,7 @@ class HomeController extends Controller
 {
     public function agent(Request $request): JsonResponse
     {
+        $dbgT0 = microtime(true);
         $user = $request->user();
         $today = today();
 
@@ -47,21 +46,13 @@ class HomeController extends Controller
         $todayFollowups = FollowUp::query()->where('agent_id', $user->id)
             ->pending()->whereDate('due_at', $today)->count();
 
-        $suggestedLead = Lead::query()
-            ->whereNotIn('status', array_map(fn ($s) => $s->value, LeadStatus::excludedFromCycle()))
-            ->whereNull('do_not_call_at')
-            ->where(function ($q): void {
-                $q->whereNull('locked_by')->orWhere('locked_until', '<', now());
-            })
-            ->where(function ($q) use ($user): void {
-                $q->where('assigned_agent_id', $user->id)->orWhereNull('assigned_agent_id');
-            })
-            ->selectRaw('leads.*, ('.LeadPriorityScore::sqlExpression().') as priority_score')
-            ->orderByDesc('priority_score')
-            ->first();
-
         $wallet = Wallet::query()->firstOrCreate(['user_id' => $user->id]);
         $unreadNotifications = $user->appNotifications()->where('read', false)->count();
+
+        // #region agent log
+        $dbgMs = (int) round((microtime(true) - $dbgT0) * 1000);
+        @file_put_contents(base_path('../../debug-90b576.log'), json_encode(['sessionId' => '90b576', 'location' => 'HomeController::agent', 'message' => 'home agent done', 'data' => ['ms' => $dbgMs, 'userId' => $user->id], 'timestamp' => (int) (microtime(true) * 1000), 'hypothesisId' => 'B'])."\n", FILE_APPEND);
+        // #endregion
 
         return ApiResponse::success([
             'target' => [
@@ -73,11 +64,12 @@ class HomeController extends Controller
             'assigned_leads_count' => $assignedCount,
             'overdue_followups' => $overdueFollowups,
             'today_followups' => $todayFollowups,
-            'suggested_lead' => $suggestedLead ? new LeadResource($suggestedLead) : null,
-            'suggested_reason' => $suggestedLead ? LeadPriorityScore::reasonFor($suggestedLead)->value : null,
             'wallet' => [
                 'balance_available' => (string) $wallet->balance_available,
                 'balance_pending' => (string) $wallet->balance_pending,
+                'balance_locked' => (string) $wallet->balance_locked,
+                'total_earned' => (string) $wallet->total_earned,
+                'total_paid' => (string) $wallet->total_paid,
             ],
             'unread_notifications' => $unreadNotifications,
             'availability' => $user->availability?->value,
