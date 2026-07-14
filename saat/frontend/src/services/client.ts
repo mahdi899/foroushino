@@ -43,6 +43,7 @@ export interface CallResultOutcome {
   createdSaleId: string | null
   createdFollowupId: string | null
   suggestion: Suggestion | null
+  savedNote?: string | null
 }
 
 // Domain contract. The store delegates its mutations here.

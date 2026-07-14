@@ -3,45 +3,52 @@ import { dialNativePhone } from '@/lib/call'
 import { capabilitiesFromSettings, resolveCallMethod } from '@/lib/telephony'
 import { useStore } from '@/store/useStore'
 import { apiMode, api } from '@/services/index'
-import { http } from '@/services/http'
+import { http, NetworkError } from '@/services/http'
 import { syncAppData } from '@/services/sync'
 import type { CallResultInput, CallResultOutcome } from '@/services/client'
 import { enqueueOfflineWrite, flushOfflineQueue } from '@/services/offlineQueue'
+import { clearActiveCall, getActiveCallId, registerActiveCall } from '@/services/activeCallRegistry'
 
-const activeCallByLead = new Map<string, { callId: number; method: CallMethod }>()
-
-export function getActiveCallId(leadId: string): number | undefined {
-  return activeCallByLead.get(leadId)?.callId
-}
+export { getActiveCallId }
 
 export async function performStartCall(leadId: string, method?: CallMethod): Promise<void> {
   const state = useStore.getState()
   const caps = capabilitiesFromSettings(state.appSettings)
   const resolved = resolveCallMethod(method, caps)
 
-  state.startCall(leadId, resolved)
-
-  if (apiMode !== 'http') return
+  if (apiMode !== 'http') {
+    state.startCall(leadId, resolved)
+    return
+  }
 
   try {
     const data = await http.post<{
       call: { id: number | string; method?: string }
+      lead?: unknown
       session?: { dial_uri?: string }
     }>('/calls/start', { lead_id: Number(leadId), method: resolved })
 
-    activeCallByLead.set(leadId, { callId: Number(data.call.id), method: resolved })
+    registerActiveCall(leadId, Number(data.call.id))
+    state.startCall(leadId, resolved)
+
+    if (data.lead) {
+      const payload = await syncAppData()
+      useStore.getState().applySyncData(payload)
+    }
 
     if (resolved === 'native' && data.session?.dial_uri) {
       const phone = data.session.dial_uri.replace(/^tel:/, '')
       window.setTimeout(() => dialNativePhone(phone), 280)
     }
   } catch (error) {
-    await enqueueOfflineWrite({
-      type: 'start_call',
-      leadId,
-      method: resolved,
-      createdAt: new Date().toISOString(),
-    })
+    if (error instanceof NetworkError) {
+      await enqueueOfflineWrite({
+        type: 'start_call',
+        leadId,
+        method: resolved,
+        createdAt: new Date().toISOString(),
+      })
+    }
     throw error
   }
 }
@@ -68,24 +75,34 @@ export async function performSubmitCallResult(input: CallResultInput): Promise<C
 
   try {
     const outcome = await api.submitCallResult(withAdvance)
-    activeCallByLead.delete(input.leadId)
+    clearActiveCall(input.leadId)
 
-    const payload = await syncAppData()
-    useStore.getState().applySyncData(payload)
+    try {
+      const payload = await syncAppData()
+      useStore.getState().applySyncData(payload)
+    } catch {
+      // Result was saved on the server; stale local cache is acceptable until next sync.
+    }
 
     useStore.setState({
       activeCallLeadId: null,
       activeCallMethod: null,
+      activeCallDraftNote: '',
       lastOutcome: outcome,
     })
 
     return outcome
   } catch (error) {
-    await enqueueOfflineWrite({
-      type: 'submit_call_result',
-      input,
-      createdAt: new Date().toISOString(),
-    })
+    if (error instanceof NetworkError) {
+      await enqueueOfflineWrite({
+        type: 'submit_call_result',
+        input,
+        createdAt: new Date().toISOString(),
+      })
+      throw new NetworkError(
+        'ثبت نتیجه ناموفق بود. در صف آفلاین ذخیره شد؛ با برقراری اینترنت دوباره ارسال می‌شود.',
+      )
+    }
     throw error
   }
 }

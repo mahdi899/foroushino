@@ -34,6 +34,12 @@ export function useOnline() {
   return useSyncExternalStore(subscribe, getSnapshot, () => true)
 }
 
+function apiHealthUrl(baseUrl: string): string {
+  const normalized = baseUrl.replace(/\/$/, '')
+  if (normalized.endsWith('/api/v1')) return `${normalized}/health`
+  return `${normalized}/api/v1/health`
+}
+
 /** Optional reachability probe — useful when `navigator.onLine` is optimistic. */
 export async function probeNetwork(baseUrl: string): Promise<boolean> {
   if (!navigator.onLine) return false
@@ -41,7 +47,7 @@ export async function probeNetwork(baseUrl: string): Promise<boolean> {
   try {
     const controller = new AbortController()
     const timer = window.setTimeout(() => controller.abort(), 4000)
-    const response = await fetch(`${baseUrl.replace(/\/api\/v1$/, '')}/api/v1/health`, {
+    const response = await fetch(apiHealthUrl(baseUrl), {
       method: 'GET',
       cache: 'no-store',
       signal: controller.signal,

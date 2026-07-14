@@ -7,10 +7,15 @@ import { mapWorkDaySummary, mapWorkSession } from './mappers'
 
 type Dto = Record<string, unknown>
 
-export async function refreshShiftFromServer(): Promise<void> {
+const SHIFT_REFRESH_HISTORY_DAYS = 14
+const SHIFT_SYNC_HISTORY_DAYS = 90
+
+export async function refreshShiftFromServer(
+  historyDays: number = SHIFT_REFRESH_HISTORY_DAYS,
+): Promise<void> {
   const [current, history] = await Promise.all([
     http.get<Dto>('/shift/current'),
-    http.get<Dto[]>('/shift/history?days=366'),
+    http.get<Dto[]>(`/shift/history?days=${historyDays}`),
   ])
 
   const sessionDto = current.session as Dto | null | undefined
@@ -55,29 +60,45 @@ export async function performAutoAvailability(
   }
 }
 
-export async function performStartShift(availability: Availability): Promise<void> {
+export function performStartShift(availability: Availability): void {
   useStore.getState().startShift(availability)
 
-  if (apiMode === 'http') {
-    await http.post('/shift/start', { availability })
-    await refreshShiftFromServer()
-  }
+  if (apiMode !== 'http') return
+
+  void (async () => {
+    try {
+      await http.post('/shift/start', { availability })
+      await refreshShiftFromServer()
+    } catch {
+      // Optimistic local state stays; SyncProvider reconciles on next pull.
+    }
+  })()
 }
 
-export async function performEndShift(): Promise<void> {
+export function performEndShift(): void {
   useStore.getState().endShift()
 
-  if (apiMode === 'http') {
-    await http.post('/shift/end')
-    await refreshShiftFromServer()
-  }
+  if (apiMode !== 'http') return
+
+  void (async () => {
+    try {
+      await http.post('/shift/end')
+      await refreshShiftFromServer()
+    } catch {
+      // Local state already closed; server sync is best-effort.
+    }
+  })()
 }
 
 export async function performSetAvailability(status: Availability): Promise<void> {
   useStore.getState().setAvailability(status, { source: 'manual' })
 
   if (apiMode === 'http') {
-    await http.post('/shift/availability', { availability: status })
-    await refreshShiftFromServer()
+    try {
+      await http.post('/shift/availability', { availability: status })
+      await refreshShiftFromServer()
+    } catch {
+      // Keep local state; sync will reconcile on next successful pull.
+    }
   }
 }

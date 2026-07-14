@@ -128,7 +128,7 @@ async function fetchShiftData(): Promise<{ shiftCurrentRaw: Dto; shiftHistoryRaw
   try {
     const [shiftCurrentRaw, shiftHistoryRaw] = await Promise.all([
       http.get<Dto>('/shift/current'),
-      http.get<Dto[]>('/shift/history?days=366'),
+      http.get<Dto[]>('/shift/history?days=90'),
     ])
     return { shiftCurrentRaw, shiftHistoryRaw }
   } catch {

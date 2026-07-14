@@ -98,8 +98,14 @@ class CampaignDialingPolicy
     private function isWithinAllowedHours(Campaign $campaign): bool
     {
         $now = now()->format('H:i');
+        $start = $campaign->allowed_hours_start ?: '08:00';
+        $end = $campaign->allowed_hours_end ?: '23:59';
 
-        return $now >= $campaign->allowed_hours_start && $now <= $campaign->allowed_hours_end;
+        if ($start <= $end) {
+            return $now >= $start && $now <= $end;
+        }
+
+        return $now >= $start || $now <= $end;
     }
 
     private function dailyAttempts(Lead $lead): int

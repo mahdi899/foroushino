@@ -100,6 +100,7 @@ async function main() {
   )
   ok('follow-up was created', !!outcome.createdFollowupId, outcome)
   ok('next-action label resolved', outcome.nextActionLabel.length > 0, outcome.nextActionLabel)
+  ok('saved note echoed in outcome', outcome.savedNote === 'مکالمه خوب بود، فردا پیگیری کن', outcome.savedNote)
 
   // 6. standalone follow-up creation, complete, snooze
   const followup = await step('create a standalone follow-up', () =>

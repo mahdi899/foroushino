@@ -233,7 +233,7 @@ export function ProfileScreen() {
                 }}
                 className="mt-3 flex w-full items-center justify-between rounded-2xl border border-white/55 bg-white/30 px-4 py-3 dark:border-white/10 dark:bg-white/[0.04]"
               >
-                <span className="text-[13px] font-extrabold text-text">پاور دیال</span>
+                <span className="text-[13px] font-extrabold text-text">تماس پی‌درپی</span>
                 <span
                   className={cn(
                     'rounded-full px-3 py-1 text-[11px] font-extrabold',

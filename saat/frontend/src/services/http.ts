@@ -9,7 +9,32 @@ const configuredBaseUrl =
   import.meta.env?.VITE_API_BASE_URL ??
   (typeof process !== 'undefined' ? process.env?.VITE_API_BASE_URL : undefined)
 
-export const API_BASE_URL = (configuredBaseUrl ?? 'http://localhost:8000/api/v1').replace(/\/$/, '')
+/** In dev, same-origin `/api/v1` is proxied by Vite to Laravel (works from phone on LAN too). */
+function resolveDefaultApiBaseUrl(): string {
+  if (import.meta.env?.DEV) {
+    return '/api/v1'
+  }
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname } = window.location
+    return `${protocol}//${hostname}:8000/api/v1`
+  }
+  return 'http://localhost:8000/api/v1'
+}
+
+export const API_BASE_URL = (configuredBaseUrl ?? resolveDefaultApiBaseUrl()).replace(/\/$/, '')
+
+function networkErrorMessage(): string {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return 'اتصال اینترنت برقرار نیست.'
+  }
+  if (API_BASE_URL.startsWith('/')) {
+    return 'ارتباط با سرور برقرار نشد. بک‌اند را با php artisan serve اجرا کن و Vite dev server را ری‌استارت کن.'
+  }
+  if (API_BASE_URL.includes('localhost') || API_BASE_URL.includes('127.0.0.1')) {
+    return 'ارتباط با سرور برقرار نشد. بک‌اند را با php artisan serve اجرا کن.'
+  }
+  return 'ارتباط با سرور برقرار نشد. بک‌اند را با php artisan serve --host=0.0.0.0 اجرا کن.'
+}
 
 export class ApiError extends Error {
   constructor(
@@ -66,7 +91,7 @@ export async function request<T = unknown>(path: string, options: RequestOptions
   try {
     response = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: payload })
   } catch {
-    throw new NetworkError()
+    throw new NetworkError(networkErrorMessage())
   }
 
   let json: any = null

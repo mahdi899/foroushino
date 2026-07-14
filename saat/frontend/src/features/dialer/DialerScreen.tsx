@@ -50,6 +50,8 @@ export function DialerScreen() {
   const activeCallMethod = useStore((s) => s.activeCallMethod)
   const endCall = useStore((s) => s.endCall)
   const updateLeadNote = useStore((s) => s.updateLeadNote)
+  const activeCallDraftNote = useStore((s) => s.activeCallDraftNote)
+  const setActiveCallDraftNote = useStore((s) => s.setActiveCallDraftNote)
   const pushToast = useStore((s) => s.pushToast)
   const minCallDurationSec = useStore((s) => s.appSettings.minCallDurationSec)
 
@@ -100,6 +102,11 @@ export function DialerScreen() {
     haptic('heavy')
     if (isNativeCall) {
       void performReconcileCall(lead.id, 'answered')
+    }
+    const mergedNote = note.trim() || useStore.getState().activeCallDraftNote.trim()
+    if (mergedNote) {
+      updateLeadNote(lead.id, mergedNote)
+      setActiveCallDraftNote(mergedNote)
     }
     endCall(seconds)
     navigate(`/call-result/${lead.id}`, { replace: true })
@@ -211,7 +218,7 @@ export function DialerScreen() {
             icon={<NotebookPen size={22} />}
             label="یادداشت"
             onClick={() => {
-              setNote(lead.lastNote ?? '')
+              setNote(activeCallDraftNote || lead.lastNote || '')
               setSheet('note')
             }}
           />
@@ -254,14 +261,20 @@ export function DialerScreen() {
       <BottomSheet open={sheet === 'note'} onClose={() => setSheet(null)} title="یادداشت تماس">
         <textarea
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value
+            setNote(value)
+            setActiveCallDraftNote(value)
+          }}
           placeholder="نکات مهم این تماس را بنویس..."
           rows={5}
           className="w-full rounded-2xl border border-border bg-neutral-50 p-4 text-sm font-bold text-neutral-800 outline-none focus:border-primary-400"
         />
         <button
           onClick={() => {
-            updateLeadNote(lead.id, note)
+            const trimmed = note.trim()
+            updateLeadNote(lead.id, trimmed)
+            setActiveCallDraftNote(trimmed)
             setSheet(null)
           }}
           className="mt-3 h-12 w-full rounded-2xl bg-primary-600 text-sm font-extrabold text-white"

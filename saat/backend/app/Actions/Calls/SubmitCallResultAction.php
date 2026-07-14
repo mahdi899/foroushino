@@ -23,7 +23,9 @@ use App\Services\ActivityLogService;
 use App\Services\NotificationService;
 use App\Services\Quality\QaSampler;
 use App\Support\ResultRouting;
+use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class SubmitCallResultAction
 {
@@ -78,7 +80,7 @@ class SubmitCallResultAction
             $lead->call_count += 1;
             $lead->locked_by = null;
             $lead->locked_until = null;
-            if (isset($data['note'])) {
+            if (isset($data['note']) && $data['note'] !== '') {
                 $lead->last_note = $data['note'];
             }
             if (isset($data['objection'])) {
@@ -150,7 +152,14 @@ class SubmitCallResultAction
             $call = $call->fresh();
             $this->qaSampler->maybeSampleCall($call);
 
-            broadcast(new CallResultSubmitted($call))->toOthers();
+            try {
+                broadcast(new CallResultSubmitted($call))->toOthers();
+            } catch (BroadcastException $e) {
+                Log::warning('CallResultSubmitted broadcast skipped', [
+                    'call_id' => $call->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             return [
                 'call' => $call->fresh(),

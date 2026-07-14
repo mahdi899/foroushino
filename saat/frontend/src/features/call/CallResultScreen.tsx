@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -36,7 +36,10 @@ import {
 } from '@/data/labels'
 import { routeCallResult } from '@/services/logic'
 import { performSubmitCallResult } from '@/services/callActions'
+import { ApiError } from '@/services/http'
 import { SwipeDispositionDeck } from '@/components/domain/SwipeDispositionDeck'
+import { LeadNotesStrip } from '@/components/domain/LeadNotesStrip'
+import { collectLeadNotes } from '@/lib/leadNotes'
 import { objectionsLibrary } from '@/data/mockExtra'
 import { formatPhone, toFa } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
@@ -82,6 +85,8 @@ export function CallResultScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
   const lead = useStore((s) => s.leads.find((l) => l.id === id))
+  const calls = useStore((s) => s.calls.filter((c) => c.leadId === id))
+  const followups = useStore((s) => s.followups.filter((f) => f.leadId === id))
   const products = useStore((s) => s.products)
   const lastCallDuration = useStore((s) => s.lastCallDuration)
   const minCallDurationSec = useStore((s) => s.appSettings.minCallDurationSec)
@@ -91,10 +96,11 @@ export function CallResultScreen() {
   const powerDialEnabled = useStore((s) => s.powerDialEnabled)
   const dispositionMode = useStore((s) => s.dispositionMode)
   const setDispositionMode = useStore((s) => s.setDispositionMode)
+  const activeCallDraftNote = useStore((s) => s.activeCallDraftNote)
+  const setActiveCallDraftNote = useStore((s) => s.setActiveCallDraftNote)
 
   const [result, setResult] = useState<CallResult | null>(null)
   const [rating, setRating] = useState(0)
-  const [note, setNote] = useState('')
   const [objection, setObjection] = useState<Objection | null>(null)
   const [followupKind, setFollowupKind] = useState<FollowupKind>('call')
   const [dayOffset, setDayOffset] = useState<number>(1)
@@ -103,8 +109,22 @@ export function CallResultScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [outcome, setOutcome] = useState<CallResultOutcome | null>(null)
 
+  useEffect(() => {
+    if (!lead || outcome || activeCallLeadId !== lead.id) return
+    const draft = useStore.getState().activeCallDraftNote.trim()
+    if (!draft && lead.lastNote.trim()) {
+      setActiveCallDraftNote(lead.lastNote.trim())
+    }
+  }, [lead, activeCallLeadId, outcome, setActiveCallDraftNote])
+
   const routed = useMemo(() => (result ? routeCallResult(result) : null), [result])
   const product = products.find((p) => p.id === (lead?.productId ?? products[0]?.id))
+  const leadNotes = useMemo(
+    () => (lead ? collectLeadNotes(lead, calls, followups) : []),
+    [lead, calls, followups],
+  )
+  const displayNote = outcome?.savedNote ?? activeCallDraftNote
+  const noteLocked = !!outcome || submitting
 
   if (!lead) {
     return (
@@ -148,10 +168,11 @@ export function CallResultScreen() {
     haptic('success')
     setSubmitting(true)
     try {
+      const trimmedNote = activeCallDraftNote.trim()
       const out = await performSubmitCallResult({
         leadId: lead.id,
         result,
-        note,
+        note: trimmedNote,
         objection,
         nextStage: resultToStage[result] ?? null,
         rating,
@@ -162,13 +183,18 @@ export function CallResultScreen() {
         advance: powerDialEnabled,
       })
       if (powerDialEnabled && out.suggestion?.lead) {
-        pushToast('تماس بعدی آماده است')
-        navigate(`/dialer/${out.suggestion.lead.id}`, { replace: true })
+        openCallMethodSheet(out.suggestion.lead)
         return
       }
-      setOutcome(out)
-    } catch {
-      pushToast('ثبت نتیجه ناموفق بود. در صف آفلاین ذخیره شد یا دوباره تلاش کن.', 'error')
+      setOutcome({ ...out, savedNote: trimmedNote || null })
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error && error.message
+            ? error.message
+            : 'ثبت نتیجه ناموفق بود. دوباره تلاش کن.'
+      pushToast(message, 'error')
     } finally {
       setSubmitting(false)
     }
@@ -336,16 +362,29 @@ export function CallResultScreen() {
         </AnimatePresence>
 
         <div className="glass-card rounded-[22px] border border-white/55 p-4 dark:border-white/10">
-          <p className="mb-2 flex items-center gap-1.5 text-[13px] font-bold text-text">
-            <NotebookPen size={15} className="text-[#3390EC] dark:text-[#8774E1]" />
-            یادداشت (اختیاری)
-          </p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 text-[13px] font-bold text-text">
+              <NotebookPen size={15} className="text-[#3390EC] dark:text-[#8774E1]" />
+              {noteLocked && displayNote.trim() ? 'یادداشت ثبت‌شده' : 'یادداشت (اختیاری)'}
+            </p>
+            {noteLocked && displayNote.trim() && (
+              <span className="rounded-full bg-emerald-500/12 px-2 py-0.5 text-[10px] font-extrabold text-emerald-600">
+                ذخیره شد
+              </span>
+            )}
+          </div>
+          {leadNotes.length > 0 && !noteLocked && (
+            <div className="mb-3 flex justify-center">
+              <LeadNotesStrip notes={leadNotes} />
+            </div>
+          )}
           <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
+            value={displayNote}
+            onChange={(e) => setActiveCallDraftNote(e.target.value)}
+            readOnly={noteLocked}
             placeholder="یادداشت خود را اینجا بنویس..."
-            rows={2}
-            className="w-full resize-none rounded-xl border border-white/50 bg-white/35 p-3 text-[13px] font-semibold text-text outline-none focus:border-[#3390EC]/40 dark:border-white/10 dark:bg-white/[0.06] dark:focus:border-[#8774E1]/40"
+            rows={3}
+            className="w-full resize-none rounded-xl border border-white/50 bg-white/35 p-3 text-[13px] font-semibold text-text outline-none focus:border-[#3390EC]/40 read-only:opacity-90 dark:border-white/10 dark:bg-white/[0.06] dark:focus:border-[#8774E1]/40"
           />
         </div>
 
@@ -443,6 +482,21 @@ function SuccessOverlay({
       <p className="mt-1.5 max-w-[260px] text-center text-[13px] font-bold leading-6 text-neutral-500">
         {outcome.nextActionLabel}
       </p>
+
+      {outcome.savedNote && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.22 }}
+          className="mt-4 w-full rounded-2xl bg-neutral-50 p-3.5 text-right border border-border/60"
+        >
+          <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold text-neutral-400">
+            <NotebookPen size={13} />
+            یادداشت ثبت‌شده
+          </p>
+          <p className="text-[13px] font-semibold leading-6 text-neutral-700">{outcome.savedNote}</p>
+        </motion.div>
+      )}
 
       {next && (
         <motion.div

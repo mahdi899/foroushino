@@ -29,6 +29,7 @@ import type {
 import type { CallMethod } from '@/lib/call'
 import type { AuthenticatedUser } from '@/services/auth'
 import { clearToken, mapAuthUserRole } from '@/services/auth'
+import { agentFromAuthenticatedUser } from '@/lib/agentFromUser'
 import { hasPermission as checkPermission, resolvePermissions } from '@/lib/permissions'
 import { canMakeCalls } from '@/lib/roles'
 import {
@@ -127,6 +128,7 @@ interface AppState {
   // transient call context
   activeCallLeadId: string | null
   activeCallMethod: CallMethod | null
+  activeCallDraftNote: string
   lastCallDuration: number
   lastOutcome: CallResultOutcome | null
 
@@ -175,6 +177,7 @@ interface AppState {
   updateLeadStage: (leadId: string, stage: SaleStage) => void
   updateLeadTemperature: (leadId: string, temp: Temperature) => void
   updateLeadNote: (leadId: string, note: string) => void
+  setActiveCallDraftNote: (note: string) => void
   addLead: (input: { firstName: string; lastName?: string; phone: string; city?: string }) => void
   distributeLeadsToTeams: () => number
 
@@ -410,6 +413,7 @@ export const useStore = create<AppState>()(
 
       activeCallLeadId: null,
       activeCallMethod: null,
+      activeCallDraftNote: '',
       lastCallDuration: 0,
       lastOutcome: null,
 
@@ -428,14 +432,21 @@ export const useStore = create<AppState>()(
       login: (phone) => set({ isAuthed: true, phone }),
       setSessionFromAuth: (user) => {
         const role = mapAuthUserRole(user.roles)
-        set({
+        const next: Partial<AppState> = {
           isAuthed: true,
           phone: user.phone ?? user.email,
           role,
           permissions: resolvePermissions(role, user.permissions ?? []),
           currentAgentId: usesRemoteData ? String(user.id) : AGENT_MAP[role],
           dataReady: !usesRemoteData,
-        })
+        }
+
+        if (usesRemoteData) {
+          const self = agentFromAuthenticatedUser(user)
+          next.agents = [self]
+        }
+
+        set(next)
       },
       hasPermission: (permission) => checkPermission(get().permissions, permission),
       logout: () => {
@@ -596,6 +607,8 @@ export const useStore = create<AppState>()(
           leads: state.leads.map((l) => (l.id === leadId ? { ...l, lastNote: note } : l)),
         })),
 
+      setActiveCallDraftNote: (note) => set({ activeCallDraftNote: note }),
+
       updateLeadTemperature: (leadId, temp) =>
         set((state) => ({
           leads: state.leads.map((l) =>
@@ -678,6 +691,7 @@ export const useStore = create<AppState>()(
             ...flushed,
             activeCallLeadId: leadId,
             activeCallMethod: method,
+            activeCallDraftNote: '',
             lastCallDuration: 0,
             availability: 'in_call',
             availabilityChangedAt: new Date(nowMs).toISOString(),
@@ -751,7 +765,7 @@ export const useStore = create<AppState>()(
             temperature,
             lastCallAt: nowIso,
             callCount: l.callCount + 1,
-            lastNote: input.note || l.lastNote,
+            lastNote: input.note.trim() || l.lastNote,
             objection: input.objection ?? l.objection,
             rating: input.rating || l.rating,
             nextFollowupAt: input.followupAt ?? l.nextFollowupAt,
@@ -828,6 +842,7 @@ export const useStore = create<AppState>()(
           createdSaleId,
           createdFollowupId,
           suggestion,
+          savedNote: input.note.trim() || null,
         }
 
         const activity: ActivityLog[] = [
