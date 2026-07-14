@@ -1,24 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
-import { fetchDemoAccounts, type DemoAccount } from '@/services/auth'
+import { useDemoMode } from '@/hooks/useDemoMode'
+import type { DemoAccount } from '@/services/auth'
 import { toFa } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
 interface DemoAccountsPanelProps {
-  onPickPhone: (phone: string) => void
+  onPickAccount: (account: DemoAccount) => void | Promise<void>
   className?: string
 }
 
-export function DemoAccountsPanel({ onPickPhone, className }: DemoAccountsPanelProps) {
-  const [accounts, setAccounts] = useState<DemoAccount[]>([])
+export function DemoAccountsPanel({ onPickAccount, className }: DemoAccountsPanelProps) {
+  const { enabled, accounts } = useDemoMode()
   const [open, setOpen] = useState(false)
 
-  useEffect(() => {
-    void fetchDemoAccounts().then(setAccounts)
-  }, [])
-
-  if (accounts.length === 0) return null
+  if (!enabled) return null
 
   return (
     <div
@@ -66,8 +63,8 @@ export function DemoAccountsPanel({ onPickPhone, className }: DemoAccountsPanelP
                   key={account.phone}
                   type="button"
                   onClick={() => {
-                    onPickPhone(account.phone)
                     setOpen(false)
+                    void onPickAccount(account)
                   }}
                   className={cn(
                     'flex w-full flex-col gap-0.5 rounded-[10px] px-3 py-2.5 text-right',

@@ -7,14 +7,13 @@ import {
   Target,
   NotebookPen,
   TrendingUp,
-  ClipboardList,
   Repeat2,
   ChevronLeft,
   SkipForward,
   type LucideIcon,
 } from 'lucide-react'
 import type { Lead, SuggestReason } from '@/types'
-import { Avatar } from '@/components/ui/Avatar'
+import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { ContactStatusBadge } from './Badges'
 import { LeadStatusSheet } from './LeadStatusSheet'
 import { sourceIcon, sourceIconClass, suggestReasonIcon, suggestReasonChipLabel } from './icons'
@@ -51,15 +50,6 @@ export function NextCallCard({ lead, reason, onCall, onDetails, onSkip, canSkip 
   const prob = Math.max(0, Math.min(100, lead.conversionProbability))
 
   const quickActions = [
-    {
-      id: 'result',
-      label: 'ثبت نتیجه',
-      icon: ClipboardList,
-      onClick: () => {
-        haptic('light')
-        navigate(`/call-result/${lead.id}`)
-      },
-    },
     {
       id: 'status',
       label: 'تغییر وضعیت',
@@ -149,20 +139,7 @@ export function NextCallCard({ lead, reason, onCall, onDetails, onSkip, canSkip 
         <div className="pointer-events-none absolute -left-6 top-0 h-20 w-20 rounded-full bg-[#3390EC]/10 blur-2xl" />
 
         <div className="relative flex items-start gap-2.5">
-          <div className="relative shrink-0">
-            <ProbabilityRing value={prob} id={lead.id} />
-            <div className="absolute inset-[11px] flex items-center justify-center">
-              <Avatar
-                id={lead.id}
-                first={lead.firstName}
-                last={lead.lastName}
-                src={lead.avatar}
-                size={58}
-                online
-                ring
-              />
-            </div>
-          </div>
+          <LeadPortraitRing lead={lead} probability={prob} />
 
           <div className="min-w-0 flex-1 pt-0.5">
             <h2 className="truncate text-[18px] font-bold leading-snug text-text">
@@ -243,7 +220,7 @@ export function NextCallCard({ lead, reason, onCall, onDetails, onSkip, canSkip 
         className={cn(
           'relative mt-2.5 grid gap-1 rounded-[18px] border border-white/50 p-1',
           'glass-inset dark:border-white/10',
-          canSkip && onSkip ? 'grid-cols-4' : 'grid-cols-3',
+          quickActions.length === 3 ? 'grid-cols-3' : 'grid-cols-2',
         )}
       >
         {quickActions.map((action) => {
@@ -289,6 +266,17 @@ export function NextCallCard({ lead, reason, onCall, onDetails, onSkip, canSkip 
 
       <LeadStatusSheet lead={lead} open={statusOpen} onClose={() => setStatusOpen(false)} />
     </motion.div>
+  )
+}
+
+function LeadPortraitRing({ lead, probability }: { lead: Lead; probability: number }) {
+  return (
+    <div className="relative h-20 w-20 shrink-0">
+      <ProbabilityRing value={probability} id={lead.id} />
+      <div className="absolute inset-[11px]">
+        <LeadAvatar lead={lead} size={58} ring showTempBadge />
+      </div>
+    </div>
   )
 }
 

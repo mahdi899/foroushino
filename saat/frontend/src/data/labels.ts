@@ -341,6 +341,7 @@ export const roleLabels: Record<Role, string> = {
   leader: 'لیدر تیم',
   supervisor: 'سوپروایزر',
   manager: 'مدیر فروش',
+  admin: 'ادمین سیستم',
 }
 
 export const experienceLabels: Record<ExperienceLevel, string> = {

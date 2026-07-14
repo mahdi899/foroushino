@@ -23,7 +23,7 @@ import {
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
-import { Avatar } from '@/components/ui/Avatar'
+import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Button } from '@/components/ui/Button'
 import { Chip, type ChipTone } from '@/components/ui/Chip'
@@ -362,13 +362,7 @@ function FollowupCard({
         onClick={onOpen}
         className="flex min-w-0 flex-1 items-center gap-3 text-right"
       >
-        <Avatar
-          id={lead.id}
-          first={lead.firstName}
-          last={lead.lastName}
-          src={lead.avatar}
-          size={40}
-        />
+        <LeadAvatar lead={lead} size={40} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 min-w-0">
             <p className="truncate text-[14px] font-extrabold leading-snug text-neutral-900">

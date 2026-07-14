@@ -35,6 +35,7 @@ export function mapLead(dto: Dto): Lead {
     id: id(dto.id),
     firstName: dto.first_name ?? '',
     lastName: dto.last_name ?? '',
+    displayCode: dto.display_code ?? undefined,
     phone: dto.phone ?? '',
     city: dto.city ?? '',
     source: dto.source ?? 'website',

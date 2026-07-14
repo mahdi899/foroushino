@@ -67,6 +67,7 @@ export function ManagementHome() {
     leader: { title: 'تیم آلفا امروز', sub: 'عملکرد اعضای تیمت را دنبال کن' },
     supervisor: { title: 'نگاه چند تیمی', sub: 'کیفیت و pipeline تیم‌ها' },
     manager: { title: 'نمای کلان فروش', sub: 'عملکرد کل سازمان' },
+    admin: { title: 'مدیریت سیستم', sub: 'نمای کل سازمان و تنظیمات' },
   }
   const hero = heroByRole[role] ?? heroByRole.leader
 
@@ -152,7 +153,7 @@ export function ManagementHome() {
           </section>
         )}
 
-        {role === 'manager' ? (
+        {(role === 'manager' || role === 'admin') ? (
           <section>
             <h2 className="mb-3 text-[15px] font-extrabold text-neutral-900">روند تیم‌ها</h2>
             <div className="space-y-2">

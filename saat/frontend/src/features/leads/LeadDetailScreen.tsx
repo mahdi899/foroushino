@@ -136,6 +136,7 @@ export function LeadDetailScreen() {
   const releaseLead = useStore((s) => s.releaseLead)
   const reclaimLead = useStore((s) => s.reclaimLead)
   const pushToast = useStore((s) => s.pushToast)
+  const activeCallLeadId = useStore((s) => s.activeCallLeadId)
   const [statusOpen, setStatusOpen] = useState(false)
 
   if (!lead || !isLeadVisibleToAgent(lead, currentAgentId)) {
@@ -160,6 +161,7 @@ export function LeadDetailScreen() {
   const lockedByMe = !!lead.lockedBy && lead.lockedBy === currentAgentId
   const lockAgent = lockedByOther ? agents.find((a) => a.id === lead.lockedBy) : null
   const callable = canCallLead(lead, currentAgentId) && !lead.returnedToPool
+  const canRegisterResult = activeCallLeadId === lead.id
 
   return (
     <Page withNav={false} className="pb-28">
@@ -167,12 +169,14 @@ export function LeadDetailScreen() {
         title={`${lead.firstName} ${lead.lastName}`}
         subtitle={lead.product}
         action={
-          <button
-            onClick={() => navigate(`/call-result/${lead.id}`)}
-            className="glass-inset flex h-9 w-9 items-center justify-center rounded-full text-neutral-600 shadow-sm transition-all active:scale-95 dark:text-neutral-300"
-          >
-            <ClipboardList size={18} strokeWidth={2.25} />
-          </button>
+          canRegisterResult ? (
+            <button
+              onClick={() => navigate(`/call-result/${lead.id}`)}
+              className="glass-inset flex h-9 w-9 items-center justify-center rounded-full text-neutral-600 shadow-sm transition-all active:scale-95 dark:text-neutral-300"
+            >
+              <ClipboardList size={18} strokeWidth={2.25} />
+            </button>
+          ) : undefined
         }
       />
 

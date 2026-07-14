@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { MapPin, Phone } from 'lucide-react'
 import type { Lead, Temperature } from '@/types'
-import { Avatar } from '@/components/ui/Avatar'
+import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { ContactStatusBadge, PriorityBadge, SourceChip } from './Badges'
 import { sourceBadgeClass, sourceIcon } from './icons'
 import { formatPhone, maskPhone, toFa } from '@/lib/format'
@@ -77,15 +77,11 @@ export function LeadProfileHero({ lead }: { lead: Lead }) {
       <div className="relative px-4 pb-5 pt-6">
         <div className="relative flex flex-col items-center">
           <div className={cn('relative rounded-full ring-[4px]', theme.avatarRing, theme.avatarShadow)}>
-            <Avatar
-              id={lead.id}
-              first={lead.firstName}
-              last={lead.lastName}
-              src={lead.avatar}
+            <LeadAvatar
+              lead={lead}
               size={112}
               online
               ring
-              gradient={theme.avatarGradient}
               onlineClassName={theme.onlineDot}
             />
             <span

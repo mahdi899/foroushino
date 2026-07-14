@@ -18,11 +18,13 @@ import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
 import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
-import { Avatar } from '@/components/ui/Avatar'
+import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { FeedbackResultCard } from '@/components/domain/FeedbackResultCard'
 import { FollowupPicker, buildFollowupIso } from '@/components/domain/FollowupPicker'
 import { ContactStatusBadge } from '@/components/domain/Badges'
 import { suggestReasonIcon, suggestReasonChipLabel } from '@/components/domain/icons'
+import { canEndAgentCall, MIN_AGENT_CALL_DURATION_SEC } from '@/lib/callPolicy'
+import { formatDuration } from '@/lib/format'
 import { EmptyState } from '@/components/ui/States'
 import {
   objectionLabels,
@@ -80,6 +82,7 @@ export function CallResultScreen() {
   const lead = useStore((s) => s.leads.find((l) => l.id === id))
   const products = useStore((s) => s.products)
   const lastCallDuration = useStore((s) => s.lastCallDuration)
+  const activeCallLeadId = useStore((s) => s.activeCallLeadId)
   const submitCallResult = useStore((s) => s.submitCallResult)
   const openCallMethodSheet = useStore((s) => s.openCallMethodSheet)
   const pushToast = useStore((s) => s.pushToast)
@@ -106,6 +109,22 @@ export function CallResultScreen() {
     )
   }
 
+  if (!outcome && activeCallLeadId !== lead.id) {
+    return (
+      <Page withNav={false}>
+        <TopBar title="نتیجه تماس" />
+        <EmptyState
+          title="ابتدا تماس بگیرید"
+          description="برای ثبت نتیجه، اول با این سرنخ تماس بگیرید و بعد از پایان تماس نتیجه را ثبت کنید."
+          action={{
+            label: 'بازگشت به جزئیات سرنخ',
+            onClick: () => navigate(`/leads/${lead.id}`, { replace: true }),
+          }}
+        />
+      </Page>
+    )
+  }
+
   const showFollowup = !!routed?.createsFollowup
   const showSale = !!routed?.createsSale
   const showObjection =
@@ -113,6 +132,13 @@ export function CallResultScreen() {
 
   const save = () => {
     if (!result) return
+    if (!canEndAgentCall(lastCallDuration)) {
+      pushToast(
+        `حداقل مدت تماس ${formatDuration(MIN_AGENT_CALL_DURATION_SEC)} است.`,
+        'info',
+      )
+      return
+    }
     haptic('success')
     const out = submitCallResult({
       leadId: lead.id,
@@ -145,14 +171,7 @@ export function CallResultScreen() {
             <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white/85 to-transparent dark:via-white/12" />
           </div>
           <div className="relative mx-auto w-fit">
-            <Avatar
-              id={lead.id}
-              first={lead.firstName}
-              last={lead.lastName}
-              src={lead.avatar}
-              size={64}
-              ring
-            />
+            <LeadAvatar lead={lead} size={64} ring showTempBadge />
             <span className="absolute -bottom-0.5 -left-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white ring-[3px] ring-background">
               <Check size={13} strokeWidth={3} />
             </span>
@@ -401,15 +420,7 @@ function SuccessOverlay({
             )}
           </div>
           <div className="flex items-center justify-between gap-3">
-            <Avatar
-              id={next.id}
-              first={next.firstName}
-              last={next.lastName}
-              src={next.avatar}
-              size={48}
-              ring
-              className="shrink-0"
-            />
+            <LeadAvatar lead={next} size={48} ring className="shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-extrabold text-neutral-900">
                 {next.firstName} {next.lastName}

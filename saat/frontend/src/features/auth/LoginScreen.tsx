@@ -10,9 +10,11 @@ import {
   loginWithTelegramWidget,
   requestPhoneOtp,
   requestTelegramOtp,
+  loginWithDemoAccount,
   TELEGRAM_BOT_USERNAME,
   verifyPhoneOtp,
   verifyTelegramOtp,
+  type DemoAccount,
   type TelegramWidgetUser,
 } from '@/services/auth'
 import { ApiError } from '@/services/http'
@@ -60,6 +62,7 @@ export function LoginScreen() {
   const [validatedUpTo, setValidatedUpTo] = useState(-1)
   const inputs = useRef<(HTMLInputElement | null)[]>([])
   const otpTimers = useRef<ReturnType<typeof setTimeout>[]>([])
+  const otpSubmitId = useRef(0)
 
   const phoneValid = /^09\d{9}$/.test(phone)
   const telegramWebAppReady = isInTelegram()
@@ -125,10 +128,12 @@ export function LoginScreen() {
     const code = otp.join('')
     if (code.length !== OTP_LEN) return
 
+    const submitId = ++otpSubmitId.current
     let cancelled = false
 
-    const rejectOtp = () => {
+    const rejectOtp = (message?: string) => {
       haptic('error')
+      if (message) pushToast(message, 'error')
       setOtpError(true)
       otpTimers.current.push(
         setTimeout(() => {
@@ -146,10 +151,17 @@ export function LoginScreen() {
             ? await verifyPhoneOtp(phone, code)
             : await verifyTelegramOtp(telegramInitData!, code)
 
-        if (cancelled) return
+        if (cancelled || submitId !== otpSubmitId.current) return
         runGreenValidation(() => completeAuth(user))
-      } catch {
-        if (!cancelled) rejectOtp()
+      } catch (error) {
+        if (cancelled || submitId !== otpSubmitId.current) return
+        const message =
+          error instanceof ApiError
+            ? error.message
+            : error instanceof Error
+              ? error.message
+              : 'کد وارد شده نادرست است'
+        rejectOtp(message)
       }
     }
 
@@ -167,6 +179,7 @@ export function LoginScreen() {
     telegramInitData,
     runGreenValidation,
     completeAuth,
+    pushToast,
   ])
 
   const handleOtp = (i: number, val: string) => {
@@ -203,6 +216,7 @@ export function LoginScreen() {
       const result = await requestPhoneOtp(phone)
       setOtpChannel('phone')
       setOtpHint(result.hint ?? (result.channel === 'demo' ? 'کد ثابت دمو' : 'کد ورود به تلگرامت ارسال شد.'))
+      setOtp(Array(OTP_LEN).fill(''))
       setStep('otp')
     } catch (error) {
       haptic('error')
@@ -213,6 +227,35 @@ export function LoginScreen() {
             ? error.message
             : 'ارسال کد ناموفق بود'
       pushToast(message, 'error')
+    } finally {
+      setTgLoading(false)
+    }
+  }
+
+  const handlePickDemoAccount = async (account: DemoAccount) => {
+    haptic('light')
+    setPhone(account.phone)
+    setTgLoading(true)
+    try {
+      await requestPhoneOtp(account.phone)
+      setOtpChannel('phone')
+      setOtpHint(`کد ثابت دمو: ${account.otp}`)
+      setOtp(account.otp.split(''))
+      setStep('otp')
+    } catch {
+      try {
+        const user = await loginWithDemoAccount(account)
+        completeAuth(user)
+      } catch (error) {
+        haptic('error')
+        const message =
+          error instanceof ApiError
+            ? error.message
+            : error instanceof Error
+              ? error.message
+              : 'ورود دمو ناموفق بود'
+        pushToast(message, 'error')
+      }
     } finally {
       setTgLoading(false)
     }
@@ -501,7 +544,7 @@ export function LoginScreen() {
                   در فرانت فعال می‌شود.
                 </p>
               )}
-              <DemoAccountsPanel className="mt-1" onPickPhone={setPhone} />
+              <DemoAccountsPanel className="mt-1" onPickAccount={handlePickDemoAccount} />
             </div>
           ) : (
             <button

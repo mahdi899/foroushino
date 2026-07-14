@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -8,6 +8,7 @@ import {
   NotebookPen,
   Volume2,
   BookOpen,
+  MessageSquareText,
   PhoneOff,
   ChevronDown,
   MoreVertical,
@@ -20,23 +21,35 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { Avatar } from '@/components/ui/Avatar'
+import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { SalesScriptSheet } from '@/components/domain/SalesScriptSheet'
+import { LeadSmsSheet } from '@/components/domain/LeadSmsSheet'
+import { LeadNotesStrip } from '@/components/domain/LeadNotesStrip'
 import { ContactStatusBadge, SourceChip } from '@/components/domain/Badges'
 import { objectionLabels } from '@/data/labels'
-import { formatDuration, formatPhone, toFa } from '@/lib/format'
+import { formatDuration, toFa } from '@/lib/format'
+import { leadDisplayCode } from '@/lib/leadCode'
 import { dialNativePhone } from '@/lib/call'
+import {
+  MIN_AGENT_CALL_DURATION_SEC,
+  canEndAgentCall,
+  remainingAgentCallSec,
+} from '@/lib/callPolicy'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
+import { collectLeadNotes } from '@/lib/leadNotes'
 
 export function DialerScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
   const lead = useStore((s) => s.leads.find((l) => l.id === id))
+  const calls = useStore((s) => s.calls.filter((c) => c.leadId === id))
+  const followups = useStore((s) => s.followups.filter((f) => f.leadId === id))
   const activeCallMethod = useStore((s) => s.activeCallMethod)
   const endCall = useStore((s) => s.endCall)
   const updateLeadNote = useStore((s) => s.updateLeadNote)
+  const pushToast = useStore((s) => s.pushToast)
 
   const isNativeCall = activeCallMethod === 'native'
   const nativeDialed = useRef(false)
@@ -44,7 +57,7 @@ export function DialerScreen() {
   const [seconds, setSeconds] = useState(0)
   const [muted, setMuted] = useState(false)
   const [speaker, setSpeaker] = useState(false)
-  const [sheet, setSheet] = useState<null | 'note' | 'keypad' | 'guide'>(null)
+  const [sheet, setSheet] = useState<null | 'note' | 'keypad' | 'guide' | 'sms'>(null)
   const [note, setNote] = useState('')
 
   useEffect(() => {
@@ -59,12 +72,28 @@ export function DialerScreen() {
     return () => window.clearTimeout(timer)
   }, [isNativeCall, lead])
 
+  const leadNotes = useMemo(
+    () => (lead ? collectLeadNotes(lead, calls, followups) : []),
+    [lead, calls, followups],
+  )
+
   if (!lead) {
     navigate('/home', { replace: true })
     return null
   }
 
+  const canEndCall = canEndAgentCall(seconds)
+  const remainingSec = remainingAgentCallSec(seconds)
+
   const hangUp = () => {
+    if (!canEndCall) {
+      haptic('error')
+      pushToast(
+        `حداقل ${formatDuration(MIN_AGENT_CALL_DURATION_SEC)} تماس لازم است — ${formatDuration(remainingSec)} مانده.`,
+        'info',
+      )
+      return
+    }
     haptic('heavy')
     endCall(seconds)
     navigate(`/call-result/${lead.id}`, { replace: true })
@@ -82,7 +111,11 @@ export function DialerScreen() {
         <button
           type="button"
           onClick={hangUp}
-          className="glass-inset flex h-10 w-10 items-center justify-center rounded-full text-text-soft transition-all active:scale-95"
+          disabled={!canEndCall}
+          className={cn(
+            'glass-inset flex h-10 w-10 items-center justify-center rounded-full text-text-soft transition-all',
+            canEndCall ? 'active:scale-95' : 'cursor-not-allowed opacity-45',
+          )}
         >
           <ChevronDown size={22} strokeWidth={2.25} />
         </button>
@@ -111,26 +144,34 @@ export function DialerScreen() {
             transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
             className="absolute h-32 w-32 rounded-full bg-[#3390EC]/12 dark:bg-[#8774E1]/14"
           />
-          <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={108} ring />
+          <LeadAvatar lead={lead} size={108} ring showTempBadge />
         </div>
         <h2 className="mt-5 text-xl font-black text-text">
           {lead.firstName} {lead.lastName}
         </h2>
-        <p className="ltr-nums mt-1 text-sm font-bold text-text-soft tabular-nums">
-          {formatPhone(lead.phone)}
+        <p className="mt-1 text-sm font-bold text-text-soft">
+          کد سرنخ{' '}
+          <span dir="ltr" className="font-extrabold tracking-[0.14em] text-text tabular-nums">
+            {leadDisplayCode(lead)}
+          </span>
         </p>
-        <div className="mt-2.5 flex items-center gap-2">
-          <ContactStatusBadge temperature={lead.temperature} />
-          <span className="glass-inset flex items-center gap-1 rounded-full border border-white/50 px-2.5 py-1 text-sm font-bold tabular-nums text-emerald-600 dark:border-white/10">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+        <div className="mt-2.5">
+          <span
+            className={cn(
+              'glass-inset inline-flex items-center gap-1 rounded-full border border-white/50 px-2.5 py-1 text-sm font-bold tabular-nums dark:border-white/10',
+              canEndCall ? 'text-emerald-600' : 'text-amber-600',
+            )}
+          >
+            <span
+              className={cn(
+                'h-1.5 w-1.5 rounded-full',
+                canEndCall ? 'bg-emerald-500' : 'animate-pulse bg-amber-500',
+              )}
+            />
             {formatDuration(seconds)}
           </span>
         </div>
-        {isNativeCall && (
-          <p className="mt-4 max-w-[280px] text-center text-[13px] font-medium leading-6 text-text-muted">
-            پس از پایان تماس، دکمه قرمز را بزن تا نتیجه را ثبت کنی.
-          </p>
-        )}
+        <LeadNotesStrip notes={leadNotes} />
       </div>
 
       <div className="shrink-0 px-8 pb-[calc(12px+var(--safe-bottom))]">
@@ -163,6 +204,11 @@ export function DialerScreen() {
             />
           )}
           <ControlButton
+            icon={<MessageSquareText size={22} />}
+            label="پیامک"
+            onClick={() => setSheet('sms')}
+          />
+          <ControlButton
             icon={<BookOpen size={22} />}
             label="راهنما"
             tone="accent"
@@ -172,9 +218,13 @@ export function DialerScreen() {
 
         <div className="mt-5 flex justify-center">
           <motion.button
-            whileTap={{ scale: 0.9 }}
+            whileTap={canEndCall ? { scale: 0.9 } : undefined}
             onClick={hangUp}
-            className="flex h-16 w-16 items-center justify-center rounded-full bg-error text-white shadow-[0_12px_30px_-8px_rgba(229,72,77,0.6)]"
+            disabled={!canEndCall}
+            className={cn(
+              'flex h-16 w-16 items-center justify-center rounded-full text-white shadow-[0_12px_30px_-8px_rgba(229,72,77,0.6)]',
+              canEndCall ? 'bg-error' : 'cursor-not-allowed bg-error/45',
+            )}
           >
             <PhoneOff size={24} />
           </motion.button>
@@ -203,6 +253,8 @@ export function DialerScreen() {
       <BottomSheet open={sheet === 'keypad'} onClose={() => setSheet(null)} title="صفحه کلید">
         <Keypad />
       </BottomSheet>
+
+      <LeadSmsSheet open={sheet === 'sms'} onClose={() => setSheet(null)} lead={lead} />
 
       <BottomSheet open={sheet === 'guide'} onClose={() => setSheet(null)} title="راهنما">
         <div className="space-y-5 pb-1 pt-1">

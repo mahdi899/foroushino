@@ -4,7 +4,8 @@ import { Lock, Phone, Unlock, Clock } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
-import { Avatar } from '@/components/ui/Avatar'
+import { LeadAvatar } from '@/components/domain/LeadAvatar'
+import type { Lead } from '@/types'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/ui/States'
 import { toFa } from '@/lib/format'
@@ -42,10 +43,7 @@ export function LockedLeadsScreen() {
           leads.map((lead) => (
             <LockedLeadRow
               key={lead.id}
-              leadId={lead.id}
-              firstName={lead.firstName}
-              lastName={lead.lastName}
-              avatar={lead.avatar ?? undefined}
+              lead={lead}
               lockedUntil={lead.lockedUntil ?? null}
               onCall={() => {
                 haptic('medium')
@@ -66,19 +64,13 @@ export function LockedLeadsScreen() {
 }
 
 function LockedLeadRow({
-  leadId,
-  firstName,
-  lastName,
-  avatar,
+  lead,
   lockedUntil,
   onCall,
   onRelease,
   onOpen,
 }: {
-  leadId: string
-  firstName: string
-  lastName: string
-  avatar?: string
+  lead: Lead
   lockedUntil: string | null
   onCall: () => void
   onRelease: () => void
@@ -90,10 +82,10 @@ function LockedLeadRow({
   return (
     <div className="rounded-2xl border border-border/60 bg-surface p-3.5 shadow-card">
       <button onClick={onOpen} className="flex w-full items-center gap-3 text-right">
-        <Avatar id={leadId} first={firstName} last={lastName} src={avatar} size={46} />
+        <LeadAvatar lead={lead} size={46} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] font-extrabold text-neutral-900">
-            {firstName} {lastName}
+            {lead.firstName} {lead.lastName}
           </p>
           <p className="mt-0.5 flex items-center gap-1 text-[11px] font-bold text-error-500">
             <Lock size={11} />

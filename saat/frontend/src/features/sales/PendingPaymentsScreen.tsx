@@ -4,7 +4,7 @@ import { Wallet, Check, Clock } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
-import { Avatar } from '@/components/ui/Avatar'
+import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { Button } from '@/components/ui/Button'
 import { SuccessScreen } from '@/components/ui/SuccessScreen'
 import { EmptyState } from '@/components/ui/States'
@@ -44,7 +44,7 @@ export function PendingPaymentsScreen() {
             return (
               <div key={sale.id} className="rounded-2xl border border-warning-200/70 bg-warning-50/40 p-3.5 shadow-card">
                 <div className="flex items-center gap-3">
-                  <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={44} />
+                  <LeadAvatar lead={lead} size={44} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13.5px] font-extrabold text-neutral-900">
                       {lead.firstName} {lead.lastName}

@@ -51,6 +51,7 @@ interface LoginResponse {
 }
 
 export function mapAuthUserRole(roles: string[]): Role {
+  if (roles.includes('admin')) return 'admin'
   if (roles.includes('manager')) return 'manager'
   if (roles.includes('supervisor')) return 'supervisor'
   if (roles.includes('leader')) return 'leader'
@@ -110,6 +111,10 @@ export async function fetchDemoAccounts(): Promise<DemoAccount[]> {
 export async function verifyPhoneOtp(phone: string, code: string): Promise<AuthenticatedUser> {
   const response = await http.post<LoginResponse>('/auth/phone-otp/verify', { phone, code })
   return persistLoginResponse(response)
+}
+
+export async function loginWithDemoAccount(account: DemoAccount): Promise<AuthenticatedUser> {
+  return verifyPhoneOtp(account.phone, account.otp)
 }
 
 export async function requestTelegramOtp(initData: string): Promise<void> {

@@ -14,7 +14,7 @@ import {
 import { useStore } from '@/store/useStore'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Button } from '@/components/ui/Button'
-import { Avatar } from '@/components/ui/Avatar'
+import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { ContactStatusBadge, SourceChip, LeadStatusBadge } from './Badges'
 import { objectionLabels, stageLabels } from '@/data/labels'
 import { formatPhone, maskPhone, relativeDayTime, toFa } from '@/lib/format'
@@ -45,7 +45,7 @@ export function LeadQuickViewSheet({
     <BottomSheet open={open} onClose={onClose} title="پیش‌نمایش سریع">
       <div className="space-y-4 pb-1 pt-1">
         <div className="flex items-center gap-3">
-          <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={52} ring />
+          <LeadAvatar lead={lead} size={52} ring />
           <div className="min-w-0 flex-1">
             <p className="truncate text-[16px] font-extrabold text-neutral-900">
               {lead.firstName} {lead.lastName}

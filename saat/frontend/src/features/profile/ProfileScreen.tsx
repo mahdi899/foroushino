@@ -15,8 +15,11 @@ import {
   WalletCards,
   GraduationCap,
   History,
+  Server,
   type LucideIcon,
 } from 'lucide-react'
+import { isAgentRole, isManagementRole } from '@/lib/roles'
+import { hasPermission } from '@/lib/permissions'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
@@ -62,9 +65,15 @@ function ProfileStatIcon({ icon: Icon, tone }: { icon: LucideIcon; tone: StatTon
 
 export function ProfileScreen() {
   const navigate = useNavigate()
+  const role = useStore((s) => s.role)
+  const permissions = useStore((s) => s.permissions)
   const agent = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
   const logout = useStore((s) => s.logout)
   if (!agent) return null
+
+  const agentLine = isAgentRole(role)
+  const management = isManagementRole(role)
+  const canOpenAdminSettings = hasPermission(permissions, 'admin.settings')
 
   const stats: { icon: LucideIcon; label: string; value: string; tone: StatTone }[] = [
     { icon: Flame, label: 'streak', value: `${toFa(agent.streak)} روز`, tone: 'warning' },
@@ -73,16 +82,23 @@ export function ProfileScreen() {
   ]
 
   const menu: { icon: LucideIcon; label: string; onClick: () => void }[] = [
-    ...(agent.role === 'agent'
+    ...(agentLine
       ? [{ icon: Activity, label: 'وضعیت کاری من', onClick: () => navigate('/work-status') }]
       : []),
-    { icon: BadgeDollarSign, label: 'فروش‌های من', onClick: () => navigate('/sales') },
-    ...(agent.role === 'agent'
+    { icon: BadgeDollarSign, label: management ? 'فروش‌ها' : 'فروش‌های من', onClick: () => navigate('/sales') },
+    ...(agentLine
       ? [{ icon: WalletCards, label: 'درآمد من', onClick: () => navigate('/wallet') }]
       : []),
-    { icon: Trophy, label: 'عملکرد و دستاوردها', onClick: () => navigate('/performance') },
-    ...(agent.role === 'agent'
+    {
+      icon: Trophy,
+      label: management ? 'گزارش‌ها' : 'عملکرد و دستاوردها',
+      onClick: () => navigate(management ? '/reports' : '/performance'),
+    },
+    ...(agentLine
       ? [{ icon: GraduationCap, label: 'آموزش و اسکریپت فروش', onClick: () => navigate('/training') }]
+      : []),
+    ...(canOpenAdminSettings
+      ? [{ icon: Server, label: 'تنظیمات سیستم', onClick: () => navigate('/admin/settings') }]
       : []),
     { icon: Bell, label: 'اعلان‌ها', onClick: () => navigate('/notifications') },
     { icon: History, label: 'تاریخچه فعالیت', onClick: () => navigate('/activity') },

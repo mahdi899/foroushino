@@ -8,6 +8,7 @@ import {
   Globe,
   Trash2,
   WifiOff,
+  UsersRound,
   ChevronLeft,
   LogOut,
   ShieldCheck,
@@ -23,6 +24,9 @@ import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
 import { OfflineState } from '@/components/ui/States'
 import { Chip } from '@/components/ui/Chip'
+import { DemoRolePopup } from '@/components/auth/DemoRoleSwitcher'
+import { useDemoMode } from '@/hooks/useDemoMode'
+import { roleLabels } from '@/data/labels'
 import { toFa } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
@@ -49,7 +53,10 @@ export function SettingsScreen() {
   const setAutoLock = useStore((s) => s.setAutoLock)
   const logout = useStore((s) => s.logout)
   const { canInstall, install, isInstalled } = useInstallPrompt()
+  const { enabled: demoEnabled } = useDemoMode()
+  const role = useStore((s) => s.role)
   const [offline, setOffline] = useState(false)
+  const [demoRoleOpen, setDemoRoleOpen] = useState(false)
   const [toggles, setToggles] = useState({ notif: true, haptic: true })
 
   if (offline) {
@@ -149,10 +156,19 @@ export function SettingsScreen() {
         </SettingsSection>
 
         <SettingsSection title="زبان">
-          <NavRow icon={Globe} label="زبان" value="فارسی" />
+          <NavRow icon={Globe} label="زبان" value="فارسی" sublabel="به‌زودی" disabled />
         </SettingsSection>
 
         <SettingsSection title="پیشرفته">
+          {demoEnabled && (
+            <NavRow
+              icon={UsersRound}
+              label="تغییر نقش دمو"
+              value={roleLabels[role]}
+              onClick={() => setDemoRoleOpen(true)}
+              bordered
+            />
+          )}
           <NavRow icon={WifiOff} label="نمایش حالت آفلاین" onClick={() => setOffline(true)} bordered />
           <NavRow
             icon={Trash2}
@@ -184,6 +200,8 @@ export function SettingsScreen() {
           سات · نسخه ۱.۰.۰
         </motion.p>
       </motion.div>
+
+      <DemoRolePopup open={demoRoleOpen} onClose={() => setDemoRoleOpen(false)} />
     </Page>
   )
 }
@@ -251,6 +269,7 @@ function NavRow({
   icon,
   label,
   value,
+  sublabel,
   danger,
   bordered,
   disabled,
@@ -259,6 +278,7 @@ function NavRow({
   icon: LucideIcon
   label: string
   value?: string
+  sublabel?: string
   danger?: boolean
   bordered?: boolean
   disabled?: boolean
@@ -272,15 +292,20 @@ function NavRow({
       className={cn(
         'flex w-full items-center gap-3 px-3.5 py-3.5 transition-colors active:bg-black/[0.03] dark:active:bg-white/[0.04]',
         bordered && 'border-b border-white/40 dark:border-white/8',
-        disabled && 'opacity-60',
+        disabled && 'cursor-default opacity-55 active:bg-transparent dark:active:bg-transparent',
       )}
     >
       <SettingsIcon icon={icon} danger={danger} />
-      <span className={cn('flex-1 text-right text-[15px] font-semibold', danger ? 'text-error-600' : 'text-text')}>
-        {label}
-      </span>
+      <div className="min-w-0 flex-1 text-right">
+        <span className={cn('text-[15px] font-semibold', danger ? 'text-error-600' : 'text-text')}>
+          {label}
+        </span>
+        {sublabel && <p className="mt-0.5 text-[11px] font-semibold text-text-soft">{sublabel}</p>}
+      </div>
       {value && <span className="text-[13px] font-semibold text-text-soft">{value}</span>}
-      <ChevronLeft size={18} className="text-[#C7C7CC] dark:text-[#48484A]" strokeWidth={2.25} />
+      {!disabled && (
+        <ChevronLeft size={18} className="text-[#C7C7CC] dark:text-[#48484A]" strokeWidth={2.25} />
+      )}
     </button>
   )
 }

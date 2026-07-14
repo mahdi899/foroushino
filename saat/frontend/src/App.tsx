@@ -13,6 +13,7 @@ import { QuickActionSheet } from '@/components/layout/QuickActionSheet'
 import { CallMethodSheet } from '@/components/domain/CallMethodSheet'
 import { ToastHost } from '@/components/ui/Toast'
 import { cn } from '@/lib/cn'
+import { isAgentRole } from '@/lib/roles'
 import { isShiftOpen } from '@/lib/shiftUtils'
 
 import { SplashScreen } from '@/features/auth/SplashScreen'
@@ -40,6 +41,7 @@ import { CommissionDetailScreen } from '@/features/wallet/CommissionDetailScreen
 import { CommissionRulesScreen } from '@/features/wallet/CommissionRulesScreen'
 import { TrainingScreen } from '@/features/training/TrainingScreen'
 import { ObjectionsScreen } from '@/features/training/ObjectionsScreen'
+import { AdminSettingsScreen } from '@/features/admin/AdminSettingsScreen'
 import { ActivityHistoryScreen } from '@/features/activity/ActivityHistoryScreen'
 import { AppLockScreen } from '@/components/domain/AppLockScreen'
 import { OfflineBanner } from '@/components/pwa/DataGate'
@@ -59,7 +61,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 function RequireShift({ children }: { children: React.ReactNode }) {
   const role = useStore((s) => s.role)
   const shiftStarted = useStore((s) => isShiftOpen(s.workSession))
-  if (role === 'agent' && !shiftStarted) return <Navigate to="/shift-start" replace />
+  if (isAgentRole(role) && !shiftStarted) return <Navigate to="/shift-start" replace />
   return <>{children}</>
 }
 
@@ -152,6 +154,7 @@ function Shell() {
             <Route path="/notifications" element={<RequireAuth><NotificationsScreen /></RequireAuth>} />
             <Route path="/activity" element={<RequireAuth><ActivityHistoryScreen /></RequireAuth>} />
             <Route path="/settings" element={<RequireAuth><SettingsScreen /></RequireAuth>} />
+            <Route path="/admin/settings" element={<RequireAuth><AdminSettingsScreen /></RequireAuth>} />
 
             <Route path="*" element={<Navigate to={isAuthed ? '/home' : '/'} replace />} />
           </Routes>

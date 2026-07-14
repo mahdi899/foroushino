@@ -1,4 +1,4 @@
-export type Role = 'agent' | 'leader' | 'supervisor' | 'manager'
+export type Role = 'agent' | 'leader' | 'supervisor' | 'manager' | 'admin'
 
 export type Temperature = 'hot' | 'warm' | 'cold'
 
@@ -106,6 +106,7 @@ export interface Lead {
   id: string
   firstName: string
   lastName: string
+  displayCode?: string
   phone: string
   city: string
   source: LeadSource

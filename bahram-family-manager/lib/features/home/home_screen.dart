@@ -23,7 +23,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _load() {
-    setState(() => _future = context.read<AppState>().manager.home());
+    setState(() {
+      _future = context.read<AppState>().manager.home();
+    });
   }
 
   @override

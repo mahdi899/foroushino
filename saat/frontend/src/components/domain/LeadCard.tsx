@@ -1,6 +1,6 @@
 import { MapPin, Phone, Clock, Flame, Sun, Snowflake, Lock, Info, Undo2 } from 'lucide-react'
 import type { Lead, LeadSource, Temperature } from '@/types'
-import { Avatar } from '@/components/ui/Avatar'
+import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { PriorityBadge } from './Badges'
 import { sourceBadgeClass, sourceIcon } from './icons'
 import { relativeDayTime, isToday, toFa } from '@/lib/format'
@@ -61,14 +61,7 @@ export function LeadCard({ lead, onClick, onCall, onQuickView, lockedByName }: L
       <div className="relative p-3">
         <div className="flex items-start gap-2.5">
           <div className="relative shrink-0">
-            <Avatar
-              id={lead.id}
-              first={lead.firstName}
-              last={lead.lastName}
-              src={lead.avatar}
-              size={48}
-              ring
-            />
+            <LeadAvatar lead={lead} size={48} ring />
             <span
               className={cn(
                 'absolute -bottom-0.5 -left-0.5 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white dark:ring-[#232E38]',

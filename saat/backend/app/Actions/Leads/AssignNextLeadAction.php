@@ -9,8 +9,10 @@ use App\Models\Lead;
 use App\Models\LeadStatusHistory;
 use App\Models\User;
 use App\Support\LeadPriorityScore;
+use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -45,7 +47,7 @@ class AssignNextLeadAction
         }
 
         try {
-            return DB::transaction(function () use ($agent) {
+            $result = DB::transaction(function () use ($agent) {
                 $lead = $this->selectCandidate($agent);
 
                 if (! $lead) {
@@ -73,10 +75,22 @@ class AssignNextLeadAction
                     'note' => $wasUnassigned ? 'واگذاری خودکار از استخر لیدها' : 'قفل شد برای تماس بعدی',
                 ]);
 
-                broadcast(new LeadAssigned($lead))->toOthers();
-
                 return ['lead' => $lead, 'reason' => $this->reasonFor($lead)];
             });
+
+            if ($result['lead']) {
+                try {
+                    broadcast(new LeadAssigned($result['lead']))->toOthers();
+                } catch (BroadcastException $e) {
+                    Log::warning('LeadAssigned broadcast skipped', [
+                        'lead_id' => $result['lead']->id,
+                        'agent_id' => $agent->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            return $result;
         } finally {
             $lock->release();
         }

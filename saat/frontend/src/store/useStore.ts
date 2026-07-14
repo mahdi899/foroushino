@@ -28,6 +28,7 @@ import type {
 import type { CallMethod } from '@/lib/call'
 import type { AuthenticatedUser } from '@/services/auth'
 import { clearToken, mapAuthUserRole } from '@/services/auth'
+import { hasPermission as checkPermission } from '@/lib/permissions'
 import {
   agents as mockAgents,
   followups as mockFollowups,
@@ -79,6 +80,7 @@ interface AppState {
   isAuthed: boolean
   phone: string
   role: Role
+  permissions: string[]
   currentAgentId: string
 
   // shift & availability
@@ -128,6 +130,7 @@ interface AppState {
   // session actions
   login: (phone: string) => void
   setSessionFromAuth: (user: AuthenticatedUser) => void
+  hasPermission: (permission: string) => boolean
   logout: () => void
 
   // shift actions
@@ -193,6 +196,7 @@ interface AppState {
 
   // sync
   applySyncData: (payload: SyncPayload) => void
+  upsertLead: (lead: Lead) => void
   setAgentAvatar: (avatar: string | null) => void
   setDataReady: (ready: boolean) => void
   setDataSyncing: (syncing: boolean) => void
@@ -308,6 +312,7 @@ const AGENT_MAP: Record<Role, string> = {
   leader: 'a-leader',
   supervisor: 'a-sup',
   manager: 'a-mgr',
+  admin: 'a-admin',
 }
 
 type PersistedSlice = Pick<
@@ -344,6 +349,7 @@ export const useStore = create<AppState>()(
       isAuthed: false,
       phone: '',
       role: 'agent',
+      permissions: [],
       currentAgentId: MY_AGENT_ID,
 
       availability: 'offline',
@@ -391,10 +397,12 @@ export const useStore = create<AppState>()(
           isAuthed: true,
           phone: user.phone ?? user.email,
           role,
+          permissions: user.permissions ?? [],
           currentAgentId: usesRemoteData ? String(user.id) : AGENT_MAP[role],
           dataReady: !usesRemoteData,
         })
       },
+      hasPermission: (permission) => checkPermission(get().permissions, permission),
       logout: () => {
         clearToken()
         set({
@@ -404,6 +412,7 @@ export const useStore = create<AppState>()(
           availabilityChangedAt: null,
           availabilityAutoReason: null,
           role: 'agent',
+          permissions: [],
           currentAgentId: AGENT_MAP.agent,
           workSession: null,
           workDaySummaries: [],
@@ -1037,6 +1046,8 @@ export const useStore = create<AppState>()(
           workSession: payload.workSession,
           workDaySummaries: payload.workDaySummaries,
           currentAgentId: payload.agent.id,
+          role: payload.role,
+          permissions: payload.permissions,
           agents: state.agents.some((agent) => agent.id === payload.agent.id)
             ? state.agents.map((agent) =>
                 agent.id === payload.agent.id ? { ...agent, ...payload.agent } : agent,
@@ -1045,6 +1056,16 @@ export const useStore = create<AppState>()(
           dataReady: true,
           dataSyncing: false,
         })),
+      upsertLead: (lead) =>
+        set((state) => {
+          const hydrated = hydrateLeads([lead])[0]
+          const exists = state.leads.some((l) => l.id === hydrated.id)
+          return {
+            leads: exists
+              ? state.leads.map((l) => (l.id === hydrated.id ? { ...l, ...hydrated } : l))
+              : [hydrated, ...state.leads],
+          }
+        }),
       setAgentAvatar: (avatar) =>
         set((state) => ({
           agents: state.agents.map((agent) =>
@@ -1085,7 +1106,7 @@ export const useStore = create<AppState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return
         state.agents = withAvatars(state.agents, mockAgents)
-        state.leads = hydrateLeads(withAvatars(state.leads, mockLeads))
+        state.leads = hydrateLeads(state.leads)
         if (state.darkMode) {
           document.documentElement.setAttribute('data-theme', 'dark')
         }

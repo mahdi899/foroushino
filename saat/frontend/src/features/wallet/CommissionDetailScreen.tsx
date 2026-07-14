@@ -15,7 +15,7 @@ import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
 import { Badge } from '@/components/ui/Badge'
-import { Avatar } from '@/components/ui/Avatar'
+import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { EmptyState } from '@/components/ui/States'
 import { commissionStatusLabels, commissionStatusTone } from '@/data/labels'
 import { formatMoney, formatJalaliDate, relativeDayTime } from '@/lib/format'
@@ -143,7 +143,7 @@ export function CommissionDetailScreen() {
               'dark:border-white/10',
             )}
           >
-            <Avatar id={lead.id} first={lead.firstName} last={lead.lastName} src={lead.avatar} size={48} ring />
+            <LeadAvatar lead={lead} size={48} ring />
             <div className="min-w-0 flex-1">
               <p className="truncate text-[15px] font-bold text-text">
                 {lead.firstName} {lead.lastName}

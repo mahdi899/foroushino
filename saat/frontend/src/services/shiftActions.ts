@@ -10,7 +10,7 @@ type Dto = Record<string, unknown>
 export async function refreshShiftFromServer(): Promise<void> {
   const [current, history] = await Promise.all([
     http.get<Dto>('/shift/current'),
-    http.get<Dto[]>('/shift/history?days=14'),
+    http.get<Dto[]>('/shift/history?days=366'),
   ])
 
   const sessionDto = current.session as Dto | null | undefined

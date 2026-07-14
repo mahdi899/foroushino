@@ -45,7 +45,7 @@ class ShiftController extends Controller
     public function history(Request $request): JsonResponse
     {
         $user = $request->user();
-        $days = min(30, max(7, (int) $request->query('days', 14)));
+        $days = min(366, max(7, (int) $request->query('days', 14)));
         $since = today()->subDays($days - 1)->startOfDay();
 
         $sessions = UserWorkSession::query()
