@@ -1,11 +1,11 @@
 import { toJalali } from '@/lib/format'
+import { businessWeekdayIndex, todayDateKey } from '@/lib/businessDate'
 import {
   calcDailyBreakSeconds,
   calcDailyCallSeconds,
   calcDailyProductiveSeconds,
   dateKeyFromIso,
   isShiftOpen,
-  todayDateKey,
 } from '@/lib/shiftUtils'
 import type { Availability, Call, WorkDaySummary, WorkSession } from '@/types'
 
@@ -200,7 +200,7 @@ export function getWorkPeriodDayEntries(
     if (period === 'weekly') {
       return {
         date,
-        label: WEEKDAY_SHORT[dayDate.getUTCDay()],
+        label: WEEKDAY_SHORT[businessWeekdayIndex(date)],
         productiveSeconds,
         hasWork: productiveSeconds > 0,
       }

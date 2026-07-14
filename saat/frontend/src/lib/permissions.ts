@@ -35,6 +35,7 @@ const MOCK_ROLE_PERMISSIONS: Partial<Record<Role, string[]>> = {
     'sales.view-team',
     'sales.review-payment',
     'reports.view',
+    'reports.view-team',
     'reports.submit-team',
   ],
   supervisor: [
@@ -48,6 +49,7 @@ const MOCK_ROLE_PERMISSIONS: Partial<Record<Role, string[]>> = {
     'sales.review-payment',
     'sales.register-payment',
     'reports.view',
+    'reports.view-team',
     'reports.view-all',
     'reports.approve-team',
     'users.view',

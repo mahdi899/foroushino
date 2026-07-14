@@ -1,4 +1,5 @@
 import type { Agent, Followup, Lead } from '@/types'
+import { addBusinessDays, dateKeyFromIso, todayDateKey } from '@/lib/businessDate'
 import { isToday, isOverdue } from './format'
 import { rankSuggestions, isCallable, type Suggestion } from '@/services/logic'
 
@@ -92,12 +93,7 @@ export function upcomingFollowups(followups: Followup[]): Followup[] {
 }
 
 function isTomorrow(iso: string): boolean {
-  const d = new Date(iso)
-  const t = new Date()
-  t.setDate(t.getDate() + 1)
-  return (
-    d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate()
-  )
+  return dateKeyFromIso(iso) === addBusinessDays(todayDateKey(), 1)
 }
 
 export function tomorrowFollowups(followups: Followup[]): Followup[] {

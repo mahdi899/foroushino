@@ -15,6 +15,16 @@ it('exposes runtime app config to authenticated users', function () {
         ->assertJsonPath('data.call_lock_minutes', 25);
 });
 
+it('exposes business calendar settings', function () {
+    $agent = makeAgent();
+
+    $this->actingAs($agent, 'sanctum')
+        ->getJson('/api/v1/app-config')
+        ->assertOk()
+        ->assertJsonPath('data.business_timezone', 'Asia/Tehran')
+        ->assertJsonStructure(['data' => ['business_date']]);
+});
+
 it('defaults min call duration to zero when unset', function () {
     $agent = makeAgent();
 

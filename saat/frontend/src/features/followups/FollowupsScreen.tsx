@@ -41,6 +41,7 @@ import {
   getSuggestion,
 } from '@/lib/leadUtils'
 import { followupKindLabels } from '@/data/labels'
+import { isBusinessToday } from '@/lib/businessDate'
 import { formatTime, toFa, relativeDay, relativeDayTime } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
 import type { Followup, FollowupKind, Lead } from '@/types'
@@ -352,8 +353,13 @@ function FollowupCard({
           overdue ? 'text-error-600' : 'text-neutral-500',
         )}
       >
-        <span className="text-[12px] font-extrabold leading-none">
-          {formatTime(new Date(followup.dueAt))}
+        <span className="flex flex-col items-center gap-0.5 text-[12px] font-extrabold leading-none">
+          {!isBusinessToday(followup.dueAt) && (
+            <span className="text-[9px] font-bold leading-tight text-neutral-400">
+              {relativeDay(followup.dueAt)}
+            </span>
+          )}
+          <span>{formatTime(new Date(followup.dueAt))}</span>
         </span>
       </div>
 

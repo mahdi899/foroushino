@@ -31,7 +31,7 @@ export function DemoRolePopup({ open, onClose }: DemoRolePopupProps) {
     try {
       const user = await loginWithDemoAccount(account)
       setSessionFromAuth(user)
-      const payload = await syncAppData()
+      const payload = await syncAppData({ priorDailyStatsDate: useStore.getState().dailyStatsDate })
       applySyncData(payload)
       onClose()
       pushToast(`نقش: ${account.label}`, 'success')

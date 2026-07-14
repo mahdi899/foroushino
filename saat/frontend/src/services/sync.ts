@@ -19,7 +19,7 @@ import type {
   WorkDaySummary,
   WorkSession,
 } from '@/types'
-import { fetchMe, mapAuthUserRole } from './auth'
+import { fetchMe, mapAuthUserRole, type AuthenticatedUser } from './auth'
 import { http } from './http'
 import {
   mapRuntimeAppSettings,
@@ -46,7 +46,8 @@ import {
   id,
 } from './mappers'
 import { syncAllAgentsDailyStats, conversionRateFromStats } from '@/lib/dailyGoal'
-import { isManagementRole } from '@/lib/roles'
+import { todayDateKey } from '@/lib/businessDate'
+import { isLeaderRole, isManagementRole } from '@/lib/roles'
 import { fetchTeamLive, mergeTeamLiveIntoAgents, agentsFromTeamLive, teamsFromTeamLive } from './teamLive'
 
 type Dto = Record<string, unknown>
@@ -86,6 +87,7 @@ export interface SyncPayload {
   availabilityChangedAt: string | null
   workSession: WorkSession | null
   workDaySummaries: WorkDaySummary[]
+  businessDate: string
   appSettings: RuntimeAppSettings
 }
 
@@ -125,6 +127,20 @@ function mapPaymentFromSale(dto: Dto): Payment | null {
   }
 }
 
+function teamsFromAuthUser(me: AuthenticatedUser, leaderAgentId: string, agents: Agent[]): Team[] {
+  const teamId = id(me.team_id as number)
+  return [
+    {
+      id: teamId,
+      name: me.team_name ?? 'تیم من',
+      leaderId: leaderAgentId,
+      agentIds: agents
+        .filter((a) => a.teamId === teamId && a.role === 'agent')
+        .map((a) => a.id),
+    },
+  ]
+}
+
 async function fetchShiftData(days = 14): Promise<{ shiftCurrentRaw: Dto; shiftHistoryRaw: Dto[] }> {
   try {
     const [shiftCurrentRaw, shiftHistoryRaw] = await Promise.all([
@@ -139,7 +155,7 @@ async function fetchShiftData(days = 14): Promise<{ shiftCurrentRaw: Dto; shiftH
 
 let syncInFlight: Promise<SyncPayload> | null = null
 
-async function doSyncAppData(): Promise<SyncPayload> {
+async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }): Promise<SyncPayload> {
   const me = await fetchMe()
   const permissions = me.permissions ?? []
   const role = mapAuthUserRole(me.roles)
@@ -181,8 +197,8 @@ async function doSyncAppData(): Promise<SyncPayload> {
     management ? safeGet<Dto[]>('/activity') : Promise.resolve(null),
     hasPermission(permissions, 'users.view') ? safeGet<Dto[]>('/admin/users') : Promise.resolve(null),
     hasPermission(permissions, 'users.view') ? safeGet<Dto[]>('/admin/teams') : Promise.resolve(null),
-    hasPermission(permissions, 'reports.view-team') || hasPermission(permissions, 'reports.view-all')
-      ? safeGet<Dto[]>('/team-reports')
+    hasPermission(permissions, 'reports.view')
+      ? safeGet<Dto[]>('/team-reports?per_page=50')
       : Promise.resolve(null),
     fetchShiftData(management ? 30 : 14),
   ])
@@ -240,8 +256,17 @@ async function doSyncAppData(): Promise<SyncPayload> {
     agents = [agent]
   }
 
+  const businessDate =
+    (home.business_date as string | undefined) ??
+    (appConfigRaw.business_date as string | undefined) ??
+    todayDateKey()
+
   if (!isManagementRole(role)) {
-    const dailySynced = syncAllAgentsDailyStats([agent], calls, null)
+    const dailySynced = syncAllAgentsDailyStats(
+      [agent],
+      calls,
+      options?.priorDailyStatsDate ?? null,
+    )
     agent = {
       ...dailySynced.agents[0],
       points: agent.points,
@@ -256,7 +281,7 @@ async function doSyncAppData(): Promise<SyncPayload> {
     agents = [agent]
   }
 
-  const teams: Team[] =
+  let teams: Team[] =
     asArray<Dto>(adminTeamsRaw).length > 0
       ? asArray<Dto>(adminTeamsRaw).map((team) =>
           mapTeamFromAdmin(
@@ -267,8 +292,12 @@ async function doSyncAppData(): Promise<SyncPayload> {
           ),
         )
       : teamLive
-        ? teamsFromTeamLive(teamLive, agent.id)
+        ? teamsFromTeamLive(teamLive, agent.id, me.team_name ?? 'تیم من')
         : []
+
+  if (teams.length === 0 && me.team_id && isLeaderRole(role)) {
+    teams = teamsFromAuthUser(me, agent.id, agents)
+  }
 
   return {
     leads: mappedLeads,
@@ -297,12 +326,13 @@ async function doSyncAppData(): Promise<SyncPayload> {
     workSession: mapWorkSession(shiftData.shiftCurrentRaw.session as Dto | null | undefined),
     workDaySummaries: asArray<Dto>(shiftData.shiftHistoryRaw).map(mapWorkDaySummary),
     appSettings: mapRuntimeAppSettings(appConfigRaw),
+    businessDate,
   }
 }
 
-export async function syncAppData(): Promise<SyncPayload> {
+export async function syncAppData(options?: { priorDailyStatsDate?: string | null }): Promise<SyncPayload> {
   if (syncInFlight) return syncInFlight
-  syncInFlight = doSyncAppData().finally(() => {
+  syncInFlight = doSyncAppData(options).finally(() => {
     syncInFlight = null
   })
   return syncInFlight
@@ -311,7 +341,8 @@ export async function syncAppData(): Promise<SyncPayload> {
 /** Fetches fresh app data without throwing — safe after a successful write. */
 export async function trySyncAppData(): Promise<SyncPayload | null> {
   try {
-    return await syncAppData()
+    const { useStore } = await import('@/store/useStore')
+    return await syncAppData({ priorDailyStatsDate: useStore.getState().dailyStatsDate })
   } catch {
     return null
   }

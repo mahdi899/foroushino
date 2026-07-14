@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Misc;
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Support\ApiResponse;
+use App\Support\BusinessDate;
 use Illuminate\Http\JsonResponse;
 
 class AppConfigController extends Controller
@@ -27,6 +28,8 @@ class AppConfigController extends Controller
             'default_call_method' => (string) $telephony['default_call_method'],
             'voip_provider' => (string) $telephony['voip_provider'],
             'voip_fallback_to_native' => (bool) $telephony['voip_fallback_to_native'],
+            'business_timezone' => BusinessDate::timezone(),
+            'business_date' => BusinessDate::dateKey(),
         ]);
     }
 }

@@ -44,7 +44,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     const run = async () => {
       setDataSyncing(true)
       try {
-        const payload = await syncAppData()
+        const payload = await syncAppData({ priorDailyStatsDate: useStore.getState().dailyStatsDate })
         if (!cancelled) {
           applySyncData(payload)
           lastErrorRef.current = null

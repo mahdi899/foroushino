@@ -1,5 +1,5 @@
 import { positiveResults } from '@/data/labels'
-import { dateKeyFromIso, todayDateKey } from '@/lib/shiftUtils'
+import { dateKeyFromIso, todayDateKey } from '@/lib/businessDate'
 import type { Agent, Call } from '@/types'
 
 export function countAgentCallsOnDate(calls: Call[], agentId: string, date: string): number {

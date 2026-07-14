@@ -74,6 +74,7 @@ import { agentsFromTeamLive, mergeTeamLiveIntoAgents, teamsFromTeamLive } from '
 import { isProductiveAvailability, mergeClosedSessionIntoDaySummaries } from '@/lib/shiftUtils'
 import { getManagedTeam } from '@/lib/teamUtils'
 import { mergeAgentDailyStats, syncAllAgentsDailyStats, syncCurrentAgentDailyStats, conversionRateFromStats } from '@/lib/dailyGoal'
+import { todayDateKey } from '@/lib/businessDate'
 import { isPowerDialAvailable } from '@/lib/features'
 import {
   DEFAULT_RUNTIME_APP_SETTINGS,
@@ -169,6 +170,7 @@ interface AppState {
     workDaySummaries?: WorkDaySummary[]
   }) => void
   syncDailyAgentStats: () => void
+  onBusinessDayRollover: () => void
 
   // lead ownership / lock
   lockLead: (leadId: string) => { ok: boolean; lockedByOther?: boolean }
@@ -201,6 +203,8 @@ interface AppState {
   releaseCommission: (commissionId: string) => void
 
   // team reports
+  setTeamReports: (teamReports: TeamReport[]) => void
+  upsertTeamReport: (report: TeamReport) => void
   submitTeamReport: (leaderNotes?: string) => void
   approveTeamReport: (reportId: string, supervisorNotes?: string) => void
   forwardTeamReport: (reportId: string) => void
@@ -543,6 +547,19 @@ export const useStore = create<AppState>()(
             state.dailyStatsDate,
           )
           return { agents: synced.agents, dailyStatsDate: synced.dailyStatsDate }
+        }),
+
+      onBusinessDayRollover: () =>
+        set((state) => {
+          const today = todayDateKey()
+          const synced = syncAllAgentsDailyStats(state.agents, state.calls, state.dailyStatsDate)
+          return {
+            agents: synced.agents,
+            dailyStatsDate: today,
+            workDaySummaries: state.workDaySummaries.map((day) =>
+              day.date !== today ? { ...day, isOpen: false } : day,
+            ),
+          }
         }),
 
       lockLead: (leadId) => {
@@ -1089,6 +1106,20 @@ export const useStore = create<AppState>()(
           ),
         })),
 
+      setTeamReports: (teamReports) => set({ teamReports }),
+
+      upsertTeamReport: (report) =>
+        set((state) => ({
+          teamReports: [
+            report,
+            ...state.teamReports.filter(
+              (row) =>
+                row.id !== report.id &&
+                !(row.teamId === report.teamId && row.reportDate === report.reportDate),
+            ),
+          ],
+        })),
+
       submitTeamReport: (leaderNotes) => {
         const state = get()
         const team = getManagedTeam(state.teams, state.currentAgentId, state.role)
@@ -1098,8 +1129,7 @@ export const useStore = create<AppState>()(
         const callsToday = members.reduce((sum, a) => sum + a.callsToday, 0)
         const successfulToday = members.reduce((sum, a) => sum + a.successfulToday, 0)
         const conversion = callsToday > 0 ? Math.round((successfulToday / callsToday) * 1000) / 10 : 0
-        const nowIso = new Date().toISOString()
-        const today = nowIso.slice(0, 10)
+        const today = todayDateKey()
         const leader = state.agents.find((a) => a.id === state.currentAgentId)
 
         const report: TeamReport = {
@@ -1123,7 +1153,7 @@ export const useStore = create<AppState>()(
           leaderNotes: leaderNotes ?? null,
           submittedBy: state.currentAgentId,
           submitterName: leader ? `${leader.firstName} ${leader.lastName}` : undefined,
-          createdAt: nowIso,
+          createdAt: new Date().toISOString(),
         }
 
         set({
@@ -1374,7 +1404,7 @@ export const useStore = create<AppState>()(
             currentAgentId: payload.agent.id,
             role: payload.role,
             permissions: resolvePermissions(payload.role, payload.permissions),
-            dailyStatsDate: synced.dailyStatsDate,
+            dailyStatsDate: payload.businessDate ?? synced.dailyStatsDate,
             appSettings: payload.appSettings ?? state.appSettings,
             powerDialEnabled: isPowerDialAvailable
               ? state.powerDialEnabled || (payload.appSettings?.powerDialDefault ?? false)

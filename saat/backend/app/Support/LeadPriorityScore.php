@@ -14,11 +14,15 @@ class LeadPriorityScore
 {
     public static function sqlExpression(): string
     {
-        return <<<'SQL'
+        $start = BusinessDate::sqlDateTime(BusinessDate::startOfDay());
+        $end = BusinessDate::sqlDateTime(BusinessDate::endOfDay());
+        $now = BusinessDate::sqlDateTime(BusinessDate::now());
+
+        return <<<SQL
             (CASE
-                WHEN next_followup_at IS NOT NULL AND next_followup_at < NOW() AND next_followup_at < CURDATE() THEN 1000
-                WHEN next_followup_at IS NOT NULL AND next_followup_at >= CURDATE() AND next_followup_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY) THEN 900
-                WHEN temperature = 'hot' AND next_followup_at IS NOT NULL AND next_followup_at >= CURDATE() AND next_followup_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY) THEN 800
+                WHEN next_followup_at IS NOT NULL AND next_followup_at < {$now} AND next_followup_at < {$start} THEN 1000
+                WHEN next_followup_at IS NOT NULL AND next_followup_at >= {$start} AND next_followup_at <= {$end} THEN 900
+                WHEN temperature = 'hot' AND next_followup_at IS NOT NULL AND next_followup_at >= {$start} AND next_followup_at <= {$end} THEN 800
                 WHEN (stage = 'interested' OR temperature = 'hot') AND call_count > 0 THEN 700
                 WHEN call_count = 0 AND conversion_probability >= 50 THEN 600
                 WHEN temperature = 'warm' THEN 400
@@ -37,7 +41,7 @@ class LeadPriorityScore
 
     public static function reasonFor(Lead $lead): SuggestReason
     {
-        $now = now();
+        $now = BusinessDate::now();
 
         if ($lead->next_followup_at && $lead->next_followup_at->lt($now) && ! $lead->next_followup_at->isToday()) {
             return SuggestReason::OverdueFollowUp;

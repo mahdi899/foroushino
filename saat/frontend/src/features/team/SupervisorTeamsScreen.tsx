@@ -9,6 +9,7 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { Avatar } from '@/components/ui/Avatar'
 import { leaderForTeam, teamAgents } from '@/lib/teamUtils'
 import { toFa } from '@/lib/format'
+import { todayDateKey } from '@/lib/businessDate'
 import { cn } from '@/lib/cn'
 
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
@@ -20,7 +21,7 @@ export function SupervisorTeamsScreen() {
   const agents = useStore((s) => s.agents)
   const sales = useStore((s) => s.sales)
   const teamReports = useStore((s) => s.teamReports)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayDateKey()
 
   const rows = useMemo(
     () =>

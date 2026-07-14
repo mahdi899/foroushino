@@ -196,6 +196,7 @@ function Shell() {
       <ToastHost />
       <AutoLockWatcher />
       <ShiftPresenceWatcher />
+      <DayRolloverWatcher />
       {isAuthed && isLocked && <AppLockScreen />}
     </main>
   )

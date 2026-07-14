@@ -13,6 +13,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Support\ApiResponse;
+use App\Support\BusinessDate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -21,7 +22,7 @@ class HomeController extends Controller
     public function agent(Request $request): JsonResponse
     {
         $user = $request->user();
-        $today = today();
+        $today = BusinessDate::today();
 
         $target = DailyTarget::query()->firstOrCreate(
             ['user_id' => $user->id, 'date' => $today],
@@ -70,6 +71,8 @@ class HomeController extends Controller
             'level' => $user->level,
             'points' => $user->points,
             'streak' => $user->streak,
+            'business_date' => BusinessDate::dateKey(),
+            'business_timezone' => BusinessDate::timezone(),
         ]);
     }
 
@@ -93,7 +96,7 @@ class HomeController extends Controller
             $agentsQuery->where('team_id', $user->team_id);
         }
 
-        $today = today();
+        $today = BusinessDate::today();
 
         $pipeline = (clone $leadsQuery)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
         $salesToday = (clone $salesQuery)->whereDate('created_at', $today)->count();

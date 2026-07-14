@@ -4,6 +4,7 @@ namespace App\Services\Campaign;
 
 use App\Models\Campaign;
 use App\Models\Lead;
+use App\Support\BusinessDate;
 use Illuminate\Database\Eloquent\Builder;
 
 class CampaignDialingPolicy
@@ -41,22 +42,28 @@ class CampaignDialingPolicy
 
     public function applyCandidateConstraints(Builder $query): Builder
     {
+        $dayStart = BusinessDate::startOfDay()->toDateTimeString();
+        $dayEnd = BusinessDate::endOfDay()->toDateTimeString();
+        $now = BusinessDate::now()->toDateTimeString();
+
         return $query
-            ->where(function (Builder $outer): void {
+            ->where(function (Builder $outer) use ($dayStart, $dayEnd, $now): void {
                 $outer->whereNull('campaign_id')
-                    ->orWhereHas('campaign', function (Builder $campaign): void {
+                    ->orWhereHas('campaign', function (Builder $campaign) use ($dayStart, $dayEnd, $now): void {
                         $campaign->where('is_active', true)
-                            ->whereRaw('TIME(?) BETWEEN allowed_hours_start AND allowed_hours_end', [now()->format('H:i:s')])
+                            ->whereRaw('TIME(?) BETWEEN allowed_hours_start AND allowed_hours_end', [BusinessDate::now()->format('H:i:s')])
                             ->whereRaw(
-                                '(SELECT COUNT(*) FROM calls WHERE calls.lead_id = leads.id AND DATE(calls.created_at) = CURDATE()) < campaigns.max_daily_attempts',
+                                '(SELECT COUNT(*) FROM calls WHERE calls.lead_id = leads.id AND calls.created_at >= ? AND calls.created_at <= ?) < campaigns.max_daily_attempts',
+                                [$dayStart, $dayEnd],
                             )
                             ->whereRaw('leads.call_count < campaigns.max_total_attempts')
                             ->whereRaw(
                                 'NOT EXISTS (
                                     SELECT 1 FROM calls recent
                                     WHERE recent.lead_id = leads.id
-                                    AND recent.created_at >= DATE_SUB(NOW(), INTERVAL campaigns.retry_cooldown_minutes MINUTE)
+                                    AND recent.created_at >= DATE_SUB(?, INTERVAL campaigns.retry_cooldown_minutes MINUTE)
                                 )',
+                                [$now],
                             );
                     })
                     ->orWhereHas('campaign', fn (Builder $campaign) => $campaign->where('is_active', false));
@@ -111,7 +118,9 @@ class CampaignDialingPolicy
     private function dailyAttempts(Lead $lead): int
     {
         if ($lead->last_call_at?->isToday()) {
-            return $lead->calls()->whereDate('created_at', today())->count();
+            return $lead->calls()
+                ->whereBetween('created_at', [BusinessDate::startOfDay(), BusinessDate::endOfDay()])
+                ->count();
         }
 
         return 0;
