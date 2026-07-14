@@ -35,7 +35,12 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
     }
   }, [activeId, media.id, playing]);
 
-  const waveform = media.waveform && media.waveform.length > 0 ? media.waveform : Array.from({ length: 32 }, () => 0.3);
+  const rawWaveform =
+    media.waveform && media.waveform.length > 0 ? media.waveform : Array.from({ length: 32 }, () => 0.3);
+  const waveformMax = Math.max(...rawWaveform);
+  const waveformMin = Math.min(...rawWaveform);
+  const waveformRange = waveformMax - waveformMin || 1;
+  const waveform = rawWaveform.map((v) => (v - waveformMin) / waveformRange);
   const progressRatio = duration > 0 ? Math.min(1, progress / duration) : 0;
 
   const toggle = () => {
@@ -93,17 +98,20 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       >
         {playing ? <Pause className="h-4 w-4" fill="currentColor" /> : <Play className="h-4 w-4" fill="currentColor" />}
       </button>
-      <div className="flex min-w-0 flex-1 items-center gap-[2px]" aria-hidden>
-        {waveform.map((v, i) => (
-          <span
-            key={i}
-            className={cn(
-              'inline-block w-[3px] rounded-full transition-colors',
-              i / waveform.length <= progressRatio ? 'bg-gold' : 'bg-white/20',
-            )}
-            style={{ height: `${Math.max(4, Math.round(v * 24))}px` }}
-          />
-        ))}
+      <div className="flex h-10 min-w-0 flex-1 items-center gap-[1px] px-0.5" aria-hidden>
+        {waveform.map((v, i) => {
+          const played = (i + 1) / waveform.length <= progressRatio;
+          return (
+            <span
+              key={i}
+              className={cn(
+                'min-w-0 flex-1 rounded-full transition-colors',
+                played ? 'bg-gold' : 'bg-white/20',
+              )}
+              style={{ height: `${Math.round(28 + v * 72)}%` }}
+            />
+          );
+        })}
       </div>
       <span className="w-10 shrink-0 text-left text-[11px] tabular-nums text-bone/50">
         {formatTime(playing || progress > 0 ? duration - progress : duration)}

@@ -27,8 +27,8 @@ export default async function FamilyLoginPage({
   }
 
   return (
-    <main id="main-content" className="flex min-h-[100dvh] flex-col items-center justify-center bg-charcoal px-5 py-10">
-      <div className="mb-6 text-center">
+    <main id="main-content" className="flex min-h-[100dvh] flex-col items-center justify-center px-5 py-10 lg:py-16">
+      <div className="mb-6 w-full max-w-sm text-center lg:max-w-md">
         <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gold text-xl font-bold text-charcoal">
           خ
         </span>

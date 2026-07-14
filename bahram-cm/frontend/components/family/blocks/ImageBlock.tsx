@@ -36,8 +36,16 @@ export function ImageBlock({ media }: { media: FamilyMediaBlock }) {
 }
 
 export function ImageAlbumBlock({ items }: { items: FamilyMediaBlock[] }) {
+  const useThreeColumns = items.length >= 3;
+
   return (
-    <div className="grid grid-cols-2 gap-1.5">
+    <div
+      className={
+        useThreeColumns
+          ? 'grid grid-cols-2 gap-1.5 sm:grid-cols-3'
+          : 'grid grid-cols-2 gap-1.5'
+      }
+    >
       {items.map((item) => (
         <ImageBlock key={item.id} media={item} />
       ))}

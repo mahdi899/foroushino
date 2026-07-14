@@ -230,6 +230,8 @@ class FamilySeeder extends Seeder
 
         $this->seedActionResponses($members, $familyId);
 
+        $this->pinImagePostsToFeedTop();
+
         $this->printSummary($members, $familyId);
     }
 
@@ -443,6 +445,34 @@ HTML,
         FamilyComment::query()->firstOrCreate(
             [
                 'post_id' => $post->id,
+                'user_id' => $primary->id,
+                'body' => 'من هم خیلی هیجان‌زده‌ام — منتظر پست‌های هفته‌ای هستم.',
+            ],
+            [
+                'family_id' => $familyId,
+                'status' => FamilyCommentStatus::Approved,
+                'approved_at' => now()->subHours(2),
+                'moderated_by' => $author->id,
+            ],
+        );
+
+        FamilyComment::query()->firstOrCreate(
+            [
+                'post_id' => $post->id,
+                'user_id' => $author->id,
+                'body' => 'خوش آمدید به همه — هر هفته اینجا با هم جلو می‌ریم.',
+            ],
+            [
+                'family_id' => $familyId,
+                'status' => FamilyCommentStatus::Approved,
+                'approved_at' => now()->subHour(),
+                'moderated_by' => $author->id,
+            ],
+        );
+
+        FamilyComment::query()->firstOrCreate(
+            [
+                'post_id' => $post->id,
                 'user_id' => $amir->id,
                 'body' => 'سؤال: برای شروع تمرکز عمیق از کجا پیشنهاد می‌کنی؟',
             ],
@@ -561,6 +591,18 @@ HTML,
             ]);
 
             $stats->incrementActionResponses($post->id, $familyId);
+        }
+    }
+
+    private function pinImagePostsToFeedTop(): void
+    {
+        foreach (['image-moment', 'image-album-journey'] as $index => $demoKey) {
+            $post = $this->findDemoPost($demoKey);
+            if (! $post) {
+                continue;
+            }
+
+            $post->update(['published_at' => now()->subMinutes($index)]);
         }
     }
 

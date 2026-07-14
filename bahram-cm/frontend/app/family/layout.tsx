@@ -16,9 +16,17 @@ export const viewport: Viewport = {
 
 export default function FamilyLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div dir="rtl" className="min-h-[100dvh] bg-charcoal text-bone antialiased">
+    <div dir="rtl" className="min-h-[100dvh] bg-[#070b0d] text-bone antialiased">
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 hidden lg:block"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.03) 0%, transparent 55%), radial-gradient(circle at 20% 80%, rgba(201,162,39,0.04) 0%, transparent 40%)',
+        }}
+      />
       <FamilyMediaPlayerProvider>
-        <div className="mx-auto flex min-h-[100dvh] w-full max-w-lg flex-col sm:border-x sm:border-white/10">
+        <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[680px] flex-col bg-charcoal lg:border-x lg:border-white/[0.08] lg:shadow-[0_0_80px_rgba(0,0,0,0.45)]">
           {children}
         </div>
       </FamilyMediaPlayerProvider>

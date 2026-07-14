@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { FamilyMain, FamilyShell } from '@/components/family/FamilyShell';
 import { useFamilyNotifications } from '@/lib/family/hooks/useFamilyNotifications';
 import { cn } from '@/lib/cn';
 
@@ -9,20 +10,20 @@ export default function FamilyNotificationsPage() {
   const { notifications, isLoading, markRead, markAllRead } = useFamilyNotifications(true);
 
   return (
-    <div className="flex min-h-[100dvh] flex-col">
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-charcoal/90 px-4 py-3 backdrop-blur-md">
+    <FamilyShell>
+      <header className="sticky top-0 z-30 flex shrink-0 items-center justify-between border-b border-white/10 bg-charcoal/95 px-4 py-3 backdrop-blur-md sm:px-5 lg:px-6 lg:py-3.5">
         <Link href="/family" className="flex items-center gap-2 text-bone">
           <ArrowRight className="h-4 w-4 rtl-flip" />
-          <span className="text-sm font-semibold">اعلان‌ها</span>
+          <span className="text-sm font-semibold lg:text-[15px]">اعلان‌ها</span>
         </Link>
         {notifications.length > 0 && (
-          <button type="button" onClick={() => markAllRead()} className="text-xs text-gold/80 hover:text-gold">
+          <button type="button" onClick={() => markAllRead()} className="text-xs text-gold/80 hover:text-gold lg:text-sm">
             علامت‌گذاری همه به‌عنوان خوانده‌شده
           </button>
         )}
       </header>
 
-      <div className="flex-1 px-3 py-3">
+      <FamilyMain className="px-3 py-3 sm:px-4 lg:px-5 lg:py-4">
         {isLoading ? (
           <div className="space-y-2">
             {[0, 1, 2].map((i) => (
@@ -62,7 +63,7 @@ export default function FamilyNotificationsPage() {
             })}
           </ul>
         )}
-      </div>
-    </div>
+      </FamilyMain>
+    </FamilyShell>
   );
 }

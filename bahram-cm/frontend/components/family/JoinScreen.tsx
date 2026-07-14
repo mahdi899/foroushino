@@ -37,12 +37,12 @@ export function JoinScreen() {
   };
 
   return (
-    <div className="flex min-h-[calc(100dvh-56px)] flex-col items-center justify-center px-6 py-10 text-center">
+    <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10 text-center sm:px-8 lg:py-16">
       <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gold text-2xl font-bold text-charcoal">
         خ
       </span>
-      <h1 className="text-xl font-bold text-bone">به خانواده داداش بهرام بپیوند</h1>
-      <p className="mt-2 max-w-sm text-sm text-bone/60">
+      <h1 className="text-xl font-bold text-bone lg:text-2xl">به خانواده داداش بهرام بپیوند</h1>
+      <p className="mt-2 max-w-sm text-sm text-bone/60 lg:max-w-md lg:text-[15px]">
         یه فضای نزدیک و واقعی، جایی که داداش بهرام مستقیم باهات در ارتباطه.
       </p>
 

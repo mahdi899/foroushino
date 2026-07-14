@@ -55,7 +55,7 @@ export function ReactionBar({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-1.5 lg:gap-2">
       {REACTIONS.map((r) => (
         <button
           key={r.type}

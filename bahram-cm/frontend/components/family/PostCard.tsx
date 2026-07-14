@@ -47,8 +47,8 @@ export function PostCard({ post }: { post: FamilyPost }) {
   return (
     <article
       className={cn(
-        'space-y-3 rounded-3xl border p-4',
-        post.is_important ? 'border-gold/40 bg-gold/[0.06]' : 'border-white/10 bg-white/[0.03]',
+        'space-y-3 rounded-2xl border p-3.5 sm:p-4 lg:rounded-[18px]',
+        post.is_important ? 'border-gold/40 bg-gold/[0.06]' : 'border-white/10 bg-[#141a1f] lg:bg-[#151c22]',
       )}
     >
       <header className="flex items-center justify-between">
@@ -105,7 +105,10 @@ export function PostCard({ post }: { post: FamilyPost }) {
           onClose={() => setCommentsOpen(false)}
           onCommentAdded={(comment) => {
             setCommentCount((c) => c + 1);
-            setCommentPreview((prev) => [comment, ...prev].slice(0, 3));
+            setCommentPreview((prev) => {
+              if (prev.some((item) => item.id === comment.id)) return prev;
+              return [comment, ...prev].slice(0, 3);
+            });
           }}
         />
       )}

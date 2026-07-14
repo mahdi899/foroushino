@@ -23,9 +23,9 @@ export function FeedView() {
 
   if (isLoading && posts.length === 0) {
     return (
-      <div className="space-y-3 px-3 py-4">
+      <div className="space-y-3 px-3 py-4 sm:px-4 lg:px-5 lg:py-5">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="h-40 animate-pulse rounded-3xl bg-white/5" />
+          <div key={i} className="h-40 animate-pulse rounded-2xl bg-white/5 lg:h-44" />
         ))}
       </div>
     );
@@ -33,14 +33,16 @@ export function FeedView() {
 
   if (posts.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 px-6 py-16 text-center">
-        <p className="text-sm text-bone/60">هنوز پستی منتشر نشده. به‌زودی داداش بهرام اولین پیام رو می‌فرسته.</p>
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-16 text-center lg:py-24">
+        <p className="max-w-sm text-sm text-bone/60 lg:text-[15px]">
+          هنوز پستی منتشر نشده. به‌زودی داداش بهرام اولین پیام رو می‌فرسته.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3 px-3 py-4">
+    <div className="space-y-3 px-3 py-4 sm:space-y-3.5 sm:px-4 lg:px-5 lg:py-5">
       {posts.map((post) => (
         <PostCard key={post.id} post={post} />
       ))}

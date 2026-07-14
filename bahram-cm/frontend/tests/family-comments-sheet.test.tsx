@@ -10,6 +10,10 @@ vi.mock("@/lib/family/hooks/useFamilyComments", () => ({
   useFamilyComments: (...args: unknown[]) => useFamilyComments(...args),
 }));
 
+vi.mock("@/hooks/useIsMobileMotion", () => ({
+  useIsMobileMotion: () => true,
+}));
+
 function mockHook(overrides: Partial<ReturnType<typeof defaultHookState>> = {}) {
   useFamilyComments.mockReturnValue({ ...defaultHookState(), ...overrides });
 }
