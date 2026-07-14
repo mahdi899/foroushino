@@ -473,6 +473,17 @@ export const useStore = create<AppState>()(
           next.payments = []
           next.leads = []
           next.products = []
+          next.commissions = []
+          next.wallet = {
+            balanceAvailable: 0,
+            balancePending: 0,
+            balanceLocked: 0,
+            totalEarned: 0,
+            totalPaid: 0,
+            bankCardMasked: null,
+          }
+          next.walletTx = []
+          next.payouts = []
         }
 
         set(next)

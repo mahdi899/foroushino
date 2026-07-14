@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Check, CreditCard, Landmark } from 'lucide-react'
+import { Check, CreditCard, Landmark, Trash2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
@@ -8,7 +8,7 @@ import { EmptyState } from '@/components/ui/States'
 import { Button } from '@/components/ui/Button'
 import { hasPermission } from '@/lib/permissions'
 import { relativeDayTime, toFa } from '@/lib/format'
-import { confirmBankAccount, fetchBankAccountQueue } from '@/services/walletActions'
+import { confirmBankAccount, clearBankAccount, fetchBankAccountQueue } from '@/services/walletActions'
 import type { BankAccountReview } from '@/types'
 
 export function BankAccountApprovalScreen() {
@@ -42,6 +42,17 @@ export function BankAccountApprovalScreen() {
       pushToast('اطلاعات بانکی تایید شد')
     } catch {
       pushToast('تایید ناموفق بود', 'error')
+    }
+  }
+
+  const remove = async (item: BankAccountReview) => {
+    try {
+      const agent = await clearBankAccount(item.userId)
+      upsertAgent(agent)
+      setList((rows) => rows.filter((row) => row.userId !== item.userId))
+      pushToast('اطلاعات بانکی حذف شد')
+    } catch {
+      pushToast('حذف ناموفق بود', 'error')
     }
   }
 
@@ -89,15 +100,25 @@ export function BankAccountApprovalScreen() {
                 </p>
               </div>
 
-              <Button
-                full
-                size="md"
-                className="mt-3"
-                icon={<Check size={15} />}
-                onClick={() => void approve(item)}
-              >
-                تایید کارت و شبا
-              </Button>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button
+                  full
+                  size="md"
+                  icon={<Check size={15} />}
+                  onClick={() => void approve(item)}
+                >
+                  تایید
+                </Button>
+                <Button
+                  full
+                  size="md"
+                  variant="ghost"
+                  icon={<Trash2 size={15} />}
+                  onClick={() => void remove(item)}
+                >
+                  حذف
+                </Button>
+              </div>
             </motion.div>
           ))
         )}

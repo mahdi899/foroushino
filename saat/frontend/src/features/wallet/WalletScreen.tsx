@@ -29,6 +29,7 @@ import {
 } from '@/data/labels'
 import { formatMoney, relativeDayTime, toFa } from '@/lib/format'
 import { canRequestPayout } from '@/lib/payoutRules'
+import { resolveWithdrawableBalance, sumCommissionAmount } from '@/lib/walletBalance'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
 import { DataGate } from '@/components/pwa/DataGate'
@@ -102,15 +103,22 @@ export function WalletScreen() {
   const [success, setSuccess] = useState(false)
 
   const leadOf = (id: string) => leads.find((l) => l.id === id)
-  const payoutReady = canRequestPayout(wallet.balanceAvailable) && !!wallet.bankCardConfirmed && !!wallet.bankShebaRegistered
+  const withdrawableBalance = useMemo(
+    () => resolveWithdrawableBalance(wallet, commissions),
+    [wallet, commissions],
+  )
+  const payoutReady =
+    canRequestPayout(withdrawableBalance) && !!wallet.bankCardConfirmed && !!wallet.bankShebaRegistered
 
-  const pipelineAmount = useMemo(
-    () =>
-      commissions
-        .filter((c) => c.status === 'pending' || c.status === 'approved')
-        .reduce((sum, c) => sum + c.commissionAmount, 0),
+  const pipelinePending = useMemo(
+    () => sumCommissionAmount(commissions, ['pending']),
     [commissions],
   )
+  const pipelineApproved = useMemo(
+    () => sumCommissionAmount(commissions, ['approved']),
+    [commissions],
+  )
+  const pipelineAmount = pipelinePending + pipelineApproved
 
   useEffect(() => {
     if (apiMode !== 'http') return
@@ -176,19 +184,32 @@ export function WalletScreen() {
             موجودی قابل برداشت
           </p>
           <p className="relative mt-1.5 text-[32px] font-black tabular-nums leading-none text-text">
-            {formatMoney(wallet.balanceAvailable)}{' '}
+            {formatMoney(withdrawableBalance)}{' '}
             <span className="text-[14px] font-bold text-text-muted">تومان</span>
           </p>
           {pipelineAmount > 0 && (
+            <div className="relative mt-2 space-y-1 text-[11px] font-semibold text-text-soft">
+              {pipelinePending > 0 && (
+                <p>{formatMoney(pipelinePending)} تومان منتظر تایید لیدر</p>
+              )}
+              {pipelineApproved > 0 && (
+                <p>{formatMoney(pipelineApproved)} تومان منتظر تایید ناظر</p>
+              )}
+              {withdrawableBalance === 0 && (
+                <p>بعد از تایید لیدر و ناظر، مبلغ به موجودی قابل برداشت اضافه می‌شود.</p>
+              )}
+            </div>
+          )}
+          {withdrawableBalance === 0 && pipelineAmount === 0 && wallet.bankCardConfirmed && (
             <p className="relative mt-2 text-[11px] font-semibold text-text-soft">
-              {formatMoney(pipelineAmount)} تومان در فرایند تایید پورسانت
-              {wallet.balanceAvailable === 0 ? ' (بعد از تایید لیدر و ناظر به موجودی اضافه می‌شود)' : ''}
+              تایید کارت و شبا فقط امکان برداشت را فعال می‌کند؛ مبلغ پس از تایید پورسانت‌ها توسط لیدر و ناظر
+              اضافه می‌شود.
             </p>
           )}
           <motion.button
             type="button"
             whileTap={{ scale: payoutReady ? 0.97 : 1 }}
-            disabled={!canRequestPayout(wallet.balanceAvailable)}
+            disabled={!canRequestPayout(withdrawableBalance)}
             onClick={() => {
               if (!wallet.bankCardConfirmed || !wallet.bankShebaRegistered) {
                 pushToast('ابتدا کارت و شبا را در همین صفحه ثبت کن و منتظر تایید ناظر باش.', 'error')
@@ -368,7 +389,7 @@ export function WalletScreen() {
       <PayoutRequestSheet
         open={payoutOpen}
         onClose={() => setPayoutOpen(false)}
-        balanceAvailable={wallet.balanceAvailable}
+        balanceAvailable={withdrawableBalance}
         savedCardMasked={wallet.bankCardMasked}
         bankCardConfirmed={!!wallet.bankCardConfirmed}
         onSubmit={(amount) => {

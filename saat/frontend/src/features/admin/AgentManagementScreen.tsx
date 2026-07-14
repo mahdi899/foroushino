@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, UserPlus, PauseCircle, CreditCard, Landmark } from 'lucide-react'
+import { Users, UserPlus, PauseCircle, CreditCard, Landmark, Trash2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
@@ -11,6 +11,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { hasPermission } from '@/lib/permissions'
 import { toFa } from '@/lib/format'
 import { createAgent, suspendAgent, activateAgent, updateAgent } from '@/services/userAdminActions'
+import { clearBankAccount } from '@/services/walletActions'
 import { cn } from '@/lib/cn'
 import type { Agent } from '@/types'
 
@@ -78,6 +79,19 @@ export function AgentManagementScreen() {
       pushToast(agent.isActive === false ? 'کارشناس فعال شد' : 'کارشناس معلق شد')
     } catch {
       pushToast('عملیات ناموفق بود', 'error')
+    }
+  }
+
+  const clearAgentBank = async (agent: Agent) => {
+    try {
+      const updated = await clearBankAccount(agent.id)
+      useStore.getState().upsertAgent(updated)
+      if (editTarget?.id === agent.id) {
+        setEditTarget(updated)
+      }
+      pushToast('اطلاعات بانکی حذف شد')
+    } catch {
+      pushToast('حذف اطلاعات بانکی ناموفق بود', 'error')
     }
   }
 
@@ -196,6 +210,12 @@ export function AgentManagementScreen() {
         phone={phone}
         teamId={teamId}
         teams={teams}
+        agent={editTarget}
+        canClearBank={canManage}
+        onClearBank={() => editTarget && void clearAgentBank(editTarget)}
+        onName={setName}
+        onPhone={setPhone}
+        onTeam={setTeamId}
         onClose={() => setEditTarget(null)}
         onSubmit={() => void submitEdit()}
       />
@@ -210,6 +230,9 @@ function AgentFormSheet({
   phone,
   teamId,
   teams,
+  agent,
+  canClearBank,
+  onClearBank,
   onName,
   onPhone,
   onTeam,
@@ -222,12 +245,17 @@ function AgentFormSheet({
   phone: string
   teamId: string
   teams: { id: string; name: string }[]
+  agent?: Agent | null
+  canClearBank?: boolean
+  onClearBank?: () => void
   onName: (v: string) => void
   onPhone: (v: string) => void
   onTeam: (v: string) => void
   onClose: () => void
   onSubmit: () => void
 }) {
+  const hasBankInfo = !!(agent?.bankCardMasked || agent?.bankShebaRegistered)
+
   return (
     <BottomSheet open={open} onClose={onClose} title={title}>
       <div className="space-y-3 pt-1">
@@ -251,6 +279,34 @@ function AgentFormSheet({
             </Chip>
           ))}
         </div>
+
+        {canClearBank && hasBankInfo && (
+          <div className="rounded-[14px] border border-white/55 bg-white/30 px-3 py-2.5 dark:border-white/10 dark:bg-white/5">
+            {agent?.bankCardMasked && (
+              <p className="flex items-center gap-1.5 text-[12px] font-bold text-text">
+                <CreditCard size={13} className="text-text-soft" />
+                کارت: {toFa(agent.bankCardMasked)}
+                {agent.bankCardConfirmed ? ' · تایید شده' : ' · منتظر تایید'}
+              </p>
+            )}
+            {agent?.bankShebaRegistered && (
+              <p className="mt-1 flex items-center gap-1.5 text-[12px] font-bold text-text">
+                <Landmark size={13} className="text-text-soft" />
+                شبا ثبت شده
+              </p>
+            )}
+            <Button
+              full
+              size="md"
+              variant="ghost"
+              className="mt-2"
+              icon={<Trash2 size={15} />}
+              onClick={onClearBank}
+            >
+              حذف اطلاعات بانکی
+            </Button>
+          </div>
+        )}
 
         <Button full size="lg" icon={<UserPlus size={18} />} onClick={onSubmit}>
           ذخیره

@@ -19,6 +19,7 @@ Route::prefix('wallet')->group(function (): void {
     Route::get('/payout-queue', [WalletController::class, 'payoutQueue']);
     Route::get('/bank-accounts/queue', [WalletController::class, 'bankAccountQueue']);
     Route::post('/bank-accounts/{user}/confirm', [WalletController::class, 'confirmBankAccount'])->middleware('throttle:writes');
+    Route::post('/bank-accounts/{user}/clear', [WalletController::class, 'clearBankAccount'])->middleware('throttle:writes');
     Route::post('/payout-requests/{payoutRequest}/approve', [WalletController::class, 'approvePayout'])->middleware('throttle:writes');
     Route::post('/payout-requests/{payoutRequest}/reject', [WalletController::class, 'rejectPayout'])->middleware('throttle:writes');
     Route::post('/commissions/{commission}/release', [WalletController::class, 'releaseCommission'])->middleware('throttle:writes');

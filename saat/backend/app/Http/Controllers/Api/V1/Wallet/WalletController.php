@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Wallet;
 
 use App\Actions\Wallet\ApproveCommissionByLeaderAction;
 use App\Actions\Wallet\ApproveCommissionBySupervisorAction;
+use App\Actions\Wallet\ClearBankAccountAction;
 use App\Actions\Wallet\ConfirmBankAccountAction;
 use App\Actions\Wallet\RejectCommissionAction;
 use App\Enums\CommissionStatus;
@@ -35,11 +36,12 @@ class WalletController extends Controller
         private readonly ApproveCommissionBySupervisorAction $approveBySupervisor,
         private readonly RejectCommissionAction $rejectCommission,
         private readonly ConfirmBankAccountAction $confirmBankAccount,
+        private readonly ClearBankAccountAction $clearBankAccount,
     ) {}
 
     public function show(Request $request): JsonResponse
     {
-        $wallet = $this->wallet->ensureWallet($request->user());
+        $wallet = $this->wallet->reconcileAvailableBalance($request->user());
         $user = $request->user();
 
         return ApiResponse::success(array_merge(
@@ -237,6 +239,17 @@ class WalletController extends Controller
         }
 
         return ApiResponse::success(new UserAdminResource($agent), 'اطلاعات بانکی کارشناس تایید شد');
+    }
+
+    public function clearBankAccount(Request $request, User $user): JsonResponse
+    {
+        try {
+            $agent = $this->clearBankAccount->execute($user, $request->user());
+        } catch (RuntimeException $e) {
+            return ApiResponse::error($e->getMessage(), status: 422, code: 'bank_account_not_clearable');
+        }
+
+        return ApiResponse::success(new UserAdminResource($agent), 'اطلاعات بانکی کارشناس حذف شد');
     }
 
     public function approvePayout(ProcessPayoutRequest $request, PayoutRequest $payoutRequest): JsonResponse

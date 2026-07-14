@@ -32,12 +32,14 @@ export async function refreshWalletBundle(): Promise<void> {
   const commissions = asArray<Dto>(commissionsRaw).map(mapCommission)
   const walletTx = asArray<Dto>(txRaw).map(mapWalletTransaction)
   const payouts = asArray<Dto>(payoutsRaw).map(mapPayoutRequest)
+  const ownCommissions = commissions.filter((row) => !row.agentId || row.agentId === agentId)
+  const ownPayouts = payouts.filter((row) => !row.agentId || row.agentId === agentId)
 
   useStore.getState().applyWalletData({
     wallet: mapWallet(walletRaw),
-    commissions: commissions.filter((row) => row.agentId === agentId),
+    commissions: ownCommissions,
     walletTx,
-    payouts: payouts.filter((row) => row.agentId === agentId),
+    payouts: ownPayouts,
   })
 }
 
@@ -79,6 +81,11 @@ export async function fetchBankAccountQueue(): Promise<BankAccountReview[]> {
 
 export async function confirmBankAccount(userId: string): Promise<Agent> {
   const raw = await http.post<Dto>(`/wallet/bank-accounts/${userId}/confirm`)
+  return mapAgentFromAdmin(raw)
+}
+
+export async function clearBankAccount(userId: string): Promise<Agent> {
+  const raw = await http.post<Dto>(`/wallet/bank-accounts/${userId}/clear`)
   return mapAgentFromAdmin(raw)
 }
 

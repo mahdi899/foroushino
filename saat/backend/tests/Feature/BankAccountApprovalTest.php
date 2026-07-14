@@ -79,3 +79,71 @@ it('rejects confirming when sheba is missing', function () {
     $this->postJson("/api/v1/wallet/bank-accounts/{$agent->id}/confirm")
         ->assertStatus(422);
 });
+
+it('clears confirmed bank account for supervisor', function () {
+    $team = makeTeam();
+    $supervisor = makeSupervisor(['team_id' => $team->id]);
+    $agent = makeAgent(['team_id' => $team->id]);
+    $agent->forceFill([
+        'bank_card' => '6037991234567890',
+        'bank_sheba' => '603799123456789012345678',
+        'bank_card_confirmed_at' => now(),
+    ])->save();
+
+    Sanctum::actingAs($supervisor);
+
+    $response = $this->postJson("/api/v1/wallet/bank-accounts/{$agent->id}/clear");
+
+    $response->assertOk()
+        ->assertJsonPath('data.bank_card_confirmed', false)
+        ->assertJsonPath('data.bank_card_masked', null)
+        ->assertJsonPath('data.bank_sheba_registered', false);
+
+    $fresh = $agent->fresh();
+    expect($fresh->bank_card)->toBeNull()
+        ->and($fresh->bank_sheba)->toBeNull()
+        ->and($fresh->bank_card_confirmed_at)->toBeNull();
+});
+
+it('allows agent to resubmit bank account after supervisor clears it', function () {
+    $team = makeTeam();
+    $supervisor = makeSupervisor(['team_id' => $team->id]);
+    $agent = makeAgent(['team_id' => $team->id]);
+    $agent->forceFill([
+        'bank_card' => '6037991234567890',
+        'bank_sheba' => '603799123456789012345678',
+        'bank_card_confirmed_at' => now(),
+    ])->save();
+
+    Sanctum::actingAs($supervisor);
+    $this->postJson("/api/v1/wallet/bank-accounts/{$agent->id}/clear")->assertOk();
+
+    Sanctum::actingAs($agent);
+    $this->patchJson('/api/v1/wallet/bank-card', [
+        'bank_card' => '6037999876543210',
+        'bank_sheba' => '603799987654321098765432',
+    ])
+        ->assertOk()
+        ->assertJsonPath('data.bank_card_confirmed', false);
+
+    expect($agent->fresh())
+        ->bank_card->toBe('6037999876543210')
+        ->bank_sheba->toBe('603799987654321098765432')
+        ->bank_card_confirmed_at->toBeNull();
+});
+
+it('rejects clearing bank account from another team supervisor', function () {
+    $team = makeTeam(['name' => 'تیم الف']);
+    $otherTeam = makeTeam(['name' => 'تیم ب']);
+    $supervisor = makeSupervisor(['team_id' => $team->id]);
+    $agent = makeAgent(['team_id' => $otherTeam->id]);
+    $agent->forceFill([
+        'bank_card' => '6037991234567890',
+        'bank_sheba' => '603799123456789012345678',
+    ])->save();
+
+    Sanctum::actingAs($supervisor);
+
+    $this->postJson("/api/v1/wallet/bank-accounts/{$agent->id}/clear")
+        ->assertStatus(403);
+});

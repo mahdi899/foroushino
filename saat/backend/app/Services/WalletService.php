@@ -26,6 +26,46 @@ class WalletService
         return Wallet::query()->firstOrCreate(['user_id' => $user->id]);
     }
 
+    /** Align wallet balance with available commissions when credit was missed. */
+    public function reconcileAvailableBalance(User $user): Wallet
+    {
+        $wallet = $this->ensureWallet($user)->fresh();
+
+        $availableSum = (float) Commission::query()
+            ->where('agent_id', $user->id)
+            ->where('status', CommissionStatus::Available)
+            ->sum('commission_amount');
+
+        $currentAvailable = (float) $wallet->balance_available;
+        $locked = (float) $wallet->balance_locked;
+        $expectedAvailable = max(0, $availableSum - $locked);
+
+        if ($expectedAvailable <= $currentAvailable + 0.01) {
+            return $wallet;
+        }
+
+        $diff = $expectedAvailable - $currentAvailable;
+
+        DB::transaction(function () use ($wallet, $diff, $user): void {
+            $wallet->balance_available += $diff;
+            $wallet->total_earned += $diff;
+            $wallet->save();
+
+            WalletTransaction::query()->create([
+                'user_id' => $user->id,
+                'type' => WalletTxType::CommissionAvailable,
+                'amount' => $diff,
+                'description' => 'همگام‌سازی موجودی پورسانت',
+                'reference_type' => 'wallet_reconcile',
+                'reference_id' => null,
+            ]);
+
+            broadcast(new WalletUpdated($wallet->fresh()))->toOthers();
+        });
+
+        return $wallet->fresh();
+    }
+
     public function creditAvailable(Commission $commission): void
     {
         if ($commission->status !== CommissionStatus::Approved) {

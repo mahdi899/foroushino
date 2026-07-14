@@ -60,6 +60,30 @@ it('leader then supervisor approval credits the agent wallet', function () {
     expect($commission->fresh()->status->value)->toBe('available');
 });
 
+it('reconciles wallet balance when available commissions were not credited', function () {
+    $agent = makeAgent();
+    $product = makeProduct(['commission_rate' => 10]);
+    $lead = makeLead(['assigned_agent_id' => $agent->id]);
+    $sale = makeSaleFor($agent, $lead, $product, 'confirmed');
+
+    \App\Models\Commission::query()->create([
+        'sale_id' => $sale->id,
+        'agent_id' => $agent->id,
+        'product_id' => $product->id,
+        'lead_id' => $lead->id,
+        'sale_amount' => 4_000_000,
+        'commission_rate' => 10,
+        'commission_amount' => 400_000,
+        'status' => 'available',
+        'available_at' => now(),
+    ]);
+
+    $wallet = app(WalletService::class)->reconcileAvailableBalance($agent);
+
+    expect((float) $wallet->balance_available)->toBe(400000.0);
+    expect((float) $wallet->total_earned)->toBe(400000.0);
+});
+
 it('rejecting a sale sends the lead back to follow-up and never creates a commission', function () {
     $manager = makeManager();
     $agent = makeAgent();
