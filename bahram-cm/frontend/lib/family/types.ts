@@ -94,6 +94,7 @@ export interface FamilyPost {
   reply_context?: { comment_body: string; user_name: string | null } | null;
   stats: FamilyPostStats;
   user_reaction: FamilyReactionType | null;
+  comment_preview?: FamilyComment[];
 }
 
 export interface FamilyFeedMeta {

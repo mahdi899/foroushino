@@ -55,6 +55,7 @@ return [
     'comment' => [
         'max_length' => 1000,
         'short_text_max_length' => 200,
+        'require_approval' => filter_var(env('FAMILY_COMMENT_REQUIRE_APPROVAL', false), FILTER_VALIDATE_BOOL),
     ],
 
     'feed' => [

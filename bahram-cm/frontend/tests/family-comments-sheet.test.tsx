@@ -52,7 +52,7 @@ describe("CommentsSheet", () => {
     render(<CommentsSheet postId={1} onClose={vi.fn()} />);
 
     expect(screen.getByText("سلام بهرام")).toBeInTheDocument();
-    expect(screen.getByText("در انتظار تأیید")).toBeInTheDocument();
+    expect(screen.getByText("در انتظار بررسی")).toBeInTheDocument();
     expect(screen.getByText("عالی بود")).toBeInTheDocument();
   });
 
@@ -67,7 +67,7 @@ describe("CommentsSheet", () => {
 
     await waitFor(() => expect(submit).toHaveBeenCalledWith("یک نظر خوب"));
     await waitFor(() => expect(textarea).toHaveValue(""));
-    expect(await screen.findByText(/بعد از تأیید نمایش داده می‌شود/)).toBeInTheDocument();
+    expect(await screen.findByText(/نظر شما ثبت شد\./)).toBeInTheDocument();
   });
 
   it("shows the API error message when submission fails", async () => {

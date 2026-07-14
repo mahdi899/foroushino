@@ -41,6 +41,12 @@ class FamilyPostResource extends JsonResource
                 'action_responses' => (int) ($stat?->action_responses_count ?? 0),
             ],
             'user_reaction' => $this->resource->getAttribute('user_reaction'),
+            'comment_preview' => $this->when(
+                $this->resource->getAttribute('comment_preview') !== null,
+                fn () => FamilyCommentResource::collection(
+                    collect($this->resource->getAttribute('comment_preview'))
+                )->resolve(),
+            ),
         ];
     }
 }

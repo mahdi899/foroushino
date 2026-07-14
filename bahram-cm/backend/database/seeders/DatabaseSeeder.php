@@ -123,5 +123,6 @@ class DatabaseSeeder extends Seeder
         $this->call(CommerceSeeder::class);
         $this->call(SeminarSeeder::class);
         $this->call(MiniCourseSeeder::class);
+        $this->call(FamilySeeder::class);
     }
 }

@@ -9,6 +9,7 @@ use App\Jobs\Family\AnalyzeFamilyCommentJob;
 use App\Models\FamilyComment;
 use App\Models\FamilyPost;
 use App\Services\Family\FamilyAccessService;
+use App\Services\Family\FamilyStatsService;
 use App\Services\Family\PostAudienceResolver;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +20,7 @@ class CommentController extends Controller
     public function __construct(
         private readonly FamilyAccessService $access,
         private readonly PostAudienceResolver $audience,
+        private readonly FamilyStatsService $stats,
     ) {}
 
     public function index(Request $request, FamilyPost $post): JsonResponse
@@ -73,13 +75,21 @@ class CommentController extends Controller
             'body' => ['required', 'string', 'min:2', "max:{$max}"],
         ]);
 
+        $requireApproval = (bool) config('family.comment.require_approval', false);
+        $status = $requireApproval ? FamilyCommentStatus::Pending : FamilyCommentStatus::Approved;
+
         $comment = FamilyComment::query()->create([
             'post_id' => $post->id,
             'family_id' => $membership->family_id,
             'user_id' => $request->user()->id,
             'body' => trim($data['body']),
-            'status' => FamilyCommentStatus::Pending,
+            'status' => $status,
+            'approved_at' => $requireApproval ? null : now(),
         ]);
+
+        if (! $requireApproval) {
+            $this->stats->incrementApprovedComments((int) $post->id, (int) $membership->family_id);
+        }
 
         $comment->load(['user:id,name', 'user.profile']);
 

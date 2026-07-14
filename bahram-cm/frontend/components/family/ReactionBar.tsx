@@ -16,12 +16,10 @@ export function ReactionBar({
   postId,
   stats,
   userReaction,
-  onCommentClick,
 }: {
   postId: number;
   stats: FamilyPostStats;
   userReaction: FamilyReactionType | null;
-  onCommentClick: () => void;
 }) {
   const [active, setActive] = useState<FamilyReactionType | null>(userReaction);
   const [counts, setCounts] = useState(stats);
@@ -57,7 +55,7 @@ export function ReactionBar({
   };
 
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-1.5">
       {REACTIONS.map((r) => (
         <button
           key={r.type}
@@ -73,13 +71,6 @@ export function ReactionBar({
           {counts[r.type] > 0 && <span className="tabular-nums">{counts[r.type]}</span>}
         </button>
       ))}
-      <button
-        type="button"
-        onClick={onCommentClick}
-        className="mr-auto rounded-full bg-white/5 px-2.5 py-1 text-xs font-medium text-bone/60 transition hover:bg-white/10"
-      >
-        نظرات {stats.comments > 0 ? `(${stats.comments})` : ''}
-      </button>
     </div>
   );
 }

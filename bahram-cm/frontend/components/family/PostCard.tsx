@@ -8,6 +8,7 @@ import { ImageAlbumBlock, ImageBlock } from '@/components/family/blocks/ImageBlo
 import { ReplyContextBlock } from '@/components/family/blocks/ReplyContextBlock';
 import { VideoBlock } from '@/components/family/blocks/VideoBlock';
 import { VoiceBlock } from '@/components/family/blocks/VoiceBlock';
+import { CommentThreadPreview } from '@/components/family/CommentThreadPreview';
 import { CommentsSheet } from '@/components/family/CommentsSheet';
 import { ReactionBar } from '@/components/family/ReactionBar';
 import type { FamilyPost, FamilyPostBlock } from '@/lib/family/types';
@@ -35,6 +36,8 @@ function renderBlock(block: FamilyPostBlock, postId: number) {
 
 export function PostCard({ post }: { post: FamilyPost }) {
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentCount, setCommentCount] = useState(post.stats.comments);
+  const [commentPreview, setCommentPreview] = useState(post.comment_preview ?? []);
 
   const imageBlocks = post.blocks.filter((b) => b.type === 'image' && b.media);
   const otherBlocks = post.blocks.filter((b) => b.type !== 'image');
@@ -82,14 +85,28 @@ export function PostCard({ post }: { post: FamilyPost }) {
           heart: post.stats.heart,
           target: post.stats.target,
           clap: post.stats.clap,
-          comments: post.stats.comments,
+          comments: commentCount,
           action_responses: post.stats.action_responses,
         }}
         userReaction={post.user_reaction}
-        onCommentClick={() => setCommentsOpen(true)}
       />
 
-      {commentsOpen && <CommentsSheet postId={post.id} onClose={() => setCommentsOpen(false)} />}
+      <CommentThreadPreview
+        count={commentCount}
+        preview={commentPreview}
+        onOpen={() => setCommentsOpen(true)}
+      />
+
+      {commentsOpen && (
+        <CommentsSheet
+          postId={post.id}
+          onClose={() => setCommentsOpen(false)}
+          onCommentAdded={(comment) => {
+            setCommentCount((c) => c + 1);
+            setCommentPreview((prev) => [comment, ...prev].slice(0, 3));
+          }}
+        />
+      )}
     </article>
   );
 }

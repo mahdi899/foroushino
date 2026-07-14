@@ -28,16 +28,16 @@ describe("ReactionBar", () => {
     removeReaction.mockReset();
   });
 
-  it("renders counts and the comments button", () => {
-    render(<ReactionBar postId={1} stats={baseStats} userReaction={null} onCommentClick={vi.fn()} />);
+  it("renders reaction counts without a comments button", () => {
+    render(<ReactionBar postId={1} stats={baseStats} userReaction={null} />);
 
     expect(screen.getByLabelText("آتشین")).toHaveTextContent("2");
-    expect(screen.getByText(/نظرات/)).toHaveTextContent("نظرات (3)");
+    expect(screen.queryByText(/نظرات/)).not.toBeInTheDocument();
   });
 
   it("optimistically activates a reaction and calls setReaction", async () => {
     setReaction.mockResolvedValueOnce({ data: {} });
-    render(<ReactionBar postId={42} stats={baseStats} userReaction={null} onCommentClick={vi.fn()} />);
+    render(<ReactionBar postId={42} stats={baseStats} userReaction={null} />);
 
     fireEvent.click(screen.getByLabelText("قلب"));
 
@@ -47,7 +47,7 @@ describe("ReactionBar", () => {
 
   it("toggling an already-active reaction calls removeReaction", async () => {
     removeReaction.mockResolvedValueOnce({ data: { removed: true } });
-    render(<ReactionBar postId={7} stats={baseStats} userReaction="fire" onCommentClick={vi.fn()} />);
+    render(<ReactionBar postId={7} stats={baseStats} userReaction="fire" />);
 
     fireEvent.click(screen.getByLabelText("آتشین"));
 
@@ -57,7 +57,7 @@ describe("ReactionBar", () => {
 
   it("reverts the optimistic update when the request fails", async () => {
     setReaction.mockRejectedValueOnce(new Error("network"));
-    render(<ReactionBar postId={9} stats={baseStats} userReaction={null} onCommentClick={vi.fn()} />);
+    render(<ReactionBar postId={9} stats={baseStats} userReaction={null} />);
 
     fireEvent.click(screen.getByLabelText("هدف"));
     expect(screen.getByLabelText("هدف")).toHaveTextContent("2");
@@ -65,11 +65,9 @@ describe("ReactionBar", () => {
     await waitFor(() => expect(screen.getByLabelText("هدف")).toHaveTextContent("1"));
   });
 
-  it("invokes onCommentClick when the comments button is pressed", () => {
-    const onCommentClick = vi.fn();
-    render(<ReactionBar postId={1} stats={baseStats} userReaction={null} onCommentClick={onCommentClick} />);
+  it("only renders reaction buttons", () => {
+    render(<ReactionBar postId={1} stats={baseStats} userReaction={null} />);
 
-    fireEvent.click(screen.getByText(/نظرات/));
-    expect(onCommentClick).toHaveBeenCalledTimes(1);
+    expect(screen.getAllByRole("button")).toHaveLength(4);
   });
 });

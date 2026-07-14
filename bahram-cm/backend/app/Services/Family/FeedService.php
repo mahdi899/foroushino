@@ -2,7 +2,9 @@
 
 namespace App\Services\Family;
 
+use App\Enums\Family\FamilyCommentStatus;
 use App\Enums\Family\FamilyPostStatus;
+use App\Models\FamilyComment;
 use App\Models\FamilyPost;
 use App\Models\FamilyReaction;
 use App\Models\User;
@@ -63,6 +65,7 @@ class FeedService
         }
 
         $this->attachUserReactions($posts, $user->id);
+        $this->attachCommentPreviews($posts, $familyId);
 
         $nextCursor = null;
         if ($hasMore && $posts->isNotEmpty()) {
@@ -103,6 +106,29 @@ class FeedService
             'data' => $posts,
             'next_cursor' => null,
         ];
+    }
+
+    private function attachCommentPreviews(Collection $posts, int $familyId): void
+    {
+        if ($posts->isEmpty()) {
+            return;
+        }
+
+        $grouped = FamilyComment::query()
+            ->whereIn('post_id', $posts->pluck('id'))
+            ->where('family_id', $familyId)
+            ->where('status', FamilyCommentStatus::Approved->value)
+            ->with(['user:id,name', 'user.profile'])
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy('post_id');
+
+        foreach ($posts as $post) {
+            $post->setAttribute(
+                'comment_preview',
+                ($grouped->get($post->id) ?? collect())->take(3)->values()
+            );
+        }
     }
 
     private function attachUserReactions(Collection $posts, int $userId): void

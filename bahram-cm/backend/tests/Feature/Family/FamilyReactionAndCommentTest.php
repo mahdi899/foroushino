@@ -76,7 +76,7 @@ class FamilyReactionAndCommentTest extends TestCase
             ->assertUnauthorized();
     }
 
-    public function test_comment_is_pending_until_moderated(): void
+    public function test_comment_is_auto_approved_without_moderation(): void
     {
         Queue::fake();
 
@@ -86,16 +86,18 @@ class FamilyReactionAndCommentTest extends TestCase
         $response = $this->actingAs($user, 'sanctum')
             ->postJson("/api/v1/family/posts/{$post->id}/comments", ['body' => 'سلام داداش بهرام، عالی بود!']);
 
-        $response->assertCreated()->assertJsonPath('data.status', FamilyCommentStatus::Pending->value);
+        $response->assertCreated()->assertJsonPath('data.status', FamilyCommentStatus::Approved->value);
 
         $this->assertDatabaseHas('family_comments', [
             'post_id' => $post->id,
             'user_id' => $user->id,
-            'status' => FamilyCommentStatus::Pending->value,
+            'status' => FamilyCommentStatus::Approved->value,
         ]);
+
+        $this->assertDatabaseHas('family_post_stats', ['post_id' => $post->id, 'approved_comments_count' => 1]);
     }
 
-    public function test_manager_can_approve_comment_and_stats_increment(): void
+    public function test_manager_approve_is_idempotent_for_already_approved_comment(): void
     {
         Queue::fake();
 
@@ -111,10 +113,7 @@ class FamilyReactionAndCommentTest extends TestCase
 
         $this->actingAs($admin, 'sanctum')
             ->postJson("/api/v1/family-manager/comments/{$comment['id']}/approve")
-            ->assertOk()
-            ->assertJsonPath('data.status', FamilyCommentStatus::Approved->value);
-
-        $this->assertDatabaseHas('family_post_stats', ['post_id' => $post->id, 'approved_comments_count' => 1]);
+            ->assertStatus(422);
     }
 
     public function test_non_admin_manager_route_is_forbidden(): void

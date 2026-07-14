@@ -5,8 +5,17 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useFamilyComments } from '@/lib/family/hooks/useFamilyComments';
 import { FamilyApiError } from '@/lib/family/errors';
+import type { FamilyComment } from '@/lib/family/types';
 
-export function CommentsSheet({ postId, onClose }: { postId: number; onClose: () => void }) {
+export function CommentsSheet({
+  postId,
+  onClose,
+  onCommentAdded,
+}: {
+  postId: number;
+  onClose: () => void;
+  onCommentAdded?: (comment: FamilyComment) => void;
+}) {
   const { comments, isLoading, submitting, submit } = useFamilyComments(postId, true);
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -17,10 +26,13 @@ export function CommentsSheet({ postId, onClose }: { postId: number; onClose: ()
     if (!body || submitting) return;
     setError(null);
     try {
-      await submit(body);
+      const created = await submit(body);
       setValue('');
       setJustSent(true);
-      setTimeout(() => setJustSent(false), 4000);
+      if (created && !created.is_pending_mine) {
+        onCommentAdded?.(created);
+      }
+      setTimeout(() => setJustSent(false), 3000);
     } catch (e) {
       setError(e instanceof FamilyApiError ? e.message : 'ارسال نظر ناموفق بود.');
     }
@@ -63,7 +75,7 @@ export function CommentsSheet({ postId, onClose }: { postId: number; onClose: ()
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-medium text-gold/80">{c.user.name}</span>
                     {c.is_pending_mine && (
-                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-bone/50">در انتظار تأیید</span>
+                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-bone/50">در انتظار بررسی</span>
                     )}
                   </div>
                   <p className="mt-1 text-sm text-bone/85">{c.body}</p>
@@ -76,7 +88,7 @@ export function CommentsSheet({ postId, onClose }: { postId: number; onClose: ()
         <div className="border-t border-white/10 p-3">
           {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
           {justSent && !error && (
-            <p className="mb-2 text-xs text-gold/80">نظر شما ثبت شد و بعد از تأیید نمایش داده می‌شود.</p>
+            <p className="mb-2 text-xs text-gold/80">نظر شما ثبت شد.</p>
           )}
           <form
             onSubmit={(e) => {
