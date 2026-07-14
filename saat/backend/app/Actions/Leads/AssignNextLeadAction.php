@@ -11,10 +11,9 @@ use App\Models\LeadStatusHistory;
 use App\Models\User;
 use App\Services\Campaign\CampaignDialingPolicy;
 use App\Support\LeadPriorityScore;
-use Illuminate\Broadcasting\BroadcastException;
+use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -83,15 +82,9 @@ class AssignNextLeadAction
             });
 
             if ($result['lead']) {
-                try {
-                    broadcast(new LeadAssigned($result['lead']))->toOthers();
-                } catch (BroadcastException $e) {
-                    Log::warning('LeadAssigned broadcast skipped', [
-                        'lead_id' => $result['lead']->id,
-                        'agent_id' => $agent->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
+                SafeBroadcast::optionally(
+                    fn () => broadcast(new LeadAssigned($result['lead']))->toOthers(),
+                );
             }
 
             return $result;

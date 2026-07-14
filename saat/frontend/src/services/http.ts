@@ -72,7 +72,6 @@ function uuid(): string {
 
 export async function request<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, idempotencyKey, isFormData } = options
-  const _dbgT0 = performance.now()
 
   const headers: Record<string, string> = { Accept: 'application/json' }
   const token = getToken()
@@ -107,15 +106,8 @@ export async function request<T = unknown>(path: string, options: RequestOptions
 
   if (!response.ok || json?.success === false) {
     const message = json?.message ?? `درخواست ناموفق بود (${response.status})`
-    // #region agent log
-    fetch('http://127.0.0.1:7541/ingest/5e855e8d-e09f-4418-97d8-e130db1d617f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'90b576'},body:JSON.stringify({sessionId:'90b576',location:'http.ts:request',message:'api error',data:{method,path,status:response.status,ms:Math.round(performance.now()-_dbgT0)},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     throw new ApiError(message, response.status, json?.code, json?.errors)
   }
-
-  // #region agent log
-  fetch('http://127.0.0.1:7541/ingest/5e855e8d-e09f-4418-97d8-e130db1d617f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'90b576'},body:JSON.stringify({sessionId:'90b576',location:'http.ts:request',message:'api ok',data:{method,path,ms:Math.round(performance.now()-_dbgT0)},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
 
   return (json?.data ?? null) as T
 }

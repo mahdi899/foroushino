@@ -74,6 +74,7 @@ import { agentsFromTeamLive, mergeTeamLiveIntoAgents, teamsFromTeamLive } from '
 import { isProductiveAvailability, mergeClosedSessionIntoDaySummaries } from '@/lib/shiftUtils'
 import { getManagedTeam } from '@/lib/teamUtils'
 import { mergeAgentDailyStats, syncAllAgentsDailyStats, syncCurrentAgentDailyStats, conversionRateFromStats } from '@/lib/dailyGoal'
+import { isPowerDialAvailable } from '@/lib/features'
 import {
   DEFAULT_RUNTIME_APP_SETTINGS,
   type RuntimeAppSettings,
@@ -1297,7 +1298,8 @@ export const useStore = create<AppState>()(
       unlockApp: () => set({ isLocked: false }),
 
       setAppSettings: (appSettings) => set({ appSettings }),
-      setPowerDialEnabled: (enabled) => set({ powerDialEnabled: enabled }),
+      setPowerDialEnabled: (enabled) =>
+        set({ powerDialEnabled: isPowerDialAvailable ? enabled : false }),
       setDispositionMode: (mode) => set({ dispositionMode: mode }),
 
       mergeTeamLiveStats: (live) =>
@@ -1374,8 +1376,9 @@ export const useStore = create<AppState>()(
             permissions: resolvePermissions(payload.role, payload.permissions),
             dailyStatsDate: synced.dailyStatsDate,
             appSettings: payload.appSettings ?? state.appSettings,
-            powerDialEnabled:
-              state.powerDialEnabled || (payload.appSettings?.powerDialDefault ?? false),
+            powerDialEnabled: isPowerDialAvailable
+              ? state.powerDialEnabled || (payload.appSettings?.powerDialDefault ?? false)
+              : false,
             dataReady: true,
             dataSyncing: false,
           }
@@ -1432,18 +1435,17 @@ export const useStore = create<AppState>()(
         if (!state) return
         state.agents = withAvatars(state.agents, mockAgents)
         state.leads = hydrateLeads(state.leads)
-        if (!usesRemoteData) {
-          const synced = syncAllAgentsDailyStats(
-            state.agents,
-            state.calls ?? [],
-            state.dailyStatsDate ?? null,
-          )
-          state.agents = synced.agents
-          state.dailyStatsDate = synced.dailyStatsDate
-        }
+        const synced = syncAllAgentsDailyStats(
+          state.agents,
+          state.calls ?? [],
+          state.dailyStatsDate ?? null,
+        )
+        state.agents = synced.agents
+        state.dailyStatsDate = synced.dailyStatsDate
         state.maskPhoneNumbers = true
         state.autoLockEnabled = true
         state.autoLockMinutes = 5
+        if (!isPowerDialAvailable) state.powerDialEnabled = false
         if (state.darkMode) {
           document.documentElement.setAttribute('data-theme', 'dark')
         }

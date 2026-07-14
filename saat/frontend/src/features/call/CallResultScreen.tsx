@@ -2,15 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  PhoneCall,
   Check,
   NotebookPen,
   Star,
-  ArrowLeft,
   Wallet,
   CalendarClock,
   Sparkles,
-  Home,
   MessageCircleWarning,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
@@ -26,6 +23,7 @@ import { suggestReasonIcon, suggestReasonChipLabel } from '@/components/domain/i
 import { canEndAgentCall } from '@/lib/callPolicy'
 import { formatDuration } from '@/lib/format'
 import { EmptyState } from '@/components/ui/States'
+import { SuccessScreen } from '@/components/ui/SuccessScreen'
 import {
   objectionLabels,
   resultToStage,
@@ -221,6 +219,25 @@ export function CallResultScreen() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (outcome) {
+    return (
+      <CallResultSuccessView
+        outcome={outcome}
+        onNext={() => {
+          if (outcome.suggestion) {
+            openCallMethodSheet(outcome.suggestion.lead)
+          } else {
+            navigate('/home', { replace: true })
+          }
+        }}
+        onHome={() => {
+          pushToast('نتیجه تماس ثبت شد')
+          navigate('/home', { replace: true })
+        }}
+      />
+    )
   }
 
   return (
@@ -439,46 +456,29 @@ export function CallResultScreen() {
         )}
       </div>
 
-      <div className="glass-header pointer-events-auto absolute inset-x-0 bottom-0 z-30 border-t border-white/50 px-4 pt-3 pb-[calc(14px+var(--safe-bottom))] dark:border-white/10">
-        {!result && (
-          <p className="mb-2 text-center text-[11px] font-bold text-text-soft">
-            برای ثبت، یکی از نتایج بالا را انتخاب کن
-          </p>
-        )}
-        <Button
-          full
-          size="lg"
-          disabled={!result || submitting}
-          onClick={() => void save()}
-          icon={<Check size={19} />}
-        >
-          {submitting ? 'در حال ثبت…' : 'ذخیره و ثبت نتیجه'}
-        </Button>
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-[calc(14px+var(--safe-bottom))]">
+        <div className="glass-fab pointer-events-auto mx-auto max-w-[408px] rounded-[22px] border border-white/55 p-3 shadow-2xl dark:border-white/10">
+          {!result && (
+            <p className="mb-2 text-center text-[11px] font-bold text-text-soft">
+              برای ثبت، یکی از نتایج بالا را انتخاب کن
+            </p>
+          )}
+          <Button
+            full
+            size="lg"
+            disabled={!result || submitting}
+            onClick={() => void save()}
+            icon={<Check size={19} />}
+          >
+            {submitting ? 'در حال ثبت…' : 'ذخیره و ثبت نتیجه'}
+          </Button>
+        </div>
       </div>
-
-      <AnimatePresence>
-        {outcome && (
-          <SuccessOverlay
-            outcome={outcome}
-            onNext={() => {
-              if (outcome.suggestion) {
-                openCallMethodSheet(outcome.suggestion.lead)
-              } else {
-                navigate('/home', { replace: true })
-              }
-            }}
-            onHome={() => {
-              pushToast('نتیجه تماس ثبت شد')
-              navigate('/home', { replace: true })
-            }}
-          />
-        )}
-      </AnimatePresence>
     </Page>
   )
 }
 
-function SuccessOverlay({
+function CallResultSuccessView({
   outcome,
   onNext,
   onHome,
@@ -491,91 +491,55 @@ function SuccessOverlay({
   const ReasonIcon = outcome.suggestion ? suggestReasonIcon[outcome.suggestion.reason] : null
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="absolute inset-0 z-[70] flex flex-col items-center justify-center bg-surface/95 glass px-6"
-    >
-      <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: 'spring', damping: 14, stiffness: 220 }}
-        className="flex h-24 w-24 items-center justify-center rounded-full bg-success-500 text-white shadow-float"
+    <div className="fixed inset-0 z-[80]">
+      <SuccessScreen
+        title="ثبت شد، عالی بود"
+        description={outcome.nextActionLabel}
+        primaryLabel={next ? 'تماس بعدی رو شروع کن' : 'بازگشت به خانه'}
+        onPrimary={onNext}
+        secondaryLabel={next ? 'بعداً' : undefined}
+        onSecondary={next ? onHome : undefined}
       >
-        <Check size={48} strokeWidth={3} />
-      </motion.div>
-      <motion.h2
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-        className="mt-5 text-xl font-black text-neutral-900"
-      >
-        ثبت شد، عالی بود
-      </motion.h2>
-      <p className="mt-1.5 max-w-[260px] text-center text-[13px] font-bold leading-6 text-neutral-500">
-        {outcome.nextActionLabel}
-      </p>
-
-      {outcome.savedNote && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.22 }}
-          className="mt-4 w-full rounded-2xl bg-neutral-50 p-3.5 text-right border border-border/60"
-        >
-          <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold text-neutral-400">
-            <NotebookPen size={13} />
-            یادداشت ثبت‌شده
-          </p>
-          <p className="text-[13px] font-semibold leading-6 text-neutral-700">{outcome.savedNote}</p>
-        </motion.div>
-      )}
-
-      {next && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mt-6 w-full rounded-3xl bg-neutral-50 p-4 border border-border/60"
-        >
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-bold text-neutral-400">مشتری بعدی پیشنهادی</p>
-            {ReasonIcon && outcome.suggestion && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-[10px] font-extrabold text-primary-700">
-                <ReasonIcon size={11} />
-                {suggestReasonChipLabel[outcome.suggestion.reason]}
-              </span>
-            )}
+        {outcome.savedNote && (
+          <div className="rounded-2xl border border-border/60 bg-neutral-50/80 p-3.5 text-right dark:bg-white/[0.06]">
+            <p className="mb-1 flex items-center justify-center gap-1.5 text-[11px] font-bold text-neutral-400">
+              <NotebookPen size={13} />
+              یادداشت ثبت‌شده
+            </p>
+            <p className="text-[13px] font-semibold leading-6 text-neutral-700 dark:text-neutral-200">
+              {outcome.savedNote}
+            </p>
           </div>
-          <div className="flex items-center justify-between gap-3">
-            <LeadAvatar lead={next} size={48} ring className="shrink-0" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-extrabold text-neutral-900">
-                {next.firstName} {next.lastName}
-              </p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <ContactStatusBadge temperature={next.temperature} size="sm" />
-                <p className="ltr-nums text-xs font-bold text-primary-600 tabular-nums">
-                  {formatPhone(next.phone)}
+        )}
+
+        {next && (
+          <div className="rounded-2xl border border-border/60 bg-neutral-50/80 p-3.5 text-right dark:bg-white/[0.06]">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-xs font-bold text-neutral-400">مشتری بعدی پیشنهادی</p>
+              {ReasonIcon && outcome.suggestion && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-[10px] font-extrabold text-primary-700">
+                  <ReasonIcon size={11} />
+                  {suggestReasonChipLabel[outcome.suggestion.reason]}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <LeadAvatar lead={next} size={48} ring className="shrink-0" />
+              <div className="min-w-0 flex-1 text-right">
+                <p className="truncate text-sm font-extrabold text-neutral-900 dark:text-neutral-100">
+                  {next.firstName} {next.lastName}
                 </p>
+                <div className="mt-1.5 flex flex-wrap items-center justify-end gap-2">
+                  <ContactStatusBadge temperature={next.temperature} size="sm" />
+                  <p className="ltr-nums text-xs font-bold text-primary-600 tabular-nums">
+                    {formatPhone(next.phone)}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </motion.div>
-      )}
-
-      <div className="mt-6 w-full space-y-2.5">
-        <Button full size="lg" icon={next ? <PhoneCall size={18} /> : <Home size={18} />} onClick={onNext}>
-          {next ? 'تماس بعدی رو شروع کن' : 'بازگشت به خانه'}
-        </Button>
-        {next && (
-          <button onClick={onHome} className="flex w-full items-center justify-center gap-1 text-sm font-bold text-neutral-400">
-            <ArrowLeft size={15} />
-            بعداً
-          </button>
         )}
-      </div>
-    </motion.div>
+      </SuccessScreen>
+    </div>
   )
 }

@@ -56,6 +56,7 @@ import { OfflineBanner } from '@/components/pwa/DataGate'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { SyncProvider } from '@/providers/SyncProvider'
 import { ShiftPresenceWatcher } from '@/providers/ShiftPresenceWatcher'
+import { DayRolloverWatcher } from '@/providers/DayRolloverWatcher'
 import { useStandalonePwa } from '@/lib/pwa'
 
 const NAV_ROUTES = ['/home', '/leads', '/followups', '/profile', '/team', '/teams']

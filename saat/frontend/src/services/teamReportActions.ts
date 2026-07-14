@@ -1,6 +1,5 @@
 import { apiMode } from '@/services'
 import { http } from '@/services/http'
-import { syncAppData } from '@/services/sync'
 import { useStore } from '@/store/useStore'
 
 export async function performSubmitTeamReport(leaderNotes?: string): Promise<void> {
@@ -20,8 +19,7 @@ export async function performSubmitTeamReport(leaderNotes?: string): Promise<voi
     leader_notes: leaderNotes ?? null,
   })
 
-  const payload = await syncAppData()
-  useStore.getState().applySyncData(payload)
+  useStore.getState().submitTeamReport(leaderNotes)
 }
 
 export async function performApproveTeamReport(reportId: string, supervisorNotes?: string): Promise<void> {
@@ -34,8 +32,7 @@ export async function performApproveTeamReport(reportId: string, supervisorNotes
     supervisor_notes: supervisorNotes ?? null,
   })
 
-  const payload = await syncAppData()
-  useStore.getState().applySyncData(payload)
+  useStore.getState().approveTeamReport(reportId, supervisorNotes)
 }
 
 export async function performForwardTeamReport(reportId: string): Promise<void> {
@@ -46,6 +43,5 @@ export async function performForwardTeamReport(reportId: string): Promise<void> 
 
   await http.post(`/team-reports/${reportId}/forward`)
 
-  const payload = await syncAppData()
-  useStore.getState().applySyncData(payload)
+  useStore.getState().forwardTeamReport(reportId)
 }

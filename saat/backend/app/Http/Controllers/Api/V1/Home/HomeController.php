@@ -20,7 +20,6 @@ class HomeController extends Controller
 {
     public function agent(Request $request): JsonResponse
     {
-        $dbgT0 = microtime(true);
         $user = $request->user();
         $today = today();
 
@@ -48,11 +47,6 @@ class HomeController extends Controller
 
         $wallet = Wallet::query()->firstOrCreate(['user_id' => $user->id]);
         $unreadNotifications = $user->appNotifications()->where('read', false)->count();
-
-        // #region agent log
-        $dbgMs = (int) round((microtime(true) - $dbgT0) * 1000);
-        @file_put_contents(base_path('../../debug-90b576.log'), json_encode(['sessionId' => '90b576', 'location' => 'HomeController::agent', 'message' => 'home agent done', 'data' => ['ms' => $dbgMs, 'userId' => $user->id], 'timestamp' => (int) (microtime(true) * 1000), 'hypothesisId' => 'B'])."\n", FILE_APPEND);
-        // #endregion
 
         return ApiResponse::success([
             'target' => [

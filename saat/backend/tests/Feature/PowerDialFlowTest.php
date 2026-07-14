@@ -49,6 +49,26 @@ it('still succeeds when advance assignment fails after the result is saved', fun
     expect($call->fresh()->result?->value)->toBe('no_answer');
 });
 
+it('still saves call result when broadcast fails', function () {
+    $agent = makeAgent();
+    Sanctum::actingAs($agent);
+    $current = makeLead(['assigned_agent_id' => $agent->id]);
+    $call = startCallFor($agent, $current);
+
+    $this->mock(\Illuminate\Contracts\Broadcasting\Factory::class, function ($mock): void {
+        $mock->shouldReceive('event')->andThrow(new RuntimeException('Pusher error: 404 Not Found'));
+    });
+
+    $response = $this->postJson("/api/v1/calls/{$call->id}/result", [
+        'result' => 'no_answer',
+        'duration_sec' => 12,
+    ]);
+
+    $response->assertSuccessful();
+    $response->assertJsonPath('data.call.result', 'no_answer');
+    expect($call->fresh()->result?->value)->toBe('no_answer');
+});
+
 it('auto returns stale assigned leads to the pool', function () {
     $agent = makeAgent();
     $stale = makeLead([

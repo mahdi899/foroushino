@@ -29,7 +29,7 @@ import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
 import { ProfileAvatarPicker } from '@/features/profile/ProfileAvatarPicker'
 import { roleLabels } from '@/data/labels'
-import { conversionRateFromStats } from '@/lib/dailyGoal'
+import { isPowerDialAvailable } from '@/lib/features'
 import { getTeamAgentIds } from '@/lib/teamUtils'
 import { toFa } from '@/lib/format'
 import { APP_VERSION_LABEL } from '@/lib/app'
@@ -80,8 +80,6 @@ export function ProfileScreen() {
   const teams = useStore((s) => s.teams)
   const agent = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
   const logout = useStore((s) => s.logout)
-  const powerDialEnabled = useStore((s) => s.powerDialEnabled)
-  const setPowerDialEnabled = useStore((s) => s.setPowerDialEnabled)
   if (!agent) return null
 
   const agentLine = isAgentRole(role)
@@ -227,22 +225,13 @@ export function ProfileScreen() {
             {agentLine && (
               <button
                 type="button"
-                onClick={() => {
-                  haptic('selection')
-                  setPowerDialEnabled(!powerDialEnabled)
-                }}
-                className="mt-3 flex w-full items-center justify-between rounded-2xl border border-white/55 bg-white/30 px-4 py-3 dark:border-white/10 dark:bg-white/[0.04]"
+                disabled
+                aria-disabled
+                className="mt-3 flex w-full cursor-not-allowed items-center justify-between rounded-2xl border border-white/55 bg-white/30 px-4 py-3 opacity-75 dark:border-white/10 dark:bg-white/[0.04]"
               >
                 <span className="text-[13px] font-extrabold text-text">تماس پی‌درپی</span>
-                <span
-                  className={cn(
-                    'rounded-full px-3 py-1 text-[11px] font-extrabold',
-                    powerDialEnabled
-                      ? 'bg-emerald-500/15 text-emerald-700'
-                      : 'bg-black/[0.06] text-text-soft dark:bg-white/10',
-                  )}
-                >
-                  {powerDialEnabled ? 'فعال' : 'غیرفعال'}
+                <span className="rounded-full bg-black/[0.06] px-3 py-1 text-[11px] font-extrabold text-text-soft dark:bg-white/10">
+                  {isPowerDialAvailable ? 'غیرفعال' : 'غیرفعال · به‌زودی'}
                 </span>
               </button>
             )}

@@ -137,8 +137,11 @@ export function HomeScreen() {
   const goalComplete = remaining === 0 && (agent?.callGoal ?? 0) > 0
 
   useEffect(() => {
-    syncDailyAgentStats()
-  }, [syncDailyAgentStats])
+    const check = () => {
+      if (!goalComplete) wasCompleteRef.current = false
+    }
+    check()
+  }, [goalComplete, agent?.callsToday])
 
   useEffect(() => {
     setSkippedLeadIds((prev) => prev.filter((id) => leads.some((lead) => lead.id === id)))

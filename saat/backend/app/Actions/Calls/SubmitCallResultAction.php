@@ -23,9 +23,8 @@ use App\Services\ActivityLogService;
 use App\Services\NotificationService;
 use App\Services\Quality\QaSampler;
 use App\Support\ResultRouting;
-use Illuminate\Broadcasting\BroadcastException;
+use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class SubmitCallResultAction
 {
@@ -57,7 +56,7 @@ class SubmitCallResultAction
             ];
         }
 
-        return DB::transaction(function () use ($call, $data) {
+        $result = DB::transaction(function () use ($call, $data) {
             $result = CallResult::from($data['result']);
             $nextAction = ResultRouting::nextActionFor($result);
             $nextStatus = ResultRouting::leadStatusFor($result);
@@ -152,15 +151,6 @@ class SubmitCallResultAction
             $call = $call->fresh();
             $this->qaSampler->maybeSampleCall($call);
 
-            try {
-                broadcast(new CallResultSubmitted($call))->toOthers();
-            } catch (BroadcastException $e) {
-                Log::warning('CallResultSubmitted broadcast skipped', [
-                    'call_id' => $call->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
             return [
                 'call' => $call->fresh(),
                 'lead' => $lead->fresh(),
@@ -169,6 +159,12 @@ class SubmitCallResultAction
                 'next_action' => $nextAction,
             ];
         });
+
+        SafeBroadcast::optionally(
+            fn () => broadcast(new CallResultSubmitted($result['call']))->toOthers(),
+        );
+
+        return $result;
     }
 
     /**

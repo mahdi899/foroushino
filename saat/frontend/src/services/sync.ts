@@ -125,7 +125,7 @@ function mapPaymentFromSale(dto: Dto): Payment | null {
   }
 }
 
-async function fetchShiftData(days = 90): Promise<{ shiftCurrentRaw: Dto; shiftHistoryRaw: Dto[] }> {
+async function fetchShiftData(days = 14): Promise<{ shiftCurrentRaw: Dto; shiftHistoryRaw: Dto[] }> {
   try {
     const [shiftCurrentRaw, shiftHistoryRaw] = await Promise.all([
       http.get<Dto>('/shift/current'),
@@ -137,20 +137,17 @@ async function fetchShiftData(days = 90): Promise<{ shiftCurrentRaw: Dto; shiftH
   }
 }
 
-export async function syncAppData(): Promise<SyncPayload> {
-  // #region agent log
-  const _syncT0 = performance.now()
-  // #endregion
+let syncInFlight: Promise<SyncPayload> | null = null
+
+async function doSyncAppData(): Promise<SyncPayload> {
   const me = await fetchMe()
   const permissions = me.permissions ?? []
   const role = mapAuthUserRole(me.roles)
   const management = isManagementRole(role)
-  // #region agent log
-  fetch('http://127.0.0.1:7541/ingest/5e855e8d-e09f-4418-97d8-e130db1d617f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'90b576'},body:JSON.stringify({sessionId:'90b576',location:'sync.ts:syncAppData',message:'sync start',data:{role,management},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   const leadsPage = management ? 100 : 50
   const callsPage = management ? 100 : 30
   const followupsPage = management ? 100 : 50
+  const skipTeamLiveOnSync = management && hasPermission(permissions, 'users.view')
 
   const [
     home,
@@ -158,7 +155,6 @@ export async function syncAppData(): Promise<SyncPayload> {
     followupsRaw,
     callsRaw,
     salesRaw,
-    walletRaw,
     walletTxRaw,
     commissionsRaw,
     payoutsRaw,
@@ -176,7 +172,6 @@ export async function syncAppData(): Promise<SyncPayload> {
     http.get<Dto[]>(`/followups?per_page=${followupsPage}`),
     safeGet<Dto[]>(`/calls?per_page=${callsPage}`),
     http.get<Dto[]>(`/sales?per_page=${management ? 100 : 40}`),
-    http.get<Dto>('/wallet'),
     management ? http.get<Dto[]>('/wallet/transactions?per_page=100') : Promise.resolve([]),
     management ? http.get<Dto[]>('/wallet/commissions?per_page=100') : Promise.resolve([]),
     management ? http.get<Dto[]>('/wallet/payout-requests?per_page=50') : Promise.resolve([]),
@@ -189,8 +184,10 @@ export async function syncAppData(): Promise<SyncPayload> {
     hasPermission(permissions, 'reports.view-team') || hasPermission(permissions, 'reports.view-all')
       ? safeGet<Dto[]>('/team-reports')
       : Promise.resolve(null),
-    fetchShiftData(management ? 90 : 14),
+    fetchShiftData(management ? 30 : 14),
   ])
+
+  const walletRaw = (home.wallet as Dto) ?? {}
 
   const target = (home.target as Dto) ?? {}
   const { firstName, lastName } = splitName(me.name)
@@ -226,17 +223,10 @@ export async function syncAppData(): Promise<SyncPayload> {
       mappedLeads.push(embedded)
     }
   }
-  const suggestedRaw = home.suggested_lead as Dto | null | undefined
-  if (suggestedRaw && typeof suggestedRaw === 'object') {
-    const suggested = mapLead(suggestedRaw)
-    if (!mappedLeads.some((l) => l.id === suggested.id)) {
-      mappedLeads.unshift(suggested)
-    }
-  }
 
   const adminUsers = asArray<Dto>(adminUsersRaw)
   const calls = asArray<Dto>(callsRaw).map(mapCall)
-  const teamLive = isManagementRole(role)
+  const teamLive = !skipTeamLiveOnSync && isManagementRole(role)
     ? await fetchTeamLive(me.team_id ? String(me.team_id) : null)
     : null
 
@@ -280,10 +270,6 @@ export async function syncAppData(): Promise<SyncPayload> {
         ? teamsFromTeamLive(teamLive, agent.id)
         : []
 
-  // #region agent log
-  fetch('http://127.0.0.1:7541/ingest/5e855e8d-e09f-4418-97d8-e130db1d617f',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'90b576'},body:JSON.stringify({sessionId:'90b576',location:'sync.ts:syncAppData',message:'sync done',data:{role,management,leads:mappedLeads.length,followups:asArray<Dto>(followupsRaw).length,calls:calls.length,ms:Math.round(performance.now()-_syncT0)},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-
   return {
     leads: mappedLeads,
     followups: asArray<Dto>(followupsRaw).map(mapFollowup),
@@ -312,6 +298,14 @@ export async function syncAppData(): Promise<SyncPayload> {
     workDaySummaries: asArray<Dto>(shiftData.shiftHistoryRaw).map(mapWorkDaySummary),
     appSettings: mapRuntimeAppSettings(appConfigRaw),
   }
+}
+
+export async function syncAppData(): Promise<SyncPayload> {
+  if (syncInFlight) return syncInFlight
+  syncInFlight = doSyncAppData().finally(() => {
+    syncInFlight = null
+  })
+  return syncInFlight
 }
 
 /** Fetches fresh app data without throwing — safe after a successful write. */

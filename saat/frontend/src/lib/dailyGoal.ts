@@ -27,8 +27,7 @@ export function applyDailyStatsToAgent(
   const fromCalls = countAgentCallsOnDate(calls, agent.id, today)
   const fromSuccess = countAgentSuccessfulOnDate(calls, agent.id, today)
 
-  // Only reset on a real calendar-day rollover — `null` means "not synced yet", not a new day.
-  if (dailyStatsDate !== null && dailyStatsDate !== today) {
+  if (dailyStatsDate !== today) {
     return { ...agent, callsToday: fromCalls, successfulToday: fromSuccess }
   }
 
