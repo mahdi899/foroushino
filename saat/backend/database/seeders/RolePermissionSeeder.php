@@ -54,6 +54,7 @@ class RolePermissionSeeder extends Seeder
             'commissions.approve-supervisor',
             'reports.view', 'reports.view-team', 'reports.approve-team',
             'users.view', 'users.manage-team',
+            'teams.manage',
             'training.view', 'training.manage',
         ]);
 

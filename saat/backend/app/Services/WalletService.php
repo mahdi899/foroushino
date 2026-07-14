@@ -221,6 +221,27 @@ class WalletService
         return 'IR'.$digits;
     }
 
+    public static function formatBankCard(string $card): string
+    {
+        $digits = preg_replace('/\D/', '', $card) ?? '';
+
+        return trim(chunk_split($digits, 4, ' '));
+    }
+
+    public function notifyBankAccountSubmitted(User $agent): void
+    {
+        User::query()
+            ->role([RoleName::Supervisor->value, RoleName::Manager->value, RoleName::Admin->value])
+            ->where('is_active', true)
+            ->each(fn (User $supervisor) => $this->notifications->notify(
+                $supervisor,
+                NotificationKind::Payout,
+                'اطلاعات بانکی جدید',
+                "{$agent->name} کارت و شبای خود را ثبت کرد و منتظر تایید است.",
+                '/wallet/bank-accounts',
+            ));
+    }
+
     public function approvePayout(PayoutRequest $payout, User $processedBy): PayoutRequest
     {
         return DB::transaction(function () use ($payout, $processedBy) {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Wallet;
 
 use App\Actions\Wallet\ApproveCommissionByLeaderAction;
 use App\Actions\Wallet\ApproveCommissionBySupervisorAction;
+use App\Actions\Wallet\ConfirmBankAccountAction;
 use App\Actions\Wallet\RejectCommissionAction;
 use App\Enums\CommissionStatus;
 use App\Enums\RoleName;
@@ -11,12 +12,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Wallet\ProcessPayoutRequest;
 use App\Http\Requests\V1\Wallet\RequestPayoutRequest;
 use App\Http\Requests\V1\Wallet\UpdateBankCardRequest;
+use App\Http\Resources\V1\BankAccountReviewResource;
 use App\Http\Resources\V1\CommissionResource;
 use App\Http\Resources\V1\PayoutRequestResource;
+use App\Http\Resources\V1\UserAdminResource;
 use App\Http\Resources\V1\WalletResource;
 use App\Http\Resources\V1\WalletTransactionResource;
 use App\Models\Commission;
 use App\Models\PayoutRequest;
+use App\Models\User;
 use App\Services\WalletService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +34,7 @@ class WalletController extends Controller
         private readonly ApproveCommissionByLeaderAction $approveByLeader,
         private readonly ApproveCommissionBySupervisorAction $approveBySupervisor,
         private readonly RejectCommissionAction $rejectCommission,
+        private readonly ConfirmBankAccountAction $confirmBankAccount,
     ) {}
 
     public function show(Request $request): JsonResponse
@@ -58,6 +63,8 @@ class WalletController extends Controller
         $user->bank_sheba = $sheba;
         $user->bank_card_confirmed_at = null;
         $user->save();
+
+        $this->wallet->notifyBankAccountSubmitted($user);
 
         return ApiResponse::success([
             'bank_card_masked' => WalletService::maskBankCard($card),
@@ -195,6 +202,41 @@ class WalletController extends Controller
             ->get();
 
         return ApiResponse::success(PayoutRequestResource::collection($payouts));
+    }
+
+    public function bankAccountQueue(Request $request): JsonResponse
+    {
+        $supervisor = $request->user();
+        abort_unless(
+            $supervisor->can('users.manage-team') || $supervisor->can('users.manage'),
+            403,
+            'اجازه دسترسی ندارید.',
+        );
+
+        $query = User::query()
+            ->role(RoleName::Agent->value)
+            ->whereNotNull('bank_card')
+            ->whereNotNull('bank_sheba')
+            ->whereNull('bank_card_confirmed_at')
+            ->with('team')
+            ->orderByDesc('updated_at');
+
+        if (! $supervisor->can('users.manage') && ! $supervisor->can('reports.view-all') && $supervisor->team_id) {
+            $query->where('team_id', $supervisor->team_id);
+        }
+
+        return ApiResponse::success(BankAccountReviewResource::collection($query->get()));
+    }
+
+    public function confirmBankAccount(Request $request, User $user): JsonResponse
+    {
+        try {
+            $agent = $this->confirmBankAccount->execute($user, $request->user());
+        } catch (RuntimeException $e) {
+            return ApiResponse::error($e->getMessage(), status: 422, code: 'bank_account_not_confirmable');
+        }
+
+        return ApiResponse::success(new UserAdminResource($agent), 'اطلاعات بانکی کارشناس تایید شد');
     }
 
     public function approvePayout(ProcessPayoutRequest $request, PayoutRequest $payoutRequest): JsonResponse

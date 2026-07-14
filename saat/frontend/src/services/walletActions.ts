@@ -1,8 +1,8 @@
 import { apiMode } from '@/services'
 import { http } from '@/services/http'
-import { mapCommission, mapPayoutRequest, mapWallet, mapWalletTransaction } from '@/services/mappers'
+import { mapCommission, mapPayoutRequest, mapWallet, mapWalletTransaction, mapBankAccountReview, mapAgentFromAdmin } from '@/services/mappers'
 import { useStore } from '@/store/useStore'
-import type { Commission, PayoutRequest, Wallet } from '@/types'
+import type { Agent, BankAccountReview, Commission, PayoutRequest, Wallet } from '@/types'
 
 type Dto = Record<string, unknown>
 
@@ -70,6 +70,16 @@ export async function rejectCommission(commissionId: string, reason: string): Pr
 export async function fetchPayoutQueue(): Promise<PayoutRequest[]> {
   const raw = await http.get<Dto[]>('/wallet/payout-queue')
   return asArray<Dto>(raw).map(mapPayoutRequest)
+}
+
+export async function fetchBankAccountQueue(): Promise<BankAccountReview[]> {
+  const raw = await http.get<Dto[]>('/wallet/bank-accounts/queue')
+  return asArray<Dto>(raw).map(mapBankAccountReview)
+}
+
+export async function confirmBankAccount(userId: string): Promise<Agent> {
+  const raw = await http.post<Dto>(`/wallet/bank-accounts/${userId}/confirm`)
+  return mapAgentFromAdmin(raw)
 }
 
 export async function approvePayout(payoutId: string): Promise<void> {

@@ -20,6 +20,7 @@ import {
   BarChart3,
   Phone,
   CheckCircle2,
+  CreditCard,
   type LucideIcon,
 } from 'lucide-react'
 import { isAgentRole, isManagementRole } from '@/lib/roles'
@@ -131,7 +132,13 @@ export function ProfileScreen() {
       ? [{ icon: GraduationCap, label: 'آموزش و اسکریپت فروش', onClick: () => navigate('/training') }]
       : []),
     ...(hasPermission(permissions, 'users.manage-team') || hasPermission(permissions, 'users.manage')
-      ? [{ icon: Users, label: 'مدیریت کارشناسان', onClick: () => navigate('/admin/agents') }]
+      ? [
+          ...(hasPermission(permissions, 'teams.manage')
+            ? [{ icon: Users, label: 'مدیریت تیم‌ها', onClick: () => navigate('/admin/teams') }]
+            : []),
+          { icon: CreditCard, label: 'تایید کارت و شبا', onClick: () => navigate('/wallet/bank-accounts') },
+          { icon: Users, label: 'مدیریت کارشناسان', onClick: () => navigate('/admin/agents') },
+        ]
       : []),
     ...(canOpenAdminSettings || hasPermission(permissions, 'users.manage')
       ? [

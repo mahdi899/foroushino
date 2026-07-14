@@ -73,8 +73,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
     void run()
 
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && online) void run()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
     return () => {
       cancelled = true
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [
     online,

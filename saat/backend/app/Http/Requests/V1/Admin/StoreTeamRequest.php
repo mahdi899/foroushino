@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
-class UpdateTeamRequest extends FormRequest
+class StoreTeamRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -20,15 +20,15 @@ class UpdateTeamRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['sometimes', 'string', 'max:150'],
-            'leader_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
+            'name' => ['required', 'string', 'max:150'],
+            'leader_id' => ['nullable', 'integer', 'exists:users,id'],
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            if ($validator->errors()->isNotEmpty() || ! $this->has('leader_id') || $this->input('leader_id') === null) {
+            if ($validator->errors()->isNotEmpty() || ! $this->filled('leader_id')) {
                 return;
             }
 

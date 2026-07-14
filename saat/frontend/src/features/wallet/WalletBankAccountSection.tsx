@@ -3,8 +3,19 @@ import { CreditCard, Landmark, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { saveBankAccount } from '@/services/walletActions'
 import { useStore } from '@/store/useStore'
-import { toFa, toEn } from '@/lib/format'
+import {
+  formatBankCardFa,
+  formatShebaFa,
+  parseCardDigits,
+  parseShebaDigits,
+  toFa,
+} from '@/lib/format'
 import { cn } from '@/lib/cn'
+
+const bankInputClass = cn(
+  'glass-inset ltr-nums w-full rounded-[14px] border border-white/55 px-3 py-3 text-left font-bold tabular-nums',
+  'dark:border-white/10',
+)
 
 export function WalletBankAccountSection() {
   const wallet = useStore((s) => s.wallet)
@@ -12,20 +23,27 @@ export function WalletBankAccountSection() {
   const [cardRaw, setCardRaw] = useState('')
   const [shebaRaw, setShebaRaw] = useState('')
   const [saving, setSaving] = useState(false)
+  const [touched, setTouched] = useState(false)
 
-  const cardDigits = toEn(cardRaw).replace(/\D/g, '')
-  const shebaDigits = toEn(shebaRaw).replace(/\D/g, '').replace(/^IR/i, '')
+  const cardDigits = parseCardDigits(cardRaw)
+  const shebaDigits = parseShebaDigits(shebaRaw)
   const cardValid = cardDigits.length === 16
   const shebaValid = shebaDigits.length === 24
   const canSave = cardValid && shebaValid && !saving
 
   const submit = async () => {
+    setTouched(true)
+    if (!cardValid || !shebaValid) {
+      pushToast('شماره کارت (۱۶ رقم) و شبا (۲۴ رقم) هر دو الزامی هستند.', 'error')
+      return
+    }
     if (!canSave) return
     setSaving(true)
     try {
       await saveBankAccount(cardDigits, shebaDigits)
       setCardRaw('')
       setShebaRaw('')
+      setTouched(false)
       pushToast('اطلاعات بانکی ثبت شد. منتظر تایید ناظر باش.', 'success')
     } catch (e) {
       pushToast(e instanceof Error ? e.message : 'ثبت اطلاعات بانکی ناموفق بود', 'error')
@@ -44,7 +62,7 @@ export function WalletBankAccountSection() {
       {(wallet.bankCardMasked || wallet.bankShebaRegistered) && (
         <div className="mb-3 space-y-2 rounded-[14px] border border-white/55 bg-white/30 px-3 py-2.5 dark:border-white/10 dark:bg-white/5">
           {wallet.bankCardMasked && (
-            <p className="text-[12px] font-bold text-text">
+            <p className="ltr-nums text-left text-[12px] font-bold text-text">
               کارت: {toFa(wallet.bankCardMasked)}
             </p>
           )}
@@ -68,44 +86,62 @@ export function WalletBankAccountSection() {
 
       {!wallet.bankCardConfirmed && (
         <>
-          {!wallet.bankCardMasked && (
-            <p className="mb-3 text-[11px] font-semibold text-text-soft">
-              برای درخواست تسویه، شماره کارت و شبا را ثبت کن. بعد از تایید ناظر می‌توانی برداشت کنی.
-            </p>
-          )}
+          <p className="mb-3 text-[11px] font-semibold text-text-soft">
+            برای درخواست تسویه، <strong className="text-text">هر دو</strong> فیلد شماره کارت (۱۶ رقم) و شبا (۲۴
+            رقم) را وارد کن. بعد از تایید ناظر می‌توانی برداشت کنی.
+          </p>
 
-          <label className="mb-1.5 block text-[11px] font-semibold text-text-muted">شماره کارت</label>
-          <input
-            inputMode="numeric"
-            value={cardDigits ? toFa(cardDigits.replace(/(\d{4})(?=\d)/g, '$1 ').trim()) : ''}
-            onChange={(e) => setCardRaw(e.target.value)}
-            placeholder="۶۰۳۷ · · · · · · · · · · · ·"
-            maxLength={19}
-            className={cn(
-              'glass-inset mb-3 w-full rounded-[14px] border border-white/55 px-3 py-3 text-[15px] font-bold tabular-nums tracking-widest',
-              'dark:border-white/10',
-              cardDigits.length > 0 && !cardValid && 'border-red-500/30',
+          <div className="mb-3 space-y-1">
+            <label className="block text-[11px] font-semibold text-text-muted">
+              شماره کارت <span className="text-red-500">*</span>
+            </label>
+            <input
+              dir="ltr"
+              inputMode="numeric"
+              autoComplete="off"
+              value={formatBankCardFa(cardDigits)}
+              onChange={(e) => setCardRaw(e.target.value)}
+              onBlur={() => setTouched(true)}
+              placeholder="۶۰۳۷ ۹۹۱۲ ۳۴۵۶ ۷۸۹۰"
+              maxLength={19}
+              className={cn(
+                bankInputClass,
+                'text-[15px] tracking-widest',
+                touched && !cardValid && 'border-red-500/30',
+              )}
+            />
+            {touched && !cardValid && (
+              <p className="text-[10px] font-semibold text-red-500">
+                {cardDigits.length === 0 ? 'شماره کارت الزامی است.' : 'شماره کارت باید دقیقاً ۱۶ رقم باشد.'}
+              </p>
             )}
-          />
+          </div>
 
-          <label className="mb-1.5 block text-[11px] font-semibold text-text-muted">شماره شبا</label>
-          <input
-            inputMode="numeric"
-            value={
-              shebaDigits
-                ? toFa(`IR ${shebaDigits.replace(/(\d{4})(?=\d)/g, '$1 ').trim()}`)
-                : shebaRaw.toUpperCase().startsWith('IR')
-                  ? toFa(shebaRaw)
-                  : ''
-            }
-            onChange={(e) => setShebaRaw(e.target.value)}
-            placeholder="IR · · · · · · · · · · · · · · · · · · · ·"
-            className={cn(
-              'glass-inset mb-3 w-full rounded-[14px] border border-white/55 px-3 py-3 text-[14px] font-bold tabular-nums',
-              'dark:border-white/10',
-              shebaDigits.length > 0 && !shebaValid && 'border-red-500/30',
+          <div className="mb-3 space-y-1">
+            <label className="block text-[11px] font-semibold text-text-muted">
+              شماره شبا <span className="text-red-500">*</span>
+            </label>
+            <input
+              dir="ltr"
+              inputMode="numeric"
+              autoComplete="off"
+              value={formatShebaFa(shebaDigits)}
+              onChange={(e) => setShebaRaw(e.target.value)}
+              onBlur={() => setTouched(true)}
+              placeholder="IR ۶۰ ۳۷۹۹ ۱۲۳۴ ۵۶۷۸ ۹۰۱۲ ۳۴۵۶ ۷۸"
+              maxLength={32}
+              className={cn(
+                bankInputClass,
+                'text-[14px] tracking-wide',
+                touched && !shebaValid && 'border-red-500/30',
+              )}
+            />
+            {touched && !shebaValid && (
+              <p className="text-[10px] font-semibold text-red-500">
+                {shebaDigits.length === 0 ? 'شماره شبا الزامی است.' : 'شماره شبا باید ۲۴ رقم باشد (با یا بدون IR).'}
+              </p>
             )}
-          />
+          </div>
 
           <Button full size="md" disabled={!canSave} onClick={() => void submit()}>
             {wallet.bankCardMasked ? 'به‌روزرسانی اطلاعات بانکی' : 'ثبت اطلاعات بانکی'}

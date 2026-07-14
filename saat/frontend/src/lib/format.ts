@@ -57,6 +57,28 @@ export function formatMoney(amount: number): string {
   return toFa(Math.round(amount).toLocaleString('en-US'))
 }
 
+/** 16-digit card → grouped Persian digits for LTR display. */
+export function formatBankCardFa(digits: string): string {
+  const clean = toEn(digits).replace(/\D/g, '').slice(0, 16)
+  if (!clean) return ''
+  return toFa(clean.replace(/(\d{4})(?=\d)/g, '$1 ').trim())
+}
+
+/** 24-digit SHEBA → IR + grouped Persian digits for LTR display. */
+export function formatShebaFa(digits: string): string {
+  const clean = toEn(digits).replace(/\D/g, '').replace(/^IR/i, '').slice(0, 24)
+  if (!clean) return ''
+  return toFa(`IR ${clean.replace(/(\d{4})(?=\d)/g, '$1 ').trim()}`)
+}
+
+export function parseCardDigits(input: string): string {
+  return toEn(input).replace(/\D/g, '').slice(0, 16)
+}
+
+export function parseShebaDigits(input: string): string {
+  return toEn(input).toUpperCase().replace(/^IR/, '').replace(/\D/g, '').slice(0, 24)
+}
+
 const WEEKDAYS = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه']
 const FA_MONTHS = [
   'فروردین',

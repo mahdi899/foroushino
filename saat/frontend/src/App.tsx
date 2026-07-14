@@ -49,7 +49,9 @@ import { AgentReportsScreen } from '@/features/team/AgentReportsScreen'
 import { ActivityHistoryScreen } from '@/features/activity/ActivityHistoryScreen'
 import { CommissionApprovalsScreen } from '@/features/wallet/CommissionApprovalsScreen'
 import { PayoutQueueScreen } from '@/features/wallet/PayoutQueueScreen'
+import { BankAccountApprovalScreen } from '@/features/wallet/BankAccountApprovalScreen'
 import { AgentManagementScreen } from '@/features/admin/AgentManagementScreen'
+import { TeamManagementScreen } from '@/features/admin/TeamManagementScreen'
 import { StaffManagementScreen } from '@/features/admin/StaffManagementScreen'
 import { AdminSettingsScreen } from '@/features/admin/AdminSettingsScreen'
 import { LiveOpsScreen } from '@/features/liveops/LiveOpsScreen'
@@ -172,6 +174,7 @@ function Shell() {
             <Route path="/wallet" element={<RequireAuth><WalletScreen /></RequireAuth>} />
             <Route path="/wallet/approvals" element={<RequireAuth><CommissionApprovalsScreen /></RequireAuth>} />
             <Route path="/wallet/payouts" element={<RequireAuth><RequirePermission permission="wallet.manage-payouts"><PayoutQueueScreen /></RequirePermission></RequireAuth>} />
+            <Route path="/wallet/bank-accounts" element={<RequireAuth><RequirePermission permission="users.manage-team"><BankAccountApprovalScreen /></RequirePermission></RequireAuth>} />
             <Route path="/wallet/rules" element={<RequireAuth><CommissionRulesScreen /></RequireAuth>} />
             <Route path="/wallet/commissions/:id" element={<RequireAuth><CommissionDetailScreen /></RequireAuth>} />
             <Route path="/training" element={<RequireAuth><TrainingScreen /></RequireAuth>} />
@@ -185,6 +188,7 @@ function Shell() {
             <Route path="/activity" element={<RequireAuth><ActivityHistoryScreen /></RequireAuth>} />
             <Route path="/settings" element={<RequireAuth><SettingsScreen /></RequireAuth>} />
             <Route path="/admin/agents" element={<RequireAuth><RequirePermission permission="users.view"><AgentManagementScreen /></RequirePermission></RequireAuth>} />
+            <Route path="/admin/teams" element={<RequireAuth><RequirePermission permission="teams.manage"><TeamManagementScreen /></RequirePermission></RequireAuth>} />
             <Route path="/admin/staff" element={<RequireAuth><RequirePermission permission="users.view"><StaffManagementScreen /></RequirePermission></RequireAuth>} />
             <Route path="/admin/settings" element={<RequireAuth><RequirePermission permission="admin.settings"><AdminSettingsScreen /></RequirePermission></RequireAuth>} />
 

@@ -25,7 +25,7 @@ class UserAdminController extends Controller
         $query = User::query()->with('team')->orderBy('name');
         $user = $request->user();
 
-        if ($user && ! $user->can('reports.view-all') && $user->team_id) {
+        if ($user && ! $user->can('users.manage') && ! $user->can('users.manage-team') && $user->team_id) {
             $query->where('team_id', $user->team_id);
         }
 
@@ -64,6 +64,7 @@ class UserAdminController extends Controller
 
         if ($request->boolean('confirm_bank_card')) {
             abort_unless($user->bank_card, 422, 'برای تایید کارت، ابتدا شماره کارت را ثبت کن.');
+            abort_unless($user->bank_sheba, 422, 'برای تایید، ابتدا شماره شبا را ثبت کن.');
             $user->bank_card_confirmed_at = now();
         }
 

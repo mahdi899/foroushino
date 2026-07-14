@@ -319,6 +319,19 @@ export function mapAgentFromAdmin(dto: Dto): import('@/types').Agent {
     isActive: dto.is_active !== false,
     bankCardMasked: (dto.bank_card_masked as string) ?? null,
     bankCardConfirmed: dto.bank_card_confirmed != null ? !!dto.bank_card_confirmed : undefined,
+    bankShebaRegistered: dto.bank_sheba_registered != null ? !!dto.bank_sheba_registered : undefined,
+  }
+}
+
+export function mapBankAccountReview(dto: Dto): import('@/types').BankAccountReview {
+  return {
+    userId: id(dto.user_id),
+    name: (dto.name as string) ?? '',
+    teamId: dto.team_id != null ? id(dto.team_id) : undefined,
+    teamName: (dto.team_name as string) ?? null,
+    bankCard: (dto.bank_card as string) ?? '',
+    bankSheba: (dto.bank_sheba as string) ?? '',
+    updatedAt: (dto.updated_at as string) ?? null,
   }
 }
 
@@ -326,7 +339,10 @@ export function mapTeamFromAdmin(dto: Dto, memberIds: string[] = []): import('@/
   return {
     id: id(dto.id),
     name: dto.name ?? '',
-    leaderId: id(dto.leader_id),
+    leaderId: dto.leader_id != null ? id(dto.leader_id) : '',
+    leaderName: (dto.leader_name as string) ?? null,
+    agentsCount: dto.agents_count != null ? Number(dto.agents_count) : undefined,
+    agentsCapacity: dto.agents_capacity != null ? Number(dto.agents_capacity) : undefined,
     agentIds: memberIds,
   }
 }

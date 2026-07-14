@@ -66,6 +66,7 @@ const MOCK_ROLE_PERMISSIONS: Partial<Record<Role, string[]>> = {
     'wallet.manage-payouts',
     'users.view',
     'users.manage-team',
+    'teams.manage',
   ],
   manager: MANAGER_PERMISSIONS,
 }

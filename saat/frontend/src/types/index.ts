@@ -209,6 +209,7 @@ export interface Agent {
   isActive?: boolean
   bankCardMasked?: string | null
   bankCardConfirmed?: boolean
+  bankShebaRegistered?: boolean
 }
 
 export interface Team {
@@ -216,6 +217,9 @@ export interface Team {
   name: string
   leaderId: string
   agentIds: string[]
+  leaderName?: string | null
+  agentsCount?: number
+  agentsCapacity?: number
 }
 
 export type TeamReportStatus = 'submitted' | 'approved' | 'forwarded_to_manager'
@@ -389,6 +393,16 @@ export interface Wallet {
   bankCardMasked?: string | null
   bankCardConfirmed?: boolean
   bankShebaRegistered?: boolean
+}
+
+export interface BankAccountReview {
+  userId: string
+  name: string
+  teamId?: string
+  teamName?: string | null
+  bankCard: string
+  bankSheba: string
+  updatedAt?: string | null
 }
 
 export type WalletTxType =

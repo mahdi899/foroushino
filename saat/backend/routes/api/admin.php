@@ -19,6 +19,7 @@ Route::prefix('admin')->middleware('throttle:writes')->group(function (): void {
     Route::patch('/users/{user}', [UserAdminController::class, 'update']);
 
     Route::get('/teams', [TeamAdminController::class, 'index'])->withoutMiddleware('throttle:writes');
+    Route::post('/teams', [TeamAdminController::class, 'store']);
     Route::patch('/teams/{team}', [TeamAdminController::class, 'update']);
 
     Route::get('/scripts', [ScriptController::class, 'index'])->withoutMiddleware('throttle:writes');

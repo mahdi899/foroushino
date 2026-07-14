@@ -49,7 +49,7 @@ import {
 } from './mappers'
 import { syncAllAgentsDailyStats, conversionRateFromStats } from '@/lib/dailyGoal'
 import { todayDateKey } from '@/lib/businessDate'
-import { hasMultiTeamView, isLeaderRole, isManagementRole, isSupervisorRole } from '@/lib/roles'
+import { hasMultiTeamView, isAgentRole, isLeaderRole, isManagementRole, isSupervisorRole } from '@/lib/roles'
 import { fetchTeamLive, mergeTeamLiveIntoAgents, agentsFromTeamLive, teamsFromTeamLive } from './teamLive'
 
 type Dto = Record<string, unknown>
@@ -172,6 +172,20 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
   const callsPage = management ? 100 : 30
   const followupsPage = management ? 100 : 50
   const skipTeamLiveOnSync = hasMultiTeamView(role) && hasPermission(permissions, 'users.view')
+  const walletPage = 50
+  const fetchWalletBundle = isAgentRole(role)
+    ? Promise.all([
+        http.get<Dto>('/wallet'),
+        http.get<Dto[]>(`/wallet/commissions?per_page=${walletPage}`),
+        http.get<Dto[]>(`/wallet/transactions?per_page=${walletPage}`),
+        http.get<Dto[]>('/wallet/payout-requests'),
+      ])
+    : Promise.all([
+        safeGet<Dto>('/wallet'),
+        safeGet<Dto[]>(`/wallet/commissions?per_page=${walletPage}`),
+        safeGet<Dto[]>(`/wallet/transactions?per_page=${walletPage}`),
+        safeGet<Dto[]>('/wallet/payout-requests'),
+      ])
 
   const [
     home,
@@ -179,10 +193,7 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
     followupsRaw,
     callsRaw,
     salesRaw,
-    walletTxRaw,
-    commissionsRaw,
-    payoutsRaw,
-    walletDetailRaw,
+    [walletDetailRaw, commissionsRaw, walletTxRaw, payoutsRaw],
     productsRaw,
     notificationsRaw,
     appConfigRaw,
@@ -198,10 +209,7 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
     http.get<Dto[]>(`/followups?per_page=${followupsPage}`),
     safeGet<Dto[]>(`/calls?per_page=${callsPage}`),
     http.get<Dto[]>(`/sales?per_page=${management ? 100 : 40}`),
-    safeGet<Dto[]>('/wallet/transactions?per_page=50'),
-    safeGet<Dto[]>('/wallet/commissions?per_page=50'),
-    safeGet<Dto[]>('/wallet/payout-requests'),
-    safeGet<Dto>('/wallet'),
+    fetchWalletBundle,
     http.get<Dto[]>('/products'),
     http.get<Dto[]>('/notifications?per_page=50'),
     http.get<Dto>('/app-config'),

@@ -254,6 +254,7 @@ interface AppState {
   setDispositionMode: (mode: 'grid' | 'swipe') => void
   upsertLead: (lead: Lead) => void
   upsertAgent: (agent: Agent) => void
+  upsertTeam: (team: Team) => void
   setAgentAvatar: (avatar: string | null) => void
   setDataReady: (ready: boolean) => void
   setDataSyncing: (syncing: boolean) => void
@@ -1557,6 +1558,15 @@ export const useStore = create<AppState>()(
             agents: exists
               ? state.agents.map((row) => (row.id === agent.id ? { ...row, ...agent } : row))
               : [...state.agents, agent],
+          }
+        }),
+      upsertTeam: (team) =>
+        set((state) => {
+          const exists = state.teams.some((row) => row.id === team.id)
+          return {
+            teams: exists
+              ? state.teams.map((row) => (row.id === team.id ? { ...row, ...team } : row))
+              : [...state.teams, team],
           }
         }),
       setAgentAvatar: (avatar) =>

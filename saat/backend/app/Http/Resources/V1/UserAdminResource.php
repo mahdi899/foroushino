@@ -29,6 +29,7 @@ class UserAdminResource extends JsonResource
                 ? WalletService::maskBankCard($this->bank_card)
                 : null,
             'bank_card_confirmed' => $this->bank_card_confirmed_at !== null,
+            'bank_sheba_registered' => filled($this->bank_sheba),
         ];
     }
 }

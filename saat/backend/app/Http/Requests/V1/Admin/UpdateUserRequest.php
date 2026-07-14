@@ -57,6 +57,10 @@ class UpdateUserRequest extends FormRequest
                 $validator->errors()->add('confirm_bank_card', 'برای تایید کارت، ابتدا شماره کارت را ثبت کن.');
             }
 
+            if ($this->boolean('confirm_bank_card') && ! $user->bank_sheba) {
+                $validator->errors()->add('confirm_bank_card', 'برای تایید، ابتدا شماره شبا را ثبت کن.');
+            }
+
             $teamId = $this->has('team_id')
                 ? $this->integer('team_id')
                 : (int) $user->team_id;

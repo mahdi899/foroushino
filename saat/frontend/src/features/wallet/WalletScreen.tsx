@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -101,16 +101,35 @@ export function WalletScreen() {
   const [payoutOpen, setPayoutOpen] = useState(false)
   const [success, setSuccess] = useState(false)
 
+  const leadOf = (id: string) => leads.find((l) => l.id === id)
+  const payoutReady = canRequestPayout(wallet.balanceAvailable) && !!wallet.bankCardConfirmed && !!wallet.bankShebaRegistered
+
+  const pipelineAmount = useMemo(
+    () =>
+      commissions
+        .filter((c) => c.status === 'pending' || c.status === 'approved')
+        .reduce((sum, c) => sum + c.commissionAmount, 0),
+    [commissions],
+  )
+
   useEffect(() => {
-    if (apiMode === 'http') {
+    if (apiMode !== 'http') return
+
+    const refresh = () => {
       void refreshWalletBundle().catch(() => {
         pushToast('بارگذاری کیف پول ناموفق بود', 'error')
       })
     }
-  }, [pushToast])
 
-  const leadOf = (id: string) => leads.find((l) => l.id === id)
-  const payoutReady = canRequestPayout(wallet.balanceAvailable) && !!wallet.bankCardConfirmed && !!wallet.bankShebaRegistered
+    refresh()
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh()
+    }
+
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [pushToast])
 
   return (
     <Page withNav={false}>
@@ -160,6 +179,12 @@ export function WalletScreen() {
             {formatMoney(wallet.balanceAvailable)}{' '}
             <span className="text-[14px] font-bold text-text-muted">تومان</span>
           </p>
+          {pipelineAmount > 0 && (
+            <p className="relative mt-2 text-[11px] font-semibold text-text-soft">
+              {formatMoney(pipelineAmount)} تومان در فرایند تایید پورسانت
+              {wallet.balanceAvailable === 0 ? ' (بعد از تایید لیدر و ناظر به موجودی اضافه می‌شود)' : ''}
+            </p>
+          )}
           <motion.button
             type="button"
             whileTap={{ scale: payoutReady ? 0.97 : 1 }}

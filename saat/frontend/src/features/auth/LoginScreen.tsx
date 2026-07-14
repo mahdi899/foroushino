@@ -2,32 +2,24 @@ import { useCallback, useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft } from 'lucide-react'
-import { TelegramLoginWidget } from '@/components/auth/TelegramLoginWidget'
 import { DemoAccountsPanel } from '@/components/auth/DemoAccountsPanel'
 import { useStore } from '@/store/useStore'
 import {
-  loginWithTelegramWebApp,
-  loginWithTelegramWidget,
   requestPhoneOtp,
-  requestTelegramOtp,
   loginWithDemoAccount,
-  TELEGRAM_BOT_USERNAME,
   verifyPhoneOtp,
-  verifyTelegramOtp,
   type DemoAccount,
-  type TelegramWidgetUser,
 } from '@/services/auth'
 import { ApiError } from '@/services/http'
 import { SAAT_LOGO_ALT, SAAT_LOGO_AUTH_CLASS, SAAT_LOGO_SRC } from '@/lib/brand'
 import { toFa, toEn } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import { getTelegramInitData, haptic, isInTelegram } from '@/lib/telegram'
+import { haptic } from '@/lib/telegram'
 
 const OTP_LEN = 5
 const OTP_GREEN_MS = 105
 
 type OtpPhase = 'idle' | 'validating' | 'complete'
-type OtpChannel = 'phone' | 'telegram'
 
 const spring = { type: 'spring' as const, stiffness: 420, damping: 32 }
 const popSpring = { type: 'spring' as const, stiffness: 560, damping: 26 }
@@ -38,23 +30,13 @@ const stepVariants = {
   exit: { opacity: 0, y: -8 },
 }
 
-function TelegramIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden className={className} fill="currentColor">
-      <path d="M9.78 15.03 9.5 19.5c.36 0 .52-.16.71-.35l1.7-1.63 3.53 2.58c.65.36 1.11.17 1.28-.6l2.31-10.84h.01c.21-.96-.35-1.33-.98-1.1L3.9 10.2c-.94.37-.93.9-.16 1.14l4.24 1.32 9.86-6.21c.46-.28.88-.13.54.15" />
-    </svg>
-  )
-}
-
 export function LoginScreen() {
   const navigate = useNavigate()
   const setSessionFromAuth = useStore((s) => s.setSessionFromAuth)
   const pushToast = useStore((s) => s.pushToast)
   const [step, setStep] = useState<'phone' | 'otp'>('phone')
   const [phone, setPhone] = useState('')
-  const [tgLoading, setTgLoading] = useState(false)
-  const [otpChannel, setOtpChannel] = useState<OtpChannel>('phone')
-  const [telegramInitData, setTelegramInitData] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
   const [otpHint, setOtpHint] = useState('')
   const [otp, setOtp] = useState(() => Array(OTP_LEN).fill(''))
   const [otpPhase, setOtpPhase] = useState<OtpPhase>('idle')
@@ -65,7 +47,6 @@ export function LoginScreen() {
   const otpSubmitId = useRef(0)
 
   const phoneValid = /^09\d{9}$/.test(phone)
-  const telegramWebAppReady = isInTelegram()
   const otpLocked = otpPhase !== 'idle'
   const otpActiveIndex = otp.findIndex((x) => x === '')
 
@@ -146,11 +127,7 @@ export function LoginScreen() {
 
     const submit = async () => {
       try {
-        const user =
-          otpChannel === 'phone'
-            ? await verifyPhoneOtp(phone, code)
-            : await verifyTelegramOtp(telegramInitData!, code)
-
+        const user = await verifyPhoneOtp(phone, code)
         if (cancelled || submitId !== otpSubmitId.current) return
         runGreenValidation(() => completeAuth(user))
       } catch (error) {
@@ -170,17 +147,7 @@ export function LoginScreen() {
     return () => {
       cancelled = true
     }
-  }, [
-    otp,
-    step,
-    otpPhase,
-    otpChannel,
-    phone,
-    telegramInitData,
-    runGreenValidation,
-    completeAuth,
-    pushToast,
-  ])
+  }, [otp, step, otpPhase, phone, runGreenValidation, completeAuth, pushToast])
 
   const handleOtp = (i: number, val: string) => {
     if (otpLocked) return
@@ -205,17 +172,15 @@ export function LoginScreen() {
     setOtpPhase('idle')
     setOtpError(false)
     setValidatedUpTo(-1)
-    setTelegramInitData(null)
     setOtpHint('')
   }
 
   const goToOtp = async () => {
     haptic('light')
-    setTgLoading(true)
+    setLoading(true)
     try {
       const result = await requestPhoneOtp(phone)
-      setOtpChannel('phone')
-      setOtpHint(result.hint ?? (result.channel === 'demo' ? 'کد ثابت دمو' : 'کد ورود به تلگرامت ارسال شد.'))
+      setOtpHint(result.hint ?? (result.channel === 'demo' ? 'کد ثابت دمو' : 'کد تأیید ارسال شد.'))
       setOtp(Array(OTP_LEN).fill(''))
       setStep('otp')
     } catch (error) {
@@ -228,17 +193,16 @@ export function LoginScreen() {
             : 'ارسال کد ناموفق بود'
       pushToast(message, 'error')
     } finally {
-      setTgLoading(false)
+      setLoading(false)
     }
   }
 
   const handlePickDemoAccount = async (account: DemoAccount) => {
     haptic('light')
     setPhone(account.phone)
-    setTgLoading(true)
+    setLoading(true)
     try {
       await requestPhoneOtp(account.phone)
-      setOtpChannel('phone')
       setOtpHint(`کد ثابت دمو: ${account.otp}`)
       setOtp(account.otp.split(''))
       setStep('otp')
@@ -257,65 +221,9 @@ export function LoginScreen() {
         pushToast(message, 'error')
       }
     } finally {
-      setTgLoading(false)
+      setLoading(false)
     }
   }
-  const loginWithTelegram = useCallback(async () => {
-    haptic('light')
-    const initData = getTelegramInitData()
-    if (!initData) {
-      pushToast('برای ورود با تلگرام، اپ را از داخل تلگرام باز کنید.', 'error')
-      return
-    }
-
-    setTgLoading(true)
-    try {
-      const user = await loginWithTelegramWebApp()
-      completeAuth(user)
-    } catch {
-      try {
-        await requestTelegramOtp(initData)
-        setTelegramInitData(initData)
-        setOtpChannel('telegram')
-        setOtpHint('کد ورود به تلگرامت ارسال شد.')
-        setStep('otp')
-        pushToast('کد ورود در تلگرام ارسال شد', 'success')
-      } catch (error) {
-        haptic('error')
-        const message =
-          error instanceof ApiError
-            ? error.message
-            : error instanceof Error
-              ? error.message
-              : 'ورود با تلگرام ناموفق بود'
-        pushToast(message, 'error')
-      }
-    } finally {
-      setTgLoading(false)
-    }
-  }, [completeAuth, pushToast])
-
-  const handleTelegramWidgetAuth = useCallback(
-    async (widgetUser: TelegramWidgetUser) => {
-      setTgLoading(true)
-      try {
-        const user = await loginWithTelegramWidget(widgetUser)
-        completeAuth(user)
-      } catch (error) {
-        haptic('error')
-        const message =
-          error instanceof ApiError
-            ? error.message
-            : error instanceof Error
-              ? error.message
-              : 'ورود با تلگرام ناموفق بود'
-        pushToast(message, 'error')
-      } finally {
-        setTgLoading(false)
-      }
-    },
-    [completeAuth, pushToast],
-  )
 
   return (
     <div className="relative flex h-full min-h-full flex-col bg-[#FFFFFF] dark:bg-[#17212B]">
@@ -353,7 +261,7 @@ export function LoginScreen() {
                   <p className="mx-auto mt-3 max-w-[300px] text-[15px] leading-[1.55] text-[#707579] dark:text-[#8E9396]">
                     شماره موبایلت را وارد کن.
                     <br />
-                    کد تأیید در تلگرام ارسال می‌شود.
+                    کد تأیید برایت ارسال می‌شود.
                   </p>
                 </div>
 
@@ -394,7 +302,7 @@ export function LoginScreen() {
               >
                 <div className="text-center">
                   <h1 className="text-[26px] font-semibold leading-tight text-[#000000] dark:text-[#F5F5F5]">
-                    {otpChannel === 'telegram' ? 'ورود با تلگرام' : toFa(phone)}
+                    {toFa(phone)}
                   </h1>
                   <p className="mx-auto mt-3 max-w-[300px] text-[15px] leading-[1.55] text-[#707579] dark:text-[#8E9396]">
                     کد تأیید را وارد کن
@@ -499,7 +407,7 @@ export function LoginScreen() {
               <motion.button
                 type="button"
                 whileTap={{ scale: phoneValid ? 0.98 : 1 }}
-                disabled={!phoneValid || tgLoading}
+                disabled={!phoneValid || loading}
                 onClick={() => void goToOtp()}
                 className={cn(
                   'flex h-[50px] w-full items-center justify-center rounded-[10px] text-[16px] font-semibold text-white',
@@ -508,42 +416,9 @@ export function LoginScreen() {
                     : 'cursor-not-allowed bg-[#3390EC]/35 dark:bg-[#8774E1]/35',
                 )}
               >
-                {tgLoading ? 'در حال ارسال کد…' : 'ادامه'}
+                {loading ? 'در حال ارسال کد…' : 'ادامه'}
               </motion.button>
 
-              <div className="flex items-center gap-3 py-1">
-                <span className="h-px flex-1 bg-[#E5E5E5] dark:bg-[#2B3945]" />
-                <span className="text-[13px] font-medium text-[#707579] dark:text-[#8E9396]">یا</span>
-                <span className="h-px flex-1 bg-[#E5E5E5] dark:bg-[#2B3945]" />
-              </div>
-
-              {telegramWebAppReady ? (
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: tgLoading ? 1 : 0.98 }}
-                  disabled={tgLoading}
-                  onClick={loginWithTelegram}
-                  className={cn(
-                    'flex h-[50px] w-full items-center justify-center gap-2.5 rounded-[10px] border text-[16px] font-semibold',
-                    'border-[#E5E5E5] bg-[#FFFFFF] text-[#3390EC]',
-                    'active:bg-[#F4F4F5] disabled:opacity-60',
-                    'dark:border-[#2B3945] dark:bg-[#242F3D] dark:text-[#54A9EB] dark:active:bg-[#2B3945]',
-                  )}
-                >
-                  <TelegramIcon className="h-5 w-5 shrink-0" />
-                  {tgLoading ? 'در حال ورود…' : 'ورود با تلگرام'}
-                </motion.button>
-              ) : TELEGRAM_BOT_USERNAME ? (
-                <TelegramLoginWidget onAuth={handleTelegramWidgetAuth} disabled={tgLoading} />
-              ) : (
-                <p className="rounded-[10px] border border-[#E5E5E5] bg-[#F8F9FA] px-3 py-3 text-center text-[12px] leading-6 text-[#707579] dark:border-[#2B3945] dark:bg-[#242F3D] dark:text-[#8E9396]">
-                  ورود با تلگرام فقط داخل مینی‌اپ تلگرام یا با تنظیم{' '}
-                  <span dir="ltr" className="font-semibold">
-                    VITE_TELEGRAM_BOT_USERNAME
-                  </span>{' '}
-                  در فرانت فعال می‌شود.
-                </p>
-              )}
               <DemoAccountsPanel className="mt-1" onPickAccount={handlePickDemoAccount} />
             </div>
           ) : (

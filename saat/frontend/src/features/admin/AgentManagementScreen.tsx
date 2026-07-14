@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Users, UserPlus, PauseCircle, CreditCard, ShieldCheck } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Users, UserPlus, PauseCircle, CreditCard, Landmark } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
@@ -8,12 +9,13 @@ import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { Avatar } from '@/components/ui/Avatar'
 import { hasPermission } from '@/lib/permissions'
-import { toEn, toFa } from '@/lib/format'
+import { toFa } from '@/lib/format'
 import { createAgent, suspendAgent, activateAgent, updateAgent } from '@/services/userAdminActions'
 import { cn } from '@/lib/cn'
 import type { Agent } from '@/types'
 
 export function AgentManagementScreen() {
+  const navigate = useNavigate()
   const permissions = useStore((s) => s.permissions)
   const agents = useStore((s) => s.agents)
   const teams = useStore((s) => s.teams)
@@ -25,10 +27,12 @@ export function AgentManagementScreen() {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [teamId, setTeamId] = useState('')
-  const [bankCard, setBankCard] = useState('')
-  const [confirmBankCard, setConfirmBankCard] = useState(false)
 
   const roster = useMemo(() => agents.filter((a) => a.role === 'agent'), [agents])
+  const pendingBankCount = useMemo(
+    () => roster.filter((a) => a.bankCardMasked && a.bankShebaRegistered && !a.bankCardConfirmed).length,
+    [roster],
+  )
 
   if (!hasPermission(permissions, 'users.view')) return null
 
@@ -36,8 +40,6 @@ export function AgentManagementScreen() {
     setName('')
     setPhone('')
     setTeamId(teams[0]?.id ?? '')
-    setBankCard('')
-    setConfirmBankCard(false)
     setCreateOpen(true)
   }
 
@@ -46,8 +48,6 @@ export function AgentManagementScreen() {
     setName(`${agent.firstName} ${agent.lastName}`.trim())
     setPhone(agent.phone ?? '')
     setTeamId(agent.teamId)
-    setBankCard('')
-    setConfirmBankCard(!!agent.bankCardConfirmed)
   }
 
   const submitCreate = async () => {
@@ -62,15 +62,8 @@ export function AgentManagementScreen() {
 
   const submitEdit = async () => {
     if (!editTarget) return
-    const cardDigits = toEn(bankCard).replace(/\D/g, '')
     try {
-      await updateAgent(editTarget.id, {
-        name,
-        phone,
-        teamId,
-        ...(cardDigits.length === 16 ? { bankCard: cardDigits } : {}),
-        confirmBankCard,
-      })
+      await updateAgent(editTarget.id, { name, phone, teamId })
       pushToast('پروفایل به‌روز شد')
       setEditTarget(null)
     } catch {
@@ -94,7 +87,7 @@ export function AgentManagementScreen() {
         sticky
         showBack
         title="مدیریت کارشناسان"
-        subtitle={canManage ? 'افزودن، ویرایش و تایید کارت بانکی' : 'مشاهده کارشناسان'}
+        subtitle={canManage ? 'افزودن، ویرایش و مشاهده وضعیت بانکی' : 'مشاهده کارشناسان'}
         icon={Users}
         iconTone="primary"
         action={
@@ -110,9 +103,25 @@ export function AgentManagementScreen() {
         }
       />
 
+      {canManage && pendingBankCount > 0 && (
+        <div className="px-4 pt-3">
+          <button
+            type="button"
+            onClick={() => navigate('/wallet/bank-accounts')}
+            className="flex w-full items-center gap-3 rounded-[18px] border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-right"
+          >
+            <CreditCard size={18} className="shrink-0 text-amber-600" />
+            <span className="flex-1 text-[12px] font-bold text-amber-800 dark:text-amber-300">
+              {toFa(pendingBankCount)} کارشناس منتظر تایید کارت و شبا
+            </span>
+          </button>
+        </div>
+      )}
+
       <div className="space-y-2 px-4 pb-24 pt-3">
         {roster.map((agent) => {
           const team = teams.find((t) => t.id === agent.teamId)
+          const bankPending = agent.bankCardMasked && agent.bankShebaRegistered && !agent.bankCardConfirmed
           return (
             <button
               key={agent.id}
@@ -138,7 +147,13 @@ export function AgentManagementScreen() {
                   >
                     <CreditCard size={10} />
                     {toFa(agent.bankCardMasked)}
-                    {agent.bankCardConfirmed ? ' · تایید شده' : ' · در انتظار تایید'}
+                    {agent.bankCardConfirmed ? ' · تایید شده' : bankPending ? ' · منتظر تایید' : ' · ناقص'}
+                  </p>
+                )}
+                {agent.bankShebaRegistered && !agent.bankCardConfirmed && (
+                  <p className="mt-0.5 flex items-center gap-1 text-[10px] font-semibold text-text-soft">
+                    <Landmark size={10} />
+                    شبا ثبت شده
                   </p>
                 )}
               </div>
@@ -177,19 +192,10 @@ export function AgentManagementScreen() {
       <AgentFormSheet
         open={!!editTarget}
         title="ویرایش کارشناس"
-        editMode
         name={name}
         phone={phone}
         teamId={teamId}
         teams={teams}
-        bankCardMasked={editTarget?.bankCardMasked}
-        bankCard={bankCard}
-        confirmBankCard={confirmBankCard}
-        onName={setName}
-        onPhone={setPhone}
-        onTeam={setTeamId}
-        onBankCard={setBankCard}
-        onConfirmBankCard={setConfirmBankCard}
         onClose={() => setEditTarget(null)}
         onSubmit={() => void submitEdit()}
       />
@@ -200,42 +206,28 @@ export function AgentManagementScreen() {
 function AgentFormSheet({
   open,
   title,
-  editMode = false,
   name,
   phone,
   teamId,
   teams,
-  bankCardMasked,
-  bankCard = '',
-  confirmBankCard = false,
   onName,
   onPhone,
   onTeam,
-  onBankCard,
-  onConfirmBankCard,
   onClose,
   onSubmit,
 }: {
   open: boolean
   title: string
-  editMode?: boolean
   name: string
   phone: string
   teamId: string
   teams: { id: string; name: string }[]
-  bankCardMasked?: string | null
-  bankCard?: string
-  confirmBankCard?: boolean
   onName: (v: string) => void
   onPhone: (v: string) => void
   onTeam: (v: string) => void
-  onBankCard?: (v: string) => void
-  onConfirmBankCard?: (v: boolean) => void
   onClose: () => void
   onSubmit: () => void
 }) {
-  const cardDigits = toEn(bankCard).replace(/\D/g, '')
-
   return (
     <BottomSheet open={open} onClose={onClose} title={title}>
       <div className="space-y-3 pt-1">
@@ -259,38 +251,6 @@ function AgentFormSheet({
             </Chip>
           ))}
         </div>
-
-        {editMode && onBankCard && onConfirmBankCard && (
-          <div className="glass-inset space-y-2 rounded-[14px] border border-white/55 p-3 dark:border-white/10">
-            <p className="flex items-center gap-1.5 text-[12px] font-bold text-text">
-              <CreditCard size={14} className="text-[#3390EC] dark:text-[#8774E1]" />
-              شماره کارت بانکی
-            </p>
-            {bankCardMasked && (
-              <p className="text-[11px] font-semibold text-text-soft">فعلی: {toFa(bankCardMasked)}</p>
-            )}
-            <input
-              inputMode="numeric"
-              value={cardDigits ? toFa(cardDigits.replace(/(\d{4})(?=\d)/g, '$1 ').trim()) : ''}
-              onChange={(e) => onBankCard(e.target.value)}
-              placeholder="کارت جدید (۱۶ رقم)"
-              maxLength={19}
-              className="w-full rounded-[12px] border border-white/55 bg-white/30 px-3 py-2.5 text-[14px] font-bold tabular-nums tracking-widest dark:border-white/10 dark:bg-white/5"
-            />
-            <label className="flex items-start gap-2 text-[12px] font-semibold text-text-soft">
-              <input
-                type="checkbox"
-                checked={confirmBankCard}
-                onChange={(e) => onConfirmBankCard(e.target.checked)}
-                className="mt-0.5"
-              />
-              <span className="flex items-center gap-1">
-                <ShieldCheck size={13} />
-                تایید کارت بانکی برای تسویه
-              </span>
-            </label>
-          </div>
-        )}
 
         <Button full size="lg" icon={<UserPlus size={18} />} onClick={onSubmit}>
           ذخیره
