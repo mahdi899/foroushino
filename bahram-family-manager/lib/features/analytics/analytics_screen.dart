@@ -24,7 +24,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   void _load() {
-    setState(() => _future = context.read<AppState>().manager.analytics(days: _days));
+    setState(() {
+      _future = context.read<AppState>().manager.analytics(days: _days);
+    });
   }
 
   @override
@@ -58,10 +60,10 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     return ChoiceChip(
                       label: Text('${toFaDigits(d.toString())} روز'),
                       selected: _days == d,
-                      onSelected: (_) => setState(() {
-                        _days = d;
+                      onSelected: (_) {
+                        setState(() => _days = d);
                         _load();
-                      }),
+                      },
                     );
                   }).toList(),
                 ),
