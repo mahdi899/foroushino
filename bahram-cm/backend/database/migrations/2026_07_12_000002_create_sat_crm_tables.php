@@ -38,7 +38,7 @@ return new class extends Migration
             $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('reviewed_at')->nullable();
             $table->text('review_notes')->nullable();
-            $table->timestamp('called_at');
+            $table->timestamp('called_at')->useCurrent();
             $table->timestamps();
 
             $table->index(['staff_id', 'review_status']);

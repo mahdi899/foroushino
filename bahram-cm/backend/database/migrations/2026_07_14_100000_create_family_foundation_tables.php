@@ -51,7 +51,7 @@ return new class extends Migration
             $table->decimal('assignment_score', 8, 4)->nullable();
             $table->boolean('onboarding_completed')->default(false);
             $table->timestamp('onboarding_completed_at')->nullable();
-            $table->timestamp('joined_at');
+            $table->timestamp('joined_at')->useCurrent();
             $table->timestamps();
 
             $table->unique('user_id');

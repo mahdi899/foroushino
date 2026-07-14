@@ -24,3 +24,11 @@ venv/
 # Env
 .env
 bahram-cm/backend/.env
+
+# Laravel compiled bootstrap cache
+bahram-cm/backend/bootstrap/cache/*.php
+!bahram-cm/backend/bootstrap/cache/.gitignore
+
+# Logs
+*.log
+bahram-cm/backend/storage/logs/

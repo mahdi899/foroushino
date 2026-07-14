@@ -31,3 +31,6 @@ pubspec.lock
 # Env
 .env
 *.env.local
+
+# Flutter create defaults (project uses models_test.dart)
+test/widget_test.dart
