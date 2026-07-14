@@ -46,6 +46,7 @@ import { ActivityHistoryScreen } from '@/features/activity/ActivityHistoryScreen
 import { AppLockScreen } from '@/components/domain/AppLockScreen'
 import { OfflineBanner } from '@/components/pwa/DataGate'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
+import { DemoRoleSwitcher } from '@/components/auth/DemoRoleSwitcher'
 import { SyncProvider } from '@/providers/SyncProvider'
 import { ShiftPresenceWatcher } from '@/providers/ShiftPresenceWatcher'
 import { useStandalonePwa } from '@/lib/pwa'
@@ -99,6 +100,7 @@ function Shell() {
   const [fabOpen, setFabOpen] = useState(false)
 
   const showNav = isAuthed && NAV_ROUTES.includes(location.pathname)
+  const showDemoSwitcher = isAuthed && !location.pathname.startsWith('/dialer/')
   const lockScroll = location.pathname.startsWith('/dialer/')
 
   useEffect(() => {
@@ -160,6 +162,21 @@ function Shell() {
           </Routes>
         </div>
       </div>
+
+      {showDemoSwitcher && (
+        <div
+          className={cn(
+            'pointer-events-none absolute z-30',
+            showNav
+              ? 'bottom-[calc(92px+var(--safe-bottom))] left-4'
+              : 'top-[calc(10px+var(--safe-top))] left-4',
+          )}
+        >
+          <div className="pointer-events-auto">
+            <DemoRoleSwitcher />
+          </div>
+        </div>
+      )}
 
       {showNav && <BottomNav onFabClick={() => setFabOpen(true)} />}
       <QuickActionSheet open={fabOpen} onClose={() => setFabOpen(false)} />

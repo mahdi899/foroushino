@@ -106,7 +106,7 @@ export function aggregateWorkPeriod(
     live.availabilityChangedAt,
     live.nowMs,
   )
-  const dailyCall = calcDailyCallSeconds(workDaySummaries, live.workSession)
+  const dailyCall = calcDailyCallSeconds(workDaySummaries, live.workSession, live.nowMs)
 
   const filtered = workDaySummaries.filter(
     (day) => day.sessionsCount > 0 && isDayInWorkPeriod(day.date, period, new Date(live.nowMs)),

@@ -56,7 +56,14 @@ class PhoneOtpService
 
     public function verifyPhoneCode(string $phone, string $code): void
     {
-        $this->assertValidCode("phone:{$this->normalizePhone($phone)}", $code);
+        $normalized = $this->normalizePhone($phone);
+        $demo = $this->demoAuth->accountForPhone($normalized);
+
+        if ($demo !== null && hash_equals($demo['otp'], trim($code))) {
+            return;
+        }
+
+        $this->assertValidCode("phone:{$normalized}", $code);
     }
 
     public function verifyTelegramCode(int $telegramId, string $code): void

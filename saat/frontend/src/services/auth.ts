@@ -113,6 +113,10 @@ export async function verifyPhoneOtp(phone: string, code: string): Promise<Authe
   return persistLoginResponse(response)
 }
 
+export async function loginWithDemoAccount(account: DemoAccount): Promise<AuthenticatedUser> {
+  return verifyPhoneOtp(account.phone, account.otp)
+}
+
 export async function requestTelegramOtp(initData: string): Promise<void> {
   await http.post<null>('/auth/telegram-otp/request', { init_data: initData })
 }

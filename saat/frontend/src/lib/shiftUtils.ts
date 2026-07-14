@@ -78,8 +78,9 @@ export function calcDailyBreakSeconds(
 export function calcDailyCallSeconds(
   workDaySummaries: WorkDaySummary[],
   workSession: WorkSession | null,
+  nowMs: number,
 ): number {
-  const today = todayDateKey()
+  const today = todayDateKey(new Date(nowMs))
   const summary = workDaySummaries.find((d) => d.date === today)
   const base = summary?.totalCallSeconds ?? 0
 

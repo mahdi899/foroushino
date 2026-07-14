@@ -213,7 +213,7 @@ export function WorkStatusScreen() {
     now,
   )
 
-  const callSec = calcDailyCallSeconds(workDaySummaries, workSession)
+  const callSec = calcDailyCallSeconds(workDaySummaries, workSession, now)
 
   const recentWorkDays = useMemo(
     () => workDaySummaries.filter((day) => day.sessionsCount > 0).slice(0, 7),

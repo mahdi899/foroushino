@@ -44,6 +44,7 @@ class DemoAuthService
             'leader' => 'سرتیم',
             'supervisor' => 'ناظر',
             'manager' => 'مدیر',
+            'admin' => 'ادمین',
         ];
 
         return collect(config('demo_auth.accounts', []))
