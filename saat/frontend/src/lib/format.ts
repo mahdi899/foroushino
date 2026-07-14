@@ -109,6 +109,13 @@ export function formatJalaliShort(date: Date): string {
   return `${toFa(jd)} ${FA_MONTHS[jm - 1]}`
 }
 
+/** Formats a `YYYY-MM-DD` (or ISO datetime) value for Persian UI. */
+export function formatIsoDateJalali(iso: string, withWeekday = false): string {
+  const date = new Date(iso.includes('T') ? iso : `${iso}T12:00:00`)
+  if (Number.isNaN(date.getTime())) return toFa(iso)
+  return formatJalaliDate(date, withWeekday)
+}
+
 export function formatTime(date: Date): string {
   return toFa(
     `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`,

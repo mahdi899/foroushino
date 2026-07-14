@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Users, Flame, Sun, Snowflake, CalendarClock, AlertTriangle, Lock, Undo2 } from 'lucide-react'
+import { Users, Flame, Sun, Snowflake, CalendarClock, AlertTriangle, Lock, Undo2, UserPlus } from 'lucide-react'
+import { hasPermission } from '@/lib/permissions'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
@@ -10,6 +11,8 @@ import { LeadQuickViewSheet } from '@/components/domain/LeadQuickViewSheet'
 import { EmptyState } from '@/components/ui/States'
 import { isToday, isOverdue, toFa } from '@/lib/format'
 import { canCallLead, filterLeadsForAgent } from '@/lib/leadUtils'
+import { filterLeadsForScope } from '@/lib/teamUtils'
+import { isManagementRole } from '@/lib/roles'
 import { haptic } from '@/lib/telegram'
 import type { Lead } from '@/types'
 import { DataGate } from '@/components/pwa/DataGate'
@@ -27,9 +30,18 @@ const filters: { id: Filter; label: string; icon?: typeof Flame; tone: ChipTone 
 
 export function LeadsScreen() {
   const navigate = useNavigate()
+  const role = useStore((s) => s.role)
+  const agents = useStore((s) => s.agents)
+  const teams = useStore((s) => s.teams)
   const leads = useStore((s) => s.leads)
   const currentAgentId = useStore((s) => s.currentAgentId)
   const openCallMethodSheet = useStore((s) => s.openCallMethodSheet)
+  const isTeamViewer = isManagementRole(role)
+  const permissions = useStore((s) => s.permissions)
+  const canIntakeLeads =
+    hasPermission(permissions, 'leads.manage') ||
+    hasPermission(permissions, 'leads.import') ||
+    hasPermission(permissions, 'leads.reassign')
   const [searchParams] = useSearchParams()
   const tempParam = searchParams.get('temp')
   const initialFilter: Filter =
@@ -38,15 +50,21 @@ export function LeadsScreen() {
   const [quickViewLead, setQuickViewLead] = useState<Lead | null>(null)
 
   const visibleLeads = useMemo(
-    () => filterLeadsForAgent(leads, currentAgentId),
-    [leads, currentAgentId],
+    () =>
+      isTeamViewer
+        ? filterLeadsForScope(leads, teams, agents, currentAgentId, role)
+        : filterLeadsForAgent(leads, currentAgentId),
+    [leads, teams, agents, currentAgentId, role, isTeamViewer],
   )
 
   const lockedCount = useMemo(
-    () => visibleLeads.filter((l) => l.lockedBy === currentAgentId).length,
-    [visibleLeads, currentAgentId],
+    () => (isTeamViewer ? 0 : visibleLeads.filter((l) => l.lockedBy === currentAgentId).length),
+    [visibleLeads, currentAgentId, isTeamViewer],
   )
-  const returnedCount = useMemo(() => visibleLeads.filter((l) => l.returnedToPool).length, [visibleLeads])
+  const returnedCount = useMemo(
+    () => (isTeamViewer ? 0 : visibleLeads.filter((l) => l.returnedToPool).length),
+    [visibleLeads, isTeamViewer],
+  )
 
   const filtered = useMemo(() => {
     return visibleLeads.filter((l) => {
@@ -68,7 +86,7 @@ export function LeadsScreen() {
   }, [visibleLeads, filter])
 
   const call = (lead: Lead) => {
-    if (!canCallLead(lead, currentAgentId)) return
+    if (isTeamViewer || !canCallLead(lead, currentAgentId)) return
     haptic('medium')
     openCallMethodSheet(lead)
   }
@@ -78,8 +96,8 @@ export function LeadsScreen() {
       <ScreenHeader
         sticky
         subtitleInline
-        title="سرنخ‌های من"
-        subtitle={`${toFa(visibleLeads.length)} سرنخ فعال`}
+        title={isTeamViewer ? 'مشتریان تیم' : 'مشتریان من'}
+        subtitle={`${toFa(visibleLeads.length)} مشتری فعال`}
         icon={Users}
         iconTone="secondary"
       >
@@ -100,6 +118,17 @@ export function LeadsScreen() {
           })}
         </div>
 
+        {canIntakeLeads && (
+          <button
+            type="button"
+            onClick={() => navigate('/leads/intake')}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 px-3 py-2.5 text-[12px] font-extrabold text-white"
+          >
+            <UserPlus size={14} />
+            ورود و تقسیم مشتری
+          </button>
+        )}
+
         {(lockedCount > 0 || returnedCount > 0) && (
           <div className="mt-2 flex gap-2">
             {lockedCount > 0 && (
@@ -108,7 +137,7 @@ export function LeadsScreen() {
                 className="glass-inset flex flex-1 items-center gap-1.5 rounded-2xl border-error-200/60 px-3 py-2.5 text-[12px] font-semibold text-error-600 dark:border-error-500/20"
               >
                 <Lock size={14} strokeWidth={2.25} />
-                {toFa(lockedCount)} لید قفل‌شده من
+                {toFa(lockedCount)} مشتری قفل‌شده من
               </button>
             )}
             {returnedCount > 0 && (
@@ -128,7 +157,7 @@ export function LeadsScreen() {
       <div className="space-y-2 px-4 pt-2 pb-1">
         {filtered.length === 0 ? (
           <EmptyState
-            title="سرنخی پیدا نشد"
+            title="مشتری پیدا نشد"
             description="فیلتر را تغییر بده."
             action={{ label: 'پاک کردن فیلترها', onClick: () => setFilter('all') }}
           />
@@ -138,7 +167,7 @@ export function LeadsScreen() {
               key={lead.id}
               lead={lead}
               onClick={() => navigate(`/leads/${lead.id}`)}
-              onCall={() => call(lead)}
+              onCall={isTeamViewer ? undefined : () => call(lead)}
               onQuickView={() => setQuickViewLead(lead)}
             />
           ))
@@ -150,7 +179,7 @@ export function LeadsScreen() {
         lead={quickViewLead}
         open={!!quickViewLead}
         onClose={() => setQuickViewLead(null)}
-        onCall={call}
+        onCall={isTeamViewer ? undefined : call}
       />
     </Page>
   )

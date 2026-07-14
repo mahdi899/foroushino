@@ -3,9 +3,11 @@ import {
   calcDailyBreakSeconds,
   calcDailyCallSeconds,
   calcDailyProductiveSeconds,
+  dateKeyFromIso,
+  isShiftOpen,
   todayDateKey,
 } from '@/lib/shiftUtils'
-import type { Availability, WorkDaySummary, WorkSession } from '@/types'
+import type { Availability, Call, WorkDaySummary, WorkSession } from '@/types'
 
 export type WorkPeriod = 'daily' | 'weekly' | '30d' | 'seasonal' | 'annual'
 
@@ -20,7 +22,7 @@ export const WORK_PERIOD_LABELS: Record<WorkPeriod, string> = {
 }
 
 export interface WorkPeriodTotals {
-  workDays: number
+  callsCount: number
   sessionsCount: number
   totalProductiveSeconds: number
   totalBreakSeconds: number
@@ -41,16 +43,16 @@ function parseDayDate(date: string): Date {
   return new Date(`${date}T12:00:00Z`)
 }
 
-function addUtcDays(date: Date, days: number): Date {
+function addLocalDays(date: Date, days: number): Date {
   const next = new Date(date)
-  next.setUTCDate(next.getUTCDate() + days)
+  next.setDate(next.getDate() + days)
   return next
 }
 
 function listRollingDateKeys(now: Date, count: number): string[] {
   return Array.from({ length: count }, (_, index) => {
     const offset = count - 1 - index
-    return todayDateKey(addUtcDays(now, -offset))
+    return todayDateKey(addLocalDays(now, -offset))
   })
 }
 
@@ -79,7 +81,7 @@ export function isDayInWorkPeriod(date: string, period: WorkPeriod, now = new Da
     return date === today
   }
 
-  const since = todayDateKey(addUtcDays(now, -(span - 1)))
+  const since = todayDateKey(addLocalDays(now, -(span - 1)))
   return date >= since && date <= today
 }
 
@@ -88,6 +90,34 @@ type LiveShiftState = {
   availability: Availability
   availabilityChangedAt: string | null
   nowMs: number
+  calls?: Call[]
+  agentId?: string
+}
+
+function sumCallSecondsForDate(calls: Call[] | undefined, agentId: string | undefined, date: string): number {
+  if (!calls?.length || !agentId) return 0
+
+  return calls
+    .filter(
+      (call) =>
+        call.agentId === agentId &&
+        dateKeyFromIso(call.createdAt) === date &&
+        call.durationSec > 0,
+    )
+    .reduce((sum, call) => sum + call.durationSec, 0)
+}
+
+function countCallsForPeriod(
+  calls: Call[] | undefined,
+  agentId: string | undefined,
+  dates: string[],
+): number {
+  if (!calls?.length || !agentId) return 0
+
+  const dateSet = new Set(dates)
+  return calls.filter(
+    (call) => call.agentId === agentId && dateSet.has(dateKeyFromIso(call.createdAt)),
+  ).length
 }
 
 function getDayProductiveSeconds(
@@ -134,11 +164,22 @@ function getDayCallSeconds(
   live: LiveShiftState,
 ): number {
   const today = todayDateKey(new Date(live.nowMs))
+  const fromCalls = sumCallSecondsForDate(live.calls, live.agentId, date)
+
   if (date === today) {
-    return calcDailyCallSeconds(workDaySummaries, live.workSession, live.nowMs)
+    const fromSession = calcDailyCallSeconds(
+      workDaySummaries,
+      live.workSession,
+      live.availability,
+      live.availabilityChangedAt,
+      live.nowMs,
+    )
+
+    return Math.max(fromSession, fromCalls)
   }
 
-  return workDaySummaries.find((day) => day.date === date)?.totalCallSeconds ?? 0
+  const fromSummary = workDaySummaries.find((day) => day.date === date)?.totalCallSeconds ?? 0
+  return Math.max(fromSummary, fromCalls)
 }
 
 export function getWorkPeriodDayEntries(
@@ -186,7 +227,6 @@ export function aggregateWorkPeriod(
   let totalProductiveSeconds = 0
   let totalBreakSeconds = 0
   let totalCallSeconds = 0
-  let workDays = 0
   let sessionsCount = 0
 
   for (const date of dates) {
@@ -194,25 +234,21 @@ export function aggregateWorkPeriod(
     const breakSeconds = getDayBreakSeconds(date, workDaySummaries, live)
     const callSeconds = getDayCallSeconds(date, workDaySummaries, live)
     const summary = workDaySummaries.find((day) => day.date === date)
+    const isToday = date === todayDateKey(now)
 
     totalProductiveSeconds += productiveSeconds
     totalBreakSeconds += breakSeconds
     totalCallSeconds += callSeconds
 
-    if (productiveSeconds > 0 || (summary?.sessionsCount ?? 0) > 0) {
-      workDays += 1
-    }
-
-    if (date === todayDateKey(now) && live.workSession && !live.workSession.endedAt) {
-      sessionsCount += summary?.sessionsCount ?? 0
-      if ((summary?.sessionsCount ?? 0) === 0) sessionsCount += 1
+    if (isToday && isShiftOpen(live.workSession)) {
+      sessionsCount += Math.max(summary?.sessionsCount ?? 0, 1)
     } else {
       sessionsCount += summary?.sessionsCount ?? 0
     }
   }
 
   return {
-    workDays,
+    callsCount: countCallsForPeriod(live.calls, live.agentId, dates),
     sessionsCount,
     totalProductiveSeconds: Math.max(0, totalProductiveSeconds),
     totalBreakSeconds: Math.max(0, totalBreakSeconds),

@@ -7,11 +7,12 @@ interface TopBarProps {
   title?: string
   subtitle?: string
   onBack?: () => void
+  showBack?: boolean
   action?: ReactNode
   transparent?: boolean
 }
 
-export function TopBar({ title, subtitle, onBack, action, transparent }: TopBarProps) {
+export function TopBar({ title, subtitle, onBack, showBack = true, action, transparent }: TopBarProps) {
   const navigate = useNavigate()
 
   return (
@@ -22,14 +23,18 @@ export function TopBar({ title, subtitle, onBack, action, transparent }: TopBarP
       )}
     >
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => (onBack ? onBack() : navigate(-1))}
-          aria-label="بازگشت"
-          className="glass-inset flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#3390EC] shadow-sm transition-all active:scale-95 dark:text-[#8774E1]"
-        >
-          <ChevronRight size={20} strokeWidth={2.25} />
-        </button>
+        {showBack ? (
+          <button
+            type="button"
+            onClick={() => (onBack ? onBack() : navigate(-1))}
+            aria-label="بازگشت"
+            className="glass-inset flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#3390EC] shadow-sm transition-all active:scale-95 dark:text-[#8774E1]"
+          >
+            <ChevronRight size={20} strokeWidth={2.25} />
+          </button>
+        ) : (
+          <span className="h-9 w-9 shrink-0" aria-hidden />
+        )}
 
         <div className="min-w-0 flex-1 px-1 text-center">
           {title && (

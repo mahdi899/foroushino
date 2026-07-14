@@ -171,11 +171,11 @@ export const suggestReasonIcon: Record<SuggestReason, LucideIcon> = {
 export const suggestReasonChipLabel: Record<SuggestReason, string> = {
   overdue_follow_up: 'پیگیری عقب‌افتاده',
   today_follow_up: 'بهترین زمان تماس',
-  hot_in_window: 'لید داغ',
+  hot_in_window: 'مشتری داغ',
   interested_needs_follow_up: 'نزدیک به خرید',
   fresh_high_prob: 'تازه ثبت‌شده',
   warm: 'احتمال بالا',
-  cold: 'لید سرد',
+  cold: 'مشتری سرد',
   from_pool: 'از صف عمومی',
 }
 

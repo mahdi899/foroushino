@@ -31,13 +31,13 @@ export function LockedLeadsScreen() {
 
   return (
     <Page withNav={false}>
-      <TopBar title="لیدهای قفل‌شده من" subtitle={`${toFa(leads.length)} لید در حال بررسی`} />
+      <TopBar title="مشتریان قفل‌شده من" subtitle={`${toFa(leads.length)} مشتری در حال بررسی`} />
 
       <div className="space-y-3 px-4">
         {leads.length === 0 ? (
           <EmptyState
-            title="لید قفل‌شده‌ای نداری"
-            description="وقتی روی یک سرنخ تمرکز کنی، اینجا نمایش داده می‌شود."
+            title="مشتری قفل‌شده‌ای نداری"
+            description="وقتی روی یک مشتری تمرکز کنی، اینجا نمایش داده می‌شود."
           />
         ) : (
           leads.map((lead) => (
@@ -52,7 +52,7 @@ export function LockedLeadsScreen() {
               onRelease={() => {
                 haptic('light')
                 releaseLead(lead.id)
-                pushToast('قفل لید آزاد شد')
+                pushToast('قفل مشتری آزاد شد')
               }}
               onOpen={() => navigate(`/leads/${lead.id}`)}
             />

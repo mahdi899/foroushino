@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\RoleName;
 use App\Models\Sale;
 use App\Models\User;
+use App\Support\TeamScope;
 
 class SalePolicy
 {
@@ -15,11 +16,11 @@ class SalePolicy
 
     public function view(User $user, Sale $sale): bool
     {
-        if ($user->hasAnyRole([RoleName::Manager->value, RoleName::Admin->value])) {
+        if (TeamScope::isOrgWide($user)) {
             return true;
         }
 
-        if ($user->hasAnyRole([RoleName::Supervisor->value, RoleName::Leader->value])) {
+        if ($user->hasRole(RoleName::Leader->value)) {
             return $sale->team_id === $user->team_id;
         }
 
@@ -28,7 +29,11 @@ class SalePolicy
 
     public function submitPayment(User $user, Sale $sale): bool
     {
-        return $sale->agent_id === $user->id;
+        if ($sale->agent_id === $user->id) {
+            return $user->can('sales.manage');
+        }
+
+        return $user->can('sales.register-payment') && $this->view($user, $sale);
     }
 
     public function cancel(User $user, Sale $sale): bool
@@ -39,5 +44,18 @@ class SalePolicy
     public function confirm(User $user, Sale $sale): bool
     {
         return $user->can('sales.confirm');
+    }
+
+    public function forwardForConfirmation(User $user, Sale $sale): bool
+    {
+        if (! $user->can('sales.review-payment')) {
+            return false;
+        }
+
+        if (TeamScope::isOrgWide($user)) {
+            return true;
+        }
+
+        return $sale->team_id === $user->team_id;
     }
 }

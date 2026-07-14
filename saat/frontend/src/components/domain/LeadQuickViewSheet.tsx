@@ -31,7 +31,7 @@ export function LeadQuickViewSheet({
   lead: Lead | null
   open: boolean
   onClose: () => void
-  onCall: (lead: Lead) => void
+  onCall?: (lead: Lead) => void
 }) {
   const navigate = useNavigate()
   const agents = useStore((s) => s.agents)
@@ -111,7 +111,7 @@ export function LeadQuickViewSheet({
           <Button
             variant="soft"
             size="lg"
-            className="flex-1"
+            className={onCall ? 'flex-1' : 'w-full'}
             icon={<ChevronLeft size={17} />}
             onClick={() => {
               onClose()
@@ -120,19 +120,21 @@ export function LeadQuickViewSheet({
           >
             جزئیات کامل
           </Button>
-          <Button
-            size="lg"
-            className="flex-[1.3]"
-            disabled={!!lockedByOther}
-            icon={<Phone size={17} />}
-            onClick={() => {
-              haptic('medium')
-              onClose()
-              onCall(lead)
-            }}
-          >
-            تماس بگیر
-          </Button>
+          {onCall ? (
+            <Button
+              size="lg"
+              className="flex-[1.3]"
+              disabled={!!lockedByOther}
+              icon={<Phone size={17} />}
+              onClick={() => {
+                haptic('medium')
+                onClose()
+                onCall(lead)
+              }}
+            >
+              تماس بگیر
+            </Button>
+          ) : null}
         </div>
       </div>
     </BottomSheet>

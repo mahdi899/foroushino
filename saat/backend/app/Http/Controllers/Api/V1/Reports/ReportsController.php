@@ -9,6 +9,7 @@ use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\TeamScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -154,7 +155,7 @@ class ReportsController extends Controller
                 $reasons[] = 'نرخ بالای تماس‌های خیلی کوتاه (کمتر از ۵ ثانیه)';
             }
             if (($row->duplicate_marks / $totalCalls) > 0.3) {
-                $reasons[] = 'نرخ بالای ثبت لید تکراری';
+                $reasons[] = 'نرخ بالای ثبت مشتری تکراری';
             }
             if (($row->dnd_marks / $totalCalls) > 0.3) {
                 $reasons[] = 'نرخ بالای ثبت عدم تماس مجدد';
@@ -178,12 +179,6 @@ class ReportsController extends Controller
 
     private function teamScope(Request $request): ?int
     {
-        $user = $request->user();
-
-        if ($user->hasAnyRole([RoleName::Manager->value, RoleName::Admin->value])) {
-            return null;
-        }
-
-        return $user->team_id;
+        return TeamScope::teamIdForQueries($request->user());
     }
 }

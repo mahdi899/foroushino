@@ -70,7 +70,7 @@ export const httpClient: ApiClient = {
   async submitCallResult(input: CallResultInput): Promise<CallResultOutcome> {
     const callId = activeCallByLead.get(input.leadId)
     if (callId === undefined) {
-      throw new Error('هیچ تماس فعالی برای این سرنخ یافت نشد. ابتدا تماس را شروع کن.')
+      throw new Error('هیچ تماس فعالی برای این مشتری یافت نشد. ابتدا تماس را شروع کن.')
     }
 
     const payload: Record<string, unknown> = {
@@ -141,6 +141,10 @@ export const httpClient: ApiClient = {
 
   async submitPayment(saleId: string, method: PaymentMethod, reference: string) {
     await http.post(`/sales/${saleId}/submit-payment`, { method, reference_number: reference }, newIdempotencyKey())
+  },
+
+  async forwardSaleForConfirmation(saleId: string) {
+    await http.post(`/sales/${saleId}/forward-for-confirmation`, undefined, newIdempotencyKey())
   },
 
   async confirmSale(saleId: string) {

@@ -126,9 +126,9 @@ export function PerformanceScreen() {
     if (quality.hotLeads > 0)
       return {
         icon: ThermometerSun,
-        text: `${toFa(quality.hotLeads)} لید داغ منتظر تماس توئه.`,
+        text: `${toFa(quality.hotLeads)} مشتری داغ منتظر تماس توئه.`,
         href: '/leads?temp=hot',
-        cta: 'مشاهده لیدهای داغ',
+        cta: 'مشاهده مشتریان داغ',
       }
     if (quality.noteQuality < 50 && quality.totalCalls > 0)
       return {
@@ -332,7 +332,7 @@ export function PerformanceScreen() {
           <div className="grid grid-cols-2 gap-2.5">
             <QualityTile icon={CheckCircle2} label="نرخ پاسخ‌دهی" value={`${toFa(quality.answerRate)}٪`} iconWrap="icon-3d-success" />
             <QualityTile icon={NotebookPen} label="کیفیت یادداشت" value={`${toFa(quality.noteQuality)}٪`} iconWrap="icon-3d-warning" />
-            <QualityTile icon={ThermometerSun} label="لیدهای داغ من" value={toFa(quality.hotLeads)} iconWrap="icon-3d-primary" warn={quality.hotLeads > 0} />
+            <QualityTile icon={ThermometerSun} label="مشتریان داغ من" value={toFa(quality.hotLeads)} iconWrap="icon-3d-primary" warn={quality.hotLeads > 0} />
             <QualityTile icon={AlarmClock} label="پیگیری عقب‌افتاده" value={toFa(quality.overdue)} iconWrap="icon-3d-warning" warn={quality.overdue > 0} />
           </div>
           <div className="mt-2.5 grid grid-cols-2 gap-2.5">

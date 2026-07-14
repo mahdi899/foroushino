@@ -23,7 +23,7 @@ import { FeedbackResultCard } from '@/components/domain/FeedbackResultCard'
 import { FollowupPicker, buildFollowupIso } from '@/components/domain/FollowupPicker'
 import { ContactStatusBadge } from '@/components/domain/Badges'
 import { suggestReasonIcon, suggestReasonChipLabel } from '@/components/domain/icons'
-import { canEndAgentCall, MIN_AGENT_CALL_DURATION_SEC } from '@/lib/callPolicy'
+import { canEndAgentCall } from '@/lib/callPolicy'
 import { formatDuration } from '@/lib/format'
 import { EmptyState } from '@/components/ui/States'
 import {
@@ -82,6 +82,7 @@ export function CallResultScreen() {
   const lead = useStore((s) => s.leads.find((l) => l.id === id))
   const products = useStore((s) => s.products)
   const lastCallDuration = useStore((s) => s.lastCallDuration)
+  const minCallDurationSec = useStore((s) => s.appSettings.minCallDurationSec)
   const activeCallLeadId = useStore((s) => s.activeCallLeadId)
   const submitCallResult = useStore((s) => s.submitCallResult)
   const openCallMethodSheet = useStore((s) => s.openCallMethodSheet)
@@ -104,7 +105,7 @@ export function CallResultScreen() {
     return (
       <Page withNav={false}>
         <TopBar title="نتیجه تماس" />
-        <EmptyState title="سرنخ پیدا نشد" />
+        <EmptyState title="مشتری پیدا نشد" />
       </Page>
     )
   }
@@ -115,9 +116,9 @@ export function CallResultScreen() {
         <TopBar title="نتیجه تماس" />
         <EmptyState
           title="ابتدا تماس بگیرید"
-          description="برای ثبت نتیجه، اول با این سرنخ تماس بگیرید و بعد از پایان تماس نتیجه را ثبت کنید."
+          description="برای ثبت نتیجه، اول با این مشتری تماس بگیرید و بعد از پایان تماس نتیجه را ثبت کنید."
           action={{
-            label: 'بازگشت به جزئیات سرنخ',
+            label: 'بازگشت به جزئیات مشتری',
             onClick: () => navigate(`/leads/${lead.id}`, { replace: true }),
           }}
         />
@@ -132,9 +133,9 @@ export function CallResultScreen() {
 
   const save = () => {
     if (!result) return
-    if (!canEndAgentCall(lastCallDuration)) {
+    if (!canEndAgentCall(lastCallDuration, minCallDurationSec)) {
       pushToast(
-        `حداقل مدت تماس ${formatDuration(MIN_AGENT_CALL_DURATION_SEC)} است.`,
+        `حداقل مدت تماس ${formatDuration(minCallDurationSec)} است.`,
         'info',
       )
       return
@@ -223,7 +224,7 @@ export function CallResultScreen() {
         </AnimatePresence>
 
         <div className="glass-card rounded-[22px] border border-white/55 p-4 dark:border-white/10">
-          <p className="mb-2.5 text-[13px] font-bold text-text">امتیاز سرنخ</p>
+          <p className="mb-2.5 text-[13px] font-bold text-text">امتیاز مشتری</p>
           <div className="flex justify-center gap-2">
             {[1, 2, 3, 4, 5].map((i) => (
               <button key={i} onClick={() => setRating(i)}>
@@ -411,7 +412,7 @@ function SuccessOverlay({
           className="mt-6 w-full rounded-3xl bg-neutral-50 p-4 border border-border/60"
         >
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-xs font-bold text-neutral-400">سرنخ بعدی پیشنهادی</p>
+            <p className="text-xs font-bold text-neutral-400">مشتری بعدی پیشنهادی</p>
             {ReasonIcon && outcome.suggestion && (
               <span className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-[10px] font-extrabold text-primary-700">
                 <ReasonIcon size={11} />

@@ -81,3 +81,12 @@ it('re-offers a lead already assigned to the same agent for follow-up', function
 
     expect($result['lead']->id)->toBe($lead->id);
 });
+
+it('assigns a unique numeric display code to each lead based on its id', function (): void {
+    $first = makeLead();
+    $second = makeLead();
+
+    expect($first->display_code)->toBe(\App\Models\Lead::displayCodeForId($first->id))
+        ->and($second->display_code)->toBe(\App\Models\Lead::displayCodeForId($second->id))
+        ->and($first->display_code)->not->toBe($second->display_code);
+});

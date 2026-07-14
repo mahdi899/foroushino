@@ -20,12 +20,19 @@ it('lets admin read and update app settings', function (): void {
         ->assertJsonPath('data.call_lock_minutes', 45);
 });
 
-it('forbids manager from updating app settings', function (): void {
+it('lets manager read and update app settings', function (): void {
     $manager = makeManager();
 
     $this->actingAs($manager, 'sanctum')
         ->getJson('/api/v1/admin/settings')
-        ->assertForbidden();
+        ->assertOk();
+
+    $this->actingAs($manager, 'sanctum')
+        ->patchJson('/api/v1/admin/settings', [
+            'settings' => ['call_lock_minutes' => 40],
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.call_lock_minutes', 40);
 });
 
 it('lets a supervisor manage training scripts', function (): void {

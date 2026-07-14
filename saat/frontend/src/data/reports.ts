@@ -93,8 +93,8 @@ export const supervisorInsights: Insight[] = [
   {
     id: 'si1',
     tone: 'warning',
-    title: 'لید بحرانی',
-    body: '۳ لید داغ بیش از ۲ روز بدون پیگیری مانده‌اند.',
+    title: 'مشتری بحرانی',
+    body: '۳ مشتری داغ بیش از ۲ روز بدون پیگیری مانده‌اند.',
   },
   {
     id: 'si2',

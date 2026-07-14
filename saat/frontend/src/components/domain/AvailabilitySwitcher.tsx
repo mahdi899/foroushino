@@ -11,7 +11,11 @@ import { isShiftOpen } from '@/lib/shiftUtils'
 import { performSetAvailability } from '@/services/shiftActions'
 import type { Availability } from '@/types'
 
-const OPTIONS: Availability[] = ['available', 'on_break', 'offline']
+const MANUAL_OPTIONS: Availability[] = ['available', 'doing_follow_up', 'on_break']
+
+function isManualAvailability(status: Availability): boolean {
+  return MANUAL_OPTIONS.includes(status)
+}
 
 export function AvailabilityPill() {
   const [open, setOpen] = useState(false)
@@ -19,7 +23,9 @@ export function AvailabilityPill() {
   const workSession = useStore((s) => s.workSession)
   const navigate = useNavigate()
 
-  if (!isShiftOpen(workSession)) {
+  const shiftActive = isShiftOpen(workSession)
+
+  if (!shiftActive) {
     return (
       <button
         onClick={() => navigate('/shift-start')}
@@ -47,13 +53,40 @@ export function AvailabilityPill() {
 
 export function AvailabilitySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const availability = useStore((s) => s.availability)
+  const workSession = useStore((s) => s.workSession)
   const pushToast = useStore((s) => s.pushToast)
   const navigate = useNavigate()
+
+  const shiftActive = isShiftOpen(workSession)
+  const showCurrentStatus = !isManualAvailability(availability)
 
   return (
     <BottomSheet open={open} onClose={onClose} title="وضعیت کاری">
       <div className="space-y-2 pb-1">
-        {OPTIONS.map((status) => {
+        {showCurrentStatus && (
+          <div className="rounded-2xl border border-border/60 bg-neutral-50 px-4 py-3 text-[12px] font-bold text-neutral-500">
+            وضعیت فعلی: {availabilityLabels[availability]}
+            {shiftActive ? ' — یکی از گزینه‌های زیر را انتخاب کن' : ''}
+          </div>
+        )}
+
+        {availability === 'offline' && shiftActive && (
+          <button
+            type="button"
+            onClick={() => {
+              haptic('selection')
+              void performSetAvailability('available').then(() => {
+                pushToast('وضعیت به «آماده تماس» تغییر کرد', 'info')
+                onClose()
+              })
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 px-4 py-3.5 text-[14px] font-extrabold text-white"
+          >
+            آماده تماس
+          </button>
+        )}
+
+        {MANUAL_OPTIONS.map((status) => {
           const Icon = availabilityIcon[status]
           const active = availability === status
           return (

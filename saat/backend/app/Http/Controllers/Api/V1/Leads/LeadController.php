@@ -4,17 +4,20 @@ namespace App\Http\Controllers\Api\V1\Leads;
 
 use App\Actions\Leads\AssignNextLeadAction;
 use App\Actions\Leads\AutoAssignLeadsAction;
+use App\Actions\Leads\DistributeLeadsToTeamsAction;
 use App\Actions\Leads\ImportLeadsAction;
 use App\Enums\LeadStatus;
 use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Leads\IndexLeadRequest;
+use App\Http\Requests\V1\Leads\StoreLeadRequest;
 use App\Http\Resources\V1\ImportBatchResource;
 use App\Http\Resources\V1\LeadResource;
 use App\Models\ImportBatch;
 use App\Models\Lead;
 use App\Models\LeadStatusHistory;
 use App\Support\ApiResponse;
+use App\Support\TeamScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,9 +32,9 @@ class LeadController extends Controller
 
         $query = Lead::query()->with(['product', 'assignedAgent']);
 
-        if ($user->hasAnyRole([RoleName::Manager->value, RoleName::Admin->value])) {
+        if (TeamScope::isOrgWide($user)) {
             // full visibility
-        } elseif ($user->hasAnyRole([RoleName::Supervisor->value, RoleName::Leader->value])) {
+        } elseif ($user->hasRole(RoleName::Leader->value)) {
             $query->where('assigned_team_id', $user->team_id);
         } else {
             $query->where('assigned_agent_id', $user->id);
@@ -78,7 +81,7 @@ class LeadController extends Controller
         $result = $this->assignNextLead->execute($request->user());
 
         if (! $result['lead']) {
-            return ApiResponse::error('در حال حاضر لید جدیدی برای تماس وجود ندارد.', status: 404, code: 'no_leads_available');
+            return ApiResponse::error('در حال حاضر مشتری جدیدی برای تماس وجود ندارد.', status: 404, code: 'no_leads_available');
         }
 
         return ApiResponse::success([
@@ -106,7 +109,7 @@ class LeadController extends Controller
         $lead->locked_until = null;
         $lead->save();
 
-        return ApiResponse::success(new LeadResource($lead), 'قفل لید آزاد شد');
+        return ApiResponse::success(new LeadResource($lead), 'قفل مشتری آزاد شد');
     }
 
     public function returnToPool(Request $request, Lead $lead): JsonResponse
@@ -129,7 +132,7 @@ class LeadController extends Controller
             ]);
         });
 
-        return ApiResponse::success(new LeadResource($lead), 'لید به استخر بازگشت');
+        return ApiResponse::success(new LeadResource($lead), 'مشتری به استخر بازگشت');
     }
 
     public function reclaim(Request $request, Lead $lead): JsonResponse
@@ -151,7 +154,7 @@ class LeadController extends Controller
             ]);
         });
 
-        return ApiResponse::success(new LeadResource($lead), 'لید دوباره به تو اختصاص داده شد');
+        return ApiResponse::success(new LeadResource($lead), 'مشتری دوباره به تو اختصاص داده شد');
     }
 
     public function locked(Request $request): JsonResponse
@@ -180,10 +183,42 @@ class LeadController extends Controller
         return ApiResponse::success(LeadResource::collection($leads));
     }
 
+    public function store(StoreLeadRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $phone = $this->normalizePhone((string) $data['phone']);
+        $existing = Lead::query()->where('normalized_phone', $phone)->first();
+
+        $lead = Lead::query()->create([
+            'first_name' => $data['first_name'],
+            'last_name' => $data['last_name'] ?? '',
+            'phone' => $data['phone'],
+            'normalized_phone' => $phone,
+            'city' => $data['city'] ?? null,
+            'source' => $data['source'] ?? 'form',
+            'product_id' => $data['product_id'] ?? null,
+            'status' => $existing ? LeadStatus::Duplicate : LeadStatus::New,
+            'duplicate_of_id' => $existing?->id,
+        ]);
+
+        if (! $existing) {
+            LeadStatusHistory::query()->create([
+                'lead_id' => $lead->id,
+                'status' => LeadStatus::New,
+                'by_user_id' => $request->user()->id,
+                'note' => 'ثبت دستی توسط '.$request->user()->name,
+            ]);
+        }
+
+        $lead->load(['product', 'assignedAgent']);
+
+        return ApiResponse::success(new LeadResource($lead), $existing ? 'این شماره قبلاً ثبت شده (تکراری).' : 'مشتری ثبت شد.', status: $existing ? 200 : 201);
+    }
+
     public function autoAssign(Request $request, AutoAssignLeadsAction $action): JsonResponse
     {
         if (! $request->user()->can('leads.reassign')) {
-            return ApiResponse::error('اجازه تخصیص لید ندارید.', status: 403, code: 'forbidden');
+            return ApiResponse::error('اجازه تخصیص مشتری ندارید.', status: 403, code: 'forbidden');
         }
 
         $result = $action->execute(
@@ -195,10 +230,31 @@ class LeadController extends Controller
         return ApiResponse::success($result, 'تخصیص خودکار انجام شد');
     }
 
+    public function distributeToTeams(Request $request, DistributeLeadsToTeamsAction $action): JsonResponse
+    {
+        if (! $request->user()->can('leads.reassign')) {
+            return ApiResponse::error('اجازه تقسیم مشتری ندارید.', status: 403, code: 'forbidden');
+        }
+
+        $request->validate([
+            'limit' => ['sometimes', 'integer', 'min:1', 'max:500'],
+            'team_ids' => ['sometimes', 'array'],
+            'team_ids.*' => ['integer', 'exists:teams,id'],
+        ]);
+
+        $result = $action->execute(
+            $request->user(),
+            (int) $request->input('limit', 200),
+            $request->input('team_ids'),
+        );
+
+        return ApiResponse::success($result, 'مشتریان بین تیم‌ها تقسیم شدند');
+    }
+
     public function import(Request $request, ImportLeadsAction $action): JsonResponse
     {
         if (! $request->user()->can('leads.import')) {
-            return ApiResponse::error('اجازه ورود لید ندارید.', status: 403, code: 'forbidden');
+            return ApiResponse::error('اجازه ورود مشتری ندارید.', status: 403, code: 'forbidden');
         }
 
         $request->validate([
@@ -219,7 +275,7 @@ class LeadController extends Controller
 
         $batch = $action->execute($rows, $request->user(), $file->getClientOriginalName());
 
-        return ApiResponse::success(new ImportBatchResource($batch), 'وارد کردن لیدها انجام شد');
+        return ApiResponse::success(new ImportBatchResource($batch), 'وارد کردن مشتریان انجام شد');
     }
 
     public function importBatch(Request $request, ImportBatch $importBatch): JsonResponse
@@ -229,5 +285,20 @@ class LeadController extends Controller
         }
 
         return ApiResponse::success(new ImportBatchResource($importBatch));
+    }
+
+    private function normalizePhone(string $phone): string
+    {
+        $digits = preg_replace('/\D/', '', $phone) ?? '';
+
+        if (str_starts_with($digits, '98') && strlen($digits) > 10) {
+            $digits = '0'.substr($digits, 2);
+        }
+
+        if (str_starts_with($digits, '9') && strlen($digits) === 10) {
+            $digits = '0'.$digits;
+        }
+
+        return $digits;
     }
 }

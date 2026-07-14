@@ -33,20 +33,20 @@ class SubmitPaymentAction
                 'submitted_at' => now(),
             ]);
 
-            $sale->status = SaleStatus::PendingConfirmation;
+            $sale->status = SaleStatus::PaymentSubmitted;
             $sale->payment_method = $data['method'];
             $sale->submitted_at = now();
             $sale->save();
 
             $lead = $sale->lead;
-            $lead->status = LeadStatus::SalePendingConfirmation;
+            $lead->status = LeadStatus::PaymentSubmitted;
             $lead->save();
 
             LeadStatusHistory::query()->create([
                 'lead_id' => $lead->id,
-                'status' => LeadStatus::SalePendingConfirmation,
+                'status' => LeadStatus::PaymentSubmitted,
                 'by_user_id' => $agent->id,
-                'note' => 'پرداخت ثبت شد، در انتظار تایید',
+                'note' => 'پرداخت ثبت شد، در انتظار بررسی لیدر',
             ]);
 
             return $sale->fresh(['payments']);

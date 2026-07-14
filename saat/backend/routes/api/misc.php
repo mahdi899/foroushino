@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Misc\ActivityController;
+use App\Http\Controllers\Api\V1\Misc\AppConfigController;
 use App\Http\Controllers\Api\V1\Misc\CatalogController;
 use App\Http\Controllers\Api\V1\Misc\NotificationController;
 use App\Http\Controllers\Api\V1\Shift\ShiftController;
@@ -13,6 +14,7 @@ Route::prefix('notifications')->group(function (): void {
 });
 
 Route::get('/activity', [ActivityController::class, 'index']);
+Route::get('/app-config', AppConfigController::class);
 
 Route::get('/products', [CatalogController::class, 'products']);
 Route::get('/scripts', [CatalogController::class, 'scripts']);

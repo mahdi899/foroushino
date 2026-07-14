@@ -58,6 +58,7 @@ export function mapLead(dto: Dto): Lead {
     nextFollowupAt: dto.next_followup_at ?? null,
     rating: dto.rating ?? 0,
     assignedAgentId: id(dto.assigned_agent_id),
+    assignedTeamId: nullableId(dto.assigned_team_id),
     status: dto.status ?? undefined,
     ownerId: nullableId(dto.assigned_agent_id),
     lockedBy: nullableId(dto.locked_by),

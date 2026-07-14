@@ -14,7 +14,7 @@ it('lets an agent view only their own assigned lead', function () {
     expect($agentA->can('view', $othersLead))->toBeFalse();
 });
 
-it('lets a supervisor view leads assigned to their own team only', function () {
+it('lets a supervisor view leads across all teams', function () {
     $teamA = makeTeam(['name' => 'تیم الف']);
     $teamB = makeTeam(['name' => 'تیم ب']);
     $supervisor = makeSupervisor(['team_id' => $teamA->id]);
@@ -22,7 +22,7 @@ it('lets a supervisor view leads assigned to their own team only', function () {
     $leadOutsideTeam = makeLead(['assigned_team_id' => $teamB->id]);
 
     expect($supervisor->can('view', $leadInTeam))->toBeTrue();
-    expect($supervisor->can('view', $leadOutsideTeam))->toBeFalse();
+    expect($supervisor->can('view', $leadOutsideTeam))->toBeTrue();
 });
 
 it('lets a manager view any lead regardless of team or owner', function () {

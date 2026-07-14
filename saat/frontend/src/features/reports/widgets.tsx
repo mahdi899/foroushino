@@ -37,7 +37,7 @@ export function SourceCard({ sources }: { sources: SourcePerf[] }) {
   const max = Math.max(...sources.map((s) => s.leads))
   return (
     <div className="rounded-3xl bg-surface p-4 shadow-card border border-border/60">
-      <h3 className="mb-4 text-[15px] font-extrabold text-neutral-900">منابع لید</h3>
+      <h3 className="mb-4 text-[15px] font-extrabold text-neutral-900">منابع مشتری</h3>
       <div className="space-y-3">
         {sources.map((s) => {
           const Icon = sourceIcon[s.source]
@@ -50,7 +50,7 @@ export function SourceCard({ sources }: { sources: SourcePerf[] }) {
                 <div className="mb-1 flex items-center justify-between">
                   <span className="text-[12px] font-bold text-neutral-700">{sourceLabels[s.source]}</span>
                   <span className="text-[11px] font-bold text-neutral-400 tabular-nums">
-                    {toFa(s.leads)} لید · {toFa(s.conversion)}٪
+                    {toFa(s.leads)} مشتری · {toFa(s.conversion)}٪
                   </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-neutral-100">

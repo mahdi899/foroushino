@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
-use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Models\IntegrationToken;
 use App\Support\ApiResponse;
@@ -14,7 +13,7 @@ class IntegrationTokenController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $this->authorizeAdmin($request);
+        $this->authorizeSettings($request);
 
         $tokens = IntegrationToken::query()
             ->with('creator:id,name')
@@ -39,7 +38,7 @@ class IntegrationTokenController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $this->authorizeAdmin($request);
+        $this->authorizeSettings($request);
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
@@ -66,19 +65,19 @@ class IntegrationTokenController extends Controller
 
     public function destroy(Request $request, IntegrationToken $integrationToken): JsonResponse
     {
-        $this->authorizeAdmin($request);
+        $this->authorizeSettings($request);
 
         $integrationToken->update(['revoked_at' => now()]);
 
         return response()->json(null, 204);
     }
 
-    private function authorizeAdmin(Request $request): void
+    private function authorizeSettings(Request $request): void
     {
         abort_unless(
-            $request->user()?->hasRole(RoleName::Admin->value),
+            (bool) $request->user()?->can('admin.settings'),
             403,
-            'فقط ادمین کل می‌تواند توکن اتصال بسازد.'
+            'فقط مدیر سیستم می‌تواند توکن اتصال را مدیریت کند.'
         );
     }
 }

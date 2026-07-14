@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\RoleName;
 use App\Models\Lead;
 use App\Models\User;
+use App\Support\TeamScope;
 
 class LeadPolicy
 {
@@ -15,11 +16,11 @@ class LeadPolicy
 
     public function view(User $user, Lead $lead): bool
     {
-        if ($user->hasAnyRole([RoleName::Manager->value, RoleName::Admin->value])) {
+        if (TeamScope::isOrgWide($user)) {
             return true;
         }
 
-        if ($user->hasAnyRole([RoleName::Supervisor->value, RoleName::Leader->value])) {
+        if ($user->hasRole(RoleName::Leader->value)) {
             return $lead->assigned_team_id === $user->team_id;
         }
 

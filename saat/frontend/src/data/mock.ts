@@ -227,22 +227,6 @@ export const agents: Agent[] = [
     callGoal: 0,
     avatar: avatarUrl('a-mgr'),
   },
-  {
-    id: 'a-admin',
-    firstName: 'سارا',
-    lastName: 'نظری',
-    role: 'admin',
-    teamId: 't1',
-    phone: '09120000013',
-    level: 10,
-    callsToday: 0,
-    successfulToday: 0,
-    conversionRate: 0,
-    points: 12000,
-    streak: 45,
-    callGoal: 0,
-    avatar: avatarUrl('a-admin'),
-  },
 ]
 
 export const MY_AGENT_ID = 'a-me'
@@ -1251,7 +1235,7 @@ export const achievements: Achievement[] = [
 export const notifications: AppNotification[] = [
   {
     id: 'n1',
-    title: 'لید داغ جدید',
+    title: 'مشتری داغ جدید',
     body: 'امیرحسین کاظمی برای تماس آماده‌ست.',
     kind: 'lead',
     createdAt: at(-1 * HOUR),

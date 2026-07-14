@@ -20,7 +20,7 @@ export function QuickActionSheet({ open, onClose }: QuickActionSheetProps) {
     {
       icon: PhoneCall,
       label: 'شروع تماس بعدی',
-      desc: 'بهترین سرنخ پیشنهادی',
+      desc: 'بهترین مشتری پیشنهادی',
       onClick: () => {
         const next = getNextLead(leads, followups, currentAgentId)
         onClose()

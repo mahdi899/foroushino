@@ -236,7 +236,7 @@ export function FollowupsScreen() {
         {list.length === 0 ? (
           <EmptyState
             title={bucket === 'done' ? 'هنوز پیگیری تکمیل‌شده‌ای نیست' : 'پیگیری‌ای در این بخش نیست'}
-            description={bucket === 'done' ? 'پیگیری‌های انجام‌شده اینجا نمایش داده می‌شوند.' : 'وقت خوبیه برای تماس با سرنخ‌های جدید.'}
+            description={bucket === 'done' ? 'پیگیری‌های انجام‌شده اینجا نمایش داده می‌شوند.' : 'وقت خوبیه برای تماس با مشتریان جدید.'}
           />
         ) : (
           <motion.div variants={listStagger} initial="hidden" animate="show" className="space-y-3">
@@ -463,7 +463,7 @@ function CreateFollowupSheet({
     <BottomSheet open={open} onClose={onClose} title="پیگیری جدید">
       <div className="space-y-4 pt-1">
         <div>
-          <p className="mb-2 text-xs font-bold text-neutral-500">سرنخ</p>
+          <p className="mb-2 text-xs font-bold text-neutral-500">مشتری</p>
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
             {leads.slice(0, 12).map((l) => (
               <Chip key={l.id} active={leadId === l.id} onClick={() => setLeadId(l.id)}>

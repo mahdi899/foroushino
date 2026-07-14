@@ -129,6 +129,7 @@ export interface Lead {
   nextFollowupAt: string | null
   rating: number
   assignedAgentId: string
+  assignedTeamId?: string | null
   avatar?: string | null
   // lifecycle & ownership (spec §2)
   status?: LeadStatus
@@ -211,6 +212,33 @@ export interface Team {
   name: string
   leaderId: string
   agentIds: string[]
+}
+
+export type TeamReportStatus = 'submitted' | 'approved' | 'forwarded_to_manager'
+
+export interface TeamReportSummary {
+  calls_today: number
+  successful_today: number
+  conversion_rate: number
+  pending_confirmation: number
+  payment_submitted: number
+  active_agents: number
+}
+
+export interface TeamReport {
+  id: string
+  teamId: string
+  teamName: string
+  reportDate: string
+  status: TeamReportStatus
+  summary: TeamReportSummary
+  leaderNotes?: string | null
+  supervisorNotes?: string | null
+  submittedBy: string
+  submitterName?: string
+  approvedAt?: string | null
+  forwardedAt?: string | null
+  createdAt: string
 }
 
 export interface Achievement {

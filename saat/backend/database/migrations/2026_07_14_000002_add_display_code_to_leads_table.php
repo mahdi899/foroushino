@@ -16,7 +16,7 @@ return new class extends Migration
         Lead::query()
             ->whereNull('display_code')
             ->eachById(function (Lead $lead): void {
-                $lead->forceFill(['display_code' => Lead::generateUniqueDisplayCode()])->save();
+                $lead->forceFill(['display_code' => Lead::displayCodeForId((int) $lead->id)])->saveQuietly();
             });
     }
 

@@ -57,7 +57,7 @@ function makeManager(array $attrs = []): User
 function makeAdmin(array $attrs = []): User
 {
     $user = User::factory()->create($attrs);
-    $user->assignRole(RoleName::Admin->value);
+    $user->assignRole(RoleName::Manager->value);
 
     return $user;
 }
