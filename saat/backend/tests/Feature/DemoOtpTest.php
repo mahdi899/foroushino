@@ -23,7 +23,8 @@ it('lists demo accounts when demo mode is enabled', function () {
     $response = $this->getJson('/api/v1/auth/demo-accounts');
 
     $response->assertOk();
-    expect($response->json('data'))->toHaveCount(4);
+    expect($response->json('data'))->toHaveCount(5);
+    expect(collect($response->json('data'))->pluck('role'))->toContain('admin');
 });
 
 it('hides demo accounts when demo mode is disabled', function () {

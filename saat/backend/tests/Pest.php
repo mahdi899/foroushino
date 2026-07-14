@@ -70,6 +70,14 @@ function makeSupervisor(array $attrs = []): User
     return $user;
 }
 
+function makeLeader(array $attrs = []): User
+{
+    $user = User::factory()->create($attrs);
+    $user->assignRole(RoleName::Leader->value);
+
+    return $user;
+}
+
 function makeLead(array $attrs = []): \App\Models\Lead
 {
     static $seq = 0;

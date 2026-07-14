@@ -2,13 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
-  PhoneCall,
   Target,
   Users,
   LogOut,
   Timer,
   PhoneOutgoing,
-  ChevronLeft,
   Sparkles,
   CalendarDays,
   Coffee,
@@ -17,26 +15,22 @@ import {
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
-import { Avatar } from '@/components/ui/Avatar'
-import {
-  availabilityDotClass,
-  availabilityIcon,
-  suggestReasonIcon,
-  suggestReasonChipLabel,
-} from '@/components/domain/icons'
+import { availabilityDotClass, availabilityIcon } from '@/components/domain/icons'
 import { AvailabilitySheet } from '@/components/domain/AvailabilitySwitcher'
-import { getSuggestion, filterLeadsForAgent } from '@/lib/leadUtils'
+import { filterLeadsForAgent } from '@/lib/leadUtils'
 import { availabilityLabels } from '@/data/labels'
 import { toFa, formatHms, formatJalaliShort } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
 import {
-  calcLiveBreakSeconds,
-  calcLiveProductiveSeconds,
+  calcDailyBreakSeconds,
+  calcDailyCallSeconds,
+  calcDailyProductiveSeconds,
   isProductiveAvailability,
   isShiftOpen,
 } from '@/lib/shiftUtils'
 import { performEndShift } from '@/services/shiftActions'
+import { WorkPeriodSummaryCard } from '@/features/status/WorkPeriodSummaryCard'
 
 const TG = 'text-[#3390EC] dark:text-[#8774E1]'
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
@@ -193,7 +187,6 @@ export function WorkStatusScreen() {
   const workSession = useStore((s) => s.workSession)
   const workDaySummaries = useStore((s) => s.workDaySummaries)
   const leads = useStore((s) => s.leads)
-  const followups = useStore((s) => s.followups)
   const pushToast = useStore((s) => s.pushToast)
 
   const [statusOpen, setStatusOpen] = useState(false)
@@ -204,15 +197,23 @@ export function WorkStatusScreen() {
     return () => clearInterval(t)
   }, [])
 
-  const productiveSec =
-    workSession && isShiftOpen(workSession)
-      ? calcLiveProductiveSeconds(workSession, availability, availabilityChangedAt, now)
-      : 0
+  const productiveSec = calcDailyProductiveSeconds(
+    workDaySummaries,
+    workSession,
+    availability,
+    availabilityChangedAt,
+    now,
+  )
 
-  const breakSec =
-    workSession && isShiftOpen(workSession)
-      ? calcLiveBreakSeconds(workSession, availability, availabilityChangedAt, now)
-      : 0
+  const breakSec = calcDailyBreakSeconds(
+    workDaySummaries,
+    workSession,
+    availability,
+    availabilityChangedAt,
+    now,
+  )
+
+  const callSec = calcDailyCallSeconds(workDaySummaries, workSession)
 
   const recentWorkDays = useMemo(
     () => workDaySummaries.filter((day) => day.sessionsCount > 0).slice(0, 7),
@@ -226,18 +227,16 @@ export function WorkStatusScreen() {
       ),
     [leads, agent?.id, currentAgentId],
   )
-  const suggestion = useMemo(() => getSuggestion(leads, followups, currentAgentId), [leads, followups, currentAgentId])
 
   if (!agent) return null
 
   const Icon = availabilityIcon[availability]
   const goalPct = agent.callGoal ? Math.round((agent.callsToday / agent.callGoal) * 100) : 0
   const shiftActive = isShiftOpen(workSession)
-  const shiftTier = shiftActive ? getShiftTier(productiveSec) : 'early'
+  const shiftTier = getShiftTier(productiveSec)
   const shiftProgressPct = Math.min(100, Math.round((productiveSec / SHIFT_GOAL_SEC) * 100))
   const isPremiumShift = shiftTier === 'premium'
   const timerRunning = shiftActive && isProductiveAvailability(availability)
-  const ReasonIcon = suggestion ? suggestReasonIcon[suggestion.reason] : null
 
   return (
     <Page withNav={false}>
@@ -253,6 +252,7 @@ export function WorkStatusScreen() {
             'glass-hero relative overflow-hidden rounded-[26px] p-5 transition-[box-shadow,background] duration-700',
             availability === 'doing_follow_up' && 'border border-warning-300/45 bg-warning-50/75 dark:border-warning-400/25 dark:bg-warning-500/10',
             shiftActive && availability !== 'doing_follow_up' && shiftHeroClass[shiftTier],
+            !shiftActive && productiveSec > 0 && availability !== 'doing_follow_up' && shiftHeroClass[shiftTier],
           )}
         >
           <div className="pointer-events-none absolute inset-0">
@@ -319,69 +319,73 @@ export function WorkStatusScreen() {
             </span>
           </div>
 
-          {shiftActive ? (
-            <div className="relative mt-6 flex flex-col items-center">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-text-soft">
-                <Sparkles
-                  size={12}
-                  className={isPremiumShift ? 'text-secondary-600 dark:text-secondary-400' : TG}
-                  strokeWidth={2.25}
-                />
-                {isPremiumShift ? 'بیش از ۸ ساعت در شیفت' : `زمان مولد امروز · ${toFa(shiftProgressPct)}٪ از ۸ ساعت`}
+          <div className="relative mt-6 flex flex-col items-center">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-text-soft">
+              <Sparkles
+                size={12}
+                className={isPremiumShift ? 'text-secondary-600 dark:text-secondary-400' : TG}
+                strokeWidth={2.25}
+              />
+              {isPremiumShift
+                ? 'بیش از ۸ ساعت مولد امروز'
+                : `زمان مولد امروز · ${toFa(shiftProgressPct)}٪ از ۸ ساعت`}
+            </span>
+            {shiftActive && !timerRunning && (
+              <span className="mt-1 text-[10px] font-semibold text-text-soft">
+                {availability === 'on_break'
+                  ? 'در استراحت — تایمر متوقف است'
+                  : 'خارج از حالت آماده تماس — تایمر متوقف است'}
               </span>
-              {!timerRunning && shiftActive && (
-                <span className="mt-1 text-[10px] font-semibold text-text-soft">
-                  {availability === 'on_break'
-                    ? 'در استراحت — تایمر متوقف است'
-                    : 'خارج از حالت آماده تماس — تایمر متوقف است'}
-                </span>
-              )}
-              {timerRunning && availability === 'doing_follow_up' && (
-                <span className="mt-1 text-[10px] font-semibold text-warning-700 dark:text-warning-300">
-                  مشغول پیگیری — زمان شیفت در حال ثبت است
-                </span>
-              )}
+            )}
+            {shiftActive && timerRunning && availability === 'doing_follow_up' && (
+              <span className="mt-1 text-[10px] font-semibold text-warning-700 dark:text-warning-300">
+                مشغول پیگیری — زمان شیفت در حال ثبت است
+              </span>
+            )}
+            {!shiftActive && productiveSec === 0 && (
+              <span className="mt-1 text-[10px] font-semibold text-text-soft">
+                با شروع دوباره شیفت، زمان امروز از همین‌جا ادامه پیدا می‌کند
+              </span>
+            )}
 
-              <div className="relative mt-3 flex h-[88px] w-[min(100%,280px)] items-center justify-center">
-                <motion.span
-                  className={cn(
-                    'pointer-events-none absolute inset-2 rounded-[22px] border-2 transition-colors duration-700',
-                    shiftActive ? shiftPulseBorder[shiftTier] : 'border-[#3390EC]/30',
-                  )}
-                  animate={{ scale: [1, 1.06, 1], opacity: [0.5, 0, 0.5] }}
-                  transition={{ duration: isPremiumShift ? 1.6 : 2.2, repeat: Infinity, ease: 'easeOut' }}
-                />
-                <div
-                  className={cn(
-                    'glass-inset relative flex h-full w-full items-center justify-center overflow-hidden rounded-[22px]',
-                    'border border-white/55 dark:border-white/10',
-                    isPremiumShift && 'glass-inset border-secondary-400/25',
-                  )}
-                >
-                  <AnimatedShiftTimer totalSec={productiveSec} />
-                </div>
+            <div className="relative mt-3 flex h-[88px] w-[min(100%,280px)] items-center justify-center">
+              <motion.span
+                className={cn(
+                  'pointer-events-none absolute inset-2 rounded-[22px] border-2 transition-colors duration-700',
+                  productiveSec > 0 || shiftActive ? shiftPulseBorder[shiftTier] : 'border-[#3390EC]/30',
+                )}
+                animate={{ scale: [1, 1.06, 1], opacity: [0.5, 0, 0.5] }}
+                transition={{ duration: isPremiumShift ? 1.6 : 2.2, repeat: Infinity, ease: 'easeOut' }}
+              />
+              <div
+                className={cn(
+                  'glass-inset relative flex h-full w-full items-center justify-center overflow-hidden rounded-[22px]',
+                  'border border-white/55 dark:border-white/10',
+                  isPremiumShift && 'glass-inset border-secondary-400/25',
+                )}
+              >
+                <AnimatedShiftTimer totalSec={productiveSec} />
               </div>
             </div>
-          ) : (
-            <div className="relative mt-6 text-center">
-              <p className="text-[14px] font-bold text-text-muted">هنوز شیفت را شروع نکرده‌ای</p>
+
+            {!shiftActive && (
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.97 }}
                 onClick={() => navigate('/shift-start')}
                 className={cn(
-                  'relative mt-4 inline-flex h-11 items-center justify-center gap-2 overflow-hidden',
-                  'rounded-[14px] px-6 text-[14px] font-bold text-white',
+                  'relative mt-4 inline-flex h-10 items-center justify-center gap-2 overflow-hidden',
+                  'rounded-[14px] px-5 text-[13px] font-bold text-white',
                   'bg-[#3390EC] shadow-[0_8px_24px_rgba(51,144,236,0.32)]',
                   'dark:bg-[#8774E1] dark:shadow-[0_8px_24px_rgba(135,116,225,0.28)]',
                 )}
               >
                 <span className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/10" />
-                <Sparkles size={16} strokeWidth={2.25} />
-                <span className="relative">شروع شیفت</span>
+                <Sparkles size={15} strokeWidth={2.25} />
+                <span className="relative">{productiveSec > 0 ? 'ادامه شیفت' : 'شروع شیفت'}</span>
               </motion.button>
-            </div>
-          )}
+            )}
+          </div>
         </motion.div>
 
         {/* Stats grid */}
@@ -405,7 +409,7 @@ export function WorkStatusScreen() {
             icon={PhoneOutgoing}
             iconWrap="icon-3d-success"
             iconClass="text-white"
-            value={formatHms(workSession?.totalCallSeconds ?? 0)}
+            value={formatHms(callSec)}
             label="زمان مکالمه امروز"
           />
           <StatTile
@@ -472,62 +476,13 @@ export function WorkStatusScreen() {
           )}
         </motion.div>
 
-        {/* Next call suggestion */}
-        {suggestion && (
-          <motion.button
-            type="button"
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ ...spring, delay: 0.28 }}
-            whileTap={{ scale: 0.985 }}
-            onClick={() => navigate(`/leads/${suggestion.lead.id}`)}
-            className={cn(
-              'glass-card relative flex w-full items-center gap-3 overflow-hidden rounded-[24px]',
-              'border border-white/55 p-4 text-right dark:border-white/10',
-            )}
-          >
-            <div className="pointer-events-none absolute inset-0">
-              <div className="absolute -right-8 top-0 h-28 w-28 rounded-full bg-[#8774E1]/12 blur-3xl" />
-              <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white/85 to-transparent dark:via-white/12" />
-            </div>
-
-            <Avatar
-              id={suggestion.lead.id}
-              first={suggestion.lead.firstName}
-              last={suggestion.lead.lastName}
-              src={suggestion.lead.avatar}
-              size={48}
-              ring
-            />
-
-            <div className="relative min-w-0 flex-1">
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1 rounded-full border px-2 py-0.5',
-                  'border-[#3390EC]/22 bg-[#3390EC]/10 text-[10px] font-semibold',
-                  'dark:border-[#8774E1]/28 dark:bg-[#8774E1]/12',
-                  TG,
-                )}
-              >
-                تماس بعدی پیشنهادی
-              </span>
-              <p className="mt-1.5 truncate text-[15px] font-bold text-text">
-                {suggestion.lead.firstName} {suggestion.lead.lastName}
-              </p>
-              {ReasonIcon && (
-                <span className="mt-1 inline-flex max-w-full items-center gap-1 text-[11px] font-semibold text-text-soft">
-                  <ReasonIcon size={12} strokeWidth={2.35} className={cn('shrink-0', TG)} />
-                  <span className="truncate">{suggestReasonChipLabel[suggestion.reason]}</span>
-                </span>
-              )}
-            </div>
-
-            <span className="icon-3d icon-3d-primary relative flex h-10 w-10 shrink-0 items-center justify-center">
-              <PhoneCall size={18} className="text-white" strokeWidth={2.35} />
-            </span>
-            <ChevronLeft size={18} className="relative shrink-0 text-text-soft opacity-50" strokeWidth={2.25} />
-          </motion.button>
-        )}
+        <WorkPeriodSummaryCard
+          workDaySummaries={workDaySummaries}
+          workSession={workSession}
+          availability={availability}
+          availabilityChangedAt={availabilityChangedAt}
+          nowMs={now}
+        />
 
         {/* End shift */}
         {shiftActive && (

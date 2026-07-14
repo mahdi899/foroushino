@@ -32,7 +32,8 @@ import { DataGate } from '@/components/pwa/DataGate'
 
 type Filter = 'all' | SaleStatus
 
-const MANAGER_ROLES = ['leader', 'supervisor', 'manager']
+import { isManagementRole } from '@/lib/roles'
+import { hasPermission } from '@/lib/permissions'
 const TG = 'text-[#3390EC] dark:text-[#8774E1]'
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
 
@@ -120,7 +121,8 @@ function SaleCard({
   sale,
   lead,
   product,
-  isManager,
+  isTeamViewer,
+  canConfirmSales,
   onLeadClick,
   onPay,
   onCancel,
@@ -130,7 +132,8 @@ function SaleCard({
   sale: Sale
   lead?: Lead
   product?: Product
-  isManager: boolean
+  isTeamViewer: boolean
+  canConfirmSales: boolean
   onLeadClick: () => void
   onPay: () => void
   onCancel: () => void
@@ -193,14 +196,14 @@ function SaleCard({
         </div>
       )}
 
-      {!isManager && sale.status === 'payment_pending' && (
+      {!isTeamViewer && sale.status === 'payment_pending' && (
         <div className="relative mt-3 flex gap-2">
           <GlassActionBtn label="لغو فروش" icon={Ban} variant="danger" onClick={onCancel} />
           <GlassActionBtn label="ثبت پرداخت" icon={Wallet} variant="primary" onClick={onPay} />
         </div>
       )}
 
-      {!isManager && sale.status === 'pending_confirmation' && (
+      {!isTeamViewer && sale.status === 'pending_confirmation' && (
         <div
           className={cn(
             'relative mt-3 flex items-center gap-2 rounded-[14px] border px-3 py-2',
@@ -212,7 +215,19 @@ function SaleCard({
         </div>
       )}
 
-      {isManager && sale.status === 'pending_confirmation' && (
+      {isTeamViewer && !canConfirmSales && sale.status === 'pending_confirmation' && (
+        <div
+          className={cn(
+            'relative mt-3 flex items-center gap-2 rounded-[14px] border px-3 py-2',
+            'border-[#3390EC]/20 bg-[#3390EC]/8 dark:border-[#8774E1]/22 dark:bg-[#8774E1]/10',
+          )}
+        >
+          <Clock size={13} className={cn('shrink-0', TG)} strokeWidth={2.35} />
+          <p className={cn('text-[11px] font-bold', TG)}>در انتظار تایید سوپروایزر است</p>
+        </div>
+      )}
+
+      {canConfirmSales && sale.status === 'pending_confirmation' && (
         <div className="relative mt-3 flex gap-2">
           <GlassActionBtn label="رد فروش" icon={X} variant="danger" onClick={onReject} />
           <GlassActionBtn label="تایید فروش" icon={Check} variant="primary" onClick={onConfirm} />
@@ -225,6 +240,7 @@ function SaleCard({
 export function SalesScreen() {
   const navigate = useNavigate()
   const role = useStore((s) => s.role)
+  const permissions = useStore((s) => s.permissions)
   const currentAgentId = useStore((s) => s.currentAgentId)
   const sales = useStore((s) => s.sales)
   const leads = useStore((s) => s.leads)
@@ -235,7 +251,8 @@ export function SalesScreen() {
   const cancelSale = useStore((s) => s.cancelSale)
   const pushToast = useStore((s) => s.pushToast)
 
-  const isManager = MANAGER_ROLES.includes(role)
+  const isTeamViewer = isManagementRole(role)
+  const canConfirmSales = hasPermission(permissions, 'sales.confirm')
   const [filter, setFilter] = useState<Filter>('all')
   const [paySheet, setPaySheet] = useState<Sale | null>(null)
   const [confirmTarget, setConfirmTarget] = useState<Sale | null>(null)
@@ -244,7 +261,7 @@ export function SalesScreen() {
   const [cancelTarget, setCancelTarget] = useState<Sale | null>(null)
   const [success, setSuccess] = useState<'payment' | 'confirmed' | null>(null)
 
-  const visible = isManager ? sales : sales.filter((s) => s.agentId === currentAgentId)
+  const visible = isTeamViewer ? sales : sales.filter((s) => s.agentId === currentAgentId)
   const filtered = filter === 'all' ? visible : visible.filter((s) => s.status === filter)
 
   const counts: Record<Filter, number> = {
@@ -269,13 +286,13 @@ export function SalesScreen() {
       <ScreenHeader
         sticky
         showBack
-        title="فروش‌های من"
+        title={isTeamViewer ? 'فروش‌ها' : 'فروش‌های من'}
         subtitle={`${toFa(visible.length)} فروش`}
         icon={BadgeDollarSign}
         iconTone="success"
         className="pb-2"
         action={
-          !isManager && (
+          !isTeamViewer && (
             <motion.button
               type="button"
               whileTap={{ scale: 0.96 }}
@@ -335,7 +352,8 @@ export function SalesScreen() {
                 sale={sale}
                 lead={lead}
                 product={product}
-                isManager={isManager}
+                isTeamViewer={isTeamViewer}
+                canConfirmSales={canConfirmSales}
                 onLeadClick={() => lead && navigate(`/leads/${lead.id}`)}
                 onPay={() => setPaySheet(sale)}
                 onCancel={() => setCancelTarget(sale)}
@@ -448,7 +466,7 @@ export function SalesScreen() {
         )}
       </AnimatePresence>
 
-      {!isManager && (
+      {!isTeamViewer && (
         <motion.button
           type="button"
           initial={{ opacity: 0, y: 16 }}

@@ -8,13 +8,14 @@ import type {
   Payment,
   PayoutRequest,
   Product,
+  Role,
   Sale,
   Wallet,
   WalletTransaction,
   WorkDaySummary,
   WorkSession,
 } from '@/types'
-import { fetchMe } from './auth'
+import { fetchMe, mapAuthUserRole } from './auth'
 import { http } from './http'
 import {
   mapCommission,
@@ -48,6 +49,8 @@ export interface SyncPayload {
   products: Product[]
   notifications: AppNotification[]
   agent: Agent
+  role: Role
+  permissions: string[]
   availability: Availability
   availabilityChangedAt: string | null
   workSession: WorkSession | null
@@ -94,7 +97,7 @@ async function fetchShiftData(): Promise<{ shiftCurrentRaw: Dto; shiftHistoryRaw
   try {
     const [shiftCurrentRaw, shiftHistoryRaw] = await Promise.all([
       http.get<Dto>('/shift/current'),
-      http.get<Dto[]>('/shift/history?days=14'),
+      http.get<Dto[]>('/shift/history?days=366'),
     ])
     return { shiftCurrentRaw, shiftHistoryRaw }
   } catch {
@@ -144,7 +147,7 @@ export async function syncAppData(): Promise<SyncPayload> {
     id: String(me.id),
     firstName,
     lastName,
-    role: 'agent',
+    role: mapAuthUserRole(me.roles),
     teamId: me.team_id ? String(me.team_id) : '',
     avatar: me.avatar,
     phone: me.phone ?? me.email,
@@ -162,8 +165,17 @@ export async function syncAppData(): Promise<SyncPayload> {
     .map(mapPaymentFromSale)
     .filter((payment): payment is Payment => payment !== null)
 
+  const mappedLeads = asArray<Dto>(leadsRaw).map(mapLead)
+  const suggestedRaw = home.suggested_lead as Dto | null | undefined
+  if (suggestedRaw && typeof suggestedRaw === 'object') {
+    const suggested = mapLead(suggestedRaw)
+    if (!mappedLeads.some((l) => l.id === suggested.id)) {
+      mappedLeads.unshift(suggested)
+    }
+  }
+
   return {
-    leads: asArray<Dto>(leadsRaw).map(mapLead),
+    leads: mappedLeads,
     followups: asArray<Dto>(followupsRaw).map(mapFollowup),
     sales,
     payments,
@@ -174,6 +186,8 @@ export async function syncAppData(): Promise<SyncPayload> {
     products: asArray<Dto>(productsRaw).map(mapProduct),
     notifications: asArray<Dto>(notificationsRaw).map(mapNotification),
     agent,
+    role: mapAuthUserRole(me.roles),
+    permissions: me.permissions ?? [],
     availability: ((shiftCurrentRaw.availability as Availability) ?? (home.availability as Availability) ?? me.availability ?? 'offline') as Availability,
     availabilityChangedAt: (shiftCurrentRaw.availability_changed_at as string) ?? null,
     workSession: mapWorkSession(shiftCurrentRaw.session as Dto | null | undefined),
