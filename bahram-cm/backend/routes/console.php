@@ -1,5 +1,8 @@
 <?php
 
+use App\Jobs\Family\AggregateFamilyDailyMetricsJob;
+use App\Jobs\Family\CalculateFamilyDnaSnapshotJob;
+use App\Jobs\Family\RebuildFamilyBehaviorProfilesJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -10,3 +13,17 @@ Artisan::command('inspire', function () {
 
 Schedule::command('chatbot:purge-old')->dailyAt('03:00');
 Schedule::command('backup:database')->everyMinute();
+
+// Family analytics — read models are rebuildable; schedule keeps dashboards fast.
+// Queue is passed as Schedule::job()'s 2nd arg — CallbackEvent (unlike Event) has no onQueue().
+Schedule::job(new AggregateFamilyDailyMetricsJob(), config('family.queues.analytics', 'family-analytics'))
+    ->dailyAt('02:00')
+    ->onOneServer();
+
+Schedule::job(new RebuildFamilyBehaviorProfilesJob(), config('family.queues.analytics', 'family-analytics'))
+    ->dailyAt('02:30')
+    ->onOneServer();
+
+Schedule::job(new CalculateFamilyDnaSnapshotJob(), config('family.queues.analytics', 'family-analytics'))
+    ->weeklyOn(1, '03:00')
+    ->onOneServer();

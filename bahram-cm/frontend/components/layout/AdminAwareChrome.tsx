@@ -16,7 +16,8 @@ export function AdminAwareChrome({
   promo?: SeminarPromo | null;
 }) {
   const pathname = usePathname();
-  const isBareShell = pathname?.startsWith('/admin') || pathname?.startsWith('/panel');
+  const isBareShell =
+    pathname?.startsWith('/admin') || pathname?.startsWith('/panel') || pathname?.startsWith('/family');
   const hidePromo =
     pathname?.startsWith('/seminars/') || pathname?.startsWith('/purchase/');
 

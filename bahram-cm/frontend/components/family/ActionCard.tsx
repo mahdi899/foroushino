@@ -1,0 +1,202 @@
+'use client';
+
+import { useState } from 'react';
+import { cn } from '@/lib/cn';
+import { respondToAction } from '@/lib/family/api';
+import type { FamilyAction } from '@/lib/family/types';
+
+export function ActionCard({ action }: { action: FamilyAction }) {
+  const [submitted, setSubmitted] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [textValue, setTextValue] = useState('');
+  const [numberValue, setNumberValue] = useState('');
+  const [selected, setSelected] = useState<string[]>([]);
+  const [scale, setScale] = useState<number | null>(null);
+
+  const submit = async (value: Record<string, unknown>) => {
+    if (pending || submitted) return;
+    setPending(true);
+    try {
+      await respondToAction(action.id, value);
+      setSubmitted(true);
+    } finally {
+      setPending(false);
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className="rounded-2xl border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-gold">
+        ثبت شد — داداش بهرام می‌بیندش. ✅
+      </div>
+    );
+  }
+
+  const wrap = (children: React.ReactNode) => (
+    <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+      <p className="text-sm font-medium text-bone">{action.prompt}</p>
+      {children}
+    </div>
+  );
+
+  switch (action.type) {
+    case 'commitment':
+      return wrap(
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => submit({ committed: true })}
+          className="w-full rounded-xl bg-gold py-2.5 text-sm font-semibold text-charcoal transition active:scale-[0.98] disabled:opacity-60"
+        >
+          متعهد می‌شوم 💪
+        </button>,
+      );
+
+    case 'confirmation':
+      return wrap(
+        <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => submit({ confirmed: true })}
+            className="flex-1 rounded-xl bg-gold py-2.5 text-sm font-semibold text-charcoal transition active:scale-[0.98] disabled:opacity-60"
+          >
+            انجام دادم ✅
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => submit({ confirmed: false })}
+            className="flex-1 rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-bone/70 transition active:scale-[0.98] disabled:opacity-60"
+          >
+            هنوز نه
+          </button>
+        </div>,
+      );
+
+    case 'number':
+      return wrap(
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (numberValue) submit({ number: Number(numberValue) });
+          }}
+          className="flex gap-2"
+        >
+          <input
+            type="number"
+            inputMode="decimal"
+            value={numberValue}
+            onChange={(e) => setNumberValue(e.target.value)}
+            className="flex-1 rounded-xl border border-white/15 bg-transparent px-3 py-2 text-sm text-bone outline-none focus:border-gold/50"
+            placeholder="عدد را وارد کن"
+          />
+          <button
+            type="submit"
+            disabled={pending || !numberValue}
+            className="rounded-xl bg-gold px-4 py-2 text-sm font-semibold text-charcoal disabled:opacity-60"
+          >
+            ثبت
+          </button>
+        </form>,
+      );
+
+    case 'short_text':
+      return wrap(
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (textValue.trim()) submit({ text: textValue.trim() });
+          }}
+          className="space-y-2"
+        >
+          <textarea
+            value={textValue}
+            onChange={(e) => setTextValue(e.target.value)}
+            rows={2}
+            maxLength={500}
+            className="w-full resize-none rounded-xl border border-white/15 bg-transparent px-3 py-2 text-sm text-bone outline-none focus:border-gold/50"
+            placeholder="پاسخت رو بنویس…"
+          />
+          <button
+            type="submit"
+            disabled={pending || !textValue.trim()}
+            className="rounded-xl bg-gold px-4 py-2 text-sm font-semibold text-charcoal disabled:opacity-60"
+          >
+            ثبت پاسخ
+          </button>
+        </form>,
+      );
+
+    case 'single_choice':
+    case 'multi_choice':
+      return wrap(
+        <div className="space-y-2">
+          {action.options.map((opt) => {
+            const isSelected = selected.includes(opt.value);
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() =>
+                  setSelected((prev) =>
+                    action.type === 'single_choice'
+                      ? [opt.value]
+                      : isSelected
+                        ? prev.filter((v) => v !== opt.value)
+                        : [...prev, opt.value],
+                  )
+                }
+                className={cn(
+                  'block w-full rounded-xl border px-3 py-2 text-right text-sm transition',
+                  isSelected ? 'border-gold/60 bg-gold/10 text-gold' : 'border-white/15 text-bone/80 hover:bg-white/5',
+                )}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            disabled={pending || selected.length === 0}
+            onClick={() => submit(action.type === 'single_choice' ? { choice: selected[0] } : { choices: selected })}
+            className="w-full rounded-xl bg-gold py-2.5 text-sm font-semibold text-charcoal disabled:opacity-60"
+          >
+            ثبت پاسخ
+          </button>
+        </div>,
+      );
+
+    case 'scale':
+      return wrap(
+        <div className="space-y-3">
+          <div className="flex justify-between gap-1">
+            {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setScale(n)}
+                className={cn(
+                  'h-8 flex-1 rounded-lg text-xs font-semibold transition',
+                  scale === n ? 'bg-gold text-charcoal' : 'bg-white/5 text-bone/60 hover:bg-white/10',
+                )}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            disabled={pending || scale === null}
+            onClick={() => submit({ scale })}
+            className="w-full rounded-xl bg-gold py-2.5 text-sm font-semibold text-charcoal disabled:opacity-60"
+          >
+            ثبت
+          </button>
+        </div>,
+      );
+
+    default:
+      return null;
+  }
+}

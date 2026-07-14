@@ -44,7 +44,7 @@ export default async function RootLayout({
   const ld = [personJsonLd(), organizationJsonLd(), courseJsonLd(), websiteJsonLd()];
   const pathname = (await headers()).get("x-pathname") ?? "";
   const isAdminRoute = pathname.startsWith("/admin");
-  const isBareShellRoute = isAdminRoute || pathname.startsWith("/panel");
+  const isBareShellRoute = isAdminRoute || pathname.startsWith("/panel") || pathname.startsWith("/family");
   const hidePromoRoute = pathname.startsWith("/seminars/") || pathname.startsWith("/purchase/");
 
   const [chatbotConfig, perfConfig, seminarPromo] = await Promise.all([

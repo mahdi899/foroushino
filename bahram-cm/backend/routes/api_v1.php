@@ -32,6 +32,18 @@ use App\Http\Controllers\Api\V1\CommerceSmsSpotplayerController;
 use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DiscountCodeAdminController;
 use App\Http\Controllers\Api\V1\FaqController;
+use App\Http\Controllers\Api\V1\Family\ActionController as FamilyActionController;
+use App\Http\Controllers\Api\V1\Family\CommentController as FamilyCommentController;
+use App\Http\Controllers\Api\V1\Family\FeedController as FamilyFeedController;
+use App\Http\Controllers\Api\V1\Family\MediaProgressController as FamilyMediaProgressController;
+use App\Http\Controllers\Api\V1\Family\PulseController as FamilyPulseController;
+use App\Http\Controllers\Api\V1\Family\ReactionController as FamilyReactionController;
+use App\Http\Controllers\Api\V1\FamilyManager\AnalyticsController as FamilyManagerAnalyticsController;
+use App\Http\Controllers\Api\V1\FamilyManager\CommentModerationController as FamilyManagerCommentModerationController;
+use App\Http\Controllers\Api\V1\FamilyManager\FamiliesController as FamilyManagerFamiliesController;
+use App\Http\Controllers\Api\V1\FamilyManager\HomeController as FamilyManagerHomeController;
+use App\Http\Controllers\Api\V1\FamilyManager\MediaController as FamilyManagerMediaController;
+use App\Http\Controllers\Api\V1\FamilyManager\PostController as FamilyManagerPostController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\DatabaseBackupSettingsController;
@@ -467,3 +479,81 @@ Route::post('chatbot/phone', [ChatbotController::class, 'savePhone']);
 Route::post('chatbot/visitor-info', [ChatbotController::class, 'saveVisitorInfo']);
 Route::post('chatbot/visitor-message', [ChatbotController::class, 'visitorMessage']);
 Route::post('chatbot/poll', [ChatbotController::class, 'poll']);
+
+/*
+|--------------------------------------------------------------------------
+| Family — "خانواده داداش بهرام" (public feed usable by guests + members)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('family')->group(function () {
+    // Guest preview + member feed both hit index(); controller checks auth.
+    Route::get('feed', [FamilyFeedController::class, 'index'])->middleware('throttle:120,1');
+    Route::get('posts/{post}', [FamilyFeedController::class, 'show'])->whereNumber('post')->middleware('throttle:120,1');
+    Route::get('pulse', [FamilyPulseController::class, 'index'])->middleware('throttle:60,1');
+
+    Route::middleware(['auth:sanctum', 'student.active'])->group(function () {
+        Route::get('me', [FamilyFeedController::class, 'me']);
+        Route::post('join', [FamilyFeedController::class, 'join'])->middleware('throttle:20,1');
+        Route::post('onboarding/complete', [FamilyFeedController::class, 'completeOnboarding']);
+
+        Route::put('posts/{post}/reaction', [FamilyReactionController::class, 'upsert'])
+            ->whereNumber('post')->middleware('throttle:family-reaction');
+        Route::delete('posts/{post}/reaction', [FamilyReactionController::class, 'destroy'])
+            ->whereNumber('post')->middleware('throttle:family-reaction');
+
+        Route::get('posts/{post}/comments', [FamilyCommentController::class, 'index'])->whereNumber('post');
+        Route::post('posts/{post}/comments', [FamilyCommentController::class, 'store'])
+            ->whereNumber('post')->middleware('throttle:family-comment');
+
+        Route::post('actions/{action}/respond', [FamilyActionController::class, 'respond'])
+            ->whereNumber('action')->middleware('throttle:family-action');
+
+        Route::post('media-progress', [FamilyMediaProgressController::class, 'upsert'])
+            ->middleware('throttle:family-progress');
+
+        Route::get('notifications', [StudentNotificationController::class, 'index']);
+        Route::get('notifications/unread-count', [StudentNotificationController::class, 'unreadCount']);
+        Route::post('notifications/read-all', [StudentNotificationController::class, 'markAllRead']);
+        Route::post('notifications/{notification}/read', [StudentNotificationController::class, 'markRead']);
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Family Manager — Bahram + authorized admins (Flutter app + admin panel)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(function () {
+    Route::get('home', [FamilyManagerHomeController::class, 'index'])->middleware('family.manage:family.analytics.view');
+
+    Route::get('posts', [FamilyManagerPostController::class, 'index'])->middleware('family.manage:family.posts.create');
+    Route::post('posts', [FamilyManagerPostController::class, 'store'])->middleware('family.manage:family.posts.create');
+    Route::get('posts/{post}', [FamilyManagerPostController::class, 'show'])->whereNumber('post')->middleware('family.manage:family.posts.create');
+    Route::patch('posts/{post}', [FamilyManagerPostController::class, 'update'])->whereNumber('post')->middleware('family.manage:family.posts.create');
+    Route::post('posts/{post}/publish', [FamilyManagerPostController::class, 'publish'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
+    Route::post('posts/{post}/archive', [FamilyManagerPostController::class, 'archive'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
+    Route::delete('posts/{post}', [FamilyManagerPostController::class, 'destroy'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
+    Route::post('posts/{comment}/reply', [FamilyManagerPostController::class, 'reply'])->whereNumber('comment')->middleware('family.manage:family.comments.reply');
+
+    Route::get('comments', [FamilyManagerCommentModerationController::class, 'index'])->middleware('family.manage:family.comments.moderate');
+    Route::post('comments/{comment}/approve', [FamilyManagerCommentModerationController::class, 'approve'])->whereNumber('comment')->middleware('family.manage:family.comments.moderate');
+    Route::post('comments/{comment}/reject', [FamilyManagerCommentModerationController::class, 'reject'])->whereNumber('comment')->middleware('family.manage:family.comments.moderate');
+    Route::post('comments/batch-approve', [FamilyManagerCommentModerationController::class, 'batchApprove'])->middleware('family.manage:family.comments.moderate');
+    Route::post('comments/{comment}/mark-important', [FamilyManagerCommentModerationController::class, 'markImportant'])->whereNumber('comment')->middleware('family.manage:family.comments.moderate');
+    Route::post('comments/{comment}/pulse', [FamilyManagerCommentModerationController::class, 'togglePulse'])->whereNumber('comment')->middleware('family.manage:family.pulse.manage');
+    Route::post('comments/{comment}/seen', [FamilyManagerCommentModerationController::class, 'markSeen'])->whereNumber('comment')->middleware('family.manage:family.comments.moderate');
+
+    Route::get('families', [FamilyManagerFamiliesController::class, 'index'])->middleware('family.manage:family.families.view');
+    Route::get('families/{family}', [FamilyManagerFamiliesController::class, 'show'])->whereNumber('family')->middleware('family.manage:family.families.view');
+    Route::get('audience-suggestions', [FamilyManagerFamiliesController::class, 'audienceSuggestions'])->middleware('family.manage:family.families.view');
+
+    Route::get('analytics', [FamilyManagerAnalyticsController::class, 'index'])->middleware('family.manage:family.analytics.view');
+    Route::get('analytics/daily-summary', [FamilyManagerAnalyticsController::class, 'dailySummary'])->middleware('family.manage:family.analytics.view');
+
+    Route::post('media', [FamilyManagerMediaController::class, 'store'])->middleware(['family.manage:family.media.upload', 'throttle:family-upload']);
+    Route::post('media/sessions', [FamilyManagerMediaController::class, 'createSession'])->middleware(['family.manage:family.media.upload', 'throttle:family-upload']);
+    Route::post('media/sessions/{session:ulid}/chunk', [FamilyManagerMediaController::class, 'uploadChunk'])->middleware('family.manage:family.media.upload');
+    Route::post('media/sessions/{session:ulid}/complete', [FamilyManagerMediaController::class, 'completeSession'])->middleware('family.manage:family.media.upload');
+    Route::get('media/{medium}', [FamilyManagerMediaController::class, 'show'])->whereNumber('medium')->middleware('family.manage:family.media.upload');
+    Route::post('media/{medium}/retry', [FamilyManagerMediaController::class, 'retry'])->whereNumber('medium')->middleware('family.manage:family.media.upload');
+});

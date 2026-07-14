@@ -1,6 +1,7 @@
 import dynamic from 'next/dynamic';
 import { HeroCinematic } from '@/components/sections/HeroCinematic';
 import { MainPaths } from '@/components/sections/MainPaths';
+import { FamilyPulseSection } from '@/components/sections/FamilyPulseSection';
 import { SectionReveal } from '@/components/motion/SectionReveal';
 import { getCoursePathOverrides } from '@/lib/catalog/courseListings';
 
@@ -57,6 +58,9 @@ export async function HomeBelowFoldSections({ deferBelowFold }: { deferBelowFold
       </SectionReveal>
       <SectionReveal>
         <Academy />
+      </SectionReveal>
+      <SectionReveal>
+        <FamilyPulseSection />
       </SectionReveal>
       <SectionReveal>
         <Founder />

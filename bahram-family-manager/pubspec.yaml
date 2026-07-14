@@ -1,0 +1,29 @@
+name: bahram_family_manager
+description: اپ مدیریت «خانواده داداش بهرام» — انتشار پست، مدیریت نظرات، خانواده‌ها و تحلیل، برای بهرام و ادمین‌های مجاز.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  dio: ^5.7.0
+  flutter_secure_storage: ^9.2.4
+  provider: ^6.1.2
+  intl: ^0.19.0
+  file_picker: ^8.1.2
+  path: ^1.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

@@ -71,6 +71,8 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 **CDN (fashio.ir / Arvan):** [`docs/ARVAN-CDN.md`](docs/ARVAN-CDN.md)
 
+**خانواده داداش بهرام (Family):** [`docs/FAMILY.md`](docs/FAMILY.md)
+
 - **Frontend:** Vercel یا هر هاست Node — روت `bahram-cm/frontend`
 - **Backend:** Laravel — `bahram-cm/backend` با MySQL + Redis
 

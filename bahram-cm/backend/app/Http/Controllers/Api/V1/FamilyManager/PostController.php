@@ -1,0 +1,183 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1\FamilyManager;
+
+use App\Enums\Family\FamilyPostAudienceMode;
+use App\Enums\Family\FamilyPostBlockType;
+use App\Enums\Family\FamilyPostStatus;
+use App\Enums\Family\FamilyPostType;
+use App\Http\Controllers\Controller;
+use App\Models\FamilyComment;
+use App\Models\FamilyPost;
+use App\Services\AdminAuditLogger;
+use App\Services\Family\FamilyNotificationService;
+use App\Services\Family\FamilyPostPublisher;
+use App\Support\ApiResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use InvalidArgumentException;
+
+class PostController extends Controller
+{
+    public function __construct(
+        private readonly FamilyPostPublisher $publisher,
+        private readonly AdminAuditLogger $audit,
+        private readonly FamilyNotificationService $notifications,
+    ) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        $query = FamilyPost::query()
+            ->with(['author:id,name', 'blocks.media', 'targets', 'actions.options'])
+            ->orderByDesc('id');
+
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
+        $posts = $query->paginate(min(50, (int) $request->query('per_page', 20)));
+
+        return ApiResponse::success($posts->items(), 200, [
+            'current_page' => $posts->currentPage(),
+            'last_page' => $posts->lastPage(),
+            'total' => $posts->total(),
+        ]);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate($this->postRules());
+
+        $post = $this->publisher->createDraft($request->user(), $data);
+
+        return ApiResponse::success($post, 201);
+    }
+
+    /**
+     * Shared store/update rules. Every block sub-field needs an explicit rule —
+     * Laravel's validate() only keeps keys with a matching (wildcard) rule, so
+     * omitting e.g. `blocks.*.media_id` silently drops it before it reaches the
+     * publisher, which then can't find the media to enforce READY status on.
+     *
+     * @return array<string, array<int, mixed>>
+     */
+    private function postRules(bool $requireType = true): array
+    {
+        return [
+            'type' => [$requireType ? 'required' : 'nullable', Rule::enum(FamilyPostType::class)],
+            'audience_mode' => ['nullable', Rule::enum(FamilyPostAudienceMode::class)],
+            'is_important' => ['nullable', 'boolean'],
+            'family_ids' => ['nullable', 'array'],
+            'family_ids.*' => ['integer', 'exists:families,id'],
+            'blocks' => ['nullable', 'array'],
+            'blocks.*.type' => ['required', Rule::enum(FamilyPostBlockType::class)],
+            'blocks.*.position' => ['nullable', 'integer'],
+            'blocks.*.text' => ['nullable', 'string'],
+            'blocks.*.media_id' => ['nullable', 'integer', 'exists:family_media,id'],
+            'blocks.*.article_id' => ['nullable', 'integer', 'exists:articles,id'],
+            'blocks.*.comment_id' => ['nullable', 'integer', 'exists:family_comments,id'],
+            'blocks.*.action_id' => ['nullable', 'integer', 'exists:family_actions,id'],
+            'blocks.*.data' => ['nullable', 'array'],
+            'action' => ['nullable', 'array'],
+            'action.type' => ['required_with:action', 'string'],
+            'action.prompt' => ['nullable', 'string'],
+            'action.config' => ['nullable', 'array'],
+            'action.follow_up_after_minutes' => ['nullable', 'integer', 'min:1'],
+            'action.follow_up_message' => ['nullable', 'string'],
+            'action.options' => ['nullable', 'array'],
+            'action.options.*.label' => ['required_with:action.options', 'string'],
+            'action.options.*.value' => ['nullable', 'string'],
+            'action.options.*.position' => ['nullable', 'integer'],
+        ];
+    }
+
+    public function show(FamilyPost $post): JsonResponse
+    {
+        $post->load(['author:id,name', 'blocks.media', 'blocks.article', 'targets', 'actions.options']);
+
+        return ApiResponse::success($post);
+    }
+
+    public function update(Request $request, FamilyPost $post): JsonResponse
+    {
+        abort_if($post->status === FamilyPostStatus::Published, 422, 'پست منتشرشده قابل ویرایش نیست.');
+
+        $data = $request->validate($this->postRules(requireType: false));
+
+        $updated = $this->publisher->updateDraft($request->user(), $post, $data);
+
+        return ApiResponse::success($updated);
+    }
+
+    public function publish(Request $request, FamilyPost $post): JsonResponse
+    {
+        try {
+            $published = $this->publisher->publish($request->user(), $post);
+        } catch (InvalidArgumentException $e) {
+            return ApiResponse::error('media_not_ready', $e->getMessage(), 422);
+        }
+
+        if ($published->is_important) {
+            // Important-post broadcast handled asynchronously in production via a queued job
+            // fan-out over home-family members; kept out of the request cycle intentionally.
+        }
+
+        return ApiResponse::success($published);
+    }
+
+    public function archive(Request $request, FamilyPost $post): JsonResponse
+    {
+        $post->update([
+            'status' => FamilyPostStatus::Archived,
+            'archived_at' => now(),
+        ]);
+
+        $this->audit->log($request->user(), 'family.post_archived', $post);
+
+        return ApiResponse::success($post);
+    }
+
+    public function destroy(Request $request, FamilyPost $post): JsonResponse
+    {
+        abort_if($post->status === FamilyPostStatus::Published, 422, 'پست منتشرشده حذف نمی‌شود؛ آرشیو کنید.');
+
+        $this->audit->log($request->user(), 'family.post_deleted', $post);
+        $post->delete();
+
+        return ApiResponse::success(['deleted' => true]);
+    }
+
+    public function reply(Request $request, FamilyComment $comment): JsonResponse
+    {
+        $data = $request->validate([
+            'type' => ['required', 'in:text,voice'],
+            'text' => ['required_if:type,text', 'nullable', 'string', 'max:2000'],
+            'media_id' => ['required_if:type,voice', 'nullable', 'integer', 'exists:family_media,id'],
+        ]);
+
+        // Reply context is rendered from the post's reply_to_comment_id relation
+        // (see FamilyPostResource::reply_context) — no separate block needed.
+        $blocks = $data['type'] === 'text'
+            ? [['type' => 'text', 'position' => 0, 'text' => $data['text']]]
+            : [['type' => 'audio', 'position' => 0, 'media_id' => $data['media_id']]];
+
+        $post = $this->publisher->createDraft($request->user(), [
+            'type' => FamilyPostType::Reply->value,
+            'audience_mode' => FamilyPostAudienceMode::Include->value,
+            'family_ids' => [$comment->family_id],
+            'blocks' => $blocks,
+            'reply_to_comment_id' => $comment->id,
+        ]);
+
+        $published = $this->publisher->publish($request->user(), $post);
+
+        $this->audit->log($request->user(), 'family.bahram_replied', $comment, ['post_id' => $published->id]);
+
+        if ($comment->user) {
+            $this->notifications->bahramReplied($comment->user);
+        }
+
+        return ApiResponse::success($published, 201);
+    }
+}

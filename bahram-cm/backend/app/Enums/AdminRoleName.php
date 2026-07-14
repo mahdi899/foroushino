@@ -14,6 +14,7 @@ enum AdminRoleName: string
     case KycOperator = 'kyc-operator';
     case Support = 'support';
     case ContentManager = 'content-manager';
+    case FamilyManager = 'family-manager';
     case Finance = 'finance';
     case ReadOnly = 'read-only';
 
@@ -26,6 +27,7 @@ enum AdminRoleName: string
             self::KycOperator => 'کارشناس احراز هویت',
             self::Support => 'پشتیبانی',
             self::ContentManager => 'مدیر محتوا',
+            self::FamilyManager => 'مدیر خانواده',
             self::Finance => 'مالی',
             self::ReadOnly => 'ناظر',
         };
@@ -40,6 +42,7 @@ enum AdminRoleName: string
             self::KycOperator => 'بررسی پرونده‌های احراز هویت و مدارک',
             self::Support => 'پشتیبانی عمومی بدون مشاهده داده‌های حساس',
             self::ContentManager => 'مدیریت مقالات، دوره‌ها و FAQ',
+            self::FamilyManager => 'مدیریت خانواده داداش بهرام؛ انتشار، نظرات و تحلیل',
             self::Finance => 'پرداخت‌ها، تراکنش‌ها و برداشت‌ها',
             self::ReadOnly => 'فقط مشاهده گزارش‌ها و بخش‌های مجاز',
         };

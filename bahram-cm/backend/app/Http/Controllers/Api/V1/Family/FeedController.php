@@ -1,0 +1,148 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1\Family;
+
+use App\Actions\Family\JoinFamily;
+use App\Http\Controllers\Controller;
+use App\Http\Resources\V1\Family\FamilyPostResource;
+use App\Models\FamilyPost;
+use App\Services\Family\EntryContext;
+use App\Services\Family\FamilyAccessService;
+use App\Services\Family\FeedService;
+use App\Services\Family\PostAudienceResolver;
+use App\Support\ApiResponse;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class FeedController extends Controller
+{
+    public function __construct(
+        private readonly FeedService $feed,
+        private readonly FamilyAccessService $access,
+        private readonly PostAudienceResolver $audience,
+    ) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        // Not behind `auth:sanctum` middleware (guests must reach this route too),
+        // so the default guard won't see the bearer token — resolve explicitly.
+        $user = $request->user('sanctum');
+
+        if (! $user) {
+            $preview = $this->feed->guestPreview();
+
+            return ApiResponse::success(
+                FamilyPostResource::collection($preview['data'])->resolve(),
+                200,
+                [
+                    'next_cursor' => null,
+                    'guest' => true,
+                    'display_name' => config('family.display_name'),
+                ]
+            );
+        }
+
+        $result = $this->feed->forMember(
+            $user,
+            $request->query('cursor'),
+            $request->integer('limit') ?: null,
+        );
+
+        $family = $result['membership']->family;
+
+        return ApiResponse::success(
+            FamilyPostResource::collection($result['data'])->resolve(),
+            200,
+            [
+                'next_cursor' => $result['next_cursor'],
+                'guest' => false,
+                'display_name' => config('family.display_name'),
+                'member_count' => (int) $family->member_count,
+                'onboarding_completed' => (bool) $result['membership']->onboarding_completed,
+            ]
+        );
+    }
+
+    public function show(Request $request, FamilyPost $post): JsonResponse
+    {
+        $user = $request->user('sanctum');
+        abort_unless($post->status?->value === 'published' || $post->status === 'published', 404);
+
+        if ($user) {
+            $membership = $this->access->requireMembership($user);
+            abort_unless($this->audience->visibleToFamily($post, (int) $membership->family_id), 404);
+
+            $post->load([
+                'author:id,name',
+                'blocks.media',
+                'blocks.article:id,title,slug,excerpt,featured_image',
+                'actions.options',
+                'replyToComment.user:id,name',
+                'stats' => fn ($q) => $q->where('family_id', $membership->family_id),
+            ]);
+        } else {
+            abort_unless(($post->audience_mode?->value ?? $post->audience_mode) === 'all', 404);
+            $post->load(['author:id,name', 'blocks.media', 'blocks.article:id,title,slug,excerpt,featured_image']);
+        }
+
+        return ApiResponse::success((new FamilyPostResource($post))->resolve());
+    }
+
+    public function join(Request $request, JoinFamily $join): JsonResponse
+    {
+        $user = $request->user();
+        abort_unless($user, 401);
+
+        $context = EntryContext::fromArray($request->only([
+            'source', 'campaign', 'content', 'referrer', 'entry_event', 'entry_event_id',
+        ]));
+
+        $membership = $join($user, $context);
+
+        return ApiResponse::success([
+            'joined' => true,
+            'onboarding_completed' => (bool) $membership->onboarding_completed,
+            'member_count' => (int) $membership->family->member_count,
+            'display_name' => config('family.display_name'),
+        ]);
+    }
+
+    public function completeOnboarding(Request $request): JsonResponse
+    {
+        $membership = $this->access->requireMembership($request->user());
+
+        if (! $membership->onboarding_completed) {
+            $membership->update([
+                'onboarding_completed' => true,
+                'onboarding_completed_at' => now(),
+            ]);
+        }
+
+        return ApiResponse::success([
+            'onboarding_completed' => true,
+            'title' => str_replace('{name}', $request->user()->name ?? 'دوست', config('family.onboarding.title')),
+            'body' => config('family.onboarding.body'),
+            'cta' => config('family.onboarding.cta'),
+        ]);
+    }
+
+    public function me(Request $request): JsonResponse
+    {
+        $membership = $this->access->homeMembership($request->user());
+
+        if (! $membership) {
+            return ApiResponse::success([
+                'is_member' => false,
+                'display_name' => config('family.display_name'),
+            ]);
+        }
+
+        return ApiResponse::success([
+            'is_member' => true,
+            'display_name' => config('family.display_name'),
+            'member_count' => (int) $membership->family->member_count,
+            'onboarding_completed' => (bool) $membership->onboarding_completed,
+            'joined_at' => $membership->joined_at?->toIso8601String(),
+        ]);
+    }
+}

@@ -176,4 +176,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(NotificationRecipient::class);
     }
+
+    public function familyMembership(): HasOne
+    {
+        return $this->hasOne(FamilyMembership::class);
+    }
 }

@@ -60,6 +60,22 @@ return [
             'report' => false,
         ],
 
+        // Family heavy media (voice/video/image) — Download Host reached only by
+        // Backend/Workers. Never exposed to Next.js, Flutter, or the browser.
+        // Playback is served from FAMILY_MEDIA_CDN_URL, never proxied through Laravel.
+        'family_media_ftp' => [
+            'driver' => 'ftp',
+            'host' => env('FAMILY_MEDIA_FTP_HOST', ''),
+            'username' => env('FAMILY_MEDIA_FTP_USERNAME', ''),
+            'password' => env('FAMILY_MEDIA_FTP_PASSWORD', ''),
+            'port' => (int) env('FAMILY_MEDIA_FTP_PORT', 21),
+            'root' => env('FAMILY_MEDIA_FTP_ROOT', '/'),
+            'passive' => filter_var(env('FAMILY_MEDIA_FTP_PASSIVE', true), FILTER_VALIDATE_BOOL),
+            'ssl' => filter_var(env('FAMILY_MEDIA_FTP_SSL', false), FILTER_VALIDATE_BOOL),
+            'timeout' => (int) env('FAMILY_MEDIA_FTP_TIMEOUT', 60),
+            'throw' => true,
+        ],
+
     ],
 
     /*

@@ -56,6 +56,31 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by((string) ($request->user()?->id ?: $request->ip()));
         });
 
+        RateLimiter::for('family-comment', function (Request $request) {
+            return Limit::perMinute((int) config('family.rate_limits.comment_per_minute', 5))
+                ->by((string) ($request->user()?->id ?: $request->ip()));
+        });
+
+        RateLimiter::for('family-reaction', function (Request $request) {
+            return Limit::perMinute((int) config('family.rate_limits.reaction_per_minute', 30))
+                ->by((string) ($request->user()?->id ?: $request->ip()));
+        });
+
+        RateLimiter::for('family-action', function (Request $request) {
+            return Limit::perMinute((int) config('family.rate_limits.action_per_minute', 10))
+                ->by((string) ($request->user()?->id ?: $request->ip()));
+        });
+
+        RateLimiter::for('family-progress', function (Request $request) {
+            return Limit::perMinute((int) config('family.rate_limits.progress_per_minute', 60))
+                ->by((string) ($request->user()?->id ?: $request->ip()));
+        });
+
+        RateLimiter::for('family-upload', function (Request $request) {
+            return Limit::perHour((int) config('family.rate_limits.upload_per_hour', 40))
+                ->by((string) ($request->user()?->id ?: $request->ip()));
+        });
+
         Event::listen(IdentityLevel2Approved::class, TryActivateSatMembershipListener::class);
         Event::listen(SatApplicationAccepted::class, TryActivateSatMembershipListener::class);
         Event::listen(SatApplicationAccepted::class, PushSatApplicationToExternalListener::class);

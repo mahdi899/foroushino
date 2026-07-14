@@ -49,6 +49,7 @@ final class PermissionCatalog
                 'content.view',
                 'content.manage',
             ],
+            'Family' => FamilyPermissionCatalog::all(),
             'SMS' => [
                 'sms.view',
                 'sms.manage',
@@ -141,6 +142,10 @@ final class PermissionCatalog
             'finance.view_payout_card' => 'نمایش شماره کارت کامل',
             'content.view' => 'مشاهده محتوا',
             'content.manage' => 'مدیریت محتوا',
+            'family.manage', 'family.posts.create', 'family.posts.publish',
+            'family.comments.moderate', 'family.comments.reply', 'family.families.view',
+            'family.analytics.view', 'family.pulse.manage', 'family.media.upload'
+                => FamilyPermissionCatalog::label($permission),
             'sms.view' => 'مشاهده پیامک',
             'sms.manage' => 'مدیریت پیامک',
             'audit.view' => 'مشاهده لاگ ممیزی',

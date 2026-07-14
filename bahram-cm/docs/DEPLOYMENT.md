@@ -3,7 +3,8 @@
 این راهنما deploy **Next.js** (`frontend/`) و **Laravel** (`backend/`) روی **Ubuntu + Nginx + PHP-FPM + PM2 + Redis + MySQL** را شرح می‌دهد.
 
 **فایل‌های زیرساخت:** [`deploy/`](../deploy/)  
-**CDN ابر آروان (fashio.ir):** [`ARVAN-CDN.md`](ARVAN-CDN.md)
+**CDN ابر آروان (fashio.ir):** [`ARVAN-CDN.md`](ARVAN-CDN.md)  
+**خانواده داداش بهرام (Family):** [`FAMILY.md`](FAMILY.md) — متغیرهای محیطی، صف رسانه، FTP+CDN
 
 CI در `.github/workflows/ci.yml` lint، typecheck، build و PHPUnit را اجرا می‌کند.
 
@@ -133,6 +134,14 @@ sudo certbot --nginx -d fashio.ir -d www.fashio.ir -d cdn.fashio.ir
 sudo cp deploy/supervisor/bahram-queue.conf /etc/supervisor/conf.d/
 sudo supervisorctl reread && sudo supervisorctl update
 sudo supervisorctl status bahram-queue:*
+```
+
+Family (خانواده داداش بهرام) از پول جدا با صف‌های اختصاصی استفاده می‌کند تا پردازش رسانه سنگین صف اصلی را کند نکند — جزئیات در [`FAMILY.md`](FAMILY.md):
+
+```bash
+sudo cp deploy/supervisor/bahram-family-queue.conf /etc/supervisor/conf.d/
+sudo supervisorctl reread && sudo supervisorctl update
+sudo supervisorctl status bahram-family-queue:*
 ```
 
 ---

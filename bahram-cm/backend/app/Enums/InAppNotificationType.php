@@ -16,6 +16,11 @@ enum InAppNotificationType: string
     case IdentityApproved = 'identity_approved';
     case IdentityRejected = 'identity_rejected';
     case IdentityNeedsCorrection = 'identity_needs_correction';
+    case FamilyCommentApproved = 'family_comment_approved';
+    case FamilyCommentRejected = 'family_comment_rejected';
+    case FamilyBahramReplied = 'family_bahram_replied';
+    case FamilyActionFollowUp = 'family_action_follow_up';
+    case FamilyImportantPost = 'family_important_post';
 
     public function showsToast(): bool
     {
@@ -27,7 +32,12 @@ enum InAppNotificationType: string
             self::TicketReply,
             self::IdentityApproved,
             self::IdentityRejected,
-            self::IdentityNeedsCorrection => true,
+            self::IdentityNeedsCorrection,
+            self::FamilyCommentApproved,
+            self::FamilyCommentRejected,
+            self::FamilyBahramReplied,
+            self::FamilyActionFollowUp,
+            self::FamilyImportantPost => true,
             default => false,
         };
     }

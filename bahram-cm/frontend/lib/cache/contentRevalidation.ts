@@ -76,3 +76,31 @@ export async function revalidateFaqSurfaces(): Promise<void> {
     revalidatePath('/admin/commerce/faqs');
   });
 }
+
+export async function revalidateContentCommentSurfaces(
+  type: string,
+  slug?: string | null,
+): Promise<void> {
+  await revalidatePublicContent(() => {
+    revalidateTag('content-comments', 'max');
+    revalidatePath('/admin/content/comments');
+
+    if (type === 'course') {
+      revalidatePath('/courses');
+      if (slug) revalidatePath(`/courses/${slug}`);
+    } else if (type === 'mini_course') {
+      revalidateTag('mini-courses', 'max');
+      revalidatePath('/mini-courses');
+      if (slug) revalidatePath(`/mini-courses/${slug}`);
+    } else if (type === 'article') {
+      revalidateTag('articles', 'max');
+      revalidatePath('/insights');
+      if (slug) revalidatePath(`/insights/${slug}`);
+    } else if (type === 'seminar') {
+      revalidatePath('/seminars');
+      if (slug) revalidatePath(`/seminars/${slug}`);
+    } else if (type === 'campaign_writing') {
+      revalidatePath('/course/campaign-writing');
+    }
+  });
+}

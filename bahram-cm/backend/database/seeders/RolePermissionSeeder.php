@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\AdminRoleName;
 use App\Models\User;
+use App\Support\FamilyPermissionCatalog;
 use App\Support\PermissionCatalog;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
@@ -46,6 +47,7 @@ class RolePermissionSeeder extends Seeder
             'sat.view', 'sat.manage',
             'finance.view', 'finance.manage',
             'content.view', 'content.manage',
+            ...FamilyPermissionCatalog::all(),
             'sms.view', 'sms.manage',
             'tickets.view', 'tickets.manage',
             'orders.view', 'orders.manage',
@@ -79,6 +81,10 @@ class RolePermissionSeeder extends Seeder
         Role::findByName(AdminRoleName::ContentManager->value)->syncPermissions([
             'content.view', 'content.manage',
         ]);
+
+        Role::findByName(AdminRoleName::FamilyManager->value)->syncPermissions(
+            FamilyPermissionCatalog::all()
+        );
 
         Role::findByName(AdminRoleName::Finance->value)->syncPermissions([
             'students.view', 'students.search_by_mobile',
