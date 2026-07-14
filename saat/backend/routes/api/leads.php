@@ -11,7 +11,9 @@ Route::prefix('leads')->group(function (): void {
     Route::post('/next', [LeadController::class, 'next'])->middleware('throttle:writes');
     Route::get('/locked', [LeadController::class, 'locked']);
     Route::get('/returned', [LeadController::class, 'returned']);
+    Route::post('/', [LeadController::class, 'store'])->middleware('throttle:writes');
     Route::post('/auto-assign', [LeadController::class, 'autoAssign'])->middleware('throttle:writes');
+    Route::post('/distribute-teams', [LeadController::class, 'distributeToTeams'])->middleware('throttle:writes');
     Route::post('/import', [LeadController::class, 'import'])->middleware('throttle:writes');
     Route::get('/import/{importBatch}', [LeadController::class, 'importBatch']);
     Route::get('/{lead}', [LeadController::class, 'show']);

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   BadgeDollarSign,
@@ -34,12 +34,14 @@ type Filter = 'all' | SaleStatus
 
 import { isManagementRole } from '@/lib/roles'
 import { hasPermission } from '@/lib/permissions'
+import { getTeamAgentIds } from '@/lib/teamUtils'
 const TG = 'text-[#3390EC] dark:text-[#8774E1]'
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
 
 const filters: { id: Filter; label: string; tone: ChipTone }[] = [
   { id: 'all', label: 'همه', tone: 'neutral' },
   { id: 'payment_pending', label: 'در انتظار پرداخت', tone: 'warm' },
+  { id: 'payment_submitted', label: 'بررسی پرداخت', tone: 'warm' },
   { id: 'pending_confirmation', label: 'در انتظار تایید', tone: 'primary' },
   { id: 'confirmed', label: 'تایید شده', tone: 'primary' },
   { id: 'rejected', label: 'رد شده', tone: 'error' },
@@ -49,6 +51,7 @@ const filters: { id: Filter; label: string; tone: ChipTone }[] = [
 const statusGlow: Partial<Record<SaleStatus, string>> = {
   confirmed: 'bg-emerald-400/16 dark:bg-emerald-400/12',
   payment_pending: 'bg-amber-400/18 dark:bg-amber-400/12',
+  payment_submitted: 'bg-orange-400/16 dark:bg-orange-400/10',
   pending_confirmation: 'bg-[#3390EC]/14 dark:bg-[#8774E1]/14',
   rejected: 'bg-red-400/14 dark:bg-red-400/10',
   cancelled: 'bg-neutral-400/10',
@@ -123,22 +126,28 @@ function SaleCard({
   product,
   isTeamViewer,
   canConfirmSales,
+  canReviewPayment,
+  canRegisterPayment,
   onLeadClick,
   onPay,
   onCancel,
   onConfirm,
   onReject,
+  onForward,
 }: {
   sale: Sale
   lead?: Lead
   product?: Product
   isTeamViewer: boolean
   canConfirmSales: boolean
+  canReviewPayment: boolean
+  canRegisterPayment: boolean
   onLeadClick: () => void
   onPay: () => void
   onCancel: () => void
   onConfirm: () => void
   onReject: () => void
+  onForward: () => void
 }) {
   const glow = statusGlow[sale.status]
 
@@ -203,6 +212,47 @@ function SaleCard({
         </div>
       )}
 
+      {isTeamViewer && canRegisterPayment && sale.status === 'payment_pending' && (
+        <div className="relative mt-3 flex gap-2">
+          <GlassActionBtn label="ثبت واریز" icon={Wallet} variant="primary" onClick={onPay} />
+        </div>
+      )}
+
+      {canReviewPayment && sale.status === 'payment_submitted' && (
+        <div className="relative mt-3 flex gap-2">
+          <GlassActionBtn
+            label="ارسال به مدیریت"
+            icon={ShieldCheck}
+            variant="primary"
+            onClick={onForward}
+          />
+        </div>
+      )}
+
+      {!isTeamViewer && sale.status === 'payment_submitted' && (
+        <div
+          className={cn(
+            'relative mt-3 flex items-center gap-2 rounded-[14px] border px-3 py-2',
+            'border-amber-500/20 bg-amber-500/8 dark:border-amber-400/22 dark:bg-amber-400/10',
+          )}
+        >
+          <Clock size={13} className="shrink-0 text-amber-600 dark:text-amber-400" strokeWidth={2.35} />
+          <p className="text-[11px] font-bold text-amber-700 dark:text-amber-300">در انتظار تایید لیدر است</p>
+        </div>
+      )}
+
+      {isTeamViewer && !canReviewPayment && sale.status === 'payment_submitted' && (
+        <div
+          className={cn(
+            'relative mt-3 flex items-center gap-2 rounded-[14px] border px-3 py-2',
+            'border-amber-500/20 bg-amber-500/8 dark:border-amber-400/22 dark:bg-amber-400/10',
+          )}
+        >
+          <Clock size={13} className="shrink-0 text-amber-600 dark:text-amber-400" strokeWidth={2.35} />
+          <p className="text-[11px] font-bold text-amber-700 dark:text-amber-300">پرداخت ثبت شد — منتظر لیدر</p>
+        </div>
+      )}
+
       {!isTeamViewer && sale.status === 'pending_confirmation' && (
         <div
           className={cn(
@@ -239,13 +289,17 @@ function SaleCard({
 
 export function SalesScreen() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const role = useStore((s) => s.role)
   const permissions = useStore((s) => s.permissions)
   const currentAgentId = useStore((s) => s.currentAgentId)
+  const agents = useStore((s) => s.agents)
+  const teams = useStore((s) => s.teams)
   const sales = useStore((s) => s.sales)
   const leads = useStore((s) => s.leads)
   const products = useStore((s) => s.products)
   const submitPayment = useStore((s) => s.submitPayment)
+  const forwardSaleForConfirmation = useStore((s) => s.forwardSaleForConfirmation)
   const confirmSale = useStore((s) => s.confirmSale)
   const rejectSale = useStore((s) => s.rejectSale)
   const cancelSale = useStore((s) => s.cancelSale)
@@ -253,22 +307,45 @@ export function SalesScreen() {
 
   const isTeamViewer = isManagementRole(role)
   const canConfirmSales = hasPermission(permissions, 'sales.confirm')
-  const [filter, setFilter] = useState<Filter>('all')
+  const canReviewPayment = hasPermission(permissions, 'sales.review-payment')
+  const canRegisterPayment = hasPermission(permissions, 'sales.register-payment')
+  const statusParam = searchParams.get('status')
+  const [filter, setFilter] = useState<Filter>(
+    statusParam && filters.some((f) => f.id === statusParam) ? (statusParam as Filter) : 'all',
+  )
   const [paySheet, setPaySheet] = useState<Sale | null>(null)
+  const [forwardTarget, setForwardTarget] = useState<Sale | null>(null)
   const [confirmTarget, setConfirmTarget] = useState<Sale | null>(null)
   const [rejectTarget, setRejectTarget] = useState<Sale | null>(null)
   const [rejectReason, setRejectReason] = useState('')
   const [cancelTarget, setCancelTarget] = useState<Sale | null>(null)
-  const [success, setSuccess] = useState<'payment' | 'confirmed' | null>(null)
+  const [success, setSuccess] = useState<'payment' | 'confirmed' | 'forwarded' | null>(null)
 
-  const visible = isTeamViewer ? sales : sales.filter((s) => s.agentId === currentAgentId)
+  useEffect(() => {
+    if (statusParam && filters.some((f) => f.id === statusParam)) {
+      setFilter(statusParam as Filter)
+    }
+  }, [statusParam])
+
+  const teamAgentIds = useMemo(
+    () => getTeamAgentIds(teams, agents, currentAgentId, role),
+    [teams, agents, currentAgentId, role],
+  )
+
+  const visible = useMemo(
+    () =>
+      isTeamViewer
+        ? sales.filter((sale) => teamAgentIds.includes(sale.agentId))
+        : sales.filter((sale) => sale.agentId === currentAgentId),
+    [sales, isTeamViewer, teamAgentIds, currentAgentId],
+  )
   const filtered = filter === 'all' ? visible : visible.filter((s) => s.status === filter)
 
   const counts: Record<Filter, number> = {
     all: visible.length,
     draft: 0,
     payment_pending: visible.filter((s) => s.status === 'payment_pending').length,
-    payment_submitted: 0,
+    payment_submitted: visible.filter((s) => s.status === 'payment_submitted').length,
     pending_confirmation: visible.filter((s) => s.status === 'pending_confirmation').length,
     confirmed: visible.filter((s) => s.status === 'confirmed').length,
     rejected: visible.filter((s) => s.status === 'rejected').length,
@@ -354,11 +431,14 @@ export function SalesScreen() {
                 product={product}
                 isTeamViewer={isTeamViewer}
                 canConfirmSales={canConfirmSales}
+                canReviewPayment={canReviewPayment}
+                canRegisterPayment={canRegisterPayment}
                 onLeadClick={() => lead && navigate(`/leads/${lead.id}`)}
                 onPay={() => setPaySheet(sale)}
                 onCancel={() => setCancelTarget(sale)}
                 onConfirm={() => setConfirmTarget(sale)}
                 onReject={() => setRejectTarget(sale)}
+                onForward={() => setForwardTarget(sale)}
               />
             )
           })
@@ -376,6 +456,23 @@ export function SalesScreen() {
           submitPayment(paySheet.id, method, reference)
           setPaySheet(null)
           setSuccess('payment')
+        }}
+      />
+
+      <ConfirmModal
+        open={!!forwardTarget}
+        title="ارسال به مدیریت"
+        description="با تایید، این فروش برای تایید نهایی سوپروایزر/مدیر ارسال می‌شود."
+        icon={ShieldCheck}
+        tone="success"
+        confirmLabel="ارسال به مدیریت"
+        onCancel={() => setForwardTarget(null)}
+        onConfirm={() => {
+          if (!forwardTarget) return
+          haptic('success')
+          forwardSaleForConfirmation(forwardTarget.id)
+          setForwardTarget(null)
+          setSuccess('forwarded')
         }}
       />
 
@@ -449,9 +546,18 @@ export function SalesScreen() {
         {success === 'payment' && (
           <SuccessScreen
             title="پرداخت ثبت شد"
-            description="فروش برای تایید سوپروایزر ارسال شد. به‌محض تایید، پورسانت تو به‌صورت معلق ثبت می‌شود."
+            description="فروش برای تایید لیدر ارسال شد. بعد از تایید لیدر، برای تایید نهایی به مدیریت می‌رود."
             icon={Check}
             primaryLabel="بازگشت به فروش‌ها"
+            onPrimary={() => setSuccess(null)}
+          />
+        )}
+        {success === 'forwarded' && (
+          <SuccessScreen
+            title="ارسال شد"
+            description="فروش برای تایید نهایی مدیریت ارسال شد."
+            icon={ShieldCheck}
+            primaryLabel="باشه"
             onPrimary={() => setSuccess(null)}
           />
         )}

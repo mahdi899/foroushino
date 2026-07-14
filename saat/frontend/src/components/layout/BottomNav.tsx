@@ -9,7 +9,13 @@ import { cn } from '@/lib/cn'
 const ACTIVE = 'text-[#3390EC] dark:text-[#8774E1]'
 const INACTIVE = 'text-[#8E8E93] dark:text-[#98989D]'
 
-export function BottomNav({ onFabClick }: { onFabClick: () => void }) {
+export function BottomNav({
+  onFabClick,
+  showFab = true,
+}: {
+  onFabClick?: () => void
+  showFab?: boolean
+}) {
   const role = useStore((s) => s.role)
   const items = navForRole(role)
   const navigate = useNavigate()
@@ -64,29 +70,31 @@ export function BottomNav({ onFabClick }: { onFabClick: () => void }) {
         <LayoutGroup id="tg-bottom-nav">
           <nav className="glass-nav flex h-[54px] items-stretch rounded-[27px] px-0.5">
             {left.map(renderItem)}
-            <div className="w-[60px] shrink-0" aria-hidden />
+            {showFab ? <div className="w-[60px] shrink-0" aria-hidden /> : null}
             {right.map(renderItem)}
           </nav>
         </LayoutGroup>
 
-        <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-[40%]">
-          <motion.button
-            whileTap={{ scale: 0.92 }}
-            onClick={() => {
-              haptic('medium')
-              onFabClick()
-            }}
-            aria-label="عملیات سریع"
-            className={cn(
-              'glass-fab flex h-[52px] w-[52px] items-center justify-center rounded-full',
-              ACTIVE,
-            )}
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3390EC] text-white dark:bg-[#8774E1]">
-              <Plus size={22} strokeWidth={2.5} />
-            </span>
-          </motion.button>
-        </div>
+        {showFab && onFabClick ? (
+          <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-[40%]">
+            <motion.button
+              whileTap={{ scale: 0.92 }}
+              onClick={() => {
+                haptic('medium')
+                onFabClick()
+              }}
+              aria-label="عملیات سریع"
+              className={cn(
+                'glass-fab flex h-[52px] w-[52px] items-center justify-center rounded-full',
+                ACTIVE,
+              )}
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#3390EC] text-white dark:bg-[#8774E1]">
+                <Plus size={22} strokeWidth={2.5} />
+              </span>
+            </motion.button>
+          </div>
+        ) : null}
       </div>
     </div>
   )

@@ -16,6 +16,7 @@ import {
   GraduationCap,
   History,
   Server,
+  Users,
   type LucideIcon,
 } from 'lucide-react'
 import { isAgentRole, isManagementRole } from '@/lib/roles'
@@ -26,6 +27,7 @@ import { TopBar } from '@/components/layout/TopBar'
 import { ProfileAvatarPicker } from '@/features/profile/ProfileAvatarPicker'
 import { roleLabels } from '@/data/labels'
 import { toFa } from '@/lib/format'
+import { APP_VERSION_LABEL } from '@/lib/app'
 import { cn } from '@/lib/cn'
 
 type StatTone = 'warning' | 'primary' | 'success'
@@ -97,11 +99,18 @@ export function ProfileScreen() {
     ...(agentLine
       ? [{ icon: GraduationCap, label: 'آموزش و اسکریپت فروش', onClick: () => navigate('/training') }]
       : []),
-    ...(canOpenAdminSettings
-      ? [{ icon: Server, label: 'تنظیمات سیستم', onClick: () => navigate('/admin/settings') }]
+    ...(canOpenAdminSettings || hasPermission(permissions, 'users.manage')
+      ? [
+          ...(hasPermission(permissions, 'users.manage')
+            ? [{ icon: Users, label: 'مدیریت ناظران', onClick: () => navigate('/admin/staff') }]
+            : []),
+          ...(canOpenAdminSettings
+            ? [{ icon: Server, label: 'تنظیمات سیستم', onClick: () => navigate('/admin/settings') }]
+            : []),
+        ]
       : []),
     { icon: Bell, label: 'اعلان‌ها', onClick: () => navigate('/notifications') },
-    { icon: History, label: 'تاریخچه فعالیت', onClick: () => navigate('/activity') },
+    { icon: History, label: management && hasPermission(permissions, 'reports.view-all') ? 'فعالیت سیستم' : 'تاریخچه فعالیت', onClick: () => navigate('/activity') },
     { icon: Settings, label: 'تنظیمات', onClick: () => navigate('/settings') },
     { icon: ShieldCheck, label: 'حریم خصوصی', onClick: () => navigate('/settings') },
     { icon: HelpCircle, label: 'راهنما و پشتیبانی', onClick: () => navigate('/settings') },
@@ -181,7 +190,7 @@ export function ProfileScreen() {
           خروج از حساب
         </button>
 
-        <p className="pb-2 text-center text-[11px] font-medium text-[#8E8E93] dark:text-[#98989D]">سات · نسخه ۱.۰.۰</p>
+        <p className="pb-2 text-center text-[11px] font-medium text-[#8E8E93] dark:text-[#98989D]">{APP_VERSION_LABEL}</p>
       </div>
     </Page>
   )

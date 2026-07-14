@@ -130,13 +130,6 @@ class Lead extends Model
         return str_pad((string) $id, 4, '0', STR_PAD_LEFT);
     }
 
-    public static function generateUniqueDisplayCode(): string
-    {
-        $maxId = (int) self::query()->max('id');
-
-        return self::displayCodeForId($maxId + 1);
-    }
-
     protected static function booted(): void
     {
         static::created(function (Lead $lead): void {

@@ -13,7 +13,7 @@ import { QuickActionSheet } from '@/components/layout/QuickActionSheet'
 import { CallMethodSheet } from '@/components/domain/CallMethodSheet'
 import { ToastHost } from '@/components/ui/Toast'
 import { cn } from '@/lib/cn'
-import { isAgentRole } from '@/lib/roles'
+import { canMakeCalls, isAgentRole, isManagementRole } from '@/lib/roles'
 import { isShiftOpen } from '@/lib/shiftUtils'
 
 import { SplashScreen } from '@/features/auth/SplashScreen'
@@ -25,6 +25,7 @@ import { HomeRouter } from '@/features/home/HomeRouter'
 import { LeadsScreen } from '@/features/leads/LeadsScreen'
 import { LeadDetailScreen } from '@/features/leads/LeadDetailScreen'
 import { LockedLeadsScreen } from '@/features/leads/LockedLeadsScreen'
+import { LeadIntakeScreen } from '@/features/leads/LeadIntakeScreen'
 import { ReturnedLeadsScreen } from '@/features/leads/ReturnedLeadsScreen'
 import { DialerScreen } from '@/features/dialer/DialerScreen'
 import { CallResultScreen } from '@/features/call/CallResultScreen'
@@ -41,8 +42,12 @@ import { CommissionDetailScreen } from '@/features/wallet/CommissionDetailScreen
 import { CommissionRulesScreen } from '@/features/wallet/CommissionRulesScreen'
 import { TrainingScreen } from '@/features/training/TrainingScreen'
 import { ObjectionsScreen } from '@/features/training/ObjectionsScreen'
-import { AdminSettingsScreen } from '@/features/admin/AdminSettingsScreen'
+import { TeamLiveScreen } from '@/features/team/TeamLiveScreen'
+import { SupervisorTeamsScreen } from '@/features/team/SupervisorTeamsScreen'
+import { TeamReportsScreen } from '@/features/team/TeamReportsScreen'
 import { ActivityHistoryScreen } from '@/features/activity/ActivityHistoryScreen'
+import { StaffManagementScreen } from '@/features/admin/StaffManagementScreen'
+import { AdminSettingsScreen } from '@/features/admin/AdminSettingsScreen'
 import { AppLockScreen } from '@/components/domain/AppLockScreen'
 import { OfflineBanner } from '@/components/pwa/DataGate'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
@@ -50,11 +55,17 @@ import { SyncProvider } from '@/providers/SyncProvider'
 import { ShiftPresenceWatcher } from '@/providers/ShiftPresenceWatcher'
 import { useStandalonePwa } from '@/lib/pwa'
 
-const NAV_ROUTES = ['/home', '/leads', '/followups', '/performance', '/reports', '/profile']
+const NAV_ROUTES = ['/home', '/leads', '/followups', '/performance', '/reports', '/profile', '/team', '/teams']
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const isAuthed = useStore((s) => s.isAuthed)
   if (!isAuthed) return <Navigate to="/login" replace />
+  return <>{children}</>
+}
+
+function RequireAgentCall({ children }: { children: React.ReactNode }) {
+  const role = useStore((s) => s.role)
+  if (isManagementRole(role)) return <Navigate to="/home" replace />
   return <>{children}</>
 }
 
@@ -96,9 +107,11 @@ function Shell() {
   const isAuthed = useStore((s) => s.isAuthed)
   const isLocked = useStore((s) => s.isLocked)
   const availability = useStore((s) => s.availability)
+  const role = useStore((s) => s.role)
   const [fabOpen, setFabOpen] = useState(false)
 
   const showNav = isAuthed && NAV_ROUTES.includes(location.pathname)
+  const showCallFab = canMakeCalls(role)
   const lockScroll = location.pathname.startsWith('/dialer/')
 
   useEffect(() => {
@@ -134,12 +147,16 @@ function Shell() {
                 </RequireAuth>
               }
             />
+            <Route path="/team" element={<RequireAuth><TeamLiveScreen /></RequireAuth>} />
+            <Route path="/teams" element={<RequireAuth><SupervisorTeamsScreen /></RequireAuth>} />
+            <Route path="/team-reports" element={<RequireAuth><TeamReportsScreen /></RequireAuth>} />
             <Route path="/leads" element={<RequireAuth><LeadsScreen /></RequireAuth>} />
+            <Route path="/leads/intake" element={<RequireAuth><LeadIntakeScreen /></RequireAuth>} />
             <Route path="/leads/locked" element={<RequireAuth><LockedLeadsScreen /></RequireAuth>} />
             <Route path="/leads/returned" element={<RequireAuth><ReturnedLeadsScreen /></RequireAuth>} />
             <Route path="/leads/:id" element={<RequireAuth><LeadDetailScreen /></RequireAuth>} />
-            <Route path="/dialer/:id" element={<RequireAuth><DialerScreen /></RequireAuth>} />
-            <Route path="/call-result/:id" element={<RequireAuth><CallResultScreen /></RequireAuth>} />
+            <Route path="/dialer/:id" element={<RequireAuth><RequireAgentCall><DialerScreen /></RequireAgentCall></RequireAuth>} />
+            <Route path="/call-result/:id" element={<RequireAuth><RequireAgentCall><CallResultScreen /></RequireAgentCall></RequireAuth>} />
             <Route path="/followups" element={<RequireAuth><FollowupsScreen /></RequireAuth>} />
             <Route path="/sales" element={<RequireAuth><SalesScreen /></RequireAuth>} />
             <Route path="/sales/pending-payments" element={<RequireAuth><PendingPaymentsScreen /></RequireAuth>} />
@@ -154,6 +171,7 @@ function Shell() {
             <Route path="/notifications" element={<RequireAuth><NotificationsScreen /></RequireAuth>} />
             <Route path="/activity" element={<RequireAuth><ActivityHistoryScreen /></RequireAuth>} />
             <Route path="/settings" element={<RequireAuth><SettingsScreen /></RequireAuth>} />
+            <Route path="/admin/staff" element={<RequireAuth><StaffManagementScreen /></RequireAuth>} />
             <Route path="/admin/settings" element={<RequireAuth><AdminSettingsScreen /></RequireAuth>} />
 
             <Route path="*" element={<Navigate to={isAuthed ? '/home' : '/'} replace />} />
@@ -161,8 +179,13 @@ function Shell() {
         </div>
       </div>
 
-      {showNav && <BottomNav onFabClick={() => setFabOpen(true)} />}
-      <QuickActionSheet open={fabOpen} onClose={() => setFabOpen(false)} />
+      {showNav && (
+        <BottomNav
+          showFab={showCallFab}
+          onFabClick={showCallFab ? () => setFabOpen(true) : undefined}
+        />
+      )}
+      {showCallFab && <QuickActionSheet open={fabOpen} onClose={() => setFabOpen(false)} />}
       <CallMethodSheet />
       <ToastHost />
       <AutoLockWatcher />

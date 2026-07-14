@@ -16,6 +16,8 @@ import { TopBar } from '@/components/layout/TopBar'
 import { Chip } from '@/components/ui/Chip'
 import { EmptyState } from '@/components/ui/States'
 import { formatJalaliDate, relativeDayTime } from '@/lib/format'
+import { hasPermission } from '@/lib/permissions'
+import { agentById } from '@/lib/teamUtils'
 import type { ActivityKind } from '@/types'
 import { cn } from '@/lib/cn'
 
@@ -34,8 +36,15 @@ const kindConfig: Record<ActivityKind, { icon: LucideIcon; bg: string; fg: strin
 type Filter = 'all' | ActivityKind
 
 export function ActivityHistoryScreen() {
+  const permissions = useStore((s) => s.permissions)
   const currentAgentId = useStore((s) => s.currentAgentId)
-  const activity = useStore((s) => s.activity.filter((a) => a.agentId === currentAgentId))
+  const agents = useStore((s) => s.agents)
+  const allActivity = useStore((s) => s.activity)
+  const systemWide = hasPermission(permissions, 'reports.view-all')
+  const activity = useMemo(
+    () => (systemWide ? allActivity : allActivity.filter((a) => a.agentId === currentAgentId)),
+    [allActivity, currentAgentId, systemWide],
+  )
   const [filter, setFilter] = useState<Filter>('all')
 
   const filtered = useMemo(
@@ -58,7 +67,10 @@ export function ActivityHistoryScreen() {
 
   return (
     <Page withNav={false}>
-      <TopBar title="تاریخچه فعالیت" subtitle="همه فعالیت‌های ثبت‌شده تو" />
+      <TopBar
+        title={systemWide ? 'فعالیت کل سیستم' : 'تاریخچه فعالیت'}
+        subtitle={systemWide ? 'همه رویدادهای ثبت‌شده در سات' : 'همه فعالیت‌های ثبت‌شده تو'}
+      />
 
       <div className="px-4">
         <div className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 py-0.5 no-scrollbar">
@@ -95,6 +107,14 @@ export function ActivityHistoryScreen() {
                         </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[12.5px] font-extrabold text-neutral-900">{a.title}</p>
+                          {systemWide && (
+                            <p className="mt-0.5 truncate text-[10px] font-bold text-neutral-400">
+                              {(() => {
+                                const actor = agentById(agents, a.agentId)
+                                return actor ? `${actor.firstName} ${actor.lastName}` : 'سیستم'
+                              })()}
+                            </p>
+                          )}
                           {a.meta && <p className="mt-0.5 truncate text-[11px] font-bold text-neutral-400">{a.meta}</p>}
                         </div>
                         <span className="shrink-0 text-[10px] font-bold text-neutral-300">

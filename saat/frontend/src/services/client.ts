@@ -69,6 +69,7 @@ export interface ApiClient {
 
   // sales & payments (spec §8)
   submitPayment(saleId: string, method: PaymentMethod, reference: string): Promise<void>
+  forwardSaleForConfirmation(saleId: string): Promise<void>
   confirmSale(saleId: string): Promise<void>
   rejectSale(saleId: string, reason: string): Promise<void>
   cancelSale(saleId: string): Promise<void>

@@ -10,6 +10,8 @@ Route::prefix('sales')->group(function (): void {
     Route::get('/{sale}', [SaleController::class, 'show']);
     Route::post('/{sale}/submit-payment', [SaleController::class, 'submitPayment'])
         ->middleware(['throttle:writes', 'idempotent']);
+    Route::post('/{sale}/forward-for-confirmation', [SaleController::class, 'forwardForConfirmation'])
+        ->middleware(['throttle:writes', 'idempotent']);
     Route::post('/{sale}/confirm', [SaleController::class, 'confirm'])
         ->middleware(['throttle:writes', 'idempotent']);
     Route::post('/{sale}/reject', [SaleController::class, 'reject'])->middleware('throttle:writes');

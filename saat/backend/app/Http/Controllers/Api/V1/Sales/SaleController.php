@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Sales;
 
 use App\Actions\Sales\ConfirmSaleAction;
+use App\Actions\Sales\ForwardSaleForConfirmationAction;
 use App\Actions\Sales\RejectSaleAction;
 use App\Actions\Sales\SubmitPaymentAction;
 use App\Enums\RoleName;
@@ -14,6 +15,7 @@ use App\Http\Resources\V1\CommissionResource;
 use App\Http\Resources\V1\SaleResource;
 use App\Models\Sale;
 use App\Support\ApiResponse;
+use App\Support\TeamScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -21,6 +23,7 @@ class SaleController extends Controller
 {
     public function __construct(
         private readonly SubmitPaymentAction $submitPayment,
+        private readonly ForwardSaleForConfirmationAction $forwardSale,
         private readonly ConfirmSaleAction $confirmSale,
         private readonly RejectSaleAction $rejectSale,
     ) {}
@@ -30,9 +33,9 @@ class SaleController extends Controller
         $user = $request->user();
         $query = Sale::query()->with(['lead', 'product', 'agent']);
 
-        if ($user->hasAnyRole([RoleName::Manager->value, RoleName::Admin->value])) {
+        if (TeamScope::isOrgWide($user)) {
             // full visibility
-        } elseif ($user->hasAnyRole([RoleName::Supervisor->value, RoleName::Leader->value])) {
+        } elseif ($user->hasRole(RoleName::Leader->value)) {
             $query->where('team_id', $user->team_id);
         } else {
             $query->where('agent_id', $user->id);
@@ -77,7 +80,7 @@ class SaleController extends Controller
         $user = $request->user();
         $query = Sale::query()->where('status', 'pending_confirmation')->with(['lead', 'product', 'agent']);
 
-        if (! $user->hasAnyRole([RoleName::Manager->value, RoleName::Admin->value])) {
+        if (! TeamScope::isOrgWide($user)) {
             $query->where('team_id', $user->team_id);
         }
 
@@ -90,7 +93,16 @@ class SaleController extends Controller
 
         $sale = $this->submitPayment->execute($sale, $request->validated(), $request->user());
 
-        return ApiResponse::success(new SaleResource($sale), 'پرداخت ثبت شد و منتظر تایید است');
+        return ApiResponse::success(new SaleResource($sale), 'پرداخت ثبت شد و منتظر بررسی لیدر است');
+    }
+
+    public function forwardForConfirmation(Request $request, Sale $sale): JsonResponse
+    {
+        $this->authorize('forwardForConfirmation', $sale);
+
+        $sale = $this->forwardSale->execute($sale, $request->user());
+
+        return ApiResponse::success(new SaleResource($sale), 'فروش برای تایید مدیریت ارسال شد');
     }
 
     public function confirm(Request $request, Sale $sale): JsonResponse

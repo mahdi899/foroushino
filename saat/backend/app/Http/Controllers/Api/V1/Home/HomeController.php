@@ -93,7 +93,7 @@ class HomeController extends Controller
             return ApiResponse::error('اجازه دسترسی ندارید.', status: 403, code: 'forbidden');
         }
 
-        $isTeamScoped = $user->hasAnyRole([RoleName::Supervisor->value, RoleName::Leader->value]) && $user->team_id;
+        $isTeamScoped = $user->hasRole(RoleName::Leader->value) && $user->team_id;
 
         $leadsQuery = Lead::query();
         $salesQuery = Sale::query();

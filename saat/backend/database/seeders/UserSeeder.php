@@ -22,14 +22,14 @@ class UserSeeder extends Seeder
         $admin = User::query()->firstOrCreate(
             ['email' => 'admin@saat.local'],
             [
-                'name' => 'مدیر ارشد سیستم',
+                'name' => 'مدیر سیستم',
                 'phone' => '09120000001',
                 'password' => Hash::make('password'),
                 'email_verified_at' => now(),
                 'availability' => Availability::Offline,
             ]
         );
-        $admin->syncRoles([RoleName::Admin->value]);
+        $admin->syncRoles([RoleName::Manager->value]);
 
         $manager = User::query()->firstOrCreate(
             ['email' => 'manager@saat.local'],
@@ -146,6 +146,7 @@ class UserSeeder extends Seeder
             'leader' => RoleName::Leader,
             'supervisor' => RoleName::Supervisor,
             'manager' => RoleName::Manager,
+            'admin' => RoleName::Manager,
         ];
 
         foreach (config('demo_auth.accounts', []) as $phone => $account) {

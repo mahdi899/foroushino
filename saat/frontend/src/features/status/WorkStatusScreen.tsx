@@ -26,8 +26,11 @@ import {
   calcDailyBreakSeconds,
   calcDailyCallSeconds,
   calcDailyProductiveSeconds,
+  calcDailyActivitySeconds,
+  dateKeyFromIso,
   isProductiveAvailability,
   isShiftOpen,
+  todayDateKey,
 } from '@/lib/shiftUtils'
 import { performEndShift } from '@/services/shiftActions'
 import { WorkPeriodSummaryCard } from '@/features/status/WorkPeriodSummaryCard'
@@ -186,6 +189,7 @@ export function WorkStatusScreen() {
   const availabilityChangedAt = useStore((s) => s.availabilityChangedAt)
   const workSession = useStore((s) => s.workSession)
   const workDaySummaries = useStore((s) => s.workDaySummaries)
+  const calls = useStore((s) => s.calls)
   const leads = useStore((s) => s.leads)
   const pushToast = useStore((s) => s.pushToast)
 
@@ -205,6 +209,14 @@ export function WorkStatusScreen() {
     now,
   )
 
+  const activitySec = calcDailyActivitySeconds(
+    workDaySummaries,
+    workSession,
+    availability,
+    availabilityChangedAt,
+    now,
+  )
+
   const breakSec = calcDailyBreakSeconds(
     workDaySummaries,
     workSession,
@@ -213,7 +225,27 @@ export function WorkStatusScreen() {
     now,
   )
 
-  const callSec = calcDailyCallSeconds(workDaySummaries, workSession, now)
+  const callSec = calcDailyCallSeconds(
+    workDaySummaries,
+    workSession,
+    availability,
+    availabilityChangedAt,
+    now,
+  )
+
+  const callSecFromCalls = useMemo(() => {
+    const today = todayDateKey(new Date(now))
+    return calls
+      .filter(
+        (call) =>
+          call.agentId === currentAgentId &&
+          dateKeyFromIso(call.createdAt) === today &&
+          call.durationSec > 0,
+      )
+      .reduce((sum, call) => sum + call.durationSec, 0)
+  }, [calls, currentAgentId, now])
+
+  const displayCallSec = Math.max(callSec, callSecFromCalls)
 
   const recentWorkDays = useMemo(
     () => workDaySummaries.filter((day) => day.sessionsCount > 0).slice(0, 7),
@@ -233,8 +265,8 @@ export function WorkStatusScreen() {
   const Icon = availabilityIcon[availability]
   const goalPct = agent.callGoal ? Math.round((agent.callsToday / agent.callGoal) * 100) : 0
   const shiftActive = isShiftOpen(workSession)
-  const shiftTier = getShiftTier(productiveSec)
-  const shiftProgressPct = Math.min(100, Math.round((productiveSec / SHIFT_GOAL_SEC) * 100))
+  const shiftTier = getShiftTier(activitySec)
+  const shiftProgressPct = Math.min(100, Math.round((activitySec / SHIFT_GOAL_SEC) * 100))
   const isPremiumShift = shiftTier === 'premium'
   const timerRunning = shiftActive && isProductiveAvailability(availability)
 
@@ -327,24 +359,30 @@ export function WorkStatusScreen() {
                 strokeWidth={2.25}
               />
               {isPremiumShift
-                ? 'بیش از ۸ ساعت مولد امروز'
-                : `زمان مولد امروز · ${toFa(shiftProgressPct)}٪ از ۸ ساعت`}
+                ? 'بیش از ۸ ساعت فعالیت امروز'
+                : `فعالیت امروز · ${toFa(shiftProgressPct)}٪ از ۸ ساعت`}
             </span>
-            {shiftActive && !timerRunning && (
+            {shiftActive && (
               <span className="mt-1 text-[10px] font-semibold text-text-soft">
                 {availability === 'on_break'
-                  ? 'در استراحت — تایمر متوقف است'
-                  : 'خارج از حالت آماده تماس — تایمر متوقف است'}
+                  ? 'در استراحت — زمان شیفت همچنان ثبت می‌شود'
+                  : availability === 'doing_follow_up'
+                    ? 'مشغول پیگیری — زمان شیفت همچنان ثبت می‌شود'
+                    : availability === 'in_call'
+                      ? 'در تماس — زمان شیفت همچنان ثبت می‌شود'
+                      : !timerRunning
+                        ? 'زمان مولد متوقف است؛ کل شیفت همچنان ثبت می‌شود'
+                        : 'تماس، پیگیری، استراحت و همه فعالیت‌های شیفت'}
               </span>
             )}
-            {shiftActive && timerRunning && availability === 'doing_follow_up' && (
-              <span className="mt-1 text-[10px] font-semibold text-warning-700 dark:text-warning-300">
-                مشغول پیگیری — زمان شیفت در حال ثبت است
-              </span>
-            )}
-            {!shiftActive && productiveSec === 0 && (
+            {!shiftActive && activitySec > 0 && (
               <span className="mt-1 text-[10px] font-semibold text-text-soft">
-                با شروع دوباره شیفت، زمان امروز از همین‌جا ادامه پیدا می‌کند
+                جمع کل فعالیت امروز (همه شیفت‌ها)
+              </span>
+            )}
+            {!shiftActive && activitySec === 0 && (
+              <span className="mt-1 text-[10px] font-semibold text-text-soft">
+                با شروع شیفت، زمان فعالیت از همین‌جا جمع می‌شود
               </span>
             )}
 
@@ -352,7 +390,7 @@ export function WorkStatusScreen() {
               <motion.span
                 className={cn(
                   'pointer-events-none absolute inset-2 rounded-[22px] border-2 transition-colors duration-700',
-                  productiveSec > 0 || shiftActive ? shiftPulseBorder[shiftTier] : 'border-[#3390EC]/30',
+                  activitySec > 0 || shiftActive ? shiftPulseBorder[shiftTier] : 'border-[#3390EC]/30',
                 )}
                 animate={{ scale: [1, 1.06, 1], opacity: [0.5, 0, 0.5] }}
                 transition={{ duration: isPremiumShift ? 1.6 : 2.2, repeat: Infinity, ease: 'easeOut' }}
@@ -364,7 +402,7 @@ export function WorkStatusScreen() {
                   isPremiumShift && 'glass-inset border-secondary-400/25',
                 )}
               >
-                <AnimatedShiftTimer totalSec={productiveSec} />
+                <AnimatedShiftTimer totalSec={activitySec} />
               </div>
             </div>
 
@@ -382,7 +420,7 @@ export function WorkStatusScreen() {
               >
                 <span className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/10" />
                 <Sparkles size={15} strokeWidth={2.25} />
-                <span className="relative">{productiveSec > 0 ? 'ادامه شیفت' : 'شروع شیفت'}</span>
+                <span className="relative">{activitySec > 0 ? 'ادامه شیفت' : 'شروع شیفت'}</span>
               </motion.button>
             )}
           </div>
@@ -409,7 +447,7 @@ export function WorkStatusScreen() {
             icon={PhoneOutgoing}
             iconWrap="icon-3d-success"
             iconClass="text-white"
-            value={formatHms(callSec)}
+            value={formatHms(displayCallSec)}
             label="زمان مکالمه امروز"
           />
           <StatTile
@@ -482,6 +520,8 @@ export function WorkStatusScreen() {
           availability={availability}
           availabilityChangedAt={availabilityChangedAt}
           nowMs={now}
+          calls={calls}
+          agentId={currentAgentId}
         />
 
         {/* End shift */}

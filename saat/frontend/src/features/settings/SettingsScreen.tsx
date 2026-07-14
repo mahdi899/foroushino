@@ -7,7 +7,6 @@ import {
   Vibrate,
   Globe,
   Trash2,
-  WifiOff,
   UsersRound,
   ChevronLeft,
   LogOut,
@@ -22,16 +21,17 @@ import { clearToken } from '@/services/auth'
 import { useInstallPrompt } from '@/lib/pwa'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
-import { OfflineState } from '@/components/ui/States'
 import { Chip } from '@/components/ui/Chip'
 import { DemoRolePopup } from '@/components/auth/DemoRoleSwitcher'
 import { useDemoMode } from '@/hooks/useDemoMode'
 import { roleLabels } from '@/data/labels'
 import { toFa } from '@/lib/format'
+import { APP_VERSION_LABEL } from '@/lib/app'
 import { cn } from '@/lib/cn'
 
 const TG = 'text-[#3390EC] dark:text-[#8774E1]'
-const lockOptions = [1, 5, 15]
+const lockOptions = [5, 10, 15] as const
+const LOCK_MINUTES_DEFAULT = 5
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
 
 const fadeUp = {
@@ -46,31 +46,12 @@ const stagger = {
 
 export function SettingsScreen() {
   const navigate = useNavigate()
-  const maskPhoneNumbers = useStore((s) => s.maskPhoneNumbers)
-  const setMaskPhoneNumbers = useStore((s) => s.setMaskPhoneNumbers)
-  const autoLockEnabled = useStore((s) => s.autoLockEnabled)
-  const autoLockMinutes = useStore((s) => s.autoLockMinutes)
-  const setAutoLock = useStore((s) => s.setAutoLock)
   const logout = useStore((s) => s.logout)
   const { canInstall, install, isInstalled } = useInstallPrompt()
   const { enabled: demoEnabled } = useDemoMode()
   const role = useStore((s) => s.role)
-  const [offline, setOffline] = useState(false)
   const [demoRoleOpen, setDemoRoleOpen] = useState(false)
   const [toggles, setToggles] = useState({ notif: true, haptic: true })
-
-  if (offline) {
-    return (
-      <Page withNav={false}>
-        <TopBar title="حالت آفلاین" onBack={() => setOffline(false)} />
-        <OfflineState
-          title="اتصال اینترنت قطع است"
-          description="این یک نمایش از حالت آفلاین است. وقتی اتصال برقرار شود داده‌ها همگام می‌شوند."
-          action={{ label: 'تلاش دوباره', onClick: () => setOffline(false) }}
-        />
-      </Page>
-    )
-  }
 
   const switches: { icon: LucideIcon; label: string; key: keyof typeof toggles }[] = [
     { icon: Bell, label: 'اعلان‌ها', key: 'notif' },
@@ -123,29 +104,20 @@ export function SettingsScreen() {
             icon={EyeOff}
             label="پنهان‌سازی شماره لیدها"
             bordered
-            trailing={
-              <Toggle on={maskPhoneNumbers} onToggle={() => setMaskPhoneNumbers(!maskPhoneNumbers)} />
-            }
+            trailing={<Toggle on disabled />}
           />
           <SettingsRow
             icon={TimerOff}
             label="قفل خودکار در عدم فعالیت"
-            trailing={<Toggle on={autoLockEnabled} onToggle={() => setAutoLock(!autoLockEnabled)} />}
+            trailing={<Toggle on disabled />}
           />
-          {autoLockEnabled && (
-            <div className="flex items-center gap-2 border-t border-white/40 px-3.5 py-3 dark:border-white/8">
-              {lockOptions.map((m) => (
-                <Chip
-                  key={m}
-                  active={autoLockMinutes === m}
-                  tone="primary"
-                  onClick={() => setAutoLock(true, m)}
-                >
-                  {toFa(m)} دقیقه
-                </Chip>
-              ))}
-            </div>
-          )}
+          <div className="pointer-events-none flex items-center gap-2 border-t border-white/40 px-3.5 py-3 dark:border-white/8">
+            {lockOptions.map((m) => (
+              <Chip key={m} active={m === LOCK_MINUTES_DEFAULT} tone="primary">
+                {toFa(m)} دقیقه
+              </Chip>
+            ))}
+          </div>
           <div className="mx-3.5 mb-3.5 flex items-start gap-2.5 rounded-[16px] border border-[#3390EC]/15 bg-[#3390EC]/8 p-3 dark:border-[#8774E1]/18 dark:bg-[#8774E1]/10">
             <ShieldCheck size={16} className={cn('mt-0.5 shrink-0', TG)} strokeWidth={2.35} />
             <p className="text-[11.5px] font-semibold leading-6 text-text-muted">
@@ -169,7 +141,6 @@ export function SettingsScreen() {
               bordered
             />
           )}
-          <NavRow icon={WifiOff} label="نمایش حالت آفلاین" onClick={() => setOffline(true)} bordered />
           <NavRow
             icon={Trash2}
             label="بازنشانی داده‌های دمو"
@@ -197,7 +168,7 @@ export function SettingsScreen() {
         </motion.button>
 
         <motion.p variants={fadeUp} className="text-center text-[11px] font-medium text-[#8E8E93] dark:text-[#98989D]">
-          سات · نسخه ۱.۰.۰
+          {APP_VERSION_LABEL}
         </motion.p>
       </motion.div>
 

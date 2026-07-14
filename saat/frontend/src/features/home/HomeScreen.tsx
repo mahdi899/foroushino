@@ -111,6 +111,7 @@ export function HomeScreen() {
   const agent = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
   const currentAgentId = useStore((s) => s.currentAgentId)
   const openCallMethodSheet = useStore((s) => s.openCallMethodSheet)
+  const syncDailyAgentStats = useStore((s) => s.syncDailyAgentStats)
 
   const [celebrationVisible, setCelebrationVisible] = useState(false)
   const [skippedLeadIds, setSkippedLeadIds] = useState<string[]>([])
@@ -127,6 +128,10 @@ export function HomeScreen() {
   const remaining = agent ? Math.max(0, agent.callGoal - agent.callsToday) : 0
   const goalPct = agent?.callGoal ? Math.round((agent.callsToday / agent.callGoal) * 100) : 0
   const goalComplete = remaining === 0 && (agent?.callGoal ?? 0) > 0
+
+  useEffect(() => {
+    syncDailyAgentStats()
+  }, [syncDailyAgentStats])
 
   useEffect(() => {
     setSkippedLeadIds((prev) => prev.filter((id) => leads.some((lead) => lead.id === id)))

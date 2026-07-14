@@ -45,6 +45,8 @@ export const mockClient: ApiClient = {
 
   submitPayment: (saleId: string, method: PaymentMethod, reference: string) =>
     delay(useStore.getState().submitPayment(saleId, method, reference)),
+  forwardSaleForConfirmation: (saleId: string) =>
+    delay(useStore.getState().forwardSaleForConfirmation(saleId)),
   confirmSale: (saleId: string) => delay(useStore.getState().confirmSale(saleId)),
   rejectSale: (saleId: string, reason: string) => delay(useStore.getState().rejectSale(saleId, reason)),
   cancelSale: (saleId: string) => delay(useStore.getState().cancelSale(saleId)),

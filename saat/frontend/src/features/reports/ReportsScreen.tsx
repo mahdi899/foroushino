@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Phone, Target, CheckCircle2, Flame, BarChart3, TriangleAlert, ChevronLeft, BadgeDollarSign } from 'lucide-react'
+import { Phone, Target, CheckCircle2, Flame, BarChart3, TriangleAlert, ChevronLeft, BadgeDollarSign, History } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
@@ -10,6 +10,9 @@ import { LeaderboardRow } from '@/components/domain/LeaderboardRow'
 import { InsightCard } from '@/components/domain/InsightCard'
 import { FunnelCard, SourceCard, TeamCard } from './widgets'
 import { DataGate } from '@/components/pwa/DataGate'
+import { hasPermission } from '@/lib/permissions'
+import { agentById } from '@/lib/teamUtils'
+import { relativeDayTime, formatIsoDateJalali } from '@/lib/format'
 import {
   computeFunnel,
   computeManagerInsights,
@@ -23,12 +26,35 @@ import { formatMoney, toFa } from '@/lib/format'
 
 export function ReportsScreen() {
   const navigate = useNavigate()
+  const permissions = useStore((s) => s.permissions)
   const agents = useStore((s) => s.agents)
   const teams = useStore((s) => s.teams)
   const leads = useStore((s) => s.leads)
   const followups = useStore((s) => s.followups)
   const sales = useStore((s) => s.sales)
+  const activity = useStore((s) => s.activity)
+  const teamReports = useStore((s) => s.teamReports)
+  const canViewSystem = hasPermission(permissions, 'reports.view-all')
   const [tab, setTab] = useState('overview')
+
+  const tabs = useMemo(
+    () =>
+      canViewSystem
+        ? [
+            { id: 'overview', label: 'کلی' },
+            { id: 'funnel', label: 'قیف فروش' },
+            { id: 'team', label: 'تیم' },
+            { id: 'sources', label: 'منابع' },
+            { id: 'activity', label: 'فعالیت' },
+          ]
+        : [
+            { id: 'overview', label: 'کلی' },
+            { id: 'funnel', label: 'قیف فروش' },
+            { id: 'team', label: 'تیم' },
+            { id: 'sources', label: 'منابع' },
+          ],
+    [canViewSystem],
+  )
 
   const teamAgents = agents.filter((a) => a.role === 'agent')
   const totalCalls = teamAgents.reduce((s, a) => s + a.callsToday, 0)
@@ -64,21 +90,12 @@ export function ReportsScreen() {
       <ScreenHeader
         sticky
         title="گزارش‌ها"
-        subtitle="تحلیل عملکرد تیم"
+        subtitle={canViewSystem ? 'تحلیل کل سازمان' : 'تحلیل عملکرد تیم'}
         icon={BarChart3}
         iconTone="primary"
       >
         <div className="mt-3">
-          <SegmentedTabs
-            value={tab}
-            onChange={setTab}
-            tabs={[
-              { id: 'overview', label: 'کلی' },
-              { id: 'funnel', label: 'قیف فروش' },
-              { id: 'team', label: 'تیم' },
-              { id: 'sources', label: 'منابع' },
-            ]}
-          />
+          <SegmentedTabs value={tab} onChange={setTab} tabs={tabs} />
         </div>
       </ScreenHeader>
 
@@ -174,6 +191,69 @@ export function ReportsScreen() {
         {tab === 'sources' && (
           <>
             <SourceCard sources={sourcePerf} />
+          </>
+        )}
+
+        {tab === 'activity' && canViewSystem && (
+          <>
+            <button
+              onClick={() => navigate('/activity')}
+              className="flex w-full items-center gap-3 rounded-2xl bg-primary-50 p-4 text-right"
+            >
+              <History size={20} className="shrink-0 text-primary-600" />
+              <span className="flex-1 text-[13px] font-extrabold text-primary-700">
+                مشاهده تاریخچه کامل فعالیت
+              </span>
+              <ChevronLeft size={16} className="shrink-0 text-primary-400" />
+            </button>
+
+            <section>
+              <h2 className="mb-3 text-[15px] font-extrabold text-neutral-900">آخرین رویدادها</h2>
+              <div className="space-y-2">
+                {[...activity]
+                  .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                  .slice(0, 12)
+                  .map((item) => {
+                    const actor = agentById(agents, item.agentId)
+                    return (
+                      <div
+                        key={item.id}
+                        className="rounded-2xl border border-border/60 bg-surface p-3.5 shadow-card"
+                      >
+                        <p className="text-[13px] font-extrabold text-neutral-900">{item.title}</p>
+                        <p className="mt-0.5 text-[11px] font-bold text-neutral-400">
+                          {actor ? `${actor.firstName} ${actor.lastName}` : 'سیستم'}
+                          {item.meta ? ` · ${item.meta}` : ''}
+                        </p>
+                        <p className="mt-1 text-[10px] font-semibold text-neutral-300">
+                          {relativeDayTime(item.createdAt)}
+                        </p>
+                      </div>
+                    )
+                  })}
+              </div>
+            </section>
+
+            {teamReports.length > 0 && (
+              <section>
+                <h2 className="mb-3 text-[15px] font-extrabold text-neutral-900">گزارش‌های تیم</h2>
+                <div className="space-y-2">
+                  {teamReports.slice(0, 5).map((report) => (
+                    <button
+                      key={report.id}
+                      type="button"
+                      onClick={() => navigate('/team-reports')}
+                      className="flex w-full items-center justify-between rounded-2xl bg-surface p-3.5 text-right shadow-card border border-border/60"
+                    >
+                      <span className="text-[13px] font-extrabold text-neutral-900">
+                        {report.teamName} · {formatIsoDateJalali(report.reportDate)}
+                      </span>
+                      <ChevronLeft size={16} className="text-neutral-400" />
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
           </>
         )}
       </div>

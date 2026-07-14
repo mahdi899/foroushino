@@ -17,9 +17,9 @@ class RolePermissionSeeder extends Seeder
         'leads' => ['leads.view', 'leads.view-own', 'leads.view-team', 'leads.manage', 'leads.import', 'leads.reassign'],
         'calls' => ['calls.view', 'calls.manage'],
         'followups' => ['followups.view', 'followups.manage'],
-        'sales' => ['sales.view', 'sales.view-own', 'sales.view-team', 'sales.manage', 'sales.confirm'],
+        'sales' => ['sales.view', 'sales.view-own', 'sales.view-team', 'sales.manage', 'sales.confirm', 'sales.review-payment', 'sales.register-payment'],
         'wallet' => ['wallet.view', 'wallet.view-own', 'wallet.view-team', 'wallet.manage-payouts'],
-        'reports' => ['reports.view', 'reports.view-team', 'reports.view-all'],
+        'reports' => ['reports.view', 'reports.view-team', 'reports.view-all', 'reports.submit-team', 'reports.approve-team'],
         'users' => ['users.view', 'users.manage', 'teams.manage'],
         'training' => ['training.view', 'training.manage'],
         'admin' => ['admin.settings', 'admin.products'],
@@ -41,25 +41,16 @@ class RolePermissionSeeder extends Seeder
             }
         }
 
-        Role::findByName(RoleName::Admin->value)->syncPermissions($all);
+        Role::findByName(RoleName::Admin->value)->syncPermissions($all); // legacy alias of manager
 
-        Role::findByName(RoleName::Manager->value)->syncPermissions([
-            'leads.view', 'leads.manage', 'leads.import', 'leads.reassign',
-            'calls.view', 'followups.view',
-            'sales.view', 'sales.confirm',
-            'wallet.view', 'wallet.manage-payouts',
-            'reports.view', 'reports.view-team', 'reports.view-all',
-            'users.view', 'users.manage', 'teams.manage',
-            'training.view', 'training.manage',
-            'admin.products',
-        ]);
+        Role::findByName(RoleName::Manager->value)->syncPermissions($all);
 
         Role::findByName(RoleName::Supervisor->value)->syncPermissions([
-            'leads.view', 'leads.view-team', 'leads.reassign',
+            'leads.view', 'leads.view-team', 'leads.manage', 'leads.import', 'leads.reassign',
             'calls.view', 'followups.view',
-            'sales.view', 'sales.view-team', 'sales.confirm',
+            'sales.view', 'sales.view-team', 'sales.confirm', 'sales.review-payment', 'sales.register-payment',
             'wallet.view', 'wallet.view-team',
-            'reports.view', 'reports.view-team',
+            'reports.view', 'reports.view-team', 'reports.view-all', 'reports.approve-team',
             'users.view',
             'training.view', 'training.manage',
         ]);
@@ -67,9 +58,9 @@ class RolePermissionSeeder extends Seeder
         Role::findByName(RoleName::Leader->value)->syncPermissions([
             'leads.view', 'leads.view-team',
             'calls.view', 'followups.view',
-            'sales.view', 'sales.view-team',
+            'sales.view', 'sales.view-team', 'sales.review-payment',
             'wallet.view', 'wallet.view-team',
-            'reports.view', 'reports.view-team',
+            'reports.view', 'reports.view-team', 'reports.submit-team',
             'training.view',
         ]);
 

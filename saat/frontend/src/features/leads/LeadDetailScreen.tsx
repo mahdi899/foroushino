@@ -39,7 +39,9 @@ import {
   leadStatusLabels,
 } from '@/data/labels'
 import { relativeDayTime, toFa, formatDuration } from '@/lib/format'
-import { canCallLead, isLeadVisibleToAgent } from '@/lib/leadUtils'
+import { canCallLead } from '@/lib/leadUtils'
+import { isLeadInScope } from '@/lib/teamUtils'
+import { isManagementRole } from '@/lib/roles'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
 
@@ -131,6 +133,8 @@ export function LeadDetailScreen() {
   const calls = useStore((s) => s.calls.filter((c) => c.leadId === id))
   const followups = useStore((s) => s.followups.filter((f) => f.leadId === id))
   const agents = useStore((s) => s.agents)
+  const teams = useStore((s) => s.teams)
+  const role = useStore((s) => s.role)
   const currentAgentId = useStore((s) => s.currentAgentId)
   const openCallMethodSheet = useStore((s) => s.openCallMethodSheet)
   const releaseLead = useStore((s) => s.releaseLead)
@@ -139,7 +143,9 @@ export function LeadDetailScreen() {
   const activeCallLeadId = useStore((s) => s.activeCallLeadId)
   const [statusOpen, setStatusOpen] = useState(false)
 
-  if (!lead || !isLeadVisibleToAgent(lead, currentAgentId)) {
+  const isTeamViewer = isManagementRole(role)
+
+  if (!lead || !isLeadInScope(lead, teams, agents, currentAgentId, role)) {
     return (
       <Page withNav={false}>
         <TopBar title="جزئیات سرنخ" />
@@ -160,7 +166,7 @@ export function LeadDetailScreen() {
   const lockedByOther = !!lead.lockedBy && lead.lockedBy !== currentAgentId
   const lockedByMe = !!lead.lockedBy && lead.lockedBy === currentAgentId
   const lockAgent = lockedByOther ? agents.find((a) => a.id === lead.lockedBy) : null
-  const callable = canCallLead(lead, currentAgentId) && !lead.returnedToPool
+  const callable = !isTeamViewer && canCallLead(lead, currentAgentId) && !lead.returnedToPool
   const canRegisterResult = activeCallLeadId === lead.id
 
   return (
@@ -363,30 +369,32 @@ export function LeadDetailScreen() {
         </div>
       </div>
 
-      <div className="glass-header absolute inset-x-0 bottom-0 z-20 flex gap-2.5 px-4 pt-3 pb-[calc(14px+var(--safe-bottom))]">
-        <Button
-          variant="soft"
-          size="lg"
-          className="glass-inset flex-1 border border-white/55 text-neutral-700 shadow-sm dark:border-white/10 dark:text-neutral-200"
-          onClick={() => setStatusOpen(true)}
-          icon={<Repeat2 size={18} />}
-        >
-          تغییر وضعیت
-        </Button>
-        <Button
-          size="lg"
-          className="flex-[1.4] bg-[#3390EC] shadow-[0_4px_16px_-4px_rgba(51,144,236,0.55)] dark:bg-[#8774E1] dark:shadow-[0_4px_16px_-4px_rgba(135,116,225,0.55)]"
-          disabled={!callable}
-          icon={callable ? <Phone size={18} /> : <Lock size={18} />}
-          onClick={() => {
-            if (!callable) return
-            haptic('medium')
-            openCallMethodSheet(lead)
-          }}
-        >
-          {callable ? 'تماس بگیر' : lockedByOther ? 'قفل شده' : 'برگشت‌خورده'}
-        </Button>
-      </div>
+      {!isTeamViewer && (
+        <div className="glass-header absolute inset-x-0 bottom-0 z-20 flex gap-2.5 px-4 pt-3 pb-[calc(14px+var(--safe-bottom))]">
+          <Button
+            variant="soft"
+            size="lg"
+            className="glass-inset flex-1 border border-white/55 text-neutral-700 shadow-sm dark:border-white/10 dark:text-neutral-200"
+            onClick={() => setStatusOpen(true)}
+            icon={<Repeat2 size={18} />}
+          >
+            تغییر وضعیت
+          </Button>
+          <Button
+            size="lg"
+            className="flex-[1.4] bg-[#3390EC] shadow-[0_4px_16px_-4px_rgba(51,144,236,0.55)] dark:bg-[#8774E1] dark:shadow-[0_4px_16px_-4px_rgba(135,116,225,0.55)]"
+            disabled={!callable}
+            icon={callable ? <Phone size={18} /> : <Lock size={18} />}
+            onClick={() => {
+              if (!callable) return
+              haptic('medium')
+              openCallMethodSheet(lead)
+            }}
+          >
+            {callable ? 'تماس بگیر' : lockedByOther ? 'قفل شده' : 'برگشت‌خورده'}
+          </Button>
+        </div>
+      )}
 
       <LeadStatusSheet
         lead={lead}

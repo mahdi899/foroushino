@@ -11,7 +11,7 @@ import {
   type WorkPeriod,
 } from '@/lib/workPeriodSummary'
 import { cn } from '@/lib/cn'
-import type { Availability, WorkDaySummary, WorkSession } from '@/types'
+import type { Availability, Call, WorkDaySummary, WorkSession } from '@/types'
 
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
 
@@ -21,6 +21,8 @@ interface WorkPeriodSummaryCardProps {
   availability: Availability
   availabilityChangedAt: string | null
   nowMs: number
+  calls?: Call[]
+  agentId?: string
 }
 
 function formatShiftBrief(totalSec: number): string {
@@ -35,12 +37,14 @@ export function WorkPeriodSummaryCard({
   availability,
   availabilityChangedAt,
   nowMs,
+  calls,
+  agentId,
 }: WorkPeriodSummaryCardProps) {
   const [period, setPeriod] = useState<WorkPeriod>('daily')
 
   const live = useMemo(
-    () => ({ workSession, availability, availabilityChangedAt, nowMs }),
-    [workSession, availability, availabilityChangedAt, nowMs],
+    () => ({ workSession, availability, availabilityChangedAt, nowMs, calls, agentId }),
+    [workSession, availability, availabilityChangedAt, nowMs, calls, agentId],
   )
 
   const totals = useMemo(
@@ -149,7 +153,7 @@ export function WorkPeriodSummaryCard({
       )}
 
       <div className="grid grid-cols-2 gap-2 px-4 pb-3 pt-3">
-        <MetricCell label="روز کاری" value={toFa(totals.workDays)} />
+        <MetricCell label="تعداد تماس‌ها" value={toFa(totals.callsCount)} />
         <MetricCell label="تعداد شیفت" value={toFa(totals.sessionsCount)} />
         <MetricCell label="زمان مکالمه" value={formatHms(totals.totalCallSeconds)} />
         <MetricCell label="استراحت" value={formatHms(totals.totalBreakSeconds)} />

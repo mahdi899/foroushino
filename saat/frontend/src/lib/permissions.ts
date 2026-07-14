@@ -1,3 +1,67 @@
+import type { Role } from '@/types'
+import { normalizeRole } from '@/lib/roles'
+
+/** Full system-management permission set for manager in mock/offline mode. */
+const MANAGER_PERMISSIONS: string[] = [
+  'leads.view',
+  'leads.manage',
+  'leads.import',
+  'leads.reassign',
+  'calls.view',
+  'followups.view',
+  'sales.view',
+  'sales.view-team',
+  'sales.confirm',
+  'sales.review-payment',
+  'sales.register-payment',
+  'wallet.view',
+  'wallet.manage-payouts',
+  'reports.view',
+  'reports.view-team',
+  'reports.view-all',
+  'reports.approve-team',
+  'users.view',
+  'users.manage',
+  'teams.manage',
+  'training.view',
+  'training.manage',
+  'admin.products',
+  'admin.settings',
+]
+
+const MOCK_ROLE_PERMISSIONS: Partial<Record<Role, string[]>> = {
+  leader: [
+    'sales.view',
+    'sales.view-team',
+    'sales.review-payment',
+    'reports.view',
+    'reports.submit-team',
+  ],
+  supervisor: [
+    'leads.view',
+    'leads.manage',
+    'leads.import',
+    'leads.reassign',
+    'sales.view',
+    'sales.view-team',
+    'sales.confirm',
+    'sales.review-payment',
+    'sales.register-payment',
+    'reports.view',
+    'reports.view-all',
+    'reports.approve-team',
+    'users.view',
+    'wallet.view',
+    'wallet.view-team',
+  ],
+  manager: MANAGER_PERMISSIONS,
+}
+
+export function resolvePermissions(role: Role, permissions: string[]): string[] {
+  const normalized = normalizeRole(role)
+  return permissions.length > 0 ? permissions : (MOCK_ROLE_PERMISSIONS[normalized] ?? [])
+}
+
 export function hasPermission(permissions: string[], permission: string): boolean {
   return permissions.includes(permission)
 }

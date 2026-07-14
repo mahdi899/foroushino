@@ -32,11 +32,5 @@ return [
             'name' => 'مدیر دمو',
             'email' => 'demo-manager@saat.local',
         ],
-        '09125555555' => [
-            'otp' => '55555',
-            'role' => 'admin',
-            'name' => 'ادمین دمو',
-            'email' => 'demo-admin@saat.local',
-        ],
     ],
 ];

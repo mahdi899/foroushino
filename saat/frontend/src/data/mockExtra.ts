@@ -8,6 +8,7 @@ import type {
   Product,
   Sale,
   ScriptDoc,
+  TeamReport,
   Wallet,
   WalletTransaction,
 } from '@/types'
@@ -42,6 +43,49 @@ export const products: Product[] = [
 export const campaigns: Campaign[] = [
   { id: 'c-spring', name: 'کمپین بهار', productId: PRODUCT_ID, isActive: true },
   { id: 'c-webinar', name: 'کمپین وبینار', productId: PRODUCT_ID, isActive: true },
+]
+
+const today = new Date().toISOString().slice(0, 10)
+
+export const teamReports: TeamReport[] = [
+  {
+    id: 'tr-1',
+    teamId: 't1',
+    teamName: 'تیم آلفا',
+    reportDate: today,
+    status: 'submitted',
+    summary: {
+      calls_today: 42,
+      successful_today: 11,
+      conversion_rate: 26.2,
+      pending_confirmation: 0,
+      payment_submitted: 2,
+      active_agents: 4,
+    },
+    leaderNotes: 'تیم امروز روی لیدهای داغ تمرکز کرد.',
+    submittedBy: 'a-leader',
+    submitterName: 'لیدر آلفا',
+    createdAt: at(-2 * HOUR),
+  },
+  {
+    id: 'tr-2',
+    teamId: 't2',
+    teamName: 'تیم بتا',
+    reportDate: today,
+    status: 'approved',
+    summary: {
+      calls_today: 28,
+      successful_today: 6,
+      conversion_rate: 21.4,
+      pending_confirmation: 1,
+      payment_submitted: 0,
+      active_agents: 3,
+    },
+    submittedBy: 'a-leader2',
+    submitterName: 'لیدر بتا',
+    approvedAt: at(-1 * HOUR),
+    createdAt: at(-3 * HOUR),
+  },
 ]
 
 // Two confirmed sales (won leads) and pending ones from payment_pending leads
@@ -81,15 +125,27 @@ export const sales: Sale[] = [
     teamId: 't1',
     productId: PRODUCT_ID,
     amount: 18_000_000,
-    status: 'pending_confirmation',
+    status: 'payment_submitted',
     paymentMethod: 'card',
     createdAt: at(-4 * HOUR),
     submittedAt: at(-3 * HOUR),
   },
   {
+    id: 'sale-5',
+    leadId: 'l9',
+    agentId: 'a2',
+    teamId: 't1',
+    productId: PRODUCT_ID,
+    amount: 18_000_000,
+    status: 'payment_submitted',
+    paymentMethod: 'gateway',
+    createdAt: at(-2 * HOUR),
+    submittedAt: at(-1 * HOUR),
+  },
+  {
     id: 'sale-4',
     leadId: 'l15',
-    agentId: MY_AGENT_ID,
+    agentId: 'a2',
     teamId: 't1',
     productId: PRODUCT_ID,
     amount: 18_000_000,
@@ -128,6 +184,15 @@ export const payments: Payment[] = [
     referenceNumber: '۹۹۳۳۱۱۲۲',
     status: 'submitted',
     submittedAt: at(-3 * HOUR),
+  },
+  {
+    id: 'pay-5',
+    saleId: 'sale-5',
+    amount: 18_000_000,
+    method: 'gateway',
+    referenceNumber: '۴۴۵۵۶۶۷۷',
+    status: 'submitted',
+    submittedAt: at(-1 * HOUR),
   },
 ]
 
@@ -210,6 +275,30 @@ export const activityLogs: ActivityLog[] = [
     title: 'تماس با نگین فراهانی',
     meta: 'پرداخت در انتظار',
     createdAt: at(-4 * HOUR),
+  },
+  {
+    id: 'al-3',
+    agentId: 'a2',
+    kind: 'payment',
+    title: 'ثبت واریز توسط سوپروایزر',
+    meta: 'فروش تیم آلفا',
+    createdAt: at(-2 * HOUR),
+  },
+  {
+    id: 'al-4',
+    agentId: 'a-leader',
+    kind: 'sale',
+    title: 'گزارش روزانه تیم ارسال شد',
+    meta: 'تیم آلفا',
+    createdAt: at(-90 * 60_000),
+  },
+  {
+    id: 'al-5',
+    agentId: 'a-sup',
+    kind: 'sale',
+    title: 'گزارش تیم تایید و به مدیریت ارسال شد',
+    meta: 'تیم بتا',
+    createdAt: at(-1 * HOUR),
   },
 ]
 

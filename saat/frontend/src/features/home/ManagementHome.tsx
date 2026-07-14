@@ -10,6 +10,10 @@ import {
   ArrowLeft,
   BadgeDollarSign,
   TriangleAlert,
+  Radio,
+  FileText,
+  Server,
+  UserPlus,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
@@ -25,19 +29,36 @@ import {
   pendingConfirmationSales,
   weakAgents,
 } from '@/lib/reportUtils'
+import { getTeamAgentIds } from '@/lib/teamUtils'
+import { isLeaderRole, isManagerRole, isSupervisorRole } from '@/lib/roles'
+import { hasPermission } from '@/lib/permissions'
 import { roleLabels } from '@/data/labels'
 import { toFa } from '@/lib/format'
 
 export function ManagementHome() {
   const navigate = useNavigate()
   const role = useStore((s) => s.role)
+  const permissions = useStore((s) => s.permissions)
+  const currentAgentId = useStore((s) => s.currentAgentId)
   const agents = useStore((s) => s.agents)
   const teams = useStore((s) => s.teams)
   const leads = useStore((s) => s.leads)
   const followups = useStore((s) => s.followups)
   const sales = useStore((s) => s.sales)
 
-  const teamAgents = agents.filter((a) => a.role === 'agent')
+  const isLeader = isLeaderRole(role)
+  const isSupervisor = isSupervisorRole(role)
+  const isManager = isManagerRole(role)
+  const canManageStaff = hasPermission(permissions, 'users.view')
+  const canViewSystemActivity = hasPermission(permissions, 'reports.view-all')
+  const canManageSettings = hasPermission(permissions, 'admin.settings')
+  const canIntakeLeads =
+    hasPermission(permissions, 'leads.manage') ||
+    hasPermission(permissions, 'leads.import') ||
+    hasPermission(permissions, 'leads.reassign')
+  const canReviewPayment = hasPermission(permissions, 'sales.review-payment')
+  const teamAgentIds = getTeamAgentIds(teams, agents, currentAgentId, role)
+  const teamAgents = agents.filter((a) => teamAgentIds.includes(a.id) && a.role === 'agent')
   const totalCalls = teamAgents.reduce((sum, a) => sum + a.callsToday, 0)
   const totalSuccess = teamAgents.reduce((sum, a) => sum + a.successfulToday, 0)
   const avgConversion = Math.round(
@@ -50,6 +71,22 @@ export function ManagementHome() {
   const weak = useMemo(() => weakAgents(agents), [agents])
   const overdue = useMemo(() => overdueFollowupsList(followups), [followups])
   const pendingSales = useMemo(() => pendingConfirmationSales(sales), [sales])
+  const teamReports = useStore((s) => s.teamReports)
+  const pendingTeamReports = useMemo(
+    () => teamReports.filter((r) => r.status === 'submitted').length,
+    [teamReports],
+  )
+  const managerInbox = useMemo(
+    () => teamReports.filter((r) => r.status === 'forwarded_to_manager').length,
+    [teamReports],
+  )
+  const paymentReviewCount = useMemo(
+    () =>
+      sales.filter(
+        (sale) => sale.status === 'payment_submitted' && teamAgentIds.includes(sale.agentId),
+      ).length,
+    [sales, teamAgentIds],
+  )
 
   const insights = useMemo(
     () =>
@@ -66,8 +103,8 @@ export function ManagementHome() {
   const heroByRole: Record<string, { title: string; sub: string }> = {
     leader: { title: 'تیم آلفا امروز', sub: 'عملکرد اعضای تیمت را دنبال کن' },
     supervisor: { title: 'نگاه چند تیمی', sub: 'کیفیت و pipeline تیم‌ها' },
-    manager: { title: 'نمای کلان فروش', sub: 'عملکرد کل سازمان' },
-    admin: { title: 'مدیریت سیستم', sub: 'نمای کل سازمان و تنظیمات' },
+    manager: { title: 'مدیریت سیستم', sub: 'نظارت، گزارش‌ها و تنظیمات سازمان' },
+    admin: { title: 'مدیریت سیستم', sub: 'نظارت، گزارش‌ها و تنظیمات سازمان' },
   }
   const hero = heroByRole[role] ?? heroByRole.leader
 
@@ -114,7 +151,150 @@ export function ManagementHome() {
           <StatTile variant="compact" icon={<AlertTriangle size={18} />} value={overdue.length} label="عقب‌افتاده" tone="warning" />
         </div>
 
-        {pendingSales.length > 0 && (
+        {isManager && canManageSettings && (
+          <button
+            onClick={() => navigate('/admin/settings')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
+          >
+            <Server size={20} className="shrink-0 text-secondary-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
+              تنظیمات سیستم
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
+          </button>
+        )}
+
+        {isManager && canManageStaff && (
+          <button
+            onClick={() => navigate('/admin/staff')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
+          >
+            <Users size={20} className="shrink-0 text-secondary-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
+              مدیریت ناظران و لیدرها
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
+          </button>
+        )}
+
+        {isManager && canViewSystemActivity && (
+          <button
+            onClick={() => navigate('/activity')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-primary-50 p-4 text-right dark:bg-primary-500/10"
+          >
+            <TrendingUp size={20} className="shrink-0 text-primary-600 dark:text-primary-400" />
+            <span className="flex-1 text-[13px] font-extrabold text-primary-700 dark:text-primary-300">
+              گزارش کامل فعالیت سیستم
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-primary-400" />
+          </button>
+        )}
+
+        {isManager && (
+          <button
+            onClick={() => navigate('/teams')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-primary-50 p-4 text-right dark:bg-primary-500/10"
+          >
+            <Radio size={20} className="shrink-0 text-primary-600 dark:text-primary-400" />
+            <span className="flex-1 text-[13px] font-extrabold text-primary-700 dark:text-primary-300">
+              همه تیم‌ها — نظارت لایو
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-primary-400" />
+          </button>
+        )}
+
+        {isSupervisor && canIntakeLeads && (
+          <button
+            onClick={() => navigate('/leads/intake')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
+          >
+            <UserPlus size={20} className="shrink-0 text-secondary-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
+              ورود سرنخ و تقسیم بین سرتیم‌ها
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
+          </button>
+        )}
+
+        {isSupervisor && (
+          <button
+            onClick={() => navigate('/teams')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-primary-50 p-4 text-right dark:bg-primary-500/10"
+          >
+            <Radio size={20} className="shrink-0 text-primary-600 dark:text-primary-400" />
+            <span className="flex-1 text-[13px] font-extrabold text-primary-700 dark:text-primary-300">
+              همه تیم‌ها — نظارت لایو و گزارش‌ها
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-primary-400" />
+          </button>
+        )}
+
+        {isLeader && (
+          <button
+            onClick={() => navigate('/team')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-primary-50 p-4 text-right dark:bg-primary-500/10"
+          >
+            <Radio size={20} className="shrink-0 text-primary-600 dark:text-primary-400" />
+            <span className="flex-1 text-[13px] font-extrabold text-primary-700 dark:text-primary-300">
+              تیم من — وضعیت لایو کارشناسان
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-primary-400" />
+          </button>
+        )}
+
+        {isLeader && (
+          <button
+            onClick={() => navigate('/team-reports')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
+          >
+            <FileText size={20} className="shrink-0 text-secondary-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
+              ارسال گزارش روزانه تیم
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
+          </button>
+        )}
+
+        {isSupervisor && pendingTeamReports > 0 && (
+          <button
+            onClick={() => navigate('/team-reports?status=submitted')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-warning-50 p-4 text-right"
+          >
+            <FileText size={20} className="shrink-0 text-warning-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-warning-700">
+              {toFa(pendingTeamReports)} گزارش تیم منتظر تایید توست
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-warning-400" />
+          </button>
+        )}
+
+        {isManager && managerInbox > 0 && (
+          <button
+            onClick={() => navigate('/team-reports?inbox=1')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-primary-50 p-4 text-right"
+          >
+            <FileText size={20} className="shrink-0 text-primary-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-primary-700">
+              {toFa(managerInbox)} گزارش تایید‌شده از سوپروایزر
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-primary-400" />
+          </button>
+        )}
+
+        {canReviewPayment && paymentReviewCount > 0 && (
+          <button
+            onClick={() => navigate('/sales?status=payment_submitted')}
+            className="flex w-full items-center gap-3 rounded-2xl bg-warning-50 p-4 text-right"
+          >
+            <BadgeDollarSign size={20} className="shrink-0 text-warning-600" />
+            <span className="flex-1 text-[13px] font-extrabold text-warning-700">
+              {toFa(paymentReviewCount)} پرداخت منتظر تایید توست
+            </span>
+            <ArrowLeft size={16} className="shrink-0 text-warning-400" />
+          </button>
+        )}
+
+        {!isLeader && pendingSales.length > 0 && (
           <button
             onClick={() => navigate('/sales')}
             className="flex w-full items-center gap-3 rounded-2xl bg-warning-50 p-4 text-right"
@@ -153,7 +333,7 @@ export function ManagementHome() {
           </section>
         )}
 
-        {(role === 'manager' || role === 'admin') ? (
+        {(isManager || isSupervisor) ? (
           <section>
             <h2 className="mb-3 text-[15px] font-extrabold text-neutral-900">روند تیم‌ها</h2>
             <div className="space-y-2">

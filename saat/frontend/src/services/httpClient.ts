@@ -143,6 +143,10 @@ export const httpClient: ApiClient = {
     await http.post(`/sales/${saleId}/submit-payment`, { method, reference_number: reference }, newIdempotencyKey())
   },
 
+  async forwardSaleForConfirmation(saleId: string) {
+    await http.post(`/sales/${saleId}/forward-for-confirmation`, undefined, newIdempotencyKey())
+  },
+
   async confirmSale(saleId: string) {
     await http.post(`/sales/${saleId}/confirm`, undefined, newIdempotencyKey())
   },
