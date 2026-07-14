@@ -37,7 +37,8 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('admin-login', function (Request $request) {
-            return Limit::perHour(3)->by($request->ip());
+            return Limit::perHour((int) config('bahram.admin_login.max_per_hour', 3))
+                ->by($request->ip());
         });
 
         RateLimiter::for('identity-reveal', function (Request $request) {

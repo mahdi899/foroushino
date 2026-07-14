@@ -153,7 +153,7 @@ class FamilyMediaRef {
         width: (json['width'] as num?)?.toInt(),
         height: (json['height'] as num?)?.toInt(),
         failureReason: json['failure_reason']?.toString(),
-        cdnUrl: json['cdn_url']?.toString(),
+        cdnUrl: json['cdn_url']?.toString() ?? json['url']?.toString(),
       );
 }
 
@@ -283,10 +283,10 @@ class FamilyPostModel {
     }
     if (blocks.isEmpty) return '(بدون محتوا)';
     return switch (blocks.first.type) {
-      'audio' => '🎙 پیام صوتی',
-      'video' => '🎬 ویدیو',
-      'image' => '🖼 تصویر',
-      'article_reference' => '📄 اشاره به مقاله',
+      'audio' => 'پیام صوتی',
+      'video' => 'ویدیو',
+      'image' => 'تصویر',
+      'article_reference' => 'اشاره به مقاله',
       _ => '(بدون متن)',
     };
   }

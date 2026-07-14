@@ -39,8 +39,10 @@ export function PostCard({ post }: { post: FamilyPost }) {
   const [commentCount, setCommentCount] = useState(post.stats.comments);
   const [commentPreview, setCommentPreview] = useState(post.comment_preview ?? []);
 
-  const imageBlocks = post.blocks.filter((b) => b.type === 'image' && b.media);
-  const otherBlocks = post.blocks.filter((b) => b.type !== 'image');
+  const blocks = post.blocks ?? [];
+  const actions = post.actions ?? [];
+  const imageBlocks = blocks.filter((b) => b.type === 'image' && b.media);
+  const otherBlocks = blocks.filter((b) => b.type !== 'image');
 
   return (
     <article
@@ -76,7 +78,7 @@ export function PostCard({ post }: { post: FamilyPost }) {
         ) : null}
       </div>
 
-      {post.actions.map((action) => <ActionCard key={action.id} action={action} />)}
+      {actions.map((action) => <ActionCard key={action.id} action={action} />)}
 
       <ReactionBar
         postId={post.id}

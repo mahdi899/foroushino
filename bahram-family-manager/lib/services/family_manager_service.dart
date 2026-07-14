@@ -1,7 +1,6 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
-import 'package:path/path.dart' as p;
 
 import 'package:bahram_family_manager/core/api/api_client.dart';
 import 'package:bahram_family_manager/models/models.dart';
@@ -156,21 +155,27 @@ class FamilyManagerService {
   // ---------------------------------------------------------------------
 
   Future<FamilyMediaRef> uploadMedia({
-    required File file,
+    required Uint8List bytes,
+    required String filename,
     required String type,
     void Function(double progress)? onProgress,
   }) async {
-    final size = await file.length();
+    final size = bytes.length;
     if (size <= _chunkThresholdBytes) {
-      return _uploadSimple(file, type, onProgress: onProgress);
+      return _uploadSimple(bytes, filename, type, onProgress: onProgress);
     }
-    return _uploadChunked(file, type, onProgress: onProgress);
+    return _uploadChunked(bytes, filename, type, onProgress: onProgress);
   }
 
-  Future<FamilyMediaRef> _uploadSimple(File file, String type, {void Function(double progress)? onProgress}) async {
+  Future<FamilyMediaRef> _uploadSimple(
+    Uint8List bytes,
+    String filename,
+    String type, {
+    void Function(double progress)? onProgress,
+  }) async {
     final form = FormData.fromMap({
       'type': type,
-      'file': await MultipartFile.fromFile(file.path, filename: p.basename(file.path)),
+      'file': MultipartFile.fromBytes(bytes, filename: filename),
     });
 
     final res = await api.postForm(
@@ -183,9 +188,13 @@ class FamilyManagerService {
     return FamilyMediaRef.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
 
-  Future<FamilyMediaRef> _uploadChunked(File file, String type, {void Function(double progress)? onProgress}) async {
-    final totalSize = await file.length();
-    final filename = p.basename(file.path);
+  Future<FamilyMediaRef> _uploadChunked(
+    Uint8List bytes,
+    String filename,
+    String type, {
+    void Function(double progress)? onProgress,
+  }) async {
+    final totalSize = bytes.length;
 
     final sessionRes = await api.post('$_base/media/sessions', data: {
       'type': type,
@@ -197,25 +206,17 @@ class FamilyManagerService {
     final ulid = session['ulid'] as String;
     final totalChunks = (session['total_chunks'] as num).toInt();
 
-    final raf = await file.open();
-    try {
-      for (var index = 0; index < totalChunks; index++) {
-        final start = index * _chunkSizeBytes;
-        final remaining = totalSize - start;
-        final length = remaining < _chunkSizeBytes ? remaining : _chunkSizeBytes;
+    for (var index = 0; index < totalChunks; index++) {
+      final start = index * _chunkSizeBytes;
+      final end = start + _chunkSizeBytes;
+      final chunk = bytes.sublist(start, end > totalSize ? totalSize : end);
 
-        await raf.setPosition(start);
-        final bytes = await raf.read(length);
-
-        final form = FormData.fromMap({
-          'index': index,
-          'chunk': MultipartFile.fromBytes(bytes, filename: 'chunk_$index'),
-        });
-        await api.postForm('$_base/media/sessions/$ulid/chunk', form);
-        onProgress?.call((index + 1) / totalChunks);
-      }
-    } finally {
-      await raf.close();
+      final form = FormData.fromMap({
+        'index': index,
+        'chunk': MultipartFile.fromBytes(chunk, filename: 'chunk_$index'),
+      });
+      await api.postForm('$_base/media/sessions/$ulid/chunk', form);
+      onProgress?.call((index + 1) / totalChunks);
     }
 
     final completeRes = await api.post('$_base/media/sessions/$ulid/complete');

@@ -19,6 +19,9 @@ dependencies:
   intl: ^0.20.2
   file_picker: ^8.1.2
   path: ^1.9.0
+  cached_network_image: ^3.4.1
+  video_player: ^2.9.2
+  just_audio: ^0.9.46
 
 dev_dependencies:
   flutter_test:
@@ -27,3 +30,14 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  fonts:
+    - family: IRANSansXFaNum
+      fonts:
+        - asset: assets/fonts/IRANSansXFaNum-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IRANSansXFaNum-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IRANSansXFaNum-DemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/IRANSansXFaNum-Bold.ttf
+          weight: 700

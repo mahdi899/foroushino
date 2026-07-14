@@ -8,6 +8,8 @@ import 'package:bahram_family_manager/features/families/families_screen.dart';
 import 'package:bahram_family_manager/features/home/home_screen.dart';
 import 'package:bahram_family_manager/features/posts/posts_screen.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
+import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
+import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
 
 class _Tab {
   const _Tab({required this.label, required this.icon, required this.builder, this.permission});
@@ -18,8 +20,6 @@ class _Tab {
   final String? permission;
 }
 
-/// Bottom-nav shell — each tab is hidden unless the logged-in admin actually
-/// has the matching `family.*` permission (super-admins see everything).
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
 
@@ -66,15 +66,10 @@ class _RootShellState extends State<RootShell> {
     if (visibleTabs.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('مدیر خانواده بهرام')),
-        body: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
-              'حساب شما به مدیریت خانواده داداش بهرام دسترسی ندارد.\nبا مدیر کل تماس بگیرید.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textMuted),
-            ),
-          ),
+        body: const EmptyState(
+          icon: Icons.lock_outline_rounded,
+          title: 'دسترسی ندارید',
+          subtitle: 'حساب شما به مدیریت خانواده داداش بهرام دسترسی ندارد.\nبا مدیر کل تماس بگیرید.',
         ),
       );
     }
@@ -82,14 +77,15 @@ class _RootShellState extends State<RootShell> {
     final index = _index.clamp(0, visibleTabs.length - 1);
 
     return Scaffold(
-      body: SafeArea(child: visibleTabs[index].builder(context)),
+      backgroundColor: AppColors.background,
+      body: visibleTabs[index].builder(context),
       bottomNavigationBar: visibleTabs.length == 1
           ? null
-          : BottomNavigationBar(
+          : AppBottomNav(
               currentIndex: index,
               onTap: (i) => setState(() => _index = i),
               items: visibleTabs
-                  .map((t) => BottomNavigationBarItem(icon: Icon(t.icon), label: t.label))
+                  .map((t) => AppBottomNavItem(label: t.label, icon: t.icon))
                   .toList(),
             ),
     );
