@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CommentAvatar } from '@/components/family/CommentAvatar';
 import { useFamilyComments } from '@/lib/family/hooks/useFamilyComments';
 import { FamilyApiError } from '@/lib/family/errors';
+import { formatPostDateTime } from '@/lib/family/datetime';
 import type { FamilyComment } from '@/lib/family/types';
 import { cn } from '@/lib/cn';
 
@@ -14,6 +15,36 @@ type CommentsPanelProps = {
   hideTitle?: boolean;
   className?: string;
 };
+
+function CommentRow({
+  comment,
+  avatarSize,
+}: {
+  comment: FamilyComment;
+  avatarSize: 'sm' | 'md';
+}) {
+  return (
+    <li className="flex items-start gap-3 py-1">
+      <CommentAvatar name={comment.user.name} avatar={comment.user.avatar} size={avatarSize} />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span className="text-[13px] font-semibold text-sky-300/95">{comment.user.name}</span>
+          {comment.created_at && (
+            <time dateTime={comment.created_at} className="text-[11px] tabular-nums text-bone/40">
+              {formatPostDateTime(comment.created_at)}
+            </time>
+          )}
+          {comment.is_pending_mine && (
+            <span className="rounded-full bg-white/[0.08] px-2 py-0.5 text-[10px] text-bone/50">
+              در انتظار بررسی
+            </span>
+          )}
+        </div>
+        <p className="mt-1 whitespace-pre-wrap text-[15px] leading-7 text-bone/88">{comment.body}</p>
+      </div>
+    </li>
+  );
+}
 
 export function CommentsPanel({
   postId,
@@ -26,12 +57,37 @@ export function CommentsPanel({
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [justSent, setJustSent] = useState(false);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const isPage = variant === 'page';
+  const avatarSize = isPage ? 'md' : 'sm';
+
+  const orderedComments = useMemo(() => [...comments].reverse(), [comments]);
+
+  const scrollToLatest = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const root = listRef.current;
+    if (!root) return;
+    root.scrollTo({ top: root.scrollHeight, behavior });
+    bottomRef.current?.scrollIntoView({ block: 'end', behavior });
+  }, []);
 
   useEffect(() => {
     setValue('');
     setError(null);
     setJustSent(false);
   }, [postId]);
+
+  useLayoutEffect(() => {
+    if (isLoading || orderedComments.length === 0) return;
+    scrollToLatest('auto');
+    const frame = requestAnimationFrame(() => scrollToLatest('auto'));
+    return () => cancelAnimationFrame(frame);
+  }, [isLoading, orderedComments.length, postId, scrollToLatest]);
+
+  useLayoutEffect(() => {
+    if (!justSent) return;
+    scrollToLatest('smooth');
+  }, [justSent, orderedComments.length, scrollToLatest]);
 
   const handleSubmit = async () => {
     const body = value.trim();
@@ -51,49 +107,41 @@ export function CommentsPanel({
   };
 
   return (
-    <section className={cn('flex flex-col', variant === 'inline' && 'border-t border-white/10', className)}>
+    <section className={cn('flex min-h-0 flex-col', variant === 'inline' && 'border-t border-white/10', className)}>
       {!hideTitle && (
-        <div className="px-4 py-3 sm:px-5">
+        <div className="shrink-0 px-4 py-3 sm:px-5">
           <h3 className="text-sm font-semibold text-bone/90">نظرات</h3>
         </div>
       )}
 
       <div
+        ref={listRef}
         className={cn(
-          'min-h-0 overflow-y-auto overscroll-contain px-3 sm:px-4',
-          variant === 'inline' ? 'max-h-[280px] lg:max-h-[320px]' : 'flex-1 px-3 py-3 sm:px-4 lg:px-5',
+          'family-feed-scroll min-h-0 overflow-y-auto overscroll-contain',
+          isPage ? 'flex-1 px-3 py-3 sm:px-4 lg:px-5' : 'max-h-[280px] px-3 sm:px-4 lg:max-h-[320px]',
         )}
       >
         {isLoading ? (
-          <p className="py-8 text-center text-sm text-bone/50">در حال بارگذاری…</p>
-        ) : comments.length === 0 ? (
-          <p className="py-8 text-center text-sm text-bone/50">هنوز نظری ثبت نشده. اولین نفر باش.</p>
+          <div className="flex flex-col items-center justify-center gap-2 py-12">
+            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80" />
+            <p className="text-sm text-bone/50">در حال بارگذاری…</p>
+          </div>
+        ) : orderedComments.length === 0 ? (
+          <p className="py-12 text-center text-sm text-bone/50">هنوز نظری ثبت نشده. اولین نفر باش.</p>
         ) : (
-          <ul className="space-y-3 pb-2">
-            {comments.map((c) => (
-              <li key={c.id} className="flex items-start gap-2.5">
-                <CommentAvatar name={c.user.name} avatar={c.user.avatar} size="sm" />
-                <div className="min-w-0 flex-1 rounded-xl bg-white/[0.04] px-3 py-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-gold/80">{c.user.name}</span>
-                    {c.is_pending_mine && (
-                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-bone/50">
-                        در انتظار بررسی
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-sm leading-6 text-bone/85">{c.body}</p>
-                </div>
-              </li>
+          <ul className="space-y-4 pb-2">
+            {orderedComments.map((comment) => (
+              <CommentRow key={comment.id} comment={comment} avatarSize={avatarSize} />
             ))}
+            <div ref={bottomRef} aria-hidden className="h-px shrink-0" />
           </ul>
         )}
       </div>
 
       <div
         className={cn(
-          'shrink-0 border-t border-white/10 p-3 sm:p-4',
-          variant === 'page' && 'pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:p-4',
+          'shrink-0 border-t border-white/10 bg-[#0b0f10]/95 p-3 backdrop-blur-md sm:p-4',
+          isPage && 'pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:p-4',
         )}
       >
         {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
@@ -109,9 +157,9 @@ export function CommentsPanel({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             maxLength={500}
-            rows={2}
+            rows={isPage ? 2 : 2}
             placeholder="نظرت رو بنویس…"
-            className="flex-1 resize-none rounded-2xl border border-white/15 bg-transparent px-4 py-2.5 text-sm text-bone outline-none focus:border-gold/50"
+            className="flex-1 resize-none rounded-2xl border border-white/15 bg-white/[0.03] px-4 py-2.5 text-sm text-bone outline-none transition focus:border-gold/50 focus:bg-white/[0.05]"
           />
           <button
             type="submit"
