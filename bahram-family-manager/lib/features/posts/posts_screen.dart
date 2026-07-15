@@ -8,6 +8,7 @@ import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
+import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
 import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
 import 'package:bahram_family_manager/widgets/posts/post_list_tile.dart';
@@ -46,6 +47,19 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
       MaterialPageRoute(builder: (_) => PostEditorScreen(post: post)),
     );
     if (changed == true) _load();
+  }
+
+  Future<void> _togglePin(FamilyPostModel post) async {
+    try {
+      final manager = context.read<AppState>().manager;
+      final updated = post.isPinned ? await manager.unpinPost(post.id) : await manager.pinPost(post.id);
+      if (mounted) {
+        showAppSnackBar(context, updated.isPinned ? 'پست سنجاق شد.' : 'سنجاق برداشته شد.');
+        _load();
+      }
+    } catch (e) {
+      if (mounted) showAppSnackBar(context, messageOf(e));
+    }
   }
 
   @override
@@ -96,10 +110,15 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
                 physics: const AlwaysScrollableScrollPhysics(),
                 itemCount: posts.length,
                 separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
-                itemBuilder: (context, index) => PostListTile(
-                  post: posts[index],
-                  onTap: () => _openEditor(posts[index]),
-                ),
+                itemBuilder: (context, index) {
+                  final post = posts[index];
+                  final isPublishedTab = _statuses[_tabController.index] == 'published';
+                  return PostListTile(
+                    post: post,
+                    onTap: () => _openEditor(post),
+                    onPinToggle: isPublishedTab ? () => _togglePin(post) : null,
+                  );
+                },
               );
             },
           ),

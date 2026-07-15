@@ -36,8 +36,7 @@ class FeedService
 
         $query = FamilyPost::query()
             ->where('status', FamilyPostStatus::Published->value)
-            ->whereNotNull('published_at')
-            ->where('is_pinned', false);
+            ->whereNotNull('published_at');
 
         $this->audience->scopeVisibleToFamily($query, $familyId);
 

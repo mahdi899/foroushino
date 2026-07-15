@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { getStories } from '@/lib/family/api';
 import type { FamilyStory } from '@/lib/family/types';
 
@@ -127,8 +127,7 @@ export function StoryViewer({
                 ))}
               </div>
 
-              <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-3 pb-2 pt-[calc(max(0.75rem,env(safe-area-inset-top))+1.75rem)]">
-                <p className="truncate text-sm font-semibold text-white drop-shadow-md">{profileName}</p>
+              <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-end px-3 pb-2 pt-[calc(max(0.75rem,env(safe-area-inset-top))+1.75rem)]">
                 <button
                   type="button"
                   onClick={finish}
@@ -142,7 +141,7 @@ export function StoryViewer({
               <div className="relative h-full w-full">
                 {loading && (
                   <div className="flex h-full items-center justify-center">
-                    <p className="text-sm text-white/70">در حال بارگذاری…</p>
+                    <Loader2 className="h-9 w-9 animate-spin text-white/85" aria-hidden />
                   </div>
                 )}
                 {!loading && stories.length === 0 && (

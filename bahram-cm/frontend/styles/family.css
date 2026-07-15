@@ -251,6 +251,22 @@ html[data-theme='dark'] .family-app {
   background: var(--family-surface-soft);
 }
 
+.family-post--highlight {
+  animation: family-post-highlight 2.2s ease-out;
+}
+
+@keyframes family-post-highlight {
+  0%,
+  15% {
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--family-accent) 55%, transparent);
+    background: color-mix(in oklab, var(--family-accent) 8%, var(--family-surface));
+  }
+  100% {
+    box-shadow: none;
+    background: transparent;
+  }
+}
+
 .family-modal {
   border: 1px solid var(--family-border);
   background: linear-gradient(to bottom, var(--family-surface), var(--family-surface-soft));
