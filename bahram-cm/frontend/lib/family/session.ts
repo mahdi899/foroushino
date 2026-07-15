@@ -2,6 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { SERVER_API_URL } from '@/lib/api/config';
+import { serverFetchSignal } from '@/lib/api/serverFetch';
 import { STUDENT_TOKEN_COOKIE } from '@/lib/student/session';
 
 /**
@@ -36,6 +37,7 @@ export async function familyFetch<T = unknown>(
     headers,
     body,
     cache: 'no-store',
+    signal: serverFetchSignal(),
   });
 
   if (!res.ok) {

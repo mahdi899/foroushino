@@ -13,6 +13,8 @@ import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
+import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
+import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/media/family_media_view.dart';
 import 'package:bahram_family_manager/widgets/media/upload_zone.dart';
 import 'package:bahram_family_manager/widgets/surfaces/panel_gradient_card.dart';
@@ -315,7 +317,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AdaptiveScaffold(
       appBar: AppBar(title: Text(_post == null ? 'پست جدید' : 'ویرایش پست')),
       bottomNavigationBar: _isReadOnly
           ? null
@@ -338,9 +340,12 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                 ),
               ),
             ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, 120),
-        children: [
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: ListView(
+            padding: AppBreakpoints.pagePadding(context).copyWith(bottom: 120),
+            children: [
           if (_post == null)
             PanelGradientCard(
               variant: PanelGradientVariant.teal,
@@ -505,6 +510,8 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             SecondaryButton(label: 'آرشیو پست', icon: Icons.archive_rounded, onPressed: _saving ? null : _archive),
           ],
         ],
+          ),
+        ),
       ),
     );
   }

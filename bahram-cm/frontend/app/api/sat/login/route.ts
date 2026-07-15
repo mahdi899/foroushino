@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { SAT_TOKEN_COOKIE } from '@/lib/sat/session';
 import { SERVER_API_URL } from '@/lib/api/config';
 import { extractValidationMessage } from '@/lib/services/api';
 
@@ -90,12 +91,26 @@ export async function POST(req: Request) {
     );
   }
 
-  const data = (result.json.data ?? {}) as {
+  const json = result.json as Record<string, unknown>;
+  const token = typeof json.token === 'string' ? json.token : undefined;
+  const data = (json.data ?? {}) as {
     otp_required?: boolean;
     mobile?: string;
     mobile_masked?: string;
     expires_in?: number;
   };
+
+  if (token && data.otp_required === false) {
+    const out = NextResponse.json({ ok: true, otp_required: false });
+    out.cookies.set(SAT_TOKEN_COOKIE, token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
+    });
+    return out;
+  }
 
   if (!data.otp_required || !data.mobile) {
     return NextResponse.json({ error: 'ورود ناموفق بود.' }, { status: 401 });

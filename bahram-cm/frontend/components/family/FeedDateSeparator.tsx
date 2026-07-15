@@ -1,9 +1,21 @@
+'use client';
+
+import { motion, useReducedMotion } from 'framer-motion';
+import { familyMotion } from '@/lib/family/motion';
+
 export function FeedDateSeparator({ label }: { label: string }) {
+  const reduceMotion = useReducedMotion();
+
   return (
-    <div className="flex justify-center py-1">
-      <span className="rounded-full bg-white/[0.08] px-3 py-1 text-xs font-medium text-bone/55 backdrop-blur-sm">
+    <div className="family-feed-date">
+      <motion.span
+        className="family-date-pill"
+        initial={reduceMotion ? false : familyMotion.fadeUp().initial}
+        animate={familyMotion.fadeUp().animate}
+        transition={familyMotion.fadeUp().transition}
+      >
         {label}
-      </span>
+      </motion.span>
     </div>
   );
 }

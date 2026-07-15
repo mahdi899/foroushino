@@ -2,6 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { SERVER_API_URL } from '@/lib/api/config';
+import { serverFetchSignal } from '@/lib/api/serverFetch';
 
 export const STUDENT_TOKEN_COOKIE = 'bahram_student_token';
 
@@ -86,6 +87,7 @@ export async function studentFetch<T = unknown>(
     headers,
     body,
     cache: 'no-store',
+    signal: serverFetchSignal(),
   });
 
   if (!res.ok) {

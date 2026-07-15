@@ -33,12 +33,12 @@ export function JoinBanner({ id }: { id?: string }) {
   return (
     <div
       id={id}
-      className="z-30 shrink-0 border-t border-[var(--family-border-subtle)] bg-[var(--family-surface)]/95 px-4 py-3 backdrop-blur-md sm:px-5 lg:px-6 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      className="family-glass-bar z-30 shrink-0 px-4 py-3 sm:px-5 lg:px-6 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
     >
       <div className="mx-auto flex max-w-[680px] flex-col gap-2">
         {error && <p className="text-center text-xs text-red-400">{error}</p>}
         <div className="flex items-center justify-between gap-3 lg:gap-4">
-          <p className="text-start text-xs leading-relaxed text-bone/70 lg:text-sm">
+          <p className="text-start text-xs leading-relaxed text-[var(--family-tg-subtitle)] lg:text-sm">
             برای دیدن همه پیام‌ها، واکنش و همراهی با خانواده بپیوند.
           </p>
           <button

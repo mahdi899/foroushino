@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "validate:images": "node scripts/validate-images.mjs",
+    "download:noto-emojis": "node scripts/download-noto-emojis.mjs",
     "check-imports": "node scripts/check-imports.mjs",
     "verify": "npm run lint && npm run typecheck && npm run validate:images && npm run check-imports",
     "analyze": "cross-env ANALYZE=true npm run build",

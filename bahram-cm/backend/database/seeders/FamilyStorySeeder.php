@@ -14,7 +14,7 @@ use Illuminate\Database\Seeder;
  */
 class FamilyStorySeeder extends Seeder
 {
-    public const STORY_MEDIA_PATH = 'family-demo/demo-video-vertical.mp4';
+    public const STORY_MEDIA_PATH = 'media/family/demo/demo-video-vertical.mp4';
 
     public const STORY_CAPTION = '📸 استوری تست — یه لحظه از مسیر با خانواده به اشتراک می‌ذارم.';
 

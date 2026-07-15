@@ -4,7 +4,7 @@ namespace App\Jobs\Family;
 
 use App\Enums\Family\FamilyMediaStatus;
 use App\Models\FamilyMedia;
-use App\Support\FamilyMediaUrl;
+use App\Support\FamilyMediaPath;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -12,7 +12,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class TransferFamilyMediaToFtpJob implements ShouldQueue
 {
@@ -50,8 +49,7 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
 
         $type = $media->type?->value ?? 'voice';
         $ext = pathinfo($media->original_filename ?? 'file.bin', PATHINFO_EXTENSION) ?: 'bin';
-        $ulid = (string) Str::ulid();
-        $storagePath = sprintf('family/%s/%s/%s.%s', now()->format('Y/m'), $type, $ulid, $ext);
+        $storagePath = FamilyMediaPath::objectKey($type, $ext);
         $partPath = $storagePath.'.part';
 
         $diskName = config('family.media.disk', 'family_media_ftp');

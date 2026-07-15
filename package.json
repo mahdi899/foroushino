@@ -5,6 +5,7 @@
     "dev": "concurrently -k -n saat,website -c cyan,magenta \"npm run dev --prefix saat/frontend\" \"npm run dev --prefix bahram-cm/frontend\"",
     "dev:saat": "npm run dev --prefix saat/frontend",
     "dev:website": "npm run dev --prefix bahram-cm/frontend",
+    "dev:family": "powershell -NoProfile -ExecutionPolicy Bypass -File bahram-family-manager/scripts/run.ps1",
     "install:all": "npm install --prefix saat/frontend && npm install --prefix bahram-cm/frontend"
   },
   "devDependencies": {

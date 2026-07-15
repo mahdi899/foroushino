@@ -11,6 +11,9 @@ vite.config.js
 vite.config.d.ts
 *.apk
 
+# Local tooling (Flutter SDK downloads)
+.tools/
+
 # Python (bahram-cm backend)
 __pycache__/
 *.py[cod]

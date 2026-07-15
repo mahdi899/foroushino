@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
+import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
+import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
@@ -34,7 +36,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AdaptiveScaffold(
       appBar: AppBar(title: const Text('تحلیل خانواده')),
       body: RefreshIndicator(
         onRefresh: () async => _load(),
@@ -46,7 +48,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               final totals = _Totals.fromDaily(data.daily);
 
               return ListView(
-                padding: const EdgeInsets.all(AppSpacing.lg),
+                padding: AppBreakpoints.pagePadding(context),
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
                   Wrap(
@@ -70,19 +72,24 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     }).toList(),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: AppSpacing.md,
-                    crossAxisSpacing: AppSpacing.md,
-                    childAspectRatio: 1.5,
-                    children: [
-                      StatCard(title: 'عضو جدید', value: totals.newMembers, icon: Icons.person_add_rounded, color: AppColors.primary),
-                      StatCard(title: 'پست منتشرشده', value: totals.postsPublished, icon: Icons.campaign_rounded, color: AppColors.accent),
-                      StatCard(title: 'واکنش', value: totals.reactions, icon: Icons.favorite_rounded, color: AppColors.error),
-                      StatCard(title: 'اکشن تکمیل‌شده', value: totals.actionsCompleted, icon: Icons.task_alt_rounded, color: AppColors.gold),
-                    ],
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final columns = AppBreakpoints.gridColumns(context);
+                      return GridView.count(
+                        crossAxisCount: columns,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        mainAxisSpacing: AppSpacing.md,
+                        crossAxisSpacing: AppSpacing.md,
+                        childAspectRatio: columns >= 4 ? 1.6 : 1.5,
+                        children: [
+                          StatCard(title: 'عضو جدید', value: totals.newMembers, icon: Icons.person_add_rounded, color: AppColors.primary),
+                          StatCard(title: 'پست منتشرشده', value: totals.postsPublished, icon: Icons.campaign_rounded, color: AppColors.accent),
+                          StatCard(title: 'واکنش', value: totals.reactions, icon: Icons.favorite_rounded, color: AppColors.error),
+                          StatCard(title: 'اکشن تکمیل‌شده', value: totals.actionsCompleted, icon: Icons.task_alt_rounded, color: AppColors.gold),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   _SectionTitle('منابع ورودی'),

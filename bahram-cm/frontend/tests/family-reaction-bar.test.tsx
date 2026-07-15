@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ReactionBar } from "@/components/family/ReactionBar";
 import type { FamilyPostStats } from "@/lib/family/types";
 
@@ -11,6 +11,10 @@ const { setReaction, removeReaction } = vi.hoisted(() => ({
 vi.mock("@/lib/family/api", () => ({
   setReaction: (...args: unknown[]) => setReaction(...args),
   removeReaction: (...args: unknown[]) => removeReaction(...args),
+}));
+
+vi.mock("@/components/family/FamilyReactionLottie", () => ({
+  FamilyReactionLottie: () => <span data-testid="reaction-icon" />,
 }));
 
 const baseStats: FamilyPostStats = {
@@ -39,7 +43,8 @@ describe("ReactionBar", () => {
     setReaction.mockResolvedValueOnce({ data: {} });
     render(<ReactionBar postId={42} stats={baseStats} userReaction={null} />);
 
-    fireEvent.click(screen.getByLabelText("قلب"));
+    fireEvent.click(screen.getByLabelText("افزودن واکنش"));
+    fireEvent.click(within(screen.getByRole("menu")).getByLabelText("قلب"));
 
     expect(screen.getByLabelText("قلب")).toHaveTextContent("1");
     await waitFor(() => expect(setReaction).toHaveBeenCalledWith(42, "heart"));
@@ -65,9 +70,9 @@ describe("ReactionBar", () => {
     await waitFor(() => expect(screen.getByLabelText("هدف")).toHaveTextContent("1"));
   });
 
-  it("only renders reaction buttons", () => {
+  it("only renders reactions with counts plus the add button", () => {
     render(<ReactionBar postId={1} stats={baseStats} userReaction={null} />);
 
-    expect(screen.getAllByRole("button")).toHaveLength(4);
+    expect(screen.getAllByRole("button")).toHaveLength(3);
   });
 });

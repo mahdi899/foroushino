@@ -111,7 +111,7 @@ class SyncMediaLibrary extends Command
             }
 
             $ext = strtolower($file->getExtension());
-            if (! in_array($ext, ['svg', 'webp', 'png', 'jpg', 'jpeg', 'gif', 'json', 'mp4', 'webm'], true)) {
+            if (! in_array($ext, ['svg', 'webp', 'png', 'jpg', 'jpeg', 'gif', 'json', 'mp4', 'webm', 'mp3', 'm4a', 'ogg'], true)) {
                 continue;
             }
 
@@ -124,7 +124,11 @@ class SyncMediaLibrary extends Command
                 'size' => $file->getSize(),
                 'alt_fa' => str_replace(['-', '_'], ' ', pathinfo($file->getFilename(), PATHINFO_FILENAME)),
                 'original_filename' => $file->getFilename(),
-                'category' => str_starts_with($relative, 'media/site/') ? 'سایت' : 'آپلود شده',
+                'category' => match (true) {
+                    str_starts_with($relative, 'media/site/') => 'سایت',
+                    str_starts_with($relative, 'media/family/') => 'خانواده',
+                    default => 'آپلود شده',
+                },
                 'is_private' => false,
             ]);
             $indexed++;
@@ -162,6 +166,7 @@ class SyncMediaLibrary extends Command
         return match ($ext) {
             'mp4', 'webm' => MediaType::Video->value,
             'json' => MediaType::Lottie->value,
+            'mp3', 'm4a', 'ogg' => MediaType::Document->value,
             default => MediaType::Image->value,
         };
     }
@@ -176,6 +181,9 @@ class SyncMediaLibrary extends Command
             'json' => 'application/json',
             'mp4' => 'video/mp4',
             'webm' => 'video/webm',
+            'mp3' => 'audio/mpeg',
+            'm4a' => 'audio/mp4',
+            'ogg' => 'audio/ogg',
             default => 'image/jpeg',
         };
     }

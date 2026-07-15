@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import 'package:bahram_family_manager/core/labels.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
+import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
+import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/features/posts/post_editor_screen.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
@@ -70,7 +72,7 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AdaptiveScaffold(
       appBar: AppBar(
         title: const Text('پست‌های خانواده'),
         bottom: AppTabBar(
@@ -106,7 +108,7 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
               }
 
               return ListView.separated(
-                padding: const EdgeInsets.all(AppSpacing.lg),
+                padding: AppBreakpoints.pagePadding(context),
                 physics: const AlwaysScrollableScrollPhysics(),
                 itemCount: posts.length,
                 separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),

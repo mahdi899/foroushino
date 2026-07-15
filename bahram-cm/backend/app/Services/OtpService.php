@@ -201,4 +201,9 @@ class OtpService
     {
         return config('bahram.otp.dev_mode') && app()->environment('local', 'testing');
     }
+
+    public function shouldSkipAdminLogin(): bool
+    {
+        return config('bahram.otp.skip_admin') && app()->environment('local');
+    }
 }

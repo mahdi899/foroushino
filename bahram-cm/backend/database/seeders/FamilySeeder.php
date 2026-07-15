@@ -333,7 +333,7 @@ class FamilySeeder extends Seeder
 
     private function seedDemoArticle(User $author): Article
     {
-        $imagePath = '/storage/family-demo/demo-image-1.jpg';
+        $imagePath = '/storage/media/family/demo/demo-image-1.jpg';
 
         return Article::query()->updateOrCreate(
             ['slug' => 'family-demo-growth-habits'],

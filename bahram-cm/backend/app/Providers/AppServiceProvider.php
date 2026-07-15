@@ -6,6 +6,8 @@ use App\Events\IdentityLevel2Approved;
 use App\Events\SatApplicationAccepted;
 use App\Listeners\PushSatApplicationToExternalListener;
 use App\Listeners\TryActivateSatMembershipListener;
+use App\Models\FamilyMedia;
+use App\Observers\FamilyMediaObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -21,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        FamilyMedia::observe(FamilyMediaObserver::class);
+
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(120)->by($request->ip());
         });

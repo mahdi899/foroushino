@@ -9,87 +9,144 @@ import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
 import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
+import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
+import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/surfaces/app_card.dart';
 
-class FamilyDetailScreen extends StatefulWidget {
+class FamilyDetailScreen extends StatelessWidget {
   const FamilyDetailScreen({super.key, required this.familyId});
 
   final int familyId;
 
   @override
-  State<FamilyDetailScreen> createState() => _FamilyDetailScreenState();
+  Widget build(BuildContext context) {
+    return AdaptiveScaffold(
+      appBar: AppBar(title: const Text('جزئیات خانواده')),
+      body: FamilyDetailBody(familyId: familyId),
+    );
+  }
 }
 
-class _FamilyDetailScreenState extends State<FamilyDetailScreen> {
+/// Embeddable family detail — used in master-detail desktop layout and full-screen mobile.
+class FamilyDetailBody extends StatefulWidget {
+  const FamilyDetailBody({super.key, required this.familyId});
+
+  final int familyId;
+
+  @override
+  State<FamilyDetailBody> createState() => _FamilyDetailBodyState();
+}
+
+class _FamilyDetailBodyState extends State<FamilyDetailBody> {
   Future<FamilyDetailModel>? _future;
 
   @override
   void initState() {
     super.initState();
-    _future = context.read<AppState>().manager.showFamily(widget.familyId);
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant FamilyDetailBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.familyId != widget.familyId) _load();
+  }
+
+  void _load() {
+    setState(() {
+      _future = context.read<AppState>().manager.showFamily(widget.familyId);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('جزئیات خانواده')),
-      body: FutureBuilder<FamilyDetailModel>(
-        future: _future,
-        builder: (context, snapshot) => AsyncBody<FamilyDetailModel>(
-          snapshot: snapshot,
-          builder: (context, family) {
-            return ListView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: AppColors.primarySoft,
-                      child: Text(
-                        family.internalName.isNotEmpty ? family.internalName.substring(0, 1) : 'خ',
-                        style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 22),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(family.internalName, style: Theme.of(context).textTheme.headlineSmall),
-                          const SizedBox(height: AppSpacing.xs),
-                          StatusChip(
-                            label: labelOf(lifecycleLabels, family.lifecycle),
-                            color: AppColors.primary,
-                            icon: Icons.groups_rounded,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+    return FutureBuilder<FamilyDetailModel>(
+      future: _future,
+      builder: (context, snapshot) => AsyncBody<FamilyDetailModel>(
+        snapshot: snapshot,
+        builder: (context, family) => FamilyDetailContent(family: family),
+      ),
+    );
+  }
+}
+
+class FamilyDetailContent extends StatelessWidget {
+  const FamilyDetailContent({super.key, required this.family});
+
+  final FamilyDetailModel family;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDesktop = AppBreakpoints.isDesktop(context);
+
+    return ListView(
+      padding: AppBreakpoints.pagePadding(context),
+      children: [
+        Row(
+          children: [
+            CircleAvatar(
+              radius: isDesktop ? 32 : 28,
+              backgroundColor: AppColors.primarySoft,
+              child: Text(
+                family.internalName.isNotEmpty ? family.internalName.substring(0, 1) : 'خ',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: isDesktop ? 24 : 22,
                 ),
-                const SizedBox(height: AppSpacing.lg),
-                Row(
-                  children: [
-                    Expanded(child: _StatTile(title: 'اعضا', value: toFaDigits(family.memberCount.toString()))),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(child: _StatTile(title: 'ظرفیت هدف', value: toFaDigits(family.capacityTarget.toString()))),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(child: _StatTile(title: 'عضو جدید (۷ روز)', value: toFaDigits(family.newMembers7d.toString()))),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                if (family.dna != null)
-                  _DnaCard(dna: family.dna!)
-                else
-                  const AppCard(
-                    child: Text('هنوز DNA خانواده محاسبه نشده.', style: TextStyle(color: AppColors.textMuted)),
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(family.internalName, style: Theme.of(context).textTheme.headlineSmall),
+                  const SizedBox(height: AppSpacing.xs),
+                  StatusChip(
+                    label: labelOf(lifecycleLabels, family.lifecycle),
+                    color: AppColors.primary,
+                    icon: Icons.groups_rounded,
                   ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final columns = constraints.maxWidth >= 600 ? 3 : 1;
+            if (columns == 1) {
+              return Column(
+                children: [
+                  _StatTile(title: 'اعضا', value: toFaDigits(family.memberCount.toString())),
+                  const SizedBox(height: AppSpacing.sm),
+                  _StatTile(title: 'ظرفیت هدف', value: toFaDigits(family.capacityTarget.toString())),
+                  const SizedBox(height: AppSpacing.sm),
+                  _StatTile(title: 'عضو جدید (۷ روز)', value: toFaDigits(family.newMembers7d.toString())),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: _StatTile(title: 'اعضا', value: toFaDigits(family.memberCount.toString()))),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(child: _StatTile(title: 'ظرفیت هدف', value: toFaDigits(family.capacityTarget.toString()))),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(child: _StatTile(title: 'عضو جدید (۷ روز)', value: toFaDigits(family.newMembers7d.toString()))),
               ],
             );
           },
         ),
-      ),
+        const SizedBox(height: AppSpacing.xl),
+        if (family.dna != null)
+          _DnaCard(dna: family.dna!)
+        else
+          const AppCard(
+            child: Text('هنوز DNA خانواده محاسبه نشده.', style: TextStyle(color: AppColors.textMuted)),
+          ),
+      ],
     );
   }
 }

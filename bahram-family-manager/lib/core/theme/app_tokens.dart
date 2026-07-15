@@ -10,6 +10,15 @@ class AppSpacing {
   static const double lg = 16;
   static const double xl = 20;
   static const double xxl = 24;
+  static const double xxxl = 32;
+}
+
+class AppLayout {
+  AppLayout._();
+
+  static const double sidebarWidth = 280;
+  static const double shellPadding = 10;
+  static const double contentPanelRadius = 14;
 }
 
 class AppRadius {

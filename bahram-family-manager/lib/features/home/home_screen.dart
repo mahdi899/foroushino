@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
+import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
+import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
@@ -36,15 +38,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final user = context.watch<AppState>().user;
 
-    return Scaffold(
+    return AdaptiveScaffold(
       appBar: AppBar(
         title: const Text('خانه'),
         actions: [
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
-          IconButton(
-            onPressed: () => context.read<AppState>().logout(),
-            icon: const Icon(Icons.logout_rounded),
-          ),
+          if (!AppBreakpoints.isDesktop(context))
+            IconButton(
+              onPressed: () => context.read<AppState>().logout(),
+              icon: const Icon(Icons.logout_rounded),
+            ),
         ],
       ),
       body: RefreshIndicator(
@@ -55,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
             snapshot: snapshot,
             builder: (context, stats) {
               return ListView(
-                padding: const EdgeInsets.all(AppSpacing.lg),
+                padding: AppBreakpoints.pagePadding(context),
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
                   if (user != null) ...[
@@ -101,19 +104,24 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: AppSpacing.lg),
                   ],
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: AppSpacing.md,
-                    crossAxisSpacing: AppSpacing.md,
-                    childAspectRatio: 1.45,
-                    children: [
-                      StatCard(title: 'پست منتشرشده', value: stats.postsToday, icon: Icons.campaign_rounded, color: AppColors.primary),
-                      StatCard(title: 'واکنش', value: stats.reactionsToday, icon: Icons.favorite_rounded, color: AppColors.error),
-                      StatCard(title: 'نظر جدید', value: stats.newCommentsToday, icon: Icons.chat_bubble_rounded, color: AppColors.warning),
-                      StatCard(title: 'اکشن تکمیل‌شده', value: stats.actionsCompletedToday, icon: Icons.task_alt_rounded, color: AppColors.success),
-                    ],
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final columns = AppBreakpoints.gridColumns(context);
+                      return GridView.count(
+                        crossAxisCount: columns,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        mainAxisSpacing: AppSpacing.md,
+                        crossAxisSpacing: AppSpacing.md,
+                        childAspectRatio: columns >= 4 ? 1.55 : 1.45,
+                        children: [
+                          StatCard(title: 'پست منتشرشده', value: stats.postsToday, icon: Icons.campaign_rounded, color: AppColors.primary),
+                          StatCard(title: 'واکنش', value: stats.reactionsToday, icon: Icons.favorite_rounded, color: AppColors.error),
+                          StatCard(title: 'نظر جدید', value: stats.newCommentsToday, icon: Icons.chat_bubble_rounded, color: AppColors.warning),
+                          StatCard(title: 'اکشن تکمیل‌شده', value: stats.actionsCompletedToday, icon: Icons.task_alt_rounded, color: AppColors.success),
+                        ],
+                      );
+                    },
                   ),
                   if (stats.pendingComments > 0) ...[
                     const SizedBox(height: AppSpacing.md),

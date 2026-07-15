@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\FamilyMedia;
 use App\Models\FamilyPost;
+use Illuminate\Support\Collection;
 
 /** Shapes Family Manager post JSON for admin clients (includes safe media URLs). */
 final class FamilyManagerPostPresenter
@@ -11,7 +12,7 @@ final class FamilyManagerPostPresenter
     /** @return array<string, mixed> */
     public static function present(FamilyPost $post): array
     {
-        $post->loadMissing(['author:id,name', 'blocks.media', 'blocks.article', 'targets', 'actions.options']);
+        $post->loadMissing(['author:id,name', 'blocks.media', 'blocks.article', 'targets', 'actions.options', 'stats']);
 
         return [
             'id' => $post->id,
@@ -52,7 +53,29 @@ final class FamilyManagerPostPresenter
                 'post_id' => $target->post_id,
                 'family_id' => $target->family_id,
             ])->values()->all(),
+            'stats' => [
+                'views' => self::postViewCount($post),
+            ],
         ];
+    }
+
+    private static function postViewCount(FamilyPost $post): int
+    {
+        if ($post->relationLoaded('stats')) {
+            $stats = $post->getRelation('stats');
+
+            if ($stats === null) {
+                return 0;
+            }
+
+            if ($stats instanceof Collection) {
+                return (int) $stats->sum('views_count');
+            }
+
+            return 0;
+        }
+
+        return (int) $post->stats()->sum('views_count');
     }
 
     /** @return array<string, mixed>|null */

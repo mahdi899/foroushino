@@ -4,16 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { Pause, Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
+import { formatPlaybackSpeed } from '@/lib/family/playback';
 import { sendMediaProgress } from '@/lib/family/api';
 import type { FamilyMediaBlock } from '@/lib/family/types';
 
 const PODCAST_MIN_SECONDS = 45;
-const PLAYBACK_SPEEDS = [1, 1.25, 1.5, 2] as const;
-type PlaybackSpeed = (typeof PLAYBACK_SPEEDS)[number];
-
-function formatSpeed(rate: PlaybackSpeed): string {
-  return rate === 1 ? '1×' : `${rate}×`;
-}
 
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -113,14 +108,13 @@ export function VoiceBlock({
   const blobUrlRef = useRef<string | null>(null);
   const blobPromiseRef = useRef<Promise<void> | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const { activeId, register, unregister, requestPlay, notifyPaused, setNowPlaying, updateNowPlayingProgress } =
+  const { activeId, register, unregister, requestPlay, notifyPaused, setNowPlaying, updateNowPlayingProgress, playbackRate, cyclePlaybackRate } =
     useFamilyMediaPlayer();
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [scrubVisual, setScrubVisual] = useState<number | null>(null);
   const [duration, setDuration] = useState(media.duration ?? 0);
   const [audioReady, setAudioReady] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState<PlaybackSpeed>(1);
   const lastReported = useRef(0);
 
   useEffect(() => {
@@ -238,13 +232,6 @@ export function VoiceBlock({
     const el = audioRef.current;
     if (el) el.playbackRate = playbackRate;
   }, [playbackRate]);
-
-  const cycleSpeed = useCallback(() => {
-    setPlaybackRate((prev) => {
-      const idx = PLAYBACK_SPEEDS.indexOf(prev);
-      return PLAYBACK_SPEEDS[(idx + 1) % PLAYBACK_SPEEDS.length];
-    });
-  }, []);
 
   const barCount = useMemo(() => barCountForDuration(resolvedDuration), [resolvedDuration]);
 
@@ -367,12 +354,8 @@ export function VoiceBlock({
 
   if (!media.url) {
     return (
-      <div
-        className="family-voice family-voice--loading flex min-h-[3.75rem] items-center justify-center rounded-2xl px-4 py-3.5"
-        aria-busy
-        aria-label="در حال پردازش صدا"
-      >
-        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80" />
+      <div className="family-voice family-voice--loading" aria-busy aria-label="در حال پردازش صدا">
+        <span className="family-voice__spinner" aria-hidden />
       </div>
     );
   }
@@ -381,10 +364,7 @@ export function VoiceBlock({
     <div
       ref={containerRef}
       dir="ltr"
-      className={cn(
-        'family-voice flex w-full max-w-full items-center gap-3 overflow-hidden rounded-2xl px-3 py-3 sm:gap-3.5 sm:px-4 sm:py-3.5',
-        !playing && 'family-voice--idle',
-      )}
+      className={cn('family-voice', !playing && 'family-voice--idle')}
     >
       <audio
         ref={audioRef}
@@ -441,16 +421,16 @@ export function VoiceBlock({
         type="button"
         onClick={() => void toggle()}
         aria-label={playing ? 'توقف' : 'پخش'}
-        className="family-voice-play flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition active:scale-95 sm:h-[3.25rem] sm:w-[3.25rem]"
+        className="family-voice-play"
       >
         {playing ? (
-          <Pause className="h-5 w-5" fill="currentColor" />
+          <Pause className="h-[15px] w-[15px]" fill="currentColor" />
         ) : (
-          <Play className="ms-0.5 h-5 w-5" fill="currentColor" />
+          <Play className="ms-px h-[15px] w-[15px]" fill="currentColor" />
         )}
       </button>
 
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 overflow-hidden">
+      <div className="family-voice__track">
         <button
           ref={waveRef}
           type="button"
@@ -487,7 +467,7 @@ export function VoiceBlock({
             }
           }}
           className={cn(
-            'family-voice-wave w-full min-w-0 touch-none',
+            'family-voice-wave min-w-0 flex-1 touch-none',
             audioReady ? 'cursor-pointer' : 'cursor-wait opacity-70',
           )}
           style={{ '--wave-bars': barCount } as CSSProperties}
@@ -495,7 +475,7 @@ export function VoiceBlock({
           {waveform.map((v, i) => {
             const barRatio = barCount > 1 ? i / (barCount - 1) : 0;
             const played = barRatio <= progressRatio;
-            const height = Math.round(5 + v * 26);
+            const height = Math.round(4 + v * 22);
             return (
               <span
                 key={i}
@@ -509,27 +489,24 @@ export function VoiceBlock({
           })}
         </button>
 
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            {!audioReady ? (
-              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80" aria-label="در حال آماده‌سازی" />
-            ) : !playing && displayProgress <= 0 ? (
-              <span className="min-w-0 truncate text-[11px] font-medium text-[var(--family-accent)] sm:text-xs">
-                برای پخش بزنید
-              </span>
-            ) : null}
-            {isPodcast ? (
-              <button
-                type="button"
-                onClick={cycleSpeed}
-                aria-label={`سرعت پخش ${formatSpeed(playbackRate)}`}
-                className="family-voice-speed shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums sm:text-xs"
-              >
-                {formatSpeed(playbackRate)}
-              </button>
-            ) : null}
-          </div>
-          <span className="shrink-0 text-[11px] font-medium tabular-nums text-bone/55 sm:text-xs">
+        <div className="family-voice__aside">
+          {!audioReady ? (
+            <span className="family-voice__spinner family-voice__spinner--sm" aria-label="در حال آماده‌سازی" />
+          ) : null}
+          {isPodcast && audioReady ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                cyclePlaybackRate();
+              }}
+              aria-label={`سرعت پخش ${formatPlaybackSpeed(playbackRate)}`}
+              className="family-voice-speed"
+            >
+              {formatPlaybackSpeed(playbackRate)}
+            </button>
+          ) : null}
+          <span className="family-voice__duration tabular-nums">
             {formatTime(displayProgress > 0 || playing ? resolvedDuration - displayProgress : resolvedDuration)}
           </span>
         </div>

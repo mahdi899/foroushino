@@ -10,6 +10,7 @@ export function FamilyAuthorAvatar({
   avatar,
   size = 'md',
   hasStoryRing = false,
+  storyUnseen = true,
   className,
   onClick,
 }: {
@@ -17,6 +18,8 @@ export function FamilyAuthorAvatar({
   avatar?: string | null;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   hasStoryRing?: boolean;
+  /** When stories exist: unseen → animated TG ring; seen → muted ring. */
+  storyUnseen?: boolean;
   className?: string;
   onClick?: () => void;
 }) {
@@ -29,17 +32,19 @@ export function FamilyAuthorAvatar({
           ? 'h-28 w-28 text-3xl'
           : 'h-9 w-9 text-sm';
 
-  const storyPaddingClass =
+  const ringSizeClass =
     size === 'xl'
-      ? 'p-[3.5px]'
+      ? 'family-story-ring--xl'
       : size === 'lg'
-        ? 'p-[3px] family-story-ring shadow-[0_0_14px_rgba(201,147,10,0.35)]'
-        : 'p-[2px]';
+        ? 'family-story-ring--lg'
+        : size === 'sm'
+          ? 'family-story-ring--sm'
+          : 'family-story-ring--md';
 
-  const inner = (
+  const avatarFace = (
     <span
       className={cn(
-        'flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gold/20 font-bold text-gold',
+        'flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[color-mix(in_oklab,var(--family-tg-pinned-accent)_12%,var(--family-bubble-incoming))] font-bold text-[var(--family-tg-pinned-accent)]',
         sizeClass,
         !hasStoryRing && className,
       )}
@@ -56,15 +61,16 @@ export function FamilyAuthorAvatar({
   const content = hasStoryRing ? (
     <span
       className={cn(
-        'inline-flex rounded-full bg-gradient-to-tr from-gold via-amber-300 to-orange-400',
-        storyPaddingClass,
+        'family-story-ring inline-flex rounded-full',
+        ringSizeClass,
+        storyUnseen ? 'family-story-ring--unseen' : 'family-story-ring--seen',
         className,
       )}
     >
-      <span className="rounded-full bg-[var(--family-surface-panel)] p-[1.5px]">{inner}</span>
+      <span className="family-story-ring__inner">{avatarFace}</span>
     </span>
   ) : (
-    inner
+    avatarFace
   );
 
   if (onClick) {
@@ -73,7 +79,7 @@ export function FamilyAuthorAvatar({
         type="button"
         onClick={onClick}
         aria-label={hasStoryRing ? `مشاهده استوری ${name}` : undefined}
-        className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+        className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--family-tg-pinned-accent)]/50"
       >
         {content}
       </button>

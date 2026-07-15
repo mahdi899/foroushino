@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
-import { Pin } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { getPinnedPosts } from '@/lib/family/api';
+import { familyMotion } from '@/lib/family/motion';
 import { getPinnedPreview } from '@/lib/family/pinnedPreview';
 import type { FamilyPost } from '@/lib/family/types';
 
@@ -21,6 +22,7 @@ export function PinnedMessageBar({
   );
 
   const [cursor, setCursor] = useState(0);
+  const reduceMotion = useReducedMotion();
 
   const pinnedPosts = pinnedProp ?? data ?? [];
 
@@ -42,32 +44,45 @@ export function PinnedMessageBar({
   };
 
   return (
-    <button
+    <motion.button
       type="button"
       onClick={handleClick}
-      className="family-pinned-bar flex w-full items-center gap-2.5 border-b px-3 py-2.5 text-right backdrop-blur-md transition sm:px-4 lg:px-5"
+      className="family-pinned-bar"
+      initial={reduceMotion ? false : { opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={familyMotion.tween}
+      whileTap={reduceMotion ? undefined : { scale: 0.995 }}
       aria-label={`رفتن به پیام سنجاق‌شده${pinnedPosts.length > 1 ? ` (${index + 1} از ${pinnedPosts.length})` : ''}`}
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-400/10 text-sky-300">
-        <Pin className="h-4 w-4" strokeWidth={2} />
+      <span className="family-pinned-bar__rail" aria-hidden />
+
+      <span className="family-pinned-bar__body">
+        <span className="family-pinned-bar__label-row">
+          <span className="family-pinned-bar__label">پیام سنجاق‌شده</span>
+          {pinnedPosts.length > 1 ? (
+            <span className="family-pinned-bar__count">{pinnedPosts.length}</span>
+          ) : null}
+        </span>
+        <span className="family-pinned-bar__preview">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key={pinned.id}
+              className="family-pinned-bar__preview-inner"
+              initial={familyMotion.fadeUp(0).initial}
+              animate={familyMotion.fadeUp(0).animate}
+              exit={{ opacity: 0, y: -6 }}
+              transition={familyMotion.tweenFast}
+            >
+              {label}
+            </motion.span>
+          </AnimatePresence>
+        </span>
       </span>
 
       {thumbnail ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={thumbnail} alt="" className="h-9 w-9 shrink-0 rounded-lg object-cover ring-1 ring-white/10" />
+        <img src={thumbnail} alt="" className="family-pinned-bar__thumb" />
       ) : null}
-
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2 text-[11px] font-semibold tracking-wide text-sky-300/90">
-          <span>پیام سنجاق‌شده</span>
-          {pinnedPosts.length > 1 ? (
-            <span className="rounded-full bg-sky-400/10 px-1.5 py-0.5 text-[10px] font-bold text-sky-200/80">
-              {pinnedPosts.length}
-            </span>
-          ) : null}
-        </span>
-        <span className="mt-0.5 block truncate text-[13px] leading-snug text-bone/70">{label}</span>
-      </span>
-    </button>
+    </motion.button>
   );
 }

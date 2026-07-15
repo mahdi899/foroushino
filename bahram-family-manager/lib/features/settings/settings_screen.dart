@@ -12,6 +12,8 @@ import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
 import 'package:bahram_family_manager/core/utils/story_aspect.dart';
 import 'package:bahram_family_manager/widgets/media/story_media_preview.dart';
 import 'package:bahram_family_manager/widgets/media/upload_zone.dart';
+import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
+import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -200,7 +202,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return AdaptiveScaffold(
       appBar: AppBar(
         title: const Text('برندینگ و استوری'),
         bottom: AppTabBar(
@@ -222,7 +224,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 }
 
                 return ListView(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  padding: AppBreakpoints.pagePadding(context),
                   children: [
                     TextField(
                       controller: _displayNameCtrl,
@@ -291,7 +293,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               emptyMessage: 'استوری فعالی نیست.',
               builder: (context, stories) {
                 return ListView(
-                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  padding: AppBreakpoints.pagePadding(context),
                   children: [
                     UploadZone(
                       label: 'انتخاب تصویر/ویدیو استوری (۹:۱۶ عمودی)',

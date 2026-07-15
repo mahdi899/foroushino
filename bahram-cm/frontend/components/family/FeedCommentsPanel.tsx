@@ -19,18 +19,18 @@ export function FeedCommentsPanel({
 }) {
   return (
     <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden', className)}>
-      <header className="family-panel-header flex shrink-0 items-center gap-2 border-b px-4 py-3 backdrop-blur-md lg:px-5">
+      <header className="family-panel-header flex shrink-0 items-center gap-2 px-4 py-2.5 lg:px-5">
         <button
           type="button"
           onClick={onClose}
           aria-label="بازگشت به فید"
-          className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-bone/65 transition hover:bg-white/[0.05] hover:text-bone"
+          className="family-panel-back"
         >
           <ChevronRight className="h-5 w-5" aria-hidden />
-          <span className="text-sm font-medium">فید</span>
+          <span>فید</span>
         </button>
-        <h2 className="flex flex-1 items-center justify-center gap-2 text-sm font-semibold text-bone">
-          <MessageCircle className="h-4 w-4 text-gold/80" strokeWidth={1.75} />
+        <h2 className="family-panel-title">
+          <MessageCircle className="h-4 w-4 text-[var(--family-tg-pinned-accent)]" strokeWidth={1.75} />
           نظرات
         </h2>
         <span className="w-[72px]" aria-hidden />
@@ -41,7 +41,7 @@ export function FeedCommentsPanel({
         onCommentAdded={onCommentAdded}
         variant="page"
         hideTitle
-        className="min-h-0 flex-1 bg-[var(--family-surface-panel)]"
+        className="min-h-0 flex-1"
       />
     </div>
   );

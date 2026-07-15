@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { EmojiRichText } from '@/components/emoji/EmojiRichText';
 import { CommentAvatar } from '@/components/family/CommentAvatar';
 import { useFamilyComments } from '@/lib/family/hooks/useFamilyComments';
 import { FamilyApiError } from '@/lib/family/errors';
@@ -26,23 +27,26 @@ function CommentRow({
   return (
     <li className="flex items-start gap-3 py-1">
       <CommentAvatar name={comment.user.name} avatar={comment.user.avatar} size={avatarSize} />
-      <div className="family-comment-bubble min-w-0 flex-1 overflow-hidden rounded-xl px-3 py-2.5">
+      <div className="family-comment-bubble min-w-0 flex-1 overflow-hidden px-3 py-2">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <span className="text-[13px] font-semibold text-[var(--family-accent)]">{comment.user.name}</span>
+          <span className="family-comment-bubble__author">{comment.user.name}</span>
           {comment.created_at && (
-            <time dateTime={comment.created_at} className="text-[11px] tabular-nums text-bone/40">
+            <time dateTime={comment.created_at} className="family-comment-bubble__time">
               {formatPostDateTime(comment.created_at)}
             </time>
           )}
           {comment.is_pending_mine && (
-            <span className="rounded-full bg-white/[0.08] px-2 py-0.5 text-[10px] text-bone/50">
+            <span className="rounded-full bg-[color-mix(in_oklab,var(--family-text)_8%,transparent)] px-2 py-0.5 text-[10px] text-[var(--family-tg-subtitle)]">
               در انتظار بررسی
             </span>
           )}
         </div>
-        <p className="family-comment-body mt-1 whitespace-pre-wrap break-words text-[15px] leading-7 text-bone/88">
-          {comment.body}
-        </p>
+        <EmojiRichText
+          text={comment.body}
+          emojiSize={20}
+          emojiMode="loop"
+          className="family-comment-body mt-1 text-[15px] leading-[1.35] text-[var(--family-text)]"
+        />
       </div>
     </li>
   );
@@ -132,7 +136,7 @@ export function CommentsPanel({
         ) : orderedComments.length === 0 ? (
           <p className="py-12 text-center text-sm text-bone/50">هنوز نظری ثبت نشده. اولین نفر باش.</p>
         ) : (
-          <ul className="space-y-4 pb-2">
+          <ul className="space-y-2 pb-2">
             {hasMore && (
               <li className="flex justify-center py-2">
                 <button
@@ -160,7 +164,7 @@ export function CommentsPanel({
 
       <div
         className={cn(
-          'shrink-0 border-t border-[var(--family-border-subtle)] bg-[var(--family-surface-panel)]/95 p-3 backdrop-blur-md sm:p-4',
+          'family-glass-bar shrink-0 p-3 sm:p-4',
           isPage && 'pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:p-4',
         )}
       >

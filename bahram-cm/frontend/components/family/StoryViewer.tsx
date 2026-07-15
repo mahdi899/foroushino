@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/cn';
+import { fontClassName } from '@/lib/fonts';
 import { getStories } from '@/lib/family/api';
 import type { FamilyStory } from '@/lib/family/types';
 
@@ -97,7 +99,10 @@ export function StoryViewer({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[200] flex items-stretch justify-center bg-black lg:items-center lg:bg-black/90 lg:p-6"
+          className={cn(
+            'family-portal-surface fixed inset-0 z-[200] flex items-stretch justify-center bg-black lg:items-center lg:bg-black/90 lg:p-6',
+            fontClassName,
+          )}
           role="dialog"
           aria-modal
           aria-label={`استوری ${profileName}`}

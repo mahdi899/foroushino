@@ -17,7 +17,7 @@ final class FamilyDemoAssets
 {
     private const SOURCE_DIR = 'data/family-demo';
 
-    private const PUBLIC_SUBDIR = 'family-demo';
+    private const PUBLIC_SUBDIR = 'media/family/demo';
 
     /** @var list<string> */
     private const FILES = [
@@ -104,6 +104,20 @@ final class FamilyDemoAssets
         }
 
         File::ensureDirectoryExists($target);
+
+        $legacy = storage_path('app/public/family-demo');
+        if (is_dir($legacy)) {
+            foreach (self::FILES as $filename) {
+                $legacyFile = $legacy.DIRECTORY_SEPARATOR.$filename;
+                if (is_file($legacyFile)) {
+                    File::copy($legacyFile, $target.DIRECTORY_SEPARATOR.$filename);
+                }
+            }
+            $legacyLandscape = $legacy.DIRECTORY_SEPARATOR.'demo-video.mp4';
+            if (is_file($legacyLandscape)) {
+                File::copy($legacyLandscape, $target.DIRECTORY_SEPARATOR.'demo-video-vertical.mp4');
+            }
+        }
 
         foreach (self::FILES as $filename) {
             $from = $source.DIRECTORY_SEPARATOR.$filename;

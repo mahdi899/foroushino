@@ -7,6 +7,7 @@ import {
   ArrowUp,
   Loader2,
 } from 'lucide-react';
+import { AnimatedEmoji } from '@/components/emoji/AnimatedEmoji';
 import { CHAT_TEXT_FONT, QUICK_EMOJIS } from '@/lib/chatbot/emojiFont';
 import { chatbotThemeClasses } from '@/lib/chatbot/themeClasses';
 import type { DataTheme } from '@/lib/useDataTheme';
@@ -16,7 +17,7 @@ const MIN_HEIGHT_PX = 36;
 const MAX_HEIGHT_PX = 88;
 const EMOJI_PANEL_Z = 10001;
 
-const EMOJI_PICKER_ICON = QUICK_EMOJIS[0]?.src ?? '/icons/emoji/smile.svg';
+const EMOJI_PICKER_KEY = QUICK_EMOJIS[0]?.notoKey ?? 'smile';
 
 interface PanelPosition {
   left: number;
@@ -178,16 +179,7 @@ export function ChatMessageComposer({
                       )}
                       aria-label={`افزودن ${emoji.label}`}
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={emoji.src}
-                        alt=""
-                        aria-hidden
-                        width={30}
-                        height={30}
-                        draggable={false}
-                        className="h-[30px] w-[30px] shrink-0 select-none"
-                      />
+                      <AnimatedEmoji notoKey={emoji.notoKey} size={30} mode="loop" label={emoji.label} />
                     </button>
                   ))}
                 </div>
@@ -225,15 +217,7 @@ export function ChatMessageComposer({
             aria-expanded={emojiOpen}
             aria-pressed={emojiOpen}
           >
-            <img
-              src={EMOJI_PICKER_ICON}
-              alt=""
-              aria-hidden
-              width={20}
-              height={20}
-              draggable={false}
-              className="h-5 w-5 shrink-0 select-none"
-            />
+            <AnimatedEmoji notoKey={EMOJI_PICKER_KEY} size={20} mode="loop" />
           </button>
 
           <textarea

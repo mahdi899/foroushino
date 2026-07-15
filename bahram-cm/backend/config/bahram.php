@@ -46,6 +46,8 @@ return [
     'otp' => [
         'dev_mode' => filter_var(env('OTP_DEV_MODE', false), FILTER_VALIDATE_BOOL),
         'dev_code' => env('OTP_DEV_CODE', '12345'),
+        // Local-only: email/password login without SMS OTP step (admin + sat panels).
+        'skip_admin' => filter_var(env('OTP_SKIP_ADMIN', false), FILTER_VALIDATE_BOOL),
     ],
 
     'admin_login' => [

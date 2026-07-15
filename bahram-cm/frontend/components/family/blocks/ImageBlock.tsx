@@ -1,8 +1,9 @@
 'use client';
 
-import { Download, Loader2, X } from 'lucide-react';
+import { Download, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/cn';
+import { ImageZoomLightbox } from '@/components/family/blocks/ImageZoomLightbox';
 import type { FamilyMediaBlock } from '@/lib/family/types';
 
 type LoadPhase = 'loading-preview' | 'preview' | 'loading-sharp' | 'sharp' | 'error';
@@ -13,48 +14,26 @@ function aspectStyle(media: FamilyMediaBlock): { aspectRatio: string } {
     : { aspectRatio: '1' };
 }
 
-function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
-  return (
-    <div
-      role="dialog"
-      aria-modal
-      onClick={onClose}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/92 p-4"
-    >
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="بستن"
-        className="absolute end-4 top-4 rounded-full bg-black/50 p-2 text-bone/80 hover:bg-black/70"
-      >
-        <X className="h-5 w-5" />
-      </button>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={url}
-        alt=""
-        onClick={(e) => e.stopPropagation()}
-        className="max-h-full max-w-full rounded-xl object-contain"
-      />
-    </div>
-  );
-}
-
 export function ImageBlock({
   media,
   className,
   roundedClass = 'rounded-2xl',
   fillCell = false,
   constrained = false,
+  onOpenLightbox,
+  manageLightboxExternally = false,
 }: {
   media: FamilyMediaBlock;
   className?: string;
   roundedClass?: string;
   fillCell?: boolean;
   constrained?: boolean;
+  onOpenLightbox?: () => void;
+  manageLightboxExternally?: boolean;
 }) {
   const [phase, setPhase] = useState<LoadPhase>('loading-preview');
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [openLightboxAfterSharp, setOpenLightboxAfterSharp] = useState(false);
 
   useEffect(() => {
     if (!media.url) return;
@@ -85,16 +64,33 @@ export function ImageBlock({
     };
   }, [phase, media.url]);
 
+  useEffect(() => {
+    if (phase !== 'sharp' || !openLightboxAfterSharp) return;
+    setOpenLightboxAfterSharp(false);
+    if (manageLightboxExternally && onOpenLightbox) {
+      onOpenLightbox();
+      return;
+    }
+    setLightboxOpen(true);
+  }, [manageLightboxExternally, onOpenLightbox, openLightboxAfterSharp, phase]);
+
   if (!media.url) {
     return <div className={cn('aspect-square w-full bg-white/5', roundedClass, className)} />;
   }
 
   const handleClick = () => {
     if (phase === 'preview' || phase === 'error') {
+      if (manageLightboxExternally && onOpenLightbox) {
+        setOpenLightboxAfterSharp(true);
+      }
       setPhase('loading-sharp');
       return;
     }
     if (phase === 'sharp') {
+      if (manageLightboxExternally && onOpenLightbox) {
+        onOpenLightbox();
+        return;
+      }
       setLightboxOpen(true);
     }
   };
@@ -112,7 +108,7 @@ export function ImageBlock({
         className={cn(
           'relative block w-full overflow-hidden bg-white/5',
           fillCell ? 'h-full min-h-0' : '',
-          constrained && !fillCell && 'family-feed-image mx-auto',
+          constrained && !fillCell && 'family-feed-image',
           roundedClass,
           className,
         )}
@@ -159,8 +155,8 @@ export function ImageBlock({
         )}
       </button>
 
-      {lightboxOpen && phase === 'sharp' && media.url && (
-        <ImageLightbox url={media.url} onClose={() => setLightboxOpen(false)} />
+      {!manageLightboxExternally && lightboxOpen && phase === 'sharp' && media.url && (
+        <ImageZoomLightbox url={media.url} onClose={() => setLightboxOpen(false)} />
       )}
     </>
   );
@@ -168,10 +164,16 @@ export function ImageBlock({
 
 export function ImageAlbumBlock({ items, constrained = false }: { items: FamilyMediaBlock[]; constrained?: boolean }) {
   const count = items.length;
+  const [galleryOpen, setGalleryOpen] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const galleryEntries = items
+    .map((item, itemIndex) => ({ url: item.url, itemIndex }))
+    .filter((entry): entry is { url: string; itemIndex: number } => Boolean(entry.url));
+  const useSharedGallery = count > 1 && galleryEntries.length > 1;
 
   const gridClass =
     count === 1
-      ? cn('grid grid-cols-1', constrained && 'family-feed-image mx-auto')
+      ? cn('grid grid-cols-1', constrained && 'family-feed-image')
       : count === 2
         ? 'grid grid-cols-2 gap-0.5'
         : count === 3
@@ -181,19 +183,39 @@ export function ImageAlbumBlock({ items, constrained = false }: { items: FamilyM
             : 'grid grid-cols-2 gap-0.5 sm:grid-cols-3';
 
   return (
-    <div className={gridClass}>
-      {items.map((item, index) => (
-        <div key={item.id} className={cn('relative min-h-0', albumLayoutClass(count, index))}>
-          <ImageBlock
-            media={item}
-            fillCell={count > 1}
-            constrained={constrained}
-            roundedClass={albumRoundedClass(count, index)}
-            className="absolute inset-0 h-full w-full"
-          />
-        </div>
-      ))}
-    </div>
+    <>
+      <div className={cn(constrained && 'family-feed-album', gridClass)}>
+        {items.map((item, index) => (
+          <div key={item.id} className={cn('relative min-h-0', albumLayoutClass(count, index))}>
+            <ImageBlock
+              media={item}
+              fillCell={count > 1}
+              constrained={constrained}
+              roundedClass={albumRoundedClass(count, index)}
+              className="absolute inset-0 h-full w-full"
+              manageLightboxExternally={useSharedGallery}
+              onOpenLightbox={
+                useSharedGallery
+                  ? () => {
+                      const pos = galleryEntries.findIndex((entry) => entry.itemIndex === index);
+                      setGalleryIndex(pos >= 0 ? pos : 0);
+                      setGalleryOpen(true);
+                    }
+                  : undefined
+              }
+            />
+          </div>
+        ))}
+      </div>
+
+      {useSharedGallery && galleryOpen && (
+        <ImageZoomLightbox
+          urls={galleryEntries.map((entry) => entry.url)}
+          initialIndex={galleryIndex}
+          onClose={() => setGalleryOpen(false)}
+        />
+      )}
+    </>
   );
 }
 

@@ -5,6 +5,7 @@ import type { StudentFormPrefill } from '@/lib/student/formPrefill';
 
 type OpenLoginOptions = {
   redirectTo?: string;
+  context?: 'panel' | 'family';
 };
 
 type StudentAuthContextValue = {
@@ -13,6 +14,7 @@ type StudentAuthContextValue = {
   prefill: StudentFormPrefill | null;
   loginOpen: boolean;
   redirectTo: string;
+  loginContext: 'panel' | 'family';
   openLogin: (options?: OpenLoginOptions) => void;
   closeLogin: () => void;
   markLoggedIn: (displayName?: string, prefill?: StudentFormPrefill | null) => void;
@@ -37,6 +39,7 @@ export function StudentAuthProvider({
   const [prefill, setPrefill] = useState<StudentFormPrefill | null>(initialPrefill);
   const [loginOpen, setLoginOpen] = useState(false);
   const [redirectTo, setRedirectTo] = useState('/panel');
+  const [loginContext, setLoginContext] = useState<'panel' | 'family'>('panel');
 
   useEffect(() => {
     if (!initialLoggedIn) {
@@ -55,11 +58,13 @@ export function StudentAuthProvider({
 
   const openLogin = useCallback((options?: OpenLoginOptions) => {
     setRedirectTo(options?.redirectTo ?? '/panel');
+    setLoginContext(options?.context ?? 'panel');
     setLoginOpen(true);
   }, []);
 
   const closeLogin = useCallback(() => {
     setLoginOpen(false);
+    setLoginContext('panel');
   }, []);
 
   const markLoggedIn = useCallback((name?: string, nextPrefill?: StudentFormPrefill | null) => {
@@ -82,12 +87,13 @@ export function StudentAuthProvider({
       prefill,
       loginOpen,
       redirectTo,
+      loginContext,
       openLogin,
       closeLogin,
       markLoggedIn,
       markLoggedOut,
     }),
-    [isLoggedIn, displayName, prefill, loginOpen, redirectTo, openLogin, closeLogin, markLoggedIn, markLoggedOut],
+    [isLoggedIn, displayName, prefill, loginOpen, redirectTo, loginContext, openLogin, closeLogin, markLoggedIn, markLoggedOut],
   );
 
   return <StudentAuthContext.Provider value={value}>{children}</StudentAuthContext.Provider>;

@@ -6,6 +6,7 @@ import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
 import { FamilyMain, FamilyShell } from '@/components/family/FamilyShell';
 import { FamilyTopBar } from '@/components/family/FamilyTopBar';
 import { FeedView } from '@/components/family/FeedView';
+import { FamilyGuestBlur, FamilyGuestLoginBoot } from '@/components/family/FamilyGuestAuth';
 import { GuestBanner } from '@/components/family/GuestBanner';
 import { JoinBanner } from '@/components/family/JoinBanner';
 import { OnboardingModal } from '@/components/family/OnboardingModal';
@@ -44,9 +45,10 @@ export function FamilyHome({
   }, []);
 
   const previewMode = mode === 'guest' ? 'guest' : mode === 'join' ? 'join' : null;
+  const isGuest = mode === 'guest';
 
-  return (
-    <FamilyShell>
+  const feed = (
+    <>
       <div className="lg:hidden">
         <FamilyTopBar memberCount={memberCount} canViewStories={mode === 'member'} />
         <FamilyFeedChrome
@@ -70,12 +72,27 @@ export function FamilyHome({
           }}
         />
       </FamilyMain>
+    </>
+  );
+
+  return (
+    <FamilyShell>
+      {isGuest ? (
+        <>
+          <FamilyGuestLoginBoot />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <FamilyGuestBlur className="flex min-h-0 flex-1 flex-col overflow-hidden">{feed}</FamilyGuestBlur>
+            <GuestBanner />
+          </div>
+        </>
+      ) : (
+        feed
+      )}
       {mode === 'join' && (
         <Suspense>
           <FamilyAutoJoin />
         </Suspense>
       )}
-      {mode === 'guest' && <GuestBanner />}
       {mode === 'join' && (
         <Suspense>
           <JoinBanner id="family-join-cta" />

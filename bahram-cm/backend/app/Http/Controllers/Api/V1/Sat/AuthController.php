@@ -54,6 +54,10 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($this->otp->shouldSkipAdminLogin()) {
+            return $this->issueTokenResponse($user);
+        }
+
         Cache::put($this->loginPendingKey($mobile), $user->id, self::LOGIN_PENDING_TTL_SECONDS);
 
         try {
@@ -139,6 +143,11 @@ class AuthController extends Controller
 
         Cache::forget($this->loginPendingKey($mobile));
 
+        return $this->issueTokenResponse($user);
+    }
+
+    private function issueTokenResponse(User $user): JsonResponse
+    {
         if ($user->mobile_verified_at === null) {
             $user->update(['mobile_verified_at' => now()]);
         }
@@ -149,7 +158,7 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $token,
-            'data' => $this->userPayload($user),
+            'data' => array_merge($this->userPayload($user), ['otp_required' => false]),
         ]);
     }
 

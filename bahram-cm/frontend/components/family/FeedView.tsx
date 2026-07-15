@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { FeedDateSeparator } from '@/components/family/FeedDateSeparator';
 import { FeedPreviewGate, FeedPreviewIntro } from '@/components/family/FeedPreviewIntro';
+import { useFamilyGuestLogin } from '@/components/family/FamilyGuestAuth';
 import { FamilyBrandingSidebar } from '@/components/family/FamilyBrandingSidebar';
 import { FamilyNotificationsPanel } from '@/components/family/FamilyNotificationsPanel';
 import { FeedCommentsPanel } from '@/components/family/FeedCommentsPanel';
@@ -70,6 +71,7 @@ export function FeedView({
   const effectivePreviewMode = previewMode ?? 'guest';
   const feedScope: 'guest' | 'member' = isPreview ? 'guest' : 'member';
   const initialPage = initialFeed ? { data: initialFeed.data, meta: initialFeed.meta } : null;
+  const { openLogin } = useFamilyGuestLogin();
 
   const { posts, meta, isLoading, hasMore, loadMore, isValidating } = useFamilyFeed(
     feedScope,
@@ -80,9 +82,12 @@ export function FeedView({
   const isStaff = meta?.is_staff ?? false;
 
   const scrollToPreviewCta = useCallback(() => {
-    const id = effectivePreviewMode === 'join' ? 'family-join-cta' : 'family-guest-cta';
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [effectivePreviewMode]);
+    if (effectivePreviewMode === 'guest') {
+      openLogin();
+      return;
+    }
+    document.getElementById('family-join-cta')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [effectivePreviewMode, openLogin]);
   const feedScrollRef = useRef<HTMLDivElement | null>(null);
   const feedContentRef = useRef<HTMLDivElement | null>(null);
   const bottomAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -93,7 +98,11 @@ export function FeedView({
   const loadingHistoryRef = useRef(false);
   const pinNavigateRef = useRef(false);
   const scrollRestoreRef = useRef<{ height: number; top: number } | null>(null);
+  const scrollStickRafRef = useRef<number | null>(null);
+  const scrollAnchorRafRef = useRef<number | null>(null);
+  const maxPostIdRef = useRef(0);
   const [mainView, setMainView] = useState<MainView>('feed');
+  const [feedInteractive, setFeedInteractive] = useState(false);
   const feedItems = useMemo(() => buildFeedItems(posts), [posts]);
   const hasMoreRef = useRef(hasMore);
   const postsRef = useRef(posts);
@@ -113,12 +122,26 @@ export function FeedView({
     [onOpenComments],
   );
 
-  const scrollToLatest = useCallback((behavior: ScrollBehavior = 'auto') => {
+  const stickToBottomIfAnchored = useCallback(() => {
     const root = feedScrollRef.current;
-    if (!root) return;
-    root.scrollTo({ top: root.scrollHeight, behavior });
-    anchoredToBottomRef.current = true;
+    if (!root || pinNavigateRef.current) return;
+
+    if (!historyReadyRef.current) {
+      root.scrollTop = root.scrollHeight;
+      return;
+    }
+
+    if (!anchoredToBottomRef.current) return;
+    root.scrollTop = root.scrollHeight;
   }, []);
+
+  const scheduleStickToBottom = useCallback(() => {
+    if (scrollStickRafRef.current != null) return;
+    scrollStickRafRef.current = requestAnimationFrame(() => {
+      scrollStickRafRef.current = null;
+      stickToBottomIfAnchored();
+    });
+  }, [stickToBottomIfAnchored]);
 
   const updateAnchoredToBottom = useCallback(() => {
     const root = feedScrollRef.current;
@@ -133,11 +156,21 @@ export function FeedView({
 
     const onScroll = () => {
       if (pinNavigateRef.current) return;
-      updateAnchoredToBottom();
+      if (scrollAnchorRafRef.current != null) return;
+      scrollAnchorRafRef.current = requestAnimationFrame(() => {
+        scrollAnchorRafRef.current = null;
+        updateAnchoredToBottom();
+      });
     };
 
     root.addEventListener('scroll', onScroll, { passive: true });
-    return () => root.removeEventListener('scroll', onScroll);
+    return () => {
+      root.removeEventListener('scroll', onScroll);
+      if (scrollAnchorRafRef.current != null) {
+        cancelAnimationFrame(scrollAnchorRafRef.current);
+        scrollAnchorRafRef.current = null;
+      }
+    };
   }, [updateAnchoredToBottom, posts.length, commentsTarget, mainView]);
 
   const scrollToPost = useCallback(
@@ -231,24 +264,30 @@ export function FeedView({
   useLayoutEffect(() => {
     if (isLoading || posts.length === 0) return;
 
+    const root = feedScrollRef.current;
+    if (!root) return;
+
     if (!initialScrollDoneRef.current) {
       initialScrollDoneRef.current = true;
-      scrollToLatest('auto');
-      const frame = requestAnimationFrame(() => {
-        scrollToLatest('auto');
-        requestAnimationFrame(() => {
-          scrollToLatest('auto');
-          historyReadyRef.current = true;
-        });
-      });
-      return () => cancelAnimationFrame(frame);
+      root.scrollTop = root.scrollHeight;
+      anchoredToBottomRef.current = true;
+      historyReadyRef.current = true;
+      maxPostIdRef.current = posts.reduce((max, post) => Math.max(max, post.id), 0);
+      queueMicrotask(() => setFeedInteractive(true));
+      return;
     }
 
-    // If length changed before historyReady was flipped, unlock without jumping.
     if (!historyReadyRef.current) {
       historyReadyRef.current = true;
     }
-  }, [isLoading, posts.length, scrollToLatest]);
+  }, [isLoading, posts]);
+
+  useEffect(() => {
+    maxPostIdRef.current = posts.reduce(
+      (max, post) => Math.max(max, post.id),
+      maxPostIdRef.current,
+    );
+  }, [posts]);
 
   // Keep sticky bottom only while the user is already near the end.
   // Never force-jump when they are reading older posts / interacting mid-feed.
@@ -257,18 +296,18 @@ export function FeedView({
     if (!content || posts.length === 0) return;
 
     const observer = new ResizeObserver(() => {
-      if (!historyReadyRef.current) {
-        scrollToLatest('auto');
-        return;
-      }
-      if (anchoredToBottomRef.current && !pinNavigateRef.current) {
-        scrollToLatest('auto');
-      }
+      scheduleStickToBottom();
     });
 
     observer.observe(content);
-    return () => observer.disconnect();
-  }, [posts.length, scrollToLatest]);
+    return () => {
+      observer.disconnect();
+      if (scrollStickRafRef.current != null) {
+        cancelAnimationFrame(scrollStickRafRef.current);
+        scrollStickRafRef.current = null;
+      }
+    };
+  }, [posts.length, scheduleStickToBottom]);
 
   useEffect(() => {
     const root = feedScrollRef.current;
@@ -329,9 +368,11 @@ export function FeedView({
           />
         )}
 
-        <div className={showFeed ? 'relative flex min-h-0 min-w-0 flex-1 flex-col' : 'hidden'}>
-          <div className="hidden shrink-0 lg:block">
-            <FamilyFeedChrome showPinned={showPinned} showNowPlaying={false} onScrollToPost={scrollToPost} />
+        <div className={showFeed ? 'family-feed-pane relative flex min-h-0 min-w-0 flex-1 flex-col' : 'hidden'}>
+          <div className="family-feed-chrome-slot hidden shrink-0 lg:block">
+            <div className="family-feed-chrome-slot__inner">
+              <FamilyFeedChrome showPinned={showPinned} showNowPlaying={false} onScrollToPost={scrollToPost} />
+            </div>
           </div>
 
           <FamilyFeedChrome
@@ -344,7 +385,7 @@ export function FeedView({
             ref={feedScrollRef}
             className="family-feed-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [overflow-anchor:none]"
           >
-            <div ref={feedContentRef} className="mx-auto flex w-full max-w-[680px] flex-col">
+            <div ref={feedContentRef} className="family-feed-content mx-auto flex w-full max-w-[680px] flex-col">
               {isPreview && effectivePreviewMode && posts.length > 0 && (
                 <div className="pt-4 sm:pt-5">
                   <FeedPreviewIntro mode={effectivePreviewMode} />
@@ -354,12 +395,12 @@ export function FeedView({
                 <div className="min-h-[40vh] lg:min-h-[50vh]" aria-hidden />
               ) : posts.length === 0 ? (
                 <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 px-6 py-16 text-center lg:min-h-[50vh]">
-                  <p className="max-w-sm text-sm text-bone/60 lg:text-[15px]">
+                  <p className="family-feed-empty max-w-sm text-sm lg:text-[15px]">
                     هنوز پستی منتشر نشده. به‌زودی داداش بهرام اولین پیام رو می‌فرسته.
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3 px-3 py-4 sm:space-y-3.5 sm:px-4 lg:px-5 lg:py-5">
+                <div className="family-feed-list">
                   {!isPreview && hasMore && (
                     <div
                       ref={topSentinelRef}
@@ -374,27 +415,33 @@ export function FeedView({
                       ) : null}
                     </div>
                   )}
-                  {feedItems.map((item) =>
-                    item.kind === 'separator' ? (
+                  {feedItems.map((item) => {
+                    const animateEnter =
+                      feedInteractive &&
+                      item.kind === 'post' &&
+                      item.post.id > maxPostIdRef.current;
+
+                    return item.kind === 'separator' ? (
                       <FeedDateSeparator key={item.key} label={item.label} />
                     ) : (
-                      <div key={item.key} id={`family-post-${item.post.id}`} className="scroll-mt-4 rounded-2xl">
-                        <PostCard
-                          post={item.post}
-                          memberCount={resolvedMemberCount}
-                          isStaff={isStaff}
-                          previewMode={isPreview ? effectivePreviewMode : null}
-                          viewerKey={viewerKey}
-                          onPreviewInteract={scrollToPreviewCta}
-                          onOpenComments={
-                            isPreview
-                              ? undefined
-                              : (handlers) => openComments({ postId: item.post.id, ...handlers })
-                          }
-                        />
-                      </div>
-                    ),
-                  )}
+                      <PostCard
+                        key={item.key}
+                        anchorId={`family-post-${item.post.id}`}
+                        post={item.post}
+                        memberCount={resolvedMemberCount}
+                        isStaff={isStaff}
+                        previewMode={isPreview ? effectivePreviewMode : null}
+                        viewerKey={viewerKey}
+                        onPreviewInteract={scrollToPreviewCta}
+                        animateEnter={animateEnter}
+                        onOpenComments={
+                          isPreview
+                            ? undefined
+                            : (handlers) => openComments({ postId: item.post.id, ...handlers })
+                        }
+                      />
+                    );
+                  })}
                   {isPreview && effectivePreviewMode && (
                     <FeedPreviewGate mode={effectivePreviewMode} />
                   )}

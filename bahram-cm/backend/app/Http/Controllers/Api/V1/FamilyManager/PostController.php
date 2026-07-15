@@ -30,7 +30,7 @@ class PostController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = FamilyPost::query()
-            ->with(['author:id,name', 'blocks.media', 'targets', 'actions.options'])
+            ->with(['author:id,name', 'blocks.media', 'targets', 'actions.options', 'stats'])
             ->orderByDesc('id');
 
         if ($status = $request->query('status')) {

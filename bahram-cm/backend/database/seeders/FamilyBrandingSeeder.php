@@ -12,9 +12,9 @@ use Illuminate\Database\Seeder;
  */
 class FamilyBrandingSeeder extends Seeder
 {
-    private const PROFILE_AVATAR_PATH = 'family-demo/demo-image-1.jpg';
+    private const PROFILE_AVATAR_PATH = 'media/family/demo/demo-image-1.jpg';
 
-    private const COMMUNITY_AVATAR_PATH = 'family-demo/demo-image-2.jpg';
+    private const COMMUNITY_AVATAR_PATH = 'media/family/demo/demo-image-2.jpg';
 
     public function run(): void
     {

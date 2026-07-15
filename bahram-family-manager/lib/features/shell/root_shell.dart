@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/features/analytics/analytics_screen.dart';
 import 'package:bahram_family_manager/features/comments/comments_screen.dart';
 import 'package:bahram_family_manager/features/families/families_screen.dart';
@@ -10,6 +9,7 @@ import 'package:bahram_family_manager/features/posts/posts_screen.dart';
 import 'package:bahram_family_manager/features/settings/settings_screen.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
+import 'package:bahram_family_manager/widgets/layout/desktop_shell.dart';
 import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
 
 class _Tab {
@@ -89,18 +89,13 @@ class _RootShellState extends State<RootShell> {
 
     final index = _index.clamp(0, visibleTabs.length - 1);
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
+    return DesktopShell(
+      currentIndex: index,
+      onIndexChanged: (i) => setState(() => _index = i),
+      items: visibleTabs
+          .map((t) => AppBottomNavItem(label: t.label, icon: t.icon))
+          .toList(),
       body: visibleTabs[index].builder(context),
-      bottomNavigationBar: visibleTabs.length == 1
-          ? null
-          : AppBottomNav(
-              currentIndex: index,
-              onTap: (i) => setState(() => _index = i),
-              items: visibleTabs
-                  .map((t) => AppBottomNavItem(label: t.label, icon: t.icon))
-                  .toList(),
-            ),
     );
   }
 }

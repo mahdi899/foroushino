@@ -7,7 +7,7 @@ import { useStudentAuth } from './StudentAuthContext';
 import { StudentLoginForm } from './StudentLoginForm';
 
 export function StudentLoginModal() {
-  const { loginOpen, closeLogin, redirectTo } = useStudentAuth();
+  const { loginOpen, closeLogin, redirectTo, loginContext } = useStudentAuth();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -51,6 +51,7 @@ export function StudentLoginModal() {
               variant="modal"
               active={loginOpen}
               onClose={closeLogin}
+              context={loginContext}
             />
           </motion.div>
         </div>

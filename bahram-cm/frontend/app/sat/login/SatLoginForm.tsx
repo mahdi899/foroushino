@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Phone } from 'lucide-react';
 import { apiErrorMessage } from '@/lib/api/errors';
+import { resolveLoginOtpStep } from '@/lib/auth/loginOtpResponse';
 
 function readResponseError(payload: unknown, fallback: string): string {
   if (typeof payload === 'string' && payload.trim()) return payload;
@@ -55,8 +56,21 @@ export function SatLoginForm() {
       return;
     }
 
-    setMobile(json.mobile);
-    setMobileMasked(json.mobile_masked || json.mobile);
+    const step = resolveLoginOtpStep(json);
+
+    if (step.kind === 'authenticated') {
+      router.push('/sat');
+      router.refresh();
+      return;
+    }
+
+    if (step.kind === 'invalid') {
+      setError(step.message);
+      return;
+    }
+
+    setMobile(step.mobile);
+    setMobileMasked(step.mobile_masked);
     setStep('otp');
     setResendIn(RESEND_SECONDS);
   }

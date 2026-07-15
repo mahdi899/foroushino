@@ -40,12 +40,38 @@ export function useFamilyNotifications(enabled: boolean) {
     notifications: data?.data ?? [],
     isLoading,
     markRead: async (id: number) => {
-      await markNotificationRead(id);
-      await mutate();
+      const readAt = new Date().toISOString();
+      await mutate(
+        (current) => {
+          if (!current) return current;
+          return {
+            data: current.data.map((n) => (n.id === id ? { ...n, read_at: n.read_at ?? readAt } : n)),
+          };
+        },
+        { revalidate: false },
+      );
+      try {
+        await markNotificationRead(id);
+      } finally {
+        await mutate();
+      }
     },
     markAllRead: async () => {
-      await markAllNotificationsRead();
-      await mutate();
+      const readAt = new Date().toISOString();
+      await mutate(
+        (current) => {
+          if (!current) return current;
+          return {
+            data: current.data.map((n) => ({ ...n, read_at: n.read_at ?? readAt })),
+          };
+        },
+        { revalidate: false },
+      );
+      try {
+        await markAllNotificationsRead();
+      } finally {
+        await mutate();
+      }
     },
   };
 }

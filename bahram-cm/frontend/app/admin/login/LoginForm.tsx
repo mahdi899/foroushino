@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 import { BrandMark } from '@/components/layout/Header';
 import { useFormSecurity } from '@/components/captcha/FormCaptcha';
+import { resolveLoginOtpStep } from '@/lib/auth/loginOtpResponse';
 
 type Props = {
   redirectFrom: string;
@@ -95,14 +96,24 @@ export function AdminLoginForm({ redirectFrom }: Props) {
       return;
     }
 
-    if (!json.otp_required || !json.mobile) {
-      setError('ورود ناموفق بود.');
+    const step = resolveLoginOtpStep(json);
+
+    if (step.kind === 'authenticated') {
+      const from = redirectFrom.startsWith('/admin') ? redirectFrom : '/admin';
+      router.push(from);
+      router.refresh();
       setPending(false);
       return;
     }
 
-    setMobile(String(json.mobile));
-    setMobileMasked(String(json.mobile_masked ?? json.mobile));
+    if (step.kind === 'invalid') {
+      setError(step.message);
+      setPending(false);
+      return;
+    }
+
+    setMobile(step.mobile);
+    setMobileMasked(step.mobile_masked);
     setStep('otp');
     setCode('');
     setResendIn(RESEND_SECONDS);

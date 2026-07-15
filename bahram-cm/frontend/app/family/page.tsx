@@ -21,16 +21,18 @@ async function loadMe(): Promise<{ data: FamilyMeResponse }> {
 }
 
 export default async function FamilyPage() {
-  const user = await getCurrentStudent();
+  const [user, initialFeed, me] = await Promise.all([
+    getCurrentStudent(),
+    loadInitialFeed(),
+    loadMe(),
+  ]);
 
   if (!user) {
-    const initialFeed = await loadInitialFeed();
     return (
       <FamilyHome mode="guest" needsOnboarding={false} initialFeed={initialFeed} viewerKey="guest" />
     );
   }
 
-  const [me, initialFeed] = await Promise.all([loadMe(), loadInitialFeed()]);
   const viewerKey = user.id;
 
   if (!me.data.is_member) {

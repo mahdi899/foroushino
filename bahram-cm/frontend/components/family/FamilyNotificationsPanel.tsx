@@ -2,75 +2,142 @@
 
 import Link from 'next/link';
 import { Bell, CheckCheck, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/cn';
 import { formatRelativeTimeFa } from '@/components/student-panel/utils/relativeTime';
 import { useFamilyNotifications, useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
 import type { FamilyNotification } from '@/lib/family/types';
+import {
+  familyNotificationIcon,
+  familyNotificationVariant,
+} from '@/components/family/familyNotificationMeta';
+
+function NotificationSkeleton({ index }: { index: number }) {
+  return (
+    <div
+      className="family-notif-row family-notif-row--skeleton"
+      style={{ animationDelay: `${index * 55}ms` }}
+      aria-hidden
+    >
+      <div className="family-notif-row__inner">
+        <div className="family-notif-row__avatar family-notif-skel-block rounded-full" />
+        <div className="family-notif-row__body min-w-0 flex-1">
+          <div className="family-notif-row__head">
+            <div className="family-notif-skel-line h-3.5 w-[58%] rounded-full" />
+            <div className="family-notif-skel-line h-2.5 w-10 shrink-0 rounded-full" />
+          </div>
+          <div className="family-notif-skel-line mt-2 h-3 w-full rounded-full" />
+          <div className="family-notif-skel-line mt-1.5 h-3 w-[72%] rounded-full" />
+        </div>
+      </div>
+      <div className="family-notif-row__divider" />
+    </div>
+  );
+}
 
 function NotificationRow({
   notification,
+  index,
   onRead,
 }: {
   notification: FamilyNotification;
+  index: number;
   onRead: (id: number) => void;
 }) {
   const isUnread = !notification.read_at;
+  const Icon = familyNotificationIcon(notification.type);
+  const variant = familyNotificationVariant(notification.type);
+  const hasLink = Boolean(notification.link?.trim());
 
-  return (
-    <article
-      className={`group family-notif-row relative overflow-hidden rounded-2xl border px-4 py-3.5 transition-colors ${
-        isUnread
-          ? 'border-gold/20 bg-gold/[0.04] hover:border-gold/30 hover:bg-gold/[0.06]'
-          : ''
-      }`}
-    >
-      {isUnread && (
-        <span
-          aria-hidden
-          className="absolute top-4 left-4 h-1.5 w-1.5 rounded-full bg-gold shadow-[0_0_8px_rgba(201,147,10,0.55)]"
-        />
-      )}
-      <div className="flex items-start gap-3">
-        <span
-          className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-            isUnread ? 'bg-gold/15 text-gold' : 'family-nav-icon'
-          }`}
+  const handleRead = () => {
+    if (isUnread) onRead(notification.id);
+  };
+
+  const rowContent = (
+    <>
+      <div className="family-notif-row__inner">
+        <div
+          className={cn(
+            'family-notif-row__avatar',
+            `family-notif-row__avatar--${variant}`,
+            !isUnread && 'family-notif-row__avatar--read',
+          )}
         >
-          <Bell className="h-4 w-4" strokeWidth={1.75} />
-        </span>
-        <div className="min-w-0 flex-1 text-right">
-          <div className="flex items-start justify-between gap-2">
-            <time className="shrink-0 text-[11px] text-bone/40" dateTime={notification.created_at}>
-              {formatRelativeTimeFa(notification.created_at)}
-            </time>
-            <h4 className={`text-sm leading-snug ${isUnread ? 'font-semibold text-bone' : 'font-medium text-bone/80'}`}>
+          <Icon className="family-notif-row__avatar-icon" strokeWidth={1.75} aria-hidden />
+          {isUnread && <span className="family-notif-row__badge" aria-hidden />}
+        </div>
+
+        <div className="family-notif-row__body">
+          <div className="family-notif-row__head">
+            <h4 className={cn('family-notif-row__title', isUnread && 'family-notif-row__title--unread')}>
               {notification.title}
             </h4>
+            <time className="family-notif-row__time" dateTime={notification.created_at}>
+              {formatRelativeTimeFa(notification.created_at)}
+            </time>
           </div>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-bone/55">{notification.body}</p>
-          {notification.link && (
-            <Link
-              href={notification.link}
-              onClick={() => {
-                if (isUnread) onRead(notification.id);
-              }}
-              className="mt-2.5 inline-flex items-center gap-1 text-[12px] font-medium text-gold/85 transition hover:text-gold"
-            >
+          <p className="family-notif-row__preview">{notification.body}</p>
+          {hasLink && (
+            <span className="family-notif-row__action">
               {notification.link_label ?? 'مشاهده'}
-              <ChevronRight className="h-3.5 w-3.5 rotate-180" strokeWidth={2} />
-            </Link>
-          )}
-          {!notification.link && isUnread && (
-            <button
-              type="button"
-              onClick={() => onRead(notification.id)}
-              className="mt-2.5 text-[12px] text-bone/45 transition hover:text-bone/70"
-            >
-              علامت‌گذاری به‌عنوان خوانده‌شده
-            </button>
+              <ChevronRight className="family-notif-row__action-icon" strokeWidth={2.25} aria-hidden />
+            </span>
           )}
         </div>
       </div>
-    </article>
+      <div className="family-notif-row__divider" aria-hidden />
+    </>
+  );
+
+  const rowClass = cn(
+    'family-notif-row',
+    isUnread && 'family-notif-row--unread',
+    hasLink && 'family-notif-row--linked',
+  );
+
+  const enterStyle = { animationDelay: `${Math.min(index, 14) * 48}ms` };
+
+  if (hasLink && notification.link) {
+    return (
+      <Link
+        href={notification.link}
+        className={rowClass}
+        style={enterStyle}
+        onClick={handleRead}
+        aria-label={`${notification.title}. ${notification.body}`}
+      >
+        {rowContent}
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className={rowClass}
+      style={enterStyle}
+      onClick={handleRead}
+      disabled={!isUnread}
+      aria-label={
+        isUnread
+          ? `${notification.title}. ${notification.body}. علامت‌گذاری به‌عنوان خوانده‌شده`
+          : `${notification.title}. ${notification.body}`
+      }
+    >
+      {rowContent}
+    </button>
+  );
+}
+
+function NotificationsEmpty() {
+  return (
+    <div className="family-notif-empty" role="status">
+      <div className="family-notif-empty__glow" aria-hidden />
+      <span className="family-notif-empty__icon">
+        <Bell strokeWidth={1.5} aria-hidden />
+      </span>
+      <p className="family-notif-empty__title">اعلان جدیدی ندارید</p>
+      <p className="family-notif-empty__hint">وقتی خبری از خانواده باشد، اینجا می‌بینید</p>
+    </div>
   );
 }
 
@@ -98,35 +165,33 @@ export function FamilyNotificationsPanel({
   };
 
   return (
-    <div className={`flex min-h-0 flex-1 flex-col ${className ?? ''}`}>
-      <header className="family-panel-header flex shrink-0 items-center gap-2 border-b px-4 py-3 backdrop-blur-md lg:px-5">
+    <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
+      <header className="family-panel-header flex shrink-0 items-center gap-2 px-4 py-2.5 lg:px-5">
         {onClose ? (
           <button
             type="button"
             onClick={onClose}
             aria-label="بازگشت به فید"
-            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-bone/65 transition hover:bg-[var(--family-surface-muted)] hover:text-bone"
+            className="family-panel-back"
           >
             <ChevronRight className="h-5 w-5" aria-hidden />
-            <span className="text-sm font-medium">فید</span>
+            <span>فید</span>
           </button>
         ) : (
           <span className="w-[72px]" aria-hidden />
         )}
-        <h2 className="flex flex-1 items-center justify-center gap-2 text-sm font-semibold text-bone">
-          <Bell className="h-4 w-4 text-gold/80" strokeWidth={1.75} />
+        <h2 className="family-panel-title">
+          <Bell className="h-4 w-4 text-[var(--family-tg-pinned-accent)]" strokeWidth={1.75} />
           اعلان‌ها
           {unreadCount > 0 && (
-            <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-bold text-gold">
-              {unreadCount.toLocaleString('fa-IR')}
-            </span>
+            <span className="family-notif-header-badge">{unreadCount.toLocaleString('fa-IR')}</span>
           )}
         </h2>
         {unreadCount > 0 ? (
           <button
             type="button"
             onClick={() => void handleMarkAll()}
-            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[12px] text-bone/55 transition hover:bg-[var(--family-surface-muted)] hover:text-bone"
+            className="family-panel-back family-notif-mark-all text-[12px]"
           >
             <CheckCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
             همه
@@ -137,25 +202,24 @@ export function FamilyNotificationsPanel({
       </header>
 
       <div className="family-feed-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="mx-auto w-full max-w-[680px] px-3 py-4 sm:px-4 lg:px-5 lg:py-5">
+        <div className="family-notif-panel">
           {isLoading ? (
-            <div className="flex min-h-[40vh] items-center justify-center" aria-busy>
-              <span
-                className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80"
-                aria-label="در حال بارگذاری"
-              />
+            <div className="family-notif-list" aria-busy aria-label="در حال بارگذاری اعلان‌ها">
+              {Array.from({ length: 6 }, (_, i) => (
+                <NotificationSkeleton key={i} index={i} />
+              ))}
             </div>
           ) : notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-              <span className="family-chip flex h-14 w-14 items-center justify-center rounded-2xl border text-bone/35">
-                <Bell className="h-6 w-6" strokeWidth={1.5} />
-              </span>
-              <p className="text-sm text-bone/50">اعلان جدیدی ندارید</p>
-            </div>
+            <NotificationsEmpty />
           ) : (
-            <div className="space-y-2.5">
-              {notifications.map((notification) => (
-                <NotificationRow key={notification.id} notification={notification} onRead={handleMarkRead} />
+            <div className="family-notif-list">
+              {notifications.map((notification, index) => (
+                <NotificationRow
+                  key={notification.id}
+                  notification={notification}
+                  index={index}
+                  onRead={handleMarkRead}
+                />
               ))}
             </div>
           )}

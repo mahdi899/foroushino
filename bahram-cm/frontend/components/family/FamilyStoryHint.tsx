@@ -6,6 +6,7 @@ type FamilyStoryHintProps = {
   hasUnseen: boolean;
   onOpenStories: () => void;
   className?: string;
+  showOnlineDot?: boolean;
 };
 
 /** Member count + optional «استوری جدید» — same pattern on mobile header and desktop sidebar. */
@@ -14,7 +15,8 @@ export function FamilyStoryHint({
   memberLabel = 'عضو',
   hasUnseen,
   onOpenStories,
-  className = 'text-[11px] text-bone/50 lg:text-xs',
+  className = 'family-topbar__subtitle',
+  showOnlineDot = false,
 }: FamilyStoryHintProps) {
   const hasMembers = typeof memberCount === 'number';
 
@@ -23,7 +25,8 @@ export function FamilyStoryHint({
   return (
     <p className={className}>
       {hasMembers && (
-        <span>
+        <span className="family-topbar__subtitle--live">
+          {showOnlineDot && <span className="family-topbar__meta-dot" aria-hidden />}
           {memberCount.toLocaleString('fa-IR')} {memberLabel}
         </span>
       )}
@@ -31,7 +34,7 @@ export function FamilyStoryHint({
         <button
           type="button"
           onClick={onOpenStories}
-          className="font-medium text-gold transition hover:text-gold/80"
+          className="font-medium text-[var(--family-tg-pinned-accent)] transition hover:opacity-80"
         >
           {hasMembers ? ' · ' : ''}
           استوری جدید

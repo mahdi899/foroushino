@@ -2,6 +2,7 @@ import { LinkButton } from '@/components/ui/Button';
 import { Eyebrow } from '@/components/ui/Eyebrow';
 import { Marquee } from '@/components/motion/Marquee';
 import { Reveal } from '@/components/motion/Reveal';
+import { FamilyPulseQuote } from '@/components/sections/FamilyPulseQuote';
 import { getFamilyPulse } from '@/lib/family/pulse';
 
 export async function FamilyPulseSection() {
@@ -33,17 +34,7 @@ export async function FamilyPulseSection() {
         />
         <Marquee speed={48} className="py-1">
           {items.map((item) => (
-            <blockquote
-              key={item.id}
-              className="max-w-[16.5rem] shrink-0 border-s border-gold/30 ps-4 sm:max-w-[20rem]"
-            >
-              <p className="line-clamp-3 text-start text-sm leading-6 text-bone/80">
-                {item.body}
-              </p>
-              <footer className="mt-2 text-start text-xs font-medium text-gold/75">
-                — {item.name}
-              </footer>
-            </blockquote>
+            <FamilyPulseQuote key={item.id} body={item.body} name={item.name} />
           ))}
         </Marquee>
       </div>

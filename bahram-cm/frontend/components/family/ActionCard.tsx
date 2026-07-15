@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
   BarChart3,
   CheckCircle2,
@@ -17,6 +18,8 @@ import {
   applyMultiChoiceVote,
   applySingleChoiceVote,
 } from '@/lib/family/actionResults';
+import { familyMotion } from '@/lib/family/motion';
+import { useFamilyActionCelebrate } from '@/lib/family/FamilyActionCelebrateContext';
 import type { FamilyAction, FamilyActionResults, FamilyActionType } from '@/lib/family/types';
 
 function actionTypeMeta(type: FamilyActionType): { label: string; Icon: LucideIcon } {
@@ -43,10 +46,12 @@ function PollParticipation({
   results,
   memberCount,
   isStaff,
+  className,
 }: {
   results: FamilyActionResults | null | undefined;
   memberCount: number;
   isStaff: boolean;
+  className?: string;
 }) {
   if (memberCount <= 0) return null;
 
@@ -54,11 +59,11 @@ function PollParticipation({
   const percent = Math.min(100, Math.round((answered / memberCount) * 100));
 
   return (
-    <p className="text-[11px] tabular-nums text-bone/50">
+    <span className={cn('family-action-meta', className)}>
       {isStaff
         ? `${answered.toLocaleString('en-US')} از ${memberCount.toLocaleString('en-US')} نفر پاسخ دادند`
         : `${percent.toLocaleString('en-US')}٪ شرکت کردند`}
-    </p>
+    </span>
   );
 }
 
@@ -66,34 +71,136 @@ function PollResults({
   results,
   memberCount,
   isStaff,
+  done = false,
 }: {
   results: FamilyActionResults;
   memberCount?: number;
   isStaff?: boolean;
+  done?: boolean;
+}) {
+  const reduceMotion = useReducedMotion();
+  const topPercent = Math.max(...results.options.map((o) => o.percent), 0);
+
+  return (
+    <motion.div
+      className={cn('family-action-results', done && 'family-action-results--done')}
+      initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={familyMotion.tweenFast}
+    >
+      <ul className="family-action-poll-list">
+        {results.options.map((option, index) => {
+          const isLeader = option.percent > 0 && option.percent === topPercent;
+          const fillWidth = `${Math.max(option.percent, option.percent > 0 ? 6 : 0)}%`;
+          return (
+            <motion.li
+              key={option.value}
+              className="family-action-poll-row"
+              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ ...familyMotion.tweenFast, delay: index * familyMotion.stagger }}
+            >
+              <motion.div
+                className={cn('family-action-poll-row__fill', isLeader && 'family-action-poll-row__fill--lead')}
+                initial={reduceMotion ? false : { width: 0 }}
+                animate={{ width: fillWidth }}
+                transition={{ duration: 0.72, ease: familyMotion.tween.ease, delay: index * 0.06 }}
+                aria-hidden
+              />
+              <div className="family-action-poll-row__content">
+                <span className="family-action-poll-row__label">{option.label}</span>
+                <span className="family-action-poll-row__stat tabular-nums">{option.percent}٪</span>
+              </div>
+            </motion.li>
+          );
+        })}
+      </ul>
+      <div className="family-action-meta family-action-meta--footer">
+        {results.total.toLocaleString('fa-IR')} رأی
+        {memberCount != null && memberCount > 0 ? (
+          <>
+            <span className="family-action-meta__dot" aria-hidden>
+              ·
+            </span>
+            <PollParticipation
+              results={results}
+              memberCount={memberCount}
+              isStaff={Boolean(isStaff)}
+              className="family-action-meta--inline"
+            />
+          </>
+        ) : null}
+      </div>
+    </motion.div>
+  );
+}
+
+function ActionHeader({
+  typeLabel,
+  Icon,
+  prompt,
+  hidePrompt,
+  meta,
+}: {
+  typeLabel: string;
+  Icon: LucideIcon;
+  prompt: string;
+  hidePrompt?: boolean;
+  meta?: ReactNode;
 }) {
   return (
-    <div className="space-y-2.5 border-t border-[var(--family-border-subtle)] pt-3">
-      {memberCount != null && memberCount > 0 && (
-        <PollParticipation results={results} memberCount={memberCount} isStaff={Boolean(isStaff)} />
-      )}
-      {results.options.map((option) => (
-        <div key={option.value} className="space-y-1">
-          <div className="flex items-center justify-between gap-2 text-xs">
-            <span className="text-bone/85">{option.label}</span>
-            <span className="shrink-0 tabular-nums text-bone/50">
-              {option.percent}٪ · {option.count} رأی
-            </span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-[var(--family-surface-muted)]">
-            <div
-              className="h-full rounded-full bg-[var(--family-accent)] transition-[width] duration-500 ease-out"
-              style={{ width: `${option.percent}%` }}
-            />
-          </div>
-        </div>
-      ))}
-      <p className="text-[11px] text-bone/45">{results.total} رأی ثبت‌شده</p>
+    <div className="family-action-header">
+      <div className="family-action-header__top">
+        <span className="family-action-kicker">
+          <Icon className="h-3 w-3" strokeWidth={2} aria-hidden />
+          {typeLabel}
+        </span>
+        {meta}
+      </div>
+      {!hidePrompt && prompt ? <p className="family-action-question">{prompt}</p> : null}
     </div>
+  );
+}
+
+function ActionShell({
+  done = false,
+  children,
+}: {
+  done?: boolean;
+  children: ReactNode;
+}) {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      className={cn('family-action-glass', done && 'family-action-glass--done')}
+      initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={familyMotion.tweenFast}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function ActionSuccess({ compact = false }: { compact?: boolean }) {
+  const reduceMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      className={cn('family-action-success', compact && 'family-action-success--compact')}
+      initial={reduceMotion ? false : { opacity: 0, scale: 0.94 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={familyMotion.spring}
+    >
+      <CheckCircle2 className="family-action-success__icon" strokeWidth={2.25} aria-hidden />
+      <div className="min-w-0">
+        <p className="family-action-success__title">پاسخ شما ثبت شد</p>
+        {!compact && (
+          <p className="family-action-success__sub">بهرام می‌تواند پاسخت را ببیند</p>
+        )}
+      </div>
+    </motion.div>
   );
 }
 
@@ -108,8 +215,6 @@ export function ActionCard({
   isStaff?: boolean;
   hidePrompt?: boolean;
 }) {
-  // Keep optimistic local submit separate from feed `responded` so stale SWR
-  // cache from a previous viewer cannot trap the card in the done state.
   const [justSubmitted, setJustSubmitted] = useState(false);
   const submitted = Boolean(action.responded) || justSubmitted;
   const [pending, setPending] = useState(false);
@@ -119,6 +224,7 @@ export function ActionCard({
   const [scale, setScale] = useState<number | null>(null);
   const [results, setResults] = useState<FamilyActionResults | null | undefined>(action.results);
   const { label: typeLabel, Icon: TypeIcon } = actionTypeMeta(action.type);
+  const celebrate = useFamilyActionCelebrate();
 
   const submit = async (value: Record<string, unknown>, nextResults?: FamilyActionResults) => {
     if (pending || submitted) return;
@@ -130,6 +236,7 @@ export function ActionCard({
       await respondToAction(action.id, value);
       if (nextResults) setResults(nextResults);
       setJustSubmitted(true);
+      celebrate({ type: action.type });
     } finally {
       setPending(false);
     }
@@ -142,51 +249,42 @@ export function ActionCard({
   const isPollType =
     action.type === 'single_choice' || action.type === 'multi_choice' || action.type === 'confirmation';
 
-  const pollParticipation =
-    isPollType && memberCount != null && memberCount > 0 ? (
+  const pollMeta =
+    isPollType && memberCount != null && memberCount > 0 && !submitted ? (
       <PollParticipation results={results} memberCount={memberCount} isStaff={isStaff} />
     ) : null;
 
   if (submitted) {
     return (
-      <div className="family-action-panel family-action-panel--done space-y-3">
-        <div className="flex items-center gap-2.5">
-          <span className="family-action-badge shrink-0" aria-label={typeLabel} title={typeLabel}>
-            <TypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-          </span>
-          <p className="text-[13px] font-medium text-bone/55">{typeLabel}</p>
-        </div>
-
-        <div className="family-action-receipt">
-          <span className="family-action-receipt__mark" aria-hidden>
-            <CheckCircle2 className="h-4 w-4" strokeWidth={2} />
-          </span>
-          <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-bone/90">پاسخ شما ثبت شد</p>
-            <p className="mt-0.5 text-[12px] leading-5 text-bone/50">بهرام می‌تواند آن را ببیند.</p>
-          </div>
-        </div>
-
-        {showResults && (
-          <PollResults results={results} memberCount={memberCount} isStaff={isStaff} />
+      <ActionShell done>
+        {!hidePrompt && action.prompt ? (
+          <p className="family-action-done-question">{action.prompt}</p>
+        ) : null}
+        {showResults ? (
+          <PollResults
+            results={results}
+            memberCount={memberCount}
+            isStaff={isStaff}
+            done
+          />
+        ) : (
+          <ActionSuccess compact />
         )}
-      </div>
+      </ActionShell>
     );
   }
 
   const wrap = (children: React.ReactNode) => (
-    <div className="family-action-panel space-y-3">
-      <div className="flex items-start gap-2.5">
-        <span className="family-action-badge mt-0.5 shrink-0" aria-label={typeLabel} title={typeLabel}>
-          <TypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
-        </span>
-        {!hidePrompt && (
-          <p className="min-w-0 flex-1 text-[14px] font-semibold leading-6 text-bone">{action.prompt}</p>
-        )}
-      </div>
-      {pollParticipation}
-      {children}
-    </div>
+    <ActionShell>
+      <ActionHeader
+        typeLabel={typeLabel}
+        Icon={TypeIcon}
+        prompt={action.prompt}
+        hidePrompt={hidePrompt}
+        meta={pollMeta}
+      />
+      <div className="family-action-controls">{children}</div>
+    </ActionShell>
   );
 
   switch (action.type) {
@@ -196,7 +294,7 @@ export function ActionCard({
           type="button"
           disabled={pending}
           onClick={() => submit({ committed: true })}
-          className="family-btn-primary w-full rounded-xl py-2.5 text-sm disabled:opacity-60"
+          className="family-action-cta"
         >
           متعهد می‌شوم
         </button>,
@@ -204,29 +302,23 @@ export function ActionCard({
 
     case 'confirmation':
       return wrap(
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() =>
-                submit({ confirmed: true }, applyConfirmationVote(results, true))
-              }
-              className="family-btn-primary flex-1 rounded-xl py-2.5 text-sm disabled:opacity-60"
-            >
-              انجام دادم
-            </button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() =>
-                submit({ confirmed: false }, applyConfirmationVote(results, false))
-              }
-              className="family-input flex-1 rounded-xl py-2.5 text-sm font-semibold text-bone/70 transition active:scale-[0.98] disabled:opacity-60"
-            >
-              هنوز نه
-            </button>
-          </div>
+        <div className="family-action-split">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => submit({ confirmed: true }, applyConfirmationVote(results, true))}
+            className="family-action-cta family-action-cta--half"
+          >
+            انجام دادم
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => submit({ confirmed: false }, applyConfirmationVote(results, false))}
+            className="family-action-cta family-action-cta--half family-action-cta--ghost"
+          >
+            هنوز نه
+          </button>
         </div>,
       );
 
@@ -237,23 +329,27 @@ export function ActionCard({
             e.preventDefault();
             if (numberValue) submit({ option: numberValue });
           }}
-          className="flex gap-2"
+          className="family-action-number-form"
         >
-          <input
-            type="number"
-            inputMode="decimal"
-            value={numberValue}
-            onChange={(e) => setNumberValue(e.target.value)}
-            className="family-input w-[7.5rem] max-w-[38%] shrink-0 rounded-xl px-3 py-2 text-sm sm:w-28"
-            placeholder="عدد را وارد کن"
-          />
-          <button
-            type="submit"
-            disabled={pending || !numberValue}
-            className="family-btn-primary min-w-0 flex-1 rounded-xl px-4 py-2 text-sm disabled:opacity-60"
-          >
-            ثبت
-          </button>
+          <div className="family-action-number-bar">
+            <input
+              type="number"
+              inputMode="decimal"
+              dir="ltr"
+              value={numberValue}
+              onChange={(e) => setNumberValue(e.target.value)}
+              className="family-action-field family-action-field--number"
+              placeholder="عدد را وارد کن"
+              aria-label="عدد"
+            />
+            <button
+              type="submit"
+              disabled={pending || !numberValue}
+              className="family-action-number-submit"
+            >
+              ثبت
+            </button>
+          </div>
         </form>,
       );
 
@@ -264,22 +360,22 @@ export function ActionCard({
             e.preventDefault();
             if (textValue.trim()) submit({ text: textValue.trim() });
           }}
-          className="space-y-2"
+          className="family-action-compose"
         >
           <textarea
             value={textValue}
             onChange={(e) => setTextValue(e.target.value)}
             rows={2}
             maxLength={500}
-            className="family-input w-full resize-none rounded-xl px-3 py-2 text-sm"
-            placeholder="پاسخت رو بنویس…"
+            className="family-action-field family-action-field--area"
+            placeholder="پاسخت را بنویس…"
           />
           <button
             type="submit"
             disabled={pending || !textValue.trim()}
-            className="family-btn-primary w-full rounded-xl px-4 py-2.5 text-sm disabled:opacity-60"
+            className="family-action-cta"
           >
-            ثبت پاسخ
+            ارسال پاسخ
           </button>
         </form>,
       );
@@ -287,7 +383,7 @@ export function ActionCard({
     case 'single_choice':
     case 'multi_choice':
       return wrap(
-        <div className="space-y-2">
+        <div className="family-action-options">
           {action.options.map((opt) => {
             const isSelected = selected.includes(opt.value);
             return (
@@ -304,14 +400,10 @@ export function ActionCard({
                         : [...prev, opt.value],
                   );
                 }}
-                className={cn(
-                  'block w-full rounded-xl border px-3 py-2 text-right text-sm transition',
-                  isSelected
-                    ? 'border-[color-mix(in_oklab,var(--family-accent)_45%,var(--family-border))] bg-[color-mix(in_oklab,var(--family-accent)_10%,var(--family-surface-soft))] text-[var(--family-accent)]'
-                    : 'family-input text-bone/80 hover:bg-[var(--family-input-bg)]',
-                )}
+                className={cn('family-action-option', isSelected && 'family-action-option--selected')}
               >
-                {opt.label}
+                <span className="family-action-option__radio" aria-hidden />
+                <span className="family-action-option__label">{opt.label}</span>
               </button>
             );
           })}
@@ -321,18 +413,12 @@ export function ActionCard({
             onClick={() => {
               if (action.type === 'single_choice') {
                 const value = selected[0];
-                submit(
-                  { option: value },
-                  applySingleChoiceVote(results, action.options, value),
-                );
+                submit({ option: value }, applySingleChoiceVote(results, action.options, value));
                 return;
               }
-              submit(
-                { options: selected },
-                applyMultiChoiceVote(results, action.options, selected),
-              );
+              submit({ options: selected }, applyMultiChoiceVote(results, action.options, selected));
             }}
-            className="family-btn-primary w-full rounded-xl py-2.5 text-sm disabled:opacity-60"
+            className="family-action-cta"
           >
             ثبت پاسخ
           </button>
@@ -345,17 +431,15 @@ export function ActionCard({
       const values = Array.from({ length: max - min + 1 }, (_, i) => min + i);
 
       return wrap(
-        <div className="space-y-3">
-          <div className="flex justify-between gap-1">
+        <div className="family-action-scale">
+          <div className="family-action-segmented" role="group" aria-label="امتیاز">
             {values.map((n) => (
               <button
                 key={n}
                 type="button"
                 onClick={() => setScale(n)}
-                className={cn(
-                  'h-8 flex-1 rounded-lg text-xs font-semibold transition',
-                  scale === n ? 'family-btn-primary' : 'bg-[var(--family-surface-muted)] text-bone/60',
-                )}
+                aria-pressed={scale === n}
+                className={cn('family-action-segment', scale === n && 'family-action-segment--active')}
               >
                 {n}
               </button>
@@ -365,9 +449,9 @@ export function ActionCard({
             type="button"
             disabled={pending || scale === null}
             onClick={() => submit({ score: scale })}
-            className="family-btn-primary w-full rounded-xl py-2.5 text-sm disabled:opacity-60"
+            className="family-action-cta"
           >
-            ثبت
+            ثبت{scale != null ? ` · ${scale.toLocaleString('fa-IR')}` : ''}
           </button>
         </div>,
       );

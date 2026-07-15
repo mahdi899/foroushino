@@ -100,7 +100,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       <div
         ref={containerRef}
         className={cn(
-          'family-feed-video relative mx-auto w-full overflow-hidden rounded-2xl bg-[var(--family-surface-soft)]',
+          'family-feed-video relative w-full overflow-hidden rounded-2xl bg-[var(--family-surface-soft)]',
           isPortrait ? 'family-feed-video--portrait' : 'family-feed-video--landscape',
         )}
         style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}

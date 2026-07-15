@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ReactElement } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ActionCard } from "@/components/family/ActionCard";
+import { FamilyActionCelebrateProvider } from "@/lib/family/FamilyActionCelebrateContext";
 import type { FamilyAction } from "@/lib/family/types";
 
 const { respondToAction } = vi.hoisted(() => ({ respondToAction: vi.fn() }));
@@ -20,6 +22,10 @@ function makeAction(overrides: Partial<FamilyAction> = {}): FamilyAction {
   };
 }
 
+function renderActionCard(ui: ReactElement) {
+  return render(<FamilyActionCelebrateProvider>{ui}</FamilyActionCelebrateProvider>);
+}
+
 describe("ActionCard", () => {
   beforeEach(() => {
     respondToAction.mockReset();
@@ -27,7 +33,7 @@ describe("ActionCard", () => {
 
   it("submits a commitment action and shows the confirmation state", async () => {
     respondToAction.mockResolvedValueOnce({ data: {} });
-    render(<ActionCard action={makeAction()} />);
+    renderActionCard(<ActionCard action={makeAction()} />);
 
     fireEvent.click(screen.getByRole("button", { name: /متعهد می‌شوم/ }));
 
@@ -36,19 +42,23 @@ describe("ActionCard", () => {
   });
 
   it("restores submitted state from feed when already responded", () => {
-    render(<ActionCard action={makeAction({ responded: true, results: null })} />);
+    renderActionCard(<ActionCard action={makeAction({ responded: true, results: null })} />);
 
     expect(screen.getByText(/پاسخ شما ثبت شد/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /متعهد می‌شوم/ })).not.toBeInTheDocument();
   });
 
   it("clears done state when feed responded flag becomes false for a new viewer", () => {
-    const { rerender } = render(
+    const { rerender } = renderActionCard(
       <ActionCard action={makeAction({ responded: true, results: null })} />,
     );
     expect(screen.getByText(/پاسخ شما ثبت شد/)).toBeInTheDocument();
 
-    rerender(<ActionCard action={makeAction({ responded: false, results: null })} />);
+    rerender(
+      <FamilyActionCelebrateProvider>
+        <ActionCard action={makeAction({ responded: false, results: null })} />
+      </FamilyActionCelebrateProvider>,
+    );
 
     expect(screen.queryByText(/پاسخ شما ثبت شد/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /متعهد می‌شوم/ })).toBeInTheDocument();
@@ -56,7 +66,7 @@ describe("ActionCard", () => {
 
   it("submits a confirmation action's negative answer", async () => {
     respondToAction.mockResolvedValueOnce({ data: {} });
-    render(<ActionCard action={makeAction({ id: 2, type: "confirmation" })} />);
+    renderActionCard(<ActionCard action={makeAction({ id: 2, type: "confirmation" })} />);
 
     fireEvent.click(screen.getByRole("button", { name: "هنوز نه" }));
 
@@ -64,7 +74,7 @@ describe("ActionCard", () => {
   });
 
   it("requires a value before enabling the number submit button", () => {
-    render(<ActionCard action={makeAction({ id: 3, type: "number" })} />);
+    renderActionCard(<ActionCard action={makeAction({ id: 3, type: "number" })} />);
 
     const submitButton = screen.getByRole("button", { name: "ثبت" });
     expect(submitButton).toBeDisabled();
@@ -83,7 +93,7 @@ describe("ActionCard", () => {
         { id: 2, label: "خیر", value: "no", position: 1 },
       ],
     });
-    render(<ActionCard action={action} />);
+    renderActionCard(<ActionCard action={action} />);
 
     fireEvent.click(screen.getByText("بله"));
     fireEvent.click(screen.getByRole("button", { name: "ثبت پاسخ" }));
@@ -101,7 +111,7 @@ describe("ActionCard", () => {
         { id: 2, label: "شب", value: "night", position: 1 },
       ],
     });
-    render(<ActionCard action={action} />);
+    renderActionCard(<ActionCard action={action} />);
 
     fireEvent.click(screen.getByText("صبح"));
     fireEvent.click(screen.getByText("شب"));
@@ -114,10 +124,10 @@ describe("ActionCard", () => {
 
   it("submits a scale rating", async () => {
     respondToAction.mockResolvedValueOnce({ data: {} });
-    render(<ActionCard action={makeAction({ id: 6, type: "scale" })} />);
+    renderActionCard(<ActionCard action={makeAction({ id: 6, type: "scale" })} />);
 
     fireEvent.click(screen.getByText("7"));
-    fireEvent.click(screen.getByRole("button", { name: "ثبت" }));
+    fireEvent.click(screen.getByRole("button", { name: /ثبت/ }));
 
     await waitFor(() => expect(respondToAction).toHaveBeenCalledWith(6, { score: 7 }));
   });
@@ -130,7 +140,7 @@ describe("ActionCard", () => {
           resolveResponse = () => resolve({ data: {} });
         }),
     );
-    render(<ActionCard action={makeAction({ id: 7 })} />);
+    renderActionCard(<ActionCard action={makeAction({ id: 7 })} />);
 
     const button = screen.getByRole("button", { name: /متعهد می‌شوم/ });
     fireEvent.click(button);
@@ -142,7 +152,7 @@ describe("ActionCard", () => {
   });
 
   it("shows staff poll participation counts", () => {
-    render(
+    renderActionCard(
       <ActionCard
         action={makeAction({
           type: "single_choice",
@@ -161,7 +171,7 @@ describe("ActionCard", () => {
   });
 
   it("shows member poll participation percent", () => {
-    render(
+    renderActionCard(
       <ActionCard
         action={makeAction({
           type: "confirmation",

@@ -35,7 +35,8 @@ return [
             'timeout' => (int) env('FAMILY_MEDIA_FTP_TIMEOUT', 60),
         ],
         'cdn_url' => rtrim((string) env('FAMILY_MEDIA_CDN_URL', ''), '/'),
-        'disk' => env('FAMILY_MEDIA_DISK', 'family_media_ftp'),
+        // Local dev without FTP credentials defaults to public disk (media/family/…).
+        'disk' => env('FAMILY_MEDIA_DISK') ?: (env('FAMILY_MEDIA_FTP_HOST') ? 'family_media_ftp' : 'public'),
         'temp_disk' => env('FAMILY_MEDIA_TEMP_DISK', 'local'),
         'temp_path' => 'family-ingest',
         'max_voice_mb' => (int) env('FAMILY_MEDIA_MAX_VOICE_MB', 50),
