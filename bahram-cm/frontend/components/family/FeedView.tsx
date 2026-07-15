@@ -62,6 +62,7 @@ export function FeedView({
   const bottomAnchorRef = useRef<HTMLDivElement | null>(null);
   const topSentinelRef = useRef<HTMLDivElement | null>(null);
   const initialScrollDoneRef = useRef(false);
+  const anchoredToBottomRef = useRef(false);
   const historyReadyRef = useRef(false);
   const loadingHistoryRef = useRef(false);
   const scrollRestoreRef = useRef<{ height: number; top: number } | null>(null);
@@ -80,7 +81,7 @@ export function FeedView({
     const root = feedScrollRef.current;
     if (!root) return;
     root.scrollTo({ top: root.scrollHeight, behavior });
-    bottomAnchorRef.current?.scrollIntoView({ block: 'end', behavior });
+    anchoredToBottomRef.current = true;
   }, []);
 
   useEffect(() => {
@@ -140,8 +141,11 @@ export function FeedView({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (!historyReadyRef.current) return;
+        if (!historyReadyRef.current || !anchoredToBottomRef.current) return;
         if (!entries[0]?.isIntersecting || isValidating || loadingHistoryRef.current) return;
+
+        const distanceFromBottom = root.scrollHeight - root.clientHeight - root.scrollTop;
+        if (distanceFromBottom < 80) return;
 
         loadingHistoryRef.current = true;
         scrollRestoreRef.current = {
@@ -199,13 +203,13 @@ export function FeedView({
             <div ref={feedContentRef} className="mx-auto flex w-full max-w-[680px] flex-col">
               {isLoading && posts.length === 0 ? (
                 <>
-                  <div className="flex items-center gap-2 border-b border-white/[0.06] px-3 py-3 sm:px-4 lg:px-5">
+                  <div className="family-panel-header flex items-center gap-2 border-b px-3 py-3 sm:px-4 lg:px-5">
                     <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80" />
                     <span className="text-[13px] text-bone/45">در حال بارگذاری…</span>
                   </div>
                   <div className="space-y-3 px-3 py-4 sm:px-4 lg:px-5 lg:py-5">
                     {[0, 1, 2, 3].map((i) => (
-                      <div key={i} className="h-40 animate-pulse rounded-2xl bg-white/5 lg:h-44" />
+                      <div key={i} className="family-skeleton h-40 animate-pulse rounded-2xl lg:h-44" />
                     ))}
                   </div>
                 </>

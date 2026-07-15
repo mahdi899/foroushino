@@ -39,6 +39,11 @@ export function readResolvedTheme(): SiteTheme {
   );
   if (fromPanelRoot) return fromPanelRoot;
 
+  const fromFamilyRoot = parseSiteTheme(
+    document.getElementById("family-root")?.getAttribute("data-family-theme"),
+  );
+  if (fromFamilyRoot) return fromFamilyRoot;
+
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
@@ -46,6 +51,7 @@ export function readResolvedTheme(): SiteTheme {
 export function applyResolvedTheme(theme: SiteTheme) {
   document.documentElement.setAttribute("data-theme", theme);
   document.getElementById("panel-root")?.setAttribute("data-panel-theme", theme);
+  document.getElementById("family-root")?.setAttribute("data-family-theme", theme);
   try {
     localStorage.setItem(SITE_THEME_STORAGE_KEY, theme);
     localStorage.removeItem(LEGACY_PANEL_THEME_STORAGE_KEY);

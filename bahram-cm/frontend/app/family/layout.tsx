@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from 'next';
+import { cookies } from 'next/headers';
 import { FamilyMediaPlayerProvider } from '@/lib/family/FamilyMediaPlayerContext';
+import { FamilyThemeBoot } from '@/app/family/FamilyThemeBoot';
+import { DEFAULT_SITE_THEME, SITE_THEME_COOKIE_KEY, parseSiteTheme } from '@/lib/site-theme';
 
 export const metadata: Metadata = {
   title: 'خانواده داداش بهرام',
@@ -15,22 +18,35 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0b0f10',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f4f8f8' },
+    { media: '(prefers-color-scheme: dark)', color: '#050a0b' },
+  ],
 };
 
-export default function FamilyLayout({ children }: { children: React.ReactNode }) {
+export default async function FamilyLayout({ children }: { children: React.ReactNode }) {
+  const initialTheme =
+    parseSiteTheme((await cookies()).get(SITE_THEME_COOKIE_KEY)?.value) ?? DEFAULT_SITE_THEME;
+
   return (
-    <div dir="rtl" className="h-[100dvh] overflow-hidden bg-[#070b0d] text-bone antialiased">
+    <div
+      id="family-root"
+      dir="rtl"
+      data-family-theme={initialTheme}
+      className="family-app family-app__canvas h-[100dvh] overflow-hidden antialiased"
+      suppressHydrationWarning
+    >
+      <FamilyThemeBoot />
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 hidden lg:block"
         style={{
           backgroundImage:
-            'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.03) 0%, transparent 55%), radial-gradient(circle at 20% 80%, rgba(201,162,39,0.04) 0%, transparent 40%)',
+            'radial-gradient(circle at 50% 0%, color-mix(in oklab, var(--family-accent) 6%, transparent) 0%, transparent 55%), radial-gradient(circle at 20% 80%, color-mix(in oklab, var(--family-gold) 5%, transparent) 0%, transparent 40%)',
         }}
       />
       <FamilyMediaPlayerProvider>
-        <div className="relative mx-auto flex h-[100dvh] w-full max-w-[680px] flex-col overflow-hidden bg-charcoal lg:h-[calc(100dvh-1.5rem)] lg:max-w-[min(1280px,calc(100%-2rem))] lg:rounded-2xl lg:border lg:border-white/[0.08] lg:shadow-[0_0_80px_rgba(0,0,0,0.45)] lg:my-3">
+        <div className="family-app__frame relative mx-auto flex h-[100dvh] w-full max-w-[680px] flex-col overflow-hidden lg:my-3 lg:h-[calc(100dvh-1.5rem)] lg:max-w-[min(1280px,calc(100%-2rem))] lg:rounded-2xl">
           {children}
         </div>
       </FamilyMediaPlayerProvider>

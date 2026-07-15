@@ -61,9 +61,9 @@ export function PostCard({
   return (
     <article
       className={cn(
-        'space-y-3 rounded-2xl border p-3.5 sm:p-4 lg:rounded-[18px]',
+        'space-y-3 rounded-2xl p-3.5 sm:p-4 lg:rounded-[18px]',
         compact && 'space-y-2 p-3',
-        post.is_important ? 'border-gold/40 bg-gold/[0.06]' : 'border-white/10 bg-[#141a1f] lg:bg-[#151c22]',
+        post.is_important ? 'family-card--important' : 'family-card',
       )}
     >
       <header className="flex items-center justify-between">
@@ -101,9 +101,9 @@ export function PostCard({
 
       {actions.map((action) => <ActionCard key={action.id} action={action} />)}
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="space-y-2 border-t border-[var(--family-border-subtle)] pt-2.5">
         {post.published_at && (
-          <time dateTime={post.published_at} className="shrink-0 text-[11px] tabular-nums text-bone/40">
+          <time dateTime={post.published_at} className="block text-[11px] tabular-nums text-bone/40">
             {formatPostDateTime(post.published_at)}
           </time>
         )}

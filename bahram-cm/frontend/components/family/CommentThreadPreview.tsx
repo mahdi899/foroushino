@@ -18,7 +18,7 @@ function AvatarStack({ comments }: { comments: FamilyComment[] }) {
           name={comment.user.name}
           avatar={comment.user.avatar}
           size="xs"
-          className={cn('relative border-2 border-charcoal', index > 0 && '-ms-2')}
+          className={cn('relative border-2 border-[var(--family-surface-elevated)]', index > 0 && '-ms-2')}
           style={{ zIndex: visible.length - index } as CSSProperties}
         />
       ))}
@@ -44,16 +44,16 @@ export function CommentThreadPreview({
   const hasComments = count > 0;
 
   return (
-    <div className="border-t border-white/10 pt-2">
+    <div className="border-t border-[var(--family-border-subtle)] pt-2">
       <button
         type="button"
         onClick={onOpen}
-        className="flex w-full items-center gap-2 rounded-xl px-1 py-1.5 text-start transition hover:bg-white/[0.04]"
+        className="flex w-full items-center gap-2 rounded-xl px-1 py-1.5 text-start transition hover:bg-[var(--family-surface-muted)]"
       >
         {hasComments && preview.length > 0 ? (
           <AvatarStack comments={preview} />
         ) : (
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-bone/45">
+          <span className="family-nav-icon flex h-6 w-6 shrink-0 items-center justify-center rounded-full">
             <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
           </span>
         )}

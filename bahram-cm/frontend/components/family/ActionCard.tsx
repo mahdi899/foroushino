@@ -12,7 +12,7 @@ import type { FamilyAction, FamilyActionResults } from '@/lib/family/types';
 
 function PollResults({ results }: { results: FamilyActionResults }) {
   return (
-    <div className="space-y-2.5 border-t border-white/10 pt-3">
+    <div className="space-y-2.5 border-t border-[var(--family-border-subtle)] pt-3">
       {results.options.map((option) => (
         <div key={option.value} className="space-y-1">
           <div className="flex items-center justify-between gap-2 text-xs">
@@ -21,7 +21,7 @@ function PollResults({ results }: { results: FamilyActionResults }) {
               {option.percent}٪ · {option.count} رأی
             </span>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div className="h-1.5 overflow-hidden rounded-full bg-[var(--family-surface-muted)]">
             <div
               className="h-full rounded-full bg-gold/80 transition-[width] duration-500 ease-out"
               style={{ width: `${option.percent}%` }}
@@ -61,7 +61,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
 
   if (submitted) {
     return (
-      <div className="space-y-3 rounded-2xl border border-gold/30 bg-gold/10 p-4">
+      <div className="family-action-panel space-y-3 border-gold/30 bg-gold/[0.08]">
         <p className="text-sm text-gold">ثبت شد — داداش بهرام می‌بیندش. ✅</p>
         {showResults && <PollResults results={results} />}
       </div>
@@ -69,7 +69,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
   }
 
   const wrap = (children: React.ReactNode) => (
-    <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+    <div className="family-action-panel space-y-3">
       <p className="text-sm font-medium text-bone">{action.prompt}</p>
       {children}
     </div>
@@ -108,7 +108,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
               onClick={() =>
                 submit({ confirmed: false }, applyConfirmationVote(results, false))
               }
-              className="flex-1 rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-bone/70 transition active:scale-[0.98] disabled:opacity-60"
+              className="family-input flex-1 rounded-xl py-2.5 text-sm font-semibold text-bone/70 transition active:scale-[0.98] disabled:opacity-60"
             >
               هنوز نه
             </button>
@@ -130,7 +130,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
             inputMode="decimal"
             value={numberValue}
             onChange={(e) => setNumberValue(e.target.value)}
-            className="flex-1 rounded-xl border border-white/15 bg-transparent px-3 py-2 text-sm text-bone outline-none focus:border-gold/50"
+            className="family-input flex-1 rounded-xl px-3 py-2 text-sm"
             placeholder="عدد را وارد کن"
           />
           <button
@@ -157,7 +157,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
             onChange={(e) => setTextValue(e.target.value)}
             rows={2}
             maxLength={500}
-            className="w-full resize-none rounded-xl border border-white/15 bg-transparent px-3 py-2 text-sm text-bone outline-none focus:border-gold/50"
+            className="family-input w-full resize-none rounded-xl px-3 py-2 text-sm"
             placeholder="پاسخت رو بنویس…"
           />
           <button
@@ -191,7 +191,9 @@ export function ActionCard({ action }: { action: FamilyAction }) {
                 }
                 className={cn(
                   'block w-full rounded-xl border px-3 py-2 text-right text-sm transition',
-                  isSelected ? 'border-gold/60 bg-gold/10 text-gold' : 'border-white/15 text-bone/80 hover:bg-white/5',
+                  isSelected
+                    ? 'border-gold/60 bg-gold/10 text-gold'
+                    : 'family-input text-bone/80 hover:bg-[var(--family-input-bg)]',
                 )}
               >
                 {opt.label}
@@ -237,7 +239,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
                 onClick={() => setScale(n)}
                 className={cn(
                   'h-8 flex-1 rounded-lg text-xs font-semibold transition',
-                  scale === n ? 'bg-gold text-charcoal' : 'bg-white/5 text-bone/60 hover:bg-white/10',
+                  scale === n ? 'bg-gold text-charcoal' : 'bg-[var(--family-surface-muted)] text-bone/60',
                 )}
               >
                 {n}

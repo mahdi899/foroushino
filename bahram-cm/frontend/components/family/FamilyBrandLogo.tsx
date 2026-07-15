@@ -63,7 +63,7 @@ export function FamilyBrandLogo({
         className,
       )}
     >
-      <span className={cn('rounded-full bg-[#0b0f14]', storyPaddingClass[size])}>{logo}</span>
+      <span className={cn('family-avatar-ring rounded-full', storyPaddingClass[size])}>{logo}</span>
     </span>
   ) : (
     logo

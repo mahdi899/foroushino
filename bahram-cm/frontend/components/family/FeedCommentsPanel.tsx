@@ -19,7 +19,7 @@ export function FeedCommentsPanel({
 }) {
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
-      <header className="flex shrink-0 items-center gap-2 border-b border-white/[0.08] bg-[#0c1117]/80 px-4 py-3 backdrop-blur-md lg:px-5">
+      <header className="family-panel-header flex shrink-0 items-center gap-2 border-b px-4 py-3 backdrop-blur-md lg:px-5">
         <button
           type="button"
           onClick={onClose}
@@ -41,7 +41,7 @@ export function FeedCommentsPanel({
         onCommentAdded={onCommentAdded}
         variant="page"
         hideTitle
-        className="min-h-0 flex-1 bg-[#0b0f10]"
+        className="min-h-0 flex-1 bg-[var(--family-surface-panel)]"
       />
     </div>
   );

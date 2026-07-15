@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { StoryViewer } from '@/components/family/StoryViewer';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
 
 export function FamilyTopBar({ memberCount }: { memberCount?: number }) {
@@ -13,7 +14,7 @@ export function FamilyTopBar({ memberCount }: { memberCount?: number }) {
 
   return (
     <>
-      <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-charcoal/95 px-4 py-3 backdrop-blur-md sm:px-5 lg:px-6 lg:py-3.5">
+      <header className="family-topbar flex shrink-0 items-center justify-between border-b px-4 py-3 backdrop-blur-md sm:px-5 lg:px-6 lg:py-3.5">
         <div className="flex min-w-0 items-center gap-2.5">
           <FamilyAuthorAvatar
             name={branding.profile_name}
@@ -29,6 +30,7 @@ export function FamilyTopBar({ memberCount }: { memberCount?: number }) {
             )}
           </Link>
         </div>
+        <ThemeToggle compact />
       </header>
 
       <StoryViewer open={storyOpen} onClose={() => setStoryOpen(false)} profileName={branding.profile_name} />

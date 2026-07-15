@@ -1,0 +1,304 @@
+/* ============================================================
+ * Family app — scoped tokens aligned with panel.css (student panel)
+ * ============================================================ */
+
+.family-app {
+  color-scheme: light;
+
+  /* Panel light tokens */
+  --family-bg: #f4f8f8;
+  --family-surface: #ffffff;
+  --family-surface-soft: #eef6f6;
+  --family-primary: #008c96;
+  --family-accent: #008c96;
+  --family-accent-bright: #25a0a6;
+  --family-gold: #c9930a;
+  --family-gold-soft: rgba(201, 147, 10, 0.1);
+  --family-text: #0d1517;
+  --family-text-muted: #5f7f83;
+  --family-text-subtle: #7a9699;
+  --family-border: #d5e5e6;
+  --family-scrim: rgba(5, 10, 11, 0.55);
+  --family-shadow: 0 8px 24px rgba(0, 59, 64, 0.05);
+
+  /* Aliases used across family components */
+  --family-canvas: var(--family-bg);
+  --family-surface-muted: var(--family-surface-soft);
+  --family-surface-elevated: var(--family-surface);
+  --family-surface-panel: var(--family-surface-soft);
+  --family-border-subtle: var(--family-border);
+  --family-frame-shadow: var(--family-shadow);
+  --family-sidebar-from: var(--family-surface);
+  --family-sidebar-to: var(--family-surface-soft);
+  --family-overlay: var(--family-scrim);
+  --family-reaction-active-bg: var(--family-gold-soft);
+  --family-reaction-active-border: color-mix(in oklab, var(--family-gold) 35%, var(--family-border));
+  --family-input-border: var(--family-border);
+  --family-input-bg: var(--family-surface);
+
+  /* Override site Tailwind tokens inside family (same pattern as .panel-root) */
+  --color-obsidian: var(--family-bg);
+  --color-charcoal: var(--family-surface);
+  --color-charcoal-2: var(--family-surface-soft);
+  --color-ink: #050a0b;
+  --color-bone: var(--family-text);
+  --color-bone-dim: var(--family-text-muted);
+  --color-mist: var(--family-text-subtle);
+  --color-border-soft: var(--family-border);
+  --color-border-strong: #c5d9da;
+  --color-gold: var(--family-gold);
+  --color-emerald: var(--family-primary);
+  --color-emerald-glow: var(--family-accent);
+  --shadow-frame-resolved: var(--family-shadow);
+
+  color: var(--family-text);
+}
+
+.family-app[data-family-theme='dark'],
+html[data-theme='dark'] .family-app {
+  color-scheme: dark;
+
+  --family-bg: #050a0b;
+  --family-surface: #0d1517;
+  --family-surface-soft: #142326;
+  --family-primary: #008c96;
+  --family-accent: #25a0a6;
+  --family-accent-bright: #25a0a6;
+  --family-gold: #ffb000;
+  --family-gold-soft: rgba(255, 176, 0, 0.1);
+  --family-text: #eafbfb;
+  --family-text-muted: #95b4b8;
+  --family-text-subtle: #5f7f83;
+  --family-border: rgba(234, 251, 251, 0.09);
+  --family-scrim: rgba(2, 6, 7, 0.82);
+  --family-shadow:
+    inset 0 1px 0 rgba(234, 251, 251, 0.04),
+    0 12px 36px rgba(2, 6, 7, 0.55);
+
+  --family-input-border: var(--family-border);
+  --family-input-bg: color-mix(in oklab, var(--family-bg) 60%, transparent);
+
+  --color-obsidian: var(--family-bg);
+  --color-charcoal: var(--family-surface);
+  --color-charcoal-2: var(--family-surface-soft);
+  --color-bone: var(--family-text);
+  --color-bone-dim: var(--family-text-muted);
+  --color-mist: var(--family-text-subtle);
+  --color-border-soft: var(--family-border);
+  --color-border-strong: rgba(234, 251, 251, 0.18);
+  --color-gold: var(--family-gold);
+  --color-emerald: #008c96;
+  --color-emerald-glow: #25a0a6;
+}
+
+.family-feed-scroll {
+  background: var(--family-surface-panel);
+}
+
+.family-app__frame {
+  background: var(--family-surface);
+  border: 1px solid var(--family-border);
+  box-shadow: var(--family-frame-shadow);
+}
+
+.family-app__canvas {
+  background: var(--family-canvas);
+  color: var(--family-text);
+}
+
+.family-card {
+  border: 1px solid var(--family-border);
+  background: var(--family-surface-elevated);
+}
+
+.family-card--important {
+  border-color: color-mix(in oklab, var(--family-gold) 38%, var(--family-border));
+  background: color-mix(in oklab, var(--family-gold) 7%, var(--family-surface-elevated));
+}
+
+.family-panel-header {
+  border-bottom: 1px solid var(--family-border);
+  background: color-mix(in oklab, var(--family-surface) 94%, transparent);
+}
+
+.family-comment-bubble {
+  border: 1px solid var(--family-border);
+  background: var(--family-surface-soft);
+}
+
+.family-voice {
+  background: var(--family-surface-soft);
+  border: 1px solid var(--family-border);
+}
+
+.family-sidebar {
+  border-inline-end: 1px solid var(--family-border);
+  background: linear-gradient(to bottom, var(--family-sidebar-from), var(--family-sidebar-to));
+}
+
+.family-topbar {
+  border-bottom: 1px solid var(--family-border);
+  background: color-mix(in oklab, var(--family-surface) 96%, transparent);
+}
+
+.family-pinned-bar {
+  border-bottom: 1px solid var(--family-border);
+  background: color-mix(in oklab, var(--family-surface-soft) 88%, transparent);
+}
+
+.family-pinned-bar:hover {
+  background: var(--family-surface-soft);
+}
+
+.family-modal {
+  border: 1px solid var(--family-border);
+  background: linear-gradient(to bottom, var(--family-surface), var(--family-surface-soft));
+  box-shadow: var(--family-frame-shadow);
+}
+
+.family-modal-overlay {
+  background: var(--family-overlay);
+}
+
+.family-nav-item {
+  color: var(--family-text-muted);
+}
+
+.family-nav-item:hover {
+  background: var(--family-surface-soft);
+  color: var(--family-text);
+}
+
+.family-nav-item--active {
+  background: var(--family-gold-soft);
+  color: var(--family-text);
+}
+
+.family-nav-icon {
+  background: var(--family-surface-soft);
+  color: var(--family-text-muted);
+}
+
+.family-chip {
+  border: 1px solid var(--family-border);
+  background: var(--family-surface-soft);
+}
+
+.family-notif-row {
+  border: 1px solid var(--family-border);
+  background: var(--family-surface-soft);
+}
+
+.family-notif-row:hover {
+  border-color: color-mix(in oklab, var(--family-border) 70%, var(--family-text) 8%);
+  background: color-mix(in oklab, var(--family-surface-soft) 80%, var(--family-surface) 20%);
+}
+
+.family-skeleton {
+  background: var(--family-surface-soft);
+}
+
+.family-avatar-ring {
+  background: var(--family-surface);
+}
+
+.family-reaction-icon {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  line-height: 0;
+  pointer-events: none;
+}
+
+.family-reaction-icon > div {
+  width: 26px !important;
+  height: 26px !important;
+  max-width: 26px !important;
+  max-height: 26px !important;
+  overflow: hidden !important;
+  line-height: 0 !important;
+}
+
+.family-reaction-icon svg {
+  display: block !important;
+  width: 26px !important;
+  height: 26px !important;
+  max-width: 26px !important;
+  max-height: 26px !important;
+}
+
+.family-reaction-btn {
+  display: inline-flex;
+  height: 2rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.1875rem;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background: transparent;
+  padding: 0.125rem 0.5rem 0.125rem 0.1875rem;
+  vertical-align: middle;
+  transition:
+    transform 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+
+.family-reaction-btn:hover {
+  background: var(--family-surface-soft);
+}
+
+.family-reaction-btn:active {
+  transform: scale(0.94);
+}
+
+.family-reaction-btn--active {
+  border-color: var(--family-reaction-active-border);
+  background: var(--family-reaction-active-bg);
+}
+
+.family-reaction-count {
+  font-size: 0.6875rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--family-text-muted);
+}
+
+.family-reaction-count--active {
+  color: var(--family-gold);
+  font-weight: 600;
+}
+
+.family-action-panel {
+  border: 1px solid var(--family-border);
+  background: var(--family-surface-soft);
+  border-radius: 1rem;
+  padding: 1rem;
+}
+
+.family-inline-card {
+  border: 1px solid var(--family-border);
+  background: var(--family-surface-soft);
+  border-radius: 1rem;
+}
+
+.family-input {
+  border: 1px solid var(--family-input-border);
+  background: var(--family-input-bg);
+  color: var(--family-text);
+  outline: none;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.family-input::placeholder {
+  color: var(--family-text-muted);
+}
+
+.family-input:focus {
+  border-color: color-mix(in oklab, var(--family-accent) 45%, var(--family-input-border));
+  background: color-mix(in oklab, var(--family-input-bg) 88%, var(--family-accent) 6%);
+}

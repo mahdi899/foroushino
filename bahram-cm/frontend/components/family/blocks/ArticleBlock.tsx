@@ -6,7 +6,7 @@ export function ArticleBlock({ article }: { article: FamilyArticleBlock }) {
   return (
     <Link
       href={article.url}
-      className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 transition hover:bg-white/10"
+      className="family-inline-card flex items-center gap-3 p-3 transition hover:bg-[var(--family-surface-muted)]"
     >
       {article.thumbnail ? (
         <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl">

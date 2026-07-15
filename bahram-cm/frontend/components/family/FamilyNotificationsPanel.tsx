@@ -17,10 +17,10 @@ function NotificationRow({
 
   return (
     <article
-      className={`group relative overflow-hidden rounded-2xl border px-4 py-3.5 transition-colors ${
+      className={`group family-notif-row relative overflow-hidden rounded-2xl border px-4 py-3.5 transition-colors ${
         isUnread
           ? 'border-gold/20 bg-gold/[0.04] hover:border-gold/30 hover:bg-gold/[0.06]'
-          : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.1] hover:bg-white/[0.035]'
+          : ''
       }`}
     >
       {isUnread && (
@@ -32,7 +32,7 @@ function NotificationRow({
       <div className="flex items-start gap-3">
         <span
           className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
-            isUnread ? 'bg-gold/15 text-gold' : 'bg-white/[0.05] text-bone/45'
+            isUnread ? 'bg-gold/15 text-gold' : 'family-nav-icon'
           }`}
         >
           <Bell className="h-4 w-4" strokeWidth={1.75} />
@@ -97,13 +97,13 @@ export function FamilyNotificationsPanel({
 
   return (
     <div className={`flex min-h-0 flex-1 flex-col ${className ?? ''}`}>
-      <header className="flex shrink-0 items-center gap-2 border-b border-white/[0.08] bg-[#0c1117]/80 px-4 py-3 backdrop-blur-md lg:px-5">
+      <header className="family-panel-header flex shrink-0 items-center gap-2 border-b px-4 py-3 backdrop-blur-md lg:px-5">
         {onClose ? (
           <button
             type="button"
             onClick={onClose}
             aria-label="بازگشت به فید"
-            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-bone/65 transition hover:bg-white/[0.05] hover:text-bone"
+            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-bone/65 transition hover:bg-[var(--family-surface-muted)] hover:text-bone"
           >
             <ChevronRight className="h-5 w-5" aria-hidden />
             <span className="text-sm font-medium">فید</span>
@@ -124,7 +124,7 @@ export function FamilyNotificationsPanel({
           <button
             type="button"
             onClick={() => void handleMarkAll()}
-            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[12px] text-bone/55 transition hover:bg-white/[0.05] hover:text-bone"
+            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-[12px] text-bone/55 transition hover:bg-[var(--family-surface-muted)] hover:text-bone"
           >
             <CheckCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
             همه
@@ -143,7 +143,7 @@ export function FamilyNotificationsPanel({
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-              <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03] text-bone/35">
+              <span className="family-chip flex h-14 w-14 items-center justify-center rounded-2xl border text-bone/35">
                 <Bell className="h-6 w-6" strokeWidth={1.5} />
               </span>
               <p className="text-sm text-bone/50">اعلان جدیدی ندارید</p>

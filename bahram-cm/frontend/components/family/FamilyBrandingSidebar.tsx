@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { ArrowRight, Bell, Users } from 'lucide-react';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { StoryViewer } from '@/components/family/StoryViewer';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
 import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
 
@@ -26,7 +27,7 @@ export function FamilyBrandingSidebar({
 
   return (
     <>
-      <aside className="hidden h-full w-[min(100%,280px)] shrink-0 flex-col overflow-hidden border-e border-white/[0.06] bg-gradient-to-b from-[#0e131a] via-[#0b0f14] to-[#090c10] lg:flex">
+      <aside className="family-sidebar hidden h-full w-[min(100%,280px)] shrink-0 flex-col overflow-hidden border-e lg:flex">
         <div className="flex flex-1 flex-col px-5 py-9">
           <div className="relative flex flex-col items-center text-center">
             <div
@@ -65,7 +66,7 @@ export function FamilyBrandingSidebar({
             </p>
 
             {typeof memberCount === 'number' && (
-              <div className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-white/[0.07] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-bone/55">
+              <div className="family-chip mt-5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium text-bone/55">
                 <Users className="h-3.5 w-3.5 shrink-0 text-gold/70" strokeWidth={1.75} />
                 <span>{memberCount.toLocaleString('fa-IR')} عضو فعال</span>
               </div>
@@ -77,17 +78,13 @@ export function FamilyBrandingSidebar({
               type="button"
               onClick={onOpenNotifications}
               aria-current={notificationsActive ? 'page' : undefined}
-              className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition ${
-                notificationsActive
-                  ? 'bg-gold/10 text-bone'
-                  : 'text-bone/60 hover:bg-white/[0.04] hover:text-bone'
+              className={`group family-nav-item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition ${
+                notificationsActive ? 'family-nav-item--active' : ''
               }`}
             >
               <span
-                className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
-                  notificationsActive
-                    ? 'bg-gold/15 text-gold'
-                    : 'bg-white/[0.04] text-bone/50 group-hover:bg-white/[0.07] group-hover:text-bone/80'
+                className={`family-nav-icon relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
+                  notificationsActive ? 'bg-gold/15 text-gold' : 'group-hover:text-bone/80'
                 }`}
               >
                 <Bell className="h-[16px] w-[16px]" strokeWidth={1.75} />
@@ -101,13 +98,17 @@ export function FamilyBrandingSidebar({
             </button>
             <Link
               href="/"
-              className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] text-bone/60 transition hover:bg-white/[0.04] hover:text-bone"
+              className="family-nav-item group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.04] text-bone/50 transition group-hover:bg-white/[0.07] group-hover:text-bone/80">
+              <span className="family-nav-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition group-hover:text-bone/80">
                 <ArrowRight className="h-[16px] w-[16px]" strokeWidth={1.75} />
               </span>
               بازگشت به سایت
             </Link>
+            <div className="flex items-center justify-between px-3 pt-3">
+              <span className="text-[11px] text-bone/45">حالت نمایش</span>
+              <ThemeToggle compact />
+            </div>
           </nav>
         </div>
       </aside>

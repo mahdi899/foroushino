@@ -31,14 +31,14 @@ export function CommentsPage({
         animate={{ x: 0 }}
         exit={{ x: '-100%' }}
         transition={{ type: 'spring', damping: 32, stiffness: 340 }}
-        className="flex h-[100dvh] max-h-[100dvh] w-full max-w-[680px] flex-col overflow-hidden bg-[#0b0f10]"
+        className="flex h-[100dvh] max-h-[100dvh] w-full max-w-[680px] flex-col overflow-hidden bg-[var(--family-surface-panel)]"
       >
-        <header className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-3">
+        <header className="family-panel-header flex shrink-0 items-center gap-2 border-b px-3 py-3">
           <button
             type="button"
             onClick={onClose}
             aria-label="بازگشت"
-            className="flex items-center gap-1 rounded-full px-1 py-1 text-bone/70 transition hover:bg-white/10 hover:text-bone"
+            className="flex items-center gap-1 rounded-full px-1 py-1 text-bone/70 transition hover:bg-[var(--family-surface-muted)] hover:text-bone"
           >
             <ChevronRight className="h-5 w-5" aria-hidden />
             <span className="text-sm font-medium">بازگشت</span>

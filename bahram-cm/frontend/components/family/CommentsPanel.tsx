@@ -26,7 +26,7 @@ function CommentRow({
   return (
     <li className="flex items-start gap-3 py-1">
       <CommentAvatar name={comment.user.name} avatar={comment.user.avatar} size={avatarSize} />
-      <div className="min-w-0 flex-1">
+      <div className="family-comment-bubble min-w-0 flex-1 rounded-xl px-3 py-2.5">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-[13px] font-semibold text-sky-300/95">{comment.user.name}</span>
           {comment.created_at && (
@@ -107,7 +107,7 @@ export function CommentsPanel({
   };
 
   return (
-    <section className={cn('flex min-h-0 flex-col', variant === 'inline' && 'border-t border-white/10', className)}>
+    <section className={cn('flex min-h-0 flex-col', variant === 'inline' && 'border-t border-[var(--family-border-subtle)]', className)}>
       {!hideTitle && (
         <div className="shrink-0 px-4 py-3 sm:px-5">
           <h3 className="text-sm font-semibold text-bone/90">نظرات</h3>
@@ -140,7 +140,7 @@ export function CommentsPanel({
 
       <div
         className={cn(
-          'shrink-0 border-t border-white/10 bg-[#0b0f10]/95 p-3 backdrop-blur-md sm:p-4',
+          'shrink-0 border-t border-[var(--family-border-subtle)] bg-[var(--family-surface-panel)]/95 p-3 backdrop-blur-md sm:p-4',
           isPage && 'pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:p-4',
         )}
       >
@@ -159,7 +159,7 @@ export function CommentsPanel({
             maxLength={500}
             rows={isPage ? 2 : 2}
             placeholder="نظرت رو بنویس…"
-            className="flex-1 resize-none rounded-2xl border border-white/15 bg-white/[0.03] px-4 py-2.5 text-sm text-bone outline-none transition focus:border-gold/50 focus:bg-white/[0.05]"
+            className="family-input flex-1 resize-none rounded-2xl px-4 py-2.5 text-sm"
           />
           <button
             type="submit"
