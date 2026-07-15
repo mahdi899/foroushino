@@ -108,7 +108,7 @@ export function ActionCard({
   isStaff?: boolean;
   hidePrompt?: boolean;
 }) {
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(Boolean(action.responded));
   const [pending, setPending] = useState(false);
   const [textValue, setTextValue] = useState('');
   const [numberValue, setNumberValue] = useState('');

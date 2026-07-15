@@ -4,6 +4,7 @@ namespace App\Services\Family;
 
 use App\Enums\Family\FamilyCommentStatus;
 use App\Enums\Family\FamilyPostStatus;
+use App\Models\FamilyActionResponse;
 use App\Models\FamilyComment;
 use App\Models\FamilyMembership;
 use App\Models\FamilyPost;
@@ -75,6 +76,7 @@ class FeedService
         $this->attachUserReactions($posts, $user->id);
         $this->attachCommentPreviews($posts, $familyId);
         $this->attachActionResults($posts, $familyId);
+        $this->attachUserActionResponses($posts, $user->id);
         $this->applyBrandingAuthor($posts);
 
         $nextCursor = null;
@@ -166,6 +168,7 @@ class FeedService
         $this->attachUserReactions($posts, $user->id);
         $this->attachCommentPreviews($posts, $familyId);
         $this->attachActionResults($posts, $familyId);
+        $this->attachUserActionResponses($posts, $user->id);
         $this->applyBrandingAuthor($posts);
 
         return $posts;
@@ -233,6 +236,41 @@ class FeedService
                     'result_stats',
                     $this->actionStats->forAction($familyId, $action),
                 );
+            }
+        }
+    }
+
+    private function attachUserActionResponses(Collection $posts, int $userId): void
+    {
+        if ($posts->isEmpty()) {
+            return;
+        }
+
+        $actionIds = $posts
+            ->flatMap(fn (FamilyPost $post) => $post->relationLoaded('actions') ? $post->actions->pluck('id') : [])
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($actionIds->isEmpty()) {
+            return;
+        }
+
+        $responses = FamilyActionResponse::query()
+            ->where('user_id', $userId)
+            ->whereIn('action_id', $actionIds)
+            ->get(['action_id', 'value'])
+            ->keyBy('action_id');
+
+        foreach ($posts as $post) {
+            if (! $post->relationLoaded('actions')) {
+                continue;
+            }
+
+            foreach ($post->actions as $action) {
+                $response = $responses->get($action->id);
+                $action->setAttribute('responded', $response !== null);
+                $action->setAttribute('user_response', $response?->value);
             }
         }
     }

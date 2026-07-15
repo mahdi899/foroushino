@@ -35,6 +35,13 @@ describe("ActionCard", () => {
     expect(await screen.findByText(/ثبت شد/)).toBeInTheDocument();
   });
 
+  it("restores submitted state from feed when already responded", () => {
+    render(<ActionCard action={makeAction({ responded: true, results: null })} />);
+
+    expect(screen.getByText(/ثبت شد/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /متعهد می‌شوم/ })).not.toBeInTheDocument();
+  });
+
   it("submits a confirmation action's negative answer", async () => {
     respondToAction.mockResolvedValueOnce({ data: {} });
     render(<ActionCard action={makeAction({ id: 2, type: "confirmation" })} />);

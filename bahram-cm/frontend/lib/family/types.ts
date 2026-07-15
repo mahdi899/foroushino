@@ -100,6 +100,8 @@ export interface FamilyAction {
   config: Record<string, unknown> | null;
   options: FamilyActionOption[];
   results?: FamilyActionResults | null;
+  responded?: boolean;
+  user_response?: Record<string, unknown> | null;
 }
 
 export interface FamilyPostStats {

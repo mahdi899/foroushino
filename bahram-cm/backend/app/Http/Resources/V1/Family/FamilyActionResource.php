@@ -25,6 +25,8 @@ class FamilyActionResource extends JsonResource
                 $this->resource->getAttribute('result_stats') !== null,
                 fn () => $this->resource->getAttribute('result_stats'),
             ),
+            'responded' => (bool) $this->resource->getAttribute('responded'),
+            'user_response' => $this->resource->getAttribute('user_response'),
         ];
     }
 }
