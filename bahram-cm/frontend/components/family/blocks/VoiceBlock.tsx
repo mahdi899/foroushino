@@ -42,10 +42,13 @@ function normalizeWaveform(raw: number[]): number[] {
 
 export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId: number }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const waveRef = useRef<HTMLButtonElement | null>(null);
+  const draggingRef = useRef(false);
   const { activeId, register, unregister, requestPlay, notifyPaused } = useFamilyMediaPlayer();
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(media.duration ?? 0);
+  const [scrubbing, setScrubbing] = useState(false);
   const lastReported = useRef(0);
 
   useEffect(() => {
@@ -90,6 +93,13 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
     setProgress(next);
   };
 
+  const seekFromClientX = (clientX: number) => {
+    const rect = waveRef.current?.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return;
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    seekToRatio(ratio);
+  };
+
   const reportProgress = (event: 'play' | 'pause' | 'complete', position: number) => {
     const rounded = Math.floor(position);
     if (event === 'pause' && Math.abs(rounded - lastReported.current) < 2) return;
@@ -112,7 +122,7 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   }
 
   return (
-    <div dir="ltr" className="family-voice flex items-center gap-2.5 rounded-full px-2.5 py-2">
+    <div dir="ltr" className="family-voice flex w-full items-center gap-2.5 rounded-full px-2.5 py-2">
       <audio
         ref={audioRef}
         src={media.url}
@@ -129,7 +139,9 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
           reportProgress('complete', duration);
         }}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || media.duration || 0)}
-        onTimeUpdate={(e) => setProgress(e.currentTarget.currentTime)}
+        onTimeUpdate={(e) => {
+          if (!scrubbing) setProgress(e.currentTarget.currentTime);
+        }}
         className="hidden"
       />
       <button
@@ -142,14 +154,37 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       </button>
 
       <button
+        ref={waveRef}
         type="button"
         aria-label="موج صدا"
-        onClick={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-          seekToRatio(ratio);
+        onPointerDown={(e) => {
+          draggingRef.current = true;
+          setScrubbing(true);
+          e.currentTarget.setPointerCapture(e.pointerId);
+          seekFromClientX(e.clientX);
         }}
-        className="flex h-9 min-w-0 flex-1 cursor-pointer items-center gap-[2px] px-0.5"
+        onPointerMove={(e) => {
+          if (!draggingRef.current) return;
+          seekFromClientX(e.clientX);
+        }}
+        onPointerUp={(e) => {
+          draggingRef.current = false;
+          setScrubbing(false);
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          }
+        }}
+        onPointerCancel={(e) => {
+          draggingRef.current = false;
+          setScrubbing(false);
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          }
+        }}
+        className={cn(
+          'family-voice-wave flex h-9 min-w-0 flex-1 cursor-pointer touch-none items-center',
+          scrubbing && 'opacity-90',
+        )}
       >
         {waveform.map((v, i) => {
           const barRatio = (i + 0.5) / BAR_COUNT;
@@ -159,7 +194,7 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
             <span
               key={i}
               className={cn(
-                'block w-[2px] shrink-0 rounded-full transition-colors duration-150',
+                'family-voice-bar block min-w-0 flex-1 rounded-full transition-colors duration-150',
                 played ? 'bg-[var(--family-voice-played)]' : 'bg-[var(--family-voice-unplayed)]',
               )}
               style={{ height: `${height}px` }}

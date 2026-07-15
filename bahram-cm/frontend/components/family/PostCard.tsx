@@ -92,11 +92,11 @@ export function PostCard({
         )}
         {otherBlocks.map((b) => renderBlock(b, post.id))}
         {imageBlocks.length === 1 && imageBlocks[0].media ? (
-          <ImageBlock media={imageBlocks[0].media} constrained={constrainedMedia} />
+          <ImageBlock media={imageBlocks[0].media} constrained={constrainedMedia || variant === 'feed'} />
         ) : imageBlocks.length > 1 ? (
           <ImageAlbumBlock
             items={imageBlocks.map((b) => b.media!).filter(Boolean)}
-            constrained={constrainedMedia}
+            constrained={constrainedMedia || variant === 'feed'}
           />
         ) : null}
       </div>

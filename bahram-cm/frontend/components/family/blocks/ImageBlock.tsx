@@ -105,7 +105,7 @@ export function ImageBlock({
     ? undefined
     : constrained
       ? { aspectRatio: '4 / 3', maxHeight: 'min(42vh, 320px)' }
-      : aspectStyle(media);
+      : { ...aspectStyle(media), maxHeight: 'min(55vh, 480px)' };
 
   return (
     <>

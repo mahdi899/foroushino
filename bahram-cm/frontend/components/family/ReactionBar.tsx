@@ -42,6 +42,7 @@ function ReactionButton({
       onClick={handleClick}
       className={cn(
         'family-reaction-btn',
+        count > 0 && 'family-reaction-btn--counted',
         active && 'family-reaction-btn--active',
         disabled && 'pointer-events-none opacity-45',
       )}

@@ -57,7 +57,7 @@ export function FamilyAuthorAvatar({
         className,
       )}
     >
-      <span className={cn('rounded-full bg-[var(--family-surface-panel)]', storyPaddingClass)}>{inner}</span>
+      <span className="rounded-full bg-[var(--family-surface-panel)] p-[1px]">{inner}</span>
     </span>
   ) : (
     inner

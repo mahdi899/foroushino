@@ -26,7 +26,7 @@ function CommentRow({
   return (
     <li className="flex items-start gap-3 py-1">
       <CommentAvatar name={comment.user.name} avatar={comment.user.avatar} size={avatarSize} />
-      <div className="family-comment-bubble min-w-0 flex-1 rounded-xl px-3 py-2.5">
+      <div className="family-comment-bubble min-w-0 flex-1 overflow-hidden rounded-xl px-3 py-2.5">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-[13px] font-semibold text-[var(--family-accent)]">{comment.user.name}</span>
           {comment.created_at && (
@@ -40,7 +40,9 @@ function CommentRow({
             </span>
           )}
         </div>
-        <p className="mt-1 whitespace-pre-wrap text-[15px] leading-7 text-bone/88">{comment.body}</p>
+        <p className="family-comment-body mt-1 whitespace-pre-wrap break-words text-[15px] leading-7 text-bone/88">
+          {comment.body}
+        </p>
       </div>
     </li>
   );
@@ -150,20 +152,20 @@ export function CommentsPanel({
             e.preventDefault();
             void handleSubmit();
           }}
-          className="flex items-end gap-2"
+          className="flex items-center gap-2"
         >
           <textarea
             value={value}
             onChange={(e) => setValue(e.target.value)}
             maxLength={500}
-            rows={isPage ? 2 : 2}
+            rows={1}
             placeholder="نظرت رو بنویس…"
-            className="family-input flex-1 resize-none rounded-2xl px-4 py-2.5 text-sm"
+            className="family-input family-comment-input min-h-10 flex-1 resize-none rounded-full px-4 py-2 text-sm leading-5"
           />
           <button
             type="submit"
             disabled={!value.trim() || submitting}
-            className="family-btn-primary shrink-0 rounded-full px-4 py-2.5 text-sm disabled:opacity-50"
+            className="family-btn-primary family-comment-submit h-10 shrink-0 rounded-full px-4 text-sm disabled:opacity-50"
           >
             ارسال
           </button>
