@@ -26,7 +26,22 @@ export type FamilyActionType =
   | 'short_text'
   | 'scale';
 
-export type FamilyReactionType = 'fire' | 'heart' | 'target' | 'clap';
+export type FamilyReactionType =
+  | 'fire'
+  | 'heart'
+  | 'target'
+  | 'clap'
+  | 'thumbs_up'
+  | 'laugh'
+  | 'sad'
+  | 'party'
+  | 'star'
+  | 'rocket'
+  | 'eyes'
+  | 'pray'
+  | 'muscle'
+  | 'hundred'
+  | 'wink';
 
 export interface FamilyMediaBlock {
   id: number;
@@ -92,6 +107,17 @@ export interface FamilyPostStats {
   heart: number;
   target: number;
   clap: number;
+  thumbs_up: number;
+  laugh: number;
+  sad: number;
+  party: number;
+  star: number;
+  rocket: number;
+  eyes: number;
+  pray: number;
+  muscle: number;
+  hundred: number;
+  wink: number;
   comments: number;
   action_responses: number;
 }

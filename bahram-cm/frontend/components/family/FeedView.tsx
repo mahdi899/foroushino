@@ -198,7 +198,7 @@ export function FeedView({
 
           <div
             ref={feedScrollRef}
-            className="family-feed-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"
+            className="family-feed-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
           >
             <div ref={feedContentRef} className="mx-auto flex w-full max-w-[680px] flex-col">
               {isLoading && posts.length === 0 ? (

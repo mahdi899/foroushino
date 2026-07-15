@@ -76,7 +76,9 @@ export function PostCard({
             <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-medium text-gold">سنجاق 📌</span>
           )}
           {post.is_important && (
-            <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[11px] font-medium text-gold">مهم ⭐</span>
+            <span className="rounded-full bg-[color-mix(in_oklab,var(--family-accent)_12%,var(--family-surface-soft))] px-2 py-0.5 text-[11px] font-medium text-[var(--family-accent)]">
+              مهم ⭐
+            </span>
           )}
         </div>
       </header>
@@ -109,14 +111,7 @@ export function PostCard({
         )}
         <ReactionBar
           postId={post.id}
-          stats={{
-            fire: post.stats.fire,
-            heart: post.stats.heart,
-            target: post.stats.target,
-            clap: post.stats.clap,
-            comments: commentCount,
-            action_responses: post.stats.action_responses,
-          }}
+          stats={{ ...post.stats, comments: commentCount }}
           userReaction={post.user_reaction}
         />
       </div>

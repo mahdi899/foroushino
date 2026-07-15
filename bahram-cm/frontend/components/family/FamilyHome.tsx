@@ -71,7 +71,7 @@ export function FamilyHome({
       <div className="lg:hidden">
         <FamilyStickyHeader
           memberCount={memberCount}
-          showPinned={mode === 'member'}
+          showPinned={mode === 'member' && !commentsTarget}
           onOpenComments={openComments}
         />
       </div>

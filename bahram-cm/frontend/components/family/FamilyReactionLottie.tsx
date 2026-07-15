@@ -12,6 +12,17 @@ import fireData from '@/assets/lottie/noto/fire.json';
 import heartData from '@/assets/lottie/noto/heart.json';
 import targetData from '@/assets/lottie/noto/target.json';
 import clapData from '@/assets/lottie/noto/clap.json';
+import thumbsUpData from '@/assets/lottie/noto/thumbs-up.json';
+import laughData from '@/assets/lottie/noto/laugh.json';
+import sadData from '@/assets/lottie/noto/sad.json';
+import partyData from '@/assets/lottie/noto/party.json';
+import starData from '@/assets/lottie/noto/star.json';
+import rocketData from '@/assets/lottie/noto/rocket.json';
+import eyesData from '@/assets/lottie/noto/eyes.json';
+import prayData from '@/assets/lottie/noto/pray.json';
+import muscleData from '@/assets/lottie/noto/muscle.json';
+import hundredData from '@/assets/lottie/noto/hundred.json';
+import winkData from '@/assets/lottie/noto/wink.json';
 import type { FamilyReactionType } from '@/lib/family/types';
 
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
@@ -21,6 +32,17 @@ const NOTO_REACTIONS: Record<FamilyReactionType, object> = {
   heart: heartData,
   target: targetData,
   clap: clapData,
+  thumbs_up: thumbsUpData,
+  laugh: laughData,
+  sad: sadData,
+  party: partyData,
+  star: starData,
+  rocket: rocketData,
+  eyes: eyesData,
+  pray: prayData,
+  muscle: muscleData,
+  hundred: hundredData,
+  wink: winkData,
 };
 
 const REACTION_PX = 26;

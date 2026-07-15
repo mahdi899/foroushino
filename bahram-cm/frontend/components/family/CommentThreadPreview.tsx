@@ -57,10 +57,10 @@ export function CommentThreadPreview({
             <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
           </span>
         )}
-        <span className={cn('flex-1 text-sm', hasComments ? 'text-sky-300/90' : 'text-bone/45')}>
+        <span className={cn('flex-1 text-sm', hasComments ? 'text-[var(--family-accent)]' : 'text-[var(--family-text-muted)]')}>
           {commentCountLabel(count)}
         </span>
-        <ChevronLeft className="h-4 w-4 shrink-0 text-bone/35" aria-hidden />
+        <ChevronLeft className="h-4 w-4 shrink-0 text-[var(--family-text-subtle)]" aria-hidden />
       </button>
     </div>
   );

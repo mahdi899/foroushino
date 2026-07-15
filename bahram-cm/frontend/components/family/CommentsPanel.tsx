@@ -28,7 +28,7 @@ function CommentRow({
       <CommentAvatar name={comment.user.name} avatar={comment.user.avatar} size={avatarSize} />
       <div className="family-comment-bubble min-w-0 flex-1 rounded-xl px-3 py-2.5">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <span className="text-[13px] font-semibold text-sky-300/95">{comment.user.name}</span>
+          <span className="text-[13px] font-semibold text-[var(--family-accent)]">{comment.user.name}</span>
           {comment.created_at && (
             <time dateTime={comment.created_at} className="text-[11px] tabular-nums text-bone/40">
               {formatPostDateTime(comment.created_at)}
@@ -68,7 +68,6 @@ export function CommentsPanel({
     const root = listRef.current;
     if (!root) return;
     root.scrollTo({ top: root.scrollHeight, behavior });
-    bottomRef.current?.scrollIntoView({ block: 'end', behavior });
   }, []);
 
   useEffect(() => {
@@ -107,7 +106,7 @@ export function CommentsPanel({
   };
 
   return (
-    <section className={cn('flex min-h-0 flex-col', variant === 'inline' && 'border-t border-[var(--family-border-subtle)]', className)}>
+    <section className={cn('flex min-h-0 min-w-0 flex-col overflow-x-hidden', variant === 'inline' && 'border-t border-[var(--family-border-subtle)]', className)}>
       {!hideTitle && (
         <div className="shrink-0 px-4 py-3 sm:px-5">
           <h3 className="text-sm font-semibold text-bone/90">نظرات</h3>
@@ -117,7 +116,7 @@ export function CommentsPanel({
       <div
         ref={listRef}
         className={cn(
-          'family-feed-scroll min-h-0 overflow-y-auto overscroll-contain',
+          'family-feed-scroll min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain',
           isPage ? 'flex-1 px-3 py-3 sm:px-4 lg:px-5' : 'max-h-[280px] px-3 sm:px-4 lg:max-h-[320px]',
         )}
       >

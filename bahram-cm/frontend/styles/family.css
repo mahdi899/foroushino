@@ -6,9 +6,10 @@
   color-scheme: light;
 
   /* Panel light tokens */
-  --family-bg: #f4f8f8;
+  --family-bg: #eef4f4;
   --family-surface: #ffffff;
-  --family-surface-soft: #eef6f6;
+  --family-surface-soft: #f5fafa;
+  --family-surface-panel: #e8f2f2;
   --family-primary: #008c96;
   --family-accent: #008c96;
   --family-accent-bright: #25a0a6;
@@ -25,7 +26,6 @@
   --family-canvas: var(--family-bg);
   --family-surface-muted: var(--family-surface-soft);
   --family-surface-elevated: var(--family-surface);
-  --family-surface-panel: var(--family-surface-soft);
   --family-border-subtle: var(--family-border);
   --family-frame-shadow: var(--family-shadow);
   --family-sidebar-from: var(--family-surface);
@@ -58,9 +58,10 @@
 html[data-theme='dark'] .family-app {
   color-scheme: dark;
 
-  --family-bg: #050a0b;
-  --family-surface: #0d1517;
-  --family-surface-soft: #142326;
+  --family-bg: #030708;
+  --family-surface: #0a1113;
+  --family-surface-soft: #101a1d;
+  --family-surface-panel: #0d1618;
   --family-primary: #008c96;
   --family-accent: #25a0a6;
   --family-accent-bright: #25a0a6;
@@ -77,6 +78,10 @@ html[data-theme='dark'] .family-app {
 
   --family-input-border: var(--family-border);
   --family-input-bg: color-mix(in oklab, var(--family-bg) 60%, transparent);
+
+  --family-canvas: var(--family-bg);
+  --family-surface-muted: var(--family-surface-soft);
+  --family-surface-elevated: var(--family-surface);
 
   --color-obsidian: var(--family-bg);
   --color-charcoal: var(--family-surface);
@@ -99,6 +104,7 @@ html[data-theme='dark'] .family-app {
   background: var(--family-surface);
   border: 1px solid var(--family-border);
   box-shadow: var(--family-frame-shadow);
+  overflow-x: hidden;
 }
 
 .family-app__canvas {
@@ -112,8 +118,9 @@ html[data-theme='dark'] .family-app {
 }
 
 .family-card--important {
-  border-color: color-mix(in oklab, var(--family-gold) 38%, var(--family-border));
-  background: color-mix(in oklab, var(--family-gold) 7%, var(--family-surface-elevated));
+  border-color: color-mix(in oklab, var(--family-accent) 40%, var(--family-border));
+  background: color-mix(in oklab, var(--family-accent) 8%, var(--family-surface-elevated));
+  box-shadow: inset 3px 0 0 color-mix(in oklab, var(--family-accent) 75%, transparent);
 }
 
 .family-panel-header {
@@ -314,13 +321,14 @@ html[data-theme='dark'] .family-app {
   inset-inline-end: 0;
   z-index: 30;
   display: flex;
-  flex-wrap: nowrap;
+  max-width: min(100vw - 2rem, 320px);
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.125rem;
-  border-radius: 9999px;
+  border-radius: 1rem;
   border: 1px solid var(--family-border);
   background: var(--family-surface);
-  padding: 0.25rem;
+  padding: 0.375rem;
   box-shadow: var(--family-frame-shadow);
 }
 

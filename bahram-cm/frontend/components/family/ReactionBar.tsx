@@ -4,15 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { FamilyReactionLottie } from '@/components/family/FamilyReactionLottie';
+import {
+  FAMILY_DEFAULT_REACTIONS,
+  FAMILY_PICKER_REACTIONS,
+} from '@/lib/family/reactions';
 import { removeReaction, setReaction } from '@/lib/family/api';
 import type { FamilyPostStats, FamilyReactionType } from '@/lib/family/types';
-
-const REACTIONS: { type: FamilyReactionType; label: string }[] = [
-  { type: 'fire', label: 'آتشین' },
-  { type: 'heart', label: 'قلب' },
-  { type: 'target', label: 'هدف' },
-  { type: 'clap', label: 'تشویق' },
-];
 
 function ReactionButton({
   type,
@@ -69,7 +66,25 @@ export function ReactionBar({
   userReaction: FamilyReactionType | null;
 }) {
   const [active, setActive] = useState<FamilyReactionType | null>(userReaction);
-  const [counts, setCounts] = useState(stats);
+  const [counts, setCounts] = useState<FamilyPostStats>(() => ({
+    fire: stats.fire ?? 0,
+    heart: stats.heart ?? 0,
+    target: stats.target ?? 0,
+    clap: stats.clap ?? 0,
+    thumbs_up: stats.thumbs_up ?? 0,
+    laugh: stats.laugh ?? 0,
+    sad: stats.sad ?? 0,
+    party: stats.party ?? 0,
+    star: stats.star ?? 0,
+    rocket: stats.rocket ?? 0,
+    eyes: stats.eyes ?? 0,
+    pray: stats.pray ?? 0,
+    muscle: stats.muscle ?? 0,
+    hundred: stats.hundred ?? 0,
+    wink: stats.wink ?? 0,
+    comments: stats.comments ?? 0,
+    action_responses: stats.action_responses ?? 0,
+  }));
   const [pending, setPending] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -119,28 +134,38 @@ export function ReactionBar({
     setPickerOpen(false);
   };
 
-  const visibleTypes = REACTIONS.filter((r) => counts[r.type] > 0).map((r) => r.type);
+  const defaultTypes = new Set(FAMILY_DEFAULT_REACTIONS.map((r) => r.type));
+  const extraWithCounts = FAMILY_PICKER_REACTIONS.filter((r) => counts[r.type] > 0);
 
   return (
     <div ref={rootRef} className="relative flex flex-wrap items-center gap-2">
-      {visibleTypes.map((type) => {
-        const meta = REACTIONS.find((r) => r.type === type)!;
-        return (
-          <ReactionButton
-            key={type}
-            type={type}
-            label={meta.label}
-            count={counts[type]}
-            active={active === type}
-            disabled={pending}
-            onClick={() => toggle(type)}
-          />
-        );
-      })}
+      {FAMILY_DEFAULT_REACTIONS.map((r) => (
+        <ReactionButton
+          key={r.type}
+          type={r.type}
+          label={r.label}
+          count={counts[r.type]}
+          active={active === r.type}
+          disabled={pending}
+          onClick={() => toggle(r.type)}
+        />
+      ))}
+
+      {extraWithCounts.map((r) => (
+        <ReactionButton
+          key={r.type}
+          type={r.type}
+          label={r.label}
+          count={counts[r.type]}
+          active={active === r.type}
+          disabled={pending}
+          onClick={() => toggle(r.type)}
+        />
+      ))}
 
       <button
         type="button"
-        aria-label="افزودن واکنش"
+        aria-label="واکنش‌های بیشتر"
         aria-expanded={pickerOpen}
         disabled={pending}
         onClick={() => setPickerOpen((o) => !o)}
@@ -155,12 +180,12 @@ export function ReactionBar({
 
       {pickerOpen && (
         <div className="family-reaction-picker" role="menu" aria-label="انتخاب واکنش">
-          {REACTIONS.map((r) => (
+          {FAMILY_PICKER_REACTIONS.map((r) => (
             <ReactionButton
               key={r.type}
               type={r.type}
               label={r.label}
-              count={0}
+              count={defaultTypes.has(r.type) ? counts[r.type] : 0}
               active={active === r.type}
               disabled={pending}
               onClick={() => handlePick(r.type)}

@@ -29,7 +29,7 @@ export function CommentAvatar({
   return (
     <span
       className={cn(
-        'flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-sky-500/30 to-sky-600/15 font-bold text-sky-100 ring-1 ring-white/[0.08]',
+        'flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-[color-mix(in_oklab,var(--family-accent)_14%,var(--family-surface-soft))] font-bold text-[var(--family-accent)] ring-1 ring-[var(--family-border)]',
         sizeClass,
         className,
       )}

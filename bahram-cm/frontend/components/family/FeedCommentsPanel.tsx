@@ -18,7 +18,7 @@ export function FeedCommentsPanel({
   className?: string;
 }) {
   return (
-    <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
+    <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden', className)}>
       <header className="family-panel-header flex shrink-0 items-center gap-2 border-b px-4 py-3 backdrop-blur-md lg:px-5">
         <button
           type="button"
