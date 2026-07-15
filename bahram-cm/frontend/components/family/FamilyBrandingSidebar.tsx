@@ -12,15 +12,17 @@ import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications'
 /** Desktop-only branding column — logo, نام خانواده، آواتار و لینک‌ها. */
 export function FamilyBrandingSidebar({
   memberCount,
+  isMember = true,
   notificationsActive = false,
   onOpenNotifications,
 }: {
   memberCount?: number;
+  isMember?: boolean;
   notificationsActive?: boolean;
   onOpenNotifications?: () => void;
 }) {
   const { branding } = useFamilyBranding();
-  const { unreadCount } = useFamilyUnreadCount(true);
+  const { unreadCount } = useFamilyUnreadCount(isMember);
   const [storyOpen, setStoryOpen] = useState(false);
   const hasStories = Boolean(branding.has_active_stories);
   const communityAvatar = branding.community_avatar ?? branding.profile_avatar;
@@ -74,28 +76,30 @@ export function FamilyBrandingSidebar({
           </div>
 
           <nav className="mt-auto space-y-0.5 pt-10" aria-label="میانبرهای خانواده">
-            <button
-              type="button"
-              onClick={onOpenNotifications}
-              aria-current={notificationsActive ? 'page' : undefined}
-              className={`group family-nav-item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition ${
-                notificationsActive ? 'family-nav-item--active' : ''
-              }`}
-            >
-              <span
-                className={`family-nav-icon relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
-                  notificationsActive ? 'bg-gold/15 text-gold' : 'group-hover:text-bone/80'
+            {isMember && (
+              <button
+                type="button"
+                onClick={onOpenNotifications}
+                aria-current={notificationsActive ? 'page' : undefined}
+                className={`group family-nav-item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition ${
+                  notificationsActive ? 'family-nav-item--active' : ''
                 }`}
               >
-                <Bell className="h-[16px] w-[16px]" strokeWidth={1.75} />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -left-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[9px] font-bold text-charcoal">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </span>
-              اعلان‌ها
-            </button>
+                <span
+                  className={`family-nav-icon relative flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
+                    notificationsActive ? 'bg-gold/15 text-gold' : 'group-hover:text-bone/80'
+                  }`}
+                >
+                  <Bell className="h-[16px] w-[16px]" strokeWidth={1.75} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -left-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[9px] font-bold text-charcoal">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </span>
+                اعلان‌ها
+              </button>
+            )}
             <Link
               href="/"
               className="family-nav-item group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] transition"

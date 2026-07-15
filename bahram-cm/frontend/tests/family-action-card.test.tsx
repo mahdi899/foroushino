@@ -121,4 +121,43 @@ describe("ActionCard", () => {
     resolveResponse?.();
     await waitFor(() => expect(screen.getByText(/ثبت شد/)).toBeInTheDocument());
   });
+
+  it("shows staff poll participation counts", () => {
+    render(
+      <ActionCard
+        action={makeAction({
+          type: "single_choice",
+          options: [{ id: 1, label: "بله", value: "yes", position: 0 }],
+          results: {
+            total: 12,
+            options: [{ value: "yes", label: "بله", count: 12, percent: 100 }],
+          },
+        })}
+        memberCount={30}
+        isStaff
+      />,
+    );
+
+    expect(screen.getByText("12 از 30 نفر پاسخ دادند")).toBeInTheDocument();
+  });
+
+  it("shows member poll participation percent", () => {
+    render(
+      <ActionCard
+        action={makeAction({
+          type: "confirmation",
+          results: {
+            total: 78,
+            options: [
+              { value: "yes", label: "بله", count: 78, percent: 100 },
+            ],
+          },
+        })}
+        memberCount={100}
+        isStaff={false}
+      />,
+    );
+
+    expect(screen.getByText("78٪ شرکت کردند")).toBeInTheDocument();
+  });
 });

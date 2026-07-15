@@ -6,7 +6,7 @@ import { FamilyMain, FamilyShell } from '@/components/family/FamilyShell';
 import { FamilyTopBar } from '@/components/family/FamilyTopBar';
 import { FeedView } from '@/components/family/FeedView';
 import { GuestBanner } from '@/components/family/GuestBanner';
-import { JoinScreen } from '@/components/family/JoinScreen';
+import { JoinBanner } from '@/components/family/JoinBanner';
 import { OnboardingModal } from '@/components/family/OnboardingModal';
 import type { FamilyComment } from '@/lib/family/types';
 
@@ -16,29 +16,6 @@ type CommentsTarget = {
   postId: number;
   onCommentAdded: (comment: FamilyComment) => void;
 };
-
-function FamilyStickyHeader({
-  memberCount,
-  showPinned,
-  showNowPlaying,
-  onOpenComments,
-}: {
-  memberCount?: number;
-  showPinned?: boolean;
-  showNowPlaying?: boolean;
-  onOpenComments?: (target: CommentsTarget) => void;
-}) {
-  return (
-    <div className="z-30 shrink-0">
-      <FamilyTopBar memberCount={memberCount} />
-      <FamilyFeedChrome
-        showPinned={showPinned}
-        showNowPlaying={showNowPlaying}
-        onOpenComments={onOpenComments}
-      />
-    </div>
-  );
-}
 
 export function FamilyHome({
   mode,
@@ -56,21 +33,7 @@ export function FamilyHome({
     setCommentsTarget(target);
   }, []);
 
-  if (mode === 'join') {    return (
-      <FamilyShell>
-        <div className="lg:hidden">
-          <FamilyStickyHeader />
-        </div>
-        <FamilyMain className="min-h-0 overflow-y-auto lg:flex lg:items-center lg:justify-center lg:overflow-hidden lg:px-8">
-          <div className="w-full lg:max-w-md">
-            <Suspense>
-              <JoinScreen />
-            </Suspense>
-          </div>
-        </FamilyMain>
-      </FamilyShell>
-    );
-  }
+  const previewMode = mode === 'guest' ? 'guest' : mode === 'join' ? 'join' : null;
 
   return (
     <FamilyShell>
@@ -85,12 +48,19 @@ export function FamilyHome({
       <FamilyMain className="min-h-0">
         <FeedView
           memberCount={memberCount}
+          previewMode={previewMode}
           showPinned={mode === 'member'}
           commentsTarget={commentsTarget}
           onOpenComments={openComments}
           onCloseComments={() => setCommentsTarget(null)}
         />
-      </FamilyMain>      {mode === 'guest' && <GuestBanner />}
+      </FamilyMain>
+      {mode === 'guest' && <GuestBanner />}
+      {mode === 'join' && (
+        <Suspense>
+          <JoinBanner id="family-join-cta" />
+        </Suspense>
+      )}
       {showOnboarding && <OnboardingModal onDone={() => setShowOnboarding(false)} />}
     </FamilyShell>
   );

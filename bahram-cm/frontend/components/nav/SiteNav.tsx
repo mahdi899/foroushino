@@ -103,12 +103,13 @@ export function SiteNav() {
         )}
       >
         <div className="site-header__mobile container-luxe flex h-14 min-w-0 items-center gap-2.5 lg:hidden">
-          <div className="flex min-w-0 shrink-0 items-center">
-            <Logo size="sm" />
+          <div className="flex min-w-0 flex-1 items-center">
+            <Logo size="sm" showWordmark={false} />
           </div>
-          <FamilyNavButton compact />
-          <div className="ms-auto flex shrink-0 items-center gap-2">
-            <ThemeToggle compact className="shrink-0" />
+          <div className="flex shrink-0 items-center justify-center">
+            <FamilyNavButton compact />
+          </div>
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
             <PanelNavButton showLabel={false} className="shrink-0" />
           </div>
         </div>

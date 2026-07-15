@@ -10,9 +10,43 @@ import {
 } from '@/lib/family/actionResults';
 import type { FamilyAction, FamilyActionResults } from '@/lib/family/types';
 
-function PollResults({ results }: { results: FamilyActionResults }) {
+function PollParticipation({
+  results,
+  memberCount,
+  isStaff,
+}: {
+  results: FamilyActionResults | null | undefined;
+  memberCount: number;
+  isStaff: boolean;
+}) {
+  if (memberCount <= 0) return null;
+
+  const answered = results?.total ?? 0;
+  const percent = Math.min(100, Math.round((answered / memberCount) * 100));
+
+  return (
+    <p className="text-[11px] tabular-nums text-bone/50">
+      {isStaff
+        ? `${answered.toLocaleString('en-US')} از ${memberCount.toLocaleString('en-US')} نفر پاسخ دادند`
+        : `${percent.toLocaleString('en-US')}٪ شرکت کردند`}
+    </p>
+  );
+}
+
+function PollResults({
+  results,
+  memberCount,
+  isStaff,
+}: {
+  results: FamilyActionResults;
+  memberCount?: number;
+  isStaff?: boolean;
+}) {
   return (
     <div className="space-y-2.5 border-t border-[var(--family-border-subtle)] pt-3">
+      {memberCount != null && memberCount > 0 && (
+        <PollParticipation results={results} memberCount={memberCount} isStaff={Boolean(isStaff)} />
+      )}
       {results.options.map((option) => (
         <div key={option.value} className="space-y-1">
           <div className="flex items-center justify-between gap-2 text-xs">
@@ -34,7 +68,15 @@ function PollResults({ results }: { results: FamilyActionResults }) {
   );
 }
 
-export function ActionCard({ action }: { action: FamilyAction }) {
+export function ActionCard({
+  action,
+  memberCount,
+  isStaff = false,
+}: {
+  action: FamilyAction;
+  memberCount?: number;
+  isStaff?: boolean;
+}) {
   const [submitted, setSubmitted] = useState(false);
   const [pending, setPending] = useState(false);
   const [textValue, setTextValue] = useState('');
@@ -59,11 +101,21 @@ export function ActionCard({ action }: { action: FamilyAction }) {
     results &&
     (action.type === 'single_choice' || action.type === 'multi_choice' || action.type === 'confirmation');
 
+  const isPollType =
+    action.type === 'single_choice' || action.type === 'multi_choice' || action.type === 'confirmation';
+
+  const pollParticipation =
+    isPollType && memberCount != null && memberCount > 0 ? (
+      <PollParticipation results={results} memberCount={memberCount} isStaff={isStaff} />
+    ) : null;
+
   if (submitted) {
     return (
       <div className="family-action-panel space-y-3 border-[color-mix(in_oklab,var(--family-accent)_30%,var(--family-border))] bg-[color-mix(in_oklab,var(--family-accent)_8%,var(--family-surface-soft))]">
         <p className="text-sm text-[var(--family-accent)]">ثبت شد — داداش بهرام می‌بیندش. ✅</p>
-        {showResults && <PollResults results={results} />}
+        {showResults && (
+          <PollResults results={results} memberCount={memberCount} isStaff={isStaff} />
+        )}
       </div>
     );
   }
@@ -71,6 +123,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
   const wrap = (children: React.ReactNode) => (
     <div className="family-action-panel space-y-3">
       <p className="text-sm font-medium text-bone">{action.prompt}</p>
+      {pollParticipation}
       {children}
     </div>
   );

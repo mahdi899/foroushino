@@ -31,6 +31,25 @@ class FamilyJoinAndFeedTest extends TestCase
             ->assertJsonPath('data.0.id', $post->id);
     }
 
+    public function test_logged_in_non_member_sees_preview_feed(): void
+    {
+        $user = User::factory()->create();
+        $post = FamilyPost::create([
+            'author_id' => User::factory()->create()->id,
+            'type' => 'text',
+            'status' => FamilyPostStatus::Published,
+            'audience_mode' => 'all',
+            'published_at' => now(),
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/family/feed')
+            ->assertOk()
+            ->assertJsonPath('meta.guest', true)
+            ->assertJsonPath('meta.needs_join', true)
+            ->assertJsonPath('data.0.id', $post->id);
+    }
+
     public function test_student_can_join_family_and_see_member_feed(): void
     {
         $user = User::factory()->create();

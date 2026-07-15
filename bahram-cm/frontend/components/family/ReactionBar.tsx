@@ -61,10 +61,14 @@ export function ReactionBar({
   postId,
   stats,
   userReaction,
+  readOnly = false,
+  onLockedInteract,
 }: {
   postId: number;
   stats: FamilyPostStats;
   userReaction: FamilyReactionType | null;
+  readOnly?: boolean;
+  onLockedInteract?: () => void;
 }) {
   const [active, setActive] = useState<FamilyReactionType | null>(userReaction);
   const [counts, setCounts] = useState<FamilyPostStats>(() => ({
@@ -102,6 +106,10 @@ export function ReactionBar({
   }, [pickerOpen]);
 
   const toggle = async (type: FamilyReactionType) => {
+    if (readOnly) {
+      onLockedInteract?.();
+      return;
+    }
     if (pending) return;
     setPending(true);
     const wasActive = active === type;
@@ -168,12 +176,18 @@ export function ReactionBar({
         type="button"
         aria-label="واکنش‌های بیشتر"
         aria-expanded={pickerOpen}
-        disabled={pending}
-        onClick={() => setPickerOpen((o) => !o)}
+        disabled={pending && !readOnly}
+        onClick={() => {
+          if (readOnly) {
+            onLockedInteract?.();
+            return;
+          }
+          setPickerOpen((o) => !o);
+        }}
         className={cn(
           'family-reaction-add',
           pickerOpen && 'family-reaction-add--open',
-          pending && 'pointer-events-none opacity-45',
+          pending && !readOnly && 'pointer-events-none opacity-45',
         )}
       >
         <Plus className="h-4 w-4" strokeWidth={2.25} />

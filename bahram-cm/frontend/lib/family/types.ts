@@ -166,11 +166,14 @@ export interface FamilyStory {
 export interface FamilyFeedMeta {
   next_cursor: string | null;
   guest: boolean;
+  needs_auth?: boolean;
+  needs_join?: boolean;
   display_name: string;
   branding?: FamilyBranding;
   has_active_stories?: boolean;
   member_count?: number;
   onboarding_completed?: boolean;
+  is_staff?: boolean;
 }
 
 export interface FamilyFeedResponse {
@@ -207,6 +210,7 @@ export interface FamilyMeResponse {
   member_count?: number;
   onboarding_completed?: boolean;
   joined_at?: string;
+  is_staff?: boolean;
 }
 
 export interface FamilyPulseItem {

@@ -82,6 +82,7 @@ export type StudentLoginFormProps = {
   variant?: 'modal' | 'page';
   active?: boolean;
   onClose?: () => void;
+  context?: 'panel' | 'family';
 };
 
 export function StudentLoginForm({
@@ -89,6 +90,7 @@ export function StudentLoginForm({
   variant = 'modal',
   active = true,
   onClose,
+  context = 'panel',
 }: StudentLoginFormProps) {
   const [step, setStep] = useState<Step>('mobile');
   const [phone, setPhone] = useState('');
@@ -111,6 +113,22 @@ export function StudentLoginForm({
   const phoneValid = isValidIranMobile(phone);
   const showPhoneError = phoneError !== null && (phoneTouched || phone.length >= 2);
   const isPage = variant === 'page';
+  const isFamily = context === 'family';
+  const titleId = isFamily ? 'family-login-title' : 'student-login-title';
+
+  const inputClass = cn(
+    'mt-1 h-11 w-full px-4 text-bone outline-none transition-[border-color,box-shadow] duration-200',
+    isFamily
+      ? 'family-input rounded-xl text-center text-base font-semibold tracking-[0.1em]'
+      : cn(
+          fieldClass,
+          'rounded-pill border border-bone/12 bg-ink/40 placeholder:text-mist focus:border-emerald/45 focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-emerald-glow)_16%,transparent)]',
+        ),
+  );
+
+  const submitClass = isFamily
+    ? 'family-btn-primary flex h-11 w-full items-center justify-center rounded-xl text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-55'
+    : btnPrimaryClass;
 
   const reset = useCallback(() => {
     setStep('mobile');
@@ -200,21 +218,28 @@ export function StudentLoginForm({
     <div
       role={isPage ? undefined : 'dialog'}
       aria-modal={isPage ? undefined : true}
-      aria-labelledby="student-login-title"
+      aria-labelledby={titleId}
       className={cn(
-        'relative w-full overflow-hidden border border-bone/10 bg-charcoal/96',
-        isPage
-          ? 'max-w-md rounded-2xl shadow-[0_20px_60px_-12px_rgba(0,0,0,0.45)]'
-          : 'mx-auto w-full rounded-2xl shadow-[0_20px_60px_-12px_rgba(0,0,0,0.55)]',
+        'relative w-full overflow-hidden',
+        isFamily
+          ? 'family-card max-w-md rounded-2xl shadow-none'
+          : cn(
+              'border border-bone/10 bg-charcoal/96',
+              isPage
+                ? 'max-w-md rounded-2xl shadow-[0_20px_60px_-12px_rgba(0,0,0,0.45)]'
+                : 'mx-auto w-full rounded-2xl shadow-[0_20px_60px_-12px_rgba(0,0,0,0.55)]',
+            ),
       )}
       dir="rtl"
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-l from-transparent via-emerald-glow/40 to-transparent"
-      />
+      {!isFamily && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-l from-transparent via-emerald-glow/40 to-transparent"
+        />
+      )}
 
-      <div className="relative px-5 pb-4 pt-4">
+      <div className={cn('relative px-5 pb-4', isFamily ? 'pt-5' : 'pt-4')}>
         {!isPage && onClose ? (
           <button
             type="button"
@@ -226,19 +251,25 @@ export function StudentLoginForm({
           </button>
         ) : null}
 
-        <div className="text-center">
-          <BrandMark className="mx-auto h-9 w-9 rounded-pill ring-bone/12" />
-          <h2 id="student-login-title" className="panel-text-body-lg mt-2.5 font-display font-semibold text-bone">
-            ورود به پنل دانشجویی
-          </h2>
-          <p className="mt-0.5 flex items-center justify-center gap-1 panel-text-meta text-mist">
-            <ShieldCheck className="h-3 w-3 text-emerald-glow/80" strokeWidth={1.5} aria-hidden />
-            ورود امن با پیامک یا بله
+        {isFamily ? (
+          <p id={titleId} className="text-center text-sm text-bone/55">
+            ورود با پیامک یا بله
           </p>
-        </div>
+        ) : (
+          <div className="text-center">
+            <BrandMark className="mx-auto h-9 w-9 rounded-pill ring-bone/12" />
+            <h2 id={titleId} className="panel-text-body-lg mt-2.5 font-display font-semibold text-bone">
+              ورود به پنل دانشجویی
+            </h2>
+            <p className="mt-0.5 flex items-center justify-center gap-1 panel-text-meta text-mist">
+              <ShieldCheck className="h-3 w-3 text-emerald-glow/80" strokeWidth={1.5} aria-hidden />
+              ورود امن با پیامک یا بله
+            </p>
+          </div>
+        )}
       </div>
 
-      <div className="border-t border-bone/6 px-5 py-4">
+      <div className={cn('px-5 py-4', isFamily ? '' : 'border-t border-bone/6')}>
         <AnimatePresence mode="wait">
           {step === 'mobile' ? (
             <motion.form
@@ -255,7 +286,9 @@ export function StudentLoginForm({
               className="space-y-3"
             >
               <label className="block">
-                <span className="panel-text-meta font-medium text-mist">شماره موبایل</span>
+                <span className={cn('font-medium', isFamily ? 'text-xs text-bone/55' : 'panel-text-meta text-mist')}>
+                  شماره موبایل
+                </span>
                 <input
                   name="mobile"
                   type="tel"
@@ -268,11 +301,7 @@ export function StudentLoginForm({
                   onBlur={() => setPhoneTouched(true)}
                   placeholder="09123456789"
                   maxLength={11}
-                  className={cn(
-                    fieldClass,
-                    'text-center text-base font-semibold tracking-[0.1em]',
-                    showPhoneError && 'border-gold/50',
-                  )}
+                  className={cn(inputClass, showPhoneError && (isFamily ? 'border-red-400/60' : 'border-gold/50'))}
                   aria-invalid={showPhoneError}
                 />
                 {showPhoneError ? (
@@ -284,7 +313,7 @@ export function StudentLoginForm({
 
               {otpState.error ? <p className="panel-text-meta text-gold">{otpState.error}</p> : null}
 
-              <button type="submit" disabled={!phoneValid || sendPending} className={btnPrimaryClass}>
+              <button type="submit" disabled={!phoneValid || sendPending} className={submitClass}>
                 {sendPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'دریافت کد'}
               </button>
 
@@ -294,7 +323,10 @@ export function StudentLoginForm({
                   setPasswordError(null);
                   setStep('password');
                 }}
-                className="flex w-full items-center justify-center gap-1 py-0.5 panel-text-meta text-mist transition hover:text-emerald-glow"
+                className={cn(
+                  'flex w-full items-center justify-center gap-1 py-0.5 text-xs transition',
+                  isFamily ? 'text-bone/50 hover:text-[var(--family-accent)]' : 'panel-text-meta text-mist hover:text-emerald-glow',
+                )}
               >
                 <KeyRound className="h-3 w-3" />
                 ورود با رمز عبور
@@ -315,7 +347,7 @@ export function StudentLoginForm({
                 <input type="hidden" name="mobile" value={mobile} />
               </form>
 
-              <div className="flex items-center justify-between gap-2 rounded-pill border border-bone/8 bg-ink/25 px-3 py-2">
+              <div className={cn('flex items-center justify-between gap-2 rounded-xl px-3 py-2', isFamily ? 'family-input' : 'rounded-pill border border-bone/8 bg-ink/25')}>
                 <div className="min-w-0 text-start">
                   <p className="panel-text-caption text-mist">کد به</p>
                   <p className="truncate text-sm font-medium text-bone" dir="ltr">
@@ -328,7 +360,10 @@ export function StudentLoginForm({
                     setStep('mobile');
                     setOtpCode('');
                   }}
-                  className="inline-flex shrink-0 items-center gap-0.5 panel-text-meta text-emerald-glow transition hover:text-emerald"
+                  className={cn(
+                    'inline-flex shrink-0 items-center gap-0.5 text-xs transition',
+                    isFamily ? 'text-[var(--family-accent)] hover:opacity-80' : 'panel-text-meta text-emerald-glow hover:text-emerald',
+                  )}
                 >
                   <ArrowRight className="h-3 w-3 rtl-flip" />
                   ویرایش
@@ -362,7 +397,7 @@ export function StudentLoginForm({
                 <button
                   type="submit"
                   disabled={otpCode.length < 5 || verifyPending}
-                  className={btnPrimaryClass}
+                  className={submitClass}
                 >
                   {verifyPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'تأیید و ورود'}
                 </button>
@@ -394,7 +429,10 @@ export function StudentLoginForm({
                     type="button"
                     onClick={handleResend}
                     disabled={sendPending}
-                    className="font-medium text-emerald-glow transition hover:text-emerald"
+                    className={cn(
+                      'font-medium transition',
+                      isFamily ? 'text-[var(--family-accent)] hover:opacity-80' : 'text-emerald-glow hover:text-emerald',
+                    )}
                   >
                     {sendPending ? 'در حال ارسال…' : 'ارسال مجدد کد'}
                   </button>
@@ -417,7 +455,9 @@ export function StudentLoginForm({
               {passwordSecurity.honeypotField}
 
               <label className="block">
-                <span className="panel-text-meta font-medium text-mist">شماره موبایل</span>
+                <span className={cn('font-medium', isFamily ? 'text-xs text-bone/55' : 'panel-text-meta text-mist')}>
+                  شماره موبایل
+                </span>
                 <input
                   name="mobile"
                   type="tel"
@@ -427,17 +467,19 @@ export function StudentLoginForm({
                   defaultValue={phone}
                   placeholder="09123456789"
                   maxLength={11}
-                  className={cn(fieldClass, 'text-center tracking-[0.1em]')}
+                  className={cn(inputClass, !isFamily && 'rounded-pill tracking-[0.1em]')}
                 />
               </label>
 
               <label className="block">
-                <span className="panel-text-meta font-medium text-mist">رمز عبور</span>
+                <span className={cn('font-medium', isFamily ? 'text-xs text-bone/55' : 'panel-text-meta text-mist')}>
+                  رمز عبور
+                </span>
                 <input
                   name="password"
                   type="password"
                   required
-                  className={fieldClass}
+                  className={cn(inputClass, !isFamily && 'rounded-pill')}
                   autoComplete="current-password"
                 />
               </label>
@@ -453,7 +495,7 @@ export function StudentLoginForm({
                   passwordSecurity.securityLoading ||
                   (passwordSecurity.captchaRequired && !passwordSecurity.captchaReady)
                 }
-                className={btnPrimaryClass}
+                className={submitClass}
               >
                 {passwordPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ورود'}
               </button>
@@ -464,7 +506,10 @@ export function StudentLoginForm({
                   setPasswordError(null);
                   setStep('mobile');
                 }}
-                className="flex w-full items-center justify-center gap-1 py-0.5 panel-text-meta text-mist transition hover:text-emerald-glow"
+                className={cn(
+                  'flex w-full items-center justify-center gap-1 py-0.5 text-xs transition',
+                  isFamily ? 'text-bone/50 hover:text-[var(--family-accent)]' : 'panel-text-meta text-mist hover:text-emerald-glow',
+                )}
               >
                 ورود با کد یک‌بارمصرف
               </button>

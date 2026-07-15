@@ -9,10 +9,12 @@ import { cn } from "@/lib/cn";
 export function Logo({
   className,
   size = "md",
+  showWordmark = true,
 }: {
   className?: string;
   /** `footer`: compact on phone, full scale from `md` up */
   size?: "sm" | "md" | "footer";
+  showWordmark?: boolean;
 }) {
   const markSize =
     size === "sm" ? "h-8 w-8" : size === "footer" ? "h-8 w-8 md:h-9 md:w-9" : "h-9 w-9";
@@ -43,18 +45,20 @@ export function Logo({
           className={cn(brandLogoDisplay.imageClass, "transition-transform duration-500 group-hover:scale-[1.03]")}
         />
       </span>
-      <span
-        className={cn(
-          "font-display font-bold tracking-tight",
-          size === "sm"
-            ? "text-base"
-            : size === "footer"
-              ? "text-base md:text-xl"
-              : "text-lg md:text-xl",
-        )}
-      >
-        بهرام رستمی
-      </span>
+      {showWordmark ? (
+        <span
+          className={cn(
+            "font-display font-bold tracking-tight",
+            size === "sm"
+              ? "text-base"
+              : size === "footer"
+                ? "text-base md:text-xl"
+                : "text-lg md:text-xl",
+          )}
+        >
+          بهرام رستمی
+        </span>
+      ) : null}
     </Link>
   );
 }

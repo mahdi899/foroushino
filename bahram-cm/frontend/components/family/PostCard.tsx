@@ -43,12 +43,20 @@ export function PostCard({
   compact = false,
   variant = 'feed',
   hideCommentPreview = false,
+  memberCount,
+  isStaff = false,
+  previewMode = null,
+  onPreviewInteract,
   onOpenComments,
 }: {
   post: FamilyPost;
   compact?: boolean;
   variant?: 'feed' | 'modal';
   hideCommentPreview?: boolean;
+  memberCount?: number;
+  isStaff?: boolean;
+  previewMode?: 'guest' | 'join' | null;
+  onPreviewInteract?: () => void;
   onOpenComments?: (handlers: { onCommentAdded: (comment: FamilyComment) => void }) => void;
 }) {
   const [commentCount, setCommentCount] = useState(post.stats.comments);
@@ -103,7 +111,9 @@ export function PostCard({
         ) : null}
       </div>
 
-      {actions.map((action) => <ActionCard key={action.id} action={action} />)}
+      {previewMode ? null : actions.map((action) => (
+        <ActionCard key={action.id} action={action} memberCount={memberCount} isStaff={isStaff} />
+      ))}
 
       <div className="space-y-2 border-t border-[var(--family-border-subtle)] pt-2.5">
         <div dir="ltr" className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
@@ -111,6 +121,8 @@ export function PostCard({
             postId={post.id}
             stats={{ ...post.stats, comments: commentCount }}
             userReaction={post.user_reaction}
+            readOnly={Boolean(previewMode)}
+            onLockedInteract={onPreviewInteract}
           />
           {post.published_at && (
             <time dateTime={post.published_at} className="shrink-0 text-[11px] tabular-nums text-bone/40">
@@ -124,7 +136,11 @@ export function PostCard({
         <CommentThreadPreview
           count={commentCount}
           preview={commentPreview}
-          onOpen={() =>
+          onOpen={() => {
+            if (previewMode) {
+              onPreviewInteract?.();
+              return;
+            }
             onOpenComments?.({
               onCommentAdded: (comment) => {
                 setCommentCount((c) => c + 1);
@@ -133,8 +149,8 @@ export function PostCard({
                   return [comment, ...prev].slice(0, 3);
                 });
               },
-            })
-          }
+            });
+          }}
         />
       )}
 

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { FeedDateSeparator } from '@/components/family/FeedDateSeparator';
+import { FeedPreviewGate, FeedPreviewIntro } from '@/components/family/FeedPreviewIntro';
 import { FamilyBrandingSidebar } from '@/components/family/FamilyBrandingSidebar';
 import { FamilyNotificationsPanel } from '@/components/family/FamilyNotificationsPanel';
 import { FeedCommentsPanel } from '@/components/family/FeedCommentsPanel';
@@ -45,18 +46,29 @@ function buildFeedItems(posts: FamilyPost[]): FeedItem[] {
 
 export function FeedView({
   memberCount,
+  previewMode = null,
   showPinned = false,
   commentsTarget,
   onOpenComments,
   onCloseComments,
 }: {
   memberCount?: number;
+  previewMode?: 'guest' | 'join' | null;
   showPinned?: boolean;
   commentsTarget?: CommentsTarget | null;
   onOpenComments?: (target: CommentsTarget) => void;
   onCloseComments?: () => void;
 }) {
-  const { posts, isLoading, hasMore, loadMore, isValidating } = useFamilyFeed();
+  const { posts, meta, isLoading, hasMore, loadMore, isValidating } = useFamilyFeed();
+  const resolvedMemberCount = meta?.member_count ?? memberCount;
+  const isStaff = meta?.is_staff ?? false;
+  const isPreview = Boolean(previewMode ?? meta?.guest);
+  const effectivePreviewMode = previewMode ?? (meta?.needs_join ? 'join' : 'guest');
+
+  const scrollToPreviewCta = useCallback(() => {
+    const id = effectivePreviewMode === 'join' ? 'family-join-cta' : 'family-guest-cta';
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [effectivePreviewMode]);
   const feedScrollRef = useRef<HTMLDivElement | null>(null);
   const feedContentRef = useRef<HTMLDivElement | null>(null);
   const bottomAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -166,7 +178,8 @@ export function FeedView({
   return (
     <div className="flex h-full min-h-0 flex-1">
       <FamilyBrandingSidebar
-        memberCount={memberCount}
+        memberCount={resolvedMemberCount}
+        isMember={!isPreview}
         notificationsActive={mainView === 'notifications'}
         onOpenNotifications={() => {
           onCloseComments?.();
@@ -213,6 +226,11 @@ export function FeedView({
             ) : null}
 
             <div ref={feedContentRef} className="mx-auto flex w-full max-w-[680px] flex-col">
+              {isPreview && effectivePreviewMode && !isLoading && posts.length > 0 && (
+                <div className="pt-4 sm:pt-5">
+                  <FeedPreviewIntro mode={effectivePreviewMode} />
+                </div>
+              )}
               {isLoading && posts.length === 0 ? (
                 <div className="space-y-3 px-3 py-4 sm:px-4 lg:px-5 lg:py-5">
                   {[0, 1, 2, 3].map((i) => (
@@ -227,7 +245,7 @@ export function FeedView({
                 </div>
               ) : (
                 <div className="space-y-3 px-3 py-4 sm:space-y-3.5 sm:px-4 lg:px-5 lg:py-5">
-                  {hasMore && (
+                  {!isPreview && hasMore && (
                     <div
                       ref={topSentinelRef}
                       className="flex items-center justify-center gap-2 py-3 text-xs text-bone/45"
@@ -249,11 +267,20 @@ export function FeedView({
                       <PostCard
                         key={item.key}
                         post={item.post}
-                        onOpenComments={(handlers) =>
-                          openComments({ postId: item.post.id, ...handlers })
+                        memberCount={resolvedMemberCount}
+                        isStaff={isStaff}
+                        previewMode={isPreview ? effectivePreviewMode : null}
+                        onPreviewInteract={scrollToPreviewCta}
+                        onOpenComments={
+                          isPreview
+                            ? undefined
+                            : (handlers) => openComments({ postId: item.post.id, ...handlers })
                         }
                       />
                     ),
+                  )}
+                  {isPreview && effectivePreviewMode && (
+                    <FeedPreviewGate mode={effectivePreviewMode} />
                   )}
                   <div ref={bottomAnchorRef} aria-hidden className="h-px shrink-0" />
                 </div>

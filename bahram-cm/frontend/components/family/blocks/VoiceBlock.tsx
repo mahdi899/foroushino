@@ -7,6 +7,14 @@ import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
 import { sendMediaProgress } from '@/lib/family/api';
 import type { FamilyMediaBlock } from '@/lib/family/types';
 
+const PODCAST_MIN_SECONDS = 45;
+const PLAYBACK_SPEEDS = [1, 1.25, 1.5, 2] as const;
+type PlaybackSpeed = (typeof PLAYBACK_SPEEDS)[number];
+
+function formatSpeed(rate: PlaybackSpeed): string {
+  return rate === 1 ? '1×' : `${rate}×`;
+}
+
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
   const m = Math.floor(seconds / 60);
@@ -20,11 +28,6 @@ function barCountForDuration(seconds: number): number {
   if (seconds <= 90) return 44;
   if (seconds <= 180) return 52;
   return 60;
-}
-
-function waveWidthForDuration(seconds: number): number {
-  const safe = Number.isFinite(seconds) && seconds > 0 ? seconds : 30;
-  return Math.round(Math.min(240, Math.max(96, 56 + safe * 1.35)));
 }
 
 function normalizeWaveform(raw: number[], barCount: number): number[] {
@@ -115,6 +118,7 @@ export function VoiceBlock({
   const [scrubVisual, setScrubVisual] = useState<number | null>(null);
   const [duration, setDuration] = useState(media.duration ?? 0);
   const [audioReady, setAudioReady] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState<PlaybackSpeed>(1);
   const lastReported = useRef(0);
 
   useEffect(() => {
@@ -211,8 +215,21 @@ export function VoiceBlock({
     return 30;
   }, [duration, media.duration]);
 
+  const isPodcast = resolvedDuration >= PODCAST_MIN_SECONDS;
+
+  useEffect(() => {
+    const el = audioRef.current;
+    if (el) el.playbackRate = playbackRate;
+  }, [playbackRate]);
+
+  const cycleSpeed = useCallback(() => {
+    setPlaybackRate((prev) => {
+      const idx = PLAYBACK_SPEEDS.indexOf(prev);
+      return PLAYBACK_SPEEDS[(idx + 1) % PLAYBACK_SPEEDS.length];
+    });
+  }, []);
+
   const barCount = useMemo(() => barCountForDuration(resolvedDuration), [resolvedDuration]);
-  const waveWidthPx = useMemo(() => waveWidthForDuration(resolvedDuration), [resolvedDuration]);
 
   const waveform = useMemo(() => {
     const raw =
@@ -282,6 +299,13 @@ export function VoiceBlock({
         } catch {
           // autoplay blocked or network
         }
+      } else if (!wasPlaying) {
+        requestPlay(media.id);
+        try {
+          await el.play();
+        } catch {
+          // autoplay blocked or network
+        }
       }
 
       scrubbingRef.current = false;
@@ -331,14 +355,20 @@ export function VoiceBlock({
 
   if (!media.url) {
     return (
-      <div className="family-voice flex items-center gap-3 rounded-full px-4 py-3 text-sm text-bone/50">
+      <div className="family-voice family-voice--loading flex min-h-[3.75rem] items-center gap-3 rounded-2xl px-4 py-3.5 text-sm text-bone/50">
         در حال پردازش صدا…
       </div>
     );
   }
 
   return (
-    <div dir="ltr" className="family-voice flex w-full max-w-full items-center gap-2 rounded-full px-2 py-1.5">
+    <div
+      dir="ltr"
+      className={cn(
+        'family-voice flex w-full max-w-full items-center gap-3 overflow-hidden rounded-2xl px-3 py-3 sm:gap-3.5 sm:px-4 sm:py-3.5',
+        !playing && 'family-voice--idle',
+      )}
+    >
       <audio
         ref={audioRef}
         preload="auto"
@@ -393,12 +423,16 @@ export function VoiceBlock({
         type="button"
         onClick={() => void toggle()}
         aria-label={playing ? 'توقف' : 'پخش'}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full family-voice-play transition"
+        className="family-voice-play flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition active:scale-95 sm:h-[3.25rem] sm:w-[3.25rem]"
       >
-        {playing ? <Pause className="h-3.5 w-3.5" fill="currentColor" /> : <Play className="ms-0.5 h-3.5 w-3.5" fill="currentColor" />}
+        {playing ? (
+          <Pause className="h-5 w-5" fill="currentColor" />
+        ) : (
+          <Play className="ms-0.5 h-5 w-5" fill="currentColor" />
+        )}
       </button>
 
-      <div className="flex min-w-0 flex-1 items-center">
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 overflow-hidden">
         <button
           ref={waveRef}
           type="button"
@@ -434,15 +468,15 @@ export function VoiceBlock({
             }
           }}
           className={cn(
-            'family-voice-wave h-8 max-w-full touch-none',
+            'family-voice-wave w-full min-w-0 touch-none',
             audioReady ? 'cursor-pointer' : 'cursor-wait opacity-70',
           )}
-          style={{ '--wave-bars': barCount, width: `${waveWidthPx}px` } as CSSProperties}
+          style={{ '--wave-bars': barCount } as CSSProperties}
         >
           {waveform.map((v, i) => {
             const barRatio = barCount > 1 ? i / (barCount - 1) : 0;
             const played = barRatio <= progressRatio;
-            const height = Math.round(3 + v * 14);
+            const height = Math.round(5 + v * 26);
             return (
               <span
                 key={i}
@@ -455,11 +489,30 @@ export function VoiceBlock({
             );
           })}
         </button>
-      </div>
 
-      <span className="w-9 shrink-0 text-left text-[10px] tabular-nums text-bone/50">
-        {formatTime(displayProgress > 0 || playing ? resolvedDuration - displayProgress : resolvedDuration)}
-      </span>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            {!playing && displayProgress <= 0 ? (
+              <span className="min-w-0 truncate text-[11px] font-medium text-[var(--family-accent)] sm:text-xs">
+                برای پخش بزنید
+              </span>
+            ) : null}
+            {isPodcast ? (
+              <button
+                type="button"
+                onClick={cycleSpeed}
+                aria-label={`سرعت پخش ${formatSpeed(playbackRate)}`}
+                className="family-voice-speed shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums sm:text-xs"
+              >
+                {formatSpeed(playbackRate)}
+              </button>
+            ) : null}
+          </div>
+          <span className="shrink-0 text-[11px] font-medium tabular-nums text-bone/55 sm:text-xs">
+            {formatTime(displayProgress > 0 || playing ? resolvedDuration - displayProgress : resolvedDuration)}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

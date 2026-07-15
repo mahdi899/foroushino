@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Family;
 use App\Actions\Family\JoinFamily;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\Family\FamilyPostResource;
+use App\Models\Family;
 use App\Models\FamilyPost;
 use App\Services\Family\EntryContext;
 use App\Services\Family\FamilyAccessService;
@@ -31,10 +32,12 @@ class FeedController extends Controller
         // Not behind `auth:sanctum` middleware (guests must reach this route too),
         // so the default guard won't see the bearer token — resolve explicitly.
         $user = $request->user('sanctum');
+        $membership = $user ? $this->access->homeMembership($user) : null;
 
-        if (! $user) {
+        if (! $membership) {
             $preview = $this->feed->guestPreview();
             $branding = $this->branding->publicPayload();
+            $memberCount = (int) Family::query()->sum('member_count');
 
             return ApiResponse::success(
                 FamilyPostResource::collection($preview['data'])->resolve(),
@@ -42,9 +45,12 @@ class FeedController extends Controller
                 [
                     'next_cursor' => null,
                     'guest' => true,
+                    'needs_auth' => ! $user,
+                    'needs_join' => (bool) $user,
                     'display_name' => $branding['display_name'],
                     'branding' => $branding,
                     'has_active_stories' => $this->stories->hasActiveStories(),
+                    'member_count' => $memberCount > 0 ? $memberCount : null,
                 ]
             );
         }
@@ -72,6 +78,7 @@ class FeedController extends Controller
                 'has_active_stories' => $this->stories->hasActiveStories(),
                 'member_count' => (int) $family->member_count,
                 'onboarding_completed' => (bool) $result['membership']->onboarding_completed,
+                'is_staff' => $this->access->canManage($user),
             ]
         );
     }
@@ -173,6 +180,7 @@ class FeedController extends Controller
             'member_count' => (int) $membership->family->member_count,
             'onboarding_completed' => (bool) $membership->onboarding_completed,
             'joined_at' => $membership->joined_at?->toIso8601String(),
+            'is_staff' => $this->access->canManage($request->user()),
         ]);
     }
 }

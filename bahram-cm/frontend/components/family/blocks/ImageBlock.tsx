@@ -157,41 +157,11 @@ export function ImageBlock({
         )}
       </button>
 
-      {lightboxOpen && phase === 'sharp' && (
+      {lightboxOpen && phase === 'sharp' && media.url && (
         <ImageLightbox url={media.url} onClose={() => setLightboxOpen(false)} />
       )}
     </>
   );
-}
-
-function albumLayoutClass(count: number, index: number): string {
-  if (count === 1) return '';
-  if (count === 2) return 'min-h-[120px]';
-  if (count === 3) {
-    if (index === 0) return 'col-span-1 row-span-2';
-    return '';
-  }
-  if (count === 4) return '';
-  return '';
-}
-
-function albumRoundedClass(count: number, index: number): string {
-  if (count === 1) return 'rounded-2xl';
-  if (count === 2) {
-    return index === 0 ? 'rounded-s-2xl rounded-e-md' : 'rounded-e-2xl rounded-s-md';
-  }
-  if (count === 3) {
-    if (index === 0) return 'rounded-s-2xl rounded-ee-md';
-    if (index === 1) return 'rounded-se-md';
-    return 'rounded-ee-2xl rounded-es-md';
-  }
-  if (count === 4) {
-    if (index === 0) return 'rounded-se-2xl rounded-es-md';
-    if (index === 1) return 'rounded-ss-md rounded-ee-md';
-    if (index === 2) return 'rounded-es-md rounded-se-md';
-    return 'rounded-ee-2xl rounded-ss-md';
-  }
-  return 'rounded-lg';
 }
 
 export function ImageAlbumBlock({ items, constrained = false }: { items: FamilyMediaBlock[]; constrained?: boolean }) {
@@ -223,4 +193,34 @@ export function ImageAlbumBlock({ items, constrained = false }: { items: FamilyM
       ))}
     </div>
   );
+}
+
+function albumLayoutClass(count: number, index: number): string {
+  if (count === 1) return '';
+  if (count === 2) return 'min-h-[120px]';
+  if (count === 3) {
+    if (index === 0) return 'col-span-1 row-span-2';
+    return '';
+  }
+  if (count === 4) return '';
+  return '';
+}
+
+function albumRoundedClass(count: number, index: number): string {
+  if (count === 1) return 'rounded-2xl';
+  if (count === 2) {
+    return index === 0 ? 'rounded-s-2xl rounded-e-md' : 'rounded-e-2xl rounded-s-md';
+  }
+  if (count === 3) {
+    if (index === 0) return 'rounded-s-2xl rounded-ee-md';
+    if (index === 1) return 'rounded-se-md';
+    return 'rounded-ee-2xl rounded-es-md';
+  }
+  if (count === 4) {
+    if (index === 0) return 'rounded-se-2xl rounded-es-md';
+    if (index === 1) return 'rounded-ss-md rounded-ee-md';
+    if (index === 2) return 'rounded-es-md rounded-se-md';
+    return 'rounded-ee-2xl rounded-ss-md';
+  }
+  return 'rounded-lg';
 }

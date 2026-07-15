@@ -60,7 +60,7 @@ return [
 
     'feed' => [
         'per_page' => 15,
-        'guest_preview_posts' => 1,
+        'guest_preview_posts' => (int) env('FAMILY_GUEST_PREVIEW_POSTS', 4),
         'guest_preview_partial' => true,
     ],
 
