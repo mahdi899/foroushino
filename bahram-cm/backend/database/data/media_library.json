@@ -2835,6 +2835,66 @@
             "category": "بلاگ",
             "legacy_path": null,
             "is_private": false
+        },
+        {
+            "path": "media/2026/07/01kxahme4a3hev798mnfek07gf.webp",
+            "disk": "public",
+            "url": null,
+            "type": "image",
+            "mime": "image/webp",
+            "size": 47100,
+            "width": null,
+            "height": null,
+            "alt_fa": "01kxahme4a3hev798mnfek07gf",
+            "original_filename": "01kxahme4a3hev798mnfek07gf.webp",
+            "category": "آپلود شده",
+            "legacy_path": null,
+            "is_private": false
+        },
+        {
+            "path": "media/2026/07/01kxahqjnef8wmv5c7btf6hjej.webp",
+            "disk": "public",
+            "url": null,
+            "type": "image",
+            "mime": "image/webp",
+            "size": 27956,
+            "width": null,
+            "height": null,
+            "alt_fa": "01kxahqjnef8wmv5c7btf6hjej",
+            "original_filename": "01kxahqjnef8wmv5c7btf6hjej.webp",
+            "category": "آپلود شده",
+            "legacy_path": null,
+            "is_private": false
+        },
+        {
+            "path": "media/2026/07/01kxaj17enkcrs6j5r6va0nw7r.webp",
+            "disk": "public",
+            "url": null,
+            "type": "image",
+            "mime": "image/webp",
+            "size": 20370,
+            "width": null,
+            "height": null,
+            "alt_fa": "01kxaj17enkcrs6j5r6va0nw7r",
+            "original_filename": "01kxaj17enkcrs6j5r6va0nw7r.webp",
+            "category": "آپلود شده",
+            "legacy_path": null,
+            "is_private": false
+        },
+        {
+            "path": "media/site/logo-bahram.webp",
+            "disk": "public",
+            "url": null,
+            "type": "image",
+            "mime": "image/webp",
+            "size": 103342,
+            "width": null,
+            "height": null,
+            "alt_fa": "لوگوی رسمی بهرام رستمی",
+            "original_filename": "logo-bahram.webp",
+            "category": "سایت",
+            "legacy_path": null,
+            "is_private": false
         }
     ]
 }

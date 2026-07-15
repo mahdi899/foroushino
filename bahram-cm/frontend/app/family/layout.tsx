@@ -5,6 +5,10 @@ export const metadata: Metadata = {
   title: 'خانواده داداش بهرام',
   description: 'فضای نزدیک داداش بهرام با اعضای خانواده — پست، صوت، ویدیو و گفتگو.',
   robots: { index: false, follow: false },
+  icons: {
+    icon: '/icon',
+    apple: '/apple-icon',
+  },
 };
 
 export const viewport: Viewport = {

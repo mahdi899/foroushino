@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { joinFamily } from '@/lib/family/api';
 import { FamilyApiError } from '@/lib/family/errors';
+import { FamilyBrandLogo } from '@/components/family/FamilyBrandLogo';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
 
 const rules = (profileName: string) => [
@@ -40,9 +41,7 @@ export function JoinScreen() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10 text-center sm:px-8 lg:py-16">
-      <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gold text-2xl font-bold text-charcoal">
-        {branding.profile_name.charAt(0)}
-      </span>
+      <FamilyBrandLogo className="mb-4" size="md" />
       <h1 className="text-xl font-bold text-bone lg:text-2xl">به {branding.display_name} بپیوند</h1>
       <p className="mt-2 max-w-sm text-sm text-bone/60 lg:max-w-md lg:text-[15px]">
         یه فضای نزدیک و واقعی، جایی که {branding.profile_name} مستقیم باهات در ارتباطه.

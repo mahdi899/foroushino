@@ -6,10 +6,10 @@ export function siteStorageMedia(filename: string): string {
 }
 
 export const NOT_FOUND_IMAGE = siteStorageMedia('og-default.svg');
-export const SITE_FAVICON_IMAGE = siteStorageMedia('founder-aside-portrait.webp');
+export const SITE_FAVICON_IMAGE = siteStorageMedia('logo-bahram.webp');
 export const HERO_IMAGE = siteStorageMedia('hero-ambient.svg');
 export const FOUNDER_IMAGE = siteStorageMedia('founder-portrait.svg');
-export const LOGO_IMAGE = siteStorageMedia('logo.svg');
+export const LOGO_IMAGE = siteStorageMedia('logo-bahram.webp');
 
 export const SITE_MEDIA: Record<string, { src: string; label: string; category: string }> = {
   'hero-ambient': { src: siteStorageMedia('hero-ambient.svg'), label: 'پس‌زمینه هیرو (گرافیک)', category: 'صفحه اصلی' },
@@ -60,7 +60,12 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
     category: 'دوره‌ها',
   },
   'founder': { src: siteStorageMedia('founder-portrait.svg'), label: 'تصویر بهرام', category: 'درباره' },
-  'logo': { src: siteStorageMedia('logo.svg'), label: 'لوگو', category: 'برند' },
+  'logo-bahram': {
+    src: siteStorageMedia('logo-bahram.webp'),
+    label: 'لوگوی رسمی بهرام',
+    category: 'برند',
+  },
+  'logo': { src: siteStorageMedia('logo.svg'), label: 'لوگو (گرافیک SVG)', category: 'برند' },
   'og-default': { src: siteStorageMedia('og-default.svg'), label: 'تصویر اشتراک‌گذاری', category: 'سئو' },
   'course-mockup': { src: siteStorageMedia('course-mockup.svg'), label: 'ماکاپ دوره', category: 'دوره‌ها' },
   'app-home': { src: siteStorageMedia('app-home.svg'), label: 'اپ — صفحه اصلی', category: 'سات' },

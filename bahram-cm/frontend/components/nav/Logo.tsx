@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { DirectMediaImg } from "@/components/ui/DirectMediaImg";
+import { brandLogoDisplay, sitePhotos } from "@/lib/site-photo-paths";
 import { cn } from "@/lib/cn";
 
 /**
- * Minimal wordmark. A single gold dot precedes the name, doubling as a
- * "living brand" indicator. No favicon-style box.
+ * Wordmark with the official circular brand mark.
  */
 export function Logo({
   className,
@@ -13,6 +14,9 @@ export function Logo({
   /** `footer`: compact on phone, full scale from `md` up */
   size?: "sm" | "md" | "footer";
 }) {
+  const markSize =
+    size === "sm" ? "h-8 w-8" : size === "footer" ? "h-8 w-8 md:h-9 md:w-9" : "h-9 w-9";
+
   return (
     <Link
       href="/"
@@ -23,11 +27,21 @@ export function Logo({
       )}
     >
       <span
+        className={cn(
+          "relative inline-flex shrink-0 overflow-hidden rounded-full",
+          markSize,
+          brandLogoDisplay.containerClass,
+        )}
         aria-hidden
-        className="relative inline-flex h-[7px] w-[7px] items-center justify-center"
       >
-        <span className="absolute inset-0 rounded-full bg-gold" />
-        <span className="absolute inset-0 animate-ping rounded-full bg-gold/40 [animation-duration:3s]" />
+        <DirectMediaImg
+          src={sitePhotos.logoBahram}
+          alt=""
+          fill
+          loading="eager"
+          fetchPriority="high"
+          className={cn(brandLogoDisplay.imageClass, "transition-transform duration-500 group-hover:scale-[1.03]")}
+        />
       </span>
       <span
         className={cn(

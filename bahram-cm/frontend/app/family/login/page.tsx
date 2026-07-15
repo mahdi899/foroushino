@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { FamilyBrandLogo } from '@/components/family/FamilyBrandLogo';
 import { StudentLoginForm } from '@/components/student-panel/auth/StudentLoginForm';
 import { getCurrentStudent } from '@/lib/student/session';
 
@@ -29,9 +30,7 @@ export default async function FamilyLoginPage({
   return (
     <main id="main-content" className="flex min-h-[100dvh] flex-col items-center justify-center px-5 py-10 lg:py-16">
       <div className="mb-6 w-full max-w-sm text-center lg:max-w-md">
-        <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-gold text-xl font-bold text-charcoal">
-          خ
-        </span>
+        <FamilyBrandLogo className="mx-auto mb-4" size="md" priority />
         <h1 className="text-lg font-bold text-bone">خانواده داداش بهرام</h1>
         <p className="mt-1 text-sm text-bone/60">برای ورود، شماره موبایلت رو تأیید کن.</p>
       </div>

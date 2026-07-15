@@ -5,6 +5,8 @@ import { siteStorageMedia } from '@/config/media';
  * Managed via admin gallery; legacy `/media/*` URLs redirect here.
  */
 export const sitePhotos = {
+  /** لوگوی رسمی برند — پرتره دایره‌ای با حلقه طلایی */
+  logoBahram: siteStorageMedia('logo-bahram.webp'),
   heroBackground: siteStorageMedia('hero-background.webp'),
   /** گالری — background-mobile (مربع ۹۴۱px) */
   heroBackgroundMobile: siteStorageMedia('hero-background-mobile.webp'),
@@ -66,7 +68,13 @@ export const sitePhotos = {
   ],
 } as const;
 
-/** BrandMark / favicon — same crop as FounderAside card */
+/** BrandMark / favicon — circular logo asset */
+export const brandLogoDisplay = {
+  containerClass: 'bg-charcoal ring-1 ring-gold/25',
+  imageClass: 'object-cover object-center',
+} as const;
+
+/** Legacy founder portrait crop (cards / about sections) */
 export const founderPortraitBrandDisplay = {
   containerClass: 'bg-surface-soft',
   imageClass: 'object-cover object-[center_18%]',

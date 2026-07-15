@@ -10,6 +10,7 @@ import { PanelNavButton } from "@/components/commerce/PanelNavButton";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { usePrefetchLinks } from "@/components/performance/PerformanceProvider";
 import { Logo } from "./Logo";
+import { FamilyNavButton } from "./FamilyNavButton";
 import { MobileMenu } from "./MobileMenu";
 import { SiteBottomNav } from "./SiteBottomNav";
 import { cn } from "@/lib/cn";
@@ -101,10 +102,11 @@ export function SiteNav() {
           scrolled && "lg:after:opacity-100 lg:bg-ink/70 lg:backdrop-blur-2xl",
         )}
       >
-        <div className="site-header__mobile container-luxe flex h-14 min-w-0 items-center gap-3 lg:hidden">
+        <div className="site-header__mobile container-luxe flex h-14 min-w-0 items-center gap-2.5 lg:hidden">
           <div className="flex min-w-0 shrink-0 items-center">
             <Logo size="sm" />
           </div>
+          <FamilyNavButton compact />
           <div className="ms-auto flex shrink-0 items-center gap-2">
             <ThemeToggle compact className="shrink-0" />
             <PanelNavButton showLabel={false} className="shrink-0" />
@@ -112,8 +114,9 @@ export function SiteNav() {
         </div>
 
         <div className="site-header__desktop container-luxe hidden h-16 min-w-0 items-center gap-2 lg:flex xl:gap-3">
-          <div className="flex h-10 min-w-0 shrink-0 items-center">
+          <div className="flex h-10 min-w-0 shrink-0 items-center gap-2.5 xl:gap-3">
             <Logo size="sm" />
+            <FamilyNavButton />
           </div>
 
           <nav

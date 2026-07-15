@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:bahram_family_manager/widgets/branding/app_logo.dart';
 import 'package:bahram_family_manager/config/app_config.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
@@ -133,16 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: AppSpacing.xxl),
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      gradient: AppGradients.primary,
-                      borderRadius: AppRadius.cardBorder,
-                      boxShadow: AppShadows.primaryGlow,
-                    ),
-                    child: const Icon(Icons.family_restroom_rounded, size: 40, color: Colors.white),
-                  ),
+                  const AppLogo(size: 88),
                   const SizedBox(height: AppSpacing.lg),
                   Text(
                     AppConfig.appName,
