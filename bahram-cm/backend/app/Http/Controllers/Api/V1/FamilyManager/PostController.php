@@ -156,11 +156,6 @@ class PostController extends Controller
     {
         abort_unless($post->status === FamilyPostStatus::Published, 422, 'فقط پست منتشرشده قابل سنجاق است.');
 
-        FamilyPost::query()
-            ->where('is_pinned', true)
-            ->whereKeyNot($post->id)
-            ->update(['is_pinned' => false, 'pinned_at' => null]);
-
         $post->update([
             'is_pinned' => true,
             'pinned_at' => now(),

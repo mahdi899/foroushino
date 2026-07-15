@@ -10,11 +10,11 @@ use Illuminate\Database\Seeder;
 
 /**
  * استوری ۲۴ ساعته دمو — برای تست حلقه پروفایل و StoryViewer.
- * Idempotent: upsert روی رسانهٔ demo-image-1.
+ * Idempotent: upsert روی رسانهٔ demo-video-vertical (۹:۱۶).
  */
 class FamilyStorySeeder extends Seeder
 {
-    public const STORY_MEDIA_PATH = 'family-demo/demo-image-1.jpg';
+    public const STORY_MEDIA_PATH = 'family-demo/demo-video-vertical.mp4';
 
     public const STORY_CAPTION = '📸 استوری تست — یه لحظه از مسیر با خانواده به اشتراک می‌ذارم.';
 
@@ -34,7 +34,7 @@ class FamilyStorySeeder extends Seeder
         $media = FamilyMedia::query()->where('storage_path', self::STORY_MEDIA_PATH)->first();
         if (! $media) {
             $assets = (new FamilyDemoAssets)->deploy($author);
-            $media = $assets['image1'];
+            $media = $assets['videoVertical'];
         }
 
         $story = FamilyStory::query()->updateOrCreate(

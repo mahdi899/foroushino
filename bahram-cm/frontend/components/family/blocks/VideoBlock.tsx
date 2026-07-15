@@ -183,8 +183,8 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
               </p>
             </>
           ) : (
-            <span className="family-video-play flex h-16 w-16 items-center justify-center rounded-full transition hover:scale-[1.03] active:scale-95">
-              <Play className="ms-0.5 h-7 w-7" fill="currentColor" />
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm transition hover:bg-black/60 active:scale-95">
+              <Play className="ms-0.5 h-5 w-5 text-white/90" fill="currentColor" />
             </span>
           )}
         </button>

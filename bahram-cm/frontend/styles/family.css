@@ -261,6 +261,22 @@ html[data-theme='dark'] .family-app {
   background: var(--family-surface-soft);
 }
 
+.family-post--highlight {
+  animation: family-post-highlight 2.2s ease-out;
+}
+
+@keyframes family-post-highlight {
+  0%,
+  15% {
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--family-accent) 55%, transparent);
+    background: color-mix(in oklab, var(--family-accent) 8%, var(--family-surface));
+  }
+  100% {
+    box-shadow: none;
+    background: transparent;
+  }
+}
+
 .family-modal {
   border: 1px solid var(--family-border);
   background: linear-gradient(to bottom, var(--family-surface), var(--family-surface-soft));
@@ -538,15 +554,14 @@ html[data-theme='dark'] .family-app {
 .family-action-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  border-radius: 9999px;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
   border: 1px solid color-mix(in oklab, var(--family-accent) 22%, var(--family-border));
   background: color-mix(in oklab, var(--family-accent) 10%, var(--family-surface));
-  padding: 0.2rem 0.55rem;
-  font-size: 10px;
-  font-weight: 600;
   color: var(--family-accent);
-  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 @keyframes family-story-pulse {

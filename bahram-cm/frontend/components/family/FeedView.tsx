@@ -52,6 +52,7 @@ export function FeedView({
   commentsTarget,
   onOpenComments,
   onCloseComments,
+  onRegisterScrollToPost,
 }: {
   memberCount?: number;
   previewMode?: 'guest' | 'join' | null;
@@ -60,6 +61,7 @@ export function FeedView({
   commentsTarget?: CommentsTarget | null;
   onOpenComments?: (target: CommentsTarget) => void;
   onCloseComments?: () => void;
+  onRegisterScrollToPost?: (scrollToPost: ((postId: number) => Promise<void>) | null) => void;
 }) {
   const isPreview = Boolean(previewMode);
   const effectivePreviewMode = previewMode ?? 'guest';
@@ -82,9 +84,19 @@ export function FeedView({
   const anchoredToBottomRef = useRef(false);
   const historyReadyRef = useRef(false);
   const loadingHistoryRef = useRef(false);
+  const pinNavigateRef = useRef(false);
   const scrollRestoreRef = useRef<{ height: number; top: number } | null>(null);
   const [mainView, setMainView] = useState<MainView>('feed');
   const feedItems = useMemo(() => buildFeedItems(posts), [posts]);
+  const hasMoreRef = useRef(hasMore);
+  const postsRef = useRef(posts);
+  const isValidatingRef = useRef(isValidating);
+
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+    postsRef.current = posts;
+    isValidatingRef.current = isValidating;
+  }, [hasMore, posts, isValidating]);
 
   const openComments = useCallback(
     (target: CommentsTarget) => {
@@ -100,6 +112,80 @@ export function FeedView({
     root.scrollTo({ top: root.scrollHeight, behavior });
     anchoredToBottomRef.current = true;
   }, []);
+
+  const scrollToPost = useCallback(
+    async (postId: number) => {
+      const highlight = (el: HTMLElement) => {
+        el.classList.add('family-post--highlight');
+        window.setTimeout(() => el.classList.remove('family-post--highlight'), 2200);
+      };
+
+      const tryScroll = (): boolean => {
+        const root = feedScrollRef.current;
+        const el = document.getElementById(`family-post-${postId}`);
+        if (!root || !el) return false;
+
+        const rootRect = root.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        const targetTop = elRect.top - rootRect.top + root.scrollTop - 20;
+        root.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+        anchoredToBottomRef.current = false;
+        highlight(el);
+        return true;
+      };
+
+      if (tryScroll()) return;
+
+      pinNavigateRef.current = true;
+      let attempts = 0;
+
+      while (attempts < 12) {
+        if (postsRef.current.some((post) => post.id === postId)) {
+          await new Promise<void>((resolve) => {
+            requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+          });
+          if (tryScroll()) {
+            pinNavigateRef.current = false;
+            return;
+          }
+        }
+
+        if (isValidatingRef.current) {
+          await new Promise<void>((resolve) => {
+            const wait = () => {
+              if (!isValidatingRef.current) resolve();
+              else window.setTimeout(wait, 50);
+            };
+            wait();
+          });
+        }
+
+        if (!hasMoreRef.current) break;
+
+        loadingHistoryRef.current = true;
+        scrollRestoreRef.current = null;
+        loadMore();
+        attempts += 1;
+
+        await new Promise<void>((resolve) => {
+          const wait = () => {
+            if (!isValidatingRef.current) resolve();
+            else window.setTimeout(wait, 50);
+          };
+          wait();
+        });
+      }
+
+      pinNavigateRef.current = false;
+      tryScroll();
+    },
+    [loadMore],
+  );
+
+  useEffect(() => {
+    onRegisterScrollToPost?.(scrollToPost);
+    return () => onRegisterScrollToPost?.(null);
+  }, [onRegisterScrollToPost, scrollToPost]);
 
   useEffect(() => {
     if (!isValidating) loadingHistoryRef.current = false;
@@ -158,7 +244,7 @@ export function FeedView({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (!historyReadyRef.current || !anchoredToBottomRef.current) return;
+        if (!historyReadyRef.current || !anchoredToBottomRef.current || pinNavigateRef.current) return;
         if (!entries[0]?.isIntersecting || isValidating || loadingHistoryRef.current) return;
 
         const distanceFromBottom = root.scrollHeight - root.clientHeight - root.scrollTop;
@@ -212,7 +298,7 @@ export function FeedView({
 
         <div className={showFeed ? 'relative flex min-h-0 min-w-0 flex-1 flex-col' : 'hidden'}>
           <div className="hidden shrink-0 lg:block">
-            <FamilyFeedChrome showPinned={showPinned} showNowPlaying={false} onOpenComments={openComments} />
+            <FamilyFeedChrome showPinned={showPinned} showNowPlaying={false} onScrollToPost={scrollToPost} />
           </div>
 
           <FamilyFeedChrome
@@ -261,19 +347,20 @@ export function FeedView({
                     item.kind === 'separator' ? (
                       <FeedDateSeparator key={item.key} label={item.label} />
                     ) : (
-                      <PostCard
-                        key={item.key}
-                        post={item.post}
-                        memberCount={resolvedMemberCount}
-                        isStaff={isStaff}
-                        previewMode={isPreview ? effectivePreviewMode : null}
-                        onPreviewInteract={scrollToPreviewCta}
-                        onOpenComments={
-                          isPreview
-                            ? undefined
-                            : (handlers) => openComments({ postId: item.post.id, ...handlers })
-                        }
-                      />
+                      <div key={item.key} id={`family-post-${item.post.id}`} className="scroll-mt-4 rounded-2xl">
+                        <PostCard
+                          post={item.post}
+                          memberCount={resolvedMemberCount}
+                          isStaff={isStaff}
+                          previewMode={isPreview ? effectivePreviewMode : null}
+                          onPreviewInteract={scrollToPreviewCta}
+                          onOpenComments={
+                            isPreview
+                              ? undefined
+                              : (handlers) => openComments({ postId: item.post.id, ...handlers })
+                          }
+                        />
+                      </div>
                     ),
                   )}
                   {isPreview && effectivePreviewMode && (

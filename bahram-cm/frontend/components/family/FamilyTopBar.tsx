@@ -6,6 +6,7 @@ import { ArrowRight } from 'lucide-react';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { StoryViewer } from '@/components/family/StoryViewer';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
+import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
 import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
 
 export function FamilyTopBar({ memberCount }: { memberCount?: number }) {
@@ -41,21 +42,11 @@ export function FamilyTopBar({ memberCount }: { memberCount?: number }) {
             <Link href="/family" className="block min-w-0">
               <p className="truncate text-sm font-bold text-bone lg:text-[15px]">{branding.display_name}</p>
             </Link>
-            <p className="text-[11px] text-bone/50 lg:text-xs">
-              {typeof memberCount === 'number' && (
-                <span>{memberCount.toLocaleString('fa-IR')} عضو</span>
-              )}
-              {hasUnseen && (
-                <button
-                  type="button"
-                  onClick={openStories}
-                  className="font-medium text-gold transition hover:text-gold/80"
-                >
-                  {typeof memberCount === 'number' ? ' · ' : ''}
-                  استوری جدید
-                </button>
-              )}
-            </p>
+            <FamilyStoryHint
+              memberCount={memberCount}
+              hasUnseen={hasUnseen}
+              onOpenStories={openStories}
+            />
           </div>
         </div>
 

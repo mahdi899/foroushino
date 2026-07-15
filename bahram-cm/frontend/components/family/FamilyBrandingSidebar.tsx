@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
-import { ArrowRight, Bell, Users } from 'lucide-react';
+import { ArrowRight, Bell } from 'lucide-react';
+import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { StoryViewer } from '@/components/family/StoryViewer';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
@@ -117,29 +118,18 @@ export function FamilyBrandingSidebar({
             <h2 className="max-w-[220px] text-[18px] font-bold leading-snug tracking-tight text-bone">
               {branding.display_name}
             </h2>
-            <p className="mt-3 max-w-[230px] text-[13px] leading-relaxed text-bone/45">
+            <FamilyStoryHint
+              memberCount={memberCount}
+              memberLabel="عضو فعال"
+              hasUnseen={hasUnseen}
+              onOpenStories={openStories}
+              className="mt-3 text-[12px] text-bone/50"
+            />
+            <p className="mt-2 max-w-[230px] text-[13px] leading-relaxed text-bone/45">
               فضای نزدیک {branding.profile_name}
               <span className="mx-1 text-bone/25">·</span>
               پست، صوت، ویدیو و گفتگو
             </p>
-
-            {typeof memberCount === 'number' && (
-              <div className="mt-6 flex flex-col items-center gap-2">
-                <div className="family-chip inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium text-bone/55">
-                  <Users className="h-3.5 w-3.5 shrink-0 text-gold/70" strokeWidth={1.75} />
-                  <span>{memberCount.toLocaleString('fa-IR')} عضو فعال</span>
-                </div>
-                {hasUnseen && (
-                  <button
-                    type="button"
-                    onClick={openStories}
-                    className="text-[11px] font-semibold text-gold transition hover:text-gold/80"
-                  >
-                    استوری جدید
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </aside>

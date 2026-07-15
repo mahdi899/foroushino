@@ -497,7 +497,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           if (_post != null && _post!.isPublished) ...[
             const SizedBox(height: AppSpacing.lg),
             SecondaryButton(
-              label: _post!.isPinned ? 'برداشتن سنجاق' : 'سنجاق در بالای فید',
+              label: _post!.isPinned ? 'برداشتن سنجاق' : 'سنجاق کردن',
               icon: Icons.push_pin_rounded,
               onPressed: _saving ? null : _togglePin,
             ),

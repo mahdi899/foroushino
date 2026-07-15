@@ -13,10 +13,12 @@ class PostListTile extends StatelessWidget {
     super.key,
     required this.post,
     required this.onTap,
+    this.onPinToggle,
   });
 
   final FamilyPostModel post;
   final VoidCallback onTap;
+  final VoidCallback? onPinToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -64,6 +66,18 @@ class PostListTile extends StatelessWidget {
                       color: AppColors.primary,
                       icon: postTypeIcon(post.type),
                     ),
+                    if (onPinToggle != null) ...[
+                      const SizedBox(width: AppSpacing.xs),
+                      IconButton(
+                        tooltip: post.isPinned ? 'برداشتن سنجاق' : 'سنجاق',
+                        onPressed: onPinToggle,
+                        icon: Icon(
+                          post.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                          color: post.isPinned ? AppColors.primary : AppColors.textMuted,
+                          size: 20,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

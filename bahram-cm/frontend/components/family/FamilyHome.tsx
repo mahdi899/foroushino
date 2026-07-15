@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useState } from 'react';
+import { Suspense, useCallback, useRef, useState } from 'react';
 import { FamilyAutoJoin } from '@/components/family/FamilyAutoJoin';
 import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
 import { FamilyMain, FamilyShell } from '@/components/family/FamilyShell';
@@ -31,9 +31,14 @@ export function FamilyHome({
 }) {
   const [showOnboarding, setShowOnboarding] = useState(needsOnboarding);
   const [commentsTarget, setCommentsTarget] = useState<CommentsTarget | null>(null);
+  const scrollToPostRef = useRef<((postId: number) => Promise<void>) | null>(null);
 
   const openComments = useCallback((target: CommentsTarget) => {
     setCommentsTarget(target);
+  }, []);
+
+  const handleScrollToPost = useCallback((postId: number) => {
+    void scrollToPostRef.current?.(postId);
   }, []);
 
   const previewMode = mode === 'guest' ? 'guest' : mode === 'join' ? 'join' : null;
@@ -45,7 +50,7 @@ export function FamilyHome({
         <FamilyFeedChrome
           showPinned={mode === 'member' && !commentsTarget}
           showNowPlaying={false}
-          onOpenComments={openComments}
+          onScrollToPost={handleScrollToPost}
         />
       </div>
       <FamilyMain className="min-h-0">
@@ -57,6 +62,9 @@ export function FamilyHome({
           commentsTarget={commentsTarget}
           onOpenComments={openComments}
           onCloseComments={() => setCommentsTarget(null)}
+          onRegisterScrollToPost={(fn) => {
+            scrollToPostRef.current = fn;
+          }}
         />
       </FamilyMain>
       {mode === 'join' && (
