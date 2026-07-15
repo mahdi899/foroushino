@@ -49,6 +49,7 @@ export function FeedView({
   previewMode = null,
   showPinned = false,
   initialFeed = null,
+  viewerKey = 'anon',
   commentsTarget,
   onOpenComments,
   onCloseComments,
@@ -58,6 +59,8 @@ export function FeedView({
   previewMode?: 'guest' | 'join' | null;
   showPinned?: boolean;
   initialFeed?: FamilyFeedResponse | null;
+  /** Isolates SWR feed cache per viewer so login switches cannot leak `responded`. */
+  viewerKey?: string | number;
   commentsTarget?: CommentsTarget | null;
   onOpenComments?: (target: CommentsTarget) => void;
   onCloseComments?: () => void;
@@ -68,7 +71,11 @@ export function FeedView({
   const feedScope: 'guest' | 'member' = isPreview ? 'guest' : 'member';
   const initialPage = initialFeed ? { data: initialFeed.data, meta: initialFeed.meta } : null;
 
-  const { posts, meta, isLoading, hasMore, loadMore, isValidating } = useFamilyFeed(feedScope, initialPage);
+  const { posts, meta, isLoading, hasMore, loadMore, isValidating } = useFamilyFeed(
+    feedScope,
+    initialPage,
+    viewerKey,
+  );
   const resolvedMemberCount = meta?.member_count ?? memberCount;
   const isStaff = meta?.is_staff ?? false;
 
@@ -377,6 +384,7 @@ export function FeedView({
                           memberCount={resolvedMemberCount}
                           isStaff={isStaff}
                           previewMode={isPreview ? effectivePreviewMode : null}
+                          viewerKey={viewerKey}
                           onPreviewInteract={scrollToPreviewCta}
                           onOpenComments={
                             isPreview

@@ -25,13 +25,23 @@ export default async function FamilyPage() {
 
   if (!user) {
     const initialFeed = await loadInitialFeed();
-    return <FamilyHome mode="guest" needsOnboarding={false} initialFeed={initialFeed} />;
+    return (
+      <FamilyHome mode="guest" needsOnboarding={false} initialFeed={initialFeed} viewerKey="guest" />
+    );
   }
 
   const [me, initialFeed] = await Promise.all([loadMe(), loadInitialFeed()]);
+  const viewerKey = user.id;
 
   if (!me.data.is_member) {
-    return <FamilyHome mode="join" needsOnboarding={false} initialFeed={initialFeed} />;
+    return (
+      <FamilyHome
+        mode="join"
+        needsOnboarding={false}
+        initialFeed={initialFeed}
+        viewerKey={viewerKey}
+      />
+    );
   }
 
   return (
@@ -40,6 +50,7 @@ export default async function FamilyPage() {
       memberCount={me.data.member_count}
       needsOnboarding={!me.data.onboarding_completed}
       initialFeed={initialFeed}
+      viewerKey={viewerKey}
     />
   );
 }

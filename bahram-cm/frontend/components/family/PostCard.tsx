@@ -58,6 +58,7 @@ export function PostCard({
   memberCount,
   isStaff = false,
   previewMode = null,
+  viewerKey = 'anon',
   onPreviewInteract,
   onOpenComments,
 }: {
@@ -68,6 +69,7 @@ export function PostCard({
   memberCount?: number;
   isStaff?: boolean;
   previewMode?: 'guest' | 'join' | null;
+  viewerKey?: string | number;
   onPreviewInteract?: () => void;
   onOpenComments?: (handlers: { onCommentAdded: (comment: FamilyComment) => void }) => void;
 }) {
@@ -125,7 +127,7 @@ export function PostCard({
 
       {previewMode ? null : actions.map((action) => (
         <ActionCard
-          key={action.id}
+          key={`${viewerKey}-${action.id}`}
           action={action}
           memberCount={memberCount}
           isStaff={isStaff}

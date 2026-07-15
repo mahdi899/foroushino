@@ -108,7 +108,10 @@ export function ActionCard({
   isStaff?: boolean;
   hidePrompt?: boolean;
 }) {
-  const [submitted, setSubmitted] = useState(Boolean(action.responded));
+  // Keep optimistic local submit separate from feed `responded` so stale SWR
+  // cache from a previous viewer cannot trap the card in the done state.
+  const [justSubmitted, setJustSubmitted] = useState(false);
+  const submitted = Boolean(action.responded) || justSubmitted;
   const [pending, setPending] = useState(false);
   const [textValue, setTextValue] = useState('');
   const [numberValue, setNumberValue] = useState('');
@@ -126,7 +129,7 @@ export function ActionCard({
     try {
       await respondToAction(action.id, value);
       if (nextResults) setResults(nextResults);
-      setSubmitted(true);
+      setJustSubmitted(true);
     } finally {
       setPending(false);
     }

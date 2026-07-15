@@ -23,11 +23,13 @@ export function FamilyHome({
   memberCount,
   needsOnboarding,
   initialFeed = null,
+  viewerKey = 'anon',
 }: {
   mode: Mode;
   memberCount?: number;
   needsOnboarding: boolean;
   initialFeed?: FamilyFeedResponse | null;
+  viewerKey?: string | number;
 }) {
   const [showOnboarding, setShowOnboarding] = useState(needsOnboarding);
   const [commentsTarget, setCommentsTarget] = useState<CommentsTarget | null>(null);
@@ -59,6 +61,7 @@ export function FamilyHome({
           previewMode={previewMode}
           showPinned={mode === 'member'}
           initialFeed={initialFeed}
+          viewerKey={viewerKey}
           commentsTarget={commentsTarget}
           onOpenComments={openComments}
           onCloseComments={() => setCommentsTarget(null)}

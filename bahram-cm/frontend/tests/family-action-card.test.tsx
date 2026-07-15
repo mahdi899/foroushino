@@ -42,6 +42,18 @@ describe("ActionCard", () => {
     expect(screen.queryByRole("button", { name: /متعهد می‌شوم/ })).not.toBeInTheDocument();
   });
 
+  it("clears done state when feed responded flag becomes false for a new viewer", () => {
+    const { rerender } = render(
+      <ActionCard action={makeAction({ responded: true, results: null })} />,
+    );
+    expect(screen.getByText(/پاسخ شما ثبت شد/)).toBeInTheDocument();
+
+    rerender(<ActionCard action={makeAction({ responded: false, results: null })} />);
+
+    expect(screen.queryByText(/پاسخ شما ثبت شد/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /متعهد می‌شوم/ })).toBeInTheDocument();
+  });
+
   it("submits a confirmation action's negative answer", async () => {
     respondToAction.mockResolvedValueOnce({ data: {} });
     render(<ActionCard action={makeAction({ id: 2, type: "confirmation" })} />);

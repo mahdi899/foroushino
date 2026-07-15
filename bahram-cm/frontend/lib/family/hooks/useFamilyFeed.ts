@@ -11,15 +11,25 @@ interface FeedPage {
   meta: FamilyFeedMeta;
 }
 
-export function useFamilyFeed(scope: 'guest' | 'member' = 'member', initialPage?: FeedPage | null) {
+export function useFamilyFeed(
+  scope: 'guest' | 'member' = 'member',
+  initialPage?: FeedPage | null,
+  viewerKey: string | number = 'anon',
+) {
   const fallbackData = initialPage ? [initialPage] : undefined;
 
   const { data, error, isLoading, isValidating, size, setSize, mutate } = useSWRInfinite<FeedPage>(
     (index, previousPage) => {
       if (previousPage && !previousPage.meta.next_cursor) return null;
-      return ['family-feed', scope, FEED_PAGE_SIZE, index === 0 ? null : previousPage?.meta.next_cursor];
+      return [
+        'family-feed',
+        scope,
+        viewerKey,
+        FEED_PAGE_SIZE,
+        index === 0 ? null : previousPage?.meta.next_cursor,
+      ];
     },
-    async ([, , , cursor]) => (await getFeed(cursor as string | null, FEED_PAGE_SIZE)) as FeedPage,
+    async ([, , , , cursor]) => (await getFeed(cursor as string | null, FEED_PAGE_SIZE)) as FeedPage,
     { fallbackData, revalidateFirstPage: true, revalidateOnFocus: false },
   );
 
