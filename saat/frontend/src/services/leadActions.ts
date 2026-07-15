@@ -1,6 +1,5 @@
 import { useStore } from '@/store/useStore'
 import { apiMode, api } from '@/services/index'
-import { syncAppData } from '@/services/sync'
 import { enqueueOfflineWrite, flushOfflineQueue } from '@/services/offlineQueue'
 
 export async function performLockLead(leadId: string): Promise<{ ok: boolean; lockedByOther?: boolean }> {
@@ -11,8 +10,7 @@ export async function performLockLead(leadId: string): Promise<{ ok: boolean; lo
   try {
     const result = await api.lockLead(leadId)
     if (result.ok) {
-      const payload = await syncAppData()
-      useStore.getState().applySyncData(payload)
+      useStore.getState().lockLead(leadId)
     }
     return result
   } catch {
@@ -27,8 +25,6 @@ export async function performReturnLeadToPool(leadId: string): Promise<void> {
 
   try {
     await api.returnLeadToPool(leadId)
-    const payload = await syncAppData()
-    useStore.getState().applySyncData(payload)
   } catch {
     await enqueueOfflineWrite({ type: 'return_lead', leadId, createdAt: new Date().toISOString() })
   }
@@ -39,8 +35,6 @@ export async function performReclaimLead(leadId: string): Promise<void> {
   if (apiMode !== 'http') return
 
   await api.reclaimLead(leadId)
-  const payload = await syncAppData()
-  useStore.getState().applySyncData(payload)
 }
 
 export async function flushPendingLeadWrites(): Promise<void> {

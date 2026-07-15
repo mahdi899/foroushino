@@ -4,6 +4,7 @@ namespace App\Services\Campaign;
 
 use App\Models\Campaign;
 use App\Models\Lead;
+use App\Support\BusinessDate;
 use Illuminate\Database\Eloquent\Builder;
 
 class CampaignDialingPolicy
@@ -41,22 +42,28 @@ class CampaignDialingPolicy
 
     public function applyCandidateConstraints(Builder $query): Builder
     {
+        $dayStart = BusinessDate::startOfDay()->toDateTimeString();
+        $dayEnd = BusinessDate::endOfDay()->toDateTimeString();
+        $now = BusinessDate::now()->toDateTimeString();
+
         return $query
-            ->where(function (Builder $outer): void {
+            ->where(function (Builder $outer) use ($dayStart, $dayEnd, $now): void {
                 $outer->whereNull('campaign_id')
-                    ->orWhereHas('campaign', function (Builder $campaign): void {
+                    ->orWhereHas('campaign', function (Builder $campaign) use ($dayStart, $dayEnd, $now): void {
                         $campaign->where('is_active', true)
-                            ->whereRaw('TIME(?) BETWEEN allowed_hours_start AND allowed_hours_end', [now()->format('H:i:s')])
+                            ->whereRaw('TIME(?) BETWEEN allowed_hours_start AND allowed_hours_end', [BusinessDate::now()->format('H:i:s')])
                             ->whereRaw(
-                                '(SELECT COUNT(*) FROM calls WHERE calls.lead_id = leads.id AND DATE(calls.created_at) = CURDATE()) < campaigns.max_daily_attempts',
+                                '(SELECT COUNT(*) FROM calls WHERE calls.lead_id = leads.id AND calls.created_at >= ? AND calls.created_at <= ?) < campaigns.max_daily_attempts',
+                                [$dayStart, $dayEnd],
                             )
                             ->whereRaw('leads.call_count < campaigns.max_total_attempts')
                             ->whereRaw(
                                 'NOT EXISTS (
                                     SELECT 1 FROM calls recent
                                     WHERE recent.lead_id = leads.id
-                                    AND recent.created_at >= DATE_SUB(NOW(), INTERVAL campaigns.retry_cooldown_minutes MINUTE)
+                                    AND recent.created_at >= DATE_SUB(?, INTERVAL campaigns.retry_cooldown_minutes MINUTE)
                                 )',
+                                [$now],
                             );
                     })
                     ->orWhereHas('campaign', fn (Builder $campaign) => $campaign->where('is_active', false));
@@ -98,30 +105,40 @@ class CampaignDialingPolicy
     private function isWithinAllowedHours(Campaign $campaign): bool
     {
         $now = now()->format('H:i');
+        $start = $campaign->allowed_hours_start ?: '08:00';
+        $end = $campaign->allowed_hours_end ?: '23:59';
 
-        return $now >= $campaign->allowed_hours_start && $now <= $campaign->allowed_hours_end;
+        if ($start <= $end) {
+            return $now >= $start && $now <= $end;
+        }
+
+        return $now >= $start || $now <= $end;
     }
 
     private function dailyAttempts(Lead $lead): int
     {
-        return $lead->calls()
-            ->whereDate('created_at', today())
-            ->count();
+        if ($lead->last_call_at?->isToday()) {
+            return $lead->calls()
+                ->whereBetween('created_at', [BusinessDate::startOfDay(), BusinessDate::endOfDay()])
+                ->count();
+        }
+
+        return 0;
     }
 
     private function totalAttempts(Lead $lead): int
     {
-        return max($lead->call_count, $lead->calls()->count());
+        return (int) $lead->call_count;
     }
 
     private function isInCooldown(Lead $lead, Campaign $campaign): bool
     {
-        $lastCall = $lead->calls()->latest('created_at')->first();
+        $lastAt = $lead->last_call_at;
 
-        if (! $lastCall) {
+        if (! $lastAt) {
             return false;
         }
 
-        return $lastCall->created_at->gt(now()->subMinutes($campaign->retry_cooldown_minutes));
+        return $lastAt->gt(now()->subMinutes($campaign->retry_cooldown_minutes));
     }
 }

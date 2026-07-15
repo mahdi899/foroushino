@@ -45,7 +45,13 @@ import { ObjectionsScreen } from '@/features/training/ObjectionsScreen'
 import { TeamLiveScreen } from '@/features/team/TeamLiveScreen'
 import { SupervisorTeamsScreen } from '@/features/team/SupervisorTeamsScreen'
 import { TeamReportsScreen } from '@/features/team/TeamReportsScreen'
+import { AgentReportsScreen } from '@/features/team/AgentReportsScreen'
 import { ActivityHistoryScreen } from '@/features/activity/ActivityHistoryScreen'
+import { CommissionApprovalsScreen } from '@/features/wallet/CommissionApprovalsScreen'
+import { PayoutQueueScreen } from '@/features/wallet/PayoutQueueScreen'
+import { BankAccountApprovalScreen } from '@/features/wallet/BankAccountApprovalScreen'
+import { AgentManagementScreen } from '@/features/admin/AgentManagementScreen'
+import { TeamManagementScreen } from '@/features/admin/TeamManagementScreen'
 import { StaffManagementScreen } from '@/features/admin/StaffManagementScreen'
 import { AdminSettingsScreen } from '@/features/admin/AdminSettingsScreen'
 import { LiveOpsScreen } from '@/features/liveops/LiveOpsScreen'
@@ -56,6 +62,7 @@ import { OfflineBanner } from '@/components/pwa/DataGate'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { SyncProvider } from '@/providers/SyncProvider'
 import { ShiftPresenceWatcher } from '@/providers/ShiftPresenceWatcher'
+import { DayRolloverWatcher } from '@/providers/DayRolloverWatcher'
 import { useStandalonePwa } from '@/lib/pwa'
 
 const NAV_ROUTES = ['/home', '/leads', '/followups', '/profile', '/team', '/teams']
@@ -153,6 +160,7 @@ function Shell() {
             <Route path="/team" element={<RequireAuth><TeamLiveScreen /></RequireAuth>} />
             <Route path="/teams" element={<RequireAuth><SupervisorTeamsScreen /></RequireAuth>} />
             <Route path="/team-reports" element={<RequireAuth><TeamReportsScreen /></RequireAuth>} />
+            <Route path="/agent-reports" element={<RequireAuth><AgentReportsScreen /></RequireAuth>} />
             <Route path="/leads" element={<RequireAuth><LeadsScreen /></RequireAuth>} />
             <Route path="/leads/intake" element={<RequireAuth><RequirePermission permission="leads.import"><LeadIntakeScreen /></RequirePermission></RequireAuth>} />
             <Route path="/leads/locked" element={<RequireAuth><LockedLeadsScreen /></RequireAuth>} />
@@ -164,6 +172,9 @@ function Shell() {
             <Route path="/sales" element={<RequireAuth><SalesScreen /></RequireAuth>} />
             <Route path="/sales/pending-payments" element={<RequireAuth><PendingPaymentsScreen /></RequireAuth>} />
             <Route path="/wallet" element={<RequireAuth><WalletScreen /></RequireAuth>} />
+            <Route path="/wallet/approvals" element={<RequireAuth><CommissionApprovalsScreen /></RequireAuth>} />
+            <Route path="/wallet/payouts" element={<RequireAuth><RequirePermission permission="wallet.manage-payouts"><PayoutQueueScreen /></RequirePermission></RequireAuth>} />
+            <Route path="/wallet/bank-accounts" element={<RequireAuth><RequirePermission permission="users.manage-team"><BankAccountApprovalScreen /></RequirePermission></RequireAuth>} />
             <Route path="/wallet/rules" element={<RequireAuth><CommissionRulesScreen /></RequireAuth>} />
             <Route path="/wallet/commissions/:id" element={<RequireAuth><CommissionDetailScreen /></RequireAuth>} />
             <Route path="/training" element={<RequireAuth><TrainingScreen /></RequireAuth>} />
@@ -176,6 +187,8 @@ function Shell() {
             <Route path="/notifications" element={<RequireAuth><NotificationsScreen /></RequireAuth>} />
             <Route path="/activity" element={<RequireAuth><ActivityHistoryScreen /></RequireAuth>} />
             <Route path="/settings" element={<RequireAuth><SettingsScreen /></RequireAuth>} />
+            <Route path="/admin/agents" element={<RequireAuth><RequirePermission permission="users.view"><AgentManagementScreen /></RequirePermission></RequireAuth>} />
+            <Route path="/admin/teams" element={<RequireAuth><RequirePermission permission="teams.manage"><TeamManagementScreen /></RequirePermission></RequireAuth>} />
             <Route path="/admin/staff" element={<RequireAuth><RequirePermission permission="users.view"><StaffManagementScreen /></RequirePermission></RequireAuth>} />
             <Route path="/admin/settings" element={<RequireAuth><RequirePermission permission="admin.settings"><AdminSettingsScreen /></RequirePermission></RequireAuth>} />
 
@@ -195,6 +208,7 @@ function Shell() {
       <ToastHost />
       <AutoLockWatcher />
       <ShiftPresenceWatcher />
+      <DayRolloverWatcher />
       {isAuthed && isLocked && <AppLockScreen />}
     </main>
   )

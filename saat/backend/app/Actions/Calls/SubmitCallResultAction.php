@@ -23,6 +23,7 @@ use App\Services\ActivityLogService;
 use App\Services\NotificationService;
 use App\Services\Quality\QaSampler;
 use App\Support\ResultRouting;
+use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 
 class SubmitCallResultAction
@@ -55,7 +56,7 @@ class SubmitCallResultAction
             ];
         }
 
-        return DB::transaction(function () use ($call, $data) {
+        $result = DB::transaction(function () use ($call, $data) {
             $result = CallResult::from($data['result']);
             $nextAction = ResultRouting::nextActionFor($result);
             $nextStatus = ResultRouting::leadStatusFor($result);
@@ -78,7 +79,7 @@ class SubmitCallResultAction
             $lead->call_count += 1;
             $lead->locked_by = null;
             $lead->locked_until = null;
-            if (isset($data['note'])) {
+            if (isset($data['note']) && $data['note'] !== '') {
                 $lead->last_note = $data['note'];
             }
             if (isset($data['objection'])) {
@@ -139,18 +140,16 @@ class SubmitCallResultAction
                 'lead_id' => $lead->id,
                 'status' => $nextStatus,
                 'by_user_id' => $agent->id,
-                'note' => 'نتیجه تماس: '.$result->value,
+                'note' => 'نتیجه تماس: '.$result->label(),
             ]);
 
-            $this->activity->log($agent, ActivityKind::Result, 'ثبت نتیجه تماس: '.$result->value, $lead->fullName());
+            $this->activity->log($agent, ActivityKind::Result, 'ثبت نتیجه تماس: '.$result->label(), $lead->fullName());
 
             $agent->increment('points', self::POINTS_PER_CALL);
             $this->achievements->evaluateCounters($agent);
 
             $call = $call->fresh();
             $this->qaSampler->maybeSampleCall($call);
-
-            broadcast(new CallResultSubmitted($call))->toOthers();
 
             return [
                 'call' => $call->fresh(),
@@ -160,6 +159,12 @@ class SubmitCallResultAction
                 'next_action' => $nextAction,
             ];
         });
+
+        SafeBroadcast::optionally(
+            fn () => broadcast(new CallResultSubmitted($result['call']))->toOthers(),
+        );
+
+        return $result;
     }
 
     /**

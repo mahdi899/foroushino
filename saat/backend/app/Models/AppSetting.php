@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
 
 class AppSetting extends Model
 {
@@ -55,25 +56,27 @@ class AppSetting extends Model
      */
     public static function allKeyed(): array
     {
-        $defaults = self::defaults();
+        return Cache::remember('app_settings_keyed', 60, function (): array {
+            $defaults = self::defaults();
 
-        $stored = self::query()->pluck('value', 'key')->map(function ($value) {
-            return is_array($value) && array_key_exists('v', $value) ? $value['v'] : $value;
-        })->all();
+            $stored = self::query()->pluck('value', 'key')->map(function ($value) {
+                return is_array($value) && array_key_exists('v', $value) ? $value['v'] : $value;
+            })->all();
 
-        $merged = $defaults;
+            $merged = $defaults;
 
-        foreach ($stored as $key => $value) {
-            $key = (string) $key;
+            foreach ($stored as $key => $value) {
+                $key = (string) $key;
 
-            if (str_starts_with($key, 'meli_') && ($value === '' || $value === null)) {
-                continue;
+                if (str_starts_with($key, 'meli_') && ($value === '' || $value === null)) {
+                    continue;
+                }
+
+                $merged[$key] = $value;
             }
 
-            $merged[$key] = $value;
-        }
-
-        return $merged;
+            return $merged;
+        });
     }
 
     public static function int(string $key, int $default = 0): int
@@ -125,5 +128,7 @@ class AppSetting extends Model
                 ['value' => ['v' => $value]],
             );
         }
+
+        Cache::forget('app_settings_keyed');
     }
 }

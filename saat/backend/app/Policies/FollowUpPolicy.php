@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\RoleName;
 use App\Models\FollowUp;
 use App\Models\User;
+use App\Support\TeamScope;
 
 class FollowUpPolicy
 {
@@ -15,8 +16,19 @@ class FollowUpPolicy
 
     public function view(User $user, FollowUp $followUp): bool
     {
-        if ($user->hasAnyRole([RoleName::Manager->value, RoleName::Admin->value, RoleName::Supervisor->value, RoleName::Leader->value])) {
+        if (TeamScope::isOrgWide($user)) {
             return true;
+        }
+
+        if ($user->hasAnyRole([RoleName::Leader->value, RoleName::Supervisor->value])) {
+            if (! $user->team_id) {
+                return false;
+            }
+
+            return User::query()
+                ->whereKey($followUp->agent_id)
+                ->where('team_id', $user->team_id)
+                ->exists();
         }
 
         return $followUp->agent_id === $user->id;

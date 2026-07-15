@@ -9,6 +9,7 @@ use App\Models\Sale;
 use App\Models\Team;
 use App\Models\TeamReport;
 use App\Models\User;
+use App\Support\BusinessDate;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -24,7 +25,7 @@ class SubmitTeamReportAction
             throw new RuntimeException('شما لیدر این تیم نیستید.');
         }
 
-        $reportDate = today();
+        $reportDate = BusinessDate::today();
 
         return DB::transaction(function () use ($team, $leader, $leaderNotes, $reportDate) {
             $existing = TeamReport::query()

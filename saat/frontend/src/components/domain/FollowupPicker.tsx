@@ -1,4 +1,5 @@
 import { Calendar, Clock } from 'lucide-react'
+import { buildBusinessFollowupIso } from '@/lib/businessDate'
 import { toFa, formatJalaliShort } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
@@ -19,10 +20,7 @@ const dayOptions = [
 const hourOptions = [9, 10, 11, 12, 14, 15, 16, 17, 18, 19]
 
 export function buildFollowupIso(dayOffset: number, hour: number): string {
-  const d = new Date()
-  d.setDate(d.getDate() + dayOffset)
-  d.setHours(hour, 0, 0, 0)
-  return d.toISOString()
+  return buildBusinessFollowupIso(dayOffset, hour)
 }
 
 export function FollowupPicker({ dayOffset, hour, onDayChange, onHourChange }: FollowupPickerProps) {

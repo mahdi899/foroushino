@@ -87,7 +87,7 @@ export const ADMIN_SETTING_LABELS: Record<string, { label: string; hint?: string
     type: 'number',
   },
   power_dial_default: {
-    label: 'پاور دیال پیش‌فرض',
+    label: 'تماس پی‌درپی پیش‌فرض',
     hint: 'برای کارشناسان جدید فعال شود',
     type: 'boolean',
   },

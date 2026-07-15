@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Wallet, TriangleAlert, Sparkles, Landmark } from 'lucide-react'
+import { Wallet, TriangleAlert, Sparkles, Landmark, CreditCard } from 'lucide-react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import {
   calculateBankFee,
@@ -18,18 +18,31 @@ interface PayoutRequestSheetProps {
   open: boolean
   onClose: () => void
   balanceAvailable: number
+  savedCardMasked?: string | null
+  bankCardConfirmed?: boolean
   onSubmit: (amount: number) => void
 }
 
 const OK = 'text-emerald-600 dark:text-emerald-400'
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
 
-export function PayoutRequestSheet({ open, onClose, balanceAvailable, onSubmit }: PayoutRequestSheetProps) {
+export function PayoutRequestSheet({
+  open,
+  onClose,
+  balanceAvailable,
+  savedCardMasked,
+  bankCardConfirmed = false,
+  onSubmit,
+}: PayoutRequestSheetProps) {
   const [raw, setRaw] = useState('')
+  const [confirmed, setConfirmed] = useState(false)
   const amount = Number(toEn(raw).replace(/[^\d]/g, '')) || 0
 
   useEffect(() => {
-    if (!open) setRaw('')
+    if (!open) {
+      setRaw('')
+      setConfirmed(false)
+    }
   }, [open])
 
   const validation = useMemo(
@@ -37,7 +50,7 @@ export function PayoutRequestSheet({ open, onClose, balanceAvailable, onSubmit }
     [amount, balanceAvailable],
   )
 
-  const invalid = amount <= 0 || validation?.ok === false
+  const invalid = amount <= 0 || validation?.ok === false || !confirmed || !bankCardConfirmed
   const overLimit = amount > balanceAvailable
   const belowMin = amount > 0 && amount < DEFAULT_PAYOUT_SETTINGS.minAmount
   const isFullBalance = amount > 0 && amount === balanceAvailable
@@ -45,7 +58,7 @@ export function PayoutRequestSheet({ open, onClose, balanceAvailable, onSubmit }
     amount > 0 && !isFullBalance && amount % DEFAULT_PAYOUT_SETTINGS.stepAmount !== 0
   const bankFee = amount > 0 ? calculateBankFee(amount) : 0
   const netAmount = amount > 0 ? payoutNetAmount(amount) : 0
-  const payoutAllowed = canRequestPayout(balanceAvailable)
+  const payoutAllowed = canRequestPayout(balanceAvailable) && bankCardConfirmed
   const fullBalanceAmount = fullBalancePayoutAmount(balanceAvailable)
 
   const setAmount = (next: number) => {
@@ -98,42 +111,70 @@ export function PayoutRequestSheet({ open, onClose, balanceAvailable, onSubmit }
           </div>
         </div>
 
-        {!payoutAllowed && (
+        {!bankCardConfirmed && (
+          <p className="rounded-[14px] border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+            شماره کارت تایید‌شده ندارید. ابتدا در پروفایل کارت را ثبت کنید تا ناظر آن را تایید کند.
+          </p>
+        )}
+
+        {!payoutAllowed && bankCardConfirmed && (
           <p className="rounded-[14px] border border-amber-500/25 bg-amber-500/10 px-3 py-2.5 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
             موجودی فعلی برای برداشت کافی نیست. حداقل {formatMoney(DEFAULT_PAYOUT_SETTINGS.minAmount)} تومان لازم است.
           </p>
         )}
 
-        <div className={cn(!payoutAllowed && 'pointer-events-none opacity-50')}>
-          <label className="mb-2 block text-[12px] font-semibold text-text-muted">مبلغ درخواستی</label>
-          <div
-            className={cn(
-              'glass-inset flex items-center gap-2 rounded-[18px] border px-4 py-3.5',
-              'border-white/55 dark:border-white/10',
-              (overLimit || belowMin || notStep) && 'border-red-500/30',
-            )}
-          >
-            <input
-              inputMode="numeric"
-              value={raw ? toFa(amount.toLocaleString('en-US')) : ''}
-              onChange={(e) => setRaw(e.target.value)}
-              onBlur={() => {
-                if (amount > 0 && amount !== balanceAvailable) {
-                  setRaw(String(snapPayoutAmount(amount)))
-                }
-              }}
-              placeholder="۰"
-              className="w-full bg-transparent text-left text-[22px] font-black tabular-nums text-text outline-none placeholder:text-text-soft/40"
-            />
-            <span className="shrink-0 text-[12px] font-semibold text-text-soft">تومان</span>
+        <div className={cn(!payoutAllowed && 'pointer-events-none opacity-50', 'space-y-3')}>
+          <div>
+            <label className="mb-2 block text-[12px] font-semibold text-text-muted">مبلغ درخواستی</label>
+            <div
+              className={cn(
+                'glass-inset flex items-center gap-2 rounded-[18px] border px-4 py-3.5',
+                'border-white/55 dark:border-white/10',
+                (overLimit || belowMin || notStep) && 'border-red-500/30',
+              )}
+            >
+              <input
+                inputMode="numeric"
+                value={raw ? toFa(amount.toLocaleString('en-US')) : ''}
+                onChange={(e) => setRaw(e.target.value)}
+                onBlur={() => {
+                  if (amount > 0 && amount !== balanceAvailable) {
+                    setRaw(String(snapPayoutAmount(amount)))
+                  }
+                }}
+                placeholder="۰"
+                className="w-full bg-transparent text-left text-[22px] font-black tabular-nums text-text outline-none placeholder:text-text-soft/40"
+              />
+              <span className="shrink-0 text-[12px] font-semibold text-text-soft">تومان</span>
+            </div>
           </div>
+
+          {savedCardMasked && (
+            <div className="glass-inset flex items-center gap-2 rounded-[16px] border border-white/55 px-3 py-3 dark:border-white/10">
+              <CreditCard size={16} className="text-[#3390EC] dark:text-[#8774E1]" />
+              <div>
+                <p className="text-[12px] font-bold text-text">کارت تایید‌شده</p>
+                <p className="text-[11px] font-semibold text-text-soft">{toFa(savedCardMasked)}</p>
+              </div>
+            </div>
+          )}
+
+          <label className="flex items-start gap-2 text-[12px] font-semibold text-text-soft">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              onChange={(e) => setConfirmed(e.target.checked)}
+              className="mt-0.5"
+            />
+            مبلغ و کارت مقصد را بررسی کردم و درخواست تسویه را تایید می‌کنم.
+          </label>
 
           {amount > 0 && validation?.ok && (
             <motion.div
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               className={cn(
-                'mt-3 space-y-2 rounded-[16px] border border-white/55 p-3',
+                'space-y-2 rounded-[16px] border border-white/55 p-3',
                 'glass-inset dark:border-white/10',
               )}
             >
@@ -182,6 +223,7 @@ export function PayoutRequestSheet({ open, onClose, balanceAvailable, onSubmit }
           onClick={() => {
             onSubmit(amount)
             setRaw('')
+            setConfirmed(false)
           }}
           className={cn(
             'relative flex h-[54px] w-full items-center justify-center gap-2 overflow-hidden',

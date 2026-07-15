@@ -23,6 +23,7 @@ import {
   weakAgents,
 } from '@/lib/reportUtils'
 import { formatMoney, toFa } from '@/lib/format'
+import { localizeActivityTitle } from '@/lib/activityLabels'
 import { apiMode } from '@/services'
 import { fetchReportsBundle, type ReportsApiPayload } from '@/services/reports'
 
@@ -271,7 +272,7 @@ export function ReportsScreen() {
                         key={item.id}
                         className="rounded-2xl border border-border/60 bg-surface p-3.5 shadow-card"
                       >
-                        <p className="text-[13px] font-extrabold text-neutral-900">{item.title}</p>
+                        <p className="text-[13px] font-extrabold text-neutral-900">{localizeActivityTitle(item.title)}</p>
                         <p className="mt-0.5 text-[11px] font-bold text-neutral-400">
                           {actor ? `${actor.firstName} ${actor.lastName}` : 'سیستم'}
                           {item.meta ? ` · ${item.meta}` : ''}

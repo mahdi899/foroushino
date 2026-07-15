@@ -27,6 +27,30 @@ enum CallResult: string
     case BadTiming = 'bad_timing';
     case IncompleteCall = 'incomplete_call';
 
+    public function label(): string
+    {
+        return match ($this) {
+            self::Interested => 'علاقه‌مند',
+            self::VeryHot => 'خیلی داغ',
+            self::NeedsFollowup => 'نیاز به پیگیری',
+            self::MeetingSet => 'جلسه تنظیم شد',
+            self::PaymentPending => 'پرداخت در انتظار',
+            self::Registered => 'ثبت‌نام شد',
+            self::NoAnswer => 'پاسخ نداد',
+            self::Unavailable => 'خاموش / در دسترس نبود',
+            self::WrongNumber => 'شماره اشتباه',
+            self::NotInterested => 'علاقه‌مند نیست',
+            self::DoNotDisturb => 'مزاحم نشو',
+            self::NeedsInfo => 'نیاز به اطلاعات بیشتر',
+            self::NotDecisionMaker => 'تصمیم‌گیرنده نیست',
+            self::CallLater => 'بعداً تماس بگیر',
+            self::Duplicate => 'تکراری',
+            self::PriceObjection => 'قیمت بالا بود',
+            self::BadTiming => 'زمان مناسب نبود',
+            self::IncompleteCall => 'تماس ناقص ماند',
+        };
+    }
+
     /**
      * Results considered a "positive" / successful contact for stats.
      *

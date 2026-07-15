@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Mic,
@@ -39,21 +39,26 @@ import {
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
 import { collectLeadNotes } from '@/lib/leadNotes'
-import { performReconcileCall } from '@/services/callActions'
+import { performReconcileCall, getActiveCallId, waitForActiveCallId } from '@/services/callActions'
+import { saveCallSession } from '@/services/callSession'
 
 export function DialerScreen() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const pendingMethod = (location.state as { method?: 'native' | 'voip' } | null)?.method
   const lead = useStore((s) => s.leads.find((l) => l.id === id))
   const calls = useStore((s) => s.calls.filter((c) => c.leadId === id))
   const followups = useStore((s) => s.followups.filter((f) => f.leadId === id))
   const activeCallMethod = useStore((s) => s.activeCallMethod)
   const endCall = useStore((s) => s.endCall)
   const updateLeadNote = useStore((s) => s.updateLeadNote)
+  const activeCallDraftNote = useStore((s) => s.activeCallDraftNote)
+  const setActiveCallDraftNote = useStore((s) => s.setActiveCallDraftNote)
   const pushToast = useStore((s) => s.pushToast)
   const minCallDurationSec = useStore((s) => s.appSettings.minCallDurationSec)
 
-  const isNativeCall = activeCallMethod === 'native'
+  const isNativeCall = activeCallMethod === 'native' || pendingMethod === 'native'
   const nativeDialed = useRef(false)
 
   const [seconds, setSeconds] = useState(0)
@@ -70,8 +75,7 @@ export function DialerScreen() {
   useEffect(() => {
     if (!isNativeCall || !lead || nativeDialed.current) return
     nativeDialed.current = true
-    const timer = window.setTimeout(() => dialNativePhone(lead.phone), 280)
-    return () => window.clearTimeout(timer)
+    dialNativePhone(lead.phone)
   }, [isNativeCall, lead])
 
   const leadNotes = useMemo(
@@ -88,7 +92,7 @@ export function DialerScreen() {
   const canEndCall = canEndAgentCall(seconds, minCallDurationSec)
   const remainingSec = remainingAgentCallSec(seconds, minCallDurationSec)
 
-  const hangUp = () => {
+  const hangUp = async () => {
     if (!canEndCall) {
       haptic('error')
       pushToast(
@@ -98,10 +102,22 @@ export function DialerScreen() {
       return
     }
     haptic('heavy')
-    if (isNativeCall) {
+    const callId = (await waitForActiveCallId(lead.id, 12_000)) ?? getActiveCallId(lead.id)
+    if (isNativeCall && callId) {
       void performReconcileCall(lead.id, 'answered')
     }
+    const mergedNote = note.trim() || useStore.getState().activeCallDraftNote.trim()
+    if (mergedNote) {
+      updateLeadNote(lead.id, mergedNote)
+      setActiveCallDraftNote(mergedNote)
+    }
     endCall(seconds)
+    saveCallSession({
+      leadId: lead.id,
+      callId,
+      durationSec: seconds,
+      endedAt: new Date().toISOString(),
+    })
     navigate(`/call-result/${lead.id}`, { replace: true })
   }
 
@@ -211,7 +227,7 @@ export function DialerScreen() {
             icon={<NotebookPen size={22} />}
             label="یادداشت"
             onClick={() => {
-              setNote(lead.lastNote ?? '')
+              setNote(activeCallDraftNote || lead.lastNote || '')
               setSheet('note')
             }}
           />
@@ -254,14 +270,20 @@ export function DialerScreen() {
       <BottomSheet open={sheet === 'note'} onClose={() => setSheet(null)} title="یادداشت تماس">
         <textarea
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={(e) => {
+            const value = e.target.value
+            setNote(value)
+            setActiveCallDraftNote(value)
+          }}
           placeholder="نکات مهم این تماس را بنویس..."
           rows={5}
           className="w-full rounded-2xl border border-border bg-neutral-50 p-4 text-sm font-bold text-neutral-800 outline-none focus:border-primary-400"
         />
         <button
           onClick={() => {
-            updateLeadNote(lead.id, note)
+            const trimmed = note.trim()
+            updateLeadNote(lead.id, trimmed)
+            setActiveCallDraftNote(trimmed)
             setSheet(null)
           }}
           className="mt-3 h-12 w-full rounded-2xl bg-primary-600 text-sm font-extrabold text-white"

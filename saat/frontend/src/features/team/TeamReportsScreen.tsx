@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FileText, Check, Send, ClipboardList } from 'lucide-react'
@@ -8,16 +8,18 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { Chip } from '@/components/ui/Chip'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { EmptyState } from '@/components/ui/States'
+import {
+  fetchTeamReports,
+  performApproveTeamReport,
+  performForwardTeamReport,
+  performSubmitTeamReport,
+} from '@/services/teamReportActions'
+import { apiMode } from '@/services'
 import { hasPermission } from '@/lib/permissions'
 import { isLeaderRole, isSupervisorRole } from '@/lib/roles'
 import { getManagedTeam } from '@/lib/teamUtils'
 import { toFa, formatIsoDateJalali } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
-import {
-  performApproveTeamReport,
-  performForwardTeamReport,
-  performSubmitTeamReport,
-} from '@/services/teamReportActions'
 import type { TeamReport, TeamReportStatus } from '@/types'
 import { cn } from '@/lib/cn'
 
@@ -36,10 +38,13 @@ export function TeamReportsScreen() {
   const role = useStore((s) => s.role)
   const permissions = useStore((s) => s.permissions)
   const currentAgentId = useStore((s) => s.currentAgentId)
+  const agents = useStore((s) => s.agents)
   const teams = useStore((s) => s.teams)
   const teamReports = useStore((s) => s.teamReports)
+  const setTeamReports = useStore((s) => s.setTeamReports)
   const pushToast = useStore((s) => s.pushToast)
 
+  const canViewReports = hasPermission(permissions, 'reports.view')
   const canSubmit = hasPermission(permissions, 'reports.submit-team')
   const canApprove = hasPermission(permissions, 'reports.approve-team')
   const inboxOnly = searchParams.get('inbox') === '1'
@@ -51,14 +56,50 @@ export function TeamReportsScreen() {
         ? statusParam
         : 'all'
   const [filter, setFilter] = useState<Filter>(initialFilter)
+  const [loading, setLoading] = useState(apiMode === 'http' && canViewReports)
   const [approveTarget, setApproveTarget] = useState<TeamReport | null>(null)
   const [forwardTarget, setForwardTarget] = useState<TeamReport | null>(null)
+
+  useEffect(() => {
+    setFilter(initialFilter)
+  }, [initialFilter])
+
+  useEffect(() => {
+    if (apiMode !== 'http' || !canViewReports) {
+      setLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setLoading(true)
+    fetchTeamReports()
+      .then((reports) => {
+        if (!cancelled) setTeamReports(reports)
+      })
+      .catch(() => {
+        if (!cancelled) pushToast('بارگذاری گزارش‌ها ناموفق بود', 'error')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [canViewReports, setTeamReports, pushToast])
+
+  const leaderTeamId = useMemo(() => {
+    const managed = getManagedTeam(teams, currentAgentId, role)
+    if (managed) return managed.id
+    return agents.find((agent) => agent.id === currentAgentId)?.teamId ?? null
+  }, [teams, currentAgentId, role, agents])
 
   const visible = useMemo(() => {
     let list = [...teamReports]
     if (isLeaderRole(role)) {
-      const team = getManagedTeam(teams, currentAgentId, role)
-      list = team ? list.filter((r) => r.teamId === team.id) : []
+      list = leaderTeamId
+        ? list.filter((r) => r.teamId === leaderTeamId)
+        : list.filter((r) => r.submittedBy === currentAgentId)
     }
     if (filter !== 'all') {
       list = list.filter((r) => r.status === filter)
@@ -66,17 +107,22 @@ export function TeamReportsScreen() {
     return list.sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     )
-  }, [teamReports, role, teams, currentAgentId, filter])
+  }, [teamReports, role, leaderTeamId, currentAgentId, filter])
 
-  const counts = useMemo(
-    () => ({
-      all: teamReports.length,
-      submitted: teamReports.filter((r) => r.status === 'submitted').length,
-      approved: teamReports.filter((r) => r.status === 'approved').length,
-      forwarded_to_manager: teamReports.filter((r) => r.status === 'forwarded_to_manager').length,
-    }),
-    [teamReports],
-  )
+  const counts = useMemo(() => {
+    let list = [...teamReports]
+    if (isLeaderRole(role)) {
+      list = leaderTeamId
+        ? list.filter((r) => r.teamId === leaderTeamId)
+        : list.filter((r) => r.submittedBy === currentAgentId)
+    }
+    return {
+      all: list.length,
+      submitted: list.filter((r) => r.status === 'submitted').length,
+      approved: list.filter((r) => r.status === 'approved').length,
+      forwarded_to_manager: list.filter((r) => r.status === 'forwarded_to_manager').length,
+    }
+  }, [teamReports, role, leaderTeamId, currentAgentId])
 
   return (
     <Page withNav={false}>
@@ -130,11 +176,19 @@ export function TeamReportsScreen() {
       </ScreenHeader>
 
       <div className="space-y-3 px-4 pb-24 pt-3">
-        {visible.length === 0 ? (
+        {loading ? (
+          <div className="py-12 text-center text-[13px] font-semibold text-neutral-400">
+            در حال بارگذاری گزارش‌ها…
+          </div>
+        ) : visible.length === 0 ? (
           <EmptyState
             title="گزارشی نیست"
             description={
-              canSubmit ? 'گزارش امروز تیمت را ارسال کن.' : 'هنوز گزارشی ثبت نشده.'
+              filter !== 'all'
+                ? 'در این فیلتر گزارشی پیدا نشد. «همه» را امتحان کن.'
+                : canSubmit
+                  ? 'گزارش امروز تیمت را ارسال کن.'
+                  : 'هنوز گزارشی ثبت نشده.'
             }
           />
         ) : (

@@ -1,7 +1,6 @@
 import { useStore } from '@/store/useStore'
 import type { PaymentMethod } from '@/types'
 import { apiMode, api } from '@/services/index'
-import { syncAppData } from '@/services/sync'
 import { enqueueOfflineWrite, flushOfflineQueue } from '@/services/offlineQueue'
 
 export async function performConfirmSale(saleId: string): Promise<void> {
@@ -10,8 +9,6 @@ export async function performConfirmSale(saleId: string): Promise<void> {
 
   try {
     await api.confirmSale(saleId)
-    const payload = await syncAppData()
-    useStore.getState().applySyncData(payload)
   } catch {
     await enqueueOfflineWrite({ type: 'confirm_sale', saleId, createdAt: new Date().toISOString() })
   }
@@ -22,8 +19,6 @@ export async function performRejectSale(saleId: string, reason: string): Promise
   if (apiMode !== 'http') return
 
   await api.rejectSale(saleId, reason)
-  const payload = await syncAppData()
-  useStore.getState().applySyncData(payload)
 }
 
 export async function performSubmitPayment(
@@ -36,8 +31,6 @@ export async function performSubmitPayment(
 
   try {
     await api.submitPayment(saleId, method, reference)
-    const payload = await syncAppData()
-    useStore.getState().applySyncData(payload)
   } catch {
     await enqueueOfflineWrite({
       type: 'submit_payment',

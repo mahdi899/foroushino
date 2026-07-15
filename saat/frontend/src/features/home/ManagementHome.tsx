@@ -1,10 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import {
-  Phone,
-  Target,
-  Flame,
-  AlertTriangle,
   Users,
   TrendingUp,
   ArrowLeft,
@@ -16,11 +13,12 @@ import {
   UserPlus,
   ShieldCheck,
   Activity,
+  CreditCard,
+  type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { AppHeader } from './AppHeader'
-import { StatTile } from '@/components/domain/StatTile'
 import { InsightCard } from '@/components/domain/InsightCard'
 import { LeaderboardRow } from '@/components/domain/LeaderboardRow'
 import {
@@ -39,6 +37,130 @@ import { conversionRateFromStats } from '@/lib/dailyGoal'
 import { toFa } from '@/lib/format'
 import { apiMode } from '@/services'
 import { fetchTeamLive } from '@/services/teamLive'
+import { cn } from '@/lib/cn'
+
+const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
+
+type HomeAction = {
+  id: string
+  label: string
+  icon: LucideIcon
+  onClick: () => void
+  badge?: number
+  tone?: 'default' | 'primary' | 'warning' | 'success'
+  span?: 1 | 2
+}
+
+function HeroStat({ value, label }: { value: string | number; label: string }) {
+  return (
+    <div className="min-w-0 flex-1 text-center">
+      <p className="text-[18px] font-black tabular-nums leading-none text-text">{typeof value === 'number' ? toFa(value) : value}</p>
+      <p className="mt-1 truncate text-[10px] font-semibold text-text-soft">{label}</p>
+    </div>
+  )
+}
+
+function InboxPanel({
+  items,
+}: {
+  items: { id: string; label: string; count: number; onClick: () => void }[]
+}) {
+  if (items.length === 0) return null
+
+  const total = items.reduce((sum, item) => sum + item.count, 0)
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={spring}
+      className="overflow-hidden rounded-[20px] border border-amber-500/25 bg-amber-500/8"
+    >
+      <div className="flex items-center justify-between gap-2 border-b border-amber-500/15 px-3.5 py-2.5">
+        <p className="text-[12px] font-extrabold text-amber-800 dark:text-amber-200">نیاز به اقدام</p>
+        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-black tabular-nums text-amber-700 dark:text-amber-300">
+          {toFa(total)}
+        </span>
+      </div>
+      <ul className="divide-y divide-amber-500/10">
+        {items.map((item) => (
+          <li key={item.id}>
+            <button
+              type="button"
+              onClick={item.onClick}
+              className="flex w-full items-center gap-2 px-3.5 py-3 text-right transition-colors active:bg-amber-500/10"
+            >
+              <span className="min-w-0 flex-1 text-[12px] font-bold text-text">{item.label}</span>
+              <span className="shrink-0 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-black tabular-nums text-amber-800 dark:text-amber-200">
+                {toFa(item.count)}
+              </span>
+              <ArrowLeft size={14} className="shrink-0 text-amber-600/60" />
+            </button>
+          </li>
+        ))}
+      </ul>
+    </motion.section>
+  )
+}
+
+function ActionGrid({ title, items }: { title: string; items: HomeAction[] }) {
+  if (items.length === 0) return null
+
+  return (
+    <section>
+      <h2 className="mb-2.5 px-0.5 text-[13px] font-extrabold text-text-muted">{title}</h2>
+      <div className="grid grid-cols-2 gap-2">
+        {items.map((item) => {
+          const Icon = item.icon
+          const toneClass =
+            item.tone === 'primary'
+              ? 'border-primary-500/20 bg-primary-500/8'
+              : item.tone === 'success'
+                ? 'border-emerald-500/20 bg-emerald-500/8'
+                : item.tone === 'warning'
+                  ? 'border-amber-500/20 bg-amber-500/8'
+                  : 'border-border/60 bg-surface/80'
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={item.onClick}
+              className={cn(
+                'glass-inset relative flex min-h-[72px] flex-col items-start justify-between rounded-[16px] border p-3 text-right',
+                toneClass,
+                item.span === 2 && 'col-span-2 min-h-0 flex-row items-center gap-2.5',
+              )}
+            >
+              <span
+                className={cn(
+                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]',
+                  item.tone === 'success'
+                    ? 'bg-emerald-500/15 text-emerald-600'
+                    : item.tone === 'warning'
+                      ? 'bg-amber-500/15 text-amber-600'
+                      : item.tone === 'primary'
+                        ? 'bg-primary-500/15 text-primary-600 dark:text-primary-400'
+                        : 'bg-neutral-500/10 text-text-muted',
+                )}
+              >
+                <Icon size={16} strokeWidth={2.25} />
+              </span>
+              <span className={cn('text-[11px] font-bold leading-snug text-text', item.span === 2 && 'flex-1')}>
+                {item.label}
+              </span>
+              {item.badge != null && item.badge > 0 && (
+                <span className="absolute left-2.5 top-2.5 rounded-full bg-amber-500 px-1.5 py-0.5 text-[9px] font-black tabular-nums text-white">
+                  {toFa(item.badge)}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
 
 export function ManagementHome() {
   const navigate = useNavigate()
@@ -50,6 +172,8 @@ export function ManagementHome() {
   const leads = useStore((s) => s.leads)
   const followups = useStore((s) => s.followups)
   const sales = useStore((s) => s.sales)
+  const teamReports = useStore((s) => s.teamReports)
+  const agentReports = useStore((s) => s.agentReports)
   const mergeTeamLiveStats = useStore((s) => s.mergeTeamLiveStats)
 
   const isLeader = isLeaderRole(role)
@@ -63,6 +187,9 @@ export function ManagementHome() {
     hasPermission(permissions, 'leads.import') ||
     hasPermission(permissions, 'leads.reassign')
   const canReviewPayment = hasPermission(permissions, 'sales.review-payment')
+  const canApproveCommissionsLeader = hasPermission(permissions, 'commissions.approve-leader')
+  const canApproveCommissionsSupervisor = hasPermission(permissions, 'commissions.approve-supervisor')
+
   const managedTeam = useMemo(
     () => getManagedTeam(teams, currentAgentId, role),
     [teams, currentAgentId, role],
@@ -97,10 +224,13 @@ export function ManagementHome() {
   const weak = useMemo(() => weakAgents(agents), [agents])
   const overdue = useMemo(() => overdueFollowupsList(followups), [followups])
   const pendingSales = useMemo(() => pendingConfirmationSales(sales), [sales])
-  const teamReports = useStore((s) => s.teamReports)
   const pendingTeamReports = useMemo(
     () => teamReports.filter((r) => r.status === 'submitted').length,
     [teamReports],
+  )
+  const pendingAgentReports = useMemo(
+    () => agentReports.filter((r) => r.status === 'submitted' && teamAgentIds.includes(r.agentId)).length,
+    [agentReports, teamAgentIds],
   )
   const managerInbox = useMemo(
     () => teamReports.filter((r) => r.status === 'forwarded_to_manager').length,
@@ -113,6 +243,13 @@ export function ManagementHome() {
       ).length,
     [sales, teamAgentIds],
   )
+  const pendingSalesInScope = useMemo(
+    () =>
+      isLeader
+        ? pendingSales.filter((sale) => teamAgentIds.includes(sale.agentId)).length
+        : pendingSales.length,
+    [isLeader, pendingSales, teamAgentIds],
+  )
 
   const insights = useMemo(
     () =>
@@ -122,303 +259,341 @@ export function ManagementHome() {
         weak,
         overdueCount: overdue.length,
         pendingSales: pendingSales.length,
-      }),
-    [teamRows, sourcePerf, weak, overdue.length, pendingSales.length],
+      }).slice(0, isSupervisor ? 2 : 3),
+    [teamRows, sourcePerf, weak, overdue.length, pendingSales.length, isSupervisor],
   )
 
   const heroByRole: Record<string, { title: string; sub: string }> = {
-    leader: { title: 'تیم آلفا امروز', sub: 'عملکرد اعضای تیمت را دنبال کن' },
-    supervisor: { title: 'نگاه چند تیمی', sub: 'کیفیت و pipeline تیم‌ها' },
-    manager: { title: 'مدیریت سیستم', sub: 'نظارت، گزارش‌ها و تنظیمات سازمان' },
-    admin: { title: 'مدیریت سیستم', sub: 'نظارت، گزارش‌ها و تنظیمات سازمان' },
+    leader: { title: managedTeam?.name ?? 'تیم من', sub: 'عملکرد امروز تیم' },
+    supervisor: { title: 'داشبورد ناظر', sub: `${toFa(teams.length)} تیم · کیفیت و pipeline` },
+    manager: { title: 'داشبورد مدیر', sub: 'نظارت سازمان و گزارش‌ها' },
+    admin: { title: 'داشبورد مدیر', sub: 'نظارت سازمان و گزارش‌ها' },
   }
   const hero = heroByRole[role] ?? heroByRole.leader
-
   const topAgents = [...teamAgents].sort((a, b) => b.callsToday - a.callsToday).slice(0, 3)
+
+  const inboxItems = useMemo(() => {
+    const items: { id: string; label: string; count: number; onClick: () => void }[] = []
+
+    if (isSupervisor && pendingTeamReports > 0) {
+      items.push({
+        id: 'team-reports',
+        label: 'گزارش تیم منتظر تایید',
+        count: pendingTeamReports,
+        onClick: () => navigate('/team-reports?status=submitted'),
+      })
+    }
+    if (isManager && managerInbox > 0) {
+      items.push({
+        id: 'manager-inbox',
+        label: 'گزارش تایید‌شده از ناظر',
+        count: managerInbox,
+        onClick: () => navigate('/team-reports?inbox=1'),
+      })
+    }
+    if (isLeader && pendingAgentReports > 0) {
+      items.push({
+        id: 'agent-reports',
+        label: 'گزارش کارشناس منتظر تایید',
+        count: pendingAgentReports,
+        onClick: () => navigate('/agent-reports?inbox=1'),
+      })
+    }
+    if (canReviewPayment && paymentReviewCount > 0) {
+      items.push({
+        id: 'payments',
+        label: 'پرداخت منتظر تایید',
+        count: paymentReviewCount,
+        onClick: () => navigate('/sales?status=payment_submitted'),
+      })
+    }
+    if (!isLeader && pendingSalesInScope > 0) {
+      items.push({
+        id: 'sales',
+        label: 'فروش منتظر تایید',
+        count: pendingSalesInScope,
+        onClick: () => navigate('/sales'),
+      })
+    }
+
+    return items
+  }, [
+    isSupervisor,
+    isManager,
+    isLeader,
+    pendingTeamReports,
+    managerInbox,
+    pendingAgentReports,
+    canReviewPayment,
+    paymentReviewCount,
+    pendingSalesInScope,
+    navigate,
+  ])
+
+  const primaryActions = useMemo((): HomeAction[] => {
+    const items: HomeAction[] = []
+
+    if (isLeader) {
+      items.push(
+        { id: 'team-live', label: 'تیم لایو', icon: Radio, onClick: () => navigate('/team'), tone: 'primary' },
+        { id: 'leads', label: 'مشتریان تیم', icon: Users, onClick: () => navigate('/leads') },
+        { id: 'activity', label: 'فعالیت تیم', icon: Activity, onClick: () => navigate('/activity') },
+        {
+          id: 'agent-reports',
+          label: 'گزارش کارشناسان',
+          icon: FileText,
+          onClick: () => navigate('/agent-reports?inbox=1'),
+          badge: pendingAgentReports,
+        },
+      )
+    }
+
+    if (isSupervisor || isManager) {
+      items.push(
+        {
+          id: 'teams',
+          label: isSupervisor ? 'تیم‌ها و لایو' : 'همه تیم‌ها',
+          icon: Radio,
+          onClick: () => navigate('/teams'),
+          tone: 'primary',
+        },
+        { id: 'live-ops', label: 'عملیات زنده', icon: Activity, onClick: () => navigate('/live-ops') },
+        { id: 'qa', label: 'کنترل کیفیت', icon: ShieldCheck, onClick: () => navigate('/qa') },
+      )
+      if (canIntakeLeads) {
+        items.push({
+          id: 'intake',
+          label: 'ورود و تقسیم مشتری',
+          icon: UserPlus,
+          onClick: () => navigate('/leads/intake'),
+          span: 2,
+        })
+      }
+    }
+
+    if (isManager) {
+      if (canManageSettings) {
+        items.push({ id: 'settings', label: 'تنظیمات سیستم', icon: Server, onClick: () => navigate('/admin/settings') })
+      }
+      if (canManageStaff) {
+        items.push({ id: 'staff', label: 'ناظران و لیدرها', icon: Users, onClick: () => navigate('/admin/staff') })
+      }
+      if (canViewSystemActivity) {
+        items.push({
+          id: 'sys-activity',
+          label: 'فعالیت کل سیستم',
+          icon: TrendingUp,
+          onClick: () => navigate('/activity'),
+          tone: 'primary',
+        })
+      }
+    }
+
+    if (isLeader) {
+      items.push({
+        id: 'team-report',
+        label: 'ارسال گزارش روزانه تیم',
+        icon: FileText,
+        onClick: () => navigate('/team-reports'),
+        span: 2,
+      })
+    }
+
+    return items
+  }, [
+    isLeader,
+    isSupervisor,
+    isManager,
+    canIntakeLeads,
+    canManageSettings,
+    canManageStaff,
+    canViewSystemActivity,
+    pendingAgentReports,
+    navigate,
+  ])
+
+  const financeActions = useMemo((): HomeAction[] => {
+    const items: HomeAction[] = []
+
+    if (isLeader && canApproveCommissionsLeader) {
+      items.push({
+        id: 'comm-leader',
+        label: 'تایید پورسانت',
+        icon: BadgeDollarSign,
+        onClick: () => navigate('/wallet/approvals'),
+        tone: 'success',
+      })
+    }
+    if (isSupervisor && canApproveCommissionsSupervisor) {
+      items.push({
+        id: 'comm-supervisor',
+        label: 'تایید نهایی پورسانت',
+        icon: BadgeDollarSign,
+        onClick: () => navigate('/wallet/approvals'),
+        tone: 'success',
+      })
+    }
+    if (isSupervisor && hasPermission(permissions, 'wallet.manage-payouts')) {
+      items.push({
+        id: 'payouts',
+        label: 'صف تسویه',
+        icon: BadgeDollarSign,
+        onClick: () => navigate('/wallet/payouts'),
+        tone: 'success',
+      })
+    }
+    if (canManageStaff && hasPermission(permissions, 'users.manage-team')) {
+      items.push({
+        id: 'bank',
+        label: 'تایید کارت و شبا',
+        icon: CreditCard,
+        onClick: () => navigate('/wallet/bank-accounts'),
+        tone: 'warning',
+      })
+      items.push({
+        id: 'agents',
+        label: 'مدیریت کارشناسان',
+        icon: UserPlus,
+        onClick: () => navigate('/admin/agents'),
+      })
+    }
+    if (canManageStaff && hasPermission(permissions, 'teams.manage')) {
+      items.push({
+        id: 'teams',
+        label: 'مدیریت تیم‌ها',
+        icon: Users,
+        onClick: () => navigate('/admin/teams'),
+      })
+    }
+
+    return items
+  }, [
+    isLeader,
+    isSupervisor,
+    canManageStaff,
+    canApproveCommissionsLeader,
+    canApproveCommissionsSupervisor,
+    permissions,
+    navigate,
+  ])
 
   return (
     <Page>
       <AppHeader />
 
-      <div className="space-y-5 px-4 pt-2">
-        <div
-          className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-primary-600 to-primary-800 p-5 text-white shadow-float"
+      <div className="space-y-4 px-4 pt-2 pb-2">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={spring}
+          className="glass-hero relative overflow-hidden rounded-[24px] p-4"
         >
-          <div className="absolute -left-10 -top-10 h-36 w-36 rounded-full bg-white/10 blur-xl" />
-          <div className="relative">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold">
-              {roleLabels[role]}
-            </span>
-            <h2 className="mt-3 text-[24px] font-black leading-tight">{hero.title}</h2>
-            <p className="mt-1 text-[13px] font-bold text-white/80">{hero.sub}</p>
-            <div className="mt-4 flex items-center gap-4">
-              <div>
-                <p className="text-2xl font-black tabular-nums">{toFa(totalCalls)}</p>
-                <p className="text-[11px] font-bold text-white/70">تماس امروز</p>
-              </div>
-              <div className="h-8 w-px bg-white/20" />
-              <div>
-                <p className="text-2xl font-black tabular-nums">{toFa(avgConversion)}٪</p>
-                <p className="text-[11px] font-bold text-white/70">نرخ تبدیل</p>
-              </div>
-              <div className="h-8 w-px bg-white/20" />
-              <div>
-                <p className="text-2xl font-black tabular-nums">{toFa(totalSuccess)}</p>
-                <p className="text-[11px] font-bold text-white/70">موفق</p>
-              </div>
+          <div className="pointer-events-none absolute -left-8 -top-10 h-32 w-32 rounded-full bg-primary-500/10 blur-2xl" />
+          <div className="relative flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <span className="inline-flex items-center rounded-full border border-border/50 bg-surface/60 px-2.5 py-0.5 text-[10px] font-bold text-text-soft">
+                {roleLabels[role]}
+              </span>
+              <h2 className="mt-2 truncate text-[20px] font-black leading-tight text-text">{hero.title}</h2>
+              <p className="mt-0.5 text-[11px] font-semibold text-text-soft">{hero.sub}</p>
             </div>
+            <span className="glass-inset inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold text-text-muted">
+              <Radio size={11} className="text-emerald-500" />
+              لایو
+            </span>
           </div>
-        </div>
 
-        <div className="grid grid-cols-4 gap-2">
-          <StatTile variant="compact" icon={<Phone size={18} />} value={totalCalls} label="تماس‌ها" />
-          <StatTile variant="compact" icon={<Target size={18} />} value={`${toFa(avgConversion)}٪`} label="تبدیل" tone="secondary" />
-          <StatTile variant="compact" icon={<Flame size={18} />} value={hotLeads} label="مشتری داغ" tone="accent" />
-          <StatTile variant="compact" icon={<AlertTriangle size={18} />} value={overdue.length} label="عقب‌افتاده" tone="warning" />
-        </div>
-
-        {isManager && canManageSettings && (
-          <button
-            onClick={() => navigate('/admin/settings')}
-            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
-          >
-            <Server size={20} className="shrink-0 text-secondary-600" />
-            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
-              تنظیمات سیستم
-            </span>
-            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
-          </button>
-        )}
-
-        {isManager && canManageStaff && (
-          <button
-            onClick={() => navigate('/admin/staff')}
-            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
-          >
-            <Users size={20} className="shrink-0 text-secondary-600" />
-            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
-              مدیریت ناظران و لیدرها
-            </span>
-            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
-          </button>
-        )}
-
-        {isManager && canViewSystemActivity && (
-          <button
-            onClick={() => navigate('/activity')}
-            className="flex w-full items-center gap-3 rounded-2xl bg-primary-50 p-4 text-right dark:bg-primary-500/10"
-          >
-            <TrendingUp size={20} className="shrink-0 text-primary-600 dark:text-primary-400" />
-            <span className="flex-1 text-[13px] font-extrabold text-primary-700 dark:text-primary-300">
-              گزارش کامل فعالیت سیستم
-            </span>
-            <ArrowLeft size={16} className="shrink-0 text-primary-400" />
-          </button>
-        )}
-
-        {isManager && (
-          <button
-            onClick={() => navigate('/teams')}
-            className="flex w-full items-center gap-3 rounded-2xl bg-primary-50 p-4 text-right dark:bg-primary-500/10"
-          >
-            <Radio size={20} className="shrink-0 text-primary-600 dark:text-primary-400" />
-            <span className="flex-1 text-[13px] font-extrabold text-primary-700 dark:text-primary-300">
-              همه تیم‌ها — نظارت لایو
-            </span>
-            <ArrowLeft size={16} className="shrink-0 text-primary-400" />
-          </button>
-        )}
-
-        {isSupervisor && canIntakeLeads && (
-          <button
-            onClick={() => navigate('/leads/intake')}
-            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
-          >
-            <UserPlus size={20} className="shrink-0 text-secondary-600" />
-            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
-              ورود مشتری و تقسیم بین سرتیم‌ها
-            </span>
-            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
-          </button>
-        )}
-
-        {(isSupervisor || isManager) && (
-          <button
-            onClick={() => navigate('/live-ops')}
-            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
-          >
-            <Activity size={20} className="shrink-0 text-secondary-600" />
-            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
-              عملیات زنده — تماس‌های فعال و KPI
-            </span>
-            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
-          </button>
-        )}
-
-        {(isSupervisor || isManager) && (
-          <button
-            onClick={() => navigate('/qa')}
-            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
-          >
-            <ShieldCheck size={20} className="shrink-0 text-secondary-600" />
-            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
-              کنترل کیفیت تماس‌ها
-            </span>
-            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
-          </button>
-        )}
-
-        {isSupervisor && (
-          <button
-            onClick={() => navigate('/teams')}
-            className="flex w-full items-center gap-3 rounded-2xl bg-primary-50 p-4 text-right dark:bg-primary-500/10"
-          >
-            <Radio size={20} className="shrink-0 text-primary-600 dark:text-primary-400" />
-            <span className="flex-1 text-[13px] font-extrabold text-primary-700 dark:text-primary-300">
-              همه تیم‌ها — نظارت لایو و گزارش‌ها
-            </span>
-            <ArrowLeft size={16} className="shrink-0 text-primary-400" />
-          </button>
-        )}
-
-        {isLeader && (
-          <button
-            onClick={() => navigate('/team')}
-            className="flex w-full items-center gap-3 rounded-2xl bg-primary-50 p-4 text-right dark:bg-primary-500/10"
-          >
-            <Radio size={20} className="shrink-0 text-primary-600 dark:text-primary-400" />
-            <span className="flex-1 text-[13px] font-extrabold text-primary-700 dark:text-primary-300">
-              تیم من — وضعیت لایو کارشناسان
-            </span>
-            <ArrowLeft size={16} className="shrink-0 text-primary-400" />
-          </button>
-        )}
-
-        {isLeader && (
-          <button
-            onClick={() => navigate('/team-reports')}
-            className="flex w-full items-center gap-3 rounded-2xl bg-surface p-4 text-right shadow-card border border-border/60"
-          >
-            <FileText size={20} className="shrink-0 text-secondary-600" />
-            <span className="flex-1 text-[13px] font-extrabold text-neutral-900">
-              ارسال گزارش روزانه تیم
-            </span>
-            <ArrowLeft size={16} className="shrink-0 text-neutral-400" />
-          </button>
-        )}
-
-        {isSupervisor && pendingTeamReports > 0 && (
-          <button
-            onClick={() => navigate('/team-reports?status=submitted')}
-            className="flex w-full items-center gap-3 rounded-2xl bg-warning-50 p-4 text-right"
-          >
-            <FileText size={20} className="shrink-0 text-warning-600" />
-            <span className="flex-1 text-[13px] font-extrabold text-warning-700">
-              {toFa(pendingTeamReports)} گزارش تیم منتظر تایید توست
-            </span>
-            <ArrowLeft size={16} className="shrink-0 text-warning-400" />
-          </button>
-        )}
-
-        {isManager && managerInbox > 0 && (
-          <button
-            onClick={() => navigate('/team-reports?inbox=1')}
-            className="flex w-full items-center gap-3 rounded-2xl bg-primary-50 p-4 text-right"
-          >
-            <FileText size={20} className="shrink-0 text-primary-600" />
-            <span className="flex-1 text-[13px] font-extrabold text-primary-700">
-              {toFa(managerInbox)} گزارش تایید‌شده از سوپروایزر
-            </span>
-            <ArrowLeft size={16} className="shrink-0 text-primary-400" />
-          </button>
-        )}
-
-        {canReviewPayment && paymentReviewCount > 0 && (
-          <button
-            onClick={() => navigate('/sales?status=payment_submitted')}
-            className="flex w-full items-center gap-3 rounded-2xl bg-warning-50 p-4 text-right"
-          >
-            <BadgeDollarSign size={20} className="shrink-0 text-warning-600" />
-            <span className="flex-1 text-[13px] font-extrabold text-warning-700">
-              {toFa(paymentReviewCount)} پرداخت منتظر تایید توست
-            </span>
-            <ArrowLeft size={16} className="shrink-0 text-warning-400" />
-          </button>
-        )}
-
-        {!isLeader && pendingSales.length > 0 && (
-          <button
-            onClick={() => navigate('/sales')}
-            className="flex w-full items-center gap-3 rounded-2xl bg-warning-50 p-4 text-right"
-          >
-            <BadgeDollarSign size={20} className="shrink-0 text-warning-600" />
-            <span className="flex-1 text-[13px] font-extrabold text-warning-700">
-              {toFa(pendingSales.length)} فروش منتظر تایید توست
-            </span>
-            <ArrowLeft size={16} className="shrink-0 text-warning-400" />
-          </button>
-        )}
-
-        <section>
-          <h2 className="mb-3 flex items-center gap-1.5 text-[15px] font-extrabold text-neutral-900">
-            <TrendingUp size={16} className="text-primary-500" />
-            هشدارها و بینش‌ها
-          </h2>
-          <div className="space-y-2.5">
-            {insights.map((ins) => (
-              <InsightCard key={ins.id} tone={ins.tone} title={ins.title} body={ins.body} />
-            ))}
+          <div className="relative mt-4 flex items-center gap-1 rounded-[16px] border border-border/50 bg-surface/50 px-1 py-2">
+            <HeroStat value={totalCalls} label="تماس" />
+            <div className="h-7 w-px shrink-0 bg-border/60" />
+            <HeroStat value={`${toFa(avgConversion)}٪`} label="تبدیل" />
+            <div className="h-7 w-px shrink-0 bg-border/60" />
+            <HeroStat value={hotLeads} label="داغ" />
+            <div className="h-7 w-px shrink-0 bg-border/60" />
+            <HeroStat value={overdue.length} label="عقب‌افتاده" />
           </div>
-        </section>
+        </motion.div>
 
-        {weak.length > 0 && (
+        <InboxPanel items={inboxItems} />
+
+        <ActionGrid title="دسترسی سریع" items={primaryActions} />
+        {financeActions.length > 0 && <ActionGrid title="مالی و پرسنل" items={financeActions} />}
+
+        {(isManager || isSupervisor) && teamRows.length > 0 && (
           <section>
-            <h2 className="mb-3 flex items-center gap-1.5 text-[15px] font-extrabold text-neutral-900">
-              <TriangleAlert size={16} className="text-warning-500" />
-              کارشناسان نیازمند بررسی
-            </h2>
-            <div className="space-y-2">
-              {weak.map((a, i) => (
-                <LeaderboardRow key={a.id} agent={a} rank={i + 1} metric={a.callsToday} />
-              ))}
+            <div className="mb-2.5 flex items-center justify-between px-0.5">
+              <h2 className="text-[13px] font-extrabold text-text-muted">روند تیم‌ها</h2>
+              <button
+                type="button"
+                onClick={() => navigate('/reports')}
+                className="text-[11px] font-bold text-primary-600 dark:text-primary-400"
+              >
+                گزارش کامل
+              </button>
             </div>
-          </section>
-        )}
-
-        {(isManager || isSupervisor) ? (
-          <section>
-            <h2 className="mb-3 text-[15px] font-extrabold text-neutral-900">روند تیم‌ها</h2>
-            <div className="space-y-2">
-              {teamRows.map((t) => (
-                <div key={t.id} className="flex items-center justify-between rounded-2xl bg-surface p-3.5 shadow-card border border-border/60">
-                  <span className="text-[13px] font-extrabold text-neutral-900">{t.name}</span>
-                  <span className="text-[13px] font-extrabold text-primary-700 tabular-nums">{toFa(t.conversion)}٪</span>
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar">
+              {teamRows.map((team) => (
+                <div
+                  key={team.id}
+                  className="glass-card min-w-[132px] shrink-0 rounded-[16px] border border-white/55 p-3 dark:border-white/10"
+                >
+                  <p className="truncate text-[12px] font-extrabold text-text">{team.name}</p>
+                  <p className="mt-2 text-[20px] font-black tabular-nums text-primary-600 dark:text-primary-400">
+                    {toFa(team.conversion)}٪
+                  </p>
+                  <p className="mt-0.5 text-[10px] font-semibold text-text-soft">نرخ تبدیل</p>
                 </div>
               ))}
             </div>
           </section>
-        ) : (
+        )}
+
+        {isLeader && topAgents.length > 0 && (
           <section>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="flex items-center gap-1.5 text-[15px] font-extrabold text-neutral-900">
-                <Users size={16} className="text-secondary-500" />
-                برترین اعضای تیم
-              </h2>
-            </div>
+            <h2 className="mb-2.5 px-0.5 text-[13px] font-extrabold text-text-muted">برترین‌های امروز</h2>
             <div className="space-y-2">
-              {topAgents.map((a, i) => (
-                <LeaderboardRow key={a.id} agent={a} rank={i + 1} metric={a.callsToday} />
+              {topAgents.map((agent, index) => (
+                <LeaderboardRow key={agent.id} agent={agent} rank={index + 1} metric={agent.callsToday} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {insights.length > 0 && (
+          <section>
+            <h2 className="mb-2.5 flex items-center gap-1.5 px-0.5 text-[13px] font-extrabold text-text-muted">
+              <TrendingUp size={14} className="text-primary-500" />
+              بینش‌های امروز
+            </h2>
+            <div className="space-y-2">
+              {insights.map((ins) => (
+                <InsightCard key={ins.id} tone={ins.tone} title={ins.title} body={ins.body} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {weak.length > 0 && !isSupervisor && (
+          <section>
+            <h2 className="mb-2.5 flex items-center gap-1.5 px-0.5 text-[13px] font-extrabold text-text-muted">
+              <TriangleAlert size={14} className="text-warning-500" />
+              نیازمند بررسی
+            </h2>
+            <div className="space-y-2">
+              {weak.slice(0, 3).map((agent, index) => (
+                <LeaderboardRow key={agent.id} agent={agent} rank={index + 1} metric={agent.callsToday} />
               ))}
             </div>
           </section>
         )}
 
         <button
+          type="button"
           onClick={() => navigate('/reports')}
-          className="flex w-full items-center justify-center gap-1.5 rounded-2xl bg-primary-50 py-3.5 text-sm font-extrabold text-primary-700"
+          className="flex w-full items-center justify-center gap-1.5 rounded-[16px] border border-border/60 bg-surface py-3 text-[13px] font-extrabold text-primary-700 dark:text-primary-300"
         >
-          گزارش کامل
-          <ArrowLeft size={16} />
+          گزارش‌ها و آمار
+          <ArrowLeft size={15} />
         </button>
       </div>
     </Page>

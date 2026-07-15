@@ -50,7 +50,7 @@ export function LeadIntakeScreen() {
 
   const refreshData = async () => {
     if (!usesRemoteData) return
-    const payload = await syncAppData()
+    const payload = await syncAppData({ priorDailyStatsDate: useStore.getState().dailyStatsDate })
     applySyncData(payload)
   }
 

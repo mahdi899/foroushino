@@ -23,6 +23,7 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import { SuccessScreen } from '@/components/ui/SuccessScreen'
 import { EmptyState } from '@/components/ui/States'
 import { PaymentSubmitSheet } from '@/components/domain/PaymentSubmitSheet'
+import { SaleReviewSheet } from '@/components/domain/SaleReviewSheet'
 import { saleStatusLabels, saleStatusTone } from '@/data/labels'
 import { formatMoney, relativeDayTime, toFa } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
@@ -33,6 +34,7 @@ import { DataGate } from '@/components/pwa/DataGate'
 import { isManagementRole } from '@/lib/roles'
 import { hasPermission } from '@/lib/permissions'
 import { getTeamAgentIds } from '@/lib/teamUtils'
+import { isSaleDisplayable, saleCustomerName, saleProductName } from '@/lib/saleDisplay'
 
 type Filter = 'all' | SaleStatus
 
@@ -151,6 +153,10 @@ function SaleCard({
   onForward: () => void
 }) {
   const glow = statusGlow[sale.status]
+  const customerName = saleCustomerName(sale, lead)
+  const productName = saleProductName(sale, product)
+
+  if (!customerName || !productName) return null
 
   return (
     <motion.div
@@ -179,16 +185,17 @@ function SaleCard({
         )}
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[15px] font-bold text-text">
-            {lead ? `${lead.firstName} ${lead.lastName}` : 'مشتری نامشخص'}
-          </p>
+          <p className="truncate text-[15px] font-bold text-text">{customerName}</p>
           <p className="mt-0.5 truncate text-[11px] font-semibold text-text-soft">
-            {product?.name ?? 'محصول'} · {relativeDayTime(sale.createdAt)}
+            {productName} · {relativeDayTime(sale.createdAt)}
           </p>
         </div>
 
         <div className="shrink-0 text-left">
-          <p className={cn('text-[14px] font-black tabular-nums leading-none', TG)}>{formatMoney(sale.amount)}</p>
+          <p className={cn('text-[14px] font-black tabular-nums leading-none', TG)}>
+            {formatMoney(sale.amount)}
+            <span className="mr-0.5 text-[10px] font-bold text-text-soft">تومان</span>
+          </p>
           <Badge tone={saleStatusTone[sale.status]} size="sm" className="mt-1.5">
             {saleStatusLabels[sale.status]}
           </Badge>
@@ -281,7 +288,7 @@ function SaleCard({
       {canConfirmSales && sale.status === 'pending_confirmation' && (
         <div className="relative mt-3 flex gap-2">
           <GlassActionBtn label="رد فروش" icon={X} variant="danger" onClick={onReject} />
-          <GlassActionBtn label="تایید فروش" icon={Check} variant="primary" onClick={onConfirm} />
+          <GlassActionBtn label="بررسی و تایید" icon={Check} variant="primary" onClick={onConfirm} />
         </div>
       )}
     </motion.div>
@@ -299,6 +306,9 @@ export function SalesScreen() {
   const sales = useStore((s) => s.sales)
   const leads = useStore((s) => s.leads)
   const products = useStore((s) => s.products)
+  const calls = useStore((s) => s.calls)
+  const followups = useStore((s) => s.followups)
+  const payments = useStore((s) => s.payments)
   const submitPayment = useStore((s) => s.submitPayment)
   const forwardSaleForConfirmation = useStore((s) => s.forwardSaleForConfirmation)
   const rejectSale = useStore((s) => s.rejectSale)
@@ -339,17 +349,30 @@ export function SalesScreen() {
         : sales.filter((sale) => sale.agentId === currentAgentId),
     [sales, isTeamViewer, teamAgentIds, currentAgentId],
   )
-  const filtered = filter === 'all' ? visible : visible.filter((s) => s.status === filter)
+  const displayable = useMemo(
+    () =>
+      visible.filter((sale) => {
+        const lead = leads.find((l) => l.id === sale.leadId)
+        const product = products.find((p) => p.id === sale.productId)
+        return isSaleDisplayable(sale, lead, product)
+      }),
+    [visible, leads, products],
+  )
+
+  const filtered = useMemo(
+    () => (filter === 'all' ? displayable : displayable.filter((s) => s.status === filter)),
+    [filter, displayable],
+  )
 
   const counts: Record<Filter, number> = {
-    all: visible.length,
+    all: displayable.length,
     draft: 0,
-    payment_pending: visible.filter((s) => s.status === 'payment_pending').length,
-    payment_submitted: visible.filter((s) => s.status === 'payment_submitted').length,
-    pending_confirmation: visible.filter((s) => s.status === 'pending_confirmation').length,
-    confirmed: visible.filter((s) => s.status === 'confirmed').length,
-    rejected: visible.filter((s) => s.status === 'rejected').length,
-    cancelled: visible.filter((s) => s.status === 'cancelled').length,
+    payment_pending: displayable.filter((s) => s.status === 'payment_pending').length,
+    payment_submitted: displayable.filter((s) => s.status === 'payment_submitted').length,
+    pending_confirmation: displayable.filter((s) => s.status === 'pending_confirmation').length,
+    confirmed: displayable.filter((s) => s.status === 'confirmed').length,
+    rejected: displayable.filter((s) => s.status === 'rejected').length,
+    cancelled: displayable.filter((s) => s.status === 'cancelled').length,
     refunded: 0,
   }
 
@@ -364,7 +387,7 @@ export function SalesScreen() {
         sticky
         showBack
         title={isTeamViewer ? 'فروش‌ها' : 'فروش‌های من'}
-        subtitle={`${toFa(visible.length)} فروش`}
+        subtitle={`${toFa(displayable.length)} فروش`}
         icon={BadgeDollarSign}
         iconTone="success"
         className="pb-2"
@@ -423,6 +446,7 @@ export function SalesScreen() {
           filtered.map((sale) => {
             const lead = leadOf(sale.leadId)
             const product = productOf(sale.productId)
+            const customerName = saleCustomerName(sale, lead)
             return (
               <SaleCard
                 key={sale.id}
@@ -433,7 +457,7 @@ export function SalesScreen() {
                 canConfirmSales={canConfirmSales}
                 canReviewPayment={canReviewPayment}
                 canRegisterPayment={canRegisterPayment}
-                onLeadClick={() => lead && navigate(`/leads/${lead.id}`)}
+                onLeadClick={() => lead && customerName && navigate(`/leads/${lead.id}`)}
                 onPay={() => setPaySheet(sale)}
                 onCancel={() => setCancelTarget(sale)}
                 onConfirm={() => setConfirmTarget(sale)}
@@ -476,14 +500,22 @@ export function SalesScreen() {
         }}
       />
 
-      <ConfirmModal
+      <SaleReviewSheet
         open={!!confirmTarget}
-        title="تایید فروش"
-        description="با تایید این فروش، پورسانت به‌صورت معلق برای فروشنده ثبت می‌شود."
-        icon={ShieldCheck}
-        tone="success"
-        confirmLabel="تایید فروش"
-        onCancel={() => setConfirmTarget(null)}
+        sale={confirmTarget}
+        lead={confirmTarget ? leadOf(confirmTarget.leadId) : undefined}
+        product={confirmTarget ? productOf(confirmTarget.productId) : undefined}
+        agents={agents}
+        teams={teams}
+        calls={calls}
+        followups={followups}
+        sales={sales}
+        payments={payments}
+        onClose={() => setConfirmTarget(null)}
+        onReject={() => {
+          if (!confirmTarget) return
+          setRejectTarget(confirmTarget)
+        }}
         onConfirm={() => {
           if (!confirmTarget) return
           haptic('success')

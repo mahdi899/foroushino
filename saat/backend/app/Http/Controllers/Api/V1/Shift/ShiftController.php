@@ -13,6 +13,7 @@ use App\Models\UserWorkSession;
 use App\Services\ActivityLogService;
 use App\Services\Shift\ShiftTimeTracker;
 use App\Support\ApiResponse;
+use App\Support\BusinessDate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -46,7 +47,7 @@ class ShiftController extends Controller
     {
         $user = $request->user();
         $days = min(366, max(7, (int) $request->query('days', 14)));
-        $since = today()->subDays($days - 1)->startOfDay();
+        $since = BusinessDate::today()->subDays($days - 1)->startOfDay();
 
         $sessions = UserWorkSession::query()
             ->where('user_id', $user->id)
@@ -58,7 +59,7 @@ class ShiftController extends Controller
         $grouped = [];
 
         foreach ($sessions as $session) {
-            $date = $session->started_at->toDateString();
+            $date = BusinessDate::dateKey($session->started_at);
             if (! isset($grouped[$date])) {
                 $grouped[$date] = [
                     'date' => $date,
@@ -92,7 +93,7 @@ class ShiftController extends Controller
         }
 
         $daysList = collect(range(0, $days - 1))
-            ->map(fn (int $offset) => today()->subDays($offset)->toDateString());
+            ->map(fn (int $offset) => BusinessDate::today()->subDays($offset)->toDateString());
 
         $summary = $daysList
             ->map(fn (string $date) => $grouped[$date] ?? [
@@ -177,7 +178,7 @@ class ShiftController extends Controller
     {
         $previousShiftDate = UserWorkSession::query()
             ->where('user_id', $user->id)
-            ->whereDate('started_at', '<', today())
+            ->whereDate('started_at', '<', BusinessDate::today())
             ->latest('started_at')
             ->value('started_at');
 

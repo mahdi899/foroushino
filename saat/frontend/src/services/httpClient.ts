@@ -5,13 +5,29 @@ import type { ApiClient, CallResultInput, CallResultOutcome, FollowupInput } fro
 import type { Availability, Followup, NextAction, PaymentMethod } from '@/types'
 import { nextActionLabels } from '@/data/labels'
 import { ApiError, http, newIdempotencyKey } from './http'
+import { clearActiveCall, registerActiveCall, waitForActiveCallId } from './activeCallRegistry'
+import { patchCallResultData } from './patchCallWrite'
 import { mapFollowup, mapSuggestion } from './mappers'
 import type { Suggestion } from './logic'
 
-// The ApiClient contract identifies calls by `leadId`, but the backend's
-// `/calls/{call}/result` endpoint is keyed by the call it started. We keep a
-// small in-memory map from lead -> open call, populated by `startCall`.
-const activeCallByLead = new Map<string, number>()
+type CallSummary = { id: number | string; result: string | null }
+
+async function resolveCallId(leadId: string): Promise<number> {
+  const waited = await waitForActiveCallId(leadId)
+  if (waited !== undefined) return waited
+
+  const calls = await http.get<CallSummary[]>(`/calls?lead_id=${Number(leadId)}`)
+  const open =
+    [...calls].reverse().find((call) => call.result == null) ??
+    [...calls].reverse()[0]
+  if (!open?.id) {
+    throw new Error('هیچ تماس فعالی برای این مشتری یافت نشد. ابتدا تماس را شروع کن.')
+  }
+
+  const callId = Number(open.id)
+  registerActiveCall(leadId, callId)
+  return callId
+}
 
 export const httpClient: ApiClient = {
   async startShift(availability: Availability = 'available') {
@@ -65,18 +81,16 @@ export const httpClient: ApiClient = {
       lead_id: Number(leadId),
       method,
     })
-    activeCallByLead.set(leadId, Number(data.call.id))
+    registerActiveCall(leadId, Number(data.call.id))
   },
 
   async submitCallResult(input: CallResultInput): Promise<CallResultOutcome> {
-    const callId = activeCallByLead.get(input.leadId)
-    if (callId === undefined) {
-      throw new Error('هیچ تماس فعالی برای این مشتری یافت نشد. ابتدا تماس را شروع کن.')
-    }
+    const callId = await resolveCallId(input.leadId)
+    const trimmedNote = (input.note ?? '').trim()
 
     const payload: Record<string, unknown> = {
       result: input.result,
-      note: input.note || undefined,
+      note: trimmedNote || undefined,
       duration_sec: input.durationSec,
       objection: input.objection ?? undefined,
       rating: input.rating || undefined,
@@ -97,6 +111,8 @@ export const httpClient: ApiClient = {
 
     const idempotencyKey = input.idempotencyKey ?? newIdempotencyKey()
     const data = await http.post<{
+      call?: unknown
+      lead?: unknown
       follow_up: unknown | null
       sale: { id: string | number } | null
       next_action: string
@@ -104,29 +120,30 @@ export const httpClient: ApiClient = {
       next_reason?: string
     }>(`/calls/${callId}/result`, payload, idempotencyKey)
 
-    activeCallByLead.delete(input.leadId)
+    patchCallResultData(data)
+    clearActiveCall(input.leadId)
 
-    let suggestion: Suggestion | null = null
-    if (data.next_lead && data.next_reason) {
-      suggestion = mapSuggestion({ lead: data.next_lead, reason: data.next_reason })
-    } else if (input.advance) {
-      try {
-        const next = await http.post<{ lead: unknown; reason: string }>('/leads/next')
-        suggestion = mapSuggestion(next)
-      } catch (e) {
-        if (!(e instanceof ApiError && e.status === 404)) throw e
-      }
-    }
-
-    return {
+    const outcome: CallResultOutcome = {
       nextActionLabel: nextActionLabels[data.next_action as NextAction] ?? '',
       createdSaleId: data.sale ? String(data.sale.id) : null,
       createdFollowupId:
         data.follow_up && typeof data.follow_up === 'object' && 'id' in (data.follow_up as Record<string, unknown>)
           ? String((data.follow_up as Record<string, unknown>).id)
           : null,
-      suggestion,
+      suggestion: null,
+      savedNote: trimmedNote || null,
     }
+
+    // Result is already saved — fetching the next lead is best-effort only.
+    try {
+      if (data.next_lead && data.next_reason) {
+        outcome.suggestion = mapSuggestion({ lead: data.next_lead, reason: data.next_reason })
+      }
+    } catch {
+      outcome.suggestion = null
+    }
+
+    return outcome
   },
 
   async createFollowup(input: FollowupInput): Promise<Followup> {

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api\V1\Home;
 use App\Enums\LeadStatus;
 use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\V1\LeadResource;
 use App\Models\DailyTarget;
 use App\Models\FollowUp;
 use App\Models\Lead;
@@ -14,7 +13,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Support\ApiResponse;
-use App\Support\LeadPriorityScore;
+use App\Support\BusinessDate;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -23,7 +22,7 @@ class HomeController extends Controller
     public function agent(Request $request): JsonResponse
     {
         $user = $request->user();
-        $today = today();
+        $today = BusinessDate::today();
 
         $target = DailyTarget::query()->firstOrCreate(
             ['user_id' => $user->id, 'date' => $today],
@@ -33,9 +32,11 @@ class HomeController extends Controller
         $callsToday = $user->calls()->whereDate('created_at', $today)->count();
         $salesToday = $user->sales()->whereDate('created_at', $today)->count();
 
-        $target->calls_made = $callsToday;
-        $target->sales_made = $salesToday;
-        $target->save();
+        if ($target->calls_made !== $callsToday || $target->sales_made !== $salesToday) {
+            $target->calls_made = $callsToday;
+            $target->sales_made = $salesToday;
+            $target->save();
+        }
 
         $assignedCount = Lead::query()->where('assigned_agent_id', $user->id)
             ->whereNotIn('status', array_map(fn ($s) => $s->value, LeadStatus::excludedFromCycle()))
@@ -44,19 +45,6 @@ class HomeController extends Controller
         $overdueFollowups = FollowUp::query()->where('agent_id', $user->id)->overdue()->count();
         $todayFollowups = FollowUp::query()->where('agent_id', $user->id)
             ->pending()->whereDate('due_at', $today)->count();
-
-        $suggestedLead = Lead::query()
-            ->whereNotIn('status', array_map(fn ($s) => $s->value, LeadStatus::excludedFromCycle()))
-            ->whereNull('do_not_call_at')
-            ->where(function ($q): void {
-                $q->whereNull('locked_by')->orWhere('locked_until', '<', now());
-            })
-            ->where(function ($q) use ($user): void {
-                $q->where('assigned_agent_id', $user->id)->orWhereNull('assigned_agent_id');
-            })
-            ->selectRaw('leads.*, ('.LeadPriorityScore::sqlExpression().') as priority_score')
-            ->orderByDesc('priority_score')
-            ->first();
 
         $wallet = Wallet::query()->firstOrCreate(['user_id' => $user->id]);
         $unreadNotifications = $user->appNotifications()->where('read', false)->count();
@@ -71,17 +59,20 @@ class HomeController extends Controller
             'assigned_leads_count' => $assignedCount,
             'overdue_followups' => $overdueFollowups,
             'today_followups' => $todayFollowups,
-            'suggested_lead' => $suggestedLead ? new LeadResource($suggestedLead) : null,
-            'suggested_reason' => $suggestedLead ? LeadPriorityScore::reasonFor($suggestedLead)->value : null,
             'wallet' => [
                 'balance_available' => (string) $wallet->balance_available,
                 'balance_pending' => (string) $wallet->balance_pending,
+                'balance_locked' => (string) $wallet->balance_locked,
+                'total_earned' => (string) $wallet->total_earned,
+                'total_paid' => (string) $wallet->total_paid,
             ],
             'unread_notifications' => $unreadNotifications,
             'availability' => $user->availability?->value,
             'level' => $user->level,
             'points' => $user->points,
             'streak' => $user->streak,
+            'business_date' => BusinessDate::dateKey(),
+            'business_timezone' => BusinessDate::timezone(),
         ]);
     }
 
@@ -93,19 +84,19 @@ class HomeController extends Controller
             return ApiResponse::error('اجازه دسترسی ندارید.', status: 403, code: 'forbidden');
         }
 
-        $isTeamScoped = $user->hasRole(RoleName::Leader->value) && $user->team_id;
+        $isTeamScoped = TeamScope::isTeamColony($user);
 
         $leadsQuery = Lead::query();
         $salesQuery = Sale::query();
         $agentsQuery = User::query()->role(RoleName::Agent->value);
 
-        if ($isTeamScoped) {
-            $leadsQuery->where('assigned_team_id', $user->team_id);
+        if ($isTeamScoped && $user->team_id) {
+            TeamScope::applyLeadQueryScope($leadsQuery, $user);
             $salesQuery->where('team_id', $user->team_id);
             $agentsQuery->where('team_id', $user->team_id);
         }
 
-        $today = today();
+        $today = BusinessDate::today();
 
         $pipeline = (clone $leadsQuery)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
         $salesToday = (clone $salesQuery)->whereDate('created_at', $today)->count();
@@ -113,7 +104,7 @@ class HomeController extends Controller
         $pendingConfirmationCount = (clone $salesQuery)->where('status', 'pending_confirmation')->count();
         $activeAgents = (clone $agentsQuery)->where('is_active', true)->count();
         $onlineAgents = (clone $agentsQuery)->where('availability', '!=', 'offline')->count();
-        $teamsCount = Team::query()->count();
+        $teamsCount = $isTeamScoped && $user->team_id ? 1 : Team::query()->count();
 
         return ApiResponse::success([
             'pipeline' => $pipeline,

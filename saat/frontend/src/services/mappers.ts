@@ -12,6 +12,7 @@ import type {
   WorkDaySummary,
   WorkSession,
 } from '@/types'
+import { localizeActivityTitle, localizeStatusNote } from '@/lib/activityLabels'
 import type { Suggestion } from './logic'
 
 export function id(value: string | number | null | undefined): string {
@@ -58,6 +59,7 @@ export function mapLead(dto: Dto): Lead {
     nextFollowupAt: dto.next_followup_at ?? null,
     rating: dto.rating ?? 0,
     assignedAgentId: id(dto.assigned_agent_id),
+    assignedAgentName: (dto.assigned_agent_name as string | null | undefined) ?? null,
     assignedTeamId: nullableId(dto.assigned_team_id),
     status: dto.status ?? undefined,
     ownerId: nullableId(dto.assigned_agent_id),
@@ -68,6 +70,19 @@ export function mapLead(dto: Dto): Lead {
     duplicateOfId: nullableId(dto.duplicate_of_id),
     productId: dto.product?.id !== undefined ? id(dto.product.id) : undefined,
     campaignId: dto.campaign_id !== undefined ? nullableId(dto.campaign_id) ?? undefined : undefined,
+    statusHistory: Array.isArray(dto.status_histories)
+      ? dto.status_histories.map(mapLeadStatusHistory)
+      : undefined,
+  }
+}
+
+export function mapLeadStatusHistory(dto: Dto): import('@/types').LeadStatusEvent {
+  return {
+    id: id(dto.id),
+    status: dto.status,
+    at: dto.created_at ?? new Date().toISOString(),
+    byAgentId: id(dto.by_user_id),
+    note: dto.note ? localizeStatusNote(String(dto.note)) : undefined,
   }
 }
 
@@ -87,12 +102,15 @@ export function mapFollowup(dto: Dto): Followup {
 }
 
 export function mapSale(dto: Dto): Sale {
+  const embeddedLead = dto.lead as Dto | undefined
+  const embeddedProduct = dto.product as Dto | undefined
+
   return {
     id: id(dto.id),
-    leadId: id(dto.lead_id ?? dto.lead?.id),
+    leadId: id(dto.lead_id ?? embeddedLead?.id),
     agentId: id(dto.agent_id),
     teamId: id(dto.team_id),
-    productId: id(dto.product_id ?? dto.product?.id),
+    productId: id(dto.product_id ?? embeddedProduct?.id),
     amount: Number(dto.amount ?? 0),
     status: dto.status ?? 'draft',
     paymentMethod: dto.payment_method ?? null,
@@ -101,6 +119,50 @@ export function mapSale(dto: Dto): Sale {
     confirmedAt: dto.confirmed_at ?? null,
     rejectedAt: dto.rejected_at ?? null,
     rejectionReason: dto.rejection_reason ?? null,
+    leadName: typeof embeddedLead?.full_name === 'string' ? embeddedLead.full_name : null,
+    productName: typeof embeddedProduct?.name === 'string' ? embeddedProduct.name : null,
+  }
+}
+
+/** Minimal lead row from SaleResource embed — for cards when lead isn't in /leads sync. */
+export function mapLeadFromSaleEmbed(dto: Dto): Lead | null {
+  if (dto.id == null) return null
+
+  const { firstName, lastName } = splitName(dto.full_name)
+
+  return {
+    id: id(dto.id),
+    firstName,
+    lastName,
+    phone: dto.phone ?? '',
+    city: '',
+    source: 'website',
+    temperature: 'warm',
+    priority: 2,
+    stage: 'new',
+    product: '',
+    budget: '',
+    job: '',
+    experience: 'none',
+    incomeGoal: '',
+    interestReason: '',
+    bestCallTime: '',
+    lastCallAt: null,
+    callCount: 0,
+    lastNote: '',
+    conversionProbability: 0,
+    painPoint: '',
+    objection: null,
+    nextFollowupAt: null,
+    rating: 0,
+    assignedAgentId: '',
+    assignedTeamId: null,
+    ownerId: null,
+    lockedBy: null,
+    lockedUntil: null,
+    returnedToPool: false,
+    doNotCall: false,
+    duplicateOfId: null,
   }
 }
 
@@ -109,6 +171,7 @@ export function mapCommission(dto: Dto): Commission {
     id: id(dto.id),
     saleId: id(dto.sale_id),
     agentId: id(dto.agent_id),
+    agentName: dto.agent_name ?? undefined,
     productId: id(dto.product_id),
     leadId: id(dto.lead_id),
     saleAmount: Number(dto.sale_amount ?? 0),
@@ -117,6 +180,7 @@ export function mapCommission(dto: Dto): Commission {
     status: dto.status ?? 'pending',
     availableAt: dto.available_at ?? null,
     approvedAt: dto.approved_at ?? null,
+    leaderApprovedAt: dto.leader_approved_at ?? null,
     rejectionReason: dto.rejection_reason ?? null,
     createdAt: dto.created_at,
   }
@@ -129,6 +193,9 @@ export function mapWallet(dto: Dto): Wallet {
     balanceLocked: Number(dto.balance_locked ?? 0),
     totalEarned: Number(dto.total_earned ?? 0),
     totalPaid: Number(dto.total_paid ?? 0),
+    bankCardMasked: (dto.bank_card_masked as string) ?? null,
+    bankCardConfirmed: dto.bank_card_confirmed != null ? !!dto.bank_card_confirmed : undefined,
+    bankShebaRegistered: dto.bank_sheba_registered != null ? !!dto.bank_sheba_registered : undefined,
   }
 }
 
@@ -150,9 +217,12 @@ export function mapPayoutRequest(dto: Dto): PayoutRequest {
   return {
     id: id(dto.id),
     agentId: id(dto.user_id),
+    agentName: dto.user_name ?? undefined,
     amount,
     bankFee: bankFee || undefined,
     netAmount: dto.net_amount != null ? Number(dto.net_amount) : bankFee > 0 ? amount - bankFee : undefined,
+    bankCardMasked: (dto.bank_card_masked as string) ?? null,
+    bankSheba: (dto.bank_sheba as string) ?? null,
     status: dto.status ?? 'requested',
     requestedAt: dto.requested_at,
     processedAt: dto.processed_at ?? null,
@@ -214,7 +284,7 @@ export function mapActivity(dto: Dto): import('@/types').ActivityLog {
     id: id(dto.id),
     agentId: id(dto.user_id),
     kind: dto.kind ?? 'system',
-    title: dto.title ?? '',
+    title: localizeActivityTitle(String(dto.title ?? '')),
     meta: dto.meta ?? undefined,
     createdAt: dto.created_at ?? new Date().toISOString(),
   }
@@ -246,6 +316,22 @@ export function mapAgentFromAdmin(dto: Dto): import('@/types').Agent {
     points: Number(dto.points ?? 0),
     streak: Number(dto.streak ?? 0),
     callGoal: Number(dto.call_goal ?? 0),
+    isActive: dto.is_active !== false,
+    bankCardMasked: (dto.bank_card_masked as string) ?? null,
+    bankCardConfirmed: dto.bank_card_confirmed != null ? !!dto.bank_card_confirmed : undefined,
+    bankShebaRegistered: dto.bank_sheba_registered != null ? !!dto.bank_sheba_registered : undefined,
+  }
+}
+
+export function mapBankAccountReview(dto: Dto): import('@/types').BankAccountReview {
+  return {
+    userId: id(dto.user_id),
+    name: (dto.name as string) ?? '',
+    teamId: dto.team_id != null ? id(dto.team_id) : undefined,
+    teamName: (dto.team_name as string) ?? null,
+    bankCard: (dto.bank_card as string) ?? '',
+    bankSheba: (dto.bank_sheba as string) ?? '',
+    updatedAt: (dto.updated_at as string) ?? null,
   }
 }
 
@@ -253,7 +339,10 @@ export function mapTeamFromAdmin(dto: Dto, memberIds: string[] = []): import('@/
   return {
     id: id(dto.id),
     name: dto.name ?? '',
-    leaderId: id(dto.leader_id),
+    leaderId: dto.leader_id != null ? id(dto.leader_id) : '',
+    leaderName: (dto.leader_name as string) ?? null,
+    agentsCount: dto.agents_count != null ? Number(dto.agents_count) : undefined,
+    agentsCapacity: dto.agents_capacity != null ? Number(dto.agents_capacity) : undefined,
     agentIds: memberIds,
   }
 }
@@ -279,6 +368,30 @@ export function mapTeamReport(dto: Dto): import('@/types').TeamReport {
     submitterName: dto.submitter_name ?? undefined,
     approvedAt: dto.approved_at ?? null,
     forwardedAt: dto.forwarded_at ?? null,
+    createdAt: dto.created_at ?? new Date().toISOString(),
+  }
+}
+
+export function mapAgentReport(dto: Dto): import('@/types').AgentReport {
+  return {
+    id: id(dto.id),
+    agentId: id(dto.agent_id),
+    agentName: dto.agent_name ?? undefined,
+    teamId: id(dto.team_id),
+    teamName: dto.team_name ?? undefined,
+    reportDate: dto.report_date ?? '',
+    status: dto.status ?? 'submitted',
+    summary: dto.summary ?? {
+      calls_today: 0,
+      successful_today: 0,
+      conversion_rate: 0,
+      followups_completed: 0,
+      sales_submitted: 0,
+    },
+    agentNotes: dto.agent_notes ?? null,
+    leaderNotes: dto.leader_notes ?? null,
+    approvedAt: dto.approved_at ?? null,
+    rejectedAt: dto.rejected_at ?? null,
     createdAt: dto.created_at ?? new Date().toISOString(),
   }
 }

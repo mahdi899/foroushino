@@ -20,6 +20,7 @@ import type {
   SaleStage,
   Team,
   TeamReport,
+  AgentReport,
   Temperature,
   Wallet,
   WalletTransaction,
@@ -29,6 +30,7 @@ import type {
 import type { CallMethod } from '@/lib/call'
 import type { AuthenticatedUser } from '@/services/auth'
 import { clearToken, mapAuthUserRole } from '@/services/auth'
+import { agentFromAuthenticatedUser } from '@/lib/agentFromUser'
 import { hasPermission as checkPermission, resolvePermissions } from '@/lib/permissions'
 import { canMakeCalls } from '@/lib/roles'
 import {
@@ -48,6 +50,7 @@ import {
   PRODUCT_ID,
   sales as mockSales,
   teamReports as mockTeamReports,
+  agentReports as mockAgentReports,
   wallet as mockWallet,
   walletTransactions as mockWalletTx,
 } from '@/data/mockExtra'
@@ -73,6 +76,8 @@ import { agentsFromTeamLive, mergeTeamLiveIntoAgents, teamsFromTeamLive } from '
 import { isProductiveAvailability, mergeClosedSessionIntoDaySummaries } from '@/lib/shiftUtils'
 import { getManagedTeam } from '@/lib/teamUtils'
 import { mergeAgentDailyStats, syncAllAgentsDailyStats, syncCurrentAgentDailyStats, conversionRateFromStats } from '@/lib/dailyGoal'
+import { todayDateKey } from '@/lib/businessDate'
+import { isPowerDialAvailable } from '@/lib/features'
 import {
   DEFAULT_RUNTIME_APP_SETTINGS,
   type RuntimeAppSettings,
@@ -118,6 +123,7 @@ interface AppState {
   products: Product[]
   activity: ActivityLog[]
   teamReports: TeamReport[]
+  agentReports: AgentReport[]
 
   // runtime config from management
   appSettings: RuntimeAppSettings
@@ -127,6 +133,7 @@ interface AppState {
   // transient call context
   activeCallLeadId: string | null
   activeCallMethod: CallMethod | null
+  activeCallDraftNote: string
   lastCallDuration: number
   lastOutcome: CallResultOutcome | null
 
@@ -166,6 +173,7 @@ interface AppState {
     workDaySummaries?: WorkDaySummary[]
   }) => void
   syncDailyAgentStats: () => void
+  onBusinessDayRollover: () => void
 
   // lead ownership / lock
   lockLead: (leadId: string) => { ok: boolean; lockedByOther?: boolean }
@@ -175,6 +183,7 @@ interface AppState {
   updateLeadStage: (leadId: string, stage: SaleStage) => void
   updateLeadTemperature: (leadId: string, temp: Temperature) => void
   updateLeadNote: (leadId: string, note: string) => void
+  setActiveCallDraftNote: (note: string) => void
   addLead: (input: { firstName: string; lastName?: string; phone: string; city?: string }) => void
   distributeLeadsToTeams: () => number
 
@@ -197,11 +206,27 @@ interface AppState {
   releaseCommission: (commissionId: string) => void
 
   // team reports
+  setTeamReports: (teamReports: TeamReport[]) => void
+  upsertTeamReport: (report: TeamReport) => void
   submitTeamReport: (leaderNotes?: string) => void
   approveTeamReport: (reportId: string, supervisorNotes?: string) => void
   forwardTeamReport: (reportId: string) => void
 
+  // agent reports
+  setAgentReports: (agentReports: AgentReport[]) => void
+  upsertAgentReport: (report: AgentReport) => void
+  submitAgentReport: (agentNotes?: string) => void
+  approveAgentReport: (reportId: string, leaderNotes?: string) => void
+  rejectAgentReport: (reportId: string, leaderNotes?: string) => void
+
   // wallet
+  setWalletMeta: (wallet: Wallet) => void
+  applyWalletData: (payload: {
+    wallet: Wallet
+    commissions: Commission[]
+    walletTx: WalletTransaction[]
+    payouts: PayoutRequest[]
+  }) => void
   requestPayout: (amount: number) => { ok: boolean; message?: string }
 
   // notifications
@@ -228,6 +253,8 @@ interface AppState {
   setPowerDialEnabled: (enabled: boolean) => void
   setDispositionMode: (mode: 'grid' | 'swipe') => void
   upsertLead: (lead: Lead) => void
+  upsertAgent: (agent: Agent) => void
+  upsertTeam: (team: Team) => void
   setAgentAvatar: (avatar: string | null) => void
   setDataReady: (ready: boolean) => void
   setDataSyncing: (syncing: boolean) => void
@@ -404,12 +431,14 @@ export const useStore = create<AppState>()(
       products: mockProducts,
       activity: mockActivity,
       teamReports: mockTeamReports,
+      agentReports: mockAgentReports,
       appSettings: DEFAULT_RUNTIME_APP_SETTINGS,
       powerDialEnabled: false,
       dispositionMode: 'grid',
 
       activeCallLeadId: null,
       activeCallMethod: null,
+      activeCallDraftNote: '',
       lastCallDuration: 0,
       lastOutcome: null,
 
@@ -428,14 +457,36 @@ export const useStore = create<AppState>()(
       login: (phone) => set({ isAuthed: true, phone }),
       setSessionFromAuth: (user) => {
         const role = mapAuthUserRole(user.roles)
-        set({
+        const next: Partial<AppState> = {
           isAuthed: true,
           phone: user.phone ?? user.email,
           role,
           permissions: resolvePermissions(role, user.permissions ?? []),
           currentAgentId: usesRemoteData ? String(user.id) : AGENT_MAP[role],
           dataReady: !usesRemoteData,
-        })
+        }
+
+        if (usesRemoteData) {
+          const self = agentFromAuthenticatedUser(user)
+          next.agents = [self]
+          next.sales = []
+          next.payments = []
+          next.leads = []
+          next.products = []
+          next.commissions = []
+          next.wallet = {
+            balanceAvailable: 0,
+            balancePending: 0,
+            balanceLocked: 0,
+            totalEarned: 0,
+            totalPaid: 0,
+            bankCardMasked: null,
+          }
+          next.walletTx = []
+          next.payouts = []
+        }
+
+        set(next)
       },
       hasPermission: (permission) => checkPermission(get().permissions, permission),
       logout: () => {
@@ -529,6 +580,19 @@ export const useStore = create<AppState>()(
           return { agents: synced.agents, dailyStatsDate: synced.dailyStatsDate }
         }),
 
+      onBusinessDayRollover: () =>
+        set((state) => {
+          const today = todayDateKey()
+          const synced = syncAllAgentsDailyStats(state.agents, state.calls, state.dailyStatsDate)
+          return {
+            agents: synced.agents,
+            dailyStatsDate: today,
+            workDaySummaries: state.workDaySummaries.map((day) =>
+              day.date !== today ? { ...day, isOpen: false } : day,
+            ),
+          }
+        }),
+
       lockLead: (leadId) => {
         const state = get()
         const lead = state.leads.find((l) => l.id === leadId)
@@ -595,6 +659,8 @@ export const useStore = create<AppState>()(
         set((state) => ({
           leads: state.leads.map((l) => (l.id === leadId ? { ...l, lastNote: note } : l)),
         })),
+
+      setActiveCallDraftNote: (note) => set({ activeCallDraftNote: note }),
 
       updateLeadTemperature: (leadId, temp) =>
         set((state) => ({
@@ -678,6 +744,7 @@ export const useStore = create<AppState>()(
             ...flushed,
             activeCallLeadId: leadId,
             activeCallMethod: method,
+            activeCallDraftNote: '',
             lastCallDuration: 0,
             availability: 'in_call',
             availabilityChangedAt: new Date(nowMs).toISOString(),
@@ -751,7 +818,7 @@ export const useStore = create<AppState>()(
             temperature,
             lastCallAt: nowIso,
             callCount: l.callCount + 1,
-            lastNote: input.note || l.lastNote,
+            lastNote: input.note.trim() || l.lastNote,
             objection: input.objection ?? l.objection,
             rating: input.rating || l.rating,
             nextFollowupAt: input.followupAt ?? l.nextFollowupAt,
@@ -828,6 +895,7 @@ export const useStore = create<AppState>()(
           createdSaleId,
           createdFollowupId,
           suggestion,
+          savedNote: input.note.trim() || null,
         }
 
         const activity: ActivityLog[] = [
@@ -1069,6 +1137,20 @@ export const useStore = create<AppState>()(
           ),
         })),
 
+      setTeamReports: (teamReports) => set({ teamReports }),
+
+      upsertTeamReport: (report) =>
+        set((state) => ({
+          teamReports: [
+            report,
+            ...state.teamReports.filter(
+              (row) =>
+                row.id !== report.id &&
+                !(row.teamId === report.teamId && row.reportDate === report.reportDate),
+            ),
+          ],
+        })),
+
       submitTeamReport: (leaderNotes) => {
         const state = get()
         const team = getManagedTeam(state.teams, state.currentAgentId, state.role)
@@ -1078,8 +1160,7 @@ export const useStore = create<AppState>()(
         const callsToday = members.reduce((sum, a) => sum + a.callsToday, 0)
         const successfulToday = members.reduce((sum, a) => sum + a.successfulToday, 0)
         const conversion = callsToday > 0 ? Math.round((successfulToday / callsToday) * 1000) / 10 : 0
-        const nowIso = new Date().toISOString()
-        const today = nowIso.slice(0, 10)
+        const today = todayDateKey()
         const leader = state.agents.find((a) => a.id === state.currentAgentId)
 
         const report: TeamReport = {
@@ -1103,7 +1184,7 @@ export const useStore = create<AppState>()(
           leaderNotes: leaderNotes ?? null,
           submittedBy: state.currentAgentId,
           submitterName: leader ? `${leader.firstName} ${leader.lastName}` : undefined,
-          createdAt: nowIso,
+          createdAt: new Date().toISOString(),
         }
 
         set({
@@ -1160,6 +1241,97 @@ export const useStore = create<AppState>()(
         get().pushToast('گزارش برای مدیریت ارسال شد')
       },
 
+      setAgentReports: (agentReports) => set({ agentReports }),
+
+      upsertAgentReport: (report) =>
+        set((state) => ({
+          agentReports: [
+            report,
+            ...state.agentReports.filter(
+              (row) =>
+                row.id !== report.id &&
+                !(row.agentId === report.agentId && row.reportDate === report.reportDate),
+            ),
+          ],
+        })),
+
+      submitAgentReport: (agentNotes) => {
+        const state = get()
+        const agent = state.agents.find((a) => a.id === state.currentAgentId)
+        if (!agent) return
+
+        const today = todayDateKey()
+        const report: AgentReport = {
+          id: uid('ar'),
+          agentId: state.currentAgentId,
+          agentName: agent ? `${agent.firstName} ${agent.lastName}` : undefined,
+          teamId: agent.teamId,
+          reportDate: today,
+          status: 'submitted',
+          summary: {
+            calls_today: agent.callsToday,
+            successful_today: agent.successfulToday,
+            conversion_rate: agent.conversionRate,
+            followups_completed: state.followups.filter(
+              (f) => f.agentId === state.currentAgentId && f.status === 'done',
+            ).length,
+            sales_submitted: state.sales.filter((s) => s.agentId === state.currentAgentId).length,
+          },
+          agentNotes: agentNotes ?? null,
+          createdAt: new Date().toISOString(),
+        }
+
+        set({
+          agentReports: [
+            report,
+            ...state.agentReports.filter(
+              (r) => !(r.agentId === state.currentAgentId && r.reportDate === today),
+            ),
+          ],
+        })
+        get().pushNotification({
+          title: 'گزارش روزانه ارسال شد',
+          body: 'گزارش امروزت برای لیدر ارسال شد.',
+          kind: 'system',
+          href: '/agent-reports',
+        })
+        get().pushToast('گزارش روزانه برای لیدر ارسال شد')
+      },
+
+      approveAgentReport: (reportId, leaderNotes) => {
+        const nowIso = new Date().toISOString()
+        set((state) => ({
+          agentReports: state.agentReports.map((report) =>
+            report.id === reportId
+              ? {
+                  ...report,
+                  status: 'approved' as const,
+                  leaderNotes: leaderNotes ?? null,
+                  approvedAt: nowIso,
+                }
+              : report,
+          ),
+        }))
+        get().pushToast('گزارش کارشناس تایید شد')
+      },
+
+      rejectAgentReport: (reportId, leaderNotes) => {
+        const nowIso = new Date().toISOString()
+        set((state) => ({
+          agentReports: state.agentReports.map((report) =>
+            report.id === reportId
+              ? {
+                  ...report,
+                  status: 'rejected' as const,
+                  leaderNotes: leaderNotes ?? null,
+                  rejectedAt: nowIso,
+                }
+              : report,
+          ),
+        }))
+        get().pushToast('گزارش کارشناس رد شد', 'info')
+      },
+
       releaseCommission: (commissionId) => {
         const state = get()
         const com = state.commissions.find((c) => c.id === commissionId)
@@ -1190,6 +1362,22 @@ export const useStore = create<AppState>()(
         })
         get().pushNotification({ title: 'پورسانت آزاد شد', body: 'پورسانت شما قابل برداشت شد.', kind: 'commission', href: '/wallet' })
       },
+
+      setWalletMeta: (wallet) => set({ wallet }),
+
+      applyWalletData: ({ wallet, commissions, walletTx, payouts }) =>
+        set((state) => ({
+          wallet,
+          commissions: [
+            ...state.commissions.filter((row) => row.agentId !== state.currentAgentId),
+            ...commissions,
+          ],
+          walletTx,
+          payouts: [
+            ...state.payouts.filter((row) => row.agentId !== state.currentAgentId),
+            ...payouts,
+          ],
+        })),
 
       requestPayout: (amount) => {
         const state = get()
@@ -1278,7 +1466,8 @@ export const useStore = create<AppState>()(
       unlockApp: () => set({ isLocked: false }),
 
       setAppSettings: (appSettings) => set({ appSettings }),
-      setPowerDialEnabled: (enabled) => set({ powerDialEnabled: enabled }),
+      setPowerDialEnabled: (enabled) =>
+        set({ powerDialEnabled: isPowerDialAvailable ? enabled : false }),
       setDispositionMode: (mode) => set({ dispositionMode: mode }),
 
       mergeTeamLiveStats: (live) =>
@@ -1344,6 +1533,7 @@ export const useStore = create<AppState>()(
             agents,
             teams: payload.teams ?? state.teams,
             teamReports: payload.teamReports ?? state.teamReports,
+            agentReports: payload.agentReports ?? state.agentReports,
             activity: payload.activity ?? state.activity,
             availability: payload.availability,
             availabilityChangedAt: payload.availabilityChangedAt,
@@ -1353,10 +1543,11 @@ export const useStore = create<AppState>()(
             currentAgentId: payload.agent.id,
             role: payload.role,
             permissions: resolvePermissions(payload.role, payload.permissions),
-            dailyStatsDate: synced.dailyStatsDate,
+            dailyStatsDate: payload.businessDate ?? synced.dailyStatsDate,
             appSettings: payload.appSettings ?? state.appSettings,
-            powerDialEnabled:
-              state.powerDialEnabled || (payload.appSettings?.powerDialDefault ?? false),
+            powerDialEnabled: isPowerDialAvailable
+              ? state.powerDialEnabled || (payload.appSettings?.powerDialDefault ?? false)
+              : false,
             dataReady: true,
             dataSyncing: false,
           }
@@ -1369,6 +1560,24 @@ export const useStore = create<AppState>()(
             leads: exists
               ? state.leads.map((l) => (l.id === hydrated.id ? { ...l, ...hydrated } : l))
               : [hydrated, ...state.leads],
+          }
+        }),
+      upsertAgent: (agent) =>
+        set((state) => {
+          const exists = state.agents.some((row) => row.id === agent.id)
+          return {
+            agents: exists
+              ? state.agents.map((row) => (row.id === agent.id ? { ...row, ...agent } : row))
+              : [...state.agents, agent],
+          }
+        }),
+      upsertTeam: (team) =>
+        set((state) => {
+          const exists = state.teams.some((row) => row.id === team.id)
+          return {
+            teams: exists
+              ? state.teams.map((row) => (row.id === team.id ? { ...row, ...team } : row))
+              : [...state.teams, team],
           }
         }),
       setAgentAvatar: (avatar) =>
@@ -1413,18 +1622,17 @@ export const useStore = create<AppState>()(
         if (!state) return
         state.agents = withAvatars(state.agents, mockAgents)
         state.leads = hydrateLeads(state.leads)
-        if (!usesRemoteData) {
-          const synced = syncAllAgentsDailyStats(
-            state.agents,
-            state.calls ?? [],
-            state.dailyStatsDate ?? null,
-          )
-          state.agents = synced.agents
-          state.dailyStatsDate = synced.dailyStatsDate
-        }
+        const synced = syncAllAgentsDailyStats(
+          state.agents,
+          state.calls ?? [],
+          state.dailyStatsDate ?? null,
+        )
+        state.agents = synced.agents
+        state.dailyStatsDate = synced.dailyStatsDate
         state.maskPhoneNumbers = true
         state.autoLockEnabled = true
         state.autoLockMinutes = 5
+        if (!isPowerDialAvailable) state.powerDialEnabled = false
         if (state.darkMode) {
           document.documentElement.setAttribute('data-theme', 'dark')
         }

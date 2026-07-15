@@ -2,11 +2,9 @@ import type { ReactNode } from 'react'
 import { useEffect, useRef } from 'react'
 import { useOnline } from '@/lib/network'
 import { API_BASE_URL, ApiError } from '@/services/http'
-import { getSuggestion } from '@/lib/leadUtils'
-import { api, apiMode } from '@/services'
+import { apiMode } from '@/services'
 import { syncAppData } from '@/services/sync'
 import { clearToken, fetchMe, isAuthenticated } from '@/services/auth'
-import { isAgentRole } from '@/lib/roles'
 import { flushOfflineQueue } from '@/services/offlineQueue'
 import { useStore } from '@/store/useStore'
 
@@ -26,9 +24,6 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const online = useOnline()
   const isAuthed = useStore((s) => s.isAuthed)
   const applySyncData = useStore((s) => s.applySyncData)
-  const upsertLead = useStore((s) => s.upsertLead)
-  const role = useStore((s) => s.role)
-  const currentAgentId = useStore((s) => s.currentAgentId)
   const setSessionFromAuth = useStore((s) => s.setSessionFromAuth)
   const logout = useStore((s) => s.logout)
   const setDataReady = useStore((s) => s.setDataReady)
@@ -49,26 +44,11 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     const run = async () => {
       setDataSyncing(true)
       try {
-        const payload = await syncAppData()
+        const payload = await syncAppData({ priorDailyStatsDate: useStore.getState().dailyStatsDate })
         if (!cancelled) {
           applySyncData(payload)
           lastErrorRef.current = null
           void flushOfflineQueue()
-
-          if (isAgentRole(role)) {
-            const state = useStore.getState()
-            const suggestion = getSuggestion(state.leads, state.followups, currentAgentId)
-            if (!suggestion) {
-              try {
-                const pulled = await api.getNextLead()
-                if (pulled?.lead) {
-                  upsertLead(pulled.lead)
-                }
-              } catch {
-                // Pull-from-pool is best-effort; home still shows suggested_lead from sync.
-              }
-            }
-          }
         }
       } catch (error) {
         if (cancelled) return
@@ -93,16 +73,19 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
     void run()
 
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && online) void run()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
     return () => {
       cancelled = true
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [
     online,
     isAuthed,
     applySyncData,
-    upsertLead,
-    role,
-    currentAgentId,
     logout,
     setDataReady,
     setDataSyncing,

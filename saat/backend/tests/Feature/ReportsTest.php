@@ -22,7 +22,7 @@ it('lets a manager read the pipeline report grouped by lead status', function ()
     expect($response->json('data.won'))->toBe(1);
 });
 
-it('lets a supervisor read the pipeline report across all teams', function () {
+it('limits a supervisor pipeline report to their team colony', function () {
     $teamA = makeTeam();
     $teamB = makeTeam();
     $supervisor = makeSupervisor(['team_id' => $teamA->id]);
@@ -32,7 +32,7 @@ it('lets a supervisor read the pipeline report across all teams', function () {
     $response = $this->actingAs($supervisor, 'sanctum')->getJson('/api/v1/reports/pipeline');
 
     $response->assertOk();
-    expect($response->json('data.new'))->toBe(2);
+    expect($response->json('data.new'))->toBe(1);
 });
 
 it('computes source conversion rates', function () {

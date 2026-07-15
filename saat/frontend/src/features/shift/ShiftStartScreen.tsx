@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { PhoneCall, Target, Users, Sparkles } from 'lucide-react'
@@ -17,7 +17,9 @@ export function ShiftStartScreen() {
   const currentAgentId = useStore((s) => s.currentAgentId)
   const leads = useStore((s) => s.leads)
   const followups = useStore((s) => s.followups)
+  const dataSyncing = useStore((s) => s.dataSyncing)
   const pushToast = useStore((s) => s.pushToast)
+  const [starting, setStarting] = useState(false)
 
   const myLeads = useMemo(
     () =>
@@ -28,16 +30,24 @@ export function ShiftStartScreen() {
   )
   const suggestion = useMemo(() => getSuggestion(leads, followups, currentAgentId), [leads, followups, currentAgentId])
 
-  if (!agent) return null
+  if (!agent) {
+    return (
+      <div className="flex h-full min-h-full flex-col items-center justify-center px-5">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+        <p className="mt-4 text-sm font-semibold text-neutral-500">در حال آماده‌سازی شیفت…</p>
+      </div>
+    )
+  }
 
   const goalPct = agent.callGoal ? Math.round((agent.callsToday / agent.callGoal) * 100) : 0
 
   const confirmStart = () => {
+    if (starting) return
+    setStarting(true)
     haptic('success')
-    void performStartShift('available').then(() => {
-      pushToast('شیفت شروع شد، روز خوبی داشته باشی')
-      navigate('/home', { replace: true })
-    })
+    performStartShift('available')
+    pushToast('شیفت شروع شد، روز خوبی داشته باشی')
+    navigate('/home', { replace: true })
   }
 
   return (
@@ -45,6 +55,7 @@ export function ShiftStartScreen() {
       <motion.div
         initial={{ opacity: 0, x: 12 }}
         animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.18, ease: 'easeOut' }}
         className="flex min-h-0 flex-1 flex-col"
       >
         <div className="flex items-center gap-3">
@@ -115,10 +126,23 @@ export function ShiftStartScreen() {
           </div>
         )}
 
+        {dataSyncing && (
+          <p className="mt-4 text-center text-[12px] font-medium text-neutral-400">
+            آمار امروز در پس‌زمینه به‌روز می‌شود…
+          </p>
+        )}
+
         <div className="flex-1" />
 
-        <Button full size="lg" className="mt-6" icon={<PhoneCall size={18} />} onClick={confirmStart}>
-          تایید و ورود به سات
+        <Button
+          full
+          size="lg"
+          className="mt-6"
+          icon={<PhoneCall size={18} />}
+          disabled={starting}
+          onClick={confirmStart}
+        >
+          {starting ? 'در حال ورود…' : 'تایید و ورود به سات'}
         </Button>
       </motion.div>
     </div>

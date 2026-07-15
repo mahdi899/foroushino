@@ -1,7 +1,35 @@
 import { apiMode } from '@/services'
 import { http } from '@/services/http'
-import { syncAppData } from '@/services/sync'
 import { useStore } from '@/store/useStore'
+import { mapTeamReport } from '@/services/mappers'
+import type { TeamReport, TeamReportStatus } from '@/types'
+
+type Dto = Record<string, unknown>
+
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : []
+}
+
+export interface FetchTeamReportsOptions {
+  status?: TeamReportStatus
+  inbox?: boolean
+  perPage?: number
+}
+
+export async function fetchTeamReports(options: FetchTeamReportsOptions = {}): Promise<TeamReport[]> {
+  const params = new URLSearchParams()
+  params.set('per_page', String(options.perPage ?? 50))
+  if (options.status) params.set('status', options.status)
+  if (options.inbox) params.set('inbox', '1')
+
+  const raw = await http.get<Dto[]>(`/team-reports?${params}`)
+  return asArray<Dto>(raw).map(mapTeamReport)
+}
+
+export async function refreshTeamReports(options: FetchTeamReportsOptions = {}): Promise<void> {
+  const reports = await fetchTeamReports(options)
+  useStore.getState().setTeamReports(reports)
+}
 
 export async function performSubmitTeamReport(leaderNotes?: string): Promise<void> {
   if (apiMode !== 'http') {
@@ -9,19 +37,11 @@ export async function performSubmitTeamReport(leaderNotes?: string): Promise<voi
     return
   }
 
-  const team = useStore.getState().teams.find(
-    (row) => row.leaderId === useStore.getState().currentAgentId,
-  )
-  if (!team) throw new Error('تیمی برای ارسال گزارش پیدا نشد.')
-
-  await http.post('/team-reports', {
-    team_id: Number(team.id),
-    report_date: new Date().toISOString().slice(0, 10),
+  const created = await http.post<Dto>('/team-reports', {
     leader_notes: leaderNotes ?? null,
   })
 
-  const payload = await syncAppData()
-  useStore.getState().applySyncData(payload)
+  useStore.getState().upsertTeamReport(mapTeamReport(created))
 }
 
 export async function performApproveTeamReport(reportId: string, supervisorNotes?: string): Promise<void> {
@@ -30,12 +50,11 @@ export async function performApproveTeamReport(reportId: string, supervisorNotes
     return
   }
 
-  await http.post(`/team-reports/${reportId}/approve`, {
+  const updated = await http.post<Dto>(`/team-reports/${reportId}/approve`, {
     supervisor_notes: supervisorNotes ?? null,
   })
 
-  const payload = await syncAppData()
-  useStore.getState().applySyncData(payload)
+  useStore.getState().upsertTeamReport(mapTeamReport(updated))
 }
 
 export async function performForwardTeamReport(reportId: string): Promise<void> {
@@ -44,8 +63,6 @@ export async function performForwardTeamReport(reportId: string): Promise<void> 
     return
   }
 
-  await http.post(`/team-reports/${reportId}/forward`)
-
-  const payload = await syncAppData()
-  useStore.getState().applySyncData(payload)
+  const updated = await http.post<Dto>(`/team-reports/${reportId}/forward`)
+  useStore.getState().upsertTeamReport(mapTeamReport(updated))
 }

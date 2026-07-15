@@ -6,6 +6,7 @@ use App\Enums\NotificationKind;
 use App\Events\NotificationCreated;
 use App\Models\AppNotification;
 use App\Models\User;
+use App\Support\SafeBroadcast;
 
 class NotificationService
 {
@@ -19,7 +20,9 @@ class NotificationService
             'href' => $href,
         ]);
 
-        broadcast(new NotificationCreated($notification))->toOthers();
+        SafeBroadcast::optionally(
+            fn () => broadcast(new NotificationCreated($notification))->toOthers(),
+        );
 
         return $notification;
     }

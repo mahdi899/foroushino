@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PayoutRequest extends Model
 {
     protected $fillable = [
-        'user_id', 'amount', 'bank_fee', 'net_amount', 'status', 'requested_at', 'processed_at',
+        'user_id', 'amount', 'bank_fee', 'net_amount', 'bank_card', 'bank_sheba', 'status', 'requested_at', 'processed_at',
         'processed_by', 'rejection_reason',
     ];
 

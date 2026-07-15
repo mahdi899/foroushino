@@ -1,8 +1,8 @@
 <?php
 
 use App\Actions\Sales\ConfirmSaleAction;
-use App\Actions\Sales\RejectSaleAction;
-use App\Actions\Sales\SubmitPaymentAction;
+use App\Actions\Wallet\ApproveCommissionByLeaderAction;
+use App\Actions\Wallet\ApproveCommissionBySupervisorAction;
 use App\Enums\LeadStatus;
 use App\Services\WalletService;
 
@@ -16,13 +16,13 @@ it('moves a sale to pending_confirmation once payment is submitted', function ()
     $lead = makeLead(['assigned_agent_id' => $agent->id]);
     $sale = makeSaleFor($agent, $lead, $product);
 
-    $sale = app(SubmitPaymentAction::class)->execute($sale, ['method' => 'gateway', 'reference_number' => 'REF1'], $agent);
+    $sale = app(\App\Actions\Sales\SubmitPaymentAction::class)->execute($sale, ['method' => 'gateway', 'reference_number' => 'REF1'], $agent);
 
     expect($sale->status->value)->toBe('pending_confirmation');
     expect($lead->fresh()->status)->toBe(LeadStatus::SalePendingConfirmation);
 });
 
-it('confirming a sale creates a pending commission and credits the wallet pending balance, not available', function () {
+it('confirming a sale creates a commission awaiting leader approval without wallet credit', function () {
     $manager = makeManager();
     $agent = makeAgent();
     $product = makeProduct(['commission_rate' => 10]);
@@ -36,8 +36,52 @@ it('confirming a sale creates a pending commission and credits the wallet pendin
     expect($lead->fresh()->status)->toBe(LeadStatus::Won);
 
     $wallet = app(WalletService::class)->ensureWallet($agent)->fresh();
-    expect((float) $wallet->balance_pending)->toBe(400000.0);
+    expect((float) $wallet->balance_pending)->toBe(0.0);
     expect((float) $wallet->balance_available)->toBe(0.0);
+});
+
+it('leader then supervisor approval credits the agent wallet', function () {
+    $team = makeTeam();
+    $leader = makeLeader(['team_id' => $team->id]);
+    $team->update(['leader_id' => $leader->id]);
+    $supervisor = makeSupervisor();
+    $agent = makeAgent(['team_id' => $team->id]);
+    $product = makeProduct(['commission_rate' => 10]);
+    $lead = makeLead(['assigned_agent_id' => $agent->id]);
+    $sale = makeSaleFor($agent, $lead, $product, 'pending_confirmation');
+    $sale->update(['team_id' => $team->id]);
+
+    $commission = app(ConfirmSaleAction::class)->execute($sale, $supervisor);
+    app(ApproveCommissionByLeaderAction::class)->execute($commission->fresh(), $leader);
+    app(ApproveCommissionBySupervisorAction::class)->execute($commission->fresh(), $supervisor);
+
+    $wallet = app(WalletService::class)->ensureWallet($agent)->fresh();
+    expect((float) $wallet->balance_available)->toBe(400000.0);
+    expect($commission->fresh()->status->value)->toBe('available');
+});
+
+it('reconciles wallet balance when available commissions were not credited', function () {
+    $agent = makeAgent();
+    $product = makeProduct(['commission_rate' => 10]);
+    $lead = makeLead(['assigned_agent_id' => $agent->id]);
+    $sale = makeSaleFor($agent, $lead, $product, 'confirmed');
+
+    \App\Models\Commission::query()->create([
+        'sale_id' => $sale->id,
+        'agent_id' => $agent->id,
+        'product_id' => $product->id,
+        'lead_id' => $lead->id,
+        'sale_amount' => 4_000_000,
+        'commission_rate' => 10,
+        'commission_amount' => 400_000,
+        'status' => 'available',
+        'available_at' => now(),
+    ]);
+
+    $wallet = app(WalletService::class)->reconcileAvailableBalance($agent);
+
+    expect((float) $wallet->balance_available)->toBe(400000.0);
+    expect((float) $wallet->total_earned)->toBe(400000.0);
 });
 
 it('rejecting a sale sends the lead back to follow-up and never creates a commission', function () {
@@ -47,33 +91,20 @@ it('rejecting a sale sends the lead back to follow-up and never creates a commis
     $lead = makeLead(['assigned_agent_id' => $agent->id]);
     $sale = makeSaleFor($agent, $lead, $product, 'pending_confirmation');
 
-    $sale = app(RejectSaleAction::class)->execute($sale, $manager, 'مشتری انصراف داد');
+    $sale = app(\App\Actions\Sales\RejectSaleAction::class)->execute($sale, $manager, 'مشتری انصراف داد');
 
     expect($sale->status->value)->toBe('rejected');
     expect($lead->fresh()->status)->toBe(LeadStatus::FollowUpRequired);
     expect(\App\Models\Commission::where('sale_id', $sale->id)->exists())->toBeFalse();
 });
 
-it('a pending commission does not add to the withdrawable available balance until explicitly released', function () {
-    $manager = makeManager();
-    $agent = makeAgent();
-    $product = makeProduct(['commission_rate' => 10]);
-    $lead = makeLead(['assigned_agent_id' => $agent->id]);
-    $sale = makeSaleFor($agent, $lead, $product, 'pending_confirmation');
-    $commission = app(ConfirmSaleAction::class)->execute($sale, $manager);
-
-    $walletBefore = app(WalletService::class)->ensureWallet($agent)->fresh();
-    expect((float) $walletBefore->balance_available)->toBe(0.0);
-
-    app(WalletService::class)->releaseToAvailable($commission->fresh());
-
-    $walletAfter = app(WalletService::class)->ensureWallet($agent)->fresh();
-    expect((float) $walletAfter->balance_available)->toBe(400000.0);
-    expect((float) $walletAfter->balance_pending)->toBe(0.0);
-});
-
 it('rejects a payout request larger than the available balance', function () {
     $agent = makeAgent();
+    $agent->forceFill([
+        'bank_card' => '6037991234567890',
+        'bank_sheba' => '603799123456789012345678',
+        'bank_card_confirmed_at' => now(),
+    ])->save();
     $wallet = app(WalletService::class)->ensureWallet($agent);
     $wallet->balance_available = 100_000;
     $wallet->save();
@@ -82,8 +113,13 @@ it('rejects a payout request larger than the available balance', function () {
         ->toThrow(RuntimeException::class);
 });
 
-it('allows a payout request within the available balance and locks the funds', function () {
+it('allows a payout request with confirmed bank card and locks the funds', function () {
     $agent = makeAgent();
+    $agent->forceFill([
+        'bank_card' => '6037991234567890',
+        'bank_sheba' => '603799123456789012345678',
+        'bank_card_confirmed_at' => now(),
+    ])->save();
     $wallet = app(WalletService::class)->ensureWallet($agent);
     $wallet->balance_available = 500_000;
     $wallet->save();
@@ -91,6 +127,7 @@ it('allows a payout request within the available balance and locks the funds', f
     $payout = app(WalletService::class)->requestPayout($agent, 300_000);
 
     expect($payout->status->value)->toBe('requested');
+    expect($payout->bank_card)->toBe('6037991234567890');
     expect((float) $payout->bank_fee)->toBe(500.0);
     expect((float) $payout->net_amount)->toBe(299500.0);
 
@@ -99,8 +136,27 @@ it('allows a payout request within the available balance and locks the funds', f
     expect((float) $wallet->balance_locked)->toBe(300000.0);
 });
 
+it('rejects payout when bank card is not supervisor-confirmed', function () {
+    $agent = makeAgent();
+    $agent->forceFill([
+        'bank_card' => '6037991234567890',
+        'bank_sheba' => '603799123456789012345678',
+    ])->save();
+    $wallet = app(WalletService::class)->ensureWallet($agent);
+    $wallet->balance_available = 500_000;
+    $wallet->save();
+
+    expect(fn () => app(WalletService::class)->requestPayout($agent, 300_000))
+        ->toThrow(RuntimeException::class, 'شماره کارت هنوز توسط ناظر تایید نشده است.');
+});
+
 it('rejects payout amounts below the minimum or not aligned to step', function () {
     $agent = makeAgent();
+    $agent->forceFill([
+        'bank_card' => '6037991234567890',
+        'bank_sheba' => '603799123456789012345678',
+        'bank_card_confirmed_at' => now(),
+    ])->save();
     $wallet = app(WalletService::class)->ensureWallet($agent);
     $wallet->balance_available = 500_000;
     $wallet->save();
@@ -114,6 +170,11 @@ it('rejects payout amounts below the minimum or not aligned to step', function (
 
 it('allows a full-balance payout even when the available balance is not aligned to step', function () {
     $agent = makeAgent();
+    $agent->forceFill([
+        'bank_card' => '6037991234567890',
+        'bank_sheba' => '603799123456789012345678',
+        'bank_card_confirmed_at' => now(),
+    ])->save();
     $wallet = app(WalletService::class)->ensureWallet($agent);
     $wallet->balance_available = 456_789;
     $wallet->save();

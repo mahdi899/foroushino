@@ -9,6 +9,7 @@ import { useStore } from '@/store/useStore'
 import { formatPhone, maskPhone } from '@/lib/format'
 import { isNativeCallEnabled, isVoipCallEnabled } from '@/lib/call'
 import { performStartCall } from '@/services/callActions'
+import { ApiError } from '@/services/http'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
 const spring = { type: 'spring' as const, stiffness: 420, damping: 32 }
@@ -34,13 +35,21 @@ export function CallMethodSheet() {
   const beginCall = async (method: 'native' | 'voip') => {
     if (!lead || starting) return
     setStarting(true)
+    const leadId = lead.id
     try {
       haptic('medium')
       handleClose()
-      await performStartCall(lead.id, method)
-      navigate(`/dialer/${lead.id}`)
-    } catch {
-      pushToast('شروع تماس ناموفق بود. بعداً دوباره تلاش کن.', 'error')
+      navigate(`/dialer/${leadId}`, { state: { method } })
+      await performStartCall(leadId, method)
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error && error.message
+            ? error.message
+            : 'شروع تماس ناموفق بود. بعداً دوباره تلاش کن.'
+      pushToast(message, 'error')
+      navigate(-1)
     } finally {
       setStarting(false)
     }

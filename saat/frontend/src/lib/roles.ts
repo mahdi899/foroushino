@@ -28,8 +28,7 @@ export function isManagerRole(role: Role): boolean {
 }
 
 export function hasMultiTeamView(role: Role): boolean {
-  const normalized = normalizeRole(role)
-  return role === 'supervisor' || normalized === 'manager'
+  return isManagerRole(role)
 }
 
 export function canMakeCalls(role: Role): boolean {

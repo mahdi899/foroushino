@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Calls;
 
 use App\Actions\Leads\AssignNextLeadAction;
+use App\Actions\Leads\ClaimLeadForCallAction;
 use App\Actions\Calls\SubmitCallResultAction;
 use App\Enums\Availability;
 use App\Enums\CallMethod;
@@ -23,6 +24,7 @@ use App\Services\Telephony\CallOrchestrator;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class CallController extends Controller
 {
@@ -31,6 +33,7 @@ class CallController extends Controller
         private readonly ShiftTimeTracker $shiftTracker,
         private readonly CallOrchestrator $orchestrator,
         private readonly AssignNextLeadAction $assignNextLead,
+        private readonly ClaimLeadForCallAction $claimLeadForCall,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -52,6 +55,7 @@ class CallController extends Controller
     public function start(StartCallRequest $request): JsonResponse
     {
         $lead = Lead::query()->findOrFail($request->integer('lead_id'));
+        $lead = $this->claimLeadForCall->execute($request->user(), $lead);
         $this->authorize('view', $lead);
 
         $method = $request->filled('method')
@@ -89,6 +93,7 @@ class CallController extends Controller
     public function submitResult(SubmitCallResultRequest $request, Call $call): JsonResponse
     {
         $this->authorize('view', $call->lead);
+        abort_unless($call->agent_id === $request->user()->id, 403, 'این تماس متعلق به شما نیست.');
 
         $result = $this->submitCallResult->execute($call, $request->validated());
 
@@ -105,9 +110,17 @@ class CallController extends Controller
         ];
 
         if ($request->boolean('advance')) {
-            $next = $this->assignNextLead->execute($request->user());
-            $payload['next_lead'] = $next['lead'] ? new LeadResource($next['lead']) : null;
-            $payload['next_reason'] = $next['reason']?->value;
+            try {
+                $next = $this->assignNextLead->execute($request->user());
+                $payload['next_lead'] = $next['lead'] ? new LeadResource($next['lead']) : null;
+                $payload['next_reason'] = $next['reason']?->value;
+            } catch (\Throwable $e) {
+                Log::warning('assignNextLead after call result failed', [
+                    'call_id' => $call->id,
+                    'agent_id' => $request->user()->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
 
         return ApiResponse::success($payload, 'نتیجه تماس ثبت شد');

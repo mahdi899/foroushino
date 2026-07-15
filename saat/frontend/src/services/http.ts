@@ -9,7 +9,31 @@ const configuredBaseUrl =
   import.meta.env?.VITE_API_BASE_URL ??
   (typeof process !== 'undefined' ? process.env?.VITE_API_BASE_URL : undefined)
 
-export const API_BASE_URL = (configuredBaseUrl ?? 'http://localhost:8000/api/v1').replace(/\/$/, '')
+/** Browser default: same-origin `/api/v1` (Vite proxy in dev, reverse proxy in prod). */
+function resolveDefaultApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    return '/api/v1'
+  }
+  // Node verify script only — not used in built PWA.
+  return 'http://localhost:8000/api/v1'
+}
+
+export const API_BASE_URL = (configuredBaseUrl ?? resolveDefaultApiBaseUrl()).replace(/\/$/, '')
+
+function networkErrorMessage(): string {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return 'اتصال اینترنت برقرار نیست.'
+  }
+  if (API_BASE_URL.startsWith('/')) {
+    return import.meta.env?.DEV
+      ? 'ارتباط با سرور برقرار نشد. بک‌اند را با php artisan serve اجرا کن و Vite dev server را ری‌استارت کن.'
+      : 'ارتباط با سرور برقرار نشد. پروکسی API یا VITE_API_BASE_URL را بررسی کن.'
+  }
+  if (API_BASE_URL.includes('localhost') || API_BASE_URL.includes('127.0.0.1')) {
+    return 'ارتباط با سرور برقرار نشد. بک‌اند را با php artisan serve اجرا کن.'
+  }
+  return 'ارتباط با سرور برقرار نشد. بک‌اند را با php artisan serve --host=0.0.0.0 اجرا کن.'
+}
 
 export class ApiError extends Error {
   constructor(
@@ -66,7 +90,7 @@ export async function request<T = unknown>(path: string, options: RequestOptions
   try {
     response = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: payload })
   } catch {
-    throw new NetworkError()
+    throw new NetworkError(networkErrorMessage())
   }
 
   let json: any = null

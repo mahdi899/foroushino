@@ -34,8 +34,8 @@ return new class extends Migration
             $table->unsignedTinyInteger('max_daily_attempts')->default(3)->after('priority');
             $table->unsignedTinyInteger('max_total_attempts')->default(12)->after('max_daily_attempts');
             $table->unsignedSmallInteger('retry_cooldown_minutes')->default(60)->after('max_total_attempts');
-            $table->string('allowed_hours_start', 5)->default('09:00')->after('retry_cooldown_minutes');
-            $table->string('allowed_hours_end', 5)->default('21:00')->after('allowed_hours_start');
+            $table->string('allowed_hours_start', 5)->default('08:00')->after('retry_cooldown_minutes');
+            $table->string('allowed_hours_end', 5)->default('23:59')->after('allowed_hours_start');
             $table->unsignedSmallInteger('sla_callback_minutes')->default(120)->after('allowed_hours_end');
         });
 

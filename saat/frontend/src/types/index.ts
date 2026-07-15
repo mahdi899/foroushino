@@ -129,6 +129,7 @@ export interface Lead {
   nextFollowupAt: string | null
   rating: number
   assignedAgentId: string
+  assignedAgentName?: string | null
   assignedTeamId?: string | null
   avatar?: string | null
   // lifecycle & ownership (spec §2)
@@ -205,6 +206,10 @@ export interface Agent {
   points: number
   streak: number
   callGoal: number
+  isActive?: boolean
+  bankCardMasked?: string | null
+  bankCardConfirmed?: boolean
+  bankShebaRegistered?: boolean
 }
 
 export interface Team {
@@ -212,6 +217,9 @@ export interface Team {
   name: string
   leaderId: string
   agentIds: string[]
+  leaderName?: string | null
+  agentsCount?: number
+  agentsCapacity?: number
 }
 
 export type TeamReportStatus = 'submitted' | 'approved' | 'forwarded_to_manager'
@@ -238,6 +246,32 @@ export interface TeamReport {
   submitterName?: string
   approvedAt?: string | null
   forwardedAt?: string | null
+  createdAt: string
+}
+
+export type AgentReportStatus = 'submitted' | 'approved' | 'rejected'
+
+export interface AgentReportSummary {
+  calls_today: number
+  successful_today: number
+  conversion_rate: number
+  followups_completed: number
+  sales_submitted: number
+}
+
+export interface AgentReport {
+  id: string
+  agentId: string
+  agentName?: string
+  teamId: string
+  teamName?: string
+  reportDate: string
+  status: AgentReportStatus
+  summary: AgentReportSummary
+  agentNotes?: string | null
+  leaderNotes?: string | null
+  approvedAt?: string | null
+  rejectedAt?: string | null
   createdAt: string
 }
 
@@ -304,6 +338,9 @@ export interface Sale {
   rejectedAt?: string | null
   rejectionReason?: string | null
   confirmedBy?: string | null
+  /** Populated from API embed when the lead is not in the synced leads list. */
+  leadName?: string | null
+  productName?: string | null
 }
 
 export type PaymentMethod = 'card' | 'gateway' | 'installment' | 'cash'
@@ -333,6 +370,7 @@ export interface Commission {
   id: string
   saleId: string
   agentId: string
+  agentName?: string
   productId: string
   leadId: string
   saleAmount: number
@@ -342,6 +380,7 @@ export interface Commission {
   createdAt: string
   availableAt?: string | null
   approvedAt?: string | null
+  leaderApprovedAt?: string | null
   rejectionReason?: string | null
 }
 
@@ -351,6 +390,19 @@ export interface Wallet {
   balanceLocked: number
   totalEarned: number
   totalPaid: number
+  bankCardMasked?: string | null
+  bankCardConfirmed?: boolean
+  bankShebaRegistered?: boolean
+}
+
+export interface BankAccountReview {
+  userId: string
+  name: string
+  teamId?: string
+  teamName?: string | null
+  bankCard: string
+  bankSheba: string
+  updatedAt?: string | null
 }
 
 export type WalletTxType =
@@ -378,9 +430,12 @@ export type PayoutStatus = 'requested' | 'approved' | 'paid' | 'rejected' | 'can
 export interface PayoutRequest {
   id: string
   agentId: string
+  agentName?: string
   amount: number
   bankFee?: number
   netAmount?: number
+  bankCardMasked?: string | null
+  bankSheba?: string | null
   status: PayoutStatus
   requestedAt: string
   processedAt?: string | null

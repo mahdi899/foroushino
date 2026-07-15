@@ -17,8 +17,10 @@ import { Chip } from '@/components/ui/Chip'
 import { EmptyState } from '@/components/ui/States'
 import { formatJalaliDate, relativeDayTime } from '@/lib/format'
 import { hasPermission } from '@/lib/permissions'
-import { agentById } from '@/lib/teamUtils'
+import { agentById, getTeamAgentIds } from '@/lib/teamUtils'
+import { isLeaderRole } from '@/lib/roles'
 import type { ActivityKind } from '@/types'
+import { localizeActivityTitle } from '@/lib/activityLabels'
 import { cn } from '@/lib/cn'
 
 const kindConfig: Record<ActivityKind, { icon: LucideIcon; bg: string; fg: string; label: string }> = {
@@ -37,14 +39,19 @@ type Filter = 'all' | ActivityKind
 
 export function ActivityHistoryScreen() {
   const permissions = useStore((s) => s.permissions)
+  const role = useStore((s) => s.role)
   const currentAgentId = useStore((s) => s.currentAgentId)
   const agents = useStore((s) => s.agents)
+  const teams = useStore((s) => s.teams)
   const allActivity = useStore((s) => s.activity)
   const systemWide = hasPermission(permissions, 'reports.view-all')
-  const activity = useMemo(
-    () => (systemWide ? allActivity : allActivity.filter((a) => a.agentId === currentAgentId)),
-    [allActivity, currentAgentId, systemWide],
-  )
+  const teamWide = isLeaderRole(role) && hasPermission(permissions, 'reports.view-team')
+  const teamAgentIds = getTeamAgentIds(teams, agents, currentAgentId, role)
+  const activity = useMemo(() => {
+    if (systemWide) return allActivity
+    if (teamWide) return allActivity.filter((a) => teamAgentIds.includes(a.agentId))
+    return allActivity.filter((a) => a.agentId === currentAgentId)
+  }, [allActivity, currentAgentId, systemWide, teamWide, teamAgentIds])
   const [filter, setFilter] = useState<Filter>('all')
 
   const filtered = useMemo(
@@ -68,8 +75,14 @@ export function ActivityHistoryScreen() {
   return (
     <Page withNav={false}>
       <TopBar
-        title={systemWide ? 'فعالیت کل سیستم' : 'تاریخچه فعالیت'}
-        subtitle={systemWide ? 'همه رویدادهای ثبت‌شده در سات' : 'همه فعالیت‌های ثبت‌شده تو'}
+        title={systemWide ? 'فعالیت کل سیستم' : teamWide ? 'فعالیت تیم' : 'تاریخچه فعالیت'}
+        subtitle={
+          systemWide
+            ? 'همه رویدادهای ثبت‌شده در سات'
+            : teamWide
+              ? 'فعالیت‌های کارشناسان تیمت'
+              : 'همه فعالیت‌های ثبت‌شده تو'
+        }
       />
 
       <div className="px-4">
@@ -106,15 +119,15 @@ export function ActivityHistoryScreen() {
                           <cfg.icon size={16} />
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-[12.5px] font-extrabold text-neutral-900">{a.title}</p>
-                          {systemWide && (
+                          <p className="truncate text-[12.5px] font-extrabold text-neutral-900">{localizeActivityTitle(a.title)}</p>
+                          {systemWide || teamWide ? (
                             <p className="mt-0.5 truncate text-[10px] font-bold text-neutral-400">
                               {(() => {
                                 const actor = agentById(agents, a.agentId)
                                 return actor ? `${actor.firstName} ${actor.lastName}` : 'سیستم'
                               })()}
                             </p>
-                          )}
+                          ) : null}
                           {a.meta && <p className="mt-0.5 truncate text-[11px] font-bold text-neutral-400">{a.meta}</p>}
                         </div>
                         <span className="shrink-0 text-[10px] font-bold text-neutral-300">

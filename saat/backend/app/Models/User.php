@@ -47,6 +47,9 @@ class User extends Authenticatable
         'is_active',
         'mask_phone_numbers',
         'referral_code',
+        'bank_card',
+        'bank_card_confirmed_at',
+        'bank_sheba',
     ];
 
     /**
@@ -73,6 +76,7 @@ class User extends Authenticatable
             'availability_changed_at' => 'datetime',
             'is_active' => 'boolean',
             'mask_phone_numbers' => 'boolean',
+            'bank_card_confirmed_at' => 'datetime',
         ];
     }
 

@@ -1,3 +1,11 @@
+import {
+  businessDaysBetween,
+  dateKeyFromIso,
+  formatBusinessTime,
+  isBusinessToday,
+  todayDateKey,
+} from '@/lib/businessDate'
+
 const FA_DIGITS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹']
 
 export function toFa(input: string | number): string {
@@ -47,6 +55,28 @@ export function formatHms(totalSec: number): string {
 
 export function formatMoney(amount: number): string {
   return toFa(Math.round(amount).toLocaleString('en-US'))
+}
+
+/** 16-digit card → grouped Persian digits for LTR display. */
+export function formatBankCardFa(digits: string): string {
+  const clean = toEn(digits).replace(/\D/g, '').slice(0, 16)
+  if (!clean) return ''
+  return toFa(clean.replace(/(\d{4})(?=\d)/g, '$1 ').trim())
+}
+
+/** 24-digit SHEBA → IR + grouped Persian digits for LTR display. */
+export function formatShebaFa(digits: string): string {
+  const clean = toEn(digits).replace(/\D/g, '').replace(/^IR/i, '').slice(0, 24)
+  if (!clean) return ''
+  return toFa(`IR ${clean.replace(/(\d{4})(?=\d)/g, '$1 ').trim()}`)
+}
+
+export function parseCardDigits(input: string): string {
+  return toEn(input).replace(/\D/g, '').slice(0, 16)
+}
+
+export function parseShebaDigits(input: string): string {
+  return toEn(input).toUpperCase().replace(/^IR/, '').replace(/\D/g, '').slice(0, 24)
 }
 
 const WEEKDAYS = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه']
@@ -117,22 +147,17 @@ export function formatIsoDateJalali(iso: string, withWeekday = false): string {
 }
 
 export function formatTime(date: Date): string {
-  return toFa(
-    `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`,
-  )
+  return formatBusinessTime(date)
 }
 
 export function relativeDay(iso: string): string {
-  const date = new Date(iso)
-  const now = new Date()
-  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-  const diffDays = Math.round((startOf(date) - startOf(now)) / 86400000)
+  const diffDays = businessDaysBetween(todayDateKey(), dateKeyFromIso(iso))
   if (diffDays === 0) return 'امروز'
   if (diffDays === 1) return 'فردا'
   if (diffDays === -1) return 'دیروز'
   if (diffDays > 1 && diffDays < 7) return `${toFa(diffDays)} روز دیگر`
   if (diffDays < 0) return `${toFa(Math.abs(diffDays))} روز پیش`
-  return formatJalaliShort(date)
+  return formatJalaliShort(new Date(iso))
 }
 
 export function relativeDayTime(iso: string): string {
@@ -141,13 +166,7 @@ export function relativeDayTime(iso: string): string {
 }
 
 export function isToday(iso: string): boolean {
-  const d = new Date(iso)
-  const now = new Date()
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  )
+  return isBusinessToday(iso)
 }
 
 export function isOverdue(iso: string): boolean {

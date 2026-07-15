@@ -11,10 +11,9 @@ use App\Models\LeadStatusHistory;
 use App\Models\User;
 use App\Services\Campaign\CampaignDialingPolicy;
 use App\Support\LeadPriorityScore;
-use Illuminate\Broadcasting\BroadcastException;
+use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -83,15 +82,9 @@ class AssignNextLeadAction
             });
 
             if ($result['lead']) {
-                try {
-                    broadcast(new LeadAssigned($result['lead']))->toOthers();
-                } catch (BroadcastException $e) {
-                    Log::warning('LeadAssigned broadcast skipped', [
-                        'lead_id' => $result['lead']->id,
-                        'agent_id' => $agent->id,
-                        'error' => $e->getMessage(),
-                    ]);
-                }
+                SafeBroadcast::optionally(
+                    fn () => broadcast(new LeadAssigned($result['lead']))->toOthers(),
+                );
             }
 
             return $result;
@@ -104,30 +97,32 @@ class AssignNextLeadAction
     {
         $excluded = array_map(fn ($s) => $s->value, LeadStatus::excludedFromCycle());
 
-        $candidates = Lead::query()
-            ->whereNotIn('status', $excluded)
-            ->whereNull('do_not_call_at')
-            ->where(function ($q): void {
-                $q->whereNull('locked_by')->orWhere('locked_until', '<', now());
-            })
-            ->where(function ($q) use ($agent): void {
-                $q->where('assigned_agent_id', $agent->id)
-                    ->orWhere(function ($q2) use ($agent): void {
-                        $q2->whereNull('assigned_agent_id')
-                            ->where(function ($q3) use ($agent): void {
-                                if ($agent->team_id) {
-                                    $q3->whereNull('assigned_team_id')
-                                        ->orWhere('assigned_team_id', $agent->team_id);
-                                } else {
-                                    $q3->whereNull('assigned_team_id');
-                                }
-                            });
-                    });
-            })
+        $candidates = $this->dialingPolicy->applyCandidateConstraints(
+            Lead::query()
+                ->whereNotIn('status', $excluded)
+                ->whereNull('do_not_call_at')
+                ->where(function ($q): void {
+                    $q->whereNull('locked_by')->orWhere('locked_until', '<', now());
+                })
+                ->where(function ($q) use ($agent): void {
+                    $q->where('assigned_agent_id', $agent->id)
+                        ->orWhere(function ($q2) use ($agent): void {
+                            $q2->whereNull('assigned_agent_id')
+                                ->where(function ($q3) use ($agent): void {
+                                    if ($agent->team_id) {
+                                        $q3->whereNull('assigned_team_id')
+                                            ->orWhere('assigned_team_id', $agent->team_id);
+                                    } else {
+                                        $q3->whereNull('assigned_team_id');
+                                    }
+                                });
+                        });
+                }),
+        )
             ->selectRaw('leads.*, ('.LeadPriorityScore::sqlExpression().') as priority_score')
             ->orderByDesc('priority_score')
             ->orderBy('id')
-            ->limit(25)
+            ->limit(5)
             ->lockForUpdate()
             ->get();
 

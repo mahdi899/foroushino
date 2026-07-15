@@ -145,9 +145,6 @@ class SalesActivitySeeder extends Seeder
                 $walletDeltas[$agentId]['available'] += $commissionAmount;
                 $walletDeltas[$agentId]['earned'] += $commissionAmount;
                 $walletTxRows[] = $this->walletTx($agentId, 'commission_available', $commissionAmount, 'پورسانت قابل برداشت', $sale->created_at);
-            } else {
-                $walletDeltas[$agentId]['pending'] += $commissionAmount;
-                $walletTxRows[] = $this->walletTx($agentId, 'commission_pending', $commissionAmount, 'پورسانت فروش تاییدشده', $sale->created_at);
             }
         }
 

@@ -10,12 +10,12 @@ import { LeadCard } from '@/components/domain/LeadCard'
 import { LeadQuickViewSheet } from '@/components/domain/LeadQuickViewSheet'
 import { EmptyState } from '@/components/ui/States'
 import { isToday, isOverdue, toFa } from '@/lib/format'
-import { canCallLead, filterLeadsForAgent } from '@/lib/leadUtils'
+import { canCallLead, filterLeadsForAgent, assignedAgentLabel as resolveAssignedAgentLabel } from '@/lib/leadUtils'
 import { filterLeadsForScope } from '@/lib/teamUtils'
-import { isManagementRole } from '@/lib/roles'
+import { isManagementRole, isSupervisorRole } from '@/lib/roles'
 import { haptic } from '@/lib/telegram'
 import type { Lead } from '@/types'
-import { DataGate } from '@/components/pwa/DataGate'
+import { useRemoteDataReady } from '@/providers/SyncProvider'
 
 type Filter = 'all' | 'hot' | 'warm' | 'cold' | 'today' | 'overdue'
 
@@ -48,6 +48,8 @@ export function LeadsScreen() {
     tempParam === 'hot' || tempParam === 'warm' || tempParam === 'cold' ? tempParam : 'all'
   const [filter, setFilter] = useState<Filter>(initialFilter)
   const [quickViewLead, setQuickViewLead] = useState<Lead | null>(null)
+  const { showData, syncing } = useRemoteDataReady()
+  const showLeadList = showData || leads.length > 0 || !syncing || isTeamViewer
 
   const visibleLeads = useMemo(
     () =>
@@ -96,7 +98,7 @@ export function LeadsScreen() {
       <ScreenHeader
         sticky
         subtitleInline
-        title={isTeamViewer ? 'مشتریان تیم' : 'مشتریان من'}
+        title={isTeamViewer ? (isSupervisorRole(role) ? 'مشتریان تیم من' : 'مشتریان تیم') : 'مشتریان من'}
         subtitle={`${toFa(visibleLeads.length)} مشتری فعال`}
         icon={Users}
         iconTone="secondary"
@@ -153,7 +155,12 @@ export function LeadsScreen() {
         )}
       </ScreenHeader>
 
-      <DataGate mode="placeholder">
+      {!showLeadList ? (
+        <div className="mx-4 mt-2 rounded-[20px] border border-border/60 bg-surface-soft px-4 py-8 text-center">
+          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+          <p className="text-sm font-semibold text-text">در حال دریافت مشتریان…</p>
+        </div>
+      ) : (
       <div className="space-y-2 px-4 pt-2 pb-1">
         {filtered.length === 0 ? (
           <EmptyState
@@ -166,6 +173,11 @@ export function LeadsScreen() {
             <LeadCard
               key={lead.id}
               lead={lead}
+              assignedAgentLabel={
+                isTeamViewer
+                  ? resolveAssignedAgentLabel(lead, agents) ?? 'بدون کارشناس'
+                  : undefined
+              }
               onClick={() => navigate(`/leads/${lead.id}`)}
               onCall={isTeamViewer ? undefined : () => call(lead)}
               onQuickView={() => setQuickViewLead(lead)}
@@ -173,7 +185,7 @@ export function LeadsScreen() {
           ))
         )}
       </div>
-      </DataGate>
+      )}
 
       <LeadQuickViewSheet
         lead={quickViewLead}

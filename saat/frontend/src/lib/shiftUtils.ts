@@ -1,4 +1,8 @@
 import type { Availability, WorkDaySummary, WorkSession } from '@/types'
+import {
+  dateKeyFromIso as businessDateKeyFromIso,
+  todayDateKey as businessTodayDateKey,
+} from '@/lib/businessDate'
 
 export const PRODUCTIVE_AVAILABILITIES: Availability[] = ['available', 'in_call', 'doing_follow_up']
 
@@ -26,16 +30,12 @@ export function calcLiveProductiveSeconds(
 }
 
 export function todayDateKey(now = new Date()): string {
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-
-  return `${year}-${month}-${day}`
+  return businessTodayDateKey(now)
 }
 
-/** Local calendar date for an ISO timestamp — use instead of `createdAt.slice(0, 10)` (UTC). */
+/** Iran calendar date for an ISO timestamp. */
 export function dateKeyFromIso(iso: string): string {
-  return todayDateKey(new Date(iso))
+  return businessDateKeyFromIso(iso)
 }
 
 export function isSessionOnDate(session: WorkSession, date: string): boolean {
