@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { HeroCinematic } from '@/components/sections/HeroCinematic';
 import { MainPaths } from '@/components/sections/MainPaths';
@@ -30,26 +31,29 @@ const FinalCTALazy = dynamic(
   { loading: SectionFallback },
 );
 
-const CampaignScrollStory = CampaignScrollStoryLazy;
-const BigTestimonial = BigTestimonialLazy;
-const AcademyTeaser = AcademyTeaserLazy;
-const FounderAside = FounderAsideLazy;
-const FinalCTA = FinalCTALazy;
-
-export async function HomeBelowFoldSections({ deferBelowFold }: { deferBelowFold: boolean }) {
+async function MainPathsSection() {
   const { images: pathImages } = await getCoursePathOverrides();
-  const Campaign = deferBelowFold ? CampaignScrollStoryLazy : CampaignScrollStory;
-  const Testimonial = deferBelowFold ? BigTestimonialLazy : BigTestimonial;
-  const Academy = deferBelowFold ? AcademyTeaserLazy : AcademyTeaser;
-  const Founder = deferBelowFold ? FounderAsideLazy : FounderAside;
-  const CTA = deferBelowFold ? FinalCTALazy : FinalCTA;
+
+  return (
+    <SectionReveal>
+      <MainPaths pathOverrides={{ images: pathImages }} />
+    </SectionReveal>
+  );
+}
+
+export function HomeBelowFoldSections({ deferBelowFold = true }: { deferBelowFold?: boolean }) {
+  const Campaign = deferBelowFold ? CampaignScrollStoryLazy : CampaignScrollStoryLazy;
+  const Testimonial = deferBelowFold ? BigTestimonialLazy : BigTestimonialLazy;
+  const Academy = deferBelowFold ? AcademyTeaserLazy : AcademyTeaserLazy;
+  const Founder = deferBelowFold ? FounderAsideLazy : FounderAsideLazy;
+  const CTA = deferBelowFold ? FinalCTALazy : FinalCTALazy;
 
   return (
     <main id="main-content" className="relative isolate min-w-0 w-full max-w-full overflow-x-clip">
       <HeroCinematic />
-      <SectionReveal>
-        <MainPaths pathOverrides={{ images: pathImages }} />
-      </SectionReveal>
+      <Suspense fallback={<SectionFallback />}>
+        <MainPathsSection />
+      </Suspense>
       <SectionReveal>
         <Campaign />
       </SectionReveal>

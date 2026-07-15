@@ -49,14 +49,14 @@ export function FeedPreviewGate({ mode }: { mode: 'guest' | 'join' }) {
       {mode === 'guest' ? (
         <Link
           href="/family/login?redirect=/family"
-          className="family-btn-primary rounded-full px-5 py-2.5 text-sm font-bold"
+          className="family-btn-primary flex w-full items-center justify-center rounded-xl py-3 text-sm font-bold"
         >
-          ورود
+          ورود و دیدن همه پیام‌ها
         </Link>
       ) : (
         <a
           href="#family-join-cta"
-          className="family-btn-primary rounded-full px-5 py-2.5 text-sm font-bold"
+          className="family-btn-primary flex w-full items-center justify-center rounded-xl py-3 text-sm font-bold"
         >
           بپیوند به خانواده
         </a>

@@ -1,8 +1,9 @@
+import { Suspense } from 'react';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { PanelPageFallback } from '@/components/student-panel/layout/PanelPageFallback';
 import { PanelShell } from '@/components/student-panel/layout/PanelShell';
 import { panelLoginRedirectTarget } from '@/lib/student/panelAuth';
-import { panelStudentFetch } from '@/lib/student/panelServer';
 import { resolvePanelAccess } from '@/lib/student/session';
 
 export default async function PanelShellLayout({ children }: { children: React.ReactNode }) {
@@ -15,14 +16,9 @@ export default async function PanelShellLayout({ children }: { children: React.R
     redirect(`/panel/login?redirect=${encodeURIComponent(redirectTo)}${blockedQuery}`);
   }
 
-  const notificationsRes = await panelStudentFetch<{ data: { unread_count: number } }>('/notifications/unread-count').catch(() => ({
-    data: { unread_count: 0 },
-  }));
-  const unreadCount = notificationsRes.data.unread_count;
-
   return (
-    <PanelShell user={user} unreadCount={unreadCount}>
-      {children}
+    <PanelShell user={user} unreadCount={0}>
+      <Suspense fallback={<PanelPageFallback />}>{children}</Suspense>
     </PanelShell>
   );
 }

@@ -7,7 +7,13 @@ import type { FamilyNotification } from '@/lib/family/types';
 export function useFamilyUnreadCount(enabled: boolean) {
   const { data, mutate } = useSWR(
     enabled ? 'family-notifications-unread' : null,
-    async () => (await getUnreadNotificationCount()).data,
+    async () => {
+      try {
+        return (await getUnreadNotificationCount()).data;
+      } catch {
+        return { unread_count: 0 };
+      }
+    },
     { refreshInterval: 60_000, revalidateOnFocus: true },
   );
 
@@ -17,7 +23,13 @@ export function useFamilyUnreadCount(enabled: boolean) {
 export function useFamilyNotifications(enabled: boolean) {
   const { data, isLoading, mutate } = useSWR(
     enabled ? 'family-notifications' : null,
-    async () => (await getNotifications()) as { data: FamilyNotification[] },
+    async () => {
+      try {
+        return (await getNotifications()) as { data: FamilyNotification[] };
+      } catch {
+        return { data: [] as FamilyNotification[] };
+      }
+    },
     { revalidateOnFocus: false },
   );
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useCallback, useState } from 'react';
+import { FamilyAutoJoin } from '@/components/family/FamilyAutoJoin';
 import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
 import { FamilyMain, FamilyShell } from '@/components/family/FamilyShell';
 import { FamilyTopBar } from '@/components/family/FamilyTopBar';
@@ -8,7 +9,7 @@ import { FeedView } from '@/components/family/FeedView';
 import { GuestBanner } from '@/components/family/GuestBanner';
 import { JoinBanner } from '@/components/family/JoinBanner';
 import { OnboardingModal } from '@/components/family/OnboardingModal';
-import type { FamilyComment } from '@/lib/family/types';
+import type { FamilyComment, FamilyFeedResponse } from '@/lib/family/types';
 
 type Mode = 'guest' | 'join' | 'member';
 
@@ -21,10 +22,12 @@ export function FamilyHome({
   mode,
   memberCount,
   needsOnboarding,
+  initialFeed = null,
 }: {
   mode: Mode;
   memberCount?: number;
   needsOnboarding: boolean;
+  initialFeed?: FamilyFeedResponse | null;
 }) {
   const [showOnboarding, setShowOnboarding] = useState(needsOnboarding);
   const [commentsTarget, setCommentsTarget] = useState<CommentsTarget | null>(null);
@@ -50,11 +53,17 @@ export function FamilyHome({
           memberCount={memberCount}
           previewMode={previewMode}
           showPinned={mode === 'member'}
+          initialFeed={initialFeed}
           commentsTarget={commentsTarget}
           onOpenComments={openComments}
           onCloseComments={() => setCommentsTarget(null)}
         />
       </FamilyMain>
+      {mode === 'join' && (
+        <Suspense>
+          <FamilyAutoJoin />
+        </Suspense>
+      )}
       {mode === 'guest' && <GuestBanner />}
       {mode === 'join' && (
         <Suspense>

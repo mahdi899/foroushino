@@ -3751,6 +3751,11 @@ html[data-theme="light"] .site-bottom-nav__icon-shell--active {
   padding-bottom: var(--site-bottom-nav-offset);
 }
 
+/* Hide footer while route content is still loading (no #main-content yet). */
+.site-chrome-body:not(:has(#main-content)) > footer {
+  display: none;
+}
+
 @media (max-width: 767px) {
   .site-chrome-body:has(.mobile-sticky-enroll-bar) {
     padding-bottom: calc(
@@ -7212,7 +7217,43 @@ html[data-theme="light"] .chatbot-scroll::-webkit-scrollbar-thumb:active {
 }
 
 .site-loader--page {
-  min-height: 50vh;
+  /* Height comes from .site-route-loading wrapper */
+  min-height: 0;
+}
+
+.site-route-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100dvh;
+  padding: 2rem 1rem;
+  box-sizing: border-box;
+}
+
+.site-route-loading--panel {
+  min-height: 100dvh;
+}
+
+/* Loader inside authenticated panel shell (below header / above bottom nav) */
+.site-route-loading--panel-inset {
+  min-height: calc(
+    100dvh - var(--panel-header-est, 4.25rem) - var(--panel-bottom-nav-offset, 4.5rem) - 2.5rem
+  );
+}
+
+@media (min-width: 1024px) {
+  .site-route-loading--panel-inset {
+    min-height: calc(100dvh - var(--panel-header-est, 4.25rem) - 3rem);
+  }
+}
+
+/* Family app frame — center inside the shell, not the full viewport */
+.site-route-loading--family {
+  min-height: 0;
+  flex: 1;
+  height: 100%;
 }
 
 .site-loader__ring {
@@ -7247,17 +7288,6 @@ html[data-theme="light"] .chatbot-scroll::-webkit-scrollbar-thumb:active {
   font-size: 0.875rem;
   letter-spacing: 0.04em;
   color: var(--color-mist);
-}
-
-.site-route-loading {
-  display: grid;
-  place-items: center;
-  min-height: 50vh;
-  padding: 2rem 1rem;
-}
-
-.site-route-loading--panel {
-  min-height: 40vh;
 }
 
 .site-boot-loader {

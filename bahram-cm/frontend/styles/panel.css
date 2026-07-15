@@ -538,6 +538,7 @@
 
 .panel-root {
   --panel-bottom-nav-bar: 3.75rem;
+  --panel-header-est: 4.25rem;
   --panel-bottom-nav-offset: calc(
     var(--panel-bottom-nav-bar) + max(env(safe-area-inset-bottom, 0px), 0.35rem)
   );

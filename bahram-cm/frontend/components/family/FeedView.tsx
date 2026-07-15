@@ -10,7 +10,7 @@ import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
 import { PostCard } from '@/components/family/PostCard';
 import { useFamilyFeed } from '@/lib/family/hooks/useFamilyFeed';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
-import type { FamilyComment, FamilyPost } from '@/lib/family/types';
+import type { FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
 
 type FeedItem =
   | { kind: 'separator'; key: string; label: string }
@@ -48,6 +48,7 @@ export function FeedView({
   memberCount,
   previewMode = null,
   showPinned = false,
+  initialFeed = null,
   commentsTarget,
   onOpenComments,
   onCloseComments,
@@ -55,15 +56,19 @@ export function FeedView({
   memberCount?: number;
   previewMode?: 'guest' | 'join' | null;
   showPinned?: boolean;
+  initialFeed?: FamilyFeedResponse | null;
   commentsTarget?: CommentsTarget | null;
   onOpenComments?: (target: CommentsTarget) => void;
   onCloseComments?: () => void;
 }) {
-  const { posts, meta, isLoading, hasMore, loadMore, isValidating } = useFamilyFeed();
+  const isPreview = Boolean(previewMode);
+  const effectivePreviewMode = previewMode ?? 'guest';
+  const feedScope: 'guest' | 'member' = isPreview ? 'guest' : 'member';
+  const initialPage = initialFeed ? { data: initialFeed.data, meta: initialFeed.meta } : null;
+
+  const { posts, meta, isLoading, hasMore, loadMore, isValidating } = useFamilyFeed(feedScope, initialPage);
   const resolvedMemberCount = meta?.member_count ?? memberCount;
   const isStaff = meta?.is_staff ?? false;
-  const isPreview = Boolean(previewMode ?? meta?.guest);
-  const effectivePreviewMode = previewMode ?? (meta?.needs_join ? 'join' : 'guest');
 
   const scrollToPreviewCta = useCallback(() => {
     const id = effectivePreviewMode === 'join' ? 'family-join-cta' : 'family-guest-cta';
@@ -188,10 +193,13 @@ export function FeedView({
       />
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-        <FamilyNotificationsPanel
-          onClose={() => setMainView('feed')}
-          className={mainView === 'notifications' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}
-        />
+        {!isPreview && (
+          <FamilyNotificationsPanel
+            enabled={!isPreview}
+            onClose={() => setMainView('feed')}
+            className={mainView === 'notifications' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}
+          />
+        )}
 
         {commentsTarget && (
           <FeedCommentsPanel
@@ -218,25 +226,14 @@ export function FeedView({
             ref={feedScrollRef}
             className="family-feed-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
           >
-            {isLoading && posts.length === 0 ? (
-              <div className="family-panel-header flex w-full items-center gap-2 border-b px-3 py-3 sm:px-4 lg:px-5">
-                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80" />
-                <span className="text-[13px] text-bone/45">در حال بارگذاری…</span>
-              </div>
-            ) : null}
-
             <div ref={feedContentRef} className="mx-auto flex w-full max-w-[680px] flex-col">
-              {isPreview && effectivePreviewMode && !isLoading && posts.length > 0 && (
+              {isPreview && effectivePreviewMode && posts.length > 0 && (
                 <div className="pt-4 sm:pt-5">
                   <FeedPreviewIntro mode={effectivePreviewMode} />
                 </div>
               )}
-              {isLoading && posts.length === 0 ? (
-                <div className="space-y-3 px-3 py-4 sm:px-4 lg:px-5 lg:py-5">
-                  {[0, 1, 2, 3].map((i) => (
-                    <div key={i} className="family-skeleton h-40 animate-pulse rounded-2xl lg:h-44" />
-                  ))}
-                </div>
+              {posts.length === 0 && isLoading && !initialPage ? (
+                <div className="min-h-[40vh] lg:min-h-[50vh]" aria-hidden />
               ) : posts.length === 0 ? (
                 <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 px-6 py-16 text-center lg:min-h-[50vh]">
                   <p className="max-w-sm text-sm text-bone/60 lg:text-[15px]">

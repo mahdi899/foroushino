@@ -77,12 +77,14 @@ function NotificationRow({
 export function FamilyNotificationsPanel({
   onClose,
   className,
+  enabled = true,
 }: {
   onClose?: () => void;
   className?: string;
+  enabled?: boolean;
 }) {
-  const { notifications, isLoading, markRead, markAllRead } = useFamilyNotifications(true);
-  const { refresh: refreshUnread } = useFamilyUnreadCount(true);
+  const { notifications, isLoading, markRead, markAllRead } = useFamilyNotifications(enabled);
+  const { refresh: refreshUnread } = useFamilyUnreadCount(enabled);
   const unreadCount = notifications.filter((n) => !n.read_at).length;
 
   const handleMarkAll = async () => {

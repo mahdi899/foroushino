@@ -6,23 +6,47 @@ import { SiteLoader } from '@/components/layout/SiteLoader';
 
 const MIN_VISIBLE_MS = 420;
 const FADE_MS = 380;
+const BOOT_DONE_KEY = 'site-boot-done';
+
+function isBareShellPath(pathname: string | null | undefined): boolean {
+  return Boolean(
+    pathname?.startsWith('/admin') ||
+      pathname?.startsWith('/panel') ||
+      pathname?.startsWith('/family'),
+  );
+}
+
+function readBootDone(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return sessionStorage.getItem(BOOT_DONE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markBootDone(): void {
+  try {
+    sessionStorage.setItem(BOOT_DONE_KEY, '1');
+  } catch {
+    /* ignore */
+  }
+}
 
 /**
- * Branded boot overlay — shows on first paint until the page is ready,
- * then fades out. Skipped on admin/panel routes.
+ * Branded boot overlay — first full site paint only.
+ * In-app navigations (e.g. bottom nav «خانه») use app/loading.tsx instead.
  */
 export function SiteBootLoader() {
   const pathname = usePathname();
-  const isBareShell =
-    pathname?.startsWith('/admin') ||
-    pathname?.startsWith('/panel') ||
-    pathname?.startsWith('/family');
-  const [phase, setPhase] = useState<'visible' | 'fading' | 'done'>(() =>
-    isBareShell ? 'done' : 'visible',
-  );
+  const isBareShell = isBareShellPath(pathname);
+  const [phase, setPhase] = useState<'visible' | 'fading' | 'done'>(() => {
+    if (isBareShell || readBootDone()) return 'done';
+    return 'visible';
+  });
 
   useEffect(() => {
-    if (isBareShell) {
+    if (isBareShell || readBootDone()) {
       setPhase('done');
       return;
     }
@@ -31,6 +55,7 @@ export function SiteBootLoader() {
     const started = Date.now();
 
     const finish = () => {
+      markBootDone();
       const elapsed = Date.now() - started;
       const wait = Math.max(0, MIN_VISIBLE_MS - elapsed);
       window.setTimeout(() => setPhase('fading'), wait);
@@ -43,7 +68,7 @@ export function SiteBootLoader() {
       window.addEventListener('load', finish, { once: true });
       return () => window.removeEventListener('load', finish);
     }
-  }, [isBareShell, pathname]);
+  }, [isBareShell]);
 
   if (phase === 'done') return null;
 

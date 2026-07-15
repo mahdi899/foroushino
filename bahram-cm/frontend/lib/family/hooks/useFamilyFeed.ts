@@ -11,14 +11,16 @@ interface FeedPage {
   meta: FamilyFeedMeta;
 }
 
-export function useFamilyFeed() {
+export function useFamilyFeed(scope: 'guest' | 'member' = 'member', initialPage?: FeedPage | null) {
+  const fallbackData = initialPage ? [initialPage] : undefined;
+
   const { data, error, isLoading, isValidating, size, setSize, mutate } = useSWRInfinite<FeedPage>(
     (index, previousPage) => {
       if (previousPage && !previousPage.meta.next_cursor) return null;
-      return ['family-feed', FEED_PAGE_SIZE, index === 0 ? null : previousPage?.meta.next_cursor];
+      return ['family-feed', scope, FEED_PAGE_SIZE, index === 0 ? null : previousPage?.meta.next_cursor];
     },
-    async ([, , cursor]) => (await getFeed(cursor as string | null, FEED_PAGE_SIZE)) as FeedPage,
-    { revalidateFirstPage: false, revalidateOnFocus: false },
+    async ([, , , cursor]) => (await getFeed(cursor as string | null, FEED_PAGE_SIZE)) as FeedPage,
+    { fallbackData, revalidateFirstPage: true, revalidateOnFocus: false },
   );
 
   const posts = data ? [...data.flatMap((page) => page.data)].reverse() : [];
