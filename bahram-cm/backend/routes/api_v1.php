@@ -493,13 +493,13 @@ Route::prefix('family')->group(function () {
     // Guest preview + member feed both hit index(); controller checks auth.
     Route::get('feed', [FamilyFeedController::class, 'index'])->middleware('throttle:120,1');
     Route::get('branding', [FamilyBrandingController::class, 'show'])->middleware('throttle:120,1');
-    Route::get('stories', [FamilyStoryController::class, 'index'])->middleware('throttle:120,1');
     Route::get('posts/{post}', [FamilyFeedController::class, 'show'])->whereNumber('post')->middleware('throttle:120,1');
     Route::get('pulse', [FamilyPulseController::class, 'index'])->middleware('throttle:60,1');
 
     Route::middleware(['auth:sanctum', 'student.active'])->group(function () {
         Route::get('me', [FamilyFeedController::class, 'me']);
         Route::get('pinned', [FamilyFeedController::class, 'pinned']);
+        Route::get('stories', [FamilyStoryController::class, 'index'])->middleware('throttle:120,1');
         Route::post('join', [FamilyFeedController::class, 'join'])->middleware('throttle:20,1');
         Route::post('onboarding/complete', [FamilyFeedController::class, 'completeOnboarding']);
 

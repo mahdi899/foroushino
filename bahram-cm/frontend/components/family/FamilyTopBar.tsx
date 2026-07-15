@@ -9,15 +9,22 @@ import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
 import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
 import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
 
-export function FamilyTopBar({ memberCount }: { memberCount?: number }) {
+export function FamilyTopBar({
+  memberCount,
+  canViewStories = true,
+}: {
+  memberCount?: number;
+  canViewStories?: boolean;
+}) {
   const { branding } = useFamilyBranding();
   const { hasStories, hasUnseen, markSeen } = useFamilyStoryState(branding);
   const [storyOpen, setStoryOpen] = useState(false);
+  const storiesAvailable = canViewStories && hasStories;
 
   const openStories = useCallback(() => {
-    if (!hasStories) return;
+    if (!storiesAvailable) return;
     setStoryOpen(true);
-  }, [hasStories]);
+  }, [storiesAvailable]);
 
   const handleStoriesFinished = useCallback(
     (storyIds: number[]) => {
@@ -35,8 +42,8 @@ export function FamilyTopBar({ memberCount }: { memberCount?: number }) {
             name={branding.profile_name}
             avatar={branding.community_avatar ?? branding.profile_avatar}
             size="lg"
-            hasStoryRing={hasStories}
-            onClick={hasStories ? openStories : undefined}
+            hasStoryRing={storiesAvailable}
+            onClick={storiesAvailable ? openStories : undefined}
           />
           <div className="min-w-0 leading-tight">
             <Link href="/family" className="block min-w-0">
@@ -44,7 +51,7 @@ export function FamilyTopBar({ memberCount }: { memberCount?: number }) {
             </Link>
             <FamilyStoryHint
               memberCount={memberCount}
-              hasUnseen={hasUnseen}
+              hasUnseen={canViewStories && hasUnseen}
               onOpenStories={openStories}
             />
           </div>
@@ -59,12 +66,14 @@ export function FamilyTopBar({ memberCount }: { memberCount?: number }) {
         </Link>
       </header>
 
-      <StoryViewer
-        open={storyOpen}
-        onClose={() => setStoryOpen(false)}
-        onFinished={handleStoriesFinished}
-        profileName={branding.profile_name}
-      />
+      {canViewStories && (
+        <StoryViewer
+          open={storyOpen}
+          onClose={() => setStoryOpen(false)}
+          onFinished={handleStoriesFinished}
+          profileName={branding.profile_name}
+        />
+      )}
     </>
   );
 }

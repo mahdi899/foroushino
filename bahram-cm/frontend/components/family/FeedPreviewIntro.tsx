@@ -25,7 +25,7 @@ export function FeedPreviewIntro({ mode }: { mode: 'guest' | 'join' }) {
           href="/family/login?redirect=/family"
           className="family-btn-primary mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold"
         >
-          ورود و دیدن همه پیام‌ها
+          عضویت در خانواده
         </Link>
       )}
     </div>
@@ -42,7 +42,7 @@ export function FeedPreviewGate({ mode }: { mode: 'guest' | 'join' }) {
         <p className="text-sm font-semibold text-bone">پیام‌های بیشتری در انتظارته</p>
         <p className="max-w-xs text-xs leading-relaxed text-bone/50">
           {mode === 'guest'
-            ? 'با ورود به همه پست‌ها، صداها، ویدیوها و نظرات دسترسی داری.'
+            ? 'با عضویت در خانواده به همه پست‌ها، صداها، ویدیوها و نظرات دسترسی داری.'
             : 'با پیوستن به خانواده، همه محتوا و تعاملات باز می‌شه.'}
         </p>
       </div>
@@ -51,7 +51,7 @@ export function FeedPreviewGate({ mode }: { mode: 'guest' | 'join' }) {
           href="/family/login?redirect=/family"
           className="family-btn-primary flex w-full items-center justify-center rounded-xl py-3 text-sm font-bold"
         >
-          ورود و دیدن همه پیام‌ها
+          عضویت در خانواده
         </Link>
       ) : (
         <a

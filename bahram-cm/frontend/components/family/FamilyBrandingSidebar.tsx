@@ -28,11 +28,12 @@ export function FamilyBrandingSidebar({
   const { hasStories, hasUnseen, markSeen } = useFamilyStoryState(branding);
   const [storyOpen, setStoryOpen] = useState(false);
   const communityAvatar = branding.community_avatar ?? branding.profile_avatar;
+  const storiesAvailable = isMember && hasStories;
 
   const openStories = useCallback(() => {
-    if (!hasStories) return;
+    if (!storiesAvailable) return;
     setStoryOpen(true);
-  }, [hasStories]);
+  }, [storiesAvailable]);
 
   const handleStoriesFinished = useCallback(
     (storyIds: number[]) => {
@@ -99,7 +100,7 @@ export function FamilyBrandingSidebar({
             />
 
             <div className="relative mb-6">
-              {!hasStories && (
+              {!storiesAvailable && (
                 <div
                   aria-hidden
                   className="absolute -inset-3 rounded-full bg-gradient-to-tr from-gold/30 via-transparent to-gold/10 opacity-70 blur-md"
@@ -109,9 +110,9 @@ export function FamilyBrandingSidebar({
                 name={branding.profile_name}
                 avatar={communityAvatar}
                 size="xl"
-                hasStoryRing={hasStories}
-                onClick={hasStories ? openStories : undefined}
-                className={hasStories ? undefined : 'shadow-[0_20px_50px_rgba(201,147,10,0.28)] ring-2 ring-gold/25'}
+                hasStoryRing={storiesAvailable}
+                onClick={storiesAvailable ? openStories : undefined}
+                className={storiesAvailable ? undefined : 'shadow-[0_20px_50px_rgba(201,147,10,0.28)] ring-2 ring-gold/25'}
               />
             </div>
 
@@ -121,7 +122,7 @@ export function FamilyBrandingSidebar({
             <FamilyStoryHint
               memberCount={memberCount}
               memberLabel="عضو فعال"
-              hasUnseen={hasUnseen}
+              hasUnseen={isMember && hasUnseen}
               onOpenStories={openStories}
               className="mt-3 text-[12px] text-bone/50"
             />
@@ -133,12 +134,14 @@ export function FamilyBrandingSidebar({
           </div>
         </div>
       </aside>
-      <StoryViewer
-        open={storyOpen}
-        onClose={() => setStoryOpen(false)}
-        onFinished={handleStoriesFinished}
-        profileName={branding.profile_name}
-      />
+      {isMember && (
+        <StoryViewer
+          open={storyOpen}
+          onClose={() => setStoryOpen(false)}
+          onFinished={handleStoriesFinished}
+          profileName={branding.profile_name}
+        />
+      )}
     </>
   );
 }

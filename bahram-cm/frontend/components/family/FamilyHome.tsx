@@ -46,7 +46,7 @@ export function FamilyHome({
   return (
     <FamilyShell>
       <div className="lg:hidden">
-        <FamilyTopBar memberCount={memberCount} />
+        <FamilyTopBar memberCount={memberCount} canViewStories={mode === 'member'} />
         <FamilyFeedChrome
           showPinned={mode === 'member' && !commentsTarget}
           showNowPlaying={false}
