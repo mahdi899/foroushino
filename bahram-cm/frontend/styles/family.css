@@ -222,6 +222,16 @@ html[data-theme='dark'] .family-app {
     conic-gradient(#ffffff var(--progress-deg, 0deg), rgba(255, 255, 255, 0.18) 0);
 }
 
+.family-video-play {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--color-ink);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.family-video-play:hover {
+  filter: brightness(1.03);
+}
+
 .family-voice {
   min-height: 3.75rem;
   background: var(--family-surface-soft);
