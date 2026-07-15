@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { getComments, postComment } from '@/lib/family/api';
 import type { FamilyComment } from '@/lib/family/types';
@@ -12,6 +12,14 @@ export function useFamilyComments(postId: number, enabled: boolean) {
     { revalidateOnFocus: false },
   );
   const [submitting, setSubmitting] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [extraComments, setExtraComments] = useState<FamilyComment[]>([]);
+  const [extraCursor, setExtraCursor] = useState<string | null>(null);
+
+  useEffect(() => {
+    setExtraComments([]);
+    setExtraCursor(null);
+  }, [postId]);
 
   const submit = useCallback(
     async (body: string) => {
@@ -29,10 +37,33 @@ export function useFamilyComments(postId: number, enabled: boolean) {
     [postId, mutate],
   );
 
+  const loadMore = useCallback(async () => {
+    const cursor = extraCursor ?? data?.meta.next_cursor;
+    if (!cursor || loadingMore) return;
+
+    setLoadingMore(true);
+    try {
+      const res = (await getComments(postId, cursor)) as {
+        data: FamilyComment[];
+        meta: { next_cursor: string | null };
+      };
+      setExtraComments((prev) => [...prev, ...res.data]);
+      setExtraCursor(res.meta.next_cursor);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [postId, data?.meta.next_cursor, extraCursor, loadingMore]);
+
+  const comments = [...(data?.data ?? []), ...extraComments];
+  const hasMore = Boolean(extraCursor ?? data?.meta.next_cursor);
+
   return {
-    comments: data?.data ?? [],
+    comments,
     isLoading,
     submitting,
     submit,
+    loadMore,
+    loadingMore,
+    hasMore,
   };
 }

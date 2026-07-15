@@ -4,28 +4,33 @@ namespace App\Services\Family;
 
 use App\Enums\Family\FamilyCommentStatus;
 use App\Enums\Family\FamilyPostStatus;
-use App\Models\FamilyActionResponse;
 use App\Models\FamilyComment;
+use App\Models\FamilyMembership;
 use App\Models\FamilyPost;
 use App\Models\FamilyReaction;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class FeedService
 {
     public function __construct(
         private readonly FamilyAccessService $access,
         private readonly PostAudienceResolver $audience,
-        private readonly ActionResultStatsBuilder $actionResults,
+        private readonly FamilyActionStatsService $actionStats,
         private readonly FamilyBrandingService $branding,
     ) {}
 
     /**
      * @return array{data: Collection<int, FamilyPost>, next_cursor: ?string, membership: \App\Models\FamilyMembership}
      */
-    public function forMember(User $user, ?string $cursor = null, ?int $limit = null): array
-    {
-        $membership = $this->access->requireMembership($user);
+    public function forMember(
+        User $user,
+        ?string $cursor = null,
+        ?int $limit = null,
+        ?FamilyMembership $membership = null,
+    ): array {
+        $membership = $membership ?? $this->access->requireMembership($user);
         $familyId = (int) $membership->family_id;
         $limit = $limit ?? (int) config('family.feed.per_page', 4);
 
@@ -92,7 +97,20 @@ class FeedService
     public function guestPreview(?int $limit = null): array
     {
         $limit = $limit ?? (int) config('family.feed.guest_preview_posts', 1);
+        $cacheKey = "family:guest_feed:{$limit}";
 
+        return Cache::remember(
+            $cacheKey,
+            config('family.cache.guest_feed_ttl', 30),
+            fn () => $this->buildGuestPreview($limit),
+        );
+    }
+
+    /**
+     * @return array{data: Collection<int, FamilyPost>, next_cursor: null}
+     */
+    private function buildGuestPreview(int $limit): array
+    {
         $posts = FamilyPost::query()
             ->where('status', FamilyPostStatus::Published->value)
             ->where('audience_mode', 'all')
@@ -120,9 +138,9 @@ class FeedService
     /**
      * @return Collection<int, FamilyPost>
      */
-    public function pinnedForMember(User $user): Collection
+    public function pinnedForMember(User $user, ?FamilyMembership $membership = null): Collection
     {
-        $membership = $this->access->requireMembership($user);
+        $membership = $membership ?? $this->access->requireMembership($user);
         $familyId = (int) $membership->family_id;
 
         $query = FamilyPost::query()
@@ -170,10 +188,27 @@ class FeedService
             return;
         }
 
+        $postIds = $posts->pluck('id');
+        $approved = FamilyCommentStatus::Approved->value;
+
+        $commentIds = FamilyComment::query()
+            ->from('family_comments as c1')
+            ->select('c1.id')
+            ->whereIn('c1.post_id', $postIds)
+            ->where('c1.family_id', $familyId)
+            ->where('c1.status', $approved)
+            ->whereRaw(
+                '(SELECT COUNT(*) FROM family_comments c2
+                  WHERE c2.post_id = c1.post_id
+                    AND c2.family_id = c1.family_id
+                    AND c2.status = ?
+                    AND c2.id > c1.id) < 3',
+                [$approved],
+            )
+            ->pluck('id');
+
         $grouped = FamilyComment::query()
-            ->whereIn('post_id', $posts->pluck('id'))
-            ->where('family_id', $familyId)
-            ->where('status', FamilyCommentStatus::Approved->value)
+            ->whereIn('id', $commentIds)
             ->with(['user:id,name', 'user.profile'])
             ->orderByDesc('id')
             ->get()
@@ -193,26 +228,11 @@ class FeedService
             return;
         }
 
-        $actionIds = $posts
-            ->flatMap(fn (FamilyPost $post) => $post->actions->pluck('id'))
-            ->unique()
-            ->values();
-
-        if ($actionIds->isEmpty()) {
-            return;
-        }
-
-        $responses = FamilyActionResponse::query()
-            ->where('family_id', $familyId)
-            ->whereIn('action_id', $actionIds)
-            ->get(['action_id', 'value'])
-            ->groupBy('action_id');
-
         foreach ($posts as $post) {
             foreach ($post->actions as $action) {
                 $action->setAttribute(
                     'result_stats',
-                    $this->actionResults->build($action, $responses->get($action->id, collect()))
+                    $this->actionStats->forAction($familyId, $action),
                 );
             }
         }

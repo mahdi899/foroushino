@@ -13,7 +13,9 @@ function formatBytes(bytes: number): string {
 }
 
 export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId: number }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const preloadRef = useRef<HTMLVideoElement | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
   const [phase, setPhase] = useState<'loading' | 'ready'>('loading');
   const [posterReady, setPosterReady] = useState(false);
   const [bufferRatio, setBufferRatio] = useState(0);
@@ -21,7 +23,22 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
-    if (!media.url) return;
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setIsVisible(true);
+      },
+      { rootMargin: '240px' },
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible || !media.url) return;
 
     let cancelled = false;
     setPhase('loading');
@@ -62,7 +79,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       setBufferRatio(1);
     };
 
-    video.preload = 'auto';
+    video.preload = 'metadata';
     video.addEventListener('progress', updateBuffer);
     video.addEventListener('canplaythrough', markReady);
     video.addEventListener('loadedmetadata', updateBuffer);
@@ -74,7 +91,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       video.removeEventListener('canplaythrough', markReady);
       video.removeEventListener('loadedmetadata', updateBuffer);
     };
-  }, [media.url]);
+  }, [isVisible, media.url]);
 
   if (!media.url) {
     return (
@@ -94,6 +111,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   return (
     <>
       <div
+        ref={containerRef}
         className={cn(
           'family-feed-video relative mx-auto w-full overflow-hidden rounded-2xl bg-[var(--family-surface-soft)]',
           isPortrait ? 'family-feed-video--portrait' : 'family-feed-video--landscape',
@@ -102,10 +120,10 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       >
         <video
           ref={preloadRef}
-          src={media.url}
+          src={isVisible ? media.url : undefined}
           playsInline
           muted
-          preload="auto"
+          preload={isVisible ? 'metadata' : 'none'}
           onLoadedMetadata={(e) => {
             const video = e.currentTarget;
             try {

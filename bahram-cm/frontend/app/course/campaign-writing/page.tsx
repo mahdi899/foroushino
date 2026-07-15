@@ -251,7 +251,10 @@ const faqs = [
   },
 ];
 
-export default function CourseCampaignWritingPage() {
+export default async function CourseCampaignWritingPage() {
+  const productResult = await getProductBySlug(CAMPAIGN_WRITING_SLUG);
+  const alreadyPurchased = productResult.ok ? (productResult.data.already_purchased ?? false) : false;
+
   return (
     <main id="main-content" className="relative min-w-0 max-w-full overflow-x-clip pb-20 md:pb-0">
       <link
@@ -287,23 +290,17 @@ export default function CourseCampaignWritingPage() {
               </div>
             </div>
             <div className="flex w-full max-w-lg flex-col gap-3 sm:max-w-xl sm:flex-row sm:items-stretch sm:justify-center md:max-w-2xl md:gap-4">
-              <Suspense
-                fallback={
-                  <ProductPurchaseCta
-                    productSlug={CAMPAIGN_WRITING_SLUG}
-                    alreadyPurchased={false}
-                    location="campaign_writing_hero"
-                    variant="vip"
-                    withArrow
-                    size="lg"
-                    className={heroPurchaseCtaClassName}
-                  >
-                    خرید
-                  </ProductPurchaseCta>
-                }
+              <ProductPurchaseCta
+                productSlug={CAMPAIGN_WRITING_SLUG}
+                alreadyPurchased={alreadyPurchased}
+                location="campaign_writing_hero"
+                variant="vip"
+                withArrow
+                size="lg"
+                className={heroPurchaseCtaClassName}
               >
-                <CampaignWritingHeroPurchaseCta />
-              </Suspense>
+                خرید
+              </ProductPurchaseCta>
               <LinkButton
                 href="#curriculum"
                 variant="ghost"
@@ -326,25 +323,6 @@ export default function CourseCampaignWritingPage() {
         <CampaignWritingPageContent />
       </Suspense>
     </main>
-  );
-}
-
-async function CampaignWritingHeroPurchaseCta() {
-  const productResult = await getProductBySlug(CAMPAIGN_WRITING_SLUG);
-  const alreadyPurchased = productResult.ok ? (productResult.data.already_purchased ?? false) : false;
-
-  return (
-    <ProductPurchaseCta
-      productSlug={CAMPAIGN_WRITING_SLUG}
-      alreadyPurchased={alreadyPurchased}
-      location="campaign_writing_hero"
-      variant="vip"
-      withArrow
-      size="lg"
-      className={heroPurchaseCtaClassName}
-    >
-      خرید
-    </ProductPurchaseCta>
   );
 }
 

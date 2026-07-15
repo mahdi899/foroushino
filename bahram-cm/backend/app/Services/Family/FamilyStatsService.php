@@ -198,4 +198,48 @@ class FamilyStatsService
             // Redis optional for hot counters — MySQL remains source of truth.
         }
     }
+
+    /**
+     * @return array<string, int>
+     */
+    public function feedStats(?FamilyPostStat $stat, int $postId, int $familyId): array
+    {
+        $fields = [
+            'fire' => 'fire_count',
+            'heart' => 'heart_count',
+            'target' => 'target_count',
+            'clap' => 'clap_count',
+            'thumbs_up' => 'thumbs_up_count',
+            'laugh' => 'laugh_count',
+            'sad' => 'sad_count',
+            'party' => 'party_count',
+            'star' => 'star_count',
+            'rocket' => 'rocket_count',
+            'eyes' => 'eyes_count',
+            'pray' => 'pray_count',
+            'muscle' => 'muscle_count',
+            'hundred' => 'hundred_count',
+            'wink' => 'wink_count',
+            'comments' => 'approved_comments_count',
+            'action_responses' => 'action_responses_count',
+        ];
+
+        $result = [];
+        foreach ($fields as $key => $column) {
+            $db = (int) ($stat?->$column ?? 0);
+            $hot = $this->readHotCounter($postId, $familyId, $column);
+            $result[$key] = max(0, $db + $hot);
+        }
+
+        return $result;
+    }
+
+    private function readHotCounter(int $postId, int $familyId, string $field): int
+    {
+        try {
+            return (int) Cache::get("family:stats:{$postId}:{$familyId}:{$field}", 0);
+        } catch (\Throwable) {
+            return 0;
+        }
+    }
 }

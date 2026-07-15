@@ -64,6 +64,15 @@ return [
         'guest_preview_partial' => true,
     ],
 
+    'cache' => [
+        'branding_ttl' => (int) env('FAMILY_CACHE_BRANDING_TTL', 300),
+        'stories_flag_ttl' => (int) env('FAMILY_CACHE_STORIES_FLAG_TTL', 60),
+        'guest_feed_ttl' => (int) env('FAMILY_CACHE_GUEST_FEED_TTL', 30),
+        'pulse_ttl' => (int) env('FAMILY_CACHE_PULSE_TTL', 60),
+        'member_count_ttl' => (int) env('FAMILY_CACHE_MEMBER_COUNT_TTL', 300),
+        'action_stats_ttl' => (int) env('FAMILY_CACHE_ACTION_STATS_TTL', 60),
+    ],
+
     'onboarding' => [
         'title' => 'خوش اومدی {name}.',
         'body' => "اینجا فقط قرار نیست محتوا ببینی.\n\nحرف‌هایی رو اینجا می‌گم که شاید جای دیگه نگم.\n\nخانواده‌ای.\n\nپس فقط تماشاچی نباش.\n\n— بهرام",

@@ -14,6 +14,12 @@ async function loadInitialFeed(): Promise<FamilyFeedResponse | null> {
   }
 }
 
+async function loadMe(): Promise<{ data: FamilyMeResponse }> {
+  return familyFetch<{ data: FamilyMeResponse }>('/me').catch(() => ({
+    data: { is_member: false, display_name: 'خانواده داداش بهرام' } as FamilyMeResponse,
+  }));
+}
+
 export default async function FamilyPage() {
   const user = await getCurrentStudent();
 
@@ -22,16 +28,7 @@ export default async function FamilyPage() {
     return <FamilyHome mode="guest" needsOnboarding={false} initialFeed={initialFeed} />;
   }
 
-  let me = await familyFetch<{ data: FamilyMeResponse }>('/me').catch(() => ({
-    data: { is_member: false, display_name: 'خانواده داداش بهرام' } as FamilyMeResponse,
-  }));
-
-  if (!me.data.is_member) {
-    await familyFetch('/join', { method: 'POST', body: {} }).catch(() => undefined);
-    me = await familyFetch<{ data: FamilyMeResponse }>('/me').catch(() => me);
-  }
-
-  const initialFeed = await loadInitialFeed();
+  const [me, initialFeed] = await Promise.all([loadMe(), loadInitialFeed()]);
 
   if (!me.data.is_member) {
     return <FamilyHome mode="join" needsOnboarding={false} initialFeed={initialFeed} />;

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\V1\Family;
 
+use App\Services\Family\FamilyStatsService;
 use App\Support\FamilyMediaUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -14,6 +15,29 @@ class FamilyPostResource extends JsonResource
         $stat = $this->relationLoaded('stats')
             ? $this->stats->first()
             : null;
+
+        $familyId = (int) ($stat?->family_id ?? 0);
+        $stats = $familyId > 0
+            ? app(FamilyStatsService::class)->feedStats($stat, (int) $this->id, $familyId)
+            : [
+                'fire' => 0,
+                'heart' => 0,
+                'target' => 0,
+                'clap' => 0,
+                'thumbs_up' => 0,
+                'laugh' => 0,
+                'sad' => 0,
+                'party' => 0,
+                'star' => 0,
+                'rocket' => 0,
+                'eyes' => 0,
+                'pray' => 0,
+                'muscle' => 0,
+                'hundred' => 0,
+                'wink' => 0,
+                'comments' => (int) ($stat?->approved_comments_count ?? 0),
+                'action_responses' => (int) ($stat?->action_responses_count ?? 0),
+            ];
 
         return [
             'id' => $this->id,
@@ -40,25 +64,7 @@ class FamilyPostResource extends JsonResource
                     'user_name' => $this->replyToComment->user?->name,
                 ]
             ),
-            'stats' => [
-                'fire' => (int) ($stat?->fire_count ?? 0),
-                'heart' => (int) ($stat?->heart_count ?? 0),
-                'target' => (int) ($stat?->target_count ?? 0),
-                'clap' => (int) ($stat?->clap_count ?? 0),
-                'thumbs_up' => (int) ($stat?->thumbs_up_count ?? 0),
-                'laugh' => (int) ($stat?->laugh_count ?? 0),
-                'sad' => (int) ($stat?->sad_count ?? 0),
-                'party' => (int) ($stat?->party_count ?? 0),
-                'star' => (int) ($stat?->star_count ?? 0),
-                'rocket' => (int) ($stat?->rocket_count ?? 0),
-                'eyes' => (int) ($stat?->eyes_count ?? 0),
-                'pray' => (int) ($stat?->pray_count ?? 0),
-                'muscle' => (int) ($stat?->muscle_count ?? 0),
-                'hundred' => (int) ($stat?->hundred_count ?? 0),
-                'wink' => (int) ($stat?->wink_count ?? 0),
-                'comments' => (int) ($stat?->approved_comments_count ?? 0),
-                'action_responses' => (int) ($stat?->action_responses_count ?? 0),
-            ],
+            'stats' => $stats,
             'user_reaction' => $this->resource->getAttribute('user_reaction'),
             'comment_preview' => $this->when(
                 $this->resource->getAttribute('comment_preview') !== null,

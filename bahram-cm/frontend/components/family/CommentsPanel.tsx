@@ -55,7 +55,7 @@ export function CommentsPanel({
   hideTitle = false,
   className,
 }: CommentsPanelProps) {
-  const { comments, isLoading, submitting, submit } = useFamilyComments(postId, true);
+  const { comments, isLoading, submitting, submit, loadMore, loadingMore, hasMore } = useFamilyComments(postId, true);
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [justSent, setJustSent] = useState(false);
@@ -131,6 +131,18 @@ export function CommentsPanel({
           <p className="py-12 text-center text-sm text-bone/50">هنوز نظری ثبت نشده. اولین نفر باش.</p>
         ) : (
           <ul className="space-y-4 pb-2">
+            {hasMore && (
+              <li className="flex justify-center py-2">
+                <button
+                  type="button"
+                  onClick={() => void loadMore()}
+                  disabled={loadingMore}
+                  className="rounded-full border border-[var(--family-border-subtle)] px-4 py-1.5 text-xs text-bone/65 transition hover:bg-white/[0.04] disabled:opacity-50"
+                >
+                  {loadingMore ? 'در حال بارگذاری…' : 'نظرات قدیمی‌تر'}
+                </button>
+              </li>
+            )}
             {orderedComments.map((comment) => (
               <CommentRow key={comment.id} comment={comment} avatarSize={avatarSize} />
             ))}

@@ -14,6 +14,7 @@ class FamilyAssignmentService
 {
     public function __construct(
         private readonly FamilyCreationService $creation,
+        private readonly FamilyMemberCountService $memberCounts,
     ) {}
 
     /**
@@ -167,6 +168,8 @@ class FamilyAssignmentService
                 ->whereKey($family->id)
                 ->lockForUpdate()
                 ->increment('member_count');
+
+            $this->memberCounts->bump();
 
             $family->refresh();
 

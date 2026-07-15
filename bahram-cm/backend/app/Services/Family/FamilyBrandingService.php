@@ -4,20 +4,29 @@ namespace App\Services\Family;
 
 use App\Models\FamilyBranding;
 use App\Support\FamilyMediaUrl;
+use Illuminate\Support\Facades\Cache;
 
 final class FamilyBrandingService
 {
+    private const CACHE_KEY = 'family:branding:public';
+
     /** @return array{display_name: string, profile_name: string, profile_avatar: ?string, community_avatar: ?string} */
     public function publicPayload(): array
     {
-        $branding = $this->get();
+        return Cache::remember(
+            self::CACHE_KEY,
+            config('family.cache.branding_ttl', 300),
+            function () {
+                $branding = $this->get();
 
-        return [
-            'display_name' => $branding->display_name,
-            'profile_name' => $branding->profile_name,
-            'profile_avatar' => FamilyMediaUrl::fromPath($branding->profile_avatar_path),
-            'community_avatar' => FamilyMediaUrl::fromPath($branding->community_avatar_path),
-        ];
+                return [
+                    'display_name' => $branding->display_name,
+                    'profile_name' => $branding->profile_name,
+                    'profile_avatar' => FamilyMediaUrl::fromPath($branding->profile_avatar_path),
+                    'community_avatar' => FamilyMediaUrl::fromPath($branding->community_avatar_path),
+                ];
+            },
+        );
     }
 
     public function get(): FamilyBranding
@@ -48,6 +57,8 @@ final class FamilyBrandingService
                 ? $data['community_avatar_path']
                 : $branding->community_avatar_path,
         ]);
+
+        Cache::forget(self::CACHE_KEY);
 
         return $branding->fresh();
     }

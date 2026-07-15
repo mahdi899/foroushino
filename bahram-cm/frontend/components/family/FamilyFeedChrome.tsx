@@ -37,7 +37,7 @@ export function FamilyFeedChrome({
     <>
       {showPinBar && (
         <div className="z-30 shrink-0">
-          <PinnedMessageBar onOpenComments={onOpenComments} />
+          <PinnedMessageBar pinned={pinned} onOpenComments={onOpenComments} />
         </div>
       )}
       {showNowBar && <NowPlayingBar overlay={overlayNowPlaying} />}

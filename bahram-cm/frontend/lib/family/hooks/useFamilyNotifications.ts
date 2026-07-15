@@ -2,11 +2,14 @@
 
 import useSWR from 'swr';
 import { getNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead } from '@/lib/family/api';
+import { usePageVisible } from '@/lib/family/hooks/usePageVisible';
 import type { FamilyNotification } from '@/lib/family/types';
 
 export function useFamilyUnreadCount(enabled: boolean) {
+  const pageVisible = usePageVisible();
+
   const { data, mutate } = useSWR(
-    enabled ? 'family-notifications-unread' : null,
+    enabled && pageVisible ? 'family-notifications-unread' : null,
     async () => {
       try {
         return (await getUnreadNotificationCount()).data;
@@ -14,7 +17,7 @@ export function useFamilyUnreadCount(enabled: boolean) {
         return { unread_count: 0 };
       }
     },
-    { refreshInterval: 60_000, revalidateOnFocus: true },
+    { refreshInterval: pageVisible ? 60_000 : 0, revalidateOnFocus: true },
   );
 
   return { unreadCount: data?.unread_count ?? 0, refresh: mutate };

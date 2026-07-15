@@ -5,11 +5,11 @@ namespace App\Http\Controllers\Api\V1\Family;
 use App\Actions\Family\JoinFamily;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\Family\FamilyPostResource;
-use App\Models\Family;
 use App\Models\FamilyPost;
 use App\Services\Family\EntryContext;
 use App\Services\Family\FamilyAccessService;
 use App\Services\Family\FamilyBrandingService;
+use App\Services\Family\FamilyMemberCountService;
 use App\Services\Family\FamilyStoryService;
 use App\Services\Family\FeedService;
 use App\Services\Family\PostAudienceResolver;
@@ -25,6 +25,7 @@ class FeedController extends Controller
         private readonly PostAudienceResolver $audience,
         private readonly FamilyBrandingService $branding,
         private readonly FamilyStoryService $stories,
+        private readonly FamilyMemberCountService $memberCounts,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -37,7 +38,7 @@ class FeedController extends Controller
         if (! $membership) {
             $preview = $this->feed->guestPreview();
             $branding = $this->branding->publicPayload();
-            $memberCount = (int) Family::query()->sum('member_count');
+            $memberCount = $this->memberCounts->total();
 
             return ApiResponse::success(
                 FamilyPostResource::collection($preview['data'])->resolve(),
@@ -62,6 +63,7 @@ class FeedController extends Controller
             $user,
             $request->query('cursor'),
             $limit,
+            $membership,
         );
 
         $family = $result['membership']->family;

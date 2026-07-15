@@ -7,23 +7,27 @@ import { Pin, X } from 'lucide-react';
 import { PostCard } from '@/components/family/PostCard';
 import { getPinnedPosts } from '@/lib/family/api';
 import { getPinnedPreview } from '@/lib/family/pinnedPreview';
-import type { FamilyComment } from '@/lib/family/types';
+import type { FamilyComment, FamilyPost } from '@/lib/family/types';
 
 export function PinnedMessageBar({
+  pinned: pinnedProp,
   onOpenComments,
 }: {
+  pinned?: FamilyPost;
   onOpenComments?: (handlers: {
     postId: number;
     onCommentAdded: (comment: FamilyComment) => void;
   }) => void;
 }) {
-  const { data } = useSWR('family-pinned', async () => (await getPinnedPosts()).data, {
-    revalidateOnFocus: true,
-  });
+  const { data } = useSWR(
+    pinnedProp ? null : 'family-pinned',
+    async () => (await getPinnedPosts()).data,
+    { revalidateOnFocus: true },
+  );
 
   const [expanded, setExpanded] = useState(false);
 
-  const pinned = data?.[0];
+  const pinned = pinnedProp ?? data?.[0];
   if (!pinned) return null;
 
   const { label, thumbnail } = getPinnedPreview(pinned);

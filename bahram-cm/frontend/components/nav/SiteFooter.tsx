@@ -70,8 +70,8 @@ export function SiteFooter() {
           <div className="md:col-span-7 md:grid md:grid-cols-2 md:gap-x-12 md:gap-y-8">
             {/* Mobile — compact */}
             <div className="md:hidden">
-              <div className="flex justify-center">
-                <Logo size="footer" className="text-base" />
+              <div className="flex justify-center py-2">
+                <Logo size="footer-mobile" />
               </div>
               <div className="mt-4 grid grid-cols-4 gap-2">
                 {site.footer.contact.map((link) => {

@@ -108,18 +108,17 @@ export function VoiceBlock({
   const scrubbingRef = useRef(false);
   const playingBeforeScrubRef = useRef(false);
   const seekPositionRef = useRef(0);
-  const blobUrlRef = useRef<string | null>(null);
-  const blobReadyRef = useRef(false);
-  const blobPromiseRef = useRef<Promise<void> | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
   const { activeId, register, unregister, requestPlay, notifyPaused, setNowPlaying, updateNowPlayingProgress } =
     useFamilyMediaPlayer();
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [scrubVisual, setScrubVisual] = useState<number | null>(null);
   const [duration, setDuration] = useState(media.duration ?? 0);
-  const [audioReady, setAudioReady] = useState(false);
+  const [audioReady, setAudioReady] = useState(Boolean(media.duration && media.duration > 0));
   const [playbackRate, setPlaybackRate] = useState<PlaybackSpeed>(1);
   const lastReported = useRef(0);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const el = audioRef.current;
@@ -138,76 +137,60 @@ export function VoiceBlock({
   }, [activeId, media.id]);
 
   useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setIsVisible(true);
+      },
+      { rootMargin: '200px' },
+    );
+
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
     if (!media.url) return;
 
-    let cancelled = false;
-    blobReadyRef.current = false;
-    setAudioReady(false);
-
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
-    }
-
     const el = audioRef.current;
-    if (el) {
-      el.src = media.url;
+    if (!el) return;
+
+    if (!isVisible) {
+      el.removeAttribute('src');
+      el.load();
+      return;
     }
 
-    const promise = (async () => {
-      try {
-        const response = await fetch(media.url!);
-        if (!response.ok) throw new Error('voice fetch failed');
-        const blob = await response.blob();
-        if (cancelled) return;
+    el.src = media.url;
+    el.load();
 
-        const objectUrl = URL.createObjectURL(blob);
-        blobUrlRef.current = objectUrl;
-
-        const audio = audioRef.current;
-        if (audio) {
-          const savedTime = audio.currentTime || seekPositionRef.current || 0;
-          const wasPlaying = !audio.paused;
-          audio.src = objectUrl;
-          await waitForMetadata(audio);
-          if (savedTime > 0) {
-            const actual = await seekAudio(audio, savedTime);
-            seekPositionRef.current = actual;
-            setProgress(actual);
-          }
-          if (wasPlaying) {
-            try {
-              await audio.play();
-            } catch {
-              // autoplay blocked
-            }
-          }
-        }
-
-        blobReadyRef.current = true;
-        if (!cancelled) setAudioReady(true);
-      } catch {
-        blobReadyRef.current = true;
-        if (!cancelled) setAudioReady(true);
-      }
-    })();
-
-    blobPromiseRef.current = promise;
+    const markReady = () => setAudioReady(true);
+    el.addEventListener('loadedmetadata', markReady);
+    el.addEventListener('durationchange', markReady);
+    if (el.readyState >= HTMLMediaElement.HAVE_METADATA) markReady();
 
     return () => {
-      cancelled = true;
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
+      el.removeEventListener('loadedmetadata', markReady);
+      el.removeEventListener('durationchange', markReady);
     };
-  }, [media.url]);
+  }, [isVisible, media.url]);
 
   const ensureAudioReady = useCallback(async () => {
-    if (blobPromiseRef.current) {
-      await blobPromiseRef.current;
+    if (!isVisible) setIsVisible(true);
+
+    const el = audioRef.current;
+    if (!el || !media.url) return;
+
+    if (!el.src) {
+      el.src = media.url;
+      el.load();
     }
-  }, []);
+
+    await waitForMetadata(el);
+    setAudioReady(true);
+  }, [isVisible, media.url]);
 
   const resolvedDuration = useMemo(() => {
     if (duration > 0) return duration;
@@ -363,6 +346,7 @@ export function VoiceBlock({
 
   return (
     <div
+      ref={containerRef}
       dir="ltr"
       className={cn(
         'family-voice flex w-full max-w-full items-center gap-3 overflow-hidden rounded-2xl px-3 py-3 sm:gap-3.5 sm:px-4 sm:py-3.5',
@@ -371,7 +355,7 @@ export function VoiceBlock({
     >
       <audio
         ref={audioRef}
-        preload="auto"
+        preload="none"
         onPlay={() => {
           setPlaying(true);
           const el = audioRef.current;

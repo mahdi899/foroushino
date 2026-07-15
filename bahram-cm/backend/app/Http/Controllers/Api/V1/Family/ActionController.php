@@ -8,6 +8,7 @@ use App\Jobs\Family\ProcessActionFollowUpJob;
 use App\Models\FamilyAction;
 use App\Models\FamilyActionResponse;
 use App\Services\Family\FamilyAccessService;
+use App\Services\Family\FamilyActionStatsService;
 use App\Services\Family\FamilyStatsService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -19,6 +20,7 @@ class ActionController extends Controller
     public function __construct(
         private readonly FamilyAccessService $access,
         private readonly FamilyStatsService $stats,
+        private readonly FamilyActionStatsService $actionStats,
     ) {}
 
     public function respond(Request $request, FamilyAction $action): JsonResponse
@@ -52,6 +54,7 @@ class ActionController extends Controller
 
         if ($created) {
             $this->stats->incrementActionResponses((int) $action->post_id, (int) $membership->family_id);
+            $this->actionStats->forget((int) $membership->family_id, (int) $action->id);
 
             if ($action->follow_up_after_minutes) {
                 ProcessActionFollowUpJob::dispatch($response->id)

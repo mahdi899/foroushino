@@ -12,27 +12,39 @@ export function Logo({
   showWordmark = true,
 }: {
   className?: string;
-  /** `footer`: compact on phone, full scale from `md` up */
-  size?: "sm" | "md" | "footer";
+  /** `footer`: horizontal on desktop. `footer-mobile`: large stacked mark on phone footer. */
+  size?: "sm" | "md" | "footer" | "footer-mobile";
   showWordmark?: boolean;
 }) {
+  const isFooterMobile = size === "footer-mobile";
+
   const markSize =
-    size === "sm" ? "h-8 w-8" : size === "footer" ? "h-8 w-8 md:h-9 md:w-9" : "h-9 w-9";
+    size === "sm"
+      ? "h-8 w-8"
+      : isFooterMobile
+        ? "h-[7.5rem] w-[7.5rem] sm:h-32 sm:w-32"
+        : size === "footer"
+          ? "h-9 w-9"
+          : "h-9 w-9";
 
   return (
     <Link
       href="/"
       aria-label="بهرام رستمی — صفحه‌ی نخست"
       className={cn(
-        "group inline-flex items-center gap-2.5 text-bone",
+        "group inline-flex w-fit max-w-full text-bone",
+        isFooterMobile
+          ? "flex-col items-center gap-3 text-center"
+          : "flex-row flex-nowrap items-center gap-2 md:gap-2.5",
         className,
       )}
     >
       <span
         className={cn(
-          "relative inline-flex shrink-0 overflow-hidden rounded-full",
+          "relative block shrink-0 overflow-hidden rounded-full",
           markSize,
           brandLogoDisplay.containerClass,
+          isFooterMobile && "ring-2 ring-gold/35 shadow-[0_16px_48px_rgba(201,147,10,0.24)]",
         )}
         aria-hidden
       >
@@ -48,12 +60,14 @@ export function Logo({
       {showWordmark ? (
         <span
           className={cn(
-            "font-display font-bold tracking-tight",
+            "whitespace-nowrap font-display font-bold tracking-tight",
             size === "sm"
               ? "text-base"
-              : size === "footer"
-                ? "text-base md:text-xl"
-                : "text-lg md:text-xl",
+              : isFooterMobile
+                ? "text-base"
+                : size === "footer"
+                  ? "text-xl"
+                  : "text-lg md:text-xl",
           )}
         >
           بهرام رستمی

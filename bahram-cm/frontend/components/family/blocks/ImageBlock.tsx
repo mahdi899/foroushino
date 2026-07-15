@@ -127,6 +127,8 @@ export function ImageBlock({
           <img
             src={media.url}
             alt=""
+            loading="lazy"
+            decoding="async"
             className={cn(
               'absolute inset-0 h-full w-full object-cover transition-[filter,transform] duration-500 ease-out',
               isBlurred ? 'scale-110 blur-2xl' : 'scale-100 blur-0',
