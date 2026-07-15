@@ -1,5 +1,6 @@
 import { LinkButton } from '@/components/ui/Button';
 import { Eyebrow } from '@/components/ui/Eyebrow';
+import { Marquee } from '@/components/motion/Marquee';
 import { Reveal } from '@/components/motion/Reveal';
 import { getFamilyPulse } from '@/lib/family/pulse';
 
@@ -8,33 +9,47 @@ export async function FamilyPulseSection() {
 
   if (pulse.length === 0) return null;
 
+  const items = pulse.slice(0, 8);
+
   return (
-    <section className="relative isolate mx-auto w-full max-w-5xl px-5 py-16 sm:py-20">
+    <section
+      aria-label="خانواده داداش بهرام"
+      className="relative isolate w-full overflow-hidden py-8 sm:py-10"
+    >
       <Reveal>
-        <div className="text-center">
+        <div className="px-5 text-center">
           <Eyebrow className="justify-center">خانواده داداش بهرام</Eyebrow>
-          <h2 className="mt-3 font-display text-2xl font-bold text-bone sm:text-3xl">
-            صدای واقعی خانواده
-          </h2>
-          <p className="mx-auto mt-2 max-w-md text-sm text-bone-dim">
-            نمونه‌ای از گفتگوهای روزمره‌ای که داداش بهرام مستقیم با اعضای خانواده‌اش داره.
-          </p>
         </div>
       </Reveal>
 
-      <div className="mt-8 grid gap-3 sm:grid-cols-3">
-        {pulse.slice(0, 6).map((item, i) => (
-          <Reveal key={item.id} delay={i * 0.05}>
-            <blockquote className="h-full rounded-2xl border border-bone/10 bg-charcoal-2/60 p-4">
-              <p className="line-clamp-4 text-sm leading-6 text-bone/85">{item.body}</p>
-              <footer className="mt-3 text-xs font-medium text-gold/80">— {item.name}</footer>
+      <div className="relative mt-5 sm:mt-6">
+        <div
+          className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-10 bg-gradient-to-r from-[var(--color-charcoal)] to-transparent sm:w-16"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 z-[1] w-10 bg-gradient-to-l from-[var(--color-charcoal)] to-transparent sm:w-16"
+          aria-hidden
+        />
+        <Marquee speed={48} className="py-1">
+          {items.map((item) => (
+            <blockquote
+              key={item.id}
+              className="max-w-[16.5rem] shrink-0 border-s border-gold/30 ps-4 sm:max-w-[20rem]"
+            >
+              <p className="line-clamp-3 text-start text-sm leading-6 text-bone/80">
+                {item.body}
+              </p>
+              <footer className="mt-2 text-start text-xs font-medium text-gold/75">
+                — {item.name}
+              </footer>
             </blockquote>
-          </Reveal>
-        ))}
+          ))}
+        </Marquee>
       </div>
 
-      <Reveal delay={0.2}>
-        <div className="mt-8 text-center">
+      <Reveal delay={0.12}>
+        <div className="mt-6 px-5 text-center sm:mt-8">
           <LinkButton href="/family" variant="primary" withArrow>
             بپیوند به خانواده
           </LinkButton>

@@ -51,6 +51,9 @@ export function HomeBelowFoldSections({ deferBelowFold = true }: { deferBelowFol
   return (
     <main id="main-content" className="relative isolate min-w-0 w-full max-w-full overflow-x-clip">
       <HeroCinematic />
+      <SectionReveal>
+        <FamilyPulseSection />
+      </SectionReveal>
       <Suspense fallback={<SectionFallback />}>
         <MainPathsSection />
       </Suspense>
@@ -62,9 +65,6 @@ export function HomeBelowFoldSections({ deferBelowFold = true }: { deferBelowFol
       </SectionReveal>
       <SectionReveal>
         <Academy />
-      </SectionReveal>
-      <SectionReveal>
-        <FamilyPulseSection />
       </SectionReveal>
       <SectionReveal>
         <Founder />

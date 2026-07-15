@@ -22,7 +22,7 @@ export function Logo({
     size === "sm"
       ? "h-8 w-8"
       : isFooterMobile
-        ? "h-[7.5rem] w-[7.5rem] sm:h-32 sm:w-32"
+        ? "h-40 w-40 sm:h-44 sm:w-44"
         : size === "footer"
           ? "h-9 w-9"
           : "h-9 w-9";
@@ -64,7 +64,7 @@ export function Logo({
             size === "sm"
               ? "text-base"
               : isFooterMobile
-                ? "text-base"
+                ? "text-lg"
                 : size === "footer"
                   ? "text-xl"
                   : "text-lg md:text-xl",
