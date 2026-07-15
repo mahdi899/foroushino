@@ -5,6 +5,7 @@ namespace App\Services\Family;
 use App\Enums\Family\FamilyReactionType;
 use App\Models\FamilyComment;
 use App\Models\FamilyPostStat;
+use App\Models\FamilyPostView;
 use App\Models\FamilyReaction;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +34,7 @@ class FamilyStatsService
                 'wink_count' => 0,
                 'approved_comments_count' => 0,
                 'action_responses_count' => 0,
+                'views_count' => 0,
             ]
         );
     }
@@ -103,6 +105,32 @@ class FamilyStatsService
                 'action_responses_count' => $this->nonNegativeIncrement('action_responses_count', $delta),
                 'updated_at' => now(),
             ]);
+    }
+
+    public function recordView(int $postId, int $familyId, int $userId): int
+    {
+        $now = now();
+        $inserted = FamilyPostView::query()->insertOrIgnore([
+            'post_id' => $postId,
+            'family_id' => $familyId,
+            'user_id' => $userId,
+            'viewed_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $stat = $this->ensureStatRow($postId, $familyId);
+
+        if ($inserted > 0) {
+            FamilyPostStat::query()
+                ->whereKey($stat->id)
+                ->update([
+                    'views_count' => $this->nonNegativeIncrement('views_count', 1),
+                    'updated_at' => now(),
+                ]);
+        }
+
+        return (int) FamilyPostStat::query()->whereKey($stat->id)->value('views_count');
     }
 
     /**
@@ -222,6 +250,7 @@ class FamilyStatsService
             'wink' => 'wink_count',
             'comments' => 'approved_comments_count',
             'action_responses' => 'action_responses_count',
+            'views' => 'views_count',
         ];
 
         $result = [];

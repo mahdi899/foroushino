@@ -509,10 +509,48 @@ html[data-theme='dark'] .family-app {
 }
 
 .family-action-panel {
-  border: 1px solid var(--family-border);
-  background: var(--family-surface-soft);
+  border: 1px solid color-mix(in oklab, var(--family-accent) 18%, var(--family-border));
+  border-inline-start: 3px solid color-mix(in oklab, var(--family-accent) 55%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--family-accent) 7%, var(--family-surface-soft)),
+    var(--family-surface-soft)
+  );
   border-radius: 1rem;
-  padding: 1rem;
+  padding: 0.875rem 1rem;
+}
+
+.family-action-panel--done {
+  border-inline-start-color: color-mix(in oklab, var(--family-accent) 70%, transparent);
+  background: color-mix(in oklab, var(--family-accent) 8%, var(--family-surface-soft));
+}
+
+.family-action-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in oklab, var(--family-accent) 22%, var(--family-border));
+  background: color-mix(in oklab, var(--family-accent) 10%, var(--family-surface));
+  padding: 0.2rem 0.55rem;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--family-accent);
+  white-space: nowrap;
+}
+
+@keyframes family-story-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--family-accent) 45%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--family-accent) 12%, transparent);
+  }
+}
+
+.family-story-ring {
+  animation: family-story-pulse 2.4s ease-in-out infinite;
 }
 
 .family-inline-card {

@@ -30,7 +30,11 @@ export function FamilyAuthorAvatar({
           : 'h-9 w-9 text-sm';
 
   const storyPaddingClass =
-    size === 'xl' ? 'p-[3.5px]' : size === 'lg' ? 'p-[2.5px]' : 'p-[2px]';
+    size === 'xl'
+      ? 'p-[3.5px]'
+      : size === 'lg'
+        ? 'p-[3px] family-story-ring shadow-[0_0_14px_rgba(201,147,10,0.35)]'
+        : 'p-[2px]';
 
   const inner = (
     <span
@@ -52,12 +56,12 @@ export function FamilyAuthorAvatar({
   const content = hasStoryRing ? (
     <span
       className={cn(
-        'inline-flex rounded-full bg-gradient-to-tr from-gold via-amber-300 to-gold',
+        'inline-flex rounded-full bg-gradient-to-tr from-gold via-amber-300 to-orange-400',
         storyPaddingClass,
         className,
       )}
     >
-      <span className="rounded-full bg-[var(--family-surface-panel)] p-[1px]">{inner}</span>
+      <span className="rounded-full bg-[var(--family-surface-panel)] p-[1.5px]">{inner}</span>
     </span>
   ) : (
     inner
@@ -68,6 +72,7 @@ export function FamilyAuthorAvatar({
       <button
         type="button"
         onClick={onClick}
+        aria-label={hasStoryRing ? `مشاهده استوری ${name}` : undefined}
         className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
       >
         {content}

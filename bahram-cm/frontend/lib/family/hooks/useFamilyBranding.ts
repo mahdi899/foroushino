@@ -10,6 +10,7 @@ const DEFAULT_BRANDING: FamilyBranding = {
   profile_avatar: null,
   community_avatar: null,
   has_active_stories: false,
+  latest_story_id: null,
 };
 
 export function useFamilyBranding(fallback?: FamilyBranding) {

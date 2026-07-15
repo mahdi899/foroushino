@@ -89,6 +89,7 @@ export function ReactionBar({
     wink: stats.wink ?? 0,
     comments: stats.comments ?? 0,
     action_responses: stats.action_responses ?? 0,
+    views: stats.views ?? 0,
   }));
   const [pending, setPending] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);

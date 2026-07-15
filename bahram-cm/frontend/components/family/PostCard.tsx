@@ -10,10 +10,22 @@ import { VideoBlock } from '@/components/family/blocks/VideoBlock';
 import { VoiceBlock } from '@/components/family/blocks/VoiceBlock';
 import { CommentThreadPreview } from '@/components/family/CommentThreadPreview';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
-import type { FamilyComment } from '@/lib/family/types';
-import { formatPostDateTime } from '@/lib/family/datetime';
+import { PostMetaRow } from '@/components/family/PostMetaRow';
 import { ReactionBar } from '@/components/family/ReactionBar';
+import type { FamilyComment } from '@/lib/family/types';
 import type { FamilyPost, FamilyPostBlock } from '@/lib/family/types';
+
+function shouldHideActionPrompt(blocks: FamilyPostBlock[], prompt: string): boolean {
+  const normalized = prompt.trim();
+  if (!normalized) return true;
+
+  return blocks
+    .filter((block) => block.type === 'text' && block.text)
+    .some((block) => {
+      const text = block.text!.trim();
+      return text === normalized || text.includes(normalized) || normalized.includes(text);
+    });
+}
 
 function renderBlock(block: FamilyPostBlock, postId: number, authorName: string) {
   switch (block.type) {
@@ -112,7 +124,13 @@ export function PostCard({
       </div>
 
       {previewMode ? null : actions.map((action) => (
-        <ActionCard key={action.id} action={action} memberCount={memberCount} isStaff={isStaff} />
+        <ActionCard
+          key={action.id}
+          action={action}
+          memberCount={memberCount}
+          isStaff={isStaff}
+          hidePrompt={shouldHideActionPrompt(blocks, action.prompt)}
+        />
       ))}
 
       <div className="space-y-2 border-t border-[var(--family-border-subtle)] pt-2.5">
@@ -124,11 +142,12 @@ export function PostCard({
             readOnly={Boolean(previewMode)}
             onLockedInteract={onPreviewInteract}
           />
-          {post.published_at && (
-            <time dateTime={post.published_at} className="shrink-0 text-[11px] tabular-nums text-bone/40">
-              {formatPostDateTime(post.published_at)}
-            </time>
-          )}
+          <PostMetaRow
+            postId={post.id}
+            publishedAt={post.published_at}
+            initialViews={post.stats.views ?? 0}
+            trackView={!previewMode}
+          />
         </div>
       </div>
 

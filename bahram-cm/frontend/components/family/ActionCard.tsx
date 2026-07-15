@@ -1,6 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import {
+  BarChart3,
+  CheckCircle2,
+  Gauge,
+  Hash,
+  MessageSquareText,
+  Target,
+  type LucideIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { respondToAction } from '@/lib/family/api';
 import {
@@ -8,7 +17,27 @@ import {
   applyMultiChoiceVote,
   applySingleChoiceVote,
 } from '@/lib/family/actionResults';
-import type { FamilyAction, FamilyActionResults } from '@/lib/family/types';
+import type { FamilyAction, FamilyActionResults, FamilyActionType } from '@/lib/family/types';
+
+function actionTypeMeta(type: FamilyActionType): { label: string; Icon: LucideIcon } {
+  switch (type) {
+    case 'commitment':
+      return { label: 'تعهد', Icon: Target };
+    case 'confirmation':
+      return { label: 'بررسی', Icon: CheckCircle2 };
+    case 'single_choice':
+    case 'multi_choice':
+      return { label: 'نظرسنجی', Icon: BarChart3 };
+    case 'short_text':
+      return { label: 'سوال', Icon: MessageSquareText };
+    case 'number':
+      return { label: 'عدد', Icon: Hash };
+    case 'scale':
+      return { label: 'امتیاز', Icon: Gauge };
+    default:
+      return { label: 'فعالیت', Icon: Target };
+  }
+}
 
 function PollParticipation({
   results,
@@ -72,10 +101,12 @@ export function ActionCard({
   action,
   memberCount,
   isStaff = false,
+  hidePrompt = false,
 }: {
   action: FamilyAction;
   memberCount?: number;
   isStaff?: boolean;
+  hidePrompt?: boolean;
 }) {
   const [submitted, setSubmitted] = useState(false);
   const [pending, setPending] = useState(false);
@@ -84,6 +115,7 @@ export function ActionCard({
   const [selected, setSelected] = useState<string[]>([]);
   const [scale, setScale] = useState<number | null>(null);
   const [results, setResults] = useState<FamilyActionResults | null | undefined>(action.results);
+  const { label: typeLabel, Icon: TypeIcon } = actionTypeMeta(action.type);
 
   const submit = async (value: Record<string, unknown>, nextResults?: FamilyActionResults) => {
     if (pending || submitted) return;
@@ -111,8 +143,14 @@ export function ActionCard({
 
   if (submitted) {
     return (
-      <div className="family-action-panel space-y-3 border-[color-mix(in_oklab,var(--family-accent)_30%,var(--family-border))] bg-[color-mix(in_oklab,var(--family-accent)_8%,var(--family-surface-soft))]">
-        <p className="text-sm text-[var(--family-accent)]">ثبت شد — داداش بهرام می‌بیندش. ✅</p>
+      <div className="family-action-panel family-action-panel--done space-y-3">
+        <div className="flex items-center gap-2">
+          <span className="family-action-badge">
+            <TypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            {typeLabel}
+          </span>
+          <p className="text-sm text-[var(--family-accent)]">ثبت شد — داداش بهرام می‌بیندش ✅</p>
+        </div>
         {showResults && (
           <PollResults results={results} memberCount={memberCount} isStaff={isStaff} />
         )}
@@ -122,7 +160,15 @@ export function ActionCard({
 
   const wrap = (children: React.ReactNode) => (
     <div className="family-action-panel space-y-3">
-      <p className="text-sm font-medium text-bone">{action.prompt}</p>
+      <div className="flex items-start gap-2.5">
+        <span className="family-action-badge mt-0.5 shrink-0">
+          <TypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+          {typeLabel}
+        </span>
+        {!hidePrompt && (
+          <p className="min-w-0 flex-1 text-[14px] font-semibold leading-6 text-bone">{action.prompt}</p>
+        )}
+      </div>
       {pollParticipation}
       {children}
     </div>

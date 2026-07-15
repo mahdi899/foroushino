@@ -37,7 +37,7 @@ use App\Http\Controllers\Api\V1\Family\BrandingController as FamilyBrandingContr
 use App\Http\Controllers\Api\V1\Family\CommentController as FamilyCommentController;
 use App\Http\Controllers\Api\V1\Family\FeedController as FamilyFeedController;
 use App\Http\Controllers\Api\V1\Family\MediaProgressController as FamilyMediaProgressController;
-use App\Http\Controllers\Api\V1\Family\PulseController as FamilyPulseController;
+use App\Http\Controllers\Api\V1\Family\PostViewController as FamilyPostViewController;
 use App\Http\Controllers\Api\V1\Family\ReactionController as FamilyReactionController;
 use App\Http\Controllers\Api\V1\Family\StoryController as FamilyStoryController;
 use App\Http\Controllers\Api\V1\FamilyManager\AnalyticsController as FamilyManagerAnalyticsController;
@@ -507,6 +507,9 @@ Route::prefix('family')->group(function () {
             ->whereNumber('post')->middleware('throttle:family-reaction');
         Route::delete('posts/{post}/reaction', [FamilyReactionController::class, 'destroy'])
             ->whereNumber('post')->middleware('throttle:family-reaction');
+
+        Route::post('posts/{post}/view', [FamilyPostViewController::class, 'store'])
+            ->whereNumber('post')->middleware('throttle:120,1');
 
         Route::get('posts/{post}/comments', [FamilyCommentController::class, 'index'])->whereNumber('post');
         Route::post('posts/{post}/comments', [FamilyCommentController::class, 'store'])

@@ -21,6 +21,7 @@ class BrandingController extends Controller
         return ApiResponse::success([
             ...$this->branding->publicPayload(),
             'has_active_stories' => $this->stories->hasActiveStories(),
+            'latest_story_id' => $this->stories->latestActiveStoryId(),
         ]);
     }
 }

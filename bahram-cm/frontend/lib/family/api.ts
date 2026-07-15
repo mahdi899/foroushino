@@ -85,6 +85,14 @@ export async function respondToAction(actionId: number, value: Record<string, un
   return run(() => familyFetch(`/actions/${actionId}/respond`, { method: 'POST', body: value }), 'ثبت پاسخ ناموفق بود.');
 }
 
+export async function recordPostView(postId: number): Promise<{ data: { views: number } }> {
+  try {
+    return await familyFetch(`/posts/${postId}/view`, { method: 'POST' });
+  } catch {
+    return { data: { views: 0 } };
+  }
+}
+
 export async function sendMediaProgress(payload: {
   post_id: number;
   media_id: number;

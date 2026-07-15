@@ -31,6 +31,17 @@ final class FamilyStoryService
         );
     }
 
+    public function latestActiveStoryId(): ?int
+    {
+        if (! $this->hasActiveStories()) {
+            return null;
+        }
+
+        $id = FamilyStory::query()->active()->max('id');
+
+        return $id !== null ? (int) $id : null;
+    }
+
     public function publish(User $user, FamilyMedia $media, ?string $caption = null): FamilyStory
     {
         $now = now();

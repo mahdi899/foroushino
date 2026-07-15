@@ -1,13 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ArrowRight, Bell, Users } from 'lucide-react';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { StoryViewer } from '@/components/family/StoryViewer';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
 import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
+import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
 
 /** Desktop-only branding column — logo, نام خانواده، آواتار و لینک‌ها. */
 export function FamilyBrandingSidebar({
@@ -23,9 +24,22 @@ export function FamilyBrandingSidebar({
 }) {
   const { branding } = useFamilyBranding();
   const { unreadCount } = useFamilyUnreadCount(isMember);
+  const { hasStories, hasUnseen, markSeen } = useFamilyStoryState(branding);
   const [storyOpen, setStoryOpen] = useState(false);
-  const hasStories = Boolean(branding.has_active_stories);
   const communityAvatar = branding.community_avatar ?? branding.profile_avatar;
+
+  const openStories = useCallback(() => {
+    if (!hasStories) return;
+    setStoryOpen(true);
+  }, [hasStories]);
+
+  const handleStoriesFinished = useCallback(
+    (storyIds: number[]) => {
+      const latest = storyIds.length > 0 ? Math.max(...storyIds) : undefined;
+      markSeen(latest);
+    },
+    [markSeen],
+  );
 
   return (
     <>
@@ -95,7 +109,7 @@ export function FamilyBrandingSidebar({
                 avatar={communityAvatar}
                 size="xl"
                 hasStoryRing={hasStories}
-                onClick={hasStories ? () => setStoryOpen(true) : undefined}
+                onClick={hasStories ? openStories : undefined}
                 className={hasStories ? undefined : 'shadow-[0_20px_50px_rgba(201,147,10,0.28)] ring-2 ring-gold/25'}
               />
             </div>
@@ -110,15 +124,31 @@ export function FamilyBrandingSidebar({
             </p>
 
             {typeof memberCount === 'number' && (
-              <div className="family-chip mt-6 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium text-bone/55">
-                <Users className="h-3.5 w-3.5 shrink-0 text-gold/70" strokeWidth={1.75} />
-                <span>{memberCount.toLocaleString('fa-IR')} عضو فعال</span>
+              <div className="mt-6 flex flex-col items-center gap-2">
+                <div className="family-chip inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-medium text-bone/55">
+                  <Users className="h-3.5 w-3.5 shrink-0 text-gold/70" strokeWidth={1.75} />
+                  <span>{memberCount.toLocaleString('fa-IR')} عضو فعال</span>
+                </div>
+                {hasUnseen && (
+                  <button
+                    type="button"
+                    onClick={openStories}
+                    className="text-[11px] font-semibold text-gold transition hover:text-gold/80"
+                  >
+                    استوری جدید
+                  </button>
+                )}
               </div>
             )}
           </div>
         </div>
       </aside>
-      <StoryViewer open={storyOpen} onClose={() => setStoryOpen(false)} profileName={branding.profile_name} />
+      <StoryViewer
+        open={storyOpen}
+        onClose={() => setStoryOpen(false)}
+        onFinished={handleStoriesFinished}
+        profileName={branding.profile_name}
+      />
     </>
   );
 }

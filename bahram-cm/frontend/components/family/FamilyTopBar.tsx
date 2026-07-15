@@ -1,16 +1,30 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { StoryViewer } from '@/components/family/StoryViewer';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
+import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
 
 export function FamilyTopBar({ memberCount }: { memberCount?: number }) {
   const { branding } = useFamilyBranding();
+  const { hasStories, hasUnseen, markSeen } = useFamilyStoryState(branding);
   const [storyOpen, setStoryOpen] = useState(false);
-  const hasStories = Boolean(branding.has_active_stories);
+
+  const openStories = useCallback(() => {
+    if (!hasStories) return;
+    setStoryOpen(true);
+  }, [hasStories]);
+
+  const handleStoriesFinished = useCallback(
+    (storyIds: number[]) => {
+      const latest = storyIds.length > 0 ? Math.max(...storyIds) : undefined;
+      markSeen(latest);
+    },
+    [markSeen],
+  );
 
   return (
     <>
@@ -21,14 +35,28 @@ export function FamilyTopBar({ memberCount }: { memberCount?: number }) {
             avatar={branding.community_avatar ?? branding.profile_avatar}
             size="lg"
             hasStoryRing={hasStories}
-            onClick={hasStories ? () => setStoryOpen(true) : undefined}
+            onClick={hasStories ? openStories : undefined}
           />
-          <Link href="/family" className="min-w-0 leading-tight">
-            <p className="truncate text-sm font-bold text-bone lg:text-[15px]">{branding.display_name}</p>
-            {typeof memberCount === 'number' && (
-              <p className="text-[11px] text-bone/50 lg:text-xs">{memberCount.toLocaleString('fa-IR')} عضو</p>
-            )}
-          </Link>
+          <div className="min-w-0 leading-tight">
+            <Link href="/family" className="block min-w-0">
+              <p className="truncate text-sm font-bold text-bone lg:text-[15px]">{branding.display_name}</p>
+            </Link>
+            <p className="text-[11px] text-bone/50 lg:text-xs">
+              {typeof memberCount === 'number' && (
+                <span>{memberCount.toLocaleString('fa-IR')} عضو</span>
+              )}
+              {hasUnseen && (
+                <button
+                  type="button"
+                  onClick={openStories}
+                  className="font-medium text-gold transition hover:text-gold/80"
+                >
+                  {typeof memberCount === 'number' ? ' · ' : ''}
+                  استوری جدید
+                </button>
+              )}
+            </p>
+          </div>
         </div>
 
         <Link
@@ -40,7 +68,12 @@ export function FamilyTopBar({ memberCount }: { memberCount?: number }) {
         </Link>
       </header>
 
-      <StoryViewer open={storyOpen} onClose={() => setStoryOpen(false)} profileName={branding.profile_name} />
+      <StoryViewer
+        open={storyOpen}
+        onClose={() => setStoryOpen(false)}
+        onFinished={handleStoriesFinished}
+        profileName={branding.profile_name}
+      />
     </>
   );
 }

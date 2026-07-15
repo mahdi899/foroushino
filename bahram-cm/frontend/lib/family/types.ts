@@ -120,6 +120,7 @@ export interface FamilyPostStats {
   wink: number;
   comments: number;
   action_responses: number;
+  views: number;
 }
 
 export interface FamilyPost {
@@ -143,6 +144,7 @@ export interface FamilyBranding {
   profile_avatar: string | null;
   community_avatar: string | null;
   has_active_stories?: boolean;
+  latest_story_id?: number | null;
 }
 
 export interface FamilyStoryMedia {

@@ -27,6 +27,7 @@ class FamilyPostStat extends Model
         'wink_count',
         'approved_comments_count',
         'action_responses_count',
+        'views_count',
     ];
 
     protected function casts(): array
@@ -49,6 +50,7 @@ class FamilyPostStat extends Model
             'wink_count' => 'integer',
             'approved_comments_count' => 'integer',
             'action_responses_count' => 'integer',
+            'views_count' => 'integer',
         ];
     }
 

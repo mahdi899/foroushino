@@ -11,10 +11,12 @@ export function StoryViewer({
   open,
   onClose,
   profileName,
+  onFinished,
 }: {
   open: boolean;
   onClose: () => void;
   profileName: string;
+  onFinished?: (storyIds: number[]) => void;
 }) {
   const [stories, setStories] = useState<FamilyStory[]>([]);
   const [index, setIndex] = useState(0);
@@ -33,11 +35,14 @@ export function StoryViewer({
 
   const goNext = useCallback(() => {
     if (index >= stories.length - 1) {
+      if (stories.length > 0) {
+        onFinished?.(stories.map((s) => s.id));
+      }
       onClose();
       return;
     }
     setIndex((i) => i + 1);
-  }, [index, onClose, stories.length]);
+  }, [index, onClose, onFinished, stories]);
 
   const goPrev = useCallback(() => {
     setIndex((i) => Math.max(0, i - 1));
@@ -93,7 +98,12 @@ export function StoryViewer({
             <p className="text-sm font-semibold text-white drop-shadow-sm">{profileName}</p>
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => {
+                if (stories.length > 0) {
+                  onFinished?.(stories.map((s) => s.id));
+                }
+                onClose();
+              }}
               className="rounded-full bg-white/10 px-3 py-1.5 text-sm text-white/90 backdrop-blur-sm hover:bg-white/15 hover:text-white"
             >
               بستن

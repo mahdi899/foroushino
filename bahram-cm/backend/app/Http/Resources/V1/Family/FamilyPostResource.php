@@ -37,6 +37,7 @@ class FamilyPostResource extends JsonResource
                 'wink' => 0,
                 'comments' => (int) ($stat?->approved_comments_count ?? 0),
                 'action_responses' => (int) ($stat?->action_responses_count ?? 0),
+                'views' => (int) ($stat?->views_count ?? 0),
             ];
 
         return [
