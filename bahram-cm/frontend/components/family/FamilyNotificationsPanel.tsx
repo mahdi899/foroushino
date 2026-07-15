@@ -139,9 +139,11 @@ export function FamilyNotificationsPanel({
       <div className="family-feed-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="mx-auto w-full max-w-[680px] px-3 py-4 sm:px-4 lg:px-5 lg:py-5">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-16">
-              <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80" />
-              <p className="text-sm text-bone/45">در حال بارگذاری اعلان‌ها…</p>
+            <div className="flex min-h-[40vh] items-center justify-center" aria-busy>
+              <span
+                className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80"
+                aria-label="در حال بارگذاری"
+              />
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">

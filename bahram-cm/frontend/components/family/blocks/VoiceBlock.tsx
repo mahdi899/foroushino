@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { Pause, Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
@@ -54,43 +54,78 @@ function normalizeWaveform(raw: number[], barCount: number): number[] {
   return result.map((v) => (v - min) / range);
 }
 
-function waitForMetadata(el: HTMLAudioElement): Promise<void> {
-  if (el.readyState >= HTMLMediaElement.HAVE_METADATA && Number.isFinite(el.duration) && el.duration > 0) {
-    return Promise.resolve();
-  }
+function waitForEvent(el: HTMLMediaElement, event: string, timeoutMs = 2500): Promise<void> {
   return new Promise((resolve) => {
-    const done = () => {
-      el.removeEventListener('loadedmetadata', done);
-      el.removeEventListener('durationchange', done);
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      el.removeEventListener(event, finish);
       resolve();
     };
-    el.addEventListener('loadedmetadata', done);
-    el.addEventListener('durationchange', done);
+    el.addEventListener(event, finish);
+    window.setTimeout(finish, timeoutMs);
   });
 }
 
-function seekAudio(el: HTMLAudioElement, target: number): Promise<number> {
-  return new Promise((resolve) => {
-    const finish = () => {
-      el.removeEventListener('seeked', finish);
-      resolve(el.currentTime);
-    };
+async function waitForMetadata(el: HTMLAudioElement): Promise<void> {
+  if (el.readyState >= HTMLMediaElement.HAVE_METADATA && Number.isFinite(el.duration) && el.duration > 0) {
+    return;
+  }
+  await waitForEvent(el, 'loadedmetadata');
+}
 
+/**
+ * Browsers often ignore seek before the first play() — or reset currentTime when play starts.
+ * Strategy: play → seek → confirm.
+ */
+async function playFromPosition(el: HTMLAudioElement, target: number): Promise<number> {
+  const clamped = Math.max(0, target);
+
+  const applySeek = async () => {
     try {
-      el.currentTime = target;
+      el.currentTime = clamped;
     } catch {
-      resolve(el.currentTime);
-      return;
+      // ignore
     }
-
-    if (Math.abs(el.currentTime - target) < 0.08) {
-      resolve(el.currentTime);
-      return;
+    if (Math.abs(el.currentTime - clamped) > 0.2) {
+      await waitForEvent(el, 'seeked', 900);
     }
+  };
 
-    el.addEventListener('seeked', finish);
-    window.setTimeout(finish, 700);
-  });
+  const neverPlayed = el.played.length === 0;
+
+  if (neverPlayed || el.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+    try {
+      await el.play();
+    } catch {
+      // may still allow seek while paused on some browsers
+    }
+    await applySeek();
+    if (el.paused) {
+      try {
+        await el.play();
+      } catch {
+        // blocked
+      }
+    }
+    // Re-apply after play settles — Chrome often resets on first play.
+    await applySeek();
+  } else {
+    await applySeek();
+    if (el.paused) {
+      try {
+        await el.play();
+      } catch {
+        // blocked
+      }
+      if (Math.abs(el.currentTime - clamped) > 0.25) {
+        await applySeek();
+      }
+    }
+  }
+
+  return el.currentTime;
 }
 
 export function VoiceBlock({
@@ -103,11 +138,12 @@ export function VoiceBlock({
   title?: string;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const waveRef = useRef<HTMLButtonElement | null>(null);
+  const waveRef = useRef<HTMLDivElement | null>(null);
   const draggingRef = useRef(false);
   const scrubbingRef = useRef(false);
-  const playingBeforeScrubRef = useRef(false);
+  const scrubRatioRef = useRef(0);
   const seekPositionRef = useRef(0);
+  const srcReadyRef = useRef(false);
   const [isVisible, setIsVisible] = useState(false);
   const { activeId, register, unregister, requestPlay, notifyPaused, setNowPlaying, updateNowPlayingProgress } =
     useFamilyMediaPlayer();
@@ -115,7 +151,6 @@ export function VoiceBlock({
   const [progress, setProgress] = useState(0);
   const [scrubVisual, setScrubVisual] = useState<number | null>(null);
   const [duration, setDuration] = useState(media.duration ?? 0);
-  const [audioReady, setAudioReady] = useState(Boolean(media.duration && media.duration > 0));
   const [playbackRate, setPlaybackRate] = useState<PlaybackSpeed>(1);
   const lastReported = useRef(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -151,46 +186,28 @@ export function VoiceBlock({
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    if (!media.url) return;
-
-    const el = audioRef.current;
-    if (!el) return;
-
-    if (!isVisible) {
-      el.removeAttribute('src');
-      el.load();
-      return;
-    }
-
-    el.src = media.url;
-    el.load();
-
-    const markReady = () => setAudioReady(true);
-    el.addEventListener('loadedmetadata', markReady);
-    el.addEventListener('durationchange', markReady);
-    if (el.readyState >= HTMLMediaElement.HAVE_METADATA) markReady();
-
-    return () => {
-      el.removeEventListener('loadedmetadata', markReady);
-      el.removeEventListener('durationchange', markReady);
-    };
-  }, [isVisible, media.url]);
-
-  const ensureAudioReady = useCallback(async () => {
-    if (!isVisible) setIsVisible(true);
-
+  const attachSrc = useCallback(async () => {
     const el = audioRef.current;
     if (!el || !media.url) return;
 
-    if (!el.src) {
-      el.src = media.url;
+    if (!srcReadyRef.current || el.getAttribute('src') !== media.url) {
+      el.setAttribute('src', media.url);
       el.load();
+      srcReadyRef.current = true;
+      await waitForMetadata(el);
+    } else if (el.readyState < HTMLMediaElement.HAVE_METADATA) {
+      await waitForMetadata(el);
     }
+  }, [media.url]);
 
-    await waitForMetadata(el);
-    setAudioReady(true);
-  }, [isVisible, media.url]);
+  useEffect(() => {
+    if (!isVisible || !media.url) return;
+    void attachSrc().then(() => {
+      const el = audioRef.current;
+      const d = el?.duration || media.duration || 0;
+      if (d > 0) setDuration(d);
+    });
+  }, [isVisible, media.url, media.duration, attachSrc]);
 
   const resolvedDuration = useMemo(() => {
     if (duration > 0) return duration;
@@ -243,6 +260,7 @@ export function VoiceBlock({
 
   const previewScrub = useCallback(
     (ratio: number) => {
+      scrubRatioRef.current = ratio;
       setScrubVisual(ratio * resolvedDuration);
     },
     [resolvedDuration],
@@ -251,49 +269,64 @@ export function VoiceBlock({
   const commitScrub = useCallback(
     async (ratio: number) => {
       const el = audioRef.current;
-      if (!el) return;
+      if (!el || !media.url) return;
 
-      const wasPlaying = playingBeforeScrubRef.current;
       scrubbingRef.current = true;
+      if (!isVisible) setIsVisible(true);
 
-      await ensureAudioReady();
-      await waitForMetadata(el);
+      try {
+        await attachSrc();
 
-      const durationSec = readDuration(el) || resolvedDuration;
-      if (durationSec <= 0) {
-        scrubbingRef.current = false;
+        const durationSec = readDuration(el) || resolvedDuration;
+        if (durationSec <= 0) {
+          setScrubVisual(null);
+          return;
+        }
+
+        const target = Math.max(0, Math.min(durationSec * 0.995, ratio * durationSec));
+        setScrubVisual(target);
+        seekPositionRef.current = target;
+        setProgress(target);
+
+        requestPlay(media.id);
+        const actual = await playFromPosition(el, target);
+
+        seekPositionRef.current = actual;
+        setProgress(actual);
         setScrubVisual(null);
-        return;
+        updateNowPlayingProgress(media.id, actual, durationSec);
+      } finally {
+        scrubbingRef.current = false;
       }
-
-      const target = Math.max(0, Math.min(durationSec, ratio * durationSec));
-      setScrubVisual(target);
-
-      const actual = await seekAudio(el, target);
-      seekPositionRef.current = actual;
-      setProgress(actual);
-      setScrubVisual(null);
-      updateNowPlayingProgress(media.id, actual, durationSec);
-
-      if (wasPlaying && el.paused) {
-        requestPlay(media.id);
-        try {
-          await el.play();
-        } catch {
-          // autoplay blocked or network
-        }
-      } else if (!wasPlaying) {
-        requestPlay(media.id);
-        try {
-          await el.play();
-        } catch {
-          // autoplay blocked or network
-        }
-      }
-
-      scrubbingRef.current = false;
     },
-    [ensureAudioReady, media.id, readDuration, requestPlay, resolvedDuration, updateNowPlayingProgress],
+    [
+      attachSrc,
+      isVisible,
+      media.id,
+      media.url,
+      readDuration,
+      requestPlay,
+      resolvedDuration,
+      updateNowPlayingProgress,
+    ],
+  );
+
+  const endScrub = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      try {
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        // ignore
+      }
+      // Use last preview ratio — more stable than pointerup coords.
+      const ratio = scrubRatioRef.current;
+      void commitScrub(ratio);
+    },
+    [commitScrub],
   );
 
   const toggle = async () => {
@@ -305,21 +338,19 @@ export function VoiceBlock({
       return;
     }
 
-    await ensureAudioReady();
+    if (!isVisible) setIsVisible(true);
+    await attachSrc();
     requestPlay(media.id);
-    await waitForMetadata(el);
 
-    const target = seekPositionRef.current > 0 ? seekPositionRef.current : progress;
-    if (target > 0 && Math.abs(el.currentTime - target) > 0.2) {
-      const actual = await seekAudio(el, target);
-      seekPositionRef.current = actual;
-      setProgress(actual);
-    }
-
-    try {
-      await el.play();
-    } catch {
-      // autoplay blocked or network
+    const target = seekPositionRef.current > 0.05 ? seekPositionRef.current : progress;
+    if (target > 0.05) {
+      await playFromPosition(el, target);
+    } else {
+      try {
+        await el.play();
+      } catch {
+        // blocked
+      }
     }
   };
 
@@ -338,8 +369,12 @@ export function VoiceBlock({
 
   if (!media.url) {
     return (
-      <div className="family-voice family-voice--loading flex min-h-[3.75rem] items-center gap-3 rounded-2xl px-4 py-3.5 text-sm text-bone/50">
-        در حال پردازش صدا…
+      <div
+        className="family-voice family-voice--loading flex min-h-[3.75rem] items-center justify-center rounded-2xl px-4 py-3.5"
+        aria-busy
+        aria-label="در حال پردازش صدا"
+      >
+        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80" />
       </div>
     );
   }
@@ -355,12 +390,16 @@ export function VoiceBlock({
     >
       <audio
         ref={audioRef}
-        preload="none"
+        preload="metadata"
         onPlay={() => {
           setPlaying(true);
           const el = audioRef.current;
           const d = el ? readDuration(el) : resolvedDuration;
-          const current = seekPositionRef.current > 0 ? seekPositionRef.current : (el?.currentTime ?? progress);
+          const current = scrubbingRef.current
+            ? seekPositionRef.current
+            : seekPositionRef.current > 0.05
+              ? seekPositionRef.current
+              : (el?.currentTime ?? progress);
           setProgress(current);
           setNowPlaying({
             mediaId: media.id,
@@ -381,6 +420,7 @@ export function VoiceBlock({
         onEnded={() => {
           setPlaying(false);
           seekPositionRef.current = 0;
+          setProgress(0);
           notifyPaused(media.id);
           reportProgress('complete', readDuration(audioRef.current!));
         }}
@@ -395,6 +435,15 @@ export function VoiceBlock({
         onTimeUpdate={(e) => {
           if (scrubbingRef.current || draggingRef.current || scrubVisual != null) return;
           const t = e.currentTarget.currentTime;
+          // Re-enforce pending seek if browser snapped back to 0 right after scrub.
+          if (seekPositionRef.current > 1 && t < 0.35 && Math.abs(seekPositionRef.current - t) > 1) {
+            try {
+              e.currentTarget.currentTime = seekPositionRef.current;
+            } catch {
+              // ignore
+            }
+            return;
+          }
           seekPositionRef.current = t;
           setProgress(t);
           if (activeId === media.id) {
@@ -417,17 +466,18 @@ export function VoiceBlock({
       </button>
 
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-1 overflow-hidden">
-        <button
+        <div
           ref={waveRef}
-          type="button"
-          aria-label="موج صدا"
-          disabled={!audioReady}
+          role="slider"
+          tabIndex={0}
+          aria-label="موقعیت پخش"
+          aria-valuemin={0}
+          aria-valuemax={Math.round(resolvedDuration)}
+          aria-valuenow={Math.round(displayProgress)}
           onPointerDown={(e) => {
-            if (!audioReady) return;
             e.preventDefault();
             e.stopPropagation();
             draggingRef.current = true;
-            playingBeforeScrubRef.current = !audioRef.current?.paused;
             e.currentTarget.setPointerCapture(e.pointerId);
             previewScrub(ratioFromClientX(e.clientX));
           }}
@@ -436,25 +486,19 @@ export function VoiceBlock({
             e.preventDefault();
             previewScrub(ratioFromClientX(e.clientX));
           }}
-          onPointerUp={(e) => {
-            if (!draggingRef.current) return;
-            draggingRef.current = false;
-            if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-              e.currentTarget.releasePointerCapture(e.pointerId);
-            }
-            void commitScrub(ratioFromClientX(e.clientX));
-          }}
+          onPointerUp={endScrub}
           onPointerCancel={(e) => {
             draggingRef.current = false;
             setScrubVisual(null);
-            if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-              e.currentTarget.releasePointerCapture(e.pointerId);
+            try {
+              if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+              }
+            } catch {
+              // ignore
             }
           }}
-          className={cn(
-            'family-voice-wave w-full min-w-0 touch-none',
-            audioReady ? 'cursor-pointer' : 'cursor-wait opacity-70',
-          )}
+          className="family-voice-wave w-full min-w-0 cursor-pointer touch-none select-none"
           style={{ '--wave-bars': barCount } as CSSProperties}
         >
           {waveform.map((v, i) => {
@@ -465,14 +509,14 @@ export function VoiceBlock({
               <span
                 key={i}
                 className={cn(
-                  'family-voice-bar rounded-full transition-colors duration-150',
+                  'family-voice-bar pointer-events-none rounded-full transition-colors duration-150',
                   played ? 'bg-[var(--family-voice-played)]' : 'bg-[var(--family-voice-unplayed)]',
                 )}
                 style={{ height: `${height}px` }}
               />
             );
           })}
-        </button>
+        </div>
 
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">

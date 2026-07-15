@@ -123,9 +123,11 @@ export function CommentsPanel({
         )}
       >
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-12">
-            <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80" />
-            <p className="text-sm text-bone/50">در حال بارگذاری…</p>
+          <div className={cn('flex items-center justify-center', isPage ? 'min-h-full' : 'py-16')} aria-busy>
+            <span
+              className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80"
+              aria-label="در حال بارگذاری"
+            />
           </div>
         ) : orderedComments.length === 0 ? (
           <p className="py-12 text-center text-sm text-bone/50">هنوز نظری ثبت نشده. اولین نفر باش.</p>
@@ -137,9 +139,14 @@ export function CommentsPanel({
                   type="button"
                   onClick={() => void loadMore()}
                   disabled={loadingMore}
-                  className="rounded-full border border-[var(--family-border-subtle)] px-4 py-1.5 text-xs text-bone/65 transition hover:bg-white/[0.04] disabled:opacity-50"
+                  aria-label={loadingMore ? 'در حال بارگذاری' : 'نظرات قدیمی‌تر'}
+                  className="flex min-h-8 min-w-[7.5rem] items-center justify-center rounded-full border border-[var(--family-border-subtle)] px-4 py-1.5 text-xs text-bone/65 transition hover:bg-white/[0.04] disabled:opacity-50"
                 >
-                  {loadingMore ? 'در حال بارگذاری…' : 'نظرات قدیمی‌تر'}
+                  {loadingMore ? (
+                    <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80" />
+                  ) : (
+                    'نظرات قدیمی‌تر'
+                  )}
                 </button>
               </li>
             )}

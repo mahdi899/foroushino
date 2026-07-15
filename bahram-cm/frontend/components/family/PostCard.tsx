@@ -134,14 +134,16 @@ export function PostCard({
       ))}
 
       <div className="space-y-2 border-t border-[var(--family-border-subtle)] pt-2.5">
-        <div dir="ltr" className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <ReactionBar
-            postId={post.id}
-            stats={{ ...post.stats, comments: commentCount }}
-            userReaction={post.user_reaction}
-            readOnly={Boolean(previewMode)}
-            onLockedInteract={onPreviewInteract}
-          />
+        <div dir="ltr" className="flex items-start gap-x-3">
+          <div className="min-w-0 flex-1">
+            <ReactionBar
+              postId={post.id}
+              stats={{ ...post.stats, comments: commentCount }}
+              userReaction={post.user_reaction}
+              readOnly={Boolean(previewMode)}
+              onLockedInteract={onPreviewInteract}
+            />
+          </div>
           <PostMetaRow
             postId={post.id}
             publishedAt={post.published_at}

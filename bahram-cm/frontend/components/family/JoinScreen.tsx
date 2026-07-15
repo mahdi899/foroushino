@@ -62,9 +62,13 @@ export function JoinScreen() {
         type="button"
         onClick={handleJoin}
         disabled={pending}
-        className="family-btn-primary mt-6 w-full max-w-sm rounded-full py-3 text-sm font-bold transition disabled:opacity-60"
+        className="family-btn-primary mt-6 flex w-full max-w-sm items-center justify-center rounded-full py-3 text-sm font-bold transition disabled:opacity-60"
       >
-        {pending ? 'در حال پیوستن…' : 'بپیوند به خانواده'}
+        {pending ? (
+          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+        ) : (
+          'بپیوند به خانواده'
+        )}
       </button>
     </div>
   );

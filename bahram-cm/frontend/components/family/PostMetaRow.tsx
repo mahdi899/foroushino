@@ -45,7 +45,7 @@ export function PostMetaRow({
   }, [postId, trackView]);
 
   return (
-    <div ref={ref} className="flex shrink-0 items-center gap-2.5">
+    <div ref={ref} className="flex h-8 shrink-0 items-center gap-2.5">
       {views > 0 && (
         <span className="flex items-center gap-1 text-[11px] tabular-nums text-bone/40" title="بازدید">
           <Eye className="h-3 w-3 shrink-0 opacity-70" strokeWidth={1.75} aria-hidden />

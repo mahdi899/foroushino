@@ -113,6 +113,26 @@ export function FeedView({
     anchoredToBottomRef.current = true;
   }, []);
 
+  const updateAnchoredToBottom = useCallback(() => {
+    const root = feedScrollRef.current;
+    if (!root) return;
+    const distanceFromBottom = root.scrollHeight - root.clientHeight - root.scrollTop;
+    anchoredToBottomRef.current = distanceFromBottom < 80;
+  }, []);
+
+  useEffect(() => {
+    const root = feedScrollRef.current;
+    if (!root) return;
+
+    const onScroll = () => {
+      if (pinNavigateRef.current) return;
+      updateAnchoredToBottom();
+    };
+
+    root.addEventListener('scroll', onScroll, { passive: true });
+    return () => root.removeEventListener('scroll', onScroll);
+  }, [updateAnchoredToBottom, posts.length, commentsTarget, mainView]);
+
   const scrollToPost = useCallback(
     async (postId: number) => {
       const highlight = (el: HTMLElement) => {
@@ -191,10 +211,6 @@ export function FeedView({
     if (!isValidating) loadingHistoryRef.current = false;
   }, [isValidating]);
 
-  useEffect(() => {
-    historyReadyRef.current = false;
-  }, []);
-
   useLayoutEffect(() => {
     const root = feedScrollRef.current;
     if (!root || !scrollRestoreRef.current) return;
@@ -206,29 +222,39 @@ export function FeedView({
   }, [posts.length]);
 
   useLayoutEffect(() => {
-    if (isLoading || posts.length === 0 || initialScrollDoneRef.current) return;
+    if (isLoading || posts.length === 0) return;
 
-    initialScrollDoneRef.current = true;
-    scrollToLatest('auto');
-    const frame = requestAnimationFrame(() => {
+    if (!initialScrollDoneRef.current) {
+      initialScrollDoneRef.current = true;
       scrollToLatest('auto');
-      requestAnimationFrame(() => {
+      const frame = requestAnimationFrame(() => {
         scrollToLatest('auto');
-        window.setTimeout(() => {
+        requestAnimationFrame(() => {
+          scrollToLatest('auto');
           historyReadyRef.current = true;
-        }, 150);
+        });
       });
-    });
+      return () => cancelAnimationFrame(frame);
+    }
 
-    return () => cancelAnimationFrame(frame);
+    // If length changed before historyReady was flipped, unlock without jumping.
+    if (!historyReadyRef.current) {
+      historyReadyRef.current = true;
+    }
   }, [isLoading, posts.length, scrollToLatest]);
 
+  // Keep sticky bottom only while the user is already near the end.
+  // Never force-jump when they are reading older posts / interacting mid-feed.
   useEffect(() => {
     const content = feedContentRef.current;
     if (!content || posts.length === 0) return;
 
     const observer = new ResizeObserver(() => {
       if (!historyReadyRef.current) {
+        scrollToLatest('auto');
+        return;
+      }
+      if (anchoredToBottomRef.current && !pinNavigateRef.current) {
         scrollToLatest('auto');
       }
     });
@@ -305,12 +331,11 @@ export function FeedView({
             showPinned={false}
             showNowPlaying
             overlayNowPlaying
-            onOpenComments={openComments}
           />
 
           <div
             ref={feedScrollRef}
-            className="family-feed-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
+            className="family-feed-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [overflow-anchor:none]"
           >
             <div ref={feedContentRef} className="mx-auto flex w-full max-w-[680px] flex-col">
               {isPreview && effectivePreviewMode && posts.length > 0 && (
@@ -331,16 +356,15 @@ export function FeedView({
                   {!isPreview && hasMore && (
                     <div
                       ref={topSentinelRef}
-                      className="flex items-center justify-center gap-2 py-3 text-xs text-bone/45"
+                      className="flex items-center justify-center py-3"
+                      aria-busy={isValidating && posts.length > 0}
                     >
                       {isValidating && posts.length > 0 ? (
-                        <>
-                          <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-bone/20 border-t-gold/80" />
-                          در حال بارگذاری پست‌های قدیمی‌تر…
-                        </>
-                      ) : (
-                        '↑ اسکرول کن — پست‌های قدیمی‌تر بارگذاری می‌شوند'
-                      )}
+                        <span
+                          className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-bone/20 border-t-gold/80"
+                          aria-label="در حال بارگذاری"
+                        />
+                      ) : null}
                     </div>
                   )}
                   {feedItems.map((item) =>

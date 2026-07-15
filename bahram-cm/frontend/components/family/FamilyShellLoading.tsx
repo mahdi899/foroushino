@@ -33,7 +33,7 @@ export function FamilyShellLoading() {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="site-route-loading site-route-loading--family flex-1">
-          <SiteLoader size="md" variant="page" label="در حال بارگذاری…" />
+          <SiteLoader size="md" variant="page" label="" />
         </div>
       </div>
     </div>

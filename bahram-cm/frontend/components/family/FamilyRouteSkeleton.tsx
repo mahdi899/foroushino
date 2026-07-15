@@ -19,9 +19,11 @@ export function FamilyRouteSkeleton() {
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="family-panel-header flex shrink-0 items-center gap-2 border-b px-5 py-3">
-          <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/70" />
-          <span className="text-[13px] text-bone/45">در حال بارگذاری…</span>
+        <div className="family-panel-header flex shrink-0 items-center justify-center border-b px-5 py-3">
+          <span
+            className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-bone/15 border-t-gold/70"
+            aria-label="در حال بارگذاری"
+          />
         </div>
         <div className="min-h-0 flex-1 space-y-3 px-3 py-4 sm:px-4 lg:px-5 lg:py-5">
           {[0, 1, 2].map((i) => (

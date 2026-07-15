@@ -180,8 +180,18 @@ html[data-theme='dark'] .family-app {
 }
 
 .family-now-playing {
-  background: color-mix(in oklab, var(--family-accent) 10%, var(--family-surface));
-  border-color: color-mix(in oklab, var(--family-accent) 22%, var(--family-border));
+  background: color-mix(in oklab, var(--family-accent) 8%, var(--family-surface) 92%);
+  border-color: color-mix(in oklab, var(--family-accent) 18%, var(--family-border));
+}
+
+.family-now-playing__play {
+  color: var(--family-surface);
+  background: var(--family-accent);
+  box-shadow: 0 1px 6px color-mix(in oklab, var(--family-accent) 35%, transparent);
+}
+
+.family-now-playing__play:hover {
+  filter: brightness(1.06);
 }
 
 .family-feed-video {

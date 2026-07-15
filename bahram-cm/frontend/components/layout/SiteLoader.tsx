@@ -21,6 +21,8 @@ export function SiteLoader({
   size = 'md',
   variant = 'inline',
 }: Props) {
+  const accessibleLabel = label.trim() || 'در حال بارگذاری';
+
   return (
     <div
       className={cn(
@@ -31,13 +33,13 @@ export function SiteLoader({
       )}
       role="status"
       aria-live="polite"
-      aria-label={label}
+      aria-label={accessibleLabel}
     >
       <div className="site-loader__ring" aria-hidden>
         <span className="site-loader__arc" />
         <span className="site-loader__core" />
       </div>
-      {variant === 'page' ? (
+      {variant === 'page' && label.trim() ? (
         <p className="site-loader__label">{label}</p>
       ) : null}
     </div>

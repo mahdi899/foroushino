@@ -6,12 +6,6 @@ import { cn } from '@/lib/cn';
 import { FamilyVideoModal } from '@/components/family/FamilyVideoModal';
 import type { FamilyMediaBlock } from '@/lib/family/types';
 
-function formatBytes(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return '…';
-  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024)).toLocaleString('fa-IR')} کیلوبایت`;
-  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', '/')} مگابایت`;
-}
-
 export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId: number }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const preloadRef = useRef<HTMLVideoElement | null>(null);
@@ -19,7 +13,6 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const [phase, setPhase] = useState<'loading' | 'ready'>('loading');
   const [posterReady, setPosterReady] = useState(false);
   const [bufferRatio, setBufferRatio] = useState(0);
-  const [contentLength, setContentLength] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
@@ -44,13 +37,6 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
     setPhase('loading');
     setPosterReady(false);
     setBufferRatio(0);
-
-    void fetch(media.url, { method: 'HEAD' })
-      .then((response) => {
-        const len = response.headers.get('content-length');
-        if (!cancelled && len) setContentLength(parseInt(len, 10));
-      })
-      .catch(() => {});
 
     const video = preloadRef.current;
     if (!video) return () => {
@@ -96,16 +82,17 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   if (!media.url) {
     return (
       <div
-        className="flex aspect-video items-center justify-center rounded-2xl bg-[var(--family-surface-soft)] text-sm text-bone/50"
+        className="flex aspect-video items-center justify-center rounded-2xl bg-[var(--family-surface-soft)]"
         style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
+        aria-busy
+        aria-label="در حال پردازش ویدیو"
       >
-        در حال پردازش ویدیو…
+        <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80" />
       </div>
     );
   }
 
   const isPortrait = Boolean(media.width && media.height && media.height > media.width);
-  const downloadedBytes = contentLength ? Math.round(contentLength * bufferRatio) : null;
   const progressDeg = `${Math.round(bufferRatio * 360)}deg`;
 
   return (
@@ -169,19 +156,13 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
           )}
         >
           {phase === 'loading' ? (
-            <>
-              <div
-                className="family-video-progress-ring relative flex h-16 w-16 items-center justify-center rounded-full"
-                style={{ '--progress-deg': progressDeg } as CSSProperties}
-              >
-                <Loader2 className="h-7 w-7 animate-spin text-white/90" aria-hidden />
-              </div>
-              <p className="text-[12px] font-medium tabular-nums text-white/85">
-                {downloadedBytes != null && contentLength
-                  ? `${formatBytes(downloadedBytes)} از ${formatBytes(contentLength)}`
-                  : `${Math.round(bufferRatio * 100).toLocaleString('fa-IR')}٪`}
-              </p>
-            </>
+            <div
+              className="family-video-progress-ring relative flex h-11 w-11 items-center justify-center rounded-full"
+              style={{ '--progress-deg': progressDeg } as CSSProperties}
+              aria-label="در حال بارگذاری"
+            >
+              <Loader2 className="h-5 w-5 animate-spin text-white/90" aria-hidden />
+            </div>
           ) : (
             <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm transition hover:bg-black/60 active:scale-95">
               <Play className="ms-0.5 h-5 w-5 text-white/90" fill="currentColor" />

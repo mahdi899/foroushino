@@ -120,6 +120,9 @@ export function ActionCard({
   const submit = async (value: Record<string, unknown>, nextResults?: FamilyActionResults) => {
     if (pending || submitted) return;
     setPending(true);
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     try {
       await respondToAction(action.id, value);
       if (nextResults) setResults(nextResults);
@@ -277,15 +280,16 @@ export function ActionCard({
               <button
                 key={opt.id}
                 type="button"
-                onClick={() =>
+                onClick={(e) => {
+                  e.currentTarget.blur();
                   setSelected((prev) =>
                     action.type === 'single_choice'
                       ? [opt.value]
                       : isSelected
                         ? prev.filter((v) => v !== opt.value)
                         : [...prev, opt.value],
-                  )
-                }
+                  );
+                }}
                 className={cn(
                   'block w-full rounded-xl border px-3 py-2 text-right text-sm transition',
                   isSelected
