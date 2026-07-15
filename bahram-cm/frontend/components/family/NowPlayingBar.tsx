@@ -27,25 +27,36 @@ export function NowPlayingBar({ overlay = false }: { overlay?: boolean }) {
           : 'shrink-0',
       )}
     >
-      <div dir="ltr" className="flex items-center gap-2 px-3 py-2 sm:px-4 lg:px-5">
+      <div dir="ltr" className="flex items-center gap-3 px-3 py-2.5 sm:px-4 lg:px-5">
         <button
           type="button"
           onClick={toggleActivePlayback}
           aria-label={nowPlaying.isPlaying ? 'توقف پخش' : 'ادامه پخش'}
-          className="family-voice-play flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition active:scale-95"
+          className="family-voice-play flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-95"
         >
           {nowPlaying.isPlaying ? (
-            <Pause className="h-3.5 w-3.5" fill="currentColor" />
+            <Pause className="h-4 w-4" fill="currentColor" />
           ) : (
-            <Play className="ms-0.5 h-3.5 w-3.5" fill="currentColor" />
+            <Play className="ms-0.5 h-4 w-4" fill="currentColor" />
           )}
         </button>
 
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-bone/90">{nowPlaying.title}</p>
-          <p className="text-[11px] tabular-nums text-bone/45">
-            {formatTime(nowPlaying.progress)} / {formatTime(nowPlaying.duration)}
-          </p>
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <p className="truncate text-[13px] font-semibold leading-tight text-bone/92">{nowPlaying.title}</p>
+          <div className="flex items-center gap-2">
+            <span className="w-9 shrink-0 text-left text-[10px] tabular-nums text-bone/45">
+              {formatTime(nowPlaying.progress)}
+            </span>
+            <div className="relative h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[color-mix(in_oklab,var(--family-surface-soft)_90%,transparent)]">
+              <div
+                className="absolute inset-y-0 left-0 rounded-full bg-[var(--family-accent)] transition-[width] duration-150"
+                style={{ width: `${ratio * 100}%` }}
+              />
+            </div>
+            <span className="w-9 shrink-0 text-right text-[10px] tabular-nums text-bone/45">
+              {formatTime(nowPlaying.duration)}
+            </span>
+          </div>
         </div>
 
         <button
@@ -56,15 +67,6 @@ export function NowPlayingBar({ overlay = false }: { overlay?: boolean }) {
         >
           <X className="h-4 w-4" strokeWidth={2} />
         </button>
-      </div>
-
-      <div className="px-3 pb-2 sm:px-4 lg:px-5">
-        <div className="h-1 overflow-hidden rounded-full bg-[color-mix(in_oklab,var(--family-surface-soft)_88%,transparent)]">
-          <div
-            className="h-full rounded-full bg-[var(--family-accent)] transition-[width] duration-150"
-            style={{ width: `${ratio * 100}%` }}
-          />
-        </div>
       </div>
     </div>
   );

@@ -47,6 +47,7 @@ export function FamilyMediaPlayerProvider({ children }: { children: ReactNode })
       if (elId !== id && !el.paused) el.pause();
     });
     setActiveId(id);
+    setNowPlayingState((current) => (current && current.mediaId !== id ? null : current));
   }, []);
 
   const notifyPaused = useCallback((id: number) => {

@@ -130,13 +130,13 @@ export function ActionCard({ action }: { action: FamilyAction }) {
             inputMode="decimal"
             value={numberValue}
             onChange={(e) => setNumberValue(e.target.value)}
-            className="family-input flex-1 rounded-xl px-3 py-2 text-sm"
+            className="family-input w-[7.5rem] max-w-[38%] shrink-0 rounded-xl px-3 py-2 text-sm sm:w-28"
             placeholder="عدد را وارد کن"
           />
           <button
             type="submit"
             disabled={pending || !numberValue}
-            className="family-btn-primary rounded-xl px-4 py-2 text-sm disabled:opacity-60"
+            className="family-btn-primary min-w-0 flex-1 rounded-xl px-4 py-2 text-sm disabled:opacity-60"
           >
             ثبت
           </button>
@@ -163,7 +163,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
           <button
             type="submit"
             disabled={pending || !textValue.trim()}
-            className="family-btn-primary rounded-xl px-4 py-2 text-sm disabled:opacity-60"
+            className="family-btn-primary w-full rounded-xl px-4 py-2.5 text-sm disabled:opacity-60"
           >
             ثبت پاسخ
           </button>
