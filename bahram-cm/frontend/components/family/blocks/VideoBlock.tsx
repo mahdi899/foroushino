@@ -3,47 +3,67 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Loader2, Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { useDelayedInView } from '@/hooks/useDelayedInView';
 import { FamilyVideoModal } from '@/components/family/FamilyVideoModal';
+import {
+  getFamilyMediaBlobUrl,
+  readFamilyMediaBlob,
+  tryCacheFamilyMediaBlob,
+} from '@/lib/family/mediaCache';
 import type { FamilyMediaBlock } from '@/lib/family/types';
 
+type VideoPhase = 'idle' | 'preview' | 'loading' | 'ready';
+
 export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId: number }) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const preloadRef = useRef<HTMLVideoElement | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const [phase, setPhase] = useState<'loading' | 'ready'>('loading');
+  const previewRef = useRef<HTMLVideoElement | null>(null);
+  const [phase, setPhase] = useState<VideoPhase>('idle');
+  const [loadRequested, setLoadRequested] = useState(false);
+  const [previewActive, setPreviewActive] = useState(false);
   const [posterReady, setPosterReady] = useState(false);
   const [bufferRatio, setBufferRatio] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
+  const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
+  const previewRequestedRef = useRef(false);
+
+  const previewReady = useDelayedInView(containerRef, 420, phase === 'idle');
 
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setIsVisible(true);
-      },
-      { rootMargin: '240px' },
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!isVisible || !media.url) return;
+    if (!media.url) return;
 
     let cancelled = false;
+    void readFamilyMediaBlob('full', media.id, media.url).then((blob) => {
+      if (cancelled || !blob) return;
+      const key = `video-full:${media.id}`;
+      setPlaybackUrl(getFamilyMediaBlobUrl(key, blob));
+      setPhase('ready');
+      setPosterReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [media.id, media.url]);
+
+  useEffect(() => {
+    if (!previewReady || !media.url || phase !== 'idle' || previewRequestedRef.current) return;
+
+    previewRequestedRef.current = true;
+    setPreviewActive(true);
+    setPhase('preview');
+  }, [media.id, media.url, phase, previewReady]);
+
+  useEffect(() => {
+    if (!loadRequested || !media.url) return;
+
+    let cancelled = false;
+    let raf = 0;
     setPhase('loading');
     setPosterReady(false);
     setBufferRatio(0);
 
-    const video = preloadRef.current;
-    if (!video) return () => {
-      cancelled = true;
-    };
-
-    const updateBuffer = () => {
+    const updateBuffer = (video: HTMLVideoElement) => {
       const duration = video.duration;
       if (!Number.isFinite(duration) || duration <= 0) return;
 
@@ -57,27 +77,74 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       if (ratio >= 0.985 || video.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) {
         setPhase('ready');
         setBufferRatio(1);
+        setPosterReady(true);
       }
     };
 
-    const markReady = () => {
-      setPhase('ready');
-      setBufferRatio(1);
+    const attach = (video: HTMLVideoElement) => {
+      const onProgress = () => updateBuffer(video);
+      const onMeta = () => updateBuffer(video);
+      const onReady = () => {
+        setPhase('ready');
+        setBufferRatio(1);
+        setPosterReady(true);
+      };
+
+      video.addEventListener('progress', onProgress);
+      video.addEventListener('loadedmetadata', onMeta);
+      video.addEventListener('canplaythrough', onReady);
+
+      void (async () => {
+        const cached = await readFamilyMediaBlob('full', media.id, media.url!);
+        const blob = cached ?? (await tryCacheFamilyMediaBlob(media.url!, media.id, 'full'));
+        if (cancelled) return;
+
+        const src =
+          blob != null
+            ? getFamilyMediaBlobUrl(`video-full:${media.id}`, blob)
+            : media.url!;
+        setPlaybackUrl(src);
+        video.src = src;
+        video.preload = 'auto';
+        video.load();
+      })();
+
+      return () => {
+        video.removeEventListener('progress', onProgress);
+        video.removeEventListener('loadedmetadata', onMeta);
+        video.removeEventListener('canplaythrough', onReady);
+      };
     };
 
-    video.preload = 'metadata';
-    video.addEventListener('progress', updateBuffer);
-    video.addEventListener('canplaythrough', markReady);
-    video.addEventListener('loadedmetadata', updateBuffer);
-    video.load();
+    let detach: (() => void) | undefined;
+
+    const waitForVideo = () => {
+      const video = preloadRef.current;
+      if (!video) {
+        raf = requestAnimationFrame(waitForVideo);
+        return;
+      }
+      detach = attach(video);
+    };
+
+    waitForVideo();
 
     return () => {
       cancelled = true;
-      video.removeEventListener('progress', updateBuffer);
-      video.removeEventListener('canplaythrough', markReady);
-      video.removeEventListener('loadedmetadata', updateBuffer);
+      cancelAnimationFrame(raf);
+      detach?.();
     };
-  }, [isVisible, media.url]);
+  }, [loadRequested, media.id, media.url]);
+
+  const handleActivate = () => {
+    if (phase === 'ready') {
+      setModalOpen(true);
+      return;
+    }
+    if (phase === 'idle' || phase === 'preview') {
+      setLoadRequested(true);
+    }
+  };
 
   if (!media.url) {
     return (
@@ -94,65 +161,81 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
 
   const isPortrait = Boolean(media.width && media.height && media.height > media.width);
   const progressDeg = `${Math.round(bufferRatio * 360)}deg`;
+  const modalUrl = playbackUrl ?? media.url;
 
   return (
     <>
       <div
         ref={containerRef}
         className={cn(
-          'family-feed-video relative w-full overflow-hidden rounded-2xl bg-[var(--family-surface-soft)]',
+          'family-feed-video relative max-w-full overflow-hidden rounded-2xl bg-[var(--family-surface-soft)]',
           isPortrait ? 'family-feed-video--portrait' : 'family-feed-video--landscape',
         )}
         style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
       >
-        <video
-          ref={preloadRef}
-          src={isVisible ? media.url : undefined}
-          playsInline
-          muted
-          preload={isVisible ? 'metadata' : 'none'}
-          onLoadedMetadata={(e) => {
-            const video = e.currentTarget;
-            try {
-              if (video.currentTime < 0.001) video.currentTime = 0.001;
-            } catch {
-              // ignore
-            }
-          }}
-          onLoadedData={() => {
-            setPosterReady(true);
-          }}
-          onSeeked={() => {
-            setPosterReady(true);
-          }}
-          className={cn(
-            'pointer-events-none h-full w-full object-cover transition-[filter,transform,opacity] duration-300',
-            posterReady ? 'opacity-100' : 'opacity-0',
-            phase === 'loading' ? 'scale-105 blur-md' : 'scale-100 blur-0',
-          )}
-          aria-hidden
-        />
+        {previewActive && phase !== 'ready' && !loadRequested ? (
+          <video
+            ref={previewRef}
+            src={media.url}
+            playsInline
+            muted
+            preload="metadata"
+            onLoadedData={(e) => {
+              const video = e.currentTarget;
+              try {
+                if (video.currentTime < 0.001) video.currentTime = 0.08;
+              } catch {
+                // ignore
+              }
+              setPosterReady(true);
+            }}
+            onSeeked={() => setPosterReady(true)}
+            className={cn(
+              'pointer-events-none h-full w-full object-cover transition-[filter,opacity] duration-300',
+              posterReady ? 'opacity-100 blur-md brightness-95' : 'opacity-0',
+            )}
+            aria-hidden
+          />
+        ) : null}
+
+        {loadRequested ? (
+          <video
+            ref={preloadRef}
+            playsInline
+            muted
+            preload="auto"
+            className={cn(
+              'pointer-events-none h-full w-full object-cover transition-[filter,transform,opacity] duration-300',
+              posterReady ? 'opacity-100' : 'opacity-0',
+              phase === 'loading' ? 'scale-105 blur-md' : 'scale-100 blur-0',
+            )}
+            aria-hidden
+          />
+        ) : null}
 
         <div
           className={cn(
             'absolute inset-0',
-            phase === 'loading'
-              ? 'bg-black/25'
-              : 'bg-gradient-to-b from-black/15 via-black/35 to-black/55',
+            phase === 'idle'
+              ? 'bg-[var(--family-surface-soft)]'
+              : phase === 'loading'
+                ? 'bg-black/25'
+                : phase === 'preview'
+                  ? 'bg-black/10'
+                  : 'bg-gradient-to-b from-black/15 via-black/35 to-black/55',
           )}
           aria-hidden
         />
 
         <button
           type="button"
-          disabled={phase !== 'ready'}
-          onClick={() => {
-            if (phase === 'ready') setModalOpen(true);
-          }}
-          aria-label={phase === 'ready' ? 'پخش ویدیو' : 'در حال بارگذاری ویدیو'}
+          onClick={handleActivate}
+          aria-label={
+            phase === 'ready' ? 'پخش ویدیو' : phase === 'loading' ? 'در حال بارگذاری ویدیو' : 'بارگذاری ویدیو'
+          }
           className={cn(
-            'absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center transition',
-            phase === 'ready' ? 'cursor-pointer' : 'cursor-default',
+            'absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center transition cursor-pointer',
+            phase === 'loading' && 'cursor-wait',
           )}
         >
           {phase === 'loading' ? (
@@ -173,7 +256,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
 
       <FamilyVideoModal
         open={modalOpen}
-        url={media.url}
+        url={modalUrl}
         mediaId={media.id}
         postId={postId}
         durationHint={media.duration}

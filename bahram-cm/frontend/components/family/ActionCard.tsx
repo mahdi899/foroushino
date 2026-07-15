@@ -164,16 +164,22 @@ function ActionHeader({
 
 function ActionShell({
   done = false,
+  successOnly = false,
   children,
 }: {
   done?: boolean;
+  successOnly?: boolean;
   children: ReactNode;
 }) {
   const reduceMotion = useReducedMotion();
 
   return (
     <motion.div
-      className={cn('family-action-glass', done && 'family-action-glass--done')}
+      className={cn(
+        'family-action-glass',
+        done && 'family-action-glass--done',
+        successOnly && 'family-action-glass--success',
+      )}
       initial={reduceMotion ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={familyMotion.tweenFast}
@@ -183,15 +189,21 @@ function ActionShell({
   );
 }
 
-function ActionSuccess({ compact = false }: { compact?: boolean }) {
+function ActionSuccess({ compact = false, embedded = false }: { compact?: boolean; embedded?: boolean }) {
   const reduceMotion = useReducedMotion();
 
   return (
     <motion.div
-      className={cn('family-action-success', compact && 'family-action-success--compact')}
-      initial={reduceMotion ? false : { opacity: 0, scale: 0.94 }}
+      className={cn(
+        'family-action-success',
+        compact && 'family-action-success--compact',
+        embedded && 'family-action-success--embedded',
+      )}
+      initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={familyMotion.spring}
+      role="status"
+      aria-live="polite"
     >
       <CheckCircle2 className="family-action-success__icon" strokeWidth={2.25} aria-hidden />
       <div className="min-w-0">
@@ -256,8 +268,8 @@ export function ActionCard({
 
   if (submitted) {
     return (
-      <ActionShell done>
-        {!hidePrompt && action.prompt ? (
+      <ActionShell done successOnly={!showResults}>
+        {!hidePrompt && action.prompt && showResults ? (
           <p className="family-action-done-question">{action.prompt}</p>
         ) : null}
         {showResults ? (
@@ -268,7 +280,7 @@ export function ActionCard({
             done
           />
         ) : (
-          <ActionSuccess compact />
+          <ActionSuccess compact embedded />
         )}
       </ActionShell>
     );

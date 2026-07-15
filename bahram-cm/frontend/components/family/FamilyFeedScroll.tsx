@@ -1,6 +1,6 @@
 'use client';
 
-import { forwardRef, useImperativeHandle, useRef, type ReactNode } from 'react';
+import { forwardRef, useImperativeHandle, useRef, type CSSProperties, type ReactNode } from 'react';
 import { ReactLenis, useLenis, type LenisRef } from 'lenis/react';
 import { cn } from '@/lib/cn';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -37,6 +37,7 @@ export type FamilyFeedScrollHandle = {
 type FamilyFeedScrollProps = {
   children: ReactNode;
   className?: string;
+  style?: CSSProperties;
   onScroll?: () => void;
 };
 
@@ -46,7 +47,7 @@ function FeedLenisScrollListener({ onScroll }: { onScroll: () => void }) {
 }
 
 export const FamilyFeedScroll = forwardRef<FamilyFeedScrollHandle, FamilyFeedScrollProps>(
-  function FamilyFeedScroll({ children, className, onScroll }, ref) {
+  function FamilyFeedScroll({ children, className, style, onScroll }, ref) {
     const lenisRef = useRef<LenisRef>(null);
     const nativeRef = useRef<HTMLDivElement>(null);
     const reduceMotion = usePrefersReducedMotion();
@@ -95,6 +96,7 @@ export const FamilyFeedScroll = forwardRef<FamilyFeedScrollHandle, FamilyFeedScr
         <div
           ref={nativeRef}
           className={baseClass}
+          style={style}
           onScroll={onScroll}
         >
           {children}
@@ -108,6 +110,7 @@ export const FamilyFeedScroll = forwardRef<FamilyFeedScrollHandle, FamilyFeedScr
         root={false}
         options={FEED_LENIS_OPTIONS}
         className={baseClass}
+        style={style}
       >
         {onScroll ? <FeedLenisScrollListener onScroll={onScroll} /> : null}
         {children}

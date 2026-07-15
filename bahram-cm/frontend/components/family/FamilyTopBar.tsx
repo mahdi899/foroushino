@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
+import { familyMotion } from '@/lib/family/motion';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { StoryViewer } from '@/components/family/StoryViewer';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
@@ -19,6 +21,7 @@ export function FamilyTopBar({
   const { branding } = useFamilyBranding();
   const { hasStories, hasUnseen, markSeen } = useFamilyStoryState(branding);
   const [storyOpen, setStoryOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
   const storiesAvailable = canViewStories && hasStories;
 
   const openStories = useCallback(() => {
@@ -74,7 +77,12 @@ export function FamilyTopBar({
 
   return (
     <>
-      <header className="family-topbar">
+      <motion.header
+        className="family-topbar"
+        initial={reduceMotion ? false : { opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={familyMotion.tween}
+      >
         <div className="family-topbar__inner">
           <Link href="/" aria-label="بازگشت به سایت" className="family-topbar__back">
             <ChevronRight className="family-topbar__back-icon" aria-hidden />
@@ -82,7 +90,7 @@ export function FamilyTopBar({
 
           {profileControl}
         </div>
-      </header>
+      </motion.header>
 
       {canViewStories && (
         <StoryViewer

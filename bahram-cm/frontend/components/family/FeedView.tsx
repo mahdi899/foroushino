@@ -8,7 +8,15 @@ import { FamilyBrandingSidebar } from '@/components/family/FamilyBrandingSidebar
 import { FamilyNotificationsPanel } from '@/components/family/FamilyNotificationsPanel';
 import { FeedCommentsPanel } from '@/components/family/FeedCommentsPanel';
 import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
+import { FamilyFeedScroll, type FamilyFeedScrollHandle } from '@/components/family/FamilyFeedScroll';
 import { PostCard } from '@/components/family/PostCard';
+import {
+  getFeedDistanceFromBottom,
+  getLenisDistanceFromBottom,
+  restoreFeedScrollPosition,
+  scrollFeedTo,
+  scrollFeedToLatest,
+} from '@/lib/family/feedScroll';
 import { useFamilyFeed } from '@/lib/family/hooks/useFamilyFeed';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
 import type { FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
@@ -88,8 +96,18 @@ export function FeedView({
     }
     document.getElementById('family-join-cta')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [effectivePreviewMode, openLogin]);
-  const feedScrollRef = useRef<HTMLDivElement | null>(null);
+  const feedScrollRef = useRef<FamilyFeedScrollHandle | null>(null);
+
+  const getScrollCtx = useCallback(() => {
+    const handle = feedScrollRef.current;
+    return {
+      root: handle?.getScrollElement() ?? null,
+      lenis: handle?.getLenis() ?? null,
+    };
+  }, []);
   const feedContentRef = useRef<HTMLDivElement | null>(null);
+  const chromeStackRef = useRef<HTMLDivElement | null>(null);
+  const [chromeInset, setChromeInset] = useState(0);
   const bottomAnchorRef = useRef<HTMLDivElement | null>(null);
   const topSentinelRef = useRef<HTMLDivElement | null>(null);
   const initialScrollDoneRef = useRef(false);
@@ -123,17 +141,17 @@ export function FeedView({
   );
 
   const stickToBottomIfAnchored = useCallback(() => {
-    const root = feedScrollRef.current;
+    const { root, lenis } = getScrollCtx();
     if (!root || pinNavigateRef.current) return;
 
     if (!historyReadyRef.current) {
-      root.scrollTop = root.scrollHeight;
+      scrollFeedToLatest('auto', { root, lenis });
       return;
     }
 
     if (!anchoredToBottomRef.current) return;
-    root.scrollTop = root.scrollHeight;
-  }, []);
+    scrollFeedToLatest('auto', { root, lenis });
+  }, [getScrollCtx]);
 
   const scheduleStickToBottom = useCallback(() => {
     if (scrollStickRafRef.current != null) return;
@@ -144,34 +162,26 @@ export function FeedView({
   }, [stickToBottomIfAnchored]);
 
   const updateAnchoredToBottom = useCallback(() => {
-    const root = feedScrollRef.current;
+    const { root, lenis } = getScrollCtx();
     if (!root) return;
-    const distanceFromBottom = root.scrollHeight - root.clientHeight - root.scrollTop;
+    const distanceFromBottom = lenis
+      ? getLenisDistanceFromBottom(lenis)
+      : getFeedDistanceFromBottom(root);
     anchoredToBottomRef.current = distanceFromBottom < 80;
-  }, []);
+  }, [getScrollCtx]);
+
+  const handleFeedScroll = useCallback(() => {
+    if (pinNavigateRef.current) return;
+    if (scrollAnchorRafRef.current != null) return;
+    scrollAnchorRafRef.current = requestAnimationFrame(() => {
+      scrollAnchorRafRef.current = null;
+      updateAnchoredToBottom();
+    });
+  }, [updateAnchoredToBottom]);
 
   useEffect(() => {
-    const root = feedScrollRef.current;
-    if (!root) return;
-
-    const onScroll = () => {
-      if (pinNavigateRef.current) return;
-      if (scrollAnchorRafRef.current != null) return;
-      scrollAnchorRafRef.current = requestAnimationFrame(() => {
-        scrollAnchorRafRef.current = null;
-        updateAnchoredToBottom();
-      });
-    };
-
-    root.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      root.removeEventListener('scroll', onScroll);
-      if (scrollAnchorRafRef.current != null) {
-        cancelAnimationFrame(scrollAnchorRafRef.current);
-        scrollAnchorRafRef.current = null;
-      }
-    };
-  }, [updateAnchoredToBottom, posts.length, commentsTarget, mainView]);
+    updateAnchoredToBottom();
+  }, [posts.length, commentsTarget, mainView, updateAnchoredToBottom]);
 
   const scrollToPost = useCallback(
     async (postId: number) => {
@@ -181,14 +191,14 @@ export function FeedView({
       };
 
       const tryScroll = (): boolean => {
-        const root = feedScrollRef.current;
+        const { root, lenis } = getScrollCtx();
         const el = document.getElementById(`family-post-${postId}`);
         if (!root || !el) return false;
 
         const rootRect = root.getBoundingClientRect();
         const elRect = el.getBoundingClientRect();
         const targetTop = elRect.top - rootRect.top + root.scrollTop - 20;
-        root.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+        scrollFeedTo(Math.max(0, targetTop), 'smooth', { root, lenis });
         anchoredToBottomRef.current = false;
         highlight(el);
         return true;
@@ -239,7 +249,7 @@ export function FeedView({
       pinNavigateRef.current = false;
       tryScroll();
     },
-    [loadMore],
+    [getScrollCtx, loadMore],
   );
 
   useEffect(() => {
@@ -252,24 +262,25 @@ export function FeedView({
   }, [isValidating]);
 
   useLayoutEffect(() => {
-    const root = feedScrollRef.current;
-    if (!root || !scrollRestoreRef.current) return;
+    const snapshot = scrollRestoreRef.current;
+    if (!snapshot) return;
 
-    const { height, top } = scrollRestoreRef.current;
-    const delta = root.scrollHeight - height;
-    root.scrollTop = top + delta;
+    const { root, lenis } = getScrollCtx();
+    if (!root) return;
+
+    restoreFeedScrollPosition(snapshot, { root, lenis });
     scrollRestoreRef.current = null;
-  }, [posts.length]);
+  }, [getScrollCtx, posts.length]);
 
   useLayoutEffect(() => {
     if (isLoading || posts.length === 0) return;
 
-    const root = feedScrollRef.current;
+    const { root, lenis } = getScrollCtx();
     if (!root) return;
 
     if (!initialScrollDoneRef.current) {
       initialScrollDoneRef.current = true;
-      root.scrollTop = root.scrollHeight;
+      scrollFeedToLatest('auto', { root, lenis });
       anchoredToBottomRef.current = true;
       historyReadyRef.current = true;
       maxPostIdRef.current = posts.reduce((max, post) => Math.max(max, post.id), 0);
@@ -280,7 +291,7 @@ export function FeedView({
     if (!historyReadyRef.current) {
       historyReadyRef.current = true;
     }
-  }, [isLoading, posts]);
+  }, [getScrollCtx, isLoading, posts]);
 
   useEffect(() => {
     maxPostIdRef.current = posts.reduce(
@@ -310,7 +321,7 @@ export function FeedView({
   }, [posts.length, scheduleStickToBottom]);
 
   useEffect(() => {
-    const root = feedScrollRef.current;
+    const { root } = getScrollCtx();
     const sentinel = topSentinelRef.current;
     if (!root || !sentinel || !hasMore || mainView !== 'feed' || commentsTarget) return;
 
@@ -319,7 +330,7 @@ export function FeedView({
         if (!historyReadyRef.current || !anchoredToBottomRef.current || pinNavigateRef.current) return;
         if (!entries[0]?.isIntersecting || isValidating || loadingHistoryRef.current) return;
 
-        const distanceFromBottom = root.scrollHeight - root.clientHeight - root.scrollTop;
+        const distanceFromBottom = getFeedDistanceFromBottom(root);
         if (distanceFromBottom < 80) return;
 
         loadingHistoryRef.current = true;
@@ -334,9 +345,29 @@ export function FeedView({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, loadMore, isValidating, mainView, commentsTarget, posts.length]);
+  }, [commentsTarget, getScrollCtx, hasMore, isValidating, loadMore, mainView, posts.length]);
 
   const showFeed = mainView === 'feed' && !commentsTarget;
+
+  useLayoutEffect(() => {
+    if (!showFeed) {
+      setChromeInset(0);
+      return;
+    }
+
+    const el = chromeStackRef.current;
+    if (!el) {
+      setChromeInset(0);
+      return;
+    }
+
+    const update = () => setChromeInset(el.offsetHeight);
+    update();
+
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [showFeed, showPinned]);
 
   return (
     <div className="flex h-full min-h-0 flex-1">
@@ -371,19 +402,35 @@ export function FeedView({
         <div className={showFeed ? 'family-feed-pane relative flex min-h-0 min-w-0 flex-1 flex-col' : 'hidden'}>
           <div className="family-feed-chrome-slot hidden shrink-0 lg:block">
             <div className="family-feed-chrome-slot__inner">
-              <FamilyFeedChrome showPinned={showPinned} showNowPlaying={false} onScrollToPost={scrollToPost} />
+              <FamilyFeedChrome
+                parts="pinned"
+                showPinned={showPinned}
+                showNowPlaying={false}
+                onScrollToPost={(postId) => {
+                  void scrollToPost(postId);
+                }}
+              />
             </div>
           </div>
 
-          <FamilyFeedChrome
-            showPinned={false}
-            showNowPlaying
-            overlayNowPlaying
-          />
+          <div ref={chromeStackRef} className="family-feed-chrome-stack">
+            <div className="lg:hidden">
+              <FamilyFeedChrome
+                parts="pinned"
+                showPinned={showPinned}
+                showNowPlaying={false}
+                onScrollToPost={(postId) => {
+                  void scrollToPost(postId);
+                }}
+              />
+            </div>
+            <FamilyFeedChrome parts="now" showPinned={false} showNowPlaying />
+          </div>
 
-          <div
+          <FamilyFeedScroll
             ref={feedScrollRef}
-            className="family-feed-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain [overflow-anchor:none]"
+            onScroll={handleFeedScroll}
+            style={chromeInset > 0 ? { paddingTop: chromeInset } : undefined}
           >
             <div ref={feedContentRef} className="family-feed-content mx-auto flex w-full max-w-[680px] flex-col">
               {isPreview && effectivePreviewMode && posts.length > 0 && (
@@ -449,7 +496,7 @@ export function FeedView({
                 </div>
               )}
             </div>
-          </div>
+          </FamilyFeedScroll>
         </div>
       </div>
     </div>

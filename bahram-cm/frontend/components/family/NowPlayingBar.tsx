@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Pause, Play, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
@@ -13,7 +14,7 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export function NowPlayingBar({ overlay = false }: { overlay?: boolean }) {
+export function NowPlayingBar() {
   const {
     nowPlaying,
     playbackRate,
@@ -67,25 +68,33 @@ export function NowPlayingBar({ overlay = false }: { overlay?: boolean }) {
     nowPlaying.duration > 0 ? Math.min(1, displayProgress / nowPlaying.duration) : 0;
 
   return (
-    <div
-      className={cn(
-        'family-now-playing relative',
-        overlay && 'family-now-playing--overlay pointer-events-auto absolute inset-x-0 top-0 z-40',
-        !overlay && 'shrink-0',
-      )}
-    >
+    <div className="family-now-playing relative shrink-0">
       <div dir="ltr" className="family-now-playing__row">
         <button
           type="button"
           onClick={toggleActivePlayback}
           aria-label={nowPlaying.isPlaying ? 'توقف پخش' : 'ادامه پخش'}
-          className="family-now-playing__play"
-        >
-          {nowPlaying.isPlaying ? (
-            <Pause className="h-3.5 w-3.5" fill="currentColor" />
-          ) : (
-            <Play className="ms-0.5 h-3.5 w-3.5" fill="currentColor" />
+          className={cn(
+            'family-now-playing__play',
+            nowPlaying.isPlaying && 'family-now-playing__play--playing',
           )}
+        >
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.span
+              key={nowPlaying.isPlaying ? 'pause' : 'play'}
+              className="family-now-playing__play-icon"
+              initial={{ opacity: 0, scale: 0.55 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.55 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {nowPlaying.isPlaying ? (
+                <Pause className="h-3.5 w-3.5" fill="currentColor" />
+              ) : (
+                <Play className="ms-0.5 h-3.5 w-3.5" fill="currentColor" />
+              )}
+            </motion.span>
+          </AnimatePresence>
         </button>
 
         <div className="min-w-0 flex-1">

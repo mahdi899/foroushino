@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { getPinnedPosts } from '@/lib/family/api';
 import { familyMotion } from '@/lib/family/motion';
 import { getPinnedPreview } from '@/lib/family/pinnedPreview';
@@ -22,7 +22,6 @@ export function PinnedMessageBar({
   );
 
   const [cursor, setCursor] = useState(0);
-  const reduceMotion = useReducedMotion();
 
   const pinnedPosts = pinnedProp ?? data ?? [];
 
@@ -44,14 +43,10 @@ export function PinnedMessageBar({
   };
 
   return (
-    <motion.button
+    <button
       type="button"
       onClick={handleClick}
       className="family-pinned-bar"
-      initial={reduceMotion ? false : { opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={familyMotion.tween}
-      whileTap={reduceMotion ? undefined : { scale: 0.995 }}
       aria-label={`رفتن به پیام سنجاق‌شده${pinnedPosts.length > 1 ? ` (${index + 1} از ${pinnedPosts.length})` : ''}`}
     >
       <span className="family-pinned-bar__rail" aria-hidden />
@@ -83,6 +78,6 @@ export function PinnedMessageBar({
         // eslint-disable-next-line @next/next/no-img-element
         <img src={thumbnail} alt="" className="family-pinned-bar__thumb" />
       ) : null}
-    </motion.button>
+    </button>
   );
 }

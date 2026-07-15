@@ -99,7 +99,6 @@ export function VoiceBlock({
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const waveRef = useRef<HTMLButtonElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const draggingRef = useRef(false);
   const scrubbingRef = useRef(false);
   const scrubRatioRef = useRef(0);
@@ -107,7 +106,7 @@ export function VoiceBlock({
   const seekPositionRef = useRef(0);
   const blobUrlRef = useRef<string | null>(null);
   const blobPromiseRef = useRef<Promise<void> | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const [loadRequested, setLoadRequested] = useState(false);
   const { activeId, register, unregister, requestPlay, notifyPaused, setNowPlaying, updateNowPlayingProgress, playbackRate, cyclePlaybackRate } =
     useFamilyMediaPlayer();
   const [playing, setPlaying] = useState(false);
@@ -133,24 +132,9 @@ export function VoiceBlock({
     }
   }, [activeId, media.id]);
 
+  // Full-file blob makes scrubbing reliable — only after the user taps play/scrub.
   useEffect(() => {
-    const root = containerRef.current;
-    if (!root) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setIsVisible(true);
-      },
-      { rootMargin: '240px' },
-    );
-
-    observer.observe(root);
-    return () => observer.disconnect();
-  }, []);
-
-  // Full-file blob makes scrubbing reliable (HTTP streaming often ignores currentTime).
-  useEffect(() => {
-    if (!media.url || !isVisible) return;
+    if (!media.url || !loadRequested) return;
 
     let cancelled = false;
     setAudioReady(false);
@@ -161,7 +145,7 @@ export function VoiceBlock({
     }
 
     const el = audioRef.current;
-    if (el) {
+    if (el && !el.src) {
       el.src = media.url;
     }
 
@@ -211,14 +195,14 @@ export function VoiceBlock({
         blobUrlRef.current = null;
       }
     };
-  }, [media.url, isVisible]);
+  }, [media.url, loadRequested]);
 
   const ensureAudioReady = useCallback(async () => {
-    if (!isVisible) setIsVisible(true);
+    if (!loadRequested) setLoadRequested(true);
     if (blobPromiseRef.current) {
       await blobPromiseRef.current;
     }
-  }, [isVisible]);
+  }, [loadRequested]);
 
   const resolvedDuration = useMemo(() => {
     if (duration > 0) return duration;
@@ -362,13 +346,12 @@ export function VoiceBlock({
 
   return (
     <div
-      ref={containerRef}
       dir="ltr"
       className={cn('family-voice', !playing && 'family-voice--idle')}
     >
       <audio
         ref={audioRef}
-        preload="auto"
+        preload="none"
         onPlay={() => {
           setPlaying(true);
           const el = audioRef.current;
@@ -435,11 +418,13 @@ export function VoiceBlock({
           ref={waveRef}
           type="button"
           aria-label="موج صدا"
-          disabled={!audioReady}
           onPointerDown={(e) => {
-            if (!audioReady) return;
             e.preventDefault();
             e.stopPropagation();
+            if (!loadRequested) {
+              void ensureAudioReady();
+            }
+            if (!audioReady) return;
             draggingRef.current = true;
             playingBeforeScrubRef.current = Boolean(audioRef.current && !audioRef.current.paused);
             e.currentTarget.setPointerCapture(e.pointerId);
@@ -468,7 +453,7 @@ export function VoiceBlock({
           }}
           className={cn(
             'family-voice-wave min-w-0 flex-1 touch-none',
-            audioReady ? 'cursor-pointer' : 'cursor-wait opacity-70',
+            loadRequested && !audioReady ? 'cursor-wait opacity-70' : 'cursor-pointer',
           )}
           style={{ '--wave-bars': barCount } as CSSProperties}
         >
@@ -490,7 +475,7 @@ export function VoiceBlock({
         </button>
 
         <div className="family-voice__aside">
-          {!audioReady ? (
+          {loadRequested && !audioReady ? (
             <span className="family-voice__spinner family-voice__spinner--sm" aria-label="در حال آماده‌سازی" />
           ) : null}
           {isPodcast && audioReady ? (
