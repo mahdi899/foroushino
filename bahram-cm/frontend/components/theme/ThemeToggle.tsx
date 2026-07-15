@@ -10,6 +10,10 @@ import {
 } from "@/lib/site-theme";
 
 const SIZES = {
+  mini: {
+    track: "h-7 w-[2.75rem]",
+    icon: 13,
+  },
   compact: {
     track: "h-9 w-[3.75rem]",
     icon: 15,
@@ -29,14 +33,17 @@ function thumbOffset(isLight: boolean): string {
 export function ThemeToggle({
   className,
   compact,
+  mini,
 }: {
   className?: string;
   /** Smaller footprint for dense headers (nav bar). */
   compact?: boolean;
+  /** Smallest — family sidebar row. */
+  mini?: boolean;
 }) {
   const theme = useDataTheme();
   const reduce = useReducedMotion();
-  const size = compact ? SIZES.compact : SIZES.default;
+  const size = mini ? SIZES.mini : compact ? SIZES.compact : SIZES.default;
   const isLight = theme === "light";
   const Icon = isLight ? Sun : Moon;
 

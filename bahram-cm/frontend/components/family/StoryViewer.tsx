@@ -70,14 +70,14 @@ export function StoryViewer({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex flex-col bg-black/95"
+          className="fixed inset-0 z-[100] flex flex-col bg-black/95 text-white"
           role="dialog"
           aria-modal
           aria-label={`استوری ${profileName}`}
         >
-          <div className="flex gap-1 px-3 pt-3">
+          <div className="relative z-20 flex gap-1 px-3 pt-3">
             {stories.map((story, i) => (
-              <div key={story.id} className="h-0.5 flex-1 overflow-hidden rounded-full bg-white/20">
+              <div key={story.id} className="h-0.5 flex-1 overflow-hidden rounded-full bg-white/25">
                 <div
                   className="h-full bg-gold transition-all"
                   style={{
@@ -89,16 +89,20 @@ export function StoryViewer({
             ))}
           </div>
 
-          <header className="flex items-center justify-between px-4 py-3">
-            <p className="text-sm font-semibold text-bone">{profileName}</p>
-            <button type="button" onClick={onClose} className="rounded-full px-3 py-1 text-sm text-bone/70 hover:text-bone">
+          <header className="relative z-20 flex items-center justify-between px-4 py-3">
+            <p className="text-sm font-semibold text-white drop-shadow-sm">{profileName}</p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full bg-white/10 px-3 py-1.5 text-sm text-white/90 backdrop-blur-sm hover:bg-white/15 hover:text-white"
+            >
               بستن
             </button>
           </header>
 
-          <div className="relative flex flex-1 items-center justify-center px-4 pb-8">
-            {loading && <p className="text-sm text-bone/60">در حال بارگذاری…</p>}
-            {!loading && stories.length === 0 && <p className="text-sm text-bone/60">استوری فعالی وجود ندارد.</p>}
+          <div className="relative z-10 flex flex-1 items-center justify-center px-4 pb-8">
+            {loading && <p className="text-sm text-white/70">در حال بارگذاری…</p>}
+            {!loading && stories.length === 0 && <p className="text-sm text-white/70">استوری فعالی وجود ندارد.</p>}
             {!loading && current?.media?.url && (
               <>
                 {current.media.type === 'video' ? (
@@ -122,7 +126,9 @@ export function StoryViewer({
                   />
                 )}
                 {current.caption && (
-                  <p className="absolute bottom-10 left-4 right-4 text-center text-sm text-bone/90">{current.caption}</p>
+                  <p className="absolute bottom-10 left-4 right-4 text-center text-sm text-white/90 drop-shadow-md">
+                    {current.caption}
+                  </p>
                 )}
               </>
             )}
