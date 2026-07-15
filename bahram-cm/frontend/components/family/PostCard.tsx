@@ -106,16 +106,18 @@ export function PostCard({
       {actions.map((action) => <ActionCard key={action.id} action={action} />)}
 
       <div className="space-y-2 border-t border-[var(--family-border-subtle)] pt-2.5">
-        {post.published_at && (
-          <time dateTime={post.published_at} className="block text-[11px] tabular-nums text-bone/40">
-            {formatPostDateTime(post.published_at)}
-          </time>
-        )}
-        <ReactionBar
-          postId={post.id}
-          stats={{ ...post.stats, comments: commentCount }}
-          userReaction={post.user_reaction}
-        />
+        <div dir="ltr" className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <ReactionBar
+            postId={post.id}
+            stats={{ ...post.stats, comments: commentCount }}
+            userReaction={post.user_reaction}
+          />
+          {post.published_at && (
+            <time dateTime={post.published_at} className="shrink-0 text-[11px] tabular-nums text-bone/40">
+              {formatPostDateTime(post.published_at)}
+            </time>
+          )}
+        </div>
       </div>
 
       {!hideCommentPreview && (

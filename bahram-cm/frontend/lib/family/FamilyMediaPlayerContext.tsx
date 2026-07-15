@@ -9,6 +9,7 @@ export type FamilyNowPlaying = {
   kind: 'voice' | 'video';
   progress: number;
   duration: number;
+  isPlaying: boolean;
 };
 
 interface FamilyMediaPlayerContextValue {
@@ -20,7 +21,7 @@ interface FamilyMediaPlayerContextValue {
   notifyPaused: (id: number) => void;
   setNowPlaying: (info: FamilyNowPlaying | null) => void;
   updateNowPlayingProgress: (mediaId: number, progress: number, duration?: number) => void;
-  pauseActive: () => void;
+  toggleActivePlayback: () => void;
   dismissNowPlaying: () => void;
 }
 
@@ -50,7 +51,9 @@ export function FamilyMediaPlayerProvider({ children }: { children: ReactNode })
 
   const notifyPaused = useCallback((id: number) => {
     setActiveId((current) => (current === id ? null : current));
-    setNowPlayingState((current) => (current?.mediaId === id ? null : current));
+    setNowPlayingState((current) =>
+      current?.mediaId === id ? { ...current, isPlaying: false } : current,
+    );
   }, []);
 
   const setNowPlaying = useCallback((info: FamilyNowPlaying | null) => {
@@ -69,11 +72,18 @@ export function FamilyMediaPlayerProvider({ children }: { children: ReactNode })
     });
   }, []);
 
-  const pauseActive = useCallback(() => {
-    const id = activeId ?? nowPlaying?.mediaId ?? null;
+  const toggleActivePlayback = useCallback(() => {
+    const id = nowPlaying?.mediaId ?? activeId;
     if (id == null) return;
-    elements.current.get(id)?.pause();
-  }, [activeId, nowPlaying]);
+    const el = elements.current.get(id);
+    if (!el) return;
+    if (!el.paused) {
+      el.pause();
+      return;
+    }
+    requestPlay(id);
+    void el.play().catch(() => {});
+  }, [activeId, nowPlaying, requestPlay]);
 
   const dismissNowPlaying = useCallback(() => {
     const id = activeId ?? nowPlaying?.mediaId ?? null;
@@ -93,7 +103,7 @@ export function FamilyMediaPlayerProvider({ children }: { children: ReactNode })
         notifyPaused,
         setNowPlaying,
         updateNowPlayingProgress,
-        pauseActive,
+        toggleActivePlayback,
         dismissNowPlaying,
       }}
     >

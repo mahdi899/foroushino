@@ -283,8 +283,8 @@ html[data-theme='dark'] .family-app {
 
 .family-reaction-icon {
   display: inline-flex;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
@@ -294,46 +294,59 @@ html[data-theme='dark'] .family-app {
 }
 
 .family-reaction-icon > div {
-  width: 26px !important;
-  height: 26px !important;
-  max-width: 26px !important;
-  max-height: 26px !important;
+  width: 22px !important;
+  height: 22px !important;
+  max-width: 22px !important;
+  max-height: 22px !important;
   overflow: hidden !important;
   line-height: 0 !important;
 }
 
 .family-reaction-icon svg {
   display: block !important;
-  width: 26px !important;
-  height: 26px !important;
-  max-width: 26px !important;
-  max-height: 26px !important;
+  width: 22px !important;
+  height: 22px !important;
+  max-width: 22px !important;
+  max-height: 22px !important;
+}
+
+.family-reaction-bar {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.3125rem;
 }
 
 .family-reaction-btn {
   display: inline-flex;
-  height: 2rem;
+  height: 1.75rem;
+  min-width: 1.75rem;
   flex-direction: row;
   align-items: center;
-  gap: 0.125rem;
+  justify-content: center;
+  gap: 0;
   border-radius: 9999px;
-  border: 1px solid transparent;
-  background: transparent;
-  padding: 0.125rem 0.375rem 0.125rem 0.125rem;
+  border: none;
+  background: color-mix(in oklab, var(--family-text) 7%, var(--family-surface));
+  padding: 0.125rem;
   vertical-align: middle;
   transition:
     transform 150ms ease,
     background-color 150ms ease,
-    border-color 150ms ease;
+    box-shadow 150ms ease;
 }
 
 .family-reaction-btn--counted {
-  gap: 0.25rem;
-  padding: 0.125rem 0.625rem 0.125rem 0.1875rem;
+  gap: 0.1875rem;
+  min-width: auto;
+  padding-inline: 0.1875rem 0.4375rem;
+  background: color-mix(in oklab, var(--family-text) 9%, var(--family-surface));
 }
 
 .family-reaction-btn:hover {
-  background: var(--family-surface-soft);
+  background: color-mix(in oklab, var(--family-text) 11%, var(--family-surface));
 }
 
 .family-reaction-btn:active {
@@ -341,49 +354,56 @@ html[data-theme='dark'] .family-app {
 }
 
 .family-reaction-btn--active {
-  border-color: var(--family-reaction-active-border);
-  background: var(--family-reaction-active-bg);
+  background: color-mix(in oklab, var(--family-accent) 18%, var(--family-surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--family-accent) 28%, transparent);
+}
+
+.family-reaction-btn--active.family-reaction-btn--counted {
+  padding-inline-end: 0.5rem;
 }
 
 .family-reaction-count {
-  font-size: 0.75rem;
-  line-height: 1.2;
-  min-width: 0.625rem;
+  display: inline-flex;
+  min-width: 0.875rem;
+  align-items: center;
+  justify-content: center;
+  padding-inline-end: 0.0625rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
   color: var(--family-text);
 }
 
 .family-reaction-count--active {
   color: var(--family-accent);
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .family-reaction-add {
   display: inline-flex;
-  height: 2rem;
-  width: 2rem;
+  height: 1.75rem;
+  width: 1.75rem;
   align-items: center;
   justify-content: center;
   border-radius: 9999px;
-  border: 1px solid var(--family-border);
-  background: var(--family-surface-soft);
+  border: none;
+  background: color-mix(in oklab, var(--family-text) 7%, var(--family-surface));
   color: var(--family-text-muted);
   transition:
     transform 150ms ease,
     background-color 150ms ease,
-    border-color 150ms ease,
     color 150ms ease;
 }
 
 .family-reaction-add:hover {
-  border-color: color-mix(in oklab, var(--family-accent) 35%, var(--family-border));
-  background: color-mix(in oklab, var(--family-accent) 8%, var(--family-surface-soft));
-  color: var(--family-accent);
+  background: color-mix(in oklab, var(--family-text) 11%, var(--family-surface));
+  color: var(--family-text);
 }
 
 .family-reaction-add--open {
-  border-color: color-mix(in oklab, var(--family-accent) 45%, var(--family-border));
-  background: color-mix(in oklab, var(--family-accent) 12%, var(--family-surface-soft));
+  background: color-mix(in oklab, var(--family-accent) 16%, var(--family-surface));
   color: var(--family-accent);
 }
 
@@ -394,7 +414,7 @@ html[data-theme='dark'] .family-app {
 .family-reaction-picker {
   position: absolute;
   bottom: calc(100% + 0.375rem);
-  inset-inline-end: 0;
+  left: 0;
   z-index: 30;
   display: flex;
   max-width: min(100vw - 2rem, 320px);

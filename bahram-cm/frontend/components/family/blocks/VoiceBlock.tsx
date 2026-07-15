@@ -66,6 +66,34 @@ function waitForMetadata(el: HTMLAudioElement): Promise<void> {
   });
 }
 
+function seekElement(el: HTMLAudioElement, next: number): Promise<void> {
+  return new Promise((resolve) => {
+    const finish = () => {
+      el.removeEventListener('seeked', finish);
+      resolve();
+    };
+
+    try {
+      if (typeof el.fastSeek === 'function') {
+        el.fastSeek(next);
+      } else {
+        el.currentTime = next;
+      }
+    } catch {
+      resolve();
+      return;
+    }
+
+    if (Math.abs(el.currentTime - next) < 0.05) {
+      resolve();
+      return;
+    }
+
+    el.addEventListener('seeked', finish);
+    window.setTimeout(finish, 300);
+  });
+}
+
 export function VoiceBlock({
   media,
   postId,
@@ -76,7 +104,6 @@ export function VoiceBlock({
   title?: string;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const waveRef = useRef<HTMLButtonElement | null>(null);
   const draggingRef = useRef(false);
   const scrubbingRef = useRef(false);
   const { activeId, register, unregister, requestPlay, notifyPaused, setNowPlaying, updateNowPlayingProgress } =
@@ -140,6 +167,10 @@ export function VoiceBlock({
     requestPlay(media.id);
     await waitForMetadata(el);
 
+    if (progress > 0 && Math.abs(el.currentTime - progress) > 0.25) {
+      await seekElement(el, progress);
+    }
+
     try {
       await el.play();
     } catch {
@@ -151,29 +182,33 @@ export function VoiceBlock({
     const el = audioRef.current;
     if (!el) return;
 
+    const wasPlaying = !el.paused;
     await waitForMetadata(el);
-    const d = readDuration(el);
+
+    const d = readDuration(el) || resolvedDuration;
     if (d <= 0) return;
 
     const next = Math.max(0, Math.min(d, ratio * d));
     scrubbingRef.current = true;
-    try {
-      el.currentTime = next;
-    } catch {
-      scrubbingRef.current = false;
-      return;
-    }
-    setProgress(next);
-    updateNowPlayingProgress(media.id, next, d);
+    await seekElement(el, next);
+    const actual = el.currentTime;
+    setProgress(actual);
+    updateNowPlayingProgress(media.id, actual, d);
     window.setTimeout(() => {
       scrubbingRef.current = false;
     }, 120);
+
+    if (wasPlaying && el.paused) {
+      requestPlay(media.id);
+      try {
+        await el.play();
+      } catch {
+        // autoplay blocked or network
+      }
+    }
   };
 
-  const seekFromClientX = (clientX: number) => {
-    const rect = waveRef.current?.getBoundingClientRect();
-    if (!rect || rect.width <= 0) return;
-    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  const seekFromRatio = (ratio: number) => {
     void seekToRatio(ratio);
   };
 
@@ -215,6 +250,7 @@ export function VoiceBlock({
             kind: 'voice',
             progress: el?.currentTime ?? progress,
             duration: d,
+            isPlaying: true,
           });
         }}
         onPause={() => {
@@ -256,18 +292,21 @@ export function VoiceBlock({
 
       <div className="flex min-w-0 flex-1 items-center">
         <button
-          ref={waveRef}
           type="button"
           aria-label="موج صدا"
           onPointerDown={(e) => {
             e.preventDefault();
             draggingRef.current = true;
             e.currentTarget.setPointerCapture(e.pointerId);
-            seekFromClientX(e.clientX);
+            const rect = e.currentTarget.getBoundingClientRect();
+            if (rect.width <= 0) return;
+            seekFromRatio(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)));
           }}
           onPointerMove={(e) => {
             if (!draggingRef.current) return;
-            seekFromClientX(e.clientX);
+            const rect = e.currentTarget.getBoundingClientRect();
+            if (rect.width <= 0) return;
+            seekFromRatio(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)));
           }}
           onPointerUp={(e) => {
             draggingRef.current = false;

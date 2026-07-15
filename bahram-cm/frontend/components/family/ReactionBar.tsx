@@ -50,7 +50,7 @@ function ReactionButton({
       <FamilyReactionLottie type={type} playKey={playKey} />
       {count > 0 && (
         <span className={cn('family-reaction-count', active && 'family-reaction-count--active')}>
-          {count}
+          {count.toLocaleString('en-US')}
         </span>
       )}
     </button>
@@ -139,7 +139,7 @@ export function ReactionBar({
   const extraWithCounts = FAMILY_PICKER_REACTIONS.filter((r) => counts[r.type] > 0);
 
   return (
-    <div ref={rootRef} className="relative flex flex-wrap items-center gap-2">
+    <div ref={rootRef} className="family-reaction-bar" dir="ltr">
       {FAMILY_DEFAULT_REACTIONS.map((r) => (
         <ReactionButton
           key={r.type}
