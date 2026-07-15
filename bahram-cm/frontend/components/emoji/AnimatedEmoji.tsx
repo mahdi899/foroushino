@@ -8,7 +8,8 @@
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useRef } from 'react';
 import type { LottieRefCurrentProps } from 'lottie-react';
-import { NOTO_LOTTIE, type NotoEmojiKey } from '@/lib/emoji/noto-registry';
+import { getNotoLottie } from '@/lib/emoji/noto-lottie';
+import type { NotoEmojiSlug } from '@/lib/emoji/noto-registry';
 import { cn } from '@/lib/utils';
 
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
@@ -23,7 +24,7 @@ export function AnimatedEmoji({
   className,
   label,
 }: {
-  notoKey: NotoEmojiKey;
+  notoKey: NotoEmojiSlug;
   size?: number;
   mode?: AnimatedEmojiMode;
   playKey?: number;
@@ -35,7 +36,7 @@ export function AnimatedEmoji({
   const playKeyRef = useRef(playKey);
   playKeyRef.current = playKey;
   const loop = mode === 'loop';
-  const animationData = NOTO_LOTTIE[notoKey];
+  const animationData = getNotoLottie(notoKey);
 
   const clampSvgSize = useCallback(() => {
     const svg = hostRef.current?.querySelector('svg');
@@ -102,6 +103,8 @@ export function AnimatedEmoji({
     if (mode !== 'reaction' || playKey === 0) return;
     playReaction();
   }, [playKey, mode, playReaction]);
+
+  if (!animationData) return null;
 
   return (
     <span

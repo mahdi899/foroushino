@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Check, Copy, Gift } from 'lucide-react';
+import { AnimatedEmoji } from '@/components/emoji/AnimatedEmoji';
 
 export function ReferralHeroBanner({ code, link }: { code: string; link: string }) {
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
@@ -34,7 +35,9 @@ export function ReferralHeroBanner({ code, link }: { code: string; link: string 
           </p>
         </div>
 
-        <div className="panel-referral-hero__gift lg:self-auto">🎁</div>
+        <div className="panel-referral-hero__gift lg:self-auto">
+          <AnimatedEmoji notoKey="gift" size={56} mode="loop" label="هدیه" />
+        </div>
       </div>
 
       <div className="relative z-10 mt-6 grid gap-3 sm:grid-cols-2">

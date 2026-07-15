@@ -7,6 +7,8 @@ import { recordPostView } from '@/lib/family/api';
 import { formatPostBubbleMeta, formatPostDateTime } from '@/lib/family/datetime';
 import { displayPostViews } from '@/lib/family/displayViews';
 
+const VIEW_RECORD_DELAY_MS = 1500;
+
 export function PostMetaRow({
   postId,
   publishedAt,
@@ -37,20 +39,34 @@ export function PostMetaRow({
     if (!trackView || recorded.current || !ref.current) return;
 
     const node = ref.current;
+    let timer: number | undefined;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!entry?.isIntersecting || entry.intersectionRatio < 0.45) return;
-        recorded.current = true;
-        observer.disconnect();
-        void recordPostView(postId).then((res) => {
-          setRealViews(res.data.views);
-        });
+        if (!entry?.isIntersecting || entry.intersectionRatio < 0.45) {
+          if (timer != null) window.clearTimeout(timer);
+          return;
+        }
+
+        if (timer != null) return;
+
+        timer = window.setTimeout(() => {
+          if (recorded.current) return;
+          recorded.current = true;
+          observer.disconnect();
+          void recordPostView(postId).then((res) => {
+            setRealViews(res.data.views);
+          });
+        }, VIEW_RECORD_DELAY_MS);
       },
       { threshold: [0.45, 0.6] },
     );
 
     observer.observe(node);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (timer != null) window.clearTimeout(timer);
+    };
   }, [postId, trackView]);
 
   if (variant === 'bubble') {

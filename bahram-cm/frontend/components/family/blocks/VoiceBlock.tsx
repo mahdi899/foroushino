@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { Pause, Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
+import { enqueueFamilyMediaLoad } from '@/lib/family/mediaLoadQueue';
 import { formatPlaybackSpeed } from '@/lib/family/playback';
 import { sendMediaProgress } from '@/lib/family/api';
 import type { FamilyMediaBlock } from '@/lib/family/types';
@@ -149,7 +150,7 @@ export function VoiceBlock({
       el.src = media.url;
     }
 
-    const promise = (async () => {
+    const promise = enqueueFamilyMediaLoad('full', media.id, async () => {
       try {
         const response = await fetch(media.url!);
         if (!response.ok) throw new Error('voice fetch failed');
@@ -181,10 +182,9 @@ export function VoiceBlock({
 
         if (!cancelled) setAudioReady(true);
       } catch {
-        // Fall back to network URL — seek may be limited, but play still works.
         if (!cancelled) setAudioReady(true);
       }
-    })();
+    });
 
     blobPromiseRef.current = promise;
 

@@ -10,6 +10,7 @@ import { FeedCommentsPanel } from '@/components/family/FeedCommentsPanel';
 import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
 import { FamilyFeedScroll, type FamilyFeedScrollHandle } from '@/components/family/FamilyFeedScroll';
 import { PostCard } from '@/components/family/PostCard';
+import { FamilyFeedMediaProvider } from '@/lib/family/FamilyFeedMediaContext';
 import {
   getFeedDistanceFromBottom,
   getLenisDistanceFromBottom,
@@ -31,6 +32,8 @@ type CommentsTarget = {
 };
 
 type MainView = 'feed' | 'notifications';
+
+const SCROLL_IDLE_MS = 650;
 
 function buildFeedItems(posts: FamilyPost[]): FeedItem[] {
   const items: FeedItem[] = [];
@@ -121,6 +124,9 @@ export function FeedView({
   const maxPostIdRef = useRef(0);
   const [mainView, setMainView] = useState<MainView>('feed');
   const [feedInteractive, setFeedInteractive] = useState(false);
+  const [scrollIdle, setScrollIdle] = useState(true);
+  const scrollIdleRef = useRef(true);
+  const scrollIdleTimerRef = useRef<number | null>(null);
   const feedItems = useMemo(() => buildFeedItems(posts), [posts]);
   const hasMoreRef = useRef(hasMore);
   const postsRef = useRef(posts);
@@ -170,14 +176,30 @@ export function FeedView({
     anchoredToBottomRef.current = distanceFromBottom < 80;
   }, [getScrollCtx]);
 
+  const markScrolling = useCallback(() => {
+    if (!scrollIdleRef.current) {
+      if (scrollIdleTimerRef.current != null) window.clearTimeout(scrollIdleTimerRef.current);
+    } else {
+      scrollIdleRef.current = false;
+      setScrollIdle(false);
+    }
+
+    scrollIdleTimerRef.current = window.setTimeout(() => {
+      scrollIdleRef.current = true;
+      setScrollIdle(true);
+      scrollIdleTimerRef.current = null;
+    }, SCROLL_IDLE_MS);
+  }, []);
+
   const handleFeedScroll = useCallback(() => {
+    markScrolling();
     if (pinNavigateRef.current) return;
     if (scrollAnchorRafRef.current != null) return;
     scrollAnchorRafRef.current = requestAnimationFrame(() => {
       scrollAnchorRafRef.current = null;
       updateAnchoredToBottom();
     });
-  }, [updateAnchoredToBottom]);
+  }, [markScrolling, updateAnchoredToBottom]);
 
   useEffect(() => {
     updateAnchoredToBottom();
@@ -328,6 +350,7 @@ export function FeedView({
     const observer = new IntersectionObserver(
       (entries) => {
         if (!historyReadyRef.current || !anchoredToBottomRef.current || pinNavigateRef.current) return;
+        if (!scrollIdleRef.current) return;
         if (!entries[0]?.isIntersecting || isValidating || loadingHistoryRef.current) return;
 
         const distanceFromBottom = getFeedDistanceFromBottom(root);
@@ -345,7 +368,15 @@ export function FeedView({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [commentsTarget, getScrollCtx, hasMore, isValidating, loadMore, mainView, posts.length]);
+  }, [commentsTarget, getScrollCtx, hasMore, isValidating, loadMore, mainView, posts.length, scrollIdle]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollIdleTimerRef.current != null) {
+        window.clearTimeout(scrollIdleTimerRef.current);
+      }
+    };
+  }, []);
 
   const showFeed = mainView === 'feed' && !commentsTarget;
 
@@ -427,12 +458,13 @@ export function FeedView({
             <FamilyFeedChrome parts="now" showPinned={false} showNowPlaying />
           </div>
 
-          <FamilyFeedScroll
-            ref={feedScrollRef}
-            onScroll={handleFeedScroll}
-            style={chromeInset > 0 ? { paddingTop: chromeInset } : undefined}
-          >
-            <div ref={feedContentRef} className="family-feed-content mx-auto flex w-full max-w-[680px] flex-col">
+          <FamilyFeedMediaProvider scrollIdle={scrollIdle}>
+            <FamilyFeedScroll
+              ref={feedScrollRef}
+              onScroll={handleFeedScroll}
+              style={chromeInset > 0 ? { paddingTop: chromeInset } : undefined}
+            >
+              <div ref={feedContentRef} className="family-feed-content mx-auto flex w-full max-w-[680px] flex-col">
               {isPreview && effectivePreviewMode && posts.length > 0 && (
                 <div className="pt-4 sm:pt-5">
                   <FeedPreviewIntro mode={effectivePreviewMode} />
@@ -497,6 +529,7 @@ export function FeedView({
               )}
             </div>
           </FamilyFeedScroll>
+          </FamilyFeedMediaProvider>
         </div>
       </div>
     </div>

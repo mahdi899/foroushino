@@ -35,6 +35,12 @@ const EMOJIS = {
   hundred: '1f4af',
   wink: '1f609',
   target: '1f3af',
+  'speaking-head': '1f5e3_fe0f',
+  camera: '1f4f8',
+  gift: '1f381',
+  'check-mark': '2705',
+  'sparkling-heart': '1f496',
+  'musical-notes': '1f3b6',
 };
 
 async function download(name, codepoint) {

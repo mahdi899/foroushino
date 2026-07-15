@@ -5,11 +5,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { useDelayedInView } from '@/hooks/useDelayedInView';
 import { ImageZoomLightbox } from '@/components/family/blocks/ImageZoomLightbox';
+import { useFamilyFeedMedia } from '@/lib/family/FamilyFeedMediaContext';
 import {
   getFamilyMediaBlobUrl,
   readFamilyMediaBlob,
   tryCacheFamilyMediaBlob,
 } from '@/lib/family/mediaCache';
+import { enqueueFamilyMediaLoad } from '@/lib/family/mediaLoadQueue';
 import { tryBuildImagePreviewBlob } from '@/lib/family/mediaPreview';
 import type { FamilyMediaBlock } from '@/lib/family/types';
 
@@ -45,9 +47,10 @@ export function ImageBlock({
   const [openLightboxWhenLoaded, setOpenLightboxWhenLoaded] = useState(false);
   const previewRequestedRef = useRef(false);
   const warmedRef = useRef(false);
+  const { scrollIdle } = useFamilyFeedMedia();
 
   const canRequestPreview = phase === 'idle';
-  const previewReady = useDelayedInView(rootRef, 420, canRequestPreview);
+  const previewReady = useDelayedInView(rootRef, 900, canRequestPreview, scrollIdle);
 
   const applyCachedSources = useCallback(async () => {
     if (!media.url) return false;
@@ -88,7 +91,7 @@ export function ImageBlock({
     previewRequestedRef.current = true;
     let cancelled = false;
 
-    void (async () => {
+    void enqueueFamilyMediaLoad('preview', media.id, async () => {
       const previewBlob = await tryBuildImagePreviewBlob(media.id, media.url!);
       if (cancelled) return;
 
@@ -100,7 +103,7 @@ export function ImageBlock({
 
       setDisplayUrl(media.url);
       setPhase('preview');
-    })();
+    });
 
     return () => {
       cancelled = true;
@@ -114,9 +117,8 @@ export function ImageBlock({
   }, [media.id, media.url]);
 
   const handleImageLoad = useCallback(() => {
-    warmFullCache();
-
     if (phase === 'loading') {
+      warmFullCache();
       setPhase('loaded');
       return;
     }
@@ -220,7 +222,7 @@ export function ImageBlock({
           />
         )}
 
-        {showDownloadHint && phase !== 'error' && (
+        {showDownloadHint && (
           <span className="absolute inset-0 flex items-center justify-center" aria-hidden>
             <span className="flex h-11 w-11 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm">
               <Download className="h-5 w-5 text-white/90" strokeWidth={2.25} />

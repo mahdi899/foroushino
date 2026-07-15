@@ -3,6 +3,7 @@
 import useSWR from 'swr';
 import { getNotifications, getUnreadNotificationCount, markAllNotificationsRead, markNotificationRead } from '@/lib/family/api';
 import { usePageVisible } from '@/lib/family/hooks/usePageVisible';
+import { familySwrDefaults } from '@/lib/family/swr';
 import type { FamilyNotification } from '@/lib/family/types';
 
 export function useFamilyUnreadCount(enabled: boolean) {
@@ -17,7 +18,7 @@ export function useFamilyUnreadCount(enabled: boolean) {
         return { unread_count: 0 };
       }
     },
-    { refreshInterval: pageVisible ? 60_000 : 0, revalidateOnFocus: true },
+    { refreshInterval: pageVisible ? 120_000 : 0, ...familySwrDefaults },
   );
 
   return { unreadCount: data?.unread_count ?? 0, refresh: mutate };
@@ -33,7 +34,7 @@ export function useFamilyNotifications(enabled: boolean) {
         return { data: [] as FamilyNotification[] };
       }
     },
-    { revalidateOnFocus: false },
+    { ...familySwrDefaults },
   );
 
   return {

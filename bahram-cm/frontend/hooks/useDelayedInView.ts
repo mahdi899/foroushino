@@ -2,11 +2,12 @@
 
 import { useEffect, useState, type RefObject } from 'react';
 
-/** Fires after the element stays in view for `delayMs` (skips fast scroll). */
+/** Fires after the element stays in view (and optionally scroll is idle) for `delayMs`. */
 export function useDelayedInView<T extends Element>(
   ref: RefObject<T | null>,
-  delayMs = 420,
+  delayMs = 900,
   enabled = true,
+  scrollIdle = true,
 ): boolean {
   const [ready, setReady] = useState(false);
 
@@ -23,7 +24,7 @@ export function useDelayedInView<T extends Element>(
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry?.isIntersecting) {
+        if (entry?.isIntersecting && scrollIdle) {
           timer = window.setTimeout(() => setReady(true), delayMs);
           return;
         }
@@ -31,7 +32,7 @@ export function useDelayedInView<T extends Element>(
         if (timer != null) window.clearTimeout(timer);
         setReady(false);
       },
-      { threshold: 0.22, rootMargin: '0px 0px -8% 0px' },
+      { threshold: 0.35, rootMargin: '0px 0px -10% 0px' },
     );
 
     observer.observe(el);
@@ -39,7 +40,7 @@ export function useDelayedInView<T extends Element>(
       observer.disconnect();
       if (timer != null) window.clearTimeout(timer);
     };
-  }, [delayMs, enabled, ref]);
+  }, [delayMs, enabled, ref, scrollIdle]);
 
   return ready;
 }

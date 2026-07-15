@@ -2,6 +2,7 @@
 
 import useSWR from 'swr';
 import { getBranding } from '@/lib/family/api';
+import { familyBrandingSwr } from '@/lib/family/swr';
 import type { FamilyBranding } from '@/lib/family/types';
 
 const DEFAULT_BRANDING: FamilyBranding = {
@@ -16,7 +17,7 @@ const DEFAULT_BRANDING: FamilyBranding = {
 export function useFamilyBranding(fallback?: FamilyBranding) {
   const { data, mutate } = useSWR('family-branding', async () => (await getBranding()).data, {
     fallbackData: fallback,
-    revalidateOnFocus: true,
+    ...familyBrandingSwr,
   });
 
   return {

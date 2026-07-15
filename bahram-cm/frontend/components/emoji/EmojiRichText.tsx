@@ -27,7 +27,7 @@ export function EmojiRichText({
         return (
           <AnimatedEmoji
             key={i}
-            notoKey={part.notoKey}
+            notoKey={part.notoSlug}
             size={emojiSize}
             mode={emojiMode}
             className={cn('mx-0.5 align-[-0.15em]', emojiClassName)}

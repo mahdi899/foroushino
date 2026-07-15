@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { AnimatedEmoji } from '@/components/emoji/AnimatedEmoji';
 import { completeOnboarding } from '@/lib/family/api';
 
 export function OnboardingModal({ onDone }: { onDone: () => void }) {
@@ -25,8 +26,8 @@ export function OnboardingModal({ onDone }: { onDone: () => void }) {
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-sm rounded-3xl bg-charcoal p-6 text-center shadow-2xl"
       >
-        <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gold text-xl font-bold text-charcoal">
-          🎉
+        <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gold text-charcoal">
+          <AnimatedEmoji notoKey="party" size={32} mode="loop" label="جشن" />
         </span>
         <h2 className="text-lg font-bold text-bone">خوش اومدی به خانواده!</h2>
         <p className="mt-2 text-sm text-bone/65">

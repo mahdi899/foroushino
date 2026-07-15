@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { AnimatePresence, motion } from 'framer-motion';
 import { getPinnedPosts } from '@/lib/family/api';
 import { familyMotion } from '@/lib/family/motion';
+import { familyPinnedSwr } from '@/lib/family/swr';
 import { getPinnedPreview } from '@/lib/family/pinnedPreview';
 import type { FamilyPost } from '@/lib/family/types';
 
@@ -18,7 +19,7 @@ export function PinnedMessageBar({
   const { data } = useSWR(
     pinnedProp ? null : 'family-pinned',
     async () => (await getPinnedPosts()).data,
-    { revalidateOnFocus: true },
+    { revalidateOnFocus: familyPinnedSwr.revalidateOnFocus, dedupingInterval: familyPinnedSwr.dedupingInterval, revalidateIfStale: familyPinnedSwr.revalidateIfStale },
   );
 
   const [cursor, setCursor] = useState(0);
@@ -33,7 +34,7 @@ export function PinnedMessageBar({
 
   const index = cursor % pinnedPosts.length;
   const pinned = pinnedPosts[index];
-  const { label, thumbnail } = getPinnedPreview(pinned);
+  const { label } = getPinnedPreview(pinned);
 
   const handleClick = () => {
     onScrollToPost?.(pinned.id);
@@ -73,11 +74,6 @@ export function PinnedMessageBar({
           </AnimatePresence>
         </span>
       </span>
-
-      {thumbnail ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={thumbnail} alt="" className="family-pinned-bar__thumb" />
-      ) : null}
     </button>
   );
 }

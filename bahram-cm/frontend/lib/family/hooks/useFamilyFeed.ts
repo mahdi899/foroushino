@@ -2,6 +2,7 @@
 
 import useSWRInfinite from 'swr/infinite';
 import { getFeed } from '@/lib/family/api';
+import { familySwrDefaults } from '@/lib/family/swr';
 import type { FamilyFeedMeta, FamilyPost } from '@/lib/family/types';
 
 const FEED_PAGE_SIZE = 15;
@@ -30,7 +31,7 @@ export function useFamilyFeed(
       ];
     },
     async ([, , , , cursor]) => (await getFeed(cursor as string | null, FEED_PAGE_SIZE)) as FeedPage,
-    { fallbackData, revalidateFirstPage: true, revalidateOnFocus: false },
+    { fallbackData, revalidateFirstPage: false, ...familySwrDefaults },
   );
 
   const posts = data ? [...data.flatMap((page) => page.data)].reverse() : [];

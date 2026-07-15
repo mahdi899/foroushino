@@ -5,6 +5,8 @@ import { Loader2, Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useDelayedInView } from '@/hooks/useDelayedInView';
 import { FamilyVideoModal } from '@/components/family/FamilyVideoModal';
+import { useFamilyFeedMedia } from '@/lib/family/FamilyFeedMediaContext';
+import { enqueueFamilyMediaLoad } from '@/lib/family/mediaLoadQueue';
 import {
   getFamilyMediaBlobUrl,
   readFamilyMediaBlob,
@@ -26,8 +28,9 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const [modalOpen, setModalOpen] = useState(false);
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const previewRequestedRef = useRef(false);
+  const { scrollIdle } = useFamilyFeedMedia();
 
-  const previewReady = useDelayedInView(containerRef, 420, phase === 'idle');
+  const previewReady = useDelayedInView(containerRef, 900, phase === 'idle', scrollIdle);
 
   useEffect(() => {
     if (!media.url) return;
@@ -50,8 +53,11 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
     if (!previewReady || !media.url || phase !== 'idle' || previewRequestedRef.current) return;
 
     previewRequestedRef.current = true;
-    setPreviewActive(true);
-    setPhase('preview');
+
+    void enqueueFamilyMediaLoad('preview', media.id, async () => {
+      setPreviewActive(true);
+      setPhase('preview');
+    });
   }, [media.id, media.url, phase, previewReady]);
 
   useEffect(() => {
@@ -94,7 +100,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       video.addEventListener('loadedmetadata', onMeta);
       video.addEventListener('canplaythrough', onReady);
 
-      void (async () => {
+      void enqueueFamilyMediaLoad('full', media.id, async () => {
         const cached = await readFamilyMediaBlob('full', media.id, media.url!);
         const blob = cached ?? (await tryCacheFamilyMediaBlob(media.url!, media.id, 'full'));
         if (cancelled) return;
@@ -107,7 +113,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
         video.src = src;
         video.preload = 'auto';
         video.load();
-      })();
+      });
 
       return () => {
         video.removeEventListener('progress', onProgress);

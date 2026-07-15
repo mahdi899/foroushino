@@ -7,6 +7,7 @@ import { PinnedMessageBar } from '@/components/family/PinnedMessageBar';
 import { getPinnedPosts } from '@/lib/family/api';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
 import { familyMotion } from '@/lib/family/motion';
+import { familyPinnedSwr } from '@/lib/family/swr';
 
 type ChromePart = 'pinned' | 'now' | 'all';
 
@@ -30,7 +31,7 @@ export function FamilyFeedChrome({
   const { data } = useSWR(
     showPinned && wantsPinned ? 'family-pinned' : null,
     async () => (await getPinnedPosts()).data,
-    { revalidateOnFocus: true },
+    { revalidateOnFocus: familyPinnedSwr.revalidateOnFocus, dedupingInterval: familyPinnedSwr.dedupingInterval, revalidateIfStale: familyPinnedSwr.revalidateIfStale },
   );
 
   const pinnedPosts = data ?? [];
