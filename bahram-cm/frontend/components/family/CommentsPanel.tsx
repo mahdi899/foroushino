@@ -164,7 +164,7 @@ export function CommentsPanel({
           <button
             type="submit"
             disabled={!value.trim() || submitting}
-            className="shrink-0 rounded-full bg-gold px-4 py-2.5 text-sm font-semibold text-charcoal disabled:opacity-50"
+            className="family-btn-primary shrink-0 rounded-full px-4 py-2.5 text-sm disabled:opacity-50"
           >
             ارسال
           </button>

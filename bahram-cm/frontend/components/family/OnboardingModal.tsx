@@ -36,7 +36,7 @@ export function OnboardingModal({ onDone }: { onDone: () => void }) {
           type="button"
           onClick={handleClose}
           disabled={pending}
-          className="mt-5 w-full rounded-full bg-gold py-3 text-sm font-bold text-charcoal transition active:scale-[0.98] disabled:opacity-60"
+          className="family-btn-primary mt-5 w-full rounded-full py-3 text-sm font-bold transition disabled:opacity-60"
         >
           بریم شروع کنیم
         </button>

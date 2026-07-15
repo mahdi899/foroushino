@@ -23,7 +23,7 @@ function PollResults({ results }: { results: FamilyActionResults }) {
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-[var(--family-surface-muted)]">
             <div
-              className="h-full rounded-full bg-gold/80 transition-[width] duration-500 ease-out"
+              className="h-full rounded-full bg-[var(--family-accent)] transition-[width] duration-500 ease-out"
               style={{ width: `${option.percent}%` }}
             />
           </div>
@@ -61,8 +61,8 @@ export function ActionCard({ action }: { action: FamilyAction }) {
 
   if (submitted) {
     return (
-      <div className="family-action-panel space-y-3 border-gold/30 bg-gold/[0.08]">
-        <p className="text-sm text-gold">ثبت شد — داداش بهرام می‌بیندش. ✅</p>
+      <div className="family-action-panel space-y-3 border-[color-mix(in_oklab,var(--family-accent)_30%,var(--family-border))] bg-[color-mix(in_oklab,var(--family-accent)_8%,var(--family-surface-soft))]">
+        <p className="text-sm text-[var(--family-accent)]">ثبت شد — داداش بهرام می‌بیندش. ✅</p>
         {showResults && <PollResults results={results} />}
       </div>
     );
@@ -82,7 +82,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
           type="button"
           disabled={pending}
           onClick={() => submit({ committed: true })}
-          className="w-full rounded-xl bg-gold py-2.5 text-sm font-semibold text-charcoal transition active:scale-[0.98] disabled:opacity-60"
+          className="family-btn-primary w-full rounded-xl py-2.5 text-sm disabled:opacity-60"
         >
           متعهد می‌شوم 💪
         </button>,
@@ -98,7 +98,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
               onClick={() =>
                 submit({ confirmed: true }, applyConfirmationVote(results, true))
               }
-              className="flex-1 rounded-xl bg-gold py-2.5 text-sm font-semibold text-charcoal transition active:scale-[0.98] disabled:opacity-60"
+              className="family-btn-primary flex-1 rounded-xl py-2.5 text-sm disabled:opacity-60"
             >
               انجام دادم ✅
             </button>
@@ -136,7 +136,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
           <button
             type="submit"
             disabled={pending || !numberValue}
-            className="rounded-xl bg-gold px-4 py-2 text-sm font-semibold text-charcoal disabled:opacity-60"
+            className="family-btn-primary rounded-xl px-4 py-2 text-sm disabled:opacity-60"
           >
             ثبت
           </button>
@@ -163,7 +163,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
           <button
             type="submit"
             disabled={pending || !textValue.trim()}
-            className="rounded-xl bg-gold px-4 py-2 text-sm font-semibold text-charcoal disabled:opacity-60"
+            className="family-btn-primary rounded-xl px-4 py-2 text-sm disabled:opacity-60"
           >
             ثبت پاسخ
           </button>
@@ -192,7 +192,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
                 className={cn(
                   'block w-full rounded-xl border px-3 py-2 text-right text-sm transition',
                   isSelected
-                    ? 'border-gold/60 bg-gold/10 text-gold'
+                    ? 'border-[color-mix(in_oklab,var(--family-accent)_45%,var(--family-border))] bg-[color-mix(in_oklab,var(--family-accent)_10%,var(--family-surface-soft))] text-[var(--family-accent)]'
                     : 'family-input text-bone/80 hover:bg-[var(--family-input-bg)]',
                 )}
               >
@@ -217,7 +217,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
                 applyMultiChoiceVote(results, action.options, selected),
               );
             }}
-            className="w-full rounded-xl bg-gold py-2.5 text-sm font-semibold text-charcoal disabled:opacity-60"
+            className="family-btn-primary w-full rounded-xl py-2.5 text-sm disabled:opacity-60"
           >
             ثبت پاسخ
           </button>
@@ -239,7 +239,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
                 onClick={() => setScale(n)}
                 className={cn(
                   'h-8 flex-1 rounded-lg text-xs font-semibold transition',
-                  scale === n ? 'bg-gold text-charcoal' : 'bg-[var(--family-surface-muted)] text-bone/60',
+                  scale === n ? 'family-btn-primary' : 'bg-[var(--family-surface-muted)] text-bone/60',
                 )}
               >
                 {n}
@@ -250,7 +250,7 @@ export function ActionCard({ action }: { action: FamilyAction }) {
             type="button"
             disabled={pending || scale === null}
             onClick={() => submit({ score: scale })}
-            className="w-full rounded-xl bg-gold py-2.5 text-sm font-semibold text-charcoal disabled:opacity-60"
+            className="family-btn-primary w-full rounded-xl py-2.5 text-sm disabled:opacity-60"
           >
             ثبت
           </button>

@@ -31,8 +31,8 @@
   --family-sidebar-from: var(--family-surface);
   --family-sidebar-to: var(--family-surface-soft);
   --family-overlay: var(--family-scrim);
-  --family-reaction-active-bg: var(--family-gold-soft);
-  --family-reaction-active-border: color-mix(in oklab, var(--family-gold) 35%, var(--family-border));
+  --family-reaction-active-bg: color-mix(in oklab, var(--family-accent) 12%, transparent);
+  --family-reaction-active-border: color-mix(in oklab, var(--family-accent) 35%, var(--family-border));
   --family-input-border: var(--family-border);
   --family-input-bg: var(--family-surface);
 
@@ -129,6 +129,8 @@ html[data-theme='dark'] .family-app {
 .family-voice {
   background: var(--family-surface-soft);
   border: 1px solid var(--family-border);
+  --family-voice-played: var(--family-accent);
+  --family-voice-unplayed: color-mix(in oklab, var(--family-text-muted) 42%, transparent);
 }
 
 .family-sidebar {
@@ -269,8 +271,91 @@ html[data-theme='dark'] .family-app {
 }
 
 .family-reaction-count--active {
-  color: var(--family-gold);
+  color: var(--family-accent);
   font-weight: 600;
+}
+
+.family-reaction-add {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid var(--family-border);
+  background: var(--family-surface-soft);
+  color: var(--family-text-muted);
+  transition:
+    transform 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.family-reaction-add:hover {
+  border-color: color-mix(in oklab, var(--family-accent) 35%, var(--family-border));
+  background: color-mix(in oklab, var(--family-accent) 8%, var(--family-surface-soft));
+  color: var(--family-accent);
+}
+
+.family-reaction-add--open {
+  border-color: color-mix(in oklab, var(--family-accent) 45%, var(--family-border));
+  background: color-mix(in oklab, var(--family-accent) 12%, var(--family-surface-soft));
+  color: var(--family-accent);
+}
+
+.family-reaction-add:active {
+  transform: scale(0.94);
+}
+
+.family-reaction-picker {
+  position: absolute;
+  bottom: calc(100% + 0.375rem);
+  inset-inline-end: 0;
+  z-index: 30;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.125rem;
+  border-radius: 9999px;
+  border: 1px solid var(--family-border);
+  background: var(--family-surface);
+  padding: 0.25rem;
+  box-shadow: var(--family-frame-shadow);
+}
+
+.family-btn-primary {
+  background: linear-gradient(135deg, var(--family-primary), var(--family-accent));
+  color: #ffffff;
+  font-weight: 600;
+  transition:
+    transform 150ms ease,
+    opacity 150ms ease,
+    box-shadow 150ms ease;
+  box-shadow: 0 4px 12px color-mix(in oklab, var(--family-primary) 22%, transparent);
+}
+
+.family-btn-primary:hover:not(:disabled) {
+  box-shadow: 0 6px 16px color-mix(in oklab, var(--family-primary) 30%, transparent);
+}
+
+.family-btn-primary:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.family-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.family-voice-play {
+  background: linear-gradient(135deg, var(--family-primary), var(--family-accent));
+  color: #ffffff;
+  box-shadow: 0 2px 8px color-mix(in oklab, var(--family-primary) 20%, transparent);
+}
+
+.family-voice-play:active {
+  transform: scale(0.95);
 }
 
 .family-action-panel {

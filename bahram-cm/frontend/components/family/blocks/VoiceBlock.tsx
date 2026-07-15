@@ -136,7 +136,7 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
         type="button"
         onClick={toggle}
         aria-label={playing ? 'توقف' : 'پخش'}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-glow text-charcoal shadow-[0_0_0_1px_color-mix(in_oklab,var(--color-emerald-glow)_35%,transparent)] transition active:scale-95"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full family-voice-play transition"
       >
         {playing ? <Pause className="h-4 w-4" fill="currentColor" /> : <Play className="ms-0.5 h-4 w-4" fill="currentColor" />}
       </button>
@@ -159,7 +159,7 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
             <span
               key={i}
               className={cn(
-                'min-w-0 flex-1 rounded-full transition-colors duration-150',
+                'block w-[2px] shrink-0 rounded-full transition-colors duration-150',
                 played ? 'bg-[var(--family-voice-played)]' : 'bg-[var(--family-voice-unplayed)]',
               )}
               style={{ height: `${height}px` }}

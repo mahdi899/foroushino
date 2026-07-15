@@ -27,11 +27,9 @@ const REACTION_PX = 26;
 
 export function FamilyReactionLottie({
   type,
-  active,
   playKey,
 }: {
   type: FamilyReactionType;
-  active: boolean;
   playKey: number;
 }) {
   const lottieRef = useRef<LottieRefCurrentProps>(null);
@@ -49,38 +47,45 @@ export function FamilyReactionLottie({
     svg.style.display = 'block';
   }, []);
 
+  const freezeStatic = useCallback(() => {
+    const inst = lottieRef.current;
+    if (!inst) return;
+    const total = inst.getDuration(true) ?? 1;
+    const lastFrame = Math.max(0, Math.floor(total) - 1);
+    inst.goToAndStop(lastFrame, true);
+    clampSvgSize();
+  }, [clampSvgSize]);
+
   useEffect(() => {
     clampSvgSize();
-    const t = window.setTimeout(clampSvgSize, 0);
+    const t = window.setTimeout(() => {
+      clampSvgSize();
+      lottieRef.current?.goToAndStop(0, true);
+    }, 0);
     return () => window.clearTimeout(t);
   }, [type, clampSvgSize]);
 
   useEffect(() => {
     if (playKey === 0) return;
-    lottieRef.current?.goToAndPlay(0, true);
-    clampSvgSize();
-  }, [playKey, clampSvgSize]);
-
-  useEffect(() => {
     const inst = lottieRef.current;
     if (!inst) return;
-    if (active) {
-      inst.goToAndPlay(0, true);
-    } else if (playKey === 0) {
-      inst.goToAndStop(0, true);
-    }
-  }, [active, playKey]);
+    inst.goToAndPlay(0, true);
+    clampSvgSize();
+  }, [playKey, clampSvgSize]);
 
   return (
     <span ref={hostRef} className="family-reaction-icon" aria-hidden>
       <Lottie
         lottieRef={lottieRef}
         animationData={NOTO_REACTIONS[type]}
-        loop={active}
-        autoplay={active}
+        loop={false}
+        autoplay={false}
         style={{ width: REACTION_PX, height: REACTION_PX }}
-        onDOMLoaded={clampSvgSize}
-        onComplete={clampSvgSize}
+        onDOMLoaded={() => {
+          clampSvgSize();
+          lottieRef.current?.goToAndStop(0, true);
+        }}
+        onComplete={freezeStatic}
       />
     </span>
   );

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { FamilyReactionLottie } from '@/components/family/FamilyReactionLottie';
 import { removeReaction, setReaction } from '@/lib/family/api';
@@ -48,7 +49,7 @@ function ReactionButton({
         disabled && 'pointer-events-none opacity-45',
       )}
     >
-      <FamilyReactionLottie type={type} active={active} playKey={playKey} />
+      <FamilyReactionLottie type={type} playKey={playKey} />
       {count > 0 && (
         <span className={cn('family-reaction-count', active && 'family-reaction-count--active')}>
           {count}
@@ -70,6 +71,19 @@ export function ReactionBar({
   const [active, setActive] = useState<FamilyReactionType | null>(userReaction);
   const [counts, setCounts] = useState(stats);
   const [pending, setPending] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) {
+        setPickerOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [pickerOpen]);
 
   const toggle = async (type: FamilyReactionType) => {
     if (pending) return;
@@ -100,19 +114,60 @@ export function ReactionBar({
     }
   };
 
+  const handlePick = (type: FamilyReactionType) => {
+    void toggle(type);
+    setPickerOpen(false);
+  };
+
+  const visibleTypes = REACTIONS.filter((r) => counts[r.type] > 0).map((r) => r.type);
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {REACTIONS.map((r) => (
-        <ReactionButton
-          key={r.type}
-          type={r.type}
-          label={r.label}
-          count={counts[r.type]}
-          active={active === r.type}
-          disabled={pending}
-          onClick={() => toggle(r.type)}
-        />
-      ))}
+    <div ref={rootRef} className="relative flex flex-wrap items-center gap-2">
+      {visibleTypes.map((type) => {
+        const meta = REACTIONS.find((r) => r.type === type)!;
+        return (
+          <ReactionButton
+            key={type}
+            type={type}
+            label={meta.label}
+            count={counts[type]}
+            active={active === type}
+            disabled={pending}
+            onClick={() => toggle(type)}
+          />
+        );
+      })}
+
+      <button
+        type="button"
+        aria-label="افزودن واکنش"
+        aria-expanded={pickerOpen}
+        disabled={pending}
+        onClick={() => setPickerOpen((o) => !o)}
+        className={cn(
+          'family-reaction-add',
+          pickerOpen && 'family-reaction-add--open',
+          pending && 'pointer-events-none opacity-45',
+        )}
+      >
+        <Plus className="h-4 w-4" strokeWidth={2.25} />
+      </button>
+
+      {pickerOpen && (
+        <div className="family-reaction-picker" role="menu" aria-label="انتخاب واکنش">
+          {REACTIONS.map((r) => (
+            <ReactionButton
+              key={r.type}
+              type={r.type}
+              label={r.label}
+              count={0}
+              active={active === r.type}
+              disabled={pending}
+              onClick={() => handlePick(r.type)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
