@@ -40,16 +40,11 @@ function markBootDone(): void {
 export function SiteBootLoader() {
   const pathname = usePathname();
   const isBareShell = isBareShellPath(pathname);
-  const [phase, setPhase] = useState<'visible' | 'fading' | 'done'>(() => {
-    if (isBareShell || readBootDone()) return 'done';
-    return 'visible';
-  });
+  // Always start hidden so SSR matches the first client paint (sessionStorage is client-only).
+  const [phase, setPhase] = useState<'visible' | 'fading' | 'done'>('done');
 
   useEffect(() => {
-    if (isBareShell || readBootDone()) {
-      setPhase('done');
-      return;
-    }
+    if (isBareShell || readBootDone()) return;
 
     setPhase('visible');
     const started = Date.now();

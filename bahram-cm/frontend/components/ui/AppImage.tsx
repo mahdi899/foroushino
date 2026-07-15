@@ -7,8 +7,6 @@ import { primarySiteImageSrc, siteMediaFallbacks } from '@/lib/mediaUrl';
 import { useLazyImages } from '@/components/performance/PerformanceProvider';
 import { cn } from '@/lib/utils';
 
-const disableImageOptimization = process.env.NEXT_PUBLIC_DISABLE_IMAGE_OPTIMIZATION === '1';
-
 export type AppImageProps = ImageProps & {
   wrapperClassName?: string;
 };
@@ -54,7 +52,8 @@ export function AppImage({
   const resolvedSrc =
     typeof src === 'string' ? (fallbacks[fallbackIndex] ?? primarySiteImageSrc(src) ?? src) : src;
 
-  const unoptimized = disableImageOptimization;
+  // Pre-sized /storage assets — passthrough loader, no Next.js resize pipeline.
+  const unoptimized = true;
 
   const handleImageError = useCallback(
     (event: React.SyntheticEvent<HTMLImageElement, Event>) => {
