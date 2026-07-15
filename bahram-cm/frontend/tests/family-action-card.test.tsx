@@ -32,13 +32,13 @@ describe("ActionCard", () => {
     fireEvent.click(screen.getByRole("button", { name: /متعهد می‌شوم/ }));
 
     await waitFor(() => expect(respondToAction).toHaveBeenCalledWith(1, { committed: true }));
-    expect(await screen.findByText(/ثبت شد/)).toBeInTheDocument();
+    expect(await screen.findByText(/پاسخ شما ثبت شد/)).toBeInTheDocument();
   });
 
   it("restores submitted state from feed when already responded", () => {
     render(<ActionCard action={makeAction({ responded: true, results: null })} />);
 
-    expect(screen.getByText(/ثبت شد/)).toBeInTheDocument();
+    expect(screen.getByText(/پاسخ شما ثبت شد/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /متعهد می‌شوم/ })).not.toBeInTheDocument();
   });
 
@@ -126,7 +126,7 @@ describe("ActionCard", () => {
 
     expect(respondToAction).toHaveBeenCalledTimes(1);
     resolveResponse?.();
-    await waitFor(() => expect(screen.getByText(/ثبت شد/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/پاسخ شما ثبت شد/)).toBeInTheDocument());
   });
 
   it("shows staff poll participation counts", () => {

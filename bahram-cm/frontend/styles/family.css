@@ -557,8 +557,31 @@ html[data-theme='dark'] .family-app {
 }
 
 .family-action-panel--done {
-  border-inline-start-color: color-mix(in oklab, var(--family-accent) 70%, transparent);
-  background: color-mix(in oklab, var(--family-accent) 8%, var(--family-surface-soft));
+  border-color: color-mix(in oklab, var(--family-accent) 16%, var(--family-border));
+  border-inline-start-color: color-mix(in oklab, var(--family-accent) 45%, transparent);
+  background: color-mix(in oklab, var(--family-surface-soft) 88%, var(--family-surface));
+}
+
+.family-action-receipt {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  border: 1px solid color-mix(in oklab, var(--family-accent) 16%, var(--family-border));
+  background: color-mix(in oklab, var(--family-accent) 6%, var(--family-surface));
+  border-radius: 0.875rem;
+  padding: 0.75rem 0.875rem;
+}
+
+.family-action-receipt__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  color: var(--family-accent);
+  background: color-mix(in oklab, var(--family-accent) 12%, transparent);
 }
 
 .family-action-badge {

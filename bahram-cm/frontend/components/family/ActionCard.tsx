@@ -147,12 +147,23 @@ export function ActionCard({
   if (submitted) {
     return (
       <div className="family-action-panel family-action-panel--done space-y-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <span className="family-action-badge shrink-0" aria-label={typeLabel} title={typeLabel}>
             <TypeIcon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
           </span>
-          <p className="text-sm text-[var(--family-accent)]">ثبت شد — داداش بهرام می‌بیندش ✅</p>
+          <p className="text-[13px] font-medium text-bone/55">{typeLabel}</p>
         </div>
+
+        <div className="family-action-receipt">
+          <span className="family-action-receipt__mark" aria-hidden>
+            <CheckCircle2 className="h-4 w-4" strokeWidth={2} />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-bone/90">پاسخ شما ثبت شد</p>
+            <p className="mt-0.5 text-[12px] leading-5 text-bone/50">بهرام می‌تواند آن را ببیند.</p>
+          </div>
+        </div>
+
         {showResults && (
           <PollResults results={results} memberCount={memberCount} isStaff={isStaff} />
         )}
@@ -184,7 +195,7 @@ export function ActionCard({
           onClick={() => submit({ committed: true })}
           className="family-btn-primary w-full rounded-xl py-2.5 text-sm disabled:opacity-60"
         >
-          متعهد می‌شوم 💪
+          متعهد می‌شوم
         </button>,
       );
 
@@ -200,7 +211,7 @@ export function ActionCard({
               }
               className="family-btn-primary flex-1 rounded-xl py-2.5 text-sm disabled:opacity-60"
             >
-              انجام دادم ✅
+              انجام دادم
             </button>
             <button
               type="button"

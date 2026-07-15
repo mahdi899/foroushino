@@ -57,7 +57,7 @@ export function applyConfirmationVote(
   confirmed: boolean,
 ): FamilyActionResults {
   const baseOptions = results?.options ?? [
-    { value: 'yes', label: 'انجام دادم ✅', count: 0, percent: 0 },
+    { value: 'yes', label: 'انجام دادم', count: 0, percent: 0 },
     { value: 'no', label: 'هنوز نه', count: 0, percent: 0 },
   ];
 
