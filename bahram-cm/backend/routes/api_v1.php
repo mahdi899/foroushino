@@ -33,17 +33,21 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\DiscountCodeAdminController;
 use App\Http\Controllers\Api\V1\FaqController;
 use App\Http\Controllers\Api\V1\Family\ActionController as FamilyActionController;
+use App\Http\Controllers\Api\V1\Family\BrandingController as FamilyBrandingController;
 use App\Http\Controllers\Api\V1\Family\CommentController as FamilyCommentController;
 use App\Http\Controllers\Api\V1\Family\FeedController as FamilyFeedController;
 use App\Http\Controllers\Api\V1\Family\MediaProgressController as FamilyMediaProgressController;
 use App\Http\Controllers\Api\V1\Family\PulseController as FamilyPulseController;
 use App\Http\Controllers\Api\V1\Family\ReactionController as FamilyReactionController;
+use App\Http\Controllers\Api\V1\Family\StoryController as FamilyStoryController;
 use App\Http\Controllers\Api\V1\FamilyManager\AnalyticsController as FamilyManagerAnalyticsController;
 use App\Http\Controllers\Api\V1\FamilyManager\CommentModerationController as FamilyManagerCommentModerationController;
 use App\Http\Controllers\Api\V1\FamilyManager\FamiliesController as FamilyManagerFamiliesController;
 use App\Http\Controllers\Api\V1\FamilyManager\HomeController as FamilyManagerHomeController;
 use App\Http\Controllers\Api\V1\FamilyManager\MediaController as FamilyManagerMediaController;
 use App\Http\Controllers\Api\V1\FamilyManager\PostController as FamilyManagerPostController;
+use App\Http\Controllers\Api\V1\FamilyManager\SettingsController as FamilyManagerSettingsController;
+use App\Http\Controllers\Api\V1\FamilyManager\StoryController as FamilyManagerStoryController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\DatabaseBackupSettingsController;
@@ -488,11 +492,14 @@ Route::post('chatbot/poll', [ChatbotController::class, 'poll']);
 Route::prefix('family')->group(function () {
     // Guest preview + member feed both hit index(); controller checks auth.
     Route::get('feed', [FamilyFeedController::class, 'index'])->middleware('throttle:120,1');
+    Route::get('branding', [FamilyBrandingController::class, 'show'])->middleware('throttle:120,1');
+    Route::get('stories', [FamilyStoryController::class, 'index'])->middleware('throttle:120,1');
     Route::get('posts/{post}', [FamilyFeedController::class, 'show'])->whereNumber('post')->middleware('throttle:120,1');
     Route::get('pulse', [FamilyPulseController::class, 'index'])->middleware('throttle:60,1');
 
     Route::middleware(['auth:sanctum', 'student.active'])->group(function () {
         Route::get('me', [FamilyFeedController::class, 'me']);
+        Route::get('pinned', [FamilyFeedController::class, 'pinned']);
         Route::post('join', [FamilyFeedController::class, 'join'])->middleware('throttle:20,1');
         Route::post('onboarding/complete', [FamilyFeedController::class, 'completeOnboarding']);
 
@@ -532,6 +539,8 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
     Route::patch('posts/{post}', [FamilyManagerPostController::class, 'update'])->whereNumber('post')->middleware('family.manage:family.posts.create');
     Route::post('posts/{post}/publish', [FamilyManagerPostController::class, 'publish'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::post('posts/{post}/archive', [FamilyManagerPostController::class, 'archive'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
+    Route::post('posts/{post}/pin', [FamilyManagerPostController::class, 'pin'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
+    Route::post('posts/{post}/unpin', [FamilyManagerPostController::class, 'unpin'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::delete('posts/{post}', [FamilyManagerPostController::class, 'destroy'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::post('posts/{comment}/reply', [FamilyManagerPostController::class, 'reply'])->whereNumber('comment')->middleware('family.manage:family.comments.reply');
 
@@ -549,6 +558,13 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
 
     Route::get('analytics', [FamilyManagerAnalyticsController::class, 'index'])->middleware('family.manage:family.analytics.view');
     Route::get('analytics/daily-summary', [FamilyManagerAnalyticsController::class, 'dailySummary'])->middleware('family.manage:family.analytics.view');
+
+    Route::get('settings', [FamilyManagerSettingsController::class, 'show'])->middleware('family.manage:family.settings.manage');
+    Route::patch('settings', [FamilyManagerSettingsController::class, 'update'])->middleware('family.manage:family.settings.manage');
+
+    Route::get('stories', [FamilyManagerStoryController::class, 'index'])->middleware('family.manage:family.stories.manage');
+    Route::post('stories', [FamilyManagerStoryController::class, 'store'])->middleware('family.manage:family.stories.manage');
+    Route::delete('stories/{story}', [FamilyManagerStoryController::class, 'destroy'])->whereNumber('story')->middleware('family.manage:family.stories.manage');
 
     Route::post('media', [FamilyManagerMediaController::class, 'store'])->middleware(['family.manage:family.media.upload', 'throttle:family-upload']);
     Route::post('media/sessions', [FamilyManagerMediaController::class, 'createSession'])->middleware(['family.manage:family.media.upload', 'throttle:family-upload']);

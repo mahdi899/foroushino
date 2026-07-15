@@ -9,7 +9,9 @@ import { ReplyContextBlock } from '@/components/family/blocks/ReplyContextBlock'
 import { VideoBlock } from '@/components/family/blocks/VideoBlock';
 import { VoiceBlock } from '@/components/family/blocks/VoiceBlock';
 import { CommentThreadPreview } from '@/components/family/CommentThreadPreview';
-import { CommentsSheet } from '@/components/family/CommentsSheet';
+import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
+import type { FamilyComment } from '@/lib/family/types';
+import { formatPostDateTime } from '@/lib/family/datetime';
 import { ReactionBar } from '@/components/family/ReactionBar';
 import type { FamilyPost, FamilyPostBlock } from '@/lib/family/types';
 
@@ -34,8 +36,15 @@ function renderBlock(block: FamilyPostBlock, postId: number) {
   }
 }
 
-export function PostCard({ post }: { post: FamilyPost }) {
-  const [commentsOpen, setCommentsOpen] = useState(false);
+export function PostCard({
+  post,
+  compact = false,
+  onOpenComments,
+}: {
+  post: FamilyPost;
+  compact?: boolean;
+  onOpenComments?: (handlers: { onCommentAdded: (comment: FamilyComment) => void }) => void;
+}) {
   const [commentCount, setCommentCount] = useState(post.stats.comments);
   const [commentPreview, setCommentPreview] = useState(post.comment_preview ?? []);
 
@@ -48,19 +57,23 @@ export function PostCard({ post }: { post: FamilyPost }) {
     <article
       className={cn(
         'space-y-3 rounded-2xl border p-3.5 sm:p-4 lg:rounded-[18px]',
+        compact && 'space-y-2 p-3',
         post.is_important ? 'border-gold/40 bg-gold/[0.06]' : 'border-white/10 bg-[#141a1f] lg:bg-[#151c22]',
       )}
     >
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gold/20 text-sm font-bold text-gold">
-            ب
-          </span>
+          <FamilyAuthorAvatar name={post.author.name} avatar={post.author.avatar} size="sm" />
           <span className="text-sm font-semibold text-bone">{post.author.name}</span>
         </div>
-        {post.is_important && (
-          <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[11px] font-medium text-gold">مهم ⭐</span>
-        )}
+        <div className="flex items-center gap-1.5">
+          {post.is_pinned && (
+            <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-medium text-gold">سنجاق 📌</span>
+          )}
+          {post.is_important && (
+            <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[11px] font-medium text-gold">مهم ⭐</span>
+          )}
+        </div>
       </header>
 
       <div className="space-y-3">
@@ -80,38 +93,42 @@ export function PostCard({ post }: { post: FamilyPost }) {
 
       {actions.map((action) => <ActionCard key={action.id} action={action} />)}
 
-      <ReactionBar
-        postId={post.id}
-        stats={{
-          fire: post.stats.fire,
-          heart: post.stats.heart,
-          target: post.stats.target,
-          clap: post.stats.clap,
-          comments: commentCount,
-          action_responses: post.stats.action_responses,
-        }}
-        userReaction={post.user_reaction}
-      />
+      <div className="flex items-center justify-between gap-3">
+        {post.published_at && (
+          <time dateTime={post.published_at} className="shrink-0 text-[11px] tabular-nums text-bone/40">
+            {formatPostDateTime(post.published_at)}
+          </time>
+        )}
+        <ReactionBar
+          postId={post.id}
+          stats={{
+            fire: post.stats.fire,
+            heart: post.stats.heart,
+            target: post.stats.target,
+            clap: post.stats.clap,
+            comments: commentCount,
+            action_responses: post.stats.action_responses,
+          }}
+          userReaction={post.user_reaction}
+        />
+      </div>
 
       <CommentThreadPreview
         count={commentCount}
         preview={commentPreview}
-        onOpen={() => setCommentsOpen(true)}
+        onOpen={() =>
+          onOpenComments?.({
+            onCommentAdded: (comment) => {
+              setCommentCount((c) => c + 1);
+              setCommentPreview((prev) => {
+                if (prev.some((item) => item.id === comment.id)) return prev;
+                return [comment, ...prev].slice(0, 3);
+              });
+            },
+          })
+        }
       />
 
-      {commentsOpen && (
-        <CommentsSheet
-          postId={post.id}
-          onClose={() => setCommentsOpen(false)}
-          onCommentAdded={(comment) => {
-            setCommentCount((c) => c + 1);
-            setCommentPreview((prev) => {
-              if (prev.some((item) => item.id === comment.id)) return prev;
-              return [comment, ...prev].slice(0, 3);
-            });
-          }}
-        />
-      )}
     </article>
   );
 }

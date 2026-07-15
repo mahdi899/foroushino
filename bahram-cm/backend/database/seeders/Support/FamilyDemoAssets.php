@@ -32,6 +32,7 @@ final class FamilyDemoAssets
      * @return array{
      *   voice: FamilyMedia,
      *   video: FamilyMedia,
+     *   videoVertical: FamilyMedia,
      *   image1: FamilyMedia,
      *   image2: FamilyMedia,
      *   image3: FamilyMedia,
@@ -54,6 +55,13 @@ final class FamilyDemoAssets
                 'duration' => 5,
                 'width' => 1280,
                 'height' => 720,
+            ]),
+            'videoVertical' => $this->media($uploader, 'demo-video-vertical.mp4', FamilyMediaType::Video, [
+                'mime_type' => 'video/mp4',
+                'duration' => 5,
+                'width' => 720,
+                'height' => 1280,
+                'source_filename' => 'demo-video.mp4',
             ]),
             'image1' => $this->media($uploader, 'demo-image-1.jpg', FamilyMediaType::Image, [
                 'mime_type' => 'image/jpeg',
@@ -105,6 +113,10 @@ final class FamilyDemoAssets
 
             File::copy($from, $target.DIRECTORY_SEPARATOR.$filename);
         }
+
+        // ویدیوی عمودی ۹:۱۶ — همان فایل افقی، با متادیتای portrait برای تست UI
+        $landscapeVideo = $source.DIRECTORY_SEPARATOR.'demo-video.mp4';
+        File::copy($landscapeVideo, $target.DIRECTORY_SEPARATOR.'demo-video-vertical.mp4');
     }
 
     /**
@@ -114,6 +126,12 @@ final class FamilyDemoAssets
     {
         $storagePath = self::PUBLIC_SUBDIR.'/'.$filename;
         $absolute = storage_path('app/public/'.$storagePath);
+        if (! is_file($absolute) && isset($meta['source_filename'])) {
+            $sourceAbsolute = storage_path('app/public/'.self::PUBLIC_SUBDIR.'/'.$meta['source_filename']);
+            if (is_file($sourceAbsolute)) {
+                File::copy($sourceAbsolute, $absolute);
+            }
+        }
         $size = is_file($absolute) ? filesize($absolute) : null;
 
         $width = $meta['width'] ?? null;

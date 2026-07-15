@@ -23,6 +23,8 @@ final class FamilyPermissionCatalog
                 'family.analytics.view',
                 'family.pulse.manage',
                 'family.media.upload',
+                'family.settings.manage',
+                'family.stories.manage',
             ],
         ];
     }
@@ -45,6 +47,8 @@ final class FamilyPermissionCatalog
             'family.analytics.view' => 'مشاهده تحلیل خانواده',
             'family.pulse.manage' => 'مدیریت Family Pulse',
             'family.media.upload' => 'آپلود رسانه خانواده',
+            'family.settings.manage' => 'تنظیمات برندینگ خانواده',
+            'family.stories.manage' => 'مدیریت استوری خانواده',
             default => $permission,
         };
     }

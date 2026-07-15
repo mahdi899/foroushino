@@ -20,12 +20,15 @@ use App\Models\FamilyComment;
 use App\Models\FamilyMedia;
 use App\Models\FamilyMembership;
 use App\Models\FamilyPost;
+use App\Models\FamilyBranding;
+use App\Models\FamilyStory;
 use App\Models\FamilyReaction;
 use App\Models\User;
 use App\Models\UserIdentityProfile;
 use App\Services\Family\FamilyPostPublisher;
 use App\Services\Family\FamilyStatsService;
 use Database\Seeders\Support\FamilyDemoAssets;
+use Database\Seeders\Support\FamilyDemoPostLookup;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -96,6 +99,14 @@ class FamilySeeder extends Seeder
             'blocks' => [
                 $this->textBlock('پیام ویدیویی کوتاه از بهرام — یک نکتهٔ عملی برای امروز.', 'video-message', 0),
                 $this->videoBlock($assets['video'], 1),
+            ],
+        ]);
+
+        $this->publishDemoPost($publisher, $author, 'video-vertical-portrait', [
+            'type' => FamilyPostType::Video->value,
+            'blocks' => [
+                $this->textBlock('ویدیوی عمودی ۹:۱۶ — تست نمایش در فید (مثل استوری/ریels).', 'video-vertical-portrait', 0),
+                $this->videoBlock($assets['videoVertical'], 1),
             ],
         ]);
 
@@ -231,6 +242,11 @@ class FamilySeeder extends Seeder
         $this->seedActionResponses($members, $familyId);
 
         $this->pinImagePostsToFeedTop();
+        $this->spreadDemoFeedTimeline();
+
+        $this->call(FamilyBrandingSeeder::class);
+        $this->call(FamilyPinnedPostSeeder::class);
+        $this->call(FamilyStorySeeder::class);
 
         $this->printSummary($members, $familyId);
     }
@@ -361,9 +377,7 @@ HTML,
 
     private function findDemoPost(string $demoKey): ?FamilyPost
     {
-        return FamilyPost::query()
-            ->whereHas('blocks', fn ($q) => $q->where('data->demo_key', $demoKey))
-            ->first();
+        return FamilyDemoPostLookup::find($demoKey);
     }
 
     /** @return array{text: string, demo_key?: string, type: string, position: int, data?: array<string, string>} */
@@ -596,13 +610,57 @@ HTML,
 
     private function pinImagePostsToFeedTop(): void
     {
-        foreach (['image-moment', 'image-album-journey'] as $index => $demoKey) {
+        foreach (['image-moment', 'image-album-journey', 'video-vertical-portrait'] as $index => $demoKey) {
             $post = $this->findDemoPost($demoKey);
             if (! $post) {
                 continue;
             }
 
-            $post->update(['published_at' => now()->subMinutes($index)]);
+            $post->update(['published_at' => now()->subMinutes($index * 4)]);
+        }
+    }
+
+    /** پخش پست‌های دمو در چند روز برای تست جداکنندهٔ تاریخ */
+    private function spreadDemoFeedTimeline(): void
+    {
+        $keys = [
+            'welcome-text',
+            'weekly-focus',
+            'voice-podcast',
+            'video-message',
+            'image-moment',
+            'image-album-journey',
+            'article-insight',
+            'mixed-weekly-recap',
+            'action-commitment',
+            'action-confirmation',
+            'action-poll',
+            'action-scale',
+            'action-number',
+            'action-short-text',
+            'action-multi-choice',
+            'reply-to-member',
+            'video-vertical-portrait',
+        ];
+
+        $total = count($keys);
+        foreach ($keys as $index => $demoKey) {
+            $post = $this->findDemoPost($demoKey);
+            if (! $post) {
+                continue;
+            }
+
+            if (in_array($demoKey, ['image-moment', 'image-album-journey', 'video-vertical-portrait'], true)) {
+                continue;
+            }
+
+            $daysAgo = (int) floor(($total - 1 - $index) / max(1, (int) ceil($total / 4)));
+            $hour = 8 + (($index * 3) % 14);
+            $minute = ($index * 11) % 60;
+
+            $post->update([
+                'published_at' => now()->subDays($daysAgo)->setTime($hour, $minute, 0),
+            ]);
         }
     }
 
@@ -610,9 +668,18 @@ HTML,
     private function printSummary(array $members, int $familyId): void
     {
         $published = FamilyPost::query()->where('status', FamilyPostStatus::Published)->count();
+        $pinned = FamilyPost::query()->where('is_pinned', true)->count();
+        $activeStories = FamilyStory::query()->where('expires_at', '>', now())->count();
+        $branding = FamilyBranding::query()->first();
 
         $this->command?->info('── Family Demo Seed ──');
         $this->command?->info(sprintf('خانواده: #%d | پست‌های منتشرشده: %d', $familyId, $published));
+        $this->command?->info(sprintf(
+            'برندینگ: %s | سنجاق: %d | استوری فعال: %d',
+            $branding?->display_name ?? '—',
+            $pinned,
+            $activeStories,
+        ));
         $this->command?->info(sprintf(
             'عضو اصلی: %s | رمز: %s',
             self::PRIMARY_MEMBER_MOBILE,

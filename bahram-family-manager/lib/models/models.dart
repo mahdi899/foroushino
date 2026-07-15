@@ -232,6 +232,7 @@ class FamilyPostModel {
     required this.status,
     required this.audienceMode,
     required this.isImportant,
+    this.isPinned = false,
     this.publishedAt,
     this.createdAt,
     this.authorName,
@@ -245,6 +246,7 @@ class FamilyPostModel {
   final String status;
   final String audienceMode;
   final bool isImportant;
+  final bool isPinned;
   final String? publishedAt;
   final String? createdAt;
   final String? authorName;
@@ -261,6 +263,7 @@ class FamilyPostModel {
         status: json['status']?.toString() ?? 'draft',
         audienceMode: json['audience_mode']?.toString() ?? 'all',
         isImportant: json['is_important'] == true,
+        isPinned: json['is_pinned'] == true,
         publishedAt: json['published_at']?.toString(),
         createdAt: json['created_at']?.toString(),
         authorName: (json['author'] as Map?)?['name']?.toString(),
@@ -523,6 +526,53 @@ class AnalyticsData {
         entryEvents: (json['entry_events'] as List? ?? [])
             .map((e) => EntryEventMetric.fromJson((e as Map).cast<String, dynamic>()))
             .toList(),
+      );
+}
+
+class FamilyBrandingSettings {
+  FamilyBrandingSettings({
+    required this.displayName,
+    required this.profileName,
+    this.profileAvatar,
+    this.communityAvatar,
+  });
+
+  final String displayName;
+  final String profileName;
+  final String? profileAvatar;
+  final String? communityAvatar;
+
+  factory FamilyBrandingSettings.fromJson(Map<String, dynamic> json) => FamilyBrandingSettings(
+        displayName: json['display_name']?.toString() ?? '',
+        profileName: json['profile_name']?.toString() ?? '',
+        profileAvatar: json['profile_avatar']?.toString(),
+        communityAvatar: json['community_avatar']?.toString(),
+      );
+}
+
+class FamilyStoryModel {
+  FamilyStoryModel({
+    required this.id,
+    this.caption,
+    this.publishedAt,
+    this.expiresAt,
+    this.media,
+  });
+
+  final int id;
+  final String? caption;
+  final String? publishedAt;
+  final String? expiresAt;
+  final FamilyMediaRef? media;
+
+  factory FamilyStoryModel.fromJson(Map<String, dynamic> json) => FamilyStoryModel(
+        id: json['id'] as int,
+        caption: json['caption']?.toString(),
+        publishedAt: json['published_at']?.toString(),
+        expiresAt: json['expires_at']?.toString(),
+        media: json['media'] is Map
+            ? FamilyMediaRef.fromJson((json['media'] as Map).cast<String, dynamic>())
+            : null,
       );
 }
 

@@ -3,7 +3,36 @@
 import { useState } from 'react';
 import { cn } from '@/lib/cn';
 import { respondToAction } from '@/lib/family/api';
-import type { FamilyAction } from '@/lib/family/types';
+import {
+  applyConfirmationVote,
+  applyMultiChoiceVote,
+  applySingleChoiceVote,
+} from '@/lib/family/actionResults';
+import type { FamilyAction, FamilyActionResults } from '@/lib/family/types';
+
+function PollResults({ results }: { results: FamilyActionResults }) {
+  return (
+    <div className="space-y-2.5 border-t border-white/10 pt-3">
+      {results.options.map((option) => (
+        <div key={option.value} className="space-y-1">
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <span className="text-bone/85">{option.label}</span>
+            <span className="shrink-0 tabular-nums text-bone/50">
+              {option.percent}٪ · {option.count} رأی
+            </span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-gold/80 transition-[width] duration-500 ease-out"
+              style={{ width: `${option.percent}%` }}
+            />
+          </div>
+        </div>
+      ))}
+      <p className="text-[11px] text-bone/45">{results.total} رأی ثبت‌شده</p>
+    </div>
+  );
+}
 
 export function ActionCard({ action }: { action: FamilyAction }) {
   const [submitted, setSubmitted] = useState(false);
@@ -12,22 +41,29 @@ export function ActionCard({ action }: { action: FamilyAction }) {
   const [numberValue, setNumberValue] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [scale, setScale] = useState<number | null>(null);
+  const [results, setResults] = useState<FamilyActionResults | null | undefined>(action.results);
 
-  const submit = async (value: Record<string, unknown>) => {
+  const submit = async (value: Record<string, unknown>, nextResults?: FamilyActionResults) => {
     if (pending || submitted) return;
     setPending(true);
     try {
       await respondToAction(action.id, value);
+      if (nextResults) setResults(nextResults);
       setSubmitted(true);
     } finally {
       setPending(false);
     }
   };
 
+  const showResults =
+    results &&
+    (action.type === 'single_choice' || action.type === 'multi_choice' || action.type === 'confirmation');
+
   if (submitted) {
     return (
-      <div className="rounded-2xl border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-gold">
-        ثبت شد — داداش بهرام می‌بیندش. ✅
+      <div className="space-y-3 rounded-2xl border border-gold/30 bg-gold/10 p-4">
+        <p className="text-sm text-gold">ثبت شد — داداش بهرام می‌بیندش. ✅</p>
+        {showResults && <PollResults results={results} />}
       </div>
     );
   }
@@ -54,23 +90,29 @@ export function ActionCard({ action }: { action: FamilyAction }) {
 
     case 'confirmation':
       return wrap(
-        <div className="flex gap-2">
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => submit({ confirmed: true })}
-            className="flex-1 rounded-xl bg-gold py-2.5 text-sm font-semibold text-charcoal transition active:scale-[0.98] disabled:opacity-60"
-          >
-            انجام دادم ✅
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => submit({ confirmed: false })}
-            className="flex-1 rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-bone/70 transition active:scale-[0.98] disabled:opacity-60"
-          >
-            هنوز نه
-          </button>
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                submit({ confirmed: true }, applyConfirmationVote(results, true))
+              }
+              className="flex-1 rounded-xl bg-gold py-2.5 text-sm font-semibold text-charcoal transition active:scale-[0.98] disabled:opacity-60"
+            >
+              انجام دادم ✅
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                submit({ confirmed: false }, applyConfirmationVote(results, false))
+              }
+              className="flex-1 rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-bone/70 transition active:scale-[0.98] disabled:opacity-60"
+            >
+              هنوز نه
+            </button>
+          </div>
         </div>,
       );
 
@@ -159,9 +201,20 @@ export function ActionCard({ action }: { action: FamilyAction }) {
           <button
             type="button"
             disabled={pending || selected.length === 0}
-            onClick={() =>
-              submit(action.type === 'single_choice' ? { option: selected[0] } : { options: selected })
-            }
+            onClick={() => {
+              if (action.type === 'single_choice') {
+                const value = selected[0];
+                submit(
+                  { option: value },
+                  applySingleChoiceVote(results, action.options, value),
+                );
+                return;
+              }
+              submit(
+                { options: selected },
+                applyMultiChoiceVote(results, action.options, selected),
+              );
+            }}
             className="w-full rounded-xl bg-gold py-2.5 text-sm font-semibold text-charcoal disabled:opacity-60"
           >
             ثبت پاسخ

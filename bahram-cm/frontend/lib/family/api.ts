@@ -11,11 +11,13 @@ import { extractError } from '@/lib/student/panelFormUtils';
 import { FamilyApiError } from './errors';
 import { familyFetch } from './session';
 import type {
+  FamilyBranding,
   FamilyComment,
   FamilyFeedResponse,
   FamilyMeResponse,
   FamilyNotification,
   FamilyPost,
+  FamilyStory,
 } from './types';
 
 async function run<T>(fn: () => Promise<T>, fallback: string): Promise<T> {
@@ -27,9 +29,24 @@ async function run<T>(fn: () => Promise<T>, fallback: string): Promise<T> {
   }
 }
 
-export async function getFeed(cursor?: string | null): Promise<FamilyFeedResponse> {
-  const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
+export async function getFeed(cursor?: string | null, limit = 4): Promise<FamilyFeedResponse> {
+  const params = new URLSearchParams();
+  if (cursor) params.set('cursor', cursor);
+  params.set('limit', String(limit));
+  const qs = `?${params.toString()}`;
   return run(() => familyFetch<FamilyFeedResponse>(`/feed${qs}`), 'دریافت فید ناموفق بود.');
+}
+
+export async function getBranding(): Promise<{ data: FamilyBranding }> {
+  return run(() => familyFetch<{ data: FamilyBranding }>(`/branding`), 'دریافت برندینگ ناموفق بود.');
+}
+
+export async function getStories(): Promise<{ data: FamilyStory[] }> {
+  return run(() => familyFetch<{ data: FamilyStory[] }>(`/stories`), 'دریافت استوری‌ها ناموفق بود.');
+}
+
+export async function getPinnedPosts(): Promise<{ data: FamilyPost[] }> {
+  return run(() => familyFetch<{ data: FamilyPost[] }>(`/pinned`), 'دریافت پیام سنجاق‌شده ناموفق بود.');
 }
 
 export async function joinFamily(entryContext: Record<string, string | undefined> = {}): Promise<{ data: FamilyMeResponse }> {

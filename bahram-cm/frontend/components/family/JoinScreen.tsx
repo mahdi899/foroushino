@@ -4,14 +4,16 @@ import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { joinFamily } from '@/lib/family/api';
 import { FamilyApiError } from '@/lib/family/errors';
+import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
 
-const RULES = [
-  'داداش بهرام مستقیم پست می‌ذاره، صوتی، ویدیویی و متنی.',
+const rules = (profileName: string) => [
+  `${profileName} مستقیم پست می‌ذاره، صوتی، ویدیویی و متنی.`,
   'کامنت‌ها قبل از نمایش عمومی بررسی می‌شن؛ محتوای نامرتبط یا تبلیغاتی رد می‌شه.',
   'شماره تو در اختیار بقیه اعضا قرار نمی‌گیره.',
 ];
 
 export function JoinScreen() {
+  const { branding } = useFamilyBranding();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [pending, setPending] = useState(false);
@@ -39,15 +41,15 @@ export function JoinScreen() {
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 py-10 text-center sm:px-8 lg:py-16">
       <span className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gold text-2xl font-bold text-charcoal">
-        خ
+        {branding.profile_name.charAt(0)}
       </span>
-      <h1 className="text-xl font-bold text-bone lg:text-2xl">به خانواده داداش بهرام بپیوند</h1>
+      <h1 className="text-xl font-bold text-bone lg:text-2xl">به {branding.display_name} بپیوند</h1>
       <p className="mt-2 max-w-sm text-sm text-bone/60 lg:max-w-md lg:text-[15px]">
-        یه فضای نزدیک و واقعی، جایی که داداش بهرام مستقیم باهات در ارتباطه.
+        یه فضای نزدیک و واقعی، جایی که {branding.profile_name} مستقیم باهات در ارتباطه.
       </p>
 
       <ul className="mt-6 w-full max-w-sm space-y-2 text-right">
-        {RULES.map((rule, i) => (
+        {rules(branding.profile_name).map((rule, i) => (
           <li key={i} className="flex items-start gap-2 rounded-xl bg-white/5 px-3 py-2 text-xs text-bone/70">
             <span className="mt-0.5 text-gold">•</span>
             {rule}

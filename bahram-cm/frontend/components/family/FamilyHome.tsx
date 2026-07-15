@@ -7,8 +7,18 @@ import { FeedView } from '@/components/family/FeedView';
 import { GuestBanner } from '@/components/family/GuestBanner';
 import { JoinScreen } from '@/components/family/JoinScreen';
 import { OnboardingModal } from '@/components/family/OnboardingModal';
+import { PinnedMessageBar } from '@/components/family/PinnedMessageBar';
 
 type Mode = 'guest' | 'join' | 'member';
+
+function FamilyStickyHeader({ memberCount, showPinned }: { memberCount?: number; showPinned?: boolean }) {
+  return (
+    <div className="sticky top-0 z-30 shrink-0">
+      <FamilyTopBar memberCount={memberCount} />
+      {showPinned && <PinnedMessageBar />}
+    </div>
+  );
+}
 
 export function FamilyHome({
   mode,
@@ -24,7 +34,7 @@ export function FamilyHome({
   if (mode === 'join') {
     return (
       <FamilyShell>
-        <FamilyTopBar isMember={false} />
+        <FamilyStickyHeader />
         <FamilyMain>
           <Suspense>
             <JoinScreen />
@@ -36,7 +46,7 @@ export function FamilyHome({
 
   return (
     <FamilyShell>
-      <FamilyTopBar isMember={mode === 'member'} memberCount={memberCount} />
+      <FamilyStickyHeader memberCount={memberCount} showPinned={mode === 'member'} />
       <FamilyMain>
         <FeedView />
       </FamilyMain>

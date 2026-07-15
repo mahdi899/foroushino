@@ -69,7 +69,7 @@ describe("ActionCard", () => {
     fireEvent.click(screen.getByText("بله"));
     fireEvent.click(screen.getByRole("button", { name: "ثبت پاسخ" }));
 
-    await waitFor(() => expect(respondToAction).toHaveBeenCalledWith(4, { choice: "yes" }));
+    await waitFor(() => expect(respondToAction).toHaveBeenCalledWith(4, { option: "yes" }));
   });
 
   it("accumulates multiple selections for multi-choice", async () => {
@@ -89,7 +89,7 @@ describe("ActionCard", () => {
     fireEvent.click(screen.getByRole("button", { name: "ثبت پاسخ" }));
 
     await waitFor(() =>
-      expect(respondToAction).toHaveBeenCalledWith(5, { choices: ["morning", "night"] }),
+      expect(respondToAction).toHaveBeenCalledWith(5, { options: ["morning", "night"] }),
     );
   });
 
@@ -100,7 +100,7 @@ describe("ActionCard", () => {
     fireEvent.click(screen.getByText("7"));
     fireEvent.click(screen.getByRole("button", { name: "ثبت" }));
 
-    await waitFor(() => expect(respondToAction).toHaveBeenCalledWith(6, { scale: 7 }));
+    await waitFor(() => expect(respondToAction).toHaveBeenCalledWith(6, { score: 7 }));
   });
 
   it("ignores repeated submissions while pending", async () => {

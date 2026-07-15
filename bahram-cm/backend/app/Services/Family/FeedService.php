@@ -4,6 +4,7 @@ namespace App\Services\Family;
 
 use App\Enums\Family\FamilyCommentStatus;
 use App\Enums\Family\FamilyPostStatus;
+use App\Models\FamilyActionResponse;
 use App\Models\FamilyComment;
 use App\Models\FamilyPost;
 use App\Models\FamilyReaction;
@@ -15,6 +16,8 @@ class FeedService
     public function __construct(
         private readonly FamilyAccessService $access,
         private readonly PostAudienceResolver $audience,
+        private readonly ActionResultStatsBuilder $actionResults,
+        private readonly FamilyBrandingService $branding,
     ) {}
 
     /**
@@ -24,11 +27,12 @@ class FeedService
     {
         $membership = $this->access->requireMembership($user);
         $familyId = (int) $membership->family_id;
-        $limit = $limit ?? (int) config('family.feed.per_page', 20);
+        $limit = $limit ?? (int) config('family.feed.per_page', 4);
 
         $query = FamilyPost::query()
             ->where('status', FamilyPostStatus::Published->value)
-            ->whereNotNull('published_at');
+            ->whereNotNull('published_at')
+            ->where('is_pinned', false);
 
         $this->audience->scopeVisibleToFamily($query, $familyId);
 
@@ -66,6 +70,8 @@ class FeedService
 
         $this->attachUserReactions($posts, $user->id);
         $this->attachCommentPreviews($posts, $familyId);
+        $this->attachActionResults($posts, $familyId);
+        $this->applyBrandingAuthor($posts);
 
         $nextCursor = null;
         if ($hasMore && $posts->isNotEmpty()) {
@@ -103,10 +109,59 @@ class FeedService
             ->limit($limit)
             ->get();
 
+        $this->applyBrandingAuthor($posts);
+
         return [
             'data' => $posts,
             'next_cursor' => null,
         ];
+    }
+
+    /**
+     * @return Collection<int, FamilyPost>
+     */
+    public function pinnedForMember(User $user): Collection
+    {
+        $membership = $this->access->requireMembership($user);
+        $familyId = (int) $membership->family_id;
+
+        $query = FamilyPost::query()
+            ->where('status', FamilyPostStatus::Published->value)
+            ->where('is_pinned', true)
+            ->whereNotNull('published_at');
+
+        $this->audience->scopeVisibleToFamily($query, $familyId);
+
+        $posts = $query
+            ->with([
+                'author:id,name',
+                'blocks' => fn ($q) => $q->orderBy('position'),
+                'blocks.media',
+                'blocks.article:id,title,slug,excerpt,featured_image,status',
+                'actions.options',
+                'replyToComment:id,user_id,body,status',
+                'replyToComment.user:id,name',
+                'stats' => fn ($q) => $q->where('family_id', $familyId),
+            ])
+            ->orderByDesc('pinned_at')
+            ->get();
+
+        $this->attachUserReactions($posts, $user->id);
+        $this->attachCommentPreviews($posts, $familyId);
+        $this->attachActionResults($posts, $familyId);
+        $this->applyBrandingAuthor($posts);
+
+        return $posts;
+    }
+
+    private function applyBrandingAuthor(Collection $posts): void
+    {
+        $branding = $this->branding->publicPayload();
+
+        foreach ($posts as $post) {
+            $post->setAttribute('author_display_name', $branding['profile_name']);
+            $post->setAttribute('author_avatar', $branding['profile_avatar']);
+        }
     }
 
     private function attachCommentPreviews(Collection $posts, int $familyId): void
@@ -129,6 +184,37 @@ class FeedService
                 'comment_preview',
                 ($grouped->get($post->id) ?? collect())->take(3)->values()
             );
+        }
+    }
+
+    private function attachActionResults(Collection $posts, int $familyId): void
+    {
+        if ($posts->isEmpty()) {
+            return;
+        }
+
+        $actionIds = $posts
+            ->flatMap(fn (FamilyPost $post) => $post->actions->pluck('id'))
+            ->unique()
+            ->values();
+
+        if ($actionIds->isEmpty()) {
+            return;
+        }
+
+        $responses = FamilyActionResponse::query()
+            ->where('family_id', $familyId)
+            ->whereIn('action_id', $actionIds)
+            ->get(['action_id', 'value'])
+            ->groupBy('action_id');
+
+        foreach ($posts as $post) {
+            foreach ($post->actions as $action) {
+                $action->setAttribute(
+                    'result_stats',
+                    $this->actionResults->build($action, $responses->get($action->id, collect()))
+                );
+            }
         }
     }
 

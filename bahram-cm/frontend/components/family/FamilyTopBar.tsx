@@ -1,27 +1,37 @@
-import Link from 'next/link';
-import { NotificationBell } from '@/components/family/NotificationBell';
+'use client';
 
-export function FamilyTopBar({
-  isMember,
-  memberCount,
-}: {
-  isMember: boolean;
-  memberCount?: number;
-}) {
+import Link from 'next/link';
+import { useState } from 'react';
+import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
+import { StoryViewer } from '@/components/family/StoryViewer';
+import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
+
+export function FamilyTopBar({ memberCount }: { memberCount?: number }) {
+  const { branding } = useFamilyBranding();
+  const [storyOpen, setStoryOpen] = useState(false);
+  const hasStories = Boolean(branding.has_active_stories);
+
   return (
-    <header className="sticky top-0 z-30 flex shrink-0 items-center justify-between border-b border-white/10 bg-charcoal/95 px-4 py-3 backdrop-blur-md sm:px-5 lg:px-6 lg:py-3.5">
-      <Link href="/family" className="flex min-w-0 items-center gap-2.5">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold text-sm font-bold text-charcoal lg:h-10 lg:w-10">
-          خ
-        </span>
-        <div className="min-w-0 leading-tight">
-          <p className="truncate text-sm font-bold text-bone lg:text-[15px]">خانواده داداش بهرام</p>
-          {typeof memberCount === 'number' && (
-            <p className="text-[11px] text-bone/50 lg:text-xs">{memberCount.toLocaleString('fa-IR')} عضو</p>
-          )}
+    <>
+      <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-charcoal/95 px-4 py-3 backdrop-blur-md sm:px-5 lg:px-6 lg:py-3.5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <FamilyAuthorAvatar
+            name={branding.profile_name}
+            avatar={branding.community_avatar ?? branding.profile_avatar}
+            size="lg"
+            hasStoryRing={hasStories}
+            onClick={hasStories ? () => setStoryOpen(true) : undefined}
+          />
+          <Link href="/family" className="min-w-0 leading-tight">
+            <p className="truncate text-sm font-bold text-bone lg:text-[15px]">{branding.display_name}</p>
+            {typeof memberCount === 'number' && (
+              <p className="text-[11px] text-bone/50 lg:text-xs">{memberCount.toLocaleString('fa-IR')} عضو</p>
+            )}
+          </Link>
         </div>
-      </Link>
-      {isMember && <NotificationBell />}
-    </header>
+      </header>
+
+      <StoryViewer open={storyOpen} onClose={() => setStoryOpen(false)} profileName={branding.profile_name} />
+    </>
   );
 }

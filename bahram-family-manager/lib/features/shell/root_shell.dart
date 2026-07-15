@@ -7,6 +7,7 @@ import 'package:bahram_family_manager/features/comments/comments_screen.dart';
 import 'package:bahram_family_manager/features/families/families_screen.dart';
 import 'package:bahram_family_manager/features/home/home_screen.dart';
 import 'package:bahram_family_manager/features/posts/posts_screen.dart';
+import 'package:bahram_family_manager/features/settings/settings_screen.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
 import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
@@ -56,12 +57,24 @@ class _RootShellState extends State<RootShell> {
       builder: (_) => const AnalyticsScreen(),
       permission: 'family.analytics.view',
     ),
+    _Tab(
+      label: 'برندینگ',
+      icon: Icons.palette_rounded,
+      builder: (_) => const SettingsScreen(),
+      permission: 'family.settings.manage',
+    ),
   ];
 
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AppState>().user;
-    final visibleTabs = _tabs.where((t) => t.permission == null || (user?.can(t.permission!) ?? false)).toList();
+    final visibleTabs = _tabs.where((t) {
+      if (t.permission == null) return true;
+      if (t.permission == 'family.settings.manage') {
+        return (user?.can('family.settings.manage') ?? false) || (user?.can('family.stories.manage') ?? false);
+      }
+      return user?.can(t.permission!) ?? false;
+    }).toList();
 
     if (visibleTabs.isEmpty) {
       return Scaffold(

@@ -254,6 +254,24 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     }
   }
 
+  Future<void> _togglePin() async {
+    if (_post == null) return;
+    setState(() => _saving = true);
+    try {
+      final updated = _post!.isPinned
+          ? await context.read<AppState>().manager.unpinPost(_post!.id)
+          : await context.read<AppState>().manager.pinPost(_post!.id);
+      if (mounted) {
+        setState(() => _post = updated);
+        showAppSnackBar(context, updated.isPinned ? 'پست سنجاق شد.' : 'سنجاق برداشته شد.');
+      }
+    } catch (e) {
+      if (mounted) showAppSnackBar(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   Future<void> _delete() async {
     if (_post == null) return;
     final confirmed = await showDialog<bool>(
@@ -478,6 +496,12 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           ],
           if (_post != null && _post!.isPublished) ...[
             const SizedBox(height: AppSpacing.lg),
+            SecondaryButton(
+              label: _post!.isPinned ? 'برداشتن سنجاق' : 'سنجاق در بالای فید',
+              icon: Icons.push_pin_rounded,
+              onPressed: _saving ? null : _togglePin,
+            ),
+            const SizedBox(height: AppSpacing.sm),
             SecondaryButton(label: 'آرشیو پست', icon: Icons.archive_rounded, onPressed: _saving ? null : _archive),
           ],
         ],

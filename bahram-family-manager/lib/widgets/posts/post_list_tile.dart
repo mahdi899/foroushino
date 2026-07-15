@@ -84,7 +84,7 @@ class PostListTile extends StatelessWidget {
                   ),
                 ),
               ],
-              if (isImportant || post.actions.isNotEmpty) ...[
+              if (isImportant || post.actions.isNotEmpty || post.isPinned) ...[
                 const SizedBox(height: AppSpacing.md),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
@@ -94,6 +94,8 @@ class PostListTile extends StatelessWidget {
                     children: [
                       if (isImportant)
                         const StatusChip(label: 'مهم', color: AppColors.gold, icon: Icons.star_rounded),
+                      if (post.isPinned)
+                        const StatusChip(label: 'سنجاق', color: AppColors.primary, icon: Icons.push_pin_rounded),
                       if (post.actions.isNotEmpty)
                         StatusChip(
                           label: post.actions.first.prompt,

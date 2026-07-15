@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Play } from 'lucide-react';
+import { cn } from '@/lib/cn';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
 import { sendMediaProgress } from '@/lib/family/api';
 import type { FamilyMediaBlock } from '@/lib/family/types';
@@ -41,15 +42,17 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
     );
   }
 
+  const isPortrait = Boolean(media.width && media.height && media.height > media.width);
+
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-black">
+    <div className={cn('relative w-full overflow-hidden rounded-2xl bg-black', isPortrait && 'mx-auto')}>
       <video
         ref={videoRef}
         src={media.url}
         playsInline
         preload="metadata"
         controls={started}
-        className="w-full max-h-[70vh]"
+        className={cn('w-full', isPortrait ? 'max-h-[min(85vh,720px)]' : 'max-h-[70vh]')}
         style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
         onPlay={() => {
           requestPlay(media.id);

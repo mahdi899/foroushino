@@ -1,13 +1,10 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { CommentAvatar } from '@/components/family/CommentAvatar';
 import type { FamilyComment } from '@/lib/family/types';
-
-function avatarInitial(name: string): string {
-  const trimmed = name.trim();
-  return trimmed ? trimmed.charAt(0) : '؟';
-}
 
 function AvatarStack({ comments }: { comments: FamilyComment[] }) {
   const visible = comments.slice(0, 3);
@@ -16,22 +13,14 @@ function AvatarStack({ comments }: { comments: FamilyComment[] }) {
   return (
     <div className="flex shrink-0 items-center" style={{ width: stackWidthPx }}>
       {visible.map((comment, index) => (
-        <span
+        <CommentAvatar
           key={comment.id}
-          className={cn(
-            'relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-charcoal bg-sky-500/30 text-[10px] font-bold text-sky-100',
-            index > 0 && '-ms-2',
-          )}
-          style={{ zIndex: visible.length - index }}
-          title={comment.user.name}
-        >
-          {comment.user.avatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={comment.user.avatar} alt="" className="h-full w-full rounded-full object-cover" />
-          ) : (
-            avatarInitial(comment.user.name)
-          )}
-        </span>
+          name={comment.user.name}
+          avatar={comment.user.avatar}
+          size="xs"
+          className={cn('relative border-2 border-charcoal', index > 0 && '-ms-2')}
+          style={{ zIndex: visible.length - index } as CSSProperties}
+        />
       ))}
     </div>
   );

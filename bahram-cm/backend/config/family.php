@@ -59,7 +59,7 @@ return [
     ],
 
     'feed' => [
-        'per_page' => 20,
+        'per_page' => 4,
         'guest_preview_posts' => 1,
         'guest_preview_partial' => true,
     ],

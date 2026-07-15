@@ -17,6 +17,8 @@ class FamilyPost extends Model
         'status',
         'audience_mode',
         'is_important',
+        'is_pinned',
+        'pinned_at',
         'reply_to_comment_id',
         'published_at',
         'archived_at',
@@ -29,7 +31,9 @@ class FamilyPost extends Model
             'status' => FamilyPostStatus::class,
             'audience_mode' => FamilyPostAudienceMode::class,
             'is_important' => 'boolean',
+            'is_pinned' => 'boolean',
             'published_at' => 'datetime',
+            'pinned_at' => 'datetime',
             'archived_at' => 'datetime',
         ];
     }

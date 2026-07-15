@@ -85,12 +85,12 @@ describe("CommentsSheet", () => {
     expect(await screen.findByText("نظر شما رد شد.")).toBeInTheDocument();
   });
 
-  it("calls onClose when the close button is pressed", () => {
+  it("calls onClose when the back button is pressed", () => {
     mockHook();
     const onClose = vi.fn();
     render(<CommentsSheet postId={1} onClose={onClose} />);
 
-    fireEvent.click(screen.getByLabelText("بستن"));
+    fireEvent.click(screen.getByLabelText("بازگشت"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

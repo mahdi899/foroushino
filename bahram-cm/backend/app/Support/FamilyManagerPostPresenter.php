@@ -19,6 +19,8 @@ final class FamilyManagerPostPresenter
             'status' => $post->status?->value ?? $post->status,
             'audience_mode' => $post->audience_mode?->value ?? $post->audience_mode,
             'is_important' => (bool) $post->is_important,
+            'is_pinned' => (bool) $post->is_pinned,
+            'pinned_at' => $post->pinned_at?->toIso8601String(),
             'published_at' => $post->published_at?->toIso8601String(),
             'created_at' => $post->created_at?->toIso8601String(),
             'author' => [

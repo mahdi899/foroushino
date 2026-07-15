@@ -21,6 +21,10 @@ class FamilyActionResource extends JsonResource
                 'value' => $o->value,
                 'position' => (int) $o->position,
             ])->values(),
+            'results' => $this->when(
+                $this->resource->getAttribute('result_stats') !== null,
+                fn () => $this->resource->getAttribute('result_stats'),
+            ),
         ];
     }
 }

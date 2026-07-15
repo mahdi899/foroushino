@@ -1,15 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { X } from 'lucide-react';
-import { useIsMobileMotion } from '@/hooks/useIsMobileMotion';
-import { cn } from '@/lib/cn';
+import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { ChevronRight } from 'lucide-react';
+import { CommentAvatar } from '@/components/family/CommentAvatar';
 import { useFamilyComments } from '@/lib/family/hooks/useFamilyComments';
 import { FamilyApiError } from '@/lib/family/errors';
 import type { FamilyComment } from '@/lib/family/types';
 
-export function CommentsSheet({
+export function CommentsPage({
   postId,
   onClose,
   onCommentAdded,
@@ -18,11 +17,18 @@ export function CommentsSheet({
   onClose: () => void;
   onCommentAdded?: (comment: FamilyComment) => void;
 }) {
-  const isMobile = useIsMobileMotion();
   const { comments, isLoading, submitting, submit } = useFamilyComments(postId, true);
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [justSent, setJustSent] = useState(false);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
 
   const handleSubmit = async () => {
     const body = value.trim();
@@ -42,62 +48,59 @@ export function CommentsSheet({
   };
 
   return (
-    <AnimatePresence>
+    <div className="fixed inset-0 z-40 flex justify-center">
       <motion.div
-        key="overlay"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 z-[150] bg-black/60 lg:bg-black/45"
-      />
-      <motion.div
-        key="sheet"
-        initial={isMobile ? { y: '100%' } : { x: '100%' }}
-        animate={isMobile ? { y: 0 } : { x: 0 }}
-        exit={isMobile ? { y: '100%' } : { x: '100%' }}
-        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className={cn(
-          'fixed z-[151] flex flex-col bg-[#141a1f] shadow-2xl',
-          isMobile
-            ? 'inset-x-0 bottom-0 max-h-[80vh] rounded-t-3xl border-t border-white/10'
-            : 'inset-y-0 start-0 w-full max-w-[420px] border-s border-white/10',
-        )}
+        key="comments-page"
+        initial={{ x: '-100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '-100%' }}
+        transition={{ type: 'spring', damping: 32, stiffness: 340 }}
+        className="flex h-[100dvh] max-h-[100dvh] w-full max-w-[680px] flex-col overflow-hidden bg-[#0b0f10]"
       >
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 lg:px-5">
-          <h3 className="text-sm font-semibold text-bone lg:text-[15px]">نظرات</h3>
-          <button type="button" onClick={onClose} aria-label="بستن" className="rounded-full p-1 text-bone/60 hover:bg-white/10">
-            <X className="h-5 w-5" />
+        <header className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-3 lg:px-4">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="بازگشت"
+            className="flex items-center gap-1 rounded-full px-1 py-1 text-bone/70 transition hover:bg-white/10 hover:text-bone"
+          >
+            <ChevronRight className="h-5 w-5" aria-hidden />
+            <span className="text-sm font-medium">بازگشت</span>
           </button>
-        </div>
+          <h3 className="flex-1 text-center text-sm font-semibold text-bone lg:text-[15px]">نظرات</h3>
+          <span className="w-[72px]" aria-hidden />
+        </header>
 
-        <div className="flex-1 overflow-y-auto px-4 py-3 lg:px-5">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 lg:px-5">
           {isLoading ? (
-            <p className="py-8 text-center text-sm text-bone/50">در حال بارگذاری…</p>
+            <p className="py-12 text-center text-sm text-bone/50">در حال بارگذاری…</p>
           ) : comments.length === 0 ? (
-            <p className="py-8 text-center text-sm text-bone/50">هنوز نظری ثبت نشده. اولین نفر باش.</p>
+            <p className="py-12 text-center text-sm text-bone/50">هنوز نظری ثبت نشده. اولین نفر باش.</p>
           ) : (
             <ul className="space-y-3">
               {comments.map((c) => (
-                <li key={c.id} className="rounded-xl bg-white/[0.04] px-3 py-2.5 lg:px-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-medium text-gold/80 lg:text-sm">{c.user.name}</span>
-                    {c.is_pending_mine && (
-                      <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-bone/50">در انتظار بررسی</span>
-                    )}
+                <li key={c.id} className="flex items-start gap-2.5">
+                  <CommentAvatar name={c.user.name} avatar={c.user.avatar} size="sm" />
+                  <div className="min-w-0 flex-1 rounded-xl bg-white/[0.04] px-3 py-2.5 lg:px-4">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-gold/80 lg:text-sm">{c.user.name}</span>
+                      {c.is_pending_mine && (
+                        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-bone/50">
+                          در انتظار بررسی
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-sm leading-6 text-bone/85">{c.body}</p>
                   </div>
-                  <p className="mt-1 text-sm leading-6 text-bone/85">{c.body}</p>
                 </li>
               ))}
             </ul>
           )}
         </div>
 
-        <div className="border-t border-white/10 p-3 lg:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="shrink-0 border-t border-white/10 p-3 lg:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
-          {justSent && !error && (
-            <p className="mb-2 text-xs text-gold/80">نظر شما ثبت شد.</p>
-          )}
+          {justSent && !error && <p className="mb-2 text-xs text-gold/80">نظر شما ثبت شد.</p>}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -109,7 +112,7 @@ export function CommentsSheet({
               value={value}
               onChange={(e) => setValue(e.target.value)}
               maxLength={500}
-              rows={isMobile ? 1 : 2}
+              rows={2}
               placeholder="نظرت رو بنویس…"
               className="flex-1 resize-none rounded-2xl border border-white/15 bg-transparent px-4 py-2.5 text-sm text-bone outline-none focus:border-gold/50 lg:text-[15px]"
             />
@@ -123,6 +126,9 @@ export function CommentsSheet({
           </form>
         </div>
       </motion.div>
-    </AnimatePresence>
+    </div>
   );
 }
+
+/** @deprecated Use CommentsPage — kept for test imports */
+export const CommentsSheet = CommentsPage;

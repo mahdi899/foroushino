@@ -19,9 +19,13 @@ class FamilyPostResource extends JsonResource
             'id' => $this->id,
             'type' => $this->type?->value ?? $this->type,
             'is_important' => (bool) $this->is_important,
+            'is_pinned' => (bool) $this->is_pinned,
             'published_at' => $this->published_at?->toIso8601String(),
             'author' => [
-                'name' => $this->author?->name ?? 'بهرام',
+                'name' => $this->resource->getAttribute('author_display_name')
+                    ?? $this->author?->name
+                    ?? 'بهرام',
+                'avatar' => $this->resource->getAttribute('author_avatar'),
             ],
             'blocks' => FamilyPostBlockResource::collection(
                 $this->relationLoaded('blocks') ? $this->blocks : collect(),

@@ -8,6 +8,8 @@ use App\Http\Resources\V1\Family\FamilyPostResource;
 use App\Models\FamilyPost;
 use App\Services\Family\EntryContext;
 use App\Services\Family\FamilyAccessService;
+use App\Services\Family\FamilyBrandingService;
+use App\Services\Family\FamilyStoryService;
 use App\Services\Family\FeedService;
 use App\Services\Family\PostAudienceResolver;
 use App\Support\ApiResponse;
@@ -20,6 +22,8 @@ class FeedController extends Controller
         private readonly FeedService $feed,
         private readonly FamilyAccessService $access,
         private readonly PostAudienceResolver $audience,
+        private readonly FamilyBrandingService $branding,
+        private readonly FamilyStoryService $stories,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -30,6 +34,7 @@ class FeedController extends Controller
 
         if (! $user) {
             $preview = $this->feed->guestPreview();
+            $branding = $this->branding->publicPayload();
 
             return ApiResponse::success(
                 FamilyPostResource::collection($preview['data'])->resolve(),
@@ -37,18 +42,24 @@ class FeedController extends Controller
                 [
                     'next_cursor' => null,
                     'guest' => true,
-                    'display_name' => config('family.display_name'),
+                    'display_name' => $branding['display_name'],
+                    'branding' => $branding,
+                    'has_active_stories' => $this->stories->hasActiveStories(),
                 ]
             );
         }
 
+        $limit = $request->integer('limit');
+        $limit = $limit > 0 ? min($limit, 50) : null;
+
         $result = $this->feed->forMember(
             $user,
             $request->query('cursor'),
-            $request->integer('limit') ?: null,
+            $limit,
         );
 
         $family = $result['membership']->family;
+        $branding = $this->branding->publicPayload();
 
         return ApiResponse::success(
             FamilyPostResource::collection($result['data'])->resolve(),
@@ -56,10 +67,21 @@ class FeedController extends Controller
             [
                 'next_cursor' => $result['next_cursor'],
                 'guest' => false,
-                'display_name' => config('family.display_name'),
+                'display_name' => $branding['display_name'],
+                'branding' => $branding,
+                'has_active_stories' => $this->stories->hasActiveStories(),
                 'member_count' => (int) $family->member_count,
                 'onboarding_completed' => (bool) $result['membership']->onboarding_completed,
             ]
+        );
+    }
+
+    public function pinned(Request $request): JsonResponse
+    {
+        $posts = $this->feed->pinnedForMember($request->user());
+
+        return ApiResponse::success(
+            FamilyPostResource::collection($posts)->resolve(),
         );
     }
 
@@ -103,7 +125,7 @@ class FeedController extends Controller
             'joined' => true,
             'onboarding_completed' => (bool) $membership->onboarding_completed,
             'member_count' => (int) $membership->family->member_count,
-            'display_name' => config('family.display_name'),
+            'display_name' => $this->branding->publicPayload()['display_name'],
         ]);
     }
 
@@ -131,15 +153,23 @@ class FeedController extends Controller
         $membership = $this->access->homeMembership($request->user());
 
         if (! $membership) {
+            $branding = $this->branding->publicPayload();
+
             return ApiResponse::success([
                 'is_member' => false,
-                'display_name' => config('family.display_name'),
+                'display_name' => $branding['display_name'],
+                'branding' => $branding,
+                'has_active_stories' => $this->stories->hasActiveStories(),
             ]);
         }
 
+        $branding = $this->branding->publicPayload();
+
         return ApiResponse::success([
             'is_member' => true,
-            'display_name' => config('family.display_name'),
+            'display_name' => $branding['display_name'],
+            'branding' => $branding,
+            'has_active_stories' => $this->stories->hasActiveStories(),
             'member_count' => (int) $membership->family->member_count,
             'onboarding_completed' => (bool) $membership->onboarding_completed,
             'joined_at' => $membership->joined_at?->toIso8601String(),

@@ -66,12 +66,25 @@ export interface FamilyActionOption {
   position: number;
 }
 
+export interface FamilyActionOptionResult {
+  value: string;
+  label: string;
+  count: number;
+  percent: number;
+}
+
+export interface FamilyActionResults {
+  total: number;
+  options: FamilyActionOptionResult[];
+}
+
 export interface FamilyAction {
   id: number;
   type: FamilyActionType;
   prompt: string;
   config: Record<string, unknown> | null;
   options: FamilyActionOption[];
+  results?: FamilyActionResults | null;
 }
 
 export interface FamilyPostStats {
@@ -87,8 +100,9 @@ export interface FamilyPost {
   id: number;
   type: FamilyPostType;
   is_important: boolean;
+  is_pinned?: boolean;
   published_at: string | null;
-  author: { name: string };
+  author: { name: string; avatar?: string | null };
   blocks: FamilyPostBlock[];
   actions: FamilyAction[];
   reply_context?: { comment_body: string; user_name: string | null } | null;
@@ -97,10 +111,38 @@ export interface FamilyPost {
   comment_preview?: FamilyComment[];
 }
 
+export interface FamilyBranding {
+  display_name: string;
+  profile_name: string;
+  profile_avatar: string | null;
+  community_avatar: string | null;
+  has_active_stories?: boolean;
+}
+
+export interface FamilyStoryMedia {
+  id: number;
+  type: string;
+  url: string | null;
+  width: number | null;
+  height: number | null;
+  duration: number | null;
+  mime_type: string | null;
+}
+
+export interface FamilyStory {
+  id: number;
+  caption: string | null;
+  published_at: string | null;
+  expires_at: string | null;
+  media: FamilyStoryMedia | null;
+}
+
 export interface FamilyFeedMeta {
   next_cursor: string | null;
   guest: boolean;
   display_name: string;
+  branding?: FamilyBranding;
+  has_active_stories?: boolean;
   member_count?: number;
   onboarding_completed?: boolean;
 }
@@ -134,6 +176,8 @@ export interface FamilyNotification {
 export interface FamilyMeResponse {
   is_member: boolean;
   display_name: string;
+  branding?: FamilyBranding;
+  has_active_stories?: boolean;
   member_count?: number;
   onboarding_completed?: boolean;
   joined_at?: string;

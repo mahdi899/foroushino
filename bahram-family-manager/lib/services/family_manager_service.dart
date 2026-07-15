@@ -61,6 +61,46 @@ class FamilyManagerService {
 
   Future<void> deletePost(int id) => api.delete('$_base/posts/$id');
 
+  Future<FamilyPostModel> pinPost(int id) async {
+    final res = await api.post('$_base/posts/$id/pin');
+    return FamilyPostModel.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<FamilyPostModel> unpinPost(int id) async {
+    final res = await api.post('$_base/posts/$id/unpin');
+    return FamilyPostModel.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  // ---------------------------------------------------------------------
+  // Branding & stories
+  // ---------------------------------------------------------------------
+
+  Future<FamilyBrandingSettings> getSettings() async {
+    final res = await api.get('$_base/settings');
+    return FamilyBrandingSettings.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<FamilyBrandingSettings> updateSettings(Map<String, dynamic> payload) async {
+    final res = await api.patch('$_base/settings', data: payload);
+    return FamilyBrandingSettings.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<List<FamilyStoryModel>> listStories() async {
+    final res = await api.get('$_base/stories');
+    final data = res['data'] as List? ?? [];
+    return data.map((e) => FamilyStoryModel.fromJson((e as Map).cast<String, dynamic>())).toList();
+  }
+
+  Future<FamilyStoryModel> publishStory({required int mediaId, String? caption}) async {
+    final res = await api.post('$_base/stories', data: {
+      'media_id': mediaId,
+      if (caption != null && caption.isNotEmpty) 'caption': caption,
+    });
+    return FamilyStoryModel.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<void> deleteStory(int id) => api.delete('$_base/stories/$id');
+
   Future<FamilyPostModel> replyToComment({
     required int commentId,
     required String type,

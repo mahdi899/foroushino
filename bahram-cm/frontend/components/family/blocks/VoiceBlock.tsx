@@ -70,7 +70,7 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-white/5 px-3 py-2.5">
+    <div dir="ltr" className="flex items-center gap-3 rounded-2xl bg-white/5 px-3 py-2.5">
       <audio
         ref={audioRef}
         src={media.url}

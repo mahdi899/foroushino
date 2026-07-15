@@ -152,6 +152,37 @@ class PostController extends Controller
         return ApiResponse::success(['deleted' => true]);
     }
 
+    public function pin(Request $request, FamilyPost $post): JsonResponse
+    {
+        abort_unless($post->status === FamilyPostStatus::Published, 422, 'فقط پست منتشرشده قابل سنجاق است.');
+
+        FamilyPost::query()
+            ->where('is_pinned', true)
+            ->whereKeyNot($post->id)
+            ->update(['is_pinned' => false, 'pinned_at' => null]);
+
+        $post->update([
+            'is_pinned' => true,
+            'pinned_at' => now(),
+        ]);
+
+        $this->audit->log($request->user(), 'family.post_pinned', $post);
+
+        return ApiResponse::success(FamilyManagerPostPresenter::present($post->fresh()));
+    }
+
+    public function unpin(Request $request, FamilyPost $post): JsonResponse
+    {
+        $post->update([
+            'is_pinned' => false,
+            'pinned_at' => null,
+        ]);
+
+        $this->audit->log($request->user(), 'family.post_unpinned', $post);
+
+        return ApiResponse::success(FamilyManagerPostPresenter::present($post->fresh()));
+    }
+
     public function reply(Request $request, FamilyComment $comment): JsonResponse
     {
         $data = $request->validate([

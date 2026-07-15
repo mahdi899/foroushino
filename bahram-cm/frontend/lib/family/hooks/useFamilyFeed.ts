@@ -4,6 +4,8 @@ import useSWRInfinite from 'swr/infinite';
 import { getFeed } from '@/lib/family/api';
 import type { FamilyFeedMeta, FamilyPost } from '@/lib/family/types';
 
+const FEED_PAGE_SIZE = 4;
+
 interface FeedPage {
   data: FamilyPost[];
   meta: FamilyFeedMeta;
@@ -13,13 +15,13 @@ export function useFamilyFeed() {
   const { data, error, isLoading, isValidating, size, setSize, mutate } = useSWRInfinite<FeedPage>(
     (index, previousPage) => {
       if (previousPage && !previousPage.meta.next_cursor) return null;
-      return ['family-feed', index === 0 ? null : previousPage?.meta.next_cursor];
+      return ['family-feed', FEED_PAGE_SIZE, index === 0 ? null : previousPage?.meta.next_cursor];
     },
-    async ([, cursor]) => (await getFeed(cursor as string | null)) as FeedPage,
+    async ([, , cursor]) => (await getFeed(cursor as string | null, FEED_PAGE_SIZE)) as FeedPage,
     { revalidateFirstPage: false, revalidateOnFocus: false },
   );
 
-  const posts = data ? data.flatMap((page) => page.data) : [];
+  const posts = data ? [...data.flatMap((page) => page.data)].reverse() : [];
   const lastPage = data?.[data.length - 1];
   const hasMore = Boolean(lastPage?.meta.next_cursor);
   const meta = data?.[0]?.meta;

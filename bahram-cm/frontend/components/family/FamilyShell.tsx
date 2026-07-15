@@ -19,5 +19,9 @@ export function FamilyShell({
 }
 
 export function FamilyMain({ children, className }: { children: ReactNode; className?: string }) {
-  return <main className={cn('flex min-h-0 flex-1 flex-col', className)}>{children}</main>;
+  return (
+    <main className={cn('relative flex min-h-0 flex-1 flex-col overflow-x-hidden', className)}>
+      {children}
+    </main>
+  );
 }
