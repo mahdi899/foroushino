@@ -15,13 +15,22 @@ export function FamilyAuthorAvatar({
 }: {
   name: string;
   avatar?: string | null;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   hasStoryRing?: boolean;
   className?: string;
   onClick?: () => void;
 }) {
   const sizeClass =
-    size === 'sm' ? 'h-8 w-8 text-sm' : size === 'lg' ? 'h-10 w-10 text-base' : 'h-9 w-9 text-sm';
+    size === 'sm'
+      ? 'h-8 w-8 text-sm'
+      : size === 'lg'
+        ? 'h-10 w-10 text-base'
+        : size === 'xl'
+          ? 'h-28 w-28 text-3xl'
+          : 'h-9 w-9 text-sm';
+
+  const storyPaddingClass =
+    size === 'xl' ? 'p-[3.5px]' : size === 'lg' ? 'p-[2.5px]' : 'p-[2px]';
 
   const inner = (
     <span
@@ -43,11 +52,12 @@ export function FamilyAuthorAvatar({
   const content = hasStoryRing ? (
     <span
       className={cn(
-        'inline-flex rounded-full bg-gradient-to-tr from-gold via-amber-300 to-gold p-[2.5px]',
+        'inline-flex rounded-full bg-gradient-to-tr from-gold via-amber-300 to-gold',
+        storyPaddingClass,
         className,
       )}
     >
-      <span className="rounded-full bg-charcoal p-[2px]">{inner}</span>
+      <span className={cn('rounded-full bg-[#0b0f14]', storyPaddingClass)}>{inner}</span>
     </span>
   ) : (
     inner
@@ -55,7 +65,11 @@ export function FamilyAuthorAvatar({
 
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60">
+      <button
+        type="button"
+        onClick={onClick}
+        className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+      >
         {content}
       </button>
     );

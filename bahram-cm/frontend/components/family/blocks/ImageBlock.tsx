@@ -45,11 +45,13 @@ export function ImageBlock({
   className,
   roundedClass = 'rounded-2xl',
   fillCell = false,
+  constrained = false,
 }: {
   media: FamilyMediaBlock;
   className?: string;
   roundedClass?: string;
   fillCell?: boolean;
+  constrained?: boolean;
 }) {
   const [phase, setPhase] = useState<LoadPhase>('loading-preview');
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -99,6 +101,11 @@ export function ImageBlock({
 
   const showImage = phase === 'preview' || phase === 'loading-sharp' || phase === 'sharp';
   const isBlurred = phase === 'preview' || phase === 'loading-sharp';
+  const containerStyle = fillCell
+    ? undefined
+    : constrained
+      ? { aspectRatio: '4 / 3', maxHeight: 'min(42vh, 320px)' }
+      : aspectStyle(media);
 
   return (
     <>
@@ -112,7 +119,7 @@ export function ImageBlock({
           roundedClass,
           className,
         )}
-        style={fillCell ? undefined : aspectStyle(media)}
+        style={containerStyle}
       >
         {phase === 'loading-preview' && (
           <span className="absolute inset-0 animate-pulse bg-white/[0.08]" aria-hidden />
@@ -190,12 +197,12 @@ function albumRoundedClass(count: number, index: number): string {
   return 'rounded-lg';
 }
 
-export function ImageAlbumBlock({ items }: { items: FamilyMediaBlock[] }) {
+export function ImageAlbumBlock({ items, constrained = false }: { items: FamilyMediaBlock[]; constrained?: boolean }) {
   const count = items.length;
 
   const gridClass =
     count === 1
-      ? 'grid grid-cols-1'
+      ? cn('grid grid-cols-1', constrained && 'max-h-[min(42vh,320px)]')
       : count === 2
         ? 'grid grid-cols-2 gap-0.5'
         : count === 3
@@ -211,6 +218,7 @@ export function ImageAlbumBlock({ items }: { items: FamilyMediaBlock[] }) {
           <ImageBlock
             media={item}
             fillCell={count > 1}
+            constrained={constrained}
             roundedClass={albumRoundedClass(count, index)}
             className="absolute inset-0 h-full w-full"
           />

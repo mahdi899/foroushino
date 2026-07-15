@@ -12,7 +12,7 @@ export function FamilyShell({
   className?: string;
 }) {
   return (
-    <div className={cn('flex min-h-[100dvh] flex-col', className)}>
+    <div className={cn('flex h-full min-h-0 flex-col overflow-hidden', className)}>
       {children}
     </div>
   );
@@ -20,7 +20,7 @@ export function FamilyShell({
 
 export function FamilyMain({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <main className={cn('relative flex min-h-0 flex-1 flex-col overflow-x-hidden', className)}>
+    <main className={cn('relative flex min-h-0 flex-1 flex-col overflow-hidden', className)}>
       {children}
     </main>
   );

@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 
 export default function FamilyLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div dir="rtl" className="min-h-[100dvh] bg-[#070b0d] text-bone antialiased">
+    <div dir="rtl" className="h-[100dvh] overflow-hidden bg-[#070b0d] text-bone antialiased">
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 hidden lg:block"
@@ -30,7 +30,7 @@ export default function FamilyLayout({ children }: { children: React.ReactNode }
         }}
       />
       <FamilyMediaPlayerProvider>
-        <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[680px] flex-col bg-charcoal lg:border-x lg:border-white/[0.08] lg:shadow-[0_0_80px_rgba(0,0,0,0.45)]">
+        <div className="relative mx-auto flex h-[100dvh] w-full max-w-[680px] flex-col overflow-hidden bg-charcoal lg:h-[calc(100dvh-1.5rem)] lg:max-w-[min(1280px,calc(100%-2rem))] lg:rounded-2xl lg:border lg:border-white/[0.08] lg:shadow-[0_0_80px_rgba(0,0,0,0.45)] lg:my-3">
           {children}
         </div>
       </FamilyMediaPlayerProvider>

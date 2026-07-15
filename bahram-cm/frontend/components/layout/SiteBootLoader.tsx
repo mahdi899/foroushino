@@ -13,7 +13,10 @@ const FADE_MS = 380;
  */
 export function SiteBootLoader() {
   const pathname = usePathname();
-  const isBareShell = pathname?.startsWith('/admin') || pathname?.startsWith('/panel');
+  const isBareShell =
+    pathname?.startsWith('/admin') ||
+    pathname?.startsWith('/panel') ||
+    pathname?.startsWith('/family');
   const [phase, setPhase] = useState<'visible' | 'fading' | 'done'>(() =>
     isBareShell ? 'done' : 'visible',
   );

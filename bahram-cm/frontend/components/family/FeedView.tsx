@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { FeedDateSeparator } from '@/components/family/FeedDateSeparator';
+import { FamilyBrandingSidebar } from '@/components/family/FamilyBrandingSidebar';
+import { FamilyNotificationsPanel } from '@/components/family/FamilyNotificationsPanel';
+import { FeedCommentsPanel } from '@/components/family/FeedCommentsPanel';
+import { PinnedMessageBar } from '@/components/family/PinnedMessageBar';
 import { PostCard } from '@/components/family/PostCard';
-import { CommentsPage } from '@/components/family/CommentsSheet';
 import { useFamilyFeed } from '@/lib/family/hooks/useFamilyFeed';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
 import type { FamilyComment, FamilyPost } from '@/lib/family/types';
@@ -17,6 +19,8 @@ type CommentsTarget = {
   postId: number;
   onCommentAdded: (comment: FamilyComment) => void;
 };
+
+type MainView = 'feed' | 'notifications';
 
 function buildFeedItems(posts: FamilyPost[]): FeedItem[] {
   const items: FeedItem[] = [];
@@ -39,41 +43,61 @@ function buildFeedItems(posts: FamilyPost[]): FeedItem[] {
   return items;
 }
 
-export function FeedView() {
+export function FeedView({
+  memberCount,
+  showPinned = false,
+  commentsTarget,
+  onOpenComments,
+  onCloseComments,
+}: {
+  memberCount?: number;
+  showPinned?: boolean;
+  commentsTarget?: CommentsTarget | null;
+  onOpenComments?: (target: CommentsTarget) => void;
+  onCloseComments?: () => void;
+}) {
   const { posts, isLoading, hasMore, loadMore, isValidating } = useFamilyFeed();
+  const feedScrollRef = useRef<HTMLDivElement | null>(null);
+  const feedContentRef = useRef<HTMLDivElement | null>(null);
+  const bottomAnchorRef = useRef<HTMLDivElement | null>(null);
   const topSentinelRef = useRef<HTMLDivElement | null>(null);
   const initialScrollDoneRef = useRef(false);
+  const historyReadyRef = useRef(false);
+  const loadingHistoryRef = useRef(false);
   const scrollRestoreRef = useRef<{ height: number; top: number } | null>(null);
-  const [commentsTarget, setCommentsTarget] = useState<CommentsTarget | null>(null);
+  const [mainView, setMainView] = useState<MainView>('feed');
   const feedItems = useMemo(() => buildFeedItems(posts), [posts]);
 
+  const openComments = useCallback(
+    (target: CommentsTarget) => {
+      setMainView('feed');
+      onOpenComments?.(target);
+    },
+    [onOpenComments],
+  );
+
+  const scrollToLatest = useCallback((behavior: ScrollBehavior = 'auto') => {
+    const root = feedScrollRef.current;
+    if (!root) return;
+    root.scrollTo({ top: root.scrollHeight, behavior });
+    bottomAnchorRef.current?.scrollIntoView({ block: 'end', behavior });
+  }, []);
+
   useEffect(() => {
-    const el = topSentinelRef.current;
-    if (!el || !hasMore) return;
+    if (!isValidating) loadingHistoryRef.current = false;
+  }, [isValidating]);
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && !isValidating) {
-          scrollRestoreRef.current = {
-            height: document.documentElement.scrollHeight,
-            top: window.scrollY,
-          };
-          loadMore();
-        }
-      },
-      { rootMargin: '400px' },
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [hasMore, loadMore, isValidating]);
+  useEffect(() => {
+    historyReadyRef.current = false;
+  }, []);
 
   useLayoutEffect(() => {
-    if (!scrollRestoreRef.current) return;
+    const root = feedScrollRef.current;
+    if (!root || !scrollRestoreRef.current) return;
 
     const { height, top } = scrollRestoreRef.current;
-    const delta = document.documentElement.scrollHeight - height;
-    window.scrollTo(0, top + delta);
+    const delta = root.scrollHeight - height;
+    root.scrollTop = top + delta;
     scrollRestoreRef.current = null;
   }, [posts.length]);
 
@@ -81,59 +105,153 @@ export function FeedView() {
     if (isLoading || posts.length === 0 || initialScrollDoneRef.current) return;
 
     initialScrollDoneRef.current = true;
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' });
-  }, [isLoading, posts.length]);
+    scrollToLatest('auto');
+    const frame = requestAnimationFrame(() => {
+      scrollToLatest('auto');
+      requestAnimationFrame(() => {
+        scrollToLatest('auto');
+        window.setTimeout(() => {
+          historyReadyRef.current = true;
+        }, 150);
+      });
+    });
 
-  if (isLoading && posts.length === 0) {
-    return (
-      <div className="space-y-3 px-3 py-4 sm:px-4 lg:px-5 lg:py-5">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-40 animate-pulse rounded-2xl bg-white/5 lg:h-44" />
-        ))}
-      </div>
-    );
-  }
+    return () => cancelAnimationFrame(frame);
+  }, [isLoading, posts.length, scrollToLatest]);
 
-  if (posts.length === 0) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-16 text-center lg:py-24">
-        <p className="max-w-sm text-sm text-bone/60 lg:text-[15px]">
-          هنوز پستی منتشر نشده. به‌زودی داداش بهرام اولین پیام رو می‌فرسته.
-        </p>
-      </div>
+  useEffect(() => {
+    const content = feedContentRef.current;
+    if (!content || posts.length === 0) return;
+
+    const observer = new ResizeObserver(() => {
+      if (!historyReadyRef.current) {
+        scrollToLatest('auto');
+      }
+    });
+
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, [posts.length, scrollToLatest]);
+
+  useEffect(() => {
+    const root = feedScrollRef.current;
+    const sentinel = topSentinelRef.current;
+    if (!root || !sentinel || !hasMore || mainView !== 'feed' || commentsTarget) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!historyReadyRef.current) return;
+        if (!entries[0]?.isIntersecting || isValidating || loadingHistoryRef.current) return;
+
+        loadingHistoryRef.current = true;
+        scrollRestoreRef.current = {
+          height: root.scrollHeight,
+          top: root.scrollTop,
+        };
+        loadMore();
+      },
+      { root, rootMargin: '120px' },
     );
-  }
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore, isValidating, mainView, commentsTarget, posts.length]);
+
+  const showFeed = mainView === 'feed' && !commentsTarget;
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col">
-      <div className="space-y-3 px-3 py-4 sm:space-y-3.5 sm:px-4 lg:px-5 lg:py-5">
-        {hasMore && (
-          <div ref={topSentinelRef} className="py-4 text-center text-xs text-bone/40">
-            {isValidating ? 'در حال بارگذاری پست‌های قدیمی‌تر…' : ''}
-          </div>
-        )}
-        {feedItems.map((item) =>
-          item.kind === 'separator' ? (
-            <FeedDateSeparator key={item.key} label={item.label} />
-          ) : (
-            <PostCard
-              key={item.key}
-              post={item.post}
-              onOpenComments={(handlers) => setCommentsTarget({ postId: item.post.id, ...handlers })}
-            />
-          ),
-        )}
-      </div>
+    <div className="flex h-full min-h-0 flex-1">
+      <FamilyBrandingSidebar
+        memberCount={memberCount}
+        notificationsActive={mainView === 'notifications'}
+        onOpenNotifications={() => {
+          onCloseComments?.();
+          setMainView('notifications');
+        }}
+      />
 
-      <AnimatePresence>
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+        <FamilyNotificationsPanel
+          onClose={() => setMainView('feed')}
+          className={mainView === 'notifications' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}
+        />
+
         {commentsTarget && (
-          <CommentsPage
+          <FeedCommentsPanel
             postId={commentsTarget.postId}
-            onClose={() => setCommentsTarget(null)}
+            onClose={() => onCloseComments?.()}
             onCommentAdded={commentsTarget.onCommentAdded}
+            className="flex min-h-0 flex-1 flex-col"
           />
         )}
-      </AnimatePresence>
+
+        <div className={showFeed ? 'flex min-h-0 min-w-0 flex-1 flex-col' : 'hidden'}>
+          {showPinned && (
+            <div className="hidden shrink-0 lg:block">
+              <PinnedMessageBar onOpenComments={openComments} />
+            </div>
+          )}
+
+          <div
+            ref={feedScrollRef}
+            className="family-feed-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          >
+            <div ref={feedContentRef} className="mx-auto flex w-full max-w-[680px] flex-col">
+              {isLoading && posts.length === 0 ? (
+                <>
+                  <div className="flex items-center gap-2 border-b border-white/[0.06] px-3 py-3 sm:px-4 lg:px-5">
+                    <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-bone/15 border-t-gold/80" />
+                    <span className="text-[13px] text-bone/45">در حال بارگذاری…</span>
+                  </div>
+                  <div className="space-y-3 px-3 py-4 sm:px-4 lg:px-5 lg:py-5">
+                    {[0, 1, 2, 3].map((i) => (
+                      <div key={i} className="h-40 animate-pulse rounded-2xl bg-white/5 lg:h-44" />
+                    ))}
+                  </div>
+                </>
+              ) : posts.length === 0 ? (
+                <div className="flex min-h-[40vh] flex-col items-center justify-center gap-2 px-6 py-16 text-center lg:min-h-[50vh]">
+                  <p className="max-w-sm text-sm text-bone/60 lg:text-[15px]">
+                    هنوز پستی منتشر نشده. به‌زودی داداش بهرام اولین پیام رو می‌فرسته.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 px-3 py-4 sm:space-y-3.5 sm:px-4 lg:px-5 lg:py-5">
+                  {hasMore && (
+                    <div
+                      ref={topSentinelRef}
+                      className="flex items-center justify-center gap-2 py-3 text-xs text-bone/45"
+                    >
+                      {isValidating && posts.length > 0 ? (
+                        <>
+                          <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-bone/20 border-t-gold/80" />
+                          در حال بارگذاری پست‌های قدیمی‌تر…
+                        </>
+                      ) : (
+                        '↑ اسکرول کن — پست‌های قدیمی‌تر بارگذاری می‌شوند'
+                      )}
+                    </div>
+                  )}
+                  {feedItems.map((item) =>
+                    item.kind === 'separator' ? (
+                      <FeedDateSeparator key={item.key} label={item.label} />
+                    ) : (
+                      <PostCard
+                        key={item.key}
+                        post={item.post}
+                        onOpenComments={(handlers) =>
+                          openComments({ postId: item.post.id, ...handlers })
+                        }
+                      />
+                    ),
+                  )}
+                  <div ref={bottomAnchorRef} aria-hidden className="h-px shrink-0" />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

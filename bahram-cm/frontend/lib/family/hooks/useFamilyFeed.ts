@@ -4,7 +4,7 @@ import useSWRInfinite from 'swr/infinite';
 import { getFeed } from '@/lib/family/api';
 import type { FamilyFeedMeta, FamilyPost } from '@/lib/family/types';
 
-const FEED_PAGE_SIZE = 4;
+const FEED_PAGE_SIZE = 15;
 
 interface FeedPage {
   data: FamilyPost[];

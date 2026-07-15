@@ -39,10 +39,14 @@ function renderBlock(block: FamilyPostBlock, postId: number) {
 export function PostCard({
   post,
   compact = false,
+  variant = 'feed',
+  hideCommentPreview = false,
   onOpenComments,
 }: {
   post: FamilyPost;
   compact?: boolean;
+  variant?: 'feed' | 'modal';
+  hideCommentPreview?: boolean;
   onOpenComments?: (handlers: { onCommentAdded: (comment: FamilyComment) => void }) => void;
 }) {
   const [commentCount, setCommentCount] = useState(post.stats.comments);
@@ -52,6 +56,7 @@ export function PostCard({
   const actions = post.actions ?? [];
   const imageBlocks = blocks.filter((b) => b.type === 'image' && b.media);
   const otherBlocks = blocks.filter((b) => b.type !== 'image');
+  const constrainedMedia = variant === 'modal';
 
   return (
     <article
@@ -85,9 +90,12 @@ export function PostCard({
         )}
         {otherBlocks.map((b) => renderBlock(b, post.id))}
         {imageBlocks.length === 1 && imageBlocks[0].media ? (
-          <ImageBlock media={imageBlocks[0].media} />
+          <ImageBlock media={imageBlocks[0].media} constrained={constrainedMedia} />
         ) : imageBlocks.length > 1 ? (
-          <ImageAlbumBlock items={imageBlocks.map((b) => b.media!).filter(Boolean)} />
+          <ImageAlbumBlock
+            items={imageBlocks.map((b) => b.media!).filter(Boolean)}
+            constrained={constrainedMedia}
+          />
         ) : null}
       </div>
 
@@ -113,21 +121,23 @@ export function PostCard({
         />
       </div>
 
-      <CommentThreadPreview
-        count={commentCount}
-        preview={commentPreview}
-        onOpen={() =>
-          onOpenComments?.({
-            onCommentAdded: (comment) => {
-              setCommentCount((c) => c + 1);
-              setCommentPreview((prev) => {
-                if (prev.some((item) => item.id === comment.id)) return prev;
-                return [comment, ...prev].slice(0, 3);
-              });
-            },
-          })
-        }
-      />
+      {!hideCommentPreview && (
+        <CommentThreadPreview
+          count={commentCount}
+          preview={commentPreview}
+          onOpen={() =>
+            onOpenComments?.({
+              onCommentAdded: (comment) => {
+                setCommentCount((c) => c + 1);
+                setCommentPreview((prev) => {
+                  if (prev.some((item) => item.id === comment.id)) return prev;
+                  return [comment, ...prev].slice(0, 3);
+                });
+              },
+            })
+          }
+        />
+      )}
 
     </article>
   );

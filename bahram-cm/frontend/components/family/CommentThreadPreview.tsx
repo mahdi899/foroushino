@@ -1,7 +1,7 @@
 'use client';
 
 import type { CSSProperties } from 'react';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { CommentAvatar } from '@/components/family/CommentAvatar';
 import type { FamilyComment } from '@/lib/family/types';
@@ -50,9 +50,11 @@ export function CommentThreadPreview({
         onClick={onOpen}
         className="flex w-full items-center gap-2 rounded-xl px-1 py-1.5 text-start transition hover:bg-white/[0.04]"
       >
-        {hasComments && preview.length > 0 ? <AvatarStack comments={preview} /> : (
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-[10px] text-sky-300/80">
-            💬
+        {hasComments && preview.length > 0 ? (
+          <AvatarStack comments={preview} />
+        ) : (
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-bone/45">
+            <MessageCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
           </span>
         )}
         <span className={cn('flex-1 text-sm', hasComments ? 'text-sky-300/90' : 'text-bone/45')}>
