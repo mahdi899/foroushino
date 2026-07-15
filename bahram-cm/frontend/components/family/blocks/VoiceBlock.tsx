@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Pause, Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
@@ -40,11 +40,20 @@ function normalizeWaveform(raw: number[]): number[] {
   return result.map((v) => (v - min) / range);
 }
 
-export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId: number }) {
+export function VoiceBlock({
+  media,
+  postId,
+  title = 'پیام صوتی',
+}: {
+  media: FamilyMediaBlock;
+  postId: number;
+  title?: string;
+}) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const waveRef = useRef<HTMLButtonElement | null>(null);
   const draggingRef = useRef(false);
-  const { activeId, register, unregister, requestPlay, notifyPaused } = useFamilyMediaPlayer();
+  const { activeId, register, unregister, requestPlay, notifyPaused, setNowPlaying, updateNowPlayingProgress } =
+    useFamilyMediaPlayer();
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(media.duration ?? 0);
@@ -59,10 +68,13 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   }, [media.id, register, unregister]);
 
   useEffect(() => {
-    if (activeId !== media.id && playing) {
-      audioRef.current?.pause();
+    const el = audioRef.current;
+    if (!el) return;
+    if (activeId !== media.id) {
+      if (!el.paused) el.pause();
+      setPlaying(false);
     }
-  }, [activeId, media.id, playing]);
+  }, [activeId, media.id]);
 
   const waveform = useMemo(() => {
     const raw =
@@ -72,25 +84,61 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
     return normalizeWaveform(raw);
   }, [media.waveform]);
 
-  const progressRatio = duration > 0 ? Math.min(1, progress / duration) : 0;
+  const effectiveDuration = () => {
+    const el = audioRef.current;
+    const fromEl = el?.duration;
+    if (fromEl && Number.isFinite(fromEl) && fromEl > 0) return fromEl;
+    if (duration > 0) return duration;
+    return media.duration ?? 0;
+  };
 
-  const toggle = () => {
+  const progressRatio = (() => {
+    const d = effectiveDuration();
+    return d > 0 ? Math.min(1, progress / d) : 0;
+  })();
+
+  const toggle = async () => {
     const el = audioRef.current;
     if (!el) return;
-    if (el.paused) {
-      requestPlay(media.id);
-      void el.play();
-    } else {
+
+    if (!el.paused) {
       el.pause();
+      return;
+    }
+
+    requestPlay(media.id);
+
+    if (!Number.isFinite(el.duration) || el.duration <= 0) {
+      el.load();
+      await new Promise<void>((resolve) => {
+        if (el.readyState >= HTMLMediaElement.HAVE_METADATA) {
+          resolve();
+          return;
+        }
+        const onMeta = () => {
+          el.removeEventListener('loadedmetadata', onMeta);
+          resolve();
+        };
+        el.addEventListener('loadedmetadata', onMeta);
+      });
+    }
+
+    try {
+      await el.play();
+    } catch {
+      return;
     }
   };
 
   const seekToRatio = (ratio: number) => {
     const el = audioRef.current;
-    if (!el || duration <= 0) return;
-    const next = Math.max(0, Math.min(duration, ratio * duration));
+    if (!el) return;
+    const d = effectiveDuration();
+    if (d <= 0) return;
+    const next = Math.max(0, Math.min(d, ratio * d));
     el.currentTime = next;
     setProgress(next);
+    updateNowPlayingProgress(media.id, next, d);
   };
 
   const seekFromClientX = (clientX: number) => {
@@ -108,7 +156,7 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       post_id: postId,
       media_id: media.id,
       position: rounded,
-      duration: Math.floor(duration),
+      duration: Math.floor(effectiveDuration()),
       event,
     }).catch(() => {});
   };
@@ -126,8 +174,19 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       <audio
         ref={audioRef}
         src={media.url}
-        preload="metadata"
-        onPlay={() => setPlaying(true)}
+        preload="auto"
+        onPlay={() => {
+          setPlaying(true);
+          const d = effectiveDuration();
+          setNowPlaying({
+            mediaId: media.id,
+            postId,
+            title,
+            kind: 'voice',
+            progress: audioRef.current?.currentTime ?? progress,
+            duration: d,
+          });
+        }}
         onPause={() => {
           setPlaying(false);
           notifyPaused(media.id);
@@ -136,17 +195,24 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
         onEnded={() => {
           setPlaying(false);
           notifyPaused(media.id);
-          reportProgress('complete', duration);
+          reportProgress('complete', effectiveDuration());
         }}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || media.duration || 0)}
+        onLoadedMetadata={(e) => {
+          const d = e.currentTarget.duration || media.duration || 0;
+          setDuration(d);
+        }}
         onTimeUpdate={(e) => {
-          if (!scrubbing) setProgress(e.currentTarget.currentTime);
+          const t = e.currentTarget.currentTime;
+          if (!scrubbing) setProgress(t);
+          if (activeId === media.id) {
+            updateNowPlayingProgress(media.id, t, e.currentTarget.duration || duration);
+          }
         }}
         className="hidden"
       />
       <button
         type="button"
-        onClick={toggle}
+        onClick={() => void toggle()}
         aria-label={playing ? 'توقف' : 'پخش'}
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full family-voice-play transition"
       >
@@ -181,20 +247,18 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
             e.currentTarget.releasePointerCapture(e.pointerId);
           }
         }}
-        className={cn(
-          'family-voice-wave flex h-9 min-w-0 flex-1 cursor-pointer touch-none items-center',
-          scrubbing && 'opacity-90',
-        )}
+        className={cn('family-voice-wave h-9 min-w-0 flex-1 cursor-pointer touch-none', scrubbing && 'opacity-90')}
+        style={{ '--wave-bars': BAR_COUNT } as CSSProperties}
       >
         {waveform.map((v, i) => {
-          const barRatio = (i + 0.5) / BAR_COUNT;
+          const barRatio = BAR_COUNT > 1 ? i / (BAR_COUNT - 1) : 0;
           const played = barRatio <= progressRatio;
           const height = Math.round(4 + v * 18);
           return (
             <span
               key={i}
               className={cn(
-                'family-voice-bar block min-w-0 flex-1 rounded-full transition-colors duration-150',
+                'family-voice-bar rounded-full transition-colors duration-150',
                 played ? 'bg-[var(--family-voice-played)]' : 'bg-[var(--family-voice-unplayed)]',
               )}
               style={{ height: `${height}px` }}
@@ -204,7 +268,7 @@ export function VoiceBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       </button>
 
       <span className="w-10 shrink-0 text-left text-[11px] tabular-nums text-bone/50">
-        {formatTime(playing || progress > 0 ? duration - progress : duration)}
+        {formatTime(playing || progress > 0 ? effectiveDuration() - progress : effectiveDuration())}
       </span>
     </div>
   );

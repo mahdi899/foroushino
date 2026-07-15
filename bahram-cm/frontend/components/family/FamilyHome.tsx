@@ -1,13 +1,13 @@
 'use client';
 
 import { Suspense, useCallback, useState } from 'react';
+import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
 import { FamilyMain, FamilyShell } from '@/components/family/FamilyShell';
 import { FamilyTopBar } from '@/components/family/FamilyTopBar';
 import { FeedView } from '@/components/family/FeedView';
 import { GuestBanner } from '@/components/family/GuestBanner';
 import { JoinScreen } from '@/components/family/JoinScreen';
 import { OnboardingModal } from '@/components/family/OnboardingModal';
-import { PinnedMessageBar } from '@/components/family/PinnedMessageBar';
 import type { FamilyComment } from '@/lib/family/types';
 
 type Mode = 'guest' | 'join' | 'member';
@@ -20,16 +20,22 @@ type CommentsTarget = {
 function FamilyStickyHeader({
   memberCount,
   showPinned,
+  showNowPlaying,
   onOpenComments,
 }: {
   memberCount?: number;
   showPinned?: boolean;
+  showNowPlaying?: boolean;
   onOpenComments?: (target: CommentsTarget) => void;
 }) {
   return (
     <div className="z-30 shrink-0">
       <FamilyTopBar memberCount={memberCount} />
-      {showPinned && <PinnedMessageBar onOpenComments={onOpenComments} />}
+      <FamilyFeedChrome
+        showPinned={showPinned}
+        showNowPlaying={showNowPlaying}
+        onOpenComments={onOpenComments}
+      />
     </div>
   );
 }
@@ -72,6 +78,7 @@ export function FamilyHome({
         <FamilyStickyHeader
           memberCount={memberCount}
           showPinned={mode === 'member' && !commentsTarget}
+          showNowPlaying={!commentsTarget}
           onOpenComments={openComments}
         />
       </div>

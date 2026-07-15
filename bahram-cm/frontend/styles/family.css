@@ -147,11 +147,33 @@ html[data-theme='dark'] .family-app {
 }
 
 .family-voice-wave {
+  display: grid;
+  width: 100%;
+  align-items: center;
   gap: 1px;
+  grid-template-columns: repeat(var(--wave-bars, 52), minmax(0, 1fr));
 }
 
 .family-voice-bar {
-  max-width: 3px;
+  width: 100%;
+  min-width: 0;
+  align-self: center;
+}
+
+.family-feed-image {
+  width: 100%;
+  max-width: min(100%, 280px);
+}
+
+@media (min-width: 1024px) {
+  .family-feed-image {
+    max-width: min(100%, 320px);
+  }
+}
+
+.family-now-playing {
+  background: color-mix(in oklab, var(--family-accent) 8%, var(--family-surface-panel));
+  border-color: color-mix(in oklab, var(--family-accent) 18%, var(--family-border));
 }
 
 .family-feed-video {

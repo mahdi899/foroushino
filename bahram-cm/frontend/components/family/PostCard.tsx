@@ -15,7 +15,7 @@ import { formatPostDateTime } from '@/lib/family/datetime';
 import { ReactionBar } from '@/components/family/ReactionBar';
 import type { FamilyPost, FamilyPostBlock } from '@/lib/family/types';
 
-function renderBlock(block: FamilyPostBlock, postId: number) {
+function renderBlock(block: FamilyPostBlock, postId: number, authorName: string) {
   switch (block.type) {
     case 'text':
       return block.text ? (
@@ -24,7 +24,9 @@ function renderBlock(block: FamilyPostBlock, postId: number) {
         </p>
       ) : null;
     case 'audio':
-      return block.media ? <VoiceBlock key={block.id} media={block.media} postId={postId} /> : null;
+      return block.media ? (
+        <VoiceBlock key={block.id} media={block.media} postId={postId} title={`صوت — ${authorName}`} />
+      ) : null;
     case 'video':
       return block.media ? <VideoBlock key={block.id} media={block.media} postId={postId} /> : null;
     case 'image':
@@ -90,7 +92,7 @@ export function PostCard({
             userName={post.reply_context.user_name}
           />
         )}
-        {otherBlocks.map((b) => renderBlock(b, post.id))}
+        {otherBlocks.map((b) => renderBlock(b, post.id, post.author.name))}
         {imageBlocks.length === 1 && imageBlocks[0].media ? (
           <ImageBlock media={imageBlocks[0].media} constrained={constrainedMedia || variant === 'feed'} />
         ) : imageBlocks.length > 1 ? (

@@ -5,7 +5,7 @@ import { FeedDateSeparator } from '@/components/family/FeedDateSeparator';
 import { FamilyBrandingSidebar } from '@/components/family/FamilyBrandingSidebar';
 import { FamilyNotificationsPanel } from '@/components/family/FamilyNotificationsPanel';
 import { FeedCommentsPanel } from '@/components/family/FeedCommentsPanel';
-import { PinnedMessageBar } from '@/components/family/PinnedMessageBar';
+import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
 import { PostCard } from '@/components/family/PostCard';
 import { useFamilyFeed } from '@/lib/family/hooks/useFamilyFeed';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
@@ -190,11 +190,9 @@ export function FeedView({
         )}
 
         <div className={showFeed ? 'flex min-h-0 min-w-0 flex-1 flex-col' : 'hidden'}>
-          {showPinned && (
-            <div className="hidden shrink-0 lg:block">
-              <PinnedMessageBar onOpenComments={openComments} />
-            </div>
-          )}
+          <div className="hidden shrink-0 lg:block">
+            <FamilyFeedChrome showPinned={showPinned} showNowPlaying onOpenComments={openComments} />
+          </div>
 
           <div
             ref={feedScrollRef}

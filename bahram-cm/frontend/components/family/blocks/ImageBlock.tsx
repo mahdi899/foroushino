@@ -101,11 +101,7 @@ export function ImageBlock({
 
   const showImage = phase === 'preview' || phase === 'loading-sharp' || phase === 'sharp';
   const isBlurred = phase === 'preview' || phase === 'loading-sharp';
-  const containerStyle = fillCell
-    ? undefined
-    : constrained
-      ? { aspectRatio: '4 / 3', maxHeight: 'min(42vh, 320px)' }
-      : { ...aspectStyle(media), maxHeight: 'min(55vh, 480px)' };
+  const containerStyle = fillCell ? undefined : aspectStyle(media);
 
   return (
     <>
@@ -116,6 +112,7 @@ export function ImageBlock({
         className={cn(
           'relative block w-full overflow-hidden bg-white/5',
           fillCell ? 'h-full min-h-0' : '',
+          constrained && !fillCell && 'family-feed-image mx-auto',
           roundedClass,
           className,
         )}
@@ -202,7 +199,7 @@ export function ImageAlbumBlock({ items, constrained = false }: { items: FamilyM
 
   const gridClass =
     count === 1
-      ? cn('grid grid-cols-1', constrained && 'max-h-[min(42vh,320px)]')
+      ? cn('grid grid-cols-1', constrained && 'family-feed-image mx-auto')
       : count === 2
         ? 'grid grid-cols-2 gap-0.5'
         : count === 3
