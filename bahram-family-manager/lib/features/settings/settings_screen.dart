@@ -9,7 +9,8 @@ import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
-import 'package:bahram_family_manager/widgets/media/family_media_view.dart';
+import 'package:bahram_family_manager/core/utils/story_aspect.dart';
+import 'package:bahram_family_manager/widgets/media/story_media_preview.dart';
 import 'package:bahram_family_manager/widgets/media/upload_zone.dart';
 import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
 
@@ -153,6 +154,16 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       return;
     }
 
+    final media = _storyMedia!;
+    if (media.type == 'audio') {
+      showAppSnackBar(context, 'برای استوری فقط تصویر یا ویدیو عمودی ۹:۱۶ مجاز است.');
+      return;
+    }
+    if (!isStoryAspectRatio(media.width, media.height)) {
+      showAppSnackBar(context, storyAspectHint(media.width, media.height));
+      return;
+    }
+
     setState(() => _saving = true);
     try {
       await context.read<AppState>().manager.publishStory(
@@ -283,14 +294,31 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   padding: const EdgeInsets.all(AppSpacing.lg),
                   children: [
                     UploadZone(
-                      label: 'انتخاب تصویر/ویدیو استوری',
+                      label: 'انتخاب تصویر/ویدیو استوری (۹:۱۶ عمودی)',
                       uploading: _uploading,
                       progress: _uploadProgress,
                       onTap: _pickStoryMedia,
                     ),
+                    const SizedBox(height: AppSpacing.sm),
+                    Text(
+                      'استوری در موبایل تمام‌صفحه نمایش داده می‌شود. نسبت تصویر باید ۹:۱۶ (عمودی) باشد.',
+                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65), fontSize: 13),
+                    ),
                     if (_storyMedia != null) ...[
                       const SizedBox(height: AppSpacing.md),
-                      FamilyMediaView(media: _storyMedia!, height: 220),
+                      StoryMediaPreview(media: _storyMedia!),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        storyAspectHint(_storyMedia!.width, _storyMedia!.height),
+                        style: TextStyle(
+                          color: isStoryAspectRatio(_storyMedia!.width, _storyMedia!.height)
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.error,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ],
                     const SizedBox(height: AppSpacing.md),
                     TextField(
@@ -306,12 +334,35 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     ...stories.map(
                       (story) => Card(
                         margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                        child: ListTile(
-                          title: Text(story.caption?.isNotEmpty == true ? story.caption! : 'بدون کپشن'),
-                          subtitle: Text(formatDateTime(story.publishedAt)),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline_rounded),
-                            onPressed: _saving ? null : () => _deleteStory(story),
+                        child: Padding(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (story.media != null)
+                                SizedBox(
+                                  width: 72,
+                                  child: StoryMediaPreview(media: story.media!, maxWidth: 72, showBadge: false),
+                                ),
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      story.caption?.isNotEmpty == true ? story.caption! : 'بدون کپشن',
+                                      style: const TextStyle(fontWeight: FontWeight.w700),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(formatDateTime(story.publishedAt), style: const TextStyle(fontSize: 12)),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded),
+                                onPressed: _saving ? null : () => _deleteStory(story),
+                              ),
+                            ],
                           ),
                         ),
                       ),

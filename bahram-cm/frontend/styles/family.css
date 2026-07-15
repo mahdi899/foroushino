@@ -528,15 +528,14 @@ html[data-theme='dark'] .family-app {
 .family-action-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  border-radius: 9999px;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
   border: 1px solid color-mix(in oklab, var(--family-accent) 22%, var(--family-border));
   background: color-mix(in oklab, var(--family-accent) 10%, var(--family-surface));
-  padding: 0.2rem 0.55rem;
-  font-size: 10px;
-  font-weight: 600;
   color: var(--family-accent);
-  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 @keyframes family-story-pulse {

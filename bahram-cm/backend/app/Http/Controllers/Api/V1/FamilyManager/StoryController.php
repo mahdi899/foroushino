@@ -11,6 +11,7 @@ use App\Services\Family\FamilyStoryService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class StoryController extends Controller
 {
@@ -40,6 +41,7 @@ class StoryController extends Controller
         ]);
 
         $media = FamilyMedia::query()->findOrFail($data['media_id']);
+        $this->assertStoryMediaAspect($media);
         $story = $this->stories->publish($request->user(), $media, $data['caption'] ?? null);
         $this->audit->log($request->user(), 'family.story_published', $story);
 
@@ -52,5 +54,33 @@ class StoryController extends Controller
         $this->stories->delete($story);
 
         return ApiResponse::success(['deleted' => true]);
+    }
+
+    private function assertStoryMediaAspect(FamilyMedia $media): void
+    {
+        $type = $media->type?->value ?? $media->type;
+        if (! in_array($type, ['image', 'video'], true)) {
+            throw ValidationException::withMessages([
+                'media_id' => ['برای استوری فقط تصویر یا ویدیو مجاز است.'],
+            ]);
+        }
+
+        if (! $media->width || ! $media->height) {
+            return;
+        }
+
+        if ($media->height <= $media->width) {
+            throw ValidationException::withMessages([
+                'media_id' => ['استوری باید عمودی باشد (نسبت ۹:۱۶).'],
+            ]);
+        }
+
+        $ratio = $media->height / $media->width;
+        $target = 16 / 9;
+        if (abs($ratio - $target) / $target > 0.12) {
+            throw ValidationException::withMessages([
+                'media_id' => ['نسبت تصویر استوری باید ۹:۱۶ باشد (مثلاً ۱۰۸۰×۱۹۲۰).'],
+            ]);
+        }
     }
 }
