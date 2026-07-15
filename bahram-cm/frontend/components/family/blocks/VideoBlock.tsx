@@ -93,8 +93,8 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
     <>
       <div
         className={cn(
-          'family-feed-video relative w-full overflow-hidden rounded-2xl bg-black',
-          isPortrait && 'mx-auto max-w-[min(100%,280px)] lg:max-w-[min(100%,320px)]',
+          'family-feed-video relative mx-auto w-full overflow-hidden rounded-2xl bg-black',
+          isPortrait ? 'family-feed-video--portrait' : 'family-feed-video--landscape',
         )}
         style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
       >

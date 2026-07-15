@@ -7,14 +7,16 @@ import { getPinnedPosts } from '@/lib/family/api';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
 import type { FamilyComment } from '@/lib/family/types';
 
-/** Pinned message slot + Telegram-style now playing bar beneath it (or in pin slot). */
+/** Pinned in flow; now-playing overlays feed top without shifting scroll. */
 export function FamilyFeedChrome({
   showPinned = true,
   showNowPlaying = true,
+  overlayNowPlaying = false,
   onOpenComments,
 }: {
   showPinned?: boolean;
   showNowPlaying?: boolean;
+  overlayNowPlaying?: boolean;
   onOpenComments?: (handlers: {
     postId: number;
     onCommentAdded: (comment: FamilyComment) => void;
@@ -32,9 +34,13 @@ export function FamilyFeedChrome({
   if (!showPinBar && !showNowBar) return null;
 
   return (
-    <div className="z-30 shrink-0">
-      {showPinBar && <PinnedMessageBar onOpenComments={onOpenComments} />}
-      {showNowBar && <NowPlayingBar />}
-    </div>
+    <>
+      {showPinBar && (
+        <div className="z-30 shrink-0">
+          <PinnedMessageBar onOpenComments={onOpenComments} />
+        </div>
+      )}
+      {showNowBar && <NowPlayingBar overlay={overlayNowPlaying} />}
+    </>
   );
 }

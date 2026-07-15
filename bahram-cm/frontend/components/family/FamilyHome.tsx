@@ -75,10 +75,10 @@ export function FamilyHome({
   return (
     <FamilyShell>
       <div className="lg:hidden">
-        <FamilyStickyHeader
-          memberCount={memberCount}
+        <FamilyTopBar memberCount={memberCount} />
+        <FamilyFeedChrome
           showPinned={mode === 'member' && !commentsTarget}
-          showNowPlaying={!commentsTarget}
+          showNowPlaying={false}
           onOpenComments={openComments}
         />
       </div>

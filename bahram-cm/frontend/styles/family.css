@@ -148,7 +148,6 @@ html[data-theme='dark'] .family-app {
 
 .family-voice-wave {
   display: grid;
-  width: 100%;
   align-items: center;
   gap: 1px;
   grid-template-columns: repeat(var(--wave-bars, 52), minmax(0, 1fr));
@@ -172,17 +171,29 @@ html[data-theme='dark'] .family-app {
 }
 
 .family-now-playing {
-  background: color-mix(in oklab, var(--family-accent) 8%, var(--family-surface-panel));
-  border-color: color-mix(in oklab, var(--family-accent) 18%, var(--family-border));
+  background: color-mix(in oklab, var(--family-accent) 10%, var(--family-surface));
+  border-color: color-mix(in oklab, var(--family-accent) 22%, var(--family-border));
 }
 
 .family-feed-video {
-  max-height: min(72vh, 560px);
+  width: 100%;
+}
+
+.family-feed-video--portrait {
+  max-width: min(100%, 280px);
+}
+
+.family-feed-video--landscape {
+  max-width: min(100%, 360px);
 }
 
 @media (min-width: 1024px) {
-  .family-feed-video {
-    max-height: min(52vh, 420px);
+  .family-feed-video--portrait {
+    max-width: min(100%, 240px);
+  }
+
+  .family-feed-video--landscape {
+    max-width: min(100%, 320px);
   }
 }
 

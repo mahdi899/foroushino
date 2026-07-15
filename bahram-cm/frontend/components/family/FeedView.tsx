@@ -189,10 +189,17 @@ export function FeedView({
           />
         )}
 
-        <div className={showFeed ? 'flex min-h-0 min-w-0 flex-1 flex-col' : 'hidden'}>
+        <div className={showFeed ? 'relative flex min-h-0 min-w-0 flex-1 flex-col' : 'hidden'}>
           <div className="hidden shrink-0 lg:block">
-            <FamilyFeedChrome showPinned={showPinned} showNowPlaying onOpenComments={openComments} />
+            <FamilyFeedChrome showPinned={showPinned} showNowPlaying={false} onOpenComments={openComments} />
           </div>
+
+          <FamilyFeedChrome
+            showPinned={false}
+            showNowPlaying
+            overlayNowPlaying
+            onOpenComments={openComments}
+          />
 
           <div
             ref={feedScrollRef}

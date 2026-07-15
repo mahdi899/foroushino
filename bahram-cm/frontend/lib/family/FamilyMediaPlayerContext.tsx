@@ -21,6 +21,7 @@ interface FamilyMediaPlayerContextValue {
   setNowPlaying: (info: FamilyNowPlaying | null) => void;
   updateNowPlayingProgress: (mediaId: number, progress: number, duration?: number) => void;
   pauseActive: () => void;
+  dismissNowPlaying: () => void;
 }
 
 const FamilyMediaPlayerContext = createContext<FamilyMediaPlayerContextValue | null>(null);
@@ -74,6 +75,13 @@ export function FamilyMediaPlayerProvider({ children }: { children: ReactNode })
     elements.current.get(id)?.pause();
   }, [activeId, nowPlaying]);
 
+  const dismissNowPlaying = useCallback(() => {
+    const id = activeId ?? nowPlaying?.mediaId ?? null;
+    if (id != null) elements.current.get(id)?.pause();
+    setActiveId(null);
+    setNowPlayingState(null);
+  }, [activeId, nowPlaying]);
+
   return (
     <FamilyMediaPlayerContext.Provider
       value={{
@@ -86,6 +94,7 @@ export function FamilyMediaPlayerProvider({ children }: { children: ReactNode })
         setNowPlaying,
         updateNowPlayingProgress,
         pauseActive,
+        dismissNowPlaying,
       }}
     >
       {children}

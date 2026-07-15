@@ -7,8 +7,6 @@ import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
 import { sendMediaProgress } from '@/lib/family/api';
 import type { FamilyMediaBlock } from '@/lib/family/types';
 
-const BAR_COUNT = 52;
-
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
   const m = Math.floor(seconds / 60);
@@ -16,9 +14,22 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-function normalizeWaveform(raw: number[]): number[] {
-  if (raw.length === 0) return Array.from({ length: BAR_COUNT }, () => 0.25);
-  if (raw.length === BAR_COUNT) {
+function barCountForDuration(seconds: number): number {
+  if (seconds <= 12) return 28;
+  if (seconds <= 30) return 36;
+  if (seconds <= 90) return 44;
+  if (seconds <= 180) return 52;
+  return 60;
+}
+
+function waveWidthForDuration(seconds: number): number {
+  const safe = Number.isFinite(seconds) && seconds > 0 ? seconds : 30;
+  return Math.round(Math.min(240, Math.max(96, 56 + safe * 1.35)));
+}
+
+function normalizeWaveform(raw: number[], barCount: number): number[] {
+  if (raw.length === 0) return Array.from({ length: barCount }, () => 0.25);
+  if (raw.length === barCount) {
     const max = Math.max(...raw);
     const min = Math.min(...raw);
     const range = max - min || 1;
@@ -26,8 +37,8 @@ function normalizeWaveform(raw: number[]): number[] {
   }
 
   const result: number[] = [];
-  for (let i = 0; i < BAR_COUNT; i += 1) {
-    const t = (i / (BAR_COUNT - 1)) * (raw.length - 1);
+  for (let i = 0; i < barCount; i += 1) {
+    const t = barCount > 1 ? (i / (barCount - 1)) * (raw.length - 1) : 0;
     const left = Math.floor(t);
     const right = Math.min(raw.length - 1, left + 1);
     const mix = t - left;
@@ -38,6 +49,21 @@ function normalizeWaveform(raw: number[]): number[] {
   const min = Math.min(...result);
   const range = max - min || 1;
   return result.map((v) => (v - min) / range);
+}
+
+function waitForMetadata(el: HTMLAudioElement): Promise<void> {
+  if (el.readyState >= HTMLMediaElement.HAVE_METADATA && Number.isFinite(el.duration) && el.duration > 0) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    const done = () => {
+      el.removeEventListener('loadedmetadata', done);
+      el.removeEventListener('durationchange', done);
+      resolve();
+    };
+    el.addEventListener('loadedmetadata', done);
+    el.addEventListener('durationchange', done);
+  });
 }
 
 export function VoiceBlock({
@@ -52,12 +78,12 @@ export function VoiceBlock({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const waveRef = useRef<HTMLButtonElement | null>(null);
   const draggingRef = useRef(false);
+  const scrubbingRef = useRef(false);
   const { activeId, register, unregister, requestPlay, notifyPaused, setNowPlaying, updateNowPlayingProgress } =
     useFamilyMediaPlayer();
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(media.duration ?? 0);
-  const [scrubbing, setScrubbing] = useState(false);
   const lastReported = useRef(0);
 
   useEffect(() => {
@@ -76,26 +102,31 @@ export function VoiceBlock({
     }
   }, [activeId, media.id]);
 
+  const resolvedDuration = useMemo(() => {
+    if (duration > 0) return duration;
+    if (media.duration && media.duration > 0) return media.duration;
+    return 30;
+  }, [duration, media.duration]);
+
+  const barCount = useMemo(() => barCountForDuration(resolvedDuration), [resolvedDuration]);
+  const waveWidthPx = useMemo(() => waveWidthForDuration(resolvedDuration), [resolvedDuration]);
+
   const waveform = useMemo(() => {
     const raw =
       media.waveform && media.waveform.length > 0
         ? media.waveform
-        : Array.from({ length: BAR_COUNT }, (_, i) => 0.22 + Math.sin(i * 0.55) * 0.18 + (i % 5) * 0.03);
-    return normalizeWaveform(raw);
-  }, [media.waveform]);
+        : Array.from({ length: barCount }, (_, i) => 0.22 + Math.sin(i * 0.55) * 0.18 + (i % 5) * 0.03);
+    return normalizeWaveform(raw, barCount);
+  }, [media.waveform, barCount]);
 
-  const effectiveDuration = () => {
-    const el = audioRef.current;
-    const fromEl = el?.duration;
-    if (fromEl && Number.isFinite(fromEl) && fromEl > 0) return fromEl;
+  const readDuration = (el: HTMLAudioElement) => {
+    if (Number.isFinite(el.duration) && el.duration > 0) return el.duration;
     if (duration > 0) return duration;
-    return media.duration ?? 0;
+    if (media.duration && media.duration > 0) return media.duration;
+    return 0;
   };
 
-  const progressRatio = (() => {
-    const d = effectiveDuration();
-    return d > 0 ? Math.min(1, progress / d) : 0;
-  })();
+  const progressRatio = resolvedDuration > 0 ? Math.min(1, progress / resolvedDuration) : 0;
 
   const toggle = async () => {
     const el = audioRef.current;
@@ -107,45 +138,43 @@ export function VoiceBlock({
     }
 
     requestPlay(media.id);
-
-    if (!Number.isFinite(el.duration) || el.duration <= 0) {
-      el.load();
-      await new Promise<void>((resolve) => {
-        if (el.readyState >= HTMLMediaElement.HAVE_METADATA) {
-          resolve();
-          return;
-        }
-        const onMeta = () => {
-          el.removeEventListener('loadedmetadata', onMeta);
-          resolve();
-        };
-        el.addEventListener('loadedmetadata', onMeta);
-      });
-    }
+    await waitForMetadata(el);
 
     try {
       await el.play();
     } catch {
-      return;
+      // autoplay blocked or network
     }
   };
 
-  const seekToRatio = (ratio: number) => {
+  const seekToRatio = async (ratio: number) => {
     const el = audioRef.current;
     if (!el) return;
-    const d = effectiveDuration();
+
+    await waitForMetadata(el);
+    const d = readDuration(el);
     if (d <= 0) return;
+
     const next = Math.max(0, Math.min(d, ratio * d));
-    el.currentTime = next;
+    scrubbingRef.current = true;
+    try {
+      el.currentTime = next;
+    } catch {
+      scrubbingRef.current = false;
+      return;
+    }
     setProgress(next);
     updateNowPlayingProgress(media.id, next, d);
+    window.setTimeout(() => {
+      scrubbingRef.current = false;
+    }, 120);
   };
 
   const seekFromClientX = (clientX: number) => {
     const rect = waveRef.current?.getBoundingClientRect();
     if (!rect || rect.width <= 0) return;
     const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    seekToRatio(ratio);
+    void seekToRatio(ratio);
   };
 
   const reportProgress = (event: 'play' | 'pause' | 'complete', position: number) => {
@@ -156,7 +185,7 @@ export function VoiceBlock({
       post_id: postId,
       media_id: media.id,
       position: rounded,
-      duration: Math.floor(effectiveDuration()),
+      duration: Math.floor(readDuration(audioRef.current!)),
       event,
     }).catch(() => {});
   };
@@ -170,20 +199,21 @@ export function VoiceBlock({
   }
 
   return (
-    <div dir="ltr" className="family-voice flex w-full items-center gap-2.5 rounded-full px-2.5 py-2">
+    <div dir="ltr" className="family-voice flex w-full max-w-full items-center gap-2 rounded-full px-2 py-1.5">
       <audio
         ref={audioRef}
         src={media.url}
         preload="auto"
         onPlay={() => {
           setPlaying(true);
-          const d = effectiveDuration();
+          const el = audioRef.current;
+          const d = el ? readDuration(el) : resolvedDuration;
           setNowPlaying({
             mediaId: media.id,
             postId,
             title,
             kind: 'voice',
-            progress: audioRef.current?.currentTime ?? progress,
+            progress: el?.currentTime ?? progress,
             duration: d,
           });
         }}
@@ -195,17 +225,22 @@ export function VoiceBlock({
         onEnded={() => {
           setPlaying(false);
           notifyPaused(media.id);
-          reportProgress('complete', effectiveDuration());
+          reportProgress('complete', readDuration(audioRef.current!));
         }}
         onLoadedMetadata={(e) => {
           const d = e.currentTarget.duration || media.duration || 0;
-          setDuration(d);
+          if (d > 0) setDuration(d);
+        }}
+        onDurationChange={(e) => {
+          const d = e.currentTarget.duration;
+          if (Number.isFinite(d) && d > 0) setDuration(d);
         }}
         onTimeUpdate={(e) => {
+          if (scrubbingRef.current || draggingRef.current) return;
           const t = e.currentTarget.currentTime;
-          if (!scrubbing) setProgress(t);
+          setProgress(t);
           if (activeId === media.id) {
-            updateNowPlayingProgress(media.id, t, e.currentTarget.duration || duration);
+            updateNowPlayingProgress(media.id, t, readDuration(e.currentTarget));
           }
         }}
         className="hidden"
@@ -214,61 +249,61 @@ export function VoiceBlock({
         type="button"
         onClick={() => void toggle()}
         aria-label={playing ? 'توقف' : 'پخش'}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full family-voice-play transition"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full family-voice-play transition"
       >
-        {playing ? <Pause className="h-4 w-4" fill="currentColor" /> : <Play className="ms-0.5 h-4 w-4" fill="currentColor" />}
+        {playing ? <Pause className="h-3.5 w-3.5" fill="currentColor" /> : <Play className="ms-0.5 h-3.5 w-3.5" fill="currentColor" />}
       </button>
 
-      <button
-        ref={waveRef}
-        type="button"
-        aria-label="موج صدا"
-        onPointerDown={(e) => {
-          draggingRef.current = true;
-          setScrubbing(true);
-          e.currentTarget.setPointerCapture(e.pointerId);
-          seekFromClientX(e.clientX);
-        }}
-        onPointerMove={(e) => {
-          if (!draggingRef.current) return;
-          seekFromClientX(e.clientX);
-        }}
-        onPointerUp={(e) => {
-          draggingRef.current = false;
-          setScrubbing(false);
-          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-            e.currentTarget.releasePointerCapture(e.pointerId);
-          }
-        }}
-        onPointerCancel={(e) => {
-          draggingRef.current = false;
-          setScrubbing(false);
-          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-            e.currentTarget.releasePointerCapture(e.pointerId);
-          }
-        }}
-        className={cn('family-voice-wave h-9 min-w-0 flex-1 cursor-pointer touch-none', scrubbing && 'opacity-90')}
-        style={{ '--wave-bars': BAR_COUNT } as CSSProperties}
-      >
-        {waveform.map((v, i) => {
-          const barRatio = BAR_COUNT > 1 ? i / (BAR_COUNT - 1) : 0;
-          const played = barRatio <= progressRatio;
-          const height = Math.round(4 + v * 18);
-          return (
-            <span
-              key={i}
-              className={cn(
-                'family-voice-bar rounded-full transition-colors duration-150',
-                played ? 'bg-[var(--family-voice-played)]' : 'bg-[var(--family-voice-unplayed)]',
-              )}
-              style={{ height: `${height}px` }}
-            />
-          );
-        })}
-      </button>
+      <div className="flex min-w-0 flex-1 items-center">
+        <button
+          ref={waveRef}
+          type="button"
+          aria-label="موج صدا"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            draggingRef.current = true;
+            e.currentTarget.setPointerCapture(e.pointerId);
+            seekFromClientX(e.clientX);
+          }}
+          onPointerMove={(e) => {
+            if (!draggingRef.current) return;
+            seekFromClientX(e.clientX);
+          }}
+          onPointerUp={(e) => {
+            draggingRef.current = false;
+            if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+              e.currentTarget.releasePointerCapture(e.pointerId);
+            }
+          }}
+          onPointerCancel={(e) => {
+            draggingRef.current = false;
+            if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+              e.currentTarget.releasePointerCapture(e.pointerId);
+            }
+          }}
+          className="family-voice-wave h-8 max-w-full cursor-pointer touch-none"
+          style={{ '--wave-bars': barCount, width: `${waveWidthPx}px` } as CSSProperties}
+        >
+          {waveform.map((v, i) => {
+            const barRatio = barCount > 1 ? i / (barCount - 1) : 0;
+            const played = barRatio <= progressRatio;
+            const height = Math.round(3 + v * 14);
+            return (
+              <span
+                key={i}
+                className={cn(
+                  'family-voice-bar rounded-full transition-colors duration-150',
+                  played ? 'bg-[var(--family-voice-played)]' : 'bg-[var(--family-voice-unplayed)]',
+                )}
+                style={{ height: `${height}px` }}
+              />
+            );
+          })}
+        </button>
+      </div>
 
-      <span className="w-10 shrink-0 text-left text-[11px] tabular-nums text-bone/50">
-        {formatTime(playing || progress > 0 ? effectiveDuration() - progress : effectiveDuration())}
+      <span className="w-9 shrink-0 text-left text-[10px] tabular-nums text-bone/50">
+        {formatTime(playing || progress > 0 ? resolvedDuration - progress : resolvedDuration)}
       </span>
     </div>
   );

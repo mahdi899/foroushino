@@ -1,6 +1,7 @@
 'use client';
 
-import { Pause, Volume2 } from 'lucide-react';
+import { Pause, Volume2, X } from 'lucide-react';
+import { cn } from '@/lib/cn';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
 
 function formatTime(seconds: number): string {
@@ -10,16 +11,23 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export function NowPlayingBar() {
-  const { nowPlaying, pauseActive } = useFamilyMediaPlayer();
+export function NowPlayingBar({ overlay = false }: { overlay?: boolean }) {
+  const { nowPlaying, pauseActive, dismissNowPlaying } = useFamilyMediaPlayer();
   if (!nowPlaying) return null;
 
   const ratio =
     nowPlaying.duration > 0 ? Math.min(1, nowPlaying.progress / nowPlaying.duration) : 0;
 
   return (
-    <div className="family-now-playing shrink-0 border-b px-3 py-2 sm:px-4 lg:px-5">
-      <div className="flex items-center gap-2.5">
+    <div
+      className={cn(
+        'family-now-playing border-b backdrop-blur-md',
+        overlay
+          ? 'pointer-events-auto absolute inset-x-0 top-0 z-40 shadow-[0_8px_24px_rgba(2,6,7,0.18)]'
+          : 'shrink-0',
+      )}
+    >
+      <div className="flex items-center gap-2 px-3 py-2 sm:px-4 lg:px-5">
         <button
           type="button"
           onClick={pauseActive}
@@ -29,23 +37,34 @@ export function NowPlayingBar() {
           <Pause className="h-3.5 w-3.5" fill="currentColor" />
         </button>
 
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_oklab,var(--family-accent)_12%,var(--family-surface-soft))] text-[var(--family-accent)]">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--family-accent)_14%,var(--family-surface))] text-[var(--family-accent)] ring-1 ring-[color-mix(in_oklab,var(--family-accent)_22%,transparent)]">
           <Volume2 className="h-4 w-4" strokeWidth={1.75} />
         </span>
 
         <div className="min-w-0 flex-1 text-right">
-          <p className="truncate text-[13px] font-medium text-bone/85">{nowPlaying.title}</p>
+          <p className="truncate text-[13px] font-semibold text-bone/90">{nowPlaying.title}</p>
           <p className="text-[11px] tabular-nums text-bone/45">
             {formatTime(nowPlaying.progress)} / {formatTime(nowPlaying.duration)}
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={dismissNowPlaying}
+          aria-label="بستن"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-bone/55 transition hover:bg-[var(--family-surface-soft)] hover:text-bone"
+        >
+          <X className="h-4 w-4" strokeWidth={2} />
+        </button>
       </div>
 
-      <div className="mt-2 h-0.5 overflow-hidden rounded-full bg-[var(--family-surface-soft)]">
-        <div
-          className="h-full rounded-full bg-[var(--family-accent)] transition-[width] duration-150"
-          style={{ width: `${ratio * 100}%` }}
-        />
+      <div className="px-3 pb-2 sm:px-4 lg:px-5">
+        <div className="h-1 overflow-hidden rounded-full bg-[color-mix(in_oklab,var(--family-surface-soft)_88%,transparent)]">
+          <div
+            className="h-full rounded-full bg-[var(--family-accent)] transition-[width] duration-150"
+            style={{ width: `${ratio * 100}%` }}
+          />
+        </div>
       </div>
     </div>
   );
