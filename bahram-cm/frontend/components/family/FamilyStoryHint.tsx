@@ -1,5 +1,7 @@
 'use client';
 
+import { formatFa } from '@/lib/persian';
+
 type FamilyStoryHintProps = {
   memberCount?: number;
   memberLabel?: string;
@@ -7,6 +9,9 @@ type FamilyStoryHintProps = {
   onOpenStories: () => void;
   className?: string;
   showOnlineDot?: boolean;
+  /** Hide real member count for guests — blurred placeholder only. */
+  maskMemberCount?: boolean;
+  onMaskedMemberCountClick?: () => void;
   /** When parent is already a button/link, render CTA as text (no nested button). */
   nested?: boolean;
 };
@@ -19,27 +24,54 @@ export function FamilyStoryHint({
   onOpenStories,
   className = 'family-topbar__subtitle',
   showOnlineDot = false,
+  maskMemberCount = false,
+  onMaskedMemberCountClick,
   nested = false,
 }: FamilyStoryHintProps) {
   const hasMembers = typeof memberCount === 'number';
+  const showMemberStat = maskMemberCount || hasMembers;
 
-  if (!hasMembers && !hasUnseen) return null;
+  if (!showMemberStat && !hasUnseen) return null;
 
   const unseenLabel = (
     <span className="font-medium text-[var(--family-tg-pinned-accent)]">
-      {hasMembers ? ' · ' : ''}
+      {showMemberStat ? ' · ' : ''}
       استوری جدید
+    </span>
+  );
+
+  const memberStat = maskMemberCount ? (
+    nested ? (
+      <span
+        className="family-guest-stat-mask family-topbar__subtitle--live"
+        aria-label="تعداد اعضا پنهان است"
+      >
+        <span className="family-guest-stat-mask__value" aria-hidden>
+          ۰۰ {memberLabel}
+        </span>
+      </span>
+    ) : (
+      <button
+        type="button"
+        onClick={onMaskedMemberCountClick}
+        className="family-guest-stat-mask family-topbar__subtitle--live"
+        aria-label="برای دیدن تعداد اعضا عضو خانواده شو"
+      >
+        <span className="family-guest-stat-mask__value" aria-hidden>
+          ۰۰ {memberLabel}
+        </span>
+      </button>
+    )
+  ) : (
+    <span className="family-topbar__subtitle--live">
+      {showOnlineDot && <span className="family-topbar__meta-dot" aria-hidden />}
+      {formatFa(memberCount)} {memberLabel}
     </span>
   );
 
   return (
     <p className={className}>
-      {hasMembers && (
-        <span className="family-topbar__subtitle--live">
-          {showOnlineDot && <span className="family-topbar__meta-dot" aria-hidden />}
-          {memberCount.toLocaleString('fa-IR')} {memberLabel}
-        </span>
-      )}
+      {showMemberStat && memberStat}
       {hasUnseen &&
         (nested ? (
           unseenLabel
@@ -49,7 +81,7 @@ export function FamilyStoryHint({
             onClick={onOpenStories}
             className="font-medium text-[var(--family-tg-pinned-accent)] transition hover:opacity-80"
           >
-            {hasMembers ? ' · ' : ''}
+            {showMemberStat ? ' · ' : ''}
             استوری جدید
           </button>
         ))}

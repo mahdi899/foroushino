@@ -8,6 +8,7 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/features/entry_links/entry_links_panel.dart';
 import 'package:bahram_family_manager/features/families/family_detail_cache.dart';
+import 'package:bahram_family_manager/features/families/family_members_cache.dart';
 import 'package:bahram_family_manager/features/families/family_editor_sheet.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
@@ -21,15 +22,16 @@ import 'package:bahram_family_manager/features/families/widgets/family_members_p
 import 'package:bahram_family_manager/widgets/surfaces/app_card.dart';
 
 class FamilyDetailScreen extends StatelessWidget {
-  const FamilyDetailScreen({super.key, required this.familyId});
+  const FamilyDetailScreen({super.key, required this.familyId, this.familySummary});
 
   final int familyId;
+  final FamilySummaryModel? familySummary;
 
   @override
   Widget build(BuildContext context) {
     return AdaptiveScaffold(
       appBar: const ManagerAppBar(title: Text('جزئیات خانواده')),
-      body: FamilyDetailBody(familyId: familyId),
+      body: FamilyDetailBody(familyId: familyId, familySummary: familySummary),
     );
   }
 }
@@ -39,10 +41,12 @@ class FamilyDetailBody extends StatefulWidget {
   const FamilyDetailBody({
     super.key,
     required this.familyId,
+    this.familySummary,
     this.onChanged,
   });
 
   final int familyId;
+  final FamilySummaryModel? familySummary;
   final VoidCallback? onChanged;
 
   @override
@@ -77,6 +81,7 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
     final saved = await showFamilyEditorSheet(context: context, family: family);
     if (saved == true) {
       FamilyDetailCache.invalidate(family.id);
+      FamilyMembersCache.invalidate(family.id);
       _load();
       widget.onChanged?.call();
     }
@@ -109,6 +114,7 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
       await context.read<AppState>().manager.deleteFamily(family.id);
       if (!mounted) return;
       FamilyDetailCache.invalidate(family.id);
+      FamilyMembersCache.invalidate(family.id);
       showAppSnackBar(context, 'خانواده حذف شد.');
       widget.onChanged?.call();
       if (Navigator.canPop(context)) Navigator.pop(context);
@@ -123,12 +129,13 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
     final canManage = context.read<AppState>().user?.can('family.families.manage') ?? false;
     final canManageLinks = context.read<AppState>().user?.can('family.entry_links.manage') ?? false;
 
-    return FutureBuilder<FamilyDetailModel>(
-      future: _future,
-      builder: (context, snapshot) => SizedBox.expand(
-        child: AsyncBody<FamilyDetailModel>(
+    return SizedBox.expand(
+      child: FutureBuilder<FamilyDetailModel>(
+        future: _future,
+        builder: (context, snapshot) => AsyncBody<FamilyDetailModel>(
           snapshot: snapshot,
           builder: (context, family) => _FamilyDetailTabs(
+            key: ValueKey(family.id),
             family: family,
             canManage: canManage,
             canManageLinks: canManageLinks,
@@ -143,6 +150,7 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
 
 class _FamilyDetailTabs extends StatefulWidget {
   const _FamilyDetailTabs({
+    super.key,
     required this.family,
     required this.canManage,
     required this.canManageLinks,
@@ -167,8 +175,9 @@ class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerP
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this, initialIndex: 1);
+    _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_onTabChanged);
+    if (widget.canManageLinks) _entryLinksEnabled = true;
   }
 
   @override
@@ -176,8 +185,8 @@ class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerP
     super.didUpdateWidget(oldWidget);
     if (oldWidget.family.id != widget.family.id) {
       _entryLinksEnabled = false;
-      if (_tabController.index != 1) {
-        _tabController.index = 1;
+      if (_tabController.index != 0) {
+        _tabController.index = 0;
       }
     }
   }
@@ -185,7 +194,7 @@ class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerP
   void _onTabChanged() {
     if (_tabController.indexIsChanging) return;
     final onSummary = _tabController.index == 0;
-    if (onSummary && !_entryLinksEnabled) {
+    if (onSummary && widget.canManageLinks && !_entryLinksEnabled) {
       setState(() => _entryLinksEnabled = true);
     } else {
       setState(() {});
@@ -215,7 +224,7 @@ class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerP
               child: TabBar(
                 controller: _tabController,
                 tabs: [
-                  const Tab(text: 'خلاصه'),
+                  const Tab(text: 'خانواده'),
                   Tab(text: 'اعضا (${toFaDigits(widget.family.memberCount.toString())})'),
                 ],
               ),
@@ -278,7 +287,6 @@ class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerP
   }
 }
 
-// Legacy wrapper removed — content lives in _FamilyDetailTabs.
 class FamilyDetailContent extends StatelessWidget {
   const FamilyDetailContent({
     super.key,
@@ -295,13 +303,9 @@ class FamilyDetailContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final canManageLinks = context.read<AppState>().user?.can('family.entry_links.manage') ?? false;
-    return _FamilyDetailTabs(
-      family: family,
-      canManage: canManage,
-      canManageLinks: canManageLinks,
-      onEdit: onEdit,
-      onDelete: onDelete,
+    return FamilyDetailBody(
+      familyId: family.id,
+      familySummary: family,
     );
   }
 }

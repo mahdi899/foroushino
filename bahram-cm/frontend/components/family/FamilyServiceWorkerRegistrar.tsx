@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 
 async function unregisterFamilyServiceWorkers() {
   if (!('serviceWorker' in navigator)) return;
@@ -8,7 +8,11 @@ async function unregisterFamilyServiceWorkers() {
   const registrations = await navigator.serviceWorker.getRegistrations();
   await Promise.all(
     registrations
-      .filter((registration) => registration.scope.includes('/family') || registration.active?.scriptURL.includes('sw-family'))
+      .filter(
+        (registration) =>
+          registration.scope.includes('/family') ||
+          registration.active?.scriptURL.includes('sw-family'),
+      )
       .map((registration) => registration.unregister()),
   );
 
@@ -20,7 +24,7 @@ async function unregisterFamilyServiceWorkers() {
 
 /** Registers `/sw-family.js` with scope `/family/` in production builds. */
 export function FamilyServiceWorkerRegistrar() {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (process.env.NODE_ENV !== 'production') {
       void unregisterFamilyServiceWorkers();
       return;

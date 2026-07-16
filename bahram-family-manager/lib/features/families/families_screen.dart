@@ -7,8 +7,8 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
-import 'package:bahram_family_manager/core/utils/paginated_scroll.dart';
 import 'package:bahram_family_manager/features/families/family_detail_cache.dart';
+import 'package:bahram_family_manager/features/families/family_members_cache.dart';
 import 'package:bahram_family_manager/features/families/family_detail_screen.dart';
 import 'package:bahram_family_manager/features/families/family_members_screen.dart';
 import 'package:bahram_family_manager/features/families/family_editor_sheet.dart';
@@ -107,14 +107,6 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
         _familiesError = null;
       });
       _maybeAutoSelectFirst();
-      schedulePaginatedPrefetch(
-        controller: _familiesScrollCtrl,
-        mounted: mounted,
-        hasMore: _familiesHasMore,
-        loadingMore: _familiesLoadingMore,
-        initialLoading: _familiesInitialLoading,
-        loadMore: _loadFamiliesMore,
-      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -133,6 +125,15 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
     if (!mounted || !AppBreakpoints.isDesktop(context)) return;
     if (_selectedFamilyId != null || _families.isEmpty) return;
     setState(() => _selectedFamilyId = _families.first.id);
+  }
+
+  FamilySummaryModel? _selectedFamilySummary() {
+    final id = _selectedFamilyId;
+    if (id == null) return null;
+    for (final family in _families) {
+      if (family.id == id) return family;
+    }
+    return null;
   }
 
   @override
@@ -174,6 +175,7 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
     if (created == true) {
       context.read<AppState>().invalidateFamiliesCache();
       FamilyDetailCache.invalidate();
+      FamilyMembersCache.invalidate();
       await _loadFamiliesFirstPage();
     }
   }
@@ -242,8 +244,8 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
                         subtitle: 'از لیست سمت راست، خانواده مورد نظر را انتخاب کنید.',
                       )
                     : FamilyDetailBody(
-                        key: ValueKey(_selectedFamilyId),
                         familyId: _selectedFamilyId!,
+                        familySummary: _selectedFamilySummary(),
                         onChanged: _refreshFamiliesList,
                       ),
               ),
@@ -294,9 +296,20 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
                 error: _familiesError,
                 selectedId: _selectedFamilyId,
                 onRefresh: _loadFamiliesFirstPage,
-                onSelect: (id) => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => FamilyDetailScreen(familyId: id)),
-                ),
+                onSelect: (id) {
+                  FamilySummaryModel? summary;
+                  for (final family in _families) {
+                    if (family.id == id) {
+                      summary = family;
+                      break;
+                    }
+                  }
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => FamilyDetailScreen(familyId: id, familySummary: summary),
+                    ),
+                  );
+                },
                 desktopStyle: false,
               ),
             ),
@@ -606,12 +619,14 @@ class _DesktopFamilyTile extends StatelessWidget {
               ),
               SizedBox(
                 width: 36,
-                height: 36,
-                child: CircularProgressIndicator(
-                  value: fill.toDouble(),
-                  backgroundColor: AppColors.border,
-                  color: fill >= 1 ? AppColors.warning : AppColors.primary,
-                  strokeWidth: 4,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: fill.toDouble(),
+                    minHeight: 6,
+                    backgroundColor: AppColors.border,
+                    color: fill >= 1 ? AppColors.warning : AppColors.primary,
+                  ),
                 ),
               ),
             ],

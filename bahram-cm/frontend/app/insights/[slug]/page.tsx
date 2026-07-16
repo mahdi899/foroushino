@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ContentViewTracker } from "@/components/analytics/ContentViewTracker";
+import { ServerInsertedJsonLd } from "@/components/bootstrap/ServerInsertedJsonLd";
 import { InsightAdjacentLink } from "@/components/blog/InsightAdjacentLink";
 import { InsightShareButton } from "@/components/blog/InsightShareButton";
 import { Reveal } from "@/components/motion/Reveal";
@@ -88,10 +89,7 @@ export default async function InsightDetailPage({
     <main id="main-content" className="relative min-w-0 max-w-full">
       <ContentViewTracker type="insight" slug={post.slug} />
       {post.canonical_url ? <link rel="canonical" href={post.canonical_url} /> : null}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <ServerInsertedJsonLd id={`jsonld-insight-${post.slug}`} data={jsonLd} />
 
       <section className="insight-hero-split-section">
         <div className="insight-hero-split container-luxe mx-auto max-w-6xl min-w-0">

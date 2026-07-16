@@ -11,12 +11,15 @@ import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
 import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
 import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
+import { useFamilyGuestAccessOptional } from '@/components/family/FamilyGuestAccess';
+import { FAMILY_GUEST_CTA } from '@/lib/family/guest-access';
 import type { FamilyBranding } from '@/lib/family/types';
 
 /** Desktop branding column — Telegram channel-info panel + iOS glass. */
 export function FamilyBrandingSidebar({
   memberCount,
   isMember = true,
+  guestStoriesLocked = false,
   initialBranding,
   notificationsActive = false,
   onOpenNotifications,
@@ -24,22 +27,29 @@ export function FamilyBrandingSidebar({
 }: {
   memberCount?: number;
   isMember?: boolean;
+  guestStoriesLocked?: boolean;
   initialBranding?: FamilyBranding;
   notificationsActive?: boolean;
   onOpenNotifications?: () => void;
   onCloseNotifications?: () => void;
 }) {
+  const guestAccess = useFamilyGuestAccessOptional();
   const { branding } = useFamilyBranding(initialBranding);
   const { unreadCount } = useFamilyUnreadCount(isMember);
   const { hasStories, hasUnseen, markSeen } = useFamilyStoryState(branding);
   const [storyOpen, setStoryOpen] = useState(false);
   const communityAvatar = branding.community_avatar ?? branding.profile_avatar;
-  const storiesAvailable = isMember && hasStories;
+  const storiesAvailable = hasStories;
+  const storiesLocked = guestStoriesLocked && storiesAvailable;
 
   const openStories = useCallback(() => {
-    if (!storiesAvailable) return;
+    if (storiesLocked) {
+      guestAccess?.promptLogin('stories');
+      return;
+    }
+    if (!isMember || !storiesAvailable) return;
     setStoryOpen(true);
-  }, [storiesAvailable]);
+  }, [guestAccess, isMember, storiesAvailable, storiesLocked]);
 
   const handleStoriesFinished = useCallback(
     (storyIds: number[]) => {
@@ -107,7 +117,7 @@ export function FamilyBrandingSidebar({
                     avatarVersion={branding.branding_version}
                     size="xl"
                     hasStoryRing
-                    storyUnseen={hasUnseen}
+                    storyUnseen={!storiesLocked && hasUnseen}
                     verified
                   />
                 </button>
@@ -129,9 +139,11 @@ export function FamilyBrandingSidebar({
               <FamilyStoryHint
                 memberCount={memberCount}
                 memberLabel="عضو فعال"
-                hasUnseen={isMember && hasUnseen}
+                maskMemberCount={guestStoriesLocked}
+                onMaskedMemberCountClick={() => guestAccess?.promptLogin('morePosts')}
+                hasUnseen={!storiesLocked && isMember && hasUnseen}
                 onOpenStories={openStories}
-                showOnlineDot={typeof memberCount === 'number' && memberCount > 0}
+                showOnlineDot={!guestStoriesLocked && typeof memberCount === 'number' && memberCount > 0}
                 className="family-sidebar__subtitle"
               />
               <p className="family-sidebar__bio">
@@ -146,7 +158,7 @@ export function FamilyBrandingSidebar({
             {storiesAvailable && (
               <button type="button" onClick={openStories} className="family-sidebar__story-cta">
                 <CirclePlay className="family-sidebar__story-cta-icon" strokeWidth={1.85} aria-hidden />
-                {hasUnseen ? 'استوری جدید' : 'مشاهده استوری‌ها'}
+                {storiesLocked ? FAMILY_GUEST_CTA : hasUnseen ? 'استوری جدید' : 'مشاهده استوری‌ها'}
               </button>
             )}
           </div>
@@ -157,7 +169,7 @@ export function FamilyBrandingSidebar({
         </div>
       </aside>
 
-      {isMember && (
+      {isMember && !guestStoriesLocked && (
         <StoryViewer
           open={storyOpen}
           onClose={() => setStoryOpen(false)}

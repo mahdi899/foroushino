@@ -5,8 +5,7 @@ import { FamilyAutoJoin } from '@/components/family/FamilyAutoJoin';
 import { FamilyMain, FamilyShell } from '@/components/family/FamilyShell';
 import { FamilyTopBar } from '@/components/family/FamilyTopBar';
 import { FeedView } from '@/components/family/FeedView';
-import { FamilyGuestBlur, FamilyGuestLoginBoot } from '@/components/family/FamilyGuestAuth';
-import { GuestBanner } from '@/components/family/GuestBanner';
+import { FamilyGuestAccessProvider } from '@/components/family/FamilyGuestAccess';
 import { JoinBanner } from '@/components/family/JoinBanner';
 import { JoinContextBoot } from '@/components/family/JoinContextBoot';
 import { OnboardingModal } from '@/components/family/OnboardingModal';
@@ -90,7 +89,8 @@ export function FamilyHome({
         <FamilyTopBar
           memberCount={resolvedMemberCount}
           initialBranding={initialBranding}
-          canViewStories={isMember}
+          canViewStories
+          guestStoriesLocked={isGuest}
           showNotifications={isMember}
           notificationsActive={notificationsOpen}
           onOpenNotifications={openNotifications}
@@ -123,13 +123,9 @@ export function FamilyHome({
         <JoinContextBoot />
       </Suspense>
       {isGuest ? (
-        <>
-          <FamilyGuestLoginBoot />
-          <div className="flex min-h-0 flex-1 flex-col">
-            <FamilyGuestBlur className="flex min-h-0 flex-1 flex-col overflow-hidden">{feed}</FamilyGuestBlur>
-            <GuestBanner />
-          </div>
-        </>
+        <FamilyGuestAccessProvider>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{feed}</div>
+        </FamilyGuestAccessProvider>
       ) : (
         feed
       )}

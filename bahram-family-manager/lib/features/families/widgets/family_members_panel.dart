@@ -8,12 +8,12 @@ import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/core/utils/paginated_scroll.dart';
+import 'package:bahram_family_manager/features/families/family_members_cache.dart';
 import 'package:bahram_family_manager/features/families/widgets/add_family_member_sheet.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
-import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 
 class FamilyMembersPanel extends StatefulWidget {
   const FamilyMembersPanel({
@@ -123,15 +123,29 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
 
   Future<void> _fetchPage(int page, {required bool replace}) async {
     try {
-      final result = await context.read<AppState>().manager.listMembers(
-            familyId: widget.familyId,
-            entryEventId: widget.entryEventId,
-            entryLinkId: widget.entryLinkId,
-            entrySource: widget.entrySource,
-            search: _searchQuery,
-            page: page,
-            perPage: _pageSize,
-          );
+      final canUseCache = page == 1 &&
+          replace &&
+          widget.familyId != null &&
+          _searchQuery == null &&
+          widget.entryEventId == null &&
+          widget.entryLinkId == null &&
+          widget.entrySource == null;
+
+      Future<PaginatedResult<FamilyMemberModel>> fetch() {
+        return context.read<AppState>().manager.listMembers(
+              familyId: widget.familyId,
+              entryEventId: widget.entryEventId,
+              entryLinkId: widget.entryLinkId,
+              entrySource: widget.entrySource,
+              search: _searchQuery,
+              page: page,
+              perPage: _pageSize,
+            );
+      }
+
+      final result = canUseCache
+          ? await FamilyMembersCache.load(widget.familyId!, fetch)
+          : await fetch();
       if (!mounted) return;
       setState(() {
         if (replace) {
@@ -173,7 +187,10 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
       familyId: widget.familyId!,
       familyName: widget.familyName,
     );
-    if (added == true) _loadFirstPage();
+    if (added == true) {
+      if (widget.familyId != null) FamilyMembersCache.invalidate(widget.familyId);
+      _loadFirstPage();
+    }
   }
 
   Future<void> _removeMember(FamilyMemberModel member) async {
@@ -203,6 +220,7 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
           );
       if (mounted) {
         showAppSnackBar(context, 'عضو از خانواده حذف شد.');
+        if (widget.familyId != null) FamilyMembersCache.invalidate(widget.familyId);
         _loadFirstPage();
       }
     } catch (e) {
@@ -212,73 +230,62 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final panel = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!widget.compact) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      widget.title ??
-                          (widget.familyId == null ? 'اعضای کانال خانواده' : 'اعضای این خانواده'),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                  if (_total > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(left: AppSpacing.sm),
-                      child: Text(
-                        toFaDigits(_total.toString()),
-                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  if (_canManage) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    FilledButton.icon(
-                      onPressed: _addMember,
-                      icon: const Icon(Icons.person_add_rounded, size: 18),
-                      label: const Text('افزودن'),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-            ],
-            TextField(
-              controller: _searchCtrl,
-              decoration: InputDecoration(
-                hintText: 'جستجو نام یا موبایل',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: IconButton(
-                  onPressed: _loadFirstPage,
-                  icon: const Icon(Icons.refresh_rounded),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!widget.compact) ...[
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.title ?? (widget.familyId == null ? 'اعضای کانال خانواده' : 'اعضای این خانواده'),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                 ),
-                isDense: widget.compact,
               ),
-              onSubmitted: (_) => _loadFirstPage(),
-            ),
-            if (_canManage && widget.compact) ...[
-              const SizedBox(height: AppSpacing.sm),
-              PrimaryButton(
-                label: 'افزودن عضو',
-                icon: Icons.person_add_rounded,
-                onPressed: _addMember,
-              ),
+              if (_total > 0)
+                Padding(
+                  padding: const EdgeInsets.only(left: AppSpacing.sm),
+                  child: Text(
+                    toFaDigits(_total.toString()),
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              if (_canManage) ...[
+                const SizedBox(width: AppSpacing.sm),
+                FilledButton.icon(
+                  onPressed: _addMember,
+                  icon: const Icon(Icons.person_add_rounded, size: 18),
+                  label: const Text('افزودن'),
+                ),
+              ],
             ],
-            const SizedBox(height: AppSpacing.md),
-            Expanded(child: _buildMembersBody()),
-          ],
-        );
-
-        if (constraints.maxHeight.isFinite) {
-          return panel;
-        }
-
-        return SizedBox(height: 480, child: panel);
-      },
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
+        TextField(
+          controller: _searchCtrl,
+          decoration: InputDecoration(
+            hintText: 'جستجو نام یا موبایل',
+            prefixIcon: const Icon(Icons.search_rounded),
+            suffixIcon: IconButton(
+              onPressed: _loadFirstPage,
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+            isDense: widget.compact,
+          ),
+          onSubmitted: (_) => _loadFirstPage(),
+        ),
+        if (_canManage && widget.compact) ...[
+          const SizedBox(height: AppSpacing.sm),
+          PrimaryButton(
+            label: 'افزودن عضو',
+            icon: Icons.person_add_rounded,
+            onPressed: _addMember,
+          ),
+        ],
+        const SizedBox(height: AppSpacing.md),
+        Expanded(child: _buildMembersBody()),
+      ],
     );
   }
 
@@ -373,13 +380,18 @@ class _MemberTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
     final initial = member.name?.isNotEmpty == true ? member.name!.substring(0, 1) : '؟';
 
-    return GlassPanel(
-      borderRadius: 18,
-      blur: 0,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Row(
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.surface.withValues(alpha: isDark ? 0.55 : 0.92),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: isDark ? AppColors.borderDark : AppColors.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
         children: [
           CircleAvatar(
             radius: 22,
@@ -456,7 +468,7 @@ class _MemberTile extends StatelessWidget {
               icon: const Icon(Icons.person_remove_rounded, color: AppColors.error),
             ),
           ],
-        ],
+        ),
       ),
     );
   }

@@ -340,7 +340,7 @@ class FeedService
         $limit = (int) config('family.feed.guest_preview_posts', 1);
         Cache::forget("family:guest_feed:{$limit}");
         // Also clear a few common limit variants used by clients.
-        foreach ([1, 2, 3, 4, 5, 10, 15] as $n) {
+        foreach ([1, 2, 3, 4, 5, 6, 10, 15] as $n) {
             Cache::forget("family:guest_feed:{$n}");
         }
     }
