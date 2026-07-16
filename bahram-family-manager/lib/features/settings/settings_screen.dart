@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
+import 'package:bahram_family_manager/core/utils/media_url.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
@@ -16,6 +17,7 @@ import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
 import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
+import 'package:bahram_family_manager/widgets/surfaces/panel_gradient_card.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -245,7 +247,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
                           child: Image.network(
-                            _profilePreview?.cdnUrl ?? settings.profileAvatar!,
+                            resolveMediaUrl(_profilePreview?.cdnUrl ?? settings.profileAvatar!) ?? '',
                             height: 96,
                             width: 96,
                             fit: BoxFit.cover,
@@ -267,7 +269,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
                           child: Image.network(
-                            _communityPreview?.cdnUrl ?? settings.communityAvatar!,
+                            resolveMediaUrl(_communityPreview?.cdnUrl ?? settings.communityAvatar!) ?? '',
                             height: 96,
                             width: 96,
                             fit: BoxFit.cover,
@@ -281,6 +283,16 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                       onTap: () => _pickAvatar(community: true),
                     ),
                     const SizedBox(height: AppSpacing.xl),
+                    if (settings.mediaPipeline != null)
+                      PanelSectionCard(
+                        title: 'رسانه و FTP',
+                        icon: Icons.cloud_upload_rounded,
+                        child: _MediaPipelinePanel(
+                          initial: settings.mediaPipeline!,
+                          onChanged: _load,
+                        ),
+                      ),
+                    if (settings.mediaPipeline != null) const SizedBox(height: AppSpacing.xl),
                     PrimaryButton(label: 'ذخیره تنظیمات', loading: _saving, onPressed: _saveSettings),
                   ],
                 );
@@ -377,6 +389,99 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MediaPipelinePanel extends StatefulWidget {
+  const _MediaPipelinePanel({required this.initial, required this.onChanged});
+
+  final FamilyMediaPipelineSettings initial;
+  final VoidCallback onChanged;
+
+  @override
+  State<_MediaPipelinePanel> createState() => _MediaPipelinePanelState();
+}
+
+class _MediaPipelinePanelState extends State<_MediaPipelinePanel> {
+  late bool _optimize;
+  late bool _sync;
+  late bool _ftp;
+  var _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _optimize = widget.initial.optimizeImages;
+    _sync = widget.initial.syncToSiteLibrary;
+    _ftp = widget.initial.ftpUploadEnabled;
+  }
+
+  Future<void> _save(bool Function() readValue, String key, bool value) async {
+    setState(() => _saving = true);
+    try {
+      await context.read<AppState>().manager.updateMediaPipeline({key: value});
+      widget.onChanged();
+      if (mounted) showAppSnackBar(context, 'تنظیمات رسانه ذخیره شد.');
+    } catch (e) {
+      if (mounted) {
+        setState(() => readValue());
+        showAppSnackBar(context, messageOf(e));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'دیسک آپلود: ${widget.initial.uploadDisk} · کتابخانه سایت: ${widget.initial.siteLibraryDisk}',
+          style: TextStyle(color: muted, fontSize: 12),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('بهینه‌سازی خودکار تصاویر (WebP)'),
+          subtitle: const Text('قبل از ذخیره، تصویر فشرده و بهینه می‌شود'),
+          value: _optimize,
+          onChanged: _saving
+              ? null
+              : (v) {
+                  setState(() => _optimize = v);
+                  _save(() => _optimize = widget.initial.optimizeImages, 'optimize_images', v);
+                },
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('همگام‌سازی با کتابخانه رسانه سایت'),
+          subtitle: const Text('هر عکس آپلودشده در پنل ادمین رسانه سایت هم ثبت می‌شود'),
+          value: _sync,
+          onChanged: _saving
+              ? null
+              : (v) {
+                  setState(() => _sync = v);
+                  _save(() => _sync = widget.initial.syncToSiteLibrary, 'sync_to_site_library', v);
+                },
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('آپلود روی FTP'),
+          subtitle: const Text('خاموش = ذخیره محلی public برای توسعه'),
+          value: _ftp,
+          onChanged: _saving
+              ? null
+              : (v) {
+                  setState(() => _ftp = v);
+                  _save(() => _ftp = widget.initial.ftpUploadEnabled, 'ftp_upload_enabled', v);
+                },
+        ),
+      ],
     );
   }
 }

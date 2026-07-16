@@ -14,6 +14,10 @@ use Illuminate\Support\Str;
 
 class FamilyMediaIngestService
 {
+    public function __construct(
+        private readonly FamilyMediaSettingsService $mediaSettings,
+    ) {}
+
     public function ingestSimple(User $uploader, UploadedFile $file, string $type): FamilyMedia
     {
         $mediaType = FamilyMediaType::from($type);
@@ -24,7 +28,7 @@ class FamilyMediaIngestService
 
         $media = FamilyMedia::query()->create([
             'type' => $mediaType,
-            'disk' => config('family.media.disk', 'family_media_ftp'),
+            'disk' => $this->mediaSettings->uploadDisk(),
             'temp_path' => $tempPath,
             'original_filename' => $file->getClientOriginalName(),
             'mime_type' => $file->getMimeType(),
@@ -103,7 +107,7 @@ class FamilyMediaIngestService
 
         $media = FamilyMedia::query()->create([
             'type' => $session->type,
-            'disk' => config('family.media.disk', 'family_media_ftp'),
+            'disk' => $this->mediaSettings->uploadDisk(),
             'temp_path' => $session->temp_path,
             'original_filename' => $session->original_filename,
             'mime_type' => $session->mime_type,

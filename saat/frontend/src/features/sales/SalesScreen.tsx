@@ -27,7 +27,7 @@ import { SaleReviewSheet } from '@/components/domain/SaleReviewSheet'
 import { saleStatusLabels, saleStatusTone } from '@/data/labels'
 import { formatMoney, relativeDayTime, toFa } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
-import { performConfirmSale } from '@/services/saleActions'
+import { performConfirmSale, performRejectSale } from '@/services/saleActions'
 import type { Lead, PaymentMethod, Product, Sale, SaleStatus } from '@/types'
 import { cn } from '@/lib/cn'
 import { DataGate } from '@/components/pwa/DataGate'
@@ -311,7 +311,6 @@ export function SalesScreen() {
   const payments = useStore((s) => s.payments)
   const submitPayment = useStore((s) => s.submitPayment)
   const forwardSaleForConfirmation = useStore((s) => s.forwardSaleForConfirmation)
-  const rejectSale = useStore((s) => s.rejectSale)
   const cancelSale = useStore((s) => s.cancelSale)
   const pushToast = useStore((s) => s.pushToast)
 
@@ -518,10 +517,16 @@ export function SalesScreen() {
         }}
         onConfirm={() => {
           if (!confirmTarget) return
-          haptic('success')
           void performConfirmSale(confirmTarget.id)
-          setConfirmTarget(null)
-          setSuccess('confirmed')
+            .then(() => {
+              haptic('success')
+              setConfirmTarget(null)
+              setSuccess('confirmed')
+            })
+            .catch(() => {
+              haptic('error')
+              pushToast('تایید فروش ناموفق بود. دوباره تلاش کن.', 'error')
+            })
         }}
       />
 
@@ -547,11 +552,17 @@ export function SalesScreen() {
             className="!h-12 !w-full !flex-none !text-[14px]"
             onClick={() => {
               if (!rejectTarget || !rejectReason.trim()) return
-              haptic('warning')
-              rejectSale(rejectTarget.id, rejectReason.trim())
-              pushToast('فروش رد شد')
-              setRejectTarget(null)
-              setRejectReason('')
+              void performRejectSale(rejectTarget.id, rejectReason.trim())
+                .then(() => {
+                  haptic('warning')
+                  pushToast('فروش رد شد')
+                  setRejectTarget(null)
+                  setRejectReason('')
+                })
+                .catch(() => {
+                  haptic('error')
+                  pushToast('رد فروش ناموفق بود', 'error')
+                })
             }}
           />
         </div>
@@ -596,7 +607,7 @@ export function SalesScreen() {
         {success === 'confirmed' && (
           <SuccessScreen
             title="فروش تایید شد"
-            description="پورسانت این فروش به‌صورت معلق در کیف پول فروشنده ثبت شد."
+            description="پورسانت برای تایید لیدر و ناظر ثبت شد. بعد از تایید نهایی، در کیف پول کارشناس قابل برداشت می‌شود."
             icon={ShieldCheck}
             primaryLabel="باشه"
             onPrimary={() => setSuccess(null)}

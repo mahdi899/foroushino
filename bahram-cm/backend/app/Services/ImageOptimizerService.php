@@ -37,6 +37,58 @@ class ImageOptimizerService
         return $this->finalizePreviewSession($sessionId, $dir.'/original.'.$originalExt, $file->getClientOriginalName());
     }
 
+    /**
+     * Optimize a file on disk (family uploads) without an admin preview session.
+     *
+     * @return array{engine: string, converted_to_webp: bool, size: int, mime: string, path: string}
+     */
+    public function optimizeStandalone(string $sourcePath, string $destPath): array
+    {
+        $mime = mime_content_type($sourcePath) ?: 'application/octet-stream';
+        $originalExt = Str::lower(pathinfo($sourcePath, PATHINFO_EXTENSION) ?: 'bin');
+        $skipReason = $this->skipReason($mime, $originalExt);
+
+        if ($skipReason !== null) {
+            if ($sourcePath !== $destPath) {
+                copy($sourcePath, $destPath);
+            }
+
+            return [
+                'engine' => 'none',
+                'converted_to_webp' => false,
+                'size' => (int) (filesize($destPath) ?: 0),
+                'mime' => $mime,
+                'path' => $destPath,
+            ];
+        }
+
+        try {
+            $result = $this->optimize($sourcePath, $destPath, $mime);
+            if (isset($result['path']) && is_string($result['path']) && is_file($result['path'])) {
+                $destPath = $result['path'];
+            }
+
+            return array_merge($result, ['path' => $destPath]);
+        } catch (\Throwable $e) {
+            Log::warning('Family image optimization failed, using original', [
+                'error' => $e->getMessage(),
+                'source' => $sourcePath,
+            ]);
+
+            if ($sourcePath !== $destPath) {
+                copy($sourcePath, $destPath);
+            }
+
+            return [
+                'engine' => 'copy',
+                'converted_to_webp' => false,
+                'size' => (int) (filesize($destPath) ?: 0),
+                'mime' => $mime,
+                'path' => $destPath,
+            ];
+        }
+    }
+
     /** Preview optimization for an existing library item (in-place replace flow). */
     public function createPreviewFromMedia(Media $media): array
     {

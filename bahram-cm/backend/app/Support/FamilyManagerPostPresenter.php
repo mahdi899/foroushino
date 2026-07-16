@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\Family\FamilyPostAudienceMode;
 use App\Models\FamilyMedia;
 use App\Models\FamilyPost;
+use App\Support\FamilyMediaUrl;
 use Illuminate\Support\Collection;
 
 /** Shapes Family Manager post JSON for admin clients (includes safe media URLs). */
@@ -123,6 +124,7 @@ final class FamilyManagerPostPresenter
             'waveform' => $media->waveform,
             'failure_reason' => $media->failure_reason,
             'cdn_url' => $media->cdnUrl(),
+            'url' => FamilyMediaUrl::fromPath($media->storage_path),
         ];
     }
 }

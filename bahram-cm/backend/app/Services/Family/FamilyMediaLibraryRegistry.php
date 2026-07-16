@@ -19,7 +19,7 @@ class FamilyMediaLibraryRegistry
 {
     public const CATEGORY = 'خانواده';
 
-    public function register(FamilyMedia $media): ?Media
+    public function register(FamilyMedia $media, ?string $diskOverride = null): ?Media
     {
         if ($media->status !== FamilyMediaStatus::Ready) {
             return null;
@@ -29,7 +29,7 @@ class FamilyMediaLibraryRegistry
             return null;
         }
 
-        $disk = $this->libraryDisk($media);
+        $disk = $diskOverride ?? $this->libraryDisk($media);
         if (! Storage::disk($disk)->exists($media->storage_path)) {
             return null;
         }

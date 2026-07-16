@@ -586,6 +586,7 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
 
     Route::get('settings', [FamilyManagerSettingsController::class, 'show'])->middleware('family.manage:family.settings.manage');
     Route::patch('settings', [FamilyManagerSettingsController::class, 'update'])->middleware('family.manage:family.settings.manage');
+    Route::patch('settings/media-pipeline', [FamilyManagerSettingsController::class, 'updateMediaPipeline'])->middleware('family.manage:family.settings.manage');
 
     Route::get('stories', [FamilyManagerStoryController::class, 'index'])->middleware('family.manage:family.stories.manage');
     Route::post('stories', [FamilyManagerStoryController::class, 'store'])->middleware('family.manage:family.stories.manage');

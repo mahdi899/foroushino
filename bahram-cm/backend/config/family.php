@@ -42,6 +42,9 @@ return [
         'cdn_url' => rtrim((string) env('FAMILY_MEDIA_CDN_URL', ''), '/'),
         // Local dev without FTP credentials defaults to public disk (media/family/…).
         'disk' => env('FAMILY_MEDIA_DISK') ?: (env('FAMILY_MEDIA_FTP_HOST') ? 'family_media_ftp' : 'public'),
+        'optimize_images' => filter_var(env('FAMILY_OPTIMIZE_IMAGES', true), FILTER_VALIDATE_BOOL),
+        'sync_to_site_library' => filter_var(env('FAMILY_SYNC_TO_SITE_MEDIA', true), FILTER_VALIDATE_BOOL),
+        'ftp_upload_enabled' => filter_var(env('FAMILY_FTP_UPLOAD_ENABLED', true), FILTER_VALIDATE_BOOL),
         'temp_disk' => env('FAMILY_MEDIA_TEMP_DISK', 'local'),
         'temp_path' => 'family-ingest',
         'max_voice_mb' => (int) env('FAMILY_MEDIA_MAX_VOICE_MB', 50),

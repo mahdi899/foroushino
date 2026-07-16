@@ -34,7 +34,7 @@ it('generates a daily performance snapshot from the agent\'s calls', function ()
     expect((float) $snapshot->note_quality)->toBe(100.0);
 });
 
-it('releases pending commissions whose hold window has elapsed to the available balance', function () {
+it('does not auto-release commissions awaiting leader approval', function () {
     $agent = makeAgent();
     $product = makeProduct();
     $lead = makeLead(['assigned_agent_id' => $agent->id]);
@@ -56,40 +56,30 @@ it('releases pending commissions whose hold window has elapsed to the available 
         'status' => CommissionStatus::Pending,
         'available_at' => now()->subHour(),
     ]);
-    app(\App\Services\WalletService::class)->creditPending($commission);
-
-    $this->artisan('commissions:release-due')->assertSuccessful();
-
-    expect($commission->fresh()->status)->toBe(CommissionStatus::Available);
-    $wallet = app(\App\Services\WalletService::class)->ensureWallet($agent)->fresh();
-    expect((float) $wallet->balance_available)->toBe(100000.0);
-    expect((float) $wallet->balance_pending)->toBe(0.0);
-});
-
-it('does not release commissions still inside their hold window', function () {
-    $agent = makeAgent();
-    $product = makeProduct();
-    $lead = makeLead(['assigned_agent_id' => $agent->id]);
-    $sale = \App\Models\Sale::query()->create([
-        'lead_id' => $lead->id,
-        'agent_id' => $agent->id,
-        'product_id' => $product->id,
-        'amount' => 1_000_000,
-        'status' => 'confirmed',
-    ]);
-    $commission = Commission::query()->create([
-        'sale_id' => $sale->id,
-        'agent_id' => $agent->id,
-        'product_id' => $product->id,
-        'lead_id' => $lead->id,
-        'sale_amount' => 1_000_000,
-        'commission_rate' => 10,
-        'commission_amount' => 100_000,
-        'status' => CommissionStatus::Pending,
-        'available_at' => now()->addDays(2),
-    ]);
 
     $this->artisan('commissions:release-due')->assertSuccessful();
 
     expect($commission->fresh()->status)->toBe(CommissionStatus::Pending);
+    $wallet = app(\App\Services\WalletService::class)->ensureWallet($agent)->fresh();
+    expect((float) $wallet->balance_available)->toBe(0.0);
+});
+
+it('rejects supervisor final approval when leader has not approved yet', function () {
+    $team = makeTeam();
+    $leader = makeLeader(['team_id' => $team->id]);
+    $team->update(['leader_id' => $leader->id]);
+    $supervisor = makeSupervisor();
+    $agent = makeAgent(['team_id' => $team->id]);
+    $product = makeProduct(['commission_rate' => 10]);
+    $lead = makeLead(['assigned_agent_id' => $agent->id]);
+    $sale = makeSaleFor($agent, $lead, $product, 'pending_confirmation');
+    $sale->update(['team_id' => $team->id]);
+
+    $commission = app(\App\Actions\Sales\ConfirmSaleAction::class)->execute($sale, $supervisor);
+
+    expect($commission->status->value)->toBe('pending');
+
+    expect(fn () => app(\App\Actions\Wallet\ApproveCommissionBySupervisorAction::class)
+        ->execute($commission->fresh(), $supervisor))
+        ->toThrow(RuntimeException::class, 'این پورسانت هنوز توسط لیدر تایید نشده است.');
 });

@@ -30,8 +30,6 @@ class FamilyMediaView extends StatelessWidget {
     if (media.isImage && url != null) {
       return _ImageView(
         url: url,
-        width: media.width,
-        height: media.height,
         maxHeight: height,
         radius: radius,
       );
@@ -51,75 +49,57 @@ class _ImageView extends StatelessWidget {
   const _ImageView({
     required this.url,
     required this.radius,
-    this.width,
-    this.height,
     this.maxHeight = 360,
   });
 
   final String url;
-  final int? width;
-  final int? height;
   final double maxHeight;
   final BorderRadius radius;
 
   @override
   Widget build(BuildContext context) {
-    final aspect = width != null && height != null && height! > 0 ? width! / height! : null;
-
-    Widget image = Image.network(
-      url,
-      fit: BoxFit.contain,
-      width: double.infinity,
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) return child;
-        return Container(
-          height: maxHeight,
-          color: AppColors.surfaceSoft,
-          child: const Center(child: CircularProgressIndicator()),
-        );
-      },
-      errorBuilder: (_, __, ___) => Container(
-        height: maxHeight,
-        color: AppColors.surfaceSoft,
-        child: const Icon(Icons.broken_image_rounded, color: AppColors.textMuted, size: 40),
-      ),
-    );
-
-    if (aspect != null) {
-      image = AspectRatio(aspectRatio: aspect, child: image);
-    } else {
-      image = ConstrainedBox(
-        constraints: BoxConstraints(maxHeight: maxHeight),
-        child: image,
-      );
-    }
-
     return ClipRRect(
       borderRadius: radius,
-      child: Stack(
-        fit: StackFit.passthrough,
-        children: [
-          image,
-          Positioned(
-            top: AppSpacing.sm,
-            right: AppSpacing.sm,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.45),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.image_rounded, color: Colors.white, size: 14),
-                  SizedBox(width: 4),
-                  Text('تصویر', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-                ],
+      child: SizedBox(
+        width: double.infinity,
+        height: maxHeight,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              url,
+              fit: BoxFit.contain,
+              width: double.infinity,
+              height: maxHeight,
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return const Center(child: CircularProgressIndicator());
+              },
+              errorBuilder: (_, __, ___) => const Center(
+                child: Icon(Icons.broken_image_rounded, color: AppColors.textMuted, size: 40),
               ),
             ),
-          ),
-        ],
+            Positioned(
+              top: AppSpacing.sm,
+              right: AppSpacing.sm,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.image_rounded, color: Colors.white, size: 14),
+                    SizedBox(width: 4),
+                    Text('تصویر', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

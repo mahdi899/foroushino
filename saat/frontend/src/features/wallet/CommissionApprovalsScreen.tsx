@@ -6,11 +6,9 @@ import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { EmptyState } from '@/components/ui/States'
 import { Button } from '@/components/ui/Button'
-import { hasPermission } from '@/lib/permissions'
-import { isLeaderRole, isSupervisorRole } from '@/lib/roles'
 import { formatMoney } from '@/lib/format'
 import { commissionStatusLabels } from '@/data/labels'
-import { filterCommissionQueue } from '@/lib/commissionQueue'
+import { filterCommissionQueue, resolveCommissionApprovalMode } from '@/lib/commissionQueue'
 import {
   approveCommissionAsLeader,
   approveCommissionAsSupervisor,
@@ -31,9 +29,7 @@ export function CommissionApprovalsScreen() {
   const [list, setList] = useState<Commission[]>([])
   const [loading, setLoading] = useState(true)
 
-  const canLeader = hasPermission(permissions, 'commissions.approve-leader')
-  const canSupervisor = hasPermission(permissions, 'commissions.approve-supervisor')
-  const mode = isLeaderRole(role) && canLeader ? 'leader' : isSupervisorRole(role) && canSupervisor ? 'supervisor' : null
+  const mode = resolveCommissionApprovalMode(role, permissions)
 
   useEffect(() => {
     if (!mode) {
@@ -55,11 +51,11 @@ export function CommissionApprovalsScreen() {
       .finally(() => setLoading(false))
   }, [mode, pushToast, commissions, agents, teams, currentAgentId, role])
 
-  const title = mode === 'leader' ? 'تایید پورسانت' : 'تایید نهایی پورسانت'
+  const title = mode === 'leader' ? 'تایید پورسانت (لیدر)' : 'تایید نهایی پورسانت (ناظر)'
   const subtitle =
     mode === 'leader'
-      ? 'پورسانت‌های منتظر تایید سرتیم'
-      : 'پورسانت‌های تایید‌شده توسط لیدر'
+      ? 'ابتدا لیدر تیم باید هر پورسانت را تایید کند؛ سپس برای ناظر ارسال می‌شود.'
+      : 'فقط پورسانت‌هایی که لیدر تیم تایید کرده — تایید نهایی و واریز به کیف پول کارشناس.'
 
   const approve = async (item: Commission) => {
     try {
@@ -97,8 +93,8 @@ export function CommissionApprovalsScreen() {
             title="پورسانتی برای تایید نیست"
             description={
               mode === 'leader'
-                ? 'وقتی فروش کارشناسان تیم تایید نهایی شود، پورسانت اینجا نمایش داده می‌شود.'
-                : 'پورسانت‌های تایید‌شده توسط لیدرها اینجا ظاهر می‌شوند.'
+                ? 'بعد از تایید فروش توسط مدیریت، پورسانت کارشناسان تیم اینجا نمایش داده می‌شود.'
+                : 'پورسانت‌هایی که لیدر تیم تایید کرده اینجا ظاهر می‌شوند — هنوز چیزی از لیدر نرسیده.'
             }
           />
         ) : (

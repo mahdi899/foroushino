@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
  * پروکسی توسعه — یک پورت عمومی (7357):
- *   /api/*  → Laravel :8010
- *   /*      → Flutter web-server :7358
+ *   /api/*      → Laravel :8010
+ *   /storage/*  → Laravel :8010 (فایل‌های رسانه)
+ *   /*          → Flutter web-server :7358
  */
 import http from 'node:http';
 
@@ -43,7 +44,7 @@ function pipeProxy(req, res, { host, port, path }) {
 
 const server = http.createServer((req, res) => {
   const url = req.url ?? '/';
-  if (url.startsWith('/api')) {
+  if (url.startsWith('/api') || url.startsWith('/storage')) {
     pipeProxy(req, res, { host: API_HOST, port: API_PORT, path: url });
     return;
   }
@@ -63,6 +64,7 @@ server.listen(PUBLIC_PORT, '127.0.0.1', () => {
   console.log('  مدیر خانواده — توسعه وب');
   console.log(`  اپ (تنها آدرس مرورگر):  http://localhost:${PUBLIC_PORT}`);
   console.log(`  API (همان origin):       http://localhost:${PUBLIC_PORT}/api/v1`);
+  console.log(`  Storage (همان origin):   http://localhost:${PUBLIC_PORT}/storage/...`);
   console.log(`  Laravel (داخلی):         http://${API_HOST}:${API_PORT}`);
   console.log(`  Flutter (داخلی):         http://127.0.0.1:${FLUTTER_PORT}`);
   console.log('');

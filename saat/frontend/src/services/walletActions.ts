@@ -1,6 +1,6 @@
 import { apiMode } from '@/services'
 import { http } from '@/services/http'
-import { filterCommissionQueue } from '@/lib/commissionQueue'
+import { filterCommissionQueue, resolveCommissionApprovalMode } from '@/lib/commissionQueue'
 import { mapCommission, mapPayoutRequest, mapWallet, mapWalletTransaction, mapBankAccountReview, mapAgentFromAdmin } from '@/services/mappers'
 import { useStore } from '@/store/useStore'
 import type { Agent, BankAccountReview, Commission, PayoutRequest, Wallet } from '@/types'
@@ -42,12 +42,13 @@ export async function refreshWalletBundle(): Promise<void> {
     walletTx,
     payouts: ownPayouts,
   })
+  useStore.getState().syncAgentWalletFromCommissions()
 }
 
 export async function fetchCommissionQueue(): Promise<Commission[]> {
   if (apiMode !== 'http') {
     const state = useStore.getState()
-    const mode = state.role === 'leader' ? 'leader' : state.role === 'supervisor' ? 'supervisor' : null
+    const mode = resolveCommissionApprovalMode(state.role, state.permissions)
     if (!mode) return []
     return filterCommissionQueue(
       state.commissions,
@@ -68,6 +69,7 @@ export async function approveCommissionAsLeader(commissionId: string): Promise<v
     return
   }
   await http.post(`/wallet/commissions/${commissionId}/approve-leader`)
+  await refreshWalletBundle()
 }
 
 export async function approveCommissionAsSupervisor(commissionId: string): Promise<void> {

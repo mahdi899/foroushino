@@ -5,6 +5,8 @@ namespace App\Jobs\Family;
 use App\Enums\Family\FamilyMediaStatus;
 use App\Enums\Family\FamilyMediaType;
 use App\Models\FamilyMedia;
+use App\Services\Family\FamilyImageProcessor;
+use App\Services\Family\FamilyMediaSettingsService;
 use App\Support\FamilyMediaPath;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -26,7 +28,7 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
 
     public function __construct(public int $mediaId) {}
 
-    public function handle(): void
+    public function handle(FamilyImageProcessor $imageProcessor, FamilyMediaSettingsService $settings): void
     {
         $media = FamilyMedia::query()->find($this->mediaId);
         if (! $media) {
@@ -49,14 +51,23 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
         $media->update(['status' => FamilyMediaStatus::Transferring]);
 
         $type = $media->type?->value ?? 'voice';
-        $ext = pathinfo($media->original_filename ?? 'file.bin', PATHINFO_EXTENSION) ?: 'bin';
-        $storagePath = FamilyMediaPath::objectKey($type, $ext);
+        $diskName = $settings->uploadDisk();
+        $tempDisk = Storage::disk(config('family.media.temp_disk', 'local'));
+
+        $extension = pathinfo($media->original_filename ?? 'file.bin', PATHINFO_EXTENSION) ?: 'bin';
+        $uploadAbsolute = $tempDisk->path($media->temp_path);
+        $meta = null;
+
+        if ($type === FamilyMediaType::Image->value && is_string($uploadAbsolute)) {
+            $meta = $imageProcessor->prepare($media, $media->temp_path);
+            $uploadAbsolute = $meta['absolute_path'];
+            $extension = $meta['extension'];
+        }
+
+        $storagePath = FamilyMediaPath::objectKey($type, $extension);
         $partPath = $storagePath.'.part';
 
-        $diskName = config('family.media.disk', 'family_media_ftp');
-        $tempDisk = Storage::disk(config('family.media.temp_disk', 'local'));
-        $stream = $tempDisk->readStream($media->temp_path);
-
+        $stream = fopen($uploadAbsolute, 'rb');
         if ($stream === false) {
             $media->update([
                 'status' => FamilyMediaStatus::Failed,
@@ -74,7 +85,6 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
                 fclose($stream);
             }
 
-            // Prefer atomic rename when supported; fallback to copy+delete.
             if (method_exists($ftp, 'move')) {
                 $ftp->move($partPath, $storagePath);
             } else {
@@ -84,8 +94,15 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
 
             $media->update([
                 'storage_path' => $storagePath,
+                'disk' => $diskName,
                 'status' => FamilyMediaStatus::Processing,
                 'failure_reason' => null,
+                ...(is_array($meta) ? [
+                    'mime_type' => $meta['mime_type'],
+                    'size' => $meta['size'],
+                    'width' => $meta['width'],
+                    'height' => $meta['height'],
+                ] : []),
             ]);
 
             if ($type === 'voice') {
@@ -96,7 +113,7 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
                     ->onQueue(config('family.queues.media', 'family-media'));
             } else {
                 $updates = ['status' => FamilyMediaStatus::Ready];
-                if ($type === FamilyMediaType::Image->value) {
+                if (! is_array($meta)) {
                     $absolute = $tempDisk->path($media->temp_path);
                     $dims = is_string($absolute) ? @getimagesize($absolute) : false;
                     if (is_array($dims)) {

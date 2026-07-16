@@ -697,24 +697,56 @@ class AnalyticsData {
       );
 }
 
+class FamilyMediaPipelineSettings {
+  const FamilyMediaPipelineSettings({
+    required this.optimizeImages,
+    required this.syncToSiteLibrary,
+    required this.ftpUploadEnabled,
+    this.uploadDisk = 'public',
+    this.siteLibraryDisk = 'public',
+    this.cdnUrl,
+  });
+
+  final bool optimizeImages;
+  final bool syncToSiteLibrary;
+  final bool ftpUploadEnabled;
+  final String uploadDisk;
+  final String siteLibraryDisk;
+  final String? cdnUrl;
+
+  factory FamilyMediaPipelineSettings.fromJson(Map<String, dynamic> json) => FamilyMediaPipelineSettings(
+        optimizeImages: json['optimize_images'] == true,
+        syncToSiteLibrary: json['sync_to_site_library'] != false,
+        ftpUploadEnabled: json['ftp_upload_enabled'] != false,
+        uploadDisk: json['upload_disk']?.toString() ?? 'public',
+        siteLibraryDisk: json['site_library_disk']?.toString() ?? 'public',
+        cdnUrl: json['cdn_url']?.toString(),
+      );
+}
+
 class FamilyBrandingSettings {
   FamilyBrandingSettings({
     required this.displayName,
     required this.profileName,
     this.profileAvatar,
     this.communityAvatar,
+    this.mediaPipeline,
   });
 
   final String displayName;
   final String profileName;
   final String? profileAvatar;
   final String? communityAvatar;
+  final FamilyMediaPipelineSettings? mediaPipeline;
 
   factory FamilyBrandingSettings.fromJson(Map<String, dynamic> json) => FamilyBrandingSettings(
         displayName: json['display_name']?.toString() ?? '',
         profileName: json['profile_name']?.toString() ?? '',
         profileAvatar: json['profile_avatar']?.toString(),
         communityAvatar: json['community_avatar']?.toString(),
+        mediaPipeline: json['media_pipeline'] is Map
+            ? FamilyMediaPipelineSettings.fromJson((json['media_pipeline'] as Map).cast<String, dynamic>())
+            : null,
       );
 }
 

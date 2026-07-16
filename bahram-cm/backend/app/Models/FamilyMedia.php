@@ -50,7 +50,7 @@ class FamilyMedia extends Model
 
     public function cdnUrl(): ?string
     {
-        if ($this->status !== FamilyMediaStatus::Ready) {
+        if (! $this->storage_path) {
             return null;
         }
 

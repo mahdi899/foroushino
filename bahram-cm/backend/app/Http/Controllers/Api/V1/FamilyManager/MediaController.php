@@ -8,6 +8,7 @@ use App\Models\FamilyMedia;
 use App\Models\FamilyMediaUploadSession;
 use App\Services\Family\FamilyMediaIngestService;
 use App\Support\ApiResponse;
+use App\Support\FamilyMediaUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -107,6 +108,7 @@ class MediaController extends Controller
             'height' => $media->height,
             'failure_reason' => $media->failure_reason,
             'cdn_url' => $media->cdnUrl(),
+            'url' => FamilyMediaUrl::fromPath($media->storage_path),
             // storage_path and disk credentials are intentionally never exposed.
         ];
     }

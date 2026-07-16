@@ -97,6 +97,11 @@ class FamilyManagerService {
     return FamilyBrandingSettings.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
 
+  Future<FamilyMediaPipelineSettings> updateMediaPipeline(Map<String, dynamic> payload) async {
+    final res = await api.patch('$_base/settings/media-pipeline', data: payload);
+    return FamilyMediaPipelineSettings.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
   Future<List<FamilyStoryModel>> listStories() async {
     final res = await api.get('$_base/stories');
     final data = res['data'] as List? ?? [];

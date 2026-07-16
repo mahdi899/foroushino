@@ -70,4 +70,29 @@ class FamilyMediaLibraryRegistryTest extends TestCase
         $this->assertNull($library);
         $this->assertDatabaseCount('media', 0);
     }
+
+    public function test_site_sync_skipped_when_disabled(): void
+    {
+        $uploader = User::factory()->create(['is_admin' => true]);
+        $path = 'media/family/demo/sync-off.jpg';
+        Storage::disk('public')->put($path, 'fake-image');
+
+        \App\Models\Setting::query()->updateOrCreate(
+            ['group' => 'family', 'key' => 'media_pipeline'],
+            ['value' => ['sync_to_site_library' => false]],
+        );
+        \App\Services\Family\FamilyMediaSettingsService::forgetCachedConfig();
+
+        $familyMedia = FamilyMedia::query()->create([
+            'type' => FamilyMediaType::Image,
+            'disk' => 'public',
+            'storage_path' => $path,
+            'status' => FamilyMediaStatus::Ready,
+            'uploaded_by' => $uploader->id,
+        ]);
+
+        app(\App\Services\Family\FamilyMediaSiteSync::class)->sync($familyMedia);
+
+        $this->assertDatabaseCount('media', 0);
+    }
 }

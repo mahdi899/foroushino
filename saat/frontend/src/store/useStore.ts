@@ -1084,7 +1084,6 @@ export const useStore = create<AppState>()(
           commissionAmount,
           status: 'pending',
           createdAt: nowIso,
-          availableAt: new Date(Date.now() + 3 * 86400_000).toISOString(),
         }
         const walletTx: WalletTransaction = {
           id: uid('wt'),
@@ -1581,6 +1580,7 @@ export const useStore = create<AppState>()(
             ...row,
             conversionRate: conversionRateFromStats(row.callsToday, row.successfulToday),
           }))
+          const ownCommissions = payload.commissions.filter((c) => c.agentId === payload.agent.id)
 
           return {
             leads: hydrateLeads(payload.leads),
@@ -1589,7 +1589,7 @@ export const useStore = create<AppState>()(
             sales: payload.sales,
             payments: payload.payments,
             commissions: payload.commissions,
-            wallet: payload.wallet,
+            wallet: deriveWalletFromCommissions(payload.wallet, ownCommissions),
             walletTx: payload.walletTx,
             payouts: payload.payouts,
             products: payload.products,

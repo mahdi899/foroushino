@@ -38,7 +38,7 @@ import { toFa } from '@/lib/format'
 import { apiMode } from '@/services'
 import { fetchTeamLive } from '@/services/teamLive'
 import { haptic } from '@/lib/telegram'
-import { countPendingCommissionsForLeader, countPendingCommissionsForSupervisor } from '@/lib/commissionQueue'
+import { countPendingCommissionsForLeader, countPendingCommissionsForSupervisor, resolveCommissionApprovalMode } from '@/lib/commissionQueue'
 import { cn } from '@/lib/cn'
 import type { Agent } from '@/types'
 
@@ -346,11 +346,12 @@ export function ManagementHome() {
     .slice(0, 3)
 
   const pendingCommissionCount = useMemo(() => {
-    if (isLeader && canApproveCommissionsLeader) {
+    const mode = resolveCommissionApprovalMode(role, permissions)
+    if (mode === 'leader') {
       return countPendingCommissionsForLeader(commissions, teams, agents, currentAgentId, role)
     }
-    if (isSupervisor && canApproveCommissionsSupervisor) {
-      return countPendingCommissionsForSupervisor(commissions, role)
+    if (mode === 'supervisor') {
+      return countPendingCommissionsForSupervisor(commissions)
     }
     return 0
   }, [
@@ -359,10 +360,7 @@ export function ManagementHome() {
     agents,
     currentAgentId,
     role,
-    isLeader,
-    isSupervisor,
-    canApproveCommissionsLeader,
-    canApproveCommissionsSupervisor,
+    permissions,
   ])
 
   const inboxItems = useMemo(() => {
@@ -411,7 +409,7 @@ export function ManagementHome() {
     if (pendingCommissionCount > 0) {
       items.push({
         id: 'commissions',
-        label: isLeader ? 'پورسانت منتظر تایید' : 'پورسانت منتظر تایید نهایی',
+        label: isLeader ? 'پورسانت منتظر تایید لیدر' : 'پورسانت منتظر تایید نهایی',
         count: pendingCommissionCount,
         onClick: () => navigate('/wallet/approvals'),
       })
@@ -536,24 +534,29 @@ export function ManagementHome() {
     if (isLeader && canApproveCommissionsLeader) {
       items.push({
         id: 'comm-leader',
-        label: 'تایید پورسانت',
+        label: 'تایید پورسانت (لیدر)',
         sublabel:
           pendingCommissionCount > 0
-            ? `${toFa(pendingCommissionCount)} مورد منتظر تایید`
-            : 'کمیسیون کارشناسان تیم',
+            ? `${toFa(pendingCommissionCount)} مورد — قبل از ناظر`
+            : 'پورسانت کارشناسان تیم پس از تایید فروش',
         icon: BadgeDollarSign,
         onClick: () => navigate('/wallet/approvals'),
         tone: 'success',
         badge: pendingCommissionCount,
       })
     }
-    if (isSupervisor && canApproveCommissionsSupervisor) {
+    if ((isSupervisor || isManager) && canApproveCommissionsSupervisor) {
       items.push({
         id: 'comm-supervisor',
         label: 'تایید نهایی پورسانت',
+        sublabel:
+          pendingCommissionCount > 0
+            ? `${toFa(pendingCommissionCount)} مورد تایید‌شده توسط لیدر`
+            : 'فقط پس از تایید لیدر تیم',
         icon: BadgeDollarSign,
         onClick: () => navigate('/wallet/approvals'),
         tone: 'success',
+        badge: pendingCommissionCount,
       })
     }
     if (isSupervisor && hasPermission(permissions, 'wallet.manage-payouts')) {
@@ -593,6 +596,7 @@ export function ManagementHome() {
   }, [
     isLeader,
     isSupervisor,
+    isManager,
     canManageStaff,
     canApproveCommissionsLeader,
     canApproveCommissionsSupervisor,
