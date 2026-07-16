@@ -3,22 +3,31 @@
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ChevronRight } from 'lucide-react';
+import { Bell, ChevronRight } from 'lucide-react';
+import { cn } from '@/lib/cn';
 import { familyMotion } from '@/lib/family/motion';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { StoryViewer } from '@/components/family/StoryViewer';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
+import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
 import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
 import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
 
 export function FamilyTopBar({
   memberCount,
   canViewStories = true,
+  showNotifications = false,
+  notificationsActive = false,
+  onOpenNotifications,
 }: {
   memberCount?: number;
   canViewStories?: boolean;
+  showNotifications?: boolean;
+  notificationsActive?: boolean;
+  onOpenNotifications?: () => void;
 }) {
   const { branding } = useFamilyBranding();
+  const { unreadCount } = useFamilyUnreadCount(showNotifications);
   const { hasStories, hasUnseen, markSeen } = useFamilyStoryState(branding);
   const [storyOpen, setStoryOpen] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -91,6 +100,27 @@ export function FamilyTopBar({
           </Link>
 
           {profileControl}
+
+          {showNotifications ? (
+            <button
+              type="button"
+              onClick={onOpenNotifications}
+              aria-current={notificationsActive ? 'page' : undefined}
+              aria-label="اعلان‌ها"
+              title="اعلان‌ها"
+              className={cn(
+                'family-topbar__action',
+                notificationsActive && 'family-topbar__action--active',
+              )}
+            >
+              <Bell className="family-topbar__action-icon" strokeWidth={1.85} aria-hidden />
+              {unreadCount > 0 && (
+                <span className="family-topbar__badge" aria-hidden>
+                  {unreadCount > 9 ? '9+' : unreadCount.toLocaleString('en-US')}
+                </span>
+              )}
+            </button>
+          ) : null}
         </div>
       </motion.header>
 

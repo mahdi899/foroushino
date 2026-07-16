@@ -43,8 +43,6 @@ type CommentsTarget = {
   onCommentAdded: (comment: FamilyComment) => void;
 };
 
-type MainView = 'feed' | 'notifications';
-
 const SCROLL_IDLE_MS = 650;
 
 function buildFeedItems(posts: FamilyPost[], unreadAfterId: number | null): FeedItem[] {
@@ -95,6 +93,9 @@ export function FeedView({
   onOpenComments,
   onCloseComments,
   onRegisterScrollToPost,
+  notificationsOpen = false,
+  onOpenNotifications,
+  onCloseNotifications,
 }: {
   memberCount?: number;
   previewMode?: 'guest' | 'join' | null;
@@ -106,6 +107,9 @@ export function FeedView({
   onOpenComments?: (target: CommentsTarget) => void;
   onCloseComments?: () => void;
   onRegisterScrollToPost?: (scrollToPost: ((postId: number) => Promise<void>) | null) => void;
+  notificationsOpen?: boolean;
+  onOpenNotifications?: () => void;
+  onCloseNotifications?: () => void;
 }) {
   const isPreview = Boolean(previewMode);
   const effectivePreviewMode = previewMode ?? 'guest';
@@ -146,8 +150,8 @@ export function FeedView({
   const jumpFabRef = useRef<FeedJumpToLatestHandle | null>(null);
   const jumpVisibleRef = useRef(false);
   const feedReadyRef = useRef(false);
-  const mainViewRef = useRef<MainView>('feed');
   const commentsOpenRef = useRef(false);
+  const notificationsOpenRef = useRef(false);
   const initialScrollDoneRef = useRef(false);
   const anchoredToBottomRef = useRef(false);
   const historyReadyRef = useRef(false);
@@ -161,7 +165,6 @@ export function FeedView({
   const scrollAnchorRafRef = useRef<number | null>(null);
   const revealTimerRef = useRef<number | null>(null);
   const maxPostIdRef = useRef(0);
-  const [mainView, setMainView] = useState<MainView>('feed');
   /** False until initial scroll target is applied — hides feed to prevent top→bottom jump. */
   const [feedReady, setFeedReady] = useState(false);
   const [bootTick, setBootTick] = useState(0);
@@ -186,9 +189,9 @@ export function FeedView({
 
   useEffect(() => {
     feedReadyRef.current = feedReady;
-    mainViewRef.current = mainView;
     commentsOpenRef.current = Boolean(commentsTarget);
-  }, [feedReady, mainView, commentsTarget]);
+    notificationsOpenRef.current = notificationsOpen;
+  }, [feedReady, commentsTarget, notificationsOpen]);
 
   const setJumpFabVisible = useCallback((show: boolean) => {
     jumpVisibleRef.current = show;
@@ -206,15 +209,14 @@ export function FeedView({
       : getFeedDistanceFromBottom(root);
     const canShow =
       feedReadyRef.current &&
-      mainViewRef.current === 'feed' &&
       !commentsOpenRef.current &&
+      !notificationsOpenRef.current &&
       distanceFromBottom > 120;
     setJumpFabVisible(canShow);
   }, [getScrollCtx, setJumpFabVisible]);
 
   const openComments = useCallback(
     (target: CommentsTarget) => {
-      setMainView('feed');
       anchoredToBottomRef.current = false;
       onOpenComments?.(target);
     },
@@ -311,8 +313,8 @@ export function FeedView({
 
     const canShowJump =
       feedReadyRef.current &&
-      mainViewRef.current === 'feed' &&
       !commentsOpenRef.current &&
+      !notificationsOpenRef.current &&
       distanceFromBottom > 120;
     setJumpFabVisible(canShowJump);
 
@@ -351,20 +353,20 @@ export function FeedView({
   }, [markScrolling, updateAnchoredToBottom]);
 
   useEffect(() => {
-    if (commentsTarget || mainView !== 'feed' || restoringFromCommentsRef.current) {
+    if (commentsTarget || notificationsOpen || restoringFromCommentsRef.current) {
       setJumpFabVisible(false);
       return;
     }
     updateAnchoredToBottom();
-  }, [posts.length, commentsTarget, mainView, setJumpFabVisible, updateAnchoredToBottom]);
+  }, [posts.length, commentsTarget, notificationsOpen, setJumpFabVisible, updateAnchoredToBottom]);
 
   useEffect(() => {
-    if (!feedReady || commentsTarget || mainView !== 'feed') {
+    if (!feedReady || commentsTarget || notificationsOpen) {
       setJumpFabVisible(false);
       return;
     }
     syncJumpFabFromScroll();
-  }, [feedReady, commentsTarget, mainView, setJumpFabVisible, syncJumpFabFromScroll]);
+  }, [feedReady, commentsTarget, notificationsOpen, setJumpFabVisible, syncJumpFabFromScroll]);
 
   const scrollToPost = useCallback(
     async (postId: number, options?: { behavior?: 'auto' | 'smooth'; highlight?: boolean }) => {
@@ -617,7 +619,7 @@ export function FeedView({
   useEffect(() => {
     const { root } = getScrollCtx();
     const sentinel = topSentinelRef.current;
-    if (!root || !sentinel || !hasMore || mainView !== 'feed' || commentsTarget) return;
+    if (!root || !sentinel || !hasMore || commentsTarget || notificationsOpen) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -640,7 +642,7 @@ export function FeedView({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [commentsTarget, getScrollCtx, hasMore, isValidating, loadMore, mainView, posts.length, scrollIdle]);
+  }, [commentsTarget, getScrollCtx, hasMore, isValidating, loadMore, notificationsOpen, posts.length, scrollIdle]);
 
   useEffect(() => {
     return () => {
@@ -650,7 +652,7 @@ export function FeedView({
     };
   }, []);
 
-  const showFeed = mainView === 'feed' && !commentsTarget;
+  const showFeed = !commentsTarget && !notificationsOpen;
 
   useLayoutEffect(() => {
     if (!showFeed) {
@@ -694,20 +696,17 @@ export function FeedView({
       <FamilyBrandingSidebar
         memberCount={resolvedMemberCount}
         isMember={!isPreview}
-        notificationsActive={mainView === 'notifications'}
-        onOpenNotifications={() => {
-          onCloseComments?.();
-          setMainView('notifications');
-        }}
+        notificationsActive={notificationsOpen}
+        onOpenNotifications={onOpenNotifications}
       />
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="family-feed-pane relative flex min-h-0 min-w-0 flex-1 flex-col">
-          {!isPreview && mainView === 'notifications' ? (
+          {!isPreview && notificationsOpen ? (
             <div className="absolute inset-0 z-50 flex min-h-0 flex-col bg-[var(--family-bg)]">
               <FamilyNotificationsPanel
                 enabled={!isPreview}
-                onClose={() => setMainView('feed')}
+                onClose={() => onCloseNotifications?.()}
                 className="flex min-h-0 flex-1 flex-col"
               />
             </div>
@@ -726,11 +725,11 @@ export function FeedView({
 
           <div
             className={
-              commentsTarget || mainView === 'notifications'
+              commentsTarget || notificationsOpen
                 ? 'pointer-events-none flex min-h-0 min-w-0 flex-1 flex-col'
                 : 'flex min-h-0 min-w-0 flex-1 flex-col'
             }
-            aria-hidden={Boolean(commentsTarget) || mainView === 'notifications'}
+            aria-hidden={Boolean(commentsTarget) || notificationsOpen}
           >
           <div ref={chromeStackRef} className="family-feed-chrome-stack">
             <div className="family-feed-chrome-stack__pin">
