@@ -125,7 +125,8 @@ class FeedController extends Controller
         abort_unless($user, 401);
 
         $context = EntryContext::fromArray($request->only([
-            'source', 'campaign', 'content', 'referrer', 'entry_event', 'entry_event_id',
+            'source', 'campaign', 'content', 'referrer',
+            'entry_event', 'entry_event_id', 'entry_event_ref', 'reel',
         ]));
 
         $membership = $join($user, $context);

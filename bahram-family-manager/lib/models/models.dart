@@ -355,6 +355,47 @@ class FamilyCommentModel {
   }
 }
 
+class FamilyProfileModel {
+  const FamilyProfileModel({this.description, this.notes});
+
+  final String? description;
+  final String? notes;
+
+  factory FamilyProfileModel.fromJson(Map<String, dynamic>? json) => FamilyProfileModel(
+        description: json?['description']?.toString(),
+        notes: json?['notes']?.toString(),
+      );
+
+  Map<String, dynamic> toPayload() => {
+        if (description != null) 'profile_description': description,
+        if (notes != null) 'profile_notes': notes,
+      };
+}
+
+class FamilyEntryEventModel {
+  FamilyEntryEventModel({
+    required this.id,
+    required this.name,
+    this.externalReference,
+    this.type,
+    this.topic,
+  });
+
+  final int id;
+  final String name;
+  final String? externalReference;
+  final String? type;
+  final String? topic;
+
+  factory FamilyEntryEventModel.fromJson(Map<String, dynamic> json) => FamilyEntryEventModel(
+        id: (json['id'] as num).toInt(),
+        name: json['name']?.toString() ?? '',
+        externalReference: json['external_reference']?.toString(),
+        type: json['type']?.toString(),
+        topic: json['topic']?.toString(),
+      );
+}
+
 class FamilySummaryModel {
   FamilySummaryModel({
     required this.id,
@@ -362,8 +403,13 @@ class FamilySummaryModel {
     required this.lifecycle,
     required this.memberCount,
     required this.capacityTarget,
+    required this.capacityMin,
     required this.capacityMax,
     this.primarySource,
+    this.entryEventId,
+    this.acceptingMembers = true,
+    this.profile = const FamilyProfileModel(),
+    this.entryEvent,
   });
 
   final int id;
@@ -371,8 +417,13 @@ class FamilySummaryModel {
   final String lifecycle;
   final int memberCount;
   final int capacityTarget;
+  final int capacityMin;
   final int capacityMax;
   final String? primarySource;
+  final int? entryEventId;
+  final bool acceptingMembers;
+  final FamilyProfileModel profile;
+  final FamilyEntryEventModel? entryEvent;
 
   factory FamilySummaryModel.fromJson(Map<String, dynamic> json) => FamilySummaryModel(
         id: json['id'] as int,
@@ -380,8 +431,17 @@ class FamilySummaryModel {
         lifecycle: json['lifecycle']?.toString() ?? '',
         memberCount: (json['member_count'] as num?)?.toInt() ?? 0,
         capacityTarget: (json['capacity_target'] as num?)?.toInt() ?? 0,
+        capacityMin: (json['capacity_min'] as num?)?.toInt() ?? 0,
         capacityMax: (json['capacity_max'] as num?)?.toInt() ?? 0,
         primarySource: json['primary_source']?.toString(),
+        entryEventId: (json['entry_event_id'] as num?)?.toInt(),
+        acceptingMembers: json['accepting_members'] as bool? ?? true,
+        profile: FamilyProfileModel.fromJson(
+          json['profile'] is Map ? (json['profile'] as Map).cast<String, dynamic>() : null,
+        ),
+        entryEvent: json['entry_event'] is Map
+            ? FamilyEntryEventModel.fromJson((json['entry_event'] as Map).cast<String, dynamic>())
+            : null,
       );
 }
 
@@ -419,8 +479,13 @@ class FamilyDetailModel extends FamilySummaryModel {
     required super.lifecycle,
     required super.memberCount,
     required super.capacityTarget,
+    required super.capacityMin,
     required super.capacityMax,
     super.primarySource,
+    super.entryEventId,
+    super.acceptingMembers,
+    super.profile,
+    super.entryEvent,
     required this.newMembers7d,
     this.dna,
   });
@@ -434,8 +499,17 @@ class FamilyDetailModel extends FamilySummaryModel {
         lifecycle: json['lifecycle']?.toString() ?? '',
         memberCount: (json['member_count'] as num?)?.toInt() ?? 0,
         capacityTarget: (json['capacity_target'] as num?)?.toInt() ?? 0,
+        capacityMin: (json['capacity_min'] as num?)?.toInt() ?? 0,
         capacityMax: (json['capacity_max'] as num?)?.toInt() ?? 0,
         primarySource: json['primary_source']?.toString(),
+        entryEventId: (json['entry_event_id'] as num?)?.toInt(),
+        acceptingMembers: json['accepting_members'] as bool? ?? true,
+        profile: FamilyProfileModel.fromJson(
+          json['profile'] is Map ? (json['profile'] as Map).cast<String, dynamic>() : null,
+        ),
+        entryEvent: json['entry_event'] is Map
+            ? FamilyEntryEventModel.fromJson((json['entry_event'] as Map).cast<String, dynamic>())
+            : null,
         newMembers7d: (json['new_members_7d'] as num?)?.toInt() ?? 0,
         dna: json['dna'] is Map ? FamilyDnaModel.fromJson((json['dna'] as Map).cast<String, dynamic>()) : null,
       );

@@ -12,6 +12,7 @@ class Family extends Model
     protected $fillable = [
         'internal_name',
         'lifecycle',
+        'accepting_members',
         'member_count',
         'capacity_target',
         'capacity_min',
@@ -25,6 +26,7 @@ class Family extends Model
     {
         return [
             'lifecycle' => FamilyLifecycle::class,
+            'accepting_members' => 'boolean',
             'member_count' => 'integer',
             'capacity_target' => 'integer',
             'capacity_min' => 'integer',

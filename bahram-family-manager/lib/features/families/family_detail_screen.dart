@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:bahram_family_manager/core/api/api_exception.dart';
 import 'package:bahram_family_manager/core/labels.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
+import 'package:bahram_family_manager/features/families/family_editor_sheet.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
+import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
@@ -29,9 +32,14 @@ class FamilyDetailScreen extends StatelessWidget {
 
 /// Embeddable family detail — used in master-detail desktop layout and full-screen mobile.
 class FamilyDetailBody extends StatefulWidget {
-  const FamilyDetailBody({super.key, required this.familyId});
+  const FamilyDetailBody({
+    super.key,
+    required this.familyId,
+    this.onChanged,
+  });
 
   final int familyId;
+  final VoidCallback? onChanged;
 
   @override
   State<FamilyDetailBody> createState() => _FamilyDetailBodyState();
@@ -58,22 +66,81 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
     });
   }
 
+  Future<void> _edit(FamilyDetailModel family) async {
+    final saved = await showFamilyEditorSheet(context: context, family: family);
+    if (saved == true) {
+      _load();
+      widget.onChanged?.call();
+    }
+  }
+
+  Future<void> _delete(FamilyDetailModel family) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حذف خانواده'),
+        content: Text(
+          family.memberCount > 0
+              ? 'این خانواده ${toFaDigits(family.memberCount.toString())} عضو دارد و قابل حذف نیست.'
+              : 'خانواده «${family.internalName}» حذف شود؟ این عمل قابل بازگشت نیست.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
+          if (family.memberCount == 0)
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('حذف', style: TextStyle(color: AppColors.error)),
+            ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await context.read<AppState>().manager.deleteFamily(family.id);
+      if (!mounted) return;
+      showAppSnackBar(context, 'خانواده حذف شد.');
+      widget.onChanged?.call();
+      if (Navigator.canPop(context)) Navigator.pop(context);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      showAppSnackBar(context, e.message);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final canManage = context.watch<AppState>().user?.can('family.families.manage') ?? false;
+
     return FutureBuilder<FamilyDetailModel>(
       future: _future,
       builder: (context, snapshot) => AsyncBody<FamilyDetailModel>(
         snapshot: snapshot,
-        builder: (context, family) => FamilyDetailContent(family: family),
+        builder: (context, family) => FamilyDetailContent(
+          family: family,
+          canManage: canManage,
+          onEdit: () => _edit(family),
+          onDelete: () => _delete(family),
+        ),
       ),
     );
   }
 }
 
 class FamilyDetailContent extends StatelessWidget {
-  const FamilyDetailContent({super.key, required this.family});
+  const FamilyDetailContent({
+    super.key,
+    required this.family,
+    required this.canManage,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final FamilyDetailModel family;
+  final bool canManage;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -103,16 +170,61 @@ class FamilyDetailContent extends StatelessWidget {
                 children: [
                   Text(family.internalName, style: Theme.of(context).textTheme.headlineSmall),
                   const SizedBox(height: AppSpacing.xs),
-                  StatusChip(
-                    label: labelOf(lifecycleLabels, family.lifecycle),
-                    color: AppColors.primary,
-                    icon: Icons.groups_rounded,
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.xs,
+                    children: [
+                      StatusChip(
+                        label: labelOf(lifecycleLabels, family.lifecycle),
+                        color: AppColors.primary,
+                        icon: Icons.groups_rounded,
+                      ),
+                      StatusChip(
+                        label: family.acceptingMembers ? 'پذیرش عضو' : 'بسته برای عضوگیری',
+                        color: family.acceptingMembers ? AppColors.success : AppColors.warning,
+                        icon: family.acceptingMembers ? Icons.person_add_alt_1_rounded : Icons.block_rounded,
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
+            if (canManage) ...[
+              IconButton(tooltip: 'ویرایش', onPressed: onEdit, icon: const Icon(Icons.edit_rounded)),
+              IconButton(
+                tooltip: 'حذف',
+                onPressed: onDelete,
+                icon: Icon(Icons.delete_outline_rounded, color: family.memberCount > 0 ? AppColors.textMuted : AppColors.error),
+              ),
+            ],
           ],
         ),
+        if (family.profile.description != null && family.profile.description!.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.lg),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('پروفایل خانواده', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: AppSpacing.sm),
+                Text(family.profile.description!, style: const TextStyle(color: AppColors.textMuted)),
+              ],
+            ),
+          ),
+        ],
+        if (family.profile.notes != null && family.profile.notes!.isNotEmpty) ...[
+          const SizedBox(height: AppSpacing.sm),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('یادداشت مدیر', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: AppSpacing.sm),
+                Text(family.profile.notes!, style: const TextStyle(color: AppColors.textMuted)),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.lg),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -139,6 +251,22 @@ class FamilyDetailContent extends StatelessWidget {
             );
           },
         ),
+        if (family.primarySource != null || family.entryEvent != null) ...[
+          const SizedBox(height: AppSpacing.lg),
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('تخصیص اولیه', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: AppSpacing.sm),
+                if (family.primarySource != null)
+                  Text('منبع: ${labelOf(entrySourceLabels, family.primarySource!)}'),
+                if (family.entryEvent != null)
+                  Text('رویداد: ${family.entryEvent!.name}${family.entryEvent!.externalReference == null ? '' : ' (${family.entryEvent!.externalReference})'}'),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: AppSpacing.xl),
         if (family.dna != null)
           _DnaCard(dna: family.dna!)

@@ -7,6 +7,7 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
+import 'package:bahram_family_manager/features/families/family_editor_sheet.dart';
 import 'package:bahram_family_manager/features/families/family_detail_screen.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
@@ -50,15 +51,32 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
     super.dispose();
   }
 
+  Future<void> _createFamily() async {
+    final created = await showFamilyEditorSheet(context: context);
+    if (created == true) {
+      await _load();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDesktop = AppBreakpoints.isDesktop(context);
+    final canManage = context.watch<AppState>().user?.can('family.families.manage') ?? false;
 
+    final Widget body;
     if (isDesktop) {
-      return AdaptiveScaffold(
+      body = AdaptiveScaffold(
         appBar: AppBar(
           title: const Text('خانواده‌ها'),
           automaticallyImplyLeading: false,
+          actions: [
+            if (canManage)
+              IconButton(
+                tooltip: 'خانواده جدید',
+                onPressed: _createFamily,
+                icon: const Icon(Icons.add_rounded),
+              ),
+          ],
         ),
         body: Row(
           children: [
@@ -76,13 +94,15 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
                     }),
                   ),
                   const Divider(height: 1),
-                  Expanded(child: _FamiliesList(
-                    future: _future,
-                    selectedId: _selectedFamilyId,
-                    onRefresh: _load,
-                    onSelect: _selectFamily,
-                    desktopStyle: true,
-                  )),
+                  Expanded(
+                    child: _FamiliesList(
+                      future: _future,
+                      selectedId: _selectedFamilyId,
+                      onRefresh: _load,
+                      onSelect: _selectFamily,
+                      desktopStyle: true,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -94,38 +114,53 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
                       title: 'یک خانواده انتخاب کنید',
                       subtitle: 'از لیست سمت راست، خانواده مورد نظر را انتخاب کنید.',
                     )
-                  : FamilyDetailBody(key: ValueKey(_selectedFamilyId), familyId: _selectedFamilyId!),
+                  : FamilyDetailBody(
+                      key: ValueKey(_selectedFamilyId),
+                      familyId: _selectedFamilyId!,
+                      onChanged: _load,
+                    ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      body = AdaptiveScaffold(
+        appBar: AppBar(title: const Text('خانواده‌ها')),
+        body: Column(
+          children: [
+            _SearchHeader(
+              searchCtrl: _searchCtrl,
+              lifecycle: _lifecycle,
+              onSearch: _load,
+              onLifecycleChanged: (v) => setState(() {
+                _lifecycle = v;
+                _load();
+              }),
+            ),
+            Expanded(
+              child: _FamiliesList(
+                future: _future,
+                selectedId: _selectedFamilyId,
+                onRefresh: _load,
+                onSelect: (id) => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => FamilyDetailScreen(familyId: id)),
+                ),
+                desktopStyle: false,
+              ),
             ),
           ],
         ),
       );
     }
 
-    return AdaptiveScaffold(
-      appBar: AppBar(title: const Text('خانواده‌ها')),
-      body: Column(
-        children: [
-          _SearchHeader(
-            searchCtrl: _searchCtrl,
-            lifecycle: _lifecycle,
-            onSearch: _load,
-            onLifecycleChanged: (v) => setState(() {
-              _lifecycle = v;
-              _load();
-            }),
-          ),
-          Expanded(
-            child: _FamiliesList(
-              future: _future,
-              selectedId: _selectedFamilyId,
-              onRefresh: _load,
-              onSelect: (id) => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => FamilyDetailScreen(familyId: id)),
-              ),
-              desktopStyle: false,
-            ),
-          ),
-        ],
+    if (!canManage || isDesktop) return body;
+
+    return Scaffold(
+      body: body,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _createFamily,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('خانواده جدید'),
       ),
     );
   }

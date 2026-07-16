@@ -556,7 +556,11 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
     Route::post('comments/{comment}/seen', [FamilyManagerCommentModerationController::class, 'markSeen'])->whereNumber('comment')->middleware('family.manage:family.comments.moderate');
 
     Route::get('families', [FamilyManagerFamiliesController::class, 'index'])->middleware('family.manage:family.families.view');
+    Route::post('families', [FamilyManagerFamiliesController::class, 'store'])->middleware('family.manage:family.families.manage');
     Route::get('families/{family}', [FamilyManagerFamiliesController::class, 'show'])->whereNumber('family')->middleware('family.manage:family.families.view');
+    Route::patch('families/{family}', [FamilyManagerFamiliesController::class, 'update'])->whereNumber('family')->middleware('family.manage:family.families.manage');
+    Route::delete('families/{family}', [FamilyManagerFamiliesController::class, 'destroy'])->whereNumber('family')->middleware('family.manage:family.families.manage');
+    Route::get('entry-events', [FamilyManagerFamiliesController::class, 'entryEvents'])->middleware('family.manage:family.families.view');
     Route::get('audience-suggestions', [FamilyManagerFamiliesController::class, 'audienceSuggestions'])->middleware('family.manage:family.families.view');
 
     Route::get('analytics', [FamilyManagerAnalyticsController::class, 'index'])->middleware('family.manage:family.analytics.view');

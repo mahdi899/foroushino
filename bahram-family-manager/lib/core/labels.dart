@@ -55,6 +55,18 @@ const Map<String, String> rejectionReasonLabels = {
   'other': 'سایر',
 };
 
+const Map<String, String> entrySourceLabels = {
+  'instagram': 'اینستاگرام',
+  'instagram_reel': 'ریلز اینستاگرام',
+  'instagram_story': 'استوری اینستاگرام',
+  'dm_automation': 'اتوماسیون دایرکت',
+  'website': 'وب‌سایت',
+  'article': 'مقاله',
+  'seminar': 'سمینار',
+  'campaign': 'کمپین',
+  'direct': 'ورود مستقیم',
+};
+
 const Map<String, String> lifecycleLabels = {
   'forming': 'در حال تشکیل',
   'active': 'فعال',

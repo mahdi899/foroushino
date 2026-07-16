@@ -11,7 +11,7 @@ class FamilyCreationService
     public function create(?EntryContext $context = null): Family
     {
         return DB::transaction(function () use ($context) {
-            $name = $this->nextInternalName();
+            $name = $this->nextInternalName($context);
 
             return Family::query()->create([
                 'internal_name' => $name,
@@ -26,7 +26,7 @@ class FamilyCreationService
         });
     }
 
-    private function nextInternalName(): string
+    public function nextInternalName(?EntryContext $context = null): string
     {
         $pool = config('family.internal_name_pool', ['سپهر', 'آبان', 'مسیر']);
         $used = Family::query()->pluck('internal_name')->all();

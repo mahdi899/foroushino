@@ -173,6 +173,26 @@ class FamilyManagerService {
     return FamilyDetailModel.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
 
+  Future<FamilyDetailModel> createFamily(Map<String, dynamic> payload) async {
+    final res = await api.post('$_base/families', data: payload);
+    return FamilyDetailModel.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<FamilyDetailModel> updateFamily(int id, Map<String, dynamic> payload) async {
+    final res = await api.patch('$_base/families/$id', data: payload);
+    return FamilyDetailModel.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<void> deleteFamily(int id) => api.delete('$_base/families/$id');
+
+  Future<List<FamilyEntryEventModel>> listEntryEvents({String? search}) async {
+    final res = await api.get('$_base/entry-events', query: {
+      if (search != null && search.isNotEmpty) 'search': search,
+    });
+    final data = res['data'] as List? ?? [];
+    return data.map((e) => FamilyEntryEventModel.fromJson((e as Map).cast<String, dynamic>())).toList();
+  }
+
   Future<List<AudienceSuggestion>> audienceSuggestions() async {
     final res = await api.get('$_base/audience-suggestions');
     final data = res['data'] as List? ?? [];

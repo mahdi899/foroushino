@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { joinFamily } from '@/lib/family/api';
+import { buildFamilyJoinContext } from '@/lib/family/join-context';
 import { FamilyApiError } from '@/lib/family/errors';
 
 export function JoinBanner({ id }: { id?: string }) {
@@ -16,12 +17,7 @@ export function JoinBanner({ id }: { id?: string }) {
     setPending(true);
     setError(null);
     try {
-      await joinFamily({
-        source: searchParams.get('utm_source') ?? searchParams.get('src') ?? undefined,
-        campaign: searchParams.get('utm_campaign') ?? undefined,
-        content: searchParams.get('utm_content') ?? undefined,
-        referrer: typeof document !== 'undefined' ? document.referrer || undefined : undefined,
-      });
+      await joinFamily(buildFamilyJoinContext(searchParams));
       router.refresh();
     } catch (e) {
       setError(e instanceof FamilyApiError ? e.message : 'خطایی رخ داد. دوباره تلاش کن.');
