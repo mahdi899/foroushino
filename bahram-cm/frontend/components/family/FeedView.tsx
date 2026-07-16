@@ -14,7 +14,6 @@ import { FamilyFeedScroll, type FamilyFeedScrollHandle } from '@/components/fami
 import { FamilyFeedBootSkeleton } from '@/components/family/FamilyShellLoading';
 import { PostCard } from '@/components/family/PostCard';
 import { cn } from '@/lib/cn';
-import { FamilyFeedMediaProvider } from '@/lib/family/FamilyFeedMediaContext';
 import {
   captureFeedScrollRestore,
   getFeedDistanceFromBottom,
@@ -42,6 +41,7 @@ import {
   familyFeedDebug,
   installFamilyFeedDebugGlobals,
 } from '@/lib/family/feedDebug';
+import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import { useFamilyFeed } from '@/lib/family/hooks/useFamilyFeed';
 import { useFamilyRealtime } from '@/lib/family/hooks/useFamilyRealtime';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
@@ -56,8 +56,6 @@ type CommentsTarget = {
   postId: number;
   onCommentAdded: (comment: FamilyComment) => void;
 };
-
-const SCROLL_IDLE_MS = 650;
 
 function buildFeedItems(
   posts: FamilyPost[],
@@ -134,6 +132,7 @@ export function FeedView({
   onCloseNotifications?: () => void;
 }) {
   const isPreview = Boolean(previewMode);
+  useFamilyDebugRender(isPreview ? 'FeedView:preview' : 'FeedView');
   const effectivePreviewMode = previewMode ?? 'guest';
   const feedScope: 'guest' | 'member' = isPreview ? 'guest' : 'member';
   const initialPage = initialFeed ? { data: initialFeed.data, meta: initialFeed.meta } : null;
@@ -199,13 +198,12 @@ export function FeedView({
   /** False until initial scroll target is applied — hides feed to prevent top→bottom jump. */
   const [feedReady, setFeedReady] = useState(false);
   const [bootTick, setBootTick] = useState(0);
-  const [scrollIdle, setScrollIdle] = useState(true);
   const [unreadSplitId, setUnreadSplitId] = useState<number | null>(null);
   /** Frozen label for the in-feed unread divider (does not shrink on scroll). */
   const [unreadDividerCount, setUnreadDividerCount] = useState(0);
   const unreadBadgeRef = useRef(0);
-  const scrollIdleRef = useRef(true);
-  const scrollIdleTimerRef = useRef<number | null>(null);
+  /** Suppress stick-to-tip right after natural catch-up (divider removal resizes content). */
+  const catchUpQuietUntilRef = useRef(0);
   const feedItems = useMemo(
     () => buildFeedItems(posts, isPreview ? null : unreadSplitId, unreadDividerCount),
     [posts, isPreview, unreadSplitId, unreadDividerCount],
@@ -232,6 +230,11 @@ export function FeedView({
 
   useFamilyRealtime({
     onFeedUpdated: (payload) => {
+      familyFeedDebug.info('realtime', 'feed updated', {
+        postId: payload.post_id,
+        latest: payload.latest_post_id,
+        anchored: anchoredToBottomRef.current,
+      });
       void mutate();
       if (isPreview) return;
       if (anchoredToBottomRef.current) return;
@@ -312,6 +315,14 @@ export function FeedView({
     [onOpenComments],
   );
 
+  /** Stable per-feed opener so memoized PostCards skip parent re-renders. */
+  const openPostComments = useCallback(
+    (postId: number, handlers: { onCommentAdded: (comment: FamilyComment) => void }) => {
+      openComments({ postId, ...handlers });
+    },
+    [openComments],
+  );
+
   const closeComments = useCallback(() => {
     anchoredToBottomRef.current = false;
     restoringFromCommentsRef.current = true;
@@ -326,6 +337,7 @@ export function FeedView({
     if (!root || pinNavigateRef.current || restoringFromCommentsRef.current) return;
     // Never jump to tip while older pages are being prepended / unread boot.
     if (loadingHistoryRef.current || scrollRestoreRef.current || unreadBootLockRef.current) return;
+    if (performance.now() < catchUpQuietUntilRef.current) return;
 
     // After prepend, keep the captured post glued while media/layout settle.
     if (historyPinRef.current) {
@@ -339,7 +351,21 @@ export function FeedView({
     // Do NOT scroll-to-latest while historyReady is false — that raced unread landing on every resize/re-render.
     if (!historyReadyRef.current) return;
     if (!anchoredToBottomRef.current) return;
-    familyFeedDebug.warn('stick', 'scroll to latest (anchored)');
+
+    const distance = lenis
+      ? getLenisDistanceFromBottom(lenis)
+      : getFeedDistanceFromBottom(root);
+    // Already at tip — skip lenis.resize()/scrollTo storms (unread divider clear, image decode).
+    if (distance < 8) return;
+    // Anchor flag is stale (user scrolled away) — don't yank.
+    if (distance > 96) {
+      anchoredToBottomRef.current = false;
+      return;
+    }
+
+    familyFeedDebug.warn('stick', 'scroll to latest (anchored)', {
+      distance: Math.round(distance),
+    });
     scrollFeedToLatest('auto', { root, lenis });
   }, [getScrollCtx]);
 
@@ -367,6 +393,8 @@ export function FeedView({
     });
     setLastReadPostId(viewerKey, latestId);
     pushUnreadBadge(0);
+    // Quiet stick while divider unmount shrinks feed height (ResizeObserver).
+    catchUpQuietUntilRef.current = performance.now() + 450;
     // Must clear to null — leaving latestId broke FAB jump (treated as active unread split).
     if (split != null) {
       unreadSplitRef.current = null;
@@ -526,21 +554,6 @@ export function FeedView({
     }
   }, [getScrollCtx, isPreview, markCaughtUpToLatest, pushUnreadBadge, setJumpFabVisible, viewerKey]);
 
-  const markScrolling = useCallback(() => {
-    if (!scrollIdleRef.current) {
-      if (scrollIdleTimerRef.current != null) window.clearTimeout(scrollIdleTimerRef.current);
-    } else {
-      scrollIdleRef.current = false;
-      setScrollIdle(false);
-    }
-
-    scrollIdleTimerRef.current = window.setTimeout(() => {
-      scrollIdleRef.current = true;
-      setScrollIdle(true);
-      scrollIdleTimerRef.current = null;
-    }, SCROLL_IDLE_MS);
-  }, []);
-
   const handleFeedScroll = useCallback(() => {
     // User is scrolling — stop fighting them with history pin restores.
     if (historyPinRef.current) {
@@ -550,14 +563,13 @@ export function FeedView({
         historyPinClearTimerRef.current = null;
       }
     }
-    markScrolling();
     if (pinNavigateRef.current) return;
     if (scrollAnchorRafRef.current != null) return;
     scrollAnchorRafRef.current = requestAnimationFrame(() => {
       scrollAnchorRafRef.current = null;
       updateAnchoredToBottom();
     });
-  }, [markScrolling, updateAnchoredToBottom]);
+  }, [updateAnchoredToBottom]);
 
   useEffect(() => {
     if (commentsTarget || notificationsOpen || restoringFromCommentsRef.current) {
@@ -1058,9 +1070,6 @@ export function FeedView({
 
   useEffect(() => {
     return () => {
-      if (scrollIdleTimerRef.current != null) {
-        window.clearTimeout(scrollIdleTimerRef.current);
-      }
       if (historyPinClearTimerRef.current != null) {
         window.clearTimeout(historyPinClearTimerRef.current);
       }
@@ -1161,8 +1170,7 @@ export function FeedView({
             <FamilyFeedChrome parts="now" showPinned={false} showNowPlaying />
           </div>
 
-          <FamilyFeedMediaProvider scrollIdle={scrollIdle}>
-            <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
               {!feedReady ? (
                 <FamilyFeedBootSkeleton className="absolute inset-0 z-20 overflow-hidden bg-[var(--family-chat-bg)]" />
               ) : null}
@@ -1227,11 +1235,7 @@ export function FeedView({
                         viewerKey={viewerKey}
                         onPreviewInteract={scrollToPreviewCta}
                         animateEnter={animateEnter}
-                        onOpenComments={
-                          isPreview
-                            ? undefined
-                            : (handlers) => openComments({ postId: item.post.id, ...handlers })
-                        }
+                        onOpenComments={isPreview ? undefined : openPostComments}
                       />
                     );
                   })}
@@ -1244,7 +1248,6 @@ export function FeedView({
             </div>
           </FamilyFeedScroll>
             </div>
-          </FamilyFeedMediaProvider>
 
           {!isPreview && (
             <FeedJumpToLatest

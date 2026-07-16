@@ -9,6 +9,8 @@ import { FamilyBodyPortal } from '@/components/family/FamilyBodyPortal';
 import { FamilyReactionLottie } from '@/components/family/FamilyReactionLottie';
 import { FAMILY_ALL_REACTIONS } from '@/lib/family/reactions';
 import { removeReaction, setReaction } from '@/lib/family/api';
+import { familyFeedDebug } from '@/lib/family/feedDebug';
+import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import { ReactionFlyBurst, type ReactionFlyBurstPayload } from '@/components/family/ReactionFlyBurst';
 import type { FamilyPostStats, FamilyReactionType } from '@/lib/family/types';
 
@@ -117,6 +119,7 @@ export const ReactionBar = forwardRef<
   { postId, stats, userReaction, readOnly = false, onLockedInteract, pickerAnchorRef },
   ref,
 ) {
+  useFamilyDebugRender(`ReactionBar:${postId}`);
   const [active, setActive] = useState<FamilyReactionType | null>(userReaction);
   const [counts, setCounts] = useState<FamilyPostStats>(() => ({
     fire: stats.fire ?? 0,
@@ -264,6 +267,8 @@ export const ReactionBar = forwardRef<
     const wasActive = active === type;
     const prevActive = active;
     const prevCounts = counts;
+    familyFeedDebug.mark(`reaction:${postId}:${type}`);
+    familyFeedDebug.info('reaction', wasActive ? 'remove' : 'set', { postId, type });
 
     setCounts((c) => {
       const next = { ...c };
@@ -279,7 +284,13 @@ export const ReactionBar = forwardRef<
       } else {
         await setReaction(postId, type);
       }
-    } catch {
+      familyFeedDebug.measure(`reaction:${postId}:${type}`, 'reaction', { postId, type, ok: true });
+    } catch (err) {
+      familyFeedDebug.error('reaction', 'persist failed', {
+        postId,
+        type,
+        error: String(err),
+      });
       setActive(prevActive);
       setCounts(prevCounts);
     } finally {
@@ -333,6 +344,8 @@ export const ReactionBar = forwardRef<
       prevActive: FamilyReactionType | null,
       prevCounts: FamilyPostStats,
     ) => {
+      const mark = `reaction:${postId}:${type}`;
+      familyFeedDebug.mark(mark);
       setPending(true);
       try {
         if (wasActive) {
@@ -340,7 +353,13 @@ export const ReactionBar = forwardRef<
         } else {
           await setReaction(postId, type);
         }
-      } catch {
+        familyFeedDebug.measure(mark, 'reaction', { postId, type, ok: true, wasActive });
+      } catch (err) {
+        familyFeedDebug.error('reaction', 'persist failed', {
+          postId,
+          type,
+          error: String(err),
+        });
         setActive(prevActive);
         setCounts(prevCounts);
         setIncomingReaction(null);
@@ -521,6 +540,7 @@ export const ReactionBar = forwardRef<
       if (pending || pickInFlight) return;
 
       const wasActive = active === type;
+      familyFeedDebug.info('reaction', 'quickReact', { postId, type, wasActive, hasAt: Boolean(at) });
 
       if (wasActive) {
         void toggle(type);

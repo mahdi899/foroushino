@@ -6,6 +6,8 @@ import { CommentAvatar } from '@/components/family/CommentAvatar';
 import { useFamilyComments } from '@/lib/family/hooks/useFamilyComments';
 import { FamilyApiError } from '@/lib/family/errors';
 import { formatPostDateTime } from '@/lib/family/datetime';
+import { familyFeedDebug } from '@/lib/family/feedDebug';
+import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import type { FamilyComment } from '@/lib/family/types';
 import { cn } from '@/lib/cn';
 
@@ -59,6 +61,7 @@ export function CommentsPanel({
   hideTitle = false,
   className,
 }: CommentsPanelProps) {
+  useFamilyDebugRender(`CommentsPanel:${postId}`);
   const { comments, isLoading, error: loadError, submitting, submit, loadMore, loadingMore, hasMore } =
     useFamilyComments(postId, true);
   const [value, setValue] = useState('');
@@ -99,16 +102,25 @@ export function CommentsPanel({
     const body = value.trim();
     if (!body || submitting) return;
     setError(null);
+    familyFeedDebug.mark(`comment:${postId}`);
+    familyFeedDebug.info('comment', 'submit start', { postId, len: body.length });
     try {
       const created = await submit(body);
       setValue('');
       setJustSent(true);
+      familyFeedDebug.measure(`comment:${postId}`, 'comment', {
+        postId,
+        id: created?.id,
+        pending: Boolean(created?.is_pending_mine),
+      });
       if (created && !created.is_pending_mine) {
         onCommentAdded?.(created);
       }
       setTimeout(() => setJustSent(false), 3000);
     } catch (e) {
-      setError(e instanceof FamilyApiError ? e.message : 'ارسال نظر ناموفق بود.');
+      const message = e instanceof FamilyApiError ? e.message : 'ارسال نظر ناموفق بود.';
+      familyFeedDebug.error('comment', 'submit failed', { postId, error: message });
+      setError(message);
     }
   };
 

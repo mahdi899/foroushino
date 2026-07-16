@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type SetStateAction } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type SetStateAction } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { EmojiRichText } from '@/components/emoji/EmojiRichText';
 import { cn } from '@/lib/cn';
@@ -15,6 +15,7 @@ import { CommentThreadPreview } from '@/components/family/CommentThreadPreview';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { PostMetaRow } from '@/components/family/PostMetaRow';
 import { ReactionBar, type ReactionBarHandle } from '@/components/family/ReactionBar';
+import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import type { FamilyComment } from '@/lib/family/types';
 import type { FamilyPost, FamilyPostBlock } from '@/lib/family/types';
 
@@ -129,11 +130,14 @@ function FeedPostCard({
   previewMode: 'guest' | 'join' | null;
   viewerKey: string | number;
   onPreviewInteract?: () => void;
-  onOpenComments?: (handlers: { onCommentAdded: (comment: FamilyComment) => void }) => void;
+  onOpenComments?: (
+    postId: number,
+    handlers: { onCommentAdded: (comment: FamilyComment) => void },
+  ) => void;
   commentCount: number;
   setCommentCount: Dispatch<SetStateAction<number>>;
-  commentPreview: FamilyComment[];
   setCommentPreview: Dispatch<SetStateAction<FamilyComment[]>>;
+  commentPreview: FamilyComment[];
   anchorId?: string;
   animateEnter?: boolean;
 }) {
@@ -158,7 +162,7 @@ function FeedPostCard({
       onPreviewInteract?.();
       return;
     }
-    onOpenComments?.({
+    onOpenComments?.(post.id, {
       onCommentAdded: (comment) => {
         setCommentCount((c) => c + 1);
         setCommentPreview((prev) => {
@@ -167,7 +171,14 @@ function FeedPostCard({
         });
       },
     });
-  }, [onOpenComments, onPreviewInteract, previewMode, setCommentCount, setCommentPreview]);
+  }, [
+    onOpenComments,
+    onPreviewInteract,
+    post.id,
+    previewMode,
+    setCommentCount,
+    setCommentPreview,
+  ]);
 
   const handleBubbleDoubleClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
@@ -351,7 +362,7 @@ function FeedPostCard({
   );
 }
 
-export function PostCard({
+export const PostCard = memo(function PostCard({
   post,
   compact = false,
   variant = 'feed',
@@ -374,10 +385,14 @@ export function PostCard({
   previewMode?: 'guest' | 'join' | null;
   viewerKey?: string | number;
   onPreviewInteract?: () => void;
-  onOpenComments?: (handlers: { onCommentAdded: (comment: FamilyComment) => void }) => void;
+  onOpenComments?: (
+    postId: number,
+    handlers: { onCommentAdded: (comment: FamilyComment) => void },
+  ) => void;
   anchorId?: string;
   animateEnter?: boolean;
 }) {
+  useFamilyDebugRender(`PostCard:${post.id}`);
   const [commentCount, setCommentCount] = useState(post.stats.comments);
   const [commentPreview, setCommentPreview] = useState(post.comment_preview ?? []);
 
@@ -493,7 +508,7 @@ export function PostCard({
               onPreviewInteract?.();
               return;
             }
-            onOpenComments?.({
+            onOpenComments?.(post.id, {
               onCommentAdded: (comment) => {
                 setCommentCount((c) => c + 1);
                 setCommentPreview((prev) => {
@@ -507,4 +522,4 @@ export function PostCard({
       )}
     </article>
   );
-}
+});
