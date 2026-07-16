@@ -317,4 +317,26 @@ class FeedService
 
         return [$publishedAt, (int) $id];
     }
+
+    /**
+     * Lightweight badge payload for the site "خانواده" nav and feed jump FAB.
+     *
+     * @return array{unread_count: int, latest_post_id: int}
+     */
+    public function unreadSummary(int $afterId): array
+    {
+        $base = FamilyPost::query()
+            ->where('status', FamilyPostStatus::Published->value)
+            ->whereNotNull('published_at');
+
+        $latestId = (int) ((clone $base)->max('id') ?? 0);
+        $unreadCount = $afterId > 0
+            ? (int) (clone $base)->where('id', '>', $afterId)->count()
+            : 0;
+
+        return [
+            'unread_count' => $unreadCount,
+            'latest_post_id' => $latestId,
+        ];
+    }
 }

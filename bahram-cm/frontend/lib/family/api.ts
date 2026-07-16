@@ -37,6 +37,16 @@ export async function getFeed(cursor?: string | null, limit = 4): Promise<Family
   return run(() => familyFetch<FamilyFeedResponse>(`/feed${qs}`), 'دریافت فید ناموفق بود.');
 }
 
+export async function getFeedUnreadSummary(
+  afterId: number,
+): Promise<{ data: { unread_count: number; latest_post_id: number } }> {
+  const qs = `?after_id=${Math.max(0, Math.floor(afterId))}`;
+  return run(
+    () => familyFetch<{ data: { unread_count: number; latest_post_id: number } }>(`/feed/unread-summary${qs}`),
+    'دریافت پست‌های جدید ناموفق بود.',
+  );
+}
+
 export async function getBranding(): Promise<{ data: FamilyBranding }> {
   return run(() => familyFetch<{ data: FamilyBranding }>(`/branding`), 'دریافت برندینگ ناموفق بود.');
 }

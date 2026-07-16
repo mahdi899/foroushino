@@ -297,6 +297,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
         mediaId={media.id}
         postId={postId}
         durationHint={media.duration}
+        portrait={isPortrait}
         onClose={() => setModalOpen(false)}
       />
     </>

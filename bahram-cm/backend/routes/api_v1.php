@@ -493,6 +493,7 @@ Route::post('chatbot/poll', [ChatbotController::class, 'poll']);
 Route::prefix('family')->group(function () {
     // Guest preview + member feed both hit index(); controller checks auth.
     Route::get('feed', [FamilyFeedController::class, 'index'])->middleware('throttle:120,1');
+    Route::get('feed/unread-summary', [FamilyFeedController::class, 'unreadSummary'])->middleware('throttle:120,1');
     Route::get('branding', [FamilyBrandingController::class, 'show'])->middleware('throttle:120,1');
     Route::get('posts/{post}', [FamilyFeedController::class, 'show'])->whereNumber('post')->middleware('throttle:120,1');
     Route::get('pulse', [FamilyPulseController::class, 'index'])->middleware('throttle:60,1');

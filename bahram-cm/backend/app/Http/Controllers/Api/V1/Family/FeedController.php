@@ -85,6 +85,15 @@ class FeedController extends Controller
         );
     }
 
+    public function unreadSummary(Request $request): JsonResponse
+    {
+        $afterId = max(0, $request->integer('after_id'));
+
+        return ApiResponse::success(
+            $this->feed->unreadSummary($afterId),
+        );
+    }
+
     public function pinned(Request $request): JsonResponse
     {
         $posts = $this->feed->pinnedForMember($request->user());

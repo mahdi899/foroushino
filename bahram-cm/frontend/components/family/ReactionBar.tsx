@@ -1,6 +1,7 @@
 'use client';
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { flushSync } from 'react-dom';
 import { SmilePlus } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { fontClassName } from '@/lib/fonts';
@@ -286,26 +287,94 @@ export const ReactionBar = forwardRef<
     }
   };
 
-  const resolveReactionDestination = useCallback((type: FamilyReactionType) => {
-    const destEl = reactionBtnRefs.current[type] ?? addBtnRef.current;
+  const measureReactionChip = useCallback((type: FamilyReactionType) => {
+    const destEl = reactionBtnRefs.current[type];
     if (!destEl) return null;
     const rect = destEl.getBoundingClientRect();
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }, []);
 
-  const waitForReactionDestination = useCallback(
+  /** Fallback only after mount wait — approximate landing just before the + button (LTR bar). */
+  const predictChipNearAddButton = useCallback(() => {
+    const add = addBtnRef.current;
+    if (!add) return null;
+    const rect = add.getBoundingClientRect();
+    const estimatedHalfWidth = 21;
+    const gap = 6;
+    return {
+      x: rect.left - gap - estimatedHalfWidth,
+      y: rect.top + rect.height / 2,
+    };
+  }, []);
+
+  const waitForChipDestination = useCallback(
     (type: FamilyReactionType, attempt = 0): Promise<{ x: number; y: number } | null> =>
       new Promise((resolve) => {
-        const point = resolveReactionDestination(type);
-        if (point || attempt >= 8) {
+        const point = measureReactionChip(type);
+        if (point) {
           resolve(point);
           return;
         }
+        if (attempt >= 36) {
+          resolve(predictChipNearAddButton());
+          return;
+        }
         window.requestAnimationFrame(() => {
-          void waitForReactionDestination(type, attempt + 1).then(resolve);
+          void waitForChipDestination(type, attempt + 1).then(resolve);
         });
       }),
-    [resolveReactionDestination],
+    [measureReactionChip, predictChipNearAddButton],
+  );
+
+  const persistReactionChange = useCallback(
+    async (
+      type: FamilyReactionType,
+      wasActive: boolean,
+      prevActive: FamilyReactionType | null,
+      prevCounts: FamilyPostStats,
+    ) => {
+      setPending(true);
+      try {
+        if (wasActive) {
+          await removeReaction(postId);
+        } else {
+          await setReaction(postId, type);
+        }
+      } catch {
+        setActive(prevActive);
+        setCounts(prevCounts);
+        setIncomingReaction(null);
+        setFlyAnim(null);
+        setPickInFlight(false);
+        setLaunchingType(null);
+      } finally {
+        setPending(false);
+      }
+    },
+    [postId],
+  );
+
+  const applyReactionOptimistic = useCallback(
+    (type: FamilyReactionType, opts?: { incoming?: boolean }) => {
+      const wasActive = active === type;
+      const prevActive = active;
+      const prevCounts = counts;
+      const isNewSlot = !wasActive && counts[type] === 0;
+
+      flushSync(() => {
+        setCounts((c) => {
+          const next = { ...c };
+          if (prevActive) next[prevActive] = Math.max(0, next[prevActive] - 1);
+          if (!wasActive) next[type] += 1;
+          return next;
+        });
+        setActive(wasActive ? null : type);
+        if (opts?.incoming && isNewSlot) setIncomingReaction(type);
+      });
+
+      return { wasActive, prevActive, prevCounts, isNewSlot };
+    },
+    [active, counts],
   );
 
   const triggerPostImpact = useCallback(() => {
@@ -351,6 +420,36 @@ export const ReactionBar = forwardRef<
     [playBarReactionFeedback],
   );
 
+  const startFlyToChip = useCallback(
+    async (type: FamilyReactionType, from: { x: number; y: number }, isNewSlot: boolean) => {
+      if (isNewSlot) setIncomingReaction(type);
+      // Layout after flushSync — prefer real chip center, never the + button first.
+      const to =
+        measureReactionChip(type) ??
+        (await new Promise<{ x: number; y: number } | null>((resolve) => {
+          window.requestAnimationFrame(() => {
+            const next = measureReactionChip(type);
+            if (next) {
+              resolve(next);
+              return;
+            }
+            void waitForChipDestination(type).then(resolve);
+          });
+        }));
+      if (!to) {
+        finishFlyAnimation(type);
+        return;
+      }
+      setFlyAnim({
+        id: Date.now(),
+        type,
+        from,
+        to,
+      });
+    },
+    [finishFlyAnimation, measureReactionChip, waitForChipDestination],
+  );
+
   const handlePick = (type: FamilyReactionType, sourceEl: HTMLButtonElement) => {
     if (readOnly) {
       onLockedInteract?.();
@@ -373,11 +472,11 @@ export const ReactionBar = forwardRef<
 
     setLaunchingType(type);
     setPickInFlight(true);
-    const isNewSlot = counts[type] === 0;
     const fromRect = sourceEl.getBoundingClientRect();
     const from = { x: fromRect.left + fromRect.width / 2, y: fromRect.top + fromRect.height / 2 };
 
-    void toggle(type);
+    const { prevActive, prevCounts, isNewSlot } = applyReactionOptimistic(type, { incoming: true });
+    void persistReactionChange(type, false, prevActive, prevCounts);
 
     window.setTimeout(() => {
       setPickerOpen(false);
@@ -387,19 +486,7 @@ export const ReactionBar = forwardRef<
       }, PICKER_BURST_MS);
     }, PICKER_FLY_DELAY_MS);
 
-    void waitForReactionDestination(type).then((to) => {
-      if (!to) {
-        finishFlyAnimation(type);
-        return;
-      }
-      if (isNewSlot) setIncomingReaction(type);
-      setFlyAnim({
-        id: Date.now(),
-        type,
-        from,
-        to,
-      });
-    });
+    void startFlyToChip(type, from, isNewSlot);
   };
 
   const openPickerMenu = useCallback(
@@ -435,33 +522,17 @@ export const ReactionBar = forwardRef<
 
       const wasActive = active === type;
 
-      // Second double-click removes the reaction (same as tapping the chip).
       if (wasActive) {
         void toggle(type);
         playBarReactionFeedback(type);
         return;
       }
 
-      // Same fly → slam path as picking from the reaction menu.
       setPickInFlight(true);
-      const isNewSlot = counts[type] === 0;
-      const from = at ?? resolveReactionDestination(type) ?? { x: 0, y: 0 };
-
-      void toggle(type);
-
-      void waitForReactionDestination(type).then((to) => {
-        if (!to) {
-          finishFlyAnimation(type);
-          return;
-        }
-        if (isNewSlot) setIncomingReaction(type);
-        setFlyAnim({
-          id: Date.now(),
-          type,
-          from,
-          to,
-        });
-      });
+      const from = at ?? measureReactionChip(type) ?? predictChipNearAddButton() ?? { x: 0, y: 0 };
+      const { prevActive, prevCounts, isNewSlot } = applyReactionOptimistic(type, { incoming: true });
+      void persistReactionChange(type, false, prevActive, prevCounts);
+      void startFlyToChip(type, from, isNewSlot);
     },
   }));
 
