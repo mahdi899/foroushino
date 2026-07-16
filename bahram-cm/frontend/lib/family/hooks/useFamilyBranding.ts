@@ -15,13 +15,21 @@ const DEFAULT_BRANDING: FamilyBranding = {
 };
 
 export function useFamilyBranding(fallback?: FamilyBranding) {
-  const { data, mutate } = useSWR('family-branding', async () => (await getBranding()).data, {
-    fallbackData: fallback,
-    ...familyBrandingSwr,
-  });
+  const { data, mutate, isLoading } = useSWR(
+    'family-branding',
+    async () => (await getBranding()).data,
+    {
+      fallbackData: fallback,
+      ...familyBrandingSwr,
+    },
+  );
+
+  const resolved = data ?? fallback ?? DEFAULT_BRANDING;
 
   return {
-    branding: data ?? fallback ?? DEFAULT_BRANDING,
+    branding: resolved,
+    /** True until the first branding response (no cached/fallback data yet). */
+    isLoading: Boolean(isLoading && !data && !fallback),
     refreshBranding: mutate,
   };
 }

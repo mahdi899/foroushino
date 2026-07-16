@@ -4,9 +4,9 @@ import useSWR from 'swr';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { NowPlayingBar } from '@/components/family/NowPlayingBar';
 import { PinnedMessageBar } from '@/components/family/PinnedMessageBar';
+import { PinnedBarSkeleton } from '@/components/family/PinnedBarSkeleton';
 import { getPinnedPosts } from '@/lib/family/api';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
-import { familyMotion } from '@/lib/family/motion';
 import { familyPinnedSwr } from '@/lib/family/swr';
 
 type ChromePart = 'pinned' | 'now' | 'all';
@@ -31,25 +31,21 @@ export function FamilyFeedChrome({
   const { data } = useSWR(
     showPinned && wantsPinned ? 'family-pinned' : null,
     async () => (await getPinnedPosts()).data,
-    { revalidateOnFocus: familyPinnedSwr.revalidateOnFocus, dedupingInterval: familyPinnedSwr.dedupingInterval, revalidateIfStale: familyPinnedSwr.revalidateIfStale },
+    {
+      revalidateOnFocus: familyPinnedSwr.revalidateOnFocus,
+      dedupingInterval: familyPinnedSwr.dedupingInterval,
+      revalidateIfStale: familyPinnedSwr.revalidateIfStale,
+    },
   );
 
+  const pinnedResolved = data !== undefined;
   const pinnedPosts = data ?? [];
-  const showPinBar = showPinned && wantsPinned && pinnedPosts.length > 0;
+  const showPinSlot = Boolean(showPinned && wantsPinned && (!pinnedResolved || pinnedPosts.length > 0));
   const showNowBar = showNowPlaying && wantsNow && Boolean(nowPlaying);
 
-  if (!showPinBar && !showNowBar) return null;
+  if (!showPinSlot && !showNowBar) return null;
 
-  const pinnedMotion = reduceMotion
-    ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 0 } }
-    : {
-        initial: { opacity: 0, y: -10, scale: 0.985 },
-        animate: { opacity: 1, y: 0, scale: 1 },
-        exit: { opacity: 0, y: -6, scale: 0.99 },
-        transition: familyMotion.tween,
-      };
-
-  const nowMotion = reduceMotion
+  const nowFade = reduceMotion
     ? { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 0 } }
     : {
         initial: { opacity: 0 },
@@ -60,24 +56,23 @@ export function FamilyFeedChrome({
 
   return (
     <>
-      <AnimatePresence initial={false}>
-        {showPinBar ? (
-          <motion.div
-            key="family-pinned-chrome"
-            className="family-feed-chrome-item family-feed-chrome-item--pinned z-30 shrink-0 overflow-hidden"
-            {...pinnedMotion}
-          >
+      {/* Stable pin slot — no AnimatePresence remount (avoids chromeInset / feed jump). */}
+      {showPinSlot ? (
+        <div className="family-feed-chrome-item family-feed-chrome-item--pinned family-feed-chrome-item--pinned-slot z-30 shrink-0">
+          {!pinnedResolved ? (
+            <PinnedBarSkeleton />
+          ) : (
             <PinnedMessageBar pinnedPosts={pinnedPosts} onScrollToPost={onScrollToPost} />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+          )}
+        </div>
+      ) : null}
 
       <AnimatePresence initial={false}>
         {showNowBar ? (
           <motion.div
             key="family-now-playing-chrome"
             className="family-feed-chrome-item family-feed-chrome-item--now z-40 shrink-0 overflow-hidden"
-            {...nowMotion}
+            {...nowFade}
           >
             <NowPlayingBar />
           </motion.div>

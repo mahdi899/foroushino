@@ -2,16 +2,36 @@
 
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
-import { motion, useReducedMotion } from 'framer-motion';
 import { Bell, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { familyMotion } from '@/lib/family/motion';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { StoryViewer } from '@/components/family/StoryViewer';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
 import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
 import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
 import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
+
+function TopBarInnerSkeleton({ showNotifications }: { showNotifications: boolean }) {
+  return (
+    <>
+      <div className="family-topbar__back family-topbar__back--skel" aria-hidden>
+        <span className="family-skeleton family-topbar-skel__icon" />
+      </div>
+      <div className="family-topbar__profile" aria-hidden>
+        <span className="family-skeleton family-topbar-skel__avatar shrink-0 rounded-full" />
+        <div className="family-topbar-skel__text min-w-0">
+          <span className="family-skeleton family-topbar-skel__title" />
+          <span className="family-skeleton family-topbar-skel__sub" />
+        </div>
+      </div>
+      {showNotifications ? (
+        <div className="family-topbar__action family-topbar__action--skel" aria-hidden>
+          <span className="family-skeleton family-topbar-skel__icon" />
+        </div>
+      ) : null}
+    </>
+  );
+}
 
 export function FamilyTopBar({
   memberCount,
@@ -26,11 +46,10 @@ export function FamilyTopBar({
   notificationsActive?: boolean;
   onOpenNotifications?: () => void;
 }) {
-  const { branding } = useFamilyBranding();
-  const { unreadCount } = useFamilyUnreadCount(showNotifications);
+  const { branding, isLoading } = useFamilyBranding();
+  const { unreadCount } = useFamilyUnreadCount(showNotifications && !isLoading);
   const { hasStories, hasUnseen, markSeen } = useFamilyStoryState(branding);
   const [storyOpen, setStoryOpen] = useState(false);
-  const reduceMotion = useReducedMotion();
   const storiesAvailable = canViewStories && hasStories;
 
   const openStories = useCallback(() => {
@@ -88,43 +107,48 @@ export function FamilyTopBar({
 
   return (
     <>
-      <motion.header
+      <header
         className="family-topbar"
-        initial={reduceMotion ? false : { opacity: 0, y: -12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={familyMotion.tween}
+        aria-busy={isLoading || undefined}
+        aria-label={isLoading ? 'در حال بارگذاری' : undefined}
       >
         <div className="family-topbar__inner">
-          <Link href="/" aria-label="بازگشت به سایت" className="family-topbar__back">
-            <ChevronRight className="family-topbar__back-icon" aria-hidden />
-          </Link>
+          {isLoading ? (
+            <TopBarInnerSkeleton showNotifications={showNotifications} />
+          ) : (
+            <>
+              <Link href="/" aria-label="بازگشت به سایت" className="family-topbar__back">
+                <ChevronRight className="family-topbar__back-icon" aria-hidden />
+              </Link>
 
-          {profileControl}
+              {profileControl}
 
-          {showNotifications ? (
-            <button
-              type="button"
-              onClick={onOpenNotifications}
-              aria-current={notificationsActive ? 'page' : undefined}
-              aria-label="اعلان‌ها"
-              title="اعلان‌ها"
-              className={cn(
-                'family-topbar__action',
-                notificationsActive && 'family-topbar__action--active',
-              )}
-            >
-              <Bell className="family-topbar__action-icon" strokeWidth={1.85} aria-hidden />
-              {unreadCount > 0 && (
-                <span className="family-topbar__badge" aria-hidden>
-                  {unreadCount > 9 ? '9+' : unreadCount.toLocaleString('en-US')}
-                </span>
-              )}
-            </button>
-          ) : null}
+              {showNotifications ? (
+                <button
+                  type="button"
+                  onClick={onOpenNotifications}
+                  aria-current={notificationsActive ? 'page' : undefined}
+                  aria-label="اعلان‌ها"
+                  title="اعلان‌ها"
+                  className={cn(
+                    'family-topbar__action',
+                    notificationsActive && 'family-topbar__action--active',
+                  )}
+                >
+                  <Bell className="family-topbar__action-icon" strokeWidth={1.85} aria-hidden />
+                  {unreadCount > 0 && (
+                    <span className="family-topbar__badge" aria-hidden>
+                      {unreadCount > 9 ? '9+' : unreadCount.toLocaleString('en-US')}
+                    </span>
+                  )}
+                </button>
+              ) : null}
+            </>
+          )}
         </div>
-      </motion.header>
+      </header>
 
-      {canViewStories && (
+      {canViewStories && !isLoading && (
         <StoryViewer
           open={storyOpen}
           onClose={() => setStoryOpen(false)}

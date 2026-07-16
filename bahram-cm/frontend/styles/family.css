@@ -368,13 +368,19 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   width: 100%;
 }
 
+.family-feed-chrome-item--pinned-slot {
+  height: 3.375rem;
+  min-height: 3.375rem;
+  overflow: hidden;
+  background: var(--family-tg-chrome-bg);
+}
+
 .family-feed-chrome-item--pinned {
   background: var(--family-tg-chrome-bg);
 }
 
 .family-feed-chrome-item {
   transform-origin: top center;
-  will-change: transform, opacity;
 }
 
 .family-feed-chrome-item--now {
@@ -1305,14 +1311,76 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   z-index: 40;
   isolation: isolate;
   padding-top: env(safe-area-inset-top, 0px);
-  min-height: calc(3.25rem + env(safe-area-inset-top, 0px));
+  min-height: calc(3.5rem + env(safe-area-inset-top, 0px));
   border-bottom: none;
   background: transparent;
   box-shadow: none;
-  transition:
-    opacity 180ms var(--family-tg-spring),
-    transform 220ms var(--family-tg-spring),
-    visibility 180ms;
+}
+
+.family-topbar__inner {
+  display: flex;
+  min-height: 3.5rem;
+  height: 3.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.625rem;
+  box-sizing: border-box;
+}
+
+@media (min-width: 640px) {
+  .family-topbar__inner {
+    gap: 0.625rem;
+    padding: 0.4375rem 0.875rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .family-topbar__inner {
+    padding-inline: 1.125rem;
+  }
+}
+
+.family-topbar-skel__text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.3125rem;
+}
+
+.family-topbar-skel__avatar {
+  display: block;
+  height: 2.5rem;
+  width: 2.5rem;
+}
+
+.family-topbar-skel__title {
+  display: block;
+  height: 1.0625rem;
+  width: 9.75rem;
+  max-width: 100%;
+  border-radius: 9999px;
+}
+
+.family-topbar-skel__sub {
+  display: block;
+  height: 0.8125rem;
+  width: 4.25rem;
+  border-radius: 9999px;
+  opacity: 0.72;
+}
+
+.family-topbar-skel__icon {
+  display: block;
+  height: 1.125rem;
+  width: 1.125rem;
+  border-radius: 9999px;
+}
+
+.family-topbar__back--skel,
+.family-topbar__action--skel {
+  pointer-events: none;
 }
 
 #family-root.family-app--immersive .family-topbar,
@@ -1358,27 +1426,6 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   height: 0.5px;
   background: var(--family-tg-header-border);
   pointer-events: none;
-}
-
-.family-topbar__inner {
-  display: flex;
-  min-height: 3.25rem;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.625rem 0.5rem;
-}
-
-@media (min-width: 640px) {
-  .family-topbar__inner {
-    gap: 0.625rem;
-    padding: 0.4375rem 0.875rem 0.5625rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .family-topbar__inner {
-    padding-inline: 1.125rem;
-  }
 }
 
 .family-topbar__profile {
@@ -1544,21 +1591,45 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   position: relative;
   display: flex;
   width: 100%;
-  align-items: stretch;
+  height: 3.375rem;
+  min-height: 3.375rem;
+  align-items: center;
   gap: 0.625rem;
   padding: 0.5rem 0.75rem;
   text-align: start;
   border: none;
+  box-sizing: border-box;
   /* Opaque hit surface — feed behind must not receive hover through transparent gaps. */
   background: var(--family-tg-chrome-bg);
   pointer-events: auto;
   cursor: pointer;
   touch-action: manipulation;
-  transition: background 160ms ease, transform 140ms var(--family-tg-spring);
+  transition: background 160ms ease;
+}
+
+.family-pinned-bar--skeleton {
+  pointer-events: none;
+  cursor: default;
+}
+
+.family-pinned-skel__label {
+  display: block;
+  height: 0.75rem;
+  width: 5.5rem;
+  border-radius: 9999px;
+}
+
+.family-pinned-skel__preview {
+  display: block;
+  height: 0.875rem;
+  width: min(100%, 16rem);
+  margin-top: 0.25rem;
+  border-radius: 9999px;
+  opacity: 0.8;
 }
 
 .family-pinned-bar:active {
-  transform: scale(0.995);
+  background: color-mix(in oklab, var(--family-tg-chrome-bg) 90%, var(--family-text) 4%);
 }
 
 .family-pinned-bar::before {
@@ -1599,7 +1670,7 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   background: color-mix(in oklab, var(--family-tg-chrome-bg) 94%, var(--family-bubble-incoming) 6%);
 }
 
-.family-pinned-bar:active {
+.family-pinned-bar:active::before {
   background: color-mix(in oklab, var(--family-tg-chrome-bg) 90%, var(--family-text) 4%);
 }
 
@@ -2069,11 +2140,6 @@ html[data-theme='light'] .family-app .family-post-bubble--important {
   overflow: visible;
   position: relative;
   z-index: 2;
-}
-
-.family-post-bubble--impact .family-post-bubble__foot-row,
-.family-post-bubble__foot-row:has(.family-reaction-btn--slam, .family-reaction-btn--slam-land) {
-  padding-block: 0.625rem 0.375rem;
 }
 
 .family-post-bubble__foot-row[dir='ltr'],
@@ -2798,43 +2864,27 @@ html[data-theme='light'] .family-app .family-post-bubble__comment-zone {
 .family-reaction-bar {
   position: relative;
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-start;
   gap: 0.375rem;
   max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  overflow: visible;
   padding: 0;
   margin: 0;
   min-height: 1.375rem;
-}
-
-.family-post-bubble--impact .family-reaction-bar-shell,
-.family-reaction-bar-shell:has(.family-reaction-btn--slam, .family-reaction-btn--slam-land) {
-  min-height: 2.75rem;
-  align-items: center;
-}
-
-.family-post-bubble--impact .family-reaction-bar,
-.family-reaction-bar:has(.family-reaction-btn--slam, .family-reaction-btn--slam-land) {
-  overflow: visible;
 }
 
 .family-reaction-bar > .family-reaction-add {
   margin-inline-start: 0.125rem;
 }
 
-.family-reaction-bar::-webkit-scrollbar {
-  display: none;
-}
-
 .family-reaction-btn {
   position: relative;
   display: inline-flex;
   height: 1.375rem;
+  min-height: 1.375rem;
+  max-height: 1.375rem;
   min-width: 1.375rem;
   flex-shrink: 0;
   flex-direction: row;
@@ -2848,10 +2898,11 @@ html[data-theme='light'] .family-app .family-post-bubble__comment-zone {
   vertical-align: middle;
   box-shadow: 0 1px 2px color-mix(in oklab, var(--family-text) 6%, transparent);
   transition:
-    transform 140ms ease,
     background-color 140ms ease,
-    box-shadow 140ms ease;
+    box-shadow 140ms ease,
+    border-color 140ms ease;
   z-index: 1;
+  overflow: visible;
 }
 
 .family-app[data-family-theme='light'] .family-reaction-btn,
@@ -2935,8 +2986,10 @@ html[data-theme='light'] .family-app .family-reaction-btn {
 
 .family-reaction-add {
   display: inline-flex;
-  height: 1.5rem;
-  width: 1.5rem;
+  height: 1.375rem;
+  width: 1.375rem;
+  min-height: 1.375rem;
+  max-height: 1.375rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
