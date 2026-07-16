@@ -26,4 +26,15 @@ final class FamilyMediaUrl
 
         return $cdn.'/'.ltrim($storagePath, '/');
     }
+
+    public static function withCacheBuster(?string $url, int|string|null $version): ?string
+    {
+        if (! filled($url) || $version === null || $version === '') {
+            return $url;
+        }
+
+        $separator = str_contains($url, '?') ? '&' : '?';
+
+        return $url.$separator.'v='.rawurlencode((string) $version);
+    }
 }

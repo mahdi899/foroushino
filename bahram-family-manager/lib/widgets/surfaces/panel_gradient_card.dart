@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
+import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 
 /// Panel-style gradient surface (student panel feature cards in light mode).
 class PanelGradientCard extends StatelessWidget {
@@ -82,32 +83,28 @@ class PanelSectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = scheme.brightness == Brightness.dark;
-    final shadow = isDark
-        ? [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.28),
-              blurRadius: 20,
-              offset: const Offset(0, 6),
-            ),
-          ]
-        : AppShadows.soft;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: scheme.outline),
-        boxShadow: shadow,
-      ),
+    return GlassPanel(
+      borderRadius: 20,
+      blur: 24,
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceSoftDark : AppColors.surfaceSoft,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : Colors.white.withValues(alpha: 0.35),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
-              border: Border(bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.7))),
+              border: Border(
+                bottom: BorderSide(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.white.withValues(alpha: 0.45),
+                ),
+              ),
             ),
             child: Row(
               children: [
@@ -124,7 +121,10 @@ class PanelSectionCard extends StatelessWidget {
                   const SizedBox(width: AppSpacing.md),
                 ],
                 Expanded(
-                  child: Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                  ),
                 ),
                 if (trailing != null) trailing!,
               ],

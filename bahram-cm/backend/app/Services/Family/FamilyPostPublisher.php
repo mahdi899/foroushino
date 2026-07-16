@@ -79,7 +79,16 @@ class FamilyPostPublisher
 
             $this->audit->log($actor, 'family.post_updated', $post);
 
-            return $post->fresh(['blocks.media', 'targets', 'actions.options']);
+            $fresh = $post->fresh(['blocks.media', 'targets', 'actions.options']);
+
+            if ($post->status === FamilyPostStatus::Published && $fresh) {
+                FeedService::invalidateFeedTipCache();
+                SafeBroadcast::optionally(
+                    fn () => broadcast(new FamilyFeedUpdated($fresh, 'updated')),
+                );
+            }
+
+            return $fresh ?? $post;
         });
     }
 
@@ -95,9 +104,19 @@ class FamilyPostPublisher
             }
         }
 
+        $publishedAt = $this->nextPublishedAt($post->id);
+        if ($post->published_at !== null) {
+            $previousSecond = Carbon::parse($post->published_at)->startOfSecond();
+            $candidateSecond = $publishedAt->copy()->startOfSecond();
+            if (! $candidateSecond->greaterThan($previousSecond)) {
+                $publishedAt = $previousSecond->copy()->addSecond();
+            }
+        }
+
         $post->update([
             'status' => FamilyPostStatus::Published,
-            'published_at' => $this->nextPublishedAt($post->id),
+            'published_at' => $publishedAt,
+            'archived_at' => null,
         ]);
 
         $this->audit->log($actor, 'family.post_published', $post);

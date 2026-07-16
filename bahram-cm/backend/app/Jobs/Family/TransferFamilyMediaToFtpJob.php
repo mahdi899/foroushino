@@ -3,6 +3,7 @@
 namespace App\Jobs\Family;
 
 use App\Enums\Family\FamilyMediaStatus;
+use App\Enums\Family\FamilyMediaType;
 use App\Models\FamilyMedia;
 use App\Support\FamilyMediaPath;
 use Illuminate\Bus\Queueable;
@@ -94,7 +95,16 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
                 ProcessFamilyVideoJob::dispatch($media->id)
                     ->onQueue(config('family.queues.media', 'family-media'));
             } else {
-                $media->update(['status' => FamilyMediaStatus::Ready]);
+                $updates = ['status' => FamilyMediaStatus::Ready];
+                if ($type === FamilyMediaType::Image->value) {
+                    $absolute = $tempDisk->path($media->temp_path);
+                    $dims = is_string($absolute) ? @getimagesize($absolute) : false;
+                    if (is_array($dims)) {
+                        $updates['width'] = (int) $dims[0];
+                        $updates['height'] = (int) $dims[1];
+                    }
+                }
+                $media->update($updates);
                 CleanupFamilyTemporaryMediaJob::dispatch($media->id)
                     ->onQueue(config('family.queues.media', 'family-media'));
             }

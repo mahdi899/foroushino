@@ -85,6 +85,7 @@ class FeedController extends Controller
                 'member_count' => (int) $family->member_count,
                 'onboarding_completed' => (bool) $result['membership']->onboarding_completed,
                 'is_staff' => $this->access->canManage($user),
+                'feed_revision' => FeedService::feedRevision(),
             ]
         );
     }

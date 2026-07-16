@@ -7,9 +7,12 @@ use App\Enums\Family\FamilyLifecycle;
 use App\Http\Controllers\Controller;
 use App\Models\Family;
 use App\Models\FamilyEntryEvent;
+use App\Models\FamilyMembership;
 use App\Services\Family\FamilyIntelligenceService;
 use App\Services\Family\FamilyManagementService;
+use App\Services\Family\FamilyMembershipManagementService;
 use App\Support\ApiResponse;
+use App\Support\SensitiveData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -19,6 +22,7 @@ class FamiliesController extends Controller
     public function __construct(
         private readonly FamilyIntelligenceService $intelligence,
         private readonly FamilyManagementService $management,
+        private readonly FamilyMembershipManagementService $memberships,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -141,6 +145,83 @@ class FamiliesController extends Controller
     public function audienceSuggestions(): JsonResponse
     {
         return ApiResponse::success($this->intelligence->suggestAudience());
+    }
+
+    public function members(Request $request): JsonResponse
+    {
+        $query = FamilyMembership::query()
+            ->with(['user:id,name,mobile', 'family:id,internal_name'])
+            ->orderByDesc('joined_at');
+
+        if ($familyId = $request->query('family_id')) {
+            $query->where('family_id', (int) $familyId);
+        }
+
+        if ($search = $request->query('search')) {
+            $query->whereHas('user', function ($inner) use ($search) {
+                $inner->where('name', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%");
+            });
+        }
+
+        $members = $query->paginate(min(50, (int) $request->query('per_page', 30)));
+
+        $items = collect($members->items())->map(fn (FamilyMembership $membership) => $this->presentMember($membership))->all();
+
+        return ApiResponse::success($items, 200, [
+            'current_page' => $members->currentPage(),
+            'last_page' => $members->lastPage(),
+            'total' => $members->total(),
+        ]);
+    }
+
+    public function familyMembers(Request $request, Family $family): JsonResponse
+    {
+        $request->merge(['family_id' => $family->id]);
+
+        return $this->members($request);
+    }
+
+    public function storeMember(Request $request, Family $family): JsonResponse
+    {
+        $data = $request->validate([
+            'mobile' => ['required', 'string', 'max:20'],
+            'name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $membership = $this->memberships->addMemberByMobile(
+            $family,
+            $data['mobile'],
+            $data['name'] ?? null,
+        );
+
+        return ApiResponse::success($this->presentMember($membership), 201);
+    }
+
+    public function destroyMember(Family $family, FamilyMembership $membership): JsonResponse
+    {
+        abort_unless((int) $membership->family_id === (int) $family->id, 404);
+
+        $this->memberships->removeMember($membership);
+
+        return ApiResponse::success(['deleted' => true]);
+    }
+
+    /** @return array<string, mixed> */
+    private function presentMember(FamilyMembership $membership): array
+    {
+        return [
+            'id' => $membership->id,
+            'user_id' => $membership->user_id,
+            'family_id' => $membership->family_id,
+            'family_name' => $membership->family?->internal_name,
+            'name' => $membership->user?->name,
+            'mobile' => $membership->user?->mobile,
+            'mobile_masked' => SensitiveData::maskMobile($membership->user?->mobile),
+            'entry_source' => $membership->entry_source?->value ?? $membership->entry_source,
+            'joined_at' => $membership->joined_at?->toIso8601String(),
+            'onboarding_completed' => (bool) $membership->onboarding_completed,
+        ];
     }
 
     /** @return array<string, mixed> */

@@ -12,7 +12,6 @@ import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
 import 'package:bahram_family_manager/widgets/navigation/quick_action_button.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
-import 'package:bahram_family_manager/widgets/theme/theme_mode_toggle.dart';
 
 /// Shell for authenticated manager: bottom nav on mobile, Telegram-style sidebar on desktop.
 class DesktopShell extends StatelessWidget {
@@ -207,11 +206,6 @@ class _DesktopSidebar extends StatelessWidget {
                   label: 'پست جدید',
                 ),
               ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-              child: const ThemeModeToggleButton(),
-            ),
-            const SizedBox(height: AppSpacing.sm),
             Divider(height: 1, color: scheme.outline.withValues(alpha: 0.45)),
             Expanded(
               child: ListView(

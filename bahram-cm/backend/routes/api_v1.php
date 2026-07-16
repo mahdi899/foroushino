@@ -545,9 +545,11 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
     Route::get('posts', [FamilyManagerPostController::class, 'index'])->middleware('family.manage:family.posts.create');
     Route::post('posts', [FamilyManagerPostController::class, 'store'])->middleware('family.manage:family.posts.create');
     Route::get('posts/{post}', [FamilyManagerPostController::class, 'show'])->whereNumber('post')->middleware('family.manage:family.posts.create');
+    Route::get('posts/{post}/action-results', [FamilyManagerPostController::class, 'actionResults'])->whereNumber('post')->middleware('family.manage:family.posts.create');
     Route::patch('posts/{post}', [FamilyManagerPostController::class, 'update'])->whereNumber('post')->middleware('family.manage:family.posts.create');
     Route::post('posts/{post}/publish', [FamilyManagerPostController::class, 'publish'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::post('posts/{post}/archive', [FamilyManagerPostController::class, 'archive'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
+    Route::post('posts/{post}/recover', [FamilyManagerPostController::class, 'recover'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::post('posts/{post}/pin', [FamilyManagerPostController::class, 'pin'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::post('posts/{post}/unpin', [FamilyManagerPostController::class, 'unpin'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::delete('posts/{post}', [FamilyManagerPostController::class, 'destroy'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
@@ -564,8 +566,12 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
     Route::get('families', [FamilyManagerFamiliesController::class, 'index'])->middleware('family.manage:family.families.view');
     Route::post('families', [FamilyManagerFamiliesController::class, 'store'])->middleware('family.manage:family.families.manage');
     Route::get('families/{family}', [FamilyManagerFamiliesController::class, 'show'])->whereNumber('family')->middleware('family.manage:family.families.view');
+    Route::get('families/{family}/members', [FamilyManagerFamiliesController::class, 'familyMembers'])->whereNumber('family')->middleware('family.manage:family.families.view');
+    Route::post('families/{family}/members', [FamilyManagerFamiliesController::class, 'storeMember'])->whereNumber('family')->middleware('family.manage:family.families.manage');
+    Route::delete('families/{family}/members/{membership}', [FamilyManagerFamiliesController::class, 'destroyMember'])->whereNumber(['family', 'membership'])->middleware('family.manage:family.families.manage');
     Route::patch('families/{family}', [FamilyManagerFamiliesController::class, 'update'])->whereNumber('family')->middleware('family.manage:family.families.manage');
     Route::delete('families/{family}', [FamilyManagerFamiliesController::class, 'destroy'])->whereNumber('family')->middleware('family.manage:family.families.manage');
+    Route::get('members', [FamilyManagerFamiliesController::class, 'members'])->middleware('family.manage:family.families.view');
     Route::get('entry-events', [FamilyManagerFamiliesController::class, 'entryEvents'])->middleware('family.manage:family.families.view');
 
     Route::get('entry-links', [FamilyManagerEntryLinksController::class, 'index'])->middleware('family.manage:family.entry_links.manage');

@@ -21,6 +21,17 @@ class AppLayout {
   static const double contentPanelRadius = 14;
 }
 
+class AppGlass {
+  AppGlass._();
+
+  static const double panelBlur = 22;
+  static const double sheetBlur = 26;
+  static const double navBlur = 24;
+
+  static double panelOpacity(Brightness brightness) => brightness == Brightness.dark ? 0.58 : 0.74;
+  static double inputOpacity(Brightness brightness) => brightness == Brightness.dark ? 0.42 : 0.62;
+}
+
 class AppRadius {
   AppRadius._();
 

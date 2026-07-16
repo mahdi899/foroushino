@@ -1,5 +1,6 @@
 import { ProfileVerifiedBadge } from '@/components/student-panel/layout/ProfileVerifiedBadge';
 import { cn } from '@/lib/cn';
+import { appendAvatarCacheBuster } from '@/lib/student/avatarCache';
 
 function initial(name: string): string {
   const trimmed = name.trim();
@@ -14,6 +15,7 @@ export function FamilyAuthorAvatar({
   storyUnseen = true,
   verified = false,
   verifiedLabel = 'تأییدشده',
+  avatarVersion,
   className,
   onClick,
 }: {
@@ -25,6 +27,7 @@ export function FamilyAuthorAvatar({
   storyUnseen?: boolean;
   verified?: boolean;
   verifiedLabel?: string;
+  avatarVersion?: number | null;
   className?: string;
   onClick?: () => void;
 }) {
@@ -56,7 +59,12 @@ export function FamilyAuthorAvatar({
     >
       {avatar ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={avatar} alt="" className="h-full w-full object-cover" />
+        <img
+          key={appendAvatarCacheBuster(avatar, avatarVersion)}
+          src={appendAvatarCacheBuster(avatar, avatarVersion)}
+          alt=""
+          className="h-full w-full object-cover"
+        />
       ) : (
         initial(name)
       )}

@@ -7,13 +7,15 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
-import 'package:bahram_family_manager/features/families/family_editor_sheet.dart';
 import 'package:bahram_family_manager/features/families/family_detail_screen.dart';
+import 'package:bahram_family_manager/features/families/family_members_screen.dart';
+import 'package:bahram_family_manager/features/families/family_editor_sheet.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
 import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
+import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
 
 class FamiliesScreen extends StatefulWidget {
@@ -71,6 +73,13 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
           title: const Text('خانواده‌ها'),
           automaticallyImplyLeading: false,
           actions: [
+            IconButton(
+              tooltip: 'اعضای کانال',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FamilyMembersScreen()),
+              ),
+              icon: const Icon(Icons.people_rounded),
+            ),
             if (canManage)
               IconButton(
                 tooltip: 'خانواده جدید',
@@ -126,7 +135,18 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
       );
     } else {
       body = AdaptiveScaffold(
-        appBar: const ManagerAppBar(title: Text('خانواده‌ها')),
+        appBar: ManagerAppBar(
+          title: const Text('خانواده‌ها'),
+          actions: [
+            IconButton(
+              tooltip: 'اعضای کانال',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FamilyMembersScreen()),
+              ),
+              icon: const Icon(Icons.people_rounded),
+            ),
+          ],
+        ),
         body: Column(
           children: [
             _SearchHeader(
@@ -380,20 +400,12 @@ class _MobileFamilyCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final fill = family.capacityTarget > 0 ? (family.memberCount / family.capacityTarget).clamp(0, 1.5) : 0.0;
 
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.border),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: AppShadows.soft,
-          ),
-          child: Row(
+    return GlassPanel(
+      borderRadius: 16,
+      blur: 20,
+      onTap: onTap,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
             children: [
               CircleAvatar(
                 radius: 22,
@@ -434,8 +446,6 @@ class _MobileFamilyCard extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-        ),
       ),
     );
   }

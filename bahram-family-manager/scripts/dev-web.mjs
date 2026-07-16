@@ -16,7 +16,19 @@ function pipeProxy(req, res, { host, port, path }) {
   const upstream = http.request(
     { hostname: host, port, path, method: req.method, headers },
     (pres) => {
-      res.writeHead(pres.statusCode ?? 502, pres.headers);
+      const outHeaders = { ...pres.headers };
+      const urlPath = path.split('?')[0] ?? '/';
+      if (
+        urlPath === '/' ||
+        urlPath.endsWith('.html') ||
+        urlPath.endsWith('.js') ||
+        urlPath.endsWith('.json') ||
+        urlPath.startsWith('/main.dart')
+      ) {
+        outHeaders['cache-control'] = 'no-store, no-cache, must-revalidate';
+        outHeaders['pragma'] = 'no-cache';
+      }
+      res.writeHead(pres.statusCode ?? 502, outHeaders);
       pres.pipe(res);
     },
   );

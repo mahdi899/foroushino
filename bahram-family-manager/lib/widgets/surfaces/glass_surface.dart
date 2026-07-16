@@ -13,7 +13,7 @@ class GlassPanel extends StatelessWidget {
     this.borderRadius = AppLayout.contentPanelRadius,
     this.padding,
     this.margin,
-    this.blur = 22,
+    this.blur = AppGlass.panelBlur,
     this.opacity,
     this.onTap,
   });
@@ -30,7 +30,7 @@ class GlassPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = scheme.brightness == Brightness.dark;
-    final fillOpacity = opacity ?? (isDark ? 0.58 : 0.74);
+    final fillOpacity = opacity ?? AppGlass.panelOpacity(scheme.brightness);
     final borderColor = isDark
         ? Colors.white.withValues(alpha: 0.1)
         : Colors.white.withValues(alpha: 0.55);

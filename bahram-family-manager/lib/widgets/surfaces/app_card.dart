@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
+import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 
+/// Telegram-style glass card — delegates to [GlassPanel].
 class AppCard extends StatelessWidget {
   const AppCard({
     super.key,
@@ -22,36 +24,14 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = scheme.brightness == Brightness.dark;
-
-    final card = Container(
+    return GlassPanel(
+      borderRadius: AppRadius.card,
+      blur: AppGlass.panelBlur,
+      opacity: color != null ? null : AppGlass.panelOpacity(Theme.of(context).colorScheme.brightness),
+      padding: padding,
       margin: margin,
-      decoration: BoxDecoration(
-        color: color ?? scheme.surface.withValues(alpha: isDark ? 0.72 : 0.92),
-        borderRadius: AppRadius.cardBorder,
-        border: Border.all(color: borderColor ?? scheme.outline.withValues(alpha: 0.75)),
-        boxShadow: isDark
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.25),
-                  blurRadius: 20,
-                  offset: const Offset(0, 6),
-                ),
-              ]
-            : AppShadows.soft,
-      ),
-      child: Padding(padding: padding, child: child),
-    );
-
-    if (onTap == null) return card;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadius.cardBorder,
-        child: card,
-      ),
+      onTap: onTap,
+      child: child,
     );
   }
 }

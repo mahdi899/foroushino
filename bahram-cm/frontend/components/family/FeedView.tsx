@@ -44,7 +44,9 @@ import {
 import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import { useFamilyFeed } from '@/lib/family/hooks/useFamilyFeed';
 import {
+  handleFeedModerationEvent,
   mergePublishedPostIntoFeedCaches,
+  revalidateFamilyFeedCaches,
   useFamilyRealtime,
 } from '@/lib/family/hooks/useFamilyRealtime';
 import { isRealtimeConfigured } from '@/lib/realtime/echo';
@@ -253,6 +255,7 @@ export function FeedView({
   }, []);
 
   const recentFeedUpdateIdsRef = useRef<Set<number>>(new Set());
+  const feedRevisionRef = useRef<number | null>(null);
 
   const syncTipIfServerAhead = useCallback(async () => {
     if (isPreview || isJumpedAwayRef.current) return;
@@ -260,13 +263,34 @@ export function FeedView({
     try {
       const res = await getFeedUnreadSummary(loadedLatest);
       const serverLatest = res.data.latest_post_id;
-      if (serverLatest <= loadedLatest) return;
+      const revision = res.data.feed_revision;
 
-      familyFeedDebug.info('sync', 'server ahead of loaded tip — revalidating', {
+      if (
+        revision != null &&
+        feedRevisionRef.current != null &&
+        revision !== feedRevisionRef.current
+      ) {
+        familyFeedDebug.info('sync', 'feed revision changed — revalidating', {
+          previous: feedRevisionRef.current,
+          next: revision,
+        });
+        feedRevisionRef.current = revision;
+        await revalidateTip();
+        revalidateFamilyFeedCaches();
+        return;
+      }
+      if (revision != null) feedRevisionRef.current = revision;
+
+      if (serverLatest === loadedLatest) return;
+
+      familyFeedDebug.info('sync', 'server tip changed — revalidating', {
         loadedLatest,
         serverLatest,
       });
       await revalidateTip();
+      if (serverLatest < loadedLatest) {
+        revalidateFamilyFeedCaches();
+      }
     } catch (err) {
       familyFeedDebug.warn('sync', 'tip sync failed', { error: String(err) });
     }
@@ -299,6 +323,12 @@ export function FeedView({
       });
 
       if (isPreview) return;
+
+      if (event === 'updated' || event === 'deleted' || event === 'archived') {
+        void handleFeedModerationEvent(event, payload.post_id);
+        return;
+      }
+
       if (event !== 'published') return;
 
       // Far jump window — never merge tip into the loaded slice; badge only.
@@ -342,13 +372,25 @@ export function FeedView({
   useEffect(() => {
     if (isPreview || !feedReady) return;
 
-    const intervalMs = isRealtimeConfigured() ? 45_000 : 25_000;
+    const intervalMs = isRealtimeConfigured() ? 20_000 : 12_000;
     const id = window.setInterval(() => {
       void syncTipIfServerAhead();
     }, intervalMs);
 
     return () => window.clearInterval(id);
   }, [feedReady, isPreview, syncTipIfServerAhead]);
+
+  useEffect(() => {
+    const revision = meta?.feed_revision;
+    if (revision == null) return;
+    if (feedRevisionRef.current == null) {
+      feedRevisionRef.current = revision;
+      return;
+    }
+    if (revision === feedRevisionRef.current) return;
+    feedRevisionRef.current = revision;
+    void revalidateTip().then(() => revalidateFamilyFeedCaches());
+  }, [meta?.feed_revision, revalidateTip]);
 
   useEffect(() => {
     if (isPreview) return;

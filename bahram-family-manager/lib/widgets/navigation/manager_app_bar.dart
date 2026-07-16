@@ -2,10 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/theme/theme_mode_toggle.dart';
-
-/// Glass app bar with built-in theme toggle (hidden on desktop — sidebar has it).
 class ManagerAppBar extends StatelessWidget implements PreferredSizeWidget {
   const ManagerAppBar({
     super.key,
@@ -13,7 +10,7 @@ class ManagerAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.actions,
     this.bottom,
     this.showThemeToggle,
-    this.themeToggleCompact = true,
+    this.themeToggleCompact = false,
     this.automaticallyImplyLeading = true,
   });
 
@@ -34,7 +31,7 @@ class ManagerAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = scheme.brightness == Brightness.dark;
-    final showToggle = showThemeToggle ?? !AppBreakpoints.isDesktop(context);
+    final showToggle = showThemeToggle ?? true;
 
     return ClipRect(
       child: BackdropFilter(

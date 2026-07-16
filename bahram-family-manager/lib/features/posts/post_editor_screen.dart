@@ -7,16 +7,22 @@ import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/features/posts/widgets/family_picker_sheet.dart';
+import 'package:bahram_family_manager/features/posts/widgets/post_action_results_panel.dart';
+import 'package:bahram_family_manager/features/posts/widgets/post_editor_action_bar.dart';
 import 'package:bahram_family_manager/features/posts/widgets/post_type_selector.dart';
 import 'package:bahram_family_manager/core/utils/media_url.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
+import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
+import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/media/family_media_view.dart';
 import 'package:bahram_family_manager/widgets/media/upload_zone.dart';
+import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
+import 'package:bahram_family_manager/widgets/surfaces/glass_dialog.dart';
 import 'package:bahram_family_manager/widgets/surfaces/panel_gradient_card.dart';
 
 class PostEditorScreen extends StatefulWidget {
@@ -96,7 +102,26 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     super.dispose();
   }
 
-  bool get _isReadOnly => _post?.isPublished == true;
+  bool get _isArchived => _post?.isArchived ?? false;
+
+  String get _audiencePreviewLabel {
+    if (_audienceMode == 'all') return 'همه خانواده‌ها';
+    final knownNames = _post?.targetFamilies
+            .where((target) => _selectedFamilyIds.contains(target.familyId))
+            .map((target) => target.familyName)
+            .whereType<String>()
+            .where((name) => name.isNotEmpty)
+            .toList() ??
+        [];
+    if (_audienceMode == 'include') {
+      if (knownNames.isNotEmpty) return knownNames.join('، ');
+      if (_selectedFamilyIds.isEmpty) return 'خانواده‌های انتخابی';
+      return '${_selectedFamilyIds.length} خانواده انتخابی';
+    }
+    if (knownNames.isNotEmpty) return 'همه به‌جز ${knownNames.join('، ')}';
+    if (_selectedFamilyIds.isEmpty) return 'همه به‌جز…';
+    return 'همه به‌جز ${_selectedFamilyIds.length} خانواده';
+  }
 
   String get _blockTypeForPostType => switch (_type) {
         'voice' => 'audio',
@@ -221,7 +246,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       final payload = _buildPayload();
       final saved = _post == null ? await manager.createPost(payload) : await manager.updatePost(_post!.id, payload);
       setState(() => _post = saved);
-      showAppSnackBar(context, 'پیش‌نویس ذخیره شد.');
+      showAppSnackBar(context, _isArchived ? 'تغییرات آرشیو ذخیره شد.' : (_post!.isPublished ? 'تغییرات ذخیره شد.' : 'پیش‌نویس ذخیره شد.'));
     } catch (e) {
       showAppSnackBar(context, messageOf(e));
     } finally {
@@ -243,6 +268,24 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     }
   }
 
+  Future<void> _republish() async {
+    if (_post == null) return;
+    setState(() => _saving = true);
+    try {
+      final manager = context.read<AppState>().manager;
+      final payload = _buildPayload();
+      final saved = await manager.updatePost(_post!.id, payload);
+      if (mounted) setState(() => _post = saved);
+      await manager.publishPost(_post!.id);
+      showAppSnackBar(context, 'پست دوباره منتشر شد و به بالای فید رفت.');
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      showAppSnackBar(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   Future<void> _archive() async {
     if (_post == null) return;
     setState(() => _saving = true);
@@ -251,6 +294,41 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       showAppSnackBar(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _recover() async {
+    if (_post == null) return;
+    final wasPublished = _post!.publishedAt != null;
+    final confirmed = await showGlassDialog<bool>(
+      context: context,
+      title: 'بازیابی از آرشیو',
+      content: Text(
+        wasPublished
+            ? 'این پست دوباره منتشر می‌شود و در فید خانواده نمایش داده می‌شود.'
+            : 'این پست به پیش‌نویس‌ها برمی‌گردد.',
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
+        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('بازیابی')),
+      ],
+    );
+    if (confirmed != true) return;
+
+    setState(() => _saving = true);
+    try {
+      final recovered = await context.read<AppState>().manager.recoverPost(_post!.id);
+      if (mounted) {
+        showAppSnackBar(
+          context,
+          recovered.isPublished ? 'پست بازیابی و دوباره منتشر شد.' : 'پست به پیش‌نویس‌ها برگشت.',
+        );
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (mounted) showAppSnackBar(context, messageOf(e));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -276,20 +354,23 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
   Future<void> _delete() async {
     if (_post == null) return;
-    final confirmed = await showDialog<bool>(
+    final isPublished = _post!.isPublished;
+    final confirmed = await showGlassDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('حذف پیش‌نویس'),
-        content: const Text('این پیش‌نویس برای همیشه حذف می‌شود.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
-            child: const Text('حذف'),
-          ),
-        ],
+      title: isPublished ? 'حذف پست منتشرشده' : 'حذف پیش‌نویس',
+      content: Text(
+        isPublished
+            ? 'این پست از فید خانواده حذف می‌شود. این عمل قابل بازگشت نیست.'
+            : 'این پیش‌نویس برای همیشه حذف می‌شود.',
       ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: TextButton.styleFrom(foregroundColor: AppColors.error),
+          child: const Text('حذف'),
+        ),
+      ],
     );
     if (confirmed != true) return;
 
@@ -318,28 +399,26 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   @override
   Widget build(BuildContext context) {
     return AdaptiveScaffold(
-      appBar: AppBar(title: Text(_post == null ? 'پست جدید' : 'ویرایش پست')),
-      bottomNavigationBar: _isReadOnly
-          ? null
-          : SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.lg),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    PrimaryButton(
-                      label: _post == null ? 'ذخیره پیش‌نویس' : 'ذخیره تغییرات',
-                      loading: _saving,
-                      onPressed: _save,
-                    ),
-                    if (_post != null && _post!.isDraft) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      SecondaryButton(label: 'انتشار پست', icon: Icons.publish_rounded, onPressed: _saving ? null : _publish),
-                    ],
-                  ],
-                ),
-              ),
-            ),
+      appBar: ManagerAppBar(
+        title: Text(
+          _post == null
+              ? 'پست جدید'
+              : (_isArchived
+                  ? 'ویرایش پست آرشیوشده'
+                  : (_post!.isPublished ? 'ویرایش پست منتشرشده' : 'ویرایش پست')),
+        ),
+      ),
+      bottomNavigationBar: PostEditorActionBar(
+        post: _post,
+        saving: _saving,
+        onSave: _save,
+        onPublish: _post != null && _post!.isDraft ? _publish : null,
+        onRepublish: _post != null && (_post!.isPublished || _isArchived) ? _republish : null,
+        onDelete: _post != null && !_isArchived ? _delete : null,
+        onArchive: _post != null && _post!.isPublished ? _archive : null,
+        onRecover: _isArchived ? _recover : null,
+        onTogglePin: _post != null && _post!.isPublished ? _togglePin : null,
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
@@ -364,23 +443,24 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
               ),
             ),
           if (_post == null) const SizedBox(height: AppSpacing.lg),
-          if (_isReadOnly)
-            Container(
+          if (_isArchived)
+            GlassPanel(
+              borderRadius: 16,
+              blur: 18,
               padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
-              ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline_rounded, color: AppColors.warning),
+                  Icon(Icons.archive_rounded, color: AppColors.warning),
                   SizedBox(width: AppSpacing.md),
-                  Expanded(child: Text('این پست منتشرشده و قابل ویرایش نیست.')),
+                  Expanded(
+                    child: Text(
+                      'این پست آرشیوشده است. می‌توانید ویرایش کنید، دوباره منتشر کنید، یا بدون انتشار مجدد بازیابی کنید.',
+                    ),
+                  ),
                 ],
               ),
             ),
-          if (_isReadOnly) const SizedBox(height: AppSpacing.lg),
+          if (_isArchived) const SizedBox(height: AppSpacing.lg),
           PanelSectionCard(
             title: 'محتوا',
             icon: Icons.edit_note_rounded,
@@ -390,7 +470,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                 if (_post == null) ...[
                   PostTypeSelector(
                     selected: _type,
-                    enabled: !_isReadOnly,
+                    enabled: true,
                     onChanged: (t) => setState(() {
                       _type = t;
                       _mediaRef = null;
@@ -401,7 +481,6 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                 TextField(
                   controller: _textCtrl,
                   maxLines: 6,
-                  readOnly: _isReadOnly,
                   decoration: InputDecoration(
                     labelText: _type == 'text' ? 'متن پست' : 'کپشن (اختیاری)',
                     alignLabelWithHint: true,
@@ -414,7 +493,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                       label: 'انتخاب و آپلود ${labelOf(mediaTypeLabels, _type)}',
                       uploading: _uploading,
                       progress: _uploadProgress,
-                      enabled: !_isReadOnly,
+                      enabled: true,
                       onTap: _pickAndUploadMedia,
                     )
                   else
@@ -422,7 +501,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         FamilyMediaView(media: _mediaRef!, height: _mediaRef!.isAudio ? 88 : 240),
-                        if (!_isReadOnly) ...[
+                        ...[
                           const SizedBox(height: AppSpacing.sm),
                           Align(
                             alignment: Alignment.centerLeft,
@@ -448,14 +527,23 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                 DropdownButtonFormField<String>(
                   value: _audienceMode,
                   items: audienceModeLabels.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-                  onChanged: _isReadOnly ? null : (v) => setState(() => _audienceMode = v ?? 'all'),
+                  onChanged: (v) => setState(() => _audienceMode = v ?? 'all'),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: StatusChip(
+                    label: _audiencePreviewLabel,
+                    color: AppColors.accent,
+                    icon: Icons.campaign_rounded,
+                  ),
                 ),
                 if (_audienceMode != 'all') ...[
                   const SizedBox(height: AppSpacing.md),
                   SecondaryButton(
                     label: 'انتخاب خانواده‌ها (${toFaDigits(_selectedFamilyIds.length.toString())})',
                     icon: Icons.groups_rounded,
-                    onPressed: _isReadOnly ? null : _pickFamilies,
+                    onPressed: _pickFamilies,
                   ),
                 ],
                 const SizedBox(height: AppSpacing.sm),
@@ -469,7 +557,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                     ],
                   ),
                   value: _isImportant,
-                  onChanged: _isReadOnly ? null : (v) => setState(() => _isImportant = v),
+                  onChanged: (v) => setState(() => _isImportant = v),
                 ),
               ],
             ),
@@ -485,31 +573,17 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                   contentPadding: EdgeInsets.zero,
                   title: const Text('افزودن اکشن تعاملی'),
                   value: _actionEnabled,
-                  onChanged: _isReadOnly ? null : (v) => setState(() => _actionEnabled = v),
+                  onChanged: (v) => setState(() => _actionEnabled = v),
                 ),
                 if (_actionEnabled) ..._buildActionFields(),
               ],
             ),
           ),
-          if (_post != null && _post!.isDraft) ...[
+          if (_post != null && (_post!.isPublished || _post!.isArchived) && _post!.actions.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.lg),
-            TextButton(
-              onPressed: _saving ? null : _delete,
-              style: TextButton.styleFrom(foregroundColor: AppColors.error),
-              child: const Text('حذف پیش‌نویس'),
-            ),
+            PostActionResultsPanel(postId: _post!.id),
           ],
-          if (_post != null && _post!.isPublished) ...[
-            const SizedBox(height: AppSpacing.lg),
-            SecondaryButton(
-              label: _post!.isPinned ? 'برداشتن سنجاق' : 'سنجاق کردن',
-              icon: Icons.push_pin_rounded,
-              onPressed: _saving ? null : _togglePin,
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            SecondaryButton(label: 'آرشیو پست', icon: Icons.archive_rounded, onPressed: _saving ? null : _archive),
-          ],
-        ],
+            ],
           ),
         ),
       ),
@@ -523,13 +597,12 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         value: _actionType,
         decoration: const InputDecoration(labelText: 'نوع اکشن'),
         items: actionTypeLabels.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-        onChanged: _isReadOnly ? null : (v) => setState(() => _actionType = v ?? 'commitment'),
+        onChanged: (v) => setState(() => _actionType = v ?? 'commitment'),
       ),
       const SizedBox(height: AppSpacing.md),
       TextField(
         controller: _actionPromptCtrl,
         decoration: const InputDecoration(labelText: 'متن سؤال/درخواست'),
-        readOnly: _isReadOnly,
       ),
       if (choiceActionTypes.contains(_actionType)) ...[
         const SizedBox(height: AppSpacing.md),
@@ -542,11 +615,10 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                     Expanded(
                       child: TextField(
                         controller: entry.value,
-                        readOnly: _isReadOnly,
                         decoration: InputDecoration(labelText: 'گزینه ${toFaDigits((entry.key + 1).toString())}', isDense: true),
                       ),
                     ),
-                    if (_optionControllers.length > 2 && !_isReadOnly)
+                    if (_optionControllers.length > 2)
                       IconButton(
                         onPressed: () => setState(() => _optionControllers.removeAt(entry.key)),
                         icon: const Icon(Icons.remove_circle_outline_rounded),
@@ -555,8 +627,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                 ),
               ),
             ),
-        if (!_isReadOnly)
-          TextButton.icon(
+        TextButton.icon(
             onPressed: () => setState(() => _optionControllers.add(TextEditingController())),
             icon: const Icon(Icons.add_rounded),
             label: const Text('افزودن گزینه'),
@@ -569,7 +640,6 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             Expanded(
               child: TextField(
                 controller: _scaleMinCtrl,
-                readOnly: _isReadOnly,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'حداقل (پیش‌فرض ۱)'),
               ),
@@ -578,7 +648,6 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             Expanded(
               child: TextField(
                 controller: _scaleMaxCtrl,
-                readOnly: _isReadOnly,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'حداکثر (پیش‌فرض ۱۰)'),
               ),
@@ -589,14 +658,12 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       const SizedBox(height: AppSpacing.md),
       TextField(
         controller: _followUpMinutesCtrl,
-        readOnly: _isReadOnly,
         keyboardType: TextInputType.number,
         decoration: const InputDecoration(labelText: 'پیگیری بعد از (دقیقه) — اختیاری'),
       ),
       const SizedBox(height: AppSpacing.md),
       TextField(
         controller: _followUpMessageCtrl,
-        readOnly: _isReadOnly,
         decoration: const InputDecoration(labelText: 'پیام پیگیری — اختیاری'),
       ),
     ];

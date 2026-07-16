@@ -76,6 +76,31 @@ export function shellBrandingFromFeedMeta(meta: FamilyFeedMeta): FamilyBranding 
   };
 }
 
+/** Feed meta can be stale (IndexedDB). Keep fresher avatar URLs from `/branding`. */
+export function mergeFeedBrandingIntoCurrent(
+  current: FamilyBranding | undefined,
+  fromFeed: FamilyBranding,
+): FamilyBranding {
+  const currentVersion = current?.branding_version ?? 0;
+  const feedVersion = fromFeed.branding_version ?? 0;
+  const feedIsNewer = feedVersion > currentVersion;
+
+  return {
+    ...(current ?? fromFeed),
+    display_name: fromFeed.display_name,
+    profile_name: fromFeed.profile_name,
+    has_active_stories: fromFeed.has_active_stories ?? current?.has_active_stories,
+    latest_story_id: fromFeed.latest_story_id ?? current?.latest_story_id ?? null,
+    branding_version: feedIsNewer ? fromFeed.branding_version : current?.branding_version ?? fromFeed.branding_version,
+    profile_avatar: feedIsNewer
+      ? fromFeed.profile_avatar
+      : (current?.profile_avatar ?? fromFeed.profile_avatar),
+    community_avatar: feedIsNewer
+      ? fromFeed.community_avatar
+      : (current?.community_avatar ?? fromFeed.community_avatar),
+  };
+}
+
 /** SSR boot branding — merges story flags from `/me` and feed meta into one snapshot. */
 export function brandingFromMeAndFeed(
   me: FamilyMeResponse,
@@ -94,8 +119,11 @@ export function brandingFromMeAndFeed(
 }
 
 export function syncFamilyShellFromFeedMeta(meta: FamilyFeedMeta): void {
-  const branding = shellBrandingFromFeedMeta(meta);
-  if (!branding) return;
+  const fromFeed = shellBrandingFromFeedMeta(meta);
+  if (!fromFeed) return;
+
+  const existing = readFamilyShellSnapshot()?.branding;
+  const branding = mergeFeedBrandingIntoCurrent(existing, fromFeed);
 
   writeFamilyShellSnapshot({
     branding,

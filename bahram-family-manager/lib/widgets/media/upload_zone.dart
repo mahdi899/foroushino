@@ -6,6 +6,7 @@ import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/core/utils/media_url.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/widgets/media/family_media_view.dart';
+import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 
 class UploadZone extends StatelessWidget {
   const UploadZone({
@@ -26,13 +27,9 @@ class UploadZone extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (uploading) {
-      return Container(
+      return GlassPanel(
+        borderRadius: AppRadius.card,
         padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceSoft,
-          borderRadius: AppRadius.cardBorder,
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -67,23 +64,13 @@ class UploadZone extends StatelessWidget {
       );
     }
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: AppRadius.cardBorder,
-        child: Container(
-          width: double.infinity,
+    return GlassPanel(
+      borderRadius: AppRadius.card,
+      onTap: enabled ? onTap : null,
+      child: SizedBox(
+        width: double.infinity,
+        child: Padding(
           padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl),
-          decoration: BoxDecoration(
-            color: AppColors.surfaceSoft,
-            borderRadius: AppRadius.cardBorder,
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.35),
-              width: 1.5,
-              strokeAlign: BorderSide.strokeAlignInside,
-            ),
-          ),
           child: Column(
             children: [
               Container(
@@ -124,13 +111,9 @@ class MediaPreview extends StatelessWidget {
     final ready = media.isReady;
     final statusColor = ready ? AppColors.success : AppColors.warning;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadius.cardBorder,
-        border: Border.all(color: statusColor.withValues(alpha: 0.25)),
-        boxShadow: AppShadows.soft,
-      ),
+    return GlassPanel(
+      borderRadius: AppRadius.card,
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

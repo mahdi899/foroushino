@@ -28,7 +28,13 @@ class FamilyMediaView extends StatelessWidget {
     final url = media.playableUrl;
 
     if (media.isImage && url != null) {
-      return _ImageView(url: url, height: height, radius: radius);
+      return _ImageView(
+        url: url,
+        width: media.width,
+        height: media.height,
+        maxHeight: height,
+        radius: radius,
+      );
     }
     if (media.isVideo && url != null) {
       return _VideoView(url: url, height: height, radius: radius);
@@ -42,38 +48,58 @@ class FamilyMediaView extends StatelessWidget {
 }
 
 class _ImageView extends StatelessWidget {
-  const _ImageView({required this.url, required this.height, required this.radius});
+  const _ImageView({
+    required this.url,
+    required this.radius,
+    this.width,
+    this.height,
+    this.maxHeight = 360,
+  });
 
   final String url;
-  final double height;
+  final int? width;
+  final int? height;
+  final double maxHeight;
   final BorderRadius radius;
 
   @override
   Widget build(BuildContext context) {
+    final aspect = width != null && height != null && height! > 0 ? width! / height! : null;
+
+    Widget image = Image.network(
+      url,
+      fit: BoxFit.contain,
+      width: double.infinity,
+      loadingBuilder: (context, child, progress) {
+        if (progress == null) return child;
+        return Container(
+          height: maxHeight,
+          color: AppColors.surfaceSoft,
+          child: const Center(child: CircularProgressIndicator()),
+        );
+      },
+      errorBuilder: (_, __, ___) => Container(
+        height: maxHeight,
+        color: AppColors.surfaceSoft,
+        child: const Icon(Icons.broken_image_rounded, color: AppColors.textMuted, size: 40),
+      ),
+    );
+
+    if (aspect != null) {
+      image = AspectRatio(aspectRatio: aspect, child: image);
+    } else {
+      image = ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: image,
+      );
+    }
+
     return ClipRRect(
       borderRadius: radius,
       child: Stack(
         fit: StackFit.passthrough,
         children: [
-          Image.network(
-            url,
-            height: height,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            loadingBuilder: (context, child, progress) {
-              if (progress == null) return child;
-              return Container(
-                height: height,
-                color: AppColors.surfaceSoft,
-                child: const Center(child: CircularProgressIndicator()),
-              );
-            },
-            errorBuilder: (_, __, ___) => Container(
-              height: height,
-              color: AppColors.surfaceSoft,
-              child: const Icon(Icons.broken_image_rounded, color: AppColors.textMuted, size: 40),
-            ),
-          ),
+          image,
           Positioned(
             top: AppSpacing.sm,
             right: AppSpacing.sm,

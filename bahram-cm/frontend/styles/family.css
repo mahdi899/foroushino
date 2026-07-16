@@ -628,6 +628,7 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   display: block;
   width: var(--family-media-max-w);
   max-width: 100%;
+  height: auto;
   max-height: var(--family-media-max-h);
   align-self: center;
   margin-inline: auto;
@@ -1161,11 +1162,23 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-sidebar__inner {
+  position: relative;
   display: flex;
   height: 100%;
   min-height: 0;
   flex-direction: column;
+  overflow: hidden;
+  isolation: isolate;
   padding: 1rem 1rem 0.875rem;
+}
+
+.family-sidebar__inner-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
 }
 
 @media (min-width: 1024px) {
@@ -1264,6 +1277,26 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   justify-content: center;
   padding: 1.5rem 0.25rem 1rem;
   text-align: center;
+}
+
+.family-verified-pattern {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(5px);
+  color: var(--family-tg-pinned-accent);
+}
+
+.family-verified-pattern--profile {
+  filter: blur(4px);
+}
+
+.family-verified-pattern__tick {
+  position: absolute;
+  display: block;
+  color: var(--family-tg-pinned-accent);
 }
 
 .family-sidebar__hero {
@@ -1525,23 +1558,22 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-topbar__profile {
+  position: relative;
   display: flex;
   min-width: 0;
   flex: 1;
   align-items: center;
   gap: 0.625rem;
+  overflow: hidden;
+  isolation: isolate;
   border-radius: 0.75rem;
   padding: 0.125rem 0.25rem;
   text-align: start;
-  transition: background-color 160ms ease;
 }
 
-.family-topbar__profile:hover {
-  background: color-mix(in oklab, var(--family-text) 4%, transparent);
-}
-
-.family-topbar__profile:active {
-  background: color-mix(in oklab, var(--family-text) 7%, transparent);
+.family-topbar__profile > :not(.family-verified-pattern) {
+  position: relative;
+  z-index: 1;
 }
 
 .family-topbar__title {

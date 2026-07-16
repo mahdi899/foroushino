@@ -21,14 +21,22 @@ class SettingsController extends Controller
     public function show(): JsonResponse
     {
         $branding = $this->branding->get();
+        $version = $branding->updated_at?->getTimestamp();
 
         return ApiResponse::success([
             'display_name' => $branding->display_name,
             'profile_name' => $branding->profile_name,
-            'profile_avatar' => FamilyMediaUrl::fromPath($branding->profile_avatar_path),
-            'community_avatar' => FamilyMediaUrl::fromPath($branding->community_avatar_path),
+            'profile_avatar' => FamilyMediaUrl::withCacheBuster(
+                FamilyMediaUrl::fromPath($branding->profile_avatar_path),
+                $version,
+            ),
+            'community_avatar' => FamilyMediaUrl::withCacheBuster(
+                FamilyMediaUrl::fromPath($branding->community_avatar_path),
+                $version,
+            ),
             'profile_avatar_path' => $branding->profile_avatar_path,
             'community_avatar_path' => $branding->community_avatar_path,
+            'branding_version' => $version,
         ]);
     }
 
@@ -62,14 +70,22 @@ class SettingsController extends Controller
 
         $updated = $this->branding->update($payload);
         $this->audit->log($request->user(), 'family.branding_updated', $updated);
+        $version = $updated->updated_at?->getTimestamp();
 
         return ApiResponse::success([
             'display_name' => $updated->display_name,
             'profile_name' => $updated->profile_name,
-            'profile_avatar' => FamilyMediaUrl::fromPath($updated->profile_avatar_path),
-            'community_avatar' => FamilyMediaUrl::fromPath($updated->community_avatar_path),
+            'profile_avatar' => FamilyMediaUrl::withCacheBuster(
+                FamilyMediaUrl::fromPath($updated->profile_avatar_path),
+                $version,
+            ),
+            'community_avatar' => FamilyMediaUrl::withCacheBuster(
+                FamilyMediaUrl::fromPath($updated->community_avatar_path),
+                $version,
+            ),
             'profile_avatar_path' => $updated->profile_avatar_path,
             'community_avatar_path' => $updated->community_avatar_path,
+            'branding_version' => $version,
         ]);
     }
 

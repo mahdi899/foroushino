@@ -100,16 +100,21 @@ class AppState extends ChangeNotifier {
       'light' => ThemeMode.light,
       _ => ThemeMode.system,
     };
+    notifyListeners();
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
     themeMode = mode;
-    await _storage.writeThemeMode(mode.name);
     notifyListeners();
+    try {
+      await _storage.writeThemeMode(mode.name);
+    } catch (_) {}
   }
 
-  Future<void> toggleTheme(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Future<void> toggleTheme() {
+    final isDark = themeMode == ThemeMode.dark ||
+        (themeMode == ThemeMode.system &&
+            WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark);
     return setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
   }
 }

@@ -10,7 +10,7 @@ final class FamilyBrandingService
 {
     private const CACHE_KEY = 'family:branding:public';
 
-    /** @return array{display_name: string, profile_name: string, profile_avatar: ?string, community_avatar: ?string} */
+    /** @return array{display_name: string, profile_name: string, profile_avatar: ?string, community_avatar: ?string, branding_version: ?int} */
     public function publicPayload(): array
     {
         return Cache::remember(
@@ -18,15 +18,22 @@ final class FamilyBrandingService
             config('family.cache.branding_ttl', 300),
             function () {
                 $branding = $this->get();
+                $version = $branding->updated_at?->getTimestamp();
 
                 return [
                     'display_name' => $branding->display_name,
                     'profile_name' => $branding->profile_name,
-                    'profile_avatar' => FamilyMediaUrl::fromPath($branding->profile_avatar_path),
-                    'community_avatar' => FamilyMediaUrl::fromPath($branding->community_avatar_path),
+                    'profile_avatar' => $this->versionedAvatar($branding->profile_avatar_path, $version),
+                    'community_avatar' => $this->versionedAvatar($branding->community_avatar_path, $version),
+                    'branding_version' => $version,
                 ];
             },
         );
+    }
+
+    private function versionedAvatar(?string $path, ?int $version): ?string
+    {
+        return FamilyMediaUrl::withCacheBuster(FamilyMediaUrl::fromPath($path), $version);
     }
 
     public function get(): FamilyBranding

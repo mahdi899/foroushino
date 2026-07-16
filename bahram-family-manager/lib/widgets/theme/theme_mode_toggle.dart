@@ -5,67 +5,87 @@ import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 
+/// Dark/light switch for the app bar.
 class ThemeModeToggleButton extends StatelessWidget {
   const ThemeModeToggleButton({
     super.key,
     this.compact = false,
+    this.expanded = false,
   });
 
   final bool compact;
+  final bool expanded;
 
   @override
   Widget build(BuildContext context) {
-    context.watch<AppState>();
+    final state = context.watch<AppState>();
     final scheme = Theme.of(context).colorScheme;
-    final isDark = scheme.brightness == Brightness.dark;
+    final isDark = _isDark(context, state.themeMode);
+    final accent = isDark ? AppColors.gold : AppColors.primary;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: compact ? 2 : 6, vertical: compact ? 0 : 4),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => context.read<AppState>().toggleTheme(context),
-          borderRadius: BorderRadius.circular(20),
-          child: AnimatedContainer(
-            duration: AppMotion.fast,
-            curve: AppMotion.luxe,
-            padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 12, vertical: compact ? 7 : 8),
-            decoration: BoxDecoration(
-              color: (isDark ? AppColors.gold : AppColors.primary).withValues(alpha: isDark ? 0.22 : 0.14),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: (isDark ? AppColors.gold : AppColors.primary).withValues(alpha: isDark ? 0.55 : 0.28),
-                width: 1.2,
+    final chip = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => state.toggleTheme(),
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedContainer(
+          duration: AppMotion.fast,
+          curve: AppMotion.luxe,
+          width: expanded ? double.infinity : null,
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 10 : 14,
+            vertical: compact ? 8 : 10,
+          ),
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: isDark ? 0.28 : 0.16),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: accent.withValues(alpha: 0.65), width: 1.4),
+            boxShadow: [
+              BoxShadow(
+                color: accent.withValues(alpha: 0.18),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
               ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedSwitcher(
-                  duration: AppMotion.fast,
-                  child: Icon(
-                    isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-                    key: ValueKey(isDark),
-                    size: compact ? 18 : 20,
-                    color: isDark ? AppColors.gold : AppColors.primary,
+            ],
+          ),
+          child: Row(
+            mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
+            mainAxisAlignment: expanded ? MainAxisAlignment.center : MainAxisAlignment.start,
+            children: [
+              Icon(
+                isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                size: compact ? 18 : 20,
+                color: accent,
+              ),
+              if (!compact) ...[
+                const SizedBox(width: 8),
+                Text(
+                  isDark ? 'حالت روشن' : 'حالت تاریک',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: scheme.onSurface,
                   ),
                 ),
-                if (!compact) ...[
-                  const SizedBox(width: 6),
-                  Text(
-                    isDark ? 'روشن' : 'تاریک',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? AppColors.gold : AppColors.primary,
-                    ),
-                  ),
-                ],
               ],
-            ),
+            ],
           ),
         ),
       ),
     );
+
+    if (!expanded) return chip;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      child: chip,
+    );
+  }
+
+  static bool _isDark(BuildContext context, ThemeMode mode) {
+    return switch (mode) {
+      ThemeMode.dark => true,
+      ThemeMode.light => false,
+      ThemeMode.system => MediaQuery.platformBrightnessOf(context) == Brightness.dark,
+    };
   }
 }

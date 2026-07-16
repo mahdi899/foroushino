@@ -13,6 +13,7 @@ import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
 import 'package:bahram_family_manager/widgets/layout/desktop_shell.dart';
 import 'package:bahram_family_manager/widgets/layout/shell_scope.dart';
 import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
+import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
 
 class _Tab {
   const _Tab({required this.label, required this.icon, required this.builder, this.permission});
@@ -80,7 +81,8 @@ class _RootShellState extends State<RootShell> {
 
     if (visibleTabs.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('مدیر خانواده بهرام')),
+        backgroundColor: Colors.transparent,
+        appBar: const ManagerAppBar(title: Text('مدیر خانواده بهرام')),
         body: const EmptyState(
           icon: Icons.lock_outline_rounded,
           title: 'دسترسی ندارید',

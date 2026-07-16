@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react';
 import { ArrowRight, Bell, CirclePlay } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
+import { FamilyVerifiedPatternBackdrop } from '@/components/family/FamilyVerifiedPatternBackdrop';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { StoryViewer } from '@/components/family/StoryViewer';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
@@ -53,6 +54,8 @@ export function FamilyBrandingSidebar({
     <>
       <aside className="family-sidebar hidden h-full w-[min(100%,300px)] shrink-0 flex-col overflow-hidden lg:flex">
         <div className="family-sidebar__inner">
+          <FamilyVerifiedPatternBackdrop variant="sidebar" />
+          <div className="family-sidebar__inner-content">
           <nav className="family-sidebar__toolbar" aria-label="میانبرهای خانواده">
             <Link
               href="/"
@@ -104,6 +107,7 @@ export function FamilyBrandingSidebar({
                   <FamilyAuthorAvatar
                     name={branding.profile_name}
                     avatar={communityAvatar}
+                    avatarVersion={branding.branding_version}
                     size="xl"
                     hasStoryRing
                     storyUnseen={hasUnseen}
@@ -115,6 +119,7 @@ export function FamilyBrandingSidebar({
                   <FamilyAuthorAvatar
                     name={branding.profile_name}
                     avatar={communityAvatar}
+                    avatarVersion={branding.branding_version}
                     size="xl"
                     verified
                   />
@@ -152,6 +157,7 @@ export function FamilyBrandingSidebar({
           <footer className="family-sidebar__footer">
             <span className="family-sidebar__footer-label">خانواده داداش بهرام</span>
           </footer>
+          </div>
         </div>
       </aside>
 

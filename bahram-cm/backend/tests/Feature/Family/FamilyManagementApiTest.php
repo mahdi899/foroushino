@@ -74,4 +74,76 @@ class FamilyManagementApiTest extends TestCase
             ->deleteJson("/api/v1/family-manager/families/{$family->id}")
             ->assertStatus(422);
     }
+
+    public function test_manager_can_list_add_and_remove_family_members_with_full_mobile(): void
+    {
+        $family = Family::query()->create([
+            'internal_name' => 'آرامش',
+            'member_count' => 0,
+            'capacity_target' => 5000,
+            'capacity_min' => 4500,
+            'capacity_max' => 5200,
+            'accepting_members' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'name' => 'علی تست',
+            'mobile' => '09121234567',
+            'is_admin' => false,
+        ]);
+
+        $add = $this->actingAs($this->manager, 'sanctum')
+            ->postJson("/api/v1/family-manager/families/{$family->id}/members", [
+                'mobile' => '09121234567',
+            ]);
+        $add->assertCreated()
+            ->assertJsonPath('data.mobile', '09121234567')
+            ->assertJsonPath('data.name', 'علی تست');
+
+        $membershipId = $add->json('data.id');
+        $this->assertDatabaseHas('family_memberships', [
+            'id' => $membershipId,
+            'user_id' => $user->id,
+            'family_id' => $family->id,
+        ]);
+        $this->assertSame(1, $family->fresh()->member_count);
+
+        $this->actingAs($this->manager, 'sanctum')
+            ->getJson("/api/v1/family-manager/families/{$family->id}/members")
+            ->assertOk()
+            ->assertJsonPath('data.0.mobile', '09121234567');
+
+        $this->actingAs($this->manager, 'sanctum')
+            ->deleteJson("/api/v1/family-manager/families/{$family->id}/members/{$membershipId}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('family_memberships', ['id' => $membershipId]);
+        $this->assertSame(0, $family->fresh()->member_count);
+    }
+
+    public function test_manager_can_create_user_when_adding_unknown_mobile_with_name(): void
+    {
+        $family = Family::query()->create([
+            'internal_name' => 'نو',
+            'member_count' => 0,
+            'capacity_target' => 5000,
+            'capacity_min' => 4500,
+            'capacity_max' => 5200,
+            'accepting_members' => true,
+        ]);
+
+        $this->actingAs($this->manager, 'sanctum')
+            ->postJson("/api/v1/family-manager/families/{$family->id}/members", [
+                'mobile' => '09129876543',
+                'name' => 'کاربر جدید',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.mobile', '09129876543')
+            ->assertJsonPath('data.name', 'کاربر جدید');
+
+        $this->assertDatabaseHas('users', [
+            'mobile' => '09129876543',
+            'name' => 'کاربر جدید',
+        ]);
+    }
 }
