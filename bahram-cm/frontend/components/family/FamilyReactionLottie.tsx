@@ -1,9 +1,6 @@
 'use client';
 
-/**
- * Family reaction icon — bundled Noto Emoji Animation.
- */
-
+/** Family reaction icon — bundled Noto Emoji Animation. */
 import { AnimatedEmoji, type AnimatedEmojiMode } from '@/components/emoji/AnimatedEmoji';
 import { FAMILY_REACTION_NOTO } from '@/lib/emoji/noto-registry';
 import type { FamilyReactionType } from '@/lib/family/types';
@@ -11,11 +8,9 @@ import type { FamilyReactionType } from '@/lib/family/types';
 export function FamilyReactionLottie({
   type,
   size = 20,
-  mode = 'reaction',
-  playKey = 0,
+  mode = 'loop',
 }: {
   type: FamilyReactionType;
-  playKey?: number;
   size?: number;
   mode?: AnimatedEmojiMode;
 }) {
@@ -24,7 +19,6 @@ export function FamilyReactionLottie({
       notoKey={FAMILY_REACTION_NOTO[type]}
       size={size}
       mode={mode}
-      playKey={playKey}
       className="family-reaction-icon"
     />
   );

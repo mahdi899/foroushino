@@ -84,10 +84,15 @@ class SecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
+
     return OutlinedButton(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
-        backgroundColor: AppColors.surfaceSoft,
+        backgroundColor: scheme.surface.withValues(alpha: isDark ? 0.5 : 0.7),
+        foregroundColor: scheme.onSurface,
+        side: BorderSide(color: scheme.outline.withValues(alpha: 0.75)),
         minimumSize: expand ? const Size.fromHeight(48) : null,
       ),
       child: Row(

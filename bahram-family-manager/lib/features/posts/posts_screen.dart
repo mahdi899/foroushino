@@ -8,11 +8,11 @@ import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/features/posts/post_editor_screen.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
-import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
 import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
+import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
 import 'package:bahram_family_manager/widgets/posts/post_list_tile.dart';
 
 class PostsScreen extends StatefulWidget {
@@ -73,16 +73,12 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
   @override
   Widget build(BuildContext context) {
     return AdaptiveScaffold(
-      appBar: AppBar(
+      appBar: ManagerAppBar(
         title: const Text('پست‌های خانواده'),
         bottom: AppTabBar(
           controller: _tabController,
           tabs: _statuses.map((s) => labelOf(postStatusLabels, s)).toList(),
         ),
-      ),
-      floatingActionButton: GradientFab(
-        onPressed: () => _openEditor(),
-        label: 'پست جدید',
       ),
       body: RefreshIndicator(
         onRefresh: () async => _load(),
@@ -100,7 +96,7 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
                   children: const [
                     EmptyState(
                       title: 'پستی وجود ندارد',
-                      subtitle: 'اولین پست خانواده را از دکمه پایین بسازید.',
+                      subtitle: 'از دکمه «پست جدید» در پایین صفحه یا سایدبار استفاده کنید.',
                       icon: Icons.campaign_outlined,
                     ),
                   ],

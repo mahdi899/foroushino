@@ -14,6 +14,7 @@ import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
 import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
+import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
 
 class FamiliesScreen extends StatefulWidget {
   const FamiliesScreen({super.key});
@@ -66,7 +67,7 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
     final Widget body;
     if (isDesktop) {
       body = AdaptiveScaffold(
-        appBar: AppBar(
+        appBar: ManagerAppBar(
           title: const Text('خانواده‌ها'),
           automaticallyImplyLeading: false,
           actions: [
@@ -125,7 +126,7 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
       );
     } else {
       body = AdaptiveScaffold(
-        appBar: AppBar(title: const Text('خانواده‌ها')),
+        appBar: const ManagerAppBar(title: Text('خانواده‌ها')),
         body: Column(
           children: [
             _SearchHeader(

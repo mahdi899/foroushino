@@ -18,7 +18,7 @@ class PanelGradientCard extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final VoidCallback? onTap;
 
-  LinearGradient get _gradient => switch (variant) {
+  LinearGradient _resolveGradient(BuildContext context) => switch (variant) {
         PanelGradientVariant.teal => const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -36,7 +36,7 @@ class PanelGradientCard extends StatelessWidget {
             end: Alignment.bottomLeft,
             colors: [
               AppColors.accent.withValues(alpha: 0.14),
-              AppColors.surface,
+              Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
               AppColors.primarySoft.withValues(alpha: 0.35),
             ],
           ),
@@ -46,7 +46,7 @@ class PanelGradientCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final card = Container(
       decoration: BoxDecoration(
-        gradient: _gradient,
+        gradient: _resolveGradient(context),
         borderRadius: AppRadius.cardBorder,
         boxShadow: AppShadows.panelGlow,
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),

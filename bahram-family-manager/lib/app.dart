@@ -64,7 +64,10 @@ class _RootGate extends StatelessWidget {
     final state = context.watch<AppState>();
 
     if (state.bootstrapping) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (state.sessionError != null) {

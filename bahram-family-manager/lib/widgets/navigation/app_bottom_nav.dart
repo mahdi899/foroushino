@@ -68,7 +68,7 @@ class AppBottomNav extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: compact ? 10 : 11,
                                   fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                                  color: active ? AppColors.primary : AppColors.textMuted,
+                                  color: active ? scheme.primary : scheme.onSurface.withValues(alpha: 0.55),
                                   height: 1.1,
                                 ),
                               ),
@@ -104,6 +104,7 @@ class _NavIconShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final size = compact ? 30.0 : 34.0;
     final iconSize = compact ? 18.0 : 20.0;
 
@@ -114,12 +115,12 @@ class _NavIconShell extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         gradient: active ? AppGradients.primary : null,
-        color: active ? null : AppColors.surfaceSoft,
+        color: active ? null : scheme.surface.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(compact ? 10 : AppRadius.tile),
-        border: active ? null : Border.all(color: AppColors.border.withValues(alpha: 0.8)),
+        border: active ? null : Border.all(color: scheme.outline.withValues(alpha: 0.6)),
         boxShadow: active ? AppShadows.primaryGlow : null,
       ),
-      child: Icon(icon, size: iconSize, color: active ? Colors.white : AppColors.primary),
+      child: Icon(icon, size: iconSize, color: active ? Colors.white : scheme.primary),
     );
   }
 }
@@ -141,9 +142,12 @@ class AppTabBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.sm),
-      color: AppColors.surface,
+      color: scheme.surface.withValues(alpha: isDark ? 0.35 : 0.45),
       child: TabBar(
         controller: controller,
         isScrollable: isScrollable,
@@ -153,11 +157,11 @@ class AppTabBar extends StatelessWidget implements PreferredSizeWidget {
         splashBorderRadius: BorderRadius.circular(10),
         indicator: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          color: AppColors.primarySoft,
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+          color: scheme.primary.withValues(alpha: 0.14),
+          border: Border.all(color: scheme.primary.withValues(alpha: 0.28)),
         ),
-        labelColor: AppColors.primaryDark,
-        unselectedLabelColor: AppColors.textMuted,
+        labelColor: scheme.primary,
+        unselectedLabelColor: scheme.onSurface.withValues(alpha: 0.55),
         labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
         unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
         labelPadding: const EdgeInsets.symmetric(horizontal: 4),

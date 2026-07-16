@@ -5,14 +5,11 @@
  * @see https://googlefonts.github.io/noto-emoji-animation/
  */
 
-import dynamic from 'next/dynamic';
+import Lottie, { type LottieRefCurrentProps } from 'lottie-react';
 import { useCallback, useEffect, useRef } from 'react';
-import type { LottieRefCurrentProps } from 'lottie-react';
 import { getNotoLottie } from '@/lib/emoji/noto-lottie';
 import type { NotoEmojiSlug } from '@/lib/emoji/noto-registry';
 import { cn } from '@/lib/utils';
-
-const Lottie = dynamic(() => import('lottie-react'), { ssr: false });
 
 export type AnimatedEmojiMode = 'loop' | 'inline' | 'reaction';
 
@@ -50,15 +47,16 @@ export function AnimatedEmoji({
     svg.style.display = 'block';
   }, [size]);
 
-  const playReaction = useCallback(() => {
-    lottieRef.current?.goToAndPlay(0, true);
+  const startPlayback = useCallback(() => {
+    const inst = lottieRef.current;
+    if (!inst) return;
     clampSvgSize();
-  }, [clampSvgSize]);
-
-  const stopReaction = useCallback(() => {
-    lottieRef.current?.goToAndStop(0, true);
-    clampSvgSize();
-  }, [clampSvgSize]);
+    if (mode === 'reaction' && playKeyRef.current <= 0) {
+      inst.goToAndStop(0, true);
+      return;
+    }
+    inst.goToAndPlay(0, true);
+  }, [clampSvgSize, mode]);
 
   const freezeStatic = useCallback(() => {
     const inst = lottieRef.current;
@@ -69,40 +67,19 @@ export function AnimatedEmoji({
     clampSvgSize();
   }, [clampSvgSize]);
 
-  const playLoop = useCallback(() => {
-    lottieRef.current?.goToAndPlay(0, true);
-    clampSvgSize();
-  }, [clampSvgSize]);
-
   useEffect(() => {
-    clampSvgSize();
-    const t = window.setTimeout(() => {
-      clampSvgSize();
-      if (mode === 'loop') {
-        playLoop();
-      } else if (mode === 'inline') {
-        lottieRef.current?.goToAndPlay(0, true);
-      } else if (mode === 'reaction') {
-        if (playKeyRef.current > 0) playReaction();
-        else stopReaction();
-      }
-    }, 0);
+    const t = window.setTimeout(startPlayback, 0);
     return () => window.clearTimeout(t);
-  }, [notoKey, mode, clampSvgSize, playLoop, playReaction, stopReaction]);
+  }, [notoKey, mode, playKey, startPlayback]);
 
   useEffect(() => {
-    if (mode !== 'loop') return;
+    if (!loop) return;
     const resume = () => {
-      if (document.visibilityState === 'visible') playLoop();
+      if (document.visibilityState === 'visible') startPlayback();
     };
     document.addEventListener('visibilitychange', resume);
     return () => document.removeEventListener('visibilitychange', resume);
-  }, [mode, playLoop]);
-
-  useEffect(() => {
-    if (mode !== 'reaction' || playKey === 0) return;
-    playReaction();
-  }, [playKey, mode, playReaction]);
+  }, [loop, startPlayback]);
 
   if (!animationData) return null;
 
@@ -120,20 +97,10 @@ export function AnimatedEmoji({
         lottieRef={lottieRef}
         animationData={animationData}
         loop={loop}
-        autoplay={loop}
+        autoplay
         style={{ width: size, height: size }}
-        onDOMLoaded={() => {
-          clampSvgSize();
-          if (mode === 'loop') {
-            playLoop();
-          } else if (mode === 'reaction') {
-            if (playKeyRef.current > 0) playReaction();
-            else stopReaction();
-          } else if (mode === 'inline') {
-            lottieRef.current?.goToAndPlay(0, true);
-          }
-        }}
-        onComplete={mode === 'reaction' ? freezeStatic : undefined}
+        onDOMLoaded={startPlayback}
+        onComplete={!loop ? freezeStatic : undefined}
       />
     </span>
   );

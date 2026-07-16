@@ -10,6 +10,7 @@ import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
+import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
 import 'package:bahram_family_manager/widgets/posts/post_list_tile.dart';
 
 class AnalyticsScreen extends StatefulWidget {
@@ -38,7 +39,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   @override
   Widget build(BuildContext context) {
     return AdaptiveScaffold(
-      appBar: AppBar(
+      appBar: ManagerAppBar(
         title: const Text('تحلیل خانواده'),
         actions: [
           if (context.watch<AppState>().user?.can('family.entry_links.manage') ?? false)

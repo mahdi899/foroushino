@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 
@@ -22,6 +21,7 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.xxl),
@@ -32,10 +32,10 @@ class EmptyState extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: AppColors.primarySoft,
+                color: scheme.primary.withValues(alpha: 0.14),
                 borderRadius: AppRadius.cardBorder,
               ),
-              child: Icon(icon, size: 32, color: AppColors.primary),
+              child: Icon(icon, size: 32, color: scheme.primary),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(title, textAlign: TextAlign.center, style: Theme.of(context).textTheme.titleMedium),

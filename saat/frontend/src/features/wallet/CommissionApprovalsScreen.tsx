@@ -10,6 +10,7 @@ import { hasPermission } from '@/lib/permissions'
 import { isLeaderRole, isSupervisorRole } from '@/lib/roles'
 import { formatMoney } from '@/lib/format'
 import { commissionStatusLabels } from '@/data/labels'
+import { filterCommissionQueue } from '@/lib/commissionQueue'
 import {
   approveCommissionAsLeader,
   approveCommissionAsSupervisor,
@@ -22,6 +23,10 @@ import type { Commission } from '@/types'
 export function CommissionApprovalsScreen() {
   const role = useStore((s) => s.role)
   const permissions = useStore((s) => s.permissions)
+  const commissions = useStore((s) => s.commissions)
+  const agents = useStore((s) => s.agents)
+  const teams = useStore((s) => s.teams)
+  const currentAgentId = useStore((s) => s.currentAgentId)
   const pushToast = useStore((s) => s.pushToast)
   const [list, setList] = useState<Commission[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,17 +36,26 @@ export function CommissionApprovalsScreen() {
   const mode = isLeaderRole(role) && canLeader ? 'leader' : isSupervisorRole(role) && canSupervisor ? 'supervisor' : null
 
   useEffect(() => {
-    if (apiMode !== 'http' || !mode) {
+    if (!mode) {
       setLoading(false)
       return
     }
+
+    if (apiMode !== 'http') {
+      setList(
+        filterCommissionQueue(commissions, agents, teams, currentAgentId, role, mode),
+      )
+      setLoading(false)
+      return
+    }
+
     fetchCommissionQueue()
       .then(setList)
       .catch(() => pushToast('بارگذاری پورسانت‌ها ناموفق بود', 'error'))
       .finally(() => setLoading(false))
-  }, [mode, pushToast])
+  }, [mode, pushToast, commissions, agents, teams, currentAgentId, role])
 
-  const title = mode === 'leader' ? 'تایید پورسانت — لیدر' : 'تایید پورسانت — ناظر'
+  const title = mode === 'leader' ? 'تایید پورسانت' : 'تایید نهایی پورسانت'
   const subtitle =
     mode === 'leader'
       ? 'پورسانت‌های منتظر تایید سرتیم'
@@ -79,23 +93,33 @@ export function CommissionApprovalsScreen() {
         {loading ? (
           <p className="py-12 text-center text-[13px] font-semibold text-neutral-400">در حال بارگذاری…</p>
         ) : list.length === 0 ? (
-          <EmptyState title="پورسانتی نیست" description="همه پورسانت‌ها بررسی شده‌اند." />
+          <EmptyState
+            title="پورسانتی برای تایید نیست"
+            description={
+              mode === 'leader'
+                ? 'وقتی فروش کارشناسان تیم تایید نهایی شود، پورسانت اینجا نمایش داده می‌شود.'
+                : 'پورسانت‌های تایید‌شده توسط لیدرها اینجا ظاهر می‌شوند.'
+            }
+          />
         ) : (
           list.map((item) => (
             <motion.div
               key={item.id}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="glass-card rounded-[20px] border border-white/55 p-4 dark:border-white/10"
+              className="glass-card rounded-[18px] border border-white/55 p-4 dark:border-white/10"
             >
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0 text-right">
                   <p className="text-[14px] font-bold text-text">{item.agentName ?? 'کارشناس'}</p>
                   <p className="mt-0.5 text-[11px] font-semibold text-text-soft">
                     {commissionStatusLabels[item.status]}
                   </p>
+                  <p className="mt-1 text-[11px] font-medium text-text-soft">
+                    فروش {formatMoney(item.saleAmount)} تومان
+                  </p>
                 </div>
-                <p className="text-[15px] font-black tabular-nums text-emerald-600">
+                <p className="shrink-0 text-[15px] font-black tabular-nums text-emerald-600">
                   {formatMoney(item.commissionAmount)}
                 </p>
               </div>

@@ -23,9 +23,19 @@ class PostListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
+    final muted = scheme.onSurface.withValues(alpha: 0.6);
     final mediaBlock = post.primaryMediaBlock;
     final text = post.textPreview ?? post.preview;
     final isImportant = post.isImportant;
+
+    final cardColor = isImportant
+        ? AppColors.gold.withValues(alpha: isDark ? 0.12 : 0.1)
+        : scheme.surface.withValues(alpha: isDark ? 0.62 : 0.88);
+    final borderColor = isImportant
+        ? AppColors.gold.withValues(alpha: 0.4)
+        : (isDark ? Colors.white.withValues(alpha: 0.1) : scheme.outline.withValues(alpha: 0.75));
 
     return Material(
       color: Colors.transparent,
@@ -35,11 +45,17 @@ class PostListTile extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            color: isImportant ? AppColors.goldSoft.withValues(alpha: 0.45) : AppColors.surface,
-            border: Border.all(
-              color: isImportant ? AppColors.gold.withValues(alpha: 0.35) : AppColors.border,
-            ),
-            boxShadow: AppShadows.soft,
+            color: cardColor,
+            border: Border.all(color: borderColor),
+            boxShadow: isDark
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.22),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : AppShadows.soft,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -57,7 +73,7 @@ class PostListTile extends StatelessWidget {
                           Text(post.authorName ?? 'بهرام', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                           Text(
                             formatDateTime(post.publishedAt ?? post.createdAt),
-                            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                            style: TextStyle(color: muted, fontSize: 12),
                           ),
                         ],
                       ),
@@ -74,7 +90,7 @@ class PostListTile extends StatelessWidget {
                         onPressed: onPinToggle,
                         icon: Icon(
                           post.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                          color: post.isPinned ? AppColors.primary : AppColors.textMuted,
+                          color: post.isPinned ? scheme.primary : muted,
                           size: 20,
                         ),
                       ),
@@ -186,9 +202,11 @@ class StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: scheme.surface,
+        color: scheme.surface.withValues(alpha: isDark ? 0.55 : 0.72),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: scheme.outline),
+        border: Border.all(
+          color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.5),
+        ),
         boxShadow: shadow,
       ),
       child: Column(

@@ -3,15 +3,15 @@ import 'package:provider/provider.dart';
 
 import 'package:bahram_family_manager/widgets/branding/app_logo.dart';
 import 'package:bahram_family_manager/config/app_config.dart';
-import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
+import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
 import 'package:bahram_family_manager/widgets/surfaces/app_card.dart';
-import 'package:bahram_family_manager/widgets/theme/theme_mode_toggle.dart';
+import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -126,27 +126,25 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isDesktop = AppBreakpoints.isDesktop(context);
+    final scheme = Theme.of(context).colorScheme;
+    final muted = scheme.onSurface.withValues(alpha: 0.65);
 
     if (isDesktop) {
       return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          actions: const [ThemeModeToggleButton()],
+        backgroundColor: Colors.transparent,
+        appBar: const ManagerAppBar(
+          title: SizedBox.shrink(),
+          showThemeToggle: true,
+          themeToggleCompact: false,
         ),
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 960, maxHeight: 620),
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.xxl),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: AppShadows.soft,
-                ),
+              child: GlassPanel(
+                borderRadius: 20,
+                blur: 28,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
                   child: Row(
@@ -185,11 +183,11 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        actions: const [ThemeModeToggleButton()],
+      backgroundColor: Colors.transparent,
+      appBar: const ManagerAppBar(
+        title: SizedBox.shrink(),
+        showThemeToggle: true,
+        themeToggleCompact: false,
       ),
       body: SafeArea(
         child: Center(
@@ -209,10 +207,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  const Text(
+                  Text(
                     'ورود مخصوص بهرام و ادمین‌های مجاز',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.textMuted),
+                    style: TextStyle(color: muted),
                   ),
                   const SizedBox(height: AppSpacing.xxl),
                   AppCard(
@@ -354,10 +352,11 @@ class _LoginForm extends StatelessWidget {
   }
 
   List<Widget> _credentialsStep(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65);
     return [
       Text('ورود به پنل', style: Theme.of(context).textTheme.titleLarge),
       const SizedBox(height: AppSpacing.xs),
-      const Text('ایمیل و رمز عبور ادمین را وارد کنید.', style: TextStyle(color: AppColors.textMuted)),
+      Text('ایمیل و رمز عبور ادمین را وارد کنید.', style: TextStyle(color: muted)),
       const SizedBox(height: AppSpacing.xl),
       TextField(
         controller: emailCtrl,
@@ -402,12 +401,13 @@ class _LoginForm extends StatelessWidget {
   }
 
   List<Widget> _otpStep(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65);
     return [
       Text('تأیید دو مرحله‌ای', style: Theme.of(context).textTheme.titleLarge),
       const SizedBox(height: AppSpacing.sm),
       Text(
         'کد تأیید به شماره ${mobileMasked ?? ''} ارسال شد.',
-        style: const TextStyle(color: AppColors.textMuted),
+        style: TextStyle(color: muted),
       ),
       const SizedBox(height: AppSpacing.xl),
       TextField(

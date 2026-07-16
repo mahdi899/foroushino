@@ -75,7 +75,7 @@ export function ReactionFlyBurst({
       >
         <span className="family-reaction-fly__glow" aria-hidden />
         <span className="family-reaction-fly__trail" aria-hidden />
-        <FamilyReactionLottie type={anim.type} size={FLY_EMOJI_SIZE} mode="reaction" />
+        <FamilyReactionLottie type={anim.type} size={FLY_EMOJI_SIZE} mode="loop" />
       </motion.div>
     </FamilyBodyPortal>
   );

@@ -9,13 +9,43 @@ export function sumCommissionAmount(
     .reduce((sum, c) => sum + c.commissionAmount, 0)
 }
 
-/** Withdrawable balance — prefers API wallet, falls back to available commissions when drifted. */
+/**
+ * Withdrawable balance for the current agent.
+ * Wallet API balance is authoritative once payouts have moved funds to locked.
+ * Otherwise fall back to available commissions (handles mock drift and missed wallet credits).
+ */
 export function resolveWithdrawableBalance(wallet: Wallet, commissions: Commission[]): number {
   const fromWallet = wallet.balanceAvailable
-  if (fromWallet > 0) return fromWallet
+  const fromCommissions = sumCommissionAmount(commissions, ['available'])
 
-  // Funds already requested for payout stay in balance_locked; don't infer from commissions.
-  if (wallet.balanceLocked > 0) return 0
+  if (fromWallet > 0 || wallet.balanceLocked > 0) {
+    return fromWallet
+  }
 
-  return sumCommissionAmount(commissions, ['available'])
+  return fromCommissions
+}
+
+/** Align mock wallet balances with commission rows for the logged-in agent. */
+export function deriveWalletFromCommissions(
+  wallet: Wallet,
+  commissions: Commission[],
+): Wallet {
+  const available = sumCommissionAmount(commissions, ['available'])
+  const pending = sumCommissionAmount(commissions, ['pending', 'approved'])
+  const earned = sumCommissionAmount(commissions, ['available', 'paid'])
+
+  if (wallet.balanceLocked > 0) {
+    return {
+      ...wallet,
+      balancePending: pending,
+      totalEarned: Math.max(wallet.totalEarned, earned),
+    }
+  }
+
+  return {
+    ...wallet,
+    balanceAvailable: Math.max(wallet.balanceAvailable, available),
+    balancePending: pending,
+    totalEarned: Math.max(wallet.totalEarned, earned),
+  }
 }

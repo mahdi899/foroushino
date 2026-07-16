@@ -38,6 +38,7 @@ use App\Http\Controllers\Api\V1\Family\CommentController as FamilyCommentControl
 use App\Http\Controllers\Api\V1\Family\FeedController as FamilyFeedController;
 use App\Http\Controllers\Api\V1\Family\MediaProgressController as FamilyMediaProgressController;
 use App\Http\Controllers\Api\V1\Family\PostViewController as FamilyPostViewController;
+use App\Http\Controllers\Api\V1\Family\PulseController as FamilyPulseController;
 use App\Http\Controllers\Api\V1\Family\ReactionController as FamilyReactionController;
 use App\Http\Controllers\Api\V1\Family\StoryController as FamilyStoryController;
 use App\Http\Controllers\Api\V1\FamilyManager\AnalyticsController as FamilyManagerAnalyticsController;
@@ -79,6 +80,7 @@ use App\Http\Controllers\Api\V1\Student\SeminarController as StudentSeminarContr
 use App\Http\Controllers\Api\V1\Student\SpotPlayerSessionController as StudentSpotPlayerSessionController;
 use App\Http\Controllers\Api\V1\Student\TicketController as StudentTicketController;
 use App\Http\Controllers\Api\V1\Student\VerifiedBankAccountController as StudentVerifiedBankAccountController;
+use App\Http\Controllers\Api\V1\StudentTestimonialController;
 use App\Http\Controllers\Api\V1\Sat\ActivityController as SatActivityController;
 use App\Http\Controllers\Api\V1\Sat\AuthController as SatAuthController;
 use App\Http\Controllers\Api\V1\Sat\CallController as SatCallController;

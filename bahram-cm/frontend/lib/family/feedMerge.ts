@@ -48,3 +48,26 @@ export function latestPostIdFromPages(pages: FeedCachePage[] | undefined): numbe
   const tip = pages[0]?.data[0];
   return tip?.id ?? 0;
 }
+
+/**
+ * Restore scroll depth from IndexedDB without downgrading a fresher network tip.
+ * Disk may have more pages but an older tip if a publish landed after the last persist.
+ */
+export function reconcileDiskCacheWithCurrent(
+  current: FeedCachePage[] | undefined,
+  cached: FeedCachePage[],
+): FeedCachePage[] {
+  if (!cached.length) return current ?? [];
+  if (!current?.length) return cached;
+
+  const currentTipId = latestPostIdFromPages(current);
+  const cachedTipId = latestPostIdFromPages(cached);
+
+  if (currentTipId >= cachedTipId) {
+    if (current.length >= cached.length) return current;
+    const tip = current[0];
+    return tip ? [tip, ...cached.slice(1)] : cached;
+  }
+
+  return cached;
+}

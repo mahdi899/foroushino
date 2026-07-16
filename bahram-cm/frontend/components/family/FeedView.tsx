@@ -47,6 +47,7 @@ import {
   mergePublishedPostIntoFeedCaches,
   useFamilyRealtime,
 } from '@/lib/family/hooks/useFamilyRealtime';
+import { isRealtimeConfigured } from '@/lib/realtime/echo';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
 import type { FamilyBranding, FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
 
@@ -253,6 +254,24 @@ export function FeedView({
 
   const recentFeedUpdateIdsRef = useRef<Set<number>>(new Set());
 
+  const syncTipIfServerAhead = useCallback(async () => {
+    if (isPreview || isJumpedAwayRef.current) return;
+    const loadedLatest = chronologicalLatestPostId(postsRef.current);
+    try {
+      const res = await getFeedUnreadSummary(loadedLatest);
+      const serverLatest = res.data.latest_post_id;
+      if (serverLatest <= loadedLatest) return;
+
+      familyFeedDebug.info('sync', 'server ahead of loaded tip — revalidating', {
+        loadedLatest,
+        serverLatest,
+      });
+      await revalidateTip();
+    } catch (err) {
+      familyFeedDebug.warn('sync', 'tip sync failed', { error: String(err) });
+    }
+  }, [isPreview, revalidateTip]);
+
   useFamilyRealtime({
     // FeedView owns feed merges so a far jump window is never tip-replaced.
     syncFeed: false,
@@ -298,7 +317,9 @@ export function FeedView({
       }
 
       // Reading older tip pages — merge silently + bump FAB unread.
-      void mergePublishedPostIntoFeedCaches(payload.post_id);
+      void mergePublishedPostIntoFeedCaches(payload.post_id).then((merged) => {
+        if (!merged) void revalidateTip();
+      });
 
       const lastRead = getLastReadPostId(viewerKey);
       const fromLoaded = countUnreadPosts(postsRef.current, lastRead);
@@ -316,6 +337,30 @@ export function FeedView({
     },
   });
   const isValidatingRef = useRef(isValidating);
+
+  // HTTP safety net when Reverb is down or an event was missed (e.g. two quick publishes).
+  useEffect(() => {
+    if (isPreview || !feedReady) return;
+
+    const intervalMs = isRealtimeConfigured() ? 45_000 : 25_000;
+    const id = window.setInterval(() => {
+      void syncTipIfServerAhead();
+    }, intervalMs);
+
+    return () => window.clearInterval(id);
+  }, [feedReady, isPreview, syncTipIfServerAhead]);
+
+  useEffect(() => {
+    if (isPreview) return;
+
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      void syncTipIfServerAhead();
+    };
+
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [isPreview, syncTipIfServerAhead]);
 
   useEffect(() => {
     hasMoreRef.current = hasMore;

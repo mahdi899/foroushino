@@ -11,7 +11,6 @@ enum OtpPurpose: string
     case GuestCheckout = 'guest_checkout';
     case ChangePassword = 'change_password';
     case TelegramLink = 'telegram_link';
-    case TelegramLink = 'telegram_link';
 
     public static function values(): array
     {

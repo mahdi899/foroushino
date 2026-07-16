@@ -70,6 +70,7 @@ import {
   payoutNetAmount,
   validatePayoutAmount,
 } from '@/lib/payoutRules'
+import { deriveWalletFromCommissions, resolveWithdrawableBalance } from '@/lib/walletBalance'
 import type { SyncPayload } from '@/services/sync'
 import type { TeamLiveData } from '@/services/teamLive'
 import { agentsFromTeamLive, mergeTeamLiveIntoAgents, teamsFromTeamLive } from '@/services/teamLive'
@@ -204,6 +205,9 @@ interface AppState {
   rejectSale: (saleId: string, reason: string) => void
   cancelSale: (saleId: string) => void
   releaseCommission: (commissionId: string) => void
+  approveCommissionByLeader: (commissionId: string) => void
+  rejectCommissionAction: (commissionId: string, reason: string) => void
+  syncAgentWalletFromCommissions: () => void
 
   // team reports
   setTeamReports: (teamReports: TeamReport[]) => void
@@ -1101,11 +1105,15 @@ export const useStore = create<AppState>()(
             l.id === sale.leadId ? pushStatus({ ...l, stage: 'won' }, 'won', state.currentAgentId) : l,
           ),
           commissions: [commission, ...state.commissions],
-          wallet: {
-            ...state.wallet,
-            balancePending: state.wallet.balancePending + commissionAmount,
-          },
-          walletTx: [walletTx, ...state.walletTx],
+          ...(sale.agentId === state.currentAgentId
+            ? {
+                wallet: {
+                  ...state.wallet,
+                  balancePending: state.wallet.balancePending + commissionAmount,
+                },
+              }
+            : {}),
+          walletTx: sale.agentId === state.currentAgentId ? [walletTx, ...state.walletTx] : state.walletTx,
           activity: [
             { id: uid('al'), agentId: sale.agentId, kind: 'sale', title: 'فروش تایید شد', meta: `پورسانت ${commissionAmount}`, createdAt: nowIso },
             ...state.activity,
@@ -1335,32 +1343,86 @@ export const useStore = create<AppState>()(
       releaseCommission: (commissionId) => {
         const state = get()
         const com = state.commissions.find((c) => c.id === commissionId)
-        if (!com || com.status === 'available' || com.status === 'paid') return
+        if (!com || com.status !== 'approved') return
         const nowIso = new Date().toISOString()
+        const creditsAgent = com.agentId === state.currentAgentId
         set({
           commissions: state.commissions.map((c) =>
             c.id === commissionId ? { ...c, status: 'available' as const, approvedAt: c.approvedAt ?? nowIso } : c,
           ),
-          wallet: {
-            ...state.wallet,
-            balancePending: Math.max(0, state.wallet.balancePending - com.commissionAmount),
-            balanceAvailable: state.wallet.balanceAvailable + com.commissionAmount,
-            totalEarned: state.wallet.totalEarned + com.commissionAmount,
-          },
-          walletTx: [
-            {
-              id: uid('wt'),
-              type: 'commission_available',
-              amount: com.commissionAmount,
-              description: 'پورسانت قابل برداشت شد',
-              referenceType: 'commission',
-              referenceId: com.id,
-              createdAt: nowIso,
-            },
-            ...state.walletTx,
-          ],
+          ...(creditsAgent
+            ? {
+                wallet: {
+                  ...state.wallet,
+                  balancePending: Math.max(0, state.wallet.balancePending - com.commissionAmount),
+                  balanceAvailable: state.wallet.balanceAvailable + com.commissionAmount,
+                  totalEarned: state.wallet.totalEarned + com.commissionAmount,
+                },
+                walletTx: [
+                  {
+                    id: uid('wt'),
+                    type: 'commission_available',
+                    amount: com.commissionAmount,
+                    description: 'پورسانت قابل برداشت شد',
+                    referenceType: 'commission',
+                    referenceId: com.id,
+                    createdAt: nowIso,
+                  },
+                  ...state.walletTx,
+                ],
+              }
+            : {}),
         })
-        get().pushNotification({ title: 'پورسانت آزاد شد', body: 'پورسانت شما قابل برداشت شد.', kind: 'commission', href: '/wallet' })
+        if (creditsAgent) {
+          get().pushNotification({
+            title: 'پورسانت آزاد شد',
+            body: 'پورسانت شما قابل برداشت شد.',
+            kind: 'commission',
+            href: '/wallet',
+          })
+        }
+      },
+
+      approveCommissionByLeader: (commissionId) => {
+        const state = get()
+        const com = state.commissions.find((c) => c.id === commissionId)
+        if (!com || com.status !== 'pending') return
+        const nowIso = new Date().toISOString()
+        set({
+          commissions: state.commissions.map((c) =>
+            c.id === commissionId
+              ? { ...c, status: 'approved' as const, leaderApprovedAt: nowIso }
+              : c,
+          ),
+        })
+        get().pushNotification({
+          title: 'پورسانت تایید شد',
+          body: 'برای تایید نهایی به ناظر ارسال شد.',
+          kind: 'commission',
+          href: '/wallet/approvals',
+        })
+      },
+
+      rejectCommissionAction: (commissionId, reason) => {
+        const state = get()
+        const com = state.commissions.find((c) => c.id === commissionId)
+        if (!com || com.status === 'available' || com.status === 'paid' || com.status === 'rejected') return
+        set({
+          commissions: state.commissions.map((c) =>
+            c.id === commissionId
+              ? { ...c, status: 'rejected' as const, rejectionReason: reason.trim() }
+              : c,
+          ),
+        })
+        get().pushToast('پورسانت رد شد', 'info')
+      },
+
+      syncAgentWalletFromCommissions: () => {
+        const state = get()
+        const own = state.commissions.filter((c) => c.agentId === state.currentAgentId)
+        set({
+          wallet: deriveWalletFromCommissions(state.wallet, own),
+        })
       },
 
       setWalletMeta: (wallet) => set({ wallet }),
@@ -1381,7 +1443,9 @@ export const useStore = create<AppState>()(
 
       requestPayout: (amount) => {
         const state = get()
-        const validation = validatePayoutAmount(amount, state.wallet.balanceAvailable)
+        const ownCommissions = state.commissions.filter((c) => c.agentId === state.currentAgentId)
+        const withdrawable = resolveWithdrawableBalance(state.wallet, ownCommissions)
+        const validation = validatePayoutAmount(amount, withdrawable)
         if (!validation.ok) return { ok: false, message: validation.message }
 
         const bankFee = calculateBankFee(amount)

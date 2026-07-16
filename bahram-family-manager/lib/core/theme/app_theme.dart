@@ -64,7 +64,7 @@ class AppTheme {
       useMaterial3: true,
       fontFamily: _fontFamily,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.background,
+      scaffoldBackgroundColor: Colors.transparent,
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surface.withValues(alpha: 0.94),
@@ -238,7 +238,7 @@ class AppTheme {
       useMaterial3: true,
       fontFamily: _fontFamily,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.backgroundDark,
+      scaffoldBackgroundColor: Colors.transparent,
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surfaceDark.withValues(alpha: 0.94),

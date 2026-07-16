@@ -28,7 +28,7 @@ class AdaptiveScaffold extends StatelessWidget {
     final isDesktop = AppBreakpoints.isDesktop(context);
 
     return Scaffold(
-      backgroundColor: isDesktop ? Colors.transparent : (backgroundColor ?? Theme.of(context).scaffoldBackgroundColor),
+      backgroundColor: isDesktop ? Colors.transparent : (backgroundColor ?? Colors.transparent),
       extendBody: extendBody,
       appBar: appBar,
       body: LayoutBuilder(
