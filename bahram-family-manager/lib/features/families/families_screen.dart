@@ -7,13 +7,14 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
+import 'package:bahram_family_manager/core/utils/paginated_scroll.dart';
+import 'package:bahram_family_manager/features/families/family_detail_cache.dart';
 import 'package:bahram_family_manager/features/families/family_detail_screen.dart';
 import 'package:bahram_family_manager/features/families/family_members_screen.dart';
 import 'package:bahram_family_manager/features/families/family_editor_sheet.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
-import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
@@ -26,49 +27,171 @@ class FamiliesScreen extends StatefulWidget {
 }
 
 class _FamiliesScreenState extends State<FamiliesScreen> {
+  static const _pageSize = 25;
+
   final _searchCtrl = TextEditingController();
+  final _familiesScrollCtrl = ScrollController();
   String? _lifecycle;
   int? _selectedFamilyId;
-  Future<PaginatedResult<FamilySummaryModel>>? _future;
+
+  final _families = <FamilySummaryModel>[];
+  var _familiesPage = 0;
+  var _familiesHasMore = true;
+  var _familiesTotal = 0;
+  var _familiesInitialLoading = true;
+  var _familiesLoadingMore = false;
+  String? _familiesError;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _familiesScrollCtrl.addListener(_onFamiliesScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadFamiliesFirstPage();
+    });
   }
 
-  Future<void> _load() async {
+  void _onFamiliesScroll() {
+    if (!_familiesHasMore || _familiesLoadingMore || _familiesInitialLoading) return;
+    final position = _familiesScrollCtrl.position;
+    if (position.pixels >= position.maxScrollExtent - 240) {
+      _loadFamiliesMore();
+    }
+  }
+
+  Future<void> _loadFamiliesFirstPage() async {
     setState(() {
-      _future = context.read<AppState>().manager.listFamilies(search: _searchCtrl.text, lifecycle: _lifecycle);
+      _familiesInitialLoading = true;
+      _familiesLoadingMore = false;
+      _familiesError = null;
+      _families.clear();
+      _familiesPage = 0;
+      _familiesHasMore = true;
+      _familiesTotal = 0;
     });
-    await _future;
+    await _fetchFamiliesPage(1, replace: true);
+  }
+
+  Future<void> _loadFamiliesMore() async {
+    if (!_familiesHasMore || _familiesLoadingMore || _familiesInitialLoading) return;
+    setState(() => _familiesLoadingMore = true);
+    await _fetchFamiliesPage(_familiesPage + 1, replace: false);
+  }
+
+  Future<void> _fetchFamiliesPage(int page, {required bool replace}) async {
+    try {
+      final result = await context.read<AppState>().manager.listFamilies(
+            search: _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
+            lifecycle: _lifecycle,
+            page: page,
+            perPage: _pageSize,
+          );
+      if (!mounted) return;
+      setState(() {
+        if (replace) {
+          _families
+            ..clear()
+            ..addAll(result.items);
+          if (_selectedFamilyId != null &&
+              !_families.any((family) => family.id == _selectedFamilyId)) {
+            _selectedFamilyId = _families.isNotEmpty ? _families.first.id : null;
+          }
+        } else {
+          _families.addAll(result.items);
+        }
+        _familiesPage = result.currentPage;
+        _familiesHasMore = result.hasMore;
+        _familiesTotal = result.total;
+        _familiesInitialLoading = false;
+        _familiesLoadingMore = false;
+        _familiesError = null;
+      });
+      _maybeAutoSelectFirst();
+      schedulePaginatedPrefetch(
+        controller: _familiesScrollCtrl,
+        mounted: mounted,
+        hasMore: _familiesHasMore,
+        loadingMore: _familiesLoadingMore,
+        initialLoading: _familiesInitialLoading,
+        loadMore: _loadFamiliesMore,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _familiesError = messageOf(e);
+        _familiesInitialLoading = false;
+        _familiesLoadingMore = false;
+      });
+    }
   }
 
   void _selectFamily(int id) {
     setState(() => _selectedFamilyId = id);
   }
 
+  void _maybeAutoSelectFirst() {
+    if (!mounted || !AppBreakpoints.isDesktop(context)) return;
+    if (_selectedFamilyId != null || _families.isEmpty) return;
+    setState(() => _selectedFamilyId = _families.first.id);
+  }
+
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _familiesScrollCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _refreshFamiliesList() async {
+    if (_familiesInitialLoading) {
+      await _loadFamiliesFirstPage();
+      return;
+    }
+    try {
+      final result = await context.read<AppState>().manager.listFamilies(
+            search: _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
+            lifecycle: _lifecycle,
+            page: 1,
+            perPage: _pageSize,
+          );
+      if (!mounted) return;
+      setState(() {
+        _families
+          ..clear()
+          ..addAll(result.items);
+        _familiesPage = result.currentPage;
+        _familiesHasMore = result.hasMore;
+        _familiesTotal = result.total;
+        if (_selectedFamilyId != null && !_families.any((family) => family.id == _selectedFamilyId)) {
+          _selectedFamilyId = _families.isNotEmpty ? _families.first.id : null;
+        }
+      });
+    } catch (_) {}
   }
 
   Future<void> _createFamily() async {
     final created = await showFamilyEditorSheet(context: context);
     if (created == true) {
-      await _load();
+      context.read<AppState>().invalidateFamiliesCache();
+      FamilyDetailCache.invalidate();
+      await _loadFamiliesFirstPage();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = AppBreakpoints.isDesktop(context);
-    final canManage = context.watch<AppState>().user?.can('family.families.manage') ?? false;
+    return Selector<AppState, bool>(
+      selector: (_, state) => state.user?.can('family.families.manage') ?? false,
+      builder: (context, canManage, _) {
+        final isDesktop = AppBreakpoints.isDesktop(context);
+        return _buildBody(context, isDesktop: isDesktop, canManage: canManage);
+      },
+    );
+  }
 
-    final Widget body;
+  Widget _buildBody(BuildContext context, {required bool isDesktop, required bool canManage}) {
     if (isDesktop) {
-      body = AdaptiveScaffold(
+      return AdaptiveScaffold(
         appBar: ManagerAppBar(
           title: const Text('خانواده‌ها'),
           automaticallyImplyLeading: false,
@@ -92,33 +215,25 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(
-                width: 360,
-                child: Column(
-                  children: [
-                    _SearchHeader(
-                      searchCtrl: _searchCtrl,
-                      lifecycle: _lifecycle,
-                      onSearch: _load,
-                      onLifecycleChanged: (v) => setState(() {
-                        _lifecycle = v;
-                        _load();
-                      }),
-                    ),
-                    const Divider(height: 1),
-                    Expanded(
-                      child: _FamiliesList(
-                        future: _future,
-                        selectedId: _selectedFamilyId,
-                        onRefresh: _load,
-                        onSelect: _selectFamily,
-                        desktopStyle: true,
-                      ),
-                    ),
-                  ],
-                ),
+              _FamiliesListSidebar(
+                searchCtrl: _searchCtrl,
+                lifecycle: _lifecycle,
+                onSearch: _loadFamiliesFirstPage,
+                onLifecycleChanged: (v) => setState(() {
+                  _lifecycle = v;
+                  _loadFamiliesFirstPage();
+                }),
+                scrollController: _familiesScrollCtrl,
+                families: _families,
+                initialLoading: _familiesInitialLoading,
+                loadingMore: _familiesLoadingMore,
+                hasMore: _familiesHasMore,
+                error: _familiesError,
+                selectedId: _selectedFamilyId,
+                onRefresh: _loadFamiliesFirstPage,
+                onSelect: _selectFamily,
               ),
-              const VerticalDivider(width: 1, thickness: 1),
+              VerticalDivider(width: 1, thickness: 1, color: Theme.of(context).dividerColor),
               Expanded(
                 child: _selectedFamilyId == null
                     ? const EmptyState(
@@ -129,15 +244,16 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
                     : FamilyDetailBody(
                         key: ValueKey(_selectedFamilyId),
                         familyId: _selectedFamilyId!,
-                        onChanged: _load,
+                        onChanged: _refreshFamiliesList,
                       ),
               ),
             ],
           ),
         ),
       );
-    } else {
-      body = AdaptiveScaffold(
+    }
+
+    return AdaptiveScaffold(
         appBar: ManagerAppBar(
           title: const Text('خانواده‌ها'),
           actions: [
@@ -162,17 +278,22 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
             _SearchHeader(
               searchCtrl: _searchCtrl,
               lifecycle: _lifecycle,
-              onSearch: _load,
+              onSearch: _loadFamiliesFirstPage,
               onLifecycleChanged: (v) => setState(() {
                 _lifecycle = v;
-                _load();
+                _loadFamiliesFirstPage();
               }),
             ),
             Expanded(
               child: _FamiliesList(
-                future: _future,
+                scrollController: _familiesScrollCtrl,
+                families: _families,
+                initialLoading: _familiesInitialLoading,
+                loadingMore: _familiesLoadingMore,
+                hasMore: _familiesHasMore,
+                error: _familiesError,
                 selectedId: _selectedFamilyId,
-                onRefresh: _load,
+                onRefresh: _loadFamiliesFirstPage,
                 onSelect: (id) => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => FamilyDetailScreen(familyId: id)),
                 ),
@@ -180,11 +301,83 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
               ),
             ),
           ],
-        ),
-      );
-    }
+      ),
+    );
+  }
+}
 
-    return body;
+class _FamiliesListSidebar extends StatelessWidget {
+  const _FamiliesListSidebar({
+    required this.searchCtrl,
+    required this.lifecycle,
+    required this.onSearch,
+    required this.onLifecycleChanged,
+    required this.scrollController,
+    required this.families,
+    required this.initialLoading,
+    required this.loadingMore,
+    required this.hasMore,
+    required this.error,
+    required this.selectedId,
+    required this.onRefresh,
+    required this.onSelect,
+  });
+
+  static const _width = 360.0;
+
+  final TextEditingController searchCtrl;
+  final String? lifecycle;
+  final VoidCallback onSearch;
+  final ValueChanged<String?> onLifecycleChanged;
+  final ScrollController scrollController;
+  final List<FamilySummaryModel> families;
+  final bool initialLoading;
+  final bool loadingMore;
+  final bool hasMore;
+  final String? error;
+  final int? selectedId;
+  final Future<void> Function() onRefresh;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
+
+    return SizedBox(
+      width: _width,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: context.appSurfaceSoft.withValues(alpha: isDark ? 0.78 : 0.96),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SearchHeader(
+              searchCtrl: searchCtrl,
+              lifecycle: lifecycle,
+              onSearch: onSearch,
+              onLifecycleChanged: onLifecycleChanged,
+            ),
+            Divider(height: 1, thickness: 1, color: scheme.outline.withValues(alpha: 0.65)),
+            Expanded(
+              child: _FamiliesList(
+                scrollController: scrollController,
+                families: families,
+                initialLoading: initialLoading,
+                loadingMore: loadingMore,
+                hasMore: hasMore,
+                error: error,
+                selectedId: selectedId,
+                onRefresh: onRefresh,
+                onSelect: onSelect,
+                desktopStyle: true,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -243,14 +436,24 @@ class _SearchHeader extends StatelessWidget {
 
 class _FamiliesList extends StatelessWidget {
   const _FamiliesList({
-    required this.future,
+    required this.scrollController,
+    required this.families,
+    required this.initialLoading,
+    required this.loadingMore,
+    required this.hasMore,
+    required this.error,
     required this.selectedId,
     required this.onRefresh,
     required this.onSelect,
     required this.desktopStyle,
   });
 
-  final Future<PaginatedResult<FamilySummaryModel>>? future;
+  final ScrollController scrollController;
+  final List<FamilySummaryModel> families;
+  final bool initialLoading;
+  final bool loadingMore;
+  final bool hasMore;
+  final String? error;
   final int? selectedId;
   final Future<void> Function() onRefresh;
   final ValueChanged<int> onSelect;
@@ -258,53 +461,81 @@ class _FamiliesList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (initialLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (error != null && families.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          EmptyState(
+            icon: Icons.error_outline_rounded,
+            title: 'خطا در بارگذاری خانواده‌ها',
+            subtitle: error!,
+            actionLabel: 'تلاش مجدد',
+            onAction: onRefresh,
+          ),
+        ],
+      );
+    }
+
+    if (families.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: onRefresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [EmptyState(title: 'خانواده‌ای یافت نشد', icon: Icons.groups_outlined)],
+        ),
+      );
+    }
+
+    final itemCount = families.length + (hasMore || loadingMore ? 1 : 0);
+
     return RefreshIndicator(
       onRefresh: onRefresh,
-      child: FutureBuilder<PaginatedResult<FamilySummaryModel>>(
-        future: future,
-        builder: (context, snapshot) => AsyncBody<PaginatedResult<FamilySummaryModel>>(
-          snapshot: snapshot,
-          emptyMessage: 'خانواده‌ای یافت نشد.',
-          builder: (context, data) {
-            final families = data.items;
-            if (desktopStyle && selectedId == null && families.isNotEmpty) {
-              WidgetsBinding.instance.addPostFrameCallback((_) => onSelect(families.first.id));
-            }
-            if (families.isEmpty) {
-              return ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [EmptyState(title: 'خانواده‌ای یافت نشد', icon: Icons.groups_outlined)],
-              );
-            }
-
-            if (desktopStyle) {
-              return ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: families.length,
-                itemBuilder: (context, index) {
-                  final f = families[index];
-                  return _DesktopFamilyTile(
+      child: desktopStyle
+          ? ListView.builder(
+              controller: scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: itemCount,
+              itemBuilder: (context, index) {
+                if (index >= families.length) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                final f = families[index];
+                return RepaintBoundary(
+                  child: _DesktopFamilyTile(
                     family: f,
                     selected: f.id == selectedId,
                     onTap: () => onSelect(f.id),
-                  );
-                },
-              );
-            }
-
-            return ListView.separated(
+                  ),
+                );
+              },
+            )
+          : ListView.separated(
+              controller: scrollController,
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: families.length,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+              itemCount: itemCount,
+              separatorBuilder: (_, index) {
+                if (index >= families.length - 1) return const SizedBox.shrink();
+                return const SizedBox(height: AppSpacing.sm);
+              },
               itemBuilder: (context, index) {
+                if (index >= families.length) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
                 final f = families[index];
                 return _MobileFamilyCard(family: f, onTap: () => onSelect(f.id));
               },
-            );
-          },
-        ),
-      ),
+            ),
     );
   }
 }
@@ -403,7 +634,7 @@ class _MobileFamilyCard extends StatelessWidget {
 
     return GlassPanel(
       borderRadius: 16,
-      blur: 20,
+      blur: 0,
       onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.md),
       child: Row(

@@ -52,7 +52,7 @@ class PostListTile extends StatelessWidget {
 
     return GlassPanel(
       borderRadius: 20,
-      blur: 24,
+      blur: 0,
       padding: EdgeInsets.zero,
       child: Material(
         color: Colors.transparent,
@@ -189,7 +189,7 @@ class PostListTile extends StatelessWidget {
               if (mediaBlock?.media != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-                  child: FamilyMediaView(media: mediaBlock!.media!, height: 200),
+                  child: FamilyMediaView(media: mediaBlock!.media!, height: 200, previewOnly: true),
                 ),
               if (text.isNotEmpty) ...[
                 const SizedBox(height: AppSpacing.md),

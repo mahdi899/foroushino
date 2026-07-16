@@ -641,6 +641,8 @@ class EntryLinkModel {
     this.campaign,
     this.topic,
     required this.entryEventId,
+    this.familyId,
+    this.familyName,
     required this.isActive,
     required this.url,
     required this.joinsTotal,
@@ -656,6 +658,8 @@ class EntryLinkModel {
   final String? campaign;
   final String? topic;
   final int entryEventId;
+  final int? familyId;
+  final String? familyName;
   final bool isActive;
   final String url;
   final int joinsTotal;
@@ -671,6 +675,8 @@ class EntryLinkModel {
         campaign: json['campaign']?.toString(),
         topic: json['topic']?.toString(),
         entryEventId: (json['entry_event_id'] as num?)?.toInt() ?? 0,
+        familyId: (json['family_id'] as num?)?.toInt(),
+        familyName: json['family_name']?.toString(),
         isActive: json['is_active'] as bool? ?? true,
         url: json['url']?.toString() ?? '',
         joinsTotal: (json['joins_total'] as num?)?.toInt() ?? 0,
@@ -769,10 +775,45 @@ class FamilyBrandingSettings {
       );
 }
 
+class AiProviderMeta {
+  const AiProviderMeta({
+    required this.id,
+    required this.label,
+    required this.apiStyle,
+    required this.defaultModel,
+    required this.defaultBaseUrl,
+    required this.models,
+    required this.keyHint,
+    required this.hint,
+  });
+
+  final String id;
+  final String label;
+  final String apiStyle;
+  final String defaultModel;
+  final String defaultBaseUrl;
+  final List<String> models;
+  final String keyHint;
+  final String hint;
+
+  factory AiProviderMeta.fromJson(Map<String, dynamic> json) => AiProviderMeta(
+        id: json['id']?.toString() ?? 'openai',
+        label: json['label']?.toString() ?? 'OpenAI',
+        apiStyle: json['api_style']?.toString() ?? 'openai',
+        defaultModel: json['default_model']?.toString() ?? 'gpt-4o-mini',
+        defaultBaseUrl: json['default_base_url']?.toString() ?? 'https://api.openai.com/v1',
+        models: (json['models'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+        keyHint: json['key_hint']?.toString() ?? '',
+        hint: json['hint']?.toString() ?? '',
+      );
+}
+
 class FamilyAiSettings {
   FamilyAiSettings({
     this.isActive = false,
     this.providerName = 'openai',
+    this.providerLabel,
+    this.apiStyle,
     this.baseUrl = '',
     this.model = 'gpt-4o-mini',
     this.temperature = 0.4,
@@ -787,6 +828,8 @@ class FamilyAiSettings {
 
   final bool isActive;
   final String providerName;
+  final String? providerLabel;
+  final String? apiStyle;
   final String baseUrl;
   final String model;
   final double temperature;
@@ -801,6 +844,8 @@ class FamilyAiSettings {
   factory FamilyAiSettings.fromJson(Map<String, dynamic> json) => FamilyAiSettings(
         isActive: json['is_active'] == true,
         providerName: json['provider_name']?.toString() ?? 'openai',
+        providerLabel: json['provider_label']?.toString(),
+        apiStyle: json['api_style']?.toString(),
         baseUrl: json['base_url']?.toString() ?? '',
         model: json['model']?.toString() ?? 'gpt-4o-mini',
         temperature: (json['temperature'] as num?)?.toDouble() ?? 0.4,
@@ -866,6 +911,10 @@ class FamilyMemberModel {
     this.mobile,
     this.mobileMasked,
     this.entrySource,
+    this.entryCampaign,
+    this.entryContent,
+    this.entryEventId,
+    this.entryEventName,
     this.joinedAt,
     this.onboardingCompleted = false,
   });
@@ -878,6 +927,10 @@ class FamilyMemberModel {
   final String? mobile;
   final String? mobileMasked;
   final String? entrySource;
+  final String? entryCampaign;
+  final String? entryContent;
+  final int? entryEventId;
+  final String? entryEventName;
   final String? joinedAt;
   final bool onboardingCompleted;
 
@@ -892,6 +945,12 @@ class FamilyMemberModel {
         mobile: json['mobile']?.toString(),
         mobileMasked: json['mobile_masked']?.toString(),
         entrySource: json['entry_source']?.toString(),
+        entryCampaign: json['entry_campaign']?.toString(),
+        entryContent: json['entry_content']?.toString(),
+        entryEventId: (json['entry_event_id'] as num?)?.toInt(),
+        entryEventName: json['entry_event'] is Map
+            ? (json['entry_event'] as Map)['name']?.toString()
+            : null,
         joinedAt: json['joined_at']?.toString(),
         onboardingCompleted: json['onboarding_completed'] == true,
       );

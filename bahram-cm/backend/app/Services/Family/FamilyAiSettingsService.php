@@ -4,6 +4,7 @@ namespace App\Services\Family;
 
 use App\Models\AiSetting;
 use App\Models\Setting;
+use App\Support\Ai\AiProviderCatalog;
 use Illuminate\Support\Facades\Cache;
 
 /** Panel-managed AI settings for family manager (moderation + post drafting). */
@@ -71,12 +72,18 @@ class FamilyAiSettingsService
     public function adminView(): array
     {
         $ai = AiSetting::current();
+        $provider = (string) ($this->stored()['provider_name'] ?? $ai->provider_name ?? 'openai');
+        if (! in_array($provider, AiProviderCatalog::ids(), true)) {
+            $provider = 'openai';
+        }
 
         return [
             'is_active' => $this->isActive(),
-            'provider_name' => (string) ($this->stored()['provider_name'] ?? $ai->provider_name ?? 'openai'),
-            'base_url' => (string) ($this->stored()['base_url'] ?? $ai->base_url ?? ''),
-            'model' => (string) ($this->stored()['model'] ?? $ai->model ?? 'gpt-4o-mini'),
+            'provider_name' => $provider,
+            'provider_label' => AiProviderCatalog::label($provider),
+            'api_style' => AiProviderCatalog::apiStyle($provider),
+            'base_url' => (string) ($this->stored()['base_url'] ?? $ai->base_url ?? AiProviderCatalog::defaults($provider)['base_url']),
+            'model' => (string) ($this->stored()['model'] ?? $ai->model ?? AiProviderCatalog::defaults($provider)['model']),
             'temperature' => (float) ($this->stored()['temperature'] ?? $ai->temperature ?? 0.4),
             'max_tokens' => (int) ($this->stored()['max_tokens'] ?? $ai->max_tokens ?? 1200),
             'has_api_key' => filled($this->stored()['api_key'] ?? null) || filled($ai->api_key),
@@ -121,6 +128,20 @@ class FamilyAiSettingsService
 
         if (($payload['clear_api_key'] ?? false) === true) {
             unset($next['api_key']);
+        }
+
+        $previousProvider = (string) ($current['provider_name'] ?? 'openai');
+        if (isset($payload['provider_name']) && (string) $payload['provider_name'] !== $previousProvider) {
+            $provider = (string) $payload['provider_name'];
+            if (in_array($provider, AiProviderCatalog::ids(), true)) {
+                $defaults = AiProviderCatalog::defaults($provider);
+                if (! array_key_exists('base_url', $payload)) {
+                    $next['base_url'] = $defaults['base_url'];
+                }
+                if (! array_key_exists('model', $payload)) {
+                    $next['model'] = $defaults['model'];
+                }
+            }
         }
 
         Setting::query()->updateOrCreate(

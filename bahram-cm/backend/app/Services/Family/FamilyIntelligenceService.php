@@ -146,7 +146,7 @@ class FamilyIntelligenceService
 
         try {
             $raw = $this->ai->chat([
-                ['role' => 'system', 'content' => 'You help Bahram write Persian family-community posts. Return ONLY JSON: {"text":"main draft in Persian","suggestions":["tip1","tip2"]}. Keep text under 600 chars, warm coaching tone, no hashtags, no fake promises.'],
+                ['role' => 'system', 'content' => 'You are a Persian content coach for Bahram\'s family community (like a warm Telegram channel admin). Return ONLY valid JSON: {"text":"main draft in Persian","suggestions":["tip1","tip2","tip3"]}. Rules: text under 500 chars; conversational Persian (نه رسمی خشک); short paragraphs; one clear call-to-action when appropriate; no hashtags; no emoji spam; no fake medical/financial promises; suggestions are brief editing tips in Persian (e.g. add a question, shorten intro, suggest poll).'],
                 ['role' => 'user', 'content' => "نوع: {$typeLabel}\nلحن: {$tone}\nموضوع: {$topic}"],
             ], ['temperature' => 0.7, 'max_tokens' => 900]);
 

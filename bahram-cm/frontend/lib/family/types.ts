@@ -131,6 +131,8 @@ export interface FamilyPost {
   type: FamilyPostType;
   is_important: boolean;
   is_pinned?: boolean;
+  /** When false, members cannot open or add comments on this post. */
+  comments_enabled?: boolean;
   published_at: string | null;
   author: { name: string; avatar?: string | null };
   blocks: FamilyPostBlock[];

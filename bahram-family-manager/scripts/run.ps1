@@ -42,16 +42,17 @@ if ([string]::IsNullOrWhiteSpace($ApiUrl)) {
 
 Push-Location $ProjectRoot
 try {
-  Write-Host '>> flutter pub get' -ForegroundColor Cyan
-  & $Flutter pub get
-  $pubOk = $LASTEXITCODE -eq 0
-  if (-not $pubOk) {
-    Write-Host '>> pub get failed — restoring package_config from lockfile cache' -ForegroundColor Yellow
-    $restoreScript = Join-Path $PSScriptRoot 'restore-package-config.mjs'
-    if ($Node -and (Test-Path $restoreScript)) {
+  Write-Host '>> preparing package_config' -ForegroundColor Cyan
+  $configPath = Join-Path $ProjectRoot '.dart_tool\package_config.json'
+  $restoreScript = Join-Path $PSScriptRoot 'restore-package-config.mjs'
+  if (-not (Test-Path $configPath)) {
+    Write-Host '>> flutter pub get' -ForegroundColor Cyan
+    & $Flutter pub get
+    if ($LASTEXITCODE -ne 0 -and $Node -and (Test-Path $restoreScript)) {
+      Write-Host '>> pub get failed — restoring from pubspec.lock' -ForegroundColor Yellow
       & $Node $restoreScript
       if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    } else {
+    } elseif ($LASTEXITCODE -ne 0 -and -not (Test-Path $configPath)) {
       exit $LASTEXITCODE
     }
   }
@@ -71,13 +72,11 @@ try {
     $proxyScript = Join-Path $PSScriptRoot 'dev-web.mjs'
     $flutterArgs = @(
       'run', '-d', 'web-server',
+      '--no-pub',
       '--web-hostname=127.0.0.1',
       "--web-port=$WebInternalPort",
       $define
     )
-    if (-not $pubOk) {
-      $flutterArgs += '--no-pub'
-    }
 
     Write-Host ">> flutter $($flutterArgs -join ' ')" -ForegroundColor Cyan
     $flutterProc = Start-Process -FilePath $Flutter -ArgumentList $flutterArgs -PassThru -NoNewWindow
@@ -113,10 +112,10 @@ try {
     exit $LASTEXITCODE
   }
 
-  Write-Host ">> flutter run -d $Target $define" -ForegroundColor Cyan
+  Write-Host ">> flutter run --no-pub -d $Target $define" -ForegroundColor Cyan
   switch ($Target) {
-    'android' { & $Flutter run $define }
-    'windows' { & $Flutter run -d windows $define }
+    'android' { & $Flutter run --no-pub $define }
+    'windows' { & $Flutter run --no-pub -d windows $define }
   }
 }
 finally {

@@ -4,13 +4,13 @@ import 'package:provider/provider.dart';
 import 'package:bahram_family_manager/core/labels.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
+import 'package:bahram_family_manager/core/utils/paginated_scroll.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/features/posts/widgets/post_family_filter_bar.dart';
 import 'package:bahram_family_manager/features/posts/post_editor_screen.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
-import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_dialog.dart';
@@ -26,15 +26,27 @@ class PostsScreen extends StatefulWidget {
   State<PostsScreen> createState() => _PostsScreenState();
 }
 
+class _PostsTabData {
+  final items = <FamilyPostModel>[];
+  var page = 0;
+  var hasMore = true;
+  var initialLoading = false;
+  var loadingMore = false;
+  String? error;
+}
+
 class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final _statuses = const ['draft', 'published', 'archived'];
-  Future<PaginatedResult<FamilyPostModel>>? _future;
+  final _scrollCtrl = ScrollController();
+  final _tabData = List.generate(3, (_) => _PostsTabData());
   List<FamilySummaryModel> _families = [];
   bool _familiesLoaded = false;
   int? _familyFilter;
   bool _archivedSelectionMode = false;
   final Set<int> _selectedArchivedIds = {};
+
+  _PostsTabData get _currentTab => _tabData[_tabController.index];
 
   bool get _showFamilyFilter {
     final status = _statuses[_tabController.index];
@@ -45,21 +57,95 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
   void initState() {
     super.initState();
     _tabController = TabController(length: _statuses.length, vsync: this)..addListener(_onTabChanged);
+    _scrollCtrl.addListener(_onScroll);
     _loadFamilies();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadFirstPage();
+    });
+  }
+
+  void _onScroll() {
+    final tab = _currentTab;
+    if (!tab.hasMore || tab.loadingMore || tab.initialLoading) return;
+    final position = _scrollCtrl.position;
+    if (position.pixels >= position.maxScrollExtent - 240) {
+      _loadMore();
+    }
   }
 
   Future<void> _loadFamilies() async {
     try {
-      final data = await context.read<AppState>().manager.listFamilies(perPage: 100);
+      final data = await context.read<AppState>().cachedFamilies();
       if (mounted) {
         setState(() {
-          _families = data.items;
+          _families = data;
           _familiesLoaded = true;
         });
       }
     } catch (_) {
       if (mounted) setState(() => _familiesLoaded = true);
+    }
+  }
+
+  Future<void> _loadFirstPage() async {
+    final tab = _currentTab;
+    setState(() {
+      tab.initialLoading = true;
+      tab.loadingMore = false;
+      tab.error = null;
+      tab.items.clear();
+      tab.page = 0;
+      tab.hasMore = true;
+    });
+    await _fetchPage(1, replace: true);
+  }
+
+  Future<void> _loadMore() async {
+    final tab = _currentTab;
+    if (!tab.hasMore || tab.loadingMore || tab.initialLoading) return;
+    setState(() => tab.loadingMore = true);
+    await _fetchPage(tab.page + 1, replace: false);
+  }
+
+  Future<void> _fetchPage(int page, {required bool replace}) async {
+    final tab = _currentTab;
+    final status = _statuses[_tabController.index];
+    try {
+      final result = await context.read<AppState>().manager.listPosts(
+            status: status,
+            familyId: _showFamilyFilter ? _familyFilter : null,
+            page: page,
+          );
+      if (!mounted) return;
+      setState(() {
+        if (replace) {
+          tab.items
+            ..clear()
+            ..addAll(result.items);
+        } else {
+          tab.items.addAll(result.items);
+        }
+        tab.page = result.currentPage;
+        tab.hasMore = result.hasMore;
+        tab.initialLoading = false;
+        tab.loadingMore = false;
+        tab.error = null;
+      });
+      schedulePaginatedPrefetch(
+        controller: _scrollCtrl,
+        mounted: mounted,
+        hasMore: tab.hasMore,
+        loadingMore: tab.loadingMore,
+        initialLoading: tab.initialLoading,
+        loadMore: _loadMore,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        tab.error = messageOf(e);
+        tab.initialLoading = false;
+        tab.loadingMore = false;
+      });
     }
   }
 
@@ -71,7 +157,12 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
       if (_statuses[_tabController.index] != 'archived') {
         _exitArchivedSelection();
       }
-      _load();
+      final tab = _currentTab;
+      if (tab.items.isEmpty && !tab.initialLoading) {
+        _loadFirstPage();
+      } else {
+        setState(() {});
+      }
     }
   }
 
@@ -112,26 +203,16 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
     });
   }
 
-  void _load() {
-    final status = _statuses[_tabController.index];
-    setState(() {
-      _future = context.read<AppState>().manager.listPosts(
-            status: status,
-            familyId: _showFamilyFilter ? _familyFilter : null,
-          );
-    });
-  }
-
   void _setFamilyFilter(int? familyId) {
     setState(() => _familyFilter = familyId);
-    _load();
+    _loadFirstPage();
   }
 
   Future<void> _openEditor([FamilyPostModel? post]) async {
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => PostEditorScreen(post: post)),
     );
-    if (changed == true) _load();
+    if (changed == true) _loadFirstPage();
   }
 
   Future<void> _togglePin(FamilyPostModel post) async {
@@ -140,7 +221,7 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
       final updated = post.isPinned ? await manager.unpinPost(post.id) : await manager.pinPost(post.id);
       if (mounted) {
         showAppSnackBar(context, updated.isPinned ? 'پست سنجاق شد.' : 'سنجاق برداشته شد.');
-        _load();
+        _loadFirstPage();
       }
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
@@ -152,7 +233,7 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
       await context.read<AppState>().manager.publishPost(post.id);
       if (mounted) {
         showAppSnackBar(context, 'پست منتشر شد.');
-        _load();
+        _loadFirstPage();
       }
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
@@ -164,7 +245,7 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
       await context.read<AppState>().manager.publishPost(post.id);
       if (mounted) {
         showAppSnackBar(context, 'پست دوباره منتشر شد و به بالای فید رفت.');
-        _load();
+        _loadFirstPage();
       }
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
@@ -201,7 +282,7 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
       await context.read<AppState>().manager.deletePost(post.id);
       if (mounted) {
         showAppSnackBar(context, 'پست حذف شد.');
-        _load();
+        _loadFirstPage();
       }
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
@@ -245,7 +326,7 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
     if (!mounted) return;
 
     setState(_exitArchivedSelection);
-    _load();
+    _loadFirstPage();
 
     if (failed == 0) {
       showAppSnackBar(context, '${toFaDigits(deleted.toString())} پست حذف شد.');
@@ -281,7 +362,7 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
           context,
           recovered.isPublished ? 'پست بازیابی و دوباره منتشر شد.' : 'پست به پیش‌نویس‌ها برگشت.',
         );
-        _load();
+        _loadFirstPage();
       }
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
@@ -291,7 +372,134 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
   @override
   void dispose() {
     _tabController.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  Widget _buildPostsBody() {
+    final tab = _currentTab;
+    final posts = tab.items;
+
+    if (tab.initialLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (tab.error != null && posts.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          EmptyState(
+            icon: Icons.error_outline_rounded,
+            title: 'خطا در بارگذاری پست‌ها',
+            subtitle: tab.error!,
+            actionLabel: 'تلاش مجدد',
+            onAction: _loadFirstPage,
+          ),
+        ],
+      );
+    }
+
+    final filterHeader = _showFamilyFilter && _familiesLoaded
+        ? PostFamilyFilterBar(
+            families: _families,
+            selectedFamilyId: _familyFilter,
+            onChanged: _setFamilyFilter,
+          )
+        : null;
+
+    final status = _statuses[_tabController.index];
+    final isPublishedTab = status == 'published';
+    final isDraftTab = status == 'draft';
+    final isArchivedTab = status == 'archived';
+    final selectionToolbar = isArchivedTab
+        ? _ArchivedSelectionToolbar(
+            selectionMode: _archivedSelectionMode,
+            selectedCount: _selectedArchivedIds.length,
+            totalCount: posts.length,
+            onEnterSelection: _toggleArchivedSelectionMode,
+            onCancel: () => setState(_exitArchivedSelection),
+            onSelectAll: () => _selectAllArchived(posts),
+          )
+        : null;
+    final toolbarCount = selectionToolbar == null ? 0 : 1;
+    final headerCount = (filterHeader == null ? 0 : 1) + toolbarCount;
+    final footerCount = tab.hasMore || tab.loadingMore ? 1 : 0;
+
+    if (posts.isEmpty) {
+      return ListView(
+        controller: _scrollCtrl,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: AppBreakpoints.pagePadding(context),
+        children: [
+          if (filterHeader != null) ...[
+            filterHeader,
+            const SizedBox(height: AppSpacing.lg),
+          ],
+          EmptyState(
+            title: _familyFilter == null ? 'پستی وجود ندارد' : 'پستی برای این خانواده نیست',
+            subtitle: _familyFilter == null
+                ? 'از دکمه «پست جدید» در پایین صفحه یا سایدبار استفاده کنید.'
+                : 'فیلتر دیگری انتخاب کنید یا همه کانال‌ها را ببینید.',
+            icon: Icons.campaign_outlined,
+          ),
+        ],
+      );
+    }
+
+    return ListView.separated(
+      controller: _scrollCtrl,
+      padding: AppBreakpoints.pagePadding(context),
+      physics: const AlwaysScrollableScrollPhysics(),
+      itemCount: posts.length + headerCount + footerCount,
+      separatorBuilder: (_, index) {
+        if (index < headerCount + posts.length - 1) {
+          return const SizedBox(height: AppSpacing.md);
+        }
+        return const SizedBox.shrink();
+      },
+      itemBuilder: (context, index) {
+        var offset = 0;
+        if (filterHeader != null) {
+          if (index == offset) return filterHeader;
+          offset++;
+        }
+        if (selectionToolbar != null) {
+          if (index == offset) return selectionToolbar;
+          offset++;
+        }
+
+        final postIndex = index - offset;
+        if (postIndex >= posts.length) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final post = posts[postIndex];
+        return PostListTile(
+          post: post,
+          onTap: _archivedSelectionMode && isArchivedTab
+              ? () {}
+              : () => _openEditor(post),
+          onLongPress: isArchivedTab && !_archivedSelectionMode
+              ? () => setState(() {
+                    _archivedSelectionMode = true;
+                    _selectedArchivedIds.add(post.id);
+                  })
+              : null,
+          selectable: isArchivedTab && _archivedSelectionMode,
+          selected: _selectedArchivedIds.contains(post.id),
+          onSelectedChanged: (selected) => _toggleArchivedPostSelection(post.id, selected),
+          onPinToggle: isPublishedTab ? () => _togglePin(post) : null,
+          onEdit: isDraftTab || isPublishedTab || isArchivedTab ? () => _openEditor(post) : null,
+          onPublish: isDraftTab ? () => _publish(post) : null,
+          onRepublish: isPublishedTab || isArchivedTab ? () => _republish(post) : null,
+          onDelete: isDraftTab || isPublishedTab || isArchivedTab ? () => _delete(post) : null,
+          onRecover: isArchivedTab ? () => _recover(post) : null,
+        );
+      },
+    );
   }
 
   @override
@@ -328,108 +536,8 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
             )
           : null,
       body: RefreshIndicator(
-        onRefresh: () async => _load(),
-        child: FutureBuilder<PaginatedResult<FamilyPostModel>>(
-          future: _future,
-          builder: (context, snapshot) => AsyncBody<PaginatedResult<FamilyPostModel>>(
-            snapshot: snapshot,
-            emptyMessage: 'پستی وجود ندارد.',
-            emptyIcon: Icons.campaign_outlined,
-            builder: (context, data) {
-              final posts = data.items;
-              final filterHeader = _showFamilyFilter && _familiesLoaded
-                  ? PostFamilyFilterBar(
-                      families: _families,
-                      selectedFamilyId: _familyFilter,
-                      onChanged: _setFamilyFilter,
-                    )
-                  : null;
-
-              final status = _statuses[_tabController.index];
-              final isPublishedTab = status == 'published';
-              final isDraftTab = status == 'draft';
-              final isArchivedTab = status == 'archived';
-              final selectionToolbar = isArchivedTab
-                  ? _ArchivedSelectionToolbar(
-                      selectionMode: _archivedSelectionMode,
-                      selectedCount: _selectedArchivedIds.length,
-                      totalCount: posts.length,
-                      onEnterSelection: _toggleArchivedSelectionMode,
-                      onCancel: () => setState(_exitArchivedSelection),
-                      onSelectAll: () => _selectAllArchived(posts),
-                    )
-                  : null;
-              final toolbarCount = selectionToolbar == null ? 0 : 1;
-              final headerCount = (filterHeader == null ? 0 : 1) + toolbarCount;
-
-              if (posts.isEmpty) {
-                return ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: AppBreakpoints.pagePadding(context),
-                  children: [
-                    if (filterHeader != null) ...[
-                      filterHeader,
-                      const SizedBox(height: AppSpacing.lg),
-                    ],
-                    EmptyState(
-                      title: _familyFilter == null ? 'پستی وجود ندارد' : 'پستی برای این خانواده نیست',
-                      subtitle: _familyFilter == null
-                          ? 'از دکمه «پست جدید» در پایین صفحه یا سایدبار استفاده کنید.'
-                          : 'فیلتر دیگری انتخاب کنید یا همه کانال‌ها را ببینید.',
-                      icon: Icons.campaign_outlined,
-                    ),
-                  ],
-                );
-              }
-
-              return ListView.separated(
-                padding: AppBreakpoints.pagePadding(context),
-                physics: const AlwaysScrollableScrollPhysics(),
-                itemCount: posts.length + headerCount,
-                separatorBuilder: (_, index) {
-                  if (index < headerCount) {
-                    return const SizedBox(height: AppSpacing.md);
-                  }
-                  return const SizedBox(height: AppSpacing.md);
-                },
-                itemBuilder: (context, index) {
-                  var offset = 0;
-                  if (filterHeader != null) {
-                    if (index == offset) return filterHeader;
-                    offset++;
-                  }
-                  if (selectionToolbar != null) {
-                    if (index == offset) return selectionToolbar;
-                    offset++;
-                  }
-
-                  final post = posts[index - offset];
-                  return PostListTile(
-                    post: post,
-                    onTap: _archivedSelectionMode && isArchivedTab
-                        ? () {}
-                        : () => _openEditor(post),
-                    onLongPress: isArchivedTab && !_archivedSelectionMode
-                        ? () => setState(() {
-                              _archivedSelectionMode = true;
-                              _selectedArchivedIds.add(post.id);
-                            })
-                        : null,
-                    selectable: isArchivedTab && _archivedSelectionMode,
-                    selected: _selectedArchivedIds.contains(post.id),
-                    onSelectedChanged: (selected) => _toggleArchivedPostSelection(post.id, selected),
-                    onPinToggle: isPublishedTab ? () => _togglePin(post) : null,
-                    onEdit: isDraftTab || isPublishedTab || isArchivedTab ? () => _openEditor(post) : null,
-                    onPublish: isDraftTab ? () => _publish(post) : null,
-                    onRepublish: isPublishedTab || isArchivedTab ? () => _republish(post) : null,
-                    onDelete: isDraftTab || isPublishedTab || isArchivedTab ? () => _delete(post) : null,
-                    onRecover: isArchivedTab ? () => _recover(post) : null,
-                  );
-                },
-              );
-            },
-          ),
-        ),
+        onRefresh: _loadFirstPage,
+        child: _buildPostsBody(),
       ),
     );
   }

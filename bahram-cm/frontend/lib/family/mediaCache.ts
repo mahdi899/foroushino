@@ -56,17 +56,33 @@ export async function tryCacheFamilyMediaBlob(
   url: string,
   mediaId: number,
   kind: 'preview' | 'full',
+  mimeType?: string | null,
 ): Promise<Blob | null> {
   const cached = await readFamilyMediaBlob(kind, mediaId, url);
-  if (cached) return cached;
+  if (cached) return withPreferredMimeType(cached, mimeType);
 
   try {
-    const response = await fetch(url, { mode: 'cors', credentials: 'omit', cache: 'default' });
+    const sameOrigin =
+      url.startsWith('/') ||
+      (typeof window !== 'undefined' && new URL(url, window.location.origin).origin === window.location.origin);
+
+    const response = await fetch(url, {
+      mode: 'cors',
+      credentials: sameOrigin ? 'same-origin' : 'omit',
+      cache: 'default',
+    });
     if (!response.ok) return null;
-    const blob = await response.blob();
+    const blob = withPreferredMimeType(await response.blob(), mimeType);
     await writeFamilyMediaBlob(kind, mediaId, url, blob);
     return blob;
   } catch {
     return null;
   }
+}
+
+function withPreferredMimeType(blob: Blob, mimeType?: string | null): Blob {
+  const preferred = mimeType?.trim();
+  if (!preferred || preferred === 'application/octet-stream') return blob;
+  if (blob.type && blob.type !== 'application/octet-stream') return blob;
+  return new Blob([blob], { type: preferred });
 }

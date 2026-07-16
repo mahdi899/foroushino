@@ -15,17 +15,24 @@ class FamilyMediaView extends StatelessWidget {
     this.height = 220,
     this.borderRadius,
     this.compact = false,
+    this.previewOnly = false,
   });
 
   final FamilyMediaRef media;
   final double height;
   final BorderRadius? borderRadius;
   final bool compact;
+  /// List/feed previews — thumbnail only, no video decoder.
+  final bool previewOnly;
 
   @override
   Widget build(BuildContext context) {
     final radius = borderRadius ?? BorderRadius.circular(18);
     final url = media.playableUrl;
+
+    if (previewOnly) {
+      return MediaThumbnail(media: media, height: height, borderRadius: radius);
+    }
 
     if (media.isImage && url != null) {
       return _ImageView(

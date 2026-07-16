@@ -60,6 +60,16 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   String _actionType = 'commitment';
 
   bool _saving = false;
+  bool _aiLoading = false;
+  List<String> _aiSuggestions = [];
+  String _aiTone = 'صمیمی، انگیزشی و کوتاه';
+
+  static const _aiToneOptions = [
+    'صمیمی، انگیزشی و کوتاه',
+    'آموزشی و عملی',
+    'رسمی و حرفه‌ای',
+    'صمیمی و داستانی',
+  ];
 
   @override
   void initState() {
@@ -254,18 +264,33 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       showAppSnackBar(context, 'موضوع یا متن اولیه را وارد کنید.');
       return;
     }
-    setState(() => _saving = true);
+    setState(() => _aiLoading = true);
     try {
-      final draft = await context.read<AppState>().manager.generatePostDraft(topic: topic, type: _type);
+      final draft = await context.read<AppState>().manager.generatePostDraft(
+            topic: topic,
+            type: _type,
+            tone: _aiTone,
+          );
       final text = draft['text']?.toString() ?? '';
-      if (text.isNotEmpty) {
-        setState(() => _textCtrl.text = text);
+      final suggestions = (draft['suggestions'] as List?)
+              ?.map((e) => e.toString().trim())
+              .where((s) => s.isNotEmpty)
+              .toList() ??
+          <String>[];
+      setState(() {
+        if (text.isNotEmpty) _textCtrl.text = text;
+        _aiSuggestions = suggestions;
+      });
+      if (mounted) {
+        showAppSnackBar(
+          context,
+          suggestions.isEmpty ? 'پیش‌نویس AI آماده شد.' : 'پیش‌نویس + ${toFaDigits(suggestions.length.toString())} پیشنهاد آماده شد.',
+        );
       }
-      if (mounted) showAppSnackBar(context, 'پیش‌نویس AI آماده شد.');
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) setState(() => _aiLoading = false);
     }
   }
 
@@ -442,6 +467,10 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = context.appScheme;
+    final muted = context.appTextMuted;
+    final subtle = context.appTextSubtle;
+
     return AdaptiveScaffold(
       appBar: ManagerAppBar(
         title: Text(
@@ -490,15 +519,16 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           if (_isArchived)
             GlassPanel(
               borderRadius: 16,
-              blur: 18,
+              blur: 0,
               padding: const EdgeInsets.all(AppSpacing.md),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.archive_rounded, color: AppColors.warning),
-                  SizedBox(width: AppSpacing.md),
+                  const Icon(Icons.archive_rounded, color: AppColors.warning),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(
                       'این پست آرشیوشده است. می‌توانید ویرایش کنید، دوباره منتشر کنید، یا بدون انتشار مجدد بازیابی کنید.',
+                      style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.85)),
                     ),
                   ),
                 ],
@@ -506,56 +536,72 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             ),
           if (_isArchived) const SizedBox(height: AppSpacing.lg),
           PanelSectionCard(
-            title: 'محتوا',
-            icon: Icons.edit_note_rounded,
+            title: 'نوشتن پیام',
+            icon: Icons.edit_rounded,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (_post == null) ...[
                   PostTypeSelector(
                     selected: _type,
-                    enabled: true,
+                    enabled: !_uploading && !_saving,
                     onChanged: (t) => setState(() {
                       _type = t;
-                      _mediaRef = null;
+                      if (t == 'text') _mediaRef = null;
                     }),
+                    onAttachMedia: () {
+                      if (_type != 'text' && _mediaRef == null) _pickAndUploadMedia();
+                    },
                   ),
-                  const SizedBox(height: AppSpacing.lg),
+                  const SizedBox(height: AppSpacing.md),
                 ],
-                TextField(
-                  controller: _textCtrl,
-                  maxLines: 6,
-                  decoration: InputDecoration(
-                    labelText: _type == 'text' ? 'متن پست' : 'کپشن (اختیاری)',
-                    alignLabelWithHint: true,
+                Container(
+                  decoration: BoxDecoration(
+                    color: context.appSurfaceSoft,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: context.appBorder),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                  child: TextField(
+                    controller: _textCtrl,
+                    maxLines: 10,
+                    minLines: 5,
+                    style: TextStyle(color: scheme.onSurface),
+                    decoration: InputDecoration(
+                      hintText: _type == 'text' ? 'پیام خود را بنویسید…' : 'کپشن (اختیاری)',
+                      hintStyle: TextStyle(color: subtle),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
                   ),
                 ),
                 if (_type != 'text') ...[
-                  const SizedBox(height: AppSpacing.lg),
+                  const SizedBox(height: AppSpacing.md),
                   if (_mediaRef == null)
                     UploadZone(
-                      label: 'انتخاب و آپلود ${labelOf(mediaTypeLabels, _type)}',
+                      label: 'انتخاب ${labelOf(mediaTypeLabels, _type)}',
                       uploading: _uploading,
                       progress: _uploadProgress,
-                      enabled: true,
+                      enabled: !_saving,
                       onTap: _pickAndUploadMedia,
                     )
                   else
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        FamilyMediaView(media: _mediaRef!, height: _mediaRef!.isAudio ? 88 : 240),
-                        ...[
-                          const SizedBox(height: AppSpacing.sm),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: TextButton.icon(
-                              onPressed: () => setState(() => _mediaRef = null),
-                              icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
-                              label: const Text('حذف رسانه', style: TextStyle(color: AppColors.error)),
-                            ),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: FamilyMediaView(media: _mediaRef!, height: _mediaRef!.isAudio ? 88 : 220),
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () => setState(() => _mediaRef = null),
+                            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
+                            label: const Text('حذف رسانه', style: TextStyle(color: AppColors.error)),
                           ),
-                        ],
+                        ),
                       ],
                     ),
                 ],
@@ -615,24 +661,84 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
           ),
           const SizedBox(height: AppSpacing.lg),
           PanelSectionCard(
-            title: 'کمک AI برای محتوا',
+            title: 'دستیار AI',
             icon: Icons.auto_awesome_rounded,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Text(
+                  'موضوع را بنویسید؛ AI پیش‌نویس حرفه‌ای و پیشنهادهای ویرایش می‌دهد.',
+                  style: TextStyle(color: muted, fontSize: 13),
+                ),
+                const SizedBox(height: AppSpacing.md),
                 TextField(
                   controller: _aiTopicCtrl,
                   decoration: const InputDecoration(
-                    labelText: 'موضوع پست (اختیاری)',
-                    hintText: 'مثلاً: انگیزه برای شروع هفته',
+                    labelText: 'موضوع پست',
+                    hintText: 'مثلاً: انگیزه برای شروع هفته، مدیریت استرس',
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                OutlinedButton.icon(
-                  onPressed: _saving ? null : _generateAiDraft,
-                  icon: const Icon(Icons.auto_awesome_rounded),
-                  label: const Text('تولید پیش‌نویس با AI'),
+                Text('لحن نوشتار', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.onSurface)),
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.xs,
+                  runSpacing: AppSpacing.xs,
+                  children: _aiToneOptions.map((tone) {
+                    final selected = _aiTone == tone;
+                    return FilterChip(
+                      label: Text(tone, style: const TextStyle(fontSize: 12)),
+                      selected: selected,
+                      onSelected: (_) => setState(() => _aiTone = tone),
+                      showCheckmark: false,
+                      selectedColor: context.appPrimarySoft,
+                      backgroundColor: scheme.surface.withValues(alpha: 0.45),
+                      side: BorderSide(color: context.appBorder),
+                      labelStyle: TextStyle(
+                        color: selected ? scheme.primary : muted,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    );
+                  }).toList(),
                 ),
+                const SizedBox(height: AppSpacing.md),
+                PrimaryButton(
+                  label: 'تولید پیش‌نویس',
+                  icon: Icons.auto_awesome_rounded,
+                  loading: _aiLoading,
+                  onPressed: (_aiLoading || _saving) ? null : _generateAiDraft,
+                ),
+                if (_aiSuggestions.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Text('پیشنهادهای ویرایش', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: scheme.onSurface)),
+                  const SizedBox(height: AppSpacing.sm),
+                  ..._aiSuggestions.map(
+                    (tip) => Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                      child: InkWell(
+                        onTap: () => setState(() => _textCtrl.text = '${_textCtrl.text.trim()}\n\n$tip'.trim()),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(AppSpacing.sm),
+                          decoration: BoxDecoration(
+                            color: context.appAccentSoft,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: context.appBorder),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.lightbulb_outline_rounded, size: 16, color: scheme.primary),
+                              const SizedBox(width: AppSpacing.sm),
+                              Expanded(child: Text(tip, style: TextStyle(fontSize: 13, color: scheme.onSurface))),
+                              Icon(Icons.add_rounded, size: 16, color: muted),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -689,7 +795,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       ),
       if (choiceActionTypes.contains(_actionType)) ...[
         const SizedBox(height: AppSpacing.md),
-        const Text('گزینه‌ها', style: TextStyle(color: AppColors.textMuted)),
+        Text('گزینه‌ها', style: TextStyle(color: context.appTextMuted)),
         ..._optionControllers.asMap().entries.map(
               (entry) => Padding(
                 padding: const EdgeInsets.only(top: AppSpacing.sm),

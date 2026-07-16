@@ -114,7 +114,6 @@ function PollResultsHeader({
 function PollResults({
   results,
   actionOptions,
-  actionType,
   memberCount,
   isStaff,
   selectedValues,
@@ -122,7 +121,6 @@ function PollResults({
 }: {
   results: FamilyActionResults;
   actionOptions: { value: string; label: string }[];
-  actionType: FamilyActionType;
   memberCount?: number;
   isStaff?: boolean;
   selectedValues: Set<string>;
@@ -136,7 +134,6 @@ function PollResults({
     return a.label.localeCompare(b.label, 'fa');
   });
   const topPercent = Math.max(...sortedOptions.map((option) => option.percent), 0);
-  const isMultiChoice = actionType === 'multi_choice';
 
   return (
     <motion.div
@@ -159,6 +156,7 @@ function PollResults({
                 isMine && 'family-action-poll-row--mine',
                 option.count === 0 && 'family-action-poll-row--empty',
               )}
+              aria-current={isMine ? 'true' : undefined}
               initial={reduceMotion ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...familyMotion.tweenFast, delay: index * familyMotion.stagger }}
@@ -173,7 +171,6 @@ function PollResults({
               <div className="family-action-poll-row__content">
                 <div className="family-action-poll-row__main">
                   <span className="family-action-poll-row__label">{option.label}</span>
-                  {isMine ? <span className="family-action-poll-row__badge">انتخاب شما</span> : null}
                 </div>
                 <div className="family-action-poll-row__stats">
                   {option.count > 0 ? (
@@ -203,16 +200,6 @@ function PollResults({
               isStaff={Boolean(isStaff)}
               className="family-action-meta--inline"
             />
-          </>
-        ) : null}
-        {isMultiChoice ? (
-          <>
-            <span className="family-action-meta__dot" aria-hidden>
-              ·
-            </span>
-            <span className="family-action-meta family-action-meta--inline">
-              درصد = سهم هر گزینه از شرکت‌کنندگان
-            </span>
           </>
         ) : null}
       </div>
@@ -369,7 +356,6 @@ export function ActionCard({
             <PollResults
               results={results}
               actionOptions={action.options}
-              actionType={action.type}
               memberCount={memberCount}
               isStaff={isStaff}
               selectedValues={selectedValues}

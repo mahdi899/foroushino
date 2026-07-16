@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:bahram_family_manager/features/ai/ai_settings_screen.dart';
 import 'package:bahram_family_manager/features/analytics/analytics_screen.dart';
 import 'package:bahram_family_manager/features/comments/comments_screen.dart';
 import 'package:bahram_family_manager/features/families/families_screen.dart';
@@ -22,6 +23,26 @@ class _Tab {
   final IconData icon;
   final WidgetBuilder builder;
   final String? permission;
+}
+
+class _KeepAliveTab extends StatefulWidget {
+  const _KeepAliveTab({super.key, required this.builder});
+
+  final WidgetBuilder builder;
+
+  @override
+  State<_KeepAliveTab> createState() => _KeepAliveTabState();
+}
+
+class _KeepAliveTabState extends State<_KeepAliveTab> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.builder(context);
+  }
 }
 
 class RootShell extends StatefulWidget {
@@ -59,6 +80,12 @@ class _RootShellState extends State<RootShell> {
       icon: Icons.insights_rounded,
       builder: (_) => const AnalyticsScreen(),
       permission: 'family.analytics.view',
+    ),
+    _Tab(
+      label: 'هوش مصنوعی',
+      icon: Icons.auto_awesome_rounded,
+      builder: (_) => const AiSettingsScreen(),
+      permission: 'family.settings.manage',
     ),
     _Tab(
       label: 'برندینگ',
@@ -111,7 +138,17 @@ class _RootShellState extends State<RootShell> {
         items: visibleTabs
             .map((t) => AppBottomNavItem(label: t.label, icon: t.icon))
             .toList(),
-        body: visibleTabs[index].builder(context),
+        body: IndexedStack(
+          index: index,
+          sizing: StackFit.expand,
+          children: [
+            for (final tab in visibleTabs)
+              _KeepAliveTab(
+                key: ValueKey(tab.label),
+                builder: tab.builder,
+              ),
+          ],
+        ),
       ),
     );
   }

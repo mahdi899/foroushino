@@ -4269,6 +4269,18 @@ html[data-theme='light'] .family-app .family-action-number-bar {
   background: color-mix(in oklab, var(--family-tg-pinned-accent) 20%, transparent);
 }
 
+.family-action-poll-row--mine {
+  background:
+    radial-gradient(
+      ellipse 130% 200% at 50% 50%,
+      color-mix(in oklab, #34c759 24%, transparent) 0%,
+      color-mix(in oklab, #34c759 10%, transparent) 50%,
+      transparent 100%
+    ),
+    color-mix(in oklab, var(--family-text) 3.5%, transparent);
+  box-shadow: inset 0 0 20px color-mix(in oklab, #34c759 14%, transparent);
+}
+
 .family-action-poll-row__content {
   position: relative;
   z-index: 1;

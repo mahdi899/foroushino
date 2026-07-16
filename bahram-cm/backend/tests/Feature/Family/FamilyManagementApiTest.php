@@ -121,6 +121,48 @@ class FamilyManagementApiTest extends TestCase
         $this->assertSame(0, $family->fresh()->member_count);
     }
 
+    public function test_family_members_endpoint_returns_only_requested_family(): void
+    {
+        $familyA = Family::query()->create([
+            'internal_name' => 'فیلتر الف',
+            'member_count' => 0,
+            'capacity_target' => 5000,
+            'capacity_min' => 4500,
+            'capacity_max' => 5200,
+            'accepting_members' => true,
+        ]);
+
+        $familyB = Family::query()->create([
+            'internal_name' => 'فیلتر ب',
+            'member_count' => 0,
+            'capacity_target' => 5000,
+            'capacity_min' => 4500,
+            'capacity_max' => 5200,
+            'accepting_members' => true,
+        ]);
+
+        $userA = User::factory()->create(['mobile' => '09121111111']);
+        $userB = User::factory()->create(['mobile' => '09122222222']);
+
+        \App\Models\FamilyMembership::query()->create([
+            'user_id' => $userA->id,
+            'family_id' => $familyA->id,
+            'joined_at' => now(),
+        ]);
+        \App\Models\FamilyMembership::query()->create([
+            'user_id' => $userB->id,
+            'family_id' => $familyB->id,
+            'joined_at' => now(),
+        ]);
+
+        $response = $this->actingAs($this->manager, 'sanctum')
+            ->getJson("/api/v1/family-manager/families/{$familyA->id}/members");
+
+        $response->assertOk();
+        $mobiles = collect($response->json('data'))->pluck('mobile')->all();
+        $this->assertSame(['09121111111'], $mobiles);
+    }
+
     public function test_manager_can_create_user_when_adding_unknown_mobile_with_name(): void
     {
         $family = Family::query()->create([

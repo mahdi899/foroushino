@@ -19,6 +19,10 @@ import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import type { FamilyComment } from '@/lib/family/types';
 import type { FamilyPost, FamilyPostBlock } from '@/lib/family/types';
 
+function isPostCommentsEnabled(post: FamilyPost): boolean {
+  return post.comments_enabled !== false;
+}
+
 const POST_QUICK_REACT_BLOCK_SELECTOR = [
   'a[href]',
   'input',
@@ -347,7 +351,7 @@ function FeedPostCard({
           />
         </div>
 
-        {!hideCommentPreview && (
+        {!hideCommentPreview && isPostCommentsEnabled(post) && (
           <div className="family-post-bubble__comment-zone">
             <CommentThreadPreview
               count={commentCount}
@@ -498,7 +502,7 @@ export const PostCard = memo(function PostCard({
         </div>
       </div>
 
-      {!hideCommentPreview && (
+      {!hideCommentPreview && isPostCommentsEnabled(post) && (
         <CommentThreadPreview
           count={commentCount}
           preview={commentPreview}

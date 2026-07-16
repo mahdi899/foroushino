@@ -59,7 +59,7 @@ class CommentCard extends StatelessWidget {
 
     return GlassPanel(
       borderRadius: 20,
-      blur: AppGlass.panelBlur,
+      blur: 0,
       padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

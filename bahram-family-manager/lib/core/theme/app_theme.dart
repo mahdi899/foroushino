@@ -52,6 +52,8 @@ class AppTheme {
       onError: Colors.white,
       surface: AppColors.surface,
       onSurface: AppColors.text,
+      outline: AppColors.border,
+      outlineVariant: AppColors.border,
     );
 
     final textTheme = _textTheme(
@@ -406,4 +408,23 @@ class AppTheme {
       labelSmall: base.copyWith(fontSize: 11, fontWeight: FontWeight.w600, color: mutedColor),
     );
   }
+}
+
+/// Theme-aware semantic colors for widgets that must not hardcode light palette.
+extension AppThemeColors on BuildContext {
+  ColorScheme get appScheme => Theme.of(this).colorScheme;
+
+  bool get isDarkMode => appScheme.brightness == Brightness.dark;
+
+  Color get appSurfaceSoft => isDarkMode ? AppColors.surfaceSoftDark : AppColors.surfaceSoft;
+
+  Color get appBorder => isDarkMode ? AppColors.borderDark : AppColors.border;
+
+  Color get appTextMuted => isDarkMode ? AppColors.textMutedDark : AppColors.textMuted;
+
+  Color get appTextSubtle => isDarkMode ? AppColors.textSubtleDark : AppColors.textSubtle;
+
+  Color get appAccentSoft => AppColors.accent.withValues(alpha: isDarkMode ? 0.22 : 0.1);
+
+  Color get appPrimarySoft => AppColors.primary.withValues(alpha: isDarkMode ? 0.24 : 0.08);
 }

@@ -8,6 +8,7 @@ import { FeedView } from '@/components/family/FeedView';
 import { FamilyGuestBlur, FamilyGuestLoginBoot } from '@/components/family/FamilyGuestAuth';
 import { GuestBanner } from '@/components/family/GuestBanner';
 import { JoinBanner } from '@/components/family/JoinBanner';
+import { JoinContextBoot } from '@/components/family/JoinContextBoot';
 import { OnboardingModal } from '@/components/family/OnboardingModal';
 import { useFamilyMemberCount } from '@/lib/family/hooks/useFamilyMemberCount';
 import { invalidateAllFamilyBrowserCache } from '@/lib/family/browserCache';
@@ -118,6 +119,9 @@ export function FamilyHome({
 
   return (
     <FamilyShell>
+      <Suspense>
+        <JoinContextBoot />
+      </Suspense>
       {isGuest ? (
         <>
           <FamilyGuestLoginBoot />

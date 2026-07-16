@@ -70,10 +70,13 @@ class FamiliesController extends Controller
 
     public function show(Family $family): JsonResponse
     {
-        $family->load(['entryEvent'])->loadCount('memberships');
+        $family->load(['entryEvent'])->loadCount([
+            'memberships',
+            'memberships as new_members_7d' => fn ($q) => $q->where('joined_at', '>=', now()->subDays(7)),
+        ]);
 
         $latestDna = $family->dnaSnapshots()->latest('period_end')->first();
-        $newMembers7d = $family->memberships()->where('joined_at', '>=', now()->subDays(7))->count();
+        $newMembers7d = (int) ($family->new_members_7d ?? 0);
 
         return ApiResponse::success(array_merge($this->present($family), [
             'new_members_7d' => $newMembers7d,
@@ -150,14 +153,31 @@ class FamiliesController extends Controller
     public function members(Request $request): JsonResponse
     {
         $query = FamilyMembership::query()
-            ->with(['user:id,name,mobile', 'family:id,internal_name'])
+            ->with(['user:id,name,mobile', 'family:id,internal_name', 'entryEvent:id,name,external_reference'])
             ->orderByDesc('joined_at');
 
-        if ($familyId = $request->query('family_id')) {
+        if ($familyId = $request->input('family_id')) {
             $query->where('family_id', (int) $familyId);
         }
 
-        if ($search = $request->query('search')) {
+        if ($entryEventId = $request->input('entry_event_id')) {
+            $query->where('entry_event_id', (int) $entryEventId);
+        }
+
+        if ($entryLinkId = $request->input('entry_link_id')) {
+            $linkEventId = \App\Models\FamilyEntryLink::query()
+                ->whereKey((int) $entryLinkId)
+                ->value('entry_event_id');
+            if ($linkEventId) {
+                $query->where('entry_event_id', (int) $linkEventId);
+            }
+        }
+
+        if ($entrySource = $request->input('entry_source')) {
+            $query->where('entry_source', $entrySource);
+        }
+
+        if ($search = $request->input('search')) {
             $query->whereHas('user', function ($inner) use ($search) {
                 $inner->where('name', 'like', "%{$search}%")
                     ->orWhere('mobile', 'like', "%{$search}%");
@@ -219,6 +239,16 @@ class FamiliesController extends Controller
             'mobile' => $membership->user?->mobile,
             'mobile_masked' => SensitiveData::maskMobile($membership->user?->mobile),
             'entry_source' => $membership->entry_source?->value ?? $membership->entry_source,
+            'entry_campaign' => $membership->entry_campaign,
+            'entry_content' => $membership->entry_content,
+            'entry_event_id' => $membership->entry_event_id,
+            'entry_event' => $membership->relationLoaded('entryEvent') && $membership->entryEvent
+                ? [
+                    'id' => $membership->entryEvent->id,
+                    'name' => $membership->entryEvent->name,
+                    'external_reference' => $membership->entryEvent->external_reference,
+                ]
+                : null,
             'joined_at' => $membership->joined_at?->toIso8601String(),
             'onboarding_completed' => (bool) $membership->onboarding_completed,
         ];

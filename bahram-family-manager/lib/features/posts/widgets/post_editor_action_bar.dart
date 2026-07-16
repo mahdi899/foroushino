@@ -38,7 +38,7 @@ class PostEditorActionBar extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.lg),
         child: GlassPanel(
           borderRadius: 22,
-          blur: 28,
+          blur: 0,
           padding: const EdgeInsets.all(AppSpacing.sm),
           child: Column(
             mainAxisSize: MainAxisSize.min,

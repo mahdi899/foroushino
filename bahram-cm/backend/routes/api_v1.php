@@ -578,7 +578,9 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
 
     Route::get('entry-links', [FamilyManagerEntryLinksController::class, 'index'])->middleware('family.manage:family.entry_links.manage');
     Route::post('entry-links', [FamilyManagerEntryLinksController::class, 'store'])->middleware('family.manage:family.entry_links.manage');
+    Route::get('entry-links/{entryLink}/members', [FamilyManagerEntryLinksController::class, 'members'])->whereNumber('entryLink')->middleware('family.manage:family.families.view');
     Route::get('entry-links/{entryLink}', [FamilyManagerEntryLinksController::class, 'show'])->whereNumber('entryLink')->middleware('family.manage:family.entry_links.manage');
+    Route::patch('entry-links/{entryLink}', [FamilyManagerEntryLinksController::class, 'update'])->whereNumber('entryLink')->middleware('family.manage:family.entry_links.manage');
     Route::delete('entry-links/{entryLink}', [FamilyManagerEntryLinksController::class, 'destroy'])->whereNumber('entryLink')->middleware('family.manage:family.entry_links.manage');
 
     Route::get('audience-suggestions', [FamilyManagerFamiliesController::class, 'audienceSuggestions'])->middleware('family.manage:family.families.view');
@@ -590,6 +592,8 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
     Route::patch('settings', [FamilyManagerSettingsController::class, 'update'])->middleware('family.manage:family.settings.manage');
     Route::patch('settings/media-pipeline', [FamilyManagerSettingsController::class, 'updateMediaPipeline'])->middleware('family.manage:family.settings.manage');
     Route::patch('settings/ai', [FamilyManagerSettingsController::class, 'updateAi'])->middleware('family.manage:family.settings.manage');
+    Route::post('settings/ai/test', [FamilyManagerSettingsController::class, 'testAi'])->middleware('family.manage:family.settings.manage');
+    Route::get('settings/ai/providers', [FamilyManagerSettingsController::class, 'aiProviders'])->middleware('family.manage:family.settings.manage');
 
     Route::get('stories', [FamilyManagerStoryController::class, 'index'])->middleware('family.manage:family.stories.manage');
     Route::post('stories', [FamilyManagerStoryController::class, 'store'])->middleware('family.manage:family.stories.manage');

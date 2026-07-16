@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { joinFamily } from '@/lib/family/api';
-import { buildFamilyJoinContext } from '@/lib/family/join-context';
+import { buildFamilyJoinContext, captureFamilyJoinContext } from '@/lib/family/join-context';
 
 /** Attempts family join once, then refreshes server state (member feed without manual reload). */
 export function FamilyAutoJoin() {
@@ -14,6 +14,8 @@ export function FamilyAutoJoin() {
   useEffect(() => {
     if (started.current) return;
     started.current = true;
+
+    captureFamilyJoinContext(searchParams);
 
     void (async () => {
       try {

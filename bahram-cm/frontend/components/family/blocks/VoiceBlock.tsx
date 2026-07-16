@@ -111,8 +111,9 @@ export function VoiceBlock({
   const playingBeforeScrubRef = useRef(false);
   const seekPositionRef = useRef(0);
   const blobUrlRef = useRef<string | null>(null);
-  const blobPromiseRef = useRef<Promise<void> | null>(null);
+  const loadTaskRef = useRef<Promise<boolean> | null>(null);
   const [loadRequested, setLoadRequested] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const { activeId, register, unregister, requestPlay, notifyPaused, setNowPlaying, updateNowPlayingProgress, playbackRate, cyclePlaybackRate } =
     useFamilyMediaPlayer();
   const [playing, setPlaying] = useState(false);
@@ -138,73 +139,87 @@ export function VoiceBlock({
     }
   }, [activeId, media.id]);
 
-  // Full-file blob makes scrubbing reliable — only after the user taps play/scrub.
-  useEffect(() => {
-    if (!media.url || !loadRequested) return;
-
-    let cancelled = false;
-    setAudioReady(false);
+  // Load voice into a blob: URL only — never point <audio> at a remote file URL (IDM / forced download).
+  const loadAudio = useCallback(async (): Promise<boolean> => {
+    if (!media.url) return false;
 
     if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
+      const audio = audioRef.current;
+      if (audio && audio.src !== blobUrlRef.current) {
+        audio.src = blobUrlRef.current;
+      }
+      setAudioReady(true);
+      setLoadError(false);
+      return true;
     }
 
-    const el = audioRef.current;
-    if (el && !el.src) {
-      el.src = media.url;
+    if (loadTaskRef.current) {
+      return loadTaskRef.current;
     }
 
-    const promise = enqueueFamilyMediaLoad('full', media.id, async () => {
-      try {
-        const blob =
-          (await readFamilyMediaBlob('full', media.id, media.url!)) ??
-          (await tryCacheFamilyMediaBlob(media.url!, media.id, 'full'));
-        if (!blob) throw new Error('voice fetch failed');
-        if (cancelled) return;
+    setLoadRequested(true);
+    setAudioReady(false);
+    setLoadError(false);
 
-        const objectUrl = getFamilyMediaBlobUrl(`voice:${media.id}`, blob);
-        blobUrlRef.current = objectUrl;
+    const task = enqueueFamilyMediaLoad('full', media.id, async () => {
+      const blob =
+        (await readFamilyMediaBlob('full', media.id, media.url!)) ??
+        (await tryCacheFamilyMediaBlob(media.url!, media.id, 'full', media.mime_type));
+      if (!blob) throw new Error('voice fetch failed');
 
-        const audio = audioRef.current;
-        if (audio) {
-          const savedTime = audio.currentTime || seekPositionRef.current || 0;
-          const wasPlaying = !audio.paused;
-          audio.src = objectUrl;
-          await waitForMetadata(audio);
-          if (savedTime > 0) {
-            const actual = await seekAudio(audio, savedTime);
-            seekPositionRef.current = actual;
-            setProgress(actual);
-          }
-          if (wasPlaying) {
-            try {
-              await audio.play();
-            } catch {
-              // autoplay blocked
-            }
+      const objectUrl = getFamilyMediaBlobUrl(`voice:${media.id}`, blob);
+      blobUrlRef.current = objectUrl;
+
+      const audio = audioRef.current;
+      if (audio) {
+        const savedTime = audio.currentTime || seekPositionRef.current || 0;
+        const wasPlaying = !audio.paused;
+        audio.src = objectUrl;
+        await waitForMetadata(audio);
+        if (savedTime > 0) {
+          const actual = await seekAudio(audio, savedTime);
+          seekPositionRef.current = actual;
+          setProgress(actual);
+        }
+        if (wasPlaying) {
+          try {
+            await audio.play();
+          } catch {
+            // autoplay blocked
           }
         }
-
-        if (!cancelled) setAudioReady(true);
-      } catch {
-        if (!cancelled) setAudioReady(true);
       }
-    });
+    })
+      .then(() => {
+        const ready = Boolean(blobUrlRef.current);
+        setAudioReady(ready);
+        setLoadError(!ready);
+        return ready;
+      })
+      .catch(() => {
+        setAudioReady(false);
+        setLoadError(true);
+        return false;
+      })
+      .finally(() => {
+        loadTaskRef.current = null;
+      });
 
-    blobPromiseRef.current = promise;
+    loadTaskRef.current = task;
+    return task;
+  }, [media.id, media.mime_type, media.url]);
 
+  useEffect(() => {
     return () => {
-      cancelled = true;
+      loadTaskRef.current = null;
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
     };
-  }, [media.id, media.url, loadRequested]);
+  }, [media.id, media.url]);
 
-  const ensureAudioReady = useCallback(async () => {
-    if (!loadRequested) setLoadRequested(true);
-    if (blobPromiseRef.current) {
-      await blobPromiseRef.current;
-    }
-  }, [loadRequested]);
+  const ensureAudioReady = useCallback(async () => loadAudio(), [loadAudio]);
 
   const resolvedDuration = useMemo(() => {
     if (duration > 0) return duration;
@@ -307,7 +322,12 @@ export function VoiceBlock({
       return;
     }
 
-    await ensureAudioReady();
+    const ready = await ensureAudioReady();
+    if (!ready || !blobUrlRef.current) {
+      setLoadError(true);
+      return;
+    }
+
     requestPlay(media.id);
     await waitForMetadata(el);
 
@@ -354,6 +374,7 @@ export function VoiceBlock({
       <audio
         ref={audioRef}
         preload="none"
+        playsInline
         onPlay={() => {
           setPlaying(true);
           const el = audioRef.current;
@@ -404,7 +425,10 @@ export function VoiceBlock({
       />
       <button
         type="button"
-        onClick={() => void toggle()}
+        onClick={(e) => {
+          e.stopPropagation();
+          void toggle();
+        }}
         aria-label={playing ? 'توقف' : 'پخش'}
         className="family-voice-play"
       >
@@ -426,7 +450,7 @@ export function VoiceBlock({
             if (!loadRequested) {
               void ensureAudioReady();
             }
-            if (!audioReady) return;
+            if (!audioReady && !loadError) return;
             draggingRef.current = true;
             playingBeforeScrubRef.current = Boolean(audioRef.current && !audioRef.current.paused);
             e.currentTarget.setPointerCapture(e.pointerId);
@@ -477,8 +501,21 @@ export function VoiceBlock({
         </button>
 
         <div className="family-voice__aside">
-          {loadRequested && !audioReady ? (
+          {loadRequested && !audioReady && !loadError ? (
             <span className="family-voice__spinner family-voice__spinner--sm" aria-label="در حال آماده‌سازی" />
+          ) : null}
+          {loadError ? (
+            <button
+              type="button"
+              className="family-voice-speed"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLoadError(false);
+                void ensureAudioReady();
+              }}
+            >
+              تلاش مجدد
+            </button>
           ) : null}
           {isPodcast && audioReady ? (
             <button

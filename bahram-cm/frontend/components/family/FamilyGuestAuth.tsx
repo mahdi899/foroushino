@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { useStudentAuthOptional } from '@/components/student-panel/auth/StudentAuthContext';
+import { familyLoginRedirectPath } from '@/lib/family/join-context';
 
 export const FAMILY_LOGIN_REDIRECT = '/family';
 
@@ -13,7 +14,7 @@ export function FamilyGuestLoginBoot({ autoOpen = true }: { autoOpen?: boolean }
   useEffect(() => {
     if (!autoOpen || !auth || auth.isLoggedIn || auth.loginOpen || openedRef.current) return;
     openedRef.current = true;
-    auth.openLogin({ redirectTo: FAMILY_LOGIN_REDIRECT, context: 'family' });
+    auth.openLogin({ redirectTo: familyLoginRedirectPath(), context: 'family' });
   }, [auth, autoOpen]);
 
   return null;
@@ -23,7 +24,7 @@ export function useFamilyGuestLogin() {
   const auth = useStudentAuthOptional();
 
   return {
-    openLogin: () => auth?.openLogin({ redirectTo: FAMILY_LOGIN_REDIRECT, context: 'family' }),
+    openLogin: () => auth?.openLogin({ redirectTo: familyLoginRedirectPath(), context: 'family' }),
   };
 }
 

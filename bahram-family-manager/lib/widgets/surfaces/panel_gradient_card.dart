@@ -86,7 +86,7 @@ class PanelSectionCard extends StatelessWidget {
 
     return GlassPanel(
       borderRadius: 20,
-      blur: 24,
+      blur: 0,
       padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
