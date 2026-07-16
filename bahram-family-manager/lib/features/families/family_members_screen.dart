@@ -14,7 +14,9 @@ class FamilyMembersScreen extends StatelessWidget {
       appBar: const ManagerAppBar(title: Text('اعضای کانال')),
       body: Padding(
         padding: AppBreakpoints.pagePadding(context),
-        child: const FamilyMembersPanel(showFamilyName: true),
+        child: const SizedBox.expand(
+          child: FamilyMembersPanel(showFamilyName: true),
+        ),
       ),
     );
   }

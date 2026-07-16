@@ -88,49 +88,52 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
               ),
           ],
         ),
-        body: Row(
-          children: [
-            SizedBox(
-              width: 360,
-              child: Column(
-                children: [
-                  _SearchHeader(
-                    searchCtrl: _searchCtrl,
-                    lifecycle: _lifecycle,
-                    onSearch: _load,
-                    onLifecycleChanged: (v) => setState(() {
-                      _lifecycle = v;
-                      _load();
-                    }),
-                  ),
-                  const Divider(height: 1),
-                  Expanded(
-                    child: _FamiliesList(
-                      future: _future,
-                      selectedId: _selectedFamilyId,
-                      onRefresh: _load,
-                      onSelect: _selectFamily,
-                      desktopStyle: true,
+        body: SizedBox.expand(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: 360,
+                child: Column(
+                  children: [
+                    _SearchHeader(
+                      searchCtrl: _searchCtrl,
+                      lifecycle: _lifecycle,
+                      onSearch: _load,
+                      onLifecycleChanged: (v) => setState(() {
+                        _lifecycle = v;
+                        _load();
+                      }),
                     ),
-                  ),
-                ],
+                    const Divider(height: 1),
+                    Expanded(
+                      child: _FamiliesList(
+                        future: _future,
+                        selectedId: _selectedFamilyId,
+                        onRefresh: _load,
+                        onSelect: _selectFamily,
+                        desktopStyle: true,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const VerticalDivider(width: 1, thickness: 1),
-            Expanded(
-              child: _selectedFamilyId == null
-                  ? const EmptyState(
-                      icon: Icons.touch_app_rounded,
-                      title: 'یک خانواده انتخاب کنید',
-                      subtitle: 'از لیست سمت راست، خانواده مورد نظر را انتخاب کنید.',
-                    )
-                  : FamilyDetailBody(
-                      key: ValueKey(_selectedFamilyId),
-                      familyId: _selectedFamilyId!,
-                      onChanged: _load,
-                    ),
-            ),
-          ],
+              const VerticalDivider(width: 1, thickness: 1),
+              Expanded(
+                child: _selectedFamilyId == null
+                    ? const EmptyState(
+                        icon: Icons.touch_app_rounded,
+                        title: 'یک خانواده انتخاب کنید',
+                        subtitle: 'از لیست سمت راست، خانواده مورد نظر را انتخاب کنید.',
+                      )
+                    : FamilyDetailBody(
+                        key: ValueKey(_selectedFamilyId),
+                        familyId: _selectedFamilyId!,
+                        onChanged: _load,
+                      ),
+              ),
+            ],
+          ),
         ),
       );
     } else {
@@ -147,6 +150,13 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
             ),
           ],
         ),
+        floatingActionButton: canManage
+            ? FloatingActionButton.extended(
+                onPressed: _createFamily,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('خانواده جدید'),
+              )
+            : null,
         body: Column(
           children: [
             _SearchHeader(
@@ -174,16 +184,7 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
       );
     }
 
-    if (!canManage || isDesktop) return body;
-
-    return Scaffold(
-      body: body,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _createFamily,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('خانواده جدید'),
-      ),
-    );
+    return body;
   }
 }
 

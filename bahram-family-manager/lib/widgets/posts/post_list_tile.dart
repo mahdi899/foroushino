@@ -21,6 +21,10 @@ class PostListTile extends StatelessWidget {
     this.onRepublish,
     this.onPublish,
     this.onRecover,
+    this.selectable = false,
+    this.selected = false,
+    this.onSelectedChanged,
+    this.onLongPress,
   });
 
   final FamilyPostModel post;
@@ -31,6 +35,10 @@ class PostListTile extends StatelessWidget {
   final VoidCallback? onRepublish;
   final VoidCallback? onPublish;
   final VoidCallback? onRecover;
+  final bool selectable;
+  final bool selected;
+  final ValueChanged<bool>? onSelectedChanged;
+  final VoidCallback? onLongPress;
 
   bool get _hasMenu => onEdit != null || onDelete != null || onRepublish != null || onPublish != null || onRecover != null;
 
@@ -49,15 +57,37 @@ class PostListTile extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: selectable
+              ? () => onSelectedChanged?.call(!selected)
+              : onTap,
+          onLongPress: selectable
+              ? null
+              : (onLongPress ?? onTap),
           borderRadius: BorderRadius.circular(20),
-          child: Column(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: selected
+                  ? Border.all(color: scheme.primary, width: 2)
+                  : null,
+            ),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.md),
                 child: Row(
                   children: [
+                    if (selectable) ...[
+                      Checkbox(
+                        value: selected,
+                        onChanged: (value) => onSelectedChanged?.call(value ?? false),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                    ],
                     _AuthorAvatar(name: post.authorName),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(
@@ -89,7 +119,7 @@ class PostListTile extends StatelessWidget {
                         ),
                       ),
                     ],
-                    if (_hasMenu)
+                    if (_hasMenu && !selectable)
                       PopupMenuButton<_PostMenuAction>(
                         tooltip: 'عملیات پست',
                         icon: Icon(Icons.more_vert_rounded, color: muted, size: 22),
@@ -211,6 +241,7 @@ class PostListTile extends StatelessWidget {
                 ),
               ],
             ],
+          ),
           ),
         ),
       ),

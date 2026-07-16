@@ -2,8 +2,8 @@
 
 import { useEffect } from 'react';
 import useSWR from 'swr';
+import { readBrandingBrowserCache, writeBrandingBrowserCache } from '@/lib/family/browserCache';
 import { getBranding } from '@/lib/family/api';
-import { readFamilyShellSnapshot, writeFamilyShellSnapshot } from '@/lib/family/shellCache';
 import { familyBrandingSwr } from '@/lib/family/swr';
 import type { FamilyBranding } from '@/lib/family/types';
 
@@ -16,7 +16,10 @@ const DEFAULT_BRANDING: FamilyBranding = {
   latest_story_id: null,
 };
 
-export function useFamilyBranding(initial?: FamilyBranding) {
+export function useFamilyBranding(
+  initial?: FamilyBranding,
+  viewerKey: string | number = 'global',
+) {
   const { data, mutate, isLoading } = useSWR(
     'family-branding',
     async () => (await getBranding()).data,
@@ -28,14 +31,14 @@ export function useFamilyBranding(initial?: FamilyBranding) {
 
   useEffect(() => {
     if (data || initial) return;
-    const cached = readFamilyShellSnapshot()?.branding;
+    const cached = readBrandingBrowserCache(viewerKey);
     if (cached) void mutate(cached, { revalidate: true });
-  }, [data, initial, mutate]);
+  }, [data, initial, mutate, viewerKey]);
 
   useEffect(() => {
     if (!data) return;
-    writeFamilyShellSnapshot({ branding: data });
-  }, [data]);
+    writeBrandingBrowserCache({ branding: data }, viewerKey);
+  }, [data, viewerKey]);
 
   const resolved = data ?? initial ?? DEFAULT_BRANDING;
 

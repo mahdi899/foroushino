@@ -21,9 +21,9 @@ describe('shellCache', () => {
         community_avatar: null,
       },
       memberCount: 4,
-    });
+    }, 'user-1');
 
-    const snapshot = readFamilyShellSnapshot();
+    const snapshot = readFamilyShellSnapshot('user-1');
     expect(snapshot?.branding.display_name).toBe('خانواده تست');
     expect(snapshot?.memberCount).toBe(4);
   });

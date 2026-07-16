@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\FamilyManager;
 use App\Http\Controllers\Controller;
 use App\Models\FamilyMedia;
 use App\Services\AdminAuditLogger;
+use App\Services\Family\FamilyAiSettingsService;
 use App\Services\Family\FamilyBrandingService;
 use App\Services\Family\FamilyMediaSettingsService;
 use App\Support\ApiResponse;
@@ -18,6 +19,7 @@ class SettingsController extends Controller
         private readonly FamilyBrandingService $branding,
         private readonly AdminAuditLogger $audit,
         private readonly FamilyMediaSettingsService $mediaSettings,
+        private readonly FamilyAiSettingsService $aiSettings,
     ) {}
 
     public function show(): JsonResponse
@@ -40,6 +42,7 @@ class SettingsController extends Controller
             'community_avatar_path' => $branding->community_avatar_path,
             'branding_version' => $version,
             'media_pipeline' => $this->mediaSettings->adminView(),
+            'ai' => $this->aiSettings->adminView(),
         ]);
     }
 
@@ -90,6 +93,7 @@ class SettingsController extends Controller
             'community_avatar_path' => $updated->community_avatar_path,
             'branding_version' => $version,
             'media_pipeline' => $this->mediaSettings->adminView(),
+            'ai' => $this->aiSettings->adminView(),
         ]);
     }
 
@@ -105,6 +109,30 @@ class SettingsController extends Controller
         $this->audit->log($request->user(), 'family.media_pipeline_updated', null, $data);
 
         return ApiResponse::success($this->mediaSettings->adminView());
+    }
+
+    public function updateAi(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'is_active' => ['nullable', 'boolean'],
+            'provider_name' => ['nullable', 'string', 'max:80'],
+            'base_url' => ['nullable', 'string', 'max:255'],
+            'model' => ['nullable', 'string', 'max:120'],
+            'temperature' => ['nullable', 'numeric', 'min:0', 'max:2'],
+            'max_tokens' => ['nullable', 'integer', 'min:100', 'max:8000'],
+            'api_key' => ['nullable', 'string', 'max:500'],
+            'clear_api_key' => ['nullable', 'boolean'],
+            'auto_approve_comments' => ['nullable', 'boolean'],
+            'auto_reject_high_risk' => ['nullable', 'boolean'],
+            'risk_approve_threshold' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'risk_reject_threshold' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'default_action_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+        ]);
+
+        $this->aiSettings->update($data);
+        $this->audit->log($request->user(), 'family.ai_settings_updated', null, array_keys($data));
+
+        return ApiResponse::success($this->aiSettings->adminView());
     }
 
     private function mediaPath(?int $mediaId): ?string

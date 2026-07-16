@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { FamilyAutoJoin } from '@/components/family/FamilyAutoJoin';
 import { FamilyMain, FamilyShell } from '@/components/family/FamilyShell';
 import { FamilyTopBar } from '@/components/family/FamilyTopBar';
@@ -10,6 +10,7 @@ import { GuestBanner } from '@/components/family/GuestBanner';
 import { JoinBanner } from '@/components/family/JoinBanner';
 import { OnboardingModal } from '@/components/family/OnboardingModal';
 import { useFamilyMemberCount } from '@/lib/family/hooks/useFamilyMemberCount';
+import { invalidateAllFamilyBrowserCache } from '@/lib/family/browserCache';
 import { writeFamilyShellSnapshot } from '@/lib/family/shellCache';
 import type { FamilyBranding, FamilyComment, FamilyFeedResponse } from '@/lib/family/types';
 
@@ -43,11 +44,23 @@ export function FamilyHome({
 
   useEffect(() => {
     if (!initialBranding && typeof initialMemberCount !== 'number') return;
-    writeFamilyShellSnapshot({
-      branding: initialBranding,
-      memberCount: memberCount ?? initialMemberCount,
-    });
-  }, [initialBranding, initialMemberCount, memberCount]);
+    writeFamilyShellSnapshot(
+      {
+        branding: initialBranding,
+        memberCount: memberCount ?? initialMemberCount,
+      },
+      viewerKey,
+    );
+  }, [initialBranding, initialMemberCount, memberCount, viewerKey]);
+
+  const prevViewerKeyRef = useRef(viewerKey);
+  useEffect(() => {
+    const prev = prevViewerKeyRef.current;
+    if (prev !== viewerKey) {
+      void invalidateAllFamilyBrowserCache(prev);
+      prevViewerKeyRef.current = viewerKey;
+    }
+  }, [viewerKey]);
 
   const [showOnboarding, setShowOnboarding] = useState(needsOnboarding);
   const [commentsTarget, setCommentsTarget] = useState<CommentsTarget | null>(null);

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:bahram_family_manager/core/labels.dart';
+import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
@@ -28,17 +29,19 @@ class CommentsScreen extends StatefulWidget {
 }
 
 class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProviderStateMixin {
-  static const _tabs = ['pending', 'approved', 'rejected', 'important', 'unread'];
+  static const _tabs = ['pending', 'approved', 'rejected', 'important', 'unread', 'coaching_questions'];
   static const _tabLabels = {
     'pending': 'در انتظار',
     'approved': 'تأییدشده',
     'rejected': 'رد‌شده',
     'important': 'مهم',
     'unread': 'خوانده‌نشده',
+    'coaching_questions': 'سؤال کوچینگ',
   };
 
   late final TabController _tabController;
   Future<PaginatedResult<FamilyCommentModel>>? _future;
+  final Set<int> _selectedPendingIds = {};
 
   @override
   void initState() {
@@ -116,11 +119,38 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
     if (replied == true) _load();
   }
 
+  Future<void> _batchApprove() async {
+    if (_selectedPendingIds.isEmpty) return;
+    try {
+      final count = await context.read<AppState>().manager.batchApprove(_selectedPendingIds.toList());
+      if (mounted) {
+        showAppSnackBar(context, '${toFaDigits(count.toString())} نظر تأیید شد.');
+        setState(_selectedPendingIds.clear);
+        _load();
+      }
+    } catch (e) {
+      if (mounted) showAppSnackBar(context, messageOf(e));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isPendingTab = _tabs[_tabController.index] == 'pending';
+
     return AdaptiveScaffold(
       appBar: ManagerAppBar(
-        title: const Text('نظرات خانواده'),
+        title: Text(_selectedPendingIds.isEmpty
+            ? 'نظرات خانواده'
+            : '${toFaDigits(_selectedPendingIds.length.toString())} انتخاب‌شده'),
+        actions: isPendingTab && _selectedPendingIds.isNotEmpty
+            ? [
+                IconButton(
+                  tooltip: 'تأیید گروهی',
+                  onPressed: _batchApprove,
+                  icon: const Icon(Icons.done_all_rounded),
+                ),
+              ]
+            : null,
         bottom: AppTabBar(
           controller: _tabController,
           isScrollable: true,
@@ -151,8 +181,20 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
                 separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
                 itemBuilder: (context, index) {
                   final c = comments[index];
+                  final selected = _selectedPendingIds.contains(c.id);
                   return CommentCard(
                     comment: c,
+                    selectable: isPendingTab,
+                    selected: selected,
+                    onSelectedChanged: isPendingTab
+                        ? (value) => setState(() {
+                              if (value) {
+                                _selectedPendingIds.add(c.id);
+                              } else {
+                                _selectedPendingIds.remove(c.id);
+                              }
+                            })
+                        : null,
                     onApprove: () => _approve(c),
                     onReject: () => _reject(c),
                     onToggleImportant: () => _toggleImportant(c),

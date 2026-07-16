@@ -2,8 +2,8 @@ import type { FamilyFeedMeta, FamilyPost } from '@/lib/family/types';
 
 const DB_NAME = 'bahram-family';
 const STORE = 'feed';
-const DB_VERSION = 1;
-const CACHE_SCHEMA_VERSION = 1;
+const DB_VERSION = 2;
+const CACHE_SCHEMA_VERSION = 2 as const;
 const MAX_PAGES = 12;
 
 export type FeedCachePage = {
@@ -14,7 +14,13 @@ export type FeedCachePage = {
 export type FeedCacheRecord = {
   schemaVersion: typeof CACHE_SCHEMA_VERSION;
   savedAt: number;
+  revision: number | null;
   pages: FeedCachePage[];
+};
+
+export type FeedCacheReadResult = {
+  pages: FeedCachePage[];
+  revision: number | null;
 };
 
 function cacheKey(scope: string, viewerKey: string | number): string {
@@ -77,12 +83,15 @@ function idbSet(key: string, value: unknown): Promise<void> {
 export async function readFeedCache(
   scope: string,
   viewerKey: string | number,
-): Promise<FeedCachePage[] | null> {
+): Promise<FeedCacheReadResult | null> {
   try {
     const record = await idbGet<FeedCacheRecord>(cacheKey(scope, viewerKey));
     if (!record || record.schemaVersion !== CACHE_SCHEMA_VERSION) return null;
     if (!Array.isArray(record.pages) || record.pages.length === 0) return null;
-    return record.pages.slice(0, MAX_PAGES);
+    return {
+      pages: record.pages.slice(0, MAX_PAGES),
+      revision: record.revision ?? null,
+    };
   } catch {
     return null;
   }
@@ -92,12 +101,14 @@ export async function writeFeedCache(
   scope: string,
   viewerKey: string | number,
   pages: FeedCachePage[],
+  revision: number | null = null,
 ): Promise<void> {
   if (!pages.length) return;
   try {
     const record: FeedCacheRecord = {
       schemaVersion: CACHE_SCHEMA_VERSION,
       savedAt: Date.now(),
+      revision,
       pages: pages.slice(0, MAX_PAGES),
     };
     await idbSet(cacheKey(scope, viewerKey), record);

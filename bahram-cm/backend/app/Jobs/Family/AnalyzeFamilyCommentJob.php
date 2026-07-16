@@ -3,6 +3,7 @@
 namespace App\Jobs\Family;
 
 use App\Models\FamilyComment;
+use App\Services\Family\FamilyCommentModerationService;
 use App\Services\Family\FamilyIntelligenceService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,8 +22,10 @@ class AnalyzeFamilyCommentJob implements ShouldQueue
 
     public function __construct(public int $commentId) {}
 
-    public function handle(FamilyIntelligenceService $intelligence): void
-    {
+    public function handle(
+        FamilyIntelligenceService $intelligence,
+        FamilyCommentModerationService $moderation,
+    ): void {
         $comment = FamilyComment::query()->find($this->commentId);
         if (! $comment) {
             return;
@@ -36,12 +39,14 @@ class AnalyzeFamilyCommentJob implements ShouldQueue
                 'ai_topic' => $result['topic'] ?? null,
                 'ai_signals' => $result['signals'] ?? null,
             ]);
+
+            $comment->refresh();
+            $moderation->applyAiDecision($comment);
         } catch (\Throwable $e) {
             Log::channel('stack')->warning('Family comment AI analysis failed', [
                 'comment_id' => $this->commentId,
                 'error' => $e->getMessage(),
             ]);
-            // Non-critical — do not fail the queue hard after retries.
             if ($this->attempts() >= $this->tries) {
                 return;
             }

@@ -5,8 +5,12 @@ import type {
   FamilyMeResponse,
 } from '@/lib/family/types';
 
-const STORAGE_KEY = 'bahram-family-shell-v1';
-const SCHEMA_VERSION = 1 as const;
+const STORAGE_KEY_PREFIX = 'bahram-family-shell-v2';
+const SCHEMA_VERSION = 2 as const;
+
+export function shellStorageKey(viewerKey: string | number = 'global'): string {
+  return `${STORAGE_KEY_PREFIX}:${String(viewerKey)}`;
+}
 
 export type FamilyShellSnapshot = {
   schemaVersion: typeof SCHEMA_VERSION;
@@ -21,11 +25,13 @@ function isBranding(value: unknown): value is FamilyBranding {
   return typeof row.display_name === 'string' && typeof row.profile_name === 'string';
 }
 
-export function readFamilyShellSnapshot(): FamilyShellSnapshot | null {
+export function readFamilyShellSnapshot(
+  viewerKey: string | number = 'global',
+): FamilyShellSnapshot | null {
   if (typeof window === 'undefined') return null;
 
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(shellStorageKey(viewerKey));
     if (!raw) return null;
 
     const parsed = JSON.parse(raw) as FamilyShellSnapshot;
@@ -39,14 +45,17 @@ export function readFamilyShellSnapshot(): FamilyShellSnapshot | null {
   }
 }
 
-export function writeFamilyShellSnapshot(partial: {
-  branding?: FamilyBranding;
-  memberCount?: number;
-}): void {
+export function writeFamilyShellSnapshot(
+  partial: {
+    branding?: FamilyBranding;
+    memberCount?: number;
+  },
+  viewerKey: string | number = 'global',
+): void {
   if (typeof window === 'undefined') return;
 
   try {
-    const existing = readFamilyShellSnapshot();
+    const existing = readFamilyShellSnapshot(viewerKey);
     const branding = partial.branding ?? existing?.branding;
     if (!branding) return;
 
@@ -60,7 +69,7 @@ export function writeFamilyShellSnapshot(partial: {
           : existing?.memberCount,
     };
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+    window.localStorage.setItem(shellStorageKey(viewerKey), JSON.stringify(snapshot));
   } catch {
     // Quota / private mode — ignore.
   }
@@ -118,15 +127,21 @@ export function brandingFromMeAndFeed(
   };
 }
 
-export function syncFamilyShellFromFeedMeta(meta: FamilyFeedMeta): void {
+export function syncFamilyShellFromFeedMeta(
+  meta: FamilyFeedMeta,
+  viewerKey: string | number = 'global',
+): void {
   const fromFeed = shellBrandingFromFeedMeta(meta);
   if (!fromFeed) return;
 
-  const existing = readFamilyShellSnapshot()?.branding;
+  const existing = readFamilyShellSnapshot(viewerKey)?.branding;
   const branding = mergeFeedBrandingIntoCurrent(existing, fromFeed);
 
-  writeFamilyShellSnapshot({
-    branding,
-    memberCount: typeof meta.member_count === 'number' ? meta.member_count : undefined,
-  });
+  writeFamilyShellSnapshot(
+    {
+      branding,
+      memberCount: typeof meta.member_count === 'number' ? meta.member_count : undefined,
+    },
+    viewerKey,
+  );
 }

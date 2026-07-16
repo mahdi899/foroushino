@@ -71,7 +71,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 **CDN (fashio.ir / Arvan):** [`docs/ARVAN-CDN.md`](docs/ARVAN-CDN.md)
 
-**خانواده داداش بهرام (Family):** [`docs/FAMILY.md`](docs/FAMILY.md) — برای بج/فید realtime: `BROADCAST_CONNECTION=reverb` + `php artisan reverb:start` (جزئیات در FAMILY.md).
+**خانواده داداش بهرام (Family):** [`docs/FAMILY.md`](docs/FAMILY.md) — برای بج/فید realtime: `BROADCAST_CONNECTION=reverb` + `php artisan reverb:start`. در production حتماً `CACHE_STORE=redis` (کش فید، unread و meta).
 
 - **Frontend:** Vercel یا هر هاست Node — روت `bahram-cm/frontend`
 - **Backend:** Laravel — `bahram-cm/backend` با MySQL + Redis

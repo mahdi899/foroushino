@@ -11,11 +11,13 @@ use App\Http\Controllers\Controller;
 use App\Models\FamilyComment;
 use App\Models\FamilyPost;
 use App\Services\AdminAuditLogger;
+use App\Services\Family\FamilyIntelligenceService;
 use App\Services\Family\FamilyNotificationService;
 use App\Services\Family\FamilyPostPublisher;
 use App\Services\Family\FeedService;
 use App\Services\Family\PostAudienceResolver;
 use App\Support\ApiResponse;
+use App\Support\Csv;
 use App\Support\FamilyManagerActionResultsPresenter;
 use App\Support\FamilyManagerPostPresenter;
 use App\Support\SafeBroadcast;
@@ -23,6 +25,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PostController extends Controller
 {
@@ -88,6 +91,7 @@ class PostController extends Controller
             'type' => [$requireType ? 'required' : 'nullable', Rule::enum(FamilyPostType::class)],
             'audience_mode' => ['nullable', Rule::enum(FamilyPostAudienceMode::class)],
             'is_important' => ['nullable', 'boolean'],
+            'comments_enabled' => ['nullable', 'boolean'],
             'family_ids' => ['nullable', 'array'],
             'family_ids.*' => ['integer', 'exists:families,id'],
             'blocks' => ['nullable', 'array'],
@@ -109,6 +113,8 @@ class PostController extends Controller
             'action.options.*.label' => ['required_with:action.options', 'string'],
             'action.options.*.value' => ['nullable', 'string'],
             'action.options.*.position' => ['nullable', 'integer'],
+            'action.active_until' => ['nullable', 'date'],
+            'action.is_active' => ['nullable', 'boolean'],
         ];
     }
 
@@ -122,6 +128,48 @@ class PostController extends Controller
     public function actionResults(FamilyPost $post): JsonResponse
     {
         return ApiResponse::success($this->actionResults->forPost($post));
+    }
+
+    public function exportActionResults(FamilyPost $post): StreamedResponse
+    {
+        $results = $this->actionResults->forPost($post);
+        $rows = [];
+
+        foreach ($results as $action) {
+            foreach ($action['responses'] as $response) {
+                $rows[] = [
+                    $post->id,
+                    $action['prompt'] ?? '',
+                    $action['type'] ?? '',
+                    $response['name'] ?? '',
+                    $response['mobile'] ?? '',
+                    $response['family_name'] ?? '',
+                    $response['value_label'] ?? '',
+                    $response['responded_at'] ?? '',
+                ];
+            }
+        }
+
+        return Csv::download(
+            "family-post-{$post->id}-action-results.csv",
+            ['post_id', 'action_prompt', 'action_type', 'name', 'mobile', 'family', 'response', 'responded_at'],
+            $rows,
+        );
+    }
+
+    public function aiDraft(Request $request, FamilyIntelligenceService $intelligence): JsonResponse
+    {
+        $data = $request->validate([
+            'topic' => ['required', 'string', 'max:500'],
+            'type' => ['nullable', 'string', 'max:40'],
+            'tone' => ['nullable', 'string', 'max:200'],
+        ]);
+
+        return ApiResponse::success($intelligence->generatePostDraft(
+            $data['topic'],
+            $data['type'] ?? 'text',
+            $data['tone'] ?? null,
+        ));
     }
 
     public function update(Request $request, FamilyPost $post): JsonResponse
@@ -194,9 +242,8 @@ class PostController extends Controller
 
     public function destroy(Request $request, FamilyPost $post): JsonResponse
     {
-        abort_if($post->status === FamilyPostStatus::Archived, 422, 'پست آرشیوشده حذف نمی‌شود.');
-
-        $wasPublished = $post->status === FamilyPostStatus::Published;
+        $wasPublished = $post->status === FamilyPostStatus::Published
+            || ($post->status === FamilyPostStatus::Archived && $post->published_at !== null);
 
         $this->audit->log($request->user(), 'family.post_deleted', $post);
 

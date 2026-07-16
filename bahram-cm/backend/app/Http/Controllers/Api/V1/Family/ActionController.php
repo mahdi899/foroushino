@@ -8,6 +8,7 @@ use App\Jobs\Family\ProcessActionFollowUpJob;
 use App\Models\FamilyAction;
 use App\Models\FamilyActionResponse;
 use App\Services\Family\FamilyAccessService;
+use App\Services\Family\FamilyActionAvailability;
 use App\Services\Family\FamilyActionStatsService;
 use App\Services\Family\FamilyStatsService;
 use App\Support\ApiResponse;
@@ -21,12 +22,16 @@ class ActionController extends Controller
         private readonly FamilyAccessService $access,
         private readonly FamilyStatsService $stats,
         private readonly FamilyActionStatsService $actionStats,
+        private readonly FamilyActionAvailability $actionAvailability,
     ) {}
 
     public function respond(Request $request, FamilyAction $action): JsonResponse
     {
         $membership = $this->access->requireMembership($request->user());
         $action->load('options');
+
+        $this->actionAvailability->deactivateIfExpired($action);
+        abort_unless($this->actionAvailability->isOpen($action->fresh() ?? $action), 422, 'مهلت این نظرسنجی یا اکشن به پایان رسیده است.');
 
         $value = $this->validateValue($request, $action);
 

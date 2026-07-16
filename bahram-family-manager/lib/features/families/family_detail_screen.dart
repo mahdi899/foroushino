@@ -147,9 +147,85 @@ class FamilyDetailContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDesktop = AppBreakpoints.isDesktop(context);
+    final padding = AppBreakpoints.pagePadding(context);
+
+    final summary = _FamilySummarySection(
+      family: family,
+      canManage: canManage,
+      isDesktop: isDesktop,
+      onEdit: onEdit,
+      onDelete: onDelete,
+    );
+
+    final membersPanel = FamilyMembersPanel(
+      familyId: family.id,
+      familyName: family.internalName,
+      embeddedInScrollView: !isDesktop,
+    );
+
+    final dnaSection = family.dna != null
+        ? _DnaCard(dna: family.dna!)
+        : const AppCard(
+            child: Text('هنوز DNA خانواده محاسبه نشده.', style: TextStyle(color: AppColors.textMuted)),
+          );
+
+    if (isDesktop) {
+      return Padding(
+        padding: padding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: ListView(
+                children: [
+                  summary,
+                  const SizedBox(height: AppSpacing.xl),
+                  dnaSection,
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Expanded(
+              flex: 2,
+              child: membersPanel,
+            ),
+          ],
+        ),
+      );
+    }
 
     return ListView(
-      padding: AppBreakpoints.pagePadding(context),
+      padding: padding,
+      children: [
+        summary,
+        const SizedBox(height: AppSpacing.xl),
+        membersPanel,
+        const SizedBox(height: AppSpacing.xl),
+        dnaSection,
+      ],
+    );
+  }
+}
+
+class _FamilySummarySection extends StatelessWidget {
+  const _FamilySummarySection({
+    required this.family,
+    required this.canManage,
+    required this.isDesktop,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final FamilyDetailModel family;
+  final bool canManage;
+  final bool isDesktop;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
@@ -269,18 +345,6 @@ class FamilyDetailContent extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: AppSpacing.xl),
-        SizedBox(
-          height: isDesktop ? 420 : 360,
-          child: FamilyMembersPanel(familyId: family.id, familyName: family.internalName),
-        ),
-        const SizedBox(height: AppSpacing.xl),
-        if (family.dna != null)
-          _DnaCard(dna: family.dna!)
-        else
-          const AppCard(
-            child: Text('هنوز DNA خانواده محاسبه نشده.', style: TextStyle(color: AppColors.textMuted)),
-          ),
       ],
     );
   }

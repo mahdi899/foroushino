@@ -24,6 +24,7 @@ class FamilyPostPublisher
 {
     public function __construct(
         private readonly AdminAuditLogger $audit,
+        private readonly FamilyActionAvailability $actionAvailability,
     ) {}
 
     /**
@@ -38,6 +39,9 @@ class FamilyPostPublisher
                 'status' => FamilyPostStatus::Draft,
                 'audience_mode' => $payload['audience_mode'] ?? FamilyPostAudienceMode::All->value,
                 'is_important' => (bool) ($payload['is_important'] ?? false),
+                'comments_enabled' => array_key_exists('comments_enabled', $payload)
+                    ? (bool) $payload['comments_enabled']
+                    : true,
                 'reply_to_comment_id' => $payload['reply_to_comment_id'] ?? null,
             ]);
 
@@ -62,6 +66,9 @@ class FamilyPostPublisher
             $post->update(array_filter([
                 'audience_mode' => $payload['audience_mode'] ?? null,
                 'is_important' => array_key_exists('is_important', $payload) ? (bool) $payload['is_important'] : null,
+                'comments_enabled' => array_key_exists('comments_enabled', $payload)
+                    ? (bool) $payload['comments_enabled']
+                    : null,
             ], fn ($v) => $v !== null));
 
             if (array_key_exists('blocks', $payload)) {
@@ -205,6 +212,12 @@ class FamilyPostPublisher
             'config' => $action['config'] ?? null,
             'follow_up_after_minutes' => $action['follow_up_after_minutes'] ?? null,
             'follow_up_message' => $action['follow_up_message'] ?? null,
+            'active_until' => isset($action['active_until'])
+                ? Carbon::parse($action['active_until'])
+                : $this->actionAvailability->defaultActiveUntil(),
+            'is_active' => array_key_exists('is_active', $action)
+                ? (bool) $action['is_active']
+                : true,
         ]);
 
         foreach (array_values($action['options'] ?? []) as $i => $opt) {

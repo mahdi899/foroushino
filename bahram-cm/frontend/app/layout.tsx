@@ -26,7 +26,6 @@ import { DiscountCapture } from "@/components/commerce/DiscountCapture";
 import { GrainOverlay } from "@/components/motion/GrainOverlay";
 import { SiteBootLoader } from "@/components/layout/SiteBootLoader";
 import { cookies } from "next/headers";
-import Script from "next/script";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import {
   DEFAULT_SITE_THEME,
@@ -87,9 +86,10 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }}
         />
         <MediaPreconnect />
-        <Script id="site-theme-boot" strategy="beforeInteractive">
-          {siteThemeBootScript()}
-        </Script>
+        <script
+          id="site-theme-boot"
+          dangerouslySetInnerHTML={{ __html: siteThemeBootScript() }}
+        />
       </head>
       <body className={`${fontClassName} min-w-0 overflow-x-clip antialiased`} suppressHydrationWarning>
         <ThemeBoot />

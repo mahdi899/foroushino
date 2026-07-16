@@ -11,6 +11,7 @@ use App\Services\Family\FamilyNotificationService;
 use App\Services\Family\FamilyStatsService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -158,6 +159,8 @@ class CommentModerationController extends Controller
         $this->audit->log($request->user(), 'family.pulse_toggled', $comment, [
             'in_pulse' => $comment->family_pulse_at !== null,
         ]);
+
+        Cache::forget('family:pulse');
 
         return ApiResponse::success($this->present($comment->fresh(['user', 'family'])));
     }

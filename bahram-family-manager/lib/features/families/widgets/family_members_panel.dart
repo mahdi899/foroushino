@@ -9,7 +9,6 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/features/families/widgets/add_family_member_sheet.dart';
 import 'package:bahram_family_manager/models/models.dart';
-import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
@@ -23,12 +22,15 @@ class FamilyMembersPanel extends StatefulWidget {
     this.familyName,
     this.showFamilyName = false,
     this.compact = false,
+    this.embeddedInScrollView = false,
   });
 
   final int? familyId;
   final String? familyName;
   final bool showFamilyName;
   final bool compact;
+  /// When true, the member list uses [shrinkWrap] so it can live inside a parent [ListView].
+  final bool embeddedInScrollView;
 
   @override
   State<FamilyMembersPanel> createState() => _FamilyMembersPanelState();
@@ -44,6 +46,14 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant FamilyMembersPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.familyId != widget.familyId || oldWidget.showFamilyName != widget.showFamilyName) {
+      _load();
+    }
   }
 
   @override
@@ -151,38 +161,83 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
           ),
         ],
         const SizedBox(height: AppSpacing.md),
-        Expanded(
-          child: FutureBuilder<PaginatedResult<FamilyMemberModel>>(
+        if (widget.embeddedInScrollView)
+          _MembersList(
             future: _future,
-            builder: (context, snapshot) => AsyncBody<PaginatedResult<FamilyMemberModel>>(
-              snapshot: snapshot,
-              emptyMessage: 'عضوی یافت نشد.',
-              emptyIcon: Icons.people_outline_rounded,
-              builder: (context, data) {
-                if (data.items.isEmpty) {
-                  return EmptyState(
-                    title: 'عضوی یافت نشد',
-                    subtitle: _canManage ? 'با دکمه افزودن، عضو جدید اضافه کنید.' : 'هنوز کسی به این خانواده نپیوسته.',
-                    icon: Icons.people_outline_rounded,
-                    actionLabel: _canManage ? 'افزودن عضو' : null,
-                    onAction: _canManage ? _addMember : null,
-                  );
-                }
-                return ListView.separated(
-                  itemCount: data.items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-                  itemBuilder: (context, index) => _MemberTile(
-                    member: data.items[index],
-                    showFamilyName: widget.showFamilyName,
-                    canRemove: _canManage,
-                    onRemove: () => _removeMember(data.items[index]),
-                  ),
-                );
-              },
+            showFamilyName: widget.showFamilyName,
+            canManage: _canManage,
+            embeddedInScrollView: true,
+            onAdd: _addMember,
+            onRemove: _removeMember,
+          )
+        else
+          Expanded(
+            child: _MembersList(
+              future: _future,
+              showFamilyName: widget.showFamilyName,
+              canManage: _canManage,
+              embeddedInScrollView: false,
+              onAdd: _addMember,
+              onRemove: _removeMember,
             ),
           ),
-        ),
       ],
+    );
+  }
+}
+
+class _MembersList extends StatelessWidget {
+  const _MembersList({
+    required this.future,
+    required this.showFamilyName,
+    required this.canManage,
+    required this.embeddedInScrollView,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  final Future<PaginatedResult<FamilyMemberModel>>? future;
+  final bool showFamilyName;
+  final bool canManage;
+  final bool embeddedInScrollView;
+  final Future<void> Function() onAdd;
+  final Future<void> Function(FamilyMemberModel member) onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<PaginatedResult<FamilyMemberModel>>(
+      future: future,
+      builder: (context, snapshot) => AsyncBody<PaginatedResult<FamilyMemberModel>>(
+        snapshot: snapshot,
+        emptyMessage: 'عضوی یافت نشد.',
+        emptyIcon: Icons.people_outline_rounded,
+        builder: (context, data) {
+          if (data.items.isEmpty) {
+            return EmptyState(
+              title: 'عضوی یافت نشد',
+              subtitle: canManage ? 'با دکمه افزودن، عضو جدید اضافه کنید.' : 'هنوز کسی به این خانواده نپیوسته.',
+              icon: Icons.people_outline_rounded,
+              actionLabel: canManage ? 'افزودن عضو' : null,
+              onAction: canManage ? onAdd : null,
+            );
+          }
+          return ListView.separated(
+            shrinkWrap: embeddedInScrollView,
+            physics: embeddedInScrollView ? const NeverScrollableScrollPhysics() : null,
+            itemCount: data.items.length,
+            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+            itemBuilder: (context, index) {
+              final member = data.items[index];
+              return _MemberTile(
+                member: member,
+                showFamilyName: showFamilyName,
+                canRemove: canManage,
+                onRemove: () => onRemove(member),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 }

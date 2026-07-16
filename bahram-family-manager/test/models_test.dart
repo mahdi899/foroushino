@@ -42,7 +42,7 @@ void main() {
             'options': [],
           },
         ],
-        'targets' => [
+        'targets': [
           {'id': 1, 'post_id': 10, 'family_id': 3, 'family_name': 'نور'},
         ],
         'audience_summary': 'نور',

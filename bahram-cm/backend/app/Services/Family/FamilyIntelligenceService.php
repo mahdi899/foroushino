@@ -124,6 +124,49 @@ class FamilyIntelligenceService
         return $suggestions;
     }
 
+    /**
+     * @return array{text: string, suggestions: list<string>}
+     */
+    public function generatePostDraft(string $topic, string $type = 'text', ?string $tone = null): array
+    {
+        $tone ??= 'صمیمی، انگیزشی و کوتاه';
+        $typeLabel = match ($type) {
+            'voice' => 'پست صوتی (متن راهنما برای ضبط وویس)',
+            'image' => 'پست تصویری (کپشن کوتاه)',
+            'video' => 'پست ویدیویی (متن راهنما)',
+            default => 'پست متنی',
+        };
+
+        if (! $this->ai->isConfigured()) {
+            return [
+                'text' => "سلام خانواده! امروز درباره «{$topic}» با هم صحبت می‌کنیم.\n\n— بهرام",
+                'suggestions' => ['موضوع را مشخص‌تر کنید تا پیش‌نویس دقیق‌تر شود.'],
+            ];
+        }
+
+        try {
+            $raw = $this->ai->chat([
+                ['role' => 'system', 'content' => 'You help Bahram write Persian family-community posts. Return ONLY JSON: {"text":"main draft in Persian","suggestions":["tip1","tip2"]}. Keep text under 600 chars, warm coaching tone, no hashtags, no fake promises.'],
+                ['role' => 'user', 'content' => "نوع: {$typeLabel}\nلحن: {$tone}\nموضوع: {$topic}"],
+            ], ['temperature' => 0.7, 'max_tokens' => 900]);
+
+            $json = $this->extractJson($raw);
+            if ($json) {
+                return [
+                    'text' => (string) ($json['text'] ?? ''),
+                    'suggestions' => array_values((array) ($json['suggestions'] ?? [])),
+                ];
+            }
+        } catch (\Throwable $e) {
+            Log::warning('FamilyIntelligenceService::generatePostDraft failed', ['error' => $e->getMessage()]);
+        }
+
+        return [
+            'text' => "سلام خانواده! امروز درباره «{$topic}» با هم صحبت می‌کنیم.\n\n— بهرام",
+            'suggestions' => [],
+        ];
+    }
+
     /** @return array{risk_score: float, sentiment: string, topic: string, signals: list<string>} */
     private function heuristicCommentAnalysis(string $body): array
     {

@@ -76,7 +76,7 @@ try {
       $define
     )
     if (-not $pubOk) {
-      $flutterArgs = @('--no-pub') + $flutterArgs
+      $flutterArgs += '--no-pub'
     }
 
     Write-Host ">> flutter $($flutterArgs -join ' ')" -ForegroundColor Cyan

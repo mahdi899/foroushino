@@ -293,6 +293,16 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                         ),
                       ),
                     if (settings.mediaPipeline != null) const SizedBox(height: AppSpacing.xl),
+                    if (settings.ai != null)
+                      PanelSectionCard(
+                        title: 'هوش مصنوعی',
+                        icon: Icons.auto_awesome_rounded,
+                        child: _AiSettingsPanel(
+                          initial: settings.ai!,
+                          onChanged: _load,
+                        ),
+                      ),
+                    if (settings.ai != null) const SizedBox(height: AppSpacing.xl),
                     PrimaryButton(label: 'ذخیره تنظیمات', loading: _saving, onPressed: _saveSettings),
                   ],
                 );
@@ -389,6 +399,165 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AiSettingsPanel extends StatefulWidget {
+  const _AiSettingsPanel({required this.initial, required this.onChanged});
+
+  final FamilyAiSettings initial;
+  final VoidCallback onChanged;
+
+  @override
+  State<_AiSettingsPanel> createState() => _AiSettingsPanelState();
+}
+
+class _AiSettingsPanelState extends State<_AiSettingsPanel> {
+  late FamilyAiSettings _settings;
+  final _apiKeyCtrl = TextEditingController();
+  late final TextEditingController _modelCtrl;
+  late final TextEditingController _daysCtrl;
+  var _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _settings = widget.initial;
+    _modelCtrl = TextEditingController(text: _settings.model);
+    _daysCtrl = TextEditingController(text: _settings.defaultActionDays.toString());
+  }
+
+  @override
+  void dispose() {
+    _apiKeyCtrl.dispose();
+    _modelCtrl.dispose();
+    _daysCtrl.dispose();
+    super.dispose();
+  }
+
+  FamilyAiSettings _currentSettings() => FamilyAiSettings(
+        isActive: _settings.isActive,
+        providerName: _settings.providerName,
+        baseUrl: _settings.baseUrl,
+        model: _modelCtrl.text.trim().isEmpty ? _settings.model : _modelCtrl.text.trim(),
+        temperature: _settings.temperature,
+        maxTokens: _settings.maxTokens,
+        hasApiKey: _settings.hasApiKey,
+        autoApproveComments: _settings.autoApproveComments,
+        autoRejectHighRisk: _settings.autoRejectHighRisk,
+        riskApproveThreshold: _settings.riskApproveThreshold,
+        riskRejectThreshold: _settings.riskRejectThreshold,
+        defaultActionDays: int.tryParse(_daysCtrl.text) ?? _settings.defaultActionDays,
+      );
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      await context.read<AppState>().manager.updateAiSettings(
+            _currentSettings().toUpdatePayload(
+              apiKey: _apiKeyCtrl.text.trim().isEmpty ? null : _apiKeyCtrl.text.trim(),
+            ),
+          );
+      _apiKeyCtrl.clear();
+      widget.onChanged();
+      if (mounted) showAppSnackBar(context, 'تنظیمات AI ذخیره شد.');
+    } catch (e) {
+      if (mounted) showAppSnackBar(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          widget.initial.hasApiKey ? 'کلید API ثبت شده است' : 'کلید API تنظیم نشده',
+          style: TextStyle(color: muted, fontSize: 12),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('فعال‌سازی AI'),
+          value: _settings.isActive,
+          onChanged: _saving ? null : (v) => setState(() => _settings = FamilyAiSettings(
+                isActive: v,
+                providerName: _settings.providerName,
+                baseUrl: _settings.baseUrl,
+                model: _settings.model,
+                temperature: _settings.temperature,
+                maxTokens: _settings.maxTokens,
+                hasApiKey: _settings.hasApiKey,
+                autoApproveComments: _settings.autoApproveComments,
+                autoRejectHighRisk: _settings.autoRejectHighRisk,
+                riskApproveThreshold: _settings.riskApproveThreshold,
+                riskRejectThreshold: _settings.riskRejectThreshold,
+                defaultActionDays: _settings.defaultActionDays,
+              )),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('تأیید خودکار نظرات امن'),
+          subtitle: const Text('نظرات کم‌ریسک خودکار تأیید می‌شوند؛ مشکوک‌ها برای ادمین می‌مانند'),
+          value: _settings.autoApproveComments,
+          onChanged: _saving ? null : (v) => setState(() => _settings = FamilyAiSettings(
+                isActive: _settings.isActive,
+                providerName: _settings.providerName,
+                baseUrl: _settings.baseUrl,
+                model: _settings.model,
+                temperature: _settings.temperature,
+                maxTokens: _settings.maxTokens,
+                hasApiKey: _settings.hasApiKey,
+                autoApproveComments: v,
+                autoRejectHighRisk: _settings.autoRejectHighRisk,
+                riskApproveThreshold: _settings.riskApproveThreshold,
+                riskRejectThreshold: _settings.riskRejectThreshold,
+                defaultActionDays: _settings.defaultActionDays,
+              )),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('رد خودکار نظرات پرریسک'),
+          value: _settings.autoRejectHighRisk,
+          onChanged: _saving ? null : (v) => setState(() => _settings = FamilyAiSettings(
+                isActive: _settings.isActive,
+                providerName: _settings.providerName,
+                baseUrl: _settings.baseUrl,
+                model: _settings.model,
+                temperature: _settings.temperature,
+                maxTokens: _settings.maxTokens,
+                hasApiKey: _settings.hasApiKey,
+                autoApproveComments: _settings.autoApproveComments,
+                autoRejectHighRisk: v,
+                riskApproveThreshold: _settings.riskApproveThreshold,
+                riskRejectThreshold: _settings.riskRejectThreshold,
+                defaultActionDays: _settings.defaultActionDays,
+              )),
+        ),
+        TextField(
+          controller: _apiKeyCtrl,
+          decoration: const InputDecoration(labelText: 'کلید API جدید (اختیاری)'),
+          obscureText: true,
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        TextField(
+          controller: _modelCtrl,
+          decoration: const InputDecoration(labelText: 'مدل'),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        TextField(
+          controller: _daysCtrl,
+          decoration: const InputDecoration(labelText: 'مدت پیش‌فرض نظرسنجی/تعهد (روز)'),
+          keyboardType: TextInputType.number,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        PrimaryButton(label: 'ذخیره تنظیمات AI', loading: _saving, onPressed: _save),
+      ],
     );
   }
 }

@@ -44,6 +44,7 @@ class FamilyPostResource extends JsonResource
             'id' => $this->id,
             'type' => $this->type?->value ?? $this->type,
             'is_important' => (bool) $this->is_important,
+            'comments_enabled' => (bool) ($this->comments_enabled ?? true),
             'is_pinned' => (bool) $this->is_pinned,
             'published_at' => $this->published_at?->toIso8601String(),
             'author' => [

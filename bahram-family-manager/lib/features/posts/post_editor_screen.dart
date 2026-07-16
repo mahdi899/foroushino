@@ -47,7 +47,10 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   late String _type;
   late String _audienceMode;
   late bool _isImportant;
+  bool _commentsEnabled = true;
   final Set<int> _selectedFamilyIds = {};
+  final _actionDaysCtrl = TextEditingController(text: '7');
+  final _aiTopicCtrl = TextEditingController();
 
   FamilyMediaRef? _mediaRef;
   bool _uploading = false;
@@ -65,6 +68,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     _type = _post?.type ?? 'text';
     _audienceMode = _post?.audienceMode ?? 'all';
     _isImportant = _post?.isImportant ?? false;
+    _commentsEnabled = _post?.commentsEnabled ?? true;
     _selectedFamilyIds.addAll(_post?.targetFamilyIds ?? []);
 
     final textBlock = _post?.blocks.firstWhereOrNull((b) => b.type == 'text');
@@ -78,6 +82,13 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       _actionEnabled = true;
       _actionType = action.type;
       _actionPromptCtrl.text = action.prompt;
+      if (action.activeUntil != null) {
+        final until = DateTime.tryParse(action.activeUntil!);
+        if (until != null) {
+          final days = until.difference(DateTime.now()).inDays.clamp(1, 365);
+          _actionDaysCtrl.text = days.toString();
+        }
+      }
       for (final opt in action.options) {
         _optionControllers.add(TextEditingController(text: opt.label));
       }
@@ -96,6 +107,8 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     _followUpMessageCtrl.dispose();
     _scaleMinCtrl.dispose();
     _scaleMaxCtrl.dispose();
+    _actionDaysCtrl.dispose();
+    _aiTopicCtrl.dispose();
     for (final c in _optionControllers) {
       c.dispose();
     }
@@ -188,6 +201,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       'type': _type,
       'audience_mode': _audienceMode,
       'is_important': _isImportant,
+      'comments_enabled': _commentsEnabled,
       'blocks': blocks,
       'family_ids': _audienceMode == 'all' ? <int>[] : _selectedFamilyIds.toList(),
     };
@@ -224,10 +238,35 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         }
       }
 
+      final days = int.tryParse(_actionDaysCtrl.text) ?? 7;
+      action['active_until'] = DateTime.now().add(Duration(days: days)).toUtc().toIso8601String();
+      action['is_active'] = true;
+
       payload['action'] = action;
     }
 
     return payload;
+  }
+
+  Future<void> _generateAiDraft() async {
+    final topic = _aiTopicCtrl.text.trim().isNotEmpty ? _aiTopicCtrl.text.trim() : _textCtrl.text.trim();
+    if (topic.isEmpty) {
+      showAppSnackBar(context, 'موضوع یا متن اولیه را وارد کنید.');
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final draft = await context.read<AppState>().manager.generatePostDraft(topic: topic, type: _type);
+      final text = draft['text']?.toString() ?? '';
+      if (text.isNotEmpty) {
+        setState(() => _textCtrl.text = text);
+      }
+      if (mounted) showAppSnackBar(context, 'پیش‌نویس AI آماده شد.');
+    } catch (e) {
+      if (mounted) showAppSnackBar(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   Future<void> _save() async {
@@ -355,13 +394,18 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   Future<void> _delete() async {
     if (_post == null) return;
     final isPublished = _post!.isPublished;
+    final isArchived = _isArchived;
     final confirmed = await showGlassDialog<bool>(
       context: context,
-      title: isPublished ? 'حذف پست منتشرشده' : 'حذف پیش‌نویس',
+      title: isArchived
+          ? 'حذف پست آرشیوشده'
+          : (isPublished ? 'حذف پست منتشرشده' : 'حذف پیش‌نویس'),
       content: Text(
-        isPublished
-            ? 'این پست از فید خانواده حذف می‌شود. این عمل قابل بازگشت نیست.'
-            : 'این پیش‌نویس برای همیشه حذف می‌شود.',
+        isArchived
+            ? 'این پست آرشیوشده برای همیشه حذف می‌شود. این عمل قابل بازگشت نیست.'
+            : (isPublished
+                ? 'این پست از فید خانواده حذف می‌شود. این عمل قابل بازگشت نیست.'
+                : 'این پیش‌نویس برای همیشه حذف می‌شود.'),
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
@@ -414,7 +458,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         onSave: _save,
         onPublish: _post != null && _post!.isDraft ? _publish : null,
         onRepublish: _post != null && (_post!.isPublished || _isArchived) ? _republish : null,
-        onDelete: _post != null && !_isArchived ? _delete : null,
+        onDelete: _post != null ? _delete : null,
         onArchive: _post != null && _post!.isPublished ? _archive : null,
         onRecover: _isArchived ? _recover : null,
         onTogglePin: _post != null && _post!.isPublished ? _togglePin : null,
@@ -549,6 +593,13 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                 const SizedBox(height: AppSpacing.sm),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
+                  title: const Text('نظرات فعال'),
+                  subtitle: const Text('می‌توانید برای هر پست نظردهی را ببندید'),
+                  value: _commentsEnabled,
+                  onChanged: (v) => setState(() => _commentsEnabled = v),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
                   title: const Row(
                     children: [
                       Icon(Icons.star_rounded, size: 20, color: AppColors.gold),
@@ -558,6 +609,29 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                   ),
                   value: _isImportant,
                   onChanged: (v) => setState(() => _isImportant = v),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          PanelSectionCard(
+            title: 'کمک AI برای محتوا',
+            icon: Icons.auto_awesome_rounded,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: _aiTopicCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'موضوع پست (اختیاری)',
+                    hintText: 'مثلاً: انگیزه برای شروع هفته',
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                OutlinedButton.icon(
+                  onPressed: _saving ? null : _generateAiDraft,
+                  icon: const Icon(Icons.auto_awesome_rounded),
+                  label: const Text('تولید پیش‌نویس با AI'),
                 ),
               ],
             ),
@@ -603,6 +677,15 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       TextField(
         controller: _actionPromptCtrl,
         decoration: const InputDecoration(labelText: 'متن سؤال/درخواست'),
+      ),
+      const SizedBox(height: AppSpacing.md),
+      TextField(
+        controller: _actionDaysCtrl,
+        decoration: const InputDecoration(
+          labelText: 'مدت فعال بودن (روز)',
+          helperText: 'پس از این مدت نظرسنجی/تعهد بسته می‌شود (پیش‌فرض ۷ روز)',
+        ),
+        keyboardType: TextInputType.number,
       ),
       if (choiceActionTypes.contains(_actionType)) ...[
         const SizedBox(height: AppSpacing.md),

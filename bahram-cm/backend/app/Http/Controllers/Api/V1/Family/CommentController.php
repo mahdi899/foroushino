@@ -9,6 +9,7 @@ use App\Jobs\Family\AnalyzeFamilyCommentJob;
 use App\Models\FamilyComment;
 use App\Models\FamilyPost;
 use App\Services\Family\FamilyAccessService;
+use App\Services\Family\FamilyAiSettingsService;
 use App\Services\Family\FamilyStatsService;
 use App\Services\Family\PostAudienceResolver;
 use App\Support\ApiResponse;
@@ -69,13 +70,16 @@ class CommentController extends Controller
     {
         $membership = $this->access->requireMembership($request->user());
         abort_unless($this->audience->visibleToFamily($post, (int) $membership->family_id), 404);
+        abort_if($post->comments_enabled === false, 422, 'نظرات این پست بسته است.');
 
         $max = (int) config('family.comment.max_length', 1000);
         $data = $request->validate([
             'body' => ['required', 'string', 'min:2', "max:{$max}"],
         ]);
 
-        $requireApproval = (bool) config('family.comment.require_approval', false);
+        $aiSettings = app(FamilyAiSettingsService::class);
+        $requireApproval = (bool) config('family.comment.require_approval', false)
+            || ($aiSettings->isActive() && $aiSettings->autoApproveComments());
         $status = $requireApproval ? FamilyCommentStatus::Pending : FamilyCommentStatus::Approved;
 
         $comment = FamilyComment::query()->create([

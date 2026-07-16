@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:bahram_family_manager/core/utils/file_download.dart';
 
 import 'package:bahram_family_manager/core/api/api_client.dart';
 import 'package:bahram_family_manager/models/models.dart';
@@ -81,6 +82,35 @@ class FamilyManagerService {
     final res = await api.get('$_base/posts/$postId/action-results');
     final data = res['data'] as List? ?? [];
     return data.map((e) => FamilyActionResultModel.fromJson((e as Map).cast<String, dynamic>())).toList();
+  }
+
+  String actionResultsExportUrl(int postId) => '${api.dio.options.baseUrl}$_base/posts/$postId/action-results/export';
+
+  Future<void> downloadActionResultsExport(int postId) async {
+    final response = await api.dio.get<List<int>>(
+      '$_base/posts/$postId/action-results/export',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final bytes = response.data ?? <int>[];
+    await downloadFile('family-post-$postId-action-results.csv', bytes);
+  }
+
+  Future<Map<String, dynamic>> generatePostDraft({
+    required String topic,
+    String type = 'text',
+    String? tone,
+  }) async {
+    final res = await api.post('$_base/posts/ai-draft', data: {
+      'topic': topic,
+      'type': type,
+      if (tone != null && tone.isNotEmpty) 'tone': tone,
+    });
+    return (res['data'] as Map).cast<String, dynamic>();
+  }
+
+  Future<FamilyAiSettings> updateAiSettings(Map<String, dynamic> payload) async {
+    final res = await api.patch('$_base/settings/ai', data: payload);
+    return FamilyAiSettings.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
 
   // ---------------------------------------------------------------------
