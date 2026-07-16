@@ -11,7 +11,9 @@ function isBareShellPath(pathname: string): boolean {
 export default async function Loading() {
   const pathname = (await headers()).get('x-pathname') ?? '';
 
-  if (isBareShellPath(pathname)) return null;
+  // Family/panel/admin use their own shell skeletons. Also skip when the
+  // pathname header is missing on RSC flights — otherwise the site loader flashes.
+  if (!pathname || isBareShellPath(pathname)) return null;
 
   if (pathname === '/') {
     return <HomeHeroLoading />;

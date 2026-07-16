@@ -332,9 +332,8 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 
 .family-feed-chrome-slot__inner {
   width: 100%;
-  max-width: min(42.5rem, 100%);
-  margin-inline: auto;
-  padding-inline: 1rem;
+  margin-inline: 0;
+  padding-inline: 0;
 }
 
 .family-feed-chrome-stack {
@@ -348,7 +347,29 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-feed-chrome-stack > * {
+  pointer-events: none;
+}
+
+/* Pinned wrap: full-width opaque shield — feed underneath gets no hover/click. */
+.family-feed-chrome-stack__pin {
   pointer-events: auto;
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  background: var(--family-tg-chrome-bg);
+}
+
+.family-feed-chrome-item--pinned,
+.family-feed-chrome-item--now {
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
+  width: 100%;
+}
+
+.family-feed-chrome-item--pinned {
+  background: var(--family-tg-chrome-bg);
 }
 
 .family-feed-chrome-item {
@@ -357,7 +378,10 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-feed-chrome-item--now {
+  z-index: 2;
+  /* Overlay the feed under the pinned bar — must not affect scroll padding. */
   box-shadow: 0 6px 24px color-mix(in oklab, var(--family-text) 10%, transparent);
+  background: var(--family-tg-chrome-bg);
 }
 
 @keyframes family-tg-glass-sheen {
@@ -382,20 +406,8 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 @media (min-width: 1024px) {
-  .family-feed-chrome-slot__inner .family-pinned-bar {
-    margin-block: 0.125rem 0.375rem;
-    border-radius: 0.75rem;
-    overflow: hidden;
-    border: 0.5px solid color-mix(in oklab, var(--family-tg-header-border) 88%, transparent);
-    box-shadow: 0 1px 3px color-mix(in oklab, var(--family-text) 5%, transparent);
-  }
-
-  .family-feed-chrome-slot__inner .family-pinned-bar::before {
-    border-radius: inherit;
-  }
-
-  .family-feed-chrome-slot__inner .family-pinned-bar::after {
-    display: none;
+  .family-feed-chrome-stack .family-pinned-bar {
+    padding-inline: 1rem;
   }
 }
 
@@ -1463,7 +1475,6 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 
 .family-pinned-bar {
   position: relative;
-  isolation: isolate;
   display: flex;
   width: 100%;
   align-items: stretch;
@@ -1471,8 +1482,12 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   padding: 0.5rem 0.75rem;
   text-align: start;
   border: none;
-  background: transparent;
-  transition: transform 140ms var(--family-tg-spring);
+  /* Opaque hit surface — feed behind must not receive hover through transparent gaps. */
+  background: var(--family-tg-chrome-bg);
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background 160ms ease, transform 140ms var(--family-tg-spring);
 }
 
 .family-pinned-bar:active {
@@ -1483,7 +1498,8 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   content: '';
   position: absolute;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
+  border-radius: inherit;
   background: linear-gradient(
     180deg,
     color-mix(in oklab, var(--family-tg-chrome-bg) 98%, white 2%) 0%,
@@ -1494,7 +1510,8 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   box-shadow:
     inset 0 0.5px 0 var(--family-tg-header-highlight),
     inset 0 -0.5px 0 color-mix(in oklab, var(--family-tg-header-border) 55%, transparent);
-  transition: background 220ms var(--family-tg-spring);
+  transition: background 160ms ease;
+  pointer-events: none;
 }
 
 .family-pinned-bar::after {
@@ -1507,8 +1524,16 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   pointer-events: none;
 }
 
+.family-pinned-bar:hover {
+  background: color-mix(in oklab, var(--family-tg-chrome-bg) 94%, var(--family-bubble-incoming) 6%);
+}
+
 .family-pinned-bar:hover::before {
   background: color-mix(in oklab, var(--family-tg-chrome-bg) 94%, var(--family-bubble-incoming) 6%);
+}
+
+.family-pinned-bar:active {
+  background: color-mix(in oklab, var(--family-tg-chrome-bg) 90%, var(--family-text) 4%);
 }
 
 .family-pinned-bar:active::before {
@@ -1516,6 +1541,8 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-pinned-bar__rail {
+  position: relative;
+  z-index: 1;
   width: 2px;
   flex-shrink: 0;
   align-self: stretch;
@@ -1599,6 +1626,105 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   padding: 0.375rem 0.5rem 1.25rem;
   --family-post-bubble-width: min(100%, 32rem);
   overflow: visible;
+}
+
+.family-feed-unread {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  margin-block: 0.25rem;
+}
+
+.family-feed-unread__line {
+  flex: 1;
+  height: 1px;
+  background: color-mix(in oklab, var(--family-tg-pinned-accent) 55%, transparent);
+}
+
+.family-feed-unread__label {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--family-tg-pinned-accent);
+  white-space: nowrap;
+}
+
+.family-feed-jump {
+  position: absolute;
+  inset-inline-end: 0.875rem;
+  bottom: max(0.875rem, env(safe-area-inset-bottom));
+  z-index: 35;
+  display: flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 0.5px solid color-mix(in oklab, var(--family-text) 12%, transparent);
+  background: color-mix(in oklab, var(--family-tg-chrome-bg) 92%, var(--family-bubble-incoming) 8%);
+  box-shadow:
+    0 2px 10px color-mix(in oklab, var(--family-text) 16%, transparent),
+    inset 0 0.5px 0 color-mix(in oklab, white 18%, transparent);
+  color: color-mix(in oklab, var(--family-text) 78%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(0, 6px, 0);
+  transition:
+    opacity 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 180ms ease;
+}
+
+.family-feed-jump--visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0);
+}
+
+.family-feed-jump:hover {
+  background: color-mix(in oklab, var(--family-tg-chrome-bg) 86%, var(--family-bubble-incoming) 14%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .family-feed-jump {
+    transform: none;
+    transition: opacity 120ms ease, background 180ms ease;
+  }
+
+  .family-feed-jump--visible {
+    transform: none;
+  }
+}
+
+.family-feed-jump__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.family-feed-jump__badge {
+  position: absolute;
+  top: -0.35rem;
+  inset-inline-end: 50%;
+  translate: 50% 0;
+  min-width: 1.5rem;
+  padding: 0.125rem 0.4rem;
+  border-radius: 9999px;
+  background: var(--family-tg-pinned-accent);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  box-shadow: 0 1px 4px color-mix(in oklab, var(--family-tg-pinned-accent) 40%, transparent);
+}
+
+@media (min-width: 1024px) {
+  .family-feed-jump {
+    inset-inline-end: 1.25rem;
+    bottom: 1.25rem;
+  }
 }
 
 .family-feed-list > article {

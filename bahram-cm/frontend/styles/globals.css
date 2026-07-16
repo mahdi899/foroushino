@@ -245,9 +245,6 @@
     text-rendering: optimizeLegibility;
     scroll-behavior: smooth;
     scroll-padding-top: 4.5rem;
-    transition:
-      background-color 0.6s var(--ease-luxe),
-      color 0.6s var(--ease-luxe);
   }
 
   body {
@@ -260,6 +257,11 @@
     background-color: var(--color-ink);
     color: var(--color-bone);
     overflow-x: clip;
+  }
+
+  /* Theme color transitions only after first client sync (avoids FOUC stretch). */
+  html[data-theme-ready="1"],
+  html[data-theme-ready="1"] body {
     transition:
       background-color 0.6s var(--ease-luxe),
       color 0.6s var(--ease-luxe);

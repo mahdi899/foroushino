@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { EmojiRichText } from '@/components/emoji/EmojiRichText';
 import { cn } from '@/lib/cn';
@@ -308,6 +308,11 @@ export function PostCard({
 }) {
   const [commentCount, setCommentCount] = useState(post.stats.comments);
   const [commentPreview, setCommentPreview] = useState(post.comment_preview ?? []);
+
+  useEffect(() => {
+    setCommentCount(post.stats.comments);
+    setCommentPreview(post.comment_preview ?? []);
+  }, [post.id, post.stats.comments, post.comment_preview]);
 
   const blocks = post.blocks ?? [];
   const actions = post.actions ?? [];

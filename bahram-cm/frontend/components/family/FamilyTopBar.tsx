@@ -53,6 +53,7 @@ export function FamilyTopBar({
           hasUnseen={canViewStories && hasUnseen}
           onOpenStories={openStories}
           showOnlineDot={typeof memberCount === 'number' && memberCount > 0}
+          nested
         />
       </div>
     </button>
@@ -70,6 +71,7 @@ export function FamilyTopBar({
           hasUnseen={false}
           onOpenStories={openStories}
           showOnlineDot={typeof memberCount === 'number' && memberCount > 0}
+          nested
         />
       </div>
     </Link>

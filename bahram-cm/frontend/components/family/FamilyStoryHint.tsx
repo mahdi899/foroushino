@@ -7,6 +7,8 @@ type FamilyStoryHintProps = {
   onOpenStories: () => void;
   className?: string;
   showOnlineDot?: boolean;
+  /** When parent is already a button/link, render CTA as text (no nested button). */
+  nested?: boolean;
 };
 
 /** Member count + optional «استوری جدید» — same pattern on mobile header and desktop sidebar. */
@@ -17,10 +19,18 @@ export function FamilyStoryHint({
   onOpenStories,
   className = 'family-topbar__subtitle',
   showOnlineDot = false,
+  nested = false,
 }: FamilyStoryHintProps) {
   const hasMembers = typeof memberCount === 'number';
 
   if (!hasMembers && !hasUnseen) return null;
+
+  const unseenLabel = (
+    <span className="font-medium text-[var(--family-tg-pinned-accent)]">
+      {hasMembers ? ' · ' : ''}
+      استوری جدید
+    </span>
+  );
 
   return (
     <p className={className}>
@@ -30,16 +40,19 @@ export function FamilyStoryHint({
           {memberCount.toLocaleString('fa-IR')} {memberLabel}
         </span>
       )}
-      {hasUnseen && (
-        <button
-          type="button"
-          onClick={onOpenStories}
-          className="font-medium text-[var(--family-tg-pinned-accent)] transition hover:opacity-80"
-        >
-          {hasMembers ? ' · ' : ''}
-          استوری جدید
-        </button>
-      )}
+      {hasUnseen &&
+        (nested ? (
+          unseenLabel
+        ) : (
+          <button
+            type="button"
+            onClick={onOpenStories}
+            className="font-medium text-[var(--family-tg-pinned-accent)] transition hover:opacity-80"
+          >
+            {hasMembers ? ' · ' : ''}
+            استوری جدید
+          </button>
+        ))}
     </p>
   );
 }

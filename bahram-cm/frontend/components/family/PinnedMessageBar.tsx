@@ -47,6 +47,7 @@ export function PinnedMessageBar({
     <button
       type="button"
       onClick={handleClick}
+      onPointerDown={(e) => e.stopPropagation()}
       className="family-pinned-bar"
       aria-label={`رفتن به پیام سنجاق‌شده${pinnedPosts.length > 1 ? ` (${index + 1} از ${pinnedPosts.length})` : ''}`}
     >

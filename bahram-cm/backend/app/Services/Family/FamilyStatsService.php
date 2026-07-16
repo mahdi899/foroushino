@@ -186,6 +186,8 @@ class FamilyStatsService
                 'wink_count' => (int) ($counts['wink'] ?? 0),
                 'approved_comments_count' => $approved,
             ]);
+
+            $this->clearHotCounters($postId, (int) $familyId);
         }
     }
 
@@ -215,22 +217,15 @@ class FamilyStatsService
 
     private function bumpHotCounter(int $postId, int $familyId, string $field, int $delta): void
     {
-        try {
-            $key = "family:stats:{$postId}:{$familyId}:{$field}";
-            if ($delta >= 0) {
-                Cache::increment($key, $delta);
-            } else {
-                Cache::decrement($key, abs($delta));
-            }
-        } catch (\Throwable) {
-            // Redis optional for hot counters — MySQL remains source of truth.
-        }
+        // No-op: MySQL is updated synchronously and is the source of truth.
+        // Previously Redis deltas were added on top of DB values in feedStats,
+        // which double-counted and left stale keys after migrate:fresh.
     }
 
     /**
      * @return array<string, int>
      */
-    public function feedStats(?FamilyPostStat $stat, int $postId, int $familyId): array
+    public function feedStats(?FamilyPostStat $stat, int $postId = 0, int $familyId = 0): array
     {
         $fields = [
             'fire' => 'fire_count',
@@ -255,20 +250,41 @@ class FamilyStatsService
 
         $result = [];
         foreach ($fields as $key => $column) {
-            $db = (int) ($stat?->$column ?? 0);
-            $hot = $this->readHotCounter($postId, $familyId, $column);
-            $result[$key] = max(0, $db + $hot);
+            $result[$key] = max(0, (int) ($stat?->$column ?? 0));
         }
 
         return $result;
     }
 
-    private function readHotCounter(int $postId, int $familyId, string $field): int
+    public function clearHotCounters(int $postId, int $familyId): void
     {
+        $fields = [
+            'fire_count',
+            'heart_count',
+            'target_count',
+            'clap_count',
+            'thumbs_up_count',
+            'laugh_count',
+            'sad_count',
+            'party_count',
+            'star_count',
+            'rocket_count',
+            'eyes_count',
+            'pray_count',
+            'muscle_count',
+            'hundred_count',
+            'wink_count',
+            'approved_comments_count',
+            'action_responses_count',
+            'views_count',
+        ];
+
         try {
-            return (int) Cache::get("family:stats:{$postId}:{$familyId}:{$field}", 0);
+            foreach ($fields as $field) {
+                Cache::forget("family:stats:{$postId}:{$familyId}:{$field}");
+            }
         } catch (\Throwable) {
-            return 0;
+            // Redis optional.
         }
     }
 }

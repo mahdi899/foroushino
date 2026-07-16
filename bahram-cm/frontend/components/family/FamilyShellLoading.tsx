@@ -1,3 +1,24 @@
+/** Bubble placeholders while feed scroll position is prepared (no jump flash). */
+export function FamilyFeedBootSkeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={className}
+      aria-busy
+      aria-label="در حال بارگذاری فید"
+    >
+      <div className="family-feed-content mx-auto flex w-full max-w-[680px] flex-col gap-3 px-3 pt-4">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="family-post-bubble space-y-3 p-3 opacity-80" aria-hidden>
+            <div className="family-skeleton h-3 w-24 rounded-full" />
+            <div className="family-skeleton h-4 w-full max-w-[85%] rounded-full" />
+            <div className="family-skeleton h-4 w-full max-w-[62%] rounded-full opacity-80" />
+            <div className="family-skeleton h-28 w-full rounded-2xl opacity-60" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 /** Family frame skeleton while the route RSC resolves (sidebar/topbar placeholders). */
 export function FamilyShellLoading() {
@@ -33,18 +54,7 @@ export function FamilyShellLoading() {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="family-feed-pane relative flex min-h-0 min-w-0 flex-1 flex-col">
-          <div className="family-feed-scroll min-h-0 min-w-0 flex-1 overflow-hidden">
-            <div className="family-feed-content mx-auto flex w-full max-w-[680px] flex-col gap-3 px-3 pt-4">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="family-post-bubble space-y-3 p-3 opacity-80" aria-hidden>
-                  <div className="family-skeleton h-3 w-24 rounded-full" />
-                  <div className="family-skeleton h-4 w-full max-w-[85%] rounded-full" />
-                  <div className="family-skeleton h-4 w-full max-w-[62%] rounded-full opacity-80" />
-                  <div className="family-skeleton h-28 w-full rounded-2xl opacity-60" />
-                </div>
-              ))}
-            </div>
-          </div>
+          <FamilyFeedBootSkeleton className="family-feed-scroll min-h-0 min-w-0 flex-1 overflow-hidden" />
         </div>
       </div>
     </div>

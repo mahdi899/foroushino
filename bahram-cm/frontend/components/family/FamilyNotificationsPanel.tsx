@@ -165,7 +165,7 @@ export function FamilyNotificationsPanel({
   };
 
   return (
-    <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
+    <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden', className)}>
       <header className="family-panel-header flex shrink-0 items-center gap-2 px-4 py-2.5 lg:px-5">
         {onClose ? (
           <button
@@ -201,8 +201,8 @@ export function FamilyNotificationsPanel({
         )}
       </header>
 
-      <div className="family-feed-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="family-notif-panel">
+      <div className="family-feed-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
+        <div className="family-notif-panel mx-auto w-full max-w-[680px]">
           {isLoading ? (
             <div className="family-notif-list" aria-busy aria-label="در حال بارگذاری اعلان‌ها">
               {Array.from({ length: 6 }, (_, i) => (

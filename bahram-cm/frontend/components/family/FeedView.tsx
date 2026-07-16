@@ -2,14 +2,18 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { FeedDateSeparator } from '@/components/family/FeedDateSeparator';
+import { FeedJumpToLatest, type FeedJumpToLatestHandle } from '@/components/family/FeedJumpToLatest';
 import { FeedPreviewGate, FeedPreviewIntro } from '@/components/family/FeedPreviewIntro';
+import { FeedUnreadDivider } from '@/components/family/FeedUnreadDivider';
 import { useFamilyGuestLogin } from '@/components/family/FamilyGuestAuth';
 import { FamilyBrandingSidebar } from '@/components/family/FamilyBrandingSidebar';
 import { FamilyNotificationsPanel } from '@/components/family/FamilyNotificationsPanel';
 import { FeedCommentsPanel } from '@/components/family/FeedCommentsPanel';
 import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
 import { FamilyFeedScroll, type FamilyFeedScrollHandle } from '@/components/family/FamilyFeedScroll';
+import { FamilyFeedBootSkeleton } from '@/components/family/FamilyShellLoading';
 import { PostCard } from '@/components/family/PostCard';
+import { cn } from '@/lib/cn';
 import { FamilyFeedMediaProvider } from '@/lib/family/FamilyFeedMediaContext';
 import {
   getFeedDistanceFromBottom,
@@ -18,12 +22,20 @@ import {
   scrollFeedTo,
   scrollFeedToLatest,
 } from '@/lib/family/feedScroll';
+import {
+  countUnreadPosts,
+  firstUnreadPostId,
+  getLastReadPostId,
+  hasUnreadSince,
+  setLastReadPostId,
+} from '@/lib/family/feedReadCursor';
 import { useFamilyFeed } from '@/lib/family/hooks/useFamilyFeed';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
 import type { FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
 
 type FeedItem =
   | { kind: 'separator'; key: string; label: string }
+  | { kind: 'unread'; key: string; count: number }
   | { kind: 'post'; key: string; post: FamilyPost };
 
 type CommentsTarget = {
@@ -35,11 +47,28 @@ type MainView = 'feed' | 'notifications';
 
 const SCROLL_IDLE_MS = 650;
 
-function buildFeedItems(posts: FamilyPost[]): FeedItem[] {
+function buildFeedItems(posts: FamilyPost[], unreadAfterId: number | null): FeedItem[] {
   const items: FeedItem[] = [];
   let lastDayKey: string | null = null;
+  let unreadInserted = false;
+  const unreadCount =
+    unreadAfterId != null ? countUnreadPosts(posts.map((p) => p.id), unreadAfterId) : 0;
 
   for (const post of posts) {
+    if (
+      !unreadInserted &&
+      unreadAfterId != null &&
+      unreadCount > 0 &&
+      post.id > unreadAfterId
+    ) {
+      items.push({
+        kind: 'unread',
+        key: `unread-${unreadAfterId}`,
+        count: unreadCount,
+      });
+      unreadInserted = true;
+    }
+
     const dayKey = getPostDayKey(post.published_at);
     if (dayKey && dayKey !== lastDayKey && post.published_at) {
       items.push({
@@ -110,24 +139,41 @@ export function FeedView({
   }, []);
   const feedContentRef = useRef<HTMLDivElement | null>(null);
   const chromeStackRef = useRef<HTMLDivElement | null>(null);
+  const chromeInsetRef = useRef(0);
   const [chromeInset, setChromeInset] = useState(0);
   const bottomAnchorRef = useRef<HTMLDivElement | null>(null);
   const topSentinelRef = useRef<HTMLDivElement | null>(null);
+  const jumpFabRef = useRef<FeedJumpToLatestHandle | null>(null);
+  const jumpVisibleRef = useRef(false);
+  const feedReadyRef = useRef(false);
+  const mainViewRef = useRef<MainView>('feed');
+  const commentsOpenRef = useRef(false);
   const initialScrollDoneRef = useRef(false);
   const anchoredToBottomRef = useRef(false);
   const historyReadyRef = useRef(false);
   const loadingHistoryRef = useRef(false);
   const pinNavigateRef = useRef(false);
   const scrollRestoreRef = useRef<{ height: number; top: number } | null>(null);
+  const restoringFromCommentsRef = useRef(false);
+  const pendingInitialUnreadScrollRef = useRef<number | null>(null);
+  const unreadSplitRef = useRef<number | null>(null);
   const scrollStickRafRef = useRef<number | null>(null);
   const scrollAnchorRafRef = useRef<number | null>(null);
+  const revealTimerRef = useRef<number | null>(null);
   const maxPostIdRef = useRef(0);
   const [mainView, setMainView] = useState<MainView>('feed');
-  const [feedInteractive, setFeedInteractive] = useState(false);
+  /** False until initial scroll target is applied — hides feed to prevent top→bottom jump. */
+  const [feedReady, setFeedReady] = useState(false);
+  const [bootTick, setBootTick] = useState(0);
   const [scrollIdle, setScrollIdle] = useState(true);
+  const [unreadSplitId, setUnreadSplitId] = useState<number | null>(null);
+  const [unreadBadge, setUnreadBadge] = useState(0);
   const scrollIdleRef = useRef(true);
   const scrollIdleTimerRef = useRef<number | null>(null);
-  const feedItems = useMemo(() => buildFeedItems(posts), [posts]);
+  const feedItems = useMemo(
+    () => buildFeedItems(posts, isPreview ? null : unreadSplitId),
+    [posts, isPreview, unreadSplitId],
+  );
   const hasMoreRef = useRef(hasMore);
   const postsRef = useRef(posts);
   const isValidatingRef = useRef(isValidating);
@@ -138,17 +184,55 @@ export function FeedView({
     isValidatingRef.current = isValidating;
   }, [hasMore, posts, isValidating]);
 
+  useEffect(() => {
+    feedReadyRef.current = feedReady;
+    mainViewRef.current = mainView;
+    commentsOpenRef.current = Boolean(commentsTarget);
+  }, [feedReady, mainView, commentsTarget]);
+
+  const setJumpFabVisible = useCallback((show: boolean) => {
+    jumpVisibleRef.current = show;
+    jumpFabRef.current?.setVisible(show);
+  }, []);
+
+  const syncJumpFabFromScroll = useCallback(() => {
+    const { root, lenis } = getScrollCtx();
+    if (!root) {
+      setJumpFabVisible(false);
+      return;
+    }
+    const distanceFromBottom = lenis
+      ? getLenisDistanceFromBottom(lenis)
+      : getFeedDistanceFromBottom(root);
+    const canShow =
+      feedReadyRef.current &&
+      mainViewRef.current === 'feed' &&
+      !commentsOpenRef.current &&
+      distanceFromBottom > 120;
+    setJumpFabVisible(canShow);
+  }, [getScrollCtx, setJumpFabVisible]);
+
   const openComments = useCallback(
     (target: CommentsTarget) => {
       setMainView('feed');
+      anchoredToBottomRef.current = false;
       onOpenComments?.(target);
     },
     [onOpenComments],
   );
 
+  const closeComments = useCallback(() => {
+    anchoredToBottomRef.current = false;
+    restoringFromCommentsRef.current = true;
+    onCloseComments?.();
+    window.requestAnimationFrame(() => {
+      restoringFromCommentsRef.current = false;
+    });
+  }, [onCloseComments]);
+
   const stickToBottomIfAnchored = useCallback(() => {
     const { root, lenis } = getScrollCtx();
-    if (!root || pinNavigateRef.current) return;
+    if (!root || pinNavigateRef.current || restoringFromCommentsRef.current) return;
 
     if (!historyReadyRef.current) {
       scrollFeedToLatest('auto', { root, lenis });
@@ -158,6 +242,55 @@ export function FeedView({
     if (!anchoredToBottomRef.current) return;
     scrollFeedToLatest('auto', { root, lenis });
   }, [getScrollCtx]);
+
+  const markCaughtUpToLatest = useCallback(() => {
+    if (isPreview || postsRef.current.length === 0) return;
+    const maxId = postsRef.current.reduce((max, post) => Math.max(max, post.id), 0);
+    setLastReadPostId(viewerKey, maxId);
+    setUnreadBadge(0);
+    if (unreadSplitRef.current != null) {
+      unreadSplitRef.current = maxId;
+      setUnreadSplitId(null);
+    }
+  }, [isPreview, viewerKey]);
+
+  const revealFeed = useCallback(() => {
+    if (revealTimerRef.current != null) {
+      window.clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setFeedReady(true));
+    });
+  }, []);
+
+  const scheduleRevealFeed = useCallback(
+    (delayMs = 0) => {
+      if (revealTimerRef.current != null) return;
+      revealTimerRef.current = window.setTimeout(() => {
+        revealTimerRef.current = null;
+        revealFeed();
+      }, delayMs);
+    },
+    [revealFeed],
+  );
+  const scrollToLatestReliable = useCallback(
+    (behavior: 'auto' | 'smooth' = 'auto') => {
+      const run = () => {
+        const { root, lenis } = getScrollCtx();
+        scrollFeedToLatest(behavior, { root, lenis });
+        anchoredToBottomRef.current = true;
+      };
+      run();
+      requestAnimationFrame(() => {
+        run();
+        requestAnimationFrame(run);
+      });
+      window.setTimeout(run, 120);
+      window.setTimeout(run, 360);
+    },
+    [getScrollCtx],
+  );
 
   const scheduleStickToBottom = useCallback(() => {
     if (scrollStickRafRef.current != null) return;
@@ -173,8 +306,24 @@ export function FeedView({
     const distanceFromBottom = lenis
       ? getLenisDistanceFromBottom(lenis)
       : getFeedDistanceFromBottom(root);
-    anchoredToBottomRef.current = distanceFromBottom < 80;
-  }, [getScrollCtx]);
+    const atBottom = distanceFromBottom < 80;
+    anchoredToBottomRef.current = atBottom;
+
+    const canShowJump =
+      feedReadyRef.current &&
+      mainViewRef.current === 'feed' &&
+      !commentsOpenRef.current &&
+      distanceFromBottom > 120;
+    setJumpFabVisible(canShowJump);
+
+    if (atBottom && !isPreview && postsRef.current.length > 0) {
+      markCaughtUpToLatest();
+    } else if (!isPreview) {
+      const lastRead = getLastReadPostId(viewerKey);
+      const nextBadge = countUnreadPosts(postsRef.current.map((p) => p.id), lastRead);
+      setUnreadBadge((prev) => (prev === nextBadge ? prev : nextBadge));
+    }
+  }, [getScrollCtx, isPreview, markCaughtUpToLatest, setJumpFabVisible, viewerKey]);
 
   const markScrolling = useCallback(() => {
     if (!scrollIdleRef.current) {
@@ -202,11 +351,26 @@ export function FeedView({
   }, [markScrolling, updateAnchoredToBottom]);
 
   useEffect(() => {
+    if (commentsTarget || mainView !== 'feed' || restoringFromCommentsRef.current) {
+      setJumpFabVisible(false);
+      return;
+    }
     updateAnchoredToBottom();
-  }, [posts.length, commentsTarget, mainView, updateAnchoredToBottom]);
+  }, [posts.length, commentsTarget, mainView, setJumpFabVisible, updateAnchoredToBottom]);
+
+  useEffect(() => {
+    if (!feedReady || commentsTarget || mainView !== 'feed') {
+      setJumpFabVisible(false);
+      return;
+    }
+    syncJumpFabFromScroll();
+  }, [feedReady, commentsTarget, mainView, setJumpFabVisible, syncJumpFabFromScroll]);
 
   const scrollToPost = useCallback(
-    async (postId: number) => {
+    async (postId: number, options?: { behavior?: 'auto' | 'smooth'; highlight?: boolean }) => {
+      const behavior = options?.behavior ?? 'smooth';
+      const shouldHighlight = options?.highlight ?? behavior === 'smooth';
+
       const highlight = (el: HTMLElement) => {
         el.classList.add('family-post--highlight');
         window.setTimeout(() => el.classList.remove('family-post--highlight'), 2200);
@@ -220,9 +384,9 @@ export function FeedView({
         const rootRect = root.getBoundingClientRect();
         const elRect = el.getBoundingClientRect();
         const targetTop = elRect.top - rootRect.top + root.scrollTop - 20;
-        scrollFeedTo(Math.max(0, targetTop), 'smooth', { root, lenis });
+        scrollFeedTo(Math.max(0, targetTop), behavior, { root, lenis });
         anchoredToBottomRef.current = false;
-        highlight(el);
+        if (shouldHighlight) highlight(el);
         return true;
       };
 
@@ -295,25 +459,133 @@ export function FeedView({
   }, [getScrollCtx, posts.length]);
 
   useLayoutEffect(() => {
-    if (isLoading || posts.length === 0) return;
+    if (isLoading) return;
 
-    const { root, lenis } = getScrollCtx();
-    if (!root) return;
+    if (posts.length === 0) {
+      if (!feedReady) setFeedReady(true);
+      return;
+    }
+
+    const { root } = getScrollCtx();
+    if (!root) {
+      // Lenis/native scroll root may mount one frame later than posts.
+      const id = window.requestAnimationFrame(() => setBootTick((n) => n + 1));
+      return () => window.cancelAnimationFrame(id);
+    }
 
     if (!initialScrollDoneRef.current) {
       initialScrollDoneRef.current = true;
-      scrollFeedToLatest('auto', { root, lenis });
-      anchoredToBottomRef.current = true;
+      const maxId = posts.reduce((max, post) => Math.max(max, post.id), 0);
+      maxPostIdRef.current = maxId;
+      const postIds = posts.map((p) => p.id);
+
+      if (!isPreview) {
+        const lastRead = getLastReadPostId(viewerKey);
+        const unread = hasUnreadSince(postIds, lastRead);
+
+        // Telegram channel rule:
+        // - caught up → always open on the latest post
+        // - only jump to mid-feed when there are newer posts than lastRead
+        if (unread) {
+          const firstUnread = firstUnreadPostId([...postIds].sort((a, b) => a - b), lastRead);
+          if (firstUnread != null) {
+            unreadSplitRef.current = lastRead;
+            pendingInitialUnreadScrollRef.current = firstUnread;
+            setUnreadSplitId(lastRead);
+            setUnreadBadge(countUnreadPosts(postIds, lastRead));
+            anchoredToBottomRef.current = false;
+            historyReadyRef.current = true;
+            return;
+          }
+        }
+
+        // First visit or fully caught up → latest + persist cursor.
+        setLastReadPostId(viewerKey, maxId);
+      }
+
       historyReadyRef.current = true;
-      maxPostIdRef.current = posts.reduce((max, post) => Math.max(max, post.id), 0);
-      queueMicrotask(() => setFeedInteractive(true));
+      anchoredToBottomRef.current = true;
+      scrollToLatestReliable('auto');
+      // Wait for Lenis + delayed settle retries before revealing (avoids top→bottom flash).
+      scheduleRevealFeed(160);
       return;
     }
 
     if (!historyReadyRef.current) {
       historyReadyRef.current = true;
     }
-  }, [getScrollCtx, isLoading, posts]);
+  }, [
+    bootTick,
+    feedReady,
+    getScrollCtx,
+    isLoading,
+    isPreview,
+    posts,
+    scheduleRevealFeed,
+    scrollToLatestReliable,
+    viewerKey,
+  ]);
+
+  // Keep catching up to bottom after media/layout settles (caught-up sessions only).
+  useEffect(() => {
+    if (!feedReady || isPreview || !initialScrollDoneRef.current || unreadSplitId != null) return;
+    if (!anchoredToBottomRef.current) return;
+    const t1 = window.setTimeout(() => scrollToLatestReliable('auto'), 200);
+    const t2 = window.setTimeout(() => {
+      if (anchoredToBottomRef.current) markCaughtUpToLatest();
+    }, 500);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [feedReady, isPreview, markCaughtUpToLatest, posts.length, scrollToLatestReliable, unreadSplitId]);
+
+  // Persist catch-up when leaving the page while at the bottom.
+  useEffect(() => {
+    if (isPreview) return;
+    const persistIfCaughtUp = () => {
+      if (!anchoredToBottomRef.current) return;
+      markCaughtUpToLatest();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') persistIfCaughtUp();
+    };
+    window.addEventListener('pagehide', persistIfCaughtUp);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('pagehide', persistIfCaughtUp);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [isPreview, markCaughtUpToLatest]);
+
+  useLayoutEffect(() => {
+    const targetId = pendingInitialUnreadScrollRef.current;
+    if (targetId == null || unreadSplitId == null) return;
+    pendingInitialUnreadScrollRef.current = null;
+    void scrollToPost(targetId, { behavior: 'auto', highlight: false }).then(() => {
+      scheduleRevealFeed(40);
+    });
+  }, [unreadSplitId, scheduleRevealFeed, scrollToPost]);
+
+  // Safety: never leave the boot skeleton up forever if scroll root mounts late.
+  useEffect(() => {
+    if (feedReady || isLoading) return;
+    if (posts.length === 0) return;
+    const t = window.setTimeout(() => {
+      scrollToLatestReliable('auto');
+      setFeedReady(true);
+    }, 1200);
+    return () => window.clearTimeout(t);
+  }, [feedReady, isLoading, posts.length, scrollToLatestReliable]);
+
+  useEffect(() => {
+    return () => {
+      if (revealTimerRef.current != null) {
+        window.clearTimeout(revealTimerRef.current);
+        revealTimerRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     maxPostIdRef.current = posts.reduce(
@@ -382,21 +654,38 @@ export function FeedView({
 
   useLayoutEffect(() => {
     if (!showFeed) {
+      chromeInsetRef.current = 0;
       setChromeInset(0);
       return;
     }
 
-    const el = chromeStackRef.current;
-    if (!el) {
+    const stack = chromeStackRef.current;
+    if (!stack) {
+      chromeInsetRef.current = 0;
       setChromeInset(0);
       return;
     }
 
-    const update = () => setChromeInset(el.offsetHeight);
+    // Only the pinned bar reserves scroll padding. Now-playing overlays the feed
+    // so opening/closing it never shifts the page.
+    const measurePin = () => {
+      const pin = stack.querySelector('.family-feed-chrome-stack__pin') as HTMLElement | null;
+      return pin?.offsetHeight ?? 0;
+    };
+
+    const update = () => {
+      const next = measurePin();
+      if (next === chromeInsetRef.current) return;
+      chromeInsetRef.current = next;
+      setChromeInset(next);
+    };
+
     update();
 
     const observer = new ResizeObserver(update);
-    observer.observe(el);
+    observer.observe(stack);
+    const pin = stack.querySelector('.family-feed-chrome-stack__pin');
+    if (pin) observer.observe(pin);
     return () => observer.disconnect();
   }, [showFeed, showPinned]);
 
@@ -413,39 +702,38 @@ export function FeedView({
       />
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-        {!isPreview && (
-          <FamilyNotificationsPanel
-            enabled={!isPreview}
-            onClose={() => setMainView('feed')}
-            className={mainView === 'notifications' ? 'flex min-h-0 flex-1 flex-col' : 'hidden'}
-          />
-        )}
-
-        {commentsTarget && (
-          <FeedCommentsPanel
-            postId={commentsTarget.postId}
-            onClose={() => onCloseComments?.()}
-            onCommentAdded={commentsTarget.onCommentAdded}
-            className="flex min-h-0 flex-1 flex-col"
-          />
-        )}
-
-        <div className={showFeed ? 'family-feed-pane relative flex min-h-0 min-w-0 flex-1 flex-col' : 'hidden'}>
-          <div className="family-feed-chrome-slot hidden shrink-0 lg:block">
-            <div className="family-feed-chrome-slot__inner">
-              <FamilyFeedChrome
-                parts="pinned"
-                showPinned={showPinned}
-                showNowPlaying={false}
-                onScrollToPost={(postId) => {
-                  void scrollToPost(postId);
-                }}
+        <div className="family-feed-pane relative flex min-h-0 min-w-0 flex-1 flex-col">
+          {!isPreview && mainView === 'notifications' ? (
+            <div className="absolute inset-0 z-50 flex min-h-0 flex-col bg-[var(--family-bg)]">
+              <FamilyNotificationsPanel
+                enabled={!isPreview}
+                onClose={() => setMainView('feed')}
+                className="flex min-h-0 flex-1 flex-col"
               />
             </div>
-          </div>
+          ) : null}
 
+          {commentsTarget ? (
+            <div className="absolute inset-0 z-50 flex min-h-0 flex-col bg-[var(--family-bg)]">
+              <FeedCommentsPanel
+                postId={commentsTarget.postId}
+                onClose={closeComments}
+                onCommentAdded={commentsTarget.onCommentAdded}
+                className="flex min-h-0 flex-1 flex-col"
+              />
+            </div>
+          ) : null}
+
+          <div
+            className={
+              commentsTarget || mainView === 'notifications'
+                ? 'pointer-events-none flex min-h-0 min-w-0 flex-1 flex-col'
+                : 'flex min-h-0 min-w-0 flex-1 flex-col'
+            }
+            aria-hidden={Boolean(commentsTarget) || mainView === 'notifications'}
+          >
           <div ref={chromeStackRef} className="family-feed-chrome-stack">
-            <div className="lg:hidden">
+            <div className="family-feed-chrome-stack__pin">
               <FamilyFeedChrome
                 parts="pinned"
                 showPinned={showPinned}
@@ -459,11 +747,16 @@ export function FeedView({
           </div>
 
           <FamilyFeedMediaProvider scrollIdle={scrollIdle}>
-            <FamilyFeedScroll
-              ref={feedScrollRef}
-              onScroll={handleFeedScroll}
-              style={chromeInset > 0 ? { paddingTop: chromeInset } : undefined}
-            >
+            <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+              {!feedReady ? (
+                <FamilyFeedBootSkeleton className="absolute inset-0 z-20 overflow-hidden bg-[var(--family-chat-bg)]" />
+              ) : null}
+              <FamilyFeedScroll
+                ref={feedScrollRef}
+                onScroll={handleFeedScroll}
+                className={cn(!feedReady && 'invisible')}
+                style={chromeInset > 0 ? { paddingTop: chromeInset } : undefined}
+              >
               <div ref={feedContentRef} className="family-feed-content mx-auto flex w-full max-w-[680px] flex-col">
               {isPreview && effectivePreviewMode && posts.length > 0 && (
                 <div className="pt-4 sm:pt-5">
@@ -496,13 +789,19 @@ export function FeedView({
                   )}
                   {feedItems.map((item) => {
                     const animateEnter =
-                      feedInteractive &&
+                      feedReady &&
                       item.kind === 'post' &&
                       item.post.id > maxPostIdRef.current;
 
-                    return item.kind === 'separator' ? (
-                      <FeedDateSeparator key={item.key} label={item.label} />
-                    ) : (
+                    if (item.kind === 'separator') {
+                      return <FeedDateSeparator key={item.key} label={item.label} />;
+                    }
+
+                    if (item.kind === 'unread') {
+                      return <FeedUnreadDivider key={item.key} count={item.count} />;
+                    }
+
+                    return (
                       <PostCard
                         key={item.key}
                         anchorId={`family-post-${item.post.id}`}
@@ -529,7 +828,20 @@ export function FeedView({
               )}
             </div>
           </FamilyFeedScroll>
+            </div>
           </FamilyFeedMediaProvider>
+
+          {!isPreview && (
+            <FeedJumpToLatest
+              ref={jumpFabRef}
+              unreadCount={unreadBadge}
+              onClick={() => {
+                scrollToLatestReliable('smooth');
+                markCaughtUpToLatest();
+              }}
+            />
+          )}
+          </div>
         </div>
       </div>
     </div>

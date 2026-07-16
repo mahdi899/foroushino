@@ -7,6 +7,7 @@ import { applyResolvedTheme, readResolvedTheme } from '@/lib/site-theme';
 export function FamilyThemeBoot() {
   useLayoutEffect(() => {
     applyResolvedTheme(readResolvedTheme());
+    document.documentElement.setAttribute('data-theme-ready', '1');
   }, []);
 
   return null;

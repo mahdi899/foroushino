@@ -54,7 +54,10 @@ export function scrollFeedToLatest(
   },
 ) {
   if (lenis) {
-    lenis.scrollTo(lenis.limit, {
+    // Recalculate limit after layout/media so we don't stop mid-feed.
+    lenis.resize();
+    const limit = lenis.limit;
+    lenis.scrollTo(limit, {
       immediate: behavior === 'auto',
       force: true,
       duration: behavior === 'smooth' ? 0.48 : 0,

@@ -1,11 +1,16 @@
 import type { Metadata, Viewport } from 'next';
+import { cookies } from 'next/headers';
 import '@/styles/family.css';
 import { fontClassName, fontVariable } from '@/lib/fonts';
 import { cn } from '@/lib/cn';
 import { FamilyMediaPlayerProvider } from '@/lib/family/FamilyMediaPlayerContext';
 import { FamilyActionCelebrateProvider } from '@/lib/family/FamilyActionCelebrateContext';
 import { FamilyThemeBoot } from '@/app/family/FamilyThemeBoot';
-import { DEFAULT_SITE_THEME } from '@/lib/site-theme';
+import {
+  DEFAULT_SITE_THEME,
+  SITE_THEME_COOKIE_KEY,
+  parseSiteTheme,
+} from '@/lib/site-theme';
 
 export const metadata: Metadata = {
   title: 'خانواده داداش بهرام',
@@ -27,12 +32,15 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function FamilyLayout({ children }: { children: React.ReactNode }) {
+export default async function FamilyLayout({ children }: { children: React.ReactNode }) {
+  const initialTheme =
+    parseSiteTheme((await cookies()).get(SITE_THEME_COOKIE_KEY)?.value) ?? DEFAULT_SITE_THEME;
+
   return (
     <div
       id="family-root"
       dir="rtl"
-      data-family-theme={DEFAULT_SITE_THEME}
+      data-family-theme={initialTheme}
       className={cn(
         'family-app family-app__canvas h-[100dvh] overflow-hidden antialiased',
         fontClassName,

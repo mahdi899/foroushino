@@ -5,7 +5,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { useDelayedInView } from '@/hooks/useDelayedInView';
 import { ImageZoomLightbox } from '@/components/family/blocks/ImageZoomLightbox';
-import { useFamilyFeedMedia } from '@/lib/family/FamilyFeedMediaContext';
 import {
   getFamilyMediaBlobUrl,
   readFamilyMediaBlob,
@@ -47,10 +46,10 @@ export function ImageBlock({
   const [openLightboxWhenLoaded, setOpenLightboxWhenLoaded] = useState(false);
   const previewRequestedRef = useRef(false);
   const warmedRef = useRef(false);
-  const { scrollIdle } = useFamilyFeedMedia();
 
   const canRequestPreview = phase === 'idle';
-  const previewReady = useDelayedInView(rootRef, 900, canRequestPreview, scrollIdle);
+  // Don't gate on feed scrollIdle — that left empty white frames while waiting.
+  const previewReady = useDelayedInView(rootRef, 80, canRequestPreview, true);
 
   const applyCachedSources = useCallback(async () => {
     if (!media.url) return false;
@@ -91,18 +90,15 @@ export function ImageBlock({
     previewRequestedRef.current = true;
     let cancelled = false;
 
+    // Show the real URL immediately as a blurred Telegram-style preview —
+    // don't wait on blob encode (that left an empty white frame).
+    setDisplayUrl(media.url);
+    setPhase('preview');
+
     void enqueueFamilyMediaLoad('preview', media.id, async () => {
       const previewBlob = await tryBuildImagePreviewBlob(media.id, media.url!);
-      if (cancelled) return;
-
-      if (previewBlob) {
-        setDisplayUrl(getFamilyMediaBlobUrl(`preview:${media.id}`, previewBlob));
-        setPhase('preview');
-        return;
-      }
-
-      setDisplayUrl(media.url);
-      setPhase('preview');
+      if (cancelled || !previewBlob) return;
+      setDisplayUrl(getFamilyMediaBlobUrl(`preview:${media.id}`, previewBlob));
     });
 
     return () => {
@@ -196,7 +192,7 @@ export function ImageBlock({
         onClick={handleClick}
         disabled={phase === 'loading'}
         className={cn(
-          'relative block overflow-hidden bg-white/5',
+          'relative block overflow-hidden bg-[color-mix(in_oklab,var(--family-text)_7%,transparent)]',
           fillCell ? 'h-full min-h-0 w-full' : constrained ? 'family-feed-image' : 'w-full',
           roundedClass,
           className,
@@ -204,7 +200,10 @@ export function ImageBlock({
         style={containerStyle}
       >
         {phase === 'idle' && !imgSrc && (
-          <span className="absolute inset-0 animate-pulse bg-white/[0.06]" aria-hidden />
+          <span
+            className="absolute inset-0 animate-pulse bg-[color-mix(in_oklab,var(--family-text)_5%,transparent)]"
+            aria-hidden
+          />
         )}
 
         {imgSrc && phase !== 'error' && (
