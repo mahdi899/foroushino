@@ -2779,6 +2779,8 @@ html[data-theme='light'] .family-app .family-post-bubble__comment-zone {
   .family-reaction-btn--slam,
   .family-reaction-btn--slam-land,
   .family-reaction-btn--launching,
+  .family-reaction-btn-wrap--slam::before,
+  .family-reaction-btn-wrap--slam-land::before,
   .family-reaction-picker--burst,
   .family-reaction-fly__glow,
   .family-reaction-fly__trail,
@@ -3189,24 +3191,36 @@ html[data-theme='dark'] .family-app .family-reaction-picker--portal {
   z-index: 6;
 }
 
-.family-reaction-btn--slam,
-.family-reaction-btn--slam-land {
+.family-reaction-btn-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  vertical-align: middle;
   overflow: visible;
 }
 
-.family-reaction-btn--slam::after,
-.family-reaction-btn--slam-land::after {
+.family-reaction-btn-wrap--slam::before,
+.family-reaction-btn-wrap--slam-land::before {
   content: '';
   position: absolute;
-  inset: -10px;
-  border-radius: inherit;
-  border: 2px solid color-mix(in oklab, var(--family-tg-pinned-accent) 80%, transparent);
-  animation: family-reaction-slam-ring 0.76s ease-out both;
+  inset: 0;
+  border-radius: 9999px;
   pointer-events: none;
+  z-index: 0;
+  box-shadow:
+    0 0 0 0 color-mix(in oklab, var(--family-tg-pinned-accent) 42%, transparent),
+    0 0 0 0 color-mix(in oklab, var(--family-tg-pinned-accent) 18%, transparent);
+  animation: family-reaction-slam-ring 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.family-reaction-btn--slam-land::after {
-  animation-duration: 0.58s;
+.family-reaction-btn-wrap--slam-land::before {
+  animation-duration: 0.5s;
+}
+
+.family-reaction-btn-wrap--slam .family-reaction-btn,
+.family-reaction-btn-wrap--slam-land .family-reaction-btn {
+  position: relative;
+  z-index: 1;
 }
 
 @keyframes family-reaction-slam {
@@ -3235,12 +3249,18 @@ html[data-theme='dark'] .family-app .family-reaction-picker--portal {
 
 @keyframes family-reaction-slam-ring {
   0% {
-    transform: scale(0.45);
-    opacity: 0.95;
+    opacity: 0.7;
+    transform: scale(1);
+    box-shadow:
+      0 0 0 0 color-mix(in oklab, var(--family-tg-pinned-accent) 42%, transparent),
+      0 0 8px 0 color-mix(in oklab, var(--family-tg-pinned-accent) 18%, transparent);
   }
   100% {
-    transform: scale(2.4);
     opacity: 0;
+    transform: scale(1.55);
+    box-shadow:
+      0 0 0 1.5px color-mix(in oklab, var(--family-tg-pinned-accent) 28%, transparent),
+      0 0 14px 4px color-mix(in oklab, var(--family-tg-pinned-accent) 0%, transparent);
   }
 }
 

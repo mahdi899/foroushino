@@ -41,36 +41,44 @@ function ReactionButton({
   onClick: (source?: HTMLButtonElement) => void;
 }) {
   return (
-    <button
-      ref={buttonRef}
-      type="button"
-      role={menuItem ? 'menuitem' : undefined}
-      aria-label={label}
-      aria-pressed={active}
-      disabled={disabled}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick(e.currentTarget);
-      }}
+    <span
       className={cn(
-        'family-reaction-btn',
-        count > 0 && 'family-reaction-btn--counted',
-        active && 'family-reaction-btn--active',
-        compact && 'family-reaction-btn--compact',
-        incoming && 'family-reaction-btn--incoming',
-        slam && slamLand && 'family-reaction-btn--slam-land',
-        slam && !slamLand && 'family-reaction-btn--slam',
-        launching && 'family-reaction-btn--launching',
-        disabled && 'pointer-events-none opacity-45',
+        'family-reaction-btn-wrap',
+        slam && slamLand && 'family-reaction-btn-wrap--slam-land',
+        slam && !slamLand && 'family-reaction-btn-wrap--slam',
       )}
     >
-      <FamilyReactionLottie type={type} size={compact ? 24 : 18} mode="loop" />
-      {count > 0 && (
-        <span className={cn('family-reaction-count', active && 'family-reaction-count--active')}>
-          {count.toLocaleString('en-US')}
-        </span>
-      )}
-    </button>
+      <button
+        ref={buttonRef}
+        type="button"
+        role={menuItem ? 'menuitem' : undefined}
+        aria-label={label}
+        aria-pressed={active}
+        disabled={disabled}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick(e.currentTarget);
+        }}
+        className={cn(
+          'family-reaction-btn',
+          count > 0 && 'family-reaction-btn--counted',
+          active && 'family-reaction-btn--active',
+          compact && 'family-reaction-btn--compact',
+          incoming && 'family-reaction-btn--incoming',
+          slam && slamLand && 'family-reaction-btn--slam-land',
+          slam && !slamLand && 'family-reaction-btn--slam',
+          launching && 'family-reaction-btn--launching',
+          disabled && 'pointer-events-none opacity-45',
+        )}
+      >
+        <FamilyReactionLottie type={type} size={compact ? 24 : 18} mode="loop" />
+        {count > 0 && (
+          <span className={cn('family-reaction-count', active && 'family-reaction-count--active')}>
+            {count.toLocaleString('en-US')}
+          </span>
+        )}
+      </button>
+    </span>
   );
 }
 
