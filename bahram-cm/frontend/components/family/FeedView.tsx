@@ -13,7 +13,6 @@ import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
 import { FamilyFeedScroll, type FamilyFeedScrollHandle } from '@/components/family/FamilyFeedScroll';
 import { FamilyFeedBootSkeleton } from '@/components/family/FamilyShellLoading';
 import { PostCard } from '@/components/family/PostCard';
-import { VirtualFeedList } from '@/components/family/VirtualFeedList';
 import { cn } from '@/lib/cn';
 import {
   captureFeedScrollRestore,
@@ -1352,73 +1351,35 @@ export function FeedView({
                       ) : null}
                     </div>
                   )}
-                  {feedItems.length > 36 ? (
-                    <VirtualFeedList
-                      items={feedItems}
-                      getScrollElement={() => feedScrollRef.current?.getScrollElement() ?? null}
-                      estimateSize={(_i, item) =>
-                        item.kind === 'post' ? 280 : item.kind === 'unread' ? 48 : 36
-                      }
-                      overscan={8}
-                      renderItem={(item) => {
-                        const animateEnter =
-                          feedReady &&
-                          item.kind === 'post' &&
-                          item.post.id > maxPostIdRef.current;
+                  {feedItems.map((item) => {
+                    const animateEnter =
+                      feedReady &&
+                      item.kind === 'post' &&
+                      item.post.id > maxPostIdRef.current;
 
-                        if (item.kind === 'separator') {
-                          return <FeedDateSeparator key={item.key} label={item.label} />;
-                        }
-                        if (item.kind === 'unread') {
-                          return <FeedUnreadDivider key={item.key} count={item.count} />;
-                        }
-                        return (
-                          <PostCard
-                            key={item.key}
-                            anchorId={`family-post-${item.post.id}`}
-                            post={item.post}
-                            memberCount={resolvedMemberCount}
-                            isStaff={isStaff}
-                            previewMode={isPreview ? effectivePreviewMode : null}
-                            viewerKey={viewerKey}
-                            onPreviewInteract={scrollToPreviewCta}
-                            animateEnter={animateEnter}
-                            onOpenComments={isPreview ? undefined : openPostComments}
-                          />
-                        );
-                      }}
-                    />
-                  ) : (
-                    feedItems.map((item) => {
-                      const animateEnter =
-                        feedReady &&
-                        item.kind === 'post' &&
-                        item.post.id > maxPostIdRef.current;
+                    if (item.kind === 'separator') {
+                      return <FeedDateSeparator key={item.key} label={item.label} />;
+                    }
 
-                      if (item.kind === 'separator') {
-                        return <FeedDateSeparator key={item.key} label={item.label} />;
-                      }
+                    if (item.kind === 'unread') {
+                      return <FeedUnreadDivider key={item.key} count={item.count} />;
+                    }
 
-                      if (item.kind === 'unread') {
-                        return <FeedUnreadDivider key={item.key} count={item.count} />;
-                      }
-
-                      return (
-                        <PostCard
-                          key={item.key}
-                          anchorId={`family-post-${item.post.id}`}
-                          post={item.post}
-                          memberCount={resolvedMemberCount}
-                          isStaff={isStaff}
-                          previewMode={isPreview ? effectivePreviewMode : null}
-                          viewerKey={viewerKey}
-                          onPreviewInteract={scrollToPreviewCta}
-                          animateEnter={animateEnter}
-                          onOpenComments={isPreview ? undefined : openPostComments}
-                        />
-                      );
-                    })
-                  )}
+                    return (
+                      <PostCard
+                        key={item.key}
+                        anchorId={`family-post-${item.post.id}`}
+                        post={item.post}
+                        memberCount={resolvedMemberCount}
+                        isStaff={isStaff}
+                        previewMode={isPreview ? effectivePreviewMode : null}
+                        viewerKey={viewerKey}
+                        onPreviewInteract={scrollToPreviewCta}
+                        animateEnter={animateEnter}
+                        onOpenComments={isPreview ? undefined : openPostComments}
+                      />
+                    );
+                  })}
                   {!isPreview && (hasNewer || isJumpedAwayRef.current) ? (
                     <div ref={newerSentinelRef} className="h-8 shrink-0" aria-hidden />
                   ) : null}

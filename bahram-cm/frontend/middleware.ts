@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   backendProxyUrl,
+  isNextApiHandlerPath,
   rewriteProxyLocation,
   shouldProxyToBackend,
+  toBackendPath,
 } from "@/lib/backend-proxy";
 import { buildCdnCacheControl, buildPublicCacheControl, CDN_MEDIA_EDGE } from "@/lib/cache/headers";
 import { getMiddlewarePerfConfig } from "@/lib/cache/middlewarePerf";
@@ -72,6 +74,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Do not decorate Next App Router API handlers — setting headers here can
+  // make nested `/api/.../...` routes fall through to the HTML not-found page
+  // under Next 16 + Turbopack.
+  if (isNextApiHandlerPath(pathname)) {
+    return NextResponse.next();
+  }
+
   if (!shouldProxyToBackend(pathname)) {
     const response = NextResponse.next();
     response.headers.set("x-pathname", pathname);
@@ -79,7 +88,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const backendOrigin = backendProxyUrl();
-  const target = new URL(`${pathname}${search}`, backendOrigin);
+  const target = new URL(`${toBackendPath(pathname)}${search}`, backendOrigin);
   const publicOrigin = request.nextUrl.origin;
 
   const headers = new Headers(request.headers);

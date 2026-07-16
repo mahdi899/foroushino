@@ -11,7 +11,8 @@ import type { FamilyReactionType } from '@/lib/family/types';
 export function FamilyReactionLottie({
   type,
   size = 20,
-  mode = 'loop',
+  mode = 'reaction',
+  playKey = 0,
 }: {
   type: FamilyReactionType;
   playKey?: number;
@@ -23,6 +24,7 @@ export function FamilyReactionLottie({
       notoKey={FAMILY_REACTION_NOTO[type]}
       size={size}
       mode={mode}
+      playKey={playKey}
       className="family-reaction-icon"
     />
   );

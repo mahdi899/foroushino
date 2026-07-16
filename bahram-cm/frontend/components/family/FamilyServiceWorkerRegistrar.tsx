@@ -28,7 +28,7 @@ export function FamilyServiceWorkerRegistrar() {
 
     if (!('serviceWorker' in navigator)) return;
 
-    void navigator.serviceWorker.register('/sw-family.js', { scope: '/' }).catch(() => {
+    void navigator.serviceWorker.register('/sw-family.js', { scope: '/family/' }).catch(() => {
       /* PWA is optional */
     });
   }, []);

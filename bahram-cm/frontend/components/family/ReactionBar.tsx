@@ -1,13 +1,13 @@
 'use client';
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { flushSync } from 'react-dom';
 import { SmilePlus } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { fontClassName } from '@/lib/fonts';
 import { FamilyBodyPortal } from '@/components/family/FamilyBodyPortal';
 import { FamilyReactionLottie } from '@/components/family/FamilyReactionLottie';
-import { FAMILY_ALL_REACTIONS, FAMILY_NUDGE_REACTIONS } from '@/lib/family/reactions';
+import { FAMILY_ALL_REACTIONS } from '@/lib/family/reactions';
 import { removeReaction, setReaction } from '@/lib/family/api';
 import { familyFeedDebug } from '@/lib/family/feedDebug';
 import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
@@ -74,7 +74,7 @@ function ReactionButton({
           disabled && 'pointer-events-none opacity-45',
         )}
       >
-        <FamilyReactionLottie type={type} size={compact ? 24 : 18} mode="loop" />
+        <FamilyReactionLottie type={type} size={compact ? 24 : 18} mode="reaction" />
         {count > 0 && (
           <span className={cn('family-reaction-count', active && 'family-reaction-count--active')}>
             {count.toLocaleString('en-US')}
@@ -98,7 +98,6 @@ const POST_IMPACT_MS = 820;
 /** 3×2.375rem rows + gaps + padding — keep close to real grid so first paint isn’t far off */
 const PICKER_FALLBACK_HEIGHT = 96;
 const PICKER_FALLBACK_WIDTH = 216;
-const NUDGE_AUTO_HIDE_MS = 9000;
 
 export type ReactionBarHandle = {
   openPicker: (anchor?: HTMLElement | null) => void;
@@ -113,8 +112,6 @@ export const ReactionBar = forwardRef<
     stats: FamilyPostStats;
     userReaction: FamilyReactionType | null;
     readOnly?: boolean;
-    reactionNudge?: boolean;
-    onReactionNudgeDismiss?: () => void;
     onLockedInteract?: () => void;
     pickerAnchorRef?: RefObject<HTMLElement | null>;
   }
@@ -124,8 +121,6 @@ export const ReactionBar = forwardRef<
     stats,
     userReaction,
     readOnly = false,
-    reactionNudge = false,
-    onReactionNudgeDismiss,
     onLockedInteract,
     pickerAnchorRef,
   },
@@ -164,7 +159,6 @@ export const ReactionBar = forwardRef<
   const [slamLandType, setSlamLandType] = useState<FamilyReactionType | null>(null);
   const [flyAnim, setFlyAnim] = useState<ReactionFlyBurstPayload | null>(null);
   const [pickInFlight, setPickInFlight] = useState(false);
-  const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const addBtnRef = useRef<HTMLButtonElement>(null);
@@ -202,34 +196,7 @@ export const ReactionBar = forwardRef<
   useEffect(() => {
     setActive(userReaction);
     activeRef.current = userReaction;
-    if (userReaction) {
-      setNudgeDismissed(true);
-      onReactionNudgeDismiss?.();
-    }
-  }, [onReactionNudgeDismiss, userReaction]);
-
-  useEffect(() => {
-    if (!reactionNudge) {
-      setNudgeDismissed(false);
-    }
-  }, [reactionNudge, postId]);
-
-  const showReactionNudge =
-    reactionNudge &&
-    !readOnly &&
-    !active &&
-    !pickerOpen &&
-    !nudgeDismissed &&
-    !isReactionBusy();
-
-  useEffect(() => {
-    if (!showReactionNudge) return;
-    const id = window.setTimeout(() => {
-      setNudgeDismissed(true);
-      onReactionNudgeDismiss?.();
-    }, NUDGE_AUTO_HIDE_MS);
-    return () => window.clearTimeout(id);
-  }, [onReactionNudgeDismiss, showReactionNudge]);
+  }, [userReaction]);
 
   const updatePickerPosition = useCallback(() => {
     const anchor =
@@ -542,11 +509,6 @@ export const ReactionBar = forwardRef<
     [finishFlyAnimation, measureReactionChip, waitForChipDestination],
   );
 
-  const dismissNudge = useCallback(() => {
-    setNudgeDismissed(true);
-    onReactionNudgeDismiss?.();
-  }, [onReactionNudgeDismiss]);
-
   const commitReactionFromSource = useCallback(
     (type: FamilyReactionType, sourceEl: HTMLButtonElement) => {
       if (readOnly) {
@@ -563,7 +525,6 @@ export const ReactionBar = forwardRef<
         return;
       }
 
-      dismissNudge();
       setPickInFlightState(true);
       const fromRect = sourceEl.getBoundingClientRect();
       const from = { x: fromRect.left + fromRect.width / 2, y: fromRect.top + fromRect.height / 2 };
@@ -574,7 +535,6 @@ export const ReactionBar = forwardRef<
     },
     [
       applyReactionOptimistic,
-      dismissNudge,
       lockReactionCommit,
       onLockedInteract,
       persistReactionChange,
@@ -595,7 +555,6 @@ export const ReactionBar = forwardRef<
     if (!lockReactionCommit()) return;
 
     const wasActive = activeRef.current === type;
-    dismissNudge();
     setPickerClosing(true);
 
     if (wasActive) {
@@ -634,7 +593,6 @@ export const ReactionBar = forwardRef<
         onLockedInteract?.();
         return;
       }
-      dismissNudge();
       const el = anchor ?? pickerAnchorRef?.current ?? addBtnRef.current ?? rootRef.current;
       pickerAnchorElRef.current = el;
       if (el) {
@@ -648,7 +606,7 @@ export const ReactionBar = forwardRef<
       setPickerOpen(true);
       setPickerSession((session) => session + 1);
     },
-    [dismissNudge, onLockedInteract, pickerAnchorRef, readOnly],
+    [onLockedInteract, pickerAnchorRef, readOnly],
   );
 
   useImperativeHandle(ref, () => ({
@@ -670,7 +628,6 @@ export const ReactionBar = forwardRef<
         return;
       }
 
-      dismissNudge();
       setPickInFlightState(true);
       const from = at ?? measureReactionChip(type) ?? predictChipNearAddButton() ?? { x: 0, y: 0 };
       const { prevActive, prevCounts, isNewSlot } = applyReactionOptimistic(type, { incoming: true });
@@ -741,11 +698,7 @@ export const ReactionBar = forwardRef<
   return (
     <>
       <div className="family-reaction-bar-shell">
-        <div
-          ref={rootRef}
-          className={cn('family-reaction-bar', showReactionNudge && 'family-reaction-bar--nudge')}
-          dir="ltr"
-        >
+        <div ref={rootRef} className="family-reaction-bar" dir="ltr">
         {visibleReactions.map((r) => (
           <ReactionButton
             key={r.type}
@@ -776,39 +729,11 @@ export const ReactionBar = forwardRef<
             className={cn(
               'family-reaction-add',
               pickerOpen && 'family-reaction-add--open',
-              showReactionNudge && 'family-reaction-add--nudge-hint',
               isReactionBusy() && 'pointer-events-none opacity-45',
             )}
           >
             <SmilePlus className="h-3.5 w-3.5" strokeWidth={2} />
           </button>
-        )}
-
-        {!readOnly && (
-          <div
-            className={cn('family-reaction-nudge', showReactionNudge && 'family-reaction-nudge--visible')}
-            aria-hidden={!showReactionNudge}
-          >
-            {FAMILY_NUDGE_REACTIONS.map((r, index) => (
-              <button
-                key={r.type}
-                type="button"
-                aria-label={r.label}
-                disabled={isReactionBusy()}
-                style={{ '--family-nudge-index': index } as CSSProperties}
-                className={cn(
-                  'family-reaction-nudge-btn',
-                  isReactionBusy() && 'pointer-events-none opacity-45',
-                )}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  commitReactionFromSource(r.type, e.currentTarget);
-                }}
-              >
-                <FamilyReactionLottie type={r.type} size={18} mode="loop" />
-              </button>
-            ))}
-          </div>
         )}
         </div>
       </div>
