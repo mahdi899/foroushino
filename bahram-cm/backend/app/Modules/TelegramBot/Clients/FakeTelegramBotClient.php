@@ -59,6 +59,12 @@ class FakeTelegramBotClient implements TelegramBotClientInterface
         return (array) $this->record('getWebhookInfo', [], ['url' => '', 'has_custom_certificate' => false, 'pending_update_count' => 0]);
     }
 
+    /** @return list<array<string, mixed>> */
+    public function getUpdates(array $options = []): array
+    {
+        return (array) $this->record('getUpdates', ['options' => $options], []);
+    }
+
     public function getMe(): array
     {
         return (array) $this->record('getMe', [], ['id' => 0, 'is_bot' => true, 'first_name' => 'Fake Bot', 'username' => 'fake_bot']);

@@ -1,0 +1,82 @@
+import type { TelegramModule } from '@/lib/admin/telegram.types';
+
+export const TELEGRAM_MODULES: TelegramModule[] = [
+  {
+    href: '/admin/telegram/users',
+    label: 'کاربران متصل',
+    description: 'حساب‌های متصل به ربات آکادمی و وضعیت عضویت',
+    icon: 'Users',
+    tone: 'blue',
+    permission: 'telegram.users.view',
+    group: 'users',
+  },
+  {
+    href: '/admin/telegram/support',
+    label: 'پشتیبانی',
+    description: 'دسته‌ها، Topicها و اپراتورهای پشتیبانی',
+    icon: 'Headphones',
+    tone: 'teal',
+    permission: 'telegram.support.manage',
+    group: 'users',
+  },
+  {
+    href: '/admin/telegram/broadcasts',
+    label: 'پیام‌های همگانی',
+    description: 'پیش‌نویس، تست، تأیید و صف ارسال',
+    icon: 'Megaphone',
+    tone: 'gold',
+    permission: 'telegram.broadcast.create',
+    group: 'content',
+  },
+  {
+    href: '/admin/telegram/required-chats',
+    label: 'کانال‌های اجباری',
+    description: 'عضویت الزامی برای استفاده از ربات',
+    icon: 'Radio',
+    tone: 'amber',
+    permission: 'telegram.required_chats.manage',
+    group: 'content',
+  },
+  {
+    href: '/admin/telegram/destinations',
+    label: 'مقاصد و گروه‌ها',
+    description: 'کانال‌ها و گروه‌های وابسته به محصول و KYC',
+    icon: 'MapPin',
+    tone: 'green',
+    permission: 'telegram.destinations.manage',
+    group: 'content',
+  },
+  {
+    href: '/admin/telegram/health',
+    label: 'سلامت سیستم',
+    description: 'وب‌هوک، API تلگرام و صف آپدیت‌ها',
+    icon: 'Activity',
+    tone: 'green',
+    permission: 'telegram.view',
+    group: 'system',
+  },
+  {
+    href: '/admin/telegram/settings',
+    label: 'تنظیمات ربات',
+    description: 'توکن، وب‌هوک و همگام‌سازی با سرور',
+    icon: 'Settings',
+    tone: 'teal',
+    permission: 'telegram.settings.manage',
+    group: 'system',
+  },
+  {
+    href: '/admin/telegram/logs',
+    label: 'لاگ‌ها',
+    description: 'آپدیت‌های ناموفق و delivery log',
+    icon: 'ScrollText',
+    tone: 'amber',
+    permission: 'telegram.logs.view',
+    group: 'system',
+  },
+];
+
+export const TELEGRAM_MODULE_GROUPS: { id: TelegramModule['group']; label: string }[] = [
+  { id: 'users', label: 'کاربران و پشتیبانی' },
+  { id: 'content', label: 'محتوا و کانال‌ها' },
+  { id: 'system', label: 'سیستم و نظارت' },
+];

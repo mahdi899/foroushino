@@ -1,9 +1,6 @@
 import { redirect } from 'next/navigation';
 import { can, getCurrentUser } from '@/lib/auth/session';
-import { AdminPage } from '../../ui';
-import { AdminPageHeader } from '@/components/admin/layout/AdminPageHeader';
-import { AdminContentPanel } from '@/components/admin/layout/AdminContentPanel';
-import { AdminListEmpty } from '@/components/admin/layout/AdminListEmpty';
+import { TelegramSubPage } from '../TelegramSubPage';
 
 export default async function TelegramDestinationsPage() {
   const user = await getCurrentUser();
@@ -12,11 +9,15 @@ export default async function TelegramDestinationsPage() {
   }
 
   return (
-    <AdminPage>
-      <AdminPageHeader title="مقاصد تلگرامی" description="کانال‌ها و گروه‌های وابسته به محصول و KYC" />
-      <AdminContentPanel>
-        <AdminListEmpty title="مقصدی ثبت نشده" description="مقاصد join-request را از API ادمین تعریف کنید." />
-      </AdminContentPanel>
-    </AdminPage>
+    <TelegramSubPage
+      title="مقاصد تلگرامی"
+      description="کانال‌ها و گروه‌های وابسته به محصول و KYC"
+      icon="MapPin"
+      empty={{
+        icon: 'MapPin',
+        title: 'مقصدی ثبت نشده',
+        description: 'مقاصد join-request را از API ادمین تعریف کنید.',
+      }}
+    />
   );
 }

@@ -197,12 +197,19 @@ class MessageHandler implements UpdateHandlerInterface
     {
         $name = $account->display_name ?: ($account->user?->name ?? 'کاربر');
         $mobile = $account->mobile ? preg_replace('/^(\d{4})\d+(\d{4})$/', '$1***$2', $account->mobile) : '—';
+
+        $keyboard = [
+            [['text' => 'ورود به پنل', 'callback_data' => 'account:login_token']],
+        ];
+
+        $identityUrl = rtrim((string) config('app.frontend_url', env('FRONTEND_URL', '')), '/').'/telegram/identity';
+        if (str_starts_with($identityUrl, 'https://')) {
+            array_unshift($keyboard, [['text' => 'احراز هویت', 'web_app' => ['url' => $identityUrl]]]);
+        }
+
         $client->sendMessage($chatId, "حساب کاربری\nنام: {$name}\nموبایل: {$mobile}", [
             'reply_markup' => [
-                'inline_keyboard' => [
-                    [['text' => 'احراز هویت', 'web_app' => ['url' => rtrim((string) config('app.frontend_url', env('FRONTEND_URL', '')), '/').'/telegram/identity']]],
-                    [['text' => 'ورود به پنل', 'callback_data' => 'account:login_token']],
-                ],
+                'inline_keyboard' => $keyboard,
             ],
         ]);
     }

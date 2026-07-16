@@ -1,9 +1,6 @@
 import { redirect } from 'next/navigation';
 import { can, getCurrentUser } from '@/lib/auth/session';
-import { AdminPage } from '../../ui';
-import { AdminPageHeader } from '@/components/admin/layout/AdminPageHeader';
-import { AdminContentPanel } from '@/components/admin/layout/AdminContentPanel';
-import { AdminListEmpty } from '@/components/admin/layout/AdminListEmpty';
+import { TelegramSubPage } from '../TelegramSubPage';
 
 export default async function TelegramRequiredChatsPage() {
   const user = await getCurrentUser();
@@ -12,11 +9,15 @@ export default async function TelegramRequiredChatsPage() {
   }
 
   return (
-    <AdminPage>
-      <AdminPageHeader title="کانال‌های اجباری" description="کانال‌هایی که عضویت در آن‌ها برای استفاده از ربات الزامی است" />
-      <AdminContentPanel>
-        <AdminListEmpty title="کانالی ثبت نشده" description="از پنل یا seeder کانال‌های اجباری را اضافه کنید." />
-      </AdminContentPanel>
-    </AdminPage>
+    <TelegramSubPage
+      title="کانال‌های اجباری"
+      description="کانال‌هایی که عضویت در آن‌ها برای استفاده از ربات الزامی است"
+      icon="Radio"
+      empty={{
+        icon: 'Radio',
+        title: 'کانالی ثبت نشده',
+        description: 'از پنل یا seeder کانال‌های اجباری را اضافه کنید.',
+      }}
+    />
   );
 }

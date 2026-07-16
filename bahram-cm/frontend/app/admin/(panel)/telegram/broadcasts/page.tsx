@@ -1,9 +1,6 @@
 import { redirect } from 'next/navigation';
 import { can, getCurrentUser } from '@/lib/auth/session';
-import { AdminPage } from '../../ui';
-import { AdminPageHeader } from '@/components/admin/layout/AdminPageHeader';
-import { AdminContentPanel } from '@/components/admin/layout/AdminContentPanel';
-import { AdminListEmpty } from '@/components/admin/layout/AdminListEmpty';
+import { TelegramSubPage } from '../TelegramSubPage';
 
 export default async function TelegramBroadcastsPage() {
   const user = await getCurrentUser();
@@ -12,11 +9,15 @@ export default async function TelegramBroadcastsPage() {
   }
 
   return (
-    <AdminPage>
-      <AdminPageHeader title="پیام‌های همگانی" description="پیش‌نویس، تست، تأیید و صف ارسال" />
-      <AdminContentPanel>
-        <AdminListEmpty title="پیام همگانی ثبت نشده" description="از API ادمین یا فاز بعدی UI برای ایجاد Broadcast استفاده کنید." />
-      </AdminContentPanel>
-    </AdminPage>
+    <TelegramSubPage
+      title="پیام‌های همگانی"
+      description="پیش‌نویس، تست، تأیید و صف ارسال"
+      icon="Megaphone"
+      empty={{
+        icon: 'Megaphone',
+        title: 'پیام همگانی ثبت نشده',
+        description: 'از API ادمین یا فاز بعدی UI برای ایجاد Broadcast استفاده کنید.',
+      }}
+    />
   );
 }

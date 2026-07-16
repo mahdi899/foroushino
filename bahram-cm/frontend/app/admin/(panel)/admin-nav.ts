@@ -24,7 +24,7 @@ export const adminNav: {
       { href: '/admin/chatbot', label: 'چت‌بات هوشمند', icon: 'MessageSquare', matchPrefix: true },
       { href: '/admin/academy/tickets', label: 'تیکت‌های پشتیبانی', icon: 'LifeBuoy', matchPrefix: true, permission: 'tickets.view' },
       { href: '/admin/academy/sms', label: 'مرکز پیامک', icon: 'MessageCircle', matchPrefix: true, permission: 'sms.view' },
-      { href: '/admin/telegram', label: 'ربات تلگرام', icon: 'MessageCircle', matchPrefix: true, permission: 'telegram.view' },
+      { href: '/admin/telegram', label: 'ربات تلگرام', icon: 'Send', matchPrefix: true, permission: 'telegram.view' },
       { href: '/admin/academy/notifications', label: 'اعلان‌ها', icon: 'Bell' },
     ],
   },

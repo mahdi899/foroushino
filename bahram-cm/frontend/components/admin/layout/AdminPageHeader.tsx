@@ -11,7 +11,8 @@ export type AdminPageHeaderVariant =
   | 'seo'
   | 'settings'
   | 'academy'
-  | 'leads';
+  | 'leads'
+  | 'telegram';
 
 export function AdminPageHeader({
   icon,

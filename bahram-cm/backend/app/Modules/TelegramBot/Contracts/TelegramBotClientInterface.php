@@ -29,6 +29,14 @@ interface TelegramBotClientInterface
     /** @return array<string, mixed> */
     public function getWebhookInfo(): array;
 
+    /**
+     * Long-polling for local development (requires webhook to be deleted first).
+     *
+     * @param  array<string, mixed>  $options  offset, limit, timeout, allowed_updates
+     * @return list<array<string, mixed>>
+     */
+    public function getUpdates(array $options = []): array;
+
     /** @return array<string, mixed> */
     public function getMe(): array;
 

@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('ip_address', 45)->nullable();
             $table->timestamps();
 
-            $table->unique(['telegram_account_id', 'telegram_legal_document_id']);
+            $table->unique(['telegram_account_id', 'telegram_legal_document_id'], 'tg_terms_acc_doc_unique');
         });
     }
 

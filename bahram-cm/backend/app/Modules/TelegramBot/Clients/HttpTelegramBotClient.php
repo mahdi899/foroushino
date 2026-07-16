@@ -50,6 +50,20 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
         return (array) $this->call('getWebhookInfo');
     }
 
+    /** @return list<array<string, mixed>> */
+    public function getUpdates(array $options = []): array
+    {
+        $pollTimeout = max(0, (int) ($options['timeout'] ?? 0));
+        $httpTimeout = max(
+            (int) config('telegram.http.timeout', 20),
+            $pollTimeout + 10,
+        );
+
+        $result = $this->request('getUpdates', $options, [], $httpTimeout);
+
+        return is_array($result) ? $result : [];
+    }
+
     public function getMe(): array
     {
         return (array) $this->call('getMe');
@@ -198,11 +212,12 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
      * @param  array<string, mixed>  $params
      * @param  array<string, string>  $attachments  field => absolute local file path
      */
-    private function request(string $method, array $params = [], array $attachments = []): array|bool
+    private function request(string $method, array $params = [], array $attachments = [], ?int $httpTimeout = null): array|bool
     {
         $correlationId = TelegramCorrelation::generate();
         $retryTimes = max(0, (int) config('telegram.http.retry_times', 3));
         $baseDelayMs = max(0, (int) config('telegram.http.retry_base_delay_ms', 500));
+        $timeoutSeconds = $httpTimeout ?? (int) config('telegram.http.timeout', 20);
 
         $attempt = 0;
 
@@ -210,7 +225,7 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
             $attempt++;
 
             try {
-                $request = Http::timeout((int) config('telegram.http.timeout', 20))
+                $request = Http::timeout($timeoutSeconds)
                     ->connectTimeout((int) config('telegram.http.connect_timeout', 5))
                     ->withHeaders([TelegramCorrelation::header() => $correlationId]);
 

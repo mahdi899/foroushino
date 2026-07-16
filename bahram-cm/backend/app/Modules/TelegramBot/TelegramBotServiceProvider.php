@@ -6,6 +6,7 @@ use App\Modules\TelegramBot\Clients\FakeTelegramBotClient;
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
 use App\Modules\TelegramBot\Console\TelegramCleanupCommand;
 use App\Modules\TelegramBot\Console\TelegramHealthCheckCommand;
+use App\Modules\TelegramBot\Console\TelegramPollCommand;
 use App\Modules\TelegramBot\Console\TelegramRetryFailedUpdatesCommand;
 use App\Modules\TelegramBot\Console\TelegramSyncBotsCommand;
 use App\Modules\TelegramBot\Console\TelegramWebhookDeleteCommand;
@@ -50,6 +51,7 @@ class TelegramBotServiceProvider extends ServiceProvider
                 TelegramRetryFailedUpdatesCommand::class,
                 TelegramCleanupCommand::class,
                 TelegramSyncBotsCommand::class,
+                TelegramPollCommand::class,
             ]);
 
             return;
