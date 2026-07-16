@@ -30,6 +30,7 @@ import {
   setLastReadPostId,
 } from '@/lib/family/feedReadCursor';
 import { useFamilyFeed } from '@/lib/family/hooks/useFamilyFeed';
+import { useFamilyRealtime } from '@/lib/family/hooks/useFamilyRealtime';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
 import type { FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
 
@@ -117,7 +118,7 @@ export function FeedView({
   const initialPage = initialFeed ? { data: initialFeed.data, meta: initialFeed.meta } : null;
   const { openLogin } = useFamilyGuestLogin();
 
-  const { posts, meta, isLoading, hasMore, loadMore, isValidating } = useFamilyFeed(
+  const { posts, meta, isLoading, hasMore, loadMore, isValidating, mutate } = useFamilyFeed(
     feedScope,
     initialPage,
     viewerKey,
@@ -179,6 +180,29 @@ export function FeedView({
   );
   const hasMoreRef = useRef(hasMore);
   const postsRef = useRef(posts);
+
+  useFamilyRealtime({
+    onFeedUpdated: (payload) => {
+      void mutate();
+      if (isPreview) return;
+      const lastRead = getLastReadPostId(viewerKey);
+      if (payload.latest_post_id <= lastRead) return;
+
+      if (anchoredToBottomRef.current) {
+        // Stick-to-bottom path will mark caught up after posts refresh.
+        return;
+      }
+
+      const ids = postsRef.current.map((p) => p.id);
+      if (!ids.includes(payload.post_id)) ids.push(payload.post_id);
+      const nextBadge = countUnreadPosts(ids, lastRead);
+      setUnreadBadge((prev) => Math.max(prev, nextBadge, 1));
+      if (unreadSplitRef.current == null) {
+        unreadSplitRef.current = lastRead;
+        setUnreadSplitId(lastRead);
+      }
+    },
+  });
   const isValidatingRef = useRef(isValidating);
 
   useEffect(() => {

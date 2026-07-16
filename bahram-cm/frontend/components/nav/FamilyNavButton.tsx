@@ -6,6 +6,7 @@ import { UsersRound } from "lucide-react";
 import { navLinkMatches } from "@/lib/nav-active";
 import { cn } from "@/lib/cn";
 import { useFamilyFeedUnreadCount } from "@/lib/family/hooks/useFamilyFeedUnreadCount";
+import { useFamilyRealtime } from "@/lib/family/hooks/useFamilyRealtime";
 
 type FamilyNavButtonProps = {
   className?: string;
@@ -18,6 +19,7 @@ export function FamilyNavButton({ className, compact = false }: FamilyNavButtonP
   const active = navLinkMatches(pathname, "/family");
   const onFamilyRoute = pathname === "/family" || pathname.startsWith("/family/");
   const { unreadCount } = useFamilyFeedUnreadCount(!onFamilyRoute);
+  useFamilyRealtime({ enabled: !onFamilyRoute });
   const showBadge = !active && unreadCount > 0;
   const badgeLabel = unreadCount > 99 ? "99+" : String(unreadCount);
 
@@ -60,13 +62,15 @@ export function FamilyNavButton({ className, compact = false }: FamilyNavButtonP
         strokeWidth={2.25}
         aria-hidden
       />
-      <span className="relative inline-flex min-w-0 items-center gap-1">
-        <span className="truncate">خانواده</span>
+      <span className="relative inline-flex min-w-0 items-center gap-1" dir="ltr">
         {showBadge ? (
           <span className="family-nav-btn__count" aria-hidden>
             {badgeLabel}
           </span>
         ) : null}
+        <span className="truncate" dir="rtl">
+          خانواده
+        </span>
       </span>
     </Link>
   );

@@ -9,6 +9,7 @@ import {
 } from '@/lib/family/feedReadCursor';
 import { usePageVisible } from '@/lib/family/hooks/usePageVisible';
 import { familySwrDefaults } from '@/lib/family/swr';
+import { isRealtimeConfigured } from '@/lib/realtime/echo';
 
 /** Unread family posts for the site "خانواده" nav badge (local cursor + API). */
 export function useFamilyFeedUnreadCount(enabled = true) {
@@ -35,6 +36,13 @@ export function useFamilyFeedUnreadCount(enabled = true) {
     };
   }, [syncAfterId]);
 
+  // Mild HTTP safety net; when Reverb is configured, poll less often.
+  const refreshInterval = !pageVisible
+    ? 0
+    : isRealtimeConfigured()
+      ? 180_000
+      : 90_000;
+
   const { data, mutate } = useSWR(
     enabled && pageVisible && afterId > 0 ? ['family-feed-unread-summary', afterId] : null,
     async () => {
@@ -44,7 +52,7 @@ export function useFamilyFeedUnreadCount(enabled = true) {
         return { unread_count: 0, latest_post_id: 0 };
       }
     },
-    { refreshInterval: pageVisible ? 90_000 : 0, ...familySwrDefaults },
+    { refreshInterval, ...familySwrDefaults },
   );
 
   return {

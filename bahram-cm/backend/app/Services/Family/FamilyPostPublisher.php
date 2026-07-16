@@ -7,6 +7,7 @@ use App\Enums\Family\FamilyPostAudienceMode;
 use App\Enums\Family\FamilyPostBlockType;
 use App\Enums\Family\FamilyPostStatus;
 use App\Enums\Family\FamilyPostType;
+use App\Events\FamilyFeedUpdated;
 use App\Models\FamilyAction;
 use App\Models\FamilyMedia;
 use App\Models\FamilyPost;
@@ -14,6 +15,7 @@ use App\Models\FamilyPostBlock;
 use App\Models\FamilyPostTarget;
 use App\Models\User;
 use App\Services\AdminAuditLogger;
+use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -99,7 +101,15 @@ class FamilyPostPublisher
 
         $this->audit->log($actor, 'family.post_published', $post);
 
-        return $post->fresh(['blocks.media', 'targets', 'actions.options']);
+        $fresh = $post->fresh(['blocks.media', 'targets', 'actions.options']);
+
+        if ($fresh) {
+            SafeBroadcast::optionally(
+                fn () => broadcast(new FamilyFeedUpdated($fresh)),
+            );
+        }
+
+        return $fresh ?? $post;
     }
 
     /**
