@@ -24,6 +24,7 @@ class FamilyPostBlockResource extends JsonResource
                 'id' => $media->id,
                 'type' => $media->type?->value ?? $media->type,
                 'url' => FamilyMediaUrl::fromPath($media->storage_path),
+                'poster_url' => FamilyMediaUrl::fromPath($media->thumbnail_path),
                 'duration' => $media->duration,
                 'width' => $media->width,
                 'height' => $media->height,

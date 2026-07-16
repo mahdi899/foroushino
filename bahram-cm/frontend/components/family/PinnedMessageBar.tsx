@@ -16,7 +16,7 @@ export function PinnedMessageBar({
   pinnedPosts?: FamilyPost[];
   onScrollToPost?: (postId: number) => void;
 }) {
-  const { data } = useSWR(
+  const { data, error } = useSWR(
     pinnedProp ? null : 'family-pinned',
     async () => (await getPinnedPosts()).data,
     { revalidateOnFocus: familyPinnedSwr.revalidateOnFocus, dedupingInterval: familyPinnedSwr.dedupingInterval, revalidateIfStale: familyPinnedSwr.revalidateIfStale },
@@ -30,14 +30,24 @@ export function PinnedMessageBar({
     setCursor(0);
   }, [pinnedPosts.map((p) => p.id).join(',')]);
 
-  if (pinnedPosts.length === 0) return null;
+  // Soft-fail: archived/empty pin list — hide bar instead of crashing.
+  if (error || pinnedPosts.length === 0) return null;
 
   const index = cursor % pinnedPosts.length;
   const pinned = pinnedPosts[index];
+  if (!pinned) return null;
   const { label } = getPinnedPreview(pinned);
 
   const handleClick = () => {
-    onScrollToPost?.(pinned.id);
+    const el = document.getElementById(`family-post-${pinned.id}`);
+    // Already in the loaded window — smooth scroll without a network jump.
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('family-post--highlight');
+      window.setTimeout(() => el.classList.remove('family-post--highlight'), 2200);
+    } else {
+      onScrollToPost?.(pinned.id);
+    }
     if (pinnedPosts.length > 1) {
       setCursor((c) => (c + 1) % pinnedPosts.length);
     }

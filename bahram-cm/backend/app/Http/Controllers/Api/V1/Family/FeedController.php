@@ -58,12 +58,14 @@ class FeedController extends Controller
 
         $limit = $request->integer('limit');
         $limit = $limit > 0 ? min($limit, 50) : null;
+        $direction = $request->query('direction') === 'newer' ? 'newer' : 'older';
 
         $result = $this->feed->forMember(
             $user,
             $request->query('cursor'),
             $limit,
             $membership,
+            $direction,
         );
 
         $family = $result['membership']->family;
@@ -74,6 +76,8 @@ class FeedController extends Controller
             200,
             [
                 'next_cursor' => $result['next_cursor'],
+                'prev_cursor' => $result['prev_cursor'] ?? null,
+                'has_newer' => $result['has_newer'] ?? false,
                 'guest' => false,
                 'display_name' => $branding['display_name'],
                 'branding' => $branding,
@@ -88,9 +92,10 @@ class FeedController extends Controller
     public function unreadSummary(Request $request): JsonResponse
     {
         $afterId = max(0, $request->integer('after_id'));
+        $user = $request->user('sanctum');
 
         return ApiResponse::success(
-            $this->feed->unreadSummary($afterId),
+            $this->feed->unreadSummary($afterId, $user),
         );
     }
 
@@ -152,7 +157,9 @@ class FeedController extends Controller
             200,
             [
                 'next_cursor' => $result['next_cursor'],
+                'prev_cursor' => $result['prev_cursor'],
                 'has_newer' => $result['has_newer'],
+                'has_older' => $result['has_older'],
                 'target_post_id' => $post->id,
             ]
         );

@@ -48,6 +48,8 @@ return [
         'max_video_mb' => (int) env('FAMILY_MEDIA_MAX_VIDEO_MB', 500),
         'max_image_mb' => (int) env('FAMILY_MEDIA_MAX_IMAGE_MB', 15),
         'chunk_size_mb' => (int) env('FAMILY_MEDIA_CHUNK_SIZE_MB', 5),
+        'ffmpeg_bin' => env('FAMILY_FFMPEG_BIN', 'ffmpeg'),
+        'ffprobe_bin' => env('FAMILY_FFPROBE_BIN', 'ffprobe'),
     ],
 
     'rate_limits' => [

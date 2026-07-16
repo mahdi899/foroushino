@@ -13,7 +13,10 @@ class FamilyFeedUpdated implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(public FamilyPost $post) {}
+    public function __construct(
+        public FamilyPost $post,
+        public string $event = 'published',
+    ) {}
 
     /**
      * @return array<int, Channel>
@@ -38,6 +41,7 @@ class FamilyFeedUpdated implements ShouldBroadcastNow
             'latest_post_id' => $this->post->id,
             'published_at' => $this->post->published_at?->toIso8601String(),
             'is_important' => (bool) $this->post->is_important,
+            'event' => $this->event,
         ];
     }
 }

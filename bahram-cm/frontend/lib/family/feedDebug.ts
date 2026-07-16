@@ -362,7 +362,7 @@ export function installFamilyFeedDebugGlobals(): void {
     console.info(
       '%c[family] debug ON',
       'color:#3390ec;font-weight:700',
-      '\n  familyDebug.report()   → summary JSON\n  familyDebug.snapshot() → perf/ws/feed report\n  familyDebug.rewind(N)  → unread test\n  familyDebug.renders()  → re-render counts\n  copy(JSON.stringify(familyDebug.snapshot(),null,2))',
+      '\n  familyDebug.report()   → summary JSON\n  familyDebug.snapshot() → perf/ws/feed report\n  familyDebug.rewind(N)  → unread test\n  familyDebug.renders()  → re-render counts\n  copy(JSON.stringify(familyDebug.snapshot(),null,2))\n  Profiler: DevTools → Profiler → "Why did this render?"\n  React Scan: ?familyScan=1 or localStorage.family-react-scan=1',
     );
   }
 }

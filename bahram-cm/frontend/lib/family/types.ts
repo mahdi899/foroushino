@@ -47,6 +47,7 @@ export interface FamilyMediaBlock {
   id: number;
   type: 'voice' | 'video' | 'image';
   url: string | null;
+  poster_url?: string | null;
   duration: number | null;
   width: number | null;
   height: number | null;
@@ -169,6 +170,9 @@ export interface FamilyStory {
 
 export interface FamilyFeedMeta {
   next_cursor: string | null;
+  prev_cursor?: string | null;
+  has_newer?: boolean;
+  has_older?: boolean;
   guest: boolean;
   needs_auth?: boolean;
   needs_join?: boolean;

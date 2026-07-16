@@ -30,7 +30,7 @@ class FeedService
      * straight to any post (e.g. an old pinned message) in a single request instead of
      * paginating backward page-by-page from the tip.
      *
-     * @return array{data: Collection<int, FamilyPost>, next_cursor: ?string, has_newer: bool, membership: FamilyMembership}
+     * @return array{data: Collection<int, FamilyPost>, next_cursor: ?string, prev_cursor: ?string, has_newer: bool, has_older: bool, membership: FamilyMembership}
      */
     public function jumpToPost(
         User $user,
@@ -124,40 +124,59 @@ class FeedService
             }
         }
 
+        // prev_cursor = newest post in the window — client uses it to load still-newer posts.
+        $prevCursor = null;
+        if ($posts->isNotEmpty()) {
+            $newest = $posts->first();
+            if ($newest) {
+                $prevCursor = $this->encodeCursor(
+                    $newest->published_at?->toIso8601String() ?? '',
+                    (int) $newest->id,
+                );
+            }
+        }
+
         return [
             'data' => $posts,
             'next_cursor' => $nextCursor,
+            'prev_cursor' => $hasNewer ? $prevCursor : null,
             'has_newer' => $hasNewer,
+            'has_older' => $hasOlder,
             'membership' => $membership,
         ];
     }
 
     /**
-     * @return array{data: Collection<int, FamilyPost>, next_cursor: ?string, membership: \App\Models\FamilyMembership}
+     * @return array{data: Collection<int, FamilyPost>, next_cursor: ?string, prev_cursor: ?string, has_newer: bool, membership: FamilyMembership}
      */
     public function forMember(
         User $user,
         ?string $cursor = null,
         ?int $limit = null,
         ?FamilyMembership $membership = null,
+        string $direction = 'older',
     ): array {
         $membership = $membership ?? $this->access->requireMembership($user);
         $familyId = (int) $membership->family_id;
         $limit = $limit ?? (int) config('family.feed.per_page', 4);
+        $direction = $direction === 'newer' ? 'newer' : 'older';
 
-        // The tip page (cursor=null) is the hottest query per family — cache the shared
-        // (non-user-specific) part of it briefly. Older pages are cheap/rare enough to
-        // stay uncached. Reactions/action-responses are always attached live below since
-        // they're per-user and must never be baked into a cache shared across a family.
-        if ($cursor === null) {
+        // Tip page only caches the older/newest-first tip — never the "newer" direction.
+        if ($cursor === null && $direction === 'older') {
             $cacheKey = $this->feedTipCacheKey($familyId, $limit);
             ['data' => $posts, 'next_cursor' => $nextCursor] = Cache::remember(
                 $cacheKey,
                 (int) config('family.cache.feed_tip_ttl', 8),
-                fn () => $this->fetchFeedPage($familyId, null, $limit),
+                fn () => $this->fetchFeedPage($familyId, null, $limit, 'older'),
             );
+            $prevCursor = null;
+            $hasNewer = false;
         } else {
-            ['data' => $posts, 'next_cursor' => $nextCursor] = $this->fetchFeedPage($familyId, $cursor, $limit);
+            $page = $this->fetchFeedPage($familyId, $cursor, $limit, $direction);
+            $posts = $page['data'];
+            $nextCursor = $page['next_cursor'];
+            $prevCursor = $page['prev_cursor'];
+            $hasNewer = $page['has_newer'];
         }
 
         $this->attachUserReactions($posts, $user->id);
@@ -166,6 +185,8 @@ class FeedService
         return [
             'data' => $posts,
             'next_cursor' => $nextCursor,
+            'prev_cursor' => $prevCursor,
+            'has_newer' => $hasNewer,
             'membership' => $membership,
         ];
     }
@@ -173,9 +194,9 @@ class FeedService
     /**
      * Shared (family-wide, no per-user fields) feed page — cacheable as-is.
      *
-     * @return array{data: Collection<int, FamilyPost>, next_cursor: ?string}
+     * @return array{data: Collection<int, FamilyPost>, next_cursor: ?string, prev_cursor: ?string, has_newer: bool}
      */
-    private function fetchFeedPage(int $familyId, ?string $cursor, int $limit): array
+    private function fetchFeedPage(int $familyId, ?string $cursor, int $limit, string $direction = 'older'): array
     {
         $query = FamilyPost::query()
             ->where('status', FamilyPostStatus::Published->value)
@@ -185,16 +206,70 @@ class FeedService
 
         if ($cursor) {
             [$publishedAtRaw, $id] = $this->decodeCursor($cursor);
-            // Parse into a Carbon instance — see jumpToPost() for why comparing the raw
-            // ISO8601 cursor string against the column directly is unsafe under SQLite.
             $publishedAt = Carbon::parse($publishedAtRaw);
-            $query->where(function ($q) use ($publishedAt, $id) {
-                $q->where('published_at', '<', $publishedAt)
-                    ->orWhere(function ($q2) use ($publishedAt, $id) {
-                        $q2->where('published_at', '=', $publishedAt)
-                            ->where('id', '<', $id);
-                    });
-            });
+
+            if ($direction === 'newer') {
+                $query->where(function ($q) use ($publishedAt, $id) {
+                    $q->where('published_at', '>', $publishedAt)
+                        ->orWhere(function ($q2) use ($publishedAt, $id) {
+                            $q2->where('published_at', '=', $publishedAt)
+                                ->where('id', '>', $id);
+                        });
+                });
+            } else {
+                $query->where(function ($q) use ($publishedAt, $id) {
+                    $q->where('published_at', '<', $publishedAt)
+                        ->orWhere(function ($q2) use ($publishedAt, $id) {
+                            $q2->where('published_at', '=', $publishedAt)
+                                ->where('id', '<', $id);
+                        });
+                });
+            }
+        }
+
+        if ($direction === 'newer') {
+            // Closest-to-cursor first (asc), then reverse into feed (desc) order.
+            $posts = $query
+                ->with([
+                    'author:id,name',
+                    'blocks' => fn ($q) => $q->orderBy('position'),
+                    'blocks.media',
+                    'blocks.article:id,title,slug,excerpt,featured_image,status',
+                    'actions.options',
+                    'replyToComment:id,user_id,body,status',
+                    'replyToComment.user:id,name',
+                    'stats' => fn ($q) => $q->where('family_id', $familyId),
+                ])
+                ->orderBy('published_at')
+                ->orderBy('id')
+                ->limit($limit + 1)
+                ->get();
+
+            $hasNewer = $posts->count() > $limit;
+            if ($hasNewer) {
+                $posts = $posts->take($limit)->values();
+            }
+            $posts = $posts->reverse()->values();
+
+            $this->attachCommentPreviews($posts, $familyId);
+            $this->attachActionResults($posts, $familyId);
+            $this->applyBrandingAuthor($posts);
+
+            $prevCursor = null;
+            if ($hasNewer && $posts->isNotEmpty()) {
+                $newest = $posts->first();
+                $prevCursor = $this->encodeCursor(
+                    $newest->published_at?->toIso8601String() ?? '',
+                    (int) $newest->id,
+                );
+            }
+
+            return [
+                'data' => $posts,
+                'next_cursor' => null,
+                'prev_cursor' => $prevCursor,
+                'has_newer' => $hasNewer,
+            ];
         }
 
         $posts = $query
@@ -231,6 +306,8 @@ class FeedService
         return [
             'data' => $posts,
             'next_cursor' => $nextCursor,
+            'prev_cursor' => null,
+            'has_newer' => false,
         ];
     }
 
@@ -250,6 +327,17 @@ class FeedService
     public static function invalidateFeedTipCache(): void
     {
         Cache::increment(self::FEED_CACHE_VERSION_KEY);
+        self::invalidateGuestFeedCache();
+    }
+
+    public static function invalidateGuestFeedCache(): void
+    {
+        $limit = (int) config('family.feed.guest_preview_posts', 1);
+        Cache::forget("family:guest_feed:{$limit}");
+        // Also clear a few common limit variants used by clients.
+        foreach ([1, 2, 3, 4, 5, 10, 15] as $n) {
+            Cache::forget("family:guest_feed:{$n}");
+        }
     }
 
     /**
@@ -480,14 +568,24 @@ class FeedService
 
     /**
      * Lightweight badge payload for the site "خانواده" nav and feed jump FAB.
+     * Scoped to the member's family audience when authenticated.
      *
      * @return array{unread_count: int, latest_post_id: int}
      */
-    public function unreadSummary(int $afterId): array
+    public function unreadSummary(int $afterId, ?User $user = null): array
     {
+        $membership = $user ? $this->access->homeMembership($user) : null;
+
         $base = FamilyPost::query()
             ->where('status', FamilyPostStatus::Published->value)
             ->whereNotNull('published_at');
+
+        if ($membership) {
+            $this->audience->scopeVisibleToFamily($base, (int) $membership->family_id);
+        } else {
+            // Guests only see audience=all posts.
+            $base->where('audience_mode', 'all');
+        }
 
         $latest = (clone $base)
             ->orderByDesc('published_at')
@@ -516,7 +614,6 @@ class FeedService
             ->first(['id', 'published_at']);
 
         if (! $anchor || ! $anchor->published_at) {
-            // Unknown cursor — fall back to id comparison.
             $unreadCount = (int) (clone $base)->where('id', '>', $afterId)->count();
 
             return [

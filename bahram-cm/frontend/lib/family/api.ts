@@ -33,10 +33,15 @@ export async function getPost(postId: number): Promise<{ data: FamilyPost }> {
   return run(() => familyFetch<{ data: FamilyPost }>(`/posts/${postId}`), 'دریافت پست ناموفق بود.');
 }
 
-export async function getFeed(cursor?: string | null, limit = 4): Promise<FamilyFeedResponse> {
+export async function getFeed(
+  cursor?: string | null,
+  limit = 4,
+  direction: 'older' | 'newer' = 'older',
+): Promise<FamilyFeedResponse> {
   const params = new URLSearchParams();
   if (cursor) params.set('cursor', cursor);
   params.set('limit', String(limit));
+  if (direction === 'newer') params.set('direction', 'newer');
   const qs = `?${params.toString()}`;
   return run(() => familyFetch<FamilyFeedResponse>(`/feed${qs}`), 'دریافت فید ناموفق بود.');
 }
@@ -65,7 +70,13 @@ export async function getPinnedPosts(): Promise<{ data: FamilyPost[] }> {
 
 export type FamilyJumpResponse = {
   data: FamilyPost[];
-  meta: { next_cursor: string | null; has_newer: boolean; target_post_id: number };
+  meta: {
+    next_cursor: string | null;
+    prev_cursor: string | null;
+    has_newer: boolean;
+    has_older: boolean;
+    target_post_id: number;
+  };
 };
 
 /** Chronological window centered on `postId` — for "jump to message" (e.g. an old pinned post). */

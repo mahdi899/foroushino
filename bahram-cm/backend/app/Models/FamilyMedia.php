@@ -16,6 +16,7 @@ class FamilyMedia extends Model
         'type',
         'disk',
         'storage_path',
+        'thumbnail_path',
         'temp_path',
         'original_filename',
         'mime_type',
@@ -54,5 +55,14 @@ class FamilyMedia extends Model
         }
 
         return FamilyMediaUrl::fromPath($this->storage_path);
+    }
+
+    public function thumbnailCdnUrl(): ?string
+    {
+        if ($this->status !== FamilyMediaStatus::Ready || ! $this->thumbnail_path) {
+            return null;
+        }
+
+        return FamilyMediaUrl::fromPath($this->thumbnail_path);
     }
 }

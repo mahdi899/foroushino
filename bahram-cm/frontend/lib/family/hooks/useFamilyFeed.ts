@@ -2,17 +2,24 @@
 
 import useSWRInfinite from 'swr/infinite';
 import { useEffect, useRef } from 'react';
-import { getFeed, getPost, getPostJumpContext } from '@/lib/family/api';
+import { getFeed, getPostJumpContext } from '@/lib/family/api';
 import { readFeedCache, writeFeedCache, type FeedCachePage } from '@/lib/family/feedCache';
 import { familyFeedSwr } from '@/lib/family/swr';
 import type { FamilyFeedMeta, FamilyPost } from '@/lib/family/types';
 
 const FEED_PAGE_SIZE = 15;
 const JUMP_WINDOW_SIZE = 24;
+/** Cap rendered history so long sessions don't grow unbounded (virtualizer still helps DOM). */
+const MAX_FEED_PAGES = 10;
 
 interface FeedPage {
   data: FamilyPost[];
   meta: FamilyFeedMeta;
+}
+
+function newestPostInPages(pages: FeedPage[] | undefined): FamilyPost | null {
+  const tip = pages?.[0]?.data?.[0];
+  return tip ?? null;
 }
 
 export function useFamilyFeed(
@@ -23,6 +30,9 @@ export function useFamilyFeed(
   const fallbackData = initialPage ? [initialPage] : undefined;
   const hydratedFromDiskRef = useRef(false);
   const persistTimerRef = useRef<number | null>(null);
+  const loadingNewerRef = useRef(false);
+  const prevCursorRef = useRef<string | null>(null);
+  const hasNewerRef = useRef(false);
 
   const { data, error, isLoading, isValidating, size, setSize, mutate } = useSWRInfinite<FeedPage>(
     (index, previousPage) => {
@@ -73,16 +83,21 @@ export function useFamilyFeed(
     };
   }, [data, scope, viewerKey]);
 
+  // Keep prev_cursor / has_newer in sync with tip page meta after jump or loadNewer.
+  useEffect(() => {
+    const tipMeta = data?.[0]?.meta;
+    if (tipMeta?.prev_cursor != null) prevCursorRef.current = tipMeta.prev_cursor;
+    if (typeof tipMeta?.has_newer === 'boolean') hasNewerRef.current = tipMeta.has_newer;
+  }, [data]);
+
   const posts = data ? [...data.flatMap((page) => page.data)].reverse() : [];
   const lastPage = data?.[data.length - 1];
   const hasMore = Boolean(lastPage?.meta.next_cursor);
+  const hasNewer = Boolean(data?.[0]?.meta.has_newer ?? hasNewerRef.current);
   const meta = data?.[0]?.meta;
 
   /**
-   * Replace the whole loaded window with a chronological slice centered on `postId` —
-   * used when "jump to message" (e.g. an old pinned post) targets a post far outside
-   * the currently loaded pages. Keeps non-cursor meta (branding, is_staff, ...) intact
-   * so the rest of the feed chrome doesn't regress after a jump.
+   * Replace the whole loaded window with a chronological slice centered on `postId`.
    */
   const jumpToPost = async (postId: number): Promise<{ hasNewer: boolean }> => {
     const res = await getPostJumpContext(postId, JUMP_WINDOW_SIZE);
@@ -93,8 +108,16 @@ export function useFamilyFeed(
     };
     const nextPage: FeedPage = {
       data: res.data,
-      meta: { ...prevMeta, next_cursor: res.meta.next_cursor },
+      meta: {
+        ...prevMeta,
+        next_cursor: res.meta.next_cursor,
+        prev_cursor: res.meta.prev_cursor ?? null,
+        has_newer: res.meta.has_newer,
+        has_older: res.meta.has_older,
+      },
     };
+    prevCursorRef.current = res.meta.prev_cursor ?? null;
+    hasNewerRef.current = res.meta.has_newer;
     await mutate([nextPage], { revalidate: false });
     setSize(1);
     void writeFeedCache(scope, viewerKey, [nextPage]);
@@ -111,9 +134,122 @@ export function useFamilyFeed(
       { revalidate: false },
     );
     if (Array.isArray(next) && next.length) {
+      prevCursorRef.current = null;
+      hasNewerRef.current = false;
       void writeFeedCache(scope, viewerKey, next as FeedCachePage[]);
     }
     return next;
+  };
+
+  /**
+   * Fetch posts newer than the current tip of the loaded window (Telegram-style
+   * bidirectional scroll after a far jump). Merges into page 0 newest-first.
+   */
+  const loadNewer = async (): Promise<boolean> => {
+    if (loadingNewerRef.current) return false;
+    const cursor = prevCursorRef.current ?? data?.[0]?.meta.prev_cursor ?? null;
+    if (!cursor && !hasNewerRef.current && !data?.[0]?.meta.has_newer) return false;
+
+    loadingNewerRef.current = true;
+    try {
+      const tip = newestPostInPages(data);
+      const res = (await getFeed(cursor, FEED_PAGE_SIZE, 'newer')) as FeedPage;
+      if (!res.data.length) {
+        hasNewerRef.current = false;
+        await mutate(
+          (pages) => {
+            if (!pages?.length) return pages;
+            const first = pages[0];
+            return [
+              {
+                ...first,
+                meta: { ...first.meta, has_newer: false, prev_cursor: null },
+              },
+              ...pages.slice(1),
+            ];
+          },
+          { revalidate: false },
+        );
+        return false;
+      }
+
+      await mutate(
+        (pages) => {
+          if (!pages?.length) return [res];
+          const first = pages[0];
+          const existingIds = new Set(first.data.map((p) => p.id));
+          const incoming = res.data.filter((p) => !existingIds.has(p.id));
+          // API newer page is newest-first; prepend keeps tip ordered.
+          const mergedData = [...incoming, ...first.data];
+          const newest = mergedData[0];
+          const encodedPrev: string | null =
+            res.meta.has_newer && newest ? (res.meta.prev_cursor ?? null) : null;
+
+          hasNewerRef.current = Boolean(res.meta.has_newer);
+          prevCursorRef.current = encodedPrev;
+
+          return [
+            {
+              ...first,
+              data: mergedData,
+              meta: {
+                ...first.meta,
+                ...res.meta,
+                next_cursor: first.meta.next_cursor,
+                prev_cursor: encodedPrev,
+                has_newer: Boolean(res.meta.has_newer),
+              },
+            },
+            ...pages.slice(1),
+          ];
+        },
+        { revalidate: false },
+      );
+
+      // If we reached the true tip (no has_newer), clear jump-away semantics for callers.
+      if (!res.meta.has_newer && tip) {
+        /* caller checks hasNewer */
+      }
+      return true;
+    } finally {
+      loadingNewerRef.current = false;
+    }
+  };
+
+  const loadMore = () => {
+    const pageCount = data?.length ?? size;
+    if (pageCount >= MAX_FEED_PAGES) {
+      // Drop tip page when deep in history so DOM/SWR stay bounded; caller should
+      // treat this as jumped-away (has_newer) once tip is gone.
+      void mutate(
+        (pages) => {
+          if (!pages || pages.length < 2) return pages;
+          const rest = pages.slice(1);
+          const newTip = rest[0];
+          if (!newTip) return pages;
+          hasNewerRef.current = true;
+          const newest = newTip.data[0];
+          prevCursorRef.current = newest
+            ? null
+            : prevCursorRef.current;
+          return [
+            {
+              ...newTip,
+              meta: {
+                ...newTip.meta,
+                has_newer: true,
+                prev_cursor: newTip.meta.prev_cursor ?? null,
+              },
+            },
+            ...rest.slice(1),
+          ];
+        },
+        { revalidate: false },
+      );
+      setSize(Math.max(1, pageCount - 1 + 1));
+      return;
+    }
+    setSize(size + 1);
   };
 
   return {
@@ -123,7 +259,9 @@ export function useFamilyFeed(
     isValidating,
     error,
     hasMore,
-    loadMore: () => setSize(size + 1),
+    hasNewer,
+    loadMore,
+    loadNewer,
     jumpToPost,
     mutate,
     revalidateTip,
