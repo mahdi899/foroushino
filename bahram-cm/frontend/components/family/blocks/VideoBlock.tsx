@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Loader2, Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useDelayedInView } from '@/hooks/useDelayedInView';
@@ -33,6 +33,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const [modalOpen, setModalOpen] = useState(false);
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const previewRequestedRef = useRef(false);
+  const clickTimerRef = useRef<number | null>(null);
 
   // Don't gate on feed scrollIdle — that left an empty white frame.
   const previewReady = useDelayedInView(containerRef, 80, phase === 'idle', true);
@@ -154,6 +155,32 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
     }
   };
 
+  const handleClick = () => {
+    if (clickTimerRef.current != null) {
+      window.clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      return;
+    }
+    clickTimerRef.current = window.setTimeout(() => {
+      clickTimerRef.current = null;
+      handleActivate();
+    }, 280);
+  };
+
+  const handleDoubleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (clickTimerRef.current != null) {
+      window.clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current != null) window.clearTimeout(clickTimerRef.current);
+    };
+  }, []);
+
   if (!media.url) {
     return (
       <div
@@ -238,7 +265,8 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
 
         <button
           type="button"
-          onClick={handleActivate}
+          onClick={handleClick}
+          onDoubleClick={handleDoubleClick}
           aria-label={
             phase === 'ready' ? 'پخش ویدیو' : phase === 'loading' ? 'در حال بارگذاری ویدیو' : 'بارگذاری ویدیو'
           }

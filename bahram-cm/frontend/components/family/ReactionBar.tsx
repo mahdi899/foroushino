@@ -92,11 +92,14 @@ const PICKER_BURST_MS = 360;
 const PICKER_FLY_DELAY_MS = 150;
 const SLAM_MS = 760;
 const POST_IMPACT_MS = 820;
-const PICKER_FALLBACK_HEIGHT = 148;
-const PICKER_FALLBACK_WIDTH = 220;
+/** 3×2.375rem rows + gaps + padding — keep close to real grid so first paint isn’t far off */
+const PICKER_FALLBACK_HEIGHT = 96;
+const PICKER_FALLBACK_WIDTH = 216;
 
 export type ReactionBarHandle = {
   openPicker: (anchor?: HTMLElement | null) => void;
+  /** Telegram-style double-tap: fly+slam heart (or toggle it off if already active). */
+  quickReact: (type?: FamilyReactionType, at?: { x: number; y: number }) => void;
 };
 
 export const ReactionBar = forwardRef<
@@ -160,25 +163,38 @@ export const ReactionBar = forwardRef<
     setActive(userReaction);
   }, [userReaction]);
 
-  const updatePickerPosition = () => {
+  const updatePickerPosition = useCallback(() => {
     const anchor =
       pickerAnchorElRef.current ?? pickerAnchorRef?.current ?? addBtnRef.current ?? rootRef.current;
     if (!anchor) return;
 
     const rect = anchor.getBoundingClientRect();
-    const pickerHeight = pickerRef.current?.offsetHeight ?? PICKER_FALLBACK_HEIGHT;
-    const pickerWidth = pickerRef.current?.offsetWidth ?? PICKER_FALLBACK_WIDTH;
+    const pickerHeight = pickerRef.current?.offsetHeight || PICKER_FALLBACK_HEIGHT;
+    const pickerWidth = pickerRef.current?.offsetWidth || PICKER_FALLBACK_WIDTH;
     const spaceAbove = rect.top;
     const spaceBelow = window.innerHeight - rect.bottom;
-    const above = spaceAbove >= pickerHeight + PICKER_GAP || spaceAbove > spaceBelow;
+    // Prefer directly above the + button whenever it fits.
+    const above = spaceAbove >= pickerHeight + PICKER_GAP || spaceAbove >= spaceBelow;
     const top = above ? rect.top - PICKER_GAP - pickerHeight : rect.bottom + PICKER_GAP;
     const maxLeft = Math.max(8, window.innerWidth - pickerWidth - 8);
 
-    setPickerPos({
-      left: Math.min(Math.max(8, rect.left), maxLeft),
-      top: Math.max(8, top),
+    setPickerPos((prev) => {
+      const next = {
+        left: Math.min(Math.max(8, rect.left), maxLeft),
+        top: Math.max(8, top),
+      };
+      if (prev && prev.left === next.left && prev.top === next.top) return prev;
+      return next;
     });
-  };
+  }, [pickerAnchorRef]);
+
+  const setPickerNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      pickerRef.current = node;
+      if (node) updatePickerPosition();
+    },
+    [updatePickerPosition],
+  );
 
   useLayoutEffect(() => {
     if (!pickerOpen && !pickerClosing) {
@@ -187,16 +203,30 @@ export const ReactionBar = forwardRef<
     }
 
     updatePickerPosition();
-    const frame = window.requestAnimationFrame(updatePickerPosition);
+    let frame2 = 0;
+    const frame = window.requestAnimationFrame(() => {
+      updatePickerPosition();
+      frame2 = window.requestAnimationFrame(updatePickerPosition);
+    });
     const onLayout = () => updatePickerPosition();
     window.addEventListener('resize', onLayout);
     window.addEventListener('scroll', onLayout, true);
+
+    const picker = pickerRef.current;
+    let ro: ResizeObserver | null = null;
+    if (picker && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => updatePickerPosition());
+      ro.observe(picker);
+    }
+
     return () => {
       window.cancelAnimationFrame(frame);
+      window.cancelAnimationFrame(frame2);
       window.removeEventListener('resize', onLayout);
       window.removeEventListener('scroll', onLayout, true);
+      ro?.disconnect();
     };
-  }, [pickerOpen, pickerClosing, pickerSession]);
+  }, [pickerOpen, pickerClosing, pickerSession, updatePickerPosition]);
 
   useEffect(() => {
     if (!pickerOpen) return;
@@ -378,14 +408,62 @@ export const ReactionBar = forwardRef<
         onLockedInteract?.();
         return;
       }
-      pickerAnchorElRef.current = anchor ?? pickerAnchorRef?.current ?? addBtnRef.current ?? rootRef.current;
+      const el = anchor ?? pickerAnchorRef?.current ?? addBtnRef.current ?? rootRef.current;
+      pickerAnchorElRef.current = el;
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const maxLeft = Math.max(8, window.innerWidth - PICKER_FALLBACK_WIDTH - 8);
+        setPickerPos({
+          left: Math.min(Math.max(8, rect.left), maxLeft),
+          top: Math.max(8, rect.top - PICKER_GAP - PICKER_FALLBACK_HEIGHT),
+        });
+      }
       setPickerOpen(true);
       setPickerSession((session) => session + 1);
     },
     [onLockedInteract, pickerAnchorRef, readOnly],
   );
 
-  useImperativeHandle(ref, () => ({ openPicker: openPickerMenu }), [openPickerMenu]);
+  useImperativeHandle(ref, () => ({
+    openPicker: openPickerMenu,
+    quickReact: (type: FamilyReactionType = 'heart', at?: { x: number; y: number }) => {
+      if (readOnly) {
+        onLockedInteract?.();
+        return;
+      }
+      if (pending || pickInFlight) return;
+
+      const wasActive = active === type;
+
+      // Second double-click removes the reaction (same as tapping the chip).
+      if (wasActive) {
+        void toggle(type);
+        playBarReactionFeedback(type);
+        return;
+      }
+
+      // Same fly → slam path as picking from the reaction menu.
+      setPickInFlight(true);
+      const isNewSlot = counts[type] === 0;
+      const from = at ?? resolveReactionDestination(type) ?? { x: 0, y: 0 };
+
+      void toggle(type);
+
+      void waitForReactionDestination(type).then((to) => {
+        if (!to) {
+          finishFlyAnimation(type);
+          return;
+        }
+        if (isNewSlot) setIncomingReaction(type);
+        setFlyAnim({
+          id: Date.now(),
+          type,
+          from,
+          to,
+        });
+      });
+    },
+  }));
 
   const togglePicker = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -394,12 +472,11 @@ export const ReactionBar = forwardRef<
       onLockedInteract?.();
       return;
     }
-    pickerAnchorElRef.current = addBtnRef.current ?? rootRef.current;
-    setPickerOpen((open) => {
-      const next = !open;
-      if (next) setPickerSession((session) => session + 1);
-      return next;
-    });
+    if (pickerOpen) {
+      setPickerOpen(false);
+      return;
+    }
+    openPickerMenu(addBtnRef.current);
   };
 
   const hasVisibleReactions = visibleReactions.length > 0;
@@ -413,7 +490,7 @@ export const ReactionBar = forwardRef<
     showPicker && pickerPos ? (
       <FamilyBodyPortal key={pickerSession}>
         <div
-          ref={pickerRef}
+          ref={setPickerNode}
           className={cn(
             'family-reaction-picker family-reaction-picker--portal family-reaction-picker--grid family-portal-surface',
             pickerClosing && 'family-reaction-picker--burst',

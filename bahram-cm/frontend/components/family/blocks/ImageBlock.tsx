@@ -1,7 +1,7 @@
 'use client';
 
 import { Download, Loader2 } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import { cn } from '@/lib/cn';
 import { useDelayedInView } from '@/hooks/useDelayedInView';
 import { ImageZoomLightbox } from '@/components/family/blocks/ImageZoomLightbox';
@@ -46,6 +46,7 @@ export function ImageBlock({
   const [openLightboxWhenLoaded, setOpenLightboxWhenLoaded] = useState(false);
   const previewRequestedRef = useRef(false);
   const warmedRef = useRef(false);
+  const clickTimerRef = useRef<number | null>(null);
 
   const canRequestPreview = phase === 'idle';
   // Don't gate on feed scrollIdle — that left empty white frames while waiting.
@@ -152,7 +153,7 @@ export function ImageBlock({
     setLightboxOpen(true);
   };
 
-  const handleClick = () => {
+  const runSingleClickAction = () => {
     if (phase === 'loaded') {
       openLoaded();
       return;
@@ -178,6 +179,32 @@ export function ImageBlock({
     }
   };
 
+  const handleClick = () => {
+    if (clickTimerRef.current != null) {
+      window.clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      return;
+    }
+    clickTimerRef.current = window.setTimeout(() => {
+      clickTimerRef.current = null;
+      runSingleClickAction();
+    }, 280);
+  };
+
+  const handleDoubleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (clickTimerRef.current != null) {
+      window.clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current != null) window.clearTimeout(clickTimerRef.current);
+    };
+  }, []);
+
   const containerStyle = fillCell ? undefined : aspectStyle(media);
   const imgSrc = displayUrl ?? (phase === 'loading' ? media.url : null);
   const lightboxUrl = displayUrl ?? media.url;
@@ -190,6 +217,7 @@ export function ImageBlock({
         ref={rootRef}
         type="button"
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
         disabled={phase === 'loading'}
         className={cn(
           'relative block overflow-hidden bg-[color-mix(in_oklab,var(--family-text)_7%,transparent)]',

@@ -12,19 +12,18 @@ function readFamilyTheme() {
 
 /** Escape #family-root overflow clipping for reaction overlays. */
 export function FamilyBodyPortal({ children }: { children: ReactNode }) {
-  const [mounted, setMounted] = useState(false);
   const [theme, setTheme] = useState(readFamilyTheme);
 
   useEffect(() => {
-    setMounted(true);
     const root = document.getElementById('family-root');
     const sync = () => setTheme(readFamilyTheme());
+    sync();
     const observer = new MutationObserver(sync);
     if (root) observer.observe(root, { attributes: true, attributeFilter: ['data-family-theme'] });
     return () => observer.disconnect();
   }, []);
 
-  if (!mounted || typeof document === 'undefined') return null;
+  if (typeof document === 'undefined') return null;
 
   return createPortal(
     <div
