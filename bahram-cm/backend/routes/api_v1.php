@@ -42,6 +42,7 @@ use App\Http\Controllers\Api\V1\Family\ReactionController as FamilyReactionContr
 use App\Http\Controllers\Api\V1\Family\StoryController as FamilyStoryController;
 use App\Http\Controllers\Api\V1\FamilyManager\AnalyticsController as FamilyManagerAnalyticsController;
 use App\Http\Controllers\Api\V1\FamilyManager\CommentModerationController as FamilyManagerCommentModerationController;
+use App\Http\Controllers\Api\V1\FamilyManager\EntryLinksController as FamilyManagerEntryLinksController;
 use App\Http\Controllers\Api\V1\FamilyManager\FamiliesController as FamilyManagerFamiliesController;
 use App\Http\Controllers\Api\V1\FamilyManager\HomeController as FamilyManagerHomeController;
 use App\Http\Controllers\Api\V1\FamilyManager\MediaController as FamilyManagerMediaController;
@@ -561,6 +562,12 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
     Route::patch('families/{family}', [FamilyManagerFamiliesController::class, 'update'])->whereNumber('family')->middleware('family.manage:family.families.manage');
     Route::delete('families/{family}', [FamilyManagerFamiliesController::class, 'destroy'])->whereNumber('family')->middleware('family.manage:family.families.manage');
     Route::get('entry-events', [FamilyManagerFamiliesController::class, 'entryEvents'])->middleware('family.manage:family.families.view');
+
+    Route::get('entry-links', [FamilyManagerEntryLinksController::class, 'index'])->middleware('family.manage:family.entry_links.manage');
+    Route::post('entry-links', [FamilyManagerEntryLinksController::class, 'store'])->middleware('family.manage:family.entry_links.manage');
+    Route::get('entry-links/{entryLink}', [FamilyManagerEntryLinksController::class, 'show'])->whereNumber('entryLink')->middleware('family.manage:family.entry_links.manage');
+    Route::delete('entry-links/{entryLink}', [FamilyManagerEntryLinksController::class, 'destroy'])->whereNumber('entryLink')->middleware('family.manage:family.entry_links.manage');
+
     Route::get('audience-suggestions', [FamilyManagerFamiliesController::class, 'audienceSuggestions'])->middleware('family.manage:family.families.view');
 
     Route::get('analytics', [FamilyManagerAnalyticsController::class, 'index'])->middleware('family.manage:family.analytics.view');

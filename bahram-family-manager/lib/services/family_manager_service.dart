@@ -193,6 +193,19 @@ class FamilyManagerService {
     return data.map((e) => FamilyEntryEventModel.fromJson((e as Map).cast<String, dynamic>())).toList();
   }
 
+  Future<List<EntryLinkModel>> listEntryLinks({int days = 30}) async {
+    final res = await api.get('$_base/entry-links', query: {'days': days});
+    final data = res['data'] as List? ?? [];
+    return data.map((e) => EntryLinkModel.fromJson((e as Map).cast<String, dynamic>())).toList();
+  }
+
+  Future<EntryLinkModel> createEntryLink(Map<String, dynamic> payload) async {
+    final res = await api.post('$_base/entry-links', data: payload);
+    return EntryLinkModel.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<void> deactivateEntryLink(int id) => api.delete('$_base/entry-links/$id');
+
   Future<List<AudienceSuggestion>> audienceSuggestions() async {
     final res = await api.get('$_base/audience-suggestions');
     final data = res['data'] as List? ?? [];

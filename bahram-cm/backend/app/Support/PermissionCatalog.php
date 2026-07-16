@@ -145,6 +145,7 @@ final class PermissionCatalog
             'family.manage', 'family.posts.create', 'family.posts.publish',
             'family.comments.moderate', 'family.comments.reply', 'family.families.view',
             'family.families.manage',
+            'family.entry_links.manage',
             'family.analytics.view', 'family.pulse.manage', 'family.media.upload'
                 => FamilyPermissionCatalog::label($permission),
             'sms.view' => 'مشاهده پیامک',

@@ -45,7 +45,11 @@ class AnalyticsController extends Controller
 
         return ApiResponse::success([
             'daily' => $daily,
-            'sources' => $sources,
+            'sources' => $sources->map(fn ($row) => [
+                'source' => $row->source,
+                'source_label' => \App\Enums\Family\FamilyEntrySource::tryFrom((string) $row->source)?->label() ?? $row->source,
+                'joins' => (int) $row->joins,
+            ]),
             'entry_events' => $entryEvents->map(fn ($e) => [
                 'entry_event_id' => $e->entry_event_id,
                 'name' => $e->entryEvent?->name,

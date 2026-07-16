@@ -560,14 +560,66 @@ class DailyMetricPoint {
 }
 
 class SourceMetric {
-  SourceMetric({required this.source, required this.joins});
+  SourceMetric({required this.source, required this.joins, this.sourceLabel});
 
   final String source;
+  final String? sourceLabel;
   final int joins;
+
+  String get displayLabel => sourceLabel ?? source;
 
   factory SourceMetric.fromJson(Map<String, dynamic> json) => SourceMetric(
         source: json['source']?.toString() ?? 'نامشخص',
+        sourceLabel: json['source_label']?.toString(),
         joins: (json['joins'] as num?)?.toInt() ?? 0,
+      );
+}
+
+class EntryLinkModel {
+  EntryLinkModel({
+    required this.id,
+    required this.name,
+    required this.slug,
+    required this.source,
+    this.sourceLabel,
+    this.campaign,
+    this.topic,
+    required this.entryEventId,
+    required this.isActive,
+    required this.url,
+    required this.joinsTotal,
+    required this.joinsPeriod,
+    this.createdAt,
+  });
+
+  final int id;
+  final String name;
+  final String slug;
+  final String source;
+  final String? sourceLabel;
+  final String? campaign;
+  final String? topic;
+  final int entryEventId;
+  final bool isActive;
+  final String url;
+  final int joinsTotal;
+  final int joinsPeriod;
+  final String? createdAt;
+
+  factory EntryLinkModel.fromJson(Map<String, dynamic> json) => EntryLinkModel(
+        id: (json['id'] as num).toInt(),
+        name: json['name']?.toString() ?? '',
+        slug: json['slug']?.toString() ?? '',
+        source: json['source']?.toString() ?? '',
+        sourceLabel: json['source_label']?.toString(),
+        campaign: json['campaign']?.toString(),
+        topic: json['topic']?.toString(),
+        entryEventId: (json['entry_event_id'] as num?)?.toInt() ?? 0,
+        isActive: json['is_active'] as bool? ?? true,
+        url: json['url']?.toString() ?? '',
+        joinsTotal: (json['joins_total'] as num?)?.toInt() ?? 0,
+        joinsPeriod: (json['joins_period'] as num?)?.toInt() ?? 0,
+        createdAt: json['created_at']?.toString(),
       );
 }
 

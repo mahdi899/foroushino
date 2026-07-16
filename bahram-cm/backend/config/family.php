@@ -19,6 +19,11 @@ return [
 
     'assignment_lock_seconds' => (int) env('FAMILY_ASSIGNMENT_LOCK_SECONDS', 10),
 
+    'entry' => [
+        'base_url' => rtrim((string) env('FAMILY_ENTRY_BASE_URL', env('FRONTEND_URL', 'http://localhost:3000')), '/'),
+        'path' => trim((string) env('FAMILY_ENTRY_PATH', 'family'), '/'),
+    ],
+
     'internal_name_pool' => [
         'سپهر', 'آبان', 'مسیر', 'رشد', 'فردا', 'رویش',
         'امید', 'طلوع', 'نسیم', 'آرامش', 'همراه', 'گام',
