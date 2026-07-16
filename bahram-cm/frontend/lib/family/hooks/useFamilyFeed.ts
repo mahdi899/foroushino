@@ -31,7 +31,7 @@ export function useFamilyFeed(
       ];
     },
     async ([, , , , cursor]) => (await getFeed(cursor as string | null, FEED_PAGE_SIZE)) as FeedPage,
-    { fallbackData, revalidateFirstPage: false, ...familySwrDefaults },
+    { fallbackData, revalidateFirstPage: true, revalidateOnMount: true, ...familySwrDefaults },
   );
 
   const posts = data ? [...data.flatMap((page) => page.data)].reverse() : [];

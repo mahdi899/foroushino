@@ -1,8 +1,8 @@
 /** Shared SWR defaults — keep family channel gentle on the API. */
 export const familySwrDefaults = {
-  revalidateOnFocus: false,
+  revalidateOnFocus: true,
   revalidateOnReconnect: true,
-  dedupingInterval: 60_000,
+  dedupingInterval: 5_000,
 } as const;
 
 export const familyPinnedSwr = {

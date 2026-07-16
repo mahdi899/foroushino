@@ -16,19 +16,22 @@ export function getLastReadPostId(viewerKey: string | number): number {
   }
 }
 
-/** Best-effort cursor for the site header (any family session on this browser). */
+/** Best-effort cursor for the site header (last catch-up written on this browser). */
 export function getGlobalLastReadPostId(): number {
   if (typeof window === 'undefined') return 0;
   try {
     const globalRaw = localStorage.getItem(GLOBAL_STORAGE_KEY);
-    let max = globalRaw ? Number.parseInt(globalRaw, 10) || 0 : 0;
+    if (globalRaw) {
+      return Number.parseInt(globalRaw, 10) || 0;
+    }
+    // Legacy: pick any viewer cursor (do NOT take max id — ids ≠ chronological order).
     for (let i = 0; i < localStorage.length; i += 1) {
       const key = localStorage.key(i);
       if (!key?.startsWith('family-feed-last-read-id:')) continue;
       const value = Number.parseInt(localStorage.getItem(key) ?? '', 10) || 0;
-      if (value > max) max = value;
+      if (value > 0) return value;
     }
-    return max;
+    return 0;
   } catch {
     return 0;
   }
