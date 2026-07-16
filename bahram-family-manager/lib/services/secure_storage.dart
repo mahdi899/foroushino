@@ -5,6 +5,7 @@ class SecureStorage {
 
   static const _tokenKey = 'family_manager_api_token';
   static const _userKey = 'family_manager_user_json';
+  static const _themeModeKey = 'family_manager_theme_mode';
 
   final FlutterSecureStorage _storage;
 
@@ -19,4 +20,8 @@ class SecureStorage {
   Future<void> writeUserJson(String json) => _storage.write(key: _userKey, value: json);
 
   Future<void> clearAll() => _storage.deleteAll();
+
+  Future<String?> readThemeMode() => _storage.read(key: _themeModeKey);
+
+  Future<void> writeThemeMode(String value) => _storage.write(key: _themeModeKey, value: value);
 }

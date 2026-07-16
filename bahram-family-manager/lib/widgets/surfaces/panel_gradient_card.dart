@@ -80,12 +80,24 @@ class PanelSectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
+    final shadow = isDark
+        ? [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.28),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+          ]
+        : AppShadows.soft;
+
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.soft,
+        border: Border.all(color: scheme.outline),
+        boxShadow: shadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -93,9 +105,9 @@ class PanelSectionCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
             decoration: BoxDecoration(
-              color: AppColors.surfaceSoft,
+              color: isDark ? AppColors.surfaceSoftDark : AppColors.surfaceSoft,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(19)),
-              border: Border(bottom: BorderSide(color: AppColors.border.withValues(alpha: 0.7))),
+              border: Border(bottom: BorderSide(color: scheme.outline.withValues(alpha: 0.7))),
             ),
             child: Row(
               children: [

@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Loader2, Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useDelayedInView } from '@/hooks/useDelayedInView';
 import { FamilyVideoModal } from '@/components/family/FamilyVideoModal';
-import { useFamilyFeedMedia } from '@/lib/family/FamilyFeedMediaContext';
 import { enqueueFamilyMediaLoad } from '@/lib/family/mediaLoadQueue';
 import {
   getFamilyMediaBlobUrl,
@@ -15,6 +14,12 @@ import {
 import type { FamilyMediaBlock } from '@/lib/family/types';
 
 type VideoPhase = 'idle' | 'preview' | 'loading' | 'ready';
+
+function previewSrc(url: string): string {
+  // Hint browsers to decode an early frame for the blurred poster.
+  if (url.includes('#')) return url;
+  return `${url}#t=0.1`;
+}
 
 export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -28,9 +33,11 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const [modalOpen, setModalOpen] = useState(false);
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const previewRequestedRef = useRef(false);
-  const { scrollIdle } = useFamilyFeedMedia();
+  const clickTimerRef = useRef<number | null>(null);
 
-  const previewReady = useDelayedInView(containerRef, 900, phase === 'idle', scrollIdle);
+  // Don't gate on feed scrollIdle — that left an empty white frame.
+  const previewReady = useDelayedInView(containerRef, 80, phase === 'idle', true);
+  const posterUrl = media.poster_url ?? null;
 
   useEffect(() => {
     if (!media.url) return;
@@ -53,11 +60,8 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
     if (!previewReady || !media.url || phase !== 'idle' || previewRequestedRef.current) return;
 
     previewRequestedRef.current = true;
-
-    void enqueueFamilyMediaLoad('preview', media.id, async () => {
-      setPreviewActive(true);
-      setPhase('preview');
-    });
+    setPreviewActive(true);
+    setPhase('preview');
   }, [media.id, media.url, phase, previewReady]);
 
   useEffect(() => {
@@ -152,10 +156,36 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
     }
   };
 
+  const handleClick = () => {
+    if (clickTimerRef.current != null) {
+      window.clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      return;
+    }
+    clickTimerRef.current = window.setTimeout(() => {
+      clickTimerRef.current = null;
+      handleActivate();
+    }, 280);
+  };
+
+  const handleDoubleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    if (clickTimerRef.current != null) {
+      window.clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current != null) window.clearTimeout(clickTimerRef.current);
+    };
+  }, []);
+
   if (!media.url) {
     return (
       <div
-        className="flex aspect-video items-center justify-center rounded-2xl bg-[var(--family-surface-soft)]"
+        className="flex aspect-video items-center justify-center rounded-2xl bg-[color-mix(in_oklab,var(--family-text)_8%,transparent)]"
         style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
         aria-busy
         aria-label="در حال پردازش ویدیو"
@@ -174,15 +204,29 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       <div
         ref={containerRef}
         className={cn(
-          'family-feed-video relative max-w-full overflow-hidden rounded-2xl bg-[var(--family-surface-soft)]',
+          'family-feed-video relative max-w-full overflow-hidden rounded-2xl bg-[color-mix(in_oklab,var(--family-text)_8%,transparent)]',
           isPortrait ? 'family-feed-video--portrait' : 'family-feed-video--landscape',
         )}
         style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
       >
-        {previewActive && phase !== 'ready' && !loadRequested ? (
+        {posterUrl && phase !== 'ready' && !loadRequested ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={posterUrl}
+            alt=""
+            className={cn(
+              'pointer-events-none h-full w-full object-cover transition-opacity duration-300',
+              posterReady ? 'opacity-100' : 'opacity-70',
+            )}
+            onLoad={() => setPosterReady(true)}
+            aria-hidden
+          />
+        ) : null}
+
+        {previewActive && phase !== 'ready' && !loadRequested && !posterUrl && media.url ? (
           <video
             ref={previewRef}
-            src={media.url}
+            src={previewSrc(media.url)}
             playsInline
             muted
             preload="metadata"
@@ -195,10 +239,11 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
               }
               setPosterReady(true);
             }}
+            onLoadedMetadata={() => setPosterReady(true)}
             onSeeked={() => setPosterReady(true)}
             className={cn(
-              'pointer-events-none h-full w-full object-cover transition-[filter,opacity] duration-300',
-              posterReady ? 'opacity-100 blur-md brightness-95' : 'opacity-0',
+              'pointer-events-none h-full w-full object-cover blur-md brightness-95 transition-opacity duration-300',
+              posterReady ? 'opacity-100' : 'opacity-70',
             )}
             aria-hidden
           />
@@ -212,7 +257,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
             preload="auto"
             className={cn(
               'pointer-events-none h-full w-full object-cover transition-[filter,transform,opacity] duration-300',
-              posterReady ? 'opacity-100' : 'opacity-0',
+              posterReady ? 'opacity-100' : 'opacity-70',
               phase === 'loading' ? 'scale-105 blur-md' : 'scale-100 blur-0',
             )}
             aria-hidden
@@ -223,7 +268,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
           className={cn(
             'absolute inset-0',
             phase === 'idle'
-              ? 'bg-[var(--family-surface-soft)]'
+              ? 'bg-[color-mix(in_oklab,var(--family-text)_6%,transparent)]'
               : phase === 'loading'
                 ? 'bg-black/25'
                 : phase === 'preview'
@@ -235,7 +280,8 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
 
         <button
           type="button"
-          onClick={handleActivate}
+          onClick={handleClick}
+          onDoubleClick={handleDoubleClick}
           aria-label={
             phase === 'ready' ? 'پخش ویدیو' : phase === 'loading' ? 'در حال بارگذاری ویدیو' : 'بارگذاری ویدیو'
           }
@@ -266,6 +312,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
         mediaId={media.id}
         postId={postId}
         durationHint={media.duration}
+        portrait={isPortrait}
         onClose={() => setModalOpen(false)}
       />
     </>

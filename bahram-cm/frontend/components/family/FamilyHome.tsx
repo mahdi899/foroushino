@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useState } from 'react';
+import { Suspense, useCallback, useEffect, useState } from 'react';
 import { FamilyAutoJoin } from '@/components/family/FamilyAutoJoin';
 import { FamilyMain, FamilyShell } from '@/components/family/FamilyShell';
 import { FamilyTopBar } from '@/components/family/FamilyTopBar';
@@ -9,7 +9,9 @@ import { FamilyGuestBlur, FamilyGuestLoginBoot } from '@/components/family/Famil
 import { GuestBanner } from '@/components/family/GuestBanner';
 import { JoinBanner } from '@/components/family/JoinBanner';
 import { OnboardingModal } from '@/components/family/OnboardingModal';
-import type { FamilyComment, FamilyFeedResponse } from '@/lib/family/types';
+import { useFamilyMemberCount } from '@/lib/family/hooks/useFamilyMemberCount';
+import { writeFamilyShellSnapshot } from '@/lib/family/shellCache';
+import type { FamilyBranding, FamilyComment, FamilyFeedResponse } from '@/lib/family/types';
 
 type Mode = 'guest' | 'join' | 'member';
 
@@ -23,39 +25,79 @@ export function FamilyHome({
   memberCount,
   needsOnboarding,
   initialFeed = null,
+  initialBranding,
+  initialMemberCount,
   viewerKey = 'anon',
 }: {
   mode: Mode;
   memberCount?: number;
   needsOnboarding: boolean;
   initialFeed?: FamilyFeedResponse | null;
+  initialBranding?: FamilyBranding;
+  initialMemberCount?: number;
   viewerKey?: string | number;
 }) {
+  const { memberCount: resolvedMemberCount, syncMemberCount } = useFamilyMemberCount(
+    memberCount ?? initialMemberCount,
+  );
+
+  useEffect(() => {
+    if (!initialBranding && typeof initialMemberCount !== 'number') return;
+    writeFamilyShellSnapshot({
+      branding: initialBranding,
+      memberCount: memberCount ?? initialMemberCount,
+    });
+  }, [initialBranding, initialMemberCount, memberCount]);
+
   const [showOnboarding, setShowOnboarding] = useState(needsOnboarding);
   const [commentsTarget, setCommentsTarget] = useState<CommentsTarget | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const openComments = useCallback((target: CommentsTarget) => {
+    setNotificationsOpen(false);
     setCommentsTarget(target);
   }, []);
 
+  const openNotifications = useCallback(() => {
+    setCommentsTarget(null);
+    setNotificationsOpen(true);
+  }, []);
+
+  const closeComments = useCallback(() => setCommentsTarget(null), []);
+  const closeNotifications = useCallback(() => setNotificationsOpen(false), []);
+
   const previewMode = mode === 'guest' ? 'guest' : mode === 'join' ? 'join' : null;
   const isGuest = mode === 'guest';
+  const isMember = mode === 'member';
 
   const feed = (
     <>
       <div className="lg:hidden">
-        <FamilyTopBar memberCount={memberCount} canViewStories={mode === 'member'} />
+        <FamilyTopBar
+          memberCount={resolvedMemberCount}
+          initialBranding={initialBranding}
+          canViewStories={isMember}
+          showNotifications={isMember}
+          notificationsActive={notificationsOpen}
+          onOpenNotifications={openNotifications}
+          onCloseNotifications={closeNotifications}
+        />
       </div>
       <FamilyMain className="min-h-0">
         <FeedView
-          memberCount={memberCount}
+          memberCount={resolvedMemberCount}
+          onMemberCountChange={syncMemberCount}
           previewMode={previewMode}
-          showPinned={mode === 'member' && !commentsTarget}
+          showPinned={isMember && !commentsTarget && !notificationsOpen}
           initialFeed={initialFeed}
+          initialBranding={initialBranding}
           viewerKey={viewerKey}
           commentsTarget={commentsTarget}
           onOpenComments={openComments}
-          onCloseComments={() => setCommentsTarget(null)}
+          onCloseComments={closeComments}
+          notificationsOpen={notificationsOpen}
+          onOpenNotifications={openNotifications}
+          onCloseNotifications={closeNotifications}
         />
       </FamilyMain>
     </>

@@ -1,0 +1,28 @@
+{
+  "name": "خانواده داداش بهرام",
+  "short_name": "خانواده",
+  "description": "فضای نزدیک داداش بهرام — پست، صوت، ویدیو و گفتگو",
+  "start_url": "/family",
+  "scope": "/family",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "dir": "rtl",
+  "lang": "fa",
+  "background_color": "#0b1419",
+  "theme_color": "#0b1419",
+  "categories": ["social", "education"],
+  "icons": [
+    {
+      "src": "/apple-icon",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -6,6 +6,16 @@ export type SiteTheme = "light" | "dark";
 
 export const DEFAULT_SITE_THEME: SiteTheme = "dark";
 
+/**
+ * Runs before paint to align html (+ app roots if already in DOM) with localStorage.
+ * Prevents a dark FOUC when SSR fell back to DEFAULT but the user is on light.
+ */
+export function siteThemeBootScript(): string {
+  const storageKey = JSON.stringify(SITE_THEME_STORAGE_KEY);
+  const legacyKey = JSON.stringify(LEGACY_PANEL_THEME_STORAGE_KEY);
+  return `(function(){try{var t=localStorage.getItem(${storageKey})||localStorage.getItem(${legacyKey});if(t!=="light"&&t!=="dark")t=document.documentElement.getAttribute("data-theme");if(t!=="light"&&t!=="dark")return;document.documentElement.setAttribute("data-theme",t);var fr=document.getElementById("family-root");if(fr)fr.setAttribute("data-family-theme",t);var pr=document.getElementById("panel-root");if(pr)pr.setAttribute("data-panel-theme",t);}catch(e){}})();`;
+}
+
 export function parseSiteTheme(value: string | null | undefined): SiteTheme | null {
   return value === "light" || value === "dark" ? value : null;
 }

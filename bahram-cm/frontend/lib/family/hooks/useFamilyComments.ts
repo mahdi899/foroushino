@@ -6,7 +6,7 @@ import { getComments, postComment } from '@/lib/family/api';
 import type { FamilyComment } from '@/lib/family/types';
 
 export function useFamilyComments(postId: number, enabled: boolean) {
-  const { data, isLoading, mutate } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR(
     enabled ? ['family-comments', postId] : null,
     async () => (await getComments(postId)) as { data: FamilyComment[]; meta: { next_cursor: string | null } },
     { revalidateOnFocus: false },
@@ -60,6 +60,7 @@ export function useFamilyComments(postId: number, enabled: boolean) {
   return {
     comments,
     isLoading,
+    error: error instanceof Error ? error.message : error ? 'دریافت نظرات ناموفق بود.' : null,
     submitting,
     submit,
     loadMore,

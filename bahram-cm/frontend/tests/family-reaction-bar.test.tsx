@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type React from "react";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ReactionBar } from "@/components/family/ReactionBar";
 import type { FamilyPostStats } from "@/lib/family/types";
@@ -15,6 +16,17 @@ vi.mock("@/lib/family/api", () => ({
 
 vi.mock("@/components/family/FamilyReactionLottie", () => ({
   FamilyReactionLottie: () => <span data-testid="reaction-icon" />,
+}));
+
+vi.mock("@/components/family/ReactionFlyBurst", () => ({
+  ReactionFlyBurst: ({ onComplete }: { onComplete: () => void }) => {
+    onComplete();
+    return null;
+  },
+}));
+
+vi.mock("@/components/family/FamilyBodyPortal", () => ({
+  FamilyBodyPortal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 const baseStats: FamilyPostStats = {
@@ -74,5 +86,20 @@ describe("ReactionBar", () => {
     render(<ReactionBar postId={1} stats={baseStats} userReaction={null} />);
 
     expect(screen.getAllByRole("button")).toHaveLength(3);
+  });
+
+  it("replaces the active reaction when picking a different emoji from the picker", async () => {
+    setReaction.mockResolvedValue({ data: {} });
+    render(<ReactionBar postId={1} stats={baseStats} userReaction="heart" />);
+
+    fireEvent.click(screen.getByLabelText("افزودن واکنش"));
+    fireEvent.click(within(screen.getByRole("menu")).getByLabelText("آتشین"));
+
+    await waitFor(() => expect(setReaction).toHaveBeenCalledWith(1, "fire"));
+    expect(screen.getByLabelText("آتشین")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByLabelText("آتشین")).toHaveTextContent("3");
+    expect(screen.queryByLabelText("قلب")).not.toBeInTheDocument();
+    expect(setReaction).toHaveBeenCalledTimes(1);
+    expect(removeReaction).not.toHaveBeenCalled();
   });
 });

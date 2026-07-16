@@ -11,6 +11,7 @@ import {
   scrollFeedTo,
   scrollFeedToLatest,
   type FamilyFeedScrollBehavior,
+  type FeedScrollRestoreSnapshot,
 } from '@/lib/family/feedScroll';
 
 const FEED_LENIS_OPTIONS = {
@@ -31,7 +32,7 @@ export type FamilyFeedScrollHandle = {
   getDistanceFromBottom: () => number;
   scrollTo: (top: number, behavior?: FamilyFeedScrollBehavior) => void;
   scrollToLatest: (behavior?: FamilyFeedScrollBehavior) => void;
-  restoreScrollPosition: (snapshot: { height: number; top: number }) => void;
+  restoreScrollPosition: (snapshot: FeedScrollRestoreSnapshot) => void;
 };
 
 type FamilyFeedScrollProps = {

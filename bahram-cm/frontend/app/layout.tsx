@@ -26,8 +26,14 @@ import { DiscountCapture } from "@/components/commerce/DiscountCapture";
 import { GrainOverlay } from "@/components/motion/GrainOverlay";
 import { SiteBootLoader } from "@/components/layout/SiteBootLoader";
 import { cookies } from "next/headers";
+import Script from "next/script";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
-import { DEFAULT_SITE_THEME, SITE_THEME_COOKIE_KEY, parseSiteTheme } from "@/lib/site-theme";
+import {
+  DEFAULT_SITE_THEME,
+  SITE_THEME_COOKIE_KEY,
+  parseSiteTheme,
+  siteThemeBootScript,
+} from "@/lib/site-theme";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = defaultMetadata;
@@ -81,6 +87,9 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }}
         />
         <MediaPreconnect />
+        <Script id="site-theme-boot" strategy="beforeInteractive">
+          {siteThemeBootScript()}
+        </Script>
       </head>
       <body className={`${fontClassName} min-w-0 overflow-x-clip antialiased`} suppressHydrationWarning>
         <ThemeBoot />

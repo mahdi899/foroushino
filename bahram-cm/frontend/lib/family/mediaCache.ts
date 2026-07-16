@@ -1,4 +1,4 @@
-const CACHE_NAME = 'family-media-v1';
+const CACHE_NAME = 'family-media-v2';
 
 const blobUrlByKey = new Map<string, string>();
 
@@ -61,7 +61,7 @@ export async function tryCacheFamilyMediaBlob(
   if (cached) return cached;
 
   try {
-    const response = await fetch(url, { mode: 'cors', credentials: 'omit' });
+    const response = await fetch(url, { mode: 'cors', credentials: 'omit', cache: 'default' });
     if (!response.ok) return null;
     const blob = await response.blob();
     await writeFamilyMediaBlob(kind, mediaId, url, blob);

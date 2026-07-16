@@ -167,7 +167,7 @@ describe("ActionCard", () => {
       />,
     );
 
-    expect(screen.getByText("12 از 30 نفر پاسخ دادند")).toBeInTheDocument();
+    expect(screen.getByText('۱۲ از ۳۰ نفر پاسخ دادند')).toBeInTheDocument();
   });
 
   it("shows member poll participation percent", () => {
@@ -187,6 +187,6 @@ describe("ActionCard", () => {
       />,
     );
 
-    expect(screen.getByText("78٪ شرکت کردند")).toBeInTheDocument();
+    expect(screen.getByText('۷۸٪ شرکت کردند')).toBeInTheDocument();
   });
 });

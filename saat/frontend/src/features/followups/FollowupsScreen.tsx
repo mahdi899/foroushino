@@ -16,8 +16,8 @@ import {
   FileText,
   HelpCircle,
   ListChecks,
-  Sparkles,
   Clock3,
+  Hash,
   type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
@@ -43,10 +43,13 @@ import {
 import { followupKindLabels } from '@/data/labels'
 import { isBusinessToday } from '@/lib/businessDate'
 import { formatTime, toFa, relativeDay, relativeDayTime } from '@/lib/format'
+import { leadDisplayCode } from '@/lib/leadCode'
 import { haptic } from '@/lib/telegram'
 import type { Followup, FollowupKind, Lead } from '@/types'
 import { cn } from '@/lib/cn'
 import { DataGate } from '@/components/pwa/DataGate'
+
+const TG = 'text-[#3390EC] dark:text-[#8774E1]'
 
 const kindIcon: Record<FollowupKind, LucideIcon> = {
   call: Phone,
@@ -60,26 +63,10 @@ const kindIcon: Record<FollowupKind, LucideIcon> = {
   custom: ListChecks,
 }
 
-const kindTheme: Record<FollowupKind, { accent: string; actionBtn: string }> = {
-  call: { accent: 'bg-emerald-500', actionBtn: 'glass-inset border border-emerald-500/20 text-emerald-600' },
-  message: { accent: 'bg-secondary-500', actionBtn: 'glass-inset border border-secondary-500/20 text-secondary-600' },
-  reminder: { accent: 'bg-accent-500', actionBtn: 'glass-inset border border-accent-500/20 text-accent-600' },
-  meeting: { accent: 'bg-[#3390EC]', actionBtn: 'glass-inset border border-[#3390EC]/20 text-[#3390EC] dark:text-[#8774E1]' },
-  payment: { accent: 'bg-warning-500', actionBtn: 'glass-inset border border-warning-500/20 text-warning-600' },
-  consultation: { accent: 'bg-primary-500', actionBtn: 'glass-inset border border-primary-500/20 text-primary-600' },
-  info: { accent: 'bg-cold-500', actionBtn: 'glass-inset border border-cold-500/20 text-cold-600' },
-  decision: { accent: 'bg-secondary-500', actionBtn: 'glass-inset border border-secondary-500/20 text-secondary-600' },
-  custom: { accent: 'bg-neutral-400', actionBtn: 'glass-inset border border-white/50 text-neutral-600' },
-}
-
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
 const fadeUp = {
-  hidden: { opacity: 0, y: 10 },
+  hidden: { opacity: 0, y: 8 },
   show: { opacity: 1, y: 0, transition: spring },
-}
-const listStagger = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.05 } },
 }
 
 type Bucket = 'today' | 'tomorrow' | 'overdue' | 'week' | 'critical' | 'done'
@@ -92,6 +79,15 @@ const buckets: { id: Bucket; label: string; icon: LucideIcon; tone: ChipTone }[]
   { id: 'critical', label: 'بحرانی', icon: Flame, tone: 'hot' },
   { id: 'done', label: 'تکمیل‌شده', icon: Check, tone: 'neutral' },
 ]
+
+const bucketLabels: Record<Bucket, string> = {
+  today: 'امروز',
+  tomorrow: 'فردا',
+  overdue: 'عقب‌افتاده',
+  week: 'این هفته',
+  critical: 'بحرانی',
+  done: 'تکمیل‌شده',
+}
 
 export function FollowupsScreen() {
   const navigate = useNavigate()
@@ -115,6 +111,15 @@ export function FollowupsScreen() {
     if (params.get('new') === '1') {
       setCreateOpen(true)
       params.delete('new')
+      setParams(params, { replace: true })
+    }
+    const bucketParam = params.get('bucket')
+    if (
+      bucketParam &&
+      ['today', 'tomorrow', 'overdue', 'week', 'critical', 'done'].includes(bucketParam)
+    ) {
+      setBucket(bucketParam as Bucket)
+      params.delete('bucket')
       setParams(params, { replace: true })
     }
   }, [params, setParams])
@@ -151,7 +156,10 @@ export function FollowupsScreen() {
 
   const list = listByBucket[bucket]
   const leadOf = (leadId: string) => leads.find((l) => l.id === leadId)
-  const suggestion = useMemo(() => getSuggestion(leads, followups, currentAgentId), [leads, followups, currentAgentId])
+  const suggestion = useMemo(
+    () => getSuggestion(leads, followups, currentAgentId),
+    [leads, followups, currentAgentId],
+  )
 
   const complete = (f: Followup) => {
     haptic('success')
@@ -164,107 +172,122 @@ export function FollowupsScreen() {
     openCallMethodSheet(lead)
   }
 
-  const todayDate = new Date()
+  const activeTotal = counts.today + counts.overdue
 
   return (
     <Page>
       <ScreenHeader
         sticky
+        subtitleInline
         title="پیگیری‌ها"
-        subtitle="هیچ فرصتی را از دست نده"
-        icon={CalendarDays}
-        iconTone="accent"
-        className="pb-2"
+        subtitle={activeTotal > 0 ? `${toFa(activeTotal)} فوری` : `${toFa(counts[bucket])} مورد`}
+        className="pb-1"
       >
-        <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto overflow-y-visible px-1 py-1.5 no-scrollbar">
-          {buckets.map((b) => (
-            <Chip
-              key={b.id}
-              active={bucket === b.id}
-              tone={b.tone}
-              onClick={() => setBucket(b.id)}
-              icon={<b.icon size={14} />}
-            >
-              {b.label}
-              {counts[b.id] > 0 && (
-                <span
-                  className={cn(
-                    'mr-0.5 rounded-full px-1.5 py-0.5 text-[10px] tabular-nums',
-                    bucket === b.id ? 'bg-white/25' : 'bg-black/5',
-                  )}
-                >
-                  {toFa(counts[b.id])}
-                </span>
-              )}
-            </Chip>
-          ))}
+        <div className="glass-inset -mx-0.5 overflow-hidden rounded-[16px] border border-white/50 p-1 dark:border-white/10">
+          <div className="-mx-0.5 flex gap-1.5 overflow-x-auto overflow-y-visible px-0.5 py-0.5 no-scrollbar">
+            {buckets.map((b) => (
+              <Chip
+                key={b.id}
+                active={bucket === b.id}
+                tone={b.tone}
+                onClick={() => setBucket(b.id)}
+                icon={<b.icon size={13} />}
+                className="h-8 px-3 text-[12px]"
+              >
+                {b.label}
+                {counts[b.id] > 0 && (
+                  <span
+                    className={cn(
+                      'rounded-full px-1.5 py-0.5 text-[9px] tabular-nums',
+                      bucket === b.id ? 'bg-white/25' : 'bg-black/[0.06] dark:bg-white/10',
+                    )}
+                  >
+                    {toFa(counts[b.id])}
+                  </span>
+                )}
+              </Chip>
+            ))}
+          </div>
         </div>
       </ScreenHeader>
 
       <DataGate mode="placeholder">
-      <div className="space-y-4 px-4 pt-3">
-        {bucket === 'today' && (
-          <div className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-400">
-            <CalendarDays size={13} />
-            {relativeDay(todayDate.toISOString())}
-          </div>
-        )}
+        <div className="space-y-3 px-4 pt-2 pb-1">
+          {suggestion && bucket !== 'done' && (
+            <motion.button
+              variants={fadeUp}
+              initial="hidden"
+              animate="show"
+              whileTap={{ scale: 0.98 }}
+              onClick={() => call(suggestion.lead)}
+              className="glass-card flex w-full items-center gap-3 rounded-[18px] border border-[#3390EC]/20 px-3.5 py-3 text-right dark:border-[#8774E1]/25"
+            >
+              <LeadAvatar lead={suggestion.lead} size={42} ring />
+              <div className="min-w-0 flex-1">
+                <p className={cn('text-[10px] font-bold', TG)}>اولویت تماس</p>
+                <p className="truncate text-[14px] font-bold text-text">
+                  {suggestion.lead.firstName} {suggestion.lead.lastName}
+                </p>
+                <p className="mt-0.5 text-[11px] font-semibold text-text-soft">
+                  کد {leadDisplayCode(suggestion.lead)}
+                </p>
+              </div>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#3390EC] text-white dark:bg-[#8774E1]">
+                <Phone size={16} strokeWidth={2.35} />
+              </span>
+            </motion.button>
+          )}
 
-        {suggestion && bucket !== 'done' && (
-          <motion.button
-            variants={fadeUp}
-            whileTap={{ scale: 0.985 }}
-            onClick={() => call(suggestion.lead)}
-            className={cn(
-              'glass-card relative flex w-full items-center gap-3 overflow-hidden rounded-[22px]',
-              'border border-white/55 p-3.5 text-right dark:border-white/10',
-            )}
-          >
-            <div className="pointer-events-none absolute -left-8 top-0 h-24 w-24 rounded-full bg-[#3390EC]/12 blur-2xl dark:bg-[#8774E1]/14" />
-            <span className="icon-3d icon-3d-primary relative flex h-10 w-10 shrink-0 items-center justify-center">
-              <Sparkles size={16} className="text-white" strokeWidth={2.35} />
-            </span>
-            <div className="relative min-w-0 flex-1">
-              <p className="text-[11px] font-bold text-[#3390EC] dark:text-[#8774E1]">پیگیری بعدی پیشنهادی</p>
-              <p className="truncate text-[14px] font-bold text-text">
-                {suggestion.lead.firstName} {suggestion.lead.lastName}
-              </p>
-            </div>
-            <Phone size={17} className="relative shrink-0 text-[#3390EC] dark:text-[#8774E1]" strokeWidth={2.35} />
-          </motion.button>
-        )}
+          {list.length === 0 ? (
+            <EmptyState
+              title={bucket === 'done' ? 'هنوز پیگیری تکمیل‌شده‌ای نیست' : 'پیگیری‌ای در این بخش نیست'}
+              description={
+                bucket === 'done'
+                  ? 'پیگیری‌های انجام‌شده اینجا نمایش داده می‌شوند.'
+                  : 'وقت خوبیه برای تماس با مشتریان جدید.'
+              }
+            />
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25 }}
+              className="glass-card overflow-hidden rounded-[22px] border border-white/55 dark:border-white/10"
+            >
+              <div className="pointer-events-none border-b border-white/40 px-3.5 py-2 dark:border-white/8">
+                <p className="text-[11px] font-semibold text-text-soft">
+                  {toFa(list.length)} پیگیری · {bucketLabels[bucket]}
+                </p>
+              </div>
 
-        {list.length === 0 ? (
-          <EmptyState
-            title={bucket === 'done' ? 'هنوز پیگیری تکمیل‌شده‌ای نیست' : 'پیگیری‌ای در این بخش نیست'}
-            description={bucket === 'done' ? 'پیگیری‌های انجام‌شده اینجا نمایش داده می‌شوند.' : 'وقت خوبیه برای تماس با مشتریان جدید.'}
-          />
-        ) : (
-          <motion.div variants={listStagger} initial="hidden" animate="show" className="space-y-3">
-            {list.map((f) => {
-              const lead = leadOf(f.leadId)
-              if (!lead) return null
-              return (
-                <FollowupCard
-                  key={f.id}
-                  followup={f}
-                  lead={lead}
-                  overdue={bucket === 'overdue' || (f.status !== 'done' && overdue.some((o) => o.id === f.id))}
-                  done={bucket === 'done'}
-                  onOpen={() => navigate(`/leads/${lead.id}`)}
-                  onComplete={() => complete(f)}
-                  onCall={() => call(lead)}
-                  onSnooze={() => {
-                    setSnoozeTarget(f)
-                    setSnoozeDay(1)
-                    setSnoozeHour(10)
-                  }}
-                />
-              )
-            })}
-          </motion.div>
-        )}
-      </div>
+              {list.map((f, i) => {
+                const lead = leadOf(f.leadId)
+                if (!lead) return null
+                return (
+                  <FollowupRow
+                    key={f.id}
+                    followup={f}
+                    lead={lead}
+                    bordered={i < list.length - 1}
+                    overdue={
+                      bucket === 'overdue' ||
+                      (f.status !== 'done' && overdue.some((o) => o.id === f.id))
+                    }
+                    done={bucket === 'done'}
+                    onOpen={() => navigate(`/leads/${lead.id}`)}
+                    onComplete={() => complete(f)}
+                    onCall={() => call(lead)}
+                    onSnooze={() => {
+                      setSnoozeTarget(f)
+                      setSnoozeDay(1)
+                      setSnoozeHour(10)
+                    }}
+                  />
+                )
+              })}
+            </motion.div>
+          )}
+        </div>
       </DataGate>
 
       <Fab onClick={() => setCreateOpen(true)} />
@@ -308,11 +331,12 @@ export function FollowupsScreen() {
   )
 }
 
-function FollowupCard({
+function FollowupRow({
   followup,
   lead,
   overdue,
   done,
+  bordered,
   onOpen,
   onComplete,
   onCall,
@@ -322,122 +346,119 @@ function FollowupCard({
   lead: Lead
   overdue?: boolean
   done?: boolean
+  bordered?: boolean
   onOpen: () => void
   onComplete: () => void
   onCall: () => void
   onSnooze: () => void
 }) {
   const KindIcon = kindIcon[followup.kind]
-  const theme = kindTheme[followup.kind]
   const highPriority = followup.priority === 3
+  const code = leadDisplayCode(lead)
+  const timeLabel = formatTime(new Date(followup.dueAt))
+  const dayLabel = !isBusinessToday(followup.dueAt) ? relativeDay(followup.dueAt) : null
 
   return (
-    <motion.div
-      variants={fadeUp}
+    <article
       className={cn(
-        'glass-card relative flex items-center gap-2 overflow-hidden rounded-[20px] border py-3 pl-3 pr-2.5',
-        overdue ? 'border-error-200/50 dark:border-error-500/20' : 'border-white/55 dark:border-white/10',
-        done && 'opacity-70',
+        'relative transition-colors',
+        bordered && 'border-b border-white/40 dark:border-white/8',
+        done && 'opacity-65',
       )}
     >
-      <div
-        className={cn(
-          'absolute inset-y-3 right-0 w-[3px] rounded-l-full',
-          overdue ? 'bg-error-500' : done ? 'bg-success-500' : theme.accent,
-        )}
-      />
+      <div className="flex items-center gap-3 px-3.5 py-3">
+        <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-3 text-right">
+          <LeadAvatar lead={lead} size={44} ring />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="min-w-0 truncate text-[15px] font-bold leading-snug text-text">
+                {lead.firstName} {lead.lastName}
+              </h3>
+              {overdue && !done && (
+                <AlertTriangle size={12} className="shrink-0 text-error-500" strokeWidth={2.5} />
+              )}
+              {highPriority && !done && !overdue && (
+                <Flame size={12} className="shrink-0 text-hot-500" strokeWidth={2.5} />
+              )}
+              <span
+                dir="ltr"
+                className="mr-auto inline-flex shrink-0 items-center gap-0.5 rounded-md bg-black/[0.04] px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-text-soft dark:bg-white/[0.06]"
+              >
+                <Hash size={9} strokeWidth={2.5} />
+                {code}
+              </span>
+            </div>
 
-      <div
-        className={cn(
-          'w-11 shrink-0 text-center tabular-nums',
-          overdue ? 'text-error-600' : 'text-neutral-500',
-        )}
-      >
-        <span className="flex flex-col items-center gap-0.5 text-[12px] font-extrabold leading-none">
-          {!isBusinessToday(followup.dueAt) && (
-            <span className="text-[9px] font-bold leading-tight text-neutral-400">
-              {relativeDay(followup.dueAt)}
-            </span>
-          )}
-          <span>{formatTime(new Date(followup.dueAt))}</span>
-        </span>
-      </div>
-
-      <button
-        type="button"
-        onClick={onOpen}
-        className="flex min-w-0 flex-1 items-center gap-3 text-right"
-      >
-        <LeadAvatar lead={lead} size={40} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <p className="truncate text-[14px] font-extrabold leading-snug text-neutral-900">
-              {lead.firstName} {lead.lastName}
+            <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] font-semibold text-text-soft">
+              <span className={cn('inline-flex shrink-0 items-center gap-0.5', overdue && !done && 'text-error-600 dark:text-error-400')}>
+                <KindIcon size={10} strokeWidth={2.25} />
+                {followupKindLabels[followup.kind]}
+              </span>
+              <span className="text-text-soft/40">·</span>
+              <span className="truncate text-text-muted">
+                {done ? relativeDayTime(followup.completedAt ?? followup.dueAt) : followup.title}
+              </span>
             </p>
-            {overdue && !done && (
-              <span
-                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-error-50 text-error-600"
-                title="عقب‌افتاده"
-                aria-label="عقب‌افتاده"
-              >
-                <AlertTriangle size={11} strokeWidth={2.5} />
-              </span>
-            )}
-            {highPriority && !done && (
-              <span
-                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-hot-50 text-hot-600"
-                title="اولویت بالا"
-                aria-label="اولویت بالا"
-              >
-                <Flame size={11} strokeWidth={2.5} />
-              </span>
-            )}
           </div>
-          <p className="mt-1 truncate text-[12px] font-bold leading-snug text-neutral-500">
-            {done ? relativeDayTime(followup.completedAt ?? followup.dueAt) : followup.title}
-          </p>
-        </div>
-      </button>
+        </button>
 
-      <div className="flex shrink-0 items-center gap-1.5 pl-0.5">
-        {!done && (
-          <>
-            <button
-              type="button"
-              onClick={onCall}
-              aria-label={`${followupKindLabels[followup.kind]} با ${lead.firstName}`}
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <div className="text-left">
+            {dayLabel && (
+              <p className={cn('text-[9px] font-bold leading-tight', overdue && !done ? 'text-error-600 dark:text-error-400' : 'text-text-soft')}>
+                {dayLabel}
+              </p>
+            )}
+            <p
               className={cn(
-                'flex h-9 w-9 items-center justify-center rounded-xl transition-transform active:scale-90',
-                overdue ? 'bg-error-50 text-error-600' : theme.actionBtn,
+                'text-[12px] font-black tabular-nums leading-none',
+                overdue && !done ? 'text-error-600 dark:text-error-400' : 'text-text',
               )}
             >
-              <KindIcon size={16} strokeWidth={2.25} />
-            </button>
-            <button
-              type="button"
-              onClick={onSnooze}
-              aria-label="به تعویق انداختن"
-              className="glass-inset flex h-9 w-9 items-center justify-center rounded-xl border border-white/50 text-text-soft transition-all active:scale-90 dark:border-white/10"
-            >
-              <Clock3 size={16} strokeWidth={2.25} />
-            </button>
-            <button
-              type="button"
-              onClick={onComplete}
-              aria-label="علامت‌گذاری انجام‌شده"
-              className="glass-inset flex h-9 w-9 items-center justify-center rounded-xl border border-white/50 text-text-soft transition-all hover:text-emerald-600 active:scale-90 dark:border-white/10"
-            >
-              <Check size={17} strokeWidth={2.25} />
-            </button>
-          </>
-        )}
-        {done && (
-          <span className="glass-inset flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-500/20 text-emerald-600">
-            <Check size={17} strokeWidth={2.25} />
-          </span>
-        )}
+              {timeLabel}
+            </p>
+          </div>
+
+          {!done ? (
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={onCall}
+                aria-label={`${followupKindLabels[followup.kind]} با ${lead.firstName}`}
+                className={cn(
+                  'flex h-8 w-8 items-center justify-center rounded-full transition-transform active:scale-90',
+                  overdue
+                    ? 'bg-error-500 text-white'
+                    : 'bg-[#3390EC] text-white dark:bg-[#8774E1]',
+                )}
+              >
+                <KindIcon size={14} strokeWidth={2.35} />
+              </button>
+              <button
+                type="button"
+                onClick={onSnooze}
+                aria-label="به تعویق انداختن"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-text-soft transition-colors active:bg-black/[0.05] dark:active:bg-white/[0.06]"
+              >
+                <Clock3 size={14} strokeWidth={2.25} />
+              </button>
+              <button
+                type="button"
+                onClick={onComplete}
+                aria-label="انجام شد"
+                className="flex h-8 w-8 items-center justify-center rounded-full text-emerald-600 transition-colors active:bg-emerald-500/10"
+              >
+                <Check size={15} strokeWidth={2.5} />
+              </button>
+            </div>
+          ) : (
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/12 text-emerald-600">
+              <Check size={15} strokeWidth={2.5} />
+            </span>
+          )}
+        </div>
       </div>
-    </motion.div>
+    </article>
   )
 }
 
@@ -463,14 +484,23 @@ function CreateFollowupSheet({
   const [dayOffset, setDayOffset] = useState(0)
   const [hour, setHour] = useState(10)
 
-  const kinds: FollowupKind[] = ['call', 'message', 'reminder', 'meeting', 'payment', 'consultation', 'info', 'decision']
+  const kinds: FollowupKind[] = [
+    'call',
+    'message',
+    'reminder',
+    'meeting',
+    'payment',
+    'consultation',
+    'info',
+    'decision',
+  ]
 
   return (
     <BottomSheet open={open} onClose={onClose} title="پیگیری جدید">
       <div className="space-y-4 pt-1">
         <div>
           <p className="mb-2 text-xs font-bold text-neutral-500">مشتری</p>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
             {leads.slice(0, 12).map((l) => (
               <Chip key={l.id} active={leadId === l.id} onClick={() => setLeadId(l.id)}>
                 {l.firstName} {l.lastName}
@@ -498,7 +528,7 @@ function CreateFollowupSheet({
             onCreate({
               leadId,
               kind,
-              title: lead ? `${followupKindLabels[kind]} با ${lead.firstName}` : followupKindLabels[kind],
+              title: lead ? `${followupKindLabels[kind]} ${lead.firstName}` : followupKindLabels[kind],
               dueAt: buildFollowupIso(dayOffset, hour),
               priority: lead?.priority ?? 2,
             })

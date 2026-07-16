@@ -245,9 +245,6 @@
     text-rendering: optimizeLegibility;
     scroll-behavior: smooth;
     scroll-padding-top: 4.5rem;
-    transition:
-      background-color 0.6s var(--ease-luxe),
-      color 0.6s var(--ease-luxe);
   }
 
   body {
@@ -260,6 +257,11 @@
     background-color: var(--color-ink);
     color: var(--color-bone);
     overflow-x: clip;
+  }
+
+  /* Theme color transitions only after first client sync (avoids FOUC stretch). */
+  html[data-theme-ready="1"],
+  html[data-theme-ready="1"] body {
     transition:
       background-color 0.6s var(--ease-luxe),
       color 0.6s var(--ease-luxe);
@@ -3651,9 +3653,80 @@ html[data-theme="light"] .mobile-sticky-enroll-bar {
   border-color: color-mix(in oklab, var(--color-gold) 70%, transparent);
 }
 
-.family-nav-btn__ping span:first-child,
-.family-nav-btn__ping span:last-child {
-  background: #ffe08a;
+/* Live ping — replaces the old UsersRound icon slot (inline, before the label) */
+.family-nav-btn__ping {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 0.85rem;
+  height: 0.85rem;
+  flex-shrink: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.family-nav-btn__ping-ring,
+.family-nav-btn__ping-dot {
+  background: #0b1f22;
+}
+
+.family-nav-btn__ping-ring {
+  position: absolute;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 9999px;
+  opacity: 0.7;
+  animation: family-nav-ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.family-nav-btn__ping-dot {
+  position: relative;
+  display: block;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 1.5px color-mix(in oklab, #ffe08a 60%, transparent);
+}
+
+@keyframes family-nav-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  75%,
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+.family-nav-btn__count {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.3rem;
+  border-radius: 9999px;
+  background: color-mix(in oklab, #0b1f22 88%, transparent);
+  color: #ffe08a;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+html[data-theme="light"] .family-nav-btn__count {
+  background: color-mix(in oklab, #fff 92%, transparent);
+  color: #006f75;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 
 html[data-theme="light"] .family-nav-btn {
@@ -3677,9 +3750,13 @@ html[data-theme="light"] .family-nav-btn--active {
   border-color: color-mix(in oklab, var(--color-emerald-glow) 55%, transparent);
 }
 
-html[data-theme="light"] .family-nav-btn__ping span:first-child,
-html[data-theme="light"] .family-nav-btn__ping span:last-child {
-  background: var(--color-gold-soft);
+html[data-theme="light"] .family-nav-btn__ping-ring,
+html[data-theme="light"] .family-nav-btn__ping-dot {
+  background: #ffe08a;
+}
+
+html[data-theme="light"] .family-nav-btn__ping-dot {
+  box-shadow: 0 0 0 1.5px color-mix(in oklab, #0b1f22 35%, transparent);
 }
 
 html[data-theme="light"] .site-bottom-nav {

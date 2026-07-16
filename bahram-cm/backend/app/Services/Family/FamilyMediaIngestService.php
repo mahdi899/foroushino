@@ -75,11 +75,23 @@ class FamilyMediaIngestService
         abort_unless($index >= 0 && $index < $session->total_chunks, 422);
 
         $disk = Storage::disk(config('family.media.temp_disk', 'local'));
-        $full = $disk->get($session->temp_path) ?? '';
-        // Simple append protocol: chunks must arrive in order for V1.
+        // Chunks must arrive in order for V1.
         abort_unless($index === (int) $session->received_chunks, 422, 'Chunks must be uploaded in order.');
 
-        $disk->put($session->temp_path, $full.$binary);
+        // Stream-append — never re-read the entire partial file into PHP memory.
+        $absolute = $disk->path($session->temp_path);
+        $dir = dirname($absolute);
+        if (! is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+        $handle = fopen($absolute, 'ab');
+        abort_unless($handle !== false, 500, 'Cannot open upload session file.');
+        try {
+            fwrite($handle, $binary);
+        } finally {
+            fclose($handle);
+        }
+
         $session->increment('received_chunks');
 
         return $session->fresh();

@@ -1,6 +1,7 @@
 'use client';
 
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { flushSync } from 'react-dom';
 import { SmilePlus } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { fontClassName } from '@/lib/fonts';
@@ -8,6 +9,8 @@ import { FamilyBodyPortal } from '@/components/family/FamilyBodyPortal';
 import { FamilyReactionLottie } from '@/components/family/FamilyReactionLottie';
 import { FAMILY_ALL_REACTIONS } from '@/lib/family/reactions';
 import { removeReaction, setReaction } from '@/lib/family/api';
+import { familyFeedDebug } from '@/lib/family/feedDebug';
+import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import { ReactionFlyBurst, type ReactionFlyBurstPayload } from '@/components/family/ReactionFlyBurst';
 import type { FamilyPostStats, FamilyReactionType } from '@/lib/family/types';
 
@@ -41,36 +44,44 @@ function ReactionButton({
   onClick: (source?: HTMLButtonElement) => void;
 }) {
   return (
-    <button
-      ref={buttonRef}
-      type="button"
-      role={menuItem ? 'menuitem' : undefined}
-      aria-label={label}
-      aria-pressed={active}
-      disabled={disabled}
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick(e.currentTarget);
-      }}
+    <span
       className={cn(
-        'family-reaction-btn',
-        count > 0 && 'family-reaction-btn--counted',
-        active && 'family-reaction-btn--active',
-        compact && 'family-reaction-btn--compact',
-        incoming && 'family-reaction-btn--incoming',
-        slam && slamLand && 'family-reaction-btn--slam-land',
-        slam && !slamLand && 'family-reaction-btn--slam',
-        launching && 'family-reaction-btn--launching',
-        disabled && 'pointer-events-none opacity-45',
+        'family-reaction-btn-wrap',
+        slam && slamLand && 'family-reaction-btn-wrap--slam-land',
+        slam && !slamLand && 'family-reaction-btn-wrap--slam',
       )}
     >
-      <FamilyReactionLottie type={type} size={compact ? 24 : 18} mode="loop" />
-      {count > 0 && (
-        <span className={cn('family-reaction-count', active && 'family-reaction-count--active')}>
-          {count.toLocaleString('en-US')}
-        </span>
-      )}
-    </button>
+      <button
+        ref={buttonRef}
+        type="button"
+        role={menuItem ? 'menuitem' : undefined}
+        aria-label={label}
+        aria-pressed={active}
+        disabled={disabled}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick(e.currentTarget);
+        }}
+        className={cn(
+          'family-reaction-btn',
+          count > 0 && 'family-reaction-btn--counted',
+          active && 'family-reaction-btn--active',
+          compact && 'family-reaction-btn--compact',
+          incoming && 'family-reaction-btn--incoming',
+          slam && slamLand && 'family-reaction-btn--slam-land',
+          slam && !slamLand && 'family-reaction-btn--slam',
+          launching && 'family-reaction-btn--launching',
+          disabled && 'pointer-events-none opacity-45',
+        )}
+      >
+        <FamilyReactionLottie type={type} size={compact ? 24 : 18} mode="reaction" />
+        {count > 0 && (
+          <span className={cn('family-reaction-count', active && 'family-reaction-count--active')}>
+            {count.toLocaleString('en-US')}
+          </span>
+        )}
+      </button>
+    </span>
   );
 }
 
@@ -84,11 +95,14 @@ const PICKER_BURST_MS = 360;
 const PICKER_FLY_DELAY_MS = 150;
 const SLAM_MS = 760;
 const POST_IMPACT_MS = 820;
-const PICKER_FALLBACK_HEIGHT = 148;
-const PICKER_FALLBACK_WIDTH = 220;
+/** 3×2.375rem rows + gaps + padding — keep close to real grid so first paint isn’t far off */
+const PICKER_FALLBACK_HEIGHT = 96;
+const PICKER_FALLBACK_WIDTH = 216;
 
 export type ReactionBarHandle = {
   openPicker: (anchor?: HTMLElement | null) => void;
+  /** Telegram-style double-tap: fly+slam heart (or toggle it off if already active). */
+  quickReact: (type?: FamilyReactionType, at?: { x: number; y: number }) => void;
 };
 
 export const ReactionBar = forwardRef<
@@ -102,9 +116,17 @@ export const ReactionBar = forwardRef<
     pickerAnchorRef?: RefObject<HTMLElement | null>;
   }
 >(function ReactionBar(
-  { postId, stats, userReaction, readOnly = false, onLockedInteract, pickerAnchorRef },
+  {
+    postId,
+    stats,
+    userReaction,
+    readOnly = false,
+    onLockedInteract,
+    pickerAnchorRef,
+  },
   ref,
 ) {
+  useFamilyDebugRender(`ReactionBar:${postId}`);
   const [active, setActive] = useState<FamilyReactionType | null>(userReaction);
   const [counts, setCounts] = useState<FamilyPostStats>(() => ({
     fire: stats.fire ?? 0,
@@ -143,6 +165,29 @@ export const ReactionBar = forwardRef<
   const pickerRef = useRef<HTMLDivElement>(null);
   const pickerAnchorElRef = useRef<HTMLElement | null>(null);
   const reactionBtnRefs = useRef<Partial<Record<FamilyReactionType, HTMLButtonElement | null>>>({});
+  const activeRef = useRef<FamilyReactionType | null>(userReaction);
+  const reactionBusyRef = useRef(false);
+  const pickInFlightRef = useRef(false);
+
+  const isReactionBusy = useCallback(
+    () => reactionBusyRef.current || pending || pickInFlightRef.current,
+    [pending],
+  );
+
+  const lockReactionCommit = useCallback(() => {
+    if (reactionBusyRef.current) return false;
+    reactionBusyRef.current = true;
+    return true;
+  }, []);
+
+  const unlockReactionCommit = useCallback(() => {
+    reactionBusyRef.current = false;
+  }, []);
+
+  const setPickInFlightState = useCallback((value: boolean) => {
+    pickInFlightRef.current = value;
+    setPickInFlight(value);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -150,27 +195,41 @@ export const ReactionBar = forwardRef<
 
   useEffect(() => {
     setActive(userReaction);
+    activeRef.current = userReaction;
   }, [userReaction]);
 
-  const updatePickerPosition = () => {
+  const updatePickerPosition = useCallback(() => {
     const anchor =
       pickerAnchorElRef.current ?? pickerAnchorRef?.current ?? addBtnRef.current ?? rootRef.current;
     if (!anchor) return;
 
     const rect = anchor.getBoundingClientRect();
-    const pickerHeight = pickerRef.current?.offsetHeight ?? PICKER_FALLBACK_HEIGHT;
-    const pickerWidth = pickerRef.current?.offsetWidth ?? PICKER_FALLBACK_WIDTH;
+    const pickerHeight = pickerRef.current?.offsetHeight || PICKER_FALLBACK_HEIGHT;
+    const pickerWidth = pickerRef.current?.offsetWidth || PICKER_FALLBACK_WIDTH;
     const spaceAbove = rect.top;
     const spaceBelow = window.innerHeight - rect.bottom;
-    const above = spaceAbove >= pickerHeight + PICKER_GAP || spaceAbove > spaceBelow;
+    // Prefer directly above the + button whenever it fits.
+    const above = spaceAbove >= pickerHeight + PICKER_GAP || spaceAbove >= spaceBelow;
     const top = above ? rect.top - PICKER_GAP - pickerHeight : rect.bottom + PICKER_GAP;
     const maxLeft = Math.max(8, window.innerWidth - pickerWidth - 8);
 
-    setPickerPos({
-      left: Math.min(Math.max(8, rect.left), maxLeft),
-      top: Math.max(8, top),
+    setPickerPos((prev) => {
+      const next = {
+        left: Math.min(Math.max(8, rect.left), maxLeft),
+        top: Math.max(8, top),
+      };
+      if (prev && prev.left === next.left && prev.top === next.top) return prev;
+      return next;
     });
-  };
+  }, [pickerAnchorRef]);
+
+  const setPickerNode = useCallback(
+    (node: HTMLDivElement | null) => {
+      pickerRef.current = node;
+      if (node) updatePickerPosition();
+    },
+    [updatePickerPosition],
+  );
 
   useLayoutEffect(() => {
     if (!pickerOpen && !pickerClosing) {
@@ -179,16 +238,30 @@ export const ReactionBar = forwardRef<
     }
 
     updatePickerPosition();
-    const frame = window.requestAnimationFrame(updatePickerPosition);
+    let frame2 = 0;
+    const frame = window.requestAnimationFrame(() => {
+      updatePickerPosition();
+      frame2 = window.requestAnimationFrame(updatePickerPosition);
+    });
     const onLayout = () => updatePickerPosition();
     window.addEventListener('resize', onLayout);
     window.addEventListener('scroll', onLayout, true);
+
+    const picker = pickerRef.current;
+    let ro: ResizeObserver | null = null;
+    if (picker && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => updatePickerPosition());
+      ro.observe(picker);
+    }
+
     return () => {
       window.cancelAnimationFrame(frame);
+      window.cancelAnimationFrame(frame2);
       window.removeEventListener('resize', onLayout);
       window.removeEventListener('scroll', onLayout, true);
+      ro?.disconnect();
     };
-  }, [pickerOpen, pickerClosing, pickerSession]);
+  }, [pickerOpen, pickerClosing, pickerSession, updatePickerPosition]);
 
   useEffect(() => {
     if (!pickerOpen) return;
@@ -220,11 +293,15 @@ export const ReactionBar = forwardRef<
       onLockedInteract?.();
       return;
     }
-    if (pending) return;
+    if (!lockReactionCommit()) return;
     setPending(true);
-    const wasActive = active === type;
-    const prevActive = active;
+    const wasActive = activeRef.current === type;
+    const prevActive = activeRef.current;
     const prevCounts = counts;
+    const nextActive = wasActive ? null : type;
+    activeRef.current = nextActive;
+    familyFeedDebug.mark(`reaction:${postId}:${type}`);
+    familyFeedDebug.info('reaction', wasActive ? 'remove' : 'set', { postId, type });
 
     setCounts((c) => {
       const next = { ...c };
@@ -232,7 +309,7 @@ export const ReactionBar = forwardRef<
       if (!wasActive) next[type] += 1;
       return next;
     });
-    setActive(wasActive ? null : type);
+    setActive(nextActive);
 
     try {
       if (wasActive) {
@@ -240,34 +317,122 @@ export const ReactionBar = forwardRef<
       } else {
         await setReaction(postId, type);
       }
-    } catch {
+      familyFeedDebug.measure(`reaction:${postId}:${type}`, 'reaction', { postId, type, ok: true });
+    } catch (err) {
+      familyFeedDebug.error('reaction', 'persist failed', {
+        postId,
+        type,
+        error: String(err),
+      });
+      activeRef.current = prevActive;
       setActive(prevActive);
       setCounts(prevCounts);
     } finally {
       setPending(false);
+      unlockReactionCommit();
     }
   };
 
-  const resolveReactionDestination = useCallback((type: FamilyReactionType) => {
-    const destEl = reactionBtnRefs.current[type] ?? addBtnRef.current;
+  const measureReactionChip = useCallback((type: FamilyReactionType) => {
+    const destEl = reactionBtnRefs.current[type];
     if (!destEl) return null;
     const rect = destEl.getBoundingClientRect();
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   }, []);
 
-  const waitForReactionDestination = useCallback(
+  /** Fallback only after mount wait — approximate landing just before the + button (LTR bar). */
+  const predictChipNearAddButton = useCallback(() => {
+    const add = addBtnRef.current;
+    if (!add) return null;
+    const rect = add.getBoundingClientRect();
+    const estimatedHalfWidth = 21;
+    const gap = 6;
+    return {
+      x: rect.left - gap - estimatedHalfWidth,
+      y: rect.top + rect.height / 2,
+    };
+  }, []);
+
+  const waitForChipDestination = useCallback(
     (type: FamilyReactionType, attempt = 0): Promise<{ x: number; y: number } | null> =>
       new Promise((resolve) => {
-        const point = resolveReactionDestination(type);
-        if (point || attempt >= 8) {
+        const point = measureReactionChip(type);
+        if (point) {
           resolve(point);
           return;
         }
+        if (attempt >= 36) {
+          resolve(predictChipNearAddButton());
+          return;
+        }
         window.requestAnimationFrame(() => {
-          void waitForReactionDestination(type, attempt + 1).then(resolve);
+          void waitForChipDestination(type, attempt + 1).then(resolve);
         });
       }),
-    [resolveReactionDestination],
+    [measureReactionChip, predictChipNearAddButton],
+  );
+
+  const persistReactionChange = useCallback(
+    async (
+      type: FamilyReactionType,
+      wasActive: boolean,
+      prevActive: FamilyReactionType | null,
+      prevCounts: FamilyPostStats,
+    ) => {
+      const mark = `reaction:${postId}:${type}`;
+      familyFeedDebug.mark(mark);
+      setPending(true);
+      try {
+        if (wasActive) {
+          await removeReaction(postId);
+        } else {
+          await setReaction(postId, type);
+        }
+        familyFeedDebug.measure(mark, 'reaction', { postId, type, ok: true, wasActive });
+      } catch (err) {
+        familyFeedDebug.error('reaction', 'persist failed', {
+          postId,
+          type,
+          error: String(err),
+        });
+        activeRef.current = prevActive;
+        setActive(prevActive);
+        setCounts(prevCounts);
+        setIncomingReaction(null);
+        setFlyAnim(null);
+        setPickInFlightState(false);
+        setLaunchingType(null);
+        unlockReactionCommit();
+      } finally {
+        setPending(false);
+      }
+    },
+    [postId, setPickInFlightState, unlockReactionCommit],
+  );
+
+  const applyReactionOptimistic = useCallback(
+    (type: FamilyReactionType, opts?: { incoming?: boolean }) => {
+      const wasActive = activeRef.current === type;
+      const prevActive = activeRef.current;
+      const prevCounts = counts;
+      const isNewSlot = !wasActive && counts[type] === 0;
+      const nextActive = wasActive ? null : type;
+      activeRef.current = nextActive;
+
+      flushSync(() => {
+        setCounts((c) => {
+          const next = { ...c };
+          if (prevActive) next[prevActive] = Math.max(0, next[prevActive] - 1);
+          if (!wasActive) next[type] += 1;
+          return next;
+        });
+        setActive(nextActive);
+        if (opts?.incoming && isNewSlot) setIncomingReaction(type);
+      });
+
+      return { wasActive, prevActive, prevCounts, isNewSlot };
+    },
+    [counts],
   );
 
   const triggerPostImpact = useCallback(() => {
@@ -297,7 +462,7 @@ export const ReactionBar = forwardRef<
       onLockedInteract?.();
       return;
     }
-    if (pending || pickInFlight) return;
+    if (isReactionBusy()) return;
     void toggle(type);
     playBarReactionFeedback(type);
   };
@@ -307,10 +472,79 @@ export const ReactionBar = forwardRef<
       setIncomingReaction(null);
       setFlyAnim(null);
       setLaunchingType(null);
-      setPickInFlight(false);
+      setPickInFlightState(false);
+      unlockReactionCommit();
       playBarReactionFeedback(type, true);
     },
-    [playBarReactionFeedback],
+    [playBarReactionFeedback, setPickInFlightState, unlockReactionCommit],
+  );
+
+  const startFlyToChip = useCallback(
+    async (type: FamilyReactionType, from: { x: number; y: number }, isNewSlot: boolean) => {
+      if (isNewSlot) setIncomingReaction(type);
+      // Layout after flushSync — prefer real chip center, never the + button first.
+      const to =
+        measureReactionChip(type) ??
+        (await new Promise<{ x: number; y: number } | null>((resolve) => {
+          window.requestAnimationFrame(() => {
+            const next = measureReactionChip(type);
+            if (next) {
+              resolve(next);
+              return;
+            }
+            void waitForChipDestination(type).then(resolve);
+          });
+        }));
+      if (!to) {
+        finishFlyAnimation(type);
+        return;
+      }
+      setFlyAnim({
+        id: Date.now(),
+        type,
+        from,
+        to,
+      });
+    },
+    [finishFlyAnimation, measureReactionChip, waitForChipDestination],
+  );
+
+  const commitReactionFromSource = useCallback(
+    (type: FamilyReactionType, sourceEl: HTMLButtonElement) => {
+      if (readOnly) {
+        onLockedInteract?.();
+        return;
+      }
+      if (!lockReactionCommit()) return;
+
+      const wasActive = activeRef.current === type;
+      if (wasActive) {
+        unlockReactionCommit();
+        void toggle(type);
+        playBarReactionFeedback(type);
+        return;
+      }
+
+      setPickInFlightState(true);
+      const fromRect = sourceEl.getBoundingClientRect();
+      const from = { x: fromRect.left + fromRect.width / 2, y: fromRect.top + fromRect.height / 2 };
+
+      const { prevActive, prevCounts, isNewSlot } = applyReactionOptimistic(type, { incoming: true });
+      void persistReactionChange(type, false, prevActive, prevCounts);
+      void startFlyToChip(type, from, isNewSlot);
+    },
+    [
+      applyReactionOptimistic,
+      lockReactionCommit,
+      onLockedInteract,
+      persistReactionChange,
+      playBarReactionFeedback,
+      readOnly,
+      setPickInFlightState,
+      startFlyToChip,
+      toggle,
+      unlockReactionCommit,
+    ],
   );
 
   const handlePick = (type: FamilyReactionType, sourceEl: HTMLButtonElement) => {
@@ -318,12 +552,13 @@ export const ReactionBar = forwardRef<
       onLockedInteract?.();
       return;
     }
-    if (pending || pickInFlight) return;
+    if (!lockReactionCommit()) return;
 
-    const wasActive = active === type;
+    const wasActive = activeRef.current === type;
     setPickerClosing(true);
 
     if (wasActive) {
+      unlockReactionCommit();
       void toggle(type);
       window.setTimeout(() => {
         setPickerOpen(false);
@@ -334,12 +569,12 @@ export const ReactionBar = forwardRef<
     }
 
     setLaunchingType(type);
-    setPickInFlight(true);
-    const isNewSlot = counts[type] === 0;
+    setPickInFlightState(true);
     const fromRect = sourceEl.getBoundingClientRect();
     const from = { x: fromRect.left + fromRect.width / 2, y: fromRect.top + fromRect.height / 2 };
 
-    void toggle(type);
+    const { prevActive, prevCounts, isNewSlot } = applyReactionOptimistic(type, { incoming: true });
+    void persistReactionChange(type, false, prevActive, prevCounts);
 
     window.setTimeout(() => {
       setPickerOpen(false);
@@ -349,19 +584,7 @@ export const ReactionBar = forwardRef<
       }, PICKER_BURST_MS);
     }, PICKER_FLY_DELAY_MS);
 
-    void waitForReactionDestination(type).then((to) => {
-      if (!to) {
-        finishFlyAnimation(type);
-        return;
-      }
-      if (isNewSlot) setIncomingReaction(type);
-      setFlyAnim({
-        id: Date.now(),
-        type,
-        from,
-        to,
-      });
-    });
+    void startFlyToChip(type, from, isNewSlot);
   };
 
   const openPickerMenu = useCallback(
@@ -370,14 +593,48 @@ export const ReactionBar = forwardRef<
         onLockedInteract?.();
         return;
       }
-      pickerAnchorElRef.current = anchor ?? pickerAnchorRef?.current ?? addBtnRef.current ?? rootRef.current;
+      const el = anchor ?? pickerAnchorRef?.current ?? addBtnRef.current ?? rootRef.current;
+      pickerAnchorElRef.current = el;
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const maxLeft = Math.max(8, window.innerWidth - PICKER_FALLBACK_WIDTH - 8);
+        setPickerPos({
+          left: Math.min(Math.max(8, rect.left), maxLeft),
+          top: Math.max(8, rect.top - PICKER_GAP - PICKER_FALLBACK_HEIGHT),
+        });
+      }
       setPickerOpen(true);
       setPickerSession((session) => session + 1);
     },
     [onLockedInteract, pickerAnchorRef, readOnly],
   );
 
-  useImperativeHandle(ref, () => ({ openPicker: openPickerMenu }), [openPickerMenu]);
+  useImperativeHandle(ref, () => ({
+    openPicker: openPickerMenu,
+    quickReact: (type: FamilyReactionType = 'heart', at?: { x: number; y: number }) => {
+      if (readOnly) {
+        onLockedInteract?.();
+        return;
+      }
+      if (!lockReactionCommit()) return;
+
+      const wasActive = activeRef.current === type;
+      familyFeedDebug.info('reaction', 'quickReact', { postId, type, wasActive, hasAt: Boolean(at) });
+
+      if (wasActive) {
+        unlockReactionCommit();
+        void toggle(type);
+        playBarReactionFeedback(type);
+        return;
+      }
+
+      setPickInFlightState(true);
+      const from = at ?? measureReactionChip(type) ?? predictChipNearAddButton() ?? { x: 0, y: 0 };
+      const { prevActive, prevCounts, isNewSlot } = applyReactionOptimistic(type, { incoming: true });
+      void persistReactionChange(type, false, prevActive, prevCounts);
+      void startFlyToChip(type, from, isNewSlot);
+    },
+  }));
 
   const togglePicker = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -386,12 +643,11 @@ export const ReactionBar = forwardRef<
       onLockedInteract?.();
       return;
     }
-    pickerAnchorElRef.current = addBtnRef.current ?? rootRef.current;
-    setPickerOpen((open) => {
-      const next = !open;
-      if (next) setPickerSession((session) => session + 1);
-      return next;
-    });
+    if (pickerOpen) {
+      setPickerOpen(false);
+      return;
+    }
+    openPickerMenu(addBtnRef.current);
   };
 
   const hasVisibleReactions = visibleReactions.length > 0;
@@ -405,7 +661,7 @@ export const ReactionBar = forwardRef<
     showPicker && pickerPos ? (
       <FamilyBodyPortal key={pickerSession}>
         <div
-          ref={pickerRef}
+          ref={setPickerNode}
           className={cn(
             'family-reaction-picker family-reaction-picker--portal family-reaction-picker--grid family-portal-surface',
             pickerClosing && 'family-reaction-picker--burst',
@@ -428,7 +684,7 @@ export const ReactionBar = forwardRef<
               label={r.label}
               count={0}
               active={active === r.type}
-              disabled={pending || pickInFlight}
+              disabled={isReactionBusy()}
               compact
               menuItem
               launching={launchingType === r.type}
@@ -450,7 +706,7 @@ export const ReactionBar = forwardRef<
             label={r.label}
             count={counts[r.type]}
             active={active === r.type}
-            disabled={pending}
+            disabled={isReactionBusy()}
             incoming={incomingReaction === r.type}
             slam={slamType === r.type}
             slamLand={slamLandType === r.type}
@@ -468,12 +724,12 @@ export const ReactionBar = forwardRef<
             aria-label="افزودن واکنش"
             aria-expanded={pickerOpen}
             aria-haspopup="menu"
-            disabled={pending}
+            disabled={isReactionBusy()}
             onClick={togglePicker}
             className={cn(
               'family-reaction-add',
               pickerOpen && 'family-reaction-add--open',
-              pending && 'pointer-events-none opacity-45',
+              isReactionBusy() && 'pointer-events-none opacity-45',
             )}
           >
             <SmilePlus className="h-3.5 w-3.5" strokeWidth={2} />

@@ -20,6 +20,7 @@ const PanelThemeContext = createContext<PanelThemeContextValue | null>(null);
 export function PanelThemeBoot() {
   useLayoutEffect(() => {
     applyResolvedTheme(readResolvedTheme());
+    document.documentElement.setAttribute('data-theme-ready', '1');
   }, []);
 
   return null;

@@ -29,12 +29,31 @@ async function run<T>(fn: () => Promise<T>, fallback: string): Promise<T> {
   }
 }
 
-export async function getFeed(cursor?: string | null, limit = 4): Promise<FamilyFeedResponse> {
+export async function getPost(postId: number): Promise<{ data: FamilyPost }> {
+  return run(() => familyFetch<{ data: FamilyPost }>(`/posts/${postId}`), 'دریافت پست ناموفق بود.');
+}
+
+export async function getFeed(
+  cursor?: string | null,
+  limit = 4,
+  direction: 'older' | 'newer' = 'older',
+): Promise<FamilyFeedResponse> {
   const params = new URLSearchParams();
   if (cursor) params.set('cursor', cursor);
   params.set('limit', String(limit));
+  if (direction === 'newer') params.set('direction', 'newer');
   const qs = `?${params.toString()}`;
   return run(() => familyFetch<FamilyFeedResponse>(`/feed${qs}`), 'دریافت فید ناموفق بود.');
+}
+
+export async function getFeedUnreadSummary(
+  afterId: number,
+): Promise<{ data: { unread_count: number; latest_post_id: number } }> {
+  const qs = `?after_id=${Math.max(0, Math.floor(afterId))}`;
+  return run(
+    () => familyFetch<{ data: { unread_count: number; latest_post_id: number } }>(`/feed/unread-summary${qs}`),
+    'دریافت پست‌های جدید ناموفق بود.',
+  );
 }
 
 export async function getBranding(): Promise<{ data: FamilyBranding }> {
@@ -47,6 +66,26 @@ export async function getStories(): Promise<{ data: FamilyStory[] }> {
 
 export async function getPinnedPosts(): Promise<{ data: FamilyPost[] }> {
   return run(() => familyFetch<{ data: FamilyPost[] }>(`/pinned`), 'دریافت پیام سنجاق‌شده ناموفق بود.');
+}
+
+export type FamilyJumpResponse = {
+  data: FamilyPost[];
+  meta: {
+    next_cursor: string | null;
+    prev_cursor: string | null;
+    has_newer: boolean;
+    has_older: boolean;
+    target_post_id: number;
+  };
+};
+
+/** Chronological window centered on `postId` — for "jump to message" (e.g. an old pinned post). */
+export async function getPostJumpContext(postId: number, limit = 24): Promise<FamilyJumpResponse> {
+  const qs = `?limit=${Math.max(2, Math.floor(limit))}`;
+  return run(
+    () => familyFetch<FamilyJumpResponse>(`/posts/${postId}/jump${qs}`),
+    'رفتن به پست ناموفق بود.',
+  );
 }
 
 export async function joinFamily(entryContext: Record<string, string | undefined> = {}): Promise<{ data: FamilyMeResponse }> {

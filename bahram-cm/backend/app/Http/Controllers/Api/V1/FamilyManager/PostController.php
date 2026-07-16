@@ -6,14 +6,17 @@ use App\Enums\Family\FamilyPostAudienceMode;
 use App\Enums\Family\FamilyPostBlockType;
 use App\Enums\Family\FamilyPostStatus;
 use App\Enums\Family\FamilyPostType;
+use App\Events\FamilyFeedUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\FamilyComment;
 use App\Models\FamilyPost;
 use App\Services\AdminAuditLogger;
 use App\Services\Family\FamilyNotificationService;
 use App\Services\Family\FamilyPostPublisher;
+use App\Services\Family\FeedService;
 use App\Support\ApiResponse;
 use App\Support\FamilyManagerPostPresenter;
+use App\Support\SafeBroadcast;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -138,6 +141,10 @@ class PostController extends Controller
         ]);
 
         $this->audit->log($request->user(), 'family.post_archived', $post);
+        FeedService::invalidateFeedTipCache();
+        SafeBroadcast::optionally(
+            fn () => broadcast(new FamilyFeedUpdated($post, 'archived')),
+        );
 
         return ApiResponse::success(FamilyManagerPostPresenter::present($post));
     }
@@ -162,8 +169,12 @@ class PostController extends Controller
         ]);
 
         $this->audit->log($request->user(), 'family.post_pinned', $post);
+        $fresh = $post->fresh() ?? $post;
+        SafeBroadcast::optionally(
+            fn () => broadcast(new FamilyFeedUpdated($fresh, 'pinned')),
+        );
 
-        return ApiResponse::success(FamilyManagerPostPresenter::present($post->fresh()));
+        return ApiResponse::success(FamilyManagerPostPresenter::present($fresh));
     }
 
     public function unpin(Request $request, FamilyPost $post): JsonResponse
@@ -174,8 +185,12 @@ class PostController extends Controller
         ]);
 
         $this->audit->log($request->user(), 'family.post_unpinned', $post);
+        $fresh = $post->fresh() ?? $post;
+        SafeBroadcast::optionally(
+            fn () => broadcast(new FamilyFeedUpdated($fresh, 'unpinned')),
+        );
 
-        return ApiResponse::success(FamilyManagerPostPresenter::present($post->fresh()));
+        return ApiResponse::success(FamilyManagerPostPresenter::present($fresh));
     }
 
     public function reply(Request $request, FamilyComment $comment): JsonResponse

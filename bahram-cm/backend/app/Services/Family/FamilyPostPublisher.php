@@ -7,6 +7,7 @@ use App\Enums\Family\FamilyPostAudienceMode;
 use App\Enums\Family\FamilyPostBlockType;
 use App\Enums\Family\FamilyPostStatus;
 use App\Enums\Family\FamilyPostType;
+use App\Events\FamilyFeedUpdated;
 use App\Models\FamilyAction;
 use App\Models\FamilyMedia;
 use App\Models\FamilyPost;
@@ -14,6 +15,8 @@ use App\Models\FamilyPostBlock;
 use App\Models\FamilyPostTarget;
 use App\Models\User;
 use App\Services\AdminAuditLogger;
+use App\Support\SafeBroadcast;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -94,12 +97,44 @@ class FamilyPostPublisher
 
         $post->update([
             'status' => FamilyPostStatus::Published,
-            'published_at' => $post->published_at ?? now(),
+            'published_at' => $this->nextPublishedAt($post->id),
         ]);
 
         $this->audit->log($actor, 'family.post_published', $post);
 
-        return $post->fresh(['blocks.media', 'targets', 'actions.options']);
+        $fresh = $post->fresh(['blocks.media', 'targets', 'actions.options']);
+
+        FeedService::invalidateFeedTipCache();
+
+        if ($fresh) {
+            SafeBroadcast::optionally(
+                fn () => broadcast(new FamilyFeedUpdated($fresh)),
+            );
+        }
+
+        return $fresh ?? $post;
+    }
+
+    /**
+     * Chronological tip of the feed — never publish "behind" seeded/future-dated posts.
+     */
+    private function nextPublishedAt(int $excludePostId): Carbon
+    {
+        $tip = FamilyPost::query()
+            ->where('status', FamilyPostStatus::Published->value)
+            ->whereNotNull('published_at')
+            ->where('id', '!=', $excludePostId)
+            ->max('published_at');
+
+        $at = now();
+        if ($tip) {
+            $tipAt = Carbon::parse($tip);
+            if ($tipAt->gte($at)) {
+                $at = $tipAt->copy()->addSecond();
+            }
+        }
+
+        return $at;
     }
 
     /**

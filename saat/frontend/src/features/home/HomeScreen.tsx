@@ -1,16 +1,22 @@
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Sparkles } from 'lucide-react'
+import { Target } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { AppHeader } from './AppHeader'
+import { AgentWorkQueue } from './AgentWorkQueue'
 import { NextCallCard } from '@/components/domain/NextCallCard'
 import { GoalCelebration } from '@/components/domain/GoalCelebration'
 import { BreakOverlay } from '@/components/domain/BreakOverlay'
 import { EmptyState } from '@/components/ui/States'
-import { rankSuggestions } from '@/services/logic'
-import { filterLeadsForAgent } from '@/lib/leadUtils'
+import { rankSuggestions, isCallable } from '@/services/logic'
+import {
+  filterFollowupsForAgent,
+  filterLeadsForAgent,
+  overdueFollowups,
+  todayFollowups,
+} from '@/lib/leadUtils'
 import { isShiftOpen } from '@/lib/shiftUtils'
 import { performSetAvailability } from '@/services/shiftActions'
 import { toFa } from '@/lib/format'
@@ -20,92 +26,6 @@ import { DataGate } from '@/components/pwa/DataGate'
 
 const TG = 'text-[#3390EC] dark:text-[#8774E1]'
 const OK = 'text-emerald-600 dark:text-emerald-400'
-
-const quickSpring = { type: 'spring' as const, stiffness: 520, damping: 28 }
-const popSpring = { type: 'spring' as const, stiffness: 640, damping: 24 }
-
-function AnimatedGoalCheck() {
-  return (
-    <motion.div
-      initial={{ scale: 0.5, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ ...popSpring, duration: 0.35 }}
-      className="relative flex h-12 w-12 items-center justify-center"
-    >
-      <motion.span
-        className="absolute inset-0 rounded-full bg-emerald-400/25"
-        initial={{ scale: 0.8, opacity: 0.8 }}
-        animate={{ scale: 1.45, opacity: 0 }}
-        transition={{ duration: 0.55, ease: 'easeOut' }}
-      />
-      <svg viewBox="0 0 48 48" className="relative h-11 w-11" aria-hidden>
-        <motion.circle
-          cx="24"
-          cy="24"
-          r="20"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          className="text-emerald-500"
-          initial={{ pathLength: 0, opacity: 0.5 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 0.32, ease: 'easeOut' }}
-        />
-        <motion.path
-          d="M15 24.5 L21 30.5 L33 17.5"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="text-emerald-500"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 0.28, delay: 0.18, ease: 'easeOut' }}
-        />
-      </svg>
-    </motion.div>
-  )
-}
-
-function RemainingCallsWidget({ remaining }: { remaining: number }) {
-  return (
-    <div className="relative flex h-[84px] w-[84px] shrink-0 items-center justify-center">
-      <motion.span
-        className="pointer-events-none absolute inset-0 rounded-[20px] border-2 border-[#3390EC]/35"
-        animate={{ scale: [1, 1.12, 1], opacity: [0.45, 0, 0.45] }}
-        transition={{ duration: 1.1, repeat: Infinity, ease: 'easeOut' }}
-      />
-      <div
-        className={cn(
-          'glass-inset relative flex h-full w-full flex-col items-center justify-center',
-          'rounded-[20px] border border-white/50 dark:border-white/10',
-        )}
-      >
-        <AnimatePresence mode="popLayout">
-          <motion.span
-            key={remaining}
-            initial={{ y: 8, scale: 0.72, opacity: 0 }}
-            animate={{ y: 0, scale: 1, opacity: 1 }}
-            exit={{ y: -6, scale: 0.85, opacity: 0 }}
-            transition={{ ...quickSpring, duration: 0.32 }}
-            className={cn('text-[30px] font-black tabular-nums leading-none', TG)}
-          >
-            {toFa(remaining)}
-          </motion.span>
-        </AnimatePresence>
-        <motion.span
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.08, duration: 0.2 }}
-          className="mt-1 text-[10px] font-semibold text-text-soft"
-        >
-          تماس مانده
-        </motion.span>
-      </div>
-    </div>
-  )
-}
 
 export function HomeScreen() {
   const navigate = useNavigate()
@@ -124,17 +44,29 @@ export function HomeScreen() {
   const [skippedLeadIds, setSkippedLeadIds] = useState<string[]>([])
   const wasCompleteRef = useRef(false)
 
+  const visibleLeads = useMemo(
+    () => filterLeadsForAgent(leads, currentAgentId),
+    [leads, currentAgentId],
+  )
+  const agentFollowups = useMemo(
+    () => filterFollowupsForAgent(followups, leads, currentAgentId),
+    [followups, leads, currentAgentId],
+  )
+
   const suggestion = useMemo(() => {
-    const visible = filterLeadsForAgent(leads, currentAgentId)
     const filtered = skippedLeadIds.length
-      ? visible.filter((lead) => !skippedLeadIds.includes(lead.id))
-      : visible
+      ? visibleLeads.filter((lead) => !skippedLeadIds.includes(lead.id))
+      : visibleLeads
     return rankSuggestions(filtered, followups)[0] ?? null
-  }, [leads, followups, skippedLeadIds, currentAgentId])
+  }, [visibleLeads, followups, skippedLeadIds])
 
   const remaining = agent ? Math.max(0, agent.callGoal - agent.callsToday) : 0
   const goalPct = agent?.callGoal ? Math.round((agent.callsToday / agent.callGoal) * 100) : 0
   const goalComplete = remaining === 0 && (agent?.callGoal ?? 0) > 0
+
+  const todayCount = useMemo(() => todayFollowups(agentFollowups).length, [agentFollowups])
+  const overdueCount = useMemo(() => overdueFollowups(agentFollowups).length, [agentFollowups])
+  const callableCount = useMemo(() => visibleLeads.filter(isCallable).length, [visibleLeads])
 
   useEffect(() => {
     syncDailyAgentStats()
@@ -143,14 +75,15 @@ export function HomeScreen() {
   useEffect(() => {
     setSkippedLeadIds((prev) => prev.filter((id) => leads.some((lead) => lead.id === id)))
   }, [leads])
+
   const nextLead = suggestion?.lead ?? null
   const hasAlternateLead = useMemo(() => {
     if (!nextLead) return false
     return rankSuggestions(
-      filterLeadsForAgent(leads, currentAgentId).filter((lead) => lead.id !== nextLead.id),
+      visibleLeads.filter((lead) => lead.id !== nextLead.id),
       followups,
     ).length > 0
-  }, [leads, followups, nextLead, currentAgentId])
+  }, [visibleLeads, followups, nextLead])
 
   useEffect(() => {
     if (goalComplete && !wasCompleteRef.current) {
@@ -184,97 +117,72 @@ export function HomeScreen() {
       <div className="relative min-h-[calc(100dvh-88px)]">
         <div
           className={cn(
-            'space-y-5 px-4 pt-2 transition-[filter,opacity] duration-500',
+            'space-y-4 px-4 pt-2 pb-2 transition-[filter,opacity] duration-500',
             onBreak && 'pointer-events-none select-none blur-[6px] opacity-[0.72] saturate-[0.92]',
           )}
         >
-        <DataGate mode="placeholder">
-        <div className={cn('relative overflow-visible', celebrationVisible && 'pb-4')}>
-          <AnimatePresence>
-            {celebrationVisible && (
+          <DataGate mode="placeholder">
+            <div className={cn('relative overflow-visible', celebrationVisible && 'pb-4')}>
+              <AnimatePresence>
+                {celebrationVisible && (
+                  <motion.div
+                    key="goal-celebration"
+                    className="absolute inset-0 z-10"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.28 }}
+                  >
+                    <GoalCelebration />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Progress + work queue */}
               <motion.div
-                key="goal-celebration"
-                className="absolute inset-0"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.28 }}
-              >
-                <GoalCelebration />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <motion.div
-            layout
-            className={cn(
-              'glass-hero relative z-[1] overflow-hidden rounded-[24px] p-5 transition-[box-shadow,background] duration-500',
-              goalComplete && 'glass-hero-success',
-            )}
-          >
-          <div className="pointer-events-none absolute inset-0">
-            <motion.div
-              animate={{
-                opacity: goalComplete ? 1 : 0.85,
-                scale: goalComplete ? 1.05 : 1,
-              }}
-              transition={{ duration: 0.45 }}
-              className={cn(
-                'absolute -left-12 -top-14 h-44 w-44 rounded-full blur-3xl',
-                goalComplete ? 'bg-emerald-400/30' : 'bg-[#3390EC]/25',
-              )}
-            />
-            <motion.div
-              animate={{ opacity: goalComplete ? 1 : 0.85 }}
-              transition={{ duration: 0.45 }}
-              className={cn(
-                'absolute -bottom-16 -right-10 h-40 w-40 rounded-full blur-3xl',
-                goalComplete ? 'bg-emerald-300/20' : 'bg-[#8774E1]/20',
-              )}
-            />
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent dark:via-white/15" />
-          </div>
-
-          <div className="relative flex items-center gap-4">
-            <div className="min-w-0 flex-1">
-              <motion.span
                 layout
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold backdrop-blur-sm',
-                  goalComplete
-                    ? 'border-emerald-500/25 bg-emerald-500/12 dark:border-emerald-400/30 dark:bg-emerald-400/14'
-                    : 'border-[#3390EC]/20 bg-[#3390EC]/10 dark:border-[#8774E1]/25 dark:bg-[#8774E1]/12',
-                  goalComplete ? OK : TG,
+                  'glass-card relative z-[1] overflow-hidden rounded-[20px] border border-white/60 p-4 dark:border-white/10',
+                  goalComplete && 'border-emerald-500/25',
                 )}
               >
-                <Sparkles size={13} strokeWidth={2.25} />
-                {goalComplete ? 'هدف تکمیل شد' : 'آماده فروش'}
-              </motion.span>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        'flex h-8 w-8 items-center justify-center rounded-[10px]',
+                        goalComplete
+                          ? 'bg-emerald-500/14 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-[#3390EC]/12 dark:bg-[#8774E1]/16',
+                      )}
+                    >
+                      <Target size={16} className={goalComplete ? OK : TG} strokeWidth={2.35} />
+                    </span>
+                    <div>
+                      <p className="text-[12px] font-semibold text-text-muted">هدف تماس امروز</p>
+                      <p className="text-[17px] font-black tabular-nums leading-tight text-text">
+                        {toFa(agent?.callsToday ?? 0)}
+                        <span className="mx-1 text-[14px] font-bold text-text-soft">/</span>
+                        {toFa(agent?.callGoal ?? 0)}
+                      </p>
+                    </div>
+                  </div>
 
-              <h2 className="mt-3 text-[21px] font-bold leading-[1.3] text-text">
-                {goalComplete ? (
-                  <>
-                    آفرین!{' '}
-                    <span className={cn('font-extrabold', OK)}>کار تمومه</span>
-                  </>
-                ) : (
-                  <>
-                    تماس بعدی{' '}
-                    <span className={cn('font-extrabold', TG)}>آماده‌ست</span>
-                  </>
-                )}
-              </h2>
-
-              <div className="mt-4 max-w-[220px]">
-                <div className="mb-1.5 flex items-center justify-between gap-2 text-[11px] font-semibold">
-                  <span className="text-text-muted">پیشرفت هدف امروز</span>
-                  <span className="shrink-0 tabular-nums text-text">
-                    {toFa(agent?.callsToday ?? 0)}
-                    <span className="text-text-soft"> / </span>
-                    {toFa(agent?.callGoal ?? 0)}
-                  </span>
+                  <div className="text-left">
+                    {goalComplete ? (
+                      <span className={cn('text-[13px] font-bold', OK)}>تکمیل شد</span>
+                    ) : (
+                      <>
+                        <span className={cn('text-[22px] font-black tabular-nums leading-none', TG)}>
+                          {toFa(remaining)}
+                        </span>
+                        <p className="mt-0.5 text-[10px] font-semibold text-text-soft">تماس مانده</p>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="h-[5px] overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/10">
+
+                <div className="mt-3 h-[6px] overflow-hidden rounded-full bg-black/[0.06] dark:bg-white/10">
                   <motion.div
                     className={cn(
                       'h-full rounded-full',
@@ -287,60 +195,50 @@ export function HomeScreen() {
                     transition={{ duration: 0.45, ease: 'easeOut' }}
                   />
                 </div>
-              </div>
+
+                <div className="mt-4 border-t border-white/40 pt-4 dark:border-white/8">
+                  <AgentWorkQueue
+                    todayCount={todayCount}
+                    overdueCount={overdueCount}
+                    callableCount={callableCount}
+                    goalComplete={goalComplete}
+                  />
+                </div>
+              </motion.div>
             </div>
 
-            <AnimatePresence mode="wait">
-              {goalComplete ? (
-                <motion.div
-                  key="done"
-                  initial={{ scale: 0.85, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.9, opacity: 0 }}
-                  transition={{ ...popSpring, duration: 0.35 }}
-                  className={cn(
-                    'glass-inset glass-inset-success flex h-[84px] w-[84px] shrink-0 items-center justify-center',
-                    'rounded-[20px] border border-emerald-500/30 dark:border-emerald-400/25',
-                  )}
-                >
-                  <AnimatedGoalCheck />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="remaining"
-                  initial={{ scale: 0.92, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.88, opacity: 0 }}
-                  transition={{ duration: 0.28 }}
-                >
-                  <RemainingCallsWidget remaining={remaining} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </motion.div>
-        </div>
-
-        {nextLead ? (
-          <NextCallCard
-            lead={nextLead}
-            reason={suggestion?.reason}
-            canSkip={hasAlternateLead}
-            onSkip={() => setSkippedLeadIds((prev) => [...prev, nextLead.id])}
-            onCall={() => {
-              haptic('medium')
-              openCallMethodSheet(nextLead)
-            }}
-            onDetails={() => navigate(`/leads/${nextLead.id}`)}
-          />
-        ) : (
-          <EmptyState
-            title="مشتری برای تماس نمانده"
-            description="همه مشتریان امروزت را تماس گرفتی. کارت عالی بود."
-            action={{ label: 'دیدن همه مشتریان', onClick: () => navigate('/leads') }}
-          />
-        )}
-        </DataGate>
+            {/* Next call — primary action */}
+            {nextLead ? (
+              <div>
+                <p className="mb-2.5 px-0.5 text-[12px] font-bold text-text-muted">اولویت تماس</p>
+                <NextCallCard
+                  lead={nextLead}
+                  reason={suggestion?.reason}
+                  canSkip={hasAlternateLead}
+                  onSkip={() => setSkippedLeadIds((prev) => [...prev, nextLead.id])}
+                  onCall={() => {
+                    haptic('medium')
+                    openCallMethodSheet(nextLead)
+                  }}
+                  onDetails={() => navigate(`/leads/${nextLead.id}`)}
+                />
+              </div>
+            ) : (
+              <EmptyState
+                title="مشتری برای تماس نمانده"
+                description={
+                  overdueCount > 0
+                    ? `${toFa(overdueCount)} پیگیری عقب‌افتاده داری — از بخش پیگیری‌ها شروع کن.`
+                    : 'همه مشتریان امروزت را تماس گرفتی. کارت عالی بود.'
+                }
+                action={{
+                  label: overdueCount > 0 ? 'پیگیری‌های عقب‌افتاده' : 'دیدن همه مشتریان',
+                  onClick: () =>
+                    navigate(overdueCount > 0 ? '/followups?bucket=overdue' : '/leads'),
+                }}
+              />
+            )}
+          </DataGate>
         </div>
 
         <AnimatePresence>

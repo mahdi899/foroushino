@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type SetStateAction } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { EmojiRichText } from '@/components/emoji/EmojiRichText';
 import { cn } from '@/lib/cn';
@@ -15,47 +15,54 @@ import { CommentThreadPreview } from '@/components/family/CommentThreadPreview';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { PostMetaRow } from '@/components/family/PostMetaRow';
 import { ReactionBar, type ReactionBarHandle } from '@/components/family/ReactionBar';
+import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import type { FamilyComment } from '@/lib/family/types';
 import type { FamilyPost, FamilyPostBlock } from '@/lib/family/types';
 
-const POST_BODY_INTERACTIVE_SELECTOR = [
-  'a',
-  'button',
+const POST_QUICK_REACT_BLOCK_SELECTOR = [
+  'a[href]',
   'input',
   'textarea',
   'select',
-  'video',
   'audio',
-  'img',
-  '.family-post-bubble__text',
-  '.family-reply-quote',
-  '.family-feed-image',
-  '.family-feed-album',
-  '.family-feed-video',
-  '.family-voice',
-  '.family-inline-card',
+  '.family-reaction-bar',
+  '.family-reaction-btn-wrap',
+  '.family-reaction-add',
+  '.family-post-bubble__meta-row',
+  '.family-post-bubble__comment-zone',
   '.family-action-glass',
+  '.family-inline-card',
+  '.family-voice',
 ].join(', ');
 
-const POST_FOOT_INTERACTIVE_SELECTOR = '.family-post-bubble__meta-row, .family-reaction-bar';
+const POST_SWIPE_BLOCK_SELECTOR = [
+  'a[href]',
+  'input',
+  'textarea',
+  'select',
+  'audio',
+  '.family-reaction-bar',
+  '.family-reaction-btn-wrap',
+  '.family-reaction-add',
+  '.family-post-bubble__meta-row',
+  '.family-action-glass',
+  '.family-inline-card',
+  '.family-voice',
+].join(', ');
 
-function isEmptyZoneClick(
-  target: EventTarget | null,
-  zone: HTMLElement,
-  interactiveSelector: string,
-): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  if (!zone.contains(target)) return false;
-  return !target.closest(interactiveSelector);
+const SWIPE_LOCK_PX = 8;
+const SWIPE_OPEN_PX = 56;
+const SWIPE_MAX_PX = 72;
+function canQuickReactFromTarget(target: EventTarget | null, bubble: HTMLElement): boolean {
+  if (!(target instanceof Element)) return false;
+  if (!bubble.contains(target)) return false;
+  return !target.closest(POST_QUICK_REACT_BLOCK_SELECTOR);
 }
 
-function shouldOpenReactionPicker(
-  event: React.MouseEvent<HTMLElement>,
-  interactiveSelector: string,
-): boolean {
-  if (!isEmptyZoneClick(event.target, event.currentTarget, interactiveSelector)) return false;
-  event.preventDefault();
-  return true;
+function canSwipeFromTarget(target: EventTarget | null, bubble: HTMLElement): boolean {
+  if (!(target instanceof Element)) return false;
+  if (!bubble.contains(target)) return false;
+  return !target.closest(POST_SWIPE_BLOCK_SELECTOR);
 }
 
 function shouldHideActionPrompt(blocks: FamilyPostBlock[], prompt: string): boolean {
@@ -122,11 +129,14 @@ function FeedPostCard({
   previewMode: 'guest' | 'join' | null;
   viewerKey: string | number;
   onPreviewInteract?: () => void;
-  onOpenComments?: (handlers: { onCommentAdded: (comment: FamilyComment) => void }) => void;
+  onOpenComments?: (
+    postId: number,
+    handlers: { onCommentAdded: (comment: FamilyComment) => void },
+  ) => void;
   commentCount: number;
   setCommentCount: Dispatch<SetStateAction<number>>;
-  commentPreview: FamilyComment[];
   setCommentPreview: Dispatch<SetStateAction<FamilyComment[]>>;
+  commentPreview: FamilyComment[];
   anchorId?: string;
   animateEnter?: boolean;
 }) {
@@ -136,32 +146,120 @@ function FeedPostCard({
   const otherBlocks = blocks.filter((b) => b.type !== 'image');
   const reduceMotion = useReducedMotion();
   const reactionBarRef = useRef<ReactionBarHandle>(null);
+  const swipeRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    axis: 'x' | 'y' | null;
+    dx: number;
+  } | null>(null);
+  const [swipeX, setSwipeX] = useState(0);
+  const [swiping, setSwiping] = useState(false);
 
-  const openReactionPicker = useCallback(
-    (anchor: HTMLElement) => {
+  const openCommentsPanel = useCallback(() => {
+    if (previewMode) {
+      onPreviewInteract?.();
+      return;
+    }
+    onOpenComments?.(post.id, {
+      onCommentAdded: (comment) => {
+        setCommentCount((c) => c + 1);
+        setCommentPreview((prev) => {
+          if (prev.some((item) => item.id === comment.id)) return prev;
+          return [comment, ...prev].slice(0, 3);
+        });
+      },
+    });
+  }, [
+    onOpenComments,
+    onPreviewInteract,
+    post.id,
+    previewMode,
+    setCommentCount,
+    setCommentPreview,
+  ]);
+
+  const handleBubbleDoubleClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!canQuickReactFromTarget(event.target, event.currentTarget)) return;
+      event.preventDefault();
       if (previewMode) {
         onPreviewInteract?.();
         return;
       }
-      reactionBarRef.current?.openPicker(anchor);
+      reactionBarRef.current?.quickReact('heart', { x: event.clientX, y: event.clientY });
     },
     [onPreviewInteract, previewMode],
   );
 
-  const handleBodyReactionActivate = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      if (!shouldOpenReactionPicker(event, POST_BODY_INTERACTIVE_SELECTOR)) return;
-      openReactionPicker(event.currentTarget);
+  const endSwipe = useCallback(
+    (commit: boolean) => {
+      const dx = swipeRef.current?.dx ?? 0;
+      swipeRef.current = null;
+      setSwiping(false);
+      setSwipeX(0);
+      if (commit && Math.abs(dx) >= SWIPE_OPEN_PX) {
+        openCommentsPanel();
+      }
     },
-    [openReactionPicker],
+    [openCommentsPanel],
   );
 
-  const handleFootReactionActivate = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      if (!shouldOpenReactionPicker(event, POST_FOOT_INTERACTIVE_SELECTOR)) return;
-      openReactionPicker(event.currentTarget);
+  const handleSwipePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    if (!canSwipeFromTarget(event.target, event.currentTarget)) return;
+    swipeRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      axis: null,
+      dx: 0,
+    };
+  }, []);
+
+  const handleSwipePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const swipe = swipeRef.current;
+    if (!swipe || swipe.pointerId !== event.pointerId) return;
+
+    const dx = event.clientX - swipe.startX;
+    const dy = event.clientY - swipe.startY;
+
+    if (swipe.axis == null) {
+      if (Math.abs(dx) < SWIPE_LOCK_PX && Math.abs(dy) < SWIPE_LOCK_PX) return;
+      swipe.axis = Math.abs(dx) > Math.abs(dy) * 1.15 ? 'x' : 'y';
+      if (swipe.axis === 'x') {
+        event.currentTarget.setPointerCapture(event.pointerId);
+        setSwiping(true);
+      }
+    }
+
+    if (swipe.axis !== 'x') return;
+
+    event.preventDefault();
+    swipe.dx = dx;
+    const clamped = Math.max(-SWIPE_MAX_PX, Math.min(SWIPE_MAX_PX, dx));
+    setSwipeX(clamped);
+  }, []);
+
+  const handleSwipePointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const swipe = swipeRef.current;
+      if (!swipe || swipe.pointerId !== event.pointerId) return;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      endSwipe(swipe.axis === 'x');
     },
-    [openReactionPicker],
+    [endSwipe],
+  );
+
+  const handleSwipePointerCancel = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const swipe = swipeRef.current;
+      if (!swipe || swipe.pointerId !== event.pointerId) return;
+      endSwipe(false);
+    },
+    [endSwipe],
   );
 
   return (
@@ -177,7 +275,18 @@ function FeedPostCard({
           'family-post-bubble',
           post.is_important && 'family-post-bubble--important',
           post.is_pinned && 'family-post-bubble--pinned',
+          swiping && 'family-post-bubble--swiping',
         )}
+        style={
+          swipeX || swiping
+            ? { transform: `translate3d(${swipeX}px, 0, 0)` }
+            : undefined
+        }
+        onDoubleClick={handleBubbleDoubleClick}
+        onPointerDown={handleSwipePointerDown}
+        onPointerMove={handleSwipePointerMove}
+        onPointerUp={handleSwipePointerUp}
+        onPointerCancel={handleSwipePointerCancel}
       >
         {(post.is_pinned || post.is_important) && (
           <div className="family-post-bubble__labels">
@@ -190,15 +299,7 @@ function FeedPostCard({
           </div>
         )}
 
-        <div className="family-post-bubble__author-line">
-          <span className="family-post-bubble__author">{post.author.name}</span>
-        </div>
-
-        <div
-          className="family-post-bubble__body"
-          onClick={handleBodyReactionActivate}
-          onDoubleClick={handleBodyReactionActivate}
-        >
+        <div className="family-post-bubble__body">
           {post.reply_context && (
             <ReplyContextBlock
               commentBody={post.reply_context.comment_body}
@@ -225,12 +326,7 @@ function FeedPostCard({
               />
             ))}
 
-        <div
-          className="family-post-bubble__foot-row"
-          dir="ltr"
-          onClick={handleFootReactionActivate}
-          onDoubleClick={handleFootReactionActivate}
-        >
+        <div className="family-post-bubble__foot-row" dir="ltr">
           <div className="family-post-bubble__reactions">
             <ReactionBar
               ref={reactionBarRef}
@@ -256,21 +352,7 @@ function FeedPostCard({
             <CommentThreadPreview
               count={commentCount}
               preview={commentPreview}
-              onOpen={() => {
-                if (previewMode) {
-                  onPreviewInteract?.();
-                  return;
-                }
-                onOpenComments?.({
-                  onCommentAdded: (comment) => {
-                    setCommentCount((c) => c + 1);
-                    setCommentPreview((prev) => {
-                      if (prev.some((item) => item.id === comment.id)) return prev;
-                      return [comment, ...prev].slice(0, 3);
-                    });
-                  },
-                });
-              }}
+              onOpen={openCommentsPanel}
             />
           </div>
         )}
@@ -279,7 +361,7 @@ function FeedPostCard({
   );
 }
 
-export function PostCard({
+export const PostCard = memo(function PostCard({
   post,
   compact = false,
   variant = 'feed',
@@ -302,12 +384,21 @@ export function PostCard({
   previewMode?: 'guest' | 'join' | null;
   viewerKey?: string | number;
   onPreviewInteract?: () => void;
-  onOpenComments?: (handlers: { onCommentAdded: (comment: FamilyComment) => void }) => void;
+  onOpenComments?: (
+    postId: number,
+    handlers: { onCommentAdded: (comment: FamilyComment) => void },
+  ) => void;
   anchorId?: string;
   animateEnter?: boolean;
 }) {
+  useFamilyDebugRender(`PostCard:${post.id}`);
   const [commentCount, setCommentCount] = useState(post.stats.comments);
   const [commentPreview, setCommentPreview] = useState(post.comment_preview ?? []);
+
+  useEffect(() => {
+    setCommentCount(post.stats.comments);
+    setCommentPreview(post.comment_preview ?? []);
+  }, [post.id, post.stats.comments, post.comment_preview]);
 
   const blocks = post.blocks ?? [];
   const actions = post.actions ?? [];
@@ -416,7 +507,7 @@ export function PostCard({
               onPreviewInteract?.();
               return;
             }
-            onOpenComments?.({
+            onOpenComments?.(post.id, {
               onCommentAdded: (comment) => {
                 setCommentCount((c) => c + 1);
                 setCommentPreview((prev) => {
@@ -430,4 +521,4 @@ export function PostCard({
       )}
     </article>
   );
-}
+});

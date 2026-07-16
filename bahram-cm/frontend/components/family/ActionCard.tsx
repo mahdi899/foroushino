@@ -17,6 +17,7 @@ import {
   applyConfirmationVote,
   applyMultiChoiceVote,
   applySingleChoiceVote,
+  normalizePollResults,
 } from '@/lib/family/actionResults';
 import { familyMotion } from '@/lib/family/motion';
 import { useFamilyActionCelebrate } from '@/lib/family/FamilyActionCelebrateContext';
@@ -42,6 +43,27 @@ function actionTypeMeta(type: FamilyActionType): { label: string; Icon: LucideIc
   }
 }
 
+function pollSelectedValues(
+  type: FamilyActionType,
+  response: Record<string, unknown> | null | undefined,
+): Set<string> {
+  if (!response) return new Set();
+
+  if (type === 'single_choice' && typeof response.option === 'string') {
+    return new Set([response.option]);
+  }
+
+  if (type === 'multi_choice' && Array.isArray(response.options)) {
+    return new Set(response.options.filter((value): value is string => typeof value === 'string'));
+  }
+
+  if (type === 'confirmation') {
+    return new Set([response.confirmed === true ? 'yes' : 'no']);
+  }
+
+  return new Set();
+}
+
 function PollParticipation({
   results,
   memberCount,
@@ -61,25 +83,60 @@ function PollParticipation({
   return (
     <span className={cn('family-action-meta', className)}>
       {isStaff
-        ? `${answered.toLocaleString('en-US')} از ${memberCount.toLocaleString('en-US')} نفر پاسخ دادند`
-        : `${percent.toLocaleString('en-US')}٪ شرکت کردند`}
+        ? `${answered.toLocaleString('fa-IR')} از ${memberCount.toLocaleString('fa-IR')} نفر پاسخ دادند`
+        : `${percent.toLocaleString('fa-IR')}٪ شرکت کردند`}
     </span>
+  );
+}
+
+function PollResultsHeader({
+  typeLabel,
+  Icon,
+  prompt,
+  hidePrompt,
+}: {
+  typeLabel: string;
+  Icon: LucideIcon;
+  prompt: string;
+  hidePrompt?: boolean;
+}) {
+  return (
+    <div className="family-action-results-header">
+      <span className="family-action-kicker">
+        <Icon className="h-3 w-3" strokeWidth={2} aria-hidden />
+        {typeLabel}
+      </span>
+      {!hidePrompt && prompt ? <p className="family-action-results-header__question">{prompt}</p> : null}
+    </div>
   );
 }
 
 function PollResults({
   results,
+  actionOptions,
+  actionType,
   memberCount,
   isStaff,
+  selectedValues,
   done = false,
 }: {
   results: FamilyActionResults;
+  actionOptions: { value: string; label: string }[];
+  actionType: FamilyActionType;
   memberCount?: number;
   isStaff?: boolean;
+  selectedValues: Set<string>;
   done?: boolean;
 }) {
   const reduceMotion = useReducedMotion();
-  const topPercent = Math.max(...results.options.map((o) => o.percent), 0);
+  const normalized = normalizePollResults(actionOptions, results);
+  const sortedOptions = [...normalized.options].sort((a, b) => {
+    if (b.percent !== a.percent) return b.percent - a.percent;
+    if (b.count !== a.count) return b.count - a.count;
+    return a.label.localeCompare(b.label, 'fa');
+  });
+  const topPercent = Math.max(...sortedOptions.map((option) => option.percent), 0);
+  const isMultiChoice = actionType === 'multi_choice';
 
   return (
     <motion.div
@@ -88,14 +145,20 @@ function PollResults({
       animate={{ opacity: 1, y: 0 }}
       transition={familyMotion.tweenFast}
     >
-      <ul className="family-action-poll-list">
-        {results.options.map((option, index) => {
+      <ul className="family-action-poll-list" aria-label="نتایج نظرسنجی">
+        {sortedOptions.map((option, index) => {
           const isLeader = option.percent > 0 && option.percent === topPercent;
-          const fillWidth = `${Math.max(option.percent, option.percent > 0 ? 6 : 0)}%`;
+          const isMine = selectedValues.has(option.value);
+          const fillWidth = `${Math.max(option.percent, option.percent > 0 ? 8 : 0)}%`;
+
           return (
             <motion.li
               key={option.value}
-              className="family-action-poll-row"
+              className={cn(
+                'family-action-poll-row',
+                isMine && 'family-action-poll-row--mine',
+                option.count === 0 && 'family-action-poll-row--empty',
+              )}
               initial={reduceMotion ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...familyMotion.tweenFast, delay: index * familyMotion.stagger }}
@@ -108,26 +171,48 @@ function PollResults({
                 aria-hidden
               />
               <div className="family-action-poll-row__content">
-                <span className="family-action-poll-row__label">{option.label}</span>
-                <span className="family-action-poll-row__stat tabular-nums">{option.percent}٪</span>
+                <div className="family-action-poll-row__main">
+                  <span className="family-action-poll-row__label">{option.label}</span>
+                  {isMine ? <span className="family-action-poll-row__badge">انتخاب شما</span> : null}
+                </div>
+                <div className="family-action-poll-row__stats">
+                  {option.count > 0 ? (
+                    <span className="family-action-poll-row__count tabular-nums">
+                      {option.count.toLocaleString('fa-IR')} رأی
+                    </span>
+                  ) : null}
+                  <span className="family-action-poll-row__stat tabular-nums">
+                    {option.percent.toLocaleString('fa-IR')}٪
+                  </span>
+                </div>
               </div>
             </motion.li>
           );
         })}
       </ul>
       <div className="family-action-meta family-action-meta--footer">
-        {results.total.toLocaleString('fa-IR')} رأی
+        <span>{normalized.total.toLocaleString('fa-IR')} شرکت‌کننده</span>
         {memberCount != null && memberCount > 0 ? (
           <>
             <span className="family-action-meta__dot" aria-hidden>
               ·
             </span>
             <PollParticipation
-              results={results}
+              results={normalized}
               memberCount={memberCount}
               isStaff={Boolean(isStaff)}
               className="family-action-meta--inline"
             />
+          </>
+        ) : null}
+        {isMultiChoice ? (
+          <>
+            <span className="family-action-meta__dot" aria-hidden>
+              ·
+            </span>
+            <span className="family-action-meta family-action-meta--inline">
+              درصد = سهم هر گزینه از شرکت‌کنندگان
+            </span>
           </>
         ) : null}
       </div>
@@ -235,8 +320,11 @@ export function ActionCard({
   const [selected, setSelected] = useState<string[]>([]);
   const [scale, setScale] = useState<number | null>(null);
   const [results, setResults] = useState<FamilyActionResults | null | undefined>(action.results);
+  const [localResponse, setLocalResponse] = useState<Record<string, unknown> | null>(null);
   const { label: typeLabel, Icon: TypeIcon } = actionTypeMeta(action.type);
   const celebrate = useFamilyActionCelebrate();
+  const userResponse = localResponse ?? action.user_response ?? null;
+  const selectedValues = pollSelectedValues(action.type, userResponse);
 
   const submit = async (value: Record<string, unknown>, nextResults?: FamilyActionResults) => {
     if (pending || submitted) return;
@@ -247,6 +335,7 @@ export function ActionCard({
     try {
       await respondToAction(action.id, value);
       if (nextResults) setResults(nextResults);
+      setLocalResponse(value);
       setJustSubmitted(true);
       celebrate({ type: action.type });
     } finally {
@@ -269,16 +358,24 @@ export function ActionCard({
   if (submitted) {
     return (
       <ActionShell done successOnly={!showResults}>
-        {!hidePrompt && action.prompt && showResults ? (
-          <p className="family-action-done-question">{action.prompt}</p>
-        ) : null}
         {showResults ? (
-          <PollResults
-            results={results}
-            memberCount={memberCount}
-            isStaff={isStaff}
-            done
-          />
+          <>
+            <PollResultsHeader
+              typeLabel={typeLabel}
+              Icon={TypeIcon}
+              prompt={action.prompt}
+              hidePrompt={hidePrompt}
+            />
+            <PollResults
+              results={results}
+              actionOptions={action.options}
+              actionType={action.type}
+              memberCount={memberCount}
+              isStaff={isStaff}
+              selectedValues={selectedValues}
+              done
+            />
+          </>
         ) : (
           <ActionSuccess compact embedded />
         )}
@@ -398,6 +495,7 @@ export function ActionCard({
         <div className="family-action-options">
           {action.options.map((opt) => {
             const isSelected = selected.includes(opt.value);
+            const isMulti = action.type === 'multi_choice';
             return (
               <button
                 key={opt.id}
@@ -413,8 +511,15 @@ export function ActionCard({
                   );
                 }}
                 className={cn('family-action-option', isSelected && 'family-action-option--selected')}
+                aria-pressed={isSelected}
               >
-                <span className="family-action-option__radio" aria-hidden />
+                <span
+                  className={cn(
+                    isMulti ? 'family-action-option__check' : 'family-action-option__radio',
+                    isSelected && (isMulti ? 'family-action-option__check--selected' : undefined),
+                  )}
+                  aria-hidden
+                />
                 <span className="family-action-option__label">{opt.label}</span>
               </button>
             );

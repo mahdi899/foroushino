@@ -58,12 +58,14 @@ class FeedController extends Controller
 
         $limit = $request->integer('limit');
         $limit = $limit > 0 ? min($limit, 50) : null;
+        $direction = $request->query('direction') === 'newer' ? 'newer' : 'older';
 
         $result = $this->feed->forMember(
             $user,
             $request->query('cursor'),
             $limit,
             $membership,
+            $direction,
         );
 
         $family = $result['membership']->family;
@@ -74,6 +76,8 @@ class FeedController extends Controller
             200,
             [
                 'next_cursor' => $result['next_cursor'],
+                'prev_cursor' => $result['prev_cursor'] ?? null,
+                'has_newer' => $result['has_newer'] ?? false,
                 'guest' => false,
                 'display_name' => $branding['display_name'],
                 'branding' => $branding,
@@ -82,6 +86,16 @@ class FeedController extends Controller
                 'onboarding_completed' => (bool) $result['membership']->onboarding_completed,
                 'is_staff' => $this->access->canManage($user),
             ]
+        );
+    }
+
+    public function unreadSummary(Request $request): JsonResponse
+    {
+        $afterId = max(0, $request->integer('after_id'));
+        $user = $request->user('sanctum');
+
+        return ApiResponse::success(
+            $this->feed->unreadSummary($afterId, $user),
         );
     }
 
@@ -117,6 +131,38 @@ class FeedController extends Controller
         }
 
         return ApiResponse::success((new FamilyPostResource($post))->resolve());
+    }
+
+    /**
+     * Chronological window centered on `$post` — lets "jump to message" (e.g. an old
+     * pinned post) work in one request regardless of how far back it is.
+     */
+    public function jump(Request $request, FamilyPost $post): JsonResponse
+    {
+        $user = $request->user('sanctum');
+        abort_unless($user, 401);
+        abort_unless($post->status?->value === 'published' || $post->status === 'published', 404);
+        abort_unless($post->published_at, 404);
+
+        $membership = $this->access->requireMembership($user);
+        abort_unless($this->audience->visibleToFamily($post, (int) $membership->family_id), 404);
+
+        $limit = $request->integer('limit');
+        $half = $limit > 0 ? min(intdiv($limit, 2), 25) : 12;
+
+        $result = $this->feed->jumpToPost($user, $post, $membership, $half, $half);
+
+        return ApiResponse::success(
+            FamilyPostResource::collection($result['data'])->resolve(),
+            200,
+            [
+                'next_cursor' => $result['next_cursor'],
+                'prev_cursor' => $result['prev_cursor'],
+                'has_newer' => $result['has_newer'],
+                'has_older' => $result['has_older'],
+                'target_post_id' => $post->id,
+            ]
+        );
     }
 
     public function join(Request $request, JoinFamily $join): JsonResponse

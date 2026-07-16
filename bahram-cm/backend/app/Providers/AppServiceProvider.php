@@ -10,6 +10,7 @@ use App\Models\FamilyMedia;
 use App\Observers\FamilyMediaObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -23,6 +24,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Broadcast::routes(['middleware' => ['auth:sanctum']]);
+
         FamilyMedia::observe(FamilyMediaObserver::class);
 
         RateLimiter::for('api', function (Request $request) {

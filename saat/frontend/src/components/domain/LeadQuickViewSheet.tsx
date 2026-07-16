@@ -10,6 +10,7 @@ import {
   TrendingUp,
   ChevronLeft,
   Lock,
+  Hash,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { BottomSheet } from '@/components/ui/BottomSheet'
@@ -18,7 +19,9 @@ import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { ContactStatusBadge, SourceChip, LeadStatusBadge } from './Badges'
 import { objectionLabels, stageLabels } from '@/data/labels'
 import { formatPhone, maskPhone, relativeDayTime, toFa } from '@/lib/format'
+import { leadDisplayCode } from '@/lib/leadCode'
 import { haptic } from '@/lib/telegram'
+import { cn } from '@/lib/cn'
 import { MY_AGENT_ID } from '@/data/mock'
 import type { Lead } from '@/types'
 
@@ -46,11 +49,24 @@ export function LeadQuickViewSheet({
       <div className="space-y-4 pb-1 pt-1">
         <div className="flex items-center gap-3">
           <LeadAvatar lead={lead} size={52} ring />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[16px] font-extrabold text-neutral-900">
+          <div className="min-w-0 flex-1 text-right">
+            <p className="truncate text-[16px] font-extrabold text-text">
               {lead.firstName} {lead.lastName}
             </p>
-            <p className="ltr-nums truncate text-[12px] font-bold text-primary-600">
+            <p
+              dir="ltr"
+              className="mt-1 inline-flex items-center gap-0.5 rounded-md bg-black/[0.04] px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-text-soft dark:bg-white/[0.06]"
+            >
+              <Hash size={10} strokeWidth={2.5} />
+              {leadDisplayCode(lead)}
+            </p>
+            <p
+              dir="ltr"
+              className={cn(
+                'mt-0.5 truncate text-right text-[12px] font-bold tabular-nums tracking-wide',
+                'text-[#3390EC] dark:text-[#8774E1]',
+              )}
+            >
               {maskPhoneNumbers ? maskPhone(lead.phone) : formatPhone(lead.phone)}
             </p>
           </div>

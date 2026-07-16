@@ -48,6 +48,8 @@ return [
         'max_video_mb' => (int) env('FAMILY_MEDIA_MAX_VIDEO_MB', 500),
         'max_image_mb' => (int) env('FAMILY_MEDIA_MAX_IMAGE_MB', 15),
         'chunk_size_mb' => (int) env('FAMILY_MEDIA_CHUNK_SIZE_MB', 5),
+        'ffmpeg_bin' => env('FAMILY_FFMPEG_BIN', 'ffmpeg'),
+        'ffprobe_bin' => env('FAMILY_FFPROBE_BIN', 'ffprobe'),
     ],
 
     'rate_limits' => [
@@ -77,6 +79,10 @@ return [
         'pulse_ttl' => (int) env('FAMILY_CACHE_PULSE_TTL', 60),
         'member_count_ttl' => (int) env('FAMILY_CACHE_MEMBER_COUNT_TTL', 300),
         'action_stats_ttl' => (int) env('FAMILY_CACHE_ACTION_STATS_TTL', 60),
+        // Member feed tip page (cursor=null) — the hottest query per family. Short TTL
+        // because it's also bumped by a version key on every publish (see
+        // FamilyPostPublisher::publish), so this mostly protects against read bursts.
+        'feed_tip_ttl' => (int) env('FAMILY_CACHE_FEED_TIP_TTL', 8),
     ],
 
     'onboarding' => [

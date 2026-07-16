@@ -7,28 +7,27 @@ import {
   Grid3x3,
   NotebookPen,
   Volume2,
-  BookOpen,
   MessageSquareText,
   PhoneOff,
   ChevronDown,
-  MoreVertical,
   MapPin,
   AlertCircle,
   MessageSquareWarning,
-  Wallet,
-  History,
+  CalendarPlus,
+  UserRound,
   Clock,
+  History,
   type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { BottomSheet } from '@/components/ui/BottomSheet'
-import { SalesScriptSheet } from '@/components/domain/SalesScriptSheet'
+import { Button } from '@/components/ui/Button'
 import { LeadSmsSheet } from '@/components/domain/LeadSmsSheet'
-import { LeadNotesStrip } from '@/components/domain/LeadNotesStrip'
-import { ContactStatusBadge, SourceChip } from '@/components/domain/Badges'
-import { objectionLabels } from '@/data/labels'
-import { formatDuration, toFa } from '@/lib/format'
+import { FollowupPicker, buildFollowupIso } from '@/components/domain/FollowupPicker'
+import { ContactStatusBadge } from '@/components/domain/Badges'
+import { objectionLabels, resultLabels, stageLabels } from '@/data/labels'
+import { formatDuration, relativeDayTime, toFa } from '@/lib/format'
 import { leadDisplayCode } from '@/lib/leadCode'
 import { dialNativePhone } from '@/lib/call'
 import {
@@ -41,6 +40,10 @@ import { cn } from '@/lib/cn'
 import { collectLeadNotes } from '@/lib/leadNotes'
 import { performReconcileCall, getActiveCallId, waitForActiveCallId } from '@/services/callActions'
 import { saveCallSession } from '@/services/callSession'
+
+const TG = 'text-[#3390EC] dark:text-[#8774E1]'
+
+type Sheet = null | 'keypad' | 'sms' | 'callback'
 
 export function DialerScreen() {
   const { id } = useParams()
@@ -55,6 +58,7 @@ export function DialerScreen() {
   const updateLeadNote = useStore((s) => s.updateLeadNote)
   const activeCallDraftNote = useStore((s) => s.activeCallDraftNote)
   const setActiveCallDraftNote = useStore((s) => s.setActiveCallDraftNote)
+  const createFollowup = useStore((s) => s.createFollowup)
   const pushToast = useStore((s) => s.pushToast)
   const minCallDurationSec = useStore((s) => s.appSettings.minCallDurationSec)
 
@@ -64,8 +68,10 @@ export function DialerScreen() {
   const [seconds, setSeconds] = useState(0)
   const [muted, setMuted] = useState(false)
   const [speaker, setSpeaker] = useState(false)
-  const [sheet, setSheet] = useState<null | 'note' | 'keypad' | 'guide' | 'sms'>(null)
-  const [note, setNote] = useState('')
+  const [sheet, setSheet] = useState<Sheet>(null)
+  const [callbackDay, setCallbackDay] = useState(1)
+  const [callbackHour, setCallbackHour] = useState(10)
+  const [note, setNote] = useState(activeCallDraftNote)
 
   useEffect(() => {
     const t = setInterval(() => setSeconds((s) => s + 1), 1000)
@@ -78,9 +84,21 @@ export function DialerScreen() {
     dialNativePhone(lead.phone)
   }, [isNativeCall, lead])
 
+  useEffect(() => {
+    setNote(activeCallDraftNote)
+  }, [activeCallDraftNote])
+
   const leadNotes = useMemo(
     () => (lead ? collectLeadNotes(lead, calls, followups) : []),
     [lead, calls, followups],
+  )
+
+  const recentCalls = useMemo(
+    () =>
+      [...calls]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 2),
+    [calls],
   )
 
   if (!lead) {
@@ -91,6 +109,7 @@ export function DialerScreen() {
   const minCallEnabled = isMinCallDurationEnabled(minCallDurationSec)
   const canEndCall = canEndAgentCall(seconds, minCallDurationSec)
   const remainingSec = remainingAgentCallSec(seconds, minCallDurationSec)
+  const contextNote = leadNotes[leadNotes.length - 1]?.text ?? lead.interestReason
 
   const hangUp = async () => {
     if (!canEndCall) {
@@ -121,176 +140,250 @@ export function DialerScreen() {
     navigate(`/call-result/${lead.id}`, { replace: true })
   }
 
-  const openGuide = () => setSheet('guide')
+  const scheduleCallback = () => {
+    haptic('success')
+    createFollowup({
+      leadId: lead.id,
+      kind: 'call',
+      title: `تماس ${lead.firstName}`,
+      dueAt: buildFollowupIso(callbackDay, callbackHour),
+      priority: lead.priority,
+    })
+    pushToast('پیگیری بعدی ثبت شد')
+    setSheet(null)
+  }
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex h-full flex-col overflow-hidden bg-gradient-to-b from-[#3390EC]/8 via-background to-background dark:from-[#8774E1]/12"
+      className="flex h-full flex-col overflow-hidden bg-background"
     >
-      <div className="glass-header flex shrink-0 items-center justify-between px-3 pt-[calc(8px+var(--safe-top))] pb-2.5">
+      {/* Status bar */}
+      <div className="glass-header flex shrink-0 items-center justify-between px-4 pt-[calc(8px+var(--safe-top))] pb-2">
         <button
           type="button"
           onClick={hangUp}
           disabled={minCallEnabled && !canEndCall}
           className={cn(
-            'glass-inset flex h-10 w-10 items-center justify-center rounded-full text-text-soft transition-all',
+            'glass-inset flex h-9 w-9 items-center justify-center rounded-full text-text-soft',
             !minCallEnabled || canEndCall ? 'active:scale-95' : 'cursor-not-allowed opacity-45',
           )}
+          aria-label="پایان تماس"
         >
-          <ChevronDown size={22} strokeWidth={2.25} />
+          <ChevronDown size={20} strokeWidth={2.25} />
         </button>
-        <span className="glass-inset inline-flex items-center gap-1.5 rounded-full border border-white/55 px-3.5 py-1.5 text-[11px] font-bold text-emerald-600 dark:border-white/10">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-          {isNativeCall ? 'تماس با سیم‌کارت' : 'در حال تماس'}
-        </span>
-        <button
-          type="button"
-          onClick={openGuide}
-          className="glass-inset flex h-10 w-10 items-center justify-center rounded-full text-text-soft transition-all active:scale-95"
-        >
-          <MoreVertical size={20} strokeWidth={2.25} />
-        </button>
-      </div>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4">
-        <div className="relative flex items-center justify-center">
-          <motion.span
-            animate={{ scale: [1, 1.12, 1], opacity: [0.35, 0.15, 0.35] }}
-            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute h-40 w-40 rounded-full bg-[#3390EC]/20 dark:bg-[#8774E1]/22"
-          />
-          <motion.span
-            animate={{ scale: [1, 1.06, 1], opacity: [0.5, 0.25, 0.5] }}
-            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', delay: 0.3 }}
-            className="absolute h-32 w-32 rounded-full bg-[#3390EC]/12 dark:bg-[#8774E1]/14"
-          />
-          <LeadAvatar lead={lead} size={108} ring showTempBadge />
-        </div>
-        <h2 className="mt-5 text-xl font-black text-text">
-          {lead.firstName} {lead.lastName}
-        </h2>
-        <p className="mt-1 text-sm font-bold text-text-soft">
-          کد مشتری{' '}
-          <span dir="ltr" className="font-extrabold tracking-[0.14em] text-text tabular-nums">
-            {leadDisplayCode(lead)}
-          </span>
-        </p>
-        <div className="mt-2.5 flex flex-wrap items-center justify-center gap-2">
-          <ContactStatusBadge temperature={lead.temperature} />
-          <SourceChip source={lead.source} />
-          {lead.conversionProbability > 0 && (
-            <span className="rounded-full bg-[#3390EC]/12 px-2.5 py-1 text-[10px] font-extrabold text-[#3390EC] dark:bg-[#8774E1]/15 dark:text-[#8774E1]">
-              امتیاز لید {toFa(lead.conversionProbability)}
-            </span>
+        <div
+          className={cn(
+            'glass-inset flex items-center gap-2 rounded-full border border-white/55 px-4 py-2 dark:border-white/10',
+            minCallEnabled && !canEndCall && 'border-amber-400/30',
           )}
-          {lead.callCount > 0 && (
-            <span className="rounded-full bg-black/[0.05] px-2.5 py-1 text-[10px] font-bold text-text-soft dark:bg-white/10">
-              {toFa(lead.callCount)} تماس قبلی
-            </span>
-          )}
-        </div>
-        <div className="mt-2.5">
+        >
+          <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
           <span
             className={cn(
-              'glass-inset inline-flex items-center gap-1 rounded-full border border-white/50 px-2.5 py-1 text-sm font-bold tabular-nums dark:border-white/10',
-              minCallEnabled && !canEndCall ? 'text-amber-600' : 'text-emerald-600',
+              'text-[22px] font-black tabular-nums leading-none',
+              minCallEnabled && !canEndCall ? 'text-amber-600' : 'text-text',
             )}
           >
-            <span
-              className={cn(
-                'h-1.5 w-1.5 rounded-full',
-                minCallEnabled && !canEndCall ? 'animate-pulse bg-amber-500' : 'bg-emerald-500',
-              )}
-            />
             {formatDuration(seconds)}
           </span>
-        </div>
-        <LeadNotesStrip notes={leadNotes} />
-      </div>
-
-      <div className="shrink-0 px-8 pb-[calc(12px+var(--safe-bottom))]">
-        <div className={cn('grid gap-y-4 gap-x-3', isNativeCall ? 'grid-cols-2' : 'grid-cols-3')}>
-          {!isNativeCall && (
-            <>
-              <ControlButton
-                icon={muted ? <MicOff size={22} /> : <Mic size={22} />}
-                label="بی‌صدا"
-                active={muted}
-                onClick={() => { haptic('light'); setMuted((v) => !v) }}
-              />
-              <ControlButton icon={<Grid3x3 size={22} />} label="صفحه کلید" onClick={() => setSheet('keypad')} />
-            </>
-          )}
-          <ControlButton
-            icon={<NotebookPen size={22} />}
-            label="یادداشت"
-            onClick={() => {
-              setNote(activeCallDraftNote || lead.lastNote || '')
-              setSheet('note')
-            }}
-          />
-          {!isNativeCall && (
-            <ControlButton
-              icon={<Volume2 size={22} />}
-              label="بلندگو"
-              active={speaker}
-              onClick={() => { haptic('light'); setSpeaker((v) => !v) }}
-            />
-          )}
-          <ControlButton
-            icon={<MessageSquareText size={22} />}
-            label="پیامک"
-            onClick={() => setSheet('sms')}
-          />
-          <ControlButton
-            icon={<BookOpen size={22} />}
-            label="راهنما"
-            tone="accent"
-            onClick={openGuide}
-          />
+          <span className="text-[10px] font-bold text-text-soft">
+            {isNativeCall ? 'سیم‌کارت' : 'VoIP'}
+          </span>
         </div>
 
-        <div className="mt-5 flex justify-center">
-          <motion.button
-            whileTap={!minCallEnabled || canEndCall ? { scale: 0.9 } : undefined}
-            onClick={hangUp}
-            disabled={minCallEnabled && !canEndCall}
-            className={cn(
-              'flex h-16 w-16 items-center justify-center rounded-full text-white shadow-[0_12px_30px_-8px_rgba(229,72,77,0.6)]',
-              !minCallEnabled || canEndCall ? 'bg-error' : 'cursor-not-allowed bg-error/45',
-            )}
-          >
-            <PhoneOff size={24} />
-          </motion.button>
-        </div>
-      </div>
-
-      <BottomSheet open={sheet === 'note'} onClose={() => setSheet(null)} title="یادداشت تماس">
-        <textarea
-          value={note}
-          onChange={(e) => {
-            const value = e.target.value
-            setNote(value)
-            setActiveCallDraftNote(value)
-          }}
-          placeholder="نکات مهم این تماس را بنویس..."
-          rows={5}
-          className="w-full rounded-2xl border border-border bg-neutral-50 p-4 text-sm font-bold text-neutral-800 outline-none focus:border-primary-400"
-        />
         <button
-          onClick={() => {
-            const trimmed = note.trim()
-            updateLeadNote(lead.id, trimmed)
-            setActiveCallDraftNote(trimmed)
-            setSheet(null)
-          }}
-          className="mt-3 h-12 w-full rounded-2xl bg-primary-600 text-sm font-extrabold text-white"
+          type="button"
+          onClick={() => navigate(`/leads/${lead.id}`)}
+          className="glass-inset flex h-9 w-9 items-center justify-center rounded-full text-text-soft active:scale-95"
+          aria-label="جزئیات مشتری"
         >
-          ذخیره یادداشت
+          <UserRound size={18} strokeWidth={2.25} />
         </button>
-      </BottomSheet>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto no-scrollbar px-4 pb-2">
+        {/* Lead card */}
+        <div className="glass-card rounded-[18px] border border-white/55 p-3 dark:border-white/10">
+          <div className="flex items-center gap-2.5">
+            <LeadAvatar lead={lead} size={44} ring showTempBadge />
+            <div className="min-w-0 flex-1 text-right">
+              <h2 className="truncate text-[15px] font-bold leading-tight text-text">
+                {lead.firstName} {lead.lastName}
+              </h2>
+              <div className="mt-1 flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                <span className="text-[11px] font-semibold text-text-soft">
+                  کد مشتری:{' '}
+                  <span dir="ltr" className="text-[13px] font-black tabular-nums text-text">
+                    {leadDisplayCode(lead)}
+                  </span>
+                </span>
+                {lead.city && (
+                  <>
+                    <span className="text-text-soft/30">·</span>
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-text-soft">
+                      <MapPin size={9} strokeWidth={2.25} />
+                      {lead.city}
+                    </span>
+                  </>
+                )}
+                <span className="text-text-soft/30">·</span>
+                <ContactStatusBadge temperature={lead.temperature} size="sm" />
+                {lead.conversionProbability > 0 && (
+                  <>
+                    <span className="text-text-soft/30">·</span>
+                    <span className={cn('text-[10px] font-bold tabular-nums', TG)}>
+                      {toFa(lead.conversionProbability)}٪
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-2.5 grid grid-cols-3 gap-1">
+            <InfoPill icon={History} label="مرحله" value={stageLabels[lead.stage]} />
+            <InfoPill
+              icon={Clock}
+              label="بهترین زمان"
+              value={lead.bestCallTime || '—'}
+            />
+            <InfoPill
+              icon={PhoneOff}
+              label="تماس قبلی"
+              value={
+                lead.lastCallAt
+                  ? relativeDayTime(lead.lastCallAt)
+                  : lead.callCount > 0
+                    ? toFa(lead.callCount)
+                    : '—'
+              }
+            />
+          </div>
+
+          {(contextNote || lead.painPoint || lead.objection) && (
+            <div className="mt-2.5 space-y-1.5 border-t border-white/40 pt-2.5 dark:border-white/8">
+              {contextNote && (
+                <ContextLine icon={NotebookPen} label="یادداشت قبلی" value={contextNote} />
+              )}
+              {lead.painPoint && (
+                <ContextLine icon={AlertCircle} label="نیاز" value={lead.painPoint} tone="warning" />
+              )}
+              {lead.objection && (
+                <ContextLine
+                  icon={MessageSquareWarning}
+                  label="اعتراض محتمل"
+                  value={objectionLabels[lead.objection]}
+                  tone="error"
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Live notes — standard in call center desktops */}
+        <div className="glass-card mt-3 rounded-[18px] border border-white/55 p-3 dark:border-white/10">
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold text-text-soft">
+            <NotebookPen size={12} className={TG} strokeWidth={2.25} />
+            یادداشت همین تماس
+          </p>
+          <textarea
+            value={note}
+            onChange={(e) => {
+              const value = e.target.value
+              setNote(value)
+              setActiveCallDraftNote(value)
+            }}
+            placeholder="نکات مهم مکالمه را همین‌جا بنویس…"
+            rows={3}
+            className="glass-inset w-full resize-none rounded-[14px] border border-white/50 px-3 py-2.5 text-[13px] font-semibold leading-relaxed text-text outline-none focus:border-[#3390EC]/35 dark:border-white/10"
+          />
+        </div>
+
+        {recentCalls.length > 0 && (
+          <div className="glass-card mt-3 rounded-[18px] border border-white/55 p-3 dark:border-white/10">
+            <p className="mb-2 text-[11px] font-bold text-text-soft">آخرین تماس‌ها</p>
+            <div className="space-y-1.5">
+              {recentCalls.map((call) => (
+                <div
+                  key={call.id}
+                  className="flex items-center justify-between gap-2 rounded-[12px] bg-black/[0.03] px-2.5 py-2 dark:bg-white/[0.04]"
+                >
+                  <span className="text-[12px] font-semibold text-text">
+                    {resultLabels[call.result]}
+                  </span>
+                  <span className="shrink-0 text-[10px] font-bold tabular-nums text-text-soft">
+                    {relativeDayTime(call.createdAt)}
+                    {call.durationSec > 0 && ` · ${formatDuration(call.durationSec)}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {minCallEnabled && !canEndCall && (
+          <p className="mt-3 text-center text-[11px] font-semibold text-amber-600">
+            حداقل {formatDuration(minCallDurationSec)} — {formatDuration(remainingSec)} مانده
+          </p>
+        )}
+      </div>
+
+      {/* Quick tools */}
+      <div className="shrink-0 px-4 pb-[calc(12px+var(--safe-bottom))]">
+        <div className="glass-card overflow-hidden rounded-[18px] border border-white/55 dark:border-white/10">
+          <div className="grid grid-cols-3 gap-px bg-white/40 dark:bg-white/8">
+            {!isNativeCall && (
+              <>
+                <ActionCell
+                  icon={muted ? MicOff : Mic}
+                  label="بی‌صدا"
+                  active={muted}
+                  onClick={() => {
+                    haptic('light')
+                    setMuted((v) => !v)
+                  }}
+                />
+                <ActionCell icon={Grid3x3} label="کلید" onClick={() => setSheet('keypad')} />
+                <ActionCell
+                  icon={Volume2}
+                  label="بلندگو"
+                  active={speaker}
+                  onClick={() => {
+                    haptic('light')
+                    setSpeaker((v) => !v)
+                  }}
+                />
+              </>
+            )}
+            <ActionCell icon={MessageSquareText} label="پیامک" onClick={() => setSheet('sms')} />
+            <ActionCell icon={CalendarPlus} label="پیگیری" onClick={() => setSheet('callback')} />
+            {isNativeCall && (
+              <ActionCell
+                icon={UserRound}
+                label="جزئیات"
+                onClick={() => navigate(`/leads/${lead.id}`)}
+              />
+            )}
+          </div>
+        </div>
+
+        <motion.button
+          whileTap={!minCallEnabled || canEndCall ? { scale: 0.97 } : undefined}
+          onClick={hangUp}
+          disabled={minCallEnabled && !canEndCall}
+          className={cn(
+            'mt-4 flex h-[52px] w-full items-center justify-center gap-2 rounded-[14px] text-[15px] font-bold text-white',
+            'shadow-[0_8px_24px_-6px_rgba(229,72,77,0.5)]',
+            !minCallEnabled || canEndCall ? 'bg-error' : 'cursor-not-allowed bg-error/45',
+          )}
+        >
+          <PhoneOff size={20} strokeWidth={2.25} />
+          پایان تماس و ثبت نتیجه
+        </motion.button>
+      </div>
 
       <BottomSheet open={sheet === 'keypad'} onClose={() => setSheet(null)} title="صفحه کلید">
         <Keypad />
@@ -298,122 +391,95 @@ export function DialerScreen() {
 
       <LeadSmsSheet open={sheet === 'sms'} onClose={() => setSheet(null)} lead={lead} />
 
-      <BottomSheet open={sheet === 'guide'} onClose={() => setSheet(null)} title="راهنما">
-        <div className="space-y-5 pb-1 pt-1">
-          <section className="space-y-3">
-            <p className="text-[11px] font-bold text-text-soft">خلاصه مشتری</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <ContactStatusBadge temperature={lead.temperature} size="sm" />
-              <SourceChip source={lead.source} size="sm" />
-              <span className="rounded-full bg-primary-50 px-2.5 py-1 text-[11px] font-extrabold text-primary-700 dark:bg-primary-500/15 dark:text-primary-200">
-                {toFa(lead.conversionProbability)}٪ احتمال
-              </span>
-            </div>
-
-            {lead.city && (
-              <p className="flex items-center gap-1.5 text-[12px] font-bold text-neutral-500">
-                <MapPin size={13} className="shrink-0 text-neutral-400" />
-                {lead.city}
-              </p>
-            )}
-
-            <div className="grid grid-cols-2 gap-2">
-              <SummaryField icon={Clock} label="بهترین زمان تماس" value={lead.bestCallTime || '-'} />
-              <SummaryField icon={History} label="تعداد تلاش" value={toFa(lead.callCount)} />
-              {lead.budget && <SummaryField icon={Wallet} label="بودجه حدودی" value={lead.budget} />}
-            </div>
-
-            {lead.painPoint && (
-              <SummaryField icon={AlertCircle} label="نیاز اصلی مشتری" value={lead.painPoint} tone="warning" full />
-            )}
-            {lead.objection && (
-              <SummaryField
-                icon={MessageSquareWarning}
-                label="اعتراض احتمالی"
-                value={objectionLabels[lead.objection]}
-                tone="error"
-                full
-              />
-            )}
-            {lead.lastNote && (
-              <SummaryField icon={NotebookPen} label="آخرین یادداشت" value={lead.lastNote} full />
-            )}
-          </section>
-
-          <div className="h-px bg-border/70" />
-
-          <section className="space-y-2">
-            <p className="text-[11px] font-bold text-text-soft">اسکریپت فروش</p>
-            <SalesScriptSheet embedded />
-          </section>
+      <BottomSheet open={sheet === 'callback'} onClose={() => setSheet(null)} title="زمان‌بندی پیگیری">
+        <div className="space-y-4 pt-1">
+          <p className="text-[12px] font-semibold text-text-muted">
+            تماس بعدی با {lead.firstName} را برای بعد از این مکالمه رزرو کن.
+          </p>
+          <FollowupPicker
+            dayOffset={callbackDay}
+            hour={callbackHour}
+            onDayChange={setCallbackDay}
+            onHourChange={setCallbackHour}
+          />
+          <Button full size="lg" onClick={scheduleCallback}>
+            ثبت پیگیری
+          </Button>
         </div>
       </BottomSheet>
     </motion.div>
   )
 }
 
-function SummaryField({
+function InfoPill({
   icon: Icon,
   label,
   value,
-  tone = 'primary',
-  full,
 }: {
   icon: LucideIcon
   label: string
   value: string
-  tone?: 'primary' | 'warning' | 'error'
-  full?: boolean
 }) {
-  const toneClass = {
-    primary: 'text-primary-600',
-    warning: 'text-warning-600',
-    error: 'text-error-600',
-  }[tone]
   return (
-    <div className={cn('rounded-xl bg-neutral-50 px-3 py-2 dark:bg-white/5', full && 'col-span-2')}>
-      <p className="mb-0.5 flex items-center gap-1 text-[10px] font-bold text-neutral-400">
-        <Icon size={11} className={toneClass} />
-        {label}
-      </p>
-      <p className="text-[12px] font-extrabold leading-5 text-neutral-800 dark:text-neutral-200">{value}</p>
+    <div className="glass-inset rounded-[12px] px-2 py-2 text-center">
+      <Icon size={12} className={cn('mx-auto mb-1', TG)} strokeWidth={2.25} />
+      <p className="truncate text-[10px] font-bold text-text">{value}</p>
+      <p className="mt-0.5 text-[9px] font-semibold text-text-soft">{label}</p>
     </div>
   )
 }
 
-function ControlButton({
-  icon,
+function ContextLine({
+  icon: Icon,
+  label,
+  value,
+  tone = 'neutral',
+}: {
+  icon: LucideIcon
+  label: string
+  value: string
+  tone?: 'neutral' | 'warning' | 'error'
+}) {
+  const toneCls = {
+    neutral: TG,
+    warning: 'text-amber-600 dark:text-amber-400',
+    error: 'text-error-600 dark:text-error-400',
+  }[tone]
+
+  return (
+    <div className="flex items-start gap-2 text-right">
+      <Icon size={13} className={cn('mt-0.5 shrink-0', toneCls)} strokeWidth={2.25} />
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-bold text-text-soft">{label}</p>
+        <p className="text-[12px] font-semibold leading-snug text-text-muted line-clamp-2">{value}</p>
+      </div>
+    </div>
+  )
+}
+
+function ActionCell({
+  icon: Icon,
   label,
   onClick,
   active,
-  tone = 'neutral',
 }: {
-  icon: React.ReactNode
+  icon: LucideIcon
   label: string
   onClick?: () => void
   active?: boolean
-  tone?: 'neutral' | 'secondary' | 'accent'
 }) {
-  const toneCls =
-    tone === 'secondary'
-      ? 'border-secondary-500/20 text-secondary-600'
-      : tone === 'accent'
-        ? 'border-accent-500/20 text-accent-600'
-        : 'border-white/50 text-text dark:border-white/10'
   return (
-    <button type="button" onClick={onClick} className="flex flex-col items-center gap-1.5">
-      <motion.span
-        whileTap={{ scale: 0.9 }}
-        className={cn(
-          'glass-inset flex h-14 w-14 items-center justify-center rounded-full border transition-colors',
-          active
-            ? 'border-[#3390EC]/30 bg-[#3390EC]/15 text-[#3390EC] dark:border-[#8774E1]/35 dark:bg-[#8774E1]/18 dark:text-[#8774E1]'
-            : toneCls,
-        )}
-      >
-        {icon}
-      </motion.span>
-      <span className="text-[10px] font-semibold text-text-soft">{label}</span>
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex flex-col items-center gap-1 bg-white/50 px-1.5 py-2.5 transition-colors active:bg-white/70',
+        'dark:bg-white/[0.04] dark:active:bg-white/[0.08]',
+        active && 'bg-[#3390EC]/10 dark:bg-[#8774E1]/14',
+      )}
+    >
+      <Icon size={19} strokeWidth={2.25} className={active ? TG : 'text-text-muted'} />
+      <span className="text-[9px] font-semibold text-text-soft">{label}</span>
     </button>
   )
 }
@@ -421,11 +487,11 @@ function ControlButton({
 function Keypad() {
   const keys = ['۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹', '*', '۰', '#']
   return (
-    <div className="grid grid-cols-3 gap-3 pb-2">
+    <div className="grid grid-cols-3 gap-2 pb-2">
       {keys.map((k) => (
         <button
           key={k}
-          className="flex h-16 items-center justify-center rounded-2xl bg-neutral-50 text-2xl font-extrabold text-neutral-800 active:bg-neutral-100 dark:bg-white/8 dark:text-neutral-100"
+          className="glass-inset flex h-14 items-center justify-center rounded-2xl text-xl font-bold text-text active:opacity-80"
         >
           {k}
         </button>

@@ -165,43 +165,45 @@ export function FamilyNotificationsPanel({
   };
 
   return (
-    <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
-      <header className="family-panel-header flex shrink-0 items-center gap-2 px-4 py-2.5 lg:px-5">
-        {onClose ? (
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="بازگشت به فید"
-            className="family-panel-back"
-          >
-            <ChevronRight className="h-5 w-5" aria-hidden />
-            <span>فید</span>
-          </button>
-        ) : (
-          <span className="w-[72px]" aria-hidden />
-        )}
-        <h2 className="family-panel-title">
-          <Bell className="h-4 w-4 text-[var(--family-tg-pinned-accent)]" strokeWidth={1.75} />
-          اعلان‌ها
-          {unreadCount > 0 && (
-            <span className="family-notif-header-badge">{unreadCount.toLocaleString('fa-IR')}</span>
+    <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden', className)}>
+      <header className="family-panel-header shrink-0">
+        <div className="family-notif-header-inner">
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="بازگشت به فید"
+              className="family-panel-back"
+            >
+              <ChevronRight className="h-5 w-5" aria-hidden />
+              <span>فید</span>
+            </button>
+          ) : (
+            <span className="w-[72px]" aria-hidden />
           )}
-        </h2>
-        {unreadCount > 0 ? (
-          <button
-            type="button"
-            onClick={() => void handleMarkAll()}
-            className="family-panel-back family-notif-mark-all text-[12px]"
-          >
-            <CheckCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
-            همه
-          </button>
-        ) : (
-          <span className="w-[72px]" aria-hidden />
-        )}
+          <h2 className="family-panel-title">
+            <Bell className="h-4 w-4 text-[var(--family-tg-pinned-accent)]" strokeWidth={1.75} />
+            اعلان‌ها
+            {unreadCount > 0 && (
+              <span className="family-notif-header-badge">{unreadCount.toLocaleString('fa-IR')}</span>
+            )}
+          </h2>
+          {unreadCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => void handleMarkAll()}
+              className="family-panel-back family-notif-mark-all text-[12px]"
+            >
+              <CheckCheck className="h-3.5 w-3.5" strokeWidth={1.75} />
+              همه
+            </button>
+          ) : (
+            <span className="w-[72px]" aria-hidden />
+          )}
+        </div>
       </header>
 
-      <div className="family-feed-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div className="family-feed-scroll min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
         <div className="family-notif-panel">
           {isLoading ? (
             <div className="family-notif-list" aria-busy aria-label="در حال بارگذاری اعلان‌ها">
