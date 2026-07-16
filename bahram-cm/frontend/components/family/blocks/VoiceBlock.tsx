@@ -5,6 +5,11 @@ import { Pause, Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
 import { enqueueFamilyMediaLoad } from '@/lib/family/mediaLoadQueue';
+import {
+  getFamilyMediaBlobUrl,
+  readFamilyMediaBlob,
+  tryCacheFamilyMediaBlob,
+} from '@/lib/family/mediaCache';
 import { formatPlaybackSpeed } from '@/lib/family/playback';
 import { sendMediaProgress } from '@/lib/family/api';
 import type { FamilyMediaBlock } from '@/lib/family/types';
@@ -152,12 +157,13 @@ export function VoiceBlock({
 
     const promise = enqueueFamilyMediaLoad('full', media.id, async () => {
       try {
-        const response = await fetch(media.url!);
-        if (!response.ok) throw new Error('voice fetch failed');
-        const blob = await response.blob();
+        const blob =
+          (await readFamilyMediaBlob('full', media.id, media.url!)) ??
+          (await tryCacheFamilyMediaBlob(media.url!, media.id, 'full'));
+        if (!blob) throw new Error('voice fetch failed');
         if (cancelled) return;
 
-        const objectUrl = URL.createObjectURL(blob);
+        const objectUrl = getFamilyMediaBlobUrl(`voice:${media.id}`, blob);
         blobUrlRef.current = objectUrl;
 
         const audio = audioRef.current;
@@ -190,12 +196,8 @@ export function VoiceBlock({
 
     return () => {
       cancelled = true;
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
     };
-  }, [media.url, loadRequested]);
+  }, [media.id, media.url, loadRequested]);
 
   const ensureAudioReady = useCallback(async () => {
     if (!loadRequested) setLoadRequested(true);

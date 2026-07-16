@@ -29,6 +29,10 @@ async function run<T>(fn: () => Promise<T>, fallback: string): Promise<T> {
   }
 }
 
+export async function getPost(postId: number): Promise<{ data: FamilyPost }> {
+  return run(() => familyFetch<{ data: FamilyPost }>(`/posts/${postId}`), 'دریافت پست ناموفق بود.');
+}
+
 export async function getFeed(cursor?: string | null, limit = 4): Promise<FamilyFeedResponse> {
   const params = new URLSearchParams();
   if (cursor) params.set('cursor', cursor);

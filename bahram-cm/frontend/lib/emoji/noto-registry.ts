@@ -113,7 +113,23 @@ export const FAMILY_REACTION_NOTO: Record<FamilyReactionType, NotoEmojiSlug> = {
   wink: 'wink',
 };
 
-const EMOJI_TEST_RE = new RegExp(`^${emojiRegex()}$`, 'u');
+const UNICODE_EMOJI_RE = emojiRegex();
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Noto fallbacks for glyphs missing from emoji-regex (e.g. studio mic 🎙️). */
+const EXTRA_EMOJI_PATTERN = [...new Set(Object.keys(NOTO_CHAR_FALLBACK))]
+  .sort((a, b) => b.length - a.length)
+  .map(escapeRegExp)
+  .join('|');
+
+const EMOJI_TOKEN_SOURCE = EXTRA_EMOJI_PATTERN
+  ? `(?:${UNICODE_EMOJI_RE.source}|${EXTRA_EMOJI_PATTERN})`
+  : UNICODE_EMOJI_RE.source;
+
+const EMOJI_SPLIT_RE = new RegExp(`(${EMOJI_TOKEN_SOURCE})`, UNICODE_EMOJI_RE.flags);
 
 function charVariants(char: string): string[] {
   const base = char.replace(/\uFE0F/g, '');
@@ -144,14 +160,9 @@ export type EmojiTextPart =
 export function splitEmojiText(text: string): EmojiTextPart[] {
   if (!text) return [];
 
-  const re = new RegExp(`(${emojiRegex()})`, 'gu');
-  const parts = text.split(re).filter((part) => part.length > 0);
+  const parts = text.split(EMOJI_SPLIT_RE).filter((part) => part.length > 0);
 
   return parts.map((part) => {
-    if (!EMOJI_TEST_RE.test(part)) {
-      return { type: 'text' as const, value: part };
-    }
-
     const notoSlug = resolveNotoSlug(part);
     return notoSlug
       ? { type: 'emoji' as const, value: part, notoSlug }

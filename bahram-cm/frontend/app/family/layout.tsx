@@ -6,6 +6,7 @@ import { cn } from '@/lib/cn';
 import { FamilyMediaPlayerProvider } from '@/lib/family/FamilyMediaPlayerContext';
 import { FamilyActionCelebrateProvider } from '@/lib/family/FamilyActionCelebrateContext';
 import { FamilyThemeBoot } from '@/app/family/FamilyThemeBoot';
+import { FamilyServiceWorkerRegistrar } from '@/components/family/FamilyServiceWorkerRegistrar';
 import {
   DEFAULT_SITE_THEME,
   SITE_THEME_COOKIE_KEY,
@@ -49,6 +50,7 @@ export default async function FamilyLayout({ children }: { children: React.React
       suppressHydrationWarning
     >
       <FamilyThemeBoot />
+      <FamilyServiceWorkerRegistrar />
       <FamilyMediaPlayerProvider>
         <FamilyActionCelebrateProvider>
           <div className="family-app__frame relative mx-auto flex h-[100dvh] w-full flex-col overflow-hidden lg:my-3 lg:h-[calc(100dvh-1.5rem)]">

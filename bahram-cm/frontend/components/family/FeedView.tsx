@@ -138,7 +138,7 @@ export function FeedView({
   const initialPage = initialFeed ? { data: initialFeed.data, meta: initialFeed.meta } : null;
   const { openLogin } = useFamilyGuestLogin();
 
-  const { posts, meta, isLoading, hasMore, loadMore, isValidating, jumpToPost, mutate } = useFamilyFeed(
+  const { posts, meta, isLoading, hasMore, loadMore, isValidating, jumpToPost, revalidateTip } = useFamilyFeed(
     feedScope,
     initialPage,
     viewerKey,
@@ -251,7 +251,6 @@ export function FeedView({
         latest: payload.latest_post_id,
         anchored: anchoredToBottomRef.current,
       });
-      void mutate();
       if (isPreview) return;
       if (anchoredToBottomRef.current) return;
 
@@ -1325,7 +1324,7 @@ export function FeedView({
                 if (isJumpedAwayRef.current) {
                   isJumpedAwayRef.current = false;
                   familyFeedDebug.info('scroll', 'return to live after jump');
-                  void mutate().then(async () => {
+                  void revalidateTip().then(async () => {
                     // Let React flush so postsRef reflects the freshly fetched tip page.
                     await new Promise<void>((resolve) => {
                       requestAnimationFrame(() => requestAnimationFrame(() => resolve()));

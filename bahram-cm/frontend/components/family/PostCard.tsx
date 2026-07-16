@@ -53,6 +53,8 @@ const POST_SWIPE_BLOCK_SELECTOR = [
 const SWIPE_LOCK_PX = 8;
 const SWIPE_OPEN_PX = 56;
 const SWIPE_MAX_PX = 72;
+const REACTION_NUDGE_DWELL_MS = 3000;
+const REACTION_NUDGE_VISIBLE_RATIO = 0.5;
 
 function canQuickReactFromTarget(target: EventTarget | null, bubble: HTMLElement): boolean {
   if (!(target instanceof Element)) return false;
@@ -147,6 +149,8 @@ function FeedPostCard({
   const otherBlocks = blocks.filter((b) => b.type !== 'image');
   const reduceMotion = useReducedMotion();
   const reactionBarRef = useRef<ReactionBarHandle>(null);
+  const postDwellRef = useRef<HTMLElement>(null);
+  const [reactionNudge, setReactionNudge] = useState(false);
   const swipeRef = useRef<{
     pointerId: number;
     startX: number;
@@ -188,10 +192,47 @@ function FeedPostCard({
         onPreviewInteract?.();
         return;
       }
+      setReactionNudge(false);
       reactionBarRef.current?.quickReact('heart', { x: event.clientX, y: event.clientY });
     },
     [onPreviewInteract, previewMode],
   );
+
+  useEffect(() => {
+    if (previewMode || post.user_reaction) {
+      setReactionNudge(false);
+      return;
+    }
+
+    const node = postDwellRef.current;
+    if (!node) return;
+
+    let timer: number | undefined;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting || entry.intersectionRatio < REACTION_NUDGE_VISIBLE_RATIO) {
+          if (timer != null) window.clearTimeout(timer);
+          timer = undefined;
+          setReactionNudge(false);
+          return;
+        }
+
+        if (timer != null) return;
+
+        timer = window.setTimeout(() => {
+          setReactionNudge(true);
+        }, REACTION_NUDGE_DWELL_MS);
+      },
+      { threshold: [REACTION_NUDGE_VISIBLE_RATIO, 0.65] },
+    );
+
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+      if (timer != null) window.clearTimeout(timer);
+    };
+  }, [post.id, post.user_reaction, previewMode]);
 
   const endSwipe = useCallback(
     (commit: boolean) => {
@@ -265,6 +306,7 @@ function FeedPostCard({
 
   return (
     <motion.article
+      ref={postDwellRef}
       id={anchorId}
       className={cn('family-feed-post scroll-mt-3', compact && 'family-feed-post--compact')}
       initial={animateEnter && !reduceMotion ? familyMotion.postEnter(0).initial : false}
@@ -335,6 +377,8 @@ function FeedPostCard({
               stats={{ ...post.stats, comments: commentCount }}
               userReaction={post.user_reaction}
               readOnly={Boolean(previewMode)}
+              reactionNudge={reactionNudge}
+              onReactionNudgeDismiss={() => setReactionNudge(false)}
               onLockedInteract={onPreviewInteract}
             />
           </div>
