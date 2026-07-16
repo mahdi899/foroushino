@@ -33,12 +33,16 @@ export const FeedJumpToLatest = forwardRef<
     [],
   );
 
-  const show = visible || unreadCount > 0;
+  const show = visible;
 
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={(event) => {
+        onClick();
+        // Drop keyboard/mouse focus so global emerald focus-visible ring never sticks.
+        event.currentTarget.blur();
+      }}
       className={cn(
         'family-feed-jump',
         show && 'family-feed-jump--visible',

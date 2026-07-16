@@ -64,13 +64,94 @@ export function scrollFeedToElement(
     padding?: number;
   },
 ) {
+  if (align === 'end') {
+    // Bottom-edge pin is more accurate than height math (Telegram unread landing).
+    pinFeedElementBottom(el, { root, lenis, inset: padding, behavior });
+    return;
+  }
+
   const rootRect = root.getBoundingClientRect();
   const elRect = el.getBoundingClientRect();
   const currentScroll = lenis ? lenis.scroll : root.scrollTop;
-  const offset =
-    align === 'end' ? root.clientHeight - elRect.height - padding : padding;
-  const targetTop = elRect.top - rootRect.top + currentScroll - offset;
+  const targetTop = elRect.top - rootRect.top + currentScroll - padding;
   scrollFeedTo(Math.max(0, targetTop), behavior, { root, lenis });
+}
+
+/**
+ * Pin the bottom edge of `el` to the bottom of the feed viewport (minus inset).
+ * Returns remaining pixel drift after the scroll command (0 = settled).
+ */
+export function pinFeedElementBottom(
+  el: HTMLElement,
+  {
+    root,
+    lenis,
+    inset = 16,
+    behavior = 'auto',
+  }: {
+    root: HTMLElement;
+    lenis?: Lenis | null;
+    inset?: number;
+    behavior?: FamilyFeedScrollBehavior;
+  },
+): number {
+  const rootRect = root.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
+  const desiredBottom = rootRect.bottom - inset;
+  const drift = elRect.bottom - desiredBottom;
+  if (Math.abs(drift) < 0.75) return 0;
+  const nextTop = getFeedScrollTop(root, lenis) + drift;
+  scrollFeedTo(Math.max(0, nextTop), behavior, { root, lenis });
+  return drift;
+}
+
+/**
+ * Iteratively pin until layout/Lenis settle — professional unread landing.
+ * Safe to call only during boot (not on every scroll frame).
+ */
+export async function pinFeedElementBottomUntilSettled(
+  el: HTMLElement,
+  {
+    root,
+    lenis,
+    inset = 16,
+    maxPasses = 6,
+  }: {
+    root: HTMLElement;
+    lenis?: Lenis | null;
+    inset?: number;
+    maxPasses?: number;
+  },
+): Promise<void> {
+  const waitFrame = () =>
+    new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+
+  for (let i = 0; i < maxPasses; i += 1) {
+    if (lenis) {
+      // Resize only during settle passes — never on scroll handlers.
+      lenis.resize();
+    }
+    const drift = pinFeedElementBottom(el, {
+      root,
+      lenis,
+      inset,
+      behavior: 'auto',
+    });
+    await waitFrame();
+    if (Math.abs(drift) < 1.5) {
+      // Confirm one more frame after paint.
+      await waitFrame();
+      const again = pinFeedElementBottom(el, {
+        root,
+        lenis,
+        inset,
+        behavior: 'auto',
+      });
+      if (Math.abs(again) < 1.5) return;
+    }
+  }
 }
 
 export function scrollFeedToLatest(
@@ -151,10 +232,6 @@ export function restoreFeedScrollPosition(
   },
 ) {
   if (!root) return;
-
-  if (lenis) {
-    lenis.resize();
-  }
 
   if (previous.mode === 'anchor') {
     const el = document.getElementById(previous.anchorId);

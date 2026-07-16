@@ -29,8 +29,9 @@ export function FamilyNavButton({ className, compact = false }: FamilyNavButtonP
       href="/family"
       prefetch
       onClick={() => {
-        if (!showBadge) return;
-        stashEnterUnreadAfter(getGlobalLastReadPostId());
+        // Always hand off the catch-up cursor — badge can lag behind realtime.
+        const after = getGlobalLastReadPostId();
+        if (after > 0) stashEnterUnreadAfter(after);
       }}
       aria-current={active ? "page" : undefined}
       aria-label={

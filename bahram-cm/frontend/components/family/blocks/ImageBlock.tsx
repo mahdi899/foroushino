@@ -43,7 +43,6 @@ export function ImageBlock({
   const [phase, setPhase] = useState<LoadPhase>('idle');
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [openLightboxWhenLoaded, setOpenLightboxWhenLoaded] = useState(false);
   const previewRequestedRef = useRef(false);
   const warmedRef = useRef(false);
   const clickTimerRef = useRef<number | null>(null);
@@ -131,16 +130,6 @@ export function ImageBlock({
     }
   }, [phase]);
 
-  useEffect(() => {
-    if (phase !== 'loaded' || !openLightboxWhenLoaded) return;
-    setOpenLightboxWhenLoaded(false);
-    if (manageLightboxExternally && onOpenLightbox) {
-      onOpenLightbox();
-      return;
-    }
-    setLightboxOpen(true);
-  }, [manageLightboxExternally, onOpenLightbox, openLightboxWhenLoaded, phase]);
-
   if (!media.url) {
     return <div className={cn('aspect-square w-full bg-white/5', roundedClass, className)} />;
   }
@@ -153,6 +142,7 @@ export function ImageBlock({
     setLightboxOpen(true);
   };
 
+  /** First tap downloads / clears blur; only a later tap opens the lightbox. */
   const runSingleClickAction = () => {
     if (phase === 'loaded') {
       openLoaded();
@@ -160,9 +150,6 @@ export function ImageBlock({
     }
 
     if (phase === 'preview') {
-      if (manageLightboxExternally) {
-        setOpenLightboxWhenLoaded(true);
-      }
       setDisplayUrl((current) => current ?? media.url);
       setPhase('loaded');
       warmFullCache();
@@ -170,9 +157,6 @@ export function ImageBlock({
     }
 
     if (phase === 'idle' || phase === 'error') {
-      if (manageLightboxExternally) {
-        setOpenLightboxWhenLoaded(true);
-      }
       previewRequestedRef.current = true;
       setDisplayUrl(media.url);
       setPhase('loading');

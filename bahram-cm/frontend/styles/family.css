@@ -1905,10 +1905,21 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   opacity: 0;
   pointer-events: none;
   transform: translate3d(0, 6px, 0);
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
   transition:
     opacity 200ms cubic-bezier(0.22, 1, 0.36, 1),
     transform 200ms cubic-bezier(0.22, 1, 0.36, 1),
     background 180ms ease;
+}
+
+.family-feed-jump:focus,
+.family-feed-jump:focus-visible,
+.family-feed-jump:active {
+  outline: none !important;
+  box-shadow:
+    0 2px 10px color-mix(in oklab, var(--family-text) 16%, transparent),
+    inset 0 0.5px 0 color-mix(in oklab, white 18%, transparent);
 }
 
 .family-feed-jump--visible {
@@ -4414,9 +4425,11 @@ html[data-theme='light'] .family-app .family-action-number-bar {
   gap: 0.375rem;
   border-radius: 1.125rem;
   border: 0.5px solid color-mix(in oklab, var(--family-tg-pinned-accent) 28%, var(--family-border));
-  background: color-mix(in oklab, var(--family-bubble-channel-bg) 88%, transparent);
-  backdrop-filter: blur(22px) saturate(180%);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  /* Solid card — no glass; feed behind must not show through. */
+  background: var(--family-surface-elevated);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  opacity: 1;
   padding: 1.25rem 1.125rem 1.125rem;
   text-align: center;
   box-shadow:

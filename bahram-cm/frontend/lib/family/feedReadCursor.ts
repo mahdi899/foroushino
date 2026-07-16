@@ -177,6 +177,16 @@ export function hasUnreadSince(postsAsc: { id: number }[] | number[], lastReadPo
   return countUnreadPosts(posts, lastReadPostId) > 0;
 }
 
+/** True when the chronologically latest post intersects the feed viewport. */
+export function isFeedTipInView(root: HTMLElement, latestPostId: number): boolean {
+  if (latestPostId <= 0) return false;
+  const el = document.getElementById(`family-post-${latestPostId}`);
+  if (!el) return false;
+  const rootRect = root.getBoundingClientRect();
+  const elRect = el.getBoundingClientRect();
+  return elRect.top < rootRect.bottom - 8 && elRect.bottom > rootRect.top + 8;
+}
+
 /**
  * How many posts after `lastReadPostId` are still entirely below the viewport.
  * Binary-searches post tops — O(log n) layout reads instead of measuring every post.
