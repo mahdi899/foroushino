@@ -25,6 +25,7 @@ import {
 import {
   countUnreadPosts,
   firstUnreadPostId,
+  chronologicalLatestPostId,
   getLastReadPostId,
   hasUnreadSince,
   setLastReadPostId,
@@ -51,14 +52,14 @@ function buildFeedItems(posts: FamilyPost[], unreadAfterId: number | null): Feed
   let lastDayKey: string | null = null;
   let unreadInserted = false;
   const unreadCount =
-    unreadAfterId != null ? countUnreadPosts(posts.map((p) => p.id), unreadAfterId) : 0;
+    unreadAfterId != null ? countUnreadPosts(posts, unreadAfterId) : 0;
 
   for (const post of posts) {
     if (
       !unreadInserted &&
       unreadAfterId != null &&
       unreadCount > 0 &&
-      post.id > unreadAfterId
+      firstUnreadPostId(posts, unreadAfterId) === post.id
     ) {
       items.push({
         kind: 'unread',
@@ -185,19 +186,17 @@ export function FeedView({
     onFeedUpdated: (payload) => {
       void mutate();
       if (isPreview) return;
+      if (anchoredToBottomRef.current) return;
+
       const lastRead = getLastReadPostId(viewerKey);
-      if (payload.latest_post_id <= lastRead) return;
-
-      if (anchoredToBottomRef.current) {
-        // Stick-to-bottom path will mark caught up after posts refresh.
-        return;
-      }
-
-      const ids = postsRef.current.map((p) => p.id);
-      if (!ids.includes(payload.post_id)) ids.push(payload.post_id);
-      const nextBadge = countUnreadPosts(ids, lastRead);
-      setUnreadBadge((prev) => Math.max(prev, nextBadge, 1));
-      if (unreadSplitRef.current == null) {
+      const fromLoaded = countUnreadPosts(postsRef.current, lastRead);
+      const nextBadge = Math.max(
+        fromLoaded,
+        postsRef.current.some((p) => p.id === payload.post_id) ? fromLoaded : fromLoaded + 1,
+        1,
+      );
+      setUnreadBadge((prev) => Math.max(prev, nextBadge));
+      if (unreadSplitRef.current == null && lastRead > 0) {
         unreadSplitRef.current = lastRead;
         setUnreadSplitId(lastRead);
       }
@@ -271,11 +270,12 @@ export function FeedView({
 
   const markCaughtUpToLatest = useCallback(() => {
     if (isPreview || postsRef.current.length === 0) return;
-    const maxId = postsRef.current.reduce((max, post) => Math.max(max, post.id), 0);
-    setLastReadPostId(viewerKey, maxId);
+    const latestId = chronologicalLatestPostId(postsRef.current);
+    if (latestId <= 0) return;
+    setLastReadPostId(viewerKey, latestId);
     setUnreadBadge(0);
     if (unreadSplitRef.current != null) {
-      unreadSplitRef.current = maxId;
+      unreadSplitRef.current = latestId;
       setUnreadSplitId(null);
     }
   }, [isPreview, viewerKey]);
@@ -346,7 +346,7 @@ export function FeedView({
       markCaughtUpToLatest();
     } else if (!isPreview) {
       const lastRead = getLastReadPostId(viewerKey);
-      const nextBadge = countUnreadPosts(postsRef.current.map((p) => p.id), lastRead);
+      const nextBadge = countUnreadPosts(postsRef.current, lastRead);
       setUnreadBadge((prev) => (prev === nextBadge ? prev : nextBadge));
     }
   }, [getScrollCtx, isPreview, markCaughtUpToLatest, setJumpFabVisible, viewerKey]);
@@ -501,24 +501,26 @@ export function FeedView({
 
     if (!initialScrollDoneRef.current) {
       initialScrollDoneRef.current = true;
-      const maxId = posts.reduce((max, post) => Math.max(max, post.id), 0);
-      maxPostIdRef.current = maxId;
-      const postIds = posts.map((p) => p.id);
+      const latestId = chronologicalLatestPostId(posts);
+      maxPostIdRef.current = Math.max(
+        maxPostIdRef.current,
+        posts.reduce((max, post) => Math.max(max, post.id), 0),
+      );
 
       if (!isPreview) {
         const lastRead = getLastReadPostId(viewerKey);
-        const unread = hasUnreadSince(postIds, lastRead);
+        const unread = hasUnreadSince(posts, lastRead);
 
         // Telegram channel rule:
         // - caught up → always open on the latest post
         // - only jump to mid-feed when there are newer posts than lastRead
         if (unread) {
-          const firstUnread = firstUnreadPostId([...postIds].sort((a, b) => a - b), lastRead);
+          const firstUnread = firstUnreadPostId(posts, lastRead);
           if (firstUnread != null) {
             unreadSplitRef.current = lastRead;
             pendingInitialUnreadScrollRef.current = firstUnread;
             setUnreadSplitId(lastRead);
-            setUnreadBadge(countUnreadPosts(postIds, lastRead));
+            setUnreadBadge(countUnreadPosts(posts, lastRead));
             anchoredToBottomRef.current = false;
             historyReadyRef.current = true;
             return;
@@ -526,7 +528,7 @@ export function FeedView({
         }
 
         // First visit or fully caught up → latest + persist cursor.
-        setLastReadPostId(viewerKey, maxId);
+        setLastReadPostId(viewerKey, latestId);
       }
 
       historyReadyRef.current = true;
@@ -619,6 +621,15 @@ export function FeedView({
       maxPostIdRef.current,
     );
   }, [posts]);
+
+  // Keep jump FAB badge aligned with chronological unread after feed mutates (realtime).
+  useEffect(() => {
+    if (isPreview || !initialScrollDoneRef.current) return;
+    if (anchoredToBottomRef.current) return;
+    const lastRead = getLastReadPostId(viewerKey);
+    const nextBadge = countUnreadPosts(posts, lastRead);
+    setUnreadBadge((prev) => (prev === nextBadge ? prev : nextBadge));
+  }, [isPreview, posts, viewerKey]);
 
   // Keep sticky bottom only while the user is already near the end.
   // Never force-jump when they are reading older posts / interacting mid-feed.
@@ -722,6 +733,7 @@ export function FeedView({
         isMember={!isPreview}
         notificationsActive={notificationsOpen}
         onOpenNotifications={onOpenNotifications}
+        onCloseNotifications={onCloseNotifications}
       />
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">

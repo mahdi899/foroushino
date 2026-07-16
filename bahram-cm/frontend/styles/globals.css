@@ -3653,9 +3653,50 @@ html[data-theme="light"] .mobile-sticky-enroll-bar {
   border-color: color-mix(in oklab, var(--color-gold) 70%, transparent);
 }
 
-.family-nav-btn__ping span:first-child,
-.family-nav-btn__ping span:last-child {
-  background: #ffe08a;
+/* Live ping — sits on the pill (top-end), high contrast vs gold/teal fill */
+.family-nav-btn__ping {
+  position: absolute;
+  top: 0.2rem;
+  inset-inline-end: 0.2rem;
+  z-index: 2;
+  display: flex;
+  width: 0.5rem;
+  height: 0.5rem;
+  pointer-events: none;
+}
+
+.family-nav-btn__ping-ring,
+.family-nav-btn__ping-dot {
+  background: #0b1f22;
+}
+
+.family-nav-btn__ping-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  opacity: 0.65;
+  animation: family-nav-ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.family-nav-btn__ping-dot {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 1.5px color-mix(in oklab, #ffe08a 55%, transparent);
+}
+
+@keyframes family-nav-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.65;
+  }
+  75%,
+  100% {
+    transform: scale(2.35);
+    opacity: 0;
+  }
 }
 
 .family-nav-btn__count {
@@ -3707,9 +3748,13 @@ html[data-theme="light"] .family-nav-btn--active {
   border-color: color-mix(in oklab, var(--color-emerald-glow) 55%, transparent);
 }
 
-html[data-theme="light"] .family-nav-btn__ping span:first-child,
-html[data-theme="light"] .family-nav-btn__ping span:last-child {
-  background: var(--color-gold-soft);
+html[data-theme="light"] .family-nav-btn__ping-ring,
+html[data-theme="light"] .family-nav-btn__ping-dot {
+  background: #ffe08a;
+}
+
+html[data-theme="light"] .family-nav-btn__ping-dot {
+  box-shadow: 0 0 0 1.5px color-mix(in oklab, #0b1f22 35%, transparent);
 }
 
 html[data-theme="light"] .site-bottom-nav {

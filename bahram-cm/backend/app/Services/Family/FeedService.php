@@ -329,10 +329,51 @@ class FeedService
             ->where('status', FamilyPostStatus::Published->value)
             ->whereNotNull('published_at');
 
-        $latestId = (int) ((clone $base)->max('id') ?? 0);
-        $unreadCount = $afterId > 0
-            ? (int) (clone $base)->where('id', '>', $afterId)->count()
-            : 0;
+        $latest = (clone $base)
+            ->orderByDesc('published_at')
+            ->orderByDesc('id')
+            ->first(['id', 'published_at']);
+
+        $latestId = (int) ($latest?->id ?? 0);
+
+        if ($afterId <= 0 || ! $latest) {
+            return [
+                'unread_count' => 0,
+                'latest_post_id' => $latestId,
+            ];
+        }
+
+        if ((int) $latest->id === $afterId) {
+            return [
+                'unread_count' => 0,
+                'latest_post_id' => $latestId,
+            ];
+        }
+
+        $anchor = FamilyPost::query()
+            ->where('id', $afterId)
+            ->where('status', FamilyPostStatus::Published->value)
+            ->first(['id', 'published_at']);
+
+        if (! $anchor || ! $anchor->published_at) {
+            // Unknown cursor — fall back to id comparison.
+            $unreadCount = (int) (clone $base)->where('id', '>', $afterId)->count();
+
+            return [
+                'unread_count' => $unreadCount,
+                'latest_post_id' => $latestId,
+            ];
+        }
+
+        $unreadCount = (int) (clone $base)
+            ->where(function ($q) use ($anchor) {
+                $q->where('published_at', '>', $anchor->published_at)
+                    ->orWhere(function ($q2) use ($anchor) {
+                        $q2->where('published_at', '=', $anchor->published_at)
+                            ->where('id', '>', $anchor->id);
+                    });
+            })
+            ->count();
 
         return [
             'unread_count' => $unreadCount,

@@ -18,11 +18,13 @@ export function FamilyBrandingSidebar({
   isMember = true,
   notificationsActive = false,
   onOpenNotifications,
+  onCloseNotifications,
 }: {
   memberCount?: number;
   isMember?: boolean;
   notificationsActive?: boolean;
   onOpenNotifications?: () => void;
+  onCloseNotifications?: () => void;
 }) {
   const { branding } = useFamilyBranding();
   const { unreadCount } = useFamilyUnreadCount(isMember);
@@ -61,10 +63,13 @@ export function FamilyBrandingSidebar({
             {isMember && (
               <button
                 type="button"
-                onClick={onOpenNotifications}
-                aria-current={notificationsActive ? 'page' : undefined}
-                aria-label="اعلان‌ها"
-                title="اعلان‌ها"
+                onClick={() => {
+                  if (notificationsActive) onCloseNotifications?.();
+                  else onOpenNotifications?.();
+                }}
+                aria-pressed={notificationsActive || undefined}
+                aria-label={notificationsActive ? 'بستن اعلان‌ها' : 'اعلان‌ها'}
+                title={notificationsActive ? 'بستن اعلان‌ها' : 'اعلان‌ها'}
                 className={cn(
                   'family-sidebar__tool-btn',
                   notificationsActive && 'family-sidebar__tool-btn--active',

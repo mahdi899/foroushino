@@ -950,6 +950,8 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   justify-content: center;
   background: #000;
   overscroll-behavior: none;
+  /* Parent .family-body-portal is pointer-events: none — must re-enable for close/backdrop. */
+  pointer-events: auto;
 }
 
 .family-video-modal__close {

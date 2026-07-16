@@ -39,12 +39,14 @@ export function FamilyTopBar({
   showNotifications = false,
   notificationsActive = false,
   onOpenNotifications,
+  onCloseNotifications,
 }: {
   memberCount?: number;
   canViewStories?: boolean;
   showNotifications?: boolean;
   notificationsActive?: boolean;
   onOpenNotifications?: () => void;
+  onCloseNotifications?: () => void;
 }) {
   const { branding, isLoading } = useFamilyBranding();
   const { unreadCount } = useFamilyUnreadCount(showNotifications && !isLoading);
@@ -126,10 +128,13 @@ export function FamilyTopBar({
               {showNotifications ? (
                 <button
                   type="button"
-                  onClick={onOpenNotifications}
-                  aria-current={notificationsActive ? 'page' : undefined}
-                  aria-label="اعلان‌ها"
-                  title="اعلان‌ها"
+                  onClick={() => {
+                    if (notificationsActive) onCloseNotifications?.();
+                    else onOpenNotifications?.();
+                  }}
+                  aria-pressed={notificationsActive || undefined}
+                  aria-label={notificationsActive ? 'بستن اعلان‌ها' : 'اعلان‌ها'}
+                  title={notificationsActive ? 'بستن اعلان‌ها' : 'اعلان‌ها'}
                   className={cn(
                     'family-topbar__action',
                     notificationsActive && 'family-topbar__action--active',

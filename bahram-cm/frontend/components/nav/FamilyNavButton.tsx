@@ -52,9 +52,9 @@ export function FamilyNavButton({ className, compact = false }: FamilyNavButtonP
         }}
       />
       {!showBadge && !active ? (
-        <span aria-hidden className="family-nav-btn__ping absolute -left-0.5 -top-0.5 flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-70 [animation-duration:2.4s]" />
-          <span className="relative inline-flex h-2 w-2 rounded-full shadow-[0_0_6px_rgba(255,224,138,0.9)]" />
+        <span aria-hidden className="family-nav-btn__ping">
+          <span className="family-nav-btn__ping-ring" />
+          <span className="family-nav-btn__ping-dot" />
         </span>
       ) : null}
       <UsersRound

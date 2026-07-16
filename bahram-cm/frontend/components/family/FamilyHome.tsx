@@ -61,6 +61,7 @@ export function FamilyHome({
           showNotifications={isMember}
           notificationsActive={notificationsOpen}
           onOpenNotifications={openNotifications}
+          onCloseNotifications={closeNotifications}
         />
       </div>
       <FamilyMain className="min-h-0">
