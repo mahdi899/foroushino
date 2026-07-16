@@ -9,7 +9,6 @@ import { StoryViewer } from '@/components/family/StoryViewer';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
 import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
 import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
-import { FamilyVerifiedPatternBackdrop } from '@/components/family/FamilyVerifiedPatternBackdrop';
 import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
 
 import type { FamilyBranding } from '@/lib/family/types';
@@ -74,7 +73,6 @@ export function FamilyTopBar({
 
   const profileControl = storiesAvailable ? (
     <button type="button" onClick={openStories} className="family-topbar__profile">
-      <FamilyVerifiedPatternBackdrop variant="profile" />
       <FamilyAuthorAvatar
         name={branding.profile_name}
         avatar={branding.community_avatar ?? branding.profile_avatar}
@@ -97,7 +95,6 @@ export function FamilyTopBar({
     </button>
   ) : (
     <Link href="/family" className="family-topbar__profile">
-      <FamilyVerifiedPatternBackdrop variant="profile" />
       <FamilyAuthorAvatar
         name={branding.profile_name}
         avatar={branding.community_avatar ?? branding.profile_avatar}
