@@ -55,6 +55,8 @@ class FamilyFeedJumpTest extends TestCase
         $this->assertTrue($ids->contains($target->id), 'target post missing from jump window');
         $this->assertTrue($response->json('meta.has_newer'), 'expected more posts newer than target to exist');
         $this->assertSame($target->id, $response->json('meta.target_post_id'));
+        $this->assertNotNull($response->json('meta.prev_cursor'), 'prev_cursor required for load-newer after jump');
+        $this->assertIsBool($response->json('meta.has_older'));
 
         // Window must stay chronologically descending (newest → oldest), matching the feed.
         $publishedAts = collect($response->json('data'))->pluck('published_at')->map(fn ($v) => strtotime((string) $v));
@@ -87,6 +89,7 @@ class FamilyFeedJumpTest extends TestCase
             ->assertOk();
 
         $this->assertFalse($response->json('meta.has_newer'));
+        $this->assertNull($response->json('meta.prev_cursor'));
         $this->assertNotNull($response->json('meta.next_cursor'));
 
         $older = $this->actingAs($user, 'sanctum')
@@ -94,6 +97,29 @@ class FamilyFeedJumpTest extends TestCase
             ->assertOk();
 
         $this->assertNotEmpty($older->json('data'));
+    }
+
+    public function test_feed_newer_direction_returns_posts_after_prev_cursor(): void
+    {
+        $user = $this->joinedUser();
+        $posts = $this->publishSequence(20);
+        $target = $posts[5];
+
+        $jump = $this->actingAs($user, 'sanctum')
+            ->getJson("/api/v1/family/posts/{$target->id}/jump")
+            ->assertOk();
+
+        $prev = $jump->json('meta.prev_cursor');
+        $this->assertNotNull($prev);
+
+        $newer = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/family/feed?direction=newer&cursor=' . urlencode($prev))
+            ->assertOk();
+
+        $this->assertNotEmpty($newer->json('data'));
+        $newestInJump = collect($jump->json('data'))->first()['id'];
+        $newerIds = collect($newer->json('data'))->pluck('id');
+        $this->assertFalse($newerIds->contains($newestInJump), 'newer page should not re-include the cursor tip');
     }
 
     public function test_jump_requires_authentication(): void

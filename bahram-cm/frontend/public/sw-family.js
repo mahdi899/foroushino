@@ -1,15 +1,8 @@
-const CACHE = 'family-media-shell-v1';
+const CACHE = 'bahram-family-v1';
+const PRECACHE = ['/family-manifest.webmanifest', '/icon', '/apple-icon'];
 
-function isMediaRequest(url) {
-  return (
-    url.pathname.startsWith('/storage/media/') ||
-    url.pathname.startsWith('/storage/family/') ||
-    url.pathname.startsWith('/cdn/media/')
-  );
-}
-
-function isFamilyAppShell(url) {
-  return url.pathname.startsWith('/family');
+function isFamilyScope(url) {
+  return url.pathname === '/family' || url.pathname.startsWith('/family/');
 }
 
 function isNextRuntimeRequest(url) {
@@ -20,15 +13,35 @@ function isNextRuntimeRequest(url) {
   );
 }
 
+function isApiRequest(url) {
+  return url.pathname.startsWith('/api/');
+}
+
+function isStaticFamilyAsset(url) {
+  return (
+    url.pathname === '/family-manifest.webmanifest' ||
+    url.pathname.startsWith('/storage/media/') ||
+    url.pathname.startsWith('/storage/family/') ||
+    /\.(?:svg|png|webp|ico|woff2?|jpg|jpeg)$/i.test(url.pathname)
+  );
+}
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil(
+    caches
+      .open(CACHE)
+      .then((cache) => cache.addAll(PRECACHE))
+      .then(() => self.skipWaiting()),
+  );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then((keys) =>
+        Promise.all(keys.filter((key) => key !== CACHE && key.startsWith('bahram-family')).map((key) => caches.delete(key))),
+      )
       .then(() => self.clients.claim()),
   );
 });
@@ -37,14 +50,13 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
-  if (isNextRuntimeRequest(url)) return;
+  if (isNextRuntimeRequest(url) || isApiRequest(url)) return;
 
-  if (isMediaRequest(url)) {
+  if (isStaticFamilyAsset(url)) {
     event.respondWith(
       caches.open(CACHE).then(async (cache) => {
         const cached = await cache.match(event.request);
         if (cached) return cached;
-
         const response = await fetch(event.request);
         if (response && response.ok) {
           void cache.put(event.request, response.clone());
@@ -55,17 +67,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (isFamilyAppShell(url) && url.pathname.endsWith('.webp')) {
+  if (isFamilyScope(url)) {
+    // App shell: network-first so releases aren't stuck behind SW.
     event.respondWith(
-      caches.match(event.request).then((cached) => {
-        if (cached) return cached;
-        return fetch(event.request).then((response) => {
-          if (!response || !response.ok) return response;
-          const copy = response.clone();
-          void caches.open(CACHE).then((cache) => cache.put(event.request, copy));
-          return response;
-        });
-      }),
+      fetch(event.request).catch(() => caches.match(event.request).then((c) => c || caches.match('/family'))),
     );
   }
 });

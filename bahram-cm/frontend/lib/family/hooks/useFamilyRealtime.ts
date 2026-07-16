@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { mutate as globalMutate } from 'swr';
-import { getPost, getFeed } from '@/lib/family/api';
+import { getPost } from '@/lib/family/api';
 import { feedPagesContainPost, prependPostToFeedPages } from '@/lib/family/feedMerge';
 import { getEcho, isRealtimeConfigured } from '@/lib/realtime/echo';
 
@@ -11,10 +11,17 @@ export type FamilyFeedUpdatedPayload = {
   latest_post_id: number;
   published_at?: string | null;
   is_important?: boolean;
+  event?: 'published' | 'pinned' | 'unpinned' | 'archived';
 };
 
 type Options = {
   enabled?: boolean;
+  /**
+   * When true (default false), soft-merge new posts into every `family-feed` SWR cache.
+   * FeedView should keep this false and merge itself based on jump/anchor state —
+   * otherwise a far jump window gets corrupted by tip prepends.
+   */
+  syncFeed?: boolean;
   onFeedUpdated?: (payload: FamilyFeedUpdatedPayload) => void;
 };
 
@@ -26,13 +33,18 @@ function isFamilyFeedKey(key: unknown): boolean {
   return Array.isArray(key) && key[0] === 'family-feed';
 }
 
+function isFamilyPinnedKey(key: unknown): boolean {
+  return key === 'family-pinned' || (Array.isArray(key) && key[0] === 'family-pinned');
+}
+
 // Module-level refcount: multiple components (FeedView, FamilyNavButton, ...) subscribe to
 // the same public `family.feed` Echo channel independently. Echo already dedupes the
 // underlying `channel()` call by name, but `echo.leave(name)` unsubscribes it entirely —
 // so we must only call `leave` once the *last* consumer unmounts, not on every unmount.
 let familyFeedChannelRefCount = 0;
 
-async function mergeNewPostIntoFeedCaches(postId: number): Promise<boolean> {
+/** Soft-merge a published post into all live `family-feed` SWRInfinite caches (tip prepend). */
+export async function mergePublishedPostIntoFeedCaches(postId: number): Promise<boolean> {
   let merged = false;
 
   await globalMutate(
@@ -49,7 +61,7 @@ async function mergeNewPostIntoFeedCaches(postId: number): Promise<boolean> {
           return next;
         }
       } catch {
-        /* fall through — caller may revalidate tip */
+        /* caller may fall back to tip revalidate */
       }
 
       return current;
@@ -61,12 +73,19 @@ async function mergeNewPostIntoFeedCaches(postId: number): Promise<boolean> {
 }
 
 /**
- * Subscribe to public `family.feed` for new published posts.
- * Mutates nav unread summary + feed SWR caches; optional callback for UI (jump badge).
+ * Subscribe to public `family.feed` for feed lifecycle pings.
+ * Always refreshes unread badge caches. Feed list sync is opt-in (`syncFeed`) so
+ * FeedView can refuse merges while jumped away from the tip.
  */
-export function useFamilyRealtime({ enabled = true, onFeedUpdated }: Options = {}) {
+export function useFamilyRealtime({
+  enabled = true,
+  syncFeed = false,
+  onFeedUpdated,
+}: Options = {}) {
   const onFeedUpdatedRef = useRef(onFeedUpdated);
   onFeedUpdatedRef.current = onFeedUpdated;
+  const syncFeedRef = useRef(syncFeed);
+  syncFeedRef.current = syncFeed;
 
   useEffect(() => {
     if (!enabled || !isRealtimeConfigured()) return;
@@ -80,18 +99,16 @@ export function useFamilyRealtime({ enabled = true, onFeedUpdated }: Options = {
     const handler = (payload: FamilyFeedUpdatedPayload) => {
       void (async () => {
         void globalMutate(isFeedUnreadKey);
-        const merged = await mergeNewPostIntoFeedCaches(payload.post_id);
-        if (!merged) {
-          await globalMutate(
-            isFamilyFeedKey,
-            async (pages) => {
-              if (!Array.isArray(pages) || !pages.length) return pages;
-              const fresh = await getFeed(null, 15);
-              return [fresh, ...pages.slice(1)];
-            },
-            { revalidate: false },
-          );
+
+        const event = payload.event ?? 'published';
+        if (event === 'pinned' || event === 'unpinned' || event === 'archived') {
+          void globalMutate(isFamilyPinnedKey);
         }
+
+        if (syncFeedRef.current && event === 'published') {
+          await mergePublishedPostIntoFeedCaches(payload.post_id);
+        }
+
         onFeedUpdatedRef.current?.(payload);
       })();
     };

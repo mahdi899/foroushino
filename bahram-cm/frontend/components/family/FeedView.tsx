@@ -13,6 +13,7 @@ import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
 import { FamilyFeedScroll, type FamilyFeedScrollHandle } from '@/components/family/FamilyFeedScroll';
 import { FamilyFeedBootSkeleton } from '@/components/family/FamilyShellLoading';
 import { PostCard } from '@/components/family/PostCard';
+import { VirtualFeedList } from '@/components/family/VirtualFeedList';
 import { cn } from '@/lib/cn';
 import {
   captureFeedScrollRestore,
@@ -43,7 +44,10 @@ import {
 } from '@/lib/family/feedDebug';
 import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import { useFamilyFeed } from '@/lib/family/hooks/useFamilyFeed';
-import { useFamilyRealtime } from '@/lib/family/hooks/useFamilyRealtime';
+import {
+  mergePublishedPostIntoFeedCaches,
+  useFamilyRealtime,
+} from '@/lib/family/hooks/useFamilyRealtime';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
 import type { FamilyBranding, FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
 
@@ -142,11 +146,18 @@ export function FeedView({
   const initialPage = initialFeed ? { data: initialFeed.data, meta: initialFeed.meta } : null;
   const { openLogin } = useFamilyGuestLogin();
 
-  const { posts, meta, isLoading, hasMore, loadMore, isValidating, jumpToPost, revalidateTip } = useFamilyFeed(
-    feedScope,
-    initialPage,
-    viewerKey,
-  );
+  const {
+    posts,
+    meta,
+    isLoading,
+    hasMore,
+    hasNewer,
+    loadMore,
+    loadNewer,
+    isValidating,
+    jumpToPost,
+    revalidateTip,
+  } = useFamilyFeed(feedScope, initialPage, viewerKey);
   const resolvedMemberCount = meta?.member_count ?? memberCount;
   const isStaff = meta?.is_staff ?? false;
 
@@ -177,6 +188,8 @@ export function FeedView({
   const [chromeInset, setChromeInset] = useState(0);
   const bottomAnchorRef = useRef<HTMLDivElement | null>(null);
   const topSentinelRef = useRef<HTMLDivElement | null>(null);
+  const newerSentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingNewerRef = useRef(false);
   const jumpFabRef = useRef<FeedJumpToLatestHandle | null>(null);
   const jumpVisibleRef = useRef(false);
   const feedReadyRef = useRef(false);
@@ -242,26 +255,51 @@ export function FeedView({
   const recentFeedUpdateIdsRef = useRef<Set<number>>(new Set());
 
   useFamilyRealtime({
+    // FeedView owns feed merges so a far jump window is never tip-replaced.
+    syncFeed: false,
     onFeedUpdated: (payload) => {
-      // Reverb/Pusher redelivers on reconnect and multiple hook consumers share one
-      // channel — de-dupe by post_id so a single publish never double-counts the badge.
-      if (recentFeedUpdateIdsRef.current.has(payload.post_id)) {
+      const event = payload.event ?? 'published';
+      // Reverb/Pusher redelivers on reconnect — de-dupe by post_id for publishes.
+      if (recentFeedUpdateIdsRef.current.has(payload.post_id) && event === 'published') {
         familyFeedDebug.info('realtime', 'duplicate feed-updated ignored', { postId: payload.post_id });
         return;
       }
-      recentFeedUpdateIdsRef.current.add(payload.post_id);
-      if (recentFeedUpdateIdsRef.current.size > 50) {
-        const oldest = recentFeedUpdateIdsRef.current.values().next().value;
-        if (oldest != null) recentFeedUpdateIdsRef.current.delete(oldest);
+      if (event === 'published') {
+        recentFeedUpdateIdsRef.current.add(payload.post_id);
+        if (recentFeedUpdateIdsRef.current.size > 50) {
+          const oldest = recentFeedUpdateIdsRef.current.values().next().value;
+          if (oldest != null) recentFeedUpdateIdsRef.current.delete(oldest);
+        }
       }
 
       familyFeedDebug.info('realtime', 'feed updated', {
         postId: payload.post_id,
+        event,
         latest: payload.latest_post_id,
         anchored: anchoredToBottomRef.current,
+        jumped: isJumpedAwayRef.current,
       });
+
       if (isPreview) return;
-      if (anchoredToBottomRef.current) return;
+      if (event !== 'published') return;
+
+      // Far jump window — never merge tip into the loaded slice; badge only.
+      if (isJumpedAwayRef.current) {
+        pushUnreadBadge(Math.max(unreadBadgeRef.current + 1, 1));
+        setJumpFabVisible(true);
+        return;
+      }
+
+      // Live tail: soft-merge new post into tip without full infinite revalidate.
+      if (anchoredToBottomRef.current) {
+        void mergePublishedPostIntoFeedCaches(payload.post_id).then((merged) => {
+          if (!merged) void revalidateTip();
+        });
+        return;
+      }
+
+      // Reading older tip pages — merge silently + bump FAB unread.
+      void mergePublishedPostIntoFeedCaches(payload.post_id);
 
       const lastRead = getLastReadPostId(viewerKey);
       const fromLoaded = countUnreadPosts(postsRef.current, lastRead);
@@ -285,6 +323,13 @@ export function FeedView({
     postsRef.current = posts;
     isValidatingRef.current = isValidating;
   }, [hasMore, posts, isValidating]);
+
+  // When loadNewer reaches the true tip, clear jumped-away so catch-up works again.
+  useEffect(() => {
+    if (!hasNewer && isJumpedAwayRef.current) {
+      isJumpedAwayRef.current = false;
+    }
+  }, [hasNewer]);
 
   useEffect(() => {
     if (isPreview) return;
@@ -719,12 +764,17 @@ export function FeedView({
           await waitForFrame();
         } catch (err) {
           familyFeedDebug.error('scroll', 'jump to post failed', { postId, error: String(err) });
+          pinNavigateRef.current = false;
+          familyFeedDebug.measure(`scrollToPost:${postId}`, 'scroll', { postId, mode: 'jump-failed' });
+          return;
         }
       }
 
       pinNavigateRef.current = false;
       familyFeedDebug.measure(`scrollToPost:${postId}`, 'scroll', { postId, mode: 'jump' });
-      tryScroll();
+      if (!tryScroll()) {
+        familyFeedDebug.warn('scroll', 'jump landed but target DOM missing', { postId });
+      }
     },
     [getScrollCtx, jumpToPost, loadMore],
   );
@@ -1127,13 +1177,47 @@ export function FeedView({
         // Pin the first visible post — height/scrollTop math is unreliable with Lenis.
         scrollRestoreRef.current = captureFeedScrollRestore(scrollRoot, ctx.lenis);
         loadMore();
+        // If tip page was pruned by MAX_FEED_PAGES, treat as jumped-away.
+        if (hasNewer) isJumpedAwayRef.current = true;
       },
       { root, rootMargin: '240px 0px 0px 0px', threshold: 0 },
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [commentsTarget, getScrollCtx, hasMore, loadMore, notificationsOpen, posts.length]);
+  }, [commentsTarget, getScrollCtx, hasMore, hasNewer, loadMore, notificationsOpen, posts.length]);
+
+  // After a far jump: load newer posts when approaching the live end (bottom).
+  useEffect(() => {
+    const { root } = getScrollCtx();
+    const sentinel = newerSentinelRef.current;
+    const canLoadNewer = isJumpedAwayRef.current || hasNewer;
+    if (!root || !sentinel || !canLoadNewer || commentsTarget || notificationsOpen) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0]?.isIntersecting || loadingNewerRef.current || pinNavigateRef.current) return;
+        loadingNewerRef.current = true;
+        const ctx = getScrollCtx();
+        if (ctx.root) {
+          scrollRestoreRef.current = captureFeedScrollRestore(ctx.root, ctx.lenis);
+        }
+        void loadNewer()
+          .then((didLoad) => {
+            if (!hasNewer && !didLoad) {
+              isJumpedAwayRef.current = false;
+            }
+          })
+          .finally(() => {
+            loadingNewerRef.current = false;
+          });
+      },
+      { root, rootMargin: '0px 0px 320px 0px', threshold: 0 },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [commentsTarget, getScrollCtx, hasNewer, loadNewer, notificationsOpen, posts.length]);
 
   useEffect(() => {
     return () => {
@@ -1278,35 +1362,76 @@ export function FeedView({
                       ) : null}
                     </div>
                   )}
-                  {feedItems.map((item) => {
-                    const animateEnter =
-                      feedReady &&
-                      item.kind === 'post' &&
-                      item.post.id > maxPostIdRef.current;
+                  {feedItems.length > 36 ? (
+                    <VirtualFeedList
+                      items={feedItems}
+                      getScrollElement={() => feedScrollRef.current?.getScrollElement() ?? null}
+                      estimateSize={(_i, item) =>
+                        item.kind === 'post' ? 280 : item.kind === 'unread' ? 48 : 36
+                      }
+                      overscan={8}
+                      renderItem={(item) => {
+                        const animateEnter =
+                          feedReady &&
+                          item.kind === 'post' &&
+                          item.post.id > maxPostIdRef.current;
 
-                    if (item.kind === 'separator') {
-                      return <FeedDateSeparator key={item.key} label={item.label} />;
-                    }
+                        if (item.kind === 'separator') {
+                          return <FeedDateSeparator key={item.key} label={item.label} />;
+                        }
+                        if (item.kind === 'unread') {
+                          return <FeedUnreadDivider key={item.key} count={item.count} />;
+                        }
+                        return (
+                          <PostCard
+                            key={item.key}
+                            anchorId={`family-post-${item.post.id}`}
+                            post={item.post}
+                            memberCount={resolvedMemberCount}
+                            isStaff={isStaff}
+                            previewMode={isPreview ? effectivePreviewMode : null}
+                            viewerKey={viewerKey}
+                            onPreviewInteract={scrollToPreviewCta}
+                            animateEnter={animateEnter}
+                            onOpenComments={isPreview ? undefined : openPostComments}
+                          />
+                        );
+                      }}
+                    />
+                  ) : (
+                    feedItems.map((item) => {
+                      const animateEnter =
+                        feedReady &&
+                        item.kind === 'post' &&
+                        item.post.id > maxPostIdRef.current;
 
-                    if (item.kind === 'unread') {
-                      return <FeedUnreadDivider key={item.key} count={item.count} />;
-                    }
+                      if (item.kind === 'separator') {
+                        return <FeedDateSeparator key={item.key} label={item.label} />;
+                      }
 
-                    return (
-                      <PostCard
-                        key={item.key}
-                        anchorId={`family-post-${item.post.id}`}
-                        post={item.post}
-                        memberCount={resolvedMemberCount}
-                        isStaff={isStaff}
-                        previewMode={isPreview ? effectivePreviewMode : null}
-                        viewerKey={viewerKey}
-                        onPreviewInteract={scrollToPreviewCta}
-                        animateEnter={animateEnter}
-                        onOpenComments={isPreview ? undefined : openPostComments}
-                      />
-                    );
-                  })}
+                      if (item.kind === 'unread') {
+                        return <FeedUnreadDivider key={item.key} count={item.count} />;
+                      }
+
+                      return (
+                        <PostCard
+                          key={item.key}
+                          anchorId={`family-post-${item.post.id}`}
+                          post={item.post}
+                          memberCount={resolvedMemberCount}
+                          isStaff={isStaff}
+                          previewMode={isPreview ? effectivePreviewMode : null}
+                          viewerKey={viewerKey}
+                          onPreviewInteract={scrollToPreviewCta}
+                          animateEnter={animateEnter}
+                          onOpenComments={isPreview ? undefined : openPostComments}
+                        />
+                      );
+                    })
+                  )}
+                  {!isPreview && (hasNewer || isJumpedAwayRef.current) ? (
+                    <div ref={newerSentinelRef} className="h-8 shrink-0" aria-hidden />
+                  ) : null}
                   {isPreview && effectivePreviewMode && (
                     <FeedPreviewGate mode={effectivePreviewMode} />
                   )}

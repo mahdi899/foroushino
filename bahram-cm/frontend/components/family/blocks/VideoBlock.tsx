@@ -37,6 +37,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
 
   // Don't gate on feed scrollIdle — that left an empty white frame.
   const previewReady = useDelayedInView(containerRef, 80, phase === 'idle', true);
+  const posterUrl = media.poster_url ?? null;
 
   useEffect(() => {
     if (!media.url) return;
@@ -208,7 +209,21 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
         )}
         style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
       >
-        {previewActive && phase !== 'ready' && !loadRequested ? (
+        {posterUrl && phase !== 'ready' && !loadRequested ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={posterUrl}
+            alt=""
+            className={cn(
+              'pointer-events-none h-full w-full object-cover transition-opacity duration-300',
+              posterReady ? 'opacity-100' : 'opacity-70',
+            )}
+            onLoad={() => setPosterReady(true)}
+            aria-hidden
+          />
+        ) : null}
+
+        {previewActive && phase !== 'ready' && !loadRequested && !posterUrl && media.url ? (
           <video
             ref={previewRef}
             src={previewSrc(media.url)}

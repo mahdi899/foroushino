@@ -7,6 +7,8 @@ import { FamilyMediaPlayerProvider } from '@/lib/family/FamilyMediaPlayerContext
 import { FamilyActionCelebrateProvider } from '@/lib/family/FamilyActionCelebrateContext';
 import { FamilyThemeBoot } from '@/app/family/FamilyThemeBoot';
 import { FamilyServiceWorkerRegistrar } from '@/components/family/FamilyServiceWorkerRegistrar';
+import { FamilyReactScan } from '@/components/family/FamilyReactScan';
+import { FamilyInstallCard } from '@/components/family/FamilyInstallCard';
 import {
   DEFAULT_SITE_THEME,
   SITE_THEME_COOKIE_KEY,
@@ -17,9 +19,15 @@ export const metadata: Metadata = {
   title: 'خانواده داداش بهرام',
   description: 'فضای نزدیک داداش بهرام با اعضای خانواده — پست، صوت، ویدیو و گفتگو.',
   robots: { index: false, follow: false },
+  manifest: '/family-manifest.webmanifest',
   icons: {
     icon: '/icon',
     apple: '/apple-icon',
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'خانواده',
+    statusBarStyle: 'default',
   },
 };
 
@@ -51,10 +59,12 @@ export default async function FamilyLayout({ children }: { children: React.React
     >
       <FamilyThemeBoot />
       <FamilyServiceWorkerRegistrar />
+      <FamilyReactScan />
       <FamilyMediaPlayerProvider>
         <FamilyActionCelebrateProvider>
           <div className="family-app__frame relative mx-auto flex h-[100dvh] w-full flex-col overflow-hidden lg:my-3 lg:h-[calc(100dvh-1.5rem)]">
             {children}
+            <FamilyInstallCard />
           </div>
         </FamilyActionCelebrateProvider>
       </FamilyMediaPlayerProvider>
