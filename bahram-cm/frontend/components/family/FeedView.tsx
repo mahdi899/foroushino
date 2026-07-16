@@ -138,7 +138,7 @@ export function FeedView({
   const initialPage = initialFeed ? { data: initialFeed.data, meta: initialFeed.meta } : null;
   const { openLogin } = useFamilyGuestLogin();
 
-  const { posts, meta, isLoading, hasMore, loadMore, isValidating, mutate } = useFamilyFeed(
+  const { posts, meta, isLoading, hasMore, loadMore, isValidating, jumpToPost, mutate } = useFamilyFeed(
     feedScope,
     initialPage,
     viewerKey,
@@ -178,6 +178,8 @@ export function FeedView({
   const historyReadyRef = useRef(false);
   const loadingHistoryRef = useRef(false);
   const pinNavigateRef = useRef(false);
+  /** True after a far "jump to post" replaced the loaded window and the tip is no longer loaded. */
+  const isJumpedAwayRef = useRef(false);
   const scrollRestoreRef = useRef<FeedScrollRestoreSnapshot | null>(null);
   /** Keep re-pinning the same post briefly after history prepend (images/layout settle). */
   const historyPinRef = useRef<FeedScrollRestoreSnapshot | null>(null);
@@ -228,8 +230,22 @@ export function FeedView({
     }
   }, []);
 
+  const recentFeedUpdateIdsRef = useRef<Set<number>>(new Set());
+
   useFamilyRealtime({
     onFeedUpdated: (payload) => {
+      // Reverb/Pusher redelivers on reconnect and multiple hook consumers share one
+      // channel — de-dupe by post_id so a single publish never double-counts the badge.
+      if (recentFeedUpdateIdsRef.current.has(payload.post_id)) {
+        familyFeedDebug.info('realtime', 'duplicate feed-updated ignored', { postId: payload.post_id });
+        return;
+      }
+      recentFeedUpdateIdsRef.current.add(payload.post_id);
+      if (recentFeedUpdateIdsRef.current.size > 50) {
+        const oldest = recentFeedUpdateIdsRef.current.values().next().value;
+        if (oldest != null) recentFeedUpdateIdsRef.current.delete(oldest);
+      }
+
       familyFeedDebug.info('realtime', 'feed updated', {
         postId: payload.post_id,
         latest: payload.latest_post_id,
@@ -261,6 +277,20 @@ export function FeedView({
     postsRef.current = posts;
     isValidatingRef.current = isValidating;
   }, [hasMore, posts, isValidating]);
+
+  useEffect(() => {
+    if (isPreview) return;
+    return familyFeedDebug.registerSnapshotSource('feed', () => ({
+      scope: feedScope,
+      loadedPostCount: postsRef.current.length,
+      domPostCount: document.querySelectorAll('[id^="family-post-"]').length,
+      hasMore: hasMoreRef.current,
+      isValidating: isValidatingRef.current,
+      isJumpedAway: isJumpedAwayRef.current,
+      unreadBadge: unreadBadgeRef.current,
+      anchoredToBottom: anchoredToBottomRef.current,
+    }));
+  }, [feedScope, isPreview]);
 
   useEffect(() => {
     feedReadyRef.current = feedReady;
@@ -375,6 +405,8 @@ export function FeedView({
       familyFeedDebug.warn('catchup', 'blocked by boot lock');
       return;
     }
+    // Loaded window is an old "jump to post" slice, not the tip — nothing to catch up to.
+    if (isJumpedAwayRef.current) return;
     const latestId = chronologicalLatestPostId(postsRef.current);
     if (latestId <= 0) return;
 
@@ -477,6 +509,15 @@ export function FeedView({
     const { root, lenis } = getScrollCtx();
     if (!root) return;
     if (unreadBootLockRef.current) return;
+    // Loaded window is a "jump to post" slice — the true tip isn't loaded, so the bottom
+    // of this window is never "caught up". Keep the FAB up as the only way back to live.
+    if (isJumpedAwayRef.current) {
+      anchoredToBottomRef.current = false;
+      if (feedReadyRef.current && !commentsOpenRef.current && !notificationsOpenRef.current) {
+        setJumpFabVisible(true);
+      }
+      return;
+    }
     // Do NOT call lenis.resize() here — it runs on every scroll frame and tanks FPS.
     const distanceFromBottom = lenis
       ? getLenisDistanceFromBottom(lenis)
@@ -616,37 +657,16 @@ export function FeedView({
 
       if (tryScroll()) return;
 
-      pinNavigateRef.current = true;
-      let attempts = 0;
+      const waitForFrame = () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        });
 
-      while (attempts < 12) {
-        if (postsRef.current.some((post) => post.id === postId)) {
-          await new Promise<void>((resolve) => {
-            requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-          });
-          if (tryScroll()) {
-            pinNavigateRef.current = false;
-            return;
-          }
-        }
-
-        if (isValidatingRef.current) {
-          await new Promise<void>((resolve) => {
-            const wait = () => {
-              if (!isValidatingRef.current) resolve();
-              else window.setTimeout(wait, 50);
-            };
-            wait();
-          });
-        }
-
-        if (!hasMoreRef.current) break;
-
-        loadingHistoryRef.current = true;
-        scrollRestoreRef.current = null;
-        loadMore();
-        attempts += 1;
-
+      // Give React a tick to actually start the fetch after loadMore()/setSize() before
+      // polling isValidating — polling immediately raced the state update and could
+      // resolve before the request even began.
+      const waitForValidateSettle = async () => {
+        await waitForFrame();
         await new Promise<void>((resolve) => {
           const wait = () => {
             if (!isValidatingRef.current) resolve();
@@ -654,12 +674,51 @@ export function FeedView({
           };
           wait();
         });
+      };
+
+      pinNavigateRef.current = true;
+      familyFeedDebug.mark(`scrollToPost:${postId}`);
+
+      // Nearby posts: a couple of cheap "load one older page" tries before falling back
+      // to a direct jump fetch — avoids a network round trip for posts just outside the
+      // currently loaded window.
+      const NEARBY_ATTEMPTS = 2;
+      let attempts = 0;
+      while (attempts < NEARBY_ATTEMPTS && hasMoreRef.current) {
+        loadingHistoryRef.current = true;
+        scrollRestoreRef.current = null;
+        loadMore();
+        attempts += 1;
+        await waitForValidateSettle();
+
+        if (postsRef.current.some((post) => post.id === postId)) {
+          await waitForFrame();
+          if (tryScroll()) {
+            pinNavigateRef.current = false;
+            familyFeedDebug.measure(`scrollToPost:${postId}`, 'scroll', { postId, mode: 'nearby' });
+            return;
+          }
+        }
+      }
+
+      if (!postsRef.current.some((post) => post.id === postId)) {
+        // Far away (e.g. an old pinned post, or a very active feed) — fetch a window
+        // centered on the target directly instead of paginating backward page-by-page.
+        try {
+          familyFeedDebug.info('scroll', 'jump to post (far)', { postId });
+          const { hasNewer } = await jumpToPost(postId);
+          isJumpedAwayRef.current = hasNewer;
+          await waitForFrame();
+        } catch (err) {
+          familyFeedDebug.error('scroll', 'jump to post failed', { postId, error: String(err) });
+        }
       }
 
       pinNavigateRef.current = false;
+      familyFeedDebug.measure(`scrollToPost:${postId}`, 'scroll', { postId, mode: 'jump' });
       tryScroll();
     },
-    [getScrollCtx, loadMore],
+    [getScrollCtx, jumpToPost, loadMore],
   );
 
   useEffect(() => {
@@ -1259,8 +1318,25 @@ export function FeedView({
                 unreadSplitRef.current = null;
                 setUnreadSplitId(null);
                 setUnreadDividerCount(0);
-                markCaughtUpToLatest();
                 setJumpFabVisible(false);
+
+                // Loaded window is a "jump to post" slice — the tip isn't loaded, so
+                // refetch it before trying to scroll to it.
+                if (isJumpedAwayRef.current) {
+                  isJumpedAwayRef.current = false;
+                  familyFeedDebug.info('scroll', 'return to live after jump');
+                  void mutate().then(async () => {
+                    // Let React flush so postsRef reflects the freshly fetched tip page.
+                    await new Promise<void>((resolve) => {
+                      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+                    });
+                    markCaughtUpToLatest();
+                    scrollToLatestReliable('smooth');
+                  });
+                  return;
+                }
+
+                markCaughtUpToLatest();
                 scrollToLatestReliable('smooth');
               }}
             />

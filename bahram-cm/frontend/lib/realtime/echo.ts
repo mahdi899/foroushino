@@ -2,6 +2,7 @@
 
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
+import { familyFeedDebug } from '@/lib/family/feedDebug';
 
 export type FamilyEcho = Echo<'reverb'>;
 
@@ -13,6 +14,30 @@ declare global {
 }
 
 let echoSingleton: FamilyEcho | null = null;
+
+export type FamilyRealtimeConnectionState =
+  | 'unknown'
+  | 'initialized'
+  | 'connecting'
+  | 'connected'
+  | 'unavailable'
+  | 'failed'
+  | 'disconnected';
+
+let connectionState: FamilyRealtimeConnectionState = 'unknown';
+
+/** Latest known Reverb/Pusher connection state — for the `familyDebug.snapshot()` report. */
+export function getFamilyRealtimeConnectionState(): FamilyRealtimeConnectionState {
+  return connectionState;
+}
+
+if (typeof window !== 'undefined') {
+  familyFeedDebug.registerSnapshotSource('ws', () => ({
+    configured: isRealtimeConfigured(),
+    connectionState,
+    hasSingleton: Boolean(echoSingleton),
+  }));
+}
 
 /** True when NEXT_PUBLIC_REVERB_APP_KEY is set (client can attempt WebSocket). */
 export function isRealtimeConfigured(): boolean {
@@ -48,5 +73,29 @@ export function getEcho(): FamilyEcho | null {
   });
 
   window.Echo = echoSingleton;
+  bindConnectionStateLogging(echoSingleton);
   return echoSingleton;
 }
+
+function bindConnectionStateLogging(echo: FamilyEcho): void {
+  try {
+    const pusherConnection = (echo.connector as unknown as { pusher?: { connection?: PusherLikeConnection } })
+      .pusher?.connection;
+    if (!pusherConnection) return;
+
+    connectionState = (pusherConnection.state as FamilyRealtimeConnectionState) ?? 'unknown';
+    pusherConnection.bind('state_change', (states: { previous: string; current: string }) => {
+      connectionState = (states.current as FamilyRealtimeConnectionState) ?? 'unknown';
+      const level = states.current === 'failed' || states.current === 'unavailable' ? 'warn' : 'info';
+      familyFeedDebug[level]('realtime', `ws ${states.previous} → ${states.current}`, states);
+    });
+  } catch (err) {
+    familyFeedDebug.warn('realtime', 'ws state logging unavailable', { error: String(err) });
+  }
+}
+
+type PusherLikeConnection = {
+  state?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  bind: (event: string, cb: (...args: any[]) => void) => void;
+};

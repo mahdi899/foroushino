@@ -59,6 +59,20 @@ export async function getPinnedPosts(): Promise<{ data: FamilyPost[] }> {
   return run(() => familyFetch<{ data: FamilyPost[] }>(`/pinned`), 'دریافت پیام سنجاق‌شده ناموفق بود.');
 }
 
+export type FamilyJumpResponse = {
+  data: FamilyPost[];
+  meta: { next_cursor: string | null; has_newer: boolean; target_post_id: number };
+};
+
+/** Chronological window centered on `postId` — for "jump to message" (e.g. an old pinned post). */
+export async function getPostJumpContext(postId: number, limit = 24): Promise<FamilyJumpResponse> {
+  const qs = `?limit=${Math.max(2, Math.floor(limit))}`;
+  return run(
+    () => familyFetch<FamilyJumpResponse>(`/posts/${postId}/jump${qs}`),
+    'رفتن به پست ناموفق بود.',
+  );
+}
+
 export async function joinFamily(entryContext: Record<string, string | undefined> = {}): Promise<{ data: FamilyMeResponse }> {
   return run(() => familyFetch(`/join`, { method: 'POST', body: entryContext }), 'پیوستن به خانواده ناموفق بود.');
 }

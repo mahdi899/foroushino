@@ -24,6 +24,12 @@ function isFamilyFeedKey(key: unknown): boolean {
   return Array.isArray(key) && key[0] === 'family-feed';
 }
 
+// Module-level refcount: multiple components (FeedView, FamilyNavButton, ...) subscribe to
+// the same public `family.feed` Echo channel independently. Echo already dedupes the
+// underlying `channel()` call by name, but `echo.leave(name)` unsubscribes it entirely —
+// so we must only call `leave` once the *last* consumer unmounts, not on every unmount.
+let familyFeedChannelRefCount = 0;
+
 /**
  * Subscribe to public `family.feed` for new published posts.
  * Mutates nav unread summary + feed SWR caches; optional callback for UI (jump badge).
@@ -39,6 +45,8 @@ export function useFamilyRealtime({ enabled = true, onFeedUpdated }: Options = {
     if (!echo) return;
 
     const channel = echo.channel('family.feed');
+    familyFeedChannelRefCount += 1;
+
     const handler = (payload: FamilyFeedUpdatedPayload) => {
       void globalMutate(isFeedUnreadKey);
       void globalMutate(isFamilyFeedKey);
@@ -49,7 +57,10 @@ export function useFamilyRealtime({ enabled = true, onFeedUpdated }: Options = {
 
     return () => {
       channel.stopListening('.family.feed.updated', handler);
-      echo.leave('family.feed');
+      familyFeedChannelRefCount = Math.max(0, familyFeedChannelRefCount - 1);
+      if (familyFeedChannelRefCount === 0) {
+        echo.leave('family.feed');
+      }
     };
   }, [enabled]);
 }

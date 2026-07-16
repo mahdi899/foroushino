@@ -10,17 +10,127 @@ use App\Models\FamilyMembership;
 use App\Models\FamilyPost;
 use App\Models\FamilyReaction;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class FeedService
 {
+    private const FEED_CACHE_VERSION_KEY = 'family:feed:version';
+
     public function __construct(
         private readonly FamilyAccessService $access,
         private readonly PostAudienceResolver $audience,
         private readonly FamilyActionStatsService $actionStats,
         private readonly FamilyBrandingService $branding,
     ) {}
+
+    /**
+     * Fetch a chronological window centered on an arbitrary post — lets the UI "jump"
+     * straight to any post (e.g. an old pinned message) in a single request instead of
+     * paginating backward page-by-page from the tip.
+     *
+     * @return array{data: Collection<int, FamilyPost>, next_cursor: ?string, has_newer: bool, membership: FamilyMembership}
+     */
+    public function jumpToPost(
+        User $user,
+        FamilyPost $post,
+        ?FamilyMembership $membership = null,
+        int $before = 12,
+        int $after = 12,
+    ): array {
+        $membership = $membership ?? $this->access->requireMembership($user);
+        $familyId = (int) $membership->family_id;
+
+        // Pass the Carbon instance (not a pre-formatted string) into query bindings — Laravel
+        // reformats DateTimeInterface bindings via the connection grammar's date format, which
+        // matches how `published_at` is actually stored. A hand-formatted ISO8601 string (with
+        // "T" + timezone offset) compared lexicographically against SQLite's stored
+        // "Y-m-d H:i:s" text broke ordering entirely in tests (SQLite has no real DATETIME type).
+        $publishedAt = $post->published_at ?? now();
+        $id = (int) $post->id;
+
+        $baseQuery = fn () => $this->audience->scopeVisibleToFamily(
+            FamilyPost::query()
+                ->where('status', FamilyPostStatus::Published->value)
+                ->whereNotNull('published_at'),
+            $familyId,
+        );
+
+        // Posts newer than the target — fetched ascending (closest-to-target first) so the
+        // limit keeps the posts nearest the target, then reversed into feed (desc) order.
+        $newerRaw = $baseQuery()
+            ->where(function ($q) use ($publishedAt, $id) {
+                $q->where('published_at', '>', $publishedAt)
+                    ->orWhere(function ($q2) use ($publishedAt, $id) {
+                        $q2->where('published_at', '=', $publishedAt)
+                            ->where('id', '>', $id);
+                    });
+            })
+            ->orderBy('published_at')
+            ->orderBy('id')
+            ->limit($after + 1)
+            ->get(['id']);
+
+        $hasNewer = $newerRaw->count() > $after;
+        $newerIds = $newerRaw->take($after)->reverse()->pluck('id')->values();
+
+        // Posts older than the target — same shape as the standard cursor page.
+        $olderRaw = $baseQuery()
+            ->where(function ($q) use ($publishedAt, $id) {
+                $q->where('published_at', '<', $publishedAt)
+                    ->orWhere(function ($q2) use ($publishedAt, $id) {
+                        $q2->where('published_at', '=', $publishedAt)
+                            ->where('id', '<', $id);
+                    });
+            })
+            ->orderByDesc('published_at')
+            ->orderByDesc('id')
+            ->limit($before + 1)
+            ->get(['id']);
+
+        $hasOlder = $olderRaw->count() > $before;
+        $olderIds = $olderRaw->take($before)->pluck('id')->values();
+
+        $orderedIds = $newerIds->concat([$id])->concat($olderIds)->values();
+
+        $posts = FamilyPost::query()
+            ->whereIn('id', $orderedIds)
+            ->with([
+                'author:id,name',
+                'blocks' => fn ($q) => $q->orderBy('position'),
+                'blocks.media',
+                'blocks.article:id,title,slug,excerpt,featured_image,status',
+                'actions.options',
+                'replyToComment:id,user_id,body,status',
+                'replyToComment.user:id,name',
+                'stats' => fn ($q) => $q->where('family_id', $familyId),
+            ])
+            ->get()
+            ->sortBy(fn (FamilyPost $p) => $orderedIds->search($p->id))
+            ->values();
+
+        $this->attachUserReactions($posts, $user->id);
+        $this->attachCommentPreviews($posts, $familyId);
+        $this->attachActionResults($posts, $familyId);
+        $this->attachUserActionResponses($posts, $user->id);
+        $this->applyBrandingAuthor($posts);
+
+        $nextCursor = null;
+        if ($hasOlder && $olderIds->isNotEmpty()) {
+            $last = $posts->last(fn (FamilyPost $p) => (int) $p->id === (int) $olderIds->last());
+            if ($last) {
+                $nextCursor = $this->encodeCursor($last->published_at?->toIso8601String() ?? '', (int) $last->id);
+            }
+        }
+
+        return [
+            'data' => $posts,
+            'next_cursor' => $nextCursor,
+            'has_newer' => $hasNewer,
+            'membership' => $membership,
+        ];
+    }
 
     /**
      * @return array{data: Collection<int, FamilyPost>, next_cursor: ?string, membership: \App\Models\FamilyMembership}
@@ -35,6 +145,38 @@ class FeedService
         $familyId = (int) $membership->family_id;
         $limit = $limit ?? (int) config('family.feed.per_page', 4);
 
+        // The tip page (cursor=null) is the hottest query per family — cache the shared
+        // (non-user-specific) part of it briefly. Older pages are cheap/rare enough to
+        // stay uncached. Reactions/action-responses are always attached live below since
+        // they're per-user and must never be baked into a cache shared across a family.
+        if ($cursor === null) {
+            $cacheKey = $this->feedTipCacheKey($familyId, $limit);
+            ['data' => $posts, 'next_cursor' => $nextCursor] = Cache::remember(
+                $cacheKey,
+                (int) config('family.cache.feed_tip_ttl', 8),
+                fn () => $this->fetchFeedPage($familyId, null, $limit),
+            );
+        } else {
+            ['data' => $posts, 'next_cursor' => $nextCursor] = $this->fetchFeedPage($familyId, $cursor, $limit);
+        }
+
+        $this->attachUserReactions($posts, $user->id);
+        $this->attachUserActionResponses($posts, $user->id);
+
+        return [
+            'data' => $posts,
+            'next_cursor' => $nextCursor,
+            'membership' => $membership,
+        ];
+    }
+
+    /**
+     * Shared (family-wide, no per-user fields) feed page — cacheable as-is.
+     *
+     * @return array{data: Collection<int, FamilyPost>, next_cursor: ?string}
+     */
+    private function fetchFeedPage(int $familyId, ?string $cursor, int $limit): array
+    {
         $query = FamilyPost::query()
             ->where('status', FamilyPostStatus::Published->value)
             ->whereNotNull('published_at');
@@ -42,7 +184,10 @@ class FeedService
         $this->audience->scopeVisibleToFamily($query, $familyId);
 
         if ($cursor) {
-            [$publishedAt, $id] = $this->decodeCursor($cursor);
+            [$publishedAtRaw, $id] = $this->decodeCursor($cursor);
+            // Parse into a Carbon instance — see jumpToPost() for why comparing the raw
+            // ISO8601 cursor string against the column directly is unsafe under SQLite.
+            $publishedAt = Carbon::parse($publishedAtRaw);
             $query->where(function ($q) use ($publishedAt, $id) {
                 $q->where('published_at', '<', $publishedAt)
                     ->orWhere(function ($q2) use ($publishedAt, $id) {
@@ -73,10 +218,8 @@ class FeedService
             $posts = $posts->take($limit)->values();
         }
 
-        $this->attachUserReactions($posts, $user->id);
         $this->attachCommentPreviews($posts, $familyId);
         $this->attachActionResults($posts, $familyId);
-        $this->attachUserActionResponses($posts, $user->id);
         $this->applyBrandingAuthor($posts);
 
         $nextCursor = null;
@@ -88,8 +231,25 @@ class FeedService
         return [
             'data' => $posts,
             'next_cursor' => $nextCursor,
-            'membership' => $membership,
         ];
+    }
+
+    private function feedTipCacheKey(int $familyId, int $limit): string
+    {
+        $version = (int) Cache::get(self::FEED_CACHE_VERSION_KEY, 0);
+
+        return "family:feed:{$familyId}:{$limit}:v{$version}";
+    }
+
+    /**
+     * Bump the shared feed-tip cache version, invalidating every family's cached tip page
+     * at once. Simpler and safer than resolving exactly which families a given post's
+     * audience (`all` / `include` / `exclude`) touches, and cheap since publishes are rare
+     * relative to feed reads.
+     */
+    public static function invalidateFeedTipCache(): void
+    {
+        Cache::increment(self::FEED_CACHE_VERSION_KEY);
     }
 
     /**

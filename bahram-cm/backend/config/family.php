@@ -77,6 +77,10 @@ return [
         'pulse_ttl' => (int) env('FAMILY_CACHE_PULSE_TTL', 60),
         'member_count_ttl' => (int) env('FAMILY_CACHE_MEMBER_COUNT_TTL', 300),
         'action_stats_ttl' => (int) env('FAMILY_CACHE_ACTION_STATS_TTL', 60),
+        // Member feed tip page (cursor=null) — the hottest query per family. Short TTL
+        // because it's also bumped by a version key on every publish (see
+        // FamilyPostPublisher::publish), so this mostly protects against read bursts.
+        'feed_tip_ttl' => (int) env('FAMILY_CACHE_FEED_TIP_TTL', 8),
     ],
 
     'onboarding' => [

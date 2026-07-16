@@ -49,6 +49,21 @@ const throttleAt = new Map<string, number>();
 let longTaskObserver: PerformanceObserver | null = null;
 let installed = false;
 
+type SnapshotProvider = () => Record<string, unknown>;
+const snapshotProviders = new Map<string, SnapshotProvider>();
+
+/**
+ * Lets other modules (ws connection state, feed DOM/SWR counters, ...) contribute a
+ * section to `familyDebug.snapshot()` without feedDebug importing them directly (avoids
+ * circular imports). Returns an unregister function — call it on unmount/teardown.
+ */
+function registerSnapshotSource(key: string, provider: SnapshotProvider): () => void {
+  snapshotProviders.set(key, provider);
+  return () => {
+    if (snapshotProviders.get(key) === provider) snapshotProviders.delete(key);
+  };
+}
+
 function now() {
   return typeof performance !== 'undefined' ? performance.now() : Date.now();
 }
@@ -201,6 +216,42 @@ function buildReport() {
   };
 }
 
+/**
+ * Single-call professional report: render totals, ws state, recent long tasks,
+ * DOM/SWR feed counters (via registered sources), and recent warnings. Meant to be
+ * copy-pasted (`copy(JSON.stringify(familyDebug.snapshot(), null, 2))`) when reporting
+ * a perf/bug regression.
+ */
+function buildSnapshot() {
+  const renders = [...renderCounts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+
+  const longTasks = ring
+    .filter((e) => e.scope === 'perf' && e.level === 'warn')
+    .slice(-10)
+    .map((e) => ({ ...e.data, message: e.message, t: e.t }));
+
+  const sources: Record<string, unknown> = {};
+  for (const [key, provider] of snapshotProviders) {
+    try {
+      sources[key] = provider();
+    } catch (err) {
+      sources[key] = { error: String(err) };
+    }
+  }
+
+  return {
+    generatedAt: new Date().toISOString(),
+    sessionMs: sessionStartedAt ? Date.now() - sessionStartedAt : 0,
+    totalEvents: ring.length,
+    topRenders: renders.slice(0, 20),
+    recentLongTasks: longTasks,
+    recentWarnings: ring.filter((e) => e.level === 'warn' || e.level === 'error').slice(-20),
+    ...sources,
+  };
+}
+
 export const familyFeedDebug = {
   info: (scope: FamilyDebugScope, message: string, data?: Record<string, unknown>) =>
     emit('info', scope, message, data),
@@ -251,6 +302,8 @@ export const familyFeedDebug = {
 
   dump: (): FamilyDebugEvent[] => ring.slice(),
   report: () => buildReport(),
+  snapshot: () => buildSnapshot(),
+  registerSnapshotSource,
   clear: () => {
     ring = [];
     renderCounts.clear();
@@ -273,6 +326,7 @@ declare global {
       off: () => void;
       dump: () => FamilyDebugEvent[];
       report: () => ReturnType<typeof buildReport>;
+      snapshot: () => ReturnType<typeof buildSnapshot>;
       clear: () => void;
       rewind: (afterId: number) => void;
       renders: () => { name: string; count: number }[];
@@ -292,6 +346,7 @@ export function installFamilyFeedDebugGlobals(): void {
     off: () => enableFamilyFeedDebug(false),
     dump: () => familyFeedDebug.dump(),
     report: () => familyFeedDebug.report(),
+    snapshot: () => familyFeedDebug.snapshot(),
     clear: () => familyFeedDebug.clear(),
     rewind: rewindFamilyFeedCursor,
     renders: () =>
@@ -307,7 +362,7 @@ export function installFamilyFeedDebugGlobals(): void {
     console.info(
       '%c[family] debug ON',
       'color:#3390ec;font-weight:700',
-      '\n  familyDebug.report()  → summary JSON\n  familyDebug.rewind(N) → unread test\n  familyDebug.renders() → re-render counts\n  copy(JSON.stringify(familyDebug.report(),null,2))',
+      '\n  familyDebug.report()   → summary JSON\n  familyDebug.snapshot() → perf/ws/feed report\n  familyDebug.rewind(N)  → unread test\n  familyDebug.renders()  → re-render counts\n  copy(JSON.stringify(familyDebug.snapshot(),null,2))',
     );
   }
 }

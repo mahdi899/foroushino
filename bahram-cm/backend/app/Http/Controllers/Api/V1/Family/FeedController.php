@@ -128,6 +128,36 @@ class FeedController extends Controller
         return ApiResponse::success((new FamilyPostResource($post))->resolve());
     }
 
+    /**
+     * Chronological window centered on `$post` — lets "jump to message" (e.g. an old
+     * pinned post) work in one request regardless of how far back it is.
+     */
+    public function jump(Request $request, FamilyPost $post): JsonResponse
+    {
+        $user = $request->user('sanctum');
+        abort_unless($user, 401);
+        abort_unless($post->status?->value === 'published' || $post->status === 'published', 404);
+        abort_unless($post->published_at, 404);
+
+        $membership = $this->access->requireMembership($user);
+        abort_unless($this->audience->visibleToFamily($post, (int) $membership->family_id), 404);
+
+        $limit = $request->integer('limit');
+        $half = $limit > 0 ? min(intdiv($limit, 2), 25) : 12;
+
+        $result = $this->feed->jumpToPost($user, $post, $membership, $half, $half);
+
+        return ApiResponse::success(
+            FamilyPostResource::collection($result['data'])->resolve(),
+            200,
+            [
+                'next_cursor' => $result['next_cursor'],
+                'has_newer' => $result['has_newer'],
+                'target_post_id' => $post->id,
+            ]
+        );
+    }
+
     public function join(Request $request, JoinFamily $join): JsonResponse
     {
         $user = $request->user();

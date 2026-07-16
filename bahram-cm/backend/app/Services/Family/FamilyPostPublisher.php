@@ -104,6 +104,8 @@ class FamilyPostPublisher
 
         $fresh = $post->fresh(['blocks.media', 'targets', 'actions.options']);
 
+        FeedService::invalidateFeedTipCache();
+
         if ($fresh) {
             SafeBroadcast::optionally(
                 fn () => broadcast(new FamilyFeedUpdated($fresh)),
