@@ -64,7 +64,7 @@ class AppTheme {
       useMaterial3: true,
       fontFamily: _fontFamily,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.background,
+      scaffoldBackgroundColor: Colors.transparent,
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surface.withValues(alpha: 0.94),
@@ -89,7 +89,7 @@ class AppTheme {
       dividerTheme: const DividerThemeData(color: AppColors.border, thickness: 1),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surface,
+        fillColor: AppColors.surface.withValues(alpha: AppGlass.inputOpacity(Brightness.light)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: AppRadius.tileBorder,
@@ -199,14 +199,14 @@ class AppTheme {
         }),
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: AppColors.surface,
-        modalBackgroundColor: AppColors.surface,
+        backgroundColor: Colors.transparent,
+        modalBackgroundColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: AppRadius.sheetBorder),
         dragHandleColor: AppColors.border,
         showDragHandle: true,
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: AppColors.surface,
+        backgroundColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: AppRadius.cardBorder),
         titleTextStyle: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
       ),
@@ -238,7 +238,7 @@ class AppTheme {
       useMaterial3: true,
       fontFamily: _fontFamily,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.backgroundDark,
+      scaffoldBackgroundColor: Colors.transparent,
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surfaceDark.withValues(alpha: 0.94),
@@ -263,7 +263,7 @@ class AppTheme {
       dividerTheme: const DividerThemeData(color: AppColors.borderDark, thickness: 1),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.surfaceDark,
+        fillColor: AppColors.surfaceDark.withValues(alpha: AppGlass.inputOpacity(Brightness.dark)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: AppRadius.tileBorder,
@@ -373,14 +373,14 @@ class AppTheme {
         }),
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: AppColors.surfaceDark,
-        modalBackgroundColor: AppColors.surfaceDark,
+        backgroundColor: Colors.transparent,
+        modalBackgroundColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: AppRadius.sheetBorder),
         dragHandleColor: AppColors.borderDark,
         showDragHandle: true,
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: Colors.transparent,
         shape: RoundedRectangleBorder(borderRadius: AppRadius.cardBorder),
         titleTextStyle: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
       ),

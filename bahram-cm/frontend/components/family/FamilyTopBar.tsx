@@ -76,6 +76,7 @@ export function FamilyTopBar({
       <FamilyAuthorAvatar
         name={branding.profile_name}
         avatar={branding.community_avatar ?? branding.profile_avatar}
+        avatarVersion={branding.branding_version}
         size="lg"
         hasStoryRing={storiesAvailable}
         storyUnseen={hasUnseen}
@@ -97,6 +98,7 @@ export function FamilyTopBar({
       <FamilyAuthorAvatar
         name={branding.profile_name}
         avatar={branding.community_avatar ?? branding.profile_avatar}
+        avatarVersion={branding.branding_version}
         size="lg"
         verified
       />

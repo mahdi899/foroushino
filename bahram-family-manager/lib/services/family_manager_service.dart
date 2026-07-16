@@ -29,9 +29,10 @@ class FamilyManagerService {
   // Posts
   // ---------------------------------------------------------------------
 
-  Future<PaginatedResult<FamilyPostModel>> listPosts({String? status, int page = 1}) async {
+  Future<PaginatedResult<FamilyPostModel>> listPosts({String? status, int? familyId, int page = 1}) async {
     final res = await api.get('$_base/posts', query: {
       if (status != null) 'status': status,
+      if (familyId != null) 'family_id': familyId,
       'page': page,
     });
     return PaginatedResult.fromEnvelope(res, FamilyPostModel.fromJson);
@@ -59,6 +60,11 @@ class FamilyManagerService {
 
   Future<void> archivePost(int id) => api.post('$_base/posts/$id/archive');
 
+  Future<FamilyPostModel> recoverPost(int id) async {
+    final res = await api.post('$_base/posts/$id/recover');
+    return FamilyPostModel.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
   Future<void> deletePost(int id) => api.delete('$_base/posts/$id');
 
   Future<FamilyPostModel> pinPost(int id) async {
@@ -69,6 +75,12 @@ class FamilyManagerService {
   Future<FamilyPostModel> unpinPost(int id) async {
     final res = await api.post('$_base/posts/$id/unpin');
     return FamilyPostModel.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<List<FamilyActionResultModel>> getPostActionResults(int postId) async {
+    final res = await api.get('$_base/posts/$postId/action-results');
+    final data = res['data'] as List? ?? [];
+    return data.map((e) => FamilyActionResultModel.fromJson((e as Map).cast<String, dynamic>())).toList();
   }
 
   // ---------------------------------------------------------------------
@@ -83,6 +95,11 @@ class FamilyManagerService {
   Future<FamilyBrandingSettings> updateSettings(Map<String, dynamic> payload) async {
     final res = await api.patch('$_base/settings', data: payload);
     return FamilyBrandingSettings.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<FamilyMediaPipelineSettings> updateMediaPipeline(Map<String, dynamic> payload) async {
+    final res = await api.patch('$_base/settings/media-pipeline', data: payload);
+    return FamilyMediaPipelineSettings.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
 
   Future<List<FamilyStoryModel>> listStories() async {
@@ -159,11 +176,17 @@ class FamilyManagerService {
   // Families
   // ---------------------------------------------------------------------
 
-  Future<PaginatedResult<FamilySummaryModel>> listFamilies({String? search, String? lifecycle, int page = 1}) async {
+  Future<PaginatedResult<FamilySummaryModel>> listFamilies({
+    String? search,
+    String? lifecycle,
+    int page = 1,
+    int? perPage,
+  }) async {
     final res = await api.get('$_base/families', query: {
       if (search != null && search.isNotEmpty) 'search': search,
       if (lifecycle != null) 'lifecycle': lifecycle,
       'page': page,
+      if (perPage != null) 'per_page': perPage,
     });
     return PaginatedResult.fromEnvelope(res, FamilySummaryModel.fromJson);
   }
@@ -172,6 +195,36 @@ class FamilyManagerService {
     final res = await api.get('$_base/families/$id');
     return FamilyDetailModel.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
+
+  Future<PaginatedResult<FamilyMemberModel>> listMembers({
+    int? familyId,
+    String? search,
+    int page = 1,
+  }) async {
+    final res = await api.get(
+      familyId == null ? '$_base/members' : '$_base/families/$familyId/members',
+      query: {
+        if (search != null && search.isNotEmpty) 'search': search,
+        'page': page,
+      },
+    );
+    return PaginatedResult.fromEnvelope(res, FamilyMemberModel.fromJson);
+  }
+
+  Future<FamilyMemberModel> addMember({
+    required int familyId,
+    required String mobile,
+    String? name,
+  }) async {
+    final res = await api.post('$_base/families/$familyId/members', data: {
+      'mobile': mobile,
+      if (name != null && name.isNotEmpty) 'name': name,
+    });
+    return FamilyMemberModel.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<void> removeMember({required int familyId, required int membershipId}) =>
+      api.delete('$_base/families/$familyId/members/$membershipId');
 
   Future<FamilyDetailModel> createFamily(Map<String, dynamic> payload) async {
     final res = await api.post('$_base/families', data: payload);

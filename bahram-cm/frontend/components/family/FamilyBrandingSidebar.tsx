@@ -104,6 +104,7 @@ export function FamilyBrandingSidebar({
                   <FamilyAuthorAvatar
                     name={branding.profile_name}
                     avatar={communityAvatar}
+                    avatarVersion={branding.branding_version}
                     size="xl"
                     hasStoryRing
                     storyUnseen={hasUnseen}
@@ -115,6 +116,7 @@ export function FamilyBrandingSidebar({
                   <FamilyAuthorAvatar
                     name={branding.profile_name}
                     avatar={communityAvatar}
+                    avatarVersion={branding.branding_version}
                     size="xl"
                     verified
                   />

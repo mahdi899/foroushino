@@ -25,6 +25,6 @@ export const familyBrandingSwr = {
   ...familySwrDefaults,
   revalidateOnFocus: true,
   revalidateOnMount: true,
-  dedupingInterval: 10 * 60_000,
+  dedupingInterval: 30_000,
   keepPreviousData: true,
 } as const;

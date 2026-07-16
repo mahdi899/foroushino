@@ -42,9 +42,10 @@ void main() {
             'options': [],
           },
         ],
-        'targets': [
-          {'id': 1, 'post_id': 10, 'family_id': 3},
+        'targets' => [
+          {'id': 1, 'post_id': 10, 'family_id': 3, 'family_name': 'نور'},
         ],
+        'audience_summary': 'نور',
       };
 
       final post = FamilyPostModel.fromJson(json);
@@ -56,6 +57,8 @@ void main() {
       expect(post.preview, 'سلام خانواده');
       expect(post.actions.single.type, 'commitment');
       expect(post.targetFamilyIds, [3]);
+      expect(post.channelLabel, 'نور');
+      expect(post.targetFamilies.single.familyName, 'نور');
     });
 
     test('preview falls back to a media label when there is no text block', () {

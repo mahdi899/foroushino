@@ -14,6 +14,7 @@ import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
+import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/sheets/app_bottom_sheet.dart';
 import 'package:bahram_family_manager/widgets/surfaces/app_card.dart';
@@ -55,7 +56,7 @@ class _EntryLinksScreenState extends State<EntryLinksScreen> {
   @override
   Widget build(BuildContext context) {
     return AdaptiveScaffold(
-      appBar: AppBar(
+      appBar: ManagerAppBar(
         title: const Text('لینک‌های ورود'),
         actions: [
           IconButton(

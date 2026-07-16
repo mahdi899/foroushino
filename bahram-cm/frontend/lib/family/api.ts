@@ -48,7 +48,7 @@ export async function getFeed(
 
 export async function getFeedUnreadSummary(
   afterId: number,
-): Promise<{ data: { unread_count: number; latest_post_id: number } }> {
+): Promise<{ data: { unread_count: number; latest_post_id: number; feed_revision?: number } }> {
   const qs = `?after_id=${Math.max(0, Math.floor(afterId))}`;
   return run(
     () => familyFetch<{ data: { unread_count: number; latest_post_id: number } }>(`/feed/unread-summary${qs}`),

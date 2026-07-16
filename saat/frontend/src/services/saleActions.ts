@@ -1,24 +1,27 @@
 import { useStore } from '@/store/useStore'
 import type { PaymentMethod } from '@/types'
 import { apiMode, api } from '@/services/index'
-import { enqueueOfflineWrite, flushOfflineQueue } from '@/services/offlineQueue'
+import { enqueueOfflineWrite } from '@/services/offlineQueue'
+import { patchSaleConfirmData, patchSaleRejectData } from '@/services/patchSaleWrite'
 
 export async function performConfirmSale(saleId: string): Promise<void> {
-  useStore.getState().confirmSale(saleId)
-  if (apiMode !== 'http') return
-
-  try {
-    await api.confirmSale(saleId)
-  } catch {
-    await enqueueOfflineWrite({ type: 'confirm_sale', saleId, createdAt: new Date().toISOString() })
+  if (apiMode !== 'http') {
+    useStore.getState().confirmSale(saleId)
+    return
   }
+
+  const data = await api.confirmSale(saleId)
+  patchSaleConfirmData(data)
 }
 
 export async function performRejectSale(saleId: string, reason: string): Promise<void> {
-  useStore.getState().rejectSale(saleId, reason)
-  if (apiMode !== 'http') return
+  if (apiMode !== 'http') {
+    useStore.getState().rejectSale(saleId, reason)
+    return
+  }
 
-  await api.rejectSale(saleId, reason)
+  const data = await api.rejectSale(saleId, reason)
+  patchSaleRejectData(data)
 }
 
 export async function performSubmitPayment(
@@ -26,11 +29,14 @@ export async function performSubmitPayment(
   method: PaymentMethod,
   reference: string,
 ): Promise<void> {
-  useStore.getState().submitPayment(saleId, method, reference)
-  if (apiMode !== 'http') return
+  if (apiMode !== 'http') {
+    useStore.getState().submitPayment(saleId, method, reference)
+    return
+  }
 
   try {
     await api.submitPayment(saleId, method, reference)
+    useStore.getState().submitPayment(saleId, method, reference)
   } catch {
     await enqueueOfflineWrite({
       type: 'submit_payment',
@@ -39,9 +45,11 @@ export async function performSubmitPayment(
       reference,
       createdAt: new Date().toISOString(),
     })
+    throw new Error('ثبت پرداخت ناموفق بود و در صف آفلاین ذخیره شد.')
   }
 }
 
 export async function flushPendingSaleWrites(): Promise<void> {
+  const { flushOfflineQueue } = await import('@/services/offlineQueue')
   await flushOfflineQueue()
 }

@@ -628,6 +628,7 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   display: block;
   width: var(--family-media-max-w);
   max-width: 100%;
+  height: auto;
   max-height: var(--family-media-max-h);
   align-self: center;
   margin-inline: auto;
@@ -1533,15 +1534,6 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   border-radius: 0.75rem;
   padding: 0.125rem 0.25rem;
   text-align: start;
-  transition: background-color 160ms ease;
-}
-
-.family-topbar__profile:hover {
-  background: color-mix(in oklab, var(--family-text) 4%, transparent);
-}
-
-.family-topbar__profile:active {
-  background: color-mix(in oklab, var(--family-text) 7%, transparent);
 }
 
 .family-topbar__title {

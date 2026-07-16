@@ -2,8 +2,10 @@
 
 namespace App\Support;
 
+use App\Enums\Family\FamilyPostAudienceMode;
 use App\Models\FamilyMedia;
 use App\Models\FamilyPost;
+use App\Support\FamilyMediaUrl;
 use Illuminate\Support\Collection;
 
 /** Shapes Family Manager post JSON for admin clients (includes safe media URLs). */
@@ -12,13 +14,14 @@ final class FamilyManagerPostPresenter
     /** @return array<string, mixed> */
     public static function present(FamilyPost $post): array
     {
-        $post->loadMissing(['author:id,name', 'blocks.media', 'blocks.article', 'targets', 'actions.options', 'stats']);
+        $post->loadMissing(['author:id,name', 'blocks.media', 'blocks.article', 'targets.family:id,internal_name', 'actions.options', 'stats']);
 
         return [
             'id' => $post->id,
             'type' => $post->type?->value ?? $post->type,
             'status' => $post->status?->value ?? $post->status,
             'audience_mode' => $post->audience_mode?->value ?? $post->audience_mode,
+            'audience_summary' => self::audienceSummary($post),
             'is_important' => (bool) $post->is_important,
             'is_pinned' => (bool) $post->is_pinned,
             'pinned_at' => $post->pinned_at?->toIso8601String(),
@@ -52,11 +55,34 @@ final class FamilyManagerPostPresenter
                 'id' => $target->id,
                 'post_id' => $target->post_id,
                 'family_id' => $target->family_id,
+                'family_name' => $target->family?->internal_name,
             ])->values()->all(),
             'stats' => [
                 'views' => self::postViewCount($post),
             ],
         ];
+    }
+
+    private static function audienceSummary(FamilyPost $post): string
+    {
+        $mode = $post->audience_mode;
+        $names = $post->targets
+            ->map(fn ($target) => $target->family?->internal_name)
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($mode === FamilyPostAudienceMode::All) {
+            return 'همه خانواده‌ها';
+        }
+
+        $joined = $names !== [] ? implode('، ', $names) : 'خانواده‌های انتخابی';
+
+        return match ($mode) {
+            FamilyPostAudienceMode::Include => $joined,
+            FamilyPostAudienceMode::Exclude => 'همه به‌جز '.$joined,
+            default => 'همه خانواده‌ها',
+        };
     }
 
     private static function postViewCount(FamilyPost $post): int
@@ -98,6 +124,7 @@ final class FamilyManagerPostPresenter
             'waveform' => $media->waveform,
             'failure_reason' => $media->failure_reason,
             'cdn_url' => $media->cdnUrl(),
+            'url' => FamilyMediaUrl::fromPath($media->storage_path),
         ];
     }
 }

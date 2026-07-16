@@ -5,11 +5,15 @@ import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
+import 'package:bahram_family_manager/widgets/layout/shell_scope.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
+import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
+import 'package:bahram_family_manager/widgets/navigation/quick_action_button.dart';
 import 'package:bahram_family_manager/widgets/posts/post_list_tile.dart';
+import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 import 'package:bahram_family_manager/widgets/surfaces/panel_gradient_card.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -37,16 +41,19 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AppState>().user;
+    final shell = ShellScope.maybeOf(context);
+    final canCompose = shell?.onComposePost != null;
 
     return AdaptiveScaffold(
-      appBar: AppBar(
+      appBar: ManagerAppBar(
         title: const Text('خانه'),
         actions: [
-          IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
+          IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded), tooltip: 'بروزرسانی'),
           if (!AppBreakpoints.isDesktop(context))
             IconButton(
               onPressed: () => context.read<AppState>().logout(),
               icon: const Icon(Icons.logout_rounded),
+              tooltip: 'خروج',
             ),
         ],
       ),
@@ -61,6 +68,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: AppBreakpoints.pagePadding(context),
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
+                  if (canCompose || shell != null) ...[
+                    Row(
+                      children: [
+                        if (canCompose)
+                          QuickActionButton(
+                            icon: Icons.edit_rounded,
+                            label: 'پست جدید',
+                            color: AppColors.primary,
+                            onTap: shell!.onComposePost!,
+                          ),
+                        if (canCompose && shell != null) const SizedBox(width: AppSpacing.md),
+                        if (shell != null)
+                          QuickActionButton(
+                            icon: Icons.forum_rounded,
+                            label: 'نظرات',
+                            color: AppColors.accent,
+                            onTap: () => shell.goToLabel('نظرات'),
+                          ),
+                        if (shell != null) const SizedBox(width: AppSpacing.md),
+                        if (shell != null)
+                          QuickActionButton(
+                            icon: Icons.campaign_rounded,
+                            label: 'پست‌ها',
+                            color: AppColors.gold,
+                            onTap: () => shell.goToLabel('پست‌ها'),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
                   if (user != null) ...[
                     PanelGradientCard(
                       variant: PanelGradientVariant.teal,
@@ -114,19 +151,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   if (stats.pendingComments > 0) ...[
                     const SizedBox(height: AppSpacing.md),
-                    PanelGradientCard(
-                      variant: PanelGradientVariant.gold,
+                    GlassPanel(
+                      borderRadius: 16,
                       padding: const EdgeInsets.all(AppSpacing.lg),
+                      onTap: shell != null ? () => shell.goToLabel('نظرات') : null,
                       child: Row(
                         children: [
-                          const Icon(Icons.notification_important_rounded, color: Colors.white),
+                          Icon(Icons.notification_important_rounded, color: AppColors.gold, size: 28),
                           const SizedBox(width: AppSpacing.md),
                           Expanded(
                             child: Text(
                               '${toFaDigits(stats.pendingComments.toString())} نظر در انتظار بررسی',
-                              style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white),
+                              style: const TextStyle(fontWeight: FontWeight.w700),
                             ),
                           ),
+                          const Icon(Icons.chevron_left_rounded, size: 22),
                         ],
                       ),
                     ),
@@ -180,7 +219,13 @@ class _AiSummaryCard extends StatelessWidget {
             ),
           if (summary.suggestion != null) ...[
             const SizedBox(height: AppSpacing.sm),
-            Text(summary.suggestion!, style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.primaryDark)),
+            Text(
+              summary.suggestion!,
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
           ],
         ],
       ),

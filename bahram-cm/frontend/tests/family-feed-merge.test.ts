@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { feedPagesContainPost, prependPostToFeedPages } from '@/lib/family/feedMerge';
+import {
+  feedPagesContainPost,
+  latestPostIdFromPages,
+  prependPostToFeedPages,
+  reconcileDiskCacheWithCurrent,
+} from '@/lib/family/feedMerge';
 import type { FeedCachePage } from '@/lib/family/feedCache';
 import type { FamilyPost } from '@/lib/family/types';
 
@@ -38,5 +43,47 @@ describe('feedMerge', () => {
   it('detects post membership across pages', () => {
     expect(feedPagesContainPost(basePages, 2)).toBe(true);
     expect(feedPagesContainPost(basePages, 9)).toBe(false);
+  });
+
+  it('keeps a fresher network tip when disk has more pages', () => {
+    const staleDisk: FeedCachePage[] = [
+      {
+        data: [post(3), post(2), post(1)],
+        meta: { next_cursor: 'older', guest: false, display_name: 'Family' },
+      },
+      {
+        data: [post(0)],
+        meta: { next_cursor: null, guest: false, display_name: 'Family' },
+      },
+    ];
+    const freshNetwork: FeedCachePage[] = [
+      {
+        data: [post(5), post(4)],
+        meta: { next_cursor: 'cursor-1', guest: false, display_name: 'Family' },
+      },
+    ];
+
+    const next = reconcileDiskCacheWithCurrent(freshNetwork, staleDisk);
+    expect(latestPostIdFromPages(next)).toBe(5);
+    expect(next).toHaveLength(2);
+    expect(next[0]?.data.map((p) => p.id)).toEqual([5, 4]);
+    expect(next[1]?.data.map((p) => p.id)).toEqual([0]);
+  });
+
+  it('uses disk when its tip is newer than the live cache', () => {
+    const disk: FeedCachePage[] = [
+      {
+        data: [post(8), post(7)],
+        meta: { next_cursor: null, guest: false, display_name: 'Family' },
+      },
+    ];
+    const live: FeedCachePage[] = [
+      {
+        data: [post(6), post(5)],
+        meta: { next_cursor: null, guest: false, display_name: 'Family' },
+      },
+    ];
+
+    expect(reconcileDiskCacheWithCurrent(live, disk)).toBe(disk);
   });
 });

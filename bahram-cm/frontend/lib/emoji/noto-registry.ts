@@ -119,8 +119,8 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Noto fallbacks for glyphs missing from emoji-regex (e.g. studio mic 🎙️). */
-const EXTRA_EMOJI_PATTERN = [...new Set(Object.keys(NOTO_CHAR_FALLBACK))]
+/** Glyphs in our Noto map that `emoji-regex` skips (e.g. ❤ without U+FE0F, 🗣 without VS16). */
+const EXTRA_EMOJI_PATTERN = [...new Set([...Object.keys(NOTO_CHAR_MAP), ...Object.keys(NOTO_CHAR_FALLBACK)])]
   .sort((a, b) => b.length - a.length)
   .map(escapeRegExp)
   .join('|');

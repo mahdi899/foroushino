@@ -46,6 +46,11 @@ export interface CallResultOutcome {
   savedNote?: string | null
 }
 
+export interface SaleConfirmResult {
+  sale: unknown
+  commission: unknown
+}
+
 // Domain contract. The store delegates its mutations here.
 export interface ApiClient {
   // shift & availability (spec §1)
@@ -72,8 +77,8 @@ export interface ApiClient {
   // sales & payments (spec §8)
   submitPayment(saleId: string, method: PaymentMethod, reference: string): Promise<void>
   forwardSaleForConfirmation(saleId: string): Promise<void>
-  confirmSale(saleId: string): Promise<void>
-  rejectSale(saleId: string, reason: string): Promise<void>
+  confirmSale(saleId: string): Promise<SaleConfirmResult>
+  rejectSale(saleId: string, reason: string): Promise<unknown>
   cancelSale(saleId: string): Promise<void>
 
   // wallet (spec §9)

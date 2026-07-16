@@ -8,6 +8,7 @@ import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/media/family_media_view.dart';
+import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 
 class PostListTile extends StatelessWidget {
   const PostListTile({
@@ -15,32 +16,41 @@ class PostListTile extends StatelessWidget {
     required this.post,
     required this.onTap,
     this.onPinToggle,
+    this.onEdit,
+    this.onDelete,
+    this.onRepublish,
+    this.onPublish,
+    this.onRecover,
   });
 
   final FamilyPostModel post;
   final VoidCallback onTap;
   final VoidCallback? onPinToggle;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  final VoidCallback? onRepublish;
+  final VoidCallback? onPublish;
+  final VoidCallback? onRecover;
+
+  bool get _hasMenu => onEdit != null || onDelete != null || onRepublish != null || onPublish != null || onRecover != null;
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final muted = scheme.onSurface.withValues(alpha: 0.6);
     final mediaBlock = post.primaryMediaBlock;
     final text = post.textPreview ?? post.preview;
     final isImportant = post.isImportant;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            color: isImportant ? AppColors.goldSoft.withValues(alpha: 0.45) : AppColors.surface,
-            border: Border.all(
-              color: isImportant ? AppColors.gold.withValues(alpha: 0.35) : AppColors.border,
-            ),
-            boxShadow: AppShadows.soft,
-          ),
+    return GlassPanel(
+      borderRadius: 20,
+      blur: 24,
+      padding: EdgeInsets.zero,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -57,7 +67,7 @@ class PostListTile extends StatelessWidget {
                           Text(post.authorName ?? 'بهرام', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                           Text(
                             formatDateTime(post.publishedAt ?? post.createdAt),
-                            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                            style: TextStyle(color: muted, fontSize: 12),
                           ),
                         ],
                       ),
@@ -74,11 +84,75 @@ class PostListTile extends StatelessWidget {
                         onPressed: onPinToggle,
                         icon: Icon(
                           post.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                          color: post.isPinned ? AppColors.primary : AppColors.textMuted,
+                          color: post.isPinned ? scheme.primary : muted,
                           size: 20,
                         ),
                       ),
                     ],
+                    if (_hasMenu)
+                      PopupMenuButton<_PostMenuAction>(
+                        tooltip: 'عملیات پست',
+                        icon: Icon(Icons.more_vert_rounded, color: muted, size: 22),
+                        onSelected: (action) => switch (action) {
+                          _PostMenuAction.edit => onEdit?.call(),
+                          _PostMenuAction.publish => onPublish?.call(),
+                          _PostMenuAction.republish => onRepublish?.call(),
+                          _PostMenuAction.delete => onDelete?.call(),
+                          _PostMenuAction.recover => onRecover?.call(),
+                        },
+                        itemBuilder: (context) => [
+                          if (onEdit != null)
+                            const PopupMenuItem(
+                              value: _PostMenuAction.edit,
+                              child: ListTile(
+                                leading: Icon(Icons.edit_rounded),
+                                title: Text('ویرایش'),
+                                contentPadding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                          if (onPublish != null)
+                            const PopupMenuItem(
+                              value: _PostMenuAction.publish,
+                              child: ListTile(
+                                leading: Icon(Icons.publish_rounded),
+                                title: Text('انتشار'),
+                                contentPadding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                          if (onRepublish != null)
+                            const PopupMenuItem(
+                              value: _PostMenuAction.republish,
+                              child: ListTile(
+                                leading: Icon(Icons.refresh_rounded),
+                                title: Text('انتشار مجدد'),
+                                contentPadding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                          if (onRecover != null)
+                            const PopupMenuItem(
+                              value: _PostMenuAction.recover,
+                              child: ListTile(
+                                leading: Icon(Icons.unarchive_rounded),
+                                title: Text('بازیابی از آرشیو'),
+                                contentPadding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                          if (onDelete != null)
+                            const PopupMenuItem(
+                              value: _PostMenuAction.delete,
+                              child: ListTile(
+                                leading: Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                                title: Text('حذف', style: TextStyle(color: AppColors.error)),
+                                contentPadding: EdgeInsets.zero,
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -107,6 +181,11 @@ class PostListTile extends StatelessWidget {
                     spacing: AppSpacing.sm,
                     runSpacing: AppSpacing.sm,
                     children: [
+                      StatusChip(
+                        label: post.channelLabel,
+                        color: AppColors.accent,
+                        icon: Icons.campaign_rounded,
+                      ),
                       if (isImportant)
                         const StatusChip(label: 'مهم', color: AppColors.gold, icon: Icons.star_rounded),
                       if (post.isPinned)
@@ -114,14 +193,23 @@ class PostListTile extends StatelessWidget {
                       if (post.actions.isNotEmpty)
                         StatusChip(
                           label: post.actions.first.prompt,
-                          color: AppColors.accent,
+                          color: AppColors.primaryDark,
                           icon: Icons.ads_click_rounded,
                         ),
                     ],
                   ),
                 ),
-              ] else
-                const SizedBox(height: AppSpacing.lg),
+              ] else ...[
+                const SizedBox(height: AppSpacing.md),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(AppSpacing.lg, 0, AppSpacing.lg, AppSpacing.lg),
+                  child: StatusChip(
+                    label: post.channelLabel,
+                    color: AppColors.accent,
+                    icon: Icons.campaign_rounded,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -129,6 +217,8 @@ class PostListTile extends StatelessWidget {
     );
   }
 }
+
+enum _PostMenuAction { edit, publish, republish, recover, delete }
 
 class _AuthorAvatar extends StatelessWidget {
   const _AuthorAvatar({this.name});
@@ -171,26 +261,10 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = scheme.brightness == Brightness.dark;
-    final shadow = isDark
-        ? [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.28),
-              blurRadius: 20,
-              offset: const Offset(0, 6),
-            ),
-          ]
-        : AppShadows.soft;
-
-    return Container(
+    return GlassPanel(
+      borderRadius: 20,
+      blur: AppGlass.panelBlur,
       padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: scheme.outline),
-        boxShadow: shadow,
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,

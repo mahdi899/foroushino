@@ -6,6 +6,7 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
+import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 
 typedef CommentAction = VoidCallback;
 
@@ -44,14 +45,16 @@ class CommentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.soft,
-      ),
-      clipBehavior: Clip.antiAlias,
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
+    final muted = scheme.onSurface.withValues(alpha: 0.65);
+    final subtle = scheme.onSurface.withValues(alpha: 0.45);
+    final softFill = isDark ? AppColors.surfaceSoftDark : AppColors.surfaceSoft;
+
+    return GlassPanel(
+      borderRadius: 20,
+      blur: AppGlass.panelBlur,
+      padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -85,7 +88,7 @@ class CommentCard extends StatelessWidget {
                               ),
                               Text(
                                 formatDateTime(comment.createdAt),
-                                style: const TextStyle(color: AppColors.textSubtle, fontSize: 11),
+                                style: TextStyle(color: subtle, fontSize: 11),
                               ),
                             ],
                           ),
@@ -93,7 +96,7 @@ class CommentCard extends StatelessWidget {
                             const SizedBox(height: 2),
                             Text(
                               comment.familyInternalName!,
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                              style: TextStyle(color: muted, fontSize: 12),
                             ),
                           ],
                         ],
@@ -106,9 +109,9 @@ class CommentCard extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceSoft,
+                    color: softFill,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border.withValues(alpha: 0.8)),
+                    border: Border.all(color: scheme.outline.withValues(alpha: 0.45)),
                   ),
                   child: Text(
                     comment.body,
@@ -146,8 +149,8 @@ class CommentCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.fromLTRB(AppSpacing.sm, AppSpacing.sm, AppSpacing.sm, AppSpacing.md),
             decoration: BoxDecoration(
-              color: AppColors.surfaceSoft.withValues(alpha: 0.65),
-              border: Border(top: BorderSide(color: AppColors.border.withValues(alpha: 0.7))),
+              color: softFill.withValues(alpha: 0.65),
+              border: Border(top: BorderSide(color: scheme.outline.withValues(alpha: 0.45))),
             ),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,

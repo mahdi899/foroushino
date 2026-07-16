@@ -1,7 +1,7 @@
 // Real backend implementation of the `ApiClient` contract (Laravel «فروشینو»
 // API). Implements the exact same interface as `mockClient.ts`, so flipping
 // `services/index.ts` is the only change required anywhere else in the app.
-import type { ApiClient, CallResultInput, CallResultOutcome, FollowupInput } from './client'
+import type { ApiClient, CallResultInput, CallResultOutcome, FollowupInput, SaleConfirmResult } from './client'
 import type { Availability, Followup, NextAction, PaymentMethod } from '@/types'
 import { nextActionLabels } from '@/data/labels'
 import { ApiError, http, newIdempotencyKey } from './http'
@@ -174,12 +174,12 @@ export const httpClient: ApiClient = {
     await http.post(`/sales/${saleId}/forward-for-confirmation`, undefined, newIdempotencyKey())
   },
 
-  async confirmSale(saleId: string) {
-    await http.post(`/sales/${saleId}/confirm`, undefined, newIdempotencyKey())
+  async confirmSale(saleId: string): Promise<SaleConfirmResult> {
+    return http.post<SaleConfirmResult>(`/sales/${saleId}/confirm`, undefined, newIdempotencyKey())
   },
 
   async rejectSale(saleId: string, reason: string) {
-    await http.post(`/sales/${saleId}/reject`, { reason })
+    return http.post(`/sales/${saleId}/reject`, { reason })
   },
 
   async cancelSale(saleId: string) {

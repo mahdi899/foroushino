@@ -17,6 +17,7 @@ import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
 import 'package:bahram_family_manager/widgets/media/upload_zone.dart';
 import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
+import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
 import 'package:bahram_family_manager/widgets/sheets/app_bottom_sheet.dart';
 
 class CommentsScreen extends StatefulWidget {
@@ -118,7 +119,7 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return AdaptiveScaffold(
-      appBar: AppBar(
+      appBar: ManagerAppBar(
         title: const Text('نظرات خانواده'),
         bottom: AppTabBar(
           controller: _tabController,

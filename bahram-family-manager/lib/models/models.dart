@@ -225,6 +225,18 @@ class FamilyActionModel {
       );
 }
 
+class FamilyPostTargetModel {
+  const FamilyPostTargetModel({required this.familyId, this.familyName});
+
+  final int familyId;
+  final String? familyName;
+
+  factory FamilyPostTargetModel.fromJson(Map<String, dynamic> json) => FamilyPostTargetModel(
+        familyId: (json['family_id'] as num).toInt(),
+        familyName: json['family_name']?.toString(),
+      );
+}
+
 class FamilyPostModel {
   FamilyPostModel({
     required this.id,
@@ -232,12 +244,14 @@ class FamilyPostModel {
     required this.status,
     required this.audienceMode,
     required this.isImportant,
+    this.audienceSummary,
     this.isPinned = false,
     this.publishedAt,
     this.createdAt,
     this.authorName,
     this.blocks = const [],
     this.actions = const [],
+    this.targetFamilies = const [],
     this.targetFamilyIds = const [],
   });
 
@@ -245,6 +259,7 @@ class FamilyPostModel {
   final String type;
   final String status;
   final String audienceMode;
+  final String? audienceSummary;
   final bool isImportant;
   final bool isPinned;
   final String? publishedAt;
@@ -252,16 +267,43 @@ class FamilyPostModel {
   final String? authorName;
   final List<FamilyPostBlockModel> blocks;
   final List<FamilyActionModel> actions;
+  final List<FamilyPostTargetModel> targetFamilies;
   final List<int> targetFamilyIds;
 
   bool get isDraft => status == 'draft';
   bool get isPublished => status == 'published';
+  bool get isArchived => status == 'archived';
 
-  factory FamilyPostModel.fromJson(Map<String, dynamic> json) => FamilyPostModel(
+  String get channelLabel {
+    if (audienceSummary != null && audienceSummary!.isNotEmpty) {
+      return audienceSummary!;
+    }
+    if (audienceMode == 'all') return 'همه خانواده‌ها';
+    final names = targetFamilies
+        .map((target) => target.familyName)
+        .whereType<String>()
+        .where((name) => name.isNotEmpty)
+        .toList();
+    if (audienceMode == 'include') {
+      return names.isEmpty ? 'خانواده‌های انتخابی' : names.join('، ');
+    }
+    if (audienceMode == 'exclude') {
+      return names.isEmpty ? 'همه به‌جز…' : 'همه به‌جز ${names.join('، ')}';
+    }
+    return audienceMode;
+  }
+
+  factory FamilyPostModel.fromJson(Map<String, dynamic> json) {
+    final targets = (json['targets'] as List? ?? [])
+        .map((e) => FamilyPostTargetModel.fromJson((e as Map).cast<String, dynamic>()))
+        .toList();
+
+    return FamilyPostModel(
         id: json['id'] as int,
         type: json['type']?.toString() ?? 'text',
         status: json['status']?.toString() ?? 'draft',
         audienceMode: json['audience_mode']?.toString() ?? 'all',
+        audienceSummary: json['audience_summary']?.toString(),
         isImportant: json['is_important'] == true,
         isPinned: json['is_pinned'] == true,
         publishedAt: json['published_at']?.toString(),
@@ -274,10 +316,10 @@ class FamilyPostModel {
         actions: (json['actions'] as List? ?? [])
             .map((e) => FamilyActionModel.fromJson((e as Map).cast<String, dynamic>()))
             .toList(),
-        targetFamilyIds: (json['targets'] as List? ?? [])
-            .map((e) => ((e as Map)['family_id'] as num).toInt())
-            .toList(),
+        targetFamilies: targets,
+        targetFamilyIds: targets.map((target) => target.familyId).toList(),
       );
+  }
 
   String get preview {
     final textBlock = blocks.firstWhereOrNull((b) => b.type == 'text');
@@ -655,24 +697,56 @@ class AnalyticsData {
       );
 }
 
+class FamilyMediaPipelineSettings {
+  const FamilyMediaPipelineSettings({
+    required this.optimizeImages,
+    required this.syncToSiteLibrary,
+    required this.ftpUploadEnabled,
+    this.uploadDisk = 'public',
+    this.siteLibraryDisk = 'public',
+    this.cdnUrl,
+  });
+
+  final bool optimizeImages;
+  final bool syncToSiteLibrary;
+  final bool ftpUploadEnabled;
+  final String uploadDisk;
+  final String siteLibraryDisk;
+  final String? cdnUrl;
+
+  factory FamilyMediaPipelineSettings.fromJson(Map<String, dynamic> json) => FamilyMediaPipelineSettings(
+        optimizeImages: json['optimize_images'] == true,
+        syncToSiteLibrary: json['sync_to_site_library'] != false,
+        ftpUploadEnabled: json['ftp_upload_enabled'] != false,
+        uploadDisk: json['upload_disk']?.toString() ?? 'public',
+        siteLibraryDisk: json['site_library_disk']?.toString() ?? 'public',
+        cdnUrl: json['cdn_url']?.toString(),
+      );
+}
+
 class FamilyBrandingSettings {
   FamilyBrandingSettings({
     required this.displayName,
     required this.profileName,
     this.profileAvatar,
     this.communityAvatar,
+    this.mediaPipeline,
   });
 
   final String displayName;
   final String profileName;
   final String? profileAvatar;
   final String? communityAvatar;
+  final FamilyMediaPipelineSettings? mediaPipeline;
 
   factory FamilyBrandingSettings.fromJson(Map<String, dynamic> json) => FamilyBrandingSettings(
         displayName: json['display_name']?.toString() ?? '',
         profileName: json['profile_name']?.toString() ?? '',
         profileAvatar: json['profile_avatar']?.toString(),
         communityAvatar: json['community_avatar']?.toString(),
+        mediaPipeline: json['media_pipeline'] is Map
+            ? FamilyMediaPipelineSettings.fromJson((json['media_pipeline'] as Map).cast<String, dynamic>())
+            : null,
       );
 }
 
@@ -699,6 +773,143 @@ class FamilyStoryModel {
         media: json['media'] is Map
             ? FamilyMediaRef.fromJson((json['media'] as Map).cast<String, dynamic>())
             : null,
+      );
+}
+
+class FamilyMemberModel {
+  FamilyMemberModel({
+    required this.id,
+    required this.userId,
+    required this.familyId,
+    this.familyName,
+    this.name,
+    this.mobile,
+    this.mobileMasked,
+    this.entrySource,
+    this.joinedAt,
+    this.onboardingCompleted = false,
+  });
+
+  final int id;
+  final int userId;
+  final int familyId;
+  final String? familyName;
+  final String? name;
+  final String? mobile;
+  final String? mobileMasked;
+  final String? entrySource;
+  final String? joinedAt;
+  final bool onboardingCompleted;
+
+  String? get displayMobile => (mobile != null && mobile!.isNotEmpty) ? mobile : mobileMasked;
+
+  factory FamilyMemberModel.fromJson(Map<String, dynamic> json) => FamilyMemberModel(
+        id: (json['id'] as num).toInt(),
+        userId: (json['user_id'] as num).toInt(),
+        familyId: (json['family_id'] as num).toInt(),
+        familyName: json['family_name']?.toString(),
+        name: json['name']?.toString(),
+        mobile: json['mobile']?.toString(),
+        mobileMasked: json['mobile_masked']?.toString(),
+        entrySource: json['entry_source']?.toString(),
+        joinedAt: json['joined_at']?.toString(),
+        onboardingCompleted: json['onboarding_completed'] == true,
+      );
+}
+
+class FamilyActionStatOptionModel {
+  FamilyActionStatOptionModel({
+    required this.value,
+    required this.label,
+    required this.count,
+    required this.percent,
+  });
+
+  final String value;
+  final String label;
+  final int count;
+  final int percent;
+
+  factory FamilyActionStatOptionModel.fromJson(Map<String, dynamic> json) => FamilyActionStatOptionModel(
+        value: json['value']?.toString() ?? '',
+        label: json['label']?.toString() ?? '',
+        count: (json['count'] as num?)?.toInt() ?? 0,
+        percent: (json['percent'] as num?)?.toInt() ?? 0,
+      );
+}
+
+class FamilyActionStatsModel {
+  FamilyActionStatsModel({required this.total, required this.options});
+
+  final int total;
+  final List<FamilyActionStatOptionModel> options;
+
+  factory FamilyActionStatsModel.fromJson(Map<String, dynamic> json) => FamilyActionStatsModel(
+        total: (json['total'] as num?)?.toInt() ?? 0,
+        options: (json['options'] as List? ?? [])
+            .map((e) => FamilyActionStatOptionModel.fromJson((e as Map).cast<String, dynamic>()))
+            .toList(),
+      );
+}
+
+class FamilyActionResponseRowModel {
+  FamilyActionResponseRowModel({
+    required this.id,
+    required this.userId,
+    this.name,
+    this.mobile,
+    this.familyName,
+    this.valueLabel,
+    this.respondedAt,
+  });
+
+  final int id;
+  final int userId;
+  final String? name;
+  final String? mobile;
+  final String? familyName;
+  final String? valueLabel;
+  final String? respondedAt;
+
+  factory FamilyActionResponseRowModel.fromJson(Map<String, dynamic> json) => FamilyActionResponseRowModel(
+        id: (json['id'] as num).toInt(),
+        userId: (json['user_id'] as num).toInt(),
+        name: json['name']?.toString(),
+        mobile: json['mobile']?.toString(),
+        familyName: json['family_name']?.toString(),
+        valueLabel: json['value_label']?.toString(),
+        respondedAt: json['responded_at']?.toString(),
+      );
+}
+
+class FamilyActionResultModel {
+  FamilyActionResultModel({
+    required this.id,
+    required this.type,
+    required this.prompt,
+    required this.responseCount,
+    this.stats,
+    required this.responses,
+  });
+
+  final int id;
+  final String type;
+  final String prompt;
+  final int responseCount;
+  final FamilyActionStatsModel? stats;
+  final List<FamilyActionResponseRowModel> responses;
+
+  factory FamilyActionResultModel.fromJson(Map<String, dynamic> json) => FamilyActionResultModel(
+        id: (json['id'] as num).toInt(),
+        type: json['type']?.toString() ?? '',
+        prompt: json['prompt']?.toString() ?? '',
+        responseCount: (json['response_count'] as num?)?.toInt() ?? 0,
+        stats: json['stats'] is Map
+            ? FamilyActionStatsModel.fromJson((json['stats'] as Map).cast<String, dynamic>())
+            : null,
+        responses: (json['responses'] as List? ?? [])
+            .map((e) => FamilyActionResponseRowModel.fromJson((e as Map).cast<String, dynamic>()))
+            .toList(),
       );
 }
 

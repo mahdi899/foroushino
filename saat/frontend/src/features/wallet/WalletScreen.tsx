@@ -97,6 +97,8 @@ export function WalletScreen() {
   const payouts = useStore((s) => s.payouts)
   const leads = useStore((s) => s.leads)
   const pushToast = useStore((s) => s.pushToast)
+  const syncAgentWalletFromCommissions = useStore((s) => s.syncAgentWalletFromCommissions)
+  const currentAgentId = useStore((s) => s.currentAgentId)
 
   const [tab, setTab] = useState<Tab>('commissions')
   const [payoutOpen, setPayoutOpen] = useState(false)
@@ -121,12 +123,17 @@ export function WalletScreen() {
   const pipelineAmount = pipelinePending + pipelineApproved
 
   useEffect(() => {
-    if (apiMode !== 'http') return
+    if (apiMode !== 'http') {
+      syncAgentWalletFromCommissions()
+      return
+    }
 
     const refresh = () => {
-      void refreshWalletBundle().catch(() => {
-        pushToast('بارگذاری کیف پول ناموفق بود', 'error')
-      })
+      void refreshWalletBundle()
+        .then(() => syncAgentWalletFromCommissions())
+        .catch(() => {
+          pushToast('بارگذاری کیف پول ناموفق بود', 'error')
+        })
     }
 
     refresh()
@@ -137,7 +144,7 @@ export function WalletScreen() {
 
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [pushToast])
+  }, [pushToast, syncAgentWalletFromCommissions, currentAgentId])
 
   return (
     <Page withNav={false}>
@@ -190,20 +197,21 @@ export function WalletScreen() {
           {pipelineAmount > 0 && (
             <div className="relative mt-2 space-y-1 text-[11px] font-semibold text-text-soft">
               {pipelinePending > 0 && (
-                <p>{formatMoney(pipelinePending)} تومان منتظر تایید لیدر</p>
+                <p>{formatMoney(pipelinePending)} تومان — مرحله ۱: منتظر تایید لیدر تیم</p>
               )}
               {pipelineApproved > 0 && (
-                <p>{formatMoney(pipelineApproved)} تومان منتظر تایید ناظر</p>
+                <p>{formatMoney(pipelineApproved)} تومان — مرحله ۲: منتظر تایید نهایی ناظر</p>
               )}
               {withdrawableBalance === 0 && (
-                <p>بعد از تایید لیدر و ناظر، مبلغ به موجودی قابل برداشت اضافه می‌شود.</p>
+                <p>بعد از تایید لیدر و سپس ناظر، مبلغ به موجودی قابل برداشت اضافه می‌شود.</p>
               )}
             </div>
           )}
-          {withdrawableBalance === 0 && pipelineAmount === 0 && wallet.bankCardConfirmed && (
+          {withdrawableBalance === 0 && pipelineAmount === 0 && (
             <p className="relative mt-2 text-[11px] font-semibold text-text-soft">
-              تایید کارت و شبا فقط امکان برداشت را فعال می‌کند؛ مبلغ پس از تایید پورسانت‌ها توسط لیدر و ناظر
-              اضافه می‌شود.
+              {wallet.bankCardConfirmed
+                ? 'تایید کارت و شبا فقط امکان برداشت را فعال می‌کند؛ پورسانت‌ها ابتدا باید توسط لیدر تیم و سپس ناظر تایید شوند.'
+                : 'برای تسویه، کارت و شبا را در بخش زیر ثبت کن.'}
             </p>
           )}
           <motion.button

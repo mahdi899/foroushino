@@ -16,10 +16,10 @@ import type { FamilyMediaBlock } from '@/lib/family/types';
 
 type LoadPhase = 'idle' | 'preview' | 'loading' | 'loaded' | 'error';
 
-function aspectStyle(media: FamilyMediaBlock): { aspectRatio: string } {
+function aspectStyle(media: FamilyMediaBlock): { aspectRatio: string } | undefined {
   return media.width && media.height
     ? { aspectRatio: `${media.width} / ${media.height}` }
-    : { aspectRatio: '1' };
+    : undefined;
 }
 
 export function ImageBlock({
@@ -189,7 +189,8 @@ export function ImageBlock({
     };
   }, []);
 
-  const containerStyle = fillCell ? undefined : aspectStyle(media);
+  const hasKnownAspect = Boolean(media.width && media.height);
+  const containerStyle = fillCell || !hasKnownAspect ? undefined : aspectStyle(media);
   const imgSrc = displayUrl ?? (phase === 'loading' ? media.url : null);
   const lightboxUrl = displayUrl ?? media.url;
   const showDownloadHint = phase === 'idle' || phase === 'preview';
@@ -227,7 +228,11 @@ export function ImageBlock({
             onLoad={handleImageLoad}
             onError={handleImageError}
             className={cn(
-              'absolute inset-0 h-full w-full object-cover transition-[filter,transform] duration-500 ease-out',
+              fillCell || hasKnownAspect
+                ? 'absolute inset-0 h-full w-full'
+                : 'relative block h-auto w-full max-h-[var(--family-media-max-h)]',
+              fillCell ? 'object-cover' : 'object-contain',
+              'transition-[filter,transform] duration-500 ease-out',
               isBlurredPreview ? 'scale-110 blur-md brightness-95' : 'scale-100 blur-0',
             )}
           />

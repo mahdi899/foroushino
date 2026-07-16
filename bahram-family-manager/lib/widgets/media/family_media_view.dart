@@ -28,7 +28,11 @@ class FamilyMediaView extends StatelessWidget {
     final url = media.playableUrl;
 
     if (media.isImage && url != null) {
-      return _ImageView(url: url, height: height, radius: radius);
+      return _ImageView(
+        url: url,
+        maxHeight: height,
+        radius: radius,
+      );
     }
     if (media.isVideo && url != null) {
       return _VideoView(url: url, height: height, radius: radius);
@@ -42,58 +46,60 @@ class FamilyMediaView extends StatelessWidget {
 }
 
 class _ImageView extends StatelessWidget {
-  const _ImageView({required this.url, required this.height, required this.radius});
+  const _ImageView({
+    required this.url,
+    required this.radius,
+    this.maxHeight = 360,
+  });
 
   final String url;
-  final double height;
+  final double maxHeight;
   final BorderRadius radius;
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: radius,
-      child: Stack(
-        fit: StackFit.passthrough,
-        children: [
-          Image.network(
-            url,
-            height: height,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            loadingBuilder: (context, child, progress) {
-              if (progress == null) return child;
-              return Container(
-                height: height,
-                color: AppColors.surfaceSoft,
-                child: const Center(child: CircularProgressIndicator()),
-              );
-            },
-            errorBuilder: (_, __, ___) => Container(
-              height: height,
-              color: AppColors.surfaceSoft,
-              child: const Icon(Icons.broken_image_rounded, color: AppColors.textMuted, size: 40),
-            ),
-          ),
-          Positioned(
-            top: AppSpacing.sm,
-            right: AppSpacing.sm,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.45),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.image_rounded, color: Colors.white, size: 14),
-                  SizedBox(width: 4),
-                  Text('تصویر', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
-                ],
+      child: SizedBox(
+        width: double.infinity,
+        height: maxHeight,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              url,
+              fit: BoxFit.contain,
+              width: double.infinity,
+              height: maxHeight,
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return const Center(child: CircularProgressIndicator());
+              },
+              errorBuilder: (_, __, ___) => const Center(
+                child: Icon(Icons.broken_image_rounded, color: AppColors.textMuted, size: 40),
               ),
             ),
-          ),
-        ],
+            Positioned(
+              top: AppSpacing.sm,
+              right: AppSpacing.sm,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.image_rounded, color: Colors.white, size: 14),
+                    SizedBox(width: 4),
+                    Text('تصویر', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

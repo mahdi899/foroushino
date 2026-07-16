@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\AchievementService;
 use App\Services\ActivityLogService;
 use App\Services\NotificationService;
+use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -39,7 +40,7 @@ class ConfirmSaleAction
             throw new RuntimeException('این فروش قبلاً تایید شده است.');
         }
 
-        return DB::transaction(function () use ($sale, $confirmedBy) {
+        $commission = DB::transaction(function () use ($sale, $confirmedBy) {
             $product = $sale->product;
             $rate = (float) ($product?->commission_rate ?? 15);
             $commissionAmount = round(((float) $sale->amount * $rate) / 100, 2);
@@ -99,9 +100,13 @@ class ConfirmSaleAction
                 '/wallet',
             );
 
-            broadcast(new SaleConfirmed($sale->fresh()))->toOthers();
-
             return $commission;
         });
+
+        SafeBroadcast::optionally(
+            fn () => broadcast(new SaleConfirmed($sale->fresh()))->toOthers(),
+        );
+
+        return $commission;
     }
 }

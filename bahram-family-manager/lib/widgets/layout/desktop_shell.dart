@@ -9,8 +9,9 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/branding/app_logo.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
-import 'package:bahram_family_manager/widgets/theme/theme_mode_toggle.dart';
 import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
+import 'package:bahram_family_manager/widgets/navigation/quick_action_button.dart';
+import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 
 /// Shell for authenticated manager: bottom nav on mobile, Telegram-style sidebar on desktop.
 class DesktopShell extends StatelessWidget {
@@ -20,12 +21,14 @@ class DesktopShell extends StatelessWidget {
     required this.onIndexChanged,
     required this.items,
     required this.body,
+    this.onComposePost,
   });
 
   final int currentIndex;
   final ValueChanged<int> onIndexChanged;
   final List<AppBottomNavItem> items;
   final Widget body;
+  final VoidCallback? onComposePost;
 
   @override
   Widget build(BuildContext context) {
@@ -35,25 +38,16 @@ class DesktopShell extends StatelessWidget {
 
     if (!isDesktop) {
       return Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            body,
-            Positioned(
-              top: MediaQuery.paddingOf(context).top + 6,
-              left: 8,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: scheme.surface.withValues(alpha: 0.92),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: scheme.outline.withValues(alpha: 0.5)),
-                ),
-                child: const ThemeModeToggleButton(),
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+        body: body,
+        floatingActionButton: onComposePost == null
+            ? null
+            : Padding(
+                padding: const EdgeInsets.only(bottom: 72),
+                child: _MobileComposeFab(onPressed: onComposePost!),
               ),
-            ),
-          ],
-        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         bottomNavigationBar: items.length <= 1
             ? null
             : AppBottomNav(
@@ -67,7 +61,7 @@ class DesktopShell extends StatelessWidget {
     final user = context.watch<AppState>().user;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppLayout.shellPadding),
@@ -80,15 +74,19 @@ class DesktopShell extends StatelessWidget {
                 items: items,
                 userName: user?.name,
                 onLogout: () => context.read<AppState>().logout(),
+                onComposePost: onComposePost,
               ),
               const SizedBox(width: AppLayout.shellPadding),
               Expanded(
-                child: _DesktopContentPanel(
+                child: GlassPanel(
+                  borderRadius: AppLayout.contentPanelRadius,
+                  blur: 28,
+                  opacity: isDark ? 0.52 : 0.68,
                   child: Theme(
                     data: Theme.of(context).copyWith(
                       scaffoldBackgroundColor: Colors.transparent,
                       appBarTheme: Theme.of(context).appBarTheme.copyWith(
-                            backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surface,
+                            backgroundColor: Colors.transparent,
                             surfaceTintColor: Colors.transparent,
                             centerTitle: false,
                           ),
@@ -105,33 +103,35 @@ class DesktopShell extends StatelessWidget {
   }
 }
 
-class _DesktopContentPanel extends StatelessWidget {
-  const _DesktopContentPanel({required this.child});
+class _MobileComposeFab extends StatelessWidget {
+  const _MobileComposeFab({required this.onPressed});
 
-  final Widget child;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = scheme.brightness == Brightness.dark;
-
-    return SizedBox.expand(
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(AppLayout.contentPanelRadius),
-          border: Border.all(color: scheme.outline.withValues(alpha: 0.85)),
-          boxShadow: [
-            BoxShadow(
-              color: (isDark ? Colors.black : AppColors.primaryDark).withValues(alpha: isDark ? 0.35 : 0.06),
-              blurRadius: 32,
-              offset: const Offset(0, 12),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: AppGradients.primary,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: AppShadows.panelGlow,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(18),
+          child: const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.edit_rounded, color: Colors.white, size: 22),
+                SizedBox(width: 8),
+                Text('پست جدید', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+              ],
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppLayout.contentPanelRadius),
-          child: child,
+          ),
         ),
       ),
     );
@@ -145,6 +145,7 @@ class _DesktopSidebar extends StatelessWidget {
     required this.items,
     this.userName,
     required this.onLogout,
+    this.onComposePost,
   });
 
   final int currentIndex;
@@ -152,89 +153,79 @@ class _DesktopSidebar extends StatelessWidget {
   final List<AppBottomNavItem> items;
   final String? userName;
   final VoidCallback onLogout;
+  final VoidCallback? onComposePost;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final isDark = scheme.brightness == Brightness.dark;
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(AppLayout.contentPanelRadius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: scheme.surface.withValues(alpha: 0.96),
-            borderRadius: BorderRadius.circular(AppLayout.contentPanelRadius),
-            border: Border.all(color: scheme.outline.withValues(alpha: 0.85)),
-            boxShadow: isDark
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.28),
-                      blurRadius: 20,
-                      offset: const Offset(0, 6),
+    return GlassPanel(
+      borderRadius: AppLayout.contentPanelRadius,
+      blur: 30,
+      child: SizedBox(
+        width: AppLayout.sidebarWidth,
+        height: double.infinity,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.md),
+              child: Row(
+                children: [
+                  const AppLogo(size: 44, showShadow: false),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppConfig.appName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'پنل مدیریت خانواده',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: scheme.onSurface.withValues(alpha: 0.55),
+                              ),
+                        ),
+                      ],
                     ),
-                  ]
-                : AppShadows.soft,
-          ),
-          child: SizedBox(
-            width: AppLayout.sidebarWidth,
-            height: double.infinity,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.xl, AppSpacing.lg, AppSpacing.md),
-                  child: Row(
-                    children: [
-                      const AppLogo(size: 44, showShadow: false),
-                      const SizedBox(width: AppSpacing.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              AppConfig.appName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'پنل مدیریت خانواده',
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: scheme.onSurface.withValues(alpha: 0.55),
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const ThemeModeToggleButton(),
-                    ],
                   ),
-                ),
-                const Divider(height: 1),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.md),
-                    children: [
-                      for (var i = 0; i < items.length; i++)
-                        _SidebarNavItem(
-                          item: items[i],
-                          active: i == currentIndex,
-                          onTap: () => onTap(i),
-                        ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                _SidebarUserFooter(
-                  userName: userName,
-                  onLogout: onLogout,
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+            if (onComposePost != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+                child: ComposePostButton(
+                  onPressed: onComposePost!,
+                  expanded: false,
+                  label: 'پست جدید',
+                ),
+              ),
+            Divider(height: 1, color: scheme.outline.withValues(alpha: 0.45)),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.md),
+                children: [
+                  for (var i = 0; i < items.length; i++)
+                    _SidebarNavItem(
+                      item: items[i],
+                      active: i == currentIndex,
+                      onTap: () => onTap(i),
+                    ),
+                ],
+              ),
+            ),
+            Divider(height: 1, color: scheme.outline.withValues(alpha: 0.45)),
+            _SidebarUserFooter(
+              userName: userName,
+              onLogout: onLogout,
+            ),
+          ],
         ),
       ),
     );
@@ -269,9 +260,9 @@ class _SidebarNavItem extends StatelessWidget {
             curve: AppMotion.luxe,
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
             decoration: BoxDecoration(
-              color: active ? AppColors.primarySoft : Colors.transparent,
+              color: active ? scheme.primary.withValues(alpha: 0.14) : Colors.transparent,
               borderRadius: BorderRadius.circular(AppRadius.tile),
-              border: active ? Border.all(color: AppColors.primary.withValues(alpha: 0.22)) : null,
+              border: active ? Border.all(color: scheme.primary.withValues(alpha: 0.25)) : null,
             ),
             child: Row(
               children: [
@@ -288,7 +279,7 @@ class _SidebarNavItem extends StatelessWidget {
                   child: Icon(
                     item.icon,
                     size: 20,
-                    color: active ? Colors.white : AppColors.primary,
+                    color: active ? Colors.white : scheme.primary,
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),
@@ -366,7 +357,7 @@ class _SidebarUserFooter extends StatelessWidget {
             icon: const Icon(Icons.logout_rounded, size: 20),
             color: scheme.onSurface.withValues(alpha: 0.65),
             style: IconButton.styleFrom(
-              backgroundColor: isDark ? AppColors.surfaceSoftDark : AppColors.surfaceSoft,
+              backgroundColor: isDark ? AppColors.surfaceSoftDark.withValues(alpha: 0.6) : AppColors.surfaceSoft.withValues(alpha: 0.8),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           ),

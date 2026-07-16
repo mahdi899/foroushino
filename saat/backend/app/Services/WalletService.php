@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WalletTransaction;
 use App\Support\PayoutRules;
+use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -46,7 +47,7 @@ class WalletService
 
         $diff = $expectedAvailable - $currentAvailable;
 
-        DB::transaction(function () use ($wallet, $diff, $user): void {
+        $wallet = DB::transaction(function () use ($wallet, $diff, $user): Wallet {
             $wallet->balance_available += $diff;
             $wallet->total_earned += $diff;
             $wallet->save();
@@ -60,10 +61,12 @@ class WalletService
                 'reference_id' => null,
             ]);
 
-            broadcast(new WalletUpdated($wallet->fresh()))->toOthers();
+            return $wallet->fresh();
         });
 
-        return $wallet->fresh();
+        $this->broadcastWalletUpdated($wallet);
+
+        return $wallet;
     }
 
     public function creditAvailable(Commission $commission): void
@@ -72,7 +75,7 @@ class WalletService
             throw new RuntimeException('این پورسانت هنوز توسط لیدر تایید نشده است.');
         }
 
-        DB::transaction(function () use ($commission): void {
+        $wallet = DB::transaction(function () use ($commission): Wallet {
             $wallet = $this->ensureWallet($commission->agent);
             $wallet->balance_available += $commission->commission_amount;
             $wallet->total_earned += $commission->commission_amount;
@@ -91,14 +94,16 @@ class WalletService
                 'reference_id' => $commission->id,
             ]);
 
-            broadcast(new WalletUpdated($wallet->fresh()))->toOthers();
+            return $wallet->fresh();
         });
+
+        $this->broadcastWalletUpdated($wallet);
     }
 
     /** @deprecated Legacy auto-release path — prefer leader/supervisor approval flow. */
     public function creditPending(Commission $commission): void
     {
-        DB::transaction(function () use ($commission): void {
+        $wallet = DB::transaction(function () use ($commission): Wallet {
             $wallet = $this->ensureWallet($commission->agent);
             $wallet->increment('balance_pending', $commission->commission_amount);
 
@@ -111,10 +116,13 @@ class WalletService
                 'reference_id' => $commission->id,
             ]);
 
-            broadcast(new WalletUpdated($wallet->fresh()))->toOthers();
+            return $wallet->fresh();
         });
+
+        $this->broadcastWalletUpdated($wallet);
     }
 
+    /** @deprecated Use leader then supervisor approval — pending commissions cannot skip the queue. */
     public function releaseToAvailable(Commission $commission): void
     {
         if ($commission->status === CommissionStatus::Approved) {
@@ -123,32 +131,11 @@ class WalletService
             return;
         }
 
-        if ($commission->status !== CommissionStatus::Pending) {
-            throw new RuntimeException('این پورسانت قابل آزادسازی نیست.');
+        if ($commission->status === CommissionStatus::Pending) {
+            throw new RuntimeException('این پورسانت هنوز توسط لیدر تیم تایید نشده است.');
         }
 
-        DB::transaction(function () use ($commission): void {
-            $wallet = $this->ensureWallet($commission->agent);
-            $wallet->balance_pending = max(0, $wallet->balance_pending - $commission->commission_amount);
-            $wallet->balance_available += $commission->commission_amount;
-            $wallet->total_earned += $commission->commission_amount;
-            $wallet->save();
-
-            $commission->status = CommissionStatus::Available;
-            $commission->approved_at = $commission->approved_at ?? now();
-            $commission->save();
-
-            WalletTransaction::query()->create([
-                'user_id' => $commission->agent_id,
-                'type' => WalletTxType::CommissionAvailable,
-                'amount' => $commission->commission_amount,
-                'description' => 'پورسانت قابل برداشت شد',
-                'reference_type' => 'commission',
-                'reference_id' => $commission->id,
-            ]);
-
-            broadcast(new WalletUpdated($wallet->fresh()))->toOthers();
-        });
+        throw new RuntimeException('این پورسانت قابل آزادسازی نیست.');
     }
 
     public function requestPayout(User $user, float $amount): PayoutRequest
@@ -168,7 +155,7 @@ class WalletService
         $normalizedCard = self::normalizeBankCard($user->bank_card);
         $normalizedSheba = self::normalizeSheba($user->bank_sheba);
 
-        return DB::transaction(function () use ($user, $amount, $normalizedCard, $normalizedSheba) {
+        $payout = DB::transaction(function () use ($user, $amount, $normalizedCard, $normalizedSheba) {
             $wallet = $this->ensureWallet($user)->fresh();
             $wallet = Wallet::query()->whereKey($wallet->id)->lockForUpdate()->first();
 
@@ -206,8 +193,6 @@ class WalletService
                 'reference_id' => $payout->id,
             ]);
 
-            broadcast(new WalletUpdated($wallet->fresh()))->toOthers();
-
             User::query()
                 ->role([RoleName::Supervisor->value, RoleName::Manager->value, RoleName::Admin->value])
                 ->where('is_active', true)
@@ -221,6 +206,10 @@ class WalletService
 
             return $payout;
         });
+
+        $this->broadcastWalletUpdated($this->ensureWallet($user)->fresh());
+
+        return $payout;
     }
 
     public static function normalizeBankCard(string $card): string
@@ -284,7 +273,7 @@ class WalletService
 
     public function approvePayout(PayoutRequest $payout, User $processedBy): PayoutRequest
     {
-        return DB::transaction(function () use ($payout, $processedBy) {
+        $payout = DB::transaction(function () use ($payout, $processedBy) {
             $wallet = $this->ensureWallet($payout->user);
             $wallet->balance_locked = max(0, $wallet->balance_locked - $payout->amount);
             $wallet->total_paid += $payout->amount;
@@ -304,15 +293,17 @@ class WalletService
                 'reference_id' => $payout->id,
             ]);
 
-            broadcast(new WalletUpdated($wallet->fresh()))->toOthers();
-
             return $payout;
         });
+
+        $this->broadcastWalletUpdated($this->ensureWallet($payout->user)->fresh());
+
+        return $payout;
     }
 
     public function rejectPayout(PayoutRequest $payout, User $processedBy, string $reason): PayoutRequest
     {
-        return DB::transaction(function () use ($payout, $processedBy, $reason) {
+        $payout = DB::transaction(function () use ($payout, $processedBy, $reason) {
             $wallet = $this->ensureWallet($payout->user);
             $wallet->balance_locked = max(0, $wallet->balance_locked - $payout->amount);
             $wallet->balance_available += $payout->amount;
@@ -333,9 +324,18 @@ class WalletService
                 'reference_id' => $payout->id,
             ]);
 
-            broadcast(new WalletUpdated($wallet->fresh()))->toOthers();
-
             return $payout;
         });
+
+        $this->broadcastWalletUpdated($this->ensureWallet($payout->user)->fresh());
+
+        return $payout;
+    }
+
+    private function broadcastWalletUpdated(Wallet $wallet): void
+    {
+        SafeBroadcast::optionally(
+            fn () => broadcast(new WalletUpdated($wallet))->toOthers(),
+        );
     }
 }

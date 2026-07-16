@@ -1,5 +1,6 @@
 import { apiMode } from '@/services'
 import { http } from '@/services/http'
+import { filterCommissionQueue, resolveCommissionApprovalMode } from '@/lib/commissionQueue'
 import { mapCommission, mapPayoutRequest, mapWallet, mapWalletTransaction, mapBankAccountReview, mapAgentFromAdmin } from '@/services/mappers'
 import { useStore } from '@/store/useStore'
 import type { Agent, BankAccountReview, Commission, PayoutRequest, Wallet } from '@/types'
@@ -41,19 +42,34 @@ export async function refreshWalletBundle(): Promise<void> {
     walletTx,
     payouts: ownPayouts,
   })
+  useStore.getState().syncAgentWalletFromCommissions()
 }
 
 export async function fetchCommissionQueue(): Promise<Commission[]> {
+  if (apiMode !== 'http') {
+    const state = useStore.getState()
+    const mode = resolveCommissionApprovalMode(state.role, state.permissions)
+    if (!mode) return []
+    return filterCommissionQueue(
+      state.commissions,
+      state.agents,
+      state.teams,
+      state.currentAgentId,
+      state.role,
+      mode,
+    )
+  }
   const raw = await http.get<Dto[]>('/wallet/commissions/queue')
   return asArray<Dto>(raw).map(mapCommission)
 }
 
 export async function approveCommissionAsLeader(commissionId: string): Promise<void> {
   if (apiMode !== 'http') {
-    useStore.getState().releaseCommission(commissionId)
+    useStore.getState().approveCommissionByLeader(commissionId)
     return
   }
   await http.post(`/wallet/commissions/${commissionId}/approve-leader`)
+  await refreshWalletBundle()
 }
 
 export async function approveCommissionAsSupervisor(commissionId: string): Promise<void> {
@@ -66,6 +82,10 @@ export async function approveCommissionAsSupervisor(commissionId: string): Promi
 }
 
 export async function rejectCommission(commissionId: string, reason: string): Promise<void> {
+  if (apiMode !== 'http') {
+    useStore.getState().rejectCommissionAction(commissionId, reason)
+    return
+  }
   await http.post(`/wallet/commissions/${commissionId}/reject`, { reason })
 }
 
@@ -99,6 +119,7 @@ export async function rejectPayout(payoutId: string, reason: string): Promise<vo
 
 export async function requestPayoutAmount(amount: number): Promise<void> {
   if (apiMode !== 'http') {
+    useStore.getState().syncAgentWalletFromCommissions()
     const res = useStore.getState().requestPayout(amount)
     if (!res.ok) throw new Error(res.message ?? 'درخواست ناموفق بود')
     return

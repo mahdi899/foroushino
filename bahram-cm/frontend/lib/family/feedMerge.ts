@@ -20,6 +20,33 @@ export function prependPostToFeedPages(
   return [nextFirst, ...pages.slice(1)];
 }
 
+export function removePostFromFeedPages(
+  pages: FeedCachePage[] | undefined,
+  postId: number,
+): FeedCachePage[] | undefined {
+  if (!pages?.length) return pages;
+
+  let changed = false;
+  const next = pages
+    .map((page) => {
+      const data = page.data.filter((item) => item.id !== postId);
+      if (data.length !== page.data.length) changed = true;
+      return data.length === page.data.length ? page : { ...page, data };
+    })
+    .filter((page) => page.data.length > 0);
+
+  return changed ? next : pages;
+}
+
+/** Republish: remove existing copy then prepend at feed tip. */
+export function repositionPostToFeedTip(
+  pages: FeedCachePage[] | undefined,
+  post: FamilyPost,
+): FeedCachePage[] | undefined {
+  const stripped = removePostFromFeedPages(pages, post.id) ?? pages;
+  return prependPostToFeedPages(stripped, post) ?? stripped;
+}
+
 export function replacePostInFeedPages(
   pages: FeedCachePage[] | undefined,
   post: FamilyPost,
@@ -47,4 +74,34 @@ export function latestPostIdFromPages(pages: FeedCachePage[] | undefined): numbe
   if (!pages?.length) return 0;
   const tip = pages[0]?.data[0];
   return tip?.id ?? 0;
+}
+
+/**
+ * Restore scroll depth from IndexedDB without downgrading a fresher network tip.
+ * Disk may have more pages but an older tip if a publish landed after the last persist.
+ * When tip ids differ, always trust the network tip — disk may still contain admin-deleted posts.
+ */
+export function reconcileDiskCacheWithCurrent(
+  current: FeedCachePage[] | undefined,
+  cached: FeedCachePage[],
+): FeedCachePage[] {
+  if (!cached.length) return current ?? [];
+  if (!current?.length) return cached;
+
+  const currentTipId = latestPostIdFromPages(current);
+  const cachedTipId = latestPostIdFromPages(cached);
+
+  if (currentTipId !== cachedTipId) {
+    if (!current[0]) return cached;
+    if (current.length >= cached.length) return current;
+    return [current[0], ...cached.slice(1)];
+  }
+
+  if (currentTipId >= cachedTipId) {
+    if (current.length >= cached.length) return current;
+    const tip = current[0];
+    return tip ? [tip, ...cached.slice(1)] : cached;
+  }
+
+  return cached;
 }

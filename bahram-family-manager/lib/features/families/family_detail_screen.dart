@@ -13,7 +13,9 @@ import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
+import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
+import 'package:bahram_family_manager/features/families/widgets/family_members_panel.dart';
 import 'package:bahram_family_manager/widgets/surfaces/app_card.dart';
 
 class FamilyDetailScreen extends StatelessWidget {
@@ -24,7 +26,7 @@ class FamilyDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AdaptiveScaffold(
-      appBar: AppBar(title: const Text('جزئیات خانواده')),
+      appBar: const ManagerAppBar(title: Text('جزئیات خانواده')),
       body: FamilyDetailBody(familyId: familyId),
     );
   }
@@ -267,6 +269,11 @@ class FamilyDetailContent extends StatelessWidget {
             ),
           ),
         ],
+        const SizedBox(height: AppSpacing.xl),
+        SizedBox(
+          height: isDesktop ? 420 : 360,
+          child: FamilyMembersPanel(familyId: family.id, familyName: family.internalName),
+        ),
         const SizedBox(height: AppSpacing.xl),
         if (family.dna != null)
           _DnaCard(dna: family.dna!)

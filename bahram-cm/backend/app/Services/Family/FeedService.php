@@ -330,6 +330,11 @@ class FeedService
         self::invalidateGuestFeedCache();
     }
 
+    public static function feedRevision(): int
+    {
+        return (int) Cache::get(self::FEED_CACHE_VERSION_KEY, 0);
+    }
+
     public static function invalidateGuestFeedCache(): void
     {
         $limit = (int) config('family.feed.guest_preview_posts', 1);
@@ -570,7 +575,7 @@ class FeedService
      * Lightweight badge payload for the site "خانواده" nav and feed jump FAB.
      * Scoped to the member's family audience when authenticated.
      *
-     * @return array{unread_count: int, latest_post_id: int}
+     * @return array{unread_count: int, latest_post_id: int, feed_revision: int}
      */
     public function unreadSummary(int $afterId, ?User $user = null): array
     {
@@ -595,17 +600,17 @@ class FeedService
         $latestId = (int) ($latest?->id ?? 0);
 
         if ($afterId <= 0 || ! $latest) {
-            return [
+            return $this->withFeedRevision([
                 'unread_count' => 0,
                 'latest_post_id' => $latestId,
-            ];
+            ]);
         }
 
         if ((int) $latest->id === $afterId) {
-            return [
+            return $this->withFeedRevision([
                 'unread_count' => 0,
                 'latest_post_id' => $latestId,
-            ];
+            ]);
         }
 
         $anchor = FamilyPost::query()
@@ -616,10 +621,10 @@ class FeedService
         if (! $anchor || ! $anchor->published_at) {
             $unreadCount = (int) (clone $base)->where('id', '>', $afterId)->count();
 
-            return [
+            return $this->withFeedRevision([
                 'unread_count' => $unreadCount,
                 'latest_post_id' => $latestId,
-            ];
+            ]);
         }
 
         $unreadCount = (int) (clone $base)
@@ -632,9 +637,18 @@ class FeedService
             })
             ->count();
 
-        return [
+        return $this->withFeedRevision([
             'unread_count' => $unreadCount,
             'latest_post_id' => $latestId,
+        ]);
+    }
+
+    /** @param  array{unread_count: int, latest_post_id: int}  $payload */
+    private function withFeedRevision(array $payload): array
+    {
+        return [
+            ...$payload,
+            'feed_revision' => self::feedRevision(),
         ];
     }
 }

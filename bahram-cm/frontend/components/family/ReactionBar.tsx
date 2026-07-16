@@ -74,7 +74,7 @@ function ReactionButton({
           disabled && 'pointer-events-none opacity-45',
         )}
       >
-        <FamilyReactionLottie type={type} size={compact ? 24 : 18} mode="reaction" />
+        <FamilyReactionLottie type={type} size={compact ? 24 : 18} mode="loop" />
         {count > 0 && (
           <span className={cn('family-reaction-count', active && 'family-reaction-count--active')}>
             {count.toLocaleString('en-US')}

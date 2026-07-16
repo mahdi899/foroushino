@@ -272,6 +272,14 @@ class WalletController extends Controller
             return ApiResponse::error('اجازه دسترسی ندارید.', status: 403, code: 'forbidden');
         }
 
+        if ($commission->status !== CommissionStatus::Approved) {
+            return ApiResponse::error(
+                'فقط پورسانت‌های تایید‌شده توسط لیدر قابل آزادسازی نهایی هستند.',
+                status: 422,
+                code: 'commission_not_releasable',
+            );
+        }
+
         try {
             $this->wallet->releaseToAvailable($commission);
         } catch (RuntimeException $e) {

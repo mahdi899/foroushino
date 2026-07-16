@@ -76,6 +76,20 @@ return [
             'throw' => true,
         ],
 
+        // Site media library (admin gallery + family sync) — set MEDIA_DISK=site_media_ftp in production.
+        'site_media_ftp' => [
+            'driver' => 'ftp',
+            'host' => env('MEDIA_FTP_HOST', env('FAMILY_MEDIA_FTP_HOST', '')),
+            'username' => env('MEDIA_FTP_USERNAME', env('FAMILY_MEDIA_FTP_USERNAME', '')),
+            'password' => env('MEDIA_FTP_PASSWORD', env('FAMILY_MEDIA_FTP_PASSWORD', '')),
+            'port' => (int) env('MEDIA_FTP_PORT', env('FAMILY_MEDIA_FTP_PORT', 21)),
+            'root' => env('MEDIA_FTP_ROOT', env('FAMILY_MEDIA_FTP_ROOT', '/')),
+            'passive' => filter_var(env('MEDIA_FTP_PASSIVE', env('FAMILY_MEDIA_FTP_PASSIVE', true)), FILTER_VALIDATE_BOOL),
+            'ssl' => filter_var(env('MEDIA_FTP_SSL', env('FAMILY_MEDIA_FTP_SSL', false)), FILTER_VALIDATE_BOOL),
+            'timeout' => (int) env('MEDIA_FTP_TIMEOUT', env('FAMILY_MEDIA_FTP_TIMEOUT', 60)),
+            'throw' => true,
+        ],
+
     ],
 
     /*

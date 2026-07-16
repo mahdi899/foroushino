@@ -9,6 +9,7 @@ import type {
   CallResultInput,
   CallResultOutcome,
   FollowupInput,
+  SaleConfirmResult,
 } from './client'
 import type { Availability, Followup, PaymentMethod } from '@/types'
 import { getSuggestion } from '@/lib/leadUtils'
@@ -48,8 +49,20 @@ export const mockClient: ApiClient = {
     delay(useStore.getState().submitPayment(saleId, method, reference)),
   forwardSaleForConfirmation: (saleId: string) =>
     delay(useStore.getState().forwardSaleForConfirmation(saleId)),
-  confirmSale: (saleId: string) => delay(useStore.getState().confirmSale(saleId)),
-  rejectSale: (saleId: string, reason: string) => delay(useStore.getState().rejectSale(saleId, reason)),
+  confirmSale: async (saleId: string): Promise<SaleConfirmResult> => {
+    useStore.getState().confirmSale(saleId)
+    const state = useStore.getState()
+    const result: SaleConfirmResult = {
+      sale: state.sales.find((row) => row.id === saleId),
+      commission: state.commissions.find((row) => row.saleId === saleId),
+    }
+    return delay(result)
+  },
+  rejectSale: (saleId: string, reason: string) => {
+    useStore.getState().rejectSale(saleId, reason)
+    const sale = useStore.getState().sales.find((row) => row.id === saleId)
+    return delay(sale)
+  },
   cancelSale: (saleId: string) => delay(useStore.getState().cancelSale(saleId)),
 
   requestPayout: (amount: number) => delay(useStore.getState().requestPayout(amount)),

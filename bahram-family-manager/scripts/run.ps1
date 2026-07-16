@@ -44,7 +44,17 @@ Push-Location $ProjectRoot
 try {
   Write-Host '>> flutter pub get' -ForegroundColor Cyan
   & $Flutter pub get
-  if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+  $pubOk = $LASTEXITCODE -eq 0
+  if (-not $pubOk) {
+    Write-Host '>> pub get failed — restoring package_config from lockfile cache' -ForegroundColor Yellow
+    $restoreScript = Join-Path $PSScriptRoot 'restore-package-config.mjs'
+    if ($Node -and (Test-Path $restoreScript)) {
+      & $Node $restoreScript
+      if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    } else {
+      exit $LASTEXITCODE
+    }
+  }
 
   $define = "--dart-define=API_BASE_URL=$ApiUrl"
 
@@ -65,6 +75,9 @@ try {
       "--web-port=$WebInternalPort",
       $define
     )
+    if (-not $pubOk) {
+      $flutterArgs = @('--no-pub') + $flutterArgs
+    }
 
     Write-Host ">> flutter $($flutterArgs -join ' ')" -ForegroundColor Cyan
     $flutterProc = Start-Process -FilePath $Flutter -ArgumentList $flutterArgs -PassThru -NoNewWindow

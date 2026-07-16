@@ -14,7 +14,9 @@ use App\Services\AdminAuditLogger;
 use App\Services\Family\FamilyNotificationService;
 use App\Services\Family\FamilyPostPublisher;
 use App\Services\Family\FeedService;
+use App\Services\Family\PostAudienceResolver;
 use App\Support\ApiResponse;
+use App\Support\FamilyManagerActionResultsPresenter;
 use App\Support\FamilyManagerPostPresenter;
 use App\Support\SafeBroadcast;
 use Illuminate\Http\JsonResponse;
@@ -28,16 +30,27 @@ class PostController extends Controller
         private readonly FamilyPostPublisher $publisher,
         private readonly AdminAuditLogger $audit,
         private readonly FamilyNotificationService $notifications,
+        private readonly FamilyManagerActionResultsPresenter $actionResults,
+        private readonly PostAudienceResolver $audience,
     ) {}
 
     public function index(Request $request): JsonResponse
     {
+        $request->validate([
+            'status' => ['nullable', Rule::enum(FamilyPostStatus::class)],
+            'family_id' => ['nullable', 'integer', 'exists:families,id'],
+        ]);
+
         $query = FamilyPost::query()
-            ->with(['author:id,name', 'blocks.media', 'targets', 'actions.options', 'stats'])
+            ->with(['author:id,name', 'blocks.media', 'targets.family:id,internal_name', 'actions.options', 'stats'])
             ->orderByDesc('id');
 
         if ($status = $request->query('status')) {
             $query->where('status', $status);
+        }
+
+        if ($familyId = $request->query('family_id')) {
+            $this->audience->scopeVisibleToFamily($query, (int) $familyId);
         }
 
         $posts = $query->paginate(min(50, (int) $request->query('per_page', 20)));
@@ -106,10 +119,13 @@ class PostController extends Controller
         return ApiResponse::success(FamilyManagerPostPresenter::present($post));
     }
 
+    public function actionResults(FamilyPost $post): JsonResponse
+    {
+        return ApiResponse::success($this->actionResults->forPost($post));
+    }
+
     public function update(Request $request, FamilyPost $post): JsonResponse
     {
-        abort_if($post->status === FamilyPostStatus::Published, 422, 'پست منتشرشده قابل ویرایش نیست.');
-
         $data = $request->validate($this->postRules(requireType: false));
 
         $updated = $this->publisher->updateDraft($request->user(), $post, $data);
@@ -149,11 +165,48 @@ class PostController extends Controller
         return ApiResponse::success(FamilyManagerPostPresenter::present($post));
     }
 
+    public function recover(Request $request, FamilyPost $post): JsonResponse
+    {
+        abort_unless($post->status === FamilyPostStatus::Archived, 422, 'فقط پست آرشیوشده قابل بازیابی است.');
+
+        $restoreStatus = $post->published_at !== null
+            ? FamilyPostStatus::Published
+            : FamilyPostStatus::Draft;
+
+        $post->update([
+            'status' => $restoreStatus,
+            'archived_at' => null,
+        ]);
+
+        $this->audit->log($request->user(), 'family.post_recovered', $post);
+        FeedService::invalidateFeedTipCache();
+
+        $fresh = $post->fresh() ?? $post;
+
+        if ($restoreStatus === FamilyPostStatus::Published) {
+            SafeBroadcast::optionally(
+                fn () => broadcast(new FamilyFeedUpdated($fresh, 'published')),
+            );
+        }
+
+        return ApiResponse::success(FamilyManagerPostPresenter::present($fresh));
+    }
+
     public function destroy(Request $request, FamilyPost $post): JsonResponse
     {
-        abort_if($post->status === FamilyPostStatus::Published, 422, 'پست منتشرشده حذف نمی‌شود؛ آرشیو کنید.');
+        abort_if($post->status === FamilyPostStatus::Archived, 422, 'پست آرشیوشده حذف نمی‌شود.');
+
+        $wasPublished = $post->status === FamilyPostStatus::Published;
 
         $this->audit->log($request->user(), 'family.post_deleted', $post);
+
+        if ($wasPublished) {
+            FeedService::invalidateFeedTipCache();
+            SafeBroadcast::optionally(
+                fn () => broadcast(new FamilyFeedUpdated($post, 'deleted')),
+            );
+        }
+
         $post->delete();
 
         return ApiResponse::success(['deleted' => true]);

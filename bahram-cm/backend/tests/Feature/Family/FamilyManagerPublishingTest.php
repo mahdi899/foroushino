@@ -154,4 +154,261 @@ class FamilyManagerPublishingTest extends TestCase
             ->postJson('/api/v1/family-manager/posts', ['type' => 'text', 'blocks' => []])
             ->assertForbidden();
     }
+
+    public function test_manager_can_update_delete_and_republish_published_post(): void
+    {
+        $manager = $this->manager();
+
+        $store = $this->actingAs($manager, 'sanctum')->postJson('/api/v1/family-manager/posts', [
+            'type' => 'text',
+            'audience_mode' => 'all',
+            'blocks' => [
+                ['type' => 'text', 'position' => 0, 'text' => 'نسخه اول'],
+            ],
+        ]);
+        $postId = $store->json('data.id');
+
+        $this->actingAs($manager, 'sanctum')
+            ->postJson("/api/v1/family-manager/posts/{$postId}/publish")
+            ->assertOk();
+
+        $this->actingAs($manager, 'sanctum')
+            ->patchJson("/api/v1/family-manager/posts/{$postId}", [
+                'blocks' => [
+                    ['type' => 'text', 'position' => 0, 'text' => 'نسخه ویرایش‌شده'],
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.blocks.0.text_content', 'نسخه ویرایش‌شده');
+
+        $firstPublishedAt = FamilyPost::query()->findOrFail($postId)->published_at;
+
+        $republish = $this->actingAs($manager, 'sanctum')
+            ->postJson("/api/v1/family-manager/posts/{$postId}/publish");
+        $republish->assertOk()
+            ->assertJsonPath('data.status', 'published');
+
+        $republishedAt = FamilyPost::query()->findOrFail($postId)->fresh()->published_at;
+        $this->assertNotSame(
+            $firstPublishedAt?->toDateTimeString(),
+            $republishedAt?->toDateTimeString(),
+            'Republish should move published_at forward',
+        );
+
+        $this->actingAs($manager, 'sanctum')
+            ->deleteJson("/api/v1/family-manager/posts/{$postId}")
+            ->assertOk();
+
+        $this->assertDatabaseMissing('family_posts', ['id' => $postId]);
+    }
+
+    public function test_manager_can_recover_archived_post_to_published(): void
+    {
+        $manager = $this->manager();
+
+        $store = $this->actingAs($manager, 'sanctum')->postJson('/api/v1/family-manager/posts', [
+            'type' => 'text',
+            'audience_mode' => 'all',
+            'blocks' => [
+                ['type' => 'text', 'position' => 0, 'text' => 'برای آرشیو و بازیابی'],
+            ],
+        ]);
+        $postId = $store->json('data.id');
+
+        $this->actingAs($manager, 'sanctum')
+            ->postJson("/api/v1/family-manager/posts/{$postId}/publish")
+            ->assertOk();
+
+        $this->actingAs($manager, 'sanctum')
+            ->postJson("/api/v1/family-manager/posts/{$postId}/archive")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'archived');
+
+        $this->assertDatabaseHas('family_posts', [
+            'id' => $postId,
+            'status' => 'archived',
+        ]);
+        $this->assertNotNull(FamilyPost::query()->findOrFail($postId)->archived_at);
+
+        $recover = $this->actingAs($manager, 'sanctum')
+            ->postJson("/api/v1/family-manager/posts/{$postId}/recover");
+        $recover->assertOk()->assertJsonPath('data.status', 'published');
+
+        $fresh = FamilyPost::query()->findOrFail($postId);
+        $this->assertSame('published', $fresh->status->value);
+        $this->assertNull($fresh->archived_at);
+        $this->assertNotNull($fresh->published_at);
+    }
+
+    public function test_manager_can_update_and_republish_archived_post(): void
+    {
+        $manager = $this->manager();
+
+        $store = $this->actingAs($manager, 'sanctum')->postJson('/api/v1/family-manager/posts', [
+            'type' => 'text',
+            'audience_mode' => 'all',
+            'blocks' => [
+                ['type' => 'text', 'position' => 0, 'text' => 'نسخه آرشیو'],
+            ],
+        ]);
+        $postId = $store->json('data.id');
+
+        $this->actingAs($manager, 'sanctum')
+            ->postJson("/api/v1/family-manager/posts/{$postId}/publish")
+            ->assertOk();
+
+        $this->actingAs($manager, 'sanctum')
+            ->postJson("/api/v1/family-manager/posts/{$postId}/archive")
+            ->assertOk();
+
+        $this->actingAs($manager, 'sanctum')
+            ->patchJson("/api/v1/family-manager/posts/{$postId}", [
+                'blocks' => [
+                    ['type' => 'text', 'position' => 0, 'text' => 'ویرایش در آرشیو'],
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'archived')
+            ->assertJsonPath('data.blocks.0.text_content', 'ویرایش در آرشیو');
+
+        $firstPublishedAt = FamilyPost::query()->findOrFail($postId)->published_at;
+
+        $republish = $this->actingAs($manager, 'sanctum')
+            ->postJson("/api/v1/family-manager/posts/{$postId}/publish");
+        $republish->assertOk()
+            ->assertJsonPath('data.status', 'published');
+
+        $fresh = FamilyPost::query()->findOrFail($postId);
+        $this->assertNull($fresh->archived_at);
+        $this->assertNotSame(
+            $firstPublishedAt?->toDateTimeString(),
+            $fresh->published_at?->toDateTimeString(),
+            'Republish from archive should move published_at forward',
+        );
+        $this->assertSame('ویرایش در آرشیو', $fresh->blocks()->first()?->text_content);
+    }
+
+    public function test_manager_can_filter_posts_by_family_channel(): void
+    {
+        $manager = $this->manager();
+
+        $familyA = \App\Models\Family::query()->create([
+            'internal_name' => 'کانال آلفا',
+            'member_count' => 0,
+            'capacity_target' => 100,
+            'capacity_min' => 50,
+            'capacity_max' => 150,
+            'accepting_members' => true,
+        ]);
+        $familyB = \App\Models\Family::query()->create([
+            'internal_name' => 'کانال بتا',
+            'member_count' => 0,
+            'capacity_target' => 100,
+            'capacity_min' => 50,
+            'capacity_max' => 150,
+            'accepting_members' => true,
+        ]);
+
+        $allPostId = $this->actingAs($manager, 'sanctum')->postJson('/api/v1/family-manager/posts', [
+            'type' => 'text',
+            'audience_mode' => 'all',
+            'blocks' => [['type' => 'text', 'position' => 0, 'text' => 'برای همه']],
+        ])->json('data.id');
+        $this->actingAs($manager, 'sanctum')->postJson("/api/v1/family-manager/posts/{$allPostId}/publish")->assertOk();
+
+        $includePostId = $this->actingAs($manager, 'sanctum')->postJson('/api/v1/family-manager/posts', [
+            'type' => 'text',
+            'audience_mode' => 'include',
+            'family_ids' => [$familyA->id],
+            'blocks' => [['type' => 'text', 'position' => 0, 'text' => 'فقط آلفا']],
+        ])->json('data.id');
+        $this->actingAs($manager, 'sanctum')->postJson("/api/v1/family-manager/posts/{$includePostId}/publish")->assertOk();
+
+        $excludePostId = $this->actingAs($manager, 'sanctum')->postJson('/api/v1/family-manager/posts', [
+            'type' => 'text',
+            'audience_mode' => 'exclude',
+            'family_ids' => [$familyA->id],
+            'blocks' => [['type' => 'text', 'position' => 0, 'text' => 'همه به‌جز آلفا']],
+        ])->json('data.id');
+        $this->actingAs($manager, 'sanctum')->postJson("/api/v1/family-manager/posts/{$excludePostId}/publish")->assertOk();
+
+        $forA = $this->actingAs($manager, 'sanctum')
+            ->getJson('/api/v1/family-manager/posts?status=published&family_id='.$familyA->id)
+            ->assertOk()
+            ->json('data');
+        $forAIds = collect($forA)->pluck('id')->all();
+        $this->assertContains($allPostId, $forAIds);
+        $this->assertContains($includePostId, $forAIds);
+        $this->assertNotContains($excludePostId, $forAIds);
+
+        $forB = $this->actingAs($manager, 'sanctum')
+            ->getJson('/api/v1/family-manager/posts?status=published&family_id='.$familyB->id)
+            ->assertOk()
+            ->json('data');
+        $forBIds = collect($forB)->pluck('id')->all();
+        $this->assertContains($allPostId, $forBIds);
+        $this->assertNotContains($includePostId, $forBIds);
+        $this->assertContains($excludePostId, $forBIds);
+
+        $presented = collect($forA)->firstWhere('id', $includePostId);
+        $this->assertSame('کانال آلفا', $presented['audience_summary']);
+        $this->assertSame('کانال آلفا', $presented['targets'][0]['family_name']);
+    }
+
+    public function test_manager_can_view_action_results_with_responder_mobile(): void
+    {
+        $manager = $this->manager();
+
+        $family = Family::query()->create([
+            'internal_name' => 'نور',
+            'member_count' => 0,
+            'capacity_target' => 5000,
+            'capacity_min' => 4500,
+            'capacity_max' => 5200,
+            'accepting_members' => true,
+        ]);
+
+        $member = User::factory()->create([
+            'name' => 'رای‌دهنده',
+            'mobile' => '09121112233',
+            'is_admin' => false,
+        ]);
+
+        $store = $this->actingAs($manager, 'sanctum')->postJson('/api/v1/family-manager/posts', [
+            'type' => 'text',
+            'audience_mode' => 'all',
+            'blocks' => [
+                ['type' => 'text', 'position' => 0, 'text' => 'نظرسنجی تست'],
+            ],
+            'action' => [
+                'type' => 'single_choice',
+                'prompt' => 'گزینه مورد علاقه؟',
+                'options' => [
+                    ['label' => 'الف', 'value' => 'a'],
+                    ['label' => 'ب', 'value' => 'b'],
+                ],
+            ],
+        ]);
+        $postId = $store->json('data.id');
+        $actionId = $store->json('data.actions.0.id');
+
+        $this->actingAs($manager, 'sanctum')
+            ->postJson("/api/v1/family-manager/posts/{$postId}/publish")
+            ->assertOk();
+
+        \App\Models\FamilyActionResponse::query()->create([
+            'action_id' => $actionId,
+            'user_id' => $member->id,
+            'family_id' => $family->id,
+            'value' => ['option' => 'a'],
+        ]);
+
+        $this->actingAs($manager, 'sanctum')
+            ->getJson("/api/v1/family-manager/posts/{$postId}/action-results")
+            ->assertOk()
+            ->assertJsonPath('data.0.response_count', 1)
+            ->assertJsonPath('data.0.responses.0.mobile', '09121112233')
+            ->assertJsonPath('data.0.responses.0.value_label', 'الف')
+            ->assertJsonPath('data.0.stats.total', 1);
+    }
 }

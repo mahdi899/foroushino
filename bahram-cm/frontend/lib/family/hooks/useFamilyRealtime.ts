@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { mutate as globalMutate } from 'swr';
 import { getPost } from '@/lib/family/api';
-import { feedPagesContainPost, prependPostToFeedPages } from '@/lib/family/feedMerge';
+import { feedPagesContainPost, prependPostToFeedPages, removePostFromFeedPages, replacePostInFeedPages, repositionPostToFeedTip } from '@/lib/family/feedMerge';
 import { getEcho, isRealtimeConfigured } from '@/lib/realtime/echo';
 
 export type FamilyFeedUpdatedPayload = {
@@ -11,7 +11,7 @@ export type FamilyFeedUpdatedPayload = {
   latest_post_id: number;
   published_at?: string | null;
   is_important?: boolean;
-  event?: 'published' | 'pinned' | 'unpinned' | 'archived';
+  event?: 'published' | 'pinned' | 'unpinned' | 'archived' | 'updated' | 'deleted';
 };
 
 type Options = {
@@ -51,11 +51,14 @@ export async function mergePublishedPostIntoFeedCaches(postId: number): Promise<
     isFamilyFeedKey,
     async (current) => {
       if (!Array.isArray(current) || current.length === 0) return current;
-      if (feedPagesContainPost(current, postId)) return current;
 
       try {
         const res = await getPost(postId);
-        const next = prependPostToFeedPages(current, res.data);
+        const post = res.data;
+        const alreadyLoaded = feedPagesContainPost(current, postId);
+        const next = alreadyLoaded
+          ? repositionPostToFeedTip(current, post)
+          : prependPostToFeedPages(current, post);
         if (next && next !== current) {
           merged = true;
           return next;
@@ -70,6 +73,80 @@ export async function mergePublishedPostIntoFeedCaches(postId: number): Promise<
   );
 
   return merged;
+}
+
+/** Patch an edited post in all live feed caches. */
+export async function mergeUpdatedPostIntoFeedCaches(postId: number): Promise<boolean> {
+  let merged = false;
+
+  await globalMutate(
+    isFamilyFeedKey,
+    async (current) => {
+      if (!Array.isArray(current) || current.length === 0) return current;
+      if (!feedPagesContainPost(current, postId)) return current;
+
+      try {
+        const res = await getPost(postId);
+        const next = replacePostInFeedPages(current, res.data);
+        if (next && next !== current) {
+          merged = true;
+          return next;
+        }
+      } catch {
+        /* ignore */
+      }
+
+      return current;
+    },
+    { revalidate: false },
+  );
+
+  return merged;
+}
+
+/** Remove deleted/archived posts from all live feed caches. */
+export async function removePostFromFeedCaches(postId: number): Promise<boolean> {
+  let removed = false;
+
+  await globalMutate(
+    isFamilyFeedKey,
+    (current) => {
+      if (!Array.isArray(current) || current.length === 0) return current;
+      const next = removePostFromFeedPages(current, postId);
+      if (next && next !== current) {
+        removed = true;
+        return next;
+      }
+      return current;
+    },
+    { revalidate: false },
+  );
+
+  return removed;
+}
+
+/** Force all live feed pages to refetch from the API (admin edit/delete safety net). */
+export function revalidateFamilyFeedCaches(): void {
+  void globalMutate(isFamilyFeedKey, undefined, { revalidate: true });
+  void globalMutate(isFamilyPinnedKey);
+}
+
+/** Apply admin moderation to client feed caches immediately, then sync with server. */
+export async function handleFeedModerationEvent(
+  event: 'updated' | 'deleted' | 'archived',
+  postId: number,
+): Promise<void> {
+  if (event === 'deleted' || event === 'archived') {
+    await removePostFromFeedCaches(postId);
+    revalidateFamilyFeedCaches();
+    return;
+  }
+
+  const merged = await mergeUpdatedPostIntoFeedCaches(postId);
+  void globalMutate(isFamilyPinnedKey);
+  if (!merged) {
+    revalidateFamilyFeedCaches();
+  }
 }
 
 /**
@@ -101,12 +178,16 @@ export function useFamilyRealtime({
         void globalMutate(isFeedUnreadKey);
 
         const event = payload.event ?? 'published';
-        if (event === 'pinned' || event === 'unpinned' || event === 'archived') {
+        if (event === 'pinned' || event === 'unpinned' || event === 'archived' || event === 'deleted') {
           void globalMutate(isFamilyPinnedKey);
         }
 
-        if (syncFeedRef.current && event === 'published') {
-          await mergePublishedPostIntoFeedCaches(payload.post_id);
+        if (syncFeedRef.current) {
+          if (event === 'published') {
+            await mergePublishedPostIntoFeedCaches(payload.post_id);
+          } else if (event === 'updated' || event === 'deleted' || event === 'archived') {
+            await handleFeedModerationEvent(event, payload.post_id);
+          }
         }
 
         onFeedUpdatedRef.current?.(payload);

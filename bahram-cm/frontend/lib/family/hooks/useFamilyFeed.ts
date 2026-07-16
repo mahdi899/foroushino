@@ -5,9 +5,10 @@ import { mutate as globalMutate } from 'swr';
 import { useEffect, useRef } from 'react';
 import { getFeed, getPostJumpContext } from '@/lib/family/api';
 import { readFeedCache, writeFeedCache, type FeedCachePage } from '@/lib/family/feedCache';
-import { shellBrandingFromFeedMeta, syncFamilyShellFromFeedMeta } from '@/lib/family/shellCache';
+import { reconcileDiskCacheWithCurrent } from '@/lib/family/feedMerge';
+import { shellBrandingFromFeedMeta, mergeFeedBrandingIntoCurrent, syncFamilyShellFromFeedMeta } from '@/lib/family/shellCache';
 import { familyFeedSwr } from '@/lib/family/swr';
-import type { FamilyFeedMeta, FamilyPost } from '@/lib/family/types';
+import type { FamilyBranding, FamilyFeedMeta, FamilyPost } from '@/lib/family/types';
 
 const FEED_PAGE_SIZE = 15;
 const JUMP_WINDOW_SIZE = 24;
@@ -60,10 +61,7 @@ export function useFamilyFeed(
       if (cancelled || !cached?.length) return;
 
       void mutate(
-        (current) => {
-          if (current && current.length >= cached.length) return current;
-          return cached as FeedPage[];
-        },
+        (current) => reconcileDiskCacheWithCurrent(current as FeedPage[] | undefined, cached),
         { revalidate: false },
       );
     });
@@ -90,9 +88,13 @@ export function useFamilyFeed(
     if (!tipMeta) return;
 
     syncFamilyShellFromFeedMeta(tipMeta);
-    const branding = shellBrandingFromFeedMeta(tipMeta);
-    if (branding) {
-      void globalMutate('family-branding', branding, { revalidate: false });
+    const fromFeed = shellBrandingFromFeedMeta(tipMeta);
+    if (fromFeed) {
+      void globalMutate(
+        'family-branding',
+        (current) => mergeFeedBrandingIntoCurrent(current as FamilyBranding | undefined, fromFeed),
+        { revalidate: true },
+      );
     }
 
     if (tipMeta.prev_cursor != null) prevCursorRef.current = tipMeta.prev_cursor;

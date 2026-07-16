@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import {
   brandingFromMeAndFeed,
+  mergeFeedBrandingIntoCurrent,
   readFamilyShellSnapshot,
   shellBrandingFromFeedMeta,
   writeFamilyShellSnapshot,
@@ -62,5 +63,28 @@ describe('shellCache', () => {
     });
 
     expect(branding?.has_active_stories).toBe(true);
+  });
+
+  it('keeps fresher avatar URLs when feed branding is older', () => {
+    const merged = mergeFeedBrandingIntoCurrent(
+      {
+        display_name: 'خانواده تست',
+        profile_name: 'بهرام',
+        profile_avatar: '/a.jpg?v=2',
+        community_avatar: '/c.jpg?v=2',
+        branding_version: 2,
+      },
+      {
+        display_name: 'خانواده تست',
+        profile_name: 'بهرام',
+        profile_avatar: '/a.jpg?v=1',
+        community_avatar: '/c.jpg?v=1',
+        branding_version: 1,
+        has_active_stories: true,
+      },
+    );
+
+    expect(merged.community_avatar).toBe('/c.jpg?v=2');
+    expect(merged.has_active_stories).toBe(true);
   });
 });

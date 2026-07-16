@@ -146,6 +146,7 @@ export interface FamilyBranding {
   profile_name: string;
   profile_avatar: string | null;
   community_avatar: string | null;
+  branding_version?: number | null;
   has_active_stories?: boolean;
   latest_story_id?: number | null;
 }
@@ -182,6 +183,7 @@ export interface FamilyFeedMeta {
   member_count?: number;
   onboarding_completed?: boolean;
   is_staff?: boolean;
+  feed_revision?: number;
 }
 
 export interface FamilyFeedResponse {

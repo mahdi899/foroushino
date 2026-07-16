@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:bahram_family_manager/core/labels.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
+import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 
 const mediaPostTypes = ['text', 'voice', 'video', 'image'];
 const choiceActionTypes = ['single_choice', 'multi_choice'];
@@ -69,33 +70,42 @@ class _TypeTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      child: InkWell(
-        onTap: enabled ? onTap : null,
-        borderRadius: BorderRadius.circular(18),
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: active ? AppGradients.primary : null,
-            color: active ? null : AppColors.surface,
-            border: Border.all(color: active ? Colors.transparent : AppColors.border, width: active ? 0 : 1),
-            boxShadow: active ? AppShadows.panelGlow : AppShadows.soft,
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 30, color: active ? Colors.white : AppColors.primary),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                label,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: active ? Colors.white : AppColors.text,
+      child: active
+          ? InkWell(
+              onTap: enabled ? onTap : null,
+              borderRadius: BorderRadius.circular(18),
+              child: Ink(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  gradient: AppGradients.primary,
+                  boxShadow: AppShadows.panelGlow,
                 ),
+                child: _tileContent(active),
               ),
-            ],
+            )
+          : GlassPanel(
+              borderRadius: 18,
+              blur: 16,
+              onTap: enabled ? onTap : null,
+              child: _tileContent(active),
+            ),
+    );
+  }
+
+  Widget _tileContent(bool active) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 30, color: active ? Colors.white : AppColors.primary),
+        const SizedBox(height: AppSpacing.sm),
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: active ? Colors.white : AppColors.text,
           ),
         ),
-      ),
+      ],
     );
   }
 }
