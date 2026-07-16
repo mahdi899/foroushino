@@ -32,5 +32,10 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="TELEGRAM_FAKE_CLIENT" value="true"/>
+        <env name="TELEGRAM_BOT_TOKEN" value="test-token"/>
+        <env name="TELEGRAM_BOT_USERNAME" value="test_bahram_bot"/>
+        <env name="TELEGRAM_WEBHOOK_SECRET" value="test-secret"/>
+        <env name="TELEGRAM_BOT_KEY" value="production"/>
     </php>
 </phpunit>

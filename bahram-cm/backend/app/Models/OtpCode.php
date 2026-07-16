@@ -22,7 +22,7 @@ class OtpCode extends Model
         'expires_at' => 'datetime',
         'used_at' => 'datetime',
         'attempts_count' => 'integer',
-        'purpose' => OtpPurpose::class,
+        'purpose' => 'string',
     ];
 
     public function isExpired(): bool

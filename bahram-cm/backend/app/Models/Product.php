@@ -37,6 +37,11 @@ class Product extends Model
         'referral_cashback_type',
         'referral_cashback_value',
         'is_active',
+        'show_in_telegram',
+        'telegram_list_visibility',
+        'telegram_sort_order',
+        'telegram_content_id',
+        'telegram_settings',
         'show_on_courses',
         'featured_listing',
         'course_level',
@@ -51,6 +56,9 @@ class Product extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'show_in_telegram' => 'boolean',
+        'telegram_sort_order' => 'integer',
+        'telegram_settings' => 'array',
         'show_on_courses' => 'boolean',
         'featured_listing' => 'boolean',
         'referral_cashback_enabled' => 'boolean',

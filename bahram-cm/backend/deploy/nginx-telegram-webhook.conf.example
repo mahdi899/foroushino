@@ -1,0 +1,5 @@
+# Telegram webhook must hit Laravel directly (not Next.js).
+location ~ ^/api/v1/integrations/telegram/[^/]+/webhook$ {
+    try_files $uri $uri/ /index.php?$query_string;
+    # Ensure PHP-FPM handles this path on the Laravel vhost.
+}

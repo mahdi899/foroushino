@@ -1,0 +1,118 @@
+<?php
+
+namespace App\Modules\TelegramBot\Contracts;
+
+use App\Modules\TelegramBot\Exceptions\TelegramApiException;
+
+/**
+ * Thin wrapper around the subset of the Telegram Bot API this module needs.
+ * Every method returns the decoded `result` field of a successful response
+ * (array, or bool for a handful of Telegram methods that just return true).
+ *
+ * Implementations MUST throw TelegramApiException (or the
+ * TelegramRateLimitException subclass for HTTP 429) on failure — callers
+ * never need to inspect a raw `ok: false` payload themselves.
+ *
+ * @throws TelegramApiException
+ */
+interface TelegramBotClientInterface
+{
+    /**
+     * @param  array<string, mixed>  $options  Additional setWebhook params (allowed_updates, max_connections, …)
+     * @return array<string, mixed>|bool
+     */
+    public function setWebhook(string $url, ?string $secretToken = null, array $options = []): array|bool;
+
+    /** @return array<string, mixed>|bool */
+    public function deleteWebhook(bool $dropPendingUpdates = false): array|bool;
+
+    /** @return array<string, mixed> */
+    public function getWebhookInfo(): array;
+
+    /** @return array<string, mixed> */
+    public function getMe(): array;
+
+    /**
+     * @param  array<string, mixed>  $options  parse_mode, reply_markup, reply_to_message_id, …
+     * @return array<string, mixed>
+     */
+    public function sendMessage(int|string $chatId, string $text, array $options = []): array;
+
+    /** @param  array<string, mixed>  $options
+     * @return array<string, mixed> */
+    public function sendPhoto(int|string $chatId, string $photo, array $options = []): array;
+
+    /** @param  array<string, mixed>  $options
+     * @return array<string, mixed> */
+    public function sendVideo(int|string $chatId, string $video, array $options = []): array;
+
+    /** @param  array<string, mixed>  $options
+     * @return array<string, mixed> */
+    public function sendAudio(int|string $chatId, string $audio, array $options = []): array;
+
+    /** @param  array<string, mixed>  $options
+     * @return array<string, mixed> */
+    public function sendVoice(int|string $chatId, string $voice, array $options = []): array;
+
+    /** @param  array<string, mixed>  $options
+     * @return array<string, mixed> */
+    public function sendDocument(int|string $chatId, string $document, array $options = []): array;
+
+    /** @param  array<string, mixed>  $options
+     * @return array<string, mixed> */
+    public function copyMessage(int|string $chatId, int|string $fromChatId, int $messageId, array $options = []): array;
+
+    /** @param  array<string, mixed>  $options
+     * @return array<string, mixed> */
+    public function forwardMessage(int|string $chatId, int|string $fromChatId, int $messageId, array $options = []): array;
+
+    /**
+     * @param  array<string, mixed>  $options  Must include chat_id+message_id OR inline_message_id.
+     * @return array<string, mixed>|bool
+     */
+    public function editMessageText(string $text, array $options = []): array|bool;
+
+    /**
+     * @param  array<string, mixed>  $options  Must include chat_id+message_id OR inline_message_id.
+     * @return array<string, mixed>|bool
+     */
+    public function editMessageCaption(array $options = []): array|bool;
+
+    /**
+     * @param  array<string, mixed>  $options  Must include chat_id+message_id OR inline_message_id.
+     * @return array<string, mixed>|bool
+     */
+    public function editMessageReplyMarkup(array $options = []): array|bool;
+
+    public function deleteMessage(int|string $chatId, int $messageId): bool;
+
+    /** @param  array<string, mixed>  $options  text, show_alert, url, cache_time */
+    public function answerCallbackQuery(string $callbackQueryId, array $options = []): bool;
+
+    /** @return array<string, mixed> */
+    public function getChatMember(int|string $chatId, int $userId): array;
+
+    /** @return list<array<string, mixed>> */
+    public function getChatAdministrators(int|string $chatId): array;
+
+    public function approveChatJoinRequest(int|string $chatId, int $userId): bool;
+
+    public function declineChatJoinRequest(int|string $chatId, int $userId): bool;
+
+    /** @param  array<string, mixed>  $options  until_date, revoke_messages */
+    public function banChatMember(int|string $chatId, int $userId, array $options = []): bool;
+
+    /** @param  array<string, mixed>  $options  only_if_banned */
+    public function unbanChatMember(int|string $chatId, int $userId, array $options = []): bool;
+
+    /**
+     * @param  array<string, mixed>  $options  name, expire_date, member_limit, creates_join_request
+     * @return array<string, mixed>
+     */
+    public function createChatInviteLink(int|string $chatId, array $options = []): array;
+
+    /** @return array<string, mixed> */
+    public function revokeChatInviteLink(int|string $chatId, string $inviteLink): array;
+
+    public function sendChatAction(int|string $chatId, string $action): bool;
+}

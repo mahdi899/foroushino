@@ -168,6 +168,27 @@ class FulfillOrderJob implements ShouldQueue
         }
 
         $adminTelegram->notifyOrderFulfilled($order);
+
+        if ($userId) {
+            try {
+                app(\App\Modules\TelegramBot\Services\NotificationOutboxWriter::class)->write(
+                    eventType: 'order_paid',
+                    userId: $userId,
+                    payload: [
+                        'text' => '✅ پرداخت شما با موفقیت تأیید شد.'."\n"
+                            .'سفارش: '.($order->order_number ?? $order->id)."\n"
+                            .'محصول: '.($order->product?->title ?? '—'),
+                    ],
+                    channels: ['telegram'],
+                    idempotencyKey: 'order_paid:'.$order->id,
+                );
+            } catch (\Throwable $e) {
+                Log::channel('telegram')->warning('Failed to enqueue telegram order_paid outbox.', [
+                    'order_id' => $order->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     /**

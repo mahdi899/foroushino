@@ -39,6 +39,11 @@ class OtpService
 
     public function send(string $mobile, OtpPurpose $purpose, ?string $ip = null, ?string $userAgent = null): void
     {
+        $this->sendForPurpose($mobile, $purpose->value, $ip, $userAgent);
+    }
+
+    public function sendForPurpose(string $mobile, string $purpose, ?string $ip = null, ?string $userAgent = null): void
+    {
         if ($this->isDevMode()) {
             return;
         }
@@ -59,7 +64,7 @@ class OtpService
             return;
         }
 
-        $code = $this->generateAndStore($mobile, $purpose, $ip, $userAgent);
+        $code = $this->generateAndStore($mobile, $purpose->value, $ip, $userAgent);
 
         $smsSent = $this->sms->sendOtp($mobile, $code);
 
@@ -79,9 +84,9 @@ class OtpService
      *
      * @throws OtpException when rate limits are exceeded
      */
-    private function generateAndStore(string $mobile, OtpPurpose $purpose, ?string $ip, ?string $userAgent): string
+    private function generateAndStore(string $mobile, string $purpose, ?string $ip, ?string $userAgent): string
     {
-        $resendKey = "otp:resend:{$mobile}:{$purpose->value}";
+        $resendKey = "otp:resend:{$mobile}:{$purpose}";
         $mobileKey = "otp:mobile:{$mobile}";
         $ipKey = $ip ? "otp:ip:{$ip}" : null;
 
@@ -134,7 +139,7 @@ class OtpService
 
         $otp = OtpCode::query()
             ->where('mobile', $mobile)
-            ->where('purpose', $purpose->value)
+            ->where('purpose', $purpose)
             ->whereNull('used_at')
             ->orderByDesc('id')
             ->first();
@@ -160,13 +165,18 @@ class OtpService
 
     public function verify(string $mobile, string $code, OtpPurpose $purpose): void
     {
+        $this->verifyForPurpose($mobile, $code, $purpose->value);
+    }
+
+    public function verifyForPurpose(string $mobile, string $code, string $purpose): void
+    {
         if ($this->isDevMode() && hash_equals((string) config('bahram.otp.dev_code', '12345'), $code)) {
             return;
         }
 
         $otp = OtpCode::query()
             ->where('mobile', $mobile)
-            ->where('purpose', $purpose->value)
+            ->where('purpose', $purpose)
             ->whereNull('used_at')
             ->orderByDesc('id')
             ->first();
@@ -192,9 +202,11 @@ class OtpService
         Cache::forget($this->plainCodeCacheKey($mobile, $purpose));
     }
 
-    private function plainCodeCacheKey(string $mobile, OtpPurpose $purpose): string
+    private function plainCodeCacheKey(string $mobile, string|OtpPurpose $purpose): string
     {
-        return "otp:plain:{$mobile}:{$purpose->value}";
+        $value = $purpose instanceof OtpPurpose ? $purpose->value : $purpose;
+
+        return "otp:plain:{$mobile}:{$value}";
     }
 
     private function isDevMode(): bool

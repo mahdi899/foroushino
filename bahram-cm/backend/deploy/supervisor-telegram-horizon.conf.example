@@ -1,0 +1,18 @@
+[program:bahram-horizon]
+process_name=%(program_name)s
+command=php /var/www/bahram-cm/backend/artisan horizon
+autostart=true
+autorestart=true
+user=www-data
+redirect_stderr=true
+stdout_logfile=/var/log/supervisor/bahram-horizon.log
+stopwaitsecs=3600
+
+[program:bahram-scheduler]
+process_name=%(program_name)s
+command=php /var/www/bahram-cm/backend/artisan schedule:work
+autostart=true
+autorestart=true
+user=www-data
+redirect_stderr=true
+stdout_logfile=/var/log/supervisor/bahram-scheduler.log

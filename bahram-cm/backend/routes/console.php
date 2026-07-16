@@ -11,6 +11,10 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+Schedule::command('telegram:cleanup')->dailyAt('04:10')->onOneServer();
+Schedule::command('telegram:health-check')->hourly()->onOneServer();
+Schedule::command('telegram:retry-failed-updates')->everyTenMinutes()->onOneServer();
+
 Schedule::command('chatbot:purge-old')->dailyAt('03:00');
 Schedule::command('backup:database')->everyMinute();
 
