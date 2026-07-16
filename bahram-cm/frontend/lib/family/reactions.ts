@@ -3,6 +3,7 @@ import type { FamilyReactionType } from '@/lib/family/types';
 export type FamilyReactionMeta = {
   type: FamilyReactionType;
   label: string;
+  glyph?: string;
 };
 
 /** 5 quick reactions always visible in the bar */
@@ -35,9 +36,9 @@ export const FAMILY_ALL_REACTIONS: FamilyReactionMeta[] = [
 
 /** Teaser reactions shown after ~3s dwell on a post (slide-out nudge). */
 export const FAMILY_NUDGE_REACTIONS: FamilyReactionMeta[] = [
-  { type: 'heart', label: 'قلب' },
-  { type: 'fire', label: 'آتشین' },
-  { type: 'clap', label: 'تشویق' },
+  { type: 'heart', label: 'قلب', glyph: '❤️' },
+  { type: 'fire', label: 'آتشین', glyph: '🔥' },
+  { type: 'clap', label: 'تشویق', glyph: '👏' },
 ];
 
 export function reactionMeta(type: FamilyReactionType): FamilyReactionMeta {

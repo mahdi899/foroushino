@@ -19,6 +19,8 @@ class AppBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 380 || items.length > 5;
     final showLabels = !compact || width >= 340;
@@ -28,13 +30,13 @@ class AppBottomNav extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: AppColors.surface.withValues(alpha: 0.92),
+            color: scheme.surface.withValues(alpha: 0.92),
             border: Border(
-              top: BorderSide(color: AppColors.primary.withValues(alpha: 0.1)),
+              top: BorderSide(color: scheme.primary.withValues(alpha: 0.1)),
             ),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primaryDark.withValues(alpha: 0.07),
+                color: (isDark ? Colors.black : AppColors.primaryDark).withValues(alpha: isDark ? 0.28 : 0.07),
                 blurRadius: 20,
                 offset: const Offset(0, -6),
               ),

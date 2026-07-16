@@ -9,6 +9,7 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/branding/app_logo.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
+import 'package:bahram_family_manager/widgets/theme/theme_mode_toggle.dart';
 import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
 
 /// Shell for authenticated manager: bottom nav on mobile, Telegram-style sidebar on desktop.
@@ -29,11 +30,30 @@ class DesktopShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDesktop = AppBreakpoints.isDesktop(context);
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
 
     if (!isDesktop) {
       return Scaffold(
-        backgroundColor: AppColors.background,
-        body: body,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            body,
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 6,
+              left: 8,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: scheme.surface.withValues(alpha: 0.92),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: scheme.outline.withValues(alpha: 0.5)),
+                ),
+                child: const ThemeModeToggleButton(),
+              ),
+            ),
+          ],
+        ),
         bottomNavigationBar: items.length <= 1
             ? null
             : AppBottomNav(
@@ -47,7 +67,7 @@ class DesktopShell extends StatelessWidget {
     final user = context.watch<AppState>().user;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(AppLayout.shellPadding),
@@ -68,7 +88,7 @@ class DesktopShell extends StatelessWidget {
                     data: Theme.of(context).copyWith(
                       scaffoldBackgroundColor: Colors.transparent,
                       appBarTheme: Theme.of(context).appBarTheme.copyWith(
-                            backgroundColor: AppColors.surface,
+                            backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surface,
                             surfaceTintColor: Colors.transparent,
                             centerTitle: false,
                           ),
@@ -92,15 +112,18 @@ class _DesktopContentPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
+
     return SizedBox.expand(
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: scheme.surface,
           borderRadius: BorderRadius.circular(AppLayout.contentPanelRadius),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.85)),
+          border: Border.all(color: scheme.outline.withValues(alpha: 0.85)),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primaryDark.withValues(alpha: 0.06),
+              color: (isDark ? Colors.black : AppColors.primaryDark).withValues(alpha: isDark ? 0.35 : 0.06),
               blurRadius: 32,
               offset: const Offset(0, 12),
             ),
@@ -132,16 +155,27 @@ class _DesktopSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppLayout.contentPanelRadius),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: AppColors.surface.withValues(alpha: 0.96),
+            color: scheme.surface.withValues(alpha: 0.96),
             borderRadius: BorderRadius.circular(AppLayout.contentPanelRadius),
-            border: Border.all(color: AppColors.border.withValues(alpha: 0.85)),
-            boxShadow: AppShadows.soft,
+            border: Border.all(color: scheme.outline.withValues(alpha: 0.85)),
+            boxShadow: isDark
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.28),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : AppShadows.soft,
           ),
           child: SizedBox(
             width: AppLayout.sidebarWidth,
@@ -168,11 +202,14 @@ class _DesktopSidebar extends StatelessWidget {
                             const SizedBox(height: 2),
                             Text(
                               'پنل مدیریت خانواده',
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: AppColors.textSubtle),
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: scheme.onSurface.withValues(alpha: 0.55),
+                                  ),
                             ),
                           ],
                         ),
                       ),
+                      const ThemeModeToggleButton(),
                     ],
                   ),
                 ),
@@ -217,6 +254,9 @@ class _SidebarNavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final muted = scheme.onSurface.withValues(alpha: 0.65);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.xs),
       child: Material(
@@ -260,7 +300,7 @@ class _SidebarNavItem extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                      color: active ? AppColors.primaryDark : AppColors.textMuted,
+                      color: active ? scheme.primary : muted,
                     ),
                   ),
                 ),
@@ -284,6 +324,8 @@ class _SidebarUserFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
     final initial = userName?.isNotEmpty == true ? userName!.substring(0, 1) : 'ب';
 
     return Padding(
@@ -322,9 +364,9 @@ class _SidebarUserFooter extends StatelessWidget {
             tooltip: 'خروج',
             onPressed: onLogout,
             icon: const Icon(Icons.logout_rounded, size: 20),
-            color: AppColors.textMuted,
+            color: scheme.onSurface.withValues(alpha: 0.65),
             style: IconButton.styleFrom(
-              backgroundColor: AppColors.surfaceSoft,
+              backgroundColor: isDark ? AppColors.surfaceSoftDark : AppColors.surfaceSoft,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
           ),

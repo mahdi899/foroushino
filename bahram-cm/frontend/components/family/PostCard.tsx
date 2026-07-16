@@ -15,6 +15,7 @@ import { CommentThreadPreview } from '@/components/family/CommentThreadPreview';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { PostMetaRow } from '@/components/family/PostMetaRow';
 import { ReactionBar, type ReactionBarHandle } from '@/components/family/ReactionBar';
+import { releaseReactionNudge, tryClaimReactionNudge } from '@/lib/family/reactionNudgeCoordinator';
 import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
 import type { FamilyComment } from '@/lib/family/types';
 import type { FamilyPost, FamilyPostBlock } from '@/lib/family/types';
@@ -193,14 +194,20 @@ function FeedPostCard({
         return;
       }
       setReactionNudge(false);
+      releaseReactionNudge(post.id);
       reactionBarRef.current?.quickReact('heart', { x: event.clientX, y: event.clientY });
     },
-    [onPreviewInteract, previewMode],
+    [onPreviewInteract, post.id, previewMode],
   );
+
+  const dismissReactionNudge = useCallback(() => {
+    releaseReactionNudge(post.id);
+    setReactionNudge(false);
+  }, [post.id]);
 
   useEffect(() => {
     if (previewMode || post.user_reaction) {
-      setReactionNudge(false);
+      dismissReactionNudge();
       return;
     }
 
@@ -214,14 +221,16 @@ function FeedPostCard({
         if (!entry?.isIntersecting || entry.intersectionRatio < REACTION_NUDGE_VISIBLE_RATIO) {
           if (timer != null) window.clearTimeout(timer);
           timer = undefined;
-          setReactionNudge(false);
+          dismissReactionNudge();
           return;
         }
 
         if (timer != null) return;
 
         timer = window.setTimeout(() => {
-          setReactionNudge(true);
+          if (tryClaimReactionNudge(post.id)) {
+            setReactionNudge(true);
+          }
         }, REACTION_NUDGE_DWELL_MS);
       },
       { threshold: [REACTION_NUDGE_VISIBLE_RATIO, 0.65] },
@@ -231,8 +240,9 @@ function FeedPostCard({
     return () => {
       observer.disconnect();
       if (timer != null) window.clearTimeout(timer);
+      releaseReactionNudge(post.id);
     };
-  }, [post.id, post.user_reaction, previewMode]);
+  }, [dismissReactionNudge, post.id, post.user_reaction, previewMode]);
 
   const endSwipe = useCallback(
     (commit: boolean) => {
@@ -378,7 +388,7 @@ function FeedPostCard({
               userReaction={post.user_reaction}
               readOnly={Boolean(previewMode)}
               reactionNudge={reactionNudge}
-              onReactionNudgeDismiss={() => setReactionNudge(false)}
+              onReactionNudgeDismiss={dismissReactionNudge}
               onLockedInteract={onPreviewInteract}
             />
           </div>

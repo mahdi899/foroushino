@@ -11,22 +11,25 @@ import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
 import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
 import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
+import type { FamilyBranding } from '@/lib/family/types';
 
 /** Desktop branding column — Telegram channel-info panel + iOS glass. */
 export function FamilyBrandingSidebar({
   memberCount,
   isMember = true,
+  initialBranding,
   notificationsActive = false,
   onOpenNotifications,
   onCloseNotifications,
 }: {
   memberCount?: number;
   isMember?: boolean;
+  initialBranding?: FamilyBranding;
   notificationsActive?: boolean;
   onOpenNotifications?: () => void;
   onCloseNotifications?: () => void;
 }) {
-  const { branding } = useFamilyBranding();
+  const { branding } = useFamilyBranding(initialBranding);
   const { unreadCount } = useFamilyUnreadCount(isMember);
   const { hasStories, hasUnseen, markSeen } = useFamilyStoryState(branding);
   const [storyOpen, setStoryOpen] = useState(false);
@@ -104,6 +107,7 @@ export function FamilyBrandingSidebar({
                     size="xl"
                     hasStoryRing
                     storyUnseen={hasUnseen}
+                    verified
                   />
                 </button>
               ) : (
@@ -112,6 +116,7 @@ export function FamilyBrandingSidebar({
                     name={branding.profile_name}
                     avatar={communityAvatar}
                     size="xl"
+                    verified
                   />
                 </div>
               )}

@@ -104,24 +104,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: AppSpacing.lg),
                   ],
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final columns = AppBreakpoints.gridColumns(context);
-                      return GridView.count(
-                        crossAxisCount: columns,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        mainAxisSpacing: AppSpacing.md,
-                        crossAxisSpacing: AppSpacing.md,
-                        childAspectRatio: columns >= 4 ? 1.55 : 1.45,
-                        children: [
-                          StatCard(title: 'پست منتشرشده', value: stats.postsToday, icon: Icons.campaign_rounded, color: AppColors.primary),
-                          StatCard(title: 'واکنش', value: stats.reactionsToday, icon: Icons.favorite_rounded, color: AppColors.error),
-                          StatCard(title: 'نظر جدید', value: stats.newCommentsToday, icon: Icons.chat_bubble_rounded, color: AppColors.warning),
-                          StatCard(title: 'اکشن تکمیل‌شده', value: stats.actionsCompletedToday, icon: Icons.task_alt_rounded, color: AppColors.success),
-                        ],
-                      );
-                    },
+                  StatCardGrid(
+                    children: [
+                      StatCard(title: 'منتشر شده', value: stats.postsToday, icon: Icons.campaign_rounded, color: AppColors.primary),
+                      StatCard(title: 'واکنش', value: stats.reactionsToday, icon: Icons.favorite_rounded, color: AppColors.error),
+                      StatCard(title: 'نظر جدید', value: stats.newCommentsToday, icon: Icons.chat_bubble_rounded, color: AppColors.warning),
+                      StatCard(title: 'اکشن تکمیل‌شده', value: stats.actionsCompletedToday, icon: Icons.task_alt_rounded, color: AppColors.success),
+                    ],
                   ),
                   if (stats.pendingComments > 0) ...[
                     const SizedBox(height: AppSpacing.md),
@@ -168,9 +157,15 @@ class _AiSummaryCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (summary.lowSample)
-            Text(summary.note ?? 'حجم نمونه کم است.', style: const TextStyle(color: AppColors.textMuted))
+            Text(
+              summary.note ?? 'حجم نمونه کم است.',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65)),
+            )
           else if (summary.topics.isEmpty)
-            const Text('هنوز موضوع مشخصی از نظرات استخراج نشده.', style: TextStyle(color: AppColors.textMuted))
+            Text(
+              'هنوز موضوع مشخصی از نظرات استخراج نشده.',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65)),
+            )
           else
             ...summary.topics.map(
               (t) => Padding(

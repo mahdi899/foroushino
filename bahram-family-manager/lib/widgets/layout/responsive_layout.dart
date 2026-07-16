@@ -28,6 +28,14 @@ class AppBreakpoints {
     return mobile;
   }
 
+  /// Taller cells avoid StatCard overflow on dense 4-column grids.
+  static double statCardAspectRatio(BuildContext context) {
+    final columns = gridColumns(context);
+    if (columns >= 4) return 1.28;
+    if (columns >= 3) return 1.22;
+    return 1.18;
+  }
+
   static EdgeInsets pagePadding(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     if (width >= AppBreakpoints.wide) {

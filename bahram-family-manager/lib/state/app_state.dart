@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import 'package:bahram_family_manager/core/api/api_client.dart';
 import 'package:bahram_family_manager/core/api/api_exception.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/services/auth_service.dart';
 import 'package:bahram_family_manager/services/family_manager_service.dart';
+import 'package:bahram_family_manager/services/secure_storage.dart';
 
 /// Top-level app state: session lifecycle + shared service instances.
 /// Screen-local data (post lists, comment tabs, etc.) lives in the screens
@@ -13,13 +15,14 @@ import 'package:bahram_family_manager/services/family_manager_service.dart';
 class AppState extends ChangeNotifier {
   /// All three collaborators must share a single [ApiClient] instance — it's
   /// what carries the bearer token interceptor and the 401 callback below.
-  AppState() {
+  AppState({SecureStorage? storage}) : _storage = storage ?? SecureStorage() {
     _api = ApiClient();
-    _auth = AuthService(api: _api);
+    _auth = AuthService(api: _api, storage: _storage);
     manager = FamilyManagerService(api: _api);
     _api.onUnauthorized = _handleUnauthorized;
   }
 
+  final SecureStorage _storage;
   late final ApiClient _api;
   late final AuthService _auth;
   late final FamilyManagerService manager;
@@ -27,11 +30,13 @@ class AppState extends ChangeNotifier {
   ManagerUser? user;
   bool bootstrapping = true;
   String? sessionError;
+  ThemeMode themeMode = ThemeMode.system;
 
   Future<void> bootstrap() async {
     bootstrapping = true;
     notifyListeners();
     try {
+      await _loadThemePreference();
       final restored = await _auth.restoreSession();
       if (restored != null) {
         // Re-validate against the server in case the token was revoked.
@@ -85,6 +90,27 @@ class AppState extends ChangeNotifier {
 
   void clearSessionError() {
     sessionError = null;
+  }
+
+  Future<void> _loadThemePreference() async {
+    final saved = await _storage.readThemeMode();
+    if (saved == null) return;
+    themeMode = switch (saved) {
+      'dark' => ThemeMode.dark,
+      'light' => ThemeMode.light,
+      _ => ThemeMode.system,
+    };
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    themeMode = mode;
+    await _storage.writeThemeMode(mode.name);
+    notifyListeners();
+  }
+
+  Future<void> toggleTheme(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
   }
 }
 

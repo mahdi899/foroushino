@@ -1,3 +1,4 @@
+import { ProfileVerifiedBadge } from '@/components/student-panel/layout/ProfileVerifiedBadge';
 import { cn } from '@/lib/cn';
 
 function initial(name: string): string {
@@ -11,6 +12,8 @@ export function FamilyAuthorAvatar({
   size = 'md',
   hasStoryRing = false,
   storyUnseen = true,
+  verified = false,
+  verifiedLabel = 'تأییدشده',
   className,
   onClick,
 }: {
@@ -20,6 +23,8 @@ export function FamilyAuthorAvatar({
   hasStoryRing?: boolean;
   /** When stories exist: unseen → animated TG ring; seen → muted ring. */
   storyUnseen?: boolean;
+  verified?: boolean;
+  verifiedLabel?: string;
   className?: string;
   onClick?: () => void;
 }) {
@@ -73,6 +78,30 @@ export function FamilyAuthorAvatar({
     avatarFace
   );
 
+  const verifiedSizeClass =
+    size === 'xl'
+      ? 'family-author-avatar__verified--xl'
+      : size === 'lg'
+        ? 'family-author-avatar__verified--lg'
+        : size === 'sm'
+          ? 'family-author-avatar__verified--sm'
+          : 'family-author-avatar__verified--md';
+
+  const shell = (
+    <span className="family-author-avatar__shell inline-flex shrink-0">
+      {content}
+      {verified ? (
+        <span
+          className={cn('family-author-avatar__verified', verifiedSizeClass)}
+          title={verifiedLabel}
+          aria-label={verifiedLabel}
+        >
+          <ProfileVerifiedBadge />
+        </span>
+      ) : null}
+    </span>
+  );
+
   if (onClick) {
     return (
       <button
@@ -81,10 +110,10 @@ export function FamilyAuthorAvatar({
         aria-label={hasStoryRing ? `مشاهده استوری ${name}` : undefined}
         className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--family-tg-pinned-accent)]/50"
       >
-        {content}
+        {shell}
       </button>
     );
   }
 
-  return content;
+  return shell;
 }

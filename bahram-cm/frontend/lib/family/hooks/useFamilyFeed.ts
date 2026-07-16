@@ -1,9 +1,11 @@
 'use client';
 
 import useSWRInfinite from 'swr/infinite';
+import { mutate as globalMutate } from 'swr';
 import { useEffect, useRef } from 'react';
 import { getFeed, getPost, getPostJumpContext } from '@/lib/family/api';
 import { readFeedCache, writeFeedCache, type FeedCachePage } from '@/lib/family/feedCache';
+import { shellBrandingFromFeedMeta, syncFamilyShellFromFeedMeta } from '@/lib/family/shellCache';
 import { familyFeedSwr } from '@/lib/family/swr';
 import type { FamilyFeedMeta, FamilyPost } from '@/lib/family/types';
 
@@ -72,6 +74,16 @@ export function useFamilyFeed(
       if (persistTimerRef.current != null) window.clearTimeout(persistTimerRef.current);
     };
   }, [data, scope, viewerKey]);
+
+  useEffect(() => {
+    const feedMeta = data?.[0]?.meta;
+    if (!feedMeta) return;
+    syncFamilyShellFromFeedMeta(feedMeta);
+    const branding = shellBrandingFromFeedMeta(feedMeta);
+    if (branding) {
+      void globalMutate('family-branding', branding, { revalidate: false });
+    }
+  }, [data]);
 
   const posts = data ? [...data.flatMap((page) => page.data)].reverse() : [];
   const lastPage = data?.[data.length - 1];

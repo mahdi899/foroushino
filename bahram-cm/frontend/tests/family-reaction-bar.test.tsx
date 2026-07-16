@@ -88,7 +88,7 @@ describe("ReactionBar", () => {
     expect(screen.getAllByRole("button")).toHaveLength(3);
   });
 
-  it("shows animated nudge reactions when reactionNudge is true", () => {
+  it("shows nudge reactions when reactionNudge is true", () => {
     render(<ReactionBar postId={1} stats={baseStats} userReaction={null} reactionNudge />);
 
     expect(screen.getByLabelText("قلب", { selector: ".family-reaction-nudge-btn" })).toBeInTheDocument();
@@ -104,7 +104,7 @@ describe("ReactionBar", () => {
     fireEvent.click(screen.getByLabelText("قلب", { selector: ".family-reaction-nudge-btn" }));
 
     await waitFor(() => {
-      expect(document.querySelector(".family-reaction-nudge--visible")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("قلب", { selector: ".family-reaction-nudge-btn" })).not.toBeInTheDocument();
     });
     expect(setReaction).toHaveBeenCalledWith(1, "heart");
   });

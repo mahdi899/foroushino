@@ -784,11 +784,8 @@ export const ReactionBar = forwardRef<
           </button>
         )}
 
-        {!readOnly && (
-          <div
-            className={cn('family-reaction-nudge', showReactionNudge && 'family-reaction-nudge--visible')}
-            aria-hidden={!showReactionNudge}
-          >
+        {!readOnly && showReactionNudge && (
+          <div className="family-reaction-nudge" aria-hidden={false}>
             {FAMILY_NUDGE_REACTIONS.map((r, index) => (
               <button
                 key={r.type}
@@ -805,7 +802,9 @@ export const ReactionBar = forwardRef<
                   commitReactionFromSource(r.type, e.currentTarget);
                 }}
               >
-                <FamilyReactionLottie type={r.type} size={18} mode="loop" />
+                <span className="family-reaction-nudge-glyph" aria-hidden>
+                  {r.glyph}
+                </span>
               </button>
             ))}
           </div>
