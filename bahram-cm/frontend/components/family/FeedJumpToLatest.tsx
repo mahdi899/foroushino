@@ -6,17 +6,18 @@ import { cn } from '@/lib/cn';
 
 export type FeedJumpToLatestHandle = {
   setVisible: (show: boolean) => void;
+  setUnreadCount: (count: number) => void;
 };
 
-/** Telegram-style jump FAB — visibility is local so the feed tree does not re-render. */
+/** Telegram-style jump FAB — local state so the feed tree does not re-render on scroll. */
 export const FeedJumpToLatest = forwardRef<
   FeedJumpToLatestHandle,
   {
-    unreadCount: number;
     onClick: () => void;
   }
->(function FeedJumpToLatest({ unreadCount, onClick }, ref) {
+>(function FeedJumpToLatest({ onClick }, ref) {
   const [visible, setVisible] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useImperativeHandle(
     ref,
@@ -24,12 +25,14 @@ export const FeedJumpToLatest = forwardRef<
       setVisible: (show: boolean) => {
         setVisible((prev) => (prev === show ? prev : show));
       },
+      setUnreadCount: (count: number) => {
+        const next = Math.max(0, count);
+        setUnreadCount((prev) => (prev === next ? prev : next));
+      },
     }),
     [],
   );
 
-  // Keep FAB up while there are unread posts below (messenger-style), even if scroll
-  // heuristics briefly think we're near the bottom during boot.
   const show = visible || unreadCount > 0;
 
   return (

@@ -16,14 +16,17 @@ import { PostCard } from '@/components/family/PostCard';
 import { cn } from '@/lib/cn';
 import { FamilyFeedMediaProvider } from '@/lib/family/FamilyFeedMediaContext';
 import {
+  captureFeedScrollRestore,
   getFeedDistanceFromBottom,
   getLenisDistanceFromBottom,
   restoreFeedScrollPosition,
-  scrollFeedTo,
+  scrollFeedToElement,
   scrollFeedToLatest,
+  type FeedScrollRestoreSnapshot,
 } from '@/lib/family/feedScroll';
 import {
   countUnreadPosts,
+  countUnreadStillBelow,
   firstUnreadPostId,
   chronologicalLatestPostId,
   consumeEnterUnreadAfter,
@@ -51,12 +54,20 @@ type CommentsTarget = {
 
 const SCROLL_IDLE_MS = 650;
 
-function buildFeedItems(posts: FamilyPost[], unreadAfterId: number | null): FeedItem[] {
+function buildFeedItems(
+  posts: FamilyPost[],
+  unreadAfterId: number | null,
+  dividerCount: number,
+): FeedItem[] {
   const items: FeedItem[] = [];
   let lastDayKey: string | null = null;
   let unreadInserted = false;
   const unreadCount =
-    unreadAfterId != null ? countUnreadPosts(posts, unreadAfterId) : 0;
+    unreadAfterId != null
+      ? dividerCount > 0
+        ? dividerCount
+        : countUnreadPosts(posts, unreadAfterId)
+      : 0;
 
   for (const post of posts) {
     if (
@@ -163,7 +174,10 @@ export function FeedView({
   const historyReadyRef = useRef(false);
   const loadingHistoryRef = useRef(false);
   const pinNavigateRef = useRef(false);
-  const scrollRestoreRef = useRef<{ height: number; top: number } | null>(null);
+  const scrollRestoreRef = useRef<FeedScrollRestoreSnapshot | null>(null);
+  /** Keep re-pinning the same post briefly after history prepend (images/layout settle). */
+  const historyPinRef = useRef<FeedScrollRestoreSnapshot | null>(null);
+  const historyPinClearTimerRef = useRef<number | null>(null);
   const restoringFromCommentsRef = useRef(false);
   const pendingInitialUnreadScrollRef = useRef<number | null>(null);
   const unreadSplitRef = useRef<number | null>(null);
@@ -176,15 +190,24 @@ export function FeedView({
   const [bootTick, setBootTick] = useState(0);
   const [scrollIdle, setScrollIdle] = useState(true);
   const [unreadSplitId, setUnreadSplitId] = useState<number | null>(null);
-  const [unreadBadge, setUnreadBadge] = useState(0);
+  /** Frozen label for the in-feed unread divider (does not shrink on scroll). */
+  const [unreadDividerCount, setUnreadDividerCount] = useState(0);
+  const unreadBadgeRef = useRef(0);
   const scrollIdleRef = useRef(true);
   const scrollIdleTimerRef = useRef<number | null>(null);
   const feedItems = useMemo(
-    () => buildFeedItems(posts, isPreview ? null : unreadSplitId),
-    [posts, isPreview, unreadSplitId],
+    () => buildFeedItems(posts, isPreview ? null : unreadSplitId, unreadDividerCount),
+    [posts, isPreview, unreadSplitId, unreadDividerCount],
   );
   const hasMoreRef = useRef(hasMore);
   const postsRef = useRef(posts);
+
+  const pushUnreadBadge = useCallback((count: number) => {
+    const next = Math.max(0, Math.floor(count));
+    if (unreadBadgeRef.current === next) return;
+    unreadBadgeRef.current = next;
+    jumpFabRef.current?.setUnreadCount(next);
+  }, []);
 
   useFamilyRealtime({
     onFeedUpdated: (payload) => {
@@ -199,10 +222,11 @@ export function FeedView({
         postsRef.current.some((p) => p.id === payload.post_id) ? fromLoaded : fromLoaded + 1,
         1,
       );
-      setUnreadBadge((prev) => Math.max(prev, nextBadge));
+      pushUnreadBadge(Math.max(unreadBadgeRef.current, nextBadge));
       if (unreadSplitRef.current == null && lastRead > 0) {
         unreadSplitRef.current = lastRead;
         setUnreadSplitId(lastRead);
+        setUnreadDividerCount((prev) => Math.max(prev, nextBadge));
       }
     },
   });
@@ -262,6 +286,14 @@ export function FeedView({
   const stickToBottomIfAnchored = useCallback(() => {
     const { root, lenis } = getScrollCtx();
     if (!root || pinNavigateRef.current || restoringFromCommentsRef.current) return;
+    // Never jump to tip while older pages are being prepended.
+    if (loadingHistoryRef.current || scrollRestoreRef.current) return;
+
+    // After prepend, keep the captured post glued while media/layout settle.
+    if (historyPinRef.current) {
+      restoreFeedScrollPosition(historyPinRef.current, { root, lenis });
+      return;
+    }
 
     if (!historyReadyRef.current) {
       scrollFeedToLatest('auto', { root, lenis });
@@ -277,12 +309,13 @@ export function FeedView({
     const latestId = chronologicalLatestPostId(postsRef.current);
     if (latestId <= 0) return;
     setLastReadPostId(viewerKey, latestId);
-    setUnreadBadge(0);
+    pushUnreadBadge(0);
     if (unreadSplitRef.current != null) {
       unreadSplitRef.current = latestId;
       setUnreadSplitId(null);
+      setUnreadDividerCount(0);
     }
-  }, [isPreview, viewerKey]);
+  }, [isPreview, pushUnreadBadge, viewerKey]);
 
   const revealFeed = useCallback(() => {
     if (revealTimerRef.current != null) {
@@ -339,21 +372,28 @@ export function FeedView({
     const atBottom = distanceFromBottom < 80;
     anchoredToBottomRef.current = atBottom;
 
+    const lastRead = unreadSplitRef.current ?? getLastReadPostId(viewerKey);
+    const remainingUnread =
+      !isPreview && lastRead > 0
+        ? countUnreadStillBelow(postsRef.current, lastRead, root)
+        : 0;
+
     const canShowJump =
       feedReadyRef.current &&
       !commentsOpenRef.current &&
       !notificationsOpenRef.current &&
-      distanceFromBottom > 120;
+      (remainingUnread > 0 || distanceFromBottom > 120);
     setJumpFabVisible(canShowJump);
 
     if (atBottom && !isPreview && postsRef.current.length > 0) {
       markCaughtUpToLatest();
-    } else if (!isPreview) {
-      const lastRead = getLastReadPostId(viewerKey);
-      const nextBadge = countUnreadPosts(postsRef.current, lastRead);
-      setUnreadBadge((prev) => (prev === nextBadge ? prev : nextBadge));
+      return;
     }
-  }, [getScrollCtx, isPreview, markCaughtUpToLatest, setJumpFabVisible, viewerKey]);
+
+    if (!isPreview) {
+      pushUnreadBadge(remainingUnread);
+    }
+  }, [getScrollCtx, isPreview, markCaughtUpToLatest, pushUnreadBadge, setJumpFabVisible, viewerKey]);
 
   const markScrolling = useCallback(() => {
     if (!scrollIdleRef.current) {
@@ -385,6 +425,8 @@ export function FeedView({
       setJumpFabVisible(false);
       return;
     }
+    // Don't re-measure anchor while history prepend is in flight (would false-trigger tip stick).
+    if (loadingHistoryRef.current || scrollRestoreRef.current) return;
     updateAnchoredToBottom();
   }, [posts.length, commentsTarget, notificationsOpen, setJumpFabVisible, updateAnchoredToBottom]);
 
@@ -397,9 +439,13 @@ export function FeedView({
   }, [feedReady, commentsTarget, notificationsOpen, setJumpFabVisible, syncJumpFabFromScroll]);
 
   const scrollToPost = useCallback(
-    async (postId: number, options?: { behavior?: 'auto' | 'smooth'; highlight?: boolean }) => {
+    async (
+      postId: number,
+      options?: { behavior?: 'auto' | 'smooth'; highlight?: boolean; align?: 'start' | 'end' },
+    ) => {
       const behavior = options?.behavior ?? 'smooth';
       const shouldHighlight = options?.highlight ?? behavior === 'smooth';
+      const align = options?.align ?? 'start';
 
       const highlight = (el: HTMLElement) => {
         el.classList.add('family-post--highlight');
@@ -411,10 +457,7 @@ export function FeedView({
         const el = document.getElementById(`family-post-${postId}`);
         if (!root || !el) return false;
 
-        const rootRect = root.getBoundingClientRect();
-        const elRect = el.getBoundingClientRect();
-        const targetTop = elRect.top - rootRect.top + root.scrollTop - 20;
-        scrollFeedTo(Math.max(0, targetTop), behavior, { root, lenis });
+        scrollFeedToElement(el, behavior, { root, lenis, align, padding: align === 'end' ? 16 : 20 });
         anchoredToBottomRef.current = false;
         if (shouldHighlight) highlight(el);
         return true;
@@ -474,20 +517,61 @@ export function FeedView({
   }, [onRegisterScrollToPost, scrollToPost]);
 
   useEffect(() => {
-    if (!isValidating) loadingHistoryRef.current = false;
+    // Don't clear while scroll restore still owns the history-load cycle.
+    if (!isValidating && !scrollRestoreRef.current) {
+      loadingHistoryRef.current = false;
+    }
   }, [isValidating]);
 
   useLayoutEffect(() => {
     const snapshot = scrollRestoreRef.current;
     if (!snapshot) return;
 
-    const { root, lenis } = getScrollCtx();
-    if (!root) return;
+    const apply = () => {
+      const ctx = getScrollCtx();
+      if (!ctx.root) return;
+      restoreFeedScrollPosition(snapshot, { root: ctx.root, lenis: ctx.lenis });
+    };
 
-    restoreFeedScrollPosition(snapshot, { root, lenis });
-    scrollRestoreRef.current = null;
+    apply();
+    // Lenis/layout often settles a frame later; re-pin the same post.
+    requestAnimationFrame(() => {
+      apply();
+      requestAnimationFrame(() => {
+        apply();
+        scrollRestoreRef.current = null;
+        loadingHistoryRef.current = false;
+        historyPinRef.current = snapshot;
+        if (historyPinClearTimerRef.current != null) {
+          window.clearTimeout(historyPinClearTimerRef.current);
+        }
+        historyPinClearTimerRef.current = window.setTimeout(() => {
+          historyPinRef.current = null;
+          historyPinClearTimerRef.current = null;
+        }, 450);
+      });
+    });
   }, [getScrollCtx, posts.length]);
 
+  // Keep catching up to bottom after media/layout settles (caught-up sessions only).
+  // Skip while prepending history — that resize must not yank the user to the tip.
+  useEffect(() => {
+    if (!feedReady || isPreview || !initialScrollDoneRef.current || unreadSplitId != null) return;
+    if (!anchoredToBottomRef.current) return;
+    if (loadingHistoryRef.current || scrollRestoreRef.current || historyPinRef.current) return;
+    const t1 = window.setTimeout(() => {
+      if (loadingHistoryRef.current || scrollRestoreRef.current || historyPinRef.current) return;
+      if (anchoredToBottomRef.current) scrollToLatestReliable('auto');
+    }, 200);
+    const t2 = window.setTimeout(() => {
+      if (loadingHistoryRef.current || scrollRestoreRef.current || historyPinRef.current) return;
+      if (anchoredToBottomRef.current) markCaughtUpToLatest();
+    }, 500);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [feedReady, isPreview, markCaughtUpToLatest, posts.length, scrollToLatestReliable, unreadSplitId]);
   useLayoutEffect(() => {
     if (isLoading) return;
 
@@ -529,11 +613,15 @@ export function FeedView({
         pendingInitialUnreadScrollRef.current = lastRead;
         setUnreadSplitId(lastRead);
         const localCount = countUnreadPosts(posts, lastRead);
-        setUnreadBadge(Math.max(localCount, forceUnreadFromNav ? 1 : 0));
+        setUnreadDividerCount(Math.max(localCount, forceUnreadFromNav ? 1 : 0));
+        pushUnreadBadge(Math.max(localCount, forceUnreadFromNav ? 1 : 0));
         void getFeedUnreadSummary(lastRead)
           .then((res) => {
             const apiCount = res.data.unread_count;
-            if (apiCount > 0) setUnreadBadge(apiCount);
+            if (apiCount > 0) {
+              setUnreadDividerCount(apiCount);
+              pushUnreadBadge(apiCount);
+            }
           })
           .catch(() => {});
         anchoredToBottomRef.current = false;
@@ -568,24 +656,11 @@ export function FeedView({
     isPreview,
     isValidating,
     posts,
+    pushUnreadBadge,
     scheduleRevealFeed,
     scrollToLatestReliable,
     viewerKey,
   ]);
-
-  // Keep catching up to bottom after media/layout settles (caught-up sessions only).
-  useEffect(() => {
-    if (!feedReady || isPreview || !initialScrollDoneRef.current || unreadSplitId != null) return;
-    if (!anchoredToBottomRef.current) return;
-    const t1 = window.setTimeout(() => scrollToLatestReliable('auto'), 200);
-    const t2 = window.setTimeout(() => {
-      if (anchoredToBottomRef.current) markCaughtUpToLatest();
-    }, 500);
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-    };
-  }, [feedReady, isPreview, markCaughtUpToLatest, posts.length, scrollToLatestReliable, unreadSplitId]);
 
   // Persist catch-up when leaving the page while at the bottom.
   useEffect(() => {
@@ -609,12 +684,20 @@ export function FeedView({
     const targetId = pendingInitialUnreadScrollRef.current;
     if (targetId == null || unreadSplitId == null) return;
     pendingInitialUnreadScrollRef.current = null;
-    void scrollToPost(targetId, { behavior: 'auto', highlight: false }).then(() => {
+    void scrollToPost(targetId, { behavior: 'auto', highlight: false, align: 'end' }).then(() => {
       anchoredToBottomRef.current = false;
-      setJumpFabVisible(true);
-      scheduleRevealFeed(40);
+      // Recompute remaining-below after layout settles (last-read is now at the bottom).
+      requestAnimationFrame(() => {
+        const { root } = getScrollCtx();
+        if (root && unreadSplitRef.current != null) {
+          const remaining = countUnreadStillBelow(postsRef.current, unreadSplitRef.current, root);
+          pushUnreadBadge(remaining);
+        }
+        setJumpFabVisible(true);
+        scheduleRevealFeed(40);
+      });
     });
-  }, [unreadSplitId, scheduleRevealFeed, scrollToPost, setJumpFabVisible]);
+  }, [unreadSplitId, scheduleRevealFeed, scrollToPost, setJumpFabVisible, getScrollCtx, pushUnreadBadge]);
 
   // Safety: reveal feed if boot stalls — never force scroll-to-latest (that kills unread landing).
   useEffect(() => {
@@ -660,19 +743,24 @@ export function FeedView({
     );
   }, [posts]);
 
-  // Keep jump FAB badge aligned with chronological unread after feed mutates (realtime).
+  // Keep jump FAB badge aligned after feed mutates (realtime) — count what's still below.
   useEffect(() => {
     if (isPreview || !initialScrollDoneRef.current) return;
     if (anchoredToBottomRef.current) return;
-    const lastRead = resolveUnreadCursor(viewerKey, posts);
+    const { root } = getScrollCtx();
+    const lastRead = unreadSplitRef.current ?? resolveUnreadCursor(viewerKey, posts);
     if (lastRead <= 0) return;
-    const nextBadge = countUnreadPosts(posts, lastRead);
-    setUnreadBadge((prev) => (prev === nextBadge ? prev : nextBadge));
-    if (nextBadge > 0 && unreadSplitRef.current == null) {
+    if (root) {
+      pushUnreadBadge(countUnreadStillBelow(posts, lastRead, root));
+    } else {
+      pushUnreadBadge(countUnreadPosts(posts, lastRead));
+    }
+    if (countUnreadPosts(posts, lastRead) > 0 && unreadSplitRef.current == null) {
       unreadSplitRef.current = lastRead;
       setUnreadSplitId(lastRead);
+      setUnreadDividerCount((prev) => Math.max(prev, countUnreadPosts(posts, lastRead)));
     }
-  }, [isPreview, posts, viewerKey]);
+  }, [getScrollCtx, isPreview, posts, pushUnreadBadge, viewerKey]);
 
   // Keep sticky bottom only while the user is already near the end.
   // Never force-jump when they are reading older posts / interacting mid-feed.
@@ -694,6 +782,7 @@ export function FeedView({
     };
   }, [posts.length, scheduleStickToBottom]);
 
+  // Load older posts when the top sentinel enters view (works mid-feed / unread landing).
   useEffect(() => {
     const { root } = getScrollCtx();
     const sentinel = topSentinelRef.current;
@@ -701,31 +790,35 @@ export function FeedView({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (!historyReadyRef.current || !anchoredToBottomRef.current || pinNavigateRef.current) return;
-        if (!scrollIdleRef.current) return;
-        if (!entries[0]?.isIntersecting || isValidating || loadingHistoryRef.current) return;
+        if (!historyReadyRef.current || pinNavigateRef.current) return;
+        if (!entries[0]?.isIntersecting || isValidatingRef.current || loadingHistoryRef.current) {
+          return;
+        }
+        if (!hasMoreRef.current) return;
 
-        const distanceFromBottom = getFeedDistanceFromBottom(root);
-        if (distanceFromBottom < 80) return;
+        const ctx = getScrollCtx();
+        const scrollRoot = ctx.root;
+        if (!scrollRoot) return;
 
         loadingHistoryRef.current = true;
-        scrollRestoreRef.current = {
-          height: root.scrollHeight,
-          top: root.scrollTop,
-        };
+        // Pin the first visible post — height/scrollTop math is unreliable with Lenis.
+        scrollRestoreRef.current = captureFeedScrollRestore(scrollRoot, ctx.lenis);
         loadMore();
       },
-      { root, rootMargin: '120px' },
+      { root, rootMargin: '240px 0px 0px 0px', threshold: 0 },
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [commentsTarget, getScrollCtx, hasMore, isValidating, loadMore, notificationsOpen, posts.length, scrollIdle]);
+  }, [commentsTarget, getScrollCtx, hasMore, loadMore, notificationsOpen, posts.length]);
 
   useEffect(() => {
     return () => {
       if (scrollIdleTimerRef.current != null) {
         window.clearTimeout(scrollIdleTimerRef.current);
+      }
+      if (historyPinClearTimerRef.current != null) {
+        window.clearTimeout(historyPinClearTimerRef.current);
       }
     };
   }, []);
@@ -912,7 +1005,6 @@ export function FeedView({
           {!isPreview && (
             <FeedJumpToLatest
               ref={jumpFabRef}
-              unreadCount={unreadBadge}
               onClick={() => {
                 scrollToLatestReliable('smooth');
                 markCaughtUpToLatest();

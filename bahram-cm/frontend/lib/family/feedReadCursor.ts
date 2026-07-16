@@ -176,3 +176,40 @@ export function hasUnreadSince(postsAsc: { id: number }[] | number[], lastReadPo
   if (latestId === lastReadPostId) return false;
   return countUnreadPosts(posts, lastReadPostId) > 0;
 }
+
+/**
+ * How many posts after `lastReadPostId` are still entirely below the viewport.
+ * Binary-searches post tops — O(log n) layout reads instead of measuring every post.
+ */
+export function countUnreadStillBelow(
+  postsAsc: { id: number }[],
+  lastReadPostId: number,
+  root: HTMLElement,
+): number {
+  if (lastReadPostId <= 0 || postsAsc.length === 0) return 0;
+
+  const start = postsAsc.findIndex((p) => p.id === lastReadPostId);
+  const from = start >= 0 ? start + 1 : postsAsc.findIndex((p) => p.id > lastReadPostId);
+  if (from < 0 || from >= postsAsc.length) return 0;
+
+  const rootBottom = root.getBoundingClientRect().bottom - 4;
+  let lo = from;
+  let hi = postsAsc.length;
+
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    const el = document.getElementById(`family-post-${postsAsc[mid]!.id}`);
+    if (!el) {
+      // Not mounted yet — treat as still below.
+      hi = mid;
+      continue;
+    }
+    if (el.getBoundingClientRect().top > rootBottom) {
+      hi = mid;
+    } else {
+      lo = mid + 1;
+    }
+  }
+
+  return postsAsc.length - lo;
+}
