@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UsersRound } from "lucide-react";
 import { navLinkMatches } from "@/lib/nav-active";
 import { cn } from "@/lib/cn";
 import { useFamilyFeedUnreadCount } from "@/lib/family/hooks/useFamilyFeedUnreadCount";
 import { useFamilyRealtime } from "@/lib/family/hooks/useFamilyRealtime";
+import { getGlobalLastReadPostId, stashEnterUnreadAfter } from "@/lib/family/feedReadCursor";
 
 type FamilyNavButtonProps = {
   className?: string;
@@ -22,11 +22,16 @@ export function FamilyNavButton({ className, compact = false }: FamilyNavButtonP
   useFamilyRealtime({ enabled: !onFamilyRoute });
   const showBadge = !active && unreadCount > 0;
   const badgeLabel = unreadCount > 99 ? "99+" : String(unreadCount);
+  const showPing = !showBadge && !active;
 
   return (
     <Link
       href="/family"
       prefetch
+      onClick={() => {
+        if (!showBadge) return;
+        stashEnterUnreadAfter(getGlobalLastReadPostId());
+      }}
       aria-current={active ? "page" : undefined}
       aria-label={
         showBadge
@@ -51,17 +56,12 @@ export function FamilyNavButton({ className, compact = false }: FamilyNavButtonP
             "linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.28) 50%, transparent 65%)",
         }}
       />
-      {!showBadge && !active ? (
+      {showPing ? (
         <span aria-hidden className="family-nav-btn__ping">
           <span className="family-nav-btn__ping-ring" />
           <span className="family-nav-btn__ping-dot" />
         </span>
       ) : null}
-      <UsersRound
-        className={cn("relative shrink-0", compact ? "h-3.5 w-3.5" : "h-4 w-4")}
-        strokeWidth={2.25}
-        aria-hidden
-      />
       <span className="relative inline-flex min-w-0 items-center gap-1" dir="ltr">
         {showBadge ? (
           <span className="family-nav-btn__count" aria-hidden>

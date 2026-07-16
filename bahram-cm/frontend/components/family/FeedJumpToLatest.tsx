@@ -28,13 +28,17 @@ export const FeedJumpToLatest = forwardRef<
     [],
   );
 
+  // Keep FAB up while there are unread posts below (messenger-style), even if scroll
+  // heuristics briefly think we're near the bottom during boot.
+  const show = visible || unreadCount > 0;
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
         'family-feed-jump',
-        visible && 'family-feed-jump--visible',
+        show && 'family-feed-jump--visible',
         unreadCount > 0 && 'family-feed-jump--badged',
       )}
       aria-label={
@@ -42,8 +46,8 @@ export const FeedJumpToLatest = forwardRef<
           ? `رفتن به آخرین پست · ${unreadCount.toLocaleString('fa-IR')} پیام جدید`
           : 'رفتن به آخرین پست'
       }
-      aria-hidden={!visible}
-      tabIndex={visible ? 0 : -1}
+      aria-hidden={!show}
+      tabIndex={show ? 0 : -1}
     >
       {unreadCount > 0 && (
         <span className="family-feed-jump__badge">

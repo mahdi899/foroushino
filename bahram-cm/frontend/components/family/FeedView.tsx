@@ -26,10 +26,14 @@ import {
   countUnreadPosts,
   firstUnreadPostId,
   chronologicalLatestPostId,
+  consumeEnterUnreadAfter,
   getLastReadPostId,
   hasUnreadSince,
+  peekEnterUnreadAfter,
+  resolveUnreadCursor,
   setLastReadPostId,
 } from '@/lib/family/feedReadCursor';
+import { getFeedUnreadSummary } from '@/lib/family/api';
 import { useFamilyFeed } from '@/lib/family/hooks/useFamilyFeed';
 import { useFamilyRealtime } from '@/lib/family/hooks/useFamilyRealtime';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
@@ -500,41 +504,55 @@ export function FeedView({
     }
 
     if (!initialScrollDoneRef.current) {
-      initialScrollDoneRef.current = true;
+      const lastRead = isPreview ? 0 : resolveUnreadCursor(viewerKey, posts);
       const latestId = chronologicalLatestPostId(posts);
+      const forceUnreadFromNav = !isPreview && peekEnterUnreadAfter() > 0;
       maxPostIdRef.current = Math.max(
         maxPostIdRef.current,
         posts.reduce((max, post) => Math.max(max, post.id), 0),
       );
 
-      if (!isPreview) {
-        const lastRead = getLastReadPostId(viewerKey);
-        const unread = hasUnreadSince(posts, lastRead);
+      const hasLocalUnread = lastRead > 0 && hasUnreadSince(posts, lastRead);
+      if (!isPreview && lastRead > 0 && (hasLocalUnread || forceUnreadFromNav)) {
+        // Nav promised unread — wait for revalidated tip before locking caught-up.
+        if (forceUnreadFromNav && !hasLocalUnread && isValidating) return;
 
-        // Telegram channel rule:
-        // - caught up → always open on the latest post
-        // - only jump to mid-feed when there are newer posts than lastRead
-        if (unread) {
-          const firstUnread = firstUnreadPostId(posts, lastRead);
-          if (firstUnread != null) {
-            unreadSplitRef.current = lastRead;
-            pendingInitialUnreadScrollRef.current = firstUnread;
-            setUnreadSplitId(lastRead);
-            setUnreadBadge(countUnreadPosts(posts, lastRead));
-            anchoredToBottomRef.current = false;
-            historyReadyRef.current = true;
-            return;
-          }
+        initialScrollDoneRef.current = true;
+        consumeEnterUnreadAfter();
+        try {
+          localStorage.setItem(`family-feed-last-read-id:${String(viewerKey)}`, String(lastRead));
+          localStorage.setItem('family-feed-last-read-id', String(lastRead));
+        } catch {
+          /* ignore */
         }
+        unreadSplitRef.current = lastRead;
+        pendingInitialUnreadScrollRef.current = lastRead;
+        setUnreadSplitId(lastRead);
+        const localCount = countUnreadPosts(posts, lastRead);
+        setUnreadBadge(Math.max(localCount, forceUnreadFromNav ? 1 : 0));
+        void getFeedUnreadSummary(lastRead)
+          .then((res) => {
+            const apiCount = res.data.unread_count;
+            if (apiCount > 0) setUnreadBadge(apiCount);
+          })
+          .catch(() => {});
+        anchoredToBottomRef.current = false;
+        historyReadyRef.current = true;
+        return;
+      }
 
-        // First visit or fully caught up → latest + persist cursor.
+      // Wait for first-page revalidation so we don't lock "caught up" on a stale tip.
+      if (isValidating) return;
+
+      initialScrollDoneRef.current = true;
+
+      if (!isPreview) {
         setLastReadPostId(viewerKey, latestId);
       }
 
       historyReadyRef.current = true;
       anchoredToBottomRef.current = true;
       scrollToLatestReliable('auto');
-      // Wait for Lenis + delayed settle retries before revealing (avoids top→bottom flash).
       scheduleRevealFeed(160);
       return;
     }
@@ -548,6 +566,7 @@ export function FeedView({
     getScrollCtx,
     isLoading,
     isPreview,
+    isValidating,
     posts,
     scheduleRevealFeed,
     scrollToLatestReliable,
@@ -591,20 +610,39 @@ export function FeedView({
     if (targetId == null || unreadSplitId == null) return;
     pendingInitialUnreadScrollRef.current = null;
     void scrollToPost(targetId, { behavior: 'auto', highlight: false }).then(() => {
+      anchoredToBottomRef.current = false;
+      setJumpFabVisible(true);
       scheduleRevealFeed(40);
     });
-  }, [unreadSplitId, scheduleRevealFeed, scrollToPost]);
+  }, [unreadSplitId, scheduleRevealFeed, scrollToPost, setJumpFabVisible]);
 
-  // Safety: never leave the boot skeleton up forever if scroll root mounts late.
+  // Safety: reveal feed if boot stalls — never force scroll-to-latest (that kills unread landing).
   useEffect(() => {
     if (feedReady || isLoading) return;
     if (posts.length === 0) return;
     const t = window.setTimeout(() => {
-      scrollToLatestReliable('auto');
+      if (unreadSplitRef.current != null || pendingInitialUnreadScrollRef.current != null) {
+        setJumpFabVisible(true);
+        scheduleRevealFeed(0);
+        return;
+      }
+      if (!initialScrollDoneRef.current) {
+        initialScrollDoneRef.current = true;
+        historyReadyRef.current = true;
+        anchoredToBottomRef.current = true;
+        scrollToLatestReliable('auto');
+      }
       setFeedReady(true);
-    }, 1200);
+    }, 2000);
     return () => window.clearTimeout(t);
-  }, [feedReady, isLoading, posts.length, scrollToLatestReliable]);
+  }, [
+    feedReady,
+    isLoading,
+    posts.length,
+    scheduleRevealFeed,
+    scrollToLatestReliable,
+    setJumpFabVisible,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -626,9 +664,14 @@ export function FeedView({
   useEffect(() => {
     if (isPreview || !initialScrollDoneRef.current) return;
     if (anchoredToBottomRef.current) return;
-    const lastRead = getLastReadPostId(viewerKey);
+    const lastRead = resolveUnreadCursor(viewerKey, posts);
+    if (lastRead <= 0) return;
     const nextBadge = countUnreadPosts(posts, lastRead);
     setUnreadBadge((prev) => (prev === nextBadge ? prev : nextBadge));
+    if (nextBadge > 0 && unreadSplitRef.current == null) {
+      unreadSplitRef.current = lastRead;
+      setUnreadSplitId(lastRead);
+    }
   }, [isPreview, posts, viewerKey]);
 
   // Keep sticky bottom only while the user is already near the end.

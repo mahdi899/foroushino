@@ -3,6 +3,9 @@ const storageKey = (viewerKey: string | number) =>
 
 const GLOBAL_STORAGE_KEY = 'family-feed-last-read-id';
 
+/** Written by site nav when badge > 0; consumed once on Family feed boot. */
+export const FAMILY_ENTER_UNREAD_AFTER_KEY = 'family-enter-unread-after';
+
 /** Dispatched when the catch-up cursor changes — site nav badge listens. */
 export const FAMILY_FEED_READ_EVENT = 'family-feed-read';
 
@@ -16,7 +19,7 @@ export function getLastReadPostId(viewerKey: string | number): number {
   }
 }
 
-/** Best-effort cursor for the site header (last catch-up written on this browser). */
+/** Site header / any-surface cursor (single browser catch-up pointer). */
 export function getGlobalLastReadPostId(): number {
   if (typeof window === 'undefined') return 0;
   try {
@@ -24,7 +27,6 @@ export function getGlobalLastReadPostId(): number {
     if (globalRaw) {
       return Number.parseInt(globalRaw, 10) || 0;
     }
-    // Legacy: pick any viewer cursor (do NOT take max id — ids ≠ chronological order).
     for (let i = 0; i < localStorage.length; i += 1) {
       const key = localStorage.key(i);
       if (!key?.startsWith('family-feed-last-read-id:')) continue;
@@ -46,12 +48,61 @@ function emitFeedReadChanged(postId: number): void {
   }
 }
 
+/**
+ * Cursor used for unread UX. Prefer the pointer that still has unread vs the loaded feed
+ * so nav badge and in-app landing stay aligned when local/global keys drifted.
+ */
+export function resolveUnreadCursor(
+  viewerKey: string | number,
+  postsAsc: { id: number }[],
+): number {
+  const handoff = peekEnterUnreadAfter();
+  if (handoff > 0) return handoff;
+
+  const local = getLastReadPostId(viewerKey);
+  const global = getGlobalLastReadPostId();
+  if (postsAsc.length > 0) {
+    if (local > 0 && hasUnreadSince(postsAsc, local)) return local;
+    if (global > 0 && hasUnreadSince(postsAsc, global)) return global;
+  }
+  return local || global || 0;
+}
+
+export function peekEnterUnreadAfter(): number {
+  if (typeof window === 'undefined') return 0;
+  try {
+    return Number.parseInt(sessionStorage.getItem(FAMILY_ENTER_UNREAD_AFTER_KEY) ?? '', 10) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function consumeEnterUnreadAfter(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.removeItem(FAMILY_ENTER_UNREAD_AFTER_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Remember the nav badge cursor so Family can land on the last-seen post. */
+export function stashEnterUnreadAfter(afterId: number): void {
+  if (typeof window === 'undefined' || afterId <= 0) return;
+  try {
+    sessionStorage.setItem(FAMILY_ENTER_UNREAD_AFTER_KEY, String(afterId));
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Persist the post id the member has caught up to (chronologically latest seen). */
 export function setLastReadPostId(viewerKey: string | number, postId: number): void {
   if (typeof window === 'undefined' || postId <= 0) return;
-  const current = getLastReadPostId(viewerKey);
-  if (postId === current) return;
   try {
+    const local = getLastReadPostId(viewerKey);
+    const global = getGlobalLastReadPostId();
+    if (postId === local && postId === global) return;
     localStorage.setItem(storageKey(viewerKey), String(postId));
     localStorage.setItem(GLOBAL_STORAGE_KEY, String(postId));
     emitFeedReadChanged(postId);
