@@ -85,22 +85,18 @@ export function useFamilyFeed(
     };
   }, [data, scope, viewerKey]);
 
-<<<<<<< HEAD
   useEffect(() => {
-    const feedMeta = data?.[0]?.meta;
-    if (!feedMeta) return;
-    syncFamilyShellFromFeedMeta(feedMeta);
-    const branding = shellBrandingFromFeedMeta(feedMeta);
+    const tipMeta = data?.[0]?.meta;
+    if (!tipMeta) return;
+
+    syncFamilyShellFromFeedMeta(tipMeta);
+    const branding = shellBrandingFromFeedMeta(tipMeta);
     if (branding) {
       void globalMutate('family-branding', branding, { revalidate: false });
     }
-=======
-  // Keep prev_cursor / has_newer in sync with tip page meta after jump or loadNewer.
-  useEffect(() => {
-    const tipMeta = data?.[0]?.meta;
-    if (tipMeta?.prev_cursor != null) prevCursorRef.current = tipMeta.prev_cursor;
-    if (typeof tipMeta?.has_newer === 'boolean') hasNewerRef.current = tipMeta.has_newer;
->>>>>>> 97bf73a5e98d2c2ce90020b8f8f0ac691cac2a2a
+
+    if (tipMeta.prev_cursor != null) prevCursorRef.current = tipMeta.prev_cursor;
+    if (typeof tipMeta.has_newer === 'boolean') hasNewerRef.current = tipMeta.has_newer;
   }, [data]);
 
   const posts = data ? [...data.flatMap((page) => page.data)].reverse() : [];
