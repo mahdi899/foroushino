@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 
 /// Scaffold that blends into the desktop content panel (transparent bg on wide viewports).
@@ -29,7 +28,7 @@ class AdaptiveScaffold extends StatelessWidget {
     final isDesktop = AppBreakpoints.isDesktop(context);
 
     return Scaffold(
-      backgroundColor: isDesktop ? Colors.transparent : (backgroundColor ?? AppColors.background),
+      backgroundColor: isDesktop ? Colors.transparent : (backgroundColor ?? Theme.of(context).scaffoldBackgroundColor),
       extendBody: extendBody,
       appBar: appBar,
       body: LayoutBuilder(

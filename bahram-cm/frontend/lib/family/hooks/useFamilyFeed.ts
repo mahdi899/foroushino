@@ -1,9 +1,11 @@
 'use client';
 
 import useSWRInfinite from 'swr/infinite';
+import { mutate as globalMutate } from 'swr';
 import { useEffect, useRef } from 'react';
 import { getFeed, getPostJumpContext } from '@/lib/family/api';
 import { readFeedCache, writeFeedCache, type FeedCachePage } from '@/lib/family/feedCache';
+import { shellBrandingFromFeedMeta, syncFamilyShellFromFeedMeta } from '@/lib/family/shellCache';
 import { familyFeedSwr } from '@/lib/family/swr';
 import type { FamilyFeedMeta, FamilyPost } from '@/lib/family/types';
 
@@ -83,11 +85,18 @@ export function useFamilyFeed(
     };
   }, [data, scope, viewerKey]);
 
-  // Keep prev_cursor / has_newer in sync with tip page meta after jump or loadNewer.
   useEffect(() => {
     const tipMeta = data?.[0]?.meta;
-    if (tipMeta?.prev_cursor != null) prevCursorRef.current = tipMeta.prev_cursor;
-    if (typeof tipMeta?.has_newer === 'boolean') hasNewerRef.current = tipMeta.has_newer;
+    if (!tipMeta) return;
+
+    syncFamilyShellFromFeedMeta(tipMeta);
+    const branding = shellBrandingFromFeedMeta(tipMeta);
+    if (branding) {
+      void globalMutate('family-branding', branding, { revalidate: false });
+    }
+
+    if (tipMeta.prev_cursor != null) prevCursorRef.current = tipMeta.prev_cursor;
+    if (typeof tipMeta.has_newer === 'boolean') hasNewerRef.current = tipMeta.has_newer;
   }, [data]);
 
   const posts = data ? [...data.flatMap((page) => page.data)].reverse() : [];

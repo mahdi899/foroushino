@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect } from 'react';
 import useSWR from 'swr';
 import { getBranding } from '@/lib/family/api';
+import { readFamilyShellSnapshot, writeFamilyShellSnapshot } from '@/lib/family/shellCache';
 import { familyBrandingSwr } from '@/lib/family/swr';
 import type { FamilyBranding } from '@/lib/family/types';
 
@@ -14,22 +16,33 @@ const DEFAULT_BRANDING: FamilyBranding = {
   latest_story_id: null,
 };
 
-export function useFamilyBranding(fallback?: FamilyBranding) {
+export function useFamilyBranding(initial?: FamilyBranding) {
   const { data, mutate, isLoading } = useSWR(
     'family-branding',
     async () => (await getBranding()).data,
     {
-      fallbackData: fallback,
+      fallbackData: initial,
       ...familyBrandingSwr,
     },
   );
 
-  const resolved = data ?? fallback ?? DEFAULT_BRANDING;
+  useEffect(() => {
+    if (data || initial) return;
+    const cached = readFamilyShellSnapshot()?.branding;
+    if (cached) void mutate(cached, { revalidate: true });
+  }, [data, initial, mutate]);
+
+  useEffect(() => {
+    if (!data) return;
+    writeFamilyShellSnapshot({ branding: data });
+  }, [data]);
+
+  const resolved = data ?? initial ?? DEFAULT_BRANDING;
 
   return {
     branding: resolved,
-    /** True until the first branding response (no cached/fallback data yet). */
-    isLoading: Boolean(isLoading && !data && !fallback),
+    /** True only when there is no cached/SSR branding to show yet. */
+    isLoading: Boolean(isLoading && !data && !initial),
     refreshBranding: mutate,
   };
 }

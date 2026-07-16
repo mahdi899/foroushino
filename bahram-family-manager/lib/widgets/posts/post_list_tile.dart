@@ -6,6 +6,7 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
+import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/media/family_media_view.dart';
 
 class PostListTile extends StatelessWidget {
@@ -170,31 +171,81 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
+    final shadow = isDark
+        ? [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.28),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+          ]
+        : AppShadows.soft;
+
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.soft,
+        border: Border.all(color: scheme.outline),
+        boxShadow: shadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
               gradient: LinearGradient(colors: [color.withValues(alpha: 0.85), color]),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: Colors.white, size: 20),
+            child: Icon(icon, color: Colors.white, size: 18),
           ),
-          Text(toFaDigits(value.toString()), style: Theme.of(context).textTheme.headlineSmall),
-          Text(title, style: Theme.of(context).textTheme.labelMedium),
+          Text(
+            toFaDigits(value.toString()),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
         ],
       ),
+    );
+  }
+}
+
+/// Fixed-height responsive grid for dashboard stat cards (avoids GridView overflow).
+class StatCardGrid extends StatelessWidget {
+  const StatCardGrid({super.key, required this.children});
+
+  final List<Widget> children;
+
+  static const double cardHeight = 122;
+
+  @override
+  Widget build(BuildContext context) {
+    final columns = AppBreakpoints.gridColumns(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final spacing = AppSpacing.md.toDouble();
+        final itemWidth = (constraints.maxWidth - spacing * (columns - 1)) / columns;
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: [
+            for (final child in children)
+              SizedBox(width: itemWidth, height: cardHeight, child: child),
+          ],
+        );
+      },
     );
   }
 }

@@ -48,7 +48,7 @@ import {
   useFamilyRealtime,
 } from '@/lib/family/hooks/useFamilyRealtime';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
-import type { FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
+import type { FamilyBranding, FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
 
 type FeedItem =
   | { kind: 'separator'; key: string; label: string }
@@ -108,9 +108,11 @@ function buildFeedItems(
 
 export function FeedView({
   memberCount,
+  onMemberCountChange,
   previewMode = null,
   showPinned = false,
   initialFeed = null,
+  initialBranding,
   viewerKey = 'anon',
   commentsTarget,
   onOpenComments,
@@ -121,9 +123,11 @@ export function FeedView({
   onCloseNotifications,
 }: {
   memberCount?: number;
+  onMemberCountChange?: (memberCount?: number) => void;
   previewMode?: 'guest' | 'join' | null;
   showPinned?: boolean;
   initialFeed?: FamilyFeedResponse | null;
+  initialBranding?: FamilyBranding;
   /** Isolates SWR feed cache per viewer so login switches cannot leak `responded`. */
   viewerKey?: string | number;
   commentsTarget?: CommentsTarget | null;
@@ -155,6 +159,11 @@ export function FeedView({
   } = useFamilyFeed(feedScope, initialPage, viewerKey);
   const resolvedMemberCount = meta?.member_count ?? memberCount;
   const isStaff = meta?.is_staff ?? false;
+
+  useEffect(() => {
+    if (typeof meta?.member_count !== 'number') return;
+    onMemberCountChange?.(meta.member_count);
+  }, [meta?.member_count, onMemberCountChange]);
 
   const scrollToPreviewCta = useCallback(() => {
     if (effectivePreviewMode === 'guest') {
@@ -1261,6 +1270,7 @@ export function FeedView({
       <FamilyBrandingSidebar
         memberCount={resolvedMemberCount}
         isMember={!isPreview}
+        initialBranding={initialBranding}
         notificationsActive={notificationsOpen}
         onOpenNotifications={onOpenNotifications}
         onCloseNotifications={onCloseNotifications}

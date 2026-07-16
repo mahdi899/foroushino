@@ -15,10 +15,13 @@ class FamilyManagerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => AppState()..bootstrap(),
-      child: MaterialApp(
+      child: Consumer<AppState>(
+        builder: (context, state, _) => MaterialApp(
         title: AppConfig.appName,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: state.themeMode,
         locale: const Locale('fa', 'IR'),
         supportedLocales: const [Locale('fa', 'IR')],
         localizationsDelegates: const [
@@ -27,15 +30,18 @@ class FamilyManagerApp extends StatelessWidget {
           GlobalCupertinoLocalizations.delegate,
         ],
         builder: (context, child) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
           return Directionality(
             textDirection: TextDirection.rtl,
             child: SizedBox.expand(
               child: DecoratedBox(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0xFFF4F8F8), Color(0xFFEEF6F6), Color(0xFFF8FBFB)],
+                    colors: isDark
+                        ? const [Color(0xFF0D1517), Color(0xFF111C1F), Color(0xFF0D1517)]
+                        : const [Color(0xFFF4F8F8), Color(0xFFEEF6F6), Color(0xFFF8FBFB)],
                   ),
                 ),
                 child: child ?? const SizedBox.shrink(),
@@ -44,6 +50,7 @@ class FamilyManagerApp extends StatelessWidget {
           );
         },
         home: const _RootGate(),
+        ),
       ),
     );
   }

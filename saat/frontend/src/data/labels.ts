@@ -203,6 +203,18 @@ export const suggestReasonLabels: Record<SuggestReason, string> = {
   from_pool: 'از صف عمومی',
 }
 
+/** کوتاه و عملی — برای راهنمایی کارشناس روی کارت تماس بعدی */
+export const suggestReasonActionHint: Record<SuggestReason, string> = {
+  overdue_follow_up: 'از موعد گذشته — همین الان تماس بگیر',
+  today_follow_up: 'زمان پیگیری رسیده — اولویت با این تماسه',
+  hot_in_window: 'مشتری داغ و در بهترین بازه — فرصت را از دست نده',
+  interested_needs_follow_up: 'علاقه‌مند شده — پیگیری می‌تواند فروش را ببندد',
+  fresh_high_prob: 'تازه وارد شده با احتمال بالا — زود تماس بگیر',
+  warm: 'پتانسیل خوب — با پرسش درست جلو ببر',
+  cold: 'شروع گرم‌کردن — کوتاه و هدفمند تماس بگیر',
+  from_pool: 'از صف عمومی — سریع اختصاص بگیر و تماس بزن',
+}
+
 export const saleStatusLabels: Record<SaleStatus, string> = {
   draft: 'پیش‌نویس',
   payment_pending: 'پرداخت در انتظار',

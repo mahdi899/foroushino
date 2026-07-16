@@ -3248,51 +3248,14 @@ html[data-theme='light'] .family-app .family-reaction-btn {
 }
 
 .family-reaction-add--nudge-hint {
-  animation: family-reaction-add-nudge-pulse 1.15s var(--family-tg-spring) infinite;
   border-color: color-mix(in oklab, var(--family-tg-pinned-accent) 42%, transparent);
   color: var(--family-tg-pinned-accent);
-  box-shadow:
-    0 0 0 0 color-mix(in oklab, var(--family-tg-pinned-accent) 28%, transparent),
-    0 0.5px 1px color-mix(in oklab, var(--family-text) 6%, transparent);
-}
-
-@keyframes family-reaction-add-nudge-pulse {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow:
-      0 0 0 0 color-mix(in oklab, var(--family-tg-pinned-accent) 0%, transparent),
-      0 0.5px 1px color-mix(in oklab, var(--family-text) 6%, transparent);
-  }
-  50% {
-    transform: scale(1.08);
-    box-shadow:
-      0 0 0 4px color-mix(in oklab, var(--family-tg-pinned-accent) 16%, transparent),
-      0 0.5px 1px color-mix(in oklab, var(--family-text) 6%, transparent);
-  }
 }
 
 .family-reaction-nudge {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  max-width: 0;
-  opacity: 0;
-  overflow: hidden;
-  pointer-events: none;
-  transform-origin: left center;
-  transition:
-    max-width 520ms var(--family-tg-spring),
-    opacity 220ms ease,
-    margin-inline-start 520ms var(--family-tg-spring);
-  margin-inline-start: 0;
-  will-change: max-width, opacity, transform;
-}
-
-.family-reaction-nudge--visible {
-  max-width: 5.5rem;
-  opacity: 1;
-  pointer-events: auto;
   margin-inline-start: 0.125rem;
 }
 
@@ -3308,56 +3271,41 @@ html[data-theme='light'] .family-app .family-reaction-btn {
   border-radius: 9999px;
   border: 0.5px solid color-mix(in oklab, var(--family-tg-pinned-accent) 30%, transparent);
   background: color-mix(in oklab, var(--family-tg-pinned-accent) 10%, var(--family-bubble-incoming));
-  box-shadow:
-    0 2px 8px color-mix(in oklab, var(--family-tg-pinned-accent) 14%, transparent),
-    0 0.5px 1px color-mix(in oklab, var(--family-text) 6%, transparent);
-  transform: translateX(-0.75rem) scale(0.35);
-  opacity: 0;
+  box-shadow: 0 0.5px 1px color-mix(in oklab, var(--family-text) 6%, transparent);
+  animation: family-reaction-nudge-pop 320ms ease both;
+  animation-delay: calc(var(--family-nudge-index, 0) * 55ms);
 }
 
-.family-reaction-nudge--visible .family-reaction-nudge-btn {
-  animation: family-reaction-nudge-slide 560ms var(--family-tg-spring) both;
-  animation-delay: calc(var(--family-nudge-index, 0) * 90ms);
+.family-reaction-nudge-glyph {
+  display: block;
+  font-size: 0.875rem;
+  line-height: 1;
 }
 
-@keyframes family-reaction-nudge-slide {
-  0% {
-    transform: translateX(-1rem) scale(0.2);
+@keyframes family-reaction-nudge-pop {
+  from {
+    transform: scale(0.55);
     opacity: 0;
   }
-  58% {
-    transform: translateX(0.12rem) scale(1.14);
-    opacity: 1;
-  }
-  100% {
-    transform: translateX(0) scale(1);
+  to {
+    transform: scale(1);
     opacity: 1;
   }
 }
 
 .family-reaction-nudge-btn:hover {
-  transform: translateX(0) scale(1.1);
+  transform: scale(1.08);
   border-color: color-mix(in oklab, var(--family-tg-pinned-accent) 48%, transparent);
   background: color-mix(in oklab, var(--family-tg-pinned-accent) 16%, var(--family-bubble-incoming));
 }
 
 .family-reaction-nudge-btn:active {
-  transform: translateX(0) scale(0.9);
+  transform: scale(0.94);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .family-reaction-add--nudge-hint {
+  .family-reaction-nudge-btn {
     animation: none;
-  }
-
-  .family-reaction-nudge {
-    transition-duration: 1ms;
-  }
-
-  .family-reaction-nudge--visible .family-reaction-nudge-btn {
-    animation: none;
-    transform: none;
-    opacity: 1;
   }
 }
 
@@ -4463,6 +4411,65 @@ html[data-theme='light'] .family-app .family-action-number-bar {
   border-radius: 9999px;
   background: var(--family-chat-bg);
   padding: 1px;
+}
+
+.family-author-avatar__shell {
+  position: relative;
+  line-height: 0;
+}
+
+.family-author-avatar__verified {
+  position: absolute;
+  z-index: 6;
+  inset-inline-end: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--family-tg-pinned-accent);
+  transform: translate(20%, 20%);
+  filter:
+    drop-shadow(0 1px 3px color-mix(in oklab, var(--family-tg-pinned-accent) 55%, transparent))
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18));
+  pointer-events: none;
+  line-height: 0;
+}
+
+.family-author-avatar__verified svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+  stroke: #fff;
+  stroke-width: 2.25px;
+}
+
+.family-author-avatar__verified--sm {
+  width: 0.875rem;
+  height: 0.875rem;
+  transform: translate(18%, 18%);
+}
+
+.family-author-avatar__verified--md {
+  width: 1rem;
+  height: 1rem;
+}
+
+.family-author-avatar__verified--lg {
+  width: 1.1875rem;
+  height: 1.1875rem;
+  transform: translate(22%, 22%);
+}
+
+.family-author-avatar__verified--xl {
+  width: 1.75rem;
+  height: 1.75rem;
+  transform: translate(24%, 24%);
+  filter:
+    drop-shadow(0 2px 5px color-mix(in oklab, var(--family-tg-pinned-accent) 50%, transparent))
+    drop-shadow(0 1px 3px rgba(0, 0, 0, 0.2));
 }
 
 .family-input--field {

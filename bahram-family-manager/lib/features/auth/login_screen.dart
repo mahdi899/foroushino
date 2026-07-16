@@ -11,6 +11,7 @@ import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/surfaces/app_card.dart';
+import 'package:bahram_family_manager/widgets/theme/theme_mode_toggle.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -128,6 +129,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (isDesktop) {
       return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          actions: const [ThemeModeToggleButton()],
+        ),
         body: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 960, maxHeight: 620),
@@ -178,6 +185,12 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        actions: const [ThemeModeToggleButton()],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

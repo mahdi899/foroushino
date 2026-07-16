@@ -1,4 +1,5 @@
 import { FamilyHome } from '@/components/family/FamilyHome';
+import { brandingFromMeAndFeed } from '@/lib/family/shellCache';
 import { familyFetch } from '@/lib/family/session';
 import { getCurrentStudent } from '@/lib/student/session';
 import type { FamilyFeedResponse, FamilyMeResponse } from '@/lib/family/types';
@@ -20,6 +21,15 @@ async function loadMe(): Promise<{ data: FamilyMeResponse }> {
   }));
 }
 
+function resolveInitialMemberCount(
+  me: FamilyMeResponse,
+  feed: FamilyFeedResponse | null,
+): number | undefined {
+  if (typeof me.member_count === 'number') return me.member_count;
+  if (typeof feed?.meta.member_count === 'number') return feed.meta.member_count;
+  return undefined;
+}
+
 export default async function FamilyPage() {
   const [user, initialFeed, me] = await Promise.all([
     getCurrentStudent(),
@@ -27,9 +37,19 @@ export default async function FamilyPage() {
     loadMe(),
   ]);
 
+  const initialBranding = brandingFromMeAndFeed(me.data, initialFeed);
+  const initialMemberCount = resolveInitialMemberCount(me.data, initialFeed);
+
   if (!user) {
     return (
-      <FamilyHome mode="guest" needsOnboarding={false} initialFeed={initialFeed} viewerKey="guest" />
+      <FamilyHome
+        mode="guest"
+        needsOnboarding={false}
+        initialFeed={initialFeed}
+        initialBranding={initialBranding}
+        initialMemberCount={initialMemberCount}
+        viewerKey="guest"
+      />
     );
   }
 
@@ -41,6 +61,8 @@ export default async function FamilyPage() {
         mode="join"
         needsOnboarding={false}
         initialFeed={initialFeed}
+        initialBranding={initialBranding}
+        initialMemberCount={initialMemberCount}
         viewerKey={viewerKey}
       />
     );
@@ -49,9 +71,11 @@ export default async function FamilyPage() {
   return (
     <FamilyHome
       mode="member"
-      memberCount={me.data.member_count}
+      memberCount={initialMemberCount}
       needsOnboarding={!me.data.onboarding_completed}
       initialFeed={initialFeed}
+      initialBranding={initialBranding}
+      initialMemberCount={initialMemberCount}
       viewerKey={viewerKey}
     />
   );

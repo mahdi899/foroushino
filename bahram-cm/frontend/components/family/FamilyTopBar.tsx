@@ -11,6 +11,8 @@ import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications'
 import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
 import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
 
+import type { FamilyBranding } from '@/lib/family/types';
+
 function TopBarInnerSkeleton({ showNotifications }: { showNotifications: boolean }) {
   return (
     <>
@@ -35,6 +37,7 @@ function TopBarInnerSkeleton({ showNotifications }: { showNotifications: boolean
 
 export function FamilyTopBar({
   memberCount,
+  initialBranding,
   canViewStories = true,
   showNotifications = false,
   notificationsActive = false,
@@ -42,13 +45,14 @@ export function FamilyTopBar({
   onCloseNotifications,
 }: {
   memberCount?: number;
+  initialBranding?: FamilyBranding;
   canViewStories?: boolean;
   showNotifications?: boolean;
   notificationsActive?: boolean;
   onOpenNotifications?: () => void;
   onCloseNotifications?: () => void;
 }) {
-  const { branding, isLoading } = useFamilyBranding();
+  const { branding, isLoading } = useFamilyBranding(initialBranding);
   const { unreadCount } = useFamilyUnreadCount(showNotifications && !isLoading);
   const { hasStories, hasUnseen, markSeen } = useFamilyStoryState(branding);
   const [storyOpen, setStoryOpen] = useState(false);
@@ -75,6 +79,7 @@ export function FamilyTopBar({
         size="lg"
         hasStoryRing={storiesAvailable}
         storyUnseen={hasUnseen}
+        verified
       />
       <div className="min-w-0 leading-tight">
         <p className="family-topbar__title truncate">{branding.display_name}</p>
@@ -93,6 +98,7 @@ export function FamilyTopBar({
         name={branding.profile_name}
         avatar={branding.community_avatar ?? branding.profile_avatar}
         size="lg"
+        verified
       />
       <div className="min-w-0 leading-tight">
         <p className="family-topbar__title truncate">{branding.display_name}</p>

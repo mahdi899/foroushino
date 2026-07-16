@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Users, Flame, Sun, Snowflake, CalendarClock, AlertTriangle, Lock, Undo2, UserPlus } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { Flame, Sun, Snowflake, CalendarClock, AlertTriangle, Lock, Undo2, UserPlus } from 'lucide-react'
 import { hasPermission } from '@/lib/permissions'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
@@ -16,6 +17,7 @@ import { isManagementRole, isSupervisorRole } from '@/lib/roles'
 import { haptic } from '@/lib/telegram'
 import type { Lead } from '@/types'
 import { useRemoteDataReady } from '@/providers/SyncProvider'
+import { cn } from '@/lib/cn'
 
 type Filter = 'all' | 'hot' | 'warm' | 'cold' | 'today' | 'overdue'
 
@@ -24,9 +26,26 @@ const filters: { id: Filter; label: string; icon?: typeof Flame; tone: ChipTone 
   { id: 'hot', label: 'خیلی جدی', icon: Flame, tone: 'hot' },
   { id: 'warm', label: 'علاقه‌مند', icon: Sun, tone: 'warm' },
   { id: 'cold', label: 'کم‌علاقه', icon: Snowflake, tone: 'cold' },
-  { id: 'today', label: 'پیگیری امروز', icon: CalendarClock, tone: 'primary' },
+  { id: 'today', label: 'امروز', icon: CalendarClock, tone: 'primary' },
   { id: 'overdue', label: 'عقب‌افتاده', icon: AlertTriangle, tone: 'error' },
 ]
+
+function matchesFilter(lead: Lead, filter: Filter): boolean {
+  switch (filter) {
+    case 'hot':
+    case 'warm':
+    case 'cold':
+      return lead.temperature === filter
+    case 'today':
+      return lead.nextFollowupAt ? isToday(lead.nextFollowupAt) : false
+    case 'overdue':
+      return lead.nextFollowupAt
+        ? !isToday(lead.nextFollowupAt) && isOverdue(lead.nextFollowupAt)
+        : false
+    default:
+      return true
+  }
+}
 
 export function LeadsScreen() {
   const navigate = useNavigate()
@@ -59,6 +78,14 @@ export function LeadsScreen() {
     [leads, teams, agents, currentAgentId, role, isTeamViewer],
   )
 
+  const filterCounts = useMemo(() => {
+    const counts = {} as Record<Filter, number>
+    for (const f of filters) {
+      counts[f.id] = visibleLeads.filter((lead) => matchesFilter(lead, f.id)).length
+    }
+    return counts
+  }, [visibleLeads])
+
   const lockedCount = useMemo(
     () => (isTeamViewer ? 0 : visibleLeads.filter((l) => l.lockedBy === currentAgentId).length),
     [visibleLeads, currentAgentId, isTeamViewer],
@@ -68,24 +95,10 @@ export function LeadsScreen() {
     [visibleLeads, isTeamViewer],
   )
 
-  const filtered = useMemo(() => {
-    return visibleLeads.filter((l) => {
-      switch (filter) {
-        case 'hot':
-        case 'warm':
-        case 'cold':
-          return l.temperature === filter
-        case 'today':
-          return l.nextFollowupAt ? isToday(l.nextFollowupAt) : false
-        case 'overdue':
-          return l.nextFollowupAt
-            ? !isToday(l.nextFollowupAt) && isOverdue(l.nextFollowupAt)
-            : false
-        default:
-          return true
-      }
-    })
-  }, [visibleLeads, filter])
+  const filtered = useMemo(
+    () => visibleLeads.filter((lead) => matchesFilter(lead, filter)),
+    [visibleLeads, filter],
+  )
 
   const call = (lead: Lead) => {
     if (isTeamViewer || !canCallLead(lead, currentAgentId)) return
@@ -99,56 +112,70 @@ export function LeadsScreen() {
         sticky
         subtitleInline
         title={isTeamViewer ? (isSupervisorRole(role) ? 'مشتریان تیم من' : 'مشتریان تیم') : 'مشتریان من'}
-        subtitle={`${toFa(visibleLeads.length)} مشتری فعال`}
-        icon={Users}
-        iconTone="secondary"
+        subtitle={`${toFa(visibleLeads.length)} فعال`}
+        className="pb-1"
       >
-        <div className="-mx-1 flex gap-2 overflow-x-auto overflow-y-visible px-1 py-1 no-scrollbar">
-          {filters.map((f) => {
-            const Icon = f.icon
-            return (
-              <Chip
-                key={f.id}
-                active={filter === f.id}
-                tone={f.tone}
-                onClick={() => setFilter(f.id)}
-                icon={Icon ? <Icon size={14} /> : undefined}
-              >
-                {f.label}
-              </Chip>
-            )
-          })}
+        <div className="glass-inset -mx-0.5 overflow-hidden rounded-[16px] border border-white/50 p-1 dark:border-white/10">
+          <div className="-mx-0.5 flex gap-1.5 overflow-x-auto overflow-y-visible px-0.5 py-0.5 no-scrollbar">
+            {filters.map((f) => {
+              const Icon = f.icon
+              const count = filterCounts[f.id]
+              return (
+                <Chip
+                  key={f.id}
+                  active={filter === f.id}
+                  tone={f.tone}
+                  onClick={() => setFilter(f.id)}
+                  icon={Icon ? <Icon size={13} /> : undefined}
+                  className="h-8 px-3 text-[12px]"
+                >
+                  {f.label}
+                  {count > 0 && f.id !== 'all' && (
+                    <span
+                      className={cn(
+                        'rounded-full px-1.5 py-0.5 text-[9px] tabular-nums',
+                        filter === f.id ? 'bg-white/25' : 'bg-black/[0.06] dark:bg-white/10',
+                      )}
+                    >
+                      {toFa(count)}
+                    </span>
+                  )}
+                </Chip>
+              )
+            })}
+          </div>
         </div>
 
-        {canIntakeLeads && (
-          <button
-            type="button"
-            onClick={() => navigate('/leads/intake')}
-            className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-600 px-3 py-2.5 text-[12px] font-extrabold text-white"
-          >
-            <UserPlus size={14} />
-            ورود و تقسیم مشتری
-          </button>
-        )}
-
-        {(lockedCount > 0 || returnedCount > 0) && (
-          <div className="mt-2 flex gap-2">
+        {(canIntakeLeads || lockedCount > 0 || returnedCount > 0) && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {canIntakeLeads && (
+              <button
+                type="button"
+                onClick={() => navigate('/leads/intake')}
+                className="glass-inset inline-flex items-center gap-1.5 rounded-full border border-[#3390EC]/20 px-3 py-1.5 text-[11px] font-bold text-[#3390EC] dark:border-[#8774E1]/25 dark:text-[#8774E1]"
+              >
+                <UserPlus size={13} strokeWidth={2.35} />
+                ورود مشتری
+              </button>
+            )}
             {lockedCount > 0 && (
               <button
+                type="button"
                 onClick={() => navigate('/leads/locked')}
-                className="glass-inset flex flex-1 items-center gap-1.5 rounded-2xl border-error-200/60 px-3 py-2.5 text-[12px] font-semibold text-error-600 dark:border-error-500/20"
+                className="glass-inset inline-flex items-center gap-1.5 rounded-full border border-error-300/50 px-3 py-1.5 text-[11px] font-bold text-error-600 dark:border-error-500/25"
               >
-                <Lock size={14} strokeWidth={2.25} />
-                {toFa(lockedCount)} مشتری قفل‌شده من
+                <Lock size={13} strokeWidth={2.35} />
+                قفل‌شده {toFa(lockedCount)}
               </button>
             )}
             {returnedCount > 0 && (
               <button
+                type="button"
                 onClick={() => navigate('/leads/returned')}
-                className="glass-inset flex flex-1 items-center gap-1.5 rounded-2xl px-3 py-2.5 text-[12px] font-semibold text-[#8E8E93] dark:text-[#98989D]"
+                className="glass-inset inline-flex items-center gap-1.5 rounded-full border border-white/50 px-3 py-1.5 text-[11px] font-bold text-text-soft dark:border-white/10"
               >
-                <Undo2 size={14} strokeWidth={2.25} />
-                {toFa(returnedCount)} برگشت‌خورده
+                <Undo2 size={13} strokeWidth={2.35} />
+                برگشت‌خورده {toFa(returnedCount)}
               </button>
             )}
           </div>
@@ -161,30 +188,41 @@ export function LeadsScreen() {
           <p className="text-sm font-semibold text-text">در حال دریافت مشتریان…</p>
         </div>
       ) : (
-      <div className="space-y-2 px-4 pt-2 pb-1">
-        {filtered.length === 0 ? (
-          <EmptyState
-            title="مشتری پیدا نشد"
-            description="فیلتر را تغییر بده."
-            action={{ label: 'پاک کردن فیلترها', onClick: () => setFilter('all') }}
-          />
-        ) : (
-          filtered.map((lead) => (
-            <LeadCard
-              key={lead.id}
-              lead={lead}
-              assignedAgentLabel={
-                isTeamViewer
-                  ? resolveAssignedAgentLabel(lead, agents) ?? 'بدون کارشناس'
-                  : undefined
-              }
-              onClick={() => navigate(`/leads/${lead.id}`)}
-              onCall={isTeamViewer ? undefined : () => call(lead)}
-              onQuickView={() => setQuickViewLead(lead)}
+        <div className="px-4 pt-2 pb-1">
+          {filtered.length === 0 ? (
+            <EmptyState
+              title="مشتری پیدا نشد"
+              description="فیلتر را تغییر بده."
+              action={{ label: 'پاک کردن فیلترها', onClick: () => setFilter('all') }}
             />
-          ))
-        )}
-      </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25 }}
+              className="space-y-2"
+            >
+              <p className="px-0.5 text-[11px] font-semibold text-text-soft">
+                {toFa(filtered.length)} مشتری
+                {filter !== 'all' && ` · ${filters.find((f) => f.id === filter)?.label}`}
+              </p>
+              {filtered.map((lead) => (
+                <LeadCard
+                  key={lead.id}
+                  lead={lead}
+                  assignedAgentLabel={
+                    isTeamViewer
+                      ? resolveAssignedAgentLabel(lead, agents) ?? 'بدون کارشناس'
+                      : undefined
+                  }
+                  onClick={() => navigate(`/leads/${lead.id}`)}
+                  onCall={isTeamViewer ? undefined : () => call(lead)}
+                  onQuickView={() => setQuickViewLead(lead)}
+                />
+              ))}
+            </motion.div>
+          )}
+        </div>
       )}
 
       <LeadQuickViewSheet

@@ -85,24 +85,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     }).toList(),
                   ),
                   const SizedBox(height: AppSpacing.lg),
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final columns = AppBreakpoints.gridColumns(context);
-                      return GridView.count(
-                        crossAxisCount: columns,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        mainAxisSpacing: AppSpacing.md,
-                        crossAxisSpacing: AppSpacing.md,
-                        childAspectRatio: columns >= 4 ? 1.6 : 1.5,
-                        children: [
-                          StatCard(title: 'عضو جدید', value: totals.newMembers, icon: Icons.person_add_rounded, color: AppColors.primary),
-                          StatCard(title: 'پست منتشرشده', value: totals.postsPublished, icon: Icons.campaign_rounded, color: AppColors.accent),
-                          StatCard(title: 'واکنش', value: totals.reactions, icon: Icons.favorite_rounded, color: AppColors.error),
-                          StatCard(title: 'اکشن تکمیل‌شده', value: totals.actionsCompleted, icon: Icons.task_alt_rounded, color: AppColors.gold),
-                        ],
-                      );
-                    },
+                  StatCardGrid(
+                    children: [
+                      StatCard(title: 'عضو جدید', value: totals.newMembers, icon: Icons.person_add_rounded, color: AppColors.primary),
+                      StatCard(title: 'پست منتشرشده', value: totals.postsPublished, icon: Icons.campaign_rounded, color: AppColors.accent),
+                      StatCard(title: 'واکنش', value: totals.reactions, icon: Icons.favorite_rounded, color: AppColors.error),
+                      StatCard(title: 'اکشن تکمیل‌شده', value: totals.actionsCompleted, icon: Icons.task_alt_rounded, color: AppColors.gold),
+                    ],
                   ),
                   if (context.watch<AppState>().user?.can('family.entry_links.manage') ?? false) ...[
                     const SizedBox(height: AppSpacing.md),
