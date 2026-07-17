@@ -41,7 +41,7 @@
   overflow: hidden;
   background-color: var(--color-bg);
   color: var(--color-text);
-  font-family: var(--font-body), sans-serif;
+  font-family: var(--font-body);
   font-size: var(--panel-text-body);
   line-height: var(--panel-line-height-body);
   -webkit-text-size-adjust: 100%;
@@ -8225,7 +8225,7 @@ button.panel-notification-toast__card {
 
 .panel-root .rmdp-wrapper {
   direction: rtl;
-  font-family: var(--font-body), sans-serif;
+  font-family: var(--font-body);
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-soft, 0 12px 32px rgba(0, 59, 64, 0.12));

@@ -899,7 +899,7 @@ export function ArticleBodyEditor({
           border-radius: 0.25rem;
           background: rgba(15, 23, 42, 0.08);
           padding: 0.125rem 0.375rem;
-          font-family: ui-monospace, monospace;
+          font-family: inherit;
           font-size: 0.875em;
         }
         .article-editor-visual p {
@@ -919,7 +919,7 @@ export function ArticleBodyEditor({
           background: #0f172a;
           color: #e2e8f0;
           overflow-x: auto;
-          font-family: ui-monospace, monospace;
+          font-family: inherit;
           font-size: 0.8125rem;
           direction: ltr;
           text-align: left;

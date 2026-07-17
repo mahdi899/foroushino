@@ -5,15 +5,16 @@ import {
   Users,
   TrendingUp,
   ChevronLeft,
-  BadgeDollarSign,
   Radio,
   FileText,
   Server,
   UserPlus,
   ShieldCheck,
   Activity,
-  CreditCard,
   BarChart3,
+  Banknote,
+  Landmark,
+  WalletCards,
   type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
@@ -61,6 +62,20 @@ type MenuItem = {
   onClick: () => void
   badge?: number
   tone?: 'default' | 'primary' | 'warning' | 'success'
+  iconWrap?: 'primary' | 'success' | 'warning'
+}
+
+const iconWrapClass: Record<NonNullable<MenuItem['iconWrap']>, string> = {
+  primary: 'icon-3d-primary',
+  success: 'icon-3d-success',
+  warning: 'icon-3d-warning',
+}
+
+function resolveIconWrap(item: MenuItem): string {
+  if (item.iconWrap) return iconWrapClass[item.iconWrap]
+  if (item.tone === 'success') return iconWrapClass.success
+  if (item.tone === 'warning') return iconWrapClass.warning
+  return iconWrapClass.primary
 }
 
 function StatCell({ value, label, warn }: { value: string | number; label: string; warn?: boolean }) {
@@ -100,14 +115,6 @@ function MgmtRow({
   bordered?: boolean
 }) {
   const Icon = item.icon
-  const iconTone =
-    item.tone === 'success'
-      ? 'text-emerald-600 dark:text-emerald-400'
-      : item.tone === 'warning'
-        ? 'text-amber-600 dark:text-amber-400'
-        : item.tone === 'primary'
-          ? TG
-          : TG
 
   return (
     <button
@@ -121,8 +128,13 @@ function MgmtRow({
         bordered && 'border-b border-white/40 dark:border-white/8',
       )}
     >
-      <span className="glass-inset flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-white/50 dark:border-white/10">
-        <Icon size={17} strokeWidth={2.25} className={iconTone} />
+      <span
+        className={cn(
+          'icon-3d flex h-9 w-9 shrink-0 items-center justify-center rounded-[11px]',
+          resolveIconWrap(item),
+        )}
+      >
+        <Icon size={17} strokeWidth={2.25} className="text-white" />
       </span>
       <div className="min-w-0 flex-1">
         <span className="text-[14px] font-semibold text-text">{item.label}</span>
@@ -539,9 +551,10 @@ export function ManagementHome() {
           pendingCommissionCount > 0
             ? `${toFa(pendingCommissionCount)} مورد — قبل از ناظر`
             : 'پورسانت کارشناسان تیم پس از تایید فروش',
-        icon: BadgeDollarSign,
+        icon: WalletCards,
         onClick: () => navigate('/wallet/approvals'),
         tone: 'success',
+        iconWrap: 'success',
         badge: pendingCommissionCount,
       })
     }
@@ -553,9 +566,10 @@ export function ManagementHome() {
           pendingCommissionCount > 0
             ? `${toFa(pendingCommissionCount)} مورد تایید‌شده توسط لیدر`
             : 'فقط پس از تایید لیدر تیم',
-        icon: BadgeDollarSign,
+        icon: WalletCards,
         onClick: () => navigate('/wallet/approvals'),
         tone: 'success',
+        iconWrap: 'success',
         badge: pendingCommissionCount,
       })
     }
@@ -563,24 +577,28 @@ export function ManagementHome() {
       items.push({
         id: 'payouts',
         label: 'صف تسویه',
-        icon: BadgeDollarSign,
+        sublabel: 'پرداخت به کارشناسان — کارت و شبا',
+        icon: Banknote,
         onClick: () => navigate('/wallet/payouts'),
         tone: 'success',
+        iconWrap: 'success',
       })
     }
     if (canManageStaff && hasPermission(permissions, 'users.manage-team')) {
       items.push({
         id: 'bank',
         label: 'تایید کارت و شبا',
-        icon: CreditCard,
+        icon: Landmark,
         onClick: () => navigate('/wallet/bank-accounts'),
         tone: 'warning',
+        iconWrap: 'warning',
       })
       items.push({
         id: 'agents',
         label: 'مدیریت کارشناسان',
         icon: UserPlus,
         onClick: () => navigate('/admin/agents'),
+        iconWrap: 'primary',
       })
     }
     if (canManageStaff && hasPermission(permissions, 'teams.manage')) {
@@ -589,6 +607,7 @@ export function ManagementHome() {
         label: 'مدیریت تیم‌ها',
         icon: Users,
         onClick: () => navigate('/admin/teams'),
+        iconWrap: 'primary',
       })
     }
 

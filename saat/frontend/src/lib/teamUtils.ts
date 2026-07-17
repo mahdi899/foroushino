@@ -11,24 +11,42 @@ export function getManagedTeam(teams: Team[], userId: string, role: Role): Team 
   return null
 }
 
-/** Team colony id for leader/supervisor; null for org-wide managers. */
+/** Team colony ids for leader/supervisor; null for org-wide managers. */
+export function getColonyTeamIds(
+  teams: Team[],
+  agents: Agent[],
+  userId: string,
+  role: Role,
+): string[] {
+  const managed = getManagedTeam(teams, userId, role)
+  if (managed) return [managed.id]
+
+  if (isSupervisorRole(role)) {
+    const supervised = teams.filter((team) => team.supervisorId === userId).map((team) => team.id)
+    if (supervised.length > 0) return supervised
+
+    const self = agents.find((agent) => agent.id === userId)
+    if (self?.teamId) return [self.teamId]
+
+    if (teams.length === 1) return [teams[0]?.id ?? ''].filter(Boolean)
+  }
+
+  if (isLeaderRole(role)) {
+    const self = agents.find((agent) => agent.id === userId)
+    if (self?.teamId) return [self.teamId]
+  }
+
+  return []
+}
+
+/** @deprecated use getColonyTeamIds */
 export function getColonyTeamId(
   teams: Team[],
   agents: Agent[],
   userId: string,
   role: Role,
 ): string | null {
-  const managed = getManagedTeam(teams, userId, role)
-  if (managed) return managed.id
-
-  if (isLeaderRole(role) || isSupervisorRole(role)) {
-    const self = agents.find((agent) => agent.id === userId)
-    if (self?.teamId) return self.teamId
-
-    if (teams.length === 1) return teams[0]?.id ?? null
-  }
-
-  return null
+  return getColonyTeamIds(teams, agents, userId, role)[0] ?? null
 }
 
 export function getTeamAgentIds(
@@ -37,10 +55,10 @@ export function getTeamAgentIds(
   userId: string,
   role: Role,
 ): string[] {
-  const colonyTeamId = getColonyTeamId(teams, agents, userId, role)
-  if (colonyTeamId) {
+  const colonyTeamIds = getColonyTeamIds(teams, agents, userId, role)
+  if (colonyTeamIds.length > 0) {
     return agents
-      .filter((agent) => agent.teamId === colonyTeamId && agent.role === 'agent')
+      .filter((agent) => agent.teamId && colonyTeamIds.includes(agent.teamId) && agent.role === 'agent')
       .map((agent) => agent.id)
   }
 
@@ -62,21 +80,21 @@ export function filterLeadsForScope(
     return leads
   }
 
-  const colonyTeamId = getColonyTeamId(teams, agents, userId, role)
+  const colonyTeamIds = getColonyTeamIds(teams, agents, userId, role)
   if (isLeaderRole(role) || isSupervisorRole(role)) {
-    if (!colonyTeamId) {
+    if (colonyTeamIds.length === 0) {
       return []
     }
 
     const agentIds = new Set(
       agents
-        .filter((agent) => agent.teamId === colonyTeamId && agent.role === 'agent')
+        .filter((agent) => agent.teamId && colonyTeamIds.includes(agent.teamId) && agent.role === 'agent')
         .map((agent) => agent.id),
     )
 
     return leads.filter(
       (lead) =>
-        lead.assignedTeamId === colonyTeamId ||
+        (lead.assignedTeamId && colonyTeamIds.includes(lead.assignedTeamId)) ||
         (!!lead.assignedAgentId && agentIds.has(lead.assignedAgentId)),
     )
   }
@@ -140,4 +158,12 @@ export function leaderForTeam(agents: Agent[], leaderId: string): Agent | undefi
 
 export function leadById(leads: Lead[], id: string): Lead | undefined {
   return leads.find((lead) => lead.id === id)
+}
+
+export function supervisedTeamsForUser(teams: Team[], userId: string, role: Role): Team[] {
+  if (isSupervisorRole(role)) {
+    const supervised = teams.filter((team) => team.supervisorId === userId)
+    return supervised.length > 0 ? supervised : teams
+  }
+  return teams
 }

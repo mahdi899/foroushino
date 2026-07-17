@@ -59,7 +59,7 @@ server.on('error', (err) => {
   throw err;
 });
 
-server.listen(PUBLIC_PORT, '127.0.0.1', () => {
+server.listen(PUBLIC_PORT, () => {
   console.log('');
   console.log('  مدیر خانواده — توسعه وب');
   console.log(`  اپ (تنها آدرس مرورگر):  http://localhost:${PUBLIC_PORT}`);

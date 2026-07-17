@@ -21,6 +21,8 @@ class TeamAdminResource extends JsonResource
             'name' => $this->name,
             'leader_id' => $this->leader_id,
             'leader_name' => $this->whenLoaded('leader', fn () => $this->leader?->name),
+            'supervisor_id' => $this->supervisor_id,
+            'supervisor_name' => $this->whenLoaded('supervisor', fn () => $this->supervisor?->name),
             'members_count' => $this->whenCounted('members'),
             'agents_count' => $this->whenCounted('agents_count'),
             'agents_capacity' => TeamCapacity::AGENTS_PER_TEAM,

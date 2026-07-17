@@ -5,6 +5,7 @@ use App\Actions\Wallet\ApproveCommissionByLeaderAction;
 use App\Actions\Wallet\ApproveCommissionBySupervisorAction;
 use App\Enums\LeadStatus;
 use App\Services\WalletService;
+use Laravel\Sanctum\Sanctum;
 
 beforeEach(function () {
     seedRoles();
@@ -187,4 +188,51 @@ it('allows a full-balance payout even when the available balance is not aligned 
     $wallet = $wallet->fresh();
     expect((float) $wallet->balance_available)->toBe(0.0);
     expect((float) $wallet->balance_locked)->toBe(456789.0);
+});
+
+it('shows full bank card and sheba in payout queue for supervisors', function () {
+    $supervisor = makeSupervisor();
+    $agent = makeAgent();
+    $agent->forceFill([
+        'bank_card' => '6037991234567890',
+        'bank_sheba' => '603799123456789012345678',
+        'bank_card_confirmed_at' => now(),
+    ])->save();
+    $wallet = app(WalletService::class)->ensureWallet($agent);
+    $wallet->balance_available = 500_000;
+    $wallet->save();
+
+    $payout = app(WalletService::class)->requestPayout($agent, 300_000);
+
+    Sanctum::actingAs($supervisor);
+
+    $response = $this->getJson('/api/v1/wallet/payout-queue');
+
+    $response->assertOk()
+        ->assertJsonPath('data.0.id', $payout->id)
+        ->assertJsonPath('data.0.bank_card', '6037 9912 3456 7890')
+        ->assertJsonPath('data.0.bank_card_masked', null)
+        ->assertJsonPath('data.0.bank_sheba', 'IR603799123456789012345678');
+});
+
+it('masks bank card in own payout history for agents', function () {
+    $agent = makeAgent();
+    $agent->forceFill([
+        'bank_card' => '6037991234567890',
+        'bank_sheba' => '603799123456789012345678',
+        'bank_card_confirmed_at' => now(),
+    ])->save();
+    $wallet = app(WalletService::class)->ensureWallet($agent);
+    $wallet->balance_available = 500_000;
+    $wallet->save();
+
+    app(WalletService::class)->requestPayout($agent, 300_000);
+
+    Sanctum::actingAs($agent);
+
+    $response = $this->getJson('/api/v1/wallet/payout-requests');
+
+    $response->assertOk()
+        ->assertJsonPath('data.0.bank_card', null)
+        ->assertJsonPath('data.0.bank_card_masked', '****7890');
 });

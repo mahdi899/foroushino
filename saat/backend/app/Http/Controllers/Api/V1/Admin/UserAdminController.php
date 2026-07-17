@@ -2,16 +2,18 @@
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Admin\StoreUserRequest;
 use App\Http\Requests\V1\Admin\UpdateUserRequest;
-use App\Http\Resources\V1\TeamAdminResource;
 use App\Http\Resources\V1\UserAdminResource;
 use App\Models\Team;
 use App\Models\User;
-use App\Enums\RoleName;
+use App\Services\Admin\AgentAdminStats;
 use App\Services\WalletService;
+use App\Support\AdminScope;
 use App\Support\ApiResponse;
+use App\Support\TeamScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -25,35 +27,81 @@ class UserAdminController extends Controller
         $query = User::query()->with('team')->orderBy('name');
         $user = $request->user();
 
-        if ($user && ! $user->can('users.manage') && ! $user->can('users.manage-team') && $user->team_id) {
-            $query->where('team_id', $user->team_id);
+        if ($user && ! TeamScope::isOrgWide($user)) {
+            $teamIds = TeamScope::supervisedTeamIds($user);
+
+            if ($user->hasRole(RoleName::Leader->value) && $user->can('users.manage-team-roster')) {
+                $query->where(function ($q) use ($teamIds): void {
+                    $q->whereIn('team_id', $teamIds)
+                        ->orWhereNull('team_id');
+                })->role(RoleName::Agent->value);
+            } elseif ($teamIds !== []) {
+                $leaderIds = Team::query()->whereIn('id', $teamIds)->pluck('leader_id')->filter()->all();
+                $query->where(function ($q) use ($teamIds, $leaderIds): void {
+                    $q->whereIn('team_id', $teamIds);
+                    if ($leaderIds !== []) {
+                        $q->orWhereIn('id', $leaderIds);
+                    }
+                });
+            } elseif ($user->team_id) {
+                $query->where('team_id', $user->team_id);
+            }
         }
 
-        return ApiResponse::success(UserAdminResource::collection($query->get()));
+        $users = $query->get();
+        AgentAdminStats::attach($users);
+
+        return ApiResponse::success(UserAdminResource::collection($users));
     }
 
     public function store(StoreUserRequest $request): JsonResponse
     {
         $validated = $request->validated();
+        $role = $validated['role'] ?? RoleName::Agent->value;
         $phone = preg_replace('/\D/', '', $validated['phone']) ?? $validated['phone'];
+        $teamId = $validated['team_id'] ?? null;
 
         $user = User::query()->create([
             'name' => $validated['name'],
             'phone' => $phone,
             'email' => $validated['email'] ?? "{$phone}@saat.local",
             'password' => bcrypt(Str::random(32)),
-            'team_id' => $validated['team_id'],
+            'team_id' => in_array($role, [RoleName::Agent->value, RoleName::Leader->value], true) ? $teamId : null,
             'is_active' => true,
         ]);
-        $user->assignRole(RoleName::Agent->value);
-        app(WalletService::class)->ensureWallet($user);
+        $user->assignRole($role);
 
-        return ApiResponse::success(new UserAdminResource($user->fresh('team')), 'کارشناس اضافه شد', status: 201);
+        if ($role === RoleName::Agent->value) {
+            app(WalletService::class)->ensureWallet($user);
+        }
+
+        if ($role === RoleName::Leader->value && $teamId) {
+            Team::query()->whereKey($teamId)->update(['leader_id' => $user->id]);
+        }
+
+        $fresh = $user->fresh('team');
+        AgentAdminStats::attach(collect([$fresh]));
+
+        $message = match ($role) {
+            RoleName::Supervisor->value => 'ناظر اضافه شد',
+            RoleName::Leader->value => 'سرتیم اضافه شد',
+            default => 'کارشناس اضافه شد',
+        };
+
+        return ApiResponse::success(new UserAdminResource($fresh), $message, status: 201);
     }
 
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
-        abort_unless($user->hasRole(RoleName::Agent->value), 422, 'فقط کارشناس قابل ویرایش است.');
+        $actor = $request->user();
+        $canEdit = AdminScope::canManageUser($actor, $user);
+        if (! $canEdit && $actor?->can('users.manage-team-roster') && $user->hasRole(RoleName::Agent->value)) {
+            $targetTeamId = $request->has('team_id')
+                ? (int) $request->integer('team_id')
+                : (int) ($user->team_id ?? 0);
+            $canEdit = AdminScope::canManageTeamRoster($actor, $targetTeamId);
+        }
+        abort_unless($canEdit, 403, 'اجازه ویرایش این کاربر را ندارید.');
 
         $validated = collect($request->validated())->except(['confirm_bank_card'])->all();
         $user->fill($validated);
@@ -70,11 +118,26 @@ class UserAdminController extends Controller
 
         $user->save();
 
-        return ApiResponse::success(new UserAdminResource($user->fresh('team')), 'کاربر به‌روزرسانی شد');
+        if ($user->hasRole(RoleName::Leader->value) && $user->team_id) {
+            Team::query()
+                ->where('leader_id', $user->id)
+                ->where('id', '!=', $user->team_id)
+                ->update(['leader_id' => null]);
+            Team::query()->whereKey($user->team_id)->update(['leader_id' => $user->id]);
+        }
+
+        $fresh = $user->fresh('team');
+        AgentAdminStats::attach(collect([$fresh]));
+
+        return ApiResponse::success(new UserAdminResource($fresh), 'کاربر به‌روزرسانی شد');
     }
 
     private function authorizeView(Request $request): void
     {
-        abort_unless((bool) $request->user()?->can('users.view'), 403, 'اجازه دسترسی ندارید.');
+        abort_unless(
+            $request->user()?->can('users.view') || $request->user()?->can('users.manage-team-roster'),
+            403,
+            'اجازه دسترسی ندارید.',
+        );
     }
 }

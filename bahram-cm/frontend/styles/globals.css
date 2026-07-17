@@ -1,3 +1,4 @@
+@import "./iransans.css";
 @import "./article-content-colors.css";
 @import "./neon-border.css";
 @import "tailwindcss";
@@ -41,10 +42,10 @@
   --color-mist: #5f7f83;
   --color-veil: #33494d;
 
-  /* --- Typography ---------------------------------------------------- */
-  --font-display: var(--font-iransans), "IRANSansXFaNum", ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-iransans), "IRANSansXFaNum", ui-sans-serif, system-ui, sans-serif;
-  --font-latin: ui-sans-serif, system-ui, sans-serif;
+  /* --- Typography — IRANSansXFaNum only (public/fonts/IRANSansXFaNum) --- */
+  --font-display: var(--font-iransans), "IRANSansXFaNum", Tahoma, sans-serif;
+  --font-body: var(--font-iransans), "IRANSansXFaNum", Tahoma, sans-serif;
+  --font-latin: var(--font-iransans), "IRANSansXFaNum", Tahoma, sans-serif;
 
   /* Fluid type scale — readable floor; tighter line-height for Persian body */
   --text-display: clamp(2rem, 3.8vw + 1.15rem, 5.75rem);
@@ -284,7 +285,8 @@
 
   input,
   textarea,
-  button {
+  button,
+  select {
     font: inherit;
     color: inherit;
   }

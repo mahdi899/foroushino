@@ -1,17 +1,16 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, UserPlus, PauseCircle, CreditCard, Landmark, Trash2 } from 'lucide-react'
+import { Users, UserPlus, PauseCircle, CreditCard, Landmark, Search } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
-import { BottomSheet } from '@/components/ui/BottomSheet'
-import { Button } from '@/components/ui/Button'
-import { Chip } from '@/components/ui/Chip'
+import { AgentDetailSheet } from '@/components/domain/AgentDetailSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { hasPermission } from '@/lib/permissions'
-import { toFa } from '@/lib/format'
-import { createAgent, suspendAgent, activateAgent, updateAgent } from '@/services/userAdminActions'
+import { toFa, toEn } from '@/lib/format'
+import { createAgent, suspendAgent, activateAgent, updateAgent, fetchAdminAgents } from '@/services/userAdminActions'
 import { clearBankAccount } from '@/services/walletActions'
+import { EmptyState } from '@/components/ui/States'
 import { cn } from '@/lib/cn'
 import type { Agent } from '@/types'
 
@@ -25,17 +24,49 @@ export function AgentManagementScreen() {
   const canManage = hasPermission(permissions, 'users.manage-team') || hasPermission(permissions, 'users.manage')
   const [createOpen, setCreateOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<Agent | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [teamId, setTeamId] = useState('')
 
   const roster = useMemo(() => agents.filter((a) => a.role === 'agent'), [agents])
+  const filteredRoster = useMemo(() => {
+    const q = searchQuery.trim()
+    if (!q) return roster
+
+    const needleEn = toEn(q).toLowerCase()
+
+    return roster.filter((agent) => {
+      const fullName = `${agent.firstName} ${agent.lastName}`.trim()
+      const teamName = teams.find((t) => t.id === agent.teamId)?.name ?? 'بدون تیم'
+      const phoneDigits = toEn(agent.phone ?? '')
+
+      return (
+        fullName.includes(q) ||
+        agent.firstName.includes(q) ||
+        agent.lastName.includes(q) ||
+        teamName.includes(q) ||
+        (phoneDigits && (phoneDigits.includes(needleEn) || (agent.phone ?? '').includes(q)))
+      )
+    })
+  }, [roster, searchQuery, teams])
   const pendingBankCount = useMemo(
-    () => roster.filter((a) => a.bankCardMasked && a.bankShebaRegistered && !a.bankCardConfirmed).length,
+    () =>
+      roster.filter(
+        (a) => (a.bankCard || a.bankCardMasked) && a.bankShebaRegistered && !a.bankCardConfirmed,
+      ).length,
     [roster],
   )
+  const canView = hasPermission(permissions, 'users.view')
 
-  if (!hasPermission(permissions, 'users.view')) return null
+  useEffect(() => {
+    if (!canView) return
+    void fetchAdminAgents().catch(() => {
+      pushToast('بارگذاری کارشناسان ناموفق بود', 'error')
+    })
+  }, [canView, pushToast])
+
+  if (!canView) return null
 
   const openCreate = () => {
     setName('')
@@ -45,10 +76,11 @@ export function AgentManagementScreen() {
   }
 
   const openEdit = (agent: Agent) => {
-    setEditTarget(agent)
-    setName(`${agent.firstName} ${agent.lastName}`.trim())
-    setPhone(agent.phone ?? '')
-    setTeamId(agent.teamId)
+    const fresh = agents.find((a) => a.id === agent.id) ?? agent
+    setEditTarget(fresh)
+    setName(`${fresh.firstName} ${fresh.lastName}`.trim())
+    setPhone(fresh.phone ?? '')
+    setTeamId(fresh.teamId)
   }
 
   const submitCreate = async () => {
@@ -133,7 +165,24 @@ export function AgentManagementScreen() {
       )}
 
       <div className="space-y-2 px-4 pb-24 pt-3">
-        {roster.map((agent) => {
+        <div className="glass-inset flex items-center gap-2 rounded-[14px] border border-white/55 px-3 py-2.5 dark:border-white/10">
+          <Search size={16} className="shrink-0 text-text-soft" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="جستجوی کارشناس..."
+            className="w-full bg-transparent text-[13px] font-semibold text-text outline-none placeholder:text-text-muted"
+          />
+        </div>
+
+        {filteredRoster.length === 0 ? (
+          <EmptyState
+            icon={<Users size={32} />}
+            title="کارشناسی پیدا نشد"
+            description={searchQuery.trim() ? 'نام، تیم یا شماره دیگری را جستجو کن.' : 'هنوز کارشناسی ثبت نشده.'}
+          />
+        ) : (
+          filteredRoster.map((agent) => {
           const team = teams.find((t) => t.id === agent.teamId)
           const bankPending = agent.bankCardMasked && agent.bankShebaRegistered && !agent.bankCardConfirmed
           return (
@@ -186,132 +235,46 @@ export function AgentManagementScreen() {
               )}
             </button>
           )
-        })}
+        })
+        )}
       </div>
 
-      <AgentFormSheet
+      <AgentDetailSheet
         open={createOpen}
+        onClose={() => setCreateOpen(false)}
         title="افزودن کارشناس"
+        teams={teams}
+        canEdit
         name={name}
         phone={phone}
         teamId={teamId}
-        teams={teams}
         onName={setName}
         onPhone={setPhone}
         onTeam={setTeamId}
-        onClose={() => setCreateOpen(false)}
         onSubmit={() => void submitCreate()}
+        pushToast={pushToast}
       />
 
-      <AgentFormSheet
+      <AgentDetailSheet
         open={!!editTarget}
+        onClose={() => setEditTarget(null)}
         title="ویرایش کارشناس"
+        agent={editTarget}
+        teams={teams}
+        canEdit
+        showFinance
         name={name}
         phone={phone}
         teamId={teamId}
-        teams={teams}
-        agent={editTarget}
+        canViewBank={canManage}
         canClearBank={canManage}
         onClearBank={() => editTarget && void clearAgentBank(editTarget)}
         onName={setName}
         onPhone={setPhone}
         onTeam={setTeamId}
-        onClose={() => setEditTarget(null)}
         onSubmit={() => void submitEdit()}
+        pushToast={pushToast}
       />
     </Page>
-  )
-}
-
-function AgentFormSheet({
-  open,
-  title,
-  name,
-  phone,
-  teamId,
-  teams,
-  agent,
-  canClearBank,
-  onClearBank,
-  onName,
-  onPhone,
-  onTeam,
-  onClose,
-  onSubmit,
-}: {
-  open: boolean
-  title: string
-  name: string
-  phone: string
-  teamId: string
-  teams: { id: string; name: string }[]
-  agent?: Agent | null
-  canClearBank?: boolean
-  onClearBank?: () => void
-  onName: (v: string) => void
-  onPhone: (v: string) => void
-  onTeam: (v: string) => void
-  onClose: () => void
-  onSubmit: () => void
-}) {
-  const hasBankInfo = !!(agent?.bankCardMasked || agent?.bankShebaRegistered)
-
-  return (
-    <BottomSheet open={open} onClose={onClose} title={title}>
-      <div className="space-y-3 pt-1">
-        <input
-          value={name}
-          onChange={(e) => onName(e.target.value)}
-          placeholder="نام و نام خانوادگی"
-          className="glass-inset w-full rounded-[14px] border border-white/55 px-3 py-3 text-[14px] font-semibold dark:border-white/10"
-        />
-        <input
-          value={phone}
-          onChange={(e) => onPhone(e.target.value)}
-          placeholder="شماره موبایل"
-          inputMode="tel"
-          className="glass-inset w-full rounded-[14px] border border-white/55 px-3 py-3 text-[14px] font-semibold dark:border-white/10"
-        />
-        <div className="flex flex-wrap gap-2">
-          {teams.map((team) => (
-            <Chip key={team.id} active={teamId === team.id} onClick={() => onTeam(team.id)}>
-              {team.name}
-            </Chip>
-          ))}
-        </div>
-
-        {canClearBank && hasBankInfo && (
-          <div className="rounded-[14px] border border-white/55 bg-white/30 px-3 py-2.5 dark:border-white/10 dark:bg-white/5">
-            {agent?.bankCardMasked && (
-              <p className="flex items-center gap-1.5 text-[12px] font-bold text-text">
-                <CreditCard size={13} className="text-text-soft" />
-                کارت: {toFa(agent.bankCardMasked)}
-                {agent.bankCardConfirmed ? ' · تایید شده' : ' · منتظر تایید'}
-              </p>
-            )}
-            {agent?.bankShebaRegistered && (
-              <p className="mt-1 flex items-center gap-1.5 text-[12px] font-bold text-text">
-                <Landmark size={13} className="text-text-soft" />
-                شبا ثبت شده
-              </p>
-            )}
-            <Button
-              full
-              size="md"
-              variant="ghost"
-              className="mt-2"
-              icon={<Trash2 size={15} />}
-              onClick={onClearBank}
-            >
-              حذف اطلاعات بانکی
-            </Button>
-          </div>
-        )}
-
-        <Button full size="lg" icon={<UserPlus size={18} />} onClick={onSubmit}>
-          ذخیره
-        </Button>
-      </div>
-    </BottomSheet>
   )
 }

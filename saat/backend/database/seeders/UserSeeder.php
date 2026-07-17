@@ -82,6 +82,7 @@ class UserSeeder extends Seeder
             }
 
             $team->leader_id = $leader->id;
+            $team->supervisor_id = $supervisor->id;
             $team->save();
 
             $this->seedAgentsForTeam($team, $teamNum, $agentsPerTeam);

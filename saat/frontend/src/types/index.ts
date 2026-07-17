@@ -207,9 +207,15 @@ export interface Agent {
   streak: number
   callGoal: number
   isActive?: boolean
+  bankCard?: string | null
   bankCardMasked?: string | null
   bankCardConfirmed?: boolean
+  bankSheba?: string | null
   bankShebaRegistered?: boolean
+  callsThisMonth?: number
+  shiftSecondsThisMonth?: number
+  earnedThisMonth?: number
+  withdrawnThisMonth?: number
 }
 
 export interface Team {
@@ -218,6 +224,8 @@ export interface Team {
   leaderId: string
   agentIds: string[]
   leaderName?: string | null
+  supervisorId?: string | null
+  supervisorName?: string | null
   agentsCount?: number
   agentsCapacity?: number
 }
@@ -434,6 +442,7 @@ export interface PayoutRequest {
   amount: number
   bankFee?: number
   netAmount?: number
+  bankCard?: string | null
   bankCardMasked?: string | null
   bankSheba?: string | null
   status: PayoutStatus

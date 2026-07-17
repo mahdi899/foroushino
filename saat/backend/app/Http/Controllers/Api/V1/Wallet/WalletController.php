@@ -22,6 +22,7 @@ use App\Http\Resources\V1\WalletTransactionResource;
 use App\Models\Commission;
 use App\Models\PayoutRequest;
 use App\Models\User;
+use App\Services\Admin\AgentAdminStats;
 use App\Services\WalletService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
@@ -238,6 +239,8 @@ class WalletController extends Controller
             return ApiResponse::error($e->getMessage(), status: 422, code: 'bank_account_not_confirmable');
         }
 
+        AgentAdminStats::attach(collect([$agent]));
+
         return ApiResponse::success(new UserAdminResource($agent), 'اطلاعات بانکی کارشناس تایید شد');
     }
 
@@ -248,6 +251,8 @@ class WalletController extends Controller
         } catch (RuntimeException $e) {
             return ApiResponse::error($e->getMessage(), status: 422, code: 'bank_account_not_clearable');
         }
+
+        AgentAdminStats::attach(collect([$agent]));
 
         return ApiResponse::success(new UserAdminResource($agent), 'اطلاعات بانکی کارشناس حذف شد');
     }

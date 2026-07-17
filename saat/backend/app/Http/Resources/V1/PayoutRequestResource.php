@@ -15,6 +15,8 @@ class PayoutRequestResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $canViewFullBankDetails = $request->user()?->can('wallet.manage-payouts') ?? false;
+
         return [
             'id' => $this->id,
             'user_id' => $this->user_id,
@@ -22,7 +24,10 @@ class PayoutRequestResource extends JsonResource
             'amount' => (string) $this->amount,
             'bank_fee' => (string) $this->bank_fee,
             'net_amount' => (string) ($this->net_amount ?? max(0, (float) $this->amount - (float) $this->bank_fee)),
-            'bank_card_masked' => $this->bank_card
+            'bank_card' => $canViewFullBankDetails && $this->bank_card
+                ? \App\Services\WalletService::formatBankCard($this->bank_card)
+                : null,
+            'bank_card_masked' => ! $canViewFullBankDetails && $this->bank_card
                 ? \App\Services\WalletService::maskBankCard($this->bank_card)
                 : null,
             'bank_sheba' => $this->bank_sheba

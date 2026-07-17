@@ -8,7 +8,10 @@ use App\Http\Requests\V1\Admin\StoreTeamRequest;
 use App\Http\Requests\V1\Admin\UpdateTeamRequest;
 use App\Http\Resources\V1\TeamAdminResource;
 use App\Models\Team;
+use App\Models\User;
+use App\Support\AdminScope;
 use App\Support\ApiResponse;
+use App\Support\TeamScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -19,7 +22,7 @@ class TeamAdminController extends Controller
         $this->authorizeView($request);
 
         $query = Team::query()
-            ->with('leader')
+            ->with(['leader', 'supervisor'])
             ->withCount('members')
             ->withCount([
                 'members as agents_count' => fn ($q) => $q
@@ -29,8 +32,15 @@ class TeamAdminController extends Controller
             ->orderBy('name');
         $user = $request->user();
 
-        if ($user && ! $user->can('teams.manage') && ! $user->can('reports.view-all') && $user->team_id) {
-            $query->where('id', $user->team_id);
+        if ($user && ! TeamScope::isOrgWide($user)) {
+            $teamIds = TeamScope::supervisedTeamIds($user);
+            if ($teamIds !== []) {
+                $query->whereIn('id', $teamIds);
+            } elseif ($user->team_id) {
+                $query->where('id', $user->team_id);
+            } else {
+                $query->whereRaw('0 = 1');
+            }
         }
 
         return ApiResponse::success(TeamAdminResource::collection($query->get()));
@@ -38,10 +48,22 @@ class TeamAdminController extends Controller
 
     public function store(StoreTeamRequest $request): JsonResponse
     {
-        $team = Team::query()->create($request->validated());
+        $data = $request->validated();
+        $data['supervisor_id'] = AdminScope::resolveSupervisorIdForTeamCreate(
+            $request->user(),
+            isset($data['supervisor_id']) ? (int) $data['supervisor_id'] : null,
+        );
+
+        $team = Team::query()->create($data);
+
+        if (! empty($data['leader_id'])) {
+            User::query()
+                ->whereKey($data['leader_id'])
+                ->update(['team_id' => $team->id]);
+        }
 
         return ApiResponse::success(
-            new TeamAdminResource($team->fresh(['leader'])->loadCount('members')),
+            new TeamAdminResource($team->fresh(['leader', 'supervisor'])->loadCount('members')),
             'تیم ایجاد شد',
             status: 201,
         );
@@ -49,9 +71,19 @@ class TeamAdminController extends Controller
 
     public function update(UpdateTeamRequest $request, Team $team): JsonResponse
     {
-        $team->update($request->validated());
+        $data = $request->validated();
+        $team->update($data);
 
-        return ApiResponse::success(new TeamAdminResource($team->fresh(['leader'])->loadCount('members')), 'تیم به‌روزرسانی شد');
+        if (array_key_exists('leader_id', $data) && $data['leader_id']) {
+            User::query()
+                ->whereKey($data['leader_id'])
+                ->update(['team_id' => $team->id]);
+        }
+
+        return ApiResponse::success(
+            new TeamAdminResource($team->fresh(['leader', 'supervisor'])->loadCount('members')),
+            'تیم به‌روزرسانی شد',
+        );
     }
 
     private function authorizeView(Request $request): void

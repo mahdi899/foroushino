@@ -185,7 +185,24 @@ interface AppState {
   updateLeadTemperature: (leadId: string, temp: Temperature) => void
   updateLeadNote: (leadId: string, note: string) => void
   setActiveCallDraftNote: (note: string) => void
-  addLead: (input: { firstName: string; lastName?: string; phone: string; city?: string }) => void
+  addLead: (input: {
+    firstName: string
+    lastName?: string
+    phone: string
+    city?: string
+    source?: Lead['source']
+    productId?: string
+    temperature?: Lead['temperature']
+    priority?: Lead['priority']
+    budget?: string
+    job?: string
+    experience?: Lead['experience']
+    incomeGoal?: string
+    interestReason?: string
+    bestCallTime?: string
+    painPoint?: string
+    lastNote?: string
+  }) => void
   distributeLeadsToTeams: () => number
 
   // call actions
@@ -673,30 +690,51 @@ export const useStore = create<AppState>()(
           ),
         })),
 
-      addLead: ({ firstName, lastName = '', phone, city = '' }) => {
+      addLead: ({
+        firstName,
+        lastName = '',
+        phone,
+        city = '',
+        source = 'form',
+        productId,
+        temperature = 'warm',
+        priority = 2,
+        budget = '',
+        job = '',
+        experience = 'none',
+        incomeGoal = '',
+        interestReason = '',
+        bestCallTime = '',
+        painPoint = '',
+        lastNote = '',
+      }) => {
         const id = uid('lead')
+        const product = productId
+          ? get().products.find((p) => p.id === productId)
+          : undefined
         const lead: Lead = {
           id,
           firstName,
           lastName,
           phone,
           city,
-          source: 'form',
-          temperature: 'warm',
-          priority: 2,
+          source,
+          temperature,
+          priority,
           stage: 'new',
-          product: '',
-          budget: '',
-          job: '',
-          experience: 'none',
-          incomeGoal: '',
-          interestReason: '',
-          bestCallTime: '',
+          product: product?.name ?? '',
+          productId,
+          budget,
+          job,
+          experience,
+          incomeGoal,
+          interestReason,
+          bestCallTime,
           lastCallAt: null,
           callCount: 0,
-          lastNote: '',
+          lastNote,
           conversionProbability: 40,
-          painPoint: '',
+          painPoint,
           objection: null,
           nextFollowupAt: null,
           rating: 0,

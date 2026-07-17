@@ -16,15 +16,16 @@ it('lets a supervisor create a team', function () {
     ]);
 
     $response->assertCreated()
-        ->assertJsonPath('data.name', 'تیم شمال');
+        ->assertJsonPath('data.name', 'تیم شمال')
+        ->assertJsonPath('data.supervisor_id', $supervisor->id);
 
-    $this->assertDatabaseHas('teams', ['name' => 'تیم شمال']);
+    $this->assertDatabaseHas('teams', ['name' => 'تیم شمال', 'supervisor_id' => $supervisor->id]);
 });
 
-it('lets a supervisor list all teams', function () {
-    $teamA = makeTeam(['name' => 'تیم الف']);
+it('lets a supervisor list only their supervised teams', function () {
+    $supervisor = makeSupervisor();
+    $teamA = makeTeam(['name' => 'تیم الف', 'supervisor_id' => $supervisor->id]);
     makeTeam(['name' => 'تیم ب']);
-    $supervisor = makeSupervisor(['team_id' => $teamA->id]);
 
     Sanctum::actingAs($supervisor);
 
@@ -32,13 +33,14 @@ it('lets a supervisor list all teams', function () {
 
     $response->assertOk();
     expect(collect($response->json('data'))->pluck('name')->all())
-        ->toContain('تیم الف', 'تیم ب');
+        ->toContain('تیم الف')
+        ->not->toContain('تیم ب');
 });
 
 it('lets a supervisor update a team leader', function () {
-    $team = makeTeam(['name' => 'تیم مرکز']);
-    $leader = makeLeader(['team_id' => $team->id]);
     $supervisor = makeSupervisor();
+    $team = makeTeam(['name' => 'تیم مرکز', 'supervisor_id' => $supervisor->id]);
+    $leader = makeLeader(['team_id' => $team->id]);
 
     Sanctum::actingAs($supervisor);
 
