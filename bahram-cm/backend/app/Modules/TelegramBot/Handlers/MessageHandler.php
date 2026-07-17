@@ -130,6 +130,15 @@ class MessageHandler implements UpdateHandlerInterface
             }
         }
 
+        // Refresh after admin handlers may have changed conversation state.
+        $conversation->refresh();
+
+        if ($conversation->state === ConversationState::WaitingForCardToCardReceipt) {
+            $this->purchaseFlow->handleCardToCardReceiptMessage($bot, $account, $chatId, $message, $text);
+
+            return;
+        }
+
         if ($conversation->state === ConversationState::WaitingForDiscountCode && $text !== '') {
             $this->purchaseFlow->applyDiscountCodeAndContinue($bot, $account, $chatId, $text);
 

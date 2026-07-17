@@ -112,6 +112,20 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             return;
         }
 
+        if (str_starts_with($data, 'c2c:ok:') || str_starts_with($data, 'c2c:no:')) {
+            $this->purchaseFlow->handleCardToCardReviewCallback(
+                $bot,
+                $account,
+                $client,
+                $chatId,
+                $messageId,
+                $callbackId,
+                $data,
+            );
+
+            return;
+        }
+
         if ($data === 'membership:recheck') {
             $this->handleMembershipRecheck($client, $bot, $account, $chatId, $callbackId);
 
