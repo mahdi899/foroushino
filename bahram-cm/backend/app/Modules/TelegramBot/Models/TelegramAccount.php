@@ -3,6 +3,7 @@
 namespace App\Modules\TelegramBot\Models;
 
 use App\Models\User;
+use App\Modules\TelegramBot\Enums\BotAdminPermission;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -104,8 +105,99 @@ class TelegramAccount extends Model
             return;
         }
 
+        $updates = [];
         if (! $this->is_bot_admin) {
-            $this->forceFill(['is_bot_admin' => true])->save();
+            $updates['is_bot_admin'] = true;
         }
+
+        $metadata = (array) ($this->metadata ?? []);
+        $all = \App\Modules\TelegramBot\Enums\BotAdminPermission::values();
+        if (($metadata['bot_admin_permissions'] ?? null) !== $all) {
+            $metadata['bot_admin_permissions'] = $all;
+            $updates['metadata'] = $metadata;
+        }
+
+        if ($updates !== []) {
+            $this->forceFill($updates)->save();
+        }
+    }
+
+    /** @return list<string> */
+    public function botAdminPermissions(): array
+    {
+        if ($this->isPermanentBotAdmin()) {
+            return BotAdminPermission::values();
+        }
+
+        if (! $this->isBotAdmin()) {
+            return [];
+        }
+
+        $stored = data_get($this->metadata, 'bot_admin_permissions');
+        if (! is_array($stored) || $stored === []) {
+            // Backward compatible: legacy admins get full access until edited.
+            return BotAdminPermission::values();
+        }
+
+        $allowed = BotAdminPermission::values();
+
+        return array_values(array_filter(
+            array_map(static fn ($v) => (string) $v, $stored),
+            static fn (string $key) => in_array($key, $allowed, true),
+        ));
+    }
+
+    public function hasBotAdminPermission(BotAdminPermission|string $permission): bool
+    {
+        if (! $this->isBotAdmin()) {
+            return false;
+        }
+
+        if ($this->isPermanentBotAdmin()) {
+            return true;
+        }
+
+        $key = $permission instanceof BotAdminPermission ? $permission->value : $permission;
+
+        return in_array($key, $this->botAdminPermissions(), true);
+    }
+
+    public function grantAllBotAdminPermissions(): void
+    {
+        $metadata = (array) ($this->metadata ?? []);
+        $metadata['bot_admin_permissions'] = BotAdminPermission::values();
+        $this->forceFill([
+            'is_bot_admin' => true,
+            'metadata' => $metadata,
+        ])->save();
+    }
+
+    public function toggleBotAdminPermission(BotAdminPermission $permission): void
+    {
+        if ($this->isPermanentBotAdmin()) {
+            return;
+        }
+
+        $current = $this->botAdminPermissions();
+        if (in_array($permission->value, $current, true)) {
+            $current = array_values(array_filter($current, static fn (string $k) => $k !== $permission->value));
+        } else {
+            $current[] = $permission->value;
+        }
+
+        $metadata = (array) ($this->metadata ?? []);
+        $metadata['bot_admin_permissions'] = array_values(array_unique($current));
+        $this->forceFill(['metadata' => $metadata, 'is_bot_admin' => true])->save();
+    }
+
+    public function adminDisplayName(): string
+    {
+        if (filled($this->telegram_username)) {
+            return (string) $this->telegram_username;
+        }
+
+        $name = $this->display_name ?: trim(($this->first_name ?? '').' '.($this->last_name ?? ''));
+
+        return $name !== '' ? $name : (string) $this->telegram_user_id;
     }
 }

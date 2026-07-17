@@ -92,6 +92,10 @@ class MessageHandler implements UpdateHandlerInterface
         }
 
         if ($account->isBotAdmin()) {
+            if (isset($message['users_shared']) && $this->botAdmin->handleUsersShared($bot, $account, $conversation, $chatId, $message)) {
+                return;
+            }
+
             if (isset($message['photo']) && $this->botAdmin->handlePhotoInput($bot, $account, $conversation, $chatId, $message)) {
                 return;
             }
