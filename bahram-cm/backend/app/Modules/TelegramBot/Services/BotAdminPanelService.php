@@ -49,12 +49,8 @@ class BotAdminPanelService
         ]);
 
         $client = $this->clients->forBot($bot);
-        // ReplyKeyboard and InlineKeyboard cannot be sent together — remove outline menu first.
-        $client->sendMessage($chatId, '🛠 ورود به پنل ادمین…', [
-            'reply_markup' => ['remove_keyboard' => true],
-        ]);
         $client->sendMessage($chatId, $this->dashboardText($bot), [
-            'reply_markup' => $this->mainInlineMenu(),
+            'reply_markup' => app(AdminMenuKeyboard::class)->replyMarkup(),
         ]);
     }
 
@@ -118,14 +114,22 @@ class BotAdminPanelService
             return false;
         }
 
-        if ($conversation->state === ConversationState::AdminPanel && in_array($text, ['❌ خروج از پنل ادمین', 'لغو', '/cancel'], true)) {
-            $this->conversations->reset($conversation);
-            $client = $this->clients->forBot($bot);
-            $client->sendMessage($chatId, 'به منوی اصلی برگشتید.', [
-                'reply_markup' => app(MainMenuKeyboard::class)->replyMarkup($account),
-            ]);
+        if ($conversation->state === ConversationState::AdminPanel) {
+            if (in_array($text, [AdminMenuKeyboard::EXIT, '❌ خروج از پنل ادمین', 'لغو', '/cancel'], true)) {
+                $this->conversations->reset($conversation);
+                $client = $this->clients->forBot($bot);
+                $client->sendMessage($chatId, 'به منوی اصلی برگشتید.', [
+                    'reply_markup' => app(MainMenuKeyboard::class)->replyMarkup($account),
+                ]);
 
-            return true;
+                return true;
+            }
+
+            if (app(AdminMenuKeyboard::class)->isMenuButton($text)) {
+                $this->handleAdminMenuButton($bot, $account, $chatId, $text);
+
+                return true;
+            }
         }
 
         if ($conversation->state !== ConversationState::AdminWaitingInput) {
@@ -136,11 +140,22 @@ class BotAdminPanelService
         $flow = (string) ($admin['flow'] ?? '');
         $client = $this->clients->forBot($bot);
 
+        if (app(AdminMenuKeyboard::class)->isMenuButton($text)) {
+            $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+                'admin' => ['flow' => null, 'draft' => []],
+            ]);
+            $this->handleAdminMenuButton($bot, $account, $chatId, $text);
+
+            return true;
+        }
+
         if ($text === '/cancel' || $text === 'لغو') {
             $this->conversations->transition($conversation, ConversationState::AdminPanel, [
                 'admin' => ['flow' => null, 'draft' => []],
             ]);
-            $client->sendMessage($chatId, 'لغو شد.', ['reply_markup' => $this->backHomeMarkup()]);
+            $client->sendMessage($chatId, 'لغو شد.', [
+                'reply_markup' => app(AdminMenuKeyboard::class)->replyMarkup(),
+            ]);
 
             return true;
         }
@@ -148,6 +163,7 @@ class BotAdminPanelService
         try {
             match ($flow) {
                 'user_search' => $this->onUserSearch($bot, $account, $conversation, $client, $chatId, $text),
+                'dm_user' => $this->onDmUser($bot, $account, $conversation, $client, $chatId, $text),
                 'broadcast_title' => $this->onBroadcastTitle($bot, $account, $conversation, $client, $chatId, $text),
                 'broadcast_text' => $this->onBroadcastText($bot, $account, $conversation, $client, $chatId, $text),
                 'broadcast_quick' => $this->onBroadcastQuick($bot, $account, $conversation, $client, $chatId, $text),
@@ -158,11 +174,29 @@ class BotAdminPanelService
             };
         } catch (Throwable $e) {
             $client->sendMessage($chatId, 'خطا: '.$e->getMessage(), [
-                'reply_markup' => $this->backHomeMarkup(),
+                'reply_markup' => app(AdminMenuKeyboard::class)->replyMarkup(),
             ]);
         }
 
         return true;
+    }
+
+    private function handleAdminMenuButton(TelegramBot $bot, TelegramAccount $account, int $chatId, string $text): void
+    {
+        $client = $this->clients->forBot($bot);
+
+        match ($text) {
+            AdminMenuKeyboard::USERS => $this->renderUsersSearchHub($bot, $account, $client, $chatId, 0),
+            AdminMenuKeyboard::ADMINS => $this->handleAdminsCallback($bot, $client, $chatId, 0, 'admin:admins:p:0'),
+            AdminMenuKeyboard::BROADCAST => $this->handleBroadcastsCallback($bot, $account, $client, $chatId, 0, 'admin:b:p:0'),
+            AdminMenuKeyboard::REQUIRED_CHATS => $this->handleRequiredChatsCallback($bot, $account, $client, $chatId, 0, 'admin:rc:p:0'),
+            AdminMenuKeyboard::DESTINATIONS => $this->handleDestinationsCallback($bot, $account, $client, $chatId, 0, 'admin:d:p:0'),
+            AdminMenuKeyboard::PROFILE => $this->handleProfileCallback($bot, $account, $client, $chatId, 0, 'admin:p'),
+            AdminMenuKeyboard::SETTINGS => $this->handleSettingsCallback($bot, $account, $client, $chatId, 0, 'admin:s'),
+            AdminMenuKeyboard::LOGS => $this->handleLogsCallback($bot, $account, $client, $chatId, 0, 'admin:l'),
+            AdminMenuKeyboard::HOME => $this->showHome($bot, $account, $client, $chatId, 0),
+            default => $this->showHome($bot, $account, $client, $chatId, 0),
+        };
     }
 
     /** @param  array<string, mixed>  $message */
@@ -324,19 +358,22 @@ class BotAdminPanelService
         ]);
 
         $text = $this->dashboardText($bot);
-        $markup = ['inline_keyboard' => $this->mainInlineMenu()['inline_keyboard']];
 
         if ($messageId > 0) {
             $client->editMessageText($text, [
                 'chat_id' => $chatId,
                 'message_id' => $messageId,
-                'reply_markup' => $markup,
+            ]);
+            $client->sendMessage($chatId, 'منوی پنل ادمین پایین صفحه است.', [
+                'reply_markup' => app(AdminMenuKeyboard::class)->replyMarkup(),
             ]);
 
             return;
         }
 
-        $client->sendMessage($chatId, $text, ['reply_markup' => $markup]);
+        $client->sendMessage($chatId, $text, [
+            'reply_markup' => app(AdminMenuKeyboard::class)->replyMarkup(),
+        ]);
     }
 
     private function exitAdmin(
@@ -405,6 +442,54 @@ class BotAdminPanelService
             return;
         }
 
+        if ($action === 'msg') {
+            $conversation = $this->conversations->forAccount($account);
+            $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+                'admin' => ['flow' => 'dm_user', 'draft' => ['target_account_id' => $target->id]],
+            ]);
+            $client->sendMessage($chatId, "📩 ارسال پیام به کاربر #{$target->telegram_user_id}\n\nمتن پیام را بنویسید (یا «لغو»):", [
+                'reply_markup' => app(AdminMenuKeyboard::class)->replyMarkup(),
+            ]);
+
+            return;
+        }
+
+        if ($action === 'pay') {
+            $this->renderUserPayments($client, $chatId, $messageId, $target);
+
+            return;
+        }
+
+        if ($action === 'sub') {
+            $this->renderUserSubscriptions($client, $chatId, $messageId, $target);
+
+            return;
+        }
+
+        if ($action === 'refu') {
+            $this->renderReferralUsers($bot, $client, $chatId, $messageId, $target);
+
+            return;
+        }
+
+        if ($action === 'refs') {
+            $this->renderReferralSubscriptions($bot, $client, $chatId, $messageId, $target);
+
+            return;
+        }
+
+        if ($action === 'coop') {
+            $stats = $this->userStats->forAccount($target);
+            $client->sendMessage(
+                $chatId,
+                "🎯 درصد همکاری کاربر #{$target->telegram_user_id}: {$stats['cooperation_percent']}%\n\n"
+                .'این درصد از تنظیمات کش‌بک محصولات فعال گرفته می‌شود.',
+                ['reply_markup' => app(AdminMenuKeyboard::class)->replyMarkup()],
+            );
+
+            return;
+        }
+
         if ($action === 'a') {
             if ($target->isPermanentBotAdmin()) {
                 if (! $target->is_bot_admin) {
@@ -440,21 +525,23 @@ class BotAdminPanelService
 
         $text = "👥 مدیریت کاربران\n\n"
             ."تعداد کل کاربران (بدون ادمین): {$totalUsers}\n\n"
-            ."برای مشاهده پروفایل، شناسه عددی تلگرام یا یوزرنیم را ارسال کنید.\n"
-            ."مثال: 303360676 یا mahdi_akbari";
+            ."از کیبورد پایین «👥 کاربران» همیشه در دسترس است.\n"
+            ."شناسه عددی تلگرام یا یوزرنیم را همین‌جا بفرستید.\n"
+            .'مثال: 303360676 یا mahdi_akbari';
 
         $keyboard = [
             [
-                ['text' => '🔎 جستجوی جدید', 'callback_data' => 'admin:u:s'],
                 ['text' => '🛡 ادمین‌ها', 'callback_data' => 'admin:admins:p:0'],
-            ],
-            [
                 ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
-                ['text' => '❌ خروج', 'callback_data' => 'admin:x'],
             ],
         ];
 
         $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
+        if ($messageId <= 0) {
+            $client->sendMessage($chatId, 'منوی پنل ادمین پایین صفحه فعال است.', [
+                'reply_markup' => app(AdminMenuKeyboard::class)->replyMarkup(),
+            ]);
+        }
     }
 
     private function onUserSearch(
@@ -618,14 +705,27 @@ class BotAdminPanelService
             $text .= "\n\n🚫 وضعیت: مسدود";
         }
 
+        $id = $target->id;
         $backCb = $fromAdmins || $target->isBotAdmin() ? 'admin:admins:p:0' : 'admin:u:s';
 
         $keyboard = [
             [
-                ['text' => $target->is_blocked ? '✅ رفع مسدودیت' : '🔒 بلاک کن', 'callback_data' => 'admin:u:b:'.$target->id],
+                ['text' => $target->is_blocked ? '✅ رفع مسدودیت' : '🔒 بلاک کن', 'callback_data' => 'admin:u:b:'.$id],
             ],
             [
-                ['text' => $target->is_bot_admin || $target->isPermanentBotAdmin() ? '⬇️ حذف ادمین' : '⬆️ ادمین بات', 'callback_data' => 'admin:u:a:'.$target->id],
+                ['text' => '📩 ارسال پیام', 'callback_data' => 'admin:u:msg:'.$id],
+            ],
+            [
+                ['text' => '🏦 پرداخت ها', 'callback_data' => 'admin:u:pay:'.$id],
+                ['text' => '📮 اشتراک ها', 'callback_data' => 'admin:u:sub:'.$id],
+            ],
+            [
+                ['text' => '🗃️ اشتراک های زیرمجموعه', 'callback_data' => 'admin:u:refs:'.$id],
+                ['text' => '🎯 درصد همکاری', 'callback_data' => 'admin:u:coop:'.$id],
+            ],
+            [
+                ['text' => '👥 کاربران زیرمجموعه', 'callback_data' => 'admin:u:refu:'.$id],
+                ['text' => $target->is_bot_admin || $target->isPermanentBotAdmin() ? '⬇️ حذف ادمین' : '⬆️ ادمین بات', 'callback_data' => 'admin:u:a:'.$id],
             ],
             [
                 ['text' => '◀️ بازگشت', 'callback_data' => $backCb],
@@ -634,6 +734,202 @@ class BotAdminPanelService
         ];
 
         $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
+        // Keep admin reply keyboard visible at the bottom (like user panel).
+        if ($messageId <= 0) {
+            $client->sendMessage($chatId, 'منوی پنل ادمین پایین صفحه فعال است.', [
+                'reply_markup' => app(AdminMenuKeyboard::class)->replyMarkup(),
+            ]);
+        }
+    }
+
+    private function onDmUser(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $text,
+    ): void {
+        $targetId = (int) data_get($conversation->context, 'admin.draft.target_account_id');
+        $target = TelegramAccount::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->whereKey($targetId)
+            ->first();
+
+        if ($target === null) {
+            throw new RuntimeException('کاربر هدف یافت نشد.');
+        }
+
+        $client->sendMessage($target->telegram_user_id, "📩 پیام از پشتیبانی آکادمی:\n\n".$text);
+        $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+            'admin' => ['flow' => null, 'draft' => []],
+        ]);
+        $client->sendMessage($chatId, '✅ پیام ارسال شد.', [
+            'reply_markup' => app(AdminMenuKeyboard::class)->replyMarkup(),
+        ]);
+    }
+
+    private function renderUserPayments(
+        TelegramBotClientInterface $client,
+        int $chatId,
+        int $messageId,
+        TelegramAccount $target,
+    ): void {
+        $orders = \App\Models\Order::query()
+            ->where('user_id', $target->user_id)
+            ->whereIn('status', ['paid', 'fulfilled'])
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get(['id', 'order_number', 'final_amount', 'status', 'paid_at', 'created_at']);
+
+        $lines = ["🏦 پرداخت‌های کاربر #{$target->telegram_user_id}", ''];
+        if ($orders->isEmpty()) {
+            $lines[] = 'پرداخت موفقی ثبت نشده است.';
+        } else {
+            foreach ($orders as $order) {
+                $amount = number_format((int) $order->final_amount);
+                $lines[] = "• {$order->order_number} — {$amount} تومان ({$order->status})";
+            }
+        }
+
+        $this->editOrSend($client, $chatId, $messageId, implode("\n", $lines), [
+            'inline_keyboard' => [[
+                ['text' => '◀️ پروفایل', 'callback_data' => 'admin:u:i:'.$target->id],
+                ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
+            ]],
+        ]);
+    }
+
+    private function renderUserSubscriptions(
+        TelegramBotClientInterface $client,
+        int $chatId,
+        int $messageId,
+        TelegramAccount $target,
+    ): void {
+        $accesses = \App\Models\CourseAccess::query()
+            ->with('product:id,title')
+            ->where('user_id', $target->user_id)
+            ->orderByDesc('id')
+            ->limit(15)
+            ->get();
+
+        $lines = ["📮 اشتراک‌های کاربر #{$target->telegram_user_id}", ''];
+        if ($accesses->isEmpty()) {
+            $lines[] = 'اشتراکی ثبت نشده است.';
+        } else {
+            foreach ($accesses as $access) {
+                $title = $access->product?->title ?? ('محصول #'.$access->product_id);
+                $status = $access->status?->value ?? '—';
+                $lines[] = "• {$title} — {$status}";
+            }
+        }
+
+        $this->editOrSend($client, $chatId, $messageId, implode("\n", $lines), [
+            'inline_keyboard' => [[
+                ['text' => '◀️ پروفایل', 'callback_data' => 'admin:u:i:'.$target->id],
+                ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
+            ]],
+        ]);
+    }
+
+    private function renderReferralUsers(
+        TelegramBot $bot,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        int $messageId,
+        TelegramAccount $target,
+    ): void {
+        $userId = $target->user_id;
+        $code = $target->user?->referralCode?->code;
+
+        $query = TelegramAccount::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->where(function ($q) use ($userId, $code): void {
+                if ($userId) {
+                    $q->where('metadata->referred_by_user_id', $userId);
+                }
+                if (is_string($code) && $code !== '') {
+                    $method = $userId ? 'orWhere' : 'where';
+                    $q->{$method}('metadata->referred_by_code', $code);
+                }
+                if (! $userId && (! is_string($code) || $code === '')) {
+                    $q->whereRaw('1 = 0');
+                }
+            })
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get();
+
+        $lines = ["👥 کاربران زیرمجموعه #{$target->telegram_user_id}", ''];
+        if ($query->isEmpty()) {
+            $lines[] = 'زیرمجموعه‌ای از طریق ربات ثبت نشده است.';
+        } else {
+            foreach ($query as $item) {
+                $lines[] = '• '.$this->accountLabel($item)." (TG: {$item->telegram_user_id})";
+            }
+        }
+
+        $this->editOrSend($client, $chatId, $messageId, implode("\n", $lines), [
+            'inline_keyboard' => [[
+                ['text' => '◀️ پروفایل', 'callback_data' => 'admin:u:i:'.$target->id],
+                ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
+            ]],
+        ]);
+    }
+
+    private function renderReferralSubscriptions(
+        TelegramBot $bot,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        int $messageId,
+        TelegramAccount $target,
+    ): void {
+        $code = $target->user?->referralCode?->code;
+        $buyerIds = collect();
+        if ($target->user_id) {
+            $buyerIds = $buyerIds->merge(
+                \App\Models\ReferralConversion::query()
+                    ->where('referrer_user_id', $target->user_id)
+                    ->pluck('buyer_user_id')
+            );
+        }
+        if (is_string($code) && $code !== '') {
+            $buyerIds = $buyerIds->merge(
+                \App\Models\Order::query()
+                    ->where('referral_code', $code)
+                    ->whereIn('status', ['paid', 'fulfilled'])
+                    ->pluck('user_id')
+            );
+        }
+        $buyerIds = $buyerIds->filter()->unique()->values();
+
+        $lines = ["🗃️ اشتراک‌های زیرمجموعه #{$target->telegram_user_id}", ''];
+        if ($buyerIds->isEmpty()) {
+            $lines[] = 'اشتراک فعالی برای زیرمجموعه‌ها یافت نشد.';
+        } else {
+            $accesses = \App\Models\CourseAccess::query()
+                ->with('product:id,title')
+                ->whereIn('user_id', $buyerIds->all())
+                ->where('status', \App\Enums\CourseAccessStatus::Active)
+                ->orderByDesc('id')
+                ->limit(20)
+                ->get();
+            if ($accesses->isEmpty()) {
+                $lines[] = 'اشتراک فعالی برای زیرمجموعه‌ها یافت نشد.';
+            } else {
+                foreach ($accesses as $access) {
+                    $title = $access->product?->title ?? ('محصول #'.$access->product_id);
+                    $lines[] = "• user#{$access->user_id} — {$title}";
+                }
+            }
+        }
+
+        $this->editOrSend($client, $chatId, $messageId, implode("\n", $lines), [
+            'inline_keyboard' => [[
+                ['text' => '◀️ پروفایل', 'callback_data' => 'admin:u:i:'.$target->id],
+                ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
+            ]],
+        ]);
     }
 
     private function handleBroadcastsCallback(
