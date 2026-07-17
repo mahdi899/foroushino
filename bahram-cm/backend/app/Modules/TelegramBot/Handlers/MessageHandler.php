@@ -4,6 +4,8 @@ namespace App\Modules\TelegramBot\Handlers;
 
 use App\Models\SatApplication;
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
+use App\Modules\TelegramBot\Enums\BotFeatureFlag;
+use App\Modules\TelegramBot\Enums\ConversationState;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramUpdate;
@@ -12,9 +14,11 @@ use App\Modules\TelegramBot\Services\ConversationService;
 use App\Modules\TelegramBot\Services\MainMenuKeyboard;
 use App\Modules\TelegramBot\Services\RegistrationFlowService;
 use App\Modules\TelegramBot\Services\RequiredChatMembershipService;
+use App\Modules\TelegramBot\Services\SupportTicketBridgeService;
 use App\Modules\TelegramBot\Services\TelegramContentPresenter;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
 use App\Modules\TelegramBot\Services\TelegramSeminarCatalogService;
+use App\Modules\TelegramBot\Services\TelegramSubscriberEligibility;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Services\ReferralService;
 
@@ -31,6 +35,8 @@ class MessageHandler implements UpdateHandlerInterface
         private readonly TelegramContentPresenter $content,
         private readonly ReferralService $referrals,
         private readonly BotAdminPanelService $botAdmin,
+        private readonly TelegramSubscriberEligibility $subscriberEligibility,
+        private readonly SupportTicketBridgeService $supportTickets,
     ) {}
 
     public function handle(TelegramUpdate $update, TelegramBot $bot): void
@@ -78,8 +84,15 @@ class MessageHandler implements UpdateHandlerInterface
         }
         $account->syncPermanentAdminFlag();
 
+        $client = $this->clients->forBot($bot);
         $conversation = $this->conversations->forAccount($account);
         $text = trim((string) ($message['text'] ?? ''));
+
+        if (! $bot->is_active && ! $account->isBotAdmin()) {
+            $client->sendMessage($chatId, '⛔ ربات موقتاً غیرفعال است. لطفاً بعداً دوباره تلاش کنید.');
+
+            return;
+        }
 
         if (str_starts_with($text, '/start')) {
             $payload = trim(substr($text, 6));
@@ -105,14 +118,31 @@ class MessageHandler implements UpdateHandlerInterface
             }
         }
 
-        if ($account->isLinked() && $account->hasVerifiedMobile()) {
+        if ($conversation->state === ConversationState::WaitingForSupportMessage && $text !== '') {
+            if (in_array($text, ['لغو', '/cancel'], true)) {
+                $this->conversations->transition($conversation, ConversationState::Idle, [
+                    'support' => null,
+                ]);
+                $client->sendMessage($chatId, 'ارسال پیام پشتیبانی لغو شد.', [
+                    'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
+                ]);
+
+                return;
+            }
+
+            $this->handleSupportUserMessage($bot, $account, $conversation, $chatId, $message, $text);
+
+            return;
+        }
+
+        if ($this->canAccessMainFeatures($bot, $account)) {
             if (! $this->membership->isSatisfied($bot, $account)) {
                 $this->membership->promptJoin($bot, $account);
 
                 return;
             }
 
-            if ($this->mainMenu->isMenuButton($text, $account)) {
+            if ($this->mainMenu->isMenuButton($text, $account, $bot)) {
                 $this->handleMenuButton($bot, $account, $chatId, $text);
 
                 return;
@@ -130,6 +160,19 @@ class MessageHandler implements UpdateHandlerInterface
         }
     }
 
+    private function canAccessMainFeatures(TelegramBot $bot, TelegramAccount $account): bool
+    {
+        if ($account->isBotAdmin()) {
+            return true;
+        }
+
+        if (! $bot->featureEnabled(BotFeatureFlag::CollectPhoneAndName)) {
+            return true;
+        }
+
+        return $account->isLinked() && $account->hasVerifiedMobile();
+    }
+
     private function handleMenuButton(TelegramBot $bot, TelegramAccount $account, int $chatId, string $text): void
     {
         $client = $this->clients->forBot($bot);
@@ -140,22 +183,81 @@ class MessageHandler implements UpdateHandlerInterface
             'سات ☎️' => $this->sendSatStatus($client, $chatId, $account),
             'کانال مرجع 📣' => $this->sendReferenceChannel($client, $chatId),
             'خانواده 👨‍👩‍👧‍👦' => $this->sendFamily($client, $chatId, $account),
-            'معرفی دوستان 🎁' => $this->sendReferral($client, $chatId, $account),
-            'پشتیبانی 🎫' => $client->sendMessage($chatId, 'دسته پشتیبانی را انتخاب کنید:', [
-                'reply_markup' => [
-                    'inline_keyboard' => [
-                        [['text' => 'خرید و پرداخت', 'callback_data' => 'support:cat:purchase']],
-                        [['text' => 'دوره کمپین‌نویسی', 'callback_data' => 'support:cat:campaign_course']],
-                        [['text' => 'سایر', 'callback_data' => 'support:cat:other']],
-                    ],
-                ],
-            ]),
+            'معرفی دوستان 🎁' => $this->sendReferral($client, $chatId, $account, $bot),
+            'پشتیبانی 🎫' => $this->openSupportHub($client, $bot, $account, $chatId),
             'حساب کاربری 👤' => $this->sendAccount($client, $chatId, $account),
             'پنل ادمین بات 🛠' => $this->botAdmin->openDashboard($bot, $account, $chatId),
             default => $client->sendMessage($chatId, 'منوی اصلی:', [
-                'reply_markup' => $this->mainMenu->replyMarkup($account),
+                'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
             ]),
         };
+    }
+
+    private function openSupportHub($client, TelegramBot $bot, TelegramAccount $account, int $chatId): void
+    {
+        $requiresSub = $bot->featureEnabled(BotFeatureFlag::TicketRequiresSubscription)
+            || $bot->featureEnabled(BotFeatureFlag::SupportRequiresSubscription);
+
+        if ($requiresSub && ! $this->subscriberEligibility->hasQualifyingAccess($account)) {
+            $client->sendMessage($chatId, $this->subscriberEligibility->denialMessage());
+
+            return;
+        }
+
+        $client->sendMessage($chatId, 'دسته پشتیبانی را انتخاب کنید:', [
+            'reply_markup' => [
+                'inline_keyboard' => [
+                    [['text' => 'خرید و پرداخت', 'callback_data' => 'support:cat:purchase']],
+                    [['text' => 'دوره کمپین‌نویسی', 'callback_data' => 'support:cat:campaign_course']],
+                    [['text' => 'سایر', 'callback_data' => 'support:cat:other']],
+                ],
+            ],
+        ]);
+    }
+
+    /** @param  array<string, mixed>  $message */
+    private function handleSupportUserMessage(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        $conversation,
+        int $chatId,
+        array $message,
+        string $text,
+    ): void {
+        $client = $this->clients->forBot($bot);
+        $category = (string) data_get($conversation->context, 'support.category', 'other');
+        $subjects = [
+            'purchase' => 'خرید و پرداخت',
+            'campaign_course' => 'دوره کمپین‌نویسی',
+            'other' => 'سایر',
+        ];
+
+        try {
+            $ticket = $this->supportTickets->openOrContinue(
+                $account,
+                $category,
+                $subjects[$category] ?? 'پشتیبانی تلگرام',
+            );
+            $this->supportTickets->appendUserMessage($ticket, $text);
+            $this->supportTickets->mirrorToSupportGroup(
+                $bot,
+                $ticket,
+                $account,
+                (int) ($message['message_id'] ?? 0),
+                $this->supportTickets->categoryTopicId($category),
+            );
+        } catch (\Throwable $e) {
+            $client->sendMessage($chatId, 'ارسال پیام پشتیبانی ناموفق بود. لطفاً دوباره تلاش کنید.');
+
+            return;
+        }
+
+        $this->conversations->transition($conversation, ConversationState::Idle, [
+            'support' => null,
+        ]);
+        $client->sendMessage($chatId, '✅ پیام شما ثبت شد. پشتیبانی به‌زودی پاسخ می‌دهد.', [
+            'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
+        ]);
     }
 
     private function sendProducts($client, int $chatId): void
@@ -261,8 +363,14 @@ class MessageHandler implements UpdateHandlerInterface
         $this->sendWithLink($client, $chatId, $message, $familyUrl, '🌐 ورود به خانواده');
     }
 
-    private function sendReferral($client, int $chatId, TelegramAccount $account): void
+    private function sendReferral($client, int $chatId, TelegramAccount $account, TelegramBot $bot): void
     {
+        if (! $bot->featureEnabled(BotFeatureFlag::ReferralEnabled)) {
+            $client->sendMessage($chatId, 'زیرمجموعه‌گیری فعلاً غیرفعال است.');
+
+            return;
+        }
+
         try {
             $code = $this->referrals->getOrCreateCode($account->user);
             $summary = $this->referrals->summary($account->user);

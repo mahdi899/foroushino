@@ -2,6 +2,7 @@
 
 namespace App\Modules\TelegramBot\Models;
 
+use App\Modules\TelegramBot\Enums\BotFeatureFlag;
 use App\Modules\TelegramBot\Enums\TelegramBotEnvironment;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -73,5 +74,52 @@ class TelegramBot extends Model
     public function isProduction(): bool
     {
         return $this->environment === TelegramBotEnvironment::Production;
+    }
+
+    public function featureEnabled(BotFeatureFlag|string $flag): bool
+    {
+        $key = $flag instanceof BotFeatureFlag ? $flag->value : $flag;
+        $enum = $flag instanceof BotFeatureFlag ? $flag : BotFeatureFlag::tryFrom($key);
+        if ($enum === null) {
+            return false;
+        }
+
+        $stored = data_get($this->settings, 'features.'.$enum->value);
+
+        if ($stored === null) {
+            return $enum->defaultEnabled();
+        }
+
+        return (bool) $stored;
+    }
+
+    public function toggleFeature(BotFeatureFlag $flag): bool
+    {
+        $settings = (array) ($this->settings ?? []);
+        $features = (array) ($settings['features'] ?? []);
+        $next = ! $this->featureEnabled($flag);
+        $features[$flag->value] = $next;
+        $settings['features'] = $features;
+        $this->forceFill(['settings' => $settings])->save();
+
+        return $next;
+    }
+
+    public function cardToCardInstructions(): string
+    {
+        $custom = trim((string) data_get($this->settings, 'card_to_card_text', ''));
+        if ($custom !== '') {
+            return $custom;
+        }
+
+        return "لطفاً مبلغ سفارش را کارت‌به‌کارت واریز کنید و رسید را برای پشتیبانی بفرستید.\n"
+            .'اطلاعات کارت هنوز در تنظیمات ربات ثبت نشده — از پشتیبانی راهنمایی بگیرید.';
+    }
+
+    public function setCardToCardInstructions(string $text): void
+    {
+        $settings = (array) ($this->settings ?? []);
+        $settings['card_to_card_text'] = mb_substr(trim($text), 0, 1000);
+        $this->forceFill(['settings' => $settings])->save();
     }
 }

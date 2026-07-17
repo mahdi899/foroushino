@@ -125,7 +125,7 @@ class BotAdminPanelService
                 $this->conversations->reset($conversation);
                 $client = $this->clients->forBot($bot);
                 $client->sendMessage($chatId, 'به منوی اصلی برگشتید.', [
-                    'reply_markup' => app(MainMenuKeyboard::class)->replyMarkup($account),
+                    'reply_markup' => app(MainMenuKeyboard::class)->replyMarkup($account, $bot),
                 ]);
 
                 return true;
@@ -180,6 +180,7 @@ class BotAdminPanelService
                 'user_search' => $this->onUserSearch($bot, $account, $conversation, $client, $chatId, $text),
                 'admin_add' => $this->onAdminAddById($bot, $account, $conversation, $client, $chatId, $text),
                 'admin_add_name' => $this->onAdminAddDisplayName($bot, $account, $conversation, $client, $chatId, $text),
+                'card_to_card_text' => $this->onCardToCardText($bot, $account, $conversation, $client, $chatId, $text),
                 'dm_user' => $this->onDmUser($bot, $account, $conversation, $client, $chatId, $text),
                 'broadcast_title' => $this->onBroadcastTitle($bot, $account, $conversation, $client, $chatId, $text),
                 'broadcast_text' => $this->onBroadcastText($bot, $account, $conversation, $client, $chatId, $text),
@@ -315,7 +316,7 @@ class BotAdminPanelService
 
         $client = $this->clients->forBot($bot);
         $client->sendMessage($chatId, 'دسترسی ادمین بات برای شما فعال نیست.', [
-            'reply_markup' => app(MainMenuKeyboard::class)->replyMarkup($account),
+            'reply_markup' => app(MainMenuKeyboard::class)->replyMarkup($account, $bot),
         ]);
 
         return false;
@@ -430,7 +431,7 @@ class BotAdminPanelService
         }
 
         $client->sendMessage($chatId, 'منوی اصلی:', [
-            'reply_markup' => app(MainMenuKeyboard::class)->replyMarkup($account),
+            'reply_markup' => app(MainMenuKeyboard::class)->replyMarkup($account, $account->bot),
         ]);
     }
 
@@ -689,6 +690,31 @@ class BotAdminPanelService
             "🆔 ایدی عددی کاربر مورد نظر را با اعداد لاتین ارسال کنید و یا با استفاده از دکمه زیر کاربر مورد نظر را انتخاب کنید:",
             ['reply_markup' => app(AdminsSectionKeyboard::class)->replyMarkup()],
         );
+    }
+
+    private function onCardToCardText(
+        TelegramBot $bot,
+        TelegramAccount $actor,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $text,
+    ): void {
+        $body = trim($text);
+        if (mb_strlen($body) < 10) {
+            $client->sendMessage($chatId, 'متن کارت‌به‌کارت خیلی کوتاه است. دوباره بفرستید یا «لغو».');
+
+            return;
+        }
+
+        $bot->setCardToCardInstructions($body);
+        $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+            'admin' => ['flow' => null, 'draft' => []],
+        ]);
+        $client->sendMessage($chatId, '✅ متن کارت‌به‌کارت ذخیره شد.', [
+            'reply_markup' => $this->adminMenuMarkup($actor),
+        ]);
+        $this->renderSettings($bot->fresh() ?? $bot, $client, $chatId, 0);
     }
 
     private function handleAdminsCallback(
@@ -2120,6 +2146,39 @@ class BotAdminPanelService
             return;
         }
 
+        if ($data === 'admin:s:c2c') {
+            $conversation = $this->conversations->forAccount($account);
+            $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+                'admin' => ['flow' => 'card_to_card_text', 'draft' => []],
+            ]);
+            $client->sendMessage(
+                $chatId,
+                "📝 متن راهنمای کارت‌به‌کارت را بفرستید (شماره کارت، نام صاحب حساب، …).\n\nالان:\n".$bot->cardToCardInstructions(),
+                ['reply_markup' => $this->adminMenuMarkup($account)],
+            );
+
+            return;
+        }
+
+        if (str_starts_with($data, 'admin:s:t:')) {
+            $key = substr($data, strlen('admin:s:t:'));
+            $flag = \App\Modules\TelegramBot\Enums\BotFeatureFlag::tryFrom($key);
+            if ($flag === null) {
+                throw new RuntimeException('تنظیم نامعتبر است.');
+            }
+            $bot->refresh();
+            $on = $bot->toggleFeature($flag);
+            $this->renderSettings(
+                $bot->fresh() ?? $bot,
+                $client,
+                $chatId,
+                $messageId,
+                ($on ? '✅ فعال شد: ' : '❌ غیرفعال شد: ').$flag->labelFa(),
+            );
+
+            return;
+        }
+
         $this->renderSettings($bot, $client, $chatId, $messageId);
     }
 
@@ -2130,30 +2189,44 @@ class BotAdminPanelService
         int $messageId,
         ?string $notice = null,
     ): void {
+        $bot->refresh();
         $health = $this->health->run();
         $botHealth = $health['bots'][$bot->key] ?? [];
         $updates = $health['updates'] ?? [];
 
         $text = ($notice ? $notice."\n\n" : '')
-            ."⚙️ تنظیمات و سلامت\n\n"
-            .'ربات: '.($bot->is_active ? 'فعال ✅' : 'غیرفعال ⛔')."\n"
+            ."⚙️ تنظیمات ربات\n\n"
+            .'وضعیت ربات: '.($bot->is_active ? 'فعال ✅' : 'غیرفعال ⛔')."\n"
             .'توکن: '.(($botHealth['token_present'] ?? false) ? '✅' : '❌')."\n"
             .'API: '.(($botHealth['api_reachable'] ?? false) ? '✅' : '❌')."\n"
             .'وب‌هوک: '.($botHealth['webhook_url'] ?? '—')."\n"
             ."آپدیت معلق: ".($updates['pending'] ?? 0)."\n"
-            .'آپدیت ناموفق: '.($updates['failed'] ?? 0);
+            .'آپدیت ناموفق: '.($updates['failed'] ?? 0)."\n\n"
+            .'برای تغییر هر گزینه روی آن بزنید:';
 
-        $siteButton = TelegramSiteUrl::inlineButton('پنل وب', TelegramSiteUrl::adminTelegram());
-        $keyboard = [
-            [
-                ['text' => '🔗 ثبت وب‌هوک', 'callback_data' => 'admin:s:wh'],
-                ['text' => $bot->is_active ? '⛔ غیرفعال' : '✅ فعال', 'callback_data' => 'admin:s:ac'],
-            ],
-            [
-                ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
-            ],
+        $keyboard = [];
+        $keyboard[] = [[
+            'text' => ($bot->is_active ? '✅' : '❌').' وضعیت ربات',
+            'callback_data' => 'admin:s:ac',
+        ]];
+
+        foreach (\App\Modules\TelegramBot\Enums\BotFeatureFlag::ordered() as $flag) {
+            $on = $bot->featureEnabled($flag);
+            $keyboard[] = [[
+                'text' => ($on ? '✅' : '❌').' '.$flag->labelFa(),
+                'callback_data' => 'admin:s:t:'.$flag->value,
+            ]];
+        }
+
+        $keyboard[] = [
+            ['text' => '📝 متن کارت به کارت', 'callback_data' => 'admin:s:c2c'],
+            ['text' => '🔗 ثبت وب‌هوک', 'callback_data' => 'admin:s:wh'],
+        ];
+        $keyboard[] = [
+            ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
         ];
 
+        $siteButton = TelegramSiteUrl::inlineButton('پنل وب', TelegramSiteUrl::adminTelegram());
         if ($siteButton !== null) {
             array_unshift($keyboard, [$siteButton]);
         }

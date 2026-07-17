@@ -2,7 +2,9 @@
 
 namespace App\Modules\TelegramBot\Services;
 
+use App\Enums\OtpPurpose;
 use App\Models\User;
+use App\Modules\TelegramBot\Enums\BotFeatureFlag;
 use App\Modules\TelegramBot\Enums\ConversationState;
 use App\Modules\TelegramBot\Jobs\SendTelegramMessageJob;
 use App\Modules\TelegramBot\Models\TelegramAccount;
@@ -11,6 +13,8 @@ use App\Modules\TelegramBot\Models\TelegramConversation;
 use App\Modules\TelegramBot\Models\TelegramLegalDocument;
 use App\Modules\TelegramBot\Models\TelegramTermsAcceptance;
 use App\Modules\TelegramBot\Support\TelegramHtml;
+use App\Services\Exceptions\OtpException;
+use App\Services\OtpService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -25,12 +29,29 @@ class RegistrationFlowService
         private readonly RegistrationKeyboard $registrationKeyboard,
         private readonly TelegramUserSyncService $userSync,
         private readonly TelegramAdminUserStatsService $adminUserStats,
+        private readonly OtpService $otp,
     ) {}
 
     public function start(TelegramBot $bot, TelegramAccount $account, TelegramConversation $conversation): void
     {
         if ($account->isLinked() && $account->hasVerifiedMobile()) {
             $this->sendMainMenu($bot, $account);
+
+            return;
+        }
+
+        if (! $bot->featureEnabled(BotFeatureFlag::CollectPhoneAndName)) {
+            $this->conversations->transition($conversation, ConversationState::Idle);
+            $name = trim(($account->first_name ?? '').' '.($account->last_name ?? '')) ?: 'کاربر';
+            if (blank($account->display_name)) {
+                $account->update(['display_name' => $name]);
+            }
+            $this->queueMessage(
+                $bot,
+                $account->telegram_user_id,
+                'خوش آمدید! دریافت شماره و نام فعلاً غیرفعال است.',
+                ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
+            );
 
             return;
         }
@@ -102,7 +123,7 @@ class RegistrationFlowService
                 ConversationState::ConfirmingRegistration,
                 ConversationState::WaitingForOtp,
             ], true)) {
-                $this->askForPhone($bot, $account, $conversation, 'باشه. شماره موبایل را دوباره با دکمه زیر ارسال کنید:');
+                $this->askForPhone($bot, $account, $conversation, 'باشه. شماره موبایل را دوباره ارسال کنید:');
 
                 return;
             }
@@ -110,12 +131,8 @@ class RegistrationFlowService
 
         match ($conversation->state) {
             ConversationState::WaitingForName => $this->handleName($bot, $account, $conversation, $text),
-            ConversationState::WaitingForMobile => $this->queueMessage(
-                $bot,
-                $account->telegram_user_id,
-                'لطفاً فقط از دکمه «ارسال شماره تماس» استفاده کنید تا شماره از حساب تلگرام شما ارسال شود.',
-                ['reply_markup' => $this->registrationKeyboard->requestContactMarkup()],
-            ),
+            ConversationState::WaitingForMobile => $this->handleTypedMobile($bot, $account, $conversation, $text),
+            ConversationState::WaitingForOtp => $this->handleOtp($bot, $account, $conversation, $text),
             default => null,
         };
     }
@@ -134,14 +151,12 @@ class RegistrationFlowService
         $telegramUserId = (int) ($from['id'] ?? 0);
         $contactUserId = (int) ($contact['user_id'] ?? 0);
 
-        // Telegram Bot API: request_contact shares the sender's own Contact with user_id set.
-        // That share is treated as mobile verification — no SMS OTP.
         if ($contactUserId <= 0 || $contactUserId !== $telegramUserId) {
             $this->queueMessage(
                 $bot,
                 $account->telegram_user_id,
                 'لطفاً فقط شماره تماس خودتان را با دکمه «ارسال شماره تماس» بفرستید.',
-                ['reply_markup' => $this->registrationKeyboard->requestContactMarkup()],
+                ['reply_markup' => $this->phoneStepMarkup($bot)],
             );
 
             return;
@@ -152,26 +167,55 @@ class RegistrationFlowService
             $this->queueMessage(
                 $bot,
                 $account->telegram_user_id,
-                'شماره تماس دریافت نشد. دوباره با دکمه زیر تلاش کنید.',
-                ['reply_markup' => $this->registrationKeyboard->requestContactMarkup()],
+                'شماره تماس دریافت نشد. دوباره تلاش کنید.',
+                ['reply_markup' => $this->phoneStepMarkup($bot)],
             );
 
             return;
         }
 
-        $this->handleVerifiedContact($bot, $account, $conversation, $phone);
+        $this->handleVerifiedContact($bot, $account, $conversation, $phone, fromContact: true);
     }
 
     private function askForPhone(
         TelegramBot $bot,
         TelegramAccount $account,
         TelegramConversation $conversation,
-        string $message = 'سلام! برای شروع، شماره موبایل خود را با دکمه زیر به‌اشتراک بگذارید.',
+        string $message = 'سلام! برای شروع، شماره موبایل خود را ارسال کنید.',
     ): void {
         $this->conversations->transition($conversation, ConversationState::WaitingForMobile);
-        $this->queueMessage($bot, $account->telegram_user_id, $message, [
-            'reply_markup' => $this->registrationKeyboard->requestContactMarkup(),
+
+        $hint = $bot->featureEnabled(BotFeatureFlag::NumericPhoneVerification)
+            ? "\n\nمی‌توانید شماره را تایپ کنید یا با دکمه زیر به‌اشتراک بگذارید."
+            : "\n\nلطفاً از دکمه «ارسال شماره تماس» استفاده کنید.";
+
+        if ($bot->featureEnabled(BotFeatureFlag::IranMobileOnly)) {
+            $hint .= "\nفقط شماره ایران (09…) پذیرفته می‌شود.";
+        }
+
+        $this->queueMessage($bot, $account->telegram_user_id, $message.$hint, [
+            'reply_markup' => $this->phoneStepMarkup($bot),
         ]);
+    }
+
+    private function handleTypedMobile(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        TelegramConversation $conversation,
+        string $text,
+    ): void {
+        if (! $bot->featureEnabled(BotFeatureFlag::NumericPhoneVerification)) {
+            $this->queueMessage(
+                $bot,
+                $account->telegram_user_id,
+                'لطفاً فقط از دکمه «ارسال شماره تماس» استفاده کنید.',
+                ['reply_markup' => $this->phoneStepMarkup($bot)],
+            );
+
+            return;
+        }
+
+        $this->handleVerifiedContact($bot, $account, $conversation, $text, fromContact: false);
     }
 
     private function handleName(TelegramBot $bot, TelegramAccount $account, TelegramConversation $conversation, string $text): void
@@ -184,10 +228,13 @@ class RegistrationFlowService
 
         $name = $this->displayNameValidator->normalize($text);
         $mobile = (string) ($account->mobile ?: data_get($conversation->context, 'mobile', ''));
-        $normalized = $this->mobileNormalizer->normalize($mobile);
+        $normalized = $this->mobileNormalizer->normalize(
+            $mobile,
+            $bot->featureEnabled(BotFeatureFlag::IranMobileOnly),
+        );
 
         if ($normalized === null) {
-            $this->askForPhone($bot, $account, $conversation, 'ابتدا شماره موبایل را با دکمه زیر ارسال کنید:');
+            $this->askForPhone($bot, $account, $conversation, 'ابتدا شماره موبایل را ارسال کنید:');
 
             return;
         }
@@ -196,32 +243,89 @@ class RegistrationFlowService
         $this->completeRegistration($bot, $account->fresh(), $conversation);
     }
 
-    private function handleVerifiedContact(
+    private function handleOtp(
         TelegramBot $bot,
         TelegramAccount $account,
         TelegramConversation $conversation,
         string $text,
     ): void {
-        $mobile = $this->mobileNormalizer->normalize($text);
+        $mobile = (string) data_get($conversation->context, 'mobile', $account->mobile ?? '');
+        $code = preg_replace('/\D/u', '', $text) ?? '';
+
+        try {
+            $this->otp->verify($mobile, $code, OtpPurpose::TelegramLink);
+        } catch (OtpException $e) {
+            $this->queueMessage($bot, $account->telegram_user_id, $e->getMessage());
+
+            return;
+        }
+
+        $this->continueAfterPhoneVerified($bot, $account, $conversation, $mobile);
+    }
+
+    private function handleVerifiedContact(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        TelegramConversation $conversation,
+        string $text,
+        bool $fromContact,
+    ): void {
+        $mobile = $this->mobileNormalizer->normalize(
+            $text,
+            $bot->featureEnabled(BotFeatureFlag::IranMobileOnly),
+        );
 
         if ($mobile === null) {
-            $this->queueMessage(
-                $bot,
-                $account->telegram_user_id,
-                'شماره تماس معتبر نیست. لطفاً دوباره با دکمه «ارسال شماره تماس» بفرستید.',
-                ['reply_markup' => $this->registrationKeyboard->requestContactMarkup()],
-            );
+            $msg = $bot->featureEnabled(BotFeatureFlag::IranMobileOnly)
+                ? 'شماره تماس معتبر نیست. فقط موبایل ایران (09…) پذیرفته می‌شود.'
+                : 'شماره تماس معتبر نیست. دوباره تلاش کنید.';
+            $this->queueMessage($bot, $account->telegram_user_id, $msg, [
+                'reply_markup' => $this->phoneStepMarkup($bot),
+            ]);
 
             return;
         }
 
         $account->update(['mobile' => $mobile]);
 
+        if ($bot->featureEnabled(BotFeatureFlag::SmsOtpVerification)) {
+            try {
+                $this->otp->send($mobile, OtpPurpose::TelegramLink);
+            } catch (OtpException $e) {
+                $this->queueMessage($bot, $account->telegram_user_id, 'ارسال پیامک ناموفق بود: '.$e->getMessage());
+
+                return;
+            }
+
+            $this->conversations->transition($conversation, ConversationState::WaitingForOtp, [
+                'mobile' => $mobile,
+                'from_contact' => $fromContact,
+            ]);
+            $this->queueMessage(
+                $bot,
+                $account->telegram_user_id,
+                'کد تایید پیامک‌شده را وارد کنید.',
+                ['reply_markup' => $this->registrationKeyboard->nameStepMarkup()],
+            );
+
+            return;
+        }
+
+        // Contact share without SMS = verified. Typed number without SMS = accepted when numeric mode is on.
+        $this->continueAfterPhoneVerified($bot, $account, $conversation, $mobile);
+    }
+
+    private function continueAfterPhoneVerified(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        TelegramConversation $conversation,
+        string $mobile,
+    ): void {
         $existing = User::query()->where('mobile', $mobile)->first();
         $knownName = filled($existing?->name) ? trim((string) $existing->name) : '';
 
         if ($knownName !== '') {
-            $account->update(['display_name' => $knownName]);
+            $account->update(['display_name' => $knownName, 'mobile' => $mobile]);
             $this->queueMessage(
                 $bot,
                 $account->telegram_user_id,
@@ -255,11 +359,13 @@ class RegistrationFlowService
         $summaryLines = [];
 
         try {
-            DB::transaction(function () use ($account, $conversation, &$summaryLines): void {
-                $this->adminUserStats->attributeReferralFromStartPayload(
-                    $account,
-                    data_get($conversation->context, 'start_payload'),
-                );
+            DB::transaction(function () use ($bot, $account, $conversation, &$summaryLines): void {
+                if ($bot->featureEnabled(BotFeatureFlag::ReferralEnabled)) {
+                    $this->adminUserStats->attributeReferralFromStartPayload(
+                        $account,
+                        data_get($conversation->context, 'start_payload'),
+                    );
+                }
 
                 $account->update(['mobile_verified_at' => now()]);
 
@@ -305,8 +411,24 @@ class RegistrationFlowService
     private function sendMainMenu(TelegramBot $bot, TelegramAccount $account): void
     {
         $this->queueMessage($bot, $account->telegram_user_id, 'منوی اصلی:', [
-            'reply_markup' => $this->mainMenu->replyMarkup($account),
+            'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
         ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function phoneStepMarkup(TelegramBot $bot): array
+    {
+        if ($bot->featureEnabled(BotFeatureFlag::NumericPhoneVerification)) {
+            return [
+                'keyboard' => [
+                    [['text' => '📱 ارسال شماره تماس', 'request_contact' => true]],
+                    [['text' => RegistrationKeyboard::BACK_LABEL]],
+                ],
+                'resize_keyboard' => true,
+            ];
+        }
+
+        return $this->registrationKeyboard->requestContactMarkup();
     }
 
     /** @param  array<string, mixed>  $options */
