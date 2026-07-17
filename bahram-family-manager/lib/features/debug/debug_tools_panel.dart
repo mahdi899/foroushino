@@ -24,10 +24,14 @@ class _DebugToolsPanelState extends State<DebugToolsPanel> {
 
     return PanelSectionCard(
       title: 'ابزار توسعه‌دهنده',
-      subtitle: 'لاگ API و پاک‌سازی کش — فقط در حالت debug',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Text(
+            'لاگ API و پاک‌سازی کش — فقط در حالت debug',
+            style: TextStyle(fontSize: 12, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65)),
+          ),
+          const SizedBox(height: AppSpacing.sm),
           Text('API: ${AppConfig.apiBaseUrl}', style: const TextStyle(fontSize: 12)),
           const SizedBox(height: AppSpacing.sm),
           SwitchListTile(

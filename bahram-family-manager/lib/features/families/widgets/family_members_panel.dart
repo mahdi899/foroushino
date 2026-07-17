@@ -392,81 +392,82 @@ class _MemberTile extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: AppColors.primarySoft,
-            child: Text(initial, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(member.name ?? 'بدون نام', style: const TextStyle(fontWeight: FontWeight.w700)),
-                if (_displayMobile != null)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SelectableText(
-                          _displayMobile!,
-                          style: TextStyle(
-                            color: scheme.onSurface.withValues(alpha: 0.9),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6,
+          children: [
+            CircleAvatar(
+              radius: 22,
+              backgroundColor: AppColors.primarySoft,
+              child: Text(initial, style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(member.name ?? 'بدون نام', style: const TextStyle(fontWeight: FontWeight.w700)),
+                  if (_displayMobile != null)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SelectableText(
+                            _displayMobile!,
+                            style: TextStyle(
+                              color: scheme.onSurface.withValues(alpha: 0.9),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.6,
+                            ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        tooltip: 'کپی شماره',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () {
-                          final raw = member.displayMobile;
-                          if (raw == null) return;
-                          Clipboard.setData(ClipboardData(text: raw));
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('شماره کپی شد')),
-                          );
-                        },
-                        icon: Icon(Icons.copy_rounded, size: 18, color: scheme.primary),
-                      ),
-                    ],
-                  ),
-                if (showFamilyName && member.familyName != null)
-                  Text(member.familyName!, style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.55), fontSize: 12)),
-                if (showAttribution && member.entrySource != null)
+                        IconButton(
+                          tooltip: 'کپی شماره',
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () {
+                            final raw = member.displayMobile;
+                            if (raw == null) return;
+                            Clipboard.setData(ClipboardData(text: raw));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('شماره کپی شد')),
+                            );
+                          },
+                          icon: Icon(Icons.copy_rounded, size: 18, color: scheme.primary),
+                        ),
+                      ],
+                    ),
+                  if (showFamilyName && member.familyName != null)
+                    Text(member.familyName!, style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.55), fontSize: 12)),
+                  if (showAttribution && member.entrySource != null)
+                    Text(
+                      labelOf(entrySourceLabels, member.entrySource!),
+                      style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
+                  if (showAttribution && member.entryEventName != null)
+                    Text(
+                      member.entryEventName!,
+                      style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.5), fontSize: 11),
+                    ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (member.joinedAt != null)
+                  Text(formatDateTime(member.joinedAt!), style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.5), fontSize: 11)),
+                if (!showAttribution && member.entrySource != null)
                   Text(
                     labelOf(entrySourceLabels, member.entrySource!),
                     style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600),
                   ),
-                if (showAttribution && member.entryEventName != null)
-                  Text(
-                    member.entryEventName!,
-                    style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.5), fontSize: 11),
-                  ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (member.joinedAt != null)
-                Text(formatDateTime(member.joinedAt!), style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.5), fontSize: 11)),
-              if (!showAttribution && member.entrySource != null)
-                Text(
-                  labelOf(entrySourceLabels, member.entrySource!),
-                  style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w600),
-                ),
+            if (canRemove) ...[
+              const SizedBox(width: AppSpacing.xs),
+              IconButton(
+                tooltip: 'حذف از خانواده',
+                onPressed: onRemove,
+                icon: const Icon(Icons.person_remove_rounded, color: AppColors.error),
+              ),
             ],
-          ),
-          if (canRemove) ...[
-            const SizedBox(width: AppSpacing.xs),
-            IconButton(
-              tooltip: 'حذف از خانواده',
-              onPressed: onRemove,
-              icon: const Icon(Icons.person_remove_rounded, color: AppColors.error),
-            ),
           ],
         ],
         ),
