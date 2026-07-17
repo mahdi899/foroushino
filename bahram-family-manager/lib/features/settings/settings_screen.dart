@@ -19,6 +19,7 @@ import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
 import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
+import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 import 'package:bahram_family_manager/widgets/surfaces/panel_gradient_card.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -45,6 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   bool _saving = false;
   bool _uploading = false;
   double _uploadProgress = 0;
+  var _profileHydrated = false;
 
   @override
   void initState() {
@@ -63,9 +65,22 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   void _load() {
+    _profileHydrated = false;
+    final manager = context.read<AppState>().manager;
     setState(() {
-      _settingsFuture = context.read<AppState>().manager.getSettings();
-      _storiesFuture = context.read<AppState>().manager.listStories();
+      _settingsFuture = manager.getSettings().then((settings) {
+        if (mounted && !_profileHydrated) {
+          _profileHydrated = true;
+          _displayNameCtrl.text = settings.displayName;
+          _profileNameCtrl.text = settings.profileName;
+        }
+        return settings;
+      });
+      _storiesFuture = manager.listStories();
+      _profilePreview = null;
+      _communityPreview = null;
+      _profileMediaId = null;
+      _communityMediaId = null;
     });
   }
 
@@ -205,6 +220,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     }
   }
 
+  EdgeInsets _listPadding(BuildContext context) {
+    final base = AppBreakpoints.pagePadding(context);
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final extraBottom = AppBreakpoints.isDesktop(context) ? 0.0 : 88 + bottomInset;
+    return base.copyWith(bottom: base.bottom + extraBottom);
+  }
+
   @override
   Widget build(BuildContext context) {
     return AdaptiveScaffold(
@@ -223,13 +245,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             builder: (context, snapshot) => AsyncBody<FamilyBrandingSettings>(
               snapshot: snapshot,
               builder: (context, settings) {
-                if (_displayNameCtrl.text.isEmpty) {
-                  _displayNameCtrl.text = settings.displayName;
-                  _profileNameCtrl.text = settings.profileName;
-                }
-
                 return ListView(
-                  padding: AppBreakpoints.pagePadding(context),
+                  padding: _listPadding(context),
                   children: [
                     TextField(
                       controller: _displayNameCtrl,
@@ -240,52 +257,26 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                       controller: _profileNameCtrl,
                       decoration: const InputDecoration(labelText: 'نام مدیر (مثلاً بهرام)'),
                     ),
-                    const SizedBox(height: AppSpacing.lg),
-                    const Text('آواتار پروفایل مدیر', style: TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: AppSpacing.sm),
-                    if (_profilePreview?.cdnUrl != null || settings.profileAvatar != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.network(
-                            resolveMediaUrl(_profilePreview?.cdnUrl ?? settings.profileAvatar!) ?? '',
-                            height: 96,
-                            width: 96,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                    UploadZone(
-                      label: 'آپلود آواتار مدیر',
+                    const SizedBox(height: AppSpacing.xl),
+                    _AvatarSection(
+                      title: 'آواتار پروفایل مدیر',
+                      previewUrl: resolveMediaUrl(_profilePreview?.cdnUrl ?? settings.profileAvatar),
+                      uploadLabel: 'آپلود آواتار مدیر',
                       uploading: _uploading,
                       progress: _uploadProgress,
-                      onTap: () => _pickAvatar(community: false),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    const Text('آواتار پروفایل خانواده (حلقه استوری)', style: TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: AppSpacing.sm),
-                    if (_communityPreview?.cdnUrl != null || settings.communityAvatar != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.network(
-                            resolveMediaUrl(_communityPreview?.cdnUrl ?? settings.communityAvatar!) ?? '',
-                            height: 96,
-                            width: 96,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                    UploadZone(
-                      label: 'آپلود آواتار خانواده',
-                      uploading: _uploading,
-                      progress: _uploadProgress,
-                      onTap: () => _pickAvatar(community: true),
+                      onUpload: () => _pickAvatar(community: false),
                     ),
                     const SizedBox(height: AppSpacing.xl),
-                    if (settings.mediaPipeline != null)
+                    _AvatarSection(
+                      title: 'آواتار پروفایل خانواده (حلقه استوری)',
+                      previewUrl: resolveMediaUrl(_communityPreview?.cdnUrl ?? settings.communityAvatar),
+                      uploadLabel: 'آپلود آواتار خانواده',
+                      uploading: _uploading,
+                      progress: _uploadProgress,
+                      onUpload: () => _pickAvatar(community: true),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    if (settings.mediaPipeline != null) ...[
                       PanelSectionCard(
                         title: 'رسانه و FTP',
                         icon: Icons.cloud_upload_rounded,
@@ -294,7 +285,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                           onChanged: _load,
                         ),
                       ),
-                    if (settings.mediaPipeline != null) const SizedBox(height: AppSpacing.xl),
+                      const SizedBox(height: AppSpacing.xl),
+                    ],
                     if (kDebugMode) ...[
                       const DebugToolsPanel(),
                       const SizedBox(height: AppSpacing.xl),
@@ -312,88 +304,194 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               emptyMessage: 'استوری فعالی نیست.',
               builder: (context, stories) {
                 return ListView(
-                  padding: AppBreakpoints.pagePadding(context),
+                  padding: _listPadding(context),
                   children: [
-                    UploadZone(
-                      label: 'انتخاب تصویر/ویدیو استوری (۹:۱۶ عمودی)',
-                      uploading: _uploading,
-                      progress: _uploadProgress,
-                      onTap: _pickStoryMedia,
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'استوری در موبایل تمام‌صفحه نمایش داده می‌شود. نسبت تصویر باید ۹:۱۶ (عمودی) باشد.',
-                      style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65), fontSize: 13),
-                    ),
-                    if (_storyMedia != null) ...[
-                      const SizedBox(height: AppSpacing.md),
-                      StoryMediaPreview(media: _storyMedia!),
-                      const SizedBox(height: AppSpacing.sm),
-                      Text(
-                        storyAspectHint(_storyMedia!.width, _storyMedia!.height),
-                        style: TextStyle(
-                          color: isStoryAspectRatio(_storyMedia!.width, _storyMedia!.height)
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.error,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        textAlign: TextAlign.center,
+                    PanelSectionCard(
+                      title: 'استوری جدید',
+                      icon: Icons.auto_stories_rounded,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          UploadZone(
+                            label: 'انتخاب تصویر/ویدیو استوری (۹:۱۶ عمودی)',
+                            uploading: _uploading,
+                            progress: _uploadProgress,
+                            onTap: _pickStoryMedia,
+                          ),
+                          const SizedBox(height: AppSpacing.sm),
+                          Text(
+                            'استوری در موبایل تمام‌صفحه نمایش داده می‌شود. نسبت تصویر باید ۹:۱۶ (عمودی) باشد.',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65),
+                              fontSize: 13,
+                            ),
+                          ),
+                          if (_storyMedia != null) ...[
+                            const SizedBox(height: AppSpacing.md),
+                            Center(child: StoryMediaPreview(media: _storyMedia!)),
+                            const SizedBox(height: AppSpacing.sm),
+                            Text(
+                              storyAspectHint(_storyMedia!.width, _storyMedia!.height),
+                              style: TextStyle(
+                                color: isStoryAspectRatio(_storyMedia!.width, _storyMedia!.height)
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.error,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                          const SizedBox(height: AppSpacing.md),
+                          TextField(
+                            controller: _storyCaptionCtrl,
+                            decoration: const InputDecoration(labelText: 'کپشن (اختیاری)'),
+                            maxLines: 2,
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          PrimaryButton(label: 'انتشار استوری ۲۴ ساعته', loading: _saving, onPressed: _publishStory),
+                        ],
                       ),
-                    ],
-                    const SizedBox(height: AppSpacing.md),
-                    TextField(
-                      controller: _storyCaptionCtrl,
-                      decoration: const InputDecoration(labelText: 'کپشن (اختیاری)'),
-                      maxLines: 2,
                     ),
-                    const SizedBox(height: AppSpacing.lg),
-                    PrimaryButton(label: 'انتشار استوری ۲۴ ساعته', loading: _saving, onPressed: _publishStory),
                     const SizedBox(height: AppSpacing.xl),
-                    const Text('استوری‌های اخیر', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                    Text(
+                      'استوری‌های اخیر',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                    ),
                     const SizedBox(height: AppSpacing.md),
-                    ...stories.map(
-                      (story) => Card(
-                        margin: const EdgeInsets.only(bottom: AppSpacing.md),
-                        child: Padding(
-                          padding: const EdgeInsets.all(AppSpacing.md),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (story.media != null)
-                                SizedBox(
-                                  width: 72,
-                                  child: StoryMediaPreview(media: story.media!, maxWidth: 72, showBadge: false),
+                    if (stories.isEmpty)
+                      Text(
+                        'استوری فعالی نیست.',
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6)),
+                      )
+                    else
+                      ...stories.map(
+                        (story) => Padding(
+                          padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                          child: GlassPanel(
+                            borderRadius: 18,
+                            blur: 0,
+                            padding: const EdgeInsets.all(AppSpacing.md),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (story.media != null)
+                                  SizedBox(
+                                    width: 80,
+                                    child: StoryMediaPreview(media: story.media!, maxWidth: 80, showBadge: false),
+                                  ),
+                                if (story.media != null) const SizedBox(width: AppSpacing.md),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        story.caption?.isNotEmpty == true ? story.caption! : 'بدون کپشن',
+                                        style: const TextStyle(fontWeight: FontWeight.w700),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(formatDateTime(story.publishedAt), style: const TextStyle(fontSize: 12)),
+                                    ],
+                                  ),
                                 ),
-                              const SizedBox(width: AppSpacing.md),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      story.caption?.isNotEmpty == true ? story.caption! : 'بدون کپشن',
-                                      style: const TextStyle(fontWeight: FontWeight.w700),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(formatDateTime(story.publishedAt), style: const TextStyle(fontSize: 12)),
-                                  ],
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline_rounded),
+                                  onPressed: _saving ? null : () => _deleteStory(story),
                                 ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline_rounded),
-                                onPressed: _saving ? null : () => _deleteStory(story),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 );
               },
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AvatarSection extends StatelessWidget {
+  const _AvatarSection({
+    required this.title,
+    required this.previewUrl,
+    required this.uploadLabel,
+    required this.uploading,
+    required this.progress,
+    required this.onUpload,
+  });
+
+  final String title;
+  final String? previewUrl;
+  final String uploadLabel;
+  final bool uploading;
+  final double progress;
+  final VoidCallback onUpload;
+
+  @override
+  Widget build(BuildContext context) {
+    return PanelSectionCard(
+      title: title,
+      icon: Icons.account_circle_rounded,
+      child: Column(
+        children: [
+          _AvatarPreview(url: previewUrl),
+          const SizedBox(height: AppSpacing.md),
+          UploadZone(
+            label: uploadLabel,
+            uploading: uploading,
+            progress: progress,
+            onTap: onUpload,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AvatarPreview extends StatelessWidget {
+  const _AvatarPreview({this.url});
+
+  final String? url;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final size = AppBreakpoints.isDesktop(context) ? 112.0 : 128.0;
+
+    return Center(
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: scheme.primary.withValues(alpha: 0.35), width: 3),
+          boxShadow: AppShadows.primaryGlow,
+        ),
+        child: ClipOval(
+          child: url == null || url!.isEmpty
+              ? ColoredBox(
+                  color: scheme.surfaceContainerHighest,
+                  child: Icon(Icons.person_rounded, size: size * 0.45, color: scheme.onSurface.withValues(alpha: 0.35)),
+                )
+              : Image.network(
+                  url!,
+                  fit: BoxFit.cover,
+                  width: size,
+                  height: size,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                  },
+                  errorBuilder: (_, __, ___) => ColoredBox(
+                    color: scheme.surfaceContainerHighest,
+                    child: Icon(Icons.broken_image_rounded, size: 40, color: scheme.onSurface.withValues(alpha: 0.4)),
+                  ),
+                ),
+        ),
       ),
     );
   }

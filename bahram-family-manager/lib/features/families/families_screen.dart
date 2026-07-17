@@ -197,6 +197,7 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
         appBar: ManagerAppBar(
           title: const Text('خانواده‌ها'),
           automaticallyImplyLeading: false,
+          showShellActions: false,
           actions: [
             IconButton(
               tooltip: 'اعضای کانال',
@@ -256,64 +257,68 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
     }
 
     return AdaptiveScaffold(
-        appBar: ManagerAppBar(
-          title: const Text('خانواده‌ها'),
-          actions: [
+      appBar: ManagerAppBar(
+        title: const Text('خانواده‌ها'),
+        showShellActions: true,
+        actions: [
+          IconButton(
+            tooltip: 'اعضای کانال',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const FamilyMembersScreen()),
+            ),
+            icon: const Icon(Icons.people_rounded),
+          ),
+          if (canManage)
             IconButton(
-              tooltip: 'اعضای کانال',
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const FamilyMembersScreen()),
-              ),
-              icon: const Icon(Icons.people_rounded),
+              tooltip: 'خانواده جدید',
+              onPressed: _createFamily,
+              icon: const Icon(Icons.add_rounded),
             ),
-          ],
-        ),
-        floatingActionButton: canManage
-            ? FloatingActionButton.extended(
-                onPressed: _createFamily,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('خانواده جدید'),
-              )
-            : null,
-        body: Column(
-          children: [
-            _SearchHeader(
-              searchCtrl: _searchCtrl,
-              lifecycle: _lifecycle,
-              onSearch: _loadFamiliesFirstPage,
-              onLifecycleChanged: (v) => setState(() {
-                _lifecycle = v;
-                _loadFamiliesFirstPage();
-              }),
-            ),
-            Expanded(
-              child: _FamiliesList(
-                scrollController: _familiesScrollCtrl,
-                families: _families,
-                initialLoading: _familiesInitialLoading,
-                loadingMore: _familiesLoadingMore,
-                hasMore: _familiesHasMore,
-                error: _familiesError,
-                selectedId: _selectedFamilyId,
-                onRefresh: _loadFamiliesFirstPage,
-                onSelect: (id) {
-                  FamilySummaryModel? summary;
-                  for (final family in _families) {
-                    if (family.id == id) {
-                      summary = family;
-                      break;
-                    }
+        ],
+      ),
+      body: Column(
+        children: [
+          _SearchHeader(
+            searchCtrl: _searchCtrl,
+            lifecycle: _lifecycle,
+            onSearch: _loadFamiliesFirstPage,
+            onLifecycleChanged: (v) => setState(() {
+              _lifecycle = v;
+              _loadFamiliesFirstPage();
+            }),
+          ),
+          Expanded(
+            child: _FamiliesList(
+              scrollController: _familiesScrollCtrl,
+              families: _families,
+              initialLoading: _familiesInitialLoading,
+              loadingMore: _familiesLoadingMore,
+              hasMore: _familiesHasMore,
+              error: _familiesError,
+              selectedId: _selectedFamilyId,
+              onRefresh: _loadFamiliesFirstPage,
+              onSelect: (id) {
+                FamilySummaryModel? summary;
+                for (final family in _families) {
+                  if (family.id == id) {
+                    summary = family;
+                    break;
                   }
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => FamilyDetailScreen(familyId: id, familySummary: summary),
+                }
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => FamilyDetailScreen(
+                      familyId: id,
+                      familySummary: summary,
+                      onChanged: _refreshFamiliesList,
                     ),
-                  );
-                },
-                desktopStyle: false,
-              ),
+                  ),
+                );
+              },
+              desktopStyle: false,
             ),
-          ],
+          ),
+        ],
       ),
     );
   }
@@ -531,7 +536,12 @@ class _FamiliesList extends StatelessWidget {
             )
           : ListView.separated(
               controller: scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+              padding: EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.sm,
+                AppSpacing.lg,
+                AppSpacing.xl + 72 + MediaQuery.paddingOf(context).bottom,
+              ),
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: itemCount,
               separatorBuilder: (_, index) {

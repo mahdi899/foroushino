@@ -1,24 +1,32 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import 'package:bahram_family_manager/features/settings/app_settings_hub_screen.dart';
+import 'package:bahram_family_manager/state/app_state.dart';
+import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/theme/theme_mode_toggle.dart';
+
 class ManagerAppBar extends StatelessWidget implements PreferredSizeWidget {
   const ManagerAppBar({
     super.key,
     required this.title,
     this.actions,
     this.bottom,
-    this.showThemeToggle,
-    this.themeToggleCompact = false,
+    this.showThemeToggle = false,
+    this.themeToggleCompact = true,
+    /// On mobile primary tabs: settings + logout like home header.
+    this.showShellActions = false,
     this.automaticallyImplyLeading = true,
   });
 
   final Widget title;
   final List<Widget>? actions;
   final PreferredSizeWidget? bottom;
-  final bool? showThemeToggle;
+  final bool showThemeToggle;
   final bool themeToggleCompact;
+  final bool showShellActions;
   final bool automaticallyImplyLeading;
 
   @override
@@ -31,7 +39,7 @@ class ManagerAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = scheme.brightness == Brightness.dark;
-    final showToggle = showThemeToggle ?? true;
+    final isDesktop = AppBreakpoints.isDesktop(context);
 
     return ClipRect(
       child: BackdropFilter(
@@ -48,7 +56,21 @@ class ManagerAppBar extends StatelessWidget implements PreferredSizeWidget {
           bottom: bottom,
           actions: [
             ...?actions,
-            if (showToggle) ThemeModeToggleButton(compact: themeToggleCompact),
+            if (showShellActions && !isDesktop) ...[
+              IconButton(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AppSettingsHubScreen()),
+                ),
+                icon: const Icon(Icons.settings_rounded),
+                tooltip: 'تنظیمات',
+              ),
+              IconButton(
+                onPressed: () => context.read<AppState>().logout(),
+                icon: const Icon(Icons.logout_rounded),
+                tooltip: 'خروج',
+              ),
+            ],
+            if (showThemeToggle) ThemeModeToggleButton(compact: themeToggleCompact),
             const SizedBox(width: 4),
           ],
         ),

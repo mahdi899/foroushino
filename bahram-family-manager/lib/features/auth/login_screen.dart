@@ -135,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
         appBar: const ManagerAppBar(
           title: SizedBox.shrink(),
           showThemeToggle: true,
-          themeToggleCompact: false,
+          themeToggleCompact: true,
         ),
         body: Center(
           child: ConstrainedBox(
@@ -187,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: const ManagerAppBar(
         title: SizedBox.shrink(),
         showThemeToggle: true,
-        themeToggleCompact: false,
+        themeToggleCompact: true,
       ),
       body: SafeArea(
         child: Center(

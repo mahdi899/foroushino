@@ -305,19 +305,32 @@ class _CommentsScreenState extends State<CommentsScreen> with SingleTickerProvid
         title: Text(_selectedPendingIds.isEmpty
             ? 'نظرات خانواده'
             : '${toFaDigits(_selectedPendingIds.length.toString())} انتخاب‌شده'),
-        actions: isPendingTab && _selectedPendingIds.isNotEmpty
-            ? [
-                IconButton(
-                  tooltip: 'تأیید گروهی',
-                  onPressed: _batchApprove,
-                  icon: const Icon(Icons.done_all_rounded),
-                ),
-              ]
-            : null,
+        showShellActions: true,
+        actions: [
+          IconButton(
+            onPressed: _loadFirstPage,
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'بروزرسانی',
+          ),
+          if (isPendingTab && _selectedPendingIds.isNotEmpty)
+            IconButton(
+              tooltip: 'تأیید گروهی',
+              onPressed: _batchApprove,
+              icon: const Icon(Icons.done_all_rounded),
+            ),
+        ],
         bottom: AppTabBar(
           controller: _tabController,
           isScrollable: true,
           tabs: _tabs.map((t) => _tabLabels[t]!).toList(),
+          icons: const [
+            Icons.hourglass_top_rounded,
+            Icons.check_circle_outline_rounded,
+            Icons.cancel_outlined,
+            Icons.star_rounded,
+            Icons.mark_email_unread_rounded,
+            Icons.psychology_rounded,
+          ],
         ),
       ),
       body: RefreshIndicator(
