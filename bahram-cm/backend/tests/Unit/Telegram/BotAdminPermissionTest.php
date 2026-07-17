@@ -53,4 +53,28 @@ class BotAdminPermissionTest extends TestCase
         $staff->toggleBotAdminPermission(BotAdminPermission::Broadcast);
         $this->assertFalse($staff->fresh()->hasBotAdminPermission(BotAdminPermission::Broadcast));
     }
+
+    public function test_admin_display_name_prefers_custom_and_never_shows_numeric_id(): void
+    {
+        $bot = TelegramBot::query()->create([
+            'key' => 'production',
+            'display_name' => 'Test',
+            'token_key' => 'TELEGRAM_BOT_TOKEN',
+            'webhook_secret' => 'secret',
+            'environment' => 'production',
+            'is_active' => true,
+        ]);
+
+        $account = TelegramAccount::query()->create([
+            'telegram_bot_id' => $bot->id,
+            'telegram_user_id' => 999001,
+            'display_name' => '999001',
+            'is_bot_admin' => true,
+        ]);
+
+        $this->assertSame('بدون نام', $account->adminDisplayName());
+
+        $account->grantAllBotAdminPermissions('پشتیبان فروش');
+        $this->assertSame('پشتیبان فروش', $account->fresh()->adminDisplayName());
+    }
 }

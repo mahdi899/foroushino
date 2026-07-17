@@ -162,14 +162,24 @@ class TelegramAccount extends Model
         return in_array($key, $this->botAdminPermissions(), true);
     }
 
-    public function grantAllBotAdminPermissions(): void
+    public function grantAllBotAdminPermissions(?string $adminDisplayName = null): void
     {
         $metadata = (array) ($this->metadata ?? []);
         $metadata['bot_admin_permissions'] = BotAdminPermission::values();
+        if ($adminDisplayName !== null) {
+            $metadata['bot_admin_display_name'] = mb_substr(trim($adminDisplayName), 0, 40);
+        }
         $this->forceFill([
             'is_bot_admin' => true,
             'metadata' => $metadata,
         ])->save();
+    }
+
+    public function setBotAdminDisplayName(string $name): void
+    {
+        $metadata = (array) ($this->metadata ?? []);
+        $metadata['bot_admin_display_name'] = mb_substr(trim($name), 0, 40);
+        $this->forceFill(['metadata' => $metadata])->save();
     }
 
     public function toggleBotAdminPermission(BotAdminPermission $permission): void
@@ -190,14 +200,23 @@ class TelegramAccount extends Model
         $this->forceFill(['metadata' => $metadata, 'is_bot_admin' => true])->save();
     }
 
+    /** Label shown in the bot admins list (never a raw numeric Telegram ID). */
     public function adminDisplayName(): string
     {
+        $custom = trim((string) data_get($this->metadata, 'bot_admin_display_name', ''));
+        if ($custom !== '' && ! ctype_digit($custom)) {
+            return $custom;
+        }
+
         if (filled($this->telegram_username)) {
             return (string) $this->telegram_username;
         }
 
-        $name = $this->display_name ?: trim(($this->first_name ?? '').' '.($this->last_name ?? ''));
+        $name = trim((string) ($this->display_name ?: trim(($this->first_name ?? '').' '.($this->last_name ?? ''))));
+        if ($name !== '' && ! ctype_digit($name)) {
+            return $name;
+        }
 
-        return $name !== '' ? $name : (string) $this->telegram_user_id;
+        return 'بدون نام';
     }
 }

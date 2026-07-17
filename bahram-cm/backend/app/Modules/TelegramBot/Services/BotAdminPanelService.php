@@ -155,7 +155,7 @@ class BotAdminPanelService
             return true;
         }
 
-        if (app(AdminsSectionKeyboard::class)->isBack($text) && $flow === 'admin_add') {
+        if (app(AdminsSectionKeyboard::class)->isBack($text) && in_array($flow, ['admin_add', 'admin_add_name'], true)) {
             $this->conversations->transition($conversation, ConversationState::AdminPanel, [
                 'admin' => ['flow' => null, 'draft' => []],
             ]);
@@ -179,6 +179,7 @@ class BotAdminPanelService
             match ($flow) {
                 'user_search' => $this->onUserSearch($bot, $account, $conversation, $client, $chatId, $text),
                 'admin_add' => $this->onAdminAddById($bot, $account, $conversation, $client, $chatId, $text),
+                'admin_add_name' => $this->onAdminAddDisplayName($bot, $account, $conversation, $client, $chatId, $text),
                 'dm_user' => $this->onDmUser($bot, $account, $conversation, $client, $chatId, $text),
                 'broadcast_title' => $this->onBroadcastTitle($bot, $account, $conversation, $client, $chatId, $text),
                 'broadcast_text' => $this->onBroadcastText($bot, $account, $conversation, $client, $chatId, $text),
@@ -900,6 +901,10 @@ class BotAdminPanelService
         int $chatId,
         string $text,
     ): void {
+        if (trim($text) === AdminsSectionKeyboard::ADD_ADMIN) {
+            return;
+        }
+
         $query = trim(ltrim($text, '@'));
         if (! ctype_digit($query)) {
             $client->sendMessage($chatId, 'لطفاً فقط ایدی عددی لاتین بفرستید یا از «➕ افزودن ادمین» استفاده کنید.', [
@@ -909,7 +914,81 @@ class BotAdminPanelService
             return;
         }
 
-        $this->promoteTelegramUserToAdmin($bot, $actor, $client, $chatId, (int) $query);
+        $this->beginAdminDisplayNameStep($bot, $actor, $conversation, $client, $chatId, (int) $query);
+    }
+
+    private function onAdminAddDisplayName(
+        TelegramBot $bot,
+        TelegramAccount $actor,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $text,
+    ): void {
+        $name = trim($text);
+        if ($name === '' || $name === AdminsSectionKeyboard::ADD_ADMIN || $name === AdminsSectionKeyboard::BACK) {
+            $client->sendMessage($chatId, 'نام نمایشی ادمین را بنویسید (نه عدد خالص).', [
+                'reply_markup' => app(AdminsSectionKeyboard::class)->nameStepReplyMarkup(),
+            ]);
+
+            return;
+        }
+
+        if (ctype_digit(preg_replace('/\s+/u', '', $name) ?? '')) {
+            $client->sendMessage($chatId, 'نام نمایشی نباید فقط عدد باشد. یک نام متنی بفرستید.', [
+                'reply_markup' => app(AdminsSectionKeyboard::class)->nameStepReplyMarkup(),
+            ]);
+
+            return;
+        }
+
+        if (mb_strlen($name) > 40) {
+            $client->sendMessage($chatId, 'نام نمایشی حداکثر ۴۰ کاراکتر باشد.', [
+                'reply_markup' => app(AdminsSectionKeyboard::class)->nameStepReplyMarkup(),
+            ]);
+
+            return;
+        }
+
+        $targetId = (int) data_get($conversation->context, 'admin.draft.target_account_id');
+        $target = TelegramAccount::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->whereKey($targetId)
+            ->first();
+
+        if ($target === null) {
+            $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+                'admin' => ['flow' => null, 'draft' => []],
+            ]);
+            $client->sendMessage($chatId, 'کاربر پیدا نشد. دوباره از افزودن شروع کنید.', [
+                'reply_markup' => $this->adminMenuMarkup($actor),
+            ]);
+
+            return;
+        }
+
+        if ($target->isBotAdmin()) {
+            $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+                'admin' => ['flow' => null, 'draft' => []],
+            ]);
+            $client->sendMessage($chatId, 'این کاربر از قبل ادمین است.', [
+                'reply_markup' => $this->adminMenuMarkup($actor),
+            ]);
+            $this->renderAdminsTable($bot, $client, $chatId, 0);
+
+            return;
+        }
+
+        $target->grantAllBotAdminPermissions($name);
+        $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+            'admin' => ['flow' => null, 'draft' => []],
+        ]);
+        $this->renderAdminsTable($bot, $client, $chatId, 0);
+        $client->sendMessage(
+            $chatId,
+            '✅ «'.$target->fresh()->adminDisplayName().'» با همه دسترسی‌ها ادمین شد. از ⚙️ می‌توانید دسترسی‌ها را کم کنید.',
+            ['reply_markup' => $this->adminMenuMarkup($actor)],
+        );
     }
 
     /** @param  array<string, mixed>  $message */
@@ -941,14 +1020,15 @@ class BotAdminPanelService
         }
 
         $client = $this->clients->forBot($bot);
-        $this->promoteTelegramUserToAdmin($bot, $actor, $client, $chatId, $telegramUserId);
+        $this->beginAdminDisplayNameStep($bot, $actor, $conversation, $client, $chatId, $telegramUserId);
 
         return true;
     }
 
-    private function promoteTelegramUserToAdmin(
+    private function beginAdminDisplayNameStep(
         TelegramBot $bot,
         TelegramAccount $actor,
+        TelegramConversation $conversation,
         TelegramBotClientInterface $client,
         int $chatId,
         int $telegramUserId,
@@ -962,36 +1042,48 @@ class BotAdminPanelService
             return;
         }
 
-        $target = TelegramAccount::query()->firstOrCreate(
-            [
-                'telegram_bot_id' => $bot->id,
-                'telegram_user_id' => $telegramUserId,
-            ],
-            [
-                'display_name' => (string) $telegramUserId,
-            ],
-        );
+        $target = TelegramAccount::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->where('telegram_user_id', $telegramUserId)
+            ->first();
 
-        $conversation = $this->conversations->forAccount($actor);
-        $this->conversations->transition($conversation, ConversationState::AdminPanel, [
-            'admin' => ['flow' => null, 'draft' => []],
-        ]);
+        if ($target === null) {
+            $client->sendMessage(
+                $chatId,
+                '❌ این کاربر هنوز ربات را استارت نکرده و عضو ربات نیست. اول باید خودش /start بزند، بعد می‌توانید ادمینش کنید.',
+                ['reply_markup' => app(AdminsSectionKeyboard::class)->replyMarkup()],
+            );
 
-        if ($target->isBotAdmin()) {
+            return;
+        }
+
+        if ($target->isBotAdmin() || $target->isPermanentBotAdmin()) {
             $client->sendMessage($chatId, 'این کاربر از قبل ادمین است.', [
                 'reply_markup' => $this->adminMenuMarkup($actor),
+            ]);
+            $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+                'admin' => ['flow' => null, 'draft' => []],
             ]);
             $this->renderAdminsTable($bot, $client, $chatId, 0);
 
             return;
         }
 
-        $target->grantAllBotAdminPermissions();
-        $this->renderAdminsTable($bot, $client, $chatId, 0);
+        $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+            'admin' => [
+                'flow' => 'admin_add_name',
+                'draft' => ['target_account_id' => $target->id],
+            ],
+        ]);
+
+        $hint = filled($target->telegram_username)
+            ? '@'.$target->telegram_username
+            : 'کاربر انتخاب‌شده';
+
         $client->sendMessage(
             $chatId,
-            '✅ کاربر '.$target->adminDisplayName().' با همه دسترسی‌ها ادمین شد. از ⚙️ می‌توانید دسترسی‌ها را کم کنید.',
-            ['reply_markup' => $this->adminMenuMarkup($actor)],
+            "✅ {$hint} عضو ربات است.\n\n📝 نام نمایشی این ادمین را بفرستید (مثلاً «پشتیبان ۱»):\nاین نام در لیست ادمین‌ها دیده می‌شود.",
+            ['reply_markup' => app(AdminsSectionKeyboard::class)->nameStepReplyMarkup()],
         );
     }
 

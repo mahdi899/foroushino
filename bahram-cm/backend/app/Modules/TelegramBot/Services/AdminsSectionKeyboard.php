@@ -28,6 +28,17 @@ class AdminsSectionKeyboard
         ];
     }
 
+    /** Keyboard while waiting for the admin display name. */
+    public function nameStepReplyMarkup(): array
+    {
+        return [
+            'keyboard' => [
+                [['text' => self::BACK]],
+            ],
+            'resize_keyboard' => true,
+        ];
+    }
+
     public function isBack(string $text): bool
     {
         return trim($text) === self::BACK;

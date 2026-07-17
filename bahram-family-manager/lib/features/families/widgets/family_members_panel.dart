@@ -468,6 +468,7 @@ class _MemberTile extends StatelessWidget {
               icon: const Icon(Icons.person_remove_rounded, color: AppColors.error),
             ),
           ],
+        ],
         ),
       ),
     );

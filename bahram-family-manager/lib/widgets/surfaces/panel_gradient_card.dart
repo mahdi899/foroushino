@@ -70,11 +70,13 @@ class PanelSectionCard extends StatelessWidget {
     super.key,
     required this.title,
     required this.child,
+    this.subtitle,
     this.icon,
     this.trailing,
   });
 
   final String title;
+  final String? subtitle;
   final Widget child;
   final IconData? icon;
   final Widget? trailing;
@@ -121,9 +123,23 @@ class PanelSectionCard extends StatelessWidget {
                   const SizedBox(width: AppSpacing.md),
                 ],
                 Expanded(
-                  child: Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle!,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurface.withValues(alpha: 0.6),
+                              ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 if (trailing != null) trailing!,
