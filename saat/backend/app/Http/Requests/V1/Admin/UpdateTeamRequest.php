@@ -6,6 +6,7 @@ use App\Enums\RoleName;
 use App\Models\Team;
 use App\Models\User;
 use App\Support\AdminScope;
+use App\Support\SupervisorCapacity;
 use App\Support\TeamScope;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -43,6 +44,24 @@ class UpdateTeamRequest extends FormRequest
                 $leader = User::query()->find($this->integer('leader_id'));
                 if ($leader && ! $leader->hasRole(RoleName::Leader->value)) {
                     $validator->errors()->add('leader_id', 'سرتیم انتخاب‌شده باید نقش سرتیم داشته باشد.');
+                }
+            }
+
+            if ($this->has('supervisor_id') && $this->input('supervisor_id') !== null) {
+                $supervisor = User::query()->find($this->integer('supervisor_id'));
+                if ($supervisor && ! $supervisor->hasRole(RoleName::Supervisor->value)) {
+                    $validator->errors()->add('supervisor_id', 'کاربر انتخاب‌شده ناظر نیست.');
+                }
+
+                /** @var Team $team */
+                $team = $this->route('team');
+                $nextSupervisorId = (int) $this->integer('supervisor_id');
+                $alreadyAssigned = (int) $team->supervisor_id === $nextSupervisorId;
+                if (! $alreadyAssigned && ! SupervisorCapacity::hasRoomForTeam($nextSupervisorId)) {
+                    $validator->errors()->add(
+                        'supervisor_id',
+                        'این ناظر به سقف '.SupervisorCapacity::TEAMS_PER_SUPERVISOR.' تیم رسیده است.',
+                    );
                 }
             }
 

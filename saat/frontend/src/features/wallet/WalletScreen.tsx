@@ -109,6 +109,7 @@ export function WalletScreen() {
     () => resolveWithdrawableBalance(wallet, commissions),
     [wallet, commissions],
   )
+  const balanceNegative = withdrawableBalance < 0
   const payoutReady =
     canRequestPayout(withdrawableBalance) && !!wallet.bankCardConfirmed && !!wallet.bankShebaRegistered
 
@@ -170,13 +171,19 @@ export function WalletScreen() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={spring}
-          className="glass-hero glass-hero-success relative overflow-hidden rounded-[26px] p-5"
+          className={cn(
+            'glass-hero relative overflow-hidden rounded-[26px] p-5',
+            balanceNegative ? '' : 'glass-hero-success',
+          )}
         >
           <div className="pointer-events-none absolute inset-0">
             <motion.div
               animate={{ scale: [1, 1.08, 1], opacity: [0.7, 1, 0.7] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute -left-14 -top-16 h-48 w-48 rounded-full bg-emerald-400/24 blur-3xl"
+              className={cn(
+                'absolute -left-14 -top-16 h-48 w-48 rounded-full blur-3xl',
+                balanceNegative ? 'bg-red-400/24' : 'bg-emerald-400/24',
+              )}
             />
             <motion.div
               animate={{ scale: [1, 1.06, 1], opacity: [0.6, 0.9, 0.6] }}
@@ -187,13 +194,23 @@ export function WalletScreen() {
           </div>
 
           <p className="relative flex items-center gap-1.5 text-[12px] font-semibold text-text-soft">
-            <WalletCards size={14} className={OK} strokeWidth={2.35} />
+            <WalletCards size={14} className={balanceNegative ? 'text-red-600 dark:text-red-400' : OK} strokeWidth={2.35} />
             موجودی قابل برداشت
           </p>
-          <p className="relative mt-1.5 text-[32px] font-black tabular-nums leading-none text-text">
+          <p
+            className={cn(
+              'relative mt-1.5 text-[32px] font-black tabular-nums leading-none',
+              balanceNegative ? 'text-red-600 dark:text-red-400' : 'text-text',
+            )}
+          >
             {formatMoney(withdrawableBalance)}{' '}
             <span className="text-[14px] font-bold text-text-muted">تومان</span>
           </p>
+          {balanceNegative && (
+            <p className="relative mt-2 text-[11px] font-bold leading-relaxed text-red-600 dark:text-red-400">
+              موجودی منفی است — تا زمانی که بدهی پورسانت تسویه نشود امکان برداشت ندارید.
+            </p>
+          )}
           {pipelineAmount > 0 && (
             <div className="relative mt-2 space-y-1 text-[11px] font-semibold text-text-soft">
               {pipelinePending > 0 && (

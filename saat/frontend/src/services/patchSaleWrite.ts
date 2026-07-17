@@ -1,5 +1,5 @@
 import { useStore } from '@/store/useStore'
-import { mapCommission, mapLeadFromSaleEmbed, mapSale } from '@/services/mappers'
+import { mapCommission, mapLeadFromSaleEmbed, mapSale, mapWallet } from '@/services/mappers'
 import { deriveWalletFromCommissions } from '@/lib/walletBalance'
 
 type Dto = Record<string, unknown>
@@ -58,14 +58,37 @@ export function patchSaleConfirmData(data: { sale?: unknown; commission?: unknow
 }
 
 /** Merge sale-reject API response into local store. */
-export function patchSaleRejectData(data: { sale?: unknown } | unknown): void {
-  const saleDto = data && typeof data === 'object' && 'sale' in (data as object)
-    ? (data as { sale?: unknown }).sale
-    : data
+export function patchSaleRejectData(data: { sale?: unknown; commission?: unknown; wallet?: unknown } | unknown): void {
+  const payload = data && typeof data === 'object' ? (data as { sale?: unknown; commission?: unknown; wallet?: unknown }) : null
+  const saleDto = payload?.sale ?? data
   if (!saleDto) return
 
   const state = useStore.getState()
-  useStore.setState({
+  const patch: Partial<typeof state> = {
     sales: upsertSale(state.sales, saleDto),
-  })
+  }
+
+  if (payload?.commission) {
+    patch.commissions = upsertCommission(state.commissions, payload.commission)
+  }
+
+  if (payload?.wallet) {
+    const walletDto = payload.wallet as Record<string, unknown>
+    const agentId = (payload.commission as Record<string, unknown> | undefined)?.agent_id
+    if (!agentId || agentId === state.currentAgentId) {
+      patch.wallet = mapWallet(walletDto)
+    }
+  }
+
+  useStore.setState(patch)
+
+  if (!payload?.wallet && payload?.commission) {
+    const next = useStore.getState()
+    const ownCommissions = next.commissions.filter((c) => c.agentId === next.currentAgentId)
+    if (ownCommissions.length > 0) {
+      useStore.setState({
+        wallet: deriveWalletFromCommissions(next.wallet, ownCommissions),
+      })
+    }
+  }
 }

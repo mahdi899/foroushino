@@ -118,6 +118,14 @@ final class PayoutRules
 
 
 
+        if ($balanceAvailable <= 0) {
+
+            throw new RuntimeException('موجودی قابل برداشت کافی نیست. ابتدا بدهی پورسانت را تسویه کنید.');
+
+        }
+
+
+
         if ($amount > $balanceAvailable) {
 
             throw new RuntimeException('مبلغ درخواستی بیشتر از موجودی قابل برداشت است.');

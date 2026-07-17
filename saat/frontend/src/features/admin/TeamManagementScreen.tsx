@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Users, Crown, Shield } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
@@ -6,7 +6,9 @@ import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { hasPermission } from '@/lib/permissions'
 import { isManagerRole } from '@/lib/roles'
 import { toFa } from '@/lib/format'
+import { apiErrorMessage } from '@/lib/apiErrors'
 import { createTeam, updateTeam } from '@/services/teamAdminActions'
+import { fetchAdminAgents } from '@/services/userAdminActions'
 import { TeamFormSheet } from '@/components/domain/TeamFormSheet'
 import { buildTeamStaffOptions, memberIdsForTeam } from '@/lib/teamStaffOptions'
 import { groupTeamsBySupervisor } from '@/lib/teamHierarchy'
@@ -35,6 +37,25 @@ export function TeamManagementScreen() {
   const [memberIds, setMemberIds] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
 
+  const hierarchy = useMemo(() => {
+    const rows = teams.map((team) => ({
+      team,
+      leader: agents.find((agent) => agent.id === team.leaderId) ?? null,
+      members: teamAgents(teams, agents, team.id),
+      callsToday: 0,
+      conversion: 0,
+      pendingSales: 0,
+    }))
+    return groupTeamsBySupervisor(rows, agents)
+  }, [teams, agents])
+
+  useEffect(() => {
+    if (!canManage) return
+    void fetchAdminAgents().catch(() => {
+      pushToast('بارگذاری پرسنل ناموفق بود', 'error')
+    })
+  }, [canManage, pushToast])
+
   if (!canManage) return null
 
   const openCreate = () => {
@@ -60,6 +81,10 @@ export function TeamManagementScreen() {
       pushToast('نام تیم را وارد کن', 'error')
       return
     }
+    if (canAssignSupervisor && !supervisorId) {
+      pushToast('ناظر مسئول تیم را مشخص کن', 'error')
+      return
+    }
     setBusy(true)
     try {
       await createTeam({
@@ -70,8 +95,8 @@ export function TeamManagementScreen() {
       })
       pushToast('تیم ایجاد شد')
       setCreateOpen(false)
-    } catch {
-      pushToast('ایجاد تیم ناموفق بود', 'error')
+    } catch (error) {
+      pushToast(apiErrorMessage(error, 'ایجاد تیم ناموفق بود'), 'error')
     } finally {
       setBusy(false)
     }
@@ -79,34 +104,26 @@ export function TeamManagementScreen() {
 
   const submitEdit = async () => {
     if (!editTarget || !name.trim()) return
+    if (canAssignSupervisor && !supervisorId) {
+      pushToast('ناظر مسئول تیم را مشخص کن', 'error')
+      return
+    }
     setBusy(true)
     try {
       await updateTeam(editTarget.id, {
         name,
         leaderId: leaderId || null,
-        supervisorId: canAssignSupervisor ? supervisorId || null : undefined,
+        supervisorId: canAssignSupervisor && supervisorId ? supervisorId : undefined,
         agentIds: memberIds,
       })
       pushToast('تیم به‌روز شد')
       setEditTarget(null)
-    } catch {
-      pushToast('ویرایش تیم ناموفق بود', 'error')
+    } catch (error) {
+      pushToast(apiErrorMessage(error, 'ویرایش تیم ناموفق بود'), 'error')
     } finally {
       setBusy(false)
     }
   }
-
-  const hierarchy = useMemo(() => {
-    const rows = teams.map((team) => ({
-      team,
-      leader: agents.find((agent) => agent.id === team.leaderId) ?? null,
-      members: teamAgents(teams, agents, team.id),
-      callsToday: 0,
-      conversion: 0,
-      pendingSales: 0,
-    }))
-    return groupTeamsBySupervisor(rows, agents)
-  }, [teams, agents])
 
   const formProps = {
     name,

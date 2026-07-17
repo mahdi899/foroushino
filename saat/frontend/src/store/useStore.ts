@@ -1164,15 +1164,60 @@ export const useStore = create<AppState>()(
         const sale = state.sales.find((s) => s.id === saleId)
         if (!sale) return
         const nowIso = new Date().toISOString()
-        set({
+        const commission = state.commissions.find((c) => c.saleId === saleId)
+        const wasConfirmed = sale.status === 'confirmed'
+
+        const patch: Partial<typeof state> = {
           sales: state.sales.map((s) =>
             s.id === saleId ? { ...s, status: 'rejected' as const, rejectedAt: nowIso, rejectionReason: reason } : s,
           ),
           leads: state.leads.map((l) =>
             l.id === sale.leadId ? pushStatus(l, 'follow_up_required', state.currentAgentId, reason) : l,
           ),
+        }
+
+        if (wasConfirmed && commission) {
+          patch.commissions = state.commissions.map((c) =>
+            c.id === commission.id
+              ? { ...c, status: 'reversed' as const, rejectionReason: reason }
+              : c,
+          )
+
+          if (
+            sale.agentId === state.currentAgentId &&
+            (commission.status === 'available' || commission.status === 'paid')
+          ) {
+            const walletTx: WalletTransaction = {
+              id: uid('wt'),
+              type: 'reversal',
+              amount: commission.commissionAmount,
+              description: `برگشت پورسانت — ${reason}`,
+              referenceType: 'commission',
+              referenceId: commission.id,
+              createdAt: nowIso,
+            }
+            patch.wallet = {
+              ...state.wallet,
+              balanceAvailable: state.wallet.balanceAvailable - commission.commissionAmount,
+              totalEarned: Math.max(0, state.wallet.totalEarned - commission.commissionAmount),
+            }
+            patch.walletTx = [walletTx, ...state.walletTx]
+          }
+        }
+
+        set(patch)
+        const negative =
+          wasConfirmed &&
+          sale.agentId === state.currentAgentId &&
+          (patch.wallet?.balanceAvailable ?? state.wallet.balanceAvailable) < 0
+        get().pushNotification({
+          title: wasConfirmed ? 'فروش تاییدشده رد شد' : 'فروش رد شد',
+          body: negative
+            ? `${reason} — موجودی کیف پول منفی شده و تا تسویه بدهی امکان برداشت ندارید.`
+            : reason,
+          kind: 'sale',
+          href: wasConfirmed ? '/wallet' : '/sales',
         })
-        get().pushNotification({ title: 'فروش رد شد', body: reason, kind: 'sale', href: '/sales' })
       },
 
       cancelSale: (saleId) =>

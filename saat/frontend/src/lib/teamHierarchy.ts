@@ -99,3 +99,39 @@ export function groupTeamsBySupervisor(
     return a.supervisorName.localeCompare(b.supervisorName, 'fa')
   })
 }
+
+/** All supervisors first (even with zero teams), then unassigned teams bucket. */
+export function buildSupervisorHierarchyList(
+  supervisors: Agent[],
+  rows: TeamHierarchyRow[],
+  agents: Agent[],
+): SupervisorHierarchyGroup[] {
+  const grouped = groupTeamsBySupervisor(rows, agents)
+  const bySupervisorId = new Map(
+    grouped
+      .filter((group) => group.supervisorId != null)
+      .map((group) => [group.supervisorId as string, group]),
+  )
+
+  const result = supervisors
+    .map((supervisor) => {
+      const existing = bySupervisorId.get(supervisor.id)
+      if (existing) return existing
+
+      const name = `${supervisor.firstName} ${supervisor.lastName}`.trim()
+      return {
+        supervisorId: supervisor.id,
+        supervisorName: name,
+        supervisor,
+        teams: [],
+        teamCount: 0,
+        agentCount: 0,
+      } satisfies SupervisorHierarchyGroup
+    })
+    .sort((a, b) => a.supervisorName.localeCompare(b.supervisorName, 'fa'))
+
+  const unassigned = grouped.find((group) => group.supervisorId == null)
+  if (unassigned) result.push(unassigned)
+
+  return result
+}

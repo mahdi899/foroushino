@@ -24,7 +24,12 @@ class UpdateUserRequest extends FormRequest
 
         if ($actor?->can('users.manage-team-roster') && $user->hasRole(RoleName::Agent->value)) {
             if ($this->has('team_id')) {
-                return AdminScope::canManageTeamRoster($actor, $this->integer('team_id'));
+                $requestedTeamId = $this->input('team_id');
+                if ($requestedTeamId === null) {
+                    return AdminScope::canManageTeamRoster($actor, (int) ($user->team_id ?? 0));
+                }
+
+                return AdminScope::canManageTeamRoster($actor, (int) $requestedTeamId);
             }
 
             return AdminScope::canManageTeamRoster($actor, (int) ($user->team_id ?? 0));
@@ -96,7 +101,7 @@ class UpdateUserRequest extends FormRequest
             }
 
             $teamId = $this->has('team_id')
-                ? $this->integer('team_id')
+                ? ($this->input('team_id') === null ? 0 : $this->integer('team_id'))
                 : (int) $user->team_id;
 
             if ($teamId <= 0) {

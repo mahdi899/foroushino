@@ -17,7 +17,11 @@ class RejectSaleAction
 
     public function execute(Sale $sale, User $rejectedBy, string $reason): Sale
     {
-        return DB::transaction(function () use ($sale, $reason) {
+        if ($sale->status !== SaleStatus::PendingConfirmation) {
+            throw new \RuntimeException('این فروش در انتظار تایید نیست.');
+        }
+
+        return DB::transaction(function () use ($sale, $rejectedBy, $reason) {
             $sale->status = SaleStatus::Rejected;
             $sale->rejected_at = now();
             $sale->rejection_reason = $reason;
@@ -31,7 +35,7 @@ class RejectSaleAction
             LeadStatusHistory::query()->create([
                 'lead_id' => $lead->id,
                 'status' => LeadStatus::FollowUpRequired,
-                'by_user_id' => $sale->confirmed_by,
+                'by_user_id' => $rejectedBy->id,
                 'note' => 'فروش رد شد: '.$reason,
             ]);
 

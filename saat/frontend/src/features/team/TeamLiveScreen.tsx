@@ -37,6 +37,7 @@ import { isLeaderRole, hasMultiTeamView, isManagerRole } from '@/lib/roles'
 import { hasPermission } from '@/lib/permissions'
 import { buildTeamStaffOptions, memberIdsForTeam } from '@/lib/teamStaffOptions'
 import { updateTeam } from '@/services/teamAdminActions'
+import { apiErrorMessage } from '@/lib/apiErrors'
 import { apiMode } from '@/services'
 import { fetchTeamLive, type TeamLiveMember } from '@/services/teamLive'
 import { fetchAdminAgents } from '@/services/userAdminActions'
@@ -225,13 +226,13 @@ export function TeamLiveScreen() {
       await updateTeam(team.id, {
         name: rosterOnlyEdit ? undefined : teamName,
         leaderId: rosterOnlyEdit ? undefined : leaderId || null,
-        supervisorId: canAssignSupervisor ? supervisorId || null : undefined,
+        supervisorId: canAssignSupervisor && supervisorId ? supervisorId : undefined,
         agentIds: memberIds,
       })
       pushToast('تیم به‌روز شد', 'success')
       setEditOpen(false)
-    } catch {
-      pushToast('ویرایش تیم ناموفق بود', 'error')
+    } catch (error) {
+      pushToast(apiErrorMessage(error, 'ویرایش تیم ناموفق بود'), 'error')
     } finally {
       setSavingTeam(false)
     }

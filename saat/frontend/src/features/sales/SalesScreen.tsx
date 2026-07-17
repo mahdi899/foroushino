@@ -291,6 +291,12 @@ function SaleCard({
           <GlassActionBtn label="بررسی و تایید" icon={Check} variant="primary" onClick={onConfirm} />
         </div>
       )}
+
+      {canConfirmSales && sale.status === 'confirmed' && (
+        <div className="relative mt-3 flex gap-2">
+          <GlassActionBtn label="رد فروش تاییدشده" icon={X} variant="danger" onClick={onReject} />
+        </div>
+      )}
     </motion.div>
   )
 }
@@ -530,7 +536,11 @@ export function SalesScreen() {
         }}
       />
 
-      <BottomSheet open={!!rejectTarget} onClose={() => setRejectTarget(null)} title="دلیل رد فروش">
+      <BottomSheet
+        open={!!rejectTarget}
+        onClose={() => setRejectTarget(null)}
+        title={rejectTarget?.status === 'confirmed' ? 'رد فروش تاییدشده' : 'دلیل رد فروش'}
+      >
         <div className="space-y-3 pt-1">
           <textarea
             value={rejectReason}
@@ -555,7 +565,11 @@ export function SalesScreen() {
               void performRejectSale(rejectTarget.id, rejectReason.trim())
                 .then(() => {
                   haptic('warning')
-                  pushToast('فروش رد شد')
+                  pushToast(
+                    rejectTarget?.status === 'confirmed'
+                      ? 'فروش رد شد و پورسانت برگشت خورد'
+                      : 'فروش رد شد',
+                  )
                   setRejectTarget(null)
                   setRejectReason('')
                 })

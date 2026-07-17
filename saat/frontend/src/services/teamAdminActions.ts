@@ -95,6 +95,29 @@ export async function updateTeam(teamId: string, input: UpdateTeamInput): Promis
   return team
 }
 
+export async function assignSupervisorTeams(supervisorId: string, teamIds: string[]): Promise<void> {
+  const teams = useStore.getState().teams
+  const desired = new Set(teamIds)
+  const currentIds = teams
+    .filter((team) => String(team.supervisorId ?? '') === String(supervisorId))
+    .map((team) => team.id)
+
+  const toAssign = teamIds.filter((teamId) => {
+    const team = teams.find((row) => row.id === teamId)
+    return String(team?.supervisorId ?? '') !== String(supervisorId)
+  })
+  const toUnassign = currentIds.filter((teamId) => !desired.has(teamId))
+
+  for (const teamId of toUnassign) {
+    await updateTeam(teamId, { supervisorId: null })
+  }
+  for (const teamId of toAssign) {
+    await updateTeam(teamId, { supervisorId })
+  }
+
+  await refreshTeamsFromAdmin()
+}
+
 export async function refreshTeamsFromAdmin(): Promise<Team[]> {
   const raw = await http.get<Dto[]>('/admin/teams')
   const agents = useStore.getState().agents
