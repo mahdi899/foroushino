@@ -23,10 +23,10 @@ const variants: Record<Variant, string> = {
   sales:
     'bg-gradient-to-br from-secondary-500 to-accent-500 text-[#1A1200] shadow-sales hover:from-secondary-600 hover:to-accent-600 active:opacity-90',
   secondary:
-    'bg-surface-soft text-primary border border-border hover:bg-surface-tint dark:bg-surface-elevated dark:text-[var(--color-text)] dark:border-border dark:hover:bg-[var(--color-surface-hover)]',
-  soft: 'bg-primary-50 text-primary-700 dark:bg-[rgba(0,140,150,0.14)] dark:text-primary-300',
+    'bg-surface-soft text-primary border border-border hover:bg-surface-tint',
+  soft: 'bg-primary-50 text-primary-700 dark:bg-[rgba(0,160,170,0.16)] dark:text-[#7DE8F0] dark:border dark:border-[rgba(0,160,170,0.22)]',
   ghost:
-    'bg-transparent text-primary hover:bg-surface-tint dark:text-text-soft dark:hover:bg-[rgba(0,140,150,0.12)] dark:hover:text-[var(--color-text)]',
+    'bg-transparent text-primary hover:bg-surface-tint dark:text-[#7DE8F0] dark:hover:bg-[rgba(0,160,170,0.12)]',
   danger:
     'bg-error text-white shadow-[0_8px_24px_-8px_rgba(229,72,77,0.5)] dark:bg-[var(--color-error)]',
 }

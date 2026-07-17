@@ -18,7 +18,8 @@ import { Button } from '@/components/ui/Button'
 import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { ContactStatusBadge, SourceChip, LeadStatusBadge } from './Badges'
 import { objectionLabels, stageLabels } from '@/data/labels'
-import { formatPhone, maskPhone, relativeDayTime, toFa } from '@/lib/format'
+import { formatCustomerPhone } from '@/lib/phonePrivacy'
+import { relativeDayTime, toFa } from '@/lib/format'
 import { leadDisplayCode } from '@/lib/leadCode'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
@@ -38,7 +39,7 @@ export function LeadQuickViewSheet({
 }) {
   const navigate = useNavigate()
   const agents = useStore((s) => s.agents)
-  const maskPhoneNumbers = useStore((s) => s.maskPhoneNumbers)
+  const role = useStore((s) => s.role)
   if (!lead) return null
 
   const lockedByOther = lead.lockedBy && lead.lockedBy !== MY_AGENT_ID
@@ -67,7 +68,7 @@ export function LeadQuickViewSheet({
                 'text-[#3390EC] dark:text-[#8774E1]',
               )}
             >
-              {maskPhoneNumbers ? maskPhone(lead.phone) : formatPhone(lead.phone)}
+              {formatCustomerPhone(lead.phone, role)}
             </p>
           </div>
           {lead.status && <LeadStatusBadge status={lead.status} size="sm" />}

@@ -7,7 +7,7 @@ import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
 
 const ACTIVE = 'text-[#3390EC] dark:text-[#8774E1]'
-const INACTIVE = 'text-[#AEAEB2] dark:text-[#636366]'
+const INACTIVE = 'text-[#AEAEB2] dark:text-[#8E9398]'
 
 const spring = { type: 'spring' as const, stiffness: 480, damping: 38 }
 

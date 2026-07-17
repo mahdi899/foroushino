@@ -13,27 +13,12 @@ import {
   ADMIN_TELEPHONY_KEYS,
   getAdminSettingMeta,
   mapRuntimeAppSettings,
+  prepareAdminSettingsForSave,
 } from '@/lib/appSettings'
+import { apiErrorMessage } from '@/lib/apiErrors'
 import { DataGate } from '@/components/pwa/DataGate'
 import { testVoipConnection } from '@/services/offlineQueue'
 import { cn } from '@/lib/cn'
-
-const BOOLEAN_KEYS = [
-  'native_call_enabled',
-  'voip_enabled',
-  'voip_fallback_to_native',
-  'power_dial_default',
-] as const
-
-const NUMBER_KEYS = [
-  ...ADMIN_OPERATIONAL_KEYS,
-  ...ADMIN_QA_KEYS.filter((key) => key !== 'power_dial_default'),
-  'meli_pattern_course',
-  'meli_pattern_channel',
-  'meli_pattern_register',
-  'meli_pattern_payment',
-  'meli_pattern_custom',
-] as const
 
 const fieldClass = cn(
   'glass-inset w-full rounded-[14px] border border-white/55 px-3 py-3 text-[14px] font-semibold text-text',
@@ -75,27 +60,13 @@ export function AdminSettingsScreen() {
     if (!settings) return
     setSaving(true)
     try {
-      const normalized: AppSettings = { ...settings }
-
-      for (const key of BOOLEAN_KEYS) {
-        if (key in normalized) {
-          normalized[key] =
-            normalized[key] === true || normalized[key] === 'true' || normalized[key] === 1
-        }
-      }
-
-      for (const key of NUMBER_KEYS) {
-        const raw = normalized[key]
-        if (raw === '' || raw == null) continue
-        normalized[key] = Number(raw)
-      }
-
-      const updated = await updateAppSettings(normalized)
+      const payload = prepareAdminSettingsForSave(settings)
+      const updated = await updateAppSettings(payload)
       setSettings(updated)
       setAppSettings(mapRuntimeAppSettings(updated as Record<string, unknown>))
       pushToast('تنظیمات ذخیره شد.', 'success')
-    } catch {
-      pushToast('ذخیره تنظیمات ناموفق بود.', 'error')
+    } catch (error) {
+      pushToast(apiErrorMessage(error, 'ذخیره تنظیمات ناموفق بود.'), 'error')
     } finally {
       setSaving(false)
     }
@@ -176,7 +147,13 @@ export function AdminSettingsScreen() {
         {meta.hint && <span className="mb-2 block text-[11px] font-semibold leading-5 text-text-soft">{meta.hint}</span>}
         <input
           type={meta.type === 'number' ? 'number' : meta.type === 'url' ? 'url' : 'text'}
-          min={key === 'min_call_duration_sec' || key.startsWith('meli_pattern') ? 0 : undefined}
+          min={
+            key === 'min_call_duration_sec' || key.startsWith('meli_pattern')
+              ? 0
+              : key === 'call_lock_minutes' || key === 'lead_pool_auto_return_hours'
+                ? 1
+                : undefined
+          }
           max={key === 'qa_sample_percent' ? 100 : undefined}
           placeholder={meta.placeholder}
           value={value == null ? '' : String(value)}

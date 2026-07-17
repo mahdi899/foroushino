@@ -16,7 +16,8 @@ import { ContactStatusBadge } from './Badges'
 import { LeadStatusSheet } from './LeadStatusSheet'
 import { sourceIcon, sourceIconClass, suggestReasonIcon, suggestReasonChipLabel } from './icons'
 import { sourceLabels, suggestReasonActionHint } from '@/data/labels'
-import { formatPhone, maskPhone, toFa } from '@/lib/format'
+import { formatCustomerPhone } from '@/lib/phonePrivacy'
+import { toFa } from '@/lib/format'
 import { leadDisplayCode } from '@/lib/leadCode'
 import { useStore } from '@/store/useStore'
 import { haptic } from '@/lib/telegram'
@@ -47,7 +48,7 @@ export function NextCallCard({ lead, reason, onCall, onDetails, onSkip, canSkip 
   const [statusOpen, setStatusOpen] = useState(false)
   const SourceIcon = sourceIcon[lead.source]
   const ReasonIcon = reason ? suggestReasonIcon[reason] : null
-  const maskPhoneNumbers = useStore((s) => s.maskPhoneNumbers)
+  const role = useStore((s) => s.role)
   const prob = Math.max(0, Math.min(100, lead.conversionProbability))
 
   const secondaryActions: { id: string; label: string; icon: LucideIcon; onClick: () => void }[] = [
@@ -143,7 +144,7 @@ export function NextCallCard({ lead, reason, onCall, onDetails, onSkip, canSkip 
             className="inline-flex items-center gap-1 rounded-full bg-black/[0.04] px-2 py-1 tabular-nums dark:bg-white/[0.06]"
           >
             <Phone size={10} className={TG} strokeWidth={2.25} />
-            {maskPhoneNumbers ? maskPhone(lead.phone) : formatPhone(lead.phone)}
+            {formatCustomerPhone(lead.phone, role)}
           </span>
           <span className="inline-flex items-center gap-1 rounded-full bg-black/[0.04] px-2 py-1 dark:bg-white/[0.06]">
             <Clock size={11} className={TG} strokeWidth={2.25} />

@@ -27,11 +27,12 @@ import { useDemoMode } from '@/hooks/useDemoMode'
 import { roleLabels } from '@/data/labels'
 import { toFa } from '@/lib/format'
 import { APP_VERSION_LABEL } from '@/lib/app'
+import { shouldMaskCustomerPhones } from '@/lib/phonePrivacy'
+import { isAgentRole, isLeaderRole } from '@/lib/roles'
 import { cn } from '@/lib/cn'
 
 const TG = 'text-[#3390EC] dark:text-[#8774E1]'
-const lockOptions = [5, 10, 15] as const
-const LOCK_MINUTES_DEFAULT = 5
+const AUTO_LOCK_MINUTES = 10
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
 
 const fadeUp = {
@@ -47,11 +48,16 @@ const stagger = {
 export function SettingsScreen() {
   const navigate = useNavigate()
   const logout = useStore((s) => s.logout)
+  const darkMode = useStore((s) => s.darkMode)
+  const toggleDarkMode = useStore((s) => s.toggleDarkMode)
   const { canInstall, install, isInstalled } = useInstallPrompt()
   const { enabled: demoEnabled } = useDemoMode()
   const role = useStore((s) => s.role)
   const [demoRoleOpen, setDemoRoleOpen] = useState(false)
   const [toggles, setToggles] = useState({ notif: true, haptic: true })
+
+  const phoneMaskOn = shouldMaskCustomerPhones(role)
+  const showPrivacySection = isAgentRole(role) || isLeaderRole(role)
 
   const switches: { icon: LucideIcon; label: string; key: keyof typeof toggles }[] = [
     { icon: Bell, label: 'اعلان‌ها', key: 'notif' },
@@ -79,9 +85,8 @@ export function SettingsScreen() {
           <SettingsRow
             icon={Moon}
             label="حالت تیره"
-            sublabel="به‌زودی"
-            disabled
-            trailing={<Toggle on={false} disabled />}
+            bordered
+            trailing={<Toggle on={darkMode} onToggle={toggleDarkMode} />}
           />
           {switches.map((s, i) => (
             <SettingsRow
@@ -99,33 +104,34 @@ export function SettingsScreen() {
           ))}
         </SettingsSection>
 
-        <SettingsSection title="حریم خصوصی و امنیت">
-          <SettingsRow
-            icon={EyeOff}
-            label="پنهان‌سازی شماره مشتریان"
-            bordered
-            trailing={<Toggle on disabled />}
-          />
-          <SettingsRow
-            icon={TimerOff}
-            label="قفل خودکار در عدم فعالیت"
-            trailing={<Toggle on disabled />}
-          />
-          <div className="pointer-events-none flex items-center gap-2 border-t border-white/40 px-3.5 py-3 dark:border-white/8">
-            {lockOptions.map((m) => (
-              <Chip key={m} active={m === LOCK_MINUTES_DEFAULT} tone="primary">
-                {toFa(m)} دقیقه
+        {showPrivacySection && (
+          <SettingsSection title="حریم خصوصی و امنیت">
+            <SettingsRow
+              icon={EyeOff}
+              label="پنهان‌سازی شماره مشتریان"
+              bordered
+              disabled
+              trailing={<Toggle on={phoneMaskOn} disabled />}
+            />
+            <SettingsRow
+              icon={TimerOff}
+              label="قفل خودکار در عدم فعالیت"
+              trailing={<Toggle on disabled />}
+            />
+            <div className="pointer-events-none flex items-center gap-2 border-t border-white/40 px-3.5 py-3 dark:border-white/8">
+              <Chip active tone="primary">
+                {toFa(AUTO_LOCK_MINUTES)} دقیقه
               </Chip>
-            ))}
-          </div>
-          <div className="mx-3.5 mb-3.5 flex items-start gap-2.5 rounded-[16px] border border-[#3390EC]/15 bg-[#3390EC]/8 p-3 dark:border-[#8774E1]/18 dark:bg-[#8774E1]/10">
-            <ShieldCheck size={16} className={cn('mt-0.5 shrink-0', TG)} strokeWidth={2.35} />
-            <p className="text-[11.5px] font-semibold leading-6 text-text-muted">
-              اطلاعات مشتریان محرمانه است. از اشتراک‌گذاری شماره، یادداشت یا اطلاعات مشتریان بیرون از این
-              برنامه خودداری کن.
-            </p>
-          </div>
-        </SettingsSection>
+            </div>
+            <div className="mx-3.5 mb-3.5 flex items-start gap-2.5 rounded-[16px] border border-[#3390EC]/15 bg-[#3390EC]/8 p-3 dark:border-[#8774E1]/18 dark:bg-[#8774E1]/10">
+              <ShieldCheck size={16} className={cn('mt-0.5 shrink-0', TG)} strokeWidth={2.35} />
+              <p className="text-[11.5px] font-semibold leading-6 text-text-muted">
+                اطلاعات مشتریان محرمانه است. از اشتراک‌گذاری شماره، یادداشت یا اطلاعات مشتریان بیرون از این
+                برنامه خودداری کن.
+              </p>
+            </div>
+          </SettingsSection>
+        )}
 
         <SettingsSection title="زبان">
           <NavRow icon={Globe} label="زبان" value="فارسی" sublabel="به‌زودی" disabled />

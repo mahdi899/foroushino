@@ -72,7 +72,7 @@ export function DemoRolePopup({ open, onClose }: DemoRolePopupProps) {
             transition={{ duration: 0.18 }}
             className={cn(
               'absolute left-1/2 top-1/2 z-[60] w-[min(280px,calc(100%-32px))] -translate-x-1/2 -translate-y-1/2',
-              'rounded-[16px] border border-white/60 bg-white p-4 shadow-xl',
+              'rounded-[16px] border border-white/60 bg-white p-4 shadow-xl dark:border-white/10 dark:bg-surface-elevated',
               'dark:border-white/10 dark:bg-[#242F3D]',
             )}
           >

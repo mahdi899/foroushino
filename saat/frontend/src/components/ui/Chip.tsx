@@ -25,14 +25,12 @@ const activeStyles: Record<ChipTone, string> = {
 }
 
 const inactiveStyles: Record<ChipTone, string> = {
-  primary:
-    'glass-inset border-white/50 text-[#8E8E93] dark:border-white/10 dark:text-[#98989D]',
-  hot: 'glass-inset border-hot-100/50 text-hot-600 dark:border-hot-500/20',
-  warm: 'glass-inset border-warm-100/50 text-warm-600 dark:border-warm-500/20',
-  cold: 'glass-inset border-cold-100/50 text-cold-600 dark:border-cold-500/20',
-  error: 'glass-inset border-error-100/50 text-error-600 dark:border-error-500/20',
-  neutral:
-    'glass-inset border-white/50 text-[#8E8E93] dark:border-white/10 dark:text-[#98989D]',
+  primary: 'glass-inset border-white/50 text-text-soft',
+  hot: 'glass-inset border-hot-100/50 text-hot-600 dark:border-hot-500/20 dark:text-hot-300',
+  warm: 'glass-inset border-warm-100/50 text-warm-600 dark:border-warm-500/20 dark:text-warm-300',
+  cold: 'glass-inset border-cold-100/50 text-cold-600 dark:border-cold-500/20 dark:text-cold-300',
+  error: 'glass-inset border-error-100/50 text-error-600 dark:border-error-500/20 dark:text-error-300',
+  neutral: 'glass-inset border-white/50 text-text-soft',
 }
 
 export function Chip({ children, active, onClick, icon, tone = 'primary', className }: ChipProps) {

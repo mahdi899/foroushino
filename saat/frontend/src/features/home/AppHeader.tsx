@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { Bell, BadgeCheck, ChevronDown } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Avatar } from '@/components/ui/Avatar'
+import { TopPerformerAvatarRing } from '@/components/ui/TopPerformerAvatarRing'
 import { AvailabilitySheet } from '@/components/domain/AvailabilitySwitcher'
 import { availabilityDotClass } from '@/components/domain/icons'
 import { availabilityLabels, roleLabels } from '@/data/labels'
+import { useDailyTopRank } from '@/hooks/useDailyTopRank'
 import { cn } from '@/lib/cn'
 import { isShiftOpen } from '@/lib/shiftUtils'
 
@@ -16,10 +18,24 @@ export function AppHeader() {
   const unread = useStore((s) => s.notifications.filter((n) => !n.read).length)
   const availability = useStore((s) => s.availability)
   const workSession = useStore((s) => s.workSession)
+  const dailyTopRank = useDailyTopRank()
   if (!agent) return null
 
   const shiftActive = isShiftOpen(workSession)
   const showStatus = agent.role === 'agent'
+
+  const avatarNode = (
+    <Avatar
+      id={agent.id}
+      first={agent.firstName}
+      last={agent.lastName}
+      src={agent.avatar}
+      size={44}
+      online={shiftActive && availability === 'available'}
+      onlineClassName={availabilityDotClass[availability]}
+      ring={!dailyTopRank}
+    />
+  )
 
   return (
     <>
@@ -30,16 +46,13 @@ export function AppHeader() {
             onClick={() => navigate('/profile')}
             className="flex h-11 w-11 shrink-0 items-center justify-center"
           >
-            <Avatar
-              id={agent.id}
-              first={agent.firstName}
-              last={agent.lastName}
-              src={agent.avatar}
-              size={44}
-              online={shiftActive && availability === 'available'}
-              onlineClassName={availabilityDotClass[availability]}
-              ring
-            />
+            {dailyTopRank ? (
+              <TopPerformerAvatarRing rank={dailyTopRank} variant="compact" showBadge={false}>
+                {avatarNode}
+              </TopPerformerAvatarRing>
+            ) : (
+              avatarNode
+            )}
           </button>
 
           <div className="flex min-w-0 flex-1 items-center gap-2.5">

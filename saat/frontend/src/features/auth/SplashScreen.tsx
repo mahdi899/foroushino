@@ -24,7 +24,7 @@ export function SplashScreen() {
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="relative rounded-[20px] bg-white px-5 py-4 shadow-[0_16px_40px_-12px_rgba(2,6,7,0.25)]"
+        className="relative rounded-[20px] border border-white/60 bg-white px-5 py-4 shadow-[0_16px_40px_-12px_rgba(2,6,7,0.25)] dark:border-white/10 dark:bg-surface dark:shadow-black/40"
       >
         <img
           src={SAAT_LOGO_SRC}

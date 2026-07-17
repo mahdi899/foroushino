@@ -244,3 +244,62 @@ export function getAdminSettingMeta(key: string): AdminSettingMeta {
     }
   )
 }
+
+const ADMIN_NUMERIC_BOUNDS: Record<string, { min: number; max: number }> = {
+  call_lock_minutes: { min: 1, max: 180 },
+  min_call_duration_sec: { min: 0, max: 3600 },
+  lead_pool_auto_return_hours: { min: 1, max: 720 },
+  payout_minimum_amount: { min: 0, max: 999_999_999 },
+  qa_sample_percent: { min: 0, max: 100 },
+  meli_pattern_course: { min: 0, max: 999_999 },
+  meli_pattern_channel: { min: 0, max: 999_999 },
+  meli_pattern_register: { min: 0, max: 999_999 },
+  meli_pattern_payment: { min: 0, max: 999_999 },
+  meli_pattern_custom: { min: 0, max: 999_999 },
+}
+
+type SettingValue = string | number | boolean | null
+
+function asBoolean(value: SettingValue): boolean {
+  return value === true || value === 'true' || value === 1 || value === '1'
+}
+
+function clampNumber(key: string, value: number): number {
+  const bounds = ADMIN_NUMERIC_BOUNDS[key]
+  if (!bounds) return value
+  return Math.min(bounds.max, Math.max(bounds.min, value))
+}
+
+/** Normalize form state before PATCH — omit empties, coerce types, clamp ranges. */
+export function prepareAdminSettingsForSave(
+  settings: Record<string, SettingValue>,
+): Record<string, SettingValue> {
+  const prepared: Record<string, SettingValue> = {}
+
+  for (const [key, raw] of Object.entries(settings)) {
+    if (raw === '' || raw == null) continue
+
+    const meta = getAdminSettingMeta(key)
+
+    if (meta.type === 'boolean') {
+      prepared[key] = asBoolean(raw)
+      continue
+    }
+
+    if (meta.type === 'number') {
+      const num = Number(raw)
+      if (!Number.isFinite(num)) continue
+      prepared[key] = clampNumber(key, Math.trunc(num))
+      continue
+    }
+
+    if (meta.type === 'select') {
+      prepared[key] = String(raw)
+      continue
+    }
+
+    prepared[key] = typeof raw === 'string' ? raw.trim() : String(raw)
+  }
+
+  return prepared
+}

@@ -31,6 +31,7 @@ import type { CallMethod } from '@/lib/call'
 import type { AuthenticatedUser } from '@/services/auth'
 import { clearToken, mapAuthUserRole } from '@/services/auth'
 import { agentFromAuthenticatedUser } from '@/lib/agentFromUser'
+import { applyTheme, migrateLegacyThemePreference, resolveUserTheme, writeUserThemePreference } from '@/lib/theme'
 import { hasPermission as checkPermission, resolvePermissions } from '@/lib/permissions'
 import { canMakeCalls } from '@/lib/roles'
 import {
@@ -420,7 +421,6 @@ type PersistedSlice = Pick<
   | 'products'
   | 'activity'
   | 'agents'
-  | 'darkMode'
 >
 
 export const useStore = create<AppState>()(
@@ -471,7 +471,7 @@ export const useStore = create<AppState>()(
 
       maskPhoneNumbers: true,
       autoLockEnabled: true,
-      autoLockMinutes: 5,
+      autoLockMinutes: 10,
       isLocked: false,
 
       dataReady: !usesRemoteData,
@@ -510,10 +510,17 @@ export const useStore = create<AppState>()(
         }
 
         set(next)
+
+        const userId = next.currentAgentId ?? get().currentAgentId
+        const migrated = userId ? migrateLegacyThemePreference(userId) : null
+        const darkMode = migrated ?? resolveUserTheme(userId, false)
+        set({ darkMode })
+        applyTheme(darkMode)
       },
       hasPermission: (permission) => checkPermission(get().permissions, permission),
       logout: () => {
         clearToken()
+        applyTheme(false)
         set({
           isAuthed: false,
           phone: '',
@@ -526,6 +533,7 @@ export const useStore = create<AppState>()(
           workSession: null,
           workDaySummaries: [],
           isLocked: false,
+          darkMode: false,
           dataReady: !usesRemoteData,
           dataSyncing: false,
         })
@@ -1586,9 +1594,11 @@ export const useStore = create<AppState>()(
         })),
 
       toggleDarkMode: () => {
+        const userId = get().currentAgentId
         const next = !get().darkMode
         set({ darkMode: next })
-        document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light')
+        if (userId) writeUserThemePreference(userId, next)
+        applyTheme(next)
       },
 
       pushToast: (message, tone = 'success') => {
@@ -1782,11 +1792,16 @@ export const useStore = create<AppState>()(
         state.dailyStatsDate = synced.dailyStatsDate
         state.maskPhoneNumbers = true
         state.autoLockEnabled = true
-        state.autoLockMinutes = 5
+        state.autoLockMinutes = 10
         if (!isPowerDialAvailable) state.powerDialEnabled = false
-        if (state.darkMode) {
-          document.documentElement.setAttribute('data-theme', 'dark')
+
+        if (state.isAuthed && state.currentAgentId) {
+          migrateLegacyThemePreference(state.currentAgentId)
+          state.darkMode = resolveUserTheme(state.currentAgentId, false)
+        } else {
+          state.darkMode = false
         }
+        applyTheme(Boolean(state.darkMode))
       },
       partialize: (state) => ({
         isAuthed: state.isAuthed,
@@ -1811,7 +1826,6 @@ export const useStore = create<AppState>()(
         products: state.products,
         activity: state.activity,
         agents: state.agents,
-        darkMode: state.darkMode,
         powerDialEnabled: state.powerDialEnabled,
         dispositionMode: state.dispositionMode,
       }),

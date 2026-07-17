@@ -13,6 +13,7 @@ import { QuickActionSheet } from '@/components/layout/QuickActionSheet'
 import { CallMethodSheet } from '@/components/domain/CallMethodSheet'
 import { ToastHost } from '@/components/ui/Toast'
 import { cn } from '@/lib/cn'
+import { applyTheme } from '@/lib/theme'
 import { canMakeCalls, isAgentRole, isManagementRole } from '@/lib/roles'
 import { isShiftOpen } from '@/lib/shiftUtils'
 
@@ -214,6 +215,16 @@ function Shell() {
   )
 }
 
+function ThemeApplier() {
+  const darkMode = useStore((s) => s.darkMode)
+
+  useEffect(() => {
+    applyTheme(darkMode)
+  }, [darkMode])
+
+  return null
+}
+
 export default function App() {
   const standalone = useStandalonePwa()
 
@@ -223,18 +234,19 @@ export default function App() {
 
   return (
     <SyncProvider>
+      <ThemeApplier />
       <div
         className={cn(
           'flex min-h-[100dvh] w-full items-center justify-center',
-          standalone ? 'bg-background' : 'bg-neutral-200 sm:p-4',
+          standalone ? 'bg-background' : 'bg-background sm:p-4',
         )}
       >
         <div
           className={cn(
-            'relative overflow-hidden bg-background',
+            'app-shell relative overflow-hidden bg-background',
             standalone
               ? 'h-[100dvh] w-full'
-              : 'h-[100dvh] w-full max-w-[440px] sm:h-[896px] sm:max-h-[94vh] sm:rounded-[44px] sm:border-[8px] sm:border-neutral-900 sm:shadow-2xl',
+              : 'h-[100dvh] w-full max-w-[440px] sm:h-[896px] sm:max-h-[94vh] sm:rounded-[44px] sm:border-[8px] sm:border-neutral-900 sm:shadow-2xl dark:sm:border-neutral-800/80 dark:sm:shadow-black/60',
           )}
         >
           <OfflineBanner />

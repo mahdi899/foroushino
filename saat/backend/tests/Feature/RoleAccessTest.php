@@ -35,6 +35,34 @@ it('lets manager read and update app settings', function (): void {
         ->assertJsonPath('data.call_lock_minutes', 40);
 });
 
+it('accepts a full admin settings payload from the settings screen', function (): void {
+    $manager = makeManager();
+    $defaults = \App\Models\AppSetting::defaults();
+
+    $settings = [];
+    foreach ($defaults as $key => $value) {
+        $settings[$key] = is_bool($value) ? $value : (string) $value;
+    }
+
+    $this->actingAs($manager, 'sanctum')
+        ->patchJson('/api/v1/admin/settings', ['settings' => $settings])
+        ->assertOk();
+});
+
+it('ignores empty string settings values instead of rejecting the request', function (): void {
+    $manager = makeManager();
+
+    $this->actingAs($manager, 'sanctum')
+        ->patchJson('/api/v1/admin/settings', [
+            'settings' => [
+                'call_lock_minutes' => '',
+                'qa_sample_percent' => 12,
+            ],
+        ])
+        ->assertOk()
+        ->assertJsonPath('data.qa_sample_percent', 12);
+});
+
 it('lets a supervisor manage training scripts', function (): void {
     $supervisor = makeSupervisor();
     $product = makeProduct();

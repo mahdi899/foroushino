@@ -1,10 +1,14 @@
 import { useRef, useState } from 'react'
+import { motion } from 'framer-motion'
 import { Camera, Loader2 } from 'lucide-react'
 import { Avatar } from '@/components/ui/Avatar'
+import { TopPerformerAvatarRing } from '@/components/ui/TopPerformerAvatarRing'
+import type { DailyTopRank } from '@/lib/dailyTopPerformers'
 import { ApiError } from '@/services/http'
 import { uploadAvatar } from '@/services/auth'
 import { useStore } from '@/store/useStore'
 import { AVATAR_ACCEPT, validateAvatarFile } from '@/lib/avatarUpload'
+import { toFa } from '@/lib/format'
 import { cn } from '@/lib/cn'
 
 const usesRemoteData = import.meta.env.VITE_API_MODE === 'http'
@@ -14,11 +18,13 @@ export function ProfileAvatarPicker({
   first,
   last,
   src,
+  dailyTopRank = null,
 }: {
   id: string
   first: string
   last: string
   src?: string | null
+  dailyTopRank?: DailyTopRank | null
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -63,6 +69,10 @@ export function ProfileAvatarPicker({
     }
   }
 
+  const avatarNode = (
+    <Avatar id={id} first={first} last={last} src={src} size={88} ring={false} />
+  )
+
   return (
     <div className="relative flex flex-col items-center">
       <input
@@ -84,13 +94,21 @@ export function ProfileAvatarPicker({
         )}
       >
         <div className="relative">
-          <div
-            aria-hidden
-            className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-[#3390EC]/30 to-[#8774E1]/25 blur-sm"
-          />
-          <div className="relative rounded-full p-[2px] ring-1 ring-white/60 dark:ring-white/15">
-            <Avatar id={id} first={first} last={last} src={src} size={88} ring={false} />
-          </div>
+          {dailyTopRank ? (
+            <TopPerformerAvatarRing rank={dailyTopRank} variant="profile" showBadge={false}>
+              {avatarNode}
+            </TopPerformerAvatarRing>
+          ) : (
+            <>
+              <div
+                aria-hidden
+                className="absolute -inset-0.5 rounded-full bg-gradient-to-br from-[#3390EC]/30 to-[#8774E1]/25 blur-sm"
+              />
+              <div className="relative rounded-full p-[2px] ring-1 ring-white/60 dark:ring-white/15">
+                {avatarNode}
+              </div>
+            </>
+          )}
           <span className="absolute -bottom-0.5 -left-0.5 z-[2] flex h-7 w-7 items-center justify-center rounded-full bg-[#3390EC] shadow-md ring-2 ring-background dark:bg-[#8774E1]">
             {uploading ? (
               <Loader2 size={14} className="animate-spin text-white" />
@@ -101,7 +119,22 @@ export function ProfileAvatarPicker({
         </div>
       </button>
 
-      <p className="mt-2 text-[11px] font-semibold text-text-soft">برای تغییر عکس ضربه بزن</p>
+      {dailyTopRank ? (
+        <motion.span
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={cn(
+            'mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold shadow-sm',
+            dailyTopRank === 1 && 'bg-gradient-to-r from-amber-500 to-yellow-400 text-amber-950',
+            dailyTopRank === 2 && 'bg-gradient-to-r from-slate-400 to-slate-200 text-slate-900',
+            dailyTopRank === 3 && 'bg-gradient-to-r from-orange-500 to-amber-400 text-orange-950',
+          )}
+        >
+          برتر امروز · رتبه {toFa(dailyTopRank)}
+        </motion.span>
+      ) : (
+        <p className="mt-2 text-[11px] font-semibold text-text-soft">برای تغییر عکس ضربه بزن</p>
+      )}
     </div>
   )
 }

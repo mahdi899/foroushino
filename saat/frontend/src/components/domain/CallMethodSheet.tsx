@@ -7,7 +7,8 @@ import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { ContactStatusBadge } from '@/components/domain/Badges'
 import { LeadDetailsPanel } from '@/components/domain/LeadDetailsPanel'
 import { useStore } from '@/store/useStore'
-import { formatPhone, maskPhone, toFa } from '@/lib/format'
+import { formatCustomerPhone } from '@/lib/phonePrivacy'
+import { toFa } from '@/lib/format'
 import { leadDisplayCode } from '@/lib/leadCode'
 import { isNativeCallEnabled, isVoipCallEnabled } from '@/lib/call'
 import { performStartCall } from '@/services/callActions'
@@ -24,7 +25,7 @@ export function CallMethodSheet() {
   const close = useStore((s) => s.closeCallMethodSheet)
   const appSettings = useStore((s) => s.appSettings)
   const pushToast = useStore((s) => s.pushToast)
-  const maskPhoneNumbers = useStore((s) => s.maskPhoneNumbers)
+  const role = useStore((s) => s.role)
   const [showDetails, setShowDetails] = useState(false)
   const [starting, setStarting] = useState(false)
 
@@ -77,11 +78,7 @@ export function CallMethodSheet() {
     close()
   }
 
-  const phoneLabel = lead
-    ? maskPhoneNumbers
-      ? maskPhone(lead.phone)
-      : formatPhone(lead.phone)
-    : ''
+  const phoneLabel = lead ? formatCustomerPhone(lead.phone, role) : ''
 
   return (
     <BottomSheet

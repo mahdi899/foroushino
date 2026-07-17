@@ -32,6 +32,31 @@
 
     <title>سات — هر تماس، یک فرصت فروش</title>
 
+    <script>
+      try {
+        var raw = localStorage.getItem('saat-store')
+        if (raw) {
+          var parsed = JSON.parse(raw)
+          var st = parsed && parsed.state
+          var userId = st && st.isAuthed && st.currentAgentId ? st.currentAgentId : null
+          if (userId) {
+            var themeKey = 'saat-theme:' + userId
+            var pref = localStorage.getItem(themeKey)
+            if (pref === null && st.darkMode === true) {
+              pref = 'dark'
+              localStorage.setItem(themeKey, 'dark')
+            }
+            if (pref === 'dark') {
+              document.documentElement.setAttribute('data-theme', 'dark')
+              document.documentElement.style.colorScheme = 'dark'
+              var meta = document.querySelector('meta[name="theme-color"]')
+              if (meta) meta.setAttribute('content', '#070C0E')
+            }
+          }
+        }
+      } catch (e) {}
+    </script>
+
   </head>
 
   <body>
