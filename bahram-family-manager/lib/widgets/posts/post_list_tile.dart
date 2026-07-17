@@ -283,43 +283,64 @@ class StatCard extends StatelessWidget {
     required this.value,
     required this.icon,
     required this.color,
+    this.compact = false,
   });
 
   final String title;
   final int value;
   final IconData icon;
   final Color color;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
+    final iconSize = compact ? 28.0 : 34.0;
+    final glyphSize = compact ? 15.0 : 18.0;
+
     return GlassPanel(
-      borderRadius: 20,
+      borderRadius: compact ? 16 : 20,
       blur: AppGlass.panelBlur,
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: EdgeInsets.all(compact ? AppSpacing.sm + 2 : AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [color.withValues(alpha: 0.85), color]),
-              borderRadius: BorderRadius.circular(10),
+          Row(
+            children: [
+              Container(
+                width: iconSize,
+                height: iconSize,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [color.withValues(alpha: 0.85), color]),
+                  borderRadius: BorderRadius.circular(compact ? 8 : 10),
+                ),
+                child: Icon(icon, color: Colors.white, size: glyphSize),
+              ),
+              if (compact) ...[
+                const Spacer(),
+                Text(
+                  toFaDigits(value.toString()),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ],
+            ],
+          ),
+          if (!compact)
+            Text(
+              toFaDigits(value.toString()),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.headlineSmall,
             ),
-            child: Icon(icon, color: Colors.white, size: 18),
-          ),
-          Text(
-            toFaDigits(value.toString()),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
           Text(
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelMedium,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  fontSize: compact ? 11 : null,
+                ),
           ),
         ],
       ),
@@ -329,25 +350,34 @@ class StatCard extends StatelessWidget {
 
 /// Fixed-height responsive grid for dashboard stat cards (avoids GridView overflow).
 class StatCardGrid extends StatelessWidget {
-  const StatCardGrid({super.key, required this.children});
+  const StatCardGrid({
+    super.key,
+    required this.children,
+    this.compact = false,
+  });
 
   final List<Widget> children;
+  final bool compact;
 
-  static const double cardHeight = 122;
+  static const double cardHeight = 128;
 
   @override
   Widget build(BuildContext context) {
-    final columns = AppBreakpoints.gridColumns(context);
+    // Mobile stays at 2 columns so titles/values aren't crushed.
+    final columns = AppBreakpoints.gridColumns(context, mobile: 2, tablet: 2, desktop: 4);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final spacing = AppSpacing.md.toDouble();
+        final spacing = (compact ? AppSpacing.sm : AppSpacing.md).toDouble();
         final itemWidth = (constraints.maxWidth - spacing * (columns - 1)) / columns;
+        final height = AppBreakpoints.isDesktop(context)
+            ? cardHeight
+            : (compact ? 92.0 : 120.0);
         return Wrap(
           spacing: spacing,
           runSpacing: spacing,
           children: [
             for (final child in children)
-              SizedBox(width: itemWidth, height: cardHeight, child: child),
+              SizedBox(width: itemWidth, height: height, child: child),
           ],
         );
       },

@@ -13,6 +13,7 @@ import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
 import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
 import 'package:bahram_family_manager/widgets/posts/post_list_tile.dart';
+import 'package:bahram_family_manager/widgets/surfaces/panel_gradient_card.dart';
 
 class AnalyticsScreen extends StatefulWidget {
   const AnalyticsScreen({super.key});
@@ -39,6 +40,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = AppBreakpoints.isDesktop(context);
+    final bottomPad = isDesktop ? 0.0 : 24.0;
+
     return AdaptiveScaffold(
       appBar: ManagerAppBar(
         title: const Text('تحلیل خانواده'),
@@ -61,30 +65,36 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             snapshot: snapshot,
             builder: (context, data) {
               final totals = _Totals.fromDaily(data.daily);
+              final padding = AppBreakpoints.pagePadding(context);
 
               return ListView(
-                padding: AppBreakpoints.pagePadding(context),
+                padding: padding.copyWith(bottom: padding.bottom + bottomPad),
                 physics: const AlwaysScrollableScrollPhysics(),
                 children: [
-                  Wrap(
-                    spacing: AppSpacing.sm,
-                    children: [7, 30, 90].map((d) {
-                      final selected = _days == d;
-                      return FilterChip(
-                        label: Text('${toFaDigits(d.toString())} روز'),
-                        selected: selected,
-                        onSelected: (_) {
-                          setState(() => _days = d);
-                          _load();
-                        },
-                        showCheckmark: false,
-                        selectedColor: AppColors.primarySoft,
-                        labelStyle: TextStyle(
-                          color: selected ? AppColors.primary : AppColors.textMuted,
-                          fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                        ),
-                      );
-                    }).toList(),
+                  PanelSectionCard(
+                    title: 'بازه زمانی',
+                    icon: Icons.date_range_rounded,
+                    child: Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: AppSpacing.sm,
+                      children: [7, 30, 90].map((d) {
+                        final selected = _days == d;
+                        return FilterChip(
+                          label: Text('${toFaDigits(d.toString())} روز'),
+                          selected: selected,
+                          onSelected: (_) {
+                            setState(() => _days = d);
+                            _load();
+                          },
+                          showCheckmark: false,
+                          selectedColor: AppColors.primarySoft,
+                          labelStyle: TextStyle(
+                            color: selected ? AppColors.primary : AppColors.textMuted,
+                            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   StatCardGrid(
@@ -100,23 +110,27 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     const EntryLinksPanel(maxItems: 6),
                   ],
                   const SizedBox(height: AppSpacing.xl),
-                  _SectionTitle('منابع ورودی'),
-                  if (data.sources.isEmpty)
-                    const Text('داده‌ای موجود نیست.', style: TextStyle(color: AppColors.textMuted))
-                  else
-                    _BarList(
-                      items: data.sources.map((s) => (label: s.displayLabel, value: s.joins)).toList(),
-                      color: AppColors.primary,
-                    ),
+                  PanelSectionCard(
+                    title: 'منابع ورودی',
+                    icon: Icons.hub_rounded,
+                    child: data.sources.isEmpty
+                        ? const Text('داده‌ای موجود نیست.', style: TextStyle(color: AppColors.textMuted))
+                        : _BarList(
+                            items: data.sources.map((s) => (label: s.displayLabel, value: s.joins)).toList(),
+                            color: AppColors.primary,
+                          ),
+                  ),
                   const SizedBox(height: AppSpacing.xl),
-                  _SectionTitle('رویدادهای ورودی'),
-                  if (data.entryEvents.isEmpty)
-                    const Text('داده‌ای موجود نیست.', style: TextStyle(color: AppColors.textMuted))
-                  else
-                    _BarList(
-                      items: data.entryEvents.map((e) => (label: e.name, value: e.joins)).toList(),
-                      color: AppColors.info,
-                    ),
+                  PanelSectionCard(
+                    title: 'رویدادهای ورودی',
+                    icon: Icons.event_rounded,
+                    child: data.entryEvents.isEmpty
+                        ? const Text('داده‌ای موجود نیست.', style: TextStyle(color: AppColors.textMuted))
+                        : _BarList(
+                            items: data.entryEvents.map((e) => (label: e.name, value: e.joins)).toList(),
+                            color: AppColors.info,
+                          ),
+                  ),
                 ],
               );
             },
@@ -147,20 +161,6 @@ class _Totals {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.title);
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-    );
-  }
-}
-
 class _BarList extends StatelessWidget {
   const _BarList({required this.items, required this.color});
 
@@ -182,8 +182,18 @@ class _BarList extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(child: Text(item.label, overflow: TextOverflow.ellipsis)),
-                  Text(toFaDigits(item.value.toString()), style: TextStyle(fontWeight: FontWeight.w700, color: color)),
+                  Expanded(
+                    child: Text(
+                      item.label,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Text(
+                    toFaDigits(item.value.toString()),
+                    style: TextStyle(fontWeight: FontWeight.w800, color: color, fontSize: 13),
+                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.xs),
@@ -191,8 +201,8 @@ class _BarList extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppRadius.tile),
                 child: LinearProgressIndicator(
                   value: ratio.clamp(0, 1),
-                  minHeight: 8,
-                  backgroundColor: AppColors.border,
+                  minHeight: 10,
+                  backgroundColor: AppColors.border.withValues(alpha: 0.5),
                   color: color,
                 ),
               ),

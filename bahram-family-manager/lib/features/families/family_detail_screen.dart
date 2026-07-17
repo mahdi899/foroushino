@@ -22,16 +22,26 @@ import 'package:bahram_family_manager/features/families/widgets/family_members_p
 import 'package:bahram_family_manager/widgets/surfaces/app_card.dart';
 
 class FamilyDetailScreen extends StatelessWidget {
-  const FamilyDetailScreen({super.key, required this.familyId, this.familySummary});
+  const FamilyDetailScreen({
+    super.key,
+    required this.familyId,
+    this.familySummary,
+    this.onChanged,
+  });
 
   final int familyId;
   final FamilySummaryModel? familySummary;
+  final VoidCallback? onChanged;
 
   @override
   Widget build(BuildContext context) {
     return AdaptiveScaffold(
       appBar: const ManagerAppBar(title: Text('جزئیات خانواده')),
-      body: FamilyDetailBody(familyId: familyId, familySummary: familySummary),
+      body: FamilyDetailBody(
+        familyId: familyId,
+        familySummary: familySummary,
+        onChanged: onChanged,
+      ),
     );
   }
 }

@@ -58,102 +58,174 @@ class _AiSettingsScreenState extends State<AiSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDesktop = AppBreakpoints.isDesktop(context);
+
     return AdaptiveScaffold(
       appBar: const ManagerAppBar(title: Text('هوش مصنوعی')),
       body: FutureBuilder<FamilyBrandingSettings>(
         future: _settingsFuture,
-        builder: (context, snapshot) => AsyncBody<FamilyBrandingSettings>(
-          snapshot: snapshot,
-          builder: (context, settings) {
-            final ai = settings.ai;
-            if (ai == null) {
-              return const Center(child: Text('تنظیمات AI در دسترس نیست.'));
-            }
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting || !_providersLoaded) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            if (!_providersLoaded) {
-              return const Center(child: CircularProgressIndicator());
-            }
+          return AsyncBody<FamilyBrandingSettings>(
+            snapshot: snapshot,
+            builder: (context, settings) {
+              final ai = settings.ai;
+              if (ai == null) {
+                return const Center(child: Text('تنظیمات AI در دسترس نیست.'));
+              }
 
-            return ListView(
-              padding: AppBreakpoints.pagePadding(context),
-              children: [
-                PanelSectionCard(
-                  title: 'ارائه‌دهنده و مدل',
-                  icon: Icons.hub_rounded,
-                  child: _AiConnectionForm(
-                    initial: ai,
-                    providers: _providers,
-                    onSaved: _load,
+              final padding = AppBreakpoints.pagePadding(context);
+
+              return ListView(
+                padding: padding.copyWith(bottom: padding.bottom + (isDesktop ? 0 : 24)),
+                children: [
+                  _AiHeroBanner(),
+                  const SizedBox(height: AppSpacing.lg),
+                  PanelSectionCard(
+                    title: 'ارائه‌دهنده و مدل',
+                    icon: Icons.hub_rounded,
+                    child: _AiConnectionForm(
+                      initial: ai,
+                      providers: _providers,
+                      onSaved: _load,
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                PanelSectionCard(
-                  title: 'مدیریت نظرات',
-                  icon: Icons.shield_rounded,
-                  child: _AiModerationForm(initial: ai, onSaved: _load),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                PanelSectionCard(
-                  title: 'کاربردها',
-                  icon: Icons.tips_and_updates_rounded,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _UseCaseRow(
-                        icon: Icons.forum_rounded,
-                        title: 'تحلیل و تأیید خودکار نظرات',
-                        subtitle: 'ریسک، احساس و موضوع هر نظر',
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      _UseCaseRow(
-                        icon: Icons.edit_note_rounded,
-                        title: 'پیش‌نویس پست',
-                        subtitle: 'کمک AI در ویرایشگر پست',
-                      ),
-                      const SizedBox(height: AppSpacing.md),
-                      _UseCaseRow(
-                        icon: Icons.insights_rounded,
-                        title: 'خلاصه روزانه',
-                        subtitle: 'موضوعات پرتکرار در داشبورد',
-                      ),
-                    ],
+                  const SizedBox(height: AppSpacing.xl),
+                  PanelSectionCard(
+                    title: 'مدیریت نظرات',
+                    icon: Icons.shield_rounded,
+                    child: _AiModerationForm(initial: ai, onSaved: _load),
                   ),
-                ),
-              ],
-            );
-          },
-        ),
+                  const SizedBox(height: AppSpacing.xl),
+                  PanelSectionCard(
+                    title: 'کاربردها',
+                    icon: Icons.tips_and_updates_rounded,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _UseCaseTile(
+                          icon: Icons.forum_rounded,
+                          color: AppColors.primary,
+                          title: 'تحلیل و تأیید خودکار نظرات',
+                          subtitle: 'ریسک، احساس و موضوع هر نظر',
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _UseCaseTile(
+                          icon: Icons.edit_note_rounded,
+                          color: AppColors.accent,
+                          title: 'پیش‌نویس پست',
+                          subtitle: 'کمک AI در ویرایشگر پست',
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        _UseCaseTile(
+                          icon: Icons.insights_rounded,
+                          color: AppColors.gold,
+                          title: 'خلاصه روزانه',
+                          subtitle: 'موضوعات پرتکرار در داشبورد',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
       ),
     );
   }
 }
 
-class _UseCaseRow extends StatelessWidget {
-  const _UseCaseRow({required this.icon, required this.title, required this.subtitle});
+class _AiHeroBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return PanelGradientCard(
+      variant: PanelGradientVariant.teal,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 28),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'دستیار هوشمند خانواده',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'تحلیل نظرات، پیش‌نویس پست و خلاصه روزانه را از اینجا تنظیم کنید.',
+                  style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UseCaseTile extends StatelessWidget {
+  const _UseCaseTile({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.subtitle,
+  });
 
   final IconData icon;
+  final Color color;
   final String title;
   final String subtitle;
 
   @override
   Widget build(BuildContext context) {
     final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.65);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 20, color: AppColors.primary),
-        const SizedBox(width: AppSpacing.md),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 2),
-              Text(subtitle, style: TextStyle(color: muted, fontSize: 13)),
-            ],
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [color.withValues(alpha: 0.85), color]),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: Colors.white, size: 22),
           ),
-        ),
-      ],
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                const SizedBox(height: 2),
+                Text(subtitle, style: TextStyle(color: muted, fontSize: 12, height: 1.35)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -509,25 +581,40 @@ class _AiConnectionFormState extends State<_AiConnectionForm> {
           ),
         ],
         const SizedBox(height: AppSpacing.md),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: _testing || _saving ? null : _test,
-                child: _testing
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('تست اتصال'),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: PrimaryButton(label: 'ذخیره', loading: _saving, onPressed: _save),
-            ),
-          ],
+        Builder(
+          builder: (context) {
+            final narrow = !AppBreakpoints.isDesktop(context);
+            final testBtn = OutlinedButton(
+              onPressed: _testing || _saving ? null : _test,
+              child: _testing
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('تست اتصال'),
+            );
+            final saveBtn = PrimaryButton(label: 'ذخیره', loading: _saving, onPressed: _save);
+
+            if (narrow) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  saveBtn,
+                  const SizedBox(height: AppSpacing.sm),
+                  testBtn,
+                ],
+              );
+            }
+
+            return Row(
+              children: [
+                Expanded(child: testBtn),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(child: saveBtn),
+              ],
+            );
+          },
         ),
       ],
     );

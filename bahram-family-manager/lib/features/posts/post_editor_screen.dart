@@ -318,15 +318,32 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     }
   }
 
-  Future<void> _publish() async {
-    if (_post == null) return;
+  /// Save (create/update) then publish immediately — used from the «more» sheet.
+  Future<void> _publishNow() async {
+    if (_type == 'text' && _textCtrl.text.trim().isEmpty) {
+      showAppSnackBar(context, 'متن پست را وارد کنید.');
+      return;
+    }
+    if (_type != 'text' && _mediaRef == null) {
+      showAppSnackBar(context, 'ابتدا رسانه را آپلود کنید.');
+      return;
+    }
+
     setState(() => _saving = true);
     try {
-      await context.read<AppState>().manager.publishPost(_post!.id);
+      final manager = context.read<AppState>().manager;
+      final payload = _buildPayload();
+      final saved = _post == null ? await manager.createPost(payload) : await manager.updatePost(_post!.id, payload);
+      if (!mounted) return;
+      setState(() => _post = saved);
+      if (saved.isDraft) {
+        await manager.publishPost(saved.id);
+      }
+      if (!mounted) return;
       showAppSnackBar(context, 'پست منتشر شد.');
-      if (mounted) Navigator.of(context).pop(true);
+      Navigator.of(context).pop(true);
     } catch (e) {
-      showAppSnackBar(context, messageOf(e));
+      if (mounted) showAppSnackBar(context, messageOf(e));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -485,7 +502,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         post: _post,
         saving: _saving,
         onSave: _save,
-        onPublish: _post != null && _post!.isDraft ? _publish : null,
+        onPublish: (_post == null || _post!.isDraft) ? _publishNow : null,
         onRepublish: _post != null && (_post!.isPublished || _isArchived) ? _republish : null,
         onDelete: _post != null ? _delete : null,
         onArchive: _post != null && _post!.isPublished ? _archive : null,

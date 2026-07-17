@@ -8,18 +8,20 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
+import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/sheets/app_bottom_sheet.dart';
 
 Future<bool?> showFamilyEditorSheet({
   required BuildContext context,
   FamilyDetailModel? family,
 }) {
+  final isNarrow = !AppBreakpoints.isDesktop(context);
   return showAppBottomSheet<bool>(
     context: context,
     title: family == null ? 'ایجاد خانواده' : 'ویرایش خانواده',
     subtitle: family == null ? 'خانواده جدید به‌صورت دستی ساخته می‌شود.' : family.internalName,
     scrollable: true,
-    initialChildSize: 0.85,
+    initialChildSize: isNarrow ? 0.92 : 0.85,
     child: _FamilyEditorForm(family: family),
   );
 }
@@ -136,6 +138,26 @@ class _FamilyEditorFormState extends State<_FamilyEditorForm> {
 
   @override
   Widget build(BuildContext context) {
+    final isNarrow = !AppBreakpoints.isDesktop(context);
+
+    final capacityFields = [
+      TextField(
+        controller: _targetCtrl,
+        keyboardType: TextInputType.number,
+        decoration: const InputDecoration(labelText: 'ظرفیت هدف'),
+      ),
+      TextField(
+        controller: _minCtrl,
+        keyboardType: TextInputType.number,
+        decoration: const InputDecoration(labelText: 'حداقل'),
+      ),
+      TextField(
+        controller: _maxCtrl,
+        keyboardType: TextInputType.number,
+        decoration: const InputDecoration(labelText: 'حداکثر'),
+      ),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -146,20 +168,22 @@ class _FamilyEditorFormState extends State<_FamilyEditorForm> {
         const SizedBox(height: AppSpacing.md),
         DropdownButtonFormField<String>(
           value: _lifecycle,
+          isExpanded: true,
           decoration: const InputDecoration(labelText: 'وضعیت'),
           items: lifecycleLabels.entries
-              .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+              .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value, overflow: TextOverflow.ellipsis)))
               .toList(),
           onChanged: (v) => setState(() => _lifecycle = v ?? _lifecycle),
         ),
         const SizedBox(height: AppSpacing.md),
         DropdownButtonFormField<String?>(
           value: _primarySource,
+          isExpanded: true,
           decoration: const InputDecoration(labelText: 'منبع اصلی'),
           items: [
             const DropdownMenuItem<String?>(value: null, child: Text('—')),
             ...entrySourceLabels.entries.map(
-              (e) => DropdownMenuItem(value: e.key, child: Text(e.value)),
+              (e) => DropdownMenuItem(value: e.key, child: Text(e.value, overflow: TextOverflow.ellipsis)),
             ),
           ],
           onChanged: (v) => setState(() => _primarySource = v),
@@ -167,46 +191,39 @@ class _FamilyEditorFormState extends State<_FamilyEditorForm> {
         const SizedBox(height: AppSpacing.md),
         DropdownButtonFormField<int?>(
           value: _entryEventId,
+          isExpanded: true,
           decoration: const InputDecoration(labelText: 'رویداد ورود'),
           items: [
             const DropdownMenuItem<int?>(value: null, child: Text('—')),
             ..._events.map(
               (e) => DropdownMenuItem(
                 value: e.id,
-                child: Text(e.externalReference == null ? e.name : '${e.name} (${e.externalReference})'),
+                child: Text(
+                  e.externalReference == null ? e.name : '${e.name} (${e.externalReference})',
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
           ],
           onChanged: (v) => setState(() => _entryEventId = v),
         ),
         const SizedBox(height: AppSpacing.md),
-        Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _targetCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'ظرفیت هدف'),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: TextField(
-                controller: _minCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'حداقل'),
-              ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: TextField(
-                controller: _maxCtrl,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'حداکثر'),
-              ),
-            ),
-          ],
-        ),
+        if (isNarrow)
+          ...[
+            for (var i = 0; i < capacityFields.length; i++) ...[
+              capacityFields[i],
+              if (i < capacityFields.length - 1) const SizedBox(height: AppSpacing.md),
+            ],
+          ]
+        else
+          Row(
+            children: [
+              for (var i = 0; i < capacityFields.length; i++) ...[
+                if (i > 0) const SizedBox(width: AppSpacing.sm),
+                Expanded(child: capacityFields[i]),
+              ],
+            ],
+          ),
         const SizedBox(height: AppSpacing.md),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
@@ -218,7 +235,7 @@ class _FamilyEditorFormState extends State<_FamilyEditorForm> {
         const SizedBox(height: AppSpacing.md),
         TextField(
           controller: _descriptionCtrl,
-          maxLines: 3,
+          maxLines: isNarrow ? 2 : 3,
           decoration: const InputDecoration(
             labelText: 'توضیح پروفایل',
             alignLabelWithHint: true,
@@ -227,7 +244,7 @@ class _FamilyEditorFormState extends State<_FamilyEditorForm> {
         const SizedBox(height: AppSpacing.md),
         TextField(
           controller: _notesCtrl,
-          maxLines: 3,
+          maxLines: isNarrow ? 2 : 3,
           decoration: const InputDecoration(
             labelText: 'یادداشت مدیر',
             alignLabelWithHint: true,
@@ -242,6 +259,7 @@ class _FamilyEditorFormState extends State<_FamilyEditorForm> {
           label: _pending ? 'در حال ذخیره…' : (_isEdit ? 'ذخیره تغییرات' : 'ایجاد خانواده'),
           onPressed: _pending ? null : _save,
         ),
+        SizedBox(height: MediaQuery.paddingOf(context).bottom + AppSpacing.md),
       ],
     );
   }

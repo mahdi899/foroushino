@@ -44,10 +44,12 @@ class DesktopShell extends StatelessWidget {
         floatingActionButton: onComposePost == null
             ? null
             : Padding(
-                padding: const EdgeInsets.only(bottom: 72),
+                // Scaffold already lifts FAB above bottom nav; keep only a small gap.
+                padding: const EdgeInsets.only(bottom: 6),
                 child: _MobileComposeFab(onPressed: onComposePost!),
               ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        // startFloat = visual right in RTL (endFloat lands on the left).
+        floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
         bottomNavigationBar: items.length <= 1
             ? null
             : AppBottomNav(
@@ -121,16 +123,10 @@ class _MobileComposeFab extends StatelessWidget {
         child: InkWell(
           onTap: onPressed,
           borderRadius: BorderRadius.circular(18),
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.edit_rounded, color: Colors.white, size: 22),
-                SizedBox(width: 8),
-                Text('پست جدید', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
-              ],
-            ),
+          child: const SizedBox(
+            width: 56,
+            height: 56,
+            child: Icon(Icons.edit_rounded, color: Colors.white, size: 26),
           ),
         ),
       ),

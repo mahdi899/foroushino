@@ -12,6 +12,7 @@ import 'package:bahram_family_manager/features/settings/settings_screen.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
 import 'package:bahram_family_manager/widgets/layout/desktop_shell.dart';
+import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/widgets/layout/shell_scope.dart';
 import 'package:bahram_family_manager/widgets/navigation/app_bottom_nav.dart';
 import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
@@ -55,7 +56,7 @@ class RootShell extends StatefulWidget {
 class _RootShellState extends State<RootShell> {
   var _index = 0;
 
-  static final _tabs = <_Tab>[
+  static final _primaryTabs = <_Tab>[
     _Tab(label: 'خانه', icon: Icons.dashboard_rounded, builder: (_) => const HomeScreen()),
     _Tab(
       label: 'پست‌ها',
@@ -75,6 +76,9 @@ class _RootShellState extends State<RootShell> {
       builder: (_) => const FamiliesScreen(),
       permission: 'family.families.view',
     ),
+  ];
+
+  static final _moreTabs = <_Tab>[
     _Tab(
       label: 'تحلیل',
       icon: Icons.insights_rounded,
@@ -95,18 +99,26 @@ class _RootShellState extends State<RootShell> {
     ),
   ];
 
+  bool _canSee(_Tab t, AppState state) {
+    final user = state.user;
+    if (t.permission == null) return true;
+    if (t.permission == 'family.settings.manage') {
+      return (user?.can('family.settings.manage') ?? false) ||
+          (user?.can('family.stories.manage') ?? false);
+    }
+    return user?.can(t.permission!) ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AppState>().user;
-    final visibleTabs = _tabs.where((t) {
-      if (t.permission == null) return true;
-      if (t.permission == 'family.settings.manage') {
-        return (user?.can('family.settings.manage') ?? false) || (user?.can('family.stories.manage') ?? false);
-      }
-      return user?.can(t.permission!) ?? false;
-    }).toList();
+    final state = context.watch<AppState>();
+    final isDesktop = AppBreakpoints.isDesktop(context);
 
-    if (visibleTabs.isEmpty) {
+    final primaryVisible = _primaryTabs.where((t) => _canSee(t, state)).toList();
+    final moreVisible = _moreTabs.where((t) => _canSee(t, state)).toList();
+    final shellTabs = isDesktop ? [...primaryVisible, ...moreVisible] : primaryVisible;
+
+    if (shellTabs.isEmpty) {
       return Scaffold(
         backgroundColor: Colors.transparent,
         appBar: const ManagerAppBar(title: Text('مدیر خانواده بهرام')),
@@ -118,8 +130,8 @@ class _RootShellState extends State<RootShell> {
       );
     }
 
-    final index = _index.clamp(0, visibleTabs.length - 1);
-    final canCompose = user?.can('family.posts.create') ?? false;
+    final index = _index.clamp(0, shellTabs.length - 1);
+    final canCompose = state.user?.can('family.posts.create') ?? false;
 
     Future<void> openCompose() async {
       await Navigator.of(context).push<bool>(
@@ -130,19 +142,19 @@ class _RootShellState extends State<RootShell> {
     return ShellScope(
       goToTab: (i) => setState(() => _index = i),
       onComposePost: canCompose ? openCompose : null,
-      tabLabels: visibleTabs.map((t) => t.label).toList(),
+      tabLabels: shellTabs.map((t) => t.label).toList(),
       child: DesktopShell(
         currentIndex: index,
         onIndexChanged: (i) => setState(() => _index = i),
         onComposePost: canCompose ? openCompose : null,
-        items: visibleTabs
+        items: shellTabs
             .map((t) => AppBottomNavItem(label: t.label, icon: t.icon))
             .toList(),
         body: IndexedStack(
           index: index,
           sizing: StackFit.expand,
           children: [
-            for (final tab in visibleTabs)
+            for (final tab in shellTabs)
               _KeepAliveTab(
                 key: ValueKey(tab.label),
                 builder: tab.builder,

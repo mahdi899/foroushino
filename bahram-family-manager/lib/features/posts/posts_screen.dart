@@ -513,6 +513,14 @@ class _PostsScreenState extends State<PostsScreen> with SingleTickerProviderStat
               ? '${toFaDigits(_selectedArchivedIds.length.toString())} انتخاب‌شده'
               : 'پست‌های خانواده',
         ),
+        showShellActions: true,
+        actions: [
+          IconButton(
+            onPressed: _loadFirstPage,
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'بروزرسانی',
+          ),
+        ],
         bottom: AppTabBar(
           controller: _tabController,
           tabs: _statuses.map((s) => labelOf(postStatusLabels, s)).toList(),
