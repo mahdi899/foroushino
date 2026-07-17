@@ -98,13 +98,9 @@ class TicketAdminController extends Controller
     {
         $data = $request->validate(['message' => ['required', 'string', 'max:5000']]);
 
-        $ticket->messages()->create([
-            'user_id' => $request->user()->id,
-            'message' => $data['message'],
-            'is_admin_reply' => true,
-        ]);
+        app(\App\Modules\TelegramBot\Services\BotTicketDeliveryService::class)
+            ->deliverAdminReply($ticket, $data['message'], null, (int) $request->user()->id);
 
-        $ticket->update(['status' => 'answered']);
         $ticket->load(['user', 'messages.user']);
 
         app(SmsService::class)->sendTicketReply($ticket);

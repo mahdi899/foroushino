@@ -11,7 +11,11 @@ import {
   sendTelegramBroadcastNowAction,
   stopTelegramBroadcastAction,
 } from '../actions';
-import type { TelegramBotView, TelegramBroadcastView } from '@/lib/admin/telegram.types';
+import type {
+  TelegramBotView,
+  TelegramBroadcastSegmentView,
+  TelegramBroadcastView,
+} from '@/lib/admin/telegram.types';
 import { toFa } from '@/lib/utils';
 
 const STATUS_TONE: Record<string, 'default' | 'success' | 'warning' | 'accent' | 'danger'> = {
@@ -26,10 +30,12 @@ export function TelegramBroadcastsClient({
   items,
   meta,
   bots,
+  segments,
 }: {
   items: TelegramBroadcastView[];
   meta: { total: number };
   bots: TelegramBotView[];
+  segments: TelegramBroadcastSegmentView[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -38,6 +44,7 @@ export function TelegramBroadcastsClient({
     bot_key: bots[0]?.key ?? 'production',
     title: '',
     text: '',
+    segment_key: segments[0]?.key ?? 'all_bot_users',
   });
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>) => {
@@ -59,6 +66,9 @@ export function TelegramBroadcastsClient({
     });
   };
 
+  const segmentLabel = (key: string | null) =>
+    segments.find((s) => s.key === key)?.label ?? key ?? 'همه';
+
   return (
     <div className="admin-telegram-subpage__stack">
       <AdminContentPanel title="ایجاد پیام همگانی">
@@ -68,6 +78,14 @@ export function TelegramBroadcastsClient({
             <select className="field-input mt-1 w-full" value={form.bot_key} onChange={(e) => setForm((f) => ({ ...f, bot_key: e.target.value }))}>
               {bots.map((b) => (
                 <option key={b.id} value={b.key}>{b.display_name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-caption text-text-muted">گروه مخاطب</span>
+            <select className="field-input mt-1 w-full" value={form.segment_key} onChange={(e) => setForm((f) => ({ ...f, segment_key: e.target.value }))}>
+              {segments.map((s) => (
+                <option key={s.key} value={s.key}>{s.label} ({toFa(s.count)})</option>
               ))}
             </select>
           </label>
@@ -88,11 +106,12 @@ export function TelegramBroadcastsClient({
         {items.length === 0 ? (
           <p className="py-6 text-center text-small text-text-muted">پیام همگانی ثبت نشده.</p>
         ) : (
-          <Table head={['عنوان', 'وضعیت', 'مخاطب', 'عملیات']}>
+          <Table head={['عنوان', 'وضعیت', 'گروه', 'مخاطب', 'عملیات']}>
             {items.map((b) => (
               <tr key={b.id}>
                 <td className="px-4 py-3 font-medium">{b.title}</td>
                 <td className="px-4 py-3"><Badge tone={STATUS_TONE[b.status] ?? 'default'}>{b.status}</Badge></td>
+                <td className="px-4 py-3 text-text-muted">{segmentLabel(b.segment_key)}</td>
                 <td className="px-4 py-3 text-text-muted">{toFa(b.audience_count)}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap gap-2">

@@ -72,9 +72,16 @@ export async function toggleTelegramAccountBlockAction(accountId: number, isBloc
   }
 }
 
-export async function toggleTelegramBotAdminAction(accountId: number, isBotAdmin: boolean): Promise<{ ok: boolean; error?: string }> {
+export async function toggleTelegramBotAdminAction(
+  accountId: number,
+  isBotAdmin: boolean,
+  rank: 'simple' | 'super' = 'simple',
+): Promise<{ ok: boolean; error?: string }> {
   try {
-    await adminFetch(`/panel/telegram/accounts/${accountId}/bot-admin`, { method: 'POST', body: { is_bot_admin: isBotAdmin } });
+    await adminFetch(`/panel/telegram/accounts/${accountId}/bot-admin`, {
+      method: 'POST',
+      body: { is_bot_admin: isBotAdmin, bot_admin_rank: isBotAdmin ? rank : null },
+    });
     revalidateTelegram();
     return { ok: true };
   } catch (e) {
@@ -220,6 +227,7 @@ export async function saveTelegramBroadcastAction(input: {
   bot_key: string;
   title: string;
   text: string;
+  segment_key?: string;
 }): Promise<{ ok: boolean; error?: string }> {
   try {
     await adminFetch('/panel/telegram/broadcasts', { method: 'POST', body: input });
@@ -227,6 +235,40 @@ export async function saveTelegramBroadcastAction(input: {
     return { ok: true };
   } catch (e) {
     return actionError(e, 'ایجاد پیام همگانی ناموفق بود.');
+  }
+}
+
+export async function saveTelegramBotMessageAction(
+  key: string,
+  body: string,
+  botKey?: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await adminFetch(`/panel/telegram/messages/${encodeURIComponent(key)}`, {
+      method: 'PUT',
+      body: { body },
+      query: botKey ? { bot_key: botKey } : undefined,
+    });
+    revalidateTelegram();
+    return { ok: true };
+  } catch (e) {
+    return actionError(e, 'ذخیره پیام بات ناموفق بود.');
+  }
+}
+
+export async function resetTelegramBotMessageAction(
+  key: string,
+  botKey?: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await adminFetch(`/panel/telegram/messages/${encodeURIComponent(key)}/reset`, {
+      method: 'POST',
+      query: botKey ? { bot_key: botKey } : undefined,
+    });
+    revalidateTelegram();
+    return { ok: true };
+  } catch (e) {
+    return actionError(e, 'بازگردانی پیام بات ناموفق بود.');
   }
 }
 

@@ -9,6 +9,7 @@ use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramUpdate;
 use App\Modules\TelegramBot\Services\BotAdminPanelService;
+use App\Modules\TelegramBot\Services\BotMessageCatalog;
 use App\Modules\TelegramBot\Services\ConversationService;
 use App\Modules\TelegramBot\Services\MainMenuKeyboard;
 use App\Modules\TelegramBot\Services\RegistrationFlowService;
@@ -44,6 +45,7 @@ class MessageHandler implements UpdateHandlerInterface
         private readonly TelegramSatFlowService $satFlow,
         private readonly TelegramAdminUserStatsService $userStats,
         private readonly TelegramCourseAccessPresenter $courseAccessPresenter,
+        private readonly BotMessageCatalog $messages,
     ) {}
 
     public function handle(TelegramUpdate $update, TelegramBot $bot): void
@@ -237,7 +239,7 @@ class MessageHandler implements UpdateHandlerInterface
             'دوره کمپین نویسی 🎓' => $this->sendProducts($client, $bot, $account, $chatId),
             'سمینارها 🎤' => $this->sendSeminars($client, $chatId),
             'سات ☎️' => $this->sendSatStatus($client, $chatId, $account),
-            'کانال مرجع 📣' => $this->sendReferenceChannel($client, $chatId),
+            'کانال مرجع 📣' => $this->sendReferenceChannel($client, $chatId, $bot),
             'خانواده 👨‍👩‍👧‍👦' => $this->sendFamily($client, $chatId, $account),
             'معرفی دوستان 🎁' => $this->sendReferral($client, $chatId, $account, $bot),
             'پشتیبانی 🎫' => $this->openSupportHub($client, $bot, $account, $chatId),
@@ -260,13 +262,13 @@ class MessageHandler implements UpdateHandlerInterface
             return;
         }
 
-        $client->sendMessage($chatId, 'دسته پشتیبانی را انتخاب کنید:', [
+        $client->sendMessage($chatId, $this->messages->get($bot, 'support_prompt'), [
             'reply_markup' => [
                 'inline_keyboard' => [
-                    [['text' => 'خرید', 'callback_data' => 'support:cat:purchase']],
-                    [['text' => 'کمپین', 'callback_data' => 'support:cat:campaign_course']],
-                    [['text' => 'سات', 'callback_data' => 'support:cat:sat']],
-                    [['text' => 'سایر', 'callback_data' => 'support:cat:other']],
+                    [['text' => $this->messages->get($bot, 'support_category_purchase'), 'callback_data' => 'support:cat:purchase']],
+                    [['text' => $this->messages->get($bot, 'support_category_campaign_course'), 'callback_data' => 'support:cat:campaign_course']],
+                    [['text' => $this->messages->get($bot, 'support_category_sat'), 'callback_data' => 'support:cat:sat']],
+                    [['text' => $this->messages->get($bot, 'support_category_other'), 'callback_data' => 'support:cat:other']],
                 ],
             ],
         ]);
@@ -324,7 +326,7 @@ class MessageHandler implements UpdateHandlerInterface
         ]);
         $ack = $client->sendMessage(
             $chatId,
-            "✅ پیام شما ثبت شد.\nپشتیبانی به‌زودی پاسخ می‌دهد.\n\nبرای ادامه گفتگو، روی همین پیام یا پاسخ پشتیبانی Reply بزنید.",
+            $this->messages->get($bot, 'support_message_received'),
             ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
         );
         $ackId = (int) ($ack['message_id'] ?? 0);
@@ -389,13 +391,16 @@ class MessageHandler implements UpdateHandlerInterface
         $this->satFlow->open($bot, $account, $chatId);
     }
 
-    private function sendReferenceChannel($client, int $chatId): void
+    private function sendReferenceChannel($client, int $chatId, ?TelegramBot $bot = null): void
     {
         $identityUrl = TelegramSiteUrl::identityPage();
+        $text = $bot
+            ? $this->messages->get($bot, 'purchase_need_course')
+            : BotMessageCatalog::DEFAULTS['purchase_need_course']['body'];
         $this->sendWithLink(
             $client,
             $chatId,
-            "کانال مرجع نیاز به خرید دوره کمپین‌نویسی و احراز هویت سطح ۲ دارد.\nبرای شروع احراز هویت از منوی حساب کاربری یا لینک زیر استفاده کنید.",
+            $text,
             $identityUrl,
             '🔐 احراز هویت سطح ۲',
         );

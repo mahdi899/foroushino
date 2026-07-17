@@ -2,12 +2,15 @@
 
 namespace App\Modules\TelegramBot\Http\Controllers\Admin;
 
+use App\Modules\TelegramBot\Enums\BotAdminRank;
 use App\Modules\TelegramBot\Http\Controllers\Admin\Concerns\AuthorizesTelegramAdmin;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Repositories\TelegramBotRepository;
 use App\Modules\TelegramBot\Services\RequiredChatMembershipService;
+use App\Modules\TelegramBot\Services\TelegramUserExportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TelegramAccountAdminController
 {
@@ -16,6 +19,7 @@ class TelegramAccountAdminController
     public function __construct(
         private readonly TelegramBotRepository $bots,
         private readonly RequiredChatMembershipService $membership,
+        private readonly TelegramUserExportService $userExport,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -88,6 +92,27 @@ class TelegramAccountAdminController
         return response()->json(['data' => $this->payload($account->fresh()->load(['bot', 'user']), true, detailed: true)]);
     }
 
+    public function export(Request $request): StreamedResponse|JsonResponse
+    {
+        $this->authorizeTelegram($request, 'telegram.users.view');
+
+        $days = (int) $request->input('days', 7);
+        $botKey = $request->string('bot_key')->toString();
+        $bot = $botKey !== ''
+            ? $this->bots->findByKey($botKey)
+            : ($this->bots->allActive()->first() ?? $this->bots->all()->first());
+
+        abort_unless($bot, 404, 'Bot not found');
+
+        $export = $this->userExport->exportTxt($bot, $days);
+
+        return response()->streamDownload(function () use ($export): void {
+            echo $export['content'];
+        }, $export['filename'], [
+            'Content-Type' => 'text/plain; charset=UTF-8',
+        ]);
+    }
+
     public function setBotAdmin(Request $request, TelegramAccount $account): JsonResponse
     {
         $this->authorizeTelegram($request, 'telegram.manage');
@@ -98,6 +123,7 @@ class TelegramAccountAdminController
 
         $data = $request->validate([
             'is_bot_admin' => ['required', 'boolean'],
+            'bot_admin_rank' => ['sometimes', 'nullable', 'string', 'in:simple,super'],
         ]);
 
         if ($account->isPermanentBotAdmin() && ! $data['is_bot_admin']) {
@@ -107,7 +133,12 @@ class TelegramAccountAdminController
             ], 422);
         }
 
-        $account->update(['is_bot_admin' => $data['is_bot_admin']]);
+        if (! $data['is_bot_admin']) {
+            $account->revokeBotAdmin();
+        } else {
+            $rank = BotAdminRank::tryFrom((string) ($data['bot_admin_rank'] ?? 'simple')) ?? BotAdminRank::Simple;
+            $account->grantAllBotAdminPermissions($account->adminDisplayName(), $rank);
+        }
 
         return response()->json(['data' => $this->payload($account->fresh()->load(['bot', 'user']), true, detailed: true)]);
     }
@@ -151,7 +182,11 @@ class TelegramAccountAdminController
             'user_id' => $account->user_id,
             'user_name' => $account->user?->name,
             'is_blocked' => $account->is_blocked,
-            'is_bot_admin' => (bool) $account->is_bot_admin,
+            'is_bot_admin' => (bool) $account->is_bot_admin || $account->isPermanentBotAdmin(),
+            'bot_admin_rank' => $account->isPermanentBotAdmin()
+                ? 'super'
+                : ($account->bot_admin_rank?->value ?? ($account->is_bot_admin ? 'simple' : null)),
+            'is_permanent_bot_admin' => $account->isPermanentBotAdmin(),
             'is_linked' => $account->isLinked(),
             'mobile_verified_at' => $account->mobile_verified_at?->toIso8601String(),
             'created_at' => $account->created_at?->toIso8601String(),

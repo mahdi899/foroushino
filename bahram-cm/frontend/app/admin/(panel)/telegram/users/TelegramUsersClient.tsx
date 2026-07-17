@@ -40,9 +40,14 @@ export function TelegramUsersClient({
       <button type="button" disabled={pending} className="btn btn-secondary text-caption px-2 py-1" onClick={() => run(() => toggleTelegramAccountBlockAction(a.id, !a.is_blocked))}>
         {a.is_blocked ? 'رفع مسدودیت' : 'مسدود'}
       </button>
-      <button type="button" disabled={pending} className="btn btn-secondary text-caption px-2 py-1" onClick={() => run(() => toggleTelegramBotAdminAction(a.id, !a.is_bot_admin))}>
-        {a.is_bot_admin ? 'حذف ادمین بات' : 'ادمین بات'}
+      <button type="button" disabled={pending || !!a.is_permanent_bot_admin} className="btn btn-secondary text-caption px-2 py-1" onClick={() => run(() => toggleTelegramBotAdminAction(a.id, !a.is_bot_admin, 'simple'))}>
+        {a.is_bot_admin ? 'حذف ادمین' : 'ادمین ساده'}
       </button>
+      {!a.is_bot_admin || a.bot_admin_rank !== 'super' ? (
+        <button type="button" disabled={pending || !!a.is_permanent_bot_admin} className="btn btn-secondary text-caption px-2 py-1" onClick={() => run(() => toggleTelegramBotAdminAction(a.id, true, 'super'))}>
+          ادمین برتر
+        </button>
+      ) : null}
       {a.is_linked ? (
         <button type="button" disabled={pending} className="btn btn-secondary text-caption px-2 py-1" onClick={() => run(() => unlinkTelegramAccountAction(a.id))}>
           قطع اتصال
@@ -54,8 +59,15 @@ export function TelegramUsersClient({
   return (
     <AdminContentPanel title="کاربران ربات و نقش ادمین" summary={<span>{toFa(meta.total)} کاربر</span>}>
       <p className="mb-4 text-small text-text-muted leading-relaxed">
-        با دکمه <strong>ادمین بات</strong> می‌توانید به مخاطب دسترسی منوی ادمین داخل ربات بدهید (آمار مخاطبان و لینک پنل).
+        ادمین ساده دسترسی عملیاتی دارد؛ فقط ادمین برتر می‌تواند دیگران را ادمین کند.
       </p>
+      <div className="mb-4 flex flex-wrap gap-2">
+        {[7, 14, 30].map((days) => (
+          <a key={days} className="btn btn-secondary text-caption px-2 py-1" href={`/api/admin/telegram/accounts-export?days=${days}`}>
+            خروجی TXT — {days} روز
+          </a>
+        ))}
+      </div>
       <form
         className="mb-4 flex flex-wrap gap-2"
         onSubmit={(e) => {
@@ -87,7 +99,11 @@ export function TelegramUsersClient({
                   value: (
                     <span className="inline-flex flex-wrap gap-1">
                       <Badge tone={a.is_blocked ? 'danger' : a.is_linked ? 'success' : 'warning'}>{a.is_blocked ? 'مسدود' : a.is_linked ? 'متصل' : 'ثبت‌نام'}</Badge>
-                      {a.is_bot_admin ? <Badge tone="accent">ادمین بات</Badge> : null}
+                      {a.is_bot_admin ? (
+                        <Badge tone="accent">
+                          {a.is_permanent_bot_admin ? 'ادمین دائمی' : a.bot_admin_rank === 'super' ? 'ادمین برتر' : 'ادمین ساده'}
+                        </Badge>
+                      ) : null}
                     </span>
                   ),
                 },
@@ -111,7 +127,11 @@ export function TelegramUsersClient({
                   <Badge tone={a.is_blocked ? 'danger' : a.is_linked ? 'success' : 'warning'}>
                     {a.is_blocked ? 'مسدود' : a.is_linked ? 'متصل' : 'ثبت‌نام'}
                   </Badge>
-                  {a.is_bot_admin ? <Badge tone="accent">ادمین بات</Badge> : null}
+                  {a.is_bot_admin ? (
+                    <Badge tone="accent">
+                      {a.is_permanent_bot_admin ? 'ادمین دائمی' : a.bot_admin_rank === 'super' ? 'ادمین برتر' : 'ادمین ساده'}
+                    </Badge>
+                  ) : null}
                 </div>
               </td>
               <td className="px-4 py-3">{actions(a)}</td>

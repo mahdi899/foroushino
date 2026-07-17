@@ -64,11 +64,16 @@ class TelegramBroadcastAdminController
             $data['telegram_bot_id'] = $bot->id;
         }
 
+        $segmentKey = $data['segment_key'] ?? 'all_bot_users';
+        $audienceCount = app(\App\Modules\TelegramBot\Services\TelegramAudienceSegmentResolver::class)
+            ->count((int) $data['telegram_bot_id'], $segmentKey);
+
         $broadcast = TelegramBroadcast::query()->create([
             'telegram_bot_id' => $data['telegram_bot_id'],
             'title' => $data['title'],
             'status' => 'draft',
-            'segment_key' => $data['segment_key'] ?? null,
+            'segment_key' => $segmentKey,
+            'audience_count' => $audienceCount,
             'content' => [
                 'text' => $data['text'],
                 'options' => $data['options'] ?? [],
@@ -273,5 +278,27 @@ class TelegramBroadcastAdminController
             'text' => (string) ($broadcast->content['text'] ?? ''),
             'options' => (array) ($broadcast->content['options'] ?? []),
         ]);
+    }
+
+    public function segments(Request $request): JsonResponse
+    {
+        $this->authorizeTelegram($request, 'telegram.broadcast.create');
+
+        $resolver = app(\App\Modules\TelegramBot\Services\TelegramAudienceSegmentResolver::class);
+        $botKey = $request->string('bot_key')->toString();
+        $bot = $botKey !== ''
+            ? $this->bots->findByKey($botKey)
+            : ($this->bots->allActive()->first() ?? $this->bots->all()->first());
+
+        $items = [];
+        foreach ($resolver->labels() as $key => $label) {
+            $items[] = [
+                'key' => $key,
+                'label' => $label,
+                'count' => $bot ? $resolver->count((int) $bot->id, $key) : 0,
+            ];
+        }
+
+        return response()->json(['data' => $items]);
     }
 }

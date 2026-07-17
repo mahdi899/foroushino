@@ -4,10 +4,19 @@ export const TELEGRAM_MODULES: TelegramModule[] = [
   {
     href: '/admin/telegram/users',
     label: 'کاربران و ادمین‌های بات',
-    description: 'لیست مخاطبان، مسدود کردن، و تعیین ادمین بات برای دسترسی ویژه داخل ربات',
+    description: 'لیست مخاطبان، مسدود کردن، و تعیین ادمین ساده/برتر داخل ربات',
     icon: 'Users',
     tone: 'blue',
     permission: 'telegram.users.view',
+    group: 'users',
+  },
+  {
+    href: '/admin/telegram/stats',
+    label: 'آمار بات',
+    description: 'آمار روزانه، هفتگی و ماهانه استفاده از ربات',
+    icon: 'BarChart3',
+    tone: 'teal',
+    permission: 'telegram.reports.view',
     group: 'users',
   },
   {
@@ -22,10 +31,19 @@ export const TELEGRAM_MODULES: TelegramModule[] = [
   {
     href: '/admin/telegram/broadcasts',
     label: 'پیام‌های همگانی',
-    description: 'پیش‌نویس، تست، تأیید و صف ارسال',
+    description: 'پیش‌نویس با انتخاب گروه مخاطب، تست، تأیید و صف ارسال',
     icon: 'Megaphone',
     tone: 'gold',
     permission: 'telegram.broadcast.create',
+    group: 'content',
+  },
+  {
+    href: '/admin/telegram/messages',
+    label: 'پیام‌های بات',
+    description: 'ویرایش متن‌های اصلی پاسخ‌های ربات به کاربران',
+    icon: 'MessageSquare',
+    tone: 'blue',
+    permission: 'telegram.content.manage',
     group: 'content',
   },
   {

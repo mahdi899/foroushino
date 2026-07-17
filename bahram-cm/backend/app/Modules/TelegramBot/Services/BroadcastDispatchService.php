@@ -13,6 +13,7 @@ class BroadcastDispatchService
 {
     public function __construct(
         private readonly TelegramQueueDispatcher $queueDispatcher,
+        private readonly TelegramAudienceSegmentResolver $segments,
     ) {}
 
     public function queue(TelegramBroadcast $broadcast): void
@@ -28,14 +29,13 @@ class BroadcastDispatchService
         $batchIds = [];
 
         DB::transaction(function () use ($broadcast, &$batchIds): void {
-            $accounts = TelegramAccount::query()
-                ->where('telegram_bot_id', $broadcast->telegram_bot_id)
-                ->where('is_blocked', false)
-                ->orderBy('id')
-                ->get();
+            $accounts = $this->segments->accounts(
+                (int) $broadcast->telegram_bot_id,
+                $broadcast->segment_key ?: 'all_bot_users',
+            );
 
             if ($accounts->isEmpty()) {
-                throw new RuntimeException('هیچ کاربر فعالی برای این ربات یافت نشد.');
+                throw new RuntimeException('هیچ کاربر فعالی برای این مخاطب یافت نشد.');
             }
 
             $broadcast->update([

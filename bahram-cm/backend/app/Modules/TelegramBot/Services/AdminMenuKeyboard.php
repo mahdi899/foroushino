@@ -11,6 +11,8 @@ class AdminMenuKeyboard
 
     public const ADMINS = '🛡 ادمین‌ها';
 
+    public const STATS = '📊 آمار';
+
     public const BROADCAST = '📣 پیام همگانی';
 
     public const REQUIRED_CHATS = '📻 کانال اجباری';
@@ -18,6 +20,12 @@ class AdminMenuKeyboard
     public const DESTINATIONS = '📍 مقاصد';
 
     public const DISCOUNTS = '🎟 کد تخفیف';
+
+    public const TICKETS = '🎫 تیکت‌ها';
+
+    public const MESSAGES = '💬 پیام‌ها';
+
+    public const EXPORT = '📤 خروجی کاربران';
 
     public const PROFILE = '🤖 پروفایل بات';
 
@@ -32,6 +40,7 @@ class AdminMenuKeyboard
     /**
      * Map each menu button to the permission that unlocks it.
      * HOME/EXIT are always available for bot admins.
+     * ADMINS requires super rank (checked separately).
      *
      * @return array<string, BotAdminPermission|null>
      */
@@ -39,11 +48,15 @@ class AdminMenuKeyboard
     {
         return [
             self::USERS => BotAdminPermission::UserInfo,
-            self::ADMINS => BotAdminPermission::Settings,
+            self::ADMINS => null, // gated by canManageBotAdmins()
+            self::STATS => BotAdminPermission::Stats,
             self::BROADCAST => BotAdminPermission::Broadcast,
             self::REQUIRED_CHATS => BotAdminPermission::ForcedJoin,
             self::DESTINATIONS => BotAdminPermission::Menus,
             self::DISCOUNTS => BotAdminPermission::Discount,
+            self::TICKETS => BotAdminPermission::Tickets,
+            self::MESSAGES => BotAdminPermission::Messages,
+            self::EXPORT => BotAdminPermission::DataExport,
             self::PROFILE => BotAdminPermission::Settings,
             self::SETTINGS => BotAdminPermission::Settings,
             self::LOGS => BotAdminPermission::Stats,
@@ -57,8 +70,10 @@ class AdminMenuKeyboard
     {
         $all = [
             [self::USERS, self::ADMINS],
-            [self::BROADCAST, self::REQUIRED_CHATS],
-            [self::DESTINATIONS, self::DISCOUNTS],
+            [self::STATS, self::BROADCAST],
+            [self::TICKETS, self::MESSAGES],
+            [self::REQUIRED_CHATS, self::DESTINATIONS],
+            [self::DISCOUNTS, self::EXPORT],
             [self::PROFILE, self::SETTINGS],
             [self::LOGS],
             [self::HOME, self::EXIT],
@@ -73,6 +88,14 @@ class AdminMenuKeyboard
         foreach ($all as $row) {
             $kept = [];
             foreach ($row as $label) {
+                if ($label === self::ADMINS) {
+                    if ($account->canManageBotAdmins()) {
+                        $kept[] = $label;
+                    }
+
+                    continue;
+                }
+
                 $permission = $map[$label] ?? null;
                 if ($permission === null || $account->hasBotAdminPermission($permission)) {
                     $kept[] = $label;

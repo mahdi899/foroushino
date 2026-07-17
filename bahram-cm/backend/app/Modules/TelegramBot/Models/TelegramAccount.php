@@ -4,6 +4,7 @@ namespace App\Modules\TelegramBot\Models;
 
 use App\Models\User;
 use App\Modules\TelegramBot\Enums\BotAdminPermission;
+use App\Modules\TelegramBot\Enums\BotAdminRank;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,6 +25,7 @@ class TelegramAccount extends Model
         'language_code',
         'is_blocked',
         'is_bot_admin',
+        'bot_admin_rank',
         'metadata',
     ];
 
@@ -34,6 +36,7 @@ class TelegramAccount extends Model
             'mobile_verified_at' => 'datetime',
             'is_blocked' => 'boolean',
             'is_bot_admin' => 'boolean',
+            'bot_admin_rank' => BotAdminRank::class,
             'metadata' => 'array',
         ];
     }
@@ -98,6 +101,37 @@ class TelegramAccount extends Model
         return in_array($username, $usernames, true);
     }
 
+    public function isSuperBotAdmin(): bool
+    {
+        if ($this->isPermanentBotAdmin()) {
+            return true;
+        }
+
+        if (! $this->isBotAdmin()) {
+            return false;
+        }
+
+        return ($this->bot_admin_rank ?? BotAdminRank::Simple) === BotAdminRank::Super;
+    }
+
+    public function canManageBotAdmins(): bool
+    {
+        return $this->isSuperBotAdmin();
+    }
+
+    public function botAdminRankLabel(): string
+    {
+        if ($this->isPermanentBotAdmin()) {
+            return 'ادمین دائمی (برتر)';
+        }
+
+        if (! $this->isBotAdmin()) {
+            return '—';
+        }
+
+        return ($this->bot_admin_rank ?? BotAdminRank::Simple)->labelFa();
+    }
+
     /** Persist the permanent-admin flag when this account matches config. */
     public function syncPermanentAdminFlag(): void
     {
@@ -108,6 +142,10 @@ class TelegramAccount extends Model
         $updates = [];
         if (! $this->is_bot_admin) {
             $updates['is_bot_admin'] = true;
+        }
+
+        if ($this->bot_admin_rank !== BotAdminRank::Super) {
+            $updates['bot_admin_rank'] = BotAdminRank::Super;
         }
 
         $metadata = (array) ($this->metadata ?? []);
@@ -162,7 +200,7 @@ class TelegramAccount extends Model
         return in_array($key, $this->botAdminPermissions(), true);
     }
 
-    public function grantAllBotAdminPermissions(?string $adminDisplayName = null): void
+    public function grantAllBotAdminPermissions(?string $adminDisplayName = null, BotAdminRank $rank = BotAdminRank::Simple): void
     {
         $metadata = (array) ($this->metadata ?? []);
         $metadata['bot_admin_permissions'] = BotAdminPermission::values();
@@ -171,6 +209,34 @@ class TelegramAccount extends Model
         }
         $this->forceFill([
             'is_bot_admin' => true,
+            'bot_admin_rank' => $rank,
+            'metadata' => $metadata,
+        ])->save();
+    }
+
+    public function setBotAdminRank(BotAdminRank $rank): void
+    {
+        if ($this->isPermanentBotAdmin()) {
+            return;
+        }
+
+        $this->forceFill([
+            'is_bot_admin' => true,
+            'bot_admin_rank' => $rank,
+        ])->save();
+    }
+
+    public function revokeBotAdmin(): void
+    {
+        if ($this->isPermanentBotAdmin()) {
+            return;
+        }
+
+        $metadata = (array) ($this->metadata ?? []);
+        $metadata['bot_admin_permissions'] = [];
+        $this->forceFill([
+            'is_bot_admin' => false,
+            'bot_admin_rank' => null,
             'metadata' => $metadata,
         ])->save();
     }

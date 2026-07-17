@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
 use App\Modules\TelegramBot\Contracts\TelegramBotClientInterface;
+use App\Modules\TelegramBot\Enums\BotAdminRank;
 use App\Modules\TelegramBot\Enums\ConversationState;
 use App\Modules\TelegramBot\Enums\UpdateStatus;
 use App\Modules\TelegramBot\Jobs\ProcessTelegramUpdateJob;
@@ -28,6 +29,8 @@ use Throwable;
 
 class BotAdminPanelService
 {
+    use BotAdminPanelFeatureHandlers;
+
     private const USERS_PER_PAGE = 8;
 
     private const BROADCASTS_PER_PAGE = 6;
@@ -42,6 +45,11 @@ class BotAdminPanelService
         private readonly TelegramUpdateRepository $updates,
         private readonly TelegramAdminUserStatsService $userStats,
         private readonly RequiredChatMembershipService $requiredChats,
+        private readonly BotUsageStatsService $usageStats,
+        private readonly TelegramUserExportService $userExport,
+        private readonly BotTicketDeliveryService $ticketDelivery,
+        private readonly BotMessageCatalog $messageCatalog,
+        private readonly TelegramAudienceSegmentResolver $audienceSegments,
     ) {}
 
     public function openDashboard(TelegramBot $bot, TelegramAccount $account, int $chatId): void
@@ -98,8 +106,13 @@ class BotAdminPanelService
             match (true) {
                 $data === 'admin:h' => $this->showHome($bot, $account, $client, $chatId, $messageId),
                 str_starts_with($data, 'admin:u:') => $this->handleUsersCallback($bot, $account, $client, $chatId, $messageId, $data),
+                str_starts_with($data, 'admin:admins:rank:') => $this->applyAdminRankChoice($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:admins:') => $this->handleAdminsCallback($bot, $account, $client, $chatId, $messageId, $data),
+                str_starts_with($data, 'admin:b:sg:') => $this->handleBroadcastSegmentPick($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:b:') => $this->handleBroadcastsCallback($bot, $account, $client, $chatId, $messageId, $data),
+                str_starts_with($data, 'admin:tk:') => $this->handleTicketsCallback($bot, $account, $client, $chatId, $messageId, $data),
+                str_starts_with($data, 'admin:msg:') => $this->handleMessagesCallback($bot, $account, $client, $chatId, $messageId, $data),
+                str_starts_with($data, 'admin:ex:') => $this->handleExportCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:rc:') => $this->handleRequiredChatsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:dc:') => $this->handleDiscountsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:d:') => $this->handleDestinationsCallback($bot, $account, $client, $chatId, $messageId, $data),
@@ -206,6 +219,10 @@ class BotAdminPanelService
                 'broadcast_title' => $this->onBroadcastTitle($bot, $account, $conversation, $client, $chatId, $text),
                 'broadcast_text' => $this->onBroadcastText($bot, $account, $conversation, $client, $chatId, $text),
                 'broadcast_quick' => $this->onBroadcastQuick($bot, $account, $conversation, $client, $chatId, $text),
+                'ticket_reply' => $this->onTicketReply($bot, $account, $conversation, $client, $chatId, $text),
+                'message_edit' => $this->onMessageEdit($bot, $account, $conversation, $client, $chatId, $text),
+                'zarinpal_merchant' => $this->onZarinpalMerchantInput($bot, $account, $conversation, $client, $chatId, $text),
+                'zarinpal_merchant_confirm' => $this->onZarinpalMerchantConfirm($bot, $account, $conversation, $client, $chatId, $text),
                 'profile_name' => $this->onProfileName($bot, $account, $conversation, $client, $chatId, $text),
                 'profile_short' => $this->onProfileShort($bot, $account, $conversation, $client, $chatId, $text),
                 'profile_desc' => $this->onProfileDescription($bot, $account, $conversation, $client, $chatId, $text),
@@ -226,16 +243,27 @@ class BotAdminPanelService
 
         $permission = match ($text) {
             AdminMenuKeyboard::USERS => \App\Modules\TelegramBot\Enums\BotAdminPermission::UserInfo,
-            AdminMenuKeyboard::ADMINS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Settings,
+            AdminMenuKeyboard::STATS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Stats,
             AdminMenuKeyboard::BROADCAST => \App\Modules\TelegramBot\Enums\BotAdminPermission::Broadcast,
             AdminMenuKeyboard::REQUIRED_CHATS => \App\Modules\TelegramBot\Enums\BotAdminPermission::ForcedJoin,
             AdminMenuKeyboard::DESTINATIONS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Menus,
             AdminMenuKeyboard::DISCOUNTS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Discount,
+            AdminMenuKeyboard::TICKETS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Tickets,
+            AdminMenuKeyboard::MESSAGES => \App\Modules\TelegramBot\Enums\BotAdminPermission::Messages,
+            AdminMenuKeyboard::EXPORT => \App\Modules\TelegramBot\Enums\BotAdminPermission::DataExport,
             AdminMenuKeyboard::PROFILE, AdminMenuKeyboard::SETTINGS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Settings,
             AdminMenuKeyboard::LOGS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Stats,
-            AdminMenuKeyboard::HOME, AdminMenuKeyboard::EXIT => null,
+            AdminMenuKeyboard::ADMINS, AdminMenuKeyboard::HOME, AdminMenuKeyboard::EXIT => null,
             default => null,
         };
+
+        if ($text === AdminMenuKeyboard::ADMINS && ! $account->canManageBotAdmins()) {
+            $client->sendMessage($chatId, '⛔ فقط ادمین برتر می‌تواند ادمین‌ها را مدیریت کند.', [
+                'reply_markup' => $this->adminMenuMarkup($account),
+            ]);
+
+            return;
+        }
 
         if ($permission !== null && ! $account->hasBotAdminPermission($permission)) {
             $client->sendMessage($chatId, '⛔ دسترسی «'.$permission->labelFa().'» برای شما فعال نیست.', [
@@ -248,10 +276,14 @@ class BotAdminPanelService
         match ($text) {
             AdminMenuKeyboard::USERS => $this->renderUsersSearchHub($bot, $account, $client, $chatId, 0),
             AdminMenuKeyboard::ADMINS => $this->openAdminsSection($bot, $account, $client, $chatId),
+            AdminMenuKeyboard::STATS => $this->openStatsSection($bot, $account, $client, $chatId),
             AdminMenuKeyboard::BROADCAST => $this->handleBroadcastsCallback($bot, $account, $client, $chatId, 0, 'admin:b:p:0'),
             AdminMenuKeyboard::REQUIRED_CHATS => $this->handleRequiredChatsCallback($bot, $account, $client, $chatId, 0, 'admin:rc:p:0'),
             AdminMenuKeyboard::DESTINATIONS => $this->handleDestinationsCallback($bot, $account, $client, $chatId, 0, 'admin:d:list'),
             AdminMenuKeyboard::DISCOUNTS => $this->handleDiscountsCallback($bot, $account, $client, $chatId, 0, 'admin:dc:list'),
+            AdminMenuKeyboard::TICKETS => $this->openTicketsSection($bot, $account, $client, $chatId),
+            AdminMenuKeyboard::MESSAGES => $this->openMessagesSection($bot, $account, $client, $chatId),
+            AdminMenuKeyboard::EXPORT => $this->openExportSection($bot, $account, $client, $chatId),
             AdminMenuKeyboard::PROFILE => $this->handleProfileCallback($bot, $account, $client, $chatId, 0, 'admin:p'),
             AdminMenuKeyboard::SETTINGS => $this->handleSettingsCallback($bot, $account, $client, $chatId, 0, 'admin:s'),
             AdminMenuKeyboard::LOGS => $this->handleLogsCallback($bot, $account, $client, $chatId, 0, 'admin:l'),
@@ -552,22 +584,29 @@ class BotAdminPanelService
         }
 
         if ($action === 'a') {
+            if (! $account->canManageBotAdmins()) {
+                throw new RuntimeException('فقط ادمین برتر می‌تواند ادمین را اضافه/حذف کند.');
+            }
             if ($target->isPermanentBotAdmin()) {
                 if (! $target->is_bot_admin) {
-                    $target->update(['is_bot_admin' => true]);
+                    $target->update(['is_bot_admin' => true, 'bot_admin_rank' => BotAdminRank::Super]);
                 }
                 $this->renderUserDetail($bot, $account, $client, $chatId, $messageId, $target->fresh());
                 throw new RuntimeException('این کاربر ادمین دائمی است و قابل حذف نیست.');
             }
 
-            $target->update(['is_bot_admin' => ! $target->is_bot_admin]);
-            if ($target->fresh()->is_bot_admin) {
-                $this->renderUsersSearchHub($bot, $account, $client, $chatId, $messageId);
-                $client->sendMessage($chatId, 'کاربر به ادمین‌ها منتقل شد. از بخش «ادمین‌ها» قابل مشاهده است.');
+            if ($target->is_bot_admin) {
+                $target->revokeBotAdmin();
+                $this->renderUserDetail($bot, $account, $client, $chatId, $messageId, $target->fresh());
 
                 return;
             }
-            $this->renderUserDetail($bot, $account, $client, $chatId, $messageId, $target->fresh());
+
+            $target->grantAllBotAdminPermissions($target->adminDisplayName(), BotAdminRank::Simple);
+            $this->renderUsersSearchHub($bot, $account, $client, $chatId, $messageId);
+            $client->sendMessage($chatId, 'کاربر به‌عنوان ادمین ساده اضافه شد. از بخش «ادمین‌ها» رده و دسترسی‌ها را تنظیم کنید.');
+
+            return;
         }
     }
 
@@ -678,9 +717,8 @@ class BotAdminPanelService
         TelegramBotClientInterface $client,
         int $chatId,
     ): void {
-        if (! $actor->hasBotAdminPermission(\App\Modules\TelegramBot\Enums\BotAdminPermission::Settings)
-            && ! $actor->isPermanentBotAdmin()) {
-            $client->sendMessage($chatId, '⛔ مدیریت ادمین‌ها نیاز به دسترسی تنظیمات دارد.', [
+        if (! $actor->canManageBotAdmins()) {
+            $client->sendMessage($chatId, '⛔ فقط ادمین برتر می‌تواند ادمین‌ها را مدیریت کند.', [
                 'reply_markup' => $this->adminMenuMarkup($actor),
             ]);
 
@@ -900,9 +938,8 @@ class BotAdminPanelService
         int $messageId,
         string $data,
     ): void {
-        if (! $actor->hasBotAdminPermission(\App\Modules\TelegramBot\Enums\BotAdminPermission::Settings)
-            && ! $actor->isPermanentBotAdmin()) {
-            throw new RuntimeException('دسترسی تنظیمات برای مدیریت ادمین‌ها لازم است.');
+        if (! $actor->canManageBotAdmins()) {
+            throw new RuntimeException('فقط ادمین برتر می‌تواند ادمین‌ها را مدیریت کند.');
         }
 
         $parts = explode(':', $data);
@@ -954,8 +991,11 @@ class BotAdminPanelService
                 \App\Modules\TelegramBot\Enums\BotAdminPermission::Broadcast => 'دکمه «📣 پیام همگانی»',
                 \App\Modules\TelegramBot\Enums\BotAdminPermission::UserInfo => 'دکمه «👥 کاربران»',
                 \App\Modules\TelegramBot\Enums\BotAdminPermission::ForcedJoin => 'دکمه «📻 کانال اجباری»',
-                \App\Modules\TelegramBot\Enums\BotAdminPermission::Settings => 'دکمه‌های «🛡 ادمین‌ها / ⚙️ تنظیمات / 🤖 پروفایل»',
-                \App\Modules\TelegramBot\Enums\BotAdminPermission::Stats => 'دکمه «📋 لاگ‌ها»',
+                \App\Modules\TelegramBot\Enums\BotAdminPermission::Settings => 'دکمه‌های «⚙️ تنظیمات / 🤖 پروفایل»',
+                \App\Modules\TelegramBot\Enums\BotAdminPermission::Stats => 'دکمه‌های «📊 آمار / 📋 لاگ‌ها»',
+                \App\Modules\TelegramBot\Enums\BotAdminPermission::Tickets => 'دکمه «🎫 تیکت‌ها»',
+                \App\Modules\TelegramBot\Enums\BotAdminPermission::Messages => 'دکمه «💬 پیام‌ها»',
+                \App\Modules\TelegramBot\Enums\BotAdminPermission::DataExport => 'دکمه «📤 خروجی کاربران»',
                 default => null,
             };
             $on = $fresh->hasBotAdminPermission($permission);
@@ -985,6 +1025,7 @@ class BotAdminPanelService
             }
             $target->update([
                 'is_bot_admin' => false,
+                'bot_admin_rank' => null,
                 'metadata' => array_merge((array) ($target->metadata ?? []), [
                     'bot_admin_permissions' => [],
                 ]),
@@ -1034,9 +1075,10 @@ class BotAdminPanelService
         ];
 
         foreach ($admins as $admin) {
-            $name = mb_substr($admin->adminDisplayName(), 0, 18);
+            $name = mb_substr($admin->adminDisplayName(), 0, 14);
+            $rankMark = $admin->isPermanentBotAdmin() || $admin->isSuperBotAdmin() ? '⭐' : '👤';
             $keyboard[] = [
-                ['text' => $name, 'callback_data' => 'admin:admins:perm:'.$admin->id],
+                ['text' => $rankMark.' '.$name, 'callback_data' => 'admin:admins:perm:'.$admin->id],
                 ['text' => '⚙️', 'callback_data' => 'admin:admins:perm:'.$admin->id],
                 ['text' => $admin->isPermanentBotAdmin() ? '🔒' : '🗑️', 'callback_data' => $admin->isPermanentBotAdmin()
                     ? 'admin:admins:perm:'.$admin->id
@@ -1077,13 +1119,18 @@ class BotAdminPanelService
         }
 
         $keyboard[] = [
+            ['text' => ($target->isSuperBotAdmin() ? '✅' : '⬜').' ادمین برتر', 'callback_data' => 'admin:admins:rank:'.$target->id.':super'],
+            ['text' => ((! $target->isSuperBotAdmin() && $target->isBotAdmin()) ? '✅' : '⬜').' ادمین ساده', 'callback_data' => 'admin:admins:rank:'.$target->id.':simple'],
+        ];
+
+        $keyboard[] = [
             ['text' => '◀️ لیست ادمین‌ها', 'callback_data' => 'admin:admins:list'],
             ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
         ];
 
         $note = $target->isPermanentBotAdmin()
             ? "\n\n⭐ ادمین دائمی — همه دسترسی‌ها همیشه فعال‌اند."
-            : "\n\nبرای تغییر هر دسترسی روی آن بزنید.";
+            : "\n\nرده: ".$target->botAdminRankLabel()."\nبرای تغییر هر دسترسی روی آن بزنید.";
 
         $this->editOrSend(
             $client,
@@ -1180,14 +1227,14 @@ class BotAdminPanelService
             return;
         }
 
-        $target->grantAllBotAdminPermissions($name);
+        $target->grantAllBotAdminPermissions($name, BotAdminRank::Simple);
         $this->conversations->transition($conversation, ConversationState::AdminPanel, [
             'admin' => ['flow' => null, 'draft' => []],
         ]);
         $this->renderAdminsTable($bot, $client, $chatId, 0);
         $client->sendMessage(
             $chatId,
-            '✅ «'.$target->fresh()->adminDisplayName().'» با همه دسترسی‌ها ادمین شد. از ⚙️ می‌توانید دسترسی‌ها را کم کنید.',
+            '✅ «'.$target->fresh()->adminDisplayName().'» به‌عنوان ادمین ساده با همه دسترسی‌ها اضافه شد. از ⚙️ می‌توانید رده را برتر کنید یا دسترسی‌ها را کم کنید.',
             ['reply_markup' => $this->adminMenuMarkup($actor)],
         );
     }
@@ -1234,9 +1281,8 @@ class BotAdminPanelService
         int $chatId,
         int $telegramUserId,
     ): void {
-        if (! $actor->hasBotAdminPermission(\App\Modules\TelegramBot\Enums\BotAdminPermission::Settings)
-            && ! $actor->isPermanentBotAdmin()) {
-            $client->sendMessage($chatId, '⛔ دسترسی کافی برای افزودن ادمین ندارید.', [
+        if (! $actor->canManageBotAdmins()) {
+            $client->sendMessage($chatId, '⛔ فقط ادمین برتر می‌تواند ادمین اضافه کند.', [
                 'reply_markup' => $this->adminMenuMarkup($actor),
             ]);
 
@@ -1672,11 +1718,15 @@ class BotAdminPanelService
             ->groupBy('status')
             ->pluck('total', 'status');
 
-        $audienceEstimate = $bot ? $this->activeAudienceCount($bot) : null;
+        $audienceEstimate = $bot
+            ? $this->audienceSegments->count((int) $bot->id, $broadcast->segment_key)
+            : null;
+        $segmentLabel = $this->audienceSegments->label((string) ($broadcast->segment_key ?: 'all_bot_users'));
 
         $text = ($notice ? $notice."\n\n" : '')
             ."📣 #{$broadcast->id} · {$broadcast->title}\n"
             .'وضعیت: '.$this->broadcastStatusLabel((string) $broadcast->status)."\n"
+            ."گروه مخاطب: {$segmentLabel}\n"
             .'مخاطب: '.($broadcast->audience_count ?: ($audienceEstimate ?? '—'))."\n"
             ."ارسال‌شده: ".($stats['sent'] ?? 0)."\n"
             ."ناموفق: ".($stats['failed'] ?? 0)."\n\n"
@@ -1751,19 +1801,10 @@ class BotAdminPanelService
             throw new RuntimeException('متن پیام خالی است.');
         }
 
-        $broadcast = TelegramBroadcast::query()->create([
-            'telegram_bot_id' => $bot->id,
+        $this->promptBroadcastSegment($bot, $account, $conversation, $client, $chatId, [
             'title' => $title,
-            'status' => 'draft',
-            'content' => ['text' => mb_substr($body, 0, 4000), 'options' => []],
-            'created_by' => $account->user_id,
+            'text' => mb_substr($body, 0, 4000),
         ]);
-
-        $this->conversations->transition($conversation, ConversationState::AdminPanel, [
-            'admin' => ['flow' => null, 'draft' => []],
-        ]);
-
-        $this->sendBroadcastPreview($bot, $client, $chatId, $broadcast, '✅ پیش‌نویس ذخیره شد.');
     }
 
     private function onBroadcastQuick(
@@ -1779,21 +1820,29 @@ class BotAdminPanelService
             throw new RuntimeException('متن پیام خالی است.');
         }
 
-        $title = 'پیام '.now()->format('Y-m-d H:i');
-
-        $broadcast = TelegramBroadcast::query()->create([
-            'telegram_bot_id' => $bot->id,
-            'title' => $title,
-            'status' => 'draft',
-            'content' => ['text' => mb_substr($body, 0, 4000), 'options' => []],
-            'created_by' => $account->user_id,
+        $this->promptBroadcastSegment($bot, $account, $conversation, $client, $chatId, [
+            'title' => 'پیام '.now()->format('Y-m-d H:i'),
+            'text' => mb_substr($body, 0, 4000),
         ]);
+    }
 
-        $this->conversations->transition($conversation, ConversationState::AdminPanel, [
-            'admin' => ['flow' => null, 'draft' => []],
-        ]);
+    private function handleBroadcastSegmentPick(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        int $messageId,
+        string $data,
+    ): void {
+        $segmentKey = substr($data, strlen('admin:b:sg:'));
+        $conversation = $this->conversations->forAccount($account);
+        $draft = (array) data_get($conversation->context, 'admin.draft', []);
 
-        $this->sendBroadcastPreview($bot, $client, $chatId, $broadcast);
+        if (($conversation->context['admin']['flow'] ?? '') !== 'broadcast_segment') {
+            throw new RuntimeException('مرحله انتخاب مخاطب منقضی شده. دوباره پیام همگانی بسازید.');
+        }
+
+        $this->finalizeBroadcastWithSegment($bot, $account, $client, $chatId, $segmentKey, $draft);
     }
 
     private function sendBroadcastPreview(
@@ -1803,19 +1852,21 @@ class BotAdminPanelService
         TelegramBroadcast $broadcast,
         ?string $prefix = null,
     ): void {
-        $audience = $this->activeAudienceCount($bot);
+        $segmentLabel = $this->audienceSegments->label((string) ($broadcast->segment_key ?: 'all_bot_users'));
+        $audience = (int) ($broadcast->audience_count ?: $this->audienceSegments->count((int) $bot->id, $broadcast->segment_key));
         $body = (string) data_get($broadcast->content, 'text', '');
 
         $message = ($prefix ? $prefix."\n\n" : '')
             ."📣 پیش‌نمایش #{$broadcast->id}\n"
-            ."مخاطبان فعال: {$audience}\n\n"
+            ."مخاطب: {$segmentLabel}\n"
+            ."تعداد: {$audience}\n\n"
             .mb_substr($body, 0, 3500);
 
         $client->sendMessage($chatId, $message, [
             'reply_markup' => [
                 'inline_keyboard' => [
                     [
-                        ['text' => '🚀 ارسال به همه', 'callback_data' => 'admin:b:sn:'.$broadcast->id],
+                        ['text' => '🚀 ارسال', 'callback_data' => 'admin:b:sn:'.$broadcast->id],
                         ['text' => '🧪 تست برای من', 'callback_data' => 'admin:b:ts:'.$broadcast->id],
                     ],
                     [
@@ -3562,6 +3613,12 @@ class BotAdminPanelService
             return;
         }
 
+        if ($data === 'admin:s:zp') {
+            $this->beginZarinpalMerchantFlow($bot, $account, $client, $chatId);
+
+            return;
+        }
+
         if ($data === 'admin:s:c2c') {
             $conversation = $this->conversations->forAccount($account);
             $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
@@ -3705,7 +3762,10 @@ class BotAdminPanelService
             ['text' => '🏦 گزارشات پرداخت', 'callback_data' => 'admin:s:pr'],
         ];
         $keyboard[] = [
+            ['text' => '💳 مرچنت زرین‌پال', 'callback_data' => 'admin:s:zp'],
             ['text' => '📝 متن کارت به کارت', 'callback_data' => 'admin:s:c2c'],
+        ];
+        $keyboard[] = [
             ['text' => '🔗 ثبت وب‌هوک', 'callback_data' => 'admin:s:wh'],
         ];
         $keyboard[] = [

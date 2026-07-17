@@ -6,12 +6,15 @@ import type {
   TelegramAccountView,
   TelegramBotView,
   TelegramBotProfileView,
+  TelegramBotMessageView,
+  TelegramBroadcastSegmentView,
   TelegramBroadcastView,
   TelegramDeliveryLogView,
   TelegramDestinationView,
   TelegramHealthSnapshot,
   TelegramOperatorView,
   TelegramRequiredChatView,
+  TelegramStatsSummaryView,
   TelegramSupportCategoryView,
   TelegramUpdateLogView,
 } from '@/lib/admin/telegram.types';
@@ -89,6 +92,39 @@ export async function loadTelegramBroadcasts(query?: ListQuery): Promise<{ items
     return { items: res.data ?? [], meta: res.meta ?? { current_page: 1, last_page: 1, total: 0 } };
   } catch {
     return { items: [], meta: { current_page: 1, last_page: 1, total: 0 } };
+  }
+}
+
+export async function loadTelegramBroadcastSegments(botKey?: string): Promise<TelegramBroadcastSegmentView[]> {
+  try {
+    const res = await adminFetch<{ data: TelegramBroadcastSegmentView[] }>('/panel/telegram/broadcast-segments', {
+      query: buildQuery({ bot_key: botKey }),
+    });
+    return res.data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+export async function loadTelegramStats(botKey?: string): Promise<TelegramStatsSummaryView | null> {
+  try {
+    const res = await adminFetch<{ data: TelegramStatsSummaryView }>('/panel/telegram/stats', {
+      query: buildQuery({ bot_key: botKey }),
+    });
+    return res.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function loadTelegramMessages(botKey?: string): Promise<TelegramBotMessageView[]> {
+  try {
+    const res = await adminFetch<{ data: TelegramBotMessageView[] }>('/panel/telegram/messages', {
+      query: buildQuery({ bot_key: botKey }),
+    });
+    return res.data ?? [];
+  } catch {
+    return [];
   }
 }
 

@@ -6,7 +6,9 @@ use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramBroadcastAdminControl
 use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramDestinationAdminController;
 use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramHealthAdminController;
 use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramLogAdminController;
+use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramMessageAdminController;
 use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramRequiredChatAdminController;
+use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramStatsAdminController;
 use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramSupportAdminController;
 use App\Modules\TelegramBot\Http\Controllers\IdentityStatusController;
 use App\Modules\TelegramBot\Http\Controllers\MiniAppAuthController;
@@ -27,6 +29,7 @@ Route::middleware(['auth:sanctum', SubstituteBindings::class])->group(function (
 
     Route::middleware('admin')->prefix('api/v1/panel/telegram')->group(function (): void {
         Route::get('/health', TelegramHealthAdminController::class);
+        Route::get('/stats', TelegramStatsAdminController::class);
 
         Route::get('/bots', [TelegramBotAdminController::class, 'index']);
         Route::post('/bots/sync', [TelegramBotAdminController::class, 'syncFromConfig']);
@@ -41,6 +44,7 @@ Route::middleware(['auth:sanctum', SubstituteBindings::class])->group(function (
         Route::delete('/bots/{bot}/profile/photo', [TelegramBotAdminController::class, 'removeProfilePhoto']);
 
         Route::get('/accounts', [TelegramAccountAdminController::class, 'index']);
+        Route::get('/accounts/export', [TelegramAccountAdminController::class, 'export']);
         Route::get('/accounts/{account}', [TelegramAccountAdminController::class, 'show']);
         Route::patch('/accounts/{account}', [TelegramAccountAdminController::class, 'update']);
         Route::post('/accounts/{account}/unlink', [TelegramAccountAdminController::class, 'unlink']);
@@ -69,6 +73,11 @@ Route::middleware(['auth:sanctum', SubstituteBindings::class])->group(function (
         Route::post('/broadcasts/{broadcast}/send-now', [TelegramBroadcastAdminController::class, 'sendNow']);
         Route::post('/broadcasts/{broadcast}/stop', [TelegramBroadcastAdminController::class, 'stop']);
         Route::post('/broadcasts/{broadcast}/test', [TelegramBroadcastAdminController::class, 'test']);
+        Route::get('/broadcast-segments', [TelegramBroadcastAdminController::class, 'segments']);
+
+        Route::get('/messages', [TelegramMessageAdminController::class, 'index']);
+        Route::put('/messages/{key}', [TelegramMessageAdminController::class, 'update']);
+        Route::post('/messages/{key}/reset', [TelegramMessageAdminController::class, 'reset']);
 
         Route::get('/support/categories', [TelegramSupportAdminController::class, 'categories']);
         Route::post('/support/categories', [TelegramSupportAdminController::class, 'storeCategory']);

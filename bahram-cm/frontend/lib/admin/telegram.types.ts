@@ -75,6 +75,8 @@ export type TelegramAccountView = {
   user_name: string | null;
   is_blocked: boolean;
   is_bot_admin: boolean;
+  bot_admin_rank?: 'simple' | 'super' | null;
+  is_permanent_bot_admin?: boolean;
   is_linked: boolean;
   mobile_verified_at: string | null;
   created_at: string | null;
@@ -141,6 +143,35 @@ export type TelegramBroadcastView = {
   text?: string;
   options?: Record<string, unknown>;
   recipient_stats?: Record<string, number>;
+};
+
+export type TelegramBroadcastSegmentView = {
+  key: string;
+  label: string;
+  count: number;
+};
+
+export type TelegramBotMessageView = {
+  key: string;
+  label: string;
+  category: string;
+  body: string;
+  is_custom: boolean;
+};
+
+export type TelegramStatsPeriodView = {
+  period: string;
+  from: string;
+  to: string;
+  unique_users: number;
+  new_users: number;
+  updates_count: number;
+};
+
+export type TelegramStatsSummaryView = {
+  day: TelegramStatsPeriodView;
+  week: TelegramStatsPeriodView;
+  month: TelegramStatsPeriodView;
 };
 
 export type TelegramSupportCategoryView = {
