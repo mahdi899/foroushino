@@ -38,8 +38,11 @@ class FamilyEntryLinkService
         $externalReference = isset($data['external_reference'])
             ? $this->sanitize($data['external_reference'], 120)
             : null;
+        $familyId = isset($data['family_id']) && is_numeric($data['family_id'])
+            ? (int) $data['family_id']
+            : null;
 
-        return DB::transaction(function () use ($name, $source, $campaign, $topic, $externalReference, $creator) {
+        return DB::transaction(function () use ($name, $source, $campaign, $topic, $externalReference, $familyId, $creator) {
             $slug = $this->uniqueSlug($name);
 
             $event = FamilyEntryEvent::query()->create([
@@ -55,16 +58,28 @@ class FamilyEntryLinkService
                 ],
             ]);
 
-            return FamilyEntryLink::query()->create([
+            $link = FamilyEntryLink::query()->create([
                 'name' => $name,
                 'slug' => $slug,
                 'source' => $source,
                 'entry_event_id' => $event->id,
+                'family_id' => $familyId,
                 'campaign' => $campaign,
                 'topic' => $topic,
                 'created_by' => $creator?->id,
                 'is_active' => true,
             ]);
+
+            if ($familyId !== null) {
+                \App\Models\Family::query()
+                    ->whereKey($familyId)
+                    ->update([
+                        'entry_event_id' => $event->id,
+                        'primary_source' => $source->value,
+                    ]);
+            }
+
+            return $link;
         });
     }
 
@@ -76,6 +91,7 @@ class FamilyEntryLinkService
         $params = array_filter([
             'src' => $link->source?->value ?? $link->source,
             'entry_event' => (string) $link->entry_event_id,
+            'family_id' => $link->family_id ? (string) $link->family_id : null,
             'utm_source' => $link->source?->value ?? $link->source,
             'utm_campaign' => $link->campaign ?? $link->slug,
             'utm_content' => $link->topic,
@@ -98,6 +114,64 @@ class FamilyEntryLinkService
     public function deactivate(FamilyEntryLink $link): void
     {
         $link->update(['is_active' => false]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(FamilyEntryLink $link, array $data): FamilyEntryLink
+    {
+        return DB::transaction(function () use ($link, $data) {
+            $updates = [];
+            $eventUpdates = [];
+
+            if (array_key_exists('name', $data)) {
+                $name = trim((string) $data['name']);
+                if ($name === '') {
+                    throw ValidationException::withMessages([
+                        'name' => ['نام لینک ورود الزامی است.'],
+                    ]);
+                }
+                $updates['name'] = $name;
+                $eventUpdates['name'] = $name;
+            }
+
+            if (array_key_exists('campaign', $data)) {
+                $updates['campaign'] = $this->sanitize($data['campaign'], 120);
+            }
+
+            if (array_key_exists('topic', $data)) {
+                $topic = $this->sanitize($data['topic'], 120);
+                $updates['topic'] = $topic;
+                $eventUpdates['topic'] = $topic;
+            }
+
+            if (array_key_exists('family_id', $data) && is_numeric($data['family_id'])) {
+                $familyId = (int) $data['family_id'];
+                $updates['family_id'] = $familyId;
+
+                \App\Models\Family::query()
+                    ->whereKey($familyId)
+                    ->update([
+                        'entry_event_id' => $link->entry_event_id,
+                        'primary_source' => $link->source?->value ?? $link->source,
+                    ]);
+            }
+
+            if (array_key_exists('is_active', $data)) {
+                $updates['is_active'] = filter_var($data['is_active'], FILTER_VALIDATE_BOOL);
+            }
+
+            if ($eventUpdates !== [] && $link->entryEvent) {
+                $link->entryEvent->update($eventUpdates);
+            }
+
+            if ($updates !== []) {
+                $link->update($updates);
+            }
+
+            return $link->fresh(['entryEvent', 'family']);
+        });
     }
 
     private function uniqueSlug(string $name): string

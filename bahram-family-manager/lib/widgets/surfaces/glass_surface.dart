@@ -31,30 +31,39 @@ class GlassPanel extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final isDark = scheme.brightness == Brightness.dark;
     final fillOpacity = opacity ?? AppGlass.panelOpacity(scheme.brightness);
-    final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.1)
-        : Colors.white.withValues(alpha: 0.55);
+    final borderColor = blur > 0
+        ? (isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.55))
+        : (isDark ? AppColors.borderDark : AppColors.border);
 
-    final panel = ClipRRect(
+    final decoration = BoxDecoration(
+      color: scheme.surface.withValues(alpha: blur > 0 ? fillOpacity : (opacity ?? 1)),
       borderRadius: BorderRadius.circular(borderRadius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: scheme.surface.withValues(alpha: fillOpacity),
-            borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(color: borderColor),
-            boxShadow: [
+      border: Border.all(color: borderColor),
+      boxShadow: blur > 0
+          ? [
               BoxShadow(
                 color: (isDark ? Colors.black : AppColors.primaryDark).withValues(alpha: isDark ? 0.22 : 0.05),
                 blurRadius: 24,
                 offset: const Offset(0, 8),
               ),
-            ],
-          ),
-          child: padding != null ? Padding(padding: padding!, child: child) : child,
-        ),
-      ),
+            ]
+          : null,
+    );
+
+    final panel = ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: blur > 0
+          ? BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+              child: DecoratedBox(
+                decoration: decoration,
+                child: padding != null ? Padding(padding: padding!, child: child) : child,
+              ),
+            )
+          : DecoratedBox(
+              decoration: decoration,
+              child: padding != null ? Padding(padding: padding!, child: child) : child,
+            ),
     );
 
     if (onTap == null) {

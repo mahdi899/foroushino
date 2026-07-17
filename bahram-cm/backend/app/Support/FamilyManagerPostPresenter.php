@@ -23,6 +23,7 @@ final class FamilyManagerPostPresenter
             'audience_mode' => $post->audience_mode?->value ?? $post->audience_mode,
             'audience_summary' => self::audienceSummary($post),
             'is_important' => (bool) $post->is_important,
+            'comments_enabled' => (bool) ($post->comments_enabled ?? true),
             'is_pinned' => (bool) $post->is_pinned,
             'pinned_at' => $post->pinned_at?->toIso8601String(),
             'published_at' => $post->published_at?->toIso8601String(),
@@ -45,6 +46,8 @@ final class FamilyManagerPostPresenter
                 'id' => $action->id,
                 'type' => $action->type?->value ?? $action->type,
                 'prompt' => $action->prompt,
+                'active_until' => $action->active_until?->toIso8601String(),
+                'is_active' => (bool) $action->is_active,
                 'options' => $action->options->map(fn ($opt) => [
                     'label' => $opt->label,
                     'value' => $opt->value,

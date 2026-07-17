@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +8,7 @@ import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/core/utils/media_url.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
+import 'package:bahram_family_manager/features/debug/debug_tools_panel.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
@@ -293,6 +295,10 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                         ),
                       ),
                     if (settings.mediaPipeline != null) const SizedBox(height: AppSpacing.xl),
+                    if (kDebugMode) ...[
+                      const DebugToolsPanel(),
+                      const SizedBox(height: AppSpacing.xl),
+                    ],
                     PrimaryButton(label: 'ذخیره تنظیمات', loading: _saving, onPressed: _saveSettings),
                   ],
                 );

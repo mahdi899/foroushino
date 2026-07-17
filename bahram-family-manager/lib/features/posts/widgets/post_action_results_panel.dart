@@ -8,6 +8,7 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
+import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
@@ -42,10 +43,29 @@ class _PostActionResultsPanelState extends State<PostActionResultsPanel> {
     return PanelSectionCard(
       title: 'نتایج اکشن و نظرسنجی',
       icon: Icons.poll_rounded,
-      trailing: IconButton(
-        tooltip: 'بروزرسانی',
-        onPressed: _load,
-        icon: const Icon(Icons.refresh_rounded),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            tooltip: 'خروجی Excel',
+            onPressed: () async {
+              try {
+                await context.read<AppState>().manager.downloadActionResultsExport(widget.postId);
+                if (context.mounted) {
+                  showAppSnackBar(context, 'فایل CSV دانلود شد.');
+                }
+              } catch (e) {
+                if (context.mounted) showAppSnackBar(context, messageOf(e));
+              }
+            },
+            icon: const Icon(Icons.download_rounded),
+          ),
+          IconButton(
+            tooltip: 'بروزرسانی',
+            onPressed: _load,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
       ),
       child: FutureBuilder<List<FamilyActionResultModel>>(
         future: _future,
@@ -112,7 +132,9 @@ class _ActionResultCard extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
-            '${toFaDigits(result.responseCount.toString())} پاسخ',
+            '${toFaDigits(result.responseCount.toString())} پاسخ'
+            '${result.activeUntil != null ? ' · تا ${formatDateTime(result.activeUntil)}' : ''}'
+            '${result.isOpen ? '' : ' · بسته شده'}',
             style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.6), fontSize: 12),
           ),
           if (result.stats != null && result.stats!.options.isNotEmpty) ...[

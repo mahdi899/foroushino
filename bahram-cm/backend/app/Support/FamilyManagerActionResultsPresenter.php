@@ -48,6 +48,9 @@ final class FamilyManagerActionResultsPresenter
             'id' => $action->id,
             'type' => $action->type?->value ?? $action->type,
             'prompt' => $action->prompt,
+            'active_until' => $action->active_until?->toIso8601String(),
+            'is_active' => (bool) $action->is_active,
+            'is_open' => app(\App\Services\Family\FamilyActionAvailability::class)->isOpen($action),
             'options' => $action->options->map(fn ($opt) => [
                 'label' => $opt->label,
                 'value' => $opt->value,

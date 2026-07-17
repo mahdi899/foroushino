@@ -6,6 +6,9 @@ import 'package:bahram_family_manager/core/labels.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
+import 'package:bahram_family_manager/features/entry_links/entry_links_panel.dart';
+import 'package:bahram_family_manager/features/families/family_detail_cache.dart';
+import 'package:bahram_family_manager/features/families/family_members_cache.dart';
 import 'package:bahram_family_manager/features/families/family_editor_sheet.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
@@ -19,15 +22,16 @@ import 'package:bahram_family_manager/features/families/widgets/family_members_p
 import 'package:bahram_family_manager/widgets/surfaces/app_card.dart';
 
 class FamilyDetailScreen extends StatelessWidget {
-  const FamilyDetailScreen({super.key, required this.familyId});
+  const FamilyDetailScreen({super.key, required this.familyId, this.familySummary});
 
   final int familyId;
+  final FamilySummaryModel? familySummary;
 
   @override
   Widget build(BuildContext context) {
     return AdaptiveScaffold(
       appBar: const ManagerAppBar(title: Text('جزئیات خانواده')),
-      body: FamilyDetailBody(familyId: familyId),
+      body: FamilyDetailBody(familyId: familyId, familySummary: familySummary),
     );
   }
 }
@@ -37,10 +41,12 @@ class FamilyDetailBody extends StatefulWidget {
   const FamilyDetailBody({
     super.key,
     required this.familyId,
+    this.familySummary,
     this.onChanged,
   });
 
   final int familyId;
+  final FamilySummaryModel? familySummary;
   final VoidCallback? onChanged;
 
   @override
@@ -64,13 +70,18 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
 
   void _load() {
     setState(() {
-      _future = context.read<AppState>().manager.showFamily(widget.familyId);
+      _future = FamilyDetailCache.load(
+        widget.familyId,
+        () => context.read<AppState>().manager.showFamily(widget.familyId),
+      );
     });
   }
 
   Future<void> _edit(FamilyDetailModel family) async {
     final saved = await showFamilyEditorSheet(context: context, family: family);
     if (saved == true) {
+      FamilyDetailCache.invalidate(family.id);
+      FamilyMembersCache.invalidate(family.id);
       _load();
       widget.onChanged?.call();
     }
@@ -102,6 +113,8 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
     try {
       await context.read<AppState>().manager.deleteFamily(family.id);
       if (!mounted) return;
+      FamilyDetailCache.invalidate(family.id);
+      FamilyMembersCache.invalidate(family.id);
       showAppSnackBar(context, 'خانواده حذف شد.');
       widget.onChanged?.call();
       if (Navigator.canPop(context)) Navigator.pop(context);
@@ -113,17 +126,161 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
 
   @override
   Widget build(BuildContext context) {
-    final canManage = context.watch<AppState>().user?.can('family.families.manage') ?? false;
+    final canManage = context.read<AppState>().user?.can('family.families.manage') ?? false;
+    final canManageLinks = context.read<AppState>().user?.can('family.entry_links.manage') ?? false;
 
-    return FutureBuilder<FamilyDetailModel>(
-      future: _future,
-      builder: (context, snapshot) => AsyncBody<FamilyDetailModel>(
-        snapshot: snapshot,
-        builder: (context, family) => FamilyDetailContent(
-          family: family,
-          canManage: canManage,
-          onEdit: () => _edit(family),
-          onDelete: () => _delete(family),
+    return SizedBox.expand(
+      child: FutureBuilder<FamilyDetailModel>(
+        future: _future,
+        builder: (context, snapshot) => AsyncBody<FamilyDetailModel>(
+          snapshot: snapshot,
+          builder: (context, family) => _FamilyDetailTabs(
+            key: ValueKey(family.id),
+            family: family,
+            canManage: canManage,
+            canManageLinks: canManageLinks,
+            onEdit: () => _edit(family),
+            onDelete: () => _delete(family),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FamilyDetailTabs extends StatefulWidget {
+  const _FamilyDetailTabs({
+    super.key,
+    required this.family,
+    required this.canManage,
+    required this.canManageLinks,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final FamilyDetailModel family;
+  final bool canManage;
+  final bool canManageLinks;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  State<_FamilyDetailTabs> createState() => _FamilyDetailTabsState();
+}
+
+class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  var _entryLinksEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(_onTabChanged);
+    if (widget.canManageLinks) _entryLinksEnabled = true;
+  }
+
+  @override
+  void didUpdateWidget(covariant _FamilyDetailTabs oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.family.id != widget.family.id) {
+      _entryLinksEnabled = false;
+      if (_tabController.index != 0) {
+        _tabController.index = 0;
+      }
+    }
+  }
+
+  void _onTabChanged() {
+    if (_tabController.indexIsChanging) return;
+    final onSummary = _tabController.index == 0;
+    if (onSummary && widget.canManageLinks && !_entryLinksEnabled) {
+      setState(() => _entryLinksEnabled = true);
+    } else {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDesktop = AppBreakpoints.isDesktop(context);
+    final padding = AppBreakpoints.pagePadding(context);
+
+    return SizedBox.expand(
+      child: Padding(
+        padding: isDesktop ? padding : EdgeInsets.zero,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: isDesktop ? EdgeInsets.zero : padding.copyWith(bottom: 0),
+              child: TabBar(
+                controller: _tabController,
+                tabs: [
+                  const Tab(text: 'خانواده'),
+                  Tab(text: 'اعضا (${toFaDigits(widget.family.memberCount.toString())})'),
+                ],
+              ),
+            ),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                physics: const NeverScrollableScrollPhysics(),
+                children: [
+                  ListView(
+                    padding: isDesktop ? EdgeInsets.zero : padding,
+                    children: [
+                      _FamilySummarySection(
+                        family: widget.family,
+                        canManage: widget.canManage,
+                        isDesktop: isDesktop,
+                        onEdit: widget.onEdit,
+                        onDelete: widget.onDelete,
+                      ),
+                      SizedBox(height: isDesktop ? AppSpacing.xl : AppSpacing.lg),
+                      widget.family.dna != null
+                          ? _DnaCard(dna: widget.family.dna!)
+                          : const AppCard(
+                              child: Text(
+                                'هنوز DNA خانواده محاسبه نشده.',
+                                style: TextStyle(color: AppColors.textMuted),
+                              ),
+                            ),
+                      if (widget.canManageLinks && _entryLinksEnabled) ...[
+                        SizedBox(height: isDesktop ? AppSpacing.xl : AppSpacing.lg),
+                        EntryLinksPanel(
+                          key: ValueKey('links-${widget.family.id}'),
+                          familyId: widget.family.id,
+                          familyName: widget.family.internalName,
+                          maxItems: 4,
+                          showViewAll: true,
+                        ),
+                      ],
+                    ],
+                  ),
+                  Padding(
+                    padding: isDesktop ? EdgeInsets.zero : padding.copyWith(top: AppSpacing.sm),
+                    child: SizedBox.expand(
+                      child: FamilyMembersPanel(
+                        key: ValueKey('members-${widget.family.id}'),
+                        familyId: widget.family.id,
+                        familyName: widget.family.internalName,
+                        showAttribution: true,
+                        canManageMembers: widget.canManage,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -146,10 +303,32 @@ class FamilyDetailContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = AppBreakpoints.isDesktop(context);
+    return FamilyDetailBody(
+      familyId: family.id,
+      familySummary: family,
+    );
+  }
+}
 
-    return ListView(
-      padding: AppBreakpoints.pagePadding(context),
+class _FamilySummarySection extends StatelessWidget {
+  const _FamilySummarySection({
+    required this.family,
+    required this.canManage,
+    required this.isDesktop,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final FamilyDetailModel family;
+  final bool canManage;
+  final bool isDesktop;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
           children: [
@@ -269,18 +448,6 @@ class FamilyDetailContent extends StatelessWidget {
             ),
           ),
         ],
-        const SizedBox(height: AppSpacing.xl),
-        SizedBox(
-          height: isDesktop ? 420 : 360,
-          child: FamilyMembersPanel(familyId: family.id, familyName: family.internalName),
-        ),
-        const SizedBox(height: AppSpacing.xl),
-        if (family.dna != null)
-          _DnaCard(dna: family.dna!)
-        else
-          const AppCard(
-            child: Text('هنوز DNA خانواده محاسبه نشده.', style: TextStyle(color: AppColors.textMuted)),
-          ),
       ],
     );
   }

@@ -1,4 +1,4 @@
-const CACHE = 'bahram-family-v1';
+const CACHE = 'bahram-family-v2';
 const PRECACHE = ['/family-manifest.webmanifest', '/icon', '/apple-icon'];
 
 function isFamilyScope(url) {

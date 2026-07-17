@@ -26,26 +26,31 @@ class UploadZone extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = context.appScheme;
+    final muted = context.appTextMuted;
+    final border = context.appBorder;
+
     if (uploading) {
       return GlassPanel(
         borderRadius: AppRadius.card,
+        blur: 0,
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const SizedBox(
+                SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: scheme.primary),
                 ),
                 const SizedBox(width: AppSpacing.md),
-                const Text('در حال آپلود...', style: TextStyle(fontWeight: FontWeight.w600)),
+                Text('در حال آپلود...', style: TextStyle(fontWeight: FontWeight.w600, color: scheme.onSurface)),
                 const Spacer(),
                 Text(
                   '${toFaDigits((progress * 100).toStringAsFixed(0))}٪',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  style: TextStyle(color: muted, fontSize: 13),
                 ),
               ],
             ),
@@ -55,8 +60,8 @@ class UploadZone extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: progress == 0 ? null : progress,
                 minHeight: 6,
-                backgroundColor: AppColors.border,
-                color: AppColors.primary,
+                backgroundColor: border,
+                color: scheme.primary,
               ),
             ),
           ],
@@ -66,6 +71,7 @@ class UploadZone extends StatelessWidget {
 
     return GlassPanel(
       borderRadius: AppRadius.card,
+      blur: 0,
       onTap: enabled ? onTap : null,
       child: SizedBox(
         width: double.infinity,
@@ -83,9 +89,9 @@ class UploadZone extends StatelessWidget {
                 child: const Icon(Icons.upload_file_rounded, color: Colors.white, size: 26),
               ),
               const SizedBox(height: AppSpacing.md),
-              Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: scheme.onSurface)),
               const SizedBox(height: AppSpacing.xs),
-              const Text('برای انتخاب فایل ضربه بزنید', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+              Text('برای انتخاب فایل ضربه بزنید', style: TextStyle(color: muted, fontSize: 13)),
             ],
           ),
         ),
@@ -110,6 +116,7 @@ class MediaPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final ready = media.isReady;
     final statusColor = ready ? AppColors.success : AppColors.warning;
+    final muted = context.appTextMuted;
 
     return GlassPanel(
       borderRadius: AppRadius.card,
@@ -140,12 +147,12 @@ class MediaPreview extends StatelessWidget {
                         media.originalFilename ?? 'رسانه',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: context.appScheme.onSurface),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         '${media.status} · ${formatBytes(media.size)}',
-                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        style: TextStyle(color: muted, fontSize: 12),
                       ),
                     ],
                   ),

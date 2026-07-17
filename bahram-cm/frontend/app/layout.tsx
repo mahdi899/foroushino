@@ -26,13 +26,12 @@ import { DiscountCapture } from "@/components/commerce/DiscountCapture";
 import { GrainOverlay } from "@/components/motion/GrainOverlay";
 import { SiteBootLoader } from "@/components/layout/SiteBootLoader";
 import { cookies } from "next/headers";
-import Script from "next/script";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
+import { ServerInsertedJsonLd } from "@/components/bootstrap/ServerInsertedJsonLd";
 import {
   DEFAULT_SITE_THEME,
   SITE_THEME_COOKIE_KEY,
   parseSiteTheme,
-  siteThemeBootScript,
 } from "@/lib/site-theme";
 import "@/styles/globals.css";
 
@@ -81,17 +80,10 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <script
-          id="jsonld-site"
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }}
-        />
         <MediaPreconnect />
-        <Script id="site-theme-boot" strategy="beforeInteractive">
-          {siteThemeBootScript()}
-        </Script>
       </head>
       <body className={`${fontClassName} min-w-0 overflow-x-clip antialiased`} suppressHydrationWarning>
+        <ServerInsertedJsonLd id="jsonld-site" data={ld} />
         <ThemeBoot />
         {!isBareShellRoute ? <SiteBootLoader /> : null}
         {!isBareShellRoute ? <GrainOverlay /> : null}

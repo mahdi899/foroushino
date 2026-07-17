@@ -14,6 +14,7 @@ class FamilyEntryLink extends Model
         'slug',
         'source',
         'entry_event_id',
+        'family_id',
         'campaign',
         'topic',
         'created_by',
@@ -31,6 +32,11 @@ class FamilyEntryLink extends Model
     public function entryEvent(): BelongsTo
     {
         return $this->belongsTo(FamilyEntryEvent::class, 'entry_event_id');
+    }
+
+    public function family(): BelongsTo
+    {
+        return $this->belongsTo(Family::class);
     }
 
     public function creator(): BelongsTo

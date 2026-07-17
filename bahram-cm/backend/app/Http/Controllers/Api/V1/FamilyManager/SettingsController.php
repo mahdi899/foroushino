@@ -5,12 +5,16 @@ namespace App\Http\Controllers\Api\V1\FamilyManager;
 use App\Http\Controllers\Controller;
 use App\Models\FamilyMedia;
 use App\Services\AdminAuditLogger;
+use App\Services\AIService;
+use App\Services\Family\FamilyAiSettingsService;
 use App\Services\Family\FamilyBrandingService;
 use App\Services\Family\FamilyMediaSettingsService;
+use App\Support\Ai\AiProviderCatalog;
 use App\Support\ApiResponse;
 use App\Support\FamilyMediaUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class SettingsController extends Controller
 {
@@ -18,6 +22,7 @@ class SettingsController extends Controller
         private readonly FamilyBrandingService $branding,
         private readonly AdminAuditLogger $audit,
         private readonly FamilyMediaSettingsService $mediaSettings,
+        private readonly FamilyAiSettingsService $aiSettings,
     ) {}
 
     public function show(): JsonResponse
@@ -40,6 +45,7 @@ class SettingsController extends Controller
             'community_avatar_path' => $branding->community_avatar_path,
             'branding_version' => $version,
             'media_pipeline' => $this->mediaSettings->adminView(),
+            'ai' => $this->aiSettings->adminView(),
         ]);
     }
 
@@ -90,6 +96,7 @@ class SettingsController extends Controller
             'community_avatar_path' => $updated->community_avatar_path,
             'branding_version' => $version,
             'media_pipeline' => $this->mediaSettings->adminView(),
+            'ai' => $this->aiSettings->adminView(),
         ]);
     }
 
@@ -107,6 +114,53 @@ class SettingsController extends Controller
         return ApiResponse::success($this->mediaSettings->adminView());
     }
 
+    public function updateAi(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'is_active' => ['nullable', 'boolean'],
+            'provider_name' => ['nullable', 'string', Rule::in(AiProviderCatalog::ids())],
+            'base_url' => ['nullable', 'string', 'max:255'],
+            'model' => ['nullable', 'string', 'max:120'],
+            'temperature' => ['nullable', 'numeric', 'min:0', 'max:2'],
+            'max_tokens' => ['nullable', 'integer', 'min:100', 'max:8000'],
+            'api_key' => ['nullable', 'string', 'max:500'],
+            'clear_api_key' => ['nullable', 'boolean'],
+            'auto_approve_comments' => ['nullable', 'boolean'],
+            'auto_reject_high_risk' => ['nullable', 'boolean'],
+            'risk_approve_threshold' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'risk_reject_threshold' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'default_action_days' => ['nullable', 'integer', 'min:1', 'max:365'],
+        ]);
+
+        $this->aiSettings->update($data);
+        $this->audit->log($request->user(), 'family.ai_settings_updated', null, array_keys($data));
+
+        return ApiResponse::success($this->aiSettings->adminView());
+    }
+
+    public function testAi(Request $request, AIService $ai): JsonResponse
+    {
+        $data = $request->validate([
+            'provider_name' => ['nullable', 'string', Rule::in(AiProviderCatalog::ids())],
+            'base_url' => ['nullable', 'string', 'max:255'],
+            'model' => ['nullable', 'string', 'max:120'],
+            'temperature' => ['nullable', 'numeric', 'min:0', 'max:2'],
+            'max_tokens' => ['nullable', 'integer', 'min:100', 'max:8000'],
+            'api_key' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $settings = $this->resolveAiTestSettings($data);
+
+        return ApiResponse::success($ai->testConnection($settings));
+    }
+
+    public function aiProviders(): JsonResponse
+    {
+        return ApiResponse::success([
+            'providers' => AiProviderCatalog::publicCatalog(),
+        ]);
+    }
+
     private function mediaPath(?int $mediaId): ?string
     {
         if (! $mediaId) {
@@ -114,5 +168,36 @@ class SettingsController extends Controller
         }
 
         return FamilyMedia::query()->findOrFail($mediaId)->storage_path;
+    }
+
+    /**
+     * @param  array<string, mixed>  $draft
+     */
+    private function resolveAiTestSettings(array $draft): \App\Models\AiSetting
+    {
+        $current = \App\Models\AiSetting::current();
+        $view = $this->aiSettings->adminView();
+
+        $provider = (string) ($draft['provider_name'] ?? $view['provider_name'] ?? $current->provider_name ?? 'openai');
+        if (! in_array($provider, AiProviderCatalog::ids(), true)) {
+            $provider = 'openai';
+        }
+
+        $defaults = AiProviderCatalog::defaults($provider);
+        $apiKey = filled($draft['api_key'] ?? null)
+            ? (string) $draft['api_key']
+            : (string) ($current->api_key ?? '');
+
+        $current->forceFill([
+            'provider_name' => $provider,
+            'base_url' => (string) ($draft['base_url'] ?? $view['base_url'] ?? $defaults['base_url']),
+            'model' => (string) ($draft['model'] ?? $view['model'] ?? $defaults['model']),
+            'temperature' => (float) ($draft['temperature'] ?? $view['temperature'] ?? $current->temperature ?? 0.4),
+            'max_tokens' => (int) ($draft['max_tokens'] ?? $view['max_tokens'] ?? $current->max_tokens ?? 1200),
+            'api_key' => $apiKey,
+            'is_active' => true,
+        ]);
+
+        return $current;
     }
 }

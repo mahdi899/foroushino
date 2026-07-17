@@ -5,12 +5,14 @@ import { FeedDateSeparator } from '@/components/family/FeedDateSeparator';
 import { FeedJumpToLatest, type FeedJumpToLatestHandle } from '@/components/family/FeedJumpToLatest';
 import { FeedPreviewGate, FeedPreviewIntro } from '@/components/family/FeedPreviewIntro';
 import { FeedUnreadDivider } from '@/components/family/FeedUnreadDivider';
-import { useFamilyGuestLogin } from '@/components/family/FamilyGuestAuth';
+import { useFamilyGuestAccessOptional } from '@/components/family/FamilyGuestAccess';
+import { GUEST_BLURRED_POST_COUNT, type FamilyGuestAction } from '@/lib/family/guest-access';
 import { FamilyBrandingSidebar } from '@/components/family/FamilyBrandingSidebar';
 import { FamilyNotificationsPanel } from '@/components/family/FamilyNotificationsPanel';
 import { FeedCommentsPanel } from '@/components/family/FeedCommentsPanel';
 import { FamilyFeedChrome } from '@/components/family/FamilyFeedChrome';
 import { FamilyFeedScroll, type FamilyFeedScrollHandle } from '@/components/family/FamilyFeedScroll';
+import { VirtualFeedList, type VirtualFeedListHandle } from '@/components/family/VirtualFeedList';
 import { FamilyFeedBootSkeleton } from '@/components/family/FamilyShellLoading';
 import { PostCard } from '@/components/family/PostCard';
 import { cn } from '@/lib/cn';
@@ -51,12 +53,8 @@ import {
 } from '@/lib/family/hooks/useFamilyRealtime';
 import { isRealtimeConfigured } from '@/lib/realtime/echo';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
+import { estimateFeedItemSize, type FeedListItem } from '@/lib/family/feedItemEstimate';
 import type { FamilyBranding, FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
-
-type FeedItem =
-  | { kind: 'separator'; key: string; label: string }
-  | { kind: 'unread'; key: string; count: number }
-  | { kind: 'post'; key: string; post: FamilyPost };
 
 type CommentsTarget = {
   postId: number;
@@ -67,8 +65,8 @@ function buildFeedItems(
   posts: FamilyPost[],
   unreadAfterId: number | null,
   dividerCount: number,
-): FeedItem[] {
-  const items: FeedItem[] = [];
+): FeedListItem[] {
+  const items: FeedListItem[] = [];
   let lastDayKey: string | null = null;
   let unreadInserted = false;
   const unreadCount =
@@ -146,7 +144,14 @@ export function FeedView({
   const effectivePreviewMode = previewMode ?? 'guest';
   const feedScope: 'guest' | 'member' = isPreview ? 'guest' : 'member';
   const initialPage = initialFeed ? { data: initialFeed.data, meta: initialFeed.meta } : null;
-  const { openLogin } = useFamilyGuestLogin();
+  const guestAccess = useFamilyGuestAccessOptional();
+
+  const handleGuestGate = useCallback(
+    (action: FamilyGuestAction) => {
+      guestAccess?.promptLogin(action);
+    },
+    [guestAccess],
+  );
 
   const {
     posts,
@@ -168,14 +173,18 @@ export function FeedView({
     onMemberCountChange?.(meta.member_count);
   }, [meta?.member_count, onMemberCountChange]);
 
-  const scrollToPreviewCta = useCallback(() => {
-    if (effectivePreviewMode === 'guest') {
-      openLogin();
-      return;
-    }
-    document.getElementById('family-join-cta')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [effectivePreviewMode, openLogin]);
+  const scrollToPreviewCta = useCallback(
+    (action: FamilyGuestAction = 'morePosts') => {
+      if (effectivePreviewMode === 'guest') {
+        handleGuestGate(action);
+        return;
+      }
+      document.getElementById('family-join-cta')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    },
+    [effectivePreviewMode, handleGuestGate],
+  );
   const feedScrollRef = useRef<FamilyFeedScrollHandle | null>(null);
+  const virtualListRef = useRef<VirtualFeedListHandle | null>(null);
 
   const getScrollCtx = useCallback(() => {
     const handle = feedScrollRef.current;
@@ -234,6 +243,15 @@ export function FeedView({
     () => buildFeedItems(posts, isPreview ? null : unreadSplitId, unreadDividerCount),
     [posts, isPreview, unreadSplitId, unreadDividerCount],
   );
+  const guestBlurredPostIds = useMemo(() => {
+    if (effectivePreviewMode !== 'guest') return new Set<number>();
+    const ids = feedItems
+      .filter((item): item is Extract<FeedListItem, { kind: 'post' }> => item.kind === 'post')
+      .slice(0, GUEST_BLURRED_POST_COUNT)
+      .map((item) => item.post.id);
+    return new Set(ids);
+  }, [effectivePreviewMode, feedItems]);
+  const feedItemsRef = useRef(feedItems);
   const hasMoreRef = useRef(hasMore);
   const postsRef = useRef(posts);
 
@@ -407,8 +425,9 @@ export function FeedView({
   useEffect(() => {
     hasMoreRef.current = hasMore;
     postsRef.current = posts;
+    feedItemsRef.current = feedItems;
     isValidatingRef.current = isValidating;
-  }, [hasMore, posts, isValidating]);
+  }, [feedItems, hasMore, posts, isValidating]);
 
   // When loadNewer reaches the true tip, clear jumped-away so catch-up works again.
   useEffect(() => {
@@ -673,7 +692,11 @@ export function FeedView({
 
     let tipInView = false;
     if (nearScrollEnd) {
-      tipInView = isFeedTipInView(root, chronologicalLatestPostId(postsRef.current));
+      tipInView = isFeedTipInView(
+        root,
+        chronologicalLatestPostId(postsRef.current),
+        distanceFromBottom,
+      );
     }
 
     // If last-seen is still on screen, we are in the unread landing zone — never auto-catchup
@@ -785,13 +808,32 @@ export function FeedView({
 
       const tryScroll = (): boolean => {
         const { root, lenis } = getScrollCtx();
+        if (!root) return false;
         const el = document.getElementById(`family-post-${postId}`);
-        if (!root || !el) return false;
 
-        scrollFeedToElement(el, behavior, { root, lenis, align, padding: align === 'end' ? 16 : 20 });
-        anchoredToBottomRef.current = false;
-        if (shouldHighlight) highlight(el);
-        return true;
+        if (el) {
+          scrollFeedToElement(el, behavior, { root, lenis, align, padding: align === 'end' ? 16 : 20 });
+          anchoredToBottomRef.current = false;
+          if (shouldHighlight) highlight(el);
+          return true;
+        }
+
+        const index = feedItemsRef.current.findIndex(
+          (item) => item.kind === 'post' && item.post.id === postId,
+        );
+        if (index >= 0) {
+          virtualListRef.current?.scrollToIndex(index, { align });
+          anchoredToBottomRef.current = false;
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              const scrolled = document.getElementById(`family-post-${postId}`);
+              if (scrolled && shouldHighlight) highlight(scrolled);
+            });
+          });
+          return true;
+        }
+
+        return false;
       };
 
       if (tryScroll()) return;
@@ -893,6 +935,7 @@ export function FeedView({
       apply();
       scrollRestoreRef.current = null;
       loadingHistoryRef.current = false;
+      virtualListRef.current?.measure();
       historyPinRef.current = snapshot;
       if (historyPinClearTimerRef.current != null) {
         window.clearTimeout(historyPinClearTimerRef.current);
@@ -1086,7 +1129,7 @@ export function FeedView({
       }
 
       const measure = (label: string) => {
-        const { root, lenis } = getScrollCtx();
+        const { root } = getScrollCtx();
         const el = document.getElementById(`family-post-${targetId}`);
         if (!root || !el) {
           familyFeedDebug.warn('land', `${label}: missing el/root`, { targetId });
@@ -1100,10 +1143,10 @@ export function FeedView({
           drift: Math.round(drift * 10) / 10,
           elBottom: Math.round(elRect.bottom),
           rootBottom: Math.round(rootRect.bottom),
-          scroll: lenis ? Math.round(lenis.scroll) : Math.round(root.scrollTop),
-          limit: lenis ? Math.round(lenis.limit) : null,
+          scroll: Math.round(root.scrollTop),
+          limit: root.scrollHeight - root.clientHeight,
         });
-        return { root, lenis, el, drift };
+        return { root, el, drift };
       };
 
       const settle = async () => {
@@ -1111,7 +1154,7 @@ export function FeedView({
         if (!before) return;
         await pinFeedElementBottomUntilSettled(before.el, {
           root: before.root,
-          lenis: before.lenis,
+          lenis: null,
           inset: 16,
           maxPasses: 8,
         });
@@ -1313,6 +1356,52 @@ export function FeedView({
     };
   }, []);
 
+  const renderFeedItem = useCallback(
+    (item: FeedListItem) => {
+      const animateEnter =
+        feedReady &&
+        item.kind === 'post' &&
+        item.post.id > maxPostIdRef.current;
+
+      if (item.kind === 'separator') {
+        return <FeedDateSeparator key={item.key} label={item.label} />;
+      }
+
+      if (item.kind === 'unread') {
+        return <FeedUnreadDivider key={item.key} count={item.count} />;
+      }
+
+      return (
+        <PostCard
+          key={item.key}
+          anchorId={`family-post-${item.post.id}`}
+          post={item.post}
+          memberCount={resolvedMemberCount}
+          isStaff={isStaff}
+          previewMode={isPreview ? effectivePreviewMode : null}
+          viewerKey={viewerKey}
+          onGuestGate={scrollToPreviewCta}
+          animateEnter={animateEnter}
+          onOpenComments={isPreview ? undefined : openPostComments}
+          guestBlurred={guestBlurredPostIds.has(item.post.id)}
+          onGuestUnlock={() => handleGuestGate('morePosts')}
+        />
+      );
+    },
+    [
+      effectivePreviewMode,
+      feedReady,
+      guestBlurredPostIds,
+      handleGuestGate,
+      isPreview,
+      isStaff,
+      openPostComments,
+      resolvedMemberCount,
+      scrollToPreviewCta,
+      viewerKey,
+    ],
+  );
+
   const showFeed = !commentsTarget && !notificationsOpen;
 
   useLayoutEffect(() => {
@@ -1357,6 +1446,7 @@ export function FeedView({
       <FamilyBrandingSidebar
         memberCount={resolvedMemberCount}
         isMember={!isPreview}
+        guestStoriesLocked={effectivePreviewMode === 'guest'}
         initialBranding={initialBranding}
         notificationsActive={notificationsOpen}
         onOpenNotifications={onOpenNotifications}
@@ -1448,35 +1538,16 @@ export function FeedView({
                       ) : null}
                     </div>
                   )}
-                  {feedItems.map((item) => {
-                    const animateEnter =
-                      feedReady &&
-                      item.kind === 'post' &&
-                      item.post.id > maxPostIdRef.current;
-
-                    if (item.kind === 'separator') {
-                      return <FeedDateSeparator key={item.key} label={item.label} />;
-                    }
-
-                    if (item.kind === 'unread') {
-                      return <FeedUnreadDivider key={item.key} count={item.count} />;
-                    }
-
-                    return (
-                      <PostCard
-                        key={item.key}
-                        anchorId={`family-post-${item.post.id}`}
-                        post={item.post}
-                        memberCount={resolvedMemberCount}
-                        isStaff={isStaff}
-                        previewMode={isPreview ? effectivePreviewMode : null}
-                        viewerKey={viewerKey}
-                        onPreviewInteract={scrollToPreviewCta}
-                        animateEnter={animateEnter}
-                        onOpenComments={isPreview ? undefined : openPostComments}
-                      />
-                    );
-                  })}
+                  <VirtualFeedList
+                    ref={virtualListRef}
+                    items={feedItems}
+                    gap={8}
+                    overscan={10}
+                    className="family-feed-list__virtual"
+                    getScrollElement={() => feedScrollRef.current?.getScrollElement() ?? null}
+                    estimateSize={estimateFeedItemSize}
+                    renderItem={(item) => renderFeedItem(item)}
+                  />
                   {!isPreview && (hasNewer || isJumpedAwayRef.current) ? (
                     <div ref={newerSentinelRef} className="h-8 shrink-0" aria-hidden />
                   ) : null}

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:bahram_family_manager/core/utils/file_download.dart';
 
 import 'package:bahram_family_manager/core/api/api_client.dart';
 import 'package:bahram_family_manager/models/models.dart';
@@ -81,6 +82,57 @@ class FamilyManagerService {
     final res = await api.get('$_base/posts/$postId/action-results');
     final data = res['data'] as List? ?? [];
     return data.map((e) => FamilyActionResultModel.fromJson((e as Map).cast<String, dynamic>())).toList();
+  }
+
+  String actionResultsExportUrl(int postId) => '${api.dio.options.baseUrl}$_base/posts/$postId/action-results/export';
+
+  Future<void> downloadActionResultsExport(int postId) async {
+    final response = await api.dio.get<List<int>>(
+      '$_base/posts/$postId/action-results/export',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final bytes = response.data ?? <int>[];
+    await downloadFile('family-post-$postId-action-results.csv', bytes);
+  }
+
+  Future<Map<String, dynamic>> generatePostDraft({
+    required String topic,
+    String type = 'text',
+    String? tone,
+  }) async {
+    final res = await api.post('$_base/posts/ai-draft', data: {
+      'topic': topic,
+      'type': type,
+      if (tone != null && tone.isNotEmpty) 'tone': tone,
+    });
+    return (res['data'] as Map).cast<String, dynamic>();
+  }
+
+  Future<FamilyAiSettings> updateAiSettings(Map<String, dynamic> payload) async {
+    final res = await api.patch('$_base/settings/ai', data: payload);
+    return FamilyAiSettings.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<({bool success, String message, String? provider, String? model})> testAiConnection({
+    Map<String, dynamic>? draft,
+  }) async {
+    final res = await api.post('$_base/settings/ai/test', data: draft);
+    final data = (res['data'] as Map).cast<String, dynamic>();
+    return (
+      success: data['success'] == true,
+      message: data['message']?.toString() ?? '',
+      provider: data['provider']?.toString(),
+      model: data['model']?.toString(),
+    );
+  }
+
+  Future<List<AiProviderMeta>> listAiProviders() async {
+    final res = await api.get('$_base/settings/ai/providers');
+    final data = (res['data'] as Map).cast<String, dynamic>();
+    final providers = (data['providers'] as List?) ?? const [];
+    return providers
+        .map((e) => AiProviderMeta.fromJson((e as Map).cast<String, dynamic>()))
+        .toList();
   }
 
   // ---------------------------------------------------------------------
@@ -180,13 +232,13 @@ class FamilyManagerService {
     String? search,
     String? lifecycle,
     int page = 1,
-    int? perPage,
+    int perPage = 25,
   }) async {
     final res = await api.get('$_base/families', query: {
       if (search != null && search.isNotEmpty) 'search': search,
       if (lifecycle != null) 'lifecycle': lifecycle,
       'page': page,
-      if (perPage != null) 'per_page': perPage,
+      'per_page': perPage,
     });
     return PaginatedResult.fromEnvelope(res, FamilySummaryModel.fromJson);
   }
@@ -198,14 +250,24 @@ class FamilyManagerService {
 
   Future<PaginatedResult<FamilyMemberModel>> listMembers({
     int? familyId,
+    int? entryEventId,
+    int? entryLinkId,
+    String? entrySource,
     String? search,
     int page = 1,
+    int perPage = 25,
   }) async {
+    final path = entryLinkId != null
+        ? '$_base/entry-links/$entryLinkId/members'
+        : (familyId == null ? '$_base/members' : '$_base/families/$familyId/members');
     final res = await api.get(
-      familyId == null ? '$_base/members' : '$_base/families/$familyId/members',
+      path,
       query: {
         if (search != null && search.isNotEmpty) 'search': search,
+        if (entryEventId != null) 'entry_event_id': entryEventId,
+        if (entryLinkId == null && entrySource != null && entrySource.isNotEmpty) 'entry_source': entrySource,
         'page': page,
+        'per_page': perPage,
       },
     );
     return PaginatedResult.fromEnvelope(res, FamilyMemberModel.fromJson);
@@ -246,14 +308,22 @@ class FamilyManagerService {
     return data.map((e) => FamilyEntryEventModel.fromJson((e as Map).cast<String, dynamic>())).toList();
   }
 
-  Future<List<EntryLinkModel>> listEntryLinks({int days = 30}) async {
-    final res = await api.get('$_base/entry-links', query: {'days': days});
+  Future<List<EntryLinkModel>> listEntryLinks({int days = 30, int? familyId}) async {
+    final res = await api.get('$_base/entry-links', query: {
+      'days': days,
+      if (familyId != null) 'family_id': familyId,
+    });
     final data = res['data'] as List? ?? [];
     return data.map((e) => EntryLinkModel.fromJson((e as Map).cast<String, dynamic>())).toList();
   }
 
   Future<EntryLinkModel> createEntryLink(Map<String, dynamic> payload) async {
     final res = await api.post('$_base/entry-links', data: payload);
+    return EntryLinkModel.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<EntryLinkModel> updateEntryLink(int id, Map<String, dynamic> payload) async {
+    final res = await api.patch('$_base/entry-links/$id', data: payload);
     return EntryLinkModel.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { memo, useCallback, useEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type SetStateAction } from 'react';
+import { Lock } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { EmojiRichText } from '@/components/emoji/EmojiRichText';
 import { cn } from '@/lib/cn';
@@ -16,8 +17,14 @@ import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { PostMetaRow } from '@/components/family/PostMetaRow';
 import { ReactionBar, type ReactionBarHandle } from '@/components/family/ReactionBar';
 import { useFamilyDebugRender } from '@/lib/family/useFamilyDebugRender';
+import type { FamilyGuestAction } from '@/lib/family/guest-access';
+import { GUEST_BLURRED_POST_MESSAGE } from '@/lib/family/guest-access';
 import type { FamilyComment } from '@/lib/family/types';
 import type { FamilyPost, FamilyPostBlock } from '@/lib/family/types';
+
+function isPostCommentsEnabled(post: FamilyPost): boolean {
+  return post.comments_enabled !== false;
+}
 
 const POST_QUICK_REACT_BLOCK_SELECTOR = [
   'a[href]',
@@ -112,7 +119,7 @@ function FeedPostCard({
   isStaff,
   previewMode,
   viewerKey,
-  onPreviewInteract,
+  onGuestGate,
   onOpenComments,
   commentCount,
   setCommentCount,
@@ -120,6 +127,8 @@ function FeedPostCard({
   setCommentPreview,
   anchorId,
   animateEnter = false,
+  guestBlurred = false,
+  onGuestUnlock,
 }: {
   post: FamilyPost;
   compact?: boolean;
@@ -128,7 +137,7 @@ function FeedPostCard({
   isStaff?: boolean;
   previewMode: 'guest' | 'join' | null;
   viewerKey: string | number;
-  onPreviewInteract?: () => void;
+  onGuestGate?: (action: FamilyGuestAction) => void;
   onOpenComments?: (
     postId: number,
     handlers: { onCommentAdded: (comment: FamilyComment) => void },
@@ -139,6 +148,8 @@ function FeedPostCard({
   commentPreview: FamilyComment[];
   anchorId?: string;
   animateEnter?: boolean;
+  guestBlurred?: boolean;
+  onGuestUnlock?: () => void;
 }) {
   const blocks = post.blocks ?? [];
   const actions = post.actions ?? [];
@@ -158,7 +169,7 @@ function FeedPostCard({
 
   const openCommentsPanel = useCallback(() => {
     if (previewMode) {
-      onPreviewInteract?.();
+      onGuestGate?.('comment');
       return;
     }
     onOpenComments?.(post.id, {
@@ -172,7 +183,7 @@ function FeedPostCard({
     });
   }, [
     onOpenComments,
-    onPreviewInteract,
+    onGuestGate,
     post.id,
     previewMode,
     setCommentCount,
@@ -184,12 +195,12 @@ function FeedPostCard({
       if (!canQuickReactFromTarget(event.target, event.currentTarget)) return;
       event.preventDefault();
       if (previewMode) {
-        onPreviewInteract?.();
+        onGuestGate?.('react');
         return;
       }
       reactionBarRef.current?.quickReact('heart', { x: event.clientX, y: event.clientY });
     },
-    [onPreviewInteract, previewMode],
+    [onGuestGate, previewMode],
   );
 
   const endSwipe = useCallback(
@@ -276,18 +287,20 @@ function FeedPostCard({
           post.is_important && 'family-post-bubble--important',
           post.is_pinned && 'family-post-bubble--pinned',
           swiping && 'family-post-bubble--swiping',
+          guestBlurred && 'family-post-bubble--guest-locked',
         )}
         style={
           swipeX || swiping
             ? { transform: `translate3d(${swipeX}px, 0, 0)` }
             : undefined
         }
-        onDoubleClick={handleBubbleDoubleClick}
-        onPointerDown={handleSwipePointerDown}
-        onPointerMove={handleSwipePointerMove}
-        onPointerUp={handleSwipePointerUp}
-        onPointerCancel={handleSwipePointerCancel}
+        onDoubleClick={guestBlurred ? undefined : handleBubbleDoubleClick}
+        onPointerDown={guestBlurred ? undefined : handleSwipePointerDown}
+        onPointerMove={guestBlurred ? undefined : handleSwipePointerMove}
+        onPointerUp={guestBlurred ? undefined : handleSwipePointerUp}
+        onPointerCancel={guestBlurred ? undefined : handleSwipePointerCancel}
       >
+        <div className={cn(guestBlurred && 'family-post-bubble__guest-blur')}>
         {(post.is_pinned || post.is_important) && (
           <div className="family-post-bubble__labels">
             {post.is_pinned && (
@@ -334,7 +347,7 @@ function FeedPostCard({
               stats={{ ...post.stats, comments: commentCount }}
               userReaction={post.user_reaction}
               readOnly={Boolean(previewMode)}
-              onLockedInteract={onPreviewInteract}
+              onLockedInteract={() => onGuestGate?.('react')}
             />
           </div>
           <PostMetaRow
@@ -347,7 +360,7 @@ function FeedPostCard({
           />
         </div>
 
-        {!hideCommentPreview && (
+        {!hideCommentPreview && isPostCommentsEnabled(post) && (
           <div className="family-post-bubble__comment-zone">
             <CommentThreadPreview
               count={commentCount}
@@ -356,6 +369,19 @@ function FeedPostCard({
             />
           </div>
         )}
+        </div>
+
+        {guestBlurred ? (
+          <button
+            type="button"
+            onClick={onGuestUnlock}
+            className="family-post-bubble__guest-lock"
+            aria-label={GUEST_BLURRED_POST_MESSAGE}
+          >
+            <Lock className="family-post-bubble__guest-lock-icon" strokeWidth={1.75} aria-hidden />
+            <span className="family-post-bubble__guest-lock-text">{GUEST_BLURRED_POST_MESSAGE}</span>
+          </button>
+        ) : null}
       </div>
     </motion.article>
   );
@@ -370,10 +396,12 @@ export const PostCard = memo(function PostCard({
   isStaff = false,
   previewMode = null,
   viewerKey = 'anon',
-  onPreviewInteract,
+  onGuestGate,
   onOpenComments,
   anchorId,
   animateEnter = false,
+  guestBlurred = false,
+  onGuestUnlock,
 }: {
   post: FamilyPost;
   compact?: boolean;
@@ -383,13 +411,15 @@ export const PostCard = memo(function PostCard({
   isStaff?: boolean;
   previewMode?: 'guest' | 'join' | null;
   viewerKey?: string | number;
-  onPreviewInteract?: () => void;
+  onGuestGate?: (action: FamilyGuestAction) => void;
   onOpenComments?: (
     postId: number,
     handlers: { onCommentAdded: (comment: FamilyComment) => void },
   ) => void;
   anchorId?: string;
   animateEnter?: boolean;
+  guestBlurred?: boolean;
+  onGuestUnlock?: () => void;
 }) {
   useFamilyDebugRender(`PostCard:${post.id}`);
   const [commentCount, setCommentCount] = useState(post.stats.comments);
@@ -417,7 +447,7 @@ export const PostCard = memo(function PostCard({
         isStaff={isStaff}
         previewMode={previewMode}
         viewerKey={viewerKey}
-        onPreviewInteract={onPreviewInteract}
+        onGuestGate={onGuestGate}
         onOpenComments={onOpenComments}
         commentCount={commentCount}
         setCommentCount={setCommentCount}
@@ -425,6 +455,8 @@ export const PostCard = memo(function PostCard({
         setCommentPreview={setCommentPreview}
         anchorId={anchorId}
         animateEnter={animateEnter}
+        guestBlurred={guestBlurred}
+        onGuestUnlock={onGuestUnlock}
       />
     );
   }
@@ -487,7 +519,7 @@ export const PostCard = memo(function PostCard({
             stats={{ ...post.stats, comments: commentCount }}
             userReaction={post.user_reaction}
             readOnly={Boolean(previewMode)}
-            onLockedInteract={onPreviewInteract}
+            onLockedInteract={() => onGuestGate?.('react')}
           />
           <PostMetaRow
             postId={post.id}
@@ -498,13 +530,13 @@ export const PostCard = memo(function PostCard({
         </div>
       </div>
 
-      {!hideCommentPreview && (
+      {!hideCommentPreview && isPostCommentsEnabled(post) && (
         <CommentThreadPreview
           count={commentCount}
           preview={commentPreview}
           onOpen={() => {
             if (previewMode) {
-              onPreviewInteract?.();
+              onGuestGate?.('comment');
               return;
             }
             onOpenComments?.(post.id, {

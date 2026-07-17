@@ -27,6 +27,10 @@ class AppState extends ChangeNotifier {
   late final AuthService _auth;
   late final FamilyManagerService manager;
 
+  List<FamilySummaryModel>? _familiesCache;
+  DateTime? _familiesCacheAt;
+  static const _familiesCacheTtl = Duration(minutes: 5);
+
   ManagerUser? user;
   bool bootstrapping = true;
   String? sessionError;
@@ -116,6 +120,25 @@ class AppState extends ChangeNotifier {
         (themeMode == ThemeMode.system &&
             WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark);
     return setThemeMode(isDark ? ThemeMode.light : ThemeMode.dark);
+  }
+
+  Future<List<FamilySummaryModel>> cachedFamilies({bool force = false}) async {
+    if (!force &&
+        _familiesCache != null &&
+        _familiesCacheAt != null &&
+        DateTime.now().difference(_familiesCacheAt!) < _familiesCacheTtl) {
+      return _familiesCache!;
+    }
+
+    final result = await manager.listFamilies(perPage: 100);
+    _familiesCache = result.items;
+    _familiesCacheAt = DateTime.now();
+    return _familiesCache!;
+  }
+
+  void invalidateFamiliesCache() {
+    _familiesCache = null;
+    _familiesCacheAt = null;
   }
 }
 

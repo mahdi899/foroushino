@@ -19,6 +19,9 @@ class CommentCard extends StatelessWidget {
     required this.onToggleImportant,
     required this.onTogglePulse,
     required this.onReply,
+    this.selectable = false,
+    this.selected = false,
+    this.onSelectedChanged,
   });
 
   final FamilyCommentModel comment;
@@ -27,6 +30,9 @@ class CommentCard extends StatelessWidget {
   final CommentAction onToggleImportant;
   final CommentAction onTogglePulse;
   final CommentAction onReply;
+  final bool selectable;
+  final bool selected;
+  final ValueChanged<bool>? onSelectedChanged;
 
   Color get _accentColor {
     if (comment.status == 'pending') return AppColors.warning;
@@ -53,7 +59,7 @@ class CommentCard extends StatelessWidget {
 
     return GlassPanel(
       borderRadius: 20,
-      blur: AppGlass.panelBlur,
+      blur: 0,
       padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -72,6 +78,14 @@ class CommentCard extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (selectable) ...[
+                      Checkbox(
+                        value: selected,
+                        onChanged: (v) => onSelectedChanged?.call(v ?? false),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                    ],
                     _Avatar(name: comment.userName),
                     const SizedBox(width: AppSpacing.md),
                     Expanded(

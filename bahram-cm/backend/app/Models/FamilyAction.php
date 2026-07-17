@@ -16,6 +16,8 @@ class FamilyAction extends Model
         'config',
         'follow_up_after_minutes',
         'follow_up_message',
+        'active_until',
+        'is_active',
     ];
 
     protected function casts(): array
@@ -24,6 +26,8 @@ class FamilyAction extends Model
             'type' => FamilyActionType::class,
             'config' => 'array',
             'follow_up_after_minutes' => 'integer',
+            'active_until' => 'datetime',
+            'is_active' => 'boolean',
         ];
     }
 

@@ -174,6 +174,7 @@ class FeedController extends Controller
         $context = EntryContext::fromArray($request->only([
             'source', 'campaign', 'content', 'referrer',
             'entry_event', 'entry_event_id', 'entry_event_ref', 'reel',
+            'family_id', 'family',
         ]));
 
         $membership = $join($user, $context);

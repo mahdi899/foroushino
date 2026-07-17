@@ -11,6 +11,7 @@ import {
   Users,
 } from "lucide-react";
 import { ContentViewTracker } from "@/components/analytics/ContentViewTracker";
+import { ServerInsertedJsonLd } from "@/components/bootstrap/ServerInsertedJsonLd";
 import { ContentCommentsSection } from "@/components/comments/ContentCommentsSection";
 import { TrackedCTA } from "@/components/analytics/TrackedCTA";
 import { MdxBody } from "@/components/mdx/MdxBody";
@@ -88,10 +89,7 @@ export default async function CourseDetailPage({
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       <ContentViewTracker type="course" slug={course.slug} />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <ServerInsertedJsonLd id={`jsonld-course-${course.slug}`} data={jsonLd} />
 
       {/* HERO */}
       <section className="page-hero page-hero--media relative isolate overflow-hidden bg-ink">

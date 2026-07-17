@@ -288,6 +288,36 @@ class FamilyManagerPublishingTest extends TestCase
         $this->assertSame('ویرایش در آرشیو', $fresh->blocks()->first()?->text_content);
     }
 
+    public function test_manager_can_delete_archived_post(): void
+    {
+        $manager = $this->manager();
+
+        $store = $this->actingAs($manager, 'sanctum')->postJson('/api/v1/family-manager/posts', [
+            'type' => 'text',
+            'audience_mode' => 'all',
+            'blocks' => [
+                ['type' => 'text', 'position' => 0, 'text' => 'برای حذف از آرشیو'],
+            ],
+        ]);
+        $postId = $store->json('data.id');
+
+        $this->actingAs($manager, 'sanctum')
+            ->postJson("/api/v1/family-manager/posts/{$postId}/publish")
+            ->assertOk();
+
+        $this->actingAs($manager, 'sanctum')
+            ->postJson("/api/v1/family-manager/posts/{$postId}/archive")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'archived');
+
+        $this->actingAs($manager, 'sanctum')
+            ->deleteJson("/api/v1/family-manager/posts/{$postId}")
+            ->assertOk()
+            ->assertJsonPath('data.deleted', true);
+
+        $this->assertDatabaseMissing('family_posts', ['id' => $postId]);
+    }
+
     public function test_manager_can_filter_posts_by_family_channel(): void
     {
         $manager = $this->manager();

@@ -208,12 +208,21 @@ class FamilyActionOptionModel {
 }
 
 class FamilyActionModel {
-  FamilyActionModel({required this.id, required this.type, required this.prompt, required this.options});
+  FamilyActionModel({
+    required this.id,
+    required this.type,
+    required this.prompt,
+    required this.options,
+    this.activeUntil,
+    this.isActive = true,
+  });
 
   final int id;
   final String type;
   final String prompt;
   final List<FamilyActionOptionModel> options;
+  final String? activeUntil;
+  final bool isActive;
 
   factory FamilyActionModel.fromJson(Map<String, dynamic> json) => FamilyActionModel(
         id: (json['id'] as num?)?.toInt() ?? 0,
@@ -222,6 +231,8 @@ class FamilyActionModel {
         options: (json['options'] as List? ?? [])
             .map((e) => FamilyActionOptionModel.fromJson((e as Map).cast<String, dynamic>()))
             .toList(),
+        activeUntil: json['active_until']?.toString(),
+        isActive: json['is_active'] != false,
       );
 }
 
@@ -244,6 +255,7 @@ class FamilyPostModel {
     required this.status,
     required this.audienceMode,
     required this.isImportant,
+    this.commentsEnabled = true,
     this.audienceSummary,
     this.isPinned = false,
     this.publishedAt,
@@ -261,6 +273,7 @@ class FamilyPostModel {
   final String audienceMode;
   final String? audienceSummary;
   final bool isImportant;
+  final bool commentsEnabled;
   final bool isPinned;
   final String? publishedAt;
   final String? createdAt;
@@ -305,6 +318,7 @@ class FamilyPostModel {
         audienceMode: json['audience_mode']?.toString() ?? 'all',
         audienceSummary: json['audience_summary']?.toString(),
         isImportant: json['is_important'] == true,
+        commentsEnabled: json['comments_enabled'] != false,
         isPinned: json['is_pinned'] == true,
         publishedAt: json['published_at']?.toString(),
         createdAt: json['created_at']?.toString(),
@@ -468,7 +482,7 @@ class FamilySummaryModel {
   final FamilyEntryEventModel? entryEvent;
 
   factory FamilySummaryModel.fromJson(Map<String, dynamic> json) => FamilySummaryModel(
-        id: json['id'] as int,
+        id: (json['id'] as num).toInt(),
         internalName: json['internal_name']?.toString() ?? '',
         lifecycle: json['lifecycle']?.toString() ?? '',
         memberCount: (json['member_count'] as num?)?.toInt() ?? 0,
@@ -536,7 +550,7 @@ class FamilyDetailModel extends FamilySummaryModel {
   final FamilyDnaModel? dna;
 
   factory FamilyDetailModel.fromJson(Map<String, dynamic> json) => FamilyDetailModel(
-        id: json['id'] as int,
+        id: (json['id'] as num).toInt(),
         internalName: json['internal_name']?.toString() ?? '',
         lifecycle: json['lifecycle']?.toString() ?? '',
         memberCount: (json['member_count'] as num?)?.toInt() ?? 0,
@@ -627,6 +641,8 @@ class EntryLinkModel {
     this.campaign,
     this.topic,
     required this.entryEventId,
+    this.familyId,
+    this.familyName,
     required this.isActive,
     required this.url,
     required this.joinsTotal,
@@ -642,6 +658,8 @@ class EntryLinkModel {
   final String? campaign;
   final String? topic;
   final int entryEventId;
+  final int? familyId;
+  final String? familyName;
   final bool isActive;
   final String url;
   final int joinsTotal;
@@ -657,6 +675,8 @@ class EntryLinkModel {
         campaign: json['campaign']?.toString(),
         topic: json['topic']?.toString(),
         entryEventId: (json['entry_event_id'] as num?)?.toInt() ?? 0,
+        familyId: (json['family_id'] as num?)?.toInt(),
+        familyName: json['family_name']?.toString(),
         isActive: json['is_active'] as bool? ?? true,
         url: json['url']?.toString() ?? '',
         joinsTotal: (json['joins_total'] as num?)?.toInt() ?? 0,
@@ -731,6 +751,7 @@ class FamilyBrandingSettings {
     this.profileAvatar,
     this.communityAvatar,
     this.mediaPipeline,
+    this.ai,
   });
 
   final String displayName;
@@ -738,6 +759,7 @@ class FamilyBrandingSettings {
   final String? profileAvatar;
   final String? communityAvatar;
   final FamilyMediaPipelineSettings? mediaPipeline;
+  final FamilyAiSettings? ai;
 
   factory FamilyBrandingSettings.fromJson(Map<String, dynamic> json) => FamilyBrandingSettings(
         displayName: json['display_name']?.toString() ?? '',
@@ -747,7 +769,110 @@ class FamilyBrandingSettings {
         mediaPipeline: json['media_pipeline'] is Map
             ? FamilyMediaPipelineSettings.fromJson((json['media_pipeline'] as Map).cast<String, dynamic>())
             : null,
+        ai: json['ai'] is Map
+            ? FamilyAiSettings.fromJson((json['ai'] as Map).cast<String, dynamic>())
+            : null,
       );
+}
+
+class AiProviderMeta {
+  const AiProviderMeta({
+    required this.id,
+    required this.label,
+    required this.apiStyle,
+    required this.defaultModel,
+    required this.defaultBaseUrl,
+    required this.models,
+    required this.keyHint,
+    required this.hint,
+  });
+
+  final String id;
+  final String label;
+  final String apiStyle;
+  final String defaultModel;
+  final String defaultBaseUrl;
+  final List<String> models;
+  final String keyHint;
+  final String hint;
+
+  factory AiProviderMeta.fromJson(Map<String, dynamic> json) => AiProviderMeta(
+        id: json['id']?.toString() ?? 'openai',
+        label: json['label']?.toString() ?? 'OpenAI',
+        apiStyle: json['api_style']?.toString() ?? 'openai',
+        defaultModel: json['default_model']?.toString() ?? 'gpt-4o-mini',
+        defaultBaseUrl: json['default_base_url']?.toString() ?? 'https://api.openai.com/v1',
+        models: (json['models'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+        keyHint: json['key_hint']?.toString() ?? '',
+        hint: json['hint']?.toString() ?? '',
+      );
+}
+
+class FamilyAiSettings {
+  FamilyAiSettings({
+    this.isActive = false,
+    this.providerName = 'openai',
+    this.providerLabel,
+    this.apiStyle,
+    this.baseUrl = '',
+    this.model = 'gpt-4o-mini',
+    this.temperature = 0.4,
+    this.maxTokens = 1200,
+    this.hasApiKey = false,
+    this.autoApproveComments = true,
+    this.autoRejectHighRisk = true,
+    this.riskApproveThreshold = 0.35,
+    this.riskRejectThreshold = 0.75,
+    this.defaultActionDays = 7,
+  });
+
+  final bool isActive;
+  final String providerName;
+  final String? providerLabel;
+  final String? apiStyle;
+  final String baseUrl;
+  final String model;
+  final double temperature;
+  final int maxTokens;
+  final bool hasApiKey;
+  final bool autoApproveComments;
+  final bool autoRejectHighRisk;
+  final double riskApproveThreshold;
+  final double riskRejectThreshold;
+  final int defaultActionDays;
+
+  factory FamilyAiSettings.fromJson(Map<String, dynamic> json) => FamilyAiSettings(
+        isActive: json['is_active'] == true,
+        providerName: json['provider_name']?.toString() ?? 'openai',
+        providerLabel: json['provider_label']?.toString(),
+        apiStyle: json['api_style']?.toString(),
+        baseUrl: json['base_url']?.toString() ?? '',
+        model: json['model']?.toString() ?? 'gpt-4o-mini',
+        temperature: (json['temperature'] as num?)?.toDouble() ?? 0.4,
+        maxTokens: (json['max_tokens'] as num?)?.toInt() ?? 1200,
+        hasApiKey: json['has_api_key'] == true,
+        autoApproveComments: json['auto_approve_comments'] != false,
+        autoRejectHighRisk: json['auto_reject_high_risk'] != false,
+        riskApproveThreshold: (json['risk_approve_threshold'] as num?)?.toDouble() ?? 0.35,
+        riskRejectThreshold: (json['risk_reject_threshold'] as num?)?.toDouble() ?? 0.75,
+        defaultActionDays: (json['default_action_days'] as num?)?.toInt() ?? 7,
+      );
+
+  Map<String, dynamic> toUpdatePayload({String? apiKey, bool clearApiKey = false}) => {
+        'is_active': isActive,
+        'provider_name': providerName,
+        'base_url': baseUrl,
+        'model': model,
+        'temperature': temperature,
+        'max_tokens': maxTokens,
+        if (apiKey != null && apiKey.isNotEmpty) 'api_key': apiKey,
+        if (clearApiKey) 'clear_api_key': true,
+        'auto_approve_comments': autoApproveComments,
+        'auto_reject_high_risk': autoRejectHighRisk,
+        'risk_approve_threshold': riskApproveThreshold,
+        'risk_reject_threshold': riskRejectThreshold,
+        'default_action_days': defaultActionDays,
+      };
 }
 
 class FamilyStoryModel {
@@ -786,6 +911,10 @@ class FamilyMemberModel {
     this.mobile,
     this.mobileMasked,
     this.entrySource,
+    this.entryCampaign,
+    this.entryContent,
+    this.entryEventId,
+    this.entryEventName,
     this.joinedAt,
     this.onboardingCompleted = false,
   });
@@ -798,6 +927,10 @@ class FamilyMemberModel {
   final String? mobile;
   final String? mobileMasked;
   final String? entrySource;
+  final String? entryCampaign;
+  final String? entryContent;
+  final int? entryEventId;
+  final String? entryEventName;
   final String? joinedAt;
   final bool onboardingCompleted;
 
@@ -812,6 +945,12 @@ class FamilyMemberModel {
         mobile: json['mobile']?.toString(),
         mobileMasked: json['mobile_masked']?.toString(),
         entrySource: json['entry_source']?.toString(),
+        entryCampaign: json['entry_campaign']?.toString(),
+        entryContent: json['entry_content']?.toString(),
+        entryEventId: (json['entry_event_id'] as num?)?.toInt(),
+        entryEventName: json['entry_event'] is Map
+            ? (json['entry_event'] as Map)['name']?.toString()
+            : null,
         joinedAt: json['joined_at']?.toString(),
         onboardingCompleted: json['onboarding_completed'] == true,
       );
@@ -890,6 +1029,9 @@ class FamilyActionResultModel {
     required this.responseCount,
     this.stats,
     required this.responses,
+    this.activeUntil,
+    this.isActive = true,
+    this.isOpen = true,
   });
 
   final int id;
@@ -898,6 +1040,9 @@ class FamilyActionResultModel {
   final int responseCount;
   final FamilyActionStatsModel? stats;
   final List<FamilyActionResponseRowModel> responses;
+  final String? activeUntil;
+  final bool isActive;
+  final bool isOpen;
 
   factory FamilyActionResultModel.fromJson(Map<String, dynamic> json) => FamilyActionResultModel(
         id: (json['id'] as num).toInt(),
@@ -910,6 +1055,9 @@ class FamilyActionResultModel {
         responses: (json['responses'] as List? ?? [])
             .map((e) => FamilyActionResponseRowModel.fromJson((e as Map).cast<String, dynamic>()))
             .toList(),
+        activeUntil: json['active_until']?.toString(),
+        isActive: json['is_active'] != false,
+        isOpen: json['is_open'] != false,
       );
 }
 

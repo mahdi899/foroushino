@@ -1,15 +1,16 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { FamilyAutoJoin } from '@/components/family/FamilyAutoJoin';
 import { FamilyMain, FamilyShell } from '@/components/family/FamilyShell';
 import { FamilyTopBar } from '@/components/family/FamilyTopBar';
 import { FeedView } from '@/components/family/FeedView';
-import { FamilyGuestBlur, FamilyGuestLoginBoot } from '@/components/family/FamilyGuestAuth';
-import { GuestBanner } from '@/components/family/GuestBanner';
+import { FamilyGuestAccessProvider } from '@/components/family/FamilyGuestAccess';
 import { JoinBanner } from '@/components/family/JoinBanner';
+import { JoinContextBoot } from '@/components/family/JoinContextBoot';
 import { OnboardingModal } from '@/components/family/OnboardingModal';
 import { useFamilyMemberCount } from '@/lib/family/hooks/useFamilyMemberCount';
+import { invalidateAllFamilyBrowserCache } from '@/lib/family/browserCache';
 import { writeFamilyShellSnapshot } from '@/lib/family/shellCache';
 import type { FamilyBranding, FamilyComment, FamilyFeedResponse } from '@/lib/family/types';
 
@@ -43,11 +44,23 @@ export function FamilyHome({
 
   useEffect(() => {
     if (!initialBranding && typeof initialMemberCount !== 'number') return;
-    writeFamilyShellSnapshot({
-      branding: initialBranding,
-      memberCount: memberCount ?? initialMemberCount,
-    });
-  }, [initialBranding, initialMemberCount, memberCount]);
+    writeFamilyShellSnapshot(
+      {
+        branding: initialBranding,
+        memberCount: memberCount ?? initialMemberCount,
+      },
+      viewerKey,
+    );
+  }, [initialBranding, initialMemberCount, memberCount, viewerKey]);
+
+  const prevViewerKeyRef = useRef(viewerKey);
+  useEffect(() => {
+    const prev = prevViewerKeyRef.current;
+    if (prev !== viewerKey) {
+      void invalidateAllFamilyBrowserCache(prev);
+      prevViewerKeyRef.current = viewerKey;
+    }
+  }, [viewerKey]);
 
   const [showOnboarding, setShowOnboarding] = useState(needsOnboarding);
   const [commentsTarget, setCommentsTarget] = useState<CommentsTarget | null>(null);
@@ -76,7 +89,8 @@ export function FamilyHome({
         <FamilyTopBar
           memberCount={resolvedMemberCount}
           initialBranding={initialBranding}
-          canViewStories={isMember}
+          canViewStories
+          guestStoriesLocked={isGuest}
           showNotifications={isMember}
           notificationsActive={notificationsOpen}
           onOpenNotifications={openNotifications}
@@ -105,14 +119,13 @@ export function FamilyHome({
 
   return (
     <FamilyShell>
+      <Suspense>
+        <JoinContextBoot />
+      </Suspense>
       {isGuest ? (
-        <>
-          <FamilyGuestLoginBoot />
-          <div className="flex min-h-0 flex-1 flex-col">
-            <FamilyGuestBlur className="flex min-h-0 flex-1 flex-col overflow-hidden">{feed}</FamilyGuestBlur>
-            <GuestBanner />
-          </div>
-        </>
+        <FamilyGuestAccessProvider>
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{feed}</div>
+        </FamilyGuestAccessProvider>
       ) : (
         feed
       )}

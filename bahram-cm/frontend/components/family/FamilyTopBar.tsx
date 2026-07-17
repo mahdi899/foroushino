@@ -11,6 +11,7 @@ import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications'
 import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
 import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
 
+import { useFamilyGuestAccessOptional } from '@/components/family/FamilyGuestAccess';
 import type { FamilyBranding } from '@/lib/family/types';
 
 function TopBarInnerSkeleton({ showNotifications }: { showNotifications: boolean }) {
@@ -39,6 +40,7 @@ export function FamilyTopBar({
   memberCount,
   initialBranding,
   canViewStories = true,
+  guestStoriesLocked = false,
   showNotifications = false,
   notificationsActive = false,
   onOpenNotifications,
@@ -47,21 +49,28 @@ export function FamilyTopBar({
   memberCount?: number;
   initialBranding?: FamilyBranding;
   canViewStories?: boolean;
+  guestStoriesLocked?: boolean;
   showNotifications?: boolean;
   notificationsActive?: boolean;
   onOpenNotifications?: () => void;
   onCloseNotifications?: () => void;
 }) {
+  const guestAccess = useFamilyGuestAccessOptional();
   const { branding, isLoading } = useFamilyBranding(initialBranding);
   const { unreadCount } = useFamilyUnreadCount(showNotifications && !isLoading);
   const { hasStories, hasUnseen, markSeen } = useFamilyStoryState(branding);
   const [storyOpen, setStoryOpen] = useState(false);
   const storiesAvailable = canViewStories && hasStories;
+  const storiesLocked = guestStoriesLocked && storiesAvailable;
 
   const openStories = useCallback(() => {
+    if (storiesLocked) {
+      guestAccess?.promptLogin('stories');
+      return;
+    }
     if (!storiesAvailable) return;
     setStoryOpen(true);
-  }, [storiesAvailable]);
+  }, [guestAccess, storiesAvailable, storiesLocked]);
 
   const handleStoriesFinished = useCallback(
     (storyIds: number[]) => {
@@ -78,17 +87,19 @@ export function FamilyTopBar({
         avatar={branding.community_avatar ?? branding.profile_avatar}
         avatarVersion={branding.branding_version}
         size="lg"
-        hasStoryRing={storiesAvailable}
-        storyUnseen={hasUnseen}
+        hasStoryRing
+        storyUnseen={!storiesLocked && hasUnseen}
         verified
       />
       <div className="min-w-0 leading-tight">
         <p className="family-topbar__title truncate">{branding.display_name}</p>
         <FamilyStoryHint
           memberCount={memberCount}
-          hasUnseen={canViewStories && hasUnseen}
+          maskMemberCount={guestStoriesLocked}
+          onMaskedMemberCountClick={() => guestAccess?.promptLogin('morePosts')}
+          hasUnseen={!storiesLocked && hasUnseen}
           onOpenStories={openStories}
-          showOnlineDot={typeof memberCount === 'number' && memberCount > 0}
+          showOnlineDot={!guestStoriesLocked && typeof memberCount === 'number' && memberCount > 0}
           nested
         />
       </div>
@@ -106,9 +117,11 @@ export function FamilyTopBar({
         <p className="family-topbar__title truncate">{branding.display_name}</p>
         <FamilyStoryHint
           memberCount={memberCount}
+          maskMemberCount={guestStoriesLocked}
+          onMaskedMemberCountClick={() => guestAccess?.promptLogin('morePosts')}
           hasUnseen={false}
           onOpenStories={openStories}
-          showOnlineDot={typeof memberCount === 'number' && memberCount > 0}
+          showOnlineDot={!guestStoriesLocked && typeof memberCount === 'number' && memberCount > 0}
           nested
         />
       </div>
@@ -161,7 +174,7 @@ export function FamilyTopBar({
         </div>
       </header>
 
-      {canViewStories && !isLoading && (
+      {canViewStories && !guestStoriesLocked && !isLoading && (
         <StoryViewer
           open={storyOpen}
           onClose={() => setStoryOpen(false)}

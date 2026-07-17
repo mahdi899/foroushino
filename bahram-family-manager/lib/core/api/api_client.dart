@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:bahram_family_manager/config/app_config.dart';
 import 'package:bahram_family_manager/core/api/api_exception.dart';
+import 'package:bahram_family_manager/core/debug/api_debug_log.dart';
 import 'package:bahram_family_manager/services/secure_storage.dart';
 
 /// Thin Dio wrapper around the Laravel `/api/v1` envelope used by the
@@ -26,9 +28,36 @@ class ApiClient {
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
+          if (kDebugMode) {
+            options.extra['__started'] = DateTime.now().millisecondsSinceEpoch;
+          }
           handler.next(options);
         },
+        onResponse: (response, handler) {
+          if (kDebugMode) {
+            final started = response.requestOptions.extra['__started'] as int?;
+            final elapsed = started == null ? null : DateTime.now().millisecondsSinceEpoch - started;
+            ApiDebugLog.record(
+              method: response.requestOptions.method,
+              path: response.requestOptions.uri.path,
+              statusCode: response.statusCode,
+              durationMs: elapsed,
+            );
+          }
+          handler.next(response);
+        },
         onError: (error, handler) async {
+          if (kDebugMode) {
+            final started = error.requestOptions.extra['__started'] as int?;
+            final elapsed = started == null ? null : DateTime.now().millisecondsSinceEpoch - started;
+            ApiDebugLog.record(
+              method: error.requestOptions.method,
+              path: error.requestOptions.uri.path,
+              statusCode: error.response?.statusCode,
+              durationMs: elapsed,
+              error: error.message,
+            );
+          }
           if (error.response?.statusCode == 401) {
             await _storage.clearToken();
             onUnauthorized?.call();

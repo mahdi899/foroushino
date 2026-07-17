@@ -178,13 +178,23 @@ export function hasUnreadSince(postsAsc: { id: number }[] | number[], lastReadPo
 }
 
 /** True when the chronologically latest post intersects the feed viewport. */
-export function isFeedTipInView(root: HTMLElement, latestPostId: number): boolean {
+export function isFeedTipInView(
+  root: HTMLElement,
+  latestPostId: number,
+  distanceFromBottom?: number,
+): boolean {
   if (latestPostId <= 0) return false;
   const el = document.getElementById(`family-post-${latestPostId}`);
-  if (!el) return false;
-  const rootRect = root.getBoundingClientRect();
-  const elRect = el.getBoundingClientRect();
-  return elRect.top < rootRect.bottom - 8 && elRect.bottom > rootRect.top + 8;
+  if (el) {
+    const rootRect = root.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    return elRect.top < rootRect.bottom - 8 && elRect.bottom > rootRect.top + 8;
+  }
+  // Virtualized tip not mounted — near the bottom counts as tip in view.
+  if (typeof distanceFromBottom === 'number' && distanceFromBottom < 120) {
+    return true;
+  }
+  return false;
 }
 
 /**

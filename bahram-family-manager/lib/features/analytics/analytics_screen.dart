@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
+import 'package:bahram_family_manager/features/entry_links/entry_links_panel.dart';
 import 'package:bahram_family_manager/features/entry_links/entry_links_screen.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
@@ -95,14 +96,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     ],
                   ),
                   if (context.watch<AppState>().user?.can('family.entry_links.manage') ?? false) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    OutlinedButton.icon(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const EntryLinksScreen()),
-                      ),
-                      icon: const Icon(Icons.add_link_rounded),
-                      label: const Text('ساخت و مدیریت لینک‌های ورود'),
-                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    const EntryLinksPanel(maxItems: 6),
                   ],
                   const SizedBox(height: AppSpacing.xl),
                   _SectionTitle('منابع ورودی'),

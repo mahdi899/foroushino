@@ -66,6 +66,7 @@ final class FamilyBrandingService
         ]);
 
         Cache::forget(self::CACHE_KEY);
+        app(FamilyMetaCacheService::class)->forgetAllMeta();
 
         return $branding->fresh();
     }
