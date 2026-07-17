@@ -1,6 +1,14 @@
 import { http } from '@/services/http'
 import { mapAgentFromAdmin } from '@/services/mappers'
 import { useStore } from '@/store/useStore'
+import {
+  getUsersInflight,
+  invalidateAdminDirectory,
+  isAdminUsersFresh,
+  readCachedAdminUsers,
+  setUsersInflight,
+  writeCachedAdminUsers,
+} from '@/services/adminDataCache'
 
 type Dto = Record<string, unknown>
 
@@ -26,14 +34,42 @@ export interface UpdateAgentInput {
   confirmBankCard?: boolean
 }
 
-export async function fetchAdminAgents() {
+async function loadAdminAgentsFromApi(): Promise<ReturnType<typeof mapAgentFromAdmin>[]> {
   const raw = await http.get<Dto[]>('/admin/users')
   const agents = raw.map(mapAgentFromAdmin)
-  const upsertAgent = useStore.getState().upsertAgent
-  for (const agent of agents) {
-    upsertAgent(agent)
-  }
+  useStore.getState().setAgents(agents)
+  writeCachedAdminUsers(agents)
   return agents
+}
+
+export async function fetchAdminAgents(force = false) {
+  if (!force) {
+    const cached = readCachedAdminUsers()
+    if (cached) {
+      if (useStore.getState().agents.length === 0) {
+        useStore.getState().setAgents(cached)
+      }
+      return cached
+    }
+
+    const inflight = getUsersInflight()
+    if (inflight) return inflight
+  }
+
+  const promise = loadAdminAgentsFromApi().finally(() => setUsersInflight(null))
+  setUsersInflight(promise)
+  return promise
+}
+
+export async function ensureAdminAgentsLoaded(force = false) {
+  if (
+    !force &&
+    isAdminUsersFresh() &&
+    useStore.getState().agents.length > 0
+  ) {
+    return useStore.getState().agents
+  }
+  return fetchAdminAgents(force)
 }
 
 export async function createAgent(input: CreateAgentInput) {
@@ -50,6 +86,7 @@ export async function createStaff(input: CreateStaffInput) {
 
   const raw = await http.post<Dto>('/admin/users', payload)
   const agent = mapAgentFromAdmin(raw)
+  invalidateAdminDirectory()
   useStore.getState().upsertAgent(agent)
   return agent
 }
@@ -67,6 +104,7 @@ export async function updateAgent(agentId: string, input: UpdateAgentInput) {
 
   const raw = await http.patch<Dto>(`/admin/users/${agentId}`, payload)
   const agent = mapAgentFromAdmin(raw)
+  invalidateAdminDirectory()
   useStore.getState().upsertAgent(agent)
   return agent
 }

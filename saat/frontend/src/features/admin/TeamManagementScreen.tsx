@@ -8,7 +8,7 @@ import { isManagerRole } from '@/lib/roles'
 import { toFa } from '@/lib/format'
 import { apiErrorMessage } from '@/lib/apiErrors'
 import { createTeam, updateTeam } from '@/services/teamAdminActions'
-import { fetchAdminAgents } from '@/services/userAdminActions'
+import { ensureAdminAgentsLoaded } from '@/services/userAdminActions'
 import { TeamFormSheet } from '@/components/domain/TeamFormSheet'
 import { buildTeamStaffOptions, memberIdsForTeam } from '@/lib/teamStaffOptions'
 import { groupTeamsBySupervisor } from '@/lib/teamHierarchy'
@@ -51,7 +51,7 @@ export function TeamManagementScreen() {
 
   useEffect(() => {
     if (!canManage) return
-    void fetchAdminAgents().catch(() => {
+    void ensureAdminAgentsLoaded().catch(() => {
       pushToast('بارگذاری پرسنل ناموفق بود', 'error')
     })
   }, [canManage, pushToast])
@@ -59,6 +59,7 @@ export function TeamManagementScreen() {
   if (!canManage) return null
 
   const openCreate = () => {
+    setEditTarget(null)
     setName('')
     setLeaderId('')
     setSupervisorId(supervisors[0]?.id ?? '')
@@ -67,6 +68,7 @@ export function TeamManagementScreen() {
   }
 
   const openEdit = (team: Team) => {
+    setCreateOpen(false)
     setEditTarget(team)
     setName(team.name)
     setLeaderId(team.leaderId || '')
@@ -175,7 +177,7 @@ export function TeamManagementScreen() {
             </div>
 
             <div className="space-y-2">
-              {group.teams
+              {[...group.teams]
                 .sort((a, b) => a.team.name.localeCompare(b.team.name, 'fa'))
                 .map(({ team }) => {
                   const leaderAgent = agents.find((agent) => agent.id === team.leaderId)

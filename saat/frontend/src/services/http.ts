@@ -55,7 +55,7 @@ export class NetworkError extends Error {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   body?: unknown
   idempotencyKey?: string
   isFormData?: boolean
@@ -118,6 +118,7 @@ export const http = {
     request<T>(path, { method: 'POST', body, idempotencyKey }),
   postForm: <T>(path: string, body: FormData) => request<T>(path, { method: 'POST', body, isFormData: true }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),
+  put: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PUT', body }),
   del: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 }
 

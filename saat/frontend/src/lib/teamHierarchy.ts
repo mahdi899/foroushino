@@ -26,6 +26,47 @@ function supervisorKey(team: Team): string {
   return team.supervisorId ?? UNASSIGNED_SUPERVISOR_KEY
 }
 
+function buildMembersByTeamId(teams: Team[], agents: Agent[]): Map<string, Agent[]> {
+  const agentsById = new Map(agents.map((agent) => [agent.id, agent]))
+  const byTeamId = new Map<string, Agent[]>()
+
+  for (const team of teams) {
+    const members = team.agentIds
+      .map((id) => agentsById.get(id))
+      .filter((agent): agent is Agent => agent != null && agent.role === 'agent')
+
+    if (members.length === 0) {
+      const fallback = agents.filter((agent) => agent.teamId === team.id && agent.role === 'agent')
+      byTeamId.set(team.id, fallback)
+      continue
+    }
+
+    byTeamId.set(team.id, members)
+  }
+
+  return byTeamId
+}
+
+function buildPendingSalesByTeamId(
+  sales: { teamId: string; status: string }[],
+): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const sale of sales) {
+    if (sale.status !== 'pending_confirmation') continue
+    counts.set(sale.teamId, (counts.get(sale.teamId) ?? 0) + 1)
+  }
+  return counts
+}
+
+function buildReportsByTeamId(teamReports: TeamReport[], today: string): Map<string, TeamReport> {
+  const reports = new Map<string, TeamReport>()
+  for (const report of teamReports) {
+    if (report.reportDate !== today) continue
+    reports.set(report.teamId, report)
+  }
+  return reports
+}
+
 export function buildTeamHierarchyRows(
   teams: Team[],
   agents: Agent[],
@@ -33,16 +74,16 @@ export function buildTeamHierarchyRows(
   teamReports: TeamReport[],
   today: string,
 ): TeamHierarchyRow[] {
+  const membersByTeamId = buildMembersByTeamId(teams, agents)
+  const pendingSalesByTeamId = buildPendingSalesByTeamId(sales)
+  const reportsByTeamId = buildReportsByTeamId(teamReports, today)
+
   return teams.map((team) => {
-    const members = teamAgents(teams, agents, team.id)
+    const members = membersByTeamId.get(team.id) ?? teamAgents(teams, agents, team.id)
     const callsToday = members.reduce((sum, agent) => sum + agent.callsToday, 0)
     const successfulToday = members.reduce((sum, agent) => sum + agent.successfulToday, 0)
     const conversion =
       callsToday > 0 ? Math.round((successfulToday / callsToday) * 1000) / 10 : 0
-    const pendingSales = sales.filter(
-      (sale) => sale.teamId === team.id && sale.status === 'pending_confirmation',
-    ).length
-    const report = teamReports.find((row) => row.teamId === team.id && row.reportDate === today)
 
     return {
       team,
@@ -50,8 +91,8 @@ export function buildTeamHierarchyRows(
       members,
       callsToday,
       conversion,
-      pendingSales,
-      report,
+      pendingSales: pendingSalesByTeamId.get(team.id) ?? 0,
+      report: reportsByTeamId.get(team.id),
     }
   })
 }
@@ -134,4 +175,8 @@ export function buildSupervisorHierarchyList(
   if (unassigned) result.push(unassigned)
 
   return result
+}
+
+export function sortTeamHierarchyRows(rows: TeamHierarchyRow[]): TeamHierarchyRow[] {
+  return [...rows].sort((a, b) => a.team.name.localeCompare(b.team.name, 'fa'))
 }

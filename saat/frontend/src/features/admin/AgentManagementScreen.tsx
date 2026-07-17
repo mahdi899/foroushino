@@ -8,7 +8,7 @@ import { AgentDetailSheet } from '@/components/domain/AgentDetailSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { hasPermission } from '@/lib/permissions'
 import { toFa, toEn } from '@/lib/format'
-import { createAgent, suspendAgent, activateAgent, updateAgent, fetchAdminAgents } from '@/services/userAdminActions'
+import { createAgent, suspendAgent, activateAgent, updateAgent, ensureAdminAgentsLoaded } from '@/services/userAdminActions'
 import { clearBankAccount } from '@/services/walletActions'
 import { EmptyState } from '@/components/ui/States'
 import { cn } from '@/lib/cn'
@@ -61,7 +61,7 @@ export function AgentManagementScreen() {
 
   useEffect(() => {
     if (!canView) return
-    void fetchAdminAgents().catch(() => {
+    void ensureAdminAgentsLoaded().catch(() => {
       pushToast('بارگذاری کارشناسان ناموفق بود', 'error')
     })
   }, [canView, pushToast])

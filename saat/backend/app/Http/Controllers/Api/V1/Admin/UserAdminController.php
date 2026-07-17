@@ -10,6 +10,7 @@ use App\Http\Resources\V1\UserAdminResource;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\Admin\AgentAdminStats;
+use App\Services\Admin\AdminDirectoryCache;
 use App\Services\WalletService;
 use App\Support\AdminScope;
 use App\Support\ApiResponse;
@@ -23,35 +24,40 @@ class UserAdminController extends Controller
     public function index(Request $request): JsonResponse
     {
         $this->authorizeView($request);
-
-        $query = User::query()->with('team')->orderBy('name');
         $user = $request->user();
+        abort_unless($user, 401);
 
-        if ($user && ! TeamScope::isOrgWide($user)) {
-            $teamIds = TeamScope::supervisedTeamIds($user);
+        $users = AdminDirectoryCache::rememberUsers($user, function () use ($request, $user) {
+            $query = User::query()->with(['team', 'roles'])->orderBy('name');
 
-            if ($user->hasRole(RoleName::Leader->value) && $user->can('users.manage-team-roster')) {
-                $query->where(function ($q) use ($teamIds): void {
-                    $q->whereIn('team_id', $teamIds)
-                        ->orWhereNull('team_id');
-                })->role(RoleName::Agent->value);
-            } elseif ($teamIds !== []) {
-                $leaderIds = Team::query()->whereIn('id', $teamIds)->pluck('leader_id')->filter()->all();
-                $query->where(function ($q) use ($teamIds, $leaderIds): void {
-                    $q->whereIn('team_id', $teamIds);
-                    if ($leaderIds !== []) {
-                        $q->orWhereIn('id', $leaderIds);
-                    }
-                });
-            } elseif ($user->team_id) {
-                $query->where('team_id', $user->team_id);
+            if (! TeamScope::isOrgWide($user)) {
+                $teamIds = TeamScope::supervisedTeamIds($user);
+
+                if ($user->hasRole(RoleName::Leader->value) && $user->can('users.manage-team-roster')) {
+                    $query->where(function ($q) use ($teamIds): void {
+                        $q->whereIn('team_id', $teamIds)
+                            ->orWhereNull('team_id');
+                    })->role(RoleName::Agent->value);
+                } elseif ($teamIds !== []) {
+                    $leaderIds = Team::query()->whereIn('id', $teamIds)->pluck('leader_id')->filter()->all();
+                    $query->where(function ($q) use ($teamIds, $leaderIds): void {
+                        $q->whereIn('team_id', $teamIds);
+                        if ($leaderIds !== []) {
+                            $q->orWhereIn('id', $leaderIds);
+                        }
+                    });
+                } elseif ($user->team_id) {
+                    $query->where('team_id', $user->team_id);
+                }
             }
-        }
 
-        $users = $query->get();
-        AgentAdminStats::attach($users);
+            $users = $query->get();
+            AgentAdminStats::attach($users);
 
-        return ApiResponse::success(UserAdminResource::collection($users));
+            return UserAdminResource::collection($users)->resolve();
+        });
+
+        return ApiResponse::success($users);
     }
 
     public function store(StoreUserRequest $request): JsonResponse
@@ -79,8 +85,9 @@ class UserAdminController extends Controller
             Team::query()->whereKey($teamId)->update(['leader_id' => $user->id]);
         }
 
-        $fresh = $user->fresh('team');
+        $fresh = $user->fresh(['team', 'roles']);
         AgentAdminStats::attach(collect([$fresh]));
+        AdminDirectoryCache::bump();
 
         $message = match ($role) {
             RoleName::Supervisor->value => 'ناظر اضافه شد',
@@ -126,8 +133,9 @@ class UserAdminController extends Controller
             Team::query()->whereKey($user->team_id)->update(['leader_id' => $user->id]);
         }
 
-        $fresh = $user->fresh('team');
+        $fresh = $user->fresh(['team', 'roles']);
         AgentAdminStats::attach(collect([$fresh]));
+        AdminDirectoryCache::bump();
 
         return ApiResponse::success(new UserAdminResource($fresh), 'کاربر به‌روزرسانی شد');
     }

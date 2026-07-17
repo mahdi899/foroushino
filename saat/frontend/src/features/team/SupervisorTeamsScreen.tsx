@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, memo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -22,7 +22,7 @@ import { TeamFormSheet } from '@/components/domain/TeamFormSheet'
 import { SupervisorTeamsSheet } from '@/components/domain/SupervisorTeamsSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { buildTeamStaffOptions, memberIdsForTeam } from '@/lib/teamStaffOptions'
-import { buildTeamHierarchyRows, buildSupervisorHierarchyList } from '@/lib/teamHierarchy'
+import { buildTeamHierarchyRows, buildSupervisorHierarchyList, sortTeamHierarchyRows } from '@/lib/teamHierarchy'
 import { AGENTS_PER_TEAM, TEAMS_PER_SUPERVISOR } from '@/lib/teamCapacity'
 import { apiErrorMessage } from '@/lib/apiErrors'
 import { toFa } from '@/lib/format'
@@ -42,7 +42,7 @@ const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
 
 type DrillView = 'supervisors' | 'teams' | 'agents'
 
-function TeamSummaryRow({
+const TeamSummaryRow = memo(function TeamSummaryRow({
   row,
   onOpen,
   onEdit,
@@ -140,7 +140,7 @@ function TeamSummaryRow({
       )}
     </div>
   )
-}
+})
 
 export function SupervisorTeamsScreen() {
   const navigate = useNavigate()
@@ -149,6 +149,10 @@ export function SupervisorTeamsScreen() {
   const permissions = useStore((s) => s.permissions)
   const agents = useStore((s) => s.agents)
   const sales = useStore((s) => s.sales)
+  const pendingSales = useMemo(
+    () => sales.filter((sale) => sale.status === 'pending_confirmation'),
+    [sales],
+  )
   const teamReports = useStore((s) => s.teamReports)
   const pushToast = useStore((s) => s.pushToast)
   const today = todayDateKey()
@@ -175,10 +179,15 @@ export function SupervisorTeamsScreen() {
     [agents, teams],
   )
 
+  const supervisorAgents = useMemo(
+    () => agents.filter((agent) => agent.role === 'supervisor'),
+    [agents],
+  )
+
   const hierarchy = useMemo(() => {
-    const rows = buildTeamHierarchyRows(teams, agents, sales, teamReports, today)
-    return buildSupervisorHierarchyList(supervisors, rows, agents)
-  }, [teams, agents, sales, teamReports, today, supervisors])
+    const rows = buildTeamHierarchyRows(teams, agents, pendingSales, teamReports, today)
+    return buildSupervisorHierarchyList(supervisorAgents, rows, agents)
+  }, [teams, agents, pendingSales, teamReports, today, supervisorAgents])
 
   const selectedGroup = useMemo(
     () => hierarchy.find((group) => group.supervisorId === selectedSupervisorId) ?? null,
@@ -201,9 +210,10 @@ export function SupervisorTeamsScreen() {
     hasPermission(permissions, 'leads.reassign')
 
   const totalAgents = hierarchy.reduce((sum, group) => sum + group.agentCount, 0)
-  const supervisorCount = supervisors.length
+  const supervisorCount = supervisorAgents.length
 
   const openCreate = () => {
+    setEditTeam(null)
     setTeamName('')
     setLeaderId('')
     setSupervisorId(selectedSupervisorId ?? supervisors[0]?.id ?? '')
@@ -211,7 +221,8 @@ export function SupervisorTeamsScreen() {
     setCreateOpen(true)
   }
 
-  const openTeamEdit = (team: Team) => {
+  const openTeamEdit = useCallback((team: Team) => {
+    setCreateOpen(false)
     setEditTeam(team)
     setTeamName(team.name)
     setLeaderId(team.leaderId || '')
@@ -219,7 +230,7 @@ export function SupervisorTeamsScreen() {
     setMemberIds(
       team.agentIds.length > 0 ? [...team.agentIds] : memberIdsForTeam(team.id, agents),
     )
-  }
+  }, [agents, selectedSupervisorId])
 
   const openSupervisorEdit = (supervisorIdValue: string) => {
     const assigned = teams.filter((team) => team.supervisorId === supervisorIdValue).map((team) => team.id)
@@ -243,8 +254,8 @@ export function SupervisorTeamsScreen() {
       })
       pushToast('تیم ایجاد شد', 'success')
       setCreateOpen(false)
-    } catch {
-      pushToast('ایجاد تیم ناموفق بود', 'error')
+    } catch (error) {
+      pushToast(apiErrorMessage(error, 'ایجاد تیم ناموفق بود'), 'error')
     } finally {
       setBusy(false)
     }
@@ -262,8 +273,8 @@ export function SupervisorTeamsScreen() {
       })
       pushToast('تیم به‌روز شد', 'success')
       setEditTeam(null)
-    } catch {
-      pushToast('ویرایش تیم ناموفق بود', 'error')
+    } catch (error) {
+      pushToast(apiErrorMessage(error, 'ویرایش تیم ناموفق بود'), 'error')
     } finally {
       setBusy(false)
     }
@@ -537,20 +548,18 @@ export function SupervisorTeamsScreen() {
                 )}
               </div>
             ) : (
-              selectedGroup.teams
-                .sort((a, b) => a.team.name.localeCompare(b.team.name, 'fa'))
-                .map((row) => (
-                  <TeamSummaryRow
-                    key={row.team.id}
-                    row={row}
-                    canEdit={canManageTeams}
-                    onOpen={() => {
-                      setSelectedTeamId(row.team.id)
-                      setView('agents')
-                    }}
-                    onEdit={() => openTeamEdit(row.team)}
-                  />
-                ))
+              sortTeamHierarchyRows(selectedGroup.teams).map((row) => (
+                <TeamSummaryRow
+                  key={row.team.id}
+                  row={row}
+                  canEdit={canManageTeams}
+                  onOpen={() => {
+                    setSelectedTeamId(row.team.id)
+                    setView('agents')
+                  }}
+                  onEdit={() => openTeamEdit(row.team)}
+                />
+              ))
             )}
           </div>
         )}
@@ -645,6 +654,7 @@ export function SupervisorTeamsScreen() {
 
       <SupervisorTeamsSheet
         open={!!editSupervisorId}
+        editingSupervisorId={editSupervisorId}
         supervisorName={
           editingSupervisor
             ? `${editingSupervisor.firstName} ${editingSupervisor.lastName}`.trim()

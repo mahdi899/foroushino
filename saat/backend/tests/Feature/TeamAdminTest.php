@@ -96,24 +96,64 @@ it('lets a manager update a team without clearing supervisor', function () {
         ->assertJsonPath('data.supervisor_id', $supervisor->id);
 });
 
-it('lets a manager assign and unassign teams for a supervisor', function () {
+it('lets a manager assign and unassign teams for a supervisor via bulk endpoint', function () {
     $manager = makeManager();
     $supervisor = makeSupervisor();
     $teamA = makeTeam(['name' => 'تیم الف']);
     $teamB = makeTeam(['name' => 'تیم ب', 'supervisor_id' => $supervisor->id]);
+    $teamC = makeTeam(['name' => 'تیم ج']);
 
     Sanctum::actingAs($manager);
 
-    $this->patchJson("/api/v1/admin/teams/{$teamA->id}", [
-        'supervisor_id' => $supervisor->id,
+    $this->patchJson("/api/v1/admin/supervisors/{$supervisor->id}/teams", [
+        'team_ids' => [$teamA->id, $teamB->id],
     ])->assertOk()
-        ->assertJsonPath('data.supervisor_id', $supervisor->id);
-
-    $this->patchJson("/api/v1/admin/teams/{$teamB->id}", [
-        'supervisor_id' => null,
-    ])->assertOk()
-        ->assertJsonPath('data.supervisor_id', null);
+        ->assertJsonPath('message', 'تیم‌های ناظر به‌روزرسانی شد');
 
     expect($teamA->fresh()->supervisor_id)->toBe($supervisor->id);
+    expect($teamB->fresh()->supervisor_id)->toBe($supervisor->id);
+    expect($teamC->fresh()->supervisor_id)->toBeNull();
+
+    $this->patchJson("/api/v1/admin/supervisors/{$supervisor->id}/teams", [
+        'team_ids' => [],
+    ])->assertOk();
+
+    expect($teamA->fresh()->supervisor_id)->toBeNull();
     expect($teamB->fresh()->supervisor_id)->toBeNull();
+});
+
+it('syncs team members in one request', function () {
+    $manager = makeManager();
+    $team = makeTeam();
+    $agentA = makeAgent(['team_id' => $team->id]);
+    $agentB = makeAgent(['team_id' => $team->id]);
+    $agentC = makeAgent();
+
+    Sanctum::actingAs($manager);
+
+    $this->putJson("/api/v1/admin/teams/{$team->id}/members", [
+        'agent_ids' => [$agentA->id, $agentC->id],
+    ])->assertOk()
+        ->assertJsonPath('message', 'اعضای تیم به‌روزرسانی شد');
+
+    expect($agentA->fresh()->team_id)->toBe($team->id);
+    expect($agentB->fresh()->team_id)->toBeNull();
+    expect($agentC->fresh()->team_id)->toBe($team->id);
+});
+
+it('invalidates admin directory cache after team update', function () {
+    $manager = makeManager();
+    $team = makeTeam(['name' => 'قبل از کش']);
+
+    Sanctum::actingAs($manager);
+
+    $first = $this->getJson('/api/v1/admin/teams')->assertOk();
+    expect(collect($first->json('data'))->firstWhere('id', $team->id)['name'])->toBe('قبل از کش');
+
+    $this->patchJson("/api/v1/admin/teams/{$team->id}", [
+        'name' => 'بعد از کش',
+    ])->assertOk();
+
+    $second = $this->getJson('/api/v1/admin/teams')->assertOk();
+    expect(collect($second->json('data'))->firstWhere('id', $team->id)['name'])->toBe('بعد از کش');
 });

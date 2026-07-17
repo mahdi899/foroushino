@@ -11,7 +11,7 @@ import { Chip } from '@/components/ui/Chip'
 import { roleLabels } from '@/data/labels'
 import { hasPermission } from '@/lib/permissions'
 import { toFa } from '@/lib/format'
-import { createStaff, fetchAdminAgents } from '@/services/userAdminActions'
+import { createStaff, ensureAdminAgentsLoaded } from '@/services/userAdminActions'
 import type { Role } from '@/types'
 
 const STAFF_ROLES: Role[] = ['supervisor', 'leader']
@@ -53,7 +53,7 @@ export function StaffManagementScreen() {
 
   useEffect(() => {
     if (!hasPermission(permissions, 'users.view')) return
-    void fetchAdminAgents().catch(() => {
+    void ensureAdminAgentsLoaded().catch(() => {
       pushToast('بارگذاری پرسنل ناموفق بود', 'error')
     })
   }, [permissions, pushToast])

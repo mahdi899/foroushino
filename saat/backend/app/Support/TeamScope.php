@@ -11,6 +11,9 @@ use Illuminate\Database\Eloquent\Builder;
 /** Resolves whether a user sees one team or the whole org. */
 final class TeamScope
 {
+    /** @var array<int, list<int>> */
+    private static array $supervisedTeamIdsCache = [];
+
     public static function isOrgWide(User $user): bool
     {
         return $user->hasAnyRole([
@@ -48,8 +51,13 @@ final class TeamScope
      */
     public static function supervisedTeamIds(User $user): array
     {
+        $cacheKey = (int) $user->id;
+        if (array_key_exists($cacheKey, self::$supervisedTeamIdsCache)) {
+            return self::$supervisedTeamIdsCache[$cacheKey];
+        }
+
         if (self::isOrgWide($user)) {
-            return [];
+            return self::$supervisedTeamIdsCache[$cacheKey] = [];
         }
 
         if ($user->hasRole(RoleName::Supervisor->value)) {
@@ -61,22 +69,22 @@ final class TeamScope
                 ->all();
 
             if ($ids !== []) {
-                return $ids;
+                return self::$supervisedTeamIdsCache[$cacheKey] = $ids;
             }
 
-            return $user->team_id ? [(int) $user->team_id] : [];
+            return self::$supervisedTeamIdsCache[$cacheKey] = $user->team_id ? [(int) $user->team_id] : [];
         }
 
         if ($user->hasRole(RoleName::Leader->value)) {
             $ledTeamId = Team::query()->where('leader_id', $user->id)->value('id');
             if ($ledTeamId) {
-                return [(int) $ledTeamId];
+                return self::$supervisedTeamIdsCache[$cacheKey] = [(int) $ledTeamId];
             }
 
-            return $user->team_id ? [(int) $user->team_id] : [];
+            return self::$supervisedTeamIdsCache[$cacheKey] = $user->team_id ? [(int) $user->team_id] : [];
         }
 
-        return [];
+        return self::$supervisedTeamIdsCache[$cacheKey] = [];
     }
 
     public static function canPickTeam(User $user): bool

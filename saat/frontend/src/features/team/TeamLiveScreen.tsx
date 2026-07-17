@@ -39,13 +39,11 @@ import { buildTeamStaffOptions, memberIdsForTeam } from '@/lib/teamStaffOptions'
 import { updateTeam } from '@/services/teamAdminActions'
 import { apiErrorMessage } from '@/lib/apiErrors'
 import { apiMode } from '@/services'
-import { fetchTeamLive, type TeamLiveMember } from '@/services/teamLive'
-import { fetchAdminAgents } from '@/services/userAdminActions'
+import { subscribeTeamLive } from '@/services/teamLivePoller'
+import type { TeamLiveMember } from '@/services/teamLive'
 import type { Availability, Call } from '@/types'
 
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
-
-const LIVE_POLL_MS = 10_000
 
 export function TeamLiveScreen() {
   const navigate = useNavigate()
@@ -102,26 +100,21 @@ export function TeamLiveScreen() {
     return getTeamAgentIds(teams, agents, currentAgentId, role)
   }, [team, teams, agents, currentAgentId, role])
 
-  const refreshTeamLive = useCallback(async () => {
-    if (apiMode !== 'http') return
-
-    try {
-      const live = await fetchTeamLive(team?.id ?? selectedTeamId)
-      setLiveMembers(live.members)
-      setLiveOnlineCount(live.onlineCount)
-      setLiveRecentCalls(live.recentCalls)
-    } catch {
-      // Keep last good snapshot; store fallback still renders.
-    }
-  }, [team?.id, selectedTeamId])
+  const refreshTeamLive = useCallback((live: {
+    members: TeamLiveMember[]
+    onlineCount: number
+    recentCalls: Call[]
+  }) => {
+    setLiveMembers(live.members)
+    setLiveOnlineCount(live.onlineCount)
+    setLiveRecentCalls(live.recentCalls)
+  }, [])
 
   useEffect(() => {
     if (apiMode !== 'http') return
 
-    void refreshTeamLive()
-    const timer = setInterval(() => void refreshTeamLive(), LIVE_POLL_MS)
-    return () => clearInterval(timer)
-  }, [refreshTeamLive])
+    return subscribeTeamLive(team?.id ?? selectedTeamId, refreshTeamLive)
+  }, [team?.id, selectedTeamId, refreshTeamLive])
 
   const members = useMemo(() => {
     if (liveMembers) {
@@ -257,10 +250,8 @@ export function TeamLiveScreen() {
     haptic('selection')
     setProfileAgentId(agentId)
     setProfileAvailability(availability)
-    if (apiMode === 'http' && canViewAgentProfile) {
-      void fetchAdminAgents().catch(() => {
-        pushToast('بارگذاری پروفایل کارشناس ناموفق بود', 'error')
-      })
+    if (canViewAgentProfile && !agents.find((agent) => agent.id === agentId)) {
+      pushToast('اطلاعات کارشناس در دسترس نیست', 'error')
     }
   }
 

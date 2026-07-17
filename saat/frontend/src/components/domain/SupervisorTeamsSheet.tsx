@@ -9,6 +9,7 @@ import type { Team } from '@/types'
 type SupervisorTeamsSheetProps = {
   open: boolean
   supervisorName: string
+  editingSupervisorId: string | null
   teams: Team[]
   selectedTeamIds: string[]
   capacity: number
@@ -21,6 +22,7 @@ type SupervisorTeamsSheetProps = {
 export function SupervisorTeamsSheet({
   open,
   supervisorName,
+  editingSupervisorId,
   teams,
   selectedTeamIds,
   capacity,
@@ -82,6 +84,7 @@ export function SupervisorTeamsSheet({
               const selected = selectedTeamIds.includes(team.id)
               const ownedElsewhere =
                 team.supervisorId != null &&
+                team.supervisorId !== editingSupervisorId &&
                 team.supervisorName &&
                 !selected
               return (

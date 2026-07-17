@@ -38,7 +38,7 @@ import { roleLabels } from '@/data/labels'
 import { conversionRateFromStats } from '@/lib/dailyGoal'
 import { toFa } from '@/lib/format'
 import { apiMode } from '@/services'
-import { fetchTeamLive } from '@/services/teamLive'
+import { subscribeTeamLive } from '@/services/teamLivePoller'
 import { haptic } from '@/lib/telegram'
 import { countPendingCommissionsForLeader, countPendingCommissionsForSupervisor, resolveCommissionApprovalMode } from '@/lib/commissionQueue'
 import { cn } from '@/lib/cn'
@@ -458,18 +458,9 @@ export function ManagementHome() {
   useEffect(() => {
     if (apiMode !== 'http' || !isManagementRole(role)) return
 
-    const refresh = async () => {
-      try {
-        const live = await fetchTeamLive(managedTeam?.id ?? null)
-        mergeTeamLiveStats(live)
-      } catch {
-        // Keep last synced snapshot.
-      }
-    }
-
-    void refresh()
-    const timer = window.setInterval(() => void refresh(), 15_000)
-    return () => window.clearInterval(timer)
+    return subscribeTeamLive(managedTeam?.id ?? null, (live) => {
+      mergeTeamLiveStats(live)
+    })
   }, [role, managedTeam?.id, mergeTeamLiveStats])
 
   const teamAgentIds = getTeamAgentIds(teams, agents, currentAgentId, role)

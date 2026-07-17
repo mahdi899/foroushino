@@ -1,7 +1,13 @@
 import { http } from '@/services/http'
 import { mapTeamFromAdmin } from '@/services/mappers'
 import { useStore } from '@/store/useStore'
-import { updateAgent } from '@/services/userAdminActions'
+import {
+  getTeamsInflight,
+  invalidateAdminDirectory,
+  readCachedAdminTeams,
+  setTeamsInflight,
+  writeCachedAdminTeams,
+} from '@/services/adminDataCache'
 import type { Team } from '@/types'
 
 type Dto = Record<string, unknown>
@@ -27,23 +33,30 @@ function memberIdsForTeam(teamId: string): string[] {
     .map((agent) => agent.id)
 }
 
+function mapTeamsFromAdmin(raw: Dto[], agents = useStore.getState().agents): Team[] {
+  return (Array.isArray(raw) ? raw : []).map((dto) =>
+    mapTeamFromAdmin(
+      dto,
+      agents
+        .filter((agent) => agent.teamId === String(dto.id) && agent.role === 'agent')
+        .map((agent) => agent.id),
+    ),
+  )
+}
+
 export async function syncTeamMembers(teamId: string, agentIds: string[]): Promise<void> {
-  const agents = useStore.getState().agents.filter((agent) => agent.role === 'agent')
+  const payload = { agent_ids: agentIds.map((id) => Number(id)) }
+  await http.put<Dto>(`/admin/teams/${teamId}/members`, payload)
+
+  const agents = useStore.getState().agents
   const desired = new Set(agentIds)
-  const tasks: Promise<unknown>[] = []
-
-  for (const agent of agents) {
-    const onThisTeam = agent.teamId === teamId
-    const shouldBeOn = desired.has(agent.id)
-
-    if (onThisTeam && !shouldBeOn) {
-      tasks.push(updateAgent(agent.id, { teamId: null }))
-    } else if (!onThisTeam && shouldBeOn) {
-      tasks.push(updateAgent(agent.id, { teamId }))
-    }
-  }
-
-  await Promise.all(tasks)
+  const nextAgents = agents.map((agent) => {
+    if (agent.role !== 'agent') return agent
+    if (desired.has(agent.id)) return { ...agent, teamId }
+    if (agent.teamId === teamId) return { ...agent, teamId: '' }
+    return agent
+  })
+  useStore.getState().setAgents(nextAgents)
 
   const team = useStore.getState().teams.find((row) => row.id === teamId)
   if (team) {
@@ -53,6 +66,8 @@ export async function syncTeamMembers(teamId: string, agentIds: string[]): Promi
       agentsCount: agentIds.length,
     })
   }
+
+  invalidateAdminDirectory()
 }
 
 export async function createTeam(input: CreateTeamInput): Promise<Team> {
@@ -70,6 +85,7 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
   }
 
   const team = mapTeamFromAdmin(raw, memberIds)
+  invalidateAdminDirectory()
   useStore.getState().upsertTeam(team)
   return team
 }
@@ -91,44 +107,42 @@ export async function updateTeam(teamId: string, input: UpdateTeamInput): Promis
   }
 
   const team = mapTeamFromAdmin(raw, input.agentIds ?? memberIdsForTeam(teamId))
+  invalidateAdminDirectory()
   useStore.getState().upsertTeam(team)
   return team
 }
 
 export async function assignSupervisorTeams(supervisorId: string, teamIds: string[]): Promise<void> {
-  const teams = useStore.getState().teams
-  const desired = new Set(teamIds)
-  const currentIds = teams
-    .filter((team) => String(team.supervisorId ?? '') === String(supervisorId))
-    .map((team) => team.id)
-
-  const toAssign = teamIds.filter((teamId) => {
-    const team = teams.find((row) => row.id === teamId)
-    return String(team?.supervisorId ?? '') !== String(supervisorId)
+  await http.patch<Dto>(`/admin/supervisors/${supervisorId}/teams`, {
+    team_ids: teamIds.map((id) => Number(id)),
   })
-  const toUnassign = currentIds.filter((teamId) => !desired.has(teamId))
-
-  for (const teamId of toUnassign) {
-    await updateTeam(teamId, { supervisorId: null })
-  }
-  for (const teamId of toAssign) {
-    await updateTeam(teamId, { supervisorId })
-  }
-
-  await refreshTeamsFromAdmin()
+  invalidateAdminDirectory()
+  await refreshTeamsFromAdmin(true)
 }
 
-export async function refreshTeamsFromAdmin(): Promise<Team[]> {
+async function loadTeamsFromApi(): Promise<Team[]> {
   const raw = await http.get<Dto[]>('/admin/teams')
-  const agents = useStore.getState().agents
-  const teams = (Array.isArray(raw) ? raw : []).map((dto) =>
-    mapTeamFromAdmin(
-      dto,
-      agents
-        .filter((agent) => agent.teamId === String(dto.id) && agent.role === 'agent')
-        .map((agent) => agent.id),
-    ),
-  )
-  useStore.setState({ teams })
+  const teams = mapTeamsFromAdmin(raw)
+  useStore.getState().setTeams(teams)
+  writeCachedAdminTeams(teams)
   return teams
+}
+
+export async function refreshTeamsFromAdmin(force = false): Promise<Team[]> {
+  if (!force) {
+    const cached = readCachedAdminTeams()
+    if (cached) {
+      if (useStore.getState().teams.length === 0) {
+        useStore.getState().setTeams(cached)
+      }
+      return cached
+    }
+
+    const inflight = getTeamsInflight()
+    if (inflight) return inflight
+  }
+
+  const promise = loadTeamsFromApi().finally(() => setTeamsInflight(null))
+  setTeamsInflight(promise)
+  return promise
 }
