@@ -2,24 +2,32 @@
 
 namespace App\Modules\TelegramBot\Services;
 
+use App\Modules\TelegramBot\Models\TelegramAccount;
+
 class MainMenuKeyboard
 {
     /** @return list<list<string>> */
-    public function rows(): array
+    public function rows(?TelegramAccount $account = null): array
     {
-        return [
+        $rows = [
             ['دوره کمپین نویسی 🎓'],
             ['سمینارها 🎤', 'سات ☎️'],
             ['کانال مرجع 📣', 'خانواده 👨‍👩‍👧‍👦'],
             ['معرفی دوستان 🎁', 'پشتیبانی 🎫', 'حساب کاربری 👤'],
         ];
+
+        if ($account?->isBotAdmin()) {
+            $rows[] = ['پنل ادمین بات 🛠'];
+        }
+
+        return $rows;
     }
 
     /** @return array<string, mixed> */
-    public function replyMarkup(): array
+    public function replyMarkup(?TelegramAccount $account = null): array
     {
         $keyboard = [];
-        foreach ($this->rows() as $row) {
+        foreach ($this->rows($account) as $row) {
             $keyboard[] = array_map(static fn (string $text) => ['text' => $text], $row);
         }
 
@@ -30,15 +38,16 @@ class MainMenuKeyboard
         ];
     }
 
-    public function isMenuButton(string $text): bool
+    public function isMenuButton(string $text, ?TelegramAccount $account = null): bool
     {
-        foreach ($this->rows() as $row) {
+        foreach ($this->rows($account) as $row) {
             if (in_array($text, $row, true)) {
                 return true;
             }
         }
 
-        return false;
+        // Keep recognizing admin button even if flag was just toggled mid-session.
+        return $text === 'پنل ادمین بات 🛠';
     }
 
     /** @return array<string, mixed> */

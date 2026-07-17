@@ -3,11 +3,11 @@ import { can, getCurrentUser } from '@/lib/auth/session';
 import { loadTelegramBotProfile, loadTelegramBots } from '@/lib/admin/telegram';
 import type { TelegramBotProfileView } from '@/lib/admin/telegram.types';
 import { TelegramSubPage } from '../TelegramSubPage';
-import { TelegramSettingsClient } from './TelegramSettingsClient';
+import { TelegramBotProfileClient } from './TelegramBotProfileClient';
 
 export const dynamic = 'force-dynamic';
 
-export default async function TelegramSettingsPage() {
+export default async function TelegramBotProfilePage() {
   const user = await getCurrentUser();
   if (!user || !can(user, 'telegram.settings.manage')) {
     redirect('/admin/telegram');
@@ -32,11 +32,11 @@ export default async function TelegramSettingsPage() {
 
   return (
     <TelegramSubPage
-      title="تنظیمات ربات"
-      description="مدیریت ربات‌ها، وب‌هوک، پروفایل تلگرام و گروه پشتیبانی از پنل"
-      icon="Settings"
+      title="پروفایل بات"
+      description="تغییر نام، توضیح کوتاه، توضیحات و عکس پروفایل ربات در تلگرام"
+      icon="Bot"
     >
-      <TelegramSettingsClient bots={bots} profiles={profiles} />
+      <TelegramBotProfileClient bots={bots} profiles={profiles} />
     </TelegramSubPage>
   );
 }

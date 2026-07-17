@@ -100,6 +100,9 @@ interface TelegramBotClientInterface
     /** @return array<string, mixed> */
     public function getChatMember(int|string $chatId, int $userId): array;
 
+    /** @return array<string, mixed> */
+    public function getChat(int|string $chatId): array;
+
     /** @return list<array<string, mixed>> */
     public function getChatAdministrators(int|string $chatId): array;
 
@@ -123,4 +126,48 @@ interface TelegramBotClientInterface
     public function revokeChatInviteLink(int|string $chatId, string $inviteLink): array;
 
     public function sendChatAction(int|string $chatId, string $action): bool;
+
+    /** @return array<string, mixed>|bool */
+    public function setMyName(string $name, ?string $languageCode = null): array|bool;
+
+    /** @return array<string, mixed> */
+    public function getMyName(?string $languageCode = null): array;
+
+    /** @return array<string, mixed>|bool */
+    public function setMyDescription(?string $description, ?string $languageCode = null): array|bool;
+
+    /** @return array<string, mixed> */
+    public function getMyDescription(?string $languageCode = null): array;
+
+    /** @return array<string, mixed>|bool */
+    public function setMyShortDescription(?string $shortDescription, ?string $languageCode = null): array|bool;
+
+    /** @return array<string, mixed> */
+    public function getMyShortDescription(?string $languageCode = null): array;
+
+    /**
+     * Set the bot's static profile photo from a local JPG (or convertible image) path.
+     *
+     * @return array<string, mixed>|bool
+     */
+    public function setMyProfilePhoto(string $localFilePath): array|bool;
+
+    /** @return array<string, mixed>|bool */
+    public function removeMyProfilePhoto(): array|bool;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getUserProfilePhotos(int $userId, ?int $offset = null, ?int $limit = null): array;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getFile(string $fileId): array;
+
+    /**
+     * Download a file previously resolved via getFile (uses file_path from Telegram).
+     * Returns raw bytes; never logs the tokenized download URL.
+     */
+    public function downloadFile(string $filePath): string;
 }

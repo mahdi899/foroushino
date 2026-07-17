@@ -14,6 +14,9 @@ export interface AdminProduct {
   referral_cashback_type?: 'percent' | 'fixed' | null;
   referral_cashback_value?: number | null;
   is_active: boolean;
+  show_in_telegram?: boolean;
+  telegram_list_visibility?: 'public' | 'private';
+  telegram_sort_order?: number;
   featured_image: string | null;
   featured_image_url: string | null;
   show_on_courses?: boolean;

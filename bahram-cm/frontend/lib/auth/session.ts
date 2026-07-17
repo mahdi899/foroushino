@@ -25,7 +25,12 @@ export const getToken = cache(async (): Promise<string | undefined> => {
  */
 export async function adminFetch<T = unknown>(
   path: string,
-  options: { method?: string; body?: unknown; query?: Record<string, string | number | undefined> } = {},
+  options: {
+    method?: string;
+    body?: unknown;
+    query?: Record<string, string | number | undefined>;
+    timeoutMs?: number;
+  } = {},
 ): Promise<T> {
   const token = await getToken();
   const url = new URL(`${SERVER_API_URL}${path}`);
@@ -44,7 +49,7 @@ export async function adminFetch<T = unknown>(
     },
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     cache: 'no-store',
-    signal: AbortSignal.timeout(10_000),
+    signal: AbortSignal.timeout(options.timeoutMs ?? 10_000),
   });
 
   if (!res.ok) {

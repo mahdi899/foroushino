@@ -10,7 +10,7 @@ class TelegramHealthAdminController
 {
     public function __invoke(Request $request, HealthCheckService $health): JsonResponse
     {
-        if (! $request->user()?->can('telegram.view')) {
+        if (! $request->user()?->isSuperAdmin() && ! $request->user()?->hasPermission('telegram.view')) {
             abort(403);
         }
 

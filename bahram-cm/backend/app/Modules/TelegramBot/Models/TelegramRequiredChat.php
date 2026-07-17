@@ -2,6 +2,7 @@
 
 namespace App\Modules\TelegramBot\Models;
 
+use App\Modules\TelegramBot\Support\TelegramChatIdResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -29,5 +30,10 @@ class TelegramRequiredChat extends Model
     public function bot(): BelongsTo
     {
         return $this->belongsTo(TelegramBot::class, 'telegram_bot_id');
+    }
+
+    public function resolvedChatId(): string
+    {
+        return TelegramChatIdResolver::resolve((string) $this->chat_id, $this->invite_link);
     }
 }

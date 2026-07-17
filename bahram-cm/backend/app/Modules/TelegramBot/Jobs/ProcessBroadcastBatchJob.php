@@ -50,7 +50,17 @@ class ProcessBroadcastBatchJob implements ShouldQueue
             }
 
             try {
-                $client->sendMessage($recipient->account->telegram_user_id, $text, $options);
+                $account = $recipient->account;
+                if ($account === null) {
+                    $recipient->update([
+                        'status' => 'failed',
+                        'error_message' => 'Telegram account not found.',
+                    ]);
+
+                    continue;
+                }
+
+                $client->sendMessage($account->telegram_user_id, $text, $options);
                 $recipient->update(['status' => 'sent', 'sent_at' => now()]);
             } catch (Throwable $e) {
                 $recipient->update([

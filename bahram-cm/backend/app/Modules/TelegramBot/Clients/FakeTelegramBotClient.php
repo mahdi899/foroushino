@@ -140,6 +140,15 @@ class FakeTelegramBotClient implements TelegramBotClientInterface
         return (array) $this->record('getChatMember', compact('chatId', 'userId'), ['status' => 'member']);
     }
 
+    public function getChat(int|string $chatId): array
+    {
+        return (array) $this->record('getChat', compact('chatId'), [
+            'id' => -1001234567890,
+            'type' => 'channel',
+            'username' => 'fake_channel',
+        ]);
+    }
+
     public function getChatAdministrators(int|string $chatId): array
     {
         $result = $this->record('getChatAdministrators', compact('chatId'), []);
@@ -180,6 +189,68 @@ class FakeTelegramBotClient implements TelegramBotClientInterface
     public function sendChatAction(int|string $chatId, string $action): bool
     {
         return (bool) $this->record('sendChatAction', compact('chatId', 'action'), true);
+    }
+
+    public function setMyName(string $name, ?string $languageCode = null): array|bool
+    {
+        return (bool) $this->record('setMyName', compact('name', 'languageCode'), true);
+    }
+
+    public function getMyName(?string $languageCode = null): array
+    {
+        return (array) $this->record('getMyName', compact('languageCode'), ['name' => 'Fake Bot']);
+    }
+
+    public function setMyDescription(?string $description, ?string $languageCode = null): array|bool
+    {
+        return (bool) $this->record('setMyDescription', compact('description', 'languageCode'), true);
+    }
+
+    public function getMyDescription(?string $languageCode = null): array
+    {
+        return (array) $this->record('getMyDescription', compact('languageCode'), ['description' => '']);
+    }
+
+    public function setMyShortDescription(?string $shortDescription, ?string $languageCode = null): array|bool
+    {
+        return (bool) $this->record('setMyShortDescription', compact('shortDescription', 'languageCode'), true);
+    }
+
+    public function getMyShortDescription(?string $languageCode = null): array
+    {
+        return (array) $this->record('getMyShortDescription', compact('languageCode'), ['short_description' => '']);
+    }
+
+    public function setMyProfilePhoto(string $localFilePath): array|bool
+    {
+        return (bool) $this->record('setMyProfilePhoto', compact('localFilePath'), true);
+    }
+
+    public function removeMyProfilePhoto(): array|bool
+    {
+        return (bool) $this->record('removeMyProfilePhoto', [], true);
+    }
+
+    public function getUserProfilePhotos(int $userId, ?int $offset = null, ?int $limit = null): array
+    {
+        return (array) $this->record('getUserProfilePhotos', compact('userId', 'offset', 'limit'), [
+            'total_count' => 0,
+            'photos' => [],
+        ]);
+    }
+
+    public function getFile(string $fileId): array
+    {
+        return (array) $this->record('getFile', compact('fileId'), [
+            'file_id' => $fileId,
+            'file_unique_id' => 'fake',
+            'file_path' => 'photos/file_0.jpg',
+        ]);
+    }
+
+    public function downloadFile(string $filePath): string
+    {
+        return (string) $this->record('downloadFile', compact('filePath'), '');
     }
 
     /** @param  array<string, mixed>  $arguments */

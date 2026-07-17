@@ -3,8 +3,8 @@ import type { TelegramModule } from '@/lib/admin/telegram.types';
 export const TELEGRAM_MODULES: TelegramModule[] = [
   {
     href: '/admin/telegram/users',
-    label: 'کاربران متصل',
-    description: 'حساب‌های متصل به ربات آکادمی و وضعیت عضویت',
+    label: 'کاربران و ادمین‌های بات',
+    description: 'لیست مخاطبان، مسدود کردن، و تعیین ادمین بات برای دسترسی ویژه داخل ربات',
     icon: 'Users',
     tone: 'blue',
     permission: 'telegram.users.view',
@@ -47,6 +47,15 @@ export const TELEGRAM_MODULES: TelegramModule[] = [
     group: 'content',
   },
   {
+    href: '/admin/telegram/bot-profile',
+    label: 'پروفایل بات',
+    description: 'نام، توضیح و عکس پروفایل بات در تلگرام',
+    icon: 'Bot',
+    tone: 'blue',
+    permission: 'telegram.settings.manage',
+    group: 'system',
+  },
+  {
     href: '/admin/telegram/health',
     label: 'سلامت سیستم',
     description: 'وب‌هوک، API تلگرام و صف آپدیت‌ها',
@@ -58,7 +67,7 @@ export const TELEGRAM_MODULES: TelegramModule[] = [
   {
     href: '/admin/telegram/settings',
     label: 'تنظیمات ربات',
-    description: 'توکن، وب‌هوک و همگام‌سازی با سرور',
+    description: 'وب‌هوک، گروه پشتیبانی، فعال/غیرفعال و همگام‌سازی',
     icon: 'Settings',
     tone: 'teal',
     permission: 'telegram.settings.manage',

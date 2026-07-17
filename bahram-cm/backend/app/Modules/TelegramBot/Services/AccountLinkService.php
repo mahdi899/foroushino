@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AccountLinkService
 {
@@ -31,16 +32,26 @@ class AccountLinkService
         );
     }
 
-    public function linkToUser(TelegramAccount $account, User $user): TelegramAccount
+    public function linkToUser(TelegramAccount $account, User $user, bool $reclaim = true): TelegramAccount
     {
-        return DB::transaction(function () use ($account, $user): TelegramAccount {
+        return DB::transaction(function () use ($account, $user, $reclaim): TelegramAccount {
             $existing = TelegramAccount::query()
                 ->where('user_id', $user->id)
                 ->where('id', '!=', $account->id)
                 ->first();
 
             if ($existing !== null) {
-                throw new \RuntimeException('User already linked to another Telegram account.');
+                if (! $reclaim) {
+                    throw new \RuntimeException('User already linked to another Telegram account.');
+                }
+
+                Log::channel('telegram')->info('Reclaiming site user link for new Telegram account.', [
+                    'user_id' => $user->id,
+                    'previous_telegram_account_id' => $existing->id,
+                    'new_telegram_account_id' => $account->id,
+                ]);
+
+                $existing->update(['user_id' => null]);
             }
 
             $account->update(['user_id' => $user->id]);

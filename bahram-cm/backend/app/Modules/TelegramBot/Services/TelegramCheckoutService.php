@@ -9,6 +9,10 @@ use App\Services\OrderService;
 use App\Services\ZarinpalPaymentService;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Starts checkout for a Telegram user using the same Zarinpal gateway
+ * configuration as the main site (PaymentSetting singleton).
+ */
 class TelegramCheckoutService
 {
     public function __construct(

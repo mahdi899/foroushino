@@ -59,7 +59,7 @@ export function TelegramHubClient({
           <div className="min-w-0">
             <h2 className="admin-telegram-hub__hero-title">مرکز مدیریت ربات تلگرام</h2>
             <p className="admin-telegram-hub__hero-desc">
-              وب‌هوک، کاربران متصل، پیام‌های همگانی و پشتیبانی دانشجویان — همه از یکجا.
+              کاربران و ادمین بات، پروفایل تلگرام، پیام همگانی، کانال اجباری و پشتیبانی — همه از همین بخش.
             </p>
           </div>
         </div>
@@ -141,16 +141,16 @@ export function TelegramHubClient({
         </div>
         <ul className="admin-telegram-hub__tips-list">
           <li>
-            <code>php artisan telegram:sync-bots</code>
-            <span>همگام‌سازی ربات‌ها از env</span>
+            <Link href="/admin/telegram/users" className="text-primary underline-offset-2 hover:underline">کاربران و ادمین‌های بات</Link>
+            <span>از ستون عملیات، مخاطب را «ادمین بات» کنید</span>
+          </li>
+          <li>
+            <Link href="/admin/telegram/bot-profile" className="text-primary underline-offset-2 hover:underline">پروفایل بات</Link>
+            <span>نام و توضیحات بات را در تلگرام عوض کنید</span>
           </li>
           <li>
             <code>php artisan telegram:webhook:set</code>
             <span>تنظیم وب‌هوک روی سرور</span>
-          </li>
-          <li>
-            <code>php artisan telegram:health-check</code>
-            <span>بررسی سلامت از CLI</span>
           </li>
         </ul>
       </div>

@@ -11,7 +11,10 @@ use App\Modules\TelegramBot\Services\ConversationService;
 use App\Modules\TelegramBot\Services\MainMenuKeyboard;
 use App\Modules\TelegramBot\Services\RegistrationFlowService;
 use App\Modules\TelegramBot\Services\RequiredChatMembershipService;
+use App\Modules\TelegramBot\Services\TelegramContentPresenter;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
+use App\Modules\TelegramBot\Services\TelegramSeminarCatalogService;
+use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Services\ReferralService;
 
 class MessageHandler implements UpdateHandlerInterface
@@ -23,6 +26,8 @@ class MessageHandler implements UpdateHandlerInterface
         private readonly MainMenuKeyboard $mainMenu,
         private readonly TelegramBotClientFactory $clients,
         private readonly TelegramProductCatalogService $catalog,
+        private readonly TelegramSeminarCatalogService $seminars,
+        private readonly TelegramContentPresenter $content,
         private readonly ReferralService $referrals,
     ) {}
 
@@ -37,7 +42,6 @@ class MessageHandler implements UpdateHandlerInterface
             return;
         }
 
-        // Support-group admin replies are handled separately when chat matches support group.
         if (
             filled($bot->support_group_chat_id)
             && (string) data_get($message, 'chat.id') === (string) $bot->support_group_chat_id
@@ -81,15 +85,15 @@ class MessageHandler implements UpdateHandlerInterface
                 return;
             }
 
-            if ($this->mainMenu->isMenuButton($text)) {
+            if ($this->mainMenu->isMenuButton($text, $account)) {
                 $this->handleMenuButton($bot, $account, $chatId, $text);
 
                 return;
             }
         }
 
-        if (isset($message['contact']['phone_number'])) {
-            $this->registration->handleText($bot, $account, $conversation, (string) $message['contact']['phone_number']);
+        if (isset($message['contact'])) {
+            $this->registration->handleContact($bot, $account, $conversation, $message);
 
             return;
         }
@@ -105,9 +109,9 @@ class MessageHandler implements UpdateHandlerInterface
 
         match ($text) {
             'دوره کمپین نویسی 🎓' => $this->sendProducts($client, $chatId),
-            'سمینارها 🎤' => $client->sendMessage($chatId, 'سمینارهای آینده از پنل سمینار سایت همگام می‌شوند. به‌زودی جزئیات داخل ربات تکمیل می‌شود.'),
+            'سمینارها 🎤' => $this->sendSeminars($client, $chatId),
             'سات ☎️' => $this->sendSatStatus($client, $chatId, $account),
-            'کانال مرجع 📣' => $client->sendMessage($chatId, "کانال مرجع نیاز به خرید دوره کمپین‌نویسی و احراز هویت سطح ۲ دارد.\nبرای شروع احراز هویت از منوی حساب کاربری استفاده کنید."),
+            'کانال مرجع 📣' => $this->sendReferenceChannel($client, $chatId),
             'خانواده 👨‍👩‍👧‍👦' => $this->sendFamily($client, $chatId, $account),
             'معرفی دوستان 🎁' => $this->sendReferral($client, $chatId, $account),
             'پشتیبانی 🎫' => $client->sendMessage($chatId, 'دسته پشتیبانی را انتخاب کنید:', [
@@ -120,61 +124,107 @@ class MessageHandler implements UpdateHandlerInterface
                 ],
             ]),
             'حساب کاربری 👤' => $this->sendAccount($client, $chatId, $account),
+            'پنل ادمین بات 🛠' => $this->sendBotAdminPanel($client, $bot, $account, $chatId),
             default => $client->sendMessage($chatId, 'منوی اصلی:', [
-                'reply_markup' => $this->mainMenu->replyMarkup(),
+                'reply_markup' => $this->mainMenu->replyMarkup($account),
             ]),
         };
     }
 
     private function sendProducts($client, int $chatId): void
     {
-        $products = $this->catalog->listPublic();
+        $products = $this->catalog->listPublicCourses();
         if ($products->isEmpty()) {
-            $client->sendMessage($chatId, 'در حال حاضر محصول فعالی برای تلگرام تعریف نشده است.');
+            $client->sendMessage(
+                $chatId,
+                "در حال حاضر دوره فعالی برای تلگرام تعریف نشده است.\nاز پنل سایت → تجارت → محصولات، گزینه «نمایش در تلگرام» را برای دوره فعال کنید."
+            );
 
             return;
         }
 
-        $lines = ["دوره‌های قابل خرید:\n"];
         foreach ($products->take(10) as $product) {
-            $price = number_format((int) ($product->sale_price ?? $product->price));
-            $lines[] = "• {$product->title} — {$price} تومان";
+            $options = ['reply_markup' => $this->content->productReplyMarkup($product)];
+            $client->sendMessage($chatId, $this->content->formatProductMessage($product), $options);
         }
-        $client->sendMessage($chatId, implode("\n", $lines));
+    }
+
+    private function sendSeminars($client, int $chatId): void
+    {
+        $seminars = $this->seminars->listUpcoming();
+        if ($seminars->isEmpty()) {
+            $client->sendMessage($chatId, 'در حال حاضر سمینار فعالی برای نمایش وجود ندارد.');
+
+            return;
+        }
+
+        foreach ($seminars as $seminar) {
+            $markup = $this->content->seminarReplyMarkup($seminar);
+            $options = $markup !== [] ? ['reply_markup' => $markup] : [];
+            $client->sendMessage($chatId, $this->content->formatSeminarMessage($seminar), $options);
+        }
     }
 
     private function sendSatStatus($client, int $chatId, TelegramAccount $account): void
     {
+        $satUrl = TelegramSiteUrl::satPage();
+
         if (! $account->user_id) {
-            $client->sendMessage($chatId, 'ابتدا ثبت‌نام را کامل کنید.');
+            $client->sendMessage($chatId, TelegramSiteUrl::withLink('ابتدا ثبت‌نام را کامل کنید.', $satUrl, 'صفحه سات'));
 
             return;
         }
 
         $app = SatApplication::query()->where('user_id', $account->user_id)->latest('id')->first();
         if ($app === null) {
-            $client->sendMessage($chatId, 'درخواستی برای سات ثبت نشده است. برای ثبت از سایت یا دکمه ثبت درخواست استفاده کنید.');
+            $message = TelegramSiteUrl::withLink(
+                'درخواستی برای سات ثبت نشده است. برای ثبت از سایت اقدام کنید.',
+                $satUrl,
+                'ثبت درخواست سات',
+            );
+            $client->sendMessage($chatId, $message, $this->optionalUrlMarkup('ثبت درخواست سات', $satUrl));
 
             return;
         }
 
-        $client->sendMessage($chatId, 'وضعیت سات: '.(string) ($app->status ?? '—'));
+        $message = TelegramSiteUrl::withLink(
+            'وضعیت سات: '.(string) ($app->status ?? '—'),
+            $satUrl,
+            'مشاهده صفحه سات',
+        );
+        $client->sendMessage($chatId, $message, $this->optionalUrlMarkup('مشاهده صفحه سات', $satUrl));
+    }
+
+    private function sendReferenceChannel($client, int $chatId): void
+    {
+        $identityUrl = TelegramSiteUrl::identityPage();
+        $message = TelegramSiteUrl::withLink(
+            "کانال مرجع نیاز به خرید دوره کمپین‌نویسی و احراز هویت سطح ۲ دارد.\nبرای شروع احراز هویت از منوی حساب کاربری یا لینک زیر استفاده کنید.",
+            $identityUrl,
+            'احراز هویت',
+        );
+        $client->sendMessage($chatId, $message, $this->optionalUrlMarkup('احراز هویت', $identityUrl));
     }
 
     private function sendFamily($client, int $chatId, TelegramAccount $account): void
     {
+        $familyUrl = TelegramSiteUrl::familyHome();
+
         if (! $account->user_id || ! $account->user) {
-            $client->sendMessage($chatId, 'ابتدا ثبت‌نام را کامل کنید.');
+            $client->sendMessage($chatId, TelegramSiteUrl::withLink('ابتدا ثبت‌نام را کامل کنید.', $familyUrl, 'صفحه خانواده'));
 
             return;
         }
 
         try {
             app(\App\Services\Family\FamilyAssignmentService::class)->assign($account->user);
-            $client->sendMessage($chatId, 'خانواده شما فعال است. برای مشاهده محتوا از وب‌اپ خانواده روی دامنه اصلی استفاده کنید.');
+            $message = 'خانواده شما فعال است. برای مشاهده محتوا وارد وب‌اپ خانواده شوید.';
         } catch (\Throwable) {
-            $client->sendMessage($chatId, 'خانواده شما از طریق اپ/وب‌اپ دامنه اصلی در دسترس است.');
+            $message = 'خانواده شما از طریق وب‌اپ دامنه اصلی در دسترس است.';
         }
+
+        $message = TelegramSiteUrl::withLink($message, $familyUrl, 'ورود به خانواده');
+        $client->sendMessage($chatId, $message, $this->optionalUrlMarkup('ورود به خانواده', $familyUrl));
     }
 
     private function sendReferral($client, int $chatId, TelegramAccount $account): void
@@ -197,20 +247,67 @@ class MessageHandler implements UpdateHandlerInterface
     {
         $name = $account->display_name ?: ($account->user?->name ?? 'کاربر');
         $mobile = $account->mobile ? preg_replace('/^(\d{4})\d+(\d{4})$/', '$1***$2', $account->mobile) : '—';
+        $panelUrl = TelegramSiteUrl::studentPanel();
+        $identityUrl = TelegramSiteUrl::identityPage();
 
-        $keyboard = [
-            [['text' => 'ورود به پنل', 'callback_data' => 'account:login_token']],
-        ];
+        $keyboard = [];
+        $identityButton = TelegramSiteUrl::inlineButton('احراز هویت', $identityUrl);
+        if ($identityButton !== null) {
+            $keyboard[] = [$identityButton];
+        }
+        $panelButton = TelegramSiteUrl::inlineButton('ورود به پنل سایت', $panelUrl);
+        if ($panelButton !== null) {
+            $keyboard[] = [$panelButton];
+        }
+        $keyboard[] = [['text' => 'دریافت لینک ورود', 'callback_data' => 'account:login_token']];
 
-        $identityUrl = rtrim((string) config('app.frontend_url', env('FRONTEND_URL', '')), '/').'/telegram/identity';
-        if (str_starts_with($identityUrl, 'https://')) {
-            array_unshift($keyboard, [['text' => 'احراز هویت', 'web_app' => ['url' => $identityUrl]]]);
+        $message = TelegramSiteUrl::withLink(
+            "حساب کاربری\nنام: {$name}\nموبایل: {$mobile}",
+            $panelUrl,
+            'پنل کاربری سایت',
+        );
+
+        $client->sendMessage($chatId, $message, [
+            'reply_markup' => ['inline_keyboard' => $keyboard],
+        ]);
+    }
+
+    private function sendBotAdminPanel($client, TelegramBot $bot, TelegramAccount $account, int $chatId): void
+    {
+        if (! $account->isBotAdmin()) {
+            $client->sendMessage($chatId, 'دسترسی ادمین بات برای شما فعال نیست.', [
+                'reply_markup' => $this->mainMenu->replyMarkup($account),
+            ]);
+
+            return;
         }
 
-        $client->sendMessage($chatId, "حساب کاربری\nنام: {$name}\nموبایل: {$mobile}", [
-            'reply_markup' => [
-                'inline_keyboard' => $keyboard,
-            ],
-        ]);
+        $total = TelegramAccount::query()->where('telegram_bot_id', $bot->id)->count();
+        $linked = TelegramAccount::query()->where('telegram_bot_id', $bot->id)->whereNotNull('user_id')->count();
+        $admins = TelegramAccount::query()->where('telegram_bot_id', $bot->id)->where('is_bot_admin', true)->count();
+        $adminUrl = TelegramSiteUrl::adminTelegram();
+
+        $message = TelegramSiteUrl::withLink(
+            "🛠 پنل ادمین بات\n\n"
+            ."مخاطبان: {$total}\n"
+            ."متصل به سایت: {$linked}\n"
+            ."ادمین‌های بات: {$admins}\n\n"
+            .'برای مدیریت پیام همگانی، کانال اجباری و تنظیمات از پنل سایت استفاده کنید.',
+            $adminUrl,
+            'پنل مدیریت تلگرام',
+        );
+
+        $client->sendMessage($chatId, $message, $this->optionalUrlMarkup('باز کردن پنل ادمین', $adminUrl));
+    }
+
+    /** @return array<string, mixed> */
+    private function optionalUrlMarkup(string $label, ?string $url): array
+    {
+        $button = TelegramSiteUrl::inlineButton($label, $url);
+        if ($button === null) {
+            return [];
+        }
+
+        return ['reply_markup' => ['inline_keyboard' => [[$button]]]];
     }
 }

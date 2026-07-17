@@ -2,31 +2,41 @@
 
 namespace App\Modules\TelegramBot\Services;
 
-use App\Modules\TelegramBot\Jobs\ProcessBroadcastBatchJob;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBroadcast;
 use App\Modules\TelegramBot\Models\TelegramBroadcastBatch;
 use App\Modules\TelegramBot\Models\TelegramBroadcastRecipient;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class BroadcastDispatchService
 {
+    public function __construct(
+        private readonly TelegramQueueDispatcher $queueDispatcher,
+    ) {}
+
     public function queue(TelegramBroadcast $broadcast): void
     {
         if (! in_array($broadcast->status, ['approved', 'scheduled'], true)) {
-            throw new \RuntimeException('Broadcast is not approved for dispatch.');
+            throw new RuntimeException('پیام همگانی هنوز تأیید نشده است.');
         }
 
         if ($broadcast->audience_count > 1000 && $broadcast->approved_by === null) {
-            throw new \RuntimeException('Second approval required for large broadcasts.');
+            throw new RuntimeException('برای ارسال به بیش از ۱۰۰۰ نفر، تأیید دوم لازم است.');
         }
 
-        DB::transaction(function () use ($broadcast): void {
+        $batchIds = [];
+
+        DB::transaction(function () use ($broadcast, &$batchIds): void {
             $accounts = TelegramAccount::query()
                 ->where('telegram_bot_id', $broadcast->telegram_bot_id)
-                ->whereNotNull('user_id')
                 ->where('is_blocked', false)
+                ->orderBy('id')
                 ->get();
+
+            if ($accounts->isEmpty()) {
+                throw new RuntimeException('هیچ کاربر فعالی برای این ربات یافت نشد.');
+            }
 
             $broadcast->update([
                 'status' => 'queued',
@@ -52,11 +62,14 @@ class BroadcastDispatchService
                     ]);
                 }
 
-                ProcessBroadcastBatchJob::dispatch($batch->id)
-                    ->onQueue((string) config('telegram_bot.queues.broadcast', 'telegram-broadcast'));
-
+                $batchIds[] = $batch->id;
                 $index++;
             }
         });
+
+        // Dispatch after commit so sync/async workers always see persisted rows.
+        foreach ($batchIds as $batchId) {
+            $this->queueDispatcher->dispatchBroadcastBatch($batchId);
+        }
     }
 }

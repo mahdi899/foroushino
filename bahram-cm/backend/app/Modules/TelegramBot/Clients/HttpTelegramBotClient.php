@@ -149,6 +149,11 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
         return (array) $this->call('getChatMember', ['chat_id' => $chatId, 'user_id' => $userId]);
     }
 
+    public function getChat(int|string $chatId): array
+    {
+        return (array) $this->call('getChat', ['chat_id' => $chatId]);
+    }
+
     public function getChatAdministrators(int|string $chatId): array
     {
         $result = $this->call('getChatAdministrators', ['chat_id' => $chatId]);
@@ -191,6 +196,123 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
         return (bool) $this->call('sendChatAction', ['chat_id' => $chatId, 'action' => $action]);
     }
 
+    public function setMyName(string $name, ?string $languageCode = null): array|bool
+    {
+        return $this->call('setMyName', array_filter([
+            'name' => $name,
+            'language_code' => $languageCode,
+        ], fn ($v) => $v !== null && $v !== ''));
+    }
+
+    public function getMyName(?string $languageCode = null): array
+    {
+        return (array) $this->call('getMyName', array_filter([
+            'language_code' => $languageCode,
+        ], fn ($v) => $v !== null && $v !== ''));
+    }
+
+    public function setMyDescription(?string $description, ?string $languageCode = null): array|bool
+    {
+        return $this->call('setMyDescription', array_filter([
+            'description' => $description ?? '',
+            'language_code' => $languageCode,
+        ], fn ($v) => $v !== null));
+    }
+
+    public function getMyDescription(?string $languageCode = null): array
+    {
+        return (array) $this->call('getMyDescription', array_filter([
+            'language_code' => $languageCode,
+        ], fn ($v) => $v !== null && $v !== ''));
+    }
+
+    public function setMyShortDescription(?string $shortDescription, ?string $languageCode = null): array|bool
+    {
+        return $this->call('setMyShortDescription', array_filter([
+            'short_description' => $shortDescription ?? '',
+            'language_code' => $languageCode,
+        ], fn ($v) => $v !== null));
+    }
+
+    public function getMyShortDescription(?string $languageCode = null): array
+    {
+        return (array) $this->call('getMyShortDescription', array_filter([
+            'language_code' => $languageCode,
+        ], fn ($v) => $v !== null && $v !== ''));
+    }
+
+    public function setMyProfilePhoto(string $localFilePath): array|bool
+    {
+        if (! is_file($localFilePath)) {
+            throw TelegramApiException::fromTransportFailure('setMyProfilePhoto', 'Local profile photo file not found.');
+        }
+
+        $attachName = 'profile_photo';
+        $photo = json_encode([
+            'type' => 'static',
+            'photo' => 'attach://'.$attachName,
+        ], JSON_THROW_ON_ERROR);
+
+        $contents = file_get_contents($localFilePath);
+        if ($contents === false || $contents === '') {
+            throw TelegramApiException::fromTransportFailure('setMyProfilePhoto', 'Unable to read profile photo file.');
+        }
+
+        return $this->request('setMyProfilePhoto', [
+            'photo' => $photo,
+        ], [
+            $attachName => [
+                'content' => $contents,
+                'filename' => 'profile.jpg',
+                'headers' => ['Content-Type' => 'image/jpeg'],
+            ],
+        ]);
+    }
+
+    public function removeMyProfilePhoto(): array|bool
+    {
+        return $this->call('removeMyProfilePhoto');
+    }
+
+    public function getUserProfilePhotos(int $userId, ?int $offset = null, ?int $limit = null): array
+    {
+        return (array) $this->call('getUserProfilePhotos', array_filter([
+            'user_id' => $userId,
+            'offset' => $offset,
+            'limit' => $limit,
+        ], fn ($v) => $v !== null));
+    }
+
+    public function getFile(string $fileId): array
+    {
+        return (array) $this->call('getFile', ['file_id' => $fileId]);
+    }
+
+    public function downloadFile(string $filePath): string
+    {
+        $url = $this->baseUrl.'/file/bot'.$this->token.'/'.ltrim($filePath, '/');
+        $correlationId = TelegramCorrelation::generate();
+
+        try {
+            $response = Http::timeout((int) config('telegram.http.timeout', 20))
+                ->connectTimeout((int) config('telegram.http.connect_timeout', 5))
+                ->withHeaders([TelegramCorrelation::header() => $correlationId])
+                ->get($url);
+        } catch (ConnectionException $e) {
+            throw TelegramApiException::fromTransportFailure('downloadFile', $e->getMessage(), [
+                'correlation_id' => $correlationId,
+            ]);
+        }
+
+        if (! $response->successful()) {
+            throw TelegramApiException::fromResponse('downloadFile', $response->status(), (array) $response->json(), [
+                'correlation_id' => $correlationId,
+            ]);
+        }
+
+        return $response->body();
+    }
+
     /** @param  array<string, mixed>  $params */
     private function callWithAttachment(string $method, string $field, string $file, array $params): array|bool
     {
@@ -210,7 +332,7 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
 
     /**
      * @param  array<string, mixed>  $params
-     * @param  array<string, string>  $attachments  field => absolute local file path
+     * @param  array<string, string|array{content: string, filename?: string, headers?: array<string, string>}>  $attachments
      */
     private function request(string $method, array $params = [], array $attachments = [], ?int $httpTimeout = null): array|bool
     {
@@ -229,8 +351,17 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
                     ->connectTimeout((int) config('telegram.http.connect_timeout', 5))
                     ->withHeaders([TelegramCorrelation::header() => $correlationId]);
 
-                foreach ($attachments as $field => $path) {
-                    $request = $request->attach($field, fopen($path, 'r'), basename($path));
+                foreach ($attachments as $field => $attachment) {
+                    if (is_array($attachment)) {
+                        $request = $request->attach(
+                            $field,
+                            $attachment['content'],
+                            $attachment['filename'] ?? 'file.bin',
+                            $attachment['headers'] ?? [],
+                        );
+                    } else {
+                        $request = $request->attach($field, fopen($attachment, 'r'), basename($attachment));
+                    }
                 }
 
                 $response = $request->post($this->apiUrl($method), $params);

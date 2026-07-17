@@ -22,6 +22,7 @@ class TelegramAccount extends Model
         'mobile_verified_at',
         'language_code',
         'is_blocked',
+        'is_bot_admin',
         'metadata',
     ];
 
@@ -31,6 +32,7 @@ class TelegramAccount extends Model
             'telegram_user_id' => 'integer',
             'mobile_verified_at' => 'datetime',
             'is_blocked' => 'boolean',
+            'is_bot_admin' => 'boolean',
             'metadata' => 'array',
         ];
     }
@@ -68,5 +70,10 @@ class TelegramAccount extends Model
     public function hasVerifiedMobile(): bool
     {
         return $this->mobile_verified_at !== null && filled($this->mobile);
+    }
+
+    public function isBotAdmin(): bool
+    {
+        return (bool) $this->is_bot_admin;
     }
 }

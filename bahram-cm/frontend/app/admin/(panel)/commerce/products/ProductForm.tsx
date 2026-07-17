@@ -27,6 +27,9 @@ const empty: Partial<AdminProduct> = {
   referral_cashback_type: 'fixed',
   referral_cashback_value: null,
   is_active: true,
+  show_in_telegram: false,
+  telegram_list_visibility: 'public',
+  telegram_sort_order: 0,
   featured_image: '',
   show_on_courses: false,
   featured_listing: false,
@@ -142,6 +145,9 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
           ? Number(form.referral_cashback_value) || null
           : null,
         is_active: !!form.is_active,
+        show_in_telegram: !!form.show_in_telegram,
+        telegram_list_visibility: (form.telegram_list_visibility as 'public' | 'private') ?? 'public',
+        telegram_sort_order: Number(form.telegram_sort_order) || 0,
         featured_image: form.featured_image || null,
         show_on_courses: !!form.show_on_courses,
         featured_listing: !!form.featured_listing,
@@ -294,6 +300,59 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
               />
               فعال
             </label>
+
+            <div className="rounded-lg border border-border bg-surface/40 p-4 space-y-4">
+              <div>
+                <h3 className="text-small font-semibold text-primary-dark">نمایش در ربات تلگرام</h3>
+                <p className="mt-1 text-caption text-text-muted">
+                  محصولات فعال‌شده در دکمه «دوره کمپین نویسی» بات نمایش داده می‌شوند و امکان خرید مستقیم دارند.
+                  مرچنت زرین‌پال از{' '}
+                  <Link href="/admin/commerce/payment-settings" className="text-primary hover:underline">
+                    تنظیمات پرداخت
+                  </Link>{' '}
+                  کنترل می‌شود.
+                </p>
+              </div>
+
+              <label className="flex items-center gap-2 text-small text-text">
+                <input
+                  type="checkbox"
+                  checked={!!form.show_in_telegram}
+                  onChange={(e) => patch({ show_in_telegram: e.target.checked })}
+                  className="h-4 w-4 accent-[var(--color-primary)]"
+                />
+                نمایش در تلگرام
+              </label>
+
+              {form.show_in_telegram ? (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="field-label">ترتیب در منوی بات</label>
+                    <input
+                      type="number"
+                      min={0}
+                      className="field-input"
+                      dir="ltr"
+                      value={form.telegram_sort_order ?? 0}
+                      onChange={(e) => patch({ telegram_sort_order: Number(e.target.value) || 0 })}
+                    />
+                  </div>
+                  <div>
+                    <label className="field-label">سطح نمایش</label>
+                    <select
+                      className="field-input"
+                      value={form.telegram_list_visibility ?? 'public'}
+                      onChange={(e) =>
+                        patch({ telegram_list_visibility: e.target.value as 'public' | 'private' })
+                      }
+                    >
+                      <option value="public">عمومی</option>
+                      <option value="private">خصوصی</option>
+                    </select>
+                  </div>
+                </div>
+              ) : null}
+            </div>
 
             <div>
               <label className="field-label">توضیح کوتاه</label>
