@@ -149,10 +149,10 @@ Route::prefix('integrations/inbound')->middleware('sat.integration:inbound:appli
 |--------------------------------------------------------------------------
 */
 Route::prefix('student')->group(function () {
-    Route::post('auth/send-otp', [StudentAuthController::class, 'sendOtp'])->middleware('throttle:10,1');
-    Route::post('auth/send-otp-bale', [StudentAuthController::class, 'sendOtpViaBale'])->middleware('throttle:10,1');
-    Route::post('auth/verify-otp', [StudentAuthController::class, 'verifyOtp'])->middleware('throttle:20,1');
-    Route::post('auth/login-password', [StudentAuthController::class, 'loginPassword'])->middleware('throttle:10,1');
+    Route::post('auth/send-otp', [StudentAuthController::class, 'sendOtp'])->middleware('throttle:student-auth');
+    Route::post('auth/send-otp-bale', [StudentAuthController::class, 'sendOtpViaBale'])->middleware('throttle:student-auth');
+    Route::post('auth/verify-otp', [StudentAuthController::class, 'verifyOtp'])->middleware('throttle:student-auth');
+    Route::post('auth/login-password', [StudentAuthController::class, 'loginPassword'])->middleware('throttle:student-auth');
 
     Route::middleware(['auth:sanctum', 'student.active'])->group(function () {
         Route::post('auth/logout', [StudentAuthController::class, 'logout']);

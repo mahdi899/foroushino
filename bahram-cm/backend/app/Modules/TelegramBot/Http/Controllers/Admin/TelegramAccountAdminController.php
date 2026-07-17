@@ -100,6 +100,13 @@ class TelegramAccountAdminController
             'is_bot_admin' => ['required', 'boolean'],
         ]);
 
+        if ($account->isPermanentBotAdmin() && ! $data['is_bot_admin']) {
+            return response()->json([
+                'message' => 'این کاربر ادمین دائمی ربات است و قابل حذف نیست.',
+                'error' => ['message_fa' => 'این کاربر ادمین دائمی ربات است و قابل حذف نیست.'],
+            ], 422);
+        }
+
         $account->update(['is_bot_admin' => $data['is_bot_admin']]);
 
         return response()->json(['data' => $this->payload($account->fresh()->load(['bot', 'user']), true, detailed: true)]);

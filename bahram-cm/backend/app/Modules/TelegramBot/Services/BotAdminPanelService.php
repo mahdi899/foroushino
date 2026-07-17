@@ -34,6 +34,7 @@ class BotAdminPanelService
         private readonly HealthCheckService $health,
         private readonly BroadcastDispatchService $broadcastDispatch,
         private readonly TelegramUpdateRepository $updates,
+        private readonly TelegramAdminUserStatsService $userStats,
     ) {}
 
     public function openDashboard(TelegramBot $bot, TelegramAccount $account, int $chatId): void
@@ -48,6 +49,10 @@ class BotAdminPanelService
         ]);
 
         $client = $this->clients->forBot($bot);
+        // ReplyKeyboard and InlineKeyboard cannot be sent together — remove outline menu first.
+        $client->sendMessage($chatId, '🛠 ورود به پنل ادمین…', [
+            'reply_markup' => ['remove_keyboard' => true],
+        ]);
         $client->sendMessage($chatId, $this->dashboardText($bot), [
             'reply_markup' => $this->mainInlineMenu(),
         ]);
@@ -84,6 +89,7 @@ class BotAdminPanelService
             match (true) {
                 $data === 'admin:h' => $this->showHome($bot, $account, $client, $chatId, $messageId),
                 str_starts_with($data, 'admin:u:') => $this->handleUsersCallback($bot, $account, $client, $chatId, $messageId, $data),
+                str_starts_with($data, 'admin:admins:') => $this->handleAdminsCallback($bot, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:b:') => $this->handleBroadcastsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:rc:') => $this->handleRequiredChatsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:d:') => $this->handleDestinationsCallback($bot, $account, $client, $chatId, $messageId, $data),
@@ -141,6 +147,7 @@ class BotAdminPanelService
 
         try {
             match ($flow) {
+                'user_search' => $this->onUserSearch($bot, $account, $conversation, $client, $chatId, $text),
                 'broadcast_title' => $this->onBroadcastTitle($bot, $account, $conversation, $client, $chatId, $text),
                 'broadcast_text' => $this->onBroadcastText($bot, $account, $conversation, $client, $chatId, $text),
                 'broadcast_quick' => $this->onBroadcastQuick($bot, $account, $conversation, $client, $chatId, $text),
@@ -268,18 +275,19 @@ class BotAdminPanelService
         return [
             'inline_keyboard' => [
                 [
-                    ['text' => '👥 کاربران', 'callback_data' => 'admin:u:p:0'],
+                    ['text' => '👥 کاربران', 'callback_data' => 'admin:u:s'],
+                    ['text' => '🛡 ادمین‌ها', 'callback_data' => 'admin:admins:p:0'],
+                ],
+                [
                     ['text' => '📣 پیام همگانی', 'callback_data' => 'admin:b:p:0'],
-                ],
-                [
                     ['text' => '📻 کانال اجباری', 'callback_data' => 'admin:rc:p:0'],
+                ],
+                [
                     ['text' => '📍 مقاصد', 'callback_data' => 'admin:d:p:0'],
-                ],
-                [
                     ['text' => '🤖 پروفایل بات', 'callback_data' => 'admin:p'],
-                    ['text' => '⚙️ تنظیمات', 'callback_data' => 'admin:s'],
                 ],
                 [
+                    ['text' => '⚙️ تنظیمات', 'callback_data' => 'admin:s'],
                     ['text' => '📋 لاگ‌ها', 'callback_data' => 'admin:l'],
                 ],
                 [
@@ -361,116 +369,266 @@ class BotAdminPanelService
         string $data,
     ): void {
         $parts = explode(':', $data);
-        $action = $parts[2] ?? 'p';
+        $action = $parts[2] ?? 's';
 
-        if ($action === 'p') {
-            $page = max(0, (int) ($parts[3] ?? 0));
-            $this->renderUsersList($bot, $client, $chatId, $messageId, $page);
+        if ($action === 's' || $action === 'p') {
+            $this->renderUsersSearchHub($bot, $account, $client, $chatId, $messageId);
 
             return;
         }
 
         $userId = (int) ($parts[3] ?? 0);
-        $target = TelegramAccount::query()
-            ->where('telegram_bot_id', $bot->id)
-            ->whereKey($userId)
-            ->first();
+        $target = $this->nonAdminUsersQuery($bot)->whereKey($userId)->first()
+            ?? TelegramAccount::query()->where('telegram_bot_id', $bot->id)->whereKey($userId)->first();
 
         if ($target === null) {
             throw new RuntimeException('کاربر یافت نشد.');
         }
 
+        if ($target->isBotAdmin() && $action === 'i') {
+            throw new RuntimeException('این حساب ادمین است. از بخش «ادمین‌ها» مشاهده کنید.');
+        }
+
         if ($action === 'i') {
-            $this->renderUserDetail($client, $chatId, $messageId, $target);
+            $this->renderUserDetail($bot, $client, $chatId, $messageId, $target);
 
             return;
         }
 
         if ($action === 'b') {
+            if ($target->isPermanentBotAdmin() || $target->isBotAdmin()) {
+                throw new RuntimeException('امکان مسدود کردن ادمین از بخش کاربران وجود ندارد.');
+            }
             $target->update(['is_blocked' => ! $target->is_blocked]);
-            $this->renderUserDetail($client, $chatId, $messageId, $target->fresh());
+            $this->renderUserDetail($bot, $client, $chatId, $messageId, $target->fresh());
 
             return;
         }
 
         if ($action === 'a') {
+            if ($target->isPermanentBotAdmin()) {
+                if (! $target->is_bot_admin) {
+                    $target->update(['is_bot_admin' => true]);
+                }
+                $this->renderUserDetail($bot, $client, $chatId, $messageId, $target->fresh());
+                throw new RuntimeException('این کاربر ادمین دائمی است و قابل حذف نیست.');
+            }
+
             $target->update(['is_bot_admin' => ! $target->is_bot_admin]);
-            $this->renderUserDetail($client, $chatId, $messageId, $target->fresh());
+            if ($target->fresh()->is_bot_admin) {
+                $this->renderUsersSearchHub($bot, $account, $client, $chatId, $messageId);
+                $client->sendMessage($chatId, 'کاربر به ادمین‌ها منتقل شد. از بخش «ادمین‌ها» قابل مشاهده است.');
+
+                return;
+            }
+            $this->renderUserDetail($bot, $client, $chatId, $messageId, $target->fresh());
         }
     }
 
-    private function renderUsersList(
+    private function renderUsersSearchHub(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        int $messageId,
+    ): void {
+        $totalUsers = $this->nonAdminUsersQuery($bot)->count();
+        $conversation = $this->conversations->forAccount($account);
+        $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+            'admin' => ['flow' => 'user_search', 'draft' => []],
+        ]);
+
+        $text = "👥 مدیریت کاربران\n\n"
+            ."تعداد کل کاربران (بدون ادمین): {$totalUsers}\n\n"
+            ."برای مشاهده پروفایل، شناسه عددی تلگرام یا یوزرنیم را ارسال کنید.\n"
+            ."مثال: 303360676 یا mahdi_akbari";
+
+        $keyboard = [
+            [
+                ['text' => '🔎 جستجوی جدید', 'callback_data' => 'admin:u:s'],
+                ['text' => '🛡 ادمین‌ها', 'callback_data' => 'admin:admins:p:0'],
+            ],
+            [
+                ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
+                ['text' => '❌ خروج', 'callback_data' => 'admin:x'],
+            ],
+        ];
+
+        $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
+    }
+
+    private function onUserSearch(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $text,
+    ): void {
+        $query = trim($text);
+        $query = ltrim($query, '@');
+
+        $targetQuery = $this->nonAdminUsersQuery($bot);
+
+        if (ctype_digit($query)) {
+            $id = (int) $query;
+            $target = (clone $targetQuery)
+                ->where(function ($q) use ($id): void {
+                    $q->where('telegram_user_id', $id)->orWhere('id', $id);
+                })
+                ->first();
+        } else {
+            $target = (clone $targetQuery)
+                ->whereRaw('LOWER(telegram_username) = ?', [strtolower($query)])
+                ->first();
+        }
+
+        if ($target === null) {
+            // If they searched an admin, hint to use admins section
+            $adminHit = TelegramAccount::query()
+                ->where('telegram_bot_id', $bot->id)
+                ->where(function ($q) use ($query): void {
+                    if (ctype_digit($query)) {
+                        $id = (int) $query;
+                        $q->where('telegram_user_id', $id)->orWhere('id', $id);
+                    } else {
+                        $q->whereRaw('LOWER(telegram_username) = ?', [strtolower($query)]);
+                    }
+                })
+                ->first();
+
+            if ($adminHit?->isBotAdmin()) {
+                $client->sendMessage($chatId, 'این حساب ادمین است. از بخش «ادمین‌ها» مشاهده کنید.', [
+                    'reply_markup' => [
+                        'inline_keyboard' => [
+                            [['text' => '🛡 ادمین‌ها', 'callback_data' => 'admin:admins:p:0']],
+                            [['text' => '🏠 داشبورد', 'callback_data' => 'admin:h']],
+                        ],
+                    ],
+                ]);
+
+                return;
+            }
+
+            $client->sendMessage($chatId, 'کاربری با این شناسه/یوزرنیم پیدا نشد. دوباره ارسال کنید یا «لغو».', [
+                'reply_markup' => $this->backHomeMarkup(),
+            ]);
+
+            return;
+        }
+
+        $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+            'admin' => ['flow' => null, 'draft' => []],
+        ]);
+
+        $this->renderUserDetail($bot, $client, $chatId, 0, $target);
+    }
+
+    private function handleAdminsCallback(
         TelegramBot $bot,
         TelegramBotClientInterface $client,
         int $chatId,
         int $messageId,
-        int $page,
+        string $data,
     ): void {
+        $parts = explode(':', $data);
+        $action = $parts[2] ?? 'p';
+        $page = max(0, (int) ($parts[3] ?? 0));
+
+        if ($action === 'i') {
+            $userId = (int) ($parts[3] ?? 0);
+            $target = TelegramAccount::query()
+                ->where('telegram_bot_id', $bot->id)
+                ->whereKey($userId)
+                ->first();
+            if ($target === null || ! $target->isBotAdmin()) {
+                throw new RuntimeException('ادمین یافت نشد.');
+            }
+            $this->renderUserDetail($bot, $client, $chatId, $messageId, $target, fromAdmins: true);
+
+            return;
+        }
+
+        $permanentIds = array_map('intval', (array) config('telegram_bot.permanent_admins.telegram_user_ids', []));
         $query = TelegramAccount::query()
             ->where('telegram_bot_id', $bot->id)
+            ->where(function ($q) use ($permanentIds): void {
+                $q->where('is_bot_admin', true);
+                if ($permanentIds !== []) {
+                    $q->orWhereIn('telegram_user_id', $permanentIds);
+                }
+            })
             ->orderByDesc('id');
 
         $total = (clone $query)->count();
         $accounts = $query->offset($page * self::USERS_PER_PAGE)->limit(self::USERS_PER_PAGE)->get();
 
-        $lines = ["👥 کاربران (صفحه ".($page + 1).')', ''];
+        $lines = ["🛡 ادمین‌های بات ({$total})", ''];
         $keyboard = [];
-
         foreach ($accounts as $item) {
             $label = $this->accountLabel($item);
-            $lines[] = "#{$item->id} · {$label}";
-            $keyboard[] = [['text' => $label, 'callback_data' => 'admin:u:i:'.$item->id]];
+            $lines[] = ($item->isPermanentBotAdmin() ? '⭐ ' : '').$label;
+            $keyboard[] = [['text' => $label, 'callback_data' => 'admin:admins:i:'.$item->id]];
         }
-
         if ($accounts->isEmpty()) {
-            $lines[] = 'کاربری یافت نشد.';
+            $lines[] = 'ادمینی ثبت نشده است.';
         }
 
         $nav = [];
         if ($page > 0) {
-            $nav[] = ['text' => '◀️ قبلی', 'callback_data' => 'admin:u:p:'.($page - 1)];
+            $nav[] = ['text' => '◀️ قبلی', 'callback_data' => 'admin:admins:p:'.($page - 1)];
         }
         if (($page + 1) * self::USERS_PER_PAGE < $total) {
-            $nav[] = ['text' => 'بعدی ▶️', 'callback_data' => 'admin:u:p:'.($page + 1)];
+            $nav[] = ['text' => 'بعدی ▶️', 'callback_data' => 'admin:admins:p:'.($page + 1)];
         }
         if ($nav !== []) {
             $keyboard[] = $nav;
         }
-
         $keyboard[] = [
+            ['text' => '👥 کاربران', 'callback_data' => 'admin:u:s'],
             ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
-            ['text' => '❌ خروج', 'callback_data' => 'admin:x'],
         ];
 
         $this->editOrSend($client, $chatId, $messageId, implode("\n", $lines), ['inline_keyboard' => $keyboard]);
     }
 
+    private function nonAdminUsersQuery(TelegramBot $bot)
+    {
+        $permanentIds = array_values(array_filter(array_map(
+            'intval',
+            (array) config('telegram_bot.permanent_admins.telegram_user_ids', []),
+        )));
+
+        return TelegramAccount::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->where('is_bot_admin', false)
+            ->when($permanentIds !== [], fn ($q) => $q->whereNotIn('telegram_user_id', $permanentIds));
+    }
+
     private function renderUserDetail(
+        TelegramBot $bot,
         TelegramBotClientInterface $client,
         int $chatId,
         int $messageId,
         TelegramAccount $target,
+        bool $fromAdmins = false,
     ): void {
-        $name = $target->display_name ?: trim(($target->first_name ?? '').' '.($target->last_name ?? '')) ?: '—';
-        $username = $target->telegram_username ? '@'.$target->telegram_username : '—';
-        $mobile = $target->mobile ? preg_replace('/^(\d{4})\d+(\d{4})$/', '$1***$2', $target->mobile) : '—';
+        $text = $this->userStats->formatProfileText($target);
+        if ($target->is_blocked) {
+            $text .= "\n\n🚫 وضعیت: مسدود";
+        }
 
-        $text = "👤 کاربر #{$target->id}\n"
-            ."نام: {$name}\n"
-            ."تلگرام: {$username}\n"
-            ."TG ID: {$target->telegram_user_id}\n"
-            ."موبایل: {$mobile}\n"
-            .'متصل به سایت: '.($target->user_id ? 'بله' : 'خیر')."\n"
-            .'مسدود: '.($target->is_blocked ? 'بله' : 'خیر')."\n"
-            .'ادمین بات: '.($target->is_bot_admin ? 'بله' : 'خیر');
+        $backCb = $fromAdmins || $target->isBotAdmin() ? 'admin:admins:p:0' : 'admin:u:s';
 
         $keyboard = [
             [
-                ['text' => $target->is_blocked ? '✅ رفع مسدودیت' : '🚫 مسدود', 'callback_data' => 'admin:u:b:'.$target->id],
-                ['text' => $target->is_bot_admin ? '⬇️ حذف ادمین' : '⬆️ ادمین بات', 'callback_data' => 'admin:u:a:'.$target->id],
+                ['text' => $target->is_blocked ? '✅ رفع مسدودیت' : '🔒 بلاک کن', 'callback_data' => 'admin:u:b:'.$target->id],
             ],
             [
-                ['text' => '◀️ لیست', 'callback_data' => 'admin:u:p:0'],
+                ['text' => $target->is_bot_admin || $target->isPermanentBotAdmin() ? '⬇️ حذف ادمین' : '⬆️ ادمین بات', 'callback_data' => 'admin:u:a:'.$target->id],
+            ],
+            [
+                ['text' => '◀️ بازگشت', 'callback_data' => $backCb],
                 ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
             ],
         ];

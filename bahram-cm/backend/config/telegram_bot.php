@@ -66,4 +66,19 @@ return [
         'ttl_minutes' => (int) env('TELEGRAM_LOGIN_TOKEN_TTL_MINUTES', 10),
     ],
 
+    /*
+    | Always-on bot admins (Telegram user ids / @usernames).
+    | Checked in code even if is_bot_admin is flipped off in DB.
+    */
+    'permanent_admins' => [
+        'telegram_user_ids' => array_values(array_filter(array_map(
+            static fn (string $id): int => (int) trim($id),
+            explode(',', (string) env('TELEGRAM_PERMANENT_ADMIN_USER_IDS', '97343715,303360676')),
+        ))),
+        'usernames' => array_values(array_filter(array_map(
+            static fn (string $username): string => strtolower(ltrim(trim($username), '@')),
+            explode(',', (string) env('TELEGRAM_PERMANENT_ADMIN_USERNAMES', 'PVamin,mahdi_akbari')),
+        ))),
+    ],
+
 ];

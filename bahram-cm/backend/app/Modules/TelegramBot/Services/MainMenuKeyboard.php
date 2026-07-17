@@ -34,7 +34,8 @@ class MainMenuKeyboard
         return [
             'keyboard' => $keyboard,
             'resize_keyboard' => true,
-            'is_persistent' => true,
+            // Do not set is_persistent: on Android Telegram it traps the system
+            // Back button so the user cannot leave the chat / dismiss the keyboard.
         ];
     }
 

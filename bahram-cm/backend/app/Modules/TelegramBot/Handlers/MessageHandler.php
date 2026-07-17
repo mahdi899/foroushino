@@ -67,6 +67,17 @@ class MessageHandler implements UpdateHandlerInterface
             ],
         );
 
+        $account->fill([
+            'telegram_username' => $from['username'] ?? $account->telegram_username,
+            'first_name' => $from['first_name'] ?? $account->first_name,
+            'last_name' => $from['last_name'] ?? $account->last_name,
+            'language_code' => $from['language_code'] ?? $account->language_code,
+        ]);
+        if ($account->isDirty()) {
+            $account->save();
+        }
+        $account->syncPermanentAdminFlag();
+
         $conversation = $this->conversations->forAccount($account);
         $text = trim((string) ($message['text'] ?? ''));
 
