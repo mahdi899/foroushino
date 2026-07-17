@@ -3,6 +3,14 @@ import type { PaymentMethod } from '@/types'
 import { apiMode, api } from '@/services/index'
 import { enqueueOfflineWrite } from '@/services/offlineQueue'
 import { patchSaleConfirmData, patchSaleRejectData } from '@/services/patchSaleWrite'
+import { http } from '@/services/http'
+import { mapSale } from '@/services/mappers'
+import type { Sale } from '@/types'
+
+export async function fetchSaleById(saleId: string): Promise<Sale> {
+  const raw = await http.get<Record<string, unknown>>(`/sales/${saleId}`)
+  return mapSale(raw)
+}
 
 export async function performConfirmSale(saleId: string): Promise<void> {
   if (apiMode !== 'http') {

@@ -11,11 +11,16 @@ class Team extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'leader_id'];
+    protected $fillable = ['name', 'leader_id', 'supervisor_id'];
 
     public function leader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'leader_id');
+    }
+
+    public function supervisor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'supervisor_id');
     }
 
     public function members(): HasMany

@@ -22,7 +22,7 @@ import {
 } from '@/lib/saleReview'
 import { formatDuration, formatMoney, relativeDayTime, toFa } from '@/lib/format'
 import { cn } from '@/lib/cn'
-import type { Agent, Call, Followup, Lead, Payment, Product, Sale, Team } from '@/types'
+import type { Agent, Call, Commission, Followup, Lead, Payment, Product, Sale, Team } from '@/types'
 
 const TG = 'text-[#3390EC] dark:text-[#8774E1]'
 
@@ -48,6 +48,12 @@ interface SaleReviewSheetProps {
   onClose: () => void
   onConfirm: () => void
   onReject: () => void
+  /** Commission approval context — shows payout breakdown above the dossier. */
+  commission?: Commission
+  title?: string
+  confirmLabel?: string
+  rejectLabel?: string
+  loadingExternal?: boolean
 }
 
 export function SaleReviewSheet({
@@ -64,6 +70,11 @@ export function SaleReviewSheet({
   onClose,
   onConfirm,
   onReject,
+  commission,
+  title = 'گزارش پرونده فروش',
+  confirmLabel = 'تایید نهایی فروش',
+  rejectLabel = 'رد فروش',
+  loadingExternal = false,
 }: SaleReviewSheetProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -127,32 +138,60 @@ export function SaleReviewSheet({
     [agents, sale],
   )
 
-  if (!sale) return null
+  if (!open) return null
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="گزارش پرونده فروش" className="pb-0">
+    <BottomSheet open={open} onClose={onClose} title={title} className="pb-0">
       <div className="flex min-h-0 flex-1 flex-col px-4 pb-[calc(12px+var(--safe-bottom))]">
-        <div className="glass-card mb-4 rounded-[20px] border border-white/55 p-4 dark:border-white/10">
-          <div className="flex items-start gap-3">
-            <span className="icon-3d icon-3d-primary flex h-12 w-12 shrink-0 items-center justify-center">
-              <BadgeDollarSign size={20} className="text-white" strokeWidth={2.25} />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[16px] font-black text-text">
-                {dossier?.customerName ?? lead?.firstName ?? 'مشتری'}
-              </p>
-              <p className="mt-0.5 truncate text-[12px] font-semibold text-text-soft">
-                {dossier?.productName ?? product?.name ?? 'محصول'}
-              </p>
-              <p className={cn('mt-2 text-[18px] font-black tabular-nums', TG)}>
-                {formatMoney(dossier?.amount ?? sale.amount)}
-                <span className="mr-1 text-[11px] font-bold text-text-soft">تومان</span>
-              </p>
+        {sale && (
+          <div className="glass-card mb-4 rounded-[20px] border border-white/55 p-4 dark:border-white/10">
+            <div className="flex items-start gap-3">
+              <span className="icon-3d icon-3d-primary flex h-12 w-12 shrink-0 items-center justify-center">
+                <BadgeDollarSign size={20} className="text-white" strokeWidth={2.25} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[16px] font-black text-text">
+                  {dossier?.customerName ?? lead?.firstName ?? sale.leadName ?? 'مشتری'}
+                </p>
+                <p className="mt-0.5 truncate text-[12px] font-semibold text-text-soft">
+                  {dossier?.productName ?? product?.name ?? sale.productName ?? 'محصول'}
+                </p>
+                <p className={cn('mt-2 text-[18px] font-black tabular-nums', TG)}>
+                  {formatMoney(dossier?.amount ?? sale.amount)}
+                  <span className="mr-1 text-[11px] font-bold text-text-soft">تومان</span>
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {loading && (
+        {commission && (
+          <div className="glass-inset mb-4 rounded-[18px] border border-emerald-500/20 bg-emerald-500/6 p-3.5 dark:border-emerald-400/18">
+            <p className="text-[11px] font-bold text-text-soft">جزئیات پورسانت</p>
+            <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-[12px]">
+              <div>
+                <p className="font-semibold text-text-soft">کارشناس</p>
+                <p className="font-bold text-text">{commission.agentName ?? '—'}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-text-soft">نرخ پورسانت</p>
+                <p className="font-bold text-text">{commission.commissionRate}٪</p>
+              </div>
+              <div>
+                <p className="font-semibold text-text-soft">مبلغ فروش</p>
+                <p className="font-black tabular-nums text-text">{formatMoney(commission.saleAmount)}</p>
+              </div>
+              <div>
+                <p className="font-semibold text-text-soft">مبلغ پورسانت</p>
+                <p className="font-black tabular-nums text-emerald-600 dark:text-emerald-400">
+                  {formatMoney(commission.commissionAmount)}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {(loading || loadingExternal) && (
           <div className="flex flex-col items-center py-10">
             <div className="h-9 w-9 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
             <p className="mt-3 text-[13px] font-semibold text-text-muted">در حال آماده‌سازی گزارش…</p>
@@ -165,7 +204,7 @@ export function SaleReviewSheet({
           </div>
         )}
 
-        {!loading && dossier && (
+        {!loading && !loadingExternal && dossier && (
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto no-scrollbar">
             <section className="grid grid-cols-2 gap-2">
               <SummaryTile
@@ -272,7 +311,7 @@ export function SaleReviewSheet({
           </div>
         )}
 
-        {!loading && dossier && (
+        {!loading && !loadingExternal && dossier && (
           <div className="mt-4 flex gap-2 border-t border-white/40 pt-4 dark:border-white/10">
             <motion.button
               type="button"
@@ -284,7 +323,7 @@ export function SaleReviewSheet({
               className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-[14px] border border-red-500/25 bg-red-500/10 text-[13px] font-bold text-red-600 dark:text-red-400"
             >
               <X size={15} />
-              رد فروش
+              {rejectLabel}
             </motion.button>
             <motion.button
               type="button"
@@ -297,12 +336,12 @@ export function SaleReviewSheet({
               )}
             >
               <Check size={15} />
-              تایید نهایی فروش
+              {confirmLabel}
             </motion.button>
           </div>
         )}
 
-        {saleAgent && !loading && (
+        {saleAgent && !loading && !loadingExternal && (
           <p className="mt-2 text-center text-[10px] font-semibold text-text-soft">
             ثبت‌کننده فروش: {saleAgent.firstName} {saleAgent.lastName}
           </p>

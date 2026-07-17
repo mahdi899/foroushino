@@ -1,13 +1,17 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Shield, ChevronLeft } from 'lucide-react'
+import { Shield, ChevronLeft, UserPlus, Crown } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { Avatar } from '@/components/ui/Avatar'
+import { BottomSheet } from '@/components/ui/BottomSheet'
+import { Button } from '@/components/ui/Button'
+import { Chip } from '@/components/ui/Chip'
 import { roleLabels } from '@/data/labels'
 import { hasPermission } from '@/lib/permissions'
 import { toFa } from '@/lib/format'
+import { createStaff, ensureAdminAgentsLoaded } from '@/services/userAdminActions'
 import type { Role } from '@/types'
 
 const STAFF_ROLES: Role[] = ['supervisor', 'leader']
@@ -17,8 +21,16 @@ export function StaffManagementScreen() {
   const permissions = useStore((s) => s.permissions)
   const agents = useStore((s) => s.agents)
   const teams = useStore((s) => s.teams)
+  const pushToast = useStore((s) => s.pushToast)
 
   const canManage = hasPermission(permissions, 'users.manage')
+  const canCreateLeader = canManage || hasPermission(permissions, 'users.manage-team')
+
+  const [createRole, setCreateRole] = useState<'supervisor' | 'leader' | null>(null)
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [teamId, setTeamId] = useState('')
+  const [busy, setBusy] = useState(false)
 
   const staff = useMemo(
     () => agents.filter((agent) => STAFF_ROLES.includes(agent.role)),
@@ -28,8 +40,60 @@ export function StaffManagementScreen() {
   const supervisors = staff.filter((a) => a.role === 'supervisor')
   const leaders = staff.filter((a) => a.role === 'leader')
 
+  const supervisedTeams = useMemo(() => {
+    const map = new Map<string, typeof teams>()
+    for (const team of teams) {
+      const key = team.supervisorId ?? '__none__'
+      const bucket = map.get(key) ?? []
+      bucket.push(team)
+      map.set(key, bucket)
+    }
+    return map
+  }, [teams])
+
+  useEffect(() => {
+    if (!hasPermission(permissions, 'users.view')) return
+    void ensureAdminAgentsLoaded().catch(() => {
+      pushToast('بارگذاری پرسنل ناموفق بود', 'error')
+    })
+  }, [permissions, pushToast])
+
   if (!hasPermission(permissions, 'users.view')) {
     return null
+  }
+
+  const openCreate = (role: 'supervisor' | 'leader') => {
+    setCreateRole(role)
+    setName('')
+    setPhone('')
+    setTeamId(teams[0]?.id ?? '')
+  }
+
+  const submitCreate = async () => {
+    if (!createRole || !name.trim() || !phone.trim()) {
+      pushToast('نام و شماره موبایل را وارد کن', 'error')
+      return
+    }
+    if (createRole === 'leader' && !teamId) {
+      pushToast('تیم سرتیم را انتخاب کن', 'error')
+      return
+    }
+
+    setBusy(true)
+    try {
+      await createStaff({
+        name,
+        phone,
+        role: createRole,
+        teamId: createRole === 'leader' ? teamId : undefined,
+      })
+      pushToast(createRole === 'supervisor' ? 'ناظر اضافه شد' : 'سرتیم اضافه شد')
+      setCreateRole(null)
+    } catch {
+      pushToast('افزودن پرسنل ناموفق بود', 'error')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -38,74 +102,171 @@ export function StaffManagementScreen() {
         sticky
         showBack
         title="مدیریت ناظران"
-        subtitle={canManage ? 'ناظران، لیدرها و تیم‌ها' : 'مشاهده ناظران و لیدرها'}
+        subtitle={canManage ? 'تعریف ناظر، سرتیم و تیم‌ها' : 'مشاهده ناظران و سرتیم‌ها'}
         icon={Shield}
         iconTone="primary"
       />
 
       <div className="space-y-5 px-4 pb-24 pt-2">
         <section>
-          <h2 className="mb-3 text-[15px] font-extrabold text-neutral-900">
-            سوپروایزرها ({toFa(supervisors.length)})
-          </h2>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="text-[15px] font-extrabold text-text">
+              ناظران ({toFa(supervisors.length)})
+            </h2>
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => openCreate('supervisor')}
+                className="flex items-center gap-1 rounded-full bg-[#3390EC] px-3 py-1.5 text-[10px] font-bold text-white dark:bg-[#8774E1]"
+              >
+                <UserPlus size={12} />
+                افزودن ناظر
+              </button>
+            )}
+          </div>
           <div className="space-y-2">
-            {supervisors.map((person) => {
-              const team = teams.find((t) => t.id === person.teamId)
-              return (
-                <StaffRow
-                  key={person.id}
-                  person={person}
-                  teamName={team?.name}
-                  onOpenTeams={() => navigate('/teams')}
-                />
-              )
-            })}
+            {supervisors.length === 0 ? (
+              <p className="rounded-[18px] border border-dashed border-white/55 px-4 py-5 text-center text-[12px] font-semibold text-text-soft dark:border-white/10">
+                هنوز ناظری ثبت نشده
+              </p>
+            ) : (
+              supervisors.map((person) => {
+                const assignedTeams =
+                  supervisedTeams.get(person.id)?.sort((a, b) => a.name.localeCompare(b.name, 'fa')) ?? []
+                return (
+                  <StaffRow
+                    key={person.id}
+                    person={person}
+                    meta={
+                      assignedTeams.length > 0
+                        ? `${toFa(assignedTeams.length)} تیم: ${assignedTeams.map((team) => team.name).join('، ')}`
+                        : 'بدون تیم تحت نظارت'
+                    }
+                    onOpen={() => navigate('/teams')}
+                  />
+                )
+              })
+            )}
           </div>
         </section>
 
         <section>
-          <h2 className="mb-3 text-[15px] font-extrabold text-neutral-900">
-            لیدرهای تیم ({toFa(leaders.length)})
-          </h2>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="text-[15px] font-extrabold text-text">
+              سرتیم‌ها ({toFa(leaders.length)})
+            </h2>
+            {canCreateLeader && (
+              <button
+                type="button"
+                onClick={() => openCreate('leader')}
+                className="flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-[10px] font-bold text-white"
+              >
+                <Crown size={12} />
+                افزودن سرتیم
+              </button>
+            )}
+          </div>
           <div className="space-y-2">
-            {leaders.map((person) => {
-              const team = teams.find((t) => t.leaderId === person.id)
-              return (
-                <StaffRow
-                  key={person.id}
-                  person={person}
-                  teamName={team?.name}
-                  onOpenTeams={() => team && navigate(`/team?teamId=${team.id}`)}
-                />
-              )
-            })}
+            {leaders.length === 0 ? (
+              <p className="rounded-[18px] border border-dashed border-white/55 px-4 py-5 text-center text-[12px] font-semibold text-text-soft dark:border-white/10">
+                هنوز سرتیمی ثبت نشده
+              </p>
+            ) : (
+              leaders.map((person) => {
+                const team = teams.find((t) => t.leaderId === person.id)
+                const supervisorName = team?.supervisorName
+                return (
+                  <StaffRow
+                    key={person.id}
+                    person={person}
+                    meta={
+                      team
+                        ? `تیم ${team.name}${supervisorName ? ` · ناظر ${supervisorName}` : ''}`
+                        : 'بدون تیم'
+                    }
+                    onOpen={() => (team ? navigate(`/team?teamId=${team.id}`) : navigate('/teams'))}
+                  />
+                )
+              })
+            )}
           </div>
         </section>
 
         {canManage && (
-          <p className="rounded-2xl bg-primary-50 p-4 text-[12px] font-semibold leading-6 text-primary-700">
-            ویرایش نقش‌ها و تیم‌ها از پنل ادمین وب در دسترس است. در موبایل فعلاً مشاهده و
-            نظارت لایو فعال است.
-          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/admin/teams')}
+            className="glass-card flex w-full items-center justify-between rounded-[18px] border border-white/55 px-4 py-3.5 text-right dark:border-white/10"
+          >
+            <span className="text-[13px] font-bold text-text">مدیریت تیم‌ها و کارشناسان</span>
+            <ChevronLeft size={16} className="text-text-soft" />
+          </button>
         )}
       </div>
+
+      <BottomSheet
+        open={createRole != null}
+        onClose={() => setCreateRole(null)}
+        title={createRole === 'supervisor' ? 'افزودن ناظر' : 'افزودن سرتیم'}
+      >
+        <div className="space-y-3 pt-1">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="نام و نام خانوادگی"
+            className="glass-inset w-full rounded-[14px] border border-white/55 px-3 py-3 text-[14px] font-semibold dark:border-white/10"
+          />
+          <input
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="شماره موبایل"
+            inputMode="tel"
+            className="glass-inset w-full rounded-[14px] border border-white/55 px-3 py-3 text-[14px] font-semibold dark:border-white/10"
+          />
+          {createRole === 'leader' && (
+            <div className="flex flex-wrap gap-2">
+              {teams.map((team) => (
+                <Chip key={team.id} active={teamId === team.id} onClick={() => setTeamId(team.id)}>
+                  {team.name}
+                </Chip>
+              ))}
+            </div>
+          )}
+          <Button
+            full
+            size="lg"
+            disabled={busy}
+            icon={<UserPlus size={18} />}
+            onClick={() => void submitCreate()}
+          >
+            {busy ? 'در حال ذخیره…' : 'ذخیره'}
+          </Button>
+        </div>
+      </BottomSheet>
     </Page>
   )
 }
 
 function StaffRow({
   person,
-  teamName,
-  onOpenTeams,
+  meta,
+  onOpen,
 }: {
-  person: { id: string; firstName: string; lastName: string; role: Role; avatar?: string | null; callsToday: number }
-  teamName?: string
-  onOpenTeams: () => void
+  person: {
+    id: string
+    firstName: string
+    lastName: string
+    role: Role
+    avatar?: string | null
+    callsToday: number
+  }
+  meta?: string
+  onOpen: () => void
 }) {
   return (
     <button
       type="button"
-      onClick={onOpenTeams}
+      onClick={onOpen}
       className="glass-card flex w-full items-center gap-3 rounded-[20px] border border-white/55 p-3.5 text-right dark:border-white/10"
     >
       <Avatar
@@ -120,10 +281,8 @@ function StaffRow({
         <p className="truncate text-[14px] font-bold text-text">
           {person.firstName} {person.lastName}
         </p>
-        <p className="mt-0.5 text-[11px] font-semibold text-text-soft">
-          {roleLabels[person.role]}
-          {teamName ? ` · ${teamName}` : ''}
-        </p>
+        <p className="mt-0.5 text-[11px] font-semibold text-text-soft">{roleLabels[person.role]}</p>
+        {meta && <p className="mt-1 text-[10px] font-semibold text-text-muted">{meta}</p>}
       </div>
       <div className="shrink-0 text-left">
         <p className="text-[12px] font-black tabular-nums text-text">{toFa(person.callsToday)}</p>

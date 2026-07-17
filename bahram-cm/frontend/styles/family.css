@@ -5,7 +5,7 @@
 .family-app {
   color-scheme: light;
 
-  --family-font: var(--font-iransans), "IRANSansXFaNum", Tahoma, Arial, sans-serif;
+  --family-font: var(--font-iransans), "IRANSansXFaNum", Tahoma, sans-serif;
   font-family: var(--family-font);
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
@@ -144,7 +144,7 @@
 }
 
 .family-portal-surface {
-  font-family: var(--font-iransans), "IRANSansXFaNum", Tahoma, Arial, sans-serif;
+  font-family: var(--font-iransans), "IRANSansXFaNum", Tahoma, sans-serif;
   font-synthesis: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

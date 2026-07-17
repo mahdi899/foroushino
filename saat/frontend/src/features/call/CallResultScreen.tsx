@@ -23,7 +23,8 @@ import { FollowupPicker, buildFollowupIso } from '@/components/domain/FollowupPi
 import { ContactStatusBadge } from '@/components/domain/Badges'
 import { suggestReasonIcon, suggestReasonChipLabel } from '@/components/domain/icons'
 import { canEndAgentCall } from '@/lib/callPolicy'
-import { formatDuration } from '@/lib/format'
+import { formatDuration, toFa } from '@/lib/format'
+import { formatCustomerPhone } from '@/lib/phonePrivacy'
 import { EmptyState } from '@/components/ui/States'
 import { SuccessScreen } from '@/components/ui/SuccessScreen'
 import {
@@ -41,7 +42,6 @@ import { ApiError } from '@/services/http'
 import { readCallSession } from '@/services/callSession'
 import { collectLeadNotes } from '@/lib/leadNotes'
 import { objectionsLibrary } from '@/data/mockExtra'
-import { formatPhone, toFa } from '@/lib/format'
 import { leadDisplayCode } from '@/lib/leadCode'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
@@ -558,6 +558,7 @@ function CallResultSuccessView({
   onNext: () => void
   onHome: () => void
 }) {
+  const role = useStore((s) => s.role)
   const next = outcome.suggestion?.lead ?? null
   const ReasonIcon = outcome.suggestion ? suggestReasonIcon[outcome.suggestion.reason] : null
 
@@ -603,7 +604,7 @@ function CallResultSuccessView({
                 <div className="mt-1.5 flex flex-wrap items-center justify-end gap-2">
                   <ContactStatusBadge temperature={next.temperature} size="sm" />
                   <p className="ltr-nums text-xs font-bold text-primary-600 tabular-nums">
-                    {formatPhone(next.phone)}
+                    {formatCustomerPhone(next.phone, role)}
                   </p>
                 </div>
               </div>

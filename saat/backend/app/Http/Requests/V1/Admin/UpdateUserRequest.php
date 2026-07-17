@@ -4,6 +4,7 @@ namespace App\Http\Requests\V1\Admin;
 
 use App\Enums\RoleName;
 use App\Models\User;
+use App\Support\AdminScope;
 use App\Support\TeamCapacity;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -13,7 +14,28 @@ class UpdateUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) ($this->user()?->can('users.manage') || $this->user()?->can('users.manage-team'));
+        /** @var User $user */
+        $user = $this->route('user');
+        $actor = $this->user();
+
+        if (AdminScope::canManageUser($actor, $user)) {
+            return true;
+        }
+
+        if ($actor?->can('users.manage-team-roster') && $user->hasRole(RoleName::Agent->value)) {
+            if ($this->has('team_id')) {
+                $requestedTeamId = $this->input('team_id');
+                if ($requestedTeamId === null) {
+                    return AdminScope::canManageTeamRoster($actor, (int) ($user->team_id ?? 0));
+                }
+
+                return AdminScope::canManageTeamRoster($actor, (int) $requestedTeamId);
+            }
+
+            return AdminScope::canManageTeamRoster($actor, (int) ($user->team_id ?? 0));
+        }
+
+        return false;
     }
 
     /**
@@ -49,6 +71,23 @@ class UpdateUserRequest extends FormRequest
 
             /** @var User $user */
             $user = $this->route('user');
+            $actor = $this->user();
+
+            if ($actor?->can('users.manage-team-roster') && ! $actor->can('users.manage-team') && ! $actor->can('users.manage')) {
+                if (! $user->hasRole(RoleName::Agent->value)) {
+                    $validator->errors()->add('role', 'فقط کارشناسان قابل ویرایش هستند.');
+
+                    return;
+                }
+
+                $allowedKeys = ['team_id'];
+                foreach (array_keys($this->all()) as $key) {
+                    if (! in_array($key, $allowedKeys, true)) {
+                        $validator->errors()->add($key, 'اجازه ویرایش این فیلد را ندارید.');
+                    }
+                }
+            }
+
             if (! $user->hasRole(RoleName::Agent->value)) {
                 return;
             }
@@ -62,11 +101,15 @@ class UpdateUserRequest extends FormRequest
             }
 
             $teamId = $this->has('team_id')
-                ? $this->integer('team_id')
+                ? ($this->input('team_id') === null ? 0 : $this->integer('team_id'))
                 : (int) $user->team_id;
 
             if ($teamId <= 0) {
                 return;
+            }
+
+            if ($actor && $actor->can('users.manage-team-roster') && ! AdminScope::canManageTeamRoster($actor, $teamId)) {
+                $validator->errors()->add('team_id', 'فقط می‌توانی کارشناسان تیم خودت را مدیریت کنی.');
             }
 
             $activating = $this->has('is_active') && $this->boolean('is_active') && ! $user->is_active;

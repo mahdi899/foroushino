@@ -1,22 +1,17 @@
-"use client";
-
-import { useServerInsertedHTML } from "next/navigation";
-
 type ServerInsertedJsonLdProps = {
   id: string;
   data: unknown;
 };
 
 /**
- * Injects JSON-LD during the server HTML stream only (React 19 safe).
- * Avoids rendering <script> in the client React tree, which Next 16 warns about.
+ * JSON-LD for Server Components only — no client bundle.
+ * Avoids Turbopack/SSR "module factory is not available" issues from
+ * useServerInsertedHTML inside a client boundary.
  */
 export function ServerInsertedJsonLd({ id, data }: ServerInsertedJsonLdProps) {
   const payload = JSON.stringify(data).replace(/</g, "\\u003c");
 
-  useServerInsertedHTML(() => (
+  return (
     <script id={id} type="application/ld+json" dangerouslySetInnerHTML={{ __html: payload }} />
-  ));
-
-  return null;
+  );
 }

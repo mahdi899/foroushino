@@ -9,7 +9,7 @@ interface PageProps {
 
 export function Page({ children, className, withNav = true }: PageProps) {
   return (
-    <div className={cn('min-h-full', withNav && 'pb-[calc(106px+var(--safe-bottom))]', className)}>
+    <div className={cn('min-h-full font-sans', withNav && 'pb-[calc(106px+var(--safe-bottom))]', className)}>
       {children}
     </div>
   )

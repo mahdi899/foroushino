@@ -28,7 +28,7 @@ export function isManagerRole(role: Role): boolean {
 }
 
 export function hasMultiTeamView(role: Role): boolean {
-  return isManagerRole(role)
+  return isManagerRole(role) || isSupervisorRole(role)
 }
 
 export function canMakeCalls(role: Role): boolean {

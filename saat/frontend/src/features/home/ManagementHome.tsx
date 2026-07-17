@@ -5,15 +5,17 @@ import {
   Users,
   TrendingUp,
   ChevronLeft,
-  BadgeDollarSign,
   Radio,
   FileText,
   Server,
   UserPlus,
   ShieldCheck,
   Activity,
-  CreditCard,
   BarChart3,
+  Banknote,
+  Landmark,
+  WalletCards,
+  AlertTriangle,
   type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
@@ -36,11 +38,11 @@ import { roleLabels } from '@/data/labels'
 import { conversionRateFromStats } from '@/lib/dailyGoal'
 import { toFa } from '@/lib/format'
 import { apiMode } from '@/services'
-import { fetchTeamLive } from '@/services/teamLive'
+import { subscribeTeamLive } from '@/services/teamLivePoller'
 import { haptic } from '@/lib/telegram'
 import { countPendingCommissionsForLeader, countPendingCommissionsForSupervisor, resolveCommissionApprovalMode } from '@/lib/commissionQueue'
 import { cn } from '@/lib/cn'
-import type { Agent } from '@/types'
+import type { Agent, Role } from '@/types'
 
 const TG = 'text-[#3390EC] dark:text-[#8774E1]'
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
@@ -61,34 +63,221 @@ type MenuItem = {
   onClick: () => void
   badge?: number
   tone?: 'default' | 'primary' | 'warning' | 'success'
+  iconWrap?: 'primary' | 'success' | 'warning'
 }
 
-function StatCell({ value, label, warn }: { value: string | number; label: string; warn?: boolean }) {
+const iconWrapClass: Record<NonNullable<MenuItem['iconWrap']>, string> = {
+  primary: 'icon-3d-primary',
+  success: 'icon-3d-success',
+  warning: 'icon-3d-warning',
+}
+
+function resolveIconWrap(item: MenuItem): string {
+  if (item.iconWrap) return iconWrapClass[item.iconWrap]
+  if (item.tone === 'success') return iconWrapClass.success
+  if (item.tone === 'warning') return iconWrapClass.warning
+  return iconWrapClass.primary
+}
+
+function StatCell({
+  value,
+  label,
+  warn,
+  accent,
+}: {
+  value: string | number
+  label: string
+  warn?: boolean
+  accent?: 'blue' | 'green' | 'orange' | 'red'
+}) {
+  const accentRing =
+    accent === 'green'
+      ? 'border-emerald-500/20 bg-emerald-500/8'
+      : accent === 'orange'
+        ? 'border-orange-500/20 bg-orange-500/8'
+        : accent === 'red'
+          ? 'border-red-500/20 bg-red-500/8'
+          : 'border-[#3390EC]/20 bg-[#3390EC]/8 dark:border-[#8774E1]/25 dark:bg-[#8774E1]/10'
+
   return (
-    <div className="flex flex-col items-center px-1.5 py-3">
+    <div
+      className={cn(
+        'glass-inset flex flex-col items-center rounded-[14px] border px-1.5 py-2.5',
+        accentRing,
+        warn && 'border-amber-500/30 bg-amber-500/10',
+      )}
+    >
       <span
         className={cn(
-          'text-[17px] font-black tabular-nums leading-none',
+          'text-[18px] font-black tabular-nums leading-none',
           warn ? 'text-amber-600 dark:text-amber-400' : 'text-text',
         )}
       >
         {typeof value === 'number' ? toFa(value) : value}
       </span>
-      <span className="mt-1 text-center text-[10px] font-semibold leading-tight text-text-soft">{label}</span>
+      <span className="mt-1 text-center text-[9px] font-bold leading-tight text-text-soft">{label}</span>
     </div>
+  )
+}
+
+function MgmtHeroBanner({
+  role,
+  hero,
+  totalCalls,
+  avgConversion,
+  hotLeads,
+  overdueCount,
+  teamAgentsCount,
+  teamsCount,
+  inboxTotal,
+  isLeader,
+  isSupervisor,
+  isManager,
+}: {
+  role: Role
+  hero: { title: string; sub: string }
+  totalCalls: number
+  avgConversion: number
+  hotLeads: number
+  overdueCount: number
+  teamAgentsCount: number
+  teamsCount: number
+  inboxTotal: number
+  isLeader: boolean
+  isSupervisor: boolean
+  isManager: boolean
+}) {
+  const accentBar =
+    isManager
+      ? 'from-[#8774E1]/90 via-[#3390EC]/70 to-[#10A37F]/60'
+      : isSupervisor
+        ? 'from-[#3390EC]/90 via-[#10A37F]/70 to-[#FFB000]/50'
+        : 'from-[#10A37F]/90 via-[#3390EC]/70 to-[#8774E1]/50'
+
+  return (
+    <motion.div
+      variants={fadeUp}
+      className="glass-card relative overflow-hidden rounded-[26px] border border-white/60 dark:border-white/10"
+    >
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-10 top-6 h-36 w-36 rounded-full bg-[#3390EC]/18 blur-3xl" />
+        <div className="absolute -bottom-10 -right-8 h-32 w-32 rounded-full bg-[#8774E1]/16 blur-3xl" />
+        <div className="absolute right-1/4 top-1/3 h-20 w-20 rounded-full bg-[#10A37F]/12 blur-2xl" />
+        <div className="absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-white/90 to-transparent dark:via-white/15" />
+      </div>
+
+      <div className={cn('relative h-1 w-full bg-gradient-to-l', accentBar)} />
+
+      <div className="relative px-4 pb-4 pt-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 text-right">
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
+              <span className="glass-inset inline-flex items-center rounded-full border border-white/55 px-2.5 py-1 text-[10px] font-bold text-text-soft dark:border-white/10">
+                {roleLabels[role]}
+              </span>
+              <span className="text-[10px] font-semibold text-text-soft">
+                {isLeader ? 'پنل لیدر' : isSupervisor ? 'پنل ناظر' : 'پنل مدیریت'}
+              </span>
+            </div>
+            <h2 className="mt-2 truncate text-[22px] font-black leading-tight tracking-tight text-text">
+              {hero.title}
+            </h2>
+            <p className="mt-1 text-[12px] font-medium text-text-soft">{hero.sub}</p>
+          </div>
+
+          <motion.span
+            animate={{ scale: [1, 1.04, 1] }}
+            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+            className="glass-inset-success inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/25 px-2.5 py-1.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+            لایو
+          </motion.span>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <StatCell value={totalCalls} label="تماس امروز" accent="blue" />
+          <StatCell value={`${toFa(avgConversion)}٪`} label="نرخ تبدیل" accent="green" />
+          <StatCell value={hotLeads} label="لید داغ" accent="orange" />
+          <StatCell
+            value={overdueCount}
+            label="عقب‌افتاده"
+            warn={overdueCount > 0}
+            accent={overdueCount > 0 ? 'red' : undefined}
+          />
+        </div>
+
+        <div className="glass-inset mt-3 flex items-center justify-between gap-2 rounded-[16px] border border-white/50 px-3 py-2.5 dark:border-white/10">
+          <div className="flex min-w-0 flex-1 items-center justify-around gap-1">
+            {(isSupervisor || isManager) && (
+              <div className="flex flex-col items-center px-1">
+                <span className="text-[15px] font-black tabular-nums text-text">{toFa(teamsCount)}</span>
+                <span className="text-[9px] font-bold text-text-soft">تیم</span>
+              </div>
+            )}
+            <div className="flex flex-col items-center px-1">
+              <span className="text-[15px] font-black tabular-nums text-text">{toFa(teamAgentsCount)}</span>
+              <span className="text-[9px] font-bold text-text-soft">کارشناس</span>
+            </div>
+            <div className="flex flex-col items-center px-1">
+              <span
+                className={cn(
+                  'text-[15px] font-black tabular-nums',
+                  inboxTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-text',
+                )}
+              >
+                {toFa(inboxTotal)}
+              </span>
+              <span className="text-[9px] font-bold text-text-soft">اقدام</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
   )
 }
 
 function MgmtSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <motion.section variants={fadeUp}>
-      <h2 className="mb-1.5 px-1 text-[11px] font-extrabold uppercase tracking-wide text-text-soft">
-        {title}
-      </h2>
-      <div className="glass-card overflow-hidden rounded-[18px] border border-white/55 dark:border-white/10">
+      <h2 className="mb-2 px-1 text-[12px] font-extrabold tracking-wide text-text-soft">{title}</h2>
+      <div className="glass-card overflow-hidden rounded-[20px] border border-white/55 dark:border-white/10">
         {children}
       </div>
     </motion.section>
+  )
+}
+
+function QuickActionTile({ item }: { item: MenuItem }) {
+  const Icon = item.icon
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        haptic('selection')
+        item.onClick()
+      }}
+      className="glass-inset group relative flex flex-col items-center gap-2.5 rounded-[18px] border border-white/50 p-3.5 text-center transition-all active:scale-[0.97] dark:border-white/10"
+    >
+      {item.badge != null && item.badge > 0 ? (
+        <span className="absolute -top-1 -left-1 z-[1] flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-black text-white shadow-md">
+          {toFa(item.badge)}
+        </span>
+      ) : null}
+      <span
+        className={cn(
+          'icon-3d flex h-11 w-11 items-center justify-center rounded-[14px] transition-transform group-active:scale-95',
+          resolveIconWrap(item),
+        )}
+      >
+        <Icon size={20} strokeWidth={2.25} className="text-white" />
+      </span>
+      <span className="line-clamp-2 text-[11px] font-bold leading-tight text-text">{item.label}</span>
+    </button>
   )
 }
 
@@ -100,14 +289,6 @@ function MgmtRow({
   bordered?: boolean
 }) {
   const Icon = item.icon
-  const iconTone =
-    item.tone === 'success'
-      ? 'text-emerald-600 dark:text-emerald-400'
-      : item.tone === 'warning'
-        ? 'text-amber-600 dark:text-amber-400'
-        : item.tone === 'primary'
-          ? TG
-          : TG
 
   return (
     <button
@@ -117,21 +298,26 @@ function MgmtRow({
         item.onClick()
       }}
       className={cn(
-        'flex w-full items-center gap-3 px-3.5 py-3 text-right transition-colors active:bg-black/[0.03] dark:active:bg-white/[0.04]',
+        'group flex w-full items-center gap-3 px-3.5 py-3.5 text-right transition-colors active:bg-black/[0.03] dark:active:bg-white/[0.04]',
         bordered && 'border-b border-white/40 dark:border-white/8',
       )}
     >
-      <span className="glass-inset flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-white/50 dark:border-white/10">
-        <Icon size={17} strokeWidth={2.25} className={iconTone} />
+      <span
+        className={cn(
+          'icon-3d flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] transition-transform group-active:scale-95',
+          resolveIconWrap(item),
+        )}
+      >
+        <Icon size={18} strokeWidth={2.25} className="text-white" />
       </span>
       <div className="min-w-0 flex-1">
-        <span className="text-[14px] font-semibold text-text">{item.label}</span>
+        <span className="text-[14px] font-bold text-text">{item.label}</span>
         {item.sublabel && (
           <p className="mt-0.5 truncate text-[11px] font-medium text-text-soft">{item.sublabel}</p>
         )}
       </div>
       {item.badge != null && item.badge > 0 ? (
-        <span className="shrink-0 rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-black tabular-nums text-white">
+        <span className="shrink-0 rounded-full bg-gradient-to-b from-amber-400 to-amber-500 px-2.5 py-0.5 text-[10px] font-black tabular-nums text-white shadow-sm">
           {toFa(item.badge)}
         </span>
       ) : null}
@@ -159,15 +345,18 @@ function InboxRow({
         onClick()
       }}
       className={cn(
-        'flex w-full items-center gap-3 px-3.5 py-3 text-right transition-colors active:bg-amber-500/8',
+        'group flex w-full items-center gap-3 px-3.5 py-3.5 text-right transition-colors active:bg-amber-500/10',
         bordered && 'border-b border-amber-500/12 dark:border-amber-500/10',
       )}
     >
-      <span className="min-w-0 flex-1 text-[13px] font-semibold text-text">{label}</span>
-      <span className="shrink-0 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-black tabular-nums text-amber-700 dark:text-amber-300">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-amber-500/15">
+        <AlertTriangle size={16} strokeWidth={2.25} className="text-amber-600 dark:text-amber-400" />
+      </span>
+      <span className="min-w-0 flex-1 text-[13px] font-bold text-text">{label}</span>
+      <span className="shrink-0 rounded-full bg-gradient-to-b from-amber-400 to-orange-500 px-2.5 py-1 text-[11px] font-black tabular-nums text-white shadow-sm">
         {toFa(count)}
       </span>
-      <ChevronLeft size={16} className="shrink-0 text-amber-600/50" />
+      <ChevronLeft size={16} className="shrink-0 text-amber-600/50 transition-transform group-active:-translate-x-0.5" />
     </button>
   )
 }
@@ -183,11 +372,11 @@ function AgentRankRow({
 }) {
   const rankStyle =
     rank === 1
-      ? 'bg-warning-400 text-white'
+      ? 'bg-gradient-to-b from-amber-300 to-amber-500 text-white shadow-sm'
       : rank === 2
-        ? 'bg-neutral-300 text-neutral-700'
+        ? 'bg-gradient-to-b from-neutral-200 to-neutral-300 text-neutral-700'
         : rank === 3
-          ? 'bg-accent-400 text-white'
+          ? 'bg-gradient-to-b from-orange-300 to-orange-400 text-white shadow-sm'
           : 'bg-neutral-100 text-neutral-500 dark:bg-white/10 dark:text-neutral-400'
 
   const subline =
@@ -200,19 +389,19 @@ function AgentRankRow({
   return (
     <div
       className={cn(
-        'flex items-center gap-2.5 px-3.5 py-2.5',
+        'flex items-center gap-2.5 px-3.5 py-3',
         bordered && 'border-b border-white/40 dark:border-white/8',
       )}
     >
       <span
         className={cn(
-          'flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-black',
+          'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-black',
           rankStyle,
         )}
       >
         {toFa(rank)}
       </span>
-      <Avatar id={agent.id} first={agent.firstName} last={agent.lastName} src={agent.avatar} size={34} />
+      <Avatar id={agent.id} first={agent.firstName} last={agent.lastName} src={agent.avatar} size={36} />
       <div className="min-w-0 flex-1 text-right">
         <p className="truncate text-[13px] font-bold text-text">
           {agent.firstName} {agent.lastName}
@@ -220,7 +409,7 @@ function AgentRankRow({
         <p className="text-[10px] font-semibold text-text-soft">{subline}</p>
       </div>
       <div className="shrink-0 text-left">
-        <p className="text-[15px] font-black tabular-nums text-text">{toFa(agent.callsToday)}</p>
+        <p className="text-[16px] font-black tabular-nums text-text">{toFa(agent.callsToday)}</p>
         <p className="text-[9px] font-semibold text-text-soft">تماس</p>
         {agent.successfulToday > 0 && (
           <p className="mt-0.5 text-[9px] font-bold tabular-nums text-emerald-600">
@@ -269,18 +458,9 @@ export function ManagementHome() {
   useEffect(() => {
     if (apiMode !== 'http' || !isManagementRole(role)) return
 
-    const refresh = async () => {
-      try {
-        const live = await fetchTeamLive(managedTeam?.id ?? null)
-        mergeTeamLiveStats(live)
-      } catch {
-        // Keep last synced snapshot.
-      }
-    }
-
-    void refresh()
-    const timer = window.setInterval(() => void refresh(), 15_000)
-    return () => window.clearInterval(timer)
+    return subscribeTeamLive(managedTeam?.id ?? null, (live) => {
+      mergeTeamLiveStats(live)
+    })
   }, [role, managedTeam?.id, mergeTeamLiveStats])
 
   const teamAgentIds = getTeamAgentIds(teams, agents, currentAgentId, role)
@@ -539,9 +719,10 @@ export function ManagementHome() {
           pendingCommissionCount > 0
             ? `${toFa(pendingCommissionCount)} مورد — قبل از ناظر`
             : 'پورسانت کارشناسان تیم پس از تایید فروش',
-        icon: BadgeDollarSign,
+        icon: WalletCards,
         onClick: () => navigate('/wallet/approvals'),
         tone: 'success',
+        iconWrap: 'success',
         badge: pendingCommissionCount,
       })
     }
@@ -553,9 +734,10 @@ export function ManagementHome() {
           pendingCommissionCount > 0
             ? `${toFa(pendingCommissionCount)} مورد تایید‌شده توسط لیدر`
             : 'فقط پس از تایید لیدر تیم',
-        icon: BadgeDollarSign,
+        icon: WalletCards,
         onClick: () => navigate('/wallet/approvals'),
         tone: 'success',
+        iconWrap: 'success',
         badge: pendingCommissionCount,
       })
     }
@@ -563,24 +745,28 @@ export function ManagementHome() {
       items.push({
         id: 'payouts',
         label: 'صف تسویه',
-        icon: BadgeDollarSign,
+        sublabel: 'پرداخت به کارشناسان — کارت و شبا',
+        icon: Banknote,
         onClick: () => navigate('/wallet/payouts'),
         tone: 'success',
+        iconWrap: 'success',
       })
     }
     if (canManageStaff && hasPermission(permissions, 'users.manage-team')) {
       items.push({
         id: 'bank',
         label: 'تایید کارت و شبا',
-        icon: CreditCard,
+        icon: Landmark,
         onClick: () => navigate('/wallet/bank-accounts'),
         tone: 'warning',
+        iconWrap: 'warning',
       })
       items.push({
         id: 'agents',
         label: 'مدیریت کارشناسان',
         icon: UserPlus,
         onClick: () => navigate('/admin/agents'),
+        iconWrap: 'primary',
       })
     }
     if (canManageStaff && hasPermission(permissions, 'teams.manage')) {
@@ -589,6 +775,7 @@ export function ManagementHome() {
         label: 'مدیریت تیم‌ها',
         icon: Users,
         onClick: () => navigate('/admin/teams'),
+        iconWrap: 'primary',
       })
     }
 
@@ -605,6 +792,20 @@ export function ManagementHome() {
     navigate,
   ])
 
+  const inboxTotal = useMemo(
+    () => inboxItems.reduce((sum, item) => sum + item.count, 0),
+    [inboxItems],
+  )
+
+  const quickActions = useMemo(
+    () => teamMenu.filter((item) => ['teams', 'live-ops', 'qa', 'team-live', 'intake'].includes(item.id)),
+    [teamMenu],
+  )
+  const listMenu = useMemo(
+    () => teamMenu.filter((item) => !quickActions.some((q) => q.id === item.id)),
+    [teamMenu, quickActions],
+  )
+
   return (
     <Page>
       <AppHeader />
@@ -613,38 +814,22 @@ export function ManagementHome() {
         variants={stagger}
         initial="hidden"
         animate="show"
-        className="space-y-3 px-4 pt-2 pb-2"
+        className="space-y-4 px-4 pt-2 pb-2"
       >
-        {/* Team snapshot */}
-        <motion.div
-          variants={fadeUp}
-          className="glass-card overflow-hidden rounded-[18px] border border-white/55 dark:border-white/10"
-        >
-          <div className="px-3.5 pb-3 pt-3.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 text-right">
-                <span className="inline-flex items-center rounded-full border border-white/50 bg-white/40 px-2 py-0.5 text-[10px] font-bold text-text-soft dark:border-white/10 dark:bg-white/[0.06]">
-                  {roleLabels[role]}
-                </span>
-                <h2 className="mt-1.5 truncate text-[18px] font-bold leading-tight text-text">{hero.title}</h2>
-                <p className="mt-0.5 text-[11px] font-medium text-text-soft">{hero.sub}</p>
-              </div>
-              <span className="glass-inset inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/20 px-2 py-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                لایو
-              </span>
-            </div>
-
-            <div className="glass-inset mt-3 overflow-hidden rounded-[14px] border border-white/50 dark:border-white/10">
-              <div className="grid grid-cols-4 divide-x divide-white/40 dark:divide-white/8">
-                <StatCell value={totalCalls} label="تماس" />
-                <StatCell value={`${toFa(avgConversion)}٪`} label="تبدیل" />
-                <StatCell value={hotLeads} label="داغ" />
-                <StatCell value={overdue.length} label="عقب‌افتاده" warn={overdue.length > 0} />
-              </div>
-            </div>
-          </div>
-        </motion.div>
+        <MgmtHeroBanner
+          role={role}
+          hero={hero}
+          totalCalls={totalCalls}
+          avgConversion={avgConversion}
+          hotLeads={hotLeads}
+          overdueCount={overdue.length}
+          teamAgentsCount={teamAgents.length}
+          teamsCount={teams.length}
+          inboxTotal={inboxTotal}
+          isLeader={isLeader}
+          isSupervisor={isSupervisor}
+          isManager={isManager}
+        />
 
         {inboxItems.length > 0 && (
           <MgmtSection title="نیاز به اقدام">
@@ -660,10 +845,23 @@ export function ManagementHome() {
           </MgmtSection>
         )}
 
-        {teamMenu.length > 0 && (
-          <MgmtSection title={isLeader ? 'مدیریت تیم' : 'دسترسی سریع'}>
-            {teamMenu.map((item, i) => (
-              <MgmtRow key={item.id} item={item} bordered={i < teamMenu.length - 1} />
+        {quickActions.length > 0 && (
+          <motion.section variants={fadeUp}>
+            <h2 className="mb-2 px-1 text-[12px] font-extrabold tracking-wide text-text-soft">
+              {isLeader ? 'میانبرهای تیم' : 'دسترسی سریع'}
+            </h2>
+            <div className="grid grid-cols-2 gap-2.5">
+              {quickActions.map((item) => (
+                <QuickActionTile key={item.id} item={item} />
+              ))}
+            </div>
+          </motion.section>
+        )}
+
+        {listMenu.length > 0 && (
+          <MgmtSection title={isLeader ? 'مدیریت تیم' : 'عملیات و تنظیمات'}>
+            {listMenu.map((item, i) => (
+              <MgmtRow key={item.id} item={item} bordered={i < listMenu.length - 1} />
             ))}
           </MgmtSection>
         )}
@@ -678,10 +876,8 @@ export function ManagementHome() {
 
         {(isManager || isSupervisor) && teamRows.length > 0 && (
           <motion.section variants={fadeUp}>
-            <div className="mb-1.5 flex items-center justify-between px-1">
-              <h2 className="text-[11px] font-extrabold uppercase tracking-wide text-text-soft">
-                روند تیم‌ها
-              </h2>
+            <div className="mb-2 flex items-center justify-between px-1">
+              <h2 className="text-[12px] font-extrabold tracking-wide text-text-soft">روند تیم‌ها</h2>
               <button
                 type="button"
                 onClick={() => navigate('/reports')}
@@ -690,18 +886,20 @@ export function ManagementHome() {
                 گزارش کامل
               </button>
             </div>
-            <div className="-mx-0.5 flex gap-2 overflow-x-auto px-0.5 pb-0.5 no-scrollbar">
+            <div className="-mx-0.5 flex gap-2.5 overflow-x-auto px-0.5 pb-0.5 no-scrollbar">
               {teamRows.map((team) => (
-                <div
+                <motion.div
                   key={team.id}
-                  className="glass-card min-w-[120px] shrink-0 rounded-[16px] border border-white/55 p-3 dark:border-white/10"
+                  whileTap={{ scale: 0.97 }}
+                  className="glass-card relative min-w-[130px] shrink-0 overflow-hidden rounded-[18px] border border-white/55 p-3.5 dark:border-white/10"
                 >
-                  <p className="truncate text-[11px] font-bold text-text-soft">{team.name}</p>
-                  <p className={cn('mt-1.5 text-[20px] font-black tabular-nums leading-none', TG)}>
+                  <div className="pointer-events-none absolute -right-4 -top-4 h-14 w-14 rounded-full bg-[#3390EC]/12 blur-xl" />
+                  <p className="relative truncate text-[11px] font-bold text-text-soft">{team.name}</p>
+                  <p className={cn('relative mt-2 text-[22px] font-black tabular-nums leading-none', TG)}>
                     {toFa(team.conversion)}٪
                   </p>
-                  <p className="mt-1 text-[9px] font-semibold text-text-soft">نرخ تبدیل</p>
-                </div>
+                  <p className="relative mt-1 text-[9px] font-semibold text-text-soft">نرخ تبدیل</p>
+                </motion.div>
               ))}
             </div>
           </motion.section>
@@ -722,7 +920,7 @@ export function ManagementHome() {
 
         {insights.length > 0 && (
           <motion.section variants={fadeUp} className="space-y-2">
-            <h2 className="flex items-center gap-1.5 px-1 text-[11px] font-extrabold uppercase tracking-wide text-text-soft">
+            <h2 className="flex items-center gap-1.5 px-1 text-[12px] font-extrabold tracking-wide text-text-soft">
               <TrendingUp size={12} className={TG} />
               بینش‌های امروز
             </h2>

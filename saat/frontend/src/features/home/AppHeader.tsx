@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { Bell, BadgeCheck, ChevronDown } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Avatar } from '@/components/ui/Avatar'
+import { TopPerformerAvatarRing } from '@/components/ui/TopPerformerAvatarRing'
 import { AvailabilitySheet } from '@/components/domain/AvailabilitySwitcher'
 import { availabilityDotClass } from '@/components/domain/icons'
 import { availabilityLabels, roleLabels } from '@/data/labels'
+import { useDailyTopRank } from '@/hooks/useDailyTopRank'
 import { cn } from '@/lib/cn'
 import { isShiftOpen } from '@/lib/shiftUtils'
 
@@ -16,10 +18,24 @@ export function AppHeader() {
   const unread = useStore((s) => s.notifications.filter((n) => !n.read).length)
   const availability = useStore((s) => s.availability)
   const workSession = useStore((s) => s.workSession)
+  const dailyTopRank = useDailyTopRank()
   if (!agent) return null
 
   const shiftActive = isShiftOpen(workSession)
   const showStatus = agent.role === 'agent'
+
+  const avatarNode = (
+    <Avatar
+      id={agent.id}
+      first={agent.firstName}
+      last={agent.lastName}
+      src={agent.avatar}
+      size={44}
+      online={shiftActive && availability === 'available'}
+      onlineClassName={availabilityDotClass[availability]}
+      ring={!dailyTopRank}
+    />
+  )
 
   return (
     <>
@@ -30,16 +46,13 @@ export function AppHeader() {
             onClick={() => navigate('/profile')}
             className="flex h-11 w-11 shrink-0 items-center justify-center"
           >
-            <Avatar
-              id={agent.id}
-              first={agent.firstName}
-              last={agent.lastName}
-              src={agent.avatar}
-              size={44}
-              online={shiftActive && availability === 'available'}
-              onlineClassName={availabilityDotClass[availability]}
-              ring
-            />
+            {dailyTopRank ? (
+              <TopPerformerAvatarRing rank={dailyTopRank} variant="compact" showBadge={false}>
+                {avatarNode}
+              </TopPerformerAvatarRing>
+            ) : (
+              avatarNode
+            )}
           </button>
 
           <div className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -49,7 +62,7 @@ export function AppHeader() {
               className="flex min-w-0 shrink flex-col items-start gap-0.5 overflow-hidden text-right"
             >
               <span className="flex min-w-0 items-center gap-1.5">
-                <span className="truncate text-[17px] font-bold leading-tight tracking-tight text-neutral-900">
+                <span className="truncate text-[17px] font-bold leading-tight tracking-tight text-text">
                   {agent.firstName} {agent.lastName}
                 </span>
                 <BadgeCheck size={16} className="shrink-0 text-primary-500" strokeWidth={2.5} />
@@ -68,8 +81,8 @@ export function AppHeader() {
                   shiftActive && availability === 'doing_follow_up'
                     ? 'border-warning-300/80 bg-warning-50/95 text-warning-800 dark:border-warning-400/30 dark:bg-warning-500/15 dark:text-warning-200'
                     : shiftActive
-                      ? 'glass-inset border-white/55 text-neutral-600 dark:border-white/10 dark:text-neutral-300'
-                      : 'border-warning-200/80 bg-warning-50/90 text-warning-700',
+                      ? 'glass-inset border-white/55 text-text-muted dark:border-white/10 dark:text-text-soft'
+                      : 'border-warning-200/80 bg-warning-50/90 text-warning-700 dark:border-warning-400/25 dark:bg-warning-500/12 dark:text-warning-200',
                 )}
               >
                 <span

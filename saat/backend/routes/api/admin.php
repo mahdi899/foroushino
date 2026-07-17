@@ -21,6 +21,8 @@ Route::prefix('admin')->middleware('throttle:writes')->group(function (): void {
     Route::get('/teams', [TeamAdminController::class, 'index'])->withoutMiddleware('throttle:writes');
     Route::post('/teams', [TeamAdminController::class, 'store']);
     Route::patch('/teams/{team}', [TeamAdminController::class, 'update']);
+    Route::put('/teams/{team}/members', [TeamAdminController::class, 'syncMembers']);
+    Route::patch('/supervisors/{user}/teams', [TeamAdminController::class, 'assignSupervisorTeams']);
 
     Route::get('/scripts', [ScriptController::class, 'index'])->withoutMiddleware('throttle:writes');
     Route::post('/scripts', [ScriptController::class, 'store']);

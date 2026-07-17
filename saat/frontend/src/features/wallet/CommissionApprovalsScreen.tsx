@@ -6,9 +6,13 @@ import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { EmptyState } from '@/components/ui/States'
 import { Button } from '@/components/ui/Button'
+import { BottomSheet } from '@/components/ui/BottomSheet'
+import { CommissionReviewSheet } from '@/components/domain/CommissionReviewSheet'
 import { formatMoney } from '@/lib/format'
 import { commissionStatusLabels } from '@/data/labels'
 import { filterCommissionQueue, resolveCommissionApprovalMode } from '@/lib/commissionQueue'
+import { cn } from '@/lib/cn'
+import { haptic } from '@/lib/telegram'
 import {
   approveCommissionAsLeader,
   approveCommissionAsSupervisor,
@@ -28,6 +32,10 @@ export function CommissionApprovalsScreen() {
   const pushToast = useStore((s) => s.pushToast)
   const [list, setList] = useState<Commission[]>([])
   const [loading, setLoading] = useState(true)
+  const [reviewTarget, setReviewTarget] = useState<Commission | null>(null)
+  const [rejectTarget, setRejectTarget] = useState<Commission | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejecting, setRejecting] = useState(false)
 
   const mode = resolveCommissionApprovalMode(role, permissions)
 
@@ -58,25 +66,37 @@ export function CommissionApprovalsScreen() {
       : 'فقط پورسانت‌هایی که لیدر تیم تایید کرده — تایید نهایی و واریز به کیف پول کارشناس.'
 
   const approve = async (item: Commission) => {
-    try {
-      if (mode === 'leader') await approveCommissionAsLeader(item.id)
-      else await approveCommissionAsSupervisor(item.id)
-      setList((rows) => rows.filter((row) => row.id !== item.id))
-      pushToast(mode === 'leader' ? 'برای ناظر ارسال شد' : 'به کیف پول کارشناس اضافه شد')
-    } catch {
-      pushToast('تایید ناموفق بود', 'error')
-    }
+    if (mode === 'leader') await approveCommissionAsLeader(item.id)
+    else await approveCommissionAsSupervisor(item.id)
+    setList((rows) => rows.filter((row) => row.id !== item.id))
+    pushToast(mode === 'leader' ? 'برای ناظر ارسال شد' : 'به کیف پول کارشناس اضافه شد')
   }
 
-  const reject = async (item: Commission) => {
-    const reason = window.prompt('دلیل رد پورسانت:')
-    if (!reason?.trim()) return
+  const reject = async (item: Commission, reason: string) => {
+    await rejectCommission(item.id, reason)
+    setList((rows) => rows.filter((row) => row.id !== item.id))
+    pushToast('پورسانت رد شد')
+  }
+
+  const openRejectSheet = (item: Commission) => {
+    setReviewTarget(null)
+    setRejectReason('')
+    setRejectTarget(item)
+  }
+
+  const submitReject = async () => {
+    if (!rejectTarget || !rejectReason.trim() || rejecting) return
+    setRejecting(true)
     try {
-      await rejectCommission(item.id, reason.trim())
-      setList((rows) => rows.filter((row) => row.id !== item.id))
-      pushToast('پورسانت رد شد')
+      await reject(rejectTarget, rejectReason.trim())
+      haptic('warning')
+      setRejectTarget(null)
+      setRejectReason('')
     } catch {
+      haptic('error')
       pushToast('رد ناموفق بود', 'error')
+    } finally {
+      setRejecting(false)
     }
   }
 
@@ -120,10 +140,20 @@ export function CommissionApprovalsScreen() {
                 </p>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <Button size="sm" variant="primary" icon={<Check size={14} />} onClick={() => void approve(item)}>
-                  {mode === 'leader' ? 'تایید لیدر' : 'تایید نهایی'}
+                <Button
+                  size="sm"
+                  variant="primary"
+                  icon={<Check size={14} />}
+                  onClick={() => setReviewTarget(item)}
+                >
+                  {mode === 'leader' ? 'بررسی و تایید' : 'بررسی و تایید نهایی'}
                 </Button>
-                <Button size="sm" variant="secondary" icon={<X size={14} />} onClick={() => void reject(item)}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={<X size={14} />}
+                  onClick={() => openRejectSheet(item)}
+                >
                   رد
                 </Button>
               </div>
@@ -131,6 +161,63 @@ export function CommissionApprovalsScreen() {
           ))
         )}
       </div>
+
+      <CommissionReviewSheet
+        commission={reviewTarget}
+        mode={mode}
+        open={!!reviewTarget}
+        onClose={() => setReviewTarget(null)}
+        onApprove={async (item) => {
+          try {
+            await approve(item)
+          } catch {
+            pushToast('تایید ناموفق بود', 'error')
+            throw new Error('approve failed')
+          }
+        }}
+        onReject={(item) => openRejectSheet(item)}
+      />
+
+      <BottomSheet
+        open={!!rejectTarget}
+        onClose={() => {
+          if (rejecting) return
+          setRejectTarget(null)
+          setRejectReason('')
+        }}
+        title="رد پورسانت"
+        description={
+          rejectTarget
+            ? `پورسانت ${rejectTarget.agentName ?? 'کارشناس'} — ${formatMoney(rejectTarget.commissionAmount)} تومان`
+            : undefined
+        }
+      >
+        <div className="space-y-3 px-4 pb-[calc(12px+var(--safe-bottom))] pt-1">
+          <textarea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="دلیل رد پورسانت را بنویس..."
+            rows={3}
+            disabled={rejecting}
+            className={cn(
+              'w-full resize-none rounded-[16px] border border-white/55 bg-white/40 p-3',
+              'text-[13px] font-semibold text-text outline-none backdrop-blur-xl',
+              'focus:border-[#3390EC]/40 dark:border-white/10 dark:bg-white/[0.06]',
+              'dark:focus:border-[#8774E1]/40',
+            )}
+          />
+          <Button
+            size="md"
+            variant="danger"
+            icon={<X size={16} />}
+            disabled={!rejectReason.trim() || rejecting}
+            className="w-full"
+            onClick={() => void submitReject()}
+          >
+            {rejecting ? 'در حال ثبت…' : 'ثبت رد پورسانت'}
+          </Button>
+        </div>
+      </BottomSheet>
     </Page>
   )
 }

@@ -81,7 +81,7 @@ export function PaymentSubmitSheet({
             value={reference}
             onChange={(e) => setReference(e.target.value)}
             placeholder="مثلاً ۷۷۳۱۹۹۸۲"
-            className="h-12 w-full rounded-xl border border-border bg-neutral-50 px-3.5 text-left text-[14px] font-extrabold tabular-nums text-neutral-900 outline-none focus:border-primary-400"
+            className="h-12 w-full rounded-xl border border-border bg-neutral-50 px-3.5 text-left text-[14px] font-extrabold tabular-nums text-neutral-900 outline-none focus:border-primary-400 dark:bg-white/[0.06] dark:text-neutral-100"
           />
         </div>
 

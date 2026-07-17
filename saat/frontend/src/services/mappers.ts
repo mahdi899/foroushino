@@ -13,6 +13,7 @@ import type {
   WorkSession,
 } from '@/types'
 import { localizeActivityTitle, localizeStatusNote } from '@/lib/activityLabels'
+import { conversionRateFromStats } from '@/lib/dailyGoal'
 import type { Suggestion } from './logic'
 
 export function id(value: string | number | null | undefined): string {
@@ -221,6 +222,7 @@ export function mapPayoutRequest(dto: Dto): PayoutRequest {
     amount,
     bankFee: bankFee || undefined,
     netAmount: dto.net_amount != null ? Number(dto.net_amount) : bankFee > 0 ? amount - bankFee : undefined,
+    bankCard: (dto.bank_card as string) ?? null,
     bankCardMasked: (dto.bank_card_masked as string) ?? null,
     bankSheba: (dto.bank_sheba as string) ?? null,
     status: dto.status ?? 'requested',
@@ -301,6 +303,9 @@ export function mapAgentFromAdmin(dto: Dto): import('@/types').Agent {
         ? 'manager'
         : 'agent'
 
+  const callsToday = Number(dto.calls_today ?? 0)
+  const successfulToday = Number(dto.successful_today ?? 0)
+
   return {
     id: id(dto.id),
     firstName,
@@ -310,16 +315,22 @@ export function mapAgentFromAdmin(dto: Dto): import('@/types').Agent {
     avatar: dto.avatar ?? null,
     phone: dto.phone ?? dto.email ?? '',
     level: Number(dto.level ?? 1),
-    callsToday: 0,
-    successfulToday: 0,
-    conversionRate: 0,
+    callsToday,
+    successfulToday,
+    conversionRate: conversionRateFromStats(callsToday, successfulToday),
     points: Number(dto.points ?? 0),
     streak: Number(dto.streak ?? 0),
     callGoal: Number(dto.call_goal ?? 0),
     isActive: dto.is_active !== false,
+    bankCard: (dto.bank_card as string) ?? null,
     bankCardMasked: (dto.bank_card_masked as string) ?? null,
     bankCardConfirmed: dto.bank_card_confirmed != null ? !!dto.bank_card_confirmed : undefined,
+    bankSheba: (dto.bank_sheba as string) ?? null,
     bankShebaRegistered: dto.bank_sheba_registered != null ? !!dto.bank_sheba_registered : undefined,
+    callsThisMonth: Number(dto.calls_this_month ?? 0),
+    shiftSecondsThisMonth: Number(dto.shift_seconds_this_month ?? 0),
+    earnedThisMonth: Number(dto.earned_this_month ?? 0),
+    withdrawnThisMonth: Number(dto.withdrawn_this_month ?? 0),
   }
 }
 
@@ -341,6 +352,8 @@ export function mapTeamFromAdmin(dto: Dto, memberIds: string[] = []): import('@/
     name: dto.name ?? '',
     leaderId: dto.leader_id != null ? id(dto.leader_id) : '',
     leaderName: (dto.leader_name as string) ?? null,
+    supervisorId: dto.supervisor_id != null ? id(dto.supervisor_id) : null,
+    supervisorName: (dto.supervisor_name as string) ?? null,
     agentsCount: dto.agents_count != null ? Number(dto.agents_count) : undefined,
     agentsCapacity: dto.agents_capacity != null ? Number(dto.agents_capacity) : undefined,
     agentIds: memberIds,

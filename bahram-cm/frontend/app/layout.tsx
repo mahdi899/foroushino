@@ -83,7 +83,7 @@ export default async function RootLayout({
         <MediaPreconnect />
       </head>
       <body className={`${fontClassName} min-w-0 overflow-x-clip antialiased`} suppressHydrationWarning>
-        <ServerInsertedJsonLd id="jsonld-site" data={ld} />
+        {!isBareShellRoute ? <ServerInsertedJsonLd id="jsonld-site" data={ld} /> : null}
         <ThemeBoot />
         {!isBareShellRoute ? <SiteBootLoader /> : null}
         {!isBareShellRoute ? <GrainOverlay /> : null}

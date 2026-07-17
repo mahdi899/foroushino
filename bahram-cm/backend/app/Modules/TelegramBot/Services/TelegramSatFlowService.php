@@ -48,6 +48,25 @@ class TelegramSatFlowService
         }
 
         $conversation = $this->conversations->forAccount($account);
+        $knownName = $this->resolveRegisteredName($account);
+
+        if ($knownName !== null) {
+            $this->conversations->transition($conversation, ConversationState::FillingSatApplication, [
+                'sat' => ['step' => 'city', 'draft' => ['name' => $knownName]],
+            ]);
+            $client->sendMessage(
+                $chatId,
+                "☎️ درخواست همکاری سات\n\n"
+                ."نام ثبت‌شده: {$knownName}\n\n"
+                ."۱) شهر محل سکونت را بفرستید:\n"
+                ."(یا /null اگر نمی‌خواهید)\n"
+                .'(برای انصراف «لغو»)',
+                ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
+            );
+
+            return;
+        }
+
         $this->conversations->transition($conversation, ConversationState::FillingSatApplication, [
             'sat' => ['step' => 'name', 'draft' => []],
         ]);
@@ -60,6 +79,25 @@ class TelegramSatFlowService
             .'(یا «لغو»)',
             ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
         );
+    }
+
+    private function resolveRegisteredName(TelegramAccount $account): ?string
+    {
+        $account->loadMissing('user');
+
+        $candidates = [
+            trim((string) ($account->display_name ?? '')),
+            trim((string) ($account->user?->name ?? '')),
+            trim(((string) ($account->first_name ?? '')).' '.((string) ($account->last_name ?? ''))),
+        ];
+
+        foreach ($candidates as $name) {
+            if (mb_strlen($name) >= 3 && mb_strlen($name) <= 255) {
+                return $name;
+            }
+        }
+
+        return null;
     }
 
     public function handleText(
@@ -116,7 +154,7 @@ class TelegramSatFlowService
         $this->conversations->transition($conversation, ConversationState::FillingSatApplication, [
             'sat' => ['step' => 'city', 'draft' => $draft],
         ]);
-        $client->sendMessage($chatId, "۲) شهر محل سکونت را بفرستید:\n(یا /null اگر نمی‌خواهید)");
+        $client->sendMessage($chatId, "شهر محل سکونت را بفرستید:\n(یا /null اگر نمی‌خواهید)");
     }
 
     /** @param  array<string, mixed>  $draft */
@@ -137,7 +175,7 @@ class TelegramSatFlowService
         $this->conversations->transition($conversation, ConversationState::FillingSatApplication, [
             'sat' => ['step' => 'age', 'draft' => $draft],
         ]);
-        $client->sendMessage($chatId, "۳) سن خود را با عدد انگلیسی بفرستید (۱۰ تا ۱۲۰):\n(یا /null)");
+        $client->sendMessage($chatId, "سن خود را با عدد انگلیسی بفرستید (۱۰ تا ۱۲۰):\n(یا /null)");
     }
 
     /** @param  array<string, mixed>  $draft */

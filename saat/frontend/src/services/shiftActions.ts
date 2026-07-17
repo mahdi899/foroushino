@@ -1,9 +1,10 @@
 import type { Availability, AvailabilityAutoReason } from '@/types'
 import { useStore } from '@/store/useStore'
 import { canAutoSetAvailability } from '@/lib/shiftPresence'
+import { isShiftOpen, mergeSyncedWorkSession } from '@/lib/shiftUtils'
+import { mapWorkDaySummary, mapWorkSession } from './mappers'
 import { apiMode } from './index'
 import { http } from './http'
-import { mapWorkDaySummary, mapWorkSession } from './mappers'
 
 type Dto = Record<string, unknown>
 
@@ -19,12 +20,13 @@ export async function refreshShiftFromServer(
 
   const sessionDto = current.session as Dto | null | undefined
   const mappedSession = mapWorkSession(sessionDto)
-  const availability = (current.availability as Availability) ?? 'offline'
+  const local = useStore.getState()
 
   useStore.getState().applyShiftState({
-    workSession: mappedSession,
-    availability,
-    availabilityChangedAt: (current.availability_changed_at as string) ?? null,
+    workSession: mergeSyncedWorkSession(local.workSession, mappedSession),
+    availability: (current.availability as Availability) ?? local.availability,
+    availabilityChangedAt:
+      (current.availability_changed_at as string) ?? local.availabilityChangedAt,
     availabilityAutoReason: null,
     workDaySummaries: Array.isArray(history) ? history.map(mapWorkDaySummary) : [],
   })
@@ -59,19 +61,31 @@ export async function performAutoAvailability(
   }
 }
 
-export function performStartShift(availability: Availability): void {
+export async function performStartShift(availability: Availability): Promise<void> {
   useStore.getState().startShift(availability)
 
   if (apiMode !== 'http') return
 
-  void (async () => {
-    try {
-      await http.post('/shift/start', { availability })
+  try {
+    const data = await http.post<Dto>('/shift/start', { availability })
+    const mappedSession = mapWorkSession(data.session as Dto | null | undefined)
+    const state = useStore.getState()
+
+    useStore.getState().applyShiftState({
+      workSession: mergeSyncedWorkSession(state.workSession, mappedSession),
+      availability: (data.user as Dto | undefined)?.availability as Availability ?? availability,
+      availabilityChangedAt: state.availabilityChangedAt,
+      availabilityAutoReason: null,
+      workDaySummaries: state.workDaySummaries,
+    })
+
+    if (!isShiftOpen(useStore.getState().workSession)) {
       await refreshShiftFromServer()
-    } catch {
-      // Optimistic local state stays; SyncProvider reconciles on next pull.
     }
-  })()
+  } catch (error) {
+    // Optimistic local shift stays open for offline / flaky networks.
+    throw error
+  }
 }
 
 export function performEndShift(): void {

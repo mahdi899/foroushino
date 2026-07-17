@@ -15,7 +15,7 @@ interface ChipProps {
 
 const activeStyles: Record<ChipTone, string> = {
   primary:
-    'bg-[#3390EC] text-white border-[#3390EC] shadow-[0_4px_14px_-4px_rgba(51,144,236,0.55)] dark:bg-[#8774E1] dark:border-[#8774E1] dark:shadow-[0_4px_14px_-4px_rgba(135,116,225,0.55)]',
+    'bg-primary-600 text-white border-primary-600 shadow-[0_4px_14px_-4px_rgba(0,111,117,0.45)] dark:bg-primary-500 dark:border-primary-500 dark:shadow-[0_4px_14px_-4px_rgba(0,140,150,0.4)]',
   hot: 'bg-hot-600 text-white border-hot-600 shadow-[0_4px_14px_-4px_rgba(255,107,0,0.45)]',
   warm: 'bg-warm-600 text-white border-warm-600 shadow-[0_4px_14px_-4px_rgba(255,176,0,0.45)]',
   cold: 'bg-cold-600 text-white border-cold-600 shadow-[0_4px_14px_-4px_rgba(82,107,128,0.45)]',
@@ -25,14 +25,12 @@ const activeStyles: Record<ChipTone, string> = {
 }
 
 const inactiveStyles: Record<ChipTone, string> = {
-  primary:
-    'glass-inset border-white/50 text-[#8E8E93] dark:border-white/10 dark:text-[#98989D]',
-  hot: 'glass-inset border-hot-100/50 text-hot-600 dark:border-hot-500/20',
-  warm: 'glass-inset border-warm-100/50 text-warm-600 dark:border-warm-500/20',
-  cold: 'glass-inset border-cold-100/50 text-cold-600 dark:border-cold-500/20',
-  error: 'glass-inset border-error-100/50 text-error-600 dark:border-error-500/20',
-  neutral:
-    'glass-inset border-white/50 text-[#8E8E93] dark:border-white/10 dark:text-[#98989D]',
+  primary: 'glass-inset border-white/50 text-text-soft',
+  hot: 'glass-inset border-hot-100/50 text-hot-600 dark:border-hot-500/20 dark:text-hot-300',
+  warm: 'glass-inset border-warm-100/50 text-warm-600 dark:border-warm-500/20 dark:text-warm-300',
+  cold: 'glass-inset border-cold-100/50 text-cold-600 dark:border-cold-500/20 dark:text-cold-300',
+  error: 'glass-inset border-error-100/50 text-error-600 dark:border-error-500/20 dark:text-error-300',
+  neutral: 'glass-inset border-white/50 text-text-soft',
 }
 
 export function Chip({ children, active, onClick, icon, tone = 'primary', className }: ChipProps) {

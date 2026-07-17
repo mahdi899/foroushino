@@ -100,6 +100,44 @@ class WalletService
         $this->broadcastWalletUpdated($wallet);
     }
 
+    public function reverseCommission(Commission $commission, string $reason): Wallet
+    {
+        if (in_array($commission->status, [CommissionStatus::Reversed, CommissionStatus::Rejected], true)) {
+            throw new RuntimeException('این پورسانت قبلاً برگشت خورده است.');
+        }
+
+        $wallet = DB::transaction(function () use ($commission, $reason): Wallet {
+            $amount = (float) $commission->commission_amount;
+            $wallet = $this->ensureWallet($commission->agent);
+
+            if (in_array($commission->status, [CommissionStatus::Available, CommissionStatus::Paid], true)) {
+                $wallet = Wallet::query()->whereKey($wallet->id)->lockForUpdate()->first();
+                $wallet->balance_available -= $amount;
+                $wallet->total_earned = max(0, (float) $wallet->total_earned - $amount);
+                $wallet->save();
+
+                WalletTransaction::query()->create([
+                    'user_id' => $commission->agent_id,
+                    'type' => WalletTxType::Reversal,
+                    'amount' => $amount,
+                    'description' => 'برگشت پورسانت — '.$reason,
+                    'reference_type' => 'commission',
+                    'reference_id' => $commission->id,
+                ]);
+            }
+
+            $commission->status = CommissionStatus::Reversed;
+            $commission->rejection_reason = $reason;
+            $commission->save();
+
+            return $wallet->fresh();
+        });
+
+        $this->broadcastWalletUpdated($wallet);
+
+        return $wallet;
+    }
+
     /** @deprecated Legacy auto-release path — prefer leader/supervisor approval flow. */
     public function creditPending(Commission $commission): void
     {

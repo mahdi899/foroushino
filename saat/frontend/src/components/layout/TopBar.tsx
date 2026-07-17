@@ -38,12 +38,12 @@ export function TopBar({ title, subtitle, onBack, showBack = true, action, trans
 
         <div className="min-w-0 flex-1 px-1 text-center">
           {title && (
-            <h1 className="truncate text-[17px] font-bold leading-tight tracking-tight text-neutral-900 dark:text-white">
+            <h1 className="truncate text-[17px] font-bold leading-tight tracking-tight text-text">
               {title}
             </h1>
           )}
           {subtitle && (
-            <p className="mt-0.5 truncate text-[13px] font-medium leading-none text-[#8E8E93] dark:text-[#98989D]">
+            <p className="mt-0.5 truncate text-[13px] font-medium leading-none text-text-soft">
               {subtitle}
             </p>
           )}

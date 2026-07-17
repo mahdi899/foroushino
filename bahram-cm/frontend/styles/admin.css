@@ -54,7 +54,7 @@
   overflow: hidden;
   background-color: var(--color-bg);
   color: var(--color-text);
-  font-family: var(--font-body), sans-serif;
+  font-family: var(--font-body);
   font-size: var(--admin-text-body);
   line-height: var(--admin-line-height-body);
   -webkit-text-size-adjust: 100%;
@@ -3382,7 +3382,7 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
 
 .admin-root .rmdp-wrapper {
   direction: rtl;
-  font-family: var(--font-body), sans-serif;
+  font-family: var(--font-body);
 }
 
 .admin-root .rmdp-calendar {

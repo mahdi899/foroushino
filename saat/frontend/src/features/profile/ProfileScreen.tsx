@@ -27,9 +27,12 @@ import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
 import { ProfileAvatarPicker } from '@/features/profile/ProfileAvatarPicker'
+import { TeamDailyLeaderboard } from '@/components/domain/TeamDailyLeaderboard'
 import { roleLabels } from '@/data/labels'
 import { getTeamAgentIds } from '@/lib/teamUtils'
 import { conversionRateFromStats } from '@/lib/dailyGoal'
+import { getAgentTeamPeers } from '@/lib/dailyTopPerformers'
+import { useDailyTopRank } from '@/hooks/useDailyTopRank'
 import { toFa } from '@/lib/format'
 import { APP_VERSION_LABEL } from '@/lib/app'
 import { haptic } from '@/lib/telegram'
@@ -71,6 +74,16 @@ export function ProfileScreen() {
   const goalPct =
     agent.callGoal > 0 ? Math.min(100, Math.round((agent.callsToday / agent.callGoal) * 100)) : 0
   const goalComplete = agentLine && agent.callGoal > 0 && agent.callsToday >= agent.callGoal
+
+  const dailyTopRank = useDailyTopRank(agent.id)
+
+  const teamLeaderboard = useMemo(() => {
+    if (!agentLine || !agent.teamId) return null
+    const peers = getAgentTeamPeers(agent, agents, teams, currentAgentId, role)
+    if (peers.length === 0) return null
+    const team = teams.find((item) => item.id === agent.teamId)
+    return { teamName: team?.name ?? 'تیم من', peers }
+  }, [agentLine, agent, agents, teams, currentAgentId, role])
 
   const profileStats = useMemo(() => {
     if (management) {
@@ -167,17 +180,18 @@ export function ProfileScreen() {
         {/* Profile hero */}
         <motion.div
           variants={fadeUp}
-          className="glass-card relative overflow-hidden rounded-[22px] border border-white/55 dark:border-white/10"
+          className="glass-card relative overflow-visible rounded-[22px] border border-white/55 dark:border-white/10"
         >
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent dark:via-white/12" />
 
           <div className="px-4 pb-4 pt-5">
-            <div className="flex flex-col items-center">
+            <div className={cn('flex flex-col items-center', dailyTopRank === 1 && 'pt-2')}>
               <ProfileAvatarPicker
                 id={agent.id}
                 first={agent.firstName}
                 last={agent.lastName}
                 src={agent.avatar}
+                dailyTopRank={dailyTopRank}
               />
               <h2 className="mt-3 text-[20px] font-bold tracking-tight text-text">
                 {agent.firstName} {agent.lastName}
@@ -247,6 +261,35 @@ export function ProfileScreen() {
             )}
           </div>
         </motion.div>
+
+        {teamLeaderboard && (
+          <motion.div variants={fadeUp}>
+            <div className="mb-2 flex items-center justify-between gap-2 px-1">
+              <h2 className="min-w-0 truncate text-[12px] font-bold text-text-soft">
+                {teamLeaderboard.teamName} · {toFa(teamLeaderboard.peers.length)} عضو
+              </h2>
+              <button
+                type="button"
+                onClick={() => {
+                  haptic('selection')
+                  navigate('/performance')
+                }}
+                className={cn('inline-flex shrink-0 items-center gap-0.5 text-[11px] font-bold', TG)}
+              >
+                برترین‌های تیم
+                <ChevronLeft size={14} strokeWidth={2.25} />
+              </button>
+            </div>
+            <div className="glass-card overflow-hidden rounded-[22px] border border-white/55 p-3 dark:border-white/10">
+              <TeamDailyLeaderboard
+                peers={teamLeaderboard.peers}
+                meId={agent.id}
+                variant="compact"
+                embedded
+              />
+            </div>
+          </motion.div>
+        )}
 
         <ProfileSection title="کار من">
           {workMenu.map((item, i) => (

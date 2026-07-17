@@ -21,7 +21,7 @@ class RolePermissionSeeder extends Seeder
         'wallet' => ['wallet.view', 'wallet.view-own', 'wallet.view-team', 'wallet.manage-payouts'],
         'commissions' => ['commissions.approve-leader', 'commissions.approve-supervisor'],
         'reports' => ['reports.view', 'reports.view-team', 'reports.view-all', 'reports.submit-team', 'reports.approve-team', 'reports.submit-agent', 'reports.approve-agent'],
-        'users' => ['users.view', 'users.manage', 'users.manage-team', 'teams.manage'],
+        'users' => ['users.view', 'users.manage', 'users.manage-team', 'users.manage-team-roster', 'teams.manage'],
         'training' => ['training.view', 'training.manage'],
         'admin' => ['admin.settings', 'admin.products'],
     ];
@@ -65,6 +65,7 @@ class RolePermissionSeeder extends Seeder
             'wallet.view', 'wallet.view-team',
             'commissions.approve-leader',
             'reports.view', 'reports.view-team', 'reports.submit-team', 'reports.approve-agent',
+            'users.view', 'users.manage-team-roster',
             'training.view',
         ]);
 

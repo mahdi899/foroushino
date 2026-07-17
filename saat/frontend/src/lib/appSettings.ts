@@ -42,63 +42,264 @@ export function mapRuntimeAppSettings(dto: Record<string, unknown>): RuntimeAppS
   }
 }
 
-export const ADMIN_SETTING_LABELS: Record<string, { label: string; hint?: string; type?: 'number' | 'text' | 'boolean' | 'select'; options?: { value: string; label: string }[] }> = {
+export type AdminSettingMeta = {
+  label: string
+  hint?: string
+  type?: 'number' | 'text' | 'boolean' | 'select' | 'url'
+  options?: { value: string; label: string }[]
+  placeholder?: string
+}
+
+export const ADMIN_SETTING_LABELS: Record<string, AdminSettingMeta> = {
   min_call_duration_sec: {
     label: 'حداقل مدت تماس',
-    hint: 'ثانیه — ۰ یعنی بدون محدودیت',
+    hint: 'ثانیه — ۰ یعنی بدون محدودیت برای ثبت نتیجه',
     type: 'number',
+    placeholder: '۰',
   },
   call_lock_minutes: {
     label: 'مدت قفل مشتری',
-    hint: 'دقیقه پس از واگذاری به کارشناس',
+    hint: 'دقیقه — مدت نگهداری مشتری روی کارشناس پس از واگذاری',
     type: 'number',
+    placeholder: '۳۰',
   },
   native_call_enabled: {
-    label: 'تماس سیم‌کارت',
-    hint: 'فعال/غیرفعال کردن تماس native',
+    label: 'تماس با سیم‌کارت',
+    hint: 'اجازه تماس از طریق شماره‌گیر گوشی',
     type: 'boolean',
   },
   voip_enabled: {
     label: 'تماس VoIP',
-    hint: 'فعال‌سازی تماس درون‌برنامه‌ای (نیاز به پیکربندی سرور)',
+    hint: 'تماس درون‌برنامه‌ای از طریق سرور تلفن',
     type: 'boolean',
   },
   default_call_method: {
     label: 'روش پیش‌فرض تماس',
+    hint: 'اولین گزینه‌ای که کارشناس می‌بیند',
     type: 'select',
     options: [
-      { value: 'native', label: 'سیم‌کارت' },
-      { value: 'voip', label: 'VoIP' },
+      { value: 'native', label: 'سیم‌کارت گوشی' },
+      { value: 'voip', label: 'VoIP (درون برنامه)' },
     ],
   },
   voip_provider: {
-    label: 'ارائه‌دهنده VoIP',
-    hint: 'مثال: asterisk, freepbx',
-    type: 'text',
+    label: 'سرویس VoIP',
+    hint: 'نوع اتصال به مرکز تماس',
+    type: 'select',
+    options: [
+      { value: 'asterisk', label: 'Asterisk' },
+      { value: 'freepbx', label: 'FreePBX' },
+      { value: 'custom', label: 'سفارشی / دیگر' },
+    ],
   },
   voip_fallback_to_native: {
     label: 'بازگشت خودکار به سیم‌کارت',
-    hint: 'اگر VoIP در دسترس نبود',
+    hint: 'اگر VoIP در دسترس نبود، تماس از گوشی برقرار شود',
     type: 'boolean',
   },
   lead_pool_auto_return_hours: {
     label: 'بازگشت خودکار به استخر',
-    hint: 'ساعت',
+    hint: 'ساعت — مشتری بدون اقدام به استخر برمی‌گردد',
     type: 'number',
-  },
-  power_dial_default: {
-    label: 'تماس پی‌درپی پیش‌فرض',
-    hint: 'برای کارشناسان جدید فعال شود',
-    type: 'boolean',
-  },
-  qa_sample_percent: {
-    label: 'نمونه‌گیری QA',
-    hint: 'درصد تماس‌های موفق برای بررسی کیفیت',
-    type: 'number',
+    placeholder: '۴۸',
   },
   payout_minimum_amount: {
     label: 'حداقل مبلغ برداشت',
-    hint: 'تومان',
+    hint: 'تومان — کمتر از این مبلغ درخواست تسویه ممکن نیست',
     type: 'number',
+    placeholder: '۱۰۰۰۰۰',
   },
+  power_dial_default: {
+    label: 'تماس پی‌درپی پیش‌فرض',
+    hint: 'برای کارشناسان تازه‌وارد فعال باشد',
+    type: 'boolean',
+  },
+  qa_sample_percent: {
+    label: 'نمونه‌گیری کنترل کیفیت',
+    hint: 'درصد تماس‌های موفق که برای QA انتخاب می‌شوند',
+    type: 'number',
+    placeholder: '۱۰',
+  },
+  meli_pattern_course: {
+    label: 'کد پترن — لینک دوره',
+    hint: 'کد پترن ملی‌پرداز — ۰ یعنی غیرفعال',
+    type: 'number',
+    placeholder: 'مثال: ۱۰۰۱',
+  },
+  meli_sms_link_course: {
+    label: 'آدرس لینک دوره',
+    hint: 'لینک مقصد با ردیابی کارشناس',
+    type: 'url',
+    placeholder: 'https://foroushino.ir/c',
+  },
+  meli_pattern_channel: {
+    label: 'کد پترن — لینک کانال',
+    hint: 'کد پترن ملی‌پرداز — ۰ یعنی غیرفعال',
+    type: 'number',
+    placeholder: 'مثال: ۱۰۰۲',
+  },
+  meli_sms_link_channel: {
+    label: 'آدرس لینک کانال',
+    hint: 'لینک کانال تلگرام یا صفحه معرفی',
+    type: 'url',
+    placeholder: 'https://foroushino.ir/t',
+  },
+  meli_pattern_register: {
+    label: 'کد پترن — ثبت‌نام',
+    hint: 'کد پترن ملی‌پرداز — ۰ یعنی غیرفعال',
+    type: 'number',
+    placeholder: 'مثال: ۱۰۰۳',
+  },
+  meli_sms_link_register: {
+    label: 'آدرس لینک ثبت‌نام',
+    hint: 'صفحه ثبت‌نام یا فرم مشتری',
+    type: 'url',
+    placeholder: 'https://foroushino.ir/r',
+  },
+  meli_pattern_payment: {
+    label: 'کد پترن — پرداخت',
+    hint: 'کد پترن ملی‌پرداز — ۰ یعنی غیرفعال',
+    type: 'number',
+    placeholder: 'مثال: ۱۰۰۴',
+  },
+  meli_sms_link_payment: {
+    label: 'آدرس لینک پرداخت',
+    hint: 'درگاه یا صفحه پرداخت',
+    type: 'url',
+    placeholder: 'https://foroushino.ir/p',
+  },
+  meli_pattern_custom: {
+    label: 'کد پترن — پیامک دلخواه',
+    hint: 'برای متن آزاد کارشناس — ۰ یعنی غیرفعال',
+    type: 'number',
+    placeholder: 'مثال: ۱۰۰۵',
+  },
+}
+
+export const ADMIN_TELEPHONY_KEYS = [
+  'native_call_enabled',
+  'voip_enabled',
+  'default_call_method',
+  'voip_provider',
+  'voip_fallback_to_native',
+] as const
+
+export const ADMIN_OPERATIONAL_KEYS = [
+  'min_call_duration_sec',
+  'call_lock_minutes',
+  'lead_pool_auto_return_hours',
+  'payout_minimum_amount',
+] as const
+
+export const ADMIN_QA_KEYS = ['power_dial_default', 'qa_sample_percent'] as const
+
+export const ADMIN_SMS_TEMPLATE_GROUPS = [
+  {
+    title: 'لینک دوره',
+    description: 'ارسال معرفی دوره برای مشتری',
+    patternKey: 'meli_pattern_course',
+    linkKey: 'meli_sms_link_course',
+  },
+  {
+    title: 'لینک کانال',
+    description: 'دعوت به کانال تلگرام یا شبکه اجتماعی',
+    patternKey: 'meli_pattern_channel',
+    linkKey: 'meli_sms_link_channel',
+  },
+  {
+    title: 'لینک ثبت‌نام',
+    description: 'هدایت مشتری به فرم ثبت‌نام',
+    patternKey: 'meli_pattern_register',
+    linkKey: 'meli_sms_link_register',
+  },
+  {
+    title: 'لینک پرداخت',
+    description: 'ارسال صفحه پرداخت یا پیش‌فاکتور',
+    patternKey: 'meli_pattern_payment',
+    linkKey: 'meli_sms_link_payment',
+  },
+  {
+    title: 'پیامک دلخواه',
+    description: 'متن آزاد کارشناس — فقط پترن لازم است',
+    patternKey: 'meli_pattern_custom',
+    linkKey: null,
+  },
+] as const
+
+export const ADMIN_KNOWN_SETTING_KEYS = new Set<string>([
+  ...ADMIN_TELEPHONY_KEYS,
+  ...ADMIN_OPERATIONAL_KEYS,
+  ...ADMIN_QA_KEYS,
+  ...ADMIN_SMS_TEMPLATE_GROUPS.flatMap((group) =>
+    group.linkKey ? [group.patternKey, group.linkKey] : [group.patternKey],
+  ),
+])
+
+export function getAdminSettingMeta(key: string): AdminSettingMeta {
+  return (
+    ADMIN_SETTING_LABELS[key] ?? {
+      label: key,
+      hint: 'تنظیم سفارشی سیستم',
+      type: 'text',
+    }
+  )
+}
+
+const ADMIN_NUMERIC_BOUNDS: Record<string, { min: number; max: number }> = {
+  call_lock_minutes: { min: 1, max: 180 },
+  min_call_duration_sec: { min: 0, max: 3600 },
+  lead_pool_auto_return_hours: { min: 1, max: 720 },
+  payout_minimum_amount: { min: 0, max: 999_999_999 },
+  qa_sample_percent: { min: 0, max: 100 },
+  meli_pattern_course: { min: 0, max: 999_999 },
+  meli_pattern_channel: { min: 0, max: 999_999 },
+  meli_pattern_register: { min: 0, max: 999_999 },
+  meli_pattern_payment: { min: 0, max: 999_999 },
+  meli_pattern_custom: { min: 0, max: 999_999 },
+}
+
+type SettingValue = string | number | boolean | null
+
+function asBoolean(value: SettingValue): boolean {
+  return value === true || value === 'true' || value === 1 || value === '1'
+}
+
+function clampNumber(key: string, value: number): number {
+  const bounds = ADMIN_NUMERIC_BOUNDS[key]
+  if (!bounds) return value
+  return Math.min(bounds.max, Math.max(bounds.min, value))
+}
+
+/** Normalize form state before PATCH — omit empties, coerce types, clamp ranges. */
+export function prepareAdminSettingsForSave(
+  settings: Record<string, SettingValue>,
+): Record<string, SettingValue> {
+  const prepared: Record<string, SettingValue> = {}
+
+  for (const [key, raw] of Object.entries(settings)) {
+    if (raw === '' || raw == null) continue
+
+    const meta = getAdminSettingMeta(key)
+
+    if (meta.type === 'boolean') {
+      prepared[key] = asBoolean(raw)
+      continue
+    }
+
+    if (meta.type === 'number') {
+      const num = Number(raw)
+      if (!Number.isFinite(num)) continue
+      prepared[key] = clampNumber(key, Math.trunc(num))
+      continue
+    }
+
+    if (meta.type === 'select') {
+      prepared[key] = String(raw)
+      continue
+    }
+
+    prepared[key] = typeof raw === 'string' ? raw.trim() : String(raw)
+  }
+
+  return prepared
 }

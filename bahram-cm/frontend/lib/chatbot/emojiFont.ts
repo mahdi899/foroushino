@@ -1,5 +1,7 @@
+import { SITE_FONT_STACK } from '@/lib/fonts';
+
 /** Site text stack — IRANSansXFaNum only (no external/system UI fonts). */
-export const CHAT_TEXT_FONT = 'var(--font-iran), IRANSansXFaNum, Tahoma, sans-serif';
+export const CHAT_TEXT_FONT = SITE_FONT_STACK;
 
 export {
   SITE_EMOJIS as LOCAL_EMOJIS,

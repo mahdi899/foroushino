@@ -114,5 +114,6 @@ export function canRequestPayout(
   balanceAvailable: number,
   settings: PayoutSettings = DEFAULT_PAYOUT_SETTINGS,
 ): boolean {
+  if (balanceAvailable <= 0) return false
   return maxPayoutAmount(balanceAvailable, settings) > 0
 }

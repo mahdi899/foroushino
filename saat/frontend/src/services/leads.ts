@@ -1,13 +1,24 @@
 import { http } from './http'
 import { mapLead } from './mappers'
-import type { Lead } from '@/types'
+import type { ExperienceLevel, Lead, LeadSource, Priority, Temperature } from '@/types'
 
 export interface CreateLeadInput {
   first_name: string
   last_name?: string
   phone: string
   city?: string
-  source?: string
+  source?: LeadSource
+  product_id?: number
+  temperature?: Temperature
+  priority?: Priority
+  budget?: string
+  job?: string
+  experience?: ExperienceLevel
+  income_goal?: string
+  interest_reason?: string
+  best_call_time?: string
+  pain_point?: string
+  last_note?: string
 }
 
 export interface ImportBatchResult {

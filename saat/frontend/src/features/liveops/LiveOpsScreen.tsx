@@ -4,8 +4,10 @@ import { Activity, PhoneCall, Users, ChevronLeft } from 'lucide-react'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { DataGate } from '@/components/pwa/DataGate'
+import { useStore } from '@/store/useStore'
 import { fetchLiveOpsDashboard } from '@/services/reports'
-import { toFa, formatPhone } from '@/lib/format'
+import { toFa } from '@/lib/format'
+import { formatCustomerPhone } from '@/lib/phonePrivacy'
 
 interface ActiveCall {
   id: number
@@ -17,6 +19,7 @@ interface ActiveCall {
 
 export function LiveOpsScreen() {
   const navigate = useNavigate()
+  const role = useStore((s) => s.role)
   const [data, setData] = useState<Awaited<ReturnType<typeof fetchLiveOpsDashboard>> | null>(null)
 
   useEffect(() => {
@@ -79,7 +82,7 @@ export function LiveOpsScreen() {
                         {call.agent?.name ?? 'کارشناس'} → {call.lead?.first_name} {call.lead?.last_name}
                       </p>
                       <p className="ltr-nums text-[11px] font-bold text-text-soft">
-                        {call.lead?.phone ? formatPhone(call.lead.phone) : ''}
+                        {call.lead?.phone ? formatCustomerPhone(call.lead.phone, role) : ''}
                       </p>
                     </div>
                     <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] font-extrabold text-emerald-700">

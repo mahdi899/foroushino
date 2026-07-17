@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Sales;
 use App\Actions\Sales\ConfirmSaleAction;
 use App\Actions\Sales\ForwardSaleForConfirmationAction;
 use App\Actions\Sales\RejectSaleAction;
+use App\Actions\Sales\RevokeConfirmedSaleAction;
 use App\Actions\Sales\SubmitPaymentAction;
 use App\Enums\RoleName;
 use App\Enums\SaleStatus;
@@ -13,6 +14,7 @@ use App\Http\Requests\V1\Sales\RejectSaleRequest;
 use App\Http\Requests\V1\Sales\SubmitPaymentRequest;
 use App\Http\Resources\V1\CommissionResource;
 use App\Http\Resources\V1\SaleResource;
+use App\Http\Resources\V1\WalletResource;
 use App\Models\Sale;
 use App\Support\ApiResponse;
 use App\Support\TeamScope;
@@ -26,6 +28,7 @@ class SaleController extends Controller
         private readonly ForwardSaleForConfirmationAction $forwardSale,
         private readonly ConfirmSaleAction $confirmSale,
         private readonly RejectSaleAction $rejectSale,
+        private readonly RevokeConfirmedSaleAction $revokeConfirmedSale,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -129,8 +132,28 @@ class SaleController extends Controller
     {
         $this->authorize('confirm', $sale);
 
-        $sale = $this->rejectSale->execute($sale, $request->user(), $request->string('reason')->toString());
+        $reason = $request->string('reason')->toString();
 
-        return ApiResponse::success(new SaleResource($sale), 'فروش رد شد');
+        if ($sale->status === SaleStatus::Confirmed) {
+            try {
+                $result = $this->revokeConfirmedSale->execute($sale, $request->user(), $reason);
+            } catch (\RuntimeException $e) {
+                return ApiResponse::error($e->getMessage(), status: 422, code: 'sale_not_revocable');
+            }
+
+            return ApiResponse::success([
+                'sale' => new SaleResource($result['sale']),
+                'commission' => $result['commission'] ? new CommissionResource($result['commission']) : null,
+                'wallet' => $result['wallet'] ? new WalletResource($result['wallet']) : null,
+            ], 'فروش رد شد و پورسانت برگشت خورد');
+        }
+
+        if ($sale->status !== SaleStatus::PendingConfirmation) {
+            return ApiResponse::error('این فروش قابل رد نیست.', status: 422, code: 'sale_not_rejectable');
+        }
+
+        $sale = $this->rejectSale->execute($sale, $request->user(), $reason);
+
+        return ApiResponse::success(['sale' => new SaleResource($sale)], 'فروش رد شد');
     }
 }

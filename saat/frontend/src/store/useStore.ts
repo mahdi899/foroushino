@@ -31,6 +31,7 @@ import type { CallMethod } from '@/lib/call'
 import type { AuthenticatedUser } from '@/services/auth'
 import { clearToken, mapAuthUserRole } from '@/services/auth'
 import { agentFromAuthenticatedUser } from '@/lib/agentFromUser'
+import { applyTheme, migrateLegacyThemePreference, resolveUserTheme, writeUserThemePreference } from '@/lib/theme'
 import { hasPermission as checkPermission, resolvePermissions } from '@/lib/permissions'
 import { canMakeCalls } from '@/lib/roles'
 import {
@@ -74,7 +75,7 @@ import { deriveWalletFromCommissions, resolveWithdrawableBalance } from '@/lib/w
 import type { SyncPayload } from '@/services/sync'
 import type { TeamLiveData } from '@/services/teamLive'
 import { agentsFromTeamLive, mergeTeamLiveIntoAgents, teamsFromTeamLive } from '@/services/teamLive'
-import { isProductiveAvailability, mergeClosedSessionIntoDaySummaries } from '@/lib/shiftUtils'
+import { isProductiveAvailability, mergeClosedSessionIntoDaySummaries, mergeSyncedWorkSession } from '@/lib/shiftUtils'
 import { getManagedTeam } from '@/lib/teamUtils'
 import { mergeAgentDailyStats, syncAllAgentsDailyStats, syncCurrentAgentDailyStats, conversionRateFromStats } from '@/lib/dailyGoal'
 import { todayDateKey } from '@/lib/businessDate'
@@ -185,7 +186,24 @@ interface AppState {
   updateLeadTemperature: (leadId: string, temp: Temperature) => void
   updateLeadNote: (leadId: string, note: string) => void
   setActiveCallDraftNote: (note: string) => void
-  addLead: (input: { firstName: string; lastName?: string; phone: string; city?: string }) => void
+  addLead: (input: {
+    firstName: string
+    lastName?: string
+    phone: string
+    city?: string
+    source?: Lead['source']
+    productId?: string
+    temperature?: Lead['temperature']
+    priority?: Lead['priority']
+    budget?: string
+    job?: string
+    experience?: Lead['experience']
+    incomeGoal?: string
+    interestReason?: string
+    bestCallTime?: string
+    painPoint?: string
+    lastNote?: string
+  }) => void
   distributeLeadsToTeams: () => number
 
   // call actions
@@ -258,7 +276,9 @@ interface AppState {
   setDispositionMode: (mode: 'grid' | 'swipe') => void
   upsertLead: (lead: Lead) => void
   upsertAgent: (agent: Agent) => void
+  setAgents: (agents: Agent[]) => void
   upsertTeam: (team: Team) => void
+  setTeams: (teams: Team[]) => void
   setAgentAvatar: (avatar: string | null) => void
   setDataReady: (ready: boolean) => void
   setDataSyncing: (syncing: boolean) => void
@@ -401,7 +421,6 @@ type PersistedSlice = Pick<
   | 'products'
   | 'activity'
   | 'agents'
-  | 'darkMode'
 >
 
 export const useStore = create<AppState>()(
@@ -452,7 +471,7 @@ export const useStore = create<AppState>()(
 
       maskPhoneNumbers: true,
       autoLockEnabled: true,
-      autoLockMinutes: 5,
+      autoLockMinutes: 10,
       isLocked: false,
 
       dataReady: !usesRemoteData,
@@ -491,10 +510,17 @@ export const useStore = create<AppState>()(
         }
 
         set(next)
+
+        const userId = next.currentAgentId ?? get().currentAgentId
+        const migrated = userId ? migrateLegacyThemePreference(userId) : null
+        const darkMode = migrated ?? resolveUserTheme(userId, false)
+        set({ darkMode })
+        applyTheme(darkMode)
       },
       hasPermission: (permission) => checkPermission(get().permissions, permission),
       logout: () => {
         clearToken()
+        applyTheme(false)
         set({
           isAuthed: false,
           phone: '',
@@ -507,6 +533,7 @@ export const useStore = create<AppState>()(
           workSession: null,
           workDaySummaries: [],
           isLocked: false,
+          darkMode: false,
           dataReady: !usesRemoteData,
           dataSyncing: false,
         })
@@ -673,30 +700,51 @@ export const useStore = create<AppState>()(
           ),
         })),
 
-      addLead: ({ firstName, lastName = '', phone, city = '' }) => {
+      addLead: ({
+        firstName,
+        lastName = '',
+        phone,
+        city = '',
+        source = 'form',
+        productId,
+        temperature = 'warm',
+        priority = 2,
+        budget = '',
+        job = '',
+        experience = 'none',
+        incomeGoal = '',
+        interestReason = '',
+        bestCallTime = '',
+        painPoint = '',
+        lastNote = '',
+      }) => {
         const id = uid('lead')
+        const product = productId
+          ? get().products.find((p) => p.id === productId)
+          : undefined
         const lead: Lead = {
           id,
           firstName,
           lastName,
           phone,
           city,
-          source: 'form',
-          temperature: 'warm',
-          priority: 2,
+          source,
+          temperature,
+          priority,
           stage: 'new',
-          product: '',
-          budget: '',
-          job: '',
-          experience: 'none',
-          incomeGoal: '',
-          interestReason: '',
-          bestCallTime: '',
+          product: product?.name ?? '',
+          productId,
+          budget,
+          job,
+          experience,
+          incomeGoal,
+          interestReason,
+          bestCallTime,
           lastCallAt: null,
           callCount: 0,
-          lastNote: '',
+          lastNote,
           conversionProbability: 40,
-          painPoint: '',
+          painPoint,
           objection: null,
           nextFollowupAt: null,
           rating: 0,
@@ -1126,15 +1174,60 @@ export const useStore = create<AppState>()(
         const sale = state.sales.find((s) => s.id === saleId)
         if (!sale) return
         const nowIso = new Date().toISOString()
-        set({
+        const commission = state.commissions.find((c) => c.saleId === saleId)
+        const wasConfirmed = sale.status === 'confirmed'
+
+        const patch: Partial<typeof state> = {
           sales: state.sales.map((s) =>
             s.id === saleId ? { ...s, status: 'rejected' as const, rejectedAt: nowIso, rejectionReason: reason } : s,
           ),
           leads: state.leads.map((l) =>
             l.id === sale.leadId ? pushStatus(l, 'follow_up_required', state.currentAgentId, reason) : l,
           ),
+        }
+
+        if (wasConfirmed && commission) {
+          patch.commissions = state.commissions.map((c) =>
+            c.id === commission.id
+              ? { ...c, status: 'reversed' as const, rejectionReason: reason }
+              : c,
+          )
+
+          if (
+            sale.agentId === state.currentAgentId &&
+            (commission.status === 'available' || commission.status === 'paid')
+          ) {
+            const walletTx: WalletTransaction = {
+              id: uid('wt'),
+              type: 'reversal',
+              amount: commission.commissionAmount,
+              description: `برگشت پورسانت — ${reason}`,
+              referenceType: 'commission',
+              referenceId: commission.id,
+              createdAt: nowIso,
+            }
+            patch.wallet = {
+              ...state.wallet,
+              balanceAvailable: state.wallet.balanceAvailable - commission.commissionAmount,
+              totalEarned: Math.max(0, state.wallet.totalEarned - commission.commissionAmount),
+            }
+            patch.walletTx = [walletTx, ...state.walletTx]
+          }
+        }
+
+        set(patch)
+        const negative =
+          wasConfirmed &&
+          sale.agentId === state.currentAgentId &&
+          (patch.wallet?.balanceAvailable ?? state.wallet.balanceAvailable) < 0
+        get().pushNotification({
+          title: wasConfirmed ? 'فروش تاییدشده رد شد' : 'فروش رد شد',
+          body: negative
+            ? `${reason} — موجودی کیف پول منفی شده و تا تسویه بدهی امکان برداشت ندارید.`
+            : reason,
+          kind: 'sale',
+          href: wasConfirmed ? '/wallet' : '/sales',
         })
-        get().pushNotification({ title: 'فروش رد شد', body: reason, kind: 'sale', href: '/sales' })
       },
 
       cancelSale: (saleId) =>
@@ -1501,9 +1594,11 @@ export const useStore = create<AppState>()(
         })),
 
       toggleDarkMode: () => {
+        const userId = get().currentAgentId
         const next = !get().darkMode
         set({ darkMode: next })
-        document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light')
+        if (userId) writeUserThemePreference(userId, next)
+        applyTheme(next)
       },
 
       pushToast: (message, tone = 'success') => {
@@ -1602,7 +1697,7 @@ export const useStore = create<AppState>()(
             availability: payload.availability,
             availabilityChangedAt: payload.availabilityChangedAt,
             availabilityAutoReason: null,
-            workSession: payload.workSession,
+            workSession: mergeSyncedWorkSession(state.workSession, payload.workSession),
             workDaySummaries: payload.workDaySummaries,
             currentAgentId: payload.agent.id,
             role: payload.role,
@@ -1635,6 +1730,7 @@ export const useStore = create<AppState>()(
               : [...state.agents, agent],
           }
         }),
+      setAgents: (agents) => set({ agents }),
       upsertTeam: (team) =>
         set((state) => {
           const exists = state.teams.some((row) => row.id === team.id)
@@ -1644,6 +1740,7 @@ export const useStore = create<AppState>()(
               : [...state.teams, team],
           }
         }),
+      setTeams: (teams) => set({ teams }),
       setAgentAvatar: (avatar) =>
         set((state) => ({
           agents: state.agents.map((agent) =>
@@ -1695,11 +1792,16 @@ export const useStore = create<AppState>()(
         state.dailyStatsDate = synced.dailyStatsDate
         state.maskPhoneNumbers = true
         state.autoLockEnabled = true
-        state.autoLockMinutes = 5
+        state.autoLockMinutes = 10
         if (!isPowerDialAvailable) state.powerDialEnabled = false
-        if (state.darkMode) {
-          document.documentElement.setAttribute('data-theme', 'dark')
+
+        if (state.isAuthed && state.currentAgentId) {
+          migrateLegacyThemePreference(state.currentAgentId)
+          state.darkMode = resolveUserTheme(state.currentAgentId, false)
+        } else {
+          state.darkMode = false
         }
+        applyTheme(Boolean(state.darkMode))
       },
       partialize: (state) => ({
         isAuthed: state.isAuthed,
@@ -1724,7 +1826,6 @@ export const useStore = create<AppState>()(
         products: state.products,
         activity: state.activity,
         agents: state.agents,
-        darkMode: state.darkMode,
         powerDialEnabled: state.powerDialEnabled,
         dispositionMode: state.dispositionMode,
       }),

@@ -13,7 +13,6 @@ import {
   Award,
   Sparkles,
   Zap,
-  Crown,
   ThermometerSun,
   AlarmClock,
   NotebookPen,
@@ -27,18 +26,19 @@ import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { StatTile } from '@/components/domain/StatTile'
-import { LeaderboardRow } from '@/components/domain/LeaderboardRow'
+import { TeamDailyLeaderboard } from '@/components/domain/TeamDailyLeaderboard'
 import { AchievementBadge, AchievementBadgeIcon } from '@/components/domain/AchievementBadge'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { achievements } from '@/data/mock'
 import { roleLabels } from '@/data/labels'
 import { overdueFollowups } from '@/lib/leadUtils'
+import { getAgentTeamPeers } from '@/lib/dailyTopPerformers'
 import { formatDuration, formatMoney, toFa } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { DataGate } from '@/components/pwa/DataGate'
 import { haptic } from '@/lib/telegram'
-import type { Agent, Achievement } from '@/types'
+import type { Achievement } from '@/types'
 
 const TG = 'text-[#3390EC] dark:text-[#8774E1]'
 const OK = 'text-emerald-600 dark:text-emerald-400'
@@ -68,6 +68,8 @@ function SectionTitle({ icon: Icon, children }: { icon: LucideIcon; children: Re
 export function PerformanceScreen() {
   const navigate = useNavigate()
   const agents = useStore((s) => s.agents)
+  const teams = useStore((s) => s.teams)
+  const role = useStore((s) => s.role)
   const me = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
   const myId = useStore((s) => s.currentAgentId)
   const calls = useStore((s) => s.calls.filter((c) => c.agentId === myId))
@@ -77,15 +79,10 @@ export function PerformanceScreen() {
   const commissions = useStore((s) => s.commissions.filter((c) => c.agentId === myId))
   const [selectedAch, setSelectedAch] = useState<Achievement | null>(null)
 
-  const teamAgents = useMemo(
-    () =>
-      agents
-        .filter((a) => a.role === 'agent')
-        .sort((a, b) => b.callsToday - a.callsToday),
-    [agents],
-  )
-  const podium = teamAgents.slice(0, 3)
-  const rest = teamAgents.slice(3, 5)
+  const teamAgents = useMemo(() => {
+    if (!me) return []
+    return getAgentTeamPeers(me, agents, teams, myId, role)
+  }, [me, agents, teams, myId, role])
 
   const quality = useMemo(() => {
     const totalCalls = calls.length
@@ -370,12 +367,7 @@ export function PerformanceScreen() {
 
         <motion.section variants={fadeUp}>
           <SectionTitle icon={Trophy}>برترین‌های تیم</SectionTitle>
-          <Podium podium={podium} meId={me.id} />
-          <div className="mt-3 space-y-2">
-            {rest.map((a, i) => (
-              <LeaderboardRow key={a.id} agent={a} rank={i + 4} highlight={a.id === me.id} />
-            ))}
-          </div>
+          <TeamDailyLeaderboard peers={teamAgents} meId={me.id} />
         </motion.section>
 
         <motion.section variants={fadeUp}>
@@ -491,85 +483,6 @@ function QualityTile({
       <div className="min-w-0">
         <p className={cn('font-black tabular-nums text-text', small ? 'text-[12.5px]' : 'text-[15px]')}>{value}</p>
         <p className="truncate text-[10.5px] font-semibold text-text-soft">{label}</p>
-      </div>
-    </div>
-  )
-}
-
-function Podium({ podium, meId }: { podium: Agent[]; meId: string }) {
-  const order = [1, 0, 2]
-
-  const rankConfig = {
-    1: {
-      avatarSize: 56,
-      stepHeight: 'h-[76px]',
-      step: 'border border-amber-400/30 bg-amber-400/12 dark:bg-amber-400/10',
-      rankText: 'text-amber-600 dark:text-amber-400',
-      crown: true,
-    },
-    2: {
-      avatarSize: 48,
-      stepHeight: 'h-[56px]',
-      step: 'border border-white/55 bg-white/30 dark:border-white/10 dark:bg-white/[0.06]',
-      rankText: 'text-text-muted',
-      crown: false,
-    },
-    3: {
-      avatarSize: 44,
-      stepHeight: 'h-[44px]',
-      step: 'border border-orange-400/25 bg-orange-400/10',
-      rankText: 'text-orange-600 dark:text-orange-400',
-      crown: false,
-    },
-  } as const
-
-  return (
-    <div className="glass-card rounded-[24px] border border-white/55 p-4 pt-5 dark:border-white/10">
-      <div className="flex items-end justify-center gap-2">
-        {order.map((idx, pos) => {
-          const agent = podium[idx]
-          if (!agent) return <div key={pos} className="flex-1" />
-          const rank = (idx + 1) as 1 | 2 | 3
-          const cfg = rankConfig[rank]
-          const isMe = agent.id === meId
-
-          return (
-            <div key={agent.id} className="flex min-w-0 flex-1 flex-col items-center">
-              <div className="relative mb-2.5 flex flex-col items-center">
-                {cfg.crown && (
-                  <div className="mb-1">
-                    <Crown size={17} className="text-amber-500" fill="currentColor" strokeWidth={1.5} />
-                  </div>
-                )}
-                <div className={cn('rounded-full', isMe && 'ring-2 ring-[#3390EC]/40 ring-offset-2 ring-offset-transparent')}>
-                  <Avatar id={agent.id} first={agent.firstName} last={agent.lastName} src={agent.avatar} size={cfg.avatarSize} ring />
-                </div>
-              </div>
-
-              <p className="max-w-full truncate text-center text-[12px] font-bold text-text">
-                {agent.firstName}
-                {isMe && <span className={cn('mr-0.5 text-[10px] font-semibold', TG)}>(تو)</span>}
-              </p>
-
-              <span
-                className={cn(
-                  'glass-inset mt-1 inline-flex items-center gap-0.5 rounded-full border px-2 py-0.5',
-                  'text-[10px] font-bold tabular-nums dark:border-white/10',
-                  isMe ? 'border-[#3390EC]/25 text-[#3390EC] dark:border-[#8774E1]/28 dark:text-[#8774E1]' : 'border-white/55 text-text-soft',
-                )}
-              >
-                <Phone size={9} strokeWidth={2.5} />
-                {toFa(agent.callsToday)}
-              </span>
-
-              <div className={cn('mt-2.5 w-full rounded-t-2xl backdrop-blur-sm', cfg.stepHeight, cfg.step)}>
-                <div className="flex h-full items-center justify-center">
-                  <span className={cn('text-[28px] font-black tabular-nums leading-none', cfg.rankText)}>{toFa(rank)}</span>
-                </div>
-              </div>
-            </div>
-          )
-        })}
       </div>
     </div>
   )

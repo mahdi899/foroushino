@@ -18,6 +18,10 @@ export function resolveWithdrawableBalance(wallet: Wallet, commissions: Commissi
   const fromWallet = wallet.balanceAvailable
   const fromCommissions = sumCommissionAmount(commissions, ['available'])
 
+  if (fromWallet < 0) {
+    return fromWallet
+  }
+
   if (fromWallet > 0 || wallet.balanceLocked > 0) {
     return fromWallet
   }

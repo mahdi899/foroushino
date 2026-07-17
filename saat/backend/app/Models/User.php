@@ -90,6 +90,11 @@ class User extends Authenticatable
         return $this->hasOne(Team::class, 'leader_id');
     }
 
+    public function supervisedTeams(): HasMany
+    {
+        return $this->hasMany(Team::class, 'supervisor_id');
+    }
+
     public function assignedLeads(): HasMany
     {
         return $this->hasMany(Lead::class, 'assigned_agent_id');

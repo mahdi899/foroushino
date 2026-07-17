@@ -23,6 +23,42 @@ it('lets a supervisor create a single lead manually', function () {
     expect(\App\Models\Lead::where('normalized_phone', '09120009999')->exists())->toBeTrue();
 });
 
+it('stores extended lead profile fields on manual create', function () {
+    $supervisor = makeSupervisor();
+    $product = makeProduct();
+
+    $response = $this->actingAs($supervisor, 'sanctum')->postJson('/api/v1/leads', [
+        'first_name' => 'سارا',
+        'last_name' => 'محمدی',
+        'phone' => '09120007777',
+        'city' => 'اصفهان',
+        'source' => 'instagram',
+        'product_id' => $product->id,
+        'temperature' => 'hot',
+        'priority' => 3,
+        'job' => 'فریلنسر',
+        'experience' => 'beginner',
+        'budget' => '۵ تا ۱۰ میلیون',
+        'income_goal' => '۳۰ میلیون در ماه',
+        'interest_reason' => 'می‌خواهد مهارت جدید یاد بگیرد',
+        'best_call_time' => 'عصرها',
+        'pain_point' => 'درآمد ناپایدار',
+        'last_note' => 'از طریق استوری اینستاگرام آمده',
+    ]);
+
+    $response->assertCreated()
+        ->assertJsonPath('data.temperature', 'hot')
+        ->assertJsonPath('data.priority', 3)
+        ->assertJsonPath('data.job', 'فریلنسر');
+
+    $lead = \App\Models\Lead::where('normalized_phone', '09120007777')->first();
+    expect($lead)->not->toBeNull()
+        ->and($lead->product_id)->toBe($product->id)
+        ->and($lead->experience)->toBe('beginner')
+        ->and($lead->interest_reason)->toBe('می‌خواهد مهارت جدید یاد بگیرد')
+        ->and($lead->last_note)->toBe('از طریق استوری اینستاگرام آمده');
+});
+
 it('lets a supervisor import leads from csv', function () {
     $supervisor = makeSupervisor();
     $csv = "first_name,last_name,phone,city,source\nسارا,محمدی,09120008888,اصفهان,excel\n";

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/cn'
@@ -38,6 +39,11 @@ interface ScreenHeaderProps {
   className?: string
 }
 
+const headerMotion = {
+  hidden: { opacity: 0, y: -6 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 420, damping: 34 } },
+}
+
 export function ScreenHeader({
   title,
   subtitle,
@@ -61,16 +67,22 @@ export function ScreenHeader({
         className,
       )}
     >
-      <div className="flex items-start gap-2.5 pb-1">
+      <motion.div
+        className="flex items-start gap-2.5 pb-1"
+        variants={headerMotion}
+        initial="hidden"
+        animate="show"
+      >
         {showBack && (
-          <button
+          <motion.button
             type="button"
+            whileTap={{ scale: 0.92 }}
             onClick={() => (onBack ? onBack() : navigate(-1))}
             aria-label="بازگشت"
-            className="glass-inset mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#3390EC] shadow-sm transition-all active:scale-95 dark:text-[#8774E1]"
+            className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/[0.05] text-primary-600 transition-colors active:bg-black/[0.08] dark:bg-white/[0.08] dark:text-primary-400"
           >
-            <ChevronRight size={20} strokeWidth={2.25} />
-          </button>
+            <ChevronRight size={19} strokeWidth={2.25} />
+          </motion.button>
         )}
 
         <div className="min-w-0 flex-1">
@@ -78,28 +90,30 @@ export function ScreenHeader({
             <div className="flex min-w-0 items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2">
                 {Icon && (
-                  <span
+                  <motion.span
                     className={cn(
-                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-[12px]',
+                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px]',
                       iconToneWrap[iconTone],
                     )}
+                    animate={{ scale: [1, 1.04, 1] }}
+                    transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
                   >
                     <Icon size={15} strokeWidth={2.35} className={iconToneColors[iconTone]} />
-                  </span>
+                  </motion.span>
                 )}
-                <h1 className="truncate text-[22px] font-bold leading-tight tracking-tight text-text">
+                <h1 className="truncate text-[22px] font-bold leading-tight tracking-[-0.02em] text-text">
                   {title}
                 </h1>
               </div>
               {subtitle && (
-                <p className="shrink-0 text-[13px] font-semibold tabular-nums text-text-soft">
+                <span className="shrink-0 rounded-full bg-black/[0.05] px-2.5 py-1 text-[12px] font-semibold tabular-nums text-text-soft dark:bg-white/[0.08]">
                   {subtitle}
-                </p>
+                </span>
               )}
             </div>
           ) : (
             <>
-              <h1 className="truncate text-[28px] font-bold leading-[1.15] tracking-tight text-text">
+              <h1 className="truncate text-[28px] font-bold leading-[1.12] tracking-[-0.02em] text-text">
                 {title}
               </h1>
               {(subtitle || Icon) && (
@@ -107,7 +121,7 @@ export function ScreenHeader({
                   {Icon && (
                     <span
                       className={cn(
-                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-[11px]',
+                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px]',
                         iconToneWrap[iconTone],
                       )}
                     >
@@ -123,9 +137,9 @@ export function ScreenHeader({
           )}
         </div>
         {action && <div className="shrink-0 pt-0.5">{action}</div>}
-      </div>
+      </motion.div>
 
-      {children && <div className="pb-2.5 pt-1">{children}</div>}
+      {children && <div className="pb-2 pt-1.5">{children}</div>}
     </div>
   )
 }

@@ -10,6 +10,7 @@ use App\Models\Lead;
 use App\Models\LeadStatusHistory;
 use App\Models\User;
 use App\Services\Campaign\CampaignDialingPolicy;
+use App\Support\LeadFairAssignment;
 use App\Support\LeadPriorityScore;
 use App\Support\SafeBroadcast;
 use Illuminate\Support\Facades\Cache;
@@ -36,6 +37,7 @@ class AssignNextLeadAction
 {
     public function __construct(
         private readonly CampaignDialingPolicy $dialingPolicy,
+        private readonly LeadFairAssignment $fairAssignment,
     ) {}
 
     /**
@@ -127,6 +129,13 @@ class AssignNextLeadAction
             ->get();
 
         foreach ($candidates as $lead) {
+            if (
+                $lead->assigned_agent_id === null
+                && ! $this->fairAssignment->canPullFromPool($agent, $lead->assigned_team_id ? (int) $lead->assigned_team_id : null)
+            ) {
+                continue;
+            }
+
             if ($this->dialingPolicy->canDial($lead->loadMissing('campaign'))->allowed) {
                 return $lead;
             }

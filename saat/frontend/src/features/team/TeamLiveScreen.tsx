@@ -10,10 +10,15 @@ import {
   BadgeDollarSign,
   ClipboardList,
   FileText,
+  Pencil,
+  Crown,
+  Shield,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
+import { AgentDetailSheet } from '@/components/domain/AgentDetailSheet'
+import { TeamFormSheet } from '@/components/domain/TeamFormSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { availabilityLabels, resultLabels } from '@/data/labels'
 import { availabilityDotClass } from '@/components/domain/icons'
@@ -22,19 +27,23 @@ import {
   getManagedTeam,
   getTeamAgentIds,
   leadById,
+  leaderForTeam,
   teamCallsToday,
 } from '@/lib/teamUtils'
 import { formatDuration, relativeDayTime, toFa } from '@/lib/format'
+import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
-import { isLeaderRole, hasMultiTeamView } from '@/lib/roles'
+import { isLeaderRole, hasMultiTeamView, isManagerRole } from '@/lib/roles'
 import { hasPermission } from '@/lib/permissions'
+import { buildTeamStaffOptions, memberIdsForTeam } from '@/lib/teamStaffOptions'
+import { updateTeam } from '@/services/teamAdminActions'
+import { apiErrorMessage } from '@/lib/apiErrors'
 import { apiMode } from '@/services'
-import { fetchTeamLive, type TeamLiveMember } from '@/services/teamLive'
+import { subscribeTeamLive } from '@/services/teamLivePoller'
+import type { TeamLiveMember } from '@/services/teamLive'
 import type { Availability, Call } from '@/types'
 
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
-
-const LIVE_POLL_MS = 10_000
 
 export function TeamLiveScreen() {
   const navigate = useNavigate()
@@ -54,6 +63,30 @@ export function TeamLiveScreen() {
   const [liveMembers, setLiveMembers] = useState<TeamLiveMember[] | null>(null)
   const [liveOnlineCount, setLiveOnlineCount] = useState<number | null>(null)
   const [liveRecentCalls, setLiveRecentCalls] = useState<Call[] | null>(null)
+  const [profileAgentId, setProfileAgentId] = useState<string | null>(null)
+  const [profileAvailability, setProfileAvailability] = useState<Availability | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [teamName, setTeamName] = useState('')
+  const [leaderId, setLeaderId] = useState('')
+  const [supervisorId, setSupervisorId] = useState('')
+  const [memberIds, setMemberIds] = useState<string[]>([])
+  const [savingTeam, setSavingTeam] = useState(false)
+
+  const pushToast = useStore((s) => s.pushToast)
+  const canManageTeams = hasPermission(permissions, 'teams.manage')
+  const canManageRoster = hasPermission(permissions, 'users.manage-team-roster')
+  const canEditTeam = canManageTeams || canManageRoster
+  const rosterOnlyEdit = canManageRoster && !canManageTeams
+  const canAssignSupervisor = canManageTeams && isManagerRole(role)
+  const { leaders, members: memberOptions, supervisors } = useMemo(
+    () => buildTeamStaffOptions(agents, teams),
+    [agents, teams],
+  )
+  const canViewAgentProfile = hasPermission(permissions, 'users.view')
+  const canViewFinance =
+    hasPermission(permissions, 'users.view') || hasPermission(permissions, 'users.manage-team')
+  const canManageAgents =
+    hasPermission(permissions, 'users.manage-team') || hasPermission(permissions, 'users.manage')
 
   const team = useMemo(() => {
     if (selectedTeamId && hasMultiTeamView(role)) {
@@ -67,26 +100,21 @@ export function TeamLiveScreen() {
     return getTeamAgentIds(teams, agents, currentAgentId, role)
   }, [team, teams, agents, currentAgentId, role])
 
-  const refreshTeamLive = useCallback(async () => {
-    if (apiMode !== 'http') return
-
-    try {
-      const live = await fetchTeamLive(team?.id ?? selectedTeamId)
-      setLiveMembers(live.members)
-      setLiveOnlineCount(live.onlineCount)
-      setLiveRecentCalls(live.recentCalls)
-    } catch {
-      // Keep last good snapshot; store fallback still renders.
-    }
-  }, [team?.id, selectedTeamId])
+  const refreshTeamLive = useCallback((live: {
+    members: TeamLiveMember[]
+    onlineCount: number
+    recentCalls: Call[]
+  }) => {
+    setLiveMembers(live.members)
+    setLiveOnlineCount(live.onlineCount)
+    setLiveRecentCalls(live.recentCalls)
+  }, [])
 
   useEffect(() => {
     if (apiMode !== 'http') return
 
-    void refreshTeamLive()
-    const timer = setInterval(() => void refreshTeamLive(), LIVE_POLL_MS)
-    return () => clearInterval(timer)
-  }, [refreshTeamLive])
+    return subscribeTeamLive(team?.id ?? selectedTeamId, refreshTeamLive)
+  }, [team?.id, selectedTeamId, refreshTeamLive])
 
   const members = useMemo(() => {
     if (liveMembers) {
@@ -163,6 +191,70 @@ export function TeamLiveScreen() {
     ).length
   }, [agentReports, canApproveAgentReports, teamAgentIds])
 
+  const profileAgent = useMemo(
+    () => (profileAgentId ? agents.find((agent) => agent.id === profileAgentId) ?? null : null),
+    [agents, profileAgentId],
+  )
+
+  const openTeamEdit = () => {
+    if (!team) return
+    haptic('selection')
+    setTeamName(team.name)
+    setLeaderId(team.leaderId || '')
+    setSupervisorId(team.supervisorId || '')
+    setMemberIds(
+      team.agentIds.length > 0 ? [...team.agentIds] : memberIdsForTeam(team.id, agents),
+    )
+    setEditOpen(true)
+  }
+
+  const submitTeamEdit = async () => {
+    if (!team || !teamName.trim()) {
+      pushToast('نام تیم را وارد کن', 'error')
+      return
+    }
+
+    setSavingTeam(true)
+    try {
+      await updateTeam(team.id, {
+        name: rosterOnlyEdit ? undefined : teamName,
+        leaderId: rosterOnlyEdit ? undefined : leaderId || null,
+        supervisorId: canAssignSupervisor && supervisorId ? supervisorId : undefined,
+        agentIds: memberIds,
+      })
+      pushToast('تیم به‌روز شد', 'success')
+      setEditOpen(false)
+    } catch (error) {
+      pushToast(apiErrorMessage(error, 'ویرایش تیم ناموفق بود'), 'error')
+    } finally {
+      setSavingTeam(false)
+    }
+  }
+
+  const teamLeader = team ? leaderForTeam(agents, team.leaderId) : null
+  const leaderLabel =
+    team?.leaderName ??
+    (teamLeader ? `${teamLeader.firstName} ${teamLeader.lastName}`.trim() : null)
+  const supervisorLabel =
+    team?.supervisorName ??
+    (team?.supervisorId
+      ? agents.find((agent) => agent.id === team.supervisorId)
+      : null)
+  const supervisorName = supervisorLabel
+    ? typeof supervisorLabel === 'string'
+      ? supervisorLabel
+      : `${supervisorLabel.firstName} ${supervisorLabel.lastName}`.trim()
+    : null
+
+  const openAgentProfile = (agentId: string, availability: Availability) => {
+    haptic('selection')
+    setProfileAgentId(agentId)
+    setProfileAvailability(availability)
+    if (canViewAgentProfile && !agents.find((agent) => agent.id === agentId)) {
+      pushToast('اطلاعات کارشناس در دسترس نیست', 'error')
+    }
+  }
+
   return (
     <Page>
       <ScreenHeader
@@ -171,7 +263,36 @@ export function TeamLiveScreen() {
         subtitle={isLeaderRole(role) ? 'نظارت لایو بر کارشناسان' : 'وضعیت لحظه‌ای تیم'}
         icon={Users}
         iconTone="primary"
+        action={
+          canEditTeam && team ? (
+            <button
+              type="button"
+              onClick={openTeamEdit}
+              className="flex items-center gap-1 rounded-full border border-[#3390EC]/25 bg-[#3390EC]/10 px-3 py-2 text-[11px] font-bold text-[#3390EC] dark:border-[#8774E1]/25 dark:bg-[#8774E1]/10 dark:text-[#8774E1]"
+            >
+              <Pencil size={13} strokeWidth={2.5} />
+              {rosterOnlyEdit ? 'کارشناسان' : 'ویرایش'}
+            </button>
+          ) : undefined
+        }
       />
+
+      {team && (leaderLabel || supervisorName) && (
+        <div className="mx-4 -mt-1 mb-1 flex flex-wrap gap-2">
+          {leaderLabel && (
+            <span className="glass-inset inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold text-text-soft">
+              <Crown size={11} className="text-amber-600" />
+              لیدر: {leaderLabel}
+            </span>
+          )}
+          {supervisorName && (
+            <span className="glass-inset inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-bold text-text-soft">
+              <Shield size={11} className="text-[#3390EC] dark:text-[#8774E1]" />
+              ناظر: {supervisorName}
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="space-y-5 px-4 pb-6 pt-1">
         <motion.div
@@ -253,9 +374,11 @@ export function TeamLiveScreen() {
                 : undefined
 
               return (
-                <div
+                <button
                   key={member.id}
-                  className="glass-card flex items-center gap-3 rounded-[20px] border border-white/55 p-3.5 dark:border-white/10"
+                  type="button"
+                  onClick={() => openAgentProfile(member.id, memberAvailability)}
+                  className="glass-card flex w-full items-center gap-3 rounded-[20px] border border-white/55 p-3.5 text-right transition-transform active:scale-[0.99] dark:border-white/10"
                 >
                   <Avatar
                     id={member.id}
@@ -286,7 +409,8 @@ export function TeamLiveScreen() {
                     </p>
                     <p className="text-[10px] font-semibold text-text-soft">تماس امروز</p>
                   </div>
-                </div>
+                  <ArrowLeft size={14} className="shrink-0 text-text-soft" />
+                </button>
               )
             })}
           </div>
@@ -356,6 +480,47 @@ export function TeamLiveScreen() {
           </button>
         )}
       </div>
+
+      <AgentDetailSheet
+        open={!!profileAgent}
+        onClose={() => {
+          setProfileAgentId(null)
+          setProfileAvailability(null)
+        }}
+        title="پروفایل کارشناس"
+        agent={profileAgent}
+        teams={teams}
+        viewMode
+        availability={profileAvailability ?? undefined}
+        showFinance={canViewFinance}
+        name={profileAgent ? `${profileAgent.firstName} ${profileAgent.lastName}`.trim() : ''}
+        phone={profileAgent?.phone ?? ''}
+        teamId={profileAgent?.teamId ?? ''}
+        canViewBank={canManageAgents}
+        pushToast={pushToast}
+      />
+
+      <TeamFormSheet
+        open={editOpen}
+        title={rosterOnlyEdit ? 'انتخاب کارشناسان' : 'ویرایش تیم'}
+        name={teamName}
+        leaderId={leaderId}
+        memberIds={memberIds}
+        supervisorId={supervisorId}
+        leaderOptions={leaders}
+        memberOptions={memberOptions}
+        supervisorOptions={supervisors}
+        showSupervisorPicker={canAssignSupervisor}
+        rosterOnly={rosterOnlyEdit}
+        submitLabel="ذخیره تغییرات"
+        onName={setTeamName}
+        onLeader={setLeaderId}
+        onSupervisor={setSupervisorId}
+        onMemberIds={setMemberIds}
+        onClose={() => setEditOpen(false)}
+        onSubmit={() => void submitTeamEdit()}
+        busy={savingTeam}
+      />
     </Page>
   )
 }

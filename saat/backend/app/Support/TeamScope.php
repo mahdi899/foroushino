@@ -4,12 +4,16 @@ namespace App\Support;
 
 use App\Enums\RoleName;
 use App\Models\Lead;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 
 /** Resolves whether a user sees one team or the whole org. */
 final class TeamScope
 {
+    /** @var array<int, list<int>> */
+    private static array $supervisedTeamIdsCache = [];
+
     public static function isOrgWide(User $user): bool
     {
         return $user->hasAnyRole([
@@ -18,38 +22,98 @@ final class TeamScope
         ]);
     }
 
-    /** True for leader/supervisor bound to a single team colony. */
+    /** True for leader/supervisor bound to at least one team colony. */
     public static function isTeamColony(User $user): bool
     {
-        return $user->hasAnyRole([
-            RoleName::Leader->value,
-            RoleName::Supervisor->value,
-        ]) && $user->team_id !== null;
+        if (! $user->hasAnyRole([RoleName::Leader->value, RoleName::Supervisor->value])) {
+            return false;
+        }
+
+        return self::supervisedTeamIds($user) !== [] || $user->team_id !== null;
     }
 
-    /** `null` = all teams; otherwise filter by this team id. */
+    /** `null` = all teams; otherwise filter by this team id (legacy single-team callers). */
     public static function teamIdForQueries(User $user): ?int
     {
-        return self::isOrgWide($user) ? null : $user->team_id;
+        if (self::isOrgWide($user)) {
+            return null;
+        }
+
+        $teamIds = self::supervisedTeamIds($user);
+
+        return $teamIds[0] ?? $user->team_id;
+    }
+
+    /**
+     * Team ids a leader/supervisor may operate on. Empty for org-wide managers.
+     *
+     * @return list<int>
+     */
+    public static function supervisedTeamIds(User $user): array
+    {
+        $cacheKey = (int) $user->id;
+        if (array_key_exists($cacheKey, self::$supervisedTeamIdsCache)) {
+            return self::$supervisedTeamIdsCache[$cacheKey];
+        }
+
+        if (self::isOrgWide($user)) {
+            return self::$supervisedTeamIdsCache[$cacheKey] = [];
+        }
+
+        if ($user->hasRole(RoleName::Supervisor->value)) {
+            $ids = Team::query()
+                ->where('supervisor_id', $user->id)
+                ->orderBy('id')
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            if ($ids !== []) {
+                return self::$supervisedTeamIdsCache[$cacheKey] = $ids;
+            }
+
+            return self::$supervisedTeamIdsCache[$cacheKey] = $user->team_id ? [(int) $user->team_id] : [];
+        }
+
+        if ($user->hasRole(RoleName::Leader->value)) {
+            $ledTeamId = Team::query()->where('leader_id', $user->id)->value('id');
+            if ($ledTeamId) {
+                return self::$supervisedTeamIdsCache[$cacheKey] = [(int) $ledTeamId];
+            }
+
+            return self::$supervisedTeamIdsCache[$cacheKey] = $user->team_id ? [(int) $user->team_id] : [];
+        }
+
+        return self::$supervisedTeamIdsCache[$cacheKey] = [];
     }
 
     public static function canPickTeam(User $user): bool
     {
-        return self::isOrgWide($user);
+        return self::isOrgWide($user) || count(self::supervisedTeamIds($user)) > 1;
     }
 
-    /** Active agent ids belonging to the user's team colony. */
+    /** Active agent ids belonging to one team. */
     public static function teamAgentIds(?int $teamId): array
     {
-        if (! $teamId) {
+        return self::teamAgentIdsForTeams($teamId ? [$teamId] : []);
+    }
+
+    /**
+     * @param  list<int>  $teamIds
+     * @return list<int>
+     */
+    public static function teamAgentIdsForTeams(array $teamIds): array
+    {
+        if ($teamIds === []) {
             return [];
         }
 
         return User::query()
             ->role(RoleName::Agent->value)
-            ->where('team_id', $teamId)
+            ->whereIn('team_id', $teamIds)
             ->where('is_active', true)
             ->pluck('id')
+            ->map(fn ($id) => (int) $id)
             ->all();
     }
 
@@ -62,12 +126,12 @@ final class TeamScope
             return;
         }
 
-        if (self::isTeamColony($user)) {
-            $teamId = (int) $user->team_id;
-            $agentIds = self::teamAgentIds($teamId);
+        $teamIds = self::supervisedTeamIds($user);
+        if ($teamIds !== []) {
+            $agentIds = self::teamAgentIdsForTeams($teamIds);
 
-            $query->where(function ($q) use ($teamId, $agentIds): void {
-                $q->where('assigned_team_id', $teamId);
+            $query->where(function ($q) use ($teamIds, $agentIds): void {
+                $q->whereIn('assigned_team_id', $teamIds);
                 if ($agentIds !== []) {
                     $q->orWhereIn('assigned_agent_id', $agentIds);
                 }
@@ -85,8 +149,9 @@ final class TeamScope
             return;
         }
 
-        if (self::isTeamColony($user)) {
-            $agentIds = self::teamAgentIds((int) $user->team_id);
+        $teamIds = self::supervisedTeamIds($user);
+        if ($teamIds !== []) {
+            $agentIds = self::teamAgentIdsForTeams($teamIds);
             if ($agentIds === []) {
                 $query->whereRaw('0 = 1');
 
@@ -106,8 +171,9 @@ final class TeamScope
             return;
         }
 
-        if (self::isTeamColony($user) && $user->team_id) {
-            $query->where('team_id', $user->team_id);
+        $teamIds = self::supervisedTeamIds($user);
+        if ($teamIds !== []) {
+            $query->whereIn('team_id', $teamIds);
 
             return;
         }
@@ -127,20 +193,19 @@ final class TeamScope
 
     private static function teamColonyCanViewLead(User $user, Lead $lead): bool
     {
-        if (! $user->team_id) {
+        $teamIds = self::supervisedTeamIds($user);
+        if ($teamIds === []) {
             return false;
         }
 
-        $teamId = (int) $user->team_id;
-
-        if ($lead->assigned_team_id === $teamId) {
+        if ($lead->assigned_team_id && in_array((int) $lead->assigned_team_id, $teamIds, true)) {
             return true;
         }
 
         if ($lead->assigned_agent_id) {
             return User::query()
                 ->whereKey($lead->assigned_agent_id)
-                ->where('team_id', $teamId)
+                ->whereIn('team_id', $teamIds)
                 ->exists();
         }
 

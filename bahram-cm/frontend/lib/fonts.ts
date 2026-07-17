@@ -13,8 +13,12 @@ const iranSans = localFont({
   variable: "--font-iransans",
   display: "swap",
   preload: true,
-  fallback: ["Tahoma", "Arial", "sans-serif"],
+  fallback: ["IRANSansXFaNum", "Tahoma", "sans-serif"],
 });
+
+/** Canonical site font stack — IRANSansXFaNum from public/fonts only. */
+export const SITE_FONT_STACK =
+  'var(--font-iransans), IRANSansXFaNum, Tahoma, sans-serif';
 
 /** CSS variable for Tailwind `@theme` tokens (`--font-body`, `--font-display`). */
 export const fontVariable = iranSans.variable;

@@ -9,6 +9,7 @@ import { getSuggestion, filterLeadsForAgent } from '@/lib/leadUtils'
 import { roleLabels, suggestReasonLabels } from '@/data/labels'
 import { toFa, formatJalaliDate } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
+import { isShiftOpen } from '@/lib/shiftUtils'
 import { performStartShift } from '@/services/shiftActions'
 
 export function ShiftStartScreen() {
@@ -41,13 +42,24 @@ export function ShiftStartScreen() {
 
   const goalPct = agent.callGoal ? Math.round((agent.callsToday / agent.callGoal) * 100) : 0
 
-  const confirmStart = () => {
+  const confirmStart = async () => {
     if (starting) return
     setStarting(true)
     haptic('success')
-    performStartShift('available')
-    pushToast('شیفت شروع شد، روز خوبی داشته باشی')
-    navigate('/home', { replace: true })
+
+    try {
+      await performStartShift('available')
+      pushToast('شیفت شروع شد، روز خوبی داشته باشی')
+      navigate('/home', { replace: true })
+    } catch {
+      if (isShiftOpen(useStore.getState().workSession)) {
+        pushToast('شیفت محلی شروع شد؛ همگام‌سازی با سرور بعداً انجام می‌شود', 'info')
+        navigate('/home', { replace: true })
+        return
+      }
+      pushToast('شروع شیفت ناموفق بود. اتصال را بررسی کن و دوباره تلاش کن.', 'error')
+      setStarting(false)
+    }
   }
 
   return (
