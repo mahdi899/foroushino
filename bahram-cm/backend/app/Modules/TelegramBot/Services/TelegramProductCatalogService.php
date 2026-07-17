@@ -41,7 +41,6 @@ class TelegramProductCatalogService
     {
         return Product::query()
             ->where('is_active', true)
-            ->where('show_in_telegram', true)
             ->where(function ($q) use ($idOrSlug): void {
                 if (is_numeric($idOrSlug)) {
                     $q->where('id', (int) $idOrSlug);
@@ -49,6 +48,13 @@ class TelegramProductCatalogService
                     $q->where('slug', (string) $idOrSlug);
                 }
             })
+            ->where(function ($q): void {
+                $q->where('show_in_telegram', true)
+                    ->orWhereHas('seminar', function ($seminar): void {
+                        $seminar->where('status', 'published');
+                    });
+            })
+            ->with('seminar')
             ->first();
     }
 }

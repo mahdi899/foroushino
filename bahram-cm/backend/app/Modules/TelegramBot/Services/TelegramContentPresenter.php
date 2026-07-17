@@ -63,18 +63,16 @@ class TelegramContentPresenter
             $lines[] = trim(strip_tags((string) $seminar->description));
         }
 
-        $price = (int) ($seminar->price ?? $seminar->product?->price ?? 0);
-        $sale = $seminar->sale_price ?? $seminar->product?->sale_price;
-        $sale = $sale !== null ? (int) $sale : null;
-
+        [$price, $sale] = $this->seminarPrices($seminar);
         if ($price > 0) {
             $lines[] = '';
             $lines[] = $this->formatPriceLine($price, $sale);
         }
 
-        $remaining = $seminar->remainingSeats();
-        if ($remaining !== null) {
-            $lines[] = $seminar->isFull() ? '⚠️ ظرفیت تکمیل شده' : "👥 ظرفیت باقی‌مانده: {$remaining}";
+        if ($seminar->capacity !== null && $seminar->capacity > 0) {
+            $lines[] = $seminar->isFull()
+                ? '⚠️ ظرفیت تکمیل شده'
+                : '👥 ظرفیت باقی‌مانده: '.$seminar->remainingSeats();
         }
 
         return implode("\n", $lines);
@@ -90,10 +88,13 @@ class TelegramContentPresenter
     public function seminarReplyMarkup(Seminar $seminar): array
     {
         $keyboard = [];
-
         $product = $seminar->product;
-        if ($product && $product->is_active && (int) ($seminar->price ?? $product->price ?? 0) > 0 && ! $seminar->isFull()) {
-            $keyboard[] = [['text' => '🛒 ثبت‌نام / خرید', 'callback_data' => 'buy:'.$product->id]];
+        [$price] = $this->seminarPrices($seminar);
+
+        if ($seminar->isFull()) {
+            $keyboard[] = [['text' => '⛔ ظرفیت تکمیل شده', 'callback_data' => 'seminar:full']];
+        } elseif ($product && $product->is_active && $price > 0) {
+            $keyboard[] = [['text' => '🛒 ثبت‌نام / پرداخت', 'callback_data' => 'buy:'.$product->id]];
         }
 
         $keyboard = [
@@ -111,9 +112,20 @@ class TelegramContentPresenter
     private function formatPriceLine(int $price, ?int $salePrice): string
     {
         if ($salePrice !== null && $salePrice > 0 && $salePrice < $price) {
-            return 'قیمت: '.number_format($price)." تومان\nقیمت ویژه: ".number_format($salePrice).' تومان';
+            return 'قیمت اصلی: '.number_format($price)." تومان\nقیمت با تخفیف: ".number_format($salePrice).' تومان';
         }
 
         return 'قیمت: '.number_format($price).' تومان';
+    }
+
+    /** @return array{0: int, 1: int|null} */
+    private function seminarPrices(Seminar $seminar): array
+    {
+        $product = $seminar->product;
+        $price = (int) ($seminar->price ?: $product?->price ?: 0);
+        $sale = $seminar->sale_price ?? $product?->sale_price;
+        $sale = $sale !== null ? (int) $sale : null;
+
+        return [$price, $sale];
     }
 }

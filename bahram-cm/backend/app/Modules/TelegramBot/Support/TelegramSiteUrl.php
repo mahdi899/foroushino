@@ -6,10 +6,33 @@ final class TelegramSiteUrl
 {
     public static function frontendBase(): string
     {
-        return rtrim((string) config(
-            'telegram.site_base_url',
-            config('bahram.frontend_url', config('app.frontend_url', env('FRONTEND_URL', 'https://fashio.ir'))),
-        ), '/');
+        $candidates = [
+            config('telegram.site_base_url'),
+            config('bahram.frontend_url'),
+            config('app.frontend_url'),
+            env('FRONTEND_URL'),
+            'https://fashio.ir',
+        ];
+
+        foreach ($candidates as $candidate) {
+            $base = rtrim(trim((string) $candidate), '/');
+            if ($base !== '' && self::isPublicWebBase($base)) {
+                return $base;
+            }
+        }
+
+        return 'https://fashio.ir';
+    }
+
+    public static function isPublicWebBase(string $url): bool
+    {
+        if (! preg_match('#^https?://#i', $url)) {
+            return false;
+        }
+
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+        return $host !== '' && ! in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true);
     }
 
     public static function resolve(?string $landingHref, ?string $slug, string $purchaseSegment = 'purchase'): ?string
@@ -76,7 +99,17 @@ final class TelegramSiteUrl
 
     public static function identityPage(): ?string
     {
-        return self::page('telegram/identity');
+        return self::page('panel/identity-verification');
+    }
+
+    public static function telegramLoginPage(?string $token = null): ?string
+    {
+        $path = 'panel';
+        if (filled($token)) {
+            $path .= '?tg_login='.urlencode((string) $token);
+        }
+
+        return self::page($path);
     }
 
     public static function adminTelegram(): ?string

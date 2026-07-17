@@ -11,7 +11,7 @@ class TelegramSeminarCatalogService
     public function listUpcoming(): Collection
     {
         return Seminar::query()
-            ->with(['product:id,slug,is_active,price,sale_price,show_in_telegram'])
+            ->with(['product:id,slug,is_active,price,sale_price,show_in_telegram,title'])
             ->where('status', 'published')
             ->where('date', '>=', now()->subDay())
             ->orderBy('date')
