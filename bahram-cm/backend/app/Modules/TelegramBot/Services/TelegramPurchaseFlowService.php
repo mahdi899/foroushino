@@ -24,6 +24,7 @@ class TelegramPurchaseFlowService
         private readonly TelegramCheckoutService $checkout,
         private readonly DiscountService $discounts,
         private readonly MainMenuKeyboard $mainMenu,
+        private readonly TelegramCardToCardFlowService $cardToCardFlow,
     ) {}
 
     public function applyDiscountCodeAndContinue(
@@ -190,11 +191,45 @@ class TelegramPurchaseFlowService
             return;
         }
 
-        $amount = number_format((int) $result['amount']);
-        $client->sendMessage(
+        $this->cardToCardFlow->beginWaitingForReceipt(
+            $bot,
+            $account,
             $chatId,
-            "سفارش #{$result['order_id']}\n{$product->title}\nمبلغ: {$amount} تومان\n\n"
-            ."🏧 راهنمای کارت‌به‌کارت:\n{$result['instructions']}",
+            (int) $result['order_id'],
+            (string) $product->title,
+            (int) $result['amount'],
+            (string) $result['instructions'],
+        );
+    }
+
+    /** @param  array<string, mixed>  $message */
+    public function handleCardToCardReceiptMessage(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        int $chatId,
+        array $message,
+        string $text = '',
+    ): void {
+        $this->cardToCardFlow->handleUserMessage($bot, $account, $chatId, $message, $text);
+    }
+
+    public function handleCardToCardReviewCallback(
+        TelegramBot $bot,
+        TelegramAccount $actor,
+        $client,
+        int $chatId,
+        int $messageId,
+        string $callbackId,
+        string $data,
+    ): void {
+        $this->cardToCardFlow->handleAdminReviewCallback(
+            $bot,
+            $actor,
+            $client,
+            $chatId,
+            $messageId,
+            $callbackId,
+            $data,
         );
     }
 
