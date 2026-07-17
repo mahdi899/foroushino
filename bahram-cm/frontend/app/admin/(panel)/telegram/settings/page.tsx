@@ -33,7 +33,7 @@ export default async function TelegramSettingsPage() {
   return (
     <TelegramSubPage
       title="تنظیمات ربات"
-      description="مدیریت ربات‌ها، وب‌هوک، پروفایل تلگرام و گروه پشتیبانی از پنل"
+      description="مدیریت ربات‌ها، وب‌هوک، پروفایل تلگرام و گروه گزارشات از پنل"
       icon="Settings"
     >
       <TelegramSettingsClient bots={bots} profiles={profiles} />

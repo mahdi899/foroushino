@@ -123,4 +123,41 @@ class TelegramBot extends Model
         $settings['card_to_card_text'] = mb_substr(trim($text), 0, 1000);
         $this->forceFill(['settings' => $settings])->save();
     }
+
+    /**
+     * Chat ID of the reports/support group where user tickets are mirrored.
+     */
+    public function reportsGroupChatId(): ?string
+    {
+        if (filled($this->support_group_chat_id)) {
+            return (string) $this->support_group_chat_id;
+        }
+
+        if (filled($this->reports_chat_id)) {
+            return (string) $this->reports_chat_id;
+        }
+
+        return null;
+    }
+
+    /**
+     * Channel/group for payment reports (C2C review + successful payments).
+     */
+    public function paymentReportsChatId(): ?string
+    {
+        $value = data_get($this->settings, 'payment_reports_chat_id');
+
+        return filled($value) ? (string) $value : null;
+    }
+
+    public function setPaymentReportsChatId(?string $chatId): void
+    {
+        $settings = (array) ($this->settings ?? []);
+        if (filled($chatId)) {
+            $settings['payment_reports_chat_id'] = (string) $chatId;
+        } else {
+            unset($settings['payment_reports_chat_id']);
+        }
+        $this->forceFill(['settings' => $settings])->save();
+    }
 }

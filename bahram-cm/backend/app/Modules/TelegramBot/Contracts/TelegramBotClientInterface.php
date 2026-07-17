@@ -75,6 +75,11 @@ interface TelegramBotClientInterface
     public function forwardMessage(int|string $chatId, int|string $fromChatId, int $messageId, array $options = []): array;
 
     /**
+     * @param  list<array{type: string, emoji?: string}>  $reaction
+     */
+    public function setMessageReaction(int|string $chatId, int $messageId, array $reaction = [['type' => 'emoji', 'emoji' => '✅']]): bool;
+
+    /**
      * @param  array<string, mixed>  $options  Must include chat_id+message_id OR inline_message_id.
      * @return array<string, mixed>|bool
      */

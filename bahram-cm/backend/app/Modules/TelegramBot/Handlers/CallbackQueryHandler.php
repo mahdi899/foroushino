@@ -48,10 +48,14 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             return;
         }
 
-        // Never interact inside groups/channels — admin UX stays in private chat only.
+        // Allow C2C review callbacks inside the payment-reports group/channel only.
         $chatType = (string) data_get($callback, 'message.chat.type', 'private');
         if ($chatType !== 'private') {
-            return;
+            $paymentChat = $bot->paymentReportsChatId();
+            $isC2cReview = str_starts_with($data, 'c2c:ok:') || str_starts_with($data, 'c2c:no:');
+            if (! $isC2cReview || blank($paymentChat) || (string) $chatId !== (string) $paymentChat) {
+                return;
+            }
         }
 
         $account = TelegramAccount::query()->firstOrCreate(
@@ -157,7 +161,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         string $data,
     ): void {
         $category = substr($data, strlen('support:cat:'));
-        if (! in_array($category, ['purchase', 'campaign_course', 'other'], true)) {
+        if (! in_array($category, ['purchase', 'campaign_course', 'sat', 'other'], true)) {
             $this->answer($client, $callbackId, 'دسته نامعتبر است.', true);
 
             return;
@@ -185,7 +189,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         ]);
 
         $this->answer($client, $callbackId, 'پیام خود را بنویسید.');
-        $client->sendMessage($chatId, 'پیام پشتیبانی خود را بنویسید (یا «لغو»):');
+        $client->sendMessage($chatId, 'پیام پشتیبانی خود را بنویسید (متن یا رسانه). برای انصراف «لغو»:');
     }
 
     private function handleMembershipRecheck($client, TelegramBot $bot, TelegramAccount $account, int $chatId, string $callbackId): void

@@ -2,10 +2,10 @@
 
 namespace App\Modules\TelegramBot\Handlers;
 
+use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramMessageMap;
 use App\Modules\TelegramBot\Models\TelegramUpdate;
-use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
 use App\Modules\TelegramBot\Support\TelegramHtml;
 
 class EditedMessageHandler implements UpdateHandlerInterface
@@ -31,29 +31,26 @@ class EditedMessageHandler implements UpdateHandlerInterface
             ->where('direction', 'user_to_support')
             ->first();
 
-        if ($map === null || blank($bot->support_group_chat_id)) {
+        if ($map === null || blank($bot->reportsGroupChatId())) {
             return;
         }
 
         $client = $this->clients->forBot($bot);
-        $body = TelegramHtml::bold('نسخه ویرایش‌شده')."\n".TelegramHtml::escape($text);
+        $body = TelegramHtml::bold('نسخه ویرایش‌شده کاربر')."\n".TelegramHtml::escape($text);
+        $replyTo = (int) ($map->media_group_id ?: $map->target_message_id);
 
-        try {
-            $client->editMessageText($body, [
-                'chat_id' => $map->target_chat_id,
-                'message_id' => $map->target_message_id,
-                'parse_mode' => 'HTML',
-            ]);
-        } catch (\Throwable) {
-            $client->sendMessage($map->target_chat_id, $body, [
-                'parse_mode' => 'HTML',
-                'message_thread_id' => $map->target_thread_id,
-            ]);
+        $options = [
+            'parse_mode' => 'HTML',
+            'message_thread_id' => $map->target_thread_id,
+        ];
+        if ($replyTo > 0) {
+            $options['reply_to_message_id'] = $replyTo;
         }
 
-        $map->update([
-            'edit_version' => $map->edit_version + 1,
-            'edited_at' => now(),
-        ]);
+        try {
+            $client->sendMessage($map->target_chat_id, $body, $options);
+        } catch (\Throwable) {
+            // Best-effort notice in reports group.
+        }
     }
 }

@@ -96,19 +96,49 @@ export function TelegramSettingsClient({
 
                   <div className="mt-3 grid gap-3 md:grid-cols-2">
                     <label className="block">
-                      <span className="text-caption text-text-muted">گروه پشتیبانی (chat id)</span>
+                      <span className="text-caption text-text-muted">گروه گزارشات پشتیبانی (chat id)</span>
                       <input
                         className="field-input mt-1 w-full"
                         dir="ltr"
+                        placeholder="-100xxxxxxxxxx"
                         defaultValue={bot.support_group_chat_id ?? ''}
                         onBlur={(e) => {
                           const v = e.target.value.trim();
                           if (v === (bot.support_group_chat_id ?? '')) return;
-                          run(() => updateTelegramBotAction(bot.id, { support_group_chat_id: v || null }));
+                          run(() =>
+                            updateTelegramBotAction(bot.id, {
+                              support_group_chat_id: v || null,
+                              reports_chat_id: v || null,
+                            }),
+                          );
                         }}
                       />
+                      <span className="mt-1 block text-caption text-text-muted">
+                        پیام‌های پشتیبانی کاربران فقط در این گروه می‌آید.
+                      </span>
                     </label>
                     <label className="block">
+                      <span className="text-caption text-text-muted">گروه/کانال گزارشات پرداخت (chat id)</span>
+                      <input
+                        className="field-input mt-1 w-full"
+                        dir="ltr"
+                        placeholder="-100xxxxxxxxxx"
+                        defaultValue={bot.payment_reports_chat_id ?? ''}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v === (bot.payment_reports_chat_id ?? '')) return;
+                          run(() =>
+                            updateTelegramBotAction(bot.id, {
+                              payment_reports_chat_id: v || null,
+                            }),
+                          );
+                        }}
+                      />
+                      <span className="mt-1 block text-caption text-text-muted">
+                        رسید کارت‌به‌کارت، تأیید/رد، و خریدهای موفق (سایت + ربات) فقط اینجا می‌آید.
+                      </span>
+                    </label>
+                    <label className="block md:col-span-2">
                       <span className="text-caption text-text-muted">وب‌هوک فعلی</span>
                       <input className="field-input mt-1 w-full" dir="ltr" readOnly value={bot.webhook_url ?? '—'} />
                     </label>

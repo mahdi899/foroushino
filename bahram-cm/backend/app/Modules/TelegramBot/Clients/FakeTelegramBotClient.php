@@ -110,6 +110,11 @@ class FakeTelegramBotClient implements TelegramBotClientInterface
         return (array) $this->record('forwardMessage', compact('chatId', 'fromChatId', 'messageId', 'options'), ['message_id' => $this->nextMessageId()]);
     }
 
+    public function setMessageReaction(int|string $chatId, int $messageId, array $reaction = [['type' => 'emoji', 'emoji' => '✅']]): bool
+    {
+        return (bool) $this->record('setMessageReaction', compact('chatId', 'messageId', 'reaction'), true);
+    }
+
     public function editMessageText(string $text, array $options = []): array|bool
     {
         return $this->record('editMessageText', ['text' => $text, 'options' => $options], true);

@@ -30,6 +30,7 @@ export async function updateTelegramBotAction(
     support_group_chat_id?: string | null;
     reports_chat_id?: string | null;
     reports_topic_id?: number | null;
+    payment_reports_chat_id?: string | null;
   },
 ): Promise<{ ok: boolean; error?: string }> {
   try {

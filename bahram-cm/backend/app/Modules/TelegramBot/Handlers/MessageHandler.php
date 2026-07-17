@@ -58,8 +58,8 @@ class MessageHandler implements UpdateHandlerInterface
         }
 
         if (
-            filled($bot->support_group_chat_id)
-            && (string) data_get($message, 'chat.id') === (string) $bot->support_group_chat_id
+            filled($bot->reportsGroupChatId())
+            && (string) data_get($message, 'chat.id') === (string) $bot->reportsGroupChatId()
         ) {
             app(\App\Modules\TelegramBot\Services\SupportAdminReplyService::class)
                 ->handleIncomingSupportMessage($bot, $message);
@@ -138,6 +138,11 @@ class MessageHandler implements UpdateHandlerInterface
         // Refresh after admin handlers may have changed conversation state.
         $conversation->refresh();
 
+        // User Reply on a support message → continue thread in reports group.
+        if ($this->supportTickets->tryHandleUserReplyToSupport($bot, $account, $message)) {
+            return;
+        }
+
         if ($conversation->state === ConversationState::WaitingForCardToCardReceipt) {
             $this->purchaseFlow->handleCardToCardReceiptMessage($bot, $account, $chatId, $message, $text);
 
@@ -158,7 +163,7 @@ class MessageHandler implements UpdateHandlerInterface
             return;
         }
 
-        if ($conversation->state === ConversationState::WaitingForSupportMessage && $text !== '') {
+        if ($conversation->state === ConversationState::WaitingForSupportMessage) {
             if (in_array($text, ['لغو', '/cancel'], true)) {
                 $this->conversations->transition($conversation, ConversationState::Idle, [
                     'support' => null,
@@ -167,6 +172,17 @@ class MessageHandler implements UpdateHandlerInterface
                     'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
                 ]);
 
+                return;
+            }
+
+            $hasMedia = isset($message['photo'])
+                || isset($message['document'])
+                || isset($message['video'])
+                || isset($message['voice'])
+                || isset($message['audio'])
+                || isset($message['sticker']);
+
+            if ($text === '' && ! $hasMedia) {
                 return;
             }
 
@@ -247,8 +263,9 @@ class MessageHandler implements UpdateHandlerInterface
         $client->sendMessage($chatId, 'دسته پشتیبانی را انتخاب کنید:', [
             'reply_markup' => [
                 'inline_keyboard' => [
-                    [['text' => 'خرید و پرداخت', 'callback_data' => 'support:cat:purchase']],
-                    [['text' => 'دوره کمپین‌نویسی', 'callback_data' => 'support:cat:campaign_course']],
+                    [['text' => 'خرید', 'callback_data' => 'support:cat:purchase']],
+                    [['text' => 'کمپین', 'callback_data' => 'support:cat:campaign_course']],
+                    [['text' => 'سات', 'callback_data' => 'support:cat:sat']],
                     [['text' => 'سایر', 'callback_data' => 'support:cat:other']],
                 ],
             ],
@@ -266,11 +283,20 @@ class MessageHandler implements UpdateHandlerInterface
     ): void {
         $client = $this->clients->forBot($bot);
         $category = (string) data_get($conversation->context, 'support.category', 'other');
-        $subjects = [
-            'purchase' => 'خرید و پرداخت',
-            'campaign_course' => 'دوره کمپین‌نویسی',
-            'other' => 'سایر',
-        ];
+        $subjects = SupportTicketBridgeService::CATEGORY_LABELS;
+
+        if (blank($bot->reportsGroupChatId())) {
+            $client->sendMessage(
+                $chatId,
+                '⛔ گروه گزارشات هنوز تنظیم نشده است. لطفاً بعداً دوباره تلاش کنید.',
+                ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
+            );
+            $this->conversations->transition($conversation, ConversationState::Idle, [
+                'support' => null,
+            ]);
+
+            return;
+        }
 
         try {
             $ticket = $this->supportTickets->openOrContinue(
@@ -278,13 +304,14 @@ class MessageHandler implements UpdateHandlerInterface
                 $category,
                 $subjects[$category] ?? 'پشتیبانی تلگرام',
             );
-            $this->supportTickets->appendUserMessage($ticket, $text);
-            $this->supportTickets->mirrorToSupportGroup(
+            $this->supportTickets->appendUserMessage($ticket, $text !== '' ? $text : '[رسانه]');
+            $mirrored = $this->supportTickets->mirrorToSupportGroup(
                 $bot,
                 $ticket,
                 $account,
                 (int) ($message['message_id'] ?? 0),
                 $this->supportTickets->categoryTopicId($category),
+                $category,
             );
         } catch (\Throwable $e) {
             $client->sendMessage($chatId, 'ارسال پیام پشتیبانی ناموفق بود. لطفاً دوباره تلاش کنید.');
@@ -295,9 +322,23 @@ class MessageHandler implements UpdateHandlerInterface
         $this->conversations->transition($conversation, ConversationState::Idle, [
             'support' => null,
         ]);
-        $client->sendMessage($chatId, '✅ پیام شما ثبت شد. پشتیبانی به‌زودی پاسخ می‌دهد.', [
-            'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
-        ]);
+        $ack = $client->sendMessage(
+            $chatId,
+            "✅ پیام شما ثبت شد.\nپشتیبانی به‌زودی پاسخ می‌دهد.\n\nبرای ادامه گفتگو، روی همین پیام یا پاسخ پشتیبانی Reply بزنید.",
+            ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
+        );
+        $ackId = (int) ($ack['message_id'] ?? 0);
+        if ($ackId > 0 && ($mirrored['id_message_id'] ?? 0) > 0) {
+            $this->supportTickets->mapSupportThreadToUser(
+                $ticket->id,
+                $mirrored['support_chat_id'],
+                $mirrored['id_message_id'],
+                (string) $chatId,
+                $ackId,
+                $mirrored['topic_id'] ?? null,
+                $mirrored['forward_message_id'] ?? null,
+            );
+        }
     }
 
     private function sendProducts($client, TelegramBot $bot, TelegramAccount $account, int $chatId): void

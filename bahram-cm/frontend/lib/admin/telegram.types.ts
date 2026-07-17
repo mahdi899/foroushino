@@ -45,6 +45,7 @@ export type TelegramBotView = {
   support_group_chat_id?: string | null;
   reports_chat_id?: string | null;
   reports_topic_id?: number | null;
+  payment_reports_chat_id?: string | null;
   settings?: Record<string, unknown>;
   token_key?: string;
 };
