@@ -12,8 +12,8 @@ use App\Services\ZarinpalPaymentService;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Starts checkout for a Telegram user using Zarinpal and/or card-to-card,
- * controlled by bot feature flags.
+ * Starts checkout for a Telegram user using the same OrderService /
+ * DiscountService / referral fields as the website.
  */
 class TelegramCheckoutService
 {
@@ -99,7 +99,13 @@ class TelegramCheckoutService
         ];
 
         if (filled($discountCode)) {
-            $payload['discount_code'] = $discountCode;
+            // Same key as website checkout (OrderService + DiscountService).
+            $payload['coupon'] = strtoupper(trim($discountCode));
+        }
+
+        $ref = data_get($account->metadata, 'referred_by_code');
+        if (filled($ref)) {
+            $payload['ref'] = (string) $ref;
         }
 
         return $this->orders->create($payload, $user);

@@ -2,6 +2,11 @@
 
 namespace App\Modules\TelegramBot\Services;
 
+use App\Enums\DiscountRestriction;
+use App\Enums\DiscountType;
+use App\Models\DiscountCode;
+use App\Models\Product;
+use App\Models\User;
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
 use App\Modules\TelegramBot\Contracts\TelegramBotClientInterface;
 use App\Modules\TelegramBot\Enums\ConversationState;
@@ -17,6 +22,7 @@ use App\Modules\TelegramBot\Models\TelegramRequiredChat;
 use App\Modules\TelegramBot\Models\TelegramUpdate;
 use App\Modules\TelegramBot\Repositories\TelegramUpdateRepository;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
+use App\Support\JalaliDate;
 use RuntimeException;
 use Throwable;
 
@@ -35,6 +41,7 @@ class BotAdminPanelService
         private readonly BroadcastDispatchService $broadcastDispatch,
         private readonly TelegramUpdateRepository $updates,
         private readonly TelegramAdminUserStatsService $userStats,
+        private readonly RequiredChatMembershipService $requiredChats,
     ) {}
 
     public function openDashboard(TelegramBot $bot, TelegramAccount $account, int $chatId): void
@@ -94,6 +101,7 @@ class BotAdminPanelService
                 str_starts_with($data, 'admin:admins:') => $this->handleAdminsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:b:') => $this->handleBroadcastsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:rc:') => $this->handleRequiredChatsCallback($bot, $account, $client, $chatId, $messageId, $data),
+                str_starts_with($data, 'admin:dc:') => $this->handleDiscountsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:d:') => $this->handleDestinationsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:p') => $this->handleProfileCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:s') => $this->handleSettingsCallback($bot, $account, $client, $chatId, $messageId, $data),
@@ -181,6 +189,17 @@ class BotAdminPanelService
                 'admin_add' => $this->onAdminAddById($bot, $account, $conversation, $client, $chatId, $text),
                 'admin_add_name' => $this->onAdminAddDisplayName($bot, $account, $conversation, $client, $chatId, $text),
                 'card_to_card_text' => $this->onCardToCardText($bot, $account, $conversation, $client, $chatId, $text),
+                'rc_add' => $this->onRequiredChatAddInput($bot, $account, $conversation, $client, $chatId, $text),
+                'rc_rename' => $this->onRequiredChatRenameInput($bot, $account, $conversation, $client, $chatId, $text),
+                'dest_add' => $this->onDestinationAddInput($bot, $account, $conversation, $client, $chatId, $text),
+                'dest_rename' => $this->onDestinationRenameInput($bot, $account, $conversation, $client, $chatId, $text),
+                'dc_add_code' => $this->onDiscountWizardStep($bot, $account, $conversation, $client, $chatId, $text, 'code'),
+                'dc_add_percent' => $this->onDiscountWizardStep($bot, $account, $conversation, $client, $chatId, $text, 'percent'),
+                'dc_add_user' => $this->onDiscountWizardStep($bot, $account, $conversation, $client, $chatId, $text, 'user'),
+                'dc_add_expires' => $this->onDiscountWizardStep($bot, $account, $conversation, $client, $chatId, $text, 'expires'),
+                'dc_add_max_uses' => $this->onDiscountWizardStep($bot, $account, $conversation, $client, $chatId, $text, 'max_uses'),
+                'dc_add_max_per_user' => $this->onDiscountWizardStep($bot, $account, $conversation, $client, $chatId, $text, 'max_per_user'),
+                'dc_add_product' => $this->onDiscountWizardStep($bot, $account, $conversation, $client, $chatId, $text, 'product'),
                 'dm_user' => $this->onDmUser($bot, $account, $conversation, $client, $chatId, $text),
                 'broadcast_title' => $this->onBroadcastTitle($bot, $account, $conversation, $client, $chatId, $text),
                 'broadcast_text' => $this->onBroadcastText($bot, $account, $conversation, $client, $chatId, $text),
@@ -209,6 +228,7 @@ class BotAdminPanelService
             AdminMenuKeyboard::BROADCAST => \App\Modules\TelegramBot\Enums\BotAdminPermission::Broadcast,
             AdminMenuKeyboard::REQUIRED_CHATS => \App\Modules\TelegramBot\Enums\BotAdminPermission::ForcedJoin,
             AdminMenuKeyboard::DESTINATIONS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Menus,
+            AdminMenuKeyboard::DISCOUNTS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Discount,
             AdminMenuKeyboard::PROFILE, AdminMenuKeyboard::SETTINGS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Settings,
             AdminMenuKeyboard::LOGS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Stats,
             AdminMenuKeyboard::HOME, AdminMenuKeyboard::EXIT => null,
@@ -228,7 +248,8 @@ class BotAdminPanelService
             AdminMenuKeyboard::ADMINS => $this->openAdminsSection($bot, $account, $client, $chatId),
             AdminMenuKeyboard::BROADCAST => $this->handleBroadcastsCallback($bot, $account, $client, $chatId, 0, 'admin:b:p:0'),
             AdminMenuKeyboard::REQUIRED_CHATS => $this->handleRequiredChatsCallback($bot, $account, $client, $chatId, 0, 'admin:rc:p:0'),
-            AdminMenuKeyboard::DESTINATIONS => $this->handleDestinationsCallback($bot, $account, $client, $chatId, 0, 'admin:d:p:0'),
+            AdminMenuKeyboard::DESTINATIONS => $this->handleDestinationsCallback($bot, $account, $client, $chatId, 0, 'admin:d:list'),
+            AdminMenuKeyboard::DISCOUNTS => $this->handleDiscountsCallback($bot, $account, $client, $chatId, 0, 'admin:dc:list'),
             AdminMenuKeyboard::PROFILE => $this->handleProfileCallback($bot, $account, $client, $chatId, 0, 'admin:p'),
             AdminMenuKeyboard::SETTINGS => $this->handleSettingsCallback($bot, $account, $client, $chatId, 0, 'admin:s'),
             AdminMenuKeyboard::LOGS => $this->handleLogsCallback($bot, $account, $client, $chatId, 0, 'admin:l'),
@@ -355,7 +376,7 @@ class BotAdminPanelService
                     ['text' => '📻 کانال اجباری', 'callback_data' => 'admin:rc:p:0'],
                 ],
                 [
-                    ['text' => '📍 مقاصد', 'callback_data' => 'admin:d:p:0'],
+                    ['text' => '📍 مقاصد', 'callback_data' => 'admin:d:list'],
                     ['text' => '🤖 پروفایل بات', 'callback_data' => 'admin:p'],
                 ],
                 [
@@ -1771,11 +1792,52 @@ class BotAdminPanelService
         int $messageId,
         string $data,
     ): void {
+        if (! $account->hasBotAdminPermission(\App\Modules\TelegramBot\Enums\BotAdminPermission::ForcedJoin)
+            && ! $account->isPermanentBotAdmin()) {
+            throw new RuntimeException('دسترسی «جوین اجباری» لازم است.');
+        }
+
         $parts = explode(':', $data);
         $action = $parts[2] ?? 'p';
 
-        if ($action === 'p') {
+        if ($action === 'noop') {
+            return;
+        }
+
+        if ($action === 'p' || $action === 'list') {
             $this->renderRequiredChatsList($bot, $client, $chatId, $messageId);
+
+            return;
+        }
+
+        if ($action === 'add') {
+            $conversation = $this->conversations->forAccount($account);
+            $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+                'admin' => ['flow' => 'rc_add', 'draft' => []],
+            ]);
+            $client->sendMessage(
+                $chatId,
+                "➕ افزودن کانال اجباری\n\n"
+                ."۱) ربات را در کانال ادمین کنید (حداقل دسترسی دیدن اعضا).\n"
+                ."۲) یکی از این‌ها را بفرستید:\n"
+                ."• یک پست از کانال را همین‌جا فوروارد کنید\n"
+                ."• یا @یوزرنیم / آیدی عددی / لینک t.me\n\n"
+                .'برای انصراف «لغو» بفرستید.',
+                ['reply_markup' => [
+                    'keyboard' => [
+                        [[
+                            'text' => '📢 انتخاب کانال',
+                            'request_chat' => [
+                                'request_id' => 2001,
+                                'chat_is_channel' => true,
+                                'bot_is_member' => true,
+                            ],
+                        ]],
+                        [['text' => 'لغو']],
+                    ],
+                    'resize_keyboard' => true,
+                ]],
+            );
 
             return;
         }
@@ -1790,15 +1852,52 @@ class BotAdminPanelService
             throw new RuntimeException('کانال یافت نشد.');
         }
 
+        if ($action === 'del') {
+            $title = $requiredChat->title;
+            $requiredChat->delete();
+            $this->renderRequiredChatsList($bot, $client, $chatId, $messageId, "🗑️ «{$title}» حذف شد.");
+
+            return;
+        }
+
+        if ($action === 'rn') {
+            $conversation = $this->conversations->forAccount($account);
+            $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+                'admin' => [
+                    'flow' => 'rc_rename',
+                    'draft' => ['required_chat_id' => $requiredChat->id],
+                ],
+            ]);
+            $client->sendMessage(
+                $chatId,
+                "✍️ نام نمایشی جدید برای «{$requiredChat->title}» را بفرستید:\n(یا «لغو»)",
+                ['reply_markup' => $this->adminMenuMarkup($account)],
+            );
+
+            return;
+        }
+
         if ($action === 't') {
             $requiredChat->update(['is_active' => ! $requiredChat->is_active]);
+            $this->renderRequiredChatsList($bot, $client, $chatId, $messageId, 'وضعیت فعال بودن به‌روز شد.');
+
+            return;
         }
 
         if ($action === 'r') {
             $requiredChat->update(['is_required' => ! $requiredChat->is_required]);
+            $this->renderRequiredChatsList($bot, $client, $chatId, $messageId, 'وضعیت اجباری بودن به‌روز شد.');
+
+            return;
         }
 
-        $this->renderRequiredChatDetail($client, $chatId, $messageId, $requiredChat->fresh());
+        if ($action === 'i') {
+            $this->renderRequiredChatDetail($client, $chatId, $messageId, $requiredChat);
+
+            return;
+        }
+
+        $this->renderRequiredChatsList($bot, $client, $chatId, $messageId);
     }
 
     private function renderRequiredChatsList(
@@ -1806,29 +1905,50 @@ class BotAdminPanelService
         TelegramBotClientInterface $client,
         int $chatId,
         int $messageId,
+        ?string $notice = null,
     ): void {
         $items = TelegramRequiredChat::query()
             ->where('telegram_bot_id', $bot->id)
             ->orderBy('sort_order')
+            ->orderBy('id')
             ->get();
 
-        $lines = ['📻 کانال‌های اجباری', ''];
-        $keyboard = [];
+        $text = ($notice ? $notice."\n\n" : '')
+            .'👈 به بخش جوین اجباری خوش آمدید';
+
+        $keyboard = [
+            [['text' => '➕ افزودن', 'callback_data' => 'admin:rc:add']],
+            [
+                ['text' => 'حذف', 'callback_data' => 'admin:rc:noop'],
+                ['text' => 'تغییر نام', 'callback_data' => 'admin:rc:noop'],
+                ['text' => 'ورود', 'callback_data' => 'admin:rc:noop'],
+            ],
+        ];
 
         foreach ($items as $item) {
-            $flag = ($item->is_active ? '✅' : '⛔').($item->is_required ? ' *' : '');
-            $label = mb_substr("{$flag} {$item->title}", 0, 40);
-            $lines[] = "#{$item->id} · {$item->title}";
-            $keyboard[] = [['text' => $label, 'callback_data' => 'admin:rc:i:'.$item->id]];
+            $title = mb_substr((string) $item->title, 0, 28);
+            if ($title === '') {
+                $title = 'بدون نام';
+            }
+            $enterLabel = '↗️ '.$title;
+            $enterButton = filled($item->invite_link)
+                ? ['text' => $enterLabel, 'url' => (string) $item->invite_link]
+                : ['text' => $enterLabel, 'callback_data' => 'admin:rc:i:'.$item->id];
+
+            $keyboard[] = [
+                ['text' => '🗑️', 'callback_data' => 'admin:rc:del:'.$item->id],
+                ['text' => '✍️', 'callback_data' => 'admin:rc:rn:'.$item->id],
+                $enterButton,
+            ];
         }
 
         if ($items->isEmpty()) {
-            $lines[] = 'کانالی ثبت نشده.';
+            $keyboard[] = [['text' => 'کانالی ثبت نشده — افزودن را بزنید', 'callback_data' => 'admin:rc:add']];
         }
 
         $keyboard[] = [['text' => '🏠 داشبورد', 'callback_data' => 'admin:h']];
 
-        $this->editOrSend($client, $chatId, $messageId, implode("\n", $lines), ['inline_keyboard' => $keyboard]);
+        $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
     }
 
     private function renderRequiredChatDetail(
@@ -1841,20 +1961,268 @@ class BotAdminPanelService
             ."chat_id: {$requiredChat->chat_id}\n"
             .'فعال: '.($requiredChat->is_active ? 'بله' : 'خیر')."\n"
             .'اجباری: '.($requiredChat->is_required ? 'بله' : 'خیر')."\n"
-            .($requiredChat->invite_link ? "لینک: {$requiredChat->invite_link}" : '');
+            .($requiredChat->invite_link ? "لینک: {$requiredChat->invite_link}" : 'لینک: —');
 
-        $keyboard = [
-            [
-                ['text' => $requiredChat->is_active ? '⛔ غیرفعال' : '✅ فعال', 'callback_data' => 'admin:rc:t:'.$requiredChat->id],
-                ['text' => $requiredChat->is_required ? 'اختیاری' : 'اجباری', 'callback_data' => 'admin:rc:r:'.$requiredChat->id],
-            ],
-            [
-                ['text' => '◀️ لیست', 'callback_data' => 'admin:rc:p:0'],
-                ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
-            ],
+        $keyboard = [];
+        if (filled($requiredChat->invite_link)) {
+            $keyboard[] = [['text' => '↗️ ورود به کانال', 'url' => (string) $requiredChat->invite_link]];
+        }
+        $keyboard[] = [
+            ['text' => $requiredChat->is_active ? '⛔ غیرفعال' : '✅ فعال', 'callback_data' => 'admin:rc:t:'.$requiredChat->id],
+            ['text' => $requiredChat->is_required ? 'اختیاری کن' : 'اجباری کن', 'callback_data' => 'admin:rc:r:'.$requiredChat->id],
+        ];
+        $keyboard[] = [
+            ['text' => '✍️ تغییر نام', 'callback_data' => 'admin:rc:rn:'.$requiredChat->id],
+            ['text' => '🗑️ حذف', 'callback_data' => 'admin:rc:del:'.$requiredChat->id],
+        ];
+        $keyboard[] = [
+            ['text' => '◀️ لیست', 'callback_data' => 'admin:rc:list'],
+            ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
         ];
 
         $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
+    }
+
+    private function onRequiredChatAddInput(
+        TelegramBot $bot,
+        TelegramAccount $actor,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $text,
+    ): void {
+        if (trim($text) === '📢 انتخاب کانال') {
+            return;
+        }
+
+        $this->registerRequiredChatFromIdentifier($bot, $actor, $conversation, $client, $chatId, trim($text));
+    }
+
+    private function onRequiredChatRenameInput(
+        TelegramBot $bot,
+        TelegramAccount $actor,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $text,
+    ): void {
+        $name = trim($text);
+        if ($name === '' || mb_strlen($name) > 80) {
+            $client->sendMessage($chatId, 'نام معتبر بفرستید (۱ تا ۸۰ کاراکتر).');
+
+            return;
+        }
+
+        $id = (int) data_get($conversation->context, 'admin.draft.required_chat_id');
+        $requiredChat = TelegramRequiredChat::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->whereKey($id)
+            ->first();
+
+        if ($requiredChat === null) {
+            $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+                'admin' => ['flow' => null, 'draft' => []],
+            ]);
+            $client->sendMessage($chatId, 'کانال پیدا نشد.', [
+                'reply_markup' => $this->adminMenuMarkup($actor),
+            ]);
+
+            return;
+        }
+
+        $requiredChat->update(['title' => $name]);
+        $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+            'admin' => ['flow' => null, 'draft' => []],
+        ]);
+        $client->sendMessage($chatId, '✅ نام به‌روز شد.', [
+            'reply_markup' => $this->adminMenuMarkup($actor),
+        ]);
+        $this->renderRequiredChatsList($bot, $client, $chatId, 0);
+    }
+
+    /** @param  array<string, mixed>  $message */
+    public function handleRequiredChatShareOrForward(
+        TelegramBot $bot,
+        TelegramAccount $actor,
+        TelegramConversation $conversation,
+        int $chatId,
+        array $message,
+    ): bool {
+        if (! $actor->isBotAdmin()) {
+            return false;
+        }
+
+        $flow = (string) data_get($conversation->context, 'admin.flow', '');
+        if ($conversation->state !== ConversationState::AdminWaitingInput
+            || ! in_array($flow, ['rc_add', 'dest_add'], true)) {
+            return false;
+        }
+
+        $client = $this->clients->forBot($bot);
+        $identifier = null;
+
+        if (isset($message['chat_shared'])) {
+            $sharedId = (int) data_get($message, 'chat_shared.chat_id', 0);
+            if ($sharedId !== 0) {
+                $identifier = (string) $sharedId;
+            }
+        }
+
+        if ($identifier === null) {
+            $forwardChat = (array) ($message['forward_from_chat'] ?? []);
+            if ($forwardChat !== []) {
+                $identifier = (string) ($forwardChat['id'] ?? '');
+                if ($identifier === '' && filled($forwardChat['username'] ?? null)) {
+                    $identifier = '@'.$forwardChat['username'];
+                }
+            }
+        }
+
+        if ($identifier === null) {
+            $origin = (array) ($message['forward_origin'] ?? []);
+            if (($origin['type'] ?? '') === 'channel') {
+                $originChat = (array) ($origin['chat'] ?? []);
+                $identifier = (string) ($originChat['id'] ?? '');
+                if ($identifier === '' && filled($originChat['username'] ?? null)) {
+                    $identifier = '@'.$originChat['username'];
+                }
+            }
+        }
+
+        if ($identifier === null || $identifier === '' || $identifier === '0') {
+            return false;
+        }
+
+        if ($flow === 'dest_add') {
+            $this->registerDestinationFromIdentifier($bot, $actor, $conversation, $client, $chatId, $identifier, $message);
+        } else {
+            $this->registerRequiredChatFromIdentifier($bot, $actor, $conversation, $client, $chatId, $identifier, $message);
+        }
+
+        return true;
+    }
+
+    /** @param  array<string, mixed>|null  $sourceMessage */
+    private function registerRequiredChatFromIdentifier(
+        TelegramBot $bot,
+        TelegramAccount $actor,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $raw,
+        ?array $sourceMessage = null,
+    ): void {
+        $raw = trim($raw);
+        $inviteHint = null;
+        if (preg_match('~(?:https?://)?(?:www\.)?t\.me/~i', $raw)) {
+            $inviteHint = $raw;
+        }
+
+        try {
+            $resolvedId = $this->requiredChats->resolveAndSyncChatId($bot, $raw, $inviteHint);
+            $this->assertBotIsChannelAdmin($bot, $client, $resolvedId);
+
+            $chatInfo = [];
+            try {
+                $chatInfo = $client->getChat($resolvedId);
+            } catch (Throwable) {
+                $chatInfo = [];
+            }
+
+            $title = (string) ($chatInfo['title'] ?? data_get($sourceMessage, 'forward_from_chat.title') ?? '');
+            if ($title === '') {
+                $title = (string) ($chatInfo['username'] ?? $resolvedId);
+            }
+
+            $inviteLink = $inviteHint;
+            if (blank($inviteLink) && filled($chatInfo['username'] ?? null)) {
+                $inviteLink = 'https://t.me/'.$chatInfo['username'];
+            }
+            if (blank($inviteLink) && filled($chatInfo['invite_link'] ?? null)) {
+                $inviteLink = (string) $chatInfo['invite_link'];
+            }
+            if (blank($inviteLink)) {
+                try {
+                    $created = $client->createChatInviteLink($resolvedId, [
+                        'name' => 'bot-required-join',
+                    ]);
+                    $inviteLink = (string) ($created['invite_link'] ?? '');
+                } catch (Throwable) {
+                    $inviteLink = null;
+                }
+            }
+
+            $existing = TelegramRequiredChat::query()
+                ->where('telegram_bot_id', $bot->id)
+                ->where('chat_id', $resolvedId)
+                ->first();
+
+            if ($existing !== null) {
+                $existing->update([
+                    'title' => $title,
+                    'invite_link' => $inviteLink ?: $existing->invite_link,
+                    'is_active' => true,
+                    'is_required' => true,
+                ]);
+                $saved = $existing;
+                $notice = '✅ کانال از قبل بود و به‌روز شد: '.$title;
+            } else {
+                $maxSort = (int) TelegramRequiredChat::query()
+                    ->where('telegram_bot_id', $bot->id)
+                    ->max('sort_order');
+                $saved = TelegramRequiredChat::query()->create([
+                    'telegram_bot_id' => $bot->id,
+                    'chat_id' => $resolvedId,
+                    'title' => $title,
+                    'invite_link' => $inviteLink,
+                    'is_required' => true,
+                    'is_active' => true,
+                    'sort_order' => $maxSort + 1,
+                ]);
+                $notice = '✅ کانال اجباری ثبت شد: '.$title;
+            }
+        } catch (Throwable $e) {
+            $client->sendMessage(
+                $chatId,
+                '❌ ثبت کانال ناموفق بود:\n'.$e->getMessage()."\n\n"
+                .'مطمئن شوید ربات در کانال ادمین است و دوباره فوروارد/@یوزرنیم/لینک بفرستید.',
+            );
+
+            return;
+        }
+
+        $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+            'admin' => ['flow' => null, 'draft' => []],
+        ]);
+        $client->sendMessage($chatId, $notice, [
+            'reply_markup' => $this->adminMenuMarkup($actor),
+        ]);
+        $this->renderRequiredChatsList($bot, $client, $chatId, 0);
+        unset($saved);
+    }
+
+    private function assertBotIsChannelAdmin(
+        TelegramBot $bot,
+        TelegramBotClientInterface $client,
+        string $resolvedChatId,
+    ): void {
+        if (config('bahram.otp.dev_mode') && app()->environment('local', 'testing')) {
+            return;
+        }
+
+        try {
+            $client->getChatAdministrators($resolvedChatId);
+        } catch (Throwable $e) {
+            if (str_contains($e->getMessage(), 'member list is inaccessible')
+                || str_contains($e->getMessage(), 'chat not found')
+                || str_contains($e->getMessage(), 'bot is not a member')) {
+                throw new RuntimeException(
+                    'ربات باید در این کانال ادمین باشد تا بتواند عضویت کاربران را بررسی کند.',
+                );
+            }
+
+            throw new RuntimeException('شناسه کانال معتبر نیست یا ربات به آن دسترسی ندارد: '.$e->getMessage());
+        }
     }
 
     private function handleDestinationsCallback(
@@ -1865,16 +2233,73 @@ class BotAdminPanelService
         int $messageId,
         string $data,
     ): void {
-        if (! $account->hasBotAdminPermission(\App\Modules\TelegramBot\Enums\BotAdminPermission::Menus)) {
+        if (! $account->hasBotAdminPermission(\App\Modules\TelegramBot\Enums\BotAdminPermission::Menus)
+            && ! $account->isPermanentBotAdmin()) {
             throw new RuntimeException('دسترسی «منو ها» برای مدیریت مقاصد لازم است.');
         }
 
         $parts = explode(':', $data);
-        $action = $parts[2] ?? 'p';
+        $action = $parts[2] ?? 'list';
 
-        if ($action === 'p') {
-            $page = max(0, (int) ($parts[3] ?? 0));
-            $this->renderDestinationsList($bot, $client, $chatId, $messageId, $page);
+        if ($action === 'noop') {
+            return;
+        }
+
+        if ($action === 'p' || $action === 'list') {
+            $this->renderDestinationsList($bot, $client, $chatId, $messageId);
+
+            return;
+        }
+
+        if ($action === 'add') {
+            $conversation = $this->conversations->forAccount($account);
+            $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+                'admin' => ['flow' => 'dest_add', 'draft' => []],
+            ]);
+            $client->sendMessage(
+                $chatId,
+                "➕ افزودن مقصد\n\n"
+                ."۱) ربات را داخل گروه/کانال ادمین کنید\n"
+                ."   و اگر عضویت درخواستی می‌خواهید، تأیید درخواست عضویت را روشن کنید.\n\n"
+                ."۲) بعد آیدی عددی گروه را با اعداد لاتین بفرستید.\n"
+                ."مثال:\n"
+                ."`-1003623149563`\n\n"
+                ."آیدی معمولاً با `-100` شروع می‌شود.\n"
+                .'برای انصراف «لغو» بفرستید.',
+                [
+                    'parse_mode' => 'Markdown',
+                    'reply_markup' => [
+                        'keyboard' => [[['text' => 'لغو']]],
+                        'resize_keyboard' => true,
+                    ],
+                ],
+            );
+
+            return;
+        }
+
+        if ($action === 'reqset') {
+            $destinationId = (int) ($parts[3] ?? 0);
+            $productId = (int) ($parts[4] ?? 0);
+            $destination = TelegramDestination::query()
+                ->where('telegram_bot_id', $bot->id)
+                ->whereKey($destinationId)
+                ->first();
+            if ($destination === null || $productId <= 0) {
+                throw new RuntimeException('مقصد یا محصول نامعتبر است.');
+            }
+            $product = \App\Models\Product::query()->whereKey($productId)->first();
+            if ($product === null) {
+                throw new RuntimeException('محصول یافت نشد.');
+            }
+            $destination->requirements()->delete();
+            $destination->requirements()->create([
+                'requirement_type' => 'active_course_access',
+                'requirement_value' => (string) $product->id,
+                'group_key' => 'default',
+                'operator' => 'all',
+            ]);
+            $this->renderDestinationDetail($client, $chatId, $messageId, $destination->fresh(['requirements']), '✅ شرط دسترسی: '.$product->title);
 
             return;
         }
@@ -1883,17 +2308,66 @@ class BotAdminPanelService
         $destination = TelegramDestination::query()
             ->where('telegram_bot_id', $bot->id)
             ->whereKey($destinationId)
+            ->with('requirements')
             ->first();
 
         if ($destination === null) {
             throw new RuntimeException('مقصد یافت نشد.');
         }
 
-        if ($action === 't') {
-            $destination->update(['is_active' => ! $destination->is_active]);
+        if ($action === 'del') {
+            $title = $destination->title;
+            $destination->requirements()->delete();
+            $destination->delete();
+            $this->renderDestinationsList($bot, $client, $chatId, $messageId, "🗑️ «{$title}» حذف شد.");
+
+            return;
         }
 
-        $this->renderDestinationDetail($client, $chatId, $messageId, $destination->fresh());
+        if ($action === 'rn') {
+            $conversation = $this->conversations->forAccount($account);
+            $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+                'admin' => [
+                    'flow' => 'dest_rename',
+                    'draft' => ['destination_id' => $destination->id],
+                ],
+            ]);
+            $client->sendMessage(
+                $chatId,
+                "✍️ نام نمایشی جدید برای «{$destination->title}» را بفرستید:\n(یا «لغو»)",
+                ['reply_markup' => $this->adminMenuMarkup($account)],
+            );
+
+            return;
+        }
+
+        if ($action === 't') {
+            $destination->update(['is_active' => ! $destination->is_active]);
+            $this->renderDestinationsList($bot, $client, $chatId, $messageId, 'وضعیت مقصد به‌روز شد.');
+
+            return;
+        }
+
+        if ($action === 'req') {
+            $this->renderDestinationRequirementPicker($client, $chatId, $messageId, $destination);
+
+            return;
+        }
+
+        if ($action === 'reqclear') {
+            $destination->requirements()->delete();
+            $this->renderDestinationDetail($client, $chatId, $messageId, $destination->fresh(['requirements']), 'شرط‌های دسترسی پاک شد.');
+
+            return;
+        }
+
+        if ($action === 'i') {
+            $this->renderDestinationDetail($client, $chatId, $messageId, $destination);
+
+            return;
+        }
+
+        $this->renderDestinationsList($bot, $client, $chatId, $messageId);
     }
 
     private function renderDestinationsList(
@@ -1901,43 +2375,52 @@ class BotAdminPanelService
         TelegramBotClientInterface $client,
         int $chatId,
         int $messageId,
-        int $page,
+        ?string $notice = null,
     ): void {
-        $query = TelegramDestination::query()
+        $items = TelegramDestination::query()
             ->where('telegram_bot_id', $bot->id)
-            ->orderByDesc('id');
+            ->withCount('requirements')
+            ->orderByDesc('id')
+            ->get();
 
-        $total = (clone $query)->count();
-        $items = $query->offset($page * self::DESTINATIONS_PER_PAGE)->limit(self::DESTINATIONS_PER_PAGE)->get();
+        $text = ($notice ? $notice."\n\n" : '')
+            ."👈 به بخش #مقاصد خوش آمدید\n\n"
+            .'مقصد = کانال خصوصی با عضویت شرطی (مثلاً فقط خریداران دوره).';
 
-        $lines = ["📍 مقاصد (صفحه ".($page + 1).')', ''];
-        $keyboard = [];
+        $keyboard = [
+            [['text' => '➕ افزودن', 'callback_data' => 'admin:d:add']],
+            [
+                ['text' => 'حذف', 'callback_data' => 'admin:d:noop'],
+                ['text' => 'تغییر نام', 'callback_data' => 'admin:d:noop'],
+                ['text' => 'ورود', 'callback_data' => 'admin:d:noop'],
+            ],
+        ];
 
         foreach ($items as $item) {
-            $flag = $item->is_active ? '✅' : '⛔';
-            $label = mb_substr("{$flag} {$item->title}", 0, 40);
-            $lines[] = "#{$item->id} · {$item->title}";
-            $keyboard[] = [['text' => $label, 'callback_data' => 'admin:d:i:'.$item->id]];
+            $title = mb_substr((string) $item->title, 0, 26);
+            if ($title === '') {
+                $title = 'بدون نام';
+            }
+            $prefix = $item->is_active ? '' : '⛔ ';
+            $enterLabel = '↗️ '.$prefix.$title;
+            $enterButton = filled($item->join_request_url)
+                ? ['text' => $enterLabel, 'url' => (string) $item->join_request_url]
+                : ['text' => $enterLabel, 'callback_data' => 'admin:d:i:'.$item->id];
+
+            $keyboard[] = [
+                ['text' => '🗑️', 'callback_data' => 'admin:d:del:'.$item->id],
+                ['text' => '✍️', 'callback_data' => 'admin:d:rn:'.$item->id],
+                $enterButton,
+            ];
         }
 
         if ($items->isEmpty()) {
-            $lines[] = 'مقصدی ثبت نشده.';
-        }
-
-        $nav = [];
-        if ($page > 0) {
-            $nav[] = ['text' => '◀️', 'callback_data' => 'admin:d:p:'.($page - 1)];
-        }
-        if (($page + 1) * self::DESTINATIONS_PER_PAGE < $total) {
-            $nav[] = ['text' => '▶️', 'callback_data' => 'admin:d:p:'.($page + 1)];
-        }
-        if ($nav !== []) {
-            $keyboard[] = $nav;
+            $keyboard[] = [['text' => 'مقصدی ثبت نشده — افزودن را بزنید', 'callback_data' => 'admin:d:add']];
         }
 
         $keyboard[] = [['text' => '🏠 داشبورد', 'callback_data' => 'admin:h']];
 
-        $this->editOrSend($client, $chatId, $messageId, implode("\n", $lines), ['inline_keyboard' => $keyboard]);
+        $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
     }
 
     private function renderDestinationDetail(
@@ -1945,24 +2428,803 @@ class BotAdminPanelService
         int $chatId,
         int $messageId,
         TelegramDestination $destination,
+        ?string $notice = null,
     ): void {
-        $text = "📍 #{$destination->id} · {$destination->title}\n"
+        $destination->loadMissing('requirements');
+        $reqLines = [];
+        foreach ($destination->requirements as $req) {
+            $productTitle = \App\Models\Product::query()->whereKey((int) $req->requirement_value)->value('title');
+            $reqLines[] = '• '.($productTitle ?: $req->requirement_type.'='.$req->requirement_value);
+        }
+        if ($reqLines === []) {
+            $reqLines[] = '• هنوز شرطی تنظیم نشده (درخواست‌ها رد می‌شوند).';
+        }
+
+        $text = ($notice ? $notice."\n\n" : '')
+            ."📍 #{$destination->id} · {$destination->title}\n"
             ."chat_id: {$destination->chat_id}\n"
-            ."نوع: {$destination->chat_type}\n"
             .'فعال: '.($destination->is_active ? 'بله' : 'خیر')."\n"
-            ."دسترسی: {$destination->access_mode}";
+            .($destination->join_request_url ? "لینک عضویت: {$destination->join_request_url}\n" : '')
+            ."\nشرایط دسترسی:\n".implode("\n", $reqLines);
+
+        $keyboard = [];
+        if (filled($destination->join_request_url)) {
+            $keyboard[] = [['text' => '↗️ لینک عضویت', 'url' => (string) $destination->join_request_url]];
+        }
+        $keyboard[] = [
+            ['text' => $destination->is_active ? '⛔ غیرفعال' : '✅ فعال', 'callback_data' => 'admin:d:t:'.$destination->id],
+            ['text' => '🎯 شرط دسترسی', 'callback_data' => 'admin:d:req:'.$destination->id],
+        ];
+        $keyboard[] = [
+            ['text' => '✍️ تغییر نام', 'callback_data' => 'admin:d:rn:'.$destination->id],
+            ['text' => '🗑️ حذف', 'callback_data' => 'admin:d:del:'.$destination->id],
+        ];
+        $keyboard[] = [
+            ['text' => '◀️ لیست', 'callback_data' => 'admin:d:list'],
+            ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
+        ];
+
+        $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
+    }
+
+    private function renderDestinationRequirementPicker(
+        TelegramBotClientInterface $client,
+        int $chatId,
+        int $messageId,
+        TelegramDestination $destination,
+    ): void {
+        $products = \App\Models\Product::query()
+            ->where('is_active', true)
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get(['id', 'title']);
+
+        $text = "🎯 شرط دسترسی برای «{$destination->title}»\n\n"
+            .'محصولی را انتخاب کنید که کاربر باید دسترسی فعال به آن داشته باشد:';
+
+        $keyboard = [];
+        foreach ($products as $product) {
+            $label = mb_substr('#'.$product->id.' '.$product->title, 0, 40);
+            $keyboard[] = [[
+                'text' => $label,
+                'callback_data' => 'admin:d:reqset:'.$destination->id.':'.$product->id,
+            ]];
+        }
+
+        if ($products->isEmpty()) {
+            $keyboard[] = [['text' => 'محصول فعالی نیست', 'callback_data' => 'admin:d:i:'.$destination->id]];
+        }
+
+        $keyboard[] = [
+            ['text' => '🧹 پاک کردن شرط‌ها', 'callback_data' => 'admin:d:reqclear:'.$destination->id],
+        ];
+        $keyboard[] = [
+            ['text' => '◀️ جزئیات', 'callback_data' => 'admin:d:i:'.$destination->id],
+            ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
+        ];
+
+        $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
+    }
+
+    private function onDestinationAddInput(
+        TelegramBot $bot,
+        TelegramAccount $actor,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $text,
+    ): void {
+        $raw = trim(str_replace(['`', ' ', "\u{200c}"], '', $text));
+
+        // Accept numeric Telegram chat ids: -1003623149563
+        if (! preg_match('/^-100\d{5,}$/', $raw) && ! preg_match('/^-\d{8,}$/', $raw)) {
+            $client->sendMessage(
+                $chatId,
+                "لطفاً فقط آیدی عددی گروه را بفرستید.\n"
+                ."مثال درست:\n`-1003623149563`\n\n"
+                .'اول ربات را در گروه ادمین کنید، بعد همین آیدی را بفرستید.',
+                ['parse_mode' => 'Markdown'],
+            );
+
+            return;
+        }
+
+        $this->registerDestinationFromIdentifier($bot, $actor, $conversation, $client, $chatId, $raw);
+    }
+
+    private function onDestinationRenameInput(
+        TelegramBot $bot,
+        TelegramAccount $actor,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $text,
+    ): void {
+        $name = trim($text);
+        if ($name === '' || mb_strlen($name) > 80) {
+            $client->sendMessage($chatId, 'نام معتبر بفرستید (۱ تا ۸۰ کاراکتر).');
+
+            return;
+        }
+
+        $id = (int) data_get($conversation->context, 'admin.draft.destination_id');
+        $destination = TelegramDestination::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->whereKey($id)
+            ->first();
+
+        if ($destination === null) {
+            $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+                'admin' => ['flow' => null, 'draft' => []],
+            ]);
+            $client->sendMessage($chatId, 'مقصد پیدا نشد.', [
+                'reply_markup' => $this->adminMenuMarkup($actor),
+            ]);
+
+            return;
+        }
+
+        $destination->update(['title' => $name]);
+        $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+            'admin' => ['flow' => null, 'draft' => []],
+        ]);
+        $client->sendMessage($chatId, '✅ نام به‌روز شد.', [
+            'reply_markup' => $this->adminMenuMarkup($actor),
+        ]);
+        $this->renderDestinationsList($bot, $client, $chatId, 0);
+    }
+
+    /** @param  array<string, mixed>|null  $sourceMessage */
+    private function registerDestinationFromIdentifier(
+        TelegramBot $bot,
+        TelegramAccount $actor,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $raw,
+        ?array $sourceMessage = null,
+    ): void {
+        $raw = trim($raw);
+        $inviteHint = null;
+        if (preg_match('~(?:https?://)?(?:www\.)?t\.me/~i', $raw)) {
+            $inviteHint = $raw;
+        }
+
+        try {
+            $resolvedId = $this->requiredChats->resolveAndSyncChatId($bot, $raw, $inviteHint);
+            $this->assertBotIsChannelAdmin($bot, $client, $resolvedId);
+
+            $chatInfo = [];
+            try {
+                $chatInfo = $client->getChat($resolvedId);
+            } catch (Throwable) {
+                $chatInfo = [];
+            }
+
+            $title = (string) ($chatInfo['title'] ?? data_get($sourceMessage, 'forward_from_chat.title') ?? '');
+            if ($title === '') {
+                $title = (string) ($chatInfo['username'] ?? $resolvedId);
+            }
+
+            $username = filled($chatInfo['username'] ?? null) ? (string) $chatInfo['username'] : null;
+            $chatType = (string) ($chatInfo['type'] ?? 'channel');
+
+            $joinUrl = $inviteHint;
+            if (blank($joinUrl) && $username) {
+                $joinUrl = 'https://t.me/'.$username;
+            }
+            if (blank($joinUrl)) {
+                try {
+                    $created = $client->createChatInviteLink($resolvedId, [
+                        'name' => 'bot-destination',
+                        'creates_join_request' => true,
+                    ]);
+                    $joinUrl = (string) ($created['invite_link'] ?? '');
+                } catch (Throwable) {
+                    $joinUrl = null;
+                }
+            }
+
+            $existing = TelegramDestination::query()
+                ->where('telegram_bot_id', $bot->id)
+                ->where('chat_id', $resolvedId)
+                ->first();
+
+            if ($existing !== null) {
+                $existing->update([
+                    'title' => $title,
+                    'username' => $username,
+                    'chat_type' => $chatType,
+                    'join_request_url' => $joinUrl ?: $existing->join_request_url,
+                    'is_active' => true,
+                    'access_mode' => $existing->access_mode ?: 'requirements',
+                ]);
+                $saved = $existing;
+                $notice = '✅ مقصد از قبل بود و به‌روز شد: '.$title;
+            } else {
+                $saved = TelegramDestination::query()->create([
+                    'telegram_bot_id' => $bot->id,
+                    'title' => $title,
+                    'chat_id' => $resolvedId,
+                    'chat_type' => $chatType,
+                    'username' => $username,
+                    'join_request_url' => $joinUrl,
+                    'access_mode' => 'requirements',
+                    'is_active' => true,
+                    'welcome_inside_chat' => false,
+                ]);
+                $notice = '✅ مقصد ثبت شد: '.$title;
+            }
+        } catch (Throwable $e) {
+            $client->sendMessage(
+                $chatId,
+                '❌ ثبت مقصد ناموفق بود:\n'.$e->getMessage()."\n\n"
+                .'ربات باید در کانال ادمین باشد و بتواند درخواست عضویت را مدیریت کند.',
+            );
+
+            return;
+        }
+
+        $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+            'admin' => ['flow' => null, 'draft' => []],
+        ]);
+        $client->sendMessage($chatId, $notice."\n\nحالا شرط دسترسی (محصول) را انتخاب کنید.", [
+            'reply_markup' => $this->adminMenuMarkup($actor),
+        ]);
+        $this->renderDestinationRequirementPicker($client, $chatId, 0, $saved->fresh(['requirements']) ?? $saved);
+    }
+
+    private function handleDiscountsCallback(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        int $messageId,
+        string $data,
+    ): void {
+        if (! $account->hasBotAdminPermission(\App\Modules\TelegramBot\Enums\BotAdminPermission::Discount)
+            && ! $account->isPermanentBotAdmin()) {
+            throw new RuntimeException('دسترسی «کد تخفیف» لازم است.');
+        }
+
+        $parts = explode(':', $data);
+        $action = $parts[2] ?? 'list';
+
+        if ($action === 'noop') {
+            return;
+        }
+
+        if ($action === 'list') {
+            $this->renderDiscountsList($client, $chatId, $messageId);
+
+            return;
+        }
+
+        if ($action === 'add') {
+            $this->startDiscountSingleWizard($account, $client, $chatId);
+
+            return;
+        }
+
+        if ($action === 'batch') {
+            $client->sendMessage(
+                $chatId,
+                "➕ کد تخفیف دسته‌ای\n\n"
+                ."این بخش به‌زودی فعال می‌شود.\n"
+                .'فعلاً از «کد تخفیف جدید (تکی)» استفاده کنید.',
+            );
+            $this->renderDiscountsList($client, $chatId, $messageId);
+
+            return;
+        }
+
+        if ($action === 'file') {
+            $client->sendMessage(
+                $chatId,
+                "📁 ساخت با فایل\n\n"
+                ."آپلود فایل (CSV/Excel) به‌زودی فعال می‌شود.\n"
+                .'فعلاً از «کد تخفیف جدید (تکی)» استفاده کنید.',
+            );
+            $this->renderDiscountsList($client, $chatId, $messageId);
+
+            return;
+        }
+
+        $id = (int) ($parts[3] ?? 0);
+        $code = DiscountCode::query()->whereKey($id)->first();
+        if ($code === null && in_array($action, ['i', 't', 'del'], true)) {
+            throw new RuntimeException('کد تخفیف یافت نشد.');
+        }
+
+        if ($action === 't' && $code) {
+            $code->update(['is_active' => ! $code->is_active]);
+            $this->renderDiscountsList($client, $chatId, $messageId, 'وضعیت کد به‌روز شد.');
+
+            return;
+        }
+
+        if ($action === 'del' && $code) {
+            if ($code->usages()->exists()) {
+                throw new RuntimeException('این کد در سفارش‌ها استفاده شده و قابل حذف نیست.');
+            }
+            $label = $code->code;
+            $code->delete();
+            $this->renderDiscountsList($client, $chatId, $messageId, "🗑️ کد «{$label}» حذف شد.");
+
+            return;
+        }
+
+        if ($action === 'i' && $code) {
+            $this->renderDiscountDetail($client, $chatId, $messageId, $code);
+
+            return;
+        }
+
+        $this->renderDiscountsList($client, $chatId, $messageId);
+    }
+
+    private function startDiscountSingleWizard(
+        TelegramAccount $account,
+        TelegramBotClientInterface $client,
+        int $chatId,
+    ): void {
+        $conversation = $this->conversations->forAccount($account);
+        $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+            'admin' => ['flow' => 'dc_add_code', 'draft' => []],
+        ]);
+        $client->sendMessage(
+            $chatId,
+            'کد مورد نظر را با حروف یا اعداد انگلیسی وارد کنید:',
+            ['reply_markup' => $this->adminMenuMarkup($account)],
+        );
+    }
+
+    private function renderDiscountsList(
+        TelegramBotClientInterface $client,
+        int $chatId,
+        int $messageId,
+        ?string $notice = null,
+    ): void {
+        $items = DiscountCode::query()
+            ->withCount('usages')
+            ->where('is_active', true)
+            ->latest('id')
+            ->limit(30)
+            ->get();
+
+        $inactiveCount = DiscountCode::query()->where('is_active', false)->count();
+
+        $text = ($notice ? $notice."\n\n" : '');
+        if ($items->isEmpty()) {
+            $text .= 'هیچ کد تخفیفی فعال نیست.';
+            if ($inactiveCount > 0) {
+                $text .= "\n({$inactiveCount} کد غیرفعال در پنل سایت قابل مشاهده است.)";
+            }
+        } else {
+            $text .= "🎟 کدهای تخفیف فعال\n"
+                ."یکپارچه با پنل سایت — در وب و ربات یکسان کار می‌کند.\n";
+        }
 
         $keyboard = [
             [
-                ['text' => $destination->is_active ? '⛔ غیرفعال' : '✅ فعال', 'callback_data' => 'admin:d:t:'.$destination->id],
+                ['text' => '+ کد تخفیف جدید (تکی)', 'callback_data' => 'admin:dc:add'],
+                ['text' => '+ کد تخفیف دسته ای', 'callback_data' => 'admin:dc:batch'],
+            ],
+            [['text' => '📁 ساخت با فایل', 'callback_data' => 'admin:dc:file']],
+        ];
+
+        foreach ($items as $item) {
+            $typeLabel = $item->discount_type === DiscountType::Percent
+                ? $item->discount_value.'%'
+                : number_format((int) $item->discount_value).'ت';
+            $name = mb_substr($item->code.' · '.$typeLabel, 0, 28);
+            $keyboard[] = [
+                ['text' => $name, 'callback_data' => 'admin:dc:i:'.$item->id],
+                ['text' => '✅', 'callback_data' => 'admin:dc:t:'.$item->id],
+                ['text' => '🗑️', 'callback_data' => 'admin:dc:del:'.$item->id],
+            ];
+        }
+
+        $keyboard[] = [['text' => 'بازگشت', 'callback_data' => 'admin:h']];
+
+        $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
+    }
+
+    private function renderDiscountDetail(
+        TelegramBotClientInterface $client,
+        int $chatId,
+        int $messageId,
+        DiscountCode $code,
+    ): void {
+        $code->loadCount('usages');
+        $code->loadMissing(['users', 'products']);
+        $typeLabel = $code->discount_type === DiscountType::Percent
+            ? $code->discount_value.'٪'
+            : number_format((int) $code->discount_value).' تومان';
+
+        $userLabel = $code->users->isEmpty()
+            ? 'عمومی'
+            : $code->users->map(fn (User $u) => '#'.$u->id)->implode(', ');
+        $productLabel = $code->products->isEmpty()
+            ? 'همه اشتراک‌ها'
+            : $code->products->pluck('title')->implode('، ');
+
+        $text = "🎟 کد: {$code->code}\n"
+            ."تخفیف: {$typeLabel}\n"
+            ."کاربر: {$userLabel}\n"
+            .'انقضا: '.($code->ends_at ? JalaliDate::format($code->ends_at) : 'ندارد')."\n"
+            .'سقف کاربران: '.($code->max_uses ?? 'نامحدود')."\n"
+            .'سقف هر کاربر: '.($code->max_uses_per_user ?? 'نامحدود')."\n"
+            ."اشتراک: {$productLabel}\n"
+            ."مصرف‌شده: {$code->usages_count}\n"
+            .'فعال: '.($code->is_active ? 'بله' : 'خیر');
+
+        $keyboard = [
+            [
+                ['text' => $code->is_active ? '⛔ غیرفعال' : '✅ فعال', 'callback_data' => 'admin:dc:t:'.$code->id],
+                ['text' => '🗑️ حذف', 'callback_data' => 'admin:dc:del:'.$code->id],
             ],
             [
-                ['text' => '◀️ لیست', 'callback_data' => 'admin:d:p:0'],
-                ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
+                ['text' => '◀️ لیست', 'callback_data' => 'admin:dc:list'],
+                ['text' => 'بازگشت', 'callback_data' => 'admin:h'],
             ],
         ];
 
         $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
+    }
+
+    private function onDiscountWizardStep(
+        TelegramBot $bot,
+        TelegramAccount $actor,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $text,
+        string $step,
+    ): void {
+        $draft = (array) data_get($conversation->context, 'admin.draft', []);
+        $input = trim($text);
+        $isNull = $this->isDiscountNullCommand($input);
+
+        match ($step) {
+            'code' => $this->discountWizardCode($conversation, $client, $chatId, $input, $draft),
+            'percent' => $this->discountWizardPercent($conversation, $client, $chatId, $input, $draft),
+            'user' => $this->discountWizardUser($bot, $conversation, $client, $chatId, $input, $isNull, $draft),
+            'expires' => $this->discountWizardExpires($conversation, $client, $chatId, $input, $isNull, $draft),
+            'max_uses' => $this->discountWizardMaxUses($conversation, $client, $chatId, $input, $isNull, $draft),
+            'max_per_user' => $this->discountWizardMaxPerUser($conversation, $client, $chatId, $input, $isNull, $draft),
+            'product' => $this->discountWizardProduct($actor, $conversation, $client, $chatId, $input, $isNull, $draft),
+            default => $client->sendMessage($chatId, 'فرآیند ناقص است. دوباره از افزودن شروع کنید.'),
+        };
+    }
+
+    /** @param  array<string, mixed>  $draft */
+    private function discountWizardCode(
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $input,
+        array $draft,
+    ): void {
+        $code = strtoupper(preg_replace('/\s+/u', '', $input) ?? '');
+        if ($code === '' || ! preg_match('/^[A-Z0-9_-]{2,40}$/', $code)) {
+            $client->sendMessage($chatId, 'کد مورد نظر را با حروف یا اعداد انگلیسی وارد کنید:');
+
+            return;
+        }
+
+        if (DiscountCode::query()->whereRaw('UPPER(code) = ?', [$code])->exists()) {
+            $client->sendMessage($chatId, 'این کد از قبل وجود دارد. کد دیگری وارد کنید:');
+
+            return;
+        }
+
+        $draft['code'] = $code;
+        $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+            'admin' => ['flow' => 'dc_add_percent', 'draft' => $draft],
+        ]);
+        $client->sendMessage($chatId, 'درصد تخفیف را بین 1 و 100 با اعداد انگلیسی وارد کنید:');
+    }
+
+    /** @param  array<string, mixed>  $draft */
+    private function discountWizardPercent(
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $input,
+        array $draft,
+    ): void {
+        if (! preg_match('/^\d{1,3}$/', $input)) {
+            $client->sendMessage($chatId, 'درصد تخفیف را بین 1 و 100 با اعداد انگلیسی وارد کنید:');
+
+            return;
+        }
+
+        $value = (int) $input;
+        if ($value < 1 || $value > 100) {
+            $client->sendMessage($chatId, 'درصد تخفیف را بین 1 و 100 با اعداد انگلیسی وارد کنید:');
+
+            return;
+        }
+
+        $draft['discount_type'] = DiscountType::Percent->value;
+        $draft['discount_value'] = $value;
+        $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+            'admin' => ['flow' => 'dc_add_user', 'draft' => $draft],
+        ]);
+        $client->sendMessage(
+            $chatId,
+            'اگر کد متعلق به کاربر خاصی میباشد شناسه عدد او را ارسال کرده و اگر کد عمومی است دستور /null را ارسال کنید:',
+        );
+    }
+
+    /** @param  array<string, mixed>  $draft */
+    private function discountWizardUser(
+        TelegramBot $bot,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $input,
+        bool $isNull,
+        array $draft,
+    ): void {
+        if ($isNull) {
+            $draft['user_id'] = null;
+        } else {
+            if (! preg_match('/^\d+$/', $input)) {
+                $client->sendMessage(
+                    $chatId,
+                    'شناسه عدد معتبر بفرستید یا برای کد عمومی دستور /null را ارسال کنید:',
+                );
+
+                return;
+            }
+
+            $numericId = (int) $input;
+            $userId = $this->resolveDiscountUserId($bot, $numericId);
+            if ($userId === null) {
+                $client->sendMessage(
+                    $chatId,
+                    'کاربری با این شناسه پیدا نشد. شناسه سایت یا ایدی تلگرام کاربر ثبت‌نام‌شده را بفرستید، یا /null:',
+                );
+
+                return;
+            }
+
+            $draft['user_id'] = $userId;
+        }
+
+        $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+            'admin' => ['flow' => 'dc_add_expires', 'draft' => $draft],
+        ]);
+        $client->sendMessage(
+            $chatId,
+            "زمان انقضا کد را مانند مثال زیر ارسال کنید و یا اگر انقضا ندارد دستور /null را ارسال کنید.\n\n"
+            ."مثال:\n1403-05-15 12:30:00",
+        );
+    }
+
+    /** @param  array<string, mixed>  $draft */
+    private function discountWizardExpires(
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $input,
+        bool $isNull,
+        array $draft,
+    ): void {
+        if ($isNull) {
+            $draft['ends_at'] = null;
+        } else {
+            $parsed = JalaliDate::parseDateTime($input);
+            if ($parsed === null) {
+                $client->sendMessage(
+                    $chatId,
+                    "فرمت تاریخ نامعتبر است. مانند مثال بفرستید یا /null:\n1403-05-15 12:30:00",
+                );
+
+                return;
+            }
+            $draft['ends_at'] = $parsed->toIso8601String();
+        }
+
+        $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+            'admin' => ['flow' => 'dc_add_max_uses', 'draft' => $draft],
+        ]);
+        $client->sendMessage(
+            $chatId,
+            'حداکثر تعداد کاربری که میتوانند از این کد استفاده کنند را با اعداد انگلیسی وارد کرده و یا اگر محدودیت ندارد دستور /null را ارسال کنید:',
+        );
+    }
+
+    /** @param  array<string, mixed>  $draft */
+    private function discountWizardMaxUses(
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $input,
+        bool $isNull,
+        array $draft,
+    ): void {
+        if ($isNull) {
+            $draft['max_uses'] = null;
+        } else {
+            if (! preg_match('/^\d+$/', $input) || (int) $input < 1) {
+                $client->sendMessage(
+                    $chatId,
+                    'عدد انگلیسی معتبر بفرستید یا اگر محدودیت ندارد /null را ارسال کنید:',
+                );
+
+                return;
+            }
+            $draft['max_uses'] = (int) $input;
+        }
+
+        $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+            'admin' => ['flow' => 'dc_add_max_per_user', 'draft' => $draft],
+        ]);
+        $client->sendMessage(
+            $chatId,
+            'حداکثر تعداد دفعاتی که یک کاربر می تواند از این کد استفاده کند را با اعداد انگلیسی وارد کنید. اگر محدودیتی ندارد دستور /null را ارسال کنید:',
+        );
+    }
+
+    /** @param  array<string, mixed>  $draft */
+    private function discountWizardMaxPerUser(
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $input,
+        bool $isNull,
+        array $draft,
+    ): void {
+        if ($isNull) {
+            $draft['max_uses_per_user'] = null;
+        } else {
+            if (! preg_match('/^\d+$/', $input) || (int) $input < 1) {
+                $client->sendMessage(
+                    $chatId,
+                    'عدد انگلیسی معتبر بفرستید یا اگر محدودیت ندارد /null را ارسال کنید:',
+                );
+
+                return;
+            }
+            $draft['max_uses_per_user'] = (int) $input;
+        }
+
+        $products = Product::query()
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->limit(30)
+            ->get(['id', 'title']);
+
+        $map = [];
+        $lines = [];
+        foreach ($products->values() as $index => $product) {
+            $cmd = '/chat'.($index + 1);
+            $map[$cmd] = (int) $product->id;
+            $lines[] = $product->title.': '.$cmd;
+        }
+        $draft['product_commands'] = $map;
+
+        $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+            'admin' => ['flow' => 'dc_add_product', 'draft' => $draft],
+        ]);
+
+        $list = $lines === []
+            ? "(محصول فعالی ثبت نشده — /null بفرستید)\n"
+            : implode("\n", $lines);
+
+        $client->sendMessage(
+            $chatId,
+            "اگر کد مخصوص اشتراک خاصی میباشد دستور آن را انتخاب کرده و در غیر این صورت دستور /null را ارسال کنید.\n\n"
+            ."لیست اشتراک ها:\n\n{$list}",
+        );
+    }
+
+    /** @param  array<string, mixed>  $draft */
+    private function discountWizardProduct(
+        TelegramAccount $actor,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $input,
+        bool $isNull,
+        array $draft,
+    ): void {
+        $productId = null;
+        if (! $isNull) {
+            $cmd = strtolower(trim($input));
+            if (! str_starts_with($cmd, '/')) {
+                $cmd = '/'.$cmd;
+            }
+            $map = (array) ($draft['product_commands'] ?? []);
+            if (! isset($map[$cmd])) {
+                $client->sendMessage(
+                    $chatId,
+                    'دستور اشتراک معتبر نیست. یکی از دستورهای لیست را بفرستید یا /null:',
+                );
+
+                return;
+            }
+            $productId = (int) $map[$cmd];
+        }
+
+        $code = strtoupper((string) ($draft['code'] ?? ''));
+        $value = (int) ($draft['discount_value'] ?? 0);
+        if ($code === '' || $value < 1) {
+            $client->sendMessage($chatId, 'فرآیند ناقص است. دوباره از افزودن شروع کنید.', [
+                'reply_markup' => $this->adminMenuMarkup($actor),
+            ]);
+
+            return;
+        }
+
+        $userId = isset($draft['user_id']) ? (int) $draft['user_id'] : null;
+        if ($userId !== null && $userId <= 0) {
+            $userId = null;
+        }
+
+        $restriction = match (true) {
+            $userId !== null && $productId !== null => DiscountRestriction::All,
+            $userId !== null => DiscountRestriction::SpecificUsers,
+            $productId !== null => DiscountRestriction::SpecificProducts,
+            default => DiscountRestriction::All,
+        };
+
+        $created = DiscountCode::query()->create([
+            'code' => $code,
+            'title' => $code,
+            'discount_type' => DiscountType::Percent,
+            'discount_value' => $value,
+            'is_active' => true,
+            'ends_at' => filled($draft['ends_at'] ?? null) ? $draft['ends_at'] : null,
+            'max_uses' => $draft['max_uses'] ?? null,
+            'max_uses_per_user' => $draft['max_uses_per_user'] ?? null,
+            'restriction' => $restriction,
+            'requires_link' => false,
+            'uses_count' => 0,
+        ]);
+
+        if ($userId !== null) {
+            $created->users()->sync([$userId]);
+        }
+        if ($productId !== null) {
+            $created->products()->sync([$productId]);
+        }
+
+        $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+            'admin' => ['flow' => null, 'draft' => []],
+        ]);
+
+        $client->sendMessage(
+            $chatId,
+            "✅ کد تخفیف «{$created->code}» با موفقیت ساخته شد و در سایت و ربات فعال است.",
+            ['reply_markup' => $this->adminMenuMarkup($actor)],
+        );
+        $this->renderDiscountsList($client, $chatId, 0);
+    }
+
+    private function isDiscountNullCommand(string $input): bool
+    {
+        $normalized = strtolower(trim($input));
+
+        return in_array($normalized, ['/null', 'null', 'nul'], true);
+    }
+
+    private function resolveDiscountUserId(TelegramBot $bot, int $numericId): ?int
+    {
+        if (User::query()->whereKey($numericId)->exists()) {
+            return $numericId;
+        }
+
+        $account = TelegramAccount::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->where('telegram_user_id', $numericId)
+            ->whereNotNull('user_id')
+            ->first();
+
+        return $account?->user_id ? (int) $account->user_id : null;
     }
 
     private function handleProfileCallback(

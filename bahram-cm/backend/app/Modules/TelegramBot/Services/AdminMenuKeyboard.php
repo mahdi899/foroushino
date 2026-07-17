@@ -17,6 +17,8 @@ class AdminMenuKeyboard
 
     public const DESTINATIONS = '📍 مقاصد';
 
+    public const DISCOUNTS = '🎟 کد تخفیف';
+
     public const PROFILE = '🤖 پروفایل بات';
 
     public const SETTINGS = '⚙️ تنظیمات';
@@ -41,6 +43,7 @@ class AdminMenuKeyboard
             self::BROADCAST => BotAdminPermission::Broadcast,
             self::REQUIRED_CHATS => BotAdminPermission::ForcedJoin,
             self::DESTINATIONS => BotAdminPermission::Menus,
+            self::DISCOUNTS => BotAdminPermission::Discount,
             self::PROFILE => BotAdminPermission::Settings,
             self::SETTINGS => BotAdminPermission::Settings,
             self::LOGS => BotAdminPermission::Stats,
@@ -55,8 +58,9 @@ class AdminMenuKeyboard
         $all = [
             [self::USERS, self::ADMINS],
             [self::BROADCAST, self::REQUIRED_CHATS],
-            [self::DESTINATIONS, self::PROFILE],
-            [self::SETTINGS, self::LOGS],
+            [self::DESTINATIONS, self::DISCOUNTS],
+            [self::PROFILE, self::SETTINGS],
+            [self::LOGS],
             [self::HOME, self::EXIT],
         ];
 

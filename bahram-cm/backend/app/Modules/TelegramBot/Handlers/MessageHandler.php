@@ -18,6 +18,7 @@ use App\Modules\TelegramBot\Services\SupportTicketBridgeService;
 use App\Modules\TelegramBot\Services\TelegramContentPresenter;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
 use App\Modules\TelegramBot\Services\TelegramSeminarCatalogService;
+use App\Modules\TelegramBot\Services\TelegramPurchaseFlowService;
 use App\Modules\TelegramBot\Services\TelegramSubscriberEligibility;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Services\ReferralService;
@@ -37,6 +38,7 @@ class MessageHandler implements UpdateHandlerInterface
         private readonly BotAdminPanelService $botAdmin,
         private readonly TelegramSubscriberEligibility $subscriberEligibility,
         private readonly SupportTicketBridgeService $supportTickets,
+        private readonly TelegramPurchaseFlowService $purchaseFlow,
     ) {}
 
     public function handle(TelegramUpdate $update, TelegramBot $bot): void
@@ -57,6 +59,12 @@ class MessageHandler implements UpdateHandlerInterface
             app(\App\Modules\TelegramBot\Services\SupportAdminReplyService::class)
                 ->handleIncomingSupportMessage($bot, $message);
 
+            return;
+        }
+
+        // Never reply inside groups/channels — admin panel & user UX stay in private chat only.
+        $chatType = (string) data_get($message, 'chat.type', 'private');
+        if ($chatType !== 'private') {
             return;
         }
 
@@ -105,6 +113,10 @@ class MessageHandler implements UpdateHandlerInterface
         }
 
         if ($account->isBotAdmin()) {
+            if ($this->botAdmin->handleRequiredChatShareOrForward($bot, $account, $conversation, $chatId, $message)) {
+                return;
+            }
+
             if (isset($message['users_shared']) && $this->botAdmin->handleUsersShared($bot, $account, $conversation, $chatId, $message)) {
                 return;
             }
@@ -116,6 +128,12 @@ class MessageHandler implements UpdateHandlerInterface
             if ($text !== '' && $this->botAdmin->handleTextInput($bot, $account, $conversation, $chatId, $text)) {
                 return;
             }
+        }
+
+        if ($conversation->state === ConversationState::WaitingForDiscountCode && $text !== '') {
+            $this->purchaseFlow->applyDiscountCodeAndContinue($bot, $account, $chatId, $text);
+
+            return;
         }
 
         if ($conversation->state === ConversationState::WaitingForSupportMessage && $text !== '') {

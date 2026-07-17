@@ -15,11 +15,8 @@ use App\Modules\TelegramBot\Services\RegistrationFlowService;
 use App\Modules\TelegramBot\Services\RequiredChatMembershipService;
 use App\Modules\TelegramBot\Services\TelegramCheckoutService;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
+use App\Modules\TelegramBot\Services\TelegramPurchaseFlowService;
 use App\Modules\TelegramBot\Services\TelegramSubscriberEligibility;
-use App\Modules\TelegramBot\Support\TelegramSiteUrl;
-use App\Services\Exceptions\PaymentException;
-use Illuminate\Validation\ValidationException;
-use Throwable;
 
 class CallbackQueryHandler implements UpdateHandlerInterface
 {
@@ -33,6 +30,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         private readonly TelegramCheckoutService $checkout,
         private readonly BotAdminPanelService $botAdmin,
         private readonly TelegramSubscriberEligibility $subscriberEligibility,
+        private readonly TelegramPurchaseFlowService $purchaseFlow,
     ) {}
 
     public function handle(TelegramUpdate $update, TelegramBot $bot): void
@@ -45,6 +43,12 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         $chatId = (int) data_get($callback, 'message.chat.id', $telegramUserId);
 
         if ($telegramUserId <= 0) {
+            return;
+        }
+
+        // Never interact inside groups/channels — admin UX stays in private chat only.
+        $chatType = (string) data_get($callback, 'message.chat.type', 'private');
+        if ($chatType !== 'private') {
             return;
         }
 
@@ -80,6 +84,14 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             return;
         }
 
+        if (str_starts_with($data, 'buy:skip:')) {
+            $productId = (int) substr($data, strlen('buy:skip:'));
+            $this->answer($client, $callbackId, 'ادامه بدون کد تخفیف');
+            $this->purchaseFlow->proceedToPaymentMethods($bot, $account, $chatId, $productId, null);
+
+            return;
+        }
+
         if (str_starts_with($data, 'buy:')) {
             $this->handleBuy($client, $bot, $account, $chatId, $callbackId, $data);
 
@@ -87,13 +99,15 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         }
 
         if (str_starts_with($data, 'pay:zp:')) {
-            $this->startZarinpalPay($client, $bot, $account, $chatId, $callbackId, (int) substr($data, 7));
+            $this->answer($client, $callbackId, 'در حال آماده‌سازی…');
+            $this->purchaseFlow->startZarinpal($bot, $account, $chatId, (int) substr($data, 7));
 
             return;
         }
 
         if (str_starts_with($data, 'pay:c2c:')) {
-            $this->startCardToCardPay($client, $bot, $account, $chatId, $callbackId, (int) substr($data, 8));
+            $this->answer($client, $callbackId, 'در حال ثبت سفارش…');
+            $this->purchaseFlow->startCardToCard($bot, $account, $chatId, (int) substr($data, 8));
 
             return;
         }
@@ -202,7 +216,6 @@ class CallbackQueryHandler implements UpdateHandlerInterface
 
         $zp = $this->checkout->zarinpalEnabled($bot);
         $c2c = $this->checkout->cardToCardEnabled($bot);
-
         if (! $zp && ! $c2c) {
             $this->answer($client, $callbackId, 'هیچ روش پرداختی فعال نیست.', true);
             $client->sendMessage($chatId, '⛔ پرداخت آنلاین و کارت‌به‌کارت هر دو غیرفعال‌اند. با پشتیبانی تماس بگیرید.');
@@ -210,110 +223,25 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             return;
         }
 
-        if ($zp && $c2c) {
-            $this->answer($client, $callbackId, 'روش پرداخت را انتخاب کنید.');
-            $client->sendMessage($chatId, "{$product->title}\n\nروش پرداخت را انتخاب کنید:", [
+        $conversation = $this->conversations->forAccount($account);
+        $this->conversations->transition($conversation, ConversationState::WaitingForDiscountCode, [
+            'checkout' => ['product_id' => $productId, 'coupon' => null],
+        ]);
+
+        $price = number_format((int) ($product->sale_price ?? $product->price ?? 0));
+        $this->answer($client, $callbackId, 'کد تخفیف؟');
+        $client->sendMessage(
+            $chatId,
+            "🛒 {$product->title}\nمبلغ: {$price} تومان\n\n"
+            ."اگر کد تخفیف دارید همین‌جا بفرستید (همان کدهای پنل سایت).\n"
+            .'کد معرف هم اگر با لینک معرفی وارد شده باشید خودکار اعمال می‌شود.',
+            [
                 'reply_markup' => [
                     'inline_keyboard' => [
-                        [['text' => '💳 زرین‌پال (آنلاین)', 'callback_data' => 'pay:zp:'.$productId]],
-                        [['text' => '🏧 کارت به کارت', 'callback_data' => 'pay:c2c:'.$productId]],
+                        [['text' => '⏭ بدون کد تخفیف', 'callback_data' => 'buy:skip:'.$productId]],
                     ],
                 ],
-            ]);
-
-            return;
-        }
-
-        if ($zp) {
-            $this->startZarinpalPay($client, $bot, $account, $chatId, $callbackId, $productId);
-
-            return;
-        }
-
-        $this->startCardToCardPay($client, $bot, $account, $chatId, $callbackId, $productId);
-    }
-
-    private function startZarinpalPay(
-        $client,
-        TelegramBot $bot,
-        TelegramAccount $account,
-        int $chatId,
-        string $callbackId,
-        int $productId,
-    ): void {
-        $product = $this->catalog->findForTelegram($productId);
-        if ($product === null) {
-            $this->answer($client, $callbackId, 'محصول یافت نشد.', true);
-
-            return;
-        }
-
-        try {
-            $result = $this->checkout->startZarinpalCheckout($account, $product);
-        } catch (ValidationException $e) {
-            $message = collect($e->errors())->flatten()->first() ?: 'امکان شروع پرداخت وجود ندارد.';
-            $this->answer($client, $callbackId, (string) $message, true);
-            $client->sendMessage($chatId, (string) $message);
-
-            return;
-        } catch (PaymentException $e) {
-            $message = $e->getMessage() ?: 'درگاه پرداخت زرین‌پال آماده نیست.';
-            $this->answer($client, $callbackId, $message, true);
-            $client->sendMessage($chatId, $message);
-
-            return;
-        } catch (Throwable $e) {
-            $this->answer($client, $callbackId, 'خطا در اتصال به درگاه پرداخت.', true);
-            $client->sendMessage($chatId, 'شروع پرداخت ناموفق بود. لطفاً دوباره تلاش کنید یا از سایت خرید کنید.');
-
-            return;
-        }
-
-        $amount = number_format((int) $result['amount']);
-        $this->answer($client, $callbackId, 'لینک پرداخت آماده شد.');
-        $client->sendMessage(
-            $chatId,
-            "سفارش #{$result['order_id']}\n{$product->title}\nمبلغ قابل پرداخت: {$amount} تومان\n\nبرای پرداخت، دکمه زیر را بزنید.",
-            TelegramSiteUrl::linkMarkup($result['payment_url'], '💳 پرداخت آنلاین'),
-        );
-    }
-
-    private function startCardToCardPay(
-        $client,
-        TelegramBot $bot,
-        TelegramAccount $account,
-        int $chatId,
-        string $callbackId,
-        int $productId,
-    ): void {
-        $product = $this->catalog->findForTelegram($productId);
-        if ($product === null) {
-            $this->answer($client, $callbackId, 'محصول یافت نشد.', true);
-
-            return;
-        }
-
-        try {
-            $result = $this->checkout->startCardToCardCheckout($account, $product);
-        } catch (ValidationException $e) {
-            $message = collect($e->errors())->flatten()->first() ?: 'امکان ثبت سفارش وجود ندارد.';
-            $this->answer($client, $callbackId, (string) $message, true);
-            $client->sendMessage($chatId, (string) $message);
-
-            return;
-        } catch (Throwable $e) {
-            $this->answer($client, $callbackId, 'خطا در ثبت سفارش.', true);
-            $client->sendMessage($chatId, 'ثبت سفارش کارت‌به‌کارت ناموفق بود.');
-
-            return;
-        }
-
-        $amount = number_format((int) $result['amount']);
-        $this->answer($client, $callbackId, 'سفارش ثبت شد.');
-        $client->sendMessage(
-            $chatId,
-            "سفارش #{$result['order_id']}\n{$product->title}\nمبلغ: {$amount} تومان\n\n"
-            ."🏧 راهنمای کارت‌به‌کارت:\n{$result['instructions']}",
+            ],
         );
     }
 

@@ -195,6 +195,26 @@ class DiscountService
             DiscountRestriction::SpecificUsers => $this->assertSpecificUsers($discountCode, $user, $phone),
             DiscountRestriction::PriorBuyers => $this->assertPriorBuyers($discountCode, $user, $phone),
         };
+
+        // Combined constraints (bot/site wizards may attach both pivots).
+        $discountCode->loadMissing(['users', 'products']);
+
+        if (
+            $discountCode->restriction !== DiscountRestriction::SpecificUsers
+            && $discountCode->users->isNotEmpty()
+        ) {
+            $this->assertSpecificUsers($discountCode, $user, $phone);
+        }
+
+        if (
+            ! in_array($discountCode->restriction, [
+                DiscountRestriction::SpecificProducts,
+                DiscountRestriction::PriorBuyers,
+            ], true)
+            && $discountCode->products->isNotEmpty()
+        ) {
+            $this->assertSpecificProducts($discountCode, $product);
+        }
     }
 
     private function assertSpecificProducts(DiscountCode $discountCode, Product $product): void
