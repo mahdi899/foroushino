@@ -6,7 +6,10 @@ final class TelegramSiteUrl
 {
     public static function frontendBase(): string
     {
-        return rtrim((string) config('bahram.frontend_url', config('app.frontend_url', env('FRONTEND_URL', ''))), '/');
+        return rtrim((string) config(
+            'telegram.site_base_url',
+            config('bahram.frontend_url', config('app.frontend_url', env('FRONTEND_URL', 'https://fashio.ir'))),
+        ), '/');
     }
 
     public static function resolve(?string $landingHref, ?string $slug, string $purchaseSegment = 'purchase'): ?string
@@ -82,15 +85,25 @@ final class TelegramSiteUrl
     }
 
     /**
-     * Always append a browseable link in the message body (works even for localhost).
+     * Inline keyboard with a URL button below the message (membership-style).
+     *
+     * @param  list<list<array{text: string, url?: string, callback_data?: string}>>  $extraRows
+     * @return array<string, mixed>
      */
-    public static function withLink(string $message, ?string $url, string $label = 'مشاهده صفحه'): string
+    public static function linkMarkup(?string $url, string $label, array $extraRows = []): array
     {
-        if ($url === null || trim($url) === '') {
-            return $message;
+        $keyboard = $extraRows;
+
+        $button = self::inlineButton($label, $url);
+        if ($button !== null) {
+            array_unshift($keyboard, [$button]);
         }
 
-        return rtrim($message)."\n\n🔗 {$label}:\n{$url}";
+        if ($keyboard === []) {
+            return [];
+        }
+
+        return ['reply_markup' => ['inline_keyboard' => $keyboard]];
     }
 
     public static function isInlineButtonUrl(?string $url): bool
@@ -99,19 +112,35 @@ final class TelegramSiteUrl
             return false;
         }
 
-        if (! str_starts_with($url, 'https://')) {
+        $url = trim($url);
+        if (! str_starts_with($url, 'https://') && ! str_starts_with($url, 'http://')) {
             return false;
         }
 
         $host = strtolower((string) parse_url($url, PHP_URL_HOST));
 
-        return $host !== ''
-            && ! in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true);
+        if ($host === '') {
+            return false;
+        }
+
+        return ! in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true);
     }
 
     /** @return array{text: string, url: string}|null */
     public static function inlineButton(string $label, ?string $url): ?array
     {
         return self::isInlineButtonUrl($url) ? ['text' => $label, 'url' => (string) $url] : null;
+    }
+
+    /**
+     * One full-width URL button row (membership / payment style).
+     *
+     * @return list<list<array{text: string, url: string}>>
+     */
+    public static function urlKeyboardRow(string $label, ?string $url): array
+    {
+        $button = self::inlineButton($label, $url);
+
+        return $button !== null ? [[$button]] : [];
     }
 }

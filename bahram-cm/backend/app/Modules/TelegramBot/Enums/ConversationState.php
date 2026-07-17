@@ -17,6 +17,8 @@ enum ConversationState: string
     case WaitingForSupportMessage = 'waiting_for_support_message';
     case WaitingForCompanionName = 'waiting_for_companion_name';
     case WaitingForCompanionMobile = 'waiting_for_companion_mobile';
+    case AdminPanel = 'admin_panel';
+    case AdminWaitingInput = 'admin_waiting_input';
 
     /** @return list<string> */
     public static function values(): array

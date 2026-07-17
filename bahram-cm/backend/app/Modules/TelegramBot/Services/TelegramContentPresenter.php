@@ -23,32 +23,27 @@ class TelegramContentPresenter
             $product->sale_price !== null ? (int) $product->sale_price : null,
         );
 
-        $siteUrl = TelegramSiteUrl::resolve($product->landing_href, $product->slug);
-        if ($siteUrl !== null && ! TelegramSiteUrl::isInlineButtonUrl($siteUrl)) {
-            $lines[] = '';
-            $lines[] = '🔗 '.$siteUrl;
-        }
-
         return implode("\n", $lines);
+    }
+
+    /** @return array<string, mixed> */
+    public function productSendOptions(Product $product): array
+    {
+        return $this->productReplyMarkup($product);
     }
 
     /** @return array<string, mixed> */
     public function productReplyMarkup(Product $product): array
     {
-        $row = [
-            ['text' => '🛒 خرید و پرداخت', 'callback_data' => 'buy:'.$product->id],
+        $keyboard = [
+            [['text' => '🛒 خرید و پرداخت', 'callback_data' => 'buy:'.$product->id]],
+            ...TelegramSiteUrl::urlKeyboardRow(
+                '🌐 مشاهده در سایت',
+                TelegramSiteUrl::resolve($product->landing_href, $product->slug),
+            ),
         ];
 
-        $siteButton = TelegramSiteUrl::inlineButton(
-            'مشاهده در سایت',
-            TelegramSiteUrl::resolve($product->landing_href, $product->slug),
-        );
-
-        if ($siteButton !== null) {
-            $row[] = $siteButton;
-        }
-
-        return ['inline_keyboard' => [$row]];
+        return ['reply_markup' => ['inline_keyboard' => $keyboard]];
     }
 
     public function formatSeminarMessage(Seminar $seminar): string
@@ -82,35 +77,35 @@ class TelegramContentPresenter
             $lines[] = $seminar->isFull() ? '⚠️ ظرفیت تکمیل شده' : "👥 ظرفیت باقی‌مانده: {$remaining}";
         }
 
-        $siteUrl = TelegramSiteUrl::seminarPage($seminar->slug);
-        if ($siteUrl !== null && ! TelegramSiteUrl::isInlineButtonUrl($siteUrl)) {
-            $lines[] = '';
-            $lines[] = '🔗 '.$siteUrl;
-        }
-
         return implode("\n", $lines);
+    }
+
+    /** @return array<string, mixed> */
+    public function seminarSendOptions(Seminar $seminar): array
+    {
+        return $this->seminarReplyMarkup($seminar);
     }
 
     /** @return array<string, mixed> */
     public function seminarReplyMarkup(Seminar $seminar): array
     {
-        $row = [];
+        $keyboard = [];
 
         $product = $seminar->product;
         if ($product && $product->is_active && (int) ($seminar->price ?? $product->price ?? 0) > 0 && ! $seminar->isFull()) {
-            $row[] = ['text' => '🛒 ثبت‌نام / خرید', 'callback_data' => 'buy:'.$product->id];
+            $keyboard[] = [['text' => '🛒 ثبت‌نام / خرید', 'callback_data' => 'buy:'.$product->id]];
         }
 
-        $siteButton = TelegramSiteUrl::inlineButton('مشاهده در سایت', TelegramSiteUrl::seminarPage($seminar->slug));
-        if ($siteButton !== null) {
-            $row[] = $siteButton;
-        }
+        $keyboard = [
+            ...$keyboard,
+            ...TelegramSiteUrl::urlKeyboardRow('🌐 مشاهده در سایت', TelegramSiteUrl::seminarPage($seminar->slug)),
+        ];
 
-        if ($row === []) {
+        if ($keyboard === []) {
             return [];
         }
 
-        return ['inline_keyboard' => [$row]];
+        return ['reply_markup' => ['inline_keyboard' => $keyboard]];
     }
 
     private function formatPriceLine(int $price, ?int $salePrice): string

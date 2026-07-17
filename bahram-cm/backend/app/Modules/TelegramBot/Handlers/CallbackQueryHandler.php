@@ -6,12 +6,14 @@ use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramUpdate;
+use App\Modules\TelegramBot\Services\BotAdminPanelService;
 use App\Modules\TelegramBot\Services\ConversationService;
 use App\Modules\TelegramBot\Services\MainMenuKeyboard;
 use App\Modules\TelegramBot\Services\RegistrationFlowService;
 use App\Modules\TelegramBot\Services\RequiredChatMembershipService;
 use App\Modules\TelegramBot\Services\TelegramCheckoutService;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
+use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Services\Exceptions\PaymentException;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -26,6 +28,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         private readonly TelegramBotClientFactory $clients,
         private readonly TelegramProductCatalogService $catalog,
         private readonly TelegramCheckoutService $checkout,
+        private readonly BotAdminPanelService $botAdmin,
     ) {}
 
     public function handle(TelegramUpdate $update, TelegramBot $bot): void
@@ -54,6 +57,11 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         );
 
         $client = $this->clients->forBot($bot);
+        $messageId = (int) data_get($callback, 'message.message_id', 0);
+
+        if ($this->botAdmin->handleCallback($bot, $account, $data, $chatId, $messageId, $callbackId)) {
+            return;
+        }
 
         if (str_starts_with($data, 'buy:')) {
             $this->handleBuy($client, $account, $chatId, $callbackId, $data);
@@ -142,14 +150,8 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         $this->answer($client, $callbackId, 'لینک پرداخت آماده شد.');
         $client->sendMessage(
             $chatId,
-            "سفارش #{$result['order_id']}\n{$product->title}\nمبلغ قابل پرداخت: {$amount} تومان\n\nروی دکمه زیر بزنید تا به درگاه زرین‌پال بروید.",
-            [
-                'reply_markup' => [
-                    'inline_keyboard' => [[
-                        ['text' => '💳 پرداخت آنلاین', 'url' => $result['payment_url']],
-                    ]],
-                ],
-            ],
+            "سفارش #{$result['order_id']}\n{$product->title}\nمبلغ قابل پرداخت: {$amount} تومان\n\nبرای پرداخت، دکمه زیر را بزنید.",
+            TelegramSiteUrl::linkMarkup($result['payment_url'], '💳 پرداخت آنلاین'),
         );
     }
 
