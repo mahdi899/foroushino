@@ -12,9 +12,11 @@ import 'package:bahram_family_manager/features/families/family_members_cache.dar
 import 'package:bahram_family_manager/features/families/family_detail_screen.dart';
 import 'package:bahram_family_manager/features/families/family_members_screen.dart';
 import 'package:bahram_family_manager/features/families/family_editor_sheet.dart';
+import 'package:bahram_family_manager/features/families/widgets/add_family_member_sheet.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
+import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
 import 'package:bahram_family_manager/widgets/surfaces/glass_surface.dart';
 import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
@@ -172,12 +174,47 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
 
   Future<void> _createFamily() async {
     final created = await showFamilyEditorSheet(context: context);
-    if (created == true) {
+    if (created == true && mounted) {
       context.read<AppState>().invalidateFamiliesCache();
       FamilyDetailCache.invalidate();
       FamilyMembersCache.invalidate();
       await _loadFamiliesFirstPage();
     }
+  }
+
+  Future<void> _addMemberToFamily(FamilySummaryModel family) async {
+    final added = await showAddFamilyMemberSheet(
+      context: context,
+      familyId: family.id,
+      familyName: family.internalName,
+    );
+    if (added != true || !mounted) return;
+    FamilyDetailCache.invalidate(family.id);
+    FamilyMembersCache.invalidate(family.id);
+    showAppSnackBar(context, 'عضو به خانواده اضافه شد.');
+    await _refreshFamiliesList();
+    if (!mounted) return;
+    if (AppBreakpoints.isDesktop(context)) {
+      _selectFamily(family.id);
+    }
+  }
+
+  void _openFamilyMembers(FamilySummaryModel family) {
+    if (AppBreakpoints.isDesktop(context)) {
+      _selectFamily(family.id);
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => FamilyMembersScreen(
+          familyId: family.id,
+          familyName: family.internalName,
+          title: 'اعضای ${family.internalName}',
+          showFamilyName: false,
+          showAttribution: true,
+        ),
+      ),
+    );
   }
 
   @override
@@ -233,8 +270,11 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
                 hasMore: _familiesHasMore,
                 error: _familiesError,
                 selectedId: _selectedFamilyId,
+                canManage: canManage,
                 onRefresh: _loadFamiliesFirstPage,
                 onSelect: _selectFamily,
+                onAddMember: _addMemberToFamily,
+                onManageMembers: _openFamilyMembers,
               ),
               VerticalDivider(width: 1, thickness: 1, color: Theme.of(context).dividerColor),
               Expanded(
@@ -296,6 +336,7 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
               hasMore: _familiesHasMore,
               error: _familiesError,
               selectedId: _selectedFamilyId,
+              canManage: canManage,
               onRefresh: _loadFamiliesFirstPage,
               onSelect: (id) {
                 FamilySummaryModel? summary;
@@ -315,6 +356,8 @@ class _FamiliesScreenState extends State<FamiliesScreen> {
                   ),
                 );
               },
+              onAddMember: _addMemberToFamily,
+              onManageMembers: _openFamilyMembers,
               desktopStyle: false,
             ),
           ),
@@ -337,8 +380,11 @@ class _FamiliesListSidebar extends StatelessWidget {
     required this.hasMore,
     required this.error,
     required this.selectedId,
+    required this.canManage,
     required this.onRefresh,
     required this.onSelect,
+    required this.onAddMember,
+    required this.onManageMembers,
   });
 
   static const _width = 360.0;
@@ -354,8 +400,11 @@ class _FamiliesListSidebar extends StatelessWidget {
   final bool hasMore;
   final String? error;
   final int? selectedId;
+  final bool canManage;
   final Future<void> Function() onRefresh;
   final ValueChanged<int> onSelect;
+  final ValueChanged<FamilySummaryModel> onAddMember;
+  final ValueChanged<FamilySummaryModel> onManageMembers;
 
   @override
   Widget build(BuildContext context) {
@@ -387,8 +436,11 @@ class _FamiliesListSidebar extends StatelessWidget {
                 hasMore: hasMore,
                 error: error,
                 selectedId: selectedId,
+                canManage: canManage,
                 onRefresh: onRefresh,
                 onSelect: onSelect,
+                onAddMember: onAddMember,
+                onManageMembers: onManageMembers,
                 desktopStyle: true,
               ),
             ),
@@ -461,8 +513,11 @@ class _FamiliesList extends StatelessWidget {
     required this.hasMore,
     required this.error,
     required this.selectedId,
+    required this.canManage,
     required this.onRefresh,
     required this.onSelect,
+    required this.onAddMember,
+    required this.onManageMembers,
     required this.desktopStyle,
   });
 
@@ -473,8 +528,11 @@ class _FamiliesList extends StatelessWidget {
   final bool hasMore;
   final String? error;
   final int? selectedId;
+  final bool canManage;
   final Future<void> Function() onRefresh;
   final ValueChanged<int> onSelect;
+  final ValueChanged<FamilySummaryModel> onAddMember;
+  final ValueChanged<FamilySummaryModel> onManageMembers;
   final bool desktopStyle;
 
   @override
@@ -529,7 +587,10 @@ class _FamiliesList extends StatelessWidget {
                   child: _DesktopFamilyTile(
                     family: f,
                     selected: f.id == selectedId,
+                    canManage: canManage,
                     onTap: () => onSelect(f.id),
+                    onAddMember: () => onAddMember(f),
+                    onManageMembers: () => onManageMembers(f),
                   ),
                 );
               },
@@ -556,7 +617,13 @@ class _FamiliesList extends StatelessWidget {
                   );
                 }
                 final f = families[index];
-                return _MobileFamilyCard(family: f, onTap: () => onSelect(f.id));
+                return _MobileFamilyCard(
+                  family: f,
+                  canManage: canManage,
+                  onTap: () => onSelect(f.id),
+                  onAddMember: () => onAddMember(f),
+                  onManageMembers: () => onManageMembers(f),
+                );
               },
             ),
     );
@@ -567,12 +634,18 @@ class _DesktopFamilyTile extends StatelessWidget {
   const _DesktopFamilyTile({
     required this.family,
     required this.selected,
+    required this.canManage,
     required this.onTap,
+    required this.onAddMember,
+    required this.onManageMembers,
   });
 
   final FamilySummaryModel family;
   final bool selected;
+  final bool canManage;
   final VoidCallback onTap;
+  final VoidCallback onAddMember;
+  final VoidCallback onManageMembers;
 
   @override
   Widget build(BuildContext context) {
@@ -639,6 +712,19 @@ class _DesktopFamilyTile extends StatelessWidget {
                   ),
                 ),
               ),
+              if (canManage)
+                PopupMenuButton<String>(
+                  tooltip: 'عملیات اعضا',
+                  onSelected: (value) {
+                    if (value == 'add') onAddMember();
+                    if (value == 'members') onManageMembers();
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'add', child: Text('افزودن عضو')),
+                    PopupMenuItem(value: 'members', child: Text('مدیریت اعضا')),
+                  ],
+                  icon: const Icon(Icons.more_vert_rounded, size: 20),
+                ),
             ],
           ),
         ),
@@ -648,10 +734,19 @@ class _DesktopFamilyTile extends StatelessWidget {
 }
 
 class _MobileFamilyCard extends StatelessWidget {
-  const _MobileFamilyCard({required this.family, required this.onTap});
+  const _MobileFamilyCard({
+    required this.family,
+    required this.canManage,
+    required this.onTap,
+    required this.onAddMember,
+    required this.onManageMembers,
+  });
 
   final FamilySummaryModel family;
+  final bool canManage;
   final VoidCallback onTap;
+  final VoidCallback onAddMember;
+  final VoidCallback onManageMembers;
 
   @override
   Widget build(BuildContext context) {
@@ -702,6 +797,19 @@ class _MobileFamilyCard extends StatelessWidget {
                   strokeWidth: 5,
                 ),
               ),
+              if (canManage)
+                PopupMenuButton<String>(
+                  tooltip: 'عملیات اعضا',
+                  onSelected: (value) {
+                    if (value == 'add') onAddMember();
+                    if (value == 'members') onManageMembers();
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'add', child: Text('افزودن عضو')),
+                    PopupMenuItem(value: 'members', child: Text('مدیریت اعضا')),
+                  ],
+                  icon: const Icon(Icons.more_vert_rounded),
+                ),
             ],
       ),
     );

@@ -14,11 +14,12 @@ import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/chips/status_chip.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
-import 'package:bahram_family_manager/widgets/feedback/async_body.dart';
+import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
 import 'package:bahram_family_manager/widgets/layout/adaptive_scaffold.dart';
 import 'package:bahram_family_manager/widgets/navigation/manager_app_bar.dart';
 import 'package:bahram_family_manager/widgets/layout/responsive_layout.dart';
 import 'package:bahram_family_manager/features/families/widgets/family_members_panel.dart';
+import 'package:bahram_family_manager/features/families/widgets/add_family_member_sheet.dart';
 import 'package:bahram_family_manager/widgets/surfaces/app_card.dart';
 
 class FamilyDetailScreen extends StatelessWidget {
@@ -64,7 +65,9 @@ class FamilyDetailBody extends StatefulWidget {
 }
 
 class _FamilyDetailBodyState extends State<FamilyDetailBody> {
-  Future<FamilyDetailModel>? _future;
+  FamilyDetailModel? _family;
+  var _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -75,16 +78,44 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
   @override
   void didUpdateWidget(covariant FamilyDetailBody oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.familyId != widget.familyId) _load();
+    if (oldWidget.familyId != widget.familyId) {
+      _family = null;
+      _load();
+    }
   }
 
-  void _load() {
-    setState(() {
-      _future = FamilyDetailCache.load(
-        widget.familyId,
-        () => context.read<AppState>().manager.showFamily(widget.familyId),
-      );
-    });
+  Future<void> _load({bool quiet = false}) async {
+    if (!quiet || _family == null) {
+      setState(() {
+        _loading = _family == null;
+        _error = null;
+      });
+    }
+
+    try {
+      final FamilyDetailModel family;
+      if (quiet) {
+        family = await context.read<AppState>().manager.showFamily(widget.familyId);
+        FamilyDetailCache.put(family);
+      } else {
+        family = await FamilyDetailCache.load(
+          widget.familyId,
+          () => context.read<AppState>().manager.showFamily(widget.familyId),
+        );
+      }
+      if (!mounted) return;
+      setState(() {
+        _family = family;
+        _loading = false;
+        _error = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = messageOf(e);
+        _loading = false;
+      });
+    }
   }
 
   Future<void> _edit(FamilyDetailModel family) async {
@@ -92,7 +123,7 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
     if (saved == true) {
       FamilyDetailCache.invalidate(family.id);
       FamilyMembersCache.invalidate(family.id);
-      _load();
+      await _load(quiet: true);
       widget.onChanged?.call();
     }
   }
@@ -139,20 +170,43 @@ class _FamilyDetailBodyState extends State<FamilyDetailBody> {
     final canManage = context.read<AppState>().user?.can('family.families.manage') ?? false;
     final canManageLinks = context.read<AppState>().user?.can('family.entry_links.manage') ?? false;
 
-    return SizedBox.expand(
-      child: FutureBuilder<FamilyDetailModel>(
-        future: _future,
-        builder: (context, snapshot) => AsyncBody<FamilyDetailModel>(
-          snapshot: snapshot,
-          builder: (context, family) => _FamilyDetailTabs(
-            key: ValueKey(family.id),
-            family: family,
-            canManage: canManage,
-            canManageLinks: canManageLinks,
-            onEdit: () => _edit(family),
-            onDelete: () => _delete(family),
+    if (_loading && _family == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null && _family == null) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          EmptyState(
+            icon: Icons.error_outline_rounded,
+            title: 'خطا در بارگذاری',
+            subtitle: _error!,
+            actionLabel: 'تلاش مجدد',
+            onAction: _load,
           ),
-        ),
+        ],
+      );
+    }
+
+    final family = _family;
+    if (family == null) {
+      return const EmptyState(title: 'خانواده یافت نشد', icon: Icons.groups_outlined);
+    }
+
+    return SizedBox.expand(
+      child: _FamilyDetailTabs(
+        key: ValueKey(family.id),
+        family: family,
+        canManage: canManage,
+        canManageLinks: canManageLinks,
+        onEdit: () => _edit(family),
+        onDelete: () => _delete(family),
+        onMembersChanged: () {
+          FamilyMembersCache.invalidate(family.id);
+          _load(quiet: true);
+          widget.onChanged?.call();
+        },
       ),
     );
   }
@@ -166,6 +220,7 @@ class _FamilyDetailTabs extends StatefulWidget {
     required this.canManageLinks,
     required this.onEdit,
     required this.onDelete,
+    required this.onMembersChanged,
   });
 
   final FamilyDetailModel family;
@@ -173,6 +228,7 @@ class _FamilyDetailTabs extends StatefulWidget {
   final bool canManageLinks;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onMembersChanged;
 
   @override
   State<_FamilyDetailTabs> createState() => _FamilyDetailTabsState();
@@ -253,6 +309,20 @@ class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerP
                         isDesktop: isDesktop,
                         onEdit: widget.onEdit,
                         onDelete: widget.onDelete,
+                        onOpenMembers: () => _tabController.animateTo(1),
+                        onAddMember: widget.canManage
+                            ? () async {
+                                final added = await showAddFamilyMemberSheet(
+                                  context: context,
+                                  familyId: widget.family.id,
+                                  familyName: widget.family.internalName,
+                                );
+                                if (added == true) {
+                                  widget.onMembersChanged();
+                                  if (mounted) _tabController.animateTo(1);
+                                }
+                              }
+                            : null,
                       ),
                       SizedBox(height: isDesktop ? AppSpacing.xl : AppSpacing.lg),
                       widget.family.dna != null
@@ -277,14 +347,11 @@ class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerP
                   ),
                   Padding(
                     padding: isDesktop ? EdgeInsets.zero : padding.copyWith(top: AppSpacing.sm),
-                    child: SizedBox.expand(
-                      child: FamilyMembersPanel(
-                        key: ValueKey('members-${widget.family.id}'),
-                        familyId: widget.family.id,
-                        familyName: widget.family.internalName,
-                        showAttribution: true,
-                        canManageMembers: widget.canManage,
-                      ),
+                    child: _KeepAliveMembersTab(
+                      familyId: widget.family.id,
+                      familyName: widget.family.internalName,
+                      canManage: widget.canManage,
+                      onMembersChanged: widget.onMembersChanged,
                     ),
                   ),
                 ],
@@ -293,6 +360,41 @@ class _FamilyDetailTabsState extends State<_FamilyDetailTabs> with SingleTickerP
           ],
         ),
       ),
+    );
+  }
+}
+
+class _KeepAliveMembersTab extends StatefulWidget {
+  const _KeepAliveMembersTab({
+    required this.familyId,
+    required this.familyName,
+    required this.canManage,
+    required this.onMembersChanged,
+  });
+
+  final int familyId;
+  final String familyName;
+  final bool canManage;
+  final VoidCallback onMembersChanged;
+
+  @override
+  State<_KeepAliveMembersTab> createState() => _KeepAliveMembersTabState();
+}
+
+class _KeepAliveMembersTabState extends State<_KeepAliveMembersTab> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return FamilyMembersPanel(
+      key: ValueKey('members-${widget.familyId}'),
+      familyId: widget.familyId,
+      familyName: widget.familyName,
+      showAttribution: true,
+      canManageMembers: widget.canManage,
+      onMembersChanged: widget.onMembersChanged,
     );
   }
 }
@@ -327,6 +429,8 @@ class _FamilySummarySection extends StatelessWidget {
     required this.isDesktop,
     required this.onEdit,
     required this.onDelete,
+    required this.onOpenMembers,
+    this.onAddMember,
   });
 
   final FamilyDetailModel family;
@@ -334,6 +438,8 @@ class _FamilySummarySection extends StatelessWidget {
   final bool isDesktop;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final VoidCallback onOpenMembers;
+  final VoidCallback? onAddMember;
 
   @override
   Widget build(BuildContext context) {
@@ -390,6 +496,25 @@ class _FamilySummarySection extends StatelessWidget {
             ],
           ],
         ),
+        if (canManage) ...[
+          const SizedBox(height: AppSpacing.md),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              FilledButton.icon(
+                onPressed: onAddMember,
+                icon: const Icon(Icons.person_add_rounded, size: 18),
+                label: const Text('افزودن عضو'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onOpenMembers,
+                icon: const Icon(Icons.people_rounded, size: 18),
+                label: const Text('مدیریت اعضا'),
+              ),
+            ],
+          ),
+        ],
         if (family.profile.description != null && family.profile.description!.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.lg),
           AppCard(
@@ -423,7 +548,11 @@ class _FamilySummarySection extends StatelessWidget {
             if (columns == 1) {
               return Column(
                 children: [
-                  _StatTile(title: 'اعضا', value: toFaDigits(family.memberCount.toString())),
+                  _StatTile(
+                    title: 'اعضا',
+                    value: toFaDigits(family.memberCount.toString()),
+                    onTap: onOpenMembers,
+                  ),
                   const SizedBox(height: AppSpacing.sm),
                   _StatTile(title: 'ظرفیت هدف', value: toFaDigits(family.capacityTarget.toString())),
                   const SizedBox(height: AppSpacing.sm),
@@ -433,7 +562,13 @@ class _FamilySummarySection extends StatelessWidget {
             }
             return Row(
               children: [
-                Expanded(child: _StatTile(title: 'اعضا', value: toFaDigits(family.memberCount.toString()))),
+                Expanded(
+                  child: _StatTile(
+                    title: 'اعضا',
+                    value: toFaDigits(family.memberCount.toString()),
+                    onTap: onOpenMembers,
+                  ),
+                ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(child: _StatTile(title: 'ظرفیت هدف', value: toFaDigits(family.capacityTarget.toString()))),
                 const SizedBox(width: AppSpacing.md),
@@ -464,15 +599,17 @@ class _FamilySummarySection extends StatelessWidget {
 }
 
 class _StatTile extends StatelessWidget {
-  const _StatTile({required this.title, required this.value});
+  const _StatTile({required this.title, required this.value, this.onTap});
 
   final String title;
   final String value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return AppCard(
       padding: const EdgeInsets.all(AppSpacing.md),
+      onTap: onTap,
       child: Column(
         children: [
           Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary)),

@@ -34,4 +34,9 @@ class FamilyDetailCache {
     _data.remove(familyId);
     _at.remove(familyId);
   }
+
+  static void put(FamilyDetailModel model) {
+    _data[model.id] = model;
+    _at[model.id] = DateTime.now();
+  }
 }

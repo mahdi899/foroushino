@@ -28,6 +28,7 @@ class FamilyMembersPanel extends StatefulWidget {
     this.showAttribution = false,
     this.compact = false,
     this.canManageMembers = false,
+    this.onMembersChanged,
   });
 
   final int? familyId;
@@ -40,6 +41,7 @@ class FamilyMembersPanel extends StatefulWidget {
   final bool showAttribution;
   final bool compact;
   final bool canManageMembers;
+  final VoidCallback? onMembersChanged;
 
   @override
   State<FamilyMembersPanel> createState() => _FamilyMembersPanelState();
@@ -189,6 +191,7 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
     );
     if (added == true) {
       if (widget.familyId != null) FamilyMembersCache.invalidate(widget.familyId);
+      widget.onMembersChanged?.call();
       _loadFirstPage();
     }
   }
@@ -221,6 +224,7 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
       if (mounted) {
         showAppSnackBar(context, 'عضو از خانواده حذف شد.');
         if (widget.familyId != null) FamilyMembersCache.invalidate(widget.familyId);
+        widget.onMembersChanged?.call();
         _loadFirstPage();
       }
     } catch (e) {
@@ -230,66 +234,92 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (!widget.compact) ...[
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  widget.title ?? (widget.familyId == null ? 'اعضای کانال خانواده' : 'اعضای این خانواده'),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                ),
-              ),
-              if (_total > 0)
-                Padding(
-                  padding: const EdgeInsets.only(left: AppSpacing.sm),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final hasBoundedHeight =
+            constraints.hasBoundedHeight && constraints.maxHeight.isFinite && constraints.maxHeight > 0;
+
+        final header = <Widget>[
+          if (!widget.compact) ...[
+            Row(
+              children: [
+                Expanded(
                   child: Text(
-                    toFaDigits(_total.toString()),
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                    widget.title ?? (widget.familyId == null ? 'اعضای کانال خانواده' : 'اعضای این خانواده'),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                   ),
                 ),
-              if (_canManage) ...[
-                const SizedBox(width: AppSpacing.sm),
-                FilledButton.icon(
-                  onPressed: _addMember,
-                  icon: const Icon(Icons.person_add_rounded, size: 18),
-                  label: const Text('افزودن'),
-                ),
+                if (_total > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(left: AppSpacing.sm),
+                    child: Text(
+                      toFaDigits(_total.toString()),
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                if (_canManage) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  FilledButton.icon(
+                    onPressed: _addMember,
+                    icon: const Icon(Icons.person_add_rounded, size: 18),
+                    label: const Text('افزودن'),
+                  ),
+                ],
               ],
-            ],
-          ),
-          const SizedBox(height: AppSpacing.md),
-        ],
-        TextField(
-          controller: _searchCtrl,
-          decoration: InputDecoration(
-            hintText: 'جستجو نام یا موبایل',
-            prefixIcon: const Icon(Icons.search_rounded),
-            suffixIcon: IconButton(
-              onPressed: _loadFirstPage,
-              icon: const Icon(Icons.refresh_rounded),
             ),
-            isDense: widget.compact,
+            const SizedBox(height: AppSpacing.md),
+          ],
+          TextField(
+            controller: _searchCtrl,
+            decoration: InputDecoration(
+              hintText: 'جستجو نام یا موبایل',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: IconButton(
+                onPressed: _loadFirstPage,
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+              isDense: widget.compact,
+            ),
+            onSubmitted: (_) => _loadFirstPage(),
           ),
-          onSubmitted: (_) => _loadFirstPage(),
-        ),
-        if (_canManage && widget.compact) ...[
-          const SizedBox(height: AppSpacing.sm),
-          PrimaryButton(
-            label: 'افزودن عضو',
-            icon: Icons.person_add_rounded,
-            onPressed: _addMember,
-          ),
-        ],
-        const SizedBox(height: AppSpacing.md),
-        Expanded(child: _buildMembersBody()),
-      ],
+          if (_canManage && widget.compact) ...[
+            const SizedBox(height: AppSpacing.sm),
+            PrimaryButton(
+              label: 'افزودن عضو',
+              icon: Icons.person_add_rounded,
+              onPressed: _addMember,
+            ),
+          ],
+          const SizedBox(height: AppSpacing.md),
+        ];
+
+        if (hasBoundedHeight) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ...header,
+              Expanded(child: _buildMembersBody()),
+            ],
+          );
+        }
+
+        // Fallback when parent (e.g. misconfigured TabBarView) gives unbounded height.
+        return ListView(
+          controller: _scrollCtrl,
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            ...header,
+            SizedBox(
+              height: 420,
+              child: _buildMembersBody(embedScroll: false),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildMembersBody() {
+  Widget _buildMembersBody({bool embedScroll = true}) {
     if (_initialLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -327,7 +357,7 @@ class _FamilyMembersPanelState extends State<FamilyMembersPanel> {
     return RefreshIndicator(
       onRefresh: _loadFirstPage,
       child: ListView.separated(
-        controller: _scrollCtrl,
+        controller: embedScroll ? _scrollCtrl : null,
         physics: const AlwaysScrollableScrollPhysics(),
         itemCount: _members.length + (_hasMore || _loadingMore ? 1 : 0),
         separatorBuilder: (_, index) {

@@ -937,9 +937,9 @@ class FamilyMemberModel {
   String? get displayMobile => (mobile != null && mobile!.isNotEmpty) ? mobile : mobileMasked;
 
   factory FamilyMemberModel.fromJson(Map<String, dynamic> json) => FamilyMemberModel(
-        id: (json['id'] as num).toInt(),
-        userId: (json['user_id'] as num).toInt(),
-        familyId: (json['family_id'] as num).toInt(),
+        id: (json['id'] as num?)?.toInt() ?? 0,
+        userId: (json['user_id'] as num?)?.toInt() ?? 0,
+        familyId: (json['family_id'] as num?)?.toInt() ?? 0,
         familyName: json['family_name']?.toString(),
         name: json['name']?.toString(),
         mobile: json['mobile']?.toString(),
