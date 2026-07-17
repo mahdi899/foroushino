@@ -107,7 +107,35 @@ class TeamAdminController extends Controller
             ->values()
             ->all();
 
-        DB::transaction(function () use ($team, $agentIds): void {
+        DB::transaction(function () use ($team, $agentIds, $request): void {
+            $actor = $request->user();
+            abort_unless($actor, 401);
+
+            $allowedIds = User::query()
+                ->whereIn('id', $agentIds)
+                ->get()
+                ->filter(fn (User $agent) => AdminScope::canManageUser($actor, $agent))
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            if (count($allowedIds) !== count($agentIds)) {
+                abort(403, 'اجازه مدیریت همه کارشناسان انتخاب‌شده را ندارید.');
+            }
+
+            User::query()
+                ->role(RoleName::Agent->value)
+                ->where('team_id', $team->id)
+                ->when($agentIds !== [], fn ($query) => $query->whereNotIn('id', $agentIds))
+                ->get()
+                ->each(function (User $agent) use ($actor): void {
+                    abort_unless(
+                        AdminScope::canManageUser($actor, $agent),
+                        403,
+                        'اجازه حذف این کارشناس از تیم را ندارید.',
+                    );
+                });
+
             User::query()
                 ->role(RoleName::Agent->value)
                 ->where('team_id', $team->id)

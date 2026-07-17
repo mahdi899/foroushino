@@ -5,6 +5,7 @@ namespace App\Http\Requests\V1\Admin;
 use App\Enums\RoleName;
 use App\Models\User;
 use App\Support\SupervisorCapacity;
+use App\Support\TeamScope;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -12,7 +13,11 @@ class AssignSupervisorTeamsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->can('users.manage');
+        $actor = $this->user();
+
+        return $actor
+            && $actor->can('users.manage')
+            && TeamScope::isOrgWide($actor);
     }
 
     /**

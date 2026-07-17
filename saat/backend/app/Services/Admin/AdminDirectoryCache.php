@@ -63,12 +63,13 @@ final class AdminDirectoryCache
         sort($teamIds);
         $version = (int) Cache::get(self::VERSION_KEY, 0);
 
-        return md5(json_encode([
+        return hash('sha256', json_encode([
             'version' => $version,
             'org' => TeamScope::isOrgWide($actor),
             'teams' => $teamIds,
             'team_id' => $actor->team_id,
             'roles' => $actor->getRoleNames()->sort()->values()->all(),
+            'permissions' => $actor->getAllPermissions()->pluck('name')->sort()->values()->all(),
         ], JSON_THROW_ON_ERROR));
     }
 }

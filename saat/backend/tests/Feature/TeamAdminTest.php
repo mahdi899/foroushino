@@ -157,3 +157,44 @@ it('invalidates admin directory cache after team update', function () {
     $second = $this->getJson('/api/v1/admin/teams')->assertOk();
     expect(collect($second->json('data'))->firstWhere('id', $team->id)['name'])->toBe('بعد از کش');
 });
+
+it('forbids a leader from stealing agents from another team via bulk sync', function () {
+    $teamA = makeTeam();
+    $teamB = makeTeam();
+    $leader = makeLeader(['team_id' => $teamA->id]);
+    $teamA->update(['leader_id' => $leader->id]);
+    $ownAgent = makeAgent(['team_id' => $teamA->id]);
+    $foreignAgent = makeAgent(['team_id' => $teamB->id]);
+
+    Sanctum::actingAs($leader);
+
+    $this->putJson("/api/v1/admin/teams/{$teamA->id}/members", [
+        'agent_ids' => [$ownAgent->id, $foreignAgent->id],
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors(['agent_ids']);
+
+    expect($foreignAgent->fresh()->team_id)->toBe($teamB->id);
+});
+
+it('forbids supervisors from bulk supervisor team assignment', function () {
+    $supervisor = makeSupervisor();
+    $otherSupervisor = makeSupervisor();
+    $team = makeTeam();
+
+    Sanctum::actingAs($supervisor);
+
+    $this->patchJson("/api/v1/admin/supervisors/{$otherSupervisor->id}/teams", [
+        'team_ids' => [$team->id],
+    ])->assertForbidden();
+});
+
+it('forbids agents from syncing team members', function () {
+    $team = makeTeam();
+    $agent = makeAgent(['team_id' => $team->id]);
+
+    Sanctum::actingAs($agent);
+
+    $this->putJson("/api/v1/admin/teams/{$team->id}/members", [
+        'agent_ids' => [$agent->id],
+    ])->assertForbidden();
+});
