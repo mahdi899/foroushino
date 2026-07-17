@@ -67,7 +67,7 @@ export const TELEGRAM_MODULES: TelegramModule[] = [
   {
     href: '/admin/telegram/settings',
     label: 'تنظیمات ربات',
-    description: 'وب‌هوک، گروه پشتیبانی، فعال/غیرفعال و همگام‌سازی',
+    description: 'وب‌هوک، گروه گزارشات، فعال/غیرفعال و همگام‌سازی',
     icon: 'Settings',
     tone: 'teal',
     permission: 'telegram.settings.manage',

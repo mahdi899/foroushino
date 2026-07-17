@@ -53,10 +53,18 @@ class TelegramBotAdminController
             'support_group_chat_id' => ['sometimes', 'nullable', 'string', 'max:64'],
             'reports_chat_id' => ['sometimes', 'nullable', 'string', 'max:64'],
             'reports_topic_id' => ['sometimes', 'nullable', 'integer'],
+            'payment_reports_chat_id' => ['sometimes', 'nullable', 'string', 'max:64'],
             'settings' => ['sometimes', 'nullable', 'array'],
         ]);
 
-        $bot->update($data);
+        if (array_key_exists('payment_reports_chat_id', $data)) {
+            $bot->setPaymentReportsChatId($data['payment_reports_chat_id']);
+            unset($data['payment_reports_chat_id']);
+        }
+
+        if ($data !== []) {
+            $bot->update($data);
+        }
 
         return response()->json(['data' => $this->payload($bot->fresh(), null, detailed: true)]);
     }
@@ -407,6 +415,7 @@ class TelegramBotAdminController
             'support_group_chat_id' => $bot->support_group_chat_id,
             'reports_chat_id' => $bot->reports_chat_id,
             'reports_topic_id' => $bot->reports_topic_id,
+            'payment_reports_chat_id' => $bot->paymentReportsChatId(),
             'settings' => $bot->settings ?? [],
             'token_key' => $bot->token_key,
         ]);

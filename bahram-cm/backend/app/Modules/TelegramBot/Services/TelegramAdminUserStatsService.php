@@ -29,6 +29,7 @@ class TelegramAdminUserStatsService
      *   registered_at: string,
      *   successful_orders: int,
      *   active_subscriptions: int,
+     *   account_balance: int,
      *   cooperation_percent: int,
      *   subset_count: int,
      *   buyer_subset_count: int,
@@ -55,6 +56,7 @@ class TelegramAdminUserStatsService
         $buyerSubsetCount = 0;
         $subsetTxCount = 0;
         $subsetTxAmount = 0;
+        $accountBalance = 0;
         $cooperationPercent = $this->defaultCooperationPercent();
 
         if ($user instanceof User) {
@@ -73,6 +75,7 @@ class TelegramAdminUserStatsService
             $buyerSubsetCount = $referralStats['buyer_subset_count'];
             $subsetTxCount = $referralStats['subset_tx_count'];
             $subsetTxAmount = $referralStats['subset_tx_amount'];
+            $accountBalance = (int) ($this->referrals->summary($user)['payable_amount'] ?? 0);
         } else {
             $subsetCount = $this->botSubsetCount((int) $account->telegram_bot_id, null, null, (int) $account->telegram_user_id);
         }
@@ -84,6 +87,7 @@ class TelegramAdminUserStatsService
             'registered_at' => $registeredLabel,
             'successful_orders' => $successfulOrders,
             'active_subscriptions' => $activeSubscriptions,
+            'account_balance' => $accountBalance,
             'cooperation_percent' => $cooperationPercent,
             'subset_count' => $subsetCount,
             'buyer_subset_count' => $buyerSubsetCount,
@@ -96,13 +100,17 @@ class TelegramAdminUserStatsService
     {
         $s = $this->forAccount($account);
         $amount = number_format($s['subset_tx_amount']);
+        $balance = number_format($s['account_balance']);
 
-        return "🆔 شناسه کاربری: {$s['telegram_user_id']}\n"
+        return "حساب کاربری 👤\n\n"
+            ."🆔 شناسه کاربری: {$s['telegram_user_id']}\n"
             ."👤 نام و نام خانوادگی: {$s['display_name']}\n"
             ."📞 شماره تماس: {$s['phone_display']}\n"
-            ."📆 زمان ثبت نام: {$s['registered_at']}\n\n"
-            ."🏦 تراکنش های موفق: {$s['successful_orders']} عدد\n"
-            ."🛒 اشتراک های فعال: {$s['active_subscriptions']} عدد\n\n"
+            ."📆 زمان ثبت نام: {$s['registered_at']}\n"
+            ."👥 تعداد زیرمجموعه: {$s['subset_count']}\n\n"
+            ."🏦 تراکنش های موفق: {$s['successful_orders']}\n"
+            ."🛒 دوره های فعال: {$s['active_subscriptions']}\n\n"
+            ."💰 موجودی حساب: {$balance} تومان\n\n"
             ."🎯 درصد همکاری: {$s['cooperation_percent']}%\n"
             ."👥 تعداد زیرمجموعه: {$s['subset_count']} نفر\n"
             ."🧑‍💻 تعداد زیرمجموعه های خریدار: {$s['buyer_subset_count']} نفر\n"

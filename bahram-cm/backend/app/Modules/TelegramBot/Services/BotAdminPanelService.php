@@ -189,6 +189,8 @@ class BotAdminPanelService
                 'admin_add' => $this->onAdminAddById($bot, $account, $conversation, $client, $chatId, $text),
                 'admin_add_name' => $this->onAdminAddDisplayName($bot, $account, $conversation, $client, $chatId, $text),
                 'card_to_card_text' => $this->onCardToCardText($bot, $account, $conversation, $client, $chatId, $text),
+                'reports_group' => $this->onReportsGroupInput($bot, $account, $conversation, $client, $chatId, $text),
+                'payment_reports' => $this->onPaymentReportsInput($bot, $account, $conversation, $client, $chatId, $text),
                 'rc_add' => $this->onRequiredChatAddInput($bot, $account, $conversation, $client, $chatId, $text),
                 'rc_rename' => $this->onRequiredChatRenameInput($bot, $account, $conversation, $client, $chatId, $text),
                 'dest_add' => $this->onDestinationAddInput($bot, $account, $conversation, $client, $chatId, $text),
@@ -735,6 +737,158 @@ class BotAdminPanelService
         $client->sendMessage($chatId, '✅ متن کارت‌به‌کارت ذخیره شد.', [
             'reply_markup' => $this->adminMenuMarkup($actor),
         ]);
+        $this->renderSettings($bot->fresh() ?? $bot, $client, $chatId, 0);
+    }
+
+    private function onReportsGroupInput(
+        TelegramBot $bot,
+        TelegramAccount $actor,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $text,
+    ): void {
+        $raw = trim(str_replace(['`', ' ', "\u{200c}"], '', $text));
+
+        if (in_array(mb_strtolower($raw), ['/null', 'null', 'none', 'پاک', 'حذف'], true)) {
+            $bot->update([
+                'support_group_chat_id' => null,
+                'reports_chat_id' => null,
+            ]);
+            $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+                'admin' => ['flow' => null, 'draft' => []],
+            ]);
+            $client->sendMessage($chatId, '✅ گروه گزارشات پاک شد.', [
+                'reply_markup' => $this->adminMenuMarkup($actor),
+            ]);
+            $this->renderSettings($bot->fresh() ?? $bot, $client, $chatId, 0);
+
+            return;
+        }
+
+        if (! preg_match('/^-100\d{5,}$/', $raw) && ! preg_match('/^-\d{8,}$/', $raw)) {
+            $client->sendMessage(
+                $chatId,
+                "لطفاً فقط آیدی عددی گروه را بفرستید.\n"
+                ."مثال درست:\n`-1003623149563`\n\n"
+                ."اول ربات را در گروه ادمین کنید، بعد همین آیدی را بفرستید.\n"
+                .'برای پاک کردن `/null` بفرستید.',
+                ['parse_mode' => 'Markdown'],
+            );
+
+            return;
+        }
+
+        try {
+            $this->assertBotIsChannelAdmin($bot, $client, $raw);
+        } catch (Throwable $e) {
+            $client->sendMessage(
+                $chatId,
+                '❌ ثبت گروه گزارشات ناموفق بود:\n'.$e->getMessage()."\n\n"
+                .'مطمئن شوید ربات در گروه ادمین است و دوباره آیدی را بفرستید.',
+            );
+
+            return;
+        }
+
+        $title = $raw;
+        try {
+            $chatInfo = $client->getChat($raw);
+            $title = (string) ($chatInfo['title'] ?? $raw);
+        } catch (Throwable) {
+            // title is optional
+        }
+
+        $bot->update([
+            'support_group_chat_id' => $raw,
+            'reports_chat_id' => $raw,
+        ]);
+
+        $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+            'admin' => ['flow' => null, 'draft' => []],
+        ]);
+        $client->sendMessage(
+            $chatId,
+            "✅ گروه گزارشات ذخیره شد:\n{$title}\n`{$raw}`\n\n"
+            .'از این به بعد پیام‌های پشتیبانی فقط در همین گروه می‌آید — نه در چت خصوصی ادمین.',
+            [
+                'parse_mode' => 'Markdown',
+                'reply_markup' => $this->adminMenuMarkup($actor),
+            ],
+        );
+        $this->renderSettings($bot->fresh() ?? $bot, $client, $chatId, 0);
+    }
+
+    private function onPaymentReportsInput(
+        TelegramBot $bot,
+        TelegramAccount $actor,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $text,
+    ): void {
+        $raw = trim(str_replace(['`', ' ', "\u{200c}"], '', $text));
+
+        if (in_array(mb_strtolower($raw), ['/null', 'null', 'none', 'پاک', 'حذف'], true)) {
+            $bot->setPaymentReportsChatId(null);
+            $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+                'admin' => ['flow' => null, 'draft' => []],
+            ]);
+            $client->sendMessage($chatId, '✅ گروه گزارشات پرداخت پاک شد.', [
+                'reply_markup' => $this->adminMenuMarkup($actor),
+            ]);
+            $this->renderSettings($bot->fresh() ?? $bot, $client, $chatId, 0);
+
+            return;
+        }
+
+        if (! preg_match('/^-100\d{5,}$/', $raw) && ! preg_match('/^-\d{8,}$/', $raw)) {
+            $client->sendMessage(
+                $chatId,
+                "لطفاً فقط آیدی عددی گروه/کانال را بفرستید.\n"
+                ."مثال درست:\n`-1003623149563`\n\n"
+                ."اول ربات را ادمین کنید، بعد همین آیدی را بفرستید.\n"
+                .'برای پاک کردن `/null` بفرستید.',
+                ['parse_mode' => 'Markdown'],
+            );
+
+            return;
+        }
+
+        try {
+            $this->assertBotIsChannelAdmin($bot, $client, $raw);
+        } catch (Throwable $e) {
+            $client->sendMessage(
+                $chatId,
+                '❌ ثبت گزارشات پرداخت ناموفق بود:\n'.$e->getMessage()."\n\n"
+                .'مطمئن شوید ربات ادمین است و دوباره آیدی را بفرستید.',
+            );
+
+            return;
+        }
+
+        $title = $raw;
+        try {
+            $chatInfo = $client->getChat($raw);
+            $title = (string) ($chatInfo['title'] ?? $raw);
+        } catch (Throwable) {
+            // title is optional
+        }
+
+        $bot->setPaymentReportsChatId($raw);
+
+        $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+            'admin' => ['flow' => null, 'draft' => []],
+        ]);
+        $client->sendMessage(
+            $chatId,
+            "✅ گزارشات پرداخت ذخیره شد:\n{$title}\n`{$raw}`\n\n"
+            .'رسید کارت‌به‌کارت و خریدهای موفق فقط اینجا می‌آید — نه در چت خصوصی ادمین.',
+            [
+                'parse_mode' => 'Markdown',
+                'reply_markup' => $this->adminMenuMarkup($actor),
+            ],
+        );
         $this->renderSettings($bot->fresh() ?? $bot, $client, $chatId, 0);
     }
 
@@ -3422,6 +3576,70 @@ class BotAdminPanelService
             return;
         }
 
+        if ($data === 'admin:s:rg') {
+            $conversation = $this->conversations->forAccount($account);
+            $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+                'admin' => ['flow' => 'reports_group', 'draft' => []],
+            ]);
+            $current = filled($bot->reportsGroupChatId())
+                ? (string) $bot->reportsGroupChatId()
+                : 'تنظیم نشده';
+            $client->sendMessage(
+                $chatId,
+                "🎫 گروه گزارشات (پشتیبانی)\n\n"
+                ."پیام‌های پشتیبانی کاربران فقط در این گروه فوروارد می‌شود.\n"
+                ."ادمین‌ها روی پیام آیدی عددی کاربر ریپلای می‌کنند تا جواب برسد.\n\n"
+                ."وضعیت فعلی: `{$current}`\n\n"
+                ."۱) ربات را داخل گروه گزارشات ادمین کنید\n"
+                ."۲) آیدی عددی گروه را با اعداد لاتین بفرستید\n"
+                ."مثال:\n"
+                ."`-1003623149563`\n\n"
+                ."برای پاک کردن `/null` بفرستید.\n"
+                .'برای انصراف «لغو» بفرستید.',
+                [
+                    'parse_mode' => 'Markdown',
+                    'reply_markup' => [
+                        'keyboard' => [[['text' => 'لغو']]],
+                        'resize_keyboard' => true,
+                    ],
+                ],
+            );
+
+            return;
+        }
+
+        if ($data === 'admin:s:pr') {
+            $conversation = $this->conversations->forAccount($account);
+            $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+                'admin' => ['flow' => 'payment_reports', 'draft' => []],
+            ]);
+            $current = filled($bot->paymentReportsChatId())
+                ? (string) $bot->paymentReportsChatId()
+                : 'تنظیم نشده';
+            $client->sendMessage(
+                $chatId,
+                "🏦 گروه/کانال گزارشات پرداخت\n\n"
+                ."رسیدهای کارت‌به‌کارت، خریدهای موفق زرین‌پال و پرداخت‌های سایت فقط اینجا می‌آید.\n"
+                ."تأیید/رد کارت‌به‌کارت هم از همین‌جا انجام می‌شود — نه در چت خصوصی ادمین.\n\n"
+                ."وضعیت فعلی: `{$current}`\n\n"
+                ."۱) ربات را داخل گروه/کانال ادمین کنید\n"
+                ."۲) آیدی عددی را با اعداد لاتین بفرستید\n"
+                ."مثال:\n"
+                ."`-1003623149563`\n\n"
+                ."برای پاک کردن `/null` بفرستید.\n"
+                .'برای انصراف «لغو» بفرستید.',
+                [
+                    'parse_mode' => 'Markdown',
+                    'reply_markup' => [
+                        'keyboard' => [[['text' => 'لغو']]],
+                        'resize_keyboard' => true,
+                    ],
+                ],
+            );
+
+            return;
+        }
+
         if (str_starts_with($data, 'admin:s:t:')) {
             $key = substr($data, strlen('admin:s:t:'));
             $flag = \App\Modules\TelegramBot\Enums\BotFeatureFlag::tryFrom($key);
@@ -3462,6 +3680,8 @@ class BotAdminPanelService
             .'توکن: '.(($botHealth['token_present'] ?? false) ? '✅' : '❌')."\n"
             .'API: '.(($botHealth['api_reachable'] ?? false) ? '✅' : '❌')."\n"
             .'وب‌هوک: '.($botHealth['webhook_url'] ?? '—')."\n"
+            .'گروه گزارشات: '.(filled($bot->reportsGroupChatId()) ? (string) $bot->reportsGroupChatId() : 'تنظیم نشده')."\n"
+            .'گزارشات پرداخت: '.(filled($bot->paymentReportsChatId()) ? (string) $bot->paymentReportsChatId() : 'تنظیم نشده')."\n"
             ."آپدیت معلق: ".($updates['pending'] ?? 0)."\n"
             .'آپدیت ناموفق: '.($updates['failed'] ?? 0)."\n\n"
             .'برای تغییر هر گزینه روی آن بزنید:';
@@ -3480,6 +3700,10 @@ class BotAdminPanelService
             ]];
         }
 
+        $keyboard[] = [
+            ['text' => '🎫 گروه گزارشات', 'callback_data' => 'admin:s:rg'],
+            ['text' => '🏦 گزارشات پرداخت', 'callback_data' => 'admin:s:pr'],
+        ];
         $keyboard[] = [
             ['text' => '📝 متن کارت به کارت', 'callback_data' => 'admin:s:c2c'],
             ['text' => '🔗 ثبت وب‌هوک', 'callback_data' => 'admin:s:wh'],

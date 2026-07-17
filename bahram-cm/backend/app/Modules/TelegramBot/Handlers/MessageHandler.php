@@ -2,7 +2,6 @@
 
 namespace App\Modules\TelegramBot\Handlers;
 
-use App\Models\SatApplication;
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
 use App\Modules\TelegramBot\Enums\BotFeatureFlag;
 use App\Modules\TelegramBot\Enums\ConversationState;
@@ -18,8 +17,11 @@ use App\Modules\TelegramBot\Services\SupportTicketBridgeService;
 use App\Modules\TelegramBot\Services\TelegramContentPresenter;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
 use App\Modules\TelegramBot\Services\TelegramSeminarCatalogService;
+use App\Modules\TelegramBot\Services\TelegramCourseAccessPresenter;
 use App\Modules\TelegramBot\Services\TelegramPurchaseFlowService;
+use App\Modules\TelegramBot\Services\TelegramSatFlowService;
 use App\Modules\TelegramBot\Services\TelegramSubscriberEligibility;
+use App\Modules\TelegramBot\Services\TelegramAdminUserStatsService;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Services\ReferralService;
 
@@ -39,6 +41,9 @@ class MessageHandler implements UpdateHandlerInterface
         private readonly TelegramSubscriberEligibility $subscriberEligibility,
         private readonly SupportTicketBridgeService $supportTickets,
         private readonly TelegramPurchaseFlowService $purchaseFlow,
+        private readonly TelegramSatFlowService $satFlow,
+        private readonly TelegramAdminUserStatsService $userStats,
+        private readonly TelegramCourseAccessPresenter $courseAccessPresenter,
     ) {}
 
     public function handle(TelegramUpdate $update, TelegramBot $bot): void
@@ -53,8 +58,8 @@ class MessageHandler implements UpdateHandlerInterface
         }
 
         if (
-            filled($bot->support_group_chat_id)
-            && (string) data_get($message, 'chat.id') === (string) $bot->support_group_chat_id
+            filled($bot->reportsGroupChatId())
+            && (string) data_get($message, 'chat.id') === (string) $bot->reportsGroupChatId()
         ) {
             app(\App\Modules\TelegramBot\Services\SupportAdminReplyService::class)
                 ->handleIncomingSupportMessage($bot, $message);
@@ -133,10 +138,23 @@ class MessageHandler implements UpdateHandlerInterface
         // Refresh after admin handlers may have changed conversation state.
         $conversation->refresh();
 
+        // User Reply on a support message → continue thread in reports group.
+        if ($this->supportTickets->tryHandleUserReplyToSupport($bot, $account, $message)) {
+            return;
+        }
+
         if ($conversation->state === ConversationState::WaitingForCardToCardReceipt) {
             $this->purchaseFlow->handleCardToCardReceiptMessage($bot, $account, $chatId, $message, $text);
 
             return;
+        }
+
+        if ($conversation->state === ConversationState::FillingSatApplication && $text !== '') {
+            if ($this->satFlow->handleText($bot, $account, $chatId, $text)) {
+                return;
+            }
+            // Menu button cancelled SAT draft — fall through to menu handler.
+            $conversation->refresh();
         }
 
         if ($conversation->state === ConversationState::WaitingForDiscountCode && $text !== '') {
@@ -145,7 +163,7 @@ class MessageHandler implements UpdateHandlerInterface
             return;
         }
 
-        if ($conversation->state === ConversationState::WaitingForSupportMessage && $text !== '') {
+        if ($conversation->state === ConversationState::WaitingForSupportMessage) {
             if (in_array($text, ['لغو', '/cancel'], true)) {
                 $this->conversations->transition($conversation, ConversationState::Idle, [
                     'support' => null,
@@ -154,6 +172,17 @@ class MessageHandler implements UpdateHandlerInterface
                     'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
                 ]);
 
+                return;
+            }
+
+            $hasMedia = isset($message['photo'])
+                || isset($message['document'])
+                || isset($message['video'])
+                || isset($message['voice'])
+                || isset($message['audio'])
+                || isset($message['sticker']);
+
+            if ($text === '' && ! $hasMedia) {
                 return;
             }
 
@@ -205,7 +234,7 @@ class MessageHandler implements UpdateHandlerInterface
         $client = $this->clients->forBot($bot);
 
         match ($text) {
-            'دوره کمپین نویسی 🎓' => $this->sendProducts($client, $chatId),
+            'دوره کمپین نویسی 🎓' => $this->sendProducts($client, $bot, $account, $chatId),
             'سمینارها 🎤' => $this->sendSeminars($client, $chatId),
             'سات ☎️' => $this->sendSatStatus($client, $chatId, $account),
             'کانال مرجع 📣' => $this->sendReferenceChannel($client, $chatId),
@@ -234,8 +263,9 @@ class MessageHandler implements UpdateHandlerInterface
         $client->sendMessage($chatId, 'دسته پشتیبانی را انتخاب کنید:', [
             'reply_markup' => [
                 'inline_keyboard' => [
-                    [['text' => 'خرید و پرداخت', 'callback_data' => 'support:cat:purchase']],
-                    [['text' => 'دوره کمپین‌نویسی', 'callback_data' => 'support:cat:campaign_course']],
+                    [['text' => 'خرید', 'callback_data' => 'support:cat:purchase']],
+                    [['text' => 'کمپین', 'callback_data' => 'support:cat:campaign_course']],
+                    [['text' => 'سات', 'callback_data' => 'support:cat:sat']],
                     [['text' => 'سایر', 'callback_data' => 'support:cat:other']],
                 ],
             ],
@@ -253,11 +283,20 @@ class MessageHandler implements UpdateHandlerInterface
     ): void {
         $client = $this->clients->forBot($bot);
         $category = (string) data_get($conversation->context, 'support.category', 'other');
-        $subjects = [
-            'purchase' => 'خرید و پرداخت',
-            'campaign_course' => 'دوره کمپین‌نویسی',
-            'other' => 'سایر',
-        ];
+        $subjects = SupportTicketBridgeService::CATEGORY_LABELS;
+
+        if (blank($bot->reportsGroupChatId())) {
+            $client->sendMessage(
+                $chatId,
+                '⛔ گروه گزارشات هنوز تنظیم نشده است. لطفاً بعداً دوباره تلاش کنید.',
+                ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
+            );
+            $this->conversations->transition($conversation, ConversationState::Idle, [
+                'support' => null,
+            ]);
+
+            return;
+        }
 
         try {
             $ticket = $this->supportTickets->openOrContinue(
@@ -265,13 +304,14 @@ class MessageHandler implements UpdateHandlerInterface
                 $category,
                 $subjects[$category] ?? 'پشتیبانی تلگرام',
             );
-            $this->supportTickets->appendUserMessage($ticket, $text);
-            $this->supportTickets->mirrorToSupportGroup(
+            $this->supportTickets->appendUserMessage($ticket, $text !== '' ? $text : '[رسانه]');
+            $mirrored = $this->supportTickets->mirrorToSupportGroup(
                 $bot,
                 $ticket,
                 $account,
                 (int) ($message['message_id'] ?? 0),
                 $this->supportTickets->categoryTopicId($category),
+                $category,
             );
         } catch (\Throwable $e) {
             $client->sendMessage($chatId, 'ارسال پیام پشتیبانی ناموفق بود. لطفاً دوباره تلاش کنید.');
@@ -282,12 +322,26 @@ class MessageHandler implements UpdateHandlerInterface
         $this->conversations->transition($conversation, ConversationState::Idle, [
             'support' => null,
         ]);
-        $client->sendMessage($chatId, '✅ پیام شما ثبت شد. پشتیبانی به‌زودی پاسخ می‌دهد.', [
-            'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
-        ]);
+        $ack = $client->sendMessage(
+            $chatId,
+            "✅ پیام شما ثبت شد.\nپشتیبانی به‌زودی پاسخ می‌دهد.\n\nبرای ادامه گفتگو، روی همین پیام یا پاسخ پشتیبانی Reply بزنید.",
+            ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
+        );
+        $ackId = (int) ($ack['message_id'] ?? 0);
+        if ($ackId > 0 && ($mirrored['id_message_id'] ?? 0) > 0) {
+            $this->supportTickets->mapSupportThreadToUser(
+                $ticket->id,
+                $mirrored['support_chat_id'],
+                $mirrored['id_message_id'],
+                (string) $chatId,
+                $ackId,
+                $mirrored['topic_id'] ?? null,
+                $mirrored['forward_message_id'] ?? null,
+            );
+        }
     }
 
-    private function sendProducts($client, int $chatId): void
+    private function sendProducts($client, TelegramBot $bot, TelegramAccount $account, int $chatId): void
     {
         $products = $this->catalog->listPublicCourses();
         if ($products->isEmpty()) {
@@ -300,11 +354,8 @@ class MessageHandler implements UpdateHandlerInterface
         }
 
         foreach ($products->take(10) as $product) {
-            $client->sendMessage(
-                $chatId,
-                $this->content->formatProductMessage($product),
-                $this->content->productSendOptions($product),
-            );
+            $view = $this->courseAccessPresenter->present($bot, $account, $product);
+            $client->sendMessage($chatId, $view['text'], $view['options']);
         }
     }
 
@@ -328,34 +379,14 @@ class MessageHandler implements UpdateHandlerInterface
 
     private function sendSatStatus($client, int $chatId, TelegramAccount $account): void
     {
-        $satUrl = TelegramSiteUrl::satPage();
-
-        if (! $account->user_id) {
-            $this->sendWithLink($client, $chatId, 'ابتدا ثبت‌نام را کامل کنید.', $satUrl, '🌐 صفحه سات');
-
-            return;
-        }
-
-        $app = SatApplication::query()->where('user_id', $account->user_id)->latest('id')->first();
-        if ($app === null) {
-            $this->sendWithLink(
-                $client,
-                $chatId,
-                'درخواستی برای سات ثبت نشده است. برای ثبت از سایت اقدام کنید.',
-                $satUrl,
-                '🌐 ثبت درخواست سات',
-            );
+        $bot = $account->bot ?? TelegramBot::query()->find($account->telegram_bot_id);
+        if ($bot === null) {
+            $client->sendMessage($chatId, 'ربات در دسترس نیست.');
 
             return;
         }
 
-        $this->sendWithLink(
-            $client,
-            $chatId,
-            'وضعیت سات: '.(string) ($app->status ?? '—'),
-            $satUrl,
-            '🌐 مشاهده صفحه سات',
-        );
+        $this->satFlow->open($bot, $account, $chatId);
     }
 
     private function sendReferenceChannel($client, int $chatId): void
@@ -366,7 +397,7 @@ class MessageHandler implements UpdateHandlerInterface
             $chatId,
             "کانال مرجع نیاز به خرید دوره کمپین‌نویسی و احراز هویت سطح ۲ دارد.\nبرای شروع احراز هویت از منوی حساب کاربری یا لینک زیر استفاده کنید.",
             $identityUrl,
-            '🌐 احراز هویت',
+            '🔐 احراز هویت سطح ۲',
         );
     }
 
@@ -414,28 +445,24 @@ class MessageHandler implements UpdateHandlerInterface
 
     private function sendAccount($client, int $chatId, TelegramAccount $account): void
     {
-        $name = $account->display_name ?: ($account->user?->name ?? 'کاربر');
-        $mobile = $account->mobile ? preg_replace('/^(\d{4})\d+(\d{4})$/', '$1***$2', $account->mobile) : '—';
         $panelUrl = TelegramSiteUrl::studentPanel();
         $identityUrl = TelegramSiteUrl::identityPage();
+        $text = $this->userStats->formatProfileText($account);
 
         $keyboard = [];
-        foreach (TelegramSiteUrl::urlKeyboardRow('🌐 احراز هویت', $identityUrl) as $row) {
+        foreach (TelegramSiteUrl::urlKeyboardRow('🔐 احراز هویت سطح ۲', $identityUrl) as $row) {
             $keyboard[] = $row;
         }
-        foreach (TelegramSiteUrl::urlKeyboardRow('🌐 ورود به پنل سایت', $panelUrl) as $row) {
+        foreach (TelegramSiteUrl::urlKeyboardRow('ورود به پنل', $panelUrl) as $row) {
             $keyboard[] = $row;
         }
-        $keyboard[] = [['text' => 'دریافت لینک ورود', 'callback_data' => 'account:login_token']];
-
-        $options = $keyboard !== []
-            ? ['reply_markup' => ['inline_keyboard' => $keyboard]]
-            : [];
 
         $client->sendMessage(
             $chatId,
-            "حساب کاربری\nنام: {$name}\nموبایل: {$mobile}",
-            $options,
+            $text,
+            $keyboard !== []
+                ? ['reply_markup' => ['inline_keyboard' => $keyboard]]
+                : [],
         );
     }
 

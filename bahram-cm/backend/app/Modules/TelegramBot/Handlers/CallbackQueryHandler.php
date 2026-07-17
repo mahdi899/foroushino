@@ -17,6 +17,7 @@ use App\Modules\TelegramBot\Services\TelegramCheckoutService;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
 use App\Modules\TelegramBot\Services\TelegramPurchaseFlowService;
 use App\Modules\TelegramBot\Services\TelegramSubscriberEligibility;
+use App\Modules\TelegramBot\Services\TelegramCourseAccessPresenter;
 
 class CallbackQueryHandler implements UpdateHandlerInterface
 {
@@ -31,6 +32,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         private readonly BotAdminPanelService $botAdmin,
         private readonly TelegramSubscriberEligibility $subscriberEligibility,
         private readonly TelegramPurchaseFlowService $purchaseFlow,
+        private readonly TelegramCourseAccessPresenter $courseAccessPresenter,
     ) {}
 
     public function handle(TelegramUpdate $update, TelegramBot $bot): void
@@ -46,10 +48,14 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             return;
         }
 
-        // Never interact inside groups/channels — admin UX stays in private chat only.
+        // Allow C2C review callbacks inside the payment-reports group/channel only.
         $chatType = (string) data_get($callback, 'message.chat.type', 'private');
         if ($chatType !== 'private') {
-            return;
+            $paymentChat = $bot->paymentReportsChatId();
+            $isC2cReview = str_starts_with($data, 'c2c:ok:') || str_starts_with($data, 'c2c:no:');
+            if (! $isC2cReview || blank($paymentChat) || (string) $chatId !== (string) $paymentChat) {
+                return;
+            }
         }
 
         $account = TelegramAccount::query()->firstOrCreate(
@@ -126,6 +132,12 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             return;
         }
 
+        if ($data === 'seminar:full') {
+            $this->answer($client, $callbackId, 'ظرفیت این سمینار تکمیل شده است.', true);
+
+            return;
+        }
+
         if ($data === 'membership:recheck') {
             $this->handleMembershipRecheck($client, $bot, $account, $chatId, $callbackId);
 
@@ -149,7 +161,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         string $data,
     ): void {
         $category = substr($data, strlen('support:cat:'));
-        if (! in_array($category, ['purchase', 'campaign_course', 'other'], true)) {
+        if (! in_array($category, ['purchase', 'campaign_course', 'sat', 'other'], true)) {
             $this->answer($client, $callbackId, 'دسته نامعتبر است.', true);
 
             return;
@@ -177,7 +189,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         ]);
 
         $this->answer($client, $callbackId, 'پیام خود را بنویسید.');
-        $client->sendMessage($chatId, 'پیام پشتیبانی خود را بنویسید (یا «لغو»):');
+        $client->sendMessage($chatId, 'پیام پشتیبانی خود را بنویسید (متن یا رسانه). برای انصراف «لغو»:');
     }
 
     private function handleMembershipRecheck($client, TelegramBot $bot, TelegramAccount $account, int $chatId, string $callbackId): void
@@ -228,6 +240,22 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             return;
         }
 
+        if ($this->courseAccessPresenter->owns($account, $product)) {
+            $this->answer($client, $callbackId, 'قبلاً خریده‌اید', true);
+            $view = $this->courseAccessPresenter->present($bot, $account, $product);
+            $client->sendMessage($chatId, $view['text'], $view['options']);
+
+            return;
+        }
+
+        $product->loadMissing('seminar');
+        if ($product->seminar && $product->seminar->isFull()) {
+            $this->answer($client, $callbackId, 'ظرفیت این سمینار تکمیل شده است.', true);
+            $client->sendMessage($chatId, "⛔ سمینار «{$product->seminar->title}» ظرفیتش تکمیل شده است.");
+
+            return;
+        }
+
         $zp = $this->checkout->zarinpalEnabled($bot);
         $c2c = $this->checkout->cardToCardEnabled($bot);
         if (! $zp && ! $c2c) {
@@ -242,11 +270,22 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             'checkout' => ['product_id' => $productId, 'coupon' => null],
         ]);
 
-        $price = number_format((int) ($product->sale_price ?? $product->price ?? 0));
+        $base = (int) ($product->price ?? 0);
+        $sale = $product->sale_price !== null ? (int) $product->sale_price : null;
+        if ($product->seminar) {
+            $base = (int) ($product->seminar->price ?: $base);
+            $saleRaw = $product->seminar->sale_price ?? $product->sale_price;
+            $sale = $saleRaw !== null ? (int) $saleRaw : null;
+        }
+
+        $priceBlock = ($sale !== null && $sale > 0 && $sale < $base)
+            ? 'قیمت اصلی: '.number_format($base)." تومان\nقیمت با تخفیف: ".number_format($sale).' تومان'
+            : 'مبلغ: '.number_format($sale ?: $base).' تومان';
+
         $this->answer($client, $callbackId, 'کد تخفیف؟');
         $client->sendMessage(
             $chatId,
-            "🛒 {$product->title}\nمبلغ: {$price} تومان\n\n"
+            "🛒 {$product->title}\n{$priceBlock}\n\n"
             ."اگر کد تخفیف دارید همین‌جا بفرستید (همان کدهای پنل سایت).\n"
             .'کد معرف هم اگر با لینک معرفی وارد شده باشید خودکار اعمال می‌شود.',
             [

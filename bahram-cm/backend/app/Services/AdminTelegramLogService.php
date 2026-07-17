@@ -155,6 +155,21 @@ class AdminTelegramLogService
     public function notifyOrderPaid(Order $order, ?string $refId = null): void
     {
         $this->notify(AdminTelegramEventKey::OrderPaid, ['order_id' => $order->id, 'ref_id' => $refId]);
+
+        try {
+            $gateway = null;
+            if (is_string($refId) && in_array($refId, ['card_to_card', 'c2c'], true)) {
+                $gateway = 'card_to_card';
+                $refId = null;
+            }
+            app(\App\Modules\TelegramBot\Services\TelegramPaymentReportsNotifier::class)
+                ->notifyOrderPaid($order, $gateway, is_string($refId) ? $refId : null);
+        } catch (Throwable $e) {
+            Log::warning('payment_reports_notify_order_paid_failed', [
+                'order_id' => $order->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function notifyOrderFulfilled(Order $order): void

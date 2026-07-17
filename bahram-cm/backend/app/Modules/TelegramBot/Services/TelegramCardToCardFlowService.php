@@ -17,7 +17,7 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Card-to-card checkout: user sends receipt → bot admins review → fulfill/reject.
+ * Card-to-card checkout: user sends receipt → payment reports group review → fulfill/reject.
  */
 class TelegramCardToCardFlowService
 {
@@ -26,6 +26,7 @@ class TelegramCardToCardFlowService
         private readonly TelegramBotClientFactory $clients,
         private readonly MainMenuKeyboard $mainMenu,
         private readonly AdminTelegramLogService $adminTelegram,
+        private readonly TelegramPaymentReportsNotifier $paymentReports,
     ) {}
 
     public function beginWaitingForReceipt(
@@ -154,7 +155,7 @@ class TelegramCardToCardFlowService
             ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
         );
 
-        $this->notifyAdmins($bot, $client, $order, $fileId, $file['kind'], $account);
+        $this->notifyPaymentReports($bot, $client, $order, $fileId, $file['kind'], $account);
     }
 
     public function handleAdminReviewCallback(
@@ -353,7 +354,7 @@ class TelegramCardToCardFlowService
         );
     }
 
-    private function notifyAdmins(
+    private function notifyPaymentReports(
         TelegramBot $bot,
         TelegramBotClientInterface $client,
         Order $order,
@@ -361,79 +362,33 @@ class TelegramCardToCardFlowService
         string $kind,
         TelegramAccount $buyer,
     ): void {
-        $amount = number_format((int) ($order->final_amount ?? 0));
+        if (blank($bot->paymentReportsChatId())) {
+            $client->sendMessage(
+                (int) $buyer->telegram_user_id,
+                '⛔ گروه گزارشات پرداخت هنوز تنظیم نشده است. لطفاً بعداً دوباره تلاش کنید یا با پشتیبانی در تماس باشید.',
+                ['reply_markup' => $this->mainMenu->replyMarkup($buyer, $bot)],
+            );
+
+            return;
+        }
+
         $buyerName = $buyer->adminDisplayName()
             ?: ($buyer->display_name ?: trim(($buyer->first_name ?? '').' '.($buyer->last_name ?? '')) ?: 'کاربر');
         $mobile = $buyer->mobile ?: ($order->customer_phone ?: '—');
-        $product = $order->product?->title ?: '—';
 
-        $caption = "🏧 رسید کارت‌به‌کارت\n"
-            ."سفارش #{$order->id}\n"
-            ."محصول: {$product}\n"
-            ."مبلغ: {$amount} تومان\n"
-            ."خریدار: {$buyerName}\n"
-            ."موبایل: {$mobile}\n"
-            ."تلگرام: #{$buyer->telegram_user_id}";
+        $ok = $this->paymentReports->notifyCardToCardReceipt(
+            $bot,
+            $order,
+            $fileId,
+            $kind,
+            $buyerName,
+            $mobile,
+            (int) $buyer->telegram_user_id,
+        );
 
-        $keyboard = [
-            'inline_keyboard' => [
-                [
-                    ['text' => '✅ تأیید پرداخت', 'callback_data' => 'c2c:ok:'.$order->id],
-                    ['text' => '❌ رد رسید', 'callback_data' => 'c2c:no:'.$order->id],
-                ],
-            ],
-        ];
-
-        $admins = $this->botAdmins($bot);
-        $targets = array_values(array_filter(
-            $admins,
-            fn (TelegramAccount $admin) => (int) $admin->telegram_user_id !== (int) $buyer->telegram_user_id,
-        ));
-        if ($targets === []) {
-            $targets = $admins;
+        if (! $ok) {
+            Log::warning('card_to_card_payment_reports_notify_failed', ['order_id' => $order->id]);
         }
-
-        foreach ($targets as $admin) {
-            try {
-                if ($kind === 'document') {
-                    $client->sendDocument((int) $admin->telegram_user_id, $fileId, [
-                        'caption' => $caption,
-                        'reply_markup' => $keyboard,
-                    ]);
-                } else {
-                    $client->sendPhoto((int) $admin->telegram_user_id, $fileId, [
-                        'caption' => $caption,
-                        'reply_markup' => $keyboard,
-                    ]);
-                }
-            } catch (Throwable $e) {
-                Log::warning('card_to_card_admin_notify_failed', [
-                    'admin_id' => $admin->id,
-                    'order_id' => $order->id,
-                    'error' => $e->getMessage(),
-                ]);
-                try {
-                    $client->sendMessage((int) $admin->telegram_user_id, $caption."\n\n(ارسال فایل رسید ناموفق بود)", [
-                        'reply_markup' => $keyboard,
-                    ]);
-                } catch (Throwable) {
-                    // ignore
-                }
-            }
-        }
-    }
-
-    /** @return list<TelegramAccount> */
-    private function botAdmins(TelegramBot $bot): array
-    {
-        return TelegramAccount::query()
-            ->where('telegram_bot_id', $bot->id)
-            ->where('is_blocked', false)
-            ->where('is_bot_admin', true)
-            ->get()
-            ->filter(fn (TelegramAccount $a) => $a->isBotAdmin())
-            ->values()
-            ->all();
     }
 
     private function resolveBuyerAccount(TelegramBot $bot, Order $order): ?TelegramAccount

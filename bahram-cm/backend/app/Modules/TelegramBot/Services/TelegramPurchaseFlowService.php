@@ -102,6 +102,13 @@ class TelegramPurchaseFlowService
             return;
         }
 
+        $product->loadMissing('seminar');
+        if ($product->seminar && $product->seminar->isFull()) {
+            $client->sendMessage($chatId, "⛔ سمینار «{$product->seminar->title}» ظرفیتش تکمیل شده است.");
+
+            return;
+        }
+
         $conversation = $this->conversations->forAccount($account);
         $this->conversations->transition($conversation, ConversationState::Idle, [
             'checkout' => [

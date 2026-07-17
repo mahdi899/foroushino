@@ -119,6 +119,16 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
         ]);
     }
 
+    public function setMessageReaction(int|string $chatId, int $messageId, array $reaction = [['type' => 'emoji', 'emoji' => '✅']]): bool
+    {
+        return (bool) $this->call('setMessageReaction', [
+            'chat_id' => $chatId,
+            'message_id' => $messageId,
+            // Telegram expects a JSON-serialized array, not nested form fields.
+            'reaction' => json_encode(array_values($reaction), JSON_UNESCAPED_UNICODE),
+        ]);
+    }
+
     public function editMessageText(string $text, array $options = []): array|bool
     {
         return $this->call('editMessageText', ['text' => $text, ...$options]);
