@@ -37,24 +37,26 @@ export function BottomSheet({ open, onClose, children, title, className }: Botto
               if (info.offset.y > 120) onClose()
             }}
             className={cn(
-              'glass-nav absolute inset-x-0 bottom-0 z-50 flex max-h-[88%] flex-col',
-              'rounded-t-[28px] border-t border-white/70 dark:border-white/10',
+              'glass-sheet absolute inset-x-0 bottom-0 z-50 flex max-h-[88%] flex-col',
+              'rounded-t-[20px]',
               className,
             )}
           >
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/90 to-transparent dark:via-white/12" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-black/[0.08] dark:bg-white/[0.1]" />
 
-            <div className="flex shrink-0 justify-center pb-1 pt-3">
-              <div className="glass-inset h-1.5 w-11 rounded-full border border-white/50 dark:border-white/10" />
+            <div className="flex shrink-0 justify-center pb-1 pt-2.5">
+              <div className="h-[5px] w-9 rounded-full bg-black/15 dark:bg-white/20" />
             </div>
 
             {title && (
-              <div className="shrink-0 px-5 pb-3 pt-1">
-                <h3 className="text-[17px] font-bold tracking-tight text-text">{title}</h3>
+              <div className="shrink-0 px-5 pb-2 pt-0.5 text-center">
+                <h3 className="text-[13px] font-semibold uppercase tracking-[0.02em] text-text-muted">
+                  {title}
+                </h3>
               </div>
             )}
 
-            <div className="overflow-y-auto no-scrollbar px-5 pb-[calc(20px+var(--safe-bottom))]">
+            <div className="overflow-y-auto no-scrollbar px-4 pb-[calc(16px+var(--safe-bottom))] pt-1">
               {children}
             </div>
           </motion.div>

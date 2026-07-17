@@ -108,7 +108,7 @@ export function CallMethodSheet() {
             <>
               {/* Lead identity */}
               <div className="flex flex-col items-center px-2 pt-1 text-center">
-                <LeadAvatar lead={lead} size={56} ring showTempBadge />
+                <LeadAvatar lead={lead} size={56} ring showTempBadge animated />
                 <h2 className="mt-2.5 text-[18px] font-bold text-text">
                   {lead.firstName} {lead.lastName}
                 </h2>

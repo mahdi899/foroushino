@@ -14,6 +14,19 @@ export function isShiftOpen(session: WorkSession | null | undefined): boolean {
   return Boolean(session?.startedAt && !session?.endedAt)
 }
 
+/** Keep a just-started local shift when sync has not caught up yet. */
+export function mergeSyncedWorkSession(
+  local: WorkSession | null | undefined,
+  remote: WorkSession | null | undefined,
+): WorkSession | null {
+  if (remote && isShiftOpen(remote)) return remote
+  if (isShiftOpen(local)) {
+    if (!remote) return local ?? null
+    if (remote.endedAt) return remote
+  }
+  return remote ?? null
+}
+
 export function calcLiveProductiveSeconds(
   session: WorkSession,
   availability: Availability,

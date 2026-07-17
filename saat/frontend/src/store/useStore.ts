@@ -75,7 +75,7 @@ import { deriveWalletFromCommissions, resolveWithdrawableBalance } from '@/lib/w
 import type { SyncPayload } from '@/services/sync'
 import type { TeamLiveData } from '@/services/teamLive'
 import { agentsFromTeamLive, mergeTeamLiveIntoAgents, teamsFromTeamLive } from '@/services/teamLive'
-import { isProductiveAvailability, mergeClosedSessionIntoDaySummaries } from '@/lib/shiftUtils'
+import { isProductiveAvailability, mergeClosedSessionIntoDaySummaries, mergeSyncedWorkSession } from '@/lib/shiftUtils'
 import { getManagedTeam } from '@/lib/teamUtils'
 import { mergeAgentDailyStats, syncAllAgentsDailyStats, syncCurrentAgentDailyStats, conversionRateFromStats } from '@/lib/dailyGoal'
 import { todayDateKey } from '@/lib/businessDate'
@@ -1697,7 +1697,7 @@ export const useStore = create<AppState>()(
             availability: payload.availability,
             availabilityChangedAt: payload.availabilityChangedAt,
             availabilityAutoReason: null,
-            workSession: payload.workSession,
+            workSession: mergeSyncedWorkSession(state.workSession, payload.workSession),
             workDaySummaries: payload.workDaySummaries,
             currentAgentId: payload.agent.id,
             role: payload.role,

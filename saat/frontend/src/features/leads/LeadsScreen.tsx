@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Flame, Sun, Snowflake, CalendarClock, AlertTriangle, Lock, Undo2, UserPlus } from 'lucide-react'
+import { Lock, Undo2, UserPlus } from 'lucide-react'
 import { hasPermission } from '@/lib/permissions'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
-import { Chip, type ChipTone } from '@/components/ui/Chip'
+import { LeadFilterBar, type LeadFilterItem } from '@/components/domain/LeadFilterBar'
+import type { LeadFilterId } from '@/components/domain/LeadFilterIcons'
 import { LeadCard } from '@/components/domain/LeadCard'
 import { LeadQuickViewSheet } from '@/components/domain/LeadQuickViewSheet'
 import { EmptyState } from '@/components/ui/States'
@@ -14,20 +15,21 @@ import { isToday, isOverdue, toFa } from '@/lib/format'
 import { canCallLead, filterLeadsForAgent, assignedAgentLabel as resolveAssignedAgentLabel } from '@/lib/leadUtils'
 import { filterLeadsForScope } from '@/lib/teamUtils'
 import { isManagementRole, isSupervisorRole } from '@/lib/roles'
+import { BRAND_SOFT } from '@/lib/brand'
 import { haptic } from '@/lib/telegram'
 import type { Lead } from '@/types'
 import { useRemoteDataReady } from '@/providers/SyncProvider'
 import { cn } from '@/lib/cn'
 
-type Filter = 'all' | 'hot' | 'warm' | 'cold' | 'today' | 'overdue'
+type Filter = LeadFilterId
 
-const filters: { id: Filter; label: string; icon?: typeof Flame; tone: ChipTone }[] = [
-  { id: 'all', label: 'همه', tone: 'neutral' },
-  { id: 'hot', label: 'خیلی جدی', icon: Flame, tone: 'hot' },
-  { id: 'warm', label: 'علاقه‌مند', icon: Sun, tone: 'warm' },
-  { id: 'cold', label: 'کم‌علاقه', icon: Snowflake, tone: 'cold' },
-  { id: 'today', label: 'امروز', icon: CalendarClock, tone: 'primary' },
-  { id: 'overdue', label: 'عقب‌افتاده', icon: AlertTriangle, tone: 'error' },
+const filters: LeadFilterItem[] = [
+  { id: 'all', label: 'همه' },
+  { id: 'hot', label: 'خیلی جدی' },
+  { id: 'warm', label: 'علاقه‌مند' },
+  { id: 'cold', label: 'کم‌علاقه' },
+  { id: 'today', label: 'امروز' },
+  { id: 'overdue', label: 'عقب‌افتاده' },
 ]
 
 function matchesFilter(lead: Lead, filter: Filter): boolean {
@@ -115,68 +117,50 @@ export function LeadsScreen() {
         subtitle={`${toFa(visibleLeads.length)} فعال`}
         className="pb-1"
       >
-        <div className="glass-inset -mx-0.5 overflow-hidden rounded-[16px] border border-white/50 p-1 dark:border-white/10">
-          <div className="-mx-0.5 flex gap-1.5 overflow-x-auto overflow-y-visible px-0.5 py-0.5 no-scrollbar">
-            {filters.map((f) => {
-              const Icon = f.icon
-              const count = filterCounts[f.id]
-              return (
-                <Chip
-                  key={f.id}
-                  active={filter === f.id}
-                  tone={f.tone}
-                  onClick={() => setFilter(f.id)}
-                  icon={Icon ? <Icon size={13} /> : undefined}
-                  className="h-8 px-3 text-[12px]"
-                >
-                  {f.label}
-                  {count > 0 && f.id !== 'all' && (
-                    <span
-                      className={cn(
-                        'rounded-full px-1.5 py-0.5 text-[9px] tabular-nums',
-                        filter === f.id ? 'bg-white/25' : 'bg-black/[0.06] dark:bg-white/10',
-                      )}
-                    >
-                      {toFa(count)}
-                    </span>
-                  )}
-                </Chip>
-              )
-            })}
-          </div>
-        </div>
+        <LeadFilterBar
+          filters={filters}
+          active={filter}
+          counts={filterCounts}
+          onChange={setFilter}
+        />
 
         {(canIntakeLeads || lockedCount > 0 || returnedCount > 0) && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {canIntakeLeads && (
-              <button
+              <motion.button
                 type="button"
+                whileTap={{ scale: 0.94 }}
                 onClick={() => navigate('/leads/intake')}
-                className="glass-inset inline-flex items-center gap-1.5 rounded-full border border-[#3390EC]/20 px-3 py-1.5 text-[11px] font-bold text-[#3390EC] dark:border-[#8774E1]/25 dark:text-[#8774E1]"
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold',
+                  BRAND_SOFT,
+                )}
               >
                 <UserPlus size={13} strokeWidth={2.35} />
                 ورود مشتری
-              </button>
+              </motion.button>
             )}
             {lockedCount > 0 && (
-              <button
+              <motion.button
                 type="button"
+                whileTap={{ scale: 0.94 }}
                 onClick={() => navigate('/leads/locked')}
-                className="glass-inset inline-flex items-center gap-1.5 rounded-full border border-error-300/50 px-3 py-1.5 text-[11px] font-bold text-error-600 dark:border-error-500/25"
+                className="inline-flex items-center gap-1.5 rounded-full border border-error-300/50 bg-error-500/8 px-3 py-1.5 text-[11px] font-bold text-error-600 dark:border-error-500/25 dark:bg-error-500/10"
               >
                 <Lock size={13} strokeWidth={2.35} />
                 قفل‌شده {toFa(lockedCount)}
-              </button>
+              </motion.button>
             )}
             {returnedCount > 0 && (
-              <button
+              <motion.button
                 type="button"
+                whileTap={{ scale: 0.94 }}
                 onClick={() => navigate('/leads/returned')}
-                className="glass-inset inline-flex items-center gap-1.5 rounded-full border border-white/50 px-3 py-1.5 text-[11px] font-bold text-text-soft dark:border-white/10"
+                className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.06] bg-black/[0.04] px-3 py-1.5 text-[11px] font-bold text-text-soft dark:border-white/10 dark:bg-white/[0.06]"
               >
                 <Undo2 size={13} strokeWidth={2.35} />
                 برگشت‌خورده {toFa(returnedCount)}
-              </button>
+              </motion.button>
             )}
           </div>
         )}

@@ -64,7 +64,7 @@ import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { SyncProvider } from '@/providers/SyncProvider'
 import { ShiftPresenceWatcher } from '@/providers/ShiftPresenceWatcher'
 import { DayRolloverWatcher } from '@/providers/DayRolloverWatcher'
-import { useStandalonePwa } from '@/lib/pwa'
+import { useAppShellLayout } from '@/lib/appLayout'
 
 const NAV_ROUTES = ['/home', '/leads', '/followups', '/profile', '/team', '/teams']
 
@@ -132,8 +132,9 @@ function Shell() {
   return (
     <main
       className={cn(
-        'relative h-full overflow-hidden transition-colors duration-500',
-        availability === 'doing_follow_up' && 'bg-warning-50/55 dark:bg-warning-500/8',
+        'relative h-full w-full min-w-0 max-w-full overflow-x-hidden bg-background font-sans transition-colors duration-500',
+        availability === 'doing_follow_up' &&
+          'shadow-[inset_0_2px_0_0_rgba(255,176,0,0.45)] dark:shadow-[inset_0_2px_0_0_rgba(255,176,0,0.32)]',
       )}
     >
       <div
@@ -226,7 +227,7 @@ function ThemeApplier() {
 }
 
 export default function App() {
-  const standalone = useStandalonePwa()
+  const { mode } = useAppShellLayout()
 
   useEffect(() => {
     initTelegram()
@@ -237,15 +238,16 @@ export default function App() {
       <ThemeApplier />
       <div
         className={cn(
-          'flex min-h-[100dvh] w-full items-center justify-center',
-          standalone ? 'bg-background' : 'bg-background sm:p-4',
+          'font-sans flex min-h-[100dvh] w-full min-w-0 max-w-[100vw] antialiased',
+          mode === 'preview' ? 'items-center justify-center bg-background sm:p-4' : 'bg-background',
         )}
       >
         <div
+          data-shell={mode}
           className={cn(
-            'app-shell relative overflow-hidden bg-background',
-            standalone
-              ? 'h-[100dvh] w-full'
+            'app-shell relative overflow-x-hidden bg-background font-sans',
+            mode === 'device'
+              ? 'mx-auto h-[100dvh] w-full min-w-0'
               : 'h-[100dvh] w-full max-w-[440px] sm:h-[896px] sm:max-h-[94vh] sm:rounded-[44px] sm:border-[8px] sm:border-neutral-900 sm:shadow-2xl dark:sm:border-neutral-800/80 dark:sm:shadow-black/60',
           )}
         >

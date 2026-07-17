@@ -14,7 +14,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['IRANSansXFaNum', 'Tahoma', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-sans)', 'IRANSansXFaNum', 'Tahoma', 'system-ui', 'sans-serif'],
       },
       colors: {
         primary: {

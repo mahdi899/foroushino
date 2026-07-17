@@ -15,7 +15,7 @@ interface ChipProps {
 
 const activeStyles: Record<ChipTone, string> = {
   primary:
-    'bg-[#3390EC] text-white border-[#3390EC] shadow-[0_4px_14px_-4px_rgba(51,144,236,0.55)] dark:bg-[#8774E1] dark:border-[#8774E1] dark:shadow-[0_4px_14px_-4px_rgba(135,116,225,0.55)]',
+    'bg-primary-600 text-white border-primary-600 shadow-[0_4px_14px_-4px_rgba(0,111,117,0.45)] dark:bg-primary-500 dark:border-primary-500 dark:shadow-[0_4px_14px_-4px_rgba(0,140,150,0.4)]',
   hot: 'bg-hot-600 text-white border-hot-600 shadow-[0_4px_14px_-4px_rgba(255,107,0,0.45)]',
   warm: 'bg-warm-600 text-white border-warm-600 shadow-[0_4px_14px_-4px_rgba(255,176,0,0.45)]',
   cold: 'bg-cold-600 text-white border-cold-600 shadow-[0_4px_14px_-4px_rgba(82,107,128,0.45)]',

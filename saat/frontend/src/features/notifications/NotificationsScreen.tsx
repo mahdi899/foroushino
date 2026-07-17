@@ -1,39 +1,34 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Flame,
-  Clock,
-  Award,
-  Bell,
-  CheckCheck,
-  BadgeDollarSign,
-  Wallet,
-  ShieldAlert,
-  PlayCircle,
-  type LucideIcon,
-} from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { CheckCheck, ChevronLeft } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
 import { EmptyState } from '@/components/ui/States'
+import { NOTIFICATION_ICON_STYLES } from '@/components/domain/NotificationIcons'
 import { relativeDayTime } from '@/lib/format'
-import type { AppNotification } from '@/types'
 import { cn } from '@/lib/cn'
 
-const kindConfig: Record<AppNotification['kind'], { icon: LucideIcon; bg: string; fg: string }> = {
-  lead: { icon: Flame, bg: 'bg-hot-50', fg: 'text-hot-600' },
-  followup: { icon: Clock, bg: 'bg-warning-50', fg: 'text-warning-600' },
-  achievement: { icon: Award, bg: 'bg-secondary-50', fg: 'text-secondary-600' },
-  system: { icon: Bell, bg: 'bg-primary-50', fg: 'text-primary-600' },
-  sale: { icon: BadgeDollarSign, bg: 'bg-success-50', fg: 'text-success-600' },
-  commission: { icon: Wallet, bg: 'bg-success-50', fg: 'text-success-600' },
-  payout: { icon: Wallet, bg: 'bg-primary-50', fg: 'text-primary-600' },
-  quality: { icon: ShieldAlert, bg: 'bg-error-50', fg: 'text-error-600' },
-  shift: { icon: PlayCircle, bg: 'bg-cold-50', fg: 'text-cold-600' },
+const listMotion = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.045, delayChildren: 0.04 },
+  },
+}
+
+const rowMotion = {
+  hidden: { opacity: 0, y: 12 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { type: 'spring' as const, stiffness: 420, damping: 34 },
+  },
 }
 
 export function NotificationsScreen() {
   const navigate = useNavigate()
+  const reduceMotion = useReducedMotion()
   const notifications = useStore((s) => s.notifications)
   const markAllRead = useStore((s) => s.markAllRead)
 
@@ -47,42 +42,100 @@ export function NotificationsScreen() {
       <TopBar
         title="اعلان‌ها"
         action={
-          <button onClick={markAllRead} className="flex h-10 w-10 items-center justify-center text-primary-600">
-            <CheckCheck size={20} />
-          </button>
+          notifications.length > 0 ? (
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.92 }}
+              onClick={markAllRead}
+              aria-label="علامت‌گذاری همه به‌عنوان خوانده‌شده"
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-black/[0.04] text-primary-600 transition-colors active:bg-black/[0.07] dark:bg-white/[0.08] dark:text-primary-400"
+            >
+              <CheckCheck size={18} strokeWidth={2.25} />
+            </motion.button>
+          ) : null
         }
       />
 
-      <div className="space-y-2.5 px-4">
+      <div className="px-4 pb-6 pt-1">
         {notifications.length === 0 ? (
           <EmptyState title="اعلانی نداری" description="همه چیز به‌روز است." />
         ) : (
-          notifications.map((n) => {
-            const { icon: Icon, bg, fg } = kindConfig[n.kind]
-            return (
-              <button
-                key={n.id}
-                onClick={() => n.href && navigate(n.href)}
-                disabled={!n.href}
-                className={cn(
-                  'flex w-full items-start gap-3 rounded-2xl p-3.5 border text-right',
-                  n.read ? 'bg-surface border-border/60' : 'bg-primary-50/40 border-primary-100',
-                )}
-              >
-                <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', bg, fg)}>
-                  <Icon size={18} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-[13px] font-extrabold text-neutral-900">{n.title}</p>
-                    {!n.read && <span className="h-2 w-2 shrink-0 rounded-full bg-primary-500" />}
-                  </div>
-                  <p className="mt-0.5 text-xs leading-5 text-neutral-500">{n.body}</p>
-                  <p className="mt-1 text-[10px] font-bold text-neutral-300">{relativeDayTime(n.createdAt)}</p>
-                </div>
-              </button>
-            )
-          })
+          <motion.div
+            className="ios-inset-group divide-y divide-black/[0.06] dark:divide-white/[0.08]"
+            variants={reduceMotion ? undefined : listMotion}
+            initial={reduceMotion ? false : 'hidden'}
+            animate={reduceMotion ? undefined : 'show'}
+          >
+            {notifications.map((n) => {
+              const { icon: Icon, tone } = NOTIFICATION_ICON_STYLES[n.kind]
+              const clickable = !!n.href
+
+              return (
+                <motion.button
+                  key={n.id}
+                  type="button"
+                  variants={reduceMotion ? undefined : rowMotion}
+                  whileTap={clickable ? { scale: 0.985 } : undefined}
+                  onClick={() => n.href && navigate(n.href)}
+                  disabled={!clickable}
+                  className={cn(
+                    'ios-list-row relative w-full text-right transition-colors',
+                    !n.read && 'bg-primary-500/[0.05] dark:bg-primary-400/[0.07]',
+                    !clickable && 'cursor-default',
+                  )}
+                >
+                  {!n.read ? (
+                    <motion.span
+                      aria-hidden
+                      className="absolute -left-0.5 top-3 h-2 w-2 rounded-full bg-primary-500 ring-2 ring-white dark:ring-[#2C2C2E]"
+                      animate={reduceMotion ? undefined : { scale: [1, 1.15, 1], opacity: [1, 0.75, 1] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                  ) : null}
+
+                  <motion.span
+                    className={cn('ios-action-icon', tone)}
+                    animate={
+                      reduceMotion || n.read
+                        ? undefined
+                        : { scale: [1, 1.06, 1] }
+                    }
+                    transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+                  >
+                    <Icon />
+                  </motion.span>
+
+                  <span className="min-w-0 flex-1 pr-1">
+                    <span className="flex items-start justify-between gap-2">
+                      <span
+                        className={cn(
+                          'block text-[15px] leading-[20px]',
+                          n.read ? 'font-semibold text-text' : 'font-bold text-text',
+                        )}
+                      >
+                        {n.title}
+                      </span>
+                    </span>
+                    <span className="mt-0.5 block line-clamp-2 text-[13px] leading-[18px] text-text-muted">
+                      {n.body}
+                    </span>
+                    <span className="mt-1.5 block text-[11px] font-medium text-text-soft">
+                      {relativeDayTime(n.createdAt)}
+                    </span>
+                  </span>
+
+                  {clickable ? (
+                    <ChevronLeft
+                      size={16}
+                      strokeWidth={2.2}
+                      className="shrink-0 self-center text-[#C7C7CC] dark:text-[#636366]"
+                      aria-hidden
+                    />
+                  ) : null}
+                </motion.button>
+              )
+            })}
+          </motion.div>
         )}
       </div>
     </Page>

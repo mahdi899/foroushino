@@ -62,7 +62,7 @@ export function AppHeader() {
               className="flex min-w-0 shrink flex-col items-start gap-0.5 overflow-hidden text-right"
             >
               <span className="flex min-w-0 items-center gap-1.5">
-                <span className="truncate text-[17px] font-bold leading-tight tracking-tight text-neutral-900">
+                <span className="truncate text-[17px] font-bold leading-tight tracking-tight text-text">
                   {agent.firstName} {agent.lastName}
                 </span>
                 <BadgeCheck size={16} className="shrink-0 text-primary-500" strokeWidth={2.5} />
@@ -81,8 +81,8 @@ export function AppHeader() {
                   shiftActive && availability === 'doing_follow_up'
                     ? 'border-warning-300/80 bg-warning-50/95 text-warning-800 dark:border-warning-400/30 dark:bg-warning-500/15 dark:text-warning-200'
                     : shiftActive
-                      ? 'glass-inset border-white/55 text-neutral-600 dark:border-white/10 dark:text-neutral-300'
-                      : 'border-warning-200/80 bg-warning-50/90 text-warning-700',
+                      ? 'glass-inset border-white/55 text-text-muted dark:border-white/10 dark:text-text-soft'
+                      : 'border-warning-200/80 bg-warning-50/90 text-warning-700 dark:border-warning-400/25 dark:bg-warning-500/12 dark:text-warning-200',
                 )}
               >
                 <span

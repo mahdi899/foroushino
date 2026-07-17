@@ -53,6 +53,17 @@ export function formatHms(totalSec: number): string {
   return formatDuration(totalSec)
 }
 
+/** Always HH:MM:SS — for shift / activity timers up to 8h+. */
+export function formatShiftHms(totalSec: number): string {
+  const safe = Math.max(0, Math.floor(totalSec))
+  const h = Math.floor(safe / 3600)
+  const m = Math.floor((safe % 3600) / 60)
+  const s = safe % 60
+  return toFa(
+    `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`,
+  )
+}
+
 export function formatMoney(amount: number): string {
   return toFa(Math.round(amount).toLocaleString('en-US'))
 }

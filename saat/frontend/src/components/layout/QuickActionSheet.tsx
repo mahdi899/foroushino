@@ -1,12 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import {
-  AlertTriangle,
-  CalendarPlus,
-  CalendarDays,
-  PhoneCall,
-  Users,
-  type LucideIcon,
-} from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { useStore } from '@/store/useStore'
 import { cn } from '@/lib/cn'
@@ -18,10 +11,28 @@ import {
   todayFollowups,
 } from '@/lib/leadUtils'
 import { toFa } from '@/lib/format'
+import {
+  QUICK_ACTION_ICON_STYLES,
+  QuickCallIcon,
+  QuickLeadsIcon,
+  QuickNewFollowupIcon,
+  QuickOverdueIcon,
+  QuickTodayIcon,
+} from '@/components/layout/QuickActionIcons'
+import type { ComponentType } from 'react'
 
 interface QuickActionSheetProps {
   open: boolean
   onClose: () => void
+}
+
+type ActionItem = {
+  key: string
+  icon: ComponentType<{ className?: string }>
+  iconStyle: (typeof QUICK_ACTION_ICON_STYLES)[keyof typeof QUICK_ACTION_ICON_STYLES]
+  label: string
+  desc: string
+  onClick: () => void
 }
 
 export function QuickActionSheet({ open, onClose }: QuickActionSheetProps) {
@@ -36,9 +47,11 @@ export function QuickActionSheet({ open, onClose }: QuickActionSheetProps) {
   const todayCount = todayFollowups(agentFollowups).length
   const callableCount = filterLeadsForAgent(leads, currentAgentId).length
 
-  const actions: { icon: LucideIcon; label: string; desc: string; onClick: () => void; urgent?: boolean }[] = [
+  const actions: ActionItem[] = [
     {
-      icon: PhoneCall,
+      key: 'next-call',
+      icon: QuickCallIcon,
+      iconStyle: QUICK_ACTION_ICON_STYLES.call,
       label: 'شروع تماس بعدی',
       desc: 'بهترین مشتری پیشنهادی سیستم',
       onClick: () => {
@@ -50,19 +63,22 @@ export function QuickActionSheet({ open, onClose }: QuickActionSheetProps) {
     ...(overdueCount > 0
       ? [
           {
-            icon: AlertTriangle,
+            key: 'overdue',
+            icon: QuickOverdueIcon,
+            iconStyle: QUICK_ACTION_ICON_STYLES.overdue,
             label: 'پیگیری‌های عقب‌افتاده',
             desc: `${toFa(overdueCount)} مورد از موعد گذشته`,
-            urgent: true,
             onClick: () => {
               onClose()
               navigate('/followups?bucket=overdue')
             },
-          },
+          } satisfies ActionItem,
         ]
       : []),
     {
-      icon: CalendarDays,
+      key: 'today',
+      icon: QuickTodayIcon,
+      iconStyle: QUICK_ACTION_ICON_STYLES.today,
       label: 'پیگیری‌های امروز',
       desc: todayCount > 0 ? `${toFa(todayCount)} مورد برای امروز` : 'برنامه تماس امروز',
       onClick: () => {
@@ -71,7 +87,9 @@ export function QuickActionSheet({ open, onClose }: QuickActionSheetProps) {
       },
     },
     {
-      icon: Users,
+      key: 'leads',
+      icon: QuickLeadsIcon,
+      iconStyle: QUICK_ACTION_ICON_STYLES.leads,
       label: 'لیست مشتریان',
       desc: `${toFa(callableCount)} مشتری در صف تو`,
       onClick: () => {
@@ -80,7 +98,9 @@ export function QuickActionSheet({ open, onClose }: QuickActionSheetProps) {
       },
     },
     {
-      icon: CalendarPlus,
+      key: 'new-followup',
+      icon: QuickNewFollowupIcon,
+      iconStyle: QUICK_ACTION_ICON_STYLES.newFollowup,
       label: 'پیگیری جدید',
       desc: 'یادآوری برای خودت بساز',
       onClick: () => {
@@ -92,36 +112,33 @@ export function QuickActionSheet({ open, onClose }: QuickActionSheetProps) {
 
   return (
     <BottomSheet open={open} onClose={onClose} title="اقدام سریع">
-      <div className="space-y-2 pt-1">
-        {actions.map((a) => {
-          const Icon = a.icon
+      <div className="ios-inset-group">
+        {actions.map((action, index) => {
+          const Icon = action.icon
+          const isLast = index === actions.length - 1
+
           return (
             <button
-              key={a.label}
-              onClick={a.onClick}
-              className={cn(
-                'flex w-full items-center gap-3 rounded-2xl border p-3.5 text-right active:bg-neutral-50 dark:active:bg-white/[0.04]',
-                a.urgent
-                  ? 'border-amber-300/70 bg-amber-50/50 dark:border-amber-400/25 dark:bg-amber-400/8'
-                  : 'border-border/70',
-              )}
+              key={action.key}
+              type="button"
+              onClick={action.onClick}
+              className={cn('ios-list-row', !isLast && 'ios-list-row-divider')}
             >
-              <span
-                className={cn(
-                  'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl',
-                  a.urgent
-                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-400/16 dark:text-amber-300'
-                    : 'bg-primary-50 text-primary-600 dark:bg-[#8774E1]/16 dark:text-[#8774E1]',
-                )}
-              >
-                <Icon size={20} />
+              <span className={cn('ios-action-icon', action.iconStyle)}>
+                <Icon />
               </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[14px] font-extrabold text-neutral-900 dark:text-neutral-100">
-                  {a.label}
-                </p>
-                <p className="text-[11px] font-bold text-neutral-400">{a.desc}</p>
-              </div>
+
+              <span className="min-w-0 flex-1 text-right">
+                <span className="block text-[17px] leading-[22px] text-text">{action.label}</span>
+                <span className="block text-[13px] leading-[18px] text-text-muted">{action.desc}</span>
+              </span>
+
+              <ChevronLeft
+                size={17}
+                strokeWidth={2.2}
+                className="shrink-0 text-[#C7C7CC] dark:text-[#636366]"
+                aria-hidden
+              />
             </button>
           )
         })}
