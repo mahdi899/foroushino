@@ -3,6 +3,8 @@
 namespace App\Modules\TelegramBot\Handlers;
 
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
+use App\Modules\TelegramBot\Enums\BotFeatureFlag;
+use App\Modules\TelegramBot\Enums\ConversationState;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramUpdate;
@@ -13,10 +15,8 @@ use App\Modules\TelegramBot\Services\RegistrationFlowService;
 use App\Modules\TelegramBot\Services\RequiredChatMembershipService;
 use App\Modules\TelegramBot\Services\TelegramCheckoutService;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
-use App\Modules\TelegramBot\Support\TelegramSiteUrl;
-use App\Services\Exceptions\PaymentException;
-use Illuminate\Validation\ValidationException;
-use Throwable;
+use App\Modules\TelegramBot\Services\TelegramPurchaseFlowService;
+use App\Modules\TelegramBot\Services\TelegramSubscriberEligibility;
 
 class CallbackQueryHandler implements UpdateHandlerInterface
 {
@@ -29,6 +29,8 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         private readonly TelegramProductCatalogService $catalog,
         private readonly TelegramCheckoutService $checkout,
         private readonly BotAdminPanelService $botAdmin,
+        private readonly TelegramSubscriberEligibility $subscriberEligibility,
+        private readonly TelegramPurchaseFlowService $purchaseFlow,
     ) {}
 
     public function handle(TelegramUpdate $update, TelegramBot $bot): void
@@ -44,6 +46,12 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             return;
         }
 
+        // Never interact inside groups/channels — admin UX stays in private chat only.
+        $chatType = (string) data_get($callback, 'message.chat.type', 'private');
+        if ($chatType !== 'private') {
+            return;
+        }
+
         $account = TelegramAccount::query()->firstOrCreate(
             [
                 'telegram_bot_id' => $bot->id,
@@ -56,6 +64,13 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             ],
         );
 
+        if (! $bot->is_active && ! $account->isBotAdmin()) {
+            $client = $this->clients->forBot($bot);
+            $this->answer($client, $callbackId, 'ربات موقتاً غیرفعال است.', true);
+
+            return;
+        }
+
         $client = $this->clients->forBot($bot);
         $messageId = (int) data_get($callback, 'message.message_id', 0);
 
@@ -63,8 +78,36 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             return;
         }
 
+        if (str_starts_with($data, 'support:cat:')) {
+            $this->handleSupportCategory($client, $bot, $account, $chatId, $callbackId, $data);
+
+            return;
+        }
+
+        if (str_starts_with($data, 'buy:skip:')) {
+            $productId = (int) substr($data, strlen('buy:skip:'));
+            $this->answer($client, $callbackId, 'ادامه بدون کد تخفیف');
+            $this->purchaseFlow->proceedToPaymentMethods($bot, $account, $chatId, $productId, null);
+
+            return;
+        }
+
         if (str_starts_with($data, 'buy:')) {
-            $this->handleBuy($client, $account, $chatId, $callbackId, $data);
+            $this->handleBuy($client, $bot, $account, $chatId, $callbackId, $data);
+
+            return;
+        }
+
+        if (str_starts_with($data, 'pay:zp:')) {
+            $this->answer($client, $callbackId, 'در حال آماده‌سازی…');
+            $this->purchaseFlow->startZarinpal($bot, $account, $chatId, (int) substr($data, 7));
+
+            return;
+        }
+
+        if (str_starts_with($data, 'pay:c2c:')) {
+            $this->answer($client, $callbackId, 'در حال ثبت سفارش…');
+            $this->purchaseFlow->startCardToCard($bot, $account, $chatId, (int) substr($data, 8));
 
             return;
         }
@@ -83,6 +126,46 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         }
     }
 
+    private function handleSupportCategory(
+        $client,
+        TelegramBot $bot,
+        TelegramAccount $account,
+        int $chatId,
+        string $callbackId,
+        string $data,
+    ): void {
+        $category = substr($data, strlen('support:cat:'));
+        if (! in_array($category, ['purchase', 'campaign_course', 'other'], true)) {
+            $this->answer($client, $callbackId, 'دسته نامعتبر است.', true);
+
+            return;
+        }
+
+        $requiresSub = $bot->featureEnabled(BotFeatureFlag::TicketRequiresSubscription)
+            || $bot->featureEnabled(BotFeatureFlag::SupportRequiresSubscription);
+
+        if ($requiresSub && ! $this->subscriberEligibility->hasQualifyingAccess($account)) {
+            $this->answer($client, $callbackId, 'اشتراک لازم است.', true);
+            $client->sendMessage($chatId, $this->subscriberEligibility->denialMessage());
+
+            return;
+        }
+
+        if (! $account->isLinked()) {
+            $this->answer($client, $callbackId, 'ابتدا ثبت‌نام کنید.', true);
+
+            return;
+        }
+
+        $conversation = $this->conversations->forAccount($account);
+        $this->conversations->transition($conversation, ConversationState::WaitingForSupportMessage, [
+            'support' => ['category' => $category],
+        ]);
+
+        $this->answer($client, $callbackId, 'پیام خود را بنویسید.');
+        $client->sendMessage($chatId, 'پیام پشتیبانی خود را بنویسید (یا «لغو»):');
+    }
+
     private function handleMembershipRecheck($client, TelegramBot $bot, TelegramAccount $account, int $chatId, string $callbackId): void
     {
         $this->membership->invalidateCache($bot, $account->telegram_user_id);
@@ -91,7 +174,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             $this->answer($client, $callbackId, '✅ عضویت تأیید شد.');
             if ($account->isLinked() && $account->hasVerifiedMobile()) {
                 $client->sendMessage($chatId, 'منوی اصلی:', [
-                    'reply_markup' => $this->mainMenu->replyMarkup($account),
+                    'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
                 ]);
             }
 
@@ -102,8 +185,14 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         $this->membership->promptJoin($bot, $account);
     }
 
-    private function handleBuy($client, TelegramAccount $account, int $chatId, string $callbackId, string $data): void
-    {
+    private function handleBuy(
+        $client,
+        TelegramBot $bot,
+        TelegramAccount $account,
+        int $chatId,
+        string $callbackId,
+        string $data,
+    ): void {
         $productId = (int) substr($data, 4);
         if ($productId <= 0) {
             $this->answer($client, $callbackId, 'محصول نامعتبر است.');
@@ -125,33 +214,34 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             return;
         }
 
-        try {
-            $result = $this->checkout->startCheckout($account, $product);
-        } catch (ValidationException $e) {
-            $message = collect($e->errors())->flatten()->first() ?: 'امکان شروع پرداخت وجود ندارد.';
-            $this->answer($client, $callbackId, (string) $message, true);
-            $client->sendMessage($chatId, (string) $message);
-
-            return;
-        } catch (PaymentException $e) {
-            $message = $e->getMessage() ?: 'درگاه پرداخت زرین‌پال آماده نیست.';
-            $this->answer($client, $callbackId, $message, true);
-            $client->sendMessage($chatId, $message);
-
-            return;
-        } catch (Throwable $e) {
-            $this->answer($client, $callbackId, 'خطا در اتصال به درگاه پرداخت.', true);
-            $client->sendMessage($chatId, 'شروع پرداخت ناموفق بود. لطفاً دوباره تلاش کنید یا از سایت خرید کنید.');
+        $zp = $this->checkout->zarinpalEnabled($bot);
+        $c2c = $this->checkout->cardToCardEnabled($bot);
+        if (! $zp && ! $c2c) {
+            $this->answer($client, $callbackId, 'هیچ روش پرداختی فعال نیست.', true);
+            $client->sendMessage($chatId, '⛔ پرداخت آنلاین و کارت‌به‌کارت هر دو غیرفعال‌اند. با پشتیبانی تماس بگیرید.');
 
             return;
         }
 
-        $amount = number_format((int) $result['amount']);
-        $this->answer($client, $callbackId, 'لینک پرداخت آماده شد.');
+        $conversation = $this->conversations->forAccount($account);
+        $this->conversations->transition($conversation, ConversationState::WaitingForDiscountCode, [
+            'checkout' => ['product_id' => $productId, 'coupon' => null],
+        ]);
+
+        $price = number_format((int) ($product->sale_price ?? $product->price ?? 0));
+        $this->answer($client, $callbackId, 'کد تخفیف؟');
         $client->sendMessage(
             $chatId,
-            "سفارش #{$result['order_id']}\n{$product->title}\nمبلغ قابل پرداخت: {$amount} تومان\n\nبرای پرداخت، دکمه زیر را بزنید.",
-            TelegramSiteUrl::linkMarkup($result['payment_url'], '💳 پرداخت آنلاین'),
+            "🛒 {$product->title}\nمبلغ: {$price} تومان\n\n"
+            ."اگر کد تخفیف دارید همین‌جا بفرستید (همان کدهای پنل سایت).\n"
+            .'کد معرف هم اگر با لینک معرفی وارد شده باشید خودکار اعمال می‌شود.',
+            [
+                'reply_markup' => [
+                    'inline_keyboard' => [
+                        [['text' => '⏭ بدون کد تخفیف', 'callback_data' => 'buy:skip:'.$productId]],
+                    ],
+                ],
+            ],
         );
     }
 

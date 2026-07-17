@@ -29,7 +29,15 @@ class AppServiceProvider extends ServiceProvider
         FamilyMedia::observe(FamilyMediaObserver::class);
 
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(120)->by($request->ip());
+            $perMinute = max(1, (int) config('bahram.api_rate_limit_per_minute', 120));
+
+            return Limit::perMinute($perMinute)->by($request->ip());
+        });
+
+        RateLimiter::for('student-auth', function (Request $request) {
+            $perMinute = max(1, (int) config('bahram.student_auth_rate_limit_per_minute', 30));
+
+            return Limit::perMinute($perMinute)->by($request->ip());
         });
 
         RateLimiter::for('leads', function (Request $request) {

@@ -10,6 +10,7 @@ import { JoinBanner } from '@/components/family/JoinBanner';
 import { JoinContextBoot } from '@/components/family/JoinContextBoot';
 import { OnboardingModal } from '@/components/family/OnboardingModal';
 import { useFamilyMemberCount } from '@/lib/family/hooks/useFamilyMemberCount';
+import { useOverlayHistoryBack } from '@/lib/family/hooks/useOverlayHistoryBack';
 import { invalidateAllFamilyBrowserCache } from '@/lib/family/browserCache';
 import { writeFamilyShellSnapshot } from '@/lib/family/shellCache';
 import type { FamilyBranding, FamilyComment, FamilyFeedResponse } from '@/lib/family/types';
@@ -78,6 +79,12 @@ export function FamilyHome({
 
   const closeComments = useCallback(() => setCommentsTarget(null), []);
   const closeNotifications = useCallback(() => setNotificationsOpen(false), []);
+
+  const overlayKey = commentsTarget ? 'comments' : notificationsOpen ? 'notifications' : null;
+  useOverlayHistoryBack(overlayKey, () => {
+    setCommentsTarget(null);
+    setNotificationsOpen(false);
+  });
 
   const previewMode = mode === 'guest' ? 'guest' : mode === 'join' ? 'join' : null;
   const isGuest = mode === 'guest';

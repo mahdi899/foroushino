@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SERVER_API_URL } from '@/lib/api/config';
+import { forwardedClientHeaders } from '@/lib/api/forwardedClientHeaders';
 import { extractValidationMessage } from '@/lib/services/api';
 import { STUDENT_TOKEN_COOKIE } from './session';
 
@@ -22,7 +23,11 @@ async function callStudentAuth(path: string, body: unknown): Promise<{ ok: boole
   try {
     const res = await fetch(`${SERVER_API_URL}/student${path}`, {
       method: 'POST',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        ...(await forwardedClientHeaders()),
+      },
       body: JSON.stringify(body),
       cache: 'no-store',
     });

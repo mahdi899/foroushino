@@ -75,6 +75,15 @@ export function DiscountCodeForm({
       .map((v) => Number(v.trim()))
       .filter((v) => Number.isFinite(v) && v > 0);
 
+    let restriction = form.restriction;
+    if (userIds.length > 0 && form.product_ids.length > 0 && restriction === 'all') {
+      restriction = 'specific_products';
+    } else if (userIds.length > 0 && restriction === 'all') {
+      restriction = 'specific_users';
+    } else if (form.product_ids.length > 0 && restriction === 'all') {
+      restriction = 'specific_products';
+    }
+
     const res = await saveDiscountCode(
       {
         code: form.code.trim().toUpperCase(),
@@ -90,7 +99,7 @@ export function DiscountCodeForm({
         min_order_amount: form.min_order_amount ? Number(form.min_order_amount) : null,
         max_discount_amount: form.max_discount_amount ? Number(form.max_discount_amount) : null,
         requires_link: form.requires_link,
-        restriction: form.restriction,
+        restriction,
         product_ids: form.product_ids,
         user_ids: userIds,
       },
@@ -131,16 +140,13 @@ export function DiscountCodeForm({
     }
   }
 
-  const showProducts =
-    form.restriction === 'specific_products' || form.restriction === 'prior_buyers';
-
   return (
     <form onSubmit={onSubmit} className="card max-w-3xl space-y-6 p-6">
       <section className="space-y-4">
-        <h3 className="text-h4">اطلاعات پایه</h3>
+        <h3 className="text-h4">۱. کد و درصد تخفیف</h3>
         <div className="grid gap-4 md:grid-cols-2">
           <label>
-            <span className="field-label">کد تخفیف *</span>
+            <span className="field-label">کد تخفیف (حروف/اعداد انگلیسی) *</span>
             <div className="flex gap-2">
               <input
                 className="field-input font-mono"
@@ -148,6 +154,7 @@ export function DiscountCodeForm({
                 value={form.code}
                 onChange={(e) => patch('code', e.target.value.toUpperCase())}
                 required
+                placeholder="مثلاً NOWROOZ20"
               />
               <button
                 type="button"
@@ -172,15 +179,11 @@ export function DiscountCodeForm({
           <span className="field-label">توضیحات</span>
           <textarea
             className="field-input"
-            rows={3}
+            rows={2}
             value={form.description}
             onChange={(e) => patch('description', e.target.value)}
           />
         </label>
-      </section>
-
-      <section className="space-y-4 border-t border-border pt-6">
-        <h3 className="text-h4">مقدار تخفیف</h3>
         <div className="grid gap-4 md:grid-cols-2">
           <label>
             <span className="field-label">نوع تخفیف</span>
@@ -198,7 +201,7 @@ export function DiscountCodeForm({
           </label>
           <label>
             <span className="field-label">
-              {form.discount_type === 'percent' ? 'درصد تخفیف' : 'مبلغ تخفیف (تومان)'}
+              {form.discount_type === 'percent' ? 'درصد تخفیف (۱ تا ۱۰۰) *' : 'مبلغ تخفیف (تومان) *'}
             </span>
             <input
               className="field-input"
@@ -221,7 +224,7 @@ export function DiscountCodeForm({
                 onChange={(e) =>
                   patch('max_discount_amount', e.target.value ? Number(e.target.value) : null)
                 }
-                placeholder="اختیاری"
+                placeholder="اختیاری — خالی = بدون سقف"
               />
             </label>
           ) : null}
@@ -240,18 +243,49 @@ export function DiscountCodeForm({
       </section>
 
       <section className="space-y-4 border-t border-border pt-6">
-        <h3 className="text-h4">زمان‌بندی و محدودیت مصرف</h3>
+        <h3 className="text-h4">۲. کاربر، انقضا و سقف مصرف</h3>
+        <p className="text-caption text-muted">
+          برای کد عمومی محدودیت کاربر را خالی بگذارید. فیلدهای خالی یعنی بدون محدودیت (مثل /null در ربات).
+        </p>
+        <label>
+          <span className="field-label">شناسه کاربر خاص (سایت) — خالی = عمومی</span>
+          <input
+            className="field-input font-mono"
+            dir="ltr"
+            value={userIdsText}
+            onChange={(e) => {
+              setUserIdsText(e.target.value);
+              const hasUsers = e.target.value.trim().length > 0;
+              if (hasUsers && form.restriction === 'all') {
+                patch('restriction', 'specific_users');
+              }
+              if (!hasUsers && form.restriction === 'specific_users') {
+                patch('restriction', 'all');
+              }
+            }}
+            placeholder="خالی = عمومی — یا مثلاً 12, 45"
+          />
+          {code?.users?.length ? (
+            <ul className="mt-2 space-y-1 text-caption text-muted">
+              {code.users.map((user) => (
+                <li key={user.id}>
+                  #{user.id} — {user.name} {user.mobile ? `(${user.mobile})` : ''}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </label>
         <div className="grid gap-4 md:grid-cols-2">
           <label>
             <span className="field-label">شروع اعتبار</span>
             <JalaliDateTimeField value={form.starts_at} onChange={(v) => patch('starts_at', v)} />
           </label>
           <label>
-            <span className="field-label">پایان اعتبار</span>
+            <span className="field-label">زمان انقضا — خالی = بدون انقضا</span>
             <JalaliDateTimeField value={form.ends_at} onChange={(v) => patch('ends_at', v)} />
           </label>
           <label>
-            <span className="field-label">حداکثر مصرف کل</span>
+            <span className="field-label">حداکثر تعداد استفاده کل — خالی = نامحدود</span>
             <input
               className="field-input"
               type="number"
@@ -262,7 +296,7 @@ export function DiscountCodeForm({
             />
           </label>
           <label>
-            <span className="field-label">حداکثر مصرف هر کاربر</span>
+            <span className="field-label">حداکثر استفاده هر کاربر — خالی = نامحدود</span>
             <input
               className="field-input"
               type="number"
@@ -294,7 +328,7 @@ export function DiscountCodeForm({
       </section>
 
       <section className="space-y-4 border-t border-border pt-6">
-        <h3 className="text-h4">محدودیت مخاطب</h3>
+        <h3 className="text-h4">۳. اشتراک / محصول خاص</h3>
         <label>
           <span className="field-label">نوع محدودیت</span>
           <select
@@ -310,52 +344,37 @@ export function DiscountCodeForm({
           </select>
         </label>
 
-        {form.restriction === 'specific_users' ? (
-          <label>
-            <span className="field-label">شناسه دانشجویان (با کاما جدا کنید)</span>
-            <input
-              className="field-input font-mono"
-              dir="ltr"
-              value={userIdsText}
-              onChange={(e) => setUserIdsText(e.target.value)}
-              placeholder="12, 45, 78"
-            />
-            <span className="mt-1 block text-caption text-muted">
-              شناسه‌ها را از صفحه دانشجویان پیدا کنید.
-            </span>
-            {code?.users?.length ? (
-              <ul className="mt-2 space-y-1 text-caption text-muted">
-                {code.users.map((user) => (
-                  <li key={user.id}>
-                    #{user.id} — {user.name} {user.mobile ? `(${user.mobile})` : ''}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </label>
+        {form.restriction === 'specific_users' && !userIdsText.trim() ? (
+          <p className="text-caption text-muted">
+            برای محدودیت کاربر خاص، حداقل یک شناسه در بخش بالا وارد کنید.
+          </p>
         ) : null}
 
-        {showProducts ? (
-          <div>
-            <span className="field-label">
-              {form.restriction === 'prior_buyers'
-                ? 'محصولات خرید قبلی (خالی = هر خرید موفق)'
-                : 'محصولات مجاز'}
-            </span>
-            <div className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-lg border border-border p-3">
-              {products.map((product) => (
-                <label key={product.id} className="flex items-center gap-2 text-small">
-                  <input
-                    type="checkbox"
-                    checked={form.product_ids.includes(product.id)}
-                    onChange={() => toggleProduct(product.id)}
-                  />
-                  <span>{product.title}</span>
-                </label>
-              ))}
-            </div>
+        <div>
+          <span className="field-label">
+            {form.restriction === 'prior_buyers'
+              ? 'محصولات خرید قبلی (خالی = هر خرید موفق)'
+              : 'اشتراک‌های مجاز — خالی = همه اشتراک‌ها'}
+          </span>
+          <div className="mt-2 max-h-48 space-y-2 overflow-y-auto rounded-lg border border-border p-3">
+            {products.map((product) => (
+              <label key={product.id} className="flex items-center gap-2 text-small">
+                <input
+                  type="checkbox"
+                  checked={form.product_ids.includes(product.id)}
+                  onChange={() => {
+                    const selecting = !form.product_ids.includes(product.id);
+                    toggleProduct(product.id);
+                    if (selecting && form.restriction === 'all') {
+                      patch('restriction', 'specific_products');
+                    }
+                  }}
+                />
+                <span>{product.title}</span>
+              </label>
+            ))}
           </div>
-        ) : null}
+        </div>
       </section>
 
       <section className="space-y-3 border-t border-border pt-6">

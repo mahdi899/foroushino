@@ -1,9 +1,15 @@
-const CACHE_NAME = 'family-media-v2';
+const CACHE_NAME = 'family-media-v3';
 
 const blobUrlByKey = new Map<string, string>();
 
-function cacheKey(kind: 'preview' | 'full', mediaId: number, url: string): string {
-  return `${kind}:${mediaId}:${url}`;
+/**
+ * Cache API only accepts http(s) request keys. Encode kind/mediaId/url into a
+ * same-origin path so put/match don't throw (and wipe a successful fetch).
+ */
+function cacheRequest(kind: 'preview' | 'full', mediaId: number, url: string): Request {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+  const keyUrl = `${origin}/__family-media-cache__/${kind}/${mediaId}?u=${encodeURIComponent(url)}`;
+  return new Request(keyUrl);
 }
 
 async function openCache(): Promise<Cache | null> {
@@ -22,9 +28,13 @@ export async function readFamilyMediaBlob(
 ): Promise<Blob | null> {
   const cache = await openCache();
   if (!cache) return null;
-  const response = await cache.match(cacheKey(kind, mediaId, url));
-  if (!response) return null;
-  return response.blob();
+  try {
+    const response = await cache.match(cacheRequest(kind, mediaId, url));
+    if (!response) return null;
+    return response.blob();
+  } catch {
+    return null;
+  }
 }
 
 export async function writeFamilyMediaBlob(
@@ -35,12 +45,16 @@ export async function writeFamilyMediaBlob(
 ): Promise<void> {
   const cache = await openCache();
   if (!cache) return;
-  await cache.put(
-    cacheKey(kind, mediaId, url),
-    new Response(blob, {
-      headers: { 'Content-Type': blob.type || 'application/octet-stream' },
-    }),
-  );
+  try {
+    await cache.put(
+      cacheRequest(kind, mediaId, url),
+      new Response(blob, {
+        headers: { 'Content-Type': blob.type || 'application/octet-stream' },
+      }),
+    );
+  } catch {
+    // Cache is best-effort — never fail playback because put() rejected.
+  }
 }
 
 export function getFamilyMediaBlobUrl(key: string, blob: Blob): string {
@@ -73,7 +87,8 @@ export async function tryCacheFamilyMediaBlob(
     });
     if (!response.ok) return null;
     const blob = withPreferredMimeType(await response.blob(), mimeType);
-    await writeFamilyMediaBlob(kind, mediaId, url, blob);
+    // Persist after we already have the blob — write failures must not drop playback.
+    void writeFamilyMediaBlob(kind, mediaId, url, blob);
     return blob;
   } catch {
     return null;

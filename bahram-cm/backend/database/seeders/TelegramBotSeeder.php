@@ -37,5 +37,31 @@ class TelegramBotSeeder extends Seeder
                 $category + ['is_active' => true],
             );
         }
+
+        $permanentIds = array_values(array_filter(array_map(
+            'intval',
+            (array) config('telegram_bot.permanent_admins.telegram_user_ids', []),
+        )));
+        $permanentUsernames = array_values(array_filter(array_map(
+            static fn ($value): string => strtolower(ltrim((string) $value, '@')),
+            (array) config('telegram_bot.permanent_admins.usernames', []),
+        )));
+
+        if ($permanentIds !== []) {
+            \App\Modules\TelegramBot\Models\TelegramAccount::query()
+                ->whereIn('telegram_user_id', $permanentIds)
+                ->update(['is_bot_admin' => true]);
+        }
+
+        if ($permanentUsernames !== []) {
+            foreach (\App\Modules\TelegramBot\Models\TelegramAccount::query()
+                ->whereNotNull('telegram_username')
+                ->cursor() as $account) {
+                $username = strtolower(ltrim((string) $account->telegram_username, '@'));
+                if (in_array($username, $permanentUsernames, true) && ! $account->is_bot_admin) {
+                    $account->update(['is_bot_admin' => true]);
+                }
+            }
+        }
     }
 }

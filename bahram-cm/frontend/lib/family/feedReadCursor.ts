@@ -49,8 +49,9 @@ function emitFeedReadChanged(postId: number): void {
 }
 
 /**
- * Cursor used for unread UX. Prefer the pointer that still has unread vs the loaded feed
- * so nav badge and in-app landing stay aligned when local/global keys drifted.
+ * Cursor used for unread UX for this viewer.
+ * Do not inherit another viewer's global cursor on first enter — that lands
+ * the feed on old posts instead of the tip after login/join.
  */
 export function resolveUnreadCursor(
   viewerKey: string | number,
@@ -60,12 +61,10 @@ export function resolveUnreadCursor(
   if (handoff > 0) return handoff;
 
   const local = getLastReadPostId(viewerKey);
-  const global = getGlobalLastReadPostId();
-  if (postsAsc.length > 0) {
-    if (local > 0 && hasUnreadSince(postsAsc, local)) return local;
-    if (global > 0 && hasUnreadSince(postsAsc, global)) return global;
-  }
-  return local || global || 0;
+  if (local <= 0) return 0;
+
+  if (postsAsc.length > 0 && hasUnreadSince(postsAsc, local)) return local;
+  return local;
 }
 
 export function peekEnterUnreadAfter(): number {

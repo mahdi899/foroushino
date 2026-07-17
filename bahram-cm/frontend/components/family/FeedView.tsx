@@ -141,7 +141,6 @@ export function FeedView({
 }) {
   const isPreview = Boolean(previewMode);
   useFamilyDebugRender(isPreview ? 'FeedView:preview' : 'FeedView');
-  const effectivePreviewMode = previewMode ?? 'guest';
   const feedScope: 'guest' | 'member' = isPreview ? 'guest' : 'member';
   const initialPage = initialFeed ? { data: initialFeed.data, meta: initialFeed.meta } : null;
   const guestAccess = useFamilyGuestAccessOptional();
@@ -175,13 +174,13 @@ export function FeedView({
 
   const scrollToPreviewCta = useCallback(
     (action: FamilyGuestAction = 'morePosts') => {
-      if (effectivePreviewMode === 'guest') {
+      if (previewMode === 'guest') {
         handleGuestGate(action);
         return;
       }
       document.getElementById('family-join-cta')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     },
-    [effectivePreviewMode, handleGuestGate],
+    [handleGuestGate, previewMode],
   );
   const feedScrollRef = useRef<FamilyFeedScrollHandle | null>(null);
   const virtualListRef = useRef<VirtualFeedListHandle | null>(null);
@@ -222,6 +221,11 @@ export function FeedView({
   const unreadSplitRef = useRef<number | null>(null);
   /** Blocks tip-stick / scroll-to-latest while unread landing is in progress. */
   const unreadBootLockRef = useRef(false);
+  /**
+   * After caught-up boot, keep re-sticking through image/chrome-inset growth.
+   * Cleared when tip is truly reached or the settle window ends.
+   */
+  const tipSettleUntilRef = useRef(0);
   /** Last unreadSplitId we already finished landing for — prevents re-pin loops. */
   const unreadLandCompletedForRef = useRef<number | null>(null);
   /** Bumps to cancel in-flight scrollToLatestReliable rAF/timeouts. */
@@ -244,13 +248,13 @@ export function FeedView({
     [posts, isPreview, unreadSplitId, unreadDividerCount],
   );
   const guestBlurredPostIds = useMemo(() => {
-    if (effectivePreviewMode !== 'guest') return new Set<number>();
+    if (previewMode !== 'guest') return new Set<number>();
     const ids = feedItems
       .filter((item): item is Extract<FeedListItem, { kind: 'post' }> => item.kind === 'post')
       .slice(0, GUEST_BLURRED_POST_COUNT)
       .map((item) => item.post.id);
     return new Set(ids);
-  }, [effectivePreviewMode, feedItems]);
+  }, [feedItems, previewMode]);
   const feedItemsRef = useRef(feedItems);
   const hasMoreRef = useRef(hasMore);
   const postsRef = useRef(posts);
@@ -543,16 +547,21 @@ export function FeedView({
     const distance = lenis
       ? getLenisDistanceFromBottom(lenis)
       : getFeedDistanceFromBottom(root);
-    // Already at tip — skip lenis.resize()/scrollTo storms (unread divider clear, image decode).
+    const settling = performance.now() < tipSettleUntilRef.current;
+
+    // Already at tip — skip scroll storms (unread divider clear, image decode).
     if (distance < 8) return;
-    // Anchor flag is stale (user scrolled away) — don't yank.
-    if (distance > 96) {
+
+    // User scrolled away — don't yank. During tip settle after boot, content often
+    // grows >96px (images / chrome inset); keep sticking instead of releasing.
+    if (distance > 96 && !settling) {
       anchoredToBottomRef.current = false;
       return;
     }
 
     familyFeedDebug.warn('stick', 'scroll to latest (anchored)', {
       distance: Math.round(distance),
+      settling,
     });
     scrollFeedToLatest('auto', { root, lenis });
   }, [getScrollCtx]);
@@ -599,6 +608,8 @@ export function FeedView({
       window.clearTimeout(revealTimerRef.current);
       revealTimerRef.current = null;
     }
+    // History load is safe only after the boot scroll target is applied.
+    historyReadyRef.current = true;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => setFeedReady(true));
     });
@@ -650,7 +661,9 @@ export function FeedView({
         requestAnimationFrame(run);
       });
       window.setTimeout(run, 120);
-      window.setTimeout(run, 360);
+      window.setTimeout(run, 400);
+      // Late pass after images / chrome inset (pinned bar) finish growing.
+      window.setTimeout(run, 1000);
     },
     [getScrollCtx],
   );
@@ -724,6 +737,24 @@ export function FeedView({
       tipInView &&
       remainingUnread === 0 &&
       !(unreadSession && lastReadInView);
+
+    // While tip is still settling after caught-up boot, don't drop the anchor just
+    // because media/chrome inset grew the scroll height (that showed the jump FAB early).
+    // If the user clearly scrolled away, cancel settle immediately.
+    const settling = performance.now() < tipSettleUntilRef.current;
+    if (settling && !atBottom && anchoredToBottomRef.current) {
+      if (distanceFromBottom > 220) {
+        tipSettleUntilRef.current = 0;
+        anchoredToBottomRef.current = false;
+      } else {
+        setJumpFabVisible(false);
+        return;
+      }
+    }
+    if (settling && atBottom) {
+      tipSettleUntilRef.current = 0;
+    }
+
     anchoredToBottomRef.current = atBottom;
 
     const badgeCount = remainingUnread;
@@ -1052,7 +1083,7 @@ export function FeedView({
             });
           });
         anchoredToBottomRef.current = false;
-        historyReadyRef.current = true;
+        // historyReady enabled in revealFeed after unread land completes
         return;
       }
 
@@ -1063,15 +1094,17 @@ export function FeedView({
         setLastReadPostId(viewerKey, latestId);
       }
 
-      historyReadyRef.current = true;
+      // historyReady enabled in revealFeed after tip scroll
       anchoredToBottomRef.current = true;
       unreadBootLockRef.current = false;
+      // Keep sticking through image decode / pinned chrome inset after reveal.
+      tipSettleUntilRef.current = performance.now() + 2200;
       scrollToLatestReliable('auto');
       scheduleRevealFeed(160);
       return;
     }
 
-    if (!historyReadyRef.current) {
+    if (!historyReadyRef.current && feedReady) {
       historyReadyRef.current = true;
     }
   }, [
@@ -1292,7 +1325,9 @@ export function FeedView({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (!historyReadyRef.current || pinNavigateRef.current) return;
+        // Wait until boot tip/unread scroll finished — otherwise the top sentinel
+        // fires at scrollTop≈0 and loadMore pins the feed on oldest posts.
+        if (!feedReadyRef.current || !historyReadyRef.current || pinNavigateRef.current) return;
         if (!entries[0]?.isIntersecting || isValidatingRef.current || loadingHistoryRef.current) {
           return;
         }
@@ -1378,7 +1413,7 @@ export function FeedView({
           post={item.post}
           memberCount={resolvedMemberCount}
           isStaff={isStaff}
-          previewMode={isPreview ? effectivePreviewMode : null}
+          previewMode={previewMode}
           viewerKey={viewerKey}
           onGuestGate={scrollToPreviewCta}
           animateEnter={animateEnter}
@@ -1389,13 +1424,13 @@ export function FeedView({
       );
     },
     [
-      effectivePreviewMode,
       feedReady,
       guestBlurredPostIds,
       handleGuestGate,
       isPreview,
       isStaff,
       openPostComments,
+      previewMode,
       resolvedMemberCount,
       scrollToPreviewCta,
       viewerKey,
@@ -1446,7 +1481,7 @@ export function FeedView({
       <FamilyBrandingSidebar
         memberCount={resolvedMemberCount}
         isMember={!isPreview}
-        guestStoriesLocked={effectivePreviewMode === 'guest'}
+        guestStoriesLocked={previewMode === 'guest'}
         initialBranding={initialBranding}
         notificationsActive={notificationsOpen}
         onOpenNotifications={onOpenNotifications}
@@ -1509,9 +1544,9 @@ export function FeedView({
                 style={chromeInset > 0 ? { paddingTop: chromeInset } : undefined}
               >
               <div ref={feedContentRef} className="family-feed-content mx-auto flex w-full max-w-[680px] flex-col">
-              {isPreview && effectivePreviewMode && posts.length > 0 && (
+              {isPreview && previewMode && posts.length > 0 && (
                 <div className="pt-4 sm:pt-5">
-                  <FeedPreviewIntro mode={effectivePreviewMode} />
+                  <FeedPreviewIntro mode={previewMode} />
                 </div>
               )}
               {posts.length === 0 && isLoading && !initialPage ? (
@@ -1551,8 +1586,8 @@ export function FeedView({
                   {!isPreview && (hasNewer || isJumpedAwayRef.current) ? (
                     <div ref={newerSentinelRef} className="h-8 shrink-0" aria-hidden />
                   ) : null}
-                  {isPreview && effectivePreviewMode && (
-                    <FeedPreviewGate mode={effectivePreviewMode} />
+                  {isPreview && previewMode && (
+                    <FeedPreviewGate mode={previewMode} />
                   )}
                   <div ref={bottomAnchorRef} aria-hidden className="h-px shrink-0" />
                 </div>
@@ -1567,6 +1602,7 @@ export function FeedView({
               onClick={() => {
                 unreadBootLockRef.current = false;
                 anchoredToBottomRef.current = true;
+                tipSettleUntilRef.current = performance.now() + 1500;
                 // Clear unread session first so scrollToLatestReliable is not cancelled.
                 unreadSplitRef.current = null;
                 setUnreadSplitId(null);

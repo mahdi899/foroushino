@@ -4,7 +4,7 @@ namespace App\Modules\TelegramBot\Services;
 
 class IranMobileNormalizer
 {
-    public function normalize(?string $input): ?string
+    public function normalize(?string $input, bool $iranOnly = true): ?string
     {
         if ($input === null) {
             return null;
@@ -24,10 +24,19 @@ class IranMobileNormalizer
             $digits = '0'.$digits;
         }
 
-        if (! preg_match('/^09\d{9}$/', $digits)) {
+        if (preg_match('/^09\d{9}$/', $digits)) {
+            return $digits;
+        }
+
+        if ($iranOnly) {
             return null;
         }
 
-        return $digits;
+        // Non-Iran mode: accept 8–15 digit international numbers.
+        if (preg_match('/^\d{8,15}$/', $digits)) {
+            return $digits;
+        }
+
+        return null;
     }
 }

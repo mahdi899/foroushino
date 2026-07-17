@@ -12,6 +12,21 @@ return [
         'rate_limit_per_minute' => (int) env('LEAD_RATE_LIMIT_PER_MINUTE', 5),
     ],
 
+    /*
+    | Global API throttle (ThrottleRequests:api). Family/student traffic often
+    | arrives via Next.js server actions, so local defaults are higher — the
+    | feed alone can exceed 120/min on a single loopback IP during UI testing.
+    */
+    'api_rate_limit_per_minute' => (int) env(
+        'API_RATE_LIMIT_PER_MINUTE',
+        env('APP_ENV') === 'local' ? 2000 : 120,
+    ),
+
+    'student_auth_rate_limit_per_minute' => (int) env(
+        'STUDENT_AUTH_RATE_LIMIT_PER_MINUTE',
+        env('APP_ENV') === 'local' ? 60 : 30,
+    ),
+
     'uploads' => [
         'public_disk' => env('MEDIA_DISK', 'public'),
         'private_disk' => 'local',

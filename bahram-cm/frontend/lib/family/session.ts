@@ -2,6 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { SERVER_API_URL } from '@/lib/api/config';
+import { forwardedClientHeaders } from '@/lib/api/forwardedClientHeaders';
 import { serverFetchSignal } from '@/lib/api/serverFetch';
 import { STUDENT_TOKEN_COOKIE } from '@/lib/student/session';
 
@@ -23,6 +24,7 @@ export async function familyFetch<T = unknown>(
 
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    ...(await forwardedClientHeaders()),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
   let body: BodyInit | undefined;
