@@ -411,14 +411,88 @@ class MessageHandler implements UpdateHandlerInterface
             return;
         }
 
+        $user = $account->user;
+
         try {
-            app(\App\Services\Family\FamilyAssignmentService::class)->assign($account->user);
-            $message = 'خانواده شما فعال است. برای مشاهده محتوا وارد وب‌اپ خانواده شوید.';
+            app(\App\Services\Family\FamilyAssignmentService::class)->assign($user);
         } catch (\Throwable) {
-            $message = 'خانواده شما از طریق وب‌اپ دامنه اصلی در دسترس است.';
+            // Assignment is best-effort; still try to show membership if present.
         }
 
-        $this->sendWithLink($client, $chatId, $message, $familyUrl, '🌐 ورود به خانواده');
+        $membership = app(\App\Services\Family\FamilyAccessService::class)->homeMembership($user);
+        if ($membership === null) {
+            $this->sendWithLink(
+                $client,
+                $chatId,
+                "👨‍👩‍👧‍👦 خانواده\n\n"
+                ."هنوز به خانواده‌ای وصل نیستید.\n"
+                .'با ورود به وب‌اپ، عضویت شما فعال می‌شود.',
+                $familyUrl,
+                '🌐 ورود به خانواده',
+            );
+
+            return;
+        }
+
+        $membership->loadMissing('family');
+        $family = $membership->family;
+        $memberCount = (int) ($family?->member_count ?? 0);
+        $familyId = (int) $membership->family_id;
+        $unreadCount = $this->familyUnreadPostCount($user, $membership);
+
+        $lines = [
+            '👨‍👩‍👧‍👦 خانواده شما',
+            '────────────────',
+            '👥 تعداد اعضا: '.number_format($memberCount).' نفر',
+        ];
+
+        if ($unreadCount > 0) {
+            $lines[] = '📝 پست‌های جدید ندیده‌شده: '.number_format($unreadCount);
+            $lines[] = '';
+            $lines[] = $unreadCount === 1
+                ? 'یک پست جدید منتظر شماست — همین الان سر بزنید.'
+                : "{$unreadCount} پست جدید منتظر شماست — بیا خانواده را چک کن.";
+        } else {
+            $lines[] = '📝 پست جدید ندیده‌شده: ۰';
+            $lines[] = '';
+            $lines[] = 'فعلاً همه‌چیز را دیده‌اید. برای حال‌وهوای خانواده، یک سر بزنید.';
+        }
+
+        $this->sendWithLink($client, $chatId, implode("\n", $lines), $familyUrl, '🌐 ورود به خانواده');
+    }
+
+    private function familyUnreadPostCount(\App\Models\User $user, \App\Models\FamilyMembership $membership): int
+    {
+        try {
+            $familyId = (int) $membership->family_id;
+            $afterId = (int) \App\Models\FamilyPostView::query()
+                ->where('user_id', $user->id)
+                ->where('family_id', $familyId)
+                ->max('post_id');
+
+            $feed = app(\App\Services\Family\FeedService::class);
+
+            if ($afterId > 0) {
+                return max(0, (int) ($feed->unreadSummary($afterId, $user)['unread_count'] ?? 0));
+            }
+
+            // Never opened the feed: count published posts since join.
+            $joinedAt = $membership->joined_at;
+            $query = \App\Models\FamilyPost::query()
+                ->where('status', \App\Enums\Family\FamilyPostStatus::Published->value)
+                ->whereNotNull('published_at');
+
+            app(\App\Services\Family\PostAudienceResolver::class)
+                ->scopeVisibleToFamily($query, $familyId);
+
+            if ($joinedAt) {
+                $query->where('published_at', '>=', $joinedAt);
+            }
+
+            return max(0, (int) $query->count());
+        } catch (\Throwable) {
+            return 0;
+        }
     }
 
     private function sendReferral($client, int $chatId, TelegramAccount $account, TelegramBot $bot): void
