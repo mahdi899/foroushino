@@ -220,6 +220,8 @@ export interface Agent {
   shiftSecondsThisMonth?: number
   earnedThisMonth?: number
   withdrawnThisMonth?: number
+  pointsThisMonth?: number
+  successfulThisMonth?: number
 }
 
 export interface Team {

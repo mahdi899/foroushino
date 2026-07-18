@@ -1,6 +1,7 @@
 import type { Agent, Followup, Lead } from '@/types'
 import { conversionRateFromStats } from '@/lib/dailyGoal'
 import { overdueFollowupsList } from '@/lib/reportUtils'
+import { overdueFollowups } from '@/lib/leadUtils'
 import { relativeDayTime, toFa } from '@/lib/format'
 
 export type TeamMetricKind = 'calls' | 'conversion' | 'hot_leads' | 'overdue'
@@ -138,7 +139,20 @@ export function buildOverdueBreakdown(
     .sort((a, b) => b.items.length - a.items.length)
 }
 
-export function metricSheetTitle(kind: TeamMetricKind): string {
+export function metricSheetTitle(kind: TeamMetricKind, scope: 'team' | 'self' = 'team'): string {
+  if (scope === 'self') {
+    switch (kind) {
+      case 'calls':
+        return 'تماس‌های امروز من'
+      case 'conversion':
+        return 'نرخ تبدیل من'
+      case 'hot_leads':
+        return 'لیدهای داغ من'
+      case 'overdue':
+        return 'پیگیری‌های عقب‌افتاده من'
+    }
+  }
+
   switch (kind) {
     case 'calls':
       return 'تماس‌های امروز تیم'
@@ -157,4 +171,55 @@ export function filterLeadsForTeam(leads: Lead[], teamAgentIds: string[]): Lead[
 
 export function filterFollowupsForTeam(followups: Followup[], teamAgentIds: string[]): Followup[] {
   return followups.filter((row) => teamAgentIds.includes(row.agentId))
+}
+
+export function buildAgentSelfCallsItems(agent: Agent): MetricDetailItem[] {
+  if (agent.callsToday <= 0) return []
+  return [
+    {
+      id: `${agent.id}-calls`,
+      title: `${toFa(agent.successfulToday)} تماس موفق از ${toFa(agent.callsToday)}`,
+      subtitle: 'عملکرد امروز',
+    },
+  ]
+}
+
+export function buildAgentSelfConversionItems(agent: Agent): MetricDetailItem[] {
+  const rate = conversionRateFromStats(agent.callsToday, agent.successfulToday)
+  return [
+    {
+      id: `${agent.id}-conv`,
+      title: `${toFa(agent.callsToday)} تماس · ${toFa(agent.successfulToday)} موفق`,
+      subtitle:
+        rate > 0
+          ? `نرخ تبدیل ${toFa(rate)}٪`
+          : agent.callsToday > 0
+            ? 'هنوز تماس موفق ثبت نشده'
+            : 'تماسی ثبت نشده',
+    },
+  ]
+}
+
+export function buildAgentSelfHotLeadItems(leads: Lead[]): MetricDetailItem[] {
+  return leads
+    .filter((lead) => lead.temperature === 'hot')
+    .map((lead) => ({
+      id: lead.id,
+      leadId: lead.id,
+      title: leadName(lead),
+      subtitle: [lead.product, lead.city].filter(Boolean).join(' · ') || 'لید داغ',
+    }))
+}
+
+export function buildAgentSelfOverdueItems(followups: Followup[], leads: Lead[]): MetricDetailItem[] {
+  const leadById = new Map(leads.map((lead) => [lead.id, lead]))
+  return overdueFollowups(followups).map((followup) => {
+    const lead = leadById.get(followup.leadId)
+    return {
+      id: followup.id,
+      leadId: followup.leadId,
+      title: lead ? leadName(lead) : followup.title,
+      subtitle: `${followup.title} · ${relativeDayTime(followup.dueAt)}`,
+    }
+  })
 }

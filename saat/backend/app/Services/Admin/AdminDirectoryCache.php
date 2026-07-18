@@ -31,6 +31,11 @@ final class AdminDirectoryCache
         return 'team:live:'.$actor->id.':'.($teamId ?? 'all').':'.self::scopeHash($actor);
     }
 
+    public static function rosterKey(User $actor, int $teamId): string
+    {
+        return 'team:roster:'.$actor->id.':'.$teamId.':'.self::scopeHash($actor);
+    }
+
     public static function rememberUsers(User $actor, callable $resolver): mixed
     {
         return Cache::remember(self::usersKey($actor), self::USERS_TTL_SECONDS, $resolver);
@@ -44,6 +49,11 @@ final class AdminDirectoryCache
     public static function rememberLive(User $actor, ?int $teamId, callable $resolver): mixed
     {
         return Cache::remember(self::liveKey($actor, $teamId), self::LIVE_TTL_SECONDS, $resolver);
+    }
+
+    public static function rememberRoster(User $actor, int $teamId, callable $resolver): mixed
+    {
+        return Cache::remember(self::rosterKey($actor, $teamId), self::LIVE_TTL_SECONDS, $resolver);
     }
 
     public static function bump(): void

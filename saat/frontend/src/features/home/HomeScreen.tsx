@@ -6,6 +6,7 @@ import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { AppHeader } from './AppHeader'
 import { AgentWorkQueue } from './AgentWorkQueue'
+import { AgentMetricStatsPanel } from '@/components/domain/AgentMetricStatsPanel'
 import { NextCallCard } from '@/components/domain/NextCallCard'
 import { GoalCelebration } from '@/components/domain/GoalCelebration'
 import { BreakOverlay } from '@/components/domain/BreakOverlay'
@@ -191,6 +192,12 @@ export function HomeScreen() {
                   </div>
                 </div>
               </motion.div>
+
+              {currentAgentId ? (
+                <motion.div layout className="relative z-[1]">
+                  <AgentMetricStatsPanel agentId={currentAgentId} />
+                </motion.div>
+              ) : null}
 
               {/* Work queue — iOS grouped widgets */}
               <motion.div

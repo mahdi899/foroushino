@@ -53,6 +53,7 @@ import { writeCachedAdminTeams, writeCachedAdminUsers } from '@/services/adminDa
 import { todayDateKey } from '@/lib/businessDate'
 import { hasMultiTeamView, isAgentRole, isLeaderRole, isManagementRole, isSupervisorRole } from '@/lib/roles'
 import { fetchTeamLive, mergeTeamLiveIntoAgents, agentsFromTeamLive, teamsFromTeamLive } from './teamLive'
+import { agentsFromTeamRoster, fetchTeamRoster, teamFromTeamRoster } from './teamRoster'
 import { mapProduct } from '@/services/products'
 
 type Dto = Record<string, unknown>
@@ -328,6 +329,16 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
 
   if (teams.length === 0 && me.team_id && (isLeaderRole(role) || isSupervisorRole(role))) {
     teams = teamsFromAuthUser(me, agent.id, agents)
+  }
+
+  if (isAgentRole(role) && me.team_id) {
+    try {
+      const roster = await fetchTeamRoster()
+      agents = agentsFromTeamRoster(roster, agent)
+      teams = [teamFromTeamRoster(roster)]
+    } catch {
+      // roster unavailable — keep self-only agent list
+    }
   }
 
   if (adminUsers.length > 0) {

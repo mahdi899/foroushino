@@ -20,20 +20,23 @@ import {
   ChevronLeft,
   Gauge,
   BadgeCheck,
+  Users,
   type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { StatTile } from '@/components/domain/StatTile'
-import { TeamDailyLeaderboard } from '@/components/domain/TeamDailyLeaderboard'
+import { AgentMetricStatsPanel } from '@/components/domain/AgentMetricStatsPanel'
+import { TeamRosterCard } from '@/components/domain/TeamRosterCard'
+import { TeamPodium } from '@/components/domain/TeamPodium'
 import { AchievementBadge, AchievementBadgeIcon } from '@/components/domain/AchievementBadge'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import { achievements } from '@/data/mock'
 import { roleLabels } from '@/data/labels'
 import { overdueFollowups } from '@/lib/leadUtils'
-import { getAgentTeamPeers } from '@/lib/dailyTopPerformers'
+import { getAgentTeamPeersMonthly } from '@/lib/monthlyTopPerformers'
 import { formatDuration, formatMoney, toFa } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { DataGate } from '@/components/pwa/DataGate'
@@ -81,8 +84,13 @@ export function PerformanceScreen() {
 
   const teamAgents = useMemo(() => {
     if (!me) return []
-    return getAgentTeamPeers(me, agents, teams, myId, role)
+    return getAgentTeamPeersMonthly(me, agents, teams, myId, role)
   }, [me, agents, teams, myId, role])
+
+  const myTeam = useMemo(
+    () => (me?.teamId ? teams.find((team) => team.id === me.teamId) ?? null : null),
+    [me?.teamId, teams],
+  )
 
   const quality = useMemo(() => {
     const totalCalls = calls.length
@@ -366,8 +374,22 @@ export function PerformanceScreen() {
         </motion.button>
 
         <motion.section variants={fadeUp}>
-          <SectionTitle icon={Trophy}>برترین‌های تیم</SectionTitle>
-          <TeamDailyLeaderboard peers={teamAgents} meId={me.id} />
+          <SectionTitle icon={Gauge}>آمار امروز</SectionTitle>
+          {myId ? <AgentMetricStatsPanel agentId={myId} embedded /> : null}
+        </motion.section>
+
+        {teamAgents.length > 0 ? (
+          <motion.section variants={fadeUp}>
+            <SectionTitle icon={Trophy}>برترین‌های این ماه</SectionTitle>
+            <div className="glass-card overflow-hidden rounded-[24px] border border-white/55 p-4 pt-5 dark:border-white/10">
+              <TeamPodium podium={teamAgents.slice(0, 3)} meId={me.id} variant="default" embedded />
+            </div>
+          </motion.section>
+        ) : null}
+
+        <motion.section variants={fadeUp}>
+          <SectionTitle icon={Users}>تیم من</SectionTitle>
+          {myTeam && myId ? <TeamRosterCard team={myTeam} agents={agents} meId={myId} /> : null}
         </motion.section>
 
         <motion.section variants={fadeUp}>

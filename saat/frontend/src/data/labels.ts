@@ -33,30 +33,33 @@ export const sourceLabels: Record<LeadSource, string> = {
 }
 
 export const temperatureLabels: Record<Temperature, string> = {
-  hot: 'خیلی جدی',
-  warm: 'علاقه‌مند',
-  cold: 'کم‌علاقه',
+  hot: 'داغ',
+  warm: 'گرم',
+  cold: 'سرد',
 }
 
-/** Plain-language guide for agents when picking lead temperature. */
+/** راهنمای کارشناس برای انتخاب وضعیت مشتری بعد از تماس. */
 export const temperatureGuide: Record<
   Temperature,
-  { title: string; description: string; example: string }
+  { title: string; description: string; example: string; action: string }
 > = {
   hot: {
-    title: 'خیلی جدی',
-    description: 'احتمال خرید بالاست؛ زود تماس بگیر.',
-    example: 'مثلاً: «همین هفته ثبت‌نام می‌کنم»',
+    title: 'داغ — آماده خرید',
+    description: 'مشتری جدی است؛ همین تماس یا حداکثر فردا باید فروش بسته یا جلسه ثبت شود.',
+    example: '«همین هفته ثبت‌نام می‌کنم» · «لینک پرداخت بفرست»',
+    action: 'اولویت ۱ · تماس امروز',
   },
   warm: {
-    title: 'علاقه‌مند',
-    description: 'پیگیری می‌خواهد؛ هنوز تصمیم نهایی نگرفته.',
-    example: 'مثلاً: «با خانواده مشورت می‌کنم»',
+    title: 'گرم — نیاز به پیگیری',
+    description: 'علاقه دارد ولی هنوز تصمیم نگرفته؛ زمان پیگیری بعدی را مشخص کن.',
+    example: '«با خانواده هماهنگ می‌کنم» · «جزئیات دوره را بفرست»',
+    action: 'اولویت ۲ · پیگیری منظم',
   },
   cold: {
-    title: 'کم‌علاقه',
-    description: 'فعلاً اولویت پایین؛ زمان تماس بیشتری لازم است.',
-    example: 'مثلاً: «الان وقتش نیست»',
+    title: 'سرد — فعلاً بی‌اولویت',
+    description: 'الان زمان مناسب نیست یا هنوز نیاز احساس نمی‌کند؛ فاصله تماس بعدی را بیشتر بگذار.',
+    example: '«الان وقت ندارم» · «بعداً خودم تماس می‌گیرم»',
+    action: 'اولویت ۳ · تماس بعدی دورتر',
   },
 }
 

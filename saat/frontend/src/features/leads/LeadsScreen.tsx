@@ -14,6 +14,7 @@ import { isToday, isOverdue, toFa } from '@/lib/format'
 import { canCallLead, filterLeadsForAgent, assignedAgentLabel as resolveAssignedAgentLabel } from '@/lib/leadUtils'
 import { filterLeadsForScope } from '@/lib/teamUtils'
 import { isManagementRole, isSupervisorRole } from '@/lib/roles'
+import { temperatureLabels } from '@/data/labels'
 import { BRAND_SOFT } from '@/lib/brand'
 import { haptic } from '@/lib/telegram'
 import type { Lead } from '@/types'
@@ -24,9 +25,9 @@ type Filter = LeadFilterId
 
 const filters: LeadFilterItem[] = [
   { id: 'all', label: 'همه' },
-  { id: 'hot', label: 'خیلی جدی' },
-  { id: 'warm', label: 'علاقه‌مند' },
-  { id: 'cold', label: 'کم‌علاقه' },
+  { id: 'hot', label: temperatureLabels.hot },
+  { id: 'warm', label: temperatureLabels.warm },
+  { id: 'cold', label: temperatureLabels.cold },
   { id: 'today', label: 'امروز' },
   { id: 'overdue', label: 'عقب‌افتاده' },
 ]

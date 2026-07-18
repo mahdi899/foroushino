@@ -37,9 +37,16 @@ interface TeamPodiumProps {
   meId: string
   variant?: keyof typeof rankConfig
   embedded?: boolean
+  metric?: 'daily' | 'monthly'
 }
 
-export function TeamPodium({ podium, meId, variant = 'default', embedded = false }: TeamPodiumProps) {
+export function TeamPodium({
+  podium,
+  meId,
+  variant = 'default',
+  embedded = false,
+  metric = 'monthly',
+}: TeamPodiumProps) {
   const order = [1, 0, 2]
   const sizes = rankConfig[variant]
 
@@ -52,6 +59,9 @@ export function TeamPodium({ podium, meId, variant = 'default', embedded = false
         const cfg = sizes[rank]
         const style = rankStyle[rank]
         const isMe = agent.id === meId
+        const pointsValue = metric === 'monthly' ? (agent.pointsThisMonth ?? 0) : agent.points
+        const successValue =
+          metric === 'monthly' ? (agent.successfulThisMonth ?? 0) : agent.successfulToday
 
         return (
           <div key={agent.id} className="flex min-w-0 flex-1 flex-col items-center">
@@ -79,7 +89,7 @@ export function TeamPodium({ podium, meId, variant = 'default', embedded = false
             </div>
 
             <p className="max-w-full truncate text-center text-[11px] font-bold text-text">
-              {agent.firstName}
+              {agent.firstName} {agent.lastName}
             </p>
 
             <div className="mt-1 flex flex-col items-center gap-0.5">
@@ -91,16 +101,18 @@ export function TeamPodium({ podium, meId, variant = 'default', embedded = false
                 )}
               >
                 <Star size={8} strokeWidth={2.5} />
-                {toFa(agent.points)}
+                {toFa(pointsValue)}
               </span>
-              <span
-                className={cn(
-                  'inline-flex items-center gap-0.5 text-[9px] font-semibold tabular-nums text-text-soft',
-                )}
-              >
-                <Phone size={8} strokeWidth={2.5} />
-                {toFa(agent.successfulToday)} موفق
-              </span>
+              {metric === 'daily' && (
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-0.5 text-[9px] font-semibold tabular-nums text-text-soft',
+                  )}
+                >
+                  <Phone size={8} strokeWidth={2.5} />
+                  {toFa(successValue)}
+                </span>
+              )}
             </div>
 
             <div className={cn('mt-2 w-full rounded-t-2xl backdrop-blur-sm', cfg.stepHeight, style.step)}>

@@ -19,7 +19,7 @@ class AgentSmsLinkBuilder
             return '';
         }
 
-        return self::withBase($agent, (string) ($settings[$key] ?? ''));
+        return self::withBase($agent, (string) ($settings[$key] ?? ''), $settings);
     }
 
     public static function withBase(User $agent, string $base, array $settings = []): string

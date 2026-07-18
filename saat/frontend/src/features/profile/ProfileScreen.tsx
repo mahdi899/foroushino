@@ -20,6 +20,7 @@ import {
   Users,
   BarChart3,
   CreditCard,
+  Trophy,
   type LucideIcon,
 } from 'lucide-react'
 import { isAgentRole, isManagementRole } from '@/lib/roles'
@@ -29,12 +30,12 @@ import { apiMode } from '@/services'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
 import { ProfileAvatarPicker } from '@/features/profile/ProfileAvatarPicker'
-import { TeamDailyLeaderboard } from '@/components/domain/TeamDailyLeaderboard'
 import { AgentCodeBadge } from '@/components/domain/AgentCodeBadge'
+import { TeamPodium } from '@/components/domain/TeamPodium'
 import { roleLabels } from '@/data/labels'
 import { getTeamAgentIds } from '@/lib/teamUtils'
 import { conversionRateFromStats } from '@/lib/dailyGoal'
-import { getAgentTeamPeers } from '@/lib/dailyTopPerformers'
+import { getAgentTeamPeersMonthly } from '@/lib/monthlyTopPerformers'
 import { useDailyTopRank } from '@/hooks/useDailyTopRank'
 import { toFa } from '@/lib/format'
 import { APP_VERSION_LABEL } from '@/lib/app'
@@ -86,13 +87,10 @@ export function ProfileScreen() {
 
   const dailyTopRank = useDailyTopRank(agent?.id)
 
-  const teamLeaderboard = useMemo(() => {
-    if (!agent || !agentLine || !agent.teamId) return null
-    const peers = getAgentTeamPeers(agent, agents, teams, currentAgentId, role)
-    if (peers.length === 0) return null
-    const team = teams.find((item) => item.id === agent.teamId)
-    return { teamName: team?.name ?? 'تیم من', peers }
-  }, [agentLine, agent, agents, teams, currentAgentId, role])
+  const teamAgents = useMemo(() => {
+    if (!agent || !agentLine) return []
+    return getAgentTeamPeersMonthly(agent, agents, teams, currentAgentId, role)
+  }, [agent, agentLine, agents, teams, currentAgentId, role])
 
   const profileStats = useMemo(() => {
     if (!agent) {
@@ -306,31 +304,14 @@ export function ProfileScreen() {
           </div>
         </motion.div>
 
-        {teamLeaderboard && (
+        {agentLine && teamAgents.length > 0 && (
           <motion.div variants={fadeUp}>
-            <div className="mb-2 flex items-center justify-between gap-2 px-1">
-              <h2 className="min-w-0 truncate text-[12px] font-bold text-text-soft">
-                {teamLeaderboard.teamName} · {toFa(teamLeaderboard.peers.length)} عضو
-              </h2>
-              <button
-                type="button"
-                onClick={() => {
-                  haptic('selection')
-                  navigate('/performance')
-                }}
-                className={cn('inline-flex shrink-0 items-center gap-0.5 text-[11px] font-bold', TG)}
-              >
-                برترین‌های تیم
-                <ChevronLeft size={14} strokeWidth={2.25} />
-              </button>
-            </div>
-            <div className="glass-card overflow-hidden rounded-[22px] border border-white/55 p-3 dark:border-white/10">
-              <TeamDailyLeaderboard
-                peers={teamLeaderboard.peers}
-                meId={agent.id}
-                variant="compact"
-                embedded
-              />
+            <h2 className="mb-2 flex items-center gap-1.5 px-1 text-[12px] font-bold text-text-soft">
+              <Trophy size={12} className={TG} strokeWidth={2.35} />
+              برترین‌های این ماه
+            </h2>
+            <div className="glass-card overflow-hidden rounded-[22px] border border-white/55 p-4 pt-5 dark:border-white/10">
+              <TeamPodium podium={teamAgents.slice(0, 3)} meId={agent.id} variant="default" embedded />
             </div>
           </motion.div>
         )}
