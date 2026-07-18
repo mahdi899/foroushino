@@ -37,6 +37,12 @@ export const defaultMetadata: Metadata = {
     canonical: "/",
     languages: { "fa-IR": "/" },
   },
+  manifest: "/site-manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "بهرام رستمی",
+    statusBarStyle: "default",
+  },
   openGraph: {
     type: "website",
     locale: SITE.locale,

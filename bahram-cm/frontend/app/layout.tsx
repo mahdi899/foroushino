@@ -11,6 +11,9 @@ import {
 } from "@/lib/jsonld";
 import { AdminAwareChrome } from "@/components/layout/AdminAwareChrome";
 import { SiteChatbotEntry } from "@/components/chatbot/SiteChatbotEntry";
+import { BahramUpdateBanner } from "@/components/pwa/BahramUpdateBanner";
+import { SiteInstallCard } from "@/components/pwa/SiteInstallCard";
+import { SitePwaRegistrar } from "@/components/pwa/SitePwaRegistrar";
 import { MediaPreconnect } from "@/components/performance/MediaPreconnect";
 import { PerformanceProvider } from "@/components/performance/PerformanceProvider";
 import { getPublicChatbotConfig } from "@/lib/chatbot/public";
@@ -89,6 +92,7 @@ export default async function RootLayout({
         {!isBareShellRoute ? <GrainOverlay /> : null}
         {!isBareShellRoute ? <ReferralCapture /> : null}
         {!isBareShellRoute ? <DiscountCapture /> : null}
+        {!isBareShellRoute ? <SitePwaRegistrar /> : null}
         <StudentAuthRoot
           initialLoggedIn={studentLoggedIn}
           initialDisplayName={studentDisplayName}
@@ -105,6 +109,8 @@ export default async function RootLayout({
               deferWidget={perfConfig.lazy_load_chatbot !== false}
             />
           ) : null}
+          {!isBareShellRoute ? <SiteInstallCard /> : null}
+          {!isBareShellRoute ? <BahramUpdateBanner variant="site" /> : null}
         </StudentAuthRoot>
       </body>
     </html>

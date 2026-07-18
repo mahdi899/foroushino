@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { PWA_MANIFEST_ICONS } from '@/lib/pwa/manifest-icons';
 
 const FAMILY_DOMAIN = process.env.NEXT_PUBLIC_FAMILY_DOMAIN?.trim() || '';
 
@@ -29,10 +30,7 @@ export function GET(request: NextRequest) {
     background_color: '#0b1419',
     theme_color: '#0b1419',
     categories: ['social', 'education'],
-    icons: [
-      { src: '/apple-icon', sizes: '180x180', type: 'image/png', purpose: 'any' },
-      { src: '/icon', sizes: '32x32', type: 'image/png', purpose: 'maskable' },
-    ],
+    icons: [...PWA_MANIFEST_ICONS],
   };
 
   return NextResponse.json(manifest, {

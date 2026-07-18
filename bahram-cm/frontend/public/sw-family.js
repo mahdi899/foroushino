@@ -1,5 +1,5 @@
-const CACHE = 'bahram-family-v3';
-const PRECACHE = ['/family-manifest.webmanifest', '/icon', '/apple-icon'];
+const CACHE = 'bahram-family-v4';
+const PRECACHE = ['/family-manifest.webmanifest', '/pwa/icon/192', '/pwa/icon/512', '/apple-icon'];
 
 /**
  * Option B dual-domain:
@@ -21,8 +21,6 @@ function shellFallback() {
 
 function isFamilyScope(url) {
   if (isApexFamilyScope()) {
-    // Apex: treat same-origin navigations as the family app shell, except
-    // paths that belong to the main site / tooling.
     if (
       url.pathname.startsWith('/panel') ||
       url.pathname.startsWith('/admin') ||
@@ -51,6 +49,7 @@ function isApiRequest(url) {
 function isStaticFamilyAsset(url) {
   return (
     url.pathname === '/family-manifest.webmanifest' ||
+    url.pathname.startsWith('/pwa/icon/') ||
     url.pathname.startsWith('/storage/media/') ||
     url.pathname.startsWith('/storage/family/') ||
     /\.(?:svg|png|webp|ico|woff2?|jpg|jpeg)$/i.test(url.pathname)
@@ -71,10 +70,20 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((key) => key !== CACHE && key.startsWith('bahram-family')).map((key) => caches.delete(key))),
+        Promise.all(
+          keys
+            .filter((key) => key.startsWith('bahram-family-') && key !== CACHE)
+            .map((key) => caches.delete(key)),
+        ),
       )
       .then(() => self.clients.claim()),
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {
@@ -99,7 +108,6 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (isFamilyScope(url)) {
-    // App shell: network-first so releases aren't stuck behind SW.
     const fallback = shellFallback();
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request).then((c) => c || caches.match(fallback))),

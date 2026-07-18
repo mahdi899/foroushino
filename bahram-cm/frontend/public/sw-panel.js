@@ -1,5 +1,5 @@
-const CACHE = 'bahram-panel-v2';
-const PRECACHE = ['/panel-manifest.webmanifest', '/icon', '/apple-icon'];
+const CACHE = 'bahram-panel-v3';
+const PRECACHE = ['/panel-manifest.webmanifest', '/pwa/icon/192', '/pwa/icon/512', '/apple-icon'];
 
 function isPanelScope(url) {
   return url.pathname.startsWith('/panel');
@@ -16,6 +16,7 @@ function isNextRuntimeRequest(url) {
 function isStaticPanelAsset(url) {
   return (
     url.pathname === '/panel-manifest.webmanifest' ||
+    url.pathname.startsWith('/pwa/icon/') ||
     /\.(?:svg|png|webp|ico|woff2?)$/i.test(url.pathname)
   );
 }
@@ -33,9 +34,21 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key.startsWith('bahram-panel-') && key !== CACHE)
+            .map((key) => caches.delete(key)),
+        ),
+      )
       .then(() => self.clients.claim()),
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {

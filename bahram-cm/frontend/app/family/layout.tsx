@@ -9,6 +9,7 @@ import { FamilyThemeBoot } from '@/app/family/FamilyThemeBoot';
 import { FamilyServiceWorkerRegistrar } from '@/components/family/FamilyServiceWorkerRegistrar';
 import { FamilyReactScan } from '@/components/family/FamilyReactScan';
 import { FamilyInstallCard } from '@/components/family/FamilyInstallCard';
+import { BahramUpdateBanner } from '@/components/pwa/BahramUpdateBanner';
 import {
   DEFAULT_SITE_THEME,
   SITE_THEME_COOKIE_KEY,
@@ -65,6 +66,7 @@ export default async function FamilyLayout({ children }: { children: React.React
           <div className="family-app__frame relative mx-auto flex h-[100dvh] w-full flex-col overflow-hidden lg:my-3 lg:h-[calc(100dvh-1.5rem)]">
             {children}
             <FamilyInstallCard />
+            <BahramUpdateBanner variant="family" />
           </div>
         </FamilyActionCelebrateProvider>
       </FamilyMediaPlayerProvider>
