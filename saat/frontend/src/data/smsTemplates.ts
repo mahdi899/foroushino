@@ -7,10 +7,10 @@ export interface LeadSmsTemplate {
   build: (lead: Lead) => string
 }
 
-const COURSE_LINK = 'https://foroushino.ir/course'
-const CHANNEL_LINK = 'https://t.me/foroushino'
-const REGISTER_LINK = 'https://foroushino.ir/register'
-const PAYMENT_LINK = 'https://foroushino.ir/pay'
+const COURSE_LINK = 'https://rostami.app/courses'
+const CHANNEL_LINK = 'https://t.me/RostamiAppBot'
+const REGISTER_LINK = 'https://rostami.app/register'
+const PAYMENT_LINK = 'https://rostami.app/payment'
 
 export const LEAD_SMS_TEMPLATES: LeadSmsTemplate[] = [
   {

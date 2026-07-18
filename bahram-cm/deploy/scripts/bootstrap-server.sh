@@ -86,6 +86,8 @@ sed -i "s|^SESSION_SECURE_COOKIE=.*|SESSION_SECURE_COOKIE=true|" .env
 sed -i "s|^CACHE_STORE=.*|CACHE_STORE=redis|" .env
 sed -i "s|^QUEUE_CONNECTION=.*|QUEUE_CONNECTION=redis|" .env
 sed -i "s|^OTP_DEV_MODE=.*|OTP_DEV_MODE=false|" .env
+grep -q '^OTP_SKIP_ADMIN=' .env && sed -i "s|^OTP_SKIP_ADMIN=.*|OTP_SKIP_ADMIN=false|" .env || echo "OTP_SKIP_ADMIN=false" >> .env
+grep -q '^PAYMENT_DEV_MODE=' .env && sed -i "s|^PAYMENT_DEV_MODE=.*|PAYMENT_DEV_MODE=false|" .env || echo "PAYMENT_DEV_MODE=false" >> .env
 sed -i "s|^REVALIDATE_SECRET=.*|REVALIDATE_SECRET=${REVALIDATE_SECRET}|" .env
 sed -i "s|^REVALIDATE_WEBHOOK_URL=.*|REVALIDATE_WEBHOOK_URL=${SITE_URL}/api/revalidate|" .env
 sed -i "s|^INTERNAL_API_SECRET=.*|INTERNAL_API_SECRET=${INTERNAL_SECRET}|" .env
@@ -174,6 +176,8 @@ DEPLOY
 chmod +x /usr/local/bin/bahram-deploy
 
 echo "==> Nginx (rostami.app + rostami.club — Option B dual-domain)"
+mkdir -p /etc/nginx/conf.d
+cp "${APP_ROOT}/deploy/nginx/conf.d/rostami-upstreams.conf" /etc/nginx/conf.d/rostami-upstreams.conf
 NGINX_SRC="${APP_ROOT}/deploy/nginx/rostami-app-origin.conf"
 if [[ ! -f "${NGINX_SRC}" && -f /root/rostami-app-origin.conf ]]; then
   NGINX_SRC="/root/rostami-app-origin.conf"

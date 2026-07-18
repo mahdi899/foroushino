@@ -75,6 +75,8 @@ CRON_LINE="* * * * * cd ${APP_ROOT}/backend && php artisan schedule:run >> /dev/
 (crontab -u www-data -l 2>/dev/null | grep -v 'schedule:run' || true; echo "${CRON_LINE}") | crontab -u www-data -
 
 echo "==> Nginx"
+mkdir -p /etc/nginx/conf.d
+cp "${APP_ROOT}/deploy/nginx/conf.d/rostami-upstreams.conf" /etc/nginx/conf.d/rostami-upstreams.conf
 NGINX_SRC="${APP_ROOT}/deploy/nginx/rostami-app-origin.conf"
 [[ -f "${NGINX_SRC}" ]] || NGINX_SRC="/root/rostami-app-origin.conf"
 cp "${NGINX_SRC}" /etc/nginx/sites-available/rostami-app.conf

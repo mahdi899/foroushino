@@ -130,7 +130,7 @@ export const ADMIN_SETTING_LABELS: Record<string, AdminSettingMeta> = {
     label: 'آدرس لینک دوره',
     hint: 'لینک مقصد با ردیابی کارشناس',
     type: 'url',
-    placeholder: 'https://foroushino.ir/c',
+    placeholder: 'https://rostami.app/courses',
   },
   meli_pattern_channel: {
     label: 'کد پترن — لینک کانال',
@@ -142,7 +142,7 @@ export const ADMIN_SETTING_LABELS: Record<string, AdminSettingMeta> = {
     label: 'آدرس لینک کانال',
     hint: 'لینک کانال تلگرام یا صفحه معرفی',
     type: 'url',
-    placeholder: 'https://foroushino.ir/t',
+    placeholder: 'https://t.me/RostamiAppBot',
   },
   meli_pattern_register: {
     label: 'کد پترن — ثبت‌نام',
@@ -154,7 +154,7 @@ export const ADMIN_SETTING_LABELS: Record<string, AdminSettingMeta> = {
     label: 'آدرس لینک ثبت‌نام',
     hint: 'صفحه ثبت‌نام یا فرم مشتری',
     type: 'url',
-    placeholder: 'https://foroushino.ir/r',
+    placeholder: 'https://rostami.app/register',
   },
   meli_pattern_payment: {
     label: 'کد پترن — پرداخت',
@@ -166,7 +166,7 @@ export const ADMIN_SETTING_LABELS: Record<string, AdminSettingMeta> = {
     label: 'آدرس لینک پرداخت',
     hint: 'درگاه یا صفحه پرداخت',
     type: 'url',
-    placeholder: 'https://foroushino.ir/p',
+    placeholder: 'https://rostami.app/payment',
   },
   meli_pattern_custom: {
     label: 'کد پترن — پیامک دلخواه',

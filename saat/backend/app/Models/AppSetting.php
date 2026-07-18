@@ -44,10 +44,10 @@ class AppSetting extends Model
             'meli_pattern_register' => 11111,
             'meli_pattern_payment' => 11111,
             'meli_pattern_custom' => 11111,
-            'meli_sms_link_course' => 'https://foroushino.ir/c',
-            'meli_sms_link_channel' => 'https://foroushino.ir/t',
-            'meli_sms_link_register' => 'https://foroushino.ir/r',
-            'meli_sms_link_payment' => 'https://foroushino.ir/p',
+            'meli_sms_link_course' => 'https://rostami.app/courses',
+            'meli_sms_link_channel' => 'https://t.me/RostamiAppBot',
+            'meli_sms_link_register' => 'https://rostami.app/register',
+            'meli_sms_link_payment' => 'https://rostami.app/payment',
         ];
     }
 

@@ -1,7 +1,38 @@
-const CACHE = 'bahram-family-v2';
+const CACHE = 'bahram-family-v3';
 const PRECACHE = ['/family-manifest.webmanifest', '/icon', '/apple-icon'];
 
+/**
+ * Option B dual-domain:
+ * - rostami.club apex → SW scope `/` → shell is `/`
+ * - rostami.app/family (or local) → SW scope `/family/` → shell is `/family`
+ */
+function isApexFamilyScope() {
+  try {
+    const path = new URL(self.registration.scope).pathname;
+    return path === '/' || path === '';
+  } catch {
+    return false;
+  }
+}
+
+function shellFallback() {
+  return isApexFamilyScope() ? '/' : '/family';
+}
+
 function isFamilyScope(url) {
+  if (isApexFamilyScope()) {
+    // Apex: treat same-origin navigations as the family app shell, except
+    // paths that belong to the main site / tooling.
+    if (
+      url.pathname.startsWith('/panel') ||
+      url.pathname.startsWith('/admin') ||
+      url.pathname.startsWith('/sso') ||
+      url.pathname.startsWith('/_next')
+    ) {
+      return false;
+    }
+    return true;
+  }
   return url.pathname === '/family' || url.pathname.startsWith('/family/');
 }
 
@@ -69,8 +100,9 @@ self.addEventListener('fetch', (event) => {
 
   if (isFamilyScope(url)) {
     // App shell: network-first so releases aren't stuck behind SW.
+    const fallback = shellFallback();
     event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request).then((c) => c || caches.match('/family'))),
+      fetch(event.request).catch(() => caches.match(event.request).then((c) => c || caches.match(fallback))),
     );
   }
 });

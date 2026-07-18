@@ -41,6 +41,8 @@ sed -i "s|^SESSION_SECURE_COOKIE=.*|SESSION_SECURE_COOKIE=true|" .env
 sed -i "s|^CACHE_STORE=.*|CACHE_STORE=redis|" .env
 sed -i "s|^QUEUE_CONNECTION=.*|QUEUE_CONNECTION=redis|" .env
 sed -i "s|^OTP_DEV_MODE=.*|OTP_DEV_MODE=false|" .env
+grep -q '^OTP_SKIP_ADMIN=' .env && sed -i "s|^OTP_SKIP_ADMIN=.*|OTP_SKIP_ADMIN=false|" .env || echo "OTP_SKIP_ADMIN=false" >> .env
+grep -q '^PAYMENT_DEV_MODE=' .env && sed -i "s|^PAYMENT_DEV_MODE=.*|PAYMENT_DEV_MODE=false|" .env || echo "PAYMENT_DEV_MODE=false" >> .env
 sed -i "s|^REVALIDATE_SECRET=.*|REVALIDATE_SECRET=${REVALIDATE_SECRET}|" .env
 sed -i "s|^REVALIDATE_WEBHOOK_URL=.*|REVALIDATE_WEBHOOK_URL=${SITE_URL}/api/revalidate|" .env
 sed -i "s|^INTERNAL_API_SECRET=.*|INTERNAL_API_SECRET=${INTERNAL_SECRET}|" .env
@@ -72,6 +74,12 @@ sed -i "s|^NEXT_PUBLIC_API_BASE_URL=.*|NEXT_PUBLIC_API_BASE_URL=${SITE_URL}|" .e
 sed -i "s|^BACKEND_PROXY_URL=.*|BACKEND_PROXY_URL=http://127.0.0.1:8010|" .env.local
 sed -i "s|^NEXT_PUBLIC_CDN_ORIGIN=.*|NEXT_PUBLIC_CDN_ORIGIN=${CDN_URL}|" .env.local
 sed -i "s|^REVALIDATE_SECRET=.*|REVALIDATE_SECRET=${REVALIDATE_SECRET}|" .env.local
+grep -q '^NEXT_PUBLIC_APP_DOMAIN=' .env.local \
+  && sed -i "s|^NEXT_PUBLIC_APP_DOMAIN=.*|NEXT_PUBLIC_APP_DOMAIN=${SITE_URL#https://}|" .env.local \
+  || echo "NEXT_PUBLIC_APP_DOMAIN=${SITE_URL#https://}" >> .env.local
+grep -q '^NEXT_PUBLIC_FAMILY_DOMAIN=' .env.local \
+  && sed -i "s|^NEXT_PUBLIC_FAMILY_DOMAIN=.*|NEXT_PUBLIC_FAMILY_DOMAIN=${FAMILY_URL#https://}|" .env.local \
+  || echo "NEXT_PUBLIC_FAMILY_DOMAIN=${FAMILY_URL#https://}" >> .env.local
 
 npm ci
 npm run build
@@ -84,13 +92,18 @@ pm2 save
 env PATH="$PATH:/usr/bin" pm2 startup systemd -u root --hp /root | tail -1 | bash || true
 
 cp "${APP_ROOT}/deploy/supervisor/bahram-queue.conf" /etc/supervisor/conf.d/bahram-queue.conf
+cp "${APP_ROOT}/deploy/supervisor/bahram-family-queue.conf" /etc/supervisor/conf.d/bahram-family-queue.conf
+cp "${APP_ROOT}/backend/deploy/supervisor-telegram-horizon.conf.example" /etc/supervisor/conf.d/bahram-telegram-horizon.conf
 supervisorctl reread
 supervisorctl update
-supervisorctl start bahram-queue:* || supervisorctl restart bahram-queue:*
+supervisorctl start bahram-queue:* bahram-family-queue:* bahram-horizon bahram-scheduler \
+  || supervisorctl restart bahram-queue:* bahram-family-queue:* bahram-horizon bahram-scheduler || true
 
 CRON_LINE="* * * * * cd ${APP_ROOT}/backend && php artisan schedule:run >> /dev/null 2>&1"
 (crontab -u www-data -l 2>/dev/null | grep -v 'schedule:run' || true; echo "${CRON_LINE}") | crontab -u www-data -
 
+mkdir -p /etc/nginx/conf.d
+cp "${APP_ROOT}/deploy/nginx/conf.d/rostami-upstreams.conf" /etc/nginx/conf.d/rostami-upstreams.conf
 NGINX_SRC="/root/rostami-app-origin.conf"
 [[ -f "${NGINX_SRC}" ]] || NGINX_SRC="${APP_ROOT}/deploy/nginx/rostami-app-origin.conf"
 cp "${NGINX_SRC}" /etc/nginx/sites-available/rostami-app.conf
@@ -100,6 +113,11 @@ ln -sf /etc/nginx/sites-available/rostami-app.conf /etc/nginx/sites-enabled/rost
 ln -sf /etc/nginx/sites-available/rostami-club.conf /etc/nginx/sites-enabled/rostami-club.conf
 nginx -t
 systemctl reload nginx
+
+if grep -q '^TELEGRAM_BOT_TOKEN=.\+' "${APP_ROOT}/backend/.env"; then
+  cd "${APP_ROOT}/backend"
+  php artisan telegram:webhook:set production || true
+fi
 
 cat > /root/bahram-deploy-credentials.txt <<EOF
 Bahram CM production — $(date -Iseconds)
@@ -111,7 +129,8 @@ INTERNAL_API_SECRET=${INTERNAL_SECRET}
 SITE_URL=${SITE_URL}
 FAMILY_URL=${FAMILY_URL}
 No admin user was seeded (CacheIntegrationsSeeder only). Create the first
-super-admin now: php artisan tinker → see docs/DEPLOYMENT.md "Create admin".
+super-admin now:
+  cd ${APP_ROOT}/backend && php artisan app:create-admin
 EOF
 chmod 600 /root/bahram-deploy-credentials.txt
 

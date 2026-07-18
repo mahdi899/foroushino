@@ -83,7 +83,8 @@ if [[ -n "$TELEGRAM_BOT_TOKEN" ]]; then
 fi
 sed -i "s|^TELEGRAM_BOT_USERNAME=.*|TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}|" .env
 
-# Append production hints if missing
+# Production session cookie domain (force — .env.example may have SESSION_DOMAIN=null)
+sed -i "s|^SESSION_DOMAIN=.*|SESSION_DOMAIN=.${DOMAIN}|" .env
 grep -q '^SESSION_DOMAIN=' .env || echo "SESSION_DOMAIN=.${DOMAIN}" >> .env
 
 composer install --no-dev --optimize-autoloader --no-interaction

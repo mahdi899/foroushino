@@ -13,7 +13,7 @@ it('lists configured sms templates for agents', function (): void {
         'meli_pattern_register' => 0,
         'meli_pattern_payment' => 0,
         'meli_pattern_custom' => 1005,
-        'meli_sms_link_course' => 'https://foroushino.ir/c',
+        'meli_sms_link_course' => 'https://rostami.app/courses',
     ]);
 
     $agent = User::factory()->create();
@@ -34,7 +34,7 @@ it('sends lead sms through melipayamak pattern api', function (): void {
 
     AppSetting::syncMany([
         'meli_pattern_course' => 2222,
-        'meli_sms_link_course' => 'https://foroushino.ir/c',
+        'meli_sms_link_course' => 'https://rostami.app/courses',
     ]);
 
     Http::fake([
@@ -62,7 +62,7 @@ it('sends lead sms through melipayamak pattern api', function (): void {
     Http::assertSent(function ($request) {
         return $request->url() === 'https://rest.payamak-panel.com/api/SendSMS/SendByBaseNumber'
             && $request['bodyId'] === 2222
-            && $request['text'] === 'علی رضایی;https://foroushino.ir/c?ref=ABC12'
+            && $request['text'] === 'علی رضایی;https://rostami.app/courses?ref=ABC12'
             && $request['to'] === '09121111111';
     });
 });

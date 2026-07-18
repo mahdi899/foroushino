@@ -149,6 +149,9 @@ pm2 startup  # دستور systemd را اجرا کنید
 ## 5. Nginx (rostami.app + rostami.club)
 
 ```bash
+# Shared upstreams/maps — ONCE only (both vhosts use rostami_next / rostami_php)
+sudo cp deploy/nginx/conf.d/rostami-upstreams.conf /etc/nginx/conf.d/rostami-upstreams.conf
+
 # rostami.app (پشت Arvan CDN) — روی سرور مبدا از نسخه origin استفاده کنید:
 sudo cp deploy/nginx/rostami-app-origin.conf /etc/nginx/sites-available/rostami-app.conf
 sudo ln -sf /etc/nginx/sites-available/rostami-app.conf /etc/nginx/sites-enabled/
@@ -164,7 +167,7 @@ sudo certbot --nginx -d rostami.app -d www.rostami.app -d cdn.rostami.app
 sudo certbot --nginx -d rostami.club -d www.rostami.club -d family-cdn.rostami.club
 ```
 
-نکته: `deploy/nginx/rostami-app.conf` (بدون `-origin`) نسخه‌ای است که خودش SSL می‌کند — برای وقتی که Arvan را هنوز وصل نکرده‌اید یا مستقیم می‌خواهید تست کنید.
+نکته: `deploy/nginx/rostami-app.conf` (بدون `-origin`) نسخه‌ای است که خودش SSL می‌کند — برای وقتی که Arvan را هنوز وصل نکرده‌اید یا مستقیم می‌خواهید تست کنید. **هرگز** `upstream` را دوباره داخل vhost تعریف نکنید — nginx با دو فایل فعال خطا می‌دهد.
 
 ---
 

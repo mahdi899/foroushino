@@ -37,8 +37,8 @@ webhook، دستورات، لینک‌سازی همه از آن سمت است.
 (هر بات فقط یک webhook می‌تواند داشته باشد).
 
 ```env
-# saat/backend/.env
-TELEGRAM_BOT_TOKEN=8955330613:AAHPKF-S94xk7uYU6YL-OtDykdiLMEQl4Mk
+# saat/backend/.env — NEVER commit the real token; inject via server env / secrets
+TELEGRAM_BOT_TOKEN=
 TELEGRAM_BOT_USERNAME=RostamiAppBot
 ```
 
@@ -85,7 +85,8 @@ cd frontend && npm run telegram:link
 export REPO_URL="https://github.com/YOUR_ORG/mini-call-center.git"
 export DOMAIN=sat.center
 export SITE_URL=https://sat.center
-export TELEGRAM_BOT_TOKEN="8955330613:AAHPKF-S94xk7uYU6YL-OtDykdiLMEQl4Mk"
+# Inject from secrets manager / paste at deploy time — do not hardcode in git
+export TELEGRAM_BOT_TOKEN="YOUR_BOT_TOKEN_FROM_BOTFATHER"
 export TELEGRAM_BOT_USERNAME="RostamiAppBot"
 sudo -E bash /var/www/saat/deploy/scripts/bootstrap-server.sh
 
@@ -101,7 +102,7 @@ SANCTUM_STATEFUL_DOMAINS=sat.center,www.sat.center
 SESSION_DOMAIN=.sat.center
 DEV_LOGIN_ENABLED=false
 DEMO_OTP_ENABLED=false
-TELEGRAM_BOT_TOKEN=8955330613:AAHPKF-S94xk7uYU6YL-OtDykdiLMEQl4Mk
+TELEGRAM_BOT_TOKEN=   # set on server only
 TELEGRAM_BOT_USERNAME=RostamiAppBot
 ```
 

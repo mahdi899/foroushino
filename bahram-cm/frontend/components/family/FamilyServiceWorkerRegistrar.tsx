@@ -8,11 +8,12 @@ async function unregisterFamilyServiceWorkers() {
   const registrations = await navigator.serviceWorker.getRegistrations();
   await Promise.all(
     registrations
-      .filter(
-        (registration) =>
-          registration.scope.includes('/family') ||
-          registration.active?.scriptURL.includes('sw-family'),
-      )
+      .filter((registration) => {
+        const scripts = [registration.active, registration.waiting, registration.installing]
+          .filter(Boolean)
+          .map((worker) => worker!.scriptURL);
+        return scripts.some((url) => url.includes('sw-family')) || registration.scope.includes('/family');
+      })
       .map((registration) => registration.unregister()),
   );
 

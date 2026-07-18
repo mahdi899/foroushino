@@ -57,10 +57,19 @@ class SsoBridgeController extends Controller
         }
 
         $cacheKey = self::CACHE_PREFIX.$bridgeToken;
-        $userId = Cache::get($cacheKey);
 
-        // One-time use — burn it immediately regardless of outcome.
-        Cache::forget($cacheKey);
+        // Atomic one-time consume: lock then pull so two concurrent requests
+        // cannot both mint a Sanctum token from the same bridge token.
+        $lock = Cache::lock('sso_bridge_lock:'.$bridgeToken, 10);
+        if (! $lock->get()) {
+            return ApiResponse::error('bridge_busy', 'در حال پردازش ورود. لطفاً چند ثانیه صبر کنید.', 429);
+        }
+
+        try {
+            $userId = Cache::pull($cacheKey);
+        } finally {
+            $lock->release();
+        }
 
         if (! $userId) {
             return ApiResponse::error('bridge_expired', 'لینک ورود منقضی شده. دوباره تلاش کنید.', 410);
