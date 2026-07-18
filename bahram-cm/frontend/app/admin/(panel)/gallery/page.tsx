@@ -5,6 +5,7 @@ import { AdminPage } from '../ui';
 import { listGalleryMediaPage } from './actions';
 import type { AdminMediaItem } from '@/lib/admin/mediaTypes';
 import { MediaEditModal } from './MediaEditModal';
+import { MediaFtpSettings } from './MediaFtpSettings';
 import { StaticMediaModal } from './StaticMediaModal';
 import { MediaLibraryGrid } from '../content/MediaLibraryGrid';
 import type { UnifiedMediaItem } from '@/lib/admin/unifiedGallery';
@@ -71,6 +72,8 @@ export default function AdminGalleryPage() {
       title="کتابخانه رسانه"
       desc="مرکز مدیریت تصاویر سایت — آپلود، بهینه‌سازی، ویرایش عنوان و alt، و استفاده در مقالات و صفحات"
     >
+      <MediaFtpSettings />
+
       <MediaLibraryGrid
         uploaded={uploaded}
         mode="manage"
