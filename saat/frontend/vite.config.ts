@@ -3,12 +3,14 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { versionPlugin } from './plugins/vite-plugin-version'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   base: './',
   plugins: [
+    versionPlugin(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -18,6 +20,7 @@ export default defineConfig({
         'pwa/icon-192.png',
         'pwa/icon-512.png',
         'pwa/maskable-512.png',
+        'version.json',
         'avatars/**/*',
       ],
       manifest: {
@@ -57,8 +60,13 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,woff,woff2,webp}'],
         navigateFallback: 'index.html',
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//, /\/version\.json$/],
         runtimeCaching: [
+          {
+            // Never cache version checks — critical for update pipeline
+            urlPattern: /\/version\.json(\?.*)?$/i,
+            handler: 'NetworkOnly',
+          },
           {
             urlPattern: /^https:\/\/telegram\.org\/.*/i,
             handler: 'CacheFirst',

@@ -1,11 +1,16 @@
 /// <reference types="vite/client" />
 /// <reference types="vite-plugin-pwa/client" />
 
+declare const __APP_BUILD_VERSION__: string
+declare const __APP_BUILD_HASH__: string
+declare const __APP_BUILD_TIME__: string
+
 interface ImportMetaEnv {
   readonly VITE_API_MODE?: 'mock' | 'http'
   readonly VITE_API_BASE_URL?: string
   readonly VITE_TELEGRAM_BOT_USERNAME?: string
   readonly VITE_VOIP_CALL_ENABLED?: string
+  readonly VITE_UPDATE_TYPE?: 'forced' | 'optional' | 'silent'
 }
 
 interface ImportMeta {
@@ -37,6 +42,7 @@ interface TelegramWebApp {
 }
 
 interface Window {
+  TelegramWebviewProxy?: unknown
   Telegram?: {
     WebApp?: TelegramWebApp
   }

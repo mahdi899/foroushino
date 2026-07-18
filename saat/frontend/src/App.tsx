@@ -61,6 +61,7 @@ import { RequirePermission } from '@/components/auth/RequirePermission'
 import { AppLockScreen } from '@/components/domain/AppLockScreen'
 import { OfflineBanner } from '@/components/pwa/DataGate'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
+import { UpdateBanner } from '@/components/pwa/UpdateBanner'
 import { SyncProvider } from '@/providers/SyncProvider'
 import { ShiftPresenceWatcher } from '@/providers/ShiftPresenceWatcher'
 import { DayRolloverWatcher } from '@/providers/DayRolloverWatcher'
@@ -256,6 +257,7 @@ export default function App() {
             <Shell />
           </BrowserRouter>
           <InstallPrompt />
+          <UpdateBanner />
         </div>
       </div>
     </SyncProvider>

@@ -7,12 +7,13 @@ interface BottomSheetProps {
   onClose: () => void
   children: ReactNode
   title?: string
+  description?: string
   className?: string
 }
 
 const sheetSpring = { type: 'spring' as const, damping: 34, stiffness: 380 }
 
-export function BottomSheet({ open, onClose, children, title, className }: BottomSheetProps) {
+export function BottomSheet({ open, onClose, children, title, description, className }: BottomSheetProps) {
   return (
     <AnimatePresence>
       {open && (
@@ -53,6 +54,11 @@ export function BottomSheet({ open, onClose, children, title, className }: Botto
                 <h3 className="text-[13px] font-semibold uppercase tracking-[0.02em] text-text-muted">
                   {title}
                 </h3>
+                {description ? (
+                  <p className="mt-1 text-[12px] font-medium leading-relaxed text-text-muted/80">
+                    {description}
+                  </p>
+                ) : null}
               </div>
             )}
 

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, UserPlus, PauseCircle, CreditCard, Landmark, Search } from 'lucide-react'
+import { Users, PauseCircle, CreditCard, Landmark, Search } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'

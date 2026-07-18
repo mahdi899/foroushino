@@ -76,10 +76,10 @@ export function resolvePermissions(role: Role, permissions: string[]): string[] 
   return permissions.length > 0 ? permissions : (MOCK_ROLE_PERMISSIONS[normalized] ?? [])
 }
 
-export function hasPermission(permissions: string[], permission: string): boolean {
+export function hasPermission(permissions: readonly string[], permission: string): boolean {
   return permissions.includes(permission)
 }
 
-export function hasAnyPermission(permissions: string[], names: string[]): boolean {
+export function hasAnyPermission(permissions: readonly string[], names: readonly string[]): boolean {
   return names.some((name) => permissions.includes(name))
 }

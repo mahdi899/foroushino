@@ -23,11 +23,14 @@ interface LeadAvatarProps {
   animated?: boolean
 }
 
-const glowPulse = {
+const glowPulse: Record<
+  Temperature,
+  { duration: number; scale: number[]; opacity: number[] }
+> = {
   hot: { duration: 2.1, scale: [1, 1.14, 1], opacity: [0.42, 0.16, 0.42] },
   warm: { duration: 2.6, scale: [1, 1.1, 1], opacity: [0.34, 0.14, 0.34] },
   cold: { duration: 3.2, scale: [1, 1.08, 1], opacity: [0.28, 0.12, 0.28] },
-} as const
+}
 
 export function LeadAvatar({
   lead,
