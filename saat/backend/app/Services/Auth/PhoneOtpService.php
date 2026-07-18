@@ -29,13 +29,7 @@ class PhoneOtpService
         $user = User::query()->where('phone', $normalized)->first();
 
         if (! $user?->telegram_id) {
-            if ($this->demoAuth->enabled()) {
-                throw new RuntimeException(
-                    'این شماره در لیست دمو نیست. از حساب‌های دمو پایین صفحه استفاده کن یا «ورود با تلگرام» بزن.'
-                );
-            }
-
-            throw new RuntimeException('این شماره به تلگرام وصل نیست. از «ورود با تلگرام» استفاده کن.');
+            throw new RuntimeException('اجازه ورود فقط برای افراد ثبت‌نام‌شده است.');
         }
 
         $this->sendToTelegramUser((int) $user->telegram_id, $this->issueCode("phone:{$normalized}"));

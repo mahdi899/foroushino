@@ -16,6 +16,7 @@ export function agentFromAuthenticatedUser(user: AuthenticatedUser): Agent {
     teamId: user.team_id ? String(user.team_id) : '',
     avatar: user.avatar,
     phone: user.phone ?? user.email,
+    agentCode: Number(user.id),
     level: Number(user.level ?? 1),
     callsToday: 0,
     successfulToday: 0,

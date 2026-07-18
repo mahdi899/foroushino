@@ -21,11 +21,13 @@ import {
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { LeadAvatar } from '@/components/domain/LeadAvatar'
+import { ProductLink, resolveProductFromStore } from '@/components/domain/ProductLink'
 import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Button } from '@/components/ui/Button'
 import { LeadSmsSheet } from '@/components/domain/LeadSmsSheet'
 import { FollowupPicker, buildFollowupIso } from '@/components/domain/FollowupPicker'
 import { ContactStatusBadge } from '@/components/domain/Badges'
+import { LeadDetailsPanel } from '@/components/domain/LeadDetailsPanel'
 import { objectionLabels, resultLabels, stageLabels } from '@/data/labels'
 import { formatDuration, relativeDayTime, toFa } from '@/lib/format'
 import { leadDisplayCode } from '@/lib/leadCode'
@@ -43,7 +45,7 @@ import { saveCallSession } from '@/services/callSession'
 
 const TG = 'text-[#3390EC] dark:text-[#8774E1]'
 
-type Sheet = null | 'keypad' | 'sms' | 'callback'
+type Sheet = null | 'keypad' | 'sms' | 'callback' | 'details'
 
 export function DialerScreen() {
   const { id } = useParams()
@@ -53,6 +55,7 @@ export function DialerScreen() {
   const lead = useStore((s) => s.leads.find((l) => l.id === id))
   const calls = useStore((s) => s.calls.filter((c) => c.leadId === id))
   const followups = useStore((s) => s.followups.filter((f) => f.leadId === id))
+  const products = useStore((s) => s.products)
   const activeCallMethod = useStore((s) => s.activeCallMethod)
   const endCall = useStore((s) => s.endCall)
   const updateLeadNote = useStore((s) => s.updateLeadNote)
@@ -99,6 +102,14 @@ export function DialerScreen() {
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 2),
     [calls],
+  )
+
+  const leadProduct = useMemo(
+    () =>
+      lead
+        ? resolveProductFromStore(products, { productId: lead.productId, name: lead.product })
+        : undefined,
+    [lead, products],
   )
 
   if (!lead) {
@@ -196,7 +207,10 @@ export function DialerScreen() {
 
         <button
           type="button"
-          onClick={() => navigate(`/leads/${lead.id}`)}
+          onClick={() => {
+            haptic('light')
+            setSheet('details')
+          }}
           className="glass-inset flex h-9 w-9 items-center justify-center rounded-full text-text-soft active:scale-95"
           aria-label="جزئیات مشتری"
         >
@@ -243,7 +257,20 @@ export function DialerScreen() {
             </div>
           </div>
 
-          <div className="mt-2.5 grid grid-cols-3 gap-1">
+          {lead.product ? (
+            <ProductLink
+              product={leadProduct}
+              productId={lead.productId}
+              className={cn(
+                'mt-2.5 flex w-full justify-center text-center text-[14px] font-bold leading-snug',
+                leadProduct?.slug ? TG : 'text-text-muted',
+              )}
+            >
+              {lead.product}
+            </ProductLink>
+          ) : null}
+
+          <div className={cn('grid grid-cols-3 gap-1', lead.product ? 'mt-2' : 'mt-2.5')}>
             <InfoPill icon={History} label="مرحله" value={stageLabels[lead.stage]} />
             <InfoPill
               icon={Clock}
@@ -360,13 +387,14 @@ export function DialerScreen() {
             )}
             <ActionCell icon={MessageSquareText} label="پیامک" onClick={() => setSheet('sms')} />
             <ActionCell icon={CalendarPlus} label="پیگیری" onClick={() => setSheet('callback')} />
-            {isNativeCall && (
-              <ActionCell
-                icon={UserRound}
-                label="جزئیات"
-                onClick={() => navigate(`/leads/${lead.id}`)}
-              />
-            )}
+            <ActionCell
+              icon={UserRound}
+              label="جزئیات"
+              onClick={() => {
+                haptic('light')
+                setSheet('details')
+              }}
+            />
           </div>
         </div>
 
@@ -405,6 +433,17 @@ export function DialerScreen() {
           <Button full size="lg" onClick={scheduleCallback}>
             ثبت پیگیری
           </Button>
+        </div>
+      </BottomSheet>
+
+      <BottomSheet
+        open={sheet === 'details'}
+        onClose={() => setSheet(null)}
+        title="جزئیات مشتری"
+        className="max-h-[92%]"
+      >
+        <div className="no-scrollbar overflow-y-auto pb-2">
+          <LeadDetailsPanel lead={lead} />
         </div>
       </BottomSheet>
     </motion.div>

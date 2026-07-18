@@ -18,6 +18,12 @@ const LAST_NAMES = [
   'جعفری', 'موسوی', 'قربانی', 'زارع', 'ملکی', 'فرهادی', 'امینی',
 ]
 
+const TEAM_CODE_BASE: Record<string, number> = {
+  t1: 1000,
+  t2: 2000,
+  t3: 3000,
+}
+
 export function buildMockTeamsAndAgents(): { teams: Team[]; agents: Agent[] } {
   const teams: Team[] = TEAM_DEFS.map((team) => ({
     id: team.id,
@@ -46,6 +52,7 @@ export function buildMockTeamsAndAgents(): { teams: Team[]; agents: Agent[] } {
         role: 'agent',
         teamId: team.id,
         phone: String(phone++),
+        agentCode: id === 'a-me' ? 1001 : TEAM_CODE_BASE[team.id] + slot + 1,
         level: 2 + (slot % 4),
         callsToday: 8 + (slot % 10),
         successfulToday: 3 + (slot % 6),
@@ -69,6 +76,7 @@ export const mockStaffAgents: Agent[] = [
     role: 'leader',
     teamId: 't1',
     phone: '09120001001',
+    agentCode: 101,
     level: 6,
     callsToday: 0,
     successfulToday: 0,
@@ -85,6 +93,7 @@ export const mockStaffAgents: Agent[] = [
     role: 'leader',
     teamId: 't2',
     phone: '09120001002',
+    agentCode: 102,
     level: 5,
     callsToday: 0,
     successfulToday: 0,
@@ -101,6 +110,7 @@ export const mockStaffAgents: Agent[] = [
     role: 'leader',
     teamId: 't3',
     phone: '09120001003',
+    agentCode: 103,
     level: 5,
     callsToday: 0,
     successfulToday: 0,
@@ -117,6 +127,7 @@ export const mockStaffAgents: Agent[] = [
     role: 'supervisor',
     teamId: 't1',
     phone: '09120001011',
+    agentCode: 201,
     level: 7,
     callsToday: 0,
     successfulToday: 0,
@@ -133,6 +144,7 @@ export const mockStaffAgents: Agent[] = [
     role: 'manager',
     teamId: 't1',
     phone: '09120001012',
+    agentCode: 1,
     level: 9,
     callsToday: 0,
     successfulToday: 0,

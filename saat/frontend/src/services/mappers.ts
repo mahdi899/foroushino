@@ -14,6 +14,7 @@ import type {
 } from '@/types'
 import { localizeActivityTitle, localizeStatusNote } from '@/lib/activityLabels'
 import { conversionRateFromStats } from '@/lib/dailyGoal'
+import { normalizeTeamReportSummary } from '@/lib/teamDailyReport'
 import type { Suggestion } from './logic'
 
 export function id(value: string | number | null | undefined): string {
@@ -314,6 +315,7 @@ export function mapAgentFromAdmin(dto: Dto): import('@/types').Agent {
     teamId: id(dto.team_id),
     avatar: dto.avatar ?? null,
     phone: dto.phone ?? dto.email ?? '',
+    agentCode: Number(dto.id),
     level: Number(dto.level ?? 1),
     callsToday,
     successfulToday,
@@ -361,20 +363,17 @@ export function mapTeamFromAdmin(dto: Dto, memberIds: string[] = []): import('@/
 }
 
 export function mapTeamReport(dto: Dto): import('@/types').TeamReport {
+  const summary = normalizeTeamReportSummary(
+    dto.summary && typeof dto.summary === 'object' ? dto.summary : {},
+  )
+
   return {
     id: id(dto.id),
     teamId: id(dto.team_id),
     teamName: dto.team_name ?? dto.team?.name ?? '',
     reportDate: dto.report_date ?? '',
     status: dto.status ?? 'submitted',
-    summary: dto.summary ?? {
-      calls_today: 0,
-      successful_today: 0,
-      conversion_rate: 0,
-      pending_confirmation: 0,
-      payment_submitted: 0,
-      active_agents: 0,
-    },
+    summary,
     leaderNotes: dto.leader_notes ?? null,
     supervisorNotes: dto.supervisor_notes ?? null,
     submittedBy: id(dto.submitted_by),

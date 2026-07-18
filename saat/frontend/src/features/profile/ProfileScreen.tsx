@@ -15,6 +15,7 @@ import {
   WalletCards,
   GraduationCap,
   History,
+  Layers3,
   Server,
   Users,
   BarChart3,
@@ -22,12 +23,14 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { isAgentRole, isManagementRole } from '@/lib/roles'
-import { hasPermission } from '@/lib/permissions'
+import { hasPermission, canManageCatalog } from '@/lib/permissions'
 import { useStore } from '@/store/useStore'
+import { apiMode } from '@/services'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
 import { ProfileAvatarPicker } from '@/features/profile/ProfileAvatarPicker'
 import { TeamDailyLeaderboard } from '@/components/domain/TeamDailyLeaderboard'
+import { AgentCodeBadge } from '@/components/domain/AgentCodeBadge'
 import { roleLabels } from '@/data/labels'
 import { getTeamAgentIds } from '@/lib/teamUtils'
 import { conversionRateFromStats } from '@/lib/dailyGoal'
@@ -65,20 +68,26 @@ export function ProfileScreen() {
   const teams = useStore((s) => s.teams)
   const agent = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
   const logout = useStore((s) => s.logout)
-  if (!agent) return null
+  const pushToast = useStore((s) => s.pushToast)
+  const dataReady = useStore((s) => s.dataReady)
+  const dataSyncing = useStore((s) => s.dataSyncing)
 
   const agentLine = isAgentRole(role)
   const management = isManagementRole(role)
   const canOpenAdminSettings = hasPermission(permissions, 'admin.settings')
+  const canOpenCatalog = canManageCatalog(permissions)
   const reportsPath = management ? '/reports' : '/performance'
   const goalPct =
-    agent.callGoal > 0 ? Math.min(100, Math.round((agent.callsToday / agent.callGoal) * 100)) : 0
-  const goalComplete = agentLine && agent.callGoal > 0 && agent.callsToday >= agent.callGoal
+    agent && agent.callGoal > 0
+      ? Math.min(100, Math.round((agent.callsToday / agent.callGoal) * 100))
+      : 0
+  const goalComplete =
+    agentLine && !!agent && agent.callGoal > 0 && agent.callsToday >= agent.callGoal
 
-  const dailyTopRank = useDailyTopRank(agent.id)
+  const dailyTopRank = useDailyTopRank(agent?.id)
 
   const teamLeaderboard = useMemo(() => {
-    if (!agentLine || !agent.teamId) return null
+    if (!agent || !agentLine || !agent.teamId) return null
     const peers = getAgentTeamPeers(agent, agents, teams, currentAgentId, role)
     if (peers.length === 0) return null
     const team = teams.find((item) => item.id === agent.teamId)
@@ -86,6 +95,14 @@ export function ProfileScreen() {
   }, [agentLine, agent, agents, teams, currentAgentId, role])
 
   const profileStats = useMemo(() => {
+    if (!agent) {
+      return [
+        { label: 'تماس امروز', value: toFa(0) },
+        { label: 'موفق امروز', value: toFa(0) },
+        { label: 'نرخ تبدیل', value: `${toFa(0)}٪` },
+      ]
+    }
+
     if (management) {
       const teamAgentIds = getTeamAgentIds(teams, agents, currentAgentId, role)
       const teamAgents = agents.filter(
@@ -115,6 +132,20 @@ export function ProfileScreen() {
       { label: 'نرخ تبدیل', value: `${toFa(conversion)}٪` },
     ]
   }, [management, teams, agents, currentAgentId, role, agent])
+
+  if (!agent) {
+    if (apiMode === 'http' && (!dataReady || dataSyncing)) {
+      return (
+        <Page>
+          <TopBar title="پروفایل" showBack={false} />
+          <div className="flex justify-center py-16">
+            <div className="h-9 w-9 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+          </div>
+        </Page>
+      )
+    }
+    return null
+  }
 
   const workMenu: MenuItem[] = [
     ...(agentLine
@@ -160,6 +191,9 @@ export function ProfileScreen() {
           { icon: Users, label: 'مدیریت کارشناسان', onClick: () => navigate('/admin/agents') },
         ]
       : []),
+    ...(canOpenCatalog
+      ? [{ icon: Layers3, label: 'محصولات و منابع ورود', sublabel: 'تعریف دوره‌ها و منبع ورود مشتری', onClick: () => navigate('/admin/catalog') }]
+      : []),
     ...(canOpenAdminSettings || hasPermission(permissions, 'users.manage')
       ? [
           ...(hasPermission(permissions, 'users.manage')
@@ -197,6 +231,16 @@ export function ProfileScreen() {
                 {agent.firstName} {agent.lastName}
               </h2>
               <p className="mt-0.5 text-[13px] font-medium text-text-soft">{roleLabels[agent.role]}</p>
+
+              {agent.agentCode > 0 && (
+                <div className="mt-2">
+                  <AgentCodeBadge
+                    code={agent.agentCode}
+                    onCopied={(msg) => pushToast(msg)}
+                    onCopyError={(msg) => pushToast(msg, 'error')}
+                  />
+                </div>
+              )}
 
               {agentLine && (agent.streak > 0 || agent.points > 0) && (
                 <div className="mt-2 flex flex-wrap items-center justify-center gap-1.5">

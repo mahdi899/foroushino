@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useDemoMode } from '@/hooks/useDemoMode'
 import { useStore } from '@/store/useStore'
 import { loginWithDemoAccount, type DemoAccount } from '@/services/auth'
-import { syncAppData } from '@/services/sync'
+import { completeLoginSession } from '@/services/loginFlow'
 import { ApiError } from '@/services/http'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
@@ -18,8 +18,6 @@ export function DemoRolePopup({ open, onClose }: DemoRolePopupProps) {
   const navigate = useNavigate()
   const { accounts } = useDemoMode()
   const role = useStore((s) => s.role)
-  const setSessionFromAuth = useStore((s) => s.setSessionFromAuth)
-  const applySyncData = useStore((s) => s.applySyncData)
   const pushToast = useStore((s) => s.pushToast)
   const [switching, setSwitching] = useState<string | null>(null)
 
@@ -30,9 +28,7 @@ export function DemoRolePopup({ open, onClose }: DemoRolePopupProps) {
     setSwitching(account.phone)
     try {
       const user = await loginWithDemoAccount(account)
-      setSessionFromAuth(user)
-      const payload = await syncAppData({ priorDailyStatsDate: useStore.getState().dailyStatsDate })
-      applySyncData(payload)
+      await completeLoginSession(user)
       onClose()
       pushToast(`نقش: ${account.label}`, 'success')
       navigate('/home', { replace: true })

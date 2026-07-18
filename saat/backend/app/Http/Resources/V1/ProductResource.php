@@ -23,6 +23,9 @@ class ProductResource extends JsonResource
             'price' => (string) $this->price,
             'commission_rate' => (string) $this->commission_rate,
             'description' => $this->description,
+            'cover_image_url' => $this->cover_image_url,
+            'video_url' => $this->video_url,
+            'landing_url' => $this->landing_url,
             'is_active' => $this->is_active,
         ];
     }

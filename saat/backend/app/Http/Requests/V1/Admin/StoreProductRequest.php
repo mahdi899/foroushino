@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\V1\Admin;
 
+use App\Support\FlexibleLink;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreProductRequest extends FormRequest
@@ -23,6 +24,9 @@ class StoreProductRequest extends FormRequest
             'price' => ['required', 'numeric', 'min:0'],
             'commission_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'description' => ['nullable', 'string'],
+            'cover_image_url' => ['nullable', 'string', 'max:500'],
+            'video_url' => FlexibleLink::rules(),
+            'landing_url' => FlexibleLink::rules(),
             'is_active' => ['nullable', 'boolean'],
         ];
     }

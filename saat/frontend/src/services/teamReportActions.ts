@@ -2,7 +2,7 @@ import { apiMode } from '@/services'
 import { http } from '@/services/http'
 import { useStore } from '@/store/useStore'
 import { mapTeamReport } from '@/services/mappers'
-import type { TeamReport, TeamReportStatus } from '@/types'
+import type { TeamReport, TeamReportStatus, TeamReportSummary } from '@/types'
 
 type Dto = Record<string, unknown>
 
@@ -31,17 +31,44 @@ export async function refreshTeamReports(options: FetchTeamReportsOptions = {}):
   useStore.getState().setTeamReports(reports)
 }
 
-export async function performSubmitTeamReport(leaderNotes?: string): Promise<void> {
+export async function performSubmitTeamReport(payload: {
+  leaderNotes?: string
+  summary?: TeamReportSummary
+} = {}): Promise<void> {
   if (apiMode !== 'http') {
-    useStore.getState().submitTeamReport(leaderNotes)
+    const ok = useStore.getState().submitTeamReport(payload.leaderNotes, payload.summary)
+    if (!ok) throw new Error('تیمی برای ارسال گزارش پیدا نشد.')
     return
   }
 
   const created = await http.post<Dto>('/team-reports', {
-    leader_notes: leaderNotes ?? null,
+    leader_notes: payload.leaderNotes ?? null,
+    summary: payload.summary ?? null,
   })
 
   useStore.getState().upsertTeamReport(mapTeamReport(created))
+  useStore.getState().pushToast('گزارش روزانه برای سوپروایزر ارسال شد')
+}
+
+export async function performUpdateTeamReport(
+  reportId: string,
+  payload: {
+    supervisorNotes?: string
+    summary?: TeamReportSummary
+  },
+): Promise<void> {
+  if (apiMode !== 'http') {
+    useStore.getState().updateTeamReport(reportId, payload)
+    return
+  }
+
+  const updated = await http.patch<Dto>(`/team-reports/${reportId}`, {
+    supervisor_notes: payload.supervisorNotes ?? null,
+    summary: payload.summary ?? null,
+  })
+
+  useStore.getState().upsertTeamReport(mapTeamReport(updated))
+  useStore.getState().pushToast('ویرایش گزارش ذخیره شد')
 }
 
 export async function performApproveTeamReport(reportId: string, supervisorNotes?: string): Promise<void> {

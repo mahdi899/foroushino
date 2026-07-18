@@ -1,7 +1,9 @@
+import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { MapPin, Phone } from 'lucide-react'
 import type { Lead, Temperature } from '@/types'
 import { LeadAvatar } from '@/components/domain/LeadAvatar'
+import { ProductLink, resolveProductFromStore } from '@/components/domain/ProductLink'
 import { ContactStatusBadge, PriorityBadge, SourceChip } from './Badges'
 import { sourceBadgeClass, sourceIcon } from './icons'
 import { formatCustomerPhone } from '@/lib/phonePrivacy'
@@ -59,6 +61,11 @@ export function LeadProfileHero({ lead }: { lead: Lead }) {
   const theme = heroTheme[lead.temperature]
   const SourceIcon = sourceIcon[lead.source]
   const role = useStore((s) => s.role)
+  const products = useStore((s) => s.products)
+  const leadProduct = useMemo(
+    () => resolveProductFromStore(products, { productId: lead.productId, name: lead.product }),
+    [products, lead.productId, lead.product],
+  )
 
   return (
     <motion.div
@@ -75,63 +82,77 @@ export function LeadProfileHero({ lead }: { lead: Lead }) {
 
       <div className={cn('h-1 w-full bg-gradient-to-l', theme.accent)} />
 
-      <div className="relative px-4 pb-5 pt-6">
+      <div className="relative px-5 pb-6 pt-8">
         <div className="relative flex flex-col items-center">
-          <div className={cn('relative rounded-full ring-[4px]', theme.avatarRing, theme.avatarShadow)}>
+          <div className={cn('relative rounded-full ring-[5px]', theme.avatarRing, theme.avatarShadow)}>
             <LeadAvatar
               lead={lead}
-              size={112}
+              size={136}
               online
               ring
               onlineClassName={theme.onlineDot}
             />
             <span
               className={cn(
-                'glass-inset absolute -bottom-1 -left-1 flex h-9 w-9 items-center justify-center rounded-2xl text-white shadow-md ring-2 ring-white/80',
+                'glass-inset absolute -bottom-1 -left-1 flex h-11 w-11 items-center justify-center rounded-2xl text-white shadow-md ring-2 ring-white/80',
                 sourceBadgeTone[lead.source],
               )}
             >
-              <SourceIcon size={16} strokeWidth={2.5} />
+              <SourceIcon size={19} strokeWidth={2.5} />
             </span>
           </div>
 
-          <div className="mt-4 flex items-center gap-2">
-            <h2 className="text-[22px] font-bold tracking-tight text-neutral-900 dark:text-white">
+          <div className="mt-5 flex items-center gap-2.5">
+            <h2 className="text-[28px] font-bold tracking-tight text-neutral-900 dark:text-white">
               {lead.firstName} {lead.lastName}
             </h2>
-            {lead.priority > 1 && <PriorityBadge priority={lead.priority} />}
+            {lead.priority > 1 && <PriorityBadge priority={lead.priority} size="lg" />}
           </div>
 
-          {lead.product && (
-            <span className="glass-inset mt-1.5 rounded-full border border-white/50 px-3 py-1 text-[11px] font-bold text-neutral-600 dark:border-white/10 dark:text-neutral-300">
+          {lead.product ? (
+            <ProductLink
+              product={leadProduct}
+              productId={lead.productId}
+              className={cn(
+                'mt-5 block max-w-full text-center text-[13px] font-semibold leading-snug',
+                leadProduct?.slug
+                  ? 'text-[#3390EC] dark:text-[#8774E1]'
+                  : 'text-neutral-600 dark:text-neutral-300',
+              )}
+            >
               {lead.product}
-            </span>
-          )}
+            </ProductLink>
+          ) : null}
 
-          <div className="glass-inset mt-4 flex w-full items-center justify-center gap-4 rounded-2xl border border-white/50 px-4 py-2.5 dark:border-white/10">
-            <span className={cn('inline-flex items-center gap-1.5 text-[13px] font-semibold', theme.phone)}>
-              <Phone size={14} className="shrink-0 opacity-70" strokeWidth={2.25} />
+          <div
+            className={cn(
+              'glass-inset flex w-full items-center justify-center gap-5 rounded-[18px] border border-white/50 px-5 py-3.5 dark:border-white/10',
+              lead.product ? 'mt-2.5' : 'mt-5',
+            )}
+          >
+            <span className={cn('inline-flex items-center gap-2 text-[15px] font-semibold', theme.phone)}>
+              <Phone size={17} className="shrink-0 opacity-70" strokeWidth={2.25} />
               <span className="ltr-nums tabular-nums">
                 {formatCustomerPhone(lead.phone, role)}
               </span>
             </span>
             {lead.city && (
               <>
-                <span className="h-4 w-px bg-white/40 dark:bg-white/10" />
-                <span className="inline-flex min-w-0 items-center gap-1 text-[12px] font-semibold text-[#8E8E93] dark:text-[#98989D]">
-                  <MapPin size={13} className="shrink-0 opacity-70" strokeWidth={2.25} />
+                <span className="h-5 w-px bg-white/40 dark:bg-white/10" />
+                <span className="inline-flex min-w-0 items-center gap-1.5 text-[14px] font-semibold text-[#8E8E93] dark:text-[#98989D]">
+                  <MapPin size={16} className="shrink-0 opacity-70" strokeWidth={2.25} />
                   <span className="truncate">{lead.city}</span>
                 </span>
               </>
             )}
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-            <ContactStatusBadge temperature={lead.temperature} />
-            <SourceChip source={lead.source} />
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2.5">
+            <ContactStatusBadge temperature={lead.temperature} size="lg" />
+            <SourceChip source={lead.source} size="lg" />
             <span
               className={cn(
-                'glass-inset rounded-full border px-2.5 py-1 text-[11px] font-bold tabular-nums',
+                'glass-inset rounded-full border px-3 py-1.5 text-[13px] font-bold tabular-nums',
                 lead.conversionProbability >= 70
                   ? 'border-primary-200/50 bg-primary-500/10 text-primary-700'
                   : lead.conversionProbability >= 40

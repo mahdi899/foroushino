@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -8,6 +8,7 @@ import {
   Radio,
   FileText,
   Server,
+  Layers3,
   UserPlus,
   ShieldCheck,
   Activity,
@@ -22,6 +23,7 @@ import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { AppHeader } from './AppHeader'
 import { InsightCard } from '@/components/domain/InsightCard'
+import { TeamMetricDetailSheet } from '@/components/domain/TeamMetricDetailSheet'
 import { Avatar } from '@/components/ui/Avatar'
 import {
   computeManagerInsights,
@@ -33,7 +35,7 @@ import {
 } from '@/lib/reportUtils'
 import { getManagedTeam, getTeamAgentIds } from '@/lib/teamUtils'
 import { isLeaderRole, isManagerRole, isSupervisorRole, isManagementRole } from '@/lib/roles'
-import { hasPermission } from '@/lib/permissions'
+import { hasPermission, canManageCatalog } from '@/lib/permissions'
 import { roleLabels } from '@/data/labels'
 import { conversionRateFromStats } from '@/lib/dailyGoal'
 import { toFa } from '@/lib/format'
@@ -41,6 +43,15 @@ import { apiMode } from '@/services'
 import { subscribeTeamLive } from '@/services/teamLivePoller'
 import { haptic } from '@/lib/telegram'
 import { countPendingCommissionsForLeader, countPendingCommissionsForSupervisor, resolveCommissionApprovalMode } from '@/lib/commissionQueue'
+import {
+  buildCallsBreakdown,
+  buildConversionBreakdown,
+  buildHotLeadsBreakdown,
+  buildOverdueBreakdown,
+  filterFollowupsForTeam,
+  filterLeadsForTeam,
+  type TeamMetricKind,
+} from '@/lib/teamMetricBreakdown'
 import { cn } from '@/lib/cn'
 import type { Agent, Role } from '@/types'
 
@@ -84,11 +95,13 @@ function StatCell({
   label,
   warn,
   accent,
+  onClick,
 }: {
   value: string | number
   label: string
   warn?: boolean
   accent?: 'blue' | 'green' | 'orange' | 'red'
+  onClick?: () => void
 }) {
   const accentRing =
     accent === 'green'
@@ -99,14 +112,8 @@ function StatCell({
           ? 'border-red-500/20 bg-red-500/8'
           : 'border-[#3390EC]/20 bg-[#3390EC]/8 dark:border-[#8774E1]/25 dark:bg-[#8774E1]/10'
 
-  return (
-    <div
-      className={cn(
-        'glass-inset flex flex-col items-center rounded-[14px] border px-1.5 py-2.5',
-        accentRing,
-        warn && 'border-amber-500/30 bg-amber-500/10',
-      )}
-    >
+  const body = (
+    <>
       <span
         className={cn(
           'text-[18px] font-black tabular-nums leading-none',
@@ -116,7 +123,31 @@ function StatCell({
         {typeof value === 'number' ? toFa(value) : value}
       </span>
       <span className="mt-1 text-center text-[9px] font-bold leading-tight text-text-soft">{label}</span>
-    </div>
+    </>
+  )
+
+  const className = cn(
+    'glass-inset flex flex-col items-center rounded-[14px] border px-1.5 py-2.5',
+    accentRing,
+    warn && 'border-amber-500/30 bg-amber-500/10',
+    onClick && 'cursor-pointer transition-transform active:scale-[0.97]',
+  )
+
+  if (!onClick) {
+    return <div className={className}>{body}</div>
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        haptic('selection')
+        onClick()
+      }}
+      className={className}
+    >
+      {body}
+    </button>
   )
 }
 
@@ -133,6 +164,7 @@ function MgmtHeroBanner({
   isLeader,
   isSupervisor,
   isManager,
+  onMetricClick,
 }: {
   role: Role
   hero: { title: string; sub: string }
@@ -146,6 +178,7 @@ function MgmtHeroBanner({
   isLeader: boolean
   isSupervisor: boolean
   isManager: boolean
+  onMetricClick?: (kind: TeamMetricKind) => void
 }) {
   const accentBar =
     isManager
@@ -199,14 +232,30 @@ function MgmtHeroBanner({
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <StatCell value={totalCalls} label="تماس امروز" accent="blue" />
-          <StatCell value={`${toFa(avgConversion)}٪`} label="نرخ تبدیل" accent="green" />
-          <StatCell value={hotLeads} label="لید داغ" accent="orange" />
+          <StatCell
+            value={totalCalls}
+            label="تماس امروز"
+            accent="blue"
+            onClick={onMetricClick ? () => onMetricClick('calls') : undefined}
+          />
+          <StatCell
+            value={`${toFa(avgConversion)}٪`}
+            label="نرخ تبدیل"
+            accent="green"
+            onClick={onMetricClick ? () => onMetricClick('conversion') : undefined}
+          />
+          <StatCell
+            value={hotLeads}
+            label="لید داغ"
+            accent="orange"
+            onClick={onMetricClick ? () => onMetricClick('hot_leads') : undefined}
+          />
           <StatCell
             value={overdueCount}
             label="عقب‌افتاده"
             warn={overdueCount > 0}
             accent={overdueCount > 0 ? 'red' : undefined}
+            onClick={onMetricClick ? () => onMetricClick('overdue') : undefined}
           />
         </div>
 
@@ -423,6 +472,7 @@ function AgentRankRow({
 
 export function ManagementHome() {
   const navigate = useNavigate()
+  const [metricSheet, setMetricSheet] = useState<TeamMetricKind | null>(null)
   const role = useStore((s) => s.role)
   const permissions = useStore((s) => s.permissions)
   const currentAgentId = useStore((s) => s.currentAgentId)
@@ -442,6 +492,7 @@ export function ManagementHome() {
   const canManageStaff = hasPermission(permissions, 'users.view')
   const canViewSystemActivity = hasPermission(permissions, 'reports.view-all')
   const canManageSettings = hasPermission(permissions, 'admin.settings')
+  const canOpenCatalog = canManageCatalog(permissions)
   const canIntakeLeads =
     hasPermission(permissions, 'leads.manage') ||
     hasPermission(permissions, 'leads.import') ||
@@ -465,15 +516,20 @@ export function ManagementHome() {
 
   const teamAgentIds = getTeamAgentIds(teams, agents, currentAgentId, role)
   const teamAgents = agents.filter((a) => teamAgentIds.includes(a.id) && a.role === 'agent')
+  const teamLeads = useMemo(() => filterLeadsForTeam(leads, teamAgentIds), [leads, teamAgentIds])
+  const teamFollowups = useMemo(
+    () => filterFollowupsForTeam(followups, teamAgentIds),
+    [followups, teamAgentIds],
+  )
   const totalCalls = teamAgents.reduce((sum, a) => sum + a.callsToday, 0)
   const totalSuccess = teamAgents.reduce((sum, a) => sum + a.successfulToday, 0)
   const avgConversion = conversionRateFromStats(totalCalls, totalSuccess)
-  const hotLeads = leads.filter((l) => l.temperature === 'hot').length
+  const hotLeads = teamLeads.filter((l) => l.temperature === 'hot').length
 
   const teamRows = useMemo(() => computeTeamRows(agents, teams), [agents, teams])
   const sourcePerf = useMemo(() => computeSourcePerf(leads), [leads])
   const weak = useMemo(() => weakAgents(agents), [agents])
-  const overdue = useMemo(() => overdueFollowupsList(followups), [followups])
+  const overdue = useMemo(() => overdueFollowupsList(teamFollowups), [teamFollowups])
   const pendingSales = useMemo(() => pendingConfirmationSales(sales), [sales])
   const pendingTeamReports = useMemo(
     () => teamReports.filter((r) => r.status === 'submitted').length,
@@ -676,6 +732,15 @@ export function ManagementHome() {
     }
 
     if (isManager) {
+      if (canOpenCatalog) {
+        items.push({
+          id: 'catalog',
+          label: 'محصولات و منابع ورود',
+          sublabel: 'دوره‌ها، لینک پیامک و منبع ورود',
+          icon: Layers3,
+          onClick: () => navigate('/admin/settings'),
+        })
+      }
       if (canManageSettings) {
         items.push({ id: 'settings', label: 'تنظیمات سیستم', icon: Server, onClick: () => navigate('/admin/settings') })
       }
@@ -700,6 +765,7 @@ export function ManagementHome() {
     isManager,
     canIntakeLeads,
     canManageSettings,
+    canOpenCatalog,
     canManageStaff,
     canViewSystemActivity,
     pendingAgentReports,
@@ -806,6 +872,22 @@ export function ManagementHome() {
     [teamMenu, quickActions],
   )
 
+  const metricRows = useMemo(() => {
+    if (!metricSheet) return []
+    switch (metricSheet) {
+      case 'calls':
+        return buildCallsBreakdown(teamAgents)
+      case 'conversion':
+        return buildConversionBreakdown(teamAgents)
+      case 'hot_leads':
+        return buildHotLeadsBreakdown(leads, teamAgents, teamAgentIds)
+      case 'overdue':
+        return buildOverdueBreakdown(followups, leads, teamAgents, teamAgentIds)
+      default:
+        return []
+    }
+  }, [metricSheet, teamAgents, leads, followups, teamAgentIds])
+
   return (
     <Page>
       <AppHeader />
@@ -829,6 +911,14 @@ export function ManagementHome() {
           isLeader={isLeader}
           isSupervisor={isSupervisor}
           isManager={isManager}
+          onMetricClick={setMetricSheet}
+        />
+
+        <TeamMetricDetailSheet
+          open={metricSheet != null}
+          kind={metricSheet}
+          rows={metricRows}
+          onClose={() => setMetricSheet(null)}
         />
 
         {inboxItems.length > 0 && (

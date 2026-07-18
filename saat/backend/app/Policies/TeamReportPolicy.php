@@ -47,4 +47,10 @@ class TeamReportPolicy
         return $user->can('reports.approve-team')
             && $report->status === TeamReportStatus::Approved;
     }
+
+    public function update(User $user, TeamReport $report): bool
+    {
+        return $user->can('reports.approve-team')
+            && in_array($report->status, [TeamReportStatus::Submitted, TeamReportStatus::Approved], true);
+    }
 }

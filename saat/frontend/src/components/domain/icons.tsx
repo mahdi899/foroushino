@@ -44,9 +44,9 @@ import {
   SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react'
-import type { Availability, CallResult, LeadSource, SuggestReason, WalletTxType } from '@/types'
+import type { Availability, CallResult, SuggestReason, WalletTxType } from '@/types'
 
-export const sourceIcon: Record<LeadSource, LucideIcon> = {
+export const sourceIcon: Record<string, LucideIcon> = {
   instagram: Instagram,
   website: Globe,
   telegram: Send,
@@ -54,9 +54,14 @@ export const sourceIcon: Record<LeadSource, LucideIcon> = {
   webinar: Video,
   form: ClipboardList,
   excel: FileSpreadsheet,
+  bahram: Sparkle,
 }
 
-export const sourceColor: Record<LeadSource, string> = {
+export function resolveSourceIcon(source: string): LucideIcon {
+  return sourceIcon[source] ?? Globe
+}
+
+export const sourceColor: Record<string, string> = {
   instagram: 'secondary',
   website: 'cold',
   telegram: 'cold',
@@ -67,7 +72,7 @@ export const sourceColor: Record<LeadSource, string> = {
 }
 
 /** Static Tailwind classes — never use dynamic `text-${sourceColor}-500` */
-export const sourceIconClass: Record<LeadSource, string> = {
+export const sourceIconClass: Record<string, string> = {
   instagram: 'text-secondary-500',
   website: 'text-cold-500',
   telegram: 'text-cold-500',
@@ -75,9 +80,14 @@ export const sourceIconClass: Record<LeadSource, string> = {
   webinar: 'text-secondary-500',
   form: 'text-primary-500',
   excel: 'text-success-500',
+  bahram: 'text-primary-500',
 }
 
-export const sourceBadgeClass: Record<LeadSource, string> = {
+export function resolveSourceIconClass(source: string): string {
+  return sourceIconClass[source] ?? 'text-neutral-500'
+}
+
+export const sourceBadgeClass: Record<string, string> = {
   instagram: 'bg-secondary-500',
   website: 'bg-cold-500',
   telegram: 'bg-cold-500',

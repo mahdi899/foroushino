@@ -3,6 +3,7 @@ import { BottomSheet } from '@/components/ui/BottomSheet'
 import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { Avatar } from '@/components/ui/Avatar'
+import { AgentCodeBadge } from '@/components/domain/AgentCodeBadge'
 import { availabilityLabels } from '@/data/labels'
 import { availabilityDotClass } from '@/components/domain/icons'
 import { formatDuration, formatHms, formatMoney, toFa } from '@/lib/format'
@@ -163,6 +164,16 @@ export function AgentDetailSheet({
                   </p>
                 )}
                 <p className="mt-0.5 text-[11px] font-semibold text-text-soft">{teamName}</p>
+                {agent.agentCode > 0 && pushToast && (
+                  <div className="mt-2">
+                    <AgentCodeBadge
+                      code={agent.agentCode}
+                      compact
+                      onCopied={(msg) => pushToast(msg)}
+                      onCopyError={(msg) => pushToast(msg, 'error')}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -199,6 +210,9 @@ export function AgentDetailSheet({
         {readOnly ? (
           <>
             <ProfileField label="نام و نام خانوادگی" value={name || `${agent?.firstName ?? ''} ${agent?.lastName ?? ''}`.trim()} />
+            {agent?.agentCode != null && agent.agentCode > 0 && (
+              <ProfileField label="شناسه کارشناس" value={toFa(agent.agentCode)} />
+            )}
             <ProfileField label="شماره موبایل" value={toFa(phone || agent?.phone || '—')} />
             <ProfileField label="تیم" value={teamName} />
           </>

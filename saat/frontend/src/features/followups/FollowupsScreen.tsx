@@ -1,6 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import {
   Phone,
   MessageCircle,
@@ -61,12 +60,6 @@ const kindIcon: Record<FollowupKind, LucideIcon> = {
   info: FileText,
   decision: HelpCircle,
   custom: ListChecks,
-}
-
-const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
-const fadeUp = {
-  hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: spring },
 }
 
 type Bucket = 'today' | 'tomorrow' | 'overdue' | 'week' | 'critical' | 'done'
@@ -214,13 +207,10 @@ export function FollowupsScreen() {
       <DataGate mode="placeholder">
         <div className="space-y-3 px-4 pt-2 pb-1">
           {suggestion && bucket !== 'done' && (
-            <motion.button
-              variants={fadeUp}
-              initial="hidden"
-              animate="show"
-              whileTap={{ scale: 0.98 }}
+            <button
+              type="button"
               onClick={() => call(suggestion.lead)}
-              className="glass-card flex w-full items-center gap-3 rounded-[18px] border border-[#3390EC]/20 px-3.5 py-3 text-right dark:border-[#8774E1]/25"
+              className="list-row flex w-full items-center gap-3 rounded-[18px] border border-[#3390EC]/20 px-3.5 py-3 text-right active:scale-[0.98] dark:border-[#8774E1]/25"
             >
               <LeadAvatar lead={suggestion.lead} size={42} ring />
               <div className="min-w-0 flex-1">
@@ -235,7 +225,7 @@ export function FollowupsScreen() {
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#3390EC] text-white dark:bg-[#8774E1]">
                 <Phone size={16} strokeWidth={2.35} />
               </span>
-            </motion.button>
+            </button>
           )}
 
           {list.length === 0 ? (
@@ -248,12 +238,7 @@ export function FollowupsScreen() {
               }
             />
           ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25 }}
-              className="glass-card overflow-hidden rounded-[22px] border border-white/55 dark:border-white/10"
-            >
+            <div className="list-panel overflow-hidden rounded-[22px]">
               <div className="pointer-events-none border-b border-white/40 px-3.5 py-2 dark:border-white/8">
                 <p className="text-[11px] font-semibold text-text-soft">
                   {toFa(list.length)} پیگیری · {bucketLabels[bucket]}
@@ -285,7 +270,7 @@ export function FollowupsScreen() {
                   />
                 )
               })}
-            </motion.div>
+            </div>
           )}
         </div>
       </DataGate>

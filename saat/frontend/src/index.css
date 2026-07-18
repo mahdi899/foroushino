@@ -201,9 +201,9 @@ select {
   }
 
   .glass-header {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(24px) saturate(125%);
-    -webkit-backdrop-filter: blur(24px) saturate(125%);
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(8px) saturate(120%);
+    -webkit-backdrop-filter: blur(8px) saturate(120%);
     border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
     box-shadow:
       inset 0 -0.5px 0 rgba(255, 255, 255, 0.85),
@@ -211,9 +211,9 @@ select {
   }
 
   [data-theme='dark'] .glass-header {
-    background: rgba(10, 18, 20, 0.68);
-    backdrop-filter: blur(32px) saturate(165%);
-    -webkit-backdrop-filter: blur(32px) saturate(165%);
+    background: rgba(10, 18, 20, 0.92);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
     border-bottom-color: var(--glass-rim-soft);
     box-shadow:
       inset 0 1px 0 var(--glass-highlight),
@@ -223,9 +223,9 @@ select {
 
   .glass-nav,
   .glass-tab-bar {
-    background: rgba(255, 255, 255, 0.78);
-    backdrop-filter: blur(52px) saturate(195%);
-    -webkit-backdrop-filter: blur(52px) saturate(195%);
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
     border: 0.5px solid rgba(255, 255, 255, 0.72);
     box-shadow:
       inset 0 0.5px 0 rgba(255, 255, 255, 0.96),
@@ -240,9 +240,9 @@ select {
 
   [data-theme='dark'] .glass-nav,
   [data-theme='dark'] .glass-tab-bar {
-    background: rgba(22, 22, 24, 0.8);
-    backdrop-filter: blur(56px) saturate(170%);
-    -webkit-backdrop-filter: blur(56px) saturate(170%);
+    background: rgba(22, 22, 24, 0.94);
+    backdrop-filter: blur(14px) saturate(150%);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
     border-color: rgba(255, 255, 255, 0.1);
     box-shadow:
       inset 0 0.5px 0 rgba(255, 255, 255, 0.1),
@@ -411,6 +411,26 @@ select {
       0 0 0 0.5px rgba(0, 0, 0, 0.05),
       0 10px 28px rgba(0, 0, 0, 0.06),
       0 2px 8px rgba(0, 0, 0, 0.03);
+  }
+
+  /* Flat list surfaces — no per-row backdrop blur (much faster scroll). */
+  .list-row {
+    background: rgb(var(--color-surface));
+    border: 0.5px solid rgb(var(--color-border));
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+
+  .list-panel {
+    background: rgb(var(--color-surface));
+    border: 0.5px solid rgb(var(--color-border));
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  [data-theme='dark'] .list-row,
+  [data-theme='dark'] .list-panel {
+    background: rgb(var(--color-surface));
+    border-color: rgb(var(--color-border));
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
   }
 
   /* Colored pipeline cards — no white glass wash; theme gradient is the surface */

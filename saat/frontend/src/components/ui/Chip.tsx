@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { motion } from 'framer-motion'
 import { cn } from '@/lib/cn'
 
 export type ChipTone = 'primary' | 'hot' | 'warm' | 'cold' | 'error' | 'neutral'
@@ -25,27 +24,27 @@ const activeStyles: Record<ChipTone, string> = {
 }
 
 const inactiveStyles: Record<ChipTone, string> = {
-  primary: 'glass-inset border-white/50 text-text-soft',
-  hot: 'glass-inset border-hot-100/50 text-hot-600 dark:border-hot-500/20 dark:text-hot-300',
-  warm: 'glass-inset border-warm-100/50 text-warm-600 dark:border-warm-500/20 dark:text-warm-300',
-  cold: 'glass-inset border-cold-100/50 text-cold-600 dark:border-cold-500/20 dark:text-cold-300',
-  error: 'glass-inset border-error-100/50 text-error-600 dark:border-error-500/20 dark:text-error-300',
-  neutral: 'glass-inset border-white/50 text-text-soft',
+  primary: 'bg-surface-soft border-border text-text-soft',
+  hot: 'bg-surface-soft border-hot-100/50 text-hot-600 dark:border-hot-500/20 dark:text-hot-300',
+  warm: 'bg-surface-soft border-warm-100/50 text-warm-600 dark:border-warm-500/20 dark:text-warm-300',
+  cold: 'bg-surface-soft border-cold-100/50 text-cold-600 dark:border-cold-500/20 dark:text-cold-300',
+  error: 'bg-surface-soft border-error-100/50 text-error-600 dark:border-error-500/20 dark:text-error-300',
+  neutral: 'bg-surface-soft border-border text-text-soft',
 }
 
 export function Chip({ children, active, onClick, icon, tone = 'primary', className }: ChipProps) {
   return (
-    <motion.button
-      whileTap={{ scale: 0.94 }}
+    <button
+      type="button"
       onClick={onClick}
       className={cn(
-        'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 h-9 text-[13px] font-bold transition-colors',
+        'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 h-9 text-[13px] font-bold transition-colors active:scale-[0.96]',
         active ? activeStyles[tone] : inactiveStyles[tone],
         className,
       )}
     >
       {icon}
       {children}
-    </motion.button>
+    </button>
   )
 }

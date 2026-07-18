@@ -1,6 +1,8 @@
 import type { FunnelStage, SourcePerf, TeamRow } from '@/data/reports'
-import { stageLabels, sourceLabels } from '@/data/labels'
-import { sourceIcon, sourceIconClass } from '@/components/domain/icons'
+import { stageLabels } from '@/data/labels'
+import { resolveSourceIcon, resolveSourceIconClass } from '@/components/domain/icons'
+import { getSourceLabel } from '@/lib/leadSources'
+import { useStore } from '@/store/useStore'
 import { toFa } from '@/lib/format'
 import { ArrowUp, ArrowDown } from 'lucide-react'
 import { cn } from '@/lib/cn'
@@ -34,21 +36,22 @@ export function FunnelCard({ funnel }: { funnel: FunnelStage[] }) {
 }
 
 export function SourceCard({ sources }: { sources: SourcePerf[] }) {
+  const leadSources = useStore((s) => s.leadSources)
   const max = Math.max(...sources.map((s) => s.leads))
   return (
     <div className="rounded-3xl bg-surface p-4 shadow-card border border-border/60">
       <h3 className="mb-4 text-[15px] font-extrabold text-neutral-900">منابع مشتری</h3>
       <div className="space-y-3">
         {sources.map((s) => {
-          const Icon = sourceIcon[s.source]
+          const Icon = resolveSourceIcon(s.source)
           return (
             <div key={s.source} className="flex items-center gap-3">
-              <span className={cn('flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-50', sourceIconClass[s.source])}>
+              <span className={cn('flex h-8 w-8 items-center justify-center rounded-xl bg-neutral-50', resolveSourceIconClass(s.source))}>
                 <Icon size={16} />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="mb-1 flex items-center justify-between">
-                  <span className="text-[12px] font-bold text-neutral-700">{sourceLabels[s.source]}</span>
+                  <span className="text-[12px] font-bold text-neutral-700">{getSourceLabel(s.source, leadSources)}</span>
                   <span className="text-[11px] font-bold text-neutral-400 tabular-nums">
                     {toFa(s.leads)} مشتری · {toFa(s.conversion)}٪
                   </span>

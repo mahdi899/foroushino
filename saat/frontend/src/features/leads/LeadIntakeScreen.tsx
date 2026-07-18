@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { UserPlus, Upload, Share2, Users } from 'lucide-react'
+import { UserPlus, Upload, Share2, Users, Download } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
@@ -12,15 +12,17 @@ import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
 import { createLead, distributeLeadsToTeams, importLeadsCsv } from '@/services/leads'
 import { syncAppData } from '@/services/sync'
+import { intakeLeadSources } from '@/lib/leadSources'
+import { ProductLink, resolveProductFromStore } from '@/components/domain/ProductLink'
 import {
   experienceLabels,
   priorityLabels,
-  sourceLabels,
 } from '@/data/labels'
 import type { CreateLeadInput } from '@/services/leads'
 import type { ExperienceLevel, LeadSource, Priority, Temperature } from '@/types'
 
 const usesRemoteData = import.meta.env.VITE_API_MODE === 'http'
+const LEAD_IMPORT_SAMPLE_CSV = '/lead-import-sample.csv'
 
 const fieldClass = cn(
   'glass-inset w-full rounded-[14px] border border-white/55 px-3 py-3 text-[14px] font-semibold text-text',
@@ -67,7 +69,7 @@ const emptyForm = (): IntakeForm => ({
   lastNote: '',
 })
 
-const sourceOptions = Object.keys(sourceLabels) as LeadSource[]
+
 const experienceOptions = Object.keys(experienceLabels) as ExperienceLevel[]
 const priorityOptions: Priority[] = [1, 2, 3]
 
@@ -119,6 +121,7 @@ export function LeadIntakeScreen() {
   const teams = useStore((s) => s.teams)
   const leads = useStore((s) => s.leads)
   const products = useStore((s) => s.products.filter((p) => p.isActive))
+  const leadSources = useStore((s) => s.leadSources)
   const addLead = useStore((s) => s.addLead)
   const distributeLeadsToTeamsLocal = useStore((s) => s.distributeLeadsToTeams)
   const applySyncData = useStore((s) => s.applySyncData)
@@ -142,6 +145,13 @@ export function LeadIntakeScreen() {
           !lead.doNotCall,
       ).length,
     [leads],
+  )
+
+  const sourceOptions = useMemo(() => intakeLeadSources(leadSources), [leadSources])
+
+  const selectedProduct = useMemo(
+    () => resolveProductFromStore(products, { productId: form.productId }),
+    [products, form.productId],
   )
 
   const patch = <K extends keyof IntakeForm>(key: K, value: IntakeForm[K]) => {
@@ -332,8 +342,8 @@ export function LeadIntakeScreen() {
                   className={selectClass}
                 >
                   {sourceOptions.map((source) => (
-                    <option key={source} value={source}>
-                      {sourceLabels[source]}
+                    <option key={source.slug} value={source.slug}>
+                      {source.label}
                     </option>
                   ))}
                 </select>
@@ -353,6 +363,15 @@ export function LeadIntakeScreen() {
                   ))}
                 </select>
               </label>
+              {selectedProduct ? (
+                <ProductLink
+                  product={selectedProduct}
+                  className="inline-flex text-[12px] font-bold text-primary-600"
+                  showChevron
+                >
+                  مشاهده صفحه {selectedProduct.name}
+                </ProductLink>
+              ) : null}
             </FormSection>
 
             <FormSection title="پروفایل مشتری">
@@ -494,6 +513,14 @@ export function LeadIntakeScreen() {
             <p className="text-[11px] font-semibold leading-6 text-text-soft">
               ستون‌های پشتیبانی‌شده: first_name, last_name, phone, city, source, product_id
             </p>
+            <a
+              href={LEAD_IMPORT_SAMPLE_CSV}
+              download="lead-import-sample.csv"
+              className="flex w-full items-center justify-center gap-2 rounded-[18px] border border-[#3390EC]/25 bg-[#3390EC]/8 py-3 text-sm font-extrabold text-[#3390EC] dark:border-[#8774E1]/25 dark:bg-[#8774E1]/10 dark:text-[#8774E1]"
+            >
+              <Download size={16} />
+              دانلود فایل نمونه CSV
+            </a>
             <input
               ref={fileRef}
               type="file"

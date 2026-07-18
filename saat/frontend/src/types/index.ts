@@ -4,14 +4,17 @@ export type Temperature = 'hot' | 'warm' | 'cold'
 
 export type Priority = 1 | 2 | 3
 
-export type LeadSource =
-  | 'instagram'
-  | 'website'
-  | 'telegram'
-  | 'ads'
-  | 'webinar'
-  | 'form'
-  | 'excel'
+export type LeadSource = string
+
+export interface LeadSourceOption {
+  id: string
+  slug: string
+  label: string
+  sortOrder: number
+  isActive: boolean
+  isSystem: boolean
+  showInForm: boolean
+}
 
 export type SaleStage =
   | 'new'
@@ -199,6 +202,7 @@ export interface Agent {
   teamId: string
   avatar?: string | null
   phone: string
+  agentCode: number
   level: number
   callsToday: number
   successfulToday: number
@@ -232,6 +236,24 @@ export interface Team {
 
 export type TeamReportStatus = 'submitted' | 'approved' | 'forwarded_to_manager'
 
+export type TeamReportAgentReviewStatus = 'pending' | 'approved' | 'rejected'
+
+export interface TeamReportAgentMetrics {
+  calls_today: number
+  successful_today: number
+  conversion_rate: number
+  commission_today: number
+  shift_seconds: number
+}
+
+export interface TeamReportAgentEntry {
+  agent_id: string
+  agent_name: string
+  source: TeamReportAgentMetrics
+  display?: Partial<TeamReportAgentMetrics> & { note?: string | null }
+  review_status?: TeamReportAgentReviewStatus
+}
+
 export interface TeamReportSummary {
   calls_today: number
   successful_today: number
@@ -239,6 +261,8 @@ export interface TeamReportSummary {
   pending_confirmation: number
   payment_submitted: number
   active_agents: number
+  agents?: TeamReportAgentEntry[]
+  narrative?: string | null
 }
 
 export interface TeamReport {
@@ -491,9 +515,14 @@ export interface WorkDaySummary {
 export interface Product {
   id: string
   name: string
+  slug?: string
   price: number
   category: string
   commissionRate: number
+  description?: string
+  coverImageUrl?: string
+  videoUrl?: string
+  landingUrl?: string
   isActive: boolean
 }
 

@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react'
 import { useOnline } from '@/lib/network'
 import { API_BASE_URL, ApiError } from '@/services/http'
 import { apiMode } from '@/services'
+import { completeLoginSession } from '@/services/loginFlow'
 import { syncAppData } from '@/services/sync'
 import { clearToken, fetchMe, isAuthenticated } from '@/services/auth'
 import { flushOfflineQueue } from '@/services/offlineQueue'
@@ -24,7 +25,6 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const online = useOnline()
   const isAuthed = useStore((s) => s.isAuthed)
   const applySyncData = useStore((s) => s.applySyncData)
-  const setSessionFromAuth = useStore((s) => s.setSessionFromAuth)
   const logout = useStore((s) => s.logout)
   const setDataReady = useStore((s) => s.setDataReady)
   const setDataSyncing = useStore((s) => s.setDataSyncing)
@@ -101,7 +101,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     const restore = async () => {
       try {
         const user = await fetchMe()
-        if (!cancelled) setSessionFromAuth(user)
+        if (!cancelled) await completeLoginSession(user)
       } catch {
         if (!cancelled) clearToken()
       }
@@ -112,7 +112,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [isAuthed, setSessionFromAuth])
+  }, [isAuthed])
 
   return <>{children}</>
 }
@@ -122,6 +122,9 @@ export function useRemoteDataReady() {
   const dataReady = useStore((s) => s.dataReady)
   const dataSyncing = useStore((s) => s.dataSyncing)
   const isAuthed = useStore((s) => s.isAuthed)
+  const hasCachedData = useStore(
+    (s) => s.leads.length > 0 || s.agents.length > 1 || s.products.length > 0,
+  )
 
   if (apiMode === 'mock') {
     return { showData: true, syncing: false, needsNetwork: false }
@@ -132,7 +135,7 @@ export function useRemoteDataReady() {
   }
 
   return {
-    showData: online && dataReady,
+    showData: online && (dataReady || hasCachedData),
     syncing: online && dataSyncing && !dataReady,
     needsNetwork: true,
   }

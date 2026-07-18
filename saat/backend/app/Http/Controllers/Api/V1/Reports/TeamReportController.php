@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Reports;
 use App\Actions\Reports\ApproveTeamReportAction;
 use App\Actions\Reports\ForwardTeamReportAction;
 use App\Actions\Reports\SubmitTeamReportAction;
+use App\Actions\Reports\UpdateTeamReportAction;
 use App\Enums\RoleName;
 use App\Enums\TeamReportStatus;
 use App\Http\Controllers\Controller;
@@ -21,6 +22,7 @@ class TeamReportController extends Controller
         private readonly SubmitTeamReportAction $submitReport,
         private readonly ApproveTeamReportAction $approveReport,
         private readonly ForwardTeamReportAction $forwardReport,
+        private readonly UpdateTeamReportAction $updateReport,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -64,9 +66,15 @@ class TeamReportController extends Controller
 
         $validated = $request->validate([
             'leader_notes' => ['nullable', 'string', 'max:2000'],
+            'summary' => ['nullable', 'array'],
         ]);
 
-        $report = $this->submitReport->execute($team, $user, $validated['leader_notes'] ?? null);
+        $report = $this->submitReport->execute(
+            $team,
+            $user,
+            $validated['leader_notes'] ?? null,
+            $validated['summary'] ?? null,
+        );
 
         return ApiResponse::success(new TeamReportResource($report), 'گزارش روزانه برای سوپروایزر ارسال شد');
     }
@@ -95,5 +103,24 @@ class TeamReportController extends Controller
         $report = $this->forwardReport->execute($teamReport, $request->user());
 
         return ApiResponse::success(new TeamReportResource($report), 'گزارش برای مدیریت ارسال شد');
+    }
+
+    public function update(Request $request, TeamReport $teamReport): JsonResponse
+    {
+        $this->authorize('update', $teamReport);
+
+        $validated = $request->validate([
+            'supervisor_notes' => ['nullable', 'string', 'max:2000'],
+            'summary' => ['nullable', 'array'],
+        ]);
+
+        $report = $this->updateReport->execute(
+            $teamReport,
+            $request->user(),
+            $validated['supervisor_notes'] ?? null,
+            $validated['summary'] ?? null,
+        );
+
+        return ApiResponse::success(new TeamReportResource($report), 'ویرایش گزارش ذخیره شد');
     }
 }

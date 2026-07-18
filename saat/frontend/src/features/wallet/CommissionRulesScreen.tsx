@@ -3,6 +3,7 @@ import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
 import { commissionRules } from '@/data/mockExtra'
+import { ProductLink } from '@/components/domain/ProductLink'
 import { toFa } from '@/lib/format'
 
 export function CommissionRulesScreen() {
@@ -33,7 +34,13 @@ export function CommissionRulesScreen() {
                 (i < products.length - 1 ? 'border-b border-border/60' : '')
               }
             >
-              <span className="text-[12.5px] font-bold text-neutral-600">{p.name}</span>
+              <ProductLink
+                product={p}
+                className="text-[12.5px] font-bold text-neutral-600"
+                showChevron
+              >
+                {p.name}
+              </ProductLink>
               <span className="text-[13px] font-black tabular-nums text-primary-600">
                 {toFa(p.commissionRate)}٪
               </span>

@@ -21,6 +21,7 @@ import { FeedbackResultRow } from '@/components/domain/FeedbackResultCard'
 import { resultIcon } from '@/components/domain/icons'
 import { FollowupPicker, buildFollowupIso } from '@/components/domain/FollowupPicker'
 import { ContactStatusBadge } from '@/components/domain/Badges'
+import { ProductLink } from '@/components/domain/ProductLink'
 import { suggestReasonIcon, suggestReasonChipLabel } from '@/components/domain/icons'
 import { canEndAgentCall } from '@/lib/callPolicy'
 import { formatDuration, toFa } from '@/lib/format'
@@ -406,7 +407,15 @@ export function CallResultScreen() {
               <div className="glass-card overflow-hidden rounded-[18px] border border-white/55 p-3.5 dark:border-white/10">
                 <p className="mb-2 flex items-center gap-1.5 text-[13px] font-bold text-text">
                   <Wallet size={15} className="text-emerald-600" strokeWidth={2.35} />
-                  مبلغ ({product?.name ?? 'محصول'})
+                  مبلغ (
+                  {product ? (
+                    <ProductLink product={product} className="text-[13px] font-bold text-emerald-700">
+                      {product.name}
+                    </ProductLink>
+                  ) : (
+                    'محصول'
+                  )}
+                  )
                 </p>
                 <div
                   dir="ltr"

@@ -31,7 +31,7 @@ interface BadgeProps {
   tone?: Tone
   icon?: ReactNode
   className?: string
-  size?: 'sm' | 'md'
+  size?: 'sm' | 'md' | 'lg'
 }
 
 export function Badge({ children, tone = 'neutral', icon, className, size = 'md' }: BadgeProps) {
@@ -39,7 +39,11 @@ export function Badge({ children, tone = 'neutral', icon, className, size = 'md'
     <span
       className={cn(
         'inline-flex items-center gap-1 font-bold rounded-full',
-        size === 'sm' ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs',
+        size === 'sm'
+          ? 'px-2 py-0.5 text-[11px]'
+          : size === 'lg'
+            ? 'px-3 py-1.5 text-[13px]'
+            : 'px-2.5 py-1 text-xs',
         tones[tone],
         className,
       )}

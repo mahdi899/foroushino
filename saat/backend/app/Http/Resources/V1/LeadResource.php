@@ -23,7 +23,7 @@ class LeadResource extends JsonResource
             'full_name' => $this->fullName(),
             'phone' => $this->phone,
             'city' => $this->city,
-            'source' => $this->source?->value,
+            'source' => $this->source instanceof \BackedEnum ? $this->source->value : $this->source,
             'temperature' => $this->temperature?->value,
             'priority' => $this->priority,
             'stage' => $this->stage?->value,

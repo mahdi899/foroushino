@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\LeadSource;
 use App\Enums\LeadStatus;
 use App\Enums\SaleStage;
 use App\Enums\Temperature;
@@ -30,7 +29,6 @@ class Lead extends Model
     protected function casts(): array
     {
         return [
-            'source' => LeadSource::class,
             'temperature' => Temperature::class,
             'stage' => SaleStage::class,
             'status' => LeadStatus::class,

@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from 'react-router-dom'
+import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import {
   Percent,
@@ -19,6 +20,7 @@ import { LeadAvatar } from '@/components/domain/LeadAvatar'
 import { EmptyState } from '@/components/ui/States'
 import { commissionStatusLabels, commissionStatusTone } from '@/data/labels'
 import { formatMoney, formatJalaliDate, relativeDayTime } from '@/lib/format'
+import { ProductLink } from '@/components/domain/ProductLink'
 import { cn } from '@/lib/cn'
 
 const OK = 'text-emerald-600 dark:text-emerald-400'
@@ -34,7 +36,15 @@ const stagger = {
   show: { opacity: 1, transition: { staggerChildren: 0.07, delayChildren: 0.05 } },
 }
 
-function DetailRow({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+function DetailRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon
+  label: string
+  value: ReactNode
+}) {
   return (
     <div className="flex items-center gap-3 px-4 py-3.5">
       <span className="icon-3d icon-3d-primary flex h-8 w-8 shrink-0 items-center justify-center">
@@ -95,7 +105,17 @@ export function CommissionDetailScreen() {
   }
 
   const rows = [
-    { icon: Package, label: 'محصول', value: product?.name ?? '—' },
+    {
+      icon: Package,
+      label: 'محصول',
+      value: product ? (
+        <ProductLink product={product} className="text-[13px] font-bold text-text" showChevron>
+          {product.name}
+        </ProductLink>
+      ) : (
+        '—'
+      ),
+    },
     { icon: User, label: 'مشتری', value: lead ? `${lead.firstName} ${lead.lastName}` : '—' },
     { icon: Percent, label: 'نرخ پورسانت', value: `${commission.commissionRate}٪` },
     { icon: Calendar, label: 'تاریخ ثبت', value: formatJalaliDate(new Date(commission.createdAt)) },

@@ -31,7 +31,7 @@ function buildMembersByTeamId(teams: Team[], agents: Agent[]): Map<string, Agent
   const byTeamId = new Map<string, Agent[]>()
 
   for (const team of teams) {
-    const members = team.agentIds
+    const members = (team.agentIds ?? [])
       .map((id) => agentsById.get(id))
       .filter((agent): agent is Agent => agent != null && agent.role === 'agent')
 

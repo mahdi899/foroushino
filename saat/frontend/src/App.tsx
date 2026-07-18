@@ -55,6 +55,8 @@ import { AgentManagementScreen } from '@/features/admin/AgentManagementScreen'
 import { TeamManagementScreen } from '@/features/admin/TeamManagementScreen'
 import { StaffManagementScreen } from '@/features/admin/StaffManagementScreen'
 import { AdminSettingsScreen } from '@/features/admin/AdminSettingsScreen'
+import { CatalogAdminScreen } from '@/features/admin/CatalogAdminScreen'
+import { ProductDetailScreen } from '@/features/products/ProductDetailScreen'
 import { LiveOpsScreen } from '@/features/liveops/LiveOpsScreen'
 import { QaReviewsScreen } from '@/features/qa/QaReviewsScreen'
 import { RequirePermission } from '@/components/auth/RequirePermission'
@@ -62,6 +64,7 @@ import { AppLockScreen } from '@/components/domain/AppLockScreen'
 import { OfflineBanner } from '@/components/pwa/DataGate'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { UpdateBanner } from '@/components/pwa/UpdateBanner'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { SyncProvider } from '@/providers/SyncProvider'
 import { ShiftPresenceWatcher } from '@/providers/ShiftPresenceWatcher'
 import { DayRolloverWatcher } from '@/providers/DayRolloverWatcher'
@@ -69,8 +72,20 @@ import { useAppShellLayout } from '@/lib/appLayout'
 
 const NAV_ROUTES = ['/home', '/leads', '/followups', '/profile', '/team', '/teams']
 
+import { useStoreHydrated } from '@/hooks/useStoreHydrated'
+
+function AuthBootSplash() {
+  return (
+    <div className="flex h-full min-h-[100dvh] items-center justify-center bg-background">
+      <div className="h-9 w-9 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+    </div>
+  )
+}
+
 function RequireAuth({ children }: { children: React.ReactNode }) {
+  const hydrated = useStoreHydrated()
   const isAuthed = useStore((s) => s.isAuthed)
+  if (!hydrated) return <AuthBootSplash />
   if (!isAuthed) return <Navigate to="/login" replace />
   return <>{children}</>
 }
@@ -113,12 +128,23 @@ function AutoLockWatcher() {
   return null
 }
 
+function FollowUpChrome() {
+  const availability = useStore((s) => s.availability)
+  if (availability !== 'doing_follow_up') return null
+
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none fixed inset-0 z-30 shadow-[inset_0_2px_0_0_rgba(255,176,0,0.45)] dark:shadow-[inset_0_2px_0_0_rgba(255,176,0,0.32)]"
+    />
+  )
+}
+
 function Shell() {
   const location = useLocation()
   const scrollRef = useRef<HTMLDivElement>(null)
   const isAuthed = useStore((s) => s.isAuthed)
   const isLocked = useStore((s) => s.isLocked)
-  const availability = useStore((s) => s.availability)
   const role = useStore((s) => s.role)
   const [fabOpen, setFabOpen] = useState(false)
 
@@ -131,13 +157,8 @@ function Shell() {
   }, [location.pathname])
 
   return (
-    <main
-      className={cn(
-        'relative h-full w-full min-w-0 max-w-full overflow-x-hidden bg-background font-sans transition-colors duration-500',
-        availability === 'doing_follow_up' &&
-          'shadow-[inset_0_2px_0_0_rgba(255,176,0,0.45)] dark:shadow-[inset_0_2px_0_0_rgba(255,176,0,0.32)]',
-      )}
-    >
+    <main className="relative h-full w-full min-w-0 max-w-full overflow-x-hidden bg-background font-sans transition-colors duration-500">
+      <FollowUpChrome />
       <div
         ref={scrollRef}
         className={cn('h-full no-scrollbar', lockScroll ? 'overflow-hidden' : 'overflow-y-auto')}
@@ -180,6 +201,7 @@ function Shell() {
             <Route path="/wallet/bank-accounts" element={<RequireAuth><RequirePermission permission="users.manage-team"><BankAccountApprovalScreen /></RequirePermission></RequireAuth>} />
             <Route path="/wallet/rules" element={<RequireAuth><CommissionRulesScreen /></RequireAuth>} />
             <Route path="/wallet/commissions/:id" element={<RequireAuth><CommissionDetailScreen /></RequireAuth>} />
+            <Route path="/products/:slug" element={<RequireAuth><ProductDetailScreen /></RequireAuth>} />
             <Route path="/training" element={<RequireAuth><TrainingScreen /></RequireAuth>} />
             <Route path="/training/objections" element={<RequireAuth><ObjectionsScreen /></RequireAuth>} />
             <Route path="/performance" element={<RequireAuth><PerformanceScreen /></RequireAuth>} />
@@ -193,6 +215,7 @@ function Shell() {
             <Route path="/admin/agents" element={<RequireAuth><RequirePermission permission="users.view"><AgentManagementScreen /></RequirePermission></RequireAuth>} />
             <Route path="/admin/teams" element={<RequireAuth><RequirePermission permission="teams.manage"><TeamManagementScreen /></RequirePermission></RequireAuth>} />
             <Route path="/admin/staff" element={<RequireAuth><RequirePermission permission="users.view"><StaffManagementScreen /></RequirePermission></RequireAuth>} />
+            <Route path="/admin/catalog" element={<RequireAuth><CatalogAdminScreen /></RequireAuth>} />
             <Route path="/admin/settings" element={<RequireAuth><RequirePermission permission="admin.settings"><AdminSettingsScreen /></RequirePermission></RequireAuth>} />
 
             <Route path="*" element={<Navigate to={isAuthed ? '/home' : '/'} replace />} />
@@ -254,7 +277,9 @@ export default function App() {
         >
           <OfflineBanner />
           <BrowserRouter>
-            <Shell />
+            <ErrorBoundary>
+              <Shell />
+            </ErrorBoundary>
           </BrowserRouter>
           <InstallPrompt />
           <UpdateBanner />

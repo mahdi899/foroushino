@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { MapPin, Phone, Clock, Flame, Sun, Snowflake, Lock, Info, Undo2, UserRound, Hash } from 'lucide-react'
 import type { Lead, Temperature } from '@/types'
 import { LeadAvatar } from '@/components/domain/LeadAvatar'
@@ -25,7 +26,7 @@ const tempPill: Record<Temperature, string> = {
 
 const tempIcon = { hot: Flame, warm: Sun, cold: Snowflake }
 
-export function LeadCard({
+export const LeadCard = memo(function LeadCard({
   lead,
   onClick,
   onCall,
@@ -46,8 +47,8 @@ export function LeadCard({
     <article
       onClick={onClick}
       className={cn(
-        'glass-card group relative cursor-pointer overflow-hidden rounded-[18px] border border-white/55',
-        'transition-transform active:scale-[0.99] dark:border-white/10',
+        'list-row group relative cursor-pointer overflow-hidden rounded-[18px]',
+        'transition-transform active:scale-[0.99]',
         lockedByOther && 'ring-1 ring-error-400/25',
       )}
     >
@@ -192,4 +193,4 @@ export function LeadCard({
       </div>
     </article>
   )
-}
+})

@@ -15,11 +15,13 @@ import type {
   PaymentMethod,
   PayoutRequest,
   Product,
+  LeadSourceOption,
   Role,
   Sale,
   SaleStage,
   Team,
   TeamReport,
+  TeamReportSummary,
   AgentReport,
   Temperature,
   Wallet,
@@ -33,6 +35,7 @@ import { clearToken, mapAuthUserRole } from '@/services/auth'
 import { agentFromAuthenticatedUser } from '@/lib/agentFromUser'
 import { applyTheme, migrateLegacyThemePreference, resolveUserTheme, writeUserThemePreference } from '@/lib/theme'
 import { hasPermission as checkPermission, resolvePermissions } from '@/lib/permissions'
+import { normalizeTeamReport } from '@/lib/teamDailyReport'
 import { canMakeCalls } from '@/lib/roles'
 import {
   agents as mockAgents,
@@ -56,6 +59,7 @@ import {
   walletTransactions as mockWalletTx,
 } from '@/data/mockExtra'
 import { avatarUrl } from '@/data/avatars'
+import { DEFAULT_LEAD_SOURCES } from '@/lib/leadSources'
 import { positiveResults, nextActionLabels } from '@/data/labels'
 import {
   computeCommission,
@@ -74,7 +78,7 @@ import {
 import { deriveWalletFromCommissions, resolveWithdrawableBalance } from '@/lib/walletBalance'
 import type { SyncPayload } from '@/services/sync'
 import type { TeamLiveData } from '@/services/teamLive'
-import { agentsFromTeamLive, mergeTeamLiveIntoAgents, teamsFromTeamLive } from '@/services/teamLive'
+import { agentsFromTeamLive, mergeTeamLiveIntoAgents, teamLiveStatsChanged, teamsFromTeamLive } from '@/services/teamLive'
 import { isProductiveAvailability, mergeClosedSessionIntoDaySummaries, mergeSyncedWorkSession } from '@/lib/shiftUtils'
 import { getManagedTeam } from '@/lib/teamUtils'
 import { mergeAgentDailyStats, syncAllAgentsDailyStats, syncCurrentAgentDailyStats, conversionRateFromStats } from '@/lib/dailyGoal'
@@ -123,6 +127,7 @@ interface AppState {
   walletTx: WalletTransaction[]
   payouts: PayoutRequest[]
   products: Product[]
+  leadSources: LeadSourceOption[]
   activity: ActivityLog[]
   teamReports: TeamReport[]
   agentReports: AgentReport[]
@@ -230,7 +235,11 @@ interface AppState {
   // team reports
   setTeamReports: (teamReports: TeamReport[]) => void
   upsertTeamReport: (report: TeamReport) => void
-  submitTeamReport: (leaderNotes?: string) => void
+  submitTeamReport: (leaderNotes?: string, summary?: TeamReportSummary) => boolean
+  updateTeamReport: (
+    reportId: string,
+    payload: { supervisorNotes?: string; summary?: TeamReportSummary },
+  ) => void
   approveTeamReport: (reportId: string, supervisorNotes?: string) => void
   forwardTeamReport: (reportId: string) => void
 
@@ -279,6 +288,8 @@ interface AppState {
   setAgents: (agents: Agent[]) => void
   upsertTeam: (team: Team) => void
   setTeams: (teams: Team[]) => void
+  setProducts: (products: Product[]) => void
+  setLeadSources: (leadSources: LeadSourceOption[]) => void
   setAgentAvatar: (avatar: string | null) => void
   setDataReady: (ready: boolean) => void
   setDataSyncing: (syncing: boolean) => void
@@ -452,6 +463,7 @@ export const useStore = create<AppState>()(
       walletTx: mockWalletTx,
       payouts: mockPayouts,
       products: mockProducts,
+      leadSources: DEFAULT_LEAD_SOURCES,
       activity: mockActivity,
       teamReports: mockTeamReports,
       agentReports: mockAgentReports,
@@ -1237,29 +1249,38 @@ export const useStore = create<AppState>()(
           ),
         })),
 
-      setTeamReports: (teamReports) => set({ teamReports }),
+      setTeamReports: (teamReports) =>
+        set({ teamReports: teamReports.map((report) => normalizeTeamReport(report)) }),
 
       upsertTeamReport: (report) =>
-        set((state) => ({
-          teamReports: [
-            report,
-            ...state.teamReports.filter(
-              (row) =>
-                row.id !== report.id &&
-                !(row.teamId === report.teamId && row.reportDate === report.reportDate),
-            ),
-          ],
-        })),
+        set((state) => {
+          const normalized = normalizeTeamReport(report)
+          return {
+            teamReports: [
+              normalized,
+              ...state.teamReports
+                .filter(
+                  (row) =>
+                    row.id !== normalized.id &&
+                    !(row.teamId === normalized.teamId && row.reportDate === normalized.reportDate),
+                )
+                .map((row) => normalizeTeamReport(row)),
+            ],
+          }
+        }),
 
-      submitTeamReport: (leaderNotes) => {
+      submitTeamReport: (leaderNotes, summary) => {
         const state = get()
         const team = getManagedTeam(state.teams, state.currentAgentId, state.role)
-        if (!team) return
+        if (!team) return false
 
-        const members = state.agents.filter((a) => team.agentIds.includes(a.id))
-        const callsToday = members.reduce((sum, a) => sum + a.callsToday, 0)
-        const successfulToday = members.reduce((sum, a) => sum + a.successfulToday, 0)
-        const conversion = callsToday > 0 ? Math.round((successfulToday / callsToday) * 1000) / 10 : 0
+        const members = state.agents.filter((a) => (team.agentIds ?? []).includes(a.id))
+        const callsToday = summary?.calls_today ?? members.reduce((sum, a) => sum + a.callsToday, 0)
+        const successfulToday =
+          summary?.successful_today ?? members.reduce((sum, a) => sum + a.successfulToday, 0)
+        const conversion =
+          summary?.conversion_rate ??
+          (callsToday > 0 ? Math.round((successfulToday / callsToday) * 1000) / 10 : 0)
         const today = todayDateKey()
         const leader = state.agents.find((a) => a.id === state.currentAgentId)
 
@@ -1269,7 +1290,7 @@ export const useStore = create<AppState>()(
           teamName: team.name,
           reportDate: today,
           status: 'submitted',
-          summary: {
+          summary: summary ?? {
             calls_today: callsToday,
             successful_today: successfulToday,
             conversion_rate: conversion,
@@ -1289,8 +1310,10 @@ export const useStore = create<AppState>()(
 
         set({
           teamReports: [
-            report,
-            ...state.teamReports.filter((r) => !(r.teamId === team.id && r.reportDate === today)),
+            normalizeTeamReport(report),
+            ...state.teamReports
+              .filter((r) => !(r.teamId === team.id && r.reportDate === today))
+              .map((row) => normalizeTeamReport(row)),
           ],
         })
         get().pushNotification({
@@ -1300,6 +1323,22 @@ export const useStore = create<AppState>()(
           href: '/team-reports',
         })
         get().pushToast('گزارش روزانه برای سوپروایزر ارسال شد')
+        return true
+      },
+
+      updateTeamReport: (reportId, payload) => {
+        set((state) => ({
+          teamReports: state.teamReports.map((report) =>
+            report.id === reportId
+              ? {
+                  ...report,
+                  supervisorNotes: payload.supervisorNotes ?? report.supervisorNotes ?? null,
+                  summary: payload.summary ?? report.summary,
+                }
+              : report,
+          ),
+        }))
+        get().pushToast('ویرایش گزارش ذخیره شد')
       },
 
       approveTeamReport: (reportId, supervisorNotes) => {
@@ -1638,6 +1677,10 @@ export const useStore = create<AppState>()(
                 ? agentsFromTeamLive(live, self)
                 : state.agents
 
+          if (!teamLiveStatsChanged(baseAgents, live) && state.teams.length > 0) {
+            return state
+          }
+
           return {
             agents: mergeTeamLiveIntoAgents(baseAgents, live),
             teams:
@@ -1649,7 +1692,7 @@ export const useStore = create<AppState>()(
 
       applySyncData: (payload) =>
         set((state) => {
-          const baseAgents =
+          let baseAgents =
             payload.agents.length > 0
               ? payload.agents.map((remote) =>
                   remote.id === payload.agent.id
@@ -1663,6 +1706,10 @@ export const useStore = create<AppState>()(
                       : agent,
                   )
                 : [...state.agents, payload.agent]
+
+          if (!baseAgents.some((row) => row.id === payload.agent.id)) {
+            baseAgents = [...baseAgents, payload.agent]
+          }
 
           const nextCalls = payload.calls ?? state.calls
           const synced = syncCurrentAgentDailyStats(
@@ -1688,6 +1735,7 @@ export const useStore = create<AppState>()(
             walletTx: payload.walletTx,
             payouts: payload.payouts,
             products: payload.products,
+            leadSources: payload.leadSources,
             notifications: payload.notifications,
             agents,
             teams: payload.teams ?? state.teams,
@@ -1741,6 +1789,8 @@ export const useStore = create<AppState>()(
           }
         }),
       setTeams: (teams) => set({ teams }),
+      setProducts: (products) => set({ products }),
+      setLeadSources: (leadSources) => set({ leadSources }),
       setAgentAvatar: (avatar) =>
         set((state) => ({
           agents: state.agents.map((agent) =>
@@ -1800,6 +1850,17 @@ export const useStore = create<AppState>()(
           state.darkMode = resolveUserTheme(state.currentAgentId, false)
         } else {
           state.darkMode = false
+        }
+        if (state.isAuthed && state.role) {
+          state.permissions = resolvePermissions(state.role, state.permissions ?? [])
+        }
+        if (
+          state.isAuthed &&
+          usesRemoteData &&
+          state.currentAgentId &&
+          !state.agents.some((agent) => agent.id === state.currentAgentId)
+        ) {
+          state.dataReady = false
         }
         applyTheme(Boolean(state.darkMode))
       },

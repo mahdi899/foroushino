@@ -15,6 +15,8 @@ import { SAAT_LOGO_ALT, SAAT_LOGO_AUTH_CLASS, SAAT_LOGO_SRC } from '@/lib/brand'
 import { toFa, toEn } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { haptic } from '@/lib/telegram'
+import { completeLoginSession } from '@/services/loginFlow'
+import { useStoreHydrated } from '@/hooks/useStoreHydrated'
 
 const OTP_LEN = 5
 const OTP_GREEN_MS = 105
@@ -32,6 +34,8 @@ const stepVariants = {
 
 export function LoginScreen() {
   const navigate = useNavigate()
+  const hydrated = useStoreHydrated()
+  const isAuthed = useStore((s) => s.isAuthed)
   const setSessionFromAuth = useStore((s) => s.setSessionFromAuth)
   const pushToast = useStore((s) => s.pushToast)
   const [step, setStep] = useState<'phone' | 'otp'>('phone')
@@ -51,13 +55,30 @@ export function LoginScreen() {
   const otpActiveIndex = otp.findIndex((x) => x === '')
 
   const completeAuth = useCallback(
-    (user: Parameters<typeof setSessionFromAuth>[0]) => {
-      setSessionFromAuth(user)
-      haptic('success')
-      navigate('/home', { replace: true })
+    async (user: Parameters<typeof setSessionFromAuth>[0]) => {
+      try {
+        await completeLoginSession(user)
+        haptic('success')
+        navigate('/home', { replace: true })
+      } catch (error) {
+        haptic('error')
+        const message =
+          error instanceof ApiError
+            ? error.message
+            : error instanceof Error
+              ? error.message
+              : 'ورود ناموفق بود'
+        pushToast(message, 'error')
+      }
     },
-    [navigate, setSessionFromAuth],
+    [navigate, pushToast],
   )
+
+  useEffect(() => {
+    if (hydrated && isAuthed) {
+      navigate('/home', { replace: true })
+    }
+  }, [hydrated, isAuthed, navigate])
 
   const runGreenValidation = useCallback(
     (onDone: () => void) => {
@@ -129,7 +150,9 @@ export function LoginScreen() {
       try {
         const user = await verifyPhoneOtp(phone, code)
         if (cancelled || submitId !== otpSubmitId.current) return
-        runGreenValidation(() => completeAuth(user))
+        runGreenValidation(() => {
+          void completeAuth(user)
+        })
       } catch (error) {
         if (cancelled || submitId !== otpSubmitId.current) return
         const message =
@@ -209,7 +232,7 @@ export function LoginScreen() {
     } catch {
       try {
         const user = await loginWithDemoAccount(account)
-        completeAuth(user)
+        await completeAuth(user)
       } catch (error) {
         haptic('error')
         const message =

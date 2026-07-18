@@ -65,11 +65,30 @@ enum LeadSmsTemplate: string
     public function variables(User $agent, Lead $lead, array $settings, ?string $customBody = null): array
     {
         return match ($this) {
-            self::Course, self::Channel, self::Register, self::Payment => [
+            self::Course => [
+                $lead->fullName(),
+                AgentSmsLinkBuilder::withBase($agent, self::courseLink($lead, $settings), $settings),
+            ],
+            self::Channel, self::Register, self::Payment => [
                 $lead->fullName(),
                 AgentSmsLinkBuilder::for($agent, $this, $settings),
             ],
             self::Custom => [trim((string) $customBody)],
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     */
+    private static function courseLink(Lead $lead, array $settings): string
+    {
+        $lead->loadMissing('product');
+
+        $productUrl = trim((string) ($lead->product?->landing_url ?? ''));
+        if ($productUrl !== '') {
+            return $productUrl;
+        }
+
+        return (string) ($settings['meli_sms_link_course'] ?? '');
     }
 }

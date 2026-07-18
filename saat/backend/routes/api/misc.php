@@ -17,6 +17,8 @@ Route::get('/activity', [ActivityController::class, 'index']);
 Route::get('/app-config', AppConfigController::class);
 
 Route::get('/products', [CatalogController::class, 'products']);
+Route::get('/products/{product:slug}', [CatalogController::class, 'showProduct']);
+Route::get('/lead-sources', [CatalogController::class, 'leadSources']);
 Route::get('/scripts', [CatalogController::class, 'scripts']);
 Route::get('/objections', [CatalogController::class, 'objections']);
 

@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import { Lock, Undo2, UserPlus } from 'lucide-react'
 import { hasPermission } from '@/lib/permissions'
 import { useStore } from '@/store/useStore'
@@ -81,10 +80,26 @@ export function LeadsScreen() {
   )
 
   const filterCounts = useMemo(() => {
-    const counts = {} as Record<Filter, number>
-    for (const f of filters) {
-      counts[f.id] = visibleLeads.filter((lead) => matchesFilter(lead, f.id)).length
+    const counts: Record<Filter, number> = {
+      all: visibleLeads.length,
+      hot: 0,
+      warm: 0,
+      cold: 0,
+      today: 0,
+      overdue: 0,
     }
+
+    for (const lead of visibleLeads) {
+      if (lead.temperature === 'hot') counts.hot++
+      else if (lead.temperature === 'warm') counts.warm++
+      else if (lead.temperature === 'cold') counts.cold++
+
+      if (lead.nextFollowupAt) {
+        if (isToday(lead.nextFollowupAt)) counts.today++
+        else if (isOverdue(lead.nextFollowupAt)) counts.overdue++
+      }
+    }
+
     return counts
   }, [visibleLeads])
 
@@ -127,40 +142,37 @@ export function LeadsScreen() {
         {(canIntakeLeads || lockedCount > 0 || returnedCount > 0) && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {canIntakeLeads && (
-              <motion.button
+              <button
                 type="button"
-                whileTap={{ scale: 0.94 }}
                 onClick={() => navigate('/leads/intake')}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold',
+                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold active:scale-[0.96]',
                   BRAND_SOFT,
                 )}
               >
                 <UserPlus size={13} strokeWidth={2.35} />
                 ورود مشتری
-              </motion.button>
+              </button>
             )}
             {lockedCount > 0 && (
-              <motion.button
+              <button
                 type="button"
-                whileTap={{ scale: 0.94 }}
                 onClick={() => navigate('/leads/locked')}
-                className="inline-flex items-center gap-1.5 rounded-full border border-error-300/50 bg-error-500/8 px-3 py-1.5 text-[11px] font-bold text-error-600 dark:border-error-500/25 dark:bg-error-500/10"
+                className="inline-flex items-center gap-1.5 rounded-full border border-error-300/50 bg-error-500/8 px-3 py-1.5 text-[11px] font-bold text-error-600 active:scale-[0.96] dark:border-error-500/25 dark:bg-error-500/10"
               >
                 <Lock size={13} strokeWidth={2.35} />
                 قفل‌شده {toFa(lockedCount)}
-              </motion.button>
+              </button>
             )}
             {returnedCount > 0 && (
-              <motion.button
+              <button
                 type="button"
-                whileTap={{ scale: 0.94 }}
                 onClick={() => navigate('/leads/returned')}
-                className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.06] bg-black/[0.04] px-3 py-1.5 text-[11px] font-bold text-text-soft dark:border-white/10 dark:bg-white/[0.06]"
+                className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.06] bg-black/[0.04] px-3 py-1.5 text-[11px] font-bold text-text-soft active:scale-[0.96] dark:border-white/10 dark:bg-white/[0.06]"
               >
                 <Undo2 size={13} strokeWidth={2.35} />
                 برگشت‌خورده {toFa(returnedCount)}
-              </motion.button>
+              </button>
             )}
           </div>
         )}
@@ -180,12 +192,7 @@ export function LeadsScreen() {
               action={{ label: 'پاک کردن فیلترها', onClick: () => setFilter('all') }}
             />
           ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25 }}
-              className="space-y-2"
-            >
+            <div className="space-y-2">
               <p className="px-0.5 text-[11px] font-semibold text-text-soft">
                 {toFa(filtered.length)} مشتری
                 {filter !== 'all' && ` · ${filters.find((f) => f.id === filter)?.label}`}
@@ -204,7 +211,7 @@ export function LeadsScreen() {
                   onQuickView={() => setQuickViewLead(lead)}
                 />
               ))}
-            </motion.div>
+            </div>
           )}
         </div>
       )}

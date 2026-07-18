@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, memo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
@@ -39,7 +39,6 @@ import { isSaleDisplayable, saleCustomerName, saleProductName } from '@/lib/sale
 type Filter = 'all' | SaleStatus
 
 const TG = 'text-[#3390EC] dark:text-[#8774E1]'
-const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
 
 const filters: { id: Filter; label: string; tone: ChipTone }[] = [
   { id: 'all', label: 'همه', tone: 'neutral' },
@@ -50,25 +49,6 @@ const filters: { id: Filter; label: string; tone: ChipTone }[] = [
   { id: 'rejected', label: 'رد شده', tone: 'error' },
   { id: 'cancelled', label: 'کنسل شده', tone: 'neutral' },
 ]
-
-const statusGlow: Partial<Record<SaleStatus, string>> = {
-  confirmed: 'bg-emerald-400/16 dark:bg-emerald-400/12',
-  payment_pending: 'bg-amber-400/18 dark:bg-amber-400/12',
-  payment_submitted: 'bg-orange-400/16 dark:bg-orange-400/10',
-  pending_confirmation: 'bg-[#3390EC]/14 dark:bg-[#8774E1]/14',
-  rejected: 'bg-red-400/14 dark:bg-red-400/10',
-  cancelled: 'bg-neutral-400/10',
-}
-
-const listStagger = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.06, delayChildren: 0.04 } },
-}
-
-const cardFadeUp = {
-  hidden: { opacity: 0, y: 14 },
-  show: { opacity: 1, y: 0, transition: spring },
-}
 
 function GlassActionBtn({
   label,
@@ -101,15 +81,14 @@ function GlassActionBtn({
   }
 
   return (
-    <motion.button
+    <button
       type="button"
-      whileTap={{ scale: disabled ? 1 : 0.97 }}
       disabled={disabled}
       onClick={onClick}
       className={cn(
         disabled && 'pointer-events-none opacity-45',
         'relative inline-flex h-9 flex-1 items-center justify-center gap-1.5 overflow-hidden',
-        'rounded-[13px] text-[12px] font-bold',
+        'rounded-[13px] text-[12px] font-bold active:scale-[0.97]',
         styles[variant],
         className,
       )}
@@ -119,11 +98,11 @@ function GlassActionBtn({
       )}
       <Icon size={14} strokeWidth={2.35} className="relative shrink-0" />
       <span className="relative">{label}</span>
-    </motion.button>
+    </button>
   )
 }
 
-function SaleCard({
+const SaleCard = memo(function SaleCard({
   sale,
   lead,
   product,
@@ -152,29 +131,17 @@ function SaleCard({
   onReject: () => void
   onForward: () => void
 }) {
-  const glow = statusGlow[sale.status]
   const customerName = saleCustomerName(sale, lead)
   const productName = saleProductName(sale, product)
 
   if (!customerName || !productName) return null
 
   return (
-    <motion.div
-      variants={cardFadeUp}
-      layout
+    <div
       className={cn(
-        'glass-card relative overflow-hidden rounded-[22px] border border-white/55 p-4',
-        'dark:border-white/10',
+        'list-row relative overflow-hidden rounded-[22px] p-4',
       )}
     >
-      <div className="pointer-events-none absolute inset-0">
-        {glow && (
-          <div className={cn('absolute -left-8 -top-8 h-28 w-28 rounded-full blur-3xl', glow)} />
-        )}
-        <div className="absolute -bottom-10 -right-8 h-24 w-24 rounded-full bg-[#8774E1]/8 blur-3xl" />
-        <div className="absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white/85 to-transparent dark:via-white/12" />
-      </div>
-
       <button type="button" onClick={onLeadClick} className="relative flex w-full items-center gap-3 text-right">
         {lead ? (
           <LeadAvatar lead={lead} size={48} ring />
@@ -297,9 +264,9 @@ function SaleCard({
           <GlassActionBtn label="رد فروش تاییدشده" icon={X} variant="danger" onClick={onReject} />
         </div>
       )}
-    </motion.div>
+    </div>
   )
-}
+})
 
 export function SalesScreen() {
   const navigate = useNavigate()
@@ -439,12 +406,7 @@ export function SalesScreen() {
       </ScreenHeader>
 
       <DataGate mode="placeholder">
-      <motion.div
-        variants={listStagger}
-        initial="hidden"
-        animate="show"
-        className="space-y-3 px-4 pt-3 pb-24"
-      >
+      <div className="space-y-3 px-4 pt-3 pb-24">
         {filtered.length === 0 ? (
           <EmptyState title="فروشی پیدا نشد" description="فیلتر را تغییر بده." />
         ) : (
@@ -472,7 +434,7 @@ export function SalesScreen() {
             )
           })
         )}
-      </motion.div>
+      </div>
       </DataGate>
 
       <PaymentSubmitSheet
@@ -630,17 +592,13 @@ export function SalesScreen() {
       </AnimatePresence>
 
       {!isTeamViewer && (
-        <motion.button
+        <button
           type="button"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ ...spring, delay: 0.2 }}
-          whileTap={{ scale: 0.97 }}
           onClick={() => navigate('/wallet')}
           className={cn(
             'glass-fab fixed inset-x-4 bottom-[calc(16px+var(--safe-bottom))] z-30 mx-auto',
             'flex h-[52px] max-w-[220px] items-center justify-center gap-2 rounded-[18px]',
-            'text-[13px] font-bold text-text',
+            'text-[13px] font-bold text-text active:scale-[0.97]',
           )}
         >
           <span className="icon-3d icon-3d-primary flex h-8 w-8 items-center justify-center">
@@ -648,7 +606,7 @@ export function SalesScreen() {
           </span>
           مشاهده کیف پول
           <ChevronLeft size={15} className="opacity-45" strokeWidth={2.35} />
-        </motion.button>
+        </button>
       )}
     </Page>
   )

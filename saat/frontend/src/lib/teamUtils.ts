@@ -11,6 +11,19 @@ export function getManagedTeam(teams: Team[], userId: string, role: Role): Team 
   return null
 }
 
+/** Leader team for daily reports — leader_id first, then the leader's own teamId. */
+export function resolveLeaderTeam(teams: Team[], agents: Agent[], userId: string, role: Role): Team | null {
+  const managed = getManagedTeam(teams, userId, role)
+  if (managed) return managed
+
+  if (!isLeaderRole(role)) return null
+
+  const self = agents.find((agent) => agent.id === userId)
+  if (!self?.teamId) return null
+
+  return teams.find((team) => team.id === self.teamId) ?? null
+}
+
 /** Team colony ids for leader/supervisor; null for org-wide managers. */
 export function getColonyTeamIds(
   teams: Team[],
@@ -149,7 +162,7 @@ export function teamAgents(teams: Team[], agents: Agent[], teamId: string): Agen
   if (!team) {
     return agents.filter((agent) => agent.teamId === teamId && agent.role === 'agent')
   }
-  return agents.filter((agent) => team.agentIds.includes(agent.id))
+  return agents.filter((agent) => (team.agentIds ?? []).includes(agent.id))
 }
 
 export function leaderForTeam(agents: Agent[], leaderId: string): Agent | undefined {

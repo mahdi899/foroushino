@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -12,10 +12,12 @@ import {
 } from 'lucide-react'
 import type { Lead, SuggestReason } from '@/types'
 import { LeadAvatar } from '@/components/domain/LeadAvatar'
+import { ProductLink, resolveProductFromStore } from '@/components/domain/ProductLink'
 import { ContactStatusBadge } from './Badges'
 import { LeadStatusSheet } from './LeadStatusSheet'
-import { sourceIcon, sourceIconClass, suggestReasonIcon, suggestReasonChipLabel } from './icons'
-import { sourceLabels, suggestReasonActionHint } from '@/data/labels'
+import { resolveSourceIcon, resolveSourceIconClass, suggestReasonIcon, suggestReasonChipLabel } from './icons'
+import { suggestReasonActionHint } from '@/data/labels'
+import { getSourceLabel } from '@/lib/leadSources'
 import { formatCustomerPhone } from '@/lib/phonePrivacy'
 import { toFa } from '@/lib/format'
 import { leadDisplayCode } from '@/lib/leadCode'
@@ -46,10 +48,16 @@ interface NextCallCardProps {
 export function NextCallCard({ lead, reason, onCall, onDetails, onSkip, canSkip = false }: NextCallCardProps) {
   const navigate = useNavigate()
   const [statusOpen, setStatusOpen] = useState(false)
-  const SourceIcon = sourceIcon[lead.source]
+  const leadSources = useStore((s) => s.leadSources)
+  const products = useStore((s) => s.products)
+  const SourceIcon = resolveSourceIcon(lead.source)
   const ReasonIcon = reason ? suggestReasonIcon[reason] : null
   const role = useStore((s) => s.role)
   const prob = Math.max(0, Math.min(100, lead.conversionProbability))
+  const leadProduct = useMemo(
+    () => resolveProductFromStore(products, { productId: lead.productId, name: lead.product }),
+    [products, lead.productId, lead.product],
+  )
 
   const secondaryActions: { id: string; label: string; icon: LucideIcon; onClick: () => void }[] = [
     {
@@ -121,6 +129,18 @@ export function NextCallCard({ lead, reason, onCall, onDetails, onSkip, canSkip 
             <h2 className="truncate text-[20px] font-bold leading-tight tracking-tight text-text">
               {lead.firstName} {lead.lastName}
             </h2>
+            {lead.product ? (
+              <ProductLink
+                product={leadProduct}
+                productId={lead.productId}
+                className={cn(
+                  'mt-1 block min-w-0 text-right text-[14px] font-bold leading-snug',
+                  leadProduct?.slug ? TG : 'text-text-soft',
+                )}
+              >
+                {lead.product}
+              </ProductLink>
+            ) : null}
             <p className="mt-0.5 text-[11px] font-semibold text-text-soft">
               کد مشتری{' '}
               <span dir="ltr" className="font-bold tracking-wide text-text tabular-nums">
@@ -152,8 +172,8 @@ export function NextCallCard({ lead, reason, onCall, onDetails, onSkip, canSkip 
             {lead.bestCallTime}
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-white/50 bg-white/40 px-2.5 py-1 text-[11px] font-semibold text-text-muted dark:border-white/10 dark:bg-white/[0.06]">
-            <SourceIcon size={11} className={sourceIconClass[lead.source]} strokeWidth={2.25} />
-            {sourceLabels[lead.source]}
+            <SourceIcon size={11} className={resolveSourceIconClass(lead.source)} strokeWidth={2.25} />
+            {getSourceLabel(lead.source, leadSources)}
           </span>
         </div>
 

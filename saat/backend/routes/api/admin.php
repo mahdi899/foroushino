@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Api\V1\Admin\CampaignController;
 use App\Http\Controllers\Api\V1\Admin\IntegrationTokenController;
+use App\Http\Controllers\Api\V1\Admin\LeadSourceController;
 use App\Http\Controllers\Api\V1\Admin\ObjectionController;
+use App\Http\Controllers\Api\V1\Admin\ProductCoverController;
 use App\Http\Controllers\Api\V1\Admin\ProductController;
 use App\Http\Controllers\Api\V1\Admin\ScriptController;
 use App\Http\Controllers\Api\V1\Admin\SettingsController;
@@ -38,6 +40,13 @@ Route::prefix('admin')->middleware('throttle:writes')->group(function (): void {
     Route::post('/products', [ProductController::class, 'store']);
     Route::patch('/products/{product}', [ProductController::class, 'update']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+    Route::post('/products/{product:slug}/cover', [ProductCoverController::class, 'store']);
+    Route::delete('/products/{product:slug}/cover', [ProductCoverController::class, 'destroy']);
+
+    Route::get('/lead-sources', [LeadSourceController::class, 'index'])->withoutMiddleware('throttle:writes');
+    Route::post('/lead-sources', [LeadSourceController::class, 'store']);
+    Route::patch('/lead-sources/{leadSource}', [LeadSourceController::class, 'update']);
+    Route::delete('/lead-sources/{leadSource}', [LeadSourceController::class, 'destroy']);
 
     Route::get('/campaigns', [CampaignController::class, 'index'])->withoutMiddleware('throttle:writes');
     Route::post('/campaigns', [CampaignController::class, 'store']);

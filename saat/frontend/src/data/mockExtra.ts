@@ -26,14 +26,17 @@ export const products: Product[] = [
   {
     id: PRODUCT_ID,
     name: 'دوره شغل کمپین‌نویسی',
+    slug: 'campaign-writing-job',
     price: 18_000_000,
     category: 'دوره آموزشی',
     commissionRate: 15,
+    description: 'مسیر ورود به بازار کار کمپین‌نویسی با پروژه‌های عملی.',
     isActive: true,
   },
   {
     id: 'p-ads-mastery',
     name: 'دوره تبلیغات حرفه‌ای (به‌زودی)',
+    slug: 'ads-mastery',
     price: 12_000_000,
     category: 'دوره آموزشی',
     commissionRate: 12,

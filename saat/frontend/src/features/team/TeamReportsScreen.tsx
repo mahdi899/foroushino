@@ -13,11 +13,15 @@ import {
   performApproveTeamReport,
   performForwardTeamReport,
   performSubmitTeamReport,
+  performUpdateTeamReport,
 } from '@/services/teamReportActions'
+import { TeamReportComposeSheet } from '@/components/domain/TeamReportComposeSheet'
+import { TeamReportReviewSheet } from '@/components/domain/TeamReportReviewSheet'
+import { effectiveAgentMetrics, sortAgentEntries } from '@/lib/teamDailyReport'
 import { apiMode } from '@/services'
 import { hasPermission } from '@/lib/permissions'
 import { isLeaderRole, isSupervisorRole } from '@/lib/roles'
-import { getManagedTeam } from '@/lib/teamUtils'
+import { resolveLeaderTeam } from '@/lib/teamUtils'
 import { toFa, formatIsoDateJalali } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
 import type { TeamReport, TeamReportStatus } from '@/types'
@@ -59,6 +63,13 @@ export function TeamReportsScreen() {
   const [loading, setLoading] = useState(apiMode === 'http' && canViewReports)
   const [approveTarget, setApproveTarget] = useState<TeamReport | null>(null)
   const [forwardTarget, setForwardTarget] = useState<TeamReport | null>(null)
+  const [composeOpen, setComposeOpen] = useState(false)
+  const [reviewTarget, setReviewTarget] = useState<TeamReport | null>(null)
+
+  const leaderTeam = useMemo(
+    () => resolveLeaderTeam(teams, agents, currentAgentId, role),
+    [teams, agents, currentAgentId, role],
+  )
 
   useEffect(() => {
     setFilter(initialFilter)
@@ -89,7 +100,7 @@ export function TeamReportsScreen() {
   }, [canViewReports, setTeamReports, pushToast])
 
   const leaderTeamId = useMemo(() => {
-    const managed = getManagedTeam(teams, currentAgentId, role)
+    const managed = resolveLeaderTeam(teams, agents, currentAgentId, role)
     if (managed) return managed.id
     return agents.find((agent) => agent.id === currentAgentId)?.teamId ?? null
   }, [teams, currentAgentId, role, agents])
@@ -144,8 +155,8 @@ export function TeamReportsScreen() {
             <button
               type="button"
               onClick={() => {
-                haptic('success')
-                void performSubmitTeamReport().catch(() => pushToast('ارسال گزارش ناموفق بود', 'error'))
+                haptic('light')
+                setComposeOpen(true)
               }}
               className="rounded-full bg-[#3390EC] px-3 py-2 text-[11px] font-bold text-white dark:bg-[#8774E1]"
             >
@@ -225,10 +236,46 @@ export function TeamReportsScreen() {
                 <Metric label="تبدیل" value={`${toFa(report.summary.conversion_rate)}٪`} />
               </div>
 
+              {report.summary.agents && report.summary.agents.length > 0 ? (
+                <div className="mt-3 space-y-1.5 rounded-[14px] bg-black/[0.03] px-3 py-2.5 dark:bg-white/[0.04]">
+                  <p className="text-[10px] font-bold text-text-soft">خلاصه کارشناسان (بر اساس موفقیت)</p>
+                  {sortAgentEntries(report.summary.agents)
+                    .slice(0, 4)
+                    .map((entry) => (
+                      <p key={entry.agent_id} className="text-[11px] font-semibold leading-relaxed text-text-muted">
+                        {entry.agent_name}: {toFa(effectiveAgentMetrics(entry).calls_today)} تماس ·{' '}
+                        {toFa(effectiveAgentMetrics(entry).conversion_rate)}٪
+                      </p>
+                    ))}
+                  {report.summary.agents.length > 4 ? (
+                    <p className="text-[10px] font-bold text-text-soft">
+                      + {toFa(report.summary.agents.length - 4)} کارشناس دیگر
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {report.summary.narrative ? (
+                <pre className="mt-3 whitespace-pre-wrap rounded-[14px] bg-black/[0.04] px-3 py-2 text-[11px] font-semibold leading-relaxed text-text-soft dark:bg-white/6">
+                  {report.summary.narrative}
+                </pre>
+              ) : null}
+
               {report.leaderNotes && (
                 <p className="mt-3 rounded-[14px] bg-black/[0.04] px-3 py-2 text-[12px] font-semibold text-text-soft dark:bg-white/6">
                   {report.leaderNotes}
                 </p>
+              )}
+
+              {canApprove && (
+                <button
+                  type="button"
+                  onClick={() => setReviewTarget(report)}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-[14px] border border-white/50 py-2.5 text-[12px] font-bold text-text-soft dark:border-white/10"
+                >
+                  <ClipboardList size={14} />
+                  بررسی و ویرایش جزئیات
+                </button>
               )}
 
               {canApprove && report.status === 'submitted' && (
@@ -263,6 +310,47 @@ export function TeamReportsScreen() {
           ))
         )}
       </div>
+
+      <TeamReportComposeSheet
+        open={composeOpen}
+        team={leaderTeam}
+        onClose={() => setComposeOpen(false)}
+        onSubmit={async ({ leaderNotes, summary }) => {
+          try {
+            await performSubmitTeamReport({ leaderNotes, summary })
+            haptic('success')
+          } catch {
+            pushToast('ارسال گزارش ناموفق بود', 'error')
+          }
+        }}
+      />
+
+      <TeamReportReviewSheet
+        report={reviewTarget}
+        open={!!reviewTarget}
+        onClose={() => setReviewTarget(null)}
+        onSave={async ({ supervisorNotes, agents, narrative }) => {
+          if (!reviewTarget) return
+          await performUpdateTeamReport(reviewTarget.id, {
+            supervisorNotes,
+            summary: {
+              ...reviewTarget.summary,
+              agents,
+              narrative,
+            },
+          })
+          setReviewTarget(null)
+        }}
+        onApprove={
+          reviewTarget?.status === 'submitted'
+            ? () => {
+                if (!reviewTarget) return
+                setApproveTarget(reviewTarget)
+                setReviewTarget(null)
+              }
+            : undefined
+        }
+      />
 
       <ConfirmModal
         open={!!approveTarget}

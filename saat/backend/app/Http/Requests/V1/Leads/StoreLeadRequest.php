@@ -3,8 +3,8 @@
 namespace App\Http\Requests\V1\Leads;
 
 use App\Enums\ExperienceLevel;
-use App\Enums\LeadSource;
 use App\Enums\Temperature;
+use App\Rules\ActiveLeadSourceSlug;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -25,7 +25,7 @@ class StoreLeadRequest extends FormRequest
             'last_name' => ['nullable', 'string', 'max:120'],
             'phone' => ['required', 'string', 'max:20'],
             'city' => ['nullable', 'string', 'max:120'],
-            'source' => ['nullable', 'string', Rule::enum(LeadSource::class)],
+            'source' => ['nullable', 'string', 'max:60', new ActiveLeadSourceSlug],
             'product_id' => ['nullable', 'integer', 'exists:products,id'],
             'temperature' => ['nullable', 'string', Rule::enum(Temperature::class)],
             'priority' => ['nullable', 'integer', Rule::in([1, 2, 3])],

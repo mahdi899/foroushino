@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/cn'
 
@@ -49,22 +48,21 @@ export function Button({
   type = 'button',
 }: ButtonProps) {
   return (
-    <motion.button
+    <button
       type={type}
-      whileTap={{ scale: disabled ? 1 : 0.97 }}
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'inline-flex items-center justify-center font-bold transition-colors select-none',
+        'inline-flex items-center justify-center font-bold transition-colors select-none active:scale-[0.97]',
         variants[variant],
         sizes[size],
         full && 'w-full',
-        disabled && 'opacity-50',
+        disabled && 'opacity-50 active:scale-100',
         className,
       )}
     >
       {icon}
       {children}
-    </motion.button>
+    </button>
   )
 }

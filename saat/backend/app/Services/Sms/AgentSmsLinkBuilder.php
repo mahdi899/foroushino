@@ -5,6 +5,8 @@ namespace App\Services\Sms;
 use App\Enums\LeadSmsTemplate;
 use App\Models\User;
 
+use App\Support\FlexibleLink;
+
 class AgentSmsLinkBuilder
 {
     /**
@@ -17,7 +19,13 @@ class AgentSmsLinkBuilder
             return '';
         }
 
-        $base = rtrim((string) ($settings[$key] ?? ''), '/');
+        return self::withBase($agent, (string) ($settings[$key] ?? ''));
+    }
+
+    public static function withBase(User $agent, string $base, array $settings = []): string
+    {
+        $base = FlexibleLink::toAbsolute($base, $settings);
+        $base = rtrim(trim($base), '/');
         if ($base === '') {
             return '';
         }

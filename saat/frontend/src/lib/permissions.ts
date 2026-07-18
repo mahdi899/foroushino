@@ -83,3 +83,7 @@ export function hasPermission(permissions: readonly string[], permission: string
 export function hasAnyPermission(permissions: readonly string[], names: readonly string[]): boolean {
   return names.some((name) => permissions.includes(name))
 }
+
+export function canManageCatalog(permissions: readonly string[]): boolean {
+  return hasAnyPermission(permissions, ['admin.products', 'admin.settings'])
+}

@@ -19,6 +19,7 @@ import type {
   WalletTransaction,
   WorkDaySummary,
   WorkSession,
+  LeadSourceOption,
 } from '@/types'
 import { fetchMe, mapAuthUserRole, type AuthenticatedUser } from './auth'
 import { http } from './http'
@@ -52,6 +53,7 @@ import { writeCachedAdminTeams, writeCachedAdminUsers } from '@/services/adminDa
 import { todayDateKey } from '@/lib/businessDate'
 import { hasMultiTeamView, isAgentRole, isLeaderRole, isManagementRole, isSupervisorRole } from '@/lib/roles'
 import { fetchTeamLive, mergeTeamLiveIntoAgents, agentsFromTeamLive, teamsFromTeamLive } from './teamLive'
+import { mapProduct } from '@/services/products'
 
 type Dto = Record<string, unknown>
 
@@ -78,6 +80,7 @@ export interface SyncPayload {
   walletTx: WalletTransaction[]
   payouts: PayoutRequest[]
   products: Product[]
+  leadSources: LeadSourceOption[]
   notifications: AppNotification[]
   agents: Agent[]
   teams: Team[]
@@ -95,14 +98,15 @@ export interface SyncPayload {
   appSettings: RuntimeAppSettings
 }
 
-function mapProduct(dto: Dto): Product {
+function mapLeadSource(dto: Dto): LeadSourceOption {
   return {
     id: id(dto.id as string | number),
-    name: (dto.name as string) ?? '',
-    price: Number(dto.price ?? 0),
-    category: (dto.category as string) ?? '',
-    commissionRate: Number(dto.commission_rate ?? dto.commissionRate ?? 0),
+    slug: (dto.slug as string) ?? '',
+    label: (dto.label as string) ?? '',
+    sortOrder: Number(dto.sort_order ?? dto.sortOrder ?? 0),
     isActive: dto.is_active !== false,
+    isSystem: dto.is_system === true,
+    showInForm: dto.show_in_form !== false,
   }
 }
 
@@ -196,6 +200,7 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
     salesRaw,
     [walletDetailRaw, commissionsRaw, walletTxRaw, payoutsRaw],
     productsRaw,
+    leadSourcesRaw,
     notificationsRaw,
     appConfigRaw,
     activityRaw,
@@ -212,6 +217,7 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
     http.get<Dto[]>(`/sales?per_page=${management ? 100 : 40}`),
     fetchWalletBundle,
     http.get<Dto[]>('/products'),
+    http.get<Dto[]>('/lead-sources'),
     http.get<Dto[]>('/notifications?per_page=50'),
     http.get<Dto>('/app-config'),
     canViewTeamActivity ? safeGet<Dto[]>('/activity') : Promise.resolve(null),
@@ -237,6 +243,7 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
     teamId: me.team_id ? String(me.team_id) : '',
     avatar: me.avatar,
     phone: me.phone ?? me.email,
+    agentCode: Number(me.id),
     level: Number(home.level ?? me.level ?? 1),
     callsToday: Number(target.calls_made ?? 0),
     successfulToday: 0,
@@ -271,6 +278,9 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
   if (adminUsers.length > 0) {
     agents = adminUsers.map(mapAgentFromAdmin)
     if (teamLive) agents = mergeTeamLiveIntoAgents(agents, teamLive)
+    if (!agents.some((row) => row.id === agent.id)) {
+      agents = [agent, ...agents]
+    }
   } else if (teamLive) {
     agents = agentsFromTeamLive(teamLive, agent)
   } else {
@@ -338,6 +348,7 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
     walletTx: asArray<Dto>(walletTxRaw).map(mapWalletTransaction),
     payouts: asArray<Dto>(payoutsRaw).map(mapPayoutRequest),
     products: asArray<Dto>(productsRaw).map(mapProduct),
+    leadSources: asArray<Dto>(leadSourcesRaw).map(mapLeadSource),
     notifications: asArray<Dto>(notificationsRaw).map(mapNotification),
     agents,
     teams,

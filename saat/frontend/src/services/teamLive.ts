@@ -68,6 +68,7 @@ function agentFromLiveMember(member: TeamLiveMember, teamId: string): Agent {
     teamId,
     avatar: member.avatar,
     phone: '',
+    agentCode: Number(member.agentId) || 0,
     level: 1,
     callsToday: member.callsToday,
     successfulToday: member.successfulToday,
@@ -101,6 +102,24 @@ export function teamsFromTeamLive(
       agentIds: live.members.map((member) => member.agentId),
     },
   ]
+}
+
+/** True when live stats differ from the current agent rows (skip redundant store writes). */
+export function teamLiveStatsChanged(agents: Agent[], live: TeamLiveData): boolean {
+  const byId = new Map(live.members.map((member) => [member.agentId, member]))
+
+  for (const agent of agents) {
+    const liveMember = byId.get(agent.id)
+    if (!liveMember) continue
+    if (
+      agent.callsToday !== liveMember.callsToday ||
+      agent.successfulToday !== liveMember.successfulToday
+    ) {
+      return true
+    }
+  }
+
+  return false
 }
 
 /** Merge team-live KPIs into the synced agent list for management dashboards. */

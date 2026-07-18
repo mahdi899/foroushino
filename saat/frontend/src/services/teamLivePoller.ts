@@ -32,6 +32,8 @@ function uniqueTeamIds(): Array<string | null> {
 }
 
 async function pollOnce(): Promise<void> {
+  if (typeof document !== 'undefined' && document.hidden) return
+
   const teamIds = uniqueTeamIds()
   await Promise.all(
     teamIds.map(async (teamId) => {
