@@ -3,8 +3,9 @@ set -euo pipefail
 
 GIT_ROOT="/var/www/foroushino"
 APP_ROOT="/var/www/bahram-cm"
-SITE_URL="https://fashio.ir"
-CDN_URL="https://cdn.fashio.ir"
+SITE_URL="https://rostami.app"
+CDN_URL="https://cdn.rostami.app"
+FAMILY_URL="https://rostami.club"
 DB_NAME="bahram_backend"
 DB_USER="bahram"
 DB_PASS="$(openssl rand -base64 24 | tr -d '/+=' | head -c 32)"
@@ -29,7 +30,7 @@ sed -i "s|^APP_ENV=.*|APP_ENV=production|" .env
 sed -i "s|^APP_DEBUG=.*|APP_DEBUG=false|" .env
 sed -i "s|^APP_URL=.*|APP_URL=http://127.0.0.1:8010|" .env
 sed -i "s|^FRONTEND_URL=.*|FRONTEND_URL=${SITE_URL}|" .env
-sed -i "s|^CORS_ALLOWED_ORIGINS=.*|CORS_ALLOWED_ORIGINS=${SITE_URL}|" .env
+sed -i "s|^CORS_ALLOWED_ORIGINS=.*|CORS_ALLOWED_ORIGINS=${SITE_URL},${FAMILY_URL}|" .env
 sed -i "s|^LOG_LEVEL=.*|LOG_LEVEL=warning|" .env
 sed -i "s|^LOG_CHANNEL=.*|LOG_CHANNEL=daily|" .env
 sed -i "s|^DB_DATABASE=.*|DB_DATABASE=${DB_NAME}|" .env
@@ -44,14 +45,20 @@ sed -i "s|^REVALIDATE_SECRET=.*|REVALIDATE_SECRET=${REVALIDATE_SECRET}|" .env
 sed -i "s|^REVALIDATE_WEBHOOK_URL=.*|REVALIDATE_WEBHOOK_URL=${SITE_URL}/api/revalidate|" .env
 sed -i "s|^INTERNAL_API_SECRET=.*|INTERNAL_API_SECRET=${INTERNAL_SECRET}|" .env
 sed -i "s|^IDENTITY_NATIONAL_CODE_HMAC_KEY=.*|IDENTITY_NATIONAL_CODE_HMAC_KEY=${HMAC_KEY}|" .env
-sed -i "s|^SANCTUM_STATEFUL_DOMAINS=.*|SANCTUM_STATEFUL_DOMAINS=fashio.ir|" .env
+sed -i "s|^SANCTUM_STATEFUL_DOMAINS=.*|SANCTUM_STATEFUL_DOMAINS=${SITE_URL#https://},${FAMILY_URL#https://}|" .env
 sed -i "s|^MEDIA_URL=.*|MEDIA_URL=${CDN_URL}|" .env
 sed -i "s|^CDN_PROVIDER=.*|CDN_PROVIDER=arvan|" .env
+sed -i "s|^FAMILY_ENTRY_BASE_URL=.*|FAMILY_ENTRY_BASE_URL=${FAMILY_URL}|" .env
+sed -i "s|^FAMILY_ENTRY_PATH=.*|FAMILY_ENTRY_PATH=|" .env
 
 composer install --no-dev --optimize-autoloader --no-interaction
 php artisan key:generate --force
 php artisan migrate --force
-php artisan db:seed --class=DatabaseSeeder --force || true
+# NOTE: intentionally NOT the full DatabaseSeeder — it seeds demo commerce,
+# seminars, mini-courses, and a Family with hardcoded weak passwords
+# (`password`, `12345`). CacheIntegrationsSeeder only wires real settings.
+php artisan db:seed --class=CacheIntegrationsSeeder --force || true
+php artisan db:seed --class=TelegramBotSeeder --force || true
 php artisan storage:link || true
 php artisan config:cache
 php artisan route:cache
@@ -84,10 +91,13 @@ supervisorctl start bahram-queue:* || supervisorctl restart bahram-queue:*
 CRON_LINE="* * * * * cd ${APP_ROOT}/backend && php artisan schedule:run >> /dev/null 2>&1"
 (crontab -u www-data -l 2>/dev/null | grep -v 'schedule:run' || true; echo "${CRON_LINE}") | crontab -u www-data -
 
-NGINX_SRC="/root/fashio-origin.conf"
-cp "${NGINX_SRC}" /etc/nginx/sites-available/fashio.conf
+NGINX_SRC="/root/rostami-app-origin.conf"
+[[ -f "${NGINX_SRC}" ]] || NGINX_SRC="${APP_ROOT}/deploy/nginx/rostami-app-origin.conf"
+cp "${NGINX_SRC}" /etc/nginx/sites-available/rostami-app.conf
+cp "${APP_ROOT}/deploy/nginx/rostami-club.conf" /etc/nginx/sites-available/rostami-club.conf
 rm -f /etc/nginx/sites-enabled/default
-ln -sf /etc/nginx/sites-available/fashio.conf /etc/nginx/sites-enabled/fashio.conf
+ln -sf /etc/nginx/sites-available/rostami-app.conf /etc/nginx/sites-enabled/rostami-app.conf
+ln -sf /etc/nginx/sites-available/rostami-club.conf /etc/nginx/sites-enabled/rostami-club.conf
 nginx -t
 systemctl reload nginx
 
@@ -99,7 +109,9 @@ DB_PASS=${DB_PASS}
 REVALIDATE_SECRET=${REVALIDATE_SECRET}
 INTERNAL_API_SECRET=${INTERNAL_SECRET}
 SITE_URL=${SITE_URL}
-Admin: admin@bahram.local / password (change after first login)
+FAMILY_URL=${FAMILY_URL}
+No admin user was seeded (CacheIntegrationsSeeder only). Create the first
+super-admin now: php artisan tinker → see docs/DEPLOYMENT.md "Create admin".
 EOF
 chmod 600 /root/bahram-deploy-credentials.txt
 

@@ -50,8 +50,8 @@ export const DEFAULT_CACHE_INTEGRATIONS_FORM: CacheIntegrationsForm = {
   revalidateWebhookUrl: '',
   revalidateSecretInput: '',
   cdnProvider: 'arvan',
-  arvanDomain: 'fashio.ir',
-  arvanMediaDomain: 'cdn.fashio.ir',
+  arvanDomain: 'rostami.app',
+  arvanMediaDomain: 'cdn.rostami.app',
   arvanApiKeyInput: '',
   cloudflareZoneId: '',
   cloudflareApiTokenInput: '',
@@ -71,7 +71,7 @@ export function integrationsViewToForm(view: CacheIntegrationsView): CacheIntegr
 }
 
 export const CDN_PROVIDER_OPTIONS: { id: CdnProvider; label: string; hint: string }[] = [
-  { id: 'arvan', label: 'ابر آروان', hint: 'پیشنهادی برای fashio.ir — CDN داخلی ایران' },
+  { id: 'arvan', label: 'ابر آروان', hint: 'پیشنهادی برای rostami.app — CDN داخلی ایران' },
   { id: 'cloudflare', label: 'Cloudflare', hint: 'CDN بین‌المللی — Zone ID + API Token' },
   { id: 'none', label: 'غیرفعال', hint: 'فقط ISR و کش Laravel — بدون purge لبه' },
 ];

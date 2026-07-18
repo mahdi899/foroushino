@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Saat (سات) — production deploy for satcall.ir
+# Saat (سات) — production deploy for sat.center
 # Usage (on server):
 #   ./deploy/scripts/deploy.sh [all|backend|frontend|rollback|health]
 set -euo pipefail
@@ -7,7 +7,7 @@ set -euo pipefail
 APP_DIR="${APP_DIR:-/var/www/saat}"
 GIT_ROOT="${GIT_ROOT:-/var/www/mini-call-center}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/saat}"
-DOMAIN="${DOMAIN:-https://satcall.ir}"
+DOMAIN="${DOMAIN:-https://sat.center}"
 DATE=$(date +%Y%m%d_%H%M%S)
 BRANCH="${BRANCH:-main}"
 

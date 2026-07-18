@@ -19,10 +19,20 @@ TELEGRAM_WEBHOOK_SECRET=
 TELEGRAM_BOT_KEY=production
 TELEGRAM_STAGING_BOT_TOKEN=
 TELEGRAM_STAGING_WEBHOOK_SECRET=
-TELEGRAM_WEBHOOK_BASE_URL=https://api.fashio.ir
+TELEGRAM_WEBHOOK_BASE_URL=https://rostami.app
 ```
 
+⚠️ عمداً یک ساب‌دامین `api.*` جدا نیست — چنین ساب‌دامین‌هایی در ایران فیلتر می‌شوند.
+webhook از همان `rostami.app/api/v1/integrations/telegram/{botKey}/webhook` سرویس می‌شود؛
+nginx این مسیر را مستقیم به PHP-FPM می‌فرستد (bypass از Next.js) — نمونه در
+`deploy/nginx-telegram-webhook.conf.example` و پیاده‌سازی واقعی در
+`../../deploy/nginx/rostami-app.conf`.
+
 توکن ادمین (`sms_providers.telegram`) جداست و برای لاگ ادمین است.
+
+توکن این بات (`@RostamiAppBot`) با **saat** (سات، `sat.center`) مشترک است — Mini App
+"Sat Center" (`t.me/RostamiAppBot/satcenter`) با همین `TELEGRAM_BOT_TOKEN` initData
+را تأیید می‌کند اما هیچ webhook خودش ثبت نمی‌کند (این پروژه مالک webhook است).
 
 ## نصب
 

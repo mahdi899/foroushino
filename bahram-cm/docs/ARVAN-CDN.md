@@ -1,21 +1,21 @@
-# راهنمای CDN — fashio.ir + ابر آروان
+# راهنمای CDN — rostami.app + ابر آروان
 
 ## معماری (الزامی)
 
 ```
-کاربر → Arvan CDN → fashio.ir (Nginx → Next.js :3000)
+کاربر → Arvan CDN → rostami.app (Nginx → Next.js :3000)
                          ↓ server-side فقط
                     127.0.0.1:8010 Laravel
                          ↓
-                    cdn.fashio.ir → /storage, /cdn (رسانه)
+                    cdn.rostami.app → /storage, /cdn (رسانه)
 ```
 
 ### قوانین مهم
 
-1. **دامنه عمومی:** فقط `https://fashio.ir` — مرورگر همه `/api/*` را از همین origin می‌گیرد (Next.js proxy).
-2. **Laravel عمومی نیست:** `api.fashio.ir` یا IP مستقیم را **باز نکنید** — در ایران فیلتر/بلاک می‌شود.
+1. **دامنه عمومی:** فقط `https://rostami.app` — مرورگر همه `/api/*` را از همین origin می‌گیرد (Next.js proxy).
+2. **Laravel عمومی نیست:** `api.rostami.app` یا IP مستقیم را **باز نکنید** — در ایران فیلتر/بلاک می‌شود.
 3. **ارتباط داخلی:** `BACKEND_PROXY_URL=http://127.0.0.1:8010` (یا شبکه private).
-4. **رسانه:** `https://cdn.fashio.ir` پشت Arvan — فقط فایل استاتیک.
+4. **رسانه:** `https://cdn.rostami.app` پشت Arvan — فقط فایل استاتیک.
 
 ---
 
@@ -24,10 +24,10 @@
 ### Frontend (`.env.local` روی سرور)
 
 ```env
-NEXT_PUBLIC_SITE_URL=https://fashio.ir
-NEXT_PUBLIC_API_BASE_URL=https://fashio.ir
+NEXT_PUBLIC_SITE_URL=https://rostami.app
+NEXT_PUBLIC_API_BASE_URL=https://rostami.app
 BACKEND_PROXY_URL=http://127.0.0.1:8010
-NEXT_PUBLIC_CDN_ORIGIN=https://cdn.fashio.ir
+NEXT_PUBLIC_CDN_ORIGIN=https://cdn.rostami.app
 REVALIDATE_SECRET=<random-64>
 
 # Google reCAPTCHA v3 (مخفی)
@@ -40,9 +40,9 @@ NEXT_PUBLIC_RECAPTCHA_SITE_KEY=<site-key>
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=http://127.0.0.1:8010
-FRONTEND_URL=https://fashio.ir
-CORS_ALLOWED_ORIGINS=https://fashio.ir
-MEDIA_URL=https://cdn.fashio.ir
+FRONTEND_URL=https://rostami.app
+CORS_ALLOWED_ORIGINS=https://rostami.app
+MEDIA_URL=https://cdn.rostami.app
 SESSION_DRIVER=redis
 CACHE_STORE=redis
 QUEUE_CONNECTION=redis
@@ -54,7 +54,7 @@ RECAPTCHA_SCORE_THRESHOLD=0.5
 
 # Purge کش Arvan (اختیاری)
 ARVAN_API_KEY=
-ARVAN_DOMAIN=fashio.ir
+ARVAN_DOMAIN=rostami.app
 ```
 
 ---
@@ -67,7 +67,7 @@ ARVAN_DOMAIN=fashio.ir
 |--------|-----|--------|
 | `@` | A/CNAME | IP سرور origin |
 | `cdn` | A/CNAME | همان IP |
-| `www` | CNAME | `fashio.ir` |
+| `www` | CNAME | `rostami.app` |
 
 ### ۲. SSL
 
@@ -80,7 +80,7 @@ ARVAN_DOMAIN=fashio.ir
 |------|-----|-----|
 | `/_next/static/*` | بله | ۱ سال |
 | `/fonts/*`, `/icons/*` | بله | ۱ سال |
-| `/cdn/*`, `/storage/*` روی cdn.fashio.ir | بله | ۱ سال |
+| `/cdn/*`, `/storage/*` روی cdn.rostami.app | بله | ۱ سال |
 | `/api/*` | **خیر** | — |
 | HTML (`/`, `/insights/*`, …) | بله | طبق `CDN-Cache-Control` از Next |
 
@@ -106,11 +106,11 @@ Next.js و Laravel هدر `CDN-Cache-Control` می‌فرستند — در Arvan
 
 ## Nginx
 
-فایل آماده: [`deploy/nginx/fashio.conf`](../deploy/nginx/fashio.conf)
+فایل آماده: [`deploy/nginx/rostami-app-origin.conf`](../deploy/nginx/rostami-app-origin.conf)
 
 ```bash
-sudo cp deploy/nginx/fashio.conf /etc/nginx/sites-available/fashio.conf
-sudo ln -sf /etc/nginx/sites-available/fashio.conf /etc/nginx/sites-enabled/
+sudo cp deploy/nginx/rostami-app-origin.conf /etc/nginx/sites-available/rostami-app.conf
+sudo ln -sf /etc/nginx/sites-available/rostami-app.conf /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
@@ -132,9 +132,9 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ## چک‌لیست بعد از Deploy
 
-- [ ] `curl -I https://fashio.ir` → 200
-- [ ] `curl -I https://fashio.ir/api/articles` → 200 (از همان دامنه)
+- [ ] `curl -I https://rostami.app` → 200
+- [ ] `curl -I https://rostami.app/api/articles` → 200 (از همان دامنه)
 - [ ] `curl -I http://YOUR_SERVER_IP:8010/api/articles` از خارج → **timeout/refused**
-- [ ] `curl -I https://cdn.fashio.ir/storage/media/site/logo.svg` → 200
+- [ ] `curl -I https://cdn.rostami.app/storage/media/site/logo.svg` → 200
 - [ ] reCAPTCHA در فرم تماس / چت‌بات کار می‌کند
 - [ ] `/admin/cache` → پریست «حداکثر سرعت»

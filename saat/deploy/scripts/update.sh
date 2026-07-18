@@ -93,5 +93,5 @@ systemctl reload php8.3-fpm 2>/dev/null || systemctl reload php8.2-fpm 2>/dev/nu
 systemctl reload nginx 2>/dev/null || true
 
 print_status "Quick update finished"
-curl -s "https://satcall.ir/version.json" | head -c 300 || true
+curl -s "https://sat.center/version.json" | head -c 300 || true
 echo

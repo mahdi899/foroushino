@@ -7,7 +7,7 @@ return [
     'default_bot_key' => env('TELEGRAM_BOT_KEY', 'production'),
 
     /** Public site base URL for inline keyboard link buttons (must be https, not localhost). */
-    'site_base_url' => rtrim((string) env('TELEGRAM_SITE_BASE_URL', 'https://fashio.ir'), '/'),
+    'site_base_url' => rtrim((string) env('TELEGRAM_SITE_BASE_URL', 'https://rostami.app'), '/'),
 
     'api_base_url' => rtrim((string) env('TELEGRAM_API_BASE_URL', 'https://api.telegram.org'), '/'),
 

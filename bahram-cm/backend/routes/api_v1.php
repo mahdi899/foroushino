@@ -63,6 +63,7 @@ use App\Http\Controllers\Api\V1\MiniCourseCommentController;
 use App\Http\Controllers\Api\V1\MiniCourseController;
 use App\Http\Controllers\Api\V1\SettingController;
 use App\Http\Controllers\Api\V1\Student\AuthController as StudentAuthController;
+use App\Http\Controllers\Api\V1\Student\SsoBridgeController;
 use App\Http\Controllers\Api\V1\Student\CashbackPayoutController as StudentCashbackPayoutController;
 use App\Http\Controllers\Api\V1\Student\CertificateDownloadController;
 use App\Http\Controllers\Api\V1\Student\CourseController as StudentCourseController;
@@ -154,7 +155,11 @@ Route::prefix('student')->group(function () {
     Route::post('auth/verify-otp', [StudentAuthController::class, 'verifyOtp'])->middleware('throttle:student-auth');
     Route::post('auth/login-password', [StudentAuthController::class, 'loginPassword'])->middleware('throttle:student-auth');
 
+    // Cross-domain SSO handoff between rostami.app and rostami.club (see SsoBridgeController).
+    Route::post('auth/sso/consume', [SsoBridgeController::class, 'consume'])->middleware('throttle:student-auth');
+
     Route::middleware(['auth:sanctum', 'student.active'])->group(function () {
+        Route::post('auth/sso/bridge', [SsoBridgeController::class, 'issue']);
         Route::post('auth/logout', [StudentAuthController::class, 'logout']);
         Route::get('me', [StudentAuthController::class, 'me']);
 

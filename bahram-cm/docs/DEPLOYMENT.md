@@ -2,9 +2,22 @@
 
 این راهنما deploy **Next.js** (`frontend/`) و **Laravel** (`backend/`) روی **Ubuntu + Nginx + PHP-FPM + PM2 + Redis + MySQL** را شرح می‌دهد.
 
-**فایل‌های زیرساخت:** [`deploy/`](../deploy/)  
-**CDN ابر آروان (fashio.ir):** [`ARVAN-CDN.md`](ARVAN-CDN.md)  
+**معماری: Option B — دو دامنه واقعی (true dual-domain)**
+
+| دامین | نقش |
+|---|---|
+| `rostami.app` | سایت اصلی، پنل دانشجو (`/panel`)، پنل ادمین (`/admin`)، ربات (لینک‌ها)، webhook تلگرام |
+| `cdn.rostami.app` | رسانه سایت (Arvan CDN) |
+| `rostami.club` | خانواده داداش بهرام — PWA مستقل (apex) |
+| `family-cdn.rostami.club` | رسانه خانواده (FTP + CDN) |
+| `sat.center` | سات — پروژه **جداگانه** (`saat/`)، همان بات تلگرام را برای Mini App استفاده می‌کند — [`saat/deploy/DEPLOYMENT.md`](../../saat/deploy/DEPLOYMENT.md) |
+
+هر دو دامنهٔ `rostami.app` و `rostami.club` توسط **همان یک** پردازش Next.js (PM2, پورت 3000) و **همان یک** بک‌اند Laravel (127.0.0.1:8010) سرویس می‌شوند — فقط nginx بر اساس Host تفکیک می‌کند. `middleware.ts` مسیر `/` روی `rostami.club` را داخلی به `/family` بازنویسی می‌کند، و `/family` روی `rostami.app` / `/panel`، `/admin` روی `rostami.club` را با یک هندشیک SSO یک‌بارمصرف به دامنه درست ریدایرکت می‌کند (`app/sso/bridge/route.ts` + بک‌اند `SsoBridgeController`).
+
+**فایل‌های زیرساخت:** [`deploy/`](../deploy/)
+**CDN ابر آروان:** [`ARVAN-CDN.md`](ARVAN-CDN.md)
 **خانواده داداش بهرام (Family):** [`FAMILY.md`](FAMILY.md) — متغیرهای محیطی، صف رسانه، FTP+CDN
+**تلگرام:** [`../backend/docs/TELEGRAM_BOT.md`](../backend/docs/TELEGRAM_BOT.md)
 
 CI در `.github/workflows/ci.yml` lint، typecheck، build و PHPUnit را اجرا می‌کند.
 
@@ -16,7 +29,7 @@ CI در `.github/workflows/ci.yml` lint، typecheck، build و PHPUnit را اج
 |-----------|------|
 | Ubuntu | 22.04 LTS یا 24.04 LTS |
 | Node.js | 20 LTS |
-| PHP | 8.2+ (extensions: mbstring, xml, curl, mysql, redis, gd, intl, zip, bcmath) |
+| PHP | 8.3+ (extensions: mbstring, xml, curl, mysql, redis, gd, intl, zip, bcmath) |
 | Composer | 2.x |
 | MySQL | 8.0+ |
 | Redis | 7.x |
@@ -25,10 +38,11 @@ CI در `.github/workflows/ci.yml` lint، typecheck، build و PHPUnit را اج
 | Supervisor | `apt install supervisor` |
 | Certbot | SSL (Let's Encrypt) |
 
+سریع‌ترین راه: `sudo bash deploy/scripts/bootstrap-server.sh` انجام تمام مراحل ۱ تا ۷ + nginx dual-domain + supervisor + webhook تلگرام را خودکار می‌کند. بخش‌های زیر برای راه‌اندازی دستی/گام‌به‌گام است.
+
 ```bash
-# نمونه نصب پایه
-sudo apt update && sudo apt install -y nginx php8.2-fpm php8.2-mysql php8.2-redis \
-  php8.2-mbstring php8.2-xml php8.2-curl php8.2-gd php8.2-intl php8.2-zip php8.2-bcmath \
+sudo apt update && sudo apt install -y nginx php8.3-fpm php8.3-mysql php8.3-redis \
+  php8.3-mbstring php8.3-xml php8.3-curl php8.3-gd php8.3-intl php8.3-zip php8.3-bcmath \
   mysql-server redis-server supervisor certbot python3-certbot-nginx
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
@@ -41,8 +55,9 @@ sudo npm install -g pm2
 
 ```bash
 sudo mkdir -p /var/www
-sudo git clone <repo-url> /var/www/bahram-cm
-sudo chown -R www-data:www-data /var/www/bahram-cm
+sudo git clone <repo-url> /var/www/foroushino
+sudo ln -sfn /var/www/foroushino/bahram-cm /var/www/bahram-cm
+sudo chown -R www-data:www-data /var/www/foroushino
 ```
 
 ---
@@ -52,11 +67,12 @@ sudo chown -R www-data:www-data /var/www/bahram-cm
 ```bash
 cd /var/www/bahram-cm/backend
 cp .env.example .env
-# ویرایش .env — بخش PRODUCTION را ببینید
+# ویرایش .env — بخش PRODUCTION را ببینید (rostami.app + rostami.club)
 composer install --no-dev --optimize-autoloader
 php artisan key:generate
 php artisan migrate --force
-php artisan db:seed --class=CacheIntegrationsSeeder
+php artisan db:seed --class=CacheIntegrationsSeeder --force
+php artisan db:seed --class=TelegramBotSeeder --force
 php artisan storage:link
 php artisan config:cache
 php artisan route:cache
@@ -64,19 +80,32 @@ php artisan view:cache
 php artisan event:cache
 ```
 
-### متغیرهای مهم Production (fashio.ir)
+### ⚠️ هرگز `DatabaseSeeder` کامل را در Production اجرا نکنید
 
-| Variable | مقدار پیشنهادی |
+`db:seed --class=DatabaseSeeder` یک ادمین با ایمیل/رمز شناخته‌شده (`admin@bahram.local` / `password`) و داده‌های آزمایشی (سفارش، سمینار، خانواده با رمز `12345`) می‌سازد — فقط برای local/staging. در production فقط `CacheIntegrationsSeeder` را اجرا کنید (بالا) و اولین ادمین واقعی را بسازید:
+
+```bash
+php artisan app:create-admin
+# ایمیل / موبایل / نام را می‌پرسد؛ رمز به‌صورت پنهان (secret prompt) گرفته می‌شود — هیچ‌جا لاگ نمی‌شود.
+```
+
+### متغیرهای مهم Production
+
+| Variable | مقدار |
 |----------|----------------|
 | `APP_ENV` | `production` |
 | `APP_DEBUG` | `false` |
-| `APP_URL` | `http://127.0.0.1:8010` (فقط داخلی — **نه** api.fashio.ir) |
-| `FRONTEND_URL` | `https://fashio.ir` |
-| `CORS_ALLOWED_ORIGINS` | `https://fashio.ir` |
-| `MEDIA_URL` | `https://cdn.fashio.ir` |
-| `CACHE_STORE` | `redis` |
-| `QUEUE_CONNECTION` | `redis` |
-| `SESSION_DRIVER` | `redis` |
+| `APP_URL` | `http://127.0.0.1:8010` (فقط داخلی — **نه** یک ساب‌دامین api.* عمومی؛ در ایران فیلتر می‌شود) |
+| `FRONTEND_URL` | `https://rostami.app` |
+| `CORS_ALLOWED_ORIGINS` | `https://rostami.app,https://rostami.club` |
+| `SANCTUM_STATEFUL_DOMAINS` | `rostami.app,rostami.club` |
+| `MEDIA_URL` | `https://cdn.rostami.app` |
+| `FAMILY_ENTRY_BASE_URL` | `https://rostami.club` |
+| `FAMILY_ENTRY_PATH` | *(خالی — apex، نه `/family`)* |
+| `FAMILY_MEDIA_CDN_URL` | `https://family-cdn.rostami.club` |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_BOT_USERNAME` | مشترک با Mini App سات — `@RostamiAppBot` |
+| `TELEGRAM_WEBHOOK_BASE_URL` / `TELEGRAM_SITE_BASE_URL` | `https://rostami.app` |
+| `CACHE_STORE` / `QUEUE_CONNECTION` / `SESSION_DRIVER` | `redis` |
 | `SESSION_SECURE_COOKIE` | `true` |
 | `OTP_DEV_MODE` | `false` |
 | `LOG_LEVEL` | `warning` |
@@ -84,7 +113,7 @@ php artisan event:cache
 | `INTERNAL_API_SECRET` | secret جدا از REVALIDATE |
 | `RECAPTCHA_SITE_KEY` / `RECAPTCHA_SECRET_KEY` | Google reCAPTCHA v3 |
 
-> **مهم:** API عمومی (`api.fashio.ir`) باز نکنید. مرورگر فقط `https://fashio.ir/api/*` را صدا می‌زند؛ Next.js به `127.0.0.1:8010` پروکسی می‌کند.
+> **مهم:** API عمومی جدا (`api.rostami.app`) باز نکنید. مرورگر فقط `https://rostami.app/api/*` یا `https://rostami.club/api/*` را صدا می‌زند؛ Next.js به `127.0.0.1:8010` پروکسی می‌کند. فقط دو مسیر مستقیم به PHP-FPM می‌روند (نه از Next): webhook تلگرام و آپلود رسانه مدیر خانواده — در `deploy/nginx/rostami-app.conf`.
 
 ---
 
@@ -93,7 +122,7 @@ php artisan event:cache
 ```bash
 cd /var/www/bahram-cm/frontend
 cp .env.example .env.local
-# تنظیم env vars
+# تنظیم env vars — شامل NEXT_PUBLIC_APP_DOMAIN و NEXT_PUBLIC_FAMILY_DOMAIN
 npm ci
 npm run verify
 npm run build
@@ -104,27 +133,38 @@ pm2 startup  # دستور systemd را اجرا کنید
 
 | Variable | Purpose |
 |----------|---------|
-| `NEXT_PUBLIC_SITE_URL` | `https://fashio.ir` |
-| `NEXT_PUBLIC_API_BASE_URL` | `https://fashio.ir` (same-origin — نه subdomain جدا) |
+| `NEXT_PUBLIC_SITE_URL` | `https://rostami.app` |
+| `NEXT_PUBLIC_API_BASE_URL` | `https://rostami.app` (same-origin) |
 | `BACKEND_PROXY_URL` | `http://127.0.0.1:8010` (داخلی) |
-| `NEXT_PUBLIC_CDN_ORIGIN` | `https://cdn.fashio.ir` |
+| `NEXT_PUBLIC_CDN_ORIGIN` | `https://cdn.rostami.app` |
+| `NEXT_PUBLIC_APP_DOMAIN` | `rostami.app` — **الزامی برای dual-domain** |
+| `NEXT_PUBLIC_FAMILY_DOMAIN` | `rostami.club` — **الزامی برای dual-domain** |
 | `NEXT_PUBLIC_RECAPTCHA_SITE_KEY` | Google reCAPTCHA v3 |
 | `REVALIDATE_SECRET` | مشترک با Laravel |
 
+اگر `NEXT_PUBLIC_APP_DOMAIN`/`NEXT_PUBLIC_FAMILY_DOMAIN` خالی بمانند (مثلاً در local dev)، رفتار قدیمی/تک‌دامنه‌ای برمی‌گردد: `/family` فقط یک مسیر عادی روی همان origin است — بدون ریدایرکت یا SSO.
+
 ---
 
-## 5. Nginx (fashio.ir)
+## 5. Nginx (rostami.app + rostami.club)
 
 ```bash
-sudo cp deploy/nginx/fashio.conf /etc/nginx/sites-available/fashio.conf
-sudo ln -sf /etc/nginx/sites-available/fashio.conf /etc/nginx/sites-enabled/
+# rostami.app (پشت Arvan CDN) — روی سرور مبدا از نسخه origin استفاده کنید:
+sudo cp deploy/nginx/rostami-app-origin.conf /etc/nginx/sites-available/rostami-app.conf
+sudo ln -sf /etc/nginx/sites-available/rostami-app.conf /etc/nginx/sites-enabled/
+
+# rostami.club (خانواده) — TLS مستقیم روی همین سرور، بدون Arvan:
+sudo cp deploy/nginx/rostami-club.conf /etc/nginx/sites-available/rostami-club.conf
+sudo ln -sf /etc/nginx/sites-available/rostami-club.conf /etc/nginx/sites-enabled/
+
 sudo nginx -t && sudo systemctl reload nginx
 
 # SSL
-sudo certbot --nginx -d fashio.ir -d www.fashio.ir -d cdn.fashio.ir
+sudo certbot --nginx -d rostami.app -d www.rostami.app -d cdn.rostami.app
+sudo certbot --nginx -d rostami.club -d www.rostami.club -d family-cdn.rostami.club
 ```
 
-فایل `fashio.conf` فقط `fashio.ir` و `cdn.fashio.ir` را عمومی می‌کند؛ Laravel روی `127.0.0.1:8010` گوش می‌دهد.
+نکته: `deploy/nginx/rostami-app.conf` (بدون `-origin`) نسخه‌ای است که خودش SSL می‌کند — برای وقتی که Arvan را هنوز وصل نکرده‌اید یا مستقیم می‌خواهید تست کنید.
 
 ---
 
@@ -132,21 +172,21 @@ sudo certbot --nginx -d fashio.ir -d www.fashio.ir -d cdn.fashio.ir
 
 ```bash
 sudo cp deploy/supervisor/bahram-queue.conf /etc/supervisor/conf.d/
-sudo supervisorctl reread && sudo supervisorctl update
-sudo supervisorctl status bahram-queue:*
-```
-
-Family (خانواده داداش بهرام) از پول جدا با صف‌های اختصاصی استفاده می‌کند تا پردازش رسانه سنگین صف اصلی را کند نکند — جزئیات در [`FAMILY.md`](FAMILY.md):
-
-```bash
 sudo cp deploy/supervisor/bahram-family-queue.conf /etc/supervisor/conf.d/
+sudo cp backend/deploy/supervisor-telegram-horizon.conf.example /etc/supervisor/conf.d/bahram-telegram-horizon.conf
 sudo supervisorctl reread && sudo supervisorctl update
-sudo supervisorctl status bahram-family-queue:*
+sudo supervisorctl status bahram-queue:* bahram-family-queue:* bahram-horizon bahram-scheduler
 ```
+
+- `bahram-queue` — صف عمومی (سفارش، نوتیفیکیشن، ...).
+- `bahram-family-queue` — صف اختصاصی خانواده (رسانه سنگین) — جزئیات در [`FAMILY.md`](FAMILY.md).
+- `bahram-horizon` + `bahram-scheduler` — صف‌های ربات تلگرام (`telegram-inbound/replies/...`) و `schedule:run` بدون کرون.
 
 ---
 
 ## 7. Laravel Scheduler (Cron)
+
+اگر `bahram-scheduler` (بالا، `artisan schedule:work`) را با Supervisor اجرا می‌کنید، کرون لازم نیست. در غیر این صورت:
 
 ```bash
 sudo crontab -u www-data -e
@@ -156,7 +196,22 @@ sudo crontab -u www-data -e
 
 ---
 
-## 8. Deploy بعدی (به‌روزرسانی)
+## 8. Telegram Bot (@RostamiAppBot — مشترک با سات)
+
+```bash
+cd /var/www/bahram-cm/backend
+php artisan telegram:sync-bots
+php artisan telegram:webhook:set production
+php artisan telegram:webhook:info production   # تأیید
+```
+
+webhook مستقیماً روی `https://rostami.app/api/v1/integrations/telegram/production/webhook` است (بدون ساب‌دامین جدا) — nginx این مسیر را مستقیم به PHP-FPM می‌فرستد (نه Next.js)، جزئیات در `deploy/nginx/rostami-app.conf`.
+
+Mini App سات (`t.me/RostamiAppBot/satcenter`) از **همین بات و توکن** استفاده می‌کند اما webhook خودش را ثبت نمی‌کند — فقط initData را با همان token تأیید می‌کند. جزئیات: [`../../saat/deploy/DEPLOYMENT.md`](../../saat/deploy/DEPLOYMENT.md)
+
+---
+
+## 9. Deploy بعدی (به‌روزرسانی)
 
 ```bash
 cd /var/www/bahram-cm
@@ -166,7 +221,7 @@ chmod +x deploy/scripts/deploy.sh deploy/scripts/backup.sh
 
 ---
 
-## 9. Backup روزانه
+## 10. Backup روزانه
 
 ```bash
 # Cron root یا www-data:
@@ -175,22 +230,28 @@ chmod +x deploy/scripts/deploy.sh deploy/scripts/backup.sh
 
 ---
 
-## 10. Post-deploy checklist
+## 11. Post-deploy checklist
 
 1. `/admin/cache` → پریست **حداکثر سرعت**
 2. Arvan CDN Cache Rules — [`ARVAN-CDN.md`](ARVAN-CDN.md)
 3. `GET /up` روی `127.0.0.1:8010` → 200 (Laravel داخلی)
-4. `GET https://fashio.ir` → 200 (Next.js)
-5. `GET https://fashio.ir/api/articles` → 200 (از همان دامنه)
-6. Submit فرم → reCAPTCHA + ردیف در DB
-7. `/sitemap.xml` کامل لود شود
-8. Queue workers در Supervisor: `RUNNING`
-9. Redis: `redis-cli ping` → `PONG`
-10. Backup تست‌شده
-11. Monitoring فعال (Sentry / uptime)
+4. `GET https://rostami.app` → 200 (Next.js، سایت اصلی)
+5. `GET https://rostami.club` → 200 (همان Next.js، rewrite داخلی به `/family`)
+6. `GET https://rostami.app/api/articles` → 200 (از همان دامنه)
+7. کلیک روی «خانواده» در ناوبری سایت اصلی → ریدایرکت به `rostami.club` بدون نیاز به لاگین دوباره (SSO bridge)
+8. `/family` روی `rostami.app` → ریدایرکت 30x به `rostami.club`
+9. `/panel` یا `/admin` روی `rostami.club` → ریدایرکت 30x به `rostami.app`
+10. Submit فرم → reCAPTCHA + ردیف در DB
+11. `/sitemap.xml` کامل لود شود
+12. Queue workers در Supervisor: همه `RUNNING`
+13. Redis: `redis-cli ping` → `PONG`
+14. `php artisan telegram:webhook:info production` → `url` درست است
+15. اولین ادمین واقعی با `php artisan app:create-admin` ساخته شده (نه seeder)
+16. Backup تست‌شده
+17. Monitoring فعال (Sentry / uptime)
 
 جزئیات CDN: [`ARVAN-CDN.md`](ARVAN-CDN.md)
 
 ---
 
-*آخرین به‌روزرسانی: ۱۴۰۵/۰۴/۲۰*
+*آخرین به‌روزرسانی: Option B — دو دامنه واقعی (rostami.app + rostami.club)*

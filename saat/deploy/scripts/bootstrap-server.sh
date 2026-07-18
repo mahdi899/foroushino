@@ -9,8 +9,12 @@ GIT_ROOT="${GIT_ROOT:-/var/www/mini-call-center}"
 APP_ROOT="${APP_ROOT:-/var/www/saat}"
 REPO_URL="${REPO_URL:-}"
 BRANCH="${BRANCH:-main}"
-SITE_URL="${SITE_URL:-https://satcall.ir}"
-DOMAIN="${DOMAIN:-satcall.ir}"
+SITE_URL="${SITE_URL:-https://sat.center}"
+DOMAIN="${DOMAIN:-sat.center}"
+# Shared Telegram bot (@RostamiAppBot) — same token as bahram-cm. Saat only
+# verifies Mini App initData signatures with it; it does NOT own the webhook.
+TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
+TELEGRAM_BOT_USERNAME="${TELEGRAM_BOT_USERNAME:-RostamiAppBot}"
 
 echo "==> Installing system packages"
 apt-get update -qq
@@ -74,6 +78,10 @@ sed -i "s|^SANCTUM_STATEFUL_DOMAINS=.*|SANCTUM_STATEFUL_DOMAINS=${DOMAIN},www.${
 sed -i "s|^DEV_LOGIN_ENABLED=.*|DEV_LOGIN_ENABLED=false|" .env
 sed -i "s|^DEMO_OTP_ENABLED=.*|DEMO_OTP_ENABLED=false|" .env
 sed -i "s|^MAIL_FROM_ADDRESS=.*|MAIL_FROM_ADDRESS=\"noreply@${DOMAIN}\"|" .env
+if [[ -n "$TELEGRAM_BOT_TOKEN" ]]; then
+  sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}|" .env
+fi
+sed -i "s|^TELEGRAM_BOT_USERNAME=.*|TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}|" .env
 
 # Append production hints if missing
 grep -q '^SESSION_DOMAIN=' .env || echo "SESSION_DOMAIN=.${DOMAIN}" >> .env
@@ -95,8 +103,8 @@ VITE_UPDATE_TYPE=optional npm run build
 cp -f public/version.json dist/version.json 2>/dev/null || true
 
 echo "==> Nginx"
-cp "${APP_ROOT}/deploy/nginx/satcall.conf" /etc/nginx/sites-available/satcall.conf
-ln -sfn /etc/nginx/sites-available/satcall.conf /etc/nginx/sites-enabled/satcall.conf
+cp "${APP_ROOT}/deploy/nginx/sat-center.conf" /etc/nginx/sites-available/sat-center.conf
+ln -sfn /etc/nginx/sites-available/sat-center.conf /etc/nginx/sites-enabled/sat-center.conf
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl reload nginx
@@ -118,8 +126,8 @@ echo "DB_USER=${DB_USER}"
 echo "DB_PASS=${DB_PASS}  (save this!)"
 echo
 echo "Next:"
-echo "  1. Set TELEGRAM_BOT_TOKEN / TELEGRAM_BOT_USERNAME in backend/.env"
+echo "  1. Confirm TELEGRAM_BOT_TOKEN in backend/.env (shared @RostamiAppBot token)"
 echo "  2. certbot --nginx -d ${DOMAIN} -d www.${DOMAIN}"
-echo "  3. BotFather Mini App URL → ${SITE_URL}"
+echo "  3. BotFather Mini App 'satcenter' Web App URL → ${SITE_URL}"
 echo "  4. ./deploy/scripts/deploy.sh health"
 echo "============================================"

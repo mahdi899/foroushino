@@ -11,7 +11,7 @@ final class TelegramSiteUrl
             config('bahram.frontend_url'),
             config('app.frontend_url'),
             env('FRONTEND_URL'),
-            'https://fashio.ir',
+            'https://rostami.app',
         ];
 
         foreach ($candidates as $candidate) {
@@ -21,7 +21,7 @@ final class TelegramSiteUrl
             }
         }
 
-        return 'https://fashio.ir';
+        return 'https://rostami.app';
     }
 
     public static function isPublicWebBase(string $url): bool
@@ -82,9 +82,22 @@ final class TelegramSiteUrl
         return $base.'/'.ltrim($path, '/');
     }
 
+    /**
+     * Family PWA home. Option B (dual-domain): the family app lives on its
+     * own apex (`FAMILY_ENTRY_BASE_URL`, e.g. https://rostami.club), not
+     * under the main site's `/family` path — do not fall back to
+     * {@see page()} here or bot links will 404/redirect incorrectly.
+     */
     public static function familyHome(): ?string
     {
-        return self::page('family');
+        $base = rtrim((string) config('family.entry.base_url', ''), '/');
+        if ($base === '' || ! self::isPublicWebBase($base)) {
+            return self::page('family');
+        }
+
+        $path = trim((string) config('family.entry.path', ''), '/');
+
+        return $path === '' ? $base : $base.'/'.$path;
     }
 
     public static function studentPanel(): ?string

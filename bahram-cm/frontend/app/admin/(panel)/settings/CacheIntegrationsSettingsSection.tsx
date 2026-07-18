@@ -104,7 +104,7 @@ export function CacheIntegrationsSettingsSection({
               id="revalidate-webhook-url"
               className="field-input"
               dir="ltr"
-              placeholder={view?.default_webhook_url ?? 'https://fashio.ir/api/revalidate'}
+              placeholder={view?.default_webhook_url ?? 'https://rostami.app/api/revalidate'}
               value={form.revalidateWebhookUrl}
               onChange={(e) => patch({ revalidateWebhookUrl: e.target.value })}
             />
@@ -175,7 +175,7 @@ export function CacheIntegrationsSettingsSection({
               id="arvan-domain"
               className="field-input"
               dir="ltr"
-              placeholder="fashio.ir"
+              placeholder="rostami.app"
               value={form.arvanDomain}
               onChange={(e) => patch({ arvanDomain: e.target.value })}
             />
@@ -189,7 +189,7 @@ export function CacheIntegrationsSettingsSection({
               id="arvan-media-domain"
               className="field-input"
               dir="ltr"
-              placeholder="cdn.fashio.ir"
+              placeholder="cdn.rostami.app"
               value={form.arvanMediaDomain}
               onChange={(e) => patch({ arvanMediaDomain: e.target.value })}
             />

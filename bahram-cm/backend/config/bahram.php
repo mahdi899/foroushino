@@ -51,8 +51,8 @@ return [
 
     'arvan' => [
         'api_key' => env('ARVAN_API_KEY'),
-        'domain' => env('ARVAN_DOMAIN', 'fashio.ir'),
-        'media_domain' => env('ARVAN_MEDIA_DOMAIN', 'cdn.fashio.ir'),
+        'domain' => env('ARVAN_DOMAIN', 'rostami.app'),
+        'media_domain' => env('ARVAN_MEDIA_DOMAIN', 'cdn.rostami.app'),
     ],
 
     /** Active CDN edge provider: arvan | cloudflare | none */

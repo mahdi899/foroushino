@@ -14,6 +14,72 @@ import { mediaPathToStorage } from "@/lib/media/legacyMap";
 
 const STUDENT_TOKEN_COOKIE = "bahram_student_token";
 
+/**
+ * Option B — true dual-domain: rostami.app (main site/panel) and
+ * rostami.club (Family PWA) are two real apex domains served by the SAME
+ * Next.js process. Unset in local dev → both fall back to path-based
+ * `/family` on a single origin, unchanged from before.
+ */
+const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN?.trim() || "";
+const FAMILY_DOMAIN = process.env.NEXT_PUBLIC_FAMILY_DOMAIN?.trim() || "";
+const DUAL_DOMAIN_ENABLED = Boolean(APP_DOMAIN && FAMILY_DOMAIN && APP_DOMAIN !== FAMILY_DOMAIN);
+
+function hostnameOf(request: NextRequest): string {
+  return (request.headers.get("host") ?? request.nextUrl.hostname).split(":")[0]!;
+}
+
+/** Paths that must never be rewritten into `/family/**` on the club apex (assets, PWA files, API). */
+function isFamilyRewriteExempt(pathname: string): boolean {
+  if (pathname.startsWith("/family") || pathname.startsWith("/sso")) return true;
+  if (pathname.startsWith("/_next") || pathname.includes(".")) return true;
+  if (pathname === "/icon" || pathname === "/apple-icon") return true;
+  return false;
+}
+
+/** One-time SSO bridge token — see backend `SsoBridgeController`. */
+async function issueSsoBridgeToken(request: NextRequest): Promise<string | null> {
+  const token = request.cookies.get(STUDENT_TOKEN_COOKIE)?.value;
+  if (!token) return null;
+
+  try {
+    const res = await fetch(`${backendProxyUrl()}/api/v1/student/auth/sso/bridge`, {
+      method: "POST",
+      headers: { Accept: "application/json", Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data?: { bridge_token?: string } };
+    return json?.data?.bridge_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** rostami.app/family/** → rostami.club (SSO bridge if logged in, else /login). */
+async function redirectToFamilyDomain(request: NextRequest, pathname: string, search: string): Promise<NextResponse> {
+  const targetPath = pathname === "/family" ? "/" : pathname.replace(/^\/family/, "") || "/";
+  const bridgeToken = await issueSsoBridgeToken(request);
+
+  if (!bridgeToken) {
+    return NextResponse.redirect(`https://${FAMILY_DOMAIN}/login`);
+  }
+
+  const next = encodeURIComponent(targetPath + search);
+  return NextResponse.redirect(`https://${FAMILY_DOMAIN}/sso/bridge?bt=${encodeURIComponent(bridgeToken)}&next=${next}`);
+}
+
+/** rostami.club/panel/** (or /admin) → rostami.app (SSO bridge if logged in, else /panel login). */
+async function redirectToAppDomain(request: NextRequest, pathname: string, search: string): Promise<NextResponse> {
+  const bridgeToken = await issueSsoBridgeToken(request);
+
+  if (!bridgeToken) {
+    return NextResponse.redirect(`https://${APP_DOMAIN}${pathname}${search}`);
+  }
+
+  const next = encodeURIComponent(pathname + search);
+  return NextResponse.redirect(`https://${APP_DOMAIN}/sso/bridge?bt=${encodeURIComponent(bridgeToken)}&next=${next}`);
+}
+
 function isMiniCourseDetailPath(pathname: string): boolean {
   return /^\/mini-courses\/[^/]+$/.test(pathname);
 }
@@ -74,6 +140,28 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Option B dual-domain routing — rostami.app ↔ rostami.club (see helpers above).
+  if (DUAL_DOMAIN_ENABLED) {
+    const hostname = hostnameOf(request);
+
+    if (hostname === APP_DOMAIN && (pathname === "/family" || pathname.startsWith("/family/"))) {
+      return redirectToFamilyDomain(request, pathname, search);
+    }
+
+    if (
+      hostname === FAMILY_DOMAIN &&
+      (pathname === "/panel" || pathname.startsWith("/panel/") || pathname === "/admin" || pathname.startsWith("/admin/"))
+    ) {
+      return redirectToAppDomain(request, pathname, search);
+    }
+
+    if (hostname === FAMILY_DOMAIN && !isFamilyRewriteExempt(pathname) && !shouldProxyToBackend(pathname)) {
+      const url = request.nextUrl.clone();
+      url.pathname = pathname === "/" ? "/family" : `/family${pathname}`;
+      return NextResponse.rewrite(url);
+    }
+  }
+
   // Do not decorate Next App Router API handlers — setting headers here can
   // make nested `/api/.../...` routes fall through to the HTML not-found page
   // under Next 16 + Turbopack.
@@ -96,11 +184,16 @@ export async function middleware(request: NextRequest) {
   headers.set("X-Forwarded-Proto", request.nextUrl.protocol.replace(":", ""));
   headers.set("X-Forwarded-For", request.headers.get("x-forwarded-for") ?? "127.0.0.1");
 
+  // Large family-manager media uploads (chunked, but still slow on mobile
+  // networks) need more headroom than the default page/API timeout — nginx
+  // also fast-paths this prefix straight to PHP-FPM (see deploy/nginx).
+  const isFamilyMediaUpload = pathname.startsWith("/api/v1/family-manager/media");
+
   const init: RequestInit = {
     method: request.method,
     headers,
     redirect: "manual",
-    signal: AbortSignal.timeout(15_000),
+    signal: AbortSignal.timeout(isFamilyMediaUpload ? 120_000 : 15_000),
   };
 
   if (request.method !== "GET" && request.method !== "HEAD") {

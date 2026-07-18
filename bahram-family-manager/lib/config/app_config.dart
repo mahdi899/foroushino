@@ -3,7 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:bahram_family_manager/config/dev_ports.dart';
 
 /// Runtime configuration — override via `--dart-define` at build time, e.g.:
-/// flutter run --dart-define=API_BASE_URL=https://fashio.ir/api/v1
+/// flutter run --dart-define=API_BASE_URL=https://rostami.app/api/v1
+///
+/// Always points at the MAIN site domain (rostami.app) — the manager app
+/// talks to the same admin API bahram-cm's Next.js proxies to Laravel. It
+/// never talks to rostami.club (Family PWA) directly.
 class AppConfig {
   AppConfig._();
 

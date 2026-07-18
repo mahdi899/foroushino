@@ -43,7 +43,8 @@ PM2_CONFIG="$APP_ROOT/deploy/pm2/ecosystem.config.cjs"
 pm2 reload "$PM2_CONFIG" --update-env || pm2 start "$PM2_CONFIG"
 
 echo "==> Restart queue workers"
-sudo supervisorctl restart bahram-queue:*
+sudo supervisorctl restart bahram-queue:* bahram-family-queue:* bahram-horizon bahram-scheduler 2>/dev/null \
+  || sudo supervisorctl restart bahram-queue:*
 
 echo "==> OPcache reset (if available)"
 php -r "if (function_exists('opcache_reset')) { opcache_reset(); echo 'OPcache reset'; }" || true

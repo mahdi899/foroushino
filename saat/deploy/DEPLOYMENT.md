@@ -1,18 +1,21 @@
-# Saat (سات) — Production deploy on satcall.ir
+# Saat (سات) — Production deploy on sat.center
 
-دامین: **https://satcall.ir**  
-فرانت: وب + تلگرام مینی‌اپ (همان origin)  
+دامین: **https://sat.center**
+فرانت: وب + تلگرام مینی‌اپ (همان origin)
 API: همان دامنه از مسیر `/api` → Laravel
+
+بات مشترک اکوسیستم: **[@RostamiAppBot](https://t.me/RostamiAppBot)** (همان بات سایت اصلی `rostami.app`)
+مینی‌اپ: **Sat Center** — short name `satcenter` — لینک مستقیم `https://t.me/RostamiAppBot/satcenter`
 
 ---
 
 ## معماری
 
 ```
-https://satcall.ir/           → frontend/dist (SPA)
-https://satcall.ir/version.json  → never cached (سیستم آپدیت)
-https://satcall.ir/api/v1/*   → Laravel PHP-FPM
-https://satcall.ir/storage/*  → Laravel public storage
+https://sat.center/              → frontend/dist (SPA)
+https://sat.center/version.json  → never cached (سیستم آپدیت)
+https://sat.center/api/v1/*      → Laravel PHP-FPM (این پروژه)
+https://sat.center/storage/*     → Laravel public storage
 ```
 
 مسیر روی سرور:
@@ -21,6 +24,31 @@ https://satcall.ir/storage/*  → Laravel public storage
 /var/www/mini-call-center/   # git clone monorepo
 /var/www/saat → symlink به .../saat
 ```
+
+---
+
+## بات تلگرام مشترک
+
+بات `@RostamiAppBot` توسط **bahram-cm** (سایت اصلی `rostami.app`) مدیریت می‌شود:
+webhook، دستورات، لینک‌سازی همه از آن سمت است.
+
+سات فقط **توکن همان بات** را برای تایید `initData` مینی‌اپ لازم دارد — و
+**هیچ webhook ثبت نمی‌کند**. اگر سات webhook ثبت کند، با bahram-cm تصادم می‌کنند
+(هر بات فقط یک webhook می‌تواند داشته باشد).
+
+```env
+# saat/backend/.env
+TELEGRAM_BOT_TOKEN=8955330613:AAHPKF-S94xk7uYU6YL-OtDykdiLMEQl4Mk
+TELEGRAM_BOT_USERNAME=RostamiAppBot
+```
+
+BotFather (یک‌بار، از قبل انجام شده):
+
+1. `/newapp` روی `@RostamiAppBot` → نام: **Sat Center**، short name: `satcenter`
+2. Web App URL: `https://sat.center/`
+3. لینک نهایی: `https://t.me/RostamiAppBot/satcenter`
+
+اگر Web App URL تغییر کرد: `@BotFather` → `/myapps` → `Sat Center` → Edit Web App URL.
 
 ---
 
@@ -55,24 +83,26 @@ cd frontend && npm run telegram:link
 ```bash
 # روی سرور Ubuntu
 export REPO_URL="https://github.com/YOUR_ORG/mini-call-center.git"
-export DOMAIN=satcall.ir
-export SITE_URL=https://satcall.ir
-sudo bash /var/www/saat/deploy/scripts/bootstrap-server.sh
+export DOMAIN=sat.center
+export SITE_URL=https://sat.center
+export TELEGRAM_BOT_TOKEN="8955330613:AAHPKF-S94xk7uYU6YL-OtDykdiLMEQl4Mk"
+export TELEGRAM_BOT_USERNAME="RostamiAppBot"
+sudo -E bash /var/www/saat/deploy/scripts/bootstrap-server.sh
 
 # SSL
-sudo certbot --nginx -d satcall.ir -d www.satcall.ir
+sudo certbot --nginx -d sat.center -d www.sat.center
 ```
 
-سپس در `backend/.env`:
+سپس در `backend/.env` (بوت‌استرپ این‌ها را خودکار می‌نویسد، فقط تایید کنید):
 
 ```env
-APP_URL=https://satcall.ir
-SANCTUM_STATEFUL_DOMAINS=satcall.ir,www.satcall.ir
-SESSION_DOMAIN=.satcall.ir
+APP_URL=https://sat.center
+SANCTUM_STATEFUL_DOMAINS=sat.center,www.sat.center
+SESSION_DOMAIN=.sat.center
 DEV_LOGIN_ENABLED=false
 DEMO_OTP_ENABLED=false
-TELEGRAM_BOT_TOKEN=...
-TELEGRAM_BOT_USERNAME=...
+TELEGRAM_BOT_TOKEN=8955330613:AAHPKF-S94xk7uYU6YL-OtDykdiLMEQl4Mk
+TELEGRAM_BOT_USERNAME=RostamiAppBot
 ```
 
 فرانت production (معمولاً همان‌origin، بدون `VITE_API_BASE_URL`):
@@ -80,17 +110,6 @@ TELEGRAM_BOT_USERNAME=...
 ```bash
 cp frontend/.env.production.example frontend/.env.production
 ```
-
----
-
-## BotFather (مینی‌اپ)
-
-1. `@BotFather` → بات سات
-2. Menu Button / Configure Mini App → Web App URL: `https://satcall.ir`
-3. `/setdomain` → `satcall.ir`
-4. توکن را در `TELEGRAM_BOT_TOKEN` بگذارید
-
-وب و مینی‌اپ هر دو همان URL را باز می‌کنند.
 
 ---
 
@@ -118,8 +137,8 @@ cd /var/www/saat
 بعد از دیپلوی چک کنید:
 
 ```bash
-curl -s https://satcall.ir/version.json
-curl -s https://satcall.ir/api/v1/health
+curl -s https://sat.center/version.json
+curl -s https://sat.center/api/v1/health
 ```
 
 ---
@@ -135,14 +154,15 @@ curl -s https://satcall.ir/api/v1/health
 
 ## چک‌لیست لانچ
 
-- [ ] DNS `satcall.ir` → سرور
+- [ ] DNS `sat.center` → سرور
 - [ ] SSL (certbot)
-- [ ] `backend/.env` production + Telegram token
+- [ ] `backend/.env` production + `TELEGRAM_BOT_TOKEN` مشترک
 - [ ] `DEMO_OTP` / `DEV_LOGIN` خاموش
-- [ ] Nginx از `deploy/nginx/satcall.conf`
+- [ ] Nginx از `deploy/nginx/sat-center.conf`
 - [ ] Supervisor `saat-queue`
 - [ ] `./deploy/scripts/deploy.sh all` موفق
-- [ ] وب: `https://satcall.ir` باز می‌شود
-- [ ] مینی‌اپ در تلگرام همان URL را باز می‌کند
+- [ ] وب: `https://sat.center` باز می‌شود
+- [ ] مینی‌اپ `t.me/RostamiAppBot/satcenter` همان صفحه را باز می‌کند
 - [ ] `/version.json` بدون کش برمی‌گردد
 - [ ] بنر آپدیت بعد از بیلد جدید روی وب دیده می‌شود
+- [ ] webhook بات فقط روی bahram-cm (rostami.app) ثبت شده — نه اینجا
