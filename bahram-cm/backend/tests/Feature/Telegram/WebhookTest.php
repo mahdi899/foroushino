@@ -23,6 +23,16 @@ class WebhookTest extends TestCase
         $this->bot = TelegramBot::query()->where('key', 'production')->firstOrFail();
     }
 
+    /** Headers a correctly configured Cloudflare Worker would inject. */
+    private function proxyHeaders(string $telegramSecret = 'test-secret'): array
+    {
+        return [
+            'Authorization' => 'Bearer test-proxy-token',
+            'X-Proxy-Origin' => 'Cloudflare-Worker',
+            'X-Telegram-Bot-Api-Secret-Token' => $telegramSecret,
+        ];
+    }
+
     public function test_webhook_accepts_valid_update_with_secret(): void
     {
         $payload = [
@@ -38,7 +48,7 @@ class WebhookTest extends TestCase
         $response = $this->postJson(
             '/api/v1/integrations/telegram/production/webhook',
             $payload,
-            ['X-Telegram-Bot-Api-Secret-Token' => 'test-secret'],
+            $this->proxyHeaders(),
         );
 
         $response->assertOk()->assertJson(['ok' => true]);
@@ -55,7 +65,38 @@ class WebhookTest extends TestCase
         $response = $this->postJson(
             '/api/v1/integrations/telegram/production/webhook',
             ['update_id' => 1002, 'message' => ['text' => 'hi']],
-            ['X-Telegram-Bot-Api-Secret-Token' => 'wrong-secret'],
+            $this->proxyHeaders('wrong-secret'),
+        );
+
+        $response->assertForbidden();
+        $this->assertDatabaseCount('telegram_updates', 0);
+    }
+
+    public function test_webhook_rejects_requests_missing_proxy_origin_headers(): void
+    {
+        // Simulates a request that hit rostami.app directly, bypassing the
+        // Cloudflare Worker — must be dropped before the Telegram secret is
+        // even inspected.
+        $response = $this->postJson(
+            '/api/v1/integrations/telegram/production/webhook',
+            ['update_id' => 1003, 'message' => ['text' => 'hi']],
+            ['X-Telegram-Bot-Api-Secret-Token' => 'test-secret'],
+        );
+
+        $response->assertForbidden();
+        $this->assertDatabaseCount('telegram_updates', 0);
+    }
+
+    public function test_webhook_rejects_wrong_proxy_shared_token(): void
+    {
+        $response = $this->postJson(
+            '/api/v1/integrations/telegram/production/webhook',
+            ['update_id' => 1004, 'message' => ['text' => 'hi']],
+            [
+                'Authorization' => 'Bearer not-the-shared-token',
+                'X-Proxy-Origin' => 'Cloudflare-Worker',
+                'X-Telegram-Bot-Api-Secret-Token' => 'test-secret',
+            ],
         );
 
         $response->assertForbidden();
@@ -74,7 +115,7 @@ class WebhookTest extends TestCase
             ],
         ];
 
-        $headers = ['X-Telegram-Bot-Api-Secret-Token' => 'test-secret'];
+        $headers = $this->proxyHeaders();
 
         $this->postJson('/api/v1/integrations/telegram/production/webhook', $payload, $headers)
             ->assertOk();

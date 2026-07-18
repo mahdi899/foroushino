@@ -9,8 +9,17 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/health', HealthController::class);
 
+// Only reachable from Bahram (Server 1) — never called directly by a browser
+// or the public internet. Gated by proxy-origin presence, the per-token
+// Bearer integration token, HMAC signature + anti-replay, and a dedicated
+// rate limit (independent from the authenticated `api` limiter).
 Route::prefix('integrations/inbound')
-    ->middleware('integration.token:inbound:applications')
+    ->middleware([
+        'proxy.origin:presence',
+        'integration.token:inbound:applications',
+        'hmac.signature:sat-inbound',
+        'throttle:integration',
+    ])
     ->group(function (): void {
         Route::get('/ping', [InboundApplicationController::class, 'ping']);
         Route::post('/applications', [InboundApplicationController::class, 'store']);

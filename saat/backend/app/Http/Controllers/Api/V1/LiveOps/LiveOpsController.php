@@ -9,6 +9,7 @@ use App\Models\Call;
 use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\User;
+use App\Services\Analytics\DashboardCache;
 use App\Services\Analytics\KpiCalculator;
 use App\Support\ApiResponse;
 use App\Support\TeamScope;
@@ -36,38 +37,44 @@ class LiveOpsController extends Controller
             ? ($request->integer('team_id') ?: null)
             : $user->team_id;
 
-        $agentsQuery = User::query()->role(RoleName::Agent->value)->where('is_active', true);
-        if ($teamId) {
-            $agentsQuery->where('team_id', $teamId);
-        }
-        $agentIds = $agentsQuery->pluck('id');
+        $key = DashboardCache::key('live-ops:dashboard', ['team_id' => $teamId]);
 
-        $activeCalls = Call::query()
-            ->with(['lead', 'agent'])
-            ->whereIn('agent_id', $agentIds)
-            ->whereNull('ended_at')
-            ->latest('started_at')
-            ->limit(50)
-            ->get();
+        $payload = DashboardCache::remember($key, DashboardCache::LIVE_TTL_SECONDS, function () use ($teamId) {
+            $agentsQuery = User::query()->role(RoleName::Agent->value)->where('is_active', true);
+            if ($teamId) {
+                $agentsQuery->where('team_id', $teamId);
+            }
+            $agentIds = $agentsQuery->pluck('id');
 
-        $overdueFollowups = FollowUp::query()
-            ->whereIn('agent_id', $agentIds)
-            ->where('status', 'overdue')
-            ->count();
+            $activeCalls = Call::query()
+                ->with(['lead', 'agent'])
+                ->whereIn('agent_id', $agentIds)
+                ->whereNull('ended_at')
+                ->latest('started_at')
+                ->limit(50)
+                ->get();
 
-        $queuedLeads = Lead::query()
-            ->when($teamId, fn ($q) => $q->where('assigned_team_id', $teamId))
-            ->whereIn('status', ['queued', 'assigned', 'new'])
-            ->whereNull('do_not_call_at')
-            ->count();
+            $overdueFollowups = FollowUp::query()
+                ->whereIn('agent_id', $agentIds)
+                ->where('status', 'overdue')
+                ->count();
 
-        return ApiResponse::success([
-            'team_id' => $teamId,
-            'kpis' => $this->kpi->snapshot($agentIds->all()),
-            'active_calls' => CallResource::collection($activeCalls),
-            'overdue_followups' => $overdueFollowups,
-            'queued_leads' => $queuedLeads,
-            'generated_at' => now()->toIso8601String(),
-        ]);
+            $queuedLeads = Lead::query()
+                ->when($teamId, fn ($q) => $q->where('assigned_team_id', $teamId))
+                ->whereIn('status', ['queued', 'assigned', 'new'])
+                ->whereNull('do_not_call_at')
+                ->count();
+
+            return [
+                'team_id' => $teamId,
+                'kpis' => $this->kpi->snapshot($agentIds->all()),
+                'active_calls' => CallResource::collection($activeCalls)->resolve(),
+                'overdue_followups' => $overdueFollowups,
+                'queued_leads' => $queuedLeads,
+                'generated_at' => now()->toIso8601String(),
+            ];
+        });
+
+        return ApiResponse::success($payload);
     }
 }

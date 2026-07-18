@@ -40,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'sat.staff' => \App\Http\Middleware\EnsureUserIsSatStaff::class,
             'sat.integration' => \App\Http\Middleware\AuthenticateSatIntegrationToken::class,
             'student.active' => \App\Http\Middleware\EnsureStudentIsActive::class,
+            'proxy.origin' => \App\Http\Middleware\EnsureProxyOrigin::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -103,14 +104,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 ], $status);
             }
 
-            $status = 500;
-
+            // Never leak file paths, DB structure, or stack traces to API clients —
+            // regardless of APP_DEBUG. Laravel's default reporter still logs the
+            // full exception; only the client-facing payload is sanitized here.
             return response()->json([
                 'error' => [
                     'code' => 'server_error',
                     'message_fa' => 'خطای غیرمنتظره‌ای در سرور رخ داد. لطفاً بعداً تلاش کنید.',
-                    'details' => config('app.debug') ? $e->getMessage() : null,
                 ],
-            ], $status);
+            ], 500);
         });
     })->create();

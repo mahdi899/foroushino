@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\MediaDeliveryService;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class MediaDeliveryController extends Controller
 {
@@ -12,7 +12,7 @@ class MediaDeliveryController extends Controller
     {
     }
 
-    public function show(Request $request, string $path): BinaryFileResponse
+    public function show(Request $request, string $path): Response
     {
         $width = $request->query('w');
         $quality = (int) $request->query('q', 85);

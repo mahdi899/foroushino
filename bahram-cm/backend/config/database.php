@@ -146,12 +146,23 @@ return [
 
     'redis' => [
 
-        'client' => env('REDIS_CLIENT', 'phpredis'),
+        // Only predis/predis is a composer dependency here (no ext-redis on
+        // most deploy targets) — default MUST match what's actually
+        // installed. Set REDIS_CLIENT=phpredis explicitly only on hosts
+        // where the phpredis extension is confirmed present.
+        'client' => env('REDIS_CLIENT', 'predis'),
 
+        // Applied to every connection below by Laravel's Redis manager
+        // (phpredis and predis both understand `persistent` /
+        // `read_write_timeout`) — a persistent TCP connection reused across
+        // requests on the same PHP-FPM worker, so the manager effectively
+        // behaves as a per-process singleton connection pool rather than
+        // reconnecting on every request.
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
             'prefix' => env('REDIS_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')).'-database-'),
-            'persistent' => env('REDIS_PERSISTENT', false),
+            'persistent' => env('REDIS_PERSISTENT', true),
+            'read_write_timeout' => (float) env('REDIS_READ_WRITE_TIMEOUT', 60),
         ],
 
         'default' => [

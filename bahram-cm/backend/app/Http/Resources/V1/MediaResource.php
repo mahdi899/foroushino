@@ -16,6 +16,11 @@ class MediaResource extends JsonResource
             'id' => $this->id,
             'url' => $this->when(! $this->is_private, $this->referenceUrl()),
             'view_url' => $this->resolveViewUrl($request, $isAdmin),
+            // Storage disk name — admin-only; lets the media panel show
+            // whether a file is local or already on the download host and
+            // enable/disable the push/pull FTP actions accordingly.
+            'disk' => $this->when($isAdmin, $this->disk),
+            'is_remote' => $this->when($isAdmin, ! in_array($this->disk, ['public', 'local'], true)),
             'type' => $this->type?->value,
             'mime' => $this->mime,
             'size' => $this->size,

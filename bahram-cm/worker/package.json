@@ -1,0 +1,15 @@
+{
+  "name": "bahram-telegram-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloudflare Worker relay for the Telegram webhook — auth, filter, forward to Server 1.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

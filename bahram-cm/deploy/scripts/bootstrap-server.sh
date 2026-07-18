@@ -66,6 +66,10 @@ echo "==> Generate secrets"
 REVALIDATE_SECRET="$(openssl rand -hex 32)"
 INTERNAL_SECRET="$(openssl rand -hex 32)"
 HMAC_KEY="$(openssl rand -hex 32)"
+# Shared with the Cloudflare Worker (worker/) and with saat's server —
+# generate once here unless already exported, then copy to both places.
+PROXY_SHARED_TOKEN="${PROXY_SHARED_TOKEN:-$(openssl rand -hex 32)}"
+SAT_SYNC_HMAC_SECRET="${SAT_SYNC_HMAC_SECRET:-$(openssl rand -hex 32)}"
 
 echo "==> Backend .env"
 cd "${APP_ROOT}/backend"
@@ -85,6 +89,12 @@ sed -i "s|^SESSION_DRIVER=.*|SESSION_DRIVER=redis|" .env
 sed -i "s|^SESSION_SECURE_COOKIE=.*|SESSION_SECURE_COOKIE=true|" .env
 sed -i "s|^CACHE_STORE=.*|CACHE_STORE=redis|" .env
 sed -i "s|^QUEUE_CONNECTION=.*|QUEUE_CONNECTION=redis|" .env
+sed -i "s|^REDIS_PREFIX=.*|REDIS_PREFIX=bahram_database_|" .env
+grep -q '^REDIS_PREFIX=' .env || echo "REDIS_PREFIX=bahram_database_" >> .env
+sed -i "s|^PROXY_SHARED_TOKEN=.*|PROXY_SHARED_TOKEN=${PROXY_SHARED_TOKEN}|" .env
+grep -q '^PROXY_SHARED_TOKEN=' .env || echo "PROXY_SHARED_TOKEN=${PROXY_SHARED_TOKEN}" >> .env
+sed -i "s|^SAT_SYNC_HMAC_SECRET=.*|SAT_SYNC_HMAC_SECRET=${SAT_SYNC_HMAC_SECRET}|" .env
+grep -q '^SAT_SYNC_HMAC_SECRET=' .env || echo "SAT_SYNC_HMAC_SECRET=${SAT_SYNC_HMAC_SECRET}" >> .env
 sed -i "s|^OTP_DEV_MODE=.*|OTP_DEV_MODE=false|" .env
 grep -q '^OTP_SKIP_ADMIN=' .env && sed -i "s|^OTP_SKIP_ADMIN=.*|OTP_SKIP_ADMIN=false|" .env || echo "OTP_SKIP_ADMIN=false" >> .env
 grep -q '^PAYMENT_DEV_MODE=' .env && sed -i "s|^PAYMENT_DEV_MODE=.*|PAYMENT_DEV_MODE=false|" .env || echo "PAYMENT_DEV_MODE=false" >> .env
@@ -206,6 +216,8 @@ DB_USER=${DB_USER}
 DB_PASS=${DB_PASS}
 REVALIDATE_SECRET=${REVALIDATE_SECRET}
 INTERNAL_API_SECRET=${INTERNAL_SECRET}
+PROXY_SHARED_TOKEN=${PROXY_SHARED_TOKEN}  (also set as a `wrangler secret` on the Cloudflare Worker, and copy into saat's .env)
+SAT_SYNC_HMAC_SECRET=${SAT_SYNC_HMAC_SECRET}  (copy into saat's .env — must match exactly)
 SITE_URL=${SITE_URL}
 FAMILY_URL=${FAMILY_URL}
 EOF
@@ -228,6 +240,10 @@ echo ""
 echo "Next:"
 echo "  1. certbot --nginx -d ${SITE_URL#https://} -d www.${SITE_URL#https://} -d ${CDN_URL#https://}"
 echo "  2. certbot --nginx -d ${FAMILY_URL#https://} -d www.${FAMILY_URL#https://} -d ${FAMILY_CDN_URL#https://}"
-echo "  3. Confirm TELEGRAM_BOT_TOKEN in backend/.env, then: php artisan telegram:webhook:info production"
-echo "  4. saat (sat.center) is a SEPARATE app — see saat/deploy/DEPLOYMENT.md"
+echo "  3. Deploy the Cloudflare Worker (bahram-cm/worker/) — see worker/README.md — then set"
+echo "     TELEGRAM_WEBHOOK_BASE_URL in backend/.env to the Worker's public URL and re-run:"
+echo "     php artisan telegram:webhook:set production"
+echo "  4. Copy PROXY_SHARED_TOKEN + SAT_SYNC_HMAC_SECRET (above) into saat's backend/.env"
+echo "     and PROXY_SHARED_TOKEN into the Worker (wrangler secret put PROXY_SHARED_TOKEN)"
+echo "  5. saat (sat.center) is a SEPARATE app — see saat/deploy/DEPLOYMENT.md"
 echo "============================================"

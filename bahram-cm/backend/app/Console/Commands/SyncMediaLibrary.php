@@ -6,12 +6,16 @@ use App\Enums\MediaType;
 use App\Models\Media;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 
 class SyncMediaLibrary extends Command
 {
+    private const INDEXABLE_EXTENSIONS = ['svg', 'webp', 'png', 'jpg', 'jpeg', 'gif', 'json', 'mp4', 'webm', 'mp3', 'm4a', 'ogg'];
+
     protected $signature = 'media:sync
         {--export : Write database/media_library.json from the media table}
-        {--import : Apply database/media_library.json into the database (default when not exporting)}';
+        {--import : Apply database/media_library.json into the database (default when not exporting)}
+        {--include-remote : Also scan the configured download host (FTP/SFTP) for unindexed files — full recursive listing, slower, run occasionally rather than on every deploy}';
 
     protected $description = 'Sync the media library between git-tracked files, JSON manifest, and the database';
 
@@ -111,7 +115,7 @@ class SyncMediaLibrary extends Command
             }
 
             $ext = strtolower($file->getExtension());
-            if (! in_array($ext, ['svg', 'webp', 'png', 'jpg', 'jpeg', 'gif', 'json', 'mp4', 'webm', 'mp3', 'm4a', 'ogg'], true)) {
+            if (! in_array($ext, self::INDEXABLE_EXTENSIONS, true)) {
                 continue;
             }
 
@@ -134,11 +138,92 @@ class SyncMediaLibrary extends Command
             $indexed++;
         }
 
+        if ($this->option('include-remote')) {
+            $remoteIndexed = $this->importFromRemoteDisk();
+            $indexed += $remoteIndexed;
+            if ($remoteIndexed > 0) {
+                $this->info("Indexed {$remoteIndexed} new file(s) from the remote download host.");
+            }
+        }
+
         $this->call('media:export-legacy-map');
 
         $this->info("Imported {$imported} manifest row(s); indexed {$indexed} new file(s) from disk.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Scans the configured download host (site_media_ftp / site_media_sftp)
+     * for files not yet present in the `media` table. Deliberately opt-in
+     * via --include-remote — a full recursive FTP/SFTP listing is far
+     * slower than the local filesystem scan above and should be run
+     * occasionally (e.g. a nightly scheduled task), not on every deploy.
+     */
+    private function importFromRemoteDisk(): int
+    {
+        $diskName = (string) config('bahram.uploads.public_disk', 'public');
+        $driver = (string) config("filesystems.disks.{$diskName}.driver", 'local');
+
+        if (! in_array($driver, ['ftp', 'sftp'], true) || ! filled(config("filesystems.disks.{$diskName}.host"))) {
+            return 0;
+        }
+
+        $disk = Storage::disk($diskName);
+
+        try {
+            $files = $disk->allFiles('media');
+        } catch (\Throwable $e) {
+            $this->warn('Unable to list the remote download host: '.$e->getMessage());
+
+            return 0;
+        }
+
+        $indexed = 0;
+
+        foreach ($files as $file) {
+            $relative = str_replace('\\', '/', $file);
+
+            if (str_ends_with($relative, '.part')) {
+                continue;
+            }
+
+            $ext = strtolower(pathinfo($relative, PATHINFO_EXTENSION));
+            if (! in_array($ext, self::INDEXABLE_EXTENSIONS, true)) {
+                continue;
+            }
+
+            if (Media::query()->where('path', $relative)->exists()) {
+                continue;
+            }
+
+            $size = null;
+            try {
+                $size = $disk->size($relative);
+            } catch (\Throwable) {
+                // Non-fatal — size lookup can fail transiently over FTP/SFTP.
+            }
+
+            Media::query()->create([
+                'disk' => $diskName,
+                'path' => $relative,
+                'url' => null,
+                'type' => $this->typeFromExtension($ext),
+                'mime' => $this->mimeFromExtension($ext),
+                'size' => $size,
+                'alt_fa' => str_replace(['-', '_'], ' ', pathinfo(basename($relative), PATHINFO_FILENAME)),
+                'original_filename' => basename($relative),
+                'category' => match (true) {
+                    str_starts_with($relative, 'media/site/') => 'سایت',
+                    str_starts_with($relative, 'media/family/') => 'خانواده',
+                    default => 'آپلود شده',
+                },
+                'is_private' => false,
+            ]);
+            $indexed++;
+        }
+
+        return $indexed;
     }
 
     /** @return list<array<string, mixed>> */

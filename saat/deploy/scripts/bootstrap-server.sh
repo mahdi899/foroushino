@@ -87,6 +87,27 @@ sed -i "s|^TELEGRAM_BOT_USERNAME=.*|TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAM
 sed -i "s|^SESSION_DOMAIN=.*|SESSION_DOMAIN=.${DOMAIN}|" .env
 grep -q '^SESSION_DOMAIN=' .env || echo "SESSION_DOMAIN=.${DOMAIN}" >> .env
 
+# Production sessions on Redis, never the database (force — .env.example
+# defaults to SESSION_DRIVER=database for zero-dependency local dev).
+sed -i "s|^SESSION_DRIVER=.*|SESSION_DRIVER=redis|" .env
+grep -q '^SESSION_DRIVER=' .env || echo "SESSION_DRIVER=redis" >> .env
+
+# Distinct Redis key namespace — must never collide with bahram-cm's on a
+# shared Redis host.
+sed -i "s|^REDIS_PREFIX=.*|REDIS_PREFIX=saat_database_|" .env
+grep -q '^REDIS_PREFIX=' .env || echo "REDIS_PREFIX=saat_database_" >> .env
+
+# Server-to-server security secrets shared with bahram-cm — generate once if
+# not supplied via environment, then print so they can be copied into
+# bahram-cm's .env (PROXY_SHARED_TOKEN, SAT_SYNC_HMAC_SECRET must match
+# EXACTLY on both servers).
+PROXY_SHARED_TOKEN="${PROXY_SHARED_TOKEN:-$(openssl rand -hex 32)}"
+SAT_SYNC_HMAC_SECRET="${SAT_SYNC_HMAC_SECRET:-$(openssl rand -hex 32)}"
+sed -i "s|^PROXY_SHARED_TOKEN=.*|PROXY_SHARED_TOKEN=${PROXY_SHARED_TOKEN}|" .env
+grep -q '^PROXY_SHARED_TOKEN=' .env || echo "PROXY_SHARED_TOKEN=${PROXY_SHARED_TOKEN}" >> .env
+sed -i "s|^SAT_SYNC_HMAC_SECRET=.*|SAT_SYNC_HMAC_SECRET=${SAT_SYNC_HMAC_SECRET}|" .env
+grep -q '^SAT_SYNC_HMAC_SECRET=' .env || echo "SAT_SYNC_HMAC_SECRET=${SAT_SYNC_HMAC_SECRET}" >> .env
+
 composer install --no-dev --optimize-autoloader --no-interaction
 php artisan key:generate --force
 php artisan migrate --force
@@ -125,10 +146,13 @@ echo "APP_ROOT=${APP_ROOT}"
 echo "SITE_URL=${SITE_URL}"
 echo "DB_USER=${DB_USER}"
 echo "DB_PASS=${DB_PASS}  (save this!)"
+echo "PROXY_SHARED_TOKEN=${PROXY_SHARED_TOKEN}  (copy to bahram-cm .env — must match exactly)"
+echo "SAT_SYNC_HMAC_SECRET=${SAT_SYNC_HMAC_SECRET}  (copy to bahram-cm .env — must match exactly)"
 echo
 echo "Next:"
 echo "  1. Confirm TELEGRAM_BOT_TOKEN in backend/.env (shared @RostamiAppBot token)"
 echo "  2. certbot --nginx -d ${DOMAIN} -d www.${DOMAIN}"
 echo "  3. BotFather Mini App 'satcenter' Web App URL → ${SITE_URL}"
-echo "  4. ./deploy/scripts/deploy.sh health"
+echo "  4. Copy PROXY_SHARED_TOKEN + SAT_SYNC_HMAC_SECRET (above) into bahram-cm's backend/.env"
+echo "  5. ./deploy/scripts/deploy.sh health"
 echo "============================================"

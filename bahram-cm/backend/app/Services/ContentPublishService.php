@@ -99,6 +99,21 @@ class ContentPublishService
         );
     }
 
+    public function revalidateSeminars(?string $slug = null, ?string $previousSlug = null): void
+    {
+        $paths = ['/seminars'];
+        foreach (array_filter([$slug, $previousSlug]) as $s) {
+            $paths[] = '/seminars/'.$s;
+        }
+
+        $this->purge(
+            'ذخیره سمینار',
+            ['seminars', 'services'],
+            array_values(array_unique($paths)),
+            fn () => $this->forgetSeminarRuntimeCache($slug, $previousSlug),
+        );
+    }
+
     public function revalidateContentComments(string $type, ?string $slug = null): void
     {
         $paths = match ($type) {
@@ -235,6 +250,15 @@ class ContentPublishService
 
         if ($slug) {
             RuntimeCache::forget('public_products:show:'.$slug);
+        }
+    }
+
+    private function forgetSeminarRuntimeCache(?string $slug, ?string $previousSlug = null): void
+    {
+        RuntimeCache::forget('public_seminars:promo');
+
+        foreach (array_filter([$slug, $previousSlug]) as $s) {
+            RuntimeCache::forget('public_seminars:show:'.$s);
         }
     }
 }

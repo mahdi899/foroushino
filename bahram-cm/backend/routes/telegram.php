@@ -16,10 +16,16 @@ use App\Modules\TelegramBot\Http\Controllers\WebhookController;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
 
+// Telegram never calls this route directly in production — the public webhook
+// URL registered with Telegram is the Cloudflare Worker, which authenticates
+// the Telegram secret token itself and forwards here with `Authorization:
+// Bearer <PROXY_SHARED_TOKEN>` + `X-Proxy-Origin: Cloudflare-Worker` injected.
+// Any request hitting this origin directly (bypassing the Worker) is dropped
+// by `proxy.origin:strict` before the Telegram secret is even checked.
 Route::post(
     '/api/v1/integrations/telegram/{botKey}/webhook',
     WebhookController::class,
-)->middleware(['telegram.webhook', 'throttle:120,1']);
+)->middleware(['proxy.origin:strict', 'telegram.webhook', 'throttle:120,1']);
 
 Route::post('/api/v1/telegram/miniapp/auth', MiniAppAuthController::class)
     ->middleware('throttle:30,1');

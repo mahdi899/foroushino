@@ -57,6 +57,7 @@ use App\Http\Controllers\Api\V1\ImageOptimizerSettingsController;
 use App\Http\Controllers\Api\V1\SmsSpotplayerCredentialsController;
 use App\Http\Controllers\Api\V1\MediaConfigController;
 use App\Http\Controllers\Api\V1\MediaController;
+use App\Http\Controllers\Api\V1\MediaFtpController;
 use App\Http\Controllers\Api\V1\MediaOptimizeController;
 use App\Http\Controllers\Api\V1\ContentCommentAdminController;
 use App\Http\Controllers\Api\V1\MiniCourseCommentController;
@@ -89,6 +90,7 @@ use App\Http\Controllers\Api\V1\Sat\InboundApplicationController;
 use App\Http\Controllers\Api\V1\Sat\IntegrationTokenController;
 use App\Http\Controllers\Api\V1\Sat\LeadController as SatLeadController;
 use App\Http\Controllers\Api\V1\Sat\StaffController as SatStaffController;
+use App\Http\Controllers\Api\V1\Sat\StatusCallbackController as SatStatusCallbackController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('auth/login', [AuthController::class, 'login'])->middleware('throttle:admin-login');
@@ -139,10 +141,19 @@ Route::prefix('sat')->group(function () {
 | SAT inbound integration (Bahram site → SAT, token auth, cross-domain)
 |--------------------------------------------------------------------------
 */
-Route::prefix('integrations/inbound')->middleware('sat.integration:inbound:applications')->group(function () {
-    Route::get('ping', [InboundApplicationController::class, 'ping']);
-    Route::post('applications', [InboundApplicationController::class, 'store']);
-});
+Route::prefix('integrations/inbound')
+    ->middleware(['proxy.origin:presence', 'throttle:integration'])
+    ->group(function () {
+        Route::middleware('sat.integration:inbound:applications')->group(function () {
+            Route::get('ping', [InboundApplicationController::class, 'ping']);
+            Route::post('applications', [InboundApplicationController::class, 'store']);
+        });
+
+        // Reverse channel: Saat reports a lead status change for an
+        // application that Bahram originally pushed out (HMAC-signed body).
+        Route::post('sat-status', [SatStatusCallbackController::class, 'store'])
+            ->middleware('sat.integration:callback:lead-status');
+    });
 
 /*
 |--------------------------------------------------------------------------
@@ -230,6 +241,13 @@ Route::get('student/certificates/{certificate}/download', CertificateDownloadCon
     ->name('student.certificates.download')
     ->middleware('signed');
 
+// Signed download for private media (e.g. patient photos) — the controller
+// itself accepts either a valid signature (guest-safe temporary link) or an
+// authenticated admin with `media.read`, so this must stay outside the
+// auth:sanctum-gated admin group below.
+Route::get('media/{medium}/download', [MediaController::class, 'download'])
+    ->name('media.download');
+
 Route::get('media/config', [MediaConfigController::class, 'config']);
 Route::get('media/optimize-preview/{session}/{variant}', [MediaOptimizeController::class, 'previewFile'])
     ->name('media.optimize.preview');
@@ -266,6 +284,15 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::post('media/{medium}/optimize-preview', [MediaOptimizeController::class, 'previewExisting']);
     Route::post('media/{medium}/optimize-replace', [MediaOptimizeController::class, 'confirmReplace']);
     Route::delete('media/optimize-preview/{session}', [MediaOptimizeController::class, 'discard']);
+
+    // Download-host (FTP/SFTP) connection management + two-way transfer.
+    Route::get('media/ftp/connection', [MediaFtpController::class, 'connection']);
+    Route::put('media/ftp/connection', [MediaFtpController::class, 'updateConnection']);
+    Route::post('media/ftp/connection/test', [MediaFtpController::class, 'testConnection']);
+    Route::get('media/ftp/list', [MediaFtpController::class, 'list']);
+    Route::delete('media/ftp/file', [MediaFtpController::class, 'destroyRemote']);
+    Route::post('media/{medium}/ftp/push', [MediaFtpController::class, 'push']);
+    Route::post('media/{medium}/ftp/pull', [MediaFtpController::class, 'pull']);
 
     Route::get('settings/{group}', [SettingController::class, 'show']);
     Route::put('settings/{group}', [SettingController::class, 'update']);

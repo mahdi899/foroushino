@@ -36,6 +36,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'idempotent' => EnsureIdempotency::class,
             'integration.token' => \App\Http\Middleware\AuthenticateIntegrationToken::class,
+            'proxy.origin' => \App\Http\Middleware\EnsureProxyOrigin::class,
+            'hmac.signature' => \App\Http\Middleware\VerifyHmacSignature::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
@@ -66,18 +68,26 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $exceptions->render(function (HttpExceptionInterface $e, Request $request) {
-            return ApiResponse::error($e->getMessage() ?: 'خطایی رخ داد.', status: $e->getStatusCode(), code: 'http_error');
+            $status = $e->getStatusCode();
+
+            // Generic, status-driven message only — never relay abort()'s raw
+            // message text, which may embed internal details.
+            $messageFa = match ($status) {
+                403 => 'اجازه دسترسی به این بخش را ندارید.',
+                404 => 'مسیر مورد نظر یافت نشد.',
+                405 => 'این عملیات روی سرور پشتیبانی نمی‌شود.',
+                429 => 'تعداد درخواست‌ها بیش از حد مجاز است.',
+                default => 'خطایی رخ داد.',
+            };
+
+            return ApiResponse::error($messageFa, status: $status, code: 'http_error');
         });
 
+        // Never leak file paths, DB structure, exception class names, or stack
+        // traces to API clients — regardless of APP_DEBUG. Laravel's default
+        // reporter still logs the full exception; only the client-facing
+        // payload is sanitized here.
         $exceptions->render(function (\Throwable $e, Request $request) {
-            if (app()->hasDebugModeEnabled()) {
-                return ApiResponse::error($e->getMessage(), data: [
-                    'exception' => get_class($e),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                ], status: 500, code: 'server_error');
-            }
-
             return ApiResponse::error('خطای داخلی سرور رخ داد.', status: 500, code: 'server_error');
         });
     })->create();

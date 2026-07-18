@@ -8,6 +8,7 @@ use App\Models\Call;
 use App\Models\FollowUp;
 use App\Models\Lead;
 use App\Models\User;
+use App\Services\Analytics\DashboardCache;
 use App\Support\ApiResponse;
 use App\Support\TeamScope;
 use Illuminate\Http\JsonResponse;
@@ -20,19 +21,23 @@ class ReportsController extends Controller
         $this->authorizeReports($request);
         $teamId = $this->teamScope($request);
 
-        $query = Lead::query()->selectRaw('source, count(*) as total, sum(case when status = ? then 1 else 0 end) as won', ['won'])
-            ->groupBy('source');
+        $key = DashboardCache::key('reports:sources', ['team_id' => $teamId]);
 
-        if ($teamId) {
-            $query->where('assigned_team_id', $teamId);
-        }
+        $rows = DashboardCache::remember($key, DashboardCache::REPORT_TTL_SECONDS, function () use ($teamId) {
+            $query = Lead::query()->selectRaw('source, count(*) as total, sum(case when status = ? then 1 else 0 end) as won', ['won'])
+                ->groupBy('source');
 
-        $rows = $query->get()->map(fn ($row) => [
-            'source' => $row->source,
-            'total' => (int) $row->total,
-            'won' => (int) $row->won,
-            'conversion_rate' => $row->total > 0 ? round(($row->won / $row->total) * 100, 1) : 0,
-        ]);
+            if ($teamId) {
+                $query->where('assigned_team_id', $teamId);
+            }
+
+            return $query->get()->map(fn ($row) => [
+                'source' => $row->source,
+                'total' => (int) $row->total,
+                'won' => (int) $row->won,
+                'conversion_rate' => $row->total > 0 ? round(($row->won / $row->total) * 100, 1) : 0,
+            ])->values()->all();
+        });
 
         return ApiResponse::success($rows);
     }
@@ -42,12 +47,18 @@ class ReportsController extends Controller
         $this->authorizeReports($request);
         $teamId = $this->teamScope($request);
 
-        $query = Lead::query()->selectRaw('status, count(*) as total')->groupBy('status');
-        if ($teamId) {
-            $query->where('assigned_team_id', $teamId);
-        }
+        $key = DashboardCache::key('reports:pipeline', ['team_id' => $teamId]);
 
-        return ApiResponse::success($query->pluck('total', 'status'));
+        $pipeline = DashboardCache::remember($key, DashboardCache::REPORT_TTL_SECONDS, function () use ($teamId) {
+            $query = Lead::query()->selectRaw('status, count(*) as total')->groupBy('status');
+            if ($teamId) {
+                $query->where('assigned_team_id', $teamId);
+            }
+
+            return $query->pluck('total', 'status')->all();
+        });
+
+        return ApiResponse::success($pipeline);
     }
 
     /**
@@ -58,41 +69,48 @@ class ReportsController extends Controller
     {
         $this->authorizeReports($request);
         $teamId = $this->teamScope($request);
-        $since = now()->subDays((int) $request->input('days', 7));
+        $days = (int) $request->input('days', 7);
 
-        $callStats = Call::query()
-            ->selectRaw('agent_id, count(*) as calls')
-            ->where('created_at', '>=', $since)
-            ->groupBy('agent_id')
-            ->pluck('calls', 'agent_id');
+        $key = DashboardCache::key('reports:weak-agents', ['team_id' => $teamId, 'days' => $days]);
 
-        $saleStats = \App\Models\Sale::query()
-            ->selectRaw('agent_id, count(*) as confirmed_sales')
-            ->where('status', 'confirmed')
-            ->where('created_at', '>=', $since)
-            ->groupBy('agent_id')
-            ->pluck('confirmed_sales', 'agent_id');
+        $rows = DashboardCache::remember($key, DashboardCache::REPORT_TTL_SECONDS, function () use ($teamId, $days) {
+            $since = now()->subDays($days);
 
-        $agents = User::query()->role(RoleName::Agent->value)->where('is_active', true);
-        if ($teamId) {
-            $agents->where('team_id', $teamId);
-        }
+            $callStats = Call::query()
+                ->selectRaw('agent_id, count(*) as calls')
+                ->where('created_at', '>=', $since)
+                ->groupBy('agent_id')
+                ->pluck('calls', 'agent_id');
 
-        $rows = $agents->get(['id', 'name'])->map(function (User $agent) use ($callStats, $saleStats) {
-            $calls = (int) ($callStats[$agent->id] ?? 0);
-            $sales = (int) ($saleStats[$agent->id] ?? 0);
+            $saleStats = \App\Models\Sale::query()
+                ->selectRaw('agent_id, count(*) as confirmed_sales')
+                ->where('status', 'confirmed')
+                ->where('created_at', '>=', $since)
+                ->groupBy('agent_id')
+                ->pluck('confirmed_sales', 'agent_id');
 
-            return [
-                'agent_id' => $agent->id,
-                'agent_name' => $agent->name,
-                'calls' => $calls,
-                'confirmed_sales' => $sales,
-                'conversion_rate' => $calls > 0 ? round(($sales / $calls) * 100, 1) : 0,
-            ];
-        })
-            ->filter(fn ($row) => $row['calls'] >= 15 && $row['conversion_rate'] < 3)
-            ->sortBy('conversion_rate')
-            ->values();
+            $agents = User::query()->role(RoleName::Agent->value)->where('is_active', true);
+            if ($teamId) {
+                $agents->where('team_id', $teamId);
+            }
+
+            return $agents->get(['id', 'name'])->map(function (User $agent) use ($callStats, $saleStats) {
+                $calls = (int) ($callStats[$agent->id] ?? 0);
+                $sales = (int) ($saleStats[$agent->id] ?? 0);
+
+                return [
+                    'agent_id' => $agent->id,
+                    'agent_name' => $agent->name,
+                    'calls' => $calls,
+                    'confirmed_sales' => $sales,
+                    'conversion_rate' => $calls > 0 ? round(($sales / $calls) * 100, 1) : 0,
+                ];
+            })
+                ->filter(fn ($row) => $row['calls'] >= 15 && $row['conversion_rate'] < 3)
+                ->sortBy('conversion_rate')
+                ->values()
+                ->all();
+        });
 
         return ApiResponse::success($rows);
     }
@@ -102,16 +120,20 @@ class ReportsController extends Controller
         $this->authorizeReports($request);
         $teamId = $this->teamScope($request);
 
-        $query = FollowUp::query()->overdue()->with(['agent', 'lead']);
-        if ($teamId) {
-            $query->whereHas('agent', fn ($q) => $q->where('team_id', $teamId));
-        }
+        $key = DashboardCache::key('reports:overdue', ['team_id' => $teamId]);
 
-        $byAgent = $query->get()->groupBy('agent_id')->map(fn ($group, $agentId) => [
-            'agent_id' => (int) $agentId,
-            'agent_name' => $group->first()->agent?->name,
-            'overdue_count' => $group->count(),
-        ])->values();
+        $byAgent = DashboardCache::remember($key, DashboardCache::REPORT_TTL_SECONDS, function () use ($teamId) {
+            $query = FollowUp::query()->overdue()->with(['agent', 'lead']);
+            if ($teamId) {
+                $query->whereHas('agent', fn ($q) => $q->where('team_id', $teamId));
+            }
+
+            return $query->get()->groupBy('agent_id')->map(fn ($group, $agentId) => [
+                'agent_id' => (int) $agentId,
+                'agent_name' => $group->first()->agent?->name,
+                'overdue_count' => $group->count(),
+            ])->values()->all();
+        });
 
         return ApiResponse::success($byAgent);
     }
@@ -124,50 +146,56 @@ class ReportsController extends Controller
     {
         $this->authorizeReports($request);
         $teamId = $this->teamScope($request);
-        $since = now()->subDays((int) $request->input('days', 1));
+        $days = (int) $request->input('days', 1);
 
-        $stats = Call::query()
-            ->selectRaw(
-                'agent_id, count(*) as total_calls, '.
-                'sum(case when duration_sec < 5 then 1 else 0 end) as ghost_calls, '.
-                'sum(case when result = ? then 1 else 0 end) as duplicate_marks, '.
-                'sum(case when result = ? then 1 else 0 end) as dnd_marks',
-                ['duplicate', 'do_not_disturb'],
-            )
-            ->where('created_at', '>=', $since)
-            ->groupBy('agent_id')
-            ->having('total_calls', '>=', 10)
-            ->get()
-            ->keyBy('agent_id');
+        $key = DashboardCache::key('reports:suspicious', ['team_id' => $teamId, 'days' => $days]);
 
-        $agents = User::query()->role(RoleName::Agent->value)->where('is_active', true)
-            ->whereIn('id', $stats->keys());
-        if ($teamId) {
-            $agents->where('team_id', $teamId);
-        }
+        $flags = DashboardCache::remember($key, DashboardCache::REPORT_TTL_SECONDS, function () use ($teamId, $days) {
+            $since = now()->subDays($days);
 
-        $flags = $agents->get(['id', 'name'])->map(function (User $agent) use ($stats) {
-            $row = $stats[$agent->id];
-            $totalCalls = (int) $row->total_calls;
+            $stats = Call::query()
+                ->selectRaw(
+                    'agent_id, count(*) as total_calls, '.
+                    'sum(case when duration_sec < 5 then 1 else 0 end) as ghost_calls, '.
+                    'sum(case when result = ? then 1 else 0 end) as duplicate_marks, '.
+                    'sum(case when result = ? then 1 else 0 end) as dnd_marks',
+                    ['duplicate', 'do_not_disturb'],
+                )
+                ->where('created_at', '>=', $since)
+                ->groupBy('agent_id')
+                ->having('total_calls', '>=', 10)
+                ->get()
+                ->keyBy('agent_id');
 
-            $reasons = [];
-            if (($row->ghost_calls / $totalCalls) > 0.4) {
-                $reasons[] = 'نرخ بالای تماس‌های خیلی کوتاه (کمتر از ۵ ثانیه)';
-            }
-            if (($row->duplicate_marks / $totalCalls) > 0.3) {
-                $reasons[] = 'نرخ بالای ثبت مشتری تکراری';
-            }
-            if (($row->dnd_marks / $totalCalls) > 0.3) {
-                $reasons[] = 'نرخ بالای ثبت عدم تماس مجدد';
+            $agents = User::query()->role(RoleName::Agent->value)->where('is_active', true)
+                ->whereIn('id', $stats->keys());
+            if ($teamId) {
+                $agents->where('team_id', $teamId);
             }
 
-            return [
-                'agent_id' => $agent->id,
-                'agent_name' => $agent->name,
-                'total_calls' => $totalCalls,
-                'reasons' => $reasons,
-            ];
-        })->filter(fn ($row) => count($row['reasons']) > 0)->values();
+            return $agents->get(['id', 'name'])->map(function (User $agent) use ($stats) {
+                $row = $stats[$agent->id];
+                $totalCalls = (int) $row->total_calls;
+
+                $reasons = [];
+                if (($row->ghost_calls / $totalCalls) > 0.4) {
+                    $reasons[] = 'نرخ بالای تماس‌های خیلی کوتاه (کمتر از ۵ ثانیه)';
+                }
+                if (($row->duplicate_marks / $totalCalls) > 0.3) {
+                    $reasons[] = 'نرخ بالای ثبت مشتری تکراری';
+                }
+                if (($row->dnd_marks / $totalCalls) > 0.3) {
+                    $reasons[] = 'نرخ بالای ثبت عدم تماس مجدد';
+                }
+
+                return [
+                    'agent_id' => $agent->id,
+                    'agent_name' => $agent->name,
+                    'total_calls' => $totalCalls,
+                    'reasons' => $reasons,
+                ];
+            })->filter(fn ($row) => count($row['reasons']) > 0)->values()->all();
+        });
 
         return ApiResponse::success($flags);
     }

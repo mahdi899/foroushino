@@ -26,7 +26,11 @@ class RegistrationStartTest extends TestCase
 
         $this->app->instance(FakeTelegramBotClient::class, new FakeTelegramBotClient);
 
-        $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'test-webhook-secret')
+        $this->withHeaders([
+            'X-Telegram-Bot-Api-Secret-Token' => 'test-webhook-secret',
+            'Authorization' => 'Bearer test-proxy-token',
+            'X-Proxy-Origin' => 'Cloudflare-Worker',
+        ])
             ->postJson('/api/v1/integrations/telegram/production/webhook', [
                 'update_id' => 9001,
                 'message' => [

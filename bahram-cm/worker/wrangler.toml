@@ -1,0 +1,28 @@
+name = "bahram-telegram-relay"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+workers_dev = true
+
+# Public URL once deployed: https://bahram-telegram-relay.<your-subdomain>.workers.dev
+# Register THIS URL (with the webhook path appended) as the Telegram webhook —
+# never the origin server directly. See backend TELEGRAM_WEBHOOK_BASE_URL and
+# `php artisan telegram:webhook:set`.
+
+[vars]
+# Non-secret defaults. Anything sensitive is set with `wrangler secret put`
+# (see README.md "Secrets").
+BACKEND_ORIGIN = "https://rostami.app"
+WEBHOOK_PATH_PREFIX = "/api/v1/integrations/telegram/"
+PROXY_ORIGIN_VALUE = "Cloudflare-Worker"
+DEDUPE_TTL_SECONDS = "120"
+
+# Optional: enables best-effort duplicate-update suppression at the edge, on
+# top of the Laravel-side idempotency guarantee (unique update_id per bot).
+# Create with: wrangler kv namespace create TELEGRAM_DEDUPE
+# Then uncomment and fill in the id below.
+# [[kv_namespaces]]
+# binding = "TELEGRAM_DEDUPE"
+# id = "<kv-namespace-id>"
+
+[env.staging]
+vars = { BACKEND_ORIGIN = "https://rostami.app", WEBHOOK_PATH_PREFIX = "/api/v1/integrations/telegram/", PROXY_ORIGIN_VALUE = "Cloudflare-Worker", DEDUPE_TTL_SECONDS = "120" }

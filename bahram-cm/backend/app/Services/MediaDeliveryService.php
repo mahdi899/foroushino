@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Support\MediaUrl;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 /** On-the-fly resize + long-cache delivery for public /storage/media assets. */
 class MediaDeliveryService
@@ -16,10 +19,21 @@ class MediaDeliveryService
     /** Widths requested by Next.js image loader — pre-generated on upload/import. */
     public const PREWARM_WIDTHS = [320, 448, 640, 750, 828, 1080, 1200, 1920];
 
-    public function deliver(string $path, ?int $width, int $quality = 85): BinaryFileResponse
+    public function deliver(string $path, ?int $width, int $quality = 85): Response
     {
         $path = $this->normalizePath($path);
-        $disk = Storage::disk(config('bahram.uploads.public_disk', 'public'));
+        $diskName = config('bahram.uploads.public_disk', 'public');
+
+        // Files that already live on the download host are never proxied
+        // through this Laravel process — GD resize needs local bytes, and
+        // streaming them here would defeat the entire point of moving media
+        // off the Iran server (bandwidth). Redirect straight to the CDN
+        // origin that fronts the download host instead.
+        if ($this->isRemoteDisk($diskName)) {
+            return $this->redirectToCdn($path);
+        }
+
+        $disk = Storage::disk($diskName);
 
         abort_unless($disk->exists($path), 404);
 
@@ -81,7 +95,13 @@ class MediaDeliveryService
             return;
         }
 
-        $disk = Storage::disk(config('bahram.uploads.public_disk', 'public'));
+        $diskName = config('bahram.uploads.public_disk', 'public');
+        if ($this->isRemoteDisk($diskName)) {
+            // No local bytes to resize — the CDN serves the original as-is.
+            return;
+        }
+
+        $disk = Storage::disk($diskName);
         if (! $disk->exists($path)) {
             return;
         }
@@ -115,6 +135,25 @@ class MediaDeliveryService
                 // Best effort — delivery still works on demand.
             }
         }
+    }
+
+    private function isRemoteDisk(string $diskName): bool
+    {
+        $driver = (string) config("filesystems.disks.{$diskName}.driver", 'local');
+
+        return in_array($driver, ['ftp', 'sftp'], true);
+    }
+
+    private function redirectToCdn(string $path): RedirectResponse
+    {
+        $url = MediaUrl::resolve(MediaUrl::fromDiskPath($path));
+        abort_if($url === null, 404);
+
+        $maxAge = (int) config('bahram.media_cache_max_age', 31536000);
+
+        return redirect()->away($url, 302, [
+            'Cache-Control' => 'public, max-age='.$maxAge,
+        ]);
     }
 
     private function normalizePath(string $path): string

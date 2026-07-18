@@ -3,6 +3,7 @@
 namespace App\Services\Sat;
 
 use App\Models\SatApplication;
+use App\Support\HmacSigner;
 use App\Support\SatIntegrationConfig;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -44,6 +45,7 @@ class SatOutboundSyncService
             $response = Http::timeout(15)
                 ->acceptJson()
                 ->withToken((string) $config['api_token'])
+                ->withHeaders($this->signedHeaders($payload))
                 ->post($url, $payload);
 
             if (! $response->successful()) {
@@ -105,6 +107,7 @@ class SatOutboundSyncService
             $response = Http::timeout(10)
                 ->acceptJson()
                 ->withToken((string) $config['api_token'])
+                ->withHeaders($this->signedHeaders([]))
                 ->get($pingUrl);
 
             if ($response->successful() && ($response->json('success') === true || $response->json('data.status') === 'ok')) {
@@ -122,5 +125,25 @@ class SatOutboundSyncService
 
             return ['ok' => false, 'message' => 'امکان اتصال به سرور سات وجود ندارد. آدرس باید به بک‌اند سات (معمولاً پورت ۸۰۰۰) اشاره کند.'];
         }
+    }
+
+    /**
+     * Headers required by Saat's proxy-origin gate + HMAC signature
+     * verification. Sent on every outbound call, in addition to the
+     * per-installation Bearer integration token.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, string>
+     */
+    private function signedHeaders(array $payload): array
+    {
+        $headerName = (string) config('security.proxy_origin.header', 'X-Proxy-Origin');
+        $allowed = (array) config('security.proxy_origin.allowed_values', []);
+        $originValue = in_array('Internal-Sync', $allowed, true) ? 'Internal-Sync' : ($allowed[0] ?? 'Internal-Sync');
+
+        return array_merge(
+            [$headerName => $originValue],
+            HmacSigner::headersFor($payload),
+        );
     }
 }

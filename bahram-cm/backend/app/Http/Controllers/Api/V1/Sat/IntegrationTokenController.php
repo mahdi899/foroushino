@@ -40,6 +40,8 @@ class IntegrationTokenController extends Controller
         ]);
     }
 
+    private const ALLOWED_ABILITIES = ['inbound:applications', 'callback:lead-status'];
+
     public function store(Request $request): JsonResponse
     {
         $actor = $request->user();
@@ -47,13 +49,17 @@ class IntegrationTokenController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
+            'abilities' => ['nullable', 'array'],
+            'abilities.*' => ['string', 'in:'.implode(',', self::ALLOWED_ABILITIES)],
         ]);
+
+        $abilities = ! empty($data['abilities']) ? array_values(array_unique($data['abilities'])) : ['inbound:applications'];
 
         $plain = 'sat_'.Str::random(48);
         $token = SatIntegrationToken::query()->create([
             'name' => $data['name'],
             'token_hash' => hash('sha256', $plain),
-            'abilities' => ['inbound:applications'],
+            'abilities' => $abilities,
             'created_by' => $actor->id,
         ]);
 

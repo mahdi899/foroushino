@@ -12,8 +12,10 @@ use App\Models\Sale;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Services\Analytics\DashboardCache;
 use App\Support\ApiResponse;
 use App\Support\BusinessDate;
+use App\Support\TeamScope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -85,36 +87,46 @@ class HomeController extends Controller
         }
 
         $isTeamScoped = TeamScope::isTeamColony($user);
-
-        $leadsQuery = Lead::query();
-        $salesQuery = Sale::query();
-        $agentsQuery = User::query()->role(RoleName::Agent->value);
-
-        if ($isTeamScoped && $user->team_id) {
-            TeamScope::applyLeadQueryScope($leadsQuery, $user);
-            $salesQuery->where('team_id', $user->team_id);
-            $agentsQuery->where('team_id', $user->team_id);
-        }
-
+        $teamId = $isTeamScoped && $user->team_id ? $user->team_id : null;
         $today = BusinessDate::today();
 
-        $pipeline = (clone $leadsQuery)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
-        $salesToday = (clone $salesQuery)->whereDate('created_at', $today)->count();
-        $confirmedTotal = (clone $salesQuery)->where('status', 'confirmed')->sum('amount');
-        $pendingConfirmationCount = (clone $salesQuery)->where('status', 'pending_confirmation')->count();
-        $activeAgents = (clone $agentsQuery)->where('is_active', true)->count();
-        $onlineAgents = (clone $agentsQuery)->where('availability', '!=', 'offline')->count();
-        $teamsCount = $isTeamScoped && $user->team_id ? 1 : Team::query()->count();
-
-        return ApiResponse::success([
-            'pipeline' => $pipeline,
-            'sales_today' => $salesToday,
-            'confirmed_sales_total' => (string) $confirmedTotal,
-            'pending_confirmation_count' => $pendingConfirmationCount,
-            'active_agents' => $activeAgents,
-            'online_agents' => $onlineAgents,
-            'teams_count' => $teamsCount,
-            'scope' => $isTeamScoped ? 'team' : 'all',
+        $key = DashboardCache::key('home:management', [
+            'team_id' => $teamId,
+            'scoped' => $isTeamScoped,
+            'date' => $today->toDateString(),
         ]);
+
+        $payload = DashboardCache::remember($key, DashboardCache::HOME_TTL_SECONDS, function () use ($user, $isTeamScoped, $teamId, $today) {
+            $leadsQuery = Lead::query();
+            $salesQuery = Sale::query();
+            $agentsQuery = User::query()->role(RoleName::Agent->value);
+
+            if ($teamId) {
+                TeamScope::applyLeadQueryScope($leadsQuery, $user);
+                $salesQuery->where('team_id', $teamId);
+                $agentsQuery->where('team_id', $teamId);
+            }
+
+            $pipeline = (clone $leadsQuery)->selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+            $salesToday = (clone $salesQuery)->whereDate('created_at', $today)->count();
+            $confirmedTotal = (clone $salesQuery)->where('status', 'confirmed')->sum('amount');
+            $pendingConfirmationCount = (clone $salesQuery)->where('status', 'pending_confirmation')->count();
+            $activeAgents = (clone $agentsQuery)->where('is_active', true)->count();
+            $onlineAgents = (clone $agentsQuery)->where('availability', '!=', 'offline')->count();
+            $teamsCount = $teamId ? 1 : Team::query()->count();
+
+            return [
+                'pipeline' => $pipeline,
+                'sales_today' => $salesToday,
+                'confirmed_sales_total' => (string) $confirmedTotal,
+                'pending_confirmation_count' => $pendingConfirmationCount,
+                'active_agents' => $activeAgents,
+                'online_agents' => $onlineAgents,
+                'teams_count' => $teamsCount,
+                'scope' => $isTeamScoped ? 'team' : 'all',
+            ];
+        });
+
+        return ApiResponse::success($payload);
     }
 }

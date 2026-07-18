@@ -7,13 +7,21 @@ use App\Events\SatApplicationAccepted;
 use App\Listeners\PushSatApplicationToExternalListener;
 use App\Listeners\TryActivateSatMembershipListener;
 use App\Models\FamilyMedia;
+use App\Models\PersonalAccessToken;
+use App\Models\Seminar;
+use App\Models\SeminarAttendee;
 use App\Observers\FamilyMediaObserver;
+use App\Observers\SeminarAttendeeObserver;
+use App\Observers\SeminarObserver;
+use App\Support\MediaFtpConnection;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Sanctum\Sanctum;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +35,14 @@ class AppServiceProvider extends ServiceProvider
         Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
         FamilyMedia::observe(FamilyMediaObserver::class);
+        Seminar::observe(SeminarObserver::class);
+        SeminarAttendee::observe(SeminarAttendeeObserver::class);
+
+        // Short-TTL cache around Sanctum's per-request token->user lookup —
+        // see App\Models\PersonalAccessToken for the invalidation strategy.
+        Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
+
+        $this->configureDynamicMediaDisk();
 
         RateLimiter::for('api', function (Request $request) {
             $perMinute = max(1, (int) config('bahram.api_rate_limit_per_minute', 120));
@@ -97,8 +113,45 @@ class AppServiceProvider extends ServiceProvider
                 ->by((string) ($request->user()?->id ?: $request->ip()));
         });
 
+        // Server-to-server integration routes (SAT inbound) — keyed by the
+        // caller's IP since these are pre-auth (proxy-origin gate runs first).
+        RateLimiter::for('integration', function (Request $request) {
+            return Limit::perMinute(60)->by($request->ip());
+        });
+
         Event::listen(IdentityLevel2Approved::class, TryActivateSatMembershipListener::class);
         Event::listen(SatApplicationAccepted::class, TryActivateSatMembershipListener::class);
         Event::listen(SatApplicationAccepted::class, PushSatApplicationToExternalListener::class);
+    }
+
+    /**
+     * If an admin has saved FTP/SFTP connection details from the media
+     * panel, override the static `site_media_ftp`/`site_media_sftp` disk
+     * config (and the active `bahram.uploads.public_disk`) for this
+     * request/worker — every existing call site that resolves the disk by
+     * name (`Storage::disk($media->disk)`, `config('bahram.uploads.public_disk')`)
+     * transparently picks up the panel-managed credentials with no further
+     * code changes. Silently skipped before the `settings` table exists
+     * (fresh install, running migrations) or if the DB is unreachable.
+     */
+    private function configureDynamicMediaDisk(): void
+    {
+        try {
+            if (! Schema::hasTable('settings')) {
+                return;
+            }
+
+            if (! MediaFtpConnection::isReady()) {
+                return;
+            }
+
+            $diskName = MediaFtpConnection::diskName();
+
+            config(["filesystems.disks.{$diskName}" => MediaFtpConnection::toDiskConfig()]);
+            config(['bahram.uploads.public_disk' => $diskName]);
+        } catch (\Throwable) {
+            // DB not reachable yet at this point in the boot cycle — the
+            // static env-based disk config (if any) remains in effect.
+        }
     }
 }

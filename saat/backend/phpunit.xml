@@ -46,5 +46,8 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="PROXY_SHARED_TOKEN" value="test-proxy-token"/>
+        <env name="PROXY_ORIGIN_ALLOWED_VALUES" value="Cloudflare-Worker,Internal-Sync"/>
+        <env name="SAT_SYNC_HMAC_SECRET" value="test-hmac-secret"/>
     </php>
 </phpunit>

@@ -77,6 +77,10 @@ return [
         ],
 
         // Site media library (admin gallery + family sync) — set MEDIA_DISK=site_media_ftp in production.
+        // NOTE: overridden at runtime from the panel-managed connection (see
+        // App\Support\MediaFtpConnection + AppServiceProvider::configureDynamicMediaDisk())
+        // when an admin has saved Host/Username/Password/Port from the media panel —
+        // these env vars are only the fallback for a pure env-config deployment.
         'site_media_ftp' => [
             'driver' => 'ftp',
             'host' => env('MEDIA_FTP_HOST', env('FAMILY_MEDIA_FTP_HOST', '')),
@@ -87,6 +91,21 @@ return [
             'passive' => filter_var(env('MEDIA_FTP_PASSIVE', env('FAMILY_MEDIA_FTP_PASSIVE', true)), FILTER_VALIDATE_BOOL),
             'ssl' => filter_var(env('MEDIA_FTP_SSL', env('FAMILY_MEDIA_FTP_SSL', false)), FILTER_VALIDATE_BOOL),
             'timeout' => (int) env('MEDIA_FTP_TIMEOUT', env('FAMILY_MEDIA_FTP_TIMEOUT', 60)),
+            'throw' => true,
+        ],
+
+        // SFTP counterpart of the disk above — set MEDIA_DISK=site_media_sftp
+        // (or save protocol=sftp from the panel) to use this instead of plain FTP.
+        'site_media_sftp' => [
+            'driver' => 'sftp',
+            'host' => env('MEDIA_SFTP_HOST', env('MEDIA_FTP_HOST', '')),
+            'username' => env('MEDIA_SFTP_USERNAME', env('MEDIA_FTP_USERNAME', '')),
+            'password' => env('MEDIA_SFTP_PASSWORD', env('MEDIA_FTP_PASSWORD', '')),
+            'privateKey' => env('MEDIA_SFTP_PRIVATE_KEY', ''),
+            'passphrase' => env('MEDIA_SFTP_PASSPHRASE', ''),
+            'port' => (int) env('MEDIA_SFTP_PORT', 22),
+            'root' => env('MEDIA_SFTP_ROOT', env('MEDIA_FTP_ROOT', '/')),
+            'timeout' => (int) env('MEDIA_SFTP_TIMEOUT', env('MEDIA_FTP_TIMEOUT', 60)),
             'throw' => true,
         ],
 
