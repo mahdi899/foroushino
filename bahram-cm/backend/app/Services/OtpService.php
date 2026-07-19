@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\OtpPurpose;
 use App\Models\OtpCode;
+use App\Models\User;
 use App\Services\Exceptions\OtpException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
@@ -217,5 +218,10 @@ class OtpService
     public function shouldSkipAdminLogin(): bool
     {
         return config('bahram.otp.skip_admin') && app()->environment('local');
+    }
+
+    public function shouldSkipAdminLoginOtpFor(User $user): bool
+    {
+        return $this->shouldSkipAdminLogin() || $user->admin_login_otp_exempt;
     }
 }

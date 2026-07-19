@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
 import { BrandMark } from '@/components/layout/Header';
 import { useFormSecurity } from '@/components/captcha/FormCaptcha';
+import { captchaToRequestFields } from '@/lib/captcha/types';
+import { bootstrapAdminDevDefaults } from '@/lib/auth/bootstrapAdmin';
 import { resolveLoginOtpStep } from '@/lib/auth/loginOtpResponse';
 
 type Props = {
@@ -26,8 +28,8 @@ export function AdminLoginForm({ redirectFrom }: Props) {
   const [pending, setPending] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [resendIn, setResendIn] = useState(0);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(() => bootstrapAdminDevDefaults()?.email ?? '');
+  const [password, setPassword] = useState(() => bootstrapAdminDevDefaults()?.password ?? '');
   const {
     captchaField,
     honeypotField,
@@ -78,9 +80,7 @@ export function AdminLoginForm({ redirectFrom }: Props) {
       body: JSON.stringify({
         email: emailValue,
         password: passwordValue,
-        captcha_token: captcha?.captcha_token,
-        captcha_id: captcha?.captcha_id,
-        captcha_answer: captcha?.captcha_answer,
+        ...captchaToRequestFields(captcha),
         website: website || undefined,
       }),
     });

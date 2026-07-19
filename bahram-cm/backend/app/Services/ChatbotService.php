@@ -446,11 +446,12 @@ class ChatbotService
     }
 
     public function verifyCaptcha(
-        ?string $turnstileToken,
+        ?string $token,
         ?string $mathId,
         mixed $mathAnswer,
         ?string $ip,
         ?string $sessionId = null,
+        ?string $provider = null,
     ): bool {
         $config = $this->mergedConfig();
         if (! $config['require_captcha']) {
@@ -458,12 +459,13 @@ class ChatbotService
         }
 
         return app(CaptchaService::class)->verify(
-            $turnstileToken,
-            $mathId,
-            $mathAnswer,
-            $ip,
-            $sessionId,
+            token: $token,
+            mathId: $mathId,
+            mathAnswer: $mathAnswer,
+            ip: $ip,
+            sessionId: $sessionId,
             allowIpTrust: false,
+            provider: $provider,
         );
     }
 

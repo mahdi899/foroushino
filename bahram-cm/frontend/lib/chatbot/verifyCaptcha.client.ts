@@ -14,6 +14,7 @@ export async function verifyChatbotCaptchaClient(input: {
         session_id: input.sessionId,
         client_ip: input.clientIp,
         captcha_token: input.payload.captcha_token,
+        captcha_provider: input.payload.captcha_provider,
         captcha_math_id: input.payload.captcha_id,
         captcha_math_answer: input.payload.captcha_answer,
       }),

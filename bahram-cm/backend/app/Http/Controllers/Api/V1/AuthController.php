@@ -50,7 +50,7 @@ class AuthController extends Controller
             ]);
         }
 
-        if ($this->otp->shouldSkipAdminLogin()) {
+        if ($this->otp->shouldSkipAdminLoginOtpFor($user)) {
             return $this->issueTokenResponse($user);
         }
 
@@ -197,7 +197,9 @@ class AuthController extends Controller
         $roles = $user->getRoleNames()->values()->all();
         $permissions = $user->getAllPermissions()->pluck('name')->values()->all();
 
-        if ($user->isSuperAdmin() && $permissions === []) {
+        if ($user->isRootAdmin() && $permissions === []) {
+            $permissions = \App\Support\PermissionCatalog::all();
+        } elseif ($user->isSuperAdmin() && $permissions === []) {
             $permissions = \App\Support\PermissionCatalog::all();
         }
 
@@ -209,6 +211,7 @@ class AuthController extends Controller
             'roles' => $roles,
             'permissions' => $permissions,
             'is_super_admin' => $user->isSuperAdmin(),
+            'is_root_admin' => $user->isRootAdmin(),
         ];
     }
 

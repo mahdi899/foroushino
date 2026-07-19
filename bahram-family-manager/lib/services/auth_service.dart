@@ -4,6 +4,27 @@ import 'package:bahram_family_manager/core/api/api_client.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/services/secure_storage.dart';
 
+sealed class AdminLoginResult {
+  const AdminLoginResult();
+
+  const factory AdminLoginResult.authenticated(ManagerUser user) = AdminLoginAuthenticated;
+  const factory AdminLoginResult.otpRequired({
+    required String mobile,
+    required String masked,
+  }) = AdminLoginOtpRequired;
+}
+
+final class AdminLoginAuthenticated extends AdminLoginResult {
+  const AdminLoginAuthenticated(this.user);
+  final ManagerUser user;
+}
+
+final class AdminLoginOtpRequired extends AdminLoginResult {
+  const AdminLoginOtpRequired({required this.mobile, required this.masked});
+  final String mobile;
+  final String masked;
+}
+
 /// Reuses the existing admin login flow (email/password → SMS OTP → Sanctum
 /// token) — no parallel auth system. See backend `AuthController`.
 class AuthService {
@@ -25,10 +46,9 @@ class AuthService {
     return MathChallenge.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
 
-  /// Step 1 — validates email/password, triggers an SMS OTP to the admin's
-  /// registered mobile. Returns the real (normalized) mobile — needed for
-  /// resend/verify — and the masked version to display to the user.
-  Future<({String mobile, String masked})> loginWithPassword({
+  /// Step 1 — validates email/password. OTP-exempt admins receive a token
+  /// immediately; others get an SMS OTP on their registered mobile.
+  Future<AdminLoginResult> loginWithPassword({
     required String email,
     required String password,
     String? captchaId,
@@ -41,8 +61,20 @@ class AuthService {
       if (captchaAnswer != null) 'captcha_answer': captchaAnswer,
     });
     final data = (res['data'] as Map).cast<String, dynamic>();
+    final token = res['token']?.toString();
+
+    if (data['otp_required'] == false && token != null && token.isNotEmpty) {
+      final user = ManagerUser.fromJson(data);
+      await _storage.writeToken(token);
+      await _storage.writeUserJson(jsonEncode(data));
+      return AdminLoginResult.authenticated(user);
+    }
+
     final mobile = data['mobile']?.toString() ?? '';
-    return (mobile: mobile, masked: data['mobile_masked']?.toString() ?? mobile);
+    return AdminLoginResult.otpRequired(
+      mobile: mobile,
+      masked: data['mobile_masked']?.toString() ?? mobile,
+    );
   }
 
   Future<void> resendOtp(String mobile) async {

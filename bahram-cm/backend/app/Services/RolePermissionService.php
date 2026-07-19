@@ -91,7 +91,7 @@ class RolePermissionService
             ]);
         }
 
-        if (! $actor->isSuperAdmin()) {
+        if (! $actor->isRootAdmin() && ! $actor->isSuperAdmin()) {
             $requestedReserved = array_values(array_intersect(
                 $permissions,
                 PermissionCatalog::reservedForSuperAdmin(),
@@ -120,7 +120,7 @@ class RolePermissionService
     {
         $this->assertAdminPermission($actor, 'admins.create');
 
-        if ($roleName === AdminRoleName::SuperAdmin->value && ! $actor->isSuperAdmin()) {
+        if ($roleName === AdminRoleName::SuperAdmin->value && ! $actor->isRootAdmin() && ! $actor->isSuperAdmin()) {
             throw ValidationException::withMessages([
                 'role' => ['فقط مدیر کل می‌تواند مدیر کل جدید بسازد.'],
             ]);
@@ -178,12 +178,18 @@ class RolePermissionService
             throw ValidationException::withMessages(['user' => ['کاربر هدف ادمین نیست.']]);
         }
 
+        if ($admin->isRootAdmin()) {
+            throw ValidationException::withMessages([
+                'role' => ['نقش مدیر اصلی سیستم قابل تغییر نیست.'],
+            ]);
+        }
+
         if ($admin->id === $actor->id && $roleName !== AdminRoleName::SuperAdmin->value && $admin->isSuperAdmin()) {
-            $this->assertNotLastSuperAdmin($admin);
+            $this->assertNotLastSuperAdmin($admin, $actor);
         }
 
         if ($admin->isSuperAdmin() && $roleName !== AdminRoleName::SuperAdmin->value) {
-            $this->assertNotLastSuperAdmin($admin);
+            $this->assertNotLastSuperAdmin($admin, $actor);
         }
 
         $before = $admin->getRoleNames()->all();
@@ -208,12 +214,16 @@ class RolePermissionService
             throw ValidationException::withMessages(['user' => ['کاربر هدف ادمین نیست.']]);
         }
 
+        if ($admin->isRootAdmin()) {
+            throw ValidationException::withMessages(['user' => ['مدیر اصلی سیستم قابل حذف نیست.']]);
+        }
+
         if ($admin->id === $actor->id) {
             throw ValidationException::withMessages(['user' => ['نمی‌توانید حساب خود را حذف کنید.']]);
         }
 
         if ($admin->isSuperAdmin()) {
-            $this->assertNotLastSuperAdmin($admin);
+            $this->assertNotLastSuperAdmin($admin, $actor);
         }
 
         DB::transaction(function () use ($actor, $admin): void {
@@ -231,7 +241,7 @@ class RolePermissionService
 
     private function assertAdminPermission(User $actor, string $permission): void
     {
-        if ($actor->isSuperAdmin() || $actor->hasPermission($permission)) {
+        if ($actor->isRootAdmin() || $actor->isSuperAdmin() || $actor->hasPermission($permission)) {
             return;
         }
 
@@ -240,13 +250,19 @@ class RolePermissionService
 
     private function assertCanManageRoles(User $actor): void
     {
-        if (! $actor->isSuperAdmin() && ! $actor->hasPermission('roles.manage')) {
-            abort(403, 'اجازه دسترسی ندارید.');
+        if ($actor->isRootAdmin() || $actor->isSuperAdmin() || $actor->hasPermission('roles.manage')) {
+            return;
         }
+
+        abort(403, 'اجازه دسترسی ندارید.');
     }
 
-    private function assertNotLastSuperAdmin(User $admin): void
+    private function assertNotLastSuperAdmin(User $admin, User $actor): void
     {
+        if ($actor->isRootAdmin()) {
+            return;
+        }
+
         $count = User::role(AdminRoleName::SuperAdmin->value)->where('is_admin', true)->count();
         if ($count <= 1 && $admin->isSuperAdmin()) {
             throw ValidationException::withMessages([
@@ -263,7 +279,7 @@ class RolePermissionService
     {
         $allowed = array_values(array_intersect($permissions, PermissionCatalog::all()));
 
-        if (! $actor->isSuperAdmin()) {
+        if (! $actor->isRootAdmin() && ! $actor->isSuperAdmin()) {
             $allowed = array_values(array_diff($allowed, PermissionCatalog::reservedForSuperAdmin()));
         }
 

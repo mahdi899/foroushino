@@ -27,6 +27,7 @@ trait RequiresCaptcha
     {
         return [
             'captcha_token' => ['nullable', 'string'],
+            'captcha_provider' => ['nullable', 'string', 'in:turnstile,recaptcha'],
             'captcha_id' => ['nullable', 'uuid'],
             'captcha_answer' => ['nullable'],
             $this->honeypotField() => ['nullable', 'string', 'max:500'],
@@ -72,6 +73,7 @@ trait RequiresCaptcha
                 mathAnswer: $mathAnswer,
                 ip: $this->ip(),
                 allowIpTrust: false,
+                provider: is_string($this->input('captcha_provider')) ? $this->input('captcha_provider') : null,
             );
 
             if (! $valid) {

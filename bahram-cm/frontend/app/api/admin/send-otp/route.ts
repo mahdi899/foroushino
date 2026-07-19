@@ -12,6 +12,7 @@ export async function POST(req: Request) {
   const result = await callAdminAuth('/auth/send-otp', {
     mobile,
     captcha_token: body.captcha_token,
+    captcha_provider: body.captcha_provider,
     captcha_id: body.captcha_id,
     captcha_answer: body.captcha_answer,
     website: body.website,

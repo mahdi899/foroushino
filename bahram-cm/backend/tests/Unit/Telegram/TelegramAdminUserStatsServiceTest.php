@@ -58,7 +58,7 @@ class TelegramAdminUserStatsServiceTest extends TestCase
         $this->assertStringContainsString('شناسه کاربری: 97343715', $text);
         $this->assertStringContainsString('امین شکری', $text);
         $this->assertStringContainsString('+989399843394', $text);
-        $this->assertStringContainsString('تراکنش های موفق: 1 عدد', $text);
+        $this->assertStringContainsString('🏦 تراکنش های موفق: 1', $text);
         $this->assertStringContainsString('تعداد زیرمجموعه', $text);
     }
 }

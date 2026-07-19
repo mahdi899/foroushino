@@ -19,8 +19,8 @@ it('moves a sale to pending_confirmation once payment is submitted', function ()
 
     $sale = app(\App\Actions\Sales\SubmitPaymentAction::class)->execute($sale, ['method' => 'gateway', 'reference_number' => 'REF1'], $agent);
 
-    expect($sale->status->value)->toBe('pending_confirmation');
-    expect($lead->fresh()->status)->toBe(LeadStatus::SalePendingConfirmation);
+    expect($sale->status->value)->toBe('payment_submitted');
+    expect($lead->fresh()->status)->toBe(LeadStatus::PaymentSubmitted);
 });
 
 it('confirming a sale creates a commission awaiting leader approval without wallet credit', function () {

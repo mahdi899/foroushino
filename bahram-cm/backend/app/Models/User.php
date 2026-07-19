@@ -30,6 +30,8 @@ class User extends Authenticatable
         'status',
         'spotplayer_x',
         'is_admin',
+        'admin_login_otp_exempt',
+        'is_root_admin',
         'is_sat_staff',
         'sat_leader_id',
         'mobile_verified_at',
@@ -56,6 +58,8 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'admin_login_otp_exempt' => 'boolean',
+            'is_root_admin' => 'boolean',
             'is_sat_staff' => 'boolean',
             'status' => UserStatus::class,
             'onboarding_progress' => 'array',
@@ -68,11 +72,16 @@ class User extends Authenticatable
             return false;
         }
 
-        if ($this->isSuperAdmin()) {
+        if ($this->isRootAdmin() || $this->isSuperAdmin()) {
             return true;
         }
 
         return $this->can($permission);
+    }
+
+    public function isRootAdmin(): bool
+    {
+        return $this->is_admin && $this->is_root_admin;
     }
 
     public function isSuperAdmin(): bool

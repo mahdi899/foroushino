@@ -13,6 +13,7 @@ async function tryLogin(
   password: string,
   security?: {
     captcha_token?: unknown;
+    captcha_provider?: unknown;
     captcha_id?: unknown;
     captcha_answer?: unknown;
     website?: unknown;
@@ -30,6 +31,7 @@ async function tryLogin(
           email,
           password,
           captcha_token: security?.captcha_token,
+          captcha_provider: security?.captcha_provider,
           captcha_id: security?.captcha_id,
           captcha_answer: security?.captcha_answer,
           website: security?.website,
@@ -62,6 +64,7 @@ export async function POST(req: Request) {
 
   const result = await tryLogin(email, password, {
     captcha_token: body.captcha_token,
+    captcha_provider: body.captcha_provider,
     captcha_id: body.captcha_id,
     captcha_answer: body.captcha_answer,
     website: body.website,

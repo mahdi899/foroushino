@@ -145,7 +145,7 @@ class FtpMediaManager
         return $media->refresh();
     }
 
-    /** Download a file from the download host back onto the local `public` disk. */
+    /** Download a file from the download host back onto the local `public` disk, then remove the remote copy. */
     public function pull(Media $media): Media
     {
         $remoteDiskName = $this->remoteDiskName();
@@ -187,7 +187,13 @@ class FtpMediaManager
         $this->finalizeTransfer($local, $partPath, $media->path);
         DirectoryListingGuard::guardPublicRelativePath($media->path);
 
+        $remote->delete($media->path);
+        if ($remote->exists($media->path)) {
+            throw new RuntimeException('حذف فایل از هاست دانلود پس از بازگردانی به سرور ناموفق بود.');
+        }
+
         $media->update(['disk' => self::LOCAL_DISK, 'keep_on_server' => true]);
+        $this->forgetListingCache($media->path);
         LegacyMediaMap::flush();
 
         return $media->refresh();
@@ -308,6 +314,7 @@ class FtpMediaManager
     {
         $local->delete($media->path);
         $media->update(['disk' => $this->remoteDiskName(), 'keep_on_server' => false]);
+        DirectoryListingGuard::guardStoragePath($this->remoteDisk(), $media->path);
         $this->forgetListingCache($media->path);
         LegacyMediaMap::flush();
     }

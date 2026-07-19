@@ -9,7 +9,7 @@ beforeEach(function () {
 it('lets a supervisor register payment on behalf of an agent', function () {
     $team = makeTeam();
     $agent = makeAgent(['team_id' => $team->id]);
-    $supervisor = makeSupervisor();
+    $supervisor = makeSupervisor(['team_id' => $team->id]);
     $lead = makeLead(['assigned_team_id' => $team->id, 'assigned_agent_id' => $agent->id]);
     $product = makeProduct();
     $sale = makeSaleFor($agent, $lead, $product, SaleStatus::PaymentPending->value);

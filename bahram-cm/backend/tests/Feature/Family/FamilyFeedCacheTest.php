@@ -58,25 +58,20 @@ class FamilyFeedCacheTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.unread_count', 0)
             ->assertJsonPath('data.latest_post_id', $post->id)
-            ->assertJsonPath('data.feed_revision', FeedService::feedRevision((int) $family->id));
+            ->assertJsonPath('data.feed_revision', FeedService::feedRevision());
     }
 
-    public function test_feed_version_is_scoped_per_family(): void
+    public function test_feed_version_bumps_on_invalidation(): void
     {
         Cache::flush();
 
-        $familyA = $this->createFamily('family-a');
-        $familyB = $this->createFamily('family-b');
+        $before = FeedService::feedRevision();
+        FeedService::invalidateFeedTipCache();
 
-        FeedService::invalidateFeedTipCache(null, [(int) $familyA->id]);
-
-        $this->assertGreaterThan(
-            FeedService::feedRevision((int) $familyB->id),
-            FeedService::feedRevision((int) $familyA->id),
-        );
+        $this->assertGreaterThan($before, FeedService::feedRevision());
     }
 
-    public function test_publish_invalidates_only_target_families_for_include_mode(): void
+    public function test_publish_invalidates_feed_revision_globally(): void
     {
         Cache::flush();
 
@@ -93,12 +88,16 @@ class FamilyFeedCacheTest extends TestCase
 
         $post->targets()->create(['family_id' => $familyA->id]);
 
-        $versionBeforeB = FeedService::feedRevision((int) $familyB->id);
+        $versionBefore = FeedService::feedRevision();
 
-        FeedService::invalidateFeedTipCache($post->fresh(['targets']));
+        FeedService::invalidateFeedTipCache();
 
-        $this->assertGreaterThan(0, FeedService::feedRevision((int) $familyA->id));
-        $this->assertSame($versionBeforeB, FeedService::feedRevision((int) $familyB->id));
+        $this->assertGreaterThan($versionBefore, FeedService::feedRevision());
+        $this->assertSame(
+            FeedService::feedRevision(),
+            FeedService::feedRevision(),
+        );
+        $this->assertNotNull($familyB->id);
     }
 
     public function test_meta_cache_returns_latest_post_id(): void

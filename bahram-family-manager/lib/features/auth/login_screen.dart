@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:bahram_family_manager/config/bootstrap_admin.dart';
 import 'package:bahram_family_manager/widgets/branding/app_logo.dart';
 import 'package:bahram_family_manager/config/app_config.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/models/models.dart';
+import 'package:bahram_family_manager/services/auth_service.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
@@ -21,8 +23,12 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController(
+    text: BootstrapAdmin.devDefaults?.email ?? '',
+  );
+  final _passwordCtrl = TextEditingController(
+    text: BootstrapAdmin.devDefaults?.password ?? '',
+  );
   final _otpCtrl = TextEditingController();
   final _captchaAnswerCtrl = TextEditingController();
 
@@ -66,18 +72,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
     setState(() => _loading = true);
     try {
-      final result = await context.read<AppState>().requestOtp(
+      final result = await context.read<AppState>().login(
             email: _emailCtrl.text.trim(),
             password: _passwordCtrl.text,
             captchaId: _captcha?.id,
             captchaAnswer: _captchaAnswerCtrl.text.isEmpty ? null : _captchaAnswerCtrl.text,
           );
       if (!mounted) return;
-      setState(() {
-        _step = 1;
-        _mobile = result.mobile;
-        _mobileMasked = result.masked;
-      });
+      switch (result) {
+        case AdminLoginAuthenticated():
+          return;
+        case AdminLoginOtpRequired(:final mobile, :final masked):
+          setState(() {
+            _step = 1;
+            _mobile = mobile;
+            _mobileMasked = masked;
+          });
+      }
     } catch (e) {
       if (!mounted) return;
       showAppSnackBar(context, messageOf(e));

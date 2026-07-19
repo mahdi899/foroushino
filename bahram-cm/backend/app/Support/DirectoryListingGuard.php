@@ -2,8 +2,11 @@
 
 namespace App\Support;
 
+use App\Models\Media;
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\File;
+use League\Flysystem\Local\LocalFilesystemAdapter;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
@@ -29,8 +32,7 @@ final class DirectoryListingGuard
     /** Guard parent directories on any Flysystem disk (local public or FTP/SFTP). */
     public static function guardStoragePath(Filesystem $disk, string $relativePath): void
     {
-        $adapter = $disk->getAdapter();
-        if (method_exists($adapter, 'getPathPrefix') || method_exists($disk, 'path')) {
+        if (self::isLocalPublicDisk($disk)) {
             self::guardPublicRelativePath($relativePath);
 
             return;
@@ -68,6 +70,40 @@ final class DirectoryListingGuard
         return $created;
     }
 
+    /** Backfill index.html on a remote download-host disk (FTP/SFTP). */
+    public static function backfillRemote(Filesystem $disk): int
+    {
+        if (self::isLocalPublicDisk($disk)) {
+            return 0;
+        }
+
+        $created = 0;
+
+        foreach (self::PUBLIC_ROOTS as $root) {
+            $created += self::ensureRemoteIndex($disk, $root);
+        }
+
+        $paths = Media::query()
+            ->whereNotIn('disk', ['public', 'local'])
+            ->whereNotNull('path')
+            ->pluck('path');
+
+        foreach ($paths as $path) {
+            $created += self::guardFlysystemPath($disk, (string) $path);
+        }
+
+        return $created;
+    }
+
+    private static function isLocalPublicDisk(Filesystem $disk): bool
+    {
+        if ($disk instanceof FilesystemAdapter) {
+            return $disk->getAdapter() instanceof LocalFilesystemAdapter;
+        }
+
+        return method_exists($disk->getAdapter(), 'getPathPrefix');
+    }
+
     private static function publicRoot(): string
     {
         return storage_path('app/public');
@@ -98,14 +134,15 @@ final class DirectoryListingGuard
         }
     }
 
-    private static function guardFlysystemPath(Filesystem $disk, string $relativePath): void
+    private static function guardFlysystemPath(Filesystem $disk, string $relativePath): int
     {
         $relativePath = str_replace('\\', '/', trim($relativePath, '/'));
         $directory = trim(dirname($relativePath), '.');
         if ($directory === '' || $directory === '.') {
-            return;
+            return 0;
         }
 
+        $created = 0;
         $parts = explode('/', $directory);
         $current = '';
 
@@ -115,16 +152,28 @@ final class DirectoryListingGuard
             }
 
             $current = $current === '' ? $part : $current.'/'.$part;
-            $indexPath = $current.'/index.html';
-
-            try {
-                if (! $disk->exists($indexPath)) {
-                    $disk->put($indexPath, self::indexContents());
-                }
-            } catch (\Throwable) {
-                // Best effort — remote hosts may reject tiny placeholder files.
-            }
+            $created += self::ensureRemoteIndex($disk, $current);
         }
+
+        return $created;
+    }
+
+    private static function ensureRemoteIndex(Filesystem $disk, string $directory): int
+    {
+        $directory = trim(str_replace('\\', '/', $directory), '/');
+        $indexPath = $directory === '' ? 'index.html' : $directory.'/index.html';
+
+        try {
+            if (! $disk->exists($indexPath)) {
+                $disk->put($indexPath, self::indexContents());
+
+                return 1;
+            }
+        } catch (\Throwable) {
+            // Best effort — remote hosts may reject tiny placeholder files.
+        }
+
+        return 0;
     }
 
     private static function ensureIndex(string $absoluteDir): bool

@@ -130,6 +130,12 @@ export function ImageBlock({
     }
   }, [phase]);
 
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current != null) window.clearTimeout(clickTimerRef.current);
+    };
+  }, []);
+
   if (!media.url) {
     return <div className={cn('aspect-square w-full bg-white/5', roundedClass, className)} />;
   }
@@ -182,12 +188,6 @@ export function ImageBlock({
       clickTimerRef.current = null;
     }
   };
-
-  useEffect(() => {
-    return () => {
-      if (clickTimerRef.current != null) window.clearTimeout(clickTimerRef.current);
-    };
-  }, []);
 
   const hasKnownAspect = Boolean(media.width && media.height);
   const containerStyle = fillCell || !hasKnownAspect ? undefined : aspectStyle(media);

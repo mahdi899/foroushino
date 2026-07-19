@@ -7,7 +7,14 @@ interface CaptchaSettingsSectionProps {
   form: CaptchaSettingsForm;
   hasSecretKey: boolean;
   secretKeyPreview: string | null;
-  envFallback: { siteKey: boolean; secretKey: boolean };
+  hasTurnstileSecretKey: boolean;
+  turnstileSecretKeyPreview: string | null;
+  envFallback: {
+    siteKey: boolean;
+    secretKey: boolean;
+    turnstileSiteKey: boolean;
+    turnstileSecretKey: boolean;
+  };
   onChange: (form: CaptchaSettingsForm) => void;
 }
 
@@ -45,6 +52,8 @@ export function CaptchaSettingsSection({
   form,
   hasSecretKey,
   secretKeyPreview,
+  hasTurnstileSecretKey,
+  turnstileSecretKeyPreview,
   envFallback,
   onChange,
 }: CaptchaSettingsSectionProps) {
@@ -58,8 +67,8 @@ export function CaptchaSettingsSection({
         <div>
           <h2 className="text-h3 text-primary-dark">امنیت فرم‌ها و کپچا</h2>
           <p className="mt-1 text-small text-text-muted">
-            محافظت فرم‌های عمومی، خبرنامه، درخواست عضویت و ورود ادمین. Google reCAPTCHA v3 مخفی؛ در صورت
-            خطا، کپچای ریاضی جایگزین می‌شود.
+            محافظت فرم‌های عمومی، خبرنامه، درخواست عضویت و ورود ادمین. اولویت: Cloudflare Turnstile، سپس
+            Google reCAPTCHA v3، و در صورت خطا کپچای ریاضی.
           </p>
         </div>
       </div>
@@ -68,7 +77,7 @@ export function CaptchaSettingsSection({
         <ToggleRow
           checked={form.enabled}
           label="فعال‌سازی کپچا"
-          hint="کلید reCAPTCHA v3 یا کپچای ریاضی برای فرم‌های انتخاب‌شده"
+          hint="کلید Turnstile یا reCAPTCHA v3؛ در غیر این صورت کپچای ریاضی"
           onChange={(enabled) => patch({ enabled })}
         />
 
@@ -102,6 +111,57 @@ export function CaptchaSettingsSection({
               onChange={(protectAdminLogin) => patch({ protectAdminLogin })}
             />
           </div>
+        </div>
+
+        <div className="lg:col-span-2">
+          <p className="mb-3 text-caption font-medium text-text">اولویت ۱ — Cloudflare Turnstile</p>
+        </div>
+
+        <div>
+          <label className="field-label" htmlFor="captcha-turnstile-site-key">
+            Site Key (Turnstile)
+          </label>
+          <input
+            id="captcha-turnstile-site-key"
+            value={form.turnstileSiteKey}
+            onChange={(e) => patch({ turnstileSiteKey: e.target.value })}
+            className="field-input"
+            dir="ltr"
+            placeholder="0x4AAAA..."
+            disabled={!form.enabled}
+          />
+          {envFallback.turnstileSiteKey && !form.turnstileSiteKey.trim() && (
+            <p className="mt-1 text-caption text-text-muted">fallback از env: NEXT_PUBLIC_TURNSTILE_SITE_KEY</p>
+          )}
+        </div>
+
+        <div>
+          <label className="field-label" htmlFor="captcha-turnstile-secret-key">
+            Secret Key (Turnstile)
+          </label>
+          <input
+            id="captcha-turnstile-secret-key"
+            type="password"
+            value={form.turnstileSecretKeyInput}
+            onChange={(e) => patch({ turnstileSecretKeyInput: e.target.value })}
+            className="field-input"
+            dir="ltr"
+            placeholder={hasTurnstileSecretKey ? 'برای تغییر، کلید جدید وارد کنید' : '0x4AAAA...'}
+            disabled={!form.enabled}
+            autoComplete="new-password"
+          />
+          {hasTurnstileSecretKey && !form.turnstileSecretKeyInput && turnstileSecretKeyPreview && (
+            <p className="mt-1 text-caption text-success" dir="ltr">
+              ذخیره‌شده: {turnstileSecretKeyPreview}
+            </p>
+          )}
+          {envFallback.turnstileSecretKey && !hasTurnstileSecretKey && !form.turnstileSecretKeyInput.trim() && (
+            <p className="mt-1 text-caption text-text-muted">fallback از env: TURNSTILE_SECRET_KEY</p>
+          )}
+        </div>
+
+        <div className="lg:col-span-2">
+          <p className="mb-3 text-caption font-medium text-text">اولویت ۲ — Google reCAPTCHA v3</p>
         </div>
 
         <div>
@@ -150,7 +210,7 @@ export function CaptchaSettingsSection({
 
       {!form.enabled && (
         <p className="mt-4 rounded-lg bg-surface-soft px-3 py-2 text-caption text-text-muted">
-          کپچا غیرفعال است — فرم‌ها بدون تأیید reCAPTCHA/ریاضی ارسال می‌شوند (Honeypot در صورت فعال بودن
+          کپچا غیرفعال است — فرم‌ها بدون تأیید Turnstile/reCAPTCHA/ریاضی ارسال می‌شوند (Honeypot در صورت فعال بودن
           همچنان اعمال می‌شود).
         </p>
       )}

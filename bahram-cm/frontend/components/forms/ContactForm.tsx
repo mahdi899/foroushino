@@ -7,6 +7,7 @@ import { LoggedInUserSummary } from "@/components/forms/LoggedInUserSummary";
 import { useStudentFormPrefill } from "@/components/student-panel/auth/StudentAuthContext";
 import { cn } from "@/lib/cn";
 import { submitContact, validateContact, type ContactFieldErrors } from "@/lib/services/leads";
+import { captchaToRequestFields } from "@/lib/captcha/types";
 
 type Status = "idle" | "loading" | "ok" | "err";
 
@@ -59,9 +60,7 @@ export function ContactForm({ className }: { className?: string }) {
     const result = await submitContact({
       ...payload,
       source: "web_contact",
-      captcha_token: captcha?.captcha_token,
-      captcha_id: captcha?.captcha_id,
-      captcha_answer: captcha?.captcha_answer,
+      ...captchaToRequestFields(captcha),
       website,
     });
 

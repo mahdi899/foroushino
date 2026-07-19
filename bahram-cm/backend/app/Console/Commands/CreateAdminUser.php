@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\AdminRoleName;
 use App\Models\User;
+use App\Support\BootstrapAdmin;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -17,15 +18,21 @@ use Illuminate\Support\Str;
  */
 class CreateAdminUser extends Command
 {
-    protected $signature = 'app:create-admin {--email=} {--mobile=} {--name=}';
+    protected $signature = 'app:create-admin
+        {--email= : Admin email}
+        {--mobile= : Admin mobile (09xxxxxxxxx)}
+        {--name= : Display name}
+        {--password= : Password (min 12 chars; omit for interactive prompt)}
+        {--skip-otp : Skip SMS OTP on admin/sat/flutter login for this account}
+        {--root : Mark as root super-admin (full access, can delete other super-admins)}';
 
     protected $description = 'Create (or promote) a super-admin user — interactive password prompt, never logged.';
 
     public function handle(): int
     {
-        $email = $this->option('email') ?: $this->ask('ایمیل ادمین');
-        $mobile = $this->option('mobile') ?: $this->ask('موبایل ادمین (۰۹...)');
-        $name = $this->option('name') ?: $this->ask('نام نمایشی', 'مدیر کل');
+        $email = strtolower((string) ($this->option('email') ?: $this->ask('ایمیل ادمین')));
+        $mobile = (string) ($this->option('mobile') ?: $this->ask('موبایل ادمین (۰۹...)'));
+        $name = (string) ($this->option('name') ?: $this->ask('نام نمایشی', 'مدیر کل'));
 
         $validator = Validator::make(
             ['email' => $email, 'mobile' => $mobile],
@@ -38,13 +45,16 @@ class CreateAdminUser extends Command
             return self::FAILURE;
         }
 
-        $password = $this->secret('رمز عبور (حداقل ۱۲ کاراکتر)');
-        $confirm = $this->secret('تکرار رمز عبور');
+        $password = $this->option('password');
+        if ($password === null) {
+            $password = $this->secret('رمز عبور (حداقل ۱۲ کاراکتر)');
+            $confirm = $this->secret('تکرار رمز عبور');
 
-        if ($password !== $confirm) {
-            $this->error('رمزها یکسان نیستند.');
+            if ($password !== $confirm) {
+                $this->error('رمزها یکسان نیستند.');
 
-            return self::FAILURE;
+                return self::FAILURE;
+            }
         }
 
         if (mb_strlen((string) $password) < 12) {
@@ -53,19 +63,32 @@ class CreateAdminUser extends Command
             return self::FAILURE;
         }
 
-        $existing = User::query()->where('email', $email)->orWhere('mobile', $mobile)->first();
-        if ($existing && ! $this->confirm("کاربری با این ایمیل/موبایل موجود است ({$existing->email}). بروزرسانی شود؟")) {
+        $existing = User::query()
+            ->where('email', $email)
+            ->orWhere('mobile', $mobile)
+            ->first();
+        $autoConfirm = $this->option('no-interaction')
+            || ($this->option('email') && $this->option('mobile') && $this->option('password'));
+        if ($existing && ! $autoConfirm && ! $this->confirm("کاربری با این ایمیل/موبایل موجود است ({$existing->email}). بروزرسانی شود؟")) {
             return self::FAILURE;
         }
 
+        $skipOtp = $this->option('skip-otp');
+        $isRoot = $this->option('root') || BootstrapAdmin::isRootEmail($email);
+
+        $lookup = $existing ? ['id' => $existing->id] : ['email' => $email];
+
         $admin = User::query()->updateOrCreate(
-            ['email' => $email],
+            $lookup,
             [
                 'name' => $name,
+                'email' => $email,
                 'mobile' => $mobile,
                 'mobile_verified_at' => now(),
                 'password' => Hash::make($password),
                 'is_admin' => true,
+                'admin_login_otp_exempt' => $skipOtp,
+                'is_root_admin' => $isRoot,
                 'remember_token' => Str::random(60),
             ],
         );
@@ -75,6 +98,12 @@ class CreateAdminUser extends Command
         }
 
         $this->info("ادمین ساخته/به‌روزرسانی شد: {$admin->email}");
+        if ($skipOtp) {
+            $this->line('ورود بدون OTP فعال است (admin_login_otp_exempt).');
+        }
+        if ($isRoot) {
+            $this->line('Root super-admin فعال است (is_root_admin).');
+        }
 
         return self::SUCCESS;
     }

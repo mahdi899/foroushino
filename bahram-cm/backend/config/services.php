@@ -43,8 +43,8 @@ return [
 
     // @deprecated — use recaptcha (kept for migration)
     'turnstile' => [
-        'site_key' => env('RECAPTCHA_SITE_KEY'),
-        'secret_key' => env('RECAPTCHA_SECRET_KEY'),
+        'site_key' => env('TURNSTILE_SITE_KEY', env('NEXT_PUBLIC_TURNSTILE_SITE_KEY')),
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
     ],
 
 ];

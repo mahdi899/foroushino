@@ -94,11 +94,15 @@ function makeLead(array $attrs = []): \App\Models\Lead
 
 function startCallFor(\App\Models\User $agent, \App\Models\Lead $lead): \App\Models\Call
 {
-    return \App\Models\Call::query()->create([
+    $call = \App\Models\Call::query()->create([
         'lead_id' => $lead->id,
         'agent_id' => $agent->id,
         'started_at' => now(),
     ]);
+
+    $lead->forceFill(['last_call_at' => now()])->save();
+
+    return $call;
 }
 
 function makeSaleFor(\App\Models\User $agent, \App\Models\Lead $lead, \App\Models\Product $product, string $status = 'payment_pending'): \App\Models\Sale

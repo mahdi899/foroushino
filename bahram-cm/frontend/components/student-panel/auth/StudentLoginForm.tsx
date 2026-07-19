@@ -203,6 +203,7 @@ export function StudentLoginForm({
     }
 
     if (captcha?.captcha_token) fd.set('captcha_token', captcha.captcha_token);
+    if (captcha?.captcha_provider) fd.set('captcha_provider', captcha.captcha_provider);
     if (captcha?.captcha_id) fd.set('captcha_id', captcha.captcha_id);
     if (captcha?.captcha_answer !== undefined && captcha.captcha_answer !== null) {
       fd.set('captcha_answer', String(captcha.captcha_answer));

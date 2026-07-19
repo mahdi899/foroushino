@@ -16,7 +16,13 @@ class CaptchaService
     private const CACHE_KEY = 'captcha.config';
 
     /**
-     * @return array{enabled?: bool, site_key?: string, secret_key?: string}
+     * @return array{
+     *   enabled?: bool,
+     *   site_key?: string,
+     *   secret_key?: string,
+     *   turnstile_site_key?: string,
+     *   turnstile_secret_key?: string
+     * }
      */
     private function storedConfig(): array
     {
@@ -81,6 +87,30 @@ class CaptchaService
         return true;
     }
 
+    public function turnstileSiteKey(): ?string
+    {
+        $stored = trim((string) ($this->storedConfig()['turnstile_site_key'] ?? ''));
+        if ($stored !== '') {
+            return $stored;
+        }
+
+        $env = trim((string) config('services.turnstile.site_key', ''));
+
+        return $env !== '' ? $env : null;
+    }
+
+    public function turnstileSecretKey(): ?string
+    {
+        $stored = trim((string) ($this->storedConfig()['turnstile_secret_key'] ?? ''));
+        if ($stored !== '') {
+            return $stored;
+        }
+
+        $env = trim((string) config('services.turnstile.secret_key', ''));
+
+        return $env !== '' ? $env : null;
+    }
+
     public function siteKey(): ?string
     {
         $stored = trim((string) ($this->storedConfig()['site_key'] ?? ''));
@@ -109,6 +139,8 @@ class CaptchaService
      * @return array{
      *   enabled: bool,
      *   site_key: string,
+     *   turnstile_site_key: string,
+     *   recaptcha_site_key: string,
      *   has_recaptcha: bool,
      *   has_turnstile: bool,
      *   honeypot_enabled: bool,
@@ -120,14 +152,18 @@ class CaptchaService
     public function publicConfig(): array
     {
         $enabled = $this->isEnabled();
-        $siteKey = $this->siteKey() ?? '';
-        $hasRecaptcha = $enabled && $siteKey !== '';
+        $turnstileSiteKey = $this->turnstileSiteKey() ?? '';
+        $recaptchaSiteKey = $this->siteKey() ?? '';
+        $hasTurnstile = $enabled && $turnstileSiteKey !== '';
+        $hasRecaptcha = $enabled && $recaptchaSiteKey !== '';
 
         return [
             'enabled' => $enabled,
-            'site_key' => $enabled ? $siteKey : '',
+            'site_key' => $enabled ? $recaptchaSiteKey : '',
+            'turnstile_site_key' => $enabled ? $turnstileSiteKey : '',
+            'recaptcha_site_key' => $enabled ? $recaptchaSiteKey : '',
             'has_recaptcha' => $hasRecaptcha,
-            'has_turnstile' => $hasRecaptcha,
+            'has_turnstile' => $hasTurnstile,
             'honeypot_enabled' => $this->isHoneypotEnabled(),
             'protect_newsletter' => $this->isFormProtected('newsletter'),
             'protect_leads' => $this->isFormProtected('leads'),
@@ -165,8 +201,15 @@ class CaptchaService
         Cache::put($this->mathCacheKey($id), $answer, now()->addMinutes(self::MATH_TTL_MINUTES));
     }
 
-    public function verify(?string $token, ?string $mathId, mixed $mathAnswer, ?string $ip = null, ?string $sessionId = null, bool $allowIpTrust = true): bool
-    {
+    public function verify(
+        ?string $token,
+        ?string $mathId,
+        mixed $mathAnswer,
+        ?string $ip = null,
+        ?string $sessionId = null,
+        bool $allowIpTrust = true,
+        ?string $provider = null,
+    ): bool {
         if (! $this->isEnabled()) {
             return true;
         }
@@ -182,7 +225,7 @@ class CaptchaService
         $verified = false;
 
         if ($token !== null && $token !== '') {
-            $verified = $this->verifyRecaptcha($token, $ip);
+            $verified = $this->verifyToken($token, $ip, $provider);
         }
 
         if (! $verified && $mathId !== null && $mathId !== '' && $mathAnswer !== null && $mathAnswer !== '') {
@@ -194,6 +237,27 @@ class CaptchaService
         }
 
         return $verified;
+    }
+
+    private function verifyToken(string $token, ?string $ip, ?string $provider): bool
+    {
+        if ($provider === 'turnstile') {
+            return $this->verifyTurnstile($token, $ip);
+        }
+
+        if ($provider === 'recaptcha') {
+            return $this->verifyRecaptcha($token, $ip);
+        }
+
+        if ($this->turnstileSecretKey() && $this->verifyTurnstile($token, $ip)) {
+            return true;
+        }
+
+        if ($this->secretKey()) {
+            return $this->verifyRecaptcha($token, $ip);
+        }
+
+        return false;
     }
 
     public function isTrusted(?string $ip = null, ?string $sessionId = null): bool
@@ -284,10 +348,35 @@ class CaptchaService
         }
     }
 
-    /** @deprecated Use verifyRecaptcha */
     public function verifyTurnstile(string $token, ?string $ip = null): bool
     {
-        return $this->verifyRecaptcha($token, $ip);
+        $secret = $this->turnstileSecretKey();
+        if (! $secret) {
+            return false;
+        }
+
+        $payload = [
+            'secret' => $secret,
+            'response' => $token,
+        ];
+
+        if ($ip) {
+            $payload['remoteip'] = $ip;
+        }
+
+        try {
+            $response = Http::asForm()
+                ->timeout(8)
+                ->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', $payload);
+
+            if (! $response->successful()) {
+                return false;
+            }
+
+            return (bool) $response->json('success');
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     public function verifyMath(string $id, mixed $answer): bool

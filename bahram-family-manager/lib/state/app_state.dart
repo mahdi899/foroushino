@@ -58,18 +58,41 @@ class AppState extends ChangeNotifier {
 
   Future<MathChallenge> fetchMathChallenge() => _auth.fetchMathChallenge();
 
-  Future<({String mobile, String masked})> requestOtp({
+  Future<AdminLoginResult> login({
     required String email,
     required String password,
     String? captchaId,
     String? captchaAnswer,
-  }) {
-    return _auth.loginWithPassword(
+  }) async {
+    final result = await _auth.loginWithPassword(
       email: email,
       password: password,
       captchaId: captchaId,
       captchaAnswer: captchaAnswer,
     );
+    if (result case AdminLoginAuthenticated(:final user)) {
+      this.user = user;
+      notifyListeners();
+    }
+    return result;
+  }
+
+  Future<({String mobile, String masked})> requestOtp({
+    required String email,
+    required String password,
+    String? captchaId,
+    String? captchaAnswer,
+  }) async {
+    final result = await login(
+      email: email,
+      password: password,
+      captchaId: captchaId,
+      captchaAnswer: captchaAnswer,
+    );
+    return switch (result) {
+      AdminLoginAuthenticated(:final user) => throw StateError('Already signed in as ${user.email}'),
+      AdminLoginOtpRequired(:final mobile, :final masked) => (mobile: mobile, masked: masked),
+    };
   }
 
   Future<void> resendOtp(String mobile) => _auth.resendOtp(mobile);

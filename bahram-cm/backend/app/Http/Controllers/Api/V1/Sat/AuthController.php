@@ -54,7 +54,7 @@ class AuthController extends Controller
             ]);
         }
 
-        if ($this->otp->shouldSkipAdminLogin()) {
+        if ($this->otp->shouldSkipAdminLoginOtpFor($user)) {
             return $this->issueTokenResponse($user);
         }
 

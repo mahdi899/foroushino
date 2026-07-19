@@ -65,7 +65,8 @@ export function useFormSecurity(
       ref={captchaRef}
       key={captchaGate.resetKey}
       active={configLoaded}
-      siteKey={admin ? '' : captchaGate.siteKey}
+      turnstileSiteKey={captchaGate.turnstileSiteKey}
+      recaptchaSiteKey={captchaGate.recaptchaSiteKey}
       variant={admin ? 'admin' : 'site'}
       compact
       inline={inline}

@@ -74,7 +74,9 @@ export default function SettingsPage() {
   const [captchaMeta, setCaptchaMeta] = useState({
     hasSecretKey: false,
     secretKeyPreview: null as string | null,
-    envFallback: { siteKey: false, secretKey: false },
+    hasTurnstileSecretKey: false,
+    turnstileSecretKeyPreview: null as string | null,
+    envFallback: { siteKey: false, secretKey: false, turnstileSiteKey: false, turnstileSecretKey: false },
   });
   const [trackingForm, setTrackingForm] = useState<TrackingSettingsForm>(DEFAULT_TRACKING_FORM);
   const [trackingMeta, setTrackingMeta] = useState({
@@ -144,6 +146,8 @@ export default function SettingsPage() {
         setCaptchaMeta({
           hasSecretKey: captcha.meta.hasSecretKey,
           secretKeyPreview: captcha.meta.secretKeyPreview,
+          hasTurnstileSecretKey: captcha.meta.hasTurnstileSecretKey,
+          turnstileSecretKeyPreview: captcha.meta.turnstileSecretKeyPreview,
           envFallback: captcha.meta.envFallback,
         });
         setTrackingForm(tracking.form);
@@ -187,6 +191,8 @@ export default function SettingsPage() {
       setCaptchaMeta({
         hasSecretKey: meta.hasSecretKey,
         secretKeyPreview: meta.secretKeyPreview,
+        hasTurnstileSecretKey: meta.hasTurnstileSecretKey,
+        turnstileSecretKeyPreview: meta.turnstileSecretKeyPreview,
         envFallback: meta.envFallback,
       });
     }
@@ -511,6 +517,8 @@ export default function SettingsPage() {
             form={captchaForm}
             hasSecretKey={captchaMeta.hasSecretKey}
             secretKeyPreview={captchaMeta.secretKeyPreview}
+            hasTurnstileSecretKey={captchaMeta.hasTurnstileSecretKey}
+            turnstileSecretKeyPreview={captchaMeta.turnstileSecretKeyPreview}
             envFallback={captchaMeta.envFallback}
             onChange={setCaptchaForm}
           />

@@ -118,7 +118,7 @@ final class FamilyMetaCacheService
         $branding = $this->branding->publicPayload();
 
         return [
-            'feed_revision' => FeedService::feedRevision($familyId),
+            'feed_revision' => FeedService::feedRevision(),
             'latest_post_id' => $this->latestPostIdForFamily($familyId),
             'branding_version' => $branding['branding_version'] ?? null,
             'has_active_stories' => $this->stories->hasActiveStories(),

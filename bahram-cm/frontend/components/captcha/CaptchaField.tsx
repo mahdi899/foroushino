@@ -4,11 +4,14 @@ import { useCallback, useEffect, useId, useImperativeHandle, useRef, useState, f
 import { Loader2, RefreshCw } from 'lucide-react';
 import { fetchMathCaptcha, fetchCaptchaPublicConfig } from '@/lib/captcha/api';
 import {
+  INVISIBLE_TOKEN_REFRESH_MS,
   isRecaptchaConfigured,
+  isTurnstileConfigured,
+  PROVIDER_LOAD_TIMEOUT_MS,
   recaptchaScriptUrl,
-  RECAPTCHA_LOAD_TIMEOUT_MS,
-  RECAPTCHA_TOKEN_REFRESH_MS,
   resolveRecaptchaSiteKey,
+  resolveTurnstileSiteKey,
+  turnstileScriptUrl,
 } from '@/lib/captcha/config';
 import type { CaptchaMode, CaptchaPayload, CaptchaPublicConfig } from '@/lib/captcha/types';
 import { sanitizeNumericInput, isNumericInputKey } from '@/lib/captcha/numericInput';
@@ -20,10 +23,26 @@ declare global {
       ready: (cb: () => void) => void;
       execute: (siteKey: string, options: { action: string }) => Promise<string>;
     };
+    turnstile?: {
+      render: (
+        container: string | HTMLElement,
+        options: {
+          sitekey: string;
+          size?: 'normal' | 'compact' | 'invisible';
+          callback?: (token: string) => void;
+          'error-callback'?: () => void;
+          'expired-callback'?: () => void;
+        },
+      ) => string;
+      execute: (widgetId?: string) => void;
+      reset: (widgetId?: string) => void;
+      remove: (widgetId?: string) => void;
+    };
   }
 }
 
 const recaptchaScriptPromises = new Map<string, Promise<void>>();
+let turnstileScriptPromise: Promise<void> | null = null;
 
 function loadRecaptchaScript(siteKey: string): Promise<void> {
   if (typeof window === 'undefined') {
@@ -65,9 +84,49 @@ function loadRecaptchaScript(siteKey: string): Promise<void> {
   return promise;
 }
 
+function loadTurnstileScript(): Promise<void> {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('Turnstile is browser-only'));
+  }
+
+  if (window.turnstile) {
+    return Promise.resolve();
+  }
+
+  if (turnstileScriptPromise) return turnstileScriptPromise;
+
+  turnstileScriptPromise = new Promise<void>((resolve, reject) => {
+    const url = turnstileScriptUrl();
+    const existing = document.querySelector<HTMLScriptElement>('script[data-turnstile-script="1"]');
+    if (existing) {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Turnstile script failed')), { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = url;
+    script.async = true;
+    script.defer = true;
+    script.dataset.turnstileScript = '1';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Turnstile script failed'));
+    document.head.appendChild(script);
+  });
+
+  return turnstileScriptPromise;
+}
+
+function invisiblePayload(provider: 'turnstile' | 'recaptcha', token: string): CaptchaPayload {
+  return { captcha_token: token, captcha_provider: provider };
+}
+
 export interface CaptchaFieldProps {
   className?: string;
+  /** @deprecated Use recaptchaSiteKey */
   siteKey?: string;
+  turnstileSiteKey?: string;
+  recaptchaSiteKey?: string;
   compact?: boolean;
   /** Extra-compact math captcha for inline newsletter/forms */
   tight?: boolean;
@@ -81,7 +140,7 @@ export interface CaptchaFieldProps {
   variant?: 'default' | 'site' | 'admin';
   onReadyChange?: (ready: boolean) => void;
   onPayloadChange?: (payload: CaptchaPayload | null) => void;
-  /** reCAPTCHA v3 token obtained — verify on server before unlocking chat. */
+  /** reCAPTCHA / Turnstile token obtained — verify on server before unlocking chat. */
   onHumanVerified?: (payload: CaptchaPayload) => void;
   /** Enter pressed in math answer field (chatbot verify step). */
   onMathSubmit?: (payload: CaptchaPayload) => void;
@@ -95,6 +154,8 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
   {
     className,
     siteKey = '',
+    turnstileSiteKey: turnstileSiteKeyProp,
+    recaptchaSiteKey: recaptchaSiteKeyProp,
     compact,
     tight,
     pillEmbed,
@@ -113,9 +174,16 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
   const mathIdRef = useRef('');
   const modeRef = useRef<CaptchaMode>('loading');
   const refreshTimerRef = useRef<number | null>(null);
-  const recaptchaGenRef = useRef(0);
+  const chainGenRef = useRef(0);
   const answerInputId = useId();
-  const recaptchaSiteKey = variant === 'admin' ? siteKey.trim() : resolveRecaptchaSiteKey(siteKey);
+  const turnstileContainerRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetRef = useRef<string | null>(null);
+  const resolvedTurnstileSiteKey =
+    turnstileSiteKeyProp !== undefined ? turnstileSiteKeyProp.trim() : resolveTurnstileSiteKey('');
+  const resolvedRecaptchaSiteKey =
+    recaptchaSiteKeyProp !== undefined
+      ? recaptchaSiteKeyProp.trim()
+      : resolveRecaptchaSiteKey(siteKey);
 
   const [mode, setMode] = useState<CaptchaMode>('loading');
   const [mathQuestion, setMathQuestion] = useState('');
@@ -209,81 +277,197 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
     }
   }, [clearRefreshTimer, notifyPayload, notifyReady]);
 
+  const removeTurnstileWidget = useCallback(() => {
+    if (turnstileWidgetRef.current && window.turnstile) {
+      try {
+        window.turnstile.remove(turnstileWidgetRef.current);
+      } catch {
+        // ignore
+      }
+    }
+    turnstileWidgetRef.current = null;
+  }, []);
+
+  const applyInvisibleToken = useCallback(
+    (provider: 'turnstile' | 'recaptcha', token: string) => {
+      setMode(provider);
+      setLoadError(null);
+      notifyReady(true);
+      const payload = invisiblePayload(provider, token);
+      notifyPayload(payload);
+      onHumanVerified?.(payload);
+    },
+    [notifyPayload, notifyReady, onHumanVerified],
+  );
+
   const executeRecaptcha = useCallback(async () => {
     if (!window.grecaptcha) {
       throw new Error('reCAPTCHA unavailable');
     }
 
-    const token = await window.grecaptcha.execute(recaptchaSiteKey, { action: 'submit' });
+    const token = await window.grecaptcha.execute(resolvedRecaptchaSiteKey, { action: 'submit' });
     if (!token) {
       throw new Error('reCAPTCHA token empty');
     }
 
-    setMode('recaptcha');
-    setLoadError(null);
-    notifyReady(true);
-    const payload = { captcha_token: token };
-    notifyPayload(payload);
-    onHumanVerified?.(payload);
-  }, [notifyPayload, notifyReady, onHumanVerified, recaptchaSiteKey]);
+    applyInvisibleToken('recaptcha', token);
+  }, [applyInvisibleToken, resolvedRecaptchaSiteKey]);
 
-  const startRecaptcha = useCallback(async () => {
-    if (!isRecaptchaConfigured(recaptchaSiteKey)) {
-      await activateMathMode();
-      return;
+  const executeTurnstile = useCallback(async () => {
+    if (!window.turnstile || !turnstileContainerRef.current) {
+      throw new Error('Turnstile unavailable');
     }
 
-    const gen = ++recaptchaGenRef.current;
+    removeTurnstileWidget();
+
+    const token = await new Promise<string>((resolve, reject) => {
+      const timeout = window.setTimeout(() => reject(new Error('Turnstile timeout')), PROVIDER_LOAD_TIMEOUT_MS);
+
+      turnstileWidgetRef.current = window.turnstile!.render(turnstileContainerRef.current!, {
+        sitekey: resolvedTurnstileSiteKey,
+        size: 'invisible',
+        callback: (value) => {
+          window.clearTimeout(timeout);
+          resolve(value);
+        },
+        'error-callback': () => {
+          window.clearTimeout(timeout);
+          reject(new Error('Turnstile error'));
+        },
+        'expired-callback': () => {
+          window.clearTimeout(timeout);
+          reject(new Error('Turnstile expired'));
+        },
+      });
+
+      window.turnstile!.execute(turnstileWidgetRef.current);
+    });
+
+    if (!token) {
+      throw new Error('Turnstile token empty');
+    }
+
+    applyInvisibleToken('turnstile', token);
+  }, [applyInvisibleToken, removeTurnstileWidget, resolvedTurnstileSiteKey]);
+
+  const startRecaptcha = useCallback(async () => {
+    if (!isRecaptchaConfigured(resolvedRecaptchaSiteKey)) {
+      throw new Error('reCAPTCHA not configured');
+    }
+
+    await Promise.race([
+      loadRecaptchaScript(resolvedRecaptchaSiteKey),
+      new Promise((_, reject) => {
+        window.setTimeout(() => reject(new Error('reCAPTCHA timeout')), PROVIDER_LOAD_TIMEOUT_MS);
+      }),
+    ]);
+
+    await new Promise<void>((resolve) => {
+      window.grecaptcha?.ready(() => resolve());
+    });
+
+    await executeRecaptcha();
+  }, [executeRecaptcha, resolvedRecaptchaSiteKey]);
+
+  const startTurnstile = useCallback(async () => {
+    if (!isTurnstileConfigured(resolvedTurnstileSiteKey)) {
+      throw new Error('Turnstile not configured');
+    }
+
+    await Promise.race([
+      loadTurnstileScript(),
+      new Promise((_, reject) => {
+        window.setTimeout(() => reject(new Error('Turnstile timeout')), PROVIDER_LOAD_TIMEOUT_MS);
+      }),
+    ]);
+
+    await executeTurnstile();
+  }, [executeTurnstile, resolvedTurnstileSiteKey]);
+
+  const scheduleTokenRefresh = useCallback(
+    (refreshFn: () => Promise<void>) => {
+      clearRefreshTimer();
+      refreshTimerRef.current = window.setInterval(() => {
+        void refreshFn().catch(() => {
+          clearRefreshTimer();
+          notifyReady(false);
+          notifyPayload(null);
+        });
+      }, INVISIBLE_TOKEN_REFRESH_MS);
+    },
+    [clearRefreshTimer, notifyPayload, notifyReady],
+  );
+
+  const startCaptchaChain = useCallback(async () => {
+    const gen = ++chainGenRef.current;
     setMode('loading');
     setLoadError(null);
     notifyReady(false);
     notifyPayload(null);
     clearRefreshTimer();
+    removeTurnstileWidget();
 
-    try {
-      await Promise.race([
-        loadRecaptchaScript(recaptchaSiteKey),
-        new Promise((_, reject) => {
-          window.setTimeout(() => reject(new Error('reCAPTCHA timeout')), RECAPTCHA_LOAD_TIMEOUT_MS);
-        }),
-      ]);
+    const tryTurnstile = isTurnstileConfigured(resolvedTurnstileSiteKey);
+    const tryRecaptcha = isRecaptchaConfigured(resolvedRecaptchaSiteKey);
 
-      if (gen !== recaptchaGenRef.current) return;
-
-      await new Promise<void>((resolve) => {
-        window.grecaptcha?.ready(() => resolve());
-      });
-
-      if (gen !== recaptchaGenRef.current) return;
-
-      await executeRecaptcha();
-
-      if (gen !== recaptchaGenRef.current) return;
-
-      refreshTimerRef.current = window.setInterval(() => {
-        void executeRecaptcha().catch(() => {
-          clearRefreshTimer();
-          notifyReady(false);
-          notifyPayload(null);
-        });
-      }, RECAPTCHA_TOKEN_REFRESH_MS);
-    } catch {
-      if (gen !== recaptchaGenRef.current) return;
+    if (!tryTurnstile && !tryRecaptcha) {
       await activateMathMode();
+      return;
     }
-  }, [activateMathMode, clearRefreshTimer, executeRecaptcha, notifyPayload, notifyReady, recaptchaSiteKey]);
 
-  const startRecaptchaRef = useRef(startRecaptcha);
-  startRecaptchaRef.current = startRecaptcha;
+    if (tryTurnstile) {
+      try {
+        await startTurnstile();
+        if (gen !== chainGenRef.current) return;
+        scheduleTokenRefresh(async () => {
+          removeTurnstileWidget();
+          await startTurnstile();
+        });
+        return;
+      } catch {
+        if (gen !== chainGenRef.current) return;
+        removeTurnstileWidget();
+      }
+    }
+
+    if (tryRecaptcha) {
+      try {
+        await startRecaptcha();
+        if (gen !== chainGenRef.current) return;
+        scheduleTokenRefresh(() => executeRecaptcha());
+        return;
+      } catch {
+        if (gen !== chainGenRef.current) return;
+      }
+    }
+
+    await activateMathMode();
+  }, [
+    activateMathMode,
+    clearRefreshTimer,
+    executeRecaptcha,
+    notifyPayload,
+    notifyReady,
+    removeTurnstileWidget,
+    resolvedRecaptchaSiteKey,
+    resolvedTurnstileSiteKey,
+    scheduleTokenRefresh,
+    startRecaptcha,
+    startTurnstile,
+  ]);
+
+  const startCaptchaChainRef = useRef(startCaptchaChain);
+  startCaptchaChainRef.current = startCaptchaChain;
 
   useEffect(() => {
     if (!active) return;
-    void startRecaptchaRef.current();
+    void startCaptchaChainRef.current();
     return () => {
       clearRefreshTimer();
-      recaptchaGenRef.current += 1;
+      removeTurnstileWidget();
+      chainGenRef.current += 1;
     };
-  }, [active, clearRefreshTimer]);
+  }, [active, clearRefreshTimer, removeTurnstileWidget]);
 
   useEffect(() => {
     if (mode !== 'math') return;
@@ -316,7 +500,13 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
     variant === 'site' || (!adminInline && variant !== 'default' && compact && inline);
   const siteTight = siteInline && tight;
   const mathOnly = mode === 'math' && (pillEmbed || (compact && inline));
-  const invisibleRecaptcha = mode === 'recaptcha' || (mode === 'loading' && isRecaptchaConfigured(recaptchaSiteKey) && !mathOnly);
+  const invisibleProvider =
+    (isTurnstileConfigured(resolvedTurnstileSiteKey) && mode !== 'math') ||
+    (isRecaptchaConfigured(resolvedRecaptchaSiteKey) && mode !== 'math');
+  const invisibleCaptcha =
+    mode === 'turnstile' ||
+    mode === 'recaptcha' ||
+    (mode === 'loading' && invisibleProvider && !mathOnly);
 
   return (
     <div
@@ -334,7 +524,7 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
       )}
       aria-label={pillEmbed ? 'تأیید امنیتی' : undefined}
     >
-      {mode === 'loading' && !mathOnly && invisibleRecaptcha && (
+      {mode === 'loading' && !mathOnly && invisibleCaptcha && (
         <div className={cn('flex items-center gap-2 text-text-muted', compact && inline ? 'text-[11px]' : 'text-small')}>
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
           {compact && inline ? '…' : 'در حال تأیید امنیتی...'}
@@ -456,21 +646,29 @@ export const CaptchaField = forwardRef<CaptchaFieldHandle, CaptchaFieldProps>(fu
         </div>
       )}
 
+      <div ref={turnstileContainerRef} className="hidden" aria-hidden="true" />
+
       {loadError && mode === 'math' && (
         <p className={cn('text-gold', siteInline || compact || inline ? 'text-[10px]' : 'mt-2 text-small')}>{loadError}</p>
       )}
 
-      {mode === 'recaptcha' && !pillEmbed && !compact && (
+      {(mode === 'recaptcha' || mode === 'turnstile') && !pillEmbed && !compact && (
         <p className="mt-2 text-[10px] text-text-muted">
-          این سایت توسط reCAPTCHA محافظت می‌شود و{' '}
-          <a href="https://policies.google.com/privacy" className="underline" target="_blank" rel="noopener noreferrer">
-            حریم خصوصی
-          </a>{' '}
-          و{' '}
-          <a href="https://policies.google.com/terms" className="underline" target="_blank" rel="noopener noreferrer">
-            شرایط
-          </a>{' '}
-          Google اعمال می‌شود.
+          {mode === 'turnstile' ? (
+            <>این سایت توسط Cloudflare Turnstile محافظت می‌شود.</>
+          ) : (
+            <>
+              این سایت توسط reCAPTCHA محافظت می‌شود و{' '}
+              <a href="https://policies.google.com/privacy" className="underline" target="_blank" rel="noopener noreferrer">
+                حریم خصوصی
+              </a>{' '}
+              و{' '}
+              <a href="https://policies.google.com/terms" className="underline" target="_blank" rel="noopener noreferrer">
+                شرایط
+              </a>{' '}
+              Google اعمال می‌شود.
+            </>
+          )}
         </p>
       )}
     </div>
@@ -526,6 +724,8 @@ export function useCaptchaGate(options?: CaptchaGateOptions) {
           setConfig({
             enabled: true,
             site_key: '',
+            turnstile_site_key: '',
+            recaptcha_site_key: '',
             has_recaptcha: false,
             has_turnstile: false,
             honeypot_enabled: true,
@@ -553,7 +753,9 @@ export function useCaptchaGate(options?: CaptchaGateOptions) {
     fieldReady: captcha.ready,
     fieldPayload: captcha.payload,
     payload: required ? captcha.payload : null,
-    siteKey: config?.site_key ?? '',
+    turnstileSiteKey: config?.turnstile_site_key ?? '',
+    recaptchaSiteKey: config?.recaptcha_site_key ?? config?.site_key ?? '',
+    siteKey: config?.recaptcha_site_key ?? config?.site_key ?? '',
     reset: captcha.reset,
     resetKey: captcha.resetKey,
     fieldProps: captcha.fieldProps,

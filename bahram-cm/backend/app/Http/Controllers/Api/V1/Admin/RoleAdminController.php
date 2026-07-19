@@ -144,7 +144,7 @@ class RoleAdminController extends Controller
     /** @return array<string, mixed> */
     private function adminPayload(User $user, ?User $viewer = null): array
     {
-        $canViewEmail = $viewer && ($viewer->isSuperAdmin() || $viewer->hasPermission('admins.view_email'));
+        $canViewEmail = $viewer && ($viewer->isRootAdmin() || $viewer->isSuperAdmin() || $viewer->hasPermission('admins.view_email'));
 
         return [
             'id' => $user->id,
@@ -153,10 +153,28 @@ class RoleAdminController extends Controller
             'mobile' => $user->mobile,
             'roles' => $user->getRoleNames()->values()->all(),
             'is_super_admin' => $user->isSuperAdmin(),
+            'is_root_admin' => $user->isRootAdmin(),
             'can_view_email' => $canViewEmail,
-            'can_create' => $viewer && ($viewer->isSuperAdmin() || $viewer->hasPermission('admins.create')),
-            'can_assign_role' => $viewer && ($viewer->isSuperAdmin() || $viewer->hasPermission('admins.assign_role')),
-            'can_delete' => $viewer && ($viewer->isSuperAdmin() || $viewer->hasPermission('admins.delete')),
+            'can_create' => $viewer && ($viewer->isRootAdmin() || $viewer->isSuperAdmin() || $viewer->hasPermission('admins.create')),
+            'can_assign_role' => $viewer && ! $user->isRootAdmin() && ($viewer->isRootAdmin() || $viewer->isSuperAdmin() || $viewer->hasPermission('admins.assign_role')),
+            'can_delete' => $viewer && $this->viewerCanDeleteAdmin($viewer, $user),
         ];
+    }
+
+    private function viewerCanDeleteAdmin(User $viewer, User $target): bool
+    {
+        if ($target->isRootAdmin() || $target->id === $viewer->id) {
+            return false;
+        }
+
+        if (! ($viewer->isRootAdmin() || $viewer->isSuperAdmin() || $viewer->hasPermission('admins.delete'))) {
+            return false;
+        }
+
+        if ($target->isSuperAdmin() && ! $viewer->isRootAdmin()) {
+            return false;
+        }
+
+        return true;
     }
 }

@@ -31,6 +31,7 @@ export type AdminUserRow = {
   mobile?: string | null;
   roles: string[];
   is_super_admin: boolean;
+  is_root_admin?: boolean;
   can_view_email?: boolean;
   can_create?: boolean;
   can_assign_role?: boolean;

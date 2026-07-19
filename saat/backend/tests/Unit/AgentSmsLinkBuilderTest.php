@@ -3,6 +3,9 @@
 use App\Enums\LeadSmsTemplate;
 use App\Models\User;
 use App\Services\Sms\AgentSmsLinkBuilder;
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 it('passes settings to withBase when building template links', function (): void {
     config(['app.url' => 'http://localhost']);

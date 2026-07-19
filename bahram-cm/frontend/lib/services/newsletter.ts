@@ -8,6 +8,7 @@
  */
 import { postJson, type ApiResult } from "./api";
 import type { CaptchaPayload } from "@/lib/captcha/types";
+import { captchaToRequestFields } from "@/lib/captcha/types";
 
 export type NewsletterResult = {
   id: number;
@@ -33,9 +34,7 @@ export async function subscribeNewsletter(
     email: email.trim(),
     source,
     page_url: typeof window !== "undefined" ? window.location.href : undefined,
-    captcha_token: captcha?.captcha_token,
-    captcha_id: captcha?.captcha_id,
-    captcha_answer: captcha?.captcha_answer,
+    ...captchaToRequestFields(captcha),
     website: website || undefined,
   });
 

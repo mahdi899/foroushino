@@ -12,13 +12,17 @@ async function sleep(ms: number): Promise<void> {
 }
 
 function fallbackCaptchaConfig(): CaptchaPublicConfig {
-  const envKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY?.trim() ?? '';
-  const hasRecaptcha = Boolean(envKey);
+  const turnstileKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim() ?? '';
+  const recaptchaKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY?.trim() ?? '';
+  const hasTurnstile = Boolean(turnstileKey);
+  const hasRecaptcha = Boolean(recaptchaKey);
   return {
     enabled: true,
-    site_key: envKey,
+    site_key: recaptchaKey,
+    turnstile_site_key: turnstileKey,
+    recaptcha_site_key: recaptchaKey,
     has_recaptcha: hasRecaptcha,
-    has_turnstile: hasRecaptcha,
+    has_turnstile: hasTurnstile,
     honeypot_enabled: true,
     protect_newsletter: true,
     protect_leads: true,

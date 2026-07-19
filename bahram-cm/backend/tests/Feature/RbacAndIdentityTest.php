@@ -401,6 +401,7 @@ class RbacAndIdentityTest extends TestCase
         $this->postJson('/api/v1/roles/admins', [
             'name' => 'مالی جدید',
             'email' => 'new.finance@bahram.test',
+            'mobile' => '09121234567',
             'password' => 'password123',
             'role' => AdminRoleName::Finance->value,
         ])
@@ -427,6 +428,7 @@ class RbacAndIdentityTest extends TestCase
         $this->postJson('/api/v1/roles/admins', [
             'name' => 'مدیر تست',
             'email' => 'blocked@bahram.test',
+            'mobile' => '09121234568',
             'password' => 'password123',
             'role' => AdminRoleName::Finance->value,
         ])->assertForbidden();
@@ -435,23 +437,49 @@ class RbacAndIdentityTest extends TestCase
     public function test_admin_cannot_create_super_admin_user(): void
     {
         $admin = $this->makeAdmin(AdminRoleName::Admin);
+        $admin->givePermissionTo('admins.create');
         Sanctum::actingAs($admin);
 
         $this->postJson('/api/v1/roles/admins', [
             'name' => 'مدیر کل جدید',
             'email' => 'blocked-super@bahram.test',
+            'mobile' => '09121234569',
             'password' => 'password123',
             'role' => AdminRoleName::SuperAdmin->value,
         ])->assertUnprocessable()
             ->assertJsonPath('error.details.role.0', 'فقط مدیر کل می‌تواند مدیر کل جدید بسازد.');
     }
 
-    private function makeAdmin(AdminRoleName $role): User
+    public function test_root_admin_can_delete_other_super_admin(): void
+    {
+        $root = $this->makeAdmin(AdminRoleName::SuperAdmin, isRootAdmin: true);
+        $other = $this->makeAdmin(AdminRoleName::SuperAdmin);
+        Sanctum::actingAs($root);
+
+        $this->deleteJson('/api/v1/roles/admins/'.$other->id)
+            ->assertNoContent();
+
+        $this->assertNull(User::query()->find($other->id));
+    }
+
+    public function test_root_admin_cannot_be_deleted(): void
+    {
+        $root = $this->makeAdmin(AdminRoleName::SuperAdmin, isRootAdmin: true);
+        $other = $this->makeAdmin(AdminRoleName::SuperAdmin, isRootAdmin: true);
+        Sanctum::actingAs($other);
+
+        $this->deleteJson('/api/v1/roles/admins/'.$root->id)
+            ->assertUnprocessable()
+            ->assertJsonPath('error.details.user.0', 'مدیر اصلی سیستم قابل حذف نیست.');
+    }
+
+    private function makeAdmin(AdminRoleName $role, bool $isRootAdmin = false): User
     {
         $user = User::factory()->create([
             'email' => Str::uuid().'@bahram.test',
             'password' => Hash::make('password'),
             'is_admin' => true,
+            'is_root_admin' => $isRootAdmin,
         ]);
         $user->assignRole($role->value);
 

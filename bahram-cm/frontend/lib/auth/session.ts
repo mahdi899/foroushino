@@ -12,6 +12,7 @@ export interface AdminUser {
   roles: string[];
   permissions: string[];
   is_super_admin?: boolean;
+  is_root_admin?: boolean;
 }
 
 /** Read the Sanctum personal-access token from the httpOnly cookie. */
@@ -77,10 +78,19 @@ export const getCurrentUser = cache(async (): Promise<AdminUser | null> => {
   }
 });
 /** Permission gate helper for server components / actions. */
+export function isRootAdmin(user: AdminUser | null): boolean {
+  if (!user) return false;
+  return Boolean(user.is_root_admin);
+}
+
+/** Permission gate helper for server components / actions. */
 export function isSuperAdmin(user: AdminUser | null): boolean {
   if (!user) return false;
   return Boolean(
-    user.is_super_admin || user.roles.includes('super-admin') || user.roles.includes('SUPER_ADMIN'),
+    user.is_root_admin ||
+      user.is_super_admin ||
+      user.roles.includes('super-admin') ||
+      user.roles.includes('SUPER_ADMIN'),
   );
 }
 

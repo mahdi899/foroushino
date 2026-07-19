@@ -34,8 +34,20 @@ const baseStats: FamilyPostStats = {
   heart: 0,
   target: 1,
   clap: 0,
+  thumbs_up: 0,
+  laugh: 0,
+  sad: 0,
+  party: 0,
+  star: 0,
+  rocket: 0,
+  eyes: 0,
+  pray: 0,
+  muscle: 0,
+  hundred: 0,
+  wink: 0,
   comments: 3,
   action_responses: 0,
+  views: 0,
 };
 
 describe("ReactionBar", () => {

@@ -9,6 +9,7 @@ export type LeadInput = {
   notes?: string;
   source?: string;
   captcha_token?: string;
+  captcha_provider?: 'turnstile' | 'recaptcha' | 'math';
   captcha_id?: string;
   captcha_answer?: string;
   website?: string;
@@ -78,6 +79,7 @@ export type ContactInput = {
   message: string;
   source?: string;
   captcha_token?: string;
+  captcha_provider?: 'turnstile' | 'recaptcha' | 'math';
   captcha_id?: string;
   captcha_answer?: string;
   website?: string;

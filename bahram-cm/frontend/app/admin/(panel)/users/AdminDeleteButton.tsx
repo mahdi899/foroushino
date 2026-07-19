@@ -8,16 +8,14 @@ import type { AdminUserRow } from '@/lib/admin/accessTypes';
 
 export function AdminDeleteButton({
   admin,
-  canManage,
 }: {
   admin: AdminUserRow;
-  canManage: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  if (!canManage || admin.is_super_admin) {
+  if (!admin.can_delete) {
     return <span className="text-caption text-text-muted">—</span>;
   }
 

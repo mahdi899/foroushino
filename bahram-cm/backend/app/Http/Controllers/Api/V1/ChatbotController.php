@@ -53,6 +53,7 @@ class ChatbotController extends Controller
             $request->input('captcha_math_answer'),
             $ip !== '' ? $ip : null,
             $request->input('session_id'),
+            is_string($request->input('captcha_provider')) ? $request->input('captcha_provider') : null,
         );
 
         if (! $verified) {
@@ -93,6 +94,7 @@ class ChatbotController extends Controller
             $request->input('captcha_math_answer'),
             $ip !== '' ? $ip : null,
             $request->input('session_id'),
+            is_string($request->input('captcha_provider')) ? $request->input('captcha_provider') : null,
         );
 
         if (! $verified) {
@@ -320,6 +322,7 @@ class ChatbotController extends Controller
             'user_agent' => ['nullable', 'string', 'max:500'],
             'requested_operator_profile_id' => ['nullable', 'uuid'],
             'captcha_token' => ['nullable', 'string'],
+            'captcha_provider' => ['nullable', 'string', 'in:turnstile,recaptcha'],
             'captcha_math_id' => ['nullable', 'string'],
             'captcha_math_answer' => ['nullable'],
         ]);
@@ -331,6 +334,7 @@ class ChatbotController extends Controller
             $validated['captcha_math_answer'] ?? null,
             $ip !== '' ? $ip : null,
             $validated['session_id'],
+            $validated['captcha_provider'] ?? null,
         );
 
         if (! $verified) {

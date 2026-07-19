@@ -353,6 +353,10 @@ export const ReactionBar = forwardRef<
     };
   }, []);
 
+  const waitForChipDestinationRef = useRef<
+    (type: FamilyReactionType, attempt?: number) => Promise<{ x: number; y: number } | null>
+  >(() => Promise.resolve(null));
+
   const waitForChipDestination = useCallback(
     (type: FamilyReactionType, attempt = 0): Promise<{ x: number; y: number } | null> =>
       new Promise((resolve) => {
@@ -366,11 +370,13 @@ export const ReactionBar = forwardRef<
           return;
         }
         window.requestAnimationFrame(() => {
-          void waitForChipDestination(type, attempt + 1).then(resolve);
+          void waitForChipDestinationRef.current(type, attempt + 1).then(resolve);
         });
       }),
     [measureReactionChip, predictChipNearAddButton],
   );
+
+  waitForChipDestinationRef.current = waitForChipDestination;
 
   const persistReactionChange = useCallback(
     async (

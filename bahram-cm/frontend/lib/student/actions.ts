@@ -101,6 +101,7 @@ export async function loginPasswordAction(_prev: PasswordAuthState, formData: Fo
     mobile,
     password,
     captcha_token: formData.get('captcha_token') || undefined,
+    captcha_provider: formData.get('captcha_provider') || undefined,
     captcha_id: formData.get('captcha_id') || undefined,
     captcha_answer: formData.get('captcha_answer') ?? undefined,
     website: formData.get('website') || undefined,

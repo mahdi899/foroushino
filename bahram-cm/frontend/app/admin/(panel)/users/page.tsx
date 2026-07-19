@@ -50,7 +50,11 @@ export default async function AdminUsersPage() {
             <tr key={admin.id} className="hover:bg-surface-soft/40">
               <td className="px-4 py-3 font-medium text-text">
                 {admin.name}
-                {admin.is_super_admin ? (
+                {admin.is_root_admin ? (
+                  <span className="mr-2 inline-block">
+                    <Badge tone="accent">مدیر اصلی</Badge>
+                  </span>
+                ) : admin.is_super_admin ? (
                   <span className="mr-2 inline-block">
                     <Badge tone="accent">مدیر کل</Badge>
                   </span>
@@ -80,7 +84,7 @@ export default async function AdminUsersPage() {
               </td>
               {showDeleteColumn ? (
                 <td className="px-4 py-3">
-                  <AdminDeleteButton admin={admin} canManage={canDelete} />
+                  <AdminDeleteButton admin={admin} />
                 </td>
               ) : null}
             </tr>
