@@ -1,5 +1,6 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
+import { verifyRevalidateSecret } from '@/lib/cache/verifyRevalidateSecret';
 
 type RevalidateBody = {
   secret?: string;
@@ -13,12 +14,6 @@ function resolveSecret(request: NextRequest, body: RevalidateBody): string {
   return body.secret?.trim() ?? '';
 }
 
-function secretMatches(provided: string): boolean {
-  const expected = process.env.REVALIDATE_SECRET?.trim();
-  if (!expected || !provided) return false;
-  return provided === expected;
-}
-
 /** ISR purge webhook — called by Laravel CacheService after admin purge / content changes. */
 export async function POST(request: NextRequest) {
   let body: RevalidateBody = {};
@@ -29,7 +24,7 @@ export async function POST(request: NextRequest) {
   }
 
   const provided = resolveSecret(request, body);
-  if (!secretMatches(provided)) {
+  if (!(await verifyRevalidateSecret(provided))) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 

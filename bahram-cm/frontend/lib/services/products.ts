@@ -1,6 +1,7 @@
 /** Purchasable products/packages service (used by the checkout flow). */
 import { cache } from "react";
 import { getJson, type ApiResult } from "./api";
+import { getStaticJson } from "./staticFetch";
 import { getStudentToken } from "@/lib/student/session";
 
 export type ProductListItem = {
@@ -41,7 +42,12 @@ type SingleResponse<T> = { data: T };
 
 export async function getProducts(options?: { listed?: boolean }): Promise<ApiResult<ProductListItem[]>> {
   const query = options?.listed ? '?listed=1' : '';
-  const result = await getJson<ListResponse<ProductListItem>>(`/products${query}`);
+  const result = options?.listed
+    ? await getStaticJson<ListResponse<ProductListItem>>(`/products${query}`, {
+        ttlKey: 'pricing',
+        tags: ['products', 'pricing', 'home'],
+      })
+    : await getJson<ListResponse<ProductListItem>>(`/products${query}`);
   if (!result.ok) return result;
   return { ok: true, data: result.data.data };
 }

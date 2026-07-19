@@ -3,13 +3,20 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Services\CacheIntegrationService;
 use App\Services\CacheService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Http\Concerns\VerifiesInternalSecret;
 
 class CacheController extends Controller
 {
-    public function __construct(private readonly CacheService $cache) {}
+    use VerifiesInternalSecret;
+
+    public function __construct(
+        private readonly CacheService $cache,
+        private readonly CacheIntegrationService $integrations,
+    ) {}
 
     /** Public config for Next.js edge middleware (no auth). */
     public function publicConfig(): JsonResponse
@@ -160,6 +167,23 @@ class CacheController extends Controller
         };
 
         return response()->json(['data' => $result]);
+    }
+
+    /** Next.js ISR webhook — verify panel-managed revalidate secret (server-to-server). */
+    public function verifyRevalidate(Request $request): JsonResponse
+    {
+        if (! $this->verifyInternalSecret($request)) {
+            return response()->json(['ok' => false], 401);
+        }
+
+        $provided = trim((string) ($request->input('secret') ?? ''));
+        $expected = $this->integrations->revalidateSecret() ?? '';
+
+        if ($provided === '' || $expected === '') {
+            return response()->json(['ok' => false], 401);
+        }
+
+        return response()->json(['ok' => hash_equals($expected, $provided)]);
     }
 
 }

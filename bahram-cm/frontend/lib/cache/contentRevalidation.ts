@@ -2,6 +2,7 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { adminFetch } from '@/lib/auth/session';
+import { articleTag } from '@/lib/cache/isrTags';
 
 let autoPurgeCache: { at: number; enabled: boolean } | null = null;
 const AUTO_PURGE_TTL_MS = 30_000;
@@ -32,15 +33,18 @@ export async function revalidatePublicContent(
 }
 
 export async function revalidateArticleSurfaces(slug?: string | null): Promise<void> {
-  await revalidatePublicContent(() => {
+    await revalidatePublicContent(() => {
     revalidateTag('articles', 'max');
     revalidateTag('seo', 'max');
+    revalidateTag('home', 'max');
+    revalidatePath('/');
     revalidatePath('/admin/blog');
     revalidatePath('/admin/blog/new');
     revalidatePath('/insights');
     revalidatePath('/sitemap.xml');
     revalidatePath('/sitemaps');
     if (slug) {
+      revalidateTag(articleTag(slug), 'max');
       revalidatePath(`/insights/${slug}`);
     }
   });

@@ -4202,3 +4202,29 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   color: #fbbf24;
 }
 
+.admin-root .admin-panel-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--color-surface-muted) 72%, transparent);
+}
+
+.admin-root .admin-panel-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-surface) 55%, transparent) 50%,
+    transparent 100%
+  );
+  animation: admin-panel-skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
+@keyframes admin-panel-skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+

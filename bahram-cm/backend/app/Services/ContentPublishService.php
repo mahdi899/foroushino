@@ -19,13 +19,15 @@ class ContentPublishService
     public function revalidateArticles(?string $slug = null, ?string $previousSlug = null): void
     {
         $paths = ['/insights', '/sitemap.xml', '/sitemaps'];
+        $tags = ['articles', 'seo', 'home'];
         foreach (array_filter([$slug, $previousSlug]) as $s) {
             $paths[] = '/insights/'.$s;
+            $tags[] = 'article:'.$s;
         }
 
         $this->purge(
             'ذخیره مقاله',
-            ['articles', 'seo'],
+            array_values(array_unique($tags)),
             array_values(array_unique($paths)),
             fn () => $this->forgetArticleRuntimeCache($slug, $previousSlug),
         );
@@ -78,7 +80,7 @@ class ContentPublishService
 
         $this->purge(
             'ذخیره محصول',
-            ['pricing', 'services', 'settings'],
+            ['pricing', 'services', 'settings', 'home', 'products'],
             array_values(array_unique($paths)),
             fn () => $this->forgetProductRuntimeCache($slug),
         );

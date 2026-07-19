@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { buildMetadata } from "@/lib/seo";
 import { HomeBelowFoldSections } from "@/components/home/HomeBelowFoldSections";
+import { ensureStaticPageCache } from "@/lib/cache/staticPage";
 import bahramImageLoader from "@/lib/imageLoader";
 import { sitePhotos } from "@/lib/site-photo-paths";
 
@@ -10,7 +11,9 @@ export const metadata: Metadata = buildMetadata({
   path: "/",
 });
 
-export default function HomePage() {
+export default async function HomePage() {
+  await ensureStaticPageCache();
+
   return (
     <>
       <link rel="preload" as="image" href={bahramImageLoader({ src: sitePhotos.heroBackgroundMobile, width: 768, quality: 80 })} media="(max-width: 1023px)" fetchPriority="high" />

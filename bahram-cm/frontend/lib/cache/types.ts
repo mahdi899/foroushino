@@ -110,7 +110,7 @@ export const CACHE_MODULES: CacheModule[] = [
     settingKey: 'page_cache',
     group: 'cache',
     label: 'کش صفحه (ISR)',
-    description: 'HTML مقالات، برگه‌ها، نظرات و محتوای عمومی — نه فرم خرید/چت',
+    description: 'صفحات عمومی (خانه، بلاگ، دوره‌ها) از رندر ازپیش‌ساخته سرو می‌شوند؛ با ذخیره محتوا خودکار بروز می‌شوند',
   },
   {
     id: 'object_cache',
@@ -200,6 +200,7 @@ export const CACHE_MODULES: CacheModule[] = [
 ];
 
 export const CACHE_TAG_GROUPS: CacheTagGroup[] = [
+  { id: 'home', label: 'صفحه اصلی', tags: ['home', 'pricing', 'products', 'seminars'], ttlKey: 'ttl_home', fallbackSeconds: 600 },
   { id: 'articles', label: 'مقالات', tags: ['articles'], ttlKey: 'ttl_articles', fallbackSeconds: REVALIDATE.articles },
   { id: 'cases', label: 'نمونه کارها', tags: ['cases'], ttlKey: 'ttl_cases', fallbackSeconds: REVALIDATE.cases },
   { id: 'services', label: 'خدمات', tags: ['services'], ttlKey: 'ttl_services', fallbackSeconds: REVALIDATE.services },
@@ -208,6 +209,7 @@ export const CACHE_TAG_GROUPS: CacheTagGroup[] = [
   { id: 'seo', label: 'سئو و سایت‌مپ', tags: ['seo', 'redirects'], ttlKey: 'ttl_settings', fallbackSeconds: 3600 },
   { id: 'faqs', label: 'سوالات متداول', tags: ['faqs', 'public-faqs'], ttlKey: 'ttl_settings', fallbackSeconds: 300 },
   { id: 'testimonials', label: 'نظرات / تبدیل‌ها', tags: ['testimonials', 'public-transformations'], ttlKey: 'ttl_cases', fallbackSeconds: 600 },
+  { id: 'mini-courses', label: 'مینی‌دوره‌ها', tags: ['mini-courses', 'public-mini-courses', 'content-comments'], ttlKey: 'ttl_services', fallbackSeconds: 3600 },
   { id: 'chatbot', label: 'چت‌بات', tags: ['chatbot'], ttlKey: 'ttl_settings', fallbackSeconds: 300 },
 ];
 

@@ -1,7 +1,11 @@
 'use client';
 
 import useSWR from 'swr';
-import { EMPTY_DASHBOARD_SUMMARY, type DashboardSummary } from '@/lib/admin/dashboardTypes';
+import {
+  EMPTY_DASHBOARD_SUMMARY,
+  normalizeDashboardSummary,
+  type DashboardSummary,
+} from '@/lib/admin/dashboardTypes';
 
 const SWR_KEY = 'admin-dashboard-summary';
 
@@ -16,36 +20,29 @@ async function fetchDashboardSummary(): Promise<DashboardSummary> {
   return json.data ? normalizeDashboardSummary(json.data) : EMPTY_DASHBOARD_SUMMARY;
 }
 
-function normalizeDashboardSummary(data: DashboardSummary): DashboardSummary {
-  return {
-    ...EMPTY_DASHBOARD_SUMMARY,
-    ...data,
-    chatbot: { ...EMPTY_DASHBOARD_SUMMARY.chatbot, ...data.chatbot },
-    academy: { ...EMPTY_DASHBOARD_SUMMARY.academy, ...data.academy },
-    recent_leads: data.recent_leads ?? [],
-    recent_tickets: data.recent_tickets ?? [],
-  };
-}
-
 /**
  * Dashboard-only SWR cache — does not touch articles, SEO, purchase, or chatbot runtime.
- * Refreshes on focus + every 30s while the dashboard is open (operator queue counts).
+ * Refreshes on focus + every 60s while the tab is visible.
  */
-export function useDashboardSummary() {
+export function useDashboardSummary(initialData?: DashboardSummary) {
+  const hasInitialData = initialData !== undefined;
+
   const { data, error, isLoading, isValidating, mutate } = useSWR(SWR_KEY, fetchDashboardSummary, {
     revalidateOnFocus: true,
     revalidateOnReconnect: true,
-    refreshInterval: 30_000,
-    dedupingInterval: 4_000,
+    refreshInterval: () => (typeof document !== 'undefined' && document.hidden ? 0 : 60_000),
+    dedupingInterval: 8_000,
     keepPreviousData: true,
-    fallbackData: EMPTY_DASHBOARD_SUMMARY,
+    fallbackData: initialData ?? EMPTY_DASHBOARD_SUMMARY,
+    revalidateOnMount: hasInitialData ? true : undefined,
   });
 
   const loadError = error instanceof Error ? error.message : error ? String(error) : null;
+  const stats = data ?? initialData ?? EMPTY_DASHBOARD_SUMMARY;
 
   return {
-    stats: data ?? EMPTY_DASHBOARD_SUMMARY,
-    loading: isLoading && !data,
+    stats,
+    loading: isLoading && initialData === undefined,
     validating: isValidating,
     error: loadError,
     refresh: () => mutate(),

@@ -501,6 +501,8 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
 });
 
 Route::get('cache/public', [CacheController::class, 'publicConfig']);
+Route::post('internal/cache/verify-revalidate', [CacheController::class, 'verifyRevalidate'])
+    ->middleware('throttle:120,1');
 Route::get('settings', [SettingController::class, 'publicIndex']);
 
 Route::get('captcha/config', [CaptchaController::class, 'config'])->middleware('throttle:60,1');

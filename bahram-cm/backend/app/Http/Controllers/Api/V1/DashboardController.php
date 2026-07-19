@@ -24,9 +24,13 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Services\ChatbotService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
+    private const SUMMARY_CACHE_KEY = 'admin.dashboard.summary';
+
+    private const SUMMARY_CACHE_TTL_SECONDS = 30;
     private const LEAD_STATUS_LABELS = [
         'new' => 'جدید',
         'contacted' => 'تماس گرفته شده',
@@ -42,6 +46,20 @@ class DashboardController extends Controller
     ];
 
     public function summary(ChatbotService $chatbot): JsonResponse
+    {
+        $data = Cache::remember(
+            self::SUMMARY_CACHE_KEY,
+            self::SUMMARY_CACHE_TTL_SECONDS,
+            fn () => $this->buildSummary($chatbot),
+        );
+
+        return response()->json(['data' => $data]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildSummary(ChatbotService $chatbot): array
     {
         $chatbotConfig = $chatbot->mergedConfig();
         $pendingOperator = ChatbotLog::query()
@@ -86,8 +104,7 @@ class DashboardController extends Controller
             SatApplicationStatus::Reviewing->value,
         ];
 
-        return response()->json([
-            'data' => [
+        return [
                 'leads' => Lead::query()->count(),
                 'new_leads' => Lead::query()->where('status', 'new')->count(),
                 'products' => Product::query()->where('is_active', true)->count(),
@@ -116,7 +133,6 @@ class DashboardController extends Controller
                 ],
                 'recent_leads' => $recentLeads,
                 'recent_tickets' => $recentTickets,
-            ],
-        ]);
+            ];
     }
 }

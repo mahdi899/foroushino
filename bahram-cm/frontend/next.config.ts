@@ -97,6 +97,8 @@ const config: NextConfig = {
   allowedDevOrigins,
   reactStrictMode: true,
   poweredByHeader: false,
+  /** Hide bottom-left "Compiling / Rendering" dev badge (nextjs-portal). Errors still show. */
+  devIndicators: false,
   async redirects() {
     return [
       { source: "/academy/app", destination: "/saat", permanent: true },
@@ -145,7 +147,8 @@ const config: NextConfig = {
       bodySizeLimit: '10mb',
     },
     staleTimes: {
-      dynamic: 0,
+      // Dev: short client cache cuts repeated "Rendering" on in-app navigation.
+      dynamic: process.env.NODE_ENV === 'development' ? 30 : 0,
       static: 180,
     },
     optimizePackageImports: [

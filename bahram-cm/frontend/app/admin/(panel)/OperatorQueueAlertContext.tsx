@@ -8,19 +8,33 @@ interface OperatorQueueAlertContextValue {
   pendingCount: number;
   ticketPendingCount: number;
   refreshPendingCount: () => Promise<void>;
+  syncBadgeCounts: (chatbot: number, tickets: number) => void;
 }
 
 const OperatorQueueAlertContext = createContext<OperatorQueueAlertContextValue | null>(null);
 
 const POLL_ACTIVE_MS = 45_000;
 const POLL_IDLE_MS = 120_000;
-const BOOT_DEFER_MS = 4_000;
+const BOOT_DEFER_MS = 6_000;
 
-export function OperatorQueueAlertProvider({ children }: { children: React.ReactNode }) {
+export function OperatorQueueAlertProvider({
+  children,
+  pollingEnabled = true,
+}: {
+  children: React.ReactNode;
+  pollingEnabled?: boolean;
+}) {
   const [pendingCount, setPendingCount] = useState(0);
   const [ticketPendingCount, setTicketPendingCount] = useState(0);
   const pendingRef = useRef(0);
   const ticketPendingRef = useRef(0);
+
+  const syncBadgeCounts = useCallback((chatbot: number, tickets: number) => {
+    pendingRef.current = chatbot;
+    ticketPendingRef.current = tickets;
+    setPendingCount(chatbot);
+    setTicketPendingCount(tickets);
+  }, []);
 
   const refreshPendingCount = useCallback(async () => {
     try {
@@ -41,6 +55,8 @@ export function OperatorQueueAlertProvider({ children }: { children: React.React
   }, []);
 
   useEffect(() => {
+    if (!pollingEnabled) return;
+
     let timerId = 0;
     let bootTimerId = 0;
     let cancelled = false;
@@ -84,11 +100,11 @@ export function OperatorQueueAlertProvider({ children }: { children: React.React
       window.clearTimeout(bootTimerId);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [refreshPendingCount]);
+  }, [refreshPendingCount, pollingEnabled]);
 
   const value = useMemo(
-    () => ({ pendingCount, ticketPendingCount, refreshPendingCount }),
-    [pendingCount, ticketPendingCount, refreshPendingCount],
+    () => ({ pendingCount, ticketPendingCount, refreshPendingCount, syncBadgeCounts }),
+    [pendingCount, ticketPendingCount, refreshPendingCount, syncBadgeCounts],
   );
 
   return <OperatorQueueAlertContext.Provider value={value}>{children}</OperatorQueueAlertContext.Provider>;

@@ -113,8 +113,9 @@ export function MediaFtpSettings() {
   }, []);
 
   useEffect(() => {
+    if (!open) return;
     void loadConnection();
-  }, [loadConnection]);
+  }, [loadConnection, open]);
 
   function onProtocolChange(next: MediaFtpProtocol) {
     setProtocol(next);

@@ -79,3 +79,14 @@ export const EMPTY_DASHBOARD_SUMMARY: DashboardSummary = {
   recent_leads: [],
   recent_tickets: [],
 };
+
+export function normalizeDashboardSummary(data: DashboardSummary): DashboardSummary {
+  return {
+    ...EMPTY_DASHBOARD_SUMMARY,
+    ...data,
+    chatbot: { ...EMPTY_DASHBOARD_SUMMARY.chatbot, ...data.chatbot },
+    academy: { ...EMPTY_DASHBOARD_SUMMARY.academy, ...data.academy },
+    recent_leads: data.recent_leads ?? [],
+    recent_tickets: data.recent_tickets ?? [],
+  };
+}

@@ -360,7 +360,8 @@ export default function CacheAdminPage() {
       {!loading && tab === 'profiles' && (
         <div className="space-y-4">
           <p className="text-small text-text-muted">
-            یک پروفایل آماده انتخاب کنید — تمام تنظیمات کش، بارگذاری و TTL به‌صورت خودکار اعمال می‌شود.
+            یک پروفایل آماده انتخاب کنید — TTL کش صفحات، بلاگ و صفحه اصلی، بارگذاری تنبل و پاک‌سازی خودکار پس از ذخیره محتوا تنظیم می‌شود.
+            صفحات عمومی از رندر ازپیش‌ساخته (ISR) سرو می‌شوند و با انتشار مقاله یا محصول بلافاصله بروز می‌شوند.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             {PERFORMANCE_PRESETS.map((preset) => {

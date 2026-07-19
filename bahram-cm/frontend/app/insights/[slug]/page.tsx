@@ -15,8 +15,7 @@ import { articleJsonLd, breadcrumbJsonLd } from "@/lib/jsonld";
 import { resolveArticleHeroExcerpt } from "@/lib/blog/heroExcerpt";
 import { formatDateFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
-
-export const revalidate = 300;
+import { ensureStaticPageCache } from "@/lib/cache/staticPage";
 
 export async function generateStaticParams() {
   const items = await getAllArticleSlugs();
@@ -50,6 +49,7 @@ export default async function InsightDetailPage({
 }) {
   const { slug: rawSlug } = await params;
   const slug = normalizeArticleSlugParam(rawSlug);
+  await ensureStaticPageCache();
   const result = await getArticleBySlug(slug);
   if (!result.ok) notFound();
   const post = result.data;
@@ -95,7 +95,7 @@ export default async function InsightDetailPage({
         <div className="insight-hero-split container-luxe mx-auto max-w-6xl min-w-0">
           <div className="insight-hero-split__grid">
             {coverSrc ? (
-              <Reveal delay={0.04} className="insight-hero-split__media-wrap">
+              <div className="insight-hero-split__media-wrap">
                 <figure className="insight-hero-split__media">
                   <SiteImage
                     src={coverSrc}
@@ -103,11 +103,12 @@ export default async function InsightDetailPage({
                     fallbackAlt={post.title}
                     fill
                     priority
+                    decoding="sync"
                     sizes="(max-width: 1023px) 100vw, 42vw"
                     className="object-cover"
                   />
                 </figure>
-              </Reveal>
+              </div>
             ) : (
               <Reveal delay={0.04} className="insight-hero-split__media-wrap">
                 <div

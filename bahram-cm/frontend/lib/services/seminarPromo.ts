@@ -1,4 +1,4 @@
-import { getJson, type ApiResult } from './api';
+import { getStaticJson } from './staticFetch';
 
 export type SeminarPromo = {
   seminar_id: number;
@@ -17,7 +17,10 @@ export type SeminarPromo = {
 type PromoResponse = { data: SeminarPromo | null };
 
 export async function getActiveSeminarPromo(): Promise<SeminarPromo | null> {
-  const result = await getJson<PromoResponse>('/seminars/promo');
+  const result = await getStaticJson<PromoResponse>('/seminars/promo', {
+    ttlKey: 'home',
+    tags: ['seminars', 'home', 'services'],
+  });
   if (!result.ok || !result.data.data) return null;
   return result.data.data;
 }

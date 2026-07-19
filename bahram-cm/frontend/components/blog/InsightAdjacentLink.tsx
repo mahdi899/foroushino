@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export function InsightAdjacentLink({
@@ -11,26 +11,32 @@ export function InsightAdjacentLink({
   title: string;
   direction: "prev" | "next";
 }) {
-  const icon = (
-    <span className="insight-hero-adjacent__icon" aria-hidden>
-      <ArrowLeft
-        className={cn("h-4 w-4 rtl-flip", direction === "next" && "rotate-180")}
-        strokeWidth={1.75}
-      />
-    </span>
-  );
+  const isPrev = direction === "prev";
 
   return (
     <Link
       href={href}
       className={cn(
         "insight-hero-adjacent group",
-        direction === "prev" ? "insight-hero-adjacent--prev" : "insight-hero-adjacent--next",
+        isPrev ? "insight-hero-adjacent--prev" : "insight-hero-adjacent--next",
       )}
     >
-      {direction === "next" ? icon : null}
-      <span className="insight-hero-adjacent__title">{title}</span>
-      {direction === "prev" ? icon : null}
+      {!isPrev ? (
+        <span className="insight-hero-adjacent__icon" aria-hidden>
+          <ChevronRight className="h-4 w-4" strokeWidth={2} />
+        </span>
+      ) : null}
+      <span className="insight-hero-adjacent__body">
+        <span className="insight-hero-adjacent__label">
+          {isPrev ? "مقاله قبلی" : "مقاله بعدی"}
+        </span>
+        <span className="insight-hero-adjacent__title">{title}</span>
+      </span>
+      {isPrev ? (
+        <span className="insight-hero-adjacent__icon" aria-hidden>
+          <ChevronLeft className="h-4 w-4" strokeWidth={2} />
+        </span>
+      ) : null}
     </Link>
   );
 }

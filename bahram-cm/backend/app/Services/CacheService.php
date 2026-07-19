@@ -35,7 +35,14 @@ class CacheService
         'faqs',
         'public-faqs',
         'testimonials',
+        'public-transformations',
         'chatbot',
+        'home',
+        'mini-courses',
+        'public-mini-courses',
+        'content-comments',
+        'seminars',
+        'products',
     ];
 
     public const WARM_PATHS = [

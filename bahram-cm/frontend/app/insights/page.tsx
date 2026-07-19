@@ -8,8 +8,7 @@ import { SiteImage } from "@/components/ui/SiteImage";
 import { getArticles } from "@/lib/services/articles";
 import { formatDateFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
-
-export const revalidate = 300;
+import { ensureStaticPageCache } from "@/lib/cache/staticPage";
 
 export const metadata: Metadata = buildMetadata({
   title: "بلاگ",
@@ -47,6 +46,7 @@ function ArticleCover({
 }
 
 export default async function InsightsPage() {
+  await ensureStaticPageCache();
   const result = await getArticles(1);
   const items = result.ok ? result.data.items : [];
   const [featured, ...rest] = items;

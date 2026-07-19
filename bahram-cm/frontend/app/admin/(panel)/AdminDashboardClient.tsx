@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { LayoutDashboard, Loader2, MessageSquare, RefreshCw } from 'lucide-react';
 import { useDashboardSummary } from '@/hooks/useDashboardSummary';
@@ -9,6 +10,8 @@ import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
 import { AdminLucideIcon } from '@/lib/admin/lucide-icons';
 import { toFa } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { useOperatorQueueAlert } from './OperatorQueueAlertContext';
+import type { DashboardSummary } from '@/lib/admin/dashboardTypes';
 
 const QUICK_LINKS = [
   { href: '/admin/chatbot', label: 'چت‌بات', icon: 'MessageSquare', meta: 'صف اپراتور و تنظیمات' },
@@ -28,9 +31,28 @@ function SummaryTile({ href, label, value }: { href: string; label: string; valu
   );
 }
 
-export function AdminDashboardClient() {
-  const { stats, loading, validating, error, refresh } = useDashboardSummary();
+function StatCardSkeleton() {
+  return <div className="admin-stat-card admin-panel-skeleton h-[5.5rem] sm:h-[6rem]" aria-hidden />;
+}
+
+function StatGridSkeleton({ count }: { count: number }) {
+  return (
+    <div className="admin-dashboard-kpi-grid">
+      {Array.from({ length: count }).map((_, index) => (
+        <StatCardSkeleton key={index} />
+      ))}
+    </div>
+  );
+}
+
+export function AdminDashboardClient({ initialStats }: { initialStats?: DashboardSummary }) {
+  const { stats, loading, validating, error, refresh } = useDashboardSummary(initialStats);
+  const { syncBadgeCounts } = useOperatorQueueAlert();
   const { academy } = stats;
+
+  useEffect(() => {
+    syncBadgeCounts(stats.chatbot.pending_operator, stats.academy.tickets_open);
+  }, [stats.chatbot.pending_operator, stats.academy.tickets_open, syncBadgeCounts]);
 
   const frontDeskCards = [
     {
@@ -146,7 +168,7 @@ export function AdminDashboardClient() {
   ];
 
   return (
-    <div className={cn('admin-dashboard', loading && 'pointer-events-none opacity-60')}>
+    <div className="admin-dashboard">
       <DashboardAlerts />
 
       {error ? (
@@ -179,29 +201,41 @@ export function AdminDashboardClient() {
 
       <section className="admin-dashboard-section">
         <h2 className="admin-dashboard-section__title">پیشخوان عملیاتی</h2>
-        <div className="admin-dashboard-kpi-grid">
-          {frontDeskCards.map((c) => (
-            <StatCard key={c.label} {...c} />
-          ))}
-        </div>
+        {loading ? (
+          <StatGridSkeleton count={3} />
+        ) : (
+          <div className="admin-dashboard-kpi-grid">
+            {frontDeskCards.map((c) => (
+              <StatCard key={c.label} {...c} />
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="admin-dashboard-section">
         <h2 className="admin-dashboard-section__title">آکادمی و باشگاه مشتریان</h2>
-        <div className="admin-dashboard-kpi-grid">
-          {academyCards.map((c) => (
-            <StatCard key={c.label} {...c} />
-          ))}
-        </div>
+        {loading ? (
+          <StatGridSkeleton count={6} />
+        ) : (
+          <div className="admin-dashboard-kpi-grid">
+            {academyCards.map((c) => (
+              <StatCard key={c.label} {...c} />
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="admin-dashboard-section">
         <h2 className="admin-dashboard-section__title">فروش و محتوا</h2>
-        <div className="admin-dashboard-kpi-grid">
-          {commerceCards.map((c) => (
-            <StatCard key={c.label} {...c} />
-          ))}
-        </div>
+        {loading ? (
+          <StatGridSkeleton count={4} />
+        ) : (
+          <div className="admin-dashboard-kpi-grid">
+            {commerceCards.map((c) => (
+              <StatCard key={c.label} {...c} />
+            ))}
+          </div>
+        )}
       </section>
 
       <div className="admin-dashboard-layout">

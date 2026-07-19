@@ -24,14 +24,32 @@ export function AdminShell({
 }) {
   return (
     <AdminFocusProvider>
-      <OperatorQueueAlertProvider>
-        <AdminSaveBarProvider>
-          <AdminShellInner permissions={permissions} isSuperAdmin={isSuperAdmin}>
-            {children}
-          </AdminShellInner>
-        </AdminSaveBarProvider>
-      </OperatorQueueAlertProvider>
+      <AdminSaveBarProvider>
+        <AdminShellWithAlerts permissions={permissions} isSuperAdmin={isSuperAdmin}>
+          {children}
+        </AdminShellWithAlerts>
+      </AdminSaveBarProvider>
     </AdminFocusProvider>
+  );
+}
+
+function AdminShellWithAlerts({
+  children,
+  permissions,
+  isSuperAdmin,
+}: {
+  children: React.ReactNode;
+  permissions: string[];
+  isSuperAdmin: boolean;
+}) {
+  const pathname = usePathname();
+
+  return (
+    <OperatorQueueAlertProvider pollingEnabled={pathname !== '/admin'}>
+      <AdminShellInner permissions={permissions} isSuperAdmin={isSuperAdmin}>
+        {children}
+      </AdminShellInner>
+    </OperatorQueueAlertProvider>
   );
 }
 
