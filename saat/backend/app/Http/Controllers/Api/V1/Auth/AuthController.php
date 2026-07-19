@@ -6,6 +6,7 @@ use App\Enums\Availability;
 use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Auth\DevLoginRequest;
+use App\Http\Requests\V1\Auth\PasswordLoginRequest;
 use App\Http\Requests\V1\Auth\RequestPhoneOtpRequest;
 use App\Http\Requests\V1\Auth\RequestTelegramOtpRequest;
 use App\Http\Requests\V1\Auth\TelegramLoginRequest;
@@ -20,6 +21,8 @@ use App\Services\Auth\InvalidTelegramInitDataException;
 use App\Services\Auth\PhoneOtpService;
 use App\Services\Auth\TelegramAuthVerifier;
 use App\Support\ApiResponse;
+use App\Support\PasswordLogin;
+use App\Support\PhoneNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -70,21 +73,49 @@ class AuthController extends Controller
     public function requestPhoneOtp(RequestPhoneOtpRequest $request): JsonResponse
     {
         $phone = $request->string('phone')->toString();
+        $method = $request->filled('method') ? $request->string('method')->toString() : null;
 
         try {
-            $channel = $this->phoneOtp->requestForPhone($phone);
+            $result = $this->phoneOtp->requestForPhone($phone, $method);
         } catch (RuntimeException $e) {
             return ApiResponse::error($e->getMessage(), status: 422, code: 'otp_request_failed');
         }
 
+        $channel = $result['channel'];
         $demo = $this->demoAuth->accountForPhone($phone);
 
         return ApiResponse::success([
             'channel' => $channel,
-            'hint' => $channel === 'demo'
-                ? "کد ثابت دمو: {$demo['otp']}"
-                : 'کد ورود به تلگرامت ارسال شد.',
-        ], $channel === 'demo' ? 'کد دمو آماده است.' : 'کد ورود به تلگرامت ارسال شد.');
+            'password_available' => $result['password_available'],
+            'otp_available' => $result['otp_available'],
+            'hint' => match ($channel) {
+                'demo' => "کد ثابت دمو: {$demo['otp']}",
+                'password' => 'رمز عبور حساب خود را وارد کنید.',
+                'choice' => 'رمز عبور یا کد تلگرام را انتخاب کنید.',
+                default => 'کد ورود به تلگرامت ارسال شد.',
+            },
+        ], match ($channel) {
+            'demo' => 'کد دمو آماده است.',
+            'password' => 'ورود با رمز عبور',
+            'choice' => 'روش ورود را انتخاب کنید',
+            default => 'کد ورود به تلگرامت ارسال شد.',
+        });
+    }
+
+    public function passwordLogin(PasswordLoginRequest $request): JsonResponse
+    {
+        $phone = PhoneNormalizer::normalize($request->string('phone')->toString());
+        $user = User::query()->where('phone', $phone)->first();
+
+        if (! PasswordLogin::enabledForUser($user)) {
+            return ApiResponse::error('شماره یا رمز عبور نادرست است.', status: 401, code: 'invalid_credentials');
+        }
+
+        if (! Hash::check($request->string('password')->toString(), (string) $user->password)) {
+            return ApiResponse::error('شماره یا رمز عبور نادرست است.', status: 401, code: 'invalid_credentials');
+        }
+
+        return $this->issueTokenForUser($user, 'password');
     }
 
     public function verifyPhoneOtp(VerifyPhoneOtpRequest $request): JsonResponse
@@ -176,15 +207,12 @@ class AuthController extends Controller
                 'name' => trim("{$telegramUser['first_name']} ".($telegramUser['last_name'] ?? '')),
                 'email' => 'tg_'.$telegramUser['id'].'@telegram.saat.local',
                 'password' => Hash::make(Str::random(40)),
-                'avatar' => $telegramUser['photo_url'],
                 'availability' => Availability::Offline,
                 'is_active' => true,
             ]);
             $user->save();
             $user->assignRole(RoleName::Agent->value);
             Wallet::query()->firstOrCreate(['user_id' => $user->id]);
-        } elseif ($telegramUser['photo_url'] && $user->avatar !== $telegramUser['photo_url']) {
-            $user->update(['avatar' => $telegramUser['photo_url']]);
         }
 
         if (! $user->is_active) {

@@ -2,6 +2,7 @@
 
 namespace App\Services\Sms;
 
+use App\Models\AppSetting;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -12,11 +13,10 @@ class MelipayamakClient
      */
     public function sendByBaseNumber(string $to, int $bodyId, array $variables): string
     {
-        $username = (string) config('melipayamak.username');
-        $password = (string) config('melipayamak.password');
+        $config = $this->resolveConfig();
 
-        if ($username === '' || $password === '') {
-            throw new RuntimeException('نام کاربری یا رمز ملی پیامک در سرور تنظیم نشده است.');
+        if ($config['username'] === '' || $config['password'] === '') {
+            throw new RuntimeException('نام کاربری یا رمز ملی پیامک در پنل مدیریت تنظیم نشده است.');
         }
 
         if ($bodyId <= 0) {
@@ -30,9 +30,9 @@ class MelipayamakClient
 
         $response = Http::timeout(20)
             ->asJson()
-            ->post(rtrim((string) config('melipayamak.rest_url'), '/').'/SendByBaseNumber', [
-                'username' => $username,
-                'password' => $password,
+            ->post(rtrim($config['rest_url'], '/').'/SendByBaseNumber', [
+                'username' => $config['username'],
+                'password' => $config['password'],
                 'to' => $this->normalizePhone($to),
                 'bodyId' => $bodyId,
                 'text' => $text,
@@ -50,6 +50,73 @@ class MelipayamakClient
         }
 
         return $recId;
+    }
+
+    /**
+     * @return array{ok: bool, message: string, credit?: float}
+     */
+    public function probeCredentials(?string $username = null, ?string $password = null, ?string $restUrl = null): array
+    {
+        $config = $this->resolveConfig($username, $password, $restUrl);
+
+        if ($config['username'] === '' || $config['password'] === '') {
+            return [
+                'ok' => false,
+                'message' => 'نام کاربری و رمز پنل ملی‌پیامک را وارد کنید.',
+            ];
+        }
+
+        $response = Http::timeout(20)
+            ->asJson()
+            ->post(rtrim($config['rest_url'], '/').'/GetCredit', [
+                'username' => $config['username'],
+                'password' => $config['password'],
+            ]);
+
+        if (! $response->ok()) {
+            return [
+                'ok' => false,
+                'message' => 'ارتباط با سرور ملی‌پیامک برقرار نشد.',
+            ];
+        }
+
+        $value = $response->json('Value') ?? $response->json('value');
+
+        if (is_numeric($value) && (float) $value < 0) {
+            return [
+                'ok' => false,
+                'message' => $this->errorMessage((string) (int) $value),
+            ];
+        }
+
+        if (! is_numeric($value)) {
+            return [
+                'ok' => false,
+                'message' => 'پاسخ نامعتبر از ملی‌پیامک دریافت شد.',
+            ];
+        }
+
+        $credit = (float) $value;
+
+        return [
+            'ok' => true,
+            'message' => 'اتصال به پنل ملی‌پیامک برقرار است.',
+            'credit' => $credit,
+        ];
+    }
+
+    /**
+     * @return array{username: string, password: string, rest_url: string}
+     */
+    private function resolveConfig(?string $username = null, ?string $password = null, ?string $restUrl = null): array
+    {
+        $stored = AppSetting::melipayamakConfig();
+
+        return [
+            'username' => $username ?? $stored['username'],
+            'password' => $password ?? $stored['password'],
+            'rest_url' => $restUrl ?? $stored['rest_url'],
+        ];
     }
 
     private function normalizePhone(string $phone): string

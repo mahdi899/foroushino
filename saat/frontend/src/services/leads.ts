@@ -38,6 +38,11 @@ export async function createLead(input: CreateLeadInput): Promise<Lead> {
   return mapLead(dto)
 }
 
+export async function fetchLeadsFromApi(): Promise<Lead[]> {
+  const rows = await http.get<Record<string, unknown>[]>('/leads')
+  return rows.map(mapLead)
+}
+
 export async function importLeadsCsv(file: File): Promise<ImportBatchResult> {
   const form = new FormData()
   form.append('file', file)

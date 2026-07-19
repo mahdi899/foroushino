@@ -10,8 +10,12 @@ import { Button } from '@/components/ui/Button'
 import { Chip } from '@/components/ui/Chip'
 import { roleLabels } from '@/data/labels'
 import { hasPermission } from '@/lib/permissions'
+import { isSuperAdminRole } from '@/lib/roles'
+import { apiErrorMessage } from '@/lib/apiErrors'
+import { isManagerRole } from '@/lib/roles'
 import { toFa } from '@/lib/format'
 import { createStaff, ensureAdminAgentsLoaded } from '@/services/userAdminActions'
+import { refreshTeamsFromAdmin } from '@/services/teamAdminActions'
 import type { Role } from '@/types'
 
 const STAFF_ROLES: Role[] = ['supervisor', 'leader']
@@ -19,16 +23,20 @@ const STAFF_ROLES: Role[] = ['supervisor', 'leader']
 export function StaffManagementScreen() {
   const navigate = useNavigate()
   const permissions = useStore((s) => s.permissions)
+  const role = useStore((s) => s.role)
   const agents = useStore((s) => s.agents)
   const teams = useStore((s) => s.teams)
   const pushToast = useStore((s) => s.pushToast)
 
   const canManage = hasPermission(permissions, 'users.manage')
   const canCreateLeader = canManage || hasPermission(permissions, 'users.manage-team')
+  const leaderTeamOptional = isManagerRole(role)
 
-  const [createRole, setCreateRole] = useState<'supervisor' | 'leader' | null>(null)
+  const [createRole, setCreateRole] = useState<'supervisor' | 'leader' | 'super-admin' | null>(null)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [teamId, setTeamId] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -53,7 +61,10 @@ export function StaffManagementScreen() {
 
   useEffect(() => {
     if (!hasPermission(permissions, 'users.view')) return
-    void ensureAdminAgentsLoaded().catch(() => {
+    void Promise.all([
+      ensureAdminAgentsLoaded(),
+      refreshTeamsFromAdmin(),
+    ]).catch(() => {
       pushToast('بارگذاری پرسنل ناموفق بود', 'error')
     })
   }, [permissions, pushToast])
@@ -62,11 +73,13 @@ export function StaffManagementScreen() {
     return null
   }
 
-  const openCreate = (role: 'supervisor' | 'leader') => {
-    setCreateRole(role)
+  const openCreate = (nextRole: 'supervisor' | 'leader' | 'super-admin') => {
+    setCreateRole(nextRole)
     setName('')
     setPhone('')
-    setTeamId(teams[0]?.id ?? '')
+    setEmail('')
+    setPassword('')
+    setTeamId(nextRole === 'leader' && leaderTeamOptional ? '' : (teams[0]?.id ?? ''))
   }
 
   const submitCreate = async () => {
@@ -74,8 +87,21 @@ export function StaffManagementScreen() {
       pushToast('نام و شماره موبایل را وارد کن', 'error')
       return
     }
-    if (createRole === 'leader' && !teamId) {
+    if (createRole === 'leader' && !leaderTeamOptional && !teamId) {
       pushToast('تیم سرتیم را انتخاب کن', 'error')
+      return
+    }
+    if (createRole === 'leader' && !leaderTeamOptional && teams.length === 0) {
+      pushToast('ابتدا یک تیم بساز، بعد سرتیم را اضافه کن', 'error')
+      return
+    }
+    if (createRole === 'super-admin') {
+      if (!email.trim() || password.length < 12) {
+        pushToast('ایمیل و رمز (حداقل ۱۲ کاراکتر) الزامی است', 'error')
+        return
+      }
+    } else if (password.length < 12) {
+      pushToast('رمز عبور اولیه (حداقل ۱۲ کاراکتر) الزامی است', 'error')
       return
     }
 
@@ -85,12 +111,23 @@ export function StaffManagementScreen() {
         name,
         phone,
         role: createRole,
-        teamId: createRole === 'leader' ? teamId : undefined,
+        teamId: createRole === 'leader' && teamId ? teamId : undefined,
+        email: createRole === 'super-admin' ? email.trim() : undefined,
+        password,
       })
-      pushToast(createRole === 'supervisor' ? 'ناظر اضافه شد' : 'سرتیم اضافه شد')
+      if (createRole === 'leader') {
+        await refreshTeamsFromAdmin(true)
+      }
+      pushToast(
+        createRole === 'supervisor'
+          ? 'ناظر اضافه شد'
+          : createRole === 'leader'
+            ? 'سرتیم اضافه شد'
+            : 'مدیر کل اضافه شد',
+      )
       setCreateRole(null)
-    } catch {
-      pushToast('افزودن پرسنل ناموفق بود', 'error')
+    } catch (error) {
+      pushToast(apiErrorMessage(error, 'افزودن پرسنل ناموفق بود'), 'error')
     } finally {
       setBusy(false)
     }
@@ -108,6 +145,25 @@ export function StaffManagementScreen() {
       />
 
       <div className="space-y-5 px-4 pb-24 pt-2">
+        {isSuperAdminRole(role) && (
+          <section className="glass-card rounded-[20px] border border-white/55 p-4 dark:border-white/10">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="text-[15px] font-extrabold text-text">مدیران کل</h2>
+              <button
+                type="button"
+                onClick={() => openCreate('super-admin')}
+                className="flex items-center gap-1 rounded-full bg-[#3390EC] px-3 py-1.5 text-[10px] font-bold text-white dark:bg-[#8774E1]"
+              >
+                <Crown size={12} />
+                مدیر کل جدید
+              </button>
+            </div>
+            <p className="text-[12px] leading-6 text-text-soft">
+              مدیر کل با رمز عبور وارد می‌شود و به همه بخش‌ها دسترسی دارد.
+            </p>
+          </section>
+        )}
+
         <section>
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-[15px] font-extrabold text-text">
@@ -207,7 +263,13 @@ export function StaffManagementScreen() {
       <BottomSheet
         open={createRole != null}
         onClose={() => setCreateRole(null)}
-        title={createRole === 'supervisor' ? 'افزودن ناظر' : 'افزودن سرتیم'}
+        title={
+          createRole === 'supervisor'
+            ? 'افزودن ناظر'
+            : createRole === 'leader'
+              ? 'افزودن سرتیم'
+              : 'افزودن مدیر کل'
+        }
       >
         <div className="space-y-3 pt-1">
           <input
@@ -223,13 +285,53 @@ export function StaffManagementScreen() {
             inputMode="tel"
             className="glass-inset w-full rounded-[14px] border border-white/55 px-3 py-3 text-[14px] font-semibold dark:border-white/10"
           />
+          {createRole === 'super-admin' && (
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="ایمیل"
+              type="email"
+              className="glass-inset w-full rounded-[14px] border border-white/55 px-3 py-3 text-[14px] font-semibold dark:border-white/10"
+            />
+          )}
+          <input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="رمز عبور اولیه (حداقل ۱۲ کاراکتر)"
+            type="password"
+            className="glass-inset w-full rounded-[14px] border border-white/55 px-3 py-3 text-[14px] font-semibold dark:border-white/10"
+          />
           {createRole === 'leader' && (
-            <div className="flex flex-wrap gap-2">
-              {teams.map((team) => (
-                <Chip key={team.id} active={teamId === team.id} onClick={() => setTeamId(team.id)}>
-                  {team.name}
-                </Chip>
-              ))}
+            <div className="space-y-2">
+              {teams.length > 0 ? (
+                <>
+                  <p className="text-[11px] font-semibold text-text-soft">
+                    {leaderTeamOptional
+                      ? 'اختصاص به تیم (اختیاری — می‌توانی بعداً در مدیریت تیم‌ها تنظیم کنی)'
+                      : 'تیم سرتیم را انتخاب کن'}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {leaderTeamOptional && (
+                      <Chip active={!teamId} onClick={() => setTeamId('')}>
+                        بدون تیم
+                      </Chip>
+                    )}
+                    {teams.map((team) => (
+                      <Chip key={team.id} active={teamId === team.id} onClick={() => setTeamId(team.id)}>
+                        {team.name}
+                      </Chip>
+                    ))}
+                  </div>
+                </>
+              ) : leaderTeamOptional ? (
+                <p className="rounded-[14px] border border-dashed border-white/55 px-3 py-2.5 text-[11px] font-semibold leading-6 text-text-soft dark:border-white/10">
+                  هنوز تیمی ساخته نشده. سرتیم بدون تیم ذخیره می‌شود و بعداً از «مدیریت تیم‌ها» به تیم اختصاص می‌دهی.
+                </p>
+              ) : (
+                <p className="rounded-[14px] border border-dashed border-amber-400/40 bg-amber-50/80 px-3 py-2.5 text-[11px] font-semibold leading-6 text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                  برای افزودن سرتیم ابتدا از بخش مدیریت تیم‌ها یک تیم بساز.
+                </p>
+              )}
             </div>
           )}
           <Button

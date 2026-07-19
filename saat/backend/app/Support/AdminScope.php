@@ -46,6 +46,8 @@ final class AdminScope
     public static function canCreateRole(User $actor, string $role): bool
     {
         return match ($role) {
+            RoleName::SuperAdmin->value => $actor->hasRole(RoleName::SuperAdmin->value) && $actor->can('users.manage'),
+            RoleName::Admin->value, RoleName::Manager->value => TeamScope::isOrgWide($actor) && $actor->can('users.manage'),
             RoleName::Supervisor->value => (bool) $actor->can('users.manage'),
             RoleName::Leader->value => $actor->can('users.manage') || $actor->can('users.manage-team'),
             RoleName::Agent->value => $actor->can('users.manage-team') || $actor->can('users.manage'),
@@ -77,6 +79,7 @@ final class AdminScope
         if ($target->hasAnyRole([
             RoleName::Manager->value,
             RoleName::Admin->value,
+            RoleName::SuperAdmin->value,
             RoleName::Supervisor->value,
         ])) {
             return false;

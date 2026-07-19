@@ -198,3 +198,31 @@ it('forbids agents from syncing team members', function () {
         'agent_ids' => [$agent->id],
     ])->assertForbidden();
 });
+
+it('lets a manager delete a team and unassign its agents', function () {
+    $manager = makeManager();
+    $team = makeTeam(['name' => 'تیم حذف']);
+    $agent = makeAgent(['team_id' => $team->id]);
+
+    Sanctum::actingAs($manager);
+
+    $this->deleteJson("/api/v1/admin/teams/{$team->id}")
+        ->assertOk()
+        ->assertJsonPath('message', 'تیم حذف شد');
+
+    $this->assertDatabaseMissing('teams', ['id' => $team->id]);
+    expect($agent->fresh()->team_id)->toBeNull();
+});
+
+it('forbids a supervisor from deleting another supervisors team', function () {
+    $supervisor = makeSupervisor();
+    $otherSupervisor = makeSupervisor();
+    $team = makeTeam(['supervisor_id' => $otherSupervisor->id]);
+
+    Sanctum::actingAs($supervisor);
+
+    $this->deleteJson("/api/v1/admin/teams/{$team->id}")
+        ->assertForbidden();
+
+    $this->assertDatabaseHas('teams', ['id' => $team->id]);
+});

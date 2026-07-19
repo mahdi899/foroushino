@@ -55,6 +55,7 @@ import { hasMultiTeamView, isAgentRole, isLeaderRole, isManagementRole, isSuperv
 import { fetchTeamLive, mergeTeamLiveIntoAgents, agentsFromTeamLive, teamsFromTeamLive } from './teamLive'
 import { agentsFromTeamRoster, fetchTeamRoster, teamFromTeamRoster } from './teamRoster'
 import { mapProduct } from '@/services/products'
+import { pooledAll } from '@/lib/pooledAll'
 
 type Dto = Record<string, unknown>
 
@@ -193,13 +194,48 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
         safeGet<Dto[]>('/wallet/payout-requests'),
       ])
 
+  const syncRows = await pooledAll<unknown>(
+    [
+      () => http.get<Dto>('/home/agent'),
+      () => http.get<Dto[]>(`/leads?per_page=${leadsPage}`),
+      () => http.get<Dto[]>(`/followups?per_page=${followupsPage}`),
+      () => safeGet<Dto[]>(`/calls?per_page=${callsPage}`),
+      () => http.get<Dto[]>(`/sales?per_page=${management ? 100 : 40}`),
+      () => fetchWalletBundle,
+      () => http.get<Dto[]>('/products'),
+      () => http.get<Dto[]>('/lead-sources'),
+      () => http.get<Dto[]>('/notifications?per_page=50'),
+      () => http.get<Dto>('/app-config'),
+      () =>
+        canViewTeamActivity ? safeGet<Dto[]>('/activity') : Promise.resolve(null),
+      () =>
+        hasPermission(permissions, 'users.view')
+          ? safeGet<Dto[]>('/admin/users')
+          : Promise.resolve(null),
+      () =>
+        hasPermission(permissions, 'users.view')
+          ? safeGet<Dto[]>('/admin/teams')
+          : Promise.resolve(null),
+      () =>
+        hasPermission(permissions, 'reports.view')
+          ? safeGet<Dto[]>('/team-reports?per_page=50')
+          : Promise.resolve(null),
+      () =>
+        canViewAgentReports
+          ? safeGet<Dto[]>('/agent-reports?per_page=50')
+          : Promise.resolve(null),
+      () => fetchShiftData(management ? 30 : 14),
+    ],
+    4,
+  )
+
   const [
     home,
     leadsRaw,
     followupsRaw,
     callsRaw,
     salesRaw,
-    [walletDetailRaw, commissionsRaw, walletTxRaw, payoutsRaw],
+    walletBundle,
     productsRaw,
     leadSourcesRaw,
     notificationsRaw,
@@ -210,26 +246,26 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
     teamReportsRaw,
     agentReportsRaw,
     shiftData,
-  ] = await Promise.all([
-    http.get<Dto>('/home/agent'),
-    http.get<Dto[]>(`/leads?per_page=${leadsPage}`),
-    http.get<Dto[]>(`/followups?per_page=${followupsPage}`),
-    safeGet<Dto[]>(`/calls?per_page=${callsPage}`),
-    http.get<Dto[]>(`/sales?per_page=${management ? 100 : 40}`),
-    fetchWalletBundle,
-    http.get<Dto[]>('/products'),
-    http.get<Dto[]>('/lead-sources'),
-    http.get<Dto[]>('/notifications?per_page=50'),
-    http.get<Dto>('/app-config'),
-    canViewTeamActivity ? safeGet<Dto[]>('/activity') : Promise.resolve(null),
-    hasPermission(permissions, 'users.view') ? safeGet<Dto[]>('/admin/users') : Promise.resolve(null),
-    hasPermission(permissions, 'users.view') ? safeGet<Dto[]>('/admin/teams') : Promise.resolve(null),
-    hasPermission(permissions, 'reports.view')
-      ? safeGet<Dto[]>('/team-reports?per_page=50')
-      : Promise.resolve(null),
-    canViewAgentReports ? safeGet<Dto[]>('/agent-reports?per_page=50') : Promise.resolve(null),
-    fetchShiftData(management ? 30 : 14),
-  ])
+  ] = syncRows as [
+    Dto,
+    Dto[],
+    Dto[],
+    Dto[] | null,
+    Dto[],
+    [Dto | null, Dto[] | null, Dto[] | null, Dto[] | null],
+    Dto[],
+    Dto[],
+    Dto[],
+    Dto,
+    Dto[] | null,
+    Dto[] | null,
+    Dto[] | null,
+    Dto[] | null,
+    Dto[] | null,
+    { shiftCurrentRaw: Dto; shiftHistoryRaw: Dto[] },
+  ]
+
+  const [walletDetailRaw, commissionsRaw, walletTxRaw, payoutsRaw] = walletBundle
 
   const walletRaw = (walletDetailRaw as Dto | null) ?? (home.wallet as Dto) ?? {}
 
@@ -282,6 +318,9 @@ async function doSyncAppData(options?: { priorDailyStatsDate?: string | null }):
     if (!agents.some((row) => row.id === agent.id)) {
       agents = [agent, ...agents]
     }
+    agents = agents.map((row) =>
+      row.id === agent.id ? { ...row, avatar: agent.avatar ?? row.avatar } : row,
+    )
   } else if (teamLive) {
     agents = agentsFromTeamLive(teamLive, agent)
   } else {

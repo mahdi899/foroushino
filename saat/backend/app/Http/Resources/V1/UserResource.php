@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources\V1;
 
+use App\Support\PasswordLogin;
+use App\Support\PublicMediaUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -20,7 +22,7 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'phone' => $this->phone,
             'email' => $this->email,
-            'avatar' => $this->avatar,
+            'avatar' => PublicMediaUrl::normalize($this->avatar),
             'team_id' => $this->team_id,
             'team_name' => $this->whenLoaded('team', fn () => $this->team?->name),
             'level' => $this->level,
@@ -30,6 +32,7 @@ class UserResource extends JsonResource
             'sale_goal' => $this->sale_goal,
             'availability' => $this->availability?->value,
             'is_active' => $this->is_active,
+            'password_login_enabled' => PasswordLogin::enabledForUser($this->resource),
             'roles' => $this->getRoleNames(),
             'permissions' => $this->getAllPermissions()->pluck('name'),
         ];

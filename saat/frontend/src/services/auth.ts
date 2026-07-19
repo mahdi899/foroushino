@@ -32,6 +32,7 @@ export interface AuthenticatedUser {
   is_active: boolean
   roles: string[]
   permissions: string[]
+  password_login_enabled?: boolean
 }
 
 interface LoginResponse {
@@ -40,7 +41,8 @@ interface LoginResponse {
 }
 
 export function mapAuthUserRole(roles: string[]): Role {
-  if (roles.includes('admin')) return 'manager'
+  if (roles.includes('super-admin')) return 'super-admin'
+  if (roles.includes('admin')) return 'admin'
   if (roles.includes('manager')) return 'manager'
   if (roles.includes('supervisor')) return 'supervisor'
   if (roles.includes('leader')) return 'leader'
@@ -60,12 +62,19 @@ export interface DemoAccount {
 }
 
 export interface PhoneOtpRequestResult {
-  channel: 'demo' | 'telegram' | 'sms'
+  channel: 'demo' | 'telegram' | 'sms' | 'password' | 'choice'
   hint?: string
+  password_available?: boolean
+  otp_available?: boolean
 }
 
-export async function requestPhoneOtp(phone: string): Promise<PhoneOtpRequestResult> {
-  return http.post<PhoneOtpRequestResult>('/auth/phone-otp/request', { phone })
+export async function requestPhoneOtp(
+  phone: string,
+  method?: 'password' | 'otp',
+): Promise<PhoneOtpRequestResult> {
+  const payload: { phone: string; method?: 'password' | 'otp' } = { phone }
+  if (method) payload.method = method
+  return http.post<PhoneOtpRequestResult>('/auth/phone-otp/request', payload)
 }
 
 export async function fetchDemoAccounts(): Promise<DemoAccount[]> {
@@ -78,6 +87,11 @@ export async function fetchDemoAccounts(): Promise<DemoAccount[]> {
 
 export async function verifyPhoneOtp(phone: string, code: string): Promise<AuthenticatedUser> {
   const response = await http.post<LoginResponse>('/auth/phone-otp/verify', { phone, code })
+  return persistLoginResponse(response)
+}
+
+export async function loginWithPassword(phone: string, password: string): Promise<AuthenticatedUser> {
+  const response = await http.post<LoginResponse>('/auth/password-login', { phone, password })
   return persistLoginResponse(response)
 }
 
@@ -111,6 +125,21 @@ export async function uploadAvatar(file: File): Promise<AuthenticatedUser> {
 
 export async function removeAvatar(): Promise<AuthenticatedUser> {
   return http.del<AuthenticatedUser>('/me/avatar')
+}
+
+export interface UpdatePasswordInput {
+  password: string
+  passwordConfirmation: string
+  currentPassword?: string
+}
+
+export async function updatePassword(input: UpdatePasswordInput): Promise<AuthenticatedUser> {
+  const payload: Record<string, string> = {
+    password: input.password,
+    password_confirmation: input.passwordConfirmation,
+  }
+  if (input.currentPassword) payload.current_password = input.currentPassword
+  return http.put<AuthenticatedUser>('/me/password', payload)
 }
 
 export function isAuthenticated(): boolean {

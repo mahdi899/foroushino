@@ -34,7 +34,9 @@ type TeamFormSheetProps = {
   onSupervisor?: (value: string) => void
   onClose: () => void
   onSubmit: () => void
+  onDelete?: () => void
   busy?: boolean
+  deleting?: boolean
 }
 
 function matchesQuery(option: TeamStaffOption, query: string) {
@@ -112,7 +114,9 @@ export function TeamFormSheet({
   onSupervisor,
   onClose,
   onSubmit,
+  onDelete,
   busy,
+  deleting,
 }: TeamFormSheetProps) {
   const [leaderSearch, setLeaderSearch] = useState('')
   const [memberSearch, setMemberSearch] = useState('')
@@ -291,12 +295,23 @@ export function TeamFormSheet({
         <Button
           full
           size="lg"
-          disabled={busy}
+          disabled={busy || deleting}
           icon={<UserPlus size={18} />}
           onClick={onSubmit}
         >
           {busy ? 'در حال ذخیره…' : submitLabel}
         </Button>
+
+        {onDelete && (
+          <button
+            type="button"
+            disabled={busy || deleting}
+            onClick={onDelete}
+            className="w-full rounded-[18px] border border-red-500/25 bg-red-500/10 py-3 text-sm font-extrabold text-red-600 disabled:opacity-50 dark:text-red-400"
+          >
+            {deleting ? 'در حال حذف…' : 'حذف تیم'}
+          </button>
+        )}
       </div>
     </BottomSheet>
   )

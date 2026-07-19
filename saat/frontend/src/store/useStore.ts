@@ -284,6 +284,7 @@ interface AppState {
   setPowerDialEnabled: (enabled: boolean) => void
   setDispositionMode: (mode: 'grid' | 'swipe') => void
   upsertLead: (lead: Lead) => void
+  setLeads: (leads: Lead[]) => void
   upsertAgent: (agent: Agent) => void
   setAgents: (agents: Agent[]) => void
   upsertTeam: (team: Team) => void
@@ -329,6 +330,21 @@ const DEMO_RETURNED_LEAD_ID = 'l31'
 
 function hydrateLeads(leads: Lead[]): Lead[] {
   return leads.map((l) => {
+    if (usesRemoteData) {
+      const status: LeadStatus = l.status ?? stageToStatus(l)
+
+      return {
+        ...l,
+        ownerId: l.ownerId ?? l.assignedAgentId,
+        status,
+        lockedBy: l.lockedBy ?? null,
+        lockedUntil: l.lockedUntil ?? null,
+        doNotCall: l.doNotCall ?? false,
+        returnedToPool: l.returnedToPool ?? false,
+        productId: l.productId,
+      }
+    }
+
     const isDemoLocked = l.id === DEMO_LOCKED_LEAD_ID && l.lockedBy === undefined
     const isDemoReturned = l.id === DEMO_RETURNED_LEAD_ID && l.returnedToPool === undefined
     const status: LeadStatus =
@@ -406,6 +422,7 @@ const AGENT_MAP: Record<Role, string> = {
   supervisor: 'a-sup',
   manager: 'a-mgr',
   admin: 'a-mgr',
+  'super-admin': 'a-mgr',
 }
 
 type PersistedSlice = Pick<
@@ -432,6 +449,11 @@ type PersistedSlice = Pick<
   | 'products'
   | 'activity'
   | 'agents'
+  | 'darkMode'
+  | 'powerDialEnabled'
+  | 'dispositionMode'
+  | 'autoLockEnabled'
+  | 'autoLockMinutes'
 >
 
 export const useStore = create<AppState>()(
@@ -1769,6 +1791,7 @@ export const useStore = create<AppState>()(
               : [hydrated, ...state.leads],
           }
         }),
+      setLeads: (leads) => set({ leads: hydrateLeads(leads) }),
       upsertAgent: (agent) =>
         set((state) => {
           const exists = state.agents.some((row) => row.id === agent.id)
@@ -1831,8 +1854,26 @@ export const useStore = create<AppState>()(
       },
       onRehydrateStorage: () => (state) => {
         if (!state) return
-        state.agents = withAvatars(state.agents, mockAgents)
-        state.leads = hydrateLeads(state.leads)
+
+        if (usesRemoteData) {
+          state.leads = []
+          state.agents = []
+          state.calls = []
+          state.followups = []
+          state.sales = []
+          state.payments = []
+          state.commissions = []
+          state.walletTx = []
+          state.payouts = []
+          state.products = []
+          state.activity = []
+          state.notifications = []
+          state.dataReady = false
+        } else {
+          state.agents = withAvatars(state.agents, mockAgents)
+          state.leads = hydrateLeads(state.leads)
+        }
+
         const synced = syncAllAgentsDailyStats(
           state.agents,
           state.calls ?? [],
@@ -1864,32 +1905,68 @@ export const useStore = create<AppState>()(
         }
         applyTheme(Boolean(state.darkMode))
       },
-      partialize: (state) => ({
-        isAuthed: state.isAuthed,
-        phone: state.phone,
-        role: state.role,
-        currentAgentId: state.currentAgentId,
-        availability: state.availability,
-        availabilityChangedAt: state.availabilityChangedAt,
-        workSession: state.workSession,
-        workDaySummaries: state.workDaySummaries,
-        dailyStatsDate: state.dailyStatsDate,
-        leads: state.leads,
-        calls: state.calls,
-        followups: state.followups,
-        notifications: state.notifications,
-        sales: state.sales,
-        payments: state.payments,
-        commissions: state.commissions,
-        wallet: state.wallet,
-        walletTx: state.walletTx,
-        payouts: state.payouts,
-        products: state.products,
-        activity: state.activity,
-        agents: state.agents,
-        powerDialEnabled: state.powerDialEnabled,
-        dispositionMode: state.dispositionMode,
-      }),
+      partialize: (state): PersistedSlice => {
+        const prefs = {
+          phone: state.phone,
+          darkMode: state.darkMode,
+          powerDialEnabled: state.powerDialEnabled,
+          dispositionMode: state.dispositionMode,
+          autoLockEnabled: state.autoLockEnabled,
+          autoLockMinutes: state.autoLockMinutes,
+        }
+
+        if (usesRemoteData) {
+          return {
+            ...prefs,
+            isAuthed: false,
+            role: 'agent',
+            currentAgentId: '',
+            availability: 'offline',
+            availabilityChangedAt: null,
+            workSession: null,
+            workDaySummaries: [],
+            dailyStatsDate: null,
+            leads: [],
+            calls: [],
+            followups: [],
+            notifications: [],
+            sales: [],
+            payments: [],
+            commissions: [],
+            wallet: state.wallet,
+            walletTx: [],
+            payouts: [],
+            products: [],
+            activity: [],
+            agents: [],
+          }
+        }
+
+        return {
+          ...prefs,
+          isAuthed: state.isAuthed,
+          role: state.role,
+          currentAgentId: state.currentAgentId,
+          availability: state.availability,
+          availabilityChangedAt: state.availabilityChangedAt,
+          workSession: state.workSession,
+          workDaySummaries: state.workDaySummaries,
+          dailyStatsDate: state.dailyStatsDate,
+          leads: state.leads,
+          calls: state.calls,
+          followups: state.followups,
+          notifications: state.notifications,
+          sales: state.sales,
+          payments: state.payments,
+          commissions: state.commissions,
+          wallet: state.wallet,
+          walletTx: state.walletTx,
+          payouts: state.payouts,
+          products: state.products,
+          activity: state.activity,
+          agents: state.agents,
+        }
+      },
     },
   ),
 )

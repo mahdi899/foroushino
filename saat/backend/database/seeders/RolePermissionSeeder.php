@@ -44,6 +44,8 @@ class RolePermissionSeeder extends Seeder
 
         Role::findByName(RoleName::Admin->value)->syncPermissions($all); // legacy alias of manager
 
+        Role::findByName(RoleName::SuperAdmin->value)->syncPermissions($all);
+
         Role::findByName(RoleName::Manager->value)->syncPermissions($all);
 
         Role::findByName(RoleName::Supervisor->value)->syncPermissions([

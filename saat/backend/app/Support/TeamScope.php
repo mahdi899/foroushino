@@ -19,6 +19,7 @@ final class TeamScope
         return $user->hasAnyRole([
             RoleName::Manager->value,
             RoleName::Admin->value,
+            RoleName::SuperAdmin->value,
         ]);
     }
 

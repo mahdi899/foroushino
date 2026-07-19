@@ -48,6 +48,9 @@ class AppSetting extends Model
             'meli_sms_link_channel' => 'https://t.me/RostamiAppBot',
             'meli_sms_link_register' => 'https://rostami.app/register',
             'meli_sms_link_payment' => 'https://rostami.app/payment',
+            'melipayamak_username' => '',
+            'melipayamak_password' => '',
+            'melipayamak_rest_url' => 'https://rest.payamak-panel.com/api/SendSMS',
         ];
     }
 
@@ -69,6 +72,11 @@ class AppSetting extends Model
                 $key = (string) $key;
 
                 if (str_starts_with($key, 'meli_') && ($value === '' || $value === null)) {
+                    continue;
+                }
+
+                if (in_array($key, ['melipayamak_username', 'melipayamak_password', 'melipayamak_rest_url'], true)
+                    && ($value === '' || $value === null)) {
                     continue;
                 }
 
@@ -94,6 +102,31 @@ class AppSetting extends Model
     public static function string(string $key, string $default = ''): string
     {
         return (string) (self::allKeyed()[$key] ?? $default);
+    }
+
+    /**
+     * @return array{username: string, password: string, rest_url: string}
+     */
+    public static function melipayamakConfig(): array
+    {
+        $username = self::string('melipayamak_username');
+        $password = self::string('melipayamak_password');
+        $restUrl = self::string('melipayamak_rest_url');
+
+        return [
+            'username' => $username !== '' ? $username : (string) config('melipayamak.username'),
+            'password' => $password !== '' ? $password : (string) config('melipayamak.password'),
+            'rest_url' => $restUrl !== ''
+                ? $restUrl
+                : (string) config('melipayamak.rest_url', 'https://rest.payamak-panel.com/api/SendSMS'),
+        ];
+    }
+
+    public static function melipayamakPasswordConfigured(): bool
+    {
+        $config = self::melipayamakConfig();
+
+        return $config['password'] !== '';
     }
 
     public static function callLockMinutes(): int

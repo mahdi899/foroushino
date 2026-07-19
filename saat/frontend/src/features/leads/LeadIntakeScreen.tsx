@@ -10,8 +10,8 @@ import { hasPermission } from '@/lib/permissions'
 import { toFa } from '@/lib/format'
 import { haptic } from '@/lib/telegram'
 import { cn } from '@/lib/cn'
-import { createLead, distributeLeadsToTeams, importLeadsCsv } from '@/services/leads'
-import { syncAppData } from '@/services/sync'
+import { createLead, distributeLeadsToTeams, fetchLeadsFromApi, importLeadsCsv } from '@/services/leads'
+import { apiErrorMessage } from '@/lib/apiErrors'
 import { intakeLeadSources } from '@/lib/leadSources'
 import { ProductLink, resolveProductFromStore } from '@/components/domain/ProductLink'
 import {
@@ -123,8 +123,9 @@ export function LeadIntakeScreen() {
   const products = useStore((s) => s.products.filter((p) => p.isActive))
   const leadSources = useStore((s) => s.leadSources)
   const addLead = useStore((s) => s.addLead)
+  const upsertLead = useStore((s) => s.upsertLead)
+  const setLeads = useStore((s) => s.setLeads)
   const distributeLeadsToTeamsLocal = useStore((s) => s.distributeLeadsToTeams)
-  const applySyncData = useStore((s) => s.applySyncData)
   const pushToast = useStore((s) => s.pushToast)
 
   const fileRef = useRef<HTMLInputElement>(null)
@@ -162,10 +163,10 @@ export function LeadIntakeScreen() {
     return null
   }
 
-  const refreshData = async () => {
+  const refreshLeads = async () => {
     if (!usesRemoteData) return
-    const payload = await syncAppData({ priorDailyStatsDate: useStore.getState().dailyStatsDate })
-    applySyncData(payload)
+    const fresh = await fetchLeadsFromApi()
+    setLeads(fresh)
   }
 
   const onCreate = async () => {
@@ -185,8 +186,8 @@ export function LeadIntakeScreen() {
       const payload = buildPayload(form)
 
       if (usesRemoteData) {
-        await createLead(payload)
-        await refreshData()
+        const lead = await createLead(payload)
+        upsertLead(lead)
       } else {
         addLead({
           firstName: form.firstName.trim(),
@@ -210,8 +211,8 @@ export function LeadIntakeScreen() {
 
       setForm(emptyForm())
       pushToast('مشتری ثبت شد.', 'success')
-    } catch {
-      pushToast('ثبت مشتری ناموفق بود.', 'error')
+    } catch (error) {
+      pushToast(apiErrorMessage(error, 'ثبت مشتری ناموفق بود.'), 'error')
     } finally {
       setBusy(null)
     }
@@ -222,7 +223,7 @@ export function LeadIntakeScreen() {
     try {
       if (usesRemoteData) {
         const result = await importLeadsCsv(file)
-        await refreshData()
+        await refreshLeads()
         pushToast(
           `${toFa(result.imported_count)} مشتری جدید · ${toFa(result.duplicate_count)} تکراری`,
           'success',
@@ -230,8 +231,8 @@ export function LeadIntakeScreen() {
       } else {
         pushToast('در حالت دمو، فایل CSV را به‌صورت دستی اضافه کنید یا از فرم استفاده کنید.', 'info')
       }
-    } catch {
-      pushToast('ورود فایل ناموفق بود.', 'error')
+    } catch (error) {
+      pushToast(apiErrorMessage(error, 'ورود فایل ناموفق بود.'), 'error')
     } finally {
       setBusy(null)
     }
@@ -251,7 +252,7 @@ export function LeadIntakeScreen() {
     try {
       if (usesRemoteData) {
         const result = await distributeLeadsToTeams()
-        await refreshData()
+        await refreshLeads()
         pushToast(
           `${toFa(result.distributed)} مشتری بین ${toFa(result.teams)} تیم تقسیم شد.`,
           'success',
@@ -260,8 +261,8 @@ export function LeadIntakeScreen() {
         const count = distributeLeadsToTeamsLocal()
         pushToast(`${toFa(count)} مشتری بین سرتیم‌ها تقسیم شد.`, 'success')
       }
-    } catch {
-      pushToast('تقسیم مشتریان ناموفق بود.', 'error')
+    } catch (error) {
+      pushToast(apiErrorMessage(error, 'تقسیم مشتریان ناموفق بود.'), 'error')
     } finally {
       setBusy(null)
     }

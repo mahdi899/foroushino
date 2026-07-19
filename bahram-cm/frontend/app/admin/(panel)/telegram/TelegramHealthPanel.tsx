@@ -90,7 +90,7 @@ export function TelegramHealthPanel({ health: initialHealth }: { health: Telegra
             </div>
           ) : (
             <TelegramInfoPanel icon="Bot" tone="blue" title="رباتی ثبت نشده">
-              <p className="admin-telegram-info-panel__text">ابتدا env را تنظیم و سپس sync-bots را اجرا کنید.</p>
+              <p className="admin-telegram-info-panel__text">از تنظیمات ربات، «همگام‌سازی ربات‌ها» را بزنید و توکن را در پنل ذخیره کنید.</p>
             </TelegramInfoPanel>
           )}
         </>

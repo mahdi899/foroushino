@@ -7,10 +7,10 @@ use App\Http\Requests\V1\Me\UploadAvatarRequest;
 use App\Http\Resources\V1\UserResource;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\PublicMediaUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class MeAvatarController extends Controller
 {
@@ -36,7 +36,7 @@ class MeAvatarController extends Controller
         );
 
         $user->update([
-            'avatar' => Storage::disk('public')->url($path),
+            'avatar' => PublicMediaUrl::forPublicDiskPath($path),
         ]);
 
         return ApiResponse::success(
@@ -61,28 +61,9 @@ class MeAvatarController extends Controller
 
     private function deleteStoredAvatar(?string $avatar): void
     {
-        if ($avatar === null || $avatar === '') {
-            return;
-        }
-
-        $path = $this->storedAvatarPath($avatar);
+        $path = PublicMediaUrl::publicDiskPath($avatar);
         if ($path !== null && Storage::disk('public')->exists($path)) {
             Storage::disk('public')->delete($path);
         }
-    }
-
-    private function storedAvatarPath(string $avatar): ?string
-    {
-        $storageUrl = rtrim(Storage::disk('public')->url(''), '/');
-
-        if (Str::startsWith($avatar, $storageUrl.'/avatars/users/')) {
-            return Str::after($avatar, $storageUrl.'/');
-        }
-
-        if (Str::startsWith($avatar, '/storage/avatars/users/')) {
-            return Str::after($avatar, '/storage/');
-        }
-
-        return null;
     }
 }

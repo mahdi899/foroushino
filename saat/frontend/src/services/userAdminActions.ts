@@ -16,13 +16,16 @@ export interface CreateAgentInput {
   name: string
   phone: string
   teamId: string
+  password: string
 }
 
 export interface CreateStaffInput {
   name: string
   phone: string
-  role: 'supervisor' | 'leader' | 'agent'
+  role: 'supervisor' | 'leader' | 'agent' | 'super-admin' | 'manager' | 'admin'
   teamId?: string
+  email?: string
+  password?: string
 }
 
 export interface UpdateAgentInput {
@@ -82,10 +85,22 @@ export async function createStaff(input: CreateStaffInput) {
     phone: input.phone,
     role: input.role,
   }
-  if (input.teamId) payload.team_id = Number(input.teamId)
+  if (input.teamId && /^\d+$/.test(String(input.teamId))) {
+    payload.team_id = Number(input.teamId)
+  }
+  if (input.email) payload.email = input.email
+  if (input.password) payload.password = input.password
 
   const raw = await http.post<Dto>('/admin/users', payload)
   const agent = mapAgentFromAdmin(raw)
+
+  if (input.role === 'leader' && input.teamId) {
+    const team = useStore.getState().teams.find((row) => row.id === input.teamId)
+    if (team) {
+      useStore.getState().upsertTeam({ ...team, leaderId: agent.id })
+    }
+  }
+
   invalidateAdminDirectory()
   useStore.getState().upsertAgent(agent)
   return agent

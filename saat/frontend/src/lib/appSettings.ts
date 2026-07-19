@@ -45,7 +45,7 @@ export function mapRuntimeAppSettings(dto: Record<string, unknown>): RuntimeAppS
 export type AdminSettingMeta = {
   label: string
   hint?: string
-  type?: 'number' | 'text' | 'boolean' | 'select' | 'url'
+  type?: 'number' | 'text' | 'boolean' | 'select' | 'url' | 'password'
   options?: { value: string; label: string }[]
   placeholder?: string
 }
@@ -174,6 +174,24 @@ export const ADMIN_SETTING_LABELS: Record<string, AdminSettingMeta> = {
     type: 'number',
     placeholder: 'مثال: ۱۰۰۵',
   },
+  melipayamak_username: {
+    label: 'نام کاربری پنل ملی‌پیامک',
+    hint: 'همان نام کاربری ورود به payamak-panel.com',
+    type: 'text',
+    placeholder: 'username',
+  },
+  melipayamak_password: {
+    label: 'رمز عبور پنل ملی‌پیامک',
+    hint: 'برای تغییر ندادن، خالی بگذارید',
+    type: 'password',
+    placeholder: '••••••••',
+  },
+  melipayamak_rest_url: {
+    label: 'آدرس REST API',
+    hint: 'معمولاً نیاز به تغییر نیست',
+    type: 'url',
+    placeholder: 'https://rest.payamak-panel.com/api/SendSMS',
+  },
 }
 
 export const ADMIN_TELEPHONY_KEYS = [
@@ -192,6 +210,12 @@ export const ADMIN_OPERATIONAL_KEYS = [
 ] as const
 
 export const ADMIN_QA_KEYS = ['power_dial_default', 'qa_sample_percent'] as const
+
+export const ADMIN_SMS_PANEL_KEYS = [
+  'melipayamak_username',
+  'melipayamak_password',
+  'melipayamak_rest_url',
+] as const
 
 export const ADMIN_SMS_TEMPLATE_GROUPS = [
   {
@@ -230,6 +254,8 @@ export const ADMIN_KNOWN_SETTING_KEYS = new Set<string>([
   ...ADMIN_TELEPHONY_KEYS,
   ...ADMIN_OPERATIONAL_KEYS,
   ...ADMIN_QA_KEYS,
+  ...ADMIN_SMS_PANEL_KEYS,
+  'melipayamak_password_configured',
   ...ADMIN_SMS_TEMPLATE_GROUPS.flatMap((group) =>
     group.linkKey ? [group.patternKey, group.linkKey] : [group.patternKey],
   ),
@@ -278,8 +304,13 @@ export function prepareAdminSettingsForSave(
 
   for (const [key, raw] of Object.entries(settings)) {
     if (raw === '' || raw == null) continue
+    if (key === 'melipayamak_password_configured') continue
 
     const meta = getAdminSettingMeta(key)
+
+    if (meta.type === 'password' && String(raw).trim() === '') {
+      continue
+    }
 
     if (meta.type === 'boolean') {
       prepared[key] = asBoolean(raw)

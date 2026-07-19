@@ -70,6 +70,8 @@ fi
 sed -i "s|^APP_ENV=.*|APP_ENV=production|" .env
 sed -i "s|^APP_DEBUG=.*|APP_DEBUG=false|" .env
 sed -i "s|^APP_URL=.*|APP_URL=${SITE_URL}|" .env
+sed -i "s|^FILESYSTEM_DISK=.*|FILESYSTEM_DISK=public|" .env
+grep -q '^FILESYSTEM_DISK=' .env || echo "FILESYSTEM_DISK=public" >> .env
 sed -i "s|^LOG_LEVEL=.*|LOG_LEVEL=warning|" .env
 sed -i "s|^DB_DATABASE=.*|DB_DATABASE=${DB_NAME}|" .env
 sed -i "s|^DB_USERNAME=.*|DB_USERNAME=${DB_USER}|" .env
@@ -112,6 +114,8 @@ composer install --no-dev --optimize-autoloader --no-interaction
 php artisan key:generate --force
 php artisan migrate --force
 php artisan storage:link || true
+chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
+chmod -R ug+rwX storage bootstrap/cache 2>/dev/null || true
 php artisan config:cache
 php artisan route:cache
 
@@ -123,6 +127,27 @@ fi
 npm ci || npm install --no-audit --no-fund
 VITE_UPDATE_TYPE=optional npm run build
 cp -f public/version.json dist/version.json 2>/dev/null || true
+
+echo "==> PHP-FPM pool (avoid worker exhaustion under parallel API sync)"
+PHP_POOL="/etc/php/8.3/fpm/pool.d/www.conf"
+if [[ -f "${APP_ROOT}/deploy/php-fpm/saat-www-pool-snippet.conf" ]]; then
+  while IFS= read -r line; do
+    [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" =~ ^\[ ]] && continue
+  key="${line%%=*}"
+  key="$(echo "$key" | xargs)"
+  val="${line#*=}"
+  val="$(echo "$val" | xargs)"
+  if grep -q "^${key} = " "$PHP_POOL" 2>/dev/null; then
+    sed -i "s|^${key} = .*|${key} = ${val}|" "$PHP_POOL"
+  else
+    echo "${key} = ${val}" >> "$PHP_POOL"
+  fi
+  done < "${APP_ROOT}/deploy/php-fpm/saat-www-pool-snippet.conf"
+  php-fpm8.3 -t
+  systemctl restart php8.3-fpm
+fi
 
 echo "==> Nginx"
 cp "${APP_ROOT}/deploy/nginx/sat-center.conf" /etc/nginx/sites-available/sat-center.conf

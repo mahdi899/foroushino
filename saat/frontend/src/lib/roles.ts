@@ -1,10 +1,11 @@
 import type { Role } from '@/types'
 
-const MANAGEMENT_ROLES: Role[] = ['leader', 'supervisor', 'manager', 'admin']
+const MANAGEMENT_ROLES: Role[] = ['leader', 'supervisor', 'manager', 'admin', 'super-admin']
 
 /** Legacy `admin` is the same operational role as `manager`. */
 export function normalizeRole(role: Role): Role {
-  return role === 'admin' ? 'manager' : role
+  if (role === 'admin' || role === 'super-admin') return 'manager'
+  return role
 }
 
 export function isManagementRole(role: Role): boolean {
@@ -21,6 +22,10 @@ export function isLeaderRole(role: Role): boolean {
 
 export function isSupervisorRole(role: Role): boolean {
   return role === 'supervisor'
+}
+
+export function isSuperAdminRole(role: Role): boolean {
+  return role === 'super-admin'
 }
 
 export function isManagerRole(role: Role): boolean {

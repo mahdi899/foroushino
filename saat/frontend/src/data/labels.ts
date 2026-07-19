@@ -360,6 +360,7 @@ export const roleLabels: Record<Role, string> = {
   supervisor: 'سوپروایزر',
   manager: 'مدیر',
   admin: 'مدیر',
+  'super-admin': 'مدیر کل',
 }
 
 export const experienceLabels: Record<ExperienceLevel, string> = {

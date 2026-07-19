@@ -49,7 +49,10 @@ export function ProfileAvatarPicker({
     try {
       if (usesRemoteData) {
         const user = await uploadAvatar(file)
-        setAgentAvatar(user.avatar)
+        const avatar = user.avatar
+          ? `${user.avatar}${user.avatar.includes('?') ? '&' : '?'}v=${Date.now()}`
+          : null
+        setAgentAvatar(avatar)
       } else {
         const dataUrl = await readFileAsDataUrl(file)
         setAgentAvatar(dataUrl)

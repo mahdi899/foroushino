@@ -3,6 +3,8 @@
 namespace App\Services\Auth;
 
 use App\Models\User;
+use App\Support\PasswordLogin;
+use App\Support\PhoneNormalizer;
 use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 
@@ -15,26 +17,90 @@ class PhoneOtpService
         private readonly DemoAuthService $demoAuth,
     ) {}
 
-    public function requestForPhone(string $phone): string
+    /**
+     * @return array{channel: string, password_available: bool, otp_available: bool}
+     */
+    public function requestForPhone(string $phone, ?string $method = null): array
     {
-        $normalized = $this->normalizePhone($phone);
+        $normalized = PhoneNormalizer::normalize($phone);
         $demo = $this->demoAuth->accountForPhone($normalized);
 
         if ($demo !== null) {
             Cache::put($this->cacheKey("phone:{$normalized}"), $demo['otp'], self::TTL_SECONDS);
 
-            return 'demo';
+            return [
+                'channel' => 'demo',
+                'password_available' => false,
+                'otp_available' => true,
+            ];
         }
 
         $user = User::query()->where('phone', $normalized)->first();
 
-        if (! $user?->telegram_id) {
-            throw new RuntimeException('اجازه ورود فقط برای افراد ثبت‌نام‌شده است.');
+        if (! $user) {
+            throw new RuntimeException('این شماره در سیستم ثبت نشده است.');
         }
 
-        $this->sendToTelegramUser((int) $user->telegram_id, $this->issueCode("phone:{$normalized}"));
+        if (! $user->is_active) {
+            throw new RuntimeException('حساب کاربری شما غیرفعال شده است.');
+        }
 
-        return 'telegram';
+        $passwordAvailable = PasswordLogin::enabledForUser($user);
+        $otpAvailable = (bool) $user->telegram_id;
+
+        if ($method === 'password') {
+            if (! $passwordAvailable) {
+                throw new RuntimeException('ورود با رمز عبور برای این شماره فعال نیست.');
+            }
+
+            return [
+                'channel' => 'password',
+                'password_available' => true,
+                'otp_available' => $otpAvailable,
+            ];
+        }
+
+        if ($method === 'otp') {
+            if (! $otpAvailable) {
+                throw new RuntimeException('تلگرام به این شماره متصل نیست. از رمز عبور یا راهنمای مدیر استفاده کنید.');
+            }
+
+            $this->sendToTelegramUser((int) $user->telegram_id, $this->issueCode("phone:{$normalized}"));
+
+            return [
+                'channel' => 'telegram',
+                'password_available' => $passwordAvailable,
+                'otp_available' => true,
+            ];
+        }
+
+        if ($passwordAvailable && $otpAvailable) {
+            return [
+                'channel' => 'choice',
+                'password_available' => true,
+                'otp_available' => true,
+            ];
+        }
+
+        if ($passwordAvailable) {
+            return [
+                'channel' => 'password',
+                'password_available' => true,
+                'otp_available' => false,
+            ];
+        }
+
+        if ($otpAvailable) {
+            $this->sendToTelegramUser((int) $user->telegram_id, $this->issueCode("phone:{$normalized}"));
+
+            return [
+                'channel' => 'telegram',
+                'password_available' => false,
+                'otp_available' => true,
+            ];
+        }
+
+        throw new RuntimeException('برای ورود به رمز عبور از مدیر بگیرید یا ابتدا از طریق تلگرام وارد شوید.');
     }
 
     /**
@@ -50,7 +116,7 @@ class PhoneOtpService
 
     public function verifyPhoneCode(string $phone, string $code): void
     {
-        $normalized = $this->normalizePhone($phone);
+        $normalized = PhoneNormalizer::normalize($phone);
         $demo = $this->demoAuth->accountForPhone($normalized);
 
         if ($demo !== null && hash_equals($demo['otp'], trim($code))) {
@@ -95,16 +161,5 @@ class PhoneOtpService
     private function cacheKey(string $key): string
     {
         return "saat:otp:{$key}";
-    }
-
-    private function normalizePhone(string $phone): string
-    {
-        $digits = preg_replace('/\D+/', '', $phone) ?? '';
-
-        if (str_starts_with($digits, '98') && strlen($digits) === 12) {
-            return '0'.substr($digits, 2);
-        }
-
-        return $digits;
     }
 }

@@ -296,12 +296,12 @@ export function mapActivity(dto: Dto): import('@/types').ActivityLog {
 export function mapAgentFromAdmin(dto: Dto): import('@/types').Agent {
   const { firstName, lastName } = splitName(dto.name as string)
   const roles = (dto.roles as string[]) ?? []
-  const role = roles.includes('leader')
-    ? 'leader'
-    : roles.includes('supervisor')
-      ? 'supervisor'
-      : roles.includes('manager') || roles.includes('admin')
-        ? 'manager'
+  const role = roles.includes('super-admin') || roles.includes('admin') || roles.includes('manager')
+    ? 'manager'
+    : roles.includes('leader')
+      ? 'leader'
+      : roles.includes('supervisor')
+        ? 'supervisor'
         : 'agent'
 
   const callsToday = Number(dto.calls_today ?? 0)

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Admin\AssignSupervisorTeamsRequest;
+use App\Http\Requests\V1\Admin\DeleteTeamRequest;
 use App\Http\Requests\V1\Admin\StoreTeamRequest;
 use App\Http\Requests\V1\Admin\SyncTeamMembersRequest;
 use App\Http\Requests\V1\Admin\UpdateTeamRequest;
@@ -98,6 +99,21 @@ class TeamAdminController extends Controller
             new TeamAdminResource($team->fresh(['leader', 'supervisor'])->loadCount('members')),
             'تیم به‌روزرسانی شد',
         );
+    }
+
+    public function destroy(DeleteTeamRequest $request, Team $team): JsonResponse
+    {
+        DB::transaction(function () use ($team): void {
+            User::query()
+                ->where('team_id', $team->id)
+                ->update(['team_id' => null]);
+
+            $team->delete();
+        });
+
+        AdminDirectoryCache::bump();
+
+        return ApiResponse::success(null, 'تیم حذف شد');
     }
 
     public function syncMembers(SyncTeamMembersRequest $request, Team $team): JsonResponse

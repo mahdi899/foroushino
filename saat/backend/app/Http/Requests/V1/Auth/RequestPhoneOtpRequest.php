@@ -18,6 +18,7 @@ class RequestPhoneOtpRequest extends FormRequest
     {
         return [
             'phone' => ['required', 'string', 'regex:/^09\d{9}$/'],
+            'method' => ['sometimes', 'nullable', 'string', 'in:password,otp'],
         ];
     }
 }

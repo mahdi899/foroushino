@@ -72,12 +72,12 @@ export function TelegramSettingsClient({
         title="ربات‌های ثبت‌شده"
         action={
           <button type="button" disabled={pending} className="btn btn-secondary text-small" onClick={() => run(syncTelegramBotsAction)}>
-            همگام‌سازی از env
+            همگام‌سازی ربات‌ها
           </button>
         }
       >
         {bots.length === 0 ? (
-          <p className="py-6 text-center text-small text-text-muted">رباتی ثبت نشده. ابتدا env را تنظیم و sync کنید.</p>
+          <p className="py-6 text-center text-small text-text-muted">رباتی ثبت نشده. «همگام‌سازی ربات‌ها» را بزنید، سپس توکن BotFather را در همین صفحه ذخیره کنید.</p>
         ) : (
           <div className="space-y-4">
             {bots.map((bot) => {
@@ -191,7 +191,7 @@ function BotTokenRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () => vo
 
   return (
     <div>
-      <p className="text-caption text-text-muted">توکن ربات</p>
+      <p className="text-caption text-text-muted">توکن ربات (رمزنگاری‌شده در دیتابیس — نیازی به .env نیست)</p>
       <div className="mt-1 flex flex-wrap gap-2">
         <input
           className="field-input min-w-[200px] flex-1 text-small"

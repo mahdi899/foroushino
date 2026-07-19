@@ -45,6 +45,7 @@ class User extends Authenticatable
         'availability',
         'availability_changed_at',
         'is_active',
+        'phone_otp_exempt',
         'mask_phone_numbers',
         'referral_code',
         'bank_card',
@@ -75,6 +76,7 @@ class User extends Authenticatable
             'availability' => Availability::class,
             'availability_changed_at' => 'datetime',
             'is_active' => 'boolean',
+            'phone_otp_exempt' => 'boolean',
             'mask_phone_numbers' => 'boolean',
             'bank_card_confirmed_at' => 'datetime',
         ];

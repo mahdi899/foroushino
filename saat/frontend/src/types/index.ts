@@ -1,4 +1,4 @@
-export type Role = 'agent' | 'leader' | 'supervisor' | 'manager' | 'admin'
+export type Role = 'agent' | 'leader' | 'supervisor' | 'manager' | 'admin' | 'super-admin'
 
 export type Temperature = 'hot' | 'warm' | 'cold'
 

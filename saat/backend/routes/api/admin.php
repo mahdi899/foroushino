@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('admin')->middleware('throttle:writes')->group(function (): void {
     Route::get('/settings', [SettingsController::class, 'show'])->withoutMiddleware('throttle:writes');
     Route::patch('/settings', [SettingsController::class, 'update']);
+    Route::post('/settings/test-melipayamak', [SettingsController::class, 'testMelipayamak']);
 
     Route::get('/users', [UserAdminController::class, 'index'])->withoutMiddleware('throttle:writes');
     Route::post('/users', [UserAdminController::class, 'store']);
@@ -23,6 +24,7 @@ Route::prefix('admin')->middleware('throttle:writes')->group(function (): void {
     Route::get('/teams', [TeamAdminController::class, 'index'])->withoutMiddleware('throttle:writes');
     Route::post('/teams', [TeamAdminController::class, 'store']);
     Route::patch('/teams/{team}', [TeamAdminController::class, 'update']);
+    Route::delete('/teams/{team}', [TeamAdminController::class, 'destroy']);
     Route::put('/teams/{team}/members', [TeamAdminController::class, 'syncMembers']);
     Route::patch('/supervisors/{user}/teams', [TeamAdminController::class, 'assignSupervisorTeams']);
 

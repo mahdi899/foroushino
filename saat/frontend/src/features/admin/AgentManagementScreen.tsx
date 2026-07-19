@@ -27,6 +27,7 @@ export function AgentManagementScreen() {
   const [searchQuery, setSearchQuery] = useState('')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [password, setPassword] = useState('')
   const [teamId, setTeamId] = useState('')
 
   const roster = useMemo(() => agents.filter((a) => a.role === 'agent'), [agents])
@@ -71,6 +72,7 @@ export function AgentManagementScreen() {
   const openCreate = () => {
     setName('')
     setPhone('')
+    setPassword('')
     setTeamId(teams[0]?.id ?? '')
     setCreateOpen(true)
   }
@@ -84,8 +86,12 @@ export function AgentManagementScreen() {
   }
 
   const submitCreate = async () => {
+    if (password.length < 12) {
+      pushToast('رمز عبور اولیه (حداقل ۱۲ کاراکتر) الزامی است', 'error')
+      return
+    }
     try {
-      await createAgent({ name, phone, teamId })
+      await createAgent({ name, phone, teamId, password })
       pushToast('کارشناس اضافه شد')
       setCreateOpen(false)
     } catch {
@@ -247,9 +253,11 @@ export function AgentManagementScreen() {
         canEdit
         name={name}
         phone={phone}
+        password={password}
         teamId={teamId}
         onName={setName}
         onPhone={setPhone}
+        onPassword={setPassword}
         onTeam={setTeamId}
         onSubmit={() => void submitCreate()}
         pushToast={pushToast}

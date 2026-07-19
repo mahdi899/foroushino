@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\Integrations\InboundApplicationController;
 use App\Http\Controllers\Api\V1\MeAvatarController;
 use App\Http\Controllers\Api\V1\MeController;
+use App\Http\Controllers\Api\V1\MePasswordController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', HealthController::class);
@@ -33,11 +34,13 @@ Route::middleware('throttle:auth')->prefix('auth')->group(function (): void {
     Route::post('/telegram-otp/verify', [AuthController::class, 'verifyTelegramOtp']);
     Route::post('/phone-otp/request', [AuthController::class, 'requestPhoneOtp']);
     Route::post('/phone-otp/verify', [AuthController::class, 'verifyPhoneOtp']);
+    Route::post('/password-login', [AuthController::class, 'passwordLogin']);
     Route::post('/dev-login', [AuthController::class, 'devLogin']);
 });
 
 Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
     Route::get('/me', MeController::class);
+    Route::put('/me/password', [MePasswordController::class, 'update']);
     Route::post('/me/avatar', [MeAvatarController::class, 'store']);
     Route::delete('/me/avatar', [MeAvatarController::class, 'destroy']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);

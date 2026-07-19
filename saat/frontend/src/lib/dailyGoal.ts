@@ -42,6 +42,7 @@ export function mergeAgentDailyStats(local: Agent, remote: Agent): Agent {
   return {
     ...local,
     ...remote,
+    avatar: remote.avatar ?? local.avatar,
     callsToday: Math.max(local.callsToday, remote.callsToday),
     successfulToday: Math.max(local.successfulToday, remote.successfulToday),
   }

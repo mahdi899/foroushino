@@ -3,6 +3,7 @@
 namespace App\Http\Resources\V1;
 
 use App\Services\WalletService;
+use App\Support\PublicMediaUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -28,6 +29,7 @@ class UserAdminResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,
+            'avatar' => PublicMediaUrl::normalize($this->avatar),
             'team_id' => $this->team_id,
             'team_name' => $this->whenLoaded('team', fn () => $this->team?->name),
             'is_active' => $this->is_active,

@@ -10,6 +10,7 @@ import {
   ADMIN_KNOWN_SETTING_KEYS,
   ADMIN_OPERATIONAL_KEYS,
   ADMIN_QA_KEYS,
+  ADMIN_SMS_PANEL_KEYS,
   ADMIN_SMS_TEMPLATE_GROUPS,
   ADMIN_TELEPHONY_KEYS,
   getAdminSettingMeta,
@@ -17,8 +18,7 @@ import {
   prepareAdminSettingsForSave,
 } from '@/lib/appSettings'
 import { apiErrorMessage } from '@/lib/apiErrors'
-import { DataGate } from '@/components/pwa/DataGate'
-import { testVoipConnection } from '@/services/offlineQueue'
+import { testMelipayamakConnection, testVoipConnection } from '@/services/admin'
 import { cn } from '@/lib/cn'
 
 const fieldClass = cn(
@@ -34,6 +34,7 @@ export function AdminSettingsScreen() {
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [saving, setSaving] = useState(false)
   const [testingVoip, setTestingVoip] = useState(false)
+  const [testingSms, setTestingSms] = useState(false)
 
   useEffect(() => {
     if (!hasPermission('admin.settings')) {
@@ -63,7 +64,7 @@ export function AdminSettingsScreen() {
     try {
       const payload = prepareAdminSettingsForSave(settings)
       const updated = await updateAppSettings(payload)
-      setSettings(updated)
+      setSettings({ ...updated, melipayamak_password: '' })
       setAppSettings(mapRuntimeAppSettings(updated as Record<string, unknown>))
       pushToast('تنظیمات ذخیره شد.', 'success')
     } catch (error) {
@@ -82,6 +83,27 @@ export function AdminSettingsScreen() {
       pushToast('تست اتصال VoIP ناموفق بود.', 'error')
     } finally {
       setTestingVoip(false)
+    }
+  }
+
+  const onTestMelipayamak = async () => {
+    if (!settings) return
+    setTestingSms(true)
+    try {
+      const result = await testMelipayamakConnection({
+        username: String(settings.melipayamak_username ?? ''),
+        password: settings.melipayamak_password ? String(settings.melipayamak_password) : undefined,
+        rest_url: String(settings.melipayamak_rest_url ?? ''),
+      })
+      const credit =
+        typeof result.credit === 'number'
+          ? ` موجودی: ${result.credit.toLocaleString('fa-IR')} ریال`
+          : ''
+      pushToast(`${result.message}${credit}`, result.ok ? 'success' : 'error')
+    } catch {
+      pushToast('تست اتصال ملی‌پیامک ناموفق بود.', 'error')
+    } finally {
+      setTestingSms(false)
     }
   }
 
@@ -142,6 +164,29 @@ export function AdminSettingsScreen() {
       )
     }
 
+    if (meta.type === 'password') {
+      const configured = settings.melipayamak_password_configured === true
+      return (
+        <label key={key} className={wrapClass}>
+          <span className="mb-1 block text-[14px] font-bold text-text">{meta.label}</span>
+          {meta.hint && <span className="mb-2 block text-[11px] font-semibold leading-5 text-text-soft">{meta.hint}</span>}
+          {configured && (
+            <span className="mb-2 block text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+              رمز ذخیره شده است — برای تغییر، رمز جدید وارد کنید.
+            </span>
+          )}
+          <input
+            type="password"
+            autoComplete="new-password"
+            placeholder={configured ? 'رمز جدید (اختیاری)' : meta.placeholder}
+            value={value == null ? '' : String(value)}
+            onChange={(e) => setSettings((prev) => (prev ? { ...prev, [key]: e.target.value } : prev))}
+            className={cn(fieldClass, 'ltr-nums text-left')}
+          />
+        </label>
+      )
+    }
+
     return (
       <label key={key} className={wrapClass}>
         <span className="mb-1 block text-[14px] font-bold text-text">{meta.label}</span>
@@ -169,10 +214,14 @@ export function AdminSettingsScreen() {
     <Page withNav={false}>
       <ScreenHeader sticky showBack title="تنظیمات سیستم" icon={Server} iconTone="primary" />
 
-      <DataGate mode="placeholder">
-        <div className="space-y-5 px-4 pb-24 pt-2">
-          {settings && (
-            <>
+      <div className="space-y-5 px-4 pb-24 pt-2">
+        {!settings ? (
+          <div className="mx-auto rounded-[20px] border border-border/60 bg-surface-soft px-4 py-10 text-center">
+            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+            <p className="text-sm font-semibold text-text">در حال بارگذاری تنظیمات…</p>
+          </div>
+        ) : (
+          <>
               <section className="space-y-3">
                 <h2 className="flex items-center gap-1.5 px-1 text-[12px] font-bold text-text-soft">
                   <Radio size={13} />
@@ -211,7 +260,30 @@ export function AdminSettingsScreen() {
               <section className="space-y-3">
                 <h2 className="flex items-center gap-1.5 px-1 text-[12px] font-bold text-text-soft">
                   <MessageSquare size={13} />
-                  پیامک ملی‌پرداز
+                  پنل ملی‌پیامک
+                </h2>
+                <p className="px-1 text-[11px] font-semibold leading-5 text-text-muted">
+                  نام کاربری و رمز پنل payamak-panel.com را اینجا وارد کنید. پس از ذخیره، با «تست اتصال» اعتبار پنل را
+                  بررسی کنید.
+                </p>
+                <div className="glass-card space-y-3 rounded-[20px] border border-white/55 p-4 dark:border-white/10">
+                  {ADMIN_SMS_PANEL_KEYS.map((key) => renderField(key, true))}
+                  <button
+                    type="button"
+                    disabled={testingSms}
+                    onClick={() => void onTestMelipayamak()}
+                    className="flex w-full items-center justify-center gap-2 rounded-[18px] border border-[#3390EC]/25 bg-[#3390EC]/10 py-3 text-sm font-extrabold text-[#3390EC] dark:border-[#8774E1]/25 dark:bg-[#8774E1]/10 dark:text-[#8774E1]"
+                  >
+                    <MessageSquare size={16} />
+                    {testingSms ? 'در حال تست…' : 'تست اتصال ملی‌پیامک'}
+                  </button>
+                </div>
+              </section>
+
+              <section className="space-y-3">
+                <h2 className="flex items-center gap-1.5 px-1 text-[12px] font-bold text-text-soft">
+                  <MessageSquare size={13} />
+                  قالب‌های پیامک
                 </h2>
                 <p className="px-1 text-[11px] font-semibold leading-5 text-text-muted">
                   برای هر نوع پیامک، کد پترن پنل ملی‌پرداز و در صورت نیاز لینک مقصد را وارد کنید. مقدار ۰ یعنی آن
@@ -238,19 +310,18 @@ export function AdminSettingsScreen() {
                   {otherEntries.map(([key]) => renderField(key))}
                 </section>
               )}
-            </>
-          )}
+          </>
+        )}
 
-          <button
-            type="button"
-            disabled={!settings || saving}
-            onClick={onSave}
-            className="w-full rounded-[18px] bg-primary-600 py-3.5 text-sm font-extrabold text-white disabled:opacity-50"
-          >
-            {saving ? 'در حال ذخیره…' : 'ذخیره تنظیمات'}
-          </button>
-        </div>
-      </DataGate>
+        <button
+          type="button"
+          disabled={!settings || saving}
+          onClick={onSave}
+          className="w-full rounded-[18px] bg-primary-600 py-3.5 text-sm font-extrabold text-white disabled:opacity-50"
+        >
+          {saving ? 'در حال ذخیره…' : 'ذخیره تنظیمات'}
+        </button>
+      </div>
     </Page>
   )
 }

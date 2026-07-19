@@ -20,27 +20,70 @@ class StoreUserRequest extends FormRequest
     }
 
     /**
+     * @return list<string>
+     */
+    public static function allowedRolesFor(?\App\Models\User $actor): array
+    {
+        if (! $actor) {
+            return [];
+        }
+
+        $roles = [RoleName::Agent->value];
+
+        if ($actor->can('users.manage-team') || $actor->can('users.manage')) {
+            $roles[] = RoleName::Leader->value;
+        }
+
+        if ($actor->can('users.manage')) {
+            $roles[] = RoleName::Supervisor->value;
+        }
+
+        if (TeamScope::isOrgWide($actor) && $actor->can('users.manage')) {
+            $roles[] = RoleName::Manager->value;
+            $roles[] = RoleName::Admin->value;
+            $roles[] = RoleName::SuperAdmin->value;
+        }
+
+        return array_values(array_unique($roles));
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function rules(): array
     {
         $role = $this->input('role', RoleName::Agent->value);
+        $orgWideRole = in_array($role, [
+            RoleName::SuperAdmin->value,
+            RoleName::Admin->value,
+            RoleName::Manager->value,
+        ], true);
+        $passwordLoginRole = in_array($role, RoleName::passwordLoginAtCreationValues(), true);
 
         return [
             'name' => ['required', 'string', 'max:150'],
             'phone' => ['required', 'string', 'max:20', 'unique:users,phone'],
-            'role' => ['sometimes', 'string', Rule::in([
-                RoleName::Agent->value,
-                RoleName::Leader->value,
-                RoleName::Supervisor->value,
-            ])],
+            'role' => ['sometimes', 'string', Rule::in(self::allowedRolesFor($this->user()))],
             'team_id' => [
-                Rule::requiredIf(in_array($role, [RoleName::Agent->value, RoleName::Leader->value], true)),
+                Rule::requiredIf($role === RoleName::Agent->value),
                 'nullable',
                 'integer',
                 'exists:teams,id',
             ],
-            'email' => ['nullable', 'email', 'max:150', 'unique:users,email'],
+            'email' => [
+                Rule::requiredIf($orgWideRole),
+                'nullable',
+                'email',
+                'max:150',
+                'unique:users,email',
+            ],
+            'password' => [
+                Rule::requiredIf($passwordLoginRole),
+                'nullable',
+                'string',
+                'min:12',
+                'max:128',
+            ],
         ];
     }
 
@@ -69,6 +112,10 @@ class StoreUserRequest extends FormRequest
                         $validator->errors()->add('team_id', 'اجازه افزودن کارشناس به این تیم را ندارید.');
                     }
                 }
+            }
+
+            if ($role === RoleName::Leader->value && $actor && ! TeamScope::isOrgWide($actor) && ! $this->filled('team_id')) {
+                $validator->errors()->add('team_id', 'تیم سرتیم را مشخص کن.');
             }
 
             if ($role === RoleName::Leader->value && $this->filled('team_id') && $actor && ! TeamScope::isOrgWide($actor)) {

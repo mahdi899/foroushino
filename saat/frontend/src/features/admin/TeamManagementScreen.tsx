@@ -7,7 +7,7 @@ import { hasPermission } from '@/lib/permissions'
 import { isManagerRole } from '@/lib/roles'
 import { toFa } from '@/lib/format'
 import { apiErrorMessage } from '@/lib/apiErrors'
-import { createTeam, updateTeam } from '@/services/teamAdminActions'
+import { createTeam, deleteTeam, updateTeam } from '@/services/teamAdminActions'
 import { ensureAdminAgentsLoaded } from '@/services/userAdminActions'
 import { TeamFormSheet } from '@/components/domain/TeamFormSheet'
 import { buildTeamStaffOptions, memberIdsForTeam } from '@/lib/teamStaffOptions'
@@ -36,6 +36,7 @@ export function TeamManagementScreen() {
   const [supervisorId, setSupervisorId] = useState('')
   const [memberIds, setMemberIds] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const hierarchy = useMemo(() => {
     const rows = teams.map((team) => ({
@@ -124,6 +125,25 @@ export function TeamManagementScreen() {
       pushToast(apiErrorMessage(error, 'ویرایش تیم ناموفق بود'), 'error')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const submitDelete = async () => {
+    if (!editTarget) return
+    const confirmed = window.confirm(
+      `تیم «${editTarget.name}» حذف شود؟\nکارشناسان این تیم بدون تیم می‌شوند.`,
+    )
+    if (!confirmed) return
+
+    setDeleting(true)
+    try {
+      await deleteTeam(editTarget.id)
+      pushToast('تیم حذف شد')
+      setEditTarget(null)
+    } catch (error) {
+      pushToast(apiErrorMessage(error, 'حذف تیم ناموفق بود'), 'error')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -238,6 +258,8 @@ export function TeamManagementScreen() {
         {...formProps}
         onClose={() => setEditTarget(null)}
         onSubmit={() => void submitEdit()}
+        onDelete={() => void submitDelete()}
+        deleting={deleting}
       />
     </Page>
   )

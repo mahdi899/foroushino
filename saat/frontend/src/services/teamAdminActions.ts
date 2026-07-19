@@ -90,6 +90,18 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
   return team
 }
 
+export async function deleteTeam(teamId: string): Promise<void> {
+  await http.del(`/admin/teams/${teamId}`)
+
+  const state = useStore.getState()
+  const nextAgents = state.agents.map((agent) =>
+    agent.teamId === teamId ? { ...agent, teamId: '' } : agent,
+  )
+  state.setAgents(nextAgents)
+  state.setTeams(state.teams.filter((team) => team.id !== teamId))
+  invalidateAdminDirectory()
+}
+
 export async function updateTeam(teamId: string, input: UpdateTeamInput): Promise<Team> {
   const payload: Dto = {}
   if (input.name != null) payload.name = input.name.trim()

@@ -1,30 +1,29 @@
 import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   Bell,
   Moon,
   Vibrate,
   Globe,
-  Trash2,
-  UsersRound,
   ChevronLeft,
   LogOut,
   ShieldCheck,
   EyeOff,
   TimerOff,
   Download,
+  KeyRound,
   type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { clearToken } from '@/services/auth'
+import { fetchMe, updatePassword } from '@/services/auth'
+import { apiMode } from '@/services'
+import { apiErrorMessage } from '@/lib/apiErrors'
 import { useInstallPrompt } from '@/lib/pwa'
 import { Page } from '@/components/layout/Page'
 import { TopBar } from '@/components/layout/TopBar'
 import { Chip } from '@/components/ui/Chip'
-import { DemoRolePopup } from '@/components/auth/DemoRoleSwitcher'
-import { useDemoMode } from '@/hooks/useDemoMode'
-import { roleLabels } from '@/data/labels'
+import { Button } from '@/components/ui/Button'
 import { toFa } from '@/lib/format'
 import { APP_VERSION_LABEL } from '@/lib/app'
 import { shouldMaskCustomerPhones } from '@/lib/phonePrivacy'
@@ -48,16 +47,61 @@ const stagger = {
 export function SettingsScreen() {
   const navigate = useNavigate()
   const logout = useStore((s) => s.logout)
+  const pushToast = useStore((s) => s.pushToast)
   const darkMode = useStore((s) => s.darkMode)
   const toggleDarkMode = useStore((s) => s.toggleDarkMode)
   const { canInstall, install, isInstalled } = useInstallPrompt()
-  const { enabled: demoEnabled } = useDemoMode()
   const role = useStore((s) => s.role)
-  const [demoRoleOpen, setDemoRoleOpen] = useState(false)
   const [toggles, setToggles] = useState({ notif: true, haptic: true })
+  const [passwordLoginEnabled, setPasswordLoginEnabled] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordBusy, setPasswordBusy] = useState(false)
+
+  useEffect(() => {
+    if (apiMode !== 'http') return
+    void fetchMe()
+      .then((user) => setPasswordLoginEnabled(Boolean(user.password_login_enabled)))
+      .catch(() => {})
+  }, [])
 
   const phoneMaskOn = shouldMaskCustomerPhones(role)
   const showPrivacySection = isAgentRole(role) || isLeaderRole(role)
+  const showPasswordSection = apiMode === 'http'
+
+  const savePassword = async () => {
+    if (newPassword.length < 12) {
+      pushToast('رمز عبور باید حداقل ۱۲ کاراکتر باشد', 'error')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      pushToast('تکرار رمز عبور یکسان نیست', 'error')
+      return
+    }
+    if (passwordLoginEnabled && !currentPassword) {
+      pushToast('رمز عبور فعلی را وارد کن', 'error')
+      return
+    }
+
+    setPasswordBusy(true)
+    try {
+      const user = await updatePassword({
+        password: newPassword,
+        passwordConfirmation: confirmPassword,
+        currentPassword: passwordLoginEnabled ? currentPassword : undefined,
+      })
+      setPasswordLoginEnabled(Boolean(user.password_login_enabled))
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      pushToast('رمز عبور ذخیره شد', 'success')
+    } catch (error) {
+      pushToast(apiErrorMessage(error, 'ذخیره رمز عبور ناموفق بود'), 'error')
+    } finally {
+      setPasswordBusy(false)
+    }
+  }
 
   const switches: { icon: LucideIcon; label: string; key: keyof typeof toggles }[] = [
     { icon: Bell, label: 'اعلان‌ها', key: 'notif' },
@@ -104,6 +148,51 @@ export function SettingsScreen() {
           ))}
         </SettingsSection>
 
+        {showPasswordSection && (
+          <SettingsSection title="ورود با رمز عبور">
+            <div className="space-y-3 px-3.5 py-3">
+              <div className="flex items-start gap-2.5 rounded-[16px] border border-[#3390EC]/15 bg-[#3390EC]/8 p-3 dark:border-[#8774E1]/18 dark:bg-[#8774E1]/10">
+                <KeyRound size={16} className={cn('mt-0.5 shrink-0', TG)} strokeWidth={2.35} />
+                <p className="text-[11.5px] font-semibold leading-6 text-text-muted">
+                  {passwordLoginEnabled
+                    ? 'ورود با شماره موبایل و رمز عبور برای حسابت فعال است.'
+                    : 'با تعیین رمز عبور می‌توانی به‌جای کد تلگرام، با شماره موبایل وارد شوی.'}
+                </p>
+              </div>
+
+              {passwordLoginEnabled && (
+                <input
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="رمز عبور فعلی"
+                  type="password"
+                  autoComplete="current-password"
+                  className="glass-inset w-full rounded-[14px] border border-white/55 px-3 py-3 text-[14px] font-semibold dark:border-white/10"
+                />
+              )}
+              <input
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="رمز عبور جدید (حداقل ۱۲ کاراکتر)"
+                type="password"
+                autoComplete="new-password"
+                className="glass-inset w-full rounded-[14px] border border-white/55 px-3 py-3 text-[14px] font-semibold dark:border-white/10"
+              />
+              <input
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="تکرار رمز عبور جدید"
+                type="password"
+                autoComplete="new-password"
+                className="glass-inset w-full rounded-[14px] border border-white/55 px-3 py-3 text-[14px] font-semibold dark:border-white/10"
+              />
+              <Button full size="lg" disabled={passwordBusy} onClick={() => void savePassword()}>
+                {passwordBusy ? 'در حال ذخیره…' : passwordLoginEnabled ? 'تغییر رمز عبور' : 'فعال‌سازی ورود با رمز'}
+              </Button>
+            </div>
+          </SettingsSection>
+        )}
+
         {showPrivacySection && (
           <SettingsSection title="حریم خصوصی و امنیت">
             <SettingsRow
@@ -137,28 +226,6 @@ export function SettingsScreen() {
           <NavRow icon={Globe} label="زبان" value="فارسی" sublabel="به‌زودی" disabled />
         </SettingsSection>
 
-        <SettingsSection title="پیشرفته">
-          {demoEnabled && (
-            <NavRow
-              icon={UsersRound}
-              label="تغییر نقش دمو"
-              value={roleLabels[role]}
-              onClick={() => setDemoRoleOpen(true)}
-              bordered
-            />
-          )}
-          <NavRow
-            icon={Trash2}
-            label="بازنشانی داده‌های دمو"
-            danger
-            onClick={() => {
-              clearToken()
-              localStorage.removeItem('saat-store')
-              location.reload()
-            }}
-          />
-        </SettingsSection>
-
         <motion.button
           variants={fadeUp}
           type="button"
@@ -177,8 +244,6 @@ export function SettingsScreen() {
           {APP_VERSION_LABEL}
         </motion.p>
       </motion.div>
-
-      <DemoRolePopup open={demoRoleOpen} onClose={() => setDemoRoleOpen(false)} />
     </Page>
   )
 }

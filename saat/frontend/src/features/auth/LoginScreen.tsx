@@ -2,13 +2,11 @@ import { useCallback, useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft } from 'lucide-react'
-import { DemoAccountsPanel } from '@/components/auth/DemoAccountsPanel'
 import { useStore } from '@/store/useStore'
 import {
   requestPhoneOtp,
-  loginWithDemoAccount,
   verifyPhoneOtp,
-  type DemoAccount,
+  loginWithPassword,
 } from '@/services/auth'
 import { ApiError } from '@/services/http'
 import { SAAT_LOGO_ALT, SAAT_LOGO_AUTH_CLASS, SAAT_LOGO_SRC } from '@/lib/brand'
@@ -38,10 +36,12 @@ export function LoginScreen() {
   const isAuthed = useStore((s) => s.isAuthed)
   const setSessionFromAuth = useStore((s) => s.setSessionFromAuth)
   const pushToast = useStore((s) => s.pushToast)
-  const [step, setStep] = useState<'phone' | 'otp'>('phone')
+  const [step, setStep] = useState<'phone' | 'choice' | 'otp' | 'password'>('phone')
   const [phone, setPhone] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [otpHint, setOtpHint] = useState('')
+  const [loginOptions, setLoginOptions] = useState({ password: false, otp: false })
   const [otp, setOtp] = useState(() => Array(OTP_LEN).fill(''))
   const [otpPhase, setOtpPhase] = useState<OtpPhase>('idle')
   const [otpError, setOtpError] = useState(false)
@@ -198,12 +198,61 @@ export function LoginScreen() {
     setOtpHint('')
   }
 
-  const goToOtp = async () => {
+  const goToNextStep = async () => {
     haptic('light')
     setLoading(true)
     try {
       const result = await requestPhoneOtp(phone)
+      setLoginOptions({
+        password:
+          result.password_available ??
+          (result.channel === 'password' || result.channel === 'choice'),
+        otp:
+          result.otp_available ??
+          (result.channel === 'telegram' ||
+            result.channel === 'choice' ||
+            result.channel === 'demo'),
+      })
       setOtpHint(result.hint ?? (result.channel === 'demo' ? 'کد ثابت دمو' : 'کد تأیید ارسال شد.'))
+      if (result.channel === 'choice') {
+        setStep('choice')
+      } else if (result.channel === 'password') {
+        setPassword('')
+        setStep('password')
+      } else {
+        setOtp(Array(OTP_LEN).fill(''))
+        setStep('otp')
+      }
+    } catch (error) {
+      haptic('error')
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'ارسال کد ناموفق بود'
+      pushToast(message, 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const startPasswordLogin = () => {
+    haptic('light')
+    setPassword('')
+    setStep('password')
+  }
+
+  const startOtpLogin = async () => {
+    haptic('light')
+    setLoading(true)
+    try {
+      const result = await requestPhoneOtp(phone, 'otp')
+      setLoginOptions({
+        password: result.password_available ?? true,
+        otp: true,
+      })
+      setOtpHint(result.hint ?? 'کد تأیید ارسال شد.')
       setOtp(Array(OTP_LEN).fill(''))
       setStep('otp')
     } catch (error) {
@@ -220,29 +269,25 @@ export function LoginScreen() {
     }
   }
 
-  const handlePickDemoAccount = async (account: DemoAccount) => {
+  const submitPassword = async () => {
+    if (password.length < 12) {
+      pushToast('رمز عبور باید حداقل ۱۲ کاراکتر باشد', 'error')
+      return
+    }
     haptic('light')
-    setPhone(account.phone)
     setLoading(true)
     try {
-      await requestPhoneOtp(account.phone)
-      setOtpHint(`کد ثابت دمو: ${account.otp}`)
-      setOtp(account.otp.split(''))
-      setStep('otp')
-    } catch {
-      try {
-        const user = await loginWithDemoAccount(account)
-        await completeAuth(user)
-      } catch (error) {
-        haptic('error')
-        const message =
-          error instanceof ApiError
+      const user = await loginWithPassword(phone, password)
+      await completeAuth(user)
+    } catch (error) {
+      haptic('error')
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error
             ? error.message
-            : error instanceof Error
-              ? error.message
-              : 'ورود دمو ناموفق بود'
-        pushToast(message, 'error')
-      }
+            : 'ورود ناموفق بود'
+      pushToast(message, 'error')
     } finally {
       setLoading(false)
     }
@@ -284,7 +329,7 @@ export function LoginScreen() {
                   <p className="mx-auto mt-3 max-w-[300px] text-[15px] leading-[1.55] text-[#707579] dark:text-[#8E9396]">
                     شماره موبایلت را وارد کن.
                     <br />
-                    کد تأیید برایت ارسال می‌شود.
+                    با رمز عبور یا کد تأیید وارد می‌شوی.
                   </p>
                 </div>
 
@@ -307,6 +352,87 @@ export function LoginScreen() {
                       placeholder={toFa('0912 345 6789')}
                       className={cn(
                         'h-[26px] w-full bg-transparent text-left text-[16px] font-normal tabular-nums outline-none',
+                        'text-[#000000] placeholder:text-[#A8A8A8] dark:text-[#F5F5F5] dark:placeholder:text-[#5E6770]',
+                      )}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            ) : step === 'choice' ? (
+              <motion.div
+                key="choice"
+                variants={stepVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+                className="flex flex-1 flex-col"
+              >
+                <div className="text-center">
+                  <h1 className="text-[26px] font-semibold leading-tight text-[#000000] dark:text-[#F5F5F5]">
+                    {toFa(phone)}
+                  </h1>
+                  <p className="mx-auto mt-3 max-w-[300px] text-[15px] leading-[1.55] text-[#707579] dark:text-[#8E9396]">
+                    روش ورود را انتخاب کن.
+                  </p>
+                </div>
+                <div className="mt-8 space-y-3">
+                  {loginOptions.password && (
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={startPasswordLogin}
+                      className="flex h-[50px] w-full items-center justify-center rounded-[10px] bg-[#3390EC] text-[16px] font-semibold text-white active:bg-[#2B7FD4] disabled:opacity-60 dark:bg-[#8774E1] dark:active:bg-[#7563D4]"
+                    >
+                      ورود با رمز عبور
+                    </button>
+                  )}
+                  {loginOptions.otp && (
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => void startOtpLogin()}
+                      className="flex h-[50px] w-full items-center justify-center rounded-[10px] border border-[#3390EC]/30 bg-[#3390EC]/8 text-[16px] font-semibold text-[#3390EC] disabled:opacity-60 dark:border-[#8774E1]/30 dark:bg-[#8774E1]/10 dark:text-[#8774E1]"
+                    >
+                      {loading ? 'در حال ارسال کد…' : 'ورود با کد تلگرام'}
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            ) : step === 'password' ? (
+              <motion.div
+                key="password"
+                variants={stepVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+                className="flex flex-1 flex-col"
+              >
+                <div className="text-center">
+                  <h1 className="text-[26px] font-semibold leading-tight text-[#000000] dark:text-[#F5F5F5]">
+                    {toFa(phone)}
+                  </h1>
+                  <p className="mx-auto mt-3 max-w-[300px] text-[15px] leading-[1.55] text-[#707579] dark:text-[#8E9396]">
+                    رمز عبور حساب خود را وارد کن.
+                  </p>
+                </div>
+                <div className="mt-8 w-full">
+                  <div
+                    className={cn(
+                      'overflow-hidden rounded-[12px] border px-4 py-[13px]',
+                      'border-[#E5E5E5] bg-[#FFFFFF]',
+                      'dark:border-[#2B3945] dark:bg-[#242F3D]',
+                    )}
+                  >
+                    <input
+                      type="password"
+                      autoFocus
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="رمز عبور"
+                      className={cn(
+                        'h-[26px] w-full bg-transparent text-[16px] font-normal outline-none',
                         'text-[#000000] placeholder:text-[#A8A8A8] dark:text-[#F5F5F5] dark:placeholder:text-[#5E6770]',
                       )}
                     />
@@ -431,7 +557,7 @@ export function LoginScreen() {
                 type="button"
                 whileTap={{ scale: phoneValid ? 0.98 : 1 }}
                 disabled={!phoneValid || loading}
-                onClick={() => void goToOtp()}
+                onClick={() => void goToNextStep()}
                 className={cn(
                   'flex h-[50px] w-full items-center justify-center rounded-[10px] text-[16px] font-semibold text-white',
                   phoneValid
@@ -441,25 +567,75 @@ export function LoginScreen() {
               >
                 {loading ? 'در حال ارسال کد…' : 'ادامه'}
               </motion.button>
-
-              <DemoAccountsPanel className="mt-1" onPickAccount={handlePickDemoAccount} />
             </div>
-          ) : (
+          ) : step === 'password' ? (
+            <div className="space-y-3">
+              <motion.button
+                type="button"
+                whileTap={{ scale: password.length >= 12 ? 0.98 : 1 }}
+                disabled={password.length < 12 || loading}
+                onClick={() => void submitPassword()}
+                className={cn(
+                  'flex h-[50px] w-full items-center justify-center rounded-[10px] text-[16px] font-semibold text-white',
+                  password.length >= 12
+                    ? 'bg-[#3390EC] active:bg-[#2B7FD4] dark:bg-[#8774E1] dark:active:bg-[#7563D4]'
+                    : 'cursor-not-allowed bg-[#3390EC]/35 dark:bg-[#8774E1]/35',
+                )}
+              >
+                {loading ? 'در حال ورود…' : 'ورود'}
+              </motion.button>
+              {loginOptions.otp && (
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => void startOtpLogin()}
+                  className="flex w-full items-center justify-center py-2 text-[15px] font-medium text-[#3390EC] disabled:opacity-40 dark:text-[#8774E1]"
+                >
+                  ورود با کد تلگرام
+                </button>
+              )}
+            </div>
+          ) : step === 'choice' ? (
             <button
               type="button"
               onClick={() => {
-                resetOtp()
+                setPassword('')
                 setStep('phone')
               }}
-              disabled={otpLocked}
-              className={cn(
-                'flex w-full items-center justify-center gap-1 py-2 text-[15px] font-medium',
-                'text-[#3390EC] disabled:opacity-40 dark:text-[#8774E1]',
-              )}
+              className="flex w-full items-center justify-center gap-1 py-2 text-[15px] font-medium text-[#3390EC] dark:text-[#8774E1]"
             >
               <ChevronLeft size={16} className="rotate-180" />
               ویرایش شماره
             </button>
+          ) : (
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => {
+                  resetOtp()
+                  setPassword('')
+                  setStep('phone')
+                }}
+                disabled={otpLocked}
+                className={cn(
+                  'flex w-full items-center justify-center gap-1 py-2 text-[15px] font-medium',
+                  'text-[#3390EC] disabled:opacity-40 dark:text-[#8774E1]',
+                )}
+              >
+                <ChevronLeft size={16} className="rotate-180" />
+                ویرایش شماره
+              </button>
+              {loginOptions.password && (
+                <button
+                  type="button"
+                  disabled={otpLocked || loading}
+                  onClick={startPasswordLogin}
+                  className="flex w-full items-center justify-center py-2 text-[15px] font-medium text-[#3390EC] disabled:opacity-40 dark:text-[#8774E1]"
+                >
+                  ورود با رمز عبور
+                </button>
+              )}
+            </div>
           )}
 
           <p className="text-center text-[12px] leading-[1.6] text-[#707579] dark:text-[#8E9396]">

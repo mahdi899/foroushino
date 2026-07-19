@@ -30,6 +30,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const setDataSyncing = useStore((s) => s.setDataSyncing)
   const pushToast = useStore((s) => s.pushToast)
   const lastErrorRef = useRef<string | null>(null)
+  const lastSyncAtRef = useRef(0)
+  const MIN_BACKGROUND_SYNC_MS = 45_000
 
   useEffect(() => {
     if (apiMode !== 'http' || !isAuthed) return
@@ -48,6 +50,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         if (!cancelled) {
           applySyncData(payload)
           lastErrorRef.current = null
+          lastSyncAtRef.current = Date.now()
           void flushOfflineQueue()
         }
       } catch (error) {
@@ -74,7 +77,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     void run()
 
     const onVisible = () => {
-      if (document.visibilityState === 'visible' && online) void run()
+      if (document.visibilityState !== 'visible' || !online) return
+      const elapsed = Date.now() - lastSyncAtRef.current
+      if (lastSyncAtRef.current > 0 && elapsed < MIN_BACKGROUND_SYNC_MS) return
+      void run()
     }
     document.addEventListener('visibilitychange', onVisible)
 

@@ -101,12 +101,14 @@ export function AgentDetailSheet({
   showFinance = false,
   name = '',
   phone = '',
+  password = '',
   teamId = '',
   canEdit = false,
   canViewBank = false,
   canClearBank = false,
   onName,
   onPhone,
+  onPassword,
   onTeam,
   onSubmit,
   onClearBank,
@@ -122,12 +124,14 @@ export function AgentDetailSheet({
   showFinance?: boolean
   name?: string
   phone?: string
+  password?: string
   teamId?: string
   canEdit?: boolean
   canViewBank?: boolean
   canClearBank?: boolean
   onName?: (v: string) => void
   onPhone?: (v: string) => void
+  onPassword?: (v: string) => void
   onTeam?: (v: string) => void
   onSubmit?: () => void
   onClearBank?: () => void
@@ -231,6 +235,15 @@ export function AgentDetailSheet({
               inputMode="tel"
               className="glass-inset w-full rounded-[14px] border border-white/55 px-3 py-3 text-[14px] font-semibold dark:border-white/10"
             />
+            {!agent && (
+              <input
+                value={password}
+                onChange={(e) => onPassword?.(e.target.value)}
+                placeholder="رمز عبور اولیه (حداقل ۱۲ کاراکتر)"
+                type="password"
+                className="glass-inset w-full rounded-[14px] border border-white/55 px-3 py-3 text-[14px] font-semibold dark:border-white/10"
+              />
+            )}
             <div className="flex flex-wrap gap-2">
               {teams.map((team) => (
                 <Chip key={team.id} active={teamId === team.id} onClick={() => onTeam?.(team.id)}>

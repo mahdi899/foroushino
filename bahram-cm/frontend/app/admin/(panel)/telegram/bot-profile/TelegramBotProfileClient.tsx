@@ -35,7 +35,7 @@ export function TelegramBotProfileClient({
     const bot = botsSorted.find((item) => item.id === botId);
     if (bot && !bot.token_present) {
       setMsg({
-        text: `توکن ربات ${bot.key} در env تنظیم نشده (${bot.token_key ?? 'TELEGRAM_BOT_TOKEN'}).`,
+        text: `توکن ربات ${bot.key} تنظیم نشده. از تنظیمات ربات → بخش «توکن ربات»، توکن BotFather را وارد و ذخیره کنید.`,
         tone: 'error',
       });
       return;
@@ -58,7 +58,7 @@ export function TelegramBotProfileClient({
     const bot = botsSorted.find((item) => item.id === botId);
     if (bot && !bot.token_present) {
       setMsg({
-        text: `توکن ربات ${bot.key} در env تنظیم نشده (${bot.token_key ?? 'TELEGRAM_BOT_TOKEN'}).`,
+        text: `توکن ربات ${bot.key} تنظیم نشده. از تنظیمات ربات → بخش «توکن ربات»، توکن BotFather را وارد و ذخیره کنید.`,
         tone: 'error',
       });
       return;
@@ -140,10 +140,9 @@ export function TelegramBotProfileClient({
 
                 {!canEdit ? (
                   <p className="mb-4 rounded-lg border border-warning/30 bg-warning/10 p-3 text-small text-text-muted leading-relaxed">
-                    این ربات فقط در دیتابیس ثبت شده و توکن env ندارد. برای ویرایش پروفایل، کارت ربات{' '}
-                    <strong className="text-text">production</strong> را استفاده کنید، یا در{' '}
-                    <code dir="ltr" className="text-caption">{bot.token_key ?? 'TELEGRAM_BOT_TOKEN'}</code> مقدار توکن BotFather را در{' '}
-                    <code dir="ltr" className="text-caption">bahram-cm/backend/.env</code> بگذارید و سرور backend را ری‌استارت کنید.
+                    توکن این ربات هنوز در پنل ذخیره نشده. به{' '}
+                    <strong className="text-text">تنظیمات ربات</strong> بروید، در بخش «توکن ربات» مقدار BotFather را وارد کنید و «ذخیره توکن» را بزنید.
+                    نیازی به قرار دادن توکن در فایل <code dir="ltr" className="text-caption">.env</code> نیست.
                   </p>
                 ) : null}
 

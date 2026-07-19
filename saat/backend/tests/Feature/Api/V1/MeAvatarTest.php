@@ -24,7 +24,7 @@ test('authenticated user can upload profile avatar', function (): void {
         ->assertJsonPath('message', 'عکس پروفایل به‌روزرسانی شد');
 
     $avatarUrl = $response->json('data.avatar');
-    expect($avatarUrl)->toBeString()->not->toBeEmpty();
+    expect($avatarUrl)->toBe('/storage/avatars/users/'.$user->id.'.jpg');
 
     $user->refresh();
     expect($user->avatar)->toBe($avatarUrl);
@@ -65,7 +65,7 @@ test('authenticated user can remove profile avatar', function (): void {
     $user = User::factory()->create();
     $path = 'avatars/users/'.$user->id.'.png';
     Storage::disk('public')->put($path, 'fake-image');
-    $user->update(['avatar' => Storage::disk('public')->url($path)]);
+    $user->update(['avatar' => '/storage/'.$path]);
 
     $this
         ->actingAs($user, 'sanctum')

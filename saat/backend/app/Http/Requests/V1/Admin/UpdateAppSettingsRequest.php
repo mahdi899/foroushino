@@ -73,6 +73,9 @@ class UpdateAppSettingsRequest extends FormRequest
             'settings.meli_sms_link_channel' => ['sometimes', 'nullable', 'string', 'max:500'],
             'settings.meli_sms_link_register' => ['sometimes', 'nullable', 'string', 'max:500'],
             'settings.meli_sms_link_payment' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'settings.melipayamak_username' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'settings.melipayamak_password' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'settings.melipayamak_rest_url' => ['sometimes', 'nullable', 'string', 'max:500'],
             'settings.*' => ['nullable'],
         ];
     }

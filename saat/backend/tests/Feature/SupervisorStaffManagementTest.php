@@ -8,6 +8,8 @@ beforeEach(function () {
     seedRoles();
 });
 
+const STAFF_INITIAL_PASSWORD = 'StaffPass12345';
+
 it('lets a manager create a supervisor account', function () {
     $manager = makeManager();
     Sanctum::actingAs($manager);
@@ -16,10 +18,21 @@ it('lets a manager create a supervisor account', function () {
         'name' => 'ناظر جدید',
         'phone' => '09129990001',
         'role' => 'supervisor',
+        'password' => STAFF_INITIAL_PASSWORD,
     ]);
 
     $response->assertCreated();
     expect($response->json('data.roles'))->toContain('supervisor');
+
+    $this->postJson('/api/v1/auth/phone-otp/request', [
+        'phone' => '09129990001',
+    ])->assertOk()
+        ->assertJsonPath('data.channel', 'password');
+
+    $this->postJson('/api/v1/auth/password-login', [
+        'phone' => '09129990001',
+        'password' => STAFF_INITIAL_PASSWORD,
+    ])->assertOk();
 });
 
 it('forbids a supervisor from creating another supervisor', function () {
@@ -30,7 +43,24 @@ it('forbids a supervisor from creating another supervisor', function () {
         'name' => 'ناظر دوم',
         'phone' => '09129990002',
         'role' => 'supervisor',
+        'password' => STAFF_INITIAL_PASSWORD,
     ])->assertForbidden();
+});
+
+it('lets a manager create a leader without assigning a team yet', function () {
+    $manager = makeManager();
+    Sanctum::actingAs($manager);
+
+    $response = $this->postJson('/api/v1/admin/users', [
+        'name' => 'سرتیم بدون تیم',
+        'phone' => '09129990004',
+        'role' => 'leader',
+        'password' => STAFF_INITIAL_PASSWORD,
+    ]);
+
+    $response->assertCreated();
+    expect($response->json('data.roles'))->toContain('leader');
+    expect($response->json('data.team_id'))->toBeNull();
 });
 
 it('lets a supervisor create a leader for one of their teams', function () {
@@ -43,10 +73,24 @@ it('lets a supervisor create a leader for one of their teams', function () {
         'phone' => '09129990003',
         'role' => 'leader',
         'team_id' => $team->id,
+        'password' => STAFF_INITIAL_PASSWORD,
     ]);
 
     $response->assertCreated();
     expect($team->fresh()->leader_id)->toBe($response->json('data.id'));
+});
+
+it('requires a supervisor to pick a team when creating a leader', function () {
+    $supervisor = makeSupervisor();
+    Sanctum::actingAs($supervisor);
+
+    $this->postJson('/api/v1/admin/users', [
+        'name' => 'سرتیم بدون تیم',
+        'phone' => '09129990005',
+        'role' => 'leader',
+        'password' => STAFF_INITIAL_PASSWORD,
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors(['team_id']);
 });
 
 it('limits each supervisor to five teams', function () {

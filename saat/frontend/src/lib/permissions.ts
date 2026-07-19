@@ -69,6 +69,8 @@ const MOCK_ROLE_PERMISSIONS: Partial<Record<Role, string[]>> = {
     'teams.manage',
   ],
   manager: MANAGER_PERMISSIONS,
+  'super-admin': MANAGER_PERMISSIONS,
+  admin: MANAGER_PERMISSIONS,
 }
 
 export function resolvePermissions(role: Role, permissions: string[]): string[] {
