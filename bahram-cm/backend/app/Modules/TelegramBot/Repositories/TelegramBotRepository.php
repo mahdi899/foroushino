@@ -26,7 +26,10 @@ class TelegramBotRepository
     /** @return Collection<int, TelegramBot> */
     public function all(): Collection
     {
-        return TelegramBot::query()->orderBy('key')->get();
+        return TelegramBot::query()
+            ->where('is_active', true)
+            ->orderBy('key')
+            ->get();
     }
 
     /**

@@ -27,6 +27,7 @@ export async function updateTelegramBotAction(
   botId: number,
   input: {
     is_active?: boolean;
+    bot_token_input?: string;
     support_group_chat_id?: string | null;
     reports_chat_id?: string | null;
     reports_topic_id?: number | null;
@@ -86,6 +87,24 @@ export async function toggleTelegramBotAdminAction(
     return { ok: true };
   } catch (e) {
     return actionError(e, 'تغییر نقش ادمین بات ناموفق بود.');
+  }
+}
+
+export async function grantTelegramBotAdminByTelegramIdAction(input: {
+  telegram_user_id: number;
+  bot_admin_rank?: 'simple' | 'super';
+  display_name?: string;
+  bot_key?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await adminFetch('/panel/telegram/accounts/grant-bot-admin', {
+      method: 'POST',
+      body: input,
+    });
+    revalidateTelegram();
+    return { ok: true };
+  } catch (e) {
+    return actionError(e, 'افزودن ادمین بات ناموفق بود.');
   }
 }
 
@@ -372,5 +391,69 @@ export async function retryFailedTelegramUpdatesAction(): Promise<{ ok: boolean;
     return { ok: true, retried: res.data?.retried ?? 0 };
   } catch (e) {
     return actionError(e, 'تلاش مجدد آپدیت‌ها ناموفق بود.');
+  }
+}
+
+export async function saveTelegramInfrastructureAction(input: {
+  mode?: 'direct' | 'worker';
+  worker_url?: string;
+  connection_token_input?: string;
+  webhook_secret_input?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await adminFetch('/panel/telegram/infrastructure', { method: 'PATCH', body: input });
+    revalidateTelegram();
+    return { ok: true };
+  } catch (e) {
+    return actionError(e, 'ذخیره تنظیمات اتصال ناموفق بود.');
+  }
+}
+
+export async function testTelegramInfrastructureAction(): Promise<{
+  ok: boolean;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    const res = await adminFetch<{ data: { ok: boolean; message: string } }>(
+      '/panel/telegram/infrastructure/test',
+      { method: 'POST' },
+    );
+    return { ok: res.data?.ok ?? false, message: res.data?.message };
+  } catch (e) {
+    return actionError(e, 'تست اتصال ناموفق بود.');
+  }
+}
+
+export async function registerTelegramWebhookFromPanelAction(): Promise<{
+  ok: boolean;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    const res = await adminFetch<{ data: { ok: boolean; message: string; url?: string } }>(
+      '/panel/telegram/infrastructure/register-webhook',
+      { method: 'POST' },
+    );
+    revalidateTelegram();
+    return { ok: res.data?.ok ?? false, message: res.data?.message };
+  } catch (e) {
+    return actionError(e, 'ثبت وب‌هوک ناموفق بود.');
+  }
+}
+
+export async function suggestTelegramSecretsAction(): Promise<{
+  ok: boolean;
+  data?: { bearer_token: string; webhook_secret: string };
+  error?: string;
+}> {
+  try {
+    const res = await adminFetch<{ data: { bearer_token: string; webhook_secret: string } }>(
+      '/panel/telegram/infrastructure/suggest-secrets',
+      { method: 'POST' },
+    );
+    return { ok: true, data: res.data };
+  } catch (e) {
+    return actionError(e, 'ساخت توکن ناموفق بود.');
   }
 }

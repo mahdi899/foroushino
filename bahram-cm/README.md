@@ -69,7 +69,7 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 جزئیات در [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
-**CDN (rostami.app / Arvan):** [`docs/ARVAN-CDN.md`](docs/ARVAN-CDN.md)
+**CDN (rostami.app / Cloudflare):** [`docs/CLOUDFLARE-CDN.md`](docs/CLOUDFLARE-CDN.md) — جایگزین آروان: [`docs/ARVAN-CDN.md`](docs/ARVAN-CDN.md)
 
 **خانواده داداش بهرام (Family):** [`docs/FAMILY.md`](docs/FAMILY.md) — برای بج/فید realtime: `BROADCAST_CONNECTION=reverb` + `php artisan reverb:start`. در production حتماً `CACHE_STORE=redis` (کش فید، unread و meta).
 

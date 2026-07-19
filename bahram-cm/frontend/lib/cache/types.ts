@@ -131,7 +131,7 @@ export const CACHE_MODULES: CacheModule[] = [
     settingKey: 'cdn_html_cache',
     group: 'cache',
     label: 'کش CDN (HTML)',
-    description: 'کش لبه CDN برای HTML — Arvan یا Cloudflare',
+    description: 'کش لبه CDN برای HTML — Cloudflare یا Arvan',
   },
   {
     id: 'cdn_auto_purge',

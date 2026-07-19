@@ -7,6 +7,7 @@ use App\Modules\TelegramBot\Enums\TelegramBotEnvironment;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Crypt;
 
 class TelegramBot extends Model
 {
@@ -62,6 +63,18 @@ class TelegramBot extends Model
      */
     public function resolveToken(): ?string
     {
+        $fromPanel = $this->panelToken();
+        if (filled($fromPanel)) {
+            return $fromPanel;
+        }
+
+        if ($this->key === 'production') {
+            $legacy = app(\App\Services\TelegramInfrastructureService::class)->legacyBotToken();
+            if (filled($legacy)) {
+                return $legacy;
+            }
+        }
+
         if (blank($this->token_key)) {
             return null;
         }
@@ -69,6 +82,41 @@ class TelegramBot extends Model
         $value = env($this->token_key);
 
         return filled($value) ? (string) $value : null;
+    }
+
+    public function panelToken(): ?string
+    {
+        $encrypted = trim((string) data_get($this->settings, 'panel_token_encrypted', ''));
+        if ($encrypted === '') {
+            return null;
+        }
+
+        try {
+            return Crypt::decryptString($encrypted);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    public function setPanelToken(string $token): void
+    {
+        $settings = (array) ($this->settings ?? []);
+        $settings['panel_token_encrypted'] = Crypt::encryptString(trim($token));
+        $this->forceFill(['settings' => $settings])->save();
+    }
+
+    public function panelTokenPreview(): ?string
+    {
+        $token = $this->panelToken();
+        if ($token === null) {
+            return null;
+        }
+
+        if (strlen($token) <= 8) {
+            return '••••';
+        }
+
+        return substr($token, 0, 4).'…'.substr($token, -4);
     }
 
     public function isProduction(): bool

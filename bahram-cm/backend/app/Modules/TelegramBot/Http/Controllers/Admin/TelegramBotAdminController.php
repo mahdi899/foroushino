@@ -8,6 +8,8 @@ use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Repositories\TelegramBotRepository;
 use App\Modules\TelegramBot\Services\BotResolver;
 use App\Modules\TelegramBot\Services\HealthCheckService;
+use App\Modules\TelegramBot\Services\TelegramWebhookRegisteredNotifier;
+use App\Services\TelegramInfrastructureService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -20,6 +22,8 @@ class TelegramBotAdminController
         private readonly HealthCheckService $health,
         private readonly BotResolver $resolver,
         private readonly TelegramBotClientFactory $clients,
+        private readonly TelegramInfrastructureService $infrastructure,
+        private readonly TelegramWebhookRegisteredNotifier $webhookRegisteredNotifier,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -50,6 +54,7 @@ class TelegramBotAdminController
 
         $data = $request->validate([
             'is_active' => ['sometimes', 'boolean'],
+            'bot_token_input' => ['sometimes', 'nullable', 'string', 'max:256'],
             'support_group_chat_id' => ['sometimes', 'nullable', 'string', 'max:64'],
             'reports_chat_id' => ['sometimes', 'nullable', 'string', 'max:64'],
             'reports_topic_id' => ['sometimes', 'nullable', 'integer'],
@@ -60,6 +65,14 @@ class TelegramBotAdminController
         if (array_key_exists('payment_reports_chat_id', $data)) {
             $bot->setPaymentReportsChatId($data['payment_reports_chat_id']);
             unset($data['payment_reports_chat_id']);
+        }
+
+        if (array_key_exists('bot_token_input', $data)) {
+            $token = trim((string) $data['bot_token_input']);
+            if ($token !== '') {
+                $bot->setPanelToken($token);
+            }
+            unset($data['bot_token_input']);
         }
 
         if ($data !== []) {
@@ -82,11 +95,12 @@ class TelegramBotAdminController
     {
         $this->authorizeTelegram($request, 'telegram.settings.manage');
 
-        $base = rtrim((string) config('telegram_bot.webhook.base_url'), '/');
-        $path = str_replace('{botKey}', $bot->key, (string) config('telegram_bot.webhook.path_pattern'));
-        $url = $base.'/'.$path;
+        $url = $this->infrastructure->buildWebhookUrl($bot->key);
 
         $this->clients->forBot($bot)->setWebhook($url, $bot->webhook_secret);
+
+        $mode = $this->infrastructure->usesWorkerBridge() ? 'Cloudflare Worker' : 'مستقیم';
+        $this->webhookRegisteredNotifier->notify($bot, $url, $mode);
 
         return response()->json(['data' => ['ok' => true, 'url' => $url]]);
     }
@@ -382,10 +396,9 @@ class TelegramBotAdminController
             'error' => [
                 'code' => 'telegram_bot_token_missing',
                 'message_fa' => sprintf(
-                    'توکن ربات «%s» (%s) در env تنظیم نشده. مقدار %s را در فایل bahram-cm/backend/.env قرار دهید، یا پروفایل ربات production را ویرایش کنید.',
+                    'توکن ربات «%s» (%s) تنظیم نشده. در همین صفحه، داخل بخش این ربات، توکن را وارد و ذخیره کنید.',
                     $bot->display_name,
                     $bot->key,
-                    $envVar,
                 ),
             ],
         ], 422);
@@ -402,6 +415,7 @@ class TelegramBotAdminController
             'environment' => $bot->environment?->value ?? (string) $bot->environment,
             'is_active' => $bot->is_active,
             'token_present' => filled($bot->resolveToken()),
+            'bot_token_preview' => $bot->panelTokenPreview(),
             'token_key' => $bot->token_key,
             'api_reachable' => (bool) ($healthBot['api_reachable'] ?? false),
             'webhook_url' => $healthBot['webhook_url'] ?? null,

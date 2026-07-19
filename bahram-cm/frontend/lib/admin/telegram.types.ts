@@ -16,6 +16,19 @@ export type TelegramHealthSnapshot = {
 
 export type TelegramModuleTone = 'teal' | 'gold' | 'blue' | 'green' | 'amber';
 
+export type TelegramInfrastructureView = {
+  worker_url: string;
+  mode: 'direct' | 'worker';
+  backend_origin: string;
+  server_webhook_url: string;
+  worker_webhook_url: string | null;
+  has_connection_token: boolean;
+  connection_token_preview: string | null;
+  configured: boolean;
+  worker_sample_template?: string | null;
+  worker_deploy_sample?: string | null;
+};
+
 export type TelegramModule = {
   href: string;
   label: string;
@@ -40,6 +53,7 @@ export type TelegramBotView = {
   environment: string;
   is_active: boolean;
   token_present: boolean;
+  bot_token_preview?: string | null;
   api_reachable: boolean;
   webhook_url: string | null;
   support_group_chat_id?: string | null;

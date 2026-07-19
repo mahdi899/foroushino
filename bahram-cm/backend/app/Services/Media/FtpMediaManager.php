@@ -347,9 +347,27 @@ class FtpMediaManager
         Cache::forget('media.ftp.list.'.$this->remoteDiskName().'.'.md5(trim($directory, '/')));
     }
 
-    /** Never surface raw driver exception text (may contain host/paths) — return a generic reason instead. */
+    /** Never surface raw driver exception text (may contain host/paths) — return a helpful reason instead. */
     private function safeMessage(\Throwable $e): string
     {
+        $message = $e->getMessage();
+
+        if (! extension_loaded('ftp')) {
+            return 'افزونه PHP با نام ext-ftp روی سرور فعال نیست. در Laragon از php.ini خط extension=ftp را فعال کنید و وب‌سرور را ری‌استارت کنید.';
+        }
+
+        if (str_contains($message, 'FtpAdapter') && str_contains($message, 'not found')) {
+            return 'پکیج FTP نصب نیست. در پوشه backend دستور composer install را اجرا کنید.';
+        }
+
+        if (str_contains($message, 'login') || str_contains($message, 'authenticate')) {
+            $ssl = (bool) (MediaFtpConnection::get()['ssl'] ?? false);
+
+            return $ssl
+                ? 'ورود FTP ناموفق بود. هاست‌های دانلود ایرانی معمولاً FTPS (SSL) ندارند — گزینه FTPS را خاموش کنید، رمز را دوباره وارد کنید و ذخیره کنید.'
+                : 'ورود FTP ناموفق بود. Host، Username، Password و Port را بررسی کنید.';
+        }
+
         return 'بررسی کنید Host، Username، Password و Port درست وارد شده باشند.';
     }
 }

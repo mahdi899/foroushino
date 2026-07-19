@@ -31,6 +31,8 @@ class SmsCenterConfigController extends Controller
             'event_categories' => $this->config->eventCategoriesView(),
             'admin_telegram_events' => $this->config->adminTelegramEventsView(),
             'admin_telegram_categories' => $this->config->adminTelegramCategoriesView(),
+            'telegram_infrastructure' => $this->config->telegramInfrastructureView(),
+            'telegram_worker_sample_template' => $this->config->telegramWorkerSampleTemplate(),
         ]]);
     }
 

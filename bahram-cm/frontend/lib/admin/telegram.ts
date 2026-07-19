@@ -12,6 +12,7 @@ import type {
   TelegramDeliveryLogView,
   TelegramDestinationView,
   TelegramHealthSnapshot,
+  TelegramInfrastructureView,
   TelegramOperatorView,
   TelegramRequiredChatView,
   TelegramStatsSummaryView,
@@ -34,6 +35,15 @@ export async function loadTelegramHealth(): Promise<TelegramHealthSnapshot | nul
   try {
     const res = await adminFetch<{ data: TelegramHealthSnapshot }>('/panel/telegram/health');
     return res.data;
+  } catch {
+    return null;
+  }
+}
+
+export async function loadTelegramInfrastructure(): Promise<TelegramInfrastructureView | null> {
+  try {
+    const res = await adminFetch<{ data: TelegramInfrastructureView }>('/panel/telegram/infrastructure');
+    return res.data ?? null;
   } catch {
     return null;
   }

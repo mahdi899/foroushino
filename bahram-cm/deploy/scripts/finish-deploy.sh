@@ -49,7 +49,7 @@ sed -i "s|^INTERNAL_API_SECRET=.*|INTERNAL_API_SECRET=${INTERNAL_SECRET}|" .env
 sed -i "s|^IDENTITY_NATIONAL_CODE_HMAC_KEY=.*|IDENTITY_NATIONAL_CODE_HMAC_KEY=${HMAC_KEY}|" .env
 sed -i "s|^SANCTUM_STATEFUL_DOMAINS=.*|SANCTUM_STATEFUL_DOMAINS=${SITE_URL#https://},${FAMILY_URL#https://}|" .env
 sed -i "s|^MEDIA_URL=.*|MEDIA_URL=${CDN_URL}|" .env
-sed -i "s|^CDN_PROVIDER=.*|CDN_PROVIDER=arvan|" .env
+sed -i "s|^CDN_PROVIDER=.*|CDN_PROVIDER=cloudflare|" .env
 sed -i "s|^FAMILY_ENTRY_BASE_URL=.*|FAMILY_ENTRY_BASE_URL=${FAMILY_URL}|" .env
 sed -i "s|^FAMILY_ENTRY_PATH=.*|FAMILY_ENTRY_PATH=|" .env
 
@@ -103,6 +103,7 @@ CRON_LINE="* * * * * cd ${APP_ROOT}/backend && php artisan schedule:run >> /dev/
 (crontab -u www-data -l 2>/dev/null | grep -v 'schedule:run' || true; echo "${CRON_LINE}") | crontab -u www-data -
 
 mkdir -p /etc/nginx/conf.d
+cp "${APP_ROOT}/deploy/nginx/conf.d/cloudflare-real-ip.conf" /etc/nginx/conf.d/cloudflare-real-ip.conf
 cp "${APP_ROOT}/deploy/nginx/conf.d/rostami-upstreams.conf" /etc/nginx/conf.d/rostami-upstreams.conf
 NGINX_SRC="/root/rostami-app-origin.conf"
 [[ -f "${NGINX_SRC}" ]] || NGINX_SRC="${APP_ROOT}/deploy/nginx/rostami-app-origin.conf"

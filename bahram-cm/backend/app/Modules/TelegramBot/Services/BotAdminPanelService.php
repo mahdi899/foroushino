@@ -3597,10 +3597,11 @@ class BotAdminPanelService
         string $data,
     ): void {
         if ($data === 'admin:s:wh') {
-            $base = rtrim((string) config('telegram_bot.webhook.base_url'), '/');
-            $path = str_replace('{botKey}', $bot->key, (string) config('telegram_bot.webhook.path_pattern'));
-            $url = $base.'/'.$path;
+            $infrastructure = app(\App\Services\TelegramInfrastructureService::class);
+            $url = $infrastructure->buildWebhookUrl($bot->key);
             $client->setWebhook($url, $bot->webhook_secret);
+            $mode = $infrastructure->usesWorkerBridge() ? 'Cloudflare Worker' : 'مستقیم';
+            app(TelegramWebhookRegisteredNotifier::class)->notify($bot, $url, $mode);
             $this->renderSettings($bot, $client, $chatId, $messageId, "✅ وب‌هوک ثبت شد:\n{$url}");
 
             return;

@@ -6,6 +6,7 @@ use App\Modules\TelegramBot\Enums\BotAdminRank;
 use App\Modules\TelegramBot\Http\Controllers\Admin\Concerns\AuthorizesTelegramAdmin;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Repositories\TelegramBotRepository;
+use App\Modules\TelegramBot\Services\AccountLinkService;
 use App\Modules\TelegramBot\Services\RequiredChatMembershipService;
 use App\Modules\TelegramBot\Services\TelegramUserExportService;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +19,7 @@ class TelegramAccountAdminController
 
     public function __construct(
         private readonly TelegramBotRepository $bots,
+        private readonly AccountLinkService $accountLinks,
         private readonly RequiredChatMembershipService $membership,
         private readonly TelegramUserExportService $userExport,
     ) {}
@@ -110,6 +112,48 @@ class TelegramAccountAdminController
             echo $export['content'];
         }, $export['filename'], [
             'Content-Type' => 'text/plain; charset=UTF-8',
+        ]);
+    }
+
+    public function grantBotAdminByTelegramUserId(Request $request): JsonResponse
+    {
+        $user = $this->authorizeTelegram($request, 'telegram.manage');
+
+        $data = $request->validate([
+            'telegram_user_id' => ['required', 'integer', 'min:1'],
+            'bot_key' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'bot_admin_rank' => ['sometimes', 'nullable', 'string', 'in:simple,super'],
+            'display_name' => ['sometimes', 'nullable', 'string', 'max:40'],
+        ]);
+
+        $botKey = trim((string) ($data['bot_key'] ?? ''));
+        $bot = $botKey !== ''
+            ? $this->bots->findByKey($botKey)
+            : ($this->bots->allActive()->first() ?? $this->bots->all()->first());
+
+        abort_unless($bot, 404, 'Bot not found');
+
+        $telegramUserId = (int) $data['telegram_user_id'];
+        $account = $this->accountLinks->findOrCreateAccount($bot, $telegramUserId);
+
+        if (filled($data['display_name'] ?? null)) {
+            $account->setBotAdminDisplayName((string) $data['display_name']);
+            $account->refresh();
+        }
+
+        if ($account->isPermanentBotAdmin()) {
+            $account->syncPermanentAdminFlag();
+        } else {
+            $rank = BotAdminRank::tryFrom((string) ($data['bot_admin_rank'] ?? 'simple')) ?? BotAdminRank::Simple;
+            $account->grantAllBotAdminPermissions($account->adminDisplayName(), $rank);
+        }
+
+        $account->load(['bot', 'user']);
+        $canReveal = $user->isSuperAdmin() || $user->hasPermission('telegram.users.reveal_mobile');
+
+        return response()->json([
+            'data' => $this->payload($account, $canReveal, detailed: true),
+            'message' => 'ادمین بات با موفقیت ثبت شد.',
         ]);
     }
 

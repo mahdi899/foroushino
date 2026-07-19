@@ -12,6 +12,8 @@ export type SmsProviderView = {
   configured: boolean;
   has_credentials: boolean;
   credential_hint: string | null;
+  suggested_base_url?: string | null;
+  suggested_credentials?: string | null;
 };
 
 export type SmsEventView = {
@@ -68,6 +70,8 @@ export type SmsCenterConfig = {
   event_categories: SmsEventCategoryView[];
   admin_telegram_events: AdminTelegramEventView[];
   admin_telegram_categories: AdminTelegramCategoryView[];
+  telegram_infrastructure?: import('@/lib/admin/telegram.types').TelegramInfrastructureView | null;
+  telegram_worker_sample_template?: string | null;
 };
 
 export type SmsProviderForm = {

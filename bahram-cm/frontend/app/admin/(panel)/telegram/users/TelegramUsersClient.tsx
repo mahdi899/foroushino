@@ -6,6 +6,7 @@ import { Badge, Table } from '../../ui';
 import { AdminTableCard } from '@/components/admin/layout/AdminTableCard';
 import { AdminContentPanel } from '@/components/admin/layout/AdminContentPanel';
 import {
+  grantTelegramBotAdminByTelegramIdAction,
   toggleTelegramAccountBlockAction,
   toggleTelegramBotAdminAction,
   unlinkTelegramAccountAction,
@@ -61,6 +62,9 @@ export function TelegramUsersClient({
       <p className="mb-4 text-small text-text-muted leading-relaxed">
         ادمین ساده دسترسی عملیاتی دارد؛ فقط ادمین برتر می‌تواند دیگران را ادمین کند.
       </p>
+
+      <AddBotAdminByIdForm onSaved={() => router.refresh()} disabled={pending} />
+
       <div className="mb-4 flex flex-wrap gap-2">
         {[7, 14, 30].map((days) => (
           <a key={days} className="btn btn-secondary text-caption px-2 py-1" href={`/api/admin/telegram/accounts-export?days=${days}`}>
@@ -140,5 +144,89 @@ export function TelegramUsersClient({
         </Table>
       )}
     </AdminContentPanel>
+  );
+}
+
+function AddBotAdminByIdForm({ onSaved, disabled }: { onSaved: () => void; disabled: boolean }) {
+  const [telegramUserId, setTelegramUserId] = useState('');
+  const [rank, setRank] = useState<'simple' | 'super'>('simple');
+  const [displayName, setDisplayName] = useState('');
+  const [pending, startTransition] = useTransition();
+  const [status, setStatus] = useState<string | null>(null);
+
+  const save = () => {
+    const id = Number(telegramUserId.trim());
+    if (!Number.isInteger(id) || id <= 0) {
+      setStatus('آیدی عددی تلگرام را درست وارد کنید.');
+      return;
+    }
+
+    startTransition(async () => {
+      setStatus(null);
+      const res = await grantTelegramBotAdminByTelegramIdAction({
+        telegram_user_id: id,
+        bot_admin_rank: rank,
+        display_name: displayName.trim() || undefined,
+      });
+      if (!res.ok) {
+        setStatus(res.error ?? 'خطا');
+        return;
+      }
+
+      setStatus('ادمین بات ثبت شد.');
+      setTelegramUserId('');
+      setDisplayName('');
+      onSaved();
+    });
+  };
+
+  return (
+    <div className="mb-4 rounded-xl border border-border p-4">
+      <p className="text-small font-semibold text-text">افزودن ادمین با آیدی تلگرام</p>
+      <p className="mt-1 text-caption text-text-muted">
+        اگر کاربر هنوز /start نزده، رکورد ساخته می‌شود و با ورود به ربات، منوی ادمین برایش فعال است.
+      </p>
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
+        <label className="block">
+          <span className="text-caption text-text-muted">آیدی عددی تلگرام</span>
+          <input
+            className="field-input mt-1 w-full"
+            dir="ltr"
+            inputMode="numeric"
+            placeholder="303360676"
+            value={telegramUserId}
+            onChange={(e) => setTelegramUserId(e.target.value.replace(/[^\d]/g, ''))}
+          />
+        </label>
+        <label className="block">
+          <span className="text-caption text-text-muted">نقش</span>
+          <select className="field-input mt-1 w-full" value={rank} onChange={(e) => setRank(e.target.value as 'simple' | 'super')}>
+            <option value="simple">ادمین ساده</option>
+            <option value="super">ادمین برتر</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-caption text-text-muted">نام نمایشی (اختیاری)</span>
+          <input
+            className="field-input mt-1 w-full"
+            placeholder="مثلاً پشتیبانی"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            maxLength={40}
+          />
+        </label>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          disabled={disabled || pending || !telegramUserId.trim()}
+          className="btn btn-primary text-caption px-3 py-1.5"
+          onClick={() => void save()}
+        >
+          افزودن ادمین
+        </button>
+        {status ? <span className="text-caption text-text-muted">{status}</span> : null}
+      </div>
+    </div>
   );
 }

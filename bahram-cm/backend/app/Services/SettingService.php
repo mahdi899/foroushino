@@ -51,6 +51,10 @@ class SettingService
             CaptchaService::forgetCachedConfig();
         }
 
+        if ($group === TelegramInfrastructureService::GROUP) {
+            TelegramInfrastructureService::forgetCachedConfig();
+        }
+
         Cache::forget('settings.public');
 
         return $this->group($group);

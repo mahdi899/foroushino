@@ -12,11 +12,16 @@ use App\Models\SmsEventConfig;
 use App\Services\AdminTelegramLogService;
 use App\Models\SmsProvider;
 use App\Models\SmsSetting;
+use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Services\Sms\SmsProviderFactory;
+use App\Services\TelegramInfrastructureService;
 
 class SmsCenterConfigService
 {
-    public function __construct(private readonly SmsProviderFactory $providerFactory) {}
+    public function __construct(
+        private readonly SmsProviderFactory $providerFactory,
+        private readonly TelegramInfrastructureService $telegramInfrastructure,
+    ) {}
 
     /** @return array<string, mixed> */
     public function globalView(): array
@@ -60,19 +65,43 @@ class SmsCenterConfigService
     /** @return list<array<string, mixed>> */
     public function providersView(): array
     {
-        return SmsProvider::query()->orderBy('sort_order')->get()->map(fn (SmsProvider $p) => [
-            'slug' => $p->slug,
-            'label_fa' => $p->label_fa,
-            'channel_type' => $p->channelType()->value,
-            'channel_label' => $p->channelType()->label(),
-            'docs_url' => $p->docs_url,
-            'sender_number' => $p->sender_number,
-            'base_url' => $p->base_url,
-            'is_active' => $p->is_active,
-            'configured' => $p->isReady(),
-            'has_credentials' => filled($p->credentials),
-            'credential_hint' => $this->credentialHint($p),
-        ])->all();
+        $telegramDefaults = $this->telegramProviderDefaults();
+
+        return SmsProvider::query()->orderBy('sort_order')->get()->map(function (SmsProvider $p) use ($telegramDefaults) {
+            $row = [
+                'slug' => $p->slug,
+                'label_fa' => $p->label_fa,
+                'channel_type' => $p->channelType()->value,
+                'channel_label' => $p->channelType()->label(),
+                'docs_url' => $p->docs_url,
+                'sender_number' => $p->sender_number,
+                'base_url' => $p->base_url,
+                'is_active' => $p->is_active,
+                'configured' => $p->isReady(),
+                'has_credentials' => filled($p->credentials),
+                'credential_hint' => $this->credentialHint($p),
+            ];
+
+            if ($p->slug === 'telegram') {
+                $row['suggested_base_url'] = $telegramDefaults['base_url'];
+                if (! filled($p->credentials) && filled($telegramDefaults['bot_token'])) {
+                    $row['suggested_credentials'] = $telegramDefaults['bot_token'];
+                }
+            }
+
+            return $row;
+        })->all();
+    }
+
+    /** @return array{base_url: string, bot_token: string|null} */
+    private function telegramProviderDefaults(): array
+    {
+        $bot = TelegramBot::query()->where('key', 'production')->first();
+
+        return [
+            'base_url' => TelegramInfrastructureService::DEFAULT_BASE_URL,
+            'bot_token' => filled($bot?->resolveToken()) ? (string) $bot->resolveToken() : null,
+        ];
     }
 
     /** @param  array<string, mixed>  $input */
@@ -268,6 +297,17 @@ class SmsCenterConfigService
             ])
             ->values()
             ->all();
+    }
+
+    /** @return array<string, mixed>|null */
+    public function telegramInfrastructureView(): ?array
+    {
+        return $this->telegramInfrastructure->adminView();
+    }
+
+    public function telegramWorkerSampleTemplate(): ?string
+    {
+        return $this->telegramInfrastructure->workerSampleTemplate();
     }
 
     private function credentialHint(SmsProvider $provider): ?string

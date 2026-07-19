@@ -7,7 +7,7 @@
 | دامین | نقش |
 |---|---|
 | `rostami.app` | سایت اصلی، پنل دانشجو (`/panel`)، پنل ادمین (`/admin`)، ربات (لینک‌ها)، webhook تلگرام |
-| `cdn.rostami.app` | رسانه سایت (Arvan CDN) |
+| `cdn.rostami.app` | رسانه سایت (Cloudflare CDN) |
 | `rostami.club` | خانواده داداش بهرام — PWA مستقل (apex) |
 | `family-cdn.rostami.club` | رسانه خانواده (FTP + CDN) |
 | `sat.center` | سات — پروژه **جداگانه** (`saat/`)، همان بات تلگرام را برای Mini App استفاده می‌کند — [`saat/deploy/DEPLOYMENT.md`](../../saat/deploy/DEPLOYMENT.md) |
@@ -15,7 +15,7 @@
 هر دو دامنهٔ `rostami.app` و `rostami.club` توسط **همان یک** پردازش Next.js (PM2, پورت 3000) و **همان یک** بک‌اند Laravel (127.0.0.1:8010) سرویس می‌شوند — فقط nginx بر اساس Host تفکیک می‌کند. `middleware.ts` مسیر `/` روی `rostami.club` را داخلی به `/family` بازنویسی می‌کند، و `/family` روی `rostami.app` / `/panel`، `/admin` روی `rostami.club` را با یک هندشیک SSO یک‌بارمصرف به دامنه درست ریدایرکت می‌کند (`app/sso/bridge/route.ts` + بک‌اند `SsoBridgeController`).
 
 **فایل‌های زیرساخت:** [`deploy/`](../deploy/)
-**CDN ابر آروان:** [`ARVAN-CDN.md`](ARVAN-CDN.md)
+**CDN Cloudflare:** [`CLOUDFLARE-CDN.md`](CLOUDFLARE-CDN.md) — جایگزین آروان: [`ARVAN-CDN.md`](ARVAN-CDN.md)
 **خانواده داداش بهرام (Family):** [`FAMILY.md`](FAMILY.md) — متغیرهای محیطی، صف رسانه، FTP+CDN
 **تلگرام:** [`../backend/docs/TELEGRAM_BOT.md`](../backend/docs/TELEGRAM_BOT.md)
 
@@ -29,7 +29,7 @@ CI در `.github/workflows/ci.yml` lint، typecheck، build و PHPUnit را اج
 |-----------|------|
 | Ubuntu | 22.04 LTS یا 24.04 LTS |
 | Node.js | 20 LTS |
-| PHP | 8.3+ (extensions: mbstring, xml, curl, mysql, redis, gd, intl, zip, bcmath) |
+| PHP | 8.3+ (extensions: mbstring, xml, curl, mysql, redis, gd, intl, zip, bcmath, **ftp**) |
 | Composer | 2.x |
 | MySQL | 8.0+ |
 | Redis | 7.x |
@@ -42,12 +42,26 @@ CI در `.github/workflows/ci.yml` lint، typecheck، build و PHPUnit را اج
 
 ```bash
 sudo apt update && sudo apt install -y nginx php8.3-fpm php8.3-mysql php8.3-redis \
-  php8.3-mbstring php8.3-xml php8.3-curl php8.3-gd php8.3-intl php8.3-zip php8.3-bcmath \
+  php8.3-mbstring php8.3-xml php8.3-curl php8.3-gd php8.3-intl php8.3-zip php8.3-bcmath php8.3-ftp \
   mysql-server redis-server supervisor certbot python3-certbot-nginx
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
 sudo npm install -g pm2
 ```
+
+### افزونه PHP: FTP (`ext-ftp`)
+
+کتابخانه رسانه و انتقال فایل به **هاست دانلود** (پنل ادمین → گالری) و صف رسانه خانواده از درایور Flysystem FTP استفاده می‌کنند؛ بدون `ext-ftp` تست اتصال FTP در پنل با خطا مواجه می‌شود.
+
+**Ubuntu (production):** پکیج `php8.3-ftp` را نصب کنید (در دستور بالا هست) و PHP-FPM را ری‌استارت کنید:
+
+```bash
+sudo apt install -y php8.3-ftp
+sudo systemctl restart php8.3-fpm
+php -m | grep -i ftp   # باید ftp چاپ شود
+```
+
+**Laragon (توسعه محلی):** در `php.ini` خط `extension=ftp` را بدون `;` فعال کنید، Laragon را Stop/Start کنید و `php artisan serve` را دوباره اجرا کنید (پروسس قدیمی افزونه‌های جدید را نمی‌بیند).
 
 ---
 
@@ -152,11 +166,11 @@ pm2 startup  # دستور systemd را اجرا کنید
 # Shared upstreams/maps — ONCE only (both vhosts use rostami_next / rostami_php)
 sudo cp deploy/nginx/conf.d/rostami-upstreams.conf /etc/nginx/conf.d/rostami-upstreams.conf
 
-# rostami.app (پشت Arvan CDN) — روی سرور مبدا از نسخه origin استفاده کنید:
+# rostami.app (پشت Cloudflare CDN) — روی سرور مبدا از نسخه origin استفاده کنید:
 sudo cp deploy/nginx/rostami-app-origin.conf /etc/nginx/sites-available/rostami-app.conf
 sudo ln -sf /etc/nginx/sites-available/rostami-app.conf /etc/nginx/sites-enabled/
 
-# rostami.club (خانواده) — TLS مستقیم روی همین سرور، بدون Arvan:
+# rostami.club (خانواده) — TLS مستقیم روی همین سرور (یا Cloudflare جداگانه):
 sudo cp deploy/nginx/rostami-club.conf /etc/nginx/sites-available/rostami-club.conf
 sudo ln -sf /etc/nginx/sites-available/rostami-club.conf /etc/nginx/sites-enabled/
 
@@ -167,7 +181,7 @@ sudo certbot --nginx -d rostami.app -d www.rostami.app -d cdn.rostami.app
 sudo certbot --nginx -d rostami.club -d www.rostami.club -d family-cdn.rostami.club
 ```
 
-نکته: `deploy/nginx/rostami-app.conf` (بدون `-origin`) نسخه‌ای است که خودش SSL می‌کند — برای وقتی که Arvan را هنوز وصل نکرده‌اید یا مستقیم می‌خواهید تست کنید. **هرگز** `upstream` را دوباره داخل vhost تعریف نکنید — nginx با دو فایل فعال خطا می‌دهد.
+نکته: `deploy/nginx/rostami-app.conf` (بدون `-origin`) نسخه‌ای است که خودش SSL می‌کند — برای Full (strict) با Cloudflare. **هرگز** `upstream` را دوباره داخل vhost تعریف نکنید — nginx با دو فایل فعال خطا می‌دهد.
 
 ---
 
@@ -236,7 +250,7 @@ chmod +x deploy/scripts/deploy.sh deploy/scripts/backup.sh
 ## 11. Post-deploy checklist
 
 1. `/admin/cache` → پریست **حداکثر سرعت**
-2. Arvan CDN Cache Rules — [`ARVAN-CDN.md`](ARVAN-CDN.md)
+2. Cloudflare Cache Rules — [`CLOUDFLARE-CDN.md`](CLOUDFLARE-CDN.md) + [`cloudflare-cache-rules.example.json`](cloudflare-cache-rules.example.json)
 3. `GET /up` روی `127.0.0.1:8010` → 200 (Laravel داخلی)
 4. `GET https://rostami.app` → 200 (Next.js، سایت اصلی)
 5. `GET https://rostami.club` → 200 (همان Next.js، rewrite داخلی به `/family`)
@@ -248,10 +262,11 @@ chmod +x deploy/scripts/deploy.sh deploy/scripts/backup.sh
 11. `/sitemap.xml` کامل لود شود
 12. Queue workers در Supervisor: همه `RUNNING`
 13. Redis: `redis-cli ping` → `PONG`
-14. `php artisan telegram:webhook:info production` → `url` درست است
-15. اولین ادمین واقعی با `php artisan app:create-admin` ساخته شده (نه seeder)
-16. Backup تست‌شده
-17. Monitoring فعال (Sentry / uptime)
+14. `php -m | grep -i ftp` → `ftp` (هاست دانلود رسانه و صف FTP خانواده)
+15. `php artisan telegram:webhook:info production` → `url` درست است
+16. اولین ادمین واقعی با `php artisan app:create-admin` ساخته شده (نه seeder)
+17. Backup تست‌شده
+18. Monitoring فعال (Sentry / uptime)
 
 جزئیات CDN: [`ARVAN-CDN.md`](ARVAN-CDN.md)
 

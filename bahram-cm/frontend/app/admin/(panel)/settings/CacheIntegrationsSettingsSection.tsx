@@ -38,7 +38,7 @@ export function CacheIntegrationsSettingsSection({
           <div className="flex items-start gap-3">
             <Cloud className="mt-0.5 h-5 w-5 shrink-0 text-accent" strokeWidth={1.6} />
             <div>
-              <h2 className="text-h3 text-primary-dark">CDN لبه (Arvan / Cloudflare)</h2>
+              <h2 className="text-h3 text-primary-dark">CDN لبه (Cloudflare / Arvan)</h2>
               <p className="mt-1 text-small text-text-muted">
                 یک ارائه‌دهنده را انتخاب کنید؛ purge خودکار و دستی فقط روی همان اعمال می‌شود. می‌توانید هر
                 زمان سوییچ کنید.

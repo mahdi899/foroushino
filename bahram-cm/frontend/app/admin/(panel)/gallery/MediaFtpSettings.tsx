@@ -410,6 +410,9 @@ export function MediaFtpSettings() {
                     <input type="checkbox" checked={ssl} onChange={(e) => setSsl(e.target.checked)} />
                     FTPS (SSL)
                   </label>
+                  <span className="w-full text-caption text-muted">
+                    هاست‌های دانلود ایرانی معمولاً فقط FTP ساده روی پورت ۲۱ دارند — FTPS را خاموش بگذارید مگر اینکه هاست صراحتاً SSL بخواهد.
+                  </span>
                 </div>
               ) : (
                 <label className="block text-small">

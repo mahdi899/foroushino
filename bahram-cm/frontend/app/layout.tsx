@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { unstable_noStore } from "next/cache";
 import { headers } from "next/headers";
 import { fontClassName, fontVariable } from "@/lib/fonts";
@@ -26,6 +27,8 @@ import { SiteShellDeferred } from "@/components/layout/SiteShellDeferred";
 import { cookies } from "next/headers";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import { ServerInsertedJsonLd } from "@/components/bootstrap/ServerInsertedJsonLd";
+import { DevServiceWorkerCleanup } from "@/components/pwa/DevServiceWorkerCleanup";
+import { DEV_SERVICE_WORKER_CLEANUP_SCRIPT } from "@/lib/pwa/unregisterBahramServiceWorkers";
 import {
   DEFAULT_SITE_THEME,
   SITE_THEME_COOKIE_KEY,
@@ -79,8 +82,14 @@ export default async function RootLayout({
     >
       <head>
         <MediaPreconnect />
+        {process.env.NODE_ENV === "development" ? (
+          <Script id="bahram-dev-sw-cleanup" strategy="beforeInteractive">
+            {DEV_SERVICE_WORKER_CLEANUP_SCRIPT}
+          </Script>
+        ) : null}
       </head>
       <body className={`${fontClassName} min-w-0 overflow-x-clip antialiased`} suppressHydrationWarning>
+        {process.env.NODE_ENV === "development" ? <DevServiceWorkerCleanup /> : null}
         {!isBareShellRoute ? <ServerInsertedJsonLd id="jsonld-site" data={ld} /> : null}
         <ThemeBoot />
         {!isBareShellRoute ? <SiteShellDeferred /> : null}

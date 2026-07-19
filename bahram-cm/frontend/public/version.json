@@ -1,8 +1,9 @@
 {
-  "version": "0.1.0",
-  "buildHash": "mrr6jsyu-ae7690",
-  "buildTime": "2026-07-19T02:32:01.639Z",
-  "timestamp": 1784428321639,
+  "version": "3",
+  "name": "bahram",
+  "buildHash": "mrruc3ar-avn001",
+  "buildTime": "2026-07-19T14:02:00.000Z",
+  "timestamp": 1784469720000,
   "updateType": "optional",
-  "minVersion": "0.1.0"
+  "minVersion": "3"
 }

@@ -472,6 +472,8 @@ export default function SettingsPage() {
               providers={smsRoutingConfig.providers}
               adminTelegramEvents={smsRoutingConfig.admin_telegram_events ?? []}
               adminTelegramCategories={smsRoutingConfig.admin_telegram_categories ?? []}
+              telegramInfrastructure={smsRoutingConfig.telegram_infrastructure ?? null}
+              telegramWorkerSampleTemplate={smsRoutingConfig.telegram_worker_sample_template ?? null}
             />
           ) : (
             <div id="sms-routing" className="card p-6 text-caption text-text-muted">
@@ -518,7 +520,7 @@ export default function SettingsPage() {
           id="infrastructure"
           icon={SETTINGS_CATEGORY_NAV[6].icon}
           title="کش و زیرساخت"
-          desc="Webhook بازسازی کش، یکپارچگی Arvan CDN و بکاپ دیتابیس."
+          desc="Webhook بازسازی کش، یکپارچگی Cloudflare CDN و بکاپ دیتابیس."
         >
           <CacheIntegrationsSettingsSection
             form={integrationsForm}

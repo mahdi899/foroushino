@@ -4,6 +4,7 @@ use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramAccountAdminControlle
 use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramBotAdminController;
 use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramBroadcastAdminController;
 use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramDestinationAdminController;
+use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramInfrastructureAdminController;
 use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramHealthAdminController;
 use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramLogAdminController;
 use App\Modules\TelegramBot\Http\Controllers\Admin\TelegramMessageAdminController;
@@ -37,6 +38,12 @@ Route::middleware(['auth:sanctum', SubstituteBindings::class])->group(function (
         Route::get('/health', TelegramHealthAdminController::class);
         Route::get('/stats', TelegramStatsAdminController::class);
 
+        Route::get('/infrastructure', [TelegramInfrastructureAdminController::class, 'show']);
+        Route::patch('/infrastructure', [TelegramInfrastructureAdminController::class, 'update']);
+        Route::post('/infrastructure/register-webhook', [TelegramInfrastructureAdminController::class, 'registerWebhook']);
+        Route::post('/infrastructure/test', [TelegramInfrastructureAdminController::class, 'test']);
+        Route::post('/infrastructure/suggest-secrets', [TelegramInfrastructureAdminController::class, 'suggestSecrets']);
+
         Route::get('/bots', [TelegramBotAdminController::class, 'index']);
         Route::post('/bots/sync', [TelegramBotAdminController::class, 'syncFromConfig']);
         Route::get('/bots/{bot}', [TelegramBotAdminController::class, 'show']);
@@ -51,6 +58,7 @@ Route::middleware(['auth:sanctum', SubstituteBindings::class])->group(function (
 
         Route::get('/accounts', [TelegramAccountAdminController::class, 'index']);
         Route::get('/accounts/export', [TelegramAccountAdminController::class, 'export']);
+        Route::post('/accounts/grant-bot-admin', [TelegramAccountAdminController::class, 'grantBotAdminByTelegramUserId']);
         Route::get('/accounts/{account}', [TelegramAccountAdminController::class, 'show']);
         Route::patch('/accounts/{account}', [TelegramAccountAdminController::class, 'update']);
         Route::post('/accounts/{account}/unlink', [TelegramAccountAdminController::class, 'unlink']);

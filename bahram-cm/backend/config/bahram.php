@@ -56,7 +56,7 @@ return [
     ],
 
     /** Active CDN edge provider: arvan | cloudflare | none */
-    'cdn_provider' => env('CDN_PROVIDER', 'arvan'),
+    'cdn_provider' => env('CDN_PROVIDER', 'cloudflare'),
 
     'otp' => [
         'dev_mode' => filter_var(env('OTP_DEV_MODE', false), FILTER_VALIDATE_BOOL),

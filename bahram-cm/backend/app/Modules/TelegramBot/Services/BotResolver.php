@@ -39,10 +39,18 @@ class BotResolver
     public function syncAllFromConfig(): Collection
     {
         $synced = collect();
+        $configuredKeys = [];
 
         foreach ((array) config('telegram_bot.bots', []) as $configKey => $entry) {
             $key = (string) ($entry['key'] ?? $configKey);
+            $configuredKeys[] = $key;
             $synced->push($this->bots->upsertFromConfig($key, $entry));
+        }
+
+        if ($configuredKeys !== []) {
+            TelegramBot::query()
+                ->whereNotIn('key', $configuredKeys)
+                ->update(['is_active' => false]);
         }
 
         return $synced;

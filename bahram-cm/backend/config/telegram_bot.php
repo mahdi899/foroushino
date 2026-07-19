@@ -11,19 +11,11 @@ return [
     'bots' => [
         'production' => [
             'key' => env('TELEGRAM_BOT_KEY', 'production'),
-            'display_name' => 'Bahram Academy Bot (Production)',
+            'display_name' => 'Bahram Academy Bot',
             'token_env' => 'TELEGRAM_BOT_TOKEN',
             'webhook_secret_env' => 'TELEGRAM_WEBHOOK_SECRET',
             'username_env' => 'TELEGRAM_BOT_USERNAME',
             'environment' => 'production',
-        ],
-        'staging' => [
-            'key' => env('TELEGRAM_STAGING_BOT_KEY', 'staging'),
-            'display_name' => 'Bahram Academy Bot (Staging)',
-            'token_env' => 'TELEGRAM_STAGING_BOT_TOKEN',
-            'webhook_secret_env' => 'TELEGRAM_STAGING_WEBHOOK_SECRET',
-            'username_env' => 'TELEGRAM_STAGING_BOT_USERNAME',
-            'environment' => 'staging',
         ],
     ],
 

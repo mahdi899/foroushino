@@ -24,7 +24,7 @@ apt-get install -y -qq \
   nginx git curl unzip ca-certificates gnupg lsb-release \
   mysql-server redis-server supervisor \
   php8.3-fpm php8.3-cli php8.3-mysql php8.3-redis php8.3-mbstring \
-  php8.3-xml php8.3-curl php8.3-gd php8.3-intl php8.3-zip php8.3-bcmath \
+  php8.3-xml php8.3-curl php8.3-gd php8.3-intl php8.3-zip php8.3-bcmath php8.3-ftp \
   php8.3-opcache php8.3-readline
 
 if ! command -v node >/dev/null 2>&1 || [[ "$(node -v | cut -d. -f1 | tr -d v)" -lt 20 ]]; then
@@ -104,7 +104,7 @@ sed -i "s|^INTERNAL_API_SECRET=.*|INTERNAL_API_SECRET=${INTERNAL_SECRET}|" .env
 sed -i "s|^IDENTITY_NATIONAL_CODE_HMAC_KEY=.*|IDENTITY_NATIONAL_CODE_HMAC_KEY=${HMAC_KEY}|" .env
 sed -i "s|^SANCTUM_STATEFUL_DOMAINS=.*|SANCTUM_STATEFUL_DOMAINS=${SITE_URL#https://},${FAMILY_URL#https://}|" .env
 sed -i "s|^MEDIA_URL=.*|MEDIA_URL=${CDN_URL}|" .env
-sed -i "s|^CDN_PROVIDER=.*|CDN_PROVIDER=arvan|" .env
+sed -i "s|^CDN_PROVIDER=.*|CDN_PROVIDER=cloudflare|" .env
 sed -i "s|^ARVAN_DOMAIN=.*|ARVAN_DOMAIN=${SITE_URL#https://}|" .env
 sed -i "s|^ARVAN_MEDIA_DOMAIN=.*|ARVAN_MEDIA_DOMAIN=${CDN_URL#https://}|" .env
 sed -i "s|^FAMILY_ENTRY_BASE_URL=.*|FAMILY_ENTRY_BASE_URL=${FAMILY_URL}|" .env
@@ -187,6 +187,7 @@ chmod +x /usr/local/bin/bahram-deploy
 
 echo "==> Nginx (rostami.app + rostami.club — Option B dual-domain)"
 mkdir -p /etc/nginx/conf.d
+cp "${APP_ROOT}/deploy/nginx/conf.d/cloudflare-real-ip.conf" /etc/nginx/conf.d/cloudflare-real-ip.conf
 cp "${APP_ROOT}/deploy/nginx/conf.d/rostami-upstreams.conf" /etc/nginx/conf.d/rostami-upstreams.conf
 NGINX_SRC="${APP_ROOT}/deploy/nginx/rostami-app-origin.conf"
 if [[ ! -f "${NGINX_SRC}" && -f /root/rostami-app-origin.conf ]]; then
@@ -233,17 +234,19 @@ echo ""
 echo "============================================"
 echo "Bootstrap complete!"
 echo "Credentials saved to: ${CREDS}"
-echo "Main site: ${SITE_URL} (via Arvan CDN → origin ${SITE_URL%://*})"
+echo "Main site: ${SITE_URL} (via Cloudflare CDN → origin)"
 echo "Family PWA: ${FAMILY_URL} (direct TLS on origin — certbot -d ${FAMILY_URL#https://})"
 echo "Direct IP test: http://185.130.50.24"
 echo ""
 echo "Next:"
-echo "  1. certbot --nginx -d ${SITE_URL#https://} -d www.${SITE_URL#https://} -d ${CDN_URL#https://}"
-echo "  2. certbot --nginx -d ${FAMILY_URL#https://} -d www.${FAMILY_URL#https://} -d ${FAMILY_CDN_URL#https://}"
-echo "  3. Deploy the Cloudflare Worker (bahram-cm/worker/) — see worker/README.md — then set"
+echo "  1. Cloudflare DNS: A/CNAME @, www, cdn → origin IP (proxied ☁️ orange)"
+echo "  2. Set CLOUDFLARE_ZONE_ID + CLOUDFLARE_API_TOKEN in backend/.env (or /admin/settings)"
+echo "  3. Import Cache Rules from docs/cloudflare-cache-rules.example.json"
+echo "  4. certbot --nginx -d ${FAMILY_URL#https://} -d www.${FAMILY_URL#https://} -d ${FAMILY_CDN_URL#https://}"
+echo "  5. Deploy the Cloudflare Worker (bahram-cm/worker/) — see worker/README.md — then set"
 echo "     TELEGRAM_WEBHOOK_BASE_URL in backend/.env to the Worker's public URL and re-run:"
 echo "     php artisan telegram:webhook:set production"
-echo "  4. Copy PROXY_SHARED_TOKEN + SAT_SYNC_HMAC_SECRET (above) into saat's backend/.env"
+echo "  6. Copy PROXY_SHARED_TOKEN + SAT_SYNC_HMAC_SECRET (above) into saat's backend/.env"
 echo "     and PROXY_SHARED_TOKEN into the Worker (wrangler secret put PROXY_SHARED_TOKEN)"
-echo "  5. saat (sat.center) is a SEPARATE app — see saat/deploy/DEPLOYMENT.md"
+echo "  7. saat (sat.center) is a SEPARATE app — see saat/deploy/DEPLOYMENT.md"
 echo "============================================"

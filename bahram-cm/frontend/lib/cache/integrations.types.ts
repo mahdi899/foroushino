@@ -1,4 +1,4 @@
-/** Cache integration settings (ISR webhook + Arvan / Cloudflare CDN). */
+/** Cache integration settings (ISR webhook + Cloudflare / Arvan CDN). */
 
 export type CdnProvider = 'arvan' | 'cloudflare' | 'none';
 
@@ -49,7 +49,7 @@ export type CacheIntegrationsForm = {
 export const DEFAULT_CACHE_INTEGRATIONS_FORM: CacheIntegrationsForm = {
   revalidateWebhookUrl: '',
   revalidateSecretInput: '',
-  cdnProvider: 'arvan',
+  cdnProvider: 'cloudflare',
   arvanDomain: 'rostami.app',
   arvanMediaDomain: 'cdn.rostami.app',
   arvanApiKeyInput: '',
@@ -71,7 +71,7 @@ export function integrationsViewToForm(view: CacheIntegrationsView): CacheIntegr
 }
 
 export const CDN_PROVIDER_OPTIONS: { id: CdnProvider; label: string; hint: string }[] = [
-  { id: 'arvan', label: 'ابر آروان', hint: 'پیشنهادی برای rostami.app — CDN داخلی ایران' },
-  { id: 'cloudflare', label: 'Cloudflare', hint: 'CDN بین‌المللی — Zone ID + API Token' },
+  { id: 'cloudflare', label: 'Cloudflare', hint: 'پیشنهادی — Zone ID + API Token برای purge خودکار' },
+  { id: 'arvan', label: 'ابر آروان', hint: 'CDN داخلی ایران — API Key + دامنه' },
   { id: 'none', label: 'غیرفعال', hint: 'فقط ISR و کش Laravel — بدون purge لبه' },
 ];

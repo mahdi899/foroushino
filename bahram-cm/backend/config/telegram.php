@@ -53,19 +53,11 @@ return [
     'bots' => [
         'production' => [
             'key' => env('TELEGRAM_BOT_KEY', 'production'),
-            'display_name' => 'Bahram Academy Bot (Production)',
+            'display_name' => 'Bahram Academy Bot',
             'username' => env('TELEGRAM_BOT_USERNAME'),
             'token_key' => 'TELEGRAM_BOT_TOKEN',
             'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
             'environment' => 'production',
-        ],
-        'staging' => [
-            'key' => env('TELEGRAM_STAGING_BOT_KEY', 'staging'),
-            'display_name' => 'Bahram Academy Bot (Staging)',
-            'username' => env('TELEGRAM_STAGING_BOT_USERNAME'),
-            'token_key' => 'TELEGRAM_STAGING_BOT_TOKEN',
-            'webhook_secret' => env('TELEGRAM_STAGING_WEBHOOK_SECRET'),
-            'environment' => 'staging',
         ],
     ],
 

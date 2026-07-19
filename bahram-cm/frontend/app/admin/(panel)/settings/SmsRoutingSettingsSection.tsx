@@ -6,7 +6,9 @@ import { ExternalLink, Loader2, Route, Save, Send } from 'lucide-react';
 import type { AdminTelegramCategoryView, AdminTelegramEventView, SmsGlobalView, SmsProviderView } from '@/lib/admin/smsCenter.types';
 import { SMS_PROVIDER_DEFAULT_BASE_URLS, smsProvidersForChannel } from '@/lib/admin/smsCenter.types';
 import { saveSmsGlobalSettings, saveSmsProvider, testSmsProvider } from '@/lib/admin/smsCenter';
+import type { TelegramInfrastructureView } from '@/lib/admin/telegram.types';
 import { AdminTelegramSettingsSection } from './AdminTelegramSettingsSection';
+import { TelegramSmsProviderRow } from './TelegramSmsProviderRow';
 import { Badge } from '../ui';
 
 function ProviderOptions({ providers }: { providers: SmsProviderView[] }) {
@@ -23,9 +25,13 @@ function ProviderOptions({ providers }: { providers: SmsProviderView[] }) {
 }
 
 function ProviderCredentialRow({ provider }: { provider: SmsProviderView }) {
-  const [credentials, setCredentials] = useState('');
+  const isTelegram = provider.slug === 'telegram';
+  const suggestedBaseUrl = isTelegram ? (provider.suggested_base_url ?? SMS_PROVIDER_DEFAULT_BASE_URLS.telegram ?? '') : '';
+  const [credentials, setCredentials] = useState(
+    isTelegram && !provider.has_credentials && provider.suggested_credentials ? provider.suggested_credentials : '',
+  );
   const [sender, setSender] = useState(provider.sender_number ?? '');
-  const [baseUrl, setBaseUrl] = useState(provider.base_url ?? '');
+  const [baseUrl, setBaseUrl] = useState(provider.base_url ?? suggestedBaseUrl);
   const [pending, setPending] = useState(false);
   const [testing, setTesting] = useState(false);
   const [status, setStatus] = useState('');
@@ -38,7 +44,9 @@ function ProviderCredentialRow({ provider }: { provider: SmsProviderView }) {
       : 'کلید API سفیر (api-access-key)'
     : provider.has_credentials
       ? `کلید ذخیره‌شده (${provider.credential_hint ?? '••••'})`
-      : 'کلید API / توکن ربات';
+      : isTelegram && provider.suggested_credentials
+        ? 'توکن ربات (از تنظیمات تلگرام)'
+        : 'کلید API / توکن ربات';
   const senderPlaceholder = isBaleSafir ? 'شناسه بازو (bot_id)' : 'شماره فرستنده';
 
   if (provider.slug === 'melipayamak' || provider.slug === 'kavenegar') {
@@ -64,7 +72,7 @@ function ProviderCredentialRow({ provider }: { provider: SmsProviderView }) {
     setStatus('');
     const shouldSave =
       credentials.trim() !== '' ||
-      baseUrl.trim() !== (provider.base_url ?? '') ||
+      baseUrl.trim() !== (provider.base_url ?? suggestedBaseUrl ?? '') ||
       sender !== (provider.sender_number ?? '');
     if (shouldSave) {
       const saveRes = await saveSmsProvider(provider.slug, {
@@ -110,7 +118,13 @@ function ProviderCredentialRow({ provider }: { provider: SmsProviderView }) {
         className="field-input mt-2 w-full text-small"
         dir="ltr"
         type="url"
-        placeholder={defaultBaseUrl ? `base_url (پیش‌فرض: ${defaultBaseUrl})` : 'base_url (اختیاری)'}
+        placeholder={
+          isTelegram && suggestedBaseUrl
+            ? `base_url (پیش‌فرض: ${suggestedBaseUrl})`
+            : defaultBaseUrl
+              ? `base_url (پیش‌فرض: ${defaultBaseUrl})`
+              : 'base_url (اختیاری)'
+        }
         value={baseUrl}
         onChange={(e) => setBaseUrl(e.target.value)}
       />
@@ -134,11 +148,15 @@ export function SmsRoutingSettingsSection({
   providers: initialProviders,
   adminTelegramEvents = [],
   adminTelegramCategories = [],
+  telegramInfrastructure = null,
+  telegramWorkerSampleTemplate = null,
 }: {
   global: SmsGlobalView;
   providers: SmsProviderView[];
   adminTelegramEvents?: AdminTelegramEventView[];
   adminTelegramCategories?: AdminTelegramCategoryView[];
+  telegramInfrastructure?: TelegramInfrastructureView | null;
+  telegramWorkerSampleTemplate?: string | null;
 }) {
   const [global, setGlobal] = useState(initialGlobal);
   const [globalPending, setGlobalPending] = useState(false);
@@ -255,7 +273,15 @@ export function SmsRoutingSettingsSection({
                       ) : null}
                     </div>
                   </div>
-                  <ProviderCredentialRow provider={provider} />
+                  {provider.slug === 'telegram' && telegramInfrastructure ? (
+                    <TelegramSmsProviderRow
+                      provider={provider}
+                      infrastructure={telegramInfrastructure}
+                      workerSampleTemplate={telegramWorkerSampleTemplate}
+                    />
+                  ) : (
+                    <ProviderCredentialRow provider={provider} />
+                  )}
                 </div>
               ))}
             </div>

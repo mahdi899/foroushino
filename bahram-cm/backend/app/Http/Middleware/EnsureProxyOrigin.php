@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\TelegramInfrastructureService;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -40,7 +41,8 @@ class EnsureProxyOrigin
         }
 
         if ($mode === 'strict') {
-            $expected = (string) ($config['shared_token'] ?? '');
+            $expected = app(TelegramInfrastructureService::class)->proxySharedToken()
+                ?? (string) ($config['shared_token'] ?? '');
             if ($expected === '' || ! hash_equals($expected, $bearer)) {
                 return $this->deny();
             }

@@ -624,7 +624,7 @@ export default function CacheAdminPage() {
               icon={Cloud}
               title={`CDN فعال: ${status.cdn_provider_label}`}
               value={status.cdn_configured ? 'متصل' : status.cdn_provider === 'none' ? 'خاموش' : 'ناقص'}
-              hint="انتخاب Arvan یا Cloudflare از تنظیمات سایت"
+              hint="انتخاب Cloudflare یا Arvan از تنظیمات سایت"
               href="/admin/settings#cache-integrations"
               ok={status.cdn_configured}
             />

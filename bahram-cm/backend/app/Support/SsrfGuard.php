@@ -54,6 +54,10 @@ final class SsrfGuard
 
         $host = strtolower($parsed['host']);
 
+        if (self::isTrustedPublicHost($host)) {
+            return null;
+        }
+
         if (self::isPrivateOrReservedHost($host)) {
             return 'آدرس IP خصوصی یا رزرو شده مجاز نیست.';
         }
@@ -139,6 +143,23 @@ final class SsrfGuard
         $blockedHosts = ['169.254.169.254', 'metadata.google.internal'];
         if (in_array($host, $blockedHosts, true)) {
             return true;
+        }
+
+        return false;
+    }
+
+    private static function isTrustedPublicHost(string $host): bool
+    {
+        $suffixes = [
+            'telegram.org',
+            'workers.dev',
+            'cloudflareworkers.com',
+        ];
+
+        foreach ($suffixes as $suffix) {
+            if ($host === $suffix || str_ends_with($host, '.'.$suffix)) {
+                return true;
+            }
         }
 
         return false;

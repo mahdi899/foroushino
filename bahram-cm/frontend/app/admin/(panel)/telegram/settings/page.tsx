@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 import { can, getCurrentUser } from '@/lib/auth/session';
-import { loadTelegramBotProfile, loadTelegramBots } from '@/lib/admin/telegram';
-import type { TelegramBotProfileView } from '@/lib/admin/telegram.types';
+import { loadTelegramBotProfile, loadTelegramBots, loadTelegramInfrastructure } from '@/lib/admin/telegram';
+import { loadTelegramWorkerSample } from '@/lib/admin/telegram-worker-sample';
+import type { TelegramBotProfileView, TelegramInfrastructureView } from '@/lib/admin/telegram.types';
 import { TelegramSubPage } from '../TelegramSubPage';
 import { TelegramSettingsClient } from './TelegramSettingsClient';
 
@@ -14,6 +15,8 @@ export default async function TelegramSettingsPage() {
   }
 
   const bots = await loadTelegramBots();
+  const infrastructure = await loadTelegramInfrastructure();
+  const workerSample = await loadTelegramWorkerSample();
   const profilesEntries = await Promise.all(
     bots.map(async (bot) => {
       const profile = await loadTelegramBotProfile(bot.id);
@@ -36,7 +39,7 @@ export default async function TelegramSettingsPage() {
       description="مدیریت ربات‌ها، وب‌هوک، پروفایل تلگرام و گروه گزارشات از پنل"
       icon="Settings"
     >
-      <TelegramSettingsClient bots={bots} profiles={profiles} />
+      <TelegramSettingsClient bots={bots} profiles={profiles} infrastructure={infrastructure} workerSample={infrastructure?.worker_sample_template ?? workerSample} />
     </TelegramSubPage>
   );
 }

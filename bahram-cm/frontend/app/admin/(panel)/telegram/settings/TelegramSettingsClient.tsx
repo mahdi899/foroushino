@@ -1,24 +1,29 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { Loader2, Save } from 'lucide-react';
 import { Badge } from '../../ui';
 import { AdminContentPanel } from '@/components/admin/layout/AdminContentPanel';
 import {
   syncTelegramBotsAction,
-  setTelegramWebhookAction,
   updateTelegramBotAction,
   updateTelegramBotProfileAction,
 } from '../actions';
-import type { TelegramBotProfileView, TelegramBotView } from '@/lib/admin/telegram.types';
+import type { TelegramBotProfileView, TelegramBotView, TelegramInfrastructureView } from '@/lib/admin/telegram.types';
+import { TelegramBridgeSettingsSection } from './TelegramBridgeSettingsSection';
 
 export function TelegramSettingsClient({
   bots,
   profiles: initialProfiles,
+  infrastructure,
+  workerSample,
 }: {
   bots: TelegramBotView[];
   profiles: Record<number, TelegramBotProfileView>;
+  infrastructure: TelegramInfrastructureView | null;
+  workerSample: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -47,6 +52,8 @@ export function TelegramSettingsClient({
 
   return (
     <div className="admin-telegram-subpage__stack">
+      <TelegramBridgeSettingsSection initial={infrastructure} workerSample={workerSample} />
+
       <AdminContentPanel title="پرداخت زرین‌پال (مشترک با سایت)">
         <p className="text-small text-text-muted leading-relaxed">
           مرچنت‌کد و حالت sandbox/live برای خرید داخل بات همان تنظیمات تجارت است. سفارش‌های بات مثل خرید سایت در پنل تجارت ثبت می‌شوند.
@@ -94,54 +101,12 @@ export function TelegramSettingsClient({
                     </div>
                   </div>
 
-                  <div className="mt-3 grid gap-3 md:grid-cols-2">
-                    <label className="block">
-                      <span className="text-caption text-text-muted">گروه گزارشات پشتیبانی (chat id)</span>
-                      <input
-                        className="field-input mt-1 w-full"
-                        dir="ltr"
-                        placeholder="-100xxxxxxxxxx"
-                        defaultValue={bot.support_group_chat_id ?? ''}
-                        onBlur={(e) => {
-                          const v = e.target.value.trim();
-                          if (v === (bot.support_group_chat_id ?? '')) return;
-                          run(() =>
-                            updateTelegramBotAction(bot.id, {
-                              support_group_chat_id: v || null,
-                              reports_chat_id: v || null,
-                            }),
-                          );
-                        }}
-                      />
-                      <span className="mt-1 block text-caption text-text-muted">
-                        پیام‌های پشتیبانی کاربران فقط در این گروه می‌آید.
-                      </span>
-                    </label>
-                    <label className="block">
-                      <span className="text-caption text-text-muted">گروه/کانال گزارشات پرداخت (chat id)</span>
-                      <input
-                        className="field-input mt-1 w-full"
-                        dir="ltr"
-                        placeholder="-100xxxxxxxxxx"
-                        defaultValue={bot.payment_reports_chat_id ?? ''}
-                        onBlur={(e) => {
-                          const v = e.target.value.trim();
-                          if (v === (bot.payment_reports_chat_id ?? '')) return;
-                          run(() =>
-                            updateTelegramBotAction(bot.id, {
-                              payment_reports_chat_id: v || null,
-                            }),
-                          );
-                        }}
-                      />
-                      <span className="mt-1 block text-caption text-text-muted">
-                        رسید کارت‌به‌کارت، تأیید/رد، و خریدهای موفق (سایت + ربات) فقط اینجا می‌آید.
-                      </span>
-                    </label>
-                    <label className="block md:col-span-2">
-                      <span className="text-caption text-text-muted">وب‌هوک فعلی</span>
-                      <input className="field-input mt-1 w-full" dir="ltr" readOnly value={bot.webhook_url ?? '—'} />
-                    </label>
+                  <div className="mt-3 border-t border-border pt-3">
+                    <BotTokenRow bot={bot} onSaved={() => router.refresh()} />
+                  </div>
+
+                  <div className="mt-3">
+                    <BotChatIdsRow bot={bot} onSaved={() => router.refresh()} />
                   </div>
 
                   <div className="mt-4 rounded-lg border border-border/70 bg-surface-muted/30 p-3">
@@ -187,9 +152,6 @@ export function TelegramSettingsClient({
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button type="button" disabled={pending} className="btn btn-primary text-caption px-3 py-1.5" onClick={() => run(() => setTelegramWebhookAction(bot.id))}>
-                      ثبت وب‌هوک
-                    </button>
                     <button
                       type="button"
                       disabled={pending}
@@ -206,6 +168,120 @@ export function TelegramSettingsClient({
         )}
         {msg ? <p className="mt-4 text-small text-text-muted">{msg}</p> : null}
       </AdminContentPanel>
+    </div>
+  );
+}
+
+function BotTokenRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () => void }) {
+  const [token, setToken] = useState('');
+  const [pending, startTransition] = useTransition();
+  const [status, setStatus] = useState('');
+
+  const save = () => {
+    startTransition(async () => {
+      setStatus('');
+      const res = await updateTelegramBotAction(bot.id, { bot_token_input: token.trim() || undefined });
+      setStatus(res.ok ? 'ذخیره شد' : res.error ?? 'خطا');
+      if (res.ok) {
+        setToken('');
+        onSaved();
+      }
+    });
+  };
+
+  return (
+    <div>
+      <p className="text-caption text-text-muted">توکن ربات</p>
+      <div className="mt-1 flex flex-wrap gap-2">
+        <input
+          className="field-input min-w-[200px] flex-1 text-small"
+          dir="ltr"
+          type="password"
+          autoComplete="new-password"
+          placeholder={bot.token_present ? `ذخیره‌شده: ${bot.bot_token_preview ?? '••••'}` : 'از BotFather'}
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+        />
+        <button type="button" disabled={pending || !token.trim()} onClick={() => void save()} className="btn btn-secondary px-2 py-1 admin-text-meta">
+          {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+          ذخیره توکن
+        </button>
+        {status ? <span className="self-center text-caption text-text-muted">{status}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+function BotChatIdsRow({ bot, onSaved }: { bot: TelegramBotView; onSaved: () => void }) {
+  const [supportChatId, setSupportChatId] = useState(bot.support_group_chat_id ?? '');
+  const [paymentReportsChatId, setPaymentReportsChatId] = useState(bot.payment_reports_chat_id ?? '');
+  const [pending, startTransition] = useTransition();
+  const [status, setStatus] = useState('');
+
+  useEffect(() => {
+    setSupportChatId(bot.support_group_chat_id ?? '');
+    setPaymentReportsChatId(bot.payment_reports_chat_id ?? '');
+  }, [bot.support_group_chat_id, bot.payment_reports_chat_id]);
+
+  const dirty =
+    supportChatId.trim() !== (bot.support_group_chat_id ?? '') ||
+    paymentReportsChatId.trim() !== (bot.payment_reports_chat_id ?? '');
+
+  const save = () => {
+    startTransition(async () => {
+      setStatus('');
+      const support = supportChatId.trim();
+      const payment = paymentReportsChatId.trim();
+      const res = await updateTelegramBotAction(bot.id, {
+        support_group_chat_id: support || null,
+        reports_chat_id: support || null,
+        payment_reports_chat_id: payment || null,
+      });
+      setStatus(res.ok ? 'ذخیره شد' : res.error ?? 'خطا');
+      if (res.ok) onSaved();
+    });
+  };
+
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <label className="block">
+        <span className="text-caption text-text-muted">گروه گزارشات پشتیبانی (chat id)</span>
+        <input
+          className="field-input mt-1 w-full"
+          dir="ltr"
+          placeholder="-100xxxxxxxxxx"
+          value={supportChatId}
+          onChange={(e) => setSupportChatId(e.target.value)}
+        />
+        <span className="mt-1 block text-caption text-text-muted">
+          پیام‌های پشتیبانی کاربران فقط در این گروه می‌آید.
+        </span>
+      </label>
+      <label className="block">
+        <span className="text-caption text-text-muted">گروه/کانال گزارشات پرداخت (chat id)</span>
+        <input
+          className="field-input mt-1 w-full"
+          dir="ltr"
+          placeholder="-100xxxxxxxxxx"
+          value={paymentReportsChatId}
+          onChange={(e) => setPaymentReportsChatId(e.target.value)}
+        />
+        <span className="mt-1 block text-caption text-text-muted">
+          رسید کارت‌به‌کارت، تأیید/رد، و خریدهای موفق (سایت + ربات) فقط اینجا می‌آید.
+        </span>
+      </label>
+      <div className="flex flex-wrap items-center gap-2 md:col-span-2">
+        <button
+          type="button"
+          disabled={pending || !dirty}
+          onClick={() => void save()}
+          className="btn btn-primary px-3 py-1.5 text-caption"
+        >
+          {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+          ذخیره گروه‌های گزارش
+        </button>
+        {status ? <span className="text-caption text-text-muted">{status}</span> : null}
+      </div>
     </div>
   );
 }
