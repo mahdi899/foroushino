@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\CashbackPayoutStatus;
 use App\Enums\CourseAccessStatus;
+use App\Enums\ReferralConversionStatus;
 use App\Enums\SatApplicationStatus;
 use App\Enums\TicketStatus;
 use App\Http\Controllers\Controller;
@@ -128,6 +129,9 @@ class DashboardController extends Controller
                     'upcoming_seminars' => Seminar::query()->where('date', '>=', now())->count(),
                     'sat_applications_pending' => SatApplication::query()->whereIn('status', $pendingSatStatuses)->count(),
                     'cashback_payouts_pending' => CashbackPayout::query()->where('status', CashbackPayoutStatus::Pending)->count(),
+                    'referral_conversions_pending' => ReferralConversion::query()
+                        ->where('status', ReferralConversionStatus::Pending)
+                        ->count(),
                     'referral_conversions' => ReferralConversion::query()->count(),
                     'notifications_sent' => Notification::query()->count(),
                 ],

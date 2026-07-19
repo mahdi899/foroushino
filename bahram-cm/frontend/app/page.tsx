@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { buildMetadata } from "@/lib/seo";
 import { HomeBelowFoldSections } from "@/components/home/HomeBelowFoldSections";
 import { ensureStaticPageCache } from "@/lib/cache/staticPage";
-import bahramImageLoader from "@/lib/imageLoader";
-import { sitePhotos } from "@/lib/site-photo-paths";
+import { getPublicPerfConfig } from "@/lib/cache/public";
 
 export const metadata: Metadata = buildMetadata({
   title: "مسیر رشد حرفه‌ای",
@@ -12,13 +11,8 @@ export const metadata: Metadata = buildMetadata({
 });
 
 export default async function HomePage() {
-  await ensureStaticPageCache();
+  const [, perf] = await Promise.all([ensureStaticPageCache(), getPublicPerfConfig()]);
+  const deferBelowFold = perf.defer_below_fold !== false;
 
-  return (
-    <>
-      <link rel="preload" as="image" href={bahramImageLoader({ src: sitePhotos.heroBackgroundMobile, width: 768, quality: 80 })} media="(max-width: 1023px)" fetchPriority="high" />
-      <link rel="preload" as="image" href={bahramImageLoader({ src: sitePhotos.heroBackground, width: 1920, quality: 80 })} media="(min-width: 1024px)" fetchPriority="high" />
-      <HomeBelowFoldSections />
-    </>
-  );
+  return <HomeBelowFoldSections deferBelowFold={deferBelowFold} />;
 }

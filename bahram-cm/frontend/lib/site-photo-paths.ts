@@ -74,6 +74,23 @@ export const brandLogoDisplay = {
   imageClass: 'object-cover object-center',
 } as const;
 
+/** Intrinsic pixels of logo-bahram.webp — used for aspect-ratio hints. */
+export const BRAND_LOGO_INTRINSIC = { width: 1024, height: 1024 } as const;
+
+/** CSS pixel size delivered for each Logo size variant. */
+export function brandLogoPixelSize(size: 'sm' | 'md' | 'footer' | 'footer-mobile'): number {
+  switch (size) {
+    case 'sm':
+      return 32;
+    case 'footer-mobile':
+      return 176;
+    case 'footer':
+    case 'md':
+    default:
+      return 36;
+  }
+}
+
 /** Legacy founder portrait crop (cards / about sections) */
 export const founderPortraitBrandDisplay = {
   containerClass: 'bg-surface-soft',

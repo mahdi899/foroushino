@@ -66,7 +66,7 @@ function AdminShellInner({
   const [mobileOpen, setMobileOpen] = useState(false);
   const { focusMode } = useAdminFocus();
   const { sidebarCollapsed, toggleSidebar } = useAdminTheme();
-  const { pendingCount, ticketPendingCount } = useOperatorQueueAlert();
+  const { navBadgeCounts } = useOperatorQueueAlert();
 
   const nav = useMemo(
     () => filterAdminNav(adminNav, { permissions, isSuperAdmin }),
@@ -108,15 +108,13 @@ function AdminShellInner({
             nav={nav}
             collapsed={sidebarCollapsed}
             onToggleCollapse={toggleSidebar}
-            pendingCount={pendingCount}
-            ticketPendingCount={ticketPendingCount}
+            navBadgeCounts={navBadgeCounts}
           />
           <AdminMobileMenu
             nav={nav}
             open={mobileOpen}
             onClose={() => setMobileOpen(false)}
-            pendingCount={pendingCount}
-            ticketPendingCount={ticketPendingCount}
+            navBadgeCounts={navBadgeCounts}
           />
         </>
       )}
@@ -129,8 +127,7 @@ function AdminShellInner({
 
       {!focusMode && (
         <AdminBottomNav
-          pendingCount={pendingCount}
-          ticketPendingCount={ticketPendingCount}
+          navBadgeCounts={navBadgeCounts}
           menuOpen={mobileOpen}
           onMenuOpen={() => setMobileOpen(true)}
         />

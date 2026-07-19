@@ -51,8 +51,8 @@ export function AdminDashboardClient({ initialStats }: { initialStats?: Dashboar
   const { academy } = stats;
 
   useEffect(() => {
-    syncBadgeCounts(stats.chatbot.pending_operator, stats.academy.tickets_open);
-  }, [stats.chatbot.pending_operator, stats.academy.tickets_open, syncBadgeCounts]);
+    syncBadgeCounts(stats);
+  }, [stats, syncBadgeCounts]);
 
   const frontDeskCards = [
     {

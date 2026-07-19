@@ -11,8 +11,6 @@ import {
 } from "@/lib/jsonld";
 import { AdminAwareChrome } from "@/components/layout/AdminAwareChrome";
 import { SiteChatbotEntry } from "@/components/chatbot/SiteChatbotEntry";
-import { BahramUpdateBanner } from "@/components/pwa/BahramUpdateBanner";
-import { SitePwaRegistrar } from "@/components/pwa/SitePwaRegistrar";
 import { MediaPreconnect } from "@/components/performance/MediaPreconnect";
 import { PerformanceProvider } from "@/components/performance/PerformanceProvider";
 import { getPublicChatbotConfig } from "@/lib/chatbot/public";
@@ -23,10 +21,8 @@ import { getStudentDisplayName } from "@/lib/student/displayName";
 import { buildStudentFormPrefill } from "@/lib/student/formPrefill";
 import { getCurrentStudent } from "@/lib/student/session";
 import { StudentAuthRoot } from "@/components/student-panel/auth/StudentAuthRoot";
-import { ReferralCapture } from "@/components/commerce/ReferralCapture";
-import { DiscountCapture } from "@/components/commerce/DiscountCapture";
 import { GrainOverlay } from "@/components/motion/GrainOverlay";
-import { SiteBootLoader } from "@/components/layout/SiteBootLoader";
+import { SiteShellDeferred } from "@/components/layout/SiteShellDeferred";
 import { cookies } from "next/headers";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import { ServerInsertedJsonLd } from "@/components/bootstrap/ServerInsertedJsonLd";
@@ -87,11 +83,8 @@ export default async function RootLayout({
       <body className={`${fontClassName} min-w-0 overflow-x-clip antialiased`} suppressHydrationWarning>
         {!isBareShellRoute ? <ServerInsertedJsonLd id="jsonld-site" data={ld} /> : null}
         <ThemeBoot />
-        {!isBareShellRoute ? <SiteBootLoader /> : null}
+        {!isBareShellRoute ? <SiteShellDeferred /> : null}
         {!isBareShellRoute ? <GrainOverlay /> : null}
-        {!isBareShellRoute ? <ReferralCapture /> : null}
-        {!isBareShellRoute ? <DiscountCapture /> : null}
-        {!isBareShellRoute ? <SitePwaRegistrar /> : null}
         <StudentAuthRoot
           initialLoggedIn={studentLoggedIn}
           initialDisplayName={studentDisplayName}
@@ -108,7 +101,6 @@ export default async function RootLayout({
               deferWidget={perfConfig.lazy_load_chatbot !== false}
             />
           ) : null}
-          {!isBareShellRoute ? <BahramUpdateBanner variant="site" /> : null}
         </StudentAuthRoot>
       </body>
     </html>

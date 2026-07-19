@@ -1,14 +1,21 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { fetchPendingTicketsCount } from './academy/actions';
-import { fetchChatbotOperatorQueueCount } from './chatbot/actions';
+import { fetchAdminNavBadgeCounts } from '@/lib/admin/fetchNavBadgeCounts';
+import {
+  buildAdminNavBadgeCountsFromSummary,
+  EMPTY_ADMIN_NAV_BADGE_COUNTS,
+  hasAnyAdminNavBadge,
+  type AdminNavBadgeCounts,
+} from '@/lib/admin/navBadges';
+import type { DashboardSummary } from '@/lib/admin/dashboardTypes';
 
 interface OperatorQueueAlertContextValue {
   pendingCount: number;
   ticketPendingCount: number;
+  navBadgeCounts: AdminNavBadgeCounts;
   refreshPendingCount: () => Promise<void>;
-  syncBadgeCounts: (chatbot: number, tickets: number) => void;
+  syncBadgeCounts: (summary: DashboardSummary) => void;
 }
 
 const OperatorQueueAlertContext = createContext<OperatorQueueAlertContextValue | null>(null);
@@ -24,35 +31,28 @@ export function OperatorQueueAlertProvider({
   children: React.ReactNode;
   pollingEnabled?: boolean;
 }) {
-  const [pendingCount, setPendingCount] = useState(0);
-  const [ticketPendingCount, setTicketPendingCount] = useState(0);
-  const pendingRef = useRef(0);
-  const ticketPendingRef = useRef(0);
+  const [navBadgeCounts, setNavBadgeCounts] = useState<AdminNavBadgeCounts>(EMPTY_ADMIN_NAV_BADGE_COUNTS);
+  const countsRef = useRef<AdminNavBadgeCounts>(EMPTY_ADMIN_NAV_BADGE_COUNTS);
 
-  const syncBadgeCounts = useCallback((chatbot: number, tickets: number) => {
-    pendingRef.current = chatbot;
-    ticketPendingRef.current = tickets;
-    setPendingCount(chatbot);
-    setTicketPendingCount(tickets);
+  const applyCounts = useCallback((next: AdminNavBadgeCounts) => {
+    countsRef.current = next;
+    setNavBadgeCounts(next);
   }, []);
+
+  const syncBadgeCounts = useCallback(
+    (summary: DashboardSummary) => {
+      applyCounts(buildAdminNavBadgeCountsFromSummary(summary));
+    },
+    [applyCounts],
+  );
 
   const refreshPendingCount = useCallback(async () => {
     try {
-      const [chatbotTotal, ticketTotal] = await Promise.all([
-        fetchChatbotOperatorQueueCount(),
-        fetchPendingTicketsCount(),
-      ]);
-      pendingRef.current = chatbotTotal;
-      ticketPendingRef.current = ticketTotal;
-      setPendingCount(chatbotTotal);
-      setTicketPendingCount(ticketTotal);
+      applyCounts(await fetchAdminNavBadgeCounts());
     } catch {
-      pendingRef.current = 0;
-      ticketPendingRef.current = 0;
-      setPendingCount(0);
-      setTicketPendingCount(0);
+      applyCounts(EMPTY_ADMIN_NAV_BADGE_COUNTS);
     }
-  }, []);
+  }, [applyCounts]);
 
   useEffect(() => {
     if (!pollingEnabled) return;
@@ -61,11 +61,9 @@ export function OperatorQueueAlertProvider({
     let bootTimerId = 0;
     let cancelled = false;
 
-    const hasAlerts = () => pendingRef.current > 0 || ticketPendingRef.current > 0;
-
     const schedule = () => {
       window.clearTimeout(timerId);
-      const delay = document.hidden ? POLL_IDLE_MS * 2 : hasAlerts() ? POLL_ACTIVE_MS : POLL_IDLE_MS;
+      const delay = document.hidden ? POLL_IDLE_MS * 2 : hasAnyAdminNavBadge(countsRef.current) ? POLL_ACTIVE_MS : POLL_IDLE_MS;
       timerId = window.setTimeout(async () => {
         if (!document.hidden && !cancelled) await refreshPendingCount();
         if (!cancelled) schedule();
@@ -103,8 +101,14 @@ export function OperatorQueueAlertProvider({
   }, [refreshPendingCount, pollingEnabled]);
 
   const value = useMemo(
-    () => ({ pendingCount, ticketPendingCount, refreshPendingCount, syncBadgeCounts }),
-    [pendingCount, ticketPendingCount, refreshPendingCount, syncBadgeCounts],
+    () => ({
+      pendingCount: navBadgeCounts.chatbot,
+      ticketPendingCount: navBadgeCounts.tickets,
+      navBadgeCounts,
+      refreshPendingCount,
+      syncBadgeCounts,
+    }),
+    [navBadgeCounts, refreshPendingCount, syncBadgeCounts],
   );
 
   return <OperatorQueueAlertContext.Provider value={value}>{children}</OperatorQueueAlertContext.Provider>;

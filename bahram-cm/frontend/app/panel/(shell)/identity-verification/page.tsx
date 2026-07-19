@@ -13,8 +13,15 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 type IdentityArtifact = {
+  id?: number;
   type?: string;
 };
+
+function resolveNationalCardArtifactId(state: IdentityState | null): number | null {
+  const artifacts = state?.latest_submission?.artifacts ?? [];
+  const card = artifacts.find((artifact) => artifact.type === 'national_card_front');
+  return typeof card?.id === 'number' ? card.id : null;
+}
 
 type IdentityState = {
   identity_status?: string;
@@ -97,6 +104,7 @@ export default async function IdentityVerificationPage({
 
   const initialDraft = buildIdentityDraft(state, user?.name, user?.profile);
   const cardUploaded = hasUploadedNationalCard(state);
+  const serverCardArtifactId = resolveNationalCardArtifactId(state);
   const initialStep = resolveInitialStep(state, params.step);
 
   return (
@@ -114,6 +122,7 @@ export default async function IdentityVerificationPage({
         correctionItems={state?.required_corrections ?? null}
         initialStep={initialStep}
         cardUploadedOnServer={cardUploaded}
+        serverCardArtifactId={serverCardArtifactId}
         draftSubmissionId={state?.latest_submission?.id ?? null}
       />
     </div>

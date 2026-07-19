@@ -5,6 +5,10 @@ export type SeminarPromo = {
   title: string;
   banner_url: string;
   banner_url_mobile: string;
+  banner_width?: number | null;
+  banner_height?: number | null;
+  banner_mobile_width?: number | null;
+  banner_mobile_height?: number | null;
   banner_alt: string;
   link: string | null;
   variant: 'available' | 'full';

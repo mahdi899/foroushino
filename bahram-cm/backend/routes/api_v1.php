@@ -210,6 +210,8 @@ Route::prefix('student')->group(function () {
         Route::get('identity-verification', [StudentIdentityVerificationController::class, 'show']);
         Route::post('identity-verification/draft', [StudentIdentityVerificationController::class, 'draft']);
         Route::post('identity-verification/artifacts', [StudentIdentityVerificationController::class, 'uploadArtifact']);
+        Route::get('identity-verification/artifacts/{artifact}/stream', [StudentIdentityVerificationController::class, 'streamArtifact'])
+            ->whereNumber('artifact');
         Route::get('identity-verification/video-prompt', [StudentIdentityVerificationController::class, 'videoPrompt']);
         Route::post('identity-verification/submit', [StudentIdentityVerificationController::class, 'submit'])
             ->middleware('throttle:identity-submit');

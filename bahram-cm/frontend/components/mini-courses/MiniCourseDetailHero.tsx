@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import '@/lib/proseContentStyles';
 import type { LucideIcon } from 'lucide-react';
 import { ArrowLeft, Clapperboard, Clock, PenLine, Sparkles } from 'lucide-react';
 import { MiniCourseEnrollCta } from '@/components/mini-courses/MiniCourseEnrollCta';

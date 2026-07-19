@@ -1,5 +1,3 @@
-@import "./iransans.css";
-@import "./article-content-colors.css";
 @import "./neon-border.css";
 @import "tailwindcss";
 
@@ -3900,6 +3898,25 @@ html[data-theme="light"] .site-bottom-nav__icon-shell--active {
 .site-bottom-nav__item:focus-visible {
   outline: 2px solid var(--color-emerald-glow);
   outline-offset: -2px;
+}
+
+/* Seminar promo — separate mobile / desktop art (natural image aspect) */
+.site-promo-bar__frame {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.site-promo-bar__img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.site-promo-bar-link:hover,
+.site-promo-bar-link:focus-visible {
+  opacity: 1;
 }
 
 .site-chrome-body {

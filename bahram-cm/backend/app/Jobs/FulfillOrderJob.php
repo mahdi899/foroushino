@@ -90,7 +90,7 @@ class FulfillOrderJob implements ShouldQueue
             }
         }
 
-        DB::transaction(function () use ($order, $userId, $licenseResponse, $referrals) {
+        DB::transaction(function () use ($order, $userId, $licenseResponse, $referrals, $discounts) {
             if ($userId) {
                 $courseAccess = null;
                 $order->loadMissing('product.seminar');

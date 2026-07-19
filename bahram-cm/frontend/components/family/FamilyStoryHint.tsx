@@ -78,7 +78,7 @@ export function FamilyStoryHint({
   ) : (
     <span className="family-topbar__subtitle--live">
       {showOnlineDot && <span className="family-topbar__meta-dot" aria-hidden />}
-      {formatFa(displayMemberCount ?? memberCount)} {memberLabel}
+      {formatFa(displayMemberCount ?? memberCount ?? 0)} {memberLabel}
     </span>
   );
 

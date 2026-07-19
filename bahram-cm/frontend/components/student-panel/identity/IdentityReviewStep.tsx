@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CheckCircle2, ClipboardCheck, CreditCard, Loader2, Video } from 'lucide-react';
 import { formatDateFa } from '@/lib/persian';
 import { primeVideoElement } from '@/lib/media/recorder';
+import { studentIdentityArtifactStreamUrl } from '@/lib/student/identityArtifacts';
 
 const GENDER_FA: Record<string, string> = {
   male: 'مرد',
@@ -23,6 +24,7 @@ type Props = {
   draft: Draft;
   cardFile: File | null;
   cardReadyOnServer?: boolean;
+  serverCardArtifactId?: number | null;
   videoBlob: Blob | null;
   pending: boolean;
   onBack: () => void;
@@ -33,6 +35,7 @@ export function IdentityReviewStep({
   draft,
   cardFile,
   cardReadyOnServer = false,
+  serverCardArtifactId = null,
   videoBlob,
   pending,
   onBack,
@@ -119,6 +122,12 @@ export function IdentityReviewStep({
               {cardPreviewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={cardPreviewUrl} alt="پیش‌نمایش کارت ملی" />
+              ) : serverCardArtifactId ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={studentIdentityArtifactStreamUrl(serverCardArtifactId)}
+                  alt="تصویر کارت ملی بارگذاری‌شده"
+                />
               ) : cardReadyOnServer ? (
                 <CheckCircle2 size={22} aria-hidden />
               ) : (

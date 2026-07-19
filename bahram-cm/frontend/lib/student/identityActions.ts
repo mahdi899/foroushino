@@ -95,14 +95,17 @@ export async function saveIdentityDraftAction(
 
 export async function uploadIdentityArtifactAction(formData: FormData): Promise<SimpleFormState> {
   try {
-    await studentUpload<{ data: Record<string, unknown> }>('/identity-verification/artifacts', formData);
+    const res = await studentUpload<{ data: { id?: number } }>('/identity-verification/artifacts', formData);
+    revalidatePath('/panel/identity-verification');
+    revalidatePath('/panel/profile');
+    const artifactId = res.data?.id;
+    return {
+      success: 'مدرک با موفقیت بارگذاری شد.',
+      data: typeof artifactId === 'number' ? { artifact_id: artifactId } : undefined,
+    };
   } catch (err) {
     return identityActionError(err, 'بارگذاری مدرک ناموفق بود.');
   }
-
-  revalidatePath('/panel/identity-verification');
-  revalidatePath('/panel/profile');
-  return { success: 'مدرک با موفقیت بارگذاری شد.' };
 }
 
 export async function submitIdentityVerificationAction(formData: FormData): Promise<SimpleFormState> {

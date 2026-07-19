@@ -14,6 +14,10 @@ export const IMAGE_SIZES = {
   cardHalf: '(max-width:768px) 92vw, (max-width:1024px) 48vw, 560px',
   /** Safe default when a fill image has no explicit sizes. */
   fillDefault: '(max-width:768px) 100vw, 50vw',
+  /** Homepage hero LCP — desktop (~1350px rendered at xl). */
+  heroLcpDesktop: '(max-width: 1023px) 0px, (max-width: 1440px) 92vw, 1350px',
+  /** Homepage hero LCP — mobile full bleed. */
+  heroLcpMobile: '(max-width: 1023px) 100vw, 0px',
 } as const;
 
 /** Max delivery width — caps Next.js optimizer requests on large monitors. */

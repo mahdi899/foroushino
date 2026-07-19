@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { CheckCircle2, CreditCard, ImagePlus, Loader2, Trash2, Upload } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { studentIdentityArtifactStreamUrl } from '@/lib/student/identityArtifacts';
 
 const MAX_MB = 8;
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif';
@@ -22,6 +23,7 @@ function formatFileSize(bytes: number): string {
 
 type Props = {
   file: File | null;
+  serverCardArtifactId?: number | null;
   onFileChange: (file: File | null) => void;
   onBack: () => void;
   onContinue: () => void;
@@ -31,6 +33,7 @@ type Props = {
 
 export function NationalCardUploadStep({
   file,
+  serverCardArtifactId = null,
   onFileChange,
   onBack,
   onContinue,
@@ -85,6 +88,9 @@ export function NationalCardUploadStep({
     validateAndSet(e.dataTransfer.files?.[0] ?? null);
   }
 
+  const showServerPreview = !file && serverCardArtifactId != null;
+  const showTips = !file && !showServerPreview;
+
   return (
     <div className="panel-identity-card-upload">
       <div className="panel-identity-card-upload__header">
@@ -100,14 +106,35 @@ export function NationalCardUploadStep({
       </div>
 
       <div className="panel-identity-card-upload__body">
-        <ul className="panel-identity-card-upload__tips">
-          {TIPS.map((tip) => (
-            <li key={tip}>
-              <CheckCircle2 size={14} aria-hidden />
-              <span>{tip}</span>
-            </li>
-          ))}
-        </ul>
+        {showServerPreview ? (
+          <div className="panel-identity-card-upload__server-preview">
+            <div className="panel-identity-card-upload__preview-frame panel-identity-card-upload__preview-frame--server">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={studentIdentityArtifactStreamUrl(serverCardArtifactId)}
+                alt="تصویر کارت ملی بارگذاری‌شده"
+              />
+              <span className="panel-identity-card-upload__preview-badge">
+                <CheckCircle2 size={14} aria-hidden />
+                بارگذاری شده
+              </span>
+            </div>
+            <p className="panel-identity-card-upload__server-caption">
+              تصویر کارت ملی قبلاً ذخیره شده است. در صورت نیاز می‌توانید تصویر جدید انتخاب کنید.
+            </p>
+          </div>
+        ) : null}
+
+        {showTips ? (
+          <ul className="panel-identity-card-upload__tips">
+            {TIPS.map((tip) => (
+              <li key={tip}>
+                <CheckCircle2 size={14} aria-hidden />
+                <span>{tip}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
         <input
           ref={inputRef}

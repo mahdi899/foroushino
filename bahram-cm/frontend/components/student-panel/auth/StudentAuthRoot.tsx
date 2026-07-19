@@ -1,9 +1,15 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import type { StudentFormPrefill } from '@/lib/student/formPrefill';
 import { StudentAuthProvider, useStudentAuth } from './StudentAuthContext';
-import { StudentLoginModal } from './StudentLoginModal';
+
+const StudentLoginModal = dynamic(
+  () => import('./StudentLoginModal').then((m) => ({ default: m.StudentLoginModal })),
+  { ssr: false },
+);
 
 function StudentAuthUrlSyncInner() {
   const router = useRouter();
@@ -33,7 +39,11 @@ function StudentAuthUrlSyncInner() {
   return null;
 }
 
-import type { StudentFormPrefill } from '@/lib/student/formPrefill';
+function StudentLoginModalGate() {
+  const { loginOpen } = useStudentAuth();
+  if (!loginOpen) return null;
+  return <StudentLoginModal />;
+}
 
 export function StudentAuthRoot({
   children,
@@ -53,7 +63,7 @@ export function StudentAuthRoot({
       initialPrefill={initialPrefill}
     >
       <StudentAuthUrlSyncInner />
-      <StudentLoginModal />
+      <StudentLoginModalGate />
       {children}
     </StudentAuthProvider>
   );

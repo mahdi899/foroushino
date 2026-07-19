@@ -17,16 +17,17 @@ const TAP_MOVE_THRESHOLD = 14;
 const SWIPE_THRESHOLD = 52;
 
 type Vec2 = { x: number; y: number };
+type TouchPoint = { clientX: number; clientY: number };
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function touchDistance(a: Touch, b: Touch) {
+function touchDistance(a: TouchPoint, b: TouchPoint) {
   return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
 }
 
-function touchCenter(a: Touch, b: Touch): Vec2 {
+function touchCenter(a: TouchPoint, b: TouchPoint): Vec2 {
   return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
 }
 

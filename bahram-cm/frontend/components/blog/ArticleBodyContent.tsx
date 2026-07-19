@@ -4,6 +4,7 @@ import { ArticleVideoEmbed } from '@/components/blog/ArticleVideoEmbed';
 import { splitArticleBodyHtml } from '@/lib/article/videoEmbed';
 import { rewriteArticleBodyMediaUrls } from '@/lib/mediaUrl';
 import { sanitizeRichHtml } from '@/lib/sanitize';
+import '@/lib/proseContentStyles';
 
 interface ArticleBodyContentProps {
   html: string;

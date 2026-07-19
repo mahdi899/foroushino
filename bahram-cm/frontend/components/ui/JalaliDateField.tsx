@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import DatePicker from 'react-multi-date-picker';
 import { CalendarDays } from 'lucide-react';
 import type DateObject from 'react-date-object';
@@ -30,6 +31,11 @@ export function JalaliDateField({
   minDate,
 }: JalaliDateFieldProps) {
   const pickerValue = apiDateToDateObject(value);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | undefined>(undefined);
+
+  useEffect(() => {
+    setPortalTarget(document.getElementById('panel-root') ?? document.body);
+  }, []);
 
   function handleChange(next: DateObject | DateObject[] | null) {
     if (!next || Array.isArray(next)) {
@@ -53,6 +59,8 @@ export function JalaliDateField({
       arrow={false}
       required={required}
       containerClassName="jalali-date-field"
+      portal
+      portalTarget={portalTarget}
       render={(displayValue, openCalendar) => (
         <button
           type="button"

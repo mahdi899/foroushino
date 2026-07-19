@@ -1,6 +1,8 @@
-import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
-import { brandLogoDisplay, sitePhotos } from '@/lib/site-photo-paths';
+import { BrandLogoImage } from '@/components/ui/BrandLogoImage';
+import { brandLogoDisplay } from '@/lib/site-photo-paths';
 import { cn } from '@/lib/utils';
+
+const BRAND_MARK_PX = 40;
 
 export function BrandMark({ className }: { className?: string }) {
   return (
@@ -12,13 +14,10 @@ export function BrandMark({ className }: { className?: string }) {
       )}
       aria-hidden
     >
-      <DirectMediaImg
-        src={sitePhotos.logoBahram}
-        alt=""
-        fill
-        loading="eager"
-        fetchPriority="high"
-        className={brandLogoDisplay.imageClass}
+      <BrandLogoImage
+        size={BRAND_MARK_PX}
+        priority
+        className={cn(brandLogoDisplay.imageClass, 'h-full w-full')}
       />
     </div>
   );

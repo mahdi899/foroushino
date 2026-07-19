@@ -11,6 +11,12 @@ import { StatusBadge } from '@/components/student-panel/ui/StatusBadge';
 import { panelStudentFetch } from '@/lib/student/panelServer';
 import { getBankAccountRulesAction, getVerifiedBankAccountsAction } from '@/lib/student/bankAccountActions';
 import { getCurrentStudent } from '@/lib/student/session';
+import {
+  CASHBACK_PAYOUT_STATUS_BADGE,
+  REFERRAL_INVITE_STATUS_BADGE,
+  cashbackPayoutStatusLabel,
+  referralInviteStatusLabel,
+} from '@/lib/student/referralLabels';
 
 export const metadata: Metadata = { title: 'باشگاه مشتریان | پنل کاربری', robots: { index: false, follow: false } };
 
@@ -35,18 +41,6 @@ interface Payout {
   status: string;
   created_at: string | null;
 }
-
-const STATUS_BADGE: Record<string, 'success' | 'warning' | 'neutral'> = {
-  paid: 'success',
-  payable: 'warning',
-  pending: 'neutral',
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  paid: 'پرداخت‌شده',
-  payable: 'قابل برداشت',
-  pending: 'در انتظار',
-};
 
 export default async function PanelReferralsPage() {
   const [user, { data: referral }, { data: payouts }, bankAccountsResult, bankRules] = await Promise.all([
@@ -127,7 +121,9 @@ export default async function PanelReferralsPage() {
                       {p.masked_card_number}
                     </span>
                     <span className="font-semibold text-text">{p.amount.toLocaleString('fa-IR')} تومان</span>
-                    <StatusBadge variant="neutral">{p.status}</StatusBadge>
+                    <StatusBadge variant={CASHBACK_PAYOUT_STATUS_BADGE[p.status] ?? 'neutral'}>
+                      {cashbackPayoutStatusLabel(p.status)}
+                    </StatusBadge>
                   </li>
                 ))}
               </ul>
@@ -161,8 +157,8 @@ export default async function PanelReferralsPage() {
                           {invitee.converted_at ? new Date(invitee.converted_at).toLocaleDateString('fa-IR') : '—'}
                         </td>
                         <td>
-                          <StatusBadge variant={STATUS_BADGE[invitee.status] ?? 'neutral'}>
-                            {STATUS_LABEL[invitee.status] ?? invitee.status}
+                          <StatusBadge variant={REFERRAL_INVITE_STATUS_BADGE[invitee.status] ?? 'neutral'}>
+                            {referralInviteStatusLabel(invitee.status)}
                           </StatusBadge>
                         </td>
                         <td>{invitee.cashback_amount.toLocaleString('fa-IR')} تومان</td>
@@ -177,8 +173,8 @@ export default async function PanelReferralsPage() {
                   <li key={index} className="rounded-xl bg-surface-soft p-3">
                     <div className="flex items-center justify-between gap-3">
                       <span className="font-medium text-text">{invitee.buyer_name ?? 'کاربر'}</span>
-                      <StatusBadge variant={STATUS_BADGE[invitee.status] ?? 'neutral'}>
-                        {STATUS_LABEL[invitee.status] ?? invitee.status}
+                      <StatusBadge variant={REFERRAL_INVITE_STATUS_BADGE[invitee.status] ?? 'neutral'}>
+                        {referralInviteStatusLabel(invitee.status)}
                       </StatusBadge>
                     </div>
                     <p className="panel-card-subtext mt-1">{invitee.product_title ?? 'محصول نامشخص'}</p>

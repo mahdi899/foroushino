@@ -8,10 +8,27 @@ type SitePromoBarProps = {
   promo: SeminarPromo;
 };
 
-/** Desktop wide strip — actual height follows intrinsic aspect ratio at 100vw. */
-const DESKTOP_BANNER = { width: 1920, height: 120 } as const;
-/** Mobile promo — taller strip for narrow screens (recommended: 1080×280). */
-const MOBILE_BANNER = { width: 1080, height: 280 } as const;
+/** Fallback desktop strip ratio (1983×83). */
+const DESKTOP_BANNER_FALLBACK = { width: 1983, height: 83 } as const;
+/** Fallback mobile strip ratio (1632×235). */
+const MOBILE_BANNER_FALLBACK = { width: 1632, height: 235 } as const;
+
+function resolveBannerSize(
+  promo: SeminarPromo,
+  variant: 'desktop' | 'mobile',
+): { width: number; height: number } {
+  if (variant === 'mobile') {
+    return {
+      width: promo.banner_mobile_width ?? MOBILE_BANNER_FALLBACK.width,
+      height: promo.banner_mobile_height ?? MOBILE_BANNER_FALLBACK.height,
+    };
+  }
+
+  return {
+    width: promo.banner_width ?? DESKTOP_BANNER_FALLBACK.width,
+    height: promo.banner_height ?? DESKTOP_BANNER_FALLBACK.height,
+  };
+}
 
 function PromoBannerImage({
   src,
@@ -19,45 +36,60 @@ function PromoBannerImage({
   width,
   height,
   wrapperClassName,
+  sizes = '100vw',
 }: {
   src: string;
   alt: string;
   width: number;
   height: number;
   wrapperClassName?: string;
+  sizes?: string;
 }) {
   return (
-    <SiteImage
-      src={src}
-      alt={alt}
-      width={width}
-      height={height}
-      sizes="100vw"
-      className="block h-auto w-full"
-      wrapperClassName={wrapperClassName ?? 'block w-full'}
-      priority
-    />
+    <div className={wrapperClassName ?? 'site-promo-bar__frame block w-full'}>
+      <SiteImage
+        src={src}
+        alt={alt}
+        width={width}
+        height={height}
+        sizes={sizes}
+        priority
+        className="site-promo-bar__img h-auto w-full"
+      />
+    </div>
   );
 }
 
 export function SitePromoBar({ promo }: SitePromoBarProps) {
-  const mobileSrc = promo.banner_url_mobile || promo.banner_url;
+  const desktopSrc = promo.banner_url;
+  const mobileSrc = promo.banner_url_mobile?.trim() || '';
+  const hasDedicatedMobile = mobileSrc !== '' && mobileSrc !== desktopSrc;
+  const desktopSize = resolveBannerSize(promo, 'desktop');
+  const mobileSize = resolveBannerSize(promo, 'mobile');
 
   const content = (
-    <div className="relative w-full overflow-hidden bg-ink">
+    <div className="site-promo-bar relative w-full overflow-hidden bg-ink">
+      {hasDedicatedMobile ? (
+        <PromoBannerImage
+          src={mobileSrc}
+          alt={promo.banner_alt}
+          width={mobileSize.width}
+          height={mobileSize.height}
+          wrapperClassName="site-promo-bar__frame site-promo-bar__frame--mobile block w-full md:hidden"
+          sizes="100vw"
+        />
+      ) : null}
       <PromoBannerImage
-        src={mobileSrc}
+        src={desktopSrc}
         alt={promo.banner_alt}
-        width={MOBILE_BANNER.width}
-        height={MOBILE_BANNER.height}
-        wrapperClassName="block w-full md:hidden"
-      />
-      <PromoBannerImage
-        src={promo.banner_url}
-        alt={promo.banner_alt}
-        width={DESKTOP_BANNER.width}
-        height={DESKTOP_BANNER.height}
-        wrapperClassName="hidden w-full md:block"
+        width={desktopSize.width}
+        height={desktopSize.height}
+        wrapperClassName={
+          hasDedicatedMobile
+            ? 'site-promo-bar__frame site-promo-bar__frame--desktop hidden w-full md:block'
+            : 'site-promo-bar__frame site-promo-bar__frame--desktop block w-full'
+        }
+        sizes="100vw"
       />
     </div>
   );
@@ -66,7 +98,7 @@ export function SitePromoBar({ promo }: SitePromoBarProps) {
     return (
       <Link
         href={promo.link}
-        className="relative z-[3] block w-full transition-opacity hover:opacity-95"
+        className="site-promo-bar-link relative z-[3] block w-full"
         aria-label={`${promo.title} — مشاهده سمینار`}
       >
         {content}
@@ -75,7 +107,7 @@ export function SitePromoBar({ promo }: SitePromoBarProps) {
   }
 
   return (
-    <div className="relative z-[3] w-full" aria-label={promo.title}>
+    <div className="site-promo-bar-link relative z-[3] w-full" aria-label={promo.title}>
       {content}
     </div>
   );

@@ -14,6 +14,7 @@ export interface DashboardAcademyStats {
   upcoming_seminars: number;
   sat_applications_pending: number;
   cashback_payouts_pending: number;
+  referral_conversions_pending: number;
   referral_conversions: number;
   notifications_sent: number;
 }
@@ -61,6 +62,7 @@ export const EMPTY_DASHBOARD_ACADEMY: DashboardAcademyStats = {
   upcoming_seminars: 0,
   sat_applications_pending: 0,
   cashback_payouts_pending: 0,
+  referral_conversions_pending: 0,
   referral_conversions: 0,
   notifications_sent: 0,
 };

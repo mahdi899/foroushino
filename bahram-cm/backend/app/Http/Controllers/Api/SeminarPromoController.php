@@ -40,11 +40,18 @@ class SeminarPromoController extends Controller
                 ? MediaUrl::fromDiskPath($bannerMobilePath)
                 : $bannerRef;
 
+            $desktopDims = self::imageDimensions($bannerPath);
+            $mobileDims = self::imageDimensions($bannerMobilePath) ?? $desktopDims;
+
             return [
                 'seminar_id' => $seminar->id,
                 'title' => $seminar->title,
                 'banner_url' => MediaUrl::resolve($bannerRef),
                 'banner_url_mobile' => MediaUrl::resolve($bannerMobileRef),
+                'banner_width' => $desktopDims['width'] ?? null,
+                'banner_height' => $desktopDims['height'] ?? null,
+                'banner_mobile_width' => $mobileDims['width'] ?? null,
+                'banner_mobile_height' => $mobileDims['height'] ?? null,
                 'banner_alt' => $seminar->title,
                 'link' => '/seminars/'.$seminar->slug,
                 'variant' => $isFull ? 'full' : 'available',
@@ -56,5 +63,32 @@ class SeminarPromoController extends Controller
         }, 'services');
 
         return response()->json(['data' => $data]);
+    }
+
+    /**
+     * @return array{width: int, height: int}|null
+     */
+    private static function imageDimensions(?string $storagePath): ?array
+    {
+        if (! filled($storagePath)) {
+            return null;
+        }
+
+        $ref = MediaUrl::fromDiskPath($storagePath);
+        if (! is_string($ref) || ! str_starts_with($ref, '/storage/')) {
+            return null;
+        }
+
+        $fullPath = storage_path('app/public/'.ltrim(substr($ref, strlen('/storage/')), '/'));
+        if (! is_file($fullPath)) {
+            return null;
+        }
+
+        $size = @getimagesize($fullPath);
+        if ($size === false) {
+            return null;
+        }
+
+        return ['width' => (int) $size[0], 'height' => (int) $size[1]];
     }
 }

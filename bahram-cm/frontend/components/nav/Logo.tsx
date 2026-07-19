@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { DirectMediaImg } from "@/components/ui/DirectMediaImg";
-import { brandLogoDisplay, sitePhotos } from "@/lib/site-photo-paths";
+import { BrandLogoImage } from "@/components/ui/BrandLogoImage";
+import { brandLogoDisplay, brandLogoPixelSize } from "@/lib/site-photo-paths";
 import { cn } from "@/lib/cn";
 
 /**
@@ -17,6 +17,7 @@ export function Logo({
   showWordmark?: boolean;
 }) {
   const isFooterMobile = size === "footer-mobile";
+  const pixelSize = brandLogoPixelSize(size);
 
   const markSize =
     size === "sm"
@@ -48,13 +49,13 @@ export function Logo({
         )}
         aria-hidden
       >
-        <DirectMediaImg
-          src={sitePhotos.logoBahram}
-          alt=""
-          fill
-          loading="eager"
-          fetchPriority="high"
-          className={cn(brandLogoDisplay.imageClass, "transition-transform duration-500 group-hover:scale-[1.03]")}
+        <BrandLogoImage
+          size={pixelSize}
+          priority
+          className={cn(
+            brandLogoDisplay.imageClass,
+            "h-full w-full transition-transform duration-500 group-hover:scale-[1.03]",
+          )}
         />
       </span>
       {showWordmark ? (

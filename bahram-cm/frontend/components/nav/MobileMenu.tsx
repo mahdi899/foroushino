@@ -50,6 +50,7 @@ export function MobileMenu({ open, onClose }: Props) {
         aria-modal="true"
         aria-label="منوی اصلی"
         aria-hidden={!open}
+        inert={!open ? true : undefined}
       >
         <div className="site-mobile-menu__handle" aria-hidden />
 

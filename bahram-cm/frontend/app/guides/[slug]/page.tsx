@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "@/lib/proseContentStyles";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";

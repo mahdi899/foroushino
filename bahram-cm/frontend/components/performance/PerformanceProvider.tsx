@@ -28,3 +28,8 @@ export function useLazyImages(): boolean {
 export function usePrefetchLinks(): boolean {
   return usePerformanceConfig()?.prefetch_links === true;
 }
+
+/** Whether below-the-fold homepage sections should defer JS until near viewport. */
+export function useDeferBelowFold(): boolean {
+  return usePerformanceConfig()?.defer_below_fold !== false;
+}

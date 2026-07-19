@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
-import { ContentViewTracker } from "@/components/analytics/ContentViewTracker";
+import {
+  InsightNewsletterDeferred,
+  InsightShareButtonLazy,
+  InsightViewTracker,
+} from "@/components/blog/InsightDeferredClient";
+import {
+  InsightAdjacentNav,
+  InsightRelatedArticles,
+} from "@/components/blog/InsightRelatedSection";
 import { ServerInsertedJsonLd } from "@/components/bootstrap/ServerInsertedJsonLd";
-import { InsightAdjacentLink } from "@/components/blog/InsightAdjacentLink";
-import { InsightShareButton } from "@/components/blog/InsightShareButton";
-import { Reveal } from "@/components/motion/Reveal";
-import { NewsletterCTA } from "@/components/sections/NewsletterCTA";
+import { ArticleBodyContent } from "@/components/blog/ArticleBodyContent";
 import { SiteImage } from "@/components/ui/SiteImage";
 import { normalizeArticleSlugParam } from "@/lib/articleSlug";
-import { getArticleBySlug, getAllArticleSlugs, getArticles } from "@/lib/services/articles";
-import { ArticleBodyContent } from "@/components/blog/ArticleBodyContent";
+import { getArticleBySlug, getAllArticleSlugs } from "@/lib/services/articles";
 import { articleJsonLd, breadcrumbJsonLd } from "@/lib/jsonld";
 import { resolveArticleHeroExcerpt } from "@/lib/blog/heroExcerpt";
 import { formatDateFa } from "@/lib/persian";
@@ -49,23 +54,14 @@ export default async function InsightDetailPage({
 }) {
   const { slug: rawSlug } = await params;
   const slug = normalizeArticleSlugParam(rawSlug);
-  await ensureStaticPageCache();
-  const result = await getArticleBySlug(slug);
+
+  const [, result] = await Promise.all([ensureStaticPageCache(), getArticleBySlug(slug)]);
   if (!result.ok) notFound();
   const post = result.data;
 
   if (post.slug !== slug) {
     redirect(`/insights/${encodeURIComponent(post.slug)}`);
   }
-
-  const listResult = await getArticles(1, 100);
-  const articles = listResult.ok ? listResult.data.items : [];
-  const currentIndex = articles.findIndex((item) => item.slug === post.slug);
-  const adjacentPrev =
-    currentIndex >= 0 && currentIndex < articles.length - 1 ? articles[currentIndex + 1] : null;
-  const adjacentNext = currentIndex > 0 ? articles[currentIndex - 1] : null;
-
-  const related = articles.filter((p) => p.slug !== post.slug).slice(0, 3);
 
   const jsonLd = [
     articleJsonLd({
@@ -87,7 +83,7 @@ export default async function InsightDetailPage({
 
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
-      <ContentViewTracker type="insight" slug={post.slug} />
+      <InsightViewTracker slug={post.slug} />
       {post.canonical_url ? <link rel="canonical" href={post.canonical_url} /> : null}
       <ServerInsertedJsonLd id={`jsonld-insight-${post.slug}`} data={jsonLd} />
 
@@ -110,15 +106,15 @@ export default async function InsightDetailPage({
                 </figure>
               </div>
             ) : (
-              <Reveal delay={0.04} className="insight-hero-split__media-wrap">
+              <div className="insight-hero-split__media-wrap">
                 <div
                   aria-hidden
                   className="insight-hero-split__media insight-hero-split__media--fallback"
                 />
-              </Reveal>
+              </div>
             )}
 
-            <Reveal className="insight-hero-split__content">
+            <div className="insight-hero-split__content">
               <div className="insight-hero-split__toolbar">
                 <div className="insight-hero-split__meta-row">
                   <Link href="/insights" className="insight-hero-split__tag">
@@ -136,7 +132,7 @@ export default async function InsightDetailPage({
                     </time>
                   ) : null}
                 </div>
-                <InsightShareButton title={post.title} text={heroExcerpt} />
+                <InsightShareButtonLazy title={post.title} text={heroExcerpt} />
               </div>
 
               <header className="insight-hero-split__heading">
@@ -148,29 +144,10 @@ export default async function InsightDetailPage({
                 ) : null}
               </header>
 
-              {adjacentPrev || adjacentNext ? (
-                <nav aria-label="مقالات مجاور" className="insight-hero-adjacent-nav">
-                  {adjacentNext ? (
-                    <InsightAdjacentLink
-                      href={`/insights/${adjacentNext.slug}`}
-                      title={adjacentNext.title}
-                      direction="next"
-                    />
-                  ) : (
-                    <span className="insight-hero-adjacent insight-hero-adjacent--placeholder" aria-hidden />
-                  )}
-                  {adjacentPrev ? (
-                    <InsightAdjacentLink
-                      href={`/insights/${adjacentPrev.slug}`}
-                      title={adjacentPrev.title}
-                      direction="prev"
-                    />
-                  ) : (
-                    <span className="insight-hero-adjacent insight-hero-adjacent--placeholder" aria-hidden />
-                  )}
-                </nav>
-              ) : null}
-            </Reveal>
+              <Suspense fallback={null}>
+                <InsightAdjacentNav slug={post.slug} />
+              </Suspense>
+            </div>
           </div>
         </div>
       </section>
@@ -184,40 +161,11 @@ export default async function InsightDetailPage({
         </div>
       </section>
 
-      {related.length > 0 ? (
-        <section className="py-section-sm">
-          <div className="container-luxe">
-            <h2 className="text-h3 text-bone">مطالب مرتبط</h2>
-            <div className="mt-6 grid gap-5 md:grid-cols-3">
-              {related.map((item) => (
-                <Link
-                  key={item.slug}
-                  href={`/insights/${item.slug}`}
-                  className="neon-surface-hover group block h-full overflow-hidden rounded-card border border-bone/10 bg-charcoal/45 transition-colors hover:border-bone/25"
-                >
-                  <div className="relative aspect-[3/2] overflow-hidden">
-                    {item.featured_image ? (
-                      <SiteImage
-                        src={item.featured_image}
-                        alt={item.featured_image_alt}
-                        fallbackAlt={item.title}
-                        fill
-                        sizes="33vw"
-                        className="object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-                      />
-                    ) : null}
-                  </div>
-                  <div className="p-5">
-                    <h3 className="text-h3 text-bone">{item.title}</h3>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
+      <Suspense fallback={null}>
+        <InsightRelatedArticles slug={post.slug} />
+      </Suspense>
 
-      <NewsletterCTA />
+      <InsightNewsletterDeferred />
     </main>
   );
 }

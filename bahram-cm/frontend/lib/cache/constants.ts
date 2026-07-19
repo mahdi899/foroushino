@@ -24,4 +24,5 @@ export const CACHE_WARM_PATHS = [
   '/courses',
   '/sitemap.xml',
   '/robots.txt',
+  '/llms.txt',
 ] as const;

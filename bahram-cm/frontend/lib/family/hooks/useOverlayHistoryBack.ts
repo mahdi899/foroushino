@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useEffectEvent, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 type OverlayKey = 'comments' | 'notifications' | 'stories' | 'lightbox';
 
@@ -24,10 +24,15 @@ function getTelegramWebApp(): TelegramWebAppLike | undefined {
  */
 export function useOverlayHistoryBack(active: OverlayKey | null, onBack: () => void): void {
   const closedByPopRef = useRef(false);
+  const onBackRef = useRef(onBack);
 
-  const handleBack = useEffectEvent(() => {
-    onBack();
-  });
+  useEffect(() => {
+    onBackRef.current = onBack;
+  }, [onBack]);
+
+  const handleBack = () => {
+    onBackRef.current();
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

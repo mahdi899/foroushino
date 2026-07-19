@@ -21,6 +21,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class IdentityVerificationController extends Controller
 {
@@ -226,6 +227,18 @@ class IdentityVerificationController extends Controller
         ], 201);
     }
 
+    public function streamArtifact(
+        Request $request,
+        IdentityVerificationArtifact $artifact,
+        IdentityArtifactStorage $storage,
+    ): StreamedResponse {
+        $artifact->loadMissing('submission');
+
+        abort_unless($artifact->submission?->user_id === $request->user()->id, 403);
+
+        return $storage->stream($artifact);
+    }
+
     public function videoPrompt(Request $request): JsonResponse
     {
         $prompts = config('bahram.identity.video_prompts', []);
@@ -308,6 +321,7 @@ class IdentityVerificationController extends Controller
             'submitted_at' => $submission->submitted_at?->toIso8601String(),
             'artifacts' => $submission->relationLoaded('artifacts')
                 ? $submission->artifacts->map(fn (IdentityVerificationArtifact $a) => [
+                    'id' => $a->id,
                     'type' => $a->type->value,
                     'mime_type' => $a->mime_type,
                     'size_bytes' => $a->size_bytes,

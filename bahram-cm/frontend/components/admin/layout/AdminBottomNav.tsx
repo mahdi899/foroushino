@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { AdminLucideIcon } from '@/lib/admin/lucide-icons';
 import { cn } from '@/lib/utils';
 import { isAdminNavActive } from '@/app/admin/(panel)/admin-nav';
+import { adminNavBadgeCountForHref, type AdminNavBadgeCounts } from '@/lib/admin/navBadges';
 
 const ADMIN_BOTTOM_NAV_ITEMS = [
   { href: '/admin', label: 'داشبورد', shortLabel: 'خانه', icon: 'LayoutDashboard', exact: true },
@@ -38,13 +39,11 @@ function NavIcon({
 }
 
 export function AdminBottomNav({
-  pendingCount,
-  ticketPendingCount,
+  navBadgeCounts,
   menuOpen = false,
   onMenuOpen,
 }: {
-  pendingCount: number;
-  ticketPendingCount: number;
+  navBadgeCounts: AdminNavBadgeCounts;
   menuOpen?: boolean;
   onMenuOpen: () => void;
 }) {
@@ -60,10 +59,8 @@ export function AdminBottomNav({
           item.href === '/admin'
             ? pathname === '/admin'
             : isAdminNavActive(pathname, item.href, true);
-        const showBadge =
-          (item.href === '/admin/chatbot' && pendingCount > 0) ||
-          (item.href === '/admin/academy/tickets' && ticketPendingCount > 0);
-        const badgeCount = item.href === '/admin/chatbot' ? pendingCount : ticketPendingCount;
+        const badgeCount = adminNavBadgeCountForHref(item.href, navBadgeCounts);
+        const showBadge = badgeCount > 0;
 
         return (
           <Link

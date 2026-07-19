@@ -43,6 +43,7 @@ export function IdentityVerificationWizard({
   correctionItems,
   initialStep = 0,
   cardUploadedOnServer = false,
+  serverCardArtifactId = null,
   draftSubmissionId = null,
 }: {
   initialStatus?: string | null;
@@ -51,6 +52,7 @@ export function IdentityVerificationWizard({
   correctionItems?: string[] | null;
   initialStep?: number;
   cardUploadedOnServer?: boolean;
+  serverCardArtifactId?: number | null;
   draftSubmissionId?: number | null;
 }) {
   const router = useRouter();
@@ -67,6 +69,7 @@ export function IdentityVerificationWizard({
   });
   const [cardFile, setCardFile] = useState<File | null>(null);
   const [cardReadyOnServer, setCardReadyOnServer] = useState(cardUploadedOnServer);
+  const [activeCardArtifactId, setActiveCardArtifactId] = useState<number | null>(serverCardArtifactId);
   const [activeDraftSubmissionId, setActiveDraftSubmissionId] = useState<number | null>(draftSubmissionId);
   const [videoBlob, setVideoBlob] = useState<Blob | null>(null);
   const [videoPrompt, setVideoPrompt] = useState('');
@@ -159,6 +162,10 @@ export function IdentityVerificationWizard({
         setErrorTitle(res.errorTitle ?? null);
         setError(res.error);
         return;
+      }
+      const artifactId = res.data?.artifact_id;
+      if (typeof artifactId === 'number') {
+        setActiveCardArtifactId(artifactId);
       }
       setCardReadyOnServer(true);
       setStep(2);
@@ -326,24 +333,18 @@ export function IdentityVerificationWizard({
         ) : null}
 
         {step === 1 ? (
-          <>
-            {cardReadyOnServer && !cardFile ? (
-              <div className="mb-4 rounded-xl border border-success/30 bg-success/10 px-4 py-3 text-sm text-text">
-                تصویر کارت ملی قبلاً بارگذاری شده است. در صورت نیاز می‌توانید تصویر جدید انتخاب کنید.
-              </div>
-            ) : null}
-            <NationalCardUploadStep
-              file={cardFile}
-              onFileChange={(file) => {
-                setCardFile(file);
-                if (file) setCardReadyOnServer(false);
-              }}
-              onBack={() => setStep(0)}
-              onContinue={continueFromCard}
-              continueDisabled={!cardFile && !cardReadyOnServer}
-              continuePending={pending}
-            />
-          </>
+          <NationalCardUploadStep
+            file={cardFile}
+            serverCardArtifactId={cardReadyOnServer ? activeCardArtifactId : null}
+            onFileChange={(file) => {
+              setCardFile(file);
+              if (file) setCardReadyOnServer(false);
+            }}
+            onBack={() => setStep(0)}
+            onContinue={continueFromCard}
+            continueDisabled={!cardFile && !cardReadyOnServer}
+            continuePending={pending}
+          />
         ) : null}
 
         {showSelfieHandoff ? <SelfieMobileHandoff onBack={() => setStep(1)} /> : null}
@@ -373,6 +374,7 @@ export function IdentityVerificationWizard({
             draft={draft}
             cardFile={cardFile}
             cardReadyOnServer={cardReadyOnServer}
+            serverCardArtifactId={cardReadyOnServer ? activeCardArtifactId : null}
             videoBlob={videoBlob}
             pending={pending}
             onBack={() => setStep(2)}

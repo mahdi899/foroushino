@@ -354,7 +354,7 @@ HTML,
                 'status' => 'published',
                 'published_at' => now()->subDays(2),
                 'author_id' => $author->id,
-                'is_indexable' => false,
+                'is_indexable' => true,
             ],
         );
     }

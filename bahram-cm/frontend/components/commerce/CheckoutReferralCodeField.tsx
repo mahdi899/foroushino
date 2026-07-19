@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { readReferralCode, setReferralCode } from "@/lib/referral/capture";
@@ -29,6 +29,7 @@ export function CheckoutReferralCodeField({
   const [applied, setApplied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const storedValidatedRef = useRef(false);
 
   const validateStoredCode = useCallback(async (code: string) => {
     const result = await validateReferralCode({
@@ -38,6 +39,7 @@ export function CheckoutReferralCodeField({
 
     if (result.ok) {
       setApplied(result.data.code);
+      setDraft(result.data.code);
       setError(null);
       onAppliedChange?.(result.data.code);
     } else {
@@ -49,16 +51,18 @@ export function CheckoutReferralCodeField({
   }, [authToken, onAppliedChange]);
 
   useEffect(() => {
+    if (storedValidatedRef.current) return;
     const stored = readReferralCode();
-    if (stored) {
-      const normalized = normalizeCode(stored);
-      setDraft(stored);
-      onAppliedChange?.(normalized);
-      void validateStoredCode(stored);
-    }
-  }, [authToken, onAppliedChange, validateStoredCode]);
+    if (!stored) return;
+
+    storedValidatedRef.current = true;
+    setDraft(stored);
+    void validateStoredCode(stored);
+  }, [authToken, validateStoredCode]);
 
   async function applyCode() {
+    if (pending) return;
+
     const next = normalizeCode(draft);
     setError(null);
 
@@ -75,21 +79,26 @@ export function CheckoutReferralCodeField({
     }
 
     setPending(true);
-    const result = await validateReferralCode({
-      code: next,
-      token: authToken ?? undefined,
-    });
-    setPending(false);
+    try {
+      const result = await validateReferralCode({
+        code: next,
+        token: authToken ?? undefined,
+      });
 
-    if (!result.ok) {
-      setError(result.error);
-      return;
+      if (!result.ok) {
+        setApplied(null);
+        onAppliedChange?.(null);
+        setError(result.error);
+        return;
+      }
+
+      setReferralCode(result.data.code);
+      setApplied(result.data.code);
+      setDraft(result.data.code);
+      onAppliedChange?.(result.data.code);
+    } finally {
+      setPending(false);
     }
-
-    setReferralCode(result.data.code);
-    setApplied(result.data.code);
-    setDraft(result.data.code);
-    onAppliedChange?.(result.data.code);
   }
 
   function handleToggle() {

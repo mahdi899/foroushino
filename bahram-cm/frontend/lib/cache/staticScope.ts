@@ -17,6 +17,7 @@ export const STATIC_CONTENT_PREFIXES = [
   '/sitemap.xml',
   '/sitemaps',
   '/robots.txt',
+  '/llms.txt',
 ] as const;
 
 /** Always dynamic — never ISR HTML cache. */

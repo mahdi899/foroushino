@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Settings, X } from 'lucide-react';
 import { adminNav, isAdminNavActive, type AdminNavItem } from '@/app/admin/(panel)/admin-nav';
+import { adminNavBadgeCountForHref, type AdminNavBadgeCounts } from '@/lib/admin/navBadges';
 import { AdminLucideIcon } from '@/lib/admin/lucide-icons';
 import { cn } from '@/lib/utils';
 
@@ -11,14 +12,12 @@ export function AdminMobileMenu({
   nav = adminNav,
   open,
   onClose,
-  pendingCount,
-  ticketPendingCount,
+  navBadgeCounts,
 }: {
   nav?: { group: string; items: AdminNavItem[] }[];
   open: boolean;
   onClose: () => void;
-  pendingCount: number;
-  ticketPendingCount: number;
+  navBadgeCounts: AdminNavBadgeCounts;
 }) {
   const pathname = usePathname();
 
@@ -60,9 +59,7 @@ export function AdminMobileMenu({
               <ul className="space-y-0.5">
                 {group.items.map((item) => {
                   const active = isAdminNavActive(pathname, item.href, item.matchPrefix);
-                  const isChatbotNav = item.href === '/admin/chatbot';
-                  const isTicketsNav = item.href === '/admin/academy/tickets';
-                  const navAlertCount = isChatbotNav ? pendingCount : isTicketsNav ? ticketPendingCount : 0;
+                  const navAlertCount = adminNavBadgeCountForHref(item.href, navBadgeCounts);
                   const isImportant = 'emphasis' in item && item.emphasis;
 
                   return (
@@ -73,6 +70,7 @@ export function AdminMobileMenu({
                         data-active={active}
                         className={cn(
                           'admin-mobile-nav-item',
+                          navAlertCount > 0 && 'admin-nav-queue-alert',
                           isImportant && !active && 'text-red-600',
                         )}
                       >

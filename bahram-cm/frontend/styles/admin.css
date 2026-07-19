@@ -723,6 +723,16 @@ body:has(.admin-root):not(:has(.admin-login-screen)) {
   animation: admin-queue-blink-active 1.8s ease-in-out infinite;
 }
 
+.admin-root .admin-mobile-nav-item.admin-nav-queue-alert:not([data-active='true']) {
+  background: rgba(245, 158, 11, 0.1);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.5);
+  animation: admin-queue-blink 1.8s ease-in-out infinite;
+}
+
+.admin-root .admin-mobile-nav-item.admin-nav-queue-alert[data-active='true'] {
+  animation: admin-queue-blink-active 1.8s ease-in-out infinite;
+}
+
 /* Tables + lists */
 .admin-root {
   --admin-border-section: color-mix(in srgb, var(--color-border) 50%, transparent);

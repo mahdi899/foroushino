@@ -1595,6 +1595,23 @@
   cursor: not-allowed;
 }
 
+.panel-root select.field-input {
+  appearance: auto;
+  cursor: pointer;
+  min-height: 2.75rem;
+  padding-inline-end: 2rem;
+}
+
+.panel-root select.field-input:disabled {
+  cursor: not-allowed;
+}
+
+.panel-root textarea.field-input {
+  cursor: text;
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
 .panel-root .field-input--error {
   border-color: #dc4f45;
   background: rgba(220, 79, 69, 0.04);
@@ -1665,9 +1682,49 @@
   transform: translateY(-50%);
 }
 
+.panel-root[data-panel-theme='dark'] .field-input--error {
+  border-color: #f08070;
+  background: rgba(240, 128, 112, 0.08);
+}
+
 .panel-root[data-panel-theme='dark'] .field-input--error:focus {
   border-color: #f08070;
   box-shadow: 0 0 0 3px rgba(240, 128, 112, 0.15);
+}
+
+.panel-root[data-panel-theme='dark'] .field-input,
+.panel-root[data-panel-theme='dark'] .jalali-date-input-wrap {
+  background-color: var(--color-surface-soft);
+  border-color: color-mix(in srgb, var(--color-border) 88%, rgba(234, 251, 251, 0.08));
+  color: var(--color-text);
+  color-scheme: dark;
+}
+
+.panel-root[data-panel-theme='dark'] .field-input::placeholder {
+  color: color-mix(in srgb, var(--color-text-muted) 82%, transparent);
+  opacity: 1;
+}
+
+.panel-root[data-panel-theme='dark'] .field-input:focus,
+.panel-root[data-panel-theme='dark'] .jalali-date-input-wrap:focus-visible {
+  background-color: var(--color-surface);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.panel-root[data-panel-theme='dark'] .field-input:-webkit-autofill,
+.panel-root[data-panel-theme='dark'] .field-input:-webkit-autofill:hover,
+.panel-root[data-panel-theme='dark'] .field-input:-webkit-autofill:focus,
+.panel-root[data-panel-theme='dark'] .field-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-surface-soft) inset !important;
+  -webkit-text-fill-color: var(--color-text) !important;
+  caret-color: var(--color-text);
+  transition: background-color 99999s ease-out 0s;
+}
+
+.panel-root[data-panel-theme='dark'] select.field-input option {
+  background-color: var(--color-surface);
+  color: var(--color-text);
 }
 
 .panel-root .text-error {
@@ -4721,6 +4778,29 @@
   color: var(--color-primary);
 }
 
+.panel-identity-card-upload__server-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  height: 100%;
+  min-height: 11.5rem;
+}
+
+.panel-identity-card-upload__preview-frame--server {
+  flex: 1;
+  min-height: 11.5rem;
+  border-radius: 0.875rem;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, var(--color-border));
+  background: color-mix(in srgb, var(--color-text) 6%, var(--color-surface));
+}
+
+.panel-identity-card-upload__server-caption {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  color: var(--color-text-muted);
+}
+
 .panel-identity-card-upload__zone {
   display: flex;
   flex-direction: column;
@@ -5343,22 +5423,23 @@
   flex-shrink: 0;
   place-items: center;
   border-radius: 0.75rem;
-  background: var(--panel-accent-soft, rgba(59, 130, 246, 0.12));
-  color: var(--panel-accent, #3b82f6);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 24%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface));
+  color: var(--color-primary);
 }
 
 .panel-identity-selfie-handoff__title {
   margin: 0;
   font-size: 1rem;
   font-weight: 700;
-  color: var(--panel-text, #111);
+  color: var(--color-text);
 }
 
 .panel-identity-selfie-handoff__lead {
   margin: 0.25rem 0 0;
   font-size: 0.875rem;
   line-height: 1.7;
-  color: var(--panel-text-muted, #666);
+  color: var(--color-text-muted);
 }
 
 .panel-identity-selfie-handoff__body {
@@ -5379,14 +5460,17 @@
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem;
+  padding: 0.875rem;
   border-radius: 0.875rem;
-  border: 1px solid var(--panel-border, #e5e7eb);
-  background: #fff;
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface-soft) 90%, var(--color-surface));
 }
 
 .panel-identity-selfie-handoff__qr {
   display: block;
+  padding: 0.5rem;
+  border-radius: 0.625rem;
+  background: #fff;
 }
 
 .panel-identity-selfie-handoff__qr-hint {
@@ -5395,7 +5479,7 @@
   gap: 0.35rem;
   margin: 0;
   font-size: 0.75rem;
-  color: var(--panel-text-muted, #666);
+  color: var(--color-text-muted);
 }
 
 .panel-identity-selfie-handoff__link-block {
@@ -5407,15 +5491,16 @@
 .panel-identity-selfie-handoff__link-label {
   margin: 0;
   font-size: 0.8125rem;
-  color: var(--panel-text-muted, #666);
+  color: var(--color-text-muted);
 }
 
 .panel-identity-selfie-handoff__link {
   margin: 0;
   padding: 0.625rem 0.75rem;
   border-radius: 0.625rem;
-  border: 1px solid var(--panel-border, #e5e7eb);
-  background: var(--panel-surface-soft, #f9fafb);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-soft);
+  color: var(--color-text);
   font-size: 0.75rem;
   line-height: 1.6;
   word-break: break-all;
@@ -5429,10 +5514,28 @@
   margin: 0;
   padding: 0.75rem 1rem 0.75rem 1.5rem;
   border-radius: 0.75rem;
-  background: var(--panel-surface-soft, #f9fafb);
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  background: color-mix(in srgb, var(--color-surface-soft) 92%, var(--color-surface));
   font-size: 0.8125rem;
   line-height: 1.8;
-  color: var(--panel-text-muted, #666);
+  color: var(--color-text-muted);
+}
+
+.panel-root[data-panel-theme='dark'] .panel-identity-selfie-handoff__qr-wrap {
+  border-color: color-mix(in srgb, var(--color-border) 88%, rgba(234, 251, 251, 0.08));
+  background: color-mix(in srgb, var(--color-surface-soft) 94%, rgba(234, 251, 251, 0.03));
+}
+
+.panel-root[data-panel-theme='dark'] .panel-identity-selfie-handoff__link {
+  border-color: color-mix(in srgb, var(--color-border) 88%, rgba(234, 251, 251, 0.08));
+  background: color-mix(in srgb, var(--color-surface-soft) 94%, rgba(234, 251, 251, 0.03));
+  color: var(--color-text);
+}
+
+.panel-root[data-panel-theme='dark'] .panel-identity-selfie-handoff__steps {
+  border-color: color-mix(in srgb, var(--color-primary) 16%, var(--color-border));
+  background: color-mix(in srgb, var(--color-primary) 5%, var(--color-surface-soft));
+  color: var(--color-text-muted);
 }
 
 @media (min-width: 640px) {
@@ -8189,6 +8292,10 @@ button.panel-notification-toast__card {
   transition: all 180ms ease;
   cursor: pointer;
   text-align: right;
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  margin: 0;
 }
 
 .panel-root .jalali-date-input-wrap:hover {

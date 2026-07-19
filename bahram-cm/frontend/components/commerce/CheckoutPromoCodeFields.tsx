@@ -60,10 +60,14 @@ export function CheckoutPromoCodeFields({
   customerPhone,
 }: CheckoutPromoCodeFieldsProps) {
   const [activeTab, setActiveTab] = useState<PromoTab | null>(null);
+  const [referralMounted, setReferralMounted] = useState(false);
+  const [discountMounted, setDiscountMounted] = useState(false);
   const [referralApplied, setReferralApplied] = useState<string | null>(null);
   const [discountApplied, setDiscountApplied] = useState<string | null>(null);
 
   function toggleTab(tab: PromoTab) {
+    if (tab === 'referral') setReferralMounted(true);
+    if (tab === 'discount') setDiscountMounted(true);
     setActiveTab((current) => (current === tab ? null : tab));
   }
 
@@ -91,20 +95,24 @@ export function CheckoutPromoCodeFields({
         )}
       >
         <div className="overflow-hidden">
-          {activeTab === 'referral' ? (
-            <CheckoutReferralCodeField
-              variant="panel"
-              ownReferralCode={ownReferralCode}
-              onAppliedChange={setReferralApplied}
-            />
+          {referralMounted ? (
+            <div className={activeTab === 'referral' ? undefined : 'hidden'}>
+              <CheckoutReferralCodeField
+                variant="panel"
+                ownReferralCode={ownReferralCode}
+                onAppliedChange={setReferralApplied}
+              />
+            </div>
           ) : null}
-          {activeTab === 'discount' ? (
-            <CheckoutDiscountCodeField
-              variant="panel"
-              productId={productId}
-              customerPhone={customerPhone}
-              onAppliedChange={setDiscountApplied}
-            />
+          {discountMounted ? (
+            <div className={activeTab === 'discount' ? undefined : 'hidden'}>
+              <CheckoutDiscountCodeField
+                variant="panel"
+                productId={productId}
+                customerPhone={customerPhone}
+                onAppliedChange={setDiscountApplied}
+              />
+            </div>
           ) : null}
         </div>
       </div>
