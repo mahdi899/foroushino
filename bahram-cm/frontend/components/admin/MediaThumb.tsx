@@ -10,6 +10,8 @@ interface MediaThumbProps {
   src: string;
   persistSrc: string;
   legacyPath?: string | null;
+  isRemote?: boolean;
+  disk?: string | null;
   alt: string;
   className?: string;
   style?: React.CSSProperties;
@@ -59,6 +61,8 @@ export function MediaThumb({
   src,
   persistSrc,
   legacyPath,
+  isRemote,
+  disk,
   alt,
   className,
   style,
@@ -69,8 +73,8 @@ export function MediaThumb({
   onLoad,
 }: MediaThumbProps) {
   const fallbacks = useMemo(
-    () => adminMediaThumbFallbacks({ src, persistSrc, legacyPath }),
-    [src, persistSrc, legacyPath],
+    () => adminMediaThumbFallbacks({ src, persistSrc, legacyPath, isRemote, disk }),
+    [src, persistSrc, legacyPath, isRemote, disk],
   );
   const [index, setIndex] = useState(0);
   const currentSrc = normalizeAdminMediaUrl(fallbacks[index] ?? src);

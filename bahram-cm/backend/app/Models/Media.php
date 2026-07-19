@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MediaType;
+use App\Support\FamilyMediaUrl;
 use App\Support\MediaUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -41,11 +42,31 @@ class Media extends Model
             return null;
         }
 
+        $libraryUrl = FamilyMediaUrl::fromPath($this->path, $this->disk);
+        if ($libraryUrl !== null) {
+            if (str_starts_with($libraryUrl, 'http://') || str_starts_with($libraryUrl, 'https://')) {
+                return $libraryUrl;
+            }
+
+            return MediaUrl::resolve($libraryUrl);
+        }
+
         if ($this->url) {
             return MediaUrl::resolve($this->url);
         }
 
         return MediaUrl::resolve(MediaUrl::fromDiskPath($this->path));
+    }
+
+    public function isOnRemoteDisk(): bool
+    {
+        return ! in_array($this->disk, ['public', 'local'], true);
+    }
+
+    /** Same-origin admin proxy when the file only exists on the download host. */
+    public function adminStreamPath(): string
+    {
+        return '/api/admin/media/'.$this->id.'/file';
     }
 
     /** Portable path for DB / API JSON. */

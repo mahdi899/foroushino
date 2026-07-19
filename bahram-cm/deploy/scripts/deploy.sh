@@ -32,6 +32,7 @@ php artisan event:cache
 
 echo "==> Storage link (idempotent)"
 php artisan storage:link 2>/dev/null || true
+php artisan media:guard-directories
 
 echo "==> Frontend build"
 cd "$APP_ROOT/frontend"

@@ -14,7 +14,7 @@ class TelegramInfrastructureAdminController
     use AuthorizesTelegramAdmin;
 
     public function __construct(
-        private readonly TelegramInfrastructureService $infrastructure,
+        private readonly \App\Services\TelegramInfrastructureService $infrastructure,
         private readonly TelegramBotClientFactory $clients,
     ) {}
 

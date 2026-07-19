@@ -1,5 +1,18 @@
-import { persistMediaUrl, resolveMediaUrl, normalizeAdminMediaUrl } from '@/lib/mediaUrl';
+import { persistMediaUrl, resolveMediaUrl, normalizeAdminMediaUrl, isAdminMediaOnRemoteHost } from '@/lib/mediaUrl';
 import type { AdminMediaItem } from '@/lib/admin/mediaTypes';
+
+function remoteAdminMediaUrl(id: number, viewUrl?: string | null): string {
+  const normalized = normalizeAdminMediaUrl(viewUrl);
+  if (
+    normalized.startsWith('http://') ||
+    normalized.startsWith('https://') ||
+    normalized.startsWith('/api/admin/media/')
+  ) {
+    return normalized;
+  }
+
+  return `/api/admin/media/${id}/file`;
+}
 
 export function mapAdminMediaRow(m: {
   id: number;
@@ -16,9 +29,11 @@ export function mapAdminMediaRow(m: {
 }): AdminMediaItem {
   const ref = m.url || m.legacy_path || '';
   const persistSrc = persistMediaUrl(ref);
-  const displayUrl =
-    normalizeAdminMediaUrl(m.legacy_path) ||
-    normalizeAdminMediaUrl(m.view_url || resolveMediaUrl(persistSrc));
+  const isRemote = isAdminMediaOnRemoteHost({ isRemote: m.is_remote, disk: m.disk });
+  const displayUrl = isRemote
+    ? remoteAdminMediaUrl(m.id, m.view_url)
+    : normalizeAdminMediaUrl(m.legacy_path) ||
+      normalizeAdminMediaUrl(m.view_url || resolveMediaUrl(persistSrc));
 
   return {
     id: m.id,
@@ -31,6 +46,6 @@ export function mapAdminMediaRow(m: {
     width: m.width ?? null,
     height: m.height ?? null,
     disk: m.disk ?? undefined,
-    isRemote: m.is_remote ?? undefined,
+    isRemote: isRemote || undefined,
   };
 }

@@ -51,6 +51,27 @@ class MediaResource extends JsonResource
             return URL::temporarySignedRoute('media.download', now()->addMinutes($ttl), ['medium' => $this->id]);
         }
 
-        return $this->resolvedUrl();
+        return $this->adminViewUrl($isAdmin);
+    }
+
+    private function adminViewUrl(bool $isAdmin): ?string
+    {
+        $resolved = $this->resolvedUrl();
+
+        if ($resolved && (str_starts_with($resolved, 'http://') || str_starts_with($resolved, 'https://'))) {
+            return $resolved;
+        }
+
+        if ($isAdmin && $this->isOnRemoteDisk()) {
+            try {
+                if (! \Illuminate\Support\Facades\Storage::disk('public')->exists($this->path)) {
+                    return $this->adminStreamPath();
+                }
+            } catch (\Throwable) {
+                return $this->adminStreamPath();
+            }
+        }
+
+        return $resolved;
     }
 }

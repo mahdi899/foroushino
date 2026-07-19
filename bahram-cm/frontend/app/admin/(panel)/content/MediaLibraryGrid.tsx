@@ -5,6 +5,7 @@ import { Check, ChevronLeft, ChevronRight, Loader2, Search, Sparkles, Trash2, Up
 import { cn, toFa } from '@/lib/utils';
 import { MediaThumb } from '@/components/admin/MediaThumb';
 import { inferAdminMediaKind } from '@/lib/admin/mediaKind';
+import { isAdminMediaOnRemoteHost } from '@/lib/mediaUrl';
 import {
   buildUnifiedGallery,
   findUnifiedByPersistSrc,
@@ -387,8 +388,11 @@ export function MediaLibraryGrid({
             const mediaKind = inferAdminMediaKind(item.src, item.mime);
             const isPlayable = mediaKind === 'video' || mediaKind === 'audio';
             const hasStorageHint = item.kind === 'uploaded' && item.adminItem;
+            const itemRemote = hasStorageHint
+              ? isAdminMediaOnRemoteHost(item.adminItem!)
+              : false;
             const storageBorder = hasStorageHint
-              ? uploadStorageBorderClass(item.adminItem?.isRemote === true)
+              ? uploadStorageBorderClass(itemRemote)
               : 'border-border hover:border-primary/40';
 
             return (
@@ -398,7 +402,7 @@ export function MediaLibraryGrid({
                 tabIndex={0}
                 title={
                   hasStorageHint
-                    ? `${item.label} — ${item.adminItem?.isRemote ? 'هاست دانلود' : 'سرور'}`
+                    ? `${item.label} — ${itemRemote ? 'هاست دانلود' : 'سرور'}`
                     : item.label
                 }
                 onClick={() => onItemClick(item)}
@@ -420,6 +424,8 @@ export function MediaLibraryGrid({
                     src={item.src}
                     persistSrc={item.persistSrc}
                     legacyPath={item.adminItem?.legacyPath}
+                    isRemote={itemRemote}
+                    disk={item.adminItem?.disk}
                     mime={item.mime}
                     alt={item.label}
                     interactive={isPlayable}

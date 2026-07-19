@@ -10,6 +10,8 @@ type MediaZoomOverlayProps = {
   src: string;
   persistSrc: string;
   legacyPath?: string | null;
+  isRemote?: boolean;
+  disk?: string | null;
   alt: string;
   mime?: string | null;
   onClose: () => void;
@@ -39,6 +41,8 @@ export function MediaZoomOverlay({
   src,
   persistSrc,
   legacyPath,
+  isRemote,
+  disk,
   alt,
   mime,
   onClose,
@@ -100,6 +104,8 @@ export function MediaZoomOverlay({
             src={src}
             persistSrc={persistSrc}
             legacyPath={legacyPath}
+            isRemote={isRemote}
+            disk={disk}
             alt={alt}
             mime={mime}
             controls
@@ -202,6 +208,8 @@ export function MediaZoomOverlay({
             src={src}
             persistSrc={persistSrc}
             legacyPath={legacyPath}
+            isRemote={isRemote}
+            disk={disk}
             alt={alt}
             mime={mime}
             onLoad={(event) => applyFitZoom(event.currentTarget as HTMLImageElement)}

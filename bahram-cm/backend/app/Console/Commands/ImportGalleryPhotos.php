@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Media;
+use App\Support\DirectoryListingGuard;
 use App\Support\LegacyMediaMap;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
@@ -26,6 +27,7 @@ class ImportGalleryPhotos extends Command
         $repoRoot = dirname(base_path(), 2);
         $siteDir = storage_path('app/public/media/site');
         File::ensureDirectoryExists($siteDir);
+        DirectoryListingGuard::guardPublicRelativePath('media/site');
 
         /** @var list<array{source: string, filename: string, legacy: string, alt: string, label: string}> */
         $map = [
@@ -162,6 +164,7 @@ class ImportGalleryPhotos extends Command
             $storagePath = 'media/site/'.$item['filename'];
             $dest = storage_path('app/public/'.$storagePath);
             File::copy($sourcePath, $dest);
+            DirectoryListingGuard::guardPublicRelativePath($storagePath);
 
             Media::query()->updateOrCreate(
                 ['legacy_path' => $item['legacy']],

@@ -9,6 +9,8 @@ type MediaPreviewProps = {
   src: string;
   persistSrc: string;
   legacyPath?: string | null;
+  isRemote?: boolean;
+  disk?: string | null;
   alt: string;
   className?: string;
   imageClassName?: string;
@@ -41,6 +43,8 @@ export function MediaPreview({
   src,
   persistSrc,
   legacyPath,
+  isRemote,
+  disk,
   alt,
   className,
   imageClassName,
@@ -103,6 +107,8 @@ export function MediaPreview({
           src={src}
           persistSrc={persistSrc}
           legacyPath={legacyPath}
+          isRemote={isRemote}
+          disk={disk}
           alt={alt}
           mime={mime}
           controls={mediaKind === 'video' || mediaKind === 'audio'}

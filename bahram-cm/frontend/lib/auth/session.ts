@@ -53,9 +53,13 @@ export async function adminFetch<T = unknown>(
   });
 
   if (!res.ok) {
-    const err = new Error(`Admin API ${res.status}`) as Error & { status: number; payload?: unknown };
+    const payload = (await res.json().catch(() => undefined)) as
+      | { error?: { message_fa?: string }; message?: string }
+      | undefined;
+    const message = payload?.error?.message_fa ?? payload?.message ?? `Admin API ${res.status}`;
+    const err = new Error(message) as Error & { status: number; payload?: unknown };
     err.status = res.status;
-    err.payload = await res.json().catch(() => undefined);
+    err.payload = payload;
     throw err;
   }
 

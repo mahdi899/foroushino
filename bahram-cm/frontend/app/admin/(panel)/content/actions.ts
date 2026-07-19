@@ -183,6 +183,10 @@ export async function getAdminMediaPage(options: {
         alt_fa?: string | null;
         category?: string | null;
         mime?: string | null;
+        width?: number | null;
+        height?: number | null;
+        disk?: string | null;
+        is_remote?: boolean | null;
       }[];
       meta?: { current_page?: number; last_page?: number; total?: number; per_page?: number };
     }>('/media', { query });
@@ -212,6 +216,10 @@ export async function getAdminMediaItems(): Promise<AdminMediaItem[]> {
         alt_fa?: string | null;
         category?: string | null;
         mime?: string | null;
+        width?: number | null;
+        height?: number | null;
+        disk?: string | null;
+        is_remote?: boolean | null;
       }[];
     }>('/media', { query: { per_page: 200 } });
     return res.data.map(mapAdminMediaRow);

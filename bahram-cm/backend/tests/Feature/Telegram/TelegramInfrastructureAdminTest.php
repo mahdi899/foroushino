@@ -31,6 +31,13 @@ class TelegramInfrastructureAdminTest extends TestCase
         Sanctum::actingAs($this->admin);
     }
 
+    public function test_admin_can_read_infrastructure(): void
+    {
+        $this->getJson('/api/v1/panel/telegram/infrastructure')
+            ->assertOk()
+            ->assertJsonStructure(['data' => ['mode', 'backend_origin', 'configured']]);
+    }
+
     public function test_admin_can_save_worker_settings_from_panel(): void
     {
         $this->patchJson('/api/v1/panel/telegram/infrastructure', [

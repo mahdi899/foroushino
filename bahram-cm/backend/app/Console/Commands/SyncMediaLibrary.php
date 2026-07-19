@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Enums\MediaType;
 use App\Models\Media;
+use App\Support\DirectoryListingGuard;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
@@ -147,6 +148,11 @@ class SyncMediaLibrary extends Command
         }
 
         $this->call('media:export-legacy-map');
+
+        $guarded = DirectoryListingGuard::backfill();
+        if ($guarded > 0) {
+            $this->info("Added {$guarded} index.html guard file(s) under public media directories.");
+        }
 
         $this->info("Imported {$imported} manifest row(s); indexed {$indexed} new file(s) from disk.");
 

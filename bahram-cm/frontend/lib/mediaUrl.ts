@@ -178,6 +178,10 @@ export function resolveMediaUrl(url: string | null | undefined): string {
     return normalizeAbsoluteStorage(ref);
   }
 
+  if (ref.startsWith('/api/admin/media/')) {
+    return ref;
+  }
+
   if (ref.startsWith('/storage/')) {
     if (MEDIA_ORIGIN) return `${MEDIA_ORIGIN}${ref}`;
     return ref;
@@ -189,9 +193,32 @@ export function resolveMediaUrl(url: string | null | undefined): string {
   return ref;
 }
 
+const LOCAL_MEDIA_DISKS = new Set(['public', 'local']);
+
+/** True when the file is stored on the download host (FTP/SFTP), not local public disk. */
+export function isAdminMediaOnRemoteHost(item: {
+  isRemote?: boolean | null;
+  disk?: string | null;
+}): boolean {
+  if (item.isRemote === true) return true;
+
+  const disk = item.disk?.trim();
+  if (!disk) return false;
+
+  return !LOCAL_MEDIA_DISKS.has(disk);
+}
+
 /** Normalize admin thumbnail URLs — same-origin gallery storage via Next proxy. */
 export function normalizeAdminMediaUrl(url: string | null | undefined): string {
   if (!url?.trim()) return '';
+
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('/api/admin/media/')) {
+    return trimmed;
+  }
 
   const ref = adminStorageRef(url);
   if (ref.startsWith('/storage/')) return ref;
@@ -202,11 +229,36 @@ export function normalizeAdminMediaUrl(url: string | null | undefined): string {
   return ref || persisted;
 }
 
+/** Open-in-new-tab URL for admin gallery / edit modal. */
+export function adminMediaOpenUrl(item: {
+  id: number;
+  url: string;
+  persistSrc: string;
+  isRemote?: boolean | null;
+  disk?: string | null;
+}): string {
+  if (isAdminMediaOnRemoteHost(item)) {
+    const normalized = normalizeAdminMediaUrl(item.url);
+    if (
+      normalized.startsWith('http://') ||
+      normalized.startsWith('https://') ||
+      normalized.startsWith('/api/admin/media/')
+    ) {
+      return normalized;
+    }
+    return `/api/admin/media/${item.id}/file`;
+  }
+
+  return resolveMediaUrl(item.url || item.persistSrc);
+}
+
 /** Build ordered fallback URLs for admin gallery thumbnails. */
 export function adminMediaThumbFallbacks(item: {
   src: string;
   persistSrc: string;
   legacyPath?: string | null;
+  isRemote?: boolean | null;
+  disk?: string | null;
 }): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -219,15 +271,26 @@ export function adminMediaThumbFallbacks(item: {
   };
 
   const ref = adminStorageRef(item.persistSrc || item.src || item.legacyPath);
+  const remoteLike =
+    isAdminMediaOnRemoteHost({ isRemote: item.isRemote, disk: item.disk }) ||
+    item.src.startsWith('http://') ||
+    item.src.startsWith('https://') ||
+    item.src.startsWith('/api/admin/media/');
 
-  // Same-origin storage first — required for SVG and avoids localhost → 127.0.0.1 blocks.
-  if (ref.startsWith('/storage/media/')) {
+  if (remoteLike) {
+    add(item.src);
+  } else if (ref.startsWith('/storage/media/')) {
     add(ref);
   }
 
-  add(item.persistSrc);
-  add(item.src);
-  add(item.legacyPath);
+  if (!remoteLike) {
+    add(item.persistSrc);
+    add(item.src);
+    add(item.legacyPath);
+  } else {
+    add(item.persistSrc);
+    add(item.legacyPath);
+  }
 
   return out;
 }

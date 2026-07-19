@@ -9,6 +9,7 @@ use App\Services\Family\FamilyImageProcessor;
 use App\Services\Family\FamilyMediaSettingsService;
 use App\Support\FamilyMediaStorage;
 use App\Support\FamilyMediaPath;
+use App\Support\DirectoryListingGuard;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -129,6 +130,8 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
                 $target->copy($partPath, $storagePath);
                 $target->delete($partPath);
             }
+
+            DirectoryListingGuard::guardStoragePath($target, $storagePath);
 
             if ($diskName !== 'public') {
                 FamilyMediaStorage::purgeLocalPublicCopy($storagePath);

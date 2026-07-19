@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Media;
 use App\Support\LegacyMediaMap;
 use App\Support\MediaPath;
+use App\Support\DirectoryListingGuard;
 use App\Support\MediaUrl;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -31,6 +32,7 @@ class MediaService
             basename($path),
             $this->storeOptions($disk),
         );
+        DirectoryListingGuard::guardPublicRelativePath($path);
 
         [$width, $height] = $this->dimensions($file);
 
@@ -73,6 +75,7 @@ class MediaService
         if (is_resource($stream)) {
             fclose($stream);
         }
+        DirectoryListingGuard::guardPublicRelativePath($path);
 
         $mime = mime_content_type($absoluteSourcePath) ?: 'application/octet-stream';
         [$width, $height] = $this->dimensionsFromPath($absoluteSourcePath, $mime);
@@ -151,6 +154,7 @@ class MediaService
         if (is_resource($stream)) {
             fclose($stream);
         }
+        DirectoryListingGuard::guardPublicRelativePath($path);
 
         [$width, $height] = $this->dimensionsFromPath($absolutePath, $mime);
 

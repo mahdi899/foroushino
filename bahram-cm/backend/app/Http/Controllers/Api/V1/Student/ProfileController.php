@@ -9,6 +9,7 @@ use App\Services\AdminTelegramLogService;
 use App\Services\Exceptions\OtpException;
 use App\Services\OtpService;
 use App\Support\ApiResponse;
+use App\Support\DirectoryListingGuard;
 use App\Support\MediaUrl;
 use App\Support\StudentProfilePayload;
 use Illuminate\Http\JsonResponse;
@@ -126,6 +127,7 @@ class ProfileController extends Controller
         $directory = 'avatars/'.$user->id;
         $filename = 'avatar.'.$file->getClientOriginalExtension();
         $stored = $file->storeAs($directory, $filename, 'public');
+        DirectoryListingGuard::guardPublicRelativePath($stored);
 
         $reference = MediaUrl::fromDiskPath($stored);
         $user->profile()->updateOrCreate(

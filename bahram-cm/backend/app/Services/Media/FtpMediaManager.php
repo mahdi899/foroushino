@@ -5,6 +5,7 @@ namespace App\Services\Media;
 use App\Models\Media;
 use App\Support\LegacyMediaMap;
 use App\Support\MediaFtpConnection;
+use App\Support\DirectoryListingGuard;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -133,6 +134,7 @@ class FtpMediaManager
         }
 
         $this->finalizeTransfer($remote, $partPath, $media->path);
+        DirectoryListingGuard::guardStoragePath($remote, $media->path);
 
         $local->delete($media->path);
 
@@ -183,6 +185,7 @@ class FtpMediaManager
         }
 
         $this->finalizeTransfer($local, $partPath, $media->path);
+        DirectoryListingGuard::guardPublicRelativePath($media->path);
 
         $media->update(['disk' => self::LOCAL_DISK, 'keep_on_server' => true]);
         LegacyMediaMap::flush();

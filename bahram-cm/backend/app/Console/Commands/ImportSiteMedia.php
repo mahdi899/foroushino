@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Media;
+use App\Support\DirectoryListingGuard;
 use App\Support\LegacyMediaMap;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
@@ -44,6 +45,7 @@ class ImportSiteMedia extends Command
             if (! File::exists(storage_path('app/public/'.$storagePath)) || $this->option('force')) {
                 File::ensureDirectoryExists(storage_path('app/public/'.$destDir));
                 File::copy($file->getPathname(), storage_path('app/public/'.$storagePath));
+                DirectoryListingGuard::guardPublicRelativePath($storagePath);
             }
 
             $label = pathinfo($filename, PATHINFO_FILENAME);

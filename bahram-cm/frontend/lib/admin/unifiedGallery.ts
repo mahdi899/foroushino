@@ -1,4 +1,4 @@
-import { persistMediaUrl, resolveMediaUrl, normalizeAdminMediaUrl } from '@/lib/mediaUrl';
+import { persistMediaUrl, resolveMediaUrl, normalizeAdminMediaUrl, isAdminMediaOnRemoteHost } from '@/lib/mediaUrl';
 import type { AdminMediaItem } from '@/lib/admin/mediaTypes';
 import { buildStaticGallery } from '@/lib/admin/galleryImages';
 
@@ -24,10 +24,11 @@ export function buildUnifiedGallery(uploaded: AdminMediaItem[]): UnifiedMediaIte
     seen.add(persistSrc);
     items.push({
       key: `media-${row.id}`,
-      src:
-        normalizeAdminMediaUrl(row.legacyPath ?? row.url) ||
-        normalizeAdminMediaUrl(row.url) ||
-        resolveMediaUrl(persistSrc),
+      src: isAdminMediaOnRemoteHost(row)
+        ? row.url || `/api/admin/media/${row.id}/file`
+        : normalizeAdminMediaUrl(row.legacyPath ?? row.url) ||
+          normalizeAdminMediaUrl(row.url) ||
+          resolveMediaUrl(persistSrc),
       persistSrc,
       label: row.label,
       category: row.category || 'آپلود شده',

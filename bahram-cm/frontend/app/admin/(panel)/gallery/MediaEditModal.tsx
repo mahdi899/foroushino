@@ -17,7 +17,7 @@ import type { MediaOptimizePreview } from '@/lib/admin/mediaOptimize';
 import { MediaPreview } from '@/components/admin/MediaPreview';
 import { MediaZoomOverlay } from '@/components/admin/MediaZoomOverlay';
 import { inferAdminMediaKind } from '@/lib/admin/mediaKind';
-import { resolveMediaUrl } from '@/lib/mediaUrl';
+import { adminMediaOpenUrl, isAdminMediaOnRemoteHost } from '@/lib/mediaUrl';
 
 interface MediaEditModalProps {
   item: AdminMediaItem | null;
@@ -69,7 +69,8 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
   const mediaKindLabel =
     mediaKind === 'video' ? 'ویدیو' : mediaKind === 'audio' ? 'صوت' : mediaKind === 'image' ? 'تصویر' : 'رسانه';
   const canOptimize = isOptimizableImage(item);
-  const isRemote = item.isRemote === true;
+  const isRemote = isAdminMediaOnRemoteHost(item);
+  const openUrl = adminMediaOpenUrl(item);
 
   async function onTransfer() {
     setTransferring(true);
@@ -212,6 +213,8 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
                 src={previewUrl || item.url}
                 persistSrc={item.persistSrc}
                 legacyPath={item.legacyPath}
+                isRemote={isRemote}
+                disk={item.disk}
                 alt={alt || title || item.label}
                 mime={item.mime}
               />
@@ -241,7 +244,7 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
                   </button>
                 )}
                 <a
-                  href={resolveMediaUrl(previewUrl || item.url)}
+                  href={openUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn btn-secondary min-w-0 flex-1 justify-center gap-1 px-1.5 py-1.5 text-caption whitespace-nowrap"
@@ -388,6 +391,8 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
             src={previewUrl || item.url}
             persistSrc={item.persistSrc}
             legacyPath={item.legacyPath}
+            isRemote={isRemote}
+            disk={item.disk}
             alt={alt || title || item.label}
             mime={item.mime}
             onClose={() => setZoomOpen(false)}
