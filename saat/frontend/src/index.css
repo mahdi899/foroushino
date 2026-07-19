@@ -238,6 +238,11 @@ select {
     isolation: isolate;
   }
 
+  .ios-tab-bar button:hover,
+  .ios-tab-bar button:focus-visible {
+    background: transparent;
+  }
+
   [data-theme='dark'] .glass-nav,
   [data-theme='dark'] .glass-tab-bar {
     background: rgba(22, 22, 24, 0.94);

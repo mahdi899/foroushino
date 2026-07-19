@@ -6,6 +6,7 @@ import { revalidateArticleSurfaces, revalidatePublicContent, revalidateTestimoni
 import { mediaAltNeedsFix, suggestMediaAltWithAi, filenameToFallbackAlt } from '@/lib/ai/mediaAlt';
 import { persistMediaUrl, resolveMediaUrl, normalizeAdminMediaUrl } from '@/lib/mediaUrl';
 import { notifySearchCrawlers, type CrawlerNotifyResult } from '@/lib/seo/notifyCrawlers';
+import { mapAdminMediaRow } from '@/lib/admin/mapAdminMediaRow';
 import type { ArticlePayload } from '@/lib/admin/articleTypes';
 import type { AdminMediaItem, AdminMediaPageResult, AdminMediaTrashItem } from '@/lib/admin/mediaTypes';
 import type { ApiArticle, ApiCase } from '@/lib/api/types';
@@ -152,35 +153,6 @@ export async function createCase(payload: {
   } catch {
     return null;
   }
-}
-
-function mapAdminMediaRow(m: {
-  id: number;
-  url?: string | null;
-  view_url?: string | null;
-  legacy_path?: string | null;
-  alt_fa?: string | null;
-  category?: string | null;
-  mime?: string | null;
-  width?: number | null;
-  height?: number | null;
-}): AdminMediaItem {
-  const ref = m.url || m.legacy_path || '';
-  const persistSrc = persistMediaUrl(ref);
-  const displayUrl =
-    normalizeAdminMediaUrl(m.legacy_path) ||
-    normalizeAdminMediaUrl(m.view_url || resolveMediaUrl(persistSrc));
-  return {
-    id: m.id,
-    url: displayUrl,
-    persistSrc,
-    legacyPath: m.legacy_path ?? null,
-    label: m.alt_fa?.trim() || 'آپلود شده',
-    category: m.category?.trim() || 'آپلود شده',
-    mime: m.mime,
-    width: m.width ?? null,
-    height: m.height ?? null,
-  };
 }
 
 export async function getAdminMediaPage(options: {

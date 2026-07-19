@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { formatFa } from '@/lib/persian';
+import { inflatedMemberCount } from '@/lib/family/inflatedMemberCount';
 
 type FamilyStoryHintProps = {
   memberCount?: number;
@@ -28,8 +30,19 @@ export function FamilyStoryHint({
   onMaskedMemberCountClick,
   nested = false,
 }: FamilyStoryHintProps) {
+  const [hour, setHour] = useState(() => new Date().getHours());
+
+  useEffect(() => {
+    const syncHour = () => setHour(new Date().getHours());
+    syncHour();
+    const id = window.setInterval(syncHour, 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const hasMembers = typeof memberCount === 'number';
   const showMemberStat = maskMemberCount || hasMembers;
+  const displayMemberCount =
+    hasMembers && !maskMemberCount ? inflatedMemberCount(memberCount, hour) : null;
 
   if (!showMemberStat && !hasUnseen) return null;
 
@@ -65,7 +78,7 @@ export function FamilyStoryHint({
   ) : (
     <span className="family-topbar__subtitle--live">
       {showOnlineDot && <span className="family-topbar__meta-dot" aria-hidden />}
-      {formatFa(memberCount)} {memberLabel}
+      {formatFa(displayMemberCount ?? memberCount)} {memberLabel}
     </span>
   );
 

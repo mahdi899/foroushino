@@ -34,14 +34,47 @@ final class ResmushClient
 
     public static function supportsMime(string $mime): bool
     {
+        $mime = $mime === 'image/jpg' ? 'image/jpeg' : $mime;
+
         return in_array($mime, ['image/jpeg', 'image/png', 'image/gif', 'image/bmp'], true);
+    }
+
+    public static function supportsPath(string $path): bool
+    {
+        $mime = mime_content_type($path) ?: '';
+        if (self::supportsMime($mime)) {
+            return true;
+        }
+
+        $ext = Str::lower(pathinfo($path, PATHINFO_EXTENSION) ?: '');
+
+        return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'bmp'], true);
+    }
+
+    private static function uploadMimeFor(string $path): string
+    {
+        $mime = mime_content_type($path) ?: '';
+        if ($mime === 'image/jpg') {
+            $mime = 'image/jpeg';
+        }
+        if ($mime !== '' && $mime !== 'application/octet-stream' && str_starts_with($mime, 'image/')) {
+            return $mime;
+        }
+
+        return match (Str::lower(pathinfo($path, PATHINFO_EXTENSION) ?: '')) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'bmp' => 'image/bmp',
+            default => 'application/octet-stream',
+        };
     }
 
     /** Compress a local file; returns path to downloaded optimized temp file. */
     public function compressToTemp(string $sourcePath): string
     {
         $name = basename($sourcePath);
-        $mime = mime_content_type($sourcePath) ?: 'application/octet-stream';
+        $mime = self::uploadMimeFor($sourcePath);
         $url = self::API_URL.'?qlty='.max(0, min(100, $this->quality));
 
         $response = Http::withHeaders([

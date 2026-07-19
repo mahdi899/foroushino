@@ -3,8 +3,8 @@
 import { ImageIcon, Loader2, Zap } from 'lucide-react';
 import { Badge } from '../ui';
 import {
-  RESMUSH_QUALITY_OPTIONS,
-  normalizeResmushQuality,
+  OPTIMIZER_QUALITY_OPTIONS,
+  normalizeOptimizerQuality,
   type ImageOptimizerForm,
   type ImageOptimizerView,
 } from '@/lib/media/imageOptimizer.types';
@@ -19,6 +19,66 @@ type Props = {
   onTest: (target: 'tinify' | 'resmush') => void;
 };
 
+function OptimizerQualityPicker({
+  qualityValue,
+  savedQuality,
+  onSelect,
+}: {
+  qualityValue: number;
+  savedQuality: number | null;
+  onSelect: (q: (typeof OPTIMIZER_QUALITY_OPTIONS)[number]) => void;
+}) {
+  const qualityDirty = savedQuality !== null && savedQuality !== qualityValue;
+
+  return (
+    <div>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <label className="field-label mb-0">درصد کیفیت فشرده‌سازی</label>
+        {savedQuality !== null && (
+          <span className="text-caption text-text-muted" dir="ltr">
+            ذخیره‌شده: {savedQuality}
+            {qualityDirty ? ' · تغییر ذخیره‌نشده' : null}
+          </span>
+        )}
+      </div>
+      <div
+        className="grid grid-cols-4 gap-2 sm:grid-cols-8"
+        role="radiogroup"
+        aria-label="درصد کیفیت فشرده‌سازی"
+      >
+        {OPTIMIZER_QUALITY_OPTIONS.map((q) => {
+          const active = qualityValue === q;
+          return (
+            <button
+              key={q}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => onSelect(q)}
+              className={`rounded-lg border px-2 py-2 text-caption transition-colors ${
+                active
+                  ? 'border-accent bg-accent-soft text-primary-dark'
+                  : 'border-border bg-surface text-text hover:border-accent/40'
+              }`}
+              dir="ltr"
+            >
+              {q}
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-caption text-text-muted">
+        {qualityValue >= 90
+          ? 'کیفیت بالا — حجم بیشتر، افت کیفیت کمتر'
+          : qualityValue >= 80
+            ? 'متعادل'
+            : 'فشرده‌تر — حجم کمتر، افت کیفیت بیشتر'}
+        . پیش‌فرض: <strong dir="ltr">95</strong>.
+      </p>
+    </div>
+  );
+}
+
 export function ImageOptimizerSettingsSection({
   form,
   view,
@@ -30,9 +90,8 @@ export function ImageOptimizerSettingsSection({
 }: Props) {
   const tinifyOk = view?.tinify_configured ?? false;
   const resmushOk = view?.resmush_configured ?? false;
-  const qualityValue = normalizeResmushQuality(form.resmushQuality);
-  const savedQuality = view ? normalizeResmushQuality(view.resmush_quality) : null;
-  const qualityDirty = savedQuality !== null && savedQuality !== qualityValue;
+  const qualityValue = normalizeOptimizerQuality(form.resmushQuality);
+  const savedQuality = view ? normalizeOptimizerQuality(view.resmush_quality) : null;
 
   function patch(partial: Partial<ImageOptimizerForm>) {
     onChange((prev) => ({ ...prev, ...partial }));
@@ -47,11 +106,23 @@ export function ImageOptimizerSettingsSection({
             <div>
               <h2 className="text-h3 text-primary-dark">بهینه‌سازی تصویر (آپلود و گالری)</h2>
               <p className="mt-1 text-small text-text-muted">
-                اولویت: <strong>TinyPNG</strong> (نیاز به کلید API) → <strong>reSmush.it</strong> (رایگان، بدون کلید) → GD
-                فقط در صورت نبود گزینه دیگر.
+                اولویت: <strong>TinyPNG</strong> → <strong>reSmush.it</strong> → <strong>WebP با GD</strong> فقط
+                اگر هر دو سرویس قبلی جواب ندادند.
               </p>
             </div>
           </div>
+        </div>
+
+        <div className="mb-4 rounded-lg border border-border bg-surface-soft/30 p-4">
+          <OptimizerQualityPicker
+            qualityValue={qualityValue}
+            savedQuality={savedQuality}
+            onSelect={(q) => patch({ resmushQuality: q })}
+          />
+          <p className="mt-3 text-caption text-text-muted">
+            این درصد برای <strong>reSmush.it</strong> و <strong>WebP با GD</strong> (مرحله آخر) اعمال می‌شود.
+            <strong> TinyPNG</strong> فشرده‌سازی هوشمند خودکار دارد و در API آن پارامتر کیفیت/درصد وجود ندارد.
+          </p>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
@@ -96,6 +167,10 @@ export function ImageOptimizerSettingsSection({
             {view?.env_fallback.tinify_key && !view.has_tinify_key && !form.tinifyKeyInput.trim() && (
               <p className="mt-1 text-caption text-text-muted">fallback از env: TINIFY_API_KEY</p>
             )}
+            <p className="mt-3 rounded-md border border-border/80 bg-surface px-3 py-2 text-caption text-text-muted">
+              فشرده‌سازی TinyPNG خودکار است (معمولاً ۵۰–۸۰٪ کاهش حجم) و درصد کیفیت از پنل قابل تنظیم نیست — برای
+              کنترل درصد، از reSmush یا GD استفاده می‌شود.
+            </p>
 
             <div className="mt-auto pt-4">
               <button
@@ -115,7 +190,7 @@ export function ImageOptimizerSettingsSection({
               <div>
                 <h3 className="text-body font-semibold text-primary-dark">reSmush.it</h3>
                 <p className="mt-0.5 text-caption text-text-muted">
-                  رایگان و بدون کلید API — برای WebP ابتدا به PNG تبدیل و سپس فشرده می‌شود.
+                  رایگان و بدون کلید API — خروجی همان فرمت فشرده‌شده (بدون تبدیل WebP با GD).
                 </p>
               </div>
               <Badge tone={resmushOk ? 'success' : 'warning'}>{resmushOk ? 'فعال' : 'غیرفعال'}</Badge>
@@ -131,68 +206,21 @@ export function ImageOptimizerSettingsSection({
               استفاده از reSmush.it
             </label>
 
-            <div className="mt-4 flex flex-col gap-4">
-              <div>
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <label className="field-label mb-0">کیفیت فشرده‌سازی</label>
-                  {savedQuality !== null && (
-                    <span className="text-caption text-text-muted" dir="ltr">
-                      ذخیره‌شده: {savedQuality}
-                      {qualityDirty ? ' · تغییر ذخیره‌نشده' : null}
-                    </span>
-                  )}
-                </div>
-                <div
-                  className="grid grid-cols-4 gap-2 sm:grid-cols-8"
-                  role="radiogroup"
-                  aria-label="کیفیت فشرده‌سازی"
-                >
-                  {RESMUSH_QUALITY_OPTIONS.map((q) => {
-                    const active = qualityValue === q;
-                    return (
-                      <button
-                        key={q}
-                        type="button"
-                        role="radio"
-                        aria-checked={active}
-                        onClick={() => patch({ resmushQuality: q })}
-                        className={`rounded-lg border px-2 py-2 text-caption transition-colors ${
-                          active
-                            ? 'border-accent bg-accent-soft text-primary-dark'
-                            : 'border-border bg-surface text-text hover:border-accent/40'
-                        }`}
-                        dir="ltr"
-                      >
-                        {q}
-                      </button>
-                    );
-                  })}
-                </div>
-                <p className="mt-2 text-caption text-text-muted">
-                  {qualityValue >= 90
-                    ? 'کیفیت بالا — حجم بیشتر'
-                    : qualityValue >= 80
-                      ? 'متعادل (پیشنهادی)'
-                      : 'فشرده‌تر — حجم کمتر'}
-                  . برای کیفیت بالا <strong dir="ltr">95</strong> را انتخاب کنید.
-                </p>
-              </div>
-              <div>
-                <label className="field-label" htmlFor="resmush-referer">
-                  Referer (آدرس سایت)
-                </label>
-                <input
-                  id="resmush-referer"
-                  className="field-input"
-                  dir="ltr"
-                  placeholder="https://bahram.academy"
-                  value={form.resmushReferer}
-                  onChange={(e) => patch({ resmushReferer: e.target.value })}
-                />
-                {view?.env_fallback.resmush_referer && !form.resmushReferer.trim() && (
-                  <p className="mt-1 text-caption text-text-muted">پیش‌فرض: FRONTEND_URL</p>
-                )}
-              </div>
+            <div className="mt-4">
+              <label className="field-label" htmlFor="resmush-referer">
+                Referer (آدرس سایت)
+              </label>
+              <input
+                id="resmush-referer"
+                className="field-input"
+                dir="ltr"
+                placeholder="https://bahram.academy"
+                value={form.resmushReferer}
+                onChange={(e) => patch({ resmushReferer: e.target.value })}
+              />
+              {view?.env_fallback.resmush_referer && !form.resmushReferer.trim() && (
+                <p className="mt-1 text-caption text-text-muted">پیش‌فرض: FRONTEND_URL</p>
+              )}
             </div>
 
             <div className="mt-auto pt-4">

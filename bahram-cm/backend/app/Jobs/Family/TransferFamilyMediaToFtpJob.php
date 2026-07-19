@@ -7,6 +7,7 @@ use App\Enums\Family\FamilyMediaType;
 use App\Models\FamilyMedia;
 use App\Services\Family\FamilyImageProcessor;
 use App\Services\Family\FamilyMediaSettingsService;
+use App\Support\FamilyMediaStorage;
 use App\Support\FamilyMediaPath;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -51,7 +52,6 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
         $media->update(['status' => FamilyMediaStatus::Transferring]);
 
         $type = $media->type?->value ?? 'voice';
-        $diskName = $settings->uploadDisk();
         $tempDisk = Storage::disk(config('family.media.temp_disk', 'local'));
 
         $extension = pathinfo($media->original_filename ?? 'file.bin', PATHINFO_EXTENSION) ?: 'bin';
@@ -65,6 +65,36 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
         }
 
         $storagePath = FamilyMediaPath::objectKey($type, $extension);
+        $remoteDisk = $settings->uploadDisk();
+
+        if ($remoteDisk !== 'public') {
+            try {
+                $this->storeOnDisk($media, $remoteDisk, $uploadAbsolute, $storagePath, $meta, $type, $tempDisk);
+
+                return;
+            } catch (\Throwable $e) {
+                Log::warning('Family FTP transfer failed, falling back to public disk', [
+                    'media_id' => $media->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $this->storeOnDisk($media, 'public', $uploadAbsolute, $storagePath, $meta, $type, $tempDisk);
+    }
+
+  /**
+   * @param  array{absolute_path: string, extension: string, mime_type: string, size: int, width: ?int, height: ?int}|null  $meta
+   */
+    private function storeOnDisk(
+        FamilyMedia $media,
+        string $diskName,
+        string $uploadAbsolute,
+        string $storagePath,
+        ?array $meta,
+        string $type,
+        \Illuminate\Contracts\Filesystem\Filesystem $tempDisk,
+    ): void {
         $partPath = $storagePath.'.part';
 
         $stream = fopen($uploadAbsolute, 'rb');
@@ -78,18 +108,30 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
         }
 
         try {
-            $ftp = Storage::disk($diskName);
-            $ftp->writeStream($partPath, $stream);
+            $target = Storage::disk($diskName);
+            $target->writeStream($partPath, $stream);
 
             if (is_resource($stream)) {
                 fclose($stream);
             }
 
-            if (method_exists($ftp, 'move')) {
-                $ftp->move($partPath, $storagePath);
+            $localSize = filesize($uploadAbsolute) ?: 0;
+            $remoteSize = $target->size($partPath);
+
+            if ($localSize > 0 && $remoteSize !== $localSize) {
+                $target->delete($partPath);
+                throw new \RuntimeException('Remote upload size mismatch.');
+            }
+
+            if (method_exists($target, 'move')) {
+                $target->move($partPath, $storagePath);
             } else {
-                $ftp->copy($partPath, $storagePath);
-                $ftp->delete($partPath);
+                $target->copy($partPath, $storagePath);
+                $target->delete($partPath);
+            }
+
+            if ($diskName !== 'public') {
+                FamilyMediaStorage::purgeLocalPublicCopy($storagePath);
             }
 
             $media->update([
@@ -126,10 +168,9 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
                     ->onQueue(config('family.queues.media', 'family-media'));
             }
         } catch (\Throwable $e) {
-            Log::warning('Family FTP transfer failed', [
-                'media_id' => $media->id,
-                'error' => $e->getMessage(),
-            ]);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
 
             try {
                 Storage::disk($diskName)->delete($partPath);

@@ -1,8 +1,14 @@
 /** Image optimizer settings (TinyPNG + reSmush.it). */
 
-export const RESMUSH_QUALITY_OPTIONS = [60, 70, 75, 80, 85, 90, 95, 100] as const;
+export const OPTIMIZER_QUALITY_OPTIONS = [60, 70, 75, 80, 85, 90, 95, 100] as const;
 
-export type ResmushQuality = (typeof RESMUSH_QUALITY_OPTIONS)[number];
+/** @deprecated Use OPTIMIZER_QUALITY_OPTIONS */
+export const RESMUSH_QUALITY_OPTIONS = OPTIMIZER_QUALITY_OPTIONS;
+
+export type OptimizerQuality = (typeof OPTIMIZER_QUALITY_OPTIONS)[number];
+
+/** @deprecated Use OptimizerQuality */
+export type ResmushQuality = OptimizerQuality;
 
 export type ImageOptimizerEnvFallback = {
   tinify_key: boolean;
@@ -23,25 +29,30 @@ export type ImageOptimizerView = {
 export type ImageOptimizerForm = {
   tinifyKeyInput: string;
   resmushEnabled: boolean;
-  resmushQuality: ResmushQuality;
+  resmushQuality: OptimizerQuality;
   resmushReferer: string;
 };
 
-export function normalizeResmushQuality(value: unknown): ResmushQuality {
+export function normalizeOptimizerQuality(value: unknown): OptimizerQuality {
   const n = Number(value);
-  if (!Number.isFinite(n)) return 85;
-  if ((RESMUSH_QUALITY_OPTIONS as readonly number[]).includes(n)) {
-    return n as ResmushQuality;
+  if (!Number.isFinite(n)) return 95;
+  if ((OPTIMIZER_QUALITY_OPTIONS as readonly number[]).includes(n)) {
+    return n as OptimizerQuality;
   }
-  return RESMUSH_QUALITY_OPTIONS.reduce((best, option) =>
+  return OPTIMIZER_QUALITY_OPTIONS.reduce((best, option) =>
     Math.abs(option - n) < Math.abs(best - n) ? option : best,
   );
+}
+
+/** @deprecated Use normalizeOptimizerQuality */
+export function normalizeResmushQuality(value: unknown): OptimizerQuality {
+  return normalizeOptimizerQuality(value);
 }
 
 export const DEFAULT_IMAGE_OPTIMIZER_FORM: ImageOptimizerForm = {
   tinifyKeyInput: '',
   resmushEnabled: true,
-  resmushQuality: 85,
+  resmushQuality: 95,
   resmushReferer: '',
 };
 
@@ -49,7 +60,7 @@ export function imageOptimizerViewToForm(view: ImageOptimizerView): ImageOptimiz
   return {
     tinifyKeyInput: '',
     resmushEnabled: view.resmush_enabled,
-    resmushQuality: normalizeResmushQuality(view.resmush_quality),
+    resmushQuality: normalizeOptimizerQuality(view.resmush_quality),
     resmushReferer: view.resmush_referer ?? '',
   };
 }

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-/** Image compression: Tinify → reSmush.it → local GD (WebP). */
+/** Image compression: Tinify + reSmush.it + local GD — smallest output wins. */
 class ImageOptimizerService
 {
     private const CACHE_PREFIX = 'media.optimize.';
@@ -44,7 +44,7 @@ class ImageOptimizerService
      */
     public function optimizeStandalone(string $sourcePath, string $destPath): array
     {
-        $mime = mime_content_type($sourcePath) ?: 'application/octet-stream';
+        $mime = $this->detectImageMime($sourcePath);
         $originalExt = Str::lower(pathinfo($sourcePath, PATHINFO_EXTENSION) ?: 'bin');
         $skipReason = $this->skipReason($mime, $originalExt);
 
@@ -64,11 +64,11 @@ class ImageOptimizerService
 
         try {
             $result = $this->optimize($sourcePath, $destPath, $mime);
-            if (isset($result['path']) && is_string($result['path']) && is_file($result['path'])) {
-                $destPath = $result['path'];
-            }
+            $optimizedPath = isset($result['path']) && is_string($result['path']) && is_file($result['path'])
+                ? $result['path']
+                : $destPath;
 
-            return array_merge($result, ['path' => $destPath]);
+            return $this->finalizeStandaloneOptimization($sourcePath, $optimizedPath, $result);
         } catch (\Throwable $e) {
             Log::warning('Family image optimization failed, using original', [
                 'error' => $e->getMessage(),
@@ -87,6 +87,52 @@ class ImageOptimizerService
                 'path' => $destPath,
             ];
         }
+    }
+
+    /**
+     * Family/site ingest: keep whichever variant is smaller before FTP upload.
+     *
+     * @param  array{engine?: string, converted_to_webp?: bool, size?: int, mime?: string, path?: string}  $result
+     * @return array{engine: string, converted_to_webp: bool, size: int, mime: string, path: string, kept: 'original'|'optimized'}
+     */
+    private function finalizeStandaloneOptimization(string $originalPath, string $optimizedPath, array $result): array
+    {
+        $originalSize = filesize($originalPath) ?: 0;
+        $optimizedSize = is_file($optimizedPath) ? (filesize($optimizedPath) ?: 0) : 0;
+
+        if ($optimizedSize > 0 && ($originalSize === 0 || $optimizedSize < $originalSize)) {
+            $mime = mime_content_type($optimizedPath) ?: ($result['mime'] ?? 'application/octet-stream');
+
+            return [
+                'engine' => (string) ($result['engine'] ?? 'optimized'),
+                'converted_to_webp' => (bool) ($result['converted_to_webp'] ?? str_starts_with($mime, 'image/webp')),
+                'size' => $optimizedSize,
+                'mime' => $mime,
+                'path' => $optimizedPath,
+                'kept' => 'optimized',
+            ];
+        }
+
+        if ($optimizedPath !== $originalPath && is_file($optimizedPath)) {
+            @unlink($optimizedPath);
+        }
+
+        $mime = mime_content_type($originalPath) ?: ($result['mime'] ?? 'application/octet-stream');
+
+        Log::info('Family image optimization kept original (smaller or equal)', [
+            'original_size' => $originalSize,
+            'optimized_size' => $optimizedSize,
+            'engine' => $result['engine'] ?? null,
+        ]);
+
+        return [
+            'engine' => $originalSize > 0 && $optimizedSize > 0 ? 'original' : (string) ($result['engine'] ?? 'copy'),
+            'converted_to_webp' => str_starts_with($mime, 'image/webp'),
+            'size' => $originalSize,
+            'mime' => $mime,
+            'path' => $originalPath,
+            'kept' => 'original',
+        ];
     }
 
     /** Preview optimization for an existing library item (in-place replace flow). */
@@ -123,7 +169,7 @@ class ImageOptimizerService
     {
         [$width, $height] = $this->dimensions($originalPath);
         $originalSize = filesize($originalPath) ?: 0;
-        $mime = mime_content_type($originalPath) ?: 'application/octet-stream';
+        $mime = $this->detectImageMime($originalPath);
         $originalExt = Str::lower(pathinfo($originalPath, PATHINFO_EXTENSION) ?: 'bin');
 
         $skipReason = $this->skipReason($mime, $originalExt);
@@ -328,45 +374,189 @@ class ImageOptimizerService
         ];
     }
 
-    /** @return array{engine: string, converted_to_webp: bool, size: int, mime: string} */
+    /** @return array{engine: string, converted_to_webp: bool, size: int, mime: string, path?: string} */
     private function optimize(string $sourcePath, string $destPath, string $mime): array
     {
+        $mime = $this->detectImageMime($sourcePath, $mime);
         $convertWebp = config('bahram.image_optimizer.convert_webp', true)
             && ! str_starts_with($mime, 'image/webp')
             && ! str_starts_with($mime, 'image/gif');
         $isWebpSource = str_starts_with($mime, 'image/webp');
+        $originalSize = filesize($sourcePath) ?: 0;
+        $dir = dirname($destPath);
+
+        /** @var list<array{engine: string, converted_to_webp: bool, size: int, mime: string, path: string}> $candidates */
+        $candidates = [];
+        $tempFiles = [];
 
         if ($this->tinifyKey() && $this->tinifySupported($mime)) {
+            $temp = $this->candidatePath($dir, 'tinify', $convertWebp ? 'webp' : $this->sourceExtension($sourcePath));
             try {
-                return $this->optimizeWithTinify($sourcePath, $destPath, $convertWebp);
+                $result = $this->optimizeWithTinify($sourcePath, $temp, $convertWebp);
+                if (is_file($temp) && ($result['size'] ?? 0) > 0) {
+                    $candidates[] = array_merge($result, ['path' => $temp]);
+                    $tempFiles[] = $temp;
+                }
             } catch (\Throwable $e) {
-                Log::warning('Tinify optimization failed, trying fallback', ['error' => $e->getMessage()]);
+                @unlink($temp);
+                Log::warning('Tinify optimization failed', ['error' => $e->getMessage()]);
             }
         }
 
-        if ($this->optimizerSettings->resmushEnabled() && (ResmushClient::supportsMime($mime) || $isWebpSource)) {
+        if ($this->optimizerSettings->resmushEnabled() && (ResmushClient::supportsPath($sourcePath) || $isWebpSource)) {
+            $temp = $this->candidatePath($dir, 'resmush', $this->sourceExtension($sourcePath));
             try {
-                return $this->optimizeWithResmush($sourcePath, $destPath, $convertWebp);
+                $result = $this->optimizeWithResmush($sourcePath, $temp);
+                $path = isset($result['path']) && is_string($result['path']) ? $result['path'] : $temp;
+                if (is_file($path) && ($result['size'] ?? 0) > 0) {
+                    $candidates[] = array_merge($result, ['path' => $path]);
+                    $tempFiles[] = $path;
+                    if ($path !== $temp) {
+                        @unlink($temp);
+                    }
+                }
             } catch (\Throwable $e) {
-                Log::warning('reSmush.it optimization failed, trying fallback', ['error' => $e->getMessage()]);
+                @unlink($temp);
+                Log::warning('reSmush.it optimization failed', ['error' => $e->getMessage()]);
             }
         }
 
         if ($this->gdAvailable()) {
-            return $this->guardSmallerThanOriginal(
-                $sourcePath,
-                $destPath,
-                $this->optimizeWithGd($sourcePath, $destPath, $convertWebp),
-            );
+            $gdExt = $convertWebp && function_exists('imagewebp') ? 'webp' : $this->sourceExtension($sourcePath);
+            $temp = $this->candidatePath($dir, 'gd', $gdExt);
+            try {
+                $result = $this->optimizeWithGd($sourcePath, $temp, $convertWebp);
+                if (is_file($temp) && ($result['size'] ?? 0) > 0) {
+                    $candidates[] = array_merge($result, ['path' => $temp]);
+                    $tempFiles[] = $temp;
+                }
+            } catch (\Throwable $e) {
+                @unlink($temp);
+                Log::warning('GD optimization failed', ['error' => $e->getMessage(), 'path' => $sourcePath]);
+            }
         }
 
-        throw new \RuntimeException('No image optimizer available (Tinify, reSmush.it, or PHP GD).');
+        if ($candidates === []) {
+            if (! copy($sourcePath, $destPath)) {
+                throw new \RuntimeException('No image optimizer available (Tinify, reSmush.it, or PHP GD).');
+            }
+
+            return [
+                'engine' => 'copy',
+                'converted_to_webp' => str_starts_with($mime, 'image/webp'),
+                'size' => $originalSize,
+                'mime' => $mime,
+                'path' => $destPath,
+            ];
+        }
+
+        $winner = $this->pickSmallestCandidate($candidates);
+
+        if ($originalSize > 0 && $winner['size'] >= $originalSize) {
+            $originalDest = $this->destPathForSourceFormat($destPath, $sourcePath);
+            copy($sourcePath, $originalDest);
+            $this->cleanupTempFiles($tempFiles);
+
+            return [
+                'engine' => 'copy',
+                'converted_to_webp' => str_starts_with($mime, 'image/webp'),
+                'size' => $originalSize,
+                'mime' => $mime,
+                'path' => $originalDest,
+            ];
+        }
+
+        $finalPath = $this->destPathForSourceFormat($destPath, $winner['path']);
+        if ($winner['path'] !== $finalPath && ! copy($winner['path'], $finalPath)) {
+            $this->cleanupTempFiles($tempFiles);
+            throw new \RuntimeException('Could not save best optimized image.');
+        }
+
+        $this->cleanupTempFiles($tempFiles, $winner['path']);
+
+        Log::debug('Image optimization picked best candidate', [
+            'winner' => $winner['engine'],
+            'winner_bytes' => $winner['size'],
+            'original_bytes' => $originalSize,
+            'candidates' => array_map(
+                static fn (array $candidate): array => [
+                    'engine' => $candidate['engine'],
+                    'bytes' => $candidate['size'],
+                ],
+                $candidates,
+            ),
+        ]);
+
+        return [
+            'engine' => $winner['engine'],
+            'converted_to_webp' => $winner['converted_to_webp'],
+            'size' => filesize($finalPath) ?: $winner['size'],
+            'mime' => mime_content_type($finalPath) ?: $winner['mime'],
+            'path' => $finalPath,
+        ];
     }
 
-    /** @return array{engine: string, converted_to_webp: bool, size: int, mime: string} */
-    private function optimizeWithResmush(string $sourcePath, string $destPath, bool $convertWebp): array
+    /**
+     * @param  list<array{engine: string, converted_to_webp: bool, size: int, mime: string, path: string}>  $candidates
+     * @return array{engine: string, converted_to_webp: bool, size: int, mime: string, path: string}
+     */
+    private function pickSmallestCandidate(array $candidates): array
     {
-        $mime = mime_content_type($sourcePath) ?: '';
+        $winner = $candidates[0];
+
+        foreach (array_slice($candidates, 1) as $candidate) {
+            if ($candidate['size'] < $winner['size']) {
+                $winner = $candidate;
+
+                continue;
+            }
+
+            if ($candidate['size'] === $winner['size'] && $this->enginePriority($candidate['engine']) < $this->enginePriority($winner['engine'])) {
+                $winner = $candidate;
+            }
+        }
+
+        return $winner;
+    }
+
+    private function enginePriority(string $engine): int
+    {
+        return match ($engine) {
+            'gd' => 0,
+            'resmush' => 1,
+            'tinify' => 2,
+            default => 9,
+        };
+    }
+
+    private function candidatePath(string $dir, string $engine, string $ext): string
+    {
+        $ext = $ext === 'jpeg' ? 'jpg' : $ext;
+
+        return $dir.'/candidate-'.$engine.'-'.Str::lower(Str::ulid()->toString()).'.'.$ext;
+    }
+
+    private function sourceExtension(string $path): string
+    {
+        $ext = Str::lower(pathinfo($path, PATHINFO_EXTENSION) ?: 'jpg');
+
+        return $ext === 'jpeg' ? 'jpg' : $ext;
+    }
+
+    /** @param  list<string>  $paths */
+    private function cleanupTempFiles(array $paths, ?string $except = null): void
+    {
+        foreach ($paths as $path) {
+            if ($path !== $except && is_file($path)) {
+                @unlink($path);
+            }
+        }
+    }
+
+    /** @return array{engine: string, converted_to_webp: bool, size: int, mime: string, path?: string} */
+    private function optimizeWithResmush(string $sourcePath, string $destPath): array
+    {
+        $mime = $this->detectImageMime($sourcePath);
         $isWebpSource = str_starts_with($mime, 'image/webp');
         $bridgeTemp = null;
         $tinifyTemp = null;
@@ -375,7 +565,7 @@ class ImageOptimizerService
         if ($isWebpSource) {
             $bridgeTemp = $this->decodeWebpToPngTemp($sourcePath);
             $inputPath = $bridgeTemp;
-        } elseif (! ResmushClient::supportsMime($mime)) {
+        } elseif (! ResmushClient::supportsPath($sourcePath)) {
             throw new \RuntimeException('reSmush.it does not support this mime type.');
         }
 
@@ -383,29 +573,20 @@ class ImageOptimizerService
 
         try {
             ['path' => $workingPath, 'temp' => $tinifyTemp] = $this->maybeTinifyCompress($tempPath);
-            $needsWebp = $convertWebp || ($isWebpSource && str_ends_with(strtolower($destPath), '.webp'));
+            $outputPath = $this->destPathForSourceFormat($destPath, $workingPath);
 
-            if ($needsWebp) {
-                try {
-                    return $this->finalizeOptimizedWebp($workingPath, $destPath);
-                } catch (\Throwable $e) {
-                    Log::warning('WebP encode after reSmush failed, using compressed source file', [
-                        'error' => $e->getMessage(),
-                    ]);
-
-                    return $this->saveResmushOutputAsFallback($workingPath, $destPath);
-                }
-            }
-
-            if (! copy($workingPath, $destPath)) {
+            if (! copy($workingPath, $outputPath)) {
                 throw new \RuntimeException('Could not save reSmush.it output.');
             }
 
+            $outputMime = mime_content_type($outputPath) ?: 'application/octet-stream';
+
             return [
                 'engine' => 'resmush',
-                'converted_to_webp' => false,
-                'size' => filesize($destPath) ?: 0,
-                'mime' => mime_content_type($destPath) ?: 'application/octet-stream',
+                'converted_to_webp' => str_starts_with($outputMime, 'image/webp'),
+                'size' => filesize($outputPath) ?: 0,
+                'mime' => $outputMime,
+                'path' => $outputPath,
             ];
         } finally {
             foreach ([$tempPath, $bridgeTemp, $tinifyTemp] as $file) {
@@ -441,58 +622,34 @@ class ImageOptimizerService
         return ['path' => $sourcePath, 'temp' => null];
     }
 
-    /** @return array{engine: string, converted_to_webp: bool, size: int, mime: string} */
-    private function finalizeOptimizedWebp(string $sourcePath, string $destPath): array
+    private function destPathForSourceFormat(string $destPath, string $sourceFilePath): string
     {
-        if ($this->tinifyKey()) {
-            try {
-                \Tinify\setKey($this->tinifyKey());
-                \Tinify\fromFile($sourcePath)->convert(['type' => ['image/webp']])->toFile($destPath);
-
-                return [
-                    'engine' => 'tinify',
-                    'converted_to_webp' => true,
-                    'size' => filesize($destPath) ?: 0,
-                    'mime' => 'image/webp',
-                ];
-            } catch (\Throwable $e) {
-                Log::warning('Tinify WebP export failed, using reSmush WebP encode', ['error' => $e->getMessage()]);
-            }
+        $ext = Str::lower(pathinfo($sourceFilePath, PATHINFO_EXTENSION) ?: '');
+        if ($ext === 'jpeg') {
+            $ext = 'jpg';
+        }
+        if ($ext === '') {
+            return $destPath;
         }
 
-        return $this->encodeWebpSmallest($sourcePath, $destPath);
+        $currentExt = Str::lower(pathinfo($destPath, PATHINFO_EXTENSION) ?: '');
+        if ($currentExt === $ext) {
+            return $destPath;
+        }
+
+        $replaced = preg_replace('/\.[^.]+$/', '.'.$ext, $destPath);
+
+        return is_string($replaced) && $replaced !== '' ? $replaced : $destPath;
     }
 
     /** @return array{engine: string, converted_to_webp: bool, size: int, mime: string} */
-    private function encodeWebpSmallest(string $sourcePath, string $destPath): array
+    private function encodeWebp(string $sourcePath, string $destPath, ?int $quality = null): array
     {
         if (! function_exists('imagewebp') || ! $this->gdAvailable()) {
             throw new \RuntimeException('Could not encode WebP.');
         }
 
-        $baseQuality = (int) config('bahram.image_optimizer.webp_quality', 85);
-        $qualities = array_values(array_unique([$baseQuality, 80, 70, 60, 50, 40, 30, 20]));
-        $bestSize = null;
-        $bestQuality = $baseQuality;
-
-        foreach ($qualities as $quality) {
-            $image = $this->loadGdImage($sourcePath);
-            if (! $image) {
-                throw new \RuntimeException('GD could not read compressed image.');
-            }
-
-            $image = $this->resizeGdIfNeeded($image);
-            $image = $this->toTruecolorImage($image);
-            imagewebp($image, $destPath, $quality);
-            imagedestroy($image);
-
-            $size = filesize($destPath) ?: 0;
-            if ($size > 0 && ($bestSize === null || $size < $bestSize)) {
-                $bestSize = $size;
-                $bestQuality = $quality;
-            }
-        }
-
+        $quality = max(0, min(100, $quality ?? $this->optimizerSettings->webpQuality()));
         $image = $this->loadGdImage($sourcePath);
         if (! $image) {
             throw new \RuntimeException('GD could not read compressed image.');
@@ -500,11 +657,11 @@ class ImageOptimizerService
 
         $image = $this->resizeGdIfNeeded($image);
         $image = $this->toTruecolorImage($image);
-        imagewebp($image, $destPath, $bestQuality);
+        imagewebp($image, $destPath, $quality);
         imagedestroy($image);
 
         return [
-            'engine' => 'resmush',
+            'engine' => 'gd',
             'converted_to_webp' => true,
             'size' => filesize($destPath) ?: 0,
             'mime' => 'image/webp',
@@ -535,44 +692,6 @@ class ImageOptimizerService
         }
 
         return $tempPath;
-    }
-
-    /**
-     * @param  array{engine: string, converted_to_webp: bool, size: int, mime: string}  $result
-     * @return array{engine: string, converted_to_webp: bool, size: int, mime: string}
-     */
-    private function guardSmallerThanOriginal(string $originalPath, string $destPath, array $result): array
-    {
-        $originalSize = filesize($originalPath) ?: 0;
-        $optimizedSize = filesize($destPath) ?: 0;
-
-        if ($originalSize === 0 || $optimizedSize < $originalSize) {
-            return $result;
-        }
-
-        $originalExt = Str::lower(pathinfo($originalPath, PATHINFO_EXTENSION) ?: '');
-        $destExt = Str::lower(pathinfo($destPath, PATHINFO_EXTENSION) ?: '');
-        if (! $this->extensionsMatch($originalExt, $destExt)) {
-            return $result;
-        }
-
-        copy($originalPath, $destPath);
-        $mime = mime_content_type($originalPath) ?: 'application/octet-stream';
-
-        return [
-            'engine' => 'copy',
-            'converted_to_webp' => str_starts_with($mime, 'image/webp'),
-            'size' => $originalSize,
-            'mime' => $mime,
-        ];
-    }
-
-    private function extensionsMatch(string $a, string $b): bool
-    {
-        $a = $a === 'jpeg' ? 'jpg' : $a;
-        $b = $b === 'jpeg' ? 'jpg' : $b;
-
-        return $a === $b;
     }
 
     /** @return array{engine: string, converted_to_webp: bool, size: int, mime: string} */
@@ -612,7 +731,7 @@ class ImageOptimizerService
         }
 
         $image = $this->resizeGdIfNeeded($image);
-        $quality = (int) config('bahram.image_optimizer.webp_quality', 85);
+        $quality = $this->optimizerSettings->webpQuality();
 
         if ($convertWebp && function_exists('imagewebp')) {
             $image = $this->toTruecolorImage($image);
@@ -695,15 +814,73 @@ class ImageOptimizerService
 
     private function loadGdImage(string $path): \GdImage|false
     {
-        $mime = mime_content_type($path) ?: '';
+        $mime = $this->detectImageMime($path);
+        $ext = Str::lower(pathinfo($path, PATHINFO_EXTENSION) ?: '');
 
-        return match (true) {
-            str_contains($mime, 'jpeg') => @imagecreatefromjpeg($path),
-            str_contains($mime, 'png') => @imagecreatefrompng($path),
-            str_contains($mime, 'webp') => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : false,
-            str_contains($mime, 'gif') => @imagecreatefromgif($path),
-            default => false,
+        $attempts = [];
+
+        if (str_contains($mime, 'jpeg') || in_array($ext, ['jpg', 'jpeg'], true)) {
+            $attempts[] = static fn () => @imagecreatefromjpeg($path);
+        }
+        if (str_contains($mime, 'png') || $ext === 'png') {
+            $attempts[] = static fn () => @imagecreatefrompng($path);
+        }
+        if ((str_contains($mime, 'webp') || $ext === 'webp') && function_exists('imagecreatefromwebp')) {
+            $attempts[] = static fn () => @imagecreatefromwebp($path);
+        }
+        if (str_contains($mime, 'gif') || $ext === 'gif') {
+            $attempts[] = static fn () => @imagecreatefromgif($path);
+        }
+        if ((str_contains($mime, 'bmp') || $ext === 'bmp') && function_exists('imagecreatefrombmp')) {
+            $attempts[] = static fn () => @imagecreatefrombmp($path);
+        }
+        if ((str_contains($mime, 'avif') || $ext === 'avif') && function_exists('imagecreatefromavif')) {
+            $attempts[] = static fn () => @imagecreatefromavif($path);
+        }
+
+        $attempts[] = function () use ($path) {
+            $binary = @file_get_contents($path);
+            if (! is_string($binary) || $binary === '') {
+                return false;
+            }
+
+            return @imagecreatefromstring($binary);
         };
+
+        foreach ($attempts as $attempt) {
+            $image = $attempt();
+            if ($image instanceof \GdImage) {
+                return $image;
+            }
+        }
+
+        return false;
+    }
+
+    private function detectImageMime(string $path, ?string $hint = null): string
+    {
+        $ext = Str::lower(pathinfo($path, PATHINFO_EXTENSION) ?: '');
+        $fromExt = match ($ext) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+            'gif' => 'image/gif',
+            'bmp' => 'image/bmp',
+            'avif' => 'image/avif',
+            'svg' => 'image/svg+xml',
+            default => null,
+        };
+
+        $detected = Str::lower(trim((string) (mime_content_type($path) ?: $hint ?: '')));
+        if ($detected === 'image/jpg') {
+            $detected = 'image/jpeg';
+        }
+
+        if ($detected === '' || $detected === 'application/octet-stream' || ! str_starts_with($detected, 'image/')) {
+            return $fromExt ?? ($hint ?: 'application/octet-stream');
+        }
+
+        return $detected;
     }
 
     private function resizeGdIfNeeded(\GdImage $image): \GdImage
@@ -764,7 +941,7 @@ class ImageOptimizerService
             }
 
             try {
-                $this->encodeWebpSmallest($sourcePath, $destPath);
+                $this->encodeWebp($sourcePath, $destPath);
 
                 return is_file($destPath) ? $destPath : $sourcePath;
             } catch (\Throwable) {
@@ -778,7 +955,7 @@ class ImageOptimizerService
         }
 
         $image = $this->resizeGdIfNeeded($image);
-        $quality = (int) config('bahram.image_optimizer.webp_quality', 85);
+        $quality = $this->optimizerSettings->webpQuality();
         $this->saveGdImage($image, $destPath, $targetExt, $quality);
         imagedestroy($image);
 
@@ -818,22 +995,15 @@ class ImageOptimizerService
             return 'خطا در بهینه‌سازی: '.$payload['optimization_error'];
         }
 
-        $hasTinify = (bool) $this->tinifyKey();
-        $hasResmush = $this->optimizerSettings->resmushEnabled();
+        $hasAnyEngine = (bool) $this->tinifyKey()
+            || $this->optimizerSettings->resmushEnabled()
+            || $this->gdAvailable();
 
-        if (! $hasTinify && ! $hasResmush) {
-            if ($this->gdAvailable()) {
-                return 'موتور داخلی PHP GD — TinyPNG و reSmush غیرفعال یا در دسترس نیستند.';
-            }
-
+        if (! $hasAnyEngine) {
             return 'هیچ موتور فشرده‌سازی فعال نیست — از تنظیمات → بهینه‌سازی تصویر، reSmush.it را فعال کنید یا کلید TinyPNG را وارد کنید.';
         }
 
-        if ($this->gdAvailable()) {
-            return 'سرویس‌های خارجی در دسترس نبودند — از موتور داخلی GD استفاده شد.';
-        }
-
-        return 'بهینه‌سازی با TinyPNG/reSmush.it ناموفق بود — اتصال را از تنظیمات تست کنید.';
+        return 'هیچ نسخه‌ای کوچک‌تر از فایل اصلی نبود — فایل اصلی نگه داشته شد.';
     }
 
     private function gdAvailable(): bool

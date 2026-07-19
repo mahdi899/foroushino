@@ -2,15 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import {
-  BarChart3,
-  CheckCircle2,
-  Gauge,
-  Hash,
-  MessageSquareText,
-  Target,
-  type LucideIcon,
-} from 'lucide-react';
+import { Check, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { respondToAction } from '@/lib/family/api';
 import {
@@ -22,26 +14,6 @@ import {
 import { familyMotion } from '@/lib/family/motion';
 import { useFamilyActionCelebrate } from '@/lib/family/FamilyActionCelebrateContext';
 import type { FamilyAction, FamilyActionResults, FamilyActionType } from '@/lib/family/types';
-
-function actionTypeMeta(type: FamilyActionType): { label: string; Icon: LucideIcon } {
-  switch (type) {
-    case 'commitment':
-      return { label: 'تعهد', Icon: Target };
-    case 'confirmation':
-      return { label: 'بررسی', Icon: CheckCircle2 };
-    case 'single_choice':
-    case 'multi_choice':
-      return { label: 'نظرسنجی', Icon: BarChart3 };
-    case 'short_text':
-      return { label: 'سوال', Icon: MessageSquareText };
-    case 'number':
-      return { label: 'عدد', Icon: Hash };
-    case 'scale':
-      return { label: 'امتیاز', Icon: Gauge };
-    default:
-      return { label: 'فعالیت', Icon: Target };
-  }
-}
 
 function pollSelectedValues(
   type: FamilyActionType,
@@ -90,23 +62,17 @@ function PollParticipation({
 }
 
 function PollResultsHeader({
-  typeLabel,
-  Icon,
   prompt,
   hidePrompt,
 }: {
-  typeLabel: string;
-  Icon: LucideIcon;
   prompt: string;
   hidePrompt?: boolean;
 }) {
+  if (hidePrompt || !prompt) return null;
+
   return (
     <div className="family-action-results-header">
-      <span className="family-action-kicker">
-        <Icon className="h-3 w-3" strokeWidth={2} aria-hidden />
-        {typeLabel}
-      </span>
-      {!hidePrompt && prompt ? <p className="family-action-results-header__question">{prompt}</p> : null}
+      <p className="family-action-results-header__question">{prompt}</p>
     </div>
   );
 }
@@ -208,27 +174,19 @@ function PollResults({
 }
 
 function ActionHeader({
-  typeLabel,
-  Icon,
   prompt,
   hidePrompt,
   meta,
 }: {
-  typeLabel: string;
-  Icon: LucideIcon;
   prompt: string;
   hidePrompt?: boolean;
   meta?: ReactNode;
 }) {
+  if (hidePrompt && !meta) return null;
+
   return (
     <div className="family-action-header">
-      <div className="family-action-header__top">
-        <span className="family-action-kicker">
-          <Icon className="h-3 w-3" strokeWidth={2} aria-hidden />
-          {typeLabel}
-        </span>
-        {meta}
-      </div>
+      {meta ? <div className="family-action-header__top">{meta}</div> : null}
       {!hidePrompt && prompt ? <p className="family-action-question">{prompt}</p> : null}
     </div>
   );
@@ -237,10 +195,12 @@ function ActionHeader({
 function ActionShell({
   done = false,
   successOnly = false,
+  inline = false,
   children,
 }: {
   done?: boolean;
   successOnly?: boolean;
+  inline?: boolean;
   children: ReactNode;
 }) {
   const reduceMotion = useReducedMotion();
@@ -248,11 +208,13 @@ function ActionShell({
   return (
     <motion.div
       className={cn(
-        'family-action-glass',
-        done && 'family-action-glass--done',
-        successOnly && 'family-action-glass--success',
+        inline ? 'family-post-action' : 'family-action-glass',
+        !inline && done && 'family-action-glass--done',
+        !inline && successOnly && 'family-action-glass--success',
+        inline && done && 'family-post-action--done',
+        inline && successOnly && 'family-post-action--success',
       )}
-      initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+      initial={reduceMotion || inline ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={familyMotion.tweenFast}
     >
@@ -293,22 +255,22 @@ export function ActionCard({
   memberCount,
   isStaff = false,
   hidePrompt = false,
+  inline = false,
 }: {
   action: FamilyAction;
   memberCount?: number;
   isStaff?: boolean;
   hidePrompt?: boolean;
+  inline?: boolean;
 }) {
   const [justSubmitted, setJustSubmitted] = useState(false);
   const submitted = Boolean(action.responded) || justSubmitted;
   const [pending, setPending] = useState(false);
   const [textValue, setTextValue] = useState('');
-  const [numberValue, setNumberValue] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
   const [scale, setScale] = useState<number | null>(null);
   const [results, setResults] = useState<FamilyActionResults | null | undefined>(action.results);
   const [localResponse, setLocalResponse] = useState<Record<string, unknown> | null>(null);
-  const { label: typeLabel, Icon: TypeIcon } = actionTypeMeta(action.type);
   const celebrate = useFamilyActionCelebrate();
   const userResponse = localResponse ?? action.user_response ?? null;
   const selectedValues = pollSelectedValues(action.type, userResponse);
@@ -344,15 +306,10 @@ export function ActionCard({
 
   if (submitted) {
     return (
-      <ActionShell done successOnly={!showResults}>
+      <ActionShell done successOnly={!showResults} inline={inline}>
         {showResults ? (
           <>
-            <PollResultsHeader
-              typeLabel={typeLabel}
-              Icon={TypeIcon}
-              prompt={action.prompt}
-              hidePrompt={hidePrompt}
-            />
+            <PollResultsHeader prompt={action.prompt} hidePrompt={hidePrompt} />
             <PollResults
               results={results}
               actionOptions={action.options}
@@ -370,14 +327,8 @@ export function ActionCard({
   }
 
   const wrap = (children: React.ReactNode) => (
-    <ActionShell>
-      <ActionHeader
-        typeLabel={typeLabel}
-        Icon={TypeIcon}
-        prompt={action.prompt}
-        hidePrompt={hidePrompt}
-        meta={pollMeta}
-      />
+    <ActionShell inline={inline}>
+      <ActionHeader prompt={action.prompt} hidePrompt={hidePrompt} meta={pollMeta} />
       <div className="family-action-controls">{children}</div>
     </ActionShell>
   );
@@ -415,37 +366,6 @@ export function ActionCard({
             هنوز نه
           </button>
         </div>,
-      );
-
-    case 'number':
-      return wrap(
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (numberValue) submit({ option: numberValue });
-          }}
-          className="family-action-number-form"
-        >
-          <div className="family-action-number-bar">
-            <input
-              type="number"
-              inputMode="decimal"
-              dir="ltr"
-              value={numberValue}
-              onChange={(e) => setNumberValue(e.target.value)}
-              className="family-action-field family-action-field--number"
-              placeholder="عدد را وارد کن"
-              aria-label="عدد"
-            />
-            <button
-              type="submit"
-              disabled={pending || !numberValue}
-              className="family-action-number-submit"
-            >
-              ثبت
-            </button>
-          </div>
-        </form>,
       );
 
     case 'short_text':
@@ -501,11 +421,22 @@ export function ActionCard({
               >
                 <span
                   className={cn(
-                    isMulti ? 'family-action-option__check' : 'family-action-option__radio',
-                    isSelected && (isMulti ? 'family-action-option__check--selected' : undefined),
+                    'family-action-option__indicator',
+                    isMulti
+                      ? 'family-action-option__indicator--check'
+                      : 'family-action-option__indicator--radio',
+                    isSelected && 'family-action-option__indicator--selected',
                   )}
                   aria-hidden
-                />
+                >
+                  {isSelected ? (
+                    isMulti ? (
+                      <Check className="family-action-option__icon" strokeWidth={2.75} />
+                    ) : (
+                      <span className="family-action-option__radio-dot" />
+                    )
+                  ) : null}
+                </span>
                 <span className="family-action-option__label">{opt.label}</span>
               </button>
             );

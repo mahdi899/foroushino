@@ -19,6 +19,7 @@ class FamilyMediaUploadSession extends Model
         'type',
         'original_filename',
         'mime_type',
+        'optimize_images',
         'total_size',
         'chunk_size',
         'total_chunks',
@@ -32,6 +33,7 @@ class FamilyMediaUploadSession extends Model
     {
         return [
             'type' => FamilyMediaType::class,
+            'optimize_images' => 'boolean',
             'total_size' => 'integer',
             'chunk_size' => 'integer',
             'total_chunks' => 'integer',

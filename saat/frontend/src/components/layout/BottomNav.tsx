@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { Plus } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { navForRole } from '@/app/nav'
 import { haptic } from '@/lib/telegram'
@@ -7,9 +7,6 @@ import { cn } from '@/lib/cn'
 
 const ACTIVE = 'text-primary-600 dark:text-primary-400'
 const INACTIVE = 'text-[#8E8E93] dark:text-[#98989D]'
-
-const spring = { type: 'spring' as const, stiffness: 500, damping: 38, mass: 0.82 }
-const tapSpring = { type: 'spring' as const, stiffness: 580, damping: 32 }
 
 function isNavActive(pathname: string, path: string) {
   if (path === '/home') return pathname === '/home'
@@ -36,41 +33,35 @@ export function BottomNav({
     const Icon = item.icon
 
     return (
-      <motion.button
+      <button
         key={item.path}
         type="button"
-        whileTap={{ scale: 0.9 }}
-        transition={tapSpring}
         onClick={() => {
           haptic('selection')
           navigate(item.path)
         }}
         aria-current={active ? 'page' : undefined}
-        className="relative flex min-w-0 flex-1 flex-col items-center justify-end gap-[3px] pb-[7px] pt-2"
+        className="relative flex min-w-0 flex-1 flex-col items-center justify-end gap-[3px] bg-transparent pb-[7px] pt-2 hover:bg-transparent active:bg-transparent focus-visible:outline-none"
       >
-        <motion.span
-          className="flex h-[28px] w-[28px] items-center justify-center"
-          animate={{
-            scale: active ? 1.04 : 1,
-            y: active ? -1 : 0,
-          }}
-          transition={spring}
-        >
-          <Icon
-            active={active}
-            className={cn('transition-colors duration-150', active ? ACTIVE : INACTIVE)}
-          />
-        </motion.span>
+        <span className="relative flex h-[28px] w-[28px] items-center justify-center">
+          <Icon active={active} className={active ? ACTIVE : INACTIVE} />
+          {active ? (
+            <span
+              aria-hidden
+              className="absolute -bottom-0.5 left-1/2 h-[3px] w-[3px] -translate-x-1/2 rounded-full bg-primary-600 dark:bg-primary-400"
+            />
+          ) : null}
+        </span>
 
         <span
           className={cn(
-            'max-w-full truncate px-0.5 text-[10px] leading-[11px] tracking-[-0.02em] transition-colors duration-150',
-            active ? cn('font-semibold', ACTIVE) : cn('font-medium', INACTIVE),
+            'max-w-full truncate px-0.5 text-[10px] leading-[11px] tracking-[-0.02em]',
+            active ? cn('font-bold', ACTIVE) : cn('font-medium', INACTIVE),
           )}
         >
           {item.label}
         </span>
-      </motion.button>
+      </button>
     )
   }
 
@@ -93,26 +84,17 @@ export function BottomNav({
 
         {showFab && onFabClick ? (
           <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-[36%]">
-            <motion.button
+            <button
               type="button"
-              whileTap={{ scale: 0.9 }}
-              transition={tapSpring}
               onClick={() => {
                 haptic('medium')
                 onFabClick()
               }}
               aria-label="عملیات سریع"
-              className="icon-3d icon-3d-primary flex h-[52px] w-[52px] items-center justify-center rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_4px_14px_rgba(0,111,117,0.32)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_4px_16px_rgba(0,160,170,0.38)]"
+              className="icon-3d icon-3d-primary flex h-[52px] w-[52px] items-center justify-center rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.32),0_4px_14px_rgba(0,111,117,0.32)] active:scale-[0.97] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_4px_16px_rgba(0,160,170,0.38)]"
             >
-              <svg viewBox="0 0 24 24" className="h-[22px] w-[22px] text-white" aria-hidden>
-                <path
-                  d="M12 5.5v13M5.5 12h13"
-                  stroke="currentColor"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </motion.button>
+              <Plus className="h-[23px] w-[23px] text-white" strokeWidth={2.35} aria-hidden />
+            </button>
           </div>
         ) : null}
       </div>

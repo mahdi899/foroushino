@@ -3,6 +3,7 @@
 namespace App\Services\Family;
 
 use App\Models\Setting;
+use App\Support\MediaFtpConnection;
 use Illuminate\Support\Facades\Cache;
 
 /** Panel-managed toggles for family media pipeline (env defaults as fallback). */
@@ -61,16 +62,21 @@ class FamilyMediaSettingsService
 
     public function uploadDisk(): string
     {
-        if (! $this->ftpUploadEnabled()) {
-            return 'public';
+        if (MediaFtpConnection::isReady()) {
+            return 'family_media_ftp';
         }
 
-        $configured = (string) config('family.media.disk', 'family_media_ftp');
-        if ($configured === 'family_media_ftp' && ! filled(config('filesystems.disks.family_media_ftp.host'))) {
-            return 'public';
+        $ftp = config('filesystems.disks.family_media_ftp', []);
+
+        if (
+            filled($ftp['host'] ?? null)
+            && filled($ftp['username'] ?? null)
+            && filled($ftp['password'] ?? null)
+        ) {
+            return 'family_media_ftp';
         }
 
-        return $configured;
+        return 'public';
     }
 
     public function siteLibraryDisk(): string

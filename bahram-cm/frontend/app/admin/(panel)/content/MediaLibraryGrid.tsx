@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight, Loader2, Search, Sparkles, Trash2, Upload } from 'lucide-react';
 import { cn, toFa } from '@/lib/utils';
 import { MediaThumb } from '@/components/admin/MediaThumb';
+import { inferAdminMediaKind } from '@/lib/admin/mediaKind';
 import {
   buildUnifiedGallery,
   findUnifiedByPersistSrc,
@@ -15,6 +16,12 @@ import type { AdminMediaItem, MediaPickMeta } from '@/lib/admin/mediaTypes';
 import { confirmGalleryUpload, discardGalleryOptimize, previewGalleryOptimize } from '../gallery/actions';
 import { MediaOptimizeModal } from '../gallery/MediaOptimizeModal';
 import { MediaTrashModal, useMediaTrashCount } from '../gallery/MediaTrashModal';
+
+function uploadStorageBorderClass(isRemote?: boolean): string {
+  return isRemote
+    ? 'border-green-500/65 hover:border-green-600/80'
+    : 'border-red-400/50 hover:border-red-500/65';
+}
 
 interface MediaLibraryGridProps {
   uploaded: AdminMediaItem[];
@@ -377,15 +384,35 @@ export function MediaLibraryGrid({
         >
           {filtered.map((item) => {
             const isSelected = selected?.key === item.key;
+            const mediaKind = inferAdminMediaKind(item.src, item.mime);
+            const isPlayable = mediaKind === 'video' || mediaKind === 'audio';
+            const hasStorageHint = item.kind === 'uploaded' && item.adminItem;
+            const storageBorder = hasStorageHint
+              ? uploadStorageBorderClass(item.adminItem?.isRemote === true)
+              : 'border-border hover:border-primary/40';
+
             return (
-              <button
+              <div
                 key={item.key}
-                type="button"
-                title={item.label}
+                role="button"
+                tabIndex={0}
+                title={
+                  hasStorageHint
+                    ? `${item.label} — ${item.adminItem?.isRemote ? 'هاست دانلود' : 'سرور'}`
+                    : item.label
+                }
                 onClick={() => onItemClick(item)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onItemClick(item);
+                  }
+                }}
                 className={cn(
-                  'group relative aspect-square overflow-hidden rounded-lg border bg-surface-soft text-right transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
-                  isSelected ? 'border-accent ring-2 ring-accent/30' : 'border-border hover:border-primary/40 hover:ring-2 hover:ring-primary/15',
+                  'group relative aspect-square cursor-pointer overflow-hidden rounded-lg border bg-surface-soft text-right transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  isSelected
+                    ? 'border-accent ring-2 ring-accent/30'
+                    : cn(storageBorder, 'hover:ring-2 hover:ring-primary/15'),
                 )}
               >
                 <div className="admin-media-thumb-frame relative aspect-square overflow-hidden">
@@ -393,7 +420,9 @@ export function MediaLibraryGrid({
                     src={item.src}
                     persistSrc={item.persistSrc}
                     legacyPath={item.adminItem?.legacyPath}
+                    mime={item.mime}
                     alt={item.label}
+                    interactive={isPlayable}
                     className="absolute inset-0 h-full w-full object-contain p-2"
                   />
                 </div>
@@ -410,7 +439,7 @@ export function MediaLibraryGrid({
                     مدیریت
                   </span>
                 )}
-              </button>
+              </div>
             );
           })}
         </div>

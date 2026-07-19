@@ -136,7 +136,7 @@ class FtpMediaManager
 
         $local->delete($media->path);
 
-        $media->update(['disk' => $remoteDiskName]);
+        $media->update(['disk' => $remoteDiskName, 'keep_on_server' => false]);
         $this->forgetListingCache($media->path);
         LegacyMediaMap::flush();
 
@@ -184,7 +184,7 @@ class FtpMediaManager
 
         $this->finalizeTransfer($local, $partPath, $media->path);
 
-        $media->update(['disk' => self::LOCAL_DISK]);
+        $media->update(['disk' => self::LOCAL_DISK, 'keep_on_server' => true]);
         LegacyMediaMap::flush();
 
         return $media->refresh();
@@ -203,6 +203,110 @@ class FtpMediaManager
         $this->forgetListingCache($path);
 
         return true;
+    }
+
+    /**
+     * Push eligible local library files to the download host.
+     * Skips files pinned on the server (`keep_on_server`) and family media
+     * (handled by the family FTP pipeline). Reconciles remote copies when present.
+     *
+     * @return array{
+     *     pushed: int,
+     *     reconciled: int,
+     *     skipped: int,
+     *     kept_on_server: int,
+     *     failed: int,
+     *     processed: int,
+     *     remaining: int,
+     *     errors: array<int, array{id: int, message: string}>
+     * }
+     */
+    public function syncLocalToRemote(int $limit = 50): array
+    {
+        if (! MediaFtpConnection::isReady()) {
+            throw new RuntimeException('هاست دانلود فعال یا پیکربندی نشده است.');
+        }
+
+        $remoteDiskName = $this->remoteDiskName();
+        $remote = $this->remoteDisk();
+
+        $localBaseQuery = Media::query()
+            ->whereIn('disk', [self::LOCAL_DISK, 'local'])
+            ->where('is_private', false)
+            ->where('keep_on_server', false)
+            ->where('path', 'not like', 'media/family/%');
+
+        $keptOnServer = Media::query()
+            ->whereIn('disk', [self::LOCAL_DISK, 'local'])
+            ->where('is_private', false)
+            ->where(function ($query) {
+                $query->where('keep_on_server', true)
+                    ->orWhere('path', 'like', 'media/family/%');
+            })
+            ->count();
+
+        $query = clone $localBaseQuery;
+
+        $total = (clone $query)->count();
+        $limit = max(1, min($limit, 200));
+        $mediaItems = $query->orderBy('id')->limit($limit)->get();
+
+        $stats = [
+            'pushed' => 0,
+            'reconciled' => 0,
+            'skipped' => 0,
+            'kept_on_server' => $keptOnServer,
+            'failed' => 0,
+            'processed' => 0,
+            'remaining' => max(0, $total - $mediaItems->count()),
+            'errors' => [],
+        ];
+
+        foreach ($mediaItems as $media) {
+            $stats['processed']++;
+
+            try {
+                $local = Storage::disk($media->disk);
+                if (! $local->exists($media->path)) {
+                    $stats['skipped']++;
+
+                    continue;
+                }
+
+                if ($remote->exists($media->path)) {
+                    $localSize = $local->size($media->path);
+                    $remoteSize = $this->remoteFileSize($media->path);
+
+                    if ($remoteSize !== null && $remoteSize === $localSize) {
+                        $this->reconcileAsRemote($media, $local);
+                        $stats['reconciled']++;
+
+                        continue;
+                    }
+                }
+
+                $this->push($media);
+                $stats['pushed']++;
+            } catch (\Throwable $e) {
+                $stats['failed']++;
+                if (count($stats['errors']) < 5) {
+                    $stats['errors'][] = [
+                        'id' => $media->id,
+                        'message' => $e->getMessage(),
+                    ];
+                }
+            }
+        }
+
+        return $stats;
+    }
+
+    private function reconcileAsRemote(Media $media, Filesystem $local): void
+    {
+        $local->delete($media->path);
+        $media->update(['disk' => $this->remoteDiskName(), 'keep_on_server' => false]);
+        $this->forgetListingCache($media->path);
+        LegacyMediaMap::flush();
     }
 
     private function remoteDisk(): Filesystem

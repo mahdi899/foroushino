@@ -18,7 +18,7 @@ class FamilyMediaIngestService
         private readonly FamilyMediaSettingsService $mediaSettings,
     ) {}
 
-    public function ingestSimple(User $uploader, UploadedFile $file, string $type): FamilyMedia
+    public function ingestSimple(User $uploader, UploadedFile $file, string $type, ?bool $optimizeImages = null): FamilyMedia
     {
         $mediaType = FamilyMediaType::from($type);
         $this->assertSize($file, $mediaType);
@@ -28,10 +28,11 @@ class FamilyMediaIngestService
 
         $media = FamilyMedia::query()->create([
             'type' => $mediaType,
-            'disk' => $this->mediaSettings->uploadDisk(),
+            'disk' => 'public',
             'temp_path' => $tempPath,
             'original_filename' => $file->getClientOriginalName(),
             'mime_type' => $file->getMimeType(),
+            'optimize_images' => $optimizeImages,
             'size' => $file->getSize(),
             'status' => FamilyMediaStatus::Queued,
             'uploaded_by' => $uploader->id,
@@ -50,6 +51,7 @@ class FamilyMediaIngestService
         int $totalSize,
         int $chunkSize,
         ?string $mime = null,
+        ?bool $optimizeImages = null,
     ): FamilyMediaUploadSession {
         $mediaType = FamilyMediaType::from($type);
         $ulid = (string) Str::ulid();
@@ -64,6 +66,7 @@ class FamilyMediaIngestService
             'type' => $mediaType,
             'original_filename' => $filename,
             'mime_type' => $mime,
+            'optimize_images' => $optimizeImages,
             'total_size' => $totalSize,
             'chunk_size' => $chunkSize,
             'total_chunks' => $totalChunks,
@@ -107,10 +110,11 @@ class FamilyMediaIngestService
 
         $media = FamilyMedia::query()->create([
             'type' => $session->type,
-            'disk' => $this->mediaSettings->uploadDisk(),
+            'disk' => 'public',
             'temp_path' => $session->temp_path,
             'original_filename' => $session->original_filename,
             'mime_type' => $session->mime_type,
+            'optimize_images' => $session->optimize_images,
             'size' => $session->total_size,
             'status' => FamilyMediaStatus::Queued,
             'uploaded_by' => $session->uploaded_by,

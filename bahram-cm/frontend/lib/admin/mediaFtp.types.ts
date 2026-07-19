@@ -34,3 +34,14 @@ export type MediaFtpTestResult = {
   ok: boolean;
   message: string;
 };
+
+export type MediaFtpSyncResult = {
+  pushed: number;
+  reconciled: number;
+  skipped: number;
+  kept_on_server: number;
+  failed: number;
+  processed: number;
+  remaining: number;
+  errors: Array<{ id: number; message: string }>;
+};

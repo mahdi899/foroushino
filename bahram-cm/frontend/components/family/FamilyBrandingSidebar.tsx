@@ -138,7 +138,6 @@ export function FamilyBrandingSidebar({
               <h2 className="family-sidebar__channel-name">{branding.display_name}</h2>
               <FamilyStoryHint
                 memberCount={memberCount}
-                memberLabel="عضو فعال"
                 maskMemberCount={guestStoriesLocked}
                 onMaskedMemberCountClick={() => guestAccess?.promptLogin('morePosts')}
                 hasUnseen={!storiesLocked && isMember && hasUnseen}

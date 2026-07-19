@@ -20,6 +20,7 @@ class FamilyMedia extends Model
         'temp_path',
         'original_filename',
         'mime_type',
+        'optimize_images',
         'size',
         'duration',
         'width',
@@ -35,6 +36,7 @@ class FamilyMedia extends Model
         return [
             'type' => FamilyMediaType::class,
             'status' => FamilyMediaStatus::class,
+            'optimize_images' => 'boolean',
             'waveform' => 'array',
             'size' => 'integer',
             'duration' => 'integer',
@@ -54,7 +56,7 @@ class FamilyMedia extends Model
             return null;
         }
 
-        return FamilyMediaUrl::fromPath($this->storage_path);
+        return FamilyMediaUrl::fromPath($this->storage_path, $this->disk);
     }
 
     public function thumbnailCdnUrl(): ?string
@@ -63,6 +65,6 @@ class FamilyMedia extends Model
             return null;
         }
 
-        return FamilyMediaUrl::fromPath($this->thumbnail_path);
+        return FamilyMediaUrl::fromPath($this->thumbnail_path, $this->disk);
     }
 }

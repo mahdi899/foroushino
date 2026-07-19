@@ -36,20 +36,31 @@ class FamilyImageProcessor
         $mime = mime_content_type($absolute) ?: (string) $media->mime_type ?: 'application/octet-stream';
         $originalExt = Str::lower(pathinfo((string) $media->original_filename, PATHINFO_EXTENSION) ?: 'jpg');
 
-        if ($media->type !== FamilyMediaType::Image || ! $this->settings->optimizeImages()) {
+        if ($media->type !== FamilyMediaType::Image || ! $this->shouldOptimizeImages($media)) {
             return $this->metaFromFile($absolute, $originalExt, $mime, false);
         }
 
-        $optimizedPath = preg_replace('/\.[^.]+$/', '', $absolute).'.webp';
+        $optimizedPath = preg_replace('/\.[^.]+$/', '', $absolute).'.optimized.'.Str::lower(Str::ulid()->toString()).'.webp';
         $result = $this->optimizer->optimizeStandalone($absolute, $optimizedPath);
         $finalPath = (string) ($result['path'] ?? $absolute);
         $finalMime = (string) ($result['mime'] ?? $mime);
-        $finalExt = Str::lower(pathinfo($finalPath, PATHINFO_EXTENSION) ?: '');
+        $finalExt = Str::lower(pathinfo($finalPath, PATHINFO_EXTENSION) ?: $originalExt);
         if ($finalExt === '' || $finalExt === 'optimized') {
             $finalExt = str_contains($finalMime, 'webp') ? 'webp' : $originalExt;
         }
 
-        return $this->metaFromFile($finalPath, $finalExt, $finalMime, ($result['engine'] ?? 'none') !== 'none');
+        $wasOptimized = ($result['kept'] ?? null) === 'optimized' && ($result['engine'] ?? 'none') !== 'none';
+
+        return $this->metaFromFile($finalPath, $finalExt, $finalMime, $wasOptimized);
+    }
+
+    private function shouldOptimizeImages(FamilyMedia $media): bool
+    {
+        if ($media->optimize_images !== null) {
+            return (bool) $media->optimize_images;
+        }
+
+        return $this->settings->optimizeImages();
     }
 
     /** @return array{absolute_path: string, extension: string, mime_type: string, size: int, width: ?int, height: ?int, optimized: bool} */

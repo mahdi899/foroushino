@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { Copy, ExternalLink, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Copy, ExternalLink, Maximize2, X } from 'lucide-react';
 import type { UnifiedMediaItem } from '@/lib/admin/unifiedGallery';
-import { DirectMediaImg } from '@/components/ui/DirectMediaImg';
+import { MediaPreview } from '@/components/admin/MediaPreview';
+import { MediaZoomOverlay } from '@/components/admin/MediaZoomOverlay';
+import { inferAdminMediaKind } from '@/lib/admin/mediaKind';
+import { resolveMediaUrl } from '@/lib/mediaUrl';
 
 interface StaticMediaModalProps {
   item: UnifiedMediaItem | null;
@@ -12,8 +15,18 @@ interface StaticMediaModalProps {
 
 export function StaticMediaModal({ item, onClose }: StaticMediaModalProps) {
   const [copied, setCopied] = useState(false);
+  const [zoomOpen, setZoomOpen] = useState(false);
+
+  const mediaKind = useMemo(
+    () => (item ? inferAdminMediaKind(item.src, item.mime) : 'image'),
+    [item],
+  );
+  const mediaKindLabel =
+    mediaKind === 'video' ? 'ویدیو' : mediaKind === 'audio' ? 'صوت' : mediaKind === 'image' ? 'تصویر' : 'رسانه';
 
   if (!item || item.kind !== 'static') return null;
+
+  const displayUrl = resolveMediaUrl(item.src);
 
   async function copyUrl() {
     try {
@@ -26,37 +39,76 @@ export function StaticMediaModal({ item, onClose }: StaticMediaModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center admin-overlay p-4" onClick={onClose}>
-      <div className="w-full max-w-lg overflow-hidden rounded-xl bg-surface shadow-premium" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <p className="text-small font-semibold text-primary-dark">جزئیات تصویر</p>
-          <button type="button" onClick={onClose} className="admin-icon-btn">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="p-4">
-          <div className="relative mx-auto mb-4 aspect-video w-full max-w-sm overflow-hidden rounded-lg border border-border bg-surface-soft">
-            <DirectMediaImg admin src={item.src} alt={item.label} fill className="object-contain" />
-          </div>
-          <p className="field-label">عنوان</p>
-          <p className="mb-3 text-small text-text">{item.label}</p>
-          <p className="field-label">دسته</p>
-          <p className="mb-3 text-small text-text-muted">{item.category}</p>
-          <p className="mb-4 text-caption text-text-muted">
-            این تصویر بخشی از assets سایت است. برای حذف یا جایگزینی باید فایل در پروژه ویرایش شود.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={copyUrl} className="btn btn-secondary py-1.5 text-caption">
-              <Copy className="h-3.5 w-3.5" />
-              {copied ? 'کپی شد' : 'کپی آدرس'}
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center admin-overlay p-4" onClick={onClose}>
+        <div
+          className="w-full max-w-lg overflow-hidden rounded-xl bg-surface shadow-premium"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+            <p className="text-small font-semibold text-primary-dark">مدیریت {mediaKindLabel}</p>
+            <button type="button" onClick={onClose} className="admin-icon-btn" aria-label="بستن">
+              <X className="h-5 w-5" />
             </button>
-            <a href={item.src} target="_blank" rel="noopener noreferrer" className="btn btn-secondary py-1.5 text-caption">
-              <ExternalLink className="h-3.5 w-3.5" />
-              باز کردن
-            </a>
+          </div>
+          <div className="p-4">
+            <div className="mx-auto mb-4 w-full max-w-sm">
+              <MediaPreview
+                src={item.src}
+                persistSrc={item.persistSrc}
+                alt={item.label}
+                mime={item.mime}
+              />
+
+              <div className="mt-3 flex flex-nowrap items-stretch gap-2">
+                <button
+                  type="button"
+                  onClick={() => setZoomOpen(true)}
+                  className="btn btn-secondary min-w-0 flex-1 justify-center py-1.5 text-caption whitespace-nowrap"
+                >
+                  <Maximize2 className="h-3.5 w-3.5 shrink-0" />
+                  بزرگ‌نمایی
+                </button>
+                <a
+                  href={displayUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary min-w-0 flex-1 justify-center py-1.5 text-caption whitespace-nowrap"
+                >
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                  باز کردن
+                </a>
+                <button
+                  type="button"
+                  onClick={() => void copyUrl()}
+                  className="btn btn-secondary min-w-0 flex-1 justify-center py-1.5 text-caption whitespace-nowrap"
+                >
+                  <Copy className="h-3.5 w-3.5 shrink-0" />
+                  {copied ? 'کپی شد' : 'کپی لینک'}
+                </button>
+              </div>
+            </div>
+
+            <p className="field-label">عنوان</p>
+            <p className="mb-3 text-small text-text">{item.label}</p>
+            <p className="field-label">دسته</p>
+            <p className="mb-3 text-small text-text-muted">{item.category}</p>
+            <p className="text-caption leading-relaxed text-text-muted">
+              این فایل بخشی از assets ثابت سایت است. برای حذف یا جایگزینی باید فایل در پروژه یا storage ویرایش شود.
+            </p>
           </div>
         </div>
       </div>
-    </div>
+
+      {zoomOpen && (
+        <MediaZoomOverlay
+          src={item.src}
+          persistSrc={item.persistSrc}
+          alt={item.label}
+          mime={item.mime}
+          onClose={() => setZoomOpen(false)}
+        />
+      )}
+    </>
   );
 }

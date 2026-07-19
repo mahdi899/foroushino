@@ -16,6 +16,8 @@ export interface AdminMediaItem {
   mime?: string | null;
   width?: number | null;
   height?: number | null;
+  disk?: string;
+  isRemote?: boolean;
 }
 
 export interface AdminMediaPageResult {

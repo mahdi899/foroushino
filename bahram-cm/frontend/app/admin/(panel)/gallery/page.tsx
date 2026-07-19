@@ -53,11 +53,13 @@ export default function AdminGalleryPage() {
   }
 
   function onManage(item: UnifiedMediaItem) {
-    if (item.kind === 'static') {
-      setStaticItem(item);
+    if (item.adminItem) {
+      setEditItem(item.adminItem);
       return;
     }
-    if (item.adminItem) setEditItem(item.adminItem);
+    if (item.kind === 'static') {
+      setStaticItem(item);
+    }
   }
 
   function onSearchChange(q: string) {

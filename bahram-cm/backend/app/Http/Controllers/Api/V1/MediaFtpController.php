@@ -109,4 +109,21 @@ class MediaFtpController extends Controller
 
         return ApiResponse::success(['deleted' => true]);
     }
+
+    public function sync(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'limit' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        try {
+            $result = $this->manager->syncLocalToRemote((int) ($data['limit'] ?? 50));
+        } catch (\RuntimeException $e) {
+            return ApiResponse::error('ftp_sync_failed', $e->getMessage(), 422);
+        } catch (\Throwable) {
+            return ApiResponse::error('ftp_sync_failed', 'همگام‌سازی با هاست دانلود با خطا مواجه شد.', 502);
+        }
+
+        return ApiResponse::success($result);
+    }
 }

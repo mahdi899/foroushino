@@ -24,9 +24,15 @@ class MediaController extends Controller
         $data = $request->validate([
             'type' => ['required', Rule::enum(FamilyMediaType::class)],
             'file' => ['required', 'file'],
+            'optimize_images' => ['sometimes', 'boolean'],
         ]);
 
-        $media = $this->ingest->ingestSimple($request->user(), $request->file('file'), $data['type']);
+        $media = $this->ingest->ingestSimple(
+            $request->user(),
+            $request->file('file'),
+            $data['type'],
+            array_key_exists('optimize_images', $data) ? (bool) $data['optimize_images'] : null,
+        );
 
         return ApiResponse::success($this->present($media), 201);
     }
@@ -39,6 +45,7 @@ class MediaController extends Controller
             'total_size' => ['required', 'integer', 'min:1'],
             'chunk_size' => ['nullable', 'integer', 'min:1'],
             'mime_type' => ['nullable', 'string'],
+            'optimize_images' => ['sometimes', 'boolean'],
         ]);
 
         $chunkSize = $data['chunk_size'] ?? ((int) config('family.media.chunk_size_mb', 5) * 1024 * 1024);
@@ -50,6 +57,7 @@ class MediaController extends Controller
             $data['total_size'],
             $chunkSize,
             $data['mime_type'] ?? null,
+            array_key_exists('optimize_images', $data) ? (bool) $data['optimize_images'] : null,
         );
 
         return ApiResponse::success([
@@ -108,7 +116,7 @@ class MediaController extends Controller
             'height' => $media->height,
             'failure_reason' => $media->failure_reason,
             'cdn_url' => $media->cdnUrl(),
-            'url' => FamilyMediaUrl::fromPath($media->storage_path),
+            'url' => FamilyMediaUrl::fromPath($media->storage_path, $media->disk),
             // storage_path and disk credentials are intentionally never exposed.
         ];
     }

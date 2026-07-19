@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { MediaThumb } from '@/components/admin/MediaThumb';
+import { inferAdminMediaKind } from '@/lib/admin/mediaKind';
 
 type MediaPreviewProps = {
   src: string;
@@ -11,6 +12,7 @@ type MediaPreviewProps = {
   alt: string;
   className?: string;
   imageClassName?: string;
+  mime?: string | null;
 };
 
 function previewDimensions(
@@ -34,7 +36,7 @@ function previewDimensions(
   };
 }
 
-/** Sized admin preview — scales small images up to fill the frame. */
+/** Sized admin preview — scales small images up; video/audio use inline players. */
 export function MediaPreview({
   src,
   persistSrc,
@@ -42,40 +44,52 @@ export function MediaPreview({
   alt,
   className,
   imageClassName,
+  mime,
 }: MediaPreviewProps) {
   const frameRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ width?: number; height?: number }>({});
+  const mediaKind = useMemo(() => inferAdminMediaKind(src, mime), [src, mime]);
 
   useEffect(() => {
     setSize({});
   }, [src]);
 
-  const updateSize = useCallback((img: HTMLImageElement) => {
+  const updateSize = useCallback((img: HTMLImageElement | HTMLVideoElement) => {
     const frame = frameRef.current;
     if (!frame) return;
-    setSize(
-      previewDimensions(img.naturalWidth, img.naturalHeight, frame.clientWidth, frame.clientHeight),
-    );
+    const naturalW = 'naturalWidth' in img ? img.naturalWidth : img.videoWidth;
+    const naturalH = 'naturalHeight' in img ? img.naturalHeight : img.videoHeight;
+    setSize(previewDimensions(naturalW, naturalH, frame.clientWidth, frame.clientHeight));
   }, []);
 
   useEffect(() => {
+    if (mediaKind !== 'image' && mediaKind !== 'video') return;
     const frame = frameRef.current;
     if (!frame) return;
 
     const observer = new ResizeObserver(() => {
-      const img = frame.querySelector('img');
-      if (img?.naturalWidth) updateSize(img);
+      const media = frame.querySelector('img, video');
+      if (media instanceof HTMLImageElement && media.naturalWidth) {
+        updateSize(media);
+      } else if (media instanceof HTMLVideoElement && media.videoWidth) {
+        updateSize(media);
+      }
     });
     observer.observe(frame);
     return () => observer.disconnect();
-  }, [updateSize, src]);
+  }, [updateSize, src, mediaKind]);
 
-  const onImageLoad = useCallback(
-    (event: React.SyntheticEvent<HTMLImageElement>) => {
+  const onMediaLoad = useCallback(
+    (event: React.SyntheticEvent<HTMLImageElement | HTMLVideoElement>) => {
       updateSize(event.currentTarget);
     },
     [updateSize],
   );
+
+  const frameClass =
+    mediaKind === 'audio'
+      ? 'flex min-h-[8rem] w-full items-center justify-center p-4'
+      : 'flex h-52 min-h-[13rem] w-full items-center justify-center p-4';
 
   return (
     <div
@@ -84,20 +98,24 @@ export function MediaPreview({
         className,
       )}
     >
-      <div
-        ref={frameRef}
-        className="flex h-52 min-h-[13rem] w-full items-center justify-center p-4"
-      >
+      <div ref={frameRef} className={frameClass}>
         <MediaThumb
           src={src}
           persistSrc={persistSrc}
           legacyPath={legacyPath}
           alt={alt}
-          onLoad={onImageLoad}
-          className={cn('block object-contain', imageClassName)}
+          mime={mime}
+          controls={mediaKind === 'video' || mediaKind === 'audio'}
+          onLoad={onMediaLoad}
+          className={cn(
+            mediaKind === 'audio' ? 'w-full' : 'block object-contain',
+            imageClassName,
+          )}
           style={
-            size.width && size.height
-              ? { width: size.width, height: size.height, maxWidth: '100%', maxHeight: '100%' }
+            mediaKind === 'image' || mediaKind === 'video'
+              ? size.width && size.height
+                ? { width: size.width, height: size.height, maxWidth: '100%', maxHeight: '100%' }
+                : undefined
               : undefined
           }
         />

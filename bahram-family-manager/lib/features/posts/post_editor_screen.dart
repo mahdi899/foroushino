@@ -55,6 +55,8 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   FamilyMediaRef? _mediaRef;
   bool _uploading = false;
   double _uploadProgress = 0;
+  bool _optimizeImages = true;
+  bool _optimizeDefaultLoaded = false;
 
   bool _actionEnabled = false;
   String _actionType = 'commitment';
@@ -106,6 +108,25 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     if (_optionControllers.isEmpty) {
       _optionControllers.add(TextEditingController());
       _optionControllers.add(TextEditingController());
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_optimizeDefaultLoaded) {
+      _optimizeDefaultLoaded = true;
+      _loadDefaultOptimizeSetting();
+    }
+  }
+
+  Future<void> _loadDefaultOptimizeSetting() async {
+    try {
+      final settings = await context.read<AppState>().manager.getSettings();
+      if (!mounted) return;
+      setState(() => _optimizeImages = settings.mediaPipeline?.optimizeImages ?? true);
+    } catch (_) {
+      // Keep default true when settings are unavailable offline.
     }
   }
 
@@ -181,6 +202,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
             bytes: bytes,
             filename: picked.name,
             type: _type,
+            optimizeImages: _type == 'image' ? _optimizeImages : null,
             onProgress: (p) {
               if (mounted) setState(() => _uploadProgress = p);
             },
@@ -594,6 +616,20 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                 ),
                 if (_type != 'text') ...[
                   const SizedBox(height: AppSpacing.md),
+                  if (_type == 'image')
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text('بهینه‌سازی تصویر', style: TextStyle(color: scheme.onSurface)),
+                      subtitle: Text(
+                        'قبل از آپلود، حجم تصویر با سرویس‌های بهینه‌سازی کم می‌شود',
+                        style: TextStyle(color: subtle, fontSize: 12),
+                      ),
+                      value: _optimizeImages,
+                      onChanged: (_uploading || _saving)
+                          ? null
+                          : (value) => setState(() => _optimizeImages = value),
+                    ),
+                  if (_type == 'image') const SizedBox(height: AppSpacing.sm),
                   if (_mediaRef == null)
                     UploadZone(
                       label: 'انتخاب ${labelOf(mediaTypeLabels, _type)}',

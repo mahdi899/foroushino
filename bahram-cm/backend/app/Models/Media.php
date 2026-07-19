@@ -18,11 +18,12 @@ class Media extends Model
     protected $fillable = [
         'disk', 'path', 'url', 'type', 'mime', 'size',
         'width', 'height', 'alt_fa', 'original_filename', 'category', 'legacy_path',
-        'is_private', 'uploaded_by',
+        'is_private', 'keep_on_server', 'uploaded_by',
     ];
 
     protected $casts = [
         'is_private' => 'boolean',
+        'keep_on_server' => 'boolean',
         'type' => MediaType::class,
         'size' => 'integer',
         'width' => 'integer',
@@ -59,5 +60,17 @@ class Media extends Model
         }
 
         return MediaUrl::fromDiskPath($this->path);
+    }
+
+    public function isSiteAsset(): bool
+    {
+        return self::isSiteAssetPath((string) $this->path);
+    }
+
+    public static function isSiteAssetPath(string $path): bool
+    {
+        $path = str_replace('\\', '/', trim($path, '/'));
+
+        return str_starts_with($path, 'media/site/');
     }
 }

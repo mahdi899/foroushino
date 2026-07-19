@@ -1,11 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ChevronDown, HardDrive, Loader2 } from 'lucide-react';
+import { ChevronDown, HardDrive, Loader2, RefreshCw } from 'lucide-react';
 import type {
   MediaFtpConnectionPayload,
   MediaFtpConnectionView,
   MediaFtpProtocol,
+  MediaFtpSyncResult,
 } from '@/lib/admin/mediaFtp.types';
 
 const DEFAULT_PORT: Record<MediaFtpProtocol, number> = { ftp: 21, sftp: 22 };
@@ -33,11 +34,24 @@ function applyConnection(view: MediaFtpConnectionView) {
   };
 }
 
+function formatSyncResult(result: MediaFtpSyncResult): string {
+  const parts: string[] = [];
+  if (result.pushed > 0) parts.push(`${result.pushed} فایل منتقل شد`);
+  if (result.reconciled > 0) parts.push(`${result.reconciled} فایل قبلاً روی هاست بود`);
+  if (result.skipped > 0) parts.push(`${result.skipped} رد شد`);
+  if (result.failed > 0) parts.push(`${result.failed} خطا`);
+  if (result.remaining > 0) parts.push(`${result.remaining} فایل باقی‌مانده`);
+  if (result.kept_on_server > 0) parts.push(`${result.kept_on_server} فایل روی سرور نگه داشته شد (رد همگام‌سازی)`);
+  if (parts.length === 0) return 'همه فایل‌های واجد شرایط همگام هستند.';
+  return parts.join(' · ');
+}
+
 export function MediaFtpSettings() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -196,33 +210,93 @@ export function MediaFtpSettings() {
     }
   }
 
-  const busy = saving || testing;
+  async function syncToHost() {
+    setSyncing(true);
+    setError('');
+    setMessage('');
+    try {
+      const res = await fetch('/api/admin/media-ftp/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 50 }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(extractError(json, 'همگام‌سازی ناموفق بود.'));
+        return;
+      }
+
+      const result = json as MediaFtpSyncResult;
+      setMessage(formatSyncResult(result));
+      if (result.errors?.length) {
+        setError(result.errors.map((e) => `#${e.id}: ${e.message}`).join(' · '));
+      }
+    } catch {
+      setError('ارتباط با سرور برقرار نشد.');
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  const busy = saving || testing || syncing;
 
   return (
     <section className="card mb-6 overflow-hidden">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between gap-3 p-5 text-right"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-            <HardDrive className="h-5 w-5" strokeWidth={2} />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-h3 text-primary-dark">هاست دانلود (FTP / SFTP)</h2>
-            <p className="mt-1 text-small text-muted">
-              اتصال به هاست دانلود برای انتقال فایل‌های رسانه — شامل مسیر پایه (Path) روی سرور
-              {diskName ? ` · دیسک فعال: ${diskName}` : ''}
-            </p>
+      <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center">
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-center justify-between gap-3 text-right"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+        >
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <HardDrive className="h-5 w-5" strokeWidth={2} />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-h3 text-primary-dark">هاست دانلود (FTP / SFTP)</h2>
+              <p className="mt-1 text-small text-muted">
+                اتصال به هاست دانلود برای انتقال فایل‌های رسانه — شامل مسیر پایه (Path) روی سرور
+                {diskName ? ` · دیسک فعال: ${diskName}` : ''}
+              </p>
+            </div>
           </div>
+          <ChevronDown
+            className={`h-5 w-5 shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`}
+            strokeWidth={2}
+          />
+        </button>
+        <button
+          type="button"
+          className="btn btn-secondary w-full shrink-0 justify-center px-4 py-2.5 text-small sm:w-auto"
+          disabled={busy || loading || !enabled}
+          title={
+            enabled
+              ? 'انتقال فایل‌های محلیِ منتظر آپلود — فایل‌هایی که دستی روی سرور نگه داشته‌اید منتقل نمی‌شوند'
+              : 'ابتدا هاست دانلود را فعال کنید'
+          }
+          onClick={() => void syncToHost()}
+        >
+          {syncing ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              همگام‌سازی…
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-4 w-4" />
+              همگام‌سازی
+            </>
+          )}
+        </button>
+      </div>
+
+      {message || error ? (
+        <div className="border-t border-border px-5 py-3">
+          {message ? <p className="text-small text-success">{message}</p> : null}
+          {error ? <p className={`text-small text-error${message ? ' mt-1' : ''}`}>{error}</p> : null}
         </div>
-        <ChevronDown
-          className={`h-5 w-5 shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`}
-          strokeWidth={2}
-        />
-      </button>
+      ) : null}
 
       {open ? (
         <div className="border-t border-border px-5 pb-5 pt-4">
@@ -234,7 +308,11 @@ export function MediaFtpSettings() {
           ) : loadError ? (
             <div className="space-y-3">
               <p className="text-small text-error">{loadError}</p>
-              <button type="button" className="btn-secondary" onClick={() => void loadConnection()}>
+              <button
+                type="button"
+                className="btn btn-secondary justify-center px-4 py-2 text-small"
+                onClick={() => void loadConnection()}
+              >
                 تلاش مجدد
               </button>
             </div>
@@ -362,24 +440,38 @@ export function MediaFtpSettings() {
                 />
               </label>
 
-              <div className="flex flex-wrap gap-2 pt-1">
-                <button type="button" className="btn-primary" disabled={busy} onClick={() => void save()}>
+              <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
+                <button
+                  type="button"
+                  className="btn btn-primary justify-center px-5 py-2.5 text-small disabled:opacity-50"
+                  disabled={busy}
+                  onClick={() => void save()}
+                >
                   {saving ? (
                     <>
-                      <Loader2 className="me-1 inline h-4 w-4 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                       در حال ذخیره…
                     </>
                   ) : (
                     'ذخیره تنظیمات'
                   )}
                 </button>
-                <button type="button" className="btn-secondary" disabled={busy} onClick={() => void testConnection()}>
-                  {testing ? 'در حال تست…' : 'تست اتصال'}
+                <button
+                  type="button"
+                  className="btn btn-secondary justify-center px-4 py-2.5 text-small disabled:opacity-50"
+                  disabled={busy}
+                  onClick={() => void testConnection()}
+                >
+                  {testing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      در حال تست…
+                    </>
+                  ) : (
+                    'تست اتصال'
+                  )}
                 </button>
               </div>
-
-              {message ? <p className="text-small text-success">{message}</p> : null}
-              {error ? <p className="text-small text-error">{error}</p> : null}
             </div>
           )}
         </div>

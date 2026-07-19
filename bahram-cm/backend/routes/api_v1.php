@@ -290,6 +290,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::put('media/ftp/connection', [MediaFtpController::class, 'updateConnection']);
     Route::post('media/ftp/connection/test', [MediaFtpController::class, 'testConnection']);
     Route::get('media/ftp/list', [MediaFtpController::class, 'list']);
+    Route::post('media/ftp/sync', [MediaFtpController::class, 'sync']);
     Route::delete('media/ftp/file', [MediaFtpController::class, 'destroyRemote']);
     Route::post('media/{medium}/ftp/push', [MediaFtpController::class, 'push']);
     Route::post('media/{medium}/ftp/pull', [MediaFtpController::class, 'pull']);

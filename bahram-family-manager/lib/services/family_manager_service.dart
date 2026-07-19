@@ -354,24 +354,27 @@ class FamilyManagerService {
     required Uint8List bytes,
     required String filename,
     required String type,
+    bool? optimizeImages,
     void Function(double progress)? onProgress,
   }) async {
     final size = bytes.length;
     if (size <= _chunkThresholdBytes) {
-      return _uploadSimple(bytes, filename, type, onProgress: onProgress);
+      return _uploadSimple(bytes, filename, type, optimizeImages: optimizeImages, onProgress: onProgress);
     }
-    return _uploadChunked(bytes, filename, type, onProgress: onProgress);
+    return _uploadChunked(bytes, filename, type, optimizeImages: optimizeImages, onProgress: onProgress);
   }
 
   Future<FamilyMediaRef> _uploadSimple(
     Uint8List bytes,
     String filename,
     String type, {
+    bool? optimizeImages,
     void Function(double progress)? onProgress,
   }) async {
     final form = FormData.fromMap({
       'type': type,
       'file': MultipartFile.fromBytes(bytes, filename: filename),
+      if (optimizeImages != null) 'optimize_images': optimizeImages,
     });
 
     final res = await api.postForm(
@@ -388,6 +391,7 @@ class FamilyManagerService {
     Uint8List bytes,
     String filename,
     String type, {
+    bool? optimizeImages,
     void Function(double progress)? onProgress,
   }) async {
     final totalSize = bytes.length;
@@ -397,6 +401,7 @@ class FamilyManagerService {
       'filename': filename,
       'total_size': totalSize,
       'chunk_size': _chunkSizeBytes,
+      if (optimizeImages != null) 'optimize_images': optimizeImages,
     });
     final session = (sessionRes['data'] as Map).cast<String, dynamic>();
     final ulid = session['ulid'] as String;

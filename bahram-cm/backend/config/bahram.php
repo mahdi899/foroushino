@@ -91,11 +91,11 @@ return [
     'image_optimizer' => [
         'tinify_key' => env('TINIFY_API_KEY'),
         'resmush_enabled' => filter_var(env('RESMUSH_ENABLED', true), FILTER_VALIDATE_BOOL),
-        'resmush_quality' => (int) env('RESMUSH_QUALITY', 85),
+        'resmush_quality' => (int) env('RESMUSH_QUALITY', 95),
         'resmush_user_agent' => env('RESMUSH_USER_AGENT', 'BahramCMS/1.0'),
         'resmush_referer' => env('RESMUSH_REFERER', env('FRONTEND_URL', 'http://localhost:3000')),
         'convert_webp' => filter_var(env('IMAGE_OPTIMIZER_WEBP', true), FILTER_VALIDATE_BOOL),
-        'webp_quality' => (int) env('IMAGE_OPTIMIZER_WEBP_QUALITY', 85),
+        'webp_quality' => (int) env('IMAGE_OPTIMIZER_WEBP_QUALITY', 95),
         'max_dimension' => (int) env('IMAGE_OPTIMIZER_MAX_DIMENSION', 2560),
         'session_ttl_minutes' => (int) env('IMAGE_OPTIMIZER_SESSION_TTL', 30),
     ],

@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type SetStateAction } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from 'react';
 import { Lock } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { EmojiRichText } from '@/components/emoji/EmojiRichText';
@@ -84,6 +84,61 @@ function shouldHideActionPrompt(blocks: FamilyPostBlock[], prompt: string): bool
     });
 }
 
+function sortBlocks(blocks: FamilyPostBlock[]): FamilyPostBlock[] {
+  return [...blocks].sort((a, b) => a.position - b.position);
+}
+
+function renderPostBodyBlocks(
+  blocks: FamilyPostBlock[],
+  postId: number,
+  authorName: string,
+  constrained?: boolean,
+) {
+  const sorted = sortBlocks(blocks);
+  const mediaBlocks = sorted.filter((block) => block.type === 'image' || block.type === 'video' || block.type === 'audio');
+  const textBlocks = sorted.filter((block) => block.type === 'text' || block.type === 'article_reference');
+
+  const mediaNodes: ReactNode[] = [];
+  let imageBatch: FamilyPostBlock[] = [];
+
+  const flushImageBatch = () => {
+    if (imageBatch.length === 1 && imageBatch[0].media) {
+      mediaNodes.push(
+        <ImageBlock key={imageBatch[0].id} media={imageBatch[0].media} constrained={constrained} />,
+      );
+    } else if (imageBatch.length > 1) {
+      mediaNodes.push(
+        <ImageAlbumBlock
+          key={`album-${imageBatch.map((block) => block.id).join('-')}`}
+          items={imageBatch.map((block) => block.media!).filter(Boolean)}
+          constrained={constrained}
+        />,
+      );
+    }
+    imageBatch = [];
+  };
+
+  for (const block of mediaBlocks) {
+    if (block.type === 'image' && block.media) {
+      imageBatch.push(block);
+      continue;
+    }
+
+    flushImageBatch();
+    const node = renderBlock(block, postId, authorName);
+    if (node) mediaNodes.push(node);
+  }
+
+  flushImageBatch();
+
+  return (
+    <>
+      {mediaNodes}
+      {textBlocks.map((block) => renderBlock(block, postId, authorName))}
+    </>
+  );
+}
+
 function renderBlock(block: FamilyPostBlock, postId: number, authorName: string) {
   switch (block.type) {
     case 'text':
@@ -153,8 +208,6 @@ function FeedPostCard({
 }) {
   const blocks = post.blocks ?? [];
   const actions = post.actions ?? [];
-  const imageBlocks = blocks.filter((b) => b.type === 'image' && b.media);
-  const otherBlocks = blocks.filter((b) => b.type !== 'image');
   const reduceMotion = useReducedMotion();
   const reactionBarRef = useRef<ReactionBarHandle>(null);
   const swipeRef = useRef<{
@@ -319,25 +372,20 @@ function FeedPostCard({
               userName={post.reply_context.user_name}
             />
           )}
-          {otherBlocks.map((b) => renderBlock(b, post.id, post.author.name))}
-          {imageBlocks.length === 1 && imageBlocks[0].media ? (
-            <ImageBlock media={imageBlocks[0].media} constrained />
-          ) : imageBlocks.length > 1 ? (
-            <ImageAlbumBlock items={imageBlocks.map((b) => b.media!).filter(Boolean)} constrained />
-          ) : null}
+          {renderPostBodyBlocks(blocks, post.id, post.author.name, true)}
+          {previewMode
+            ? null
+            : actions.map((action) => (
+                <ActionCard
+                  key={`${viewerKey}-${action.id}`}
+                  action={action}
+                  memberCount={memberCount}
+                  isStaff={isStaff}
+                  hidePrompt={shouldHideActionPrompt(blocks, action.prompt)}
+                  inline
+                />
+              ))}
         </div>
-
-        {previewMode
-          ? null
-          : actions.map((action) => (
-              <ActionCard
-                key={`${viewerKey}-${action.id}`}
-                action={action}
-                memberCount={memberCount}
-                isStaff={isStaff}
-                hidePrompt={shouldHideActionPrompt(blocks, action.prompt)}
-              />
-            ))}
 
         <div className="family-post-bubble__foot-row" dir="ltr">
           <div className="family-post-bubble__reactions">
@@ -432,8 +480,6 @@ export const PostCard = memo(function PostCard({
 
   const blocks = post.blocks ?? [];
   const actions = post.actions ?? [];
-  const imageBlocks = blocks.filter((b) => b.type === 'image' && b.media);
-  const otherBlocks = blocks.filter((b) => b.type !== 'image');
   const constrainedMedia = variant === 'modal';
   const isFeed = variant === 'feed';
 
@@ -491,26 +537,20 @@ export const PostCard = memo(function PostCard({
             userName={post.reply_context.user_name}
           />
         )}
-        {otherBlocks.map((b) => renderBlock(b, post.id, post.author.name))}
-        {imageBlocks.length === 1 && imageBlocks[0].media ? (
-          <ImageBlock media={imageBlocks[0].media} constrained={constrainedMedia} />
-        ) : imageBlocks.length > 1 ? (
-          <ImageAlbumBlock
-            items={imageBlocks.map((b) => b.media!).filter(Boolean)}
-            constrained={constrainedMedia}
-          />
-        ) : null}
+        {renderPostBodyBlocks(blocks, post.id, post.author.name, constrainedMedia)}
+        {previewMode
+          ? null
+          : actions.map((action) => (
+              <ActionCard
+                key={`${viewerKey}-${action.id}`}
+                action={action}
+                memberCount={memberCount}
+                isStaff={isStaff}
+                hidePrompt={shouldHideActionPrompt(blocks, action.prompt)}
+                inline
+              />
+            ))}
       </div>
-
-      {previewMode ? null : actions.map((action) => (
-        <ActionCard
-          key={`${viewerKey}-${action.id}`}
-          action={action}
-          memberCount={memberCount}
-          isStaff={isStaff}
-          hidePrompt={shouldHideActionPrompt(blocks, action.prompt)}
-        />
-      ))}
 
       <div className="space-y-2 border-t border-[var(--family-border-subtle)] pt-2.5">
         <div dir="ltr" className="flex items-end justify-between gap-x-2">

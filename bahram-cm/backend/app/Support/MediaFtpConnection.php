@@ -50,6 +50,11 @@ final class MediaFtpConnection
         });
     }
 
+    public static function forgetCachedConfig(): void
+    {
+        Cache::forget(self::CACHE_KEY);
+    }
+
     /** @return array<string, mixed> */
     public static function publicView(): array
     {

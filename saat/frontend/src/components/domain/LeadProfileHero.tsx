@@ -7,6 +7,7 @@ import { ProductLink, resolveProductFromStore } from '@/components/domain/Produc
 import { ContactStatusBadge, PriorityBadge, SourceChip } from './Badges'
 import { sourceBadgeClass, sourceIcon } from './icons'
 import { formatCustomerPhone } from '@/lib/phonePrivacy'
+import { leadDisplayCode } from '@/lib/leadCode'
 import { toFa } from '@/lib/format'
 import { useStore } from '@/store/useStore'
 import { cn } from '@/lib/cn'
@@ -109,12 +110,19 @@ export function LeadProfileHero({ lead }: { lead: Lead }) {
             {lead.priority > 1 && <PriorityBadge priority={lead.priority} size="lg" />}
           </div>
 
+          <p className="mt-4 text-[11px] font-semibold text-[#8E8E93] dark:text-[#98989D]">
+            کد مشتری{' '}
+            <span dir="ltr" className="text-[13px] font-bold tabular-nums text-neutral-700 dark:text-neutral-200">
+              {leadDisplayCode(lead)}
+            </span>
+          </p>
+
           {lead.product ? (
             <ProductLink
               product={leadProduct}
               productId={lead.productId}
               className={cn(
-                'mt-5 block max-w-full text-center text-[13px] font-semibold leading-snug',
+                'mt-1.5 block max-w-full text-center text-[13px] font-semibold leading-snug',
                 leadProduct?.slug
                   ? 'text-[#3390EC] dark:text-[#8774E1]'
                   : 'text-neutral-600 dark:text-neutral-300',
@@ -127,7 +135,7 @@ export function LeadProfileHero({ lead }: { lead: Lead }) {
           <div
             className={cn(
               'glass-inset flex w-full items-center justify-center gap-5 rounded-[18px] border border-white/50 px-5 py-3.5 dark:border-white/10',
-              lead.product ? 'mt-2.5' : 'mt-5',
+              'mt-2.5',
             )}
           >
             <span className={cn('inline-flex items-center gap-2 text-[15px] font-semibold', theme.phone)}>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Copy, ExternalLink, Loader2, Maximize2, Sparkles, Trash2, Wand2, X } from 'lucide-react';
+import { ExternalLink, HardDriveDownload, HardDriveUpload, Loader2, Maximize2, Sparkles, Trash2, Wand2, X } from 'lucide-react';
 import type { AdminMediaItem } from '@/lib/admin/mediaTypes';
 import {
   confirmGalleryMediaReplace,
@@ -10,11 +10,13 @@ import {
   removeGalleryMedia,
   rewriteMediaAltWithAi,
   saveMediaAlt,
+  transferGalleryMedia,
 } from './actions';
 import { MediaOptimizeModal } from './MediaOptimizeModal';
 import type { MediaOptimizePreview } from '@/lib/admin/mediaOptimize';
 import { MediaPreview } from '@/components/admin/MediaPreview';
 import { MediaZoomOverlay } from '@/components/admin/MediaZoomOverlay';
+import { inferAdminMediaKind } from '@/lib/admin/mediaKind';
 import { resolveMediaUrl } from '@/lib/mediaUrl';
 
 interface MediaEditModalProps {
@@ -39,7 +41,7 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [transferring, setTransferring] = useState(false);
   const [zoomOpen, setZoomOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmOptimize, setConfirmOptimize] = useState(false);
@@ -54,7 +56,7 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
     setPreviewUrl(item?.url ?? '');
     setError('');
     setNotice('');
-    setCopied(false);
+    setTransferring(false);
     setZoomOpen(false);
     setConfirmDelete(false);
     setConfirmOptimize(false);
@@ -63,7 +65,25 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
 
   if (!item) return null;
 
+  const mediaKind = inferAdminMediaKind(item.url, item.mime);
+  const mediaKindLabel =
+    mediaKind === 'video' ? 'ویدیو' : mediaKind === 'audio' ? 'صوت' : mediaKind === 'image' ? 'تصویر' : 'رسانه';
   const canOptimize = isOptimizableImage(item);
+  const isRemote = item.isRemote === true;
+
+  async function onTransfer() {
+    setTransferring(true);
+    setError('');
+    setNotice('');
+    const res = await transferGalleryMedia(item!.id, isRemote ? 'pull' : 'push');
+    setTransferring(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    setNotice(isRemote ? 'فایل به سرور منتقل شد.' : 'فایل به هاست دانلود منتقل شد.');
+    onSaved(res.item);
+  }
 
   async function onSave() {
     const nextAlt = alt.trim() || title.trim();
@@ -113,16 +133,6 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
     onTrashed?.();
     onSaved();
     onClose();
-  }
-
-  async function copyUrl() {
-    try {
-      await navigator.clipboard.writeText(item!.url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setError('کپی لینک ناموفق بود.');
-    }
   }
 
   async function startOptimize() {
@@ -189,7 +199,7 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
         >
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <p id="media-edit-title" className="text-small font-semibold text-primary-dark">
-              مدیریت تصویر
+              مدیریت {mediaKindLabel}
             </p>
             <button type="button" onClick={onClose} className="admin-icon-btn" aria-label="بستن">
               <X className="h-5 w-5" />
@@ -197,19 +207,20 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
           </div>
 
           <div className="p-4">
-            <div className="mx-auto mb-4 w-full max-w-sm">
+            <div className="mx-auto mb-4 w-full max-w-md">
               <MediaPreview
                 src={previewUrl || item.url}
                 persistSrc={item.persistSrc}
                 legacyPath={item.legacyPath}
                 alt={alt || title || item.label}
+                mime={item.mime}
               />
 
-              <div className="mt-3 flex flex-nowrap items-stretch gap-2">
+              <div className="mt-3 flex flex-nowrap items-stretch gap-1.5">
                 <button
                   type="button"
                   onClick={() => setZoomOpen(true)}
-                  className="btn btn-secondary min-w-0 flex-1 justify-center py-1.5 text-caption whitespace-nowrap"
+                  className="btn btn-secondary min-w-0 flex-1 justify-center gap-1 px-1.5 py-1.5 text-caption whitespace-nowrap"
                 >
                   <Maximize2 className="h-3.5 w-3.5 shrink-0" />
                   بزرگ‌نمایی
@@ -219,7 +230,7 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
                     type="button"
                     disabled={busy || optimizing || confirmingOptimize}
                     onClick={() => setConfirmOptimize(true)}
-                    className="btn btn-secondary min-w-0 flex-1 justify-center py-1.5 text-caption whitespace-nowrap"
+                    className="btn btn-secondary min-w-0 flex-1 justify-center gap-1 px-1.5 py-1.5 text-caption whitespace-nowrap"
                   >
                     {optimizing ? (
                       <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
@@ -233,20 +244,32 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
                   href={resolveMediaUrl(previewUrl || item.url)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn btn-secondary min-w-0 flex-1 justify-center py-1.5 text-caption whitespace-nowrap"
+                  className="btn btn-secondary min-w-0 flex-1 justify-center gap-1 px-1.5 py-1.5 text-caption whitespace-nowrap"
                 >
                   <ExternalLink className="h-3.5 w-3.5 shrink-0" />
                   باز کردن
                 </a>
                 <button
                   type="button"
-                  onClick={copyUrl}
-                  className="btn btn-secondary min-w-0 flex-1 justify-center py-1.5 text-caption whitespace-nowrap"
+                  disabled={busy || transferring || optimizing || confirmingOptimize}
+                  onClick={() => void onTransfer()}
+                  className="btn btn-secondary min-w-[4.75rem] flex-[1.15] justify-center gap-0.5 px-1 py-1.5 text-[11px] leading-tight whitespace-nowrap"
+                  title={isRemote ? 'بازگرداندن فایل به سرور اصلی' : 'انتقال فایل به هاست دانلود'}
                 >
-                  <Copy className="h-3.5 w-3.5 shrink-0" />
-                  {copied ? 'کپی شد' : 'کپی لینک'}
+                  {transferring ? (
+                    <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                  ) : isRemote ? (
+                    <HardDriveDownload className="h-3 w-3 shrink-0" />
+                  ) : (
+                    <HardDriveUpload className="h-3 w-3 shrink-0" />
+                  )}
+                  {transferring ? 'انتقال…' : isRemote ? 'به سرور' : 'به هاست'}
                 </button>
               </div>
+              <p className="mt-2 text-center text-caption text-muted">
+                مکان فعلی: {isRemote ? 'هاست دانلود' : 'سرور'}
+                {item.disk ? ` (${item.disk})` : ''}
+              </p>
             </div>
 
             {confirmOptimize && (
@@ -279,7 +302,7 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
 
             {confirmDelete ? (
               <div className="mb-3 rounded-lg border border-error/30 bg-error/5 p-4">
-                <p className="text-small font-medium text-text">این تصویر به سطل زباله منتقل شود؟</p>
+                <p className="text-small font-medium text-text">این {mediaKindLabel} به سطل زباله منتقل شود؟</p>
                 <p className="mt-1.5 text-caption leading-relaxed text-text-muted">
                   تا ۲۴ ساعت در سطل زباله می‌ماند و قابل بازیابی است؛ بعد از آن برای همیشه حذف می‌شود.
                 </p>
@@ -366,6 +389,7 @@ export function MediaEditModal({ item, onClose, onSaved, onTrashed }: MediaEditM
             persistSrc={item.persistSrc}
             legacyPath={item.legacyPath}
             alt={alt || title || item.label}
+            mime={item.mime}
             onClose={() => setZoomOpen(false)}
           />
         )}

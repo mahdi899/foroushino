@@ -65,7 +65,17 @@ class ImageOptimizerSettingsService
             return max(0, min(100, (int) $this->stored()['resmush_quality']));
         }
 
-        return (int) config('bahram.image_optimizer.resmush_quality', 85);
+        return (int) config('bahram.image_optimizer.resmush_quality', 95);
+    }
+
+    /** WebP encode quality — follows reSmush panel quality for a single knob. */
+    public function webpQuality(): int
+    {
+        if (isset($this->stored()['webp_quality'])) {
+            return max(0, min(100, (int) $this->stored()['webp_quality']));
+        }
+
+        return $this->resmushQuality();
     }
 
     public function resmushReferer(): string

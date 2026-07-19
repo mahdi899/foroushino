@@ -31,7 +31,7 @@ export function engineLabel(engine: string): string {
     {
       tinify: 'TinyPNG',
       resmush: 'reSmush.it',
-      gd: 'WebP (GD)',
+      gd: 'WebP (GD · آخرین fallback)',
       copy: 'بدون بهبود',
       none: '—',
     }[engine] ?? engine

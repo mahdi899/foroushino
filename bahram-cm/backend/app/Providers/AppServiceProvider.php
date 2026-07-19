@@ -146,9 +146,11 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $diskName = MediaFtpConnection::diskName();
+            $diskConfig = MediaFtpConnection::toDiskConfig();
 
-            config(["filesystems.disks.{$diskName}" => MediaFtpConnection::toDiskConfig()]);
+            config(["filesystems.disks.{$diskName}" => $diskConfig]);
             config(['bahram.uploads.public_disk' => $diskName]);
+            config(['filesystems.disks.family_media_ftp' => array_merge($diskConfig, ['throw' => true])]);
         } catch (\Throwable) {
             // DB not reachable yet at this point in the boot cycle — the
             // static env-based disk config (if any) remains in effect.

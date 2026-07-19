@@ -127,7 +127,7 @@ final class FamilyManagerPostPresenter
             'waveform' => $media->waveform,
             'failure_reason' => $media->failure_reason,
             'cdn_url' => $media->cdnUrl(),
-            'url' => FamilyMediaUrl::fromPath($media->storage_path),
+            'url' => FamilyMediaUrl::fromPath($media->storage_path, $media->disk),
         ];
     }
 }

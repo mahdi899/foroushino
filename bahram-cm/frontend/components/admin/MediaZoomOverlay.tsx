@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Minus, Plus, RotateCcw, X } from 'lucide-react';
 import { MediaThumb } from '@/components/admin/MediaThumb';
+import { inferAdminMediaKind } from '@/lib/admin/mediaKind';
 import { cn } from '@/lib/cn';
 
 type MediaZoomOverlayProps = {
@@ -10,6 +11,7 @@ type MediaZoomOverlayProps = {
   persistSrc: string;
   legacyPath?: string | null;
   alt: string;
+  mime?: string | null;
   onClose: () => void;
 };
 
@@ -38,11 +40,13 @@ export function MediaZoomOverlay({
   persistSrc,
   legacyPath,
   alt,
+  mime,
   onClose,
 }: MediaZoomOverlayProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const [natural, setNatural] = useState({ w: 0, h: 0 });
   const [zoom, setZoom] = useState(100);
+  const mediaKind = useMemo(() => inferAdminMediaKind(src, mime), [src, mime]);
 
   const applyFitZoom = useCallback((img: HTMLImageElement) => {
     const w = img.naturalWidth;
@@ -66,6 +70,49 @@ export function MediaZoomOverlay({
 
   const displayW = natural.w ? (natural.w * zoom) / 100 : undefined;
   const displayH = natural.h ? (natural.h * zoom) / 100 : undefined;
+
+  if (mediaKind === 'video' || mediaKind === 'audio') {
+    return (
+      <div
+        className="fixed inset-0 z-[60] flex flex-col bg-black/92"
+        onClick={onClose}
+        role="presentation"
+      >
+        <div
+          className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <p className="text-small font-medium text-white/90">{alt}</p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1.5 text-white/80 hover:bg-white/10 hover:text-white"
+            aria-label="بستن"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div
+          className="flex min-h-0 flex-1 items-center justify-center p-6"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <MediaThumb
+            src={src}
+            persistSrc={persistSrc}
+            legacyPath={legacyPath}
+            alt={alt}
+            mime={mime}
+            controls
+            className={cn(
+              mediaKind === 'video'
+                ? 'max-h-[min(80vh,720px)] w-full max-w-5xl rounded-lg bg-black object-contain'
+                : 'w-full max-w-xl',
+            )}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -156,7 +203,8 @@ export function MediaZoomOverlay({
             persistSrc={persistSrc}
             legacyPath={legacyPath}
             alt={alt}
-            onLoad={(event) => applyFitZoom(event.currentTarget)}
+            mime={mime}
+            onLoad={(event) => applyFitZoom(event.currentTarget as HTMLImageElement)}
             className={cn('block max-w-none object-contain')}
             style={{
               width: displayW,

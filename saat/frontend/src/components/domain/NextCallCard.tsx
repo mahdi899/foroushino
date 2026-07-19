@@ -129,24 +129,24 @@ export function NextCallCard({ lead, reason, onCall, onDetails, onSkip, canSkip 
             <h2 className="truncate text-[20px] font-bold leading-tight tracking-tight text-text">
               {lead.firstName} {lead.lastName}
             </h2>
+            <p className="mt-1 text-[11px] font-semibold text-text-soft">
+              کد مشتری{' '}
+              <span dir="ltr" className="font-bold tracking-wide text-text tabular-nums">
+                {leadDisplayCode(lead)}
+              </span>
+            </p>
             {lead.product ? (
               <ProductLink
                 product={leadProduct}
                 productId={lead.productId}
                 className={cn(
-                  'mt-1 block min-w-0 text-right text-[14px] font-bold leading-snug',
+                  'mt-0.5 block min-w-0 text-right text-[14px] font-bold leading-snug',
                   leadProduct?.slug ? TG : 'text-text-soft',
                 )}
               >
                 {lead.product}
               </ProductLink>
             ) : null}
-            <p className="mt-0.5 text-[11px] font-semibold text-text-soft">
-              کد مشتری{' '}
-              <span dir="ltr" className="font-bold tracking-wide text-text tabular-nums">
-                {leadDisplayCode(lead)}
-              </span>
-            </p>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <ContactStatusBadge temperature={lead.temperature} size="sm" />
               <span className="text-[11px] font-semibold tabular-nums text-text-soft">

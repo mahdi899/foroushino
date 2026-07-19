@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { adminFetch } from '@/lib/auth/session';
 import { suggestMediaAltWithAi, filenameToFallbackAlt } from '@/lib/ai/mediaAlt';
 import type { MediaOptimizePreview } from '@/lib/admin/mediaOptimize';
 import { SITE_ORIGIN } from '@/lib/api/config';
@@ -11,6 +12,7 @@ import {
   previewExistingMediaOptimizeApi,
   previewMediaOptimizeApi,
 } from '@/lib/admin/mediaOptimizeApi';
+import { mapAdminMediaRow } from '@/lib/admin/mapAdminMediaRow';
 import {
   deleteAdminMedia,
   getAdminMediaItems,
@@ -172,4 +174,37 @@ export async function rewriteMediaAltWithAi(
 
   revalidatePath('/admin/gallery');
   return { ok: true, alt, aiUsed: suggested.ok };
+}
+
+export async function transferGalleryMedia(
+  id: number,
+  direction: 'push' | 'pull',
+): Promise<{ ok: true; item: AdminMediaItem } | { ok: false; error: string }> {
+  try {
+    const res = await adminFetch<{
+      data: {
+        media: {
+          id: number;
+          url?: string | null;
+          view_url?: string | null;
+          legacy_path?: string | null;
+          alt_fa?: string | null;
+          category?: string | null;
+          mime?: string | null;
+          width?: number | null;
+          height?: number | null;
+          disk?: string | null;
+          is_remote?: boolean | null;
+        };
+      };
+    }>(`/media/${id}/ftp/${direction}`, { method: 'POST' });
+
+    revalidatePath('/admin/gallery');
+    return { ok: true, item: mapAdminMediaRow(res.data.media) };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'انتقال فایل ناموفق بود.',
+    };
+  }
 }
