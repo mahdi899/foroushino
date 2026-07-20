@@ -464,6 +464,13 @@ export function ImageZoomLightbox({
             <Plus className="h-4 w-4" />
           </button>
           <span className="mx-0.5 h-5 w-px bg-white/15" aria-hidden />
+          <FamilyMediaDownloadButton
+            url={activeUrl}
+            mediaId={activeMediaId}
+            label="ذخیره"
+            className="border-0 bg-transparent px-2 py-2 hover:bg-white/10"
+          />
+          <span className="mx-0.5 h-5 w-px bg-white/15" aria-hidden />
           <button
             type="button"
             onClick={resetTransform}
