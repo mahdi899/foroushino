@@ -136,11 +136,11 @@ final class TelegramSiteUrl
      * @param  list<list<array{text: string, url?: string, callback_data?: string}>>  $extraRows
      * @return array<string, mixed>
      */
-    public static function linkMarkup(?string $url, string $label, array $extraRows = []): array
+    public static function linkMarkup(?string $url, string $label, array $extraRows = [], ?string $style = null): array
     {
         $keyboard = $extraRows;
 
-        $button = self::inlineButton($label, $url);
+        $button = self::inlineButton($label, $url, $style);
         if ($button !== null) {
             array_unshift($keyboard, [$button]);
         }
@@ -172,10 +172,20 @@ final class TelegramSiteUrl
         return ! in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true);
     }
 
-    /** @return array{text: string, url: string}|null */
-    public static function inlineButton(string $label, ?string $url): ?array
+    /** @return array{text: string, url: string, style?: string}|null */
+    public static function inlineButton(string $label, ?string $url, ?string $style = null): ?array
     {
-        return self::isInlineButtonUrl($url) ? ['text' => $label, 'url' => (string) $url] : null;
+        if (! self::isInlineButtonUrl($url)) {
+            return null;
+        }
+
+        $button = ['text' => $label, 'url' => (string) $url];
+
+        if ($style !== null && in_array($style, ['primary', 'success', 'danger'], true)) {
+            $button['style'] = $style;
+        }
+
+        return $button;
     }
 
     /**

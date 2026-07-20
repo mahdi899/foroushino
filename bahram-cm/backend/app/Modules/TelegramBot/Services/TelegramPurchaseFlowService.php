@@ -124,7 +124,11 @@ class TelegramPurchaseFlowService
             $client->sendMessage($chatId, "{$product->title}\n\nروش پرداخت را انتخاب کنید:", [
                 'reply_markup' => [
                     'inline_keyboard' => [
-                        [['text' => '💳 زرین‌پال (آنلاین)', 'callback_data' => 'pay:zp:'.$productId]],
+                        [[
+                            'text' => '💳 زرین‌پال (آنلاین)',
+                            'callback_data' => 'pay:zp:'.$productId,
+                            'style' => 'success',
+                        ]],
                         [['text' => '🏧 کارت به کارت', 'callback_data' => 'pay:c2c:'.$productId]],
                     ],
                 ],
@@ -172,7 +176,7 @@ class TelegramPurchaseFlowService
         $client->sendMessage(
             $chatId,
             "سفارش #{$result['order_id']}\n{$product->title}\nمبلغ قابل پرداخت: {$amount} تومان\n\nبرای پرداخت، دکمه زیر را بزنید.",
-            TelegramSiteUrl::linkMarkup($result['payment_url'], '💳 پرداخت آنلاین'),
+            TelegramSiteUrl::linkMarkup($result['payment_url'], '💳 پرداخت آنلاین', [], 'success'),
         );
     }
 

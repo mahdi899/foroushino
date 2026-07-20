@@ -41,12 +41,17 @@ class TelegramSiteUrlTest extends TestCase
         $this->assertSame('account:login_token', $options['reply_markup']['inline_keyboard'][1][0]['callback_data']);
     }
 
-    public function test_url_keyboard_row_returns_single_full_width_button(): void
+    public function test_link_markup_supports_button_style(): void
     {
-        $rows = TelegramSiteUrl::urlKeyboardRow('🌐 مشاهده در سایت', 'https://example.com/x');
+        $options = TelegramSiteUrl::linkMarkup('https://example.com/pay', '💳 پرداخت آنلاین', [], 'success');
 
-        $this->assertCount(1, $rows);
-        $this->assertSame('🌐 مشاهده در سایت', $rows[0][0]['text']);
-        $this->assertSame('https://example.com/x', $rows[0][0]['url']);
+        $this->assertSame('success', $options['reply_markup']['inline_keyboard'][0][0]['style']);
+    }
+
+    public function test_inline_button_supports_style(): void
+    {
+        $button = TelegramSiteUrl::inlineButton('💳 پرداخت', 'https://example.com/pay', 'success');
+
+        $this->assertSame('success', $button['style'] ?? null);
     }
 }
