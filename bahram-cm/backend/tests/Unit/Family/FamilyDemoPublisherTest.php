@@ -6,9 +6,9 @@ use App\Enums\Family\FamilyMediaStatus;
 use App\Enums\Family\FamilyMediaType;
 use App\Models\FamilyMedia;
 use App\Models\User;
+use App\Services\Family\FamilyMediaSettingsService;
 use Database\Seeders\Support\FamilyDemoPublisher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -21,10 +21,9 @@ class FamilyDemoPublisherTest extends TestCase
         Storage::fake('public');
         Storage::fake('family_media_ftp');
 
-        Config::set('filesystems.disks.family_media_ftp', [
-            'driver' => 'local',
-            'root' => storage_path('framework/testing/disks/family_media_ftp'),
-        ]);
+        $this->mock(FamilyMediaSettingsService::class, function ($mock): void {
+            $mock->shouldReceive('uploadDisk')->andReturn('family_media_ftp');
+        });
 
         $path = 'media/family/demo/demo-voice.mp3';
         Storage::disk('public')->put($path, 'demo-audio-bytes');
@@ -53,13 +52,9 @@ class FamilyDemoPublisherTest extends TestCase
     {
         Storage::fake('public');
 
-        Config::set('filesystems.disks.family_media_ftp', [
-            'driver' => 'local',
-            'root' => storage_path('framework/testing/disks/family_media_ftp_empty'),
-            'host' => null,
-            'username' => null,
-            'password' => null,
-        ]);
+        $this->mock(FamilyMediaSettingsService::class, function ($mock): void {
+            $mock->shouldReceive('uploadDisk')->andReturn('public');
+        });
 
         $path = 'media/family/demo/demo-voice.mp3';
         Storage::disk('public')->put($path, 'demo-audio-bytes');

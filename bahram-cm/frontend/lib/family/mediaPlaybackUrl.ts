@@ -173,11 +173,28 @@ export function familyMediaStreamProxyUrl(mediaId: number): string | null {
   return `${window.location.origin}/api/family/media/${mediaId}/stream`;
 }
 
+function clubSameOriginMediaUrl(url: string | null | undefined): string | null {
+  const primary = resolveFamilyMediaPlaybackUrl(url);
+  if (!primary || typeof window === 'undefined' || !isFamilyClubOrigin()) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(primary);
+    const mediaPath = familyMediaPathname(parsed.pathname);
+    if (!mediaPath) return null;
+
+    return `${window.location.origin}${mediaPath}${parsed.search}`;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Playback URL candidates — same-origin stream first (FTP-safe), then CDN,
- * then club proxy fallback on rostami.club.
+ * Voice/video stream URLs — same-origin API proxy only (Range + FTP-safe).
+ * CDN is omitted: production files live on FTP and nginx CDN often 404s → decode errors.
  */
-export function resolveFamilyMediaPlaybackCandidates(
+export function resolveFamilyMediaStreamCandidates(
   url: string | null | undefined,
   mediaId?: number,
 ): string[] {
@@ -186,21 +203,32 @@ export function resolveFamilyMediaPlaybackCandidates(
   const proxy = mediaId ? familyMediaStreamProxyUrl(mediaId) : null;
   if (proxy) candidates.push(proxy);
 
+  const club = clubSameOriginMediaUrl(url);
+  if (club && !candidates.includes(club)) candidates.push(club);
+
+  if (candidates.length > 0) return candidates;
+
+  const primary = resolveFamilyMediaPlaybackUrl(url);
+  return primary ? [primary] : [];
+}
+
+/**
+ * Playback URL candidates — stream proxy first; CDN kept for legacy/no-id fallbacks.
+ */
+export function resolveFamilyMediaPlaybackCandidates(
+  url: string | null | undefined,
+  mediaId?: number,
+): string[] {
+  if (mediaId) {
+    return resolveFamilyMediaStreamCandidates(url, mediaId);
+  }
+
+  const candidates: string[] = [];
   const primary = resolveFamilyMediaPlaybackUrl(url);
   if (primary) candidates.push(primary);
 
-  if (typeof window !== 'undefined' && primary) {
-    try {
-      const parsed = new URL(primary);
-      const mediaPath = familyMediaPathname(parsed.pathname);
-      if (mediaPath && isFamilyClubOrigin()) {
-        const proxied = `${window.location.origin}${mediaPath}${parsed.search}`;
-        if (!candidates.includes(proxied)) candidates.push(proxied);
-      }
-    } catch {
-      // ignore
-    }
-  }
+  const club = clubSameOriginMediaUrl(url);
+  if (club && !candidates.includes(club)) candidates.push(club);
 
   return candidates;
 }

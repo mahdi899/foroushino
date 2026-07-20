@@ -1,4 +1,8 @@
-import { familyMediaPathname } from '@/lib/family/mediaPlaybackUrl';
+import {
+  familyMediaPathname,
+  familyMediaStreamProxyUrl,
+  resolveFamilyMediaDownloadUrl,
+} from '@/lib/family/mediaPlaybackUrl';
 
 /** Browser Cache API retention after a media item is viewed. */
 export const FAMILY_MEDIA_CACHE_TTL_MS = 3 * 24 * 60 * 60 * 1000;
@@ -41,6 +45,29 @@ export function familyMediaCacheFetchUrl(streamUrl: string): string {
   }
 
   return streamUrl;
+}
+
+function cacheFetchUrl(
+  canonicalUrl: string,
+  mediaId: number,
+  kind: FamilyMediaCacheKind,
+): string {
+  if (kind === 'video' || kind === 'voice') {
+    return familyMediaStreamProxyUrl(mediaId) ?? familyMediaCacheFetchUrl(canonicalUrl);
+  }
+
+  return familyMediaCacheFetchUrl(canonicalUrl);
+}
+
+function isSameOriginFetchUrl(fetchUrl: string): boolean {
+  if (typeof window === 'undefined') return false;
+  if (fetchUrl.startsWith('/')) return true;
+
+  try {
+    return new URL(fetchUrl, window.location.origin).origin === window.location.origin;
+  } catch {
+    return false;
+  }
 }
 
 function isFresh(response: Response): boolean {
@@ -156,21 +183,20 @@ export async function tryCacheFamilyMediaBlob(
   mediaId: number,
   kind: 'preview' | 'full',
   mimeType?: string | null,
+  mediaKind: Exclude<FamilyMediaCacheKind, 'preview' | 'full'> = 'image',
 ): Promise<Blob | null> {
   const cached = await readFamilyMediaBlob(kind, mediaId, url);
   if (cached) return withPreferredMimeType(cached, mimeType);
 
-  const fetchUrl = familyMediaCacheFetchUrl(url);
+  const fetchUrl = cacheFetchUrl(url, mediaId, mediaKind);
 
   try {
-    const sameOrigin =
-      fetchUrl.startsWith('/') ||
-      (typeof window !== 'undefined' && new URL(fetchUrl, window.location.origin).origin === window.location.origin);
+    const sameOrigin = isSameOriginFetchUrl(fetchUrl);
 
     const response = await fetch(fetchUrl, {
-      mode: 'cors',
-      credentials: sameOrigin ? 'same-origin' : 'omit',
-      cache: 'force-cache',
+      mode: sameOrigin ? 'same-origin' : 'cors',
+      credentials: sameOrigin ? 'include' : 'omit',
+      cache: sameOrigin ? 'default' : 'force-cache',
     });
     if (!response.ok) return null;
     const blob = withPreferredMimeType(await response.blob(), mimeType);
@@ -191,15 +217,13 @@ export function rememberFamilyMediaView(
   if (!url) return;
 
   const persist = () => {
-    void tryCacheFamilyMediaBlob(url, mediaId, 'full', mimeType);
+    void tryCacheFamilyMediaBlob(url, mediaId, 'full', mimeType, kind);
   };
 
-  // Voice/video stream via Range — defer full-file cache so it never steals bandwidth.
+  // Voice/video stream via Range — defer full-file cache so it never competes with playback.
   if (kind === 'voice' || kind === 'video') {
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      window.requestIdleCallback(persist, { timeout: 90_000 });
-    } else if (typeof window !== 'undefined') {
-      window.setTimeout(persist, 20_000);
+    if (typeof window !== 'undefined') {
+      window.setTimeout(persist, kind === 'video' ? 120_000 : 45_000);
     }
     return;
   }
@@ -214,9 +238,11 @@ export async function downloadFamilyMedia(
 ): Promise<void> {
   if (typeof document === 'undefined') return;
 
-  let blob = await readFamilyMediaBlob('full', mediaId, url);
+  const canonicalUrl = resolveFamilyMediaDownloadUrl(url) ?? url;
+
+  let blob = await readFamilyMediaBlob('full', mediaId, canonicalUrl);
   if (!blob) {
-    blob = await tryCacheFamilyMediaBlob(url, mediaId, 'full');
+    blob = await tryCacheFamilyMediaBlob(canonicalUrl, mediaId, 'full');
   }
 
   const name = filename ?? guessFilename(url);
@@ -224,10 +250,10 @@ export async function downloadFamilyMedia(
   anchor.rel = 'noopener';
 
   if (blob) {
-    anchor.href = getFamilyMediaBlobUrl(`download:${mediaId}:${url}`, blob);
+    anchor.href = getFamilyMediaBlobUrl(`download:${mediaId}:${canonicalUrl}`, blob);
     anchor.download = name;
   } else {
-    anchor.href = url;
+    anchor.href = canonicalUrl;
     anchor.target = '_blank';
     anchor.download = name;
   }

@@ -6,7 +6,7 @@ import { cn } from '@/lib/cn';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import {
-  resolveFamilyMediaPlaybackCandidates,
+  resolveFamilyMediaStreamCandidates,
   resolveFamilyMediaUrl,
 } from '@/lib/family/mediaPlaybackUrl';
 import { formatPlaybackSpeed } from '@/lib/family/playback';
@@ -96,7 +96,7 @@ export function VoiceBlock({
   const seekPositionRef = useRef(0);
   const streamUrl = useMemo(() => resolveFamilyMediaUrl(media.url), [media.url]);
   const playbackCandidates = useMemo(
-    () => resolveFamilyMediaPlaybackCandidates(media.url, media.id),
+    () => resolveFamilyMediaStreamCandidates(media.url, media.id),
     [media.id, media.url],
   );
   const [srcIndex, setSrcIndex] = useState(0);
@@ -331,7 +331,7 @@ export function VoiceBlock({
         preload="none"
         playsInline
         onPlay={() => {
-          rememberFamilyMediaView(activeSrc, media.id, 'voice', media.mime_type);
+          rememberFamilyMediaView(streamUrl ?? media.url, media.id, 'voice', media.mime_type);
           setPlaying(true);
           setBuffering(false);
           setLoadError(false);

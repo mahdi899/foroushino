@@ -1,4 +1,4 @@
-const CACHE = 'bahram-family-v5';
+const CACHE = 'bahram-family-v6';
 const PRECACHE = ['/family-manifest.webmanifest', '/pwa/icon/192', '/pwa/icon/512', '/apple-icon'];
 
 /**

@@ -41,7 +41,7 @@ export async function GET(
     cache: 'no-store',
   });
 
-  if (!upstream.ok) {
+  if (!upstream.ok && upstream.status !== 206) {
     return NextResponse.json({ error: 'Media not available' }, { status: upstream.status });
   }
 

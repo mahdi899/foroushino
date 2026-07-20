@@ -9,8 +9,8 @@ import { fontClassName } from '@/lib/fonts';
 import { getStories } from '@/lib/family/api';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import {
-  resolveFamilyMediaPlaybackCandidates,
   resolveFamilyMediaUrl,
+  resolveFamilyMediaStreamCandidates,
 } from '@/lib/family/mediaPlaybackUrl';
 import type { FamilyStory, FamilyStoryMedia } from '@/lib/family/types';
 
@@ -149,7 +149,9 @@ export function StoryViewer({
   const currentMedia = current?.media ?? null;
   const currentSrc = storyMediaSrc(currentMedia);
   const currentIsVideo = currentMedia ? isStoryVideo(currentMedia) : false;
-  const videoCandidates = currentSrc ? resolveFamilyMediaPlaybackCandidates(currentSrc, currentMedia?.id) : [];
+  const videoCandidates = currentSrc
+    ? resolveFamilyMediaStreamCandidates(currentSrc, currentMedia?.id)
+    : [];
   const activeVideoSrc = videoCandidates[videoSrcIndex] ?? currentSrc ?? '';
 
   const scheduleVideoAdvance = useCallback(
@@ -226,8 +228,8 @@ export function StoryViewer({
 
     videoEl.muted = true;
     videoEl.playsInline = true;
-    videoEl.preload = 'auto';
-    rememberFamilyMediaView(activeVideoSrc, currentMedia!.id, 'video', currentMedia!.mime_type);
+    videoEl.preload = 'metadata';
+    rememberFamilyMediaView(currentSrc ?? activeVideoSrc, currentMedia!.id, 'video', currentMedia!.mime_type);
 
     loadTimeoutRef.current = window.setTimeout(() => {
       if (cancelled || attempt !== playAttemptRef.current) return;
@@ -428,7 +430,7 @@ export function StoryViewer({
                           playsInline
                           muted
                           autoPlay
-                          preload="auto"
+                          preload="metadata"
                           onTimeUpdate={(e) => handleVideoTimeUpdate(e.currentTarget)}
                         />
                         {videoSlideState === 'loading' && (
