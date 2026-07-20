@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\BackupController;
 use App\Http\Controllers\Api\V1\Admin\CampaignController;
 use App\Http\Controllers\Api\V1\Admin\IntegrationTokenController;
 use App\Http\Controllers\Api\V1\Admin\LeadSourceController;
@@ -16,6 +17,13 @@ Route::prefix('admin')->middleware('throttle:writes')->group(function (): void {
     Route::get('/settings', [SettingsController::class, 'show'])->withoutMiddleware('throttle:writes');
     Route::patch('/settings', [SettingsController::class, 'update']);
     Route::post('/settings/test-melipayamak', [SettingsController::class, 'testMelipayamak']);
+
+    Route::get('/backup', [BackupController::class, 'show'])->withoutMiddleware('throttle:writes');
+    Route::patch('/backup', [BackupController::class, 'update']);
+    Route::post('/backup/run', [BackupController::class, 'run']);
+    Route::get('/backup/export/database', [BackupController::class, 'exportDatabase'])->withoutMiddleware('throttle:writes');
+    Route::get('/backup/export/storage', [BackupController::class, 'exportStorage'])->withoutMiddleware('throttle:writes');
+    Route::post('/backup/import/database', [BackupController::class, 'importDatabase']);
 
     Route::get('/users', [UserAdminController::class, 'index'])->withoutMiddleware('throttle:writes');
     Route::post('/users', [UserAdminController::class, 'store']);

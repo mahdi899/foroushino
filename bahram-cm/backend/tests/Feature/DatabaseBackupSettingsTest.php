@@ -106,6 +106,41 @@ class DatabaseBackupSettingsTest extends TestCase
         $this->assertFalse(app(DatabaseBackupService::class)->shouldRunScheduled());
     }
 
+    public function test_super_admin_can_export_media_zip(): void
+    {
+        $admin = $this->superAdmin();
+        $mediaDir = storage_path('app/public/media/site');
+        if (! is_dir($mediaDir)) {
+            mkdir($mediaDir, 0777, true);
+        }
+        file_put_contents($mediaDir.'/test-backup.txt', 'backup-test');
+
+        $this->actingAs($admin, 'sanctum')
+            ->get('/api/v1/panel/settings/database-backup/export/media')
+            ->assertOk()
+            ->assertHeader('content-disposition');
+
+        @unlink($mediaDir.'/test-backup.txt');
+    }
+
+    public function test_create_media_artifact_builds_zip(): void
+    {
+        $mediaDir = storage_path('app/public/media/site');
+        if (! is_dir($mediaDir)) {
+            mkdir($mediaDir, 0777, true);
+        }
+        file_put_contents($mediaDir.'/artifact-test.txt', 'x');
+
+        $artifact = app(DatabaseBackupService::class)->createMediaArtifact();
+
+        $this->assertStringEndsWith('.zip', $artifact['filename']);
+        $this->assertGreaterThan(0, $artifact['size_bytes']);
+        $this->assertFileExists($artifact['path']);
+
+        @unlink($artifact['path']);
+        @unlink($mediaDir.'/artifact-test.txt');
+    }
+
     private function superAdmin(): User
     {
         $user = User::factory()->create([

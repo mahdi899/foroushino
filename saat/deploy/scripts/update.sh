@@ -89,7 +89,7 @@ if [[ -z "$FRONTEND_CHANGED" && -z "$BACKEND_CHANGED" ]]; then
   print_warning "No saat frontend/backend changes in last commit"
 fi
 
-systemctl reload php8.3-fpm 2>/dev/null || systemctl reload php8.2-fpm 2>/dev/null || true
+systemctl reload php8.4-fpm 2>/dev/null || systemctl reload php8.3-fpm 2>/dev/null || true
 systemctl reload nginx 2>/dev/null || true
 
 print_status "Quick update finished"

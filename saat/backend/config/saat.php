@@ -11,4 +11,9 @@ return [
         static fn (string $phone): string => preg_replace('/\D+/', '', trim($phone)) ?? '',
         explode(',', (string) env('SAAT_PASSWORD_LOGIN_PHONES', '09367018089')),
     ))),
+
+    'backup' => [
+        'mysqldump_path' => env('MYSQLDUMP_PATH'),
+        'mysql_path' => env('MYSQL_PATH'),
+    ],
 ];

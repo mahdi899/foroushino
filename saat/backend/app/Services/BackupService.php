@@ -13,31 +13,24 @@ use Symfony\Component\Process\Process;
 use Throwable;
 use ZipArchive;
 
-class DatabaseBackupService
+class BackupService
 {
-    private const TELEGRAM_MAX_BYTES = 50 * 1024 * 1024;
-
     /** @return array<string, mixed> */
     public function adminView(): array
     {
         $settings = DatabaseBackupSetting::current();
-        $telegram = TelegramBotClient::fromAdminConfig();
-        $chatIds = TelegramBotClient::adminChatIds();
 
         return [
             'is_auto_enabled' => (bool) $settings->is_auto_enabled,
             'schedule_time' => $settings->schedule_time ?? '04:00',
-            'send_to_telegram' => (bool) $settings->send_to_telegram,
             'retention_count' => (int) ($settings->retention_count ?? 30),
             'last_backup_at' => $settings->last_backup_at?->toIso8601String(),
             'last_backup_status' => $settings->last_backup_status,
             'last_backup_message' => $settings->last_backup_message,
             'last_backup_size_bytes' => $settings->last_backup_size_bytes,
-            'telegram_configured' => $telegram->isConfigured() && $chatIds !== [],
-            'telegram_chat_count' => count($chatIds),
             'mysqldump_available' => $this->mysqldumpBinary() !== null,
             'database_name' => $this->databaseName(),
-            'site_media_available' => is_dir($this->siteMediaPath()),
+            'storage_app_exists' => is_dir(storage_path('app')),
         ];
     }
 
@@ -59,10 +52,6 @@ class DatabaseBackupService
             $patch['schedule_time'] = $time;
         }
 
-        if (array_key_exists('send_to_telegram', $input)) {
-            $patch['send_to_telegram'] = (bool) $input['send_to_telegram'];
-        }
-
         if (array_key_exists('retention_count', $input)) {
             $patch['retention_count'] = max(1, min(30, (int) $input['retention_count']));
         }
@@ -75,7 +64,7 @@ class DatabaseBackupService
     }
 
     /** @return array{ok: bool, message: string, path?: string, filename?: string, size_bytes?: int} */
-    public function runBackup(bool $sendToTelegram): array
+    public function runBackup(): array
     {
         $settings = DatabaseBackupSetting::current();
 
@@ -83,35 +72,22 @@ class DatabaseBackupService
             $artifact = $this->createDumpArtifact();
             $this->cleanupRetention((int) ($settings->retention_count ?? 30));
 
-            $message = 'بکاپ دیتابیس با موفقیت ساخته شد.';
-            $status = 'success';
-
-            if ($sendToTelegram) {
-                $telegramResult = $this->sendArtifactToTelegram($artifact);
-                if (! $telegramResult['ok']) {
-                    $status = 'partial';
-                    $message = $telegramResult['message'];
-                } else {
-                    $message = 'بکاپ ساخته و به تلگرام ارسال شد.';
-                }
-            }
-
             $settings->update([
                 'last_backup_at' => now(),
-                'last_backup_status' => $status,
-                'last_backup_message' => $message,
+                'last_backup_status' => 'success',
+                'last_backup_message' => 'بکاپ دیتابیس با موفقیت ساخته شد.',
                 'last_backup_size_bytes' => $artifact['size_bytes'],
             ]);
 
             return [
                 'ok' => true,
-                'message' => $message,
+                'message' => 'بکاپ دیتابیس با موفقیت ساخته شد.',
                 'path' => $artifact['path'],
                 'filename' => $artifact['filename'],
                 'size_bytes' => $artifact['size_bytes'],
             ];
         } catch (Throwable $e) {
-            Log::error('Database backup failed.', ['message' => $e->getMessage()]);
+            Log::error('Saat database backup failed.', ['message' => $e->getMessage()]);
 
             $settings->update([
                 'last_backup_at' => now(),
@@ -147,41 +123,9 @@ class DatabaseBackupService
             return ['ok' => true, 'message' => 'زمان اجرای بکاپ فرا نرسیده است.'];
         }
 
-        $settings = DatabaseBackupSetting::current();
-        $result = $this->runBackup((bool) $settings->send_to_telegram);
+        $result = $this->runBackup();
 
         return ['ok' => $result['ok'], 'message' => $result['message']];
-    }
-
-    /** @return array{ok: bool, message: string} */
-    public function testTelegram(): array
-    {
-        $telegram = TelegramBotClient::fromAdminConfig();
-        $chatIds = TelegramBotClient::adminChatIds();
-
-        if (! $telegram->isConfigured()) {
-            return ['ok' => false, 'message' => 'توکن ربات تلگرام در بخش مسیردهی پیامک تنظیم نشده است.'];
-        }
-
-        if ($chatIds === []) {
-            return ['ok' => false, 'message' => 'شناسه چت تلگرام ادمین در تنظیمات پیامک وارد نشده است.'];
-        }
-
-        $sent = 0;
-        foreach ($chatIds as $chatId) {
-            if ($telegram->sendMessage(
-                $chatId,
-                '<b>تست بکاپ دیتابیس</b>'."\n".'اتصال ربات تلگرام برای ارسال فایل بکاپ آماده است.',
-            )) {
-                $sent++;
-            }
-        }
-
-        if ($sent === 0) {
-            return ['ok' => false, 'message' => 'ارسال پیام تست به تلگرام ناموفق بود.'];
-        }
-
-        return ['ok' => true, 'message' => "پیام تست به {$sent} چت ارسال شد."];
     }
 
     /** @return array{path: string, filename: string, size_bytes: int} */
@@ -191,7 +135,7 @@ class DatabaseBackupService
 
         $binary = $this->mysqldumpBinary();
         if ($binary === null) {
-            throw new RuntimeException('ابزار mysqldump یافت نشد. مسیر MYSQLDUMP_PATH را در env تنظیم کنید.');
+            throw new RuntimeException('ابزار mysqldump یافت نشد. MYSQLDUMP_PATH را در env تنظیم کنید.');
         }
 
         $config = $this->mysqlConfig();
@@ -249,18 +193,18 @@ class DatabaseBackupService
     }
 
     /** @return array{path: string, filename: string, size_bytes: int} */
-    public function createMediaArtifact(): array
+    public function createStorageArtifact(): array
     {
-        $source = $this->siteMediaPath();
+        $source = storage_path('app');
         if (! is_dir($source)) {
-            throw new RuntimeException('پوشه media یافت نشد.');
+            throw new RuntimeException('پوشه storage/app یافت نشد.');
         }
 
-        $dir = $this->mediaBackupDirectory();
+        $dir = $this->backupDirectory();
         File::ensureDirectoryExists($dir);
 
         $timestamp = now()->format('Y-m-d_His');
-        $filename = "media_backup_{$timestamp}.zip";
+        $filename = "storage_app_{$timestamp}.zip";
         $zipPath = $dir.DIRECTORY_SEPARATOR.$filename;
 
         $zip = new ZipArchive();
@@ -273,10 +217,9 @@ class DatabaseBackupService
             $zip->close();
             @unlink($zipPath);
 
-            throw new RuntimeException('مسیر media نامعتبر است.');
+            throw new RuntimeException('مسیر storage/app نامعتبر است.');
         }
 
-        $hasFiles = false;
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($sourceReal, RecursiveDirectoryIterator::SKIP_DOTS),
             RecursiveIteratorIterator::SELF_FIRST,
@@ -285,18 +228,13 @@ class DatabaseBackupService
         foreach ($iterator as $file) {
             /** @var \SplFileInfo $file */
             $path = $file->getPathname();
-            $relative = 'media/'.substr($path, strlen($sourceReal) + 1);
+            $relative = substr($path, strlen($sourceReal) + 1);
 
             if ($file->isDir()) {
                 $zip->addEmptyDir(str_replace('\\', '/', $relative));
             } else {
                 $zip->addFile($path, str_replace('\\', '/', $relative));
-                $hasFiles = true;
             }
-        }
-
-        if (! $hasFiles) {
-            $zip->addEmptyDir('media');
         }
 
         $zip->close();
@@ -318,7 +256,7 @@ class DatabaseBackupService
 
         $binary = $this->mysqlBinary();
         if ($binary === null) {
-            throw new RuntimeException('ابزار mysql یافت نشد. مسیر MYSQL_PATH را در env تنظیم کنید.');
+            throw new RuntimeException('ابزار mysql یافت نشد. MYSQL_PATH را در env تنظیم کنید.');
         }
 
         $sql = $this->readSqlPayload($file);
@@ -348,43 +286,6 @@ class DatabaseBackupService
         }
     }
 
-    /** @param  array{path: string, filename: string, size_bytes: int}  $artifact */
-    private function sendArtifactToTelegram(array $artifact): array
-    {
-        $telegram = TelegramBotClient::fromAdminConfig();
-        $chatIds = TelegramBotClient::adminChatIds();
-
-        if (! $telegram->isConfigured()) {
-            return ['ok' => false, 'message' => 'بکاپ ساخته شد اما توکن ربات تلگرام تنظیم نشده است.'];
-        }
-
-        if ($chatIds === []) {
-            return ['ok' => false, 'message' => 'بکاپ ساخته شد اما شناسه چت تلگرام ادمین خالی است.'];
-        }
-
-        if ($artifact['size_bytes'] > self::TELEGRAM_MAX_BYTES) {
-            return [
-                'ok' => false,
-                'message' => 'بکاپ ساخته شد اما حجم فایل از سقف ۵۰ مگابایت تلگرام بیشتر است.',
-            ];
-        }
-
-        $caption = 'بکاپ دیتابیس '.config('app.name')."\n".basename($artifact['filename']);
-        $sent = 0;
-
-        foreach ($chatIds as $chatId) {
-            if ($telegram->sendDocument($chatId, $artifact['path'], $caption)) {
-                $sent++;
-            }
-        }
-
-        if ($sent === 0) {
-            return ['ok' => false, 'message' => 'بکاپ ساخته شد اما ارسال به تلگرام ناموفق بود.'];
-        }
-
-        return ['ok' => true, 'message' => "بکاپ به {$sent} چت تلگرام ارسال شد."];
-    }
-
     private function cleanupRetention(int $retentionCount): void
     {
         $files = collect(File::files($this->backupDirectory()))
@@ -399,17 +300,7 @@ class DatabaseBackupService
 
     private function backupDirectory(): string
     {
-        return storage_path('app/backups/database');
-    }
-
-    private function mediaBackupDirectory(): string
-    {
-        return storage_path('app/backups/media');
-    }
-
-    private function siteMediaPath(): string
-    {
-        return storage_path('app/public/media');
+        return storage_path('app/backups');
     }
 
     private function readSqlPayload(UploadedFile $file): string
@@ -464,7 +355,7 @@ class DatabaseBackupService
     private function mysqldumpBinary(): ?string
     {
         return $this->resolveMysqlTool(
-            configured: trim((string) config('bahram.backup.mysqldump_path', '')),
+            configured: trim((string) config('saat.backup.mysqldump_path', '')),
             fallbacks: ['mysqldump', 'mysqldump.exe'],
             windowsPaths: $this->discoverWindowsMysqlToolPaths('mysqldump.exe'),
         );
@@ -473,7 +364,7 @@ class DatabaseBackupService
     private function mysqlBinary(): ?string
     {
         return $this->resolveMysqlTool(
-            configured: trim((string) config('bahram.backup.mysql_path', '')),
+            configured: trim((string) config('saat.backup.mysql_path', '')),
             fallbacks: ['mysql', 'mysql.exe'],
             windowsPaths: $this->discoverWindowsMysqlToolPaths('mysql.exe'),
         );

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MessageSquare, Radio, Server, ShieldCheck } from 'lucide-react'
 import { CatalogSettingsSection } from '@/features/admin/CatalogSettingsSection'
+import { BackupSettingsSection } from '@/features/admin/BackupSettingsSection'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { useStore } from '@/store/useStore'
@@ -248,6 +249,8 @@ export function AdminSettingsScreen() {
               </section>
 
               <CatalogSettingsSection />
+
+              <BackupSettingsSection />
 
               <section className="space-y-3">
                 <h2 className="flex items-center gap-1.5 px-1 text-[12px] font-bold text-text-soft">

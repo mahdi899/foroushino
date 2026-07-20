@@ -61,17 +61,32 @@ class DatabaseBackupSettingsController extends Controller
         ])->deleteFileAfterSend(false);
     }
 
+    public function exportMedia(Request $request): BinaryFileResponse|JsonResponse
+    {
+        $this->authorizeSuperAdmin($request);
+
+        try {
+            $artifact = $this->backup->createMediaArtifact();
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->download($artifact['path'], $artifact['filename'], [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(false);
+    }
+
     public function import(Request $request): JsonResponse
     {
         $this->authorizeSuperAdmin($request);
 
-    $request->validate([
-        'confirm' => ['required', 'string', 'in:RESTORE'],
-        'file' => ['required', 'file', 'max:102400'],
-    ]);
+        $request->validate([
+            'confirm' => ['required', 'string', 'in:RESTORE'],
+            'file' => ['required', 'file', 'max:102400'],
+        ]);
 
-    try {
-        $this->backup->restoreUploadedFile($request->file('file'));
+        try {
+            $this->backup->restoreUploadedFile($request->file('file'));
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

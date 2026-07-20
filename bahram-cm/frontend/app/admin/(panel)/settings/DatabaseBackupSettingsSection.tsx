@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useRef, useState } from 'react';
-import { Database, Download, Loader2, Play, Save, Send, Upload } from 'lucide-react';
+import { Database, Download, HardDrive, Loader2, Play, Save, Send, Upload } from 'lucide-react';
 import { Badge } from '../ui';
 import {
   exportDatabaseBackupAction,
+  exportMediaBackupAction,
   importDatabaseBackupAction,
   runDatabaseBackupAction,
   saveDatabaseBackupSettingsAction,
@@ -29,6 +30,7 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportingMedia, setExportingMedia] = useState(false);
   const [importing, setImporting] = useState(false);
   const [testing, setTesting] = useState(false);
   const [confirmRestore, setConfirmRestore] = useState('');
@@ -85,7 +87,26 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
     anchor.download = res.filename;
     anchor.click();
     URL.revokeObjectURL(url);
-    setStatus('فایل بکاپ دانلود شد.');
+    setStatus('فایل بکاپ دیتابیس دانلود شد.');
+  }
+
+  async function onExportMedia() {
+    setExportingMedia(true);
+    setStatus('');
+    const res = await exportMediaBackupAction();
+    setExportingMedia(false);
+    if (!res.ok) {
+      setStatus(res.error);
+      return;
+    }
+    const blob = new Blob([res.blob], { type: 'application/zip' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = res.filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setStatus('فایل بکاپ media دانلود شد.');
   }
 
   async function onImport() {
@@ -129,9 +150,10 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
         <div className="flex items-start gap-3">
           <Database className="mt-0.5 h-5 w-5 shrink-0 text-accent" strokeWidth={1.6} />
           <div>
-            <h3 className="text-h3 text-primary-dark">بکاپ دیتابیس</h3>
+            <h3 className="text-h3 text-primary-dark">بکاپ و بازیابی</h3>
             <p className="mt-1 text-caption text-text-muted">
-              بکاپ خودکار روزانه، ارسال فایل به تلگرام ادمین، و بازیابی دستی از پنل. ربات و chat_id از{' '}
+              دانلود دیتابیس و فایل‌های media سایت، بکاپ خودکار روزانه، ارسال DB به تلگرام ادمین، و بازیابی دستی.
+              ربات و chat_id از{' '}
               <Link href="#sms-routing" className="text-primary hover:underline">
                 تنظیمات تلگرام
               </Link>{' '}
@@ -146,6 +168,11 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
           <Badge tone={view?.telegram_configured ? 'success' : 'warning'}>
             {view?.telegram_configured ? `تلگرام (${view.telegram_chat_count} چت)` : 'تلگرام ناقص'}
           </Badge>
+          {view?.site_media_available ? (
+            <Badge tone="success">media آماده</Badge>
+          ) : (
+            <Badge tone="warning">media یافت نشد</Badge>
+          )}
         </div>
       </div>
 
@@ -177,7 +204,7 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
             min={1}
             max={30}
             value={form.retentionCount}
-            onChange={(e) => patch({ retentionCount: Number(e.target.value) || 7 })}
+            onChange={(e) => patch({ retentionCount: Number(e.target.value) || 30 })}
           />
         </label>
       </div>
@@ -213,7 +240,16 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
         </button>
         <button type="button" onClick={() => void onExport()} disabled={exporting} className="btn btn-secondary px-3 py-1.5 text-caption">
           {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-          اکسپورت
+          دانلود DB
+        </button>
+        <button
+          type="button"
+          onClick={() => void onExportMedia()}
+          disabled={exportingMedia || !view?.site_media_available}
+          className="btn btn-secondary px-3 py-1.5 text-caption"
+        >
+          {exportingMedia ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <HardDrive className="h-3.5 w-3.5" />}
+          دانلود media
         </button>
         <button type="button" onClick={() => void onTestTelegram()} disabled={testing} className="btn btn-secondary px-3 py-1.5 text-caption">
           {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}

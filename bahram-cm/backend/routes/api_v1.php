@@ -381,6 +381,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::put('panel/settings/database-backup', [DatabaseBackupSettingsController::class, 'update']);
     Route::post('panel/settings/database-backup/run', [DatabaseBackupSettingsController::class, 'run']);
     Route::get('panel/settings/database-backup/export', [DatabaseBackupSettingsController::class, 'export']);
+    Route::get('panel/settings/database-backup/export/media', [DatabaseBackupSettingsController::class, 'exportMedia']);
     Route::post('panel/settings/database-backup/import', [DatabaseBackupSettingsController::class, 'import']);
     Route::post('panel/settings/database-backup/test-telegram', [DatabaseBackupSettingsController::class, 'testTelegram']);
 

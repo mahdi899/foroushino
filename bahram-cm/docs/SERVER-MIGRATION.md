@@ -108,8 +108,8 @@ apt-get update -qq
 apt-get install -y -qq \
   nginx git curl unzip ca-certificates \
   mysql-server redis-server supervisor certbot \
-  php8.3-fpm php8.3-cli php8.3-mysql php8.3-redis php8.3-mbstring \
-  php8.3-xml php8.3-curl php8.3-gd php8.3-intl php8.3-zip php8.3-bcmath php8.3-ftp
+  php8.4-fpm php8.4-cli php8.4-mysql php8.4-redis php8.4-mbstring \
+  php8.4-xml php8.4-curl php8.4-gd php8.4-intl php8.4-zip php8.4-bcmath php8.4-ftp
 
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt-get install -y -qq nodejs
@@ -119,7 +119,7 @@ if ! command -v composer >/dev/null 2>&1; then
   curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 fi
 
-systemctl enable --now nginx mysql redis-server php8.3-fpm supervisor
+systemctl enable --now nginx mysql redis-server php8.4-fpm supervisor
 ```
 
 ### Clone کد
@@ -362,7 +362,7 @@ systemctl stop nginx
 
 | مشکل | احتمال | راه‌حل |
 |------|--------|--------|
-| 502 Bad Gateway | PM2 یا PHP-FPM down | `pm2 list` / `systemctl status php8.3-fpm` |
+| 502 Bad Gateway | PM2 یا PHP-FPM down | `pm2 list` / `systemctl status php8.4-fpm` |
 | لاگین کار نمی‌کند | `APP_KEY` عوض شده | `.env` قدیم را restore کن |
 | عکس‌ها 404 | storage link نیست | `php artisan storage:link` |
 | ربات تلگرام جواب نمی‌دهد | webhook | `php artisan telegram:webhook:set production` |

@@ -56,7 +56,7 @@ mysql -e "SELECT COUNT(*) FROM failed_jobs" bahram_backend
 Laravel daily logs: `backend/storage/logs/laravel.log`  
 Domain logs: `payment.log`, `sms.log`, `ai.log`, `spotplayer.log`  
 Nginx: `/var/log/nginx/access.log`, `error.log`  
-PHP-FPM slow: `/var/log/php8.2-fpm-slow.log`
+PHP-FPM slow: `/var/log/php8.4-fpm-slow.log`
 
 ## Metrics to Watch Under Load
 

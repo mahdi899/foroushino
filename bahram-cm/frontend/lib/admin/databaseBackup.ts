@@ -123,6 +123,40 @@ export async function exportDatabaseBackupAction(): Promise<
   }
 }
 
+export async function exportMediaBackupAction(): Promise<
+  { ok: true; blob: Uint8Array; filename: string } | { ok: false; error: string }
+> {
+  try {
+    const token = await getToken();
+    const res = await fetch(`${SERVER_API_URL}/panel/settings/database-backup/export/media`, {
+      headers: {
+        Accept: 'application/zip',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(600_000),
+    });
+
+    if (!res.ok) {
+      const payload = await res.json().catch(() => undefined);
+      const message =
+        payload && typeof payload === 'object' && 'message' in payload && typeof payload.message === 'string'
+          ? payload.message
+          : 'خروجی گرفتن از media ناموفق بود.';
+      return { ok: false, error: message };
+    }
+
+    const disposition = res.headers.get('content-disposition') ?? '';
+    const match = disposition.match(/filename="?([^";]+)"?/i);
+    const filename = match?.[1] ?? `media-backup-${new Date().toISOString().slice(0, 10)}.zip`;
+    const buffer = await res.arrayBuffer();
+
+    return { ok: true, blob: new Uint8Array(buffer), filename };
+  } catch {
+    return { ok: false, error: 'خروجی گرفتن از media ناموفق بود.' };
+  }
+}
+
 export async function importDatabaseBackupAction(
   formData: FormData,
 ): Promise<{ ok: boolean; message: string }> {

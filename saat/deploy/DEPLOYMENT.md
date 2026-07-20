@@ -144,6 +144,20 @@ curl -s https://sat.center/api/v1/health
 
 ---
 
+## بکاپ روزانه
+
+```bash
+chmod +x deploy/scripts/backup.sh
+# Cron — DB هر شب، storage هفتگی، نگهداری ۳۰ روز:
+0 3 * * * /var/www/saat/deploy/scripts/backup.sh
+```
+
+**پنل:** `/admin/settings` → بخش «بکاپ و بازیابی» — دانلود DB و فایل‌های `storage/app`.
+
+راهنمای کامل: [`docs/BACKUP-AND-RECOVERY.md`](../../docs/BACKUP-AND-RECOVERY.md)
+
+---
+
 ## DNS
 
 | Record | Value |

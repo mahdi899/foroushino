@@ -12,7 +12,6 @@ return new class extends Migration
             $table->id();
             $table->boolean('is_auto_enabled')->default(false);
             $table->string('schedule_time', 5)->default('04:00');
-            $table->boolean('send_to_telegram')->default(true);
             $table->unsignedTinyInteger('retention_count')->default(30);
             $table->timestamp('last_backup_at')->nullable();
             $table->string('last_backup_status', 20)->nullable();

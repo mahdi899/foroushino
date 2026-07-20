@@ -161,8 +161,8 @@ health_check() {
   fi
 
   systemctl is-active nginx >/dev/null && print_status "Nginx running" || print_error "Nginx down"
-  systemctl is-active php8.3-fpm >/dev/null 2>&1 \
-    || systemctl is-active php8.2-fpm >/dev/null 2>&1 \
+  systemctl is-active php8.4-fpm >/dev/null 2>&1 \
+    || systemctl is-active php8.3-fpm >/dev/null 2>&1 \
     && print_status "PHP-FPM running" \
     || print_error "PHP-FPM down"
 }
@@ -205,7 +205,7 @@ rollback() {
     deploy_frontend
   fi
 
-  systemctl reload php8.3-fpm 2>/dev/null || systemctl reload php8.2-fpm 2>/dev/null || true
+  systemctl reload php8.4-fpm 2>/dev/null || systemctl reload php8.3-fpm 2>/dev/null || true
   systemctl reload nginx
   print_status "Rollback completed"
 }
@@ -224,7 +224,7 @@ case "$DEPLOY_TYPE" in
     backup
     pull_code
     deploy_backend
-    systemctl reload php8.3-fpm 2>/dev/null || systemctl reload php8.2-fpm 2>/dev/null || true
+    systemctl reload php8.4-fpm 2>/dev/null || systemctl reload php8.3-fpm 2>/dev/null || true
     health_check
     ;;
   frontend)
@@ -239,7 +239,7 @@ case "$DEPLOY_TYPE" in
     pull_code
     deploy_backend
     deploy_frontend
-    systemctl reload php8.3-fpm 2>/dev/null || systemctl reload php8.2-fpm 2>/dev/null || true
+    systemctl reload php8.4-fpm 2>/dev/null || systemctl reload php8.3-fpm 2>/dev/null || true
     systemctl reload nginx
     health_check
     ;;

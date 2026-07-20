@@ -18,13 +18,14 @@ export type DatabaseBackupView = {
   telegram_chat_count: number;
   mysqldump_available: boolean;
   database_name: string;
+  site_media_available: boolean;
 };
 
 export const DEFAULT_DATABASE_BACKUP_FORM: DatabaseBackupForm = {
   isAutoEnabled: false,
   scheduleTime: '04:00',
   sendToTelegram: true,
-  retentionCount: 7,
+  retentionCount: 30,
 };
 
 export function databaseBackupViewToForm(view: DatabaseBackupView): DatabaseBackupForm {
@@ -32,7 +33,7 @@ export function databaseBackupViewToForm(view: DatabaseBackupView): DatabaseBack
     isAutoEnabled: view.is_auto_enabled,
     scheduleTime: view.schedule_time ?? '04:00',
     sendToTelegram: view.send_to_telegram,
-    retentionCount: view.retention_count ?? 7,
+    retentionCount: view.retention_count ?? 30,
   };
 }
 

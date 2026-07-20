@@ -2,16 +2,16 @@
     "version": 1,
     "items": [
         {
-            "path": "media/family/2026/07/image/reconcile.webp",
+            "path": "media/family/demo/demo-image-1.jpg",
             "disk": "public",
             "url": null,
             "type": "image",
-            "mime": "image/webp",
-            "size": 16,
+            "mime": "image/jpeg",
+            "size": 11,
             "width": null,
             "height": null,
-            "alt_fa": null,
-            "original_filename": null,
+            "alt_fa": "demo image 1",
+            "original_filename": "demo-image-1.jpg",
             "category": "خانواده",
             "legacy_path": null,
             "is_private": false

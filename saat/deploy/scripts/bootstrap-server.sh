@@ -21,9 +21,9 @@ apt-get update -qq
 apt-get install -y -qq \
   nginx git curl unzip ca-certificates gnupg lsb-release \
   mysql-server redis-server supervisor certbot python3-certbot-nginx \
-  php8.3-fpm php8.3-cli php8.3-mysql php8.3-redis php8.3-mbstring \
-  php8.3-xml php8.3-curl php8.3-gd php8.3-intl php8.3-zip php8.3-bcmath \
-  php8.3-opcache php8.3-readline
+  php8.4-fpm php8.4-cli php8.4-mysql php8.4-redis php8.4-mbstring \
+  php8.4-xml php8.4-curl php8.4-gd php8.4-intl php8.4-zip php8.4-bcmath \
+  php8.4-opcache php8.4-readline
 
 if ! command -v node >/dev/null 2>&1 || [[ "$(node -v | cut -d. -f1 | tr -d v)" -lt 20 ]]; then
   echo "==> Installing Node.js 20 LTS"
@@ -37,7 +37,7 @@ if ! command -v composer >/dev/null 2>&1; then
 fi
 
 echo "==> Enabling services"
-systemctl enable --now nginx mysql redis-server php8.3-fpm supervisor
+systemctl enable --now nginx mysql redis-server php8.4-fpm supervisor
 
 echo "==> MySQL database"
 DB_NAME="saat"
@@ -129,7 +129,7 @@ VITE_UPDATE_TYPE=optional npm run build
 cp -f public/version.json dist/version.json 2>/dev/null || true
 
 echo "==> PHP-FPM pool (avoid worker exhaustion under parallel API sync)"
-PHP_POOL="/etc/php/8.3/fpm/pool.d/www.conf"
+PHP_POOL="/etc/php/8.4/fpm/pool.d/www.conf"
 if [[ -f "${APP_ROOT}/deploy/php-fpm/saat-www-pool-snippet.conf" ]]; then
   while IFS= read -r line; do
     [[ "$line" =~ ^[[:space:]]*$ ]] && continue
@@ -145,8 +145,8 @@ if [[ -f "${APP_ROOT}/deploy/php-fpm/saat-www-pool-snippet.conf" ]]; then
     echo "${key} = ${val}" >> "$PHP_POOL"
   fi
   done < "${APP_ROOT}/deploy/php-fpm/saat-www-pool-snippet.conf"
-  php-fpm8.3 -t
-  systemctl restart php8.3-fpm
+  php-fpm8.4 -t
+  systemctl restart php8.4-fpm
 fi
 
 echo "==> Nginx"
