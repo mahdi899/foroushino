@@ -33,6 +33,7 @@ import {
   DEFAULT_SITE_THEME,
   SITE_THEME_COOKIE_KEY,
   parseSiteTheme,
+  siteThemeBootScript,
 } from "@/lib/site-theme";
 import { isFamilyHost } from "@/lib/domains";
 import "@/styles/globals.css";
@@ -78,6 +79,7 @@ export default async function RootLayout({
 
   const initialTheme =
     parseSiteTheme((await cookies()).get(SITE_THEME_COOKIE_KEY)?.value) ?? DEFAULT_SITE_THEME;
+  // When no cookie, beforeInteractive siteThemeBootScript applies OS preference before paint.
 
   return (
     <html
@@ -90,6 +92,9 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <Script id="site-theme-boot" strategy="beforeInteractive">
+          {siteThemeBootScript()}
+        </Script>
         <MediaPreconnect />
         {process.env.NODE_ENV === "development" ? (
           <Script id="bahram-dev-sw-cleanup" strategy="beforeInteractive">

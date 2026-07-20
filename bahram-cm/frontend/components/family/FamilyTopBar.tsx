@@ -13,6 +13,7 @@ import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
 
 import { useFamilyGuestAccessOptional } from '@/components/family/FamilyGuestAccess';
 import type { FamilyBranding } from '@/lib/family/types';
+import { ThemeIconButton } from '@/components/theme/ThemeIconButton';
 import { familyHomeHref } from '@/lib/domains';
 
 function TopBarInnerSkeleton({ showNotifications }: { showNotifications: boolean }) {
@@ -29,10 +30,16 @@ function TopBarInnerSkeleton({ showNotifications }: { showNotifications: boolean
         </div>
       </div>
       {showNotifications ? (
-        <div className="family-topbar__action family-topbar__action--skel" aria-hidden>
-          <span className="family-skeleton family-topbar-skel__icon" />
+        <div className="family-topbar__actions" aria-hidden>
+          <span className="family-skeleton family-topbar-skel__icon family-topbar__action family-topbar__action--skel" />
+          <span className="family-skeleton family-topbar-skel__icon family-topbar__action family-topbar__action--skel" />
         </div>
-      ) : null}
+      ) : (
+        <span
+          className="family-skeleton family-topbar-skel__icon family-topbar__action family-topbar__action--skel"
+          aria-hidden
+        />
+      )}
     </>
   );
 }
@@ -147,29 +154,32 @@ export function FamilyTopBar({
 
               {profileControl}
 
-              {showNotifications ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (notificationsActive) onCloseNotifications?.();
-                    else onOpenNotifications?.();
-                  }}
-                  aria-pressed={notificationsActive || undefined}
-                  aria-label={notificationsActive ? 'بستن اعلان‌ها' : 'اعلان‌ها'}
-                  title={notificationsActive ? 'بستن اعلان‌ها' : 'اعلان‌ها'}
-                  className={cn(
-                    'family-topbar__action',
-                    notificationsActive && 'family-topbar__action--active',
-                  )}
-                >
-                  <Bell className="family-topbar__action-icon" strokeWidth={1.85} aria-hidden />
-                  {unreadCount > 0 && (
-                    <span className="family-topbar__badge" aria-hidden>
-                      {unreadCount > 9 ? '9+' : unreadCount.toLocaleString('en-US')}
-                    </span>
-                  )}
-                </button>
-              ) : null}
+              <div className="family-topbar__actions">
+                <ThemeIconButton />
+                {showNotifications ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (notificationsActive) onCloseNotifications?.();
+                      else onOpenNotifications?.();
+                    }}
+                    aria-pressed={notificationsActive || undefined}
+                    aria-label={notificationsActive ? 'بستن اعلان‌ها' : 'اعلان‌ها'}
+                    title={notificationsActive ? 'بستن اعلان‌ها' : 'اعلان‌ها'}
+                    className={cn(
+                      'family-topbar__action',
+                      notificationsActive && 'family-topbar__action--active',
+                    )}
+                  >
+                    <Bell className="family-topbar__action-icon" strokeWidth={1.85} aria-hidden />
+                    {unreadCount > 0 && (
+                      <span className="family-topbar__badge" aria-hidden>
+                        {unreadCount > 9 ? '9+' : unreadCount.toLocaleString('en-US')}
+                      </span>
+                    )}
+                  </button>
+                ) : null}
+              </div>
             </>
           )}
         </div>
