@@ -441,17 +441,7 @@ class RegistrationFlowService
     /** @param  array<string, mixed>  $options */
     private function queueMessage(TelegramBot $bot, int $chatId, string $text, array $options = []): void
     {
-        try {
-            SendTelegramMessageJob::dispatchSync($bot->id, $chatId, $text, $options);
-        } catch (\App\Modules\TelegramBot\Exceptions\TelegramApiException $e) {
-            if (str_contains($e->getMessage(), 'failed to reach the transport')) {
-                SendTelegramMessageJob::dispatch($bot->id, $chatId, $text, $options)
-                    ->onQueue((string) config('telegram_bot.queues.replies', 'telegram-replies'));
-
-                return;
-            }
-
-            throw $e;
-        }
+        SendTelegramMessageJob::dispatch($bot->id, $chatId, $text, $options)
+            ->onQueue((string) config('telegram_bot.queues.replies', 'telegram-replies'));
     }
 }

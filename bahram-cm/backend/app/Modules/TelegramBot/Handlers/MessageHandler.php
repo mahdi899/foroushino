@@ -283,10 +283,10 @@ class MessageHandler implements UpdateHandlerInterface
         };
     }
 
-    /** User-facing reply — always synchronous so menu taps get instant feedback. */
+    /** User-facing reply — queued so inbound webhook ack stays fast (broadcast-style path). */
     private function replyNow(TelegramBot $bot, int $chatId, string $text, array $options = []): void
     {
-        $this->outbound->reply($bot, $chatId, $text, $options, sync: true);
+        $this->outbound->reply($bot, $chatId, $text, $options, sync: false);
     }
 
     private function openSupportHub(TelegramBot $bot, TelegramAccount $account, int $chatId): void
