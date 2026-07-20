@@ -34,7 +34,14 @@ export function TelegramBridgeSettingsSection({
           onStatus={(message) => startTransition(() => setStatus(message))}
         />
       </div>
-      {status ? <p className="mt-2 text-caption text-text-muted">{status}</p> : null}
+      {status ? (
+        <p
+          className={`mt-2 whitespace-pre-wrap text-caption ${status.includes('ناموفق') || status.startsWith('خطا') ? 'text-danger' : 'text-text-muted'}`}
+          dir="auto"
+        >
+          {status}
+        </p>
+      ) : null}
     </div>
   );
 }

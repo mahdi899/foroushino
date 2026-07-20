@@ -94,6 +94,18 @@ class TelegramInfrastructureService
         return $this->backendOrigin();
     }
 
+    /** Outbound Bot API — through Worker when bridge is on (Iran-safe). */
+    public function telegramApiBaseUrl(): string
+    {
+        if ($this->usesWorkerBridge()) {
+            return $this->panelBaseUrl();
+        }
+
+        $env = trim((string) config('telegram_bot.api_base_url', ''));
+
+        return $env !== '' ? rtrim($env, '/') : self::DEFAULT_BASE_URL;
+    }
+
     public function backendOrigin(): string
     {
         $stored = trim((string) ($this->stored()['backend_origin'] ?? ''));
@@ -209,6 +221,7 @@ class TelegramInfrastructureService
             'worker_url' => $this->workerUrl(),
             'mode' => $this->usesWorkerBridge() ? 'worker' : 'direct',
             'backend_origin' => $this->backendOrigin(),
+            'telegram_api_base_url' => $this->telegramApiBaseUrl(),
             'server_webhook_url' => $this->buildServerWebhookUrl('production'),
             'worker_webhook_url' => $this->usesWorkerBridge() ? $this->buildWebhookUrl('production') : null,
             'has_connection_token' => $connectionToken !== null,
@@ -317,7 +330,7 @@ class TelegramInfrastructureService
         try {
             $clients->forBot($bot)->setWebhook($url, $secret);
         } catch (\Throwable $e) {
-            return ['ok' => false, 'message' => 'ثبت وب‌هوک ناموفق: '.$e->getMessage()];
+            return ['ok' => false, 'message' => $this->formatWebhookRegistrationError($e)];
         }
 
         $mode = $this->usesWorkerBridge() ? 'Cloudflare Worker' : 'مستقیم';
@@ -357,5 +370,46 @@ class TelegramInfrastructureService
         }
 
         return substr($value, 0, 4).'…'.substr($value, -4);
+    }
+
+    private function formatWebhookRegistrationError(\Throwable $e): string
+    {
+        $message = trim($e->getMessage());
+        $base = 'ثبت وب‌هوک ناموفق';
+        $detail = $message !== '' ? ': '.$message : '';
+
+        if ($this->usesWorkerBridge()) {
+            if ($this->isLikelyTelegramConnectivityFailure($e)) {
+                return $base.$detail
+                    .' — Worker را Deploy کرده‌اید؟ توکن اتصال Worker با پنل یکی باشد.'
+                    .' لاگ: storage/logs/telegram.log';
+            }
+
+            return $base.$detail.' — Worker: '.$this->workerUrl();
+        }
+
+        if ($this->isLikelyTelegramConnectivityFailure($e)) {
+            return $base.$detail
+                .' — api.telegram.org از این شبکه در دسترس نیست؛ حالت Worker را فعال کنید یا از VPN استفاده کنید.'
+                .' لاگ: storage/logs/telegram.log';
+        }
+
+        return $base.$detail;
+    }
+
+    private function isLikelyTelegramConnectivityFailure(\Throwable $e): bool
+    {
+        if ($e instanceof \Illuminate\Http\Client\ConnectionException) {
+            return true;
+        }
+
+        $message = strtolower($e->getMessage());
+
+        return str_contains($message, 'connection')
+            || str_contains($message, 'timed out')
+            || str_contains($message, 'timeout')
+            || str_contains($message, 'could not resolve')
+            || str_contains($message, 'ssl')
+            || str_contains($message, 'curl error');
     }
 }

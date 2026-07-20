@@ -35,6 +35,7 @@ class TelegramInfrastructureServiceTest extends TestCase
             'https://site.example.com/api/v1/integrations/telegram/production/webhook',
             $service->buildServerWebhookUrl('production'),
         );
+        $this->assertSame('https://bridge.example.workers.dev', $service->telegramApiBaseUrl());
         $this->assertTrue($service->isConfigured());
     }
 
@@ -53,6 +54,7 @@ class TelegramInfrastructureServiceTest extends TestCase
 
         $this->assertFalse($service->usesWorkerBridge());
         $this->assertSame('', $service->workerUrl());
+        $this->assertSame(TelegramInfrastructureService::DEFAULT_BASE_URL, $service->telegramApiBaseUrl());
         $this->assertTrue($service->isConfigured());
         $this->assertSame(
             'https://site.example.com/api/v1/integrations/telegram/production/webhook',

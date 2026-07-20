@@ -117,7 +117,12 @@ export function TelegramBridgePanel({
       onStatus?.('');
       const res = await registerWebhook();
       setRegistering(false);
-      onStatus?.(res.ok ? ((res as { message?: string }).message ?? 'وب‌هوک ثبت شد') : (res as { error?: string }).error ?? 'خطا');
+      if (res.ok) {
+        const url = 'url' in res && res.url ? `\n${res.url}` : '';
+        onStatus?.(((res as { message?: string }).message ?? 'وب‌هوک ثبت شد') + url);
+        return;
+      }
+      onStatus?.((res as { error?: string }).error ?? (res as { message?: string }).message ?? 'خطا');
     });
   };
 

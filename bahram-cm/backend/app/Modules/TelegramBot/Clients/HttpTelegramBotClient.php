@@ -27,6 +27,7 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
     public function __construct(
         private readonly string $token,
         ?string $baseUrl = null,
+        private readonly ?string $proxyBearerToken = null,
     ) {
         $this->baseUrl = rtrim($baseUrl ?: (string) config('telegram.api_base_url', 'https://api.telegram.org'), '/');
     }
@@ -304,7 +305,8 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
         $correlationId = TelegramCorrelation::generate();
 
         try {
-            $response = Http::timeout((int) config('telegram.http.timeout', 20))
+            $response = $this->authorizedRequest()
+                ->timeout((int) config('telegram.http.timeout', 20))
                 ->connectTimeout((int) config('telegram.http.connect_timeout', 5))
                 ->withHeaders([TelegramCorrelation::header() => $correlationId])
                 ->get($url);
@@ -357,7 +359,8 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
             $attempt++;
 
             try {
-                $request = Http::timeout($timeoutSeconds)
+                $request = $this->authorizedRequest()
+                    ->timeout($timeoutSeconds)
                     ->connectTimeout((int) config('telegram.http.connect_timeout', 5))
                     ->withHeaders([TelegramCorrelation::header() => $correlationId]);
 
@@ -459,6 +462,18 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
     {
         $delayMs = $baseDelayMs * (2 ** max(0, $attempt - 1));
         usleep($delayMs * 1000);
+    }
+
+    /** Adds Worker proxy Bearer when outbound Bot API goes through Cloudflare. */
+    private function authorizedRequest(): \Illuminate\Http\Client\PendingRequest
+    {
+        $request = Http::withHeaders([]);
+
+        if ($this->proxyBearerToken !== null && $this->proxyBearerToken !== '') {
+            $request = $request->withToken($this->proxyBearerToken);
+        }
+
+        return $request;
     }
 
     /** Never log the return value of this method — it embeds the bot token. */

@@ -429,6 +429,7 @@ export async function registerTelegramWebhookFromPanelAction(): Promise<{
   ok: boolean;
   message?: string;
   error?: string;
+  url?: string;
 }> {
   try {
     const res = await adminFetch<{ data: { ok: boolean; message: string; url?: string } }>(
@@ -436,7 +437,12 @@ export async function registerTelegramWebhookFromPanelAction(): Promise<{
       { method: 'POST' },
     );
     revalidateTelegram();
-    return { ok: res.data?.ok ?? false, message: res.data?.message };
+    const data = res.data;
+    if (data?.ok) {
+      return { ok: true, message: data.message, url: data.url };
+    }
+
+    return { ok: false, error: data?.message ?? 'ثبت وب‌هوک ناموفق بود.' };
   } catch (e) {
     return actionError(e, 'ثبت وب‌هوک ناموفق بود.');
   }
