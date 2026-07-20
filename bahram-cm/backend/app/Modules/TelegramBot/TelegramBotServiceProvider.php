@@ -11,6 +11,7 @@ use App\Modules\TelegramBot\Console\TelegramRetryFailedUpdatesCommand;
 use App\Modules\TelegramBot\Console\TelegramSyncBotsCommand;
 use App\Modules\TelegramBot\Console\TelegramWebhookDeleteCommand;
 use App\Modules\TelegramBot\Console\TelegramWebhookInfoCommand;
+use App\Modules\TelegramBot\Console\TelegramWebhookReconcileCommand;
 use App\Modules\TelegramBot\Console\TelegramWebhookSetCommand;
 use App\Modules\TelegramBot\Contracts\TelegramBotClientInterface;
 use App\Modules\TelegramBot\Http\Middleware\VerifyTelegramWebhookSecret;
@@ -45,6 +46,7 @@ class TelegramBotServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 TelegramWebhookSetCommand::class,
+                TelegramWebhookReconcileCommand::class,
                 TelegramWebhookDeleteCommand::class,
                 TelegramWebhookInfoCommand::class,
                 TelegramHealthCheckCommand::class,

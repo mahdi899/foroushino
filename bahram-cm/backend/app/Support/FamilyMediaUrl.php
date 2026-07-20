@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Services\MediaHostSettingsService;
+
 final class FamilyMediaUrl
 {
     public static function fromPath(?string $storagePath, ?string $disk = null): ?string
@@ -11,10 +13,10 @@ final class FamilyMediaUrl
         }
 
         if (self::isRemoteDisk($disk) || self::shouldDeliverViaCdn($storagePath, $disk)) {
-            return self::remoteUrl($storagePath);
+            return self::canonicalizePlaybackUrl(self::remoteUrl($storagePath));
         }
 
-        return self::originStorageUrl($storagePath);
+        return self::canonicalizePlaybackUrl(self::originStorageUrl($storagePath));
     }
 
     public static function withCacheBuster(?string $url, int|string|null $version): ?string
@@ -76,21 +78,33 @@ final class FamilyMediaUrl
 
     private static function cdnBase(): string
     {
-        $cdn = rtrim((string) config('family.media.cdn_url'), '/');
-        if ($cdn !== '') {
-            return $cdn;
+        return app(MediaHostSettingsService::class)->familyMediaCdnUrl() ?? '';
+    }
+
+    /** Force download-host URLs — never rostami.club proxy (breaks video/voice Range). */
+    private static function canonicalizePlaybackUrl(?string $url): ?string
+    {
+        if (! filled($url)) {
+            return null;
         }
 
-        $mediaUrl = rtrim((string) config('bahram.media_url'), '/');
-        if ($mediaUrl !== '') {
-            return $mediaUrl;
+        $parsed = parse_url($url);
+        if (! is_array($parsed)) {
+            return $url;
         }
 
-        $arvan = trim((string) config('bahram.arvan.media_domain', ''));
-        if ($arvan !== '') {
-            return str_starts_with($arvan, 'http') ? rtrim($arvan, '/') : 'https://'.$arvan;
+        $path = $parsed['path'] ?? '';
+        if ($path === '' || ! str_contains($path, '/media/family/')) {
+            return $url;
         }
 
-        return '';
+        $cdn = self::cdnBase();
+        if ($cdn === '') {
+            return $url;
+        }
+
+        $query = isset($parsed['query']) && $parsed['query'] !== '' ? '?'.$parsed['query'] : '';
+
+        return rtrim($cdn, '/').$path.$query;
     }
 }

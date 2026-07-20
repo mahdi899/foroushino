@@ -61,6 +61,7 @@ php artisan route:clear
 php artisan view:clear
 php artisan storage:link 2>/dev/null || true
 php artisan media:sync 2>/dev/null || true
+php artisan media:sync-hosts --import 2>/dev/null || true
 php artisan tinker --execute="Illuminate\Support\Facades\Cache::forget('family:branding:public');" 2>/dev/null || true
 
 echo "==> Frontend deps (skip if node_modules exists)"

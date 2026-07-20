@@ -12,6 +12,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('telegram:cleanup')->dailyAt('04:10')->onOneServer();
+Schedule::command('telegram:reconcile-webhook')->everyMinute()->onOneServer();
 Schedule::command('telegram:health-check')->hourly()->onOneServer();
 Schedule::command('telegram:retry-failed-updates')->everyTenMinutes()->onOneServer();
 

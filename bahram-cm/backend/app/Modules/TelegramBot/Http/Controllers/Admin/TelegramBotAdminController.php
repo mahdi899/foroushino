@@ -103,7 +103,7 @@ class TelegramBotAdminController
 
         $url = $this->infrastructure->buildWebhookUrl($bot->key);
 
-        $this->clients->forBot($bot)->setWebhook($url, $bot->webhook_secret);
+        $this->clients->forBot($bot)->setWebhook($url, $bot->resolveWebhookSecret());
 
         $mode = $this->infrastructure->usesWorkerBridge() ? 'Cloudflare Worker' : 'مستقیم';
         $this->webhookRegisteredNotifier->notify($bot, $url, $mode);

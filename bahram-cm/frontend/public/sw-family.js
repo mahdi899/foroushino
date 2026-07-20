@@ -1,4 +1,4 @@
-const CACHE = 'bahram-family-v4';
+const CACHE = 'bahram-family-v5';
 const PRECACHE = ['/family-manifest.webmanifest', '/pwa/icon/192', '/pwa/icon/512', '/apple-icon'];
 
 /**
@@ -56,6 +56,11 @@ function isStaticFamilyAsset(url) {
   );
 }
 
+/** Video/voice Range requests must not pass through the SW (breaks metadata + decode). */
+function isFamilyMediaStream(url) {
+  return url.pathname.startsWith('/media/family/') || url.pathname.startsWith('/media/site/');
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
@@ -91,6 +96,10 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
   if (isNextRuntimeRequest(url) || isApiRequest(url)) return;
+
+  if (isFamilyMediaStream(url)) {
+    return;
+  }
 
   if (isStaticFamilyAsset(url)) {
     event.respondWith(

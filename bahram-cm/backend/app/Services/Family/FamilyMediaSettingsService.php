@@ -3,6 +3,7 @@
 namespace App\Services\Family;
 
 use App\Models\Setting;
+use App\Services\MediaHostSettingsService;
 use App\Support\MediaFtpConnection;
 use Illuminate\Support\Facades\Cache;
 
@@ -99,7 +100,7 @@ class FamilyMediaSettingsService
             'ftp_upload_enabled' => $this->ftpUploadEnabled(),
             'upload_disk' => $this->uploadDisk(),
             'site_library_disk' => $this->siteLibraryDisk(),
-            'cdn_url' => config('family.media.cdn_url'),
+            'cdn_url' => app(MediaHostSettingsService::class)->familyMediaCdnUrl(),
         ];
     }
 

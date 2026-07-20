@@ -33,6 +33,7 @@ php artisan event:cache
 echo "==> Storage link (idempotent)"
 php artisan storage:link 2>/dev/null || true
 php artisan media:guard-directories
+php artisan media:sync-hosts --import 2>/dev/null || true
 
 if [[ -f "$APP_ROOT/deploy/php-fpm/99-bahram-uploads.ini" ]]; then
   echo "==> PHP upload limits"

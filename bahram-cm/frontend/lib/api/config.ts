@@ -1,3 +1,5 @@
+import { MEDIA_HOSTS } from '@/lib/media/hosts.generated';
+
 // Base URLs for the Laravel API v1 admin layer.
 export const SERVER_API_URL =
   process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8010/api/v1';
@@ -7,9 +9,9 @@ export const PUBLIC_API_URL =
 
 export const API_ORIGIN = (process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:3000').replace(/\/$/, '');
 
-/** Default download host when env is unset — gallery files are not on localhost /storage. */
+/** Default download host when env is unset — synced via database/data/media_hosts.json. */
 export const DEFAULT_MEDIA_DOWNLOAD_HOST = (
-  process.env.NEXT_PUBLIC_MEDIA_DOWNLOAD_HOST || 'https://cdn.rostami.app'
+  process.env.NEXT_PUBLIC_MEDIA_DOWNLOAD_HOST || MEDIA_HOSTS.media_url
 ).replace(/\/$/, '');
 
 /**

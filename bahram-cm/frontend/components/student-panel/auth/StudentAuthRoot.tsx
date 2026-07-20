@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import type { StudentFormPrefill } from '@/lib/student/formPrefill';
+import { studentPanelHref } from '@/lib/domains';
 import { StudentAuthProvider, useStudentAuth } from './StudentAuthContext';
 
 const StudentLoginModal = dynamic(
@@ -26,13 +27,23 @@ function StudentAuthUrlSyncInner() {
 
     if (isLoggedIn) {
       handledAuthRef.current = false;
-      router.replace('/panel');
+      const target = studentPanelHref('/panel');
+      if (target.startsWith('http')) {
+        window.location.replace(target);
+      } else {
+        router.replace(target);
+      }
       return;
     }
 
     if (!handledAuthRef.current) {
       handledAuthRef.current = true;
-      router.replace('/panel/login?redirect=%2Fpanel');
+      const target = studentPanelHref('/panel/login?redirect=%2Fpanel');
+      if (target.startsWith('http')) {
+        window.location.replace(target);
+      } else {
+        router.replace(target);
+      }
     }
   }, [router, isLoggedIn]);
 

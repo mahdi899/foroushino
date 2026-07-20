@@ -8,11 +8,6 @@ import { FamilyVideoModal } from '@/components/family/FamilyVideoModal';
 import { resolveFamilyMediaPosterUrl, resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 import type { FamilyMediaBlock } from '@/lib/family/types';
 
-function previewSrc(url: string): string {
-  if (url.includes('#')) return url;
-  return `${url}#t=0.1`;
-}
-
 export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -71,12 +66,20 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
           />
         ) : framePreviewReady ? (
           <video
-            src={previewSrc(streamUrl)}
+            src={streamUrl}
             playsInline
             muted
             preload="metadata"
+            onLoadedMetadata={(e) => {
+              const video = e.currentTarget;
+              try {
+                if (video.duration > 0.15) video.currentTime = 0.1;
+              } catch {
+                /* seek unsupported — first frame is fine */
+              }
+              setPosterReady(true);
+            }}
             onLoadedData={() => setPosterReady(true)}
-            onLoadedMetadata={() => setPosterReady(true)}
             className={cn(
               'pointer-events-none h-full w-full object-cover transition-opacity duration-300',
               posterReady ? 'opacity-100' : 'opacity-70',

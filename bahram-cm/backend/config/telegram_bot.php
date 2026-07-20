@@ -49,12 +49,34 @@ return [
     'webhook' => [
         'base_url' => rtrim((string) env('TELEGRAM_WEBHOOK_BASE_URL', env('APP_URL', 'http://localhost:8010')), '/'),
         'path_pattern' => 'api/v1/integrations/telegram/{botKey}/webhook',
+        /** Must include callback_query or inline buttons stop working after setWebhook. */
+        'allowed_updates' => [
+            'message',
+            'edited_message',
+            'callback_query',
+            'my_chat_member',
+            'chat_member',
+            'chat_join_request',
+        ],
     ],
 
     'updates' => [
         'max_attempts' => (int) env('TELEGRAM_UPDATE_MAX_ATTEMPTS', 5),
         'retry_batch_size' => (int) env('TELEGRAM_UPDATE_RETRY_BATCH_SIZE', 50),
         'retention_days' => (int) env('TELEGRAM_UPDATE_RETENTION_DAYS', 30),
+    ],
+
+    /*
+    | Minute reconcile: probe Telegram (Worker/direct), heal webhook drift,
+    | pull remote backlog when Telegram reports delivery errors, retry local queue rows.
+    */
+    'reconcile' => [
+        'enabled' => filter_var(env('TELEGRAM_WEBHOOK_RECONCILE', true), FILTER_VALIDATE_BOOL),
+        'pending_pull_threshold' => (int) env('TELEGRAM_WEBHOOK_PENDING_PULL_THRESHOLD', 3),
+        'pull_batch_limit' => (int) env('TELEGRAM_WEBHOOK_PULL_BATCH_LIMIT', 50),
+        'recovery_cooldown_seconds' => (int) env('TELEGRAM_WEBHOOK_RECOVERY_COOLDOWN', 300),
+        'stale_pending_seconds' => (int) env('TELEGRAM_STALE_PENDING_SECONDS', 120),
+        'stale_pending_batch' => (int) env('TELEGRAM_STALE_PENDING_BATCH', 30),
     ],
 
     'login_token' => [

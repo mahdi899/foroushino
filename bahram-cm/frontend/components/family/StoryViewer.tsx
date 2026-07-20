@@ -129,84 +129,110 @@ export function StoryViewer({
   const currentSrc = storyMediaSrc(currentMedia);
   const currentIsVideo = currentMedia ? isStoryVideo(currentMedia) : false;
 
-  // Image stories: fixed timer. Video: play from CDN + advance on ended.
-  useEffect(() => {
-    if (!open || loading || !currentMedia || !currentSrc) return;
+  const scheduleVideoAdvance = useCallback(
+    (video: HTMLVideoElement) => {
+      if (!currentMedia) return;
 
-    clearSlideTimers();
-    setSlideProgress(0);
-
-    if (!currentIsVideo) {
-      scheduleImageSlide(IMAGE_STORY_MS);
-      return clearSlideTimers;
-    }
-
-    const video = videoRef.current;
-    if (!video) return clearSlideTimers;
-
-    video.src = currentSrc;
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = 'auto';
-    video.load();
-
-    const onTimeUpdate = () => {
-      const duration = video.duration;
-      if (!Number.isFinite(duration) || duration <= 0) return;
-      setSlideProgress(Math.min(1, video.currentTime / duration));
-    };
-
-    const onLoadedMetadata = () => {
-      const hintedSec = currentMedia.duration && currentMedia.duration > 0 ? currentMedia.duration : video.duration;
-      const maxMs = Number.isFinite(hintedSec) && hintedSec > 0
-        ? Math.min(MAX_VIDEO_STORY_MS, Math.max(MIN_VIDEO_STORY_MS, hintedSec * 1000))
-        : MAX_VIDEO_STORY_MS;
+      const hintedSec =
+        currentMedia.duration && currentMedia.duration > 0 ? currentMedia.duration : video.duration;
+      const maxMs =
+        Number.isFinite(hintedSec) && hintedSec > 0
+          ? Math.min(MAX_VIDEO_STORY_MS, Math.max(MIN_VIDEO_STORY_MS, hintedSec * 1000))
+          : MAX_VIDEO_STORY_MS;
 
       advanceTimerRef.current = window.setTimeout(() => {
         if (!video.paused && !video.ended) goNext();
       }, maxMs + 500);
+    },
+    [currentMedia, goNext],
+  );
 
-      void video.play().catch(() => {
-        // Autoplay blocked — still allow manual tap; fallback timer keeps story moving.
-        scheduleImageSlide(IMAGE_STORY_MS);
-      });
+  // Reset progress/timers when the active slide changes.
+  useEffect(() => {
+    if (!open || loading) return;
+    clearSlideTimers();
+    setSlideProgress(0);
+  }, [clearSlideTimers, index, loading, open]);
+
+  // Image stories: fixed timer.
+  useEffect(() => {
+    if (!open || loading || !currentMedia || !currentSrc || currentIsVideo) return;
+    scheduleImageSlide(IMAGE_STORY_MS);
+    return clearSlideTimers;
+  }, [
+    clearSlideTimers,
+    currentIsVideo,
+    currentMedia,
+    currentSrc,
+    index,
+    loading,
+    open,
+    scheduleImageSlide,
+  ]);
+
+  // Video stories: autoplay from CDN with progress + auto-advance.
+  useEffect(() => {
+    if (!open || loading || !currentIsVideo || !currentSrc) return;
+
+    const video = videoRef.current;
+    if (!video) return;
+
+    let cancelled = false;
+    clearSlideTimers();
+    setSlideProgress(0);
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    video.src = currentSrc;
+    video.load();
+
+    const onError = () => {
+      if (cancelled) return;
+      scheduleImageSlide(IMAGE_STORY_MS);
+    };
+
+    const onCanPlay = () => {
+      if (cancelled) return;
+      void video.play().then(() => {
+        if (!cancelled) scheduleVideoAdvance(video);
+      }).catch(onError);
     };
 
     const onEnded = () => {
+      if (cancelled) return;
       clearSlideTimers();
       goNext();
     };
 
-    const onError = () => {
-      scheduleImageSlide(IMAGE_STORY_MS);
-    };
-
-    video.addEventListener('timeupdate', onTimeUpdate);
-    video.addEventListener('loadedmetadata', onLoadedMetadata);
+    video.addEventListener('canplay', onCanPlay, { once: true });
+    video.addEventListener('error', onError, { once: true });
     video.addEventListener('ended', onEnded);
-    video.addEventListener('error', onError);
 
     return () => {
-      video.pause();
-      video.removeAttribute('src');
-      video.load();
-      video.removeEventListener('timeupdate', onTimeUpdate);
-      video.removeEventListener('loadedmetadata', onLoadedMetadata);
-      video.removeEventListener('ended', onEnded);
+      cancelled = true;
+      video.removeEventListener('canplay', onCanPlay);
       video.removeEventListener('error', onError);
+      video.removeEventListener('ended', onEnded);
+      video.pause();
       clearSlideTimers();
     };
   }, [
     clearSlideTimers,
     currentIsVideo,
-    currentMedia,
     currentSrc,
     goNext,
     index,
     loading,
     open,
     scheduleImageSlide,
+    scheduleVideoAdvance,
   ]);
+
+  const handleVideoTimeUpdate = useCallback((video: HTMLVideoElement) => {
+    const duration = video.duration;
+    if (!Number.isFinite(duration) || duration <= 0) return;
+    setSlideProgress(Math.min(1, video.currentTime / duration));
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -297,8 +323,8 @@ export function StoryViewer({
                         className="h-full w-full object-cover"
                         playsInline
                         muted
-                        autoPlay
                         preload="auto"
+                        onTimeUpdate={(e) => handleVideoTimeUpdate(e.currentTarget)}
                       />
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element

@@ -1,7 +1,15 @@
 import { DEFAULT_MEDIA_DOWNLOAD_HOST } from '@/lib/api/config';
-import { FAMILY_DOMAIN, isFamilyHost } from '@/lib/domains';
+import { MEDIA_HOSTS } from '@/lib/media/hosts.generated';
 
-const CDN_HOSTS = new Set(['cdn.rostami.app', 'family-cdn.rostami.club']);
+/** Canonical playback host for family voice/video/images. */
+export const FAMILY_MEDIA_PLAYBACK_HOST = (
+  process.env.NEXT_PUBLIC_FAMILY_MEDIA_CDN_URL ||
+  MEDIA_HOSTS.family_media_cdn_url ||
+  DEFAULT_MEDIA_DOWNLOAD_HOST
+).replace(/\/$/, '');
+
+const FAMILY_MEDIA_PREFIX = '/media/family/';
+const SITE_MEDIA_PREFIX = '/media/site/';
 
 function cdnPathFromStorageRef(ref: string): string {
   if (ref.startsWith('/storage/media/')) {
@@ -14,102 +22,68 @@ function isLocalOrigin(hostname: string): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1';
 }
 
-/** Canonical `/media/family/...` path, or null when not family media. */
+function toPlaybackHostUrl(pathname: string, search = ''): string {
+  return `${FAMILY_MEDIA_PLAYBACK_HOST}${pathname}${search}`;
+}
+
+/** Hosts that proxy /media/family — video Range + SW break; always rewrite to CDN. */
+function isFamilyMediaProxyHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return (
+    host === 'rostami.club' ||
+    host === 'www.rostami.club' ||
+    host === 'family-cdn.rostami.club' ||
+    host === 'rostami.app' ||
+    host === 'www.rostami.app'
+  );
+}
+
+/** Canonical CDN path (/media/...), or null when not a media asset we control. */
 export function familyMediaPathname(pathname: string): string | null {
   const normalized = pathname.startsWith('/') ? pathname : `/${pathname}`;
-  if (normalized.startsWith('/media/family/')) return normalized;
-  if (normalized.startsWith('/storage/media/family/')) {
+  if (normalized.startsWith(FAMILY_MEDIA_PREFIX) || normalized.startsWith(SITE_MEDIA_PREFIX)) {
+    return normalized;
+  }
+  if (
+    normalized.startsWith('/storage/media/family/') ||
+    normalized.startsWith('/storage/media/site/')
+  ) {
     return cdnPathFromStorageRef(normalized);
+  }
+  if (normalized.startsWith('/media/')) {
+    return normalized;
   }
   return null;
 }
 
-function browserFamilyOrigin(): string | null {
-  if (typeof window === 'undefined') return null;
-  if (!isFamilyHost(window.location.hostname)) return null;
-  return window.location.origin;
-}
-
-function resolveFamilyPath(pathname: string, search = ''): string | null {
-  const familyPath = familyMediaPathname(pathname);
-  if (!familyPath) return null;
-
-  const sameOrigin = browserFamilyOrigin();
-  if (sameOrigin) {
-    return `${sameOrigin}${familyPath}${search}`;
-  }
-
-  if (typeof window !== 'undefined' && isLocalOrigin(window.location.hostname)) {
-    if (pathname.startsWith('/storage/')) {
-      return `${window.location.origin}${pathname}${search}`;
-    }
-  }
-
-  return `${DEFAULT_MEDIA_DOWNLOAD_HOST}${familyPath}${search}`;
-}
-
-function rewriteAbsoluteFamilyUrl(url: URL): string | null {
-  const familyPath = familyMediaPathname(url.pathname);
-  if (!familyPath) return null;
-
-  const sameOrigin = browserFamilyOrigin();
-  if (sameOrigin) {
-    const host = url.hostname.toLowerCase();
-    const familyHost = FAMILY_DOMAIN.toLowerCase();
-    if (
-      CDN_HOSTS.has(host) ||
-      host === familyHost ||
-      host === `www.${familyHost}`
-    ) {
-      return `${sameOrigin}${familyPath}${url.search}`;
-    }
-  }
-
-  if (isLocalOrigin(url.hostname) && url.pathname.startsWith('/storage/media/family/')) {
-    return url.toString();
-  }
-
-  return `${DEFAULT_MEDIA_DOWNLOAD_HOST}${familyPath}${url.search}`;
-}
-
-/**
- * Stream URL for family voice/video/images.
- * On rostami.club → same-origin `/media/family/*` (nginx proxy, no CORS).
- * Else → download host (CDN).
- */
-export function resolveFamilyMediaPlaybackUrl(url: string | null | undefined): string | null {
-  if (!url?.trim()) return null;
-
-  const trimmed = url.trim();
-
+function rewriteKnownMediaUrl(trimmed: string): string | null {
   if (trimmed.startsWith('/storage/')) {
-    const family = resolveFamilyPath(trimmed);
-    if (family) return family;
-    return `${DEFAULT_MEDIA_DOWNLOAD_HOST}${cdnPathFromStorageRef(trimmed)}`;
-  }
-
-  if (trimmed.startsWith('/media/family/')) {
-    return resolveFamilyPath(trimmed);
+    return toPlaybackHostUrl(cdnPathFromStorageRef(trimmed));
   }
 
   if (trimmed.startsWith('/media/')) {
-    return `${DEFAULT_MEDIA_DOWNLOAD_HOST}${trimmed}`;
+    return toPlaybackHostUrl(trimmed);
   }
 
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     try {
       const parsed = new URL(trimmed);
-      const rewritten = rewriteAbsoluteFamilyUrl(parsed);
-      if (rewritten) return rewritten;
-
-      if (parsed.pathname.startsWith('/storage/')) {
-        const family = resolveFamilyPath(parsed.pathname, parsed.search);
-        if (family) return family;
-        return `${DEFAULT_MEDIA_DOWNLOAD_HOST}${cdnPathFromStorageRef(parsed.pathname)}${parsed.search}`;
+      const mediaPath = familyMediaPathname(parsed.pathname);
+      if (mediaPath) {
+        return toPlaybackHostUrl(mediaPath, parsed.search);
       }
-
-      if (isLocalOrigin(parsed.hostname) && parsed.pathname.startsWith('/media/family/')) {
-        return resolveFamilyPath(parsed.pathname, parsed.search);
+      if (parsed.pathname.startsWith('/storage/')) {
+        return toPlaybackHostUrl(cdnPathFromStorageRef(parsed.pathname), parsed.search);
+      }
+      if (isLocalOrigin(parsed.hostname) && parsed.pathname.startsWith('/media/')) {
+        return toPlaybackHostUrl(parsed.pathname, parsed.search);
+      }
+      // Legacy API may still emit club/app proxy URLs without /media path normalization.
+      if (isFamilyMediaProxyHost(parsed.hostname) && mediaPath === null) {
+        const bare = parsed.pathname.replace(/^\/+/, '');
+        if (bare.startsWith('media/family/') || bare.startsWith('media/site/')) {
+          return toPlaybackHostUrl(`/${bare}`, parsed.search);
+        }
       }
     } catch {
       return trimmed;
@@ -118,64 +92,34 @@ export function resolveFamilyMediaPlaybackUrl(url: string | null | undefined): s
   }
 
   const bare = trimmed.replace(/^\/+/, '');
-  if (bare.startsWith('media/family/')) {
-    return resolveFamilyPath(`/${bare}`);
+  if (bare.startsWith('media/family/') || bare.startsWith('media/site/') || bare.startsWith('media/')) {
+    return toPlaybackHostUrl(`/${bare}`);
   }
 
-  return `${DEFAULT_MEDIA_DOWNLOAD_HOST}/${bare}`;
+  return null;
 }
 
-/** Direct file URL on the download host — for `<a download>` and story image src. */
-export function resolveFamilyMediaDownloadUrl(url: string | null | undefined): string | null {
+/**
+ * Stream URL for family voice/video/images — always the download host (cdn.rostami.app).
+ * Rewrites rostami.club proxy URLs, legacy /storage paths, and local dev origins.
+ */
+export function resolveFamilyMediaPlaybackUrl(url: string | null | undefined): string | null {
   if (!url?.trim()) return null;
 
-  const trimmed = url.trim();
+  const rewritten = rewriteKnownMediaUrl(url.trim());
+  if (rewritten) return rewritten;
 
-  if (trimmed.startsWith('/storage/')) {
-    const familyPath = familyMediaPathname(trimmed);
-    if (familyPath) return `${DEFAULT_MEDIA_DOWNLOAD_HOST}${familyPath}`;
-    return `${DEFAULT_MEDIA_DOWNLOAD_HOST}${cdnPathFromStorageRef(trimmed)}`;
-  }
-
-  if (trimmed.startsWith('/media/family/')) {
-    return `${DEFAULT_MEDIA_DOWNLOAD_HOST}${trimmed}`;
-  }
-
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    try {
-      const parsed = new URL(trimmed);
-      const familyPath = familyMediaPathname(parsed.pathname);
-      if (familyPath) {
-        return `${DEFAULT_MEDIA_DOWNLOAD_HOST}${familyPath}${parsed.search}`;
-      }
-      if (parsed.pathname.startsWith('/storage/')) {
-        return `${DEFAULT_MEDIA_DOWNLOAD_HOST}${cdnPathFromStorageRef(parsed.pathname)}${parsed.search}`;
-      }
-    } catch {
-      return trimmed;
-    }
-    return trimmed;
-  }
-
-  const playback = resolveFamilyMediaPlaybackUrl(trimmed);
-  if (!playback) return null;
-
-  try {
-    const parsed = new URL(playback, typeof window !== 'undefined' ? window.location.origin : undefined);
-    const familyPath = familyMediaPathname(parsed.pathname);
-    if (familyPath) {
-      return `${DEFAULT_MEDIA_DOWNLOAD_HOST}${familyPath}${parsed.search}`;
-    }
-  } catch {
-    /* fall through */
-  }
-
-  return playback;
+  return `${FAMILY_MEDIA_PLAYBACK_HOST}/${url.trim().replace(/^\/+/, '')}`;
 }
 
 export function resolveFamilyMediaPosterUrl(url: string | null | undefined): string | null {
   return resolveFamilyMediaPlaybackUrl(url);
 }
 
-/** Images, voice, video — same playback resolver. */
+/** Direct CDN URL for images and downloads — same download host. */
+export function resolveFamilyMediaDownloadUrl(url: string | null | undefined): string | null {
+  return resolveFamilyMediaPlaybackUrl(url);
+}
+
+/** Images, voice, video — same download-host URL resolver. */
 export const resolveFamilyMediaUrl = resolveFamilyMediaPlaybackUrl;

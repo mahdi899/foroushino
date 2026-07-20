@@ -433,4 +433,55 @@ class FamilyManagerService {
     final res = await api.post('$_base/media/$id/retry');
     return FamilyMediaRef.fromJson((res['data'] as Map).cast<String, dynamic>());
   }
+
+  // ---------------------------------------------------------------------
+  // Family panel admins (root / super-admin only)
+  // ---------------------------------------------------------------------
+
+  Future<List<FamilyManagerAdmin>> listFamilyAdmins() async {
+    final res = await api.get('$_base/admins');
+    return (res['data'] as List? ?? [])
+        .map((e) => FamilyManagerAdmin.fromJson((e as Map).cast<String, dynamic>()))
+        .toList();
+  }
+
+  Future<FamilyManagerAdmin> createFamilyAdmin({
+    required String name,
+    required String email,
+    required String mobile,
+    required String password,
+  }) async {
+    final res = await api.post('$_base/admins', data: {
+      'name': name,
+      'email': email,
+      'mobile': mobile,
+      'password': password,
+    });
+    return FamilyManagerAdmin.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<FamilyManagerAdmin> updateFamilyAdmin(
+    int id, {
+    String? name,
+    String? email,
+    String? mobile,
+  }) async {
+    final res = await api.patch('$_base/admins/$id', data: {
+      if (name != null) 'name': name,
+      if (email != null) 'email': email,
+      if (mobile != null) 'mobile': mobile,
+    });
+    return FamilyManagerAdmin.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<void> resetFamilyAdminPassword(int id, String password) async {
+    await api.post('$_base/admins/$id/reset-password', data: {'password': password});
+  }
+
+  Future<FamilyManagerAdmin> setFamilyAdminStatus(int id, String status) async {
+    final res = await api.post('$_base/admins/$id/status', data: {'status': status});
+    return FamilyManagerAdmin.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  Future<void> deleteFamilyAdmin(int id) => api.delete('$_base/admins/$id');
 }

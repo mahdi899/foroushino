@@ -26,7 +26,7 @@ class TelegramWebhookSetCommand extends Command
         $url = $infrastructure->buildWebhookUrl($bot->key);
 
         $client = $clients->forBot($bot);
-        $client->setWebhook($url, $bot->webhook_secret);
+        $client->setWebhook($url, $bot->resolveWebhookSecret());
 
         $mode = $infrastructure->usesWorkerBridge() ? 'Cloudflare Worker' : 'مستقیم';
         $notifier->notify($bot, $url, $mode);

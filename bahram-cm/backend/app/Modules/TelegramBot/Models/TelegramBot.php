@@ -119,6 +119,24 @@ class TelegramBot extends Model
         return substr($token, 0, 4).'…'.substr($token, -4);
     }
 
+    /**
+     * Webhook secret used for X-Telegram-Bot-Api-Secret-Token validation.
+     * Production reads panel infrastructure settings first (same source as setWebhook).
+     */
+    public function resolveWebhookSecret(): ?string
+    {
+        if ($this->key === 'production') {
+            $fromInfra = app(\App\Services\TelegramInfrastructureService::class)->webhookSecret();
+            if (filled($fromInfra)) {
+                return $fromInfra;
+            }
+        }
+
+        $column = trim((string) ($this->webhook_secret ?? ''));
+
+        return $column !== '' ? $column : null;
+    }
+
     public function isProduction(): bool
     {
         return $this->environment === TelegramBotEnvironment::Production;

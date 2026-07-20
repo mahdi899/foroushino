@@ -5,6 +5,8 @@ namespace Tests\Feature\Telegram;
 use App\Modules\TelegramBot\Enums\UpdateStatus;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramUpdate;
+use App\Services\SettingService;
+use App\Services\TelegramInfrastructureService;
 use Database\Seeders\TelegramBotSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -124,5 +126,42 @@ class WebhookTest extends TestCase
             ->assertOk();
 
         $this->assertSame(1, TelegramUpdate::query()->where('update_id', 2001)->count());
+    }
+
+    public function test_webhook_accepts_secret_from_infrastructure_when_bot_column_empty(): void
+    {
+        $this->bot->update(['webhook_secret' => null]);
+        TelegramInfrastructureService::forgetCachedConfig();
+
+        app(SettingService::class)->updateGroup('telegram', [
+            'infrastructure' => [
+                'webhook_secret' => 'test-secret',
+                'base_url' => 'https://worker.test',
+                'backend_origin' => 'https://rostami.test',
+                'proxy_shared_token' => 'test-proxy-token',
+            ],
+        ]);
+        TelegramInfrastructureService::forgetCachedConfig();
+
+        $response = $this->postJson(
+            '/api/v1/integrations/telegram/production/webhook',
+            [
+                'update_id' => 3001,
+                'callback_query' => [
+                    'id' => 'cb1',
+                    'from' => ['id' => 42, 'first_name' => 'Test'],
+                    'message' => ['message_id' => 1, 'chat' => ['id' => 42, 'type' => 'private']],
+                    'chat_instance' => '1',
+                    'data' => 'test',
+                ],
+            ],
+            $this->proxyHeaders(),
+        );
+
+        $response->assertOk()->assertJson(['ok' => true]);
+        $this->assertDatabaseHas('telegram_updates', [
+            'telegram_bot_id' => $this->bot->id,
+            'update_id' => 3001,
+        ]);
     }
 }

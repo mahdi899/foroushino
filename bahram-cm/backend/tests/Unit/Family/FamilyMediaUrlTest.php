@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Family;
 
+use App\Services\MediaHostSettingsService;
 use App\Support\FamilyMediaUrl;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -52,6 +53,8 @@ class FamilyMediaUrlTest extends TestCase
 
     public function test_local_family_media_returns_frontend_origin_without_cdn(): void
     {
+        MediaHostSettingsService::forgetCachedConfig();
+
         config([
             'family.media.cdn_url' => '',
             'bahram.media_url' => '',
@@ -73,6 +76,21 @@ class FamilyMediaUrlTest extends TestCase
         $this->assertSame(
             '/storage/media/family/x.webp?v=3',
             FamilyMediaUrl::withCacheBuster('/storage/media/family/x.webp', 3),
+        );
+    }
+
+    public function test_canonicalize_rewrites_club_proxy_to_cdn(): void
+    {
+        config([
+            'family.media.cdn_url' => 'https://cdn.rostami.app',
+            'bahram.media_url' => 'https://cdn.rostami.app',
+        ]);
+
+        $url = FamilyMediaUrl::fromPath('media/family/2026/07/video/demo.mp4', 'family_media_ftp');
+
+        $this->assertSame(
+            'https://cdn.rostami.app/media/family/2026/07/video/demo.mp4',
+            $url,
         );
     }
 }

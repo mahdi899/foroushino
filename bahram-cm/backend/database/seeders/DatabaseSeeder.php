@@ -121,6 +121,7 @@ class DatabaseSeeder extends Seeder
         $this->call(AdminTelegramSeeder::class);
         $this->call(TelegramBotSeeder::class);
         $this->call(CacheIntegrationsSeeder::class);
+        $this->call(MediaHostsSeeder::class);
         $this->call(CommerceSeeder::class);
         $this->call(SeminarSeeder::class);
         $this->call(MiniCourseSeeder::class);
