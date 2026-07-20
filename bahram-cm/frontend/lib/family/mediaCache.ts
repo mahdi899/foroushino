@@ -1,6 +1,14 @@
-const CACHE_NAME = 'family-media-v3';
+import { familyMediaPathname } from '@/lib/family/mediaPlaybackUrl';
+
+/** Browser Cache API retention after a media item is viewed. */
+export const FAMILY_MEDIA_CACHE_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+
+const CACHE_NAME = 'family-media-v4';
+const CACHED_AT_HEADER = 'X-Family-Media-Cached-At';
 
 const blobUrlByKey = new Map<string, string>();
+
+export type FamilyMediaCacheKind = 'image' | 'video' | 'voice' | 'preview' | 'full';
 
 /**
  * Cache API only accepts http(s) request keys. Encode kind/mediaId/url into a
@@ -12,12 +20,61 @@ function cacheRequest(kind: 'preview' | 'full', mediaId: number, url: string): R
   return new Request(keyUrl);
 }
 
+function isFamilyClubOrigin(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname.toLowerCase();
+  return host === 'rostami.club' || host === 'www.rostami.club';
+}
+
+/** Same-origin proxy on rostami.club avoids CORS when persisting CDN media locally. */
+export function familyMediaCacheFetchUrl(streamUrl: string): string {
+  if (typeof window === 'undefined') return streamUrl;
+
+  try {
+    const parsed = new URL(streamUrl, window.location.origin);
+    const mediaPath = familyMediaPathname(parsed.pathname);
+    if (mediaPath && isFamilyClubOrigin()) {
+      return `${window.location.origin}${mediaPath}${parsed.search}`;
+    }
+  } catch {
+    // fall through
+  }
+
+  return streamUrl;
+}
+
+function isFresh(response: Response): boolean {
+  const cachedAt = response.headers.get(CACHED_AT_HEADER);
+  if (!cachedAt) return true;
+  const age = Date.now() - Number(cachedAt);
+  return Number.isFinite(age) && age >= 0 && age < FAMILY_MEDIA_CACHE_TTL_MS;
+}
+
 async function openCache(): Promise<Cache | null> {
   if (typeof caches === 'undefined') return null;
   try {
     return await caches.open(CACHE_NAME);
   } catch {
     return null;
+  }
+}
+
+export async function pruneExpiredFamilyMediaCache(): Promise<void> {
+  const cache = await openCache();
+  if (!cache) return;
+
+  try {
+    const keys = await cache.keys();
+    await Promise.all(
+      keys.map(async (request) => {
+        const response = await cache.match(request);
+        if (response && !isFresh(response)) {
+          await cache.delete(request);
+        }
+      }),
+    );
+  } catch {
+    // best-effort
   }
 }
 
@@ -31,6 +88,10 @@ export async function readFamilyMediaBlob(
   try {
     const response = await cache.match(cacheRequest(kind, mediaId, url));
     if (!response) return null;
+    if (!isFresh(response)) {
+      await cache.delete(cacheRequest(kind, mediaId, url));
+      return null;
+    }
     return response.blob();
   } catch {
     return null;
@@ -49,7 +110,10 @@ export async function writeFamilyMediaBlob(
     await cache.put(
       cacheRequest(kind, mediaId, url),
       new Response(blob, {
-        headers: { 'Content-Type': blob.type || 'application/octet-stream' },
+        headers: {
+          'Content-Type': blob.type || 'application/octet-stream',
+          [CACHED_AT_HEADER]: String(Date.now()),
+        },
       }),
     );
   } catch {
@@ -65,6 +129,27 @@ export function getFamilyMediaBlobUrl(key: string, blob: Blob): string {
   return next;
 }
 
+function guessFilename(url: string): string {
+  try {
+    const pathname = new URL(url, 'https://cdn.local').pathname;
+    const base = pathname.split('/').pop();
+    if (base && base.includes('.')) return base;
+  } catch {
+    // ignore
+  }
+  return 'media';
+}
+
+/** Cached blob URL when fresh — null when streaming from network is required. */
+export async function getCachedFamilyMediaObjectUrl(
+  url: string,
+  mediaId: number,
+): Promise<string | null> {
+  const blob = await readFamilyMediaBlob('full', mediaId, url);
+  if (!blob) return null;
+  return getFamilyMediaBlobUrl(`view:${mediaId}:${url}`, blob);
+}
+
 /** Best-effort cache write; returns blob when fetch succeeds (same-origin / CORS). */
 export async function tryCacheFamilyMediaBlob(
   url: string,
@@ -75,19 +160,20 @@ export async function tryCacheFamilyMediaBlob(
   const cached = await readFamilyMediaBlob(kind, mediaId, url);
   if (cached) return withPreferredMimeType(cached, mimeType);
 
+  const fetchUrl = familyMediaCacheFetchUrl(url);
+
   try {
     const sameOrigin =
-      url.startsWith('/') ||
-      (typeof window !== 'undefined' && new URL(url, window.location.origin).origin === window.location.origin);
+      fetchUrl.startsWith('/') ||
+      (typeof window !== 'undefined' && new URL(fetchUrl, window.location.origin).origin === window.location.origin);
 
-    const response = await fetch(url, {
+    const response = await fetch(fetchUrl, {
       mode: 'cors',
       credentials: sameOrigin ? 'same-origin' : 'omit',
-      cache: 'default',
+      cache: 'force-cache',
     });
     if (!response.ok) return null;
     const blob = withPreferredMimeType(await response.blob(), mimeType);
-    // Persist after we already have the blob — write failures must not drop playback.
     void writeFamilyMediaBlob(kind, mediaId, url, blob);
     return blob;
   } catch {
@@ -95,9 +181,52 @@ export async function tryCacheFamilyMediaBlob(
   }
 }
 
+/** Fire-and-forget local cache after the user opens/views media. */
+export function rememberFamilyMediaView(
+  url: string,
+  mediaId: number,
+  _kind: Exclude<FamilyMediaCacheKind, 'preview' | 'full'>,
+  mimeType?: string | null,
+): void {
+  if (!url) return;
+  void tryCacheFamilyMediaBlob(url, mediaId, 'full', mimeType);
+}
+
+export async function downloadFamilyMedia(
+  url: string,
+  mediaId: number,
+  filename?: string,
+): Promise<void> {
+  if (typeof document === 'undefined') return;
+
+  let blob = await readFamilyMediaBlob('full', mediaId, url);
+  if (!blob) {
+    blob = await tryCacheFamilyMediaBlob(url, mediaId, 'full');
+  }
+
+  const name = filename ?? guessFilename(url);
+  const anchor = document.createElement('a');
+  anchor.rel = 'noopener';
+
+  if (blob) {
+    anchor.href = getFamilyMediaBlobUrl(`download:${mediaId}:${url}`, blob);
+    anchor.download = name;
+  } else {
+    anchor.href = url;
+    anchor.target = '_blank';
+    anchor.download = name;
+  }
+
+  anchor.click();
+}
+
 function withPreferredMimeType(blob: Blob, mimeType?: string | null): Blob {
   const preferred = mimeType?.trim();
   if (!preferred || preferred === 'application/octet-stream') return blob;
   if (blob.type && blob.type !== 'application/octet-stream') return blob;
   return new Blob([blob], { type: preferred });
+}
+
+if (typeof window !== 'undefined') {
+  void pruneExpiredFamilyMediaCache();
 }

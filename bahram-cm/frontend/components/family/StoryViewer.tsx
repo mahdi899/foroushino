@@ -7,6 +7,7 @@ import { X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { fontClassName } from '@/lib/fonts';
 import { getStories } from '@/lib/family/api';
+import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 import type { FamilyStory, FamilyStoryMedia } from '@/lib/family/types';
 
@@ -154,9 +155,10 @@ export function StoryViewer({
     setSlideProgress(0);
   }, [clearSlideTimers, index, loading, open]);
 
-  // Image stories: fixed timer.
+  // Image stories: fixed timer + warm local cache.
   useEffect(() => {
     if (!open || loading || !currentMedia || !currentSrc || currentIsVideo) return;
+    rememberFamilyMediaView(currentSrc, currentMedia.id, 'image', currentMedia.mime_type);
     scheduleImageSlide(IMAGE_STORY_MS);
     return clearSlideTimers;
   }, [
@@ -182,9 +184,10 @@ export function StoryViewer({
     setSlideProgress(0);
     video.muted = true;
     video.playsInline = true;
-    video.preload = 'auto';
+    video.preload = 'metadata';
     video.src = currentSrc;
     video.load();
+    rememberFamilyMediaView(currentSrc, currentMedia.id, 'video', currentMedia.mime_type);
 
     const onError = () => {
       if (cancelled) return;
@@ -323,7 +326,7 @@ export function StoryViewer({
                         className="h-full w-full object-cover"
                         playsInline
                         muted
-                        preload="auto"
+                        preload="metadata"
                         onTimeUpdate={(e) => handleVideoTimeUpdate(e.currentTarget)}
                       />
                     ) : (

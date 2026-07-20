@@ -5,7 +5,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/cn';
 import { fontClassName } from '@/lib/fonts';
-
+import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
+import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
+import { useFamilyImageSrc } from '@/lib/family/useFamilyImageSrc';
 const IMMERSIVE_CLASS = 'family-app--immersive';
 
 const MIN_SCALE = 1;
@@ -38,20 +40,27 @@ function pointDistance(a: Vec2, b: Vec2) {
 export function ImageZoomLightbox({
   url,
   urls,
+  mediaId = 0,
+  mediaIds,
   initialIndex = 0,
   alt = '',
   onClose,
 }: {
   url?: string;
   urls?: string[];
+  mediaId?: number;
+  mediaIds?: number[];
   initialIndex?: number;
   alt?: string;
   onClose: () => void;
 }) {
   const sources = urls ?? (url ? [url] : []);
+  const sourceMediaIds = mediaIds ?? sources.map(() => mediaId);
   const safeInitialIndex = clamp(initialIndex, 0, Math.max(0, sources.length - 1));
   const [index, setIndex] = useState(safeInitialIndex);
   const activeUrl = sources[index] ?? '';
+  const activeMediaId = sourceMediaIds[index] ?? mediaId;
+  const displayUrl = useFamilyImageSrc(activeUrl, activeMediaId);
   const isGallery = sources.length > 1;
   const viewportRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -241,6 +250,12 @@ export function ImageZoomLightbox({
     if (scaleRef.current <= 1.02) onClose();
   };
 
+  useEffect(() => {
+    if (activeUrl && activeMediaId) {
+      rememberFamilyMediaView(activeUrl, activeMediaId, 'image');
+    }
+  }, [activeMediaId, activeUrl]);
+
   if (!activeUrl) return null;
 
   const content = (
@@ -407,7 +422,7 @@ export function ImageZoomLightbox({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               key={activeUrl}
-              src={activeUrl}
+              src={displayUrl ?? activeUrl}
               alt={alt}
               draggable={false}
               className="max-h-[calc(100dvh-7rem)] max-w-[min(100vw-2rem,56rem)] select-none object-contain"
