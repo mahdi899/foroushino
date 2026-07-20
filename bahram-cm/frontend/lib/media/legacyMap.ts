@@ -51,9 +51,16 @@ export function mediaPathToStorage(path: string): string {
 
   let relative = legacyPath.replace(/^\/(?:media|images)\//, '');
   if (relative.startsWith('site-photos/')) {
-    relative = relative.slice('site-photos/'.length);
-  } else if (relative.includes('/')) {
-    relative = relative.split('/').pop() ?? relative;
+    return `/storage/media/site/${relative.slice('site-photos/'.length)}`;
+  }
+
+  if (relative.startsWith('site/')) {
+    return `/storage/media/${relative}`;
+  }
+
+  // Gallery imports keep YYYY/MM segments — do not collapse to /storage/media/site/<filename>.
+  if (/^\d{4}\/\d{2}\//.test(relative)) {
+    return `/storage/media/${relative}`;
   }
 
   return `/storage/media/site/${relative}`;
