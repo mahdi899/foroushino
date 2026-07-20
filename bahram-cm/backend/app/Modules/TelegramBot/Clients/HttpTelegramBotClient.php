@@ -34,6 +34,10 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
 
     public function setWebhook(string $url, ?string $secretToken = null, array $options = []): array|bool
     {
+        if (! array_key_exists('allowed_updates', $options)) {
+            $options['allowed_updates'] = config('telegram_bot.webhook.allowed_updates', []);
+        }
+
         return $this->call('setWebhook', array_filter([
             'url' => $url,
             'secret_token' => $secretToken,

@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Family;
 
+use App\Services\MediaHostSettingsService;
 use App\Support\FamilyMediaUrl;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -52,6 +53,8 @@ class FamilyMediaUrlTest extends TestCase
 
     public function test_local_family_media_returns_frontend_origin_without_cdn(): void
     {
+        MediaHostSettingsService::forgetCachedConfig();
+
         config([
             'family.media.cdn_url' => '',
             'bahram.media_url' => '',

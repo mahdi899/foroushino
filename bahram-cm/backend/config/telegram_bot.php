@@ -49,6 +49,15 @@ return [
     'webhook' => [
         'base_url' => rtrim((string) env('TELEGRAM_WEBHOOK_BASE_URL', env('APP_URL', 'http://localhost:8010')), '/'),
         'path_pattern' => 'api/v1/integrations/telegram/{botKey}/webhook',
+        /** Must include callback_query or inline buttons stop working after setWebhook. */
+        'allowed_updates' => [
+            'message',
+            'edited_message',
+            'callback_query',
+            'my_chat_member',
+            'chat_member',
+            'chat_join_request',
+        ],
     ],
 
     'updates' => [

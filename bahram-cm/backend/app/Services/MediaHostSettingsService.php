@@ -23,12 +23,16 @@ class MediaHostSettingsService
     private function stored(): array
     {
         return Cache::remember(self::CACHE_KEY, 300, function () {
-            $raw = Setting::query()
-                ->where('group', self::GROUP)
-                ->where('key', self::KEY)
-                ->value('value');
+            try {
+                $raw = Setting::query()
+                    ->where('group', self::GROUP)
+                    ->where('key', self::KEY)
+                    ->value('value');
 
-            return is_array($raw) ? $raw : [];
+                return is_array($raw) ? $raw : [];
+            } catch (\Throwable) {
+                return [];
+            }
         });
     }
 
@@ -51,7 +55,7 @@ class MediaHostSettingsService
 
         $manifest = $this->manifestDefaults();
         $fromManifest = $this->normalizeUrl($manifest['media_url'] ?? null);
-        if ($fromManifest !== null) {
+        if ($fromManifest !== null && $this->shouldUseManifestFallback()) {
             return $fromManifest;
         }
 
@@ -77,11 +81,22 @@ class MediaHostSettingsService
 
         $manifest = $this->manifestDefaults();
         $fromManifest = $this->normalizeUrl($manifest['family_media_cdn_url'] ?? null);
-        if ($fromManifest !== null && ! $this->isClubMediaProxyUrl($fromManifest)) {
+        if ($fromManifest !== null && $this->shouldUseManifestFallback() && ! $this->isClubMediaProxyUrl($fromManifest)) {
             return $fromManifest;
         }
 
         return $this->arvanMediaOrigin();
+    }
+
+    private function shouldUseManifestFallback(): bool
+    {
+        if (! app()->environment(['local', 'testing'])) {
+            return true;
+        }
+
+        $stored = $this->stored();
+
+        return filled($stored['media_url'] ?? null) || filled($stored['family_media_cdn_url'] ?? null);
     }
 
     /** @return array{media_url: string|null, family_media_cdn_url: string|null} */
@@ -138,9 +153,13 @@ class MediaHostSettingsService
 
     private function arvanMediaOrigin(): ?string
     {
-        $storedArvan = trim((string) app(CacheIntegrationService::class)->arvanMediaDomain());
-        if ($storedArvan !== '') {
-            return str_starts_with($storedArvan, 'http') ? rtrim($storedArvan, '/') : 'https://'.$storedArvan;
+        try {
+            $storedArvan = trim((string) app(CacheIntegrationService::class)->arvanMediaDomain());
+            if ($storedArvan !== '') {
+                return str_starts_with($storedArvan, 'http') ? rtrim($storedArvan, '/') : 'https://'.$storedArvan;
+            }
+        } catch (\Throwable) {
+            // settings table may be unavailable before migrate / in unit tests
         }
 
         $env = trim((string) config('bahram.arvan.media_domain', ''));
