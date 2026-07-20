@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { Bell, CirclePlay } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
+import { FamilyBackButton } from '@/components/family/FamilyBackButton';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { StoryViewer } from '@/components/family/StoryViewer';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
@@ -63,6 +64,11 @@ export function FamilyBrandingSidebar({
       <aside className="family-sidebar hidden h-full w-[min(100%,300px)] shrink-0 flex-col overflow-hidden lg:flex">
         <div className="family-sidebar__inner">
           <nav className="family-sidebar__toolbar" aria-label="میانبرهای خانواده">
+            <FamilyBackButton
+              className="family-sidebar__tool-btn"
+              iconClassName="family-sidebar__tool-icon"
+            />
+
             {isMember && (
               <button
                 type="button"

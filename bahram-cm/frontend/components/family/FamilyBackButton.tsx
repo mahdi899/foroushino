@@ -17,7 +17,13 @@ import {
  * - Feed home on club host → main site (rostami.app) via full navigation
  * - Feed home single-origin → browser back or site root
  */
-export function FamilyBackButton() {
+export function FamilyBackButton({
+  className,
+  iconClassName,
+}: {
+  className?: string;
+  iconClassName?: string;
+} = {}) {
   const router = useRouter();
   const pathname = usePathname() ?? '/';
 
@@ -59,8 +65,14 @@ export function FamilyBackButton() {
   }, [pathname, router]);
 
   return (
-    <button type="button" onClick={handleBack} aria-label="بازگشت" className="family-topbar__back">
-      <ChevronRight className="family-topbar__back-icon" aria-hidden />
+    <button
+      type="button"
+      onClick={handleBack}
+      aria-label="بازگشت"
+      title="بازگشت به سایت"
+      className={className ?? 'family-topbar__back'}
+    >
+      <ChevronRight className={iconClassName ?? 'family-topbar__back-icon'} aria-hidden />
     </button>
   );
 }
