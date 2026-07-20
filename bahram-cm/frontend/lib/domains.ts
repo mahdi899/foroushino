@@ -34,7 +34,7 @@ export function appPublicOrigin(): string {
 export function isFamilyFeedHomePath(pathname: string, hostname?: string): boolean {
   const path = pathname.replace(/\/$/, '') || '/';
   if (hostname && isFamilyHost(hostname)) {
-    return path === '/';
+    return path === '/' || path === '/family';
   }
   return path === '/family';
 }

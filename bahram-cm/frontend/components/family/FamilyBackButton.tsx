@@ -3,13 +3,19 @@
 import { useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChevronRight } from 'lucide-react';
-import { appPublicOrigin, familyHomeHref, isFamilyFeedHomePath } from '@/lib/domains';
+import {
+  appPublicOrigin,
+  DUAL_DOMAIN_ENABLED,
+  familyHomeHref,
+  isFamilyFeedHomePath,
+  isFamilyHost,
+} from '@/lib/domains';
 
 /**
  * Family topbar back control:
  * - Sub-routes (login, notifications page) → family home (rostami.club/)
- * - Feed home + meaningful referrer → browser back
- * - Feed home otherwise → main site (rostami.app)
+ * - Feed home on club host → main site (rostami.app) via full navigation
+ * - Feed home single-origin → browser back or site root
  */
 export function FamilyBackButton() {
   const router = useRouter();
@@ -21,6 +27,16 @@ export function FamilyBackButton() {
     if (!isFamilyFeedHomePath(pathname, hostname)) {
       router.push(familyHomeHref());
       return;
+    }
+
+    // Cross-domain: always hard-navigate so the app host fully reloads (router.back()
+    // stays inside the shared Next.js client and leaves the site page unhydrated).
+    if (DUAL_DOMAIN_ENABLED && isFamilyHost(hostname)) {
+      const mainSite = appPublicOrigin();
+      if (mainSite) {
+        window.location.assign(`${mainSite}/`);
+        return;
+      }
     }
 
     const referrer = document.referrer;
@@ -39,13 +55,7 @@ export function FamilyBackButton() {
       }
     }
 
-    const mainSite = appPublicOrigin();
-    if (mainSite) {
-      window.location.assign(`${mainSite}/`);
-      return;
-    }
-
-    router.push(familyHomeHref());
+    router.push('/');
   }, [pathname, router]);
 
   return (
