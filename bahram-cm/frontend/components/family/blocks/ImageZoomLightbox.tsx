@@ -59,7 +59,7 @@ export function ImageZoomLightbox({
   const [index, setIndex] = useState(safeInitialIndex);
   const activeUrl = sources[index] ?? '';
   const activeMediaId = sourceMediaIds[index] ?? mediaId;
-  const displayUrl = useFamilyImageSrc(activeUrl, activeMediaId);
+  const { src: displayUrl } = useFamilyImageSrc(activeUrl, activeMediaId);
   const isGallery = sources.length > 1;
   const viewportRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);

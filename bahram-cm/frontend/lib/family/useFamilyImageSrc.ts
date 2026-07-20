@@ -1,33 +1,69 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { getCachedFamilyMediaObjectUrl } from '@/lib/family/mediaCache';
+import {
+  getCachedFamilyMediaObjectUrl,
+  getFamilyMediaBlobUrl,
+  readFamilyMediaBlob,
+} from '@/lib/family/mediaCache';
 import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 
-/** Prefer a warm local blob for images; fall back to CDN stream URL immediately. */
-export function useFamilyImageSrc(url: string | null | undefined, mediaId: number): string | null {
+export type FamilyImageSrcState = {
+  src: string | null;
+  previewSrc: string | null;
+  fromCache: boolean;
+  resolved: boolean;
+};
+
+/** Prefer a warm local blob; fall back to CDN stream URL after a quick cache check. */
+export function useFamilyImageSrc(
+  url: string | null | undefined,
+  mediaId: number,
+): FamilyImageSrcState {
   const streamUrl = useMemo(() => resolveFamilyMediaUrl(url), [url]);
-  const [src, setSrc] = useState<string | null>(streamUrl);
+  const [state, setState] = useState<FamilyImageSrcState>({
+    src: null,
+    previewSrc: null,
+    fromCache: false,
+    resolved: !streamUrl,
+  });
 
   useEffect(() => {
     if (!streamUrl) {
-      setSrc(null);
+      setState({ src: null, previewSrc: null, fromCache: false, resolved: true });
       return;
     }
 
-    setSrc(streamUrl);
     let cancelled = false;
 
-    void getCachedFamilyMediaObjectUrl(streamUrl, mediaId).then((cached) => {
-      if (!cancelled && cached) setSrc(cached);
-    });
+    void (async () => {
+      const cached = await getCachedFamilyMediaObjectUrl(streamUrl, mediaId);
+      if (cancelled) return;
 
-    // Images stream from CDN — no Cache API prefetch (see rememberFamilyMediaView).
+      if (cached) {
+        setState({ src: cached, previewSrc: null, fromCache: true, resolved: true });
+        return;
+      }
+
+      const previewBlob = await readFamilyMediaBlob('preview', mediaId, streamUrl);
+      if (cancelled) return;
+
+      const previewSrc = previewBlob
+        ? getFamilyMediaBlobUrl(`preview:${mediaId}:${streamUrl}`, previewBlob)
+        : null;
+
+      setState({
+        src: streamUrl,
+        previewSrc,
+        fromCache: false,
+        resolved: true,
+      });
+    })();
 
     return () => {
       cancelled = true;
     };
   }, [mediaId, streamUrl]);
 
-  return src;
+  return state;
 }

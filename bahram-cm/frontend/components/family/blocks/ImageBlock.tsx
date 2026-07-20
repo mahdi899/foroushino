@@ -1,8 +1,9 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
-import { useDelayedInView } from '@/hooks/useDelayedInView';
+import { useLazyInViewOnce } from '@/hooks/useLazyInViewOnce';
+import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
 import { ImageZoomLightbox } from '@/components/family/blocks/ImageZoomLightbox';
 import { useFamilyImageSrc } from '@/lib/family/useFamilyImageSrc';
 import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
@@ -36,15 +37,27 @@ export function ImageBlock({
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
-  const imageUrl = useFamilyImageSrc(media.url, media.id);
-  const inView = useDelayedInView(rootRef, 80, Boolean(imageUrl), true);
+  const { src: imageUrl, previewSrc, fromCache, resolved } = useFamilyImageSrc(media.url, media.id);
+  const shouldLoad = useLazyInViewOnce(rootRef, resolved && Boolean(imageUrl));
+  const downloadUrl = resolveFamilyMediaUrl(media.url) ?? media.url;
 
-  if (!imageUrl) {
+  useEffect(() => {
+    setLoaded(false);
+    setError(false);
+  }, [imageUrl]);
+
+  useEffect(() => {
+    if (fromCache) setLoaded(true);
+  }, [fromCache]);
+
+  if (resolved && !imageUrl) {
     return <div className={cn('aspect-square w-full bg-white/5', roundedClass, className)} />;
   }
 
   const hasKnownAspect = Boolean(media.width && media.height);
   const containerStyle = fillCell || !hasKnownAspect ? undefined : aspectStyle(media);
+  const showPlaceholder = !loaded && !error;
+  const showPreview = Boolean(previewSrc && showPlaceholder);
 
   const openLightbox = () => {
     if (manageLightboxExternally && onOpenLightbox) {
@@ -54,6 +67,11 @@ export function ImageBlock({
     setLightboxOpen(true);
   };
 
+  const retryLoad = () => {
+    setError(false);
+    setLoaded(fromCache);
+  };
+
   return (
     <>
       <button
@@ -61,6 +79,10 @@ export function ImageBlock({
         type="button"
         onClick={(event) => {
           event.stopPropagation();
+          if (error) {
+            retryLoad();
+            return;
+          }
           openLightbox();
         }}
         className={cn(
@@ -71,16 +93,34 @@ export function ImageBlock({
         )}
         style={containerStyle}
       >
-        {!loaded && !error && (
+        {showPlaceholder && (
           <span
-            className="absolute inset-0 animate-pulse bg-[color-mix(in_oklab,var(--family-text)_5%,transparent)]"
+            className={cn(
+              'absolute inset-0 bg-[color-mix(in_oklab,var(--family-text)_5%,transparent)]',
+              showPreview && 'opacity-0',
+            )}
             aria-hidden
           />
         )}
 
-        {inView && !error && (
+        {shouldLoad && showPreview && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
+            src={previewSrc}
+            alt=""
+            decoding="async"
+            aria-hidden
+            className={cn(
+              'absolute inset-0 h-full w-full object-cover blur-md scale-[1.03] saturate-[0.85]',
+              fillCell ? 'object-cover' : 'object-contain',
+            )}
+          />
+        )}
+
+        {shouldLoad && imageUrl && !error && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={imageUrl}
             src={imageUrl}
             alt=""
             decoding="async"
@@ -92,16 +132,21 @@ export function ImageBlock({
                 ? 'absolute inset-0 h-full w-full'
                 : 'relative block h-auto w-full max-h-[var(--family-media-max-h)]',
               fillCell ? 'object-cover' : 'object-contain',
-              'transition-opacity duration-300',
-              loaded ? 'opacity-100' : 'opacity-0',
+              loaded || fromCache ? 'opacity-100' : 'opacity-0',
+              !fromCache && 'transition-opacity duration-150',
             )}
           />
         )}
 
-        {error && (
-          <span className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/40 text-bone/70">
-            <span className="text-xs">بارگذاری ناموفق</span>
-            <span className="text-[11px] text-gold/80">دوباره امتحان کن</span>
+        {error && downloadUrl && (
+          <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/35 px-3 backdrop-blur-md">
+            <span className="text-xs text-bone/75">بارگذاری ناموفق</span>
+            <FamilyMediaDownloadButton
+              url={downloadUrl}
+              mediaId={media.id}
+              label="دانلود"
+              className="pointer-events-auto"
+            />
           </span>
         )}
       </button>

@@ -3,7 +3,8 @@
 import { useRef, useState, type PointerEvent, type TouchEvent } from 'react';
 import { Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { useDelayedInView } from '@/hooks/useDelayedInView';
+import { useLazyInViewOnce } from '@/hooks/useLazyInViewOnce';
+import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
 import { FamilyVideoModal } from '@/components/family/FamilyVideoModal';
 import { resolveFamilyMediaPosterUrl, resolveFamilyMediaStreamUrl, resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 import type { FamilyMediaBlock } from '@/lib/family/types';
@@ -12,11 +13,13 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const containerRef = useRef<HTMLDivElement>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [posterReady, setPosterReady] = useState(false);
+  const [posterError, setPosterError] = useState(false);
 
   const streamUrl = resolveFamilyMediaStreamUrl(media.url, media.id) ?? resolveFamilyMediaUrl(media.url);
+  const downloadUrl = resolveFamilyMediaUrl(media.url) ?? media.url;
   const posterUrl = resolveFamilyMediaPosterUrl(media.poster_url);
   const showFramePreview = !posterUrl && Boolean(streamUrl);
-  const framePreviewReady = useDelayedInView(containerRef, 80, showFramePreview, true);
+  const shouldLoadPreview = useLazyInViewOnce(containerRef, Boolean(streamUrl));
 
   const openPlayer = () => {
     if (!streamUrl) return;
@@ -41,6 +44,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   }
 
   const isPortrait = Boolean(media.width && media.height && media.height > media.width);
+  const showPoster = shouldLoadPreview && !posterError && (posterUrl || showFramePreview);
 
   return (
     <>
@@ -52,19 +56,24 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
         )}
         style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
       >
-        {posterUrl ? (
+        {!posterReady && !posterError && (
+          <span
+            className="absolute inset-0 bg-[color-mix(in_oklab,var(--family-text)_6%,transparent)]"
+            aria-hidden
+          />
+        )}
+
+        {showPoster && posterUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={posterUrl}
             alt=""
-            className={cn(
-              'pointer-events-none h-full w-full object-cover transition-opacity duration-300',
-              posterReady ? 'opacity-100' : 'opacity-70',
-            )}
+            className="pointer-events-none h-full w-full object-cover"
             onLoad={() => setPosterReady(true)}
+            onError={() => setPosterError(true)}
             aria-hidden
           />
-        ) : framePreviewReady ? (
+        ) : showPoster ? (
           <video
             src={streamUrl}
             playsInline
@@ -80,13 +89,23 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
               setPosterReady(true);
             }}
             onLoadedData={() => setPosterReady(true)}
-            className={cn(
-              'pointer-events-none h-full w-full object-cover transition-opacity duration-300',
-              posterReady ? 'opacity-100' : 'opacity-70',
-            )}
+            onError={() => setPosterError(true)}
+            className="pointer-events-none h-full w-full object-cover"
             aria-hidden
           />
         ) : null}
+
+        {posterError && downloadUrl && (
+          <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/35 px-3 backdrop-blur-md">
+            <span className="text-xs text-bone/75">پیش‌نمایش ویدیو در دسترس نیست</span>
+            <FamilyMediaDownloadButton
+              url={downloadUrl}
+              mediaId={media.id}
+              label="دانلود"
+              className="pointer-events-auto"
+            />
+          </span>
+        )}
 
         <div
           className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/10 via-black/20 to-black/45"
