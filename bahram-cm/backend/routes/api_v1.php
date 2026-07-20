@@ -41,6 +41,7 @@ use App\Http\Controllers\Api\V1\Family\PostViewController as FamilyPostViewContr
 use App\Http\Controllers\Api\V1\Family\PulseController as FamilyPulseController;
 use App\Http\Controllers\Api\V1\Family\ReactionController as FamilyReactionController;
 use App\Http\Controllers\Api\V1\Family\StoryController as FamilyStoryController;
+use App\Http\Controllers\Api\V1\FamilyManager\AdminsController as FamilyManagerAdminsController;
 use App\Http\Controllers\Api\V1\FamilyManager\AnalyticsController as FamilyManagerAnalyticsController;
 use App\Http\Controllers\Api\V1\FamilyManager\CommentModerationController as FamilyManagerCommentModerationController;
 use App\Http\Controllers\Api\V1\FamilyManager\EntryLinksController as FamilyManagerEntryLinksController;
@@ -633,6 +634,13 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
     Route::patch('settings/ai', [FamilyManagerSettingsController::class, 'updateAi'])->middleware('family.manage:family.settings.manage');
     Route::post('settings/ai/test', [FamilyManagerSettingsController::class, 'testAi'])->middleware('family.manage:family.settings.manage');
     Route::get('settings/ai/providers', [FamilyManagerSettingsController::class, 'aiProviders'])->middleware('family.manage:family.settings.manage');
+
+    Route::get('admins', [FamilyManagerAdminsController::class, 'index']);
+    Route::post('admins', [FamilyManagerAdminsController::class, 'store']);
+    Route::patch('admins/{admin}', [FamilyManagerAdminsController::class, 'update'])->whereNumber('admin');
+    Route::post('admins/{admin}/reset-password', [FamilyManagerAdminsController::class, 'resetPassword'])->whereNumber('admin');
+    Route::post('admins/{admin}/status', [FamilyManagerAdminsController::class, 'updateStatus'])->whereNumber('admin');
+    Route::delete('admins/{admin}', [FamilyManagerAdminsController::class, 'destroy'])->whereNumber('admin');
 
     Route::get('stories', [FamilyManagerStoryController::class, 'index'])->middleware('family.manage:family.stories.manage');
     Route::post('stories', [FamilyManagerStoryController::class, 'store'])->middleware('family.manage:family.stories.manage');

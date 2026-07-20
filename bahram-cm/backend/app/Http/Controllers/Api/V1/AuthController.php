@@ -43,6 +43,18 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($user->status === \App\Enums\UserStatus::Suspended) {
+            throw ValidationException::withMessages([
+                'email' => ['حساب شما معلق شده است. با مدیر کل تماس بگیرید.'],
+            ]);
+        }
+
+        if ($user->status === \App\Enums\UserStatus::Blocked) {
+            throw ValidationException::withMessages([
+                'email' => ['حساب شما مسدود شده است.'],
+            ]);
+        }
+
         $mobile = Mobile::normalize($user->mobile);
         if (! $mobile) {
             throw ValidationException::withMessages([

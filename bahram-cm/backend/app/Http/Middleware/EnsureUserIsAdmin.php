@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\UserStatus;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,6 +23,24 @@ class EnsureUserIsAdmin
                 'error' => [
                     'code' => 'forbidden',
                     'message_fa' => 'اجازه دسترسی ندارید.',
+                ],
+            ], 403);
+        }
+
+        if ($user->status === UserStatus::Suspended) {
+            return response()->json([
+                'error' => [
+                    'code' => 'account_suspended',
+                    'message_fa' => 'حساب مدیر معلق شده است.',
+                ],
+            ], 403);
+        }
+
+        if ($user->status === UserStatus::Blocked) {
+            return response()->json([
+                'error' => [
+                    'code' => 'account_blocked',
+                    'message_fa' => 'حساب مدیر مسدود شده است.',
                 ],
             ], 403);
         }

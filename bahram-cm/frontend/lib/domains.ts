@@ -20,6 +20,22 @@ export function familyPublicOrigin(): string {
   return FAMILY_DOMAIN ? `https://${FAMILY_DOMAIN}` : '';
 }
 
+/** Main marketing site — rostami.app in production. */
+export function appPublicOrigin(): string {
+  if (APP_DOMAIN) return `https://${APP_DOMAIN}`;
+  const site = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '');
+  return site || '';
+}
+
+/** True on the family feed home (club `/` or dev `/family`). */
+export function isFamilyFeedHomePath(pathname: string, hostname?: string): boolean {
+  const path = pathname.replace(/\/$/, '') || '/';
+  if (hostname && isFamilyHost(hostname)) {
+    return path === '/';
+  }
+  return path === '/family';
+}
+
 /** Public family home — club apex in prod, `/family` on single-origin dev. */
 export function familyHomeHref(): string {
   return FAMILY_DOMAIN ? `${familyPublicOrigin()}/` : '/family';

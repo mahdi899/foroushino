@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
-import { Bell, ChevronRight } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { FamilyBackButton } from '@/components/family/FamilyBackButton';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { StoryViewer } from '@/components/family/StoryViewer';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
@@ -142,9 +143,7 @@ export function FamilyTopBar({
             <TopBarInnerSkeleton showNotifications={showNotifications} />
           ) : (
             <>
-              <Link href="/" aria-label="بازگشت به سایت" className="family-topbar__back">
-                <ChevronRight className="family-topbar__back-icon" aria-hidden />
-              </Link>
+              <FamilyBackButton />
 
               {profileControl}
 
