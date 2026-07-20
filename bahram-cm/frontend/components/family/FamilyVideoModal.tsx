@@ -38,6 +38,8 @@ export function FamilyVideoModal({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const lastReported = useRef(0);
+  const hasStartedRef = useRef(false);
+  const userPausedRef = useRef(false);
   const playbackCandidates = useMemo(
     () => resolveFamilyMediaPlaybackCandidates(url, mediaId),
     [mediaId, url],
@@ -49,7 +51,7 @@ export function FamilyVideoModal({
   const [isPortrait, setIsPortrait] = useState(portrait);
   const [videoAspect, setVideoAspect] = useState<string | null>(null);
   const [coarsePointer, setCoarsePointer] = useState(readCoarsePointer);
-  const [buffering, setBuffering] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(true);
   const [playbackError, setPlaybackError] = useState(false);
   const { register, unregister, requestPlay, notifyPaused, dismissNowPlaying } = useFamilyMediaPlayer();
 
@@ -58,7 +60,9 @@ export function FamilyVideoModal({
       setSrcIndex(0);
       setIsPortrait(portrait);
       setVideoAspect(null);
-      setBuffering(true);
+      setIsBuffering(true);
+      hasStartedRef.current = false;
+      userPausedRef.current = false;
       setPlaybackError(false);
     }
   }, [open, portrait, url]);
@@ -74,7 +78,7 @@ export function FamilyVideoModal({
   const tryNextSource = useCallback(() => {
     if (playbackCandidates.length > srcIndex + 1) {
       setSrcIndex((i) => i + 1);
-      setBuffering(true);
+      setIsBuffering(true);
       setPlaybackError(false);
       return true;
     }
@@ -105,7 +109,8 @@ export function FamilyVideoModal({
   const retryPlayback = useCallback(() => {
     setSrcIndex(0);
     setPlaybackError(false);
-    setBuffering(true);
+    setIsBuffering(true);
+    userPausedRef.current = false;
     const el = videoRef.current;
     if (!el) return;
     el.load();
@@ -122,15 +127,16 @@ export function FamilyVideoModal({
 
     register(mediaId, el);
     requestPlay(mediaId);
-    setBuffering(true);
+    setIsBuffering(true);
     setPlaybackError(false);
     rememberFamilyMediaView(downloadUrl, mediaId, 'video');
 
     const onCanPlay = () => {
+      if (userPausedRef.current) return;
       void el.play().catch(() => {
         if (!tryNextSource()) {
           setPlaybackError(true);
-          setBuffering(false);
+          setIsBuffering(false);
         }
       });
     };
@@ -146,6 +152,7 @@ export function FamilyVideoModal({
   }, [
     activeSrc,
     dismissNowPlaying,
+    downloadUrl,
     mediaId,
     notifyPaused,
     open,
@@ -192,6 +199,32 @@ export function FamilyVideoModal({
     }).catch(() => {});
   };
 
+  const handlePause = useCallback(
+    (video: HTMLVideoElement) => {
+      userPausedRef.current = true;
+      setIsBuffering(false);
+
+      if (!hasStartedRef.current && !video.ended) return;
+
+      notifyPaused(mediaId);
+      reportProgress('pause', video.currentTime, video.duration || durationHint || 0);
+    },
+    [durationHint, mediaId, notifyPaused],
+  );
+
+  const handlePlaying = useCallback((video: HTMLVideoElement) => {
+    if (video.paused || video.ended) return;
+    hasStartedRef.current = true;
+    userPausedRef.current = false;
+    setIsBuffering(false);
+    setPlaybackError(false);
+  }, []);
+
+  const handleWaiting = useCallback((video: HTMLVideoElement) => {
+    if (userPausedRef.current || video.paused || video.ended) return;
+    setIsBuffering(true);
+  }, []);
+
   if (!open) return null;
 
   const playerStyle = videoAspect ? ({ aspectRatio: videoAspect } as CSSProperties) : undefined;
@@ -231,8 +264,8 @@ export function FamilyVideoModal({
           style={stageStyle}
           onClick={(e) => e.stopPropagation()}
         >
-          {buffering && !playbackError ? (
-            <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/35">
+          {isBuffering && !playbackError ? (
+            <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/35 pointer-events-none">
               <Loader2 className="h-10 w-10 animate-spin text-white/90" aria-label="در حال بارگذاری ویدیو" />
             </div>
           ) : null}
@@ -269,38 +302,27 @@ export function FamilyVideoModal({
                   setVideoAspect(`${video.videoWidth} / ${video.videoHeight}`);
                 }
               }}
-              onCanPlay={() => setBuffering(false)}
-              onPlaying={() => {
-                setBuffering(false);
-                setPlaybackError(false);
-              }}
-              onWaiting={(e) => {
-                const video = e.currentTarget;
-                if (video.ended) return;
-                setBuffering(true);
-              }}
+              onPlaying={(e) => handlePlaying(e.currentTarget)}
+              onWaiting={(e) => handleWaiting(e.currentTarget)}
               onError={() => {
                 if (tryNextSource()) return;
-                setBuffering(false);
+                setIsBuffering(false);
                 setPlaybackError(true);
               }}
               onPlay={(e) => {
+                hasStartedRef.current = true;
+                userPausedRef.current = false;
                 reportProgress(
                   'play',
                   e.currentTarget.currentTime,
                   e.currentTarget.duration || durationHint || 0,
                 );
               }}
-              onPause={(e) => {
-                notifyPaused(mediaId);
-                reportProgress(
-                  'pause',
-                  e.currentTarget.currentTime,
-                  e.currentTarget.duration || durationHint || 0,
-                );
-              }}
+              onPause={(e) => handlePause(e.currentTarget)}
               onEnded={(e) => {
-                setBuffering(false);
+                hasStartedRef.current = true;
+                userPausedRef.current = true;
+                setIsBuffering(false);
                 notifyPaused(mediaId);
                 reportProgress(
                   'complete',

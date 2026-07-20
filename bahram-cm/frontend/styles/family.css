@@ -1030,6 +1030,8 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-video-modal__player {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
   height: 100%;
@@ -1038,6 +1040,7 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   background: #000;
   outline: none;
   object-fit: contain;
+  pointer-events: auto;
 }
 
 /* 9:16 — edge-to-edge fullscreen */
