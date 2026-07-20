@@ -14,7 +14,7 @@ return [
     'http' => [
         'timeout' => (int) env('TELEGRAM_HTTP_TIMEOUT', 12),
         'connect_timeout' => (int) env('TELEGRAM_HTTP_CONNECT_TIMEOUT', 4),
-        'retry_times' => (int) env('TELEGRAM_HTTP_RETRY_TIMES', 2),
+        'retry_times' => (int) env('TELEGRAM_HTTP_RETRY_TIMES', 4),
         'retry_base_delay_ms' => (int) env('TELEGRAM_HTTP_RETRY_BASE_DELAY_MS', 350),
     ],
 
