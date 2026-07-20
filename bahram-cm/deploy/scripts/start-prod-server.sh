@@ -58,14 +58,27 @@ php artisan migrate --force
 
 pm2 delete bahram-frontend 2>/dev/null || true
 pkill -f 'next dev' 2>/dev/null || true
+pkill -f 'next build' 2>/dev/null || true
+pm2 stop all 2>/dev/null || true
 sleep 2
 
+if ! swapon --show | grep -q .; then
+  fallocate -l 4G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=4096 2>/dev/null
+  chmod 600 /swapfile
+  mkswap /swapfile 2>/dev/null || true
+  swapon /swapfile 2>/dev/null || true
+fi
+
 cd "$FRONTEND"
+export NODE_ENV=production
+export NEXT_TELEMETRY_DISABLED=1
+export NODE_OPTIONS="${NODE_OPTIONS:---max-old-space-size=3072}"
 rm -rf .next
 npm run build
 test -f .next/BUILD_ID
 
 pm2 start "$PM2_PROD" --update-env || pm2 reload "$PM2_PROD" --update-env
+pm2 restart family-manager-web 2>/dev/null || true
 pm2 save
 
 rm -f "$FLAG"

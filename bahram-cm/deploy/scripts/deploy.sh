@@ -36,7 +36,10 @@ php artisan media:guard-directories
 
 echo "==> Frontend build"
 cd "$APP_ROOT/frontend"
+# devDependencies (e.g. @next/bundle-analyzer) are required for next.config.ts at build time.
+unset NODE_ENV
 if ! npm ci; then npm install --no-audit --no-fund; fi
+export NODE_ENV=production
 npm run build
 
 echo "==> Reload PM2 (Next.js)"
