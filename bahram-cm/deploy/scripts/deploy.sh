@@ -46,6 +46,7 @@ if [[ -f "$APP_ROOT/deploy/nginx/snippets/media-cors.conf" ]]; then
   echo "==> Nginx media CORS"
   mkdir -p /etc/nginx/snippets /etc/nginx/conf.d
   cp "$APP_ROOT/deploy/nginx/snippets/media-cors.conf" /etc/nginx/snippets/media-cors.conf
+  cp "$APP_ROOT/deploy/nginx/snippets/media-stream.conf" /etc/nginx/snippets/media-stream.conf
   cp "$APP_ROOT/deploy/nginx/conf.d/rostami-upstreams.conf" /etc/nginx/conf.d/rostami-upstreams.conf
   if [[ -f "$APP_ROOT/deploy/nginx/rostami-app.conf" && -f /etc/nginx/sites-available/rostami-app.conf ]]; then
     cp "$APP_ROOT/deploy/nginx/rostami-app.conf" /etc/nginx/sites-available/rostami-app.conf

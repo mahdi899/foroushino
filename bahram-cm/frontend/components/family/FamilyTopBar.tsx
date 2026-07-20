@@ -148,7 +148,7 @@ export function FamilyTopBar({
 
               {profileControl}
 
-              <div className="family-topbar__actions">
+              <div className="family-topbar__actions" dir="ltr">
                 {showNotifications ? (
                   <button
                     type="button"
@@ -172,7 +172,7 @@ export function FamilyTopBar({
                     )}
                   </button>
                 ) : null}
-                <ThemeIconButton className="lg:hidden" />
+                <ThemeIconButton className="family-topbar__theme lg:hidden" />
               </div>
             </>
           )}

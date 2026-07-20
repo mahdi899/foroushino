@@ -194,6 +194,14 @@ function clubSameOriginMediaUrl(url: string | null | undefined): string | null {
  * Voice/video stream URLs — same-origin API proxy only (Range + FTP-safe).
  * CDN is omitted: production files live on FTP and nginx CDN often 404s → decode errors.
  */
+export function resolveFamilyMediaStreamUrl(
+  url: string | null | undefined,
+  mediaId?: number,
+): string | null {
+  const candidates = resolveFamilyMediaStreamCandidates(url, mediaId);
+  return candidates[0] ?? null;
+}
+
 export function resolveFamilyMediaStreamCandidates(
   url: string | null | undefined,
   mediaId?: number,

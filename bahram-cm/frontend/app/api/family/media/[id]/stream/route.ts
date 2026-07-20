@@ -11,6 +11,28 @@ const FORWARD_HEADERS = [
   'content-disposition',
 ] as const;
 
+function normalizeStreamHeaders(headers: Headers): void {
+  if (!headers.has('accept-ranges')) {
+    headers.set('Accept-Ranges', 'bytes');
+  }
+
+  const contentType = headers.get('content-type');
+  if (contentType) {
+    headers.set('Content-Type', contentType.split(';')[0]?.trim() ?? contentType);
+  }
+
+  const disposition = headers.get('content-disposition') ?? '';
+  if (!disposition || disposition.toLowerCase().includes('attachment')) {
+    headers.set('Content-Disposition', 'inline');
+  }
+
+  if (!headers.has('cache-control')) {
+    headers.set('Cache-Control', 'private, max-age=259200');
+  }
+
+  headers.set('X-Content-Type-Options', 'nosniff');
+}
+
 /** Same-origin stream proxy — adds auth cookie, forwards Range for video/voice. */
 export async function GET(
   request: Request,
@@ -50,12 +72,7 @@ export async function GET(
     const value = upstream.headers.get(name);
     if (value) headers.set(name, value);
   }
-  if (!headers.has('accept-ranges')) {
-    headers.set('Accept-Ranges', 'bytes');
-  }
-  if (!headers.has('cache-control')) {
-    headers.set('Cache-Control', 'private, max-age=259200');
-  }
+  normalizeStreamHeaders(headers);
 
   return new NextResponse(upstream.body, {
     status: upstream.status,
