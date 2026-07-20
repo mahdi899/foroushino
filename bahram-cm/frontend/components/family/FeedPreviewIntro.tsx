@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import {
   Heart,
@@ -22,8 +22,10 @@ import {
   GUEST_BLURRED_POST_COUNT,
   GUEST_PREVIEW_POST_COUNT,
 } from '@/lib/family/guest-access';
-import { familyMotion } from '@/lib/family/motion';
+import { useIsMobileMotion } from '@/hooks/useIsMobileMotion';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
+import { FAMILY_EASE, familyMotion } from '@/lib/family/motion';
+import { cn } from '@/lib/cn';
 
 const gateRoot = {
   hidden: {},
@@ -84,6 +86,19 @@ const featureItem = {
   },
 };
 
+const gateInstant = {
+  hidden: { opacity: 1 },
+  visible: { opacity: 1 },
+};
+
+const gatePanelLite = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { duration: 0.24, ease: FAMILY_EASE },
+  },
+};
+
 const GUEST_FEATURES: {
   icon: LucideIcon;
   tone: 'violet' | 'emerald' | 'amber' | 'rose';
@@ -118,6 +133,35 @@ export function FeedPreviewIntro({ mode }: { mode: 'guest' | 'join' }) {
 export function FeedPreviewGate({ mode }: { mode: 'guest' | 'join' }) {
   const guestAccess = useFamilyGuestAccessOptional();
   const isGuest = mode === 'guest';
+  const reduceMotion = useReducedMotion();
+  const isMobile = useIsMobileMotion();
+  const lite = isMobile && !reduceMotion;
+  const motionVariants = reduceMotion
+    ? {
+        root: gateInstant,
+        panel: gateInstant,
+        tab: gateInstant,
+        item: gateInstant,
+        grid: gateInstant,
+        feature: gateInstant,
+      }
+    : lite
+      ? {
+          root: gateInstant,
+          panel: gatePanelLite,
+          tab: gateInstant,
+          item: gateInstant,
+          grid: gateInstant,
+          feature: gateInstant,
+        }
+      : {
+          root: gateRoot,
+          panel: gatePanel,
+          tab: gateTab,
+          item: gateItem,
+          grid: featureGrid,
+          feature: featureItem,
+        };
 
   const handlePrimary = () => {
     if (isGuest) {
@@ -129,25 +173,25 @@ export function FeedPreviewGate({ mode }: { mode: 'guest' | 'join' }) {
 
   return (
     <motion.div
-      className="family-preview-gate"
+      className={cn('family-preview-gate', lite && 'family-preview-gate--lite')}
       initial="hidden"
       whileInView="visible"
-      viewport={{ once: true, amount: 0.22 }}
-      variants={gateRoot}
+      viewport={lite ? { once: true, amount: 0.14 } : { once: true, amount: 0.22 }}
+      variants={motionVariants.root}
     >
       <div className="family-preview-gate__tab-slot" aria-hidden>
-        <motion.div className="family-preview-gate__tab" variants={gateTab}>
+        <motion.div className="family-preview-gate__tab" variants={motionVariants.tab}>
           <span className="family-preview-gate__tab-pulse" aria-hidden />
           <Lock className="family-preview-gate__tab-icon" strokeWidth={2} />
         </motion.div>
       </div>
 
-      <motion.div className="family-preview-gate__panel" variants={gatePanel}>
+      <motion.div className="family-preview-gate__panel" variants={motionVariants.panel}>
         <span className="family-preview-gate__panel-sheen" aria-hidden />
         <span className="family-preview-gate__panel-shimmer" aria-hidden />
 
         <div className="family-preview-gate__body">
-          <motion.div className="family-preview-gate__story" variants={gateItem}>
+          <motion.div className="family-preview-gate__story" variants={motionVariants.item}>
             <h3 className="family-preview-gate__headline">
               {isGuest ? (
                 <>
@@ -172,9 +216,9 @@ export function FeedPreviewGate({ mode }: { mode: 'guest' | 'join' }) {
 
           <span className="family-preview-gate__divider" aria-hidden />
 
-          <motion.ul className="family-preview-gate__features" variants={featureGrid}>
+          <motion.ul className="family-preview-gate__features" variants={motionVariants.grid}>
             {GUEST_FEATURES.map(({ icon: Icon, tone, label }) => (
-              <motion.li key={label} className="family-preview-gate__feature" variants={featureItem}>
+              <motion.li key={label} className="family-preview-gate__feature" variants={motionVariants.feature}>
                 <span
                   className={`family-preview-gate__feature-icon family-preview-gate__feature-icon--${tone}`}
                 >
@@ -186,7 +230,7 @@ export function FeedPreviewGate({ mode }: { mode: 'guest' | 'join' }) {
           </motion.ul>
         </div>
 
-        <motion.div className="family-preview-gate__footer" variants={gateItem}>
+        <motion.div className="family-preview-gate__footer" variants={motionVariants.item}>
           <FamilyGlassCtaButton className="family-preview-gate__cta" onClick={handlePrimary}>
             <Users className="family-preview-gate__cta-icon" strokeWidth={2} aria-hidden />
             {isGuest ? FAMILY_GATE_JOIN_CTA : 'پیوستن به خانواده'}
