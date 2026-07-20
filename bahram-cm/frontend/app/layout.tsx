@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import { unstable_noStore } from "next/cache";
 import { headers } from "next/headers";
 import { fontClassName, fontVariable } from "@/lib/fonts";
@@ -92,14 +91,17 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <Script id="site-theme-boot" strategy="beforeInteractive">
-          {siteThemeBootScript()}
-        </Script>
+        {/* Server-only inline boot scripts — avoid next/script beforeInteractive (React 19 client warning). */}
+        <script
+          id="site-theme-boot"
+          dangerouslySetInnerHTML={{ __html: siteThemeBootScript() }}
+        />
         <MediaPreconnect />
         {process.env.NODE_ENV === "development" ? (
-          <Script id="bahram-dev-sw-cleanup" strategy="beforeInteractive">
-            {DEV_SERVICE_WORKER_CLEANUP_SCRIPT}
-          </Script>
+          <script
+            id="bahram-dev-sw-cleanup"
+            dangerouslySetInnerHTML={{ __html: DEV_SERVICE_WORKER_CLEANUP_SCRIPT }}
+          />
         ) : null}
       </head>
       <body
