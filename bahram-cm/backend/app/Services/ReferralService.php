@@ -25,6 +25,13 @@ class ReferralService
         ]);
     }
 
+    public function referralLink(string $code): string
+    {
+        $base = rtrim((string) (config('app.frontend_url') ?: config('bahram.frontend_url') ?: 'https://rostami.app'), '/');
+
+        return "{$base}/?ref={$code}";
+    }
+
     public function normalizeCode(?string $code): ?string
     {
         if (blank($code)) {

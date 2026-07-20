@@ -23,6 +23,8 @@ use App\Modules\TelegramBot\Services\TelegramPurchaseFlowService;
 use App\Modules\TelegramBot\Services\TelegramSatFlowService;
 use App\Modules\TelegramBot\Services\TelegramSubscriberEligibility;
 use App\Modules\TelegramBot\Services\TelegramAdminUserStatsService;
+use App\Support\InflatedMemberCount;
+use App\Modules\TelegramBot\Support\TelegramHtml;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Services\ReferralService;
 
@@ -349,7 +351,8 @@ class MessageHandler implements UpdateHandlerInterface
         if ($products->isEmpty()) {
             $client->sendMessage(
                 $chatId,
-                "در حال حاضر دوره فعالی برای تلگرام تعریف نشده است.\nاز پنل سایت → تجارت → محصولات، گزینه «نمایش در تلگرام» را برای دوره فعال کنید."
+                TelegramHtml::bold('در حال حاضر دوره فعالی برای تلگرام تعریف نشده است.'),
+                ['parse_mode' => 'HTML'],
             );
 
             return;
@@ -441,7 +444,7 @@ class MessageHandler implements UpdateHandlerInterface
 
         $membership->loadMissing('family');
         $family = $membership->family;
-        $memberCount = (int) ($family?->member_count ?? 0);
+        $memberCount = InflatedMemberCount::calculate((int) ($family?->member_count ?? 0));
         $familyId = (int) $membership->family_id;
         $unreadCount = $this->familyUnreadPostCount($user, $membership);
 
@@ -511,11 +514,15 @@ class MessageHandler implements UpdateHandlerInterface
         try {
             $code = $this->referrals->getOrCreateCode($account->user);
             $summary = $this->referrals->summary($account->user);
+            $link = $this->referrals->referralLink($code->code);
+            $panelUrl = TelegramSiteUrl::page('panel/referrals');
             $client->sendMessage(
                 $chatId,
-                "لینک معرفی:\n/start ref_{$code->code}\n\n"
-                .'ثبت‌نام‌ها: '.($summary['registrations'] ?? $summary['signups'] ?? 0)."\n"
-                .'پاداش قابل برداشت: '.number_format((int) ($summary['withdrawable'] ?? $summary['balance'] ?? 0)).' تومان'
+                "لینک دعوت (همکاری در فروش):\n{$link}\n\n"
+                ."کد اختصاصی: {$code->code}\n\n"
+                .'خریدهای موفق: '.number_format((int) ($summary['successful_purchases'] ?? 0))."\n"
+                .'پاداش قابل برداشت: '.number_format((int) ($summary['payable_amount'] ?? 0)).' تومان',
+                TelegramSiteUrl::linkMarkup($panelUrl, '🎁 باشگاه مشتریان در پنل')
             );
         } catch (\Throwable) {
             $client->sendMessage($chatId, 'در حال حاضر امکان نمایش لینک معرفی وجود ندارد.');

@@ -105,6 +105,32 @@ final class JalaliDate
         return sprintf('%04d/%02d/%02d', $jy, $jm, $jd);
     }
 
+    /** Persian (Jalali) date + time, e.g. «۳ مرداد ۱۴۰۵ — ۱۹:۴۶». */
+    public static function formatDateTime(?DateTimeInterface $date = null): string
+    {
+        $date = $date
+            ? Carbon::instance($date)->timezone('Asia/Tehran')
+            : now()->timezone('Asia/Tehran');
+
+        if (class_exists(IntlDateFormatter::class)) {
+            $formatter = new IntlDateFormatter(
+                'fa_IR@calendar=persian',
+                IntlDateFormatter::NONE,
+                IntlDateFormatter::NONE,
+                'Asia/Tehran',
+                IntlDateFormatter::TRADITIONAL,
+                'd MMMM y – HH:mm',
+            );
+
+            $formatted = $formatter->format($date);
+            if (is_string($formatted) && $formatted !== '') {
+                return $formatted;
+            }
+        }
+
+        return self::format($date).' '.$date->format('H:i');
+    }
+
     /** @return array{0: int, 1: int, 2: int} */
     private static function toJalali(int $gy, int $gm, int $gd): array
     {

@@ -5,6 +5,7 @@ namespace App\Modules\TelegramBot\Services;
 use App\Models\Product;
 use App\Models\Seminar;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
+use App\Support\JalaliDate;
 use Illuminate\Support\Carbon;
 
 class TelegramContentPresenter
@@ -36,7 +37,7 @@ class TelegramContentPresenter
     public function productReplyMarkup(Product $product): array
     {
         $keyboard = [
-            [['text' => '🛒 خرید و پرداخت', 'callback_data' => 'buy:'.$product->id]],
+            [$this->paymentButton('🛒 خرید و پرداخت', $product->id)],
             ...TelegramSiteUrl::urlKeyboardRow(
                 '🌐 مشاهده در سایت',
                 TelegramSiteUrl::resolve($product->landing_href, $product->slug),
@@ -51,7 +52,7 @@ class TelegramContentPresenter
         $lines = ['🎤 '.trim((string) $seminar->title), ''];
 
         if ($seminar->date instanceof Carbon) {
-            $lines[] = '📅 '.$seminar->date->timezone(config('app.timezone'))->format('Y/m/d H:i');
+            $lines[] = '📅 '.JalaliDate::formatDateTime($seminar->date);
         }
 
         if (filled($seminar->location)) {
@@ -94,7 +95,7 @@ class TelegramContentPresenter
         if ($seminar->isFull()) {
             $keyboard[] = [['text' => '⛔ ظرفیت تکمیل شده', 'callback_data' => 'seminar:full']];
         } elseif ($product && $product->is_active && $price > 0) {
-            $keyboard[] = [['text' => '🛒 ثبت‌نام / پرداخت', 'callback_data' => 'buy:'.$product->id]];
+            $keyboard[] = [$this->paymentButton('🛒 ثبت‌نام / پرداخت', $product->id)];
         }
 
         $keyboard = [
@@ -107,6 +108,16 @@ class TelegramContentPresenter
         }
 
         return ['reply_markup' => ['inline_keyboard' => $keyboard]];
+    }
+
+    /** @return array{text: string, callback_data: string, style: string} */
+    private function paymentButton(string $label, int $productId): array
+    {
+        return [
+            'text' => $label,
+            'callback_data' => 'buy:'.$productId,
+            'style' => 'success',
+        ];
     }
 
     private function formatPriceLine(int $price, ?int $salePrice): string

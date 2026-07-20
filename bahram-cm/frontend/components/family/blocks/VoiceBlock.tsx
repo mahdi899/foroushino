@@ -50,18 +50,36 @@ function normalizeWaveform(raw: number[], barCount: number): number[] {
   return result.map((v) => (v - min) / range);
 }
 
-function waitForMetadata(el: HTMLAudioElement): Promise<void> {
-  if (el.readyState >= HTMLMediaElement.HAVE_METADATA && Number.isFinite(el.duration) && el.duration > 0) {
-    return Promise.resolve();
+function waitForMetadata(el: HTMLAudioElement, timeoutMs = 20_000): Promise<boolean> {
+  if (el.readyState >= HTMLMediaElement.HAVE_METADATA) {
+    return Promise.resolve(true);
   }
+
   return new Promise((resolve) => {
-    const done = () => {
-      el.removeEventListener('loadedmetadata', done);
-      el.removeEventListener('durationchange', done);
-      resolve();
+    let settled = false;
+
+    const finish = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      el.removeEventListener('loadedmetadata', onReady);
+      el.removeEventListener('durationchange', onReady);
+      el.removeEventListener('error', onError);
+      window.clearTimeout(timer);
+      resolve(ok);
     };
-    el.addEventListener('loadedmetadata', done);
-    el.addEventListener('durationchange', done);
+
+    const onReady = () => {
+      if (el.readyState >= HTMLMediaElement.HAVE_METADATA) {
+        finish(true);
+      }
+    };
+
+    const onError = () => finish(false);
+    const timer = window.setTimeout(() => finish(false), timeoutMs);
+
+    el.addEventListener('loadedmetadata', onReady);
+    el.addEventListener('durationchange', onReady);
+    el.addEventListener('error', onError);
   });
 }
 
@@ -162,8 +180,8 @@ export function VoiceBlock({
         audio.load();
       }
 
-      await waitForMetadata(audio);
-      const ready = audio.readyState >= HTMLMediaElement.HAVE_METADATA;
+      const metaReady = await waitForMetadata(audio);
+      const ready = metaReady && audio.readyState >= HTMLMediaElement.HAVE_METADATA;
       setAudioReady(ready);
       setLoadError(!ready);
       return ready;
@@ -247,8 +265,21 @@ export function VoiceBlock({
       const wasPlaying = playingBeforeScrubRef.current;
       scrubbingRef.current = true;
 
-      await ensureAudioReady();
-      await waitForMetadata(el);
+      const loaded = await ensureAudioReady();
+      if (!loaded) {
+        scrubbingRef.current = false;
+        setScrubVisual(null);
+        setLoadError(true);
+        return;
+      }
+
+      const metaReady = await waitForMetadata(el);
+      if (!metaReady) {
+        scrubbingRef.current = false;
+        setScrubVisual(null);
+        setLoadError(true);
+        return;
+      }
 
       const durationSec = readDuration(el) || resolvedDuration;
       if (durationSec <= 0) {
@@ -297,7 +328,11 @@ export function VoiceBlock({
     }
 
     requestPlay(media.id);
-    await waitForMetadata(el);
+    const metaReady = await waitForMetadata(el);
+    if (!metaReady) {
+      setLoadError(true);
+      return;
+    }
 
     const target = seekPositionRef.current > 0 ? seekPositionRef.current : progress;
     if (target > 0 && Math.abs(el.currentTime - target) > 0.2) {

@@ -32,11 +32,9 @@ class ReferralController extends Controller
                 'converted_at' => $conversion->converted_at?->toIso8601String(),
             ]);
 
-        $siteUrl = rtrim((string) config('app.frontend_url'), '/');
-
         return ApiResponse::success([
             'code' => $code->code,
-            'link' => "{$siteUrl}/?ref={$code->code}",
+            'link' => $this->referrals->referralLink($code->code),
             'is_active' => $code->is_active,
             'summary' => $summary,
             'invitees' => $invitees,
