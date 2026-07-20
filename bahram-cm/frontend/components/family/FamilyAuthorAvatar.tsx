@@ -1,5 +1,6 @@
 import { ProfileVerifiedBadge } from '@/components/student-panel/layout/ProfileVerifiedBadge';
 import { cn } from '@/lib/cn';
+import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 import { appendAvatarCacheBuster } from '@/lib/student/avatarCache';
 
 function initial(name: string): string {
@@ -49,6 +50,11 @@ export function FamilyAuthorAvatar({
           ? 'family-story-ring--sm'
           : 'family-story-ring--md';
 
+  const resolvedAvatar = avatar ? resolveFamilyMediaUrl(avatar) ?? avatar : null;
+  const avatarSrc = resolvedAvatar
+    ? appendAvatarCacheBuster(resolvedAvatar, avatarVersion)
+    : null;
+
   const avatarFace = (
     <span
       className={cn(
@@ -57,11 +63,11 @@ export function FamilyAuthorAvatar({
         !hasStoryRing && className,
       )}
     >
-      {avatar ? (
+      {avatarSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          key={appendAvatarCacheBuster(avatar, avatarVersion)}
-          src={appendAvatarCacheBuster(avatar, avatarVersion)}
+          key={avatarSrc}
+          src={avatarSrc}
           alt=""
           className="h-full w-full object-cover"
         />

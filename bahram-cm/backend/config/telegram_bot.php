@@ -66,6 +66,19 @@ return [
         'retention_days' => (int) env('TELEGRAM_UPDATE_RETENTION_DAYS', 30),
     ],
 
+    /*
+    | Minute reconcile: probe Telegram (Worker/direct), heal webhook drift,
+    | pull remote backlog when Telegram reports delivery errors, retry local queue rows.
+    */
+    'reconcile' => [
+        'enabled' => filter_var(env('TELEGRAM_WEBHOOK_RECONCILE', true), FILTER_VALIDATE_BOOL),
+        'pending_pull_threshold' => (int) env('TELEGRAM_WEBHOOK_PENDING_PULL_THRESHOLD', 3),
+        'pull_batch_limit' => (int) env('TELEGRAM_WEBHOOK_PULL_BATCH_LIMIT', 50),
+        'recovery_cooldown_seconds' => (int) env('TELEGRAM_WEBHOOK_RECOVERY_COOLDOWN', 300),
+        'stale_pending_seconds' => (int) env('TELEGRAM_STALE_PENDING_SECONDS', 120),
+        'stale_pending_batch' => (int) env('TELEGRAM_STALE_PENDING_BATCH', 30),
+    ],
+
     'login_token' => [
         'ttl_minutes' => (int) env('TELEGRAM_LOGIN_TOKEN_TTL_MINUTES', 10),
     ],

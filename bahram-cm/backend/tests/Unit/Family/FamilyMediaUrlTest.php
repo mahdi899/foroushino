@@ -78,4 +78,19 @@ class FamilyMediaUrlTest extends TestCase
             FamilyMediaUrl::withCacheBuster('/storage/media/family/x.webp', 3),
         );
     }
+
+    public function test_canonicalize_rewrites_club_proxy_to_cdn(): void
+    {
+        config([
+            'family.media.cdn_url' => 'https://cdn.rostami.app',
+            'bahram.media_url' => 'https://cdn.rostami.app',
+        ]);
+
+        $url = FamilyMediaUrl::fromPath('media/family/2026/07/video/demo.mp4', 'family_media_ftp');
+
+        $this->assertSame(
+            'https://cdn.rostami.app/media/family/2026/07/video/demo.mp4',
+            $url,
+        );
+    }
 }

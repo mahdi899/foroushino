@@ -26,6 +26,14 @@ describe('resolveFamilyMediaPlaybackUrl', () => {
     ).toBe('https://cdn.rostami.app/media/family/2026/07/video/demo.mp4');
   });
 
+  it('preserves cache-buster query on rewrite', () => {
+    expect(
+      resolveFamilyMediaPlaybackUrl(
+        'https://rostami.club/media/family/2026/07/voice/demo.m4a?v=123',
+      ),
+    ).toBe('https://cdn.rostami.app/media/family/2026/07/voice/demo.m4a?v=123');
+  });
+
   it('rewrites /storage family paths to cdn', () => {
     expect(resolveFamilyMediaPlaybackUrl('/storage/media/family/2026/07/image/a.webp')).toBe(
       'https://cdn.rostami.app/media/family/2026/07/image/a.webp',

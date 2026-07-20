@@ -5,6 +5,7 @@ import { Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { FamilyBodyPortal } from '@/components/family/FamilyBodyPortal';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
+import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 import { sendMediaProgress } from '@/lib/family/api';
 
 function readCoarsePointer(): boolean {
@@ -31,6 +32,7 @@ export function FamilyVideoModal({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const lastReported = useRef(0);
+  const streamUrl = resolveFamilyMediaUrl(url) ?? url;
   const [isPortrait, setIsPortrait] = useState(portrait);
   const [videoAspect, setVideoAspect] = useState<string | null>(null);
   const [coarsePointer, setCoarsePointer] = useState(readCoarsePointer);
@@ -45,7 +47,7 @@ export function FamilyVideoModal({
       setBuffering(true);
       setPlaybackError(false);
     }
-  }, [open, portrait, url]);
+  }, [open, portrait, streamUrl]);
 
   useEffect(() => {
     const media = window.matchMedia('(pointer: coarse)');
@@ -84,7 +86,7 @@ export function FamilyVideoModal({
     const el = videoRef.current;
     if (!el) return;
 
-    el.src = url;
+    el.src = streamUrl;
     register(mediaId, el);
     requestPlay(mediaId);
     setBuffering(true);
@@ -99,7 +101,7 @@ export function FamilyVideoModal({
       unregister(mediaId);
       notifyPaused(mediaId);
     };
-  }, [dismissNowPlaying, mediaId, notifyPaused, open, register, requestPlay, unregister, url]);
+  }, [dismissNowPlaying, mediaId, notifyPaused, open, register, requestPlay, streamUrl, unregister]);
 
   useEffect(() => {
     if (!open) return;
@@ -202,7 +204,7 @@ export function FamilyVideoModal({
 
           <video
             ref={videoRef}
-            src={url}
+            src={streamUrl}
             playsInline
             controls
             preload="auto"

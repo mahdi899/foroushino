@@ -13,10 +13,10 @@ final class FamilyMediaUrl
         }
 
         if (self::isRemoteDisk($disk) || self::shouldDeliverViaCdn($storagePath, $disk)) {
-            return self::remoteUrl($storagePath);
+            return self::canonicalizePlaybackUrl(self::remoteUrl($storagePath));
         }
 
-        return self::originStorageUrl($storagePath);
+        return self::canonicalizePlaybackUrl(self::originStorageUrl($storagePath));
     }
 
     public static function withCacheBuster(?string $url, int|string|null $version): ?string
@@ -79,5 +79,32 @@ final class FamilyMediaUrl
     private static function cdnBase(): string
     {
         return app(MediaHostSettingsService::class)->familyMediaCdnUrl() ?? '';
+    }
+
+    /** Force download-host URLs — never rostami.club proxy (breaks video/voice Range). */
+    private static function canonicalizePlaybackUrl(?string $url): ?string
+    {
+        if (! filled($url)) {
+            return null;
+        }
+
+        $parsed = parse_url($url);
+        if (! is_array($parsed)) {
+            return $url;
+        }
+
+        $path = $parsed['path'] ?? '';
+        if ($path === '' || ! str_contains($path, '/media/family/')) {
+            return $url;
+        }
+
+        $cdn = self::cdnBase();
+        if ($cdn === '') {
+            return $url;
+        }
+
+        $query = isset($parsed['query']) && $parsed['query'] !== '' ? '?'.$parsed['query'] : '';
+
+        return rtrim($cdn, '/').$path.$query;
     }
 }
