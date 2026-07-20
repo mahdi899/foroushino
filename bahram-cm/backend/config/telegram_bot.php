@@ -63,6 +63,11 @@ return [
     'updates' => [
         'max_attempts' => (int) env('TELEGRAM_UPDATE_MAX_ATTEMPTS', 5),
         'retry_batch_size' => (int) env('TELEGRAM_UPDATE_RETRY_BATCH_SIZE', 50),
+        /** How long update rows stay in DB (admin /admin/telegram/logs). Purged hourly. */
+        'retention_hours' => (int) env('TELEGRAM_UPDATE_RETENTION_HOURS', 24),
+        'delivery_log_retention_hours' => (int) env('TELEGRAM_DELIVERY_LOG_RETENTION_HOURS', 24),
+        'cleanup_batch_size' => (int) env('TELEGRAM_UPDATE_CLEANUP_BATCH_SIZE', 5000),
+        /** @deprecated use retention_hours */
         'retention_days' => (int) env('TELEGRAM_UPDATE_RETENTION_DAYS', 30),
     ],
 
