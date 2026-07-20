@@ -15,8 +15,8 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const [posterReady, setPosterReady] = useState(false);
   const [posterError, setPosterError] = useState(false);
 
-  const streamUrl = resolveFamilyMediaPlaybackCandidates(media.url)[0] ?? null;
-  const downloadUrl = resolveFamilyMediaPlaybackUrl(media.url) ?? media.url;
+  const streamUrl = resolveFamilyMediaPlaybackUrl(media.url);
+  const downloadUrl = streamUrl ?? media.url;
   const posterUrl = resolveFamilyMediaPosterUrl(media.poster_url);
   const showFramePreview = !posterUrl && Boolean(streamUrl);
   const shouldLoadPreview = useLazyInViewOnce(containerRef, Boolean(streamUrl));
@@ -135,7 +135,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
 
       <FamilyVideoModal
         open={modalOpen}
-        url={media.url}
+        url={streamUrl ?? media.url}
         mediaId={media.id}
         postId={postId}
         durationHint={media.duration}

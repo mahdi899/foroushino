@@ -198,8 +198,8 @@ function clubSameOriginMediaUrl(url: string | null | undefined): string | null {
 }
 
 /**
- * Playback URLs — direct media file links only (no API stream proxy).
- * On rostami.club: same-origin /media/family/* first (nginx inline + Range), then CDN.
+ * Playback URLs — direct CDN file links first; same-origin club proxy as fallback (Range/CORS).
+ * Images/voice/video should hit cdn.rostami.app in dev — club /media/family proxy needs nginx/middleware.
  */
 export function resolveFamilyMediaPlaybackCandidates(
   url: string | null | undefined,
@@ -207,11 +207,11 @@ export function resolveFamilyMediaPlaybackCandidates(
 ): string[] {
   const candidates: string[] = [];
 
-  const club = clubSameOriginMediaUrl(url);
-  if (club) candidates.push(club);
-
   const primary = resolveFamilyMediaPlaybackUrl(url);
-  if (primary && !candidates.includes(primary)) candidates.push(primary);
+  if (primary) candidates.push(primary);
+
+  const club = clubSameOriginMediaUrl(url);
+  if (club && !candidates.includes(club)) candidates.push(club);
 
   return candidates;
 }

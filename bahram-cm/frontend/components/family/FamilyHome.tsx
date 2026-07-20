@@ -89,21 +89,24 @@ export function FamilyHome({
   const previewMode = mode === 'guest' ? 'guest' : mode === 'join' ? 'join' : null;
   const isGuest = mode === 'guest';
   const isMember = mode === 'member';
+  const overlayOpen = Boolean(commentsTarget || notificationsOpen);
 
   const feed = (
     <>
-      <div className="lg:hidden">
-        <FamilyTopBar
-          memberCount={resolvedMemberCount}
-          initialBranding={initialBranding}
-          canViewStories
-          guestStoriesLocked={isGuest}
-          showNotifications={isMember}
-          notificationsActive={notificationsOpen}
-          onOpenNotifications={openNotifications}
-          onCloseNotifications={closeNotifications}
-        />
-      </div>
+      {!overlayOpen ? (
+        <div className="lg:hidden">
+          <FamilyTopBar
+            memberCount={resolvedMemberCount}
+            initialBranding={initialBranding}
+            canViewStories
+            guestStoriesLocked={isGuest}
+            showNotifications={isMember}
+            notificationsActive={notificationsOpen}
+            onOpenNotifications={openNotifications}
+            onCloseNotifications={closeNotifications}
+          />
+        </div>
+      ) : null}
       <FamilyMain className="min-h-0">
         <FeedView
           memberCount={resolvedMemberCount}

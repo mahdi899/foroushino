@@ -6,7 +6,6 @@ import {
   normalizeFamilyGalleryMediaPath,
   resolveFamilyMediaDownloadUrl,
   resolveFamilyMediaPlaybackCandidates,
-  resolveFamilyMediaPlaybackCandidates,
   resolveFamilyMediaPlaybackUrl,
 } from '@/lib/family/mediaPlaybackUrl';
 
@@ -114,13 +113,13 @@ describe('resolveFamilyMediaPlaybackCandidates', () => {
     ).toEqual(['https://cdn.rostami.app/media/family/demo/demo-video.mp4']);
   });
 
-  it('prefers same-origin club URL then CDN when mediaId is provided', () => {
+  it('prefers CDN then same-origin club URL when mediaId is provided', () => {
     vi.stubGlobal('window', { location: { origin: 'https://rostami.club', hostname: 'rostami.club' } });
     expect(
       resolveFamilyMediaPlaybackCandidates('/media/family/demo/demo-video.mp4', 42),
     ).toEqual([
-      'https://rostami.club/media/family/demo/demo-video.mp4',
       'https://cdn.rostami.app/media/family/demo/demo-video.mp4',
+      'https://rostami.club/media/family/demo/demo-video.mp4',
     ]);
   });
 

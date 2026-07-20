@@ -88,15 +88,19 @@ class MediaHostSettingsService
         return $this->arvanMediaOrigin();
     }
 
-    private function shouldUseManifestFallback(): bool
-    {
+  private function shouldUseManifestFallback(): bool
+  {
         if (! app()->environment(['local', 'testing'])) {
             return true;
         }
 
         $stored = $this->stored();
+        if (filled($stored['media_url'] ?? null) || filled($stored['family_media_cdn_url'] ?? null)) {
+            return true;
+        }
 
-        return filled($stored['media_url'] ?? null) || filled($stored['family_media_cdn_url'] ?? null);
+        // Local dev: when env CDN vars are unset, use git-tracked media_hosts.json (cdn.rostami.app).
+        return ! filled(config('family.media.cdn_url')) && ! filled(config('bahram.media_url'));
     }
 
     /** @return array{media_url: string|null, family_media_cdn_url: string|null} */
