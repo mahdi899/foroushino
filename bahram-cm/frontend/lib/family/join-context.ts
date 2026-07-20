@@ -64,13 +64,8 @@ export function captureFamilyJoinContext(
   }
 }
 
-/** Login redirect target that keeps current /family query string. */
-export function familyLoginRedirectPath(): string {
-  if (typeof window === 'undefined') return '/family';
-
-  const search = window.location.search;
-  return search ? `/family${search}` : '/family';
-}
+/** Login redirect target that keeps current query string on the active host. */
+export { familyLoginRedirectPath } from '@/lib/domains';
 
 /** Build join attribution payload from stored context + current URL (URL wins). */
 export function buildFamilyJoinContext(searchParams: ReadonlyURLSearchParams): JoinContext {

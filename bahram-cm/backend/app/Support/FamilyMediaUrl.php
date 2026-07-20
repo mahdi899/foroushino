@@ -10,7 +10,7 @@ final class FamilyMediaUrl
             return null;
         }
 
-        if (self::isRemoteDisk($disk)) {
+        if (self::isRemoteDisk($disk) || self::shouldDeliverViaCdn($storagePath, $disk)) {
             return self::remoteUrl($storagePath);
         }
 
@@ -53,6 +53,25 @@ final class FamilyMediaUrl
     private static function isRemoteDisk(?string $disk): bool
     {
         return filled($disk) && ! in_array($disk, ['public', 'local'], true);
+    }
+
+    /**
+     * Production: gallery paths on public disk still live on the download host —
+     * serve via CDN when configured (panel FTP or FAMILY_MEDIA_CDN_URL).
+     */
+    private static function shouldDeliverViaCdn(string $storagePath, ?string $disk): bool
+    {
+        if (! in_array($disk, ['public', 'local', null], true)) {
+            return false;
+        }
+
+        if (self::cdnBase() === '') {
+            return false;
+        }
+
+        $path = ltrim(str_replace('\\', '/', $storagePath), '/');
+
+        return str_starts_with($path, 'media/family/') || str_starts_with($path, 'media/site/');
     }
 
     private static function cdnBase(): string

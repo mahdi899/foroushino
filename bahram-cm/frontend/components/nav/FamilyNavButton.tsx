@@ -14,13 +14,7 @@ type FamilyNavButtonProps = {
   compact?: boolean;
 };
 
-// Option B dual-domain: Family PWA lives on its own apex (rostami.club).
-// `/family` is served by `middleware.ts`, which performs the SSO handoff and
-// a cross-origin redirect — that must be a real top-level navigation, not a
-// Next `<Link>` client-side RSC fetch (which can choke on cross-origin
-// redirects). Falls back to a normal same-origin `<Link>` when unset (local
-// dev / single-domain deployments, where `/family` is just a path).
-const FAMILY_DOMAIN = process.env.NEXT_PUBLIC_FAMILY_DOMAIN?.trim() || "";
+import { familyHomeHref } from '@/lib/domains';
 
 export function FamilyNavButton({ className, compact = false }: FamilyNavButtonProps) {
   const pathname = usePathname() ?? "";
@@ -81,10 +75,12 @@ export function FamilyNavButton({ className, compact = false }: FamilyNavButtonP
     </>
   );
 
-  if (FAMILY_DOMAIN) {
+  const familyHref = familyHomeHref();
+
+  if (familyHref.startsWith('http')) {
     return (
       <a
-        href="/family"
+        href={familyHref}
         onClick={handleClick}
         aria-current={active ? "page" : undefined}
         aria-label={ariaLabel}
@@ -97,7 +93,7 @@ export function FamilyNavButton({ className, compact = false }: FamilyNavButtonP
 
   return (
     <Link
-      href="/family"
+      href={familyHref}
       prefetch
       onClick={handleClick}
       aria-current={active ? "page" : undefined}

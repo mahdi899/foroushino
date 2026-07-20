@@ -3,7 +3,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { useStudentAuthOptional } from '@/components/student-panel/auth/StudentAuthContext';
-import { familyLoginRedirectPath } from '@/lib/family/join-context';
+import { familyLoginRedirectPath } from '@/lib/domains';
 
 export const FAMILY_LOGIN_REDIRECT = '/family';
 

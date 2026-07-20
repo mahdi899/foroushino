@@ -34,6 +34,7 @@ import {
   SITE_THEME_COOKIE_KEY,
   parseSiteTheme,
 } from "@/lib/site-theme";
+import { isFamilyHost } from "@/lib/domains";
 import "@/styles/globals.css";
 
 export const metadata: Metadata = defaultMetadata;
@@ -49,8 +50,15 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const ld = [personJsonLd(), organizationJsonLd(), courseJsonLd(), websiteJsonLd()];
   const pathname = (await headers()).get("x-pathname") ?? "";
+  const host = (await headers()).get("host")?.split(":")[0] ?? "";
+  const onFamilyHost =
+    (await headers()).get("x-family-host") === "1" || isFamilyHost(host);
   const isAdminRoute = pathname.startsWith("/admin");
-  const isBareShellRoute = isAdminRoute || pathname.startsWith("/panel") || pathname.startsWith("/family");
+  const isBareShellRoute =
+    isAdminRoute ||
+    pathname.startsWith("/panel") ||
+    pathname.startsWith("/family") ||
+    onFamilyHost;
   const hidePromoRoute = pathname.startsWith("/seminars/") || pathname.startsWith("/purchase/");
 
   const [chatbotConfig, perfConfig, seminarPromo] = await Promise.all([
@@ -78,6 +86,7 @@ export default async function RootLayout({
       data-theme={initialTheme}
       data-scroll-behavior="smooth"
       className={fontVariable}
+      data-family-host={onFamilyHost ? "1" : undefined}
       suppressHydrationWarning
     >
       <head>
@@ -88,7 +97,10 @@ export default async function RootLayout({
           </Script>
         ) : null}
       </head>
-      <body className={`${fontClassName} min-w-0 overflow-x-clip antialiased`} suppressHydrationWarning>
+      <body
+        className={`${fontClassName} min-w-0 overflow-x-clip antialiased${onFamilyHost ? " h-[100dvh] overflow-hidden" : ""}`}
+        suppressHydrationWarning
+      >
         {process.env.NODE_ENV === "development" ? <DevServiceWorkerCleanup /> : null}
         {!isBareShellRoute ? <ServerInsertedJsonLd id="jsonld-site" data={ld} /> : null}
         <ThemeBoot />
@@ -100,7 +112,9 @@ export default async function RootLayout({
           initialPrefill={studentPrefill}
         >
           <PerformanceProvider config={perfConfig}>
-            <AdminAwareChrome promo={seminarPromo}>{children}</AdminAwareChrome>
+            <AdminAwareChrome promo={seminarPromo} bareShell={isBareShellRoute}>
+              {children}
+            </AdminAwareChrome>
           </PerformanceProvider>
           {!isBareShellRoute && chatbotConfig.enabled ? (
             <SiteChatbotEntry

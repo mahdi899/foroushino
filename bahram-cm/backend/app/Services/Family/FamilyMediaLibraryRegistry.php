@@ -48,6 +48,7 @@ class FamilyMediaLibraryRegistry
                 'original_filename' => $media->original_filename,
                 'category' => self::CATEGORY,
                 'is_private' => false,
+                'keep_on_server' => ! $this->isRemoteDisk($disk),
                 'uploaded_by' => $media->uploaded_by,
             ],
         );
@@ -64,6 +65,11 @@ class FamilyMediaLibraryRegistry
         }
 
         return $media->disk;
+    }
+
+    private function isRemoteDisk(string $disk): bool
+    {
+        return ! in_array($disk, ['public', 'local'], true);
     }
 
     private function mediaType(FamilyMedia $media): MediaType

@@ -5,7 +5,7 @@ namespace App\Jobs\Family;
 use App\Enums\Family\FamilyMediaStatus;
 use App\Models\FamilyMedia;
 use App\Support\FamilyFfmpeg;
-use App\Support\FamilyMediaUrl;
+use App\Support\FamilyMediaStorage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -74,8 +74,18 @@ class ProcessFamilyVideoJob implements ShouldQueue
         }
 
         $media->update($updates);
+        $fresh = $media->fresh();
+
+        if ($this->isRemoteDisk($fresh->disk)) {
+            FamilyMediaStorage::purgeLocalPaths($fresh->storage_path, $fresh->thumbnail_path);
+        }
 
         CleanupFamilyTemporaryMediaJob::dispatch($media->id)
             ->onQueue(config('family.queues.media', 'family-media'));
+    }
+
+    private function isRemoteDisk(?string $disk): bool
+    {
+        return filled($disk) && ! in_array($disk, ['public', 'local'], true);
     }
 }

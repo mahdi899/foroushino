@@ -11,18 +11,9 @@ import { getMiddlewarePerfConfig } from "@/lib/cache/middlewarePerf";
 import { isLongCacheMediaPath } from "@/lib/cache/cdnHeaders";
 import { isStaticContentPath } from "@/lib/cache/staticScope";
 import { mediaPathToStorage } from "@/lib/media/legacyMap";
+import { APP_DOMAIN, DUAL_DOMAIN_ENABLED, FAMILY_DOMAIN } from "@/lib/domains";
 
 const STUDENT_TOKEN_COOKIE = "bahram_student_token";
-
-/**
- * Option B — true dual-domain: rostami.app (main site/panel) and
- * rostami.club (Family PWA) are two real apex domains served by the SAME
- * Next.js process. Unset in local dev → both fall back to path-based
- * `/family` on a single origin, unchanged from before.
- */
-const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN?.trim() || "";
-const FAMILY_DOMAIN = process.env.NEXT_PUBLIC_FAMILY_DOMAIN?.trim() || "";
-const DUAL_DOMAIN_ENABLED = Boolean(APP_DOMAIN && FAMILY_DOMAIN && APP_DOMAIN !== FAMILY_DOMAIN);
 
 function hostnameOf(request: NextRequest): string {
   return (request.headers.get("host") ?? request.nextUrl.hostname).split(":")[0]!;
@@ -156,8 +147,12 @@ export async function middleware(request: NextRequest) {
 
     if (hostname === FAMILY_DOMAIN && !isFamilyRewriteExempt(pathname) && !shouldProxyToBackend(pathname)) {
       const url = request.nextUrl.clone();
-      url.pathname = pathname === "/" ? "/family" : `/family${pathname}`;
-      return NextResponse.rewrite(url);
+      const rewritten = pathname === "/" ? "/family" : `/family${pathname}`;
+      url.pathname = rewritten;
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set("x-pathname", rewritten);
+      requestHeaders.set("x-family-host", "1");
+      return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     }
   }
 
@@ -169,8 +164,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!shouldProxyToBackend(pathname)) {
-    const response = NextResponse.next();
-    response.headers.set("x-pathname", pathname);
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-pathname", pathname);
+    const response = NextResponse.next({ request: { headers: requestHeaders } });
     return applyPublicCacheHeaders(response, pathname, request);
   }
 

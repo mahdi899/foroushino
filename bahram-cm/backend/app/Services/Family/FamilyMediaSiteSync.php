@@ -30,12 +30,15 @@ class FamilyMediaSiteSync
 
         if ($sourceDisk === 'public' && $libraryDisk !== 'public') {
             $this->mirrorToDisk($sourceDisk, $libraryDisk, $media->storage_path);
+            FamilyMediaStorage::purgeLocalPaths($media->storage_path, $media->thumbnail_path);
+            $media->update(['disk' => $libraryDisk]);
+            $media = $media->fresh();
         }
 
         $indexed = $this->registry->register($media->fresh(), $libraryDisk);
 
-        if ($sourceDisk !== 'public') {
-            FamilyMediaStorage::purgeLocalPublicCopy($media->storage_path);
+        if ($this->isRemoteDisk($sourceDisk) || $this->isRemoteDisk($libraryDisk)) {
+            FamilyMediaStorage::purgeLocalPaths($media->storage_path, $media->thumbnail_path);
         }
 
         if ($indexed) {
@@ -74,5 +77,10 @@ class FamilyMediaSiteSync
                 fclose($stream);
             }
         }
+    }
+
+    private function isRemoteDisk(string $disk): bool
+    {
+        return ! in_array($disk, ['public', 'local'], true);
     }
 }

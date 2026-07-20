@@ -2,6 +2,18 @@
  * Family app — scoped tokens aligned with panel.css (student panel)
  * ============================================================ */
 
+html:has(#family-root),
+html:has(#family-root) body {
+  height: 100%;
+  overflow: hidden;
+}
+
+html[data-family-host='1'],
+html[data-family-host='1'] body {
+  height: 100%;
+  overflow: hidden;
+}
+
 .family-app {
   color-scheme: light;
 

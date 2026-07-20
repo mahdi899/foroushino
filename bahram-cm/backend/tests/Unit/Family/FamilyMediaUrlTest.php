@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 class FamilyMediaUrlTest extends TestCase
 {
-    public function test_public_disk_uses_app_origin_when_cdn_configured(): void
+    public function test_public_disk_uses_cdn_when_configured_for_gallery_paths(): void
     {
         config([
             'bahram.frontend_url' => 'https://rostami.app',
@@ -22,7 +22,7 @@ class FamilyMediaUrlTest extends TestCase
 
         $url = FamilyMediaUrl::fromPath($path, 'public');
 
-        $this->assertSame('https://rostami.app/storage/'.$path, $url);
+        $this->assertSame('https://cdn.rostami.app/'.$path, $url);
     }
 
     public function test_remote_disk_uses_cdn_when_file_not_on_local_public(): void

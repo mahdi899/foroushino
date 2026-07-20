@@ -312,12 +312,17 @@ export function adminMediaThumbFallbacks(item: {
   return out;
 }
 
-/** Best first URL for a site photo — direct same-origin `/storage/...` path (no `/_next/image`). */
+/** Best first URL for a site photo — CDN when MEDIA_ORIGIN is set, else same-origin `/storage/...`. */
 export function primarySiteImageSrc(src: string | null | undefined): string {
   if (!src?.trim()) return '';
   const ref = normalizeImageSrc(src);
   if (!ref) return src.trim();
-  if (ref.startsWith('/storage/')) return ref;
+  if (ref.startsWith('/storage/')) {
+    if (MEDIA_ORIGIN && usesCdnDelivery(ref)) {
+      return `${MEDIA_ORIGIN}${cdnPathFromStorageRef(ref)}`;
+    }
+    return ref;
+  }
   return resolveMediaUrl(ref) || ref;
 }
 

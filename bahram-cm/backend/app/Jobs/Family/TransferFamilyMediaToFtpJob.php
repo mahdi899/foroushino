@@ -134,7 +134,7 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
             DirectoryListingGuard::guardStoragePath($target, $storagePath);
 
             if ($diskName !== 'public') {
-                FamilyMediaStorage::purgeLocalPublicCopy($storagePath);
+                FamilyMediaStorage::purgeLocalPaths($storagePath, $media->thumbnail_path);
             }
 
             $media->update([

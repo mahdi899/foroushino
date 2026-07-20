@@ -63,7 +63,7 @@ export default async function FamilyLayout({ children }: { children: React.React
       <FamilyReactScan />
       <FamilyMediaPlayerProvider>
         <FamilyActionCelebrateProvider>
-          <div className="family-app__frame relative mx-auto flex h-[100dvh] w-full flex-col overflow-hidden lg:my-3 lg:h-[calc(100dvh-1.5rem)]">
+          <div className="family-app__frame relative mx-auto flex h-full min-h-0 w-full flex-col overflow-hidden">
             {children}
             <FamilyInstallCard />
             <BahramUpdateBanner variant="family" />

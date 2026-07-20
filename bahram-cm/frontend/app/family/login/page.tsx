@@ -1,21 +1,22 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { ArrowRight } from 'lucide-react';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { StudentLoginForm } from '@/components/student-panel/auth/StudentLoginForm';
 import { familyFetch } from '@/lib/family/session';
 import { getCurrentStudent } from '@/lib/student/session';
 import type { FamilyBranding } from '@/lib/family/types';
+import { isFamilyHost, resolveFamilyLoginRedirect } from '@/lib/domains';
 
 export const metadata: Metadata = {
   title: 'ورود | خانواده داداش بهرام',
   robots: { index: false, follow: false },
 };
 
-function resolveRedirect(target?: string): string {
-  if (target && target.startsWith('/family') && !target.startsWith('//')) return target;
-  return '/family';
+function resolveRedirect(target?: string, hostname?: string): string {
+  return resolveFamilyLoginRedirect(target, hostname);
 }
 
 export default async function FamilyLoginPage({
@@ -24,7 +25,10 @@ export default async function FamilyLoginPage({
   searchParams: Promise<{ redirect?: string }>;
 }) {
   const { redirect: redirectParam } = await searchParams;
-  const redirectTo = resolveRedirect(redirectParam);
+  const host = (await headers()).get('host')?.split(':')[0] ?? '';
+  const onClub = isFamilyHost(host);
+  const redirectTo = resolveRedirect(redirectParam, host);
+  const backHref = onClub ? '/' : '/family';
   const user = await getCurrentStudent();
 
   if (user) {
@@ -40,7 +44,7 @@ export default async function FamilyLoginPage({
   return (
     <main id="main-content" className="relative flex min-h-[100dvh] flex-col items-center justify-center px-5 py-10 lg:py-16">
       <Link
-        href="/family"
+        href={backHref}
         aria-label="بازگشت به خانواده"
         className="family-nav-icon absolute end-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--family-border-subtle)] bg-[var(--family-surface)]/80 text-bone/70 backdrop-blur-sm transition hover:text-[var(--family-accent)] sm:end-5 sm:top-5"
       >

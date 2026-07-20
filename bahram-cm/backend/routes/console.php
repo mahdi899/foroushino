@@ -31,3 +31,8 @@ Schedule::job(new RebuildFamilyBehaviorProfilesJob(), config('family.queues.anal
 Schedule::job(new CalculateFamilyDnaSnapshotJob(), config('family.queues.analytics', 'family-analytics'))
     ->weeklyOn(1, '03:00')
     ->onOneServer();
+
+Schedule::command('media:purge-local-copies --limit=300')
+    ->dailyAt('04:30')
+    ->onOneServer()
+    ->when(fn () => \App\Support\MediaFtpConnection::isReady());

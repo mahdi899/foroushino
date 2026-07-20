@@ -4,6 +4,7 @@ import { Marquee } from '@/components/motion/Marquee';
 import { Reveal } from '@/components/motion/Reveal';
 import { FamilyPulseQuote } from '@/components/sections/FamilyPulseQuote';
 import { getFamilyPulse } from '@/lib/family/pulse';
+import { familyHomeHref } from '@/lib/domains';
 
 export async function FamilyPulseSection() {
   const pulse = await getFamilyPulse();
@@ -41,7 +42,7 @@ export async function FamilyPulseSection() {
 
       <Reveal delay={0.12}>
         <div className="mt-6 px-5 text-center sm:mt-8">
-          <LinkButton href="/family" variant="primary" withArrow>
+          <LinkButton href={familyHomeHref()} variant="primary" withArrow>
             بپیوند به خانواده
           </LinkButton>
         </div>

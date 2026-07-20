@@ -9,6 +9,10 @@ const FADE_MS = 380;
 const BOOT_DONE_KEY = 'site-boot-done';
 
 function isBareShellPath(pathname: string | null | undefined): boolean {
+  if (typeof document !== 'undefined' && document.documentElement.dataset.familyHost === '1') {
+    return true;
+  }
+
   return Boolean(
     pathname?.startsWith('/admin') ||
       pathname?.startsWith('/panel') ||

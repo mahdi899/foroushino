@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { Bell } from 'lucide-react';
+import { familyNotificationsHref } from '@/lib/domains';
 import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
 
 export function NotificationBell() {
@@ -9,7 +10,7 @@ export function NotificationBell() {
 
   return (
     <Link
-      href="/family/notifications"
+      href={familyNotificationsHref()}
       aria-label="اعلان‌ها"
       className="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-bone/80 transition hover:bg-white/10"
     >
