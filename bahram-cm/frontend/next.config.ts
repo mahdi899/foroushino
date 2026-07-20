@@ -47,6 +47,9 @@ function localNetworkHosts(): string[] {
 
 const allowedDevOrigins = [
   ...localNetworkHosts(),
+  'app.lvh.me',
+  'club.lvh.me',
+  'localhost',
   ...(process.env.ALLOWED_DEV_ORIGINS?.split(",")
     .map((origin) => origin.trim())
     .filter(Boolean) ?? []),

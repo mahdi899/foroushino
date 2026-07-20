@@ -17,14 +17,17 @@ export function isFamilyHost(hostname: string): boolean {
 }
 
 export function familyPublicOrigin(): string {
+  const explicit = process.env.NEXT_PUBLIC_FAMILY_SITE_URL?.trim().replace(/\/$/, '');
+  if (explicit) return explicit;
   return FAMILY_DOMAIN ? `https://${FAMILY_DOMAIN}` : '';
 }
 
 /** Main marketing site — rostami.app in production. */
 export function appPublicOrigin(): string {
-  if (APP_DOMAIN) return `https://${APP_DOMAIN}`;
   const site = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '');
-  return site || '';
+  if (site) return site;
+  if (APP_DOMAIN) return `https://${APP_DOMAIN}`;
+  return '';
 }
 
 /** True on the family feed home (club `/` or dev `/family`). */
@@ -65,7 +68,7 @@ export function familyNotificationsHref(): string {
 export function studentPanelHref(path = '/panel'): string {
   const normalized = path.startsWith('/') ? path : `/${path}`;
   if (typeof window !== 'undefined' && isFamilyHost(window.location.hostname) && APP_DOMAIN) {
-    return `https://${APP_DOMAIN}${normalized}`;
+    return `${appPublicOrigin()}${normalized}`;
   }
   return normalized;
 }

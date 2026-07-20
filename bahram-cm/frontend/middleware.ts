@@ -11,7 +11,7 @@ import { getMiddlewarePerfConfig } from "@/lib/cache/middlewarePerf";
 import { isLongCacheMediaPath } from "@/lib/cache/cdnHeaders";
 import { isStaticContentPath } from "@/lib/cache/staticScope";
 import { mediaPathToStorage } from "@/lib/media/legacyMap";
-import { APP_DOMAIN, DUAL_DOMAIN_ENABLED, FAMILY_DOMAIN } from "@/lib/domains";
+import { APP_DOMAIN, appPublicOrigin, DUAL_DOMAIN_ENABLED, familyPublicOrigin, FAMILY_DOMAIN } from "@/lib/domains";
 
 const STUDENT_TOKEN_COOKIE = "bahram_student_token";
 
@@ -56,11 +56,11 @@ async function redirectToFamilyDomain(request: NextRequest, pathname: string, se
   const bridgeToken = await issueSsoBridgeToken(request);
 
   if (!bridgeToken) {
-    return NextResponse.redirect(`https://${FAMILY_DOMAIN}/login`);
+    return NextResponse.redirect(`${familyPublicOrigin()}/login`);
   }
 
   const next = encodeURIComponent(targetPath + search);
-  return NextResponse.redirect(`https://${FAMILY_DOMAIN}/sso/bridge?bt=${encodeURIComponent(bridgeToken)}&next=${next}`);
+  return NextResponse.redirect(`${familyPublicOrigin()}/sso/bridge?bt=${encodeURIComponent(bridgeToken)}&next=${next}`);
 }
 
 /** rostami.club/panel/** → rostami.app (SSO bridge if logged in, else /panel login). */
@@ -68,11 +68,11 @@ async function redirectToAppDomain(request: NextRequest, pathname: string, searc
   const bridgeToken = await issueSsoBridgeToken(request);
 
   if (!bridgeToken) {
-    return NextResponse.redirect(`https://${APP_DOMAIN}${pathname}${search}`);
+    return NextResponse.redirect(`${appPublicOrigin()}${pathname}${search}`);
   }
 
   const next = encodeURIComponent(pathname + search);
-  return NextResponse.redirect(`https://${APP_DOMAIN}/sso/bridge?bt=${encodeURIComponent(bridgeToken)}&next=${next}`);
+  return NextResponse.redirect(`${appPublicOrigin()}/sso/bridge?bt=${encodeURIComponent(bridgeToken)}&next=${next}`);
 }
 
 function isMiniCourseDetailPath(pathname: string): boolean {
