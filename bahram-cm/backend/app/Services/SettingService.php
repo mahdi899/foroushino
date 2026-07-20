@@ -40,6 +40,7 @@ class SettingService
 
         if ($group === 'media') {
             app(ImageOptimizerSettingsService::class)->forgetCachedConfig();
+            MediaHostSettingsService::forgetCachedConfig();
         }
 
         if ($group === 'chatbot') {

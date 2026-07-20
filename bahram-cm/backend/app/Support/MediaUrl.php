@@ -2,36 +2,22 @@
 
 namespace App\Support;
 
+use App\Services\MediaHostSettingsService;
+
 /**
  * Single source of truth for public media URLs (/storage, /images, CDN).
  *
  * DB and HTML store portable references via reference().
  * Display, API, and sitemap use resolve().
  *
- * Set MEDIA_URL=https://cdn.example.com to serve all images from a separate host.
+ * Download host: database/data/media_hosts.json → settings table (see media:sync-hosts).
  */
 final class MediaUrl
 {
     /** Unified CDN/host for uploads + static /images. Null = split mode (dev default). */
     public static function mediaOrigin(): ?string
     {
-        $url = config('bahram.media_url');
-        if (is_string($url) && trim($url) !== '') {
-            return rtrim(trim($url), '/');
-        }
-
-        return self::configuredDownloadHost();
-    }
-
-    /** cdn.rostami.app (ARVAN_MEDIA_DOMAIN) when MEDIA_URL is unset — matches local dev + production. */
-    private static function configuredDownloadHost(): ?string
-    {
-        $arvan = trim((string) config('bahram.arvan.media_domain', ''));
-        if ($arvan === '') {
-            return null;
-        }
-
-        return str_starts_with($arvan, 'http') ? rtrim($arvan, '/') : 'https://'.$arvan;
+        return app(MediaHostSettingsService::class)->mediaUrl();
     }
 
     /** Laravel /storage origin when MEDIA_URL is unset. */

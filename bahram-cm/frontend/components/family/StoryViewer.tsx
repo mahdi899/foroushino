@@ -129,84 +129,69 @@ export function StoryViewer({
   const currentSrc = storyMediaSrc(currentMedia);
   const currentIsVideo = currentMedia ? isStoryVideo(currentMedia) : false;
 
-  // Image stories: fixed timer. Video: play from CDN + advance on ended.
+  // Reset progress/timers when the active slide changes.
   useEffect(() => {
-    if (!open || loading || !currentMedia || !currentSrc) return;
-
+    if (!open || loading) return;
     clearSlideTimers();
     setSlideProgress(0);
+  }, [clearSlideTimers, index, loading, open]);
 
-    if (!currentIsVideo) {
-      scheduleImageSlide(IMAGE_STORY_MS);
-      return clearSlideTimers;
-    }
+  // Image stories: fixed timer.
+  useEffect(() => {
+    if (!open || loading || !currentMedia || !currentSrc || currentIsVideo) return;
+    scheduleImageSlide(IMAGE_STORY_MS);
+    return clearSlideTimers;
+  }, [
+    clearSlideTimers,
+    currentIsVideo,
+    currentMedia,
+    currentSrc,
+    index,
+    loading,
+    open,
+    scheduleImageSlide,
+  ]);
 
-    const video = videoRef.current;
-    if (!video) return clearSlideTimers;
+  const handleVideoLoadedMetadata = useCallback(
+    (video: HTMLVideoElement) => {
+      if (!currentMedia) return;
 
-    video.src = currentSrc;
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = 'auto';
-    video.load();
+      clearSlideTimers();
+      setSlideProgress(0);
+      video.muted = true;
 
-    const onTimeUpdate = () => {
-      const duration = video.duration;
-      if (!Number.isFinite(duration) || duration <= 0) return;
-      setSlideProgress(Math.min(1, video.currentTime / duration));
-    };
-
-    const onLoadedMetadata = () => {
-      const hintedSec = currentMedia.duration && currentMedia.duration > 0 ? currentMedia.duration : video.duration;
-      const maxMs = Number.isFinite(hintedSec) && hintedSec > 0
-        ? Math.min(MAX_VIDEO_STORY_MS, Math.max(MIN_VIDEO_STORY_MS, hintedSec * 1000))
-        : MAX_VIDEO_STORY_MS;
+      const hintedSec =
+        currentMedia.duration && currentMedia.duration > 0 ? currentMedia.duration : video.duration;
+      const maxMs =
+        Number.isFinite(hintedSec) && hintedSec > 0
+          ? Math.min(MAX_VIDEO_STORY_MS, Math.max(MIN_VIDEO_STORY_MS, hintedSec * 1000))
+          : MAX_VIDEO_STORY_MS;
 
       advanceTimerRef.current = window.setTimeout(() => {
         if (!video.paused && !video.ended) goNext();
       }, maxMs + 500);
 
       void video.play().catch(() => {
-        // Autoplay blocked — still allow manual tap; fallback timer keeps story moving.
         scheduleImageSlide(IMAGE_STORY_MS);
       });
-    };
+    },
+    [clearSlideTimers, currentMedia, goNext, scheduleImageSlide],
+  );
 
-    const onEnded = () => {
-      clearSlideTimers();
-      goNext();
-    };
+  const handleVideoTimeUpdate = useCallback((video: HTMLVideoElement) => {
+    const duration = video.duration;
+    if (!Number.isFinite(duration) || duration <= 0) return;
+    setSlideProgress(Math.min(1, video.currentTime / duration));
+  }, []);
 
-    const onError = () => {
-      scheduleImageSlide(IMAGE_STORY_MS);
-    };
+  const handleVideoEnded = useCallback(() => {
+    clearSlideTimers();
+    goNext();
+  }, [clearSlideTimers, goNext]);
 
-    video.addEventListener('timeupdate', onTimeUpdate);
-    video.addEventListener('loadedmetadata', onLoadedMetadata);
-    video.addEventListener('ended', onEnded);
-    video.addEventListener('error', onError);
-
-    return () => {
-      video.pause();
-      video.removeAttribute('src');
-      video.load();
-      video.removeEventListener('timeupdate', onTimeUpdate);
-      video.removeEventListener('loadedmetadata', onLoadedMetadata);
-      video.removeEventListener('ended', onEnded);
-      video.removeEventListener('error', onError);
-      clearSlideTimers();
-    };
-  }, [
-    clearSlideTimers,
-    currentIsVideo,
-    currentMedia,
-    currentSrc,
-    goNext,
-    index,
-    loading,
-    open,
-    scheduleImageSlide,
-  ]);
+  const handleVideoError = useCallback(() => {
+    scheduleImageSlide(IMAGE_STORY_MS);
+  }, [scheduleImageSlide]);
 
   useEffect(() => {
     if (!open) return;
@@ -294,11 +279,16 @@ export function StoryViewer({
                       <video
                         ref={videoRef}
                         key={current.id}
+                        src={currentSrc}
                         className="h-full w-full object-cover"
                         playsInline
                         muted
                         autoPlay
                         preload="auto"
+                        onLoadedMetadata={(e) => handleVideoLoadedMetadata(e.currentTarget)}
+                        onTimeUpdate={(e) => handleVideoTimeUpdate(e.currentTarget)}
+                        onEnded={handleVideoEnded}
+                        onError={handleVideoError}
                       />
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element

@@ -45,6 +45,15 @@ export function familyNotificationsHref(): string {
   return FAMILY_DOMAIN ? '/notifications' : '/family/notifications';
 }
 
+/** Student panel — absolute on club host so RSC prefetch does not hit /family/panel. */
+export function studentPanelHref(path = '/panel'): string {
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  if (typeof window !== 'undefined' && isFamilyHost(window.location.hostname) && APP_DOMAIN) {
+    return `https://${APP_DOMAIN}${normalized}`;
+  }
+  return normalized;
+}
+
 export function isFamilyBareShell(pathname: string, hostname?: string): boolean {
   if (pathname.startsWith('/admin') || pathname.startsWith('/panel') || pathname.startsWith('/family')) {
     return true;

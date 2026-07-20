@@ -22,6 +22,8 @@ function hostnameOf(request: NextRequest): string {
 /** Paths that must never be rewritten into `/family/**` on the club apex (assets, PWA files, API). */
 function isFamilyRewriteExempt(pathname: string): boolean {
   if (pathname.startsWith("/family") || pathname.startsWith("/sso")) return true;
+  // Student panel lives on rostami.app — never rewrite to /family/panel (404).
+  if (pathname === "/panel" || pathname.startsWith("/panel/")) return true;
   // Flutter Family Manager admin — served by nginx → :7358 on rostami.club, not Next.js.
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return true;
   if (pathname.startsWith("/_next") || pathname.includes(".")) return true;
@@ -133,16 +135,22 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  const hostname = hostnameOf(request);
+
+  // Student panel on club → main app (works even when rewrite env is partially missing).
+  if (
+    FAMILY_DOMAIN &&
+    APP_DOMAIN &&
+    hostname === FAMILY_DOMAIN &&
+    (pathname === "/panel" || pathname.startsWith("/panel/"))
+  ) {
+    return redirectToAppDomain(request, pathname, search);
+  }
+
   // Option B dual-domain routing — rostami.app ↔ rostami.club (see helpers above).
   if (DUAL_DOMAIN_ENABLED) {
-    const hostname = hostnameOf(request);
-
     if (hostname === APP_DOMAIN && (pathname === "/family" || pathname.startsWith("/family/"))) {
       return redirectToFamilyDomain(request, pathname, search);
-    }
-
-    if (hostname === FAMILY_DOMAIN && (pathname === "/panel" || pathname.startsWith("/panel/"))) {
-      return redirectToAppDomain(request, pathname, search);
     }
 
     if (hostname === FAMILY_DOMAIN && !isFamilyRewriteExempt(pathname) && !shouldProxyToBackend(pathname)) {

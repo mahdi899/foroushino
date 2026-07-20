@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 import '@/styles/family.css';
-import { fontClassName, fontVariable } from '@/lib/fonts';
+import { fontVariable } from '@/lib/fonts';
 import { cn } from '@/lib/cn';
 import { FamilyMediaPlayerProvider } from '@/lib/family/FamilyMediaPlayerContext';
 import { FamilyActionCelebrateProvider } from '@/lib/family/FamilyActionCelebrateContext';
@@ -53,7 +53,6 @@ export default async function FamilyLayout({ children }: { children: React.React
       data-family-theme={initialTheme}
       className={cn(
         'family-app family-app__canvas h-[100dvh] overflow-hidden antialiased',
-        fontClassName,
         fontVariable,
       )}
       suppressHydrationWarning

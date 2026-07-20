@@ -202,6 +202,7 @@ export function FamilyVideoModal({
 
           <video
             ref={videoRef}
+            src={url}
             playsInline
             controls
             preload="auto"

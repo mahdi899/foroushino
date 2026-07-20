@@ -1800,6 +1800,25 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--family-surface) 80%, transparent);
 }
 
+.family-mobile-theme-btn {
+  top: calc(0.75rem + env(safe-area-inset-top, 0px));
+  height: 2.375rem;
+  width: 2.375rem;
+  border-radius: 9999px;
+  border: 0.5px solid color-mix(in oklab, var(--family-text) 8%, transparent);
+  background: color-mix(in oklab, var(--family-surface) 72%, transparent);
+  color: var(--family-tg-pinned-accent);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  box-shadow: 0 4px 18px color-mix(in oklab, var(--family-bg) 35%, transparent);
+}
+
+#family-root.family-app--immersive .family-mobile-theme-btn {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
 .family-pinned-bar {
   position: relative;
   display: flex;

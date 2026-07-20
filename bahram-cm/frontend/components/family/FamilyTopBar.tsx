@@ -13,7 +13,6 @@ import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
 
 import { useFamilyGuestAccessOptional } from '@/components/family/FamilyGuestAccess';
 import type { FamilyBranding } from '@/lib/family/types';
-import { ThemeIconButton } from '@/components/theme/ThemeIconButton';
 import { familyHomeHref } from '@/lib/domains';
 
 function TopBarInnerSkeleton({ showNotifications }: { showNotifications: boolean }) {
@@ -173,7 +172,6 @@ export function FamilyTopBar({
                     )}
                   </button>
                 ) : null}
-                <ThemeIconButton />
               </div>
             </>
           )}

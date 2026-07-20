@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Services\MediaHostSettingsService;
+
 final class FamilyMediaUrl
 {
     public static function fromPath(?string $storagePath, ?string $disk = null): ?string
@@ -76,21 +78,6 @@ final class FamilyMediaUrl
 
     private static function cdnBase(): string
     {
-        $cdn = rtrim((string) config('family.media.cdn_url'), '/');
-        if ($cdn !== '') {
-            return $cdn;
-        }
-
-        $mediaUrl = rtrim((string) config('bahram.media_url'), '/');
-        if ($mediaUrl !== '') {
-            return $mediaUrl;
-        }
-
-        $arvan = trim((string) config('bahram.arvan.media_domain', ''));
-        if ($arvan !== '') {
-            return str_starts_with($arvan, 'http') ? rtrim($arvan, '/') : 'https://'.$arvan;
-        }
-
-        return '';
+        return app(MediaHostSettingsService::class)->familyMediaCdnUrl() ?? '';
     }
 }
