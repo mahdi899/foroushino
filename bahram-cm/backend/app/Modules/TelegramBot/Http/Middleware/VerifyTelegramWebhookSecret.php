@@ -27,7 +27,7 @@ class VerifyTelegramWebhookSecret
             abort(404);
         }
 
-        $expected = (string) ($bot->webhook_secret ?? '');
+        $expected = (string) ($bot->resolveWebhookSecret() ?? '');
 
         if ($expected === '' || ! hash_equals($expected, (string) $request->header('X-Telegram-Bot-Api-Secret-Token', ''))) {
             abort(403);

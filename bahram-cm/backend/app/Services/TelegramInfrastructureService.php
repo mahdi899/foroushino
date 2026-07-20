@@ -325,6 +325,7 @@ class TelegramInfrastructureService
         }
 
         $url = $this->buildWebhookUrl('production');
+        $this->syncProductionBotSecret();
         $secret = $this->webhookSecret();
 
         try {
@@ -353,7 +354,7 @@ class TelegramInfrastructureService
         $next['webhook_secret'] = Str::random(32);
     }
 
-    private function syncProductionBotSecret(): void
+    public function syncProductionBotSecret(): void
     {
         $secret = trim((string) ($this->stored()['webhook_secret'] ?? ''));
         if ($secret === '') {
