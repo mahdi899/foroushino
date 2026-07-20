@@ -9,9 +9,8 @@ import { fontClassName } from '@/lib/fonts';
 import { getStories } from '@/lib/family/api';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import {
-  inferFamilyMediaMimeType,
-  resolveFamilyMediaPlaybackCandidates,
   resolveFamilyMediaUrl,
+  resolveFamilyMediaStreamCandidates,
 } from '@/lib/family/mediaPlaybackUrl';
 import type { FamilyStory, FamilyStoryMedia } from '@/lib/family/types';
 
@@ -150,11 +149,10 @@ export function StoryViewer({
   const currentMedia = current?.media ?? null;
   const currentSrc = storyMediaSrc(currentMedia);
   const currentIsVideo = currentMedia ? isStoryVideo(currentMedia) : false;
-  const videoCandidates = currentSrc ? resolveFamilyMediaPlaybackCandidates(currentSrc) : [];
+  const videoCandidates = currentSrc
+    ? resolveFamilyMediaStreamCandidates(currentSrc, currentMedia?.id)
+    : [];
   const activeVideoSrc = videoCandidates[videoSrcIndex] ?? currentSrc ?? '';
-  const activeVideoMime = activeVideoSrc
-    ? inferFamilyMediaMimeType(activeVideoSrc, currentMedia?.mime_type)
-    : undefined;
 
   const scheduleVideoAdvance = useCallback(
     (video: HTMLVideoElement) => {
@@ -229,8 +227,8 @@ export function StoryViewer({
 
     videoEl.muted = true;
     videoEl.playsInline = true;
-    videoEl.preload = 'auto';
-    rememberFamilyMediaView(activeVideoSrc, currentMedia!.id, 'video', currentMedia!.mime_type);
+    videoEl.preload = 'metadata';
+    rememberFamilyMediaView(currentSrc ?? activeVideoSrc, currentMedia!.id, 'video', currentMedia!.mime_type);
 
     loadTimeoutRef.current = window.setTimeout(() => {
       if (cancelled || attempt !== playAttemptRef.current) return;
@@ -426,15 +424,14 @@ export function StoryViewer({
                         <video
                           ref={setVideoEl}
                           key={`${current.id}:${activeVideoSrc}`}
+                          src={activeVideoSrc}
                           className="h-full w-full object-cover"
                           playsInline
                           muted
                           autoPlay
-                          preload="auto"
+                          preload="metadata"
                           onTimeUpdate={(e) => handleVideoTimeUpdate(e.currentTarget)}
-                        >
-                          <source src={activeVideoSrc} type={activeVideoMime} />
-                        </video>
+                        />
                         {videoSlideState === 'loading' && (
                           <div className="absolute inset-0 z-[5] flex items-center justify-center bg-black/40">
                             <Loader2 className="h-9 w-9 animate-spin text-white/90" aria-label="در حال بارگذاری ویدیو" />

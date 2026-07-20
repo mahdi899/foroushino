@@ -180,30 +180,84 @@ export function inferFamilyMediaMimeType(
   }
 }
 
+function isFamilyClubOrigin(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname.toLowerCase();
+  return host === 'rostami.club' || host === 'www.rostami.club';
+}
+
+/** Same-origin authenticated stream — reads FTP/public disk with Range + MIME. */
+export function familyMediaStreamProxyUrl(mediaId: number): string | null {
+  if (typeof window === 'undefined' || !Number.isFinite(mediaId) || mediaId <= 0) {
+    return null;
+  }
+  return `${window.location.origin}/api/family/media/${mediaId}/stream`;
+}
+
+function clubSameOriginMediaUrl(url: string | null | undefined): string | null {
+  const primary = resolveFamilyMediaPlaybackUrl(url);
+  if (!primary || typeof window === 'undefined' || !isFamilyClubOrigin()) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(primary);
+    const mediaPath = familyMediaPathname(parsed.pathname);
+    if (!mediaPath) return null;
+
+    return `${window.location.origin}${mediaPath}${parsed.search}`;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Playback URL candidates — CDN first, then same-origin proxy on club/app hosts
- * when the direct CDN response fails (CORS/MIME edge cases on some devices).
+ * Voice/video stream URLs — same-origin API proxy only (Range + FTP-safe).
+ * CDN is omitted: production files live on FTP and nginx CDN often 404s → decode errors.
+ */
+export function resolveFamilyMediaStreamUrl(
+  url: string | null | undefined,
+  mediaId?: number,
+): string | null {
+  const candidates = resolveFamilyMediaStreamCandidates(url, mediaId);
+  return candidates[0] ?? null;
+}
+
+export function resolveFamilyMediaStreamCandidates(
+  url: string | null | undefined,
+  mediaId?: number,
+): string[] {
+  const candidates: string[] = [];
+
+  const proxy = mediaId ? familyMediaStreamProxyUrl(mediaId) : null;
+  if (proxy) candidates.push(proxy);
+
+  const club = clubSameOriginMediaUrl(url);
+  if (club && !candidates.includes(club)) candidates.push(club);
+
+  if (candidates.length > 0) return candidates;
+
+  const primary = resolveFamilyMediaPlaybackUrl(url);
+  return primary ? [primary] : [];
+}
+
+/**
+ * Playback URL candidates — stream proxy first; CDN kept for legacy/no-id fallbacks.
  */
 export function resolveFamilyMediaPlaybackCandidates(
   url: string | null | undefined,
+  mediaId?: number,
 ): string[] {
-  const primary = resolveFamilyMediaPlaybackUrl(url);
-  if (!primary) return [];
-
-  const candidates = [primary];
-
-  if (typeof window !== 'undefined') {
-    try {
-      const parsed = new URL(primary, window.location.origin);
-      const mediaPath = familyMediaPathname(parsed.pathname);
-      if (mediaPath && isFamilyMediaSameOriginHost(window.location.hostname)) {
-        const proxied = `${window.location.origin}${mediaPath}${parsed.search}`;
-        if (proxied !== primary) candidates.push(proxied);
-      }
-    } catch {
-      // ignore
-    }
+  if (mediaId) {
+    return resolveFamilyMediaStreamCandidates(url, mediaId);
   }
+
+  const candidates: string[] = [];
+  const primary = resolveFamilyMediaPlaybackUrl(url);
+  if (primary) candidates.push(primary);
+
+  const club = clubSameOriginMediaUrl(url);
+  if (club && !candidates.includes(club)) candidates.push(club);
 
   return candidates;
 }

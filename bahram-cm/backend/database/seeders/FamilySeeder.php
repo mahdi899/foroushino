@@ -366,7 +366,12 @@ HTML,
     {
         $existing = $this->findDemoPost($demoKey);
         if ($existing) {
-            return $existing->load(['blocks.media', 'actions.options']);
+            $publisher->updateDraft($author, $existing, $payload);
+            if ($existing->status !== FamilyPostStatus::Published) {
+                $publisher->publish($author, $existing);
+            }
+
+            return $existing->fresh(['blocks.media', 'actions.options']);
         }
 
         $post = $publisher->createDraft($author, $payload);

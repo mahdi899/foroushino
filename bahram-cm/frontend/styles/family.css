@@ -1566,6 +1566,12 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   align-items: center;
   gap: 0.375rem;
   margin-inline-start: auto;
+  direction: ltr;
+}
+
+/* Legacy floating toggle — theme lives in the top bar now. */
+.family-mobile-theme-btn {
+  display: none !important;
 }
 
 @media (min-width: 640px) {

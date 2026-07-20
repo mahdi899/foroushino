@@ -44,7 +44,7 @@ final class FamilyDemoAssets
         $this->ensureStorageLink();
         $this->syncPublicCopies();
 
-        return [
+        $assets = [
             'voice' => $this->media($uploader, 'demo-voice.mp3', FamilyMediaType::Voice, [
                 'mime_type' => 'audio/mpeg',
                 'duration' => 120,
@@ -73,6 +73,10 @@ final class FamilyDemoAssets
                 'mime_type' => 'image/jpeg',
             ]),
         ];
+
+        (new FamilyDemoPublisher)->publishAll($assets);
+
+        return $assets;
     }
 
     private function ensureLocalCdnFallback(): void

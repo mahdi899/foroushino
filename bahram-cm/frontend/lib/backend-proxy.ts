@@ -22,6 +22,7 @@ const NEXT_API_HANDLERS = [
   "/api/revalidate",
   "/api/cart",
   "/api/student",
+  "/api/family",
   "/api/broadcasting",
   "/api/sat",
   "/api/spotx",

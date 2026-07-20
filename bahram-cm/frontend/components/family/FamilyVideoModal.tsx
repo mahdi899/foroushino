@@ -8,9 +8,8 @@ import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownlo
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import {
-  inferFamilyMediaMimeType,
-  resolveFamilyMediaPlaybackCandidates,
-  resolveFamilyMediaUrl,
+  resolveFamilyMediaDownloadUrl,
+  resolveFamilyMediaStreamCandidates,
 } from '@/lib/family/mediaPlaybackUrl';
 import { sendMediaProgress } from '@/lib/family/api';
 
@@ -39,12 +38,12 @@ export function FamilyVideoModal({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const lastReported = useRef(0);
   const playbackCandidates = useMemo(
-    () => resolveFamilyMediaPlaybackCandidates(url),
-    [url],
+    () => resolveFamilyMediaStreamCandidates(url, mediaId),
+    [mediaId, url],
   );
+  const downloadUrl = useMemo(() => resolveFamilyMediaDownloadUrl(url) ?? url, [url]);
   const [srcIndex, setSrcIndex] = useState(0);
-  const activeSrc = playbackCandidates[srcIndex] ?? resolveFamilyMediaUrl(url) ?? url;
-  const activeMime = inferFamilyMediaMimeType(activeSrc);
+  const activeSrc = playbackCandidates[srcIndex] ?? playbackCandidates[0] ?? url;
   const [isPortrait, setIsPortrait] = useState(portrait);
   const [videoAspect, setVideoAspect] = useState<string | null>(null);
   const [coarsePointer, setCoarsePointer] = useState(readCoarsePointer);
@@ -123,7 +122,7 @@ export function FamilyVideoModal({
     requestPlay(mediaId);
     setBuffering(true);
     setPlaybackError(false);
-    rememberFamilyMediaView(activeSrc, mediaId, 'video', activeMime);
+    rememberFamilyMediaView(downloadUrl, mediaId, 'video');
 
     const onCanPlay = () => {
       void el.play().catch(() => {
@@ -143,7 +142,6 @@ export function FamilyVideoModal({
       notifyPaused(mediaId);
     };
   }, [
-    activeMime,
     activeSrc,
     dismissNowPlaying,
     mediaId,
@@ -212,7 +210,7 @@ export function FamilyVideoModal({
         onClick={handleClose}
       >
         <div className="family-video-modal__actions">
-          <FamilyMediaDownloadButton url={activeSrc} mediaId={mediaId} className="family-video-modal__download" />
+          <FamilyMediaDownloadButton url={downloadUrl} mediaId={mediaId} className="family-video-modal__download" />
           <button
             type="button"
             onClick={(e) => {
@@ -255,6 +253,7 @@ export function FamilyVideoModal({
             <video
               ref={videoRef}
               key={activeSrc}
+              src={activeSrc}
               playsInline
               controls
               preload="metadata"
@@ -303,9 +302,7 @@ export function FamilyVideoModal({
                   e.currentTarget.duration || durationHint || 0,
                 );
               }}
-            >
-              <source src={activeSrc} type={activeMime} />
-            </video>
+          />
           ) : null}
         </div>
       </div>

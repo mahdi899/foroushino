@@ -29,8 +29,12 @@ class WebhookController
         $update = $this->ingest->ingest($bot, $payload);
 
         if ($update !== null && $update->wasRecentlyCreated) {
-            ProcessTelegramUpdateJob::dispatch($update->id)
-                ->onQueue((string) config('telegram_bot.queues.inbound', 'telegram-inbound'));
+            if (config('telegram_bot.outbound_sync', false)) {
+                ProcessTelegramUpdateJob::dispatchSync($update->id);
+            } else {
+                ProcessTelegramUpdateJob::dispatch($update->id)
+                    ->onQueue((string) config('telegram_bot.queues.inbound', 'telegram-inbound'));
+            }
         }
 
         return response()->json(['ok' => true]);

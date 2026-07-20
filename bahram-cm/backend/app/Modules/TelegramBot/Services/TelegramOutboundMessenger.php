@@ -3,6 +3,7 @@
 namespace App\Modules\TelegramBot\Services;
 
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
+use App\Modules\TelegramBot\Exceptions\TelegramApiException;
 use App\Modules\TelegramBot\Jobs\SendTelegramMessageJob;
 use App\Modules\TelegramBot\Models\TelegramBot;
 
@@ -27,13 +28,31 @@ class TelegramOutboundMessenger
         array $options = [],
         bool $sync = false,
     ): ?array {
-        if ($sync || config('telegram_bot.outbound_sync', false)) {
-            return $this->clients->forBot($bot)->sendMessage($chatId, $text, $options);
+        $shouldSync = $sync || config('telegram_bot.outbound_sync', false);
+
+        if ($shouldSync) {
+            try {
+                return $this->clients->forBot($bot)->sendMessage($chatId, $text, $options);
+            } catch (TelegramApiException $e) {
+                if ($this->isTransportFailure($e)) {
+                    SendTelegramMessageJob::dispatch($bot->id, $chatId, $text, $options)
+                        ->onQueue((string) config('telegram_bot.queues.replies', 'telegram-replies'));
+
+                    return null;
+                }
+
+                throw $e;
+            }
         }
 
         SendTelegramMessageJob::dispatch($bot->id, $chatId, $text, $options)
             ->onQueue((string) config('telegram_bot.queues.replies', 'telegram-replies'));
 
         return null;
+    }
+
+    private function isTransportFailure(TelegramApiException $e): bool
+    {
+        return str_contains($e->getMessage(), 'failed to reach the transport');
     }
 }
