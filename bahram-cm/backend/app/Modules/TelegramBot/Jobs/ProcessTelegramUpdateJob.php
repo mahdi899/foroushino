@@ -51,7 +51,7 @@ class ProcessTelegramUpdateJob implements ShouldQueue
             : null;
 
         if ($lock !== null && ! $lock->get()) {
-            $this->release(5);
+            $this->release(2);
 
             return;
         }

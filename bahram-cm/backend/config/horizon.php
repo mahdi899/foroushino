@@ -197,13 +197,27 @@ return [
     */
 
     'defaults' => [
+        'supervisor-telegram' => [
+            'connection' => 'redis',
+            'queue' => [
+                'telegram-inbound',
+                'telegram-replies',
+            ],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 2,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 3,
+            'timeout' => 60,
+            'nice' => 0,
+        ],
         'supervisor-1' => [
             'connection' => 'redis',
             'queue' => [
-                'telegram-replies',
                 'telegram-transactional',
                 'telegram-support',
-                'telegram-inbound',
                 'telegram-broadcast',
                 'telegram-maintenance',
                 'default',
@@ -222,16 +236,24 @@ return [
 
     'environments' => [
         'production' => [
+            'supervisor-telegram' => [
+                'maxProcesses' => 8,
+                'balanceMaxShift' => 2,
+                'balanceCooldown' => 2,
+            ],
             'supervisor-1' => [
-                'maxProcesses' => 10,
+                'maxProcesses' => 6,
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
         ],
 
         'local' => [
+            'supervisor-telegram' => [
+                'maxProcesses' => 2,
+            ],
             'supervisor-1' => [
-                'maxProcesses' => 3,
+                'maxProcesses' => 2,
             ],
         ],
 

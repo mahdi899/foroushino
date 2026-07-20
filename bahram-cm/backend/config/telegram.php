@@ -12,10 +12,10 @@ return [
     'api_base_url' => rtrim((string) env('TELEGRAM_API_BASE_URL', 'https://api.telegram.org'), '/'),
 
     'http' => [
-        'timeout' => (int) env('TELEGRAM_HTTP_TIMEOUT', 20),
-        'connect_timeout' => (int) env('TELEGRAM_HTTP_CONNECT_TIMEOUT', 5),
-        'retry_times' => (int) env('TELEGRAM_HTTP_RETRY_TIMES', 3),
-        'retry_base_delay_ms' => (int) env('TELEGRAM_HTTP_RETRY_BASE_DELAY_MS', 500),
+        'timeout' => (int) env('TELEGRAM_HTTP_TIMEOUT', 12),
+        'connect_timeout' => (int) env('TELEGRAM_HTTP_CONNECT_TIMEOUT', 4),
+        'retry_times' => (int) env('TELEGRAM_HTTP_RETRY_TIMES', 2),
+        'retry_base_delay_ms' => (int) env('TELEGRAM_HTTP_RETRY_BASE_DELAY_MS', 350),
     ],
 
     'webhook' => [
@@ -31,7 +31,7 @@ return [
         'ttl_minutes' => (int) env('TELEGRAM_LOGIN_TOKEN_TTL_MINUTES', 10),
     ],
 
-    'membership_cache_seconds' => (int) env('TELEGRAM_MEMBERSHIP_CACHE_SECONDS', 300),
+    'membership_cache_seconds' => (int) env('TELEGRAM_MEMBERSHIP_CACHE_SECONDS', 900),
 
     'user_lock_seconds' => (int) env('TELEGRAM_USER_LOCK_SECONDS', 30),
 

@@ -29,10 +29,10 @@ return [
     ],
 
     'timeouts' => [
-        'http' => (int) env('TELEGRAM_HTTP_TIMEOUT', 20),
-        'connect' => (int) env('TELEGRAM_HTTP_CONNECT_TIMEOUT', 5),
-        'retry_times' => (int) env('TELEGRAM_HTTP_RETRY_TIMES', 3),
-        'retry_base_delay_ms' => (int) env('TELEGRAM_HTTP_RETRY_BASE_DELAY_MS', 500),
+        'http' => (int) env('TELEGRAM_HTTP_TIMEOUT', 12),
+        'connect' => (int) env('TELEGRAM_HTTP_CONNECT_TIMEOUT', 4),
+        'retry_times' => (int) env('TELEGRAM_HTTP_RETRY_TIMES', 2),
+        'retry_base_delay_ms' => (int) env('TELEGRAM_HTTP_RETRY_BASE_DELAY_MS', 350),
     ],
 
     'miniapp' => [
@@ -41,7 +41,10 @@ return [
 
     'user_lock_seconds' => (int) env('TELEGRAM_USER_LOCK_SECONDS', 30),
 
-    'membership_cache_seconds' => (int) env('TELEGRAM_MEMBERSHIP_CACHE_SECONDS', 300),
+    'membership_cache_seconds' => (int) env('TELEGRAM_MEMBERSHIP_CACHE_SECONDS', 900),
+
+    /** When true, handlers send Telegram messages synchronously (slower inbound workers). */
+    'outbound_sync' => filter_var(env('TELEGRAM_OUTBOUND_SYNC', false), FILTER_VALIDATE_BOOL),
 
     'webhook' => [
         'base_url' => rtrim((string) env('TELEGRAM_WEBHOOK_BASE_URL', env('APP_URL', 'http://localhost:8010')), '/'),
