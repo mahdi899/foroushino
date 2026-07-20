@@ -39,7 +39,7 @@ return [
         'max_auth_age' => (int) env('TELEGRAM_MINIAPP_MAX_AUTH_AGE', 86400),
     ],
 
-    'user_lock_seconds' => (int) env('TELEGRAM_USER_LOCK_SECONDS', 30),
+    'user_lock_seconds' => (int) env('TELEGRAM_USER_LOCK_SECONDS', 8),
 
     'membership_cache_seconds' => (int) env('TELEGRAM_MEMBERSHIP_CACHE_SECONDS', 900),
 

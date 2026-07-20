@@ -123,3 +123,72 @@ export function resolveFamilyMediaDownloadUrl(url: string | null | undefined): s
 
 /** Images, voice, video — same download-host URL resolver. */
 export const resolveFamilyMediaUrl = resolveFamilyMediaPlaybackUrl;
+
+/** Guess MIME from API hint or file extension (helps `<video>` / `<source type>`). */
+export function inferFamilyMediaMimeType(
+  url: string,
+  declared?: string | null,
+): string | undefined {
+  const mime = declared?.trim().toLowerCase();
+  if (mime && mime !== 'application/octet-stream') return mime;
+
+  const ext = url.split('?')[0]?.split('#')[0]?.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'mp4':
+    case 'm4v':
+      return 'video/mp4';
+    case 'webm':
+      return 'video/webm';
+    case 'mov':
+      return 'video/quicktime';
+    case 'm4a':
+      return 'audio/mp4';
+    case 'mp3':
+      return 'audio/mpeg';
+    case 'ogg':
+      return 'audio/ogg';
+    case 'webp':
+      return 'image/webp';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    default:
+      return undefined;
+  }
+}
+
+function isFamilyClubOrigin(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname.toLowerCase();
+  return host === 'rostami.club' || host === 'www.rostami.club';
+}
+
+/**
+ * Playback URL candidates — CDN first, then same-origin proxy on rostami.club
+ * when the direct CDN response fails (CORS/MIME edge cases on some devices).
+ */
+export function resolveFamilyMediaPlaybackCandidates(
+  url: string | null | undefined,
+): string[] {
+  const primary = resolveFamilyMediaPlaybackUrl(url);
+  if (!primary) return [];
+
+  const candidates = [primary];
+
+  if (typeof window !== 'undefined') {
+    try {
+      const parsed = new URL(primary);
+      const mediaPath = familyMediaPathname(parsed.pathname);
+      if (mediaPath && isFamilyClubOrigin()) {
+        const proxied = `${window.location.origin}${mediaPath}${parsed.search}`;
+        if (proxied !== primary) candidates.push(proxied);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return candidates;
+}

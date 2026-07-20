@@ -1,13 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { FamilyBodyPortal } from '@/components/family/FamilyBodyPortal';
 import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
-import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
+import {
+  inferFamilyMediaMimeType,
+  resolveFamilyMediaPlaybackCandidates,
+  resolveFamilyMediaUrl,
+} from '@/lib/family/mediaPlaybackUrl';
 import { sendMediaProgress } from '@/lib/family/api';
 
 function readCoarsePointer(): boolean {
@@ -34,7 +38,13 @@ export function FamilyVideoModal({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const lastReported = useRef(0);
-  const streamUrl = resolveFamilyMediaUrl(url) ?? url;
+  const playbackCandidates = useMemo(
+    () => resolveFamilyMediaPlaybackCandidates(url),
+    [url],
+  );
+  const [srcIndex, setSrcIndex] = useState(0);
+  const activeSrc = playbackCandidates[srcIndex] ?? resolveFamilyMediaUrl(url) ?? url;
+  const activeMime = inferFamilyMediaMimeType(activeSrc);
   const [isPortrait, setIsPortrait] = useState(portrait);
   const [videoAspect, setVideoAspect] = useState<string | null>(null);
   const [coarsePointer, setCoarsePointer] = useState(readCoarsePointer);
@@ -44,12 +54,13 @@ export function FamilyVideoModal({
 
   useEffect(() => {
     if (open) {
+      setSrcIndex(0);
       setIsPortrait(portrait);
       setVideoAspect(null);
       setBuffering(true);
       setPlaybackError(false);
     }
-  }, [open, portrait, streamUrl]);
+  }, [open, portrait, url]);
 
   useEffect(() => {
     const media = window.matchMedia('(pointer: coarse)');
@@ -58,6 +69,16 @@ export function FamilyVideoModal({
     media.addEventListener('change', sync);
     return () => media.removeEventListener('change', sync);
   }, []);
+
+  const tryNextSource = useCallback(() => {
+    if (playbackCandidates.length > srcIndex + 1) {
+      setSrcIndex((i) => i + 1);
+      setBuffering(true);
+      setPlaybackError(false);
+      return true;
+    }
+    return false;
+  }, [playbackCandidates.length, srcIndex]);
 
   const stopPlayback = useCallback(() => {
     const el = videoRef.current;
@@ -80,6 +101,16 @@ export function FamilyVideoModal({
     onClose();
   }, [dismissNowPlaying, onClose, stopPlayback]);
 
+  const retryPlayback = useCallback(() => {
+    setSrcIndex(0);
+    setPlaybackError(false);
+    setBuffering(true);
+    const el = videoRef.current;
+    if (!el) return;
+    el.load();
+    void el.play().catch(() => setPlaybackError(true));
+  }, []);
+
   useEffect(() => {
     if (!open) return;
 
@@ -88,18 +119,18 @@ export function FamilyVideoModal({
     const el = videoRef.current;
     if (!el) return;
 
-    el.preload = 'metadata';
-    el.src = streamUrl;
     register(mediaId, el);
     requestPlay(mediaId);
     setBuffering(true);
     setPlaybackError(false);
-    rememberFamilyMediaView(streamUrl, mediaId, 'video', 'video/mp4');
+    rememberFamilyMediaView(activeSrc, mediaId, 'video', activeMime);
 
     const onCanPlay = () => {
       void el.play().catch(() => {
-        setPlaybackError(true);
-        setBuffering(false);
+        if (!tryNextSource()) {
+          setPlaybackError(true);
+          setBuffering(false);
+        }
       });
     };
 
@@ -111,7 +142,18 @@ export function FamilyVideoModal({
       unregister(mediaId);
       notifyPaused(mediaId);
     };
-  }, [dismissNowPlaying, mediaId, notifyPaused, open, register, requestPlay, streamUrl, unregister]);
+  }, [
+    activeMime,
+    activeSrc,
+    dismissNowPlaying,
+    mediaId,
+    notifyPaused,
+    open,
+    register,
+    requestPlay,
+    tryNextSource,
+    unregister,
+  ]);
 
   useEffect(() => {
     if (!open) return;
@@ -170,7 +212,7 @@ export function FamilyVideoModal({
         onClick={handleClose}
       >
         <div className="family-video-modal__actions">
-          <FamilyMediaDownloadButton url={streamUrl} mediaId={mediaId} className="family-video-modal__download" />
+          <FamilyMediaDownloadButton url={activeSrc} mediaId={mediaId} className="family-video-modal__download" />
           <button
             type="button"
             onClick={(e) => {
@@ -196,76 +238,75 @@ export function FamilyVideoModal({
           ) : null}
 
           {playbackError ? (
-            <div className="absolute inset-0 z-[1] flex flex-col items-center justify-center gap-3 px-6 text-center text-white/85">
+            <div className="absolute inset-0 z-[2] flex flex-col items-center justify-center gap-3 px-6 text-center text-white/85">
               <p className="text-sm">پخش ویدیو ممکن نشد.</p>
               <button
                 type="button"
                 className="rounded-full bg-white/15 px-4 py-2 text-sm backdrop-blur-sm transition hover:bg-white/25"
-                onClick={() => {
-                  const el = videoRef.current;
-                  if (!el) return;
-                  setPlaybackError(false);
-                  setBuffering(true);
-                  el.load();
-                  void el.play().catch(() => setPlaybackError(true));
-                }}
+                onClick={retryPlayback}
               >
                 تلاش دوباره
               </button>
             </div>
           ) : null}
 
-          <video
-            ref={videoRef}
-            src={streamUrl}
-            playsInline
-            controls
-            preload="metadata"
-            controlsList={coarsePointer ? 'nofullscreen' : undefined}
-            disablePictureInPicture
-            className="family-video-modal__player"
-            style={playerStyle}
-            onLoadedMetadata={(e) => {
-              const video = e.currentTarget;
-              if (video.videoWidth > 0 && video.videoHeight > 0) {
-                setIsPortrait(video.videoHeight > video.videoWidth);
-                setVideoAspect(`${video.videoWidth} / ${video.videoHeight}`);
-              }
-            }}
-            onCanPlay={() => setBuffering(false)}
-            onPlaying={() => {
-              setBuffering(false);
-              setPlaybackError(false);
-            }}
-            onWaiting={() => setBuffering(true)}
-            onError={() => {
-              setBuffering(false);
-              setPlaybackError(true);
-            }}
-            onPlay={(e) => {
-              reportProgress(
-                'play',
-                e.currentTarget.currentTime,
-                e.currentTarget.duration || durationHint || 0,
-              );
-            }}
-            onPause={(e) => {
-              notifyPaused(mediaId);
-              reportProgress(
-                'pause',
-                e.currentTarget.currentTime,
-                e.currentTarget.duration || durationHint || 0,
-              );
-            }}
-            onEnded={(e) => {
-              notifyPaused(mediaId);
-              reportProgress(
-                'complete',
-                e.currentTarget.duration || 0,
-                e.currentTarget.duration || durationHint || 0,
-              );
-            }}
-          />
+          {!playbackError ? (
+            // eslint-disable-next-line jsx-a11y/media-has-caption
+            <video
+              ref={videoRef}
+              key={activeSrc}
+              playsInline
+              controls
+              preload="metadata"
+              controlsList={coarsePointer ? 'nofullscreen' : undefined}
+              disablePictureInPicture
+              className="family-video-modal__player"
+              style={playerStyle}
+              onLoadedMetadata={(e) => {
+                const video = e.currentTarget;
+                if (video.videoWidth > 0 && video.videoHeight > 0) {
+                  setIsPortrait(video.videoHeight > video.videoWidth);
+                  setVideoAspect(`${video.videoWidth} / ${video.videoHeight}`);
+                }
+              }}
+              onCanPlay={() => setBuffering(false)}
+              onPlaying={() => {
+                setBuffering(false);
+                setPlaybackError(false);
+              }}
+              onWaiting={() => setBuffering(true)}
+              onError={() => {
+                if (tryNextSource()) return;
+                setBuffering(false);
+                setPlaybackError(true);
+              }}
+              onPlay={(e) => {
+                reportProgress(
+                  'play',
+                  e.currentTarget.currentTime,
+                  e.currentTarget.duration || durationHint || 0,
+                );
+              }}
+              onPause={(e) => {
+                notifyPaused(mediaId);
+                reportProgress(
+                  'pause',
+                  e.currentTarget.currentTime,
+                  e.currentTarget.duration || durationHint || 0,
+                );
+              }}
+              onEnded={(e) => {
+                notifyPaused(mediaId);
+                reportProgress(
+                  'complete',
+                  e.currentTarget.duration || 0,
+                  e.currentTarget.duration || durationHint || 0,
+                );
+              }}
+            >
+              <source src={activeSrc} type={activeMime} />
+            </video>
+          ) : null}
         </div>
       </div>
     </FamilyBodyPortal>

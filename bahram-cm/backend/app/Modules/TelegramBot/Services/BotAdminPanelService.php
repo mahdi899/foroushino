@@ -102,6 +102,9 @@ class BotAdminPanelService
             return true;
         }
 
+        // Stop the loading spinner immediately — handlers may call Telegram API afterward.
+        $this->answer($client, $callbackId);
+
         try {
             match (true) {
                 $data === 'admin:h' => $this->showHome($bot, $account, $client, $chatId, $messageId),
@@ -121,7 +124,6 @@ class BotAdminPanelService
                 str_starts_with($data, 'admin:l') => $this->handleLogsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 default => $this->showHome($bot, $account, $client, $chatId, $messageId),
             };
-            $this->answer($client, $callbackId);
         } catch (Throwable $e) {
             $this->answer($client, $callbackId, mb_substr($e->getMessage(), 0, 180), true);
         }
@@ -3590,6 +3592,27 @@ class BotAdminPanelService
         int $messageId,
         string $data,
     ): void {
+        if ($data === 'admin:s:rs') {
+            $result = app(TelegramBotResetService::class)->reset($bot);
+            $lines = [
+                '✅ ریست صف و وب‌هوک انجام شد.',
+                '',
+                'تلگرام (remote): '.($result['pending_remote'] ?? '?'),
+                'معلق محلی: '.($result['pending_local'] ?? 0),
+                'ناموفق محلی: '.($result['failed_local'] ?? 0),
+            ];
+            if (filled($result['last_error'] ?? null)) {
+                $lines[] = 'آخرین خطای تلگرام: '.mb_substr((string) $result['last_error'], 0, 120);
+            }
+            if (($result['actions'] ?? []) !== []) {
+                $lines[] = '';
+                $lines[] = implode(' · ', $result['actions']);
+            }
+            $this->renderSettings($bot, $client, $chatId, $messageId, implode("\n", $lines));
+
+            return;
+        }
+
         if ($data === 'admin:s:wh') {
             $infrastructure = app(\App\Services\TelegramInfrastructureService::class);
             $url = $infrastructure->buildWebhookUrl($bot->key);
@@ -3725,6 +3748,7 @@ class BotAdminPanelService
         $health = $this->health->run();
         $botHealth = $health['bots'][$bot->key] ?? [];
         $updates = $health['updates'] ?? [];
+        $queueStats = app(TelegramBotResetService::class)->queueStats($bot);
 
         $text = ($notice ? $notice."\n\n" : '')
             ."⚙️ تنظیمات ربات\n\n"
@@ -3734,8 +3758,10 @@ class BotAdminPanelService
             .'وب‌هوک: '.($botHealth['webhook_url'] ?? '—')."\n"
             .'گروه گزارشات: '.(filled($bot->reportsGroupChatId()) ? (string) $bot->reportsGroupChatId() : 'تنظیم نشده')."\n"
             .'گزارشات پرداخت: '.(filled($bot->paymentReportsChatId()) ? (string) $bot->paymentReportsChatId() : 'تنظیم نشده')."\n"
-            ."آپدیت معلق: ".($updates['pending'] ?? 0)."\n"
-            .'آپدیت ناموفق: '.($updates['failed'] ?? 0)."\n\n"
+            ."آپدیت معلق (محلی): ".($queueStats['pending_local'] ?? 0)."\n"
+            .'در حال پردازش: '.($queueStats['processing_local'] ?? 0)."\n"
+            .'آپدیت ناموفق: '.($queueStats['failed_local'] ?? 0)."\n"
+            .'صف تلگرام (remote): '.($queueStats['pending_remote'] ?? '—')."\n\n"
             .'برای تغییر هر گزینه روی آن بزنید:';
 
         $keyboard = [];
@@ -3762,6 +3788,7 @@ class BotAdminPanelService
         ];
         $keyboard[] = [
             ['text' => '🔗 ثبت وب‌هوک', 'callback_data' => 'admin:s:wh'],
+            ['text' => '🔄 ریست صف', 'callback_data' => 'admin:s:rs'],
         ];
         $keyboard[] = [
             ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
@@ -3814,14 +3841,14 @@ class BotAdminPanelService
             ->where('status', UpdateStatus::Failed)
             ->orderByDesc('id')
             ->limit(5)
-            ->get(['id', 'update_type', 'last_error']);
+            ->get(['id', 'update_type', 'error_message']);
 
         $lines = [($notice ? $notice."\n\n" : '').'📋 لاگ‌ها', '', "معلق: {$pending}", "ناموفق: {$failed}", ''];
 
         foreach ($recentFailed as $item) {
             $lines[] = "#{$item->id} · {$item->update_type}";
-            if ($item->last_error) {
-                $lines[] = mb_substr((string) $item->last_error, 0, 80);
+            if ($item->error_message) {
+                $lines[] = mb_substr((string) $item->error_message, 0, 80);
             }
         }
 

@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   familyMediaPathname,
+  inferFamilyMediaMimeType,
   resolveFamilyMediaDownloadUrl,
+  resolveFamilyMediaPlaybackCandidates,
   resolveFamilyMediaPlaybackUrl,
 } from '@/lib/family/mediaPlaybackUrl';
 
@@ -56,5 +58,23 @@ describe('resolveFamilyMediaDownloadUrl', () => {
         'https://rostami.club/media/family/2026/07/image/a.webp',
       ),
     ).toBe('https://cdn.rostami.app/media/family/2026/07/image/a.webp');
+  });
+});
+
+describe('inferFamilyMediaMimeType', () => {
+  it('prefers API mime type', () => {
+    expect(inferFamilyMediaMimeType('https://cdn/a.bin', 'video/mp4')).toBe('video/mp4');
+  });
+
+  it('infers from extension', () => {
+    expect(inferFamilyMediaMimeType('https://cdn/a.mp4', null)).toBe('video/mp4');
+  });
+});
+
+describe('resolveFamilyMediaPlaybackCandidates', () => {
+  it('includes CDN URL', () => {
+    expect(
+      resolveFamilyMediaPlaybackCandidates('/media/family/demo/demo-video.mp4'),
+    ).toEqual(['https://cdn.rostami.app/media/family/demo/demo-video.mp4']);
   });
 });
