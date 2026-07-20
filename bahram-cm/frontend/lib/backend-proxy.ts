@@ -8,6 +8,11 @@ const BACKEND_PREFIXES = [
   "/fonts/",
 ];
 
+/** Public gallery paths proxied to CDN on club host (mirrors nginx on rostami.club). */
+export function isPublicCdnMediaPath(pathname: string): boolean {
+  return pathname.startsWith("/media/family/") || pathname.startsWith("/media/site/");
+}
+
 /**
  * Next.js App Router handlers under `/api/*` — middleware must not proxy these.
  * Captcha/chatbot are proxied to Laravel `/api/v1/*` instead (see `toBackendPath`).

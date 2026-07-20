@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   backendProxyUrl,
   isNextApiHandlerPath,
+  isPublicCdnMediaPath,
   rewriteProxyLocation,
   shouldProxyToBackend,
   toBackendPath,
@@ -12,6 +13,7 @@ import { isLongCacheMediaPath } from "@/lib/cache/cdnHeaders";
 import { isStaticContentPath } from "@/lib/cache/staticScope";
 import { mediaPathToStorage } from "@/lib/media/legacyMap";
 import { APP_DOMAIN, appPublicOrigin, DUAL_DOMAIN_ENABLED, familyPublicOrigin, FAMILY_DOMAIN } from "@/lib/domains";
+import { MEDIA_ORIGIN } from "@/lib/api/config";
 
 const STUDENT_TOKEN_COOKIE = "bahram_student_token";
 
@@ -122,8 +124,50 @@ async function applyPublicCacheHeaders(
   return response;
 }
 
+/** /media/family|site/* → CDN upstream (mirrors rostami.club nginx — not local storage). */
+async function proxyPublicMediaToCdn(
+  request: NextRequest,
+  pathname: string,
+  search: string,
+): Promise<NextResponse> {
+  if (!MEDIA_ORIGIN) {
+    return new NextResponse("CDN not configured", { status: 502 });
+  }
+
+  const cdnTarget = new URL(`${pathname}${search}`, MEDIA_ORIGIN);
+  const range = request.headers.get("range");
+  const ifRange = request.headers.get("if-range");
+
+  const cdnHeaders = new Headers();
+  if (range) cdnHeaders.set("Range", range);
+  if (ifRange) cdnHeaders.set("If-Range", ifRange);
+
+  let cdnResponse: Response;
+  try {
+    cdnResponse = await fetch(cdnTarget, {
+      method: request.method,
+      headers: cdnHeaders,
+      redirect: "manual",
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch {
+    return new NextResponse("CDN unavailable", { status: 502 });
+  }
+
+  return new NextResponse(cdnResponse.body, {
+    status: cdnResponse.status,
+    statusText: cdnResponse.statusText,
+    headers: cdnResponse.headers,
+  });
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+
+  // Family/site CDN assets — proxy before legacy gallery redirects.
+  if (isPublicCdnMediaPath(pathname)) {
+    return proxyPublicMediaToCdn(request, pathname, search);
+  }
 
   // Legacy Next `/public/media/*` → gallery storage (Laravel `/storage/media/site/*`).
   if (pathname.startsWith('/media/') || pathname.startsWith('/images/')) {
@@ -231,6 +275,7 @@ export const config = {
   matcher: [
     "/",
     "/storage/:path*",
+    "/media/:path*",
     "/api/:path*",
     "/cdn/:path*",
     "/css/:path*",

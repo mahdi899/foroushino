@@ -1,9 +1,14 @@
-import { familyMediaPathname } from '@/lib/family/mediaPlaybackUrl';
+import {
+  familyMediaPathname,
+  isFamilyMediaSameOriginHost,
+  normalizeFamilyGalleryMediaPath,
+  resolveFamilyMediaPlaybackUrl,
+} from '@/lib/family/mediaPlaybackUrl';
 
 /** Browser Cache API retention after a media item is viewed. */
 export const FAMILY_MEDIA_CACHE_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 
-const CACHE_NAME = 'family-media-v4';
+const CACHE_NAME = 'family-media-v5';
 const CACHED_AT_HEADER = 'X-Family-Media-Cached-At';
 
 const blobUrlByKey = new Map<string, string>();
@@ -20,27 +25,48 @@ function cacheRequest(kind: 'preview' | 'full', mediaId: number, url: string): R
   return new Request(keyUrl);
 }
 
-function isFamilyClubOrigin(): boolean {
-  if (typeof window === 'undefined') return false;
-  const host = window.location.hostname.toLowerCase();
-  return host === 'rostami.club' || host === 'www.rostami.club';
+/** Offline cache prefetch — disabled in dev (CDN-only; no /storage noise in console). */
+function shouldPrefetchFamilyMedia(): boolean {
+  return process.env.NODE_ENV === 'production';
 }
 
-/** Same-origin proxy on rostami.club avoids CORS when persisting CDN media locally. */
+function isFamilyCdnProxyPath(pathname: string): boolean {
+  if (pathname.startsWith('/storage/')) return false;
+  return normalizeFamilyGalleryMediaPath(pathname).startsWith('/media/family/');
+}
+
+/** Only same-origin /media/family/* proxy — never /storage or cross-origin CDN fetch. */
+function isAllowedFamilyMediaCacheFetch(fetchUrl: string): boolean {
+  if (fetchUrl.includes('/storage/media/')) return false;
+  try {
+    const resolved = new URL(fetchUrl, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+    if (typeof window !== 'undefined' && resolved.origin !== window.location.origin) return false;
+    return isFamilyCdnProxyPath(resolved.pathname);
+  } catch {
+    return false;
+  }
+}
+
+/** Same-origin /media/family/* proxy avoids CORS when persisting CDN media in Cache API. */
 export function familyMediaCacheFetchUrl(streamUrl: string): string {
   if (typeof window === 'undefined') return streamUrl;
 
-  try {
-    const parsed = new URL(streamUrl, window.location.origin);
-    const mediaPath = familyMediaPathname(parsed.pathname);
-    if (mediaPath && isFamilyClubOrigin()) {
-      return `${window.location.origin}${mediaPath}${parsed.search}`;
+  const canonical = resolveFamilyMediaPlaybackUrl(streamUrl) ?? streamUrl;
+
+  if (isFamilyMediaSameOriginHost(window.location.hostname)) {
+    try {
+      const parsed = new URL(canonical, window.location.origin);
+      const mediaPath = familyMediaPathname(parsed.pathname);
+      if (mediaPath && isFamilyCdnProxyPath(mediaPath)) {
+        return `${window.location.origin}${normalizeFamilyGalleryMediaPath(mediaPath)}${parsed.search}`;
+      }
+    } catch {
+      // fall through — return canonical CDN URL (cross-origin; caller skips fetch).
     }
-  } catch {
-    // fall through
   }
 
-  return streamUrl;
+  // Never fall back to raw /storage refs — gallery files are on CDN, not Next.js.
+  return canonical;
 }
 
 function isFresh(response: Response): boolean {
@@ -145,9 +171,11 @@ export async function getCachedFamilyMediaObjectUrl(
   url: string,
   mediaId: number,
 ): Promise<string | null> {
-  const blob = await readFamilyMediaBlob('full', mediaId, url);
+  const canonical = resolveFamilyMediaPlaybackUrl(url) ?? url;
+  if (!canonical) return null;
+  const blob = await readFamilyMediaBlob('full', mediaId, canonical);
   if (!blob) return null;
-  return getFamilyMediaBlobUrl(`view:${mediaId}:${url}`, blob);
+  return getFamilyMediaBlobUrl(`view:${mediaId}:${canonical}`, blob);
 }
 
 /** Best-effort cache write; returns blob when fetch succeeds (same-origin / CORS). */
@@ -157,24 +185,29 @@ export async function tryCacheFamilyMediaBlob(
   kind: 'preview' | 'full',
   mimeType?: string | null,
 ): Promise<Blob | null> {
-  const cached = await readFamilyMediaBlob(kind, mediaId, url);
+  if (!shouldPrefetchFamilyMedia()) return null;
+
+  const canonical = resolveFamilyMediaPlaybackUrl(url) ?? url;
+  if (!canonical || canonical.includes('/storage/media/')) return null;
+
+  const cached = await readFamilyMediaBlob(kind, mediaId, canonical);
   if (cached) return withPreferredMimeType(cached, mimeType);
 
-  const fetchUrl = familyMediaCacheFetchUrl(url);
+  const fetchUrl = familyMediaCacheFetchUrl(canonical);
+
+  if (!isAllowedFamilyMediaCacheFetch(fetchUrl)) return null;
 
   try {
-    const sameOrigin =
-      fetchUrl.startsWith('/') ||
-      (typeof window !== 'undefined' && new URL(fetchUrl, window.location.origin).origin === window.location.origin);
+    const resolved = new URL(fetchUrl, window.location.origin);
 
     const response = await fetch(fetchUrl, {
       mode: 'cors',
-      credentials: sameOrigin ? 'same-origin' : 'omit',
+      credentials: 'same-origin',
       cache: 'force-cache',
     });
     if (!response.ok) return null;
     const blob = withPreferredMimeType(await response.blob(), mimeType);
-    void writeFamilyMediaBlob(kind, mediaId, url, blob);
+    void writeFamilyMediaBlob(kind, mediaId, canonical, blob);
     return blob;
   } catch {
     return null;
@@ -188,10 +221,16 @@ export function rememberFamilyMediaView(
   kind: Exclude<FamilyMediaCacheKind, 'preview' | 'full'>,
   mimeType?: string | null,
 ): void {
-  if (!url) return;
+  if (!shouldPrefetchFamilyMedia()) return;
+
+  const canonical = resolveFamilyMediaPlaybackUrl(url) ?? url;
+  if (!canonical || canonical.includes('/storage/media/')) return;
+
+  // Images already stream from CDN via <img> — prefetch would hit legacy /storage paths.
+  if (kind === 'image') return;
 
   const persist = () => {
-    void tryCacheFamilyMediaBlob(url, mediaId, 'full', mimeType);
+    void tryCacheFamilyMediaBlob(canonical, mediaId, 'full', mimeType);
   };
 
   // Voice/video stream via Range — defer full-file cache so it never steals bandwidth.

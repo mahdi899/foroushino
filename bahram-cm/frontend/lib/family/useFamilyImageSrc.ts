@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { getCachedFamilyMediaObjectUrl, rememberFamilyMediaView } from '@/lib/family/mediaCache';
+import { getCachedFamilyMediaObjectUrl } from '@/lib/family/mediaCache';
 import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 
 /** Prefer a warm local blob for images; fall back to CDN stream URL immediately. */
@@ -22,7 +22,7 @@ export function useFamilyImageSrc(url: string | null | undefined, mediaId: numbe
       if (!cancelled && cached) setSrc(cached);
     });
 
-    rememberFamilyMediaView(streamUrl, mediaId, 'image');
+    // Images stream from CDN — no Cache API prefetch (see rememberFamilyMediaView).
 
     return () => {
       cancelled = true;

@@ -46,6 +46,16 @@ export function mediaPathToStorage(path: string): string {
     return trimmed;
   }
 
+  // Family + site gallery on CDN — not legacy /public/media layout.
+  if (legacyPath.startsWith('/media/family/') || legacyPath.startsWith('/media/site/')) {
+    return legacyPath;
+  }
+
+  // Wrong legacy nest: /storage/media/site/family/* → CDN /media/family/*.
+  if (legacyPath.startsWith('/storage/media/site/family/')) {
+    return legacyPath.replace('/storage/media/site/family/', '/media/family/');
+  }
+
   const mapped = resolveLegacyStoragePath(legacyPath);
   if (mapped) return mapped;
 

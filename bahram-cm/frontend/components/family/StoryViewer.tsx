@@ -200,10 +200,9 @@ export function StoryViewer({
     setSlideProgress(0);
   }, [clearSlideTimers, index, loading, open]);
 
-  // Image stories: fixed timer + warm local cache.
+  // Image stories: fixed timer (media streams from CDN — no local prefetch).
   useEffect(() => {
     if (!open || loading || !currentMedia || !currentSrc || currentIsVideo) return;
-    rememberFamilyMediaView(currentSrc, currentMedia.id, 'image', currentMedia.mime_type);
     scheduleImageSlide(IMAGE_STORY_MS);
     return clearSlideTimers;
   }, [

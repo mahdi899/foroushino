@@ -6,7 +6,6 @@ import { createPortal } from 'react-dom';
 import { cn } from '@/lib/cn';
 import { fontClassName } from '@/lib/fonts';
 import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
-import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import { useFamilyImageSrc } from '@/lib/family/useFamilyImageSrc';
 const IMMERSIVE_CLASS = 'family-app--immersive';
 
@@ -249,12 +248,6 @@ export function ImageZoomLightbox({
   const handleBackdropClick = () => {
     if (scaleRef.current <= 1.02) onClose();
   };
-
-  useEffect(() => {
-    if (activeUrl && activeMediaId) {
-      rememberFamilyMediaView(activeUrl, activeMediaId, 'image');
-    }
-  }, [activeMediaId, activeUrl]);
 
   if (!activeUrl) return null;
 

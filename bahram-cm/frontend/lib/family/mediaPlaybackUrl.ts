@@ -1,4 +1,5 @@
 import { DEFAULT_MEDIA_DOWNLOAD_HOST } from '@/lib/api/config';
+import { isFamilyHost } from '@/lib/domains';
 import { MEDIA_HOSTS } from '@/lib/media/hosts.generated';
 
 /** Canonical playback host for family voice/video/images. */
@@ -11,15 +12,33 @@ export const FAMILY_MEDIA_PLAYBACK_HOST = (
 const FAMILY_MEDIA_PREFIX = '/media/family/';
 const SITE_MEDIA_PREFIX = '/media/site/';
 
+/** Legacy mediaPathToStorage nested family assets under /storage/media/site/family/. */
+export function normalizeFamilyGalleryMediaPath(pathname: string): string {
+  if (pathname.startsWith('/media/site/family/')) {
+    return pathname.replace('/media/site/family/', '/media/family/');
+  }
+  if (pathname.startsWith('/storage/media/site/family/')) {
+    return pathname.replace('/storage/media/site/family/', '/media/family/');
+  }
+  return pathname;
+}
+
 function cdnPathFromStorageRef(ref: string): string {
   if (ref.startsWith('/storage/media/')) {
-    return ref.slice('/storage'.length);
+    return normalizeFamilyGalleryMediaPath(ref.slice('/storage'.length));
   }
-  return ref;
+  return normalizeFamilyGalleryMediaPath(ref);
 }
 
 function isLocalOrigin(hostname: string): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
+/** Club host where /media/family is same-origin proxied to CDN (nginx or Next middleware). */
+export function isFamilyMediaSameOriginHost(hostname: string): boolean {
+  if (isFamilyHost(hostname)) return true;
+  const host = hostname.toLowerCase();
+  return host === 'rostami.club' || host === 'www.rostami.club';
 }
 
 function toPlaybackHostUrl(pathname: string, search = ''): string {
@@ -40,9 +59,11 @@ function isFamilyMediaProxyHost(hostname: string): boolean {
 
 /** Canonical CDN path (/media/...), or null when not a media asset we control. */
 export function familyMediaPathname(pathname: string): string | null {
-  const normalized = pathname.startsWith('/') ? pathname : `/${pathname}`;
+  const normalized = normalizeFamilyGalleryMediaPath(
+    pathname.startsWith('/') ? pathname : `/${pathname}`,
+  );
   if (normalized.startsWith(FAMILY_MEDIA_PREFIX) || normalized.startsWith(SITE_MEDIA_PREFIX)) {
-    return normalized;
+    return normalizeFamilyGalleryMediaPath(normalized);
   }
   if (
     normalized.startsWith('/storage/media/family/') ||
@@ -159,14 +180,8 @@ export function inferFamilyMediaMimeType(
   }
 }
 
-function isFamilyClubOrigin(): boolean {
-  if (typeof window === 'undefined') return false;
-  const host = window.location.hostname.toLowerCase();
-  return host === 'rostami.club' || host === 'www.rostami.club';
-}
-
 /**
- * Playback URL candidates — CDN first, then same-origin proxy on rostami.club
+ * Playback URL candidates — CDN first, then same-origin proxy on club/app hosts
  * when the direct CDN response fails (CORS/MIME edge cases on some devices).
  */
 export function resolveFamilyMediaPlaybackCandidates(
@@ -179,9 +194,9 @@ export function resolveFamilyMediaPlaybackCandidates(
 
   if (typeof window !== 'undefined') {
     try {
-      const parsed = new URL(primary);
+      const parsed = new URL(primary, window.location.origin);
       const mediaPath = familyMediaPathname(parsed.pathname);
-      if (mediaPath && isFamilyClubOrigin()) {
+      if (mediaPath && isFamilyMediaSameOriginHost(window.location.hostname)) {
         const proxied = `${window.location.origin}${mediaPath}${parsed.search}`;
         if (proxied !== primary) candidates.push(proxied);
       }
