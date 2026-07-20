@@ -1,16 +1,30 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Loader2 } from 'lucide-react';
-import { resolveFamilyMediaPlaybackUrl } from '@/lib/family/mediaPlaybackUrl';
+import { cn } from '@/lib/cn';
 import { fontClassName } from '@/lib/fonts';
 import { getStories } from '@/lib/family/api';
-import { resolveFamilyMediaPlaybackUrl } from '@/lib/family/mediaPlaybackUrl';
-import type { FamilyStory } from '@/lib/family/types';
+import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
+import type { FamilyStory, FamilyStoryMedia } from '@/lib/family/types';
 
-const STORY_DURATION_MS = 8000;
+const IMAGE_STORY_MS = 8000;
+const MIN_VIDEO_STORY_MS = 3000;
+const MAX_VIDEO_STORY_MS = 90_000;
+
+function isStoryVideo(media: FamilyStoryMedia): boolean {
+  const type = (media.type ?? '').toLowerCase();
+  if (type === 'video') return true;
+  const mime = (media.mime_type ?? '').toLowerCase();
+  return mime.startsWith('video/');
+}
+
+function storyMediaSrc(media: FamilyStoryMedia | null | undefined): string | null {
+  if (!media) return null;
+  return resolveFamilyMediaUrl(media.url);
+}
 
 export function StoryViewer({
   open,
@@ -27,6 +41,10 @@ export function StoryViewer({
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [slideProgress, setSlideProgress] = useState(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const advanceTimerRef = useRef<number | null>(null);
+  const progressRafRef = useRef<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -46,6 +64,7 @@ export function StoryViewer({
 
     setLoading(true);
     setIndex(0);
+    setSlideProgress(0);
     getStories()
       .then((res) => setStories(res.data))
       .catch(() => setStories([]))
@@ -65,18 +84,129 @@ export function StoryViewer({
       return;
     }
     setIndex((i) => i + 1);
+    setSlideProgress(0);
   }, [finish, index, stories.length]);
 
   const goPrev = useCallback(() => {
     setIndex((i) => Math.max(0, i - 1));
+    setSlideProgress(0);
   }, []);
 
-  useEffect(() => {
-    if (!open || stories.length === 0 || loading) return;
+  const clearSlideTimers = useCallback(() => {
+    if (advanceTimerRef.current != null) {
+      window.clearTimeout(advanceTimerRef.current);
+      advanceTimerRef.current = null;
+    }
+    if (progressRafRef.current != null) {
+      cancelAnimationFrame(progressRafRef.current);
+      progressRafRef.current = null;
+    }
+  }, []);
 
-    const timer = window.setTimeout(goNext, STORY_DURATION_MS);
-    return () => window.clearTimeout(timer);
-  }, [open, stories.length, index, goNext, loading]);
+  const scheduleImageSlide = useCallback(
+    (durationMs: number) => {
+      clearSlideTimers();
+      const started = performance.now();
+
+      const tick = () => {
+        const elapsed = performance.now() - started;
+        setSlideProgress(Math.min(1, elapsed / durationMs));
+        if (elapsed < durationMs) {
+          progressRafRef.current = requestAnimationFrame(tick);
+        }
+      };
+      progressRafRef.current = requestAnimationFrame(tick);
+
+      advanceTimerRef.current = window.setTimeout(() => {
+        goNext();
+      }, durationMs);
+    },
+    [clearSlideTimers, goNext],
+  );
+
+  const current = stories[index];
+  const currentMedia = current?.media ?? null;
+  const currentSrc = storyMediaSrc(currentMedia);
+  const currentIsVideo = currentMedia ? isStoryVideo(currentMedia) : false;
+
+  // Image stories: fixed timer. Video: play from CDN + advance on ended.
+  useEffect(() => {
+    if (!open || loading || !currentMedia || !currentSrc) return;
+
+    clearSlideTimers();
+    setSlideProgress(0);
+
+    if (!currentIsVideo) {
+      scheduleImageSlide(IMAGE_STORY_MS);
+      return clearSlideTimers;
+    }
+
+    const video = videoRef.current;
+    if (!video) return clearSlideTimers;
+
+    video.src = currentSrc;
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    video.load();
+
+    const onTimeUpdate = () => {
+      const duration = video.duration;
+      if (!Number.isFinite(duration) || duration <= 0) return;
+      setSlideProgress(Math.min(1, video.currentTime / duration));
+    };
+
+    const onLoadedMetadata = () => {
+      const hintedSec = currentMedia.duration && currentMedia.duration > 0 ? currentMedia.duration : video.duration;
+      const maxMs = Number.isFinite(hintedSec) && hintedSec > 0
+        ? Math.min(MAX_VIDEO_STORY_MS, Math.max(MIN_VIDEO_STORY_MS, hintedSec * 1000))
+        : MAX_VIDEO_STORY_MS;
+
+      advanceTimerRef.current = window.setTimeout(() => {
+        if (!video.paused && !video.ended) goNext();
+      }, maxMs + 500);
+
+      void video.play().catch(() => {
+        // Autoplay blocked — still allow manual tap; fallback timer keeps story moving.
+        scheduleImageSlide(IMAGE_STORY_MS);
+      });
+    };
+
+    const onEnded = () => {
+      clearSlideTimers();
+      goNext();
+    };
+
+    const onError = () => {
+      scheduleImageSlide(IMAGE_STORY_MS);
+    };
+
+    video.addEventListener('timeupdate', onTimeUpdate);
+    video.addEventListener('loadedmetadata', onLoadedMetadata);
+    video.addEventListener('ended', onEnded);
+    video.addEventListener('error', onError);
+
+    return () => {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+      video.removeEventListener('timeupdate', onTimeUpdate);
+      video.removeEventListener('loadedmetadata', onLoadedMetadata);
+      video.removeEventListener('ended', onEnded);
+      video.removeEventListener('error', onError);
+      clearSlideTimers();
+    };
+  }, [
+    clearSlideTimers,
+    currentIsVideo,
+    currentMedia,
+    currentSrc,
+    goNext,
+    index,
+    loading,
+    open,
+    scheduleImageSlide,
+  ]);
 
   useEffect(() => {
     if (!open) return;
@@ -89,7 +219,10 @@ export function StoryViewer({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, finish, goNext, goPrev]);
 
-  const current = stories[index];
+  useEffect(() => {
+    if (!open) clearSlideTimers();
+    return clearSlideTimers;
+  }, [clearSlideTimers, open]);
 
   if (!mounted) return null;
 
@@ -122,11 +255,10 @@ export function StoryViewer({
                 {stories.map((story, i) => (
                   <div key={story.id} className="h-0.5 flex-1 overflow-hidden rounded-full bg-white/25">
                     <div
-                      className="h-full bg-gold transition-all"
+                      className="h-full bg-gold transition-[width] duration-75 ease-linear"
                       style={{
-                        width: i < index ? '100%' : i === index ? '100%' : '0%',
-                        animation:
-                          i === index && !loading ? `story-progress ${STORY_DURATION_MS}ms linear forwards` : undefined,
+                        width:
+                          i < index ? '100%' : i === index ? `${Math.round(slideProgress * 100)}%` : '0%',
                       }}
                     />
                   </div>
@@ -155,26 +287,27 @@ export function StoryViewer({
                     <p className="text-sm text-white/70">استوری فعالی وجود ندارد.</p>
                   </div>
                 )}
-                {!loading && current?.media?.url && (
+                {!loading && currentSrc && currentMedia && (
                   <>
-                    {current.media.type === 'video' ? (
+                    {currentIsVideo ? (
                       // eslint-disable-next-line jsx-a11y/media-has-caption
                       <video
+                        ref={videoRef}
                         key={current.id}
-                        src={resolveFamilyMediaPlaybackUrl(current.media.url) ?? current.media.url}
                         className="h-full w-full object-cover"
-                        autoPlay
                         playsInline
                         muted
-                        controls={false}
+                        autoPlay
+                        preload="auto"
                       />
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         key={current.id}
-                        src={resolveFamilyMediaPlaybackUrl(current.media.url) ?? current.media.url}
+                        src={currentSrc}
                         alt={current.caption ?? ''}
                         className="h-full w-full object-cover"
+                        decoding="async"
                       />
                     )}
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/55" />
@@ -185,23 +318,17 @@ export function StoryViewer({
                     )}
                   </>
                 )}
+                {!loading && current && !currentSrc && (
+                  <div className="flex h-full items-center justify-center px-6 text-center">
+                    <p className="text-sm text-white/70">فایل استوری در دسترس نیست.</p>
+                  </div>
+                )}
 
                 <button type="button" aria-label="قبلی" className="absolute inset-y-0 right-0 z-10 w-1/3" onClick={goPrev} />
                 <button type="button" aria-label="بعدی" className="absolute inset-y-0 left-0 z-10 w-1/3" onClick={goNext} />
               </div>
             </div>
           </motion.div>
-
-          <style jsx global>{`
-            @keyframes story-progress {
-              from {
-                width: 0%;
-              }
-              to {
-                width: 100%;
-              }
-            }
-          `}</style>
         </motion.div>
       )}
     </AnimatePresence>,

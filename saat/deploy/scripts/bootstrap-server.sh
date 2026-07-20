@@ -19,10 +19,18 @@ TELEGRAM_BOT_USERNAME="${TELEGRAM_BOT_USERNAME:-RostamiAppBot}"
 echo "==> Installing system packages"
 apt-get update -qq
 apt-get install -y -qq \
-  nginx git curl unzip ca-certificates gnupg lsb-release \
-  mysql-server redis-server supervisor certbot python3-certbot-nginx \
+  nginx git curl unzip ca-certificates gnupg lsb-release software-properties-common \
+  mysql-server redis-server supervisor certbot python3-certbot-nginx
+
+if ! apt-cache show php8.4-fpm >/dev/null 2>&1; then
+  echo "==> PHP 8.4 (ondrej/php PPA)"
+  add-apt-repository -y ppa:ondrej/php
+  apt-get update -qq
+fi
+
+apt-get install -y -qq \
   php8.4-fpm php8.4-cli php8.4-mysql php8.4-redis php8.4-mbstring \
-  php8.4-xml php8.4-curl php8.4-gd php8.4-intl php8.4-zip php8.4-bcmath \
+  php8.4-xml php8.4-curl php8.4-gd php8.4-intl php8.4-zip php8.4-bcmath php8.4-ftp \
   php8.4-opcache php8.4-readline
 
 if ! command -v node >/dev/null 2>&1 || [[ "$(node -v | cut -d. -f1 | tr -d v)" -lt 20 ]]; then

@@ -80,7 +80,12 @@ deploy_backend() {
   print_status "Deploying backend..."
   cd "$APP_DIR/backend"
 
-  composer install --optimize-autoloader --no-dev --no-interaction
+  if ! php -r 'exit(version_compare(PHP_VERSION, "8.4.0", ">=") ? 0 : 1);'; then
+    print_error "PHP 8.4+ required (composer.json). Current: $(php -v | head -1)"
+    exit 1
+  fi
+
+  COMPOSER_ALLOW_SUPERUSER=1 composer install --optimize-autoloader --no-dev --no-interaction
 
   php artisan migrate --force
   php artisan storage:link 2>/dev/null || true
@@ -112,7 +117,7 @@ deploy_frontend() {
     print_status "Created .env.production from example"
   fi
 
-  if ! npm ci --omit=dev; then
+  if ! npm ci; then
     npm install --no-audit --no-fund
   fi
 

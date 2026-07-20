@@ -1,9 +1,9 @@
-name = "bahram-telegram-bridge"
+name = "broken-mountain-6b4f"
 main = "src/index.js"
 compatibility_date = "2026-07-01"
 workers_dev = true
 
-# Public URL once deployed: https://bahram-telegram-bridge.<your-subdomain>.workers.dev
+# Deployed URL: https://broken-mountain-6b4f.shokspy.workers.dev
 #
 # Inbound (Telegram webhook):
 #   https://<worker>/api/v1/integrations/telegram/production/webhook
