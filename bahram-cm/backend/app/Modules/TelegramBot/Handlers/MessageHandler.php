@@ -197,7 +197,7 @@ class MessageHandler implements UpdateHandlerInterface
         }
 
         if ($this->canAccessMainFeatures($bot, $account)) {
-            if (! $this->membership->isSatisfied($bot, $account)) {
+            if (! $account->isBotAdmin() && ! $this->membership->isSatisfied($bot, $account)) {
                 $this->membership->promptJoin($bot, $account);
 
                 return;

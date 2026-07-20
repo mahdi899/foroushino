@@ -8,12 +8,19 @@ import { cn } from '@/lib/cn';
 import { fontClassName } from '@/lib/fonts';
 import { getStories } from '@/lib/family/api';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
-import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
+import {
+  inferFamilyMediaMimeType,
+  resolveFamilyMediaPlaybackCandidates,
+  resolveFamilyMediaUrl,
+} from '@/lib/family/mediaPlaybackUrl';
 import type { FamilyStory, FamilyStoryMedia } from '@/lib/family/types';
 
 const IMAGE_STORY_MS = 8000;
 const MIN_VIDEO_STORY_MS = 3000;
 const MAX_VIDEO_STORY_MS = 90_000;
+const VIDEO_LOAD_TIMEOUT_MS = 25_000;
+
+type VideoSlideState = 'loading' | 'playing' | 'error';
 
 function isStoryVideo(media: FamilyStoryMedia): boolean {
   const type = (media.type ?? '').toLowerCase();
@@ -43,9 +50,13 @@ export function StoryViewer({
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [slideProgress, setSlideProgress] = useState(0);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
+  const [videoSlideState, setVideoSlideState] = useState<VideoSlideState>('loading');
+  const [videoSrcIndex, setVideoSrcIndex] = useState(0);
   const advanceTimerRef = useRef<number | null>(null);
   const progressRafRef = useRef<number | null>(null);
+  const loadTimeoutRef = useRef<number | null>(null);
+  const playAttemptRef = useRef(0);
 
   useEffect(() => {
     setMounted(true);
@@ -66,6 +77,8 @@ export function StoryViewer({
     setLoading(true);
     setIndex(0);
     setSlideProgress(0);
+    setVideoSlideState('loading');
+    setVideoSrcIndex(0);
     getStories()
       .then((res) => setStories(res.data))
       .catch(() => setStories([]))
@@ -86,11 +99,15 @@ export function StoryViewer({
     }
     setIndex((i) => i + 1);
     setSlideProgress(0);
+    setVideoSlideState('loading');
+    setVideoSrcIndex(0);
   }, [finish, index, stories.length]);
 
   const goPrev = useCallback(() => {
     setIndex((i) => Math.max(0, i - 1));
     setSlideProgress(0);
+    setVideoSlideState('loading');
+    setVideoSrcIndex(0);
   }, []);
 
   const clearSlideTimers = useCallback(() => {
@@ -101,6 +118,10 @@ export function StoryViewer({
     if (progressRafRef.current != null) {
       cancelAnimationFrame(progressRafRef.current);
       progressRafRef.current = null;
+    }
+    if (loadTimeoutRef.current != null) {
+      window.clearTimeout(loadTimeoutRef.current);
+      loadTimeoutRef.current = null;
     }
   }, []);
 
@@ -129,6 +150,11 @@ export function StoryViewer({
   const currentMedia = current?.media ?? null;
   const currentSrc = storyMediaSrc(currentMedia);
   const currentIsVideo = currentMedia ? isStoryVideo(currentMedia) : false;
+  const videoCandidates = currentSrc ? resolveFamilyMediaPlaybackCandidates(currentSrc) : [];
+  const activeVideoSrc = videoCandidates[videoSrcIndex] ?? currentSrc ?? '';
+  const activeVideoMime = activeVideoSrc
+    ? inferFamilyMediaMimeType(activeVideoSrc, currentMedia?.mime_type)
+    : undefined;
 
   const scheduleVideoAdvance = useCallback(
     (video: HTMLVideoElement) => {
@@ -147,6 +173,25 @@ export function StoryViewer({
     },
     [currentMedia, goNext],
   );
+
+  const tryNextVideoSource = useCallback(() => {
+    if (videoCandidates.length > videoSrcIndex + 1) {
+      setVideoSrcIndex((i) => i + 1);
+      setVideoSlideState('loading');
+      return true;
+    }
+    return false;
+  }, [videoCandidates.length, videoSrcIndex]);
+
+  const retryVideo = useCallback(() => {
+    playAttemptRef.current += 1;
+    setVideoSlideState('loading');
+    setVideoSrcIndex(0);
+    if (videoEl) {
+      videoEl.load();
+      void videoEl.play().catch(() => {});
+    }
+  }, [videoEl]);
 
   // Reset progress/timers when the active slide changes.
   useEffect(() => {
@@ -172,33 +217,80 @@ export function StoryViewer({
     scheduleImageSlide,
   ]);
 
-  // Video stories: autoplay from CDN with progress + auto-advance.
+  // Video stories: stream from CDN (with club proxy fallback) — never auto-skip on error.
   useEffect(() => {
-    if (!open || loading || !currentIsVideo || !currentSrc) return;
-
-    const video = videoRef.current;
-    if (!video) return;
+    if (!open || loading || !currentIsVideo || !activeVideoSrc || !videoEl) return;
 
     let cancelled = false;
     clearSlideTimers();
     setSlideProgress(0);
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = 'metadata';
-    video.src = currentSrc;
-    video.load();
-    rememberFamilyMediaView(currentSrc, currentMedia.id, 'video', currentMedia.mime_type);
+    setVideoSlideState('loading');
+    playAttemptRef.current += 1;
+    const attempt = playAttemptRef.current;
 
-    const onError = () => {
-      if (cancelled) return;
-      scheduleImageSlide(IMAGE_STORY_MS);
+    videoEl.muted = true;
+    videoEl.playsInline = true;
+    videoEl.preload = 'auto';
+    rememberFamilyMediaView(activeVideoSrc, currentMedia!.id, 'video', currentMedia!.mime_type);
+
+    loadTimeoutRef.current = window.setTimeout(() => {
+      if (cancelled || attempt !== playAttemptRef.current) return;
+      if (tryNextVideoSource()) return;
+      setVideoSlideState('error');
+    }, VIDEO_LOAD_TIMEOUT_MS);
+
+    const clearLoadTimeout = () => {
+      if (loadTimeoutRef.current != null) {
+        window.clearTimeout(loadTimeoutRef.current);
+        loadTimeoutRef.current = null;
+      }
+    };
+
+    const startedRef = { value: false };
+
+    const beginPlayback = () => {
+      if (cancelled || attempt !== playAttemptRef.current || startedRef.value) return;
+      startedRef.value = true;
+      clearLoadTimeout();
+      void videoEl
+        .play()
+        .then(() => {
+          if (cancelled || attempt !== playAttemptRef.current) return;
+          setVideoSlideState('playing');
+          clearSlideTimers();
+          scheduleVideoAdvance(videoEl);
+        })
+        .catch(() => {
+          startedRef.value = false;
+          if (cancelled || attempt !== playAttemptRef.current) return;
+          if (tryNextVideoSource()) return;
+          setVideoSlideState('error');
+        });
+    };
+
+    const onLoadedData = () => {
+      if (cancelled || attempt !== playAttemptRef.current) return;
+      beginPlayback();
     };
 
     const onCanPlay = () => {
-      if (cancelled) return;
-      void video.play().then(() => {
-        if (!cancelled) scheduleVideoAdvance(video);
-      }).catch(onError);
+      if (cancelled || attempt !== playAttemptRef.current) return;
+      if (videoEl.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        beginPlayback();
+      }
+    };
+
+    const onPlaying = () => {
+      if (cancelled || attempt !== playAttemptRef.current) return;
+      clearLoadTimeout();
+      setVideoSlideState('playing');
+    };
+
+    const onError = () => {
+      if (cancelled || attempt !== playAttemptRef.current) return;
+      clearLoadTimeout();
+      if (tryNextVideoSource()) return;
+      setVideoSlideState('error');
     };
 
     const onEnded = () => {
@@ -207,28 +299,39 @@ export function StoryViewer({
       goNext();
     };
 
-    video.addEventListener('canplay', onCanPlay, { once: true });
-    video.addEventListener('error', onError, { once: true });
-    video.addEventListener('ended', onEnded);
+    videoEl.addEventListener('loadeddata', onLoadedData);
+    videoEl.addEventListener('canplay', onCanPlay);
+    videoEl.addEventListener('playing', onPlaying);
+    videoEl.addEventListener('error', onError);
+    videoEl.addEventListener('ended', onEnded);
+
+    void videoEl.play().catch(() => {
+      // Autoplay may wait for loadeddata — handlers above will retry.
+    });
 
     return () => {
       cancelled = true;
-      video.removeEventListener('canplay', onCanPlay);
-      video.removeEventListener('error', onError);
-      video.removeEventListener('ended', onEnded);
-      video.pause();
+      clearLoadTimeout();
+      videoEl.removeEventListener('loadeddata', onLoadedData);
+      videoEl.removeEventListener('canplay', onCanPlay);
+      videoEl.removeEventListener('playing', onPlaying);
+      videoEl.removeEventListener('error', onError);
+      videoEl.removeEventListener('ended', onEnded);
+      videoEl.pause();
       clearSlideTimers();
     };
   }, [
+    activeVideoSrc,
     clearSlideTimers,
     currentIsVideo,
-    currentSrc,
+    currentMedia,
     goNext,
     index,
     loading,
     open,
-    scheduleImageSlide,
     scheduleVideoAdvance,
+    tryNextVideoSource,
+    videoEl,
   ]);
 
   const handleVideoTimeUpdate = useCallback((video: HTMLVideoElement) => {
@@ -319,16 +422,47 @@ export function StoryViewer({
                 {!loading && currentSrc && currentMedia && (
                   <>
                     {currentIsVideo ? (
-                      // eslint-disable-next-line jsx-a11y/media-has-caption
-                      <video
-                        ref={videoRef}
-                        key={current.id}
-                        className="h-full w-full object-cover"
-                        playsInline
-                        muted
-                        preload="metadata"
-                        onTimeUpdate={(e) => handleVideoTimeUpdate(e.currentTarget)}
-                      />
+                      <>
+                        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                        <video
+                          ref={setVideoEl}
+                          key={`${current.id}:${activeVideoSrc}`}
+                          className="h-full w-full object-cover"
+                          playsInline
+                          muted
+                          autoPlay
+                          preload="auto"
+                          onTimeUpdate={(e) => handleVideoTimeUpdate(e.currentTarget)}
+                        >
+                          <source src={activeVideoSrc} type={activeVideoMime} />
+                        </video>
+                        {videoSlideState === 'loading' && (
+                          <div className="absolute inset-0 z-[5] flex items-center justify-center bg-black/40">
+                            <Loader2 className="h-9 w-9 animate-spin text-white/90" aria-label="در حال بارگذاری ویدیو" />
+                          </div>
+                        )}
+                        {videoSlideState === 'error' && (
+                          <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center gap-3 bg-black/70 px-6 text-center text-white/90">
+                            <p className="text-sm">پخش ویدیو ممکن نشد.</p>
+                            <div className="flex flex-wrap items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                className="rounded-full bg-white/15 px-4 py-2 text-sm backdrop-blur-sm transition hover:bg-white/25"
+                                onClick={retryVideo}
+                              >
+                                تلاش دوباره
+                              </button>
+                              <button
+                                type="button"
+                                className="rounded-full bg-white/10 px-4 py-2 text-sm transition hover:bg-white/20"
+                                onClick={goNext}
+                              >
+                                استوری بعدی
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img

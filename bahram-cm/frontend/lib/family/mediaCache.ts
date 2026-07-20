@@ -185,11 +185,26 @@ export async function tryCacheFamilyMediaBlob(
 export function rememberFamilyMediaView(
   url: string,
   mediaId: number,
-  _kind: Exclude<FamilyMediaCacheKind, 'preview' | 'full'>,
+  kind: Exclude<FamilyMediaCacheKind, 'preview' | 'full'>,
   mimeType?: string | null,
 ): void {
   if (!url) return;
-  void tryCacheFamilyMediaBlob(url, mediaId, 'full', mimeType);
+
+  const persist = () => {
+    void tryCacheFamilyMediaBlob(url, mediaId, 'full', mimeType);
+  };
+
+  // Voice/video stream via Range — defer full-file cache so it never steals bandwidth.
+  if (kind === 'voice' || kind === 'video') {
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      window.requestIdleCallback(persist, { timeout: 90_000 });
+    } else if (typeof window !== 'undefined') {
+      window.setTimeout(persist, 20_000);
+    }
+    return;
+  }
+
+  persist();
 }
 
 export async function downloadFamilyMedia(

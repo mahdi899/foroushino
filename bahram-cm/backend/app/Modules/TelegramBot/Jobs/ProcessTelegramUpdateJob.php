@@ -63,10 +63,26 @@ class ProcessTelegramUpdateJob implements ShouldQueue
                 'update_id' => $update->id,
                 'message' => $e->getMessage(),
             ]);
+
+            if ($this->isExpiredCallbackError($e)) {
+                $updates->markSkipped($update);
+
+                return;
+            }
+
             $updates->markFailed($update, $e->getMessage());
             throw $e;
         } finally {
             optional($lock)->release();
         }
+    }
+
+    private function isExpiredCallbackError(Throwable $e): bool
+    {
+        $message = strtolower($e->getMessage());
+
+        return str_contains($message, 'query is too old')
+            || str_contains($message, 'query id is invalid')
+            || str_contains($message, 'response timeout expired');
     }
 }

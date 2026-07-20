@@ -5,7 +5,11 @@ import { Pause, Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
-import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
+import {
+  inferFamilyMediaMimeType,
+  resolveFamilyMediaPlaybackCandidates,
+  resolveFamilyMediaUrl,
+} from '@/lib/family/mediaPlaybackUrl';
 import { formatPlaybackSpeed } from '@/lib/family/playback';
 import { sendMediaProgress } from '@/lib/family/api';
 import type { FamilyMediaBlock } from '@/lib/family/types';
@@ -51,39 +55,6 @@ function normalizeWaveform(raw: number[], barCount: number): number[] {
   return result.map((v) => (v - min) / range);
 }
 
-function waitForMetadata(el: HTMLAudioElement, timeoutMs = 20_000): Promise<boolean> {
-  if (el.readyState >= HTMLMediaElement.HAVE_METADATA) {
-    return Promise.resolve(true);
-  }
-
-  return new Promise((resolve) => {
-    let settled = false;
-
-    const finish = (ok: boolean) => {
-      if (settled) return;
-      settled = true;
-      el.removeEventListener('loadedmetadata', onReady);
-      el.removeEventListener('durationchange', onReady);
-      el.removeEventListener('error', onError);
-      window.clearTimeout(timer);
-      resolve(ok);
-    };
-
-    const onReady = () => {
-      if (el.readyState >= HTMLMediaElement.HAVE_METADATA) {
-        finish(true);
-      }
-    };
-
-    const onError = () => finish(false);
-    const timer = window.setTimeout(() => finish(false), timeoutMs);
-
-    el.addEventListener('loadedmetadata', onReady);
-    el.addEventListener('durationchange', onReady);
-    el.addEventListener('error', onError);
-  });
-}
-
 function seekAudio(el: HTMLAudioElement, target: number): Promise<number> {
   return new Promise((resolve) => {
     const finish = () => {
@@ -124,18 +95,27 @@ export function VoiceBlock({
   const scrubRatioRef = useRef(0);
   const playingBeforeScrubRef = useRef(false);
   const seekPositionRef = useRef(0);
-  const loadTaskRef = useRef<Promise<boolean> | null>(null);
-  const [loadRequested, setLoadRequested] = useState(false);
-  const [loadError, setLoadError] = useState(false);
   const streamUrl = useMemo(() => resolveFamilyMediaUrl(media.url), [media.url]);
+  const playbackCandidates = useMemo(
+    () => resolveFamilyMediaPlaybackCandidates(media.url),
+    [media.url],
+  );
+  const [srcIndex, setSrcIndex] = useState(0);
+  const activeSrc = playbackCandidates[srcIndex] ?? streamUrl ?? '';
+  const activeMime = inferFamilyMediaMimeType(activeSrc, media.mime_type);
   const { activeId, register, unregister, requestPlay, notifyPaused, setNowPlaying, updateNowPlayingProgress, playbackRate, cyclePlaybackRate } =
     useFamilyMediaPlayer();
   const [playing, setPlaying] = useState(false);
+  const [buffering, setBuffering] = useState(false);
   const [progress, setProgress] = useState(0);
   const [scrubVisual, setScrubVisual] = useState<number | null>(null);
   const [duration, setDuration] = useState(media.duration ?? 0);
-  const [audioReady, setAudioReady] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const lastReported = useRef(0);
+
+  useEffect(() => {
+    setSrcIndex(0);
+  }, [media.url]);
 
   useEffect(() => {
     const el = audioRef.current;
@@ -150,63 +130,19 @@ export function VoiceBlock({
     if (activeId !== media.id) {
       if (!el.paused) el.pause();
       setPlaying(false);
+      setBuffering(false);
     }
   }, [activeId, media.id]);
 
-  // Stream voice directly from download host — no full-file blob download.
-  const loadAudio = useCallback(async (): Promise<boolean> => {
-    if (!streamUrl) {
-      setLoadError(true);
-      return false;
+  const tryNextSource = useCallback(() => {
+    if (playbackCandidates.length > srcIndex + 1) {
+      setSrcIndex((i) => i + 1);
+      setLoadError(false);
+      setBuffering(true);
+      return true;
     }
-
-    if (loadTaskRef.current) {
-      return loadTaskRef.current;
-    }
-
-    setLoadRequested(true);
-    setLoadError(false);
-
-    const task = (async () => {
-      const audio = audioRef.current;
-      if (!audio) return false;
-
-      if (!audio.src) {
-        audio.src = streamUrl;
-        audio.preload = 'metadata';
-        audio.load();
-      } else if (!audio.src.includes(streamUrl.split('?')[0].split('#')[0])) {
-        audio.src = streamUrl;
-        audio.preload = 'metadata';
-        audio.load();
-      }
-
-      const metaReady = await waitForMetadata(audio);
-      const ready = metaReady && audio.readyState >= HTMLMediaElement.HAVE_METADATA;
-      setAudioReady(ready);
-      setLoadError(!ready);
-      return ready;
-    })()
-      .catch(() => {
-        setAudioReady(false);
-        setLoadError(true);
-        return false;
-      })
-      .finally(() => {
-        loadTaskRef.current = null;
-      });
-
-    loadTaskRef.current = task;
-    return task;
-  }, [streamUrl]);
-
-  useEffect(() => {
-    return () => {
-      loadTaskRef.current = null;
-    };
-  }, [streamUrl]);
-
-  const ensureAudioReady = useCallback(async () => loadAudio(), [loadAudio]);
+    return false;
+  }, [playbackCandidates.length, srcIndex]);
 
   const resolvedDuration = useMemo(() => {
     if (duration > 0) return duration;
@@ -258,6 +194,54 @@ export function VoiceBlock({
     [resolvedDuration],
   );
 
+  /** Start streaming immediately — browser pulls bytes via Range, no full-file wait. */
+  const startPlayback = useCallback(
+    async (seekTo?: number): Promise<boolean> => {
+      const el = audioRef.current;
+      if (!el || !activeSrc) {
+        setLoadError(true);
+        return false;
+      }
+
+      setLoadError(false);
+      setBuffering(true);
+      requestPlay(media.id);
+
+      if (seekTo != null && seekTo > 0) {
+        try {
+          el.currentTime = seekTo;
+        } catch {
+          // seek once enough data is buffered
+        }
+      }
+
+      try {
+        await el.play();
+        return true;
+      } catch {
+        if (tryNextSource()) return false;
+        setLoadError(true);
+        setBuffering(false);
+        return false;
+      }
+    },
+    [activeSrc, media.id, requestPlay, tryNextSource],
+  );
+
+  // Retry on CDN → club proxy fallback without another tap.
+  useEffect(() => {
+    if (!buffering || playing || loadError || !activeSrc) return;
+    const el = audioRef.current;
+    if (!el) return;
+
+    void el.play().catch(() => {
+      if (!tryNextSource()) {
+        setLoadError(true);
+        setBuffering(false);
+      }
+    });
+  }, [activeSrc, buffering, loadError, playing, tryNextSource]);
+
   const commitScrub = useCallback(
     async (ratio: number) => {
       const el = audioRef.current;
@@ -265,22 +249,6 @@ export function VoiceBlock({
 
       const wasPlaying = playingBeforeScrubRef.current;
       scrubbingRef.current = true;
-
-      const loaded = await ensureAudioReady();
-      if (!loaded) {
-        scrubbingRef.current = false;
-        setScrubVisual(null);
-        setLoadError(true);
-        return;
-      }
-
-      const metaReady = await waitForMetadata(el);
-      if (!metaReady) {
-        scrubbingRef.current = false;
-        setScrubVisual(null);
-        setLoadError(true);
-        return;
-      }
 
       const durationSec = readDuration(el) || resolvedDuration;
       if (durationSec <= 0) {
@@ -291,6 +259,18 @@ export function VoiceBlock({
 
       const target = Math.max(0, Math.min(durationSec * 0.999, ratio * durationSec));
       setScrubVisual(target);
+      seekPositionRef.current = target;
+
+      requestPlay(media.id);
+      setBuffering(true);
+      try {
+        await el.play();
+      } catch {
+        if (!tryNextSource()) {
+          setLoadError(true);
+          setBuffering(false);
+        }
+      }
 
       const actual = await seekAudio(el, target);
       seekPositionRef.current = actual;
@@ -298,19 +278,13 @@ export function VoiceBlock({
       setScrubVisual(null);
       updateNowPlayingProgress(media.id, actual, durationSec);
 
-      // Seek-and-play like Telegram: start from tapped position.
-      requestPlay(media.id);
-      try {
-        if (el.paused || !wasPlaying) {
-          await el.play();
-        }
-      } catch {
-        // autoplay blocked or network
+      if (wasPlaying && el.paused) {
+        void el.play().catch(() => {});
       }
 
       scrubbingRef.current = false;
     },
-    [ensureAudioReady, media.id, readDuration, requestPlay, resolvedDuration, updateNowPlayingProgress],
+    [media.id, readDuration, requestPlay, resolvedDuration, tryNextSource, updateNowPlayingProgress],
   );
 
   const toggle = async () => {
@@ -322,31 +296,8 @@ export function VoiceBlock({
       return;
     }
 
-    const ready = await ensureAudioReady();
-    if (!ready) {
-      setLoadError(true);
-      return;
-    }
-
-    requestPlay(media.id);
-    const metaReady = await waitForMetadata(el);
-    if (!metaReady) {
-      setLoadError(true);
-      return;
-    }
-
     const target = seekPositionRef.current > 0 ? seekPositionRef.current : progress;
-    if (target > 0 && Math.abs(el.currentTime - target) > 0.2) {
-      const actual = await seekAudio(el, target);
-      seekPositionRef.current = actual;
-      setProgress(actual);
-    }
-
-    try {
-      await el.play();
-    } catch {
-      // autoplay blocked or network
-    }
+    void startPlayback(target > 0 ? target : undefined);
   };
 
   const reportProgress = (event: 'play' | 'pause' | 'complete', position: number) => {
@@ -377,12 +328,14 @@ export function VoiceBlock({
     >
       <audio
         ref={audioRef}
-        src={streamUrl}
-        preload="metadata"
+        key={activeSrc}
+        preload="none"
         playsInline
         onPlay={() => {
-          rememberFamilyMediaView(streamUrl, media.id, 'voice', media.mime_type);
+          rememberFamilyMediaView(activeSrc, media.id, 'voice', media.mime_type);
           setPlaying(true);
+          setBuffering(false);
+          setLoadError(false);
           const el = audioRef.current;
           const d = el ? readDuration(el) : resolvedDuration;
           const current = seekPositionRef.current > 0 ? seekPositionRef.current : (el?.currentTime ?? progress);
@@ -400,11 +353,13 @@ export function VoiceBlock({
         onPause={() => {
           if (scrubbingRef.current || draggingRef.current) return;
           setPlaying(false);
+          setBuffering(false);
           notifyPaused(media.id);
           reportProgress('pause', audioRef.current?.currentTime ?? 0);
         }}
         onEnded={() => {
           setPlaying(false);
+          setBuffering(false);
           seekPositionRef.current = 0;
           setProgress(0);
           notifyPaused(media.id);
@@ -413,13 +368,18 @@ export function VoiceBlock({
         onLoadedMetadata={(e) => {
           const d = e.currentTarget.duration || media.duration || 0;
           if (d > 0) setDuration(d);
-          setAudioReady(true);
           setLoadError(false);
         }}
         onDurationChange={(e) => {
           const d = e.currentTarget.duration;
           if (Number.isFinite(d) && d > 0) setDuration(d);
         }}
+        onWaiting={() => setBuffering(true)}
+        onPlaying={() => {
+          setBuffering(false);
+          setLoadError(false);
+        }}
+        onCanPlay={() => setBuffering(false)}
         onTimeUpdate={(e) => {
           if (scrubbingRef.current || draggingRef.current || scrubVisual != null) return;
           const t = e.currentTarget.currentTime;
@@ -430,11 +390,14 @@ export function VoiceBlock({
           }
         }}
         onError={() => {
-          setAudioReady(false);
+          if (tryNextSource()) return;
+          setBuffering(false);
           setLoadError(true);
         }}
         className="hidden"
-      />
+      >
+        <source src={activeSrc} type={activeMime} />
+      </audio>
       <button
         type="button"
         onClick={(e) => {
@@ -444,7 +407,9 @@ export function VoiceBlock({
         aria-label={playing ? 'توقف' : 'پخش'}
         className="family-voice-play"
       >
-        {playing ? (
+        {buffering && !playing ? (
+          <span className="family-voice__spinner family-voice__spinner--sm inline-block" aria-hidden />
+        ) : playing ? (
           <Pause className="h-[15px] w-[15px]" fill="currentColor" />
         ) : (
           <Play className="ms-px h-[15px] w-[15px]" fill="currentColor" />
@@ -459,10 +424,6 @@ export function VoiceBlock({
           onPointerDown={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            if (!loadRequested) {
-              void ensureAudioReady();
-            }
-            if (!audioReady && !loadError) return;
             draggingRef.current = true;
             playingBeforeScrubRef.current = Boolean(audioRef.current && !audioRef.current.paused);
             e.currentTarget.setPointerCapture(e.pointerId);
@@ -490,8 +451,8 @@ export function VoiceBlock({
             }
           }}
           className={cn(
-            'family-voice-wave min-w-0 flex-1 touch-none',
-            loadRequested && !audioReady ? 'cursor-wait opacity-70' : 'cursor-pointer',
+            'family-voice-wave min-w-0 flex-1 touch-none cursor-pointer',
+            buffering && 'opacity-80',
           )}
           style={{ '--wave-bars': barCount } as CSSProperties}
         >
@@ -513,9 +474,6 @@ export function VoiceBlock({
         </button>
 
         <div className="family-voice__aside">
-          {loadRequested && !audioReady && !loadError ? (
-            <span className="family-voice__spinner family-voice__spinner--sm" aria-label="در حال آماده‌سازی" />
-          ) : null}
           {loadError ? (
             <button
               type="button"
@@ -523,13 +481,14 @@ export function VoiceBlock({
               onClick={(e) => {
                 e.stopPropagation();
                 setLoadError(false);
-                void ensureAudioReady();
+                setSrcIndex(0);
+                void startPlayback(seekPositionRef.current || progress);
               }}
             >
               تلاش مجدد
             </button>
           ) : null}
-          {isPodcast && audioReady ? (
+          {isPodcast && !loadError ? (
             <button
               type="button"
               onClick={(e) => {
