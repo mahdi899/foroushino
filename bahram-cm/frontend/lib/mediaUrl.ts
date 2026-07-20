@@ -30,8 +30,12 @@ function unwrapNextImageProxy(url: string): string | null {
 }
 
 function cdnPathFromStorageRef(ref: string): string {
-  if (ref.startsWith('/storage/')) return ref.slice('/storage'.length)
+  if (ref.startsWith('/storage/media/')) return ref.slice('/storage'.length)
   return ref
+}
+
+function usesCdnDelivery(ref: string): boolean {
+  return ref.startsWith('/storage/media/')
 }
 
 function normalizeAbsoluteStorage(url: string): string {
@@ -46,7 +50,10 @@ function normalizeAbsoluteStorage(url: string): string {
       return `${MEDIA_ORIGIN || ASSET_ORIGIN}${parsed.pathname}`;
     }
     if (MEDIA_ORIGIN) {
-      return `${MEDIA_ORIGIN}${cdnPathFromStorageRef(parsed.pathname)}`;
+      const ref = parsed.pathname
+      return usesCdnDelivery(ref)
+        ? `${MEDIA_ORIGIN}${cdnPathFromStorageRef(ref)}`
+        : `${siteOrigin()}${ref}`
     }
   } catch {
     /* keep */
@@ -188,8 +195,13 @@ export function resolveMediaUrl(url: string | null | undefined): string {
   }
 
   if (ref.startsWith('/storage/')) {
-    if (MEDIA_ORIGIN) return `${MEDIA_ORIGIN}${cdnPathFromStorageRef(ref)}`;
-    return ref;
+    if (MEDIA_ORIGIN && usesCdnDelivery(ref)) {
+      return `${MEDIA_ORIGIN}${cdnPathFromStorageRef(ref)}`
+    }
+    if (MEDIA_ORIGIN) {
+      return `${siteOrigin()}${ref}`
+    }
+    return ref
   }
 
   const origin = originForReference(ref);

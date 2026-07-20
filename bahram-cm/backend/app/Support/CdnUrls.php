@@ -46,10 +46,11 @@ final class CdnUrls
             $normalized = '/'.ltrim($path, '/');
             $urls[] = $site.$normalized;
 
-            if ($media !== $site && (str_starts_with($normalized, '/cdn/') || str_starts_with($normalized, '/storage/') || str_starts_with($normalized, '/media/'))) {
-                $urls[] = $media.$normalized;
-                if (str_starts_with($normalized, '/storage/')) {
+            if ($media !== $site) {
+                if (str_starts_with($normalized, '/storage/media/')) {
                     $urls[] = $media.MediaUrl::cdnPathFromStorageRef($normalized);
+                } elseif (str_starts_with($normalized, '/media/') || str_starts_with($normalized, '/cdn/')) {
+                    $urls[] = $media.$normalized;
                 }
             }
         }
