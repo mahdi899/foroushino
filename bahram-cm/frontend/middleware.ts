@@ -154,10 +154,17 @@ async function proxyPublicMediaToCdn(
     return new NextResponse("CDN unavailable", { status: 502 });
   }
 
+  const headers = new Headers(cdnResponse.headers);
+  // Download host sends attachment — force inline so <audio>/<video> play instead of downloading.
+  headers.set("Content-Disposition", "inline");
+  if (!headers.has("Accept-Ranges")) {
+    headers.set("Accept-Ranges", "bytes");
+  }
+
   return new NextResponse(cdnResponse.body, {
     status: cdnResponse.status,
     statusText: cdnResponse.statusText,
-    headers: cdnResponse.headers,
+    headers,
   });
 }
 

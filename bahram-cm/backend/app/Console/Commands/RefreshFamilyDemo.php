@@ -54,8 +54,8 @@ class RefreshFamilyDemo extends Command
 
         if (! $this->option('skip-seed')) {
             $this->info('Refreshing demo posts & stories…');
-            Artisan::call(FamilySeeder::class, [], $this->getOutput());
-            Artisan::call(FamilyStorySeeder::class, [], $this->getOutput());
+            Artisan::call('db:seed', ['--class' => FamilySeeder::class, '--force' => true], $this->getOutput());
+            Artisan::call('db:seed', ['--class' => FamilyStorySeeder::class, '--force' => true], $this->getOutput());
         }
 
         Artisan::call('cache:clear');
