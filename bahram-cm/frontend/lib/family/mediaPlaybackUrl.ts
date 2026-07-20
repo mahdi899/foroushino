@@ -165,25 +165,37 @@ function isFamilyClubOrigin(): boolean {
   return host === 'rostami.club' || host === 'www.rostami.club';
 }
 
+/** Same-origin authenticated stream — reads FTP/public disk with Range + MIME. */
+export function familyMediaStreamProxyUrl(mediaId: number): string | null {
+  if (typeof window === 'undefined' || !Number.isFinite(mediaId) || mediaId <= 0) {
+    return null;
+  }
+  return `${window.location.origin}/api/family/media/${mediaId}/stream`;
+}
+
 /**
- * Playback URL candidates — CDN first, then same-origin proxy on rostami.club
- * when the direct CDN response fails (CORS/MIME edge cases on some devices).
+ * Playback URL candidates — same-origin stream first (FTP-safe), then CDN,
+ * then club proxy fallback on rostami.club.
  */
 export function resolveFamilyMediaPlaybackCandidates(
   url: string | null | undefined,
+  mediaId?: number,
 ): string[] {
+  const candidates: string[] = [];
+
+  const proxy = mediaId ? familyMediaStreamProxyUrl(mediaId) : null;
+  if (proxy) candidates.push(proxy);
+
   const primary = resolveFamilyMediaPlaybackUrl(url);
-  if (!primary) return [];
+  if (primary) candidates.push(primary);
 
-  const candidates = [primary];
-
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && primary) {
     try {
       const parsed = new URL(primary);
       const mediaPath = familyMediaPathname(parsed.pathname);
       if (mediaPath && isFamilyClubOrigin()) {
         const proxied = `${window.location.origin}${mediaPath}${parsed.search}`;
-        if (proxied !== primary) candidates.push(proxied);
+        if (!candidates.includes(proxied)) candidates.push(proxied);
       }
     } catch {
       // ignore

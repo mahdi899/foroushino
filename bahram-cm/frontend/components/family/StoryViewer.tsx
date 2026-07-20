@@ -9,7 +9,6 @@ import { fontClassName } from '@/lib/fonts';
 import { getStories } from '@/lib/family/api';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import {
-  inferFamilyMediaMimeType,
   resolveFamilyMediaPlaybackCandidates,
   resolveFamilyMediaUrl,
 } from '@/lib/family/mediaPlaybackUrl';
@@ -150,11 +149,8 @@ export function StoryViewer({
   const currentMedia = current?.media ?? null;
   const currentSrc = storyMediaSrc(currentMedia);
   const currentIsVideo = currentMedia ? isStoryVideo(currentMedia) : false;
-  const videoCandidates = currentSrc ? resolveFamilyMediaPlaybackCandidates(currentSrc) : [];
+  const videoCandidates = currentSrc ? resolveFamilyMediaPlaybackCandidates(currentSrc, currentMedia?.id) : [];
   const activeVideoSrc = videoCandidates[videoSrcIndex] ?? currentSrc ?? '';
-  const activeVideoMime = activeVideoSrc
-    ? inferFamilyMediaMimeType(activeVideoSrc, currentMedia?.mime_type)
-    : undefined;
 
   const scheduleVideoAdvance = useCallback(
     (video: HTMLVideoElement) => {
@@ -427,15 +423,14 @@ export function StoryViewer({
                         <video
                           ref={setVideoEl}
                           key={`${current.id}:${activeVideoSrc}`}
+                          src={activeVideoSrc}
                           className="h-full w-full object-cover"
                           playsInline
                           muted
                           autoPlay
                           preload="auto"
                           onTimeUpdate={(e) => handleVideoTimeUpdate(e.currentTarget)}
-                        >
-                          <source src={activeVideoSrc} type={activeVideoMime} />
-                        </video>
+                        />
                         {videoSlideState === 'loading' && (
                           <div className="absolute inset-0 z-[5] flex items-center justify-center bg-black/40">
                             <Loader2 className="h-9 w-9 animate-spin text-white/90" aria-label="در حال بارگذاری ویدیو" />

@@ -6,7 +6,6 @@ import { cn } from '@/lib/cn';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import {
-  inferFamilyMediaMimeType,
   resolveFamilyMediaPlaybackCandidates,
   resolveFamilyMediaUrl,
 } from '@/lib/family/mediaPlaybackUrl';
@@ -97,12 +96,11 @@ export function VoiceBlock({
   const seekPositionRef = useRef(0);
   const streamUrl = useMemo(() => resolveFamilyMediaUrl(media.url), [media.url]);
   const playbackCandidates = useMemo(
-    () => resolveFamilyMediaPlaybackCandidates(media.url),
-    [media.url],
+    () => resolveFamilyMediaPlaybackCandidates(media.url, media.id),
+    [media.id, media.url],
   );
   const [srcIndex, setSrcIndex] = useState(0);
   const activeSrc = playbackCandidates[srcIndex] ?? streamUrl ?? '';
-  const activeMime = inferFamilyMediaMimeType(activeSrc, media.mime_type);
   const { activeId, register, unregister, requestPlay, notifyPaused, setNowPlaying, updateNowPlayingProgress, playbackRate, cyclePlaybackRate } =
     useFamilyMediaPlayer();
   const [playing, setPlaying] = useState(false);
@@ -329,6 +327,7 @@ export function VoiceBlock({
       <audio
         ref={audioRef}
         key={activeSrc}
+        src={activeSrc}
         preload="none"
         playsInline
         onPlay={() => {
@@ -395,9 +394,7 @@ export function VoiceBlock({
           setLoadError(true);
         }}
         className="hidden"
-      >
-        <source src={activeSrc} type={activeMime} />
-      </audio>
+      />
       <button
         type="button"
         onClick={(e) => {

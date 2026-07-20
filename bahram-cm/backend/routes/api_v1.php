@@ -40,6 +40,7 @@ use App\Http\Controllers\Api\V1\Family\MediaProgressController as FamilyMediaPro
 use App\Http\Controllers\Api\V1\Family\PostViewController as FamilyPostViewController;
 use App\Http\Controllers\Api\V1\Family\PulseController as FamilyPulseController;
 use App\Http\Controllers\Api\V1\Family\ReactionController as FamilyReactionController;
+use App\Http\Controllers\Api\V1\Family\FamilyMediaStreamController;
 use App\Http\Controllers\Api\V1\Family\StoryController as FamilyStoryController;
 use App\Http\Controllers\Api\V1\FamilyManager\AdminsController as FamilyManagerAdminsController;
 use App\Http\Controllers\Api\V1\FamilyManager\AnalyticsController as FamilyManagerAnalyticsController;
@@ -566,6 +567,10 @@ Route::prefix('family')->group(function () {
 
         Route::post('media-progress', [FamilyMediaProgressController::class, 'upsert'])
             ->middleware('throttle:family-progress');
+
+        Route::get('media/{medium}/stream', [FamilyMediaStreamController::class, 'show'])
+            ->whereNumber('medium')
+            ->middleware('throttle:240,1');
 
         Route::get('notifications', [StudentNotificationController::class, 'index']);
         Route::get('notifications/unread-count', [StudentNotificationController::class, 'unreadCount']);
