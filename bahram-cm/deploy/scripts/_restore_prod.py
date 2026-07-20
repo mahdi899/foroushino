@@ -1,36 +1,25 @@
-import io
+import subprocess
 import sys
 from pathlib import Path
 
-import paramiko
+from _deploy_common import ROOT, app_root, backend_root, configure_stdout, connect, load_deploy_env, upload_files
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-
-ROOT = Path(__file__).resolve().parents[2]
-env = {}
-for line in (Path(__file__).resolve().parents[1] / "deploy.env").read_text(encoding="utf-8").splitlines():
-    if "=" in line and not line.strip().startswith("#"):
-        k, v = line.split("=", 1)
-        env[k.strip()] = v.strip()
+configure_stdout()
+env = load_deploy_env()
+APP = app_root(env)
+BE = backend_root(env)
 
 sftp_files = [
-    (ROOT / "deploy" / "pm2" / "next-prod.cjs", "/var/www/foroushino/bahram-cm/deploy/pm2/next-prod.cjs"),
-    (ROOT / "deploy" / "pm2" / "ecosystem.config.cjs", "/var/www/foroushino/bahram-cm/deploy/pm2/ecosystem.config.cjs"),
+    (ROOT / "deploy" / "pm2" / "next-prod.cjs", "deploy/pm2/next-prod.cjs"),
+    (ROOT / "deploy" / "pm2" / "ecosystem.config.cjs", "deploy/pm2/ecosystem.config.cjs"),
 ]
 
-c = paramiko.SSHClient()
-c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-c.connect(env["DEPLOY_HOST"], 22, env["DEPLOY_USER"], env["DEPLOY_PASSWORD"], timeout=120)
+c = connect(env, timeout=120)
+upload_files(c, sftp_files, env)
 
-sftp = c.open_sftp()
-for local, remote in sftp_files:
-    sftp.put(str(local), remote)
-    print(f"uploaded {local.name} -> {remote}")
-sftp.close()
-
-cmds = r"""
+cmds = f"""
 set -e
-APP=/var/www/bahram-cm
+APP={APP}
 FE=$APP/frontend
 BE=$APP/backend
 
@@ -59,7 +48,7 @@ systemctl is-active php8.4-fpm && systemctl reload php8.4-fpm
 
 echo '=== PM2 RESTART WITH STABLE WRAPPER ==='
 pm2 delete bahram-frontend 2>/dev/null || true
-pm2 start /var/www/bahram-cm/deploy/pm2/ecosystem.config.cjs --only bahram-frontend --update-env
+pm2 start {APP}/deploy/pm2/ecosystem.config.cjs --only bahram-frontend --update-env
 pm2 restart family-manager-web --update-env 2>/dev/null || true
 pm2 save
 systemctl reload nginx
@@ -67,18 +56,18 @@ systemctl reload nginx
 echo '=== WAIT FOR READY ==='
 for i in 1 2 3 4 5 6 7 8 9 10; do
   if curl -sf --max-time 3 http://127.0.0.1:3000/ >/dev/null; then
-    echo "next ready after ${i}s"
+    echo "next ready after ${{i}}s"
     break
   fi
   sleep 1
 done
 
 echo '=== HEALTH CHECK ==='
-curl -sf -o /dev/null -w 'next:%{http_code}\n' http://127.0.0.1:3000/
-curl -sf -o /dev/null -w 'api:%{http_code}\n' http://127.0.0.1:8010/api/v1/family/branding
-curl -sk -o /dev/null -w 'app:%{http_code}\n' https://rostami.app/
-curl -sk -o /dev/null -w 'club:%{http_code}\n' https://rostami.club/
-curl -sk -o /dev/null -w 'feed:%{http_code}\n' 'https://rostami.club/api/v1/family/feed?limit=1'
+curl -sf -o /dev/null -w 'next:%{{http_code}}\\n' http://127.0.0.1:3000/
+curl -sf -o /dev/null -w 'api:%{{http_code}}\\n' http://127.0.0.1:8010/api/v1/family/branding
+curl -sk -o /dev/null -w 'app:%{{http_code}}\\n' https://rostami.app/
+curl -sk -o /dev/null -w 'club:%{{http_code}}\\n' https://rostami.club/
+curl -sk -o /dev/null -w 'feed:%{{http_code}}\\n' 'https://rostami.club/api/v1/family/feed?limit=1'
 
 pm2 list
 """
@@ -91,6 +80,4 @@ if e.strip():
 c.close()
 
 print("\n=== EXTERNAL PROBE ===")
-import subprocess
-
 subprocess.run([sys.executable, str(Path(__file__).resolve().parent / "_probe_external.py")], check=False)

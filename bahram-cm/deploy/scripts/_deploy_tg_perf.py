@@ -1,15 +1,10 @@
-import io
 import sys
 from pathlib import Path
-import paramiko
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-ROOT = Path(__file__).resolve().parents[2]
-env = {}
-for line in (Path(__file__).resolve().parents[1] / "deploy.env").read_text(encoding="utf-8").splitlines():
-    if "=" in line and not line.strip().startswith("#"):
-        k, v = line.split("=", 1)
-        env[k.strip()] = v.strip()
+from _deploy_common import ROOT, backend_root, configure_stdout, connect, load_deploy_env, upload_files
+
+configure_stdout()
+env = load_deploy_env()
 
 files = [
     "backend/app/Modules/TelegramBot/Services/TelegramOutboundMessenger.php",
@@ -23,17 +18,13 @@ files = [
     "backend/config/telegram_bot.php",
 ]
 
-c = paramiko.SSHClient()
-c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-c.connect(env["DEPLOY_HOST"], 22, env["DEPLOY_USER"], env["DEPLOY_PASSWORD"], timeout=120)
-s = c.open_sftp()
-for rel in files:
-    s.put(str(ROOT / rel), f"/var/www/foroushino/bahram-cm/{rel.replace(chr(92), '/')}")
-    print("uploaded", Path(rel).name)
-s.close()
+uploads = [(ROOT / rel, rel.replace("\\", "/")) for rel in files]
+
+c = connect(env)
+upload_files(c, uploads, env)
 
 cmd = (
-    "cd /var/www/bahram-cm/backend && "
+    f"cd {backend_root(env)} && "
     "php artisan config:cache && "
     "php artisan horizon:terminate && "
     "sleep 3 && "
