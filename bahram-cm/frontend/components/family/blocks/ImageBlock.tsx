@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { useDelayedInView } from '@/hooks/useDelayedInView';
 import { ImageZoomLightbox } from '@/components/family/blocks/ImageZoomLightbox';
+import { useFamilyImageSrc } from '@/lib/family/useFamilyImageSrc';
 import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 import type { FamilyMediaBlock } from '@/lib/family/types';
 
@@ -35,7 +36,7 @@ export function ImageBlock({
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
-  const imageUrl = resolveFamilyMediaUrl(media.url);
+  const imageUrl = useFamilyImageSrc(media.url, media.id);
   const inView = useDelayedInView(rootRef, 80, Boolean(imageUrl), true);
 
   if (!imageUrl) {
@@ -106,7 +107,7 @@ export function ImageBlock({
       </button>
 
       {!manageLightboxExternally && lightboxOpen && imageUrl && (
-        <ImageZoomLightbox url={imageUrl} onClose={() => setLightboxOpen(false)} />
+        <ImageZoomLightbox url={imageUrl} mediaId={media.id} onClose={() => setLightboxOpen(false)} />
       )}
     </>
   );
@@ -119,9 +120,10 @@ export function ImageAlbumBlock({ items, constrained = false }: { items: FamilyM
   const galleryEntries = items
     .map((item, itemIndex) => ({
       url: resolveFamilyMediaUrl(item.url),
+      mediaId: item.id,
       itemIndex,
     }))
-    .filter((entry): entry is { url: string; itemIndex: number } => Boolean(entry.url));
+    .filter((entry): entry is { url: string; mediaId: number; itemIndex: number } => Boolean(entry.url));
   const useSharedGallery = count > 1 && galleryEntries.length > 1;
 
   const gridClass =
@@ -164,6 +166,7 @@ export function ImageAlbumBlock({ items, constrained = false }: { items: FamilyM
       {useSharedGallery && galleryOpen && (
         <ImageZoomLightbox
           urls={galleryEntries.map((entry) => entry.url)}
+          mediaIds={galleryEntries.map((entry) => entry.mediaId)}
           initialIndex={galleryIndex}
           onClose={() => setGalleryOpen(false)}
         />

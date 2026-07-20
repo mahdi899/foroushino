@@ -984,10 +984,20 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   pointer-events: auto;
 }
 
-.family-video-modal__close {
+.family-video-modal__actions {
   position: absolute;
   top: max(0.75rem, env(safe-area-inset-top));
   inset-inline-end: max(0.75rem, env(safe-area-inset-right, 0px));
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.family-video-modal__close {
+  position: static;
+  inset-inline-end: auto;
+  top: auto;
   z-index: 2;
   display: inline-flex;
   align-items: center;
@@ -1096,9 +1106,14 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
     box-shadow: none;
   }
 
-  .family-video-modal__close {
+  .family-video-modal__actions {
     top: max(0.625rem, env(safe-area-inset-top));
     inset-inline-end: max(0.625rem, env(safe-area-inset-right, 0px));
+  }
+
+  .family-video-modal__close {
+    top: auto;
+    inset-inline-end: auto;
   }
 }
 

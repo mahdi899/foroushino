@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { FamilyBodyPortal } from '@/components/family/FamilyBodyPortal';
+import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
+import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 import { sendMediaProgress } from '@/lib/family/api';
 
@@ -86,17 +88,25 @@ export function FamilyVideoModal({
     const el = videoRef.current;
     if (!el) return;
 
+    el.preload = 'metadata';
     el.src = streamUrl;
     register(mediaId, el);
     requestPlay(mediaId);
     setBuffering(true);
     setPlaybackError(false);
-    void el.play().catch(() => {
-      setPlaybackError(true);
-      setBuffering(false);
-    });
+    rememberFamilyMediaView(streamUrl, mediaId, 'video', 'video/mp4');
+
+    const onCanPlay = () => {
+      void el.play().catch(() => {
+        setPlaybackError(true);
+        setBuffering(false);
+      });
+    };
+
+    el.addEventListener('canplay', onCanPlay, { once: true });
 
     return () => {
+      el.removeEventListener('canplay', onCanPlay);
       el.pause();
       unregister(mediaId);
       notifyPaused(mediaId);
@@ -159,17 +169,20 @@ export function FamilyVideoModal({
         )}
         onClick={handleClose}
       >
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleClose();
-          }}
-          aria-label="بستن"
-          className="family-video-modal__close"
-        >
-          <X className="h-5 w-5" />
-        </button>
+        <div className="family-video-modal__actions">
+          <FamilyMediaDownloadButton url={streamUrl} mediaId={mediaId} className="family-video-modal__download" />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClose();
+            }}
+            aria-label="بستن"
+            className="family-video-modal__close"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
         <div
           className="family-video-modal__stage"
@@ -207,8 +220,8 @@ export function FamilyVideoModal({
             src={streamUrl}
             playsInline
             controls
-            preload="auto"
-            controlsList={coarsePointer ? 'nodownload nofullscreen' : 'nodownload'}
+            preload="metadata"
+            controlsList={coarsePointer ? 'nofullscreen' : undefined}
             disablePictureInPicture
             className="family-video-modal__player"
             style={playerStyle}

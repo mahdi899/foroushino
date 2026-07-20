@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { Pause, Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
+import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 import { formatPlaybackSpeed } from '@/lib/family/playback';
 import { sendMediaProgress } from '@/lib/family/api';
@@ -380,6 +381,7 @@ export function VoiceBlock({
         preload="metadata"
         playsInline
         onPlay={() => {
+          rememberFamilyMediaView(streamUrl, media.id, 'voice', media.mime_type);
           setPlaying(true);
           const el = audioRef.current;
           const d = el ? readDuration(el) : resolvedDuration;
