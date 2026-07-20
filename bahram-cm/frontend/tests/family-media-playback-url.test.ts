@@ -104,6 +104,10 @@ describe('inferFamilyMediaMimeType', () => {
 });
 
 describe('resolveFamilyMediaPlaybackCandidates', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('includes CDN URL', () => {
     expect(
       resolveFamilyMediaPlaybackCandidates('/media/family/demo/demo-video.mp4'),
