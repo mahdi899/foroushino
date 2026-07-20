@@ -10,7 +10,7 @@ import {
   writeFeedBrowserCache,
 } from '@/lib/family/browserCache';
 import { getFeed, getPostJumpContext } from '@/lib/family/api';
-import { reconcileDiskCacheWithCurrent } from '@/lib/family/feedMerge';
+import { reconcileDiskCacheWithCurrent, latestPostIdFromPages } from '@/lib/family/feedMerge';
 import { shellBrandingFromFeedMeta, syncFamilyShellFromFeedMeta } from '@/lib/family/shellCache';
 import { familyFeedSwr } from '@/lib/family/swr';
 import type { FamilyBranding, FamilyFeedMeta, FamilyPost } from '@/lib/family/types';
@@ -78,7 +78,25 @@ export function useFamilyFeed(
       if (cancelled || !cached?.length) return;
 
       void mutate(
-        (current) => reconcileDiskCacheWithCurrent(current as FeedPage[] | undefined, cached),
+        (current) => {
+          const network = current as FeedPage[] | undefined;
+          if (!network?.length) return cached;
+
+          const networkTipId = latestPostIdFromPages(network);
+          const diskTipId = latestPostIdFromPages(cached);
+
+          // Never downgrade the tip page to an older IndexedDB snapshot.
+          if (diskTipId > networkTipId) {
+            return reconcileDiskCacheWithCurrent(network, cached);
+          }
+          if (diskTipId < networkTipId) {
+            if (network.length >= cached.length) return network;
+            const tip = network[0];
+            return tip ? [tip, ...cached.slice(1)] : network;
+          }
+
+          return reconcileDiskCacheWithCurrent(network, cached);
+        },
         { revalidate: false },
       );
     });

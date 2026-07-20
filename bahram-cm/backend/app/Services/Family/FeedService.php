@@ -326,7 +326,18 @@ class FeedService
      */
     public static function invalidateFeedTipCache(): void
     {
-        Cache::increment(self::FEED_CACHE_VERSION_KEY);
+        $key = self::FEED_CACHE_VERSION_KEY;
+
+        try {
+            if (! Cache::has($key)) {
+                Cache::forever($key, 1);
+            } else {
+                Cache::increment($key);
+            }
+        } catch (\Throwable) {
+            Cache::forever($key, (int) Cache::get($key, 0) + 1);
+        }
+
         self::invalidateGuestFeedCache();
     }
 

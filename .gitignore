@@ -29,8 +29,8 @@ venv/
 bahram-cm/backend/.env
 bahram-cm/deploy/deploy.env
 
-# Ad-hoc deploy/diag scripts (local SSH helpers — not part of the app)
-.tmp_*.py
+# Ad-hoc deploy/diag scripts and dumps (local SSH helpers — not part of the app)
+.tmp_*
 
 # Laravel compiled bootstrap cache
 bahram-cm/backend/bootstrap/cache/*.php

@@ -30,8 +30,28 @@ set_env APP_DEBUG false
 set_env FAMILY_MEDIA_DISK family_media_ftp
 set_env MEDIA_DISK site_media_ftp
 
+FE_ENV="${FRONTEND}/.env.local"
+touch "$FE_ENV"
+grep -q '^NEXT_PUBLIC_APP_DOMAIN=' "$FE_ENV" \
+  && sed -i 's|^NEXT_PUBLIC_APP_DOMAIN=.*|NEXT_PUBLIC_APP_DOMAIN=rostami.app|' "$FE_ENV" \
+  || echo 'NEXT_PUBLIC_APP_DOMAIN=rostami.app' >> "$FE_ENV"
+grep -q '^NEXT_PUBLIC_FAMILY_DOMAIN=' "$FE_ENV" \
+  && sed -i 's|^NEXT_PUBLIC_FAMILY_DOMAIN=.*|NEXT_PUBLIC_FAMILY_DOMAIN=rostami.club|' "$FE_ENV" \
+  || echo 'NEXT_PUBLIC_FAMILY_DOMAIN=rostami.club' >> "$FE_ENV"
+grep -q '^NEXT_PUBLIC_SITE_URL=' "$FE_ENV" \
+  && sed -i 's|^NEXT_PUBLIC_SITE_URL=.*|NEXT_PUBLIC_SITE_URL=https://rostami.app|' "$FE_ENV" \
+  || echo 'NEXT_PUBLIC_SITE_URL=https://rostami.app' >> "$FE_ENV"
+grep -q '^NEXT_PUBLIC_API_BASE_URL=' "$FE_ENV" \
+  && sed -i 's|^NEXT_PUBLIC_API_BASE_URL=.*|NEXT_PUBLIC_API_BASE_URL=https://rostami.app|' "$FE_ENV" \
+  || echo 'NEXT_PUBLIC_API_BASE_URL=https://rostami.app' >> "$FE_ENV"
+grep -q '^NEXT_PUBLIC_MEDIA_URL=' "$FE_ENV" \
+  && sed -i 's|^NEXT_PUBLIC_MEDIA_URL=.*|NEXT_PUBLIC_MEDIA_URL=https://cdn.rostami.app|' "$FE_ENV" \
+  || echo 'NEXT_PUBLIC_MEDIA_URL=https://cdn.rostami.app' >> "$FE_ENV"
+
 cd "$BACKEND"
 composer install --no-dev --optimize-autoloader --no-interaction
+chown -R www-data:www-data storage bootstrap/cache
+chmod -R ug+rwx storage bootstrap/cache
 php artisan config:clear
 php artisan cache:clear || true
 php artisan migrate --force
@@ -41,6 +61,7 @@ pkill -f 'next dev' 2>/dev/null || true
 sleep 2
 
 cd "$FRONTEND"
+rm -rf .next
 npm run build
 test -f .next/BUILD_ID
 

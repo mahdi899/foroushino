@@ -9,6 +9,7 @@ import { isAdminMediaOnRemoteHost } from '@/lib/mediaUrl';
 import {
   buildUnifiedGallery,
   findUnifiedByPersistSrc,
+  staticSitePhotoCount,
   type UnifiedMediaItem,
 } from '@/lib/admin/unifiedGallery';
 import type { MediaOptimizePreview } from '@/lib/admin/mediaOptimize';
@@ -59,6 +60,93 @@ function estimateOptimizeDurationMs(sizeBytes: number): number {
   return Math.min(35000, Math.max(5000, 4000 + mb * 5500));
 }
 
+/** قبلی / بعدی + پرش مستقیم به شماره صفحه */
+function GalleryPagination({
+  page,
+  lastPage,
+  onPageChange,
+}: {
+  page: number;
+  lastPage: number;
+  onPageChange: (page: number) => void;
+}) {
+  const [draft, setDraft] = useState(String(page));
+
+  useEffect(() => {
+    setDraft(String(page));
+  }, [page]);
+
+  function clampPage(n: number): number {
+    return Math.min(lastPage, Math.max(1, n));
+  }
+
+  function goToDraft() {
+    const parsed = Number.parseInt(draft.replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))), 10);
+    if (!Number.isFinite(parsed)) return;
+    onPageChange(clampPage(parsed));
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      <button
+        type="button"
+        disabled={page <= 1}
+        onClick={() => onPageChange(1)}
+        className="btn btn-secondary py-1.5 text-caption disabled:opacity-40"
+      >
+        اول
+      </button>
+      <button
+        type="button"
+        disabled={page <= 1}
+        onClick={() => onPageChange(page - 1)}
+        className="btn btn-secondary py-1.5 text-caption disabled:opacity-40"
+      >
+        <ChevronRight className="h-4 w-4" />
+        قبلی
+      </button>
+      <label className="flex items-center gap-1.5 text-caption text-text-muted">
+        <span>صفحه</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              goToDraft();
+            }
+          }}
+          className="field-input w-14 px-2 py-1 text-center text-caption"
+          aria-label="شماره صفحه"
+        />
+        <span>از {toFa(lastPage)}</span>
+        <button type="button" onClick={goToDraft} className="btn btn-secondary px-2 py-1 text-caption">
+          برو
+        </button>
+      </label>
+      <button
+        type="button"
+        disabled={page >= lastPage}
+        onClick={() => onPageChange(page + 1)}
+        className="btn btn-secondary py-1.5 text-caption disabled:opacity-40"
+      >
+        بعدی
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+      <button
+        type="button"
+        disabled={page >= lastPage}
+        onClick={() => onPageChange(lastPage)}
+        className="btn btn-secondary py-1.5 text-caption disabled:opacity-40"
+      >
+        آخر
+      </button>
+    </div>
+  );
+}
+
 export function MediaLibraryGrid({
   uploaded,
   mode,
@@ -90,9 +178,17 @@ export function MediaLibraryGrid({
   const [trashOpen, setTrashOpen] = useState(false);
   const { count: trashCount, refresh: refreshTrashCount } = useMediaTrashCount(trashRefreshSignal);
 
-  const items = useMemo(() => buildUnifiedGallery(uploaded), [uploaded]);
+  const includeStaticSitePhotos =
+    !paginated ||
+    (paginated.page >= paginated.lastPage && paginated.search.trim() === '');
+
+  const items = useMemo(
+    () => buildUnifiedGallery(uploaded, { includeStaticSitePhotos }),
+    [uploaded, includeStaticSitePhotos],
+  );
   const filtered = items;
   const selected = selectedUrl ? findUnifiedByPersistSrc(items, selectedUrl) : undefined;
+  const staticCount = staticSitePhotoCount();
 
   function clearUploadProgressTimer() {
     if (progressTimerRef.current) {
@@ -452,38 +548,31 @@ export function MediaLibraryGrid({
       )}
 
       {paginated && !paginated.loading && paginated.total > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
-          <p className="text-caption text-text-muted">
-            {toFa(paginated.total)} تصویر
+        <div className="flex flex-col gap-3 border-t border-border px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-caption text-text-muted">
+              {toFa(paginated.total)} فایل آپلودشده
+              {paginated.lastPage > 1 && (
+                <>
+                  {' '}
+                  — صفحه {toFa(paginated.page)} از {toFa(paginated.lastPage)}
+                </>
+              )}
+              {includeStaticSitePhotos && staticCount > 0 && (
+                <>
+                  {' '}
+                  — {toFa(staticCount)} عکس ثابت سایت (فقط این صفحه)
+                </>
+              )}
+            </p>
             {paginated.lastPage > 1 && (
-              <>
-                {' '}
-                — صفحه {toFa(paginated.page)} از {toFa(paginated.lastPage)}
-              </>
+              <GalleryPagination
+                page={paginated.page}
+                lastPage={paginated.lastPage}
+                onPageChange={paginated.onPageChange}
+              />
             )}
-          </p>
-          {paginated.lastPage > 1 && (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={paginated.page <= 1}
-                onClick={() => paginated.onPageChange(paginated.page - 1)}
-                className="btn btn-secondary py-1.5 text-caption disabled:opacity-40"
-              >
-                <ChevronRight className="h-4 w-4" />
-                قبلی
-              </button>
-              <button
-                type="button"
-                disabled={paginated.page >= paginated.lastPage}
-                onClick={() => paginated.onPageChange(paginated.page + 1)}
-                className="btn btn-secondary py-1.5 text-caption disabled:opacity-40"
-              >
-                بعدی
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-            </div>
-          )}
+          </div>
         </div>
       )}
     </>

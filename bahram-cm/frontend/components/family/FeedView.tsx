@@ -394,7 +394,9 @@ export function FeedView({
   useEffect(() => {
     if (isPreview || !feedReady) return;
 
-    const intervalMs = isRealtimeConfigured() ? 20_000 : 12_000;
+    void syncTipIfServerAhead();
+
+    const intervalMs = isRealtimeConfigured() ? 20_000 : 8_000;
     const id = window.setInterval(() => {
       void syncTipIfServerAhead();
     }, intervalMs);

@@ -6,8 +6,8 @@ module.exports = {
       cwd: '/var/www/bahram-cm/frontend',
       script: 'node_modules/.bin/next',
       args: 'start -p 3000',
-      instances: 2,
-      exec_mode: 'cluster',
+      instances: 1,
+      exec_mode: 'fork',
       autorestart: true,
       max_memory_restart: '1G',
       env: {

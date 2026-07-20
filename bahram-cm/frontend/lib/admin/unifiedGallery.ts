@@ -14,7 +14,20 @@ export type UnifiedMediaItem = {
   adminItem?: AdminMediaItem;
 };
 
-export function buildUnifiedGallery(uploaded: AdminMediaItem[]): UnifiedMediaItem[] {
+export type BuildUnifiedGalleryOptions = {
+  /** عکس‌های ثابت SITE_MEDIA — فقط وقتی true باشد به انتهای لیست اضافه می‌شوند. */
+  includeStaticSitePhotos?: boolean;
+};
+
+export function staticSitePhotoCount(): number {
+  return buildStaticGallery().length;
+}
+
+export function buildUnifiedGallery(
+  uploaded: AdminMediaItem[],
+  options: BuildUnifiedGalleryOptions = {},
+): UnifiedMediaItem[] {
+  const { includeStaticSitePhotos = true } = options;
   const items: UnifiedMediaItem[] = [];
   const seen = new Set<string>();
 
@@ -39,18 +52,20 @@ export function buildUnifiedGallery(uploaded: AdminMediaItem[]): UnifiedMediaIte
     });
   }
 
-  for (const staticItem of buildStaticGallery()) {
-    const persistSrc = persistMediaUrl(staticItem.src);
-    if (!persistSrc || seen.has(persistSrc)) continue;
-    seen.add(persistSrc);
-    items.push({
-      key: `static-${staticItem.src}`,
-      src: staticItem.src,
-      persistSrc,
-      label: staticItem.label,
-      category: staticItem.category,
-      kind: 'static',
-    });
+  if (includeStaticSitePhotos) {
+    for (const staticItem of buildStaticGallery()) {
+      const persistSrc = persistMediaUrl(staticItem.src);
+      if (!persistSrc || seen.has(persistSrc)) continue;
+      seen.add(persistSrc);
+      items.push({
+        key: `static-${staticItem.src}`,
+        src: staticItem.src,
+        persistSrc,
+        label: staticItem.label,
+        category: staticItem.category,
+        kind: 'static',
+      });
+    }
   }
 
   return items;
