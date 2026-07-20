@@ -35,7 +35,6 @@ class TelegramPurchaseFlowService
         int $chatId,
         string $code,
     ): void {
-        $client = $this->clients->forBot($bot);
         $conversation = $this->conversations->forAccount($account);
         $productId = (int) data_get($conversation->context, 'checkout.product_id');
         $product = $this->catalog->findForTelegram($productId);
@@ -151,10 +150,9 @@ class TelegramPurchaseFlowService
 
     public function startZarinpal(TelegramBot $bot, TelegramAccount $account, int $chatId, int $productId): void
     {
-        $client = $this->clients->forBot($bot);
         $product = $this->catalog->findForTelegram($productId);
         if ($product === null) {
-            $client->sendMessage($chatId, 'محصول یافت نشد.');
+            $this->outbound->reply($bot, $chatId, 'محصول یافت نشد.');
 
             return;
         }
@@ -162,21 +160,22 @@ class TelegramPurchaseFlowService
         try {
             $result = $this->checkout->startZarinpalCheckout($account, $product, $this->couponFromContext($account));
         } catch (ValidationException $e) {
-            $client->sendMessage($chatId, (string) (collect($e->errors())->flatten()->first() ?: 'امکان شروع پرداخت وجود ندارد.'));
+            $this->outbound->reply($bot, $chatId, (string) (collect($e->errors())->flatten()->first() ?: 'امکان شروع پرداخت وجود ندارد.'));
 
             return;
         } catch (PaymentException $e) {
-            $client->sendMessage($chatId, $e->getMessage() ?: 'درگاه پرداخت زرین‌پال آماده نیست.');
+            $this->outbound->reply($bot, $chatId, $e->getMessage() ?: 'درگاه پرداخت زرین‌پال آماده نیست.');
 
             return;
         } catch (Throwable) {
-            $client->sendMessage($chatId, 'شروع پرداخت ناموفق بود. لطفاً دوباره تلاش کنید.');
+            $this->outbound->reply($bot, $chatId, 'شروع پرداخت ناموفق بود. لطفاً دوباره تلاش کنید.');
 
             return;
         }
 
         $amount = number_format((int) $result['amount']);
-        $client->sendMessage(
+        $this->outbound->reply(
+            $bot,
             $chatId,
             "سفارش #{$result['order_id']}\n{$product->title}\nمبلغ قابل پرداخت: {$amount} تومان\n\nبرای پرداخت، دکمه زیر را بزنید.",
             TelegramSiteUrl::linkMarkup($result['payment_url'], '💳 پرداخت آنلاین', [], 'success'),
@@ -185,10 +184,9 @@ class TelegramPurchaseFlowService
 
     public function startCardToCard(TelegramBot $bot, TelegramAccount $account, int $chatId, int $productId): void
     {
-        $client = $this->clients->forBot($bot);
         $product = $this->catalog->findForTelegram($productId);
         if ($product === null) {
-            $client->sendMessage($chatId, 'محصول یافت نشد.');
+            $this->outbound->reply($bot, $chatId, 'محصول یافت نشد.');
 
             return;
         }
@@ -196,11 +194,11 @@ class TelegramPurchaseFlowService
         try {
             $result = $this->checkout->startCardToCardCheckout($account, $product, $this->couponFromContext($account));
         } catch (ValidationException $e) {
-            $client->sendMessage($chatId, (string) (collect($e->errors())->flatten()->first() ?: 'امکان ثبت سفارش وجود ندارد.'));
+            $this->outbound->reply($bot, $chatId, (string) (collect($e->errors())->flatten()->first() ?: 'امکان ثبت سفارش وجود ندارد.'));
 
             return;
         } catch (Throwable) {
-            $client->sendMessage($chatId, 'ثبت سفارش کارت‌به‌کارت ناموفق بود.');
+            $this->outbound->reply($bot, $chatId, 'ثبت سفارش کارت‌به‌کارت ناموفق بود.');
 
             return;
         }

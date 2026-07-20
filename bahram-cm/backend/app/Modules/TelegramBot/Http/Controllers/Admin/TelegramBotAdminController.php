@@ -67,6 +67,12 @@ class TelegramBotAdminController
             unset($data['payment_reports_chat_id']);
         }
 
+        if (array_key_exists('support_group_chat_id', $data) || array_key_exists('reports_chat_id', $data)) {
+            $reportsChatId = $data['support_group_chat_id'] ?? $data['reports_chat_id'] ?? null;
+            $bot->setReportsGroupChatId(filled($reportsChatId) ? (string) $reportsChatId : null);
+            unset($data['support_group_chat_id'], $data['reports_chat_id']);
+        }
+
         if (array_key_exists('bot_token_input', $data)) {
             $token = trim((string) $data['bot_token_input']);
             if ($token !== '') {
@@ -419,6 +425,9 @@ class TelegramBotAdminController
             'token_key' => $bot->token_key,
             'api_reachable' => (bool) ($healthBot['api_reachable'] ?? false),
             'webhook_url' => $healthBot['webhook_url'] ?? null,
+            'support_group_chat_id' => $bot->reportsGroupChatId(),
+            'reports_chat_id' => $bot->reportsGroupChatId(),
+            'payment_reports_chat_id' => $bot->paymentReportsChatId(),
         ];
 
         if (! $detailed) {
@@ -426,12 +435,8 @@ class TelegramBotAdminController
         }
 
         return array_merge($base, [
-            'support_group_chat_id' => $bot->support_group_chat_id,
-            'reports_chat_id' => $bot->reports_chat_id,
             'reports_topic_id' => $bot->reports_topic_id,
-            'payment_reports_chat_id' => $bot->paymentReportsChatId(),
             'settings' => $bot->settings ?? [],
-            'token_key' => $bot->token_key,
         ]);
     }
 }

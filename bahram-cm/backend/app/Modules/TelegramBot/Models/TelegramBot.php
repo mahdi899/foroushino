@@ -177,6 +177,13 @@ class TelegramBot extends Model
      */
     public function reportsGroupChatId(): ?string
     {
+        $fromSettings = data_get($this->settings, 'reports_group_chat_id')
+            ?? data_get($this->settings, 'support_group_chat_id');
+
+        if (filled($fromSettings)) {
+            return (string) $fromSettings;
+        }
+
         if (filled($this->support_group_chat_id)) {
             return (string) $this->support_group_chat_id;
         }
@@ -186,6 +193,24 @@ class TelegramBot extends Model
         }
 
         return null;
+    }
+
+    public function setReportsGroupChatId(?string $chatId): void
+    {
+        $settings = (array) ($this->settings ?? []);
+        $normalized = filled($chatId) ? (string) $chatId : null;
+
+        if ($normalized !== null) {
+            $settings['reports_group_chat_id'] = $normalized;
+        } else {
+            unset($settings['reports_group_chat_id'], $settings['support_group_chat_id']);
+        }
+
+        $this->forceFill([
+            'settings' => $settings,
+            'support_group_chat_id' => $normalized,
+            'reports_chat_id' => $normalized,
+        ])->save();
     }
 
     /**

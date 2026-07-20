@@ -87,4 +87,26 @@ class TelegramInfrastructureAdminTest extends TestCase
 
         $this->assertSame('123456:ABC-DEF', $bot->fresh()->panelToken());
     }
+
+    public function test_admin_can_save_report_chat_ids_and_list_returns_them(): void
+    {
+        $bot = TelegramBot::query()->where('key', 'production')->firstOrFail();
+
+        $this->patchJson("/api/v1/panel/telegram/bots/{$bot->id}", [
+            'support_group_chat_id' => '-1005244383790',
+            'payment_reports_chat_id' => '-1005244383790',
+        ])->assertOk()
+            ->assertJsonPath('data.support_group_chat_id', '-1005244383790')
+            ->assertJsonPath('data.payment_reports_chat_id', '-1005244383790');
+
+        $fresh = $bot->fresh();
+        $this->assertSame('-1005244383790', $fresh->reportsGroupChatId());
+        $this->assertSame('-1005244383790', data_get($fresh->settings, 'reports_group_chat_id'));
+        $this->assertSame('-1005244383790', $fresh->paymentReportsChatId());
+
+        $this->getJson('/api/v1/panel/telegram/bots')
+            ->assertOk()
+            ->assertJsonPath('data.0.support_group_chat_id', '-1005244383790')
+            ->assertJsonPath('data.0.payment_reports_chat_id', '-1005244383790');
+    }
 }

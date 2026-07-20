@@ -789,10 +789,7 @@ class BotAdminPanelService
         $raw = trim(str_replace(['`', ' ', "\u{200c}"], '', $text));
 
         if (in_array(mb_strtolower($raw), ['/null', 'null', 'none', 'پاک', 'حذف'], true)) {
-            $bot->update([
-                'support_group_chat_id' => null,
-                'reports_chat_id' => null,
-            ]);
+            $bot->setReportsGroupChatId(null);
             $this->conversations->transition($conversation, ConversationState::AdminPanel, [
                 'admin' => ['flow' => null, 'draft' => []],
             ]);
@@ -837,10 +834,7 @@ class BotAdminPanelService
             // title is optional
         }
 
-        $bot->update([
-            'support_group_chat_id' => $raw,
-            'reports_chat_id' => $raw,
-        ]);
+        $bot->setReportsGroupChatId($raw);
 
         $this->conversations->transition($conversation, ConversationState::AdminPanel, [
             'admin' => ['flow' => null, 'draft' => []],
