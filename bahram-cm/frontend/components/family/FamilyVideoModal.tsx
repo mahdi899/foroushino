@@ -273,7 +273,11 @@ export function FamilyVideoModal({
                 setBuffering(false);
                 setPlaybackError(false);
               }}
-              onWaiting={() => setBuffering(true)}
+              onWaiting={(e) => {
+                const video = e.currentTarget;
+                if (video.ended) return;
+                setBuffering(true);
+              }}
               onError={() => {
                 if (tryNextSource()) return;
                 setBuffering(false);
@@ -295,6 +299,7 @@ export function FamilyVideoModal({
                 );
               }}
               onEnded={(e) => {
+                setBuffering(false);
                 notifyPaused(mediaId);
                 reportProgress(
                   'complete',
