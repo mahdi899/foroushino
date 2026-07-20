@@ -42,7 +42,7 @@ final class FamilyMediaUrl
     /** FTP / download-host files — cdn.rostami.app when configured. */
     private static function remoteUrl(string $storagePath): string
     {
-        $cdn = self::cdnStorageBase();
+        $cdn = self::cdnBase();
         if ($cdn !== '') {
             return $cdn.'/'.ltrim($storagePath, '/');
         }
@@ -73,21 +73,5 @@ final class FamilyMediaUrl
         }
 
         return '';
-    }
-
-    /** CDN origin for family files — nginx serves /storage/* on cdn.rostami.app. */
-    private static function cdnStorageBase(): string
-    {
-        $cdn = self::cdnBase();
-        if ($cdn === '') {
-            return '';
-        }
-
-        $path = parse_url($cdn, PHP_URL_PATH);
-        if (is_string($path) && str_contains($path, '/storage')) {
-            return rtrim($cdn, '/');
-        }
-
-        return rtrim($cdn, '/').'/storage';
     }
 }

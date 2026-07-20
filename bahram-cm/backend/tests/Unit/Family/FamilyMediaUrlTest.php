@@ -34,7 +34,7 @@ class FamilyMediaUrlTest extends TestCase
 
         $url = FamilyMediaUrl::fromPath($path, 'family_media_ftp');
 
-        $this->assertSame('https://cdn.example.com/storage/'.$path, $url);
+        $this->assertSame('https://cdn.example.com/'.$path, $url);
     }
 
     public function test_legacy_remote_disk_still_serves_local_when_public_copy_exists(): void
@@ -47,7 +47,7 @@ class FamilyMediaUrlTest extends TestCase
 
         $url = FamilyMediaUrl::fromPath($path, 'family_media_ftp');
 
-        $this->assertSame('https://cdn.example.com/storage/'.$path, $url);
+        $this->assertSame('https://cdn.example.com/'.$path, $url);
     }
 
     public function test_local_family_media_returns_frontend_origin_without_cdn(): void

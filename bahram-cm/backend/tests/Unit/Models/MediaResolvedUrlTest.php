@@ -39,6 +39,6 @@ class MediaResolvedUrlTest extends TestCase
             'is_private' => false,
         ]);
 
-        $this->assertStringContainsString('/storage/'.$path, (string) $media->resolvedUrl());
+        $this->assertSame('https://cdn.example.com/'.$path, (string) $media->resolvedUrl());
     }
 }

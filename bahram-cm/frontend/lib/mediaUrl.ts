@@ -29,6 +29,11 @@ function unwrapNextImageProxy(url: string): string | null {
   }
 }
 
+function cdnPathFromStorageRef(ref: string): string {
+  if (ref.startsWith('/storage/')) return ref.slice('/storage'.length)
+  return ref
+}
+
 function normalizeAbsoluteStorage(url: string): string {
   try {
     const parsed = new URL(url);
@@ -41,7 +46,7 @@ function normalizeAbsoluteStorage(url: string): string {
       return `${MEDIA_ORIGIN || ASSET_ORIGIN}${parsed.pathname}`;
     }
     if (MEDIA_ORIGIN) {
-      return `${MEDIA_ORIGIN}${parsed.pathname}`;
+      return `${MEDIA_ORIGIN}${cdnPathFromStorageRef(parsed.pathname)}`;
     }
   } catch {
     /* keep */
@@ -183,7 +188,7 @@ export function resolveMediaUrl(url: string | null | undefined): string {
   }
 
   if (ref.startsWith('/storage/')) {
-    if (MEDIA_ORIGIN) return `${MEDIA_ORIGIN}${ref}`;
+    if (MEDIA_ORIGIN) return `${MEDIA_ORIGIN}${cdnPathFromStorageRef(ref)}`;
     return ref;
   }
 

@@ -43,6 +43,16 @@ final class MediaUrl
         return rtrim((string) config('bahram.frontend_url', 'http://localhost:3000'), '/');
     }
 
+    /** CDN/public path — strips Laravel's `/storage` prefix from portable refs. */
+    public static function cdnPathFromStorageRef(string $ref): string
+    {
+        if (str_starts_with($ref, '/storage/')) {
+            return substr($ref, strlen('/storage'));
+        }
+
+        return $ref;
+    }
+
     /**
      * Portable path for DB / JSON — never an absolute CDN URL.
      *
@@ -125,6 +135,11 @@ final class MediaUrl
         }
 
         if (str_starts_with($ref, '/storage/')) {
+            $cdn = self::mediaOrigin();
+            if ($cdn) {
+                return $cdn.self::cdnPathFromStorageRef($ref);
+            }
+
             return self::uploadOrigin().$ref;
         }
 
@@ -162,7 +177,7 @@ final class MediaUrl
 
         $cdn = self::mediaOrigin();
         if ($cdn && preg_match('#^https?://[^/]+(/storage/.+)$#', $url, $m)) {
-            return $cdn.$m[1];
+            return $cdn.self::cdnPathFromStorageRef($m[1]);
         }
 
         if ($cdn && preg_match('#^https?://[^/]+(/images/.+)$#', $url, $m)) {
