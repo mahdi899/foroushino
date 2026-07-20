@@ -6,7 +6,7 @@ import { cn } from '@/lib/cn';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import {
-  resolveFamilyMediaStreamCandidates,
+  resolveFamilyMediaPlaybackCandidates,
   resolveFamilyMediaUrl,
 } from '@/lib/family/mediaPlaybackUrl';
 import { formatPlaybackSpeed } from '@/lib/family/playback';
@@ -96,7 +96,7 @@ export function VoiceBlock({
   const seekPositionRef = useRef(0);
   const streamUrl = useMemo(() => resolveFamilyMediaUrl(media.url), [media.url]);
   const playbackCandidates = useMemo(
-    () => resolveFamilyMediaStreamCandidates(media.url, media.id),
+    () => resolveFamilyMediaPlaybackCandidates(media.url, media.id),
     [media.id, media.url],
   );
   const [srcIndex, setSrcIndex] = useState(0);

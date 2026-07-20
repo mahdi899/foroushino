@@ -6,7 +6,7 @@ import {
   normalizeFamilyGalleryMediaPath,
   resolveFamilyMediaDownloadUrl,
   resolveFamilyMediaPlaybackCandidates,
-  resolveFamilyMediaStreamCandidates,
+  resolveFamilyMediaPlaybackCandidates,
   resolveFamilyMediaPlaybackUrl,
 } from '@/lib/family/mediaPlaybackUrl';
 
@@ -114,26 +114,20 @@ describe('resolveFamilyMediaPlaybackCandidates', () => {
     ).toEqual(['https://cdn.rostami.app/media/family/demo/demo-video.mp4']);
   });
 
-  it('prefers CDN when mediaId is provided; stream proxy is last resort', () => {
+  it('prefers same-origin club URL then CDN when mediaId is provided', () => {
     vi.stubGlobal('window', { location: { origin: 'https://rostami.club', hostname: 'rostami.club' } });
     expect(
       resolveFamilyMediaPlaybackCandidates('/media/family/demo/demo-video.mp4', 42),
     ).toEqual([
-      'https://cdn.rostami.app/media/family/demo/demo-video.mp4',
       'https://rostami.club/media/family/demo/demo-video.mp4',
-      'https://rostami.club/api/family/media/42/stream',
+      'https://cdn.rostami.app/media/family/demo/demo-video.mp4',
     ]);
   });
 
-  it('stream candidates lead with CDN', () => {
+  it('does not use API stream proxy', () => {
     vi.stubGlobal('window', { location: { origin: 'https://rostami.club', hostname: 'rostami.club' } });
-    expect(
-      resolveFamilyMediaStreamCandidates('/media/family/demo/demo-video.mp4', 42),
-    ).toEqual([
-      'https://cdn.rostami.app/media/family/demo/demo-video.mp4',
-      'https://rostami.club/media/family/demo/demo-video.mp4',
-      'https://rostami.club/api/family/media/42/stream',
-    ]);
+    const candidates = resolveFamilyMediaPlaybackCandidates('/media/family/demo/demo-video.mp4', 42);
+    expect(candidates.some((u) => u.includes('/api/family/media/'))).toBe(false);
   });
 });
 

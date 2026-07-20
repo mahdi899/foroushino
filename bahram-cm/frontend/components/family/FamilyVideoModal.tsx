@@ -8,8 +8,9 @@ import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownlo
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import {
+  inferFamilyMediaMimeType,
   resolveFamilyMediaDownloadUrl,
-  resolveFamilyMediaStreamCandidates,
+  resolveFamilyMediaPlaybackCandidates,
 } from '@/lib/family/mediaPlaybackUrl';
 import { sendMediaProgress } from '@/lib/family/api';
 
@@ -38,12 +39,13 @@ export function FamilyVideoModal({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const lastReported = useRef(0);
   const playbackCandidates = useMemo(
-    () => resolveFamilyMediaStreamCandidates(url, mediaId),
+    () => resolveFamilyMediaPlaybackCandidates(url, mediaId),
     [mediaId, url],
   );
   const downloadUrl = useMemo(() => resolveFamilyMediaDownloadUrl(url) ?? url, [url]);
   const [srcIndex, setSrcIndex] = useState(0);
   const activeSrc = playbackCandidates[srcIndex] ?? playbackCandidates[0] ?? url;
+  const activeMime = inferFamilyMediaMimeType(activeSrc);
   const [isPortrait, setIsPortrait] = useState(portrait);
   const [videoAspect, setVideoAspect] = useState<string | null>(null);
   const [coarsePointer, setCoarsePointer] = useState(readCoarsePointer);
@@ -253,7 +255,6 @@ export function FamilyVideoModal({
             <video
               ref={videoRef}
               key={activeSrc}
-              src={activeSrc}
               playsInline
               controls
               preload="metadata"
@@ -307,7 +308,9 @@ export function FamilyVideoModal({
                   e.currentTarget.duration || durationHint || 0,
                 );
               }}
-          />
+            >
+              <source src={activeSrc} type={activeMime} />
+            </video>
           ) : null}
         </div>
       </div>

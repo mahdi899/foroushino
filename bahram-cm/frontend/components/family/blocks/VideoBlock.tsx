@@ -6,7 +6,7 @@ import { cn } from '@/lib/cn';
 import { useLazyInViewOnce } from '@/hooks/useLazyInViewOnce';
 import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
 import { FamilyVideoModal } from '@/components/family/FamilyVideoModal';
-import { resolveFamilyMediaPosterUrl, resolveFamilyMediaStreamUrl, resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
+import { resolveFamilyMediaPlaybackCandidates, resolveFamilyMediaPlaybackUrl, resolveFamilyMediaPosterUrl } from '@/lib/family/mediaPlaybackUrl';
 import type { FamilyMediaBlock } from '@/lib/family/types';
 
 export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId: number }) {
@@ -15,8 +15,8 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const [posterReady, setPosterReady] = useState(false);
   const [posterError, setPosterError] = useState(false);
 
-  const streamUrl = resolveFamilyMediaStreamUrl(media.url, media.id) ?? resolveFamilyMediaUrl(media.url);
-  const downloadUrl = resolveFamilyMediaUrl(media.url) ?? media.url;
+  const streamUrl = resolveFamilyMediaPlaybackCandidates(media.url)[0] ?? null;
+  const downloadUrl = resolveFamilyMediaPlaybackUrl(media.url) ?? media.url;
   const posterUrl = resolveFamilyMediaPosterUrl(media.poster_url);
   const showFramePreview = !posterUrl && Boolean(streamUrl);
   const shouldLoadPreview = useLazyInViewOnce(containerRef, Boolean(streamUrl));
@@ -135,7 +135,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
 
       <FamilyVideoModal
         open={modalOpen}
-        url={streamUrl}
+        url={media.url}
         mediaId={media.id}
         postId={postId}
         durationHint={media.duration}

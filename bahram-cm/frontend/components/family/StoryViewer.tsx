@@ -10,7 +10,7 @@ import { getStories } from '@/lib/family/api';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import {
   resolveFamilyMediaUrl,
-  resolveFamilyMediaStreamCandidates,
+  resolveFamilyMediaPlaybackCandidates,
 } from '@/lib/family/mediaPlaybackUrl';
 import type { FamilyStory, FamilyStoryMedia } from '@/lib/family/types';
 
@@ -150,7 +150,7 @@ export function StoryViewer({
   const currentSrc = storyMediaSrc(currentMedia);
   const currentIsVideo = currentMedia ? isStoryVideo(currentMedia) : false;
   const videoCandidates = currentSrc
-    ? resolveFamilyMediaStreamCandidates(currentSrc, currentMedia?.id)
+    ? resolveFamilyMediaPlaybackCandidates(currentSrc, currentMedia?.id)
     : [];
   const activeVideoSrc = videoCandidates[videoSrcIndex] ?? currentSrc ?? '';
 

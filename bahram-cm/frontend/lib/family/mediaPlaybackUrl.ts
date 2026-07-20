@@ -198,59 +198,31 @@ function clubSameOriginMediaUrl(url: string | null | undefined): string | null {
 }
 
 /**
- * Voice/video stream URLs — CDN first; API stream proxy last (FTP-only legacy fallback).
+ * Playback URLs — direct media file links only (no API stream proxy).
+ * On rostami.club: same-origin /media/family/* first (nginx inline + Range), then CDN.
  */
+export function resolveFamilyMediaPlaybackCandidates(
+  url: string | null | undefined,
+  _mediaId?: number,
+): string[] {
+  const candidates: string[] = [];
+
+  const club = clubSameOriginMediaUrl(url);
+  if (club) candidates.push(club);
+
+  const primary = resolveFamilyMediaPlaybackUrl(url);
+  if (primary && !candidates.includes(primary)) candidates.push(primary);
+
+  return candidates;
+}
+
+/** @deprecated Use resolveFamilyMediaPlaybackCandidates — kept for call-site compatibility. */
+export const resolveFamilyMediaStreamCandidates = resolveFamilyMediaPlaybackCandidates;
+
 export function resolveFamilyMediaStreamUrl(
   url: string | null | undefined,
   mediaId?: number,
 ): string | null {
-  const candidates = resolveFamilyMediaStreamCandidates(url, mediaId);
-  return candidates[0] ?? null;
-}
-
-export function resolveFamilyMediaStreamCandidates(
-  url: string | null | undefined,
-  mediaId?: number,
-): string[] {
-  const candidates: string[] = [];
-
-  const primary = resolveFamilyMediaPlaybackUrl(url);
-  if (primary) candidates.push(primary);
-
-  const club = clubSameOriginMediaUrl(url);
-  if (club && !candidates.includes(club)) candidates.push(club);
-
-  const proxy = mediaId ? familyMediaStreamProxyUrl(mediaId) : null;
-  if (proxy && !candidates.includes(proxy)) candidates.push(proxy);
-
-  return candidates;
-}
-
-/** Same-origin authenticated stream — FTP-only fallback when CDN is unavailable. */
-export function familyMediaStreamProxyUrl(mediaId: number): string | null {
-  if (typeof window === 'undefined' || !Number.isFinite(mediaId) || mediaId <= 0) {
-    return null;
-  }
-  return `${window.location.origin}/api/family/media/${mediaId}/stream`;
-}
-
-/**
- * Playback URL candidates — CDN first; same-origin proxy and API stream as fallbacks.
- */
-export function resolveFamilyMediaPlaybackCandidates(
-  url: string | null | undefined,
-  mediaId?: number,
-): string[] {
-  if (mediaId) {
-    return resolveFamilyMediaStreamCandidates(url, mediaId);
-  }
-
-  const candidates: string[] = [];
-  const primary = resolveFamilyMediaPlaybackUrl(url);
-  if (primary) candidates.push(primary);
-
-  const club = clubSameOriginMediaUrl(url);
-  if (club && !candidates.includes(club)) candidates.push(club);
-
-  return candidates;
+  const candidates = resolveFamilyMediaPlaybackCandidates(url, mediaId);
+  return candidates[0] ?? resolveFamilyMediaPlaybackUrl(url);
 }

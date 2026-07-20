@@ -1,6 +1,5 @@
 import {
   familyMediaPathname,
-  familyMediaStreamProxyUrl,
   isFamilyMediaSameOriginHost,
   normalizeFamilyGalleryMediaPath,
   resolveFamilyMediaDownloadUrl,
@@ -73,13 +72,9 @@ export function familyMediaCacheFetchUrl(streamUrl: string): string {
 
 function cacheFetchUrl(
   canonicalUrl: string,
-  mediaId: number,
-  kind: FamilyMediaCacheKind,
+  _mediaId: number,
+  _kind: FamilyMediaCacheKind,
 ): string {
-  if (kind === 'video' || kind === 'voice') {
-    return familyMediaStreamProxyUrl(mediaId) ?? familyMediaCacheFetchUrl(canonicalUrl);
-  }
-
   return familyMediaCacheFetchUrl(canonicalUrl);
 }
 
