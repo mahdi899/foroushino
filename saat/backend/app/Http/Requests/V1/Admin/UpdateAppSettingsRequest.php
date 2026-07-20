@@ -69,6 +69,7 @@ class UpdateAppSettingsRequest extends FormRequest
             'settings.meli_pattern_register' => ['sometimes', 'integer', 'min:0'],
             'settings.meli_pattern_payment' => ['sometimes', 'integer', 'min:0'],
             'settings.meli_pattern_custom' => ['sometimes', 'integer', 'min:0'],
+            'settings.meli_pattern_login' => ['sometimes', 'integer', 'min:0'],
             'settings.meli_sms_link_course' => ['sometimes', 'nullable', 'string', 'max:500'],
             'settings.meli_sms_link_channel' => ['sometimes', 'nullable', 'string', 'max:500'],
             'settings.meli_sms_link_register' => ['sometimes', 'nullable', 'string', 'max:500'],

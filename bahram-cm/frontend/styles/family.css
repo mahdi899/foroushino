@@ -1409,6 +1409,10 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-topbar {
+  display: none !important;
+}
+
+.family-topbar {
   position: sticky;
   top: 0;
   z-index: 40;
@@ -1663,6 +1667,52 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-topbar__badge {
+  position: absolute;
+  top: -0.1875rem;
+  inset-inline-start: -0.1875rem;
+  display: inline-flex;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding-inline: 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffffff;
+  background: var(--family-tg-pinned-accent);
+  box-shadow: 0 0 0 1.5px color-mix(in oklab, var(--family-surface) 80%, transparent);
+}
+
+.family-mobile-notifications-btn {
+  position: relative;
+  display: inline-flex;
+  height: 2.375rem;
+  width: 2.375rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 0.5px solid color-mix(in oklab, var(--family-text) 8%, transparent);
+  background: color-mix(in oklab, var(--family-surface) 72%, transparent);
+  color: var(--family-tg-pinned-accent);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  box-shadow: 0 4px 18px color-mix(in oklab, var(--family-bg) 35%, transparent);
+  top: calc(0.75rem + env(safe-area-inset-top, 0px));
+}
+
+.family-mobile-notifications-btn--active {
+  background: color-mix(in oklab, var(--family-tg-pinned-accent) 14%, transparent);
+  border-color: color-mix(in oklab, var(--family-tg-pinned-accent) 28%, transparent);
+}
+
+.family-mobile-notifications-btn__icon {
+  width: 1.0625rem;
+  height: 1.0625rem;
+}
+
+.family-mobile-notifications-btn__badge {
   position: absolute;
   top: -0.1875rem;
   inset-inline-start: -0.1875rem;

@@ -1,6 +1,7 @@
 // Thin fetch wrapper around the Laravel API envelope:
 //   { success: boolean, message: string, data: T, meta?: {...}, errors?: {...}, code?: string }
-import { getToken, clearToken } from './auth'
+import { getToken } from './auth'
+import { handleUnauthorizedSession } from './authSession'
 
 // `import.meta.env` is populated by Vite in the browser build; the Node-based
 // verification script (scripts/verify-http-client.ts) runs outside Vite, so
@@ -100,8 +101,8 @@ export async function request<T = unknown>(path: string, options: RequestOptions
     // no/invalid JSON body (e.g. 204, network-level HTML error page)
   }
 
-  if (response.status === 401) {
-    clearToken()
+  if (response.status === 401 && token) {
+    handleUnauthorizedSession()
   }
 
   if (!response.ok || json?.success === false) {

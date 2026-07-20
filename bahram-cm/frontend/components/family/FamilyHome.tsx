@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { FamilyAutoJoin } from '@/components/family/FamilyAutoJoin';
 import { FamilyMain, FamilyShell } from '@/components/family/FamilyShell';
-import { FamilyTopBar } from '@/components/family/FamilyTopBar';
+import { FamilyMobileNotificationsButton } from '@/components/family/FamilyMobileNotificationsButton';
 import { FeedView } from '@/components/family/FeedView';
 import { FamilyGuestAccessProvider } from '@/components/family/FamilyGuestAccess';
 import { JoinBanner } from '@/components/family/JoinBanner';
@@ -92,18 +92,13 @@ export function FamilyHome({
 
   const feed = (
     <>
-      <div className="lg:hidden">
-        <FamilyTopBar
-          memberCount={resolvedMemberCount}
-          initialBranding={initialBranding}
-          canViewStories
-          guestStoriesLocked={isGuest}
-          showNotifications={isMember}
-          notificationsActive={notificationsOpen}
-          onOpenNotifications={openNotifications}
-          onCloseNotifications={closeNotifications}
+      {isMember ? (
+        <FamilyMobileNotificationsButton
+          active={notificationsOpen}
+          onOpen={openNotifications}
+          onClose={closeNotifications}
         />
-      </div>
+      ) : null}
       <FamilyMain className="min-h-0">
         <FeedView
           memberCount={resolvedMemberCount}

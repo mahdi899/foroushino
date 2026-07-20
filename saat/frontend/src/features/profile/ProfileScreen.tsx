@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Settings,
@@ -142,7 +142,7 @@ export function ProfileScreen() {
         </Page>
       )
     }
-    return null
+    return <Navigate to="/login" replace />
   }
 
   const workMenu: MenuItem[] = [

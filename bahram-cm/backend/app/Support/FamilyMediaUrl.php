@@ -2,8 +2,6 @@
 
 namespace App\Support;
 
-use Illuminate\Support\Facades\Storage;
-
 final class FamilyMediaUrl
 {
     public static function fromPath(?string $storagePath, ?string $disk = null): ?string
@@ -12,16 +10,11 @@ final class FamilyMediaUrl
             return null;
         }
 
-        if (self::shouldServeLocally($disk, $storagePath)) {
-            return self::localReference($storagePath);
+        if (self::isRemoteDisk($disk)) {
+            return self::remoteUrl($storagePath);
         }
 
-        $cdn = self::cdnBase();
-        if ($cdn !== '') {
-            return $cdn.'/'.ltrim($storagePath, '/');
-        }
-
-        return self::localReference($storagePath);
+        return self::originStorageUrl($storagePath);
     }
 
     public static function withCacheBuster(?string $url, int|string|null $version): ?string
@@ -35,25 +28,31 @@ final class FamilyMediaUrl
         return $url.$separator.'v='.rawurlencode((string) $version);
     }
 
-    private static function shouldServeLocally(?string $disk, string $storagePath): bool
+    /** Files on origin (public disk) — rostami.app/storage, not MEDIA_URL CDN. */
+    private static function originStorageUrl(string $storagePath): string
     {
-        if (in_array($disk, ['public', 'local'], true)) {
-            return true;
+        $origin = rtrim((string) config('bahram.frontend_url', ''), '/');
+        if ($origin === '') {
+            $origin = rtrim((string) config('app.url'), '/');
         }
 
-        try {
-            if (Storage::disk('public')->exists($storagePath)) {
-                return true;
-            }
-        } catch (\Throwable) {
-            // Fall through to remote/CDN handling.
+        return $origin.'/storage/'.ltrim($storagePath, '/');
+    }
+
+    /** FTP / download-host files — cdn.rostami.app when configured. */
+    private static function remoteUrl(string $storagePath): string
+    {
+        $cdn = self::cdnStorageBase();
+        if ($cdn !== '') {
+            return $cdn.'/'.ltrim($storagePath, '/');
         }
 
-        if (filled($disk) && ! in_array($disk, ['public', 'local'], true)) {
-            return false;
-        }
+        return self::originStorageUrl($storagePath);
+    }
 
-        return true;
+    private static function isRemoteDisk(?string $disk): bool
+    {
+        return filled($disk) && ! in_array($disk, ['public', 'local'], true);
     }
 
     private static function cdnBase(): string
@@ -76,11 +75,19 @@ final class FamilyMediaUrl
         return '';
     }
 
-    private static function localReference(string $storagePath): string
+    /** CDN origin for family files — nginx serves /storage/* on cdn.rostami.app. */
+    private static function cdnStorageBase(): string
     {
-        $ref = MediaUrl::fromDiskPath($storagePath);
+        $cdn = self::cdnBase();
+        if ($cdn === '') {
+            return '';
+        }
 
-        return MediaUrl::resolve($ref, absolute: false)
-            ?? '/storage/'.ltrim($storagePath, '/');
+        $path = parse_url($cdn, PHP_URL_PATH);
+        if (is_string($path) && str_contains($path, '/storage')) {
+            return rtrim($cdn, '/');
+        }
+
+        return rtrim($cdn, '/').'/storage';
     }
 }

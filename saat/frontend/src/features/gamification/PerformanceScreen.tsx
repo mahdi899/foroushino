@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Flame,
@@ -40,6 +40,8 @@ import { getAgentTeamPeersMonthly } from '@/lib/monthlyTopPerformers'
 import { formatDuration, formatMoney, toFa } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { DataGate } from '@/components/pwa/DataGate'
+import { useRemoteDataReady } from '@/providers/SyncProvider'
+import { apiMode } from '@/services'
 import { haptic } from '@/lib/telegram'
 import type { Achievement } from '@/types'
 
@@ -70,6 +72,7 @@ function SectionTitle({ icon: Icon, children }: { icon: LucideIcon; children: Re
 
 export function PerformanceScreen() {
   const navigate = useNavigate()
+  const { syncing } = useRemoteDataReady()
   const agents = useStore((s) => s.agents)
   const teams = useStore((s) => s.teams)
   const role = useStore((s) => s.role)
@@ -158,7 +161,19 @@ export function PerformanceScreen() {
     }
   }, [quality, me])
 
-  if (!me) return null
+  if (!me) {
+    if (apiMode === 'http' && syncing) {
+      return (
+        <Page>
+          <ScreenHeader title="عملکرد من" showBack onBack={() => navigate('/profile')} />
+          <div className="flex justify-center py-16">
+            <div className="h-9 w-9 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+          </div>
+        </Page>
+      )
+    }
+    return <Navigate to="/login" replace />
+  }
   const goalPct = me.callGoal ? Math.round((me.callsToday / me.callGoal) * 100) : 0
   const remaining = Math.max(0, me.callGoal - me.callsToday)
   const goalComplete = remaining === 0 && me.callGoal > 0

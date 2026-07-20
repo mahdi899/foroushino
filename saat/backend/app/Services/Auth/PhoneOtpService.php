@@ -2,7 +2,9 @@
 
 namespace App\Services\Auth;
 
+use App\Models\AppSetting;
 use App\Models\User;
+use App\Services\Sms\MelipayamakClient;
 use App\Support\PasswordLogin;
 use App\Support\PhoneNormalizer;
 use Illuminate\Support\Facades\Cache;
@@ -15,6 +17,7 @@ class PhoneOtpService
     public function __construct(
         private readonly TelegramBotClient $telegram,
         private readonly DemoAuthService $demoAuth,
+        private readonly MelipayamakClient $melipayamak,
     ) {}
 
     /**
@@ -46,7 +49,7 @@ class PhoneOtpService
         }
 
         $passwordAvailable = PasswordLogin::enabledForUser($user);
-        $otpAvailable = (bool) $user->telegram_id;
+        $otpAvailable = $this->otpAvailableFor($user);
 
         if ($method === 'password') {
             if (! $passwordAvailable) {
@@ -62,13 +65,11 @@ class PhoneOtpService
 
         if ($method === 'otp') {
             if (! $otpAvailable) {
-                throw new RuntimeException('تلگرام به این شماره متصل نیست. از رمز عبور یا راهنمای مدیر استفاده کنید.');
+                throw new RuntimeException('ورود با کد تأیید برای این شماره فعال نیست. از رمز عبور استفاده کنید یا با مدیر تماس بگیرید.');
             }
 
-            $this->sendToTelegramUser((int) $user->telegram_id, $this->issueCode("phone:{$normalized}"));
-
             return [
-                'channel' => 'telegram',
+                'channel' => $this->deliverOtp($user, $normalized),
                 'password_available' => $passwordAvailable,
                 'otp_available' => true,
             ];
@@ -91,16 +92,14 @@ class PhoneOtpService
         }
 
         if ($otpAvailable) {
-            $this->sendToTelegramUser((int) $user->telegram_id, $this->issueCode("phone:{$normalized}"));
-
             return [
-                'channel' => 'telegram',
+                'channel' => $this->deliverOtp($user, $normalized),
                 'password_available' => false,
                 'otp_available' => true,
             ];
         }
 
-        throw new RuntimeException('برای ورود به رمز عبور از مدیر بگیرید یا ابتدا از طریق تلگرام وارد شوید.');
+        throw new RuntimeException('برای ورود به رمز عبور از مدیر بگیرید یا پترن OTP ورود را در تنظیمات فعال کنید.');
     }
 
     /**
@@ -129,6 +128,42 @@ class PhoneOtpService
     public function verifyTelegramCode(int $telegramId, string $code): void
     {
         $this->assertValidCode("tg:{$telegramId}", $code);
+    }
+
+    private function otpAvailableFor(User $user): bool
+    {
+        return $this->smsOtpAvailable() || (bool) $user->telegram_id;
+    }
+
+    private function smsOtpAvailable(): bool
+    {
+        if (AppSetting::int('meli_pattern_login') <= 0) {
+            return false;
+        }
+
+        $config = AppSetting::melipayamakConfig();
+
+        return $config['username'] !== '' && $config['password'] !== '';
+    }
+
+    private function deliverOtp(User $user, string $normalizedPhone): string
+    {
+        $code = $this->issueCode("phone:{$normalizedPhone}");
+
+        if ($this->smsOtpAvailable()) {
+            $patternId = AppSetting::int('meli_pattern_login');
+            $this->melipayamak->sendByBaseNumber($normalizedPhone, $patternId, [$code]);
+
+            return 'sms';
+        }
+
+        if ($user->telegram_id) {
+            $this->sendToTelegramUser((int) $user->telegram_id, $code);
+
+            return 'telegram';
+        }
+
+        throw new RuntimeException('ورود با کد تأیید برای این شماره فعال نیست.');
     }
 
     private function sendToTelegramUser(int $telegramId, string $code): void

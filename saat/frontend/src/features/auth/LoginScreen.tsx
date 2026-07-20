@@ -41,6 +41,7 @@ export function LoginScreen() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [otpHint, setOtpHint] = useState('')
+  const [otpChannel, setOtpChannel] = useState<'sms' | 'telegram' | 'demo' | null>(null)
   const [loginOptions, setLoginOptions] = useState({ password: false, otp: false })
   const [otp, setOtp] = useState(() => Array(OTP_LEN).fill(''))
   const [otpPhase, setOtpPhase] = useState<OtpPhase>('idle')
@@ -196,13 +197,14 @@ export function LoginScreen() {
     setOtpError(false)
     setValidatedUpTo(-1)
     setOtpHint('')
+    setOtpChannel(null)
   }
 
-  const goToNextStep = async () => {
+  const requestLoginMethod = async (method: 'password' | 'otp') => {
     haptic('light')
     setLoading(true)
     try {
-      const result = await requestPhoneOtp(phone)
+      const result = await requestPhoneOtp(phone, method)
       setLoginOptions({
         password:
           result.password_available ??
@@ -210,13 +212,18 @@ export function LoginScreen() {
         otp:
           result.otp_available ??
           (result.channel === 'telegram' ||
+            result.channel === 'sms' ||
             result.channel === 'choice' ||
             result.channel === 'demo'),
       })
+      if (result.channel === 'sms' || result.channel === 'telegram' || result.channel === 'demo') {
+        setOtpChannel(result.channel)
+      } else {
+        setOtpChannel(null)
+      }
       setOtpHint(result.hint ?? (result.channel === 'demo' ? 'کد ثابت دمو' : 'کد تأیید ارسال شد.'))
-      if (result.channel === 'choice') {
-        setStep('choice')
-      } else if (result.channel === 'password') {
+
+      if (method === 'password') {
         setPassword('')
         setStep('password')
       } else {
@@ -230,12 +237,18 @@ export function LoginScreen() {
           ? error.message
           : error instanceof Error
             ? error.message
-            : 'ارسال کد ناموفق بود'
+            : method === 'password'
+              ? 'ورود با رمز عبور ناموفق بود'
+              : 'ارسال کد ناموفق بود'
       pushToast(message, 'error')
     } finally {
       setLoading(false)
     }
   }
+
+  const goToPassword = () => void requestLoginMethod('password')
+
+  const goToOtp = () => void requestLoginMethod('otp')
 
   const startPasswordLogin = () => {
     haptic('light')
@@ -252,6 +265,9 @@ export function LoginScreen() {
         password: result.password_available ?? true,
         otp: true,
       })
+      if (result.channel === 'sms' || result.channel === 'telegram' || result.channel === 'demo') {
+        setOtpChannel(result.channel)
+      }
       setOtpHint(result.hint ?? 'کد تأیید ارسال شد.')
       setOtp(Array(OTP_LEN).fill(''))
       setStep('otp')
@@ -376,15 +392,15 @@ export function LoginScreen() {
                     روش ورود را انتخاب کن.
                   </p>
                 </div>
-                <div className="mt-8 space-y-3">
+                <div className="mt-8 flex gap-2">
                   {loginOptions.password && (
                     <button
                       type="button"
                       disabled={loading}
                       onClick={startPasswordLogin}
-                      className="flex h-[50px] w-full items-center justify-center rounded-[10px] bg-[#3390EC] text-[16px] font-semibold text-white active:bg-[#2B7FD4] disabled:opacity-60 dark:bg-[#8774E1] dark:active:bg-[#7563D4]"
+                      className="flex h-[50px] flex-1 items-center justify-center rounded-[10px] bg-[#3390EC] text-[15px] font-semibold text-white active:bg-[#2B7FD4] disabled:opacity-60 dark:bg-[#8774E1] dark:active:bg-[#7563D4]"
                     >
-                      ورود با رمز عبور
+                      رمز عبور
                     </button>
                   )}
                   {loginOptions.otp && (
@@ -392,9 +408,9 @@ export function LoginScreen() {
                       type="button"
                       disabled={loading}
                       onClick={() => void startOtpLogin()}
-                      className="flex h-[50px] w-full items-center justify-center rounded-[10px] border border-[#3390EC]/30 bg-[#3390EC]/8 text-[16px] font-semibold text-[#3390EC] disabled:opacity-60 dark:border-[#8774E1]/30 dark:bg-[#8774E1]/10 dark:text-[#8774E1]"
+                      className="flex h-[50px] flex-1 items-center justify-center rounded-[10px] border border-[#3390EC]/30 bg-[#3390EC]/8 text-[15px] font-semibold text-[#3390EC] disabled:opacity-60 dark:border-[#8774E1]/30 dark:bg-[#8774E1]/10 dark:text-[#8774E1]"
                     >
-                      {loading ? 'در حال ارسال کد…' : 'ورود با کد تلگرام'}
+                      {loading ? '…' : 'کد تأیید'}
                     </button>
                   )}
                 </div>
@@ -552,20 +568,34 @@ export function LoginScreen() {
           className="shrink-0 space-y-4 pt-4"
         >
           {step === 'phone' ? (
-            <div className="space-y-3">
+            <div className="flex gap-2">
               <motion.button
                 type="button"
-                whileTap={{ scale: phoneValid ? 0.98 : 1 }}
+                whileTap={{ scale: phoneValid && !loading ? 0.98 : 1 }}
                 disabled={!phoneValid || loading}
-                onClick={() => void goToNextStep()}
+                onClick={goToPassword}
                 className={cn(
-                  'flex h-[50px] w-full items-center justify-center rounded-[10px] text-[16px] font-semibold text-white',
-                  phoneValid
+                  'flex h-[50px] flex-1 items-center justify-center rounded-[10px] text-[15px] font-semibold text-white',
+                  phoneValid && !loading
                     ? 'bg-[#3390EC] active:bg-[#2B7FD4] dark:bg-[#8774E1] dark:active:bg-[#7563D4]'
                     : 'cursor-not-allowed bg-[#3390EC]/35 dark:bg-[#8774E1]/35',
                 )}
               >
-                {loading ? 'در حال ارسال کد…' : 'ادامه'}
+                {loading ? '…' : 'رمز عبور'}
+              </motion.button>
+              <motion.button
+                type="button"
+                whileTap={{ scale: phoneValid && !loading ? 0.98 : 1 }}
+                disabled={!phoneValid || loading}
+                onClick={goToOtp}
+                className={cn(
+                  'flex h-[50px] flex-1 items-center justify-center rounded-[10px] border text-[15px] font-semibold',
+                  phoneValid && !loading
+                    ? 'border-[#3390EC]/30 bg-[#3390EC]/8 text-[#3390EC] active:bg-[#3390EC]/12 dark:border-[#8774E1]/30 dark:bg-[#8774E1]/10 dark:text-[#8774E1]'
+                    : 'cursor-not-allowed border-[#3390EC]/15 bg-[#3390EC]/5 text-[#3390EC]/40 dark:border-[#8774E1]/15 dark:bg-[#8774E1]/5 dark:text-[#8774E1]/40',
+                )}
+              >
+                {loading ? '…' : 'کد تأیید'}
               </motion.button>
             </div>
           ) : step === 'password' ? (
@@ -591,7 +621,7 @@ export function LoginScreen() {
                   onClick={() => void startOtpLogin()}
                   className="flex w-full items-center justify-center py-2 text-[15px] font-medium text-[#3390EC] disabled:opacity-40 dark:text-[#8774E1]"
                 >
-                  ورود با کد تلگرام
+                  {otpChannel === 'sms' ? 'ورود با کد پیامک' : 'ورود با کد تأیید'}
                 </button>
               )}
             </div>

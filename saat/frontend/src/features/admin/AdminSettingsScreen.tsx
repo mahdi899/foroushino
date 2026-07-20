@@ -286,7 +286,7 @@ export function AdminSettingsScreen() {
                   قالب‌های پیامک
                 </h2>
                 <p className="px-1 text-[11px] font-semibold leading-5 text-text-muted">
-                  برای هر نوع پیامک، کد پترن پنل ملی‌پرداز و در صورت نیاز لینک مقصد را وارد کنید. مقدار ۰ یعنی آن
+                  برای هر نوع پیامک، کد پترن پنل ملی‌پیامک و در صورت نیاز لینک مقصد را وارد کنید. مقدار ۰ یعنی آن
                   قالب غیرفعال است.
                 </p>
                 {ADMIN_SMS_TEMPLATE_GROUPS.map((group) => (

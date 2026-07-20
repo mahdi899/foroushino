@@ -60,8 +60,8 @@ it('sends lead sms through melipayamak pattern api', function (): void {
         ->assertJsonPath('data.rec_id', '987654');
 
     Http::assertSent(function ($request) {
-        return $request->url() === 'https://rest.payamak-panel.com/api/SendSMS/SendByBaseNumber'
-            && $request['bodyId'] === 2222
+        return $request->url() === 'https://rest.payamak-panel.com/api/SendSMS/BaseServiceNumber'
+            && (int) $request['bodyId'] === 2222
             && $request['text'] === 'علی رضایی;https://rostami.app/courses?ref=ABC12'
             && $request['to'] === '09121111111';
     });

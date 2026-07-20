@@ -18,38 +18,10 @@ export function FamilyFeedBootSkeleton({ className }: { className?: string }) {
   );
 }
 
-function TopBarSkeleton({ withNotifications = true }: { withNotifications?: boolean }) {
-  return (
-    <header aria-hidden className="family-topbar">
-      <div className="family-topbar__inner">
-        <div className="family-topbar__back family-topbar__back--skel">
-          <span className="family-skeleton family-topbar-skel__icon" />
-        </div>
-        <div className="family-topbar__profile">
-          <span className="family-skeleton family-topbar-skel__avatar shrink-0 rounded-full" />
-          <div className="family-topbar-skel__text min-w-0">
-            <span className="family-skeleton family-topbar-skel__title" />
-            <span className="family-skeleton family-topbar-skel__sub" />
-          </div>
-        </div>
-        {withNotifications ? (
-          <div className="family-topbar__action family-topbar__action--skel">
-            <span className="family-skeleton family-topbar-skel__icon" />
-          </div>
-        ) : null}
-      </div>
-    </header>
-  );
-}
-
-/** Family frame skeleton while the route RSC resolves (sidebar/topbar placeholders). */
+/** Family frame skeleton while the route RSC resolves (sidebar placeholders). */
 export function FamilyShellLoading() {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-      <div className="lg:hidden">
-        <TopBarSkeleton />
-      </div>
-
       <aside aria-hidden className="family-sidebar hidden h-full w-[min(100%,300px)] shrink-0 flex-col lg:flex">
         <div className="family-sidebar__inner">
           <div className="family-sidebar__toolbar">

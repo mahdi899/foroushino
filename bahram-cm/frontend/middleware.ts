@@ -31,6 +31,8 @@ function hostnameOf(request: NextRequest): string {
 /** Paths that must never be rewritten into `/family/**` on the club apex (assets, PWA files, API). */
 function isFamilyRewriteExempt(pathname: string): boolean {
   if (pathname.startsWith("/family") || pathname.startsWith("/sso")) return true;
+  // Flutter Family Manager admin — served by nginx → :7358 on rostami.club, not Next.js.
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) return true;
   if (pathname.startsWith("/_next") || pathname.includes(".")) return true;
   if (pathname === "/icon" || pathname === "/apple-icon") return true;
   return false;
@@ -68,7 +70,7 @@ async function redirectToFamilyDomain(request: NextRequest, pathname: string, se
   return NextResponse.redirect(`https://${FAMILY_DOMAIN}/sso/bridge?bt=${encodeURIComponent(bridgeToken)}&next=${next}`);
 }
 
-/** rostami.club/panel/** (or /admin) → rostami.app (SSO bridge if logged in, else /panel login). */
+/** rostami.club/panel/** → rostami.app (SSO bridge if logged in, else /panel login). */
 async function redirectToAppDomain(request: NextRequest, pathname: string, search: string): Promise<NextResponse> {
   const bridgeToken = await issueSsoBridgeToken(request);
 
@@ -148,10 +150,7 @@ export async function middleware(request: NextRequest) {
       return redirectToFamilyDomain(request, pathname, search);
     }
 
-    if (
-      hostname === FAMILY_DOMAIN &&
-      (pathname === "/panel" || pathname.startsWith("/panel/") || pathname === "/admin" || pathname.startsWith("/admin/"))
-    ) {
+    if (hostname === FAMILY_DOMAIN && (pathname === "/panel" || pathname.startsWith("/panel/"))) {
       return redirectToAppDomain(request, pathname, search);
     }
 

@@ -122,7 +122,7 @@ export const ADMIN_SETTING_LABELS: Record<string, AdminSettingMeta> = {
   },
   meli_pattern_course: {
     label: 'کد پترن — لینک دوره',
-    hint: 'کد پترن ملی‌پرداز — ۰ یعنی غیرفعال',
+    hint: 'کد پترن ملی‌پیامک — ۰ یعنی غیرفعال',
     type: 'number',
     placeholder: 'مثال: ۱۰۰۱',
   },
@@ -134,7 +134,7 @@ export const ADMIN_SETTING_LABELS: Record<string, AdminSettingMeta> = {
   },
   meli_pattern_channel: {
     label: 'کد پترن — لینک کانال',
-    hint: 'کد پترن ملی‌پرداز — ۰ یعنی غیرفعال',
+    hint: 'کد پترن ملی‌پیامک — ۰ یعنی غیرفعال',
     type: 'number',
     placeholder: 'مثال: ۱۰۰۲',
   },
@@ -146,7 +146,7 @@ export const ADMIN_SETTING_LABELS: Record<string, AdminSettingMeta> = {
   },
   meli_pattern_register: {
     label: 'کد پترن — ثبت‌نام',
-    hint: 'کد پترن ملی‌پرداز — ۰ یعنی غیرفعال',
+    hint: 'کد پترن ملی‌پیامک — ۰ یعنی غیرفعال',
     type: 'number',
     placeholder: 'مثال: ۱۰۰۳',
   },
@@ -158,7 +158,7 @@ export const ADMIN_SETTING_LABELS: Record<string, AdminSettingMeta> = {
   },
   meli_pattern_payment: {
     label: 'کد پترن — پرداخت',
-    hint: 'کد پترن ملی‌پرداز — ۰ یعنی غیرفعال',
+    hint: 'کد پترن ملی‌پیامک — ۰ یعنی غیرفعال',
     type: 'number',
     placeholder: 'مثال: ۱۰۰۴',
   },
@@ -192,6 +192,12 @@ export const ADMIN_SETTING_LABELS: Record<string, AdminSettingMeta> = {
     type: 'url',
     placeholder: 'https://rest.payamak-panel.com/api/SendSMS',
   },
+  meli_pattern_login: {
+    label: 'کد پترن — OTP ورود',
+    hint: 'کد پترن ملی‌پیامک برای پیامک کد ورود — ۰ یعنی غیرفعال (در صورت اتصال تلگرام، از تلگرام استفاده می‌شود)',
+    type: 'number',
+    placeholder: 'مثال: ۲۰۰۱',
+  },
 }
 
 export const ADMIN_TELEPHONY_KEYS = [
@@ -215,6 +221,7 @@ export const ADMIN_SMS_PANEL_KEYS = [
   'melipayamak_username',
   'melipayamak_password',
   'melipayamak_rest_url',
+  'meli_pattern_login',
 ] as const
 
 export const ADMIN_SMS_TEMPLATE_GROUPS = [
@@ -282,6 +289,7 @@ const ADMIN_NUMERIC_BOUNDS: Record<string, { min: number; max: number }> = {
   meli_pattern_register: { min: 0, max: 999_999 },
   meli_pattern_payment: { min: 0, max: 999_999 },
   meli_pattern_custom: { min: 0, max: 999_999 },
+  meli_pattern_login: { min: 0, max: 999_999 },
 }
 
 type SettingValue = string | number | boolean | null

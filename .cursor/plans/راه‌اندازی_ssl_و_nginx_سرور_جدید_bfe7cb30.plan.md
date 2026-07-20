@@ -10,16 +10,16 @@ todos:
     status: completed
   - id: run-setup
     content: اجرای setup-origin-ssl.sh (nginx+certbot+pm2+flutter build) روی سرور بهرام
-    status: in_progress
+    status: completed
   - id: health-check-bahram
     content: تایید نهایی سرور بهرام با curl و pm2 list
-    status: pending
+    status: completed
   - id: sat-ssh
     content: اتصال SSH به سرور سات (185.130.50.24) و بررسی وضعیت فعلی
     status: completed
   - id: sat-bootstrap
     content: اجرای bootstrap-server.sh و deploy.sh پروژه saat روی سرور جدا
-    status: pending
+    status: completed
   - id: sat-ssl
     content: صدور SSL برای sat.center با certbot --nginx
     status: completed

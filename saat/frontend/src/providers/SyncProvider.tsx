@@ -57,9 +57,6 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         if (cancelled) return
 
         if (error instanceof ApiError && error.status === 401) {
-          clearToken()
-          logout()
-          pushToast('نشست منقضی شده. دوباره وارد شو.', 'error')
           return
         }
 

@@ -1,9 +1,11 @@
 <?php
 
+use App\Models\AppSetting;
 use App\Models\User;
 use App\Support\PhoneNormalizer;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 
 beforeEach(function () {
@@ -27,6 +29,67 @@ it('offers both login methods when password and telegram are available', functio
         ->assertJsonPath('data.channel', 'choice')
         ->assertJsonPath('data.password_available', true)
         ->assertJsonPath('data.otp_available', true);
+});
+
+it('sends login otp via melipayamak when pattern is configured', function () {
+    AppSetting::syncMany([
+        'melipayamak_username' => 'panel-user',
+        'melipayamak_password' => 'panel-pass',
+        'meli_pattern_login' => 3001,
+    ]);
+
+    Http::fake([
+        'rest.payamak-panel.com/*' => Http::response(['Value' => 12345], 200),
+    ]);
+
+    $user = makeAgent([
+        'phone' => '09121112233',
+        'password' => Hash::make('SecurePass1234'),
+        'phone_otp_exempt' => true,
+        'telegram_id' => null,
+    ]);
+
+    $this->postJson('/api/v1/auth/phone-otp/request', [
+        'phone' => $user->phone,
+        'method' => 'otp',
+    ])->assertOk()
+        ->assertJsonPath('data.channel', 'sms')
+        ->assertJsonPath('data.hint', 'کد ورود به شماره موبایلت پیامک شد.');
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), 'BaseServiceNumber')
+            && $request['bodyId'] === 3001
+            && $request['to'] === '09121112233';
+    });
+});
+
+it('prefers sms otp over telegram when both are available', function () {
+    AppSetting::syncMany([
+        'melipayamak_username' => 'panel-user',
+        'melipayamak_password' => 'panel-pass',
+        'meli_pattern_login' => 3001,
+    ]);
+
+    Http::fake([
+        'rest.payamak-panel.com/*' => Http::response(['Value' => 12345], 200),
+        'api.telegram.org/*' => Http::response(['ok' => true], 200),
+    ]);
+
+    $user = makeAgent([
+        'phone' => '09123334455',
+        'password' => Hash::make('SecurePass1234'),
+        'phone_otp_exempt' => true,
+        'telegram_id' => 556677,
+    ]);
+
+    $this->postJson('/api/v1/auth/phone-otp/request', [
+        'phone' => $user->phone,
+        'method' => 'otp',
+    ])->assertOk()
+        ->assertJsonPath('data.channel', 'sms');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'BaseServiceNumber'));
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'api.telegram.org'));
 });
 
 it('lets a user with both methods sign in with otp after choosing otp', function () {

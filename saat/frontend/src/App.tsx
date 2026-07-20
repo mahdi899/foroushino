@@ -20,6 +20,7 @@ import { isShiftOpen } from '@/lib/shiftUtils'
 import { SplashScreen } from '@/features/auth/SplashScreen'
 import { OnboardingScreen } from '@/features/auth/OnboardingScreen'
 import { LoginScreen } from '@/features/auth/LoginScreen'
+import { NotFoundScreen } from '@/features/auth/NotFoundScreen'
 import { ShiftStartScreen } from '@/features/shift/ShiftStartScreen'
 import { WorkStatusScreen } from '@/features/status/WorkStatusScreen'
 import { HomeRouter } from '@/features/home/HomeRouter'
@@ -66,6 +67,9 @@ import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { UpdateBanner } from '@/components/pwa/UpdateBanner'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { SyncProvider } from '@/providers/SyncProvider'
+import { AuthSessionWatcher } from '@/providers/AuthSessionWatcher'
+import { apiMode } from '@/services'
+import { getToken } from '@/services/auth'
 import { ShiftPresenceWatcher } from '@/providers/ShiftPresenceWatcher'
 import { DayRolloverWatcher } from '@/providers/DayRolloverWatcher'
 import { useAppShellLayout } from '@/lib/appLayout'
@@ -86,7 +90,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   const hydrated = useStoreHydrated()
   const isAuthed = useStore((s) => s.isAuthed)
   if (!hydrated) return <AuthBootSplash />
-  if (!isAuthed) return <Navigate to="/login" replace />
+  if (!isAuthed || (apiMode === 'http' && !getToken())) return <Navigate to="/login" replace />
   return <>{children}</>
 }
 
@@ -218,7 +222,7 @@ function Shell() {
             <Route path="/admin/catalog" element={<RequireAuth><CatalogAdminScreen /></RequireAuth>} />
             <Route path="/admin/settings" element={<RequireAuth><RequirePermission permission="admin.settings"><AdminSettingsScreen /></RequirePermission></RequireAuth>} />
 
-            <Route path="*" element={<Navigate to={isAuthed ? '/home' : '/'} replace />} />
+            <Route path="*" element={<NotFoundScreen />} />
           </Routes>
         </div>
       </div>
@@ -277,6 +281,7 @@ export default function App() {
         >
           <OfflineBanner />
           <BrowserRouter>
+            <AuthSessionWatcher />
             <ErrorBoundary>
               <Shell />
             </ErrorBoundary>

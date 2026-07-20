@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Navigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Target,
@@ -33,6 +33,8 @@ import {
   todayDateKey,
 } from '@/lib/shiftUtils'
 import { performEndShift } from '@/services/shiftActions'
+import { useRemoteDataReady } from '@/providers/SyncProvider'
+import { apiMode } from '@/services'
 import { WorkPeriodSummaryCard } from '@/features/status/WorkPeriodSummaryCard'
 
 const spring = { type: 'spring' as const, stiffness: 420, damping: 28 }
@@ -215,6 +217,7 @@ function StatTile({
 
 export function WorkStatusScreen() {
   const navigate = useNavigate()
+  const { syncing } = useRemoteDataReady()
   const agent = useStore((s) => s.agents.find((a) => a.id === s.currentAgentId))
   const currentAgentId = useStore((s) => s.currentAgentId)
   const availability = useStore((s) => s.availability)
@@ -292,7 +295,19 @@ export function WorkStatusScreen() {
     [leads, agent?.id, currentAgentId],
   )
 
-  if (!agent) return null
+  if (!agent) {
+    if (apiMode === 'http' && syncing) {
+      return (
+        <Page withNav={false}>
+          <TopBar title="وضعیت کاری من" />
+          <div className="flex justify-center py-16">
+            <div className="h-9 w-9 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
+          </div>
+        </Page>
+      )
+    }
+    return <Navigate to="/login" replace />
+  }
 
   const Icon = availabilityIcon[availability]
   const goalPct = agent.callGoal ? Math.round((agent.callsToday / agent.callGoal) * 100) : 0

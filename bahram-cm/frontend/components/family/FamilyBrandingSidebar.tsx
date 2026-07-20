@@ -1,8 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { useCallback, useState } from 'react';
-import { ArrowRight, Bell, CirclePlay } from 'lucide-react';
+import { Bell, CirclePlay } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
@@ -64,15 +63,6 @@ export function FamilyBrandingSidebar({
       <aside className="family-sidebar hidden h-full w-[min(100%,300px)] shrink-0 flex-col overflow-hidden lg:flex">
         <div className="family-sidebar__inner">
           <nav className="family-sidebar__toolbar" aria-label="میانبرهای خانواده">
-            <Link
-              href="/"
-              className="family-sidebar__tool-btn"
-              title="بازگشت به سایت"
-              aria-label="بازگشت به سایت"
-            >
-              <ArrowRight className="family-sidebar__tool-icon" strokeWidth={1.85} aria-hidden />
-            </Link>
-
             {isMember && (
               <button
                 type="button"

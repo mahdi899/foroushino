@@ -3,6 +3,7 @@
 namespace App\Services\Sms;
 
 use App\Models\AppSetting;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -28,28 +29,15 @@ class MelipayamakClient
             $variables,
         ));
 
-        $response = Http::timeout(20)
-            ->asJson()
-            ->post(rtrim($config['rest_url'], '/').'/SendByBaseNumber', [
-                'username' => $config['username'],
-                'password' => $config['password'],
-                'to' => $this->normalizePhone($to),
-                'bodyId' => $bodyId,
-                'text' => $text,
-            ]);
+        $response = $this->post($config['rest_url'], 'BaseServiceNumber', [
+            'username' => $config['username'],
+            'password' => $config['password'],
+            'to' => $this->normalizePhone($to),
+            'bodyId' => $bodyId,
+            'text' => $text,
+        ]);
 
-        if (! $response->ok()) {
-            throw new RuntimeException('ارتباط با ملی پیامک برقرار نشد.');
-        }
-
-        $value = $response->json('Value') ?? $response->json('value') ?? $response->body();
-        $recId = is_numeric($value) ? (string) $value : trim((string) $value);
-
-        if ($recId === '' || (is_numeric($recId) && (int) $recId < 0)) {
-            throw new RuntimeException($this->errorMessage($recId));
-        }
-
-        return $recId;
+        return $this->parseSendResponse($response);
     }
 
     /**
@@ -66,12 +54,10 @@ class MelipayamakClient
             ];
         }
 
-        $response = Http::timeout(20)
-            ->asJson()
-            ->post(rtrim($config['rest_url'], '/').'/GetCredit', [
-                'username' => $config['username'],
-                'password' => $config['password'],
-            ]);
+        $response = $this->post($config['rest_url'], 'GetCredit', [
+            'username' => $config['username'],
+            'password' => $config['password'],
+        ]);
 
         if (! $response->ok()) {
             return [
@@ -80,7 +66,8 @@ class MelipayamakClient
             ];
         }
 
-        $value = $response->json('Value') ?? $response->json('value');
+        $body = $response->json();
+        $value = is_array($body) ? ($body['Value'] ?? $body['value'] ?? null) : null;
 
         if (is_numeric($value) && (float) $value < 0) {
             return [
@@ -96,13 +83,58 @@ class MelipayamakClient
             ];
         }
 
-        $credit = (float) $value;
-
         return [
             'ok' => true,
             'message' => 'اتصال به پنل ملی‌پیامک برقرار است.',
-            'credit' => $credit,
+            'credit' => (float) $value,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function post(string $restUrl, string $method, array $payload): Response
+    {
+        return Http::timeout(20)
+            ->asForm()
+            ->post($this->apiUrl($restUrl, $method), $payload);
+    }
+
+    private function apiUrl(string $restUrl, string $method): string
+    {
+        $base = rtrim($restUrl, '/');
+        $base = preg_replace('#/(SendByBaseNumber|BaseServiceNumber|GetCredit)$#', '', $base) ?? $base;
+
+        return $base.'/'.$method;
+    }
+
+    private function parseSendResponse(Response $response): string
+    {
+        if (! $response->ok()) {
+            throw new RuntimeException('ارتباط با ملی پیامک برقرار نشد.');
+        }
+
+        $body = $response->json();
+
+        if (! is_array($body)) {
+            throw new RuntimeException('پاسخ نامعتبر از ملی‌پیامک دریافت شد.');
+        }
+
+        $retStatus = $body['RetStatus'] ?? null;
+        if ($retStatus !== null && (int) $retStatus !== 1) {
+            $message = trim((string) ($body['StrRetStatus'] ?? ''));
+
+            throw new RuntimeException($message !== '' ? $message : 'ارسال پیامک از ملی پیامک ناموفق بود.');
+        }
+
+        $value = $body['Value'] ?? $body['value'] ?? $response->body();
+        $recId = is_numeric($value) ? (string) $value : trim((string) $value);
+
+        if ($recId === '' || (is_numeric($recId) && (int) $recId < 0)) {
+            throw new RuntimeException($this->errorMessage($recId));
+        }
+
+        return $recId;
     }
 
     /**

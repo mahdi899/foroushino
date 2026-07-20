@@ -8,12 +8,12 @@ use Tests\TestCase;
 
 class FamilyMediaUrlTest extends TestCase
 {
-    public function test_public_disk_returns_local_storage_path_even_when_cdn_configured(): void
+    public function test_public_disk_uses_app_origin_when_cdn_configured(): void
     {
         config([
-            'family.media.cdn_url' => 'https://cdn.example.com',
+            'bahram.frontend_url' => 'https://rostami.app',
+            'family.media.cdn_url' => 'https://cdn.rostami.app',
             'bahram.media_url' => 'https://cdn.rostami.app',
-            'bahram.arvan.media_domain' => 'cdn.rostami.app',
         ]);
 
         $path = 'media/family/2026/07/image/demo.webp';
@@ -22,7 +22,7 @@ class FamilyMediaUrlTest extends TestCase
 
         $url = FamilyMediaUrl::fromPath($path, 'public');
 
-        $this->assertSame('/storage/'.$path, $url);
+        $this->assertSame('https://rostami.app/storage/'.$path, $url);
     }
 
     public function test_remote_disk_uses_cdn_when_file_not_on_local_public(): void
@@ -34,7 +34,7 @@ class FamilyMediaUrlTest extends TestCase
 
         $url = FamilyMediaUrl::fromPath($path, 'family_media_ftp');
 
-        $this->assertSame('https://cdn.example.com/'.$path, $url);
+        $this->assertSame('https://cdn.example.com/storage/'.$path, $url);
     }
 
     public function test_legacy_remote_disk_still_serves_local_when_public_copy_exists(): void
@@ -47,15 +47,16 @@ class FamilyMediaUrlTest extends TestCase
 
         $url = FamilyMediaUrl::fromPath($path, 'family_media_ftp');
 
-        $this->assertSame('/storage/'.$path, $url);
+        $this->assertSame('https://cdn.example.com/storage/'.$path, $url);
     }
 
-    public function test_local_family_media_returns_relative_storage_path_without_cdn(): void
+    public function test_local_family_media_returns_frontend_origin_without_cdn(): void
     {
         config([
             'family.media.cdn_url' => '',
             'bahram.media_url' => '',
             'bahram.arvan.media_domain' => '',
+            'bahram.frontend_url' => 'http://localhost:3000',
         ]);
 
         $path = 'media/family/2026/07/image/demo.webp';
@@ -64,7 +65,7 @@ class FamilyMediaUrlTest extends TestCase
 
         $url = FamilyMediaUrl::fromPath($path, 'public');
 
-        $this->assertSame('/storage/'.$path, $url);
+        $this->assertSame('http://localhost:3000/storage/'.$path, $url);
     }
 
     public function test_cache_buster_appends_version_query(): void
