@@ -172,7 +172,7 @@ export function StoryViewer({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         key={current.id}
-                        src={current.media.url}
+                        src={resolveFamilyMediaPlaybackUrl(current.media.url) ?? current.media.url}
                         alt={current.caption ?? ''}
                         className="h-full w-full object-cover"
                       />

@@ -49,3 +49,6 @@ export function resolveFamilyMediaPlaybackUrl(url: string | null | undefined): s
 export function resolveFamilyMediaPosterUrl(url: string | null | undefined): string | null {
   return resolveFamilyMediaPlaybackUrl(url);
 }
+
+/** Images, voice, video — same download-host URL resolver. */
+export const resolveFamilyMediaUrl = resolveFamilyMediaPlaybackUrl;

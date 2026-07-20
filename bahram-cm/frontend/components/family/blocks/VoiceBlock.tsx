@@ -4,12 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { Pause, Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
-import { enqueueFamilyMediaLoad } from '@/lib/family/mediaLoadQueue';
-import {
-  getFamilyMediaBlobUrl,
-  readFamilyMediaBlob,
-  tryCacheFamilyMediaBlob,
-} from '@/lib/family/mediaCache';
+import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 import { formatPlaybackSpeed } from '@/lib/family/playback';
 import { sendMediaProgress } from '@/lib/family/api';
 import type { FamilyMediaBlock } from '@/lib/family/types';
@@ -110,10 +105,10 @@ export function VoiceBlock({
   const scrubRatioRef = useRef(0);
   const playingBeforeScrubRef = useRef(false);
   const seekPositionRef = useRef(0);
-  const blobUrlRef = useRef<string | null>(null);
   const loadTaskRef = useRef<Promise<boolean> | null>(null);
   const [loadRequested, setLoadRequested] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const streamUrl = useMemo(() => resolveFamilyMediaUrl(media.url), [media.url]);
   const { activeId, register, unregister, requestPlay, notifyPaused, setNowPlaying, updateNowPlayingProgress, playbackRate, cyclePlaybackRate } =
     useFamilyMediaPlayer();
   const [playing, setPlaying] = useState(false);
@@ -139,18 +134,11 @@ export function VoiceBlock({
     }
   }, [activeId, media.id]);
 
-  // Load voice into a blob: URL only — never point <audio> at a remote file URL (IDM / forced download).
+  // Stream voice directly from download host — no full-file blob download.
   const loadAudio = useCallback(async (): Promise<boolean> => {
-    if (!media.url) return false;
-
-    if (blobUrlRef.current) {
-      const audio = audioRef.current;
-      if (audio && audio.src !== blobUrlRef.current) {
-        audio.src = blobUrlRef.current;
-      }
-      setAudioReady(true);
-      setLoadError(false);
-      return true;
+    if (!streamUrl) {
+      setLoadError(true);
+      return false;
     }
 
     if (loadTaskRef.current) {
@@ -158,44 +146,28 @@ export function VoiceBlock({
     }
 
     setLoadRequested(true);
-    setAudioReady(false);
     setLoadError(false);
 
-    const task = enqueueFamilyMediaLoad('full', media.id, async () => {
-      const blob =
-        (await readFamilyMediaBlob('full', media.id, media.url!)) ??
-        (await tryCacheFamilyMediaBlob(media.url!, media.id, 'full', media.mime_type));
-      if (!blob) throw new Error('voice fetch failed');
-
-      const objectUrl = getFamilyMediaBlobUrl(`voice:${media.id}`, blob);
-      blobUrlRef.current = objectUrl;
-
+    const task = (async () => {
       const audio = audioRef.current;
-      if (audio) {
-        const savedTime = audio.currentTime || seekPositionRef.current || 0;
-        const wasPlaying = !audio.paused;
-        audio.src = objectUrl;
-        await waitForMetadata(audio);
-        if (savedTime > 0) {
-          const actual = await seekAudio(audio, savedTime);
-          seekPositionRef.current = actual;
-          setProgress(actual);
-        }
-        if (wasPlaying) {
-          try {
-            await audio.play();
-          } catch {
-            // autoplay blocked
-          }
-        }
+      if (!audio) return false;
+
+      if (!audio.src) {
+        audio.src = streamUrl;
+        audio.preload = 'metadata';
+        audio.load();
+      } else if (!audio.src.includes(streamUrl.split('?')[0].split('#')[0])) {
+        audio.src = streamUrl;
+        audio.preload = 'metadata';
+        audio.load();
       }
-    })
-      .then(() => {
-        const ready = Boolean(blobUrlRef.current);
-        setAudioReady(ready);
-        setLoadError(!ready);
-        return ready;
-      })
+
+      await waitForMetadata(audio);
+      const ready = audio.readyState >= HTMLMediaElement.HAVE_METADATA;
+      setAudioReady(ready);
+      setLoadError(!ready);
+      return ready;
+    })()
       .catch(() => {
         setAudioReady(false);
         setLoadError(true);
@@ -207,17 +179,13 @@ export function VoiceBlock({
 
     loadTaskRef.current = task;
     return task;
-  }, [media.id, media.mime_type, media.url]);
+  }, [streamUrl]);
 
   useEffect(() => {
     return () => {
       loadTaskRef.current = null;
-      if (blobUrlRef.current) {
-        URL.revokeObjectURL(blobUrlRef.current);
-        blobUrlRef.current = null;
-      }
     };
-  }, [media.id, media.url]);
+  }, [streamUrl]);
 
   const ensureAudioReady = useCallback(async () => loadAudio(), [loadAudio]);
 
@@ -323,7 +291,7 @@ export function VoiceBlock({
     }
 
     const ready = await ensureAudioReady();
-    if (!ready || !blobUrlRef.current) {
+    if (!ready) {
       setLoadError(true);
       return;
     }
@@ -358,7 +326,7 @@ export function VoiceBlock({
     }).catch(() => {});
   };
 
-  if (!media.url) {
+  if (!streamUrl) {
     return (
       <div className="family-voice family-voice--loading" aria-busy aria-label="در حال پردازش صدا">
         <span className="family-voice__spinner" aria-hidden />
@@ -373,7 +341,8 @@ export function VoiceBlock({
     >
       <audio
         ref={audioRef}
-        preload="none"
+        src={streamUrl}
+        preload="metadata"
         playsInline
         onPlay={() => {
           setPlaying(true);
@@ -407,6 +376,8 @@ export function VoiceBlock({
         onLoadedMetadata={(e) => {
           const d = e.currentTarget.duration || media.duration || 0;
           if (d > 0) setDuration(d);
+          setAudioReady(true);
+          setLoadError(false);
         }}
         onDurationChange={(e) => {
           const d = e.currentTarget.duration;
@@ -420,6 +391,10 @@ export function VoiceBlock({
           if (activeId === media.id) {
             updateNowPlayingProgress(media.id, t, readDuration(e.currentTarget));
           }
+        }}
+        onError={() => {
+          setAudioReady(false);
+          setLoadError(true);
         }}
         className="hidden"
       />

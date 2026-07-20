@@ -5,10 +5,7 @@ import { Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useDelayedInView } from '@/hooks/useDelayedInView';
 import { FamilyVideoModal } from '@/components/family/FamilyVideoModal';
-import {
-  resolveFamilyMediaPlaybackUrl,
-  resolveFamilyMediaPosterUrl,
-} from '@/lib/family/mediaPlaybackUrl';
+import { resolveFamilyMediaPosterUrl, resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 import type { FamilyMediaBlock } from '@/lib/family/types';
 
 function previewSrc(url: string): string {
@@ -21,7 +18,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const [modalOpen, setModalOpen] = useState(false);
   const [posterReady, setPosterReady] = useState(false);
 
-  const streamUrl = resolveFamilyMediaPlaybackUrl(media.url);
+  const streamUrl = resolveFamilyMediaUrl(media.url);
   const posterUrl = resolveFamilyMediaPosterUrl(media.poster_url);
   const showFramePreview = !posterUrl && Boolean(streamUrl);
   const framePreviewReady = useDelayedInView(containerRef, 80, showFramePreview, true);

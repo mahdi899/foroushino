@@ -1,5 +1,5 @@
-import { getToken } from './auth'
-import { API_BASE_URL, http } from './http'
+import { getToken } from '@/services/auth'
+import { API_BASE_URL, http } from '@/services/http'
 
 export type BackupView = {
   is_auto_enabled: boolean
