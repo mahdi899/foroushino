@@ -14,6 +14,7 @@ use App\Modules\TelegramBot\Services\MainMenuKeyboard;
 use App\Modules\TelegramBot\Services\RegistrationFlowService;
 use App\Modules\TelegramBot\Services\RequiredChatMembershipService;
 use App\Modules\TelegramBot\Services\TelegramCheckoutService;
+use App\Modules\TelegramBot\Services\TelegramOutboundMessenger;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
 use App\Modules\TelegramBot\Services\TelegramPurchaseFlowService;
 use App\Modules\TelegramBot\Services\TelegramSubscriberEligibility;
@@ -33,6 +34,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         private readonly TelegramSubscriberEligibility $subscriberEligibility,
         private readonly TelegramPurchaseFlowService $purchaseFlow,
         private readonly TelegramCourseAccessPresenter $courseAccessPresenter,
+        private readonly TelegramOutboundMessenger $outbound,
     ) {}
 
     public function handle(TelegramUpdate $update, TelegramBot $bot): void
@@ -172,7 +174,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
 
         if ($requiresSub && ! $this->subscriberEligibility->hasQualifyingAccess($account)) {
             $this->answer($client, $callbackId, 'اشتراک لازم است.', true);
-            $client->sendMessage($chatId, $this->subscriberEligibility->denialMessage());
+            $this->outbound->reply($bot, $chatId, $this->subscriberEligibility->denialMessage());
 
             return;
         }
@@ -189,7 +191,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         ]);
 
         $this->answer($client, $callbackId, 'پیام خود را بنویسید.');
-        $client->sendMessage($chatId, 'پیام پشتیبانی خود را بنویسید (متن یا رسانه). برای انصراف «لغو»:');
+        $this->outbound->reply($bot, $chatId, 'پیام پشتیبانی خود را بنویسید (متن یا رسانه). برای انصراف «لغو»:');
     }
 
     private function handleMembershipRecheck($client, TelegramBot $bot, TelegramAccount $account, int $chatId, string $callbackId): void
@@ -199,7 +201,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         if ($this->membership->isSatisfied($bot, $account)) {
             $this->answer($client, $callbackId, '✅ عضویت تأیید شد.');
             if ($account->isLinked() && $account->hasVerifiedMobile()) {
-                $client->sendMessage($chatId, 'منوی اصلی:', [
+                $this->outbound->reply($bot, $chatId, 'منوی اصلی:', [
                     'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
                 ]);
             }
@@ -228,7 +230,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
 
         if (! $account->isLinked() || ! $account->hasVerifiedMobile()) {
             $this->answer($client, $callbackId, 'ابتدا ثبت‌نام و تأیید موبایل را کامل کنید.', true);
-            $client->sendMessage($chatId, 'برای خرید، ابتدا از /start ثبت‌نام را کامل کنید.');
+            $this->outbound->reply($bot, $chatId, 'برای خرید، ابتدا از /start ثبت‌نام را کامل کنید.');
 
             return;
         }
@@ -243,7 +245,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         if ($this->courseAccessPresenter->owns($account, $product)) {
             $this->answer($client, $callbackId, 'قبلاً خریده‌اید', true);
             $view = $this->courseAccessPresenter->present($bot, $account, $product);
-            $client->sendMessage($chatId, $view['text'], $view['options']);
+            $this->outbound->reply($bot, $chatId, $view['text'], $view['options']);
 
             return;
         }
@@ -251,7 +253,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         $product->loadMissing('seminar');
         if ($product->seminar && $product->seminar->isFull()) {
             $this->answer($client, $callbackId, 'ظرفیت این سمینار تکمیل شده است.', true);
-            $client->sendMessage($chatId, "⛔ سمینار «{$product->seminar->title}» ظرفیتش تکمیل شده است.");
+            $this->outbound->reply($bot, $chatId, "⛔ سمینار «{$product->seminar->title}» ظرفیتش تکمیل شده است.");
 
             return;
         }
@@ -260,7 +262,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         $c2c = $this->checkout->cardToCardEnabled($bot);
         if (! $zp && ! $c2c) {
             $this->answer($client, $callbackId, 'هیچ روش پرداختی فعال نیست.', true);
-            $client->sendMessage($chatId, '⛔ پرداخت آنلاین و کارت‌به‌کارت هر دو غیرفعال‌اند. با پشتیبانی تماس بگیرید.');
+            $this->outbound->reply($bot, $chatId, '⛔ پرداخت آنلاین و کارت‌به‌کارت هر دو غیرفعال‌اند. با پشتیبانی تماس بگیرید.');
 
             return;
         }
@@ -283,7 +285,8 @@ class CallbackQueryHandler implements UpdateHandlerInterface
             : 'مبلغ: '.number_format($sale ?: $base).' تومان';
 
         $this->answer($client, $callbackId, 'کد تخفیف؟');
-        $client->sendMessage(
+        $this->outbound->reply(
+            $bot,
             $chatId,
             "🛒 {$product->title}\n{$priceBlock}\n\n"
             ."اگر کد تخفیف دارید همین‌جا بفرستید (همان کدهای پنل سایت).\n"

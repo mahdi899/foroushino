@@ -8,6 +8,7 @@ use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Services\DiscountService;
 use App\Services\Exceptions\PaymentException;
+use App\Modules\TelegramBot\Services\TelegramOutboundMessenger;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -25,6 +26,7 @@ class TelegramPurchaseFlowService
         private readonly DiscountService $discounts,
         private readonly MainMenuKeyboard $mainMenu,
         private readonly TelegramCardToCardFlowService $cardToCardFlow,
+        private readonly TelegramOutboundMessenger $outbound,
     ) {}
 
     public function applyDiscountCodeAndContinue(
@@ -39,7 +41,7 @@ class TelegramPurchaseFlowService
         $product = $this->catalog->findForTelegram($productId);
 
         if ($product === null) {
-            $client->sendMessage($chatId, 'محصول یافت نشد. دوباره از منو خرید کنید.');
+            $this->outbound->reply($bot, $chatId, 'محصول یافت نشد. دوباره از منو خرید کنید.');
             $this->conversations->transition($conversation, ConversationState::Idle, ['checkout' => null]);
 
             return;
@@ -47,7 +49,7 @@ class TelegramPurchaseFlowService
 
         if (in_array(trim($code), ['لغو', '/cancel', '-'], true)) {
             $this->conversations->transition($conversation, ConversationState::Idle, ['checkout' => null]);
-            $client->sendMessage($chatId, 'خرید لغو شد.', [
+            $this->outbound->reply($bot, $chatId, 'خرید لغو شد.', [
                 'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
             ]);
 
@@ -64,7 +66,7 @@ class TelegramPurchaseFlowService
             );
         } catch (ValidationException $e) {
             $message = collect($e->errors())->flatten()->first() ?: 'کد تخفیف معتبر نیست.';
-            $client->sendMessage($chatId, (string) $message."\n\nدوباره کد را بفرستید یا «بدون کد تخفیف» را بزنید.");
+            $this->outbound->reply($bot, $chatId, (string) $message."\n\nدوباره کد را بفرستید یا «بدون کد تخفیف» را بزنید.");
 
             return;
         }
@@ -77,7 +79,8 @@ class TelegramPurchaseFlowService
             ],
         ]);
 
-        $client->sendMessage(
+        $this->outbound->reply(
+            $bot,
             $chatId,
             '✅ کد «'.$coupon.'» اعمال شد.'
             ."\nتخفیف: ".number_format((int) $preview['coupon_discount']).' تومان'
@@ -97,14 +100,14 @@ class TelegramPurchaseFlowService
         $client = $this->clients->forBot($bot);
         $product = $this->catalog->findForTelegram($productId);
         if ($product === null) {
-            $client->sendMessage($chatId, 'محصول یافت نشد.');
+            $this->outbound->reply($bot, $chatId, 'محصول یافت نشد.');
 
             return;
         }
 
         $product->loadMissing('seminar');
         if ($product->seminar && $product->seminar->isFull()) {
-            $client->sendMessage($chatId, "⛔ سمینار «{$product->seminar->title}» ظرفیتش تکمیل شده است.");
+            $this->outbound->reply($bot, $chatId, "⛔ سمینار «{$product->seminar->title}» ظرفیتش تکمیل شده است.");
 
             return;
         }
@@ -121,7 +124,7 @@ class TelegramPurchaseFlowService
         $c2c = $this->checkout->cardToCardEnabled($bot);
 
         if ($zp && $c2c) {
-            $client->sendMessage($chatId, "{$product->title}\n\nروش پرداخت را انتخاب کنید:", [
+            $this->outbound->reply($bot, $chatId, "{$product->title}\n\nروش پرداخت را انتخاب کنید:", [
                 'reply_markup' => [
                     'inline_keyboard' => [
                         [[
