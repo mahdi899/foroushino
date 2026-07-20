@@ -4,9 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/cn';
+import { resolveFamilyMediaPlaybackUrl } from '@/lib/family/mediaPlaybackUrl';
 import { fontClassName } from '@/lib/fonts';
 import { getStories } from '@/lib/family/api';
+import { resolveFamilyMediaPlaybackUrl } from '@/lib/family/mediaPlaybackUrl';
 import type { FamilyStory } from '@/lib/family/types';
 
 const STORY_DURATION_MS = 8000;
@@ -160,7 +161,7 @@ export function StoryViewer({
                       // eslint-disable-next-line jsx-a11y/media-has-caption
                       <video
                         key={current.id}
-                        src={current.media.url}
+                        src={resolveFamilyMediaPlaybackUrl(current.media.url) ?? current.media.url}
                         className="h-full w-full object-cover"
                         autoPlay
                         playsInline

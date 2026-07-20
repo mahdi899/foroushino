@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { X } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { FamilyBodyPortal } from '@/components/family/FamilyBodyPortal';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
@@ -26,7 +26,6 @@ export function FamilyVideoModal({
   mediaId: number;
   postId: number;
   durationHint?: number | null;
-  /** Prefer 9:16 fullscreen layout when true; refined from video metadata when available. */
   portrait?: boolean;
   onClose: () => void;
 }) {
@@ -35,14 +34,18 @@ export function FamilyVideoModal({
   const [isPortrait, setIsPortrait] = useState(portrait);
   const [videoAspect, setVideoAspect] = useState<string | null>(null);
   const [coarsePointer, setCoarsePointer] = useState(readCoarsePointer);
+  const [buffering, setBuffering] = useState(true);
+  const [playbackError, setPlaybackError] = useState(false);
   const { register, unregister, requestPlay, notifyPaused, dismissNowPlaying } = useFamilyMediaPlayer();
 
   useEffect(() => {
     if (open) {
       setIsPortrait(portrait);
       setVideoAspect(null);
+      setBuffering(true);
+      setPlaybackError(false);
     }
-  }, [open, portrait]);
+  }, [open, portrait, url]);
 
   useEffect(() => {
     const media = window.matchMedia('(pointer: coarse)');
@@ -76,7 +79,6 @@ export function FamilyVideoModal({
   useEffect(() => {
     if (!open) return;
 
-    // Hide voice/now-playing chrome while the fullscreen video is up.
     dismissNowPlaying();
 
     const el = videoRef.current;
@@ -85,7 +87,12 @@ export function FamilyVideoModal({
     el.src = url;
     register(mediaId, el);
     requestPlay(mediaId);
-    void el.play().catch(() => {});
+    setBuffering(true);
+    setPlaybackError(false);
+    void el.play().catch(() => {
+      setPlaybackError(true);
+      setBuffering(false);
+    });
 
     return () => {
       el.pause();
@@ -117,19 +124,6 @@ export function FamilyVideoModal({
       window.removeEventListener('keydown', onKey);
     };
   }, [handleClose, open]);
-
-  useEffect(() => {
-    const el = videoRef.current;
-    if (!el || !open) return;
-
-    const onWebkitEndFullscreen = () => {
-      if (document.fullscreenElement) return;
-      el.style.objectFit = 'contain';
-    };
-
-    el.addEventListener('webkitendfullscreen', onWebkitEndFullscreen);
-    return () => el.removeEventListener('webkitendfullscreen', onWebkitEndFullscreen);
-  }, [open]);
 
   const reportProgress = (event: 'play' | 'pause' | 'complete', position: number, duration: number) => {
     const rounded = Math.floor(position);
@@ -180,6 +174,32 @@ export function FamilyVideoModal({
           style={stageStyle}
           onClick={(e) => e.stopPropagation()}
         >
+          {buffering && !playbackError ? (
+            <div className="absolute inset-0 z-[1] flex items-center justify-center bg-black/35">
+              <Loader2 className="h-10 w-10 animate-spin text-white/90" aria-label="در حال بارگذاری ویدیو" />
+            </div>
+          ) : null}
+
+          {playbackError ? (
+            <div className="absolute inset-0 z-[1] flex flex-col items-center justify-center gap-3 px-6 text-center text-white/85">
+              <p className="text-sm">پخش ویدیو ممکن نشد.</p>
+              <button
+                type="button"
+                className="rounded-full bg-white/15 px-4 py-2 text-sm backdrop-blur-sm transition hover:bg-white/25"
+                onClick={() => {
+                  const el = videoRef.current;
+                  if (!el) return;
+                  setPlaybackError(false);
+                  setBuffering(true);
+                  el.load();
+                  void el.play().catch(() => setPlaybackError(true));
+                }}
+              >
+                تلاش دوباره
+              </button>
+            </div>
+          ) : null}
+
           <video
             ref={videoRef}
             playsInline
@@ -195,6 +215,16 @@ export function FamilyVideoModal({
                 setIsPortrait(video.videoHeight > video.videoWidth);
                 setVideoAspect(`${video.videoWidth} / ${video.videoHeight}`);
               }
+            }}
+            onCanPlay={() => setBuffering(false)}
+            onPlaying={() => {
+              setBuffering(false);
+              setPlaybackError(false);
+            }}
+            onWaiting={() => setBuffering(true)}
+            onError={() => {
+              setBuffering(false);
+              setPlaybackError(true);
             }}
             onPlay={(e) => {
               reportProgress(
