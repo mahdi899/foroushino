@@ -26,11 +26,11 @@ html[data-family-host='1'] body {
 
   /* Feed media caps — balanced between scroll and readability */
   --family-media-max-w: min(100%, 24rem);
-  --family-media-max-h: min(70vh, 26rem);
-  --family-media-album-max-h: min(70vh, 24rem);
+  --family-media-max-h: min(70dvh, 26rem);
+  --family-media-album-max-h: min(70dvh, 24rem);
   --family-media-portrait-w: min(100%, 20rem);
-  --family-media-portrait-h: min(75vh, 28rem);
-  --family-media-landscape-h: min(62vh, 21rem);
+  --family-media-portrait-h: min(75dvh, 28rem);
+  --family-media-landscape-h: min(62dvh, 21rem);
   --family-voice-max-w: 100%;
 
   /* Panel light tokens */
@@ -932,6 +932,13 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   max-height: var(--family-media-max-h);
   align-self: center;
   margin-inline: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.family-feed-video__play {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .family-feed-video--portrait {
@@ -967,8 +974,12 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
   background: #000;
   overscroll-behavior: none;
+  touch-action: manipulation;
   /* Parent .family-body-portal is pointer-events: none — must re-enable for close/backdrop. */
   pointer-events: auto;
 }
@@ -1004,12 +1015,19 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   justify-content: center;
   min-width: 0;
   min-height: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .family-video-modal__player {
   display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   background: #000;
   outline: none;
+  object-fit: contain;
 }
 
 /* 9:16 — edge-to-edge fullscreen */
@@ -1027,11 +1045,10 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
   height: 100%;
   max-width: 100vw;
   max-height: 100dvh;
-  object-fit: contain;
   border-radius: 0;
 }
 
-/* 16:9 — contained cinematic frame */
+/* Landscape — cinematic frame on desktop; edge-to-edge on phones */
 .family-video-modal--landscape {
   padding:
     max(1rem, env(safe-area-inset-top))
@@ -1043,16 +1060,46 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 
 .family-video-modal--landscape .family-video-modal__stage {
   width: min(100%, 56rem);
-  max-height: min(92dvh, calc(100vw * 9 / 16 + 4rem));
+  max-height: min(92dvh, 100%);
 }
 
 .family-video-modal--landscape .family-video-modal__player {
   width: 100%;
-  max-height: min(92dvh, calc((min(100vw, 56rem) - 2rem) * 9 / 16));
-  aspect-ratio: 16 / 9;
-  object-fit: contain;
+  height: auto;
+  max-height: min(92dvh, 100%);
+  aspect-ratio: var(--family-video-aspect, 16 / 9);
   border-radius: 0.75rem;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+}
+
+@media (max-width: 639px) {
+  .family-video-modal--landscape {
+    padding:
+      env(safe-area-inset-top, 0px)
+      env(safe-area-inset-right, 0px)
+      env(safe-area-inset-bottom, 0px)
+      env(safe-area-inset-left, 0px);
+    background: #000;
+  }
+
+  .family-video-modal--landscape .family-video-modal__stage {
+    width: 100%;
+    max-height: 100dvh;
+  }
+
+  .family-video-modal--landscape .family-video-modal__player {
+    width: 100%;
+    height: 100%;
+    max-height: 100dvh;
+    aspect-ratio: unset;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .family-video-modal__close {
+    top: max(0.625rem, env(safe-area-inset-top));
+    inset-inline-end: max(0.625rem, env(safe-area-inset-right, 0px));
+  }
 }
 
 .family-voice {

@@ -3,6 +3,7 @@
 import { createContext, useContext, useLayoutEffect, useMemo, useState } from 'react';
 import {
   applyResolvedTheme,
+  bootstrapSiteTheme,
   readResolvedTheme,
   type SiteTheme,
 } from '@/lib/site-theme';
@@ -19,8 +20,9 @@ const PanelThemeContext = createContext<PanelThemeContextValue | null>(null);
 
 export function PanelThemeBoot() {
   useLayoutEffect(() => {
-    applyResolvedTheme(readResolvedTheme());
+    const cleanup = bootstrapSiteTheme();
     document.documentElement.setAttribute('data-theme-ready', '1');
+    return cleanup;
   }, []);
 
   return null;
@@ -31,22 +33,36 @@ export function PanelThemeProvider({ children }: { children: React.ReactNode }) 
   const [mounted, setMounted] = useState(false);
 
   useLayoutEffect(() => {
-    const initial = readResolvedTheme();
-    setTheme(initial);
-    applyResolvedTheme(initial);
+    const cleanup = bootstrapSiteTheme();
+    setTheme(readResolvedTheme());
     setMounted(true);
-  }, []);
 
-  useLayoutEffect(() => {
-    if (!mounted) return;
-    applyResolvedTheme(theme);
-  }, [theme, mounted]);
+    const obs = new MutationObserver(() => {
+      const next = document.documentElement.getAttribute('data-theme');
+      if (next === 'light' || next === 'dark') setTheme(next);
+    });
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+
+    return () => {
+      cleanup();
+      obs.disconnect();
+    };
+  }, []);
 
   const value = useMemo(
     () => ({
       theme,
       mounted,
-      toggleTheme: () => setTheme((t) => (t === 'dark' ? 'light' : 'dark')),
+      toggleTheme: () => {
+        setTheme((current) => {
+          const next: PanelTheme = current === 'dark' ? 'light' : 'dark';
+          applyResolvedTheme(next);
+          return next;
+        });
+      },
     }),
     [theme, mounted],
   );

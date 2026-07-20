@@ -68,11 +68,16 @@ export function readResolvedTheme(): SiteTheme {
   return readSystemTheme();
 }
 
-/** Keeps `<html data-theme>`, panel root, storage, and cookie in sync. */
-export function applyResolvedTheme(theme: SiteTheme) {
+/** DOM only — used when following OS theme before the user picks light/dark. */
+export function syncThemeDom(theme: SiteTheme) {
   document.documentElement.setAttribute("data-theme", theme);
   document.getElementById("panel-root")?.setAttribute("data-panel-theme", theme);
   document.getElementById("family-root")?.setAttribute("data-family-theme", theme);
+}
+
+/** User choice — keeps `<html>`, roots, storage, and cookie in sync. */
+export function applyResolvedTheme(theme: SiteTheme) {
+  syncThemeDom(theme);
   try {
     localStorage.setItem(SITE_THEME_STORAGE_KEY, theme);
     localStorage.removeItem(LEGACY_PANEL_THEME_STORAGE_KEY);
@@ -80,4 +85,26 @@ export function applyResolvedTheme(theme: SiteTheme) {
   } catch {
     /* noop */
   }
+}
+
+/**
+ * After hydration: apply stored preference, or follow `prefers-color-scheme` until toggled.
+ * Returns a cleanup when listening for OS theme changes.
+ */
+export function bootstrapSiteTheme(): () => void {
+  const stored = readStoredTheme();
+  if (stored) {
+    applyResolvedTheme(stored);
+    return () => {};
+  }
+
+  const applySystem = () => syncThemeDom(readSystemTheme());
+  applySystem();
+
+  const media = window.matchMedia("(prefers-color-scheme: dark)");
+  const onChange = () => {
+    if (!readStoredTheme()) applySystem();
+  };
+  media.addEventListener("change", onChange);
+  return () => media.removeEventListener("change", onChange);
 }

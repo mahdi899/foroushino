@@ -1,11 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { FamilyBodyPortal } from '@/components/family/FamilyBodyPortal';
 import { useFamilyMediaPlayer } from '@/lib/family/FamilyMediaPlayerContext';
 import { sendMediaProgress } from '@/lib/family/api';
+
+function readCoarsePointer(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(pointer: coarse)').matches;
+}
 
 export function FamilyVideoModal({
   open,
@@ -28,11 +33,24 @@ export function FamilyVideoModal({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const lastReported = useRef(0);
   const [isPortrait, setIsPortrait] = useState(portrait);
+  const [videoAspect, setVideoAspect] = useState<string | null>(null);
+  const [coarsePointer, setCoarsePointer] = useState(readCoarsePointer);
   const { register, unregister, requestPlay, notifyPaused, dismissNowPlaying } = useFamilyMediaPlayer();
 
   useEffect(() => {
-    if (open) setIsPortrait(portrait);
+    if (open) {
+      setIsPortrait(portrait);
+      setVideoAspect(null);
+    }
   }, [open, portrait]);
+
+  useEffect(() => {
+    const media = window.matchMedia('(pointer: coarse)');
+    const sync = () => setCoarsePointer(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
 
   const stopPlayback = useCallback(() => {
     const el = videoRef.current;
@@ -78,16 +96,40 @@ export function FamilyVideoModal({
 
   useEffect(() => {
     if (!open) return;
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') handleClose();
     };
+
+    const feedScroll = document.querySelector('.family-feed-scroll');
+    const feedEl = feedScroll instanceof HTMLElement ? feedScroll : null;
+    const prevFeedOverflow = feedEl?.style.overflow ?? '';
+
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    if (feedEl) feedEl.style.overflow = 'hidden';
+
     window.addEventListener('keydown', onKey);
     return () => {
       document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      if (feedEl) feedEl.style.overflow = prevFeedOverflow;
       window.removeEventListener('keydown', onKey);
     };
   }, [handleClose, open]);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el || !open) return;
+
+    const onWebkitEndFullscreen = () => {
+      if (document.fullscreenElement) return;
+      el.style.objectFit = 'contain';
+    };
+
+    el.addEventListener('webkitendfullscreen', onWebkitEndFullscreen);
+    return () => el.removeEventListener('webkitendfullscreen', onWebkitEndFullscreen);
+  }, [open]);
 
   const reportProgress = (event: 'play' | 'pause' | 'complete', position: number, duration: number) => {
     const rounded = Math.floor(position);
@@ -103,6 +145,11 @@ export function FamilyVideoModal({
   };
 
   if (!open) return null;
+
+  const playerStyle = videoAspect ? ({ aspectRatio: videoAspect } as CSSProperties) : undefined;
+  const stageStyle = videoAspect
+    ? ({ ['--family-video-aspect' as string]: videoAspect } as CSSProperties)
+    : undefined;
 
   return (
     <FamilyBodyPortal>
@@ -130,19 +177,31 @@ export function FamilyVideoModal({
 
         <div
           className="family-video-modal__stage"
+          style={stageStyle}
           onClick={(e) => e.stopPropagation()}
         >
           <video
             ref={videoRef}
             playsInline
             controls
-            controlsList="nodownload"
+            preload="auto"
+            controlsList={coarsePointer ? 'nodownload nofullscreen' : 'nodownload'}
+            disablePictureInPicture
             className="family-video-modal__player"
+            style={playerStyle}
             onLoadedMetadata={(e) => {
               const video = e.currentTarget;
               if (video.videoWidth > 0 && video.videoHeight > 0) {
                 setIsPortrait(video.videoHeight > video.videoWidth);
+                setVideoAspect(`${video.videoWidth} / ${video.videoHeight}`);
               }
+            }}
+            onPlay={(e) => {
+              reportProgress(
+                'play',
+                e.currentTarget.currentTime,
+                e.currentTarget.duration || durationHint || 0,
+              );
             }}
             onPause={(e) => {
               notifyPaused(mediaId);

@@ -29,17 +29,12 @@ function TopBarInnerSkeleton({ showNotifications }: { showNotifications: boolean
           <span className="family-skeleton family-topbar-skel__sub" />
         </div>
       </div>
-      {showNotifications ? (
-        <div className="family-topbar__actions" aria-hidden>
+      <div className="family-topbar__actions" aria-hidden>
+        {showNotifications ? (
           <span className="family-skeleton family-topbar-skel__icon family-topbar__action family-topbar__action--skel" />
-          <span className="family-skeleton family-topbar-skel__icon family-topbar__action family-topbar__action--skel" />
-        </div>
-      ) : (
-        <span
-          className="family-skeleton family-topbar-skel__icon family-topbar__action family-topbar__action--skel"
-          aria-hidden
-        />
-      )}
+        ) : null}
+        <span className="family-skeleton family-topbar-skel__icon family-topbar__action family-topbar__action--skel" />
+      </div>
     </>
   );
 }
@@ -155,7 +150,6 @@ export function FamilyTopBar({
               {profileControl}
 
               <div className="family-topbar__actions">
-                <ThemeIconButton />
                 {showNotifications ? (
                   <button
                     type="button"
@@ -179,6 +173,7 @@ export function FamilyTopBar({
                     )}
                   </button>
                 ) : null}
+                <ThemeIconButton />
               </div>
             </>
           )}

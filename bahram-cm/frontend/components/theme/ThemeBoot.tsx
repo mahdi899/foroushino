@@ -1,16 +1,16 @@
 "use client";
 
 import { useLayoutEffect } from "react";
-import { applyResolvedTheme, readResolvedTheme } from "@/lib/site-theme";
+import { bootstrapSiteTheme } from "@/lib/site-theme";
 
 /**
- * Syncs client storage to <html data-theme> after SSR cookie bootstrap.
- * Replaces inline theme boot scripts (blocked by React 19 client renders).
+ * Syncs client theme after SSR: stored preference, else OS `prefers-color-scheme`.
  */
 export function ThemeBoot() {
   useLayoutEffect(() => {
-    applyResolvedTheme(readResolvedTheme());
+    const cleanup = bootstrapSiteTheme();
     document.documentElement.setAttribute("data-theme-ready", "1");
+    return cleanup;
   }, []);
 
   return null;

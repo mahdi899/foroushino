@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent, type TouchEvent } from 'react';
 import { Loader2, Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useDelayedInView } from '@/hooks/useDelayedInView';
@@ -34,6 +34,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const previewRequestedRef = useRef(false);
   const clickTimerRef = useRef<number | null>(null);
+  const lastTouchAtRef = useRef(0);
 
   // Don't gate on feed scrollIdle — that left an empty white frame.
   const previewReady = useDelayedInView(containerRef, 80, phase === 'idle', true);
@@ -151,12 +152,26 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       setModalOpen(true);
       return;
     }
-    if (phase === 'idle' || phase === 'preview') {
+    if (phase === 'idle' || phase === 'preview' || phase === 'loading') {
       setLoadRequested(true);
     }
   };
 
+  const handlePointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    // Don't start post swipe-to-comments when the user taps the video.
+    event.stopPropagation();
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    event.preventDefault();
+    lastTouchAtRef.current = Date.now();
+    handleActivate();
+  };
+
   const handleClick = () => {
+    if (Date.now() - lastTouchAtRef.current < 500) return;
+
     if (clickTimerRef.current != null) {
       window.clearTimeout(clickTimerRef.current);
       clickTimerRef.current = null;
@@ -165,7 +180,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
     clickTimerRef.current = window.setTimeout(() => {
       clickTimerRef.current = null;
       handleActivate();
-    }, 280);
+    }, 200);
   };
 
   const handleDoubleClick = (event: MouseEvent<HTMLButtonElement>) => {
@@ -280,13 +295,15 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
 
         <button
           type="button"
+          onPointerDown={handlePointerDown}
+          onTouchEnd={handleTouchEnd}
           onClick={handleClick}
           onDoubleClick={handleDoubleClick}
           aria-label={
             phase === 'ready' ? 'پخش ویدیو' : phase === 'loading' ? 'در حال بارگذاری ویدیو' : 'بارگذاری ویدیو'
           }
           className={cn(
-            'absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center transition cursor-pointer',
+            'family-feed-video__play absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center transition cursor-pointer',
             phase === 'loading' && 'cursor-wait',
           )}
         >

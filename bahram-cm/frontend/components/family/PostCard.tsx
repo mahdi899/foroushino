@@ -40,6 +40,7 @@ const POST_QUICK_REACT_BLOCK_SELECTOR = [
   '.family-action-glass',
   '.family-inline-card',
   '.family-voice',
+  '.family-feed-video',
 ].join(', ');
 
 const POST_SWIPE_BLOCK_SELECTOR = [
@@ -55,6 +56,7 @@ const POST_SWIPE_BLOCK_SELECTOR = [
   '.family-action-glass',
   '.family-inline-card',
   '.family-voice',
+  '.family-feed-video',
 ].join(', ');
 
 const SWIPE_LOCK_PX = 8;
