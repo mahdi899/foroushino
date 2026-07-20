@@ -70,7 +70,6 @@ class BackupService
 
         try {
             $artifact = $this->createDumpArtifact();
-            $this->cleanupRetention((int) ($settings->retention_count ?? 30));
 
             $settings->update([
                 'last_backup_at' => now(),
@@ -185,11 +184,15 @@ class BackupService
         file_put_contents($gzPath, $gz);
         @unlink($sqlPath);
 
-        return [
+        $artifact = [
             'path' => $gzPath,
             'filename' => $filename,
             'size_bytes' => filesize($gzPath) ?: 0,
         ];
+
+        $this->pruneLocalBackups();
+
+        return $artifact;
     }
 
     /** @return array{path: string, filename: string, size_bytes: int} */
@@ -243,11 +246,15 @@ class BackupService
             throw new RuntimeException('فایل ZIP ساخته نشد.');
         }
 
-        return [
+        $artifact = [
             'path' => $zipPath,
             'filename' => $filename,
             'size_bytes' => filesize($zipPath) ?: 0,
         ];
+
+        $this->pruneLocalBackups();
+
+        return $artifact;
     }
 
     public function restoreUploadedFile(UploadedFile $file): void
@@ -286,10 +293,22 @@ class BackupService
         }
     }
 
-    private function cleanupRetention(int $retentionCount): void
+    public function pruneLocalBackups(?int $retentionCount = null): void
     {
-        $files = collect(File::files($this->backupDirectory()))
-            ->filter(fn ($file) => str_ends_with($file->getFilename(), '.sql.gz'))
+        $retentionCount = max(1, $retentionCount ?? (int) (DatabaseBackupSetting::current()->retention_count ?? 30));
+
+        $this->pruneDirectoryBySuffix($this->backupDirectory(), '.sql.gz', $retentionCount);
+        $this->pruneDirectoryBySuffix($this->backupDirectory(), '.zip', $retentionCount);
+    }
+
+    private function pruneDirectoryBySuffix(string $directory, string $suffix, int $retentionCount): void
+    {
+        if (! is_dir($directory)) {
+            return;
+        }
+
+        $files = collect(File::files($directory))
+            ->filter(fn ($file) => str_ends_with($file->getFilename(), $suffix))
             ->sortByDesc(fn ($file) => $file->getMTime())
             ->values();
 

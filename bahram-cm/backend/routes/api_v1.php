@@ -383,6 +383,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('panel/settings/database-backup/export', [DatabaseBackupSettingsController::class, 'export']);
     Route::get('panel/settings/database-backup/export/media', [DatabaseBackupSettingsController::class, 'exportMedia']);
     Route::post('panel/settings/database-backup/import', [DatabaseBackupSettingsController::class, 'import']);
+    Route::post('panel/settings/database-backup/upload-download-host', [DatabaseBackupSettingsController::class, 'uploadDownloadHost']);
     Route::post('panel/settings/database-backup/test-telegram', [DatabaseBackupSettingsController::class, 'testTelegram']);
 
     Route::get('panel/settings/sms-spotplayer-credentials', [SmsSpotplayerCredentialsController::class, 'show']);

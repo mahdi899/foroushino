@@ -157,6 +157,40 @@ export async function exportMediaBackupAction(): Promise<
   }
 }
 
+export async function uploadDownloadHostBackupAction(): Promise<{ ok: boolean; message: string }> {
+  try {
+    const token = await getToken();
+    const res = await fetch(`${SERVER_API_URL}/panel/settings/database-backup/upload-download-host`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(600_000),
+    });
+
+    const payload = await res.json().catch(() => undefined);
+
+    if (!res.ok) {
+      const message =
+        payload && typeof payload === 'object' && 'data' in payload
+          ? ((payload.data as { message?: string })?.message ?? 'آپلود بکاپ به هاست دانلود ناموفق بود.')
+          : 'آپلود بکاپ به هاست دانلود ناموفق بود.';
+      return { ok: false, message };
+    }
+
+    revalidatePath('/admin/settings');
+
+    const data = payload && typeof payload === 'object' && 'data' in payload ? (payload.data as { message?: string }) : null;
+
+    return { ok: true, message: data?.message ?? 'بکاپ روی هاست دانلود آپلود شد.' };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : 'آپلود بکاپ به هاست دانلود ناموفق بود.' };
+  }
+}
+
 export async function importDatabaseBackupAction(
   formData: FormData,
 ): Promise<{ ok: boolean; message: string }> {

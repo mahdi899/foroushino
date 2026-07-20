@@ -84,6 +84,22 @@ return [
     'backup' => [
         'mysqldump_path' => env('MYSQLDUMP_PATH'),
         'mysql_path' => env('MYSQL_PATH'),
+        'download_host' => [
+            'base_path' => env('BACKUP_FTP_BASE', 'backups'),
+            'site_slug' => env('BACKUP_SITE_SLUG', 'bahram'),
+            'cdn_url' => env('BACKUP_CDN_URL', env('MEDIA_URL', '')),
+            'retention_days' => (int) env('BACKUP_FTP_RETENTION_DAYS', 90),
+            'weekday' => env('BACKUP_WEEKLY_WEEKDAY', '0'),
+            'host' => env('BACKUP_FTP_HOST', env('MEDIA_FTP_HOST', '')),
+            'username' => env('BACKUP_FTP_USERNAME', env('MEDIA_FTP_USERNAME', '')),
+            'password' => env('BACKUP_FTP_PASSWORD', env('MEDIA_FTP_PASSWORD', '')),
+            'port' => (int) env('BACKUP_FTP_PORT', env('MEDIA_FTP_PORT', 21)),
+            'root' => env('BACKUP_FTP_ROOT', env('MEDIA_FTP_ROOT', '/')),
+            'passive' => env('BACKUP_FTP_PASSIVE', env('MEDIA_FTP_PASSIVE', true)),
+            'ssl' => env('BACKUP_FTP_SSL', env('MEDIA_FTP_SSL', false)),
+            'timeout' => (int) env('BACKUP_FTP_TIMEOUT', 120),
+            'protocol' => env('BACKUP_FTP_PROTOCOL', 'ftp'),
+        ],
     ],
 
     'media_cache_max_age' => (int) env('MEDIA_CACHE_MAX_AGE', 31536000),

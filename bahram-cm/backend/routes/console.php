@@ -17,6 +17,7 @@ Schedule::command('telegram:retry-failed-updates')->everyTenMinutes()->onOneServ
 
 Schedule::command('chatbot:purge-old')->dailyAt('03:00');
 Schedule::command('backup:database')->everyMinute();
+Schedule::command('backup:upload-download-host')->weeklyOn(0, '03:30')->onOneServer();
 
 // Family analytics — read models are rebuildable; schedule keeps dashboards fast.
 // Queue is passed as Schedule::job()'s 2nd arg — CallbackEvent (unlike Event) has no onQueue().

@@ -67,7 +67,7 @@ it('should run scheduled only at configured time', function () {
 });
 
 it('creates storage zip artifact when storage app exists', function () {
-    $service = app(BackupService::class);
+    $service = app(\App\Services\BackupService::class);
     $artifact = $service->createStorageArtifact();
 
     expect($artifact['filename'])->toEndWith('.zip');
@@ -75,4 +75,30 @@ it('creates storage zip artifact when storage app exists', function () {
     expect(is_file($artifact['path']))->toBeTrue();
 
     @unlink($artifact['path']);
+});
+
+it('prunes local database and storage backup artifacts by retention count', function () {
+    $dir = storage_path('app/backups');
+    if (! is_dir($dir)) {
+        mkdir($dir, 0777, true);
+    }
+
+    for ($i = 0; $i < 4; $i++) {
+        $dbPath = $dir.'/backup_test_'.$i.'.sql.gz';
+        $zipPath = $dir.'/storage_app_test_'.$i.'.zip';
+        file_put_contents($dbPath, 'db');
+        file_put_contents($zipPath, 'zip');
+        touch($dbPath, now()->subDays($i)->getTimestamp());
+        touch($zipPath, now()->subDays($i)->getTimestamp());
+    }
+
+    \App\Models\DatabaseBackupSetting::current()->update(['retention_count' => 2]);
+    app(\App\Services\BackupService::class)->pruneLocalBackups(2);
+
+    expect(glob($dir.'/*.sql.gz'))->toHaveCount(2);
+    expect(glob($dir.'/*.zip'))->toHaveCount(2);
+
+    foreach (glob($dir.'/*') ?: [] as $path) {
+        @unlink($path);
+    }
 });

@@ -15,5 +15,21 @@ return [
     'backup' => [
         'mysqldump_path' => env('MYSQLDUMP_PATH'),
         'mysql_path' => env('MYSQL_PATH'),
+        'download_host' => [
+            'base_path' => env('BACKUP_FTP_BASE', 'backups'),
+            'site_slug' => env('BACKUP_SITE_SLUG', 'saat'),
+            'cdn_url' => env('BACKUP_CDN_URL', ''),
+            'retention_days' => (int) env('BACKUP_FTP_RETENTION_DAYS', 90),
+            'weekday' => env('BACKUP_WEEKLY_WEEKDAY', '0'),
+            'host' => env('BACKUP_FTP_HOST', ''),
+            'username' => env('BACKUP_FTP_USERNAME', ''),
+            'password' => env('BACKUP_FTP_PASSWORD', ''),
+            'port' => (int) env('BACKUP_FTP_PORT', 21),
+            'root' => env('BACKUP_FTP_ROOT', '/'),
+            'passive' => env('BACKUP_FTP_PASSIVE', true),
+            'ssl' => env('BACKUP_FTP_SSL', false),
+            'timeout' => (int) env('BACKUP_FTP_TIMEOUT', 120),
+            'protocol' => env('BACKUP_FTP_PROTOCOL', 'ftp'),
+        ],
     ],
 ];

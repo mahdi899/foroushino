@@ -8,6 +8,7 @@ import {
   formatBackupSize,
   importDatabaseBackup,
   runBackupNow,
+  uploadDownloadHostBackup,
   updateBackupSettings,
   type BackupForm,
   type BackupView,
@@ -27,6 +28,7 @@ export function BackupSettingsSection() {
   const [running, setRunning] = useState(false)
   const [exportingDb, setExportingDb] = useState(false)
   const [exportingStorage, setExportingStorage] = useState(false)
+  const [uploadingOffsite, setUploadingOffsite] = useState(false)
   const [importing, setImporting] = useState(false)
   const [confirmRestore, setConfirmRestore] = useState('')
   const [status, setStatus] = useState('')
@@ -132,6 +134,22 @@ export function BackupSettingsSection() {
     }
     triggerDownload(res.blob, res.filename)
     setStatus('فایل بکاپ storage دانلود شد.')
+  }
+
+  const onUploadOffsite = async () => {
+    setUploadingOffsite(true)
+    setStatus('')
+    try {
+      const result = await uploadDownloadHostBackup()
+      const refreshed = await fetchBackupSettings()
+      setView(refreshed)
+      setForm(backupViewToForm(refreshed))
+      setStatus(result.message)
+    } catch {
+      setStatus('آپلود بکاپ به هاست دانلود ناموفق بود.')
+    } finally {
+      setUploadingOffsite(false)
+    }
   }
 
   const onImport = async () => {
@@ -244,6 +262,27 @@ export function BackupSettingsSection() {
           {view.last_backup_message ? <p className="mt-1">{view.last_backup_message}</p> : null}
         </div>
 
+        <div className="rounded-[14px] border border-white/40 bg-white/20 px-3 py-2 text-[12px] font-semibold text-text-muted dark:border-white/10 dark:bg-white/5">
+          <p className="font-bold text-text">هاست دانلود (هفتگی — ۳ ماه)</p>
+          <p className="mt-1">
+            مسیر: <span dir="ltr">backups/saat/&lt;random&gt;/</span>
+            {!view.download_host_configured ? ' — BACKUP_FTP_HOST تنظیم نشده' : ''}
+          </p>
+          {view.last_offsite_backup_at ? (
+            <p className="mt-1">آخرین آپلود: {new Date(view.last_offsite_backup_at).toLocaleString('fa-IR')}</p>
+          ) : null}
+          {view.last_offsite_links?.database?.url ? (
+            <p className="mt-1 break-all" dir="ltr">
+              DB: {view.last_offsite_links.database.url}
+            </p>
+          ) : null}
+          {view.last_offsite_links?.files?.url ? (
+            <p className="mt-1 break-all" dir="ltr">
+              Files: {view.last_offsite_links.files.url}
+            </p>
+          ) : null}
+        </div>
+
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -280,6 +319,15 @@ export function BackupSettingsSection() {
           >
             {exportingStorage ? <Loader2 size={14} className="animate-spin" /> : <HardDrive size={14} />}
             دانلود فایل‌ها
+          </button>
+          <button
+            type="button"
+            disabled={uploadingOffsite || !view.download_host_configured}
+            onClick={() => void onUploadOffsite()}
+            className="inline-flex items-center gap-1.5 rounded-[14px] border border-white/55 bg-white/30 px-3 py-2 text-[13px] font-bold text-text dark:border-white/10 dark:bg-white/5"
+          >
+            {uploadingOffsite ? <Loader2 size={14} className="animate-spin" /> : <HardDrive size={14} />}
+            آپلود هفتگی به هاست
           </button>
         </div>
 

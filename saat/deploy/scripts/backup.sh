@@ -51,4 +51,10 @@ echo "==> Prune backups older than ${RETENTION_DAYS} days"
 find "$BACKUP_DIR/db" -name '*.sql.gz' -mtime +"$RETENTION_DAYS" -delete
 find "$BACKUP_DIR/storage" -name '*.tar.gz' -mtime +"$RETENTION_DAYS" -delete
 
+if [[ "$TODAY_WEEKDAY" == "$FILES_BACKUP_WEEKDAY" ]] && [[ -f "$APP_DIR/backend/artisan" ]]; then
+  echo "==> Upload weekly backup to download host (FTP/CDN)"
+  (cd "$APP_DIR/backend" && php artisan backup:upload-download-host --force) \
+    || echo "WARN: download-host upload failed" >&2
+fi
+
 echo "==> Backup complete: $TIMESTAMP"

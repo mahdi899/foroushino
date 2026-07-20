@@ -19,6 +19,12 @@ export type DatabaseBackupView = {
   mysqldump_available: boolean;
   database_name: string;
   site_media_available: boolean;
+  download_host_configured?: boolean;
+  download_host_cdn_url?: string;
+  last_offsite_backup_at?: string | null;
+  last_offsite_backup_id?: string | null;
+  last_offsite_links?: Record<string, { name?: string; url?: string; size_bytes?: number }>;
+  offsite_retention_days?: number;
 };
 
 export const DEFAULT_DATABASE_BACKUP_FORM: DatabaseBackupForm = {

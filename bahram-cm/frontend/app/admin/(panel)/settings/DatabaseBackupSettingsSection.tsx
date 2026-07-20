@@ -8,9 +8,11 @@ import {
   exportDatabaseBackupAction,
   exportMediaBackupAction,
   importDatabaseBackupAction,
+  loadDatabaseBackupSettings,
   runDatabaseBackupAction,
   saveDatabaseBackupSettingsAction,
   testDatabaseBackupTelegramAction,
+  uploadDownloadHostBackupAction,
 } from '@/lib/admin/databaseBackup';
 import {
   databaseBackupViewToForm,
@@ -31,6 +33,7 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
   const [running, setRunning] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportingMedia, setExportingMedia] = useState(false);
+  const [uploadingOffsite, setUploadingOffsite] = useState(false);
   const [importing, setImporting] = useState(false);
   const [testing, setTesting] = useState(false);
   const [confirmRestore, setConfirmRestore] = useState('');
@@ -107,6 +110,18 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
     anchor.click();
     URL.revokeObjectURL(url);
     setStatus('فایل بکاپ media دانلود شد.');
+  }
+
+  async function onUploadOffsite() {
+    setUploadingOffsite(true);
+    setStatus('');
+    const res = await uploadDownloadHostBackupAction();
+    setUploadingOffsite(false);
+    setStatus(res.message);
+    if (res.ok) {
+      const refreshed = await loadDatabaseBackupSettings();
+      if (refreshed) onViewChange(refreshed);
+    }
   }
 
   async function onImport() {
@@ -229,6 +244,33 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
         {view?.last_backup_message ? <p className="mt-1">{view.last_backup_message}</p> : null}
       </div>
 
+      <div className="mt-4 rounded-md border border-border bg-surface-soft px-3 py-2 text-caption text-text-muted">
+        <p className="font-semibold text-primary-dark">هاست دانلود (هفتگی — ۳ ماه)</p>
+        <p className="mt-1">
+          مسیر: <span dir="ltr">backups/bahram/&lt;random&gt;/</span>
+          {view?.download_host_configured ? '' : ' — FTP پیکربندی نشده'}
+        </p>
+        {view?.last_offsite_backup_at ? (
+          <p className="mt-1">آخرین آپلود: {new Date(view.last_offsite_backup_at).toLocaleString('fa-IR')}</p>
+        ) : null}
+        {view?.last_offsite_links?.database?.url ? (
+          <p className="mt-1 break-all">
+            DB:{' '}
+            <a href={view.last_offsite_links.database.url} className="text-primary hover:underline" dir="ltr">
+              {view.last_offsite_links.database.url}
+            </a>
+          </p>
+        ) : null}
+        {view?.last_offsite_links?.files?.url ? (
+          <p className="mt-1 break-all">
+            Files:{' '}
+            <a href={view.last_offsite_links.files.url} className="text-primary hover:underline" dir="ltr">
+              {view.last_offsite_links.files.url}
+            </a>
+          </p>
+        ) : null}
+      </div>
+
       <div className="mt-4 flex flex-wrap gap-2">
         <button type="button" onClick={() => void onSave()} disabled={saving} className="btn btn-secondary px-3 py-1.5 text-caption">
           {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
@@ -250,6 +292,15 @@ export function DatabaseBackupSettingsSection({ form, view, onChange, onViewChan
         >
           {exportingMedia ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <HardDrive className="h-3.5 w-3.5" />}
           دانلود media
+        </button>
+        <button
+          type="button"
+          onClick={() => void onUploadOffsite()}
+          disabled={uploadingOffsite || !view?.download_host_configured}
+          className="btn btn-secondary px-3 py-1.5 text-caption"
+        >
+          {uploadingOffsite ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <HardDrive className="h-3.5 w-3.5" />}
+          آپلود هفتگی به هاست
         </button>
         <button type="button" onClick={() => void onTestTelegram()} disabled={testing} className="btn btn-secondary px-3 py-1.5 text-caption">
           {testing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}

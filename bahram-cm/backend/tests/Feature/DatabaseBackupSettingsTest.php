@@ -141,6 +141,43 @@ class DatabaseBackupSettingsTest extends TestCase
         @unlink($mediaDir.'/artifact-test.txt');
     }
 
+    public function test_prune_local_backups_applies_retention_to_database_and_media_artifacts(): void
+    {
+        $dbDir = storage_path('app/backups/database');
+        $mediaDir = storage_path('app/backups/media');
+        if (! is_dir($dbDir)) {
+            mkdir($dbDir, 0777, true);
+        }
+        if (! is_dir($mediaDir)) {
+            mkdir($mediaDir, 0777, true);
+        }
+
+        $created = [];
+        for ($i = 0; $i < 4; $i++) {
+            $dbPath = $dbDir.'/backup_test_'.$i.'.sql.gz';
+            $mediaPath = $mediaDir.'/media_backup_test_'.$i.'.zip';
+            file_put_contents($dbPath, 'db');
+            file_put_contents($mediaPath, 'media');
+            touch($dbPath, now()->subDays($i)->getTimestamp());
+            touch($mediaPath, now()->subDays($i)->getTimestamp());
+            $created[] = $dbPath;
+            $created[] = $mediaPath;
+        }
+
+        DatabaseBackupSetting::current()->update(['retention_count' => 2]);
+        app(DatabaseBackupService::class)->pruneLocalBackups(2);
+
+        $this->assertCount(2, glob($dbDir.'/*.sql.gz'));
+        $this->assertCount(2, glob($mediaDir.'/*.zip'));
+
+        foreach (glob($dbDir.'/*') ?: [] as $path) {
+            @unlink($path);
+        }
+        foreach (glob($mediaDir.'/*') ?: [] as $path) {
+            @unlink($path);
+        }
+    }
+
     private function superAdmin(): User
     {
         $user = User::factory()->create([

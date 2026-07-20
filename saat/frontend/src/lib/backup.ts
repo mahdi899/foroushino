@@ -12,6 +12,12 @@ export type BackupView = {
   mysqldump_available: boolean
   database_name: string
   storage_app_exists: boolean
+  download_host_configured?: boolean
+  download_host_cdn_url?: string
+  last_offsite_backup_at?: string | null
+  last_offsite_backup_id?: string | null
+  last_offsite_links?: Record<string, { name?: string; url?: string; size_bytes?: number }>
+  offsite_retention_days?: number
 }
 
 export type BackupForm = {
@@ -127,4 +133,9 @@ export async function importDatabaseBackup(file: File, confirm: string): Promise
     (typeof payload?.message === 'string' ? payload.message : 'دیتابیس با موفقیت بازیابی شد.')
 
   return { ok: true, message }
+}
+
+export async function uploadDownloadHostBackup(): Promise<{ ok: boolean; message: string }> {
+  const data = await http.post<{ ok: boolean; message: string }>('/admin/backup/upload-download-host')
+  return { ok: data.ok, message: data.message }
 }

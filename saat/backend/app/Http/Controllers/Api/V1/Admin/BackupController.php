@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Services\BackupService;
+use App\Services\DownloadHostBackupService;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,13 +12,19 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class BackupController extends Controller
 {
-    public function __construct(private readonly BackupService $backup) {}
+    public function __construct(
+        private readonly BackupService $backup,
+        private readonly DownloadHostBackupService $downloadHostBackup,
+    ) {}
 
     public function show(Request $request): JsonResponse
     {
         $this->authorizeBackup($request);
 
-        return ApiResponse::success($this->backup->adminView());
+        return ApiResponse::success(array_merge(
+            $this->backup->adminView(),
+            $this->downloadHostBackup->adminSnapshot(),
+        ));
     }
 
     public function update(Request $request): JsonResponse
@@ -91,6 +98,19 @@ class BackupController extends Controller
             'ok' => true,
             'message' => 'دیتابیس با موفقیت بازیابی شد.',
         ], 'دیتابیس با موفقیت بازیابی شد.');
+    }
+
+    public function uploadDownloadHost(Request $request): JsonResponse
+    {
+        $this->authorizeBackup($request);
+
+        $result = $this->downloadHostBackup->uploadWeeklyBackup(true);
+
+        return ApiResponse::success(
+            array_merge($result, $this->downloadHostBackup->adminSnapshot()),
+            $result['message'],
+            $result['ok'] ? 200 : 422,
+        );
     }
 
     private function authorizeBackup(Request $request): void

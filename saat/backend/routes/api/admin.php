@@ -25,6 +25,8 @@ Route::prefix('admin')->middleware('throttle:writes')->group(function (): void {
     Route::get('/backup/export/storage', [BackupController::class, 'exportStorage'])->withoutMiddleware('throttle:writes');
     Route::post('/backup/import/database', [BackupController::class, 'importDatabase']);
 
+    Route::post('/backup/upload-download-host', [BackupController::class, 'uploadDownloadHost']);
+
     Route::get('/users', [UserAdminController::class, 'index'])->withoutMiddleware('throttle:writes');
     Route::post('/users', [UserAdminController::class, 'store']);
     Route::patch('/users/{user}', [UserAdminController::class, 'update']);

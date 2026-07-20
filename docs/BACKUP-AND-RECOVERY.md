@@ -85,6 +85,39 @@ ls -lt /var/backups/bahram/db/ | head -3
 ls -lt /var/backups/bahram/media/ | head -3
 ```
 
+### هاست دانلود (FTP/CDN) — هفتگی، ۳ ماه
+
+هر **یک‌شنبه** (همراه cron یا Scheduler) DB + فایل‌ها روی **هاست دانلود** آپلود می‌شوند:
+
+```
+backups/
+  bahram/
+    a1b2c3d4e5f6.../          ← نام تصادفی ۳۲ کاراکتری
+      database.sql.gz
+      media_backup_*.zip
+      manifest.json
+  saat/
+    f6e5d4c3b2a1.../
+      database.sql.gz
+      storage_app_*.zip
+      manifest.json
+```
+
+| تنظیم | پیش‌فرض |
+|--------|---------|
+| نگهداری روی FTP | **۹۰ روز** (`BACKUP_FTP_RETENTION_DAYS`) |
+| لینک دانلود | `BACKUP_CDN_URL` + مسیر (مثلاً `https://cdn.rostami.app/backups/bahram/.../database.sql.gz`) |
+| بهرام FTP | پنل رسانه → هاست دانلود (یا `BACKUP_FTP_*`) |
+| سات FTP | `BACKUP_FTP_*` در `.env` |
+
+دستور دستی:
+
+```bash
+cd backend && php artisan backup:upload-download-host --force
+```
+
+لینک‌های آخرین آپلود در پنل → **بکاپ و بازیابی** → بخش «هاست دانلود».
+
 ### بازیابی از بکاپ سرور
 
 ```bash

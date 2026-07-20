@@ -4,19 +4,26 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Services\DatabaseBackupService;
+use App\Services\DownloadHostBackupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class DatabaseBackupSettingsController extends Controller
 {
-    public function __construct(private readonly DatabaseBackupService $backup) {}
+    public function __construct(
+        private readonly DatabaseBackupService $backup,
+        private readonly DownloadHostBackupService $downloadHostBackup,
+    ) {}
 
     public function show(Request $request): JsonResponse
     {
         $this->authorizeSuperAdmin($request);
 
-        return response()->json(['data' => $this->backup->adminView()]);
+        return response()->json(['data' => array_merge(
+            $this->backup->adminView(),
+            $this->downloadHostBackup->adminSnapshot(),
+        )]);
     }
 
     public function update(Request $request): JsonResponse
@@ -97,6 +104,17 @@ class DatabaseBackupSettingsController extends Controller
                 'message' => 'دیتابیس با موفقیت بازیابی شد.',
             ],
         ]);
+    }
+
+    public function uploadDownloadHost(Request $request): JsonResponse
+    {
+        $this->authorizeSuperAdmin($request);
+
+        $result = $this->downloadHostBackup->uploadWeeklyBackup(true);
+
+        return response()->json([
+            'data' => array_merge($result, $this->downloadHostBackup->adminSnapshot()),
+        ], $result['ok'] ? 200 : 422);
     }
 
     public function testTelegram(Request $request): JsonResponse
