@@ -4,7 +4,6 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { FamilyAutoJoin } from '@/components/family/FamilyAutoJoin';
 import { FamilyMain, FamilyShell } from '@/components/family/FamilyShell';
 import { FamilyTopBar } from '@/components/family/FamilyTopBar';
-import { FamilyMobileThemeButton } from '@/components/family/FamilyMobileThemeButton';
 import { FeedView } from '@/components/family/FeedView';
 import { FamilyGuestAccessProvider } from '@/components/family/FamilyGuestAccess';
 import { JoinBanner } from '@/components/family/JoinBanner';
@@ -148,7 +147,6 @@ export function FamilyHome({
         </Suspense>
       )}
       {showOnboarding && <OnboardingModal onDone={() => setShowOnboarding(false)} />}
-      <FamilyMobileThemeButton />
     </FamilyShell>
   );
 }

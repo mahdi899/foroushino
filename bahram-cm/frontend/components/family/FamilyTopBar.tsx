@@ -11,6 +11,7 @@ import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
 import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
 import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
 import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
+import { ThemeIconButton } from '@/components/theme/ThemeIconButton';
 
 import { useFamilyGuestAccessOptional } from '@/components/family/FamilyGuestAccess';
 import type { FamilyBranding } from '@/lib/family/types';
@@ -171,6 +172,7 @@ export function FamilyTopBar({
                     )}
                   </button>
                 ) : null}
+                <ThemeIconButton className="lg:hidden" />
               </div>
             </>
           )}
