@@ -20,7 +20,6 @@ PROXY_ORIGIN_VALUE = "Cloudflare-Worker"
 DEDUPE_TTL_SECONDS = "120"
 
 # Secrets (wrangler secret put — never commit):
-#   PROXY_SHARED_TOKEN      — same as Laravel PROXY_SHARED_TOKEN / panel token
-#   TELEGRAM_WEBHOOK_SECRET — same as Laravel TELEGRAM_WEBHOOK_SECRET
-
-# Optional KV dedupe:
+#   PROXY_SHARED_TOKEN — same as Laravel PROXY_SHARED_TOKEN / panel token
+#
+# Inbound webhook secret is validated on Laravel only — Worker forwards as-is.

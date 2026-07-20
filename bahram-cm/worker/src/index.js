@@ -1,9 +1,12 @@
 /**
  * Bahram Telegram Bridge — Cloudflare Worker
  *
- * Dual-purpose relay for Iranian origins:
- *  1. Inbound  — Telegram webhook → origin Laravel (proxy.origin:strict)
- *  2. Outbound — origin Laravel → api.telegram.org (Bearer PROXY_SHARED_TOKEN)
+ * Dumb relay (no Telegram secret/token on inbound):
+ *  1. Inbound  — Telegram webhook → forward as-is to Laravel origin
+ *  2. Outbound — Laravel → api.telegram.org (Bearer PROXY_SHARED_TOKEN)
+ *
+ * Laravel validates webhook secret + proxy token. Worker only adds
+ * Authorization + X-Proxy-Origin when forwarding inbound to origin.
  */
 
 export default {
@@ -39,13 +42,6 @@ async function handleRequest(request, env, ctx) {
     return new Response('Not Found', { status: 404 });
   }
 
-  const expectedSecret = env.TELEGRAM_WEBHOOK_SECRET;
-  const providedSecret = request.headers.get('X-Telegram-Bot-Api-Secret-Token') || '';
-
-  if (!expectedSecret || !timingSafeEqual(expectedSecret, providedSecret)) {
-    return new Response('Forbidden', { status: 403 });
-  }
-
   const proxySharedToken = env.PROXY_SHARED_TOKEN;
   const backendOrigin = (env.BACKEND_ORIGIN || '').replace(/\/+$/, '');
 
@@ -68,19 +64,18 @@ async function handleRequest(request, env, ctx) {
     return jsonResponse({ ok: true });
   }
 
-  const dedupeKey = `tg:${botKey}:${update.update_id}`;
-
-  if (await isDuplicate(env, dedupeKey)) {
-    return jsonResponse({ ok: true });
-  }
-
   const forwardUrl = backendOrigin + url.pathname + (url.search || '');
 
   const forwardHeaders = new Headers();
   forwardHeaders.set('Content-Type', request.headers.get('Content-Type') || 'application/json');
-  forwardHeaders.set('X-Telegram-Bot-Api-Secret-Token', providedSecret);
   forwardHeaders.set('Authorization', `Bearer ${proxySharedToken}`);
   forwardHeaders.set('X-Proxy-Origin', env.PROXY_ORIGIN_VALUE || 'Cloudflare-Worker');
+
+  // Pass Telegram headers through — Laravel validates the webhook secret.
+  const telegramSecret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
+  if (telegramSecret) {
+    forwardHeaders.set('X-Telegram-Bot-Api-Secret-Token', telegramSecret);
+  }
 
   let backendResponse;
   try {
@@ -96,10 +91,6 @@ async function handleRequest(request, env, ctx) {
   }
 
   const responseBody = await backendResponse.text();
-
-  if (backendResponse.ok) {
-    await markSeen(env, dedupeKey, ctx);
-  }
 
   return new Response(responseBody, {
     status: backendResponse.status,
@@ -160,39 +151,6 @@ async function handleTelegramApiProxy(request, env, url) {
 
 function isTelegramApiProxyPath(pathname) {
   return pathname.startsWith('/bot') || pathname.startsWith('/file/bot');
-}
-
-async function isDuplicate(env, key) {
-  if (!env.TELEGRAM_DEDUPE) {
-    return false;
-  }
-
-  try {
-    const seen = await env.TELEGRAM_DEDUPE.get(key);
-
-    return seen !== null;
-  } catch (error) {
-    console.error('bahram-telegram-bridge dedupe read failed', error);
-
-    return false;
-  }
-}
-
-async function markSeen(env, key, ctx) {
-  if (!env.TELEGRAM_DEDUPE) {
-    return;
-  }
-
-  const ttl = Math.max(30, parseInt(env.DEDUPE_TTL_SECONDS || '120', 10) || 120);
-  const task = env.TELEGRAM_DEDUPE.put(key, '1', { expirationTtl: ttl }).catch((error) => {
-    console.error('bahram-telegram-bridge dedupe write failed', error);
-  });
-
-  if (ctx && typeof ctx.waitUntil === 'function') {
-    ctx.waitUntil(task);
-  } else {
-    await task;
-  }
 }
 
 function jsonResponse(payload, status = 200) {
