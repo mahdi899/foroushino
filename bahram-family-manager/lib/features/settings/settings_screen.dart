@@ -8,6 +8,7 @@ import 'package:bahram_family_manager/core/utils/formatters.dart';
 import 'package:bahram_family_manager/core/utils/media_url.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
+import 'package:bahram_family_manager/features/settings/family_admins_screen.dart';
 import 'package:bahram_family_manager/features/debug/debug_tools_panel.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
 import 'package:bahram_family_manager/widgets/feedback/app_snackbar.dart';
@@ -292,6 +293,35 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                       const SizedBox(height: AppSpacing.xl),
                     ],
                     PrimaryButton(label: 'ذخیره تنظیمات', loading: _saving, onPressed: _saveSettings),
+                    if (context.watch<AppState>().user?.canManageFamilyAdmins ?? false) ...[
+                      const SizedBox(height: AppSpacing.xl),
+                      PanelSectionCard(
+                        title: 'مدیران خانواده',
+                        icon: Icons.admin_panel_settings_rounded,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'ساخت، معلق‌کردن، ریست رمز و حذف مدیرانی که به اپ مدیریت خانواده دسترسی دارند.',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: AppSpacing.md),
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(builder: (_) => const FamilyAdminsScreen()),
+                                );
+                              },
+                              icon: const Icon(Icons.group_rounded),
+                              label: const Text('مدیریت مدیران'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 );
               },

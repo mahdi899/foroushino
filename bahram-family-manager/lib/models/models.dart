@@ -12,6 +12,7 @@ class ManagerUser {
     required this.roles,
     required this.permissions,
     required this.isSuperAdmin,
+    required this.isRootAdmin,
   });
 
   final int id;
@@ -21,6 +22,7 @@ class ManagerUser {
   final List<String> roles;
   final List<String> permissions;
   final bool isSuperAdmin;
+  final bool isRootAdmin;
 
   factory ManagerUser.fromJson(Map<String, dynamic> json) => ManagerUser(
         id: json['id'] as int,
@@ -30,6 +32,7 @@ class ManagerUser {
         roles: (json['roles'] as List? ?? []).map((e) => e.toString()).toList(),
         permissions: (json['permissions'] as List? ?? []).map((e) => e.toString()).toList(),
         isSuperAdmin: json['is_super_admin'] == true,
+        isRootAdmin: json['is_root_admin'] == true,
       );
 
   Map<String, dynamic> toJson() => {
@@ -40,9 +43,12 @@ class ManagerUser {
         'roles': roles,
         'permissions': permissions,
         'is_super_admin': isSuperAdmin,
+        'is_root_admin': isRootAdmin,
       };
 
-  bool can(String permission) => isSuperAdmin || permissions.contains(permission);
+  bool can(String permission) => isSuperAdmin || isRootAdmin || permissions.contains(permission);
+
+  bool get canManageFamilyAdmins => isRootAdmin || isSuperAdmin;
 }
 
 class MathChallenge {
@@ -1058,6 +1064,48 @@ class FamilyActionResultModel {
         activeUntil: json['active_until']?.toString(),
         isActive: json['is_active'] != false,
         isOpen: json['is_open'] != false,
+      );
+}
+
+class FamilyManagerAdmin {
+  FamilyManagerAdmin({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.mobile,
+    required this.status,
+    required this.isActive,
+    required this.isSuspended,
+    required this.canEdit,
+    required this.canSuspend,
+    required this.canResetPassword,
+    required this.canDelete,
+  });
+
+  final int id;
+  final String name;
+  final String email;
+  final String? mobile;
+  final String status;
+  final bool isActive;
+  final bool isSuspended;
+  final bool canEdit;
+  final bool canSuspend;
+  final bool canResetPassword;
+  final bool canDelete;
+
+  factory FamilyManagerAdmin.fromJson(Map<String, dynamic> json) => FamilyManagerAdmin(
+        id: (json['id'] as num).toInt(),
+        name: json['name']?.toString() ?? '',
+        email: json['email']?.toString() ?? '',
+        mobile: json['mobile']?.toString(),
+        status: json['status']?.toString() ?? 'active',
+        isActive: json['is_active'] == true,
+        isSuspended: json['is_suspended'] == true,
+        canEdit: json['can_edit'] == true,
+        canSuspend: json['can_suspend'] == true,
+        canResetPassword: json['can_reset_password'] == true,
+        canDelete: json['can_delete'] == true,
       );
 }
 
