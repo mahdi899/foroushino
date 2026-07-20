@@ -99,14 +99,14 @@ export default async function FamilyPage({
     );
   }
 
-  let me = await loadMe();
-  if (!me.is_member) {
-    // Join before first paint so the user never flashes join CTAs after login.
-    me = await ensureMembership(sp);
-  }
+  let [me, initialFeed] = await Promise.all([loadMe(), loadInitialFeed()]);
 
-  // Load feed only after membership is settled — guest preview ≠ member tip page.
-  const initialFeed = await loadInitialFeed();
+  if (!me.is_member) {
+    me = await ensureMembership(sp);
+    if (me.is_member) {
+      initialFeed = await loadInitialFeed();
+    }
+  }
   const initialBranding = brandingFromMeAndFeed(me, initialFeed);
   const initialMemberCount = resolveInitialMemberCount(me, initialFeed);
   const viewerKey = user.id;

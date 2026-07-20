@@ -582,13 +582,27 @@ class FeedService
         return [$publishedAt, (int) $id];
     }
 
-    /**
-     * Lightweight badge payload for the site "خانواده" nav and feed jump FAB.
-     * Scoped to the member's family audience when authenticated.
-     *
-     * @return array{unread_count: int, latest_post_id: int, feed_revision: int}
-     */
     public function unreadSummary(int $afterId, ?User $user = null): array
+    {
+        $membership = $user ? $this->access->homeMembership($user) : null;
+        $familyId = $membership ? (int) $membership->family_id : 0;
+        $revision = self::feedRevision();
+        $cacheKey = "family:unread:{$familyId}:{$afterId}:r{$revision}";
+        $ttl = (int) config('family.cache.unread_ttl', 45);
+
+        $payload = Cache::remember(
+            $cacheKey,
+            $ttl,
+            fn () => $this->computeUnreadSummary($afterId, $user),
+        );
+
+        return $this->withFeedRevision($payload);
+    }
+
+    /**
+     * @return array{unread_count: int, latest_post_id: int}
+     */
+    private function computeUnreadSummary(int $afterId, ?User $user = null): array
     {
         $membership = $user ? $this->access->homeMembership($user) : null;
 
@@ -611,17 +625,17 @@ class FeedService
         $latestId = (int) ($latest?->id ?? 0);
 
         if ($afterId <= 0 || ! $latest) {
-            return $this->withFeedRevision([
+            return [
                 'unread_count' => 0,
                 'latest_post_id' => $latestId,
-            ]);
+            ];
         }
 
         if ((int) $latest->id === $afterId) {
-            return $this->withFeedRevision([
+            return [
                 'unread_count' => 0,
                 'latest_post_id' => $latestId,
-            ]);
+            ];
         }
 
         $anchor = FamilyPost::query()
@@ -632,10 +646,10 @@ class FeedService
         if (! $anchor || ! $anchor->published_at) {
             $unreadCount = (int) (clone $base)->where('id', '>', $afterId)->count();
 
-            return $this->withFeedRevision([
+            return [
                 'unread_count' => $unreadCount,
                 'latest_post_id' => $latestId,
-            ]);
+            ];
         }
 
         $unreadCount = (int) (clone $base)
@@ -648,10 +662,10 @@ class FeedService
             })
             ->count();
 
-        return $this->withFeedRevision([
+        return [
             'unread_count' => $unreadCount,
             'latest_post_id' => $latestId,
-        ]);
+        ];
     }
 
     /** @param  array{unread_count: int, latest_post_id: int}  $payload */

@@ -15,6 +15,66 @@
             "category": "خانواده",
             "legacy_path": null,
             "is_private": false
+        },
+        {
+            "path": "media/site/seminar-promo-desktop-available.webp",
+            "disk": "site_media_ftp",
+            "url": null,
+            "type": "image",
+            "mime": "image/webp",
+            "size": 24116,
+            "width": 1983,
+            "height": 83,
+            "alt_fa": "بنر سمینار — دسکتاپ (ظرفیت باز)",
+            "original_filename": "seminar-promo-desktop-available.webp",
+            "category": "سمینار",
+            "legacy_path": null,
+            "is_private": false
+        },
+        {
+            "path": "media/site/seminar-promo-desktop-full.webp",
+            "disk": "site_media_ftp",
+            "url": null,
+            "type": "image",
+            "mime": "image/webp",
+            "size": 17134,
+            "width": 1983,
+            "height": 83,
+            "alt_fa": "بنر سمینار — دسکتاپ (تکمیل ظرفیت)",
+            "original_filename": "seminar-promo-desktop-full.webp",
+            "category": "سمینار",
+            "legacy_path": null,
+            "is_private": false
+        },
+        {
+            "path": "media/site/seminar-promo-mobile-available.webp",
+            "disk": "site_media_ftp",
+            "url": null,
+            "type": "image",
+            "mime": "image/webp",
+            "size": 27956,
+            "width": 1632,
+            "height": 235,
+            "alt_fa": "بنر سمینار — موبایل (ظرفیت باز)",
+            "original_filename": "seminar-promo-mobile-available.webp",
+            "category": "سمینار",
+            "legacy_path": null,
+            "is_private": false
+        },
+        {
+            "path": "media/site/seminar-promo-mobile-full.webp",
+            "disk": "site_media_ftp",
+            "url": null,
+            "type": "image",
+            "mime": "image/webp",
+            "size": 20370,
+            "width": 1632,
+            "height": 235,
+            "alt_fa": "بنر سمینار — موبایل (تکمیل ظرفیت)",
+            "original_filename": "seminar-promo-mobile-full.webp",
+            "category": "سمینار",
+            "legacy_path": null,
+            "is_private": false
         }
     ]
 }

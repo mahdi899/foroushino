@@ -34,6 +34,26 @@ echo "==> Storage link (idempotent)"
 php artisan storage:link 2>/dev/null || true
 php artisan media:guard-directories
 
+if [[ -f "$APP_ROOT/deploy/php-fpm/99-bahram-uploads.ini" ]]; then
+  echo "==> PHP upload limits"
+  cp "$APP_ROOT/deploy/php-fpm/99-bahram-uploads.ini" /etc/php/8.4/fpm/conf.d/99-bahram-uploads.ini
+  systemctl reload php8.4-fpm 2>/dev/null || true
+fi
+
+if [[ -f "$APP_ROOT/deploy/nginx/snippets/media-cors.conf" ]]; then
+  echo "==> Nginx media CORS"
+  mkdir -p /etc/nginx/snippets /etc/nginx/conf.d
+  cp "$APP_ROOT/deploy/nginx/snippets/media-cors.conf" /etc/nginx/snippets/media-cors.conf
+  cp "$APP_ROOT/deploy/nginx/conf.d/rostami-upstreams.conf" /etc/nginx/conf.d/rostami-upstreams.conf
+  if [[ -f "$APP_ROOT/deploy/nginx/rostami-app.conf" && -f /etc/nginx/sites-available/rostami-app.conf ]]; then
+    cp "$APP_ROOT/deploy/nginx/rostami-app.conf" /etc/nginx/sites-available/rostami-app.conf
+  fi
+  if [[ -f "$APP_ROOT/deploy/nginx/rostami-club.conf" && -f /etc/nginx/sites-available/rostami-club.conf ]]; then
+    cp "$APP_ROOT/deploy/nginx/rostami-club.conf" /etc/nginx/sites-available/rostami-club.conf
+  fi
+  nginx -t && systemctl reload nginx
+fi
+
 echo "==> Frontend build"
 cd "$APP_ROOT/frontend"
 # devDependencies (e.g. @next/bundle-analyzer) are required for next.config.ts at build time.

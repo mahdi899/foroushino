@@ -5,14 +5,14 @@ export const familySwrDefaults = {
   dedupingInterval: 5_000,
 } as const;
 
-/** Feed: refresh tip on every visit; IndexedDB restores scroll depth only. */
+/** Feed: restore from SSR/IndexedDB; avoid refetch on every tab focus. */
 export const familyFeedSwr = {
   ...familySwrDefaults,
-  revalidateOnFocus: true,
+  revalidateOnFocus: false,
   revalidateOnMount: true,
   revalidateFirstPage: true,
   revalidateAll: false,
-  dedupingInterval: 5_000,
+  dedupingInterval: 15_000,
 } as const;
 
 export const familyPinnedSwr = {

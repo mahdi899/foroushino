@@ -88,6 +88,26 @@ export const SITE_MEDIA: Record<string, { src: string; label: string; category: 
   'trust-enamad': { src: siteStorageMedia('trust-enamad.webp'), label: 'نماد اعتماد الکترونیکی', category: 'اعتماد' },
   'trust-samandehi': { src: siteStorageMedia('trust-samandehi.webp'), label: 'ساماندهی', category: 'اعتماد' },
   'trust-zarinpal': { src: siteStorageMedia('trust-zarinpal.webp'), label: 'زرین‌پال', category: 'اعتماد' },
+  'seminar-promo-desktop-available': {
+    src: siteStorageMedia('seminar-promo-desktop-available.webp'),
+    label: 'بنر سمینار — دسکتاپ (ظرفیت باز)',
+    category: 'سمینار',
+  },
+  'seminar-promo-desktop-full': {
+    src: siteStorageMedia('seminar-promo-desktop-full.webp'),
+    label: 'بنر سمینار — دسکتاپ (تکمیل ظرفیت)',
+    category: 'سمینار',
+  },
+  'seminar-promo-mobile-available': {
+    src: siteStorageMedia('seminar-promo-mobile-available.webp'),
+    label: 'بنر سمینار — موبایل (ظرفیت باز)',
+    category: 'سمینار',
+  },
+  'seminar-promo-mobile-full': {
+    src: siteStorageMedia('seminar-promo-mobile-full.webp'),
+    label: 'بنر سمینار — موبایل (تکمیل ظرفیت)',
+    category: 'سمینار',
+  },
 };
 
 export function resolveMainServiceImage(slug: string, fallback?: string | null): string {

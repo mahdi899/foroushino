@@ -19,7 +19,7 @@ set_env() {
 
 set_env FAMILY_MEDIA_DISK family_media_ftp
 set_env MEDIA_DISK site_media_ftp
-grep -q '^FAMILY_MEDIA_CDN_URL=' "$ENV_FILE" || set_env FAMILY_MEDIA_CDN_URL https://cdn.rostami.app
+grep -q '^FAMILY_MEDIA_CDN_URL=' "$ENV_FILE" || set_env FAMILY_MEDIA_CDN_URL https://rostami.club
 grep -q '^MEDIA_URL=' "$ENV_FILE" || set_env MEDIA_URL https://cdn.rostami.app
 
 echo "==> family_media disk column (public → family_media_ftp)"

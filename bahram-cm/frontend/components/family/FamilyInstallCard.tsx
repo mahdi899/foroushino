@@ -9,6 +9,28 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const DISMISS_KEY = 'family-pwa-install-dismissed';
+const DISMISS_COOLDOWN_MS = 4 * 24 * 60 * 60_000;
+
+function readDismissedAt(): number | null {
+  try {
+    const raw = window.localStorage.getItem(DISMISS_KEY);
+    if (!raw) return null;
+    if (raw === '1') {
+      const at = Date.now();
+      window.localStorage.setItem(DISMISS_KEY, String(at));
+      return at;
+    }
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function isInstallDismissed(): boolean {
+  const dismissedAt = readDismissedAt();
+  return dismissedAt !== null && Date.now() - dismissedAt < DISMISS_COOLDOWN_MS;
+}
 
 /** Compact install CTA for the family PWA (Android beforeinstallprompt + iOS hint). */
 export function FamilyInstallCard() {
@@ -20,11 +42,7 @@ export function FamilyInstallCard() {
 
   useEffect(() => {
     setIsIos(/iphone|ipad|ipod/i.test(navigator.userAgent));
-    try {
-      setDismissed(window.localStorage.getItem(DISMISS_KEY) === '1');
-    } catch {
-      setDismissed(false);
-    }
+    setDismissed(isInstallDismissed());
 
     const standalone =
       window.matchMedia('(display-mode: standalone)').matches ||
@@ -37,7 +55,9 @@ export function FamilyInstallCard() {
     const onInstall = (e: Event) => {
       e.preventDefault();
       setInstallEvent(e as BeforeInstallPromptEvent);
-      setDismissed(false);
+      if (!isInstallDismissed()) {
+        setDismissed(false);
+      }
     };
 
     window.addEventListener('beforeinstallprompt', onInstall);
@@ -61,7 +81,7 @@ export function FamilyInstallCard() {
   const dismiss = () => {
     setDismissed(true);
     try {
-      window.localStorage.setItem(DISMISS_KEY, '1');
+      window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
     } catch {
       /* ignore */
     }

@@ -1,8 +1,9 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SERVER_API_URL } from '@/lib/api/config';
+import { isFamilyHost, resolveFamilyLoginRedirect } from '@/lib/domains';
 import { forwardedClientHeaders } from '@/lib/api/forwardedClientHeaders';
 import { extractValidationMessage } from '@/lib/services/api';
 import { STUDENT_TOKEN_COOKIE } from './session';
@@ -84,7 +85,7 @@ export async function verifyOtpAction(_prev: OtpAuthState, formData: FormData): 
   if (!token) return { step: 'otp', mobile, error: 'پاسخ سرور نامعتبر بود.' };
 
   await setStudentTokenCookie(token);
-  redirect(resolveStudentLoginRedirect(formData));
+  redirect(await resolveStudentLoginRedirect(formData));
 }
 
 export interface PasswordAuthState {
@@ -112,11 +113,19 @@ export async function loginPasswordAction(_prev: PasswordAuthState, formData: Fo
   if (!token) return { error: 'پاسخ سرور نامعتبر بود.' };
 
   await setStudentTokenCookie(token);
-  redirect(resolveStudentLoginRedirect(formData));
+  redirect(await resolveStudentLoginRedirect(formData));
 }
 
-function resolveStudentLoginRedirect(formData: FormData): string {
+async function resolveStudentLoginRedirect(formData: FormData): Promise<string> {
   const redirectTo = String(formData.get('redirect_to') ?? '').trim();
+  const authContext = String(formData.get('auth_context') ?? '').trim();
+  const host = (await headers()).get('host')?.split(':')[0] ?? '';
+  const onFamily = authContext === 'family' || isFamilyHost(host);
+
+  if (onFamily) {
+    return resolveFamilyLoginRedirect(redirectTo || undefined, host);
+  }
+
   if (redirectTo.startsWith('/') && !redirectTo.startsWith('//')) {
     return redirectTo;
   }

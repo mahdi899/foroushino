@@ -32,10 +32,10 @@ export function familyLoginRedirectPath(): string {
   const { pathname, search, hostname } = window.location;
 
   if (isFamilyHost(hostname)) {
-    const path = pathname.startsWith('/family')
-      ? pathname.replace(/^\/family/, '') || '/'
-      : pathname || '/';
-    return `${path}${search}`;
+    if (pathname === '/login') return `/family${search}`;
+    if (pathname.startsWith('/family')) return `${pathname}${search}`;
+    if (pathname === '/' || pathname === '') return `/family${search}`;
+    return `/family${pathname}${search}`;
   }
 
   return search ? `/family${search}` : '/family';
@@ -52,26 +52,23 @@ export function isFamilyBareShell(pathname: string, hostname?: string): boolean 
   return Boolean(hostname && isFamilyHost(hostname));
 }
 
-export function resolveFamilyLoginRedirect(target?: string, hostname?: string): string {
-  const onClub = hostname ? isFamilyHost(hostname) : false;
-
+/** Server-side post-login path — always a Next.js `/family/*` route (not club apex `/`). */
+export function resolveFamilyLoginRedirect(target?: string, _hostname?: string): string {
   if (!target || target.startsWith('//')) {
-    return onClub ? '/' : '/family';
+    return '/family';
   }
 
   if (!target.startsWith('/')) {
-    return onClub ? '/' : '/family';
+    return '/family';
   }
 
-  if (onClub) {
-    if (target.startsWith('/family')) {
-      return target.replace(/^\/family/, '') || '/';
-    }
+  if (target.startsWith('/family')) {
+    if (target === '/family/login' || target === '/family') return target;
     return target;
   }
 
-  if (target.startsWith('/family')) return target;
-  if (target === '/' || target === '') return '/family';
+  if (target === '/login') return '/family/login';
+  if (target === '/') return '/family';
 
   return `/family${target}`;
 }

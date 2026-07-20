@@ -4,7 +4,7 @@ set -euo pipefail
 
 APP_DIR="${APP_DIR:-/var/www/foroushino/bahram-family-manager}"
 FLUTTER_BIN="${FLUTTER_BIN:-${APP_DIR}/../.tools/flutter/bin/flutter}"
-API_BASE_URL="${API_BASE_URL:-https://rostami.app/api/v1}"
+API_BASE_URL="${API_BASE_URL:-https://rostami.club/api/v1}"
 
 cd "$APP_DIR"
 

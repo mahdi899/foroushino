@@ -52,6 +52,7 @@ import {
   useFamilyRealtime,
 } from '@/lib/family/hooks/useFamilyRealtime';
 import { isRealtimeConfigured } from '@/lib/realtime/echo';
+import { usePageVisible } from '@/lib/family/hooks/usePageVisible';
 import { formatFeedDaySeparator, getPostDayKey } from '@/lib/family/datetime';
 import { estimateFeedItemSize, type FeedListItem } from '@/lib/family/feedItemEstimate';
 import type { FamilyBranding, FamilyComment, FamilyFeedResponse, FamilyPost } from '@/lib/family/types';
@@ -140,6 +141,7 @@ export function FeedView({
   onCloseNotifications?: () => void;
 }) {
   const isPreview = Boolean(previewMode);
+  const pageVisible = usePageVisible();
   useFamilyDebugRender(isPreview ? 'FeedView:preview' : 'FeedView');
   const feedScope: 'guest' | 'member' = isPreview ? 'guest' : 'member';
   const initialPage = initialFeed ? { data: initialFeed.data, meta: initialFeed.meta } : null;
@@ -392,17 +394,17 @@ export function FeedView({
 
   // HTTP safety net when Reverb is down or an event was missed (e.g. two quick publishes).
   useEffect(() => {
-    if (isPreview || !feedReady) return;
+    if (isPreview || !feedReady || !pageVisible) return;
 
     void syncTipIfServerAhead();
 
-    const intervalMs = isRealtimeConfigured() ? 20_000 : 8_000;
+    const intervalMs = isRealtimeConfigured() ? 45_000 : 30_000;
     const id = window.setInterval(() => {
       void syncTipIfServerAhead();
     }, intervalMs);
 
     return () => window.clearInterval(id);
-  }, [feedReady, isPreview, syncTipIfServerAhead]);
+  }, [feedReady, isPreview, pageVisible, syncTipIfServerAhead]);
 
   useEffect(() => {
     const revision = meta?.feed_revision;

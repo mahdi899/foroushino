@@ -1421,10 +1421,6 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-topbar {
-  display: none !important;
-}
-
-.family-topbar {
   position: sticky;
   top: 0;
   z-index: 40;

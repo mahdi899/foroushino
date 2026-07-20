@@ -221,6 +221,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/storage/:path*",
     "/api/:path*",
     "/cdn/:path*",

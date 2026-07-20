@@ -46,6 +46,12 @@ fi
 echo "==> Enabling services"
 systemctl enable --now nginx mysql redis-server php8.4-fpm supervisor
 
+echo "==> PHP upload limits (Family Manager media)"
+if [[ -f "${APP_ROOT}/deploy/php-fpm/99-bahram-uploads.ini" ]]; then
+  cp "${APP_ROOT}/deploy/php-fpm/99-bahram-uploads.ini" /etc/php/8.4/fpm/conf.d/99-bahram-uploads.ini
+  systemctl reload php8.4-fpm
+fi
+
 echo "==> MySQL database"
 DB_NAME="bahram_backend"
 DB_USER="bahram"
@@ -186,7 +192,8 @@ DEPLOY
 chmod +x /usr/local/bin/bahram-deploy
 
 echo "==> Nginx (rostami.app + rostami.club — Option B dual-domain)"
-mkdir -p /etc/nginx/conf.d
+mkdir -p /etc/nginx/snippets /etc/nginx/conf.d
+cp "${APP_ROOT}/deploy/nginx/snippets/media-cors.conf" /etc/nginx/snippets/media-cors.conf
 cp "${APP_ROOT}/deploy/nginx/conf.d/cloudflare-real-ip.conf" /etc/nginx/conf.d/cloudflare-real-ip.conf
 cp "${APP_ROOT}/deploy/nginx/conf.d/rostami-upstreams.conf" /etc/nginx/conf.d/rostami-upstreams.conf
 NGINX_SRC="${APP_ROOT}/deploy/nginx/rostami-app-origin.conf"

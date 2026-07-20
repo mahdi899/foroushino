@@ -211,8 +211,15 @@ export function StudentLoginForm({
     if (website) fd.set('website', website);
 
     startPasswordTransition(async () => {
-      const result = await loginPasswordAction({}, fd);
-      if (result.error) setPasswordError(result.error);
+      try {
+        const result = await loginPasswordAction({}, fd);
+        if (result.error) setPasswordError(result.error);
+      } catch (error) {
+        // Let Next.js handle redirect() from the server action.
+        const digest = typeof error === 'object' && error !== null && 'digest' in error ? String(error.digest) : '';
+        if (digest.startsWith('NEXT_REDIRECT')) throw error;
+        setPasswordError('خطایی رخ داد. دوباره تلاش کنید.');
+      }
     });
   }
 
@@ -375,6 +382,7 @@ export function StudentLoginForm({
               <form ref={verifyFormRef} action={verifyOtp} className="space-y-3">
                 <input type="hidden" name="mobile" value={mobile} />
                 <input type="hidden" name="redirect_to" value={redirectTo} />
+                {isFamily ? <input type="hidden" name="auth_context" value="family" /> : null}
                 <input ref={codeInputRef} type="hidden" name="code" value={otpCode} readOnly />
 
                 <OtpDigitInput
@@ -454,6 +462,7 @@ export function StudentLoginForm({
               className="space-y-3"
             >
               <input type="hidden" name="redirect_to" value={redirectTo} />
+              {isFamily ? <input type="hidden" name="auth_context" value="family" /> : null}
               {passwordSecurity.honeypotField}
 
               <label className="block">

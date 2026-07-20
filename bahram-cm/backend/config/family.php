@@ -86,6 +86,7 @@ return [
         // because it's also bumped by a version key on every publish (see
         // FamilyPostPublisher::publish), so this mostly protects against read bursts.
         'feed_tip_ttl' => (int) env('FAMILY_CACHE_FEED_TIP_TTL', 8),
+        'unread_ttl' => (int) env('FAMILY_CACHE_UNREAD_TTL', 45),
     ],
 
     'onboarding' => [

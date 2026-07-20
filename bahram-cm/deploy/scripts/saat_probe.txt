@@ -1,0 +1,32 @@
+﻿
+===== 185.130.50.129 =====
+--- hostname -I; ls -la /var/www/saat 2>/dev/null | head -3 || e
+185.130.50.129 
+
+--- ls -la /var/www/mini-call-center 2>/dev/null | head -3 || ec
+
+--- curl -sf http://127.0.0.1/api/v1/health -H 'Host: sat.center
+<html>
+
+<head><title>301 Moved Permanently</title></head>
+
+<body>
+
+<center><h1>301 Moved Permanently</h1></center>
+
+<hr><center>nginx/1.24.0 (Ubuntu)</center>
+
+</body>
+
+</html>
+
+
+--- supervisorctl status saat-queue:* 2>/dev/null | head -5 || e
+saat-queue: ERROR (no such group)
+
+--- tail -30 /var/www/saat/backend/storage/logs/laravel.log 2>/d
+NO_LOG
+
+
+===== 185.130.50.24 =====
+FAIL: Authentication failed.

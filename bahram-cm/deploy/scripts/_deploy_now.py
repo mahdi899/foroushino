@@ -335,18 +335,117 @@ echo DONE
             print("STDERR:", err)
         client.close()
         raise SystemExit(0)
+    if target == "logs-bahram":
         env = load_env()
         client = connect(env)
         for cmd in [
             "tail -80 /tmp/bahram-repair.log 2>/dev/null || true",
             "pm2 list",
             "pm2 logs bahram-frontend --lines 15 --nostream 2>&1 | tail -20",
-            "ls -la /var/www/bahram-cm/frontend/.next/BUILD_ID 2>&1",
             "test -d /var/www/bahram-cm/frontend/node_modules/@next/bundle-analyzer && echo HAS_ANALYZER || echo NO_ANALYZER",
         ]:
             print("===", cmd[:70], "===")
             _, stdout, _ = client.exec_command(cmd, timeout=90)
             print(stdout.read().decode("utf-8", errors="replace"))
+        client.close()
+        raise SystemExit(0)
+    if target == "seminar-banners":
+        env = load_env()
+        app = env.get("DEPLOY_APP_ROOT", "/var/www/bahram-cm")
+        backend = Path(__file__).resolve().parents[2] / "backend"
+        site_local = backend / "storage" / "app" / "public" / "media" / "site"
+        client = connect(env)
+        sftp = client.open_sftp()
+        remote_site = f"{app}/backend/storage/app/public/media/site"
+        for name in [
+            "seminar-promo-desktop-available.webp",
+            "seminar-promo-desktop-full.webp",
+            "seminar-promo-mobile-available.webp",
+            "seminar-promo-mobile-full.webp",
+        ]:
+            sftp.put(str(site_local / name), f"{remote_site}/{name}")
+        sftp.put(str(backend / "scripts" / "publish-seminar-banners.php"), f"{app}/backend/scripts/publish-seminar-banners.php")
+        sftp.put(str(backend / "database" / "data" / "media_library.json"), f"{app}/backend/database/data/media_library.json")
+        sftp.close()
+        cmd = (
+            f"cd {app}/backend && php scripts/publish-seminar-banners.php && "
+            "curl -sk https://rostami.app/api/seminars/promo | head -c 600"
+        )
+        _, stdout, stderr = client.exec_command(cmd, timeout=180)
+        print(stdout.read().decode("utf-8", errors="replace"))
+        err = stderr.read().decode("utf-8", errors="replace")
+        if err.strip():
+            print("ERR:", err)
+        client.close()
+        raise SystemExit(0)
+    if target == "fix-media-cors":
+        env = load_env()
+        app = env.get("DEPLOY_APP_ROOT", "/var/www/bahram-cm")
+        deploy_root = Path(__file__).resolve().parents[1] / "nginx"
+        client = connect(env)
+        sftp = client.open_sftp()
+        sftp.put(str(deploy_root / "snippets" / "media-cors.conf"), "/etc/nginx/snippets/media-cors.conf")
+        sftp.put(str(deploy_root / "conf.d" / "rostami-upstreams.conf"), "/etc/nginx/conf.d/rostami-upstreams.conf")
+        sftp.put(str(deploy_root / "rostami-app.conf"), "/etc/nginx/sites-available/rostami-app.conf")
+        sftp.put(str(deploy_root / "rostami-club.conf"), "/etc/nginx/sites-available/rostami-club.conf")
+        sftp.close()
+        test_path = "/media/family/2026/07/image/01kxp67n1vbdn98dn7219wvdg4.webp"
+        cmd = (
+            "nginx -t && systemctl reload nginx && "
+            f"grep -q '^FAMILY_MEDIA_CDN_URL=https://rostami.club' {app}/backend/.env || "
+            f"sed -i 's|^FAMILY_MEDIA_CDN_URL=.*|FAMILY_MEDIA_CDN_URL=https://rostami.club|' {app}/backend/.env && "
+            f"cd {app}/backend && php artisan config:cache && "
+            f"php artisan cache:forget family:branding:public 2>/dev/null || true && "
+            f"curl -skI -H 'Host: rostami.club' 'https://127.0.0.1{test_path}' | head -15"
+        )
+        _, stdout, stderr = client.exec_command(cmd, timeout=120)
+        print(stdout.read().decode("utf-8", errors="replace"))
+        err = stderr.read().decode("utf-8", errors="replace")
+        if err.strip():
+            print("ERR:", err)
+        client.close()
+        raise SystemExit(0)
+    if target == "fix-php-uploads":
+        env = load_env()
+        app = env.get("DEPLOY_APP_ROOT", "/var/www/bahram-cm")
+        client = connect(env)
+        sftp = client.open_sftp()
+        local_ini = Path(__file__).resolve().parents[1] / "php-fpm" / "99-bahram-uploads.ini"
+        remote_ini = "/etc/php/8.4/fpm/conf.d/99-bahram-uploads.ini"
+        sftp.put(str(local_ini), remote_ini)
+        local_controller = Path(__file__).resolve().parents[2] / "backend" / "app" / "Http" / "Controllers" / "Api" / "V1" / "FamilyManager" / "MediaController.php"
+        remote_controller = f"{app}/backend/app/Http/Controllers/Api/V1/FamilyManager/MediaController.php"
+        sftp.put(str(local_controller), remote_controller)
+        sftp.close()
+        cmd = (
+            f"cat /etc/php/8.4/fpm/conf.d/99-bahram-uploads.ini && "
+            f"systemctl reload php8.4-fpm && "
+            f"cd {app}/backend && php artisan route:cache && "
+            f"php-fpm8.4 -i 2>/dev/null | grep -E 'upload_max_filesize|post_max_size' | head -2 && "
+            f"supervisorctl status bahram-family-queue:* 2>/dev/null | head -3"
+        )
+        _, stdout, stderr = client.exec_command(cmd, timeout=120)
+        print(stdout.read().decode("utf-8", errors="replace"))
+        err = stderr.read().decode("utf-8", errors="replace")
+        if err.strip():
+            print("ERR:", err)
+        client.close()
+        raise SystemExit(0)
+    if target == "diagnose-media":
+        env = load_env()
+        client = connect(env)
+        for cmd in [
+            "grep -R 'family-manager/media' /etc/nginx/sites-enabled/ /etc/nginx/conf.d/ 2>/dev/null | head -20",
+            'php -r \'echo "upload_max=".ini_get("upload_max_filesize")." post_max=".ini_get("post_max_size").PHP_EOL;\'',
+            "tail -80 /var/www/bahram-cm/backend/storage/logs/laravel.log 2>/dev/null | tail -30",
+            "ls -la /var/www/bahram-cm/backend/storage/app/family-ingest 2>/dev/null | head -5 || echo NO_INGEST_DIR",
+        ]:
+            print("===", cmd[:75], "===")
+            _, stdout, stderr = client.exec_command(cmd, timeout=90)
+            print(stdout.read().decode("utf-8", errors="replace"))
+            err = stderr.read().decode("utf-8", errors="replace")
+            if err.strip():
+                print("ERR:", err)
         client.close()
         raise SystemExit(0)
     if target == "probe-saat":

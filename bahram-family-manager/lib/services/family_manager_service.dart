@@ -374,7 +374,7 @@ class FamilyManagerService {
     final form = FormData.fromMap({
       'type': type,
       'file': MultipartFile.fromBytes(bytes, filename: filename),
-      if (optimizeImages != null) 'optimize_images': optimizeImages,
+      if (optimizeImages != null) 'optimize_images': optimizeImages ? 1 : 0,
     });
 
     final res = await api.postForm(
@@ -401,7 +401,7 @@ class FamilyManagerService {
       'filename': filename,
       'total_size': totalSize,
       'chunk_size': _chunkSizeBytes,
-      if (optimizeImages != null) 'optimize_images': optimizeImages,
+      if (optimizeImages != null) 'optimize_images': optimizeImages ? 1 : 0,
     });
     final session = (sessionRes['data'] as Map).cast<String, dynamic>();
     final ulid = session['ulid'] as String;

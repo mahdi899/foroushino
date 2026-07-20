@@ -30,7 +30,7 @@ export function FamilyStoryHint({
   onMaskedMemberCountClick,
   nested = false,
 }: FamilyStoryHintProps) {
-  const [hour, setHour] = useState(() => new Date().getHours());
+  const [hour, setHour] = useState<number | null>(null);
 
   useEffect(() => {
     const syncHour = () => setHour(new Date().getHours());
@@ -42,7 +42,9 @@ export function FamilyStoryHint({
   const hasMembers = typeof memberCount === 'number';
   const showMemberStat = maskMemberCount || hasMembers;
   const displayMemberCount =
-    hasMembers && !maskMemberCount ? inflatedMemberCount(memberCount, hour) : null;
+    hasMembers && !maskMemberCount && hour !== null
+      ? inflatedMemberCount(memberCount, hour)
+      : null;
 
   if (!showMemberStat && !hasUnseen) return null;
 
@@ -76,7 +78,7 @@ export function FamilyStoryHint({
       </button>
     )
   ) : (
-    <span className="family-topbar__subtitle--live">
+    <span className="family-topbar__subtitle--live" suppressHydrationWarning>
       {showOnlineDot && <span className="family-topbar__meta-dot" aria-hidden />}
       {formatFa(displayMemberCount ?? memberCount ?? 0)} {memberLabel}
     </span>

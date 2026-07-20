@@ -27,6 +27,19 @@ String? resolveMediaUrl(String? raw) {
 Uri _rewriteForWeb(Uri uri) {
   if (!kIsWeb) return uri;
 
+  // Admin on rostami.club: load family CDN assets same-origin (external CDN has no CORS).
+  if (uri.host == 'cdn.rostami.app' && uri.path.startsWith('/media/family/')) {
+    final page = Uri.base;
+    if (page.host.endsWith('rostami.club')) {
+      return Uri(
+        scheme: page.scheme,
+        host: page.host,
+        path: uri.path,
+        query: uri.query.isEmpty ? null : uri.query,
+      );
+    }
+  }
+
   if (!uri.path.startsWith('/storage/')) {
     return uri;
   }
