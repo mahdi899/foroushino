@@ -362,9 +362,11 @@ export function siteMediaFallbacks(src: string | null | undefined): string[] {
   if (!ref) return [src.trim()];
 
   if (ref.startsWith('/storage/')) {
-    add(ref);
+    const cdnSrc = primarySiteImageSrc(ref);
+    add(cdnSrc);
+    if (cdnSrc !== ref) add(ref);
     for (const extra of SITE_ASSET_FALLBACKS[ref] ?? []) {
-      add(extra);
+      add(primarySiteImageSrc(extra) || extra);
     }
     return out;
   }

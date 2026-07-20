@@ -52,12 +52,14 @@ const allowedDevOrigins = [
     .filter(Boolean) ?? []),
 ];
 
-/** Allow next/image to fetch media from Laravel (proxied /storage and external CDN). */
+/** Allow next/image to fetch media from Laravel (proxied /storage) and download host CDN. */
 function backendImagePattern() {
   const origins = [
+    "https://cdn.rostami.app",
     process.env.NEXT_PUBLIC_CDN_ORIGIN,
     process.env.BACKEND_PROXY_URL,
     process.env.NEXT_PUBLIC_MEDIA_URL,
+    process.env.NEXT_PUBLIC_MEDIA_DOWNLOAD_HOST,
     process.env.NEXT_PUBLIC_ASSET_URL,
     process.env.NEXT_PUBLIC_API_BASE_URL,
   ].filter((value): value is string => Boolean(value?.trim()));

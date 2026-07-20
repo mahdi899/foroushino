@@ -42,4 +42,17 @@ class MediaUrlTest extends TestCase
             MediaUrl::cdnPathFromStorageRef('/storage/articles/cover.jpg'),
         );
     }
+
+    public function test_gallery_storage_uses_arvan_media_domain_when_media_url_unset(): void
+    {
+        config([
+            'bahram.media_url' => '',
+            'bahram.arvan.media_domain' => 'cdn.rostami.app',
+            'bahram.frontend_url' => 'http://localhost:3000',
+        ]);
+
+        $url = MediaUrl::resolve('/storage/media/site/logo.webp');
+
+        $this->assertSame('https://cdn.rostami.app/media/site/logo.webp', $url);
+    }
 }

@@ -105,4 +105,29 @@ describe('feedMerge', () => {
 
     expect(reconcileDiskCacheWithCurrent(live, disk)).toBe(disk);
   });
+
+  it('keeps a fresher disk tip when live has more scroll pages', () => {
+    const disk: FeedCachePage[] = [
+      {
+        data: [post(8), post(7)],
+        meta: { next_cursor: 'disk-cursor', guest: false, display_name: 'Family' },
+      },
+    ];
+    const live: FeedCachePage[] = [
+      {
+        data: [post(6), post(5)],
+        meta: { next_cursor: 'live-cursor', guest: false, display_name: 'Family' },
+      },
+      {
+        data: [post(4)],
+        meta: { next_cursor: null, guest: false, display_name: 'Family' },
+      },
+    ];
+
+    const next = reconcileDiskCacheWithCurrent(live, disk);
+    expect(latestPostIdFromPages(next)).toBe(8);
+    expect(next).toHaveLength(2);
+    expect(next[0]?.data.map((p) => p.id)).toEqual([8, 7]);
+    expect(next[1]?.data.map((p) => p.id)).toEqual([4]);
+  });
 });

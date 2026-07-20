@@ -77,9 +77,10 @@ export function latestPostIdFromPages(pages: FeedCachePage[] | undefined): numbe
 }
 
 /**
- * Restore scroll depth from IndexedDB without downgrading a fresher network tip.
- * Disk may have more pages but an older tip if a publish landed after the last persist.
- * When tip ids differ, always trust the network tip — disk may still contain admin-deleted posts.
+ * Merge IndexedDB scroll depth with live SWR pages without downgrading the feed tip.
+ * - Fresher network tip: trust live data (disk may still list admin-deleted posts).
+ * - Fresher disk tip: trust IndexedDB (e.g. publish persisted before network revalidated).
+ * - Same tip id: keep the fresher tip page and restore depth from whichever has more pages.
  */
 export function reconcileDiskCacheWithCurrent(
   current: FeedCachePage[] | undefined,
@@ -91,17 +92,19 @@ export function reconcileDiskCacheWithCurrent(
   const currentTipId = latestPostIdFromPages(current);
   const cachedTipId = latestPostIdFromPages(cached);
 
-  if (currentTipId !== cachedTipId) {
-    if (!current[0]) return cached;
-    if (current.length >= cached.length) return current;
-    return [current[0], ...cached.slice(1)];
-  }
-
-  if (currentTipId >= cachedTipId) {
+  if (currentTipId === cachedTipId) {
     if (current.length >= cached.length) return current;
     const tip = current[0];
     return tip ? [tip, ...cached.slice(1)] : cached;
   }
 
-  return cached;
+  if (cachedTipId > currentTipId) {
+    if (cached.length >= current.length) return cached;
+    if (!cached[0]) return current;
+    return [cached[0], ...current.slice(1)];
+  }
+
+  if (!current[0]) return cached;
+  if (current.length >= cached.length) return current;
+  return [current[0], ...cached.slice(1)];
 }

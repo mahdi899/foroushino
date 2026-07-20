@@ -16,11 +16,22 @@ final class MediaUrl
     public static function mediaOrigin(): ?string
     {
         $url = config('bahram.media_url');
-        if (! is_string($url) || trim($url) === '') {
+        if (is_string($url) && trim($url) !== '') {
+            return rtrim(trim($url), '/');
+        }
+
+        return self::configuredDownloadHost();
+    }
+
+    /** cdn.rostami.app (ARVAN_MEDIA_DOMAIN) when MEDIA_URL is unset — matches local dev + production. */
+    private static function configuredDownloadHost(): ?string
+    {
+        $arvan = trim((string) config('bahram.arvan.media_domain', ''));
+        if ($arvan === '') {
             return null;
         }
 
-        return rtrim(trim($url), '/');
+        return str_starts_with($arvan, 'http') ? rtrim($arvan, '/') : 'https://'.$arvan;
     }
 
     /** Laravel /storage origin when MEDIA_URL is unset. */

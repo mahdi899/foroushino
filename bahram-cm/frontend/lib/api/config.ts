@@ -7,15 +7,20 @@ export const PUBLIC_API_URL =
 
 export const API_ORIGIN = (process.env.NEXT_PUBLIC_API_ORIGIN || 'http://localhost:3000').replace(/\/$/, '');
 
-/**
- * Unified CDN/host for ALL public images (/images + /storage).
- * Set NEXT_PUBLIC_MEDIA_URL=https://cdn.example.com — must match backend MEDIA_URL.
- * When unset: uploads use ASSET_ORIGIN, static /images stay same-origin.
- */
-export const MEDIA_ORIGIN: string | null =
-  (process.env.NEXT_PUBLIC_MEDIA_URL || '').replace(/\/$/, '') || null;
+/** Default download host when env is unset — gallery files are not on localhost /storage. */
+export const DEFAULT_MEDIA_DOWNLOAD_HOST = (
+  process.env.NEXT_PUBLIC_MEDIA_DOWNLOAD_HOST || 'https://cdn.rostami.app'
+).replace(/\/$/, '');
 
-/** Upload origin when MEDIA_ORIGIN is unset (/storage/...). */
+/**
+ * Unified CDN/host for ALL public images (/images + /storage/media/*).
+ * Set NEXT_PUBLIC_MEDIA_URL=https://cdn.example.com — must match backend MEDIA_URL.
+ * When unset: uses DEFAULT_MEDIA_DOWNLOAD_HOST (cdn.rostami.app).
+ */
+export const MEDIA_ORIGIN: string =
+  (process.env.NEXT_PUBLIC_MEDIA_URL || '').replace(/\/$/, '') || DEFAULT_MEDIA_DOWNLOAD_HOST;
+
+/** Upload origin for non-CDN paths (/storage/articles, etc.). */
 export const ASSET_ORIGIN = (process.env.NEXT_PUBLIC_ASSET_URL || API_ORIGIN).replace(/\/$/, '');
 
 /** Public site origin (canonical, sitemap pages). */

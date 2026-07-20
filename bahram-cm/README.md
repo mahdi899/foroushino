@@ -67,7 +67,8 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 ## Deploy
 
-جزئیات در [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+جزئیات در [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).  
+**مهاجرت به IP/سرور جدید:** [`docs/SERVER-MIGRATION.md`](docs/SERVER-MIGRATION.md)
 
 **CDN (rostami.app / Cloudflare):** [`docs/CLOUDFLARE-CDN.md`](docs/CLOUDFLARE-CDN.md) — جایگزین آروان: [`docs/ARVAN-CDN.md`](docs/ARVAN-CDN.md)
 
