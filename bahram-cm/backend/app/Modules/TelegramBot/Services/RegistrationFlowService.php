@@ -34,6 +34,13 @@ class RegistrationFlowService
 
     public function start(TelegramBot $bot, TelegramAccount $account, TelegramConversation $conversation): void
     {
+        if ($account->isBotAdmin()) {
+            $this->conversations->transition($conversation, ConversationState::Idle);
+            $this->sendMainMenu($bot, $account);
+
+            return;
+        }
+
         if ($account->isLinked() && $account->hasVerifiedMobile()) {
             $this->sendMainMenu($bot, $account);
 
@@ -434,7 +441,7 @@ class RegistrationFlowService
     /** @param  array<string, mixed>  $options */
     private function queueMessage(TelegramBot $bot, int $chatId, string $text, array $options = []): void
     {
-        SendTelegramMessageJob::dispatch($bot->id, $chatId, $text, $options)
-            ->onQueue(config('telegram_bot.queues.replies'));
+        // Registration replies must be immediate — users expect an instant response to /start.
+        SendTelegramMessageJob::dispatchSync($bot->id, $chatId, $text, $options);
     }
 }

@@ -95,9 +95,11 @@ async function handleRequest(request, env, ctx) {
     return new Response('Upstream Unreachable', { status: 502 });
   }
 
-  await markSeen(env, dedupeKey, ctx);
-
   const responseBody = await backendResponse.text();
+
+  if (backendResponse.ok) {
+    await markSeen(env, dedupeKey, ctx);
+  }
 
   return new Response(responseBody, {
     status: backendResponse.status,

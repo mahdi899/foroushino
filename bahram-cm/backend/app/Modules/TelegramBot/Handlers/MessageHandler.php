@@ -143,6 +143,13 @@ class MessageHandler implements UpdateHandlerInterface
         // Refresh after admin handlers may have changed conversation state.
         $conversation->refresh();
 
+        // Main-menu reply keyboard — handle early so registration/admin input states do not swallow taps.
+        if ($text !== '' && $this->mainMenu->isMenuButton($text, $account, $bot)) {
+            $this->handleMainMenuPress($bot, $account, $conversation, $chatId, $text);
+
+            return;
+        }
+
         // User Reply on a support message → continue thread in reports group.
         if ($this->supportTickets->tryHandleUserReplyToSupport($bot, $account, $message)) {
             return;
@@ -196,20 +203,6 @@ class MessageHandler implements UpdateHandlerInterface
             return;
         }
 
-        if ($this->canAccessMainFeatures($bot, $account)) {
-            if (! $account->isBotAdmin() && ! $this->membership->isSatisfied($bot, $account)) {
-                $this->membership->promptJoin($bot, $account);
-
-                return;
-            }
-
-            if ($this->mainMenu->isMenuButton($text, $account, $bot)) {
-                $this->handleMenuButton($bot, $account, $chatId, $text);
-
-                return;
-            }
-        }
-
         if (isset($message['contact'])) {
             $this->registration->handleContact($bot, $account, $conversation, $message);
 
@@ -234,8 +227,46 @@ class MessageHandler implements UpdateHandlerInterface
         return $account->isLinked() && $account->hasVerifiedMobile();
     }
 
+    private function handleMainMenuPress(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        $conversation,
+        int $chatId,
+        string $text,
+    ): void {
+        if ($account->isBotAdmin()) {
+            if ($conversation->state !== ConversationState::Idle) {
+                $this->conversations->reset($conversation);
+                $conversation->refresh();
+            }
+            $this->handleMenuButton($bot, $account, $chatId, $text);
+
+            return;
+        }
+
+        if (! $this->canAccessMainFeatures($bot, $account)) {
+            $this->replyNow($bot, $chatId, 'لطفاً ابتدا ثبت‌نام را با /start تکمیل کنید.');
+
+            return;
+        }
+
+        if (! $this->membership->isSatisfied($bot, $account)) {
+            $this->membership->promptJoin($bot, $account);
+
+            return;
+        }
+
+        $this->handleMenuButton($bot, $account, $chatId, $text);
+    }
+
     private function handleMenuButton(TelegramBot $bot, TelegramAccount $account, int $chatId, string $text): void
     {
+        try {
+            $this->clients->forBot($bot)->sendChatAction($chatId, 'typing');
+        } catch (\Throwable) {
+            // Best-effort UX hint.
+        }
+
         match ($text) {
             'دوره کمپین نویسی 🎓' => $this->sendProducts($bot, $account, $chatId),
             'سمینارها 🎤' => $this->sendSeminars($bot, $chatId),
@@ -246,10 +277,16 @@ class MessageHandler implements UpdateHandlerInterface
             'پشتیبانی 🎫' => $this->openSupportHub($bot, $account, $chatId),
             'حساب کاربری 👤' => $this->sendAccount($bot, $chatId, $account),
             'پنل ادمین بات 🛠' => $this->botAdmin->openDashboard($bot, $account, $chatId),
-            default => $this->outbound->reply($bot, $chatId, 'منوی اصلی:', [
+            default => $this->replyNow($bot, $chatId, 'منوی اصلی:', [
                 'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
             ]),
         };
+    }
+
+    /** User-facing reply — always synchronous so menu taps get instant feedback. */
+    private function replyNow(TelegramBot $bot, int $chatId, string $text, array $options = []): void
+    {
+        $this->outbound->reply($bot, $chatId, $text, $options, sync: true);
     }
 
     private function openSupportHub(TelegramBot $bot, TelegramAccount $account, int $chatId): void
@@ -258,12 +295,12 @@ class MessageHandler implements UpdateHandlerInterface
             || $bot->featureEnabled(BotFeatureFlag::SupportRequiresSubscription);
 
         if ($requiresSub && ! $this->subscriberEligibility->hasQualifyingAccess($account)) {
-            $this->outbound->reply($bot, $chatId, $this->subscriberEligibility->denialMessage());
+            $this->replyNow($bot, $chatId, $this->subscriberEligibility->denialMessage());
 
             return;
         }
 
-        $this->outbound->reply($bot, $chatId, $this->messages->get($bot, 'support_prompt'), [
+        $this->replyNow($bot, $chatId, $this->messages->get($bot, 'support_prompt'), [
             'reply_markup' => [
                 'inline_keyboard' => [
                     [['text' => $this->messages->get($bot, 'support_category_purchase'), 'callback_data' => 'support:cat:purchase']],
@@ -347,7 +384,7 @@ class MessageHandler implements UpdateHandlerInterface
     {
         $products = $this->catalog->listPublicCourses();
         if ($products->isEmpty()) {
-            $this->outbound->reply(
+            $this->replyNow(
                 $bot,
                 $chatId,
                 TelegramHtml::bold('در حال حاضر دوره فعالی برای تلگرام تعریف نشده است.'),
@@ -359,7 +396,7 @@ class MessageHandler implements UpdateHandlerInterface
 
         foreach ($products->take(10) as $product) {
             $view = $this->courseAccessPresenter->present($bot, $account, $product);
-            $this->outbound->reply($bot, $chatId, $view['text'], $view['options']);
+            $this->replyNow($bot, $chatId, $view['text'], $view['options']);
         }
     }
 
@@ -367,13 +404,13 @@ class MessageHandler implements UpdateHandlerInterface
     {
         $seminars = $this->seminars->listUpcoming();
         if ($seminars->isEmpty()) {
-            $this->outbound->reply($bot, $chatId, 'در حال حاضر سمینار فعالی برای نمایش وجود ندارد.');
+            $this->replyNow($bot, $chatId, 'در حال حاضر سمینار فعالی برای نمایش وجود ندارد.');
 
             return;
         }
 
         foreach ($seminars as $seminar) {
-            $this->outbound->reply(
+            $this->replyNow(
                 $bot,
                 $chatId,
                 $this->content->formatSeminarMessage($seminar),
@@ -497,7 +534,7 @@ class MessageHandler implements UpdateHandlerInterface
     private function sendReferral(TelegramBot $bot, int $chatId, TelegramAccount $account): void
     {
         if (! $bot->featureEnabled(BotFeatureFlag::ReferralEnabled)) {
-            $this->outbound->reply($bot, $chatId, 'زیرمجموعه‌گیری فعلاً غیرفعال است.');
+            $this->replyNow($bot, $chatId, 'زیرمجموعه‌گیری فعلاً غیرفعال است.');
 
             return;
         }
@@ -507,7 +544,7 @@ class MessageHandler implements UpdateHandlerInterface
             $summary = $this->referrals->summary($account->user);
             $link = $this->referrals->referralLink($code->code);
             $panelUrl = TelegramSiteUrl::page('panel/referrals');
-            $this->outbound->reply(
+            $this->replyNow(
                 $bot,
                 $chatId,
                 "لینک دعوت (همکاری در فروش):\n{$link}\n\n"
@@ -517,7 +554,7 @@ class MessageHandler implements UpdateHandlerInterface
                 TelegramSiteUrl::linkMarkup($panelUrl, '🎁 باشگاه مشتریان در پنل')
             );
         } catch (\Throwable) {
-            $this->outbound->reply($bot, $chatId, 'در حال حاضر امکان نمایش لینک معرفی وجود ندارد.');
+            $this->replyNow($bot, $chatId, 'در حال حاضر امکان نمایش لینک معرفی وجود ندارد.');
         }
     }
 
@@ -535,7 +572,7 @@ class MessageHandler implements UpdateHandlerInterface
             $keyboard[] = $row;
         }
 
-        $this->outbound->reply(
+        $this->replyNow(
             $bot,
             $chatId,
             $text,
@@ -547,7 +584,7 @@ class MessageHandler implements UpdateHandlerInterface
 
     private function sendWithLink(TelegramBot $bot, int $chatId, string $message, ?string $url, string $label): void
     {
-        $this->outbound->reply(
+        $this->replyNow(
             $bot,
             $chatId,
             $message,

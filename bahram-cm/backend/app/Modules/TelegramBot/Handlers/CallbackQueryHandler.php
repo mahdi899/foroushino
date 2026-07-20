@@ -82,6 +82,14 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         $client = $this->clients->forBot($bot);
         $messageId = (int) data_get($callback, 'message.message_id', 0);
 
+        if ($callbackId !== '') {
+            try {
+                $client->answerCallbackQuery($callbackId);
+            } catch (\Throwable) {
+                // Expired callbacks are ignored — continue handling.
+            }
+        }
+
         if ($this->botAdmin->handleCallback($bot, $account, $data, $chatId, $messageId, $callbackId)) {
             return;
         }
@@ -148,10 +156,6 @@ class CallbackQueryHandler implements UpdateHandlerInterface
 
         $conversation = $this->conversations->forAccount($account);
         $this->registration->handleCallback($bot, $account, $conversation, $data);
-
-        if ($callbackId !== '') {
-            $client->answerCallbackQuery($callbackId);
-        }
     }
 
     private function handleSupportCategory(

@@ -159,6 +159,12 @@ class BotAdminPanelService
 
                 return true;
             }
+
+            if (app(MainMenuKeyboard::class)->isMenuButton($text, $account, $bot)) {
+                $this->conversations->reset($conversation);
+
+                return false;
+            }
         }
 
         if ($conversation->state !== ConversationState::AdminWaitingInput) {
@@ -176,6 +182,12 @@ class BotAdminPanelService
             $this->handleAdminMenuButton($bot, $account, $chatId, $text);
 
             return true;
+        }
+
+        if (app(MainMenuKeyboard::class)->isMenuButton($text, $account, $bot)) {
+            $this->conversations->reset($conversation);
+
+            return false;
         }
 
         if (app(AdminsSectionKeyboard::class)->isBack($text) && in_array($flow, ['admin_add', 'admin_add_name'], true)) {
