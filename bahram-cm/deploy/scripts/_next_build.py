@@ -29,7 +29,7 @@ echo "npm ci..." >> "$LOG"
 npm ci >> "$LOG" 2>&1
 export NODE_ENV=production
 echo "npm run build..." >> "$LOG"
-npm run build >> "$LOG" 2>&1
+npx next build >> "$LOG" 2>&1
 test -f .next/BUILD_ID && echo BUILD_OK >> "$LOG" || {{ echo BUILD_FAIL >> "$LOG"; exit 1; }}
 
 echo "PM2 reload..." >> "$LOG"
