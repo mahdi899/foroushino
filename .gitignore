@@ -27,6 +27,7 @@ venv/
 # Env
 .env
 bahram-cm/backend/.env
+bahram-cm/deploy/deploy.env
 
 # Ad-hoc deploy/diag scripts (local SSH helpers — not part of the app)
 .tmp_*.py
