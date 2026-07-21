@@ -423,7 +423,17 @@ trait BotAdminPanelFeatureHandlers
             throw new RuntimeException('متن خالی است.');
         }
 
-        $this->messageCatalog->set($bot, $key, mb_substr($body, 0, 4000));
+        if (str_starts_with($key, 'menu_btn_')) {
+            $body = trim(preg_split("/\r\n|\n|\r/", $body)[0] ?? '');
+            if ($body === '') {
+                throw new RuntimeException('متن دکمه خالی است.');
+            }
+            $body = mb_substr($body, 0, 64);
+        } else {
+            $body = mb_substr($body, 0, 4000);
+        }
+
+        $this->messageCatalog->set($bot, $key, $body);
         $this->conversations->transition($conversation, ConversationState::AdminPanel, [
             'admin' => ['flow' => null, 'draft' => []],
         ]);

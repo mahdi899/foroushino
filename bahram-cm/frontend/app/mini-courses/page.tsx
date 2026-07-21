@@ -10,7 +10,8 @@ import { resolveMediaAlt } from "@/lib/media/alt";
 import { buildMetadata } from "@/lib/seo";
 export const metadata: Metadata = buildMetadata({
   title: "مینی‌دوره‌ها",
-  description: "ویدیوهای رایگان برای ورود سریع به تفکر کمپین‌محور؛ نقطه‌ی شروع قبل از مسیر اصلی.",
+  description:
+    "مینی‌دوره‌های رایگان بهرام رستمی برای ورود سریع به تفکر کمپین‌محور؛ نقطه شروع قبل از مسیر اصلی کمپین‌نویسی.",
   path: "/mini-courses",
 });
 

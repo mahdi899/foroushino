@@ -79,6 +79,11 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
         return (array) $this->call('sendMessage', ['chat_id' => $chatId, 'text' => $text, ...$options]);
     }
 
+    public function sendSticker(int|string $chatId, string $sticker, array $options = []): array
+    {
+        return (array) $this->callWithAttachment('sendSticker', 'sticker', $sticker, ['chat_id' => $chatId, ...$options]);
+    }
+
     public function sendPhoto(int|string $chatId, string $photo, array $options = []): array
     {
         return (array) $this->callWithAttachment('sendPhoto', 'photo', $photo, ['chat_id' => $chatId, ...$options]);

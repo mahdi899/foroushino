@@ -5,6 +5,7 @@ namespace App\Modules\TelegramBot\Jobs;
 use App\Modules\TelegramBot\Enums\UpdateStatus;
 use App\Modules\TelegramBot\Models\TelegramUpdate;
 use App\Modules\TelegramBot\Repositories\TelegramUpdateRepository;
+use App\Modules\TelegramBot\Services\TelegramUserRateLimiter;
 use App\Modules\TelegramBot\Services\UpdateRouter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -25,8 +26,11 @@ class ProcessTelegramUpdateJob implements ShouldQueue
         public readonly int $telegramUpdateId,
     ) {}
 
-    public function handle(UpdateRouter $router, TelegramUpdateRepository $updates): void
-    {
+    public function handle(
+        UpdateRouter $router,
+        TelegramUpdateRepository $updates,
+        TelegramUserRateLimiter $rateLimiter,
+    ): void {
         $update = TelegramUpdate::query()->with('bot')->find($this->telegramUpdateId);
 
         if ($update === null) {
@@ -45,6 +49,22 @@ class ProcessTelegramUpdateJob implements ShouldQueue
         }
 
         $telegramUserId = $update->telegramUserId();
+
+        if ($telegramUserId !== null) {
+            if ($rateLimiter->tooManyAttempts($telegramUserId)) {
+                Log::channel('telegram')->info('Telegram user rate limited; skipping reply.', [
+                    'update_id' => $update->id,
+                    'telegram_user_id' => $telegramUserId,
+                    'limit' => (int) config('telegram_bot.user_rate_limit.per_minute', 30),
+                ]);
+                $updates->markSkipped($update);
+
+                return;
+            }
+
+            $rateLimiter->hit($telegramUserId);
+        }
+
         $lockSeconds = (int) config('telegram_bot.user_lock_seconds', 30);
         $lock = $telegramUserId !== null
             ? Cache::lock('telegram:user:'.$telegramUserId, $lockSeconds)

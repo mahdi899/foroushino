@@ -25,7 +25,9 @@ export function TelegramBridgeSettingsSection({
   return (
     <div className="card p-3 sm:p-4">
       <h3 className="text-small font-bold text-primary-dark">اتصال تلگرام</h3>
-      <p className="mt-1 text-caption text-text-muted">مستقیم یا از طریق Cloudflare Worker.</p>
+      <p className="mt-1 text-caption text-text-muted">
+        مستقیم، یا پروکسی (Cloudflare Worker / هاست PHP) — فقط یکی فعال باشد.
+      </p>
 
       <div className="mt-3">
         <TelegramBridgePanel

@@ -31,6 +31,20 @@ class MediaUrlTest extends TestCase
         $this->assertSame('https://rostami.app/storage/articles/cover.jpg', $url);
     }
 
+    public function test_student_avatar_under_media_uses_cdn(): void
+    {
+        $url = MediaUrl::resolve('/storage/media/avatars/42/avatar.jpg');
+
+        $this->assertSame('https://cdn.example.com/media/avatars/42/avatar.jpg', $url);
+    }
+
+    public function test_legacy_student_avatar_stays_on_site_origin(): void
+    {
+        $url = MediaUrl::resolve('/storage/avatars/42/avatar.jpg');
+
+        $this->assertSame('https://rostami.app/storage/avatars/42/avatar.jpg', $url);
+    }
+
     public function test_cdn_path_helper_only_strips_media_prefix(): void
     {
         $this->assertSame(

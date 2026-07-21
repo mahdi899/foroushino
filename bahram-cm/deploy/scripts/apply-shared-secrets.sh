@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Apply shared secrets on bahram-cm (run ON bahram server).
 # Usage:
-#   scp root@185.130.50.24:/root/bahram-sync-secrets.env /tmp/
+#   scp root@YOUR_SAAT_HOST:/root/bahram-sync-secrets.env /tmp/
 #   source /tmp/bahram-sync-secrets.env
 #   bash apply-shared-secrets.sh
 set -euo pipefail

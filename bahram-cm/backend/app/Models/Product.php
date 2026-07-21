@@ -42,6 +42,8 @@ class Product extends Model
         'telegram_sort_order',
         'telegram_content_id',
         'telegram_settings',
+        'telegram_photo_file_id',
+        'telegram_photo_source',
         'show_on_courses',
         'featured_listing',
         'course_level',
@@ -66,6 +68,22 @@ class Product extends Model
         'sale_price' => 'integer',
         'referral_cashback_value' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        static::updating(function (Product $product): void {
+            if ($product->isDirty('featured_image')) {
+                $product->telegram_photo_file_id = null;
+                $product->telegram_photo_source = null;
+            }
+        });
+
+        static::saving(function (Product $product) {
+            if ($product->isDirty('description') && filled($product->description)) {
+                $product->description = Purify::clean($product->description);
+            }
+        });
+    }
 
     public function getSlugOptions(): SlugOptions
     {
@@ -162,14 +180,5 @@ class Product extends Model
         }
 
         return $value;
-    }
-
-    protected static function booted(): void
-    {
-        static::saving(function (Product $product) {
-            if ($product->isDirty('description') && filled($product->description)) {
-                $product->description = Purify::clean($product->description);
-            }
-        });
     }
 }

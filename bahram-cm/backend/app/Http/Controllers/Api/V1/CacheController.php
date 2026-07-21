@@ -142,7 +142,7 @@ class CacheController extends Controller
             'revalidate_webhook_url' => 'sometimes|nullable|string|max:512',
             'revalidate_secret_input' => 'sometimes|nullable|string|max:256',
             'cloudflare_zone_id' => 'sometimes|nullable|string|max:64',
-            'cloudflare_api_token_input' => 'sometimes|nullable|string|max:256',
+            'cloudflare_api_token_input' => 'sometimes|nullable|string|max:512',
             'arvan_domain' => 'sometimes|nullable|string|max:128',
             'arvan_media_domain' => 'sometimes|nullable|string|max:128',
             'arvan_api_key_input' => 'sometimes|nullable|string|max:256',
@@ -167,6 +167,15 @@ class CacheController extends Controller
         };
 
         return response()->json(['data' => $result]);
+    }
+
+    public function applyCloudflareEdge(Request $request): JsonResponse
+    {
+        abort_unless($request->user()?->hasPermission('settings.manage'), 403);
+
+        $result = app(\App\Services\CloudflareEdgeHardeningService::class)->applySpeedAndSecurity();
+
+        return response()->json(['data' => $result], $result['ok'] ? 200 : 422);
     }
 
     /** Next.js ISR webhook — verify panel-managed revalidate secret (server-to-server). */

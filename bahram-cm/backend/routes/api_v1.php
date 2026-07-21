@@ -195,7 +195,8 @@ Route::prefix('student')->group(function () {
         Route::get('orders', [StudentOrderController::class, 'index']);
 
         Route::get('seminars', [StudentSeminarController::class, 'index']);
-        Route::get('seminars/{seminar}', [StudentSeminarController::class, 'show']);
+        // Bind by id (panel links use numeric ids); model route key is slug for public pages.
+        Route::get('seminars/{seminar:id}', [StudentSeminarController::class, 'show'])->whereNumber('seminar');
 
         Route::get('referrals', [StudentReferralController::class, 'show']);
 
@@ -311,6 +312,7 @@ Route::middleware(['auth:sanctum', 'admin'])->group(function () {
     Route::get('panel/cache/integrations', [CacheController::class, 'integrations']);
     Route::put('panel/cache/integrations', [CacheController::class, 'updateIntegrations']);
     Route::post('panel/cache/integrations/test', [CacheController::class, 'testIntegrations']);
+    Route::post('panel/cache/integrations/cloudflare/apply-edge', [CacheController::class, 'applyCloudflareEdge']);
 
     Route::get('leads', [\App\Http\Controllers\Api\V1\LeadController::class, 'index']);
     Route::get('leads/{lead}', [\App\Http\Controllers\Api\V1\LeadController::class, 'show'])->whereNumber('lead');

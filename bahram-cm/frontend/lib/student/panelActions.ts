@@ -76,7 +76,12 @@ export async function uploadProfileAvatarAction(formData: FormData): Promise<Sim
   try {
     await studentFetch('/profile/avatar', { method: 'POST', body, isFormData: true });
   } catch (err) {
-    return { error: extractError(err, 'بارگذاری تصویر پروفایل انجام نشد.') };
+    return {
+      error: extractError(
+        err,
+        'آپلود عکس پروفایل الان ممکن نیست. لطفاً ساعات دیگر دوباره امتحان کنید.',
+      ),
+    };
   }
 
   revalidatePath('/panel/profile');
@@ -108,6 +113,7 @@ export async function submitSatApplicationAction(_prev: SimpleFormState, formDat
 
   revalidatePath('/panel/sat');
   revalidatePath('/panel');
+  revalidatePath('/saat');
   return { success: 'درخواست شما با موفقیت ثبت شد.' };
 }
 

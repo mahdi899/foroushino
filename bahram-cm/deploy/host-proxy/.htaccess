@@ -1,0 +1,7 @@
+RewriteEngine On
+RewriteBase /bahram/
+
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+RewriteRule ^(.*)$ index.php/$1 [L,QSA]

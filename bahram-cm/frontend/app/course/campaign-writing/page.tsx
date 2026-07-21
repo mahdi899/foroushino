@@ -71,9 +71,9 @@ const heroPurchaseCtaClassName =
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = buildMetadata({
-  title: "دوره کمپین‌نویسی",
+  title: "دوره کمپین‌نویسی حرفه‌ای",
   description:
-    "یاد بگیر چطور تبلیغ بنویسی که بفروشد؛ از شناخت مشتری و پیام فروش تا پیشنهاد، مکالمه فروش و پیگیری.",
+    "دوره کمپین‌نویسی بهرام رستمی؛ از شناخت مشتری و پیام فروش تا پیشنهاد، مکالمه فروش و پیگیری — مسیر ساختن شغل کمپین‌نویسی.",
   path: "/course/campaign-writing",
 });
 

@@ -22,7 +22,7 @@ export const analyticsConfig = {
   plausibleDomain: process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN || "",
   plausibleSrc:
     process.env.NEXT_PUBLIC_PLAUSIBLE_SRC ||
-    "https://plausible.io/js/script.js",
+    "/vendor/plausible/script.js",
   gaMeasurementId: process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "",
 };
 

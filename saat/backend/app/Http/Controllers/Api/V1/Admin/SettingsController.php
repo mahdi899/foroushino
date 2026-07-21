@@ -28,6 +28,10 @@ class SettingsController extends Controller
             unset($settings['melipayamak_password']);
         }
 
+        if (array_key_exists('bahram_callback_token', $settings) && $settings['bahram_callback_token'] === '') {
+            unset($settings['bahram_callback_token']);
+        }
+
         AppSetting::syncMany($settings);
 
         return ApiResponse::success($this->publicSettings(), 'تنظیمات ذخیره شد');
@@ -56,8 +60,9 @@ class SettingsController extends Controller
     private function publicSettings(): array
     {
         $settings = AppSetting::allKeyed();
-        unset($settings['melipayamak_password']);
+        unset($settings['melipayamak_password'], $settings['bahram_callback_token']);
         $settings['melipayamak_password_configured'] = AppSetting::melipayamakPasswordConfigured();
+        $settings['bahram_callback_token_configured'] = AppSetting::bahramCallbackTokenConfigured();
 
         return $settings;
     }

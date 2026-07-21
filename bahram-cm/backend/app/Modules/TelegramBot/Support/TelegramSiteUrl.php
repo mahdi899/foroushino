@@ -191,11 +191,11 @@ final class TelegramSiteUrl
     /**
      * One full-width URL button row (membership / payment style).
      *
-     * @return list<list<array{text: string, url: string}>>
+     * @return list<list<array{text: string, url: string, style?: string}>>
      */
-    public static function urlKeyboardRow(string $label, ?string $url): array
+    public static function urlKeyboardRow(string $label, ?string $url, ?string $style = null): array
     {
-        $button = self::inlineButton($label, $url);
+        $button = self::inlineButton($label, $url, $style);
 
         return $button !== null ? [[$button]] : [];
     }

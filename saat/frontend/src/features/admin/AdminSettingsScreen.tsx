@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { MessageSquare, Radio, Server, ShieldCheck } from 'lucide-react'
 import { CatalogSettingsSection } from '@/features/admin/CatalogSettingsSection'
 import { BackupSettingsSection } from '@/features/admin/BackupSettingsSection'
+import { BahramBridgeSettingsSection } from '@/features/admin/BahramBridgeSettingsSection'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
 import { useStore } from '@/store/useStore'
@@ -65,7 +66,7 @@ export function AdminSettingsScreen() {
     try {
       const payload = prepareAdminSettingsForSave(settings)
       const updated = await updateAppSettings(payload)
-      setSettings({ ...updated, melipayamak_password: '' })
+      setSettings({ ...updated, melipayamak_password: '', bahram_callback_token: '' })
       setAppSettings(mapRuntimeAppSettings(updated as Record<string, unknown>))
       pushToast('تنظیمات ذخیره شد.', 'success')
     } catch (error) {
@@ -249,6 +250,8 @@ export function AdminSettingsScreen() {
               </section>
 
               <CatalogSettingsSection />
+
+              <BahramBridgeSettingsSection settings={settings} setSettings={setSettings} />
 
               <BackupSettingsSection />
 

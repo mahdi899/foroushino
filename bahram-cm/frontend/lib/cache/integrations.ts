@@ -48,3 +48,26 @@ export async function testCacheIntegrationAction(
     return { ok: false, message: e instanceof Error ? e.message : 'خطا در تست اتصال' };
   }
 }
+
+export type CloudflareEdgeApplyResult = {
+  ok: boolean;
+  message: string;
+  zone_name?: string;
+  steps: { id: string; ok: boolean; detail: string }[];
+};
+
+export async function applyCloudflareEdgeAction(): Promise<CloudflareEdgeApplyResult> {
+  try {
+    const res = await adminFetch<{ data: CloudflareEdgeApplyResult }>(
+      '/panel/cache/integrations/cloudflare/apply-edge',
+      { method: 'POST', body: {}, timeoutMs: 120_000 },
+    );
+    return res.data;
+  } catch (e) {
+    return {
+      ok: false,
+      message: e instanceof Error ? e.message : 'اعمال تنظیمات Cloudflare ناموفق بود',
+      steps: [],
+    };
+  }
+}

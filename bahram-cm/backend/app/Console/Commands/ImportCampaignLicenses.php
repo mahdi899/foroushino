@@ -8,12 +8,10 @@ use Illuminate\Console\Command;
 
 class ImportCampaignLicenses extends Command
 {
-    public const DEFAULT_CSV = 'database/data/spotplayer-licenses-2026-07-10.csv';
-
     public const DEFAULT_PRODUCT_SLUG = 'campaign-writing';
 
     protected $signature = 'campaign:import-licenses
-                            {file? : مسیر فایل CSV خروجی SpotPlayer}
+                            {file : مسیر فایل CSV خروجی SpotPlayer (محلی؛ در git commit نشود)}
                             {--product-id= : شناسه محصول دوره کمپین‌نویسی}
                             {--product-slug= : اسلاگ محصول (پیش‌فرض: campaign-writing)}
                             {--dry-run : اجرای آزمایشی بدون ذخیره در دیتابیس}';
@@ -25,7 +23,7 @@ class ImportCampaignLicenses extends Command
         $file = $this->resolveFilePath();
         if (! is_file($file)) {
             $this->error("فایل یافت نشد: {$file}");
-            $this->line('ابتدا `git pull` بزنید یا مسیر فایل CSV را دستی بدهید.');
+            $this->line('مسیر CSV محلی را بدهید. فایل لایسنس نباید داخل git باشد.');
 
             return self::FAILURE;
         }
@@ -72,7 +70,7 @@ class ImportCampaignLicenses extends Command
 
     private function resolveFilePath(): string
     {
-        $file = $this->argument('file') ?? self::DEFAULT_CSV;
+        $file = (string) $this->argument('file');
 
         if (! str_starts_with($file, DIRECTORY_SEPARATOR) && ! preg_match('/^[A-Za-z]:[\\\\\\/]/', $file)) {
             $file = base_path($file);

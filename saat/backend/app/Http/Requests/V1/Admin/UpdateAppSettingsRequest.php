@@ -77,6 +77,8 @@ class UpdateAppSettingsRequest extends FormRequest
             'settings.melipayamak_username' => ['sometimes', 'nullable', 'string', 'max:120'],
             'settings.melipayamak_password' => ['sometimes', 'nullable', 'string', 'max:120'],
             'settings.melipayamak_rest_url' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'settings.bahram_callback_url' => ['sometimes', 'nullable', 'string', 'max:500', 'url'],
+            'settings.bahram_callback_token' => ['sometimes', 'nullable', 'string', 'max:255'],
             'settings.*' => ['nullable'],
         ];
     }

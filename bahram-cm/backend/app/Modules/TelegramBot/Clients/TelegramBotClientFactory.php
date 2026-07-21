@@ -36,21 +36,17 @@ class TelegramBotClientFactory
             );
         }
 
+        $infrastructure = $this->app->make(TelegramInfrastructureService::class);
+
         return new HttpTelegramBotClient(
             $token,
-            $this->resolveApiBaseUrl(),
-            $this->resolveProxyBearerToken(),
+            $infrastructure->telegramApiBaseUrl(),
+            $this->resolveProxyBearerToken($infrastructure),
         );
     }
 
-    private function resolveApiBaseUrl(): string
+    private function resolveProxyBearerToken(TelegramInfrastructureService $infrastructure): ?string
     {
-        return $this->app->make(TelegramInfrastructureService::class)->telegramApiBaseUrl();
-    }
-
-    private function resolveProxyBearerToken(): ?string
-    {
-        $infrastructure = $this->app->make(TelegramInfrastructureService::class);
         if (! $infrastructure->usesWorkerBridge()) {
             return null;
         }

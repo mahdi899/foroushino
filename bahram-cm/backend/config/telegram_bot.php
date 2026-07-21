@@ -50,6 +50,15 @@ return [
     /** When true, handlers send Telegram messages in-process (no telegram-replies queue hop). */
     'outbound_sync' => filter_var(env('TELEGRAM_OUTBOUND_SYNC', true), FILTER_VALIDATE_BOOL),
 
+    /*
+    | Per Telegram user inbound rate limit. After the limit, updates are
+    | silently skipped (no bot reply) until the window resets.
+    */
+    'user_rate_limit' => [
+        'per_minute' => max(1, (int) env('TELEGRAM_USER_RATE_PER_MINUTE', 30)),
+        'decay_seconds' => max(1, (int) env('TELEGRAM_USER_RATE_DECAY_SECONDS', 60)),
+    ],
+
     'webhook' => [
         'base_url' => rtrim((string) env('TELEGRAM_WEBHOOK_BASE_URL', env('APP_URL', 'http://localhost:8010')), '/'),
         'path_pattern' => 'api/v1/integrations/telegram/{botKey}/webhook',

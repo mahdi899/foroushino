@@ -14,6 +14,8 @@ import { getProductBySlug, type ProductDetail } from "@/lib/services/products";
 import { formatFa } from "@/lib/persian";
 import { buildMetadata } from "@/lib/seo";
 import { resolveProductFeaturedImage } from "@/lib/catalog/productFeaturedImage";
+import { sanitizeRichHtml } from "@/lib/sanitize";
+import "@/lib/proseContentStyles";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -103,12 +105,17 @@ export default async function PurchasePage({
                   </div>
 
                   <div className="flex flex-col p-5 sm:p-6 md:flex-none">
-                    <h2 className="text-h3 text-balance text-bone">{product.title}</h2>
+                    <h1 className="text-h3 text-balance text-bone">{product.title}</h1>
                     {product.short_description ? (
-                      <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-bone-dim md:text-base">
+                      <p className="mt-2 text-sm leading-relaxed text-bone-dim md:text-base">
                         {product.short_description}
                       </p>
                     ) : null}
+                    {(product.course_level || product.course_duration) && (
+                      <p className="mt-3 text-caption text-bone-mute">
+                        {[product.course_level, product.course_duration].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
                     {product.seminar ? (
                       <p className="mt-4 text-sm text-bone-dim">
                         {seminarFull
@@ -169,6 +176,18 @@ export default async function PurchasePage({
               </Reveal>
             </div>
           </div>
+
+          {product.description?.trim() ? (
+            <Reveal className="mx-auto mt-8 w-full min-w-0 max-w-5xl md:mt-10">
+              <article className="neon-surface-static rounded-card border border-bone/10 bg-charcoal/45 p-5 sm:p-6 md:p-8">
+                <h2 className="mb-4 text-h3 text-bone">درباره این محصول</h2>
+                <div
+                  className="prose-luxe max-w-none text-bone-dim"
+                  dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(product.description) }}
+                />
+              </article>
+            </Reveal>
+          ) : null}
         </div>
       </section>
     </main>

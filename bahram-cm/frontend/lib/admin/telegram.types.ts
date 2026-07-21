@@ -27,6 +27,10 @@ export type TelegramInfrastructureView = {
   configured: boolean;
   worker_sample_template?: string | null;
   worker_deploy_sample?: string | null;
+  /** Filled PHP host-proxy sample (index.php) for German/shared hosting. */
+  host_proxy_deploy_sample?: string | null;
+  /** Matching .htaccess sample for the host-proxy folder. */
+  host_proxy_htaccess_sample?: string | null;
 };
 
 export type TelegramModule = {

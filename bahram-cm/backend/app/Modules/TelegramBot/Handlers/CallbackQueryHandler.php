@@ -35,6 +35,7 @@ class CallbackQueryHandler implements UpdateHandlerInterface
         private readonly TelegramPurchaseFlowService $purchaseFlow,
         private readonly TelegramCourseAccessPresenter $courseAccessPresenter,
         private readonly TelegramOutboundMessenger $outbound,
+        private readonly MessageHandler $messageHandler,
     ) {}
 
     public function handle(TelegramUpdate $update, TelegramBot $bot): void
@@ -96,6 +97,33 @@ class CallbackQueryHandler implements UpdateHandlerInterface
 
         if (str_starts_with($data, 'support:cat:')) {
             $this->handleSupportCategory($client, $bot, $account, $chatId, $callbackId, $data);
+
+            return;
+        }
+
+        if (str_starts_with($data, 'nav:')) {
+            $action = substr($data, 4);
+            if (! array_key_exists($action, MainMenuKeyboard::ACTION_KEYS)) {
+                $this->answer($client, $callbackId, 'گزینه نامعتبر است.', true);
+
+                return;
+            }
+
+            if (! $account->isLinked() || ! $account->hasVerifiedMobile()) {
+                $this->answer($client, $callbackId, 'ابتدا ثبت‌نام را کامل کنید.', true);
+
+                return;
+            }
+
+            if (! $this->membership->isSatisfied($bot, $account)) {
+                $this->answer($client, $callbackId, 'عضویت الزامی است.', true);
+                $this->membership->promptJoin($bot, $account);
+
+                return;
+            }
+
+            $this->answer($client, $callbackId, '✅');
+            $this->messageHandler->dispatchMenuAction($bot, $account, $chatId, $action);
 
             return;
         }

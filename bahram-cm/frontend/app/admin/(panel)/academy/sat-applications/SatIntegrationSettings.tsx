@@ -3,6 +3,9 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
+const PRODUCTION_SAT_API_URL =
+  'https://sat.center/api/v1/integrations/inbound/applications';
+
 type Config = {
   enabled: boolean;
   api_url: string | null;
@@ -68,8 +71,9 @@ export function SatIntegrationSettings({ initial }: Props) {
     <section className="card mb-6 p-5">
       <h2 className="text-h3 text-primary-dark">اتصال API به سات</h2>
       <p className="mt-2 text-small text-muted">
-        سات روی دامنه جداست. وقتی درخواستی «پذیرفته شده» شود، یک‌بار از طریق API به سات ارسال می‌شود.
-        توکن را از پنل سات (ادمین کل) بگیرید.
+        دامنهٔ سات: <span dir="ltr">sat.center</span>. وقتی درخواستی «پذیرفته شده» شود، یک‌بار به‌صورت صف‌شده و
+        امضاشده (HMAC + Bearer + Proxy-Origin) به سات ارسال می‌شود. توکن را از پنل سات → تنظیمات سیستم → اتصال بهرام
+        بگیرید.
       </p>
 
       <div className="mt-4 space-y-4">
@@ -83,10 +87,17 @@ export function SatIntegrationSettings({ initial }: Props) {
           <input
             className="field-input w-full"
             dir="ltr"
-            placeholder="http://127.0.0.1:8000/api/v1/integrations/inbound/applications"
+            placeholder={PRODUCTION_SAT_API_URL}
             value={apiUrl}
             onChange={(e) => setApiUrl(e.target.value)}
           />
+          <button
+            type="button"
+            className="mt-1 text-xs text-primary underline"
+            onClick={() => setApiUrl(PRODUCTION_SAT_API_URL)}
+          >
+            پر کردن آدرس production
+          </button>
         </label>
 
         <label className="block text-small">
@@ -95,7 +106,7 @@ export function SatIntegrationSettings({ initial }: Props) {
             className="field-input w-full"
             dir="ltr"
             type="password"
-            placeholder={initial.api_token_set ? `ذخیره‌شده: ${initial.api_token_preview}` : 'توکن از پنل سات'}
+            placeholder={initial.api_token_set ? `ذخیره‌شده: ${initial.api_token_preview}` : 'saat_… از پنل سات'}
             value={apiToken}
             onChange={(e) => setApiToken(e.target.value)}
           />

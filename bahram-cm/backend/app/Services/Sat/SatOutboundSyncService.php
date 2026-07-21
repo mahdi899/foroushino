@@ -5,6 +5,7 @@ namespace App\Services\Sat;
 use App\Models\SatApplication;
 use App\Support\HmacSigner;
 use App\Support\SatIntegrationConfig;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -42,7 +43,8 @@ class SatOutboundSyncService
         ];
 
         try {
-            $response = Http::timeout(15)
+            $response = Http::timeout(12)
+                ->retry(2, 250, fn ($exception) => $exception instanceof ConnectionException)
                 ->acceptJson()
                 ->withToken((string) $config['api_token'])
                 ->withHeaders($this->signedHeaders($payload))
@@ -104,7 +106,8 @@ class SatOutboundSyncService
             : $base.'/ping';
 
         try {
-            $response = Http::timeout(10)
+            $response = Http::timeout(8)
+                ->retry(2, 200, fn ($exception) => $exception instanceof ConnectionException)
                 ->acceptJson()
                 ->withToken((string) $config['api_token'])
                 ->withHeaders($this->signedHeaders([]))
@@ -123,7 +126,10 @@ class SatOutboundSyncService
         } catch (\Throwable $e) {
             Log::warning('SAT ping failed', ['url' => $pingUrl, 'error' => $e->getMessage()]);
 
-            return ['ok' => false, 'message' => 'امکان اتصال به سرور سات وجود ندارد. آدرس باید به بک‌اند سات (معمولاً پورت ۸۰۰۰) اشاره کند.'];
+            return [
+                'ok' => false,
+                'message' => 'امکان اتصال به سرور سات وجود ندارد. آدرس باید https://sat.center/api/v1/integrations/inbound/applications باشد.',
+            ];
         }
     }
 

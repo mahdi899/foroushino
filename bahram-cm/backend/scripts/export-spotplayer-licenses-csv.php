@@ -2,16 +2,16 @@
 
 /**
  * One-off helper: export valid SpotPlayer license rows from the panel XLSX
- * into the tracked CSV under database/data/.
+ * into a local CSV (never commit license CSVs — they contain customer keys/PII).
  *
- * Usage: php scripts/export-spotplayer-licenses-csv.php [path-to.xlsx]
+ * Usage: php scripts/export-spotplayer-licenses-csv.php path-to.xlsx [output.csv]
  */
 
-$source = $argv[1] ?? 'c:/Users/pc/Downloads/Telegram Desktop/licenses-2026-07-10.xlsx';
-$target = __DIR__.'/../database/data/spotplayer-licenses-2026-07-10.csv';
+$source = $argv[1] ?? null;
+$target = $argv[2] ?? (sys_get_temp_dir().DIRECTORY_SEPARATOR.'spotplayer-licenses-export.csv');
 
-if (! is_file($source)) {
-    fwrite(STDERR, "Source file not found: {$source}\n");
+if (! is_string($source) || $source === '' || ! is_file($source)) {
+    fwrite(STDERR, "Usage: php scripts/export-spotplayer-licenses-csv.php path-to.xlsx [output.csv]\n");
     exit(1);
 }
 
@@ -86,3 +86,4 @@ for ($i = 1; $i < count($rows); $i++) {
 fclose($handle);
 
 echo "Wrote {$written} rows to {$target}\n";
+echo "Do not commit this file — import with: php artisan campaign:import-licenses {$target}\n";

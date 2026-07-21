@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use RuntimeException;
 
 class ReportLeadStatusToBahramJob implements ShouldQueue
 {
@@ -16,7 +17,8 @@ class ReportLeadStatusToBahramJob implements ShouldQueue
 
     public int $tries = 5;
 
-    public int $backoff = 30;
+    /** @var list<int> */
+    public array $backoff = [10, 30, 60, 120];
 
     public function __construct(public int $leadId, public string $status) {}
 
@@ -33,6 +35,8 @@ class ReportLeadStatusToBahramJob implements ShouldQueue
         // (dispatched by the newer update) will report the newer value.
         $lead->status = $this->status;
 
-        $callback->reportStatus($lead);
+        if (! $callback->reportStatus($lead)) {
+            throw new RuntimeException('Bahram status callback failed for lead #'.$this->leadId);
+        }
     }
 }

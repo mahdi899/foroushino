@@ -13,9 +13,27 @@ import paramiko
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).resolve().parents[2]
-HOST = os.environ.get("DEPLOY_HOST", "185.130.50.129")
+HOST = (os.environ.get("DEPLOY_HOST") or "").strip()
 USER = os.environ.get("DEPLOY_USER", "root")
 PASS = os.environ.get("DEPLOY_PASSWORD", "")
+if not HOST or not PASS:
+    # Prefer deploy/deploy.env via env vars — never hardcode production IPs/passwords.
+    env_path = ROOT / "deploy" / "deploy.env"
+    if env_path.is_file():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key, value = key.strip(), value.strip()
+            if key == "DEPLOY_HOST" and not HOST:
+                HOST = value
+            elif key == "DEPLOY_USER" and USER == "root":
+                USER = value or USER
+            elif key == "DEPLOY_PASSWORD" and not PASS:
+                PASS = value
+    if not HOST or not PASS:
+        raise SystemExit("Set DEPLOY_HOST and DEPLOY_PASSWORD in deploy/deploy.env (gitignored).")
 
 UPLOADS = [
     "deploy/scripts/start-dev-server.sh",

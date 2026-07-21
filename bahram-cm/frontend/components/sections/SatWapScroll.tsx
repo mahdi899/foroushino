@@ -91,6 +91,12 @@ function WapPriceCard({ price }: { price: number }) {
         آموزش، اپ سات و همراهی تیم فروش — نه فقط یک دوره. نتیجه به تلاش و عملکرد هر فرد بستگی
         دارد.
       </p>
+      <a
+        href="#apply"
+        className="mt-5 inline-flex h-11 items-center justify-center rounded-pill border border-gold/35 bg-gold/[0.12] px-5 text-sm font-semibold text-gold transition-colors hover:border-gold/55 hover:bg-gold/[0.18]"
+      >
+        ثبت درخواست سات
+      </a>
     </div>
   );
 }

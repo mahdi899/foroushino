@@ -32,11 +32,18 @@ class TelegramMessageAdminController
 
         abort_unless(isset(BotMessageCatalog::DEFAULTS[$key]), 404);
 
+        $max = str_starts_with($key, 'menu_btn_') ? 64 : 4000;
         $data = $request->validate([
-            'body' => ['required', 'string', 'max:4000'],
+            'body' => ['required', 'string', 'max:'.$max],
         ]);
 
-        $row = $this->catalog->set($bot, $key, $data['body']);
+        $body = $data['body'];
+        if (str_starts_with($key, 'menu_btn_')) {
+            $body = trim(preg_split("/\r\n|\n|\r/", $body)[0] ?? '');
+            abort_if($body === '', 422, 'متن دکمه خالی است.');
+        }
+
+        $row = $this->catalog->set($bot, $key, $body);
 
         return response()->json([
             'data' => [

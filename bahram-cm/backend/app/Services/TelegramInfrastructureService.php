@@ -201,7 +201,7 @@ class TelegramInfrastructureService
         return is_string($contents) && $contents !== '' ? $contents : null;
     }
 
-    public function buildWorkerDeploySample(?string $proxyToken = null, ?string $webhookSecret = null): ?string
+    public function buildWorkerDeploySample(?string $proxyToken = null, ?string $webhookSecret = null, ?string $botToken = null): ?string
     {
         $template = $this->workerSampleTemplate();
         if ($template === null) {
@@ -222,6 +222,73 @@ class TelegramInfrastructureService
         );
     }
 
+    public function productionBotToken(): ?string
+    {
+        $bot = TelegramBot::query()->where('key', 'production')->first();
+        $token = trim((string) ($bot?->resolveToken() ?? ''));
+
+        return $token !== '' ? $token : null;
+    }
+
+    public function hostProxySampleTemplate(): ?string
+    {
+        $path = dirname(base_path()).DIRECTORY_SEPARATOR.'deploy'.DIRECTORY_SEPARATOR.'host-proxy'.DIRECTORY_SEPARATOR.'index.sample.php';
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $contents = file_get_contents($path);
+
+        return is_string($contents) && $contents !== '' ? $contents : null;
+    }
+
+    public function hostProxyHtaccessTemplate(): ?string
+    {
+        $path = dirname(base_path()).DIRECTORY_SEPARATOR.'deploy'.DIRECTORY_SEPARATOR.'host-proxy'.DIRECTORY_SEPARATOR.'htaccess.sample';
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $contents = file_get_contents($path);
+
+        return is_string($contents) && $contents !== '' ? $contents : null;
+    }
+
+    public function buildHostProxyDeploySample(?string $proxyToken = null): ?string
+    {
+        $template = $this->hostProxySampleTemplate();
+        if ($template === null) {
+            return null;
+        }
+
+        $proxy = trim((string) ($proxyToken ?? $this->proxySharedToken() ?? ''));
+
+        if ($proxy === '') {
+            return null;
+        }
+
+        return str_replace(
+            ['__BACKEND_ORIGIN__', '__PROXY_SHARED_TOKEN__'],
+            [$this->backendOrigin(), $proxy],
+            $template,
+        );
+    }
+
+    public function buildHostProxyHtaccessSample(string $rewriteBase = '/bahram'): ?string
+    {
+        $template = $this->hostProxyHtaccessTemplate();
+        if ($template === null) {
+            return null;
+        }
+
+        $base = '/'.trim($rewriteBase, '/');
+        if ($base === '/') {
+            $base = '/bahram';
+        }
+
+        return str_replace('__REWRITE_BASE__', $base, $template);
+    }
+
     /** @return array<string, mixed> */
     public function adminView(): array
     {
@@ -239,6 +306,8 @@ class TelegramInfrastructureService
             'configured' => $this->isConfigured(),
             'worker_sample_template' => $this->workerSampleTemplate(),
             'worker_deploy_sample' => $this->buildWorkerDeploySample(),
+            'host_proxy_deploy_sample' => $this->buildHostProxyDeploySample(),
+            'host_proxy_htaccess_sample' => $this->buildHostProxyHtaccessSample(),
         ];
     }
 
@@ -268,6 +337,9 @@ class TelegramInfrastructureService
                 $next['base_url'] = $url;
             }
         }
+
+        // Single active bridge only — drop any leftover dual-proxy setting.
+        unset($next['secondary_base_url']);
 
         $connectionToken = trim((string) ($input['connection_token_input'] ?? $input['bearer_token_input'] ?? ''));
         if ($connectionToken !== '') {

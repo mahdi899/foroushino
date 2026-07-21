@@ -20,6 +20,7 @@ use App\Modules\TelegramBot\Services\TelegramOutboundMessenger;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
 use App\Modules\TelegramBot\Services\TelegramSeminarCatalogService;
 use App\Modules\TelegramBot\Services\TelegramCourseAccessPresenter;
+use App\Modules\TelegramBot\Services\TelegramCatalogMediaService;
 use App\Modules\TelegramBot\Services\TelegramPurchaseFlowService;
 use App\Modules\TelegramBot\Services\TelegramSatFlowService;
 use App\Modules\TelegramBot\Services\TelegramSubscriberEligibility;
@@ -50,6 +51,7 @@ class MessageHandler implements UpdateHandlerInterface
         private readonly TelegramCourseAccessPresenter $courseAccessPresenter,
         private readonly BotMessageCatalog $messages,
         private readonly TelegramOutboundMessenger $outbound,
+        private readonly TelegramCatalogMediaService $catalogMedia,
     ) {}
 
     public function handle(TelegramUpdate $update, TelegramBot $bot): void
@@ -261,23 +263,27 @@ class MessageHandler implements UpdateHandlerInterface
 
     private function handleMenuButton(TelegramBot $bot, TelegramAccount $account, int $chatId, string $text): void
     {
-        try {
-            $this->clients->forBot($bot)->sendChatAction($chatId, 'typing');
-        } catch (\Throwable) {
-            // Best-effort UX hint.
-        }
+        $action = $this->mainMenu->resolveAction($text, $bot);
+        $this->dispatchMenuAction($bot, $account, $chatId, $action);
+    }
 
-        match ($text) {
-            'دوره کمپین نویسی 🎓' => $this->sendProducts($bot, $account, $chatId),
-            'سمینارها 🎤' => $this->sendSeminars($bot, $chatId),
-            'سات ☎️' => $this->sendSatStatus($bot, $chatId, $account),
-            'کانال مرجع 📣' => $this->sendReferenceChannel($bot, $chatId),
-            'خانواده 👨‍👩‍👧‍👦' => $this->sendFamily($bot, $chatId, $account),
-            'معرفی دوستان 🎁' => $this->sendReferral($bot, $chatId, $account),
-            'پشتیبانی 🎫' => $this->openSupportHub($bot, $account, $chatId),
-            'حساب کاربری 👤' => $this->sendAccount($bot, $chatId, $account),
-            'پنل ادمین بات 🛠' => $this->botAdmin->openDashboard($bot, $account, $chatId),
-            default => $this->replyNow($bot, $chatId, 'منوی اصلی:', [
+    public function dispatchMenuAction(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        int $chatId,
+        ?string $action,
+    ): void {
+        match ($action) {
+            MainMenuKeyboard::ACTION_COURSES => $this->sendProducts($bot, $account, $chatId),
+            MainMenuKeyboard::ACTION_SEMINARS => $this->sendSeminars($bot, $chatId),
+            MainMenuKeyboard::ACTION_SAT => $this->sendSatStatus($bot, $chatId, $account),
+            MainMenuKeyboard::ACTION_CHANNEL => $this->sendReferenceChannel($bot, $chatId),
+            MainMenuKeyboard::ACTION_FAMILY => $this->sendFamily($bot, $chatId, $account),
+            MainMenuKeyboard::ACTION_REFERRAL => $this->sendReferral($bot, $chatId, $account),
+            MainMenuKeyboard::ACTION_SUPPORT => $this->openSupportHub($bot, $account, $chatId),
+            MainMenuKeyboard::ACTION_ACCOUNT => $this->sendAccount($bot, $chatId, $account),
+            MainMenuKeyboard::ACTION_ADMIN => $this->botAdmin->openDashboard($bot, $account, $chatId),
+            default => $this->replyHtml($bot, $chatId, "🏠 <b>منوی اصلی</b>\nاز دکمه‌های پایین یا میانبرها استفاده کنید.", [
                 'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
             ]),
         };
@@ -289,24 +295,43 @@ class MessageHandler implements UpdateHandlerInterface
         $this->outbound->reply($bot, $chatId, $text, $options, sync: false);
     }
 
+    /** @param  array<string, mixed>  $options */
+    private function replyHtml(TelegramBot $bot, int $chatId, string $text, array $options = []): void
+    {
+        $this->replyNow($bot, $chatId, $text, $this->messages->htmlOptions($options));
+    }
+
     private function openSupportHub(TelegramBot $bot, TelegramAccount $account, int $chatId): void
     {
         $requiresSub = $bot->featureEnabled(BotFeatureFlag::TicketRequiresSubscription)
             || $bot->featureEnabled(BotFeatureFlag::SupportRequiresSubscription);
 
         if ($requiresSub && ! $this->subscriberEligibility->hasQualifyingAccess($account)) {
-            $this->replyNow($bot, $chatId, $this->subscriberEligibility->denialMessage());
+            $this->replyHtml($bot, $chatId, $this->subscriberEligibility->denialMessage());
 
             return;
         }
 
-        $this->replyNow($bot, $chatId, $this->messages->get($bot, 'support_prompt'), [
+        $this->replyHtml($bot, $chatId, $this->messages->get($bot, 'support_prompt'), [
             'reply_markup' => [
                 'inline_keyboard' => [
-                    [['text' => $this->messages->get($bot, 'support_category_purchase'), 'callback_data' => 'support:cat:purchase']],
-                    [['text' => $this->messages->get($bot, 'support_category_campaign_course'), 'callback_data' => 'support:cat:campaign_course']],
-                    [['text' => $this->messages->get($bot, 'support_category_sat'), 'callback_data' => 'support:cat:sat']],
-                    [['text' => $this->messages->get($bot, 'support_category_other'), 'callback_data' => 'support:cat:other']],
+                    [[
+                        'text' => $this->messages->get($bot, 'support_category_purchase'),
+                        'callback_data' => 'support:cat:purchase',
+                        'style' => 'primary',
+                    ]],
+                    [[
+                        'text' => $this->messages->get($bot, 'support_category_campaign_course'),
+                        'callback_data' => 'support:cat:campaign_course',
+                    ]],
+                    [[
+                        'text' => $this->messages->get($bot, 'support_category_sat'),
+                        'callback_data' => 'support:cat:sat',
+                    ]],
+                    [[
+                        'text' => $this->messages->get($bot, 'support_category_other'),
+                        'callback_data' => 'support:cat:other',
+                    ]],
                 ],
             ],
         ]);
@@ -363,7 +388,9 @@ class MessageHandler implements UpdateHandlerInterface
             $bot,
             $chatId,
             $this->messages->get($bot, 'support_message_received'),
-            ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
+            $this->messages->htmlOptions([
+                'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
+            ]),
             sync: true,
         );
         $ackId = (int) ($ack['message_id'] ?? 0);
@@ -384,19 +411,48 @@ class MessageHandler implements UpdateHandlerInterface
     {
         $products = $this->catalog->listPublicCourses();
         if ($products->isEmpty()) {
-            $this->replyNow(
+            $this->replyHtml(
                 $bot,
                 $chatId,
-                TelegramHtml::bold('در حال حاضر دوره فعالی برای تلگرام تعریف نشده است.'),
-                ['parse_mode' => 'HTML'],
+                $this->messages->get($bot, 'purchase_catalog_empty'),
+                [
+                    'reply_markup' => [
+                        'inline_keyboard' => [[
+                            ['text' => '🎫 پشتیبانی', 'callback_data' => 'nav:support', 'style' => 'primary'],
+                        ]],
+                    ],
+                ],
             );
 
             return;
         }
 
+        $this->replyHtml(
+            $bot,
+            $chatId,
+            $this->messages->get($bot, 'courses_catalog_intro'),
+        );
+
         foreach ($products->take(10) as $product) {
             $view = $this->courseAccessPresenter->present($bot, $account, $product);
-            $this->replyNow($bot, $chatId, $view['text'], $view['options']);
+            $photo = $this->catalogMedia->productPhoto($product);
+            $options = $view['options'];
+            $caption = $view['text'];
+
+            if ($photo !== null) {
+                $photoOptions = $options;
+                $photoOptions['caption'] = $caption;
+                $result = $this->outbound->replyPhoto($bot, $chatId, $photo, $photoOptions);
+                if (is_array($result)) {
+                    $this->catalogMedia->rememberProductPhoto($product, $result);
+                } elseif ($result === null) {
+                    $this->replyNow($bot, $chatId, $caption, $options);
+                }
+
+                continue;
+            }
+
+            $this->replyNow($bot, $chatId, $caption, $options);
         }
     }
 
@@ -404,18 +460,32 @@ class MessageHandler implements UpdateHandlerInterface
     {
         $seminars = $this->seminars->listUpcoming();
         if ($seminars->isEmpty()) {
-            $this->replyNow($bot, $chatId, 'در حال حاضر سمینار فعالی برای نمایش وجود ندارد.');
+            $this->replyHtml($bot, $chatId, $this->messages->get($bot, 'seminars_catalog_empty'));
 
             return;
         }
 
+        $this->replyHtml($bot, $chatId, $this->messages->get($bot, 'seminars_catalog_intro'));
+
         foreach ($seminars as $seminar) {
-            $this->replyNow(
-                $bot,
-                $chatId,
-                $this->content->formatSeminarMessage($seminar),
-                $this->content->seminarSendOptions($seminar),
-            );
+            $text = $this->content->formatSeminarMessage($seminar);
+            $options = $this->content->seminarSendOptions($seminar);
+            $photo = $this->catalogMedia->seminarPhoto($seminar);
+
+            if ($photo !== null) {
+                $photoOptions = $options;
+                $photoOptions['caption'] = $text;
+                $result = $this->outbound->replyPhoto($bot, $chatId, $photo, $photoOptions);
+                if (is_array($result)) {
+                    $this->catalogMedia->rememberSeminarPhoto($seminar, $result);
+                } elseif ($result === null) {
+                    $this->replyNow($bot, $chatId, $text, $options);
+                }
+
+                continue;
+            }
+
+            $this->replyNow($bot, $chatId, $text, $options);
         }
     }
 
@@ -442,7 +512,14 @@ class MessageHandler implements UpdateHandlerInterface
         $familyUrl = TelegramSiteUrl::familyHome();
 
         if (! $account->user_id || ! $account->user) {
-            $this->sendWithLink($bot, $chatId, 'ابتدا ثبت‌نام را کامل کنید.', $familyUrl, '🌐 صفحه خانواده');
+            $this->sendWithLink(
+                $bot,
+                $chatId,
+                "👨‍👩‍👧‍👦 <b>خانواده</b>\n\nابتدا ثبت‌نام را کامل کنید تا عضویت فعال شود.",
+                $familyUrl,
+                '🌐 صفحه خانواده',
+                'primary',
+            );
 
             return;
         }
@@ -460,11 +537,10 @@ class MessageHandler implements UpdateHandlerInterface
             $this->sendWithLink(
                 $bot,
                 $chatId,
-                "👨‍👩‍👧‍👦 خانواده\n\n"
-                ."هنوز به خانواده‌ای وصل نیستید.\n"
-                .'با ورود به وب‌اپ، عضویت شما فعال می‌شود.',
+                "👨‍👩‍👧‍👦 <b>خانواده</b>\n\nهنوز به خانواده‌ای وصل نیستید.\nبا ورود به وب‌اپ، عضویت شما فعال می‌شود.",
                 $familyUrl,
                 '🌐 ورود به خانواده',
+                'primary',
             );
 
             return;
@@ -477,24 +553,24 @@ class MessageHandler implements UpdateHandlerInterface
         $unreadCount = $this->familyUnreadPostCount($user, $membership);
 
         $lines = [
-            '👨‍👩‍👧‍👦 خانواده شما',
-            '────────────────',
-            '👥 تعداد اعضا: '.number_format($memberCount).' نفر',
+            '👨‍👩‍👧‍👦 <b>خانواده شما</b>',
+            '──────────────',
+            '👥 <b>تعداد اعضا:</b> '.number_format($memberCount).' نفر',
         ];
 
         if ($unreadCount > 0) {
-            $lines[] = '📝 پست‌های جدید ندیده‌شده: '.number_format($unreadCount);
+            $lines[] = '📝 <b>پست‌های جدید:</b> '.number_format($unreadCount);
             $lines[] = '';
             $lines[] = $unreadCount === 1
-                ? 'یک پست جدید منتظر شماست — همین الان سر بزنید.'
-                : "{$unreadCount} پست جدید منتظر شماست — بیا خانواده را چک کن.";
+                ? 'یک پست جدید منتظر شماست — همین الان سر بزنید ✨'
+                : number_format($unreadCount).' پست جدید منتظر شماست — بیا خانواده را چک کن ✨';
         } else {
             $lines[] = '📝 پست جدید ندیده‌شده: ۰';
             $lines[] = '';
-            $lines[] = 'فعلاً همه‌چیز را دیده‌اید. برای حال‌وهوای خانواده، یک سر بزنید.';
+            $lines[] = 'فعلاً همه‌چیز را دیده‌اید. برای حال‌وهوای خانواده یک سر بزنید.';
         }
 
-        $this->sendWithLink($bot, $chatId, implode("\n", $lines), $familyUrl, '🌐 ورود به خانواده');
+        $this->sendWithLink($bot, $chatId, implode("\n", $lines), $familyUrl, '🌐 ورود به خانواده', 'primary');
     }
 
     private function familyUnreadPostCount(\App\Models\User $user, \App\Models\FamilyMembership $membership): int
@@ -534,7 +610,7 @@ class MessageHandler implements UpdateHandlerInterface
     private function sendReferral(TelegramBot $bot, int $chatId, TelegramAccount $account): void
     {
         if (! $bot->featureEnabled(BotFeatureFlag::ReferralEnabled)) {
-            $this->replyNow($bot, $chatId, 'زیرمجموعه‌گیری فعلاً غیرفعال است.');
+            $this->replyHtml($bot, $chatId, "🎁 <b>معرفی دوستان</b>\n\nاین بخش فعلاً غیرفعال است.");
 
             return;
         }
@@ -544,17 +620,19 @@ class MessageHandler implements UpdateHandlerInterface
             $summary = $this->referrals->summary($account->user);
             $link = $this->referrals->referralLink($code->code);
             $panelUrl = TelegramSiteUrl::page('panel/referrals');
-            $this->replyNow(
+            $this->replyHtml(
                 $bot,
                 $chatId,
-                "لینک دعوت (همکاری در فروش):\n{$link}\n\n"
-                ."کد اختصاصی: {$code->code}\n\n"
-                .'خریدهای موفق: '.number_format((int) ($summary['successful_purchases'] ?? 0))."\n"
-                .'پاداش قابل برداشت: '.number_format((int) ($summary['payable_amount'] ?? 0)).' تومان',
-                TelegramSiteUrl::linkMarkup($panelUrl, '🎁 باشگاه مشتریان در پنل')
+                "🎁 <b>همکاری در فروش</b>\n"
+                ."──────────────\n"
+                .'🔗 لینک دعوت:'."\n<code>".\App\Modules\TelegramBot\Support\TelegramHtml::escape($link)."</code>\n\n"
+                .'🏷 کد اختصاصی: <code>'.\App\Modules\TelegramBot\Support\TelegramHtml::escape((string) $code->code)."</code>\n\n"
+                .'✅ خریدهای موفق: <b>'.number_format((int) ($summary['successful_purchases'] ?? 0))."</b>\n"
+                .'💰 پاداش قابل برداشت: <b>'.number_format((int) ($summary['payable_amount'] ?? 0)).'</b> تومان',
+                TelegramSiteUrl::linkMarkup($panelUrl, '🎁 باشگاه مشتریان در پنل', [], 'success'),
             );
         } catch (\Throwable) {
-            $this->replyNow($bot, $chatId, 'در حال حاضر امکان نمایش لینک معرفی وجود ندارد.');
+            $this->replyHtml($bot, $chatId, "⚠️ <b>لینک معرفی در دسترس نیست</b>\nکمی بعد دوباره تلاش کنید.");
         }
     }
 
@@ -565,14 +643,14 @@ class MessageHandler implements UpdateHandlerInterface
         $text = $this->userStats->formatProfileText($account);
 
         $keyboard = [];
-        foreach (TelegramSiteUrl::urlKeyboardRow('🔐 احراز هویت سطح ۲', $identityUrl) as $row) {
+        foreach (TelegramSiteUrl::urlKeyboardRow('🔐 احراز هویت سطح ۲', $identityUrl, 'primary') as $row) {
             $keyboard[] = $row;
         }
-        foreach (TelegramSiteUrl::urlKeyboardRow('ورود به پنل', $panelUrl) as $row) {
+        foreach (TelegramSiteUrl::urlKeyboardRow('🎓 ورود به پنل دانشجو', $panelUrl, 'success') as $row) {
             $keyboard[] = $row;
         }
 
-        $this->replyNow(
+        $this->replyHtml(
             $bot,
             $chatId,
             $text,
@@ -582,13 +660,19 @@ class MessageHandler implements UpdateHandlerInterface
         );
     }
 
-    private function sendWithLink(TelegramBot $bot, int $chatId, string $message, ?string $url, string $label): void
-    {
-        $this->replyNow(
+    private function sendWithLink(
+        TelegramBot $bot,
+        int $chatId,
+        string $message,
+        ?string $url,
+        string $label,
+        ?string $style = 'primary',
+    ): void {
+        $this->replyHtml(
             $bot,
             $chatId,
             $message,
-            TelegramSiteUrl::linkMarkup($url, $label),
+            TelegramSiteUrl::linkMarkup($url, $label, [], $style),
         );
     }
 }

@@ -4,6 +4,7 @@ namespace App\Modules\TelegramBot\Services;
 
 use App\Models\Product;
 use App\Models\Seminar;
+use App\Modules\TelegramBot\Support\TelegramHtml;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Support\JalaliDate;
 use Illuminate\Support\Carbon;
@@ -12,17 +13,29 @@ class TelegramContentPresenter
 {
     public function formatProductMessage(Product $product): string
     {
-        $lines = ['🎓 '.trim((string) $product->title), ''];
+        $lines = [
+            '✨ '.TelegramHtml::bold(trim((string) $product->title)),
+            '──────────────',
+        ];
 
         if (filled($product->short_description)) {
-            $lines[] = trim(strip_tags((string) $product->short_description));
+            $lines[] = TelegramHtml::escape(trim(strip_tags((string) $product->short_description)));
             $lines[] = '';
+        }
+
+        if (filled($product->course_level)) {
+            $lines[] = '🧩 <b>سطح:</b> '.TelegramHtml::escape(trim((string) $product->course_level));
+        }
+        if (filled($product->course_duration)) {
+            $lines[] = '⏱ <b>مدت:</b> '.TelegramHtml::escape(trim((string) $product->course_duration));
         }
 
         $lines[] = $this->formatPriceLine(
             (int) $product->price,
             $product->sale_price !== null ? (int) $product->sale_price : null,
         );
+        $lines[] = '';
+        $lines[] = '👇 یکی از دکمه‌های زیر را بزنید:';
 
         return implode("\n", $lines);
     }
@@ -30,17 +43,21 @@ class TelegramContentPresenter
     /** @return array<string, mixed> */
     public function productSendOptions(Product $product): array
     {
-        return $this->productReplyMarkup($product);
+        return [
+            ...$this->productReplyMarkup($product),
+            'parse_mode' => 'HTML',
+        ];
     }
 
     /** @return array<string, mixed> */
     public function productReplyMarkup(Product $product): array
     {
         $keyboard = [
-            [$this->paymentButton('🛒 خرید و پرداخت', $product->id)],
+            [$this->paymentButton('🛒 خرید امن و آنی', $product->id)],
             ...TelegramSiteUrl::urlKeyboardRow(
-                '🌐 مشاهده در سایت',
+                '🌐 جزئیات کامل در سایت',
                 TelegramSiteUrl::resolve($product->landing_href, $product->slug),
+                'primary',
             ),
         ];
 
@@ -49,19 +66,22 @@ class TelegramContentPresenter
 
     public function formatSeminarMessage(Seminar $seminar): string
     {
-        $lines = ['🎤 '.trim((string) $seminar->title), ''];
+        $lines = [
+            '🎤 '.TelegramHtml::bold(trim((string) $seminar->title)),
+            '──────────────',
+        ];
 
         if ($seminar->date instanceof Carbon) {
-            $lines[] = '📅 '.JalaliDate::formatDateTime($seminar->date);
+            $lines[] = '📅 <b>زمان:</b> '.JalaliDate::formatDateTime($seminar->date);
         }
 
         if (filled($seminar->location)) {
-            $lines[] = '📍 '.trim((string) $seminar->location);
+            $lines[] = '📍 <b>مکان:</b> '.TelegramHtml::escape(trim((string) $seminar->location));
         }
 
         if (filled($seminar->description)) {
             $lines[] = '';
-            $lines[] = trim(strip_tags((string) $seminar->description));
+            $lines[] = TelegramHtml::escape(trim(strip_tags((string) $seminar->description)));
         }
 
         [$price, $sale] = $this->seminarPrices($seminar);
@@ -72,9 +92,12 @@ class TelegramContentPresenter
 
         if ($seminar->capacity !== null && $seminar->capacity > 0) {
             $lines[] = $seminar->isFull()
-                ? '⚠️ ظرفیت تکمیل شده'
-                : '👥 ظرفیت باقی‌مانده: '.$seminar->remainingSeats();
+                ? '⚠️ <b>ظرفیت تکمیل شده</b>'
+                : '👥 <b>ظرفیت باقی‌مانده:</b> '.$seminar->remainingSeats();
         }
+
+        $lines[] = '';
+        $lines[] = '👇 برای ثبت‌نام از دکمه‌های زیر استفاده کنید:';
 
         return implode("\n", $lines);
     }
@@ -82,7 +105,10 @@ class TelegramContentPresenter
     /** @return array<string, mixed> */
     public function seminarSendOptions(Seminar $seminar): array
     {
-        return $this->seminarReplyMarkup($seminar);
+        return [
+            ...$this->seminarReplyMarkup($seminar),
+            'parse_mode' => 'HTML',
+        ];
     }
 
     /** @return array<string, mixed> */
@@ -93,14 +119,18 @@ class TelegramContentPresenter
         [$price] = $this->seminarPrices($seminar);
 
         if ($seminar->isFull()) {
-            $keyboard[] = [['text' => '⛔ ظرفیت تکمیل شده', 'callback_data' => 'seminar:full']];
+            $keyboard[] = [['text' => '⛔ ظرفیت تکمیل شده', 'callback_data' => 'seminar:full', 'style' => 'danger']];
         } elseif ($product && $product->is_active && $price > 0) {
             $keyboard[] = [$this->paymentButton('🛒 ثبت‌نام / پرداخت', $product->id)];
         }
 
         $keyboard = [
             ...$keyboard,
-            ...TelegramSiteUrl::urlKeyboardRow('🌐 مشاهده در سایت', TelegramSiteUrl::seminarPage($seminar->slug)),
+            ...TelegramSiteUrl::urlKeyboardRow(
+                '🌐 مشاهده در سایت',
+                TelegramSiteUrl::seminarPage($seminar->slug),
+                'primary',
+            ),
         ];
 
         if ($keyboard === []) {
@@ -123,10 +153,10 @@ class TelegramContentPresenter
     private function formatPriceLine(int $price, ?int $salePrice): string
     {
         if ($salePrice !== null && $salePrice > 0 && $salePrice < $price) {
-            return 'قیمت اصلی: '.number_format($price)." تومان\nقیمت با تخفیف: ".number_format($salePrice).' تومان';
+            return '💰 <b>قیمت اصلی:</b> '.number_format($price)." تومان\n🔥 <b>قیمت ویژه:</b> ".number_format($salePrice).' تومان';
         }
 
-        return 'قیمت: '.number_format($price).' تومان';
+        return '💰 <b>قیمت:</b> '.number_format($price).' تومان';
     }
 
     /** @return array{0: int, 1: int|null} */

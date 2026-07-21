@@ -6,11 +6,16 @@ import { cn } from '@/lib/cn';
 import { useLazyInViewOnce } from '@/hooks/useLazyInViewOnce';
 import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
 import { FamilyVideoModal } from '@/components/family/FamilyVideoModal';
-import { resolveFamilyMediaPlaybackCandidates, resolveFamilyMediaPlaybackUrl, resolveFamilyMediaPosterUrl } from '@/lib/family/mediaPlaybackUrl';
+import { resolveFamilyMediaPlaybackUrl, resolveFamilyMediaPosterUrl } from '@/lib/family/mediaPlaybackUrl';
 import type { FamilyMediaBlock } from '@/lib/family/types';
+
+const DOUBLE_TAP_MS = 320;
+const TAP_MOVE_PX = 12;
 
 export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastTapAtRef = useRef(0);
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [posterReady, setPosterReady] = useState(false);
   const [posterError, setPosterError] = useState(false);
@@ -28,6 +33,35 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
 
   const stopFeedGesture = (event: PointerEvent | TouchEvent) => {
     event.stopPropagation();
+  };
+
+  const onSurfacePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    // Do not stopPropagation — feed scroll must keep working on mobile.
+    pointerStartRef.current = { x: event.clientX, y: event.clientY };
+  };
+
+  const onSurfacePointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    const start = pointerStartRef.current;
+    pointerStartRef.current = null;
+    if (!start) return;
+
+    const moved =
+      Math.abs(event.clientX - start.x) > TAP_MOVE_PX ||
+      Math.abs(event.clientY - start.y) > TAP_MOVE_PX;
+    if (moved) {
+      lastTapAtRef.current = 0;
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastTapAtRef.current <= DOUBLE_TAP_MS) {
+      lastTapAtRef.current = 0;
+      event.stopPropagation();
+      openPlayer();
+      return;
+    }
+
+    lastTapAtRef.current = now;
   };
 
   if (!streamUrl) {
@@ -116,23 +150,37 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
           aria-hidden
         />
 
-        <button
-          type="button"
-          onPointerDown={stopFeedGesture}
-          onTouchEnd={(event) => {
-            stopFeedGesture(event);
-            event.preventDefault();
-            openPlayer();
+        {/* Surface: double-tap / double-click only — single tap/scroll must not open player */}
+        <div
+          className="absolute inset-0 z-[1] touch-pan-y"
+          onPointerDown={onSurfacePointerDown}
+          onPointerUp={onSurfacePointerUp}
+          onPointerCancel={() => {
+            pointerStartRef.current = null;
+            lastTapAtRef.current = 0;
           }}
-          onClick={(event) => {
+          onDoubleClick={(event) => {
             event.stopPropagation();
             openPlayer();
           }}
-          aria-label="پخش ویدیو"
-          className="family-feed-video__play absolute left-1/2 top-1/2 z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 backdrop-blur-sm transition hover:bg-black/65 active:scale-95 cursor-pointer"
-        >
-          <Play className="ms-0.5 h-6 w-6 text-white/95" fill="currentColor" />
-        </button>
+          aria-hidden
+        />
+
+        <div className="family-feed-video__play pointer-events-none absolute inset-0 z-[2] flex items-center justify-center p-4">
+          <button
+            type="button"
+            onPointerDown={stopFeedGesture}
+            onClick={(event) => {
+              event.stopPropagation();
+              lastTapAtRef.current = 0;
+              openPlayer();
+            }}
+            aria-label="پخش ویدیو"
+            className="pointer-events-auto flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-black/55 backdrop-blur-sm transition hover:bg-black/65 active:scale-95"
+          >
+            <Play className="ms-0.5 h-6 w-6 text-white/95" fill="currentColor" />
+          </button>
+        </div>
       </div>
 
       <FamilyVideoModal

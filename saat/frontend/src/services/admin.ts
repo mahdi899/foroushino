@@ -29,3 +29,33 @@ export async function testMelipayamakConnection(input: {
     payload,
   )
 }
+
+export type IntegrationTokenRow = {
+  id: number
+  name: string
+  abilities: string[]
+  created_by_name: string | null
+  last_used_at: string | null
+  revoked_at: string | null
+  created_at: string | null
+}
+
+export async function fetchIntegrationTokens(): Promise<{
+  tokens: IntegrationTokenRow[]
+  inbound_applications_url: string
+  inbound_ping_url: string
+}> {
+  return http.get('/admin/integration-tokens')
+}
+
+export async function createIntegrationToken(name: string): Promise<{
+  token: { id: number; name: string; plain_text: string }
+  inbound_applications_url: string
+  inbound_ping_url: string
+}> {
+  return http.post('/admin/integration-tokens', { name })
+}
+
+export async function revokeIntegrationToken(id: number): Promise<void> {
+  await http.del(`/admin/integration-tokens/${id}`)
+}

@@ -15,7 +15,7 @@ todos:
     content: تایید نهایی سرور بهرام با curl و pm2 list
     status: completed
   - id: sat-ssh
-    content: اتصال SSH به سرور سات (185.130.50.24) و بررسی وضعیت فعلی
+    content: اتصال SSH به سرور سات (YOUR_SAAT_SERVER_IP) و بررسی وضعیت فعلی
     status: completed
   - id: sat-bootstrap
     content: اجرای bootstrap-server.sh و deploy.sh پروژه saat روی سرور جدا
@@ -71,7 +71,7 @@ isProject: false
 
 ---
 
-# سرور دوم و کاملاً مجزا — Saat (sat.center) — 185.130.50.24
+# سرور دوم و کاملاً مجزا — Saat (sat.center) — YOUR_SAAT_SERVER_IP
 
 این سرور از سرور بهرام/فامیلی **کاملاً جداست** — فقط از طریق API با بک‌اند bahram-cm ارتباط می‌گیرد (توکن مشترک `@RostamiAppBot` برای تایید `initData` مینی‌اپ تلگرام؛ **هیچ webhook خودش ثبت نمی‌کند**).
 
@@ -88,7 +88,7 @@ https://sat.center/storage/*     → Laravel public storage
 
 ## مراحل اجرا (بعد از تایید SSH)
 
-1. اتصال SSH با `root@185.130.50.24`
+1. اتصال SSH با `root@YOUR_SAAT_SERVER_IP`
 2. بررسی وضعیت فعلی سرور (نصب بودن nginx/php/mysql/redis/node، وجود `/var/www/mini-call-center`)
 3. اگر خام است — clone مونوریپوی saat + bootstrap:
    ```bash
@@ -122,5 +122,5 @@ https://sat.center/storage/*     → Laravel public storage
 - `TELEGRAM_BOT_TOKEN` واقعی را از کجا تامین کنم (باید از شما یا از `.env` موجود bahram-cm گرفته شود، هرگز در کد commit نشود)
 
 ## پیش‌نیاز از سمت شما
-- DNS: `sat.center` و `www.sat.center` → `185.130.50.24` (این دامنه پشت CDN نیست — DNS مستقیم)
+- DNS: `sat.center` و `www.sat.center` → `YOUR_SAAT_SERVER_IP` (این دامنه پشت CDN نیست — DNS مستقیم)
 - پورت 80/443 باز باشد روی این سرور جدا

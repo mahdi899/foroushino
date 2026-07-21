@@ -30,6 +30,7 @@ class RegistrationFlowService
         private readonly TelegramAdminUserStatsService $adminUserStats,
         private readonly OtpService $otp,
         private readonly TelegramOutboundMessenger $outbound,
+        private readonly BotMessageCatalog $messages,
     ) {}
 
     public function start(TelegramBot $bot, TelegramAccount $account, TelegramConversation $conversation): void
@@ -97,8 +98,8 @@ class RegistrationFlowService
             'parse_mode' => 'HTML',
             'reply_markup' => [
                 'inline_keyboard' => [[
-                    ['text' => '✅ می‌پذیرم', 'callback_data' => 'reg:accept_terms'],
-                    ['text' => '❌ انصراف', 'callback_data' => 'reg:cancel'],
+                    ['text' => '✅ می‌پذیرم', 'callback_data' => 'reg:accept_terms', 'style' => 'success'],
+                    ['text' => '❌ انصراف', 'callback_data' => 'reg:cancel', 'style' => 'danger'],
                 ]],
             ],
         ]);
@@ -188,10 +189,11 @@ class RegistrationFlowService
         TelegramBot $bot,
         TelegramAccount $account,
         TelegramConversation $conversation,
-        string $message = 'سلام! برای شروع، شماره موبایل خود را ارسال کنید.',
+        ?string $message = null,
     ): void {
         $this->conversations->transition($conversation, ConversationState::WaitingForMobile);
 
+        $base = $message ?? $this->messages->get($bot, 'registration_ask_mobile');
         $hint = $bot->featureEnabled(BotFeatureFlag::NumericPhoneVerification)
             ? "\n\nمی‌توانید شماره را تایپ کنید یا با دکمه زیر به‌اشتراک بگذارید."
             : "\n\nلطفاً از دکمه «ارسال شماره تماس» استفاده کنید.";
@@ -200,7 +202,8 @@ class RegistrationFlowService
             $hint .= "\nفقط شماره ایران (09…) پذیرفته می‌شود.";
         }
 
-        $this->queueMessage($bot, $account->telegram_user_id, $message.$hint, [
+        $this->queueMessage($bot, $account->telegram_user_id, $base.$hint, [
+            'parse_mode' => 'HTML',
             'reply_markup' => $this->phoneStepMarkup($bot),
         ]);
     }
@@ -353,8 +356,11 @@ class RegistrationFlowService
         $this->queueMessage(
             $bot,
             $account->telegram_user_id,
-            'شماره شما تأیید شد. لطفاً نام و نام خانوادگی خود را وارد کنید.',
-            ['reply_markup' => $this->registrationKeyboard->nameStepMarkup()],
+            $this->messages->get($bot, 'registration_ask_name'),
+            [
+                'parse_mode' => 'HTML',
+                'reply_markup' => $this->registrationKeyboard->nameStepMarkup(),
+            ],
         );
     }
 
@@ -394,8 +400,14 @@ class RegistrationFlowService
         $account->refresh();
         $this->sendMainMenu($bot, $account->fresh());
 
-        $body = "✅ ثبت‌نام با موفقیت انجام شد!\n\n".implode("\n", $summaryLines);
-        $this->queueMessage($bot, $account->telegram_user_id, $body);
+        $body = $this->messages->get($bot, 'registration_complete');
+        if ($summaryLines !== []) {
+            $body .= "\n\n".implode("\n", array_map(
+                static fn ($line) => TelegramHtml::escape((string) $line),
+                $summaryLines,
+            ));
+        }
+        $this->queueMessage($bot, $account->telegram_user_id, $body, ['parse_mode' => 'HTML']);
     }
 
     private function acceptTerms(TelegramAccount $account, TelegramConversation $conversation): void
@@ -417,9 +429,25 @@ class RegistrationFlowService
 
     private function sendMainMenu(TelegramBot $bot, TelegramAccount $account): void
     {
-        $this->queueMessage($bot, $account->telegram_user_id, 'منوی اصلی:', [
+        $sticker = $this->messages->stickerFileId($bot, 'sticker_welcome');
+        if ($sticker !== null) {
+            $this->outbound->replySticker($bot, $account->telegram_user_id, $sticker);
+        }
+
+        $this->queueMessage($bot, $account->telegram_user_id, $this->messages->get($bot, 'main_menu_hint'), [
+            'parse_mode' => 'HTML',
             'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
         ]);
+
+        $this->queueMessage(
+            $bot,
+            $account->telegram_user_id,
+            "⚡ <b>میانبرهای سریع</b>\nبا یک ضربه وارد بخش موردنظر شوید:",
+            [
+                'parse_mode' => 'HTML',
+                'reply_markup' => $this->mainMenu->quickNavInlineMarkup($bot),
+            ],
+        );
     }
 
     /** @return array<string, mixed> */

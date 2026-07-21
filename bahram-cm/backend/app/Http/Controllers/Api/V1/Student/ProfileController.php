@@ -8,8 +8,8 @@ use App\Enums\OtpPurpose;
 use App\Services\AdminTelegramLogService;
 use App\Services\Exceptions\OtpException;
 use App\Services\OtpService;
+use App\Services\Student\StudentAvatarStorage;
 use App\Support\ApiResponse;
-use App\Support\DirectoryListingGuard;
 use App\Support\MediaUrl;
 use App\Support\StudentProfilePayload;
 use Illuminate\Http\JsonResponse;
@@ -18,7 +18,10 @@ use Illuminate\Support\Facades\Hash;
 
 class ProfileController extends Controller
 {
-    public function __construct(private readonly OtpService $otp) {}
+    public function __construct(
+        private readonly OtpService $otp,
+        private readonly StudentAvatarStorage $avatars,
+    ) {}
 
     public function show(Request $request): JsonResponse
     {
@@ -123,17 +126,30 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
-        $file = $data['avatar'];
-        $directory = 'avatars/'.$user->id;
-        $filename = 'avatar.'.$file->getClientOriginalExtension();
-        $stored = $file->storeAs($directory, $filename, 'public');
-        DirectoryListingGuard::guardPublicRelativePath($stored);
+        $user->loadMissing('profile');
 
-        $reference = MediaUrl::fromDiskPath($stored);
-        $user->profile()->updateOrCreate(
+        try {
+            $reference = $this->avatars->store(
+                $user->id,
+                $data['avatar'],
+                $user->profile?->avatar,
+            );
+        } catch (\RuntimeException $e) {
+            return ApiResponse::error(
+                'avatar_upload_failed',
+                $e->getMessage() !== ''
+                    ? $e->getMessage()
+                    : 'آپلود عکس پروفایل الان ممکن نیست. لطفاً ساعات دیگر دوباره امتحان کنید.',
+                502,
+            );
+        }
+
+        $profile = $user->profile()->updateOrCreate(
             ['user_id' => $user->id],
             ['avatar' => $reference],
         );
+        // Always bump updated_at so avatar_version / cache-buster changes even on rare path reuse.
+        $profile->touch();
 
         $user->refresh()->loadMissing('profile');
 

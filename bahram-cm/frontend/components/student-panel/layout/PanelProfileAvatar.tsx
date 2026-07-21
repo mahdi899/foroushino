@@ -38,7 +38,12 @@ function buildAvatarSources({
 
   const custom = avatarUrl?.trim() || avatar?.trim();
   if (custom) {
-    const resolved = primarySiteImageSrc(custom) || custom;
+    // Absolute CDN/avatar URLs from the API are already final — do not rewrite via
+    // legacy mediaPathToStorage (that incorrectly nests /media/avatars under /media/site).
+    const resolved =
+      /^https?:\/\//i.test(custom) || custom.startsWith('/storage/media/avatars/')
+        ? custom
+        : primarySiteImageSrc(custom) || custom;
     sources.push(appendAvatarCacheBuster(resolved, avatarVersion));
   }
 

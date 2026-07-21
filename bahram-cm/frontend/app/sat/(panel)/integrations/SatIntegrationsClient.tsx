@@ -13,15 +13,25 @@ type TokenRow = {
   created_at: string | null;
 };
 
+type Ability = 'inbound:applications' | 'callback:lead-status';
+
 type Props = {
   inboundApplicationsUrl: string;
   inboundPingUrl: string;
   tokens: TokenRow[];
 };
 
+const CALLBACK_URL = 'https://rostami.app/api/v1/integrations/inbound/sat-status';
+
+const ABILITY_LABELS: Record<Ability, string> = {
+  'inbound:applications': 'دریافت درخواست (CRM داخلی بهرام)',
+  'callback:lead-status': 'کال‌بک وضعیت از sat.center',
+};
+
 export function SatIntegrationsClient({ inboundApplicationsUrl, inboundPingUrl, tokens: initial }: Props) {
   const [tokens, setTokens] = useState(initial);
-  const [name, setName] = useState('سایت بهرام');
+  const [name, setName] = useState('کال‌بک سات');
+  const [ability, setAbility] = useState<Ability>('callback:lead-status');
   const [createdToken, setCreatedToken] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
@@ -33,7 +43,7 @@ export function SatIntegrationsClient({ inboundApplicationsUrl, inboundPingUrl, 
     const res = await fetch('/api/sat/integration-tokens', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name.trim() }),
+      body: JSON.stringify({ name: name.trim(), abilities: [ability] }),
     });
     const json = await res.json().catch(() => ({}));
     setPending(false);
@@ -64,11 +74,26 @@ export function SatIntegrationsClient({ inboundApplicationsUrl, inboundPingUrl, 
   return (
     <div className="space-y-6">
       <section className="rounded-xl border border-gold/15 bg-white/5 p-4">
-        <h3 className="font-medium text-gold">آدرس‌های API برای سایت بهرام</h3>
-        <p className="mt-2 text-sm text-bone/70">این URLها را در پنل بهرام → درخواست‌های سات وارد کنید.</p>
+        <h3 className="font-medium text-gold">اتصال با sat.center</h3>
+        <p className="mt-2 text-sm text-bone/70">
+          برای ارسال درخواست از بهرام به سات، توکن را در پنل سات بسازید و در{' '}
+          <strong>پنل بهرام → درخواست‌های سات</strong> وارد کنید. برای برگشت وضعیت لید از سات به بهرام، اینجا توکن
+          «کال‌بک وضعیت» بسازید و در پنل سات ذخیره کنید.
+        </p>
         <div className="mt-4 space-y-3 text-sm">
           <div>
-            <span className="text-bone/60">دریافت درخواست پذیرفته‌شده (POST)</span>
+            <span className="text-bone/60">URL کال‌بک وضعیت (برای پنل سات)</span>
+            <div className="mt-1 flex items-center gap-2">
+              <code className="block flex-1 overflow-x-auto rounded bg-black/30 px-2 py-1 text-xs" dir="ltr">
+                {CALLBACK_URL}
+              </code>
+              <button type="button" onClick={() => copy(CALLBACK_URL)} className="text-gold">
+                <Copy className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          <div>
+            <span className="text-bone/60">CRM داخلی بهرام — دریافت (فقط اگر سات روی همین دامنه باشد)</span>
             <div className="mt-1 flex items-center gap-2">
               <code className="block flex-1 overflow-x-auto rounded bg-black/30 px-2 py-1 text-xs" dir="ltr">
                 {inboundApplicationsUrl}
@@ -79,7 +104,7 @@ export function SatIntegrationsClient({ inboundApplicationsUrl, inboundPingUrl, 
             </div>
           </div>
           <div>
-            <span className="text-bone/60">تست اتصال (GET)</span>
+            <span className="text-bone/60">CRM داخلی — تست اتصال</span>
             <div className="mt-1 flex items-center gap-2">
               <code className="block flex-1 overflow-x-auto rounded bg-black/30 px-2 py-1 text-xs" dir="ltr">
                 {inboundPingUrl}
@@ -94,11 +119,25 @@ export function SatIntegrationsClient({ inboundApplicationsUrl, inboundPingUrl, 
 
       <section className="rounded-xl border border-gold/15 bg-white/5 p-4">
         <h3 className="font-medium text-gold">توکن اتصال</h3>
-        <p className="mt-2 text-sm text-bone/70">توکن فقط یک‌بار نمایش داده می‌شود. آن را در پنل بهرام ذخیره کنید.</p>
+        <p className="mt-2 text-sm text-bone/70">توکن فقط یک‌بار نمایش داده می‌شود.</p>
         <div className="mt-4 flex flex-wrap items-end gap-2">
           <label className="text-sm">
             <span className="mb-1 block text-bone/60">نام اتصال</span>
             <input className="field-input" value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-bone/60">نوع دسترسی</span>
+            <select
+              className="field-input"
+              value={ability}
+              onChange={(e) => setAbility(e.target.value as Ability)}
+            >
+              {(Object.keys(ABILITY_LABELS) as Ability[]).map((key) => (
+                <option key={key} value={key}>
+                  {ABILITY_LABELS[key]}
+                </option>
+              ))}
+            </select>
           </label>
           <button type="button" className="btn-primary inline-flex items-center gap-1" disabled={pending} onClick={createToken}>
             <Plus className="h-4 w-4" />
@@ -108,7 +147,9 @@ export function SatIntegrationsClient({ inboundApplicationsUrl, inboundPingUrl, 
         {createdToken ? (
           <div className="mt-4 rounded-lg border border-gold/30 bg-gold/10 p-3 text-sm">
             <p className="text-gold">توکن جدید (فقط همین‌اکنون):</p>
-            <code className="mt-2 block break-all text-xs" dir="ltr">{createdToken}</code>
+            <code className="mt-2 block break-all text-xs" dir="ltr">
+              {createdToken}
+            </code>
             <button type="button" className="mt-2 text-gold underline" onClick={() => copy(createdToken)}>
               کپی توکن
             </button>
@@ -124,6 +165,9 @@ export function SatIntegrationsClient({ inboundApplicationsUrl, inboundPingUrl, 
             <li key={t.id} className="flex items-center justify-between gap-2 rounded-lg bg-black/20 px-3 py-2">
               <div>
                 <span className="font-medium">{t.name}</span>
+                <span className="mr-2 text-bone/50">
+                  {t.abilities?.map((a) => ABILITY_LABELS[a as Ability] ?? a).join('، ') || '—'}
+                </span>
                 <span className="mr-2 text-bone/50">
                   {t.revoked_at ? '· لغوشده' : t.last_used_at ? '· استفاده‌شده' : '· فعال'}
                 </span>

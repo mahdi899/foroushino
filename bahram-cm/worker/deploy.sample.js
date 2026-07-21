@@ -6,6 +6,12 @@ const WEBHOOK_PATH_PREFIX = "/api/v1/integrations/telegram/";
 const PROXY_ORIGIN_VALUE = "Cloudflare-Worker";
 const DEDUPE_TTL_SECONDS = "120";
 
+/**
+ * Bahram Telegram Bridge (dumb relay)
+ * - Inbound webhook → Laravel (Bearer PROXY_SHARED_TOKEN)
+ * - Outbound Bot API with Bearer PROXY_SHARED_TOKEN
+ * - No bot token on the proxy (security)
+ */
 export default {
   async fetch(request, env, ctx) {
     try {

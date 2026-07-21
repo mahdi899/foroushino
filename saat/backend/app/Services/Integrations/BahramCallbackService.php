@@ -2,8 +2,10 @@
 
 namespace App\Services\Integrations;
 
+use App\Models\AppSetting;
 use App\Models\Lead;
 use App\Support\HmacSigner;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -22,11 +24,15 @@ class BahramCallbackService
             return true;
         }
 
-        $config = config('security.bahram_callback');
-        $url = trim((string) ($config['url'] ?? ''));
-        $token = (string) ($config['token'] ?? '');
+        $config = $this->resolveConfig();
+        $url = $config['url'];
+        $token = $config['token'];
 
         if ($url === '' || $token === '') {
+            Log::warning('Bahram status callback skipped — URL/token not configured', [
+                'lead_id' => $lead->id,
+            ]);
+
             return false;
         }
 
@@ -37,9 +43,10 @@ class BahramCallbackService
 
         try {
             $response = Http::timeout(10)
+                ->retry(2, 250, fn ($exception) => $exception instanceof ConnectionException)
                 ->acceptJson()
                 ->withToken($token)
-                ->withHeaders($this->signedHeaders($payload, (string) ($config['hmac_secret'] ?? '')))
+                ->withHeaders($this->signedHeaders($payload, $config['hmac_secret']))
                 ->post($url, $payload);
 
             if (! $response->successful()) {
@@ -61,6 +68,30 @@ class BahramCallbackService
 
             return false;
         }
+    }
+
+    /**
+     * @return array{url: string, token: string, hmac_secret: string}
+     */
+    public function resolveConfig(): array
+    {
+        $env = config('security.bahram_callback');
+
+        $url = trim(AppSetting::string('bahram_callback_url'));
+        if ($url === '') {
+            $url = trim((string) ($env['url'] ?? ''));
+        }
+
+        $token = trim(AppSetting::string('bahram_callback_token'));
+        if ($token === '') {
+            $token = (string) ($env['token'] ?? '');
+        }
+
+        return [
+            'url' => $url,
+            'token' => $token,
+            'hmac_secret' => (string) ($env['hmac_secret'] ?? ''),
+        ];
     }
 
     /**

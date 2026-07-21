@@ -101,21 +101,25 @@ class TelegramAdminUserStatsService
         $s = $this->forAccount($account);
         $amount = number_format($s['subset_tx_amount']);
         $balance = number_format($s['account_balance']);
+        $name = \App\Modules\TelegramBot\Support\TelegramHtml::escape((string) $s['display_name']);
+        $phone = \App\Modules\TelegramBot\Support\TelegramHtml::escape((string) $s['phone_display']);
+        $registered = \App\Modules\TelegramBot\Support\TelegramHtml::escape((string) $s['registered_at']);
 
-        return "حساب کاربری 👤\n\n"
-            ."🆔 شناسه کاربری: {$s['telegram_user_id']}\n"
-            ."👤 نام و نام خانوادگی: {$s['display_name']}\n"
-            ."📞 شماره تماس: {$s['phone_display']}\n"
-            ."📆 زمان ثبت نام: {$s['registered_at']}\n"
-            ."👥 تعداد زیرمجموعه: {$s['subset_count']}\n\n"
-            ."🏦 تراکنش های موفق: {$s['successful_orders']}\n"
-            ."🛒 دوره های فعال: {$s['active_subscriptions']}\n\n"
-            ."💰 موجودی حساب: {$balance} تومان\n\n"
-            ."🎯 درصد همکاری: {$s['cooperation_percent']}%\n"
-            ."👥 تعداد زیرمجموعه: {$s['subset_count']} نفر\n"
-            ."🧑‍💻 تعداد زیرمجموعه های خریدار: {$s['buyer_subset_count']} نفر\n"
-            ."💳 تعداد تراکنش های زیرمجموعه: {$s['subset_tx_count']} عدد\n"
-            ."💸 مبلغ تراکنش های زیرمجموعه: {$amount} تومان | 0 تتر";
+        return "👤 <b>حساب کاربری شما</b>\n"
+            ."──────────────\n"
+            ."🆔 شناسه: <code>{$s['telegram_user_id']}</code>\n"
+            ."👤 نام: <b>{$name}</b>\n"
+            ."📞 موبایل: {$phone}\n"
+            ."📆 ثبت‌نام: {$registered}\n\n"
+            ."🏦 تراکنش‌های موفق: <b>{$s['successful_orders']}</b>\n"
+            ."🎓 دوره‌های فعال: <b>{$s['active_subscriptions']}</b>\n"
+            ."💰 موجودی: <b>{$balance}</b> تومان\n\n"
+            ."🎁 همکاری در فروش\n"
+            ."🎯 درصد: <b>{$s['cooperation_percent']}%</b>\n"
+            ."👥 زیرمجموعه: <b>{$s['subset_count']}</b> نفر\n"
+            ."🧑‍💻 خریدار: <b>{$s['buyer_subset_count']}</b> نفر\n"
+            ."💳 تراکنش زیرمجموعه: <b>{$s['subset_tx_count']}</b>\n"
+            ."💸 مبلغ زیرمجموعه: <b>{$amount}</b> تومان";
     }
 
     /**

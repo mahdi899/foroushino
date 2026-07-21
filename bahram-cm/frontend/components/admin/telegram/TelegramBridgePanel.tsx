@@ -4,12 +4,22 @@ import { Copy, Loader2, Save, Webhook } from 'lucide-react';
 import type { TelegramInfrastructureView } from '@/lib/admin/telegram.types';
 import { useTelegramBridgeDraft } from './useTelegramBridgeDraft';
 
-function WorkerFileBlock({ source }: { source: string }) {
+function CodeFileBlock({
+  title,
+  filename,
+  source,
+  hint,
+}: {
+  title: string;
+  filename: string;
+  source: string;
+  hint: string;
+}) {
   return (
     <div className="rounded-md border border-border bg-surface-muted/20">
       <div className="flex items-center justify-between gap-2 border-b border-border px-2.5 py-2">
         <p className="text-caption font-medium text-text">
-          Worker آماده Cloudflare — <span dir="ltr" className="font-mono text-[11px]">worker.js</span>
+          {title} — <span dir="ltr" className="font-mono text-[11px]">{filename}</span>
         </p>
         <button
           type="button"
@@ -23,9 +33,7 @@ function WorkerFileBlock({ source }: { source: string }) {
       <pre className="max-h-80 overflow-auto p-2.5 font-mono text-[10px] leading-relaxed text-text" dir="ltr">
         <code>{source}</code>
       </pre>
-      <p className="border-t border-border px-2.5 py-2 text-caption text-text-muted">
-        کل فایل را در Cloudflare Workers → Quick Edit بچسبانید و Deploy کنید. متن، عکس، ویدیو، صدا و فایل پشتیبانی می‌شود.
-      </p>
+      <p className="border-t border-border px-2.5 py-2 text-caption text-text-muted">{hint}</p>
     </div>
   );
 }
@@ -39,7 +47,7 @@ function ModePicker({
 }) {
   const options = [
     { id: 'direct' as const, title: 'مستقیم', desc: 'تلگرام → سرور' },
-    { id: 'worker' as const, title: 'Worker', desc: 'تلگرام → Cloudflare → سرور' },
+    { id: 'worker' as const, title: 'پروکسی', desc: 'فقط یکی: Worker کلادفلر یا هاست' },
   ];
 
   return (
@@ -103,11 +111,18 @@ export function TelegramBridgePanel({
     registerWebhook,
   } = draft;
 
+  const phpSource = initial.host_proxy_deploy_sample?.trim() || null;
+  const htaccessSource = initial.host_proxy_htaccess_sample?.trim() || null;
+
   const onSave = () => {
     startTransition(async () => {
       onStatus?.('');
       const res = await saveInfrastructure();
-      onStatus?.(res.ok ? 'ذخیره شد — worker.js را در Cloudflare Deploy کنید' : res.error ?? 'خطا');
+      onStatus?.(
+        res.ok
+          ? 'ذخیره شد — یکی از نمونه‌ها را Deploy کنید (worker.js یا index.php)'
+          : (res.error ?? 'خطا'),
+      );
     });
   };
 
@@ -133,18 +148,46 @@ export function TelegramBridgePanel({
       {mode === 'worker' ? (
         <>
           <label className="block">
-            <span className="text-caption font-medium text-text">آدرس Worker</span>
+            <span className="text-caption font-medium text-text">آدرس پروکسی (فقط یکی)</span>
             <input
               className="field-input mt-1 w-full text-small"
               dir="ltr"
               type="url"
-              placeholder="https://your-name.workers.dev"
+              placeholder="https://xxx.workers.dev  یا  https://bahram.rahai.online/bahram"
               value={workerUrl}
               onChange={(e) => setWorkerUrl(e.target.value)}
             />
+            <span className="mt-1 block text-caption text-text-muted">
+              همزمان هر دو فعال نیست — یا Worker کلادفلر، یا هاست PHP.
+            </span>
           </label>
 
-          {workerSource ? <WorkerFileBlock source={workerSource} /> : null}
+          {workerSource ? (
+            <CodeFileBlock
+              title="Worker آماده Cloudflare"
+              filename="worker.js"
+              source={workerSource}
+              hint="کل فایل را در Cloudflare Workers → Quick Edit بچسبانید و Deploy کنید. توکن ربات روی Worker نیست — فقط PROXY_SHARED_TOKEN."
+            />
+          ) : null}
+
+          {phpSource ? (
+            <CodeFileBlock
+              title="پروکسی آماده هاست PHP"
+              filename="index.php"
+              source={phpSource}
+              hint="نیازمند PHP 8.3 یا 8.4. روی هاست (مثلاً /bahram) به‌عنوان index.php آپلود کنید. توکن ربات روی هاست نیست — فقط PROXY_SHARED_TOKEN."
+            />
+          ) : null}
+
+          {htaccessSource ? (
+            <CodeFileBlock
+              title="ری‌رایت Apache"
+              filename=".htaccess"
+              source={htaccessSource}
+              hint="کنار index.php بگذارید. اگر پوشه غیر از /bahram است، RewriteBase را عوض کنید."
+            />
+          ) : null}
         </>
       ) : (
         <p className="text-caption text-text-muted">تلگرام مستقیم به سرور شما وصل می‌شود.</p>

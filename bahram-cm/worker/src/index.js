@@ -1,12 +1,12 @@
 /**
  * Bahram Telegram Bridge — Cloudflare Worker
  *
- * Dumb relay (no Telegram secret/token on inbound):
- *  1. Inbound  — Telegram webhook → forward as-is to Laravel origin
+ * Dumb relay only (no bot token on the proxy):
+ *  1. Inbound  — Telegram webhook → Laravel
  *  2. Outbound — Laravel → api.telegram.org (Bearer PROXY_SHARED_TOKEN)
  *
- * Laravel validates webhook secret + proxy token. Worker only adds
- * Authorization + X-Proxy-Origin when forwarding inbound to origin.
+ * Secrets: PROXY_SHARED_TOKEN
+ * Webhook secret is validated on Laravel; Worker forwards it as-is.
  */
 
 export default {
@@ -71,7 +71,6 @@ async function handleRequest(request, env, ctx) {
   forwardHeaders.set('Authorization', `Bearer ${proxySharedToken}`);
   forwardHeaders.set('X-Proxy-Origin', env.PROXY_ORIGIN_VALUE || 'Cloudflare-Worker');
 
-  // Pass Telegram headers through — Laravel validates the webhook secret.
   const telegramSecret = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
   if (telegramSecret) {
     forwardHeaders.set('X-Telegram-Bot-Api-Secret-Token', telegramSecret);

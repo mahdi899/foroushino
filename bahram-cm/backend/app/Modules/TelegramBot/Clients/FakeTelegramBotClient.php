@@ -75,6 +75,11 @@ class FakeTelegramBotClient implements TelegramBotClientInterface
         return (array) $this->record('sendMessage', ['chat_id' => $chatId, 'text' => $text, 'options' => $options], ['message_id' => $this->nextMessageId()]);
     }
 
+    public function sendSticker(int|string $chatId, string $sticker, array $options = []): array
+    {
+        return (array) $this->record('sendSticker', ['chat_id' => $chatId, 'sticker' => $sticker, 'options' => $options], ['message_id' => $this->nextMessageId()]);
+    }
+
     public function sendPhoto(int|string $chatId, string $photo, array $options = []): array
     {
         return (array) $this->record('sendPhoto', ['chat_id' => $chatId, 'photo' => $photo, 'options' => $options], ['message_id' => $this->nextMessageId()]);

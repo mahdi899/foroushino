@@ -74,5 +74,44 @@ class SeminarPanelAccessTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $seminar->id)
             ->assertJsonPath('data.0.title', 'سمینار فروش');
+
+        $this->getJson("/api/v1/student/seminars/{$seminar->id}")
+            ->assertOk()
+            ->assertJsonPath('data.id', $seminar->id)
+            ->assertJsonPath('data.title', 'سمینار فروش')
+            ->assertJsonPath('data.assets', [])
+            ->assertJsonPath('data.certificates', []);
+    }
+
+    public function test_student_seminar_show_rejects_non_attendee(): void
+    {
+        $owner = User::create([
+            'name' => 'صاحب',
+            'mobile' => '09121112233',
+            'status' => 'active',
+        ]);
+
+        $outsider = User::create([
+            'name' => 'غریبه',
+            'mobile' => '09123334455',
+            'status' => 'active',
+        ]);
+
+        $seminar = Seminar::create([
+            'title' => 'سمینار خصوصی',
+            'date' => now()->addWeek(),
+            'status' => 'published',
+            'price' => 0,
+        ]);
+
+        $seminar->attendees()->create([
+            'user_id' => $owner->id,
+            'attendance_status' => 'registered',
+        ]);
+
+        Sanctum::actingAs($outsider);
+
+        $this->getJson("/api/v1/student/seminars/{$seminar->id}")
+            ->assertNotFound();
     }
 }

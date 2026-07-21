@@ -198,6 +198,18 @@ export const ADMIN_SETTING_LABELS: Record<string, AdminSettingMeta> = {
     type: 'number',
     placeholder: 'مثال: ۲۰۰۱',
   },
+  bahram_callback_url: {
+    label: 'آدرس کال‌بک بهرام',
+    hint: 'وضعیت لیدهای آمده از بهرام به این URL برمی‌گردد',
+    type: 'url',
+    placeholder: 'https://rostami.app/api/v1/integrations/inbound/sat-status',
+  },
+  bahram_callback_token: {
+    label: 'توکن کال‌بک بهرام',
+    hint: 'توکن callback:lead-status از پنل بهرام — برای تغییر ندادن خالی بگذارید',
+    type: 'password',
+    placeholder: 'sat_…',
+  },
 }
 
 export const ADMIN_TELEPHONY_KEYS = [
@@ -257,12 +269,16 @@ export const ADMIN_SMS_TEMPLATE_GROUPS = [
   },
 ] as const
 
+export const ADMIN_BAHRAM_BRIDGE_KEYS = ['bahram_callback_url', 'bahram_callback_token'] as const
+
 export const ADMIN_KNOWN_SETTING_KEYS = new Set<string>([
   ...ADMIN_TELEPHONY_KEYS,
   ...ADMIN_OPERATIONAL_KEYS,
   ...ADMIN_QA_KEYS,
   ...ADMIN_SMS_PANEL_KEYS,
+  ...ADMIN_BAHRAM_BRIDGE_KEYS,
   'melipayamak_password_configured',
+  'bahram_callback_token_configured',
   ...ADMIN_SMS_TEMPLATE_GROUPS.flatMap((group) =>
     group.linkKey ? [group.patternKey, group.linkKey] : [group.patternKey],
   ),
@@ -312,7 +328,7 @@ export function prepareAdminSettingsForSave(
 
   for (const [key, raw] of Object.entries(settings)) {
     if (raw === '' || raw == null) continue
-    if (key === 'melipayamak_password_configured') continue
+    if (key === 'melipayamak_password_configured' || key === 'bahram_callback_token_configured') continue
 
     const meta = getAdminSettingMeta(key)
 

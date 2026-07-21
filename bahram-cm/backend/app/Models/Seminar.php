@@ -21,6 +21,8 @@ class Seminar extends Model
         'description',
         'cover_image',
         'cover_image_mobile',
+        'telegram_photo_file_id',
+        'telegram_photo_source',
         'status',
         'product_id',
         'price',
@@ -40,6 +42,22 @@ class Seminar extends Model
         'capacity' => 'integer',
         'promo_enabled' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        static::updating(function (Seminar $seminar): void {
+            if ($seminar->isDirty(['cover_image', 'cover_image_mobile'])) {
+                $seminar->telegram_photo_file_id = null;
+                $seminar->telegram_photo_source = null;
+            }
+        });
+
+        static::saving(function (Seminar $seminar) {
+            if ($seminar->isDirty('description') && filled($seminar->description)) {
+                $seminar->description = Purify::clean($seminar->description);
+            }
+        });
+    }
 
     public function getSlugOptions(): SlugOptions
     {
@@ -102,14 +120,5 @@ class Seminar extends Model
     public function purchaseSlug(): ?string
     {
         return $this->product?->slug;
-    }
-
-    protected static function booted(): void
-    {
-        static::saving(function (Seminar $seminar) {
-            if ($seminar->isDirty('description') && filled($seminar->description)) {
-                $seminar->description = Purify::clean($seminar->description);
-            }
-        });
     }
 }

@@ -76,13 +76,32 @@ REVALIDATE_WEBHOOK_URL=https://rostami.app/api/revalidate
 
 نمونه آماده: [`cloudflare-cache-rules.example.json`](cloudflare-cache-rules.example.json)
 
-در Dashboard → **Caching → Cache Rules** import کنید یا دستی:
+**اعمال با API (ترجیحی):**
+
+```bash
+# در bahram-cm/deploy/deploy.env یا محیط:
+# CLOUDFLARE_ZONE_ID=...
+# CLOUDFLARE_API_TOKEN=...   # Zone → Cache Rules → Edit + Zone → Read
+
+cd bahram-cm/deploy/scripts
+python apply-cloudflare-cache-rules.py
+```
+
+یا دستی در Dashboard → **Caching → Cache Rules** (ترتیب مهم است — Bypass اول):
 
 | مسیر | کش | TTL |
 |------|-----|-----|
-| `/admin`, `/api/chatbot`, `/purchase` | Bypass | — |
-| `/_next/static/*`, `/cdn/media/*`, `/storage/media/*` | Cache | 1 سال |
-| HTML عمومی | Respect `CDN-Cache-Control` | از origin |
+| `/panel`, `/admin`, `/family`, `/api/*`, `/purchase` | Bypass | — |
+| `cdn.rostami.app/media/*`, `/_next/static/*` | Cache | 1 سال |
+| HTML عمومی (`/`, `/insights`, `/courses`, `/seminars`, …) | Eligible + Respect `CDN-Cache-Control` | از origin |
+
+بعد از اعمال، باید ببینید:
+
+```bash
+curl -sI https://rostami.app/ | grep -i cf-cache
+# درخواست اول: MISS یا EXPIRED
+# درخواست دوم: HIT
+```
 
 ### ۴. API Token (حداقل دسترسی)
 

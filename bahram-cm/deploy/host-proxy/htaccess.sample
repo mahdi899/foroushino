@@ -1,0 +1,7 @@
+RewriteEngine On
+RewriteBase __REWRITE_BASE__/
+
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+RewriteRule ^(.*)$ index.php/$1 [L,QSA]

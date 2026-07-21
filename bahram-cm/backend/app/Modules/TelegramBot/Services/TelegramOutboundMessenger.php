@@ -51,6 +51,56 @@ class TelegramOutboundMessenger
         return null;
     }
 
+    /**
+     * Send a catalog banner. Prefer cached Telegram file_id in $photo.
+     *
+     * @param  array<string, mixed>  $options  caption, reply_markup, parse_mode, …
+     * @return array<string, mixed>|null
+     */
+    public function replyPhoto(
+        TelegramBot $bot,
+        int|string $chatId,
+        string $photo,
+        array $options = [],
+        bool $sync = true,
+    ): ?array {
+        $shouldSync = $sync || config('telegram_bot.outbound_sync', false);
+        if (! $shouldSync) {
+            // Photos need API result for file_id caching — send sync.
+            $shouldSync = true;
+        }
+
+        try {
+            return $this->clients->forBot($bot)->sendPhoto($chatId, $photo, $options);
+        } catch (TelegramApiException $e) {
+            if ($this->isTransportFailure($e)) {
+                return null;
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Optional welcome / mood sticker (file_id). Failures are swallowed.
+     */
+    public function replySticker(
+        TelegramBot $bot,
+        int|string $chatId,
+        string $stickerFileId,
+    ): void {
+        $fileId = trim($stickerFileId);
+        if ($fileId === '') {
+            return;
+        }
+
+        try {
+            $this->clients->forBot($bot)->sendSticker($chatId, $fileId);
+        } catch (\Throwable) {
+            // Invalid/expired sticker must not break the flow.
+        }
+    }
+
     private function isTransportFailure(TelegramApiException $e): bool
     {
         return str_contains($e->getMessage(), 'failed to reach the transport');

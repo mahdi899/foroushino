@@ -1,10 +1,18 @@
 import { formatPanelFa } from '@/lib/persian';
 
+export type AdminProductType =
+  | 'package'
+  | 'normal'
+  | 'course_spotplayer'
+  | 'manual_service'
+  | 'event'
+  | 'mini_course';
+
 export interface AdminProduct {
   id: number;
   title: string;
   slug: string;
-  type: 'package' | 'normal';
+  type: AdminProductType;
   description: string | null;
   short_description: string | null;
   price: number;
@@ -180,12 +188,13 @@ export const PAYMENT_STATUS_LABELS: Record<string, string> = {
   failed: 'ناموفق',
 };
 
-export const PRODUCT_TYPE_LABELS: Record<string, string> = {
+export const PRODUCT_TYPE_LABELS: Record<AdminProductType, string> = {
   normal: 'عادی',
   package: 'پکیج',
   course_spotplayer: 'دوره SpotPlayer',
   manual_service: 'خدمت دستی',
   event: 'رویداد',
+  mini_course: 'مینی‌دوره',
 };
 
 export const PAYMENT_RECORD_STATUS_LABELS: Record<string, string> = {

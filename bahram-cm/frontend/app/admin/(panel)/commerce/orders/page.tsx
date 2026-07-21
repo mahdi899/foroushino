@@ -116,7 +116,8 @@ export default async function OrdersPage({
                   <p className="font-medium text-text">{o.product_title ?? '—'}</p>
                   {o.product_type ? (
                     <p className="mt-0.5 text-caption text-text-muted">
-                      {PRODUCT_TYPE_LABELS[o.product_type] ?? o.product_type}
+                      {(PRODUCT_TYPE_LABELS as Record<string, string>)[o.product_type] ??
+                        o.product_type}
                     </p>
                   ) : null}
                 </td>

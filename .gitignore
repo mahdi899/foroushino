@@ -27,11 +27,16 @@ venv/
 # Env
 .env
 bahram-cm/backend/.env
+bahram-cm/frontend/.env
+saat/backend/.env
+saat/frontend/.env
 bahram-cm/deploy/deploy.env
 saat/deploy/deploy.env
 
 # Ad-hoc deploy/diag scripts and dumps (local SSH helpers — not part of the app)
 .tmp_*
+bahram-cm/deploy/scripts/_*
+bahram-cm/deploy/scripts/saat_probe.txt
 
 # Laravel compiled bootstrap cache
 bahram-cm/backend/bootstrap/cache/*.php
@@ -40,3 +45,7 @@ bahram-cm/backend/bootstrap/cache/*.php
 # Logs
 *.log
 bahram-cm/backend/storage/logs/
+
+# Customer import dumps (license keys / PII) — keep local only
+bahram-cm/backend/database/data/spotplayer-licenses*.csv
+bahram-cm/backend/database/data/*licenses*.csv

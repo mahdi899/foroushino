@@ -28,22 +28,6 @@ function writeCachedIp(ip: string): void {
   }
 }
 
-async function fetchPublicIpFromBrowser(): Promise<string | undefined> {
-  try {
-    const res = await fetch('https://api64.ipify.org?format=json', {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) return undefined;
-    const data = (await res.json()) as { ip?: string };
-    const ip = data.ip?.trim();
-    if (ip && !isLoopbackIp(ip)) return ip;
-  } catch {
-    /* non-fatal */
-  }
-  return undefined;
-}
-
 export async function resolveVisitorIpClient(): Promise<string | undefined> {
   const cached = readCachedIp();
   if (cached) return cached;
@@ -60,12 +44,10 @@ export async function resolveVisitorIpClient(): Promise<string | undefined> {
           }
         }
       } catch {
-        /* try public lookup */
+        /* non-fatal */
       }
 
-      const publicIp = await fetchPublicIpFromBrowser();
-      if (publicIp) writeCachedIp(publicIp);
-      return publicIp;
+      return undefined;
     })().finally(() => {
       inflight = undefined;
     });

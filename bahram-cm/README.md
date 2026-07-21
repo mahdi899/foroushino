@@ -130,33 +130,20 @@ php artisan seminar:import-orders path/to/orders.csv
 
 ## import لایسنس‌های دوره کمپین‌نویسی (تیم)
 
-خروجی SpotPlayer در `backend/database/data/spotplayer-licenses-2026-07-10.csv` داخل git track می‌شود (۴۸ دانشجو). دستور import **idempotent** است — اکانت، دسترسی دوره و لایسنس را می‌سازد.
+لایسنس‌های واقعی فقط در دیتابیس (`spotplayer_licenses`) نگهداری می‌شوند — **CSV/XLSX را در git commit نکنید.**
 
-**بعد از `git pull` (هم‌تیمی‌ها):**
+Import از فایل محلی (idempotent):
 
 ```bash
 cd backend
-php artisan migrate
-php artisan db:seed
-php artisan campaign:import-licenses
-```
-
-فقط تست بدون ذخیره:
-
-```bash
-php artisan campaign:import-licenses --dry-run
-```
-
-فایل CSV دیگر:
-
-```bash
 php artisan campaign:import-licenses path/to/licenses.csv
+php artisan campaign:import-licenses path/to/licenses.csv --dry-run
 ```
 
-برای export مجدد از XLSX پنل SpotPlayer:
+تبدیل XLSX پنل SpotPlayer به CSV محلی (خارج از git):
 
 ```bash
-php scripts/export-spotplayer-licenses-csv.php path/to/licenses.xlsx
+php scripts/export-spotplayer-licenses-csv.php path/to/licenses.xlsx path/to/licenses.csv
 ```
 
 ## License

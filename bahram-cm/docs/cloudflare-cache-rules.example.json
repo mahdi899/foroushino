@@ -1,19 +1,40 @@
 [
   {
+    "description": "Bypass student panel — never cache authenticated HTML",
+    "expression": "(http.host eq \"rostami.app\" or http.host eq \"www.rostami.app\") and (http.request.uri.path starts_with \"/panel\")",
+    "action": "bypass_cache"
+  },
+  {
     "description": "Bypass admin panel — never cache authenticated HTML",
-    "expression": "(http.request.uri.path starts_with \"/admin\")",
+    "expression": "(http.host eq \"rostami.app\" or http.host eq \"www.rostami.app\") and (http.request.uri.path starts_with \"/admin\")",
     "action": "bypass_cache"
   },
   {
-    "description": "Bypass dynamic APIs — forms, chat, captcha, revalidate",
-    "expression": "(http.request.uri.path starts_with \"/api/chatbot\") or (http.request.uri.path starts_with \"/api/captcha\") or (http.request.uri.path starts_with \"/api/revalidate\") or (http.request.uri.path starts_with \"/api/admin\") or (http.request.uri.path starts_with \"/purchase\") or (http.request.uri.path starts_with \"/apply\")",
+    "description": "Bypass family app shell — session-personalised",
+    "expression": "(http.host eq \"rostami.club\" or http.host eq \"www.rostami.club\" or http.host eq \"rostami.app\") and (http.request.uri.path eq \"/family\" or http.request.uri.path starts_with \"/family/\")",
     "action": "bypass_cache"
   },
   {
-    "description": "Long-cache immutable media — /cdn and /storage/media",
-    "expression": "(http.request.uri.path starts_with \"/cdn/media\") or (http.request.uri.path starts_with \"/storage/media\")",
+    "description": "Bypass dynamic APIs — forms, chat, captcha, revalidate, SSO",
+    "expression": "(http.request.uri.path starts_with \"/api/chatbot\") or (http.request.uri.path starts_with \"/api/captcha\") or (http.request.uri.path starts_with \"/api/revalidate\") or (http.request.uri.path starts_with \"/api/admin\") or (http.request.uri.path starts_with \"/api/v1\") or (http.request.uri.path starts_with \"/purchase\") or (http.request.uri.path starts_with \"/apply\") or (http.request.uri.path starts_with \"/sso\") or (http.request.uri.path starts_with \"/telegram\")",
+    "action": "bypass_cache"
+  },
+  {
+    "description": "Long-cache CDN media — /media on cdn.rostami.app (canonical)",
+    "expression": "(http.host eq \"cdn.rostami.app\") and (http.request.uri.path starts_with \"/media/\")",
     "action": "cache",
     "action_parameters": {
+      "cache": true,
+      "edge_ttl": { "mode": "override_origin", "default": 31536000 },
+      "browser_ttl": { "mode": "respect_origin" }
+    }
+  },
+  {
+    "description": "Long-cache legacy media paths on site host",
+    "expression": "(http.request.uri.path starts_with \"/cdn/media\") or (http.request.uri.path starts_with \"/storage/media\") or (http.request.uri.path starts_with \"/media/\")",
+    "action": "cache",
+    "action_parameters": {
+      "cache": true,
       "edge_ttl": { "mode": "override_origin", "default": 31536000 },
       "browser_ttl": { "mode": "respect_origin" }
     }
@@ -23,13 +44,14 @@
     "expression": "(http.request.uri.path starts_with \"/_next/static\")",
     "action": "cache",
     "action_parameters": {
+      "cache": true,
       "edge_ttl": { "mode": "override_origin", "default": 31536000 },
       "browser_ttl": { "mode": "respect_origin" }
     }
   },
   {
-    "description": "Public HTML — respect CDN-Cache-Control from Next middleware",
-    "expression": "(http.request.uri.path eq \"/\") or (http.request.uri.path starts_with \"/insights\") or (http.request.uri.path starts_with \"/faq\") or (http.request.uri.path starts_with \"/courses\") or (http.request.uri.path starts_with \"/transformations\")",
+    "description": "Public HTML on rostami.app — eligible + respect CDN-Cache-Control",
+    "expression": "(http.host eq \"rostami.app\" or http.host eq \"www.rostami.app\") and (http.request.method eq \"GET\") and (not http.request.uri.path starts_with \"/panel\") and (not http.request.uri.path starts_with \"/admin\") and (not http.request.uri.path starts_with \"/family\") and (not http.request.uri.path starts_with \"/api\") and (not http.request.uri.path starts_with \"/purchase\") and (not http.request.uri.path starts_with \"/apply\") and (not http.request.uri.path starts_with \"/sso\") and (http.request.uri.path eq \"/\" or http.request.uri.path starts_with \"/insights\" or http.request.uri.path starts_with \"/articles\" or http.request.uri.path starts_with \"/transformations\" or http.request.uri.path starts_with \"/faq\" or http.request.uri.path starts_with \"/courses\" or http.request.uri.path starts_with \"/founder\" or http.request.uri.path starts_with \"/mini-courses\" or http.request.uri.path starts_with \"/events\" or http.request.uri.path starts_with \"/guides\" or http.request.uri.path starts_with \"/resources\" or http.request.uri.path starts_with \"/seminars\" or http.request.uri.path eq \"/sitemap.xml\" or http.request.uri.path starts_with \"/sitemaps\" or http.request.uri.path eq \"/robots.txt\" or http.request.uri.path eq \"/llms.txt\")",
     "action": "cache",
     "action_parameters": {
       "cache": true,

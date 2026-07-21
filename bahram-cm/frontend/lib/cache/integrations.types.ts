@@ -71,7 +71,7 @@ export function integrationsViewToForm(view: CacheIntegrationsView): CacheIntegr
 }
 
 export const CDN_PROVIDER_OPTIONS: { id: CdnProvider; label: string; hint: string }[] = [
-  { id: 'cloudflare', label: 'Cloudflare', hint: 'پیشنهادی — Zone ID + API Token برای purge خودکار' },
+  { id: 'cloudflare', label: 'Cloudflare', hint: 'پیشنهادی — Zone ID + API Token برای کش HTML، purge و امنیت لبه' },
   { id: 'arvan', label: 'ابر آروان', hint: 'CDN داخلی ایران — API Key + دامنه' },
   { id: 'none', label: 'غیرفعال', hint: 'فقط ISR و کش Laravel — بدون purge لبه' },
 ];

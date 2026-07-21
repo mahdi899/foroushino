@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ProductType;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Services\ContentPublishService;
@@ -147,7 +148,7 @@ class ProductController extends Controller
                 'max:255',
                 Rule::unique('products', 'slug')->ignore($product?->id),
             ],
-            'type' => ['sometimes', 'string', Rule::in(['package', 'normal'])],
+            'type' => ['sometimes', 'string', Rule::in(ProductType::values())],
             'description' => ['sometimes', 'nullable', 'string'],
             'short_description' => ['sometimes', 'nullable', 'string', 'max:500'],
             'price' => [$product ? 'sometimes' : 'required', 'integer', 'min:0'],

@@ -52,6 +52,8 @@ class AppSetting extends Model
             'melipayamak_username' => '',
             'melipayamak_password' => '',
             'melipayamak_rest_url' => 'https://rest.payamak-panel.com/api/SendSMS',
+            'bahram_callback_url' => 'https://rostami.app/api/v1/integrations/inbound/sat-status',
+            'bahram_callback_token' => '',
         ];
     }
 
@@ -76,7 +78,7 @@ class AppSetting extends Model
                     continue;
                 }
 
-                if (in_array($key, ['melipayamak_username', 'melipayamak_password', 'melipayamak_rest_url'], true)
+                if (in_array($key, ['melipayamak_username', 'melipayamak_password', 'melipayamak_rest_url', 'bahram_callback_token'], true)
                     && ($value === '' || $value === null)) {
                     continue;
                 }
@@ -128,6 +130,16 @@ class AppSetting extends Model
         $config = self::melipayamakConfig();
 
         return $config['password'] !== '';
+    }
+
+    public static function bahramCallbackTokenConfigured(): bool
+    {
+        $token = self::string('bahram_callback_token');
+        if ($token !== '') {
+            return true;
+        }
+
+        return trim((string) config('security.bahram_callback.token', '')) !== '';
     }
 
     public static function callLockMinutes(): int

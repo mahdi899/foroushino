@@ -30,7 +30,7 @@ import {
   type CacheIntegrationsForm,
   type CacheIntegrationsView,
 } from '@/lib/cache/integrations.types';
-import { testCacheIntegrationAction } from '@/lib/cache/integrations';
+import { testCacheIntegrationAction, applyCloudflareEdgeAction } from '@/lib/cache/integrations';
 import { testImageOptimizerAction } from '@/lib/media/imageOptimizer';
 import {
   DEFAULT_IMAGE_OPTIMIZER_FORM,
@@ -91,6 +91,7 @@ export default function SettingsPage() {
   const [integrationsForm, setIntegrationsForm] = useState<CacheIntegrationsForm>(DEFAULT_CACHE_INTEGRATIONS_FORM);
   const [integrationsView, setIntegrationsView] = useState<CacheIntegrationsView | null>(null);
   const [integrationsTesting, setIntegrationsTesting] = useState<'webhook' | 'arvan' | 'cloudflare' | null>(null);
+  const [cloudflareApplying, setCloudflareApplying] = useState(false);
   const [imageOptimizerForm, setImageOptimizerForm] = useState<ImageOptimizerForm>(DEFAULT_IMAGE_OPTIMIZER_FORM);
   const [imageOptimizerView, setImageOptimizerView] = useState<ImageOptimizerView | null>(null);
   const [imageOptimizerTesting, setImageOptimizerTesting] = useState<'tinify' | 'resmush' | null>(null);
@@ -297,6 +298,38 @@ export default function SettingsPage() {
       setStatus('idle');
       setStatusMessage('');
     }, 4000);
+  }
+
+  async function handleApplyCloudflareEdge() {
+    setCloudflareApplying(true);
+    setStatusMessage('');
+    const saveRes = await saveIntegrationsOnly();
+    if (!saveRes.ok) {
+      setCloudflareApplying(false);
+      setStatus('error');
+      setStatusMessage(saveRes.error ?? 'ذخیره Zone ID / Token قبل از اعمال ناموفق بود.');
+      setTimeout(() => {
+        setStatus('idle');
+        setStatusMessage('');
+      }, 5000);
+      return;
+    }
+    const res = await applyCloudflareEdgeAction();
+    setCloudflareApplying(false);
+    const failed = res.steps?.filter((s) => !s.ok) ?? [];
+    const detail =
+      failed.length > 0
+        ? ` — ${failed
+            .slice(0, 3)
+            .map((s) => s.detail)
+            .join(' | ')}`
+        : '';
+    setStatusMessage(`${res.message}${detail}`);
+    setStatus(res.ok ? 'saved' : 'error');
+    setTimeout(() => {
+      setStatus('idle');
+      setStatusMessage('');
+    }, 8000);
   }
 
   async function handleTestImageOptimizer(target: 'tinify' | 'resmush') {
@@ -534,8 +567,10 @@ export default function SettingsPage() {
             form={integrationsForm}
             view={integrationsView}
             testing={integrationsTesting}
+            applyingEdge={cloudflareApplying}
             onChange={setIntegrationsForm}
             onTest={(target) => void handleTestIntegration(target)}
+            onApplyEdge={() => void handleApplyCloudflareEdge()}
           />
           <DatabaseBackupSettingsSection
             form={databaseBackupForm}

@@ -22,4 +22,5 @@ DEDUPE_TTL_SECONDS = "120"
 # Secrets (wrangler secret put — never commit):
 #   PROXY_SHARED_TOKEN — same as Laravel PROXY_SHARED_TOKEN / panel token
 #
+# Never put TELEGRAM_BOT_TOKEN on the Worker.
 # Inbound webhook secret is validated on Laravel only — Worker forwards as-is.

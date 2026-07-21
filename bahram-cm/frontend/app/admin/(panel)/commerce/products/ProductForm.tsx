@@ -11,9 +11,12 @@ import { ArticleBodyEditor } from '../../blog/ArticleBodyEditorLazy';
 import { SeoScorePanel } from '../../blog/SeoScorePanel';
 import { saveProduct, deleteProduct } from '../actions';
 import { SpotPlayerProductSection } from './SpotPlayerProductSection';
-import type { AdminProduct } from '@/lib/admin/commerceTypes';
+import type { AdminProduct, AdminProductType } from '@/lib/admin/commerceTypes';
+import { PRODUCT_TYPE_LABELS } from '@/lib/admin/commerceTypes';
 import type { SeoFixPatch } from '@/lib/ai/seoFix';
 import { resolveProductSiteFeaturedImage } from '@/lib/catalog/productFeaturedImage';
+
+const PRODUCT_TYPE_OPTIONS = Object.entries(PRODUCT_TYPE_LABELS) as [AdminProductType, string][];
 
 const empty: Partial<AdminProduct> = {
   title: '',
@@ -132,7 +135,7 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
       {
         title: form.title ?? '',
         slug: form.slug ?? '',
-        type: (form.type as 'package' | 'normal') ?? 'normal',
+        type: (form.type as AdminProductType) ?? 'normal',
         description: form.description,
         short_description: form.short_description,
         price: Number(form.price) || 0,
@@ -283,10 +286,13 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
                 <select
                   className="field-input"
                   value={form.type ?? 'normal'}
-                  onChange={(e) => patch({ type: e.target.value as 'package' | 'normal' })}
+                  onChange={(e) => patch({ type: e.target.value as AdminProductType })}
                 >
-                  <option value="normal">عادی</option>
-                  <option value="package">پکیج</option>
+                  {PRODUCT_TYPE_OPTIONS.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -305,8 +311,12 @@ export function ProductForm({ product }: { product?: AdminProduct }) {
               <div>
                 <h3 className="text-small font-semibold text-primary-dark">نمایش در ربات تلگرام</h3>
                 <p className="mt-1 text-caption text-text-muted">
-                  محصولات فعال‌شده در دکمه «دوره کمپین نویسی» بات نمایش داده می‌شوند و امکان خرید مستقیم دارند.
-                  مرچنت زرین‌پال از{' '}
+                  هر محصول فعال با تیک «نمایش در تلگرام» زیر دکمه دوره‌های بات لیست می‌شود (می‌توانید چند دوره اضافه کنید؛ ترتیب با «ترتیب در منوی بات» مشخص می‌شود).
+                  متن خود دکمه را از{' '}
+                  <Link href="/admin/telegram/messages" className="text-primary hover:underline">
+                    پیام‌های بات
+                  </Link>{' '}
+                  (دسته «منو دکمه‌ها») تغییر دهید. مرچنت زرین‌پال از{' '}
                   <Link href="/admin/commerce/payment-settings" className="text-primary hover:underline">
                     تنظیمات پرداخت
                   </Link>{' '}

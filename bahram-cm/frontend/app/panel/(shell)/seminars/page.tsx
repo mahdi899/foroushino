@@ -5,6 +5,7 @@ import { SeminarFeaturedBanner, SeminarVideoList } from '@/components/student-pa
 import { SeminarStatsRibbon } from '@/components/student-panel/seminars/SeminarStatsRibbon';
 import { panelStudentFetch } from '@/lib/student/panelServer';
 
+export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'سمینارهای من | پنل کاربری', robots: { index: false, follow: false } };
 
 interface SeminarListItem {
@@ -18,7 +19,12 @@ interface SeminarListItem {
 
 export default async function PanelSeminarsPage() {
   const { data: seminars } = await panelStudentFetch<{ data: SeminarListItem[] }>('/seminars');
-  const active = seminars.find((s) => s.attendance_status !== 'completed') ?? seminars[0] ?? null;
+  // Backend statuses: registered | attended | absent — prefer upcoming/registered for the banner.
+  const active =
+    seminars.find((s) => s.attendance_status === 'registered') ??
+    seminars.find((s) => s.attendance_status === 'attended') ??
+    seminars[0] ??
+    null;
   const recentCount = seminars.filter((s) => {
     if (!s.date) return false;
     const diff = Date.now() - new Date(s.date).getTime();

@@ -49,6 +49,13 @@ export function TelegramMessagesClient({
   return (
     <div className="admin-telegram-subpage__stack">
       <AdminContentPanel title="پیام‌های کاربرمحور بات">
+        <p className="mb-4 text-caption text-text-muted">
+          دسته «منو دکمه‌ها» متن دکمه‌های کیبورد پایین ربات است (حداکثر ۶۴ کاراکتر، بدون HTML).
+          بقیه پیام‌ها می‌توانند HTML داشته باشند؛ مثلاً{' '}
+          <code className="text-[0.7rem]">&lt;b&gt;عنوان&lt;/b&gt;</code>.
+          برای استیکر خوش‌آمد، در «استیکر خوش‌آمد (file_id)» فقط file_id تلگرام را بگذارید.
+          بعد از تغییر منو، یک‌بار /start یا منوی اصلی را در ربات باز کنید.
+        </p>
         <label className="mb-4 block max-w-sm">
           <span className="text-caption text-text-muted">ربات</span>
           <select className="field-input mt-1 w-full" value={botKey} onChange={(e) => setBotKey(e.target.value)}>

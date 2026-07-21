@@ -10,7 +10,11 @@ const BACKEND_PREFIXES = [
 
 /** Public gallery paths proxied to CDN on club host (mirrors nginx on rostami.club). */
 export function isPublicCdnMediaPath(pathname: string): boolean {
-  return pathname.startsWith("/media/family/") || pathname.startsWith("/media/site/");
+  return (
+    pathname.startsWith("/media/family/") ||
+    pathname.startsWith("/media/site/") ||
+    pathname.startsWith("/media/avatars/")
+  );
 }
 
 /**

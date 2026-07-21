@@ -53,37 +53,40 @@ class TelegramCourseAccessPresenter
         $destRows = $this->destinationKeyboardRows($bot, $account, $product);
 
         $lines = [
-            '✅ شما این دوره را قبلاً خریده‌اید.',
+            '✅ <b>شما این دوره را دارید</b>',
             '',
-            '🎓 '.$product->title,
-            '',
+            '🎓 '.\App\Modules\TelegramBot\Support\TelegramHtml::bold((string) $product->title),
+            '──────────────',
         ];
 
         if (filled($licenseKey)) {
-            $lines[] = '🔑 کلید اسپات‌پلیر:';
-            $lines[] = $licenseKey;
+            $lines[] = '🔑 <b>کلید اسپات‌پلیر:</b>';
+            $lines[] = '<code>'.\App\Modules\TelegramBot\Support\TelegramHtml::escape($licenseKey).'</code>';
             $lines[] = '';
         } else {
-            $lines[] = '🔑 کلید اسپات‌پلیر هنوز صادر نشده است. از پنل دانشجو پیگیری کنید.';
+            $lines[] = '🔑 کلید اسپات‌پلیر هنوز صادر نشده — از پنل دانشجو پیگیری کنید.';
             $lines[] = '';
         }
 
         if ($destRows !== []) {
-            $lines[] = '📍 مقاصد قابل عضویت (بر اساس دسترسی شما):';
+            $lines[] = '📍 مقاصد قابل عضویت شما:';
         } else {
-            $lines[] = '📍 در حال حاضر مقصد فعالی برای عضویت شما تعریف نشده است.';
+            $lines[] = '📍 فعلاً مقصد فعالی برای عضویت شما تعریف نشده است.';
         }
 
         $keyboard = $destRows;
-        foreach (TelegramSiteUrl::urlKeyboardRow('🌐 پنل دانشجو', TelegramSiteUrl::studentPanel()) as $row) {
+        foreach (TelegramSiteUrl::urlKeyboardRow('🌐 پنل دانشجو', TelegramSiteUrl::studentPanel(), 'success') as $row) {
             $keyboard[] = $row;
         }
 
         return [
             'text' => implode("\n", $lines),
-            'options' => $keyboard !== []
-                ? ['reply_markup' => ['inline_keyboard' => $keyboard]]
-                : [],
+            'options' => array_filter([
+                'parse_mode' => 'HTML',
+                'reply_markup' => $keyboard !== []
+                    ? ['inline_keyboard' => $keyboard]
+                    : null,
+            ]),
         ];
     }
 

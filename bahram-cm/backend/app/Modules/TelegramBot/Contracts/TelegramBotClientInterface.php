@@ -46,6 +46,12 @@ interface TelegramBotClientInterface
      */
     public function sendMessage(int|string $chatId, string $text, array $options = []): array;
 
+    /**
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>
+     */
+    public function sendSticker(int|string $chatId, string $sticker, array $options = []): array;
+
     /** @param  array<string, mixed>  $options
      * @return array<string, mixed> */
     public function sendPhoto(int|string $chatId, string $photo, array $options = []): array;

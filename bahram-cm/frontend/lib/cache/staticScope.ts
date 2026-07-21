@@ -14,6 +14,7 @@ export const STATIC_CONTENT_PREFIXES = [
   '/events',
   '/guides',
   '/resources',
+  '/seminars',
   '/sitemap.xml',
   '/sitemaps',
   '/robots.txt',
@@ -23,7 +24,12 @@ export const STATIC_CONTENT_PREFIXES = [
 /** Always dynamic — never ISR HTML cache. */
 export const DYNAMIC_ROUTE_PREFIXES = [
   '/admin',
+  '/panel',
+  '/family',
   '/purchase',
+  '/apply',
+  '/sso',
+  '/telegram',
   '/api/admin',
   '/api/captcha',
   '/api/chatbot',

@@ -14,8 +14,10 @@ import {
 } from "lucide-react";
 import { Reveal } from "@/components/motion/Reveal";
 import { AcademyAppScreensShowcase } from "@/components/sections/AcademyAppScreensShowcase";
+import { SatApplySection } from "@/components/sections/SatApplySection";
 import { SatFlowScroll, type SatFlowStep } from "@/components/sections/SatFlowScroll";
 import { SatWapScroll, type SatWapPillar } from "@/components/sections/SatWapScroll";
+import type { SatPublicApplicationStatus } from "@/components/forms/SatPublicApplicationForm";
 import { Badge } from "@/components/ui/Badge";
 import { LinkButton } from "@/components/ui/Button";
 import { Eyebrow } from "@/components/ui/Eyebrow";
@@ -25,6 +27,7 @@ import { PhotoFrame } from "@/components/ui/PhotoFrame";
 import { site } from "@/content/site";
 import { cn } from "@/lib/cn";
 import { sitePhotos } from "@/lib/site-photo-paths";
+import { getCurrentStudent, studentFetch } from "@/lib/student/session";
 
 const WAP_PRICE = 200_000_000;
 
@@ -172,7 +175,35 @@ const whoFor = [
   },
 ];
 
-export default function SaatPage() {
+const APPLICATION_STATUS_LABEL: Record<string, string> = {
+  received: "دریافت شد",
+  reviewing: "در حال بررسی",
+  accepted: "پذیرفته شد",
+  rejected: "رد شده",
+};
+
+async function loadSatApplicationStatus(): Promise<SatPublicApplicationStatus | null> {
+  const user = await getCurrentStudent();
+  if (!user) return null;
+
+  try {
+    const { data } = await studentFetch<{
+      data: { status: string; submitted_at: string | null } | null;
+    }>("/sat-application");
+    if (!data) return null;
+    return {
+      status: data.status,
+      statusLabel: APPLICATION_STATUS_LABEL[data.status] ?? data.status,
+      submittedAt: data.submitted_at,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export default async function SaatPage() {
+  const application = await loadSatApplicationStatus();
+
   return (
     <main id="main-content" className="relative min-w-0 max-w-full">
       {/* Hero */}
@@ -207,16 +238,16 @@ export default function SaatPage() {
               </Reveal>
               <Reveal delay={0.26}>
                 <div className="mt-6 flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:flex-wrap md:mt-9 md:gap-3">
-                  <LinkButton href="#wap" variant="vip" size="lg" withArrow className="w-full sm:w-auto">
-                    بررسی شرایط ورود
+                  <LinkButton href="#apply" variant="vip" size="lg" withArrow className="w-full sm:w-auto">
+                    ثبت درخواست سات
                   </LinkButton>
                   <LinkButton
-                    href="/saat#showcase"
+                    href="#wap"
                     variant="ghost"
                     size="lg"
                     className="w-full border-gold/22 sm:w-auto hover:border-gold/40 hover:bg-gold/[0.06]"
                   >
-                    دیدن سات
+                    شرایط ورود
                   </LinkButton>
                 </div>
               </Reveal>
@@ -315,6 +346,8 @@ export default function SaatPage() {
 
       <SatWapScroll pillars={wapPillars} price={WAP_PRICE} />
 
+      <SatApplySection application={application} />
+
       {/* سات فقط اپ نیست */}
       <VisualSplitSection
         eyebrow="فراتر از اپ"
@@ -399,11 +432,14 @@ export default function SaatPage() {
                   کمپین‌نویسی را در یک سیستم واقعی اجرا کن.
                 </p>
                 <div className="mt-6 flex w-full flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:gap-3">
+                  <LinkButton href="#apply" variant="vip" size="lg" withArrow className="w-full sm:w-auto">
+                    ثبت درخواست سات
+                  </LinkButton>
                   <Link
-                    href="/saat#wap"
-                    className="inline-flex items-center gap-2 text-gold transition-colors hover:text-gold-soft"
+                    href="#wap"
+                    className="inline-flex items-center gap-2 self-center text-gold transition-colors hover:text-gold-soft"
                   >
-                    مسیر ورود
+                    شرایط ورود
                     <ArrowLeft className="rtl-flip h-4 w-4" aria-hidden />
                   </Link>
                 </div>

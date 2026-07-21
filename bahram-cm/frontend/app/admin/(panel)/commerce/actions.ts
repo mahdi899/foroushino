@@ -78,6 +78,9 @@ export async function saveProduct(
       referral_cashback_type: input.referral_cashback_enabled ? input.referral_cashback_type ?? null : null,
       referral_cashback_value: input.referral_cashback_enabled ? input.referral_cashback_value ?? null : null,
       is_active: input.is_active ?? true,
+      show_in_telegram: input.show_in_telegram ?? false,
+      telegram_list_visibility: input.telegram_list_visibility ?? 'public',
+      telegram_sort_order: input.telegram_sort_order ?? 0,
       featured_image: input.featured_image,
       show_on_courses: input.show_on_courses ?? false,
       featured_listing: input.featured_listing ?? false,
@@ -100,8 +103,27 @@ export async function saveProduct(
     revalidateCommerce();
     return { ok: true, id: res.data.id };
   } catch (e) {
-    const err = e as Error & { payload?: { message?: string } };
-    return { ok: false, error: err.payload?.message ?? 'ذخیره محصول ناموفق بود.' };
+    const err = e as Error & {
+      payload?: {
+        error?: { message_fa?: string; details?: Record<string, string[]> };
+        message?: string;
+        errors?: Record<string, string[]>;
+      };
+    };
+    const details = err.payload?.error?.details ?? err.payload?.errors;
+    const firstDetail =
+      details && typeof details === 'object'
+        ? Object.values(details).flat().find((msg) => typeof msg === 'string' && msg.trim())
+        : undefined;
+    return {
+      ok: false,
+      error:
+        firstDetail ??
+        err.payload?.error?.message_fa ??
+        err.payload?.message ??
+        err.message ??
+        'ذخیره محصول ناموفق بود.',
+    };
   }
 }
 
