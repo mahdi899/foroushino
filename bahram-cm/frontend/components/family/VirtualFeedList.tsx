@@ -2,9 +2,11 @@
 
 import {
   forwardRef,
+  useCallback,
   useImperativeHandle,
   useRef,
   useEffect,
+  useLayoutEffect,
   type ReactNode,
   type CSSProperties,
 } from 'react';
@@ -13,6 +15,8 @@ import { measureElement as defaultMeasureElement, useVirtualizer } from '@tansta
 export type VirtualFeedListHandle = {
   scrollToIndex: (index: number, options?: { align?: 'start' | 'center' | 'end' }) => void;
   measure: () => void;
+  /** Remeasure currently mounted rows without wiping the size cache. */
+  remasureVisible: () => void;
 };
 
 type KeyedItem = { key: string };
@@ -52,14 +56,17 @@ export const VirtualFeedList = forwardRef(function VirtualFeedList<T extends Key
 ) {
   const count = items.length;
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
   const virtualizer = useVirtualizer({
     count,
     gap,
     anchorTo,
     followOnAppend,
     getScrollElement,
-    getItemKey: (index) => items[index]?.key ?? String(index),
-    estimateSize: (index) => estimateSize(index, items[index]!),
+    getItemKey: (index) => itemsRef.current[index]?.key ?? String(index),
+    estimateSize: (index) => estimateSize(index, itemsRef.current[index]!),
     overscan,
     useAnimationFrameWithResizeObserver: true,
     measureElement:
@@ -67,6 +74,14 @@ export const VirtualFeedList = forwardRef(function VirtualFeedList<T extends Key
         ? defaultMeasureElement
         : undefined,
   });
+
+  const remasureVisible = useCallback(() => {
+    const root = containerRef.current;
+    if (!root) return;
+    root.querySelectorAll<HTMLElement>('[data-index]').forEach((node) => {
+      virtualizer.measureElement(node);
+    });
+  }, [virtualizer]);
 
   useImperativeHandle(
     ref,
@@ -80,12 +95,36 @@ export const VirtualFeedList = forwardRef(function VirtualFeedList<T extends Key
       measure: () => {
         virtualizer.measure();
       },
+      remasureVisible,
     }),
-    [virtualizer],
+    [virtualizer, remasureVisible],
   );
 
   const virtualItems = virtualizer.getVirtualItems();
   const totalSize = virtualizer.getTotalSize();
+
+  // First paint / remount: remasure mounted rows before the user sees estimate gaps.
+  useLayoutEffect(() => {
+    remasureVisible();
+  }, [count, remasureVisible]);
+
+  // After fonts settle (common remount flash) remasure without clearing cache.
+  useEffect(() => {
+    let cancelled = false;
+    const run = () => {
+      if (!cancelled) remasureVisible();
+    };
+    if (typeof document !== 'undefined' && document.fonts?.ready) {
+      void document.fonts.ready.then(run);
+    }
+    const t1 = window.setTimeout(run, 120);
+    const t2 = window.setTimeout(run, 400);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [count, remasureVisible]);
 
   // Only rebuild measurements when older rows prepend or order shifts — not when
   // a new post appends at the tip (wiping the cache caused visible gap jitter).
@@ -101,24 +140,17 @@ export const VirtualFeedList = forwardRef(function VirtualFeedList<T extends Key
 
     if (prepended || reordered) {
       virtualizer.measure();
+      requestAnimationFrame(() => remasureVisible());
       return;
     }
 
     const appended = count > prev.count && first === prev.first;
     if (!appended) return;
 
-    // New tip row: re-measure visible DOM after layout without wiping the full cache.
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const root = containerRef.current;
-        if (!root) return;
-        virtualizer.getVirtualItems().forEach((row) => {
-          const node = root.querySelector<HTMLElement>(`[data-index="${row.index}"]`);
-          if (node) virtualizer.measureElement(node);
-        });
-      });
+      requestAnimationFrame(() => remasureVisible());
     });
-  }, [count, items, virtualizer]);
+  }, [count, items, remasureVisible, virtualizer]);
 
   return (
     <div

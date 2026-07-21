@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:bahram_family_manager/core/utils/file_download.dart';
 
 import 'package:bahram_family_manager/core/api/api_client.dart';
+import 'package:bahram_family_manager/core/api/api_exception.dart';
 import 'package:bahram_family_manager/models/models.dart';
 
 /// All calls under `/api/v1/family-manager/*` — the Bahram + authorized-admin
@@ -427,6 +428,30 @@ class FamilyManagerService {
   Future<FamilyMediaRef> showMedia(int id) async {
     final res = await api.get('$_base/media/$id');
     return FamilyMediaRef.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
+  /// Poll until backend pipeline marks media `ready` (optimize → storage → CDN/local).
+  Future<FamilyMediaRef> waitForMediaReady(
+    int id, {
+    Duration timeout = const Duration(minutes: 3),
+    Duration interval = const Duration(seconds: 2),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      final media = await showMedia(id);
+      if (media.isReady) return media;
+      if (media.status == 'failed') {
+        throw ApiException(
+          message: media.failureReason ?? 'پردازش رسانه ناموفق بود.',
+          code: 'media_failed',
+        );
+      }
+      await Future<void>.delayed(interval);
+    }
+    throw ApiException(
+      message: 'پردازش رسانه هنوز تمام نشده. چند لحظه صبر کنید و دوباره «انتشار» بزنید.',
+      code: 'media_timeout',
+    );
   }
 
   Future<FamilyMediaRef> retryMedia(int id) async {

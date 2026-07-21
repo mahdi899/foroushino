@@ -52,6 +52,14 @@ Flutter SDK در این ریپو داخل `.tools/flutter` قرار دارد. **
 ```powershell
 cd bahram-cm\backend
 php artisan serve --port=8010
+# در ترمینال جدا — بدون queue worker رسانه‌ها ready نمی‌شوند:
+php artisan queue:work redis --queue=family-media,family-high,family-low,default
+```
+
+یا از اسکریپل آماده:
+
+```powershell
+.\scripts\start-backend.ps1
 ```
 
 ### اجرای سریع (Windows)

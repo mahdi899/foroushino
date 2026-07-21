@@ -45,6 +45,10 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
 
   const isPortrait = Boolean(media.width && media.height && media.height > media.width);
   const showPoster = shouldLoadPreview && !posterError && (posterUrl || showFramePreview);
+  const videoAspectStyle =
+    media.width && media.height
+      ? { aspectRatio: `${media.width} / ${media.height}` }
+      : { aspectRatio: isPortrait ? '3 / 4' : '16 / 9' };
 
   return (
     <>
@@ -54,7 +58,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
           'family-feed-video relative max-w-full overflow-hidden rounded-2xl bg-[color-mix(in_oklab,var(--family-text)_8%,transparent)]',
           isPortrait ? 'family-feed-video--portrait' : 'family-feed-video--landscape',
         )}
-        style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
+        style={videoAspectStyle}
       >
         {!posterReady && !posterError && (
           <span

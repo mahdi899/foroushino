@@ -67,6 +67,11 @@ final class FamilyMediaUrl
             return false;
         }
 
+        // Local dev without family FTP: files live on public disk — same-origin /storage.
+        if (app()->environment('local') && ! self::familyFtpConfigured()) {
+            return false;
+        }
+
         if (self::cdnBase() === '') {
             return false;
         }
@@ -74,6 +79,15 @@ final class FamilyMediaUrl
         $path = ltrim(str_replace('\\', '/', $storagePath), '/');
 
         return str_starts_with($path, 'media/family/') || str_starts_with($path, 'media/site/');
+    }
+
+    private static function familyFtpConfigured(): bool
+    {
+        $ftp = config('filesystems.disks.family_media_ftp', []);
+
+        return filled($ftp['host'] ?? null)
+            && filled($ftp['username'] ?? null)
+            && filled($ftp['password'] ?? null);
     }
 
     private static function cdnBase(): string
@@ -95,6 +109,10 @@ final class FamilyMediaUrl
 
         $path = $parsed['path'] ?? '';
         if ($path === '' || ! str_contains($path, '/media/family/')) {
+            return $url;
+        }
+
+        if (app()->environment('local') && ! self::familyFtpConfigured()) {
             return $url;
         }
 

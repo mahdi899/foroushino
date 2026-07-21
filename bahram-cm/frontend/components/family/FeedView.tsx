@@ -623,7 +623,10 @@ export function FeedView({
     }
     // History load is safe only after the boot scroll target is applied.
     historyReadyRef.current = true;
+    // Remeasure before reveal so remount doesn't flash estimate/overlap gaps.
+    virtualListRef.current?.remasureVisible();
     requestAnimationFrame(() => {
+      virtualListRef.current?.remasureVisible();
       requestAnimationFrame(() => setFeedReady(true));
     });
   }, []);
@@ -1300,6 +1303,23 @@ export function FeedView({
       maxPostIdRef.current,
     );
   }, [posts]);
+
+  // Seed max id before first paint of cards so remount never animates every post in.
+  useLayoutEffect(() => {
+    if (posts.length === 0) return;
+    maxPostIdRef.current = Math.max(
+      maxPostIdRef.current,
+      posts.reduce((max, post) => Math.max(max, post.id), 0),
+    );
+  }, [posts]);
+
+  // After reveal, remasure again once layout/fonts are live (leave→return remount path).
+  useLayoutEffect(() => {
+    if (!feedReady) return;
+    virtualListRef.current?.remasureVisible();
+    const t = window.setTimeout(() => virtualListRef.current?.remasureVisible(), 200);
+    return () => window.clearTimeout(t);
+  }, [feedReady]);
 
   // Keep jump FAB badge aligned after feed mutates (realtime) — count what's still below.
   useEffect(() => {

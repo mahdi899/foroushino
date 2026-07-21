@@ -18,10 +18,21 @@ function estimateBlockHeight(block: FamilyPostBlock): number {
   switch (block.type) {
     case 'text':
       return estimateTextHeight(block.text);
-    case 'image':
+    case 'image': {
+      const media = block.media;
+      if (media?.width && media?.height && media.width > 0) {
+        // Feed content ≈ 360px wide on phones; clamp to typical bubble max.
+        return Math.min(420, Math.max(120, Math.round((360 * media.height) / media.width)));
+      }
       return 240;
-    case 'video':
+    }
+    case 'video': {
+      const media = block.media;
+      if (media?.width && media?.height && media.width > 0) {
+        return Math.min(480, Math.max(160, Math.round((360 * media.height) / media.width)));
+      }
       return 280;
+    }
     case 'audio':
       return 72;
     case 'article_reference':

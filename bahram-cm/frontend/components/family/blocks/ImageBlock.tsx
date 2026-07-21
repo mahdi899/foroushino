@@ -9,10 +9,11 @@ import { useFamilyImageSrc } from '@/lib/family/useFamilyImageSrc';
 import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 import type { FamilyMediaBlock } from '@/lib/family/types';
 
-function aspectStyle(media: FamilyMediaBlock): { aspectRatio: string } | undefined {
+/** Always reserve height so the virtualizer never measures a collapsed 0-tall image row. */
+function aspectStyle(media: FamilyMediaBlock): { aspectRatio: string } {
   return media.width && media.height
     ? { aspectRatio: `${media.width} / ${media.height}` }
-    : undefined;
+    : { aspectRatio: '4 / 3' };
 }
 
 export function ImageBlock({
@@ -32,7 +33,7 @@ export function ImageBlock({
   onOpenLightbox?: () => void;
   manageLightboxExternally?: boolean;
 }) {
-  const rootRef = useRef<HTMLButtonElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
@@ -54,8 +55,9 @@ export function ImageBlock({
     return <div className={cn('aspect-square w-full bg-white/5', roundedClass, className)} />;
   }
 
-  const hasKnownAspect = Boolean(media.width && media.height);
-  const containerStyle = fillCell || !hasKnownAspect ? undefined : aspectStyle(media);
+  // fillCell stretches in album grids; otherwise always reserve aspect so remount
+  // doesn't measure 0-height placeholders (jumbled gaps until images decode).
+  const containerStyle = fillCell ? undefined : aspectStyle(media);
   const showPlaceholder = !loaded && !error;
   const showPreview = Boolean(previewSrc && showPlaceholder);
 
@@ -72,21 +74,32 @@ export function ImageBlock({
     setLoaded(fromCache);
   };
 
+  const handleActivate = () => {
+    if (error) {
+      retryLoad();
+      return;
+    }
+    openLightbox();
+  };
+
   return (
     <>
-      <button
+      <div
         ref={rootRef}
-        type="button"
+        role="button"
+        tabIndex={0}
         onClick={(event) => {
           event.stopPropagation();
-          if (error) {
-            retryLoad();
-            return;
-          }
-          openLightbox();
+          handleActivate();
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          event.stopPropagation();
+          handleActivate();
         }}
         className={cn(
-          'relative block overflow-hidden bg-[color-mix(in_oklab,var(--family-text)_7%,transparent)]',
+          'relative block cursor-pointer overflow-hidden bg-[color-mix(in_oklab,var(--family-text)_7%,transparent)]',
           fillCell ? 'h-full min-h-0 w-full' : constrained ? 'family-feed-image' : 'w-full',
           roundedClass,
           className,
@@ -128,9 +141,7 @@ export function ImageBlock({
             onLoad={() => setLoaded(true)}
             onError={() => setError(true)}
             className={cn(
-              fillCell || hasKnownAspect
-                ? 'absolute inset-0 h-full w-full'
-                : 'relative block h-auto w-full max-h-[var(--family-media-max-h)]',
+              'absolute inset-0 h-full w-full',
               fillCell ? 'object-cover' : 'object-contain',
               loaded || fromCache ? 'opacity-100' : 'opacity-0',
               !fromCache && 'transition-opacity duration-150',
@@ -149,7 +160,7 @@ export function ImageBlock({
             />
           </span>
         )}
-      </button>
+      </div>
 
       {!manageLightboxExternally && lightboxOpen && imageUrl && (
         <ImageZoomLightbox url={imageUrl} mediaId={media.id} onClose={() => setLightboxOpen(false)} />

@@ -54,6 +54,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
   FamilyMediaRef? _mediaRef;
   bool _uploading = false;
+  bool _mediaProcessing = false;
   double _uploadProgress = 0;
   bool _optimizeImages = true;
   bool _optimizeDefaultLoaded = false;
@@ -195,10 +196,12 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     setState(() {
       _uploading = true;
       _uploadProgress = 0;
+      _mediaProcessing = false;
     });
 
     try {
-      final media = await context.read<AppState>().manager.uploadMedia(
+      final manager = context.read<AppState>().manager;
+      final media = await manager.uploadMedia(
             bytes: bytes,
             filename: picked.name,
             type: _type,
@@ -207,11 +210,38 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
               if (mounted) setState(() => _uploadProgress = p);
             },
           );
-      if (mounted) setState(() => _mediaRef = media);
+      if (!mounted) return;
+      setState(() {
+        _mediaRef = media;
+        _uploading = false;
+        _mediaProcessing = !media.isReady;
+      });
+      if (media.isReady) return;
+
+      final ready = await manager.waitForMediaReady(media.id);
+      if (mounted) setState(() => _mediaRef = ready);
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
     } finally {
-      if (mounted) setState(() => _uploading = false);
+      if (mounted) setState(() {
+        _uploading = false;
+        _mediaProcessing = false;
+      });
+    }
+  }
+
+  Future<FamilyMediaRef?> _ensureMediaReady() async {
+    final media = _mediaRef;
+    if (media == null || _type == 'text') return media;
+    if (media.isReady) return media;
+
+    setState(() => _mediaProcessing = true);
+    try {
+      final ready = await context.read<AppState>().manager.waitForMediaReady(media.id);
+      if (mounted) setState(() => _mediaRef = ready);
+      return ready;
+    } finally {
+      if (mounted) setState(() => _mediaProcessing = false);
     }
   }
 
@@ -328,6 +358,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
     setState(() => _saving = true);
     try {
+      if (_type != 'text') {
+        await _ensureMediaReady();
+      }
       final manager = context.read<AppState>().manager;
       final payload = _buildPayload();
       final saved = _post == null ? await manager.createPost(payload) : await manager.updatePost(_post!.id, payload);
@@ -353,6 +386,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
     setState(() => _saving = true);
     try {
+      if (_type != 'text') {
+        await _ensureMediaReady();
+      }
       final manager = context.read<AppState>().manager;
       final payload = _buildPayload();
       final saved = _post == null ? await manager.createPost(payload) : await manager.updatePost(_post!.id, payload);
@@ -633,15 +669,35 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                   if (_mediaRef == null)
                     UploadZone(
                       label: 'انتخاب ${labelOf(mediaTypeLabels, _type)}',
-                      uploading: _uploading,
+                      uploading: _uploading || _mediaProcessing,
                       progress: _uploadProgress,
-                      enabled: !_saving,
+                      enabled: !_saving && !_mediaProcessing,
                       onTap: _pickAndUploadMedia,
                     )
                   else
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        if (_mediaProcessing)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: scheme.primary),
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(
+                                  child: Text(
+                                    'در حال بهینه‌سازی و آماده‌سازی تصویر…',
+                                    style: TextStyle(color: subtle, fontSize: 13),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(14),
                           child: FamilyMediaView(media: _mediaRef!, height: _mediaRef!.isAudio ? 88 : 220),
