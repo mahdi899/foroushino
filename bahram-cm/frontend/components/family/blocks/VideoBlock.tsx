@@ -129,11 +129,9 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
             openPlayer();
           }}
           aria-label="پخش ویدیو"
-          className="family-feed-video__play absolute inset-0 flex flex-col items-center justify-center gap-2 p-4 text-center transition cursor-pointer"
+          className="family-feed-video__play absolute left-1/2 top-1/2 z-10 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 backdrop-blur-sm transition hover:bg-black/65 active:scale-95 cursor-pointer"
         >
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/55 backdrop-blur-sm transition hover:bg-black/65 active:scale-95">
-            <Play className="ms-0.5 h-6 w-6 text-white/95" fill="currentColor" />
-          </span>
+          <Play className="ms-0.5 h-6 w-6 text-white/95" fill="currentColor" />
         </button>
       </div>
 
