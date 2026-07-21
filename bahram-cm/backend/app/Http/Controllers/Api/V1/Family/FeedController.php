@@ -82,6 +82,15 @@ class FeedController extends Controller
                 'display_name' => $branding['display_name'],
                 'branding' => $branding,
                 'has_active_stories' => $this->stories->hasActiveStories((int) $family->id),
+                'member_count' => (int) $family->member_count,
+                'onboarding_completed' => (bool) $result['membership']->onboarding_completed,
+                'is_staff' => $this->access->canManage($user),
+                'feed_revision' => FeedService::feedRevision(),
+            ]
+        );
+    }
+
+    public function unreadSummary(Request $request): JsonResponse
     {
         $afterId = max(0, $request->integer('after_id'));
         $user = $request->user('sanctum');
