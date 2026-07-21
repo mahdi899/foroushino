@@ -417,7 +417,7 @@ export async function testTelegramInfrastructureAction(): Promise<{
   try {
     const res = await adminFetch<{ data: { ok: boolean; message: string } }>(
       '/panel/telegram/infrastructure/test',
-      { method: 'POST' },
+      { method: 'POST', timeoutMs: 45_000 },
     );
     return { ok: res.data?.ok ?? false, message: res.data?.message };
   } catch (e) {
@@ -432,9 +432,10 @@ export async function registerTelegramWebhookFromPanelAction(): Promise<{
   url?: string;
 }> {
   try {
+    // setWebhook goes Iran → Worker → Telegram and can exceed the default 10s adminFetch budget.
     const res = await adminFetch<{ data: { ok: boolean; message: string; url?: string } }>(
       '/panel/telegram/infrastructure/register-webhook',
-      { method: 'POST' },
+      { method: 'POST', timeoutMs: 60_000 },
     );
     revalidateTelegram();
     const data = res.data;
