@@ -6,7 +6,6 @@ use App\Enums\OtpPurpose;
 use App\Models\User;
 use App\Modules\TelegramBot\Enums\BotFeatureFlag;
 use App\Modules\TelegramBot\Enums\ConversationState;
-use App\Modules\TelegramBot\Jobs\SendTelegramMessageJob;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramConversation;
@@ -30,6 +29,7 @@ class RegistrationFlowService
         private readonly TelegramUserSyncService $userSync,
         private readonly TelegramAdminUserStatsService $adminUserStats,
         private readonly OtpService $otp,
+        private readonly TelegramOutboundMessenger $outbound,
     ) {}
 
     public function start(TelegramBot $bot, TelegramAccount $account, TelegramConversation $conversation): void
@@ -441,7 +441,7 @@ class RegistrationFlowService
     /** @param  array<string, mixed>  $options */
     private function queueMessage(TelegramBot $bot, int $chatId, string $text, array $options = []): void
     {
-        SendTelegramMessageJob::dispatch($bot->id, $chatId, $text, $options)
-            ->onQueue((string) config('telegram_bot.queues.replies', 'telegram-replies'));
+        // Honors TELEGRAM_OUTBOUND_SYNC — /start must not depend on Horizon silently.
+        $this->outbound->reply($bot, $chatId, $text, $options);
     }
 }
