@@ -60,7 +60,14 @@ class ZarinpalController extends Controller
         $authority = (string) $request->query('Authority', '');
         $status = (string) $request->query('Status', '');
 
-        if ($status !== 'OK' || blank($authority)) {
+        // Bare URL hits (no Authority) are not real gateway returns — don't mint a receipt token.
+        if (blank($authority)) {
+            return redirect()->away(
+                rtrim((string) config('app.frontend_url'), '/').'/payment/result',
+            );
+        }
+
+        if ($status !== 'OK') {
             $order = $this->zarinpal->cancelByAuthority($authority);
 
             return redirect()->away($this->paymentResultUrl('cancelled', $order));

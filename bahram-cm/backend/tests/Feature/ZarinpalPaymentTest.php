@@ -217,4 +217,30 @@ class ZarinpalPaymentTest extends TestCase
         $this->assertSame('canceled', $payment->status);
         $this->assertSame('pending_payment', $resolved->status);
     }
+
+    public function test_bare_callback_url_does_not_issue_receipt_token(): void
+    {
+        $this->get('/api/payments/zarinpal/callback')
+            ->assertRedirect(rtrim((string) config('app.frontend_url'), '/').'/payment/result');
+    }
+
+    public function test_cancelled_callback_with_authority_redirects_to_result_with_token(): void
+    {
+        $this->activateSandbox();
+        $order = $this->makeOrder();
+
+        Http::fake([
+            'sandbox.zarinpal.com/pg/v4/payment/request.json' => Http::response([
+                'data' => ['code' => 100, 'authority' => 'A44444444444444444444444444444444444'],
+            ], 200),
+        ]);
+
+        app(ZarinpalPaymentService::class)->request($order);
+
+        $response = $this->get('/api/payments/zarinpal/callback?Authority=A44444444444444444444444444444444444&Status=NOK');
+
+        $response->assertRedirect();
+        $location = (string) $response->headers->get('Location');
+        $this->assertStringContainsString('/payment/result?token=', $location);
+    }
 }
