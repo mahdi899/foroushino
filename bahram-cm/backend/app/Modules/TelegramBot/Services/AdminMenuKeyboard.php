@@ -4,38 +4,77 @@ namespace App\Modules\TelegramBot\Services;
 
 use App\Modules\TelegramBot\Enums\BotAdminPermission;
 use App\Modules\TelegramBot\Models\TelegramAccount;
+use App\Modules\TelegramBot\Support\TelegramCustomEmoji;
 
 class AdminMenuKeyboard
 {
-    public const USERS = '👥 کاربران';
+    public const USERS = 'کاربران';
 
-    public const ADMINS = '🛡 ادمین‌ها';
+    public const ADMINS = 'ادمین‌ها';
 
-    public const STATS = '📊 آمار';
+    public const STATS = 'آمار';
 
-    public const BROADCAST = '📣 پیام همگانی';
+    public const BROADCAST = 'پیام همگانی';
 
-    public const REQUIRED_CHATS = '📻 کانال اجباری';
+    public const REQUIRED_CHATS = 'کانال اجباری';
 
-    public const DESTINATIONS = '📍 مقاصد';
+    public const DESTINATIONS = 'مقاصد';
 
-    public const DISCOUNTS = '🎟 کد تخفیف';
+    public const DISCOUNTS = 'کد تخفیف';
 
-    public const TICKETS = '🎫 تیکت‌ها';
+    public const TICKETS = 'تیکت‌ها';
 
-    public const MESSAGES = '💬 پیام‌ها';
+    public const MESSAGES = 'پیام‌ها';
 
-    public const EXPORT = '📤 خروجی کاربران';
+    public const EXPORT = 'خروجی کاربران';
 
-    public const PROFILE = '🤖 پروفایل بات';
+    public const PROFILE = 'پروفایل بات';
 
-    public const SETTINGS = '⚙️ تنظیمات';
+    public const SETTINGS = 'تنظیمات';
 
-    public const LOGS = '📋 لاگ‌ها';
+    public const LOGS = 'لاگ‌ها';
 
-    public const HOME = '🏠 داشبورد';
+    public const HOME = 'داشبورد';
 
-    public const EXIT = '❌ خروج از پنل ادمین';
+    public const EXIT = 'خروج از پنل ادمین';
+
+    /** Premium icon key per button label. */
+    private const ICONS = [
+        self::USERS => 'user',
+        self::ADMINS => 'shield',
+        self::STATS => 'chart',
+        self::BROADCAST => 'channel',
+        self::REQUIRED_CHATS => 'tv',
+        self::DESTINATIONS => 'pin',
+        self::DISCOUNTS => 'ticket',
+        self::TICKETS => 'support',
+        self::MESSAGES => 'chat',
+        self::EXPORT => 'empty',
+        self::PROFILE => 'robot',
+        self::SETTINGS => 'tools',
+        self::LOGS => 'notes',
+        self::HOME => 'home',
+        self::EXIT => 'cross',
+    ];
+
+    /** Old labels that may still sit on users' reply keyboards. */
+    private const LEGACY = [
+        self::USERS => ['👥 کاربران'],
+        self::ADMINS => ['🛡 ادمین‌ها'],
+        self::STATS => ['📊 آمار'],
+        self::BROADCAST => ['📣 پیام همگانی'],
+        self::REQUIRED_CHATS => ['📻 کانال اجباری'],
+        self::DESTINATIONS => ['📍 مقاصد'],
+        self::DISCOUNTS => ['🎟 کد تخفیف'],
+        self::TICKETS => ['🎫 تیکت‌ها'],
+        self::MESSAGES => ['💬 پیام‌ها'],
+        self::EXPORT => ['📤 خروجی کاربران'],
+        self::PROFILE => ['🤖 پروفایل بات'],
+        self::SETTINGS => ['⚙️ تنظیمات'],
+        self::LOGS => ['📋 لاگ‌ها'],
+        self::HOME => ['🏠 داشبورد'],
+        self::EXIT => ['❌ خروج از پنل ادمین'],
+    ];
 
     /**
      * Map each menu button to the permission that unlocks it.
@@ -114,7 +153,15 @@ class AdminMenuKeyboard
     {
         $keyboard = [];
         foreach ($this->rows($account) as $row) {
-            $keyboard[] = array_map(static fn (string $text) => ['text' => $text], $row);
+            $keyboard[] = array_map(static function (string $text): array {
+                $button = ['text' => $text];
+                $iconKey = self::ICONS[$text] ?? null;
+                if ($iconKey !== null) {
+                    $button = [...$button, ...TelegramCustomEmoji::buttonIcon($iconKey)];
+                }
+
+                return $button;
+            }, $row);
         }
 
         return [
@@ -125,13 +172,54 @@ class AdminMenuKeyboard
 
     public function isMenuButton(string $text, ?TelegramAccount $account = null): bool
     {
+        $text = trim($text);
+        if ($this->normalizeLabel($text) !== null) {
+            return true;
+        }
+
         foreach ($this->rows($account) as $row) {
             if (in_array($text, $row, true)) {
                 return true;
             }
         }
 
-        // Still recognize known labels even if currently hidden (stale keyboard).
         return array_key_exists($text, $this->buttonPermissions());
+    }
+
+    /** Map pressed text (current or legacy) to canonical label. */
+    public function normalizeLabel(string $text): ?string
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return null;
+        }
+
+        if (array_key_exists($text, $this->buttonPermissions())) {
+            return $text;
+        }
+
+        foreach (self::LEGACY as $canonical => $aliases) {
+            if (in_array($text, $aliases, true)) {
+                return $canonical;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Inline button with optional premium icon.
+     *
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    public static function inlineButton(string $text, string $callbackData, ?string $iconKey = null, array $extra = []): array
+    {
+        $button = ['text' => $text, 'callback_data' => $callbackData, ...$extra];
+        if ($iconKey !== null) {
+            $button = [...$button, ...TelegramCustomEmoji::buttonIcon($iconKey)];
+        }
+
+        return $button;
     }
 }

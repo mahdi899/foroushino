@@ -284,7 +284,7 @@ class MessageHandler implements UpdateHandlerInterface
             MainMenuKeyboard::ACTION_SUPPORT => $this->openSupportHub($bot, $account, $chatId),
             MainMenuKeyboard::ACTION_ACCOUNT => $this->sendAccount($bot, $chatId, $account),
             MainMenuKeyboard::ACTION_ADMIN => $this->botAdmin->openDashboard($bot, $account, $chatId),
-            default => $this->replyHtml($bot, $chatId, TelegramCustomEmoji::tag('home').' <b>منوی اصلی</b>\nاز دکمه‌های پایین استفاده کنید.', [
+            default => $this->replyHtml($bot, $chatId, TelegramCustomEmoji::tag('home')." <b>منوی اصلی</b>\nاز دکمه‌های پایین استفاده کنید.", [
                 'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
             ]),
         };
@@ -631,8 +631,10 @@ class MessageHandler implements UpdateHandlerInterface
 
     private function sendReferral(TelegramBot $bot, int $chatId, TelegramAccount $account): void
     {
+        $e = static fn (string $key): string => TelegramCustomEmoji::tag($key);
+
         if (! $bot->featureEnabled(BotFeatureFlag::ReferralEnabled)) {
-            $this->replyHtml($bot, $chatId, "🎁 <b>معرفی دوستان</b>\n\nاین بخش فعلاً غیرفعال است.");
+            $this->replyHtml($bot, $chatId, $e('gift')." <b>معرفی دوستان</b>\n\nاین بخش فعلاً غیرفعال است.");
 
             return;
         }
@@ -645,16 +647,16 @@ class MessageHandler implements UpdateHandlerInterface
             $this->replyHtml(
                 $bot,
                 $chatId,
-                "🎁 <b>همکاری در فروش</b>\n"
+                $e('gift')." <b>همکاری در فروش</b>\n"
                 ."──────────────\n"
-                .'🔗 لینک دعوت:'."\n<code>".\App\Modules\TelegramBot\Support\TelegramHtml::escape($link)."</code>\n\n"
-                .'🏷 کد اختصاصی: <code>'.\App\Modules\TelegramBot\Support\TelegramHtml::escape((string) $code->code)."</code>\n\n"
-                .'✅ خریدهای موفق: <b>'.number_format((int) ($summary['successful_purchases'] ?? 0))."</b>\n"
-                .'💰 پاداش قابل برداشت: <b>'.number_format((int) ($summary['payable_amount'] ?? 0)).'</b> تومان',
-                TelegramSiteUrl::linkMarkup($panelUrl, '🎁 باشگاه مشتریان در پنل', [], 'success'),
+                .$e('pin').' لینک دعوت:'."\n<code>".\App\Modules\TelegramBot\Support\TelegramHtml::escape($link)."</code>\n\n"
+                .$e('notes').' کد اختصاصی: <code>'.\App\Modules\TelegramBot\Support\TelegramHtml::escape((string) $code->code)."</code>\n\n"
+                .$e('check').' خریدهای موفق: <b>'.number_format((int) ($summary['successful_purchases'] ?? 0))."</b>\n"
+                .$e('money').' پاداش قابل برداشت: <b>'.number_format((int) ($summary['payable_amount'] ?? 0)).'</b> تومان',
+                TelegramSiteUrl::linkMarkup($panelUrl, 'باشگاه مشتریان در پنل', [], 'success', 'gift'),
             );
         } catch (\Throwable) {
-            $this->replyHtml($bot, $chatId, "⚠️ <b>لینک معرفی در دسترس نیست</b>\nکمی بعد دوباره تلاش کنید.");
+            $this->replyHtml($bot, $chatId, $e('warning').' <b>لینک معرفی در دسترس نیست</b>\nکمی بعد دوباره تلاش کنید.');
         }
     }
 

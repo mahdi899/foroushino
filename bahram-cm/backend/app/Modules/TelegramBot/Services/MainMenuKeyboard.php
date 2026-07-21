@@ -161,7 +161,6 @@ class MainMenuKeyboard
         return [
             'keyboard' => $keyboard,
             'resize_keyboard' => true,
-            'is_persistent' => true,
         ];
     }
 

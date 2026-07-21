@@ -5,61 +5,120 @@ namespace App\Modules\TelegramBot\Support;
 /**
  * Telegram Premium / custom emoji helpers (Bot API 9.4+).
  *
- * IMPORTANT: only use document IDs confirmed via Telegram (message entities).
- * Invalid IDs make sendMessage fail with DOCUMENT_INVALID and break the bot.
- *
- * Until real IDs are collected from the owner's Premium stickers, we render
- * unicode fallbacks only (safe). Set ENABLED=true and fill IDS when ready.
+ * IDs below come from Telegram itself via getForumTopicIconStickers /
+ * getCustomEmojiStickers (verified with a live sendMessage smoke test).
+ * Never invent custom_emoji_id values — invalid IDs break the bot.
  */
 final class TelegramCustomEmoji
 {
-    /**
-     * Master switch — keep false until custom_emoji_id values are verified.
-     * Official docs example (thumbs_up) is the only known-safe ID so far.
-     */
-    public const ENABLED = false;
+    public const ENABLED = true;
 
-    /** Verified custom emoji sticker document IDs only. */
+    /**
+     * Verified custom emoji sticker document IDs only.
+     * Keys without an entry keep the unicode fallback.
+     */
     public const IDS = [
-        // From Telegram Bot API formatting docs:
-        'thumbs_up' => '5368324170671202286',
+        'thumbs_up' => '5368324170671202286', // 👍
+        'check' => '5237699328843200968', // ✅
+        'cross' => '5377498341074542641', // ‼️
+        'fire' => '5312241539987020022', // 🔥
+        'star' => '5235579393115438657', // ⭐️
+        'heart' => '5312138559556164615', // ❤️
+        'party' => '5310228579009699834', // 🎉
+        'sparkles' => '5312536423851630001', // 💡
+        'home' => '5312486108309757006', // 🏠
+        'graduation' => '5357419403325481346', // 🎓
+        'mic' => '5382003830487523366', // 🎤
+        'bell' => '5309984423003823246', // 📣
+        'gift' => '5309958691854754293', // 💎
+        'support' => '5377624166436445368', // 🎟
+        'lightning' => '5312016608254762256', // ⚡️
+        'key' => '5418115271267197333', // 🪪
+        'money' => '5350452584119279096', // 💰
+        'calendar' => '5433614043006903194', // 📆
+        'point_up' => '5418085807791545980', // 🔝
+        'rocket' => '5348436127038579546', // ✈️
+        'cart' => '5431492767249342908', // 🛒
+        'phone' => '5409357944619802453', // 📱
+        'warning' => '5379748062124056162', // ❗️
+        'family' => '5386435923204382258', // 👨‍👩‍👧‍👦
+        'channel' => '5309984423003823246', // 📣
+        'pen' => '5238156910363950406', // ✍️
+        'play' => '5368653135101310687', // 🎬
+        'tools' => '5350554349074391003', // 💻
+        'user' => '5357121491508928442', // 👀
+        'pin' => '5309965701241379366', // 🔎
+        'empty' => '5357315181649076022', // 📁
+        'globe' => '5348436127038579546', // ✈️
+        'wave' => '5310228579009699834', // 🎉
+        'lock' => '5418115271267197333', // 🪪
+        // Admin panel
+        'robot' => '5309832892262654231', // 🤖
+        'chart' => '5350305691942788490', // 📈
+        'chat' => '5417915203100613993', // 💬
+        'shield' => '5357188789351490453', // 🪖
+        'notes' => '5373251851074415873', // 📝
+        'tv' => '5350513667144163474', // 📺
+        'ticket' => '5377624166436445368', // 🎟
+        'add' => '5237699328843200968', // ✅
+        'back' => '5418085807791545980', // 🔝
+        // Account / referral profile
+        'cash' => '5309929258443874898', // 💸
+        'coin' => '5377690785674175481', // 🪙
+        'trophy' => '5312315739842026755', // 🏆
+        'briefcase' => '5348227245599105972', // 💼
+        'diamond' => '5309958691854754293', // 💎
     ];
 
     public const FALLBACKS = [
         'thumbs_up' => '👍',
-        'rocket' => '🚀',
-        'point_up' => '☝️',
+        'rocket' => '✈️',
+        'point_up' => '🔝',
         'check' => '✅',
-        'cross' => '❌',
+        'cross' => '‼️',
         'fire' => '🔥',
-        'star' => '⭐',
+        'star' => '⭐️',
         'heart' => '❤️',
         'party' => '🎉',
-        'sparkles' => '✨',
-        'wave' => '👋',
+        'sparkles' => '💡',
+        'wave' => '🎉',
         'home' => '🏠',
         'graduation' => '🎓',
         'mic' => '🎤',
-        'bell' => '🔔',
-        'gift' => '🎁',
-        'support' => '🎫',
-        'user' => '👤',
-        'lightning' => '⚡',
-        'lock' => '🔒',
-        'key' => '🔑',
+        'bell' => '📣',
+        'gift' => '💎',
+        'support' => '🎟',
+        'user' => '👀',
+        'lightning' => '⚡️',
+        'lock' => '🪪',
+        'key' => '🪪',
         'money' => '💰',
-        'calendar' => '📅',
-        'pin' => '📍',
-        'play' => '▶️',
-        'globe' => '🌐',
+        'calendar' => '📆',
+        'pin' => '🔎',
+        'play' => '🎬',
+        'globe' => '✈️',
         'cart' => '🛒',
         'phone' => '📱',
-        'warning' => '⚠️',
-        'empty' => '📭',
+        'warning' => '❗️',
+        'empty' => '📁',
         'family' => '👨‍👩‍👧‍👦',
         'channel' => '📣',
-        'tools' => '🛠',
+        'tools' => '💻',
         'pen' => '✍️',
+        'robot' => '🤖',
+        'chart' => '📈',
+        'chat' => '💬',
+        'shield' => '🪖',
+        'notes' => '📝',
+        'tv' => '📺',
+        'ticket' => '🎟',
+        'add' => '✅',
+        'back' => '🔝',
+        'cash' => '💸',
+        'coin' => '🪙',
+        'trophy' => '🏆',
+        'briefcase' => '💼',
+        'diamond' => '💎',
     ];
 
     public static function tag(string $key): string

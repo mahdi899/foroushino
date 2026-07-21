@@ -11,6 +11,8 @@ use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
 use App\Modules\TelegramBot\Contracts\TelegramBotClientInterface;
 use App\Modules\TelegramBot\Enums\BotAdminRank;
 use App\Modules\TelegramBot\Enums\ConversationState;
+use App\Modules\TelegramBot\Support\TelegramCustomEmoji;
+use App\Modules\TelegramBot\Support\TelegramHtml;
 use App\Modules\TelegramBot\Enums\UpdateStatus;
 use App\Modules\TelegramBot\Jobs\ProcessTelegramUpdateJob;
 use App\Modules\TelegramBot\Models\TelegramAccount;
@@ -65,6 +67,7 @@ class BotAdminPanelService
 
         $client = $this->clients->forBot($bot);
         $client->sendMessage($chatId, $this->dashboardText($bot), [
+            'parse_mode' => 'HTML',
             'reply_markup' => $this->adminMenuMarkup($account),
         ]);
     }
@@ -151,7 +154,8 @@ class BotAdminPanelService
         }
 
         if ($conversation->state === ConversationState::AdminPanel) {
-            if (in_array($text, [AdminMenuKeyboard::EXIT, '❌ خروج از پنل ادمین', 'لغو', '/cancel'], true)) {
+            if (in_array($text, [AdminMenuKeyboard::EXIT, '❌ خروج از پنل ادمین', 'لغو', '/cancel'], true)
+                || app(AdminMenuKeyboard::class)->normalizeLabel($text) === AdminMenuKeyboard::EXIT) {
                 $this->conversations->reset($conversation);
                 $client = $this->clients->forBot($bot);
                 $client->sendMessage($chatId, 'به منوی اصلی برگشتید.', [
@@ -261,6 +265,7 @@ class BotAdminPanelService
     private function handleAdminMenuButton(TelegramBot $bot, TelegramAccount $account, int $chatId, string $text): void
     {
         $client = $this->clients->forBot($bot);
+        $text = app(AdminMenuKeyboard::class)->normalizeLabel($text) ?? trim($text);
 
         $permission = match ($text) {
             AdminMenuKeyboard::USERS => \App\Modules\TelegramBot\Enums\BotAdminPermission::UserInfo,
@@ -406,41 +411,45 @@ class BotAdminPanelService
         $admins = TelegramAccount::query()->where('telegram_bot_id', $bot->id)->where('is_bot_admin', true)->count();
         $draftBroadcasts = TelegramBroadcast::query()->where('telegram_bot_id', $bot->id)->where('status', 'draft')->count();
         $requiredChats = TelegramRequiredChat::query()->where('telegram_bot_id', $bot->id)->where('is_active', true)->count();
+        $e = static fn (string $key): string => TelegramCustomEmoji::tag($key);
 
-        return "🛠 پنل ادمین بات\n\n"
-            ."ربات: {$bot->display_name} ({$bot->key})\n"
-            ."مخاطبان: {$total} · متصل: {$linked} · مسدود: {$blocked}\n"
-            ."ادمین‌های بات: {$admins}\n"
-            ."پیام همگانی پیش‌نویس: {$draftBroadcasts}\n"
-            ."کانال اجباری فعال: {$requiredChats}\n\n"
-            ."از دکمه‌های زیر برای مدیریت استفاده کنید.\n"
+        return $e('tools').' <b>پنل ادمین بات</b>'."\n\n"
+            .'ربات: '.TelegramHtml::escape((string) $bot->display_name)
+            .' ('.TelegramHtml::escape((string) $bot->key).")\n"
+            .$e('user')." مخاطبان: {$total} · متصل: {$linked} · مسدود: {$blocked}\n"
+            .$e('shield')." ادمین‌های بات: {$admins}\n"
+            .$e('channel')." پیام همگانی پیش‌نویس: {$draftBroadcasts}\n"
+            .$e('tv')." کانال اجباری فعال: {$requiredChats}\n\n"
+            .'از دکمه‌های پایین برای مدیریت استفاده کنید.'."\n"
             .'برای لغو هر مرحله «لغو» بنویسید.';
     }
 
     /** @return array<string, mixed> */
     private function mainInlineMenu(): array
     {
+        $b = static fn (string $text, string $cb, string $icon): array => AdminMenuKeyboard::inlineButton($text, $cb, $icon);
+
         return [
             'inline_keyboard' => [
                 [
-                    ['text' => '👥 کاربران', 'callback_data' => 'admin:u:s'],
-                    ['text' => '🛡 ادمین‌ها', 'callback_data' => 'admin:admins:p:0'],
+                    $b('کاربران', 'admin:u:s', 'user'),
+                    $b('ادمین‌ها', 'admin:admins:p:0', 'shield'),
                 ],
                 [
-                    ['text' => '📣 پیام همگانی', 'callback_data' => 'admin:b:p:0'],
-                    ['text' => '📻 کانال اجباری', 'callback_data' => 'admin:rc:p:0'],
+                    $b('پیام همگانی', 'admin:b:p:0', 'channel'),
+                    $b('کانال اجباری', 'admin:rc:p:0', 'tv'),
                 ],
                 [
-                    ['text' => '📍 مقاصد', 'callback_data' => 'admin:d:list'],
-                    ['text' => '🤖 پروفایل بات', 'callback_data' => 'admin:p'],
+                    $b('مقاصد', 'admin:d:list', 'pin'),
+                    $b('پروفایل بات', 'admin:p', 'robot'),
                 ],
                 [
-                    ['text' => '⚙️ تنظیمات', 'callback_data' => 'admin:s'],
-                    ['text' => '📋 لاگ‌ها', 'callback_data' => 'admin:l'],
+                    $b('تنظیمات', 'admin:s', 'tools'),
+                    $b('لاگ‌ها', 'admin:l', 'notes'),
                 ],
                 [
-                    ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
-                    ['text' => '❌ خروج', 'callback_data' => 'admin:x'],
+                    $b('داشبورد', 'admin:h', 'home'),
+                    $b('خروج', 'admin:x', 'cross'),
                 ],
             ],
         ];
@@ -452,8 +461,8 @@ class BotAdminPanelService
         return [
             'inline_keyboard' => [
                 [
-                    ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
-                    ['text' => '❌ خروج', 'callback_data' => 'admin:x'],
+                    AdminMenuKeyboard::inlineButton('داشبورد', 'admin:h', 'home'),
+                    AdminMenuKeyboard::inlineButton('خروج', 'admin:x', 'cross'),
                 ],
             ],
         ];
@@ -477,6 +486,7 @@ class BotAdminPanelService
             $client->editMessageText($text, [
                 'chat_id' => $chatId,
                 'message_id' => $messageId,
+                'parse_mode' => 'HTML',
             ]);
             $client->sendMessage($chatId, 'منوی پنل ادمین پایین صفحه است.', [
                 'reply_markup' => $this->adminMenuMarkup($account),
@@ -486,6 +496,7 @@ class BotAdminPanelService
         }
 
         $client->sendMessage($chatId, $text, [
+            'parse_mode' => 'HTML',
             'reply_markup' => $this->adminMenuMarkup($account),
         ]);
     }
@@ -840,7 +851,7 @@ class BotAdminPanelService
         } catch (Throwable $e) {
             $client->sendMessage(
                 $chatId,
-                '❌ ثبت گروه گزارشات ناموفق بود:\n'.$e->getMessage()."\n\n"
+                '❌ ثبت گروه گزارشات ناموفق بود:'."\n".$e->getMessage()."\n\n"
                 .'مطمئن شوید ربات در گروه ادمین است و دوباره آیدی را بفرستید.',
             );
 
@@ -913,7 +924,7 @@ class BotAdminPanelService
         } catch (Throwable $e) {
             $client->sendMessage(
                 $chatId,
-                '❌ ثبت گزارشات پرداخت ناموفق بود:\n'.$e->getMessage()."\n\n"
+                '❌ ثبت گزارشات پرداخت ناموفق بود:'."\n".$e->getMessage()."\n\n"
                 .'مطمئن شوید ربات ادمین است و دوباره آیدی را بفرستید.',
             );
 
@@ -1164,7 +1175,7 @@ class BotAdminPanelService
         int $chatId,
         string $text,
     ): void {
-        if (trim($text) === AdminsSectionKeyboard::ADD_ADMIN) {
+        if (app(AdminsSectionKeyboard::class)->isAdd($text)) {
             return;
         }
 
@@ -1189,9 +1200,10 @@ class BotAdminPanelService
         string $text,
     ): void {
         $name = trim($text);
-        if ($name === '' || $name === AdminsSectionKeyboard::ADD_ADMIN || $name === AdminsSectionKeyboard::BACK) {
+        $adminsKeyboard = app(AdminsSectionKeyboard::class);
+        if ($name === '' || $adminsKeyboard->isAdd($name) || $adminsKeyboard->isBack($name)) {
             $client->sendMessage($chatId, 'نام نمایشی ادمین را بنویسید (نه عدد خالص).', [
-                'reply_markup' => app(AdminsSectionKeyboard::class)->nameStepReplyMarkup(),
+                'reply_markup' => $adminsKeyboard->nameStepReplyMarkup(),
             ]);
 
             return;
@@ -1404,7 +1416,7 @@ class BotAdminPanelService
             ],
         ];
 
-        $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
+        $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard], ['parse_mode' => 'HTML']);
         // Keep admin reply keyboard visible at the bottom (like user panel).
         if ($messageId <= 0) {
             $client->sendMessage($chatId, 'منوی پنل ادمین پایین صفحه فعال است.', [
@@ -2404,7 +2416,7 @@ class BotAdminPanelService
         } catch (Throwable $e) {
             $client->sendMessage(
                 $chatId,
-                '❌ ثبت کانال ناموفق بود:\n'.$e->getMessage()."\n\n"
+                '❌ ثبت کانال ناموفق بود:'."\n".$e->getMessage()."\n\n"
                 .'مطمئن شوید ربات در کانال ادمین است و دوباره فوروارد/@یوزرنیم/لینک بفرستید.',
             );
 
@@ -2878,7 +2890,7 @@ class BotAdminPanelService
         } catch (Throwable $e) {
             $client->sendMessage(
                 $chatId,
-                '❌ ثبت مقصد ناموفق بود:\n'.$e->getMessage()."\n\n"
+                '❌ ثبت مقصد ناموفق بود:'."\n".$e->getMessage()."\n\n"
                 .'ربات باید در کانال ادمین باشد و بتواند درخواست عضویت را مدیریت کند.',
             );
 
@@ -3889,13 +3901,15 @@ class BotAdminPanelService
         $this->editOrSend($client, $chatId, $messageId, implode("\n", $lines), ['inline_keyboard' => $keyboard]);
     }
 
-    /** @param  array<string, mixed>  $replyMarkup */
+    /** @param  array<string, mixed>  $replyMarkup
+     * @param  array<string, mixed>  $options */
     private function editOrSend(
         TelegramBotClientInterface $client,
         int $chatId,
         int $messageId,
         string $text,
         array $replyMarkup,
+        array $options = [],
     ): void {
         if ($messageId > 0) {
             try {
@@ -3903,6 +3917,7 @@ class BotAdminPanelService
                     'chat_id' => $chatId,
                     'message_id' => $messageId,
                     'reply_markup' => $replyMarkup,
+                    ...$options,
                 ]);
 
                 return;
@@ -3911,7 +3926,7 @@ class BotAdminPanelService
             }
         }
 
-        $client->sendMessage($chatId, $text, ['reply_markup' => $replyMarkup]);
+        $client->sendMessage($chatId, $text, ['reply_markup' => $replyMarkup, ...$options]);
     }
 
     private function accountLabel(TelegramAccount $account): string

@@ -2,12 +2,18 @@
 
 namespace App\Modules\TelegramBot\Services;
 
+use App\Modules\TelegramBot\Support\TelegramCustomEmoji;
+
 class AdminsSectionKeyboard
 {
     /** Same action as inline «افزودن» — pick a Telegram user to promote. */
-    public const ADD_ADMIN = '➕ افزودن ادمین';
+    public const ADD_ADMIN = 'افزودن ادمین';
 
-    public const BACK = '🔙 بازگشت';
+    public const BACK = 'بازگشت';
+
+    private const LEGACY_ADD = ['➕ افزودن ادمین'];
+
+    private const LEGACY_BACK = ['🔙 بازگشت'];
 
     /** @return array<string, mixed> */
     public function replyMarkup(): array
@@ -21,8 +27,12 @@ class AdminsSectionKeyboard
                         'user_is_bot' => false,
                         'max_quantity' => 1,
                     ],
+                    ...TelegramCustomEmoji::buttonIcon('add'),
                 ]],
-                [['text' => self::BACK]],
+                [[
+                    'text' => self::BACK,
+                    ...TelegramCustomEmoji::buttonIcon('back'),
+                ]],
             ],
             'resize_keyboard' => true,
         ];
@@ -33,7 +43,10 @@ class AdminsSectionKeyboard
     {
         return [
             'keyboard' => [
-                [['text' => self::BACK]],
+                [[
+                    'text' => self::BACK,
+                    ...TelegramCustomEmoji::buttonIcon('back'),
+                ]],
             ],
             'resize_keyboard' => true,
         ];
@@ -41,6 +54,15 @@ class AdminsSectionKeyboard
 
     public function isBack(string $text): bool
     {
-        return trim($text) === self::BACK;
+        $text = trim($text);
+
+        return $text === self::BACK || in_array($text, self::LEGACY_BACK, true);
+    }
+
+    public function isAdd(string $text): bool
+    {
+        $text = trim($text);
+
+        return $text === self::ADD_ADMIN || in_array($text, self::LEGACY_ADD, true);
     }
 }

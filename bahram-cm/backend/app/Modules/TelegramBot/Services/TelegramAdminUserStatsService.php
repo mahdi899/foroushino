@@ -104,22 +104,23 @@ class TelegramAdminUserStatsService
         $name = \App\Modules\TelegramBot\Support\TelegramHtml::escape((string) $s['display_name']);
         $phone = \App\Modules\TelegramBot\Support\TelegramHtml::escape((string) $s['phone_display']);
         $registered = \App\Modules\TelegramBot\Support\TelegramHtml::escape((string) $s['registered_at']);
+        $e = static fn (string $key): string => \App\Modules\TelegramBot\Support\TelegramCustomEmoji::tag($key);
 
-        return "👤 <b>حساب کاربری شما</b>\n"
+        return $e('user').' <b>حساب کاربری شما</b>'."\n"
             ."──────────────\n"
-            ."🆔 شناسه: <code>{$s['telegram_user_id']}</code>\n"
-            ."👤 نام: <b>{$name}</b>\n"
-            ."📞 موبایل: {$phone}\n"
-            ."📆 ثبت‌نام: {$registered}\n\n"
-            ."🏦 تراکنش‌های موفق: <b>{$s['successful_orders']}</b>\n"
-            ."🎓 دوره‌های فعال: <b>{$s['active_subscriptions']}</b>\n"
-            ."💰 موجودی: <b>{$balance}</b> تومان\n\n"
-            ."🎁 همکاری در فروش\n"
-            ."🎯 درصد: <b>{$s['cooperation_percent']}%</b>\n"
-            ."👥 زیرمجموعه: <b>{$s['subset_count']}</b> نفر\n"
-            ."🧑‍💻 خریدار: <b>{$s['buyer_subset_count']}</b> نفر\n"
-            ."💳 تراکنش زیرمجموعه: <b>{$s['subset_tx_count']}</b>\n"
-            ."💸 مبلغ زیرمجموعه: <b>{$amount}</b> تومان";
+            .$e('key')." شناسه: <code>{$s['telegram_user_id']}</code>\n"
+            .$e('user')." نام: <b>{$name}</b>\n"
+            .$e('phone')." موبایل: {$phone}\n"
+            .$e('calendar')." ثبت‌نام: {$registered}\n\n"
+            .$e('money')." تراکنش‌های موفق: <b>{$s['successful_orders']}</b>\n"
+            .$e('graduation')." دوره‌های فعال: <b>{$s['active_subscriptions']}</b>\n"
+            .$e('coin')." موجودی: <b>{$balance}</b> تومان\n\n"
+            .$e('gift')." <b>همکاری در فروش</b>\n"
+            .$e('trophy')." درصد: <b>{$s['cooperation_percent']}%</b>\n"
+            .$e('family')." زیرمجموعه: <b>{$s['subset_count']}</b> نفر\n"
+            .$e('briefcase')." خریدار: <b>{$s['buyer_subset_count']}</b> نفر\n"
+            .$e('chart')." تراکنش زیرمجموعه: <b>{$s['subset_tx_count']}</b>\n"
+            .$e('cash')." مبلغ زیرمجموعه: <b>{$amount}</b> تومان";
     }
 
     /**

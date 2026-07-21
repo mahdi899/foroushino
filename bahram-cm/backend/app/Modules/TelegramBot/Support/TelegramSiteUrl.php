@@ -151,11 +151,11 @@ final class TelegramSiteUrl
      * @param  list<list<array{text: string, url?: string, callback_data?: string}>>  $extraRows
      * @return array<string, mixed>
      */
-    public static function linkMarkup(?string $url, string $label, array $extraRows = [], ?string $style = null): array
+    public static function linkMarkup(?string $url, string $label, array $extraRows = [], ?string $style = null, ?string $iconKey = null): array
     {
         $keyboard = $extraRows;
 
-        $button = self::inlineButton($label, $url, $style);
+        $button = self::inlineButton($label, $url, $style, $iconKey);
         if ($button !== null) {
             array_unshift($keyboard, [$button]);
         }
