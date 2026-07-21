@@ -58,7 +58,23 @@ class TelegramBotRepository
             return null;
         }
 
-        $value = env($envKey);
+        // Prefer values already baked into config:cache for known keys.
+        $configMap = [
+            'TELEGRAM_BOT_TOKEN' => 'telegram_bot.bots.production.token',
+            'TELEGRAM_WEBHOOK_SECRET' => 'telegram_bot.bots.production.webhook_secret',
+            'TELEGRAM_BOT_USERNAME' => 'telegram_bot.bots.production.username',
+        ];
+        if (isset($configMap[$envKey])) {
+            $fromConfig = config($configMap[$envKey]);
+            if (filled($fromConfig)) {
+                return (string) $fromConfig;
+            }
+        }
+
+        $value = $_ENV[$envKey]
+            ?? $_SERVER[$envKey]
+            ?? (getenv($envKey) ?: null)
+            ?? env($envKey);
 
         return filled($value) ? (string) $value : null;
     }

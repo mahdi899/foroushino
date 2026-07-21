@@ -13,6 +13,10 @@ return [
             'key' => env('TELEGRAM_BOT_KEY', 'production'),
             'display_name' => 'Bahram Academy Bot',
             'token_env' => 'TELEGRAM_BOT_TOKEN',
+            // Baked into config:cache — do not read these via env() at runtime.
+            'token' => env('TELEGRAM_BOT_TOKEN'),
+            'webhook_secret' => env('TELEGRAM_WEBHOOK_SECRET'),
+            'username' => env('TELEGRAM_BOT_USERNAME'),
             'webhook_secret_env' => 'TELEGRAM_WEBHOOK_SECRET',
             'username_env' => 'TELEGRAM_BOT_USERNAME',
             'environment' => 'production',

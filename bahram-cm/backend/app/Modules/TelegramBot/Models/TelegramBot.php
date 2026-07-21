@@ -56,10 +56,9 @@ class TelegramBot extends Model
     }
 
     /**
-     * Resolve the actual bot token from the environment. The token itself is
-     * never persisted in the database — only the name of the env var is
-     * (`token_key`) — and it is read directly from the process environment
-     * so it works whether or not config is cached.
+     * Resolve the bot token. Prefer panel/legacy storage, then values baked into
+     * `config:cache` (`telegram_bot.bots.*.token`), then process env.
+     * Never rely on runtime `env()` alone — it is null after `config:cache`.
      */
     public function resolveToken(): ?string
     {
@@ -75,11 +74,19 @@ class TelegramBot extends Model
             }
         }
 
+        $fromConfig = config('telegram_bot.bots.'.$this->key.'.token');
+        if (filled($fromConfig)) {
+            return (string) $fromConfig;
+        }
+
         if (blank($this->token_key)) {
             return null;
         }
 
-        $value = env($this->token_key);
+        $value = $_ENV[$this->token_key]
+            ?? $_SERVER[$this->token_key]
+            ?? (getenv($this->token_key) ?: null)
+            ?? env($this->token_key);
 
         return filled($value) ? (string) $value : null;
     }

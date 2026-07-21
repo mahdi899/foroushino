@@ -52,7 +52,17 @@ class TelegramInfrastructureService
             }
         }
 
-        $env = trim((string) env('TELEGRAM_BOT_TOKEN', ''));
+        $fromConfig = trim((string) config('telegram_bot.bots.production.token', ''));
+        if ($fromConfig !== '') {
+            return $fromConfig;
+        }
+
+        $env = trim((string) (
+            $_ENV['TELEGRAM_BOT_TOKEN']
+            ?? $_SERVER['TELEGRAM_BOT_TOKEN']
+            ?? (getenv('TELEGRAM_BOT_TOKEN') ?: '')
+            ?: env('TELEGRAM_BOT_TOKEN', '')
+        ));
 
         return $env !== '' ? $env : null;
     }
