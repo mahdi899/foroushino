@@ -69,6 +69,19 @@ try {
     Stop-ListenerOnPort $WebInternalPort
     Start-Sleep -Milliseconds 500
 
+    # Keep a queue worker alive for cleanup / export jobs (upload itself is sync in local).
+    $Php = Join-Path $RepoRoot '.tools\php84\php.exe'
+    $Backend = Join-Path $RepoRoot 'bahram-cm\backend'
+    $queueProc = $null
+    if (Test-Path $Php) {
+      Write-Host '>> queue worker (family-media)' -ForegroundColor Cyan
+      $queueProc = Start-Process -FilePath $Php -ArgumentList @(
+        'artisan', 'queue:work', 'redis',
+        '--queue=family-media,family-high,family-low,default',
+        '--tries=3', '--timeout=600'
+      ) -WorkingDirectory $Backend -PassThru -WindowStyle Hidden
+    }
+
     $proxyScript = Join-Path $PSScriptRoot 'dev-web.mjs'
     $flutterArgs = @(
       'run', '-d', 'web-server',
@@ -105,6 +118,9 @@ try {
       & $Node $proxyScript
     }
     finally {
+      if ($queueProc -and -not $queueProc.HasExited) {
+        Stop-Process -Id $queueProc.Id -Force -ErrorAction SilentlyContinue
+      }
       if ($flutterProc -and -not $flutterProc.HasExited) {
         Stop-Process -Id $flutterProc.Id -Force -ErrorAction SilentlyContinue
       }

@@ -3210,6 +3210,36 @@
             "category": "خانواده",
             "legacy_path": null,
             "is_private": false
+        },
+        {
+            "path": "media/family/2026/07/image/01ky118k6ktdxkw3k6q5fa38mm.webp",
+            "disk": "public",
+            "url": null,
+            "type": "image",
+            "mime": "image/webp",
+            "size": 92172,
+            "width": 941,
+            "height": 1672,
+            "alt_fa": "ChatGPT Image Jul 19, 2026, 02 30 20 PM (9)",
+            "original_filename": "ChatGPT Image Jul 19, 2026, 02_30_20 PM (9).png",
+            "category": "خانواده",
+            "legacy_path": null,
+            "is_private": false
+        },
+        {
+            "path": "media/family/2026/07/image/01ky118m3rbe7jc15t4abw4hfe.webp",
+            "disk": "public",
+            "url": null,
+            "type": "image",
+            "mime": "image/webp",
+            "size": 92172,
+            "width": 941,
+            "height": 1672,
+            "alt_fa": "ChatGPT Image Jul 19, 2026, 02 30 20 PM (9)",
+            "original_filename": "ChatGPT Image Jul 19, 2026, 02_30_20 PM (9).png",
+            "category": "خانواده",
+            "legacy_path": null,
+            "is_private": false
         }
     ]
 }

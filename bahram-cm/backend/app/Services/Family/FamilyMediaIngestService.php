@@ -38,10 +38,9 @@ class FamilyMediaIngestService
             'uploaded_by' => $uploader->id,
         ]);
 
-        TransferFamilyMediaToFtpJob::dispatch($media->id)
-            ->onQueue(config('family.queues.media', 'family-media'));
+        $this->dispatchTransfer($media->id);
 
-        return $media;
+        return $media->fresh() ?? $media;
     }
 
     public function createChunkSession(
@@ -125,10 +124,9 @@ class FamilyMediaIngestService
             'media_id' => $media->id,
         ]);
 
-        TransferFamilyMediaToFtpJob::dispatch($media->id)
-            ->onQueue(config('family.queues.media', 'family-media'));
+        $this->dispatchTransfer($media->id);
 
-        return $media;
+        return $media->fresh() ?? $media;
     }
 
     public function retry(FamilyMedia $media): FamilyMedia
@@ -141,10 +139,26 @@ class FamilyMediaIngestService
             'failure_reason' => null,
         ]);
 
-        TransferFamilyMediaToFtpJob::dispatch($media->id)
-            ->onQueue(config('family.queues.media', 'family-media'));
+        $this->dispatchTransfer($media->id);
 
         return $media->fresh();
+    }
+
+    /**
+     * Local/testing: process immediately so publish doesn't depend on a queue worker.
+     * Production: async on family-media (optimize → FTP/CDN).
+     */
+    private function dispatchTransfer(int $mediaId): void
+    {
+        $queue = config('family.queues.media', 'family-media');
+
+        if (app()->environment(['local', 'testing'])) {
+            TransferFamilyMediaToFtpJob::dispatchSync($mediaId);
+
+            return;
+        }
+
+        TransferFamilyMediaToFtpJob::dispatch($mediaId)->onQueue($queue);
     }
 
     private function assertSize(UploadedFile $file, FamilyMediaType $type): void

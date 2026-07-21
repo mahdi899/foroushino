@@ -114,21 +114,17 @@ describe('resolveFamilyMediaPlaybackCandidates', () => {
     ).toEqual(['https://cdn.rostami.app/media/family/demo/demo-video.mp4']);
   });
 
-<<<<<<< HEAD
-  it('prefers same-origin club URL then CDN when family site URL is set', () => {
+  it('prefers CDN then same-origin club URL when family site URL is set', () => {
     vi.stubEnv('NEXT_PUBLIC_FAMILY_SITE_URL', 'https://rostami.club');
     expect(
       resolveFamilyMediaPlaybackCandidates('/media/family/demo/demo-video.mp4', 42),
     ).toEqual([
-      'https://rostami.club/media/family/demo/demo-video.mp4',
       'https://cdn.rostami.app/media/family/demo/demo-video.mp4',
+      'https://rostami.club/media/family/demo/demo-video.mp4',
     ]);
   });
 
-  it('prefers same-origin club URL then CDN in the browser on rostami.club', () => {
-=======
-  it('prefers CDN then same-origin club URL when mediaId is provided', () => {
->>>>>>> 6f5843535344db556f9cf6397711bcaa58d51cef
+  it('prefers CDN then same-origin club URL in the browser on rostami.club', () => {
     vi.stubGlobal('window', { location: { origin: 'https://rostami.club', hostname: 'rostami.club' } });
     expect(
       resolveFamilyMediaPlaybackCandidates('/media/family/demo/demo-video.mp4', 42),
