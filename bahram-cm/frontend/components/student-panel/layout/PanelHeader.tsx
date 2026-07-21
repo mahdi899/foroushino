@@ -74,10 +74,20 @@ export function PanelHeader({
 
       <div className="panel-header__trail">
         <PanelThemeToggle />
-        <Link href="/" className="panel-header__home" aria-label="بازگشت به صفحه اصلی سایت">
+        <a
+          href="/"
+          className="panel-header__home"
+          aria-label="بازگشت به صفحه اصلی سایت"
+          onClick={(event) => {
+            // Full document load — soft nav from bare panel shell leaves SiteShellDeferred /
+            // GrainOverlay / root layout chrome half-mounted (same class of bug as family→site).
+            event.preventDefault();
+            window.location.assign('/');
+          }}
+        >
           <Home size={16} />
           <span className="hidden sm:inline">سایت</span>
-        </Link>
+        </a>
         <form action={logoutStudentAction}>
           <button
             type="submit"

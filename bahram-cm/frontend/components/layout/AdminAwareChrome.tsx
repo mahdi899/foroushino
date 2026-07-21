@@ -29,7 +29,13 @@ export function AdminAwareChrome({
   const pathname = usePathname();
   const onFamilyHost =
     typeof document !== 'undefined' && document.documentElement.dataset.familyHost === '1';
-  const isBareShell = bareShell ?? (isBareShellPath(pathname) || onFamilyHost);
+  // On the client, prefer live pathname / family-host dataset. The server `bareShell`
+  // prop can lag one RSC pass after soft-nav from /panel|/admin|/family → `/`, which
+  // left the marketing site without SiteNav/SiteFooter until a full reload.
+  const isBareShell =
+    isBareShellPath(pathname) ||
+    onFamilyHost ||
+    (typeof document === 'undefined' && Boolean(bareShell));
   const hidePromo =
     pathname?.startsWith('/seminars/') || pathname?.startsWith('/purchase/');
 
