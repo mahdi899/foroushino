@@ -219,6 +219,9 @@ export function FeedView({
   const historyPinRef = useRef<FeedScrollRestoreSnapshot | null>(null);
   const historyPinClearTimerRef = useRef<number | null>(null);
   const restoringFromCommentsRef = useRef(false);
+  /** User was at the feed tip when comments/notifications opened — restore tip on close. */
+  const tipBeforeOverlayRef = useRef(false);
+  const overlayOpenRef = useRef(false);
   const pendingInitialUnreadScrollRef = useRef<number | null>(null);
   const unreadSplitRef = useRef<number | null>(null);
   /** Blocks tip-stick / scroll-to-latest while unread landing is in progress. */
@@ -514,7 +517,8 @@ export function FeedView({
 
   const openComments = useCallback(
     (target: CommentsTarget) => {
-      anchoredToBottomRef.current = false;
+      // Keep tip memory via tipBeforeOverlayRef — clearing anchored here made return-from-comments
+      // land a chrome-inset/topbar height above the tip.
       onOpenComments?.(target);
     },
     [onOpenComments],
@@ -529,7 +533,6 @@ export function FeedView({
   );
 
   const closeComments = useCallback(() => {
-    anchoredToBottomRef.current = false;
     restoringFromCommentsRef.current = true;
     onCloseComments?.();
     window.requestAnimationFrame(() => {
@@ -683,6 +686,36 @@ export function FeedView({
     },
     [getScrollCtx],
   );
+
+  // Comments/notifications overlay: topbar + pinned chrome remount and change viewport height.
+  // Mid-feed posts stay visually correct; the tip needs an explicit scroll-to-latest on close.
+  useLayoutEffect(() => {
+    const overlayOpen = Boolean(commentsTarget || notificationsOpen);
+
+    if (overlayOpen && !overlayOpenRef.current) {
+      const { root, lenis } = getScrollCtx();
+      const distance = root
+        ? lenis
+          ? getLenisDistanceFromBottom(lenis)
+          : getFeedDistanceFromBottom(root)
+        : Number.POSITIVE_INFINITY;
+      tipBeforeOverlayRef.current =
+        anchoredToBottomRef.current ||
+        (Number.isFinite(distance) && distance < 120);
+    }
+
+    if (!overlayOpen && overlayOpenRef.current && tipBeforeOverlayRef.current) {
+      tipBeforeOverlayRef.current = false;
+      anchoredToBottomRef.current = true;
+      tipSettleUntilRef.current = performance.now() + 900;
+      scrollToLatestReliable('auto');
+      window.requestAnimationFrame(() => {
+        scrollToLatestReliable('auto');
+      });
+    }
+
+    overlayOpenRef.current = overlayOpen;
+  }, [commentsTarget, getScrollCtx, notificationsOpen, scrollToLatestReliable]);
 
   const scheduleStickToBottom = useCallback(() => {
     if (scrollStickRafRef.current != null) return;
