@@ -438,16 +438,6 @@ class RegistrationFlowService
             'parse_mode' => 'HTML',
             'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
         ]);
-
-        $this->queueMessage(
-            $bot,
-            $account->telegram_user_id,
-            "⚡ <b>میانبرهای سریع</b>\nبا یک ضربه وارد بخش موردنظر شوید:",
-            [
-                'parse_mode' => 'HTML',
-                'reply_markup' => $this->mainMenu->quickNavInlineMarkup($bot),
-            ],
-        );
     }
 
     /** @return array<string, mixed> */

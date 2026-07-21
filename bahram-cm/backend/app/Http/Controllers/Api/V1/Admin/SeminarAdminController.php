@@ -59,6 +59,7 @@ class SeminarAdminController extends Controller
                 'title' => $asset->title,
                 'type' => $asset->type,
                 'is_downloadable' => $asset->is_downloadable,
+                'external_url' => $asset->external_url,
             ]),
             'certificates' => $seminar->certificates->map(fn (Certificate $c) => [
                 'id' => $c->id,
@@ -121,27 +122,43 @@ class SeminarAdminController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'type' => ['required', 'string', 'in:video,file'],
             'is_downloadable' => ['nullable', 'boolean'],
-            'file' => ['required', 'file', 'max:512000'],
+            'file' => ['nullable', 'required_without:external_url', 'file', 'max:512000'],
+            'external_url' => ['nullable', 'required_without:file', 'url', 'max:2048'],
         ]);
 
-        $file = $request->file('file');
-        $path = $file->store('seminar-assets/'.$seminar->id, 'local');
+        $externalUrl = isset($data['external_url']) ? trim($data['external_url']) : null;
+        $path = null;
+
+        if ($request->hasFile('file')) {
+            $path = $request->file('file')->store('seminar-assets/'.$seminar->id, 'local');
+            $externalUrl = null;
+        }
+
+        abort_if(! $path && ! $externalUrl, 422, 'فایل یا لینک ویدیو الزامی است.');
 
         $asset = $seminar->assets()->create([
             'title' => $data['title'],
-            'type' => $data['type'],
+            'type' => $externalUrl ? 'video' : $data['type'],
             'path' => $path,
-            'is_downloadable' => $data['is_downloadable'] ?? false,
+            'external_url' => $externalUrl,
+            'is_downloadable' => $externalUrl ? false : ($data['is_downloadable'] ?? false),
         ]);
 
-        return response()->json(['data' => ['id' => $asset->id, 'title' => $asset->title, 'type' => $asset->type]], 201);
+        return response()->json(['data' => [
+            'id' => $asset->id,
+            'title' => $asset->title,
+            'type' => $asset->type,
+            'external_url' => $asset->external_url,
+        ]], 201);
     }
 
     public function deleteAsset(Seminar $seminar, SeminarAsset $asset): JsonResponse
     {
         abort_if($asset->seminar_id !== $seminar->id, 404);
 
-        Storage::disk('local')->delete($asset->path);
+        if ($asset->path) {
+            Storage::disk('local')->delete($asset->path);
+        }
         $asset->delete();
 
         return response()->json(['data' => ['deleted' => true]]);

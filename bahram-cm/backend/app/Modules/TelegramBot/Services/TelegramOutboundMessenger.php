@@ -73,11 +73,8 @@ class TelegramOutboundMessenger
         try {
             return $this->clients->forBot($bot)->sendPhoto($chatId, $photo, $options);
         } catch (TelegramApiException $e) {
-            if ($this->isTransportFailure($e)) {
-                return null;
-            }
-
-            throw $e;
+            // Caption/entity/photo errors must not abort the catalog — callers fall back to text.
+            return null;
         }
     }
 

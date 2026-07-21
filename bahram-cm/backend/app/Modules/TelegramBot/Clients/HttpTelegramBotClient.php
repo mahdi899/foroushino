@@ -104,7 +104,7 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
         return (array) $this->callWithAttachment('sendVoice', 'voice', $voice, ['chat_id' => $chatId, ...$options]);
     }
 
-    public function sendDocument(int|string $chatId, string $document, array $options = []): array
+    public function sendDocument(int|string $chatId, string|array $document, array $options = []): array
     {
         return (array) $this->callWithAttachment('sendDocument', 'document', $document, ['chat_id' => $chatId, ...$options]);
     }
@@ -335,8 +335,20 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
     }
 
     /** @param  array<string, mixed>  $params */
-    private function callWithAttachment(string $method, string $field, string $file, array $params): array|bool
+    private function callWithAttachment(string $method, string $field, string|array $file, array $params): array|bool
     {
+        if (is_array($file)) {
+            $content = (string) ($file['content'] ?? '');
+            $filename = (string) ($file['filename'] ?? 'file.bin');
+
+            return $this->request($method, $params, [
+                $field => [
+                    'content' => $content,
+                    'filename' => $filename !== '' ? $filename : 'file.bin',
+                ],
+            ]);
+        }
+
         if (is_file($file)) {
             return $this->request($method, $params, [$field => $file]);
         }

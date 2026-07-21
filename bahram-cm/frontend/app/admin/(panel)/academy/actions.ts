@@ -213,7 +213,7 @@ export async function uploadSeminarAsset(seminarId: number, formData: FormData) 
     revalidateAcademy();
     return { ok: true as const };
   } catch (e) {
-    return actionError(e, 'بارگذاری فایل سمینار ناموفق بود.');
+    return actionError(e, 'بارگذاری فایل یا لینک سمینار ناموفق بود.');
   }
 }
 

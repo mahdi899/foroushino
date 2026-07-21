@@ -51,17 +51,24 @@ class SeminarController extends Controller
             'location' => $seminar->location,
             'description' => $seminar->description,
             'attendance_status' => $attendee->attendance_status->value,
-            'assets' => $seminar->assets->map(fn ($asset) => [
-                'id' => $asset->id,
-                'title' => $asset->title,
-                'type' => $asset->type,
-                // Never expose the raw storage path — only a short-lived signed URL.
-                'download_url' => URL::temporarySignedRoute(
-                    'student.seminar-assets.download',
-                    now()->addMinutes(10),
-                    ['asset' => $asset->id]
-                ),
-            ]),
+            'assets' => $seminar->assets->map(function ($asset) {
+                $isExternal = filled($asset->external_url);
+
+                return [
+                    'id' => $asset->id,
+                    'title' => $asset->title,
+                    'type' => $asset->type,
+                    'is_external' => $isExternal,
+                    // Local files: short-lived signed URL. External videos: the stored URL.
+                    'download_url' => $isExternal
+                        ? $asset->external_url
+                        : URL::temporarySignedRoute(
+                            'student.seminar-assets.download',
+                            now()->addMinutes(10),
+                            ['asset' => $asset->id]
+                        ),
+                ];
+            }),
             'certificates' => $seminar->certificates->map(fn ($cert) => [
                 'id' => $cert->id,
                 'certificate_number' => $cert->certificate_number,

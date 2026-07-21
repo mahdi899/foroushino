@@ -88,23 +88,16 @@ trait BotAdminPanelFeatureHandlers
             return;
         }
 
+        $client->sendMessage($chatId, "⏳ در حال آماده‌سازی خروجی {$days} روز…");
+
         $export = $this->userExport->exportTxt($bot, $days);
-        $tmp = tempnam(sys_get_temp_dir(), 'tg_export_');
-        if ($tmp === false) {
-            throw new RuntimeException('ایجاد فایل موقت ناموفق بود.');
-        }
 
-        $path = $tmp.'.txt';
-        rename($tmp, $path);
-        file_put_contents($path, $export['content']);
-
-        try {
-            $client->sendDocument($chatId, $path, [
-                'caption' => "✅ خروجی {$days} روز — {$export['count']} کاربر\n".$export['filename'],
-            ]);
-        } finally {
-            @unlink($path);
-        }
+        $client->sendDocument($chatId, [
+            'content' => $export['content'],
+            'filename' => $export['filename'],
+        ], [
+            'caption' => "✅ خروجی {$days} روز — {$export['count']} کاربر",
+        ]);
 
         $client->sendMessage($chatId, 'فایل ارسال شد.', [
             'reply_markup' => $this->adminMenuMarkup($account),

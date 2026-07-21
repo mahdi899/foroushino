@@ -16,6 +16,7 @@ class SeminarAssetDownloadController extends Controller
     public function __invoke(Request $request, SeminarAsset $asset)
     {
         abort_unless($request->hasValidSignature(), 403);
+        abort_if(filled($asset->external_url) || blank($asset->path), 404);
 
         $disk = Storage::disk('local');
         abort_unless($disk->exists($asset->path), 404);

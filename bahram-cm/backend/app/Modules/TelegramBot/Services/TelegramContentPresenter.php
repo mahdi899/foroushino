@@ -81,7 +81,12 @@ class TelegramContentPresenter
 
         if (filled($seminar->description)) {
             $lines[] = '';
-            $lines[] = TelegramHtml::escape(trim(strip_tags((string) $seminar->description)));
+            // Keep catalog cards short — Telegram photo captions max out at 1024 chars.
+            $desc = trim(strip_tags((string) $seminar->description));
+            if (mb_strlen($desc) > 180) {
+                $desc = rtrim(mb_substr($desc, 0, 180)).'…';
+            }
+            $lines[] = TelegramHtml::escape($desc);
         }
 
         [$price, $sale] = $this->seminarPrices($seminar);
@@ -99,7 +104,26 @@ class TelegramContentPresenter
         $lines[] = '';
         $lines[] = '👇 برای ثبت‌نام از دکمه‌های زیر استفاده کنید:';
 
-        return implode("\n", $lines);
+        return $this->fitTelegramCaption(implode("\n", $lines));
+    }
+
+    /**
+     * Telegram sendPhoto caption limit is 1024 characters after entities.
+     * Also keep UTF-8 byte length under ~1000 to avoid false "too long" rejects.
+     */
+    public function fitTelegramCaption(string $text, int $max = 900): string
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return $text;
+        }
+
+        while (mb_strlen($text) > $max || strlen($text) > 1000) {
+            $cut = max(40, mb_strlen($text) - 40);
+            $text = rtrim(mb_substr($text, 0, $cut));
+        }
+
+        return $text;
     }
 
     /** @return array<string, mixed> */

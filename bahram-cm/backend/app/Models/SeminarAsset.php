@@ -12,6 +12,7 @@ class SeminarAsset extends Model
         'title',
         'type',
         'path',
+        'external_url',
         'is_downloadable',
     ];
 

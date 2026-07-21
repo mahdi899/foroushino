@@ -100,7 +100,7 @@ class FakeTelegramBotClient implements TelegramBotClientInterface
         return (array) $this->record('sendVoice', ['chat_id' => $chatId, 'voice' => $voice, 'options' => $options], ['message_id' => $this->nextMessageId()]);
     }
 
-    public function sendDocument(int|string $chatId, string $document, array $options = []): array
+    public function sendDocument(int|string $chatId, string|array $document, array $options = []): array
     {
         return (array) $this->record('sendDocument', ['chat_id' => $chatId, 'document' => $document, 'options' => $options], ['message_id' => $this->nextMessageId()]);
     }

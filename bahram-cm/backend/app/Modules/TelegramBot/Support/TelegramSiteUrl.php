@@ -105,6 +105,21 @@ final class TelegramSiteUrl
         return self::page('panel');
     }
 
+    public static function courseWatchPage(int|string $accessId): ?string
+    {
+        $id = trim((string) $accessId);
+        if ($id === '' || ! ctype_digit($id)) {
+            return null;
+        }
+
+        return self::page('panel/courses/'.$id.'/watch');
+    }
+
+    public static function coursesPanel(): ?string
+    {
+        return self::page('panel/courses');
+    }
+
     public static function satPage(): ?string
     {
         return self::page('panel/sat');

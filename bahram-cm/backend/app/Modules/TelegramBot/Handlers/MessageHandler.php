@@ -283,7 +283,7 @@ class MessageHandler implements UpdateHandlerInterface
             MainMenuKeyboard::ACTION_SUPPORT => $this->openSupportHub($bot, $account, $chatId),
             MainMenuKeyboard::ACTION_ACCOUNT => $this->sendAccount($bot, $chatId, $account),
             MainMenuKeyboard::ACTION_ADMIN => $this->botAdmin->openDashboard($bot, $account, $chatId),
-            default => $this->replyHtml($bot, $chatId, "🏠 <b>منوی اصلی</b>\nاز دکمه‌های پایین یا میانبرها استفاده کنید.", [
+            default => $this->replyHtml($bot, $chatId, "🏠 <b>منوی اصلی</b>\nاز دکمه‌های پایین استفاده کنید.", [
                 'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
             ]),
         };
@@ -427,12 +427,6 @@ class MessageHandler implements UpdateHandlerInterface
             return;
         }
 
-        $this->replyHtml(
-            $bot,
-            $chatId,
-            $this->messages->get($bot, 'courses_catalog_intro'),
-        );
-
         foreach ($products->take(10) as $product) {
             $view = $this->courseAccessPresenter->present($bot, $account, $product);
             $photo = $this->catalogMedia->productPhoto($product);
@@ -441,7 +435,7 @@ class MessageHandler implements UpdateHandlerInterface
 
             if ($photo !== null) {
                 $photoOptions = $options;
-                $photoOptions['caption'] = $caption;
+                $photoOptions['caption'] = $this->content->fitTelegramCaption($caption);
                 $result = $this->outbound->replyPhoto($bot, $chatId, $photo, $photoOptions);
                 if (is_array($result)) {
                     $this->catalogMedia->rememberProductPhoto($product, $result);
@@ -460,32 +454,54 @@ class MessageHandler implements UpdateHandlerInterface
     {
         $seminars = $this->seminars->listUpcoming();
         if ($seminars->isEmpty()) {
-            $this->replyHtml($bot, $chatId, $this->messages->get($bot, 'seminars_catalog_empty'));
+            $this->outbound->reply(
+                $bot,
+                $chatId,
+                $this->messages->get($bot, 'seminars_catalog_empty'),
+                $this->messages->htmlOptions(),
+                sync: true,
+            );
 
             return;
         }
 
-        $this->replyHtml($bot, $chatId, $this->messages->get($bot, 'seminars_catalog_intro'));
-
+        $sent = 0;
         foreach ($seminars as $seminar) {
-            $text = $this->content->formatSeminarMessage($seminar);
-            $options = $this->content->seminarSendOptions($seminar);
-            $photo = $this->catalogMedia->seminarPhoto($seminar);
+            try {
+                $text = $this->content->formatSeminarMessage($seminar);
+                $options = $this->content->seminarSendOptions($seminar);
+                $photo = $this->catalogMedia->seminarPhoto($seminar);
 
-            if ($photo !== null) {
-                $photoOptions = $options;
-                $photoOptions['caption'] = $text;
-                $result = $this->outbound->replyPhoto($bot, $chatId, $photo, $photoOptions);
-                if (is_array($result)) {
-                    $this->catalogMedia->rememberSeminarPhoto($seminar, $result);
-                } elseif ($result === null) {
-                    $this->replyNow($bot, $chatId, $text, $options);
+                if ($photo !== null) {
+                    $photoOptions = $options;
+                    $photoOptions['caption'] = $this->content->fitTelegramCaption($text);
+                    $result = $this->outbound->replyPhoto($bot, $chatId, $photo, $photoOptions);
+                    if (is_array($result)) {
+                        $this->catalogMedia->rememberSeminarPhoto($seminar, $result);
+                        $sent++;
+                    } elseif ($result === null) {
+                        $this->replyNow($bot, $chatId, $text, $options);
+                        $sent++;
+                    }
+
+                    continue;
                 }
 
-                continue;
+                $this->replyNow($bot, $chatId, $text, $options);
+                $sent++;
+            } catch (\Throwable) {
+                // Continue with remaining seminars.
             }
+        }
 
-            $this->replyNow($bot, $chatId, $text, $options);
+        if ($sent === 0) {
+            $this->outbound->reply(
+                $bot,
+                $chatId,
+                $this->messages->get($bot, 'seminars_catalog_empty'),
+                $this->messages->htmlOptions(),
+                sync: true,
+            );
         }
     }
 

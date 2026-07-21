@@ -139,7 +139,7 @@ export type AdminSeminarDetail = AdminSeminar & {
   cover_image?: string | null;
   cover_image_mobile?: string | null;
   attendees: { id: number; user_id: number; name: string | null; mobile: string | null; attendance_status: string }[];
-  assets: { id: number; title: string; type: string; is_downloadable: boolean }[];
+  assets: { id: number; title: string; type: string; is_downloadable: boolean; external_url?: string | null }[];
   certificates: { id: number; user_name: string | null; certificate_number: string; issued_at: string | null }[];
 };
 

@@ -50,7 +50,8 @@ class TelegramUserExportService
         }
 
         $content = implode("\n", $lines)."\n";
-        $filename = sprintf('telegram-users-%s-%dd-%s.txt', $bot->key, $days, Carbon::now()->format('Ymd-His'));
+        $safeKey = preg_replace('/[^a-zA-Z0-9_-]+/', '-', (string) ($bot->key ?: 'bot')) ?: 'bot';
+        $filename = sprintf('telegram-users-%s-%dd-%s.txt', $safeKey, $days, Carbon::now()->format('Ymd-His'));
 
         return [
             'filename' => $filename,

@@ -125,7 +125,14 @@ class BotAdminPanelService
                 default => $this->showHome($bot, $account, $client, $chatId, $messageId),
             };
         } catch (Throwable $e) {
-            $this->answer($client, $callbackId, mb_substr($e->getMessage(), 0, 180), true);
+            // Callback query was already answered above — show the error as a chat message.
+            try {
+                $client->sendMessage($chatId, '⚠️ '.mb_substr($e->getMessage(), 0, 500), [
+                    'reply_markup' => $this->adminMenuMarkup($account),
+                ]);
+            } catch (Throwable) {
+                // ignore secondary failures
+            }
         }
 
         return true;

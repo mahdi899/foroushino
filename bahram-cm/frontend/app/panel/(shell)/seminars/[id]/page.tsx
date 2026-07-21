@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { FileDown, Award } from 'lucide-react';
+import { ExternalLink, FileDown, Award } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { panelStudentFetch } from '@/lib/student/panelServer';
 
@@ -12,7 +12,7 @@ interface SeminarDetail {
   date: string | null;
   location: string | null;
   description: string | null;
-  assets: { id: number; title: string; type: string; download_url: string }[];
+  assets: { id: number; title: string; type: string; download_url: string; is_external?: boolean }[];
   certificates: { id: number; certificate_number: string | null; issued_at: string | null; download_url: string | null }[];
 }
 
@@ -59,9 +59,15 @@ export default async function PanelSeminarDetailPage({ params }: { params: Promi
             {assets.map((asset) => (
               <li key={asset.id} className="flex items-center justify-between gap-3 py-3">
                 <span className="text-sm text-text">{asset.title}</span>
-                <a href={asset.download_url} className="btn btn-secondary panel-text-meta">
-                  <FileDown size={16} />
-                  دریافت
+                <a
+                  href={asset.download_url}
+                  className="btn btn-secondary panel-text-meta"
+                  {...(asset.is_external
+                    ? { target: '_blank', rel: 'noopener noreferrer' }
+                    : {})}
+                >
+                  {asset.is_external ? <ExternalLink size={16} /> : <FileDown size={16} />}
+                  {asset.is_external ? 'مشاهده' : 'دریافت'}
                 </a>
               </li>
             ))}

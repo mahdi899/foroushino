@@ -69,8 +69,9 @@ interface TelegramBotClientInterface
     public function sendVoice(int|string $chatId, string $voice, array $options = []): array;
 
     /** @param  array<string, mixed>  $options
+     * @param  string|array{content: string, filename?: string}  $document
      * @return array<string, mixed> */
-    public function sendDocument(int|string $chatId, string $document, array $options = []): array;
+    public function sendDocument(int|string $chatId, string|array $document, array $options = []): array;
 
     /** @param  array<string, mixed>  $options
      * @return array<string, mixed> */

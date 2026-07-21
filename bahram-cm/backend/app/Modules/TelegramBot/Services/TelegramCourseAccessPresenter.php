@@ -2,18 +2,21 @@
 
 namespace App\Modules\TelegramBot\Services;
 
+use App\Enums\CourseAccessStatus;
+use App\Models\CourseAccess;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramDestination;
+use App\Modules\TelegramBot\Support\TelegramHtml;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Services\CourseAccessService;
 use App\Services\PurchaseGuardService;
 
 /**
- * Course catalog UX: buy vs already-owned (SpotPlayer key + destinations).
+ * Course catalog UX: buy vs already-owned (watch link + SpotPlayer key + destinations).
  */
 class TelegramCourseAccessPresenter
 {
@@ -49,33 +52,40 @@ class TelegramCourseAccessPresenter
             ];
         }
 
+        $access = $this->resolveAccess($account, $product);
         $licenseKey = $this->resolveLicenseKey($account, $product);
         $destRows = $this->destinationKeyboardRows($bot, $account, $product);
+        $watchUrl = $access
+            ? TelegramSiteUrl::courseWatchPage($access->id)
+            : TelegramSiteUrl::coursesPanel();
 
         $lines = [
-            '✅ <b>شما این دوره را دارید</b>',
+            '✅ <b>شما به این دوره دسترسی دارید</b>',
             '',
-            '🎓 '.\App\Modules\TelegramBot\Support\TelegramHtml::bold((string) $product->title),
+            '🎓 '.TelegramHtml::bold(trim((string) $product->title)),
             '──────────────',
+            'برای پخش آنلاین داخل سایت، دکمه زیر را بزنید.',
         ];
 
         if (filled($licenseKey)) {
-            $lines[] = '🔑 <b>کلید اسپات‌پلیر:</b>';
-            $lines[] = '<code>'.\App\Modules\TelegramBot\Support\TelegramHtml::escape($licenseKey).'</code>';
             $lines[] = '';
+            $lines[] = '🔑 <b>کلید اسپات‌پلیر</b> (اپلیکیشن دسکتاپ/موبایل):';
+            $lines[] = '<code>'.TelegramHtml::escape($licenseKey).'</code>';
         } else {
-            $lines[] = '🔑 کلید اسپات‌پلیر هنوز صادر نشده — از پنل دانشجو پیگیری کنید.';
             $lines[] = '';
+            $lines[] = '🔑 کلید اسپات‌پلیر هنوز آماده نیست — از پشتیبانی پیگیری کنید.';
         }
 
         if ($destRows !== []) {
-            $lines[] = '📍 مقاصد قابل عضویت شما:';
-        } else {
-            $lines[] = '📍 فعلاً مقصد فعالی برای عضویت شما تعریف نشده است.';
+            $lines[] = '';
+            $lines[] = '📍 کانال/گروه‌های ویژه این دوره را هم می‌توانید از دکمه‌های زیر باز کنید.';
         }
 
-        $keyboard = $destRows;
-        foreach (TelegramSiteUrl::urlKeyboardRow('🌐 پنل دانشجو', TelegramSiteUrl::studentPanel(), 'success') as $row) {
+        $keyboard = [];
+        foreach (TelegramSiteUrl::urlKeyboardRow('▶️ پخش آنلاین در پنل', $watchUrl, 'success') as $row) {
+            $keyboard[] = $row;
+        }
+        foreach ($destRows as $row) {
             $keyboard[] = $row;
         }
 
@@ -88,6 +98,23 @@ class TelegramCourseAccessPresenter
                     : null,
             ]),
         ];
+    }
+
+    private function resolveAccess(TelegramAccount $account, Product $product): ?CourseAccess
+    {
+        $user = $account->user;
+        if (! $user instanceof User) {
+            return null;
+        }
+
+        $this->courseAccess->syncFromPaidOrders($user);
+
+        return CourseAccess::query()
+            ->where('user_id', $user->id)
+            ->where('product_id', $product->id)
+            ->where('status', CourseAccessStatus::Active)
+            ->orderByDesc('id')
+            ->first();
     }
 
     private function resolveLicenseKey(TelegramAccount $account, Product $product): ?string
@@ -122,8 +149,6 @@ class TelegramCourseAccessPresenter
     }
 
     /**
-     * Destinations the user can join for this product (or any allowed destination tied to it).
-     *
      * @return list<list<array{text: string, url: string}>>
      */
     private function destinationKeyboardRows(TelegramBot $bot, TelegramAccount $account, Product $product): array
@@ -147,7 +172,6 @@ class TelegramCourseAccessPresenter
                 continue;
             }
 
-            // Prefer destinations that require this product; still show manual grants.
             $requiresThisProduct = $destination->requirements->contains(
                 fn ($req) => in_array($req->requirement_type, ['product', 'active_course_access'], true)
                     && (int) $req->requirement_value === (int) $product->id,
