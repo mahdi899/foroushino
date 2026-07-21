@@ -2008,7 +2008,7 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-feed-list__virtual-row {
-  contain: layout style;
+  overflow: visible;
 }
 
 .family-feed-unread {

@@ -232,6 +232,8 @@ export function FeedView({
   const unreadLandCompletedForRef = useRef<number | null>(null);
   /** Bumps to cancel in-flight scrollToLatestReliable rAF/timeouts. */
   const scrollLatestGenRef = useRef(0);
+  /** Suppress jump FAB while a FAB-initiated scroll-to-tip is in flight. */
+  const jumpToLatestInFlightRef = useRef(false);
   const scrollStickRafRef = useRef<number | null>(null);
   const scrollAnchorRafRef = useRef<number | null>(null);
   const revealTimerRef = useRef<number | null>(null);
@@ -272,7 +274,7 @@ export function FeedView({
     jumpFabRef.current?.setUnreadCount(next);
     familyFeedDebug.info('fab', 'unread badge', { count: next });
     // Keep FAB visible while unread remains below; parent still hides at tip.
-    if (next > 0) {
+    if (next > 0 && !jumpToLatestInFlightRef.current) {
       jumpVisibleRef.current = true;
       jumpFabRef.current?.setVisible(true);
     }
@@ -495,10 +497,17 @@ export function FeedView({
     const distanceFromBottom = lenis
       ? getLenisDistanceFromBottom(lenis)
       : getFeedDistanceFromBottom(root);
+    const tipInView = isFeedTipInView(
+      root,
+      chronologicalLatestPostId(postsRef.current),
+      distanceFromBottom,
+    );
     const canShow =
+      !jumpToLatestInFlightRef.current &&
       feedReadyRef.current &&
       !commentsOpenRef.current &&
       !notificationsOpenRef.current &&
+      !tipInView &&
       distanceFromBottom > 120;
     setJumpFabVisible(canShow);
   }, [getScrollCtx, setJumpFabVisible]);
@@ -704,17 +713,13 @@ export function FeedView({
       !isPreview && lastRead > 0 ? countUnreadPosts(postsRef.current, lastRead) : 0;
     const unreadSession = split != null && chronoUnread > 0;
 
-    // Stricter tip threshold during unread — Lenis settle can sit ~40–79px above tip.
-    const nearScrollEnd = distanceFromBottom < (unreadSession ? 24 : 80);
+    const latestPostId = chronologicalLatestPostId(postsRef.current);
+    const tipInView = isFeedTipInView(root, latestPostId, distanceFromBottom);
 
-    let tipInView = false;
-    if (nearScrollEnd) {
-      tipInView = isFeedTipInView(
-        root,
-        chronologicalLatestPostId(postsRef.current),
-        distanceFromBottom,
-      );
-    }
+    // Stricter tip threshold during unread — Lenis settle can sit ~40–79px above tip.
+    // Also trust DOM tip visibility — virtual list scroll height can lag measured rows.
+    const nearScrollEnd =
+      distanceFromBottom < (unreadSession ? 24 : 80) || tipInView;
 
     // If last-seen is still on screen, we are in the unread landing zone — never auto-catchup
     // (short posts can fit tip + last-read in one viewport and falsely look "at tip").
@@ -733,7 +738,7 @@ export function FeedView({
     // (that flashed badge 1→10 and forced a false catch-up).
     const remainingUnread =
       !isPreview && lastRead > 0 && chronoUnread > 0
-        ? countUnreadStillBelow(postsRef.current, lastRead, root)
+        ? countUnreadStillBelow(postsRef.current, lastRead, root, distanceFromBottom)
         : 0;
 
     const atBottom =
@@ -747,7 +752,7 @@ export function FeedView({
     // If the user clearly scrolled away, cancel settle immediately.
     const settling = performance.now() < tipSettleUntilRef.current;
     if (settling && !atBottom && anchoredToBottomRef.current) {
-      if (distanceFromBottom > 220) {
+      if (distanceFromBottom > 220 && !jumpToLatestInFlightRef.current) {
         tipSettleUntilRef.current = 0;
         anchoredToBottomRef.current = false;
       } else {
@@ -763,15 +768,26 @@ export function FeedView({
 
     const badgeCount = remainingUnread;
 
+    const reachedTip = atBottom;
+
     const canShowJump =
+      !jumpToLatestInFlightRef.current &&
       feedReadyRef.current &&
       !commentsOpenRef.current &&
       !notificationsOpenRef.current &&
-      !atBottom &&
+      !reachedTip &&
+      !tipInView &&
       (badgeCount > 0 || distanceFromBottom > 120 || unreadSession);
     setJumpFabVisible(canShowJump);
 
-    if (atBottom && !isPreview && postsRef.current.length > 0) {
+    if (reachedTip) {
+      jumpToLatestInFlightRef.current = false;
+    } else if (tipInView && nearScrollEnd) {
+      // Manual scroll to tip — release FAB-click guard even before full catch-up settles.
+      jumpToLatestInFlightRef.current = false;
+    }
+
+    if (reachedTip && !isPreview && postsRef.current.length > 0) {
       if (unreadSession || badgeCount > 0) {
         familyFeedDebug.info('anchor', 'at tip → catch up', {
           distanceFromBottom: Math.round(distanceFromBottom),
@@ -1205,10 +1221,18 @@ export function FeedView({
       await settle();
       if (cancelled) return;
 
-      const { root } = getScrollCtx();
+      const { root, lenis } = getScrollCtx();
       if (root && unreadSplitRef.current != null) {
         const lastRead = unreadSplitRef.current;
-        const below = countUnreadStillBelow(postsRef.current, lastRead, root);
+        const distanceFromBottom = lenis
+          ? getLenisDistanceFromBottom(lenis)
+          : getFeedDistanceFromBottom(root);
+        const below = countUnreadStillBelow(
+          postsRef.current,
+          lastRead,
+          root,
+          distanceFromBottom,
+        );
         const chrono = countUnreadPosts(postsRef.current, lastRead);
         familyFeedDebug.info('land', 'badge after land', {
           below,
@@ -1282,13 +1306,16 @@ export function FeedView({
     if (isPreview || !initialScrollDoneRef.current) return;
     if (unreadBootLockRef.current) return;
     if (anchoredToBottomRef.current) return;
-    const { root } = getScrollCtx();
+    const { root, lenis } = getScrollCtx();
     const lastRead = unreadSplitRef.current ?? resolveUnreadCursor(viewerKey, posts);
     if (lastRead <= 0) return;
     const chrono = countUnreadPosts(posts, lastRead);
     if (chrono <= 0) return;
     if (root) {
-      const below = countUnreadStillBelow(posts, lastRead, root);
+      const distanceFromBottom = lenis
+        ? getLenisDistanceFromBottom(lenis)
+        : getFeedDistanceFromBottom(root);
+      const below = countUnreadStillBelow(posts, lastRead, root, distanceFromBottom);
       // Keep at least chrono while unread session is open — don't collapse to 0 if tip also fits.
       pushUnreadBadge(below > 0 ? below : chrono);
     } else {
@@ -1606,6 +1633,7 @@ export function FeedView({
               onClick={() => {
                 unreadBootLockRef.current = false;
                 anchoredToBottomRef.current = true;
+                jumpToLatestInFlightRef.current = true;
                 tipSettleUntilRef.current = performance.now() + 1500;
                 // Clear unread session first so scrollToLatestReliable is not cancelled.
                 unreadSplitRef.current = null;

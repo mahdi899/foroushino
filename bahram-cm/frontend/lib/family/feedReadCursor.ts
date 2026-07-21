@@ -204,6 +204,7 @@ export function countUnreadStillBelow(
   postsAsc: { id: number }[],
   lastReadPostId: number,
   root: HTMLElement,
+  distanceFromBottom?: number,
 ): number {
   if (lastReadPostId <= 0 || postsAsc.length === 0) return 0;
 
@@ -212,6 +213,8 @@ export function countUnreadStillBelow(
   if (from < 0 || from >= postsAsc.length) return 0;
 
   const rootBottom = root.getBoundingClientRect().bottom - 4;
+  const nearTip =
+    typeof distanceFromBottom === 'number' && distanceFromBottom < 120;
   let lo = from;
   let hi = postsAsc.length;
 
@@ -219,8 +222,13 @@ export function countUnreadStillBelow(
     const mid = (lo + hi) >> 1;
     const el = document.getElementById(`family-post-${postsAsc[mid]!.id}`);
     if (!el) {
-      // Not mounted yet — treat as still below.
-      hi = mid;
+      // Virtualized rows above the viewport unmount too — only treat as "below"
+      // when we're not already pinned near the feed tip.
+      if (nearTip) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
       continue;
     }
     if (el.getBoundingClientRect().top > rootBottom) {
