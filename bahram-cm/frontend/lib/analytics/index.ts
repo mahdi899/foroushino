@@ -3,7 +3,7 @@
  *
  * Default provider is Plausible (privacy-friendly). GA4 is supported when a
  * measurement ID is configured. Both are optional: if neither is present, calls
- * are no-ops (with a dev-only console trace), so tracking never breaks the UI.
+ * are no-ops so tracking never breaks the UI.
  */
 import type { AnalyticsEventMap, AnalyticsEventName } from "./events";
 
@@ -42,9 +42,6 @@ export function track<E extends AnalyticsEventName>(
     }
     if (analyticsConfig.gaMeasurementId && typeof window.gtag === "function") {
       window.gtag("event", event, props ?? {});
-    }
-    if (process.env.NODE_ENV !== "production" && !analyticsEnabled) {
-      console.debug("[analytics]", event, props ?? {});
     }
   } catch {
     // analytics must never throw into the UI

@@ -27,6 +27,7 @@ import { cookies } from "next/headers";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import { ServerInsertedJsonLd } from "@/components/bootstrap/ServerInsertedJsonLd";
 import { SiteBootScripts } from "@/components/bootstrap/SiteBootScripts";
+import { SilenceBrowserConsole } from "@/components/bootstrap/SilenceBrowserConsole";
 import { DevServiceWorkerCleanup } from "@/components/pwa/DevServiceWorkerCleanup";
 import { DEV_SERVICE_WORKER_CLEANUP_SCRIPT } from "@/lib/pwa/unregisterBahramServiceWorkers";
 import {
@@ -105,6 +106,7 @@ export default async function RootLayout({
         suppressHydrationWarning
       >
         {process.env.NODE_ENV === "development" ? <DevServiceWorkerCleanup /> : null}
+        <SilenceBrowserConsole />
         {!isBareShellRoute ? <ServerInsertedJsonLd id="jsonld-site" data={ld} /> : null}
         <ThemeBoot />
         {!isBareShellRoute ? <SiteShellDeferred /> : null}
