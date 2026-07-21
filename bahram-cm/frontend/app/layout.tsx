@@ -26,6 +26,7 @@ import { SiteShellDeferred } from "@/components/layout/SiteShellDeferred";
 import { cookies } from "next/headers";
 import { ThemeBoot } from "@/components/theme/ThemeBoot";
 import { ServerInsertedJsonLd } from "@/components/bootstrap/ServerInsertedJsonLd";
+import { ServerInsertedBootScripts } from "@/components/bootstrap/ServerInsertedBootScripts";
 import { DevServiceWorkerCleanup } from "@/components/pwa/DevServiceWorkerCleanup";
 import { DEV_SERVICE_WORKER_CLEANUP_SCRIPT } from "@/lib/pwa/unregisterBahramServiceWorkers";
 import {
@@ -78,7 +79,7 @@ export default async function RootLayout({
 
   const initialTheme =
     parseSiteTheme((await cookies()).get(SITE_THEME_COOKIE_KEY)?.value) ?? DEFAULT_SITE_THEME;
-  // When no cookie, beforeInteractive siteThemeBootScript applies OS preference before paint.
+  // When no cookie, siteThemeBootScript applies OS preference before paint (SSR insert).
 
   return (
     <html
@@ -91,23 +92,18 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* Server-only inline boot scripts — avoid next/script beforeInteractive (React 19 client warning). */}
-        <script
-          id="site-theme-boot"
-          dangerouslySetInnerHTML={{ __html: siteThemeBootScript() }}
-        />
         <MediaPreconnect />
-        {process.env.NODE_ENV === "development" ? (
-          <script
-            id="bahram-dev-sw-cleanup"
-            dangerouslySetInnerHTML={{ __html: DEV_SERVICE_WORKER_CLEANUP_SCRIPT }}
-          />
-        ) : null}
       </head>
       <body
         className={`${fontClassName} min-w-0 overflow-x-clip antialiased${onFamilyHost ? " h-[100dvh] overflow-hidden" : ""}`}
         suppressHydrationWarning
       >
+        <ServerInsertedBootScripts
+          themeHtml={siteThemeBootScript()}
+          devCleanupHtml={
+            process.env.NODE_ENV === "development" ? DEV_SERVICE_WORKER_CLEANUP_SCRIPT : null
+          }
+        />
         {process.env.NODE_ENV === "development" ? <DevServiceWorkerCleanup /> : null}
         {!isBareShellRoute ? <ServerInsertedJsonLd id="jsonld-site" data={ld} /> : null}
         <ThemeBoot />
