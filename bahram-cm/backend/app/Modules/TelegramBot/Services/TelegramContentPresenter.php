@@ -4,6 +4,7 @@ namespace App\Modules\TelegramBot\Services;
 
 use App\Models\Product;
 use App\Models\Seminar;
+use App\Modules\TelegramBot\Support\TelegramCustomEmoji;
 use App\Modules\TelegramBot\Support\TelegramHtml;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Support\JalaliDate;
@@ -14,7 +15,7 @@ class TelegramContentPresenter
     public function formatProductMessage(Product $product): string
     {
         $lines = [
-            '✨ '.TelegramHtml::bold(trim((string) $product->title)),
+            TelegramCustomEmoji::tag('sparkles').' '.TelegramHtml::bold(trim((string) $product->title)),
             '──────────────',
         ];
 
@@ -24,10 +25,10 @@ class TelegramContentPresenter
         }
 
         if (filled($product->course_level)) {
-            $lines[] = '🧩 <b>سطح:</b> '.TelegramHtml::escape(trim((string) $product->course_level));
+            $lines[] = TelegramCustomEmoji::tag('star').' <b>سطح:</b> '.TelegramHtml::escape(trim((string) $product->course_level));
         }
         if (filled($product->course_duration)) {
-            $lines[] = '⏱ <b>مدت:</b> '.TelegramHtml::escape(trim((string) $product->course_duration));
+            $lines[] = TelegramCustomEmoji::tag('lightning').' <b>مدت:</b> '.TelegramHtml::escape(trim((string) $product->course_duration));
         }
 
         $lines[] = $this->formatPriceLine(
@@ -35,7 +36,7 @@ class TelegramContentPresenter
             $product->sale_price !== null ? (int) $product->sale_price : null,
         );
         $lines[] = '';
-        $lines[] = '👇 یکی از دکمه‌های زیر را بزنید:';
+        $lines[] = TelegramCustomEmoji::tag('point_up').' یکی از دکمه‌های زیر را بزنید:';
 
         return implode("\n", $lines);
     }
@@ -53,11 +54,12 @@ class TelegramContentPresenter
     public function productReplyMarkup(Product $product): array
     {
         $keyboard = [
-            [$this->paymentButton('🛒 خرید امن و آنی', $product->id)],
+            [$this->paymentButton('خرید امن و آنی', $product->id, 'cart')],
             ...TelegramSiteUrl::urlKeyboardRow(
-                '🌐 جزئیات کامل در سایت',
+                'جزئیات کامل در سایت',
                 TelegramSiteUrl::resolve($product->landing_href, $product->slug),
                 'primary',
+                'globe',
             ),
         ];
 
@@ -67,21 +69,20 @@ class TelegramContentPresenter
     public function formatSeminarMessage(Seminar $seminar): string
     {
         $lines = [
-            '🎤 '.TelegramHtml::bold(trim((string) $seminar->title)),
+            TelegramCustomEmoji::tag('mic').' '.TelegramHtml::bold(trim((string) $seminar->title)),
             '──────────────',
         ];
 
         if ($seminar->date instanceof Carbon) {
-            $lines[] = '📅 <b>زمان:</b> '.JalaliDate::formatDateTime($seminar->date);
+            $lines[] = TelegramCustomEmoji::tag('calendar').' <b>زمان:</b> '.JalaliDate::formatDateTime($seminar->date);
         }
 
         if (filled($seminar->location)) {
-            $lines[] = '📍 <b>مکان:</b> '.TelegramHtml::escape(trim((string) $seminar->location));
+            $lines[] = TelegramCustomEmoji::tag('pin').' <b>مکان:</b> '.TelegramHtml::escape(trim((string) $seminar->location));
         }
 
         if (filled($seminar->description)) {
             $lines[] = '';
-            // Keep catalog cards short — Telegram photo captions max out at 1024 chars.
             $desc = trim(strip_tags((string) $seminar->description));
             if (mb_strlen($desc) > 180) {
                 $desc = rtrim(mb_substr($desc, 0, 180)).'…';
@@ -97,20 +98,16 @@ class TelegramContentPresenter
 
         if ($seminar->capacity !== null && $seminar->capacity > 0) {
             $lines[] = $seminar->isFull()
-                ? '⚠️ <b>ظرفیت تکمیل شده</b>'
-                : '👥 <b>ظرفیت باقی‌مانده:</b> '.$seminar->remainingSeats();
+                ? TelegramCustomEmoji::tag('warning').' <b>ظرفیت تکمیل شده</b>'
+                : TelegramCustomEmoji::tag('user').' <b>ظرفیت باقی‌مانده:</b> '.$seminar->remainingSeats();
         }
 
         $lines[] = '';
-        $lines[] = '👇 برای ثبت‌نام از دکمه‌های زیر استفاده کنید:';
+        $lines[] = TelegramCustomEmoji::tag('point_up').' برای ثبت‌نام از دکمه‌های زیر استفاده کنید:';
 
         return $this->fitTelegramCaption(implode("\n", $lines));
     }
 
-    /**
-     * Telegram sendPhoto caption limit is 1024 characters after entities.
-     * Also keep UTF-8 byte length under ~1000 to avoid false "too long" rejects.
-     */
     public function fitTelegramCaption(string $text, int $max = 900): string
     {
         $text = trim($text);
@@ -143,17 +140,23 @@ class TelegramContentPresenter
         [$price] = $this->seminarPrices($seminar);
 
         if ($seminar->isFull()) {
-            $keyboard[] = [['text' => '⛔ ظرفیت تکمیل شده', 'callback_data' => 'seminar:full', 'style' => 'danger']];
+            $keyboard[] = [[
+                'text' => 'ظرفیت تکمیل شده',
+                'callback_data' => 'seminar:full',
+                'style' => 'danger',
+                ...TelegramCustomEmoji::buttonIcon('warning'),
+            ]];
         } elseif ($product && $product->is_active && $price > 0) {
-            $keyboard[] = [$this->paymentButton('🛒 ثبت‌نام / پرداخت', $product->id)];
+            $keyboard[] = [$this->paymentButton('ثبت‌نام / پرداخت', $product->id, 'cart')];
         }
 
         $keyboard = [
             ...$keyboard,
             ...TelegramSiteUrl::urlKeyboardRow(
-                '🌐 مشاهده در سایت',
+                'مشاهده در سایت',
                 TelegramSiteUrl::seminarPage($seminar->slug),
                 'primary',
+                'globe',
             ),
         ];
 
@@ -164,23 +167,25 @@ class TelegramContentPresenter
         return ['reply_markup' => ['inline_keyboard' => $keyboard]];
     }
 
-    /** @return array{text: string, callback_data: string, style: string} */
-    private function paymentButton(string $label, int $productId): array
+    /** @return array{text: string, callback_data: string, style: string, icon_custom_emoji_id?: string} */
+    private function paymentButton(string $label, int $productId, string $iconKey = 'cart'): array
     {
         return [
             'text' => $label,
             'callback_data' => 'buy:'.$productId,
             'style' => 'success',
+            ...TelegramCustomEmoji::buttonIcon($iconKey),
         ];
     }
 
     private function formatPriceLine(int $price, ?int $salePrice): string
     {
         if ($salePrice !== null && $salePrice > 0 && $salePrice < $price) {
-            return '💰 <b>قیمت اصلی:</b> '.number_format($price)." تومان\n🔥 <b>قیمت ویژه:</b> ".number_format($salePrice).' تومان';
+            return TelegramCustomEmoji::tag('money').' <b>قیمت اصلی:</b> '.number_format($price).' تومان'
+                ."\n".TelegramCustomEmoji::tag('fire').' <b>قیمت ویژه:</b> '.number_format($salePrice).' تومان';
         }
 
-        return '💰 <b>قیمت:</b> '.number_format($price).' تومان';
+        return TelegramCustomEmoji::tag('money').' <b>قیمت:</b> '.number_format($price).' تومان';
     }
 
     /** @return array{0: int, 1: int|null} */

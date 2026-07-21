@@ -76,7 +76,23 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
 
     public function sendMessage(int|string $chatId, string $text, array $options = []): array
     {
-        return (array) $this->call('sendMessage', ['chat_id' => $chatId, 'text' => $text, ...$options]);
+        try {
+            return (array) $this->call('sendMessage', ['chat_id' => $chatId, 'text' => $text, ...$options]);
+        } catch (TelegramApiException $e) {
+            // Invalid custom emoji ids break the whole bot update — strip and retry once.
+            if (! str_contains($e->getMessage(), 'DOCUMENT_INVALID')) {
+                throw $e;
+            }
+
+            $safeText = \App\Modules\TelegramBot\Support\TelegramCustomEmoji::stripHtmlTags($text);
+            $safeOptions = \App\Modules\TelegramBot\Support\TelegramCustomEmoji::stripButtonIcons($options);
+
+            Log::channel('telegram')->warning('sendMessage DOCUMENT_INVALID — retrying without custom emoji.', [
+                'chat_id' => $chatId,
+            ]);
+
+            return (array) $this->call('sendMessage', ['chat_id' => $chatId, 'text' => $safeText, ...$safeOptions]);
+        }
     }
 
     public function sendSticker(int|string $chatId, string $sticker, array $options = []): array
@@ -306,6 +322,18 @@ class HttpTelegramBotClient implements TelegramBotClientInterface
     public function getFile(string $fileId): array
     {
         return (array) $this->call('getFile', ['file_id' => $fileId]);
+    }
+
+    public function getForumTopicIconStickers(): array
+    {
+        return array_values((array) $this->call('getForumTopicIconStickers'));
+    }
+
+    public function getCustomEmojiStickers(array $customEmojiIds): array
+    {
+        return array_values((array) $this->call('getCustomEmojiStickers', [
+            'custom_emoji_ids' => json_encode(array_values($customEmojiIds), JSON_UNESCAPED_UNICODE),
+        ]));
     }
 
     public function downloadFile(string $filePath): string

@@ -182,4 +182,19 @@ interface TelegramBotClientInterface
      * Returns raw bytes; never logs the tokenized download URL.
      */
     public function downloadFile(string $filePath): string;
+
+    /**
+     * Free custom emoji stickers allowed as forum topic icons (valid custom_emoji_id values).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function getForumTopicIconStickers(): array;
+
+    /**
+     * Resolve sticker metadata for known custom emoji ids.
+     *
+     * @param  list<string>  $customEmojiIds
+     * @return list<array<string, mixed>>
+     */
+    public function getCustomEmojiStickers(array $customEmojiIds): array;
 }

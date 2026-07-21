@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramDestination;
+use App\Modules\TelegramBot\Support\TelegramCustomEmoji;
 use App\Modules\TelegramBot\Support\TelegramHtml;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Services\CourseAccessService;
@@ -60,29 +61,29 @@ class TelegramCourseAccessPresenter
             : TelegramSiteUrl::coursesPanel();
 
         $lines = [
-            '✅ <b>شما به این دوره دسترسی دارید</b>',
+            TelegramCustomEmoji::tag('check').' <b>شما به این دوره دسترسی دارید</b>',
             '',
-            '🎓 '.TelegramHtml::bold(trim((string) $product->title)),
+            TelegramCustomEmoji::tag('graduation').' '.TelegramHtml::bold(trim((string) $product->title)),
             '──────────────',
             'برای پخش آنلاین داخل سایت، دکمه زیر را بزنید.',
         ];
 
         if (filled($licenseKey)) {
             $lines[] = '';
-            $lines[] = '🔑 <b>کلید اسپات‌پلیر</b> (اپلیکیشن دسکتاپ/موبایل):';
+            $lines[] = TelegramCustomEmoji::tag('key').' <b>کلید اسپات‌پلیر</b> (اپلیکیشن دسکتاپ/موبایل):';
             $lines[] = '<code>'.TelegramHtml::escape($licenseKey).'</code>';
         } else {
             $lines[] = '';
-            $lines[] = '🔑 کلید اسپات‌پلیر هنوز آماده نیست — از پشتیبانی پیگیری کنید.';
+            $lines[] = TelegramCustomEmoji::tag('key').' کلید اسپات‌پلیر هنوز آماده نیست — از پشتیبانی پیگیری کنید.';
         }
 
         if ($destRows !== []) {
             $lines[] = '';
-            $lines[] = '📍 کانال/گروه‌های ویژه این دوره را هم می‌توانید از دکمه‌های زیر باز کنید.';
+            $lines[] = TelegramCustomEmoji::tag('pin').' کانال/گروه‌های ویژه این دوره را هم می‌توانید از دکمه‌های زیر باز کنید.';
         }
 
         $keyboard = [];
-        foreach (TelegramSiteUrl::urlKeyboardRow('▶️ پخش آنلاین در پنل', $watchUrl, 'success') as $row) {
+        foreach (TelegramSiteUrl::urlKeyboardRow('پخش آنلاین در پنل', $watchUrl, 'success', 'play') as $row) {
             $keyboard[] = $row;
         }
         foreach ($destRows as $row) {
@@ -185,7 +186,7 @@ class TelegramCourseAccessPresenter
                 ? (string) $destination->join_request_url
                 : (filled($destination->username) ? 'https://t.me/'.ltrim((string) $destination->username, '@') : null);
 
-            $button = TelegramSiteUrl::inlineButton('📍 '.$destination->title, $url);
+            $button = TelegramSiteUrl::inlineButton($destination->title, $url, null, 'pin');
             if ($button !== null) {
                 $rows[] = [$button];
             }

@@ -90,18 +90,27 @@ trait BotAdminPanelFeatureHandlers
 
         $client->sendMessage($chatId, "⏳ در حال آماده‌سازی خروجی {$days} روز…");
 
-        $export = $this->userExport->exportTxt($bot, $days);
+        try {
+            $export = $this->userExport->exportTxt($bot, $days);
 
-        $client->sendDocument($chatId, [
-            'content' => $export['content'],
-            'filename' => $export['filename'],
-        ], [
-            'caption' => "✅ خروجی {$days} روز — {$export['count']} کاربر",
-        ]);
+            $client->sendDocument($chatId, [
+                'content' => $export['content'],
+                'filename' => $export['filename'],
+            ], [
+                'caption' => "✅ خروجی {$days} روز — {$export['count']} کاربر",
+            ]);
 
-        $client->sendMessage($chatId, 'فایل ارسال شد.', [
-            'reply_markup' => $this->adminMenuMarkup($account),
-        ]);
+            $client->sendMessage($chatId, 'فایل ارسال شد.', [
+                'reply_markup' => $this->adminMenuMarkup($account),
+            ]);
+        } catch (\Throwable $e) {
+            $client->sendMessage(
+                $chatId,
+                '⚠️ ارسال فایل خروجی ناموفق بود. دوباره تلاش کنید یا از پنل وب خروجی بگیرید.',
+                ['reply_markup' => $this->adminMenuMarkup($account)],
+            );
+            throw $e;
+        }
     }
 
     private function openTicketsSection(
@@ -332,7 +341,7 @@ trait BotAdminPanelFeatureHandlers
         }
 
         $key = (string) ($parts[3] ?? '');
-        if ($key === '' || ! isset(BotMessageCatalog::DEFAULTS[$key])) {
+        if ($key === '' || ! isset(BotMessageCatalog::defaults()[$key])) {
             throw new RuntimeException('کلید پیام نامعتبر است.');
         }
 
@@ -354,7 +363,7 @@ trait BotAdminPanelFeatureHandlers
                 ]);
                 $client->sendMessage(
                     $chatId,
-                    "✏️ متن جدید برای «".BotMessageCatalog::DEFAULTS[$key]['label']."» را بفرستید:\n\n"
+                    "✏️ متن جدید برای «".BotMessageCatalog::defaults()[$key]['label']."» را بفرستید:\n\n"
                     ."الان:\n".$this->messageCatalog->get($bot, $key),
                     [
                         'reply_markup' => [
@@ -378,7 +387,7 @@ trait BotAdminPanelFeatureHandlers
         int $messageId,
         string $key,
     ): void {
-        $meta = BotMessageCatalog::DEFAULTS[$key];
+        $meta = BotMessageCatalog::defaults()[$key];
         $body = $this->messageCatalog->get($bot, $key);
 
         $this->editOrSend(
@@ -407,7 +416,7 @@ trait BotAdminPanelFeatureHandlers
         string $text,
     ): void {
         $key = (string) data_get($conversation->context, 'admin.draft.message_key');
-        if ($key === '' || ! isset(BotMessageCatalog::DEFAULTS[$key])) {
+        if ($key === '' || ! isset(BotMessageCatalog::defaults()[$key])) {
             throw new RuntimeException('کلید پیام نامعتبر است.');
         }
 

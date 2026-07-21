@@ -10,11 +10,11 @@ declare(strict_types=1);
  * نصب:
  *   1) این فایل → مثلاً /bahram/index.php
  *   2) .htaccess کنارش
- *   3) در پنل آدرس: https://your-host.example/bahram  (بدون /index.php)
+ *   3) در پنل آدرس: https://bahram.rahai.online/bahram  (بدون /index.php)
  */
 
-const BACKEND_ORIGIN = '__BACKEND_ORIGIN__';
-const PROXY_SHARED_TOKEN = '__PROXY_SHARED_TOKEN__';
+const BACKEND_ORIGIN = 'https://rostami.app';
+const PROXY_SHARED_TOKEN = 'abXgwdBJrq1k8EiUUcp3B62ELu4fn41iDQyIrIVDetWz2Z3S9VRBqhcBzaLGXdIA';
 const PROXY_ORIGIN_VALUE = 'Cloudflare-Worker';
 const TELEGRAM_API_ORIGIN = 'https://api.telegram.org';
 const WEBHOOK_PATH_PREFIX = '/api/v1/integrations/telegram/';
@@ -152,10 +152,23 @@ function proxyTelegramApi(string $path): void
     $query = $_SERVER['QUERY_STRING'] ?? '';
     $target = rtrim(TELEGRAM_API_ORIGIN, '/').$path.($query !== '' ? '?'.$query : '');
     $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+    $contentType = (string) ($_SERVER['CONTENT_TYPE'] ?? '');
+
+    // PHP empties php://input for multipart — rebuild from $_POST/$_FILES.
+    if ($method !== 'GET' && $method !== 'HEAD' && str_contains(strtolower($contentType), 'multipart/form-data')) {
+        $result = curlRequestMultipart($method, $target, buildMultipartPostFields());
+        http_response_code($result['status']);
+        if ($result['content_type']) {
+            header('Content-Type: '.$result['content_type']);
+        }
+        echo $result['body'];
+
+        return;
+    }
+
     $body = ($method === 'GET' || $method === 'HEAD') ? null : (file_get_contents('php://input') ?: '');
 
     $headers = [];
-    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
     if ($contentType !== '') {
         $headers[] = 'Content-Type: '.$contentType;
     }
@@ -166,6 +179,111 @@ function proxyTelegramApi(string $path): void
         header('Content-Type: '.$result['content_type']);
     }
     echo $result['body'];
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function buildMultipartPostFields(): array
+{
+    $fields = $_POST;
+
+    foreach ($_FILES as $key => $file) {
+        if (! is_array($file) || ! isset($file['tmp_name'])) {
+            continue;
+        }
+
+        // Single file field
+        if (! is_array($file['tmp_name'])) {
+            $tmp = (string) $file['tmp_name'];
+            if ($tmp !== '' && is_uploaded_file($tmp)) {
+                $fields[$key] = new CURLFile(
+                    $tmp,
+                    (string) ($file['type'] ?: 'application/octet-stream'),
+                    (string) ($file['name'] ?: $key),
+                );
+            }
+
+            continue;
+        }
+
+        // Multi-file field (rare for Bot API)
+        $group = [];
+        foreach ($file['tmp_name'] as $i => $tmp) {
+            $tmp = (string) $tmp;
+            if ($tmp === '' || ! is_uploaded_file($tmp)) {
+                continue;
+            }
+            $group[] = new CURLFile(
+                $tmp,
+                (string) ($file['type'][$i] ?? 'application/octet-stream'),
+                (string) ($file['name'][$i] ?? $key),
+            );
+        }
+        if ($group !== []) {
+            $fields[$key] = $group;
+        }
+    }
+
+    return $fields;
+}
+
+/**
+ * @param  array<string, mixed>  $postFields
+ * @return array{status:int, body:string, content_type:?string}
+ */
+function curlRequestMultipart(string $method, string $url, array $postFields): array
+{
+    $ch = curl_init($url);
+    if ($ch === false) {
+        http_response_code(502);
+        header('Content-Type: application/json');
+        echo json_encode(['ok' => false, 'error' => 'curl_init failed'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    // Do NOT set Content-Type manually — curl adds multipart boundary.
+    $opts = [
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_TIMEOUT => 120,
+        CURLOPT_CONNECTTIMEOUT => 15,
+        CURLOPT_POSTFIELDS => $postFields,
+        CURLOPT_HEADER => true,
+    ];
+    curl_setopt_array($ch, $opts);
+
+    $raw = curl_exec($ch);
+    if ($raw === false) {
+        $err = curl_error($ch);
+        curl_close($ch);
+        http_response_code(502);
+        header('Content-Type: application/json');
+        echo json_encode([
+            'ok' => false,
+            'error' => 'Upstream Unreachable',
+            'detail' => $err,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $headerSize = (int) curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    curl_close($ch);
+
+    $rawHeaders = substr($raw, 0, $headerSize);
+    $respBody = substr($raw, $headerSize);
+    $respCt = null;
+    if (preg_match('/^Content-Type:\s*(.+)$/mi', $rawHeaders, $m) === 1) {
+        $respCt = trim($m[1]);
+    }
+
+    return [
+        'status' => $status,
+        'body' => $respBody === false ? '' : $respBody,
+        'content_type' => $respCt,
+    ];
 }
 
 /**

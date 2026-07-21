@@ -5,6 +5,7 @@ namespace App\Modules\TelegramBot\Services;
 use App\Modules\TelegramBot\Enums\BotFeatureFlag;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
+use App\Modules\TelegramBot\Support\TelegramCustomEmoji;
 
 class MainMenuKeyboard
 {
@@ -39,11 +40,30 @@ class MainMenuKeyboard
         self::ACTION_ADMIN => 'menu_btn_admin',
     ];
 
+    /** Premium icon key per action (icon_custom_emoji_id on reply keyboard). */
+    public const ACTION_ICONS = [
+        self::ACTION_COURSES => 'graduation',
+        self::ACTION_SEMINARS => 'mic',
+        self::ACTION_SAT => 'bell',
+        self::ACTION_CHANNEL => 'channel',
+        self::ACTION_FAMILY => 'family',
+        self::ACTION_REFERRAL => 'gift',
+        self::ACTION_SUPPORT => 'support',
+        self::ACTION_ACCOUNT => 'user',
+        self::ACTION_ADMIN => 'tools',
+    ];
+
     /** Old labels that may still sit on users' reply keyboards. */
     private const LEGACY_ALIASES = [
-        self::ACTION_COURSES => ['دوره کمپین نویسی 🎓'],
-        self::ACTION_ACCOUNT => ['حساب کاربری 👤'],
-        self::ACTION_ADMIN => ['پنل ادمین بات 🛠'],
+        self::ACTION_COURSES => ['دوره‌ها 🎓', 'دوره کمپین نویسی 🎓', 'دوره‌ها'],
+        self::ACTION_SEMINARS => ['سمینارها 🎤', 'سمینارها'],
+        self::ACTION_SAT => ['سات ☎️', 'سات'],
+        self::ACTION_CHANNEL => ['کانال مرجع 📣', 'کانال مرجع'],
+        self::ACTION_FAMILY => ['خانواده 👨‍👩‍👧‍👦', 'خانواده'],
+        self::ACTION_REFERRAL => ['معرفی دوستان 🎁', 'معرفی دوستان'],
+        self::ACTION_SUPPORT => ['پشتیبانی 🎫', 'پشتیبانی'],
+        self::ACTION_ACCOUNT => ['حساب من 👤', 'حساب کاربری 👤', 'حساب من', 'حساب کاربری'],
+        self::ACTION_ADMIN => ['پنل ادمین 🛠', 'پنل ادمین بات 🛠', 'پنل ادمین', 'پنل ادمین بات'],
     ];
 
     public function __construct(
@@ -60,10 +80,6 @@ class MainMenuKeyboard
         return $this->normalizeButtonText($this->messages->get($bot, $key));
     }
 
-    /**
-     * Resolve a pressed reply-keyboard label to an action.
-     * Accepts the current custom label, default label, and legacy aliases.
-     */
     public function resolveAction(string $text, TelegramBot $bot): ?string
     {
         $text = trim($text);
@@ -73,7 +89,7 @@ class MainMenuKeyboard
 
         foreach (self::ACTION_KEYS as $action => $key) {
             $current = $this->normalizeButtonText($this->messages->get($bot, $key));
-            $default = $this->normalizeButtonText((string) (BotMessageCatalog::DEFAULTS[$key]['body'] ?? ''));
+            $default = $this->normalizeButtonText((string) (BotMessageCatalog::defaults()[$key]['body'] ?? ''));
             $legacy = self::LEGACY_ALIASES[$action] ?? [];
 
             if ($text === $current || ($default !== '' && $text === $default) || in_array($text, $legacy, true)) {
@@ -99,18 +115,16 @@ class MainMenuKeyboard
         $support = $this->buttonLabel($bot, self::ACTION_SUPPORT);
         $accountBtn = $this->buttonLabel($bot, self::ACTION_ACCOUNT);
 
-        // Primary CTA full-width, then paired rows for thumb reachability.
+        // Prefer 3-across rows for denser, less repetitive layout.
         $rows = [
-            [$courses],
-            [$seminars, $sat],
-            [$channel, $family],
+            [$courses, $seminars, $sat],
+            [$channel, $family, $support],
         ];
 
         if ($bot->featureEnabled(BotFeatureFlag::ReferralEnabled)) {
-            $rows[] = [$this->buttonLabel($bot, self::ACTION_REFERRAL), $support];
-            $rows[] = [$accountBtn];
+            $rows[] = [$this->buttonLabel($bot, self::ACTION_REFERRAL), $accountBtn];
         } else {
-            $rows[] = [$support, $accountBtn];
+            $rows[] = [$accountBtn];
         }
 
         if ($account?->isBotAdmin()) {
@@ -124,8 +138,24 @@ class MainMenuKeyboard
     public function replyMarkup(?TelegramAccount $account = null, ?TelegramBot $bot = null): array
     {
         $keyboard = [];
+        $actionsByLabel = [];
+        if ($bot !== null) {
+            foreach (self::ACTION_KEYS as $action => $_) {
+                $actionsByLabel[$this->buttonLabel($bot, $action)] = $action;
+            }
+        }
+
         foreach ($this->rows($account, $bot) as $row) {
-            $keyboard[] = array_map(static fn (string $text) => ['text' => $text], $row);
+            $keyboard[] = array_map(function (string $text) use ($actionsByLabel) {
+                $button = ['text' => $text];
+                $action = $actionsByLabel[$text] ?? null;
+                $iconKey = $action !== null ? (self::ACTION_ICONS[$action] ?? null) : null;
+                if ($iconKey !== null) {
+                    $button = [...$button, ...TelegramCustomEmoji::buttonIcon($iconKey)];
+                }
+
+                return $button;
+            }, $row);
         }
 
         return [
@@ -135,42 +165,43 @@ class MainMenuKeyboard
         ];
     }
 
-    /**
-     * Inline shortcuts under welcome / menu hint (interactive tap without reply keyboard).
-     *
-     * @return array<string, mixed>
-     */
+    /** @return array<string, mixed> */
     public function quickNavInlineMarkup(TelegramBot $bot): array
     {
         $rows = [
             [
                 [
-                    'text' => '🎓 دوره‌ها',
+                    'text' => 'دوره‌ها',
                     'callback_data' => 'nav:'.self::ACTION_COURSES,
                     'style' => 'primary',
+                    ...TelegramCustomEmoji::buttonIcon('graduation'),
                 ],
                 [
-                    'text' => '🎤 سمینارها',
+                    'text' => 'سمینارها',
                     'callback_data' => 'nav:'.self::ACTION_SEMINARS,
+                    ...TelegramCustomEmoji::buttonIcon('mic'),
                 ],
             ],
             [
                 [
-                    'text' => '👤 حساب من',
+                    'text' => 'حساب من',
                     'callback_data' => 'nav:'.self::ACTION_ACCOUNT,
+                    ...TelegramCustomEmoji::buttonIcon('user'),
                 ],
                 [
-                    'text' => '🎫 پشتیبانی',
+                    'text' => 'پشتیبانی',
                     'callback_data' => 'nav:'.self::ACTION_SUPPORT,
                     'style' => 'success',
+                    ...TelegramCustomEmoji::buttonIcon('support'),
                 ],
             ],
         ];
 
         if ($bot->featureEnabled(BotFeatureFlag::ReferralEnabled)) {
             $rows[] = [[
-                'text' => '🎁 معرفی دوستان',
+                'text' => 'معرفی دوستان',
                 'callback_data' => 'nav:'.self::ACTION_REFERRAL,
+                ...TelegramCustomEmoji::buttonIcon('gift'),
             ]];
         }
 
@@ -202,20 +233,18 @@ class MainMenuKeyboard
     private function defaultRows(?TelegramAccount $account, ?TelegramBot $bot): array
     {
         $rows = [
-            ['دوره‌ها 🎓'],
-            ['سمینارها 🎤', 'سات ☎️'],
-            ['کانال مرجع 📣', 'خانواده 👨‍👩‍👧‍👦'],
+            ['دوره‌ها', 'سمینارها', 'سات'],
+            ['کانال مرجع', 'خانواده', 'پشتیبانی'],
         ];
 
         if ($bot === null || $bot->featureEnabled(BotFeatureFlag::ReferralEnabled)) {
-            $rows[] = ['معرفی دوستان 🎁', 'پشتیبانی 🎫'];
-            $rows[] = ['حساب من 👤'];
+            $rows[] = ['معرفی دوستان', 'حساب من'];
         } else {
-            $rows[] = ['پشتیبانی 🎫', 'حساب من 👤'];
+            $rows[] = ['حساب من'];
         }
 
         if ($account?->isBotAdmin()) {
-            $rows[] = ['پنل ادمین 🛠'];
+            $rows[] = ['پنل ادمین'];
         }
 
         return $rows;
@@ -223,6 +252,8 @@ class MainMenuKeyboard
 
     private function normalizeButtonText(string $text): string
     {
+        $text = strip_tags($text);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = str_replace(["\r\n", "\r"], "\n", trim($text));
         $firstLine = trim(explode("\n", $text, 2)[0] ?? '');
 

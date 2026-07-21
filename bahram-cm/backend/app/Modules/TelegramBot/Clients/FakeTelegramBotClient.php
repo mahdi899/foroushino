@@ -263,6 +263,16 @@ class FakeTelegramBotClient implements TelegramBotClientInterface
         return (string) $this->record('downloadFile', compact('filePath'), '');
     }
 
+    public function getForumTopicIconStickers(): array
+    {
+        return (array) $this->record('getForumTopicIconStickers', [], []);
+    }
+
+    public function getCustomEmojiStickers(array $customEmojiIds): array
+    {
+        return (array) $this->record('getCustomEmojiStickers', compact('customEmojiIds'), []);
+    }
+
     /** @param  array<string, mixed>  $arguments */
     private function record(string $method, array $arguments, mixed $default): mixed
     {

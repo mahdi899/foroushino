@@ -30,7 +30,7 @@ class TelegramMessageAdminController
         $this->authorizeTelegram($request, 'telegram.content.manage');
         $bot = $this->resolveBot($request);
 
-        abort_unless(isset(BotMessageCatalog::DEFAULTS[$key]), 404);
+        abort_unless(isset(BotMessageCatalog::defaults()[$key]), 404);
 
         $max = str_starts_with($key, 'menu_btn_') ? 64 : 4000;
         $data = $request->validate([
@@ -61,16 +61,16 @@ class TelegramMessageAdminController
         $this->authorizeTelegram($request, 'telegram.content.manage');
         $bot = $this->resolveBot($request);
 
-        abort_unless(isset(BotMessageCatalog::DEFAULTS[$key]), 404);
+        abort_unless(isset(BotMessageCatalog::defaults()[$key]), 404);
 
         $this->catalog->reset($bot, $key);
 
         return response()->json([
             'data' => [
                 'key' => $key,
-                'body' => BotMessageCatalog::DEFAULTS[$key]['body'],
-                'label' => BotMessageCatalog::DEFAULTS[$key]['label'],
-                'category' => BotMessageCatalog::DEFAULTS[$key]['category'],
+                'body' => BotMessageCatalog::defaults()[$key]['body'],
+                'label' => BotMessageCatalog::defaults()[$key]['label'],
+                'category' => BotMessageCatalog::defaults()[$key]['category'],
                 'is_custom' => false,
             ],
         ]);

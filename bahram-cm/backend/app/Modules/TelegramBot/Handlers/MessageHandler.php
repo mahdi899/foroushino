@@ -28,6 +28,7 @@ use App\Modules\TelegramBot\Services\TelegramAdminUserStatsService;
 use App\Support\InflatedMemberCount;
 use App\Modules\TelegramBot\Support\TelegramHtml;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
+use App\Modules\TelegramBot\Support\TelegramCustomEmoji;
 use App\Services\ReferralService;
 
 class MessageHandler implements UpdateHandlerInterface
@@ -283,7 +284,7 @@ class MessageHandler implements UpdateHandlerInterface
             MainMenuKeyboard::ACTION_SUPPORT => $this->openSupportHub($bot, $account, $chatId),
             MainMenuKeyboard::ACTION_ACCOUNT => $this->sendAccount($bot, $chatId, $account),
             MainMenuKeyboard::ACTION_ADMIN => $this->botAdmin->openDashboard($bot, $account, $chatId),
-            default => $this->replyHtml($bot, $chatId, "🏠 <b>منوی اصلی</b>\nاز دکمه‌های پایین استفاده کنید.", [
+            default => $this->replyHtml($bot, $chatId, TelegramCustomEmoji::tag('home').' <b>منوی اصلی</b>\nاز دکمه‌های پایین استفاده کنید.', [
                 'reply_markup' => $this->mainMenu->replyMarkup($account, $bot),
             ]),
         };
@@ -418,7 +419,12 @@ class MessageHandler implements UpdateHandlerInterface
                 [
                     'reply_markup' => [
                         'inline_keyboard' => [[
-                            ['text' => '🎫 پشتیبانی', 'callback_data' => 'nav:support', 'style' => 'primary'],
+                            [
+                                'text' => 'پشتیبانی',
+                                'callback_data' => 'nav:support',
+                                'style' => 'primary',
+                                ...TelegramCustomEmoji::buttonIcon('support'),
+                            ],
                         ]],
                     ],
                 ],
@@ -659,10 +665,10 @@ class MessageHandler implements UpdateHandlerInterface
         $text = $this->userStats->formatProfileText($account);
 
         $keyboard = [];
-        foreach (TelegramSiteUrl::urlKeyboardRow('🔐 احراز هویت سطح ۲', $identityUrl, 'primary') as $row) {
+        foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', $identityUrl, 'primary', 'lock') as $row) {
             $keyboard[] = $row;
         }
-        foreach (TelegramSiteUrl::urlKeyboardRow('🎓 ورود به پنل دانشجو', $panelUrl, 'success') as $row) {
+        foreach (TelegramSiteUrl::urlKeyboardRow('ورود به پنل دانشجو', $panelUrl, 'success', 'graduation') as $row) {
             $keyboard[] = $row;
         }
 

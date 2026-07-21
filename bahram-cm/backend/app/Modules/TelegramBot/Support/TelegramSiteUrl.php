@@ -187,8 +187,8 @@ final class TelegramSiteUrl
         return ! in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true);
     }
 
-    /** @return array{text: string, url: string, style?: string}|null */
-    public static function inlineButton(string $label, ?string $url, ?string $style = null): ?array
+    /** @return array{text: string, url: string, style?: string, icon_custom_emoji_id?: string}|null */
+    public static function inlineButton(string $label, ?string $url, ?string $style = null, ?string $iconKey = null): ?array
     {
         if (! self::isInlineButtonUrl($url)) {
             return null;
@@ -200,17 +200,21 @@ final class TelegramSiteUrl
             $button['style'] = $style;
         }
 
+        if ($iconKey !== null) {
+            $button = [...$button, ...\App\Modules\TelegramBot\Support\TelegramCustomEmoji::buttonIcon($iconKey)];
+        }
+
         return $button;
     }
 
     /**
      * One full-width URL button row (membership / payment style).
      *
-     * @return list<list<array{text: string, url: string, style?: string}>>
+     * @return list<list<array{text: string, url: string, style?: string, icon_custom_emoji_id?: string}>>
      */
-    public static function urlKeyboardRow(string $label, ?string $url, ?string $style = null): array
+    public static function urlKeyboardRow(string $label, ?string $url, ?string $style = null, ?string $iconKey = null): array
     {
-        $button = self::inlineButton($label, $url, $style);
+        $button = self::inlineButton($label, $url, $style, $iconKey);
 
         return $button !== null ? [[$button]] : [];
     }
