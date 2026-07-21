@@ -106,7 +106,7 @@ export function ImageBlock({
         {shouldLoad && showPreview && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={previewSrc}
+            src={previewSrc ?? undefined}
             alt=""
             decoding="async"
             aria-hidden
