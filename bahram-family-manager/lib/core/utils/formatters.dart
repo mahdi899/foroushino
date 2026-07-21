@@ -18,14 +18,17 @@ String faNumber(num value) => toFaDigits(value.toStringAsFixed(value % 1 == 0 ? 
 
 String faPercent(double value) => '${toFaDigits(value.toStringAsFixed(0))}٪';
 
-/// Best-effort relative-ish formatting without pulling in a heavy date
-/// package beyond `intl` — good enough for a manager dashboard.
+/// Formats an ISO-8601 instant as Iran (Asia/Tehran) wall clock with date.
+/// Iran has no DST since 2022 (fixed UTC+03:30).
 String formatDateTime(String? iso) {
   if (iso == null || iso.isEmpty) return '—';
   try {
-    final date = DateTime.parse(iso).toLocal();
+    final utc = DateTime.parse(iso).toUtc();
+    final tehran = utc.add(const Duration(hours: 3, minutes: 30));
     final two = (int n) => n.toString().padLeft(2, '0');
-    return toFaDigits('${two(date.hour)}:${two(date.minute)} - ${two(date.day)}/${two(date.month)}/${date.year}');
+    return toFaDigits(
+      '${two(tehran.hour)}:${two(tehran.minute)} - ${two(tehran.day)}/${two(tehran.month)}/${tehran.year}',
+    );
   } catch (_) {
     return iso;
   }

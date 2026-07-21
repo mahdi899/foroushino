@@ -5,7 +5,6 @@ namespace App\Support;
 use App\Enums\Family\FamilyPostAudienceMode;
 use App\Models\FamilyMedia;
 use App\Models\FamilyPost;
-use App\Support\FamilyMediaUrl;
 use Illuminate\Support\Collection;
 
 /** Shapes Family Manager post JSON for admin clients (includes safe media URLs). */
@@ -25,9 +24,9 @@ final class FamilyManagerPostPresenter
             'is_important' => (bool) $post->is_important,
             'comments_enabled' => (bool) ($post->comments_enabled ?? true),
             'is_pinned' => (bool) $post->is_pinned,
-            'pinned_at' => $post->pinned_at?->toIso8601String(),
-            'published_at' => $post->published_at?->toIso8601String(),
-            'created_at' => $post->created_at?->toIso8601String(),
+            'pinned_at' => FamilyDateTime::toApi($post->pinned_at),
+            'published_at' => FamilyDateTime::toApi($post->published_at),
+            'created_at' => FamilyDateTime::toApi($post->created_at),
             'author' => [
                 'name' => $post->author?->name ?? 'بهرام',
             ],

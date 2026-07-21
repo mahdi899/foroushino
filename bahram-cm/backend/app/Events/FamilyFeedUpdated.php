@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use App\Models\FamilyPost;
+use App\Support\FamilyDateTime;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -39,7 +40,7 @@ class FamilyFeedUpdated implements ShouldBroadcastNow
         return [
             'post_id' => $this->post->id,
             'latest_post_id' => $this->post->id,
-            'published_at' => $this->post->published_at?->toIso8601String(),
+            'published_at' => FamilyDateTime::toApi($this->post->published_at),
             'is_important' => (bool) $this->post->is_important,
             'event' => $this->event,
         ];

@@ -1,9 +1,13 @@
+import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:video_player/video_player.dart';
 
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
+import 'package:bahram_family_manager/core/utils/media_playback_source.dart';
 import 'package:bahram_family_manager/core/utils/media_url.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/widgets/media/media_thumbnail.dart';
@@ -16,6 +20,8 @@ class FamilyMediaView extends StatelessWidget {
     this.borderRadius,
     this.compact = false,
     this.previewOnly = false,
+    this.localBytes,
+    this.localUrl,
   });
 
   final FamilyMediaRef media;
@@ -24,47 +30,117 @@ class FamilyMediaView extends StatelessWidget {
   final bool compact;
   /// List/feed previews — thumbnail only, no video decoder.
   final bool previewOnly;
+  /// Immediate preview from the just-picked file (before CDN URL exists).
+  final Uint8List? localBytes;
+  /// Blob URL (web) or temp file path (IO) for video/audio local preview.
+  final String? localUrl;
 
   @override
   Widget build(BuildContext context) {
     final radius = borderRadius ?? BorderRadius.circular(18);
-    final url = media.playableUrl;
+    final networkUrl = media.playableUrl;
+    final localPlaybackUrl = localUrl;
 
     if (previewOnly) {
-      return MediaThumbnail(media: media, height: height, borderRadius: radius);
-    }
-
-    if (media.isImage && url != null) {
-      return _ImageView(
-        url: url,
-        maxHeight: height,
-        radius: radius,
+      return MediaThumbnail(
+        media: media,
+        height: height,
+        borderRadius: radius,
+        localBytes: localBytes,
       );
     }
-    if (media.isVideo && url != null) {
-      return _VideoView(url: url, height: height, radius: radius);
-    }
-    if (media.isAudio && url != null) {
-      return _AudioView(media: media, url: url, compact: compact);
+
+    if (media.isImage) {
+      if (localBytes != null && localBytes!.isNotEmpty) {
+        return _ImageView(
+          bytes: localBytes,
+          maxHeight: height,
+          radius: radius,
+        );
+      }
+      if (networkUrl != null) {
+        return _ImageView(
+          url: networkUrl,
+          maxHeight: height,
+          radius: radius,
+        );
+      }
     }
 
-    return MediaThumbnail(media: media, height: height, borderRadius: radius);
+    if (media.isVideo) {
+      final source = networkUrl ?? localPlaybackUrl;
+      if (source != null) {
+        return _VideoView(
+          key: ValueKey('video-$source'),
+          source: source,
+          isFilePath: networkUrl == null && !kIsWeb,
+          height: height,
+          radius: radius,
+        );
+      }
+    }
+
+    if (media.isAudio) {
+      final source = networkUrl ?? localPlaybackUrl;
+      if (source != null) {
+        return _AudioView(
+          key: ValueKey('audio-$source'),
+          media: media,
+          url: source,
+          isFilePath: networkUrl == null && !kIsWeb,
+          compact: compact,
+        );
+      }
+    }
+
+    return MediaThumbnail(
+      media: media,
+      height: height,
+      borderRadius: radius,
+      localBytes: localBytes,
+    );
   }
 }
 
 class _ImageView extends StatelessWidget {
   const _ImageView({
-    required this.url,
     required this.radius,
+    this.url,
+    this.bytes,
     this.maxHeight = 360,
   });
 
-  final String url;
+  final String? url;
+  final Uint8List? bytes;
   final double maxHeight;
   final BorderRadius radius;
 
   @override
   Widget build(BuildContext context) {
+    final image = bytes != null && bytes!.isNotEmpty
+        ? Image.memory(
+            bytes!,
+            fit: BoxFit.contain,
+            width: double.infinity,
+            height: maxHeight,
+            errorBuilder: (_, __, ___) => const Center(
+              child: Icon(Icons.broken_image_rounded, color: AppColors.textMuted, size: 40),
+            ),
+          )
+        : Image.network(
+            url!,
+            fit: BoxFit.contain,
+            width: double.infinity,
+            height: maxHeight,
+            loadingBuilder: (context, child, progress) {
+              if (progress == null) return child;
+              return const Center(child: CircularProgressIndicator());
+            },
+            errorBuilder: (_, __, ___) => const Center(
+              child: Icon(Icons.broken_image_rounded, color: AppColors.textMuted, size: 40),
+            ),
+          );
+
     return ClipRRect(
       borderRadius: radius,
       child: SizedBox(
@@ -73,19 +149,7 @@ class _ImageView extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(
-              url,
-              fit: BoxFit.contain,
-              width: double.infinity,
-              height: maxHeight,
-              loadingBuilder: (context, child, progress) {
-                if (progress == null) return child;
-                return const Center(child: CircularProgressIndicator());
-              },
-              errorBuilder: (_, __, ___) => const Center(
-                child: Icon(Icons.broken_image_rounded, color: AppColors.textMuted, size: 40),
-              ),
-            ),
+            image,
             Positioned(
               top: AppSpacing.sm,
               right: AppSpacing.sm,
@@ -113,37 +177,69 @@ class _ImageView extends StatelessWidget {
 }
 
 class _VideoView extends StatefulWidget {
-  const _VideoView({required this.url, required this.height, required this.radius});
+  const _VideoView({
+    super.key,
+    required this.source,
+    required this.height,
+    required this.radius,
+    this.isFilePath = false,
+  });
 
-  final String url;
+  final String source;
   final double height;
   final BorderRadius radius;
+  final bool isFilePath;
 
   @override
   State<_VideoView> createState() => _VideoViewState();
 }
 
 class _VideoViewState extends State<_VideoView> {
-  late final VideoPlayerController _controller;
+  VideoPlayerController? _controller;
   var _ready = false;
+  var _failed = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
-      ..initialize().then((_) {
-        if (mounted) setState(() => _ready = true);
-      });
+    _init();
+  }
+
+  @override
+  void didUpdateWidget(covariant _VideoView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.source != widget.source || oldWidget.isFilePath != widget.isFilePath) {
+      _controller?.dispose();
+      _controller = null;
+      _ready = false;
+      _failed = false;
+      _init();
+    }
+  }
+
+  Future<void> _init() async {
+    try {
+      final controller = createVideoPlayerController(
+        widget.source,
+        isLocalFile: widget.isFilePath,
+      );
+      _controller = controller;
+      await controller.initialize();
+      if (mounted) setState(() => _ready = true);
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final controller = _controller;
     return ClipRRect(
       borderRadius: widget.radius,
       child: Container(
@@ -152,14 +248,16 @@ class _VideoViewState extends State<_VideoView> {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            if (_ready)
+            if (_ready && controller != null)
               AspectRatio(
-                aspectRatio: _controller.value.aspectRatio,
-                child: VideoPlayer(_controller),
+                aspectRatio: controller.value.aspectRatio,
+                child: VideoPlayer(controller),
               )
+            else if (_failed)
+              const Icon(Icons.broken_image_rounded, color: Colors.white70, size: 40)
             else
               const CircularProgressIndicator(color: Colors.white),
-            if (_ready)
+            if (_ready && controller != null)
               DecoratedBox(
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.25),
@@ -168,10 +266,10 @@ class _VideoViewState extends State<_VideoView> {
                 child: IconButton(
                   iconSize: 52,
                   color: Colors.white,
-                  icon: Icon(_controller.value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                  icon: Icon(controller.value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
                   onPressed: () {
                     setState(() {
-                      _controller.value.isPlaying ? _controller.pause() : _controller.play();
+                      controller.value.isPlaying ? controller.pause() : controller.play();
                     });
                   },
                 ),
@@ -184,11 +282,18 @@ class _VideoViewState extends State<_VideoView> {
 }
 
 class _AudioView extends StatefulWidget {
-  const _AudioView({required this.media, required this.url, required this.compact});
+  const _AudioView({
+    super.key,
+    required this.media,
+    required this.url,
+    required this.compact,
+    this.isFilePath = false,
+  });
 
   final FamilyMediaRef media;
   final String url;
   final bool compact;
+  final bool isFilePath;
 
   @override
   State<_AudioView> createState() => _AudioViewState();
@@ -209,9 +314,22 @@ class _AudioViewState extends State<_AudioView> {
     });
   }
 
+  @override
+  void didUpdateWidget(covariant _AudioView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url || oldWidget.isFilePath != widget.isFilePath) {
+      _loading = true;
+      _init();
+    }
+  }
+
   Future<void> _init() async {
     try {
-      await _player.setUrl(widget.url);
+      await setAudioPlayerSource(
+        _player,
+        widget.url,
+        isLocalFile: widget.isFilePath,
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }

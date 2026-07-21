@@ -29,18 +29,23 @@ function tehranDayKey(d: Date): string {
   return tehranDayFormatter.format(d);
 }
 
-function isSameTehranDay(a: Date, b: Date): boolean {
-  return tehranDayKey(a) === tehranDayKey(b);
+/** شیفت روز تقویمی تهران با کلید YYYY-MM-DD (مستقل از TZ مرورگر) */
+function shiftTehranDayKey(dayKey: string, deltaDays: number): string {
+  const [y, m, d] = dayKey.split('-').map(Number);
+  if (!y || !m || !d) return dayKey;
+  const utc = new Date(Date.UTC(y, m - 1, d + deltaDays));
+  const yy = utc.getUTCFullYear();
+  const mm = String(utc.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(utc.getUTCDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
 }
 
-function tehranToday(): Date {
-  return new Date();
+function tehranTodayKey(): string {
+  return tehranDayKey(new Date());
 }
 
-function tehranYesterday(): Date {
-  const d = tehranToday();
-  d.setDate(d.getDate() - 1);
-  return d;
+function tehranYesterdayKey(): string {
+  return shiftTehranDayKey(tehranTodayKey(), -1);
 }
 
 function formatPersianTime(d: Date): string {
@@ -50,7 +55,7 @@ function formatPersianTime(d: Date): string {
 /** روز + ماه شمسی؛ سال فقط وقتی با امسال فرق داشته باشد */
 function formatPersianPostDate(d: Date): string {
   const postYear = persianDateFormatter({ year: 'numeric' }).format(d);
-  const currentYear = persianDateFormatter({ year: 'numeric' }).format(tehranToday());
+  const currentYear = persianDateFormatter({ year: 'numeric' }).format(new Date());
 
   return persianDateFormatter({
     day: 'numeric',
@@ -71,11 +76,9 @@ export function formatFeedDaySeparator(iso: string): string {
   const d = parseDate(iso);
   if (!d) return iso;
 
-  const today = tehranToday();
-  const yesterday = tehranYesterday();
-
-  if (isSameTehranDay(d, today)) return 'امروز';
-  if (isSameTehranDay(d, yesterday)) return 'دیروز';
+  const key = tehranDayKey(d);
+  if (key === tehranTodayKey()) return 'امروز';
+  if (key === tehranYesterdayKey()) return 'دیروز';
 
   return persianDateFormatter({
     weekday: 'long',
@@ -84,24 +87,23 @@ export function formatFeedDaySeparator(iso: string): string {
   }).format(d);
 }
 
-/** تاریخ و ساعت زیر هر پست */
+/**
+ * تاریخ و ساعت زیر هر پست — همیشه به وقت ایران (Asia/Tehran)
+ * و همیشه شامل تاریخ شمسی + ساعت.
+ */
 export function formatPostDateTime(iso: string | null | undefined): string {
   if (!iso) return '';
 
   const d = parseDate(iso);
   if (!d) return iso;
 
-  const time = formatPersianTime(d);
-  const today = tehranToday();
-  const yesterday = tehranYesterday();
-
-  if (isSameTehranDay(d, today)) return time;
-  if (isSameTehranDay(d, yesterday)) return `${time} · دیروز`;
-
-  return `${time} · ${formatPersianPostDate(d)}`;
+  return `${formatPersianTime(d)} · ${formatPersianPostDate(d)}`;
 }
 
-/** متا پایین حباب فید — زمان · نویسنده · (دیروز|تاریخ شمسی) */
+/**
+ * متا پایین حباب فید — ساعت · نویسنده · تاریخ شمسی
+ * (همه به وقت ایران)
+ */
 export function formatPostBubbleMeta(
   iso: string | null | undefined,
   authorName?: string | null,
@@ -114,19 +116,6 @@ export function formatPostBubbleMeta(
 
   const parts: string[] = [formatPersianTime(d)];
   if (author) parts.push(author);
-
-  const today = tehranToday();
-  const yesterday = tehranYesterday();
-
-  if (isSameTehranDay(d, today)) {
-    return parts.join(' · ');
-  }
-
-  if (isSameTehranDay(d, yesterday)) {
-    parts.push('دیروز');
-    return parts.join(' · ');
-  }
-
   parts.push(formatPersianPostDate(d));
   return parts.join(' · ');
 }

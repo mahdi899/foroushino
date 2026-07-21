@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\V1\Family;
 
+use App\Support\FamilyDateTime;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,7 +18,7 @@ class FamilyCommentResource extends JsonResource
             'id' => $this->id,
             'body' => $this->body,
             'status' => $this->status?->value ?? $this->status,
-            'created_at' => $this->created_at?->toIso8601String(),
+            'created_at' => FamilyDateTime::toApi($this->created_at),
             'user' => [
                 'name' => $this->user?->name ?? 'عضو خانواده',
                 'avatar' => $this->user?->profile?->avatar_url ?? null,

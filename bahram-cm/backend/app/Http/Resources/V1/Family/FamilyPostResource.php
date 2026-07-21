@@ -3,6 +3,7 @@
 namespace App\Http\Resources\V1\Family;
 
 use App\Services\Family\FamilyStatsService;
+use App\Support\FamilyDateTime;
 use App\Support\FamilyMediaUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -46,7 +47,7 @@ class FamilyPostResource extends JsonResource
             'is_important' => (bool) $this->is_important,
             'comments_enabled' => (bool) ($this->comments_enabled ?? true),
             'is_pinned' => (bool) $this->is_pinned,
-            'published_at' => $this->published_at?->toIso8601String(),
+            'published_at' => FamilyDateTime::toApi($this->published_at),
             'author' => [
                 'name' => $this->resource->getAttribute('author_display_name')
                     ?? $this->author?->name

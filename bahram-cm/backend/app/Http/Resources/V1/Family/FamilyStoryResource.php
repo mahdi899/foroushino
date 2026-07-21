@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\V1\Family;
 
+use App\Support\FamilyDateTime;
 use App\Support\FamilyMediaUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -16,8 +17,8 @@ class FamilyStoryResource extends JsonResource
         return [
             'id' => $this->id,
             'caption' => $this->caption,
-            'published_at' => $this->published_at?->toIso8601String(),
-            'expires_at' => $this->expires_at?->toIso8601String(),
+            'published_at' => FamilyDateTime::toApi($this->published_at),
+            'expires_at' => FamilyDateTime::toApi($this->expires_at),
             'media' => $media ? [
                 'id' => $media->id,
                 'type' => $media->type?->value ?? $media->type,

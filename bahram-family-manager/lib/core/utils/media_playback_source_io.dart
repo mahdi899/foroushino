@@ -1,0 +1,18 @@
+import 'dart:io';
+
+import 'package:just_audio/just_audio.dart';
+import 'package:video_player/video_player.dart';
+
+VideoPlayerController createVideoPlayerController(String source, {required bool isLocalFile}) {
+  if (isLocalFile) {
+    return VideoPlayerController.file(File(source));
+  }
+  return VideoPlayerController.networkUrl(Uri.parse(source));
+}
+
+Future<Duration?> setAudioPlayerSource(AudioPlayer player, String source, {required bool isLocalFile}) {
+  if (isLocalFile) {
+    return player.setFilePath(source);
+  }
+  return player.setUrl(source);
+}
