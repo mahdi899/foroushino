@@ -81,16 +81,7 @@ class FeedController extends Controller
                 'guest' => false,
                 'display_name' => $branding['display_name'],
                 'branding' => $branding,
-                'has_active_stories' => $this->stories->hasActiveStories(),
-                'member_count' => (int) $family->member_count,
-                'onboarding_completed' => (bool) $result['membership']->onboarding_completed,
-                'is_staff' => $this->access->canManage($user),
-                'feed_revision' => FeedService::feedRevision(),
-            ]
-        );
-    }
-
-    public function unreadSummary(Request $request): JsonResponse
+                'has_active_stories' => $this->stories->hasActiveStories((int) $family->id),
     {
         $afterId = max(0, $request->integer('after_id'));
         $user = $request->user('sanctum');
@@ -227,7 +218,7 @@ class FeedController extends Controller
             'is_member' => true,
             'display_name' => $branding['display_name'],
             'branding' => $branding,
-            'has_active_stories' => $this->stories->hasActiveStories(),
+            'has_active_stories' => $this->stories->hasActiveStories((int) $membership->family_id),
             'member_count' => (int) $membership->family->member_count,
             'onboarding_completed' => (bool) $membership->onboarding_completed,
             'joined_at' => $membership->joined_at?->toIso8601String(),

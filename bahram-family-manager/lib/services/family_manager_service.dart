@@ -161,10 +161,17 @@ class FamilyManagerService {
     return data.map((e) => FamilyStoryModel.fromJson((e as Map).cast<String, dynamic>())).toList();
   }
 
-  Future<FamilyStoryModel> publishStory({required int mediaId, String? caption}) async {
+  Future<FamilyStoryModel> publishStory({
+    required int mediaId,
+    String? caption,
+    String audienceMode = 'all',
+    List<int> familyIds = const [],
+  }) async {
     final res = await api.post('$_base/stories', data: {
       'media_id': mediaId,
       if (caption != null && caption.isNotEmpty) 'caption': caption,
+      'audience_mode': audienceMode,
+      'family_ids': audienceMode == 'all' ? <int>[] : familyIds,
     });
     return FamilyStoryModel.fromJson((res['data'] as Map).cast<String, dynamic>());
   }

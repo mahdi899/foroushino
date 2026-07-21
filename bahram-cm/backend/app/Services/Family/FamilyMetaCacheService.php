@@ -121,7 +121,7 @@ final class FamilyMetaCacheService
             'feed_revision' => FeedService::feedRevision(),
             'latest_post_id' => $this->latestPostIdForFamily($familyId),
             'branding_version' => $branding['branding_version'] ?? null,
-            'has_active_stories' => $this->stories->hasActiveStories(),
+            'has_active_stories' => $this->stories->hasActiveStories($familyId),
             'member_count' => $familyId === self::GUEST_FAMILY_ID
                 ? (($total = $this->memberCounts->total()) > 0 ? $total : null)
                 : null,

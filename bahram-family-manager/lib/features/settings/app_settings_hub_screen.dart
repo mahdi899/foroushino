@@ -53,7 +53,7 @@ class AppSettingsHubScreen extends StatelessWidget {
     ),
     _HubItem(
       label: 'برندینگ',
-      subtitle: 'پروفایل خانواده و استوری ۲۴ساعته',
+      subtitle: 'نام و آواتار پروفایل خانواده',
       icon: Icons.palette_rounded,
       color: AppColors.gold,
       builder: (_) => const SettingsScreen(),
@@ -64,10 +64,6 @@ class AppSettingsHubScreen extends StatelessWidget {
   bool _canAccess(_HubItem item, AppState state) {
     final user = state.user;
     if (item.permission == null) return true;
-    if (item.permission == 'family.settings.manage') {
-      return (user?.can('family.settings.manage') ?? false) ||
-          (user?.can('family.stories.manage') ?? false);
-    }
     return user?.can(item.permission!) ?? false;
   }
 

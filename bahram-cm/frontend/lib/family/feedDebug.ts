@@ -72,14 +72,13 @@ function readEnabled(): boolean {
   if (typeof window === 'undefined') return false;
   try {
     const q = new URLSearchParams(window.location.search).get('familyDebug');
-    if (q === '1') return true;
+    if (q === '1' || q === 'console') return true;
     if (q === '0') return false;
+    // Opt-in only — never auto-enable in development (keeps the browser console clean).
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored === '1') return true;
-    if (stored === '0') return false;
-    return process.env.NODE_ENV === 'development';
+    return stored === '1' || stored === 'console';
   } catch {
-    return process.env.NODE_ENV === 'development';
+    return false;
   }
 }
 
@@ -92,7 +91,7 @@ export function enableFamilyFeedDebug(on = true): void {
   if (typeof window === 'undefined') return;
   try {
     if (on) window.localStorage.setItem(STORAGE_KEY, '1');
-    else window.localStorage.removeItem(STORAGE_KEY);
+    else window.localStorage.setItem(STORAGE_KEY, '0');
   } catch {
     /* ignore */
   }
@@ -103,8 +102,6 @@ export function enableFamilyFeedDebug(on = true): void {
   } else {
     stopPerfObservers();
   }
-  // eslint-disable-next-line no-console
-  console.info(`[family] debug ${on ? 'ON' : 'OFF'}`);
 }
 
 /** Rewind catch-up cursor so next Family enter shows unread landing. */
@@ -123,8 +120,6 @@ export function rewindFamilyFeedCursor(afterId: number): void {
     /* ignore */
   }
   familyFeedDebug.info('boot', 'cursor rewind', { afterId });
-  // eslint-disable-next-line no-console
-  console.info(`[family] cursor → ${afterId}. Leave /family then re-enter from سایت.`);
 }
 
 function push(event: FamilyDebugEvent): void {
@@ -151,6 +146,10 @@ function emit(
   };
   push(event);
 
+  // Silent by default: events stay in the ring buffer for familyDebug.dump()/report().
+  // Console noise only when explicitly requested via ?familyDebug=console or localStorage.
+  if (!shouldMirrorToConsole()) return;
+
   const label = `[family:${scope}] ${message}`;
   const payload = data ?? '';
   if (level === 'error') {
@@ -162,6 +161,18 @@ function emit(
   } else {
     // eslint-disable-next-line no-console
     console.log(label, payload);
+  }
+}
+
+function shouldMirrorToConsole(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (new URLSearchParams(window.location.search).get('familyDebug') === 'console') {
+      return true;
+    }
+    return window.localStorage.getItem(STORAGE_KEY) === 'console';
+  } catch {
+    return false;
   }
 }
 
@@ -358,11 +369,5 @@ export function installFamilyFeedDebugGlobals(): void {
   if (isFamilyFeedDebugEnabled()) {
     sessionStartedAt = Date.now();
     startPerfObservers();
-    // eslint-disable-next-line no-console
-    console.info(
-      '%c[family] debug ON',
-      'color:#3390ec;font-weight:700',
-      '\n  familyDebug.report()   → summary JSON\n  familyDebug.snapshot() → perf/ws/feed report\n  familyDebug.rewind(N)  → unread test\n  familyDebug.renders()  → re-render counts\n  copy(JSON.stringify(familyDebug.snapshot(),null,2))\n  Profiler: DevTools → Profiler → "Why did this render?"\n  React Scan: ?familyScan=1 or localStorage.family-react-scan=1',
-    );
   }
 }

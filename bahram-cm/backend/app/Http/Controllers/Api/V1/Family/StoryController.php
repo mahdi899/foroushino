@@ -19,9 +19,8 @@ class StoryController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $this->access->requireMembership($request->user());
-
-        $stories = $this->stories->activeStories();
+        $membership = $this->access->requireMembership($request->user());
+        $stories = $this->stories->activeStories((int) $membership->family_id);
 
         return ApiResponse::success(
             FamilyStoryResource::collection($stories)->resolve(),

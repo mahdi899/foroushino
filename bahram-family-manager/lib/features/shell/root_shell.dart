@@ -9,6 +9,7 @@ import 'package:bahram_family_manager/features/home/home_screen.dart';
 import 'package:bahram_family_manager/features/posts/post_editor_screen.dart';
 import 'package:bahram_family_manager/features/posts/posts_screen.dart';
 import 'package:bahram_family_manager/features/settings/settings_screen.dart';
+import 'package:bahram_family_manager/features/stories/stories_screen.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/feedback/empty_state.dart';
 import 'package:bahram_family_manager/widgets/layout/desktop_shell.dart';
@@ -65,6 +66,12 @@ class _RootShellState extends State<RootShell> {
       permission: 'family.posts.create',
     ),
     _Tab(
+      label: 'استوری',
+      icon: Icons.auto_stories_rounded,
+      builder: (_) => const StoriesScreen(),
+      permission: 'family.stories.manage',
+    ),
+    _Tab(
       label: 'نظرات',
       icon: Icons.forum_rounded,
       builder: (_) => const CommentsScreen(),
@@ -102,10 +109,6 @@ class _RootShellState extends State<RootShell> {
   bool _canSee(_Tab t, AppState state) {
     final user = state.user;
     if (t.permission == null) return true;
-    if (t.permission == 'family.settings.manage') {
-      return (user?.can('family.settings.manage') ?? false) ||
-          (user?.can('family.stories.manage') ?? false);
-    }
     return user?.can(t.permission!) ?? false;
   }
 

@@ -885,26 +885,47 @@ class FamilyStoryModel {
   FamilyStoryModel({
     required this.id,
     this.caption,
+    this.audienceMode = 'all',
+    this.audienceSummary,
     this.publishedAt,
     this.expiresAt,
     this.media,
+    this.targetFamilyIds = const [],
   });
 
   final int id;
   final String? caption;
+  final String audienceMode;
+  final String? audienceSummary;
   final String? publishedAt;
   final String? expiresAt;
   final FamilyMediaRef? media;
+  final List<int> targetFamilyIds;
 
-  factory FamilyStoryModel.fromJson(Map<String, dynamic> json) => FamilyStoryModel(
-        id: json['id'] as int,
-        caption: json['caption']?.toString(),
-        publishedAt: json['published_at']?.toString(),
-        expiresAt: json['expires_at']?.toString(),
-        media: json['media'] is Map
-            ? FamilyMediaRef.fromJson((json['media'] as Map).cast<String, dynamic>())
-            : null,
-      );
+  factory FamilyStoryModel.fromJson(Map<String, dynamic> json) {
+    final targets = json['targets'];
+    final targetIds = <int>[];
+    if (targets is List) {
+      for (final t in targets) {
+        if (t is Map && t['family_id'] != null) {
+          targetIds.add((t['family_id'] as num).toInt());
+        }
+      }
+    }
+
+    return FamilyStoryModel(
+      id: json['id'] as int,
+      caption: json['caption']?.toString(),
+      audienceMode: json['audience_mode']?.toString() ?? 'all',
+      audienceSummary: json['audience_summary']?.toString(),
+      publishedAt: json['published_at']?.toString(),
+      expiresAt: json['expires_at']?.toString(),
+      media: json['media'] is Map
+          ? FamilyMediaRef.fromJson((json['media'] as Map).cast<String, dynamic>())
+          : null,
+      targetFamilyIds: targetIds,
+    );
+  }
 }
 
 class FamilyMemberModel {
