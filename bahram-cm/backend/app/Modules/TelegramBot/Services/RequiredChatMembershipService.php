@@ -3,7 +3,6 @@
 namespace App\Modules\TelegramBot\Services;
 
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
-use App\Modules\TelegramBot\Jobs\SendTelegramMessageJob;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramRequiredChat;
@@ -17,6 +16,7 @@ class RequiredChatMembershipService
 
     public function __construct(
         private readonly TelegramBotClientFactory $clientFactory,
+        private readonly TelegramOutboundMessenger $outbound,
     ) {}
 
     /** @return list<array{chat: TelegramRequiredChat, is_member: bool}> */
@@ -94,14 +94,14 @@ class RequiredChatMembershipService
                 ."اگر عضو هستید ولی باز این پیام را می‌بینید، احتمالاً ربات هنوز در کانال ادمین نشده — به مدیر سایت اطلاع دهید.";
         }
 
-        SendTelegramMessageJob::dispatch(
-            $bot->id,
+        $this->outbound->reply(
+            $bot,
             $account->telegram_user_id,
             $message,
             [
                 'reply_markup' => ['inline_keyboard' => $buttons],
             ],
-        )->onQueue(config('telegram_bot.queues.replies'));
+        );
     }
 
     public function invalidateCache(TelegramBot $bot, int $telegramUserId, ?string $chatId = null): void
