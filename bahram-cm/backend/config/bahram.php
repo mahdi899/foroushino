@@ -75,6 +75,15 @@ return [
 
     'payment' => [
         'dev_mode' => filter_var(env('PAYMENT_DEV_MODE', false), FILTER_VALIDATE_BOOL),
+        /*
+         * Public origin ZarinPal can reach for callback (NOT APP_URL).
+         * Production APP_URL is loopback (127.0.0.1:8010); browsers/gateways
+         * hit the site via FRONTEND_URL → Next → Laravel.
+         */
+        'public_base_url' => rtrim((string) env(
+            'PAYMENT_PUBLIC_BASE_URL',
+            env('FRONTEND_URL', 'http://localhost:3000'),
+        ), '/'),
     ],
 
     'chatbot' => [

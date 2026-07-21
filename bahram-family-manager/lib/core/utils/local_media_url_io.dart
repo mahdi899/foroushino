@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-Future<String> createLocalMediaUrl(Uint8List bytes, String mimeType, {String? extension}) async {
+Future<String> createLocalMediaUrlImpl(Uint8List bytes, String mimeType, {String? extension}) async {
   final ext = (extension != null && extension.isNotEmpty)
       ? extension
       : switch (mimeType) {
@@ -27,9 +27,8 @@ Future<String> createLocalMediaUrl(Uint8List bytes, String mimeType, {String? ex
   return file.path;
 }
 
-Future<void> revokeLocalMediaUrl(String? url) async {
+Future<void> revokeLocalMediaUrlImpl(String? url) async {
   if (url == null || url.isEmpty) return;
-  // Blob URLs are web-only; IO uses temp file paths.
   if (url.startsWith('blob:') || url.startsWith('http')) return;
   try {
     final file = File(url);

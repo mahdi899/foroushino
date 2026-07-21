@@ -2,14 +2,14 @@ import 'dart:typed_data';
 
 import 'local_media_url_stub.dart'
     if (dart.library.html) 'local_media_url_web.dart'
-    if (dart.library.io) 'local_media_url_io.dart' as impl;
+    if (dart.library.io) 'local_media_url_io.dart';
 
 /// Creates a playable local URL (blob on web, temp file path on IO) from bytes.
 Future<String> createLocalMediaUrl(Uint8List bytes, String mimeType, {String? extension}) {
-  return impl.createLocalMediaUrl(bytes, mimeType, extension: extension);
+  return createLocalMediaUrlImpl(bytes, mimeType, extension: extension);
 }
 
-Future<void> revokeLocalMediaUrl(String? url) => impl.revokeLocalMediaUrl(url);
+Future<void> revokeLocalMediaUrl(String? url) => revokeLocalMediaUrlImpl(url);
 
 String guessMediaMimeType(String? filename, String mediaType) {
   final ext = filename?.split('.').last.toLowerCase();

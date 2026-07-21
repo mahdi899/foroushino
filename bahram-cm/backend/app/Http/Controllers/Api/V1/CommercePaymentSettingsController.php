@@ -29,6 +29,15 @@ class CommercePaymentSettingsController extends Controller
             'description_template' => ['sometimes', 'nullable', 'string', 'max:1000'],
         ]);
 
+        if (array_key_exists('callback_url', $data)) {
+            $callback = trim((string) ($data['callback_url'] ?? ''));
+            if ($callback === '' || PaymentSetting::isUnreachableCallbackHost($callback)) {
+                $data['callback_url'] = null;
+            } else {
+                $data['callback_url'] = $callback;
+            }
+        }
+
         $settings = PaymentSetting::current();
 
         if (array_key_exists('zarinpal_merchant_id', $data) && blank($data['zarinpal_merchant_id'])) {
@@ -43,19 +52,20 @@ class CommercePaymentSettingsController extends Controller
     /** @return array<string, mixed> */
     private function payload(PaymentSetting $settings): array
     {
-        $defaultCallback = route('api.payments.zarinpal.callback');
+        $defaultCallback = PaymentSetting::defaultCallbackUrl();
         $storedCallback = trim((string) $settings->callback_url);
+        $storedIsUsable = $storedCallback !== '' && ! PaymentSetting::isUnreachableCallbackHost($storedCallback);
 
         return [
             'sandbox_mode' => $settings->sandbox_mode,
-            'callback_url' => $settings->callback_url,
+            'callback_url' => $storedIsUsable ? $settings->callback_url : null,
             'is_active' => $settings->is_active,
             'currency' => $settings->currency ?? 'IRT',
             'description_template' => $settings->description_template,
             'has_merchant_id' => filled($settings->zarinpal_merchant_id),
             'default_callback_url' => $defaultCallback,
             'effective_callback_url' => $settings->resolvedCallbackUrl(),
-            'uses_custom_callback' => $storedCallback !== '' && $storedCallback !== $defaultCallback,
+            'uses_custom_callback' => $storedIsUsable && $storedCallback !== $defaultCallback,
             'app_url' => rtrim((string) config('app.url'), '/'),
             'frontend_payment_result_url' => rtrim((string) config('app.frontend_url'), '/').'/payment/result',
         ];

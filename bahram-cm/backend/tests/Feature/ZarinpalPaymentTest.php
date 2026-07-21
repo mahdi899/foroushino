@@ -119,6 +119,8 @@ class ZarinpalPaymentTest extends TestCase
             && $request['amount'] === 10_000_000 // Toman -> Rial conversion (x10)
             && $request['metadata']['mobile'] === '09120000000'
             && $request['metadata']['order_id'] === 'BC-TEST-0001'
+            && str_ends_with((string) $request['callback_url'], '/api/payments/zarinpal/callback')
+            && ! str_contains((string) $request['callback_url'], '127.0.0.1')
             && ! array_key_exists('email', $request['metadata'] ?? [])
             && ! array_key_exists('card_pan', $request['metadata'] ?? [])
         );

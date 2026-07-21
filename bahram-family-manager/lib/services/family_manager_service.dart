@@ -435,10 +435,12 @@ class FamilyManagerService {
     int id, {
     Duration timeout = const Duration(minutes: 3),
     Duration interval = const Duration(seconds: 2),
+    void Function(FamilyMediaRef media)? onUpdate,
   }) async {
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
       final media = await showMedia(id);
+      onUpdate?.call(media);
       if (media.isReady) return media;
       if (media.status == 'failed') {
         throw ApiException(

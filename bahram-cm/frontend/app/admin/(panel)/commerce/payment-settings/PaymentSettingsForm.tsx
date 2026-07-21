@@ -150,16 +150,24 @@ export function PaymentSettingsForm({ initial }: { initial: PaymentSettingsData 
 
             <ul className="list-disc space-y-1.5 ps-5 text-caption text-text-muted">
               <li>
-                پیش‌فرض از <code className="rounded bg-surface-soft px-1 py-0.5 admin-text-meta">APP_URL</code>
+                پیش‌فرض از آدرس عمومی سایت (
+                <code className="rounded bg-surface-soft px-1 py-0.5 admin-text-meta">FRONTEND_URL</code>
+                ) ساخته می‌شود — نه از{' '}
+                <code className="rounded bg-surface-soft px-1 py-0.5 admin-text-meta">APP_URL</code>
                 {form.app_url ? (
                   <>
                     {' '}
-                    (<span dir="ltr">{form.app_url}</span>)
+                    (<span dir="ltr">{form.app_url}</span> فقط داخلی است)
                   </>
-                ) : null}{' '}
-                ساخته می‌شود و لاراول همان را در درخواست پرداخت می‌فرستد.
+                ) : null}
+                .
               </li>
-              <li>این آدرس باید به فرانت‌اند (پورت ۳۰۰۰) نباشد؛ باید به بک‌اند لاراول اشاره کند.</li>
+              <li>
+                برای سایت واقعی باید این باشد:{' '}
+                <span dir="ltr" className="text-text">
+                  https://rostami.app/api/payments/zarinpal/callback
+                </span>
+              </li>
               <li>
                 لاراول پرداخت را تأیید می‌کند و سپس کاربر را به{' '}
                 {form.frontend_payment_result_url ? (
@@ -171,7 +179,7 @@ export function PaymentSettingsForm({ initial }: { initial: PaymentSettingsData 
                 )}{' '}
                 هدایت می‌کند.
               </li>
-              <li>اگر مقدار را پاک کنید و ذخیره کنید، لاراول همیشه از پیش‌فرض خودش استفاده می‌کند.</li>
+              <li>اگر مقدار را پاک کنید و ذخیره کنید، لاراول از پیش‌فرض عمومی بالا استفاده می‌کند.</li>
             </ul>
 
             <p className="rounded-md border border-border bg-surface-soft/60 px-3 py-2 text-caption text-text">

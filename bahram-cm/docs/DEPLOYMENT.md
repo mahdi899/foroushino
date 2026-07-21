@@ -112,6 +112,7 @@ php artisan app:create-admin
 | `APP_DEBUG` | `false` |
 | `APP_URL` | `http://127.0.0.1:8010` (فقط داخلی — **نه** یک ساب‌دامین api.* عمومی؛ در ایران فیلتر می‌شود) |
 | `FRONTEND_URL` | `https://rostami.app` |
+| `PAYMENT_PUBLIC_BASE_URL` | *(اختیاری)* پیش‌فرض همان `FRONTEND_URL` — کال‌بک زرین‌پال: `{این}/api/payments/zarinpal/callback` |
 | `CORS_ALLOWED_ORIGINS` | `https://rostami.app,https://rostami.club` |
 | `SANCTUM_STATEFUL_DOMAINS` | `rostami.app,rostami.club` |
 | `MEDIA_URL` | `https://cdn.rostami.app` |

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -6,11 +8,11 @@ import 'package:bahram_family_manager/core/labels.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
+import 'package:bahram_family_manager/core/utils/local_media_url.dart';
 import 'package:bahram_family_manager/features/posts/widgets/family_picker_sheet.dart';
 import 'package:bahram_family_manager/features/posts/widgets/post_action_results_panel.dart';
 import 'package:bahram_family_manager/features/posts/widgets/post_editor_action_bar.dart';
 import 'package:bahram_family_manager/features/posts/widgets/post_type_selector.dart';
-import 'package:bahram_family_manager/core/utils/media_url.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
 import 'package:bahram_family_manager/widgets/buttons/primary_button.dart';
@@ -53,6 +55,8 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
   final _aiTopicCtrl = TextEditingController();
 
   FamilyMediaRef? _mediaRef;
+  Uint8List? _localPreviewBytes;
+  String? _localPreviewUrl;
   bool _uploading = false;
   bool _mediaProcessing = false;
   double _uploadProgress = 0;
@@ -89,6 +93,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
     final mediaBlock = _post?.blocks.firstWhereOrNull((b) => b.media != null);
     _mediaRef = mediaBlock?.media;
+    if (_mediaRef != null && !_mediaRef!.isReady) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _refreshPendingMedia());
+    }
 
     final action = _post?.actions.firstWhereOrNull((_) => true);
     if (action != null) {
@@ -133,6 +140,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
   @override
   void dispose() {
+    _clearLocalPreview();
     _textCtrl.dispose();
     _actionPromptCtrl.dispose();
     _followUpMinutesCtrl.dispose();
@@ -145,6 +153,28 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       c.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _clearLocalPreview() async {
+    final url = _localPreviewUrl;
+    _localPreviewBytes = null;
+    _localPreviewUrl = null;
+    await revokeLocalMediaUrl(url);
+  }
+
+  Future<void> _prepareLocalPreview(Uint8List bytes, String filename, String mediaType) async {
+    await _clearLocalPreview();
+    _localPreviewBytes = bytes;
+    if (mediaType == 'image') return;
+    try {
+      _localPreviewUrl = await createLocalMediaUrl(
+        bytes,
+        guessMediaMimeType(filename, mediaType),
+        extension: extensionOfFilename(filename),
+      );
+    } catch (_) {
+      _localPreviewUrl = null;
+    }
   }
 
   bool get _isArchived => _post?.isArchived ?? false;
@@ -175,6 +205,26 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         _ => 'text',
       };
 
+  Future<void> _refreshPendingMedia() async {
+    final media = _mediaRef;
+    if (media == null || media.isReady) return;
+    setState(() => _mediaProcessing = true);
+    try {
+      final ready = await context.read<AppState>().manager.waitForMediaReady(
+            media.id,
+            onUpdate: (updated) {
+              if (!mounted) return;
+              setState(() => _mediaRef = updated);
+            },
+          );
+      if (mounted) setState(() => _mediaRef = ready);
+    } catch (_) {
+      // Keep current media ref; user can retry publish later.
+    } finally {
+      if (mounted) setState(() => _mediaProcessing = false);
+    }
+  }
+
   Future<void> _pickAndUploadMedia() async {
     final fileType = switch (_type) {
       'voice' => FileType.audio,
@@ -199,6 +249,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       _mediaProcessing = false;
     });
 
+    await _prepareLocalPreview(bytes, picked.name, _type);
+    if (mounted) setState(() {});
+
     try {
       final manager = context.read<AppState>().manager;
       final media = await manager.uploadMedia(
@@ -218,10 +271,20 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       });
       if (media.isReady) return;
 
-      final ready = await manager.waitForMediaReady(media.id);
+      final ready = await manager.waitForMediaReady(
+        media.id,
+        onUpdate: (updated) {
+          if (!mounted) return;
+          setState(() => _mediaRef = updated);
+        },
+      );
       if (mounted) setState(() => _mediaRef = ready);
     } catch (e) {
-      if (mounted) showAppSnackBar(context, messageOf(e));
+      await _clearLocalPreview();
+      if (mounted) {
+        setState(() => _mediaRef = null);
+        showAppSnackBar(context, messageOf(e));
+      }
     } finally {
       if (mounted) setState(() {
         _uploading = false;
@@ -237,7 +300,13 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
 
     setState(() => _mediaProcessing = true);
     try {
-      final ready = await context.read<AppState>().manager.waitForMediaReady(media.id);
+      final ready = await context.read<AppState>().manager.waitForMediaReady(
+            media.id,
+            onUpdate: (updated) {
+              if (!mounted) return;
+              setState(() => _mediaRef = updated);
+            },
+          );
       if (mounted) setState(() => _mediaRef = ready);
       return ready;
     } finally {
@@ -666,7 +735,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                           : (value) => setState(() => _optimizeImages = value),
                     ),
                   if (_type == 'image') const SizedBox(height: AppSpacing.sm),
-                  if (_mediaRef == null)
+                  if (_mediaRef == null && _localPreviewBytes == null)
                     UploadZone(
                       label: 'انتخاب ${labelOf(mediaTypeLabels, _type)}',
                       uploading: _uploading || _mediaProcessing,
@@ -678,7 +747,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (_mediaProcessing)
+                        if (_uploading || _mediaProcessing)
                           Padding(
                             padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                             child: Row(
@@ -691,7 +760,9 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                                 const SizedBox(width: AppSpacing.sm),
                                 Expanded(
                                   child: Text(
-                                    'در حال بهینه‌سازی و آماده‌سازی تصویر…',
+                                    _uploading
+                                        ? 'در حال آپلود… ${toFaDigits((_uploadProgress * 100).round().toString())}٪'
+                                        : 'در حال بهینه‌سازی و آماده‌سازی رسانه…',
                                     style: TextStyle(color: subtle, fontSize: 13),
                                   ),
                                 ),
@@ -700,13 +771,29 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
                           ),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: FamilyMediaView(media: _mediaRef!, height: _mediaRef!.isAudio ? 88 : 220),
+                          child: FamilyMediaView(
+                            media: _mediaRef ??
+                                FamilyMediaRef(
+                                  id: 0,
+                                  type: _type == 'voice' ? 'voice' : _type,
+                                  status: 'uploading',
+                                  originalFilename: null,
+                                ),
+                            height: (_mediaRef?.isAudio ?? _type == 'voice') ? 88 : 220,
+                            localBytes: _localPreviewBytes,
+                            localUrl: _localPreviewUrl,
+                          ),
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Align(
                           alignment: Alignment.centerLeft,
                           child: TextButton.icon(
-                            onPressed: () => setState(() => _mediaRef = null),
+                            onPressed: (_uploading || _saving)
+                                ? null
+                                : () async {
+                                    await _clearLocalPreview();
+                                    if (mounted) setState(() => _mediaRef = null);
+                                  },
                             icon: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
                             label: const Text('حذف رسانه', style: TextStyle(color: AppColors.error)),
                           ),

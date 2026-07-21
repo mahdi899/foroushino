@@ -106,7 +106,8 @@ class DatabaseSeeder extends Seeder
         PaymentSetting::current()->update([
             'sandbox_mode' => true,
             'currency' => 'IRT',
-            'callback_url' => rtrim((string) config('app.url'), '/').'/api/payments/zarinpal/callback',
+            // null → PaymentSetting::defaultCallbackUrl() (FRONTEND_URL), never APP_URL/loopback
+            'callback_url' => null,
             'description_template' => 'خرید {product_title} - سفارش {order_number}',
         ]);
 

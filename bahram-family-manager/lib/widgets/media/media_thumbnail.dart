@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -13,15 +15,30 @@ class MediaThumbnail extends StatelessWidget {
     required this.media,
     this.height = 160,
     this.borderRadius,
+    this.localBytes,
   });
 
   final FamilyMediaRef media;
   final double height;
   final BorderRadius? borderRadius;
+  final Uint8List? localBytes;
 
   @override
   Widget build(BuildContext context) {
     final radius = borderRadius ?? AppRadius.tileBorder;
+
+    if (media.type == 'image' && localBytes != null && localBytes!.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: radius,
+        child: Image.memory(
+          localBytes!,
+          height: height,
+          width: double.infinity,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _Placeholder(type: media.type, height: height, radius: radius),
+        ),
+      );
+    }
 
     final url = media.playableUrl;
 
