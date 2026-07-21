@@ -1,5 +1,5 @@
 import { DEFAULT_MEDIA_DOWNLOAD_HOST } from '@/lib/api/config';
-import { isFamilyHost } from '@/lib/domains';
+import { appPublicOrigin, familyPublicOrigin, isFamilyHost } from '@/lib/domains';
 import { MEDIA_HOSTS } from '@/lib/media/hosts.generated';
 
 /** Canonical playback host for family voice/video/images. */
@@ -34,11 +34,28 @@ function isLocalOrigin(hostname: string): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1';
 }
 
-/** Club host where /media/family is same-origin proxied to CDN (nginx or Next middleware). */
+/** Hosts where /media/family is same-origin proxied with Content-Disposition: inline. */
 export function isFamilyMediaSameOriginHost(hostname: string): boolean {
   if (isFamilyHost(hostname)) return true;
   const host = hostname.toLowerCase();
-  return host === 'rostami.club' || host === 'www.rostami.club';
+  if (host === 'rostami.club' || host === 'www.rostami.club') return true;
+  const appOrigin = appPublicOrigin();
+  if (appOrigin) {
+    try {
+      if (new URL(appOrigin).hostname.toLowerCase() === host) return true;
+    } catch {
+      // ignore
+    }
+  }
+  return host === 'rostami.app' || host === 'www.rostami.app';
+}
+
+/** Site origin that proxies /media/family (club nginx or Next middleware on app). */
+function familyMediaProxyOrigin(): string | null {
+  if (typeof window !== 'undefined' && isFamilyMediaSameOriginHost(window.location.hostname)) {
+    return window.location.origin;
+  }
+  return familyPublicOrigin() || appPublicOrigin() || null;
 }
 
 function toPlaybackHostUrl(pathname: string, search = ''): string {
@@ -182,24 +199,27 @@ export function inferFamilyMediaMimeType(
 
 function clubSameOriginMediaUrl(url: string | null | undefined): string | null {
   const primary = resolveFamilyMediaPlaybackUrl(url);
-  if (!primary || typeof window === 'undefined' || !isFamilyMediaSameOriginHost(window.location.hostname)) {
-    return null;
-  }
+  const origin = familyMediaProxyOrigin();
+  if (!primary || !origin) return null;
 
   try {
     const parsed = new URL(primary);
     const mediaPath = familyMediaPathname(parsed.pathname);
     if (!mediaPath) return null;
 
-    return `${window.location.origin}${normalizeFamilyGalleryMediaPath(mediaPath)}${parsed.search}`;
+    return `${origin}${normalizeFamilyGalleryMediaPath(mediaPath)}${parsed.search}`;
   } catch {
     return null;
   }
 }
 
 /**
+<<<<<<< HEAD
+ * Playback URLs — same-origin /media/family/* first (inline + Range), CDN fallback last.
+=======
  * Playback URLs — direct CDN file links first; same-origin club proxy as fallback (Range/CORS).
  * Images/voice/video should hit cdn.rostami.app in dev — club /media/family proxy needs nginx/middleware.
+>>>>>>> 6f5843535344db556f9cf6397711bcaa58d51cef
  */
 export function resolveFamilyMediaPlaybackCandidates(
   url: string | null | undefined,
@@ -207,6 +227,12 @@ export function resolveFamilyMediaPlaybackCandidates(
 ): string[] {
   const candidates: string[] = [];
 
+<<<<<<< HEAD
+  const proxied = clubSameOriginMediaUrl(url);
+  if (proxied) candidates.push(proxied);
+
+=======
+>>>>>>> 6f5843535344db556f9cf6397711bcaa58d51cef
   const primary = resolveFamilyMediaPlaybackUrl(url);
   if (primary) candidates.push(primary);
 

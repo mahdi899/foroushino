@@ -1,90 +1,64 @@
-#!/usr/bin/env python3
-import io
-import sys
-from pathlib import Path
-
-import paramiko
-
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-
-env: dict[str, str] = {}
-for line in (Path(__file__).resolve().parents[1] / "deploy.env").read_text(encoding="utf-8").splitlines():
-    if "=" in line and not line.strip().startswith("#"):
-        key, value = line.split("=", 1)
-        env[key.strip()] = value.strip()
-
-APP = env.get("DEPLOY_APP_ROOT", "/var/www/bahram-cm")
-
-remote = f"""#!/bin/bash
-set -eo pipefail
-LOG=/tmp/family-build-fix.log
-exec > >(tee "$LOG") 2>&1
-APP={APP}
-
-swapon /swapfile 2>/dev/null || true
-free -h
-
-cd "$APP/frontend"
-export NODE_OPTIONS="--max-old-space-size=1536"
-export NEXT_TELEMETRY_DISABLED=1
-unset NODE_ENV
-
-echo "==> npm ci"
-npm ci --no-audit --no-fund
-
-export NODE_ENV=production
-echo "==> next build"
-npx next build --webpack
-
-echo BUILD_ID=$(cat .next/BUILD_ID)
-pm2 start "$APP/deploy/pm2/ecosystem.config.cjs" --only bahram-frontend --update-env \
-  || pm2 reload "$APP/deploy/pm2/ecosystem.config.cjs" --only bahram-frontend --update-env
-curl -sf -o /dev/null -w 'next:%{{http_code}}\\n' http://127.0.0.1:3000/ || true
-echo DONE
-"""
-
-client = paramiko.SSHClient()
-client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-client.connect(env["DEPLOY_HOST"], 22, env["DEPLOY_USER"], env["DEPLOY_PASSWORD"], timeout=120)
-
-sftp = client.open_sftp()
-with sftp.file("/tmp/family-build-fix.sh", "w") as handle:
-    handle.write(remote)
-sftp.chmod("/tmp/family-build-fix.sh", 0o755)
-sftp.close()
-
-client.exec_command(
-    "rm -f /tmp/family-build-fix.done; "
-    "nohup bash /tmp/family-build-fix.sh; "
-    "echo $? > /tmp/family-build-fix.done",
-    timeout=30,
-)
-print("Full frontend rebuild started on", env["DEPLOY_HOST"])
-
+"""Upload frontend proxy/middleware fixes + rebuild."""
 import time
 
-for i in range(90):
-    time.sleep(20)
-    _, stdout, _ = client.exec_command(
-        "test -f /tmp/family-build-fix.done && echo FIN || echo RUN; "
-        "tail -1 /tmp/family-build-fix.log 2>/dev/null",
-        timeout=60,
-    )
-    lines = stdout.read().decode().strip().split("\n")
-    status = lines[0] if lines else "?"
-    tail = lines[-1] if len(lines) > 1 else ""
-    print(f"[{i * 20:4d}s] {status} | {tail[-120:]}")
+from _deploy_common import ROOT, app_root, configure_stdout, connect, load_deploy_env, upload_files
 
-    if status == "FIN":
-        _, stdout, _ = client.exec_command(
-            "cat /tmp/family-build-fix.done; tail -50 /tmp/family-build-fix.log",
-            timeout=120,
-        )
-        print(stdout.read().decode("utf-8", errors="replace"))
+configure_stdout()
+env = load_deploy_env()
+APP = app_root(env)
+
+uploads = [
+    "frontend/middleware.ts",
+    "frontend/lib/backend-proxy.ts",
+    "frontend/lib/cache/cdnHeaders.ts",
+    "frontend/lib/cache/middlewarePerf.ts",
+]
+files = [(ROOT / rel, rel) for rel in uploads if (ROOT / rel).is_file()]
+
+c = connect(env, timeout=120)
+print(f"Uploading {len(files)} frontend files...")
+upload_files(c, files, env)
+
+remote = f"""#!/bin/bash
+set -e
+LOG=/tmp/bahram-fe-fix.log
+: > "$LOG"
+pm2 stop bahram-frontend 2>/dev/null || true
+pkill -9 -f 'next build' 2>/dev/null || true
+rm -rf {APP}/frontend/.next
+if ! swapon --show | grep -q swapfile; then swapon /swapfile 2>/dev/null || true; fi
+export NODE_OPTIONS="--max-old-space-size=2560"
+cd {APP}/frontend
+npm ci >> "$LOG" 2>&1
+export NODE_ENV=production
+node scripts/generate-version.mjs >> "$LOG" 2>&1
+npx next build >> "$LOG" 2>&1
+test -f .next/BUILD_ID && echo BUILD_OK >> "$LOG"
+pm2 start {APP}/deploy/pm2/ecosystem.config.cjs --only bahram-frontend >> "$LOG" 2>&1 || pm2 restart bahram-frontend >> "$LOG" 2>&1
+sleep 6
+curl -sf -o /dev/null -w 'NEXT:%{{http_code}}\\n' http://127.0.0.1:3000/ >> "$LOG" 2>&1 || echo NEXT_FAIL >> "$LOG"
+echo DONE >> "$LOG"
+"""
+
+sftp = c.open_sftp()
+with sftp.file("/tmp/bahram-fe-fix.sh", "w") as f:
+    f.write(remote)
+sftp.chmod("/tmp/bahram-fe-fix.sh", 0o755)
+sftp.close()
+
+c.exec_command("rm -f /tmp/bahram-fe-fix.done; nohup bash /tmp/bahram-fe-fix.sh; echo $? > /tmp/bahram-fe-fix.done")
+
+for i in range(120):
+    time.sleep(15)
+    _, out, _ = c.exec_command("test -f /tmp/bahram-fe-fix.done && cat /tmp/bahram-fe-fix.done || echo running", timeout=10)
+    if out.read().decode().strip() != "running":
         break
-else:
-    print("TIMEOUT")
-    _, stdout, _ = client.exec_command("tail -50 /tmp/family-build-fix.log", timeout=60)
-    print(stdout.read().decode("utf-8", errors="replace"))
+    if i % 2 == 0:
+        _, tail, _ = c.exec_command("tail -1 /tmp/bahram-fe-fix.log 2>/dev/null", timeout=10)
+        t = tail.read().decode().strip()
+        if t:
+            print("...", t[:100])
 
-client.close()
+_, log_out, _ = c.exec_command("tail -20 /tmp/bahram-fe-fix.log; pm2 list | head -8", timeout=30)
+print(log_out.read().decode("utf-8", "replace"))
+c.close()

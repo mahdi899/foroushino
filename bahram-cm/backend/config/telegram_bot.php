@@ -43,8 +43,8 @@ return [
 
     'membership_cache_seconds' => (int) env('TELEGRAM_MEMBERSHIP_CACHE_SECONDS', 900),
 
-    /** When true, handlers send Telegram messages synchronously (slower inbound workers). */
-    'outbound_sync' => filter_var(env('TELEGRAM_OUTBOUND_SYNC', false), FILTER_VALIDATE_BOOL),
+    /** When true, handlers send Telegram messages in-process (no telegram-replies queue hop). */
+    'outbound_sync' => filter_var(env('TELEGRAM_OUTBOUND_SYNC', true), FILTER_VALIDATE_BOOL),
 
     'webhook' => [
         'base_url' => rtrim((string) env('TELEGRAM_WEBHOOK_BASE_URL', env('APP_URL', 'http://localhost:8010')), '/'),

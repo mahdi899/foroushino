@@ -1,14 +1,26 @@
 # ربات تلگرام آکادمی بهرام
 
-## معماری
+## معماری (Production + Worker)
 
-Webhook مستقیم به Laravel (بدون proxy از Next.js):
+```
+کاربر → Telegram → Cloudflare Worker → Laravel webhook → پاسخ فوری
+سرور → Cloudflare Worker → api.telegram.org → کاربر
+```
+
+Worker فقط **پل** است (ورودی/خروجی از فیلتر ایران). پردازش و منطق ربات در Laravel است.
+
+Webhook:
 
 `POST /api/v1/integrations/telegram/{botKey}/webhook`
 
-هدر اجباری: `X-Telegram-Bot-Api-Secret-Token`
+- تلگرام webhook را به URL ورکر ثبت می‌کند (نه مستقیم rostami.app)
+- Worker هدر `Authorization: Bearer PROXY_SHARED_TOKEN` را به Laravel اضافه می‌کند
+- Laravel secret را با `X-Telegram-Bot-Api-Secret-Token` چک می‌کند
+- آپدیت **همان لحظه** پردازش می‌شود (`dispatchSync`) — بدون وابستگی به صف inbound
+- پاسخ‌ها با `TELEGRAM_OUTBOUND_SYNC=true` مستقیم از همان request ارسال می‌شوند
 
-پردازش: ذخیره `telegram_updates` → صف `telegram-inbound` → Router → Handlers → سرویس‌های دامنه.
+nginx مسیر webhook را مستقیم به PHP-FPM می‌فرستد (bypass Next.js) —
+`deploy/nginx/rostami-app-origin.conf`
 
 ## Env
 
@@ -17,7 +29,9 @@ TELEGRAM_BOT_TOKEN=
 TELEGRAM_BOT_USERNAME=
 TELEGRAM_WEBHOOK_SECRET=
 TELEGRAM_BOT_KEY=production
-TELEGRAM_WEBHOOK_BASE_URL=https://rostami.app
+TELEGRAM_WEBHOOK_BASE_URL=https://broken-mountain-6b4f.shokspy.workers.dev
+TELEGRAM_OUTBOUND_SYNC=true
+PROXY_SHARED_TOKEN=
 ```
 
 ⚠️ عمداً یک ساب‌دامین `api.*` جدا نیست — چنین ساب‌دامین‌هایی در ایران فیلتر می‌شوند.
