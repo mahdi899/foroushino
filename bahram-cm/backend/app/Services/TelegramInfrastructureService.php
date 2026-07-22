@@ -92,6 +92,15 @@ class TelegramInfrastructureService
 
     public function usesWorkerBridge(): bool
     {
+        $type = trim((string) ($this->stored()['bridge_type'] ?? ''));
+        if ($type === 'worker') {
+            return true;
+        }
+        if (in_array($type, ['direct', 'host'], true)) {
+            return false;
+        }
+
+        // Back-compat: no explicit type saved yet — derive from base URL host.
         $host = strtolower((string) parse_url($this->panelBaseUrl(), PHP_URL_HOST));
 
         return $host !== '' && $host !== 'api.telegram.org';
@@ -204,6 +213,10 @@ class TelegramInfrastructureService
 
     public function buildWebhookUrl(string $botKey = 'production'): string
     {
+        if ($this->usesHostBridge()) {
+            return rtrim($this->panelBaseUrl(), '/').'/public/webhook.php';
+        }
+
         return $this->webhookBaseUrl().'/'.$this->webhookPath($botKey);
     }
 
@@ -363,7 +376,9 @@ class TelegramInfrastructureService
             'backend_origin' => $this->backendOrigin(),
             'telegram_api_base_url' => $this->telegramApiBaseUrl(),
             'server_webhook_url' => $this->buildServerWebhookUrl('production'),
-            'worker_webhook_url' => $this->usesWorkerBridge() ? $this->buildWebhookUrl('production') : null,
+            'worker_webhook_url' => $this->usesWorkerBridge() || $this->usesHostBridge()
+                ? $this->buildWebhookUrl('production')
+                : null,
             'has_connection_token' => $connectionToken !== null,
             'connection_token_preview' => $connectionToken ? $this->maskSecret($connectionToken) : null,
             'configured' => $this->isConfigured(),
@@ -547,7 +562,9 @@ class TelegramInfrastructureService
             return ['ok' => false, 'message' => $this->formatWebhookRegistrationError($e)];
         }
 
-        $mode = $this->usesWorkerBridge() ? 'Cloudflare Worker' : 'مستقیم';
+        $mode = $this->usesHostBridge()
+            ? 'هاست خارج'
+            : ($this->usesWorkerBridge() ? 'Cloudflare Worker' : 'مستقیم');
         app(TelegramWebhookRegisteredNotifier::class)->notify($bot, $url, $mode);
 
         return ['ok' => true, 'message' => 'وب‌هوک در تلگرام ثبت شد.', 'url' => $url];
@@ -591,6 +608,16 @@ class TelegramInfrastructureService
         $message = trim($e->getMessage());
         $base = 'ثبت وب‌هوک ناموفق';
         $detail = $message !== '' ? ': '.$message : '';
+
+        if ($this->usesHostBridge()) {
+            if ($this->isLikelyTelegramConnectivityFailure($e)) {
+                return $base.$detail
+                    .' — api.telegram.org از سرور ایران در دسترس نیست؛ وب‌هوک را دستی ثبت کنید.'
+                    .' لاگ: storage/logs/telegram.log';
+            }
+
+            return $base.$detail.' — هاست: '.rtrim($this->panelBaseUrl(), '/').'/public/webhook.php';
+        }
 
         if ($this->usesWorkerBridge()) {
             if ($this->isLikelyTelegramConnectivityFailure($e)) {

@@ -17,6 +17,7 @@ class TelegramInfrastructureServiceTest extends TestCase
 
         app(SettingService::class)->updateGroup(TelegramInfrastructureService::GROUP, [
             TelegramInfrastructureService::KEY => [
+                'bridge_type' => 'worker',
                 'base_url' => 'https://bridge.example.workers.dev',
                 'proxy_shared_token' => str_repeat('a', 32),
             ],
@@ -68,5 +69,31 @@ class TelegramInfrastructureServiceTest extends TestCase
 
         $this->expectException(\InvalidArgumentException::class);
         $service->update(['connection_token_input' => 'short']);
+    }
+
+    public function test_host_mode_uses_public_webhook_and_direct_telegram_api(): void
+    {
+        config(['bahram.frontend_url' => 'https://site.example.com']);
+
+        app(SettingService::class)->updateGroup(TelegramInfrastructureService::GROUP, [
+            TelegramInfrastructureService::KEY => [
+                'bridge_type' => 'host',
+                'base_url' => 'https://bahram.rahai.online/rostam/telegram',
+                'host_sync_secret' => str_repeat('a', 32),
+                'host_encryption_key' => base64_encode(random_bytes(32)),
+            ],
+        ]);
+        TelegramInfrastructureService::forgetCachedConfig();
+
+        $service = app(TelegramInfrastructureService::class);
+
+        $this->assertTrue($service->usesHostBridge());
+        $this->assertFalse($service->usesWorkerBridge());
+        $this->assertSame(
+            'https://bahram.rahai.online/rostam/telegram/public/webhook.php',
+            $service->buildWebhookUrl('production'),
+        );
+        $this->assertSame(TelegramInfrastructureService::DEFAULT_BASE_URL, $service->telegramApiBaseUrl());
+        $this->assertTrue($service->isConfigured());
     }
 }
