@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  regenerateTelegramHostSecretsAction,
   registerTelegramWebhookFromPanelAction,
   saveTelegramInfrastructureAction,
   suggestTelegramSecretsAction,
@@ -97,6 +98,14 @@ export function useTelegramBridgeDraft(initial: TelegramInfrastructureView, work
     return res;
   };
 
+  const regenerateHostSecrets = async () => {
+    const res = await regenerateTelegramHostSecretsAction();
+    if (res.ok) {
+      router.refresh();
+    }
+    return res;
+  };
+
   return {
     mode,
     setMode,
@@ -109,5 +118,6 @@ export function useTelegramBridgeDraft(initial: TelegramInfrastructureView, work
     setRegistering,
     saveInfrastructure,
     registerWebhook,
+    regenerateHostSecrets,
   };
 }

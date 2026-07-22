@@ -449,6 +449,19 @@ export async function registerTelegramWebhookFromPanelAction(): Promise<{
   }
 }
 
+export async function regenerateTelegramHostSecretsAction(): Promise<{
+  ok: boolean;
+  error?: string;
+}> {
+  try {
+    await adminFetch('/panel/telegram/infrastructure/regenerate-host-secrets', { method: 'POST' });
+    revalidateTelegram();
+    return { ok: true };
+  } catch (e) {
+    return actionError(e, 'رفرش کلیدها ناموفق بود.');
+  }
+}
+
 export async function suggestTelegramSecretsAction(): Promise<{
   ok: boolean;
   data?: { bearer_token: string; webhook_secret: string };

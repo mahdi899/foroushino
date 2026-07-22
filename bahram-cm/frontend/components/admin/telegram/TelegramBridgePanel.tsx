@@ -1,6 +1,7 @@
 'use client';
 
-import { Copy, Loader2, Save, Webhook } from 'lucide-react';
+import { useState } from 'react';
+import { Copy, KeyRound, Loader2, Save, Webhook } from 'lucide-react';
 import type { TelegramInfrastructureView } from '@/lib/admin/telegram.types';
 import { useTelegramBridgeDraft } from './useTelegramBridgeDraft';
 
@@ -110,7 +111,9 @@ export function TelegramBridgePanel({
     setRegistering,
     saveInfrastructure,
     registerWebhook,
+    regenerateHostSecrets,
   } = draft;
+  const [rotating, setRotating] = useState(false);
 
   const phpSource = initial.host_proxy_deploy_sample?.trim() || null;
   const htaccessSource = initial.host_proxy_htaccess_sample?.trim() || null;
@@ -123,6 +126,29 @@ export function TelegramBridgePanel({
       onStatus?.(
         res.ok
           ? 'ذخیره شد — یکی از نمونه‌ها را Deploy کنید (worker.js یا index.php)'
+          : (res.error ?? 'خطا'),
+      );
+    });
+  };
+
+  const onRegenerateHostSecrets = () => {
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(
+        'کلیدهای رمزنگاری، HMAC و رمز وب‌هوک هاست خارج عوض می‌شوند. تا وقتی config.php جدید را روی هاست آپلود و دوباره وب‌هوک را ثبت نکنید، ربات از طریق هاست کار نخواهد کرد. ادامه می‌دهید؟',
+      )
+    ) {
+      return;
+    }
+
+    startTransition(async () => {
+      setRotating(true);
+      onStatus?.('');
+      const res = await regenerateHostSecrets();
+      setRotating(false);
+      onStatus?.(
+        res.ok
+          ? 'کلیدها رفرش شدند — config.php جدید را از پایین کپی و روی هاست جایگزین کنید، سپس «ثبت وب‌هوک» را بزنید.'
           : (res.error ?? 'خطا'),
       );
     });
@@ -223,6 +249,21 @@ export function TelegramBridgePanel({
               ) : null}
             </div>
           ) : null}
+
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-surface-muted/20 px-2.5 py-2">
+            <p className="text-caption text-text-muted">
+              اگر ریپازیتوری روی گیت‌هاب عمومی/در دسترس دیگران است، برای امنیت بیشتر کلیدهای هاست را رفرش کنید.
+            </p>
+            <button
+              type="button"
+              onClick={() => void onRegenerateHostSecrets()}
+              disabled={pending || rotating}
+              className="btn btn-secondary shrink-0 px-2 py-1 admin-text-meta"
+            >
+              {rotating ? <Loader2 className="h-3 w-3 animate-spin" /> : <KeyRound className="h-3 w-3" />}
+              رفرش کلیدها
+            </button>
+          </div>
 
           {hostConfigSource ? (
             <CodeFileBlock

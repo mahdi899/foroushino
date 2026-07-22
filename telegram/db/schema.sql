@@ -66,3 +66,10 @@ CREATE TABLE IF NOT EXISTS sync_meta (
     sync_key VARCHAR(64) NOT NULL PRIMARY KEY,
     synced_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Flood guard for public/webhook.php (see src/Security/RateLimiter.php).
+CREATE TABLE IF NOT EXISTS rate_limits (
+    telegram_user_id BIGINT NOT NULL PRIMARY KEY,
+    window_start INT NOT NULL,
+    hits INT NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

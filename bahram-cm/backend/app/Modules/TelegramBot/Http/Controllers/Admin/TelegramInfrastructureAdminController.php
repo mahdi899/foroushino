@@ -71,6 +71,13 @@ class TelegramInfrastructureAdminController
         ]);
     }
 
+    public function regenerateHostSecrets(Request $request): JsonResponse
+    {
+        $this->authorizeTelegram($request, 'telegram.settings.manage');
+
+        return response()->json(['data' => $this->infrastructure->regenerateHostSecrets()]);
+    }
+
     public function suggestSecrets(Request $request): JsonResponse
     {
         $this->authorizeTelegram($request, 'telegram.settings.manage');

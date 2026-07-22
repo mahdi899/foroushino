@@ -29,6 +29,7 @@ declare global {
         options: {
           sitekey: string;
           size?: 'normal' | 'compact' | 'invisible';
+          theme?: 'light' | 'dark' | 'auto';
           callback?: (token: string) => void;
           'error-callback'?: () => void;
           'expired-callback'?: () => void;

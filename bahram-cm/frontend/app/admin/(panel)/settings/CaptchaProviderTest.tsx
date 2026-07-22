@@ -30,6 +30,7 @@ declare global {
           'expired-callback'?: () => void;
         },
       ) => string;
+      execute: (widgetId?: string) => void;
       reset: (widgetId?: string) => void;
       remove: (widgetId?: string) => void;
     };

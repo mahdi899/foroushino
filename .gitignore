@@ -38,6 +38,16 @@ saat/deploy/deploy.env
 bahram-cm/deploy/scripts/_*
 bahram-cm/deploy/scripts/saat_probe.txt
 
+# Ad-hoc one-off SSH/deploy/diagnostic scripts at repo root — these tend to
+# contain hardcoded server credentials and must never be committed.
+/*.py
+/check_*.py
+/apply_*.py
+/deploy_*.py
+/fix_*.py
+/reload_*.py
+/*.zip
+
 # Laravel compiled bootstrap cache
 bahram-cm/backend/bootstrap/cache/*.php
 !bahram-cm/backend/bootstrap/cache/.gitignore

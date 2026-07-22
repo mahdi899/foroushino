@@ -36,7 +36,10 @@ final class SyncClient
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $encrypted,
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_TIMEOUT => 10,
+            CURLOPT_ENCODING => '',
+            CURLOPT_TCP_KEEPALIVE => 1,
             CURLOPT_HTTPHEADER => array_merge([
                 'Content-Type: text/plain',
                 'Authorization: Bearer '.$this->config['hmac_secret'],

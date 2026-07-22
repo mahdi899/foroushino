@@ -13,6 +13,7 @@ use TelegramHost\Http\LiveClient;
 use TelegramHost\Http\SyncClient;
 use TelegramHost\Routing\DelegationDetector;
 use TelegramHost\Routing\UpdateRouter;
+use TelegramHost\Security\RateLimiter;
 use TelegramHost\Services\MainMenu;
 use TelegramHost\Services\MembershipGate;
 use TelegramHost\Services\PurchaseFlow;
@@ -44,6 +45,35 @@ if (function_exists('fastcgi_finish_request')) {
 
 try {
     $pdo = Connection::get($config);
+
+    $senderId = (int) (
+        $update['message']['from']['id']
+        ?? $update['edited_message']['from']['id']
+        ?? $update['callback_query']['from']['id']
+        ?? $update['chat_join_request']['from']['id']
+        ?? $update['my_chat_member']['from']['id']
+        ?? 0
+    );
+
+    if ($senderId > 0) {
+        $limiter = new RateLimiter($pdo);
+        if ($limiter->tooManyRequests($senderId)) {
+            // Silently drop — Telegram already got its 200 OK, no retries triggered.
+            exit;
+        }
+    }
+
+    // Hard cap free text before it reaches any handler/DB/relay — blocks
+    // oversized payloads (e.g. multi-MB "text" fields) some abusive clients send.
+    foreach (['message', 'edited_message'] as $key) {
+        if (isset($update[$key]['text']) && is_string($update[$key]['text'])) {
+            $update[$key]['text'] = mb_substr($update[$key]['text'], 0, 4000);
+        }
+        if (isset($update[$key]['caption']) && is_string($update[$key]['caption'])) {
+            $update[$key]['caption'] = mb_substr($update[$key]['caption'], 0, 1024);
+        }
+    }
+
     $sync = new SyncClient($config);
     $live = new LiveClient($sync);
     $cache = new SyncCache($pdo, $sync);

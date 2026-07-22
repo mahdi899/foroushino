@@ -560,6 +560,37 @@ class TelegramInfrastructureService
         return $this->adminView();
     }
 
+    /**
+     * Rotates every secret shared with the external host app (HMAC sync key,
+     * AES encryption key, Telegram webhook secret) in one shot. Use after a
+     * leak risk (e.g. repo went public / secrets touched by mistake).
+     *
+     * The host app's `config.php` is a static file uploaded manually, so it
+     * does NOT get the new values automatically — the admin must copy the
+     * freshly rendered `host_config_sample` to the host and re-register the
+     * webhook right after calling this.
+     *
+     * @return array<string, mixed>
+     */
+    public function regenerateHostSecrets(): array
+    {
+        $next = $this->stored();
+
+        $next['host_sync_secret'] = Str::random(64);
+        $next['host_encryption_key'] = AesGcmCipher::generateKey();
+        $next['webhook_secret'] = Str::random(32);
+
+        $this->settings->updateGroup(self::GROUP, [self::KEY => $next]);
+        self::forgetCachedConfig();
+        $this->syncProductionBotSecret();
+
+        if (($next['bridge_type'] ?? '') === 'host') {
+            PushTelegramHostSyncJob::all();
+        }
+
+        return $this->adminView();
+    }
+
     /** @return array{ok: bool, message: string} */
     public function testConnection(TelegramBotClientFactory $clients): array
     {

@@ -114,16 +114,25 @@ final class BotApiClient
      */
     private function call(string $method, array $params, bool $return = false): array
     {
-        $ch = curl_init("https://api.telegram.org/bot{$this->token}/{$method}");
+        if (self::$handle === null) {
+            self::$handle = curl_init();
+        }
+        $ch = self::$handle;
+
         curl_setopt_array($ch, [
+            CURLOPT_URL => "https://api.telegram.org/bot{$this->token}/{$method}",
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => json_encode($params, JSON_UNESCAPED_UNICODE),
             CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
             CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_TIMEOUT => 12,
+            CURLOPT_ENCODING => '',
+            CURLOPT_TCP_KEEPALIVE => 1,
+            CURLOPT_FORBID_REUSE => false,
+            CURLOPT_FRESH_CONNECT => false,
         ]);
         $raw = curl_exec($ch);
-        curl_close($ch);
 
         if (! is_string($raw)) {
             if ($return) {
