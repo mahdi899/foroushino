@@ -9,6 +9,7 @@ use TelegramHost\Cache\SyncCache;
 use TelegramHost\Db\Connection;
 use TelegramHost\Support\AesGcmCipher;
 use TelegramHost\Support\HmacVerifier;
+use TelegramHost\Telegram\BotApiClient;
 
 /**
  * Handles push commands from the main server (server → host).
@@ -56,6 +57,7 @@ final class InboundSyncHandler
             'refresh_catalog' => $this->refreshCatalog($cache),
             'refresh_all' => $this->refreshAll($cache),
             'push_account' => $this->pushAccount($pdo, $payload),
+            'register_webhook' => $this->registerWebhook($payload),
             default => $this->refreshAll($cache),
         };
     }
@@ -101,5 +103,40 @@ final class InboundSyncHandler
         (new AccountCache($pdo))->store($telegramUserId, $account);
 
         return ['ok' => true, 'action' => 'push_account'];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{ok: bool, action: string, url?: string, error?: string}
+     */
+    private function registerWebhook(array $payload): array
+    {
+        $url = trim((string) ($payload['url'] ?? ''));
+        if ($url === '') {
+            $base = rtrim((string) ($this->config['host_public_url'] ?? ''), '/');
+            $url = $base !== '' ? $base.'/public/webhook.php' : '';
+        }
+
+        if ($url === '') {
+            return ['ok' => false, 'action' => 'register_webhook', 'error' => 'missing_webhook_url'];
+        }
+
+        $token = trim((string) ($this->config['bot_token'] ?? ''));
+        if ($token === '') {
+            return ['ok' => false, 'action' => 'register_webhook', 'error' => 'missing_bot_token'];
+        }
+
+        $secret = trim((string) ($payload['secret'] ?? ''));
+        if ($secret === '') {
+            $secret = trim((string) ($this->config['webhook_secret'] ?? ''));
+        }
+
+        try {
+            (new BotApiClient($token))->setWebhook($url, $secret !== '' ? $secret : null);
+
+            return ['ok' => true, 'action' => 'register_webhook', 'url' => $url];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'action' => 'register_webhook', 'error' => $e->getMessage()];
+        }
     }
 }

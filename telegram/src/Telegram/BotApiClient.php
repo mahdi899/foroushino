@@ -76,6 +76,24 @@ final class BotApiClient
         ]);
     }
 
+    public function setWebhook(string $url, ?string $secretToken = null): void
+    {
+        $params = array_filter([
+            'url' => $url,
+            'secret_token' => $secretToken,
+            'allowed_updates' => [
+                'message',
+                'edited_message',
+                'callback_query',
+                'chat_member',
+                'my_chat_member',
+                'chat_join_request',
+            ],
+        ], static fn (mixed $value) => $value !== null && $value !== '');
+
+        $this->call('setWebhook', $params);
+    }
+
     /** @return array<string, mixed> */
     public function getChatMember(int|string $chatId, int $userId): array
     {

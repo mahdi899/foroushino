@@ -583,7 +583,22 @@ class TelegramInfrastructureService
         $secret = $this->webhookSecret();
 
         try {
-            $clients->forBot($bot)->setWebhook($url, $secret);
+            if ($this->usesHostBridge()) {
+                $hostResult = app(TelegramHostPushService::class)->registerWebhook($url, $secret);
+                if (! ($hostResult['ok'] ?? false)) {
+                    $error = (string) ($hostResult['error'] ?? 'host_error');
+
+                    return [
+                        'ok' => false,
+                        'message' => 'ثبت وب‌هوک ناموفق: '.$error
+                            .' — هاست: '.$this->hostWebhookUrl()
+                            .' (سرور ایران به api.telegram.org دسترسی ندارد؛ از هاست خارج ثبت می‌شود)',
+                    ];
+                }
+                $url = (string) ($hostResult['url'] ?? $url);
+            } else {
+                $clients->forBot($bot)->setWebhook($url, $secret);
+            }
         } catch (\Throwable $e) {
             return ['ok' => false, 'message' => $this->formatWebhookRegistrationError($e)];
         }
