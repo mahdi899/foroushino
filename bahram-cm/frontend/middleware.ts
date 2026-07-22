@@ -12,7 +12,14 @@ import { getMiddlewarePerfConfig } from "@/lib/cache/middlewarePerf";
 import { isLongCacheMediaPath } from "@/lib/cache/cdnHeaders";
 import { isStaticContentPath } from "@/lib/cache/staticScope";
 import { mediaPathToStorage } from "@/lib/media/legacyMap";
-import { APP_DOMAIN, appPublicOrigin, DUAL_DOMAIN_ENABLED, familyPublicOrigin, FAMILY_DOMAIN } from "@/lib/domains";
+import {
+  APP_DOMAIN,
+  appPublicOrigin,
+  DUAL_DOMAIN_ENABLED,
+  familyPublicOrigin,
+  FAMILY_DOMAIN,
+  isLoopbackOrigin,
+} from "@/lib/domains";
 import { MEDIA_ORIGIN } from "@/lib/api/config";
 
 const STUDENT_TOKEN_COOKIE = "bahram_student_token";
@@ -21,9 +28,19 @@ function hostnameOf(request: NextRequest): string {
   return (request.headers.get("host") ?? request.nextUrl.hostname).split(":")[0]!;
 }
 
-/** Cloudflare sets CF-IPCountry; keep family on rostami.app/family inside Iran. */
-function isIranEdgeRequest(request: NextRequest): boolean {
-  return request.headers.get("cf-ipcountry")?.toUpperCase() === "IR";
+/** Never redirect cross-domain to a loopback origin baked into the build. */
+function resolveFamilyPublicOrigin(request: NextRequest): string {
+  const fromEnv = familyPublicOrigin();
+  if (fromEnv && !isLoopbackOrigin(fromEnv)) return fromEnv;
+  if (FAMILY_DOMAIN) return `https://${FAMILY_DOMAIN}`;
+  return request.nextUrl.origin;
+}
+
+function resolveAppPublicOrigin(request: NextRequest): string {
+  const fromEnv = appPublicOrigin();
+  if (fromEnv && !isLoopbackOrigin(fromEnv)) return fromEnv;
+  if (APP_DOMAIN) return `https://${APP_DOMAIN}`;
+  return request.nextUrl.origin;
 }
 
 /** Paths that must never be rewritten into `/family/**` on the club apex (assets, PWA files, API). */
@@ -75,24 +92,28 @@ async function redirectToFamilyDomain(request: NextRequest, pathname: string, se
   const targetPath = pathname === "/family" ? "/" : pathname.replace(/^\/family/, "") || "/";
   const bridgeToken = await issueSsoBridgeToken(request);
 
+  const familyOrigin = resolveFamilyPublicOrigin(request);
+
   if (!bridgeToken) {
-    return NextResponse.redirect(`${familyPublicOrigin()}/login`);
+    return NextResponse.redirect(`${familyOrigin}/login`);
   }
 
   const next = encodeURIComponent(targetPath + search);
-  return NextResponse.redirect(`${familyPublicOrigin()}/sso/bridge?bt=${encodeURIComponent(bridgeToken)}&next=${next}`);
+  return NextResponse.redirect(`${familyOrigin}/sso/bridge?bt=${encodeURIComponent(bridgeToken)}&next=${next}`);
 }
 
 /** rostami.club/panel/** → rostami.app (SSO bridge if logged in, else /panel login). */
 async function redirectToAppDomain(request: NextRequest, pathname: string, search: string): Promise<NextResponse> {
   const bridgeToken = await issueSsoBridgeToken(request);
 
+  const appOrigin = resolveAppPublicOrigin(request);
+
   if (!bridgeToken) {
-    return NextResponse.redirect(`${appPublicOrigin()}${pathname}${search}`);
+    return NextResponse.redirect(`${appOrigin}${pathname}${search}`);
   }
 
   const next = encodeURIComponent(pathname + search);
-  return NextResponse.redirect(`${appPublicOrigin()}/sso/bridge?bt=${encodeURIComponent(bridgeToken)}&next=${next}`);
+  return NextResponse.redirect(`${appOrigin}/sso/bridge?bt=${encodeURIComponent(bridgeToken)}&next=${next}`);
 }
 
 function isMiniCourseDetailPath(pathname: string): boolean {
@@ -222,7 +243,6 @@ export async function middleware(request: NextRequest) {
     if (
       hostname === APP_DOMAIN &&
       (pathname === "/family" || pathname.startsWith("/family/")) &&
-      !isIranEdgeRequest(request) &&
       !isNextDataRequest(request)
     ) {
       return redirectToFamilyDomain(request, pathname, search);

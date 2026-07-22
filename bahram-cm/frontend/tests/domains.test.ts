@@ -32,16 +32,24 @@ describe('domains', () => {
     expect(familyPublicOrigin()).toBe('https://rostami.club');
   });
 
-  it('familyHomeHref stays on /family when hostname is the main app', async () => {
+  it('familyHomeHref uses club apex when FAMILY_DOMAIN is set', async () => {
     vi.stubEnv('NEXT_PUBLIC_FAMILY_DOMAIN', 'rostami.club');
     const { familyHomeHref } = await loadDomains();
-    expect(familyHomeHref('rostami.app')).toBe('/family');
+    expect(familyHomeHref()).toBe('https://rostami.club/');
   });
 
-  it('familyHomeHref uses club apex on the family host', async () => {
+  it('familyHomeHref ignores loopback family site URL', async () => {
+    vi.stubEnv('NEXT_PUBLIC_FAMILY_SITE_URL', 'http://localhost:3000');
     vi.stubEnv('NEXT_PUBLIC_FAMILY_DOMAIN', 'rostami.club');
     const { familyHomeHref } = await loadDomains();
-    expect(familyHomeHref('rostami.club')).toBe('https://rostami.club/');
+    expect(familyHomeHref()).toBe('https://rostami.club/');
+  });
+
+  it('does not return loopback when only NEXT_PUBLIC_SITE_URL is localhost', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'http://localhost:3000');
+    vi.stubEnv('NEXT_PUBLIC_APP_DOMAIN', '');
+    const { appPublicOrigin } = await loadDomains();
+    expect(appPublicOrigin()).toBe('');
   });
 
   it('detects loopback origins', async () => {
