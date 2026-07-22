@@ -21,6 +21,11 @@ function hostnameOf(request: NextRequest): string {
   return (request.headers.get("host") ?? request.nextUrl.hostname).split(":")[0]!;
 }
 
+/** Cloudflare sets CF-IPCountry; keep family on rostami.app/family inside Iran. */
+function isIranEdgeRequest(request: NextRequest): boolean {
+  return request.headers.get("cf-ipcountry")?.toUpperCase() === "IR";
+}
+
 /** Paths that must never be rewritten into `/family/**` on the club apex (assets, PWA files, API). */
 function isFamilyRewriteExempt(pathname: string): boolean {
   if (pathname.startsWith("/family") || pathname.startsWith("/sso")) return true;
@@ -200,7 +205,11 @@ export async function middleware(request: NextRequest) {
 
   // Option B dual-domain routing — rostami.app ↔ rostami.club (see helpers above).
   if (DUAL_DOMAIN_ENABLED) {
-    if (hostname === APP_DOMAIN && (pathname === "/family" || pathname.startsWith("/family/"))) {
+    if (
+      hostname === APP_DOMAIN &&
+      (pathname === "/family" || pathname.startsWith("/family/")) &&
+      !isIranEdgeRequest(request)
+    ) {
       return redirectToFamilyDomain(request, pathname, search);
     }
 

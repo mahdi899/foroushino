@@ -8,7 +8,6 @@ enum BotFeatureFlag: string
     case SupportRequiresSubscription = 'support_requires_subscription';
     case IranMobileOnly = 'iran_mobile_only';
     case CardToCardPayment = 'card_to_card_payment';
-    case NumericPhoneVerification = 'numeric_phone_verification';
     case SmsOtpVerification = 'sms_otp_verification';
     case CollectPhoneAndName = 'collect_phone_and_name';
     case ReferralEnabled = 'referral_enabled';
@@ -21,7 +20,6 @@ enum BotFeatureFlag: string
             self::SupportRequiresSubscription => 'ارسال پیام پشتیبانی',
             self::IranMobileOnly => 'تایید شماره‌های فقط ایران',
             self::CardToCardPayment => 'پرداخت کارت به کارت',
-            self::NumericPhoneVerification => 'تایید شماره تلفن عددی',
             self::SmsOtpVerification => 'ارسال پیامک تایید',
             self::CollectPhoneAndName => 'دریافت شماره و نام',
             self::ReferralEnabled => 'زیرمجموعه‌گیری',
@@ -36,7 +34,6 @@ enum BotFeatureFlag: string
             self::SupportRequiresSubscription => false,
             self::IranMobileOnly => true,
             self::CardToCardPayment => false,
-            self::NumericPhoneVerification => false,
             self::SmsOtpVerification => false,
             self::CollectPhoneAndName => true,
             self::ReferralEnabled => true,
@@ -52,7 +49,6 @@ enum BotFeatureFlag: string
             self::SupportRequiresSubscription,
             self::IranMobileOnly,
             self::CardToCardPayment,
-            self::NumericPhoneVerification,
             self::SmsOtpVerification,
             self::CollectPhoneAndName,
             self::ReferralEnabled,

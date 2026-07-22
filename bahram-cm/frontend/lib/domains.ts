@@ -11,6 +11,20 @@ export function normalizeHost(hostname: string): string {
   return hostname.split(':')[0]?.toLowerCase() ?? '';
 }
 
+function isLoopbackHost(hostname: string): boolean {
+  const host = normalizeHost(hostname);
+  return host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0';
+}
+
+/** True for dev origins baked into production builds (NEXT_PUBLIC_SITE_URL=localhost). */
+export function isLoopbackOrigin(url: string): boolean {
+  try {
+    return isLoopbackHost(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
 export function isFamilyHost(hostname: string): boolean {
   if (!FAMILY_DOMAIN) return false;
   return normalizeHost(hostname) === FAMILY_DOMAIN.toLowerCase();
@@ -18,16 +32,25 @@ export function isFamilyHost(hostname: string): boolean {
 
 export function familyPublicOrigin(): string {
   const explicit = process.env.NEXT_PUBLIC_FAMILY_SITE_URL?.trim().replace(/\/$/, '');
-  if (explicit) return explicit;
-  return FAMILY_DOMAIN ? `https://${FAMILY_DOMAIN}` : '';
+  if (explicit && !isLoopbackOrigin(explicit)) return explicit;
+  if (FAMILY_DOMAIN) return `https://${FAMILY_DOMAIN}`;
+  if (typeof window !== 'undefined' && isFamilyHost(window.location.hostname)) {
+    return window.location.origin;
+  }
+  return explicit ?? '';
 }
 
 /** Main marketing site — rostami.app in production. */
 export function appPublicOrigin(): string {
   const site = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '');
-  if (site) return site;
+  if (site && !isLoopbackOrigin(site)) return site;
   if (APP_DOMAIN) return `https://${APP_DOMAIN}`;
-  return '';
+  if (typeof window !== 'undefined') {
+    const host = normalizeHost(window.location.hostname);
+    if (isFamilyHost(host) && APP_DOMAIN) return `https://${APP_DOMAIN}`;
+    if (!isLoopbackHost(host)) return window.location.origin;
+  }
+  return site ?? '';
 }
 
 /** True on the family feed home (club `/` or dev `/family`). */
@@ -39,8 +62,13 @@ export function isFamilyFeedHomePath(pathname: string, hostname?: string): boole
   return path === '/family';
 }
 
-/** Public family home — club apex in prod, `/family` on single-origin dev. */
-export function familyHomeHref(): string {
+/** Public family home — club apex in prod, `/family` on main app or single-origin dev. */
+export function familyHomeHref(hostname?: string): string {
+  const host =
+    hostname ??
+    (typeof window !== 'undefined' ? normalizeHost(window.location.hostname) : '');
+  // Stay on rostami.app/family when not on the club host (Iran users + pre-redirect).
+  if (host && !isFamilyHost(host)) return '/family';
   return FAMILY_DOMAIN ? `${familyPublicOrigin()}/` : '/family';
 }
 

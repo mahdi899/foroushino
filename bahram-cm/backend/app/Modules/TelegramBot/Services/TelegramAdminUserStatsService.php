@@ -109,7 +109,7 @@ class TelegramAdminUserStatsService
         return $e('user').' <b>حساب کاربری شما</b>'."\n"
             ."──────────────\n"
             .$e('key')." شناسه: <code>{$s['telegram_user_id']}</code>\n"
-            .$e('user')." نام: <b>{$name}</b>\n"
+            .$e('pen')." نام: <b>{$name}</b>\n"
             .$e('phone')." موبایل: {$phone}\n"
             .$e('calendar')." ثبت‌نام: {$registered}\n\n"
             .$e('money')." تراکنش‌های موفق: <b>{$s['successful_orders']}</b>\n"

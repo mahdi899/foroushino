@@ -194,12 +194,11 @@ class RegistrationFlowService
         $this->conversations->transition($conversation, ConversationState::WaitingForMobile);
 
         $base = $message ?? $this->messages->get($bot, 'registration_ask_mobile');
-        $hint = $bot->featureEnabled(BotFeatureFlag::NumericPhoneVerification)
-            ? "\n\nمی‌توانید شماره را تایپ کنید یا با دکمه زیر به‌اشتراک بگذارید."
-            : "\n\nلطفاً از دکمه «ارسال شماره تماس» استفاده کنید.";
+        $e = static fn (string $key): string => \App\Modules\TelegramBot\Support\TelegramCustomEmoji::tag($key);
+        $hint = "\n\n".$e('warning').' تایپ شماره پذیرفته نمی‌شود — فقط دکمه پایین.';
 
         if ($bot->featureEnabled(BotFeatureFlag::IranMobileOnly)) {
-            $hint .= "\nفقط شماره ایران (09…) پذیرفته می‌شود.";
+            $hint .= "\n".$e('check').' فقط شماره موبایل ایران پذیرفته می‌شود.';
         }
 
         $this->queueMessage($bot, $account->telegram_user_id, $base.$hint, [
@@ -214,18 +213,17 @@ class RegistrationFlowService
         TelegramConversation $conversation,
         string $text,
     ): void {
-        if (! $bot->featureEnabled(BotFeatureFlag::NumericPhoneVerification)) {
-            $this->queueMessage(
-                $bot,
-                $account->telegram_user_id,
-                'لطفاً فقط از دکمه «ارسال شماره تماس» استفاده کنید.',
-                ['reply_markup' => $this->phoneStepMarkup($bot)],
-            );
-
-            return;
-        }
-
-        $this->handleVerifiedContact($bot, $account, $conversation, $text, fromContact: false);
+        $e = static fn (string $key): string => \App\Modules\TelegramBot\Support\TelegramCustomEmoji::tag($key);
+        $this->queueMessage(
+            $bot,
+            $account->telegram_user_id,
+            $e('warning').' تایپ شماره ممکن نیست.'."\n"
+            .$e('point_up').' لطفاً فقط دکمه <b>ارسال شماره تماس</b> را بزنید.',
+            [
+                'parse_mode' => 'HTML',
+                'reply_markup' => $this->phoneStepMarkup($bot),
+            ],
+        );
     }
 
     private function handleName(TelegramBot $bot, TelegramAccount $account, TelegramConversation $conversation, string $text): void
@@ -443,17 +441,7 @@ class RegistrationFlowService
     /** @return array<string, mixed> */
     private function phoneStepMarkup(TelegramBot $bot): array
     {
-        if ($bot->featureEnabled(BotFeatureFlag::NumericPhoneVerification)) {
-            return [
-                'keyboard' => [
-                    [['text' => '📱 ارسال شماره تماس', 'request_contact' => true]],
-                    [['text' => RegistrationKeyboard::BACK_LABEL]],
-                ],
-                'resize_keyboard' => true,
-            ];
-        }
-
-        return $this->registrationKeyboard->requestContactMarkup();
+        return $this->registrationKeyboard->requestContactMarkup(withBack: false);
     }
 
     /** @param  array<string, mixed>  $options */

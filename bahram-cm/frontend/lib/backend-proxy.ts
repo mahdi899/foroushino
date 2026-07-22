@@ -19,7 +19,7 @@ export function isPublicCdnMediaPath(pathname: string): boolean {
 
 /**
  * Next.js App Router handlers under `/api/*` — middleware must not proxy these.
- * Captcha/chatbot are proxied to Laravel `/api/v1/*` instead (see `toBackendPath`).
+ * Captcha/chatbot routes call Laravel `/api/v1/*` server-side with X-Revalidate-Secret.
  */
 const NEXT_API_HANDLERS = [
   "/api/admin",
@@ -30,6 +30,9 @@ const NEXT_API_HANDLERS = [
   "/api/broadcasting",
   "/api/sat",
   "/api/spotx",
+  /** Next route handlers attach X-Revalidate-Secret before calling Laravel. */
+  "/api/captcha",
+  "/api/chatbot",
 ];
 
 /** Browser calls `/api/captcha|chatbot/*`; Laravel serves `/api/v1/captcha|chatbot/*`. */

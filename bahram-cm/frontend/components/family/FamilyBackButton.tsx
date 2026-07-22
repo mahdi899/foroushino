@@ -9,6 +9,7 @@ import {
   familyHomeHref,
   isFamilyFeedHomePath,
   isFamilyHost,
+  isLoopbackOrigin,
 } from '@/lib/domains';
 
 /**
@@ -39,7 +40,7 @@ export function FamilyBackButton({
     // stays inside the shared Next.js client and leaves the site page unhydrated).
     if (DUAL_DOMAIN_ENABLED && isFamilyHost(hostname)) {
       const mainSite = appPublicOrigin();
-      if (mainSite) {
+      if (mainSite && !isLoopbackOrigin(mainSite)) {
         window.location.assign(`${mainSite}/`);
         return;
       }

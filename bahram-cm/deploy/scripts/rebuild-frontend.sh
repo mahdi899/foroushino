@@ -20,6 +20,18 @@ rm -f "${FRONTEND}/.next/lock" 2>/dev/null || true
 sleep 2
 
 cd "$FRONTEND"
+# NEXT_PUBLIC_* are baked at build time — ensure production origins before compile.
+if [[ -f .env.local ]]; then
+  grep -q '^NEXT_PUBLIC_APP_DOMAIN=' .env.local \
+    && sed -i 's|^NEXT_PUBLIC_APP_DOMAIN=.*|NEXT_PUBLIC_APP_DOMAIN=rostami.app|' .env.local \
+    || echo 'NEXT_PUBLIC_APP_DOMAIN=rostami.app' >> .env.local
+  grep -q '^NEXT_PUBLIC_FAMILY_DOMAIN=' .env.local \
+    && sed -i 's|^NEXT_PUBLIC_FAMILY_DOMAIN=.*|NEXT_PUBLIC_FAMILY_DOMAIN=rostami.club|' .env.local \
+    || echo 'NEXT_PUBLIC_FAMILY_DOMAIN=rostami.club' >> .env.local
+  grep -q '^NEXT_PUBLIC_SITE_URL=' .env.local \
+    && sed -i 's|^NEXT_PUBLIC_SITE_URL=.*|NEXT_PUBLIC_SITE_URL=https://rostami.app|' .env.local \
+    || echo 'NEXT_PUBLIC_SITE_URL=https://rostami.app' >> .env.local
+fi
 npm run build
 test -f .next/BUILD_ID
 echo "BUILD_ID=$(cat .next/BUILD_ID)"
