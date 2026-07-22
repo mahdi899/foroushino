@@ -278,16 +278,19 @@ class TelegramInfrastructureService
             return rtrim($fromEnv, '/\\');
         }
 
-        // Production: /var/www/bahram-cm/backend → /var/www/foroushino/telegram
+        // Standard layout: foroushino/bahram-cm/backend + foroushino/telegram (same repo).
+        $inRepo = dirname(base_path(), 2).DIRECTORY_SEPARATOR.'telegram';
+        if (is_dir($inRepo)) {
+            return $inRepo;
+        }
+
+        // Split deploy: /var/www/bahram-cm/backend + /var/www/foroushino/telegram
         $sibling = dirname(base_path(), 2).DIRECTORY_SEPARATOR.'foroushino'.DIRECTORY_SEPARATOR.'telegram';
         if (is_dir($sibling)) {
             return $sibling;
         }
 
-        // Local dev: repo root is one level above bahram-cm/
-        $repoRoot = dirname(base_path()).DIRECTORY_SEPARATOR.'telegram';
-
-        return is_dir($repoRoot) ? $repoRoot : $sibling;
+        return dirname(base_path()).DIRECTORY_SEPARATOR.'telegram';
     }
 
     public function hostProxySampleTemplate(): ?string
