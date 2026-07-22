@@ -270,6 +270,26 @@ class TelegramInfrastructureService
         return $token !== '' ? $token : null;
     }
 
+    /** Absolute path to the standalone `telegram/` host app directory. */
+    public function hostAppRoot(): string
+    {
+        $fromEnv = trim((string) env('TELEGRAM_HOST_APP_PATH', ''));
+        if ($fromEnv !== '' && is_dir($fromEnv)) {
+            return rtrim($fromEnv, '/\\');
+        }
+
+        // Production: /var/www/bahram-cm/backend → /var/www/foroushino/telegram
+        $sibling = dirname(base_path(), 2).DIRECTORY_SEPARATOR.'foroushino'.DIRECTORY_SEPARATOR.'telegram';
+        if (is_dir($sibling)) {
+            return $sibling;
+        }
+
+        // Local dev: repo root is one level above bahram-cm/
+        $repoRoot = dirname(base_path()).DIRECTORY_SEPARATOR.'telegram';
+
+        return is_dir($repoRoot) ? $repoRoot : $sibling;
+    }
+
     public function hostProxySampleTemplate(): ?string
     {
         $path = dirname(base_path()).DIRECTORY_SEPARATOR.'deploy'.DIRECTORY_SEPARATOR.'host-proxy'.DIRECTORY_SEPARATOR.'index.sample.php';
@@ -360,7 +380,7 @@ class TelegramInfrastructureService
     /** Rendered `config.php` for the standalone `telegram/` host app (deploy/host-app/config.sample.php). */
     public function buildHostAppConfigSample(): ?string
     {
-        $path = dirname(base_path()).DIRECTORY_SEPARATOR.'telegram'.DIRECTORY_SEPARATOR.'config.sample.php';
+        $path = $this->hostAppRoot().DIRECTORY_SEPARATOR.'config.sample.php';
         if (! is_file($path)) {
             return null;
         }

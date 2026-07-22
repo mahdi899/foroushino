@@ -19,7 +19,7 @@ class ExportTelegramHostConfig extends Command
 
     public function handle(TelegramInfrastructureService $infra): int
     {
-        $samplePath = dirname(base_path()).DIRECTORY_SEPARATOR.'telegram'.DIRECTORY_SEPARATOR.'config.sample.php';
+        $samplePath = app(TelegramInfrastructureService::class)->hostAppRoot().DIRECTORY_SEPARATOR.'config.sample.php';
         if (! is_file($samplePath)) {
             $this->error('telegram/config.sample.php not found.');
 
