@@ -495,7 +495,7 @@ export default function SettingsPage() {
           id="sms"
           icon={SETTINGS_CATEGORY_NAV[3].icon}
           title="پیامک و پیام‌ها"
-          desc="کلیدهای API، مسیردهی پیامک، تلگرام و ارسال خودکار SpotPlayer."
+          desc="کلیدهای API، مسیردهی پیامک و ارسال خودکار SpotPlayer."
         >
           <SmsSpotplayerCredentialsSettingsSection
             form={credentialsForm}
@@ -511,8 +511,6 @@ export default function SettingsPage() {
               providers={smsRoutingConfig.providers}
               adminTelegramEvents={smsRoutingConfig.admin_telegram_events ?? []}
               adminTelegramCategories={smsRoutingConfig.admin_telegram_categories ?? []}
-              telegramInfrastructure={smsRoutingConfig.telegram_infrastructure ?? null}
-              telegramWorkerSampleTemplate={smsRoutingConfig.telegram_worker_sample_template ?? null}
             />
           ) : (
             <div id="sms-routing" className="card p-6 text-caption text-text-muted">

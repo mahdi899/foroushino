@@ -6,8 +6,6 @@ import { ExternalLink, Loader2, Route, Save, Send } from 'lucide-react';
 import type { AdminTelegramCategoryView, AdminTelegramEventView, SmsGlobalView, SmsProviderView } from '@/lib/admin/smsCenter.types';
 import { SMS_PROVIDER_DEFAULT_BASE_URLS, smsProvidersForChannel } from '@/lib/admin/smsCenter.types';
 import { saveSmsGlobalSettings, saveSmsProvider, testSmsProvider } from '@/lib/admin/smsCenter';
-import type { TelegramInfrastructureView } from '@/lib/admin/telegram.types';
-import { TelegramSmsProviderRow } from './TelegramSmsProviderRow';
 import { Badge } from '../ui';
 
 function ProviderOptions({ providers }: { providers: SmsProviderView[] }) {
@@ -147,21 +145,18 @@ export function SmsRoutingSettingsSection({
   providers: initialProviders,
   adminTelegramEvents = [],
   adminTelegramCategories = [],
-  telegramInfrastructure = null,
-  telegramWorkerSampleTemplate = null,
 }: {
   global: SmsGlobalView;
   providers: SmsProviderView[];
   adminTelegramEvents?: AdminTelegramEventView[];
   adminTelegramCategories?: AdminTelegramCategoryView[];
-  telegramInfrastructure?: TelegramInfrastructureView | null;
-  telegramWorkerSampleTemplate?: string | null;
 }) {
   const [global, setGlobal] = useState(initialGlobal);
   const [globalPending, setGlobalPending] = useState(false);
   const [status, setStatus] = useState('');
   const smsProviders = smsProvidersForChannel(initialProviders, 'sms');
-  const messengerProviders = smsProvidersForChannel(initialProviders, 'messenger');
+  // تلگرام دیگر اینجا نیست — توکن ربات، وب‌هوک و همه‌چیز مرتبط با تلگرام فقط داخل ماژول تلگرام مدیریت می‌شود.
+  const messengerProviders = smsProvidersForChannel(initialProviders, 'messenger').filter((p) => p.slug !== 'telegram');
 
   async function saveGlobal() {
     setGlobalPending(true);
@@ -186,7 +181,11 @@ export function SmsRoutingSettingsSection({
             <Link href="/admin/academy/sms" className="text-primary hover:underline">
               مرکز پیامک
             </Link>
-            .
+            . توکن ربات، وب‌هوک و همه‌ی تنظیمات تلگرام از{' '}
+            <Link href="/admin/telegram" className="text-primary hover:underline">
+              ماژول تلگرام
+            </Link>{' '}
+            مدیریت می‌شود.
           </p>
         </div>
       </div>
@@ -272,31 +271,12 @@ export function SmsRoutingSettingsSection({
                       ) : null}
                     </div>
                   </div>
-                  {provider.slug === 'telegram' && telegramInfrastructure ? (
-                    <TelegramSmsProviderRow
-                      provider={provider}
-                      infrastructure={telegramInfrastructure}
-                      workerSampleTemplate={telegramWorkerSampleTemplate}
-                    />
-                  ) : (
-                    <ProviderCredentialRow provider={provider} />
-                  )}
+                  <ProviderCredentialRow provider={provider} />
                 </div>
               ))}
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="card space-y-2 p-4 sm:p-5">
-        <h3 className="text-h3 text-primary-dark">لاگ رویدادها در تلگرام (ادمین)</h3>
-        <p className="text-caption text-text-muted leading-relaxed">
-          مدیریت رویدادها (فعال/غیرفعال، چت‌های گیرنده، تست ارسال) اکنون از یک ربات تلگرام واحد و از داخل ماژول تلگرام
-          انجام می‌شود.
-        </p>
-        <Link href="/admin/telegram/events" className="btn btn-secondary inline-flex text-caption">
-          مدیریت رویدادها در تلگرام
-        </Link>
       </div>
 
       {status ? <p className="text-caption text-text-muted">{status}</p> : null}
