@@ -9,12 +9,14 @@ use App\Modules\TelegramBot\Models\TelegramDestination;
 use App\Modules\TelegramBot\Models\TelegramJoinRequest;
 use App\Modules\TelegramBot\Models\TelegramUpdate;
 use App\Modules\TelegramBot\Services\DestinationAccessPolicy;
+use App\Modules\TelegramBot\Services\DestinationInviteLinkService;
 use Illuminate\Support\Facades\RateLimiter;
 
 class ChatJoinRequestHandler implements UpdateHandlerInterface
 {
     public function __construct(
         private readonly DestinationAccessPolicy $policy,
+        private readonly DestinationInviteLinkService $inviteLinks,
         private readonly TelegramBotClientFactory $clients,
     ) {}
 
@@ -65,6 +67,9 @@ class ChatJoinRequestHandler implements UpdateHandlerInterface
 
         if ($decision['allowed']) {
             $client->approveChatJoinRequest($chatId, $telegramUserId);
+            if ($destination && $account) {
+                $this->inviteLinks->revokeAfterSuccessfulJoin($bot, $destination, $account);
+            }
             if ($account) {
                 $client->sendMessage($telegramUserId, '✅ درخواست عضویت شما تأیید شد.');
             }

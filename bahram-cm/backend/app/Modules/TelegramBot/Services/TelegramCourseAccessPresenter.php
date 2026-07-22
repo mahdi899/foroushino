@@ -26,6 +26,7 @@ class TelegramCourseAccessPresenter
         private readonly CourseAccessService $courseAccess,
         private readonly DestinationAccessPolicy $destinations,
         private readonly DestinationInviteLinkService $inviteLinks,
+        private readonly TelegramUserDestinationsService $userDestinations,
         private readonly TelegramContentPresenter $content,
     ) {}
 
@@ -57,7 +58,7 @@ class TelegramCourseAccessPresenter
         $access = $this->resolveAccess($account, $product);
         $licenseKey = $this->resolveLicenseKey($account, $product);
         $destRows = $this->destinationKeyboardRows($bot, $account, $product);
-        $hasPerUserDestinations = $this->hasPerUserDestinations($bot, $account, $product);
+        $destinationLines = $this->destinationMessageLines($bot, $account, $product);
         $watchUrl = $access
             ? TelegramSiteUrl::courseWatchPage($access->id)
             : TelegramSiteUrl::coursesPanel();
@@ -79,11 +80,12 @@ class TelegramCourseAccessPresenter
             $lines[] = TelegramCustomEmoji::tag('key').' کلید اسپات‌پلیر هنوز آماده نیست — از پشتیبانی پیگیری کنید.';
         }
 
-        if ($destRows !== []) {
+        if ($destinationLines !== []) {
             $lines[] = '';
-            $lines[] = TelegramCustomEmoji::tag('pin').' گروه پشتیبانی اختصاصی این دوره را از دکمه‌های زیر باز کنید.';
-            if ($hasPerUserDestinations) {
-                $lines[] = TelegramCustomEmoji::tag('lock').' لینک عضویت فقط برای شماست — پس از ورود، درخواست شما خودکار بررسی می‌شود.';
+            $lines[] = TelegramCustomEmoji::tag('pin').' <b>گروه پشتیبانی این دوره</b>';
+            $lines[] = 'ربات لینک عضویت را برای شما می‌سازد — فقط با همین اکانت تلگرام درخواست بدهید.';
+            foreach ($destinationLines as $line) {
+                $lines[] = $line;
             }
         }
 
@@ -159,36 +161,9 @@ class TelegramCourseAccessPresenter
      */
     private function destinationKeyboardRows(TelegramBot $bot, TelegramAccount $account, Product $product): array
     {
-        $userId = $account->user_id;
-        if (! $userId) {
-            return [];
-        }
-
-        $items = TelegramDestination::query()
-            ->where('telegram_bot_id', $bot->id)
-            ->where('is_active', true)
-            ->with('requirements')
-            ->orderBy('id')
-            ->get();
-
         $rows = [];
-        foreach ($items as $destination) {
-            $decision = $this->destinations->evaluate($destination, (int) $userId);
-            if (! $decision['allowed']) {
-                continue;
-            }
-
-            $requiresThisProduct = $destination->requirements->contains(
-                fn ($req) => in_array($req->requirement_type, ['product', 'active_course_access'], true)
-                    && (int) $req->requirement_value === (int) $product->id,
-            );
-
-            if (! $requiresThisProduct && $decision['reason'] !== 'manual_grant') {
-                continue;
-            }
-
+        foreach ($this->matchingDestinations($bot, $account, $product) as $destination) {
             $url = $this->inviteLinks->resolveInviteUrl($bot, $destination, $account);
-
             $button = TelegramSiteUrl::inlineButton($destination->title, $url, null, 'pin');
             if ($button !== null) {
                 $rows[] = [$button];
@@ -198,11 +173,39 @@ class TelegramCourseAccessPresenter
         return $rows;
     }
 
-    private function hasPerUserDestinations(TelegramBot $bot, TelegramAccount $account, Product $product): bool
+    /** @return list<string> */
+    private function destinationMessageLines(TelegramBot $bot, TelegramAccount $account, Product $product): array
     {
         $userId = $account->user_id;
         if (! $userId) {
-            return false;
+            return [];
+        }
+
+        $lines = [];
+        foreach ($this->matchingDestinations($bot, $account, $product) as $destination) {
+            $resolved = $this->inviteLinks->resolveForAccount($bot, $destination, $account);
+            if ($resolved === null) {
+                continue;
+            }
+
+            $lines = array_merge($lines, $this->userDestinations->formatDestinationLines([
+                'destination' => $destination,
+                'status' => $resolved['status'],
+                'invite_url' => $resolved['invite_url'],
+                'mode' => $resolved['mode'],
+                'product_titles' => [],
+            ]));
+        }
+
+        return $lines;
+    }
+
+    /** @return \Illuminate\Support\Collection<int, TelegramDestination> */
+    private function matchingDestinations(TelegramBot $bot, TelegramAccount $account, Product $product)
+    {
+        $userId = $account->user_id;
+        if (! $userId) {
+            return collect();
         }
 
         return TelegramDestination::query()
@@ -211,16 +214,19 @@ class TelegramCourseAccessPresenter
             ->with('requirements')
             ->orderBy('id')
             ->get()
-            ->contains(function (TelegramDestination $destination) use ($userId, $product) {
+            ->filter(function (TelegramDestination $destination) use ($userId, $product) {
                 $decision = $this->destinations->evaluate($destination, (int) $userId);
-                if (! $decision['allowed'] || ! $destination->usesPerUserInvites()) {
+                if (! $decision['allowed']) {
                     return false;
                 }
 
-                return $destination->requirements->contains(
+                $requiresThisProduct = $destination->requirements->contains(
                     fn ($req) => in_array($req->requirement_type, ['product', 'active_course_access'], true)
                         && (int) $req->requirement_value === (int) $product->id,
                 );
-            });
+
+                return $requiresThisProduct || $decision['reason'] === 'manual_grant';
+            })
+            ->values();
     }
 }

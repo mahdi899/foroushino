@@ -21,7 +21,9 @@ class TelegramUserDestinationsService
     /**
      * @return Collection<int, array{
      *     destination: TelegramDestination,
-     *     invite_url: string,
+     *     status: 'member'|'invite',
+     *     invite_url: ?string,
+     *     mode: 'per_user'|'shared',
      *     product_titles: list<string>
      * }>
      */
@@ -44,8 +46,8 @@ class TelegramUserDestinationsService
                     return null;
                 }
 
-                $inviteUrl = $this->inviteLinks->resolveInviteUrl($bot, $destination, $account);
-                if (blank($inviteUrl)) {
+                $resolved = $this->inviteLinks->resolveForAccount($bot, $destination, $account);
+                if ($resolved === null) {
                     return null;
                 }
 
@@ -63,7 +65,9 @@ class TelegramUserDestinationsService
 
                 return [
                     'destination' => $destination,
-                    'invite_url' => (string) $inviteUrl,
+                    'status' => $resolved['status'],
+                    'invite_url' => $resolved['invite_url'],
+                    'mode' => $resolved['mode'],
                     'product_titles' => $productTitles,
                 ];
             })
@@ -79,6 +83,10 @@ class TelegramUserDestinationsService
         $rows = [];
 
         foreach ($this->accessibleForAccount($bot, $account) as $item) {
+            if ($item['status'] !== 'invite' || blank($item['invite_url'])) {
+                continue;
+            }
+
             $button = TelegramSiteUrl::inlineButton(
                 (string) $item['destination']->title,
                 (string) $item['invite_url'],
@@ -103,21 +111,52 @@ class TelegramUserDestinationsService
 
         $lines = [
             TelegramCustomEmoji::tag('pin').' <b>گروه‌های پشتیبانی شما</b>',
-            'برای هر دوره‌ای که خریده‌اید، لینک اختصاصی عضویت در گروه پشتیبانی دارید.',
+            'ربات لینک عضویت را مستقیم برای شما می‌سازد. فقط با اکانت تلگرام خودتان درخواست بدهید.',
             '──────────────',
         ];
 
         foreach ($items as $item) {
-            $destination = $item['destination'];
-            $lines[] = '• <b>'.TelegramHtml::escape($destination->title).'</b>';
-            if ($item['product_titles'] !== []) {
-                $lines[] = '  دوره: '.TelegramHtml::escape(implode('، ', $item['product_titles']));
-            }
-            if ($destination->usesPerUserInvites()) {
-                $lines[] = '  '.TelegramCustomEmoji::tag('lock').' لینک زیر فقط برای شماست.';
-            }
+            $lines = array_merge($lines, $this->formatDestinationLines($item));
         }
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array{
+     *     destination: TelegramDestination,
+     *     status: 'member'|'invite',
+     *     invite_url: ?string,
+     *     mode: 'per_user'|'shared',
+     *     product_titles: list<string>
+     * }  $item
+     * @return list<string>
+     */
+    public function formatDestinationLines(array $item): array
+    {
+        $destination = $item['destination'];
+        $lines = ['• <b>'.TelegramHtml::escape($destination->title).'</b>'];
+
+        if ($item['product_titles'] !== []) {
+            $lines[] = '  دوره: '.TelegramHtml::escape(implode('، ', $item['product_titles']));
+        }
+
+        if ($item['status'] === 'member') {
+            $lines[] = '  '.TelegramCustomEmoji::tag('check').' شما عضو این گروه هستید.';
+
+            return $lines;
+        }
+
+        if ($item['mode'] === 'per_user') {
+            $lines[] = '  '.TelegramCustomEmoji::tag('lock').' لینک اختصاصی شما (بعد از عضویت حذف می‌شود):';
+        } else {
+            $lines[] = '  '.TelegramCustomEmoji::tag('lock').' لینک عضویت (فقط اکانت شما تأیید می‌شود):';
+        }
+
+        if (filled($item['invite_url'])) {
+            $lines[] = '  <a href="'.TelegramHtml::escape((string) $item['invite_url']).'">'.TelegramHtml::escape((string) $item['invite_url']).'</a>';
+        }
+
+        return $lines;
     }
 }

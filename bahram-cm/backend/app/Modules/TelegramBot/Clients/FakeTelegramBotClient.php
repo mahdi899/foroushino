@@ -147,7 +147,7 @@ class FakeTelegramBotClient implements TelegramBotClientInterface
 
     public function getChatMember(int|string $chatId, int $userId): array
     {
-        return (array) $this->record('getChatMember', compact('chatId', 'userId'), ['status' => 'member']);
+        return (array) $this->record('getChatMember', compact('chatId', 'userId'), ['status' => 'left']);
     }
 
     public function getChat(int|string $chatId): array

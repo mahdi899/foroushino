@@ -15,6 +15,8 @@ class TelegramDestinationInviteLink extends Model
         'telegram_user_id',
         'invite_link',
         'expires_at',
+        'revoked_at',
+        'used_at',
     ];
 
     protected function casts(): array
@@ -22,6 +24,8 @@ class TelegramDestinationInviteLink extends Model
         return [
             'telegram_user_id' => 'integer',
             'expires_at' => 'datetime',
+            'revoked_at' => 'datetime',
+            'used_at' => 'datetime',
         ];
     }
 
@@ -43,5 +47,15 @@ class TelegramDestinationInviteLink extends Model
     public function isExpired(): bool
     {
         return $this->expires_at !== null && $this->expires_at->isPast();
+    }
+
+    public function isRevoked(): bool
+    {
+        return $this->revoked_at !== null;
+    }
+
+    public function isActive(): bool
+    {
+        return filled($this->invite_link) && ! $this->isExpired() && ! $this->isRevoked();
     }
 }

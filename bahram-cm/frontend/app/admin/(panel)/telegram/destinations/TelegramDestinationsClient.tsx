@@ -139,10 +139,10 @@ export function TelegramDestinationsClient({
         summary={<span>گروه پشتیبانی محصول</span>}
       >
         <div className="space-y-2 text-small text-text-muted">
-          <p>۱. یک گروه/کانال خصوصی بسازید و ربات را ادمین کنید (با دسترسی تأیید درخواست عضویت).</p>
-          <p>۲. Chat ID گروه و محصول مرتبط (مثلاً سات یا کمپین‌نویسی) را اینجا ثبت کنید.</p>
-          <p>۳. حالت «لینک اختصاصی هر کاربر» را انتخاب کنید تا ربات برای هر خریدار لینک جدا بسازد.</p>
-          <p>۴. کاربر پس از خرید، در بخش «دوره‌ها» یا «حساب من» دکمه ورود به گروه پشتیبانی را می‌بیند.</p>
+          <p>۱. گروه را بسازید و ربات را ادمین کنید (تأیید درخواست عضویت + ساخت لینک دعوت).</p>
+          <p>۲. فقط Chat ID گروه و محصول را ثبت کنید — لینک را ربات خودش می‌سازد و به کاربر می‌دهد.</p>
+          <p>۳. لینک اختصاصی: بعد از عضویت کاربر، لینک او از تلگرام حذف می‌شود.</p>
+          <p>۴. لینک مشترک: یک لینک برای همه، ولی فقط خریداران همان محصول تأیید می‌شوند.</p>
         </div>
       </AdminContentPanel>
 
@@ -176,12 +176,12 @@ export function TelegramDestinationsClient({
           <label className="block">
             <span className="text-caption text-text-muted">نوع لینک عضویت</span>
             <select className="field-input mt-1 w-full" value={form.access_mode} onChange={(e) => setForm((f) => ({ ...f, access_mode: e.target.value }))}>
-              <option value="per_user">لینک اختصاصی هر کاربر (پیشنهادی)</option>
-              <option value="join_request">لینک مشترک + Join Request</option>
+              <option value="per_user">لینک اختصاصی (پس از عضویت حذف می‌شود)</option>
+              <option value="join_request">لینک مشترک (فقط اکانت مجاز تأیید می‌شود)</option>
             </select>
           </label>
           <label className="block">
-            <span className="text-caption text-text-muted">لینک پشتیبان (اختیاری)</span>
+            <span className="text-caption text-text-muted">لینک پشتیبان (اختیاری — معمولاً لازم نیست)</span>
             <input className="field-input mt-1 w-full" dir="ltr" placeholder="https://t.me/+..." value={form.join_request_url} onChange={(e) => setForm((f) => ({ ...f, join_request_url: e.target.value }))} />
           </label>
         </div>
@@ -236,7 +236,7 @@ export function TelegramDestinationsClient({
                           disabled={pending}
                           onChange={(e) => updateDestination(d, { access_mode: e.target.value })}
                         >
-                          <option value="per_user">لینک اختصاصی هر کاربر</option>
+                          <option value="per_user">لینک اختصاصی</option>
                           <option value="join_request">لینک مشترک</option>
                         </select>
                         <button
