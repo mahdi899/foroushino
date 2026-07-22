@@ -27,6 +27,17 @@ function productTitle(products: AdminProduct[], productId: string | null | undef
   return product?.title ?? `محصول #${productId}`;
 }
 
+function requirementLabel(
+  products: AdminProduct[],
+  requirement: { requirement_type: string; requirement_value?: string | null },
+): string {
+  if (requirement.requirement_type === 'sat_membership') {
+    return 'عضویت فعال سات';
+  }
+
+  return productTitle(products, requirement.requirement_value);
+}
+
 export function TelegramDestinationsClient({
   items,
   bots,
@@ -47,6 +58,7 @@ export function TelegramDestinationsClient({
     username: '',
     join_request_url: '',
     access_mode: 'per_user',
+    requirement_type: 'product' as 'product' | 'sat_membership',
     product_id: '',
     is_active: true,
   });
@@ -58,9 +70,12 @@ export function TelegramDestinationsClient({
 
   const save = () => {
     startTransition(async () => {
-      const requirements = form.product_id
-        ? [{ requirement_type: 'product', requirement_value: form.product_id }]
-        : undefined;
+      const requirements =
+        form.requirement_type === 'sat_membership'
+          ? [{ requirement_type: 'sat_membership', requirement_value: 'active' }]
+          : form.product_id
+            ? [{ requirement_type: 'product', requirement_value: form.product_id }]
+            : undefined;
 
       const res = await saveTelegramDestinationAction({
         bot_key: form.bot_key,
@@ -81,6 +96,7 @@ export function TelegramDestinationsClient({
           username: '',
           join_request_url: '',
           product_id: '',
+          requirement_type: 'product',
         }));
         router.refresh();
       }
@@ -104,12 +120,16 @@ export function TelegramDestinationsClient({
     });
   };
 
-  const addRequirement = (destinationId: number, productId: string) => {
-    if (!productId) return;
+  const addRequirement = (
+    destinationId: number,
+    requirementType: 'product' | 'sat_membership',
+    productId?: string,
+  ) => {
+    if (requirementType === 'product' && !productId) return;
     startTransition(async () => {
       const res = await saveTelegramDestinationRequirementAction(destinationId, {
-        requirement_type: 'product',
-        requirement_value: productId,
+        requirement_type: requirementType,
+        requirement_value: requirementType === 'sat_membership' ? 'active' : productId,
       });
       setMsg(res.ok ? 'شرط دسترسی اضافه شد.' : res.error ?? 'خطا');
       if (res.ok) router.refresh();
@@ -143,6 +163,7 @@ export function TelegramDestinationsClient({
           <p>۲. فقط Chat ID گروه و محصول را ثبت کنید — لینک را ربات خودش می‌سازد و به کاربر می‌دهد.</p>
           <p>۳. لینک اختصاصی: بعد از عضویت کاربر، لینک او از تلگرام حذف می‌شود.</p>
           <p>۴. لینک مشترک: یک لینک برای همه، ولی فقط خریداران همان محصول تأیید می‌شوند.</p>
+          <p>۵. برای گروه سات، شرط «عضویت فعال سات» را انتخاب کنید — لینک فقط بعد از تأیید درخواست و فعال شدن دسترسی داده می‌شود.</p>
         </div>
       </AdminContentPanel>
 
@@ -165,14 +186,33 @@ export function TelegramDestinationsClient({
             <input className="field-input mt-1 w-full" dir="ltr" placeholder="-100xxxxxxxxxx" value={form.chat_id} onChange={(e) => setForm((f) => ({ ...f, chat_id: e.target.value }))} />
           </label>
           <label className="block">
-            <span className="text-caption text-text-muted">محصول مرتبط</span>
-            <select className="field-input mt-1 w-full" value={form.product_id} onChange={(e) => setForm((f) => ({ ...f, product_id: e.target.value }))}>
-              <option value="">انتخاب محصول…</option>
-              {activeProducts.map((p) => (
-                <option key={p.id} value={String(p.id)}>{p.title}</option>
-              ))}
+            <span className="text-caption text-text-muted">شرط دسترسی</span>
+            <select
+              className="field-input mt-1 w-full"
+              value={form.requirement_type}
+              onChange={(e) =>
+                setForm((f) => ({
+                  ...f,
+                  requirement_type: e.target.value as 'product' | 'sat_membership',
+                  product_id: e.target.value === 'sat_membership' ? '' : f.product_id,
+                }))
+              }
+            >
+              <option value="product">خریدار محصول</option>
+              <option value="sat_membership">عضویت فعال سات</option>
             </select>
           </label>
+          {form.requirement_type === 'product' ? (
+            <label className="block">
+              <span className="text-caption text-text-muted">محصول مرتبط</span>
+              <select className="field-input mt-1 w-full" value={form.product_id} onChange={(e) => setForm((f) => ({ ...f, product_id: e.target.value }))}>
+                <option value="">انتخاب محصول…</option>
+                {activeProducts.map((p) => (
+                  <option key={p.id} value={String(p.id)}>{p.title}</option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <label className="block">
             <span className="text-caption text-text-muted">نوع لینک عضویت</span>
             <select className="field-input mt-1 w-full" value={form.access_mode} onChange={(e) => setForm((f) => ({ ...f, access_mode: e.target.value }))}>
@@ -187,7 +227,12 @@ export function TelegramDestinationsClient({
         </div>
         <button
           type="button"
-          disabled={pending || !form.title || !form.chat_id || !form.product_id}
+          disabled={
+            pending
+            || !form.title
+            || !form.chat_id
+            || (form.requirement_type === 'product' && !form.product_id)
+          }
           className="btn btn-primary mt-4"
           onClick={save}
         >
@@ -250,14 +295,14 @@ export function TelegramDestinationsClient({
                       </div>
 
                       <div>
-                        <p className="mb-2 text-caption font-medium text-text-muted">شرایط دسترسی (خریداران)</p>
+                        <p className="mb-2 text-caption font-medium text-text-muted">شرایط دسترسی</p>
                         {requirements.length === 0 ? (
-                          <p className="text-caption text-text-muted">هنوز محصولی وصل نشده — درخواست عضویت رد می‌شود.</p>
+                          <p className="text-caption text-text-muted">هنوز شرطی ثبت نشده — درخواست عضویت رد می‌شود.</p>
                         ) : (
                           <ul className="space-y-1">
                             {requirements.map((req) => (
                               <li key={req.id} className="flex items-center justify-between gap-2 rounded border border-border px-2 py-1 text-small">
-                                <span>{productTitle(products, req.requirement_value)}</span>
+                                <span>{requirementLabel(products, req)}</span>
                                 <button
                                   type="button"
                                   disabled={pending}
@@ -273,6 +318,10 @@ export function TelegramDestinationsClient({
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">
+                        <select id={`requirement-type-${d.id}`} className="field-input" defaultValue="product">
+                          <option value="product">خریدار محصول</option>
+                          <option value="sat_membership">عضویت فعال سات</option>
+                        </select>
                         <select id={`product-${d.id}`} className="field-input" defaultValue="">
                           <option value="">افزودن محصول…</option>
                           {activeProducts.map((p) => (
@@ -284,8 +333,14 @@ export function TelegramDestinationsClient({
                           disabled={pending}
                           className="btn btn-primary text-caption px-2 py-1"
                           onClick={() => {
-                            const select = document.getElementById(`product-${d.id}`) as HTMLSelectElement | null;
-                            if (select?.value) addRequirement(d.id, select.value);
+                            const typeSelect = document.getElementById(`requirement-type-${d.id}`) as HTMLSelectElement | null;
+                            const productSelect = document.getElementById(`product-${d.id}`) as HTMLSelectElement | null;
+                            const requirementType = (typeSelect?.value ?? 'product') as 'product' | 'sat_membership';
+                            if (requirementType === 'sat_membership') {
+                              addRequirement(d.id, 'sat_membership');
+                              return;
+                            }
+                            if (productSelect?.value) addRequirement(d.id, 'product', productSelect.value);
                           }}
                         >
                           افزودن شرط

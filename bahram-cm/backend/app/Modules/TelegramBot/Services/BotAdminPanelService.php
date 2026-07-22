@@ -2374,13 +2374,13 @@ class BotAdminPanelService
             ]);
             $client->sendMessage(
                 $chatId,
-                "➕ افزودن مقصد\n\n"
-                ."۱) ربات را داخل گروه/کانال ادمین کنید\n"
-                ."   و اگر عضویت درخواستی می‌خواهید، تأیید درخواست عضویت را روشن کنید.\n\n"
-                ."۲) بعد آیدی عددی گروه را با اعداد لاتین بفرستید.\n"
-                ."مثال:\n"
-                ."`-1003623149563`\n\n"
-                ."آیدی معمولاً با `-100` شروع می‌شود.\n"
+                "➕ افزودن گروه پشتیبانی محصول\n\n"
+                ."۱) ربات را داخل گروه ادمین کنید\n"
+                ."   (تأیید درخواست عضویت + ساخت لینک دعوت).\n\n"
+                ."۲) Chat ID گروه را بفرستید.\n"
+                ."مثال: `-1003623149563`\n\n"
+                ."۳) بعد از ثبت، محصول (مثلاً سات یا کمپین‌نویسی) را انتخاب می‌کنید.\n"
+                ."ربات خودش لینک عضویت را به خریداران می‌دهد.\n\n"
                 .'برای انصراف «لغو» بفرستید.',
                 [
                     'parse_mode' => 'Markdown',
@@ -2477,6 +2477,17 @@ class BotAdminPanelService
             return;
         }
 
+        if ($action === 'mode') {
+            $mode = (string) ($parts[4] ?? 'per_user');
+            $destination->update([
+                'access_mode' => $mode === 'shared' ? 'join_request' : 'per_user',
+            ]);
+            $label = $mode === 'shared' ? 'لینک مشترک' : 'لینک اختصاصی';
+            $this->renderDestinationDetail($client, $chatId, $messageId, $destination->fresh(['requirements']), 'نوع لینک: '.$label);
+
+            return;
+        }
+
         if ($action === 'i') {
             $this->renderDestinationDetail($client, $chatId, $messageId, $destination);
 
@@ -2500,8 +2511,8 @@ class BotAdminPanelService
             ->get();
 
         $text = ($notice ? $notice."\n\n" : '')
-            ."👈 به بخش #مقاصد خوش آمدید\n\n"
-            .'مقصد = کانال خصوصی با عضویت شرطی (مثلاً فقط خریداران دوره).';
+            ."👈 گروه‌های پشتیبانی محصول\n\n"
+            .'مقصد = گروه خصوصی برای خریداران یک محصول. ربات لینک عضویت را خودش می‌سازد و به کاربر می‌دهد.';
 
         $keyboard = [
             [['text' => '➕ افزودن', 'callback_data' => 'admin:d:add']],
@@ -2556,16 +2567,25 @@ class BotAdminPanelService
             $reqLines[] = '• هنوز شرطی تنظیم نشده (درخواست‌ها رد می‌شوند).';
         }
 
+        $modeLabel = $destination->usesPerUserInvites()
+            ? 'لینک اختصاصی هر کاربر (بعد از عضویت حذف می‌شود)'
+            : 'لینک مشترک (فقط اکانت مجاز تأیید می‌شود)';
+
         $text = ($notice ? $notice."\n\n" : '')
             ."📍 #{$destination->id} · {$destination->title}\n"
             ."chat_id: {$destination->chat_id}\n"
             .'فعال: '.($destination->is_active ? 'بله' : 'خیر')."\n"
-            .($destination->join_request_url ? "لینک عضویت: {$destination->join_request_url}\n" : '')
+            ."نوع لینک: {$modeLabel}\n"
+            .($destination->join_request_url ? "لینک پشتیبان: {$destination->join_request_url}\n" : "لینک: ربات هنگام درخواست کاربر می‌سازد\n")
             ."\nشرایط دسترسی:\n".implode("\n", $reqLines);
 
         $keyboard = [];
+        $keyboard[] = [
+            ['text' => '🔐 لینک اختصاصی', 'callback_data' => 'admin:d:mode:'.$destination->id.':per_user'],
+            ['text' => '🔗 لینک مشترک', 'callback_data' => 'admin:d:mode:'.$destination->id.':shared'],
+        ];
         if (filled($destination->join_request_url)) {
-            $keyboard[] = [['text' => '↗️ لینک عضویت', 'url' => (string) $destination->join_request_url]];
+            $keyboard[] = [['text' => '↗️ لینک پشتیبان گروه', 'url' => (string) $destination->join_request_url]];
         }
         $keyboard[] = [
             ['text' => $destination->is_active ? '⛔ غیرفعال' : '✅ فعال', 'callback_data' => 'admin:d:t:'.$destination->id],
@@ -2596,7 +2616,7 @@ class BotAdminPanelService
             ->get(['id', 'title']);
 
         $text = "🎯 شرط دسترسی برای «{$destination->title}»\n\n"
-            .'محصولی را انتخاب کنید که کاربر باید دسترسی فعال به آن داشته باشد:';
+            .'محصولی را انتخاب کنید. فقط خریداران همان محصول می‌توانند عضو گروه شوند:';
 
         $keyboard = [];
         foreach ($products as $product) {
@@ -2753,7 +2773,7 @@ class BotAdminPanelService
                     'chat_type' => $chatType,
                     'join_request_url' => $joinUrl ?: $existing->join_request_url,
                     'is_active' => true,
-                    'access_mode' => $existing->access_mode ?: 'requirements',
+                    'access_mode' => $existing->access_mode ?: 'per_user',
                 ]);
                 $saved = $existing;
                 $notice = '✅ مقصد از قبل بود و به‌روز شد: '.$title;

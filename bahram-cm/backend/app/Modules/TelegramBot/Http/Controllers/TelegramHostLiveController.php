@@ -17,6 +17,7 @@ use App\Modules\TelegramBot\Services\TelegramCardToCardFlowService;
 use App\Modules\TelegramBot\Services\TelegramCatalogMediaService;
 use App\Modules\TelegramBot\Services\TelegramCheckoutService;
 use App\Modules\TelegramBot\Services\TelegramCourseAccessPresenter;
+use App\Modules\TelegramBot\Services\TelegramUserDestinationsService;
 use App\Modules\TelegramBot\Services\TelegramOutboundMessenger;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
 use App\Modules\TelegramBot\Services\TelegramSatFlowService;
@@ -70,6 +71,7 @@ class TelegramHostLiveController
         private readonly TelegramCardToCardFlowService $cardToCardFlow,
         private readonly TelegramCatalogMediaService $catalogMedia,
         private readonly TelegramSubscriberEligibility $subscriberEligibility,
+        private readonly TelegramUserDestinationsService $userDestinations,
         private readonly FeedService $familyFeed,
         private readonly PostAudienceResolver $postAudience,
     ) {}
@@ -441,13 +443,35 @@ class TelegramHostLiveController
             return $this->encryptedResponse($request, ['ok' => false, 'message' => 'حساب یافت نشد.'], 404);
         }
 
+        $bot = $this->productionBot();
         $stats = $this->userStats->forAccount($account);
         $text = $this->userStats->formatProfileText($account);
+        $destinationSection = $this->userDestinations->formatAccountSection($bot, $account);
+        if ($destinationSection !== null) {
+            $text .= "\n\n".$destinationSection;
+        }
+
+        $keyboard = [];
+        foreach ($this->userDestinations->keyboardRows($bot, $account) as $row) {
+            $keyboard[] = $row;
+        }
+        foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', TelegramSiteUrl::identityPage(), 'primary', 'lock') as $row) {
+            $keyboard[] = $row;
+        }
+        foreach (TelegramSiteUrl::urlKeyboardRow('ورود به پنل دانشجو', TelegramSiteUrl::studentPanel(), 'success', 'graduation') as $row) {
+            $keyboard[] = $row;
+        }
 
         return $this->encryptedResponse($request, [
             'ok' => true,
             'stats' => $stats,
             'text' => $text,
+            'options' => array_filter([
+                'parse_mode' => 'HTML',
+                'reply_markup' => $keyboard !== []
+                    ? ['inline_keyboard' => $keyboard]
+                    : null,
+            ]),
         ]);
     }
 

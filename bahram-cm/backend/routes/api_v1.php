@@ -82,7 +82,7 @@ use App\Http\Controllers\Api\V1\Student\SatApplicationController as StudentSatAp
 use App\Http\Controllers\Api\V1\Student\SeminarAssetDownloadController;
 use App\Http\Controllers\Api\V1\Student\SeminarController as StudentSeminarController;
 use App\Http\Controllers\Api\V1\Student\SpotPlayerSessionController as StudentSpotPlayerSessionController;
-use App\Http\Controllers\Api\V1\Student\TicketController as StudentTicketController;
+use App\Http\Controllers\Api\V1\Student\TelegramDestinationController as StudentTelegramDestinationController;
 use App\Http\Controllers\Api\V1\Student\VerifiedBankAccountController as StudentVerifiedBankAccountController;
 use App\Http\Controllers\Api\V1\StudentTestimonialController;
 use App\Http\Controllers\Api\V1\Sat\ActivityController as SatActivityController;
@@ -187,6 +187,7 @@ Route::prefix('student')->group(function () {
 
         Route::get('courses', [StudentCourseController::class, 'index']);
         Route::get('courses/{courseAccess}/player', [StudentCourseController::class, 'player'])->whereNumber('courseAccess');
+        Route::get('telegram-destinations', [StudentTelegramDestinationController::class, 'index']);
         Route::post('mini-courses/{slug}/enroll', [StudentMiniCourseController::class, 'enroll']);
         Route::get('mini-courses/{slug}', [StudentMiniCourseController::class, 'show']);
         Route::get('mini-courses/{slug}/player', [StudentMiniCourseController::class, 'player']);

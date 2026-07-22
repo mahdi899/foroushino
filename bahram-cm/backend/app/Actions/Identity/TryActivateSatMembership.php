@@ -2,9 +2,10 @@
 
 namespace App\Actions\Identity;
 
-use App\Enums\SatApplicationStatus;
 use App\Enums\SatMembershipStatus;
+use App\Enums\SatApplicationStatus;
 use App\Enums\SmsEventKey;
+use App\Events\SatMembershipActivated;
 use App\Models\SatApplication;
 use App\Models\SatMembership;
 use App\Models\User;
@@ -63,6 +64,10 @@ class TryActivateSatMembership
                     ['{name}' => $user->name ?: ($profile->first_name ?? '')],
                     $user->id,
                 );
+            }
+
+            if ($wasInactiveOrSuspended) {
+                SatMembershipActivated::dispatch($user);
             }
 
             return $membership;

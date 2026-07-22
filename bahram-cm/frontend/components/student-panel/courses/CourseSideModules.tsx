@@ -1,10 +1,21 @@
 import Link from 'next/link';
 import { Headset } from 'lucide-react';
 import { SpotPlayerDownloadGrid } from '@/components/student-panel/courses/SpotPlayerDownloadGrid';
+import { TelegramSupportGroupsSection } from '@/components/student-panel/telegram/TelegramSupportGroupsSection';
+import { panelStudentFetch } from '@/lib/student/panelServer';
+import type { StudentTelegramDestinationsPayload } from '@/lib/student/telegramDestinations';
 
-export function CourseSideModules() {
+export async function CourseSideModules() {
+  const telegramDestinations = await panelStudentFetch<{ data: StudentTelegramDestinationsPayload }>(
+    '/telegram-destinations',
+  ).catch(() => ({
+    data: { telegram_linked: false, telegram_bot_url: null, destinations: [] },
+  }));
+
   return (
     <div className="panel-side-modules">
+      <TelegramSupportGroupsSection data={telegramDestinations.data} compact />
+
       <SpotPlayerDownloadGrid />
 
       <div className="card p-4">

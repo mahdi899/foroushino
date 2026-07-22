@@ -175,6 +175,9 @@ final class MessageHandler
     {
         $text = (string) ($present['text'] ?? '');
         $options = (array) ($present['options'] ?? []);
+        if (! isset($options['parse_mode'])) {
+            $options['parse_mode'] = 'HTML';
+        }
         $photo = (string) ($present['photo'] ?? '');
 
         if ($photo !== '') {
@@ -258,6 +261,8 @@ final class MessageHandler
             return;
         }
 
-        $this->api->sendMessage($chatId, (string) $result['text']);
+        $this->api->sendMessage($chatId, (string) $result['text'], (array) ($result['options'] ?? [
+            'parse_mode' => 'HTML',
+        ]));
     }
 }

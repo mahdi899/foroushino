@@ -18,6 +18,7 @@ class TelegramSatFlowService
         private readonly TelegramBotClientFactory $clients,
         private readonly MainMenuKeyboard $mainMenu,
         private readonly AdminTelegramLogService $adminTelegram,
+        private readonly TelegramUserDestinationsService $userDestinations,
     ) {}
 
     public function open(TelegramBot $bot, TelegramAccount $account, int $chatId): void
@@ -42,7 +43,7 @@ class TelegramSatFlowService
             ->first();
 
         if ($app !== null) {
-            $this->sendExistingStatus($client, $chatId, $app, $account, $satUrl, $identityUrl);
+            $this->sendExistingStatus($bot, $client, $chatId, $app, $account, $satUrl, $identityUrl);
 
             return;
         }
@@ -249,6 +250,7 @@ class TelegramSatFlowService
     }
 
     private function sendExistingStatus(
+        TelegramBot $bot,
         $client,
         int $chatId,
         SatApplication $app,
@@ -268,9 +270,10 @@ class TelegramSatFlowService
             default => 'نامشخص',
         };
 
-        $account->loadMissing('user.identityProfile');
+        $account->loadMissing('user.identityProfile', 'user.satMembership');
         $verificationLevel = (int) ($account->user?->identityProfile?->verification_level ?? 0);
         $acceptedButLocked = $status === SatApplicationStatus::Accepted && $verificationLevel < 2;
+        $membershipActive = (bool) $account->user?->satMembership?->isActive();
 
         $text = "☎️ وضعیت درخواست سات\n\n"
             ."وضعیت: {$label}\n"
@@ -281,6 +284,12 @@ class TelegramSatFlowService
         if ($acceptedButLocked) {
             $text .= "\n\n✅ پذیرفته شده‌اید، اما دسترسی هنوز قفل است.\n"
                 .'برای احراز هویت سطح ۲ وارد پنل دانشجو شوید.';
+        } elseif ($membershipActive) {
+            $text .= "\n\n✅ دسترسی سات شما فعال است.";
+            $satSection = $this->userDestinations->formatSatSection($bot, $account);
+            if ($satSection !== null) {
+                $text .= "\n\n".$satSection;
+            }
         }
 
         $extra = [];
@@ -289,10 +298,20 @@ class TelegramSatFlowService
                 $extra[] = $row;
             }
         }
+        if ($membershipActive) {
+            foreach ($this->userDestinations->satKeyboardRows($bot, $account) as $row) {
+                $extra[] = $row;
+            }
+        }
         foreach (TelegramSiteUrl::urlKeyboardRow('🌐 پنل سات', $satUrl) as $row) {
             $extra[] = $row;
         }
 
-        $client->sendMessage($chatId, $text, $extra !== [] ? ['reply_markup' => ['inline_keyboard' => $extra]] : []);
+        $options = $extra !== [] ? ['reply_markup' => ['inline_keyboard' => $extra]] : [];
+        if ($membershipActive && str_contains($text, '<b>')) {
+            $options['parse_mode'] = 'HTML';
+        }
+
+        $client->sendMessage($chatId, $text, $options);
     }
 }

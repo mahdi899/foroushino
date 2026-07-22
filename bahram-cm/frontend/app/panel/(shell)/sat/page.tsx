@@ -3,9 +3,11 @@ import Link from 'next/link';
 import { Briefcase, CheckCircle2, Clock, Crown, FileText, Lock, Search, Trophy, XCircle } from 'lucide-react';
 import { PanelPageHeader } from '@/components/student-panel/layout/PanelPageHeader';
 import { SatApplicationForm } from '@/components/student-panel/sat/SatApplicationForm';
+import { TelegramSupportGroupsSection } from '@/components/student-panel/telegram/TelegramSupportGroupsSection';
 import { getCurrentStudent } from '@/lib/student/session';
 import { panelStudentFetch } from '@/lib/student/panelServer';
 import { SAT_MEMBERSHIP_FA } from '@/lib/student/identityLabels';
+import type { StudentTelegramDestinationsPayload } from '@/lib/student/telegramDestinations';
 
 export const metadata: Metadata = { title: 'سات | پنل کاربری', robots: { index: false, follow: false } };
 
@@ -43,9 +45,12 @@ function stepState(current: string | null, stepKey: string): 'done' | 'active' |
 }
 
 export default async function PanelSatPage() {
-  const [user, { data: application }] = await Promise.all([
+  const [user, { data: application }, telegramDestinationsRes] = await Promise.all([
     getCurrentStudent(),
     panelStudentFetch<{ data: SatApplication | null }>('/sat-application'),
+    panelStudentFetch<{ data: StudentTelegramDestinationsPayload }>('/telegram-destinations').catch(() => ({
+      data: { telegram_linked: false, telegram_bot_url: null, destinations: [] },
+    })),
   ]);
   const status = application ? (STATUS[application.status] ?? STATUS.received) : null;
   const currentStatus = application?.status ?? null;
@@ -108,7 +113,13 @@ export default async function PanelSatPage() {
                 </p>
               )}
             </div>
-          ) : (
+          ) : null}
+
+          {membershipActive ? (
+            <TelegramSupportGroupsSection data={telegramDestinationsRes.data} compact />
+          ) : null}
+
+          {!application ? (
             <div className="card p-6">
               <h2 className="panel-card-title mb-4 flex items-center gap-2">
                 <FileText size={16} className="text-primary" />
@@ -123,7 +134,7 @@ export default async function PanelSatPage() {
                 اطلاعات شما محرمانه نگه داشته می‌شود و فقط برای بررسی درخواست استفاده می‌شود.
               </p>
             </div>
-          )}
+          ) : null}
         </div>
 
         <aside className="flex flex-col gap-4">

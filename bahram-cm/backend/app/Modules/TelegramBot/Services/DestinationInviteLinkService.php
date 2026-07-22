@@ -2,6 +2,7 @@
 
 namespace App\Modules\TelegramBot\Services;
 
+use App\Models\User;
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
 use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
@@ -36,12 +37,36 @@ class DestinationInviteLinkService
             return null;
         }
 
-        $decision = $this->policy->evaluate($destination, (int) $account->user_id);
+        $user = $account->relationLoaded('user')
+            ? $account->user
+            : User::query()->find($account->user_id);
+
+        if ($user === null) {
+            return null;
+        }
+
+        return $this->resolveForUser($bot, $destination, $user, $account);
+    }
+
+    /**
+     * @return array{
+     *     status: 'member'|'invite',
+     *     invite_url: ?string,
+     *     mode: 'per_user'|'shared'
+     * }|null
+     */
+    public function resolveForUser(
+        TelegramBot $bot,
+        TelegramDestination $destination,
+        User $user,
+        ?TelegramAccount $account = null,
+    ): ?array {
+        $decision = $this->policy->evaluate($destination, (int) $user->id);
         if (! $decision['allowed']) {
             return null;
         }
 
-        if ($this->isGroupMember($bot, $destination, (int) $account->telegram_user_id)) {
+        if ($account !== null && $this->isGroupMember($bot, $destination, (int) $account->telegram_user_id)) {
             return [
                 'status' => 'member',
                 'invite_url' => null,
@@ -50,7 +75,7 @@ class DestinationInviteLinkService
         }
 
         $inviteUrl = $destination->usesPerUserInvites()
-            ? $this->resolvePerUserInviteUrl($bot, $destination, $account)
+            ? $this->resolvePerUserInviteUrl($bot, $destination, $user, $account)
             : $this->ensureSharedJoinRequestUrl($bot, $destination);
 
         if (blank($inviteUrl)) {
@@ -133,11 +158,12 @@ class DestinationInviteLinkService
     private function resolvePerUserInviteUrl(
         TelegramBot $bot,
         TelegramDestination $destination,
-        TelegramAccount $account,
+        User $user,
+        ?TelegramAccount $account = null,
     ): ?string {
         $existing = TelegramDestinationInviteLink::query()
             ->where('telegram_destination_id', $destination->id)
-            ->where('user_id', $account->user_id)
+            ->where('user_id', $user->id)
             ->first();
 
         if ($existing !== null && $existing->isActive()) {
@@ -146,14 +172,14 @@ class DestinationInviteLinkService
 
         try {
             $created = $this->clients->forBot($bot)->createChatInviteLink($destination->chat_id, [
-                'name' => 'dest-'.$destination->id.'-user-'.$account->user_id,
+                'name' => 'dest-'.$destination->id.'-user-'.$user->id,
                 'creates_join_request' => true,
                 'member_limit' => 1,
             ]);
         } catch (Throwable $e) {
             Log::channel('telegram')->warning('destination_per_user_invite_failed', [
                 'destination_id' => $destination->id,
-                'user_id' => $account->user_id,
+                'user_id' => $user->id,
                 'error' => $e->getMessage(),
             ]);
 
@@ -168,11 +194,11 @@ class DestinationInviteLinkService
         TelegramDestinationInviteLink::query()->updateOrCreate(
             [
                 'telegram_destination_id' => $destination->id,
-                'user_id' => $account->user_id,
+                'user_id' => $user->id,
             ],
             [
-                'telegram_account_id' => $account->id,
-                'telegram_user_id' => $account->telegram_user_id,
+                'telegram_account_id' => $account?->id,
+                'telegram_user_id' => $account?->telegram_user_id,
                 'invite_link' => $inviteLink,
                 'expires_at' => null,
                 'revoked_at' => null,

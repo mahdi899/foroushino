@@ -3,6 +3,8 @@
 namespace App\Modules\TelegramBot\Services;
 
 use App\Models\CourseAccess;
+use App\Models\SatMembership;
+use App\Enums\SatMembershipStatus;
 use App\Modules\TelegramBot\Models\TelegramAccessDenial;
 use App\Modules\TelegramBot\Models\TelegramAccessGrant;
 use App\Modules\TelegramBot\Models\TelegramDestination;
@@ -73,6 +75,10 @@ class DestinationAccessPolicy
                 ->where('user_id', $userId)
                 ->where('product_id', (int) $req->requirement_value)
                 ->where('status', 'active')
+                ->exists(),
+            'sat_membership' => SatMembership::query()
+                ->where('user_id', $userId)
+                ->where('status', SatMembershipStatus::Active)
                 ->exists(),
             'manual_grant' => true,
             default => false,
