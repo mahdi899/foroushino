@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Bell, Loader2, Save, Send } from 'lucide-react';
 import type { AdminTelegramCategoryView, AdminTelegramEventView, SmsGlobalView } from '@/lib/admin/smsCenter.types';
 import { saveAdminTelegramEvent, saveSmsGlobalSettings, testAdminTelegram } from '@/lib/admin/smsCenter';
-import { Badge } from '../ui';
+import { Badge } from '../../ui';
 
 const ADMIN_TELEGRAM_CATEGORY_ORDER = ['commerce', 'support', 'users'] as const;
 
@@ -52,7 +52,11 @@ function AdminTelegramEventRow({ event }: { event: AdminTelegramEventView }) {
   );
 }
 
-export function AdminTelegramSettingsSection({
+/**
+ * پنل مدیریت «رویدادها» — لاگ‌های خودکار سفارش/تیکت/ثبت‌نام و... به تلگرام.
+ * از همان ربات واحد سایت استفاده می‌کند (بدون توکن جدا).
+ */
+export function AdminTelegramEventsClient({
   global: initialGlobal,
   events,
   categories,
@@ -110,7 +114,9 @@ export function AdminTelegramSettingsSection({
         <div>
           <h3 className="text-h3 text-primary-dark">لاگ رویدادها در تلگرام (ادمین)</h3>
           <p className="mt-1 text-caption text-text-muted">
-            با ربات تلگرام بالا، رویدادهای کاربران (سفارش، تیکت، ثبت‌نام و …) را به چت ادمین‌ها ارسال کنید. شناسه چت را از{' '}
+            با همان ربات تلگرام سایت، رویدادهای کاربران (سفارش، تیکت، ثبت‌نام و …) را به چت ادمین‌ها ارسال کنید — بدون
+            نیاز به توکن یا ربات جدا. مدیریت این بخش هم از داخل خود ربات (منوی «📡 رویدادها») و هم از این‌جا امکان‌پذیر
+            است. شناسه چت را از{' '}
             <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer" className="text-primary hover:underline">
               @userinfobot
             </a>{' '}

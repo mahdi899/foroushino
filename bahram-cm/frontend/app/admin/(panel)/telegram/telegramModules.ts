@@ -47,6 +47,15 @@ export const TELEGRAM_MODULES: TelegramModule[] = [
     group: 'content',
   },
   {
+    href: '/admin/telegram/events',
+    label: 'رویدادها',
+    description: 'اطلاع‌رسانی خودکار سفارش، پرداخت، تیکت و ثبت‌نام به چت ادمین‌ها — از همین ربات',
+    icon: 'Bell',
+    tone: 'gold',
+    permission: 'telegram.settings.manage',
+    group: 'content',
+  },
+  {
     href: '/admin/telegram/required-chats',
     label: 'کانال‌های اجباری',
     description: 'عضویت الزامی برای استفاده از ربات',

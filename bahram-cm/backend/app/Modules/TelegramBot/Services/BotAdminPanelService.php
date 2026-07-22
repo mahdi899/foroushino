@@ -124,6 +124,7 @@ class BotAdminPanelService
                 str_starts_with($data, 'admin:d:') => $this->handleDestinationsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:p') => $this->handleProfileCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:s') => $this->handleSettingsCallback($bot, $account, $client, $chatId, $messageId, $data),
+                str_starts_with($data, 'admin:ev:') => $this->handleEventsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 str_starts_with($data, 'admin:l') => $this->handleLogsCallback($bot, $account, $client, $chatId, $messageId, $data),
                 default => $this->showHome($bot, $account, $client, $chatId, $messageId),
             };
@@ -248,6 +249,7 @@ class BotAdminPanelService
                 'message_edit' => $this->onMessageEdit($bot, $account, $conversation, $client, $chatId, $text),
                 'zarinpal_merchant' => $this->onZarinpalMerchantInput($bot, $account, $conversation, $client, $chatId, $text),
                 'zarinpal_merchant_confirm' => $this->onZarinpalMerchantConfirm($bot, $account, $conversation, $client, $chatId, $text),
+                'events_chat_ids' => $this->onEventsChatIdsInput($bot, $account, $conversation, $client, $chatId, $text),
                 'profile_name' => $this->onProfileName($bot, $account, $conversation, $client, $chatId, $text),
                 'profile_short' => $this->onProfileShort($bot, $account, $conversation, $client, $chatId, $text),
                 'profile_desc' => $this->onProfileDescription($bot, $account, $conversation, $client, $chatId, $text),
@@ -279,6 +281,7 @@ class BotAdminPanelService
             AdminMenuKeyboard::EXPORT => \App\Modules\TelegramBot\Enums\BotAdminPermission::DataExport,
             AdminMenuKeyboard::PROFILE, AdminMenuKeyboard::SETTINGS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Settings,
             AdminMenuKeyboard::LOGS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Stats,
+            AdminMenuKeyboard::EVENTS => \App\Modules\TelegramBot\Enums\BotAdminPermission::Events,
             AdminMenuKeyboard::ADMINS, AdminMenuKeyboard::HOME, AdminMenuKeyboard::EXIT => null,
             default => null,
         };
@@ -313,6 +316,7 @@ class BotAdminPanelService
             AdminMenuKeyboard::PROFILE => $this->handleProfileCallback($bot, $account, $client, $chatId, 0, 'admin:p'),
             AdminMenuKeyboard::SETTINGS => $this->handleSettingsCallback($bot, $account, $client, $chatId, 0, 'admin:s'),
             AdminMenuKeyboard::LOGS => $this->handleLogsCallback($bot, $account, $client, $chatId, 0, 'admin:l'),
+            AdminMenuKeyboard::EVENTS => $this->openEventsSection($bot, $account, $client, $chatId),
             AdminMenuKeyboard::HOME => $this->showHome($bot, $account, $client, $chatId, 0),
             default => $this->showHome($bot, $account, $client, $chatId, 0),
         };

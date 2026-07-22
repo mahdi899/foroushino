@@ -2,11 +2,15 @@
 
 namespace App\Modules\TelegramBot\Services;
 
+use App\Enums\AdminTelegramEventKey;
+use App\Models\AdminTelegramEventConfig;
 use App\Models\PaymentSetting;
+use App\Models\SmsSetting;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Modules\TelegramBot\Contracts\TelegramBotClientInterface;
 use App\Modules\TelegramBot\Enums\BotAdminPermission;
+use App\Services\AdminTelegramLogService;
 use App\Modules\TelegramBot\Enums\BotAdminRank;
 use App\Modules\TelegramBot\Enums\ConversationState;
 use App\Modules\TelegramBot\Models\TelegramAccount;
@@ -648,5 +652,158 @@ trait BotAdminPanelFeatureHandlers
         $target->setBotAdminRank($rank);
         $this->renderAdminPermissions($client, $chatId, $messageId, $target->fresh() ?? $target);
         $client->sendMessage($chatId, '✅ رده ادمین: '.$rank->labelFa());
+    }
+
+    /**
+     * «رویدادها»: اطلاع‌رسانی خودکار سفارش/تیکت/ثبت‌نام و... به چت(های) ادمین —
+     * از همین بات (بدون توکن جدا) ارسال می‌شود.
+     */
+    private function openEventsSection(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        int $messageId = 0,
+    ): void {
+        $this->renderEvents($client, $chatId, $messageId);
+    }
+
+    private function handleEventsCallback(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        int $messageId,
+        string $data,
+    ): void {
+        if (! $account->hasBotAdminPermission(BotAdminPermission::Events)) {
+            throw new RuntimeException('دسترسی رویدادها ندارید.');
+        }
+
+        // admin:ev:{action}[:extra]
+        $parts = explode(':', $data);
+        $action = $parts[2] ?? 'p';
+
+        if ($action === 'g') {
+            $settings = SmsSetting::current();
+            $settings->update(['admin_telegram_enabled' => ! $settings->admin_telegram_enabled]);
+            $this->renderEvents($client, $chatId, $messageId);
+
+            return;
+        }
+
+        if ($action === 't') {
+            $key = (string) ($parts[3] ?? '');
+            $eventKey = AdminTelegramEventKey::tryFrom($key);
+            if ($eventKey === null) {
+                throw new RuntimeException('رویداد نامعتبر است.');
+            }
+
+            $event = AdminTelegramEventConfig::forKey($eventKey);
+            if ($event !== null) {
+                $event->update(['is_enabled' => ! $event->is_enabled]);
+            }
+
+            $this->renderEvents($client, $chatId, $messageId);
+
+            return;
+        }
+
+        if ($action === 'cid') {
+            $conversation = $this->conversations->forAccount($account);
+            $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+                'admin' => ['flow' => 'events_chat_ids', 'draft' => []],
+            ]);
+
+            $current = (string) (SmsSetting::current()->admin_telegram_chat_ids ?: 'تنظیم نشده');
+            $client->sendMessage(
+                $chatId,
+                "🆔 چت‌های گیرنده رویدادها\n\n"
+                ."شناسه چت(های) تلگرام که پیام رویدادها به آن‌ها ارسال می‌شود. چند چت را با کاما یا فاصله جدا کنید.\n\n"
+                ."وضعیت فعلی:\n`{$current}`\n\n"
+                .'شناسه(های) جدید را بفرستید یا «لغو».',
+                [
+                    'parse_mode' => 'Markdown',
+                    'reply_markup' => [
+                        'keyboard' => [[['text' => 'لغو']]],
+                        'resize_keyboard' => true,
+                    ],
+                ],
+            );
+
+            return;
+        }
+
+        if ($action === 'test') {
+            $result = app(AdminTelegramLogService::class)->sendTest();
+            $client->sendMessage($chatId, $result['success'] ? '✅ '.$result['message'] : '❌ '.$result['message']);
+            $this->renderEvents($client, $chatId, $messageId);
+
+            return;
+        }
+
+        $this->renderEvents($client, $chatId, $messageId);
+    }
+
+    private function onEventsChatIdsInput(
+        TelegramBot $bot,
+        TelegramAccount $account,
+        TelegramConversation $conversation,
+        TelegramBotClientInterface $client,
+        int $chatId,
+        string $text,
+    ): void {
+        if (trim($text) === '/null') {
+            SmsSetting::current()->update(['admin_telegram_chat_ids' => null]);
+        } else {
+            SmsSetting::current()->update(['admin_telegram_chat_ids' => mb_substr(trim($text), 0, 1000)]);
+        }
+
+        $this->conversations->transition($conversation, ConversationState::AdminPanel, [
+            'admin' => ['flow' => null, 'draft' => []],
+        ]);
+
+        $client->sendMessage($chatId, '✅ چت‌های گیرنده رویدادها ذخیره شد.', [
+            'reply_markup' => $this->adminMenuMarkup($account),
+        ]);
+    }
+
+    private function renderEvents(
+        TelegramBotClientInterface $client,
+        int $chatId,
+        int $messageId = 0,
+    ): void {
+        $settings = SmsSetting::current();
+        $globalEnabled = (bool) $settings->admin_telegram_enabled;
+        $chatIds = (string) ($settings->admin_telegram_chat_ids ?: '—');
+
+        $configs = AdminTelegramEventConfig::query()->pluck('is_enabled', 'event_key');
+
+        $text = "📡 رویدادها\n\n"
+            ."اطلاع‌رسانی خودکار سفارش، پرداخت، تیکت، ثبت‌نام و... به چت(های) ادمین — از همین بات.\n\n"
+            .'وضعیت کلی: '.($globalEnabled ? '✅ فعال' : '⛔ غیرفعال')."\n"
+            ."چت‌های گیرنده: `{$chatIds}`\n\n"
+            .'رویداد مورد نظر را برای فعال/غیرفعال‌کردن انتخاب کنید:';
+
+        $keyboard = [
+            [['text' => $globalEnabled ? '⛔ غیرفعال‌کردن همه' : '✅ فعال‌کردن همه', 'callback_data' => 'admin:ev:g']],
+        ];
+
+        foreach (AdminTelegramEventKey::all() as $eventKey) {
+            $enabled = (bool) ($configs[$eventKey->value] ?? $eventKey->defaultEnabled());
+            $mark = $enabled ? '✅' : '⛔';
+            $keyboard[] = [[
+                'text' => $mark.' '.$eventKey->emoji().' '.$eventKey->label(),
+                'callback_data' => 'admin:ev:t:'.$eventKey->value,
+            ]];
+        }
+
+        $keyboard[] = [
+            ['text' => '🆔 چت‌های گیرنده', 'callback_data' => 'admin:ev:cid'],
+            ['text' => '🧪 ارسال آزمایشی', 'callback_data' => 'admin:ev:test'],
+        ];
+        $keyboard[] = [['text' => '🏠 داشبورد', 'callback_data' => 'admin:h']];
+
+        $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard], ['parse_mode' => 'Markdown']);
     }
 }

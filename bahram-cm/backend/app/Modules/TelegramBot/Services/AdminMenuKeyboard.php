@@ -34,6 +34,8 @@ class AdminMenuKeyboard
 
     public const LOGS = 'لاگ‌ها';
 
+    public const EVENTS = 'رویدادها';
+
     public const HOME = 'داشبورد';
 
     public const EXIT = 'خروج از پنل ادمین';
@@ -53,6 +55,7 @@ class AdminMenuKeyboard
         self::PROFILE => 'robot',
         self::SETTINGS => 'tools',
         self::LOGS => 'notes',
+        self::EVENTS => 'channel',
         self::HOME => 'home',
         self::EXIT => 'cross',
     ];
@@ -72,6 +75,7 @@ class AdminMenuKeyboard
         self::PROFILE => ['🤖 پروفایل بات'],
         self::SETTINGS => ['⚙️ تنظیمات'],
         self::LOGS => ['📋 لاگ‌ها'],
+        self::EVENTS => ['📡 رویدادها'],
         self::HOME => ['🏠 داشبورد'],
         self::EXIT => ['❌ خروج از پنل ادمین'],
     ];
@@ -99,6 +103,7 @@ class AdminMenuKeyboard
             self::PROFILE => BotAdminPermission::Settings,
             self::SETTINGS => BotAdminPermission::Settings,
             self::LOGS => BotAdminPermission::Stats,
+            self::EVENTS => BotAdminPermission::Events,
             self::HOME => null,
             self::EXIT => null,
         ];
@@ -114,7 +119,7 @@ class AdminMenuKeyboard
             [self::REQUIRED_CHATS, self::DESTINATIONS],
             [self::DISCOUNTS, self::EXPORT],
             [self::PROFILE, self::SETTINGS],
-            [self::LOGS],
+            [self::EVENTS, self::LOGS],
             [self::HOME, self::EXIT],
         ];
 

@@ -7,16 +7,20 @@ use App\Jobs\SendAdminTelegramLogJob;
 use App\Models\AdminTelegramEventConfig;
 use App\Models\Order;
 use App\Models\SatApplication;
-use App\Models\SmsProvider;
 use App\Models\SmsSetting;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Modules\TelegramBot\Clients\HttpTelegramBotClient;
+use App\Modules\TelegramBot\Contracts\TelegramBotClientInterface;
+use App\Modules\TelegramBot\Services\BotResolver;
 use App\Support\JalaliDate;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Sends structured admin activity logs to Telegram chat(s) via the configured bot.
+ * Sends structured admin activity logs to Telegram chat(s) via the single, unified
+ * Telegram bot (same bot/token as the interactive site bot) — no separate "events
+ * bot" token is required anymore.
  */
 class AdminTelegramLogService
 {
@@ -50,10 +54,10 @@ class AdminTelegramLogService
 
         $context = $this->resolveContext($context);
 
-        $token = $this->botToken();
+        $client = $this->botClient();
         $chatIds = $this->chatIds();
 
-        if ($token === null || $chatIds === []) {
+        if ($client === null || $chatIds === []) {
             Log::channel('sms')->warning('Admin Telegram log skipped: bot or chat IDs not configured.', [
                 'event' => $eventKey->value,
             ]);
@@ -65,7 +69,7 @@ class AdminTelegramLogService
         $sentAny = false;
 
         foreach ($chatIds as $chatId) {
-            if ($this->telegramClient()->sendMessage($chatId, $message)) {
+            if ($this->sendToChat($client, $chatId, $message)) {
                 $sentAny = true;
             }
         }
@@ -76,10 +80,10 @@ class AdminTelegramLogService
     /** @return array{success: bool, message: string} */
     public function sendTest(): array
     {
-        $token = $this->botToken();
+        $client = $this->botClient();
         $chatIds = $this->chatIds();
 
-        if ($token === null) {
+        if ($client === null) {
             return ['success' => false, 'message' => 'توکن ربات تلگرام تنظیم نشده است.'];
         }
 
@@ -92,7 +96,7 @@ class AdminTelegramLogService
 
         $sent = false;
         foreach ($chatIds as $chatId) {
-            $sent = $this->telegramClient()->sendMessage($chatId, $message) || $sent;
+            $sent = $this->sendToChat($client, $chatId, $message) || $sent;
         }
 
         return $sent
@@ -108,10 +112,10 @@ class AdminTelegramLogService
      */
     public function sendAdminLoginOtp(string $mobile, string $code): bool
     {
-        $token = $this->botToken();
+        $client = $this->botClient();
         $chatIds = $this->chatIds();
 
-        if ($token === null || $chatIds === []) {
+        if ($client === null || $chatIds === []) {
             Log::channel('sms')->warning('Admin OTP Telegram fallback skipped: bot or chat IDs not configured.');
 
             return false;
@@ -128,7 +132,7 @@ class AdminTelegramLogService
 
         $sentAny = false;
         foreach ($chatIds as $chatId) {
-            if ($this->telegramClient()->sendMessage($chatId, $message)) {
+            if ($this->sendToChat($client, $chatId, $message)) {
                 $sentAny = true;
             }
         }
@@ -470,12 +474,50 @@ class AdminTelegramLogService
         return (bool) SmsSetting::current()->admin_telegram_enabled;
     }
 
-    private function botToken(): ?string
+    /**
+     * Client for the single, unified Telegram bot (same token as the interactive
+     * site bot). No separate "events bot" token is needed anymore.
+     *
+     * Built directly (not via TelegramBotClientFactory) because that factory
+     * substitutes a no-op fake client in the testing environment — admin event
+     * delivery must always perform a real HTTP call (mockable via Http::fake()).
+     */
+    private function botClient(): ?TelegramBotClientInterface
     {
-        $provider = SmsProvider::query()->where('slug', 'telegram')->first();
-        $token = trim((string) $provider?->credentials);
+        try {
+            $bot = app(BotResolver::class)->resolveDefault();
+        } catch (Throwable $e) {
+            Log::channel('sms')->error('Admin Telegram: failed to resolve default bot.', [
+                'message' => $e->getMessage(),
+            ]);
 
-        return $token !== '' ? $token : null;
+            return null;
+        }
+
+        $token = $bot->resolveToken();
+        if (blank($token)) {
+            return null;
+        }
+
+        // Always call api.telegram.org directly for admin event notifications —
+        // independent of the interactive bot's inbound webhook bridge mode.
+        return new HttpTelegramBotClient($token);
+    }
+
+    private function sendToChat(TelegramBotClientInterface $client, string $chatId, string $message): bool
+    {
+        try {
+            $client->sendMessage($chatId, $message, ['parse_mode' => 'HTML', 'disable_web_page_preview' => true]);
+
+            return true;
+        } catch (Throwable $e) {
+            Log::channel('sms')->error('Admin Telegram sendMessage failed.', [
+                'chat_id' => $chatId,
+                'message' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     /** @return list<string> */
@@ -485,10 +527,5 @@ class AdminTelegramLogService
         $parts = preg_split('/[\s,;]+/', $raw) ?: [];
 
         return array_values(array_filter(array_map('trim', $parts), fn ($id) => $id !== ''));
-    }
-
-    private function telegramClient(): TelegramBotClient
-    {
-        return TelegramBotClient::fromAdminConfig();
     }
 }

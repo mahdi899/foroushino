@@ -15,6 +15,7 @@ enum BotAdminPermission: string
     case Discount = 'discount';
     case DataExport = 'data_export';
     case Tickets = 'tickets';
+    case Events = 'events';
 
     public function labelFa(): string
     {
@@ -30,6 +31,7 @@ enum BotAdminPermission: string
             self::Discount => 'کد تخفیف',
             self::DataExport => 'خروجی دیتا',
             self::Tickets => 'تیکت',
+            self::Events => 'رویدادها',
         };
     }
 
@@ -48,6 +50,7 @@ enum BotAdminPermission: string
             self::Discount,
             self::DataExport,
             self::Tickets,
+            self::Events,
         ];
     }
 

@@ -7,7 +7,6 @@ import type { AdminTelegramCategoryView, AdminTelegramEventView, SmsGlobalView, 
 import { SMS_PROVIDER_DEFAULT_BASE_URLS, smsProvidersForChannel } from '@/lib/admin/smsCenter.types';
 import { saveSmsGlobalSettings, saveSmsProvider, testSmsProvider } from '@/lib/admin/smsCenter';
 import type { TelegramInfrastructureView } from '@/lib/admin/telegram.types';
-import { AdminTelegramSettingsSection } from './AdminTelegramSettingsSection';
 import { TelegramSmsProviderRow } from './TelegramSmsProviderRow';
 import { Badge } from '../ui';
 
@@ -289,11 +288,16 @@ export function SmsRoutingSettingsSection({
         ))}
       </div>
 
-      <AdminTelegramSettingsSection
-        global={global}
-        events={adminTelegramEvents}
-        categories={adminTelegramCategories}
-      />
+      <div className="card space-y-2 p-4 sm:p-5">
+        <h3 className="text-h3 text-primary-dark">لاگ رویدادها در تلگرام (ادمین)</h3>
+        <p className="text-caption text-text-muted leading-relaxed">
+          مدیریت رویدادها (فعال/غیرفعال، چت‌های گیرنده، تست ارسال) اکنون از یک ربات تلگرام واحد و از داخل ماژول تلگرام
+          انجام می‌شود.
+        </p>
+        <Link href="/admin/telegram/events" className="btn btn-secondary inline-flex text-caption">
+          مدیریت رویدادها در تلگرام
+        </Link>
+      </div>
 
       {status ? <p className="text-caption text-text-muted">{status}</p> : null}
     </div>
