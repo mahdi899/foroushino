@@ -22,7 +22,7 @@ class TelegramDestinationAdminController
         $this->authorizeTelegram($request, 'telegram.destinations.manage');
 
         $query = TelegramDestination::query()
-            ->with(['bot:id,key,display_name'])
+            ->with(['bot:id,key,display_name', 'requirements'])
             ->withCount('requirements')
             ->orderByDesc('id');
 
@@ -50,7 +50,7 @@ class TelegramDestinationAdminController
             'chat_type' => ['sometimes', 'string', 'max:32'],
             'username' => ['nullable', 'string', 'max:120'],
             'join_request_url' => ['nullable', 'string', 'max:500'],
-            'access_mode' => ['sometimes', 'string', 'max:32'],
+            'access_mode' => ['sometimes', 'string', 'max:32', 'in:join_request,requirements,shared,per_user,per_user_join_request'],
             'is_active' => ['sometimes', 'boolean'],
             'welcome_inside_chat' => ['sometimes', 'boolean'],
             'settings' => ['sometimes', 'nullable', 'array'],
@@ -100,7 +100,7 @@ class TelegramDestinationAdminController
             'chat_type' => ['sometimes', 'string', 'max:32'],
             'username' => ['sometimes', 'nullable', 'string', 'max:120'],
             'join_request_url' => ['sometimes', 'nullable', 'string', 'max:500'],
-            'access_mode' => ['sometimes', 'string', 'max:32'],
+            'access_mode' => ['sometimes', 'string', 'max:32', 'in:join_request,requirements,shared,per_user,per_user_join_request'],
             'is_active' => ['sometimes', 'boolean'],
             'welcome_inside_chat' => ['sometimes', 'boolean'],
             'settings' => ['sometimes', 'nullable', 'array'],
@@ -168,7 +168,9 @@ class TelegramDestinationAdminController
         ];
 
         if (! $detailed) {
-            return $base;
+            return array_merge($base, [
+                'requirements' => ($destination->requirements ?? collect())->map(fn ($r) => $this->requirementPayload($r))->values(),
+            ]);
         }
 
         return array_merge($base, [

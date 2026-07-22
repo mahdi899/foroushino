@@ -39,4 +39,15 @@ class TelegramDestination extends Model
     {
         return $this->hasMany(TelegramDestinationRequirement::class);
     }
+
+    public function inviteLinks(): HasMany
+    {
+        return $this->hasMany(TelegramDestinationInviteLink::class);
+    }
+
+    public function usesPerUserInvites(): bool
+    {
+        return in_array((string) $this->access_mode, ['per_user', 'per_user_join_request'], true)
+            || (bool) data_get($this->settings, 'per_user_invite', false);
+    }
 }

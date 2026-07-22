@@ -25,6 +25,7 @@ class TelegramCourseAccessPresenter
         private readonly PurchaseGuardService $purchaseGuard,
         private readonly CourseAccessService $courseAccess,
         private readonly DestinationAccessPolicy $destinations,
+        private readonly DestinationInviteLinkService $inviteLinks,
         private readonly TelegramContentPresenter $content,
     ) {}
 
@@ -56,6 +57,7 @@ class TelegramCourseAccessPresenter
         $access = $this->resolveAccess($account, $product);
         $licenseKey = $this->resolveLicenseKey($account, $product);
         $destRows = $this->destinationKeyboardRows($bot, $account, $product);
+        $hasPerUserDestinations = $this->hasPerUserDestinations($bot, $account, $product);
         $watchUrl = $access
             ? TelegramSiteUrl::courseWatchPage($access->id)
             : TelegramSiteUrl::coursesPanel();
@@ -79,7 +81,10 @@ class TelegramCourseAccessPresenter
 
         if ($destRows !== []) {
             $lines[] = '';
-            $lines[] = TelegramCustomEmoji::tag('pin').' کانال/گروه‌های ویژه این دوره را هم می‌توانید از دکمه‌های زیر باز کنید.';
+            $lines[] = TelegramCustomEmoji::tag('pin').' گروه پشتیبانی اختصاصی این دوره را از دکمه‌های زیر باز کنید.';
+            if ($hasPerUserDestinations) {
+                $lines[] = TelegramCustomEmoji::tag('lock').' لینک عضویت فقط برای شماست — پس از ورود، درخواست شما خودکار بررسی می‌شود.';
+            }
         }
 
         $keyboard = [];
@@ -182,9 +187,7 @@ class TelegramCourseAccessPresenter
                 continue;
             }
 
-            $url = filled($destination->join_request_url)
-                ? (string) $destination->join_request_url
-                : (filled($destination->username) ? 'https://t.me/'.ltrim((string) $destination->username, '@') : null);
+            $url = $this->inviteLinks->resolveInviteUrl($bot, $destination, $account);
 
             $button = TelegramSiteUrl::inlineButton($destination->title, $url, null, 'pin');
             if ($button !== null) {
@@ -193,5 +196,31 @@ class TelegramCourseAccessPresenter
         }
 
         return $rows;
+    }
+
+    private function hasPerUserDestinations(TelegramBot $bot, TelegramAccount $account, Product $product): bool
+    {
+        $userId = $account->user_id;
+        if (! $userId) {
+            return false;
+        }
+
+        return TelegramDestination::query()
+            ->where('telegram_bot_id', $bot->id)
+            ->where('is_active', true)
+            ->with('requirements')
+            ->orderBy('id')
+            ->get()
+            ->contains(function (TelegramDestination $destination) use ($userId, $product) {
+                $decision = $this->destinations->evaluate($destination, (int) $userId);
+                if (! $decision['allowed'] || ! $destination->usesPerUserInvites()) {
+                    return false;
+                }
+
+                return $destination->requirements->contains(
+                    fn ($req) => in_array($req->requirement_type, ['product', 'active_course_access'], true)
+                        && (int) $req->requirement_value === (int) $product->id,
+                );
+            });
     }
 }

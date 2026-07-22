@@ -2765,7 +2765,7 @@ class BotAdminPanelService
                     'chat_type' => $chatType,
                     'username' => $username,
                     'join_request_url' => $joinUrl,
-                    'access_mode' => 'requirements',
+                    'access_mode' => 'per_user',
                     'is_active' => true,
                     'welcome_inside_chat' => false,
                 ]);

@@ -215,12 +215,17 @@ export async function saveTelegramDestinationAction(
     chat_id: string;
     username?: string;
     join_request_url?: string;
+    access_mode?: string;
     is_active?: boolean;
+    requirements?: Array<{
+      requirement_type: string;
+      requirement_value?: string | null;
+    }>;
   },
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     if (input.id) {
-      const { id, bot_key: _b, ...body } = input;
+      const { id, bot_key: _b, requirements: _r, ...body } = input;
       await adminFetch(`/panel/telegram/destinations/${id}`, { method: 'PATCH', body });
     } else {
       await adminFetch('/panel/telegram/destinations', { method: 'POST', body: input });
@@ -229,6 +234,37 @@ export async function saveTelegramDestinationAction(
     return { ok: true };
   } catch (e) {
     return actionError(e, 'ذخیره مقصد ناموفق بود.');
+  }
+}
+
+export async function saveTelegramDestinationRequirementAction(
+  destinationId: number,
+  input: { requirement_type: string; requirement_value?: string | null },
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await adminFetch(`/panel/telegram/destinations/${destinationId}/requirements`, {
+      method: 'POST',
+      body: input,
+    });
+    revalidateTelegram();
+    return { ok: true };
+  } catch (e) {
+    return actionError(e, 'افزودن شرط دسترسی ناموفق بود.');
+  }
+}
+
+export async function deleteTelegramDestinationRequirementAction(
+  destinationId: number,
+  requirementId: number,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await adminFetch(`/panel/telegram/destinations/${destinationId}/requirements/${requirementId}`, {
+      method: 'DELETE',
+    });
+    revalidateTelegram();
+    return { ok: true };
+  } catch (e) {
+    return actionError(e, 'حذف شرط دسترسی ناموفق بود.');
   }
 }
 

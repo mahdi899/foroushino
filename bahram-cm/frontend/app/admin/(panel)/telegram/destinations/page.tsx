@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { can, getCurrentUser } from '@/lib/auth/session';
 import { loadTelegramBots, loadTelegramDestinations } from '@/lib/admin/telegram';
+import { getProducts } from '@/lib/admin/commerceData';
 import { TelegramSubPage } from '../TelegramSubPage';
 import { TelegramDestinationsClient } from './TelegramDestinationsClient';
 
@@ -12,15 +13,19 @@ export default async function TelegramDestinationsPage() {
     redirect('/admin/telegram');
   }
 
-  const [items, bots] = await Promise.all([loadTelegramDestinations(), loadTelegramBots()]);
+  const [items, bots, productsResult] = await Promise.all([
+    loadTelegramDestinations(),
+    loadTelegramBots(),
+    getProducts(),
+  ]);
 
   return (
     <TelegramSubPage
       title="مقاصد تلگرامی"
-      description="کانال‌ها و گروه‌های وابسته به محصول و KYC"
+      description="گروه‌های پشتیبانی اختصاصی هر محصول — لینک عضویت شخصی‌سازی‌شده برای خریداران"
       icon="MapPin"
     >
-      <TelegramDestinationsClient items={items} bots={bots} />
+      <TelegramDestinationsClient items={items} bots={bots} products={productsResult.items} />
     </TelegramSubPage>
   );
 }

@@ -20,6 +20,7 @@ use App\Modules\TelegramBot\Services\TelegramOutboundMessenger;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
 use App\Modules\TelegramBot\Services\TelegramSeminarCatalogService;
 use App\Modules\TelegramBot\Services\TelegramCourseAccessPresenter;
+use App\Modules\TelegramBot\Services\TelegramUserDestinationsService;
 use App\Modules\TelegramBot\Services\TelegramCatalogMediaService;
 use App\Modules\TelegramBot\Services\TelegramPurchaseFlowService;
 use App\Modules\TelegramBot\Services\TelegramSatFlowService;
@@ -50,6 +51,7 @@ class MessageHandler implements UpdateHandlerInterface
         private readonly TelegramSatFlowService $satFlow,
         private readonly TelegramAdminUserStatsService $userStats,
         private readonly TelegramCourseAccessPresenter $courseAccessPresenter,
+        private readonly TelegramUserDestinationsService $userDestinations,
         private readonly BotMessageCatalog $messages,
         private readonly TelegramOutboundMessenger $outbound,
         private readonly TelegramCatalogMediaService $catalogMedia,
@@ -665,8 +667,15 @@ class MessageHandler implements UpdateHandlerInterface
         $panelUrl = TelegramSiteUrl::studentPanel();
         $identityUrl = TelegramSiteUrl::identityPage();
         $text = $this->userStats->formatProfileText($account);
+        $destinationSection = $this->userDestinations->formatAccountSection($bot, $account);
+        if ($destinationSection !== null) {
+            $text .= "\n\n".$destinationSection;
+        }
 
         $keyboard = [];
+        foreach ($this->userDestinations->keyboardRows($bot, $account) as $row) {
+            $keyboard[] = $row;
+        }
         foreach (TelegramSiteUrl::urlKeyboardRow('احراز هویت سطح ۲', $identityUrl, 'primary', 'lock') as $row) {
             $keyboard[] = $row;
         }
