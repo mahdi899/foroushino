@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS catalog_products (
     title VARCHAR(255) NOT NULL,
     price BIGINT NULL,
     sale_price BIGINT NULL,
+    photo_url VARCHAR(512) NULL,
     synced_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -38,6 +39,9 @@ CREATE TABLE IF NOT EXISTS catalog_seminars (
     seminar_date DATETIME NULL,
     location VARCHAR(255) NULL,
     capacity_hint INT NULL,
+    price BIGINT NULL,
+    sale_price BIGINT NULL,
+    photo_url VARCHAR(512) NULL,
     synced_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

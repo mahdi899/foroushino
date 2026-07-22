@@ -52,4 +52,11 @@ final class AccountCache
 
         return $account !== null && ! empty($account['mobile_verified_at']);
     }
+
+    public function isBotAdmin(int $telegramUserId): bool
+    {
+        $account = $this->get($telegramUserId);
+
+        return $account !== null && (int) ($account['is_bot_admin'] ?? 0) === 1;
+    }
 }

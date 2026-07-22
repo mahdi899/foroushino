@@ -10,8 +10,11 @@ use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramRequiredChat;
 use App\Modules\TelegramBot\Services\AccountLinkService;
 use App\Modules\TelegramBot\Services\BotMessageCatalog;
+use App\Modules\TelegramBot\Services\TelegramCatalogMediaService;
+use App\Modules\TelegramBot\Services\TelegramCheckoutService;
 use App\Modules\TelegramBot\Services\TelegramProductCatalogService;
 use App\Modules\TelegramBot\Services\TelegramSeminarCatalogService;
+use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Modules\TelegramBot\Services\TelegramUserSyncService;
 use App\Services\Exceptions\OtpException;
 use App\Services\OtpService;
@@ -42,6 +45,8 @@ class TelegramHostSyncController
         private readonly OtpService $otp,
         private readonly TelegramUserSyncService $userSync,
         private readonly AccountLinkService $accountLinks,
+        private readonly TelegramCheckoutService $checkout,
+        private readonly TelegramCatalogMediaService $catalogMedia,
     ) {}
 
     public function bootstrap(Request $request): JsonResponse
@@ -60,32 +65,63 @@ class TelegramHostSyncController
             ->toArray();
 
         return $this->encryptedResponse($request, [
-            'bot' => ['id' => $bot->id, 'key' => $bot->key, 'features' => $bot->settings['features'] ?? []],
+            'bot' => [
+                'id' => $bot->id,
+                'key' => $bot->key,
+                'features' => $bot->settings['features'] ?? [],
+                'is_active' => (bool) $bot->is_active,
+            ],
             'messages' => $messages,
             'required_chats' => $requiredChats,
+            'checkout' => [
+                'zarinpal_enabled' => $this->checkout->zarinpalEnabled($bot),
+                'c2c_enabled' => $this->checkout->cardToCardEnabled($bot),
+            ],
+            'site_urls' => [
+                'identity' => TelegramSiteUrl::identityPage(),
+                'family' => TelegramSiteUrl::familyHome(),
+                'sat' => TelegramSiteUrl::satPage(),
+                'referral_panel' => TelegramSiteUrl::page('panel/referrals'),
+            ],
             'synced_at' => now()->toIso8601String(),
         ]);
     }
 
     public function catalog(Request $request): JsonResponse
     {
-        $courses = $this->products->listPublicCourses()->map(fn (Product $p) => [
-            'id' => $p->id,
-            'slug' => $p->slug,
-            'title' => $p->title,
-            'price' => $p->price,
-            'sale_price' => $p->sale_price,
-        ])->values();
+        $courses = $this->products->listPublicCourses()->map(function (Product $p) {
+            $photo = $this->catalogMedia->productPhoto($p);
 
-        $seminars = $this->seminars->listUpcoming()->map(fn (Seminar $s) => [
-            'id' => $s->id,
-            'product_id' => $s->product_id,
-            'title' => $s->title,
-            'date' => $s->date?->toIso8601String(),
-            'location' => $s->location,
-            // Display-only hint — the host must call capacity-check live before checkout.
-            'capacity_hint' => $s->capacity,
-        ])->values();
+            return [
+                'id' => $p->id,
+                'slug' => $p->slug,
+                'title' => $p->title,
+                'price' => $p->price,
+                'sale_price' => $p->sale_price,
+                'photo' => $photo,
+            ];
+        })->values();
+
+        $seminars = $this->seminars->listUpcoming()->map(function (Seminar $s) {
+            $s->loadMissing('product');
+            $photo = $this->catalogMedia->seminarPhoto($s);
+            $product = $s->product;
+            $base = (int) ($s->price ?: $product?->price ?: 0);
+            $saleRaw = $s->sale_price ?? $product?->sale_price;
+            $sale = $saleRaw !== null ? (int) $saleRaw : null;
+
+            return [
+                'id' => $s->id,
+                'product_id' => $s->product_id,
+                'title' => $s->title,
+                'date' => $s->date?->toIso8601String(),
+                'location' => $s->location,
+                'capacity_hint' => $s->capacity,
+                'price' => $base,
+                'sale_price' => $sale,
+                'photo' => $photo,
+            ];
+        })->values();
 
         return $this->encryptedResponse($request, [
             'courses' => $courses,
