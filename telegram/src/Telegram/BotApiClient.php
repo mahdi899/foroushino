@@ -9,6 +9,9 @@ use TelegramHost\Support\TelegramCustomEmoji;
 /** Thin cURL wrapper around api.telegram.org — token stays local to this host. */
 final class BotApiClient
 {
+    /** Reused across calls in the same request so repeated sends (e.g. course lists) keep-alive the TCP/TLS connection to api.telegram.org. */
+    private static ?\CurlHandle $handle = null;
+
     public function __construct(private readonly string $token) {}
 
     /** @param array<string, mixed> $params */
