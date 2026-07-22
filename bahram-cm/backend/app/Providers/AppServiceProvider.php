@@ -125,6 +125,8 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(SatApplicationAccepted::class, TryActivateSatMembershipListener::class);
         Event::listen(SatApplicationAccepted::class, PushSatApplicationToExternalListener::class);
         Event::listen(SatMembershipActivated::class, NotifySatTelegramGroupAccessListener::class);
+        Event::listen(SatApplicationAccepted::class, NotifySatTelegramGroupAccessListener::class);
+        Event::listen(IdentityLevel2Approved::class, NotifySatTelegramGroupAccessListener::class);
     }
 
     /**

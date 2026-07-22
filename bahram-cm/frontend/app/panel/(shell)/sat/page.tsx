@@ -58,6 +58,8 @@ export default async function PanelSatPage() {
   const membershipMeta = SAT_MEMBERSHIP_FA[membershipStatus] ?? SAT_MEMBERSHIP_FA.inactive;
   const membershipActive = membershipStatus === 'active';
   const acceptedButLocked = application?.status === 'accepted' && !membershipActive;
+  const telegramDestinations =
+    application?.status === 'accepted' ? telegramDestinationsRes.data : null;
 
   return (
     <div className="panel-page-inner flex flex-col gap-6">
@@ -115,8 +117,8 @@ export default async function PanelSatPage() {
             </div>
           ) : null}
 
-          {membershipActive ? (
-            <TelegramSupportGroupsSection data={telegramDestinationsRes.data} compact />
+          {telegramDestinations ? (
+            <TelegramSupportGroupsSection data={telegramDestinations} compact />
           ) : null}
 
           {!application ? (

@@ -107,10 +107,12 @@ class StudentTelegramDestinationTest extends TestCase
             'is_active' => true,
         ]);
 
-        \App\Models\SatMembership::query()->create([
+        \App\Models\SatApplication::query()->create([
             'user_id' => $user->id,
-            'status' => \App\Enums\SatMembershipStatus::Active,
-            'activated_at' => now(),
+            'name' => 'کاربر سات',
+            'mobile' => '09120000002',
+            'status' => \App\Enums\SatApplicationStatus::Accepted,
+            'submitted_at' => now(),
         ]);
 
         $destination = TelegramDestination::query()->create([

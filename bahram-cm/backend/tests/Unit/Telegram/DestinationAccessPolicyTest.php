@@ -92,10 +92,12 @@ class DestinationAccessPolicyTest extends TestCase
         $denied = app(DestinationAccessPolicy::class)->evaluate($destination, $user->id);
         $this->assertFalse($denied['allowed']);
 
-        \App\Models\SatMembership::query()->create([
+        \App\Models\SatApplication::query()->create([
             'user_id' => $user->id,
-            'status' => \App\Enums\SatMembershipStatus::Active,
-            'activated_at' => now(),
+            'name' => 'کاربر تست',
+            'mobile' => '09120000001',
+            'status' => \App\Enums\SatApplicationStatus::Accepted,
+            'submitted_at' => now(),
         ]);
 
         $allowed = app(DestinationAccessPolicy::class)->evaluate($destination, $user->id);

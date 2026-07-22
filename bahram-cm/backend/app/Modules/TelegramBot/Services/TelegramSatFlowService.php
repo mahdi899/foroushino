@@ -10,6 +10,7 @@ use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Services\AdminTelegramLogService;
+use App\Services\Sat\SatParticipantAccessService;
 
 class TelegramSatFlowService
 {
@@ -19,6 +20,7 @@ class TelegramSatFlowService
         private readonly MainMenuKeyboard $mainMenu,
         private readonly AdminTelegramLogService $adminTelegram,
         private readonly TelegramUserDestinationsService $userDestinations,
+        private readonly SatParticipantAccessService $satAccess,
     ) {}
 
     public function open(TelegramBot $bot, TelegramAccount $account, int $chatId): void
@@ -271,9 +273,15 @@ class TelegramSatFlowService
         };
 
         $account->loadMissing('user.identityProfile', 'user.satMembership');
-        $verificationLevel = (int) ($account->user?->identityProfile?->verification_level ?? 0);
+        $user = $account->user;
+        $verificationLevel = (int) ($user?->identityProfile?->verification_level ?? 0);
         $acceptedButLocked = $status === SatApplicationStatus::Accepted && $verificationLevel < 2;
-        $membershipActive = (bool) $account->user?->satMembership?->isActive();
+        if ($user !== null) {
+            $this->satAccess->ensureMembershipActivated($user);
+            $user->loadMissing('satMembership');
+        }
+        $satAccessOpened = $status === SatApplicationStatus::Accepted && $this->satAccess->hasOpenedAccess($user);
+        $membershipActive = (bool) $user?->satMembership?->isActive();
 
         $text = "☎️ وضعیت درخواست سات\n\n"
             ."وضعیت: {$label}\n"
@@ -282,10 +290,13 @@ class TelegramSatFlowService
             .'سن: '.($app->age ?: '—');
 
         if ($acceptedButLocked) {
-            $text .= "\n\n✅ پذیرفته شده‌اید، اما دسترسی هنوز قفل است.\n"
+            $text .= "\n\n✅ پذیرفته شده‌اید، اما دسترسی پنل هنوز قفل است.\n"
                 .'برای احراز هویت سطح ۲ وارد پنل دانشجو شوید.';
         } elseif ($membershipActive) {
             $text .= "\n\n✅ دسترسی سات شما فعال است.";
+        }
+
+        if ($satAccessOpened) {
             $satSection = $this->userDestinations->formatSatSection($bot, $account);
             if ($satSection !== null) {
                 $text .= "\n\n".$satSection;
@@ -298,7 +309,7 @@ class TelegramSatFlowService
                 $extra[] = $row;
             }
         }
-        if ($membershipActive) {
+        if ($satAccessOpened) {
             foreach ($this->userDestinations->satKeyboardRows($bot, $account) as $row) {
                 $extra[] = $row;
             }
@@ -308,7 +319,7 @@ class TelegramSatFlowService
         }
 
         $options = $extra !== [] ? ['reply_markup' => ['inline_keyboard' => $extra]] : [];
-        if ($membershipActive && str_contains($text, '<b>')) {
+        if ($satAccessOpened && str_contains($text, '<b>')) {
             $options['parse_mode'] = 'HTML';
         }
 
