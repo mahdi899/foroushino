@@ -73,7 +73,7 @@ class TelegramHostPushService
                     'Content-Type' => 'text/plain',
                 ]))
                 ->withBody($encrypted, 'text/plain')
-                ->post($hostBase.'/internal/sync.php');
+                ->post($infra->hostPushUrl());
 
             if (! $response->successful()) {
                 Log::channel('telegram')->warning('Telegram host push failed.', [

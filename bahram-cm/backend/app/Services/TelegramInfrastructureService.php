@@ -23,6 +23,11 @@ class TelegramInfrastructureService
 
     public const DEFAULT_BASE_URL = 'https://api.telegram.org';
 
+    /** Relative entry points inside the standalone `telegram/` host app. */
+    public const HOST_WEBHOOK_ENTRY = '/public/webhook.php';
+
+    public const HOST_PUSH_ENTRY = '/internal/sync.php';
+
     private const CACHE_KEY = 'telegram.infrastructure.config';
 
     public function __construct(private readonly SettingService $settings) {}
@@ -72,6 +77,22 @@ class TelegramInfrastructureService
     public function workerUrl(): string
     {
         return $this->usesWorkerBridge() ? $this->panelBaseUrl() : '';
+    }
+
+    /** Public base URL of the standalone `telegram/` app (no trailing slash). */
+    public function hostAppBaseUrl(): string
+    {
+        return rtrim($this->panelBaseUrl(), '/');
+    }
+
+    public function hostWebhookUrl(): string
+    {
+        return $this->hostAppBaseUrl().self::HOST_WEBHOOK_ENTRY;
+    }
+
+    public function hostPushUrl(): string
+    {
+        return $this->hostAppBaseUrl().self::HOST_PUSH_ENTRY;
     }
 
     public function panelBaseUrl(): string
@@ -214,7 +235,7 @@ class TelegramInfrastructureService
     public function buildWebhookUrl(string $botKey = 'production'): string
     {
         if ($this->usesHostBridge()) {
-            return rtrim($this->panelBaseUrl(), '/').'/public/webhook.php';
+            return $this->hostWebhookUrl();
         }
 
         return $this->webhookBaseUrl().'/'.$this->webhookPath($botKey);
@@ -371,7 +392,9 @@ class TelegramInfrastructureService
         $connectionToken = $this->proxySharedToken();
 
         return [
-            'worker_url' => $this->workerUrl(),
+            'worker_url' => in_array($this->bridgeType(), ['worker', 'host'], true)
+                ? $this->panelBaseUrl()
+                : $this->workerUrl(),
             'mode' => $this->bridgeType(),
             'backend_origin' => $this->backendOrigin(),
             'telegram_api_base_url' => $this->telegramApiBaseUrl(),
@@ -379,6 +402,9 @@ class TelegramInfrastructureService
             'worker_webhook_url' => $this->usesWorkerBridge() || $this->usesHostBridge()
                 ? $this->buildWebhookUrl('production')
                 : null,
+            'host_app_base_url' => $this->usesHostBridge() ? $this->hostAppBaseUrl() : null,
+            'host_webhook_url' => $this->usesHostBridge() ? $this->hostWebhookUrl() : null,
+            'host_push_url' => $this->usesHostBridge() ? $this->hostPushUrl() : null,
             'has_connection_token' => $connectionToken !== null,
             'connection_token_preview' => $connectionToken ? $this->maskSecret($connectionToken) : null,
             'configured' => $this->isConfigured(),
@@ -433,7 +459,7 @@ class TelegramInfrastructureService
                 'CHANGE_ME',
                 'CHANGE_ME',
                 'CHANGE_ME',
-                $this->usesHostBridge() ? rtrim($this->panelBaseUrl(), '/') : 'https://YOUR-HOST-DOMAIN',
+                $this->usesHostBridge() ? $this->hostAppBaseUrl() : 'https://YOUR-HOST-DOMAIN',
             ],
             $template,
         );
@@ -616,7 +642,7 @@ class TelegramInfrastructureService
                     .' لاگ: storage/logs/telegram.log';
             }
 
-            return $base.$detail.' — هاست: '.rtrim($this->panelBaseUrl(), '/').'/public/webhook.php';
+            return $base.$detail.' — هاست: '.$this->hostWebhookUrl();
         }
 
         if ($this->usesWorkerBridge()) {

@@ -56,7 +56,7 @@ class ExportTelegramHostConfig extends Command
                 (string) ($this->option('db-database') ?? 'CHANGE_ME'),
                 (string) ($this->option('db-username') ?? 'CHANGE_ME'),
                 (string) ($this->option('db-password') ?? 'CHANGE_ME'),
-                $infra->usesHostBridge() ? rtrim($infra->panelBaseUrl(), '/') : 'https://YOUR-HOST-DOMAIN',
+                $infra->usesHostBridge() ? $infra->hostAppBaseUrl() : 'https://YOUR-HOST-DOMAIN',
             ],
             $template,
         );

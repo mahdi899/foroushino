@@ -194,19 +194,35 @@ export function TelegramBridgePanel({
       ) : mode === 'host' ? (
         <>
           <label className="block">
-            <span className="text-caption font-medium text-text">دامنه اپ هاست خارج</span>
+            <span className="text-caption font-medium text-text">آدرس پایه اپ هاست خارج</span>
             <input
               className="field-input mt-1 w-full text-small"
               dir="ltr"
               type="url"
-              placeholder="https://bahram-telegram.example.com"
+              placeholder="https://bahram.rahai.online/rostam/telegram"
               value={workerUrl}
               onChange={(e) => setWorkerUrl(e.target.value)}
             />
             <span className="mt-1 block text-caption text-text-muted">
-              وب‌هوک تلگرام مستقیماً به همین دامنه (اپ PHP روی هاست شما) ثبت می‌شود.
+              فقط تا پوشه <code dir="ltr">telegram/</code> — بدون <code dir="ltr">/public</code>.
+              برای تغییر دامنه یا ساب‌فولدر: این فیلد را عوض کنید، ذخیره کنید، <code dir="ltr">config.php</code> روی هاست را به‌روز کنید، سپس «ثبت وب‌هوک».
             </span>
           </label>
+
+          {initial.host_webhook_url ? (
+            <div className="rounded-md border border-border bg-surface-muted/20 px-2.5 py-2 text-caption text-text-muted">
+              <p>
+                <span className="font-medium text-text">وب‌هوک تلگرام:</span>{' '}
+                <code dir="ltr" className="text-[11px]">{initial.host_webhook_url}</code>
+              </p>
+              {initial.host_push_url ? (
+                <p className="mt-1">
+                  <span className="font-medium text-text">Push سرور → هاست:</span>{' '}
+                  <code dir="ltr" className="text-[11px]">{initial.host_push_url}</code>
+                </p>
+              ) : null}
+            </div>
+          ) : null}
 
           {hostConfigSource ? (
             <CodeFileBlock

@@ -29,7 +29,7 @@ return [
     // X-Proxy-Origin the host expects on server → host push requests.
     'server_push_origin' => 'Main-Server',
 
-    // Public URL of this host app (used by main server to push sync commands).
+    // Public URL of this host app — same as admin panel «آدرس پایه اپ هاست خارج» (no /public).
     'host_public_url' => '__HOST_PUBLIC_URL__',
 
     // Telegram webhook secret — must match bot config on main server.

@@ -91,7 +91,11 @@ class TelegramInfrastructureServiceTest extends TestCase
         $this->assertFalse($service->usesWorkerBridge());
         $this->assertSame(
             'https://bahram.rahai.online/rostam/telegram/public/webhook.php',
-            $service->buildWebhookUrl('production'),
+            $service->hostWebhookUrl(),
+        );
+        $this->assertSame(
+            'https://bahram.rahai.online/rostam/telegram',
+            $service->hostAppBaseUrl(),
         );
         $this->assertSame(TelegramInfrastructureService::DEFAULT_BASE_URL, $service->telegramApiBaseUrl());
         $this->assertTrue($service->isConfigured());

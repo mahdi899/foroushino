@@ -37,6 +37,10 @@ export type TelegramInfrastructureView = {
   host_sync_secret_preview?: string | null;
   host_encryption_key_preview?: string | null;
   host_sync_base_url?: string | null;
+  /** Public base URL of telegram/ on external host (no /public). */
+  host_app_base_url?: string | null;
+  host_webhook_url?: string | null;
+  host_push_url?: string | null;
   /** Filled config.php for the standalone telegram/ host app. */
   host_config_sample?: string | null;
 };
