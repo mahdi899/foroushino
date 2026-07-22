@@ -7,6 +7,7 @@ use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Services\TelegramWebhookRegisteredNotifier;
 use App\Support\AesGcmCipher;
 use App\Support\SsrfGuard;
+use App\Jobs\PushTelegramHostSyncJob;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
@@ -372,13 +373,29 @@ class TelegramInfrastructureService
         $bot = TelegramBot::query()->where('key', 'production')->first();
 
         return str_replace(
-            ['__SYNC_BASE_URL__', '__HMAC_SECRET__', '__AES_KEY__', '__WEBHOOK_SECRET__', '__BOT_TOKEN__'],
+            [
+                '__SYNC_BASE_URL__',
+                '__HMAC_SECRET__',
+                '__AES_KEY__',
+                '__WEBHOOK_SECRET__',
+                '__BOT_TOKEN__',
+                '__DB_HOST__',
+                '__DB_DATABASE__',
+                '__DB_USERNAME__',
+                '__DB_PASSWORD__',
+                '__HOST_PUBLIC_URL__',
+            ],
             [
                 $this->backendOrigin().'/api/v1/integrations/telegram-host',
                 (string) ($this->hostSyncSecret() ?? ''),
                 (string) ($this->hostEncryptionKey() ?? ''),
                 (string) ($this->webhookSecret() ?? ''),
                 (string) ($bot?->resolveToken() ?? ''),
+                '127.0.0.1',
+                'CHANGE_ME',
+                'CHANGE_ME',
+                'CHANGE_ME',
+                $this->usesHostBridge() ? rtrim($this->panelBaseUrl(), '/') : 'https://YOUR-HOST-DOMAIN',
             ],
             $template,
         );
@@ -449,6 +466,10 @@ class TelegramInfrastructureService
         $this->settings->updateGroup(self::GROUP, [self::KEY => $next]);
         self::forgetCachedConfig();
         $this->syncProductionBotSecret();
+
+        if (($next['bridge_type'] ?? '') === 'host') {
+            PushTelegramHostSyncJob::all();
+        }
 
         return $this->adminView();
     }

@@ -2,6 +2,7 @@
 
 namespace App\Modules\TelegramBot\Services;
 
+use App\Jobs\PushTelegramHostSyncJob;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramBotMessage;
 use App\Modules\TelegramBot\Support\TelegramCustomEmoji;
@@ -243,6 +244,10 @@ class BotMessageCatalog
 
         Cache::forget($this->cacheKey((int) $bot->id, $key));
 
+        if ($bot->key === 'production') {
+            PushTelegramHostSyncJob::bootstrap();
+        }
+
         return $row;
     }
 
@@ -254,6 +259,10 @@ class BotMessageCatalog
             ->delete();
 
         Cache::forget($this->cacheKey((int) $bot->id, $key));
+
+        if ($bot->key === 'production') {
+            PushTelegramHostSyncJob::bootstrap();
+        }
     }
 
     public function resetAllToDefaults(TelegramBot $bot): void

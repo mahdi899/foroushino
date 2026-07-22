@@ -18,14 +18,28 @@ final class SyncCache
     public function refreshAll(): void
     {
         $bootstrap = $this->sync->call('bootstrap');
+        $this->storeBootstrapOnly($bootstrap);
+
+        $catalog = $this->sync->call('catalog');
+        $this->storeCatalogOnly($catalog);
+
+        $this->touchSyncMeta('full_refresh');
+    }
+
+    /** @param array<string, mixed> $bootstrap */
+    public function storeBootstrapOnly(array $bootstrap): void
+    {
         $this->storeMessages((array) ($bootstrap['messages'] ?? []));
         $this->storeFeatureFlags((array) ($bootstrap['bot']['features'] ?? []));
         $this->storeRequiredChats((array) ($bootstrap['required_chats'] ?? []));
+        $this->touchSyncMeta('bootstrap');
+    }
 
-        $catalog = $this->sync->call('catalog');
+    /** @param array<string, mixed> $catalog */
+    public function storeCatalogOnly(array $catalog): void
+    {
         $this->storeCatalog((array) ($catalog['courses'] ?? []), (array) ($catalog['seminars'] ?? []));
-
-        $this->touchSyncMeta('full_refresh');
+        $this->touchSyncMeta('catalog');
     }
 
     public function message(string $key, string $fallback = ''): string

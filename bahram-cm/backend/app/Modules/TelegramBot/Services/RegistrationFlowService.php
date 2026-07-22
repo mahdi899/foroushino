@@ -2,6 +2,7 @@
 
 namespace App\Modules\TelegramBot\Services;
 
+use App\Jobs\PushTelegramHostSyncJob;
 use App\Enums\OtpPurpose;
 use App\Models\User;
 use App\Modules\TelegramBot\Enums\BotFeatureFlag;
@@ -396,6 +397,17 @@ class RegistrationFlowService
         }
 
         $account->refresh();
+        if ($bot->key === 'production') {
+            PushTelegramHostSyncJob::account([
+                'telegram_user_id' => $account->telegram_user_id,
+                'user_id' => $account->user_id,
+                'mobile' => $account->mobile,
+                'mobile_verified_at' => $account->mobile_verified_at?->toIso8601String(),
+                'display_name' => $account->display_name,
+                'is_bot_admin' => (bool) $account->is_bot_admin,
+            ]);
+        }
+
         $this->sendMainMenu($bot, $account->fresh());
 
         $body = $this->messages->get($bot, 'registration_complete');
