@@ -2,6 +2,7 @@
 
 import { ShieldCheck } from 'lucide-react';
 import type { CaptchaSettingsForm } from '@/lib/captcha/types';
+import { CaptchaProviderTest } from './CaptchaProviderTest';
 
 interface CaptchaSettingsSectionProps {
   form: CaptchaSettingsForm;
@@ -206,6 +207,8 @@ export function CaptchaSettingsSection({
             <p className="mt-1 text-caption text-text-muted">fallback از env: RECAPTCHA_SECRET_KEY</p>
           )}
         </div>
+
+        <CaptchaProviderTest turnstileSiteKey={form.turnstileSiteKey} recaptchaSiteKey={form.siteKey} />
       </div>
 
       {!form.enabled && (

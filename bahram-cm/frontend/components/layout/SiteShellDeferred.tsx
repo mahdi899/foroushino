@@ -2,11 +2,6 @@
 
 import dynamic from 'next/dynamic';
 
-const SiteBootLoader = dynamic(
-  () => import('@/components/layout/SiteBootLoader').then((m) => ({ default: m.SiteBootLoader })),
-  { ssr: false },
-);
-
 const ReferralCapture = dynamic(
   () => import('@/components/commerce/ReferralCapture').then((m) => ({ default: m.ReferralCapture })),
   { ssr: false },
@@ -31,7 +26,6 @@ const BahramUpdateBanner = dynamic(
 export function SiteShellDeferred() {
   return (
     <>
-      <SiteBootLoader />
       <ReferralCapture />
       <DiscountCapture />
       <SitePwaRegistrar />

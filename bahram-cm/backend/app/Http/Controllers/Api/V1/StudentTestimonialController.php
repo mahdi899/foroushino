@@ -90,6 +90,8 @@ class StudentTestimonialController extends Controller
             'portrait_image' => $item->portrait_image,
             'sort_order' => $item->sort_order,
             'is_active' => $item->is_active,
+            'show_in_family_pulse' => (bool) $item->show_in_family_pulse,
+            'family_pulse_quote' => $item->family_pulse_quote,
             'created_at' => $item->created_at?->toIso8601String(),
             'updated_at' => $item->updated_at?->toIso8601String(),
         ];
@@ -119,6 +121,8 @@ class StudentTestimonialController extends Controller
             'portrait_image' => ['sometimes', 'nullable', 'string', 'max:500'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
+            'show_in_family_pulse' => ['sometimes', 'boolean'],
+            'family_pulse_quote' => ['sometimes', 'nullable', 'string', 'max:500'],
         ]);
 
         if (! $partial && empty($validated['slug']) && ! empty($validated['name'])) {

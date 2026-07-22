@@ -37,6 +37,9 @@ export function TestimonialMobileCard({ testimonial: t }: { testimonial: AdminSt
             <span className="admin-testimonial-card__chip">
               ترتیب {t.sort_order.toLocaleString('fa-IR')}
             </span>
+            {t.show_in_family_pulse ? (
+              <span className="admin-testimonial-card__chip">صفحه اصلی</span>
+            ) : null}
           </div>
         </div>
 

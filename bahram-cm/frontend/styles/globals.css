@@ -2680,31 +2680,6 @@ html[data-theme="light"] .photo-scrim-bottom-half {
 
 .campaign-course-hero-headline-wrap {
   overflow: visible;
-  animation: campaign-hero-fade-blur-in 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: 0.12s;
-}
-
-@keyframes campaign-hero-fade-blur-in {
-  from {
-    opacity: 0;
-    filter: blur(14px);
-    transform: translate3d(0, 12px, 0);
-  }
-
-  to {
-    opacity: 1;
-    filter: blur(0);
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .campaign-course-hero-headline-wrap {
-    animation: none;
-    opacity: 1;
-    filter: none;
-    transform: none;
-  }
 }
 
 .campaign-course-hero-headline {

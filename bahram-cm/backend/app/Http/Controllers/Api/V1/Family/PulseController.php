@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1\Family;
 
-use App\Enums\Family\FamilyCommentStatus;
 use App\Http\Controllers\Controller;
-use App\Models\FamilyComment;
+use App\Models\StudentTestimonial;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
@@ -17,19 +16,19 @@ class PulseController extends Controller
             'family:pulse',
             config('family.cache.pulse_ttl', 60),
             function () {
-                return FamilyComment::query()
-                    ->where('status', FamilyCommentStatus::Approved->value)
-                    ->whereNotNull('family_pulse_at')
-                    ->with('user:id,name')
-                    ->orderByDesc('family_pulse_at')
+                return StudentTestimonial::query()
+                    ->active()
+                    ->where('show_in_family_pulse', true)
+                    ->ordered()
                     ->limit(12)
                     ->get()
-                    ->map(fn (FamilyComment $c) => [
-                        'id' => $c->id,
-                        'body' => $c->body,
-                        'name' => $c->user?->name ?? 'عضو خانواده',
-                        'at' => $c->family_pulse_at?->toIso8601String(),
+                    ->map(fn (StudentTestimonial $t) => [
+                        'id' => $t->id,
+                        'body' => trim((string) ($t->family_pulse_quote ?: $t->summary)),
+                        'name' => $t->name,
+                        'at' => $t->updated_at?->toIso8601String(),
                     ])
+                    ->filter(fn (array $item) => $item['body'] !== '')
                     ->values()
                     ->all();
             },

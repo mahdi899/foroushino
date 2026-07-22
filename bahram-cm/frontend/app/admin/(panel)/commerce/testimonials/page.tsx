@@ -12,13 +12,12 @@ export const dynamic = 'force-dynamic';
 export default async function TestimonialsPage() {
   const { items, error } = await getStudentTestimonials();
   const activeCount = items.filter((t) => t.is_active).length;
-  const inactiveCount = items.length - activeCount;
-  const withMetricCount = items.filter((t) => t.metric_value?.trim() || t.metric_label?.trim()).length;
+  const pulseCount = items.filter((t) => t.show_in_family_pulse && t.is_active).length;
 
   return (
     <AdminPage
       title="نظرات دانشجوها"
-      desc="داستان‌های تبدیل و کارت‌های صفحه رضایت دانشجوها"
+      desc="داستان‌های تبدیل، کارت‌های رضایت و نظرات مارکی صفحه اصلی"
       icon="MessageSquareQuote"
       headerVariant="commerce"
       action={
@@ -45,15 +44,11 @@ export default async function TestimonialsPage() {
               hint="نمایش در صفحه transformations"
             />
             <StatCard
-              label="با متریک"
-              value={withMetricCount.toLocaleString('fa-IR')}
-              icon="TrendingUp"
+              label="صفحه اصلی"
+              value={pulseCount.toLocaleString('fa-IR')}
+              icon="Home"
               tone="teal"
-              hint={
-                inactiveCount > 0
-                  ? `${inactiveCount.toLocaleString('fa-IR')} غیرفعال`
-                  : 'همه فعال‌اند'
-              }
+              hint="مارکی خانواده داداش بهرام"
             />
           </div>
         ) : null}
@@ -86,7 +81,7 @@ export default async function TestimonialsPage() {
         >
           {items.length > 0 ? (
             <Table
-              head={['', 'نام', 'اسلاگ', 'قبل → بعد', 'ترتیب', 'وضعیت', 'عملیات']}
+              head={['', 'نام', 'اسلاگ', 'قبل → بعد', 'ترتیب', 'وضعیت', 'صفحه اصلی', 'عملیات']}
               mobile={items.map((t) => (
                 <TestimonialMobileCard key={t.id} testimonial={t} />
               ))}
@@ -113,6 +108,13 @@ export default async function TestimonialsPage() {
                     <Badge tone={t.is_active ? 'success' : 'default'}>
                       {t.is_active ? 'فعال' : 'غیرفعال'}
                     </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    {t.show_in_family_pulse ? (
+                      <Badge tone="accent">مارکی</Badge>
+                    ) : (
+                      <span className="text-caption text-text-muted">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <EditLink href={`/admin/commerce/testimonials/${t.id}`} />

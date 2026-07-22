@@ -143,6 +143,8 @@ export interface AdminStudentTestimonial {
   portrait_image: string | null;
   sort_order: number;
   is_active: boolean;
+  show_in_family_pulse: boolean;
+  family_pulse_quote: string | null;
   created_at: string | null;
 }
 

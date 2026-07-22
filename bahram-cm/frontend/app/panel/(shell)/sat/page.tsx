@@ -114,7 +114,11 @@ export default async function PanelSatPage() {
                 <FileText size={16} className="text-primary" />
                 فرم درخواست سات
               </h2>
-              <SatApplicationForm mobile={user?.mobile ?? ''} />
+              <SatApplicationForm
+                mobile={user?.mobile ?? ''}
+                defaultFirstName={user?.profile?.first_name ?? user?.identity?.first_name ?? ''}
+                defaultLastName={user?.profile?.last_name ?? user?.identity?.last_name ?? ''}
+              />
               <p className="panel-card-subtext mt-4 leading-relaxed">
                 اطلاعات شما محرمانه نگه داشته می‌شود و فقط برای بررسی درخواست استفاده می‌شود.
               </p>

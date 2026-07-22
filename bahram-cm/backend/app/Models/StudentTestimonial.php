@@ -22,10 +22,13 @@ class StudentTestimonial extends Model
         'portrait_image',
         'sort_order',
         'is_active',
+        'show_in_family_pulse',
+        'family_pulse_quote',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'show_in_family_pulse' => 'boolean',
         'sort_order' => 'integer',
     ];
 

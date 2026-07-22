@@ -31,6 +31,8 @@ export function TestimonialForm({ testimonial }: { testimonial?: AdminStudentTes
     meta_description: testimonial?.meta_description ?? '',
     sort_order: testimonial?.sort_order ?? 0,
     is_active: testimonial?.is_active ?? true,
+    show_in_family_pulse: testimonial?.show_in_family_pulse ?? false,
+    family_pulse_quote: testimonial?.family_pulse_quote ?? '',
   });
   const [focusKeyword, setFocusKeyword] = useState('');
   const [pending, setPending] = useState(false);
@@ -96,6 +98,8 @@ export function TestimonialForm({ testimonial }: { testimonial?: AdminStudentTes
         meta_description: form.meta_description.trim() || null,
         sort_order: Number(form.sort_order) || 0,
         is_active: form.is_active,
+        show_in_family_pulse: form.show_in_family_pulse,
+        family_pulse_quote: form.family_pulse_quote.trim() || null,
       },
       testimonial?.id,
     );
@@ -343,6 +347,40 @@ export function TestimonialForm({ testimonial }: { testimonial?: AdminStudentTes
               </div>
 
               {focusMode && <SeoScorePanel {...seoScorePanelProps} variant="inline" />}
+            </div>
+
+            <div className="card space-y-4 p-6">
+              <h2 className="text-center text-h3 font-bold text-primary-dark md:text-start">
+                صفحه اصلی — خانواده داداش بهرام
+              </h2>
+              <p className="text-center text-caption text-muted md:text-start">
+                نظراتی که اینجا فعال شوند، در مارکی زیر آمارهای صفحه اصلی نمایش داده می‌شوند.
+              </p>
+
+              <label className="flex items-start justify-center gap-2 md:justify-start">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={form.show_in_family_pulse}
+                  onChange={(e) => patch('show_in_family_pulse', e.target.checked)}
+                />
+                <span className="text-small">
+                  نمایش در بخش «خانواده داداش بهرام» صفحه اصلی
+                </span>
+              </label>
+
+              <label>
+                <span className="field-label">متن کوتاه مارکی (اختیاری)</span>
+                <textarea
+                  className="field-input"
+                  rows={3}
+                  value={form.family_pulse_quote}
+                  onChange={(e) => patch('family_pulse_quote', e.target.value)}
+                  placeholder="اگر خالی بماند، از «خلاصه کارت» استفاده می‌شود."
+                  maxLength={500}
+                  disabled={!form.show_in_family_pulse}
+                />
+              </label>
             </div>
 
             <div className="card space-y-4 p-6">

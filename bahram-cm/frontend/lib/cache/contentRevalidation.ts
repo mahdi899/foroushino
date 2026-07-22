@@ -54,6 +54,8 @@ export async function revalidateTestimonialSurfaces(_slug?: string | null): Prom
   await revalidatePublicContent(() => {
     revalidateTag('testimonials', 'max');
     revalidateTag('public-transformations', 'max');
+    revalidateTag('home', 'max');
+    revalidatePath('/');
     revalidatePath('/admin/commerce/testimonials');
     revalidatePath('/transformations');
   });

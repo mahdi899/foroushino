@@ -13,12 +13,19 @@ use Illuminate\Support\Facades\Artisan;
 class RefreshFamilyDemo extends Command
 {
     protected $signature = 'family:refresh-demo
-                            {--skip-seed : Only sync demo files to storage/FTP, skip FamilySeeder}';
+                            {--skip-seed : Only sync demo files to storage/FTP, skip FamilySeeder}
+                            {--force : Allow running in production (local/staging only by default)}';
 
     protected $description = 'Re-deploy family demo media (voice/video/images) to download host and refresh demo posts';
 
     public function handle(FamilyDemoPublisher $publisher): int
     {
+        if (app()->environment('production') && ! $this->option('force')) {
+            $this->error('family:refresh-demo is blocked in production (would re-publish demo posts). Use --force only if you really mean it.');
+
+            return self::FAILURE;
+        }
+
         $author = User::query()
             ->where('email', 'admin@bahram.local')
             ->where('is_admin', true)

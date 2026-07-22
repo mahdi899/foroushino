@@ -31,7 +31,7 @@ class SatApplicationController extends Controller
         }
 
         $application = $user->satApplications()->create([
-            'name' => $request->string('name'),
+            'name' => $request->resolvedName(),
             'mobile' => $user->mobile,
             'city' => $request->input('city'),
             'age' => $request->input('age'),

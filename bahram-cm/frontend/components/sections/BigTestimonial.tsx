@@ -68,7 +68,7 @@ export function BigTestimonial() {
               className="student-result-featured flex min-w-0 flex-[8] flex-col overflow-hidden rounded-card-lg sm:min-h-[10rem] sm:flex-row lg:min-h-0"
             >
               <div className="flex min-h-0 w-full flex-col sm:min-h-[10rem] sm:flex-row">
-                <div className="student-result-featured-media relative aspect-[4/3] max-h-[min(70vw,12.5rem)] w-full max-w-none shrink-0 overflow-hidden sm:aspect-auto sm:max-h-none sm:w-[34%] sm:max-w-[11rem] sm:self-stretch lg:max-w-[12rem]">
+                <div className="student-result-featured-media relative hidden aspect-auto max-h-none w-[34%] max-w-[11rem] shrink-0 self-stretch overflow-hidden sm:block lg:max-w-[12rem]">
                   <SiteImage
                     src={featured.photo}
                     alt={`پرتره ${featured.name}`}
@@ -93,7 +93,45 @@ export function BigTestimonial() {
                     «{featured.quote}»
                   </blockquote>
 
-                  <div className="flex items-end justify-between gap-3 border-t border-bone/8 pt-3">
+                  {/* Mobile — portrait right, identity left, metric below */}
+                  <div className="flex flex-col gap-3 border-t border-bone/8 pt-3 sm:hidden">
+                    <div className="flex items-start gap-3">
+                      <div className="relative h-[5.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-[0.875rem]">
+                        <SiteImage
+                          src={featured.photo}
+                          alt={`پرتره ${featured.name}`}
+                          fallbackAlt={`پرتره ${featured.name}`}
+                          fill
+                          className="object-cover object-top"
+                          sizes="72px"
+                        />
+                        <div
+                          aria-hidden
+                          className="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent"
+                        />
+                        <span
+                          aria-hidden
+                          className="student-result-featured-accent pointer-events-none absolute inset-y-0 start-0 w-[2px]"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1 pt-0.5">
+                        <p className="font-display text-sm font-semibold text-bone">{featured.name}</p>
+                        <p className="mt-0.5 text-caption text-mist">{featured.role}</p>
+                        <p className="mt-2 line-clamp-3 text-caption leading-snug text-emerald-glow">
+                          {featured.after}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="student-result-metric-highlight w-full rounded-[0.875rem] px-3 py-2.5 text-center">
+                      <p className="font-display text-xl font-semibold leading-none text-bone num-latin">
+                        {featured.metric.value}
+                      </p>
+                      <p className="mt-1 text-caption text-bone-dim">{featured.metric.label}</p>
+                    </div>
+                  </div>
+
+                  {/* Tablet+ — identity and metric in one row */}
+                  <div className="hidden items-end justify-between gap-3 border-t border-bone/8 pt-3 sm:flex">
                     <div className="min-w-0">
                       <p className="font-display text-sm font-semibold text-bone sm:text-base">
                         {featured.name}

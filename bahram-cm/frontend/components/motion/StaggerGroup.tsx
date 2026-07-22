@@ -1,8 +1,6 @@
 "use client";
 
-import { motion, useInView, useReducedMotion, type Variants } from "framer-motion";
-import { useRef, type ReactNode } from "react";
-import { ease, dur, VIEWPORT_ONCE } from "./easings";
+import type { ReactNode } from "react";
 
 type Props = {
   children: ReactNode;
@@ -11,37 +9,9 @@ type Props = {
   delay?: number;
 };
 
-export function StaggerGroup({
-  children,
-  className,
-  stagger = 0.08,
-  delay = 0,
-}: Props) {
-  const ref = useRef<HTMLDivElement>(null);
-  const reduce = useReducedMotion();
-  const inView = useInView(ref, VIEWPORT_ONCE);
-
-  const parent: Variants = {
-    hidden: {},
-    show: {
-      transition: {
-        staggerChildren: reduce ? 0 : stagger,
-        delayChildren: delay,
-      },
-    },
-  };
-
-  return (
-    <motion.div
-      ref={ref}
-      className={className}
-      initial="hidden"
-      animate={reduce || inView ? "show" : "hidden"}
-      variants={parent}
-    >
-      {children}
-    </motion.div>
-  );
+/** Static wrapper — stagger animations removed for reliable mobile paint. */
+export function StaggerGroup({ children, className }: Props) {
+  return <div className={className}>{children}</div>;
 }
 
 type ItemProps = {
@@ -50,25 +20,6 @@ type ItemProps = {
   y?: number;
 };
 
-export function StaggerItem({ children, className, y = 24 }: ItemProps) {
-  const reduce = useReducedMotion();
-  const variants: Variants = {
-    hidden: {
-      opacity: 0,
-      y: reduce ? 0 : y,
-      scale: reduce ? 1 : 0.97,
-    },
-    show: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: { duration: dur.lg, ease: ease.luxe },
-    },
-  };
-
-  return (
-    <motion.div className={className} variants={variants}>
-      {children}
-    </motion.div>
-  );
+export function StaggerItem({ children, className }: ItemProps) {
+  return <div className={className}>{children}</div>;
 }

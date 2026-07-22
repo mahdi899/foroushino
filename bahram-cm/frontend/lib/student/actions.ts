@@ -71,6 +71,41 @@ export async function sendOtpViaBaleAction(mobile: string): Promise<{ ok: true; 
   return { ok: true, message: result.data?.message ?? 'کد تأیید از طریق سفیر بله ارسال شد.' };
 }
 
+export async function verifySatApplyOtpInlineAction(
+  mobile: string,
+  code: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const normalizedMobile = mobile.trim();
+  const normalizedCode = code.trim();
+
+  if (!normalizedMobile) return { ok: false, error: 'شماره موبایل نامعتبر است.' };
+  if (!normalizedCode) return { ok: false, error: 'کد تایید را وارد کنید.' };
+
+  const result = await callStudentAuth('/auth/verify-otp', {
+    mobile: normalizedMobile,
+    code: normalizedCode,
+  });
+  if (!result.ok) return { ok: false, error: result.message ?? 'تایید شماره ناموفق بود.' };
+
+  const token = result.data?.token;
+  if (!token) return { ok: false, error: 'پاسخ سرور نامعتبر بود.' };
+
+  await setStudentTokenCookie(token);
+  return { ok: true };
+}
+
+export async function sendSatApplyOtpAction(
+  mobile: string,
+): Promise<{ ok: true; info: string } | { ok: false; error: string }> {
+  const normalizedMobile = mobile.trim();
+  if (!normalizedMobile) return { ok: false, error: 'شماره موبایل را وارد کنید.' };
+
+  const result = await callStudentAuth('/auth/send-otp', { mobile: normalizedMobile });
+  if (!result.ok) return { ok: false, error: result.message ?? 'ارسال کد ناموفق بود.' };
+
+  return { ok: true, info: 'کد تایید برای شما پیامک شد.' };
+}
+
 export async function verifyOtpAction(_prev: OtpAuthState, formData: FormData): Promise<OtpAuthState> {
   const mobile = String(formData.get('mobile') ?? '').trim();
   const code = String(formData.get('code') ?? '').trim();

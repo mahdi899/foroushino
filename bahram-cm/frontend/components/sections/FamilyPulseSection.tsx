@@ -11,7 +11,7 @@ export async function FamilyPulseSection() {
 
   if (pulse.length === 0) return null;
 
-  const items = pulse.slice(0, 8);
+  const items = pulse;
 
   return (
     <section

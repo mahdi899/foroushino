@@ -99,10 +99,19 @@ export async function markOnboardingStepAction(step: string): Promise<void> {
 }
 
 export async function submitSatApplicationAction(_prev: SimpleFormState, formData: FormData): Promise<SimpleFormState> {
+  const firstName = String(formData.get('first_name') ?? '').trim();
+  const lastName = String(formData.get('last_name') ?? '').trim();
   const payload = {
-    name: formData.get('name'),
+    first_name: firstName,
+    last_name: lastName,
+    name: [firstName, lastName].filter(Boolean).join(' '),
     city: formData.get('city') || null,
     age: formData.get('age') ? Number(formData.get('age')) : null,
+    captcha_token: formData.get('captcha_token') || undefined,
+    captcha_provider: formData.get('captcha_provider') || undefined,
+    captcha_id: formData.get('captcha_id') || undefined,
+    captcha_answer: formData.get('captcha_answer') ?? undefined,
+    website: formData.get('website') || undefined,
   };
 
   try {

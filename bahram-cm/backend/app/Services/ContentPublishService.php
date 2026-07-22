@@ -42,8 +42,8 @@ class ContentPublishService
 
         $this->purge(
             'ذخیره نظر / تبدیل',
-            ['testimonials', 'public-transformations'],
-            array_values(array_unique($paths)),
+            ['testimonials', 'public-transformations', 'home'],
+            array_values(array_unique(array_merge(['/', '/transformations'], $paths))),
             fn () => $this->forgetTestimonialRuntimeCache($slug, $previousSlug),
         );
     }
@@ -197,6 +197,8 @@ class ContentPublishService
 
     private function forgetTestimonialRuntimeCache(?string $slug, ?string $previousSlug = null): void
     {
+        \Illuminate\Support\Facades\Cache::forget('family:pulse');
+
         foreach (array_filter([$slug, $previousSlug]) as $s) {
             RuntimeCache::forget('public_transformations:show:'.$s);
         }

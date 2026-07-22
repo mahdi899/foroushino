@@ -269,6 +269,8 @@ export async function saveStudentTestimonial(
     meta_description?: string | null;
     sort_order?: number;
     is_active?: boolean;
+    show_in_family_pulse?: boolean;
+    family_pulse_quote?: string | null;
   },
   id?: number,
 ): Promise<{ ok: boolean; id?: number; error?: string }> {
