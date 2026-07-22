@@ -26,7 +26,7 @@ class TelegramInfrastructureService
     /** Relative entry points inside the standalone `telegram/` host app. */
     public const HOST_WEBHOOK_ENTRY = '/public/webhook.php';
 
-    public const HOST_PUSH_ENTRY = '/public/internal/sync.php';
+    public const HOST_PUSH_ENTRY = '/public/host-sync.php';
 
     private const CACHE_KEY = 'telegram.infrastructure.config';
 

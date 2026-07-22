@@ -13,7 +13,7 @@ use TelegramHost\Telegram\BotApiClient;
 
 /**
  * Handles push commands from the main server (server → host).
- * Triggered via public/internal/sync.php after HMAC + AES verification.
+ * Triggered via public/host-sync.php after HMAC + AES verification.
  */
 final class InboundSyncHandler
 {

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
  * server to the external Telegram "host" app (telegram/ on cPanel).
  *
  * Uses the same HMAC + AES-256-GCM wire format as host→server sync, but in
- * the opposite direction. The host verifies these at public/internal/sync.php.
+ * the opposite direction. The host verifies these at public/host-sync.php.
  */
 class TelegramHostPushService
 {
