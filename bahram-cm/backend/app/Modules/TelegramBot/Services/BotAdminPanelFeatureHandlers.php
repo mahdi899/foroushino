@@ -576,9 +576,9 @@ trait BotAdminPanelFeatureHandlers
                 'callback_data' => 'admin:b:sg:'.$key,
             ]];
         }
-        $keyboard[] = [['text' => 'لغو', 'callback_data' => 'admin:b:p:0']];
+        $keyboard[] = [['text' => 'لغو', 'callback_data' => 'admin:h']];
 
-        $client->sendMessage($chatId, '🎯 گروه مخاطب را انتخاب کنید:', [
+        $client->sendMessage($chatId, '🎯 برای کدام گروه ارسال شود؟', [
             'reply_markup' => ['inline_keyboard' => $keyboard],
         ]);
     }
@@ -618,7 +618,7 @@ trait BotAdminPanelFeatureHandlers
             'admin' => ['flow' => null, 'draft' => []],
         ]);
 
-        $this->sendBroadcastPreview($bot, $client, $chatId, $broadcast, '✅ پیش‌نویس ذخیره شد.');
+        $this->sendBroadcastPreview($bot, $client, $chatId, $broadcast);
     }
 
     private function applyAdminRankChoice(

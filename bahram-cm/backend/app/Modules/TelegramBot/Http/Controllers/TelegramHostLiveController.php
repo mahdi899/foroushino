@@ -36,6 +36,7 @@ use App\Support\AesGcmCipher;
 use App\Support\InflatedMemberCount;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -85,6 +86,15 @@ class TelegramHostLiveController
         try {
             $this->updateProcessor->process($this->productionBot(), $update);
         } catch (Throwable $e) {
+            report($e);
+            Log::channel('telegram')->error('telegram.host.process_update_failed', [
+                'message' => $e->getMessage(),
+                'exception' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'update' => $update,
+            ]);
+
             return $this->encryptedResponse($request, [
                 'ok' => false,
                 'message' => 'پردازش ناموفق بود.',

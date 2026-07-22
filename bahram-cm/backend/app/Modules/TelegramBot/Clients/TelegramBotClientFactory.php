@@ -41,16 +41,7 @@ class TelegramBotClientFactory
         return new HttpTelegramBotClient(
             $token,
             $infrastructure->telegramApiBaseUrl(),
-            $this->resolveProxyBearerToken($infrastructure),
+            $infrastructure->telegramApiProxyBearerToken(),
         );
-    }
-
-    private function resolveProxyBearerToken(TelegramInfrastructureService $infrastructure): ?string
-    {
-        if (! $infrastructure->usesWorkerBridge()) {
-            return null;
-        }
-
-        return $infrastructure->proxySharedToken();
     }
 }

@@ -35,8 +35,6 @@ class BotAdminPanelService
 
     private const USERS_PER_PAGE = 8;
 
-    private const BROADCASTS_PER_PAGE = 6;
-
     private const DESTINATIONS_PER_PAGE = 6;
 
     public function __construct(
@@ -242,8 +240,6 @@ class BotAdminPanelService
                 'dc_add_max_per_user' => $this->onDiscountWizardStep($bot, $account, $conversation, $client, $chatId, $text, 'max_per_user'),
                 'dc_add_product' => $this->onDiscountWizardStep($bot, $account, $conversation, $client, $chatId, $text, 'product'),
                 'dm_user' => $this->onDmUser($bot, $account, $conversation, $client, $chatId, $text),
-                'broadcast_title' => $this->onBroadcastTitle($bot, $account, $conversation, $client, $chatId, $text),
-                'broadcast_text' => $this->onBroadcastText($bot, $account, $conversation, $client, $chatId, $text),
                 'broadcast_quick' => $this->onBroadcastQuick($bot, $account, $conversation, $client, $chatId, $text),
                 'ticket_reply' => $this->onTicketReply($bot, $account, $conversation, $client, $chatId, $text),
                 'message_edit' => $this->onMessageEdit($bot, $account, $conversation, $client, $chatId, $text),
@@ -306,7 +302,7 @@ class BotAdminPanelService
             AdminMenuKeyboard::USERS => $this->renderUsersSearchHub($bot, $account, $client, $chatId, 0),
             AdminMenuKeyboard::ADMINS => $this->openAdminsSection($bot, $account, $client, $chatId),
             AdminMenuKeyboard::STATS => $this->openStatsSection($bot, $account, $client, $chatId),
-            AdminMenuKeyboard::BROADCAST => $this->handleBroadcastsCallback($bot, $account, $client, $chatId, 0, 'admin:b:p:0'),
+            AdminMenuKeyboard::BROADCAST => $this->startBroadcastFlow($bot, $account, $client, $chatId),
             AdminMenuKeyboard::REQUIRED_CHATS => $this->handleRequiredChatsCallback($bot, $account, $client, $chatId, 0, 'admin:rc:p:0'),
             AdminMenuKeyboard::DESTINATIONS => $this->handleDestinationsCallback($bot, $account, $client, $chatId, 0, 'admin:d:list'),
             AdminMenuKeyboard::DISCOUNTS => $this->handleDiscountsCallback($bot, $account, $client, $chatId, 0, 'admin:dc:list'),
@@ -413,7 +409,6 @@ class BotAdminPanelService
         $linked = TelegramAccount::query()->where('telegram_bot_id', $bot->id)->whereNotNull('user_id')->count();
         $blocked = TelegramAccount::query()->where('telegram_bot_id', $bot->id)->where('is_blocked', true)->count();
         $admins = TelegramAccount::query()->where('telegram_bot_id', $bot->id)->where('is_bot_admin', true)->count();
-        $draftBroadcasts = TelegramBroadcast::query()->where('telegram_bot_id', $bot->id)->where('status', 'draft')->count();
         $requiredChats = TelegramRequiredChat::query()->where('telegram_bot_id', $bot->id)->where('is_active', true)->count();
         $e = static fn (string $key): string => TelegramCustomEmoji::tag($key);
 
@@ -422,7 +417,6 @@ class BotAdminPanelService
             .' ('.TelegramHtml::escape((string) $bot->key).")\n"
             .$e('user')." مخاطبان: {$total} · متصل: {$linked} · مسدود: {$blocked}\n"
             .$e('shield')." ادمین‌های بات: {$admins}\n"
-            .$e('channel')." پیام همگانی پیش‌نویس: {$draftBroadcasts}\n"
             .$e('tv')." کانال اجباری فعال: {$requiredChats}\n\n"
             .'از دکمه‌های پایین برای مدیریت استفاده کنید.'."\n"
             .'برای لغو هر مرحله «لغو» بنویسید.';
@@ -440,7 +434,7 @@ class BotAdminPanelService
                     $b('ادمین‌ها', 'admin:admins:p:0', 'shield'),
                 ],
                 [
-                    $b('پیام همگانی', 'admin:b:p:0', 'channel'),
+                    $b('پیام همگانی', 'admin:b:q', 'channel'),
                     $b('کانال اجباری', 'admin:rc:p:0', 'tv'),
                 ],
                 [
@@ -1628,38 +1622,10 @@ class BotAdminPanelService
         string $data,
     ): void {
         $parts = explode(':', $data);
-        $action = $parts[2] ?? 'p';
+        $action = $parts[2] ?? 'q';
 
-        if ($action === 'p') {
-            $page = max(0, (int) ($parts[3] ?? 0));
-            $this->renderBroadcastsList($bot, $client, $chatId, $messageId, $page);
-
-            return;
-        }
-
-        if ($action === 'n') {
-            $conversation = $this->conversations->forAccount($account);
-            $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
-                'admin' => ['flow' => 'broadcast_title', 'draft' => []],
-            ]);
-            $client->sendMessage($chatId, "📝 پیام همگانی با عنوان\n\nعنوان را بنویسید (یا «لغو»):");
-
-            return;
-        }
-
-        if ($action === 'q') {
-            $conversation = $this->conversations->forAccount($account);
-            $audience = $this->activeAudienceCount($bot);
-            $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
-                'admin' => ['flow' => 'broadcast_quick', 'draft' => []],
-            ]);
-            $client->sendMessage(
-                $chatId,
-                "✉️ ارسال پیام همگانی\n\n"
-                ."متن پیام را همین‌جا بنویسید تا برای {$audience} مخاطب فعال ارسال شود.\n"
-                ."بعد از نوشتن، پیش‌نمایش و دکمه «ارسال» می‌آید.\n\n"
-                .'(یا «لغو»)',
-            );
+        if (in_array($action, ['p', 'q'], true)) {
+            $this->startBroadcastFlow($bot, $account, $client, $chatId);
 
             return;
         }
@@ -1680,59 +1646,26 @@ class BotAdminPanelService
             'sn' => $this->sendBroadcastNow($bot, $client, $chatId, $messageId, $broadcast, $account),
             'st' => $this->stopBroadcast($client, $chatId, $messageId, $broadcast, $bot),
             'ts' => $this->testBroadcast($client, $chatId, $messageId, $broadcast, $account, $bot),
-            default => $this->renderBroadcastsList($bot, $client, $chatId, $messageId, 0),
+            default => $this->startBroadcastFlow($bot, $account, $client, $chatId),
         };
     }
 
-    private function renderBroadcastsList(
+    private function startBroadcastFlow(
         TelegramBot $bot,
+        TelegramAccount $account,
         TelegramBotClientInterface $client,
         int $chatId,
-        int $messageId,
-        int $page,
     ): void {
-        $query = TelegramBroadcast::query()
-            ->where('telegram_bot_id', $bot->id)
-            ->orderByDesc('id');
+        $conversation = $this->conversations->forAccount($account);
+        $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
+            'admin' => ['flow' => 'broadcast_quick', 'draft' => []],
+        ]);
 
-        $total = (clone $query)->count();
-        $items = $query->offset($page * self::BROADCASTS_PER_PAGE)->limit(self::BROADCASTS_PER_PAGE)->get();
-
-        $lines = ["📣 پیام‌های همگانی (صفحه ".($page + 1).')', ''];
-        $lines[] = '✉️ «ارسال سریع»: فقط متن بنویسید و ارسال کنید.';
-        $lines[] = '';
-        $keyboard = [
-            [['text' => '✉️ ارسال پیام همگانی', 'callback_data' => 'admin:b:q']],
-            [['text' => '📝 پیام با عنوان جدا', 'callback_data' => 'admin:b:n']],
-        ];
-
-        foreach ($items as $item) {
-            $status = $this->broadcastStatusLabel((string) $item->status);
-            $label = mb_substr("#{$item->id} · {$item->title} ({$status})", 0, 40);
-            $lines[] = $label;
-            $keyboard[] = [['text' => $label, 'callback_data' => 'admin:b:i:'.$item->id]];
-        }
-
-        if ($items->isEmpty()) {
-            $lines[] = 'پیامی ثبت نشده.';
-        }
-
-        $nav = [];
-        if ($page > 0) {
-            $nav[] = ['text' => '◀️', 'callback_data' => 'admin:b:p:'.($page - 1)];
-        }
-        if (($page + 1) * self::BROADCASTS_PER_PAGE < $total) {
-            $nav[] = ['text' => '▶️', 'callback_data' => 'admin:b:p:'.($page + 1)];
-        }
-        if ($nav !== []) {
-            $keyboard[] = $nav;
-        }
-
-        $keyboard[] = [
-            ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
-        ];
-
-        $this->editOrSend($client, $chatId, $messageId, implode("\n", $lines), ['inline_keyboard' => $keyboard]);
+        $client->sendMessage(
+            $chatId,
+            "📣 پیام همگانی\n\nمتن پیام را بنویسید (یا «لغو»):",
+            ['reply_markup' => $this->adminMenuMarkup($account)],
+        );
     }
 
     private function renderBroadcastDetail(
@@ -1781,61 +1714,10 @@ class BotAdminPanelService
         }
 
         $keyboard[] = [
-            ['text' => '◀️ لیست', 'callback_data' => 'admin:b:p:0'],
             ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
         ];
 
         $this->editOrSend($client, $chatId, $messageId, $text, ['inline_keyboard' => $keyboard]);
-    }
-
-    private function onBroadcastTitle(
-        TelegramBot $bot,
-        TelegramAccount $account,
-        TelegramConversation $conversation,
-        TelegramBotClientInterface $client,
-        int $chatId,
-        string $text,
-    ): void {
-        $title = trim($text);
-        if ($title === '') {
-            throw new RuntimeException('عنوان خالی است.');
-        }
-
-        $this->conversations->transition($conversation, ConversationState::AdminWaitingInput, [
-            'admin' => [
-                'flow' => 'broadcast_text',
-                'draft' => ['title' => mb_substr($title, 0, 255)],
-            ],
-        ]);
-
-        $client->sendMessage($chatId, 'متن پیام همگانی را بنویسید (حداکثر ۴۰۰۰ کاراکتر):');
-    }
-
-    private function onBroadcastText(
-        TelegramBot $bot,
-        TelegramAccount $account,
-        TelegramConversation $conversation,
-        TelegramBotClientInterface $client,
-        int $chatId,
-        string $text,
-    ): void {
-        $admin = (array) ($conversation->context['admin'] ?? []);
-        $draft = (array) ($admin['draft'] ?? []);
-        $title = (string) ($draft['title'] ?? '');
-
-        if ($title === '') {
-            throw new RuntimeException('عنوان پیام یافت نشد. دوباره شروع کنید.');
-        }
-
-        $body = trim($text);
-        if ($body === '') {
-            throw new RuntimeException('متن پیام خالی است.');
-        }
-
-        $this->promptBroadcastSegment($bot, $account, $conversation, $client, $chatId, [
-            'title' => $title,
-            'text' => mb_substr($body, 0, 4000),
-        ]);
     }
 
     private function onBroadcastQuick(
@@ -1888,8 +1770,8 @@ class BotAdminPanelService
         $body = (string) data_get($broadcast->content, 'text', '');
 
         $message = ($prefix ? $prefix."\n\n" : '')
-            ."📣 پیش‌نمایش #{$broadcast->id}\n"
-            ."مخاطب: {$segmentLabel}\n"
+            ."📣 پیش‌نمایش\n"
+            ."گروه: {$segmentLabel}\n"
             ."تعداد: {$audience}\n\n"
             .mb_substr($body, 0, 3500);
 
@@ -1898,10 +1780,8 @@ class BotAdminPanelService
                 'inline_keyboard' => [
                     [
                         ['text' => '🚀 ارسال', 'callback_data' => 'admin:b:sn:'.$broadcast->id],
-                        ['text' => '🧪 تست برای من', 'callback_data' => 'admin:b:ts:'.$broadcast->id],
                     ],
                     [
-                        ['text' => '📋 جزئیات', 'callback_data' => 'admin:b:i:'.$broadcast->id],
                         ['text' => '🏠 داشبورد', 'callback_data' => 'admin:h'],
                     ],
                 ],
@@ -1967,7 +1847,7 @@ class BotAdminPanelService
 
         $client->sendMessage(
             $chatId,
-            $notice."\n\nپیام #{$sent->id} در صف ارسال قرار گرفت. وضعیت را از «جزئیات» ببینید.",
+            $notice."\n\nپیام #{$sent->id} در صف ارسال قرار گرفت.",
             [
                 'reply_markup' => [
                     'inline_keyboard' => [

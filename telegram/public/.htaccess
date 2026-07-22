@@ -1,5 +1,10 @@
 RewriteEngine On
 
+# api-proxy.php uses PATH_INFO (/api-proxy.php/bot<token>/<method>) — never
+# rewrite those to webhook.php even though the full path isn't a real file.
+RewriteCond %{REQUEST_URI} ^/api-proxy\.php
+RewriteRule ^ - [L]
+
 # Route Telegram's single webhook URL to webhook.php regardless of path suffix.
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^.*$ webhook.php [L,QSA]

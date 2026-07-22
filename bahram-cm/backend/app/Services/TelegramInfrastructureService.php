@@ -174,16 +174,38 @@ class TelegramInfrastructureService
         return $this->backendOrigin();
     }
 
-    /** Outbound Bot API — through Worker when bridge is on (Iran-safe). */
+    /** Outbound Bot API — through Worker/host relay when bridge is on (Iran-safe). */
     public function telegramApiBaseUrl(): string
     {
         if ($this->usesWorkerBridge()) {
             return $this->panelBaseUrl();
         }
 
+        if ($this->usesHostBridge()) {
+            $relay = trim((string) config('telegram_bot.host_api_proxy_url', ''));
+            if ($relay !== '' && $this->proxySharedToken() !== null) {
+                return $relay;
+            }
+        }
+
         $env = trim((string) config('telegram_bot.api_base_url', ''));
 
         return $env !== '' ? rtrim($env, '/') : self::DEFAULT_BASE_URL;
+    }
+
+    /**
+     * Bearer token for outbound Bot API calls when relayed through Worker or
+     * the host's dumb Bot-API relay — both use a shared-secret Bearer header
+     * (`PROXY_SHARED_TOKEN`), distinct from the `telegram/` host app's own
+     * HMAC-signed sync bridge (used only for webhook + local menu state).
+     */
+    public function telegramApiProxyBearerToken(): ?string
+    {
+        if ($this->usesWorkerBridge() || $this->usesHostBridge()) {
+            return $this->proxySharedToken();
+        }
+
+        return null;
     }
 
     public function backendOrigin(): string

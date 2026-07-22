@@ -39,8 +39,17 @@ php artisan media:sync-hosts --import 2>/dev/null || true
 if [[ -f "$APP_ROOT/deploy/php-fpm/99-bahram-uploads.ini" ]]; then
   echo "==> PHP upload limits"
   cp "$APP_ROOT/deploy/php-fpm/99-bahram-uploads.ini" /etc/php/8.4/fpm/conf.d/99-bahram-uploads.ini
-  systemctl reload php8.4-fpm 2>/dev/null || true
 fi
+
+if [[ -f "$APP_ROOT/deploy/php-fpm/99-bahram-opcache.ini" ]]; then
+  echo "==> PHP OPcache tuning"
+  cp "$APP_ROOT/deploy/php-fpm/99-bahram-opcache.ini" /etc/php/8.4/fpm/conf.d/99-bahram-opcache.ini
+fi
+
+# Reload unconditionally: opcache.validate_timestamps=0 means workers only
+# pick up new code on restart/reload, not automatically like before.
+echo "==> Reload php8.4-fpm"
+systemctl reload php8.4-fpm 2>/dev/null || systemctl restart php8.4-fpm 2>/dev/null || true
 
 if [[ -f "$APP_ROOT/deploy/nginx/snippets/media-cors.conf" ]]; then
   echo "==> Nginx media CORS"

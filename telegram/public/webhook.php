@@ -59,14 +59,13 @@ try {
     $messageHandler = new MessageHandler(
         $api,
         $cache,
-        $sync,
         $live,
         $conversations,
         $accounts,
         $mainMenu,
         $membership,
         $purchaseFlow,
-        $siteBaseUrl,
+        $siteBaseUrl
     );
 
     $callbackHandler = new CallbackQueryHandler(
@@ -78,8 +77,7 @@ try {
         $mainMenu,
         $membership,
         $purchaseFlow,
-        $messageHandler,
-        $siteBaseUrl,
+        $messageHandler
     );
 
     $router = new UpdateRouter(

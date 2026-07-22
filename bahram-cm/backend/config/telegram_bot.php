@@ -59,6 +59,15 @@ return [
         'decay_seconds' => max(1, (int) env('TELEGRAM_USER_RATE_DECAY_SECONDS', 60)),
     ],
 
+    /**
+     * Outbound Bot API relay used when the "host" bridge is active (Iran
+     * cannot reach api.telegram.org directly). Reuses the already-deployed
+     * dumb PHP relay (same wire format as the Cloudflare Worker's Bot API
+     * proxy) — NOT the smart `telegram/` host app, which only handles the
+     * webhook side. Auth via `PROXY_SHARED_TOKEN` (same as Worker mode).
+     */
+    'host_api_proxy_url' => rtrim((string) env('TELEGRAM_HOST_API_PROXY_URL', 'https://bahram.rahai.online/bahram'), '/'),
+
     'webhook' => [
         'base_url' => rtrim((string) env('TELEGRAM_WEBHOOK_BASE_URL', env('APP_URL', 'http://localhost:8010')), '/'),
         'path_pattern' => 'api/v1/integrations/telegram/{botKey}/webhook',
