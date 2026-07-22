@@ -264,6 +264,10 @@ class SupportAdminReplyService
 
     private function extractTelegramUserId(string $text): ?int
     {
+        if (preg_match('/tg:\/\/openmessage\?user_id=(\d{5,15})/', $text, $m)) {
+            return (int) $m[1];
+        }
+
         if (preg_match('/(?:^|\n)(\d{5,15})\s*$/u', trim($text), $m)) {
             return (int) $m[1];
         }

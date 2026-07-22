@@ -10,6 +10,7 @@ use App\Modules\TelegramBot\Models\TelegramAccount;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramMessageMap;
 use App\Modules\TelegramBot\Models\TelegramSupportCategory;
+use App\Modules\TelegramBot\Support\TelegramHtml;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -114,9 +115,10 @@ class SupportTicketBridgeService
         }
 
         $hashtag = self::CATEGORY_HASHTAGS[$categoryKey] ?? 'سایر';
-        $idBody = "پشتیبانی 🎫\n#{$hashtag}\n".(int) $account->telegram_user_id;
+        $idBody = self::formatSupportIdentityMessage($account, $hashtag);
 
         $idMessage = $client->sendMessage($supportChatId, $idBody, [
+            'parse_mode' => 'HTML',
             'message_thread_id' => $topicId,
             'reply_to_message_id' => $forwardMessageId,
         ]);
@@ -280,6 +282,38 @@ class SupportTicketBridgeService
     public function categoryHashtag(string $categoryKey): string
     {
         return self::CATEGORY_HASHTAGS[$categoryKey] ?? 'سایر';
+    }
+
+    public static function formatSupportIdentityMessage(TelegramAccount $account, string $hashtag): string
+    {
+        $account->loadMissing('user');
+        $userId = (int) $account->telegram_user_id;
+        $name = self::resolveAccountDisplayName($account);
+
+        return TelegramHtml::bold('پشتیبانی 🎫')
+            ."\n#".TelegramHtml::escape($hashtag)
+            ."\n".TelegramHtml::bold('نام: ').TelegramHtml::escape($name)
+            ."\n".TelegramHtml::bold('شناسه: ')
+            .TelegramHtml::link('tg://openmessage?user_id='.$userId, (string) $userId);
+    }
+
+    private static function resolveAccountDisplayName(TelegramAccount $account): string
+    {
+        $siteName = trim((string) ($account->user?->name ?? ''));
+        if ($siteName !== '') {
+            return $siteName;
+        }
+
+        $telegramName = trim((string) ($account->display_name ?: trim(($account->first_name ?? '').' '.($account->last_name ?? ''))));
+        if ($telegramName !== '') {
+            return $telegramName;
+        }
+
+        if (filled($account->telegram_username)) {
+            return '@'.$account->telegram_username;
+        }
+
+        return 'کاربر تلگرام';
     }
 
     public function reactConfirm(TelegramBotClientInterface $client, int|string $chatId, int $messageId): void
