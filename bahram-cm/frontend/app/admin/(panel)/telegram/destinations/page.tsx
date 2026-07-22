@@ -22,10 +22,24 @@ export default async function TelegramDestinationsPage() {
   return (
     <TelegramSubPage
       title="مقاصد تلگرامی"
-      description="گروه‌های پشتیبانی اختصاصی هر محصول — لینک عضویت شخصی‌سازی‌شده برای خریداران"
+      description="گروه‌های پشتیبانی اختصاصی هر محصول یا سات — لینک عضویت شخصی‌سازی‌شده برای کاربران مجاز"
       icon="MapPin"
     >
-      <TelegramDestinationsClient items={items} bots={bots} products={productsResult.items} />
+      {productsResult.error ? (
+        <p className="mb-4 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-small text-danger">
+          {productsResult.error}
+        </p>
+      ) : null}
+      {bots.length === 0 ? (
+        <p className="mb-4 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-small text-text-muted">
+          هیچ رباتی ثبت نشده. از بخش «ربات‌ها» ابتدا ربات را همگام‌سازی کنید.
+        </p>
+      ) : null}
+      <TelegramDestinationsClient
+        items={items}
+        bots={bots}
+        products={Array.isArray(productsResult.items) ? productsResult.items : []}
+      />
     </TelegramSubPage>
   );
 }

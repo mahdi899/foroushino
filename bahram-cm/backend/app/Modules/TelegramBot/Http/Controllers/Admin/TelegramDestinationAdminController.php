@@ -8,6 +8,7 @@ use App\Modules\TelegramBot\Models\TelegramDestinationRequirement;
 use App\Modules\TelegramBot\Repositories\TelegramBotRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class TelegramDestinationAdminController
 {
@@ -67,8 +68,19 @@ class TelegramDestinationAdminController
             $data['telegram_bot_id'] = $bot->id;
         }
 
+        $botId = (int) ($data['telegram_bot_id'] ?? 0);
+        $request->validate([
+            'chat_id' => [
+                Rule::unique('telegram_destinations', 'chat_id')->where(
+                    fn ($query) => $query->where('telegram_bot_id', $botId),
+                ),
+            ],
+        ]);
+
         $requirements = $data['requirements'] ?? [];
         unset($data['bot_key'], $data['requirements']);
+
+        $data['chat_type'] = $data['chat_type'] ?? 'supergroup';
 
         $destination = TelegramDestination::query()->create($data);
 

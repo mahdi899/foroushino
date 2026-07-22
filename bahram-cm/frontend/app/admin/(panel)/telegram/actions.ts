@@ -5,8 +5,25 @@ import { adminFetch, getToken } from '@/lib/auth/session';
 import { SERVER_API_URL } from '@/lib/api/config';
 
 function actionError(e: unknown, fallback: string): { ok: false; error: string } {
-  const err = e as Error & { payload?: { error?: { message_fa?: string }; message?: string } };
-  return { ok: false, error: err.payload?.error?.message_fa ?? err.payload?.message ?? fallback };
+  const err = e as Error & {
+    payload?: {
+      error?: { message_fa?: string };
+      message?: string;
+      errors?: Record<string, string[]>;
+    };
+  };
+  const validation = err.payload?.errors;
+  if (validation) {
+    const first = Object.values(validation).flat().find(Boolean);
+    if (first) {
+      return { ok: false, error: first };
+    }
+  }
+
+  return {
+    ok: false,
+    error: err.payload?.error?.message_fa ?? err.payload?.message ?? err.message ?? fallback,
+  };
 }
 
 function revalidateTelegram() {

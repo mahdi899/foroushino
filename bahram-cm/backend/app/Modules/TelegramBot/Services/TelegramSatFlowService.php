@@ -23,20 +23,22 @@ class TelegramSatFlowService
         private readonly SatParticipantAccessService $satAccess,
     ) {}
 
-    public function open(TelegramBot $bot, TelegramAccount $account, int $chatId): void
+    /**
+     * @return array{text: string, options: array<string, mixed>}|null
+     */
+    public function open(TelegramBot $bot, TelegramAccount $account, int $chatId, bool $deliverViaHost = false): ?array
     {
         $client = $this->clients->forBot($bot);
         $satUrl = TelegramSiteUrl::satPage();
         $identityUrl = TelegramSiteUrl::identityPage();
 
         if (! $account->user_id || ! $account->hasVerifiedMobile()) {
-            $client->sendMessage(
-                $chatId,
-                'برای ثبت درخواست سات ابتدا ثبت‌نام و تأیید موبایل را کامل کنید (/start).',
-                TelegramSiteUrl::linkMarkup($satUrl, '🌐 صفحه سات'),
-            );
+            $payload = [
+                'text' => 'برای ثبت درخواست سات ابتدا ثبت‌نام و تأیید موبایل را کامل کنید (/start).',
+                'options' => TelegramSiteUrl::linkMarkup($satUrl, '🌐 صفحه سات'),
+            ];
 
-            return;
+            return $deliverViaHost ? $payload : $this->sendPayload($client, $chatId, $payload);
         }
 
         $app = SatApplication::query()
@@ -45,9 +47,9 @@ class TelegramSatFlowService
             ->first();
 
         if ($app !== null) {
-            $this->sendExistingStatus($bot, $client, $chatId, $app, $account, $satUrl, $identityUrl);
+            $payload = $this->buildExistingStatusPayload($bot, $app, $account, $satUrl, $identityUrl);
 
-            return;
+            return $deliverViaHost ? $payload : $this->sendPayload($client, $chatId, $payload);
         }
 
         $conversation = $this->conversations->forAccount($account);
@@ -57,31 +59,41 @@ class TelegramSatFlowService
             $this->conversations->transition($conversation, ConversationState::FillingSatApplication, [
                 'sat' => ['step' => 'city', 'draft' => ['name' => $knownName]],
             ]);
-            $client->sendMessage(
-                $chatId,
-                "☎️ درخواست همکاری سات\n\n"
-                ."نام ثبت‌شده: {$knownName}\n\n"
-                ."۱) شهر محل سکونت را بفرستید:\n"
-                ."(یا /null اگر نمی‌خواهید)\n"
-                .'(برای انصراف «لغو»)',
-                ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
-            );
+            $payload = [
+                'text' => "☎️ درخواست همکاری سات\n\n"
+                    ."نام ثبت‌شده: {$knownName}\n\n"
+                    ."۱) شهر محل سکونت را بفرستید:\n"
+                    ."(یا /null اگر نمی‌خواهید)\n"
+                    .'(برای انصراف «لغو»)',
+                'options' => ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
+            ];
 
-            return;
+            return $deliverViaHost ? $payload : $this->sendPayload($client, $chatId, $payload);
         }
 
         $this->conversations->transition($conversation, ConversationState::FillingSatApplication, [
             'sat' => ['step' => 'name', 'draft' => []],
         ]);
 
-        $client->sendMessage(
-            $chatId,
-            "☎️ درخواست همکاری سات\n\n"
-            ."فرم را مثل پنل سایت تکمیل کنید.\n\n"
-            ."۱) نام و نام خانوادگی را بفرستید:\n"
-            .'(یا «لغو»)',
-            ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
-        );
+        $payload = [
+            'text' => "☎️ درخواست همکاری سات\n\n"
+                ."فرم را مثل پنل سایت تکمیل کنید.\n\n"
+                ."۱) نام و نام خانوادگی را بفرستید:\n"
+                .'(یا «لغو»)',
+            'options' => ['reply_markup' => $this->mainMenu->replyMarkup($account, $bot)],
+        ];
+
+        return $deliverViaHost ? $payload : $this->sendPayload($client, $chatId, $payload);
+    }
+
+    /**
+     * @param  array{text: string, options: array<string, mixed>}  $payload
+     */
+    private function sendPayload(mixed $client, int $chatId, array $payload): null
+    {
+        $client->sendMessage($chatId, $payload['text'], $payload['options']);
+
+        return null;
     }
 
     private function resolveRegisteredName(TelegramAccount $account): ?string
@@ -251,15 +263,16 @@ class TelegramSatFlowService
         ]);
     }
 
-    private function sendExistingStatus(
+    /**
+     * @return array{text: string, options: array<string, mixed>}
+     */
+    private function buildExistingStatusPayload(
         TelegramBot $bot,
-        $client,
-        int $chatId,
         SatApplication $app,
         TelegramAccount $account,
         ?string $satUrl,
         ?string $identityUrl,
-    ): void {
+    ): array {
         $status = $app->status instanceof SatApplicationStatus
             ? $app->status
             : SatApplicationStatus::tryFrom((string) $app->status);
@@ -323,6 +336,9 @@ class TelegramSatFlowService
             $options['parse_mode'] = 'HTML';
         }
 
-        $client->sendMessage($chatId, $text, $options);
+        return [
+            'text' => $text,
+            'options' => $options,
+        ];
     }
 }

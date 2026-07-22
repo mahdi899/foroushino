@@ -193,6 +193,20 @@ final class MessageHandler
         if (! empty($result['state'])) {
             $this->conversations->set($telegramUserId, (string) $result['state'], (array) ($result['context'] ?? []));
         }
+
+        if (empty($result['ok'])) {
+            $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'بخش سات در دسترس نیست.'));
+
+            return;
+        }
+
+        if (! empty($result['text'])) {
+            $options = (array) ($result['options'] ?? []);
+            if (! isset($options['parse_mode'])) {
+                $options['parse_mode'] = 'HTML';
+            }
+            $this->api->sendMessage($chatId, (string) $result['text'], $options);
+        }
     }
 
     private function sendReferenceChannel(int $chatId): void

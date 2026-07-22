@@ -250,11 +250,13 @@ class TelegramHostLiveController
         }
 
         $bot = $this->productionBot();
-        $this->satFlow->open($bot, $account, $chatId);
+        $payload = $this->satFlow->open($bot, $account, $chatId, deliverViaHost: true);
         $conversation = $this->conversations->forAccount($account);
 
         return $this->encryptedResponse($request, [
             'ok' => true,
+            'text' => $payload['text'] ?? '',
+            'options' => $payload['options'] ?? [],
             'state' => $conversation->state->value,
             'context' => $conversation->context ?? [],
         ]);

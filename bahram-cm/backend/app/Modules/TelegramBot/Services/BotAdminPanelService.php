@@ -21,6 +21,7 @@ use App\Modules\TelegramBot\Models\TelegramBroadcast;
 use App\Modules\TelegramBot\Models\TelegramBroadcastRecipient;
 use App\Modules\TelegramBot\Models\TelegramConversation;
 use App\Modules\TelegramBot\Models\TelegramDestination;
+use App\Modules\TelegramBot\Models\TelegramDestinationRequirement;
 use App\Modules\TelegramBot\Models\TelegramRequiredChat;
 use App\Modules\TelegramBot\Models\TelegramUpdate;
 use App\Modules\TelegramBot\Repositories\TelegramUpdateRepository;
@@ -2379,8 +2380,10 @@ class BotAdminPanelService
                 ."   (تأیید درخواست عضویت + ساخت لینک دعوت).\n\n"
                 ."۲) Chat ID گروه را بفرستید.\n"
                 ."مثال: `-1003623149563`\n\n"
-                ."۳) بعد از ثبت، محصول (مثلاً سات یا کمپین‌نویسی) را انتخاب می‌کنید.\n"
-                ."ربات خودش لینک عضویت را به خریداران می‌دهد.\n\n"
+                ."۳) بعد از ثبت، شرط دسترسی را انتخاب می‌کنید:\n"
+                ."   • محصول (مثلاً کمپین‌نویسی)\n"
+                ."   • یا «عضویت فعال سات» برای گروه سات\n"
+                ."ربات خودش لینک عضویت را به کاربران مجاز می‌دهد.\n\n"
                 .'برای انصراف «لغو» بفرستید.',
                 [
                     'parse_mode' => 'Markdown',
@@ -2396,12 +2399,36 @@ class BotAdminPanelService
 
         if ($action === 'reqset') {
             $destinationId = (int) ($parts[3] ?? 0);
-            $productId = (int) ($parts[4] ?? 0);
+            $token = (string) ($parts[4] ?? '');
             $destination = TelegramDestination::query()
                 ->where('telegram_bot_id', $bot->id)
                 ->whereKey($destinationId)
                 ->first();
-            if ($destination === null || $productId <= 0) {
+            if ($destination === null || $token === '') {
+                throw new RuntimeException('مقصد یا شرط دسترسی نامعتبر است.');
+            }
+
+            if ($token === 'sat') {
+                $destination->requirements()->delete();
+                $destination->requirements()->create([
+                    'requirement_type' => 'sat_membership',
+                    'requirement_value' => 'active',
+                    'group_key' => 'default',
+                    'operator' => 'all',
+                ]);
+                $this->renderDestinationDetail(
+                    $client,
+                    $chatId,
+                    $messageId,
+                    $destination->fresh(['requirements']),
+                    '✅ شرط دسترسی: عضویت فعال سات',
+                );
+
+                return;
+            }
+
+            $productId = (int) $token;
+            if ($productId <= 0) {
                 throw new RuntimeException('مقصد یا محصول نامعتبر است.');
             }
             $product = \App\Models\Product::query()->whereKey($productId)->first();
@@ -2512,7 +2539,7 @@ class BotAdminPanelService
 
         $text = ($notice ? $notice."\n\n" : '')
             ."👈 گروه‌های پشتیبانی محصول\n\n"
-            .'مقصد = گروه خصوصی برای خریداران یک محصول. ربات لینک عضویت را خودش می‌سازد و به کاربر می‌دهد.';
+            .'مقصد = گروه خصوصی با شرط دسترسی (خریدار محصول یا عضو سات). ربات لینک عضویت را خودش می‌سازد.';
 
         $keyboard = [
             [['text' => '➕ افزودن', 'callback_data' => 'admin:d:add']],
@@ -2560,8 +2587,7 @@ class BotAdminPanelService
         $destination->loadMissing('requirements');
         $reqLines = [];
         foreach ($destination->requirements as $req) {
-            $productTitle = \App\Models\Product::query()->whereKey((int) $req->requirement_value)->value('title');
-            $reqLines[] = '• '.($productTitle ?: $req->requirement_type.'='.$req->requirement_value);
+            $reqLines[] = '• '.$this->formatDestinationRequirementLabel($req);
         }
         if ($reqLines === []) {
             $reqLines[] = '• هنوز شرطی تنظیم نشده (درخواست‌ها رد می‌شوند).';
@@ -2616,9 +2642,15 @@ class BotAdminPanelService
             ->get(['id', 'title']);
 
         $text = "🎯 شرط دسترسی برای «{$destination->title}»\n\n"
-            .'محصولی را انتخاب کنید. فقط خریداران همان محصول می‌توانند عضو گروه شوند:';
+            ."یکی از گزینه‌ها را انتخاب کنید:\n"
+            ."• عضویت فعال سات → برای گروه پشتیبانی سات\n"
+            .'• محصول → فقط خریداران همان دوره';
 
         $keyboard = [];
+        $keyboard[] = [[
+            'text' => '📚 عضویت فعال سات',
+            'callback_data' => 'admin:d:reqset:'.$destination->id.':sat',
+        ]];
         foreach ($products as $product) {
             $label = mb_substr('#'.$product->id.' '.$product->title, 0, 40);
             $keyboard[] = [[
@@ -2804,10 +2836,27 @@ class BotAdminPanelService
         $this->conversations->transition($conversation, ConversationState::AdminPanel, [
             'admin' => ['flow' => null, 'draft' => []],
         ]);
-        $client->sendMessage($chatId, $notice."\n\nحالا شرط دسترسی (محصول) را انتخاب کنید.", [
+        $client->sendMessage($chatId, $notice."\n\nحالا شرط دسترسی (محصول یا سات) را انتخاب کنید.", [
             'reply_markup' => $this->adminMenuMarkup($actor),
         ]);
         $this->renderDestinationRequirementPicker($client, $chatId, 0, $saved->fresh(['requirements']) ?? $saved);
+    }
+
+    private function formatDestinationRequirementLabel(TelegramDestinationRequirement $req): string
+    {
+        if ($req->requirement_type === 'sat_membership') {
+            return 'عضویت فعال سات';
+        }
+
+        if (in_array($req->requirement_type, ['product', 'active_course_access'], true)) {
+            $productTitle = \App\Models\Product::query()
+                ->whereKey((int) $req->requirement_value)
+                ->value('title');
+
+            return $productTitle ?: 'محصول #'.$req->requirement_value;
+        }
+
+        return $req->requirement_type.'='.$req->requirement_value;
     }
 
     private function handleDiscountsCallback(
