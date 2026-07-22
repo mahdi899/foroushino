@@ -29,13 +29,26 @@ function isIranEdgeRequest(request: NextRequest): boolean {
 /** Paths that must never be rewritten into `/family/**` on the club apex (assets, PWA files, API). */
 function isFamilyRewriteExempt(pathname: string): boolean {
   if (pathname.startsWith("/family") || pathname.startsWith("/sso")) return true;
+  // Next route handlers + browser `/api/*` (chatbot poll, captcha, etc.) — not `/family/api/*`.
+  if (pathname.startsWith("/api/")) return true;
   // Student panel lives on rostami.app — never rewrite to /family/panel (404).
   if (pathname === "/panel" || pathname.startsWith("/panel/")) return true;
   // Flutter Family Manager admin — served by nginx → :7358 on rostami.club, not Next.js.
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return true;
   if (pathname.startsWith("/_next") || pathname.includes(".")) return true;
   if (pathname === "/icon" || pathname === "/apple-icon") return true;
+  if (pathname.startsWith("/pwa/")) return true;
   return false;
+}
+
+/** RSC/prefetch must not follow cross-origin redirects (CORS on club SSO bridge). */
+function isNextDataRequest(request: NextRequest): boolean {
+  return (
+    request.headers.get("RSC") === "1" ||
+    request.headers.get("Next-Router-Prefetch") === "1" ||
+    request.headers.get("Next-Router-State-Tree") != null ||
+    request.nextUrl.searchParams.has("_rsc")
+  );
 }
 
 /** One-time SSO bridge token — see backend `SsoBridgeController`. */
@@ -198,7 +211,8 @@ export async function middleware(request: NextRequest) {
     FAMILY_DOMAIN &&
     APP_DOMAIN &&
     hostname === FAMILY_DOMAIN &&
-    (pathname === "/panel" || pathname.startsWith("/panel/"))
+    (pathname === "/panel" || pathname.startsWith("/panel/")) &&
+    !isNextDataRequest(request)
   ) {
     return redirectToAppDomain(request, pathname, search);
   }
@@ -208,7 +222,8 @@ export async function middleware(request: NextRequest) {
     if (
       hostname === APP_DOMAIN &&
       (pathname === "/family" || pathname.startsWith("/family/")) &&
-      !isIranEdgeRequest(request)
+      !isIranEdgeRequest(request) &&
+      !isNextDataRequest(request)
     ) {
       return redirectToFamilyDomain(request, pathname, search);
     }

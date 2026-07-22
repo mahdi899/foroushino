@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
 import { SERVER_API_URL } from '@/lib/api/config';
 
+function internalApiSecret(): string {
+  return (
+    process.env.REVALIDATE_SECRET?.trim() ||
+    process.env.INTERNAL_API_SECRET?.trim() ||
+    ''
+  );
+}
+
 export async function POST(request: Request) {
-  const secret = process.env.REVALIDATE_SECRET?.trim() || '';
+  const secret = internalApiSecret();
 
   try {
     const body = await request.json();
