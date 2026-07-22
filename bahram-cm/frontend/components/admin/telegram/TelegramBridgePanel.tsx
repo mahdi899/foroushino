@@ -42,12 +42,13 @@ function ModePicker({
   mode,
   onChange,
 }: {
-  mode: 'direct' | 'worker';
-  onChange: (mode: 'direct' | 'worker') => void;
+  mode: 'direct' | 'worker' | 'host';
+  onChange: (mode: 'direct' | 'worker' | 'host') => void;
 }) {
   const options = [
     { id: 'direct' as const, title: 'مستقیم', desc: 'تلگرام → سرور' },
-    { id: 'worker' as const, title: 'پروکسی', desc: 'فقط یکی: Worker کلادفلر یا هاست' },
+    { id: 'worker' as const, title: 'پروکسی ساده', desc: 'رله بدون کش: Worker یا هاست' },
+    { id: 'host' as const, title: 'هاست خارج', desc: 'اپ کامل با کش و دیتابیس محلی' },
   ];
 
   return (
@@ -113,6 +114,7 @@ export function TelegramBridgePanel({
 
   const phpSource = initial.host_proxy_deploy_sample?.trim() || null;
   const htaccessSource = initial.host_proxy_htaccess_sample?.trim() || null;
+  const hostConfigSource = initial.host_config_sample?.trim() || null;
 
   const onSave = () => {
     startTransition(async () => {
@@ -188,6 +190,36 @@ export function TelegramBridgePanel({
               hint="کنار index.php بگذارید. اگر پوشه غیر از /bahram است، RewriteBase را عوض کنید."
             />
           ) : null}
+        </>
+      ) : mode === 'host' ? (
+        <>
+          <label className="block">
+            <span className="text-caption font-medium text-text">دامنه اپ هاست خارج</span>
+            <input
+              className="field-input mt-1 w-full text-small"
+              dir="ltr"
+              type="url"
+              placeholder="https://bahram-telegram.example.com"
+              value={workerUrl}
+              onChange={(e) => setWorkerUrl(e.target.value)}
+            />
+            <span className="mt-1 block text-caption text-text-muted">
+              وب‌هوک تلگرام مستقیماً به همین دامنه (اپ PHP روی هاست شما) ثبت می‌شود.
+            </span>
+          </label>
+
+          {hostConfigSource ? (
+            <CodeFileBlock
+              title="پیکربندی اپ هاست"
+              filename="config.php"
+              source={hostConfigSource}
+              hint="در پوشه telegram/ (کنار config.sample.php) به‌عنوان config.php آپلود کنید. شامل کلید رمزنگاری و توکن — هرگز در گیت‌هاب عمومی قرار نگیرد."
+            />
+          ) : (
+            <p className="text-caption text-text-muted">
+              پس از ذخیره، پیکربندی آماده اینجا نمایش داده می‌شود. بسته کامل کد را از پوشه <code dir="ltr">telegram/</code> در ریشه ریپو بردارید.
+            </p>
+          )}
         </>
       ) : (
         <p className="text-caption text-text-muted">تلگرام مستقیم به سرور شما وصل می‌شود.</p>

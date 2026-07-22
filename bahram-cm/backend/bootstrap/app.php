@@ -41,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'sat.integration' => \App\Http\Middleware\AuthenticateSatIntegrationToken::class,
             'student.active' => \App\Http\Middleware\EnsureStudentIsActive::class,
             'proxy.origin' => \App\Http\Middleware\EnsureProxyOrigin::class,
+            'telegram.host.signature' => \App\Modules\TelegramBot\Http\Middleware\VerifyTelegramHostSignature::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

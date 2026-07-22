@@ -1,0 +1,10 @@
+RewriteEngine On
+
+# Route Telegram's single webhook URL to webhook.php regardless of path suffix.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^.*$ webhook.php [L,QSA]
+
+# Never serve config, source, or db files even if requested directly.
+<FilesMatch "\.(sql|log)$">
+    Require all denied
+</FilesMatch>

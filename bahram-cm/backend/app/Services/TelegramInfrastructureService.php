@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Modules\TelegramBot\Clients\TelegramBotClientFactory;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Services\TelegramWebhookRegisteredNotifier;
+use App\Support\AesGcmCipher;
 use App\Support\SsrfGuard;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
@@ -93,6 +94,44 @@ class TelegramInfrastructureService
         $host = strtolower((string) parse_url($this->panelBaseUrl(), PHP_URL_HOST));
 
         return $host !== '' && $host !== 'api.telegram.org';
+    }
+
+    /**
+     * Explicit bridge type — persisted, not derived — so "Worker" (dumb relay,
+     * no local state) and "Host" (full external app with its own DB/cache) can
+     * be told apart even though both currently route the webhook through a
+     * non-api.telegram.org `base_url`.
+     */
+    public function bridgeType(): string
+    {
+        $stored = trim((string) ($this->stored()['bridge_type'] ?? ''));
+        if (in_array($stored, ['direct', 'worker', 'host'], true)) {
+            return $stored;
+        }
+
+        // Back-compat: no explicit type saved yet — fall back to derivation.
+        return $this->usesWorkerBridge() ? 'worker' : 'direct';
+    }
+
+    public function usesHostBridge(): bool
+    {
+        return $this->bridgeType() === 'host';
+    }
+
+    /** Base64-encoded 32-byte key used for AES-256-GCM body encryption with the host app. */
+    public function hostEncryptionKey(): ?string
+    {
+        $stored = trim((string) ($this->stored()['host_encryption_key'] ?? ''));
+
+        return $stored !== '' ? $stored : null;
+    }
+
+    /** HMAC-SHA256 secret used to sign/verify host <-> backend sync requests. */
+    public function hostSyncSecret(): ?string
+    {
+        $stored = trim((string) ($this->stored()['host_sync_secret'] ?? ''));
+
+        return $stored !== '' ? $stored : null;
     }
 
     public function webhookBaseUrl(): string
@@ -296,7 +335,7 @@ class TelegramInfrastructureService
 
         return [
             'worker_url' => $this->workerUrl(),
-            'mode' => $this->usesWorkerBridge() ? 'worker' : 'direct',
+            'mode' => $this->bridgeType(),
             'backend_origin' => $this->backendOrigin(),
             'telegram_api_base_url' => $this->telegramApiBaseUrl(),
             'server_webhook_url' => $this->buildServerWebhookUrl('production'),
@@ -308,7 +347,41 @@ class TelegramInfrastructureService
             'worker_deploy_sample' => $this->buildWorkerDeploySample(),
             'host_proxy_deploy_sample' => $this->buildHostProxyDeploySample(),
             'host_proxy_htaccess_sample' => $this->buildHostProxyHtaccessSample(),
+            'bridge_type' => $this->bridgeType(),
+            'has_host_secrets' => $this->hostSyncSecret() !== null && $this->hostEncryptionKey() !== null,
+            'host_sync_secret_preview' => $this->hostSyncSecret() ? $this->maskSecret($this->hostSyncSecret()) : null,
+            'host_encryption_key_preview' => $this->hostEncryptionKey() ? $this->maskSecret($this->hostEncryptionKey()) : null,
+            'host_sync_base_url' => $this->backendOrigin().'/api/v1/integrations/telegram-host',
+            'host_config_sample' => $this->buildHostAppConfigSample(),
         ];
+    }
+
+    /** Rendered `config.php` for the standalone `telegram/` host app (deploy/host-app/config.sample.php). */
+    public function buildHostAppConfigSample(): ?string
+    {
+        $path = dirname(base_path()).DIRECTORY_SEPARATOR.'telegram'.DIRECTORY_SEPARATOR.'config.sample.php';
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $template = file_get_contents($path);
+        if (! is_string($template) || $template === '') {
+            return null;
+        }
+
+        $bot = TelegramBot::query()->where('key', 'production')->first();
+
+        return str_replace(
+            ['__SYNC_BASE_URL__', '__HMAC_SECRET__', '__AES_KEY__', '__WEBHOOK_SECRET__', '__BOT_TOKEN__'],
+            [
+                $this->backendOrigin().'/api/v1/integrations/telegram-host',
+                (string) ($this->hostSyncSecret() ?? ''),
+                (string) ($this->hostEncryptionKey() ?? ''),
+                (string) ($this->webhookSecret() ?? ''),
+                (string) ($bot?->resolveToken() ?? ''),
+            ],
+            $template,
+        );
     }
 
     /**
@@ -322,11 +395,12 @@ class TelegramInfrastructureService
         $mode = $input['mode'] ?? null;
         if ($mode === 'direct') {
             $next['base_url'] = self::DEFAULT_BASE_URL;
+            $next['bridge_type'] = 'direct';
         } elseif (array_key_exists('base_url', $input) || array_key_exists('worker_url', $input)) {
             $raw = trim((string) ($input['worker_url'] ?? $input['base_url'] ?? ''));
             if ($raw === '') {
-                if ($mode === 'worker') {
-                    throw new \InvalidArgumentException('برای حالت Worker، آدرس Worker را وارد کنید.');
+                if ($mode === 'worker' || $mode === 'host') {
+                    throw new \InvalidArgumentException('برای این حالت، آدرس را وارد کنید.');
                 }
                 $next['base_url'] = self::DEFAULT_BASE_URL;
             } else {
@@ -338,8 +412,21 @@ class TelegramInfrastructureService
             }
         }
 
+        if (in_array($mode, ['worker', 'host'], true)) {
+            $next['bridge_type'] = $mode;
+        }
+
         // Single active bridge only — drop any leftover dual-proxy setting.
         unset($next['secondary_base_url']);
+
+        if ($mode === 'host') {
+            if (trim((string) ($next['host_sync_secret'] ?? '')) === '') {
+                $next['host_sync_secret'] = Str::random(64);
+            }
+            if (trim((string) ($next['host_encryption_key'] ?? '')) === '') {
+                $next['host_encryption_key'] = AesGcmCipher::generateKey();
+            }
+        }
 
         $connectionToken = trim((string) ($input['connection_token_input'] ?? $input['bearer_token_input'] ?? ''));
         if ($connectionToken !== '') {

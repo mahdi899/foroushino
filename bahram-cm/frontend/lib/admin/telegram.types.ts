@@ -18,7 +18,7 @@ export type TelegramModuleTone = 'teal' | 'gold' | 'blue' | 'green' | 'amber';
 
 export type TelegramInfrastructureView = {
   worker_url: string;
-  mode: 'direct' | 'worker';
+  mode: 'direct' | 'worker' | 'host';
   backend_origin: string;
   server_webhook_url: string;
   worker_webhook_url: string | null;
@@ -31,6 +31,14 @@ export type TelegramInfrastructureView = {
   host_proxy_deploy_sample?: string | null;
   /** Matching .htaccess sample for the host-proxy folder. */
   host_proxy_htaccess_sample?: string | null;
+  /** Explicit bridge type persisted server-side — 'host' means the standalone telegram/ app. */
+  bridge_type?: 'direct' | 'worker' | 'host';
+  has_host_secrets?: boolean;
+  host_sync_secret_preview?: string | null;
+  host_encryption_key_preview?: string | null;
+  host_sync_base_url?: string | null;
+  /** Filled config.php for the standalone telegram/ host app. */
+  host_config_sample?: string | null;
 };
 
 export type TelegramModule = {

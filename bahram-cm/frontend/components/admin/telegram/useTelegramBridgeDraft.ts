@@ -10,7 +10,7 @@ import {
 import type { TelegramInfrastructureView } from '@/lib/admin/telegram.types';
 import { buildTelegramWorkerSample } from '@/lib/admin/telegram-worker-sample.build';
 
-export type BridgeMode = 'direct' | 'worker';
+export type BridgeMode = 'direct' | 'worker' | 'host';
 
 export function useTelegramBridgeDraft(initial: TelegramInfrastructureView, workerSampleTemplate: string | null) {
   const router = useRouter();
@@ -69,13 +69,13 @@ export function useTelegramBridgeDraft(initial: TelegramInfrastructureView, work
   ]);
 
   const saveInfrastructure = async () => {
-    if (mode === 'worker' && !workerUrl.trim()) {
-      return { ok: false as const, error: 'آدرس Worker را وارد کنید.' };
+    if ((mode === 'worker' || mode === 'host') && !workerUrl.trim()) {
+      return { ok: false as const, error: 'آدرس را وارد کنید.' };
     }
 
     const res = await saveTelegramInfrastructureAction({
       mode,
-      worker_url: mode === 'worker' ? workerUrl.trim() : '',
+      worker_url: mode === 'worker' || mode === 'host' ? workerUrl.trim() : '',
       connection_token_input: mode === 'worker' ? workerToken || undefined : undefined,
       webhook_secret_input: mode === 'worker' ? webhookSecret || undefined : undefined,
     });

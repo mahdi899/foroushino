@@ -30,7 +30,7 @@ class TelegramInfrastructureAdminController
         $this->authorizeTelegram($request, 'telegram.settings.manage');
 
         $data = $request->validate([
-            'mode' => ['sometimes', 'nullable', 'string', 'in:direct,worker'],
+            'mode' => ['sometimes', 'nullable', 'string', 'in:direct,worker,host'],
             'worker_url' => ['sometimes', 'nullable', 'string', 'max:512'],
             'base_url' => ['sometimes', 'nullable', 'string', 'max:512'],
             'connection_token_input' => ['sometimes', 'nullable', 'string', 'max:256'],

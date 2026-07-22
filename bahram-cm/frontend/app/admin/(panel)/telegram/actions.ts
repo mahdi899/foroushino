@@ -395,7 +395,7 @@ export async function retryFailedTelegramUpdatesAction(): Promise<{ ok: boolean;
 }
 
 export async function saveTelegramInfrastructureAction(input: {
-  mode?: 'direct' | 'worker';
+  mode?: 'direct' | 'worker' | 'host';
   worker_url?: string;
   connection_token_input?: string;
   webhook_secret_input?: string;

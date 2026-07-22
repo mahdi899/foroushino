@@ -29,7 +29,7 @@ return [
 
         'allowed_values' => array_values(array_filter(array_map(
             static fn (string $value): string => trim($value),
-            explode(',', (string) env('PROXY_ORIGIN_ALLOWED_VALUES', 'Cloudflare-Worker,Internal-Sync')),
+            explode(',', (string) env('PROXY_ORIGIN_ALLOWED_VALUES', 'Cloudflare-Worker,Internal-Sync,Telegram-Host-App')),
         ))),
 
         'shared_token' => (string) env('PROXY_SHARED_TOKEN', ''),

@@ -109,3 +109,6 @@ Route::middleware(['auth:sanctum', SubstituteBindings::class])->group(function (
 
 Route::post('/api/v1/telegram/identity/session', [IdentityStatusController::class, 'session'])
     ->middleware('throttle:20,1');
+
+// External "host" bridge sync API (standalone PHP app on cPanel, see telegram/).
+require __DIR__.'/telegram-host.php';
