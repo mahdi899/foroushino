@@ -259,6 +259,8 @@ export function TeamLiveScreen() {
     <Page>
       <ScreenHeader
         sticky
+        showBack
+        backFallback="/home"
         title={team ? team.name : 'تیم من'}
         subtitle={isLeaderRole(role) ? 'نظارت لایو بر کارشناسان' : 'وضعیت لحظه‌ای تیم'}
         icon={Users}

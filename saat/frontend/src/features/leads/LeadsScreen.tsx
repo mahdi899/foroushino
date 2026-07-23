@@ -141,13 +141,13 @@ export function LeadsScreen() {
         />
 
         {(canIntakeLeads || lockedCount > 0 || returnedCount > 0) && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="no-scrollbar mt-2 flex min-w-0 flex-nowrap gap-1.5 overflow-x-auto touch-pan-x">
             {canIntakeLeads && (
               <button
                 type="button"
                 onClick={() => navigate('/leads/intake')}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold active:scale-[0.96]',
+                  'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] font-bold active:scale-[0.96]',
                   BRAND_SOFT,
                 )}
               >
@@ -159,7 +159,7 @@ export function LeadsScreen() {
               <button
                 type="button"
                 onClick={() => navigate('/leads/locked')}
-                className="inline-flex items-center gap-1.5 rounded-full border border-error-300/50 bg-error-500/8 px-3 py-1.5 text-[11px] font-bold text-error-600 active:scale-[0.96] dark:border-error-500/25 dark:bg-error-500/10"
+                className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-error-300/50 bg-error-500/8 px-3 py-1.5 text-[11px] font-bold text-error-600 active:scale-[0.96] dark:border-error-500/25 dark:bg-error-500/10"
               >
                 <Lock size={13} strokeWidth={2.35} />
                 قفل‌شده {toFa(lockedCount)}
@@ -169,7 +169,7 @@ export function LeadsScreen() {
               <button
                 type="button"
                 onClick={() => navigate('/leads/returned')}
-                className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.06] bg-black/[0.04] px-3 py-1.5 text-[11px] font-bold text-text-soft active:scale-[0.96] dark:border-white/10 dark:bg-white/[0.06]"
+                className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-black/[0.06] bg-black/[0.04] px-3 py-1.5 text-[11px] font-bold text-text-soft active:scale-[0.96] dark:border-white/10 dark:bg-white/[0.06]"
               >
                 <Undo2 size={13} strokeWidth={2.35} />
                 برگشت‌خورده {toFa(returnedCount)}

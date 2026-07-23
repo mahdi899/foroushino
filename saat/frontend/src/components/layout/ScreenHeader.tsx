@@ -105,7 +105,7 @@ export function ScreenHeader({
         {action && <div className="shrink-0">{action}</div>}
       </div>
 
-      {children && <div className="pb-2 pt-1">{children}</div>}
+      {children && <div className="min-w-0 pb-2 pt-1">{children}</div>}
     </div>
   )
 }

@@ -308,7 +308,9 @@ export function SupervisorTeamsScreen() {
     if (view === 'teams') {
       setView('supervisors')
       setSelectedSupervisorId(null)
+      return
     }
+    navigate('/home')
   }
 
   const headerTitle =
@@ -350,8 +352,9 @@ export function SupervisorTeamsScreen() {
     <Page>
       <ScreenHeader
         sticky
-        showBack={view !== 'supervisors'}
-        onBack={view !== 'supervisors' ? goBack : undefined}
+        showBack
+        onBack={goBack}
+        backFallback="/home"
         title={headerTitle}
         subtitle={headerSubtitle}
         icon={Users}
