@@ -14,6 +14,10 @@ if [[ ! -x "$FLUTTER_BIN" ]]; then
   exit 1
 fi
 
+# pub.dev often returns 403 from Iranian/datacenter IPs — China mirror is the fallback.
+export PUB_HOSTED_URL="${PUB_HOSTED_URL:-https://pub.flutter-io.cn}"
+export FLUTTER_STORAGE_BASE_URL="${FLUTTER_STORAGE_BASE_URL:-https://storage.flutter-io.cn}"
+
 echo "==> flutter pub get"
 "$FLUTTER_BIN" pub get
 

@@ -136,67 +136,70 @@ class _MobileComposeFabState extends State<_MobileComposeFab> with SingleTickerP
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (_open) ...[
-          if (widget.onComposeStory != null)
-            _FabOption(
-              label: 'قرار دادن استوری',
-              icon: Icons.auto_stories_rounded,
-              onTap: () => _pick(widget.onComposeStory!),
-            ),
-          if (widget.onComposePost != null)
-            _FabOption(
-              label: 'قرار دادن پست',
-              icon: Icons.campaign_rounded,
-              onTap: () => _pick(widget.onComposePost!),
-            ),
-          const SizedBox(height: AppSpacing.sm),
-        ],
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: AppGradients.primary,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: AppShadows.panelGlow,
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                if (!_open) {
-                  final hasPost = widget.onComposePost != null;
-                  final hasStory = widget.onComposeStory != null;
-                  if (hasPost && !hasStory) {
-                    widget.onComposePost!();
-                    return;
-                  }
-                  if (hasStory && !hasPost) {
-                    widget.onComposeStory!();
-                    return;
-                  }
-                }
-                _toggle();
-              },
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (_open) ...[
+            if (widget.onComposeStory != null)
+              _FabOption(
+                label: 'قرار دادن استوری',
+                icon: Icons.auto_stories_rounded,
+                onTap: () => _pick(widget.onComposeStory!),
+              ),
+            if (widget.onComposePost != null)
+              _FabOption(
+                label: 'قرار دادن پست',
+                icon: Icons.campaign_rounded,
+                onTap: () => _pick(widget.onComposePost!),
+              ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: AppGradients.primary,
               borderRadius: BorderRadius.circular(18),
-              child: AnimatedRotation(
-                turns: _open ? 0.125 : 0,
-                duration: AppMotion.fast,
-                child: SizedBox(
-                  width: 56,
-                  height: 56,
-                  child: Icon(
-                    _open ? Icons.close_rounded : Icons.edit_rounded,
-                    color: Colors.white,
-                    size: 26,
+              boxShadow: AppShadows.panelGlow,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  if (!_open) {
+                    final hasPost = widget.onComposePost != null;
+                    final hasStory = widget.onComposeStory != null;
+                    if (hasPost && !hasStory) {
+                      widget.onComposePost!();
+                      return;
+                    }
+                    if (hasStory && !hasPost) {
+                      widget.onComposeStory!();
+                      return;
+                    }
+                  }
+                  _toggle();
+                },
+                borderRadius: BorderRadius.circular(18),
+                child: AnimatedRotation(
+                  turns: _open ? 0.125 : 0,
+                  duration: AppMotion.fast,
+                  child: SizedBox(
+                    width: 56,
+                    height: 56,
+                    child: Icon(
+                      _open ? Icons.close_rounded : Icons.edit_rounded,
+                      color: Colors.white,
+                      size: 26,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -208,16 +211,21 @@ class _FabOption extends StatelessWidget {
     required this.onTap,
   });
 
+  static const _fabSlot = 56.0;
+  static const _iconSize = 48.0;
+
   final String label;
   final IconData icon;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    // LTR row: label on the visual left, icon column aligned with the main FAB on the right.
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           GlassPanel(
             borderRadius: 12,
@@ -226,21 +234,27 @@ class _FabOption extends StatelessWidget {
             child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
           ),
           const SizedBox(width: AppSpacing.sm),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: AppShadows.soft,
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: onTap,
-                borderRadius: BorderRadius.circular(14),
-                child: SizedBox(
-                  width: 48,
-                  height: 48,
-                  child: Icon(icon, color: AppColors.primary),
+          SizedBox(
+            width: _fabSlot,
+            height: _fabSlot,
+            child: Center(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: AppShadows.soft,
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onTap,
+                    borderRadius: BorderRadius.circular(14),
+                    child: SizedBox(
+                      width: _iconSize,
+                      height: _iconSize,
+                      child: Icon(icon, color: AppColors.primary),
+                    ),
+                  ),
                 ),
               ),
             ),

@@ -10,8 +10,9 @@ import paramiko
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ENV_FILE = REPO_ROOT / "saat" / "deploy" / "deploy.env"
-LOCAL_VERIFY_FILE = REPO_ROOT / "saat" / "frontend" / "public" / "16916089.txt"
 APP_DIR = "/var/www/saat"
+# Optional deploy verification marker (uploaded before build when present locally).
+LOCAL_VERIFY_FILE = REPO_ROOT / "saat" / "frontend" / "public" / "16916089.txt"
 
 
 def load_env(path: Path) -> dict[str, str]:
@@ -25,6 +26,32 @@ def load_env(path: Path) -> dict[str, str]:
         key, value = line.split("=", 1)
         out[key.strip()] = value.strip()
     return out
+
+
+def run_remote_command(client: paramiko.SSHClient, command: str, *, timeout: int = 1800) -> int:
+    """Run a remote shell command and return its exit status."""
+    print(f"\n=== {command} ===")
+    _, stdout, stderr = client.exec_command(command, timeout=timeout)
+    out = stdout.read().decode("utf-8", errors="replace")
+    err = stderr.read().decode("utf-8", errors="replace")
+    exit_status = stdout.channel.recv_exit_status()
+    if out:
+        print(out, end="" if out.endswith("\n") else "\n")
+    if err.strip():
+        print("STDERR:", err, end="" if err.endswith("\n") else "\n")
+    if exit_status != 0:
+        print(f"Command failed with exit code {exit_status}", file=sys.stderr)
+    return exit_status
+
+
+def upload_via_sftp(client: paramiko.SSHClient, local_path: Path, remote_path: str) -> None:
+    """Upload a local file; always closes the SFTP session."""
+    sftp = client.open_sftp()
+    try:
+        print(f"Uploading {local_path.name} -> {remote_path}")
+        sftp.put(str(local_path), remote_path)
+    finally:
+        sftp.close()
 
 
 def main() -> int:
@@ -43,35 +70,35 @@ def main() -> int:
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     print(f"Connecting to {user}@{host}:{port} ...")
-    client.connect(host, port, user, password, timeout=120, banner_timeout=120, auth_timeout=120)
 
-    if LOCAL_VERIFY_FILE.is_file():
-        remote_public = f"{APP_DIR}/frontend/public/{LOCAL_VERIFY_FILE.name}"
-        sftp = client.open_sftp()
-        print(f"Uploading {LOCAL_VERIFY_FILE.name} -> {remote_public}")
-        sftp.put(str(LOCAL_VERIFY_FILE), remote_public)
-        sftp.close()
+    try:
+        client.connect(host, port, user, password, timeout=120, banner_timeout=120, auth_timeout=120)
 
-    commands = [
-        f"chmod +x {APP_DIR}/deploy/scripts/*.sh",
-        f"cd {APP_DIR} && bash deploy/scripts/deploy.sh frontend",
-        "curl -sI https://sat.center/16916089.txt | head -15",
-        "wc -c /var/www/saat/frontend/dist/16916089.txt 2>/dev/null || echo dist-missing",
-        'curl -s -o /dev/null -w "http=%{http_code} size=%{size_download}\\n" https://sat.center/16916089.txt',
-    ]
+        if LOCAL_VERIFY_FILE.is_file():
+            remote_public = f"{APP_DIR}/frontend/public/{LOCAL_VERIFY_FILE.name}"
+            upload_via_sftp(client, LOCAL_VERIFY_FILE, remote_public)
 
-    for command in commands:
-        print(f"\n=== {command} ===")
-        _, stdout, stderr = client.exec_command(command, timeout=1800)
-        out = stdout.read().decode("utf-8", errors="replace")
-        err = stderr.read().decode("utf-8", errors="replace")
-        if out:
-            print(out, end="" if out.endswith("\n") else "\n")
-        if err.strip():
-            print("STDERR:", err)
+        commands = [
+            f"chmod +x {APP_DIR}/deploy/scripts/*.sh",
+            f"cd {APP_DIR} && bash deploy/scripts/deploy.sh frontend",
+        ]
 
-    client.close()
-    return 0
+        if LOCAL_VERIFY_FILE.is_file():
+            commands.extend(
+                [
+                    "curl -sI https://sat.center/16916089.txt | head -15",
+                    f"wc -c {APP_DIR}/frontend/dist/16916089.txt 2>/dev/null || echo dist-missing",
+                    'curl -s -o /dev/null -w "http=%{http_code} size=%{size_download}\\n" https://sat.center/16916089.txt',
+                ]
+            )
+
+        for command in commands:
+            if run_remote_command(client, command) != 0:
+                return 1
+
+        return 0
+    finally:
+        client.close()
 
 
 if __name__ == "__main__":
