@@ -2264,16 +2264,39 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
     box-shadow 200ms var(--family-tg-spring);
 }
 
-.family-post-bubble--swiping {
-  transition: none;
-  will-change: transform;
-  z-index: 2;
-  user-select: none;
+.family-reaction-icon-slot {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
-.family-post-bubble:has(.family-reaction-btn--slam, .family-reaction-btn--slam-land),
-.family-post-bubble--impact {
+.family-reaction-btn--pulse {
+  animation: family-reaction-pulse 0.28s ease-out both;
+}
+
+.family-reaction-btn-wrap--pulse {
   z-index: 2;
+}
+
+@keyframes family-reaction-pulse {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .family-reaction-btn--pulse {
+    animation: none;
+  }
 }
 
 .family-app[data-family-theme='light'] .family-post-bubble,
@@ -5571,5 +5594,345 @@ html[data-theme='light'] .family-app .family-action-number-bar {
   .family-action-celebrate-card__sparkle,
   .family-action-celebrate__spark {
     animation: none !important;
+  }
+}
+
+/* —— Family menu sheet + install banners —— */
+.family-menu-root {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+}
+
+.family-menu-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  border: 0;
+  background: rgba(0, 0, 0, 0.42);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.family-menu-backdrop--in {
+  opacity: 1;
+}
+
+.family-menu-sheet {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  pointer-events: auto;
+  max-height: min(78dvh, 32rem);
+  overflow: auto;
+  border-radius: 1rem 1rem 0 0;
+  background: var(--family-surface, #132028);
+  color: var(--family-fg, #e8eef2);
+  padding: 0.5rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+  transform: translateY(100%);
+  transition: transform 180ms ease;
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.28);
+}
+
+.family-menu-sheet--in {
+  transform: translateY(0);
+}
+
+.family-menu-sheet__grab {
+  width: 2.25rem;
+  height: 0.25rem;
+  margin: 0.25rem auto 0.75rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--family-muted, #8aa0ad) 55%, transparent);
+}
+
+.family-menu-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.family-menu-sheet__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.family-menu-sheet__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--family-muted, #8aa0ad);
+}
+
+.family-menu-section {
+  padding: 0.5rem 0 0.75rem;
+  border-top: 1px solid color-mix(in srgb, var(--family-muted, #8aa0ad) 22%, transparent);
+}
+
+.family-menu-section__label {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--family-muted, #8aa0ad);
+}
+
+.family-menu-theme {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.family-menu-theme__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--family-muted, #8aa0ad) 28%, transparent);
+  background: transparent;
+  color: var(--family-fg, #e8eef2);
+  font-size: 0.875rem;
+}
+
+.family-menu-theme__btn--active {
+  border-color: var(--family-accent, #3390ec);
+  background: color-mix(in srgb, var(--family-accent, #3390ec) 16%, transparent);
+}
+
+.family-menu-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0.5rem 0.25rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+}
+
+.family-menu-item--danger {
+  color: #ff6b6b;
+}
+
+.family-menu-item__text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.family-menu-item__title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.family-menu-item__sub {
+  font-size: 0.75rem;
+  color: var(--family-muted, #8aa0ad);
+}
+
+.family-menu-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--family-muted, #8aa0ad);
+}
+
+.family-menu-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+}
+
+.family-menu-confirm__text {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.family-menu-confirm__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.family-menu-confirm__btn {
+  flex: 1;
+  min-height: 2.75rem;
+  border-radius: 0.75rem;
+  border: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.family-menu-confirm__btn--muted {
+  background: color-mix(in srgb, var(--family-muted, #8aa0ad) 18%, transparent);
+  color: var(--family-fg, #e8eef2);
+}
+
+.family-menu-confirm__btn--danger {
+  background: #e5484d;
+  color: #fff;
+}
+
+.family-install-banner {
+  margin: 0.75rem 0.75rem 0.25rem;
+  border-radius: 0.875rem;
+  border: 1px solid color-mix(in srgb, var(--family-accent, #3390ec) 35%, transparent);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--family-accent, #3390ec) 18%, var(--family-surface, #132028)),
+    var(--family-surface, #132028)
+  );
+  padding: 0.875rem;
+  animation: family-install-banner-in 180ms ease both;
+}
+
+.family-install-banner__content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.family-install-banner__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--family-fg, #e8eef2);
+}
+
+.family-install-banner__sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--family-muted, #8aa0ad);
+}
+
+.family-install-banner__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--family-muted, #8aa0ad);
+}
+
+.family-install-banner__actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.family-install-banner__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.25rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: var(--family-accent, #3390ec);
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.family-install-banner__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  color: var(--family-muted, #8aa0ad);
+}
+
+.family-install-promo {
+  margin: 0.25rem 0.75rem;
+  border-radius: 0.875rem;
+  border: 1px dashed color-mix(in srgb, var(--family-accent, #3390ec) 40%, transparent);
+  background: color-mix(in srgb, var(--family-accent, #3390ec) 8%, var(--family-surface, #132028));
+  padding: 0.875rem;
+}
+
+.family-install-promo__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--family-fg, #e8eef2);
+}
+
+.family-install-promo__sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--family-muted, #8aa0ad);
+}
+
+.family-install-promo__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.7rem;
+  color: var(--family-muted, #8aa0ad);
+}
+
+.family-install-promo__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+}
+
+.family-install-promo__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.15rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: var(--family-accent, #3390ec);
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.family-install-promo__dismiss {
+  min-height: 2.15rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--family-muted, #8aa0ad);
+}
+
+@keyframes family-install-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .family-menu-backdrop,
+  .family-menu-sheet,
+  .family-install-banner {
+    transition: none;
+    animation: none;
   }
 }

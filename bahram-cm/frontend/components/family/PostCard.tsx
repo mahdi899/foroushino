@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useCallback, useEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type ReactNode, type SetStateAction } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { Lock } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { EmojiRichText } from '@/components/emoji/EmojiRichText';
@@ -43,35 +43,10 @@ const POST_QUICK_REACT_BLOCK_SELECTOR = [
   '.family-feed-video',
 ].join(', ');
 
-const POST_SWIPE_BLOCK_SELECTOR = [
-  'a[href]',
-  'input',
-  'textarea',
-  'select',
-  'audio',
-  '.family-reaction-bar',
-  '.family-reaction-btn-wrap',
-  '.family-reaction-add',
-  '.family-post-bubble__meta-row',
-  '.family-action-glass',
-  '.family-inline-card',
-  '.family-voice',
-  '.family-feed-video',
-].join(', ');
-
-const SWIPE_LOCK_PX = 8;
-const SWIPE_OPEN_PX = 56;
-const SWIPE_MAX_PX = 72;
 function canQuickReactFromTarget(target: EventTarget | null, bubble: HTMLElement): boolean {
   if (!(target instanceof Element)) return false;
   if (!bubble.contains(target)) return false;
   return !target.closest(POST_QUICK_REACT_BLOCK_SELECTOR);
-}
-
-function canSwipeFromTarget(target: EventTarget | null, bubble: HTMLElement): boolean {
-  if (!(target instanceof Element)) return false;
-  if (!bubble.contains(target)) return false;
-  return !target.closest(POST_SWIPE_BLOCK_SELECTOR);
 }
 
 function shouldHideActionPrompt(blocks: FamilyPostBlock[], prompt: string): boolean {
@@ -212,15 +187,6 @@ function FeedPostCard({
   const actions = post.actions ?? [];
   const reduceMotion = useReducedMotion();
   const reactionBarRef = useRef<ReactionBarHandle>(null);
-  const swipeRef = useRef<{
-    pointerId: number;
-    startX: number;
-    startY: number;
-    axis: 'x' | 'y' | null;
-    dx: number;
-  } | null>(null);
-  const [swipeX, setSwipeX] = useState(0);
-  const [swiping, setSwiping] = useState(false);
 
   const openCommentsPanel = useCallback(() => {
     if (previewMode) {
@@ -253,79 +219,9 @@ function FeedPostCard({
         onGuestGate?.('react');
         return;
       }
-      reactionBarRef.current?.quickReact('heart', { x: event.clientX, y: event.clientY });
+      reactionBarRef.current?.quickReact('heart');
     },
     [onGuestGate, previewMode],
-  );
-
-  const endSwipe = useCallback(
-    (commit: boolean) => {
-      const dx = swipeRef.current?.dx ?? 0;
-      swipeRef.current = null;
-      setSwiping(false);
-      setSwipeX(0);
-      if (commit && Math.abs(dx) >= SWIPE_OPEN_PX) {
-        openCommentsPanel();
-      }
-    },
-    [openCommentsPanel],
-  );
-
-  const handleSwipePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    if (!canSwipeFromTarget(event.target, event.currentTarget)) return;
-    swipeRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      axis: null,
-      dx: 0,
-    };
-  }, []);
-
-  const handleSwipePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    const swipe = swipeRef.current;
-    if (!swipe || swipe.pointerId !== event.pointerId) return;
-
-    const dx = event.clientX - swipe.startX;
-    const dy = event.clientY - swipe.startY;
-
-    if (swipe.axis == null) {
-      if (Math.abs(dx) < SWIPE_LOCK_PX && Math.abs(dy) < SWIPE_LOCK_PX) return;
-      swipe.axis = Math.abs(dx) > Math.abs(dy) * 1.15 ? 'x' : 'y';
-      if (swipe.axis === 'x') {
-        event.currentTarget.setPointerCapture(event.pointerId);
-        setSwiping(true);
-      }
-    }
-
-    if (swipe.axis !== 'x') return;
-
-    event.preventDefault();
-    swipe.dx = dx;
-    const clamped = Math.max(-SWIPE_MAX_PX, Math.min(SWIPE_MAX_PX, dx));
-    setSwipeX(clamped);
-  }, []);
-
-  const handleSwipePointerUp = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      const swipe = swipeRef.current;
-      if (!swipe || swipe.pointerId !== event.pointerId) return;
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      }
-      endSwipe(swipe.axis === 'x');
-    },
-    [endSwipe],
-  );
-
-  const handleSwipePointerCancel = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      const swipe = swipeRef.current;
-      if (!swipe || swipe.pointerId !== event.pointerId) return;
-      endSwipe(false);
-    },
-    [endSwipe],
   );
 
   return (
@@ -341,19 +237,9 @@ function FeedPostCard({
           'family-post-bubble',
           post.is_important && 'family-post-bubble--important',
           post.is_pinned && 'family-post-bubble--pinned',
-          swiping && 'family-post-bubble--swiping',
           guestBlurred && 'family-post-bubble--guest-locked',
         )}
-        style={
-          swipeX || swiping
-            ? { transform: `translate3d(${swipeX}px, 0, 0)` }
-            : undefined
-        }
         onDoubleClick={guestBlurred ? undefined : handleBubbleDoubleClick}
-        onPointerDown={guestBlurred ? undefined : handleSwipePointerDown}
-        onPointerMove={guestBlurred ? undefined : handleSwipePointerMove}
-        onPointerUp={guestBlurred ? undefined : handleSwipePointerUp}
-        onPointerCancel={guestBlurred ? undefined : handleSwipePointerCancel}
       >
         <div className={cn(guestBlurred && 'family-post-bubble__guest-blur')}>
         {(post.is_pinned || post.is_important) && (

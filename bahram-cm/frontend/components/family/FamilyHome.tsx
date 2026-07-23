@@ -102,6 +102,7 @@ export function FamilyHome({
             guestStoriesLocked={isGuest}
             showNotifications={isMember}
             notificationsActive={notificationsOpen}
+            isLoggedIn={!isGuest}
             onOpenNotifications={openNotifications}
             onCloseNotifications={closeNotifications}
           />

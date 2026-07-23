@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 
-type OverlayKey = 'comments' | 'notifications' | 'stories' | 'lightbox';
+type OverlayKey = 'comments' | 'notifications' | 'stories' | 'lightbox' | 'menu';
 
 type TelegramWebAppLike = {
   BackButton?: {

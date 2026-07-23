@@ -8,17 +8,23 @@ import type { FamilyReactionType } from '@/lib/family/types';
 export function FamilyReactionLottie({
   type,
   size = 20,
-  mode = 'loop',
+  mode = 'inline',
+  playKey = 0,
+  onComplete,
 }: {
   type: FamilyReactionType;
   size?: number;
   mode?: AnimatedEmojiMode;
+  playKey?: number;
+  onComplete?: () => void;
 }) {
   return (
     <AnimatedEmoji
       notoKey={FAMILY_REACTION_NOTO[type]}
       size={size}
       mode={mode}
+      playKey={playKey}
+      onComplete={onComplete}
       className="family-reaction-icon"
     />
   );

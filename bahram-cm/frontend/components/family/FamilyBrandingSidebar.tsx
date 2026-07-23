@@ -7,13 +7,13 @@ import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
 import { FamilyBackButton } from '@/components/family/FamilyBackButton';
 import { FamilyAuthorAvatar } from '@/components/family/FamilyAuthorAvatar';
 import { StoryViewer } from '@/components/family/StoryViewer';
-import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
 import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
 import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
 import { useFamilyGuestAccessOptional } from '@/components/family/FamilyGuestAccess';
 import { FAMILY_GUEST_CTA } from '@/lib/family/guest-access';
 import type { FamilyBranding } from '@/lib/family/types';
+import { FamilyMenuButton } from '@/components/family/FamilyMenuSheet';
 
 /** Desktop branding column — Telegram channel-info panel + iOS glass. */
 export function FamilyBrandingSidebar({
@@ -22,6 +22,7 @@ export function FamilyBrandingSidebar({
   guestStoriesLocked = false,
   initialBranding,
   notificationsActive = false,
+  isLoggedIn = false,
   onOpenNotifications,
   onCloseNotifications,
 }: {
@@ -30,6 +31,7 @@ export function FamilyBrandingSidebar({
   guestStoriesLocked?: boolean;
   initialBranding?: FamilyBranding;
   notificationsActive?: boolean;
+  isLoggedIn?: boolean;
   onOpenNotifications?: () => void;
   onCloseNotifications?: () => void;
 }) {
@@ -95,7 +97,7 @@ export function FamilyBrandingSidebar({
 
             <span className="family-sidebar__toolbar-spacer" aria-hidden />
 
-            <ThemeToggle mini className="family-sidebar__theme-toggle" />
+            <FamilyMenuButton className="family-sidebar__tool-btn" isLoggedIn={isLoggedIn} />
           </nav>
 
           <div className="family-sidebar__body">

@@ -3,6 +3,7 @@ import type { FamilyAction, FamilyPost, FamilyPostBlock } from '@/lib/family/typ
 export type FeedListItem =
   | { kind: 'separator'; key: string; label: string }
   | { kind: 'unread'; key: string; count: number }
+  | { kind: 'install-promo'; key: string; afterPostCount: number }
   | { kind: 'post'; key: string; post: FamilyPost };
 
 /** Bubble chrome: padding, meta row, reactions strip. */
@@ -87,6 +88,7 @@ function estimateActionHeight(action: FamilyAction): number {
 export function estimateFeedItemSize(_index: number, item: FeedListItem): number {
   if (item.kind === 'separator') return 44;
   if (item.kind === 'unread') return 40;
+  if (item.kind === 'install-promo') return 108;
 
   const post = item.post;
   let height = POST_CHROME_HEIGHT;
