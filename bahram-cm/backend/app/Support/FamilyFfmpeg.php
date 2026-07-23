@@ -60,6 +60,13 @@ final class FamilyFfmpeg
             if (($stream['codec_type'] ?? '') === 'video') {
                 $width = isset($stream['width']) ? (int) $stream['width'] : null;
                 $height = isset($stream['height']) ? (int) $stream['height'] : null;
+                $rotation = (int) ($stream['tags']['rotate'] ?? 0);
+                if ($rotation === 0 && isset($stream['side_data_list'][0]['rotation'])) {
+                    $rotation = (int) $stream['side_data_list'][0]['rotation'];
+                }
+                if ($width !== null && $height !== null && abs($rotation) % 180 === 90) {
+                    [$width, $height] = [$height, $width];
+                }
                 break;
             }
         }

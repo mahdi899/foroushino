@@ -6,12 +6,14 @@ class ShellScope extends InheritedWidget {
     super.key,
     required this.goToTab,
     this.onComposePost,
+    this.onComposeStory,
     this.tabLabels,
     required super.child,
   });
 
   final void Function(int index) goToTab;
   final VoidCallback? onComposePost;
+  final VoidCallback? onComposeStory;
   final List<String>? tabLabels;
 
   int? indexOfLabel(String label) {
@@ -30,5 +32,7 @@ class ShellScope extends InheritedWidget {
 
   @override
   bool updateShouldNotify(ShellScope oldWidget) =>
-      oldWidget.goToTab != goToTab || oldWidget.onComposePost != onComposePost;
+      oldWidget.goToTab != goToTab ||
+      oldWidget.onComposePost != onComposePost ||
+      oldWidget.onComposeStory != onComposeStory;
 }

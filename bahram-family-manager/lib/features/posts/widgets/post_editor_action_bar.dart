@@ -12,6 +12,7 @@ class PostEditorActionBar extends StatelessWidget {
     required this.saving,
     required this.onSave,
     this.onPublish,
+    this.onSchedule,
     this.onRepublish,
     this.onDelete,
     this.onArchive,
@@ -23,14 +24,20 @@ class PostEditorActionBar extends StatelessWidget {
   final bool saving;
   final VoidCallback onSave;
   final VoidCallback? onPublish;
+  final VoidCallback? onSchedule;
   final VoidCallback? onRepublish;
   final VoidCallback? onDelete;
   final VoidCallback? onArchive;
   final VoidCallback? onRecover;
   final VoidCallback? onTogglePin;
 
+  bool get _isDraftOrNew => post == null || post!.isDraft;
+
+  bool get _showInstantPublish => _isDraftOrNew && onPublish != null;
+
   bool get _hasMoreActions =>
-      onPublish != null ||
+      onSave != null ||
+      onSchedule != null ||
       onRepublish != null ||
       onDelete != null ||
       onArchive != null ||
@@ -66,17 +73,25 @@ class PostEditorActionBar extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (onPublish != null)
+                  if (onSave != null && _showInstantPublish)
                     _MoreTile(
-                      icon: Icons.bolt_rounded,
-                      iconColor: AppColors.primary,
-                      title: 'انتشار لحظه‌ای',
-                      subtitle: post == null
-                          ? 'ذخیره و انتشار فوری پست در فید خانواده'
-                          : 'انتشار همین پیش‌نویس در فید خانواده',
+                      icon: Icons.save_rounded,
+                      title: post == null ? 'ذخیره پیش‌نویس' : 'ذخیره',
+                      subtitle: 'بدون انتشار در فید خانواده',
                       onTap: () {
                         Navigator.pop(sheetContext);
-                        onPublish!();
+                        onSave();
+                      },
+                    ),
+                  if (onSchedule != null)
+                    _MoreTile(
+                      icon: Icons.schedule_rounded,
+                      iconColor: AppColors.gold,
+                      title: 'انتشار در ساعت خاص',
+                      subtitle: 'ذخیره و زمان‌بندی انتشار خودکار',
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        onSchedule!();
                       },
                     ),
                   if (onRepublish != null)
@@ -139,6 +154,11 @@ class PostEditorActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isDraftOrNew = _isDraftOrNew;
+    final showInstantPublish = _showInstantPublish;
+    final primaryLabel = showInstantPublish ? 'انتشار فوری' : (post == null ? 'ذخیره پیش‌نویس' : 'ذخیره');
+    final primaryIcon = showInstantPublish ? Icons.bolt_rounded : Icons.save_rounded;
+    final primaryAction = showInstantPublish ? onPublish : onSave;
 
     return SafeArea(
       child: Padding(
@@ -151,11 +171,11 @@ class PostEditorActionBar extends StatelessWidget {
             children: [
               Expanded(
                 child: _GlassActionButton(
-                  label: post == null ? 'ذخیره پیش‌نویس' : 'ذخیره',
-                  icon: Icons.save_rounded,
+                  label: primaryLabel,
+                  icon: primaryIcon,
                   primary: true,
                   loading: saving,
-                  onPressed: saving ? null : onSave,
+                  onPressed: saving ? null : primaryAction,
                 ),
               ),
               if (_hasMoreActions) ...[

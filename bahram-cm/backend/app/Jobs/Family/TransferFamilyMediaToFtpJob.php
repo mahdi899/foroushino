@@ -160,10 +160,14 @@ class TransferFamilyMediaToFtpJob implements ShouldQueue
                 $updates = ['status' => FamilyMediaStatus::Ready];
                 if (! is_array($meta)) {
                     $absolute = $tempDisk->path($media->temp_path);
-                    $dims = is_string($absolute) ? @getimagesize($absolute) : false;
-                    if (is_array($dims)) {
-                        $updates['width'] = (int) $dims[0];
-                        $updates['height'] = (int) $dims[1];
+                    if (is_string($absolute)) {
+                        $dims = \App\Support\FamilyImageDimensions::fromPath($absolute);
+                        if ($dims['width'] !== null) {
+                            $updates['width'] = $dims['width'];
+                        }
+                        if ($dims['height'] !== null) {
+                            $updates['height'] = $dims['height'];
+                        }
                     }
                 }
                 $media->update($updates);

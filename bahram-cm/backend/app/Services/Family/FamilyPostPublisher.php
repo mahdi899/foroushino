@@ -124,6 +124,7 @@ class FamilyPostPublisher
             'status' => FamilyPostStatus::Published,
             'published_at' => $publishedAt,
             'archived_at' => null,
+            'scheduled_publish_at' => null,
         ]);
 
         $this->audit->log($actor, 'family.post_published', $post);
@@ -139,6 +140,42 @@ class FamilyPostPublisher
         }
 
         return $fresh ?? $post;
+    }
+
+    public function schedule(User $actor, FamilyPost $post, Carbon $publishAt): FamilyPost
+    {
+        abort_unless($post->status === FamilyPostStatus::Draft, 422, 'فقط پیش‌نویس قابل زمان‌بندی است.');
+        abort_if($publishAt->lte(now()), 422, 'زمان انتشار باید در آینده باشد.');
+
+        $post->update(['scheduled_publish_at' => $publishAt]);
+        $this->audit->log($actor, 'family.post_scheduled', $post, [
+            'scheduled_publish_at' => $publishAt->toIso8601String(),
+        ]);
+
+        return $post->fresh(['blocks.media', 'targets', 'actions.options']) ?? $post;
+    }
+
+    /** Publish drafts whose scheduled time has passed. */
+    public function publishDueScheduled(): int
+    {
+        $due = FamilyPost::query()
+            ->where('status', FamilyPostStatus::Draft)
+            ->whereNotNull('scheduled_publish_at')
+            ->where('scheduled_publish_at', '<=', now())
+            ->with('author')
+            ->get();
+
+        $count = 0;
+        foreach ($due as $post) {
+            if (! $post->author) {
+                continue;
+            }
+            $this->publish($post->author, $post);
+            $post->update(['scheduled_publish_at' => null]);
+            $count++;
+        }
+
+        return $count;
     }
 
     /**

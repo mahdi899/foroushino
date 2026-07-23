@@ -197,6 +197,21 @@ class PostController extends Controller
         return ApiResponse::success(FamilyManagerPostPresenter::present($published));
     }
 
+    public function schedule(Request $request, FamilyPost $post): JsonResponse
+    {
+        $data = $request->validate([
+            'publish_at' => ['required', 'date', 'after:now'],
+        ]);
+
+        $scheduled = $this->publisher->schedule(
+            $request->user(),
+            $post,
+            \Carbon\Carbon::parse($data['publish_at']),
+        );
+
+        return ApiResponse::success(FamilyManagerPostPresenter::present($scheduled));
+    }
+
     public function archive(Request $request, FamilyPost $post): JsonResponse
     {
         $post->update([

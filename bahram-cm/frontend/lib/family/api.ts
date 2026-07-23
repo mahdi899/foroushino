@@ -64,6 +64,13 @@ export async function getStories(): Promise<{ data: FamilyStory[] }> {
   return run(() => familyFetch<{ data: FamilyStory[] }>(`/stories`), 'دریافت استوری‌ها ناموفق بود.');
 }
 
+export async function recordStoryView(storyId: number): Promise<{ data: { recorded: boolean } }> {
+  return run(
+    () => familyFetch<{ data: { recorded: boolean } }>(`/stories/${storyId}/view`, { method: 'POST' }),
+    'ثبت بازدید استوری ناموفق بود.',
+  );
+}
+
 export async function getPinnedPosts(): Promise<{ data: FamilyPost[] }> {
   return run(() => familyFetch<{ data: FamilyPost[] }>(`/pinned`), 'دریافت پیام سنجاق‌شده ناموفق بود.');
 }

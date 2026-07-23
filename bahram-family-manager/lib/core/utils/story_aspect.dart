@@ -2,8 +2,8 @@
 const double kStoryAspectRatio = 9 / 16;
 const double kStoryHeightToWidth = 16 / 9;
 
-/// Accepts ~±12% deviation from exact 9:16.
-bool isStoryAspectRatio(int? width, int? height, {double tolerance = 0.12}) {
+/// Accepts ~±15% deviation from exact 9:16.
+bool isStoryAspectRatio(int? width, int? height, {double tolerance = 0.15}) {
   if (width == null || height == null || width <= 0 || height <= 0) {
     return true;
   }

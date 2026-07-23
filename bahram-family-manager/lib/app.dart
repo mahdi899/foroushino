@@ -40,8 +40,8 @@ class FamilyManagerApp extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: isDark
-                        ? const [Color(0xFF0D1517), Color(0xFF111C1F), Color(0xFF0D1517)]
-                        : const [Color(0xFFF4F8F8), Color(0xFFEEF6F6), Color(0xFFF8FBFB)],
+                        ? const [Color(0xFF0E1621), Color(0xFF121C28), Color(0xFF0E1621)]
+                        : const [Color(0xFFF0F2F5), Color(0xFFE8EDF2), Color(0xFFF5F7FA)],
                   ),
                 ),
                 child: child ?? const SizedBox.shrink(),

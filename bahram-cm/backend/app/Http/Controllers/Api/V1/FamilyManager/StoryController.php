@@ -26,6 +26,7 @@ class StoryController extends Controller
     {
         $stories = FamilyStory::query()
             ->with(['media', 'publisher:id,name', 'targets.family:id,internal_name'])
+            ->withCount('views')
             ->orderByDesc('published_at')
             ->limit(50)
             ->get();
@@ -76,6 +77,13 @@ class StoryController extends Controller
         return ApiResponse::success(['deleted' => true]);
     }
 
+    public function viewers(Request $request, FamilyStory $story): JsonResponse
+    {
+        $viewers = $this->stories->viewers($story);
+
+        return ApiResponse::success($viewers->values()->all());
+    }
+
     private function assertStoryMediaAspect(FamilyMedia $media): void
     {
         $type = $media->type?->value ?? $media->type;
@@ -97,7 +105,7 @@ class StoryController extends Controller
 
         $ratio = $media->height / $media->width;
         $target = 16 / 9;
-        if (abs($ratio - $target) / $target > 0.12) {
+        if (abs($ratio - $target) / $target > 0.15) {
             throw ValidationException::withMessages([
                 'media_id' => ['نسبت تصویر استوری باید ۹:۱۶ باشد (مثلاً ۱۰۸۰×۱۹۲۰).'],
             ]);

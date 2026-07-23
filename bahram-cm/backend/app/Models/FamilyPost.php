@@ -23,6 +23,7 @@ class FamilyPost extends Model
         'reply_to_comment_id',
         'published_at',
         'archived_at',
+        'scheduled_publish_at',
     ];
 
     protected function casts(): array
@@ -37,6 +38,7 @@ class FamilyPost extends Model
             'published_at' => 'datetime',
             'pinned_at' => 'datetime',
             'archived_at' => 'datetime',
+            'scheduled_publish_at' => 'datetime',
         ];
     }
 

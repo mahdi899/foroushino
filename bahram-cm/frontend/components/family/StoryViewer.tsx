@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { fontClassName } from '@/lib/fonts';
-import { getStories } from '@/lib/family/api';
+import { getStories, recordStoryView } from '@/lib/family/api';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
 import {
   resolveFamilyMediaUrl,
@@ -15,8 +15,6 @@ import {
 import type { FamilyStory, FamilyStoryMedia } from '@/lib/family/types';
 
 const IMAGE_STORY_MS = 8000;
-const MIN_VIDEO_STORY_MS = 3000;
-const MAX_VIDEO_STORY_MS = 90_000;
 const VIDEO_LOAD_TIMEOUT_MS = 25_000;
 
 type VideoSlideState = 'loading' | 'playing' | 'error';
@@ -52,10 +50,15 @@ export function StoryViewer({
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const [videoSlideState, setVideoSlideState] = useState<VideoSlideState>('loading');
   const [videoSrcIndex, setVideoSrcIndex] = useState(0);
+  const [imageReady, setImageReady] = useState(false);
+  const [holding, setHolding] = useState(false);
+
   const advanceTimerRef = useRef<number | null>(null);
   const progressRafRef = useRef<number | null>(null);
   const loadTimeoutRef = useRef<number | null>(null);
   const playAttemptRef = useRef(0);
+  const imageTimerRef = useRef<{ startedAt: number; durationMs: number; pausedAt: number | null; accumulatedPauseMs: number } | null>(null);
+  const recordedViewsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     setMounted(true);
@@ -78,6 +81,8 @@ export function StoryViewer({
     setSlideProgress(0);
     setVideoSlideState('loading');
     setVideoSrcIndex(0);
+    setImageReady(false);
+    recordedViewsRef.current = new Set();
     getStories()
       .then((res) => setStories(res.data))
       .catch(() => setStories([]))
@@ -100,6 +105,7 @@ export function StoryViewer({
     setSlideProgress(0);
     setVideoSlideState('loading');
     setVideoSrcIndex(0);
+    setImageReady(false);
   }, [finish, index, stories.length]);
 
   const goPrev = useCallback(() => {
@@ -107,6 +113,7 @@ export function StoryViewer({
     setSlideProgress(0);
     setVideoSlideState('loading');
     setVideoSrcIndex(0);
+    setImageReady(false);
   }, []);
 
   const clearSlideTimers = useCallback(() => {
@@ -122,28 +129,80 @@ export function StoryViewer({
       window.clearTimeout(loadTimeoutRef.current);
       loadTimeoutRef.current = null;
     }
+    imageTimerRef.current = null;
   }, []);
 
   const scheduleImageSlide = useCallback(
     (durationMs: number) => {
       clearSlideTimers();
-      const started = performance.now();
+      const timer = {
+        startedAt: performance.now(),
+        durationMs,
+        pausedAt: null as number | null,
+        accumulatedPauseMs: 0,
+      };
+      imageTimerRef.current = timer;
 
       const tick = () => {
-        const elapsed = performance.now() - started;
-        setSlideProgress(Math.min(1, elapsed / durationMs));
-        if (elapsed < durationMs) {
+        const state = imageTimerRef.current;
+        if (!state) return;
+        if (state.pausedAt != null) {
+          progressRafRef.current = requestAnimationFrame(tick);
+          return;
+        }
+        const elapsed = performance.now() - state.startedAt - state.accumulatedPauseMs;
+        setSlideProgress(Math.min(1, elapsed / state.durationMs));
+        if (elapsed < state.durationMs) {
           progressRafRef.current = requestAnimationFrame(tick);
         }
       };
       progressRafRef.current = requestAnimationFrame(tick);
 
-      advanceTimerRef.current = window.setTimeout(() => {
-        goNext();
-      }, durationMs);
+      const scheduleAdvance = () => {
+        const state = imageTimerRef.current;
+        if (!state || state.pausedAt != null) return;
+        const elapsed = performance.now() - state.startedAt - state.accumulatedPauseMs;
+        const remaining = Math.max(0, state.durationMs - elapsed);
+        advanceTimerRef.current = window.setTimeout(() => {
+          if (imageTimerRef.current?.pausedAt == null) goNext();
+        }, remaining);
+      };
+      scheduleAdvance();
     },
     [clearSlideTimers, goNext],
   );
+
+  const pauseSlide = useCallback(() => {
+    setHolding(true);
+    const state = imageTimerRef.current;
+    if (state && state.pausedAt == null) {
+      state.pausedAt = performance.now();
+      if (advanceTimerRef.current != null) {
+        window.clearTimeout(advanceTimerRef.current);
+        advanceTimerRef.current = null;
+      }
+    }
+    if (videoEl && !videoEl.paused) {
+      videoEl.pause();
+    }
+  }, [videoEl]);
+
+  const resumeSlide = useCallback(() => {
+    setHolding(false);
+    const state = imageTimerRef.current;
+    if (state?.pausedAt != null) {
+      state.accumulatedPauseMs += performance.now() - state.pausedAt;
+      state.pausedAt = null;
+      const elapsed = performance.now() - state.startedAt - state.accumulatedPauseMs;
+      const remaining = Math.max(0, state.durationMs - elapsed);
+      advanceTimerRef.current = window.setTimeout(() => {
+        if (imageTimerRef.current?.pausedAt == null) goNext();
+      }, remaining);
+    }
+    if (videoEl && videoSlideState === 'playing') {
+      void videoEl.play().catch(() => {});
+    }
+  }, [goNext, videoEl, videoSlideState]);
 
   const current = stories[index];
   const currentMedia = current?.media ?? null;
@@ -153,24 +212,6 @@ export function StoryViewer({
     ? resolveFamilyMediaPlaybackCandidates(currentSrc, currentMedia?.id)
     : [];
   const activeVideoSrc = videoCandidates[videoSrcIndex] ?? currentSrc ?? '';
-
-  const scheduleVideoAdvance = useCallback(
-    (video: HTMLVideoElement) => {
-      if (!currentMedia) return;
-
-      const hintedSec =
-        currentMedia.duration && currentMedia.duration > 0 ? currentMedia.duration : video.duration;
-      const maxMs =
-        Number.isFinite(hintedSec) && hintedSec > 0
-          ? Math.min(MAX_VIDEO_STORY_MS, Math.max(MIN_VIDEO_STORY_MS, hintedSec * 1000))
-          : MAX_VIDEO_STORY_MS;
-
-      advanceTimerRef.current = window.setTimeout(() => {
-        if (!video.paused && !video.ended) goNext();
-      }, maxMs + 500);
-    },
-    [currentMedia, goNext],
-  );
 
   const tryNextVideoSource = useCallback(() => {
     if (videoCandidates.length > videoSrcIndex + 1) {
@@ -191,16 +232,20 @@ export function StoryViewer({
     }
   }, [videoEl]);
 
-  // Reset progress/timers when the active slide changes.
   useEffect(() => {
     if (!open || loading) return;
     clearSlideTimers();
     setSlideProgress(0);
   }, [clearSlideTimers, index, loading, open]);
 
-  // Image stories: fixed timer (media streams from CDN — no local prefetch).
   useEffect(() => {
-    if (!open || loading || !currentMedia || !currentSrc || currentIsVideo) return;
+    if (!open || loading || !current?.id || recordedViewsRef.current.has(current.id)) return;
+    recordedViewsRef.current.add(current.id);
+    void recordStoryView(current.id).catch(() => {});
+  }, [current?.id, loading, open]);
+
+  useEffect(() => {
+    if (!open || loading || !currentMedia || !currentSrc || currentIsVideo || !imageReady) return;
     scheduleImageSlide(IMAGE_STORY_MS);
     return clearSlideTimers;
   }, [
@@ -208,13 +253,13 @@ export function StoryViewer({
     currentIsVideo,
     currentMedia,
     currentSrc,
+    imageReady,
     index,
     loading,
     open,
     scheduleImageSlide,
   ]);
 
-  // Video stories: stream from CDN (with club proxy fallback) — never auto-skip on error.
   useEffect(() => {
     if (!open || loading || !currentIsVideo || !activeVideoSrc || !videoEl) return;
 
@@ -254,8 +299,6 @@ export function StoryViewer({
         .then(() => {
           if (cancelled || attempt !== playAttemptRef.current) return;
           setVideoSlideState('playing');
-          clearSlideTimers();
-          scheduleVideoAdvance(videoEl);
         })
         .catch(() => {
           startedRef.value = false;
@@ -302,9 +345,7 @@ export function StoryViewer({
     videoEl.addEventListener('error', onError);
     videoEl.addEventListener('ended', onEnded);
 
-    void videoEl.play().catch(() => {
-      // Autoplay may wait for loadeddata — handlers above will retry.
-    });
+    void videoEl.play().catch(() => {});
 
     return () => {
       cancelled = true;
@@ -322,11 +363,11 @@ export function StoryViewer({
     clearSlideTimers,
     currentIsVideo,
     currentMedia,
+    currentSrc,
     goNext,
     index,
     loading,
     open,
-    scheduleVideoAdvance,
     tryNextVideoSource,
     videoEl,
   ]);
@@ -378,13 +419,20 @@ export function StoryViewer({
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             className="relative h-[100dvh] w-full max-w-none lg:h-[min(calc(100dvh-3rem),52rem)] lg:w-[min(calc(100vw-3rem),calc((min(calc(100dvh-3rem),52rem))*9/16))] lg:max-w-full"
             onClick={(e) => e.stopPropagation()}
+            onPointerDown={pauseSlide}
+            onPointerUp={resumeSlide}
+            onPointerLeave={resumeSlide}
+            onPointerCancel={resumeSlide}
           >
             <div className="family-story-frame relative h-full w-full overflow-hidden bg-black lg:rounded-[1.35rem] lg:shadow-[0_24px_80px_rgba(0,0,0,0.55)] lg:ring-1 lg:ring-white/10">
               <div className="absolute inset-x-0 top-0 z-20 flex gap-1 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
                 {stories.map((story, i) => (
                   <div key={story.id} className="h-0.5 flex-1 overflow-hidden rounded-full bg-white/25">
                     <div
-                      className="h-full bg-gold transition-[width] duration-75 ease-linear"
+                      className={cn(
+                        'h-full bg-gold transition-[width] ease-linear',
+                        holding ? '' : 'duration-75',
+                      )}
                       style={{
                         width:
                           i < index ? '100%' : i === index ? `${Math.round(slideProgress * 100)}%` : '0%',
@@ -467,6 +515,7 @@ export function StoryViewer({
                         alt={current.caption ?? ''}
                         className="h-full w-full object-cover"
                         decoding="async"
+                        onLoad={() => setImageReady(true)}
                       />
                     )}
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/55" />

@@ -34,6 +34,8 @@ Schedule::job(new CalculateFamilyDnaSnapshotJob(), config('family.queues.analyti
     ->weeklyOn(1, '03:00')
     ->onOneServer();
 
+Schedule::command('family:publish-scheduled')->everyMinute()->onOneServer();
+
 Schedule::command('media:purge-local-copies --limit=300')
     ->dailyAt('04:30')
     ->onOneServer()

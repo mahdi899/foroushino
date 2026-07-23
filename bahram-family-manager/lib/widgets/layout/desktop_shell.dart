@@ -22,6 +22,7 @@ class DesktopShell extends StatelessWidget {
     required this.items,
     required this.body,
     this.onComposePost,
+    this.onComposeStory,
   });
 
   final int currentIndex;
@@ -29,6 +30,7 @@ class DesktopShell extends StatelessWidget {
   final List<AppBottomNavItem> items;
   final Widget body;
   final VoidCallback? onComposePost;
+  final VoidCallback? onComposeStory;
 
   @override
   Widget build(BuildContext context) {
@@ -41,12 +43,14 @@ class DesktopShell extends StatelessWidget {
         backgroundColor: Colors.transparent,
         extendBody: true,
         body: body,
-        floatingActionButton: onComposePost == null
+        floatingActionButton: (onComposePost == null && onComposeStory == null)
             ? null
             : Padding(
-                // Scaffold already lifts FAB above bottom nav; keep only a small gap.
                 padding: const EdgeInsets.only(bottom: 6),
-                child: _MobileComposeFab(onPressed: onComposePost!),
+                child: _MobileComposeFab(
+                  onComposePost: onComposePost,
+                  onComposeStory: onComposeStory,
+                ),
               ),
         // startFloat = visual right in RTL (endFloat lands on the left).
         floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
@@ -105,30 +109,143 @@ class DesktopShell extends StatelessWidget {
   }
 }
 
-class _MobileComposeFab extends StatelessWidget {
-  const _MobileComposeFab({required this.onPressed});
+class _MobileComposeFab extends StatefulWidget {
+  const _MobileComposeFab({
+    this.onComposePost,
+    this.onComposeStory,
+  });
 
-  final VoidCallback onPressed;
+  final VoidCallback? onComposePost;
+  final VoidCallback? onComposeStory;
+
+  @override
+  State<_MobileComposeFab> createState() => _MobileComposeFabState();
+}
+
+class _MobileComposeFabState extends State<_MobileComposeFab> with SingleTickerProviderStateMixin {
+  var _open = false;
+
+  void _toggle() => setState(() => _open = !_open);
+
+  void _pick(VoidCallback action) {
+    setState(() => _open = false);
+    action();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: AppGradients.primary,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: AppShadows.panelGlow,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(18),
-          child: const SizedBox(
-            width: 56,
-            height: 56,
-            child: Icon(Icons.edit_rounded, color: Colors.white, size: 26),
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        if (_open) ...[
+          if (widget.onComposeStory != null)
+            _FabOption(
+              label: 'قرار دادن استوری',
+              icon: Icons.auto_stories_rounded,
+              onTap: () => _pick(widget.onComposeStory!),
+            ),
+          if (widget.onComposePost != null)
+            _FabOption(
+              label: 'قرار دادن پست',
+              icon: Icons.campaign_rounded,
+              onTap: () => _pick(widget.onComposePost!),
+            ),
+          const SizedBox(height: AppSpacing.sm),
+        ],
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: AppGradients.primary,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: AppShadows.panelGlow,
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                if (!_open) {
+                  final hasPost = widget.onComposePost != null;
+                  final hasStory = widget.onComposeStory != null;
+                  if (hasPost && !hasStory) {
+                    widget.onComposePost!();
+                    return;
+                  }
+                  if (hasStory && !hasPost) {
+                    widget.onComposeStory!();
+                    return;
+                  }
+                }
+                _toggle();
+              },
+              borderRadius: BorderRadius.circular(18),
+              child: AnimatedRotation(
+                turns: _open ? 0.125 : 0,
+                duration: AppMotion.fast,
+                child: SizedBox(
+                  width: 56,
+                  height: 56,
+                  child: Icon(
+                    _open ? Icons.close_rounded : Icons.edit_rounded,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _FabOption extends StatelessWidget {
+  const _FabOption({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GlassPanel(
+            borderRadius: 12,
+            blur: AppGlass.sheetBlur,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: AppShadows.soft,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(14),
+                child: SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: Icon(icon, color: AppColors.primary),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

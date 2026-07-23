@@ -889,6 +889,7 @@ class FamilyStoryModel {
     this.audienceSummary,
     this.publishedAt,
     this.expiresAt,
+    this.viewsCount = 0,
     this.media,
     this.targetFamilyIds = const [],
   });
@@ -899,6 +900,7 @@ class FamilyStoryModel {
   final String? audienceSummary;
   final String? publishedAt;
   final String? expiresAt;
+  final int viewsCount;
   final FamilyMediaRef? media;
   final List<int> targetFamilyIds;
 
@@ -920,12 +922,34 @@ class FamilyStoryModel {
       audienceSummary: json['audience_summary']?.toString(),
       publishedAt: json['published_at']?.toString(),
       expiresAt: json['expires_at']?.toString(),
+      viewsCount: (json['views_count'] as num?)?.toInt() ?? 0,
       media: json['media'] is Map
           ? FamilyMediaRef.fromJson((json['media'] as Map).cast<String, dynamic>())
           : null,
       targetFamilyIds: targetIds,
     );
   }
+}
+
+class FamilyStoryViewerModel {
+  FamilyStoryViewerModel({
+    required this.id,
+    this.name,
+    this.mobile,
+    this.viewedAt,
+  });
+
+  final int id;
+  final String? name;
+  final String? mobile;
+  final String? viewedAt;
+
+  factory FamilyStoryViewerModel.fromJson(Map<String, dynamic> json) => FamilyStoryViewerModel(
+        id: (json['id'] as num).toInt(),
+        name: json['name']?.toString(),
+        mobile: json['mobile']?.toString(),
+        viewedAt: json['viewed_at']?.toString(),
+      );
 }
 
 class FamilyMemberModel {

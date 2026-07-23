@@ -5,35 +5,35 @@ import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 class AppColors {
   AppColors._();
 
-  static const primary = Color(0xFF008C96);
-  static const primaryDark = Color(0xFF003B40);
-  static const accent = Color(0xFF25A0A6);
-  static const gold = Color(0xFFC9930A);
-  static const goldSoft = Color(0x1AC9930A);
+  static const primary = Color(0xFF3390EC);
+  static const primaryDark = Color(0xFF1D3A52);
+  static const accent = Color(0xFF5EB3F6);
+  static const gold = Color(0xFFE8A317);
+  static const goldSoft = Color(0x1AE8A317);
 
-  static const background = Color(0xFFF4F8F8);
+  static const background = Color(0xFFF0F2F5);
   static const surface = Color(0xFFFFFFFF);
-  static const surfaceSoft = Color(0xFFEEF6F6);
-  static const text = Color(0xFF0D1517);
-  static const textMuted = Color(0xFF5F7F83);
-  static const textSubtle = Color(0xFF7A9699);
-  static const border = Color(0xFFD5E5E6);
+  static const surfaceSoft = Color(0xFFE8EDF2);
+  static const text = Color(0xFF0F1419);
+  static const textMuted = Color(0xFF5B6B7A);
+  static const textSubtle = Color(0xFF7A8B99);
+  static const border = Color(0xFFD8E1EA);
   static const scrim = Color(0x8C050A0B);
-  static const primarySoft = Color(0x14008C96);
-  static const accentSoft = Color(0x1A25A0A6);
+  static const primarySoft = Color(0x143390EC);
+  static const accentSoft = Color(0x1A5EB3F6);
 
   static const success = Color(0xFF16A34A);
   static const warning = Color(0xFFD97706);
   static const error = Color(0xFFDC2626);
   static const info = Color(0xFF2563EB);
 
-  static const backgroundDark = Color(0xFF0D1517);
-  static const surfaceDark = Color(0xFF152326);
-  static const surfaceSoftDark = Color(0xFF1A2C30);
-  static const textDark = Color(0xFFE8F0F1);
-  static const textMutedDark = Color(0xFF8FA8AB);
-  static const textSubtleDark = Color(0xFF6B8589);
-  static const borderDark = Color(0xFF2A4246);
+  static const backgroundDark = Color(0xFF0E1621);
+  static const surfaceDark = Color(0xFF17212B);
+  static const surfaceSoftDark = Color(0xFF232E3C);
+  static const textDark = Color(0xFFE8EDF2);
+  static const textMutedDark = Color(0xFF8B9BAA);
+  static const textSubtleDark = Color(0xFF6B7C8C);
+  static const borderDark = Color(0xFF2B3945);
 }
 
 class AppTheme {

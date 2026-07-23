@@ -26,4 +26,14 @@ class StoryController extends Controller
             FamilyStoryResource::collection($stories)->resolve(),
         );
     }
+
+    public function recordView(Request $request, FamilyStory $story): JsonResponse
+    {
+        $this->access->requireMembership($request->user());
+        abort_unless($story->expires_at && $story->expires_at->isFuture(), 404);
+
+        $this->stories->recordView($story, $request->user());
+
+        return ApiResponse::success(['recorded' => true]);
+    }
 }

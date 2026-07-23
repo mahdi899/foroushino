@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -6,7 +8,9 @@ import 'package:bahram_family_manager/core/labels.dart';
 import 'package:bahram_family_manager/core/theme/app_theme.dart';
 import 'package:bahram_family_manager/core/theme/app_tokens.dart';
 import 'package:bahram_family_manager/core/utils/formatters.dart';
+import 'package:bahram_family_manager/core/utils/local_media_url.dart';
 import 'package:bahram_family_manager/core/utils/story_aspect.dart';
+import 'package:bahram_family_manager/core/utils/story_media_dimensions.dart';
 import 'package:bahram_family_manager/features/posts/widgets/family_picker_sheet.dart';
 import 'package:bahram_family_manager/models/models.dart';
 import 'package:bahram_family_manager/state/app_state.dart';
@@ -33,6 +37,10 @@ class _StoriesScreenState extends State<StoriesScreen> {
   Future<List<FamilyStoryModel>>? _storiesFuture;
   final _captionCtrl = TextEditingController();
   FamilyMediaRef? _storyMedia;
+  Uint8List? _localPreviewBytes;
+  String? _localPreviewUrl;
+  int? _localWidth;
+  int? _localHeight;
   var _audienceMode = 'all';
   final Set<int> _selectedFamilyIds = {};
   bool _saving = false;
@@ -48,7 +56,16 @@ class _StoriesScreenState extends State<StoriesScreen> {
   @override
   void dispose() {
     _captionCtrl.dispose();
+    revokeLocalMediaUrl(_localPreviewUrl);
     super.dispose();
+  }
+
+  Future<void> _clearLocalPreview() async {
+    await revokeLocalMediaUrl(_localPreviewUrl);
+    _localPreviewUrl = null;
+    _localPreviewBytes = null;
+    _localWidth = null;
+    _localHeight = null;
   }
 
   void _load() {
@@ -83,30 +100,69 @@ class _StoriesScreenState extends State<StoriesScreen> {
     final picked = result?.files.singleOrNull;
     if (picked?.bytes == null) return;
 
+    final bytes = picked!.bytes!;
+    final isVideo = picked.extension?.toLowerCase() == 'mp4' ||
+        picked.extension?.toLowerCase() == 'mov' ||
+        picked.extension?.toLowerCase() == 'webm';
+
+    await _clearLocalPreview();
+    if (isVideo) {
+      final mime = guessMediaMimeType(picked.name, 'video');
+      _localPreviewUrl = await createLocalMediaUrl(bytes, mime, extension: picked.extension);
+    } else {
+      _localPreviewBytes = bytes;
+      final dims = await readImageDimensions(bytes);
+      if (dims != null) {
+        _localWidth = dims.$1;
+        _localHeight = dims.$2;
+      }
+    }
+
     setState(() {
       _uploading = true;
       _uploadProgress = 0;
+      _storyMedia = null;
     });
 
     try {
-      final isVideo = picked!.extension?.toLowerCase() == 'mp4' ||
-          picked.extension?.toLowerCase() == 'mov' ||
-          picked.extension?.toLowerCase() == 'webm';
       final media = await context.read<AppState>().manager.uploadMedia(
-            bytes: picked.bytes!,
+            bytes: bytes,
             filename: picked.name,
             type: isVideo ? 'video' : 'image',
+            optimizeImages: false,
             onProgress: (p) {
               if (mounted) setState(() => _uploadProgress = p);
             },
           );
-      if (mounted) setState(() => _storyMedia = media);
+      if (!mounted) return;
+
+      FamilyMediaRef ready = media;
+      if (!media.isReady) {
+        ready = await context.read<AppState>().manager.waitForMediaReady(
+              media.id,
+              onUpdate: (updated) {
+                if (mounted) setState(() => _storyMedia = updated);
+              },
+            );
+      }
+
+      if (mounted) {
+        setState(() {
+          _storyMedia = ready;
+          if (_localWidth == null && ready.width != null) _localWidth = ready.width;
+          if (_localHeight == null && ready.height != null) _localHeight = ready.height;
+        });
+      }
     } catch (e) {
+      await _clearLocalPreview();
       if (mounted) showAppSnackBar(context, messageOf(e));
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
   }
+
+  int? get _previewWidth => _localWidth ?? _storyMedia?.width;
+  int? get _previewHeight => _localHeight ?? _storyMedia?.height;
 
   Future<void> _publishStory() async {
     if (_storyMedia == null) {
@@ -119,8 +175,8 @@ class _StoriesScreenState extends State<StoriesScreen> {
       showAppSnackBar(context, 'برای استوری فقط تصویر یا ویدیو عمودی ۹:۱۶ مجاز است.');
       return;
     }
-    if (!isStoryAspectRatio(media.width, media.height)) {
-      showAppSnackBar(context, storyAspectHint(media.width, media.height));
+    if (!isStoryAspectRatio(_previewWidth, _previewHeight)) {
+      showAppSnackBar(context, storyAspectHint(_previewWidth, _previewHeight));
       return;
     }
     if (_audienceMode != 'all' && _selectedFamilyIds.isEmpty) {
@@ -144,6 +200,7 @@ class _StoriesScreenState extends State<StoriesScreen> {
           _audienceMode = 'all';
           _selectedFamilyIds.clear();
         });
+        await _clearLocalPreview();
         _load();
       }
     } catch (e) {
@@ -207,14 +264,24 @@ class _StoriesScreenState extends State<StoriesScreen> {
                         'استوری در موبایل تمام‌صفحه نمایش داده می‌شود. نسبت تصویر باید ۹:۱۶ (عمودی) باشد.',
                         style: TextStyle(color: muted, fontSize: 12),
                       ),
-                      if (_storyMedia != null) ...[
+                      if (_storyMedia != null || _localPreviewBytes != null || _localPreviewUrl != null) ...[
                         const SizedBox(height: AppSpacing.md),
-                        Center(child: StoryMediaPreview(media: _storyMedia!)),
+                        Center(
+                          child: StoryMediaPreview(
+                            media: _storyMedia ?? FamilyMediaRef(
+                              id: 0,
+                              type: _localPreviewUrl != null ? 'video' : 'image',
+                              status: 'ready',
+                            ),
+                            localBytes: _localPreviewBytes,
+                            localUrl: _localPreviewUrl,
+                          ),
+                        ),
                         const SizedBox(height: AppSpacing.sm),
                         Text(
-                          storyAspectHint(_storyMedia!.width, _storyMedia!.height),
+                          storyAspectHint(_previewWidth, _previewHeight),
                           style: TextStyle(
-                            color: isStoryAspectRatio(_storyMedia!.width, _storyMedia!.height)
+                            color: isStoryAspectRatio(_previewWidth, _previewHeight)
                                 ? AppColors.success
                                 : AppColors.error,
                             fontSize: 12,
@@ -274,46 +341,10 @@ class _StoriesScreenState extends State<StoriesScreen> {
                   ...stories.map(
                     (story) => Padding(
                       padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                      child: GlassPanel(
-                        borderRadius: 18,
-                        blur: 0,
-                        padding: const EdgeInsets.all(AppSpacing.md),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (story.media != null)
-                              SizedBox(
-                                width: 80,
-                                child: StoryMediaPreview(media: story.media!, maxWidth: 80, showBadge: false),
-                              ),
-                            if (story.media != null) const SizedBox(width: AppSpacing.md),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    story.caption?.isNotEmpty == true ? story.caption! : 'بدون کپشن',
-                                    style: const TextStyle(fontWeight: FontWeight.w700),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(formatDateTime(story.publishedAt), style: const TextStyle(fontSize: 12)),
-                                  if (story.audienceSummary != null) ...[
-                                    const SizedBox(height: 6),
-                                    StatusChip(
-                                      label: story.audienceSummary!,
-                                      color: AppColors.accent,
-                                      icon: Icons.groups_rounded,
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded),
-                              onPressed: _saving ? null : () => _deleteStory(story),
-                            ),
-                          ],
-                        ),
+                      child: _StoryListCard(
+                        story: story,
+                        saving: _saving,
+                        onDelete: () => _deleteStory(story),
                       ),
                     ),
                   ),
@@ -321,6 +352,154 @@ class _StoriesScreenState extends State<StoriesScreen> {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class _StoryListCard extends StatefulWidget {
+  const _StoryListCard({
+    required this.story,
+    required this.saving,
+    required this.onDelete,
+  });
+
+  final FamilyStoryModel story;
+  final bool saving;
+  final VoidCallback onDelete;
+
+  @override
+  State<_StoryListCard> createState() => _StoryListCardState();
+}
+
+class _StoryListCardState extends State<_StoryListCard> {
+  List<FamilyStoryViewerModel>? _viewers;
+  var _loadingViewers = false;
+  var _expanded = false;
+
+  Future<void> _loadViewers() async {
+    if (_viewers != null || _loadingViewers) return;
+    setState(() => _loadingViewers = true);
+    try {
+      final viewers = await context.read<AppState>().manager.listStoryViewers(widget.story.id);
+      if (mounted) setState(() => _viewers = viewers);
+    } catch (e) {
+      if (mounted) showAppSnackBar(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _loadingViewers = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final story = widget.story;
+    final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
+
+    return GlassPanel(
+      borderRadius: 18,
+      blur: AppGlass.panelBlur,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (story.media != null)
+                SizedBox(
+                  width: 80,
+                  child: StoryMediaPreview(media: story.media!, maxWidth: 80, showBadge: false),
+                ),
+              if (story.media != null) const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      story.caption?.isNotEmpty == true ? story.caption! : 'بدون کپشن',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(formatJalaliDateTime(story.publishedAt), style: const TextStyle(fontSize: 12)),
+                    const SizedBox(height: 6),
+                    StatusChip(
+                      label: '${toFaDigits(story.viewsCount.toString())} بازدید',
+                      color: AppColors.primary,
+                      icon: Icons.visibility_rounded,
+                    ),
+                    if (story.audienceSummary != null) ...[
+                      const SizedBox(height: 6),
+                      StatusChip(
+                        label: story.audienceSummary!,
+                        color: AppColors.accent,
+                        icon: Icons.groups_rounded,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.delete_outline_rounded),
+                onPressed: widget.saving ? null : widget.onDelete,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          InkWell(
+            onTap: () {
+              setState(() => _expanded = !_expanded);
+              if (_expanded) _loadViewers();
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+              child: Row(
+                children: [
+                  Icon(
+                    _expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                    size: 20,
+                    color: muted,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'بازدیدکنندگان',
+                    style: TextStyle(fontWeight: FontWeight.w600, color: muted, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_expanded) ...[
+            if (_loadingViewers)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.md),
+                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              )
+            else if (_viewers == null || _viewers!.isEmpty)
+              Text('هنوز بازدیدی ثبت نشده.', style: TextStyle(color: muted, fontSize: 12))
+            else
+              ..._viewers!.map(
+                (viewer) => Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          viewer.name?.isNotEmpty == true ? viewer.name! : 'کاربر',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      Text(
+                        viewer.mobile?.isNotEmpty == true ? toFaDigits(viewer.mobile!) : '—',
+                        style: TextStyle(fontSize: 12, color: muted),
+                        textDirection: TextDirection.ltr,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ],
       ),
     );
   }

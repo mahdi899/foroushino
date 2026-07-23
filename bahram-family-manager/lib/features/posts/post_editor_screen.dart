@@ -443,7 +443,6 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
     }
   }
 
-  /// Save (create/update) then publish immediately — used from the «more» sheet.
   Future<void> _publishNow() async {
     if (_type == 'text' && _textCtrl.text.trim().isEmpty) {
       showAppSnackBar(context, 'متن پست را وارد کنید.');
@@ -469,6 +468,60 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
       }
       if (!mounted) return;
       showAppSnackBar(context, 'پست منتشر شد.');
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) showAppSnackBar(context, messageOf(e));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _schedulePublish() async {
+    if (_type == 'text' && _textCtrl.text.trim().isEmpty) {
+      showAppSnackBar(context, 'متن پست را وارد کنید.');
+      return;
+    }
+    if (_type != 'text' && _mediaRef == null) {
+      showAppSnackBar(context, 'ابتدا رسانه را آپلود کنید.');
+      return;
+    }
+
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: now.add(const Duration(hours: 1)),
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+      helpText: 'تاریخ انتشار',
+    );
+    if (date == null || !mounted) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(now.add(const Duration(hours: 1))),
+      helpText: 'ساعت انتشار',
+    );
+    if (time == null || !mounted) return;
+
+    final scheduled = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    if (scheduled.isBefore(now.add(const Duration(minutes: 1)))) {
+      showAppSnackBar(context, 'زمان انتشار باید در آینده باشد.');
+      return;
+    }
+
+    setState(() => _saving = true);
+    try {
+      if (_type != 'text') {
+        await _ensureMediaReady();
+      }
+      final manager = context.read<AppState>().manager;
+      final payload = _buildPayload();
+      final saved = _post == null ? await manager.createPost(payload) : await manager.updatePost(_post!.id, payload);
+      if (!mounted) return;
+      setState(() => _post = saved);
+      await manager.schedulePost(saved.id, scheduled);
+      if (!mounted) return;
+      showAppSnackBar(context, 'پست برای ${formatJalaliDateTime(scheduled.toUtc().toIso8601String())} زمان‌بندی شد.');
       Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) showAppSnackBar(context, messageOf(e));
@@ -631,6 +684,7 @@ class _PostEditorScreenState extends State<PostEditorScreen> {
         saving: _saving,
         onSave: _save,
         onPublish: (_post == null || _post!.isDraft) ? _publishNow : null,
+        onSchedule: (_post == null || _post!.isDraft) ? _schedulePublish : null,
         onRepublish: _post != null && (_post!.isPublished || _isArchived) ? _republish : null,
         onDelete: _post != null ? _delete : null,
         onArchive: _post != null && _post!.isPublished ? _archive : null,

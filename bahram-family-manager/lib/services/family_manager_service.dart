@@ -178,6 +178,19 @@ class FamilyManagerService {
 
   Future<void> deleteStory(int id) => api.delete('$_base/stories/$id');
 
+  Future<List<FamilyStoryViewerModel>> listStoryViewers(int storyId) async {
+    final res = await api.get('$_base/stories/$storyId/viewers');
+    final data = res['data'] as List? ?? [];
+    return data.map((e) => FamilyStoryViewerModel.fromJson((e as Map).cast<String, dynamic>())).toList();
+  }
+
+  Future<FamilyPostModel> schedulePost(int id, DateTime publishAt) async {
+    final res = await api.post('$_base/posts/$id/schedule', data: {
+      'publish_at': publishAt.toUtc().toIso8601String(),
+    });
+    return FamilyPostModel.fromJson((res['data'] as Map).cast<String, dynamic>());
+  }
+
   Future<FamilyPostModel> replyToComment({
     required int commentId,
     required String type,

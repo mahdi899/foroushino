@@ -42,6 +42,11 @@ class FamilyStory extends Model
         return $this->hasMany(FamilyStoryTarget::class, 'story_id');
     }
 
+    public function views(): HasMany
+    {
+        return $this->hasMany(FamilyStoryView::class, 'story_id');
+    }
+
     public function scopeActive($query)
     {
         return $query->where('expires_at', '>', now());

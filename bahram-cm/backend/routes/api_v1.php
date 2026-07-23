@@ -550,6 +550,7 @@ Route::prefix('family')->group(function () {
         Route::get('posts/{post}/jump', [FamilyFeedController::class, 'jump'])
             ->whereNumber('post')->middleware('throttle:120,1');
         Route::get('stories', [FamilyStoryController::class, 'index'])->middleware('throttle:120,1');
+        Route::post('stories/{story}/view', [FamilyStoryController::class, 'recordView'])->whereNumber('story')->middleware('throttle:120,1');
         Route::post('join', [FamilyFeedController::class, 'join'])->middleware('throttle:20,1');
         Route::post('onboarding/complete', [FamilyFeedController::class, 'completeOnboarding']);
 
@@ -598,6 +599,7 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
     Route::post('posts/ai-draft', [FamilyManagerPostController::class, 'aiDraft'])->middleware('family.manage:family.posts.create');
     Route::patch('posts/{post}', [FamilyManagerPostController::class, 'update'])->whereNumber('post')->middleware('family.manage:family.posts.create');
     Route::post('posts/{post}/publish', [FamilyManagerPostController::class, 'publish'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
+    Route::post('posts/{post}/schedule', [FamilyManagerPostController::class, 'schedule'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::post('posts/{post}/archive', [FamilyManagerPostController::class, 'archive'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::post('posts/{post}/recover', [FamilyManagerPostController::class, 'recover'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
     Route::post('posts/{post}/pin', [FamilyManagerPostController::class, 'pin'])->whereNumber('post')->middleware('family.manage:family.posts.publish');
@@ -652,6 +654,7 @@ Route::prefix('family-manager')->middleware(['auth:sanctum', 'admin'])->group(fu
 
     Route::get('stories', [FamilyManagerStoryController::class, 'index'])->middleware('family.manage:family.stories.manage');
     Route::post('stories', [FamilyManagerStoryController::class, 'store'])->middleware('family.manage:family.stories.manage');
+    Route::get('stories/{story}/viewers', [FamilyManagerStoryController::class, 'viewers'])->whereNumber('story')->middleware('family.manage:family.stories.manage');
     Route::delete('stories/{story}', [FamilyManagerStoryController::class, 'destroy'])->whereNumber('story')->middleware('family.manage:family.stories.manage');
 
     Route::post('media', [FamilyManagerMediaController::class, 'store'])->middleware(['family.manage:family.media.upload', 'throttle:family-upload']);

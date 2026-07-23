@@ -6,6 +6,7 @@ use App\Enums\Family\FamilyMediaType;
 use App\Models\FamilyMedia;
 use App\Services\ImageOptimizerService;
 use Illuminate\Support\Facades\Storage;
+use App\Support\FamilyImageDimensions;
 use Illuminate\Support\Str;
 
 /** Prepares family image uploads (optimize → webp when enabled). */
@@ -66,15 +67,15 @@ class FamilyImageProcessor
     /** @return array{absolute_path: string, extension: string, mime_type: string, size: int, width: ?int, height: ?int, optimized: bool} */
     private function metaFromFile(string $path, string $extension, string $mime, bool $optimized): array
     {
-        $dims = @getimagesize($path);
+        $dims = FamilyImageDimensions::fromPath($path);
 
         return [
             'absolute_path' => $path,
             'extension' => $extension !== '' ? $extension : 'jpg',
             'mime_type' => $mime,
             'size' => (int) (filesize($path) ?: 0),
-            'width' => is_array($dims) ? (int) $dims[0] : null,
-            'height' => is_array($dims) ? (int) $dims[1] : null,
+            'width' => $dims['width'],
+            'height' => $dims['height'],
             'optimized' => $optimized,
         ];
     }

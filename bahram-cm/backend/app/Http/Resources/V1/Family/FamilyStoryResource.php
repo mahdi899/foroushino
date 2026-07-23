@@ -23,6 +23,7 @@ class FamilyStoryResource extends JsonResource
             'audience_mode' => $modeValue,
             'published_at' => FamilyDateTime::toApi($this->published_at),
             'expires_at' => FamilyDateTime::toApi($this->expires_at),
+            'views_count' => (int) ($this->views_count ?? $this->views()->count()),
             'media' => $media ? [
                 'id' => $media->id,
                 'type' => $media->type?->value ?? $media->type,

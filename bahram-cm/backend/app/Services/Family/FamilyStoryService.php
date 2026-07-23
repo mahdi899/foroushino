@@ -120,6 +120,46 @@ final class FamilyStoryService
         app(FamilyMetaCacheService::class)->forgetAllMeta();
     }
 
+    public function recordView(FamilyStory $story, User $user): void
+    {
+        DB::table('family_story_views')->upsert(
+            [
+                'story_id' => $story->id,
+                'user_id' => $user->id,
+                'viewed_at' => now(),
+            ],
+            ['story_id', 'user_id'],
+            ['viewed_at'],
+        );
+    }
+
+    /** @return Collection<int, array{id: int, name: ?string, mobile: ?string, viewed_at: string}> */
+    public function viewers(FamilyStory $story, int $limit = 100): Collection
+    {
+        return DB::table('family_story_views')
+            ->join('users', 'users.id', '=', 'family_story_views.user_id')
+            ->where('family_story_views.story_id', $story->id)
+            ->orderByDesc('family_story_views.viewed_at')
+            ->limit($limit)
+            ->get([
+                'users.id',
+                'users.name',
+                'users.mobile',
+                'family_story_views.viewed_at',
+            ])
+            ->map(fn ($row) => [
+                'id' => (int) $row->id,
+                'name' => $row->name,
+                'mobile' => $row->mobile,
+                'viewed_at' => $row->viewed_at,
+            ]);
+    }
+
+    public function viewsCount(FamilyStory $story): int
+    {
+        return (int) DB::table('family_story_views')->where('story_id', $story->id)->count();
+    }
+
     /** @param  list<int>  $familyIds */
     private function syncTargets(FamilyStory $story, array $familyIds): void
     {

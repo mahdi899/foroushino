@@ -119,7 +119,9 @@ class _RootShellState extends State<RootShell> {
 
     final primaryVisible = _primaryTabs.where((t) => _canSee(t, state)).toList();
     final moreVisible = _moreTabs.where((t) => _canSee(t, state)).toList();
-    final shellTabs = isDesktop ? [...primaryVisible, ...moreVisible] : primaryVisible;
+    final shellTabs = isDesktop
+        ? [...primaryVisible, ...moreVisible]
+        : primaryVisible.where((t) => t.label != 'استوری').toList();
 
     if (shellTabs.isEmpty) {
       return Scaffold(
@@ -135,6 +137,7 @@ class _RootShellState extends State<RootShell> {
 
     final index = _index.clamp(0, shellTabs.length - 1);
     final canCompose = state.user?.can('family.posts.create') ?? false;
+    final canComposeStory = state.user?.can('family.stories.manage') ?? false;
 
     Future<void> openCompose() async {
       await Navigator.of(context).push<bool>(
@@ -142,14 +145,22 @@ class _RootShellState extends State<RootShell> {
       );
     }
 
+    Future<void> openStoryCompose() async {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(builder: (_) => const StoriesScreen()),
+      );
+    }
+
     return ShellScope(
       goToTab: (i) => setState(() => _index = i),
       onComposePost: canCompose ? openCompose : null,
+      onComposeStory: canComposeStory ? openStoryCompose : null,
       tabLabels: shellTabs.map((t) => t.label).toList(),
       child: DesktopShell(
         currentIndex: index,
         onIndexChanged: (i) => setState(() => _index = i),
         onComposePost: canCompose ? openCompose : null,
+        onComposeStory: canComposeStory ? openStoryCompose : null,
         items: shellTabs
             .map((t) => AppBottomNavItem(label: t.label, icon: t.icon))
             .toList(),
