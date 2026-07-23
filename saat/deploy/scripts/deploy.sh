@@ -87,6 +87,8 @@ deploy_backend() {
 
   COMPOSER_ALLOW_SUPERUSER=1 composer install --optimize-autoloader --no-dev --no-interaction
 
+  # Production safety: incremental migrations only — never fresh/seed/wipe (data is preserved).
+  print_status "Running pending migrations (data preserved)..."
   php artisan migrate --force
   php artisan storage:link 2>/dev/null || true
 

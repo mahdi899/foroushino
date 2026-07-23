@@ -8,8 +8,10 @@ import {
   formatBackupSize,
   importDatabaseBackup,
   runBackupNow,
+  runWeeklyBackupNow,
   uploadDownloadHostBackup,
   updateBackupSettings,
+  weekdayLabel,
   type BackupForm,
   type BackupView,
 } from '@/lib/backup'
@@ -26,6 +28,7 @@ export function BackupSettingsSection() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [running, setRunning] = useState(false)
+  const [runningWeekly, setRunningWeekly] = useState(false)
   const [exportingDb, setExportingDb] = useState(false)
   const [exportingStorage, setExportingStorage] = useState(false)
   const [uploadingOffsite, setUploadingOffsite] = useState(false)
@@ -75,7 +78,9 @@ export function BackupSettingsSection() {
     try {
       const updated = await updateBackupSettings({
         is_auto_enabled: form.isAutoEnabled,
+        is_weekly_auto_enabled: form.isWeeklyAutoEnabled,
         schedule_time: form.scheduleTime,
+        weekly_schedule_weekday: form.weeklyScheduleWeekday,
         retention_count: form.retentionCount,
       })
       setView(updated)
@@ -95,7 +100,9 @@ export function BackupSettingsSection() {
     try {
       await updateBackupSettings({
         is_auto_enabled: form.isAutoEnabled,
+        is_weekly_auto_enabled: form.isWeeklyAutoEnabled,
         schedule_time: form.scheduleTime,
+        weekly_schedule_weekday: form.weeklyScheduleWeekday,
         retention_count: form.retentionCount,
       })
       const result = await runBackupNow()
@@ -174,6 +181,22 @@ export function BackupSettingsSection() {
     }
   }
 
+  const onRunWeekly = async () => {
+    setRunningWeekly(true)
+    setStatus('')
+    try {
+      const result = await runWeeklyBackupNow()
+      const refreshed = await fetchBackupSettings()
+      setView(refreshed)
+      setForm(backupViewToForm(refreshed))
+      setStatus(result.message)
+    } catch {
+      setStatus('بکاپ کامل هفتگی ناموفق بود.')
+    } finally {
+      setRunningWeekly(false)
+    }
+  }
+
   if (loading) {
     return (
       <section className="space-y-3">
@@ -190,6 +213,10 @@ export function BackupSettingsSection() {
 
   const lastAt = view.last_backup_at ? new Date(view.last_backup_at).toLocaleString('fa-IR') : '—'
 
+  const lastWeeklyAt = view.last_weekly_backup_at
+    ? new Date(view.last_weekly_backup_at).toLocaleString('fa-IR')
+    : '—'
+
   return (
     <section className="space-y-3">
       <h2 className="flex items-center gap-1.5 px-1 text-[12px] font-bold text-text-soft">
@@ -197,10 +224,25 @@ export function BackupSettingsSection() {
         بکاپ و بازیابی
       </h2>
       <p className="px-1 text-[11px] font-semibold leading-5 text-text-muted">
-        دانلود dump دیتابیس و فایل‌های storage/app. بکاپ خودکار روزانه از Laravel Scheduler (نیاز به cron
-        <span dir="ltr"> schedule:run</span>) و اسکریپت سرور{' '}
-        <span dir="ltr">deploy/scripts/backup.sh</span>.
+        سیاست پیش‌فرض: بکاپ روزانه دیتابیس ({view.daily_retention_days ?? 30} روز) + بکاپ کامل هفتگی
+        (دیتابیس + فایل‌ها، {view.weekly_retention_days ?? 90} روز). بیلد و دیپلوی دیتابیس را پاک
+        نمی‌کند — فقط migrationهای جدید اجرا می‌شوند.
       </p>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="rounded-[16px] border border-emerald-500/25 bg-emerald-500/5 p-3">
+          <p className="text-[13px] font-bold text-text">روزانه — دیتابیس</p>
+          <p className="mt-1 text-[11px] font-semibold text-text-muted">
+            نگهداری {view.daily_retention_days ?? 30} روز · آخرین: {lastAt}
+          </p>
+        </div>
+        <div className="rounded-[16px] border border-[#3390EC]/25 bg-[#3390EC]/5 p-3">
+          <p className="text-[13px] font-bold text-text">هفتگی — فول بکاپ</p>
+          <p className="mt-1 text-[11px] font-semibold text-text-muted">
+            نگهداری {view.weekly_retention_days ?? 90} روز · آخرین: {lastWeeklyAt}
+          </p>
+        </div>
+      </div>
 
       <div className="glass-card space-y-3 rounded-[20px] border border-white/55 p-4 dark:border-white/10">
         <div className="flex flex-wrap gap-2">
@@ -220,7 +262,7 @@ export function BackupSettingsSection() {
         </div>
 
         <label className="flex items-center justify-between rounded-[14px] border border-white/40 bg-white/25 p-3 dark:border-white/10 dark:bg-white/5">
-          <span className="text-[14px] font-bold text-text">بکاپ خودکار روزانه</span>
+          <span className="text-[14px] font-bold text-text">بکاپ خودکار روزانه (DB)</span>
           <input
             type="checkbox"
             checked={form.isAutoEnabled}
@@ -229,9 +271,19 @@ export function BackupSettingsSection() {
           />
         </label>
 
+        <label className="flex items-center justify-between rounded-[14px] border border-white/40 bg-white/25 p-3 dark:border-white/10 dark:bg-white/5">
+          <span className="text-[14px] font-bold text-text">بکاپ کامل خودکار هفتگی</span>
+          <input
+            type="checkbox"
+            checked={form.isWeeklyAutoEnabled}
+            onChange={(e) => patch({ isWeeklyAutoEnabled: e.target.checked })}
+            className="h-5 w-5 accent-primary-600"
+          />
+        </label>
+
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className="mb-1 block text-[12px] font-bold text-text-soft">ساعت اجرا</span>
+            <span className="mb-1 block text-[12px] font-bold text-text-soft">ساعت بکاپ روزانه</span>
             <input
               type="time"
               dir="ltr"
@@ -241,16 +293,18 @@ export function BackupSettingsSection() {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[12px] font-bold text-text-soft">نگهداری محلی (فایل DB)</span>
-            <input
-              type="number"
-              min={1}
-              max={30}
-              dir="ltr"
-              value={form.retentionCount}
-              onChange={(e) => patch({ retentionCount: Number(e.target.value) || 30 })}
+            <span className="mb-1 block text-[12px] font-bold text-text-soft">روز بکاپ هفتگی</span>
+            <select
+              value={form.weeklyScheduleWeekday}
+              onChange={(e) => patch({ weeklyScheduleWeekday: Number(e.target.value) })}
               className={fieldClass}
-            />
+            >
+              {[0, 1, 2, 3, 4, 5, 6].map((d) => (
+                <option key={d} value={d}>
+                  {weekdayLabel(d)}
+                </option>
+              ))}
+            </select>
           </label>
         </div>
 
@@ -292,6 +346,15 @@ export function BackupSettingsSection() {
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
             ذخیره
+          </button>
+          <button
+            type="button"
+            disabled={runningWeekly}
+            onClick={() => void onRunWeekly()}
+            className="inline-flex items-center gap-1.5 rounded-[14px] bg-[#3390EC] px-3 py-2 text-[13px] font-bold text-white"
+          >
+            {runningWeekly ? <Loader2 size={14} className="animate-spin" /> : <HardDrive size={14} />}
+            فول بکاپ الان
           </button>
           <button
             type="button"

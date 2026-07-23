@@ -28,6 +28,7 @@ Route::prefix('admin')->middleware('throttle:writes')->group(function (): void {
     Route::get('/backup', [BackupController::class, 'show'])->withoutMiddleware('throttle:writes');
     Route::patch('/backup', [BackupController::class, 'update']);
     Route::post('/backup/run', [BackupController::class, 'run']);
+    Route::post('/backup/run-weekly', [BackupController::class, 'runWeekly']);
     Route::get('/backup/export/database', [BackupController::class, 'exportDatabase'])->withoutMiddleware('throttle:writes');
     Route::get('/backup/export/storage', [BackupController::class, 'exportStorage'])->withoutMiddleware('throttle:writes');
     Route::post('/backup/import/database', [BackupController::class, 'importDatabase']);
