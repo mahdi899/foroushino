@@ -135,6 +135,7 @@ export function mergeTeamLiveIntoAgents(agents: Agent[], live: TeamLiveData): Ag
       callsToday: liveMember.callsToday,
       successfulToday: liveMember.successfulToday,
       conversionRate: conversionRateFromStats(liveMember.callsToday, liveMember.successfulToday),
+      ...(liveMember.avatar != null ? { avatar: liveMember.avatar } : {}),
     }
   })
 }

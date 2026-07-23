@@ -12,6 +12,11 @@ return [
         explode(',', (string) env('SAAT_PASSWORD_LOGIN_PHONES', '09367018089')),
     ))),
 
+    'cloudflare' => [
+        'zone_id' => env('CLOUDFLARE_ZONE_ID', ''),
+        'api_token' => env('CLOUDFLARE_API_TOKEN', ''),
+    ],
+
     'backup' => [
         'mysqldump_path' => env('MYSQLDUMP_PATH'),
         'mysql_path' => env('MYSQL_PATH'),

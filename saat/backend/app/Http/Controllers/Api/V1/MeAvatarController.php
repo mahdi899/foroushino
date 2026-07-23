@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Me\UploadAvatarRequest;
 use App\Http\Resources\V1\UserResource;
 use App\Models\User;
+use App\Services\Admin\AdminDirectoryCache;
+use App\Services\Cloudflare\CloudflareCacheService;
 use App\Support\ApiResponse;
 use App\Support\PublicMediaUrl;
 use Illuminate\Http\JsonResponse;
@@ -14,6 +16,10 @@ use Illuminate\Support\Facades\Storage;
 
 class MeAvatarController extends Controller
 {
+    public function __construct(
+        private readonly CloudflareCacheService $cloudflare,
+    ) {}
+
     public function store(UploadAvatarRequest $request): JsonResponse
     {
         /** @var User $user */
@@ -29,15 +35,16 @@ class MeAvatarController extends Controller
 
         $this->deleteStoredAvatar($user->avatar);
 
-        $path = $file->storeAs(
-            'avatars/users',
-            $user->id.'.'.$extension,
-            'public',
-        );
+        // Versioned filename — URL changes on every upload (bypasses stale CDN/browser cache).
+        $filename = $user->id.'-'.time().'.'.$extension;
+        $path = $file->storeAs('avatars/users', $filename, 'public');
 
         $user->update([
             'avatar' => PublicMediaUrl::forPublicDiskPath($path),
         ]);
+
+        AdminDirectoryCache::bump();
+        $this->cloudflare->purgeAvatars();
 
         return ApiResponse::success(
             data: new UserResource($user->fresh()->load('team')),
@@ -52,6 +59,9 @@ class MeAvatarController extends Controller
 
         $this->deleteStoredAvatar($user->avatar);
         $user->update(['avatar' => null]);
+
+        AdminDirectoryCache::bump();
+        $this->cloudflare->purgeAvatars();
 
         return ApiResponse::success(
             data: new UserResource($user->fresh()->load('team')),

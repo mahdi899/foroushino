@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [
             ForceJsonResponse::class,
             \App\Http\Middleware\CorrelationId::class,
+            \App\Http\Middleware\PreventApiCaching::class,
         ]);
 
         $middleware->alias([

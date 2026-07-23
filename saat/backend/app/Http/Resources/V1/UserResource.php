@@ -22,7 +22,7 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'phone' => $this->phone,
             'email' => $this->email,
-            'avatar' => PublicMediaUrl::normalize($this->avatar),
+            'avatar' => PublicMediaUrl::withVersion($this->avatar, $this->updated_at),
             'team_id' => $this->team_id,
             'team_name' => $this->whenLoaded('team', fn () => $this->team?->name),
             'level' => $this->level,

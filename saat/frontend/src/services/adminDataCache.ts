@@ -1,7 +1,7 @@
 import type { Agent, Team } from '@/types'
 
-const USERS_TTL_MS = 30_000
-const TEAMS_TTL_MS = 60_000
+const USERS_TTL_MS = 10_000
+const TEAMS_TTL_MS = 15_000
 
 type CacheEntry<T> = {
   at: number

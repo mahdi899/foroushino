@@ -10,9 +10,9 @@ final class AdminDirectoryCache
 {
     private const VERSION_KEY = 'admin:directory:version';
 
-    private const USERS_TTL_SECONDS = 30;
+    private const USERS_TTL_SECONDS = 10;
 
-    private const TEAMS_TTL_SECONDS = 60;
+    private const TEAMS_TTL_SECONDS = 15;
 
     private const LIVE_TTL_SECONDS = 10;
 

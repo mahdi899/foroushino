@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { MessageSquare, Radio, Server, ShieldCheck } from 'lucide-react'
 import { CatalogSettingsSection } from '@/features/admin/CatalogSettingsSection'
 import { BackupSettingsSection } from '@/features/admin/BackupSettingsSection'
+import { CloudflareSettingsSection } from '@/features/admin/CloudflareSettingsSection'
 import { BahramBridgeSettingsSection } from '@/features/admin/BahramBridgeSettingsSection'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
@@ -254,6 +255,8 @@ export function AdminSettingsScreen() {
               <BahramBridgeSettingsSection settings={settings} setSettings={setSettings} />
 
               <BackupSettingsSection />
+
+              <CloudflareSettingsSection />
 
               <section className="space-y-3">
                 <h2 className="flex items-center gap-1.5 px-1 text-[12px] font-bold text-text-soft">

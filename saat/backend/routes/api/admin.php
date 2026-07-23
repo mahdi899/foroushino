@@ -18,6 +18,13 @@ Route::prefix('admin')->middleware('throttle:writes')->group(function (): void {
     Route::patch('/settings', [SettingsController::class, 'update']);
     Route::post('/settings/test-melipayamak', [SettingsController::class, 'testMelipayamak']);
 
+    Route::get('/cloudflare', [\App\Http\Controllers\Api\V1\Admin\CloudflareController::class, 'show'])->withoutMiddleware('throttle:writes');
+    Route::patch('/cloudflare', [\App\Http\Controllers\Api\V1\Admin\CloudflareController::class, 'update']);
+    Route::post('/cloudflare/test', [\App\Http\Controllers\Api\V1\Admin\CloudflareController::class, 'test']);
+    Route::post('/cloudflare/purge', [\App\Http\Controllers\Api\V1\Admin\CloudflareController::class, 'purge']);
+    Route::post('/cloudflare/apply-edge', [\App\Http\Controllers\Api\V1\Admin\CloudflareController::class, 'applyEdge']);
+    Route::post('/cloudflare/development-mode', [\App\Http\Controllers\Api\V1\Admin\CloudflareController::class, 'developmentMode']);
+
     Route::get('/backup', [BackupController::class, 'show'])->withoutMiddleware('throttle:writes');
     Route::patch('/backup', [BackupController::class, 'update']);
     Route::post('/backup/run', [BackupController::class, 'run']);

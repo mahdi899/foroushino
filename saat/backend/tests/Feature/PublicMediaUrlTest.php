@@ -17,3 +17,9 @@ it('builds public disk paths', function () {
     expect(PublicMediaUrl::forPublicDiskPath('avatars/users/3.webp'))
         ->toBe('/storage/avatars/users/3.webp');
 });
+
+it('appends version query for cache busting', function () {
+    $at = new DateTimeImmutable('2026-07-23 12:00:00');
+    expect(PublicMediaUrl::withVersion('/storage/avatars/users/1.webp', $at))
+        ->toBe('/storage/avatars/users/1.webp?v='.$at->getTimestamp());
+});
