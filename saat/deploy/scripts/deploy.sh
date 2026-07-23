@@ -117,8 +117,9 @@ deploy_frontend() {
     print_status "Created .env.production from example"
   fi
 
-  if ! npm ci; then
-    npm install --no-audit --no-fund
+  # NODE_ENV=production on the server skips devDependencies; tsc/vite need them for build.
+  if ! npm ci --include=dev; then
+    npm install --include=dev --no-audit --no-fund
   fi
 
   # Professional update pipeline: fresh buildHash in version.json
