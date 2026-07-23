@@ -40,10 +40,18 @@ export function LiveOpsScreen() {
   const activeCalls = (data?.active_calls ?? []) as ActiveCall[]
 
   return (
-    <Page>
-      <ScreenHeader sticky title="عملیات زنده" subtitle="مرکز فرمان مدیریتی" icon={Activity} iconTone="primary" />
+    <Page withNav={false}>
+      <ScreenHeader
+        sticky
+        showBack
+        backFallback="/home"
+        title="عملیات زنده"
+        subtitle="مرکز فرمان مدیریتی"
+        icon={Activity}
+        iconTone="primary"
+      />
       <DataGate mode="placeholder">
-        <div className="space-y-3 px-4 pb-24 pt-2">
+        <div className="space-y-3 px-4 pb-[calc(24px+var(--safe-bottom))] pt-2">
           <div className="grid grid-cols-2 gap-2">
             <KpiCard icon={PhoneCall} label="تماس امروز" value={toFa(kpis?.calls_today ?? 0)} />
             <KpiCard icon={Users} label="نرخ تماس" value={`${toFa(kpis?.contact_rate ?? 0)}٪`} />

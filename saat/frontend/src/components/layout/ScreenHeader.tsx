@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { BackButton } from '@/components/layout/BackButton'
 
 type IconTone = 'primary' | 'secondary' | 'accent' | 'warning' | 'success'
 
@@ -27,12 +26,17 @@ interface ScreenHeaderProps {
   subtitle?: string
   icon?: LucideIcon
   iconTone?: IconTone
-  /** Title and subtitle on one row (subtitle aligned end). */
+  /**
+   * When true, subtitle renders as an end-aligned badge on the title row.
+   * When false (default), subtitle sits under the title as a single truncated line.
+   */
   subtitleInline?: boolean
   sticky?: boolean
-  /** Shows a back chevron; defaults to `navigate(-1)` unless `onBack` is set. */
+  /** Shows a back chevron with smart history fallback. */
   showBack?: boolean
   onBack?: () => void
+  /** Fallback route when history is empty. */
+  backFallback?: string
   action?: ReactNode
   children?: ReactNode
   className?: string
@@ -47,85 +51,61 @@ export function ScreenHeader({
   sticky,
   showBack,
   onBack,
+  backFallback = '/home',
   action,
   children,
   className,
 }: ScreenHeaderProps) {
-  const navigate = useNavigate()
-
   return (
     <div
       className={cn(
-        'px-4 pt-[calc(8px+var(--safe-top))]',
+        'px-4 pt-[calc(6px+var(--safe-top))]',
         sticky && 'sticky top-0 z-20 overflow-visible glass-header',
         className,
       )}
     >
-      <div className="flex items-start gap-2.5 pb-1">
+      <div className="flex items-center gap-2 pb-1.5">
         {showBack && (
-          <button
-            type="button"
-            onClick={() => (onBack ? onBack() : navigate(-1))}
-            aria-label="بازگشت"
-            className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/[0.05] text-primary-600 transition-colors active:scale-[0.92] active:bg-black/[0.08] dark:bg-white/[0.08] dark:text-primary-400"
-          >
-            <ChevronRight size={19} strokeWidth={2.25} />
-          </button>
+          <BackButton onBack={onBack} fallback={backFallback} variant="soft" />
         )}
 
         <div className="min-w-0 flex-1">
-          {subtitleInline && (subtitle || Icon) ? (
-            <div className="flex min-w-0 items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2">
-                {Icon && (
-                  <span
-                    className={cn(
-                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px]',
-                      iconToneWrap[iconTone],
-                    )}
-                  >
-                    <Icon size={15} strokeWidth={2.35} className={iconToneColors[iconTone]} />
-                  </span>
+          <div className="flex min-w-0 items-center gap-2">
+            {Icon && (
+              <span
+                className={cn(
+                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-[11px]',
+                  iconToneWrap[iconTone],
                 )}
-                <h1 className="truncate text-[22px] font-bold leading-tight tracking-[-0.02em] text-text">
+              >
+                <Icon size={15} strokeWidth={2.35} className={iconToneColors[iconTone]} />
+              </span>
+            )}
+
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className="truncate text-[18px] font-bold leading-tight tracking-[-0.02em] text-text">
                   {title}
                 </h1>
+                {subtitleInline && subtitle && (
+                  <span className="shrink-0 rounded-full bg-black/[0.05] px-2.5 py-0.5 text-[11px] font-semibold tabular-nums text-text-soft dark:bg-white/[0.08]">
+                    {subtitle}
+                  </span>
+                )}
               </div>
-              {subtitle && (
-                <span className="shrink-0 rounded-full bg-black/[0.05] px-2.5 py-1 text-[12px] font-semibold tabular-nums text-text-soft dark:bg-white/[0.08]">
+              {!subtitleInline && subtitle && (
+                <p className="mt-0.5 truncate text-[12px] font-medium leading-snug text-text-soft">
                   {subtitle}
-                </span>
+                </p>
               )}
             </div>
-          ) : (
-            <>
-              <h1 className="truncate text-[28px] font-bold leading-[1.12] tracking-[-0.02em] text-text">
-                {title}
-              </h1>
-              {(subtitle || Icon) && (
-                <div className="mt-1 flex min-w-0 items-center gap-1.5">
-                  {Icon && (
-                    <span
-                      className={cn(
-                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px]',
-                        iconToneWrap[iconTone],
-                      )}
-                    >
-                      <Icon size={14} strokeWidth={2.35} className={iconToneColors[iconTone]} />
-                    </span>
-                  )}
-                  {subtitle && (
-                    <p className="truncate text-[13px] font-medium text-text-soft">{subtitle}</p>
-                  )}
-                </div>
-              )}
-            </>
-          )}
+          </div>
         </div>
-        {action && <div className="shrink-0 pt-0.5">{action}</div>}
+
+        {action && <div className="shrink-0">{action}</div>}
       </div>
 
-      {children && <div className="pb-2 pt-1.5">{children}</div>}
+      {children && <div className="pb-2 pt-1">{children}</div>}
     </div>
   )
 }

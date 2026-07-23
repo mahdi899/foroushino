@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MessageSquare, Radio, Server, ShieldCheck } from 'lucide-react'
+import {
+  Cable,
+  DatabaseBackup,
+  MessageSquare,
+  Radio,
+  Server,
+  ShieldCheck,
+  SlidersHorizontal,
+} from 'lucide-react'
 import { CatalogSettingsSection } from '@/features/admin/CatalogSettingsSection'
 import { BackupSettingsSection } from '@/features/admin/BackupSettingsSection'
 import { BahramBridgeSettingsSection } from '@/features/admin/BahramBridgeSettingsSection'
@@ -28,6 +36,25 @@ const fieldClass = cn(
   'outline-none focus:border-[#3390EC]/35 dark:border-white/10',
 )
 
+type SettingsTab =
+  | 'telephony'
+  | 'ops'
+  | 'integrations'
+  | 'backup'
+  | 'qa'
+  | 'sms'
+  | 'other'
+
+const TABS: { id: SettingsTab; label: string; icon: typeof Radio }[] = [
+  { id: 'telephony', label: 'تلفن', icon: Radio },
+  { id: 'ops', label: 'عملیات', icon: Server },
+  { id: 'integrations', label: 'یکپارچه', icon: Cable },
+  { id: 'backup', label: 'بکاپ', icon: DatabaseBackup },
+  { id: 'qa', label: 'کیفیت', icon: ShieldCheck },
+  { id: 'sms', label: 'پیامک', icon: MessageSquare },
+  { id: 'other', label: 'سایر', icon: SlidersHorizontal },
+]
+
 export function AdminSettingsScreen() {
   const navigate = useNavigate()
   const hasPermission = useStore((s) => s.hasPermission)
@@ -37,6 +64,7 @@ export function AdminSettingsScreen() {
   const [saving, setSaving] = useState(false)
   const [testingVoip, setTestingVoip] = useState(false)
   const [testingSms, setTestingSms] = useState(false)
+  const [tab, setTab] = useState<SettingsTab>('telephony')
 
   useEffect(() => {
     if (!hasPermission('admin.settings')) {
@@ -112,6 +140,8 @@ export function AdminSettingsScreen() {
   const otherEntries = settings
     ? Object.entries(settings).filter(([key]) => !ADMIN_KNOWN_SETTING_KEYS.has(key))
     : []
+
+  const visibleTabs = TABS.filter((t) => t.id !== 'other' || otherEntries.length > 0)
 
   const renderField = (key: string, nested = false) => {
     if (!settings) return null
@@ -214,9 +244,40 @@ export function AdminSettingsScreen() {
 
   return (
     <Page withNav={false}>
-      <ScreenHeader sticky showBack title="تنظیمات سیستم" icon={Server} iconTone="primary" />
+      <ScreenHeader
+        sticky
+        showBack
+        backFallback="/profile"
+        title="تنظیمات سیستم"
+        icon={Server}
+        iconTone="primary"
+      >
+        {settings && (
+          <div className="no-scrollbar -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5">
+            {visibleTabs.map(({ id, label, icon: Icon }) => {
+              const active = tab === id
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setTab(id)}
+                  className={cn(
+                    'flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-[12px] font-bold transition-colors',
+                    active
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-black/[0.04] text-text-soft active:bg-black/[0.08] dark:bg-white/[0.06]',
+                  )}
+                >
+                  <Icon size={13} strokeWidth={2.4} />
+                  {label}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </ScreenHeader>
 
-      <div className="space-y-5 px-4 pb-24 pt-2">
+      <div className="space-y-5 px-4 pb-[calc(88px+var(--safe-bottom))] pt-3">
         {!settings ? (
           <div className="mx-auto rounded-[20px] border border-border/60 bg-surface-soft px-4 py-10 text-center">
             <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-primary/20 border-t-primary" />
@@ -224,6 +285,7 @@ export function AdminSettingsScreen() {
           </div>
         ) : (
           <>
+            {tab === 'telephony' && (
               <section className="space-y-3">
                 <h2 className="flex items-center gap-1.5 px-1 text-[12px] font-bold text-text-soft">
                   <Radio size={13} />
@@ -240,7 +302,9 @@ export function AdminSettingsScreen() {
                   {testingVoip ? 'در حال تست…' : 'تست اتصال VoIP'}
                 </button>
               </section>
+            )}
 
+            {tab === 'ops' && (
               <section className="space-y-3">
                 <h2 className="flex items-center gap-1.5 px-1 text-[12px] font-bold text-text-soft">
                   <Server size={13} />
@@ -248,13 +312,18 @@ export function AdminSettingsScreen() {
                 </h2>
                 {ADMIN_OPERATIONAL_KEYS.map((key) => renderField(key))}
               </section>
+            )}
 
-              <CatalogSettingsSection />
+            {tab === 'integrations' && (
+              <div className="space-y-5">
+                <CatalogSettingsSection />
+                <BahramBridgeSettingsSection settings={settings} setSettings={setSettings} />
+              </div>
+            )}
 
-              <BahramBridgeSettingsSection settings={settings} setSettings={setSettings} />
+            {tab === 'backup' && <BackupSettingsSection />}
 
-              <BackupSettingsSection />
-
+            {tab === 'qa' && (
               <section className="space-y-3">
                 <h2 className="flex items-center gap-1.5 px-1 text-[12px] font-bold text-text-soft">
                   <ShieldCheck size={13} />
@@ -262,68 +331,75 @@ export function AdminSettingsScreen() {
                 </h2>
                 {ADMIN_QA_KEYS.map((key) => renderField(key))}
               </section>
+            )}
 
-              <section className="space-y-3">
-                <h2 className="flex items-center gap-1.5 px-1 text-[12px] font-bold text-text-soft">
-                  <MessageSquare size={13} />
-                  پنل ملی‌پیامک
-                </h2>
-                <p className="px-1 text-[11px] font-semibold leading-5 text-text-muted">
-                  نام کاربری و رمز پنل payamak-panel.com را اینجا وارد کنید. پس از ذخیره، با «تست اتصال» اعتبار پنل را
-                  بررسی کنید.
-                </p>
-                <div className="glass-card space-y-3 rounded-[20px] border border-white/55 p-4 dark:border-white/10">
-                  {ADMIN_SMS_PANEL_KEYS.map((key) => renderField(key, true))}
-                  <button
-                    type="button"
-                    disabled={testingSms}
-                    onClick={() => void onTestMelipayamak()}
-                    className="flex w-full items-center justify-center gap-2 rounded-[18px] border border-[#3390EC]/25 bg-[#3390EC]/10 py-3 text-sm font-extrabold text-[#3390EC] dark:border-[#8774E1]/25 dark:bg-[#8774E1]/10 dark:text-[#8774E1]"
-                  >
-                    <MessageSquare size={16} />
-                    {testingSms ? 'در حال تست…' : 'تست اتصال ملی‌پیامک'}
-                  </button>
-                </div>
-              </section>
-
-              <section className="space-y-3">
-                <h2 className="flex items-center gap-1.5 px-1 text-[12px] font-bold text-text-soft">
-                  <MessageSquare size={13} />
-                  قالب‌های پیامک
-                </h2>
-                <p className="px-1 text-[11px] font-semibold leading-5 text-text-muted">
-                  برای هر نوع پیامک، کد پترن پنل ملی‌پیامک و در صورت نیاز لینک مقصد را وارد کنید. مقدار ۰ یعنی آن
-                  قالب غیرفعال است.
-                </p>
-                {ADMIN_SMS_TEMPLATE_GROUPS.map((group) => (
-                  <div
-                    key={group.patternKey}
-                    className="glass-card space-y-3 rounded-[20px] border border-white/55 p-4 dark:border-white/10"
-                  >
-                    <div>
-                      <p className="text-[14px] font-bold text-text">{group.title}</p>
-                      <p className="mt-0.5 text-[11px] font-semibold text-text-soft">{group.description}</p>
-                    </div>
-                    {renderField(group.patternKey, true)}
-                    {group.linkKey ? renderField(group.linkKey, true) : null}
-                  </div>
-                ))}
-              </section>
-
-              {otherEntries.length > 0 && (
+            {tab === 'sms' && (
+              <div className="space-y-5">
                 <section className="space-y-3">
-                  <h2 className="px-1 text-[12px] font-bold text-text-soft">سایر تنظیمات</h2>
-                  {otherEntries.map(([key]) => renderField(key))}
+                  <h2 className="flex items-center gap-1.5 px-1 text-[12px] font-bold text-text-soft">
+                    <MessageSquare size={13} />
+                    پنل ملی‌پیامک
+                  </h2>
+                  <p className="px-1 text-[11px] font-semibold leading-5 text-text-muted">
+                    نام کاربری و رمز پنل payamak-panel.com را اینجا وارد کنید. پس از ذخیره، با «تست اتصال» اعتبار پنل را
+                    بررسی کنید.
+                  </p>
+                  <div className="glass-card space-y-3 rounded-[20px] border border-white/55 p-4 dark:border-white/10">
+                    {ADMIN_SMS_PANEL_KEYS.map((key) => renderField(key, true))}
+                    <button
+                      type="button"
+                      disabled={testingSms}
+                      onClick={() => void onTestMelipayamak()}
+                      className="flex w-full items-center justify-center gap-2 rounded-[18px] border border-[#3390EC]/25 bg-[#3390EC]/10 py-3 text-sm font-extrabold text-[#3390EC] dark:border-[#8774E1]/25 dark:bg-[#8774E1]/10 dark:text-[#8774E1]"
+                    >
+                      <MessageSquare size={16} />
+                      {testingSms ? 'در حال تست…' : 'تست اتصال ملی‌پیامک'}
+                    </button>
+                  </div>
                 </section>
-              )}
+
+                <section className="space-y-3">
+                  <h2 className="flex items-center gap-1.5 px-1 text-[12px] font-bold text-text-soft">
+                    <MessageSquare size={13} />
+                    قالب‌های پیامک
+                  </h2>
+                  <p className="px-1 text-[11px] font-semibold leading-5 text-text-muted">
+                    برای هر نوع پیامک، کد پترن پنل ملی‌پیامک و در صورت نیاز لینک مقصد را وارد کنید. مقدار ۰ یعنی آن
+                    قالب غیرفعال است.
+                  </p>
+                  {ADMIN_SMS_TEMPLATE_GROUPS.map((group) => (
+                    <div
+                      key={group.patternKey}
+                      className="glass-card space-y-3 rounded-[20px] border border-white/55 p-4 dark:border-white/10"
+                    >
+                      <div>
+                        <p className="text-[14px] font-bold text-text">{group.title}</p>
+                        <p className="mt-0.5 text-[11px] font-semibold text-text-soft">{group.description}</p>
+                      </div>
+                      {renderField(group.patternKey, true)}
+                      {group.linkKey ? renderField(group.linkKey, true) : null}
+                    </div>
+                  ))}
+                </section>
+              </div>
+            )}
+
+            {tab === 'other' && otherEntries.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="px-1 text-[12px] font-bold text-text-soft">سایر تنظیمات</h2>
+                {otherEntries.map(([key]) => renderField(key))}
+              </section>
+            )}
           </>
         )}
+      </div>
 
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 mx-auto max-w-[440px] px-4 pb-[calc(12px+var(--safe-bottom))] pt-2">
         <button
           type="button"
           disabled={!settings || saving}
-          onClick={onSave}
-          className="w-full rounded-[18px] bg-primary-600 py-3.5 text-sm font-extrabold text-white disabled:opacity-50"
+          onClick={() => void onSave()}
+          className="pointer-events-auto w-full rounded-[18px] bg-primary-600 py-3.5 text-sm font-extrabold text-white shadow-[0_8px_24px_-8px_rgba(51,144,236,0.55)] disabled:opacity-50"
         >
           {saving ? 'در حال ذخیره…' : 'ذخیره تنظیمات'}
         </button>

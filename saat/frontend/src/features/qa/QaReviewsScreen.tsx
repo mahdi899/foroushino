@@ -87,10 +87,19 @@ export function QaReviewsScreen() {
   }
 
   return (
-    <Page>
-      <ScreenHeader sticky title="کنترل کیفیت" subtitle="بررسی تماس‌ها" icon={ShieldCheck} iconTone="primary" />
+    <Page withNav={false}>
+      <ScreenHeader
+        sticky
+        showBack
+        backFallback="/home"
+        onBack={active ? () => setActive(null) : undefined}
+        title="کنترل کیفیت"
+        subtitle="بررسی تماس‌ها"
+        icon={ShieldCheck}
+        iconTone="primary"
+      />
       <DataGate mode="placeholder">
-        <div className="space-y-2 px-4 pb-24 pt-2">
+        <div className="space-y-2 px-4 pb-[calc(24px+var(--safe-bottom))] pt-2">
           {reviews.length === 0 ? (
             <p className="rounded-2xl bg-surface p-4 text-center text-sm font-bold text-text-soft">
               موردی برای بررسی نیست.

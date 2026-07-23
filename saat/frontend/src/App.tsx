@@ -9,6 +9,7 @@ import {
 import { useStore } from '@/store/useStore'
 import { initTelegram } from '@/lib/telegram'
 import { BottomNav } from '@/components/layout/BottomNav'
+import { PageTransition } from '@/components/layout/PageTransition'
 import { QuickActionSheet } from '@/components/layout/QuickActionSheet'
 import { CallMethodSheet } from '@/components/domain/CallMethodSheet'
 import { ToastHost } from '@/components/ui/Toast'
@@ -168,62 +169,64 @@ function Shell() {
         className={cn('h-full no-scrollbar', lockScroll ? 'overflow-hidden' : 'overflow-y-auto')}
       >
         <div className={lockScroll ? 'h-full' : 'h-full min-h-full'}>
-          <Routes location={location} key={location.pathname.split('/').slice(0, 2).join('/')}>
-            <Route path="/" element={<SplashScreen />} />
-            <Route path="/onboarding" element={<OnboardingScreen />} />
-            <Route path="/login" element={<LoginScreen />} />
-            <Route path="/shift-start" element={<RequireAuth><ShiftStartScreen /></RequireAuth>} />
-            <Route path="/work-status" element={<RequireAuth><WorkStatusScreen /></RequireAuth>} />
+          <PageTransition>
+            <Routes location={location} key={location.pathname.split('/').slice(0, 2).join('/')}>
+              <Route path="/" element={<SplashScreen />} />
+              <Route path="/onboarding" element={<OnboardingScreen />} />
+              <Route path="/login" element={<LoginScreen />} />
+              <Route path="/shift-start" element={<RequireAuth><ShiftStartScreen /></RequireAuth>} />
+              <Route path="/work-status" element={<RequireAuth><WorkStatusScreen /></RequireAuth>} />
 
-            <Route
-              path="/home"
-              element={
-                <RequireAuth>
-                  <RequireShift>
-                    <HomeRouter />
-                  </RequireShift>
-                </RequireAuth>
-              }
-            />
-            <Route path="/team" element={<RequireAuth><TeamLiveScreen /></RequireAuth>} />
-            <Route path="/teams" element={<RequireAuth><SupervisorTeamsScreen /></RequireAuth>} />
-            <Route path="/team-reports" element={<RequireAuth><TeamReportsScreen /></RequireAuth>} />
-            <Route path="/agent-reports" element={<RequireAuth><AgentReportsScreen /></RequireAuth>} />
-            <Route path="/leads" element={<RequireAuth><LeadsScreen /></RequireAuth>} />
-            <Route path="/leads/intake" element={<RequireAuth><RequirePermission permission="leads.import"><LeadIntakeScreen /></RequirePermission></RequireAuth>} />
-            <Route path="/leads/locked" element={<RequireAuth><LockedLeadsScreen /></RequireAuth>} />
-            <Route path="/leads/returned" element={<RequireAuth><ReturnedLeadsScreen /></RequireAuth>} />
-            <Route path="/leads/:id" element={<RequireAuth><LeadDetailScreen /></RequireAuth>} />
-            <Route path="/dialer/:id" element={<RequireAuth><RequireAgentCall><DialerScreen /></RequireAgentCall></RequireAuth>} />
-            <Route path="/call-result/:id" element={<RequireAuth><RequireAgentCall><CallResultScreen /></RequireAgentCall></RequireAuth>} />
-            <Route path="/followups" element={<RequireAuth><FollowupsScreen /></RequireAuth>} />
-            <Route path="/sales" element={<RequireAuth><SalesScreen /></RequireAuth>} />
-            <Route path="/sales/pending-payments" element={<RequireAuth><PendingPaymentsScreen /></RequireAuth>} />
-            <Route path="/wallet" element={<RequireAuth><WalletScreen /></RequireAuth>} />
-            <Route path="/wallet/approvals" element={<RequireAuth><CommissionApprovalsScreen /></RequireAuth>} />
-            <Route path="/wallet/payouts" element={<RequireAuth><RequirePermission permission="wallet.manage-payouts"><PayoutQueueScreen /></RequirePermission></RequireAuth>} />
-            <Route path="/wallet/bank-accounts" element={<RequireAuth><RequirePermission permission="users.manage-team"><BankAccountApprovalScreen /></RequirePermission></RequireAuth>} />
-            <Route path="/wallet/rules" element={<RequireAuth><CommissionRulesScreen /></RequireAuth>} />
-            <Route path="/wallet/commissions/:id" element={<RequireAuth><CommissionDetailScreen /></RequireAuth>} />
-            <Route path="/products/:slug" element={<RequireAuth><ProductDetailScreen /></RequireAuth>} />
-            <Route path="/training" element={<RequireAuth><TrainingScreen /></RequireAuth>} />
-            <Route path="/training/objections" element={<RequireAuth><ObjectionsScreen /></RequireAuth>} />
-            <Route path="/performance" element={<RequireAuth><PerformanceScreen /></RequireAuth>} />
-            <Route path="/reports" element={<RequireAuth><ReportsScreen /></RequireAuth>} />
-            <Route path="/live-ops" element={<RequireAuth><RequirePermission permission="reports.view"><LiveOpsScreen /></RequirePermission></RequireAuth>} />
-            <Route path="/qa" element={<RequireAuth><RequirePermission permission="training.manage"><QaReviewsScreen /></RequirePermission></RequireAuth>} />
-            <Route path="/profile" element={<RequireAuth><ProfileScreen /></RequireAuth>} />
-            <Route path="/notifications" element={<RequireAuth><NotificationsScreen /></RequireAuth>} />
-            <Route path="/activity" element={<RequireAuth><ActivityHistoryScreen /></RequireAuth>} />
-            <Route path="/settings" element={<RequireAuth><SettingsScreen /></RequireAuth>} />
-            <Route path="/admin/agents" element={<RequireAuth><RequirePermission permission="users.view"><AgentManagementScreen /></RequirePermission></RequireAuth>} />
-            <Route path="/admin/teams" element={<RequireAuth><RequirePermission permission="teams.manage"><TeamManagementScreen /></RequirePermission></RequireAuth>} />
-            <Route path="/admin/staff" element={<RequireAuth><RequirePermission permission="users.view"><StaffManagementScreen /></RequirePermission></RequireAuth>} />
-            <Route path="/admin/catalog" element={<RequireAuth><CatalogAdminScreen /></RequireAuth>} />
-            <Route path="/admin/settings" element={<RequireAuth><RequirePermission permission="admin.settings"><AdminSettingsScreen /></RequirePermission></RequireAuth>} />
+              <Route
+                path="/home"
+                element={
+                  <RequireAuth>
+                    <RequireShift>
+                      <HomeRouter />
+                    </RequireShift>
+                  </RequireAuth>
+                }
+              />
+              <Route path="/team" element={<RequireAuth><TeamLiveScreen /></RequireAuth>} />
+              <Route path="/teams" element={<RequireAuth><SupervisorTeamsScreen /></RequireAuth>} />
+              <Route path="/team-reports" element={<RequireAuth><TeamReportsScreen /></RequireAuth>} />
+              <Route path="/agent-reports" element={<RequireAuth><AgentReportsScreen /></RequireAuth>} />
+              <Route path="/leads" element={<RequireAuth><LeadsScreen /></RequireAuth>} />
+              <Route path="/leads/intake" element={<RequireAuth><RequirePermission permission="leads.import"><LeadIntakeScreen /></RequirePermission></RequireAuth>} />
+              <Route path="/leads/locked" element={<RequireAuth><LockedLeadsScreen /></RequireAuth>} />
+              <Route path="/leads/returned" element={<RequireAuth><ReturnedLeadsScreen /></RequireAuth>} />
+              <Route path="/leads/:id" element={<RequireAuth><LeadDetailScreen /></RequireAuth>} />
+              <Route path="/dialer/:id" element={<RequireAuth><RequireAgentCall><DialerScreen /></RequireAgentCall></RequireAuth>} />
+              <Route path="/call-result/:id" element={<RequireAuth><RequireAgentCall><CallResultScreen /></RequireAgentCall></RequireAuth>} />
+              <Route path="/followups" element={<RequireAuth><FollowupsScreen /></RequireAuth>} />
+              <Route path="/sales" element={<RequireAuth><SalesScreen /></RequireAuth>} />
+              <Route path="/sales/pending-payments" element={<RequireAuth><PendingPaymentsScreen /></RequireAuth>} />
+              <Route path="/wallet" element={<RequireAuth><WalletScreen /></RequireAuth>} />
+              <Route path="/wallet/approvals" element={<RequireAuth><CommissionApprovalsScreen /></RequireAuth>} />
+              <Route path="/wallet/payouts" element={<RequireAuth><RequirePermission permission="wallet.manage-payouts"><PayoutQueueScreen /></RequirePermission></RequireAuth>} />
+              <Route path="/wallet/bank-accounts" element={<RequireAuth><RequirePermission permission="users.manage-team"><BankAccountApprovalScreen /></RequirePermission></RequireAuth>} />
+              <Route path="/wallet/rules" element={<RequireAuth><CommissionRulesScreen /></RequireAuth>} />
+              <Route path="/wallet/commissions/:id" element={<RequireAuth><CommissionDetailScreen /></RequireAuth>} />
+              <Route path="/products/:slug" element={<RequireAuth><ProductDetailScreen /></RequireAuth>} />
+              <Route path="/training" element={<RequireAuth><TrainingScreen /></RequireAuth>} />
+              <Route path="/training/objections" element={<RequireAuth><ObjectionsScreen /></RequireAuth>} />
+              <Route path="/performance" element={<RequireAuth><PerformanceScreen /></RequireAuth>} />
+              <Route path="/reports" element={<RequireAuth><ReportsScreen /></RequireAuth>} />
+              <Route path="/live-ops" element={<RequireAuth><RequirePermission permission="reports.view"><LiveOpsScreen /></RequirePermission></RequireAuth>} />
+              <Route path="/qa" element={<RequireAuth><RequirePermission permission="training.manage"><QaReviewsScreen /></RequirePermission></RequireAuth>} />
+              <Route path="/profile" element={<RequireAuth><ProfileScreen /></RequireAuth>} />
+              <Route path="/notifications" element={<RequireAuth><NotificationsScreen /></RequireAuth>} />
+              <Route path="/activity" element={<RequireAuth><ActivityHistoryScreen /></RequireAuth>} />
+              <Route path="/settings" element={<RequireAuth><SettingsScreen /></RequireAuth>} />
+              <Route path="/admin/agents" element={<RequireAuth><RequirePermission permission="users.view"><AgentManagementScreen /></RequirePermission></RequireAuth>} />
+              <Route path="/admin/teams" element={<RequireAuth><RequirePermission permission="teams.manage"><TeamManagementScreen /></RequirePermission></RequireAuth>} />
+              <Route path="/admin/staff" element={<RequireAuth><RequirePermission permission="users.view"><StaffManagementScreen /></RequirePermission></RequireAuth>} />
+              <Route path="/admin/catalog" element={<RequireAuth><CatalogAdminScreen /></RequireAuth>} />
+              <Route path="/admin/settings" element={<RequireAuth><RequirePermission permission="admin.settings"><AdminSettingsScreen /></RequirePermission></RequireAuth>} />
 
-            <Route path="*" element={<NotFoundScreen />} />
-          </Routes>
+              <Route path="*" element={<NotFoundScreen />} />
+            </Routes>
+          </PageTransition>
         </div>
       </div>
 
