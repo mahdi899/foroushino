@@ -4,6 +4,11 @@ import { useEffect, useRef } from 'react';
 
 type OverlayKey = 'comments' | 'notifications' | 'stories' | 'lightbox' | 'menu';
 
+type OverlayHistoryState = {
+  familyOverlay: OverlayKey;
+  familyOverlayNonce: number;
+};
+
 type TelegramWebAppLike = {
   BackButton?: {
     show: () => void;
@@ -18,9 +23,22 @@ function getTelegramWebApp(): TelegramWebAppLike | undefined {
   return (window as unknown as { Telegram?: { WebApp?: TelegramWebAppLike } }).Telegram?.WebApp;
 }
 
+function isOverlayState(
+  state: unknown,
+  active: OverlayKey,
+  nonce: number,
+): state is OverlayHistoryState {
+  if (!state || typeof state !== 'object') return false;
+  const s = state as OverlayHistoryState;
+  return s.familyOverlay === active && s.familyOverlayNonce === nonce;
+}
+
 /**
  * Sync overlay open/close with browser history + Telegram Mini App BackButton
  * so the phone system Back closes the overlay instead of doing nothing.
+ *
+ * Cleanup uses a nonce + microtask so React Strict Mode remount does not
+ * immediately pop the fresh history entry (which would close the sheet).
  */
 export function useOverlayHistoryBack(active: OverlayKey | null, onBack: () => void): void {
   const closedByPopRef = useRef(false);
@@ -29,10 +47,6 @@ export function useOverlayHistoryBack(active: OverlayKey | null, onBack: () => v
   useEffect(() => {
     onBackRef.current = onBack;
   }, [onBack]);
-
-  const handleBack = () => {
-    onBackRef.current();
-  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -43,21 +57,23 @@ export function useOverlayHistoryBack(active: OverlayKey | null, onBack: () => v
     }
 
     closedByPopRef.current = false;
-    window.history.pushState({ familyOverlay: active }, '');
+    const nonce = Date.now() + Math.random();
+    const pushed: OverlayHistoryState = { familyOverlay: active, familyOverlayNonce: nonce };
+    window.history.pushState(pushed, '');
 
     const onPopState = () => {
       closedByPopRef.current = true;
-      handleBack();
+      onBackRef.current();
     };
 
     window.addEventListener('popstate', onPopState);
 
     const tg = getTelegramWebApp();
     const onTgBack = () => {
-      if (window.history.state?.familyOverlay) {
+      if (window.history.state && typeof window.history.state === 'object' && 'familyOverlay' in window.history.state) {
         window.history.back();
       } else {
-        handleBack();
+        onBackRef.current();
       }
     };
 
@@ -72,9 +88,14 @@ export function useOverlayHistoryBack(active: OverlayKey | null, onBack: () => v
       tg?.BackButton?.hide();
 
       // UI closed the overlay: remove the synthetic history entry without
-      // navigating away from the family page.
-      if (!closedByPopRef.current && window.history.state?.familyOverlay === active) {
-        window.history.back();
+      // navigating away. Defer + nonce so Strict Mode remount can push a new
+      // entry first; the stale cleanup then no-ops instead of closing it.
+      if (!closedByPopRef.current) {
+        queueMicrotask(() => {
+          if (isOverlayState(window.history.state, active, nonce)) {
+            window.history.back();
+          }
+        });
       }
     };
   }, [active]);

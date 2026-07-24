@@ -3,6 +3,7 @@
 use App\Jobs\Family\AggregateFamilyDailyMetricsJob;
 use App\Jobs\Family\CalculateFamilyDnaSnapshotJob;
 use App\Jobs\Family\RebuildFamilyBehaviorProfilesJob;
+use App\Jobs\Family\SendFamilyDailyUnreadPushJob;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -35,6 +36,12 @@ Schedule::job(new CalculateFamilyDnaSnapshotJob(), config('family.queues.analyti
     ->onOneServer();
 
 Schedule::command('family:publish-scheduled')->everyMinute()->onOneServer();
+
+// Family PWA — daily unread reminder (default 14:00 Asia/Tehran via APP_TIMEZONE).
+Schedule::job(new SendFamilyDailyUnreadPushJob(), config('family.queues.notifications', 'family-notifications'))
+    ->dailyAt((string) config('webpush.family_daily.send_at', '14:00'))
+    ->when(fn () => (bool) config('webpush.family_daily.enabled', true))
+    ->onOneServer();
 
 Schedule::command('media:purge-local-copies --limit=300')
     ->dailyAt('04:30')

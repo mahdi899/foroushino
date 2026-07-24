@@ -9,6 +9,7 @@ import { FamilyGuestAccessProvider } from '@/components/family/FamilyGuestAccess
 import { JoinBanner } from '@/components/family/JoinBanner';
 import { JoinContextBoot } from '@/components/family/JoinContextBoot';
 import { OnboardingModal } from '@/components/family/OnboardingModal';
+import { FamilyPushDailyOptIn } from '@/components/family/FamilyPushDailyOptIn';
 import { useFamilyMemberCount } from '@/lib/family/hooks/useFamilyMemberCount';
 import { useOverlayHistoryBack } from '@/lib/family/hooks/useOverlayHistoryBack';
 import { invalidateAllFamilyBrowserCache } from '@/lib/family/browserCache';
@@ -151,6 +152,7 @@ export function FamilyHome({
         </Suspense>
       )}
       {showOnboarding && <OnboardingModal onDone={() => setShowOnboarding(false)} />}
+      {isMember ? <FamilyPushDailyOptIn enabled={!showOnboarding} /> : null}
     </FamilyShell>
   );
 }

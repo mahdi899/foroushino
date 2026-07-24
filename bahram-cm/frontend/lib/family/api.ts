@@ -168,3 +168,42 @@ export async function markNotificationRead(id: number): Promise<void> {
 export async function markAllNotificationsRead(): Promise<void> {
   await run(() => familyFetch(`/notifications/read-all`, { method: 'POST' }), 'ثبت اعلان‌ها ناموفق بود.');
 }
+
+export async function getFamilyPushVapidPublicKey(): Promise<{ data: { public_key: string } }> {
+  return run(
+    () => familyFetch<{ data: { public_key: string } }>(`/push/vapid-public-key`),
+    'دریافت کلید اعلان ناموفق بود.',
+  );
+}
+
+export async function getFamilyPushStatus(): Promise<{
+  data: { subscribed: boolean; configured: boolean; count: number };
+}> {
+  return run(
+    () =>
+      familyFetch<{ data: { subscribed: boolean; configured: boolean; count: number } }>(`/push/status`),
+    'دریافت وضعیت اعلان ناموفق بود.',
+  );
+}
+
+export async function saveFamilyPushSubscription(subscription: {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  contentEncoding?: string;
+}): Promise<{ data: { id: number; subscribed: boolean } }> {
+  return run(
+    () =>
+      familyFetch<{ data: { id: number; subscribed: boolean } }>(`/push/subscriptions`, {
+        method: 'POST',
+        body: subscription,
+      }),
+    'ثبت اعلان پوش ناموفق بود.',
+  );
+}
+
+export async function deleteFamilyPushSubscription(endpoint: string): Promise<void> {
+  await run(
+    () => familyFetch(`/push/subscriptions`, { method: 'DELETE', body: { endpoint } }),
+    'حذف اعلان پوش ناموفق بود.',
+  );
+}
