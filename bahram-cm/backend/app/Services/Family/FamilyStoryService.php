@@ -6,6 +6,7 @@ use App\Enums\Family\FamilyPostAudienceMode;
 use App\Models\FamilyMedia;
 use App\Models\FamilyStory;
 use App\Models\FamilyStoryTarget;
+use App\Models\FamilyStoryView;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -122,14 +123,9 @@ final class FamilyStoryService
 
     public function recordView(FamilyStory $story, User $user): void
     {
-        DB::table('family_story_views')->upsert(
-            [
-                'story_id' => $story->id,
-                'user_id' => $user->id,
-                'viewed_at' => now(),
-            ],
-            ['story_id', 'user_id'],
-            ['viewed_at'],
+        FamilyStoryView::query()->updateOrCreate(
+            ['story_id' => $story->id, 'user_id' => $user->id],
+            ['viewed_at' => now()],
         );
     }
 

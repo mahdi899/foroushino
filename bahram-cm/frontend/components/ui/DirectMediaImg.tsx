@@ -1,5 +1,5 @@
 import type { ImgHTMLAttributes } from 'react';
-import { normalizeAdminMediaUrl, primarySiteImageSrc } from '@/lib/mediaUrl';
+import { normalizeAdminMediaUrl, primarySiteImageSrc, resolveMediaUrl } from '@/lib/mediaUrl';
 import { cn } from '@/lib/utils';
 
 export type DirectMediaImgProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> & {
@@ -23,7 +23,7 @@ export function DirectMediaImg({
   const raw = src?.trim() ?? '';
   const resolved = raw
     ? admin
-      ? normalizeAdminMediaUrl(raw)
+      ? resolveMediaUrl(raw) || normalizeAdminMediaUrl(raw)
       : primarySiteImageSrc(raw)
     : '';
 

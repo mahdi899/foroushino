@@ -16,27 +16,19 @@ APP_DIR = "/var/www/saat"
 REPO = Path(__file__).resolve().parents[2]
 
 FILES = [
-    "backend/app/Http/Middleware/PreventApiCaching.php",
-    "backend/bootstrap/app.php",
-    "backend/app/Services/Cloudflare/CloudflareIntegrationService.php",
-    "backend/app/Services/Cloudflare/CloudflareCacheService.php",
-    "backend/app/Http/Controllers/Api/V1/Admin/CloudflareController.php",
-    "backend/app/Http/Controllers/Api/V1/MeAvatarController.php",
-    "backend/app/Services/Admin/AdminDirectoryCache.php",
-    "backend/app/Support/PublicMediaUrl.php",
-    "backend/app/Http/Resources/V1/UserResource.php",
-    "backend/app/Http/Resources/V1/UserAdminResource.php",
-    "backend/routes/api/admin.php",
+    "backend/app/Console/Commands/BackupWeeklyFullCommand.php",
+    "backend/app/Http/Controllers/Api/V1/Admin/BackupController.php",
+    "backend/app/Models/DatabaseBackupSetting.php",
+    "backend/app/Services/BackupService.php",
     "backend/config/saat.php",
-    "backend/tests/Feature/PublicMediaUrlTest.php",
-    "backend/tests/Feature/CloudflareSettingsTest.php",
-    "deploy/nginx/sat-center.conf",
-    "frontend/src/services/adminDataCache.ts",
-    "frontend/src/services/teamLive.ts",
-    "frontend/src/services/cloudflare.ts",
-    "frontend/src/features/admin/CloudflareSettingsSection.tsx",
-    "frontend/src/features/admin/AdminSettingsScreen.tsx",
-    "frontend/src/features/profile/ProfileAvatarPicker.tsx",
+    "backend/database/migrations/2026_07_23_120000_add_weekly_backup_fields_to_database_backup_settings.php",
+    "backend/routes/api/admin.php",
+    "backend/routes/console.php",
+    "backend/tests/Feature/BackupSettingsTest.php",
+    "deploy/scripts/backup.sh",
+    "deploy/scripts/deploy.sh",
+    "frontend/src/lib/backup.ts",
+    "frontend/src/features/admin/BackupSettingsSection.tsx",
 ]
 
 
@@ -99,16 +91,17 @@ def main() -> int:
 
     commands = [
         "ln -sfn /etc/letsencrypt/live/sat.center-0001 /etc/letsencrypt/live/sat.center",
+        f"chmod +x {APP_DIR}/deploy/scripts/backup.sh",
         f"cd {APP_DIR}/backend && composer dump-autoload -o",
+        f"cd {APP_DIR}/backend && php artisan migrate --force",
         f"cd {APP_DIR}/backend && php artisan optimize:clear",
         f"cd {APP_DIR}/backend && php artisan config:cache",
         f"cd {APP_DIR}/backend && php artisan route:cache",
+        "(crontab -l 2>/dev/null | grep -v saat-backup-cron || true; echo '0 3 * * * /var/www/saat/deploy/scripts/backup.sh # saat-backup-cron'; echo '* * * * * cd /var/www/saat/backend && php artisan schedule:run >> /var/log/saat-schedule.log 2>&1 # saat-backup-cron') | crontab -",
         "nginx -t",
         "systemctl reload nginx",
         f"cd {APP_DIR}/frontend && npm ci --include=dev",
         f"cd {APP_DIR}/frontend && npm run build",
-        'curl -skI -H "Host: sat.center" https://127.0.0.1/api/v1/health | grep -iE "cache|cdn|HTTP" | head -6',
-        'curl -skI -H "Host: sat.center" https://127.0.0.1/storage/avatars/users/1.jpg 2>/dev/null | grep -iE "cache|cdn|HTTP" | head -6 || true',
     ]
 
     try:

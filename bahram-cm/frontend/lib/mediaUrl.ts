@@ -400,6 +400,16 @@ export function rewriteArticleBodyMediaUrls(html: string): string {
   return out;
 }
 
+/** Keep portable `/storage/...` refs when saving article HTML from the editor. */
+export function persistArticleBodyMediaHtml(html: string): string {
+  if (!html) return html;
+
+  return html.replace(
+    /(<img\b[^>]*\bsrc=["'])([^"']+)(["'])/gi,
+    (_match, pre, src, post) => `${pre}${persistMediaUrl(src) || src}${post}`,
+  );
+}
+
 /**
  * Canonical absolute URL for sitemap, Open Graph, JSON-LD, and crawlers.
  */

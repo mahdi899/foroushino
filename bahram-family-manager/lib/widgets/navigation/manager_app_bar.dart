@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -41,38 +42,46 @@ class ManagerAppBar extends StatelessWidget implements PreferredSizeWidget {
     final isDark = scheme.brightness == Brightness.dark;
     final isDesktop = AppBreakpoints.isDesktop(context);
 
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
-        child: AppBar(
-          title: title,
-          centerTitle: false,
-          automaticallyImplyLeading: automaticallyImplyLeading,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          surfaceTintColor: Colors.transparent,
-          backgroundColor: scheme.surface.withValues(alpha: isDark ? 0.55 : 0.78),
-          foregroundColor: scheme.onSurface,
-          bottom: bottom,
-          actions: [
-            ...?actions,
-            if (showShellActions && !isDesktop) ...[
-              IconButton(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AppSettingsHubScreen()),
-                ),
-                icon: const Icon(Icons.settings_rounded),
-                tooltip: 'تنظیمات',
-              ),
-              IconButton(
-                onPressed: () => context.read<AppState>().logout(),
-                icon: const Icon(Icons.logout_rounded),
-                tooltip: 'خروج',
-              ),
-            ],
-            if (showThemeToggle) ThemeModeToggleButton(compact: themeToggleCompact),
-            const SizedBox(width: 4),
-          ],
+    final bar = AppBar(
+      title: title,
+      centerTitle: false,
+      automaticallyImplyLeading: automaticallyImplyLeading,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+      backgroundColor: scheme.surface.withValues(alpha: kIsWeb ? 0.96 : (isDark ? 0.55 : 0.78)),
+      foregroundColor: scheme.onSurface,
+      bottom: bottom,
+      actions: [
+        ...?actions,
+        if (showShellActions && !isDesktop) ...[
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AppSettingsHubScreen()),
+            ),
+            icon: const Icon(Icons.settings_rounded),
+            tooltip: 'تنظیمات',
+          ),
+          IconButton(
+            onPressed: () => context.read<AppState>().logout(),
+            icon: const Icon(Icons.logout_rounded),
+            tooltip: 'خروج',
+          ),
+        ],
+        if (showThemeToggle) ThemeModeToggleButton(compact: themeToggleCompact),
+        const SizedBox(width: 4),
+      ],
+    );
+
+    if (kIsWeb) {
+      return RepaintBoundary(child: bar);
+    }
+
+    return RepaintBoundary(
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 26, sigmaY: 26),
+          child: bar,
         ),
       ),
     );

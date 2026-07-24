@@ -16,6 +16,7 @@ import type { FamilyStory, FamilyStoryMedia } from '@/lib/family/types';
 
 const IMAGE_STORY_MS = 8000;
 const VIDEO_LOAD_TIMEOUT_MS = 25_000;
+const STORY_VIEW_RECORD_DELAY_MS = 1500;
 
 type VideoSlideState = 'loading' | 'playing' | 'error';
 
@@ -240,9 +241,26 @@ export function StoryViewer({
 
   useEffect(() => {
     if (!open || loading || !current?.id || recordedViewsRef.current.has(current.id)) return;
-    recordedViewsRef.current.add(current.id);
-    void recordStoryView(current.id).catch(() => {});
-  }, [current?.id, loading, open]);
+
+    const storyId = current.id;
+    const mediaReady = currentIsVideo ? videoSlideState === 'playing' : imageReady;
+    if (!mediaReady) return;
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      if (cancelled || recordedViewsRef.current.has(storyId)) return;
+      void recordStoryView(storyId).then((res) => {
+        if (res.data.recorded) {
+          recordedViewsRef.current.add(storyId);
+        }
+      });
+    }, STORY_VIEW_RECORD_DELAY_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [current?.id, currentIsVideo, imageReady, loading, open, videoSlideState]);
 
   useEffect(() => {
     if (!open || loading || !currentMedia || !currentSrc || currentIsVideo || !imageReady) return;

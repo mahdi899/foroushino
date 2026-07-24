@@ -57,7 +57,7 @@ import {
 } from '@/lib/article/editorColorTokens';
 import { ImageGalleryModal } from '../content/ImageGalleryModal';
 import { AiImagePromptModal } from '../content/AiImagePromptModal';
-import { resolveMediaUrl, persistMediaUrl } from '@/lib/mediaUrl';
+import { resolveMediaUrl, persistMediaUrl, rewriteArticleBodyMediaUrls, persistArticleBodyMediaHtml } from '@/lib/mediaUrl';
 import { ArticleImage } from './ArticleImageExtension';
 import { ArticleTextColor } from './ArticleTextColorExtension';
 import { ArticleHighlight } from './ArticleHighlightExtension';
@@ -341,7 +341,7 @@ export function ArticleBodyEditor({
       Placeholder.configure({ placeholder }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
     ],
-    content: value,
+    content: rewriteArticleBodyMediaUrls(value || ''),
     immediatelyRender: false,
     editorProps: {
       attributes: {
@@ -349,13 +349,17 @@ export function ArticleBodyEditor({
         dir: 'rtl',
       },
     },
-    onUpdate: ({ editor: ed }) => onChange(ed.getHTML()),
+    onUpdate: ({ editor: ed }) => onChange(persistArticleBodyMediaHtml(ed.getHTML())),
   });
 
   useEffect(() => {
     if (!editor || mode !== 'visual') return;
     const current = editor.getHTML();
-    if (value !== current) editor.commands.setContent(value || '', { emitUpdate: false });
+    const currentPortable = persistArticleBodyMediaHtml(current);
+    const nextPortable = persistArticleBodyMediaHtml(value || '');
+    if (nextPortable !== currentPortable) {
+      editor.commands.setContent(rewriteArticleBodyMediaUrls(value || ''), { emitUpdate: false });
+    }
   }, [editor, value, mode]);
 
   useEffect(() => {
@@ -377,12 +381,13 @@ export function ArticleBodyEditor({
     (next: EditorMode) => {
       if (next === mode) return;
       if (mode === 'visual' && editor) {
-        const html = editor.getHTML();
+        const html = persistArticleBodyMediaHtml(editor.getHTML());
         onChange(html);
         setHtmlDraft(html);
       } else if (next === 'visual') {
-        onChange(htmlDraft);
-        editor?.commands.setContent(htmlDraft || '', { emitUpdate: false });
+        const portable = persistArticleBodyMediaHtml(htmlDraft);
+        onChange(portable);
+        editor?.commands.setContent(rewriteArticleBodyMediaUrls(portable), { emitUpdate: false });
       }
       setMode(next);
     },
@@ -766,7 +771,7 @@ export function ArticleBodyEditor({
 
   return (
     <ArticleVideoEditContext.Provider value={videoEditContextValue}>
-    <div className="min-w-0">
+    <div className={cn('min-w-0', focusMode && 'article-editor-field--focus')}>
       <label className="field-label">{label}</label>
       <div
         className={cn(

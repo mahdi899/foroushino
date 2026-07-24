@@ -67,6 +67,7 @@ class AuthService {
       final user = ManagerUser.fromJson(data);
       await _storage.writeToken(token);
       await _storage.writeUserJson(jsonEncode(data));
+      api.resetAuthCache();
       return AdminLoginResult.authenticated(user);
     }
 
@@ -94,6 +95,7 @@ class AuthService {
     final user = ManagerUser.fromJson(userJson);
     await _storage.writeToken(token);
     await _storage.writeUserJson(jsonEncode(userJson));
+    api.resetAuthCache();
     return user;
   }
 
@@ -122,6 +124,7 @@ class AuthService {
     } catch (_) {
       // Best-effort — always clear local session even if the request fails.
     } finally {
+      api.resetAuthCache();
       await _storage.clearAll();
     }
   }

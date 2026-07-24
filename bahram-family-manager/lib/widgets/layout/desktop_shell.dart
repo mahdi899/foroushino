@@ -211,55 +211,47 @@ class _FabOption extends StatelessWidget {
     required this.onTap,
   });
 
-  static const _fabSlot = 56.0;
-  static const _iconSize = 48.0;
-
   final String label;
   final IconData icon;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    // LTR row: label on the visual left, icon column aligned with the main FAB on the right.
+    final scheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          GlassPanel(
-            borderRadius: 12,
-            blur: AppGlass.sheetBlur,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          SizedBox(
-            width: _fabSlot,
-            height: _fabSlot,
-            child: Center(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: AppShadows.soft,
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: onTap,
-                    borderRadius: BorderRadius.circular(14),
-                    child: SizedBox(
-                      width: _iconSize,
-                      height: _iconSize,
-                      child: Icon(icon, color: AppColors.primary),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: scheme.surface.withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: scheme.primary.withValues(alpha: 0.14)),
+              boxShadow: AppShadows.soft,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, color: AppColors.primary, size: 22),
+                    const SizedBox(width: 8),
+                    Text(
+                      label,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
                     ),
-                  ),
+                  ],
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 /// Design tokens aligned with bahram-cm admin/panel (Saat Teal, light theme).
@@ -30,6 +31,9 @@ class AppGlass {
 
   static double panelOpacity(Brightness brightness) => brightness == Brightness.dark ? 0.58 : 0.74;
   static double inputOpacity(Brightness brightness) => brightness == Brightness.dark ? 0.42 : 0.62;
+
+  /// BackdropFilter is very expensive on Flutter web (especially mobile browsers).
+  static double effectiveBlur(double blur) => kIsWeb ? 0 : blur;
 }
 
 class AppRadius {
