@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { UserPlus, Upload, Share2, Users, Download } from 'lucide-react'
+import { UserPlus, Upload, Share2, Users, Download, Phone, Layers3, UserRound, Flag, Inbox } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Page } from '@/components/layout/Page'
 import { ScreenHeader } from '@/components/layout/ScreenHeader'
@@ -73,10 +74,23 @@ const emptyForm = (): IntakeForm => ({
 const experienceOptions = Object.keys(experienceLabels) as ExperienceLevel[]
 const priorityOptions: Priority[] = [1, 2, 3]
 
-function FormSection({ title, children }: { title: string; children: React.ReactNode }) {
+function FormSection({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string
+  icon: LucideIcon
+  children: React.ReactNode
+}) {
   return (
     <section className="glass-card space-y-3 rounded-[20px] border border-white/55 p-4 dark:border-white/10">
-      <h3 className="text-[13px] font-extrabold text-text">{title}</h3>
+      <h3 className="flex items-center gap-2 text-[13px] font-extrabold text-text">
+        <span className="flex h-8 w-8 items-center justify-center rounded-[11px] bg-[#3390EC]/12 text-[#3390EC] dark:bg-[#8774E1]/18 dark:text-[#8774E1]">
+          <Icon size={15} strokeWidth={2.35} />
+        </span>
+        {title}
+      </h3>
       {children}
     </section>
   )
@@ -280,19 +294,27 @@ export function LeadIntakeScreen() {
       />
 
       <div className="space-y-4 px-4 pb-24 pt-2">
-        <div className="glass-card rounded-[22px] border border-white/55 p-4 dark:border-white/10">
-          <p className="text-[12px] font-bold text-text-soft">استخر بدون تیم</p>
-          <p className="mt-1 text-[28px] font-black tabular-nums text-text">{toFa(poolCount)}</p>
-          <p className="mt-1 text-[11px] font-semibold text-text-muted">
-            بین {toFa(teams.length)} تیم به‌صورت نوبتی تقسیم می‌شوند
-          </p>
+        <div className="glass-card flex items-center gap-3.5 rounded-[22px] border border-white/55 p-4 dark:border-white/10">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[16px] bg-[#3390EC]/12 text-[#3390EC] dark:bg-[#8774E1]/18 dark:text-[#8774E1]">
+            <Inbox size={22} strokeWidth={2.2} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12px] font-bold text-text-soft">استخر بدون تیم</p>
+            <p className="mt-0.5 text-[28px] font-black tabular-nums leading-none text-text">{toFa(poolCount)}</p>
+            <p className="mt-1.5 text-[11px] font-semibold text-text-muted">
+              بین {toFa(teams.length)} تیم به‌صورت نوبتی تقسیم می‌شوند
+            </p>
+          </div>
         </div>
 
         {canManage && (
           <div className="space-y-4">
-            <h2 className="px-1 text-[15px] font-extrabold text-text">ثبت دستی مشتری</h2>
+            <h2 className="flex items-center gap-2 px-1 text-[15px] font-extrabold text-text">
+              <UserPlus size={16} className="text-[#3390EC] dark:text-[#8774E1]" />
+              ثبت دستی مشتری
+            </h2>
 
-            <FormSection title="اطلاعات تماس">
+            <FormSection title="اطلاعات تماس" icon={Phone}>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
                   <FieldLabel required>نام</FieldLabel>
@@ -334,7 +356,7 @@ export function LeadIntakeScreen() {
               </label>
             </FormSection>
 
-            <FormSection title="منبع و محصول">
+            <FormSection title="منبع و محصول" icon={Layers3}>
               <label className="block">
                 <FieldLabel>منبع ورود</FieldLabel>
                 <select
@@ -375,7 +397,7 @@ export function LeadIntakeScreen() {
               ) : null}
             </FormSection>
 
-            <FormSection title="پروفایل مشتری">
+            <FormSection title="پروفایل مشتری" icon={UserRound}>
               <label className="block">
                 <FieldLabel>شغل</FieldLabel>
                 <input
@@ -421,7 +443,7 @@ export function LeadIntakeScreen() {
               </div>
             </FormSection>
 
-            <FormSection title="اولویت و پیگیری">
+            <FormSection title="اولویت و پیگیری" icon={Flag}>
               <div>
                 <FieldLabel>درجه علاقه</FieldLabel>
                 <TemperaturePicker

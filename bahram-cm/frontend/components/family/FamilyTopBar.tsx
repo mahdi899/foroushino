@@ -11,7 +11,7 @@ import { useFamilyBranding } from '@/lib/family/hooks/useFamilyBranding';
 import { useFamilyUnreadCount } from '@/lib/family/hooks/useFamilyNotifications';
 import { FamilyStoryHint } from '@/components/family/FamilyStoryHint';
 import { useFamilyStoryState } from '@/lib/family/hooks/useFamilyStoryState';
-import { ThemeIconButton } from '@/components/theme/ThemeIconButton';
+import { FamilyMenuButton } from '@/components/family/FamilyMenuSheet';
 
 import { useFamilyGuestAccessOptional } from '@/components/family/FamilyGuestAccess';
 import type { FamilyBranding } from '@/lib/family/types';
@@ -47,6 +47,7 @@ export function FamilyTopBar({
   guestStoriesLocked = false,
   showNotifications = false,
   notificationsActive = false,
+  isLoggedIn = false,
   onOpenNotifications,
   onCloseNotifications,
 }: {
@@ -56,6 +57,7 @@ export function FamilyTopBar({
   guestStoriesLocked?: boolean;
   showNotifications?: boolean;
   notificationsActive?: boolean;
+  isLoggedIn?: boolean;
   onOpenNotifications?: () => void;
   onCloseNotifications?: () => void;
 }) {
@@ -172,7 +174,7 @@ export function FamilyTopBar({
                     )}
                   </button>
                 ) : null}
-                <ThemeIconButton className="family-topbar__theme lg:hidden" />
+                <FamilyMenuButton className="lg:hidden" isLoggedIn={isLoggedIn} />
               </div>
             </>
           )}

@@ -14,15 +14,20 @@ vi.mock("@/lib/family/api", () => ({
   removeReaction: (...args: unknown[]) => removeReaction(...args),
 }));
 
-vi.mock("@/components/family/FamilyReactionLottie", () => ({
-  FamilyReactionLottie: () => <span data-testid="reaction-icon" />,
+vi.mock("@/lib/fonts", () => ({
+  fontClassName: "",
 }));
 
-vi.mock("@/components/family/ReactionFlyBurst", () => ({
-  ReactionFlyBurst: ({ onComplete }: { onComplete: () => void }) => {
-    onComplete();
-    return null;
-  },
+vi.mock("framer-motion", async () => {
+  const actual = await vi.importActual<typeof import("framer-motion")>("framer-motion");
+  return {
+    ...actual,
+    useReducedMotion: () => false,
+  };
+});
+
+vi.mock("@/components/family/FamilyReactionLottie", () => ({
+  FamilyReactionLottie: () => <span data-testid="reaction-icon" />,
 }));
 
 vi.mock("@/components/family/FamilyBodyPortal", () => ({

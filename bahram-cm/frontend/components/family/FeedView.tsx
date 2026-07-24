@@ -15,7 +15,9 @@ import { FamilyFeedScroll, type FamilyFeedScrollHandle } from '@/components/fami
 import { VirtualFeedList, type VirtualFeedListHandle } from '@/components/family/VirtualFeedList';
 import { FamilyFeedBootSkeleton } from '@/components/family/FamilyShellLoading';
 import { PostCard } from '@/components/family/PostCard';
+import { FamilyInstallPromoInline, FamilyInstallTopBanner } from '@/components/family/FamilyInstallBanner';
 import { cn } from '@/lib/cn';
+import { useFamilyPwaInstall } from '@/lib/family/pwa-install';
 import {
   captureFeedScrollRestore,
   getFeedDistanceFromBottom,
@@ -66,10 +68,12 @@ function buildFeedItems(
   posts: FamilyPost[],
   unreadAfterId: number | null,
   dividerCount: number,
+  includeInstallPromos: boolean,
 ): FeedListItem[] {
   const items: FeedListItem[] = [];
   let lastDayKey: string | null = null;
   let unreadInserted = false;
+  let postOrdinal = 0;
   const unreadCount =
     unreadAfterId != null
       ? dividerCount > 0
@@ -103,6 +107,15 @@ function buildFeedItems(
     }
 
     items.push({ kind: 'post', key: `post-${post.id}`, post });
+    postOrdinal += 1;
+
+    if (includeInstallPromos && postOrdinal % 10 === 0) {
+      items.push({
+        kind: 'install-promo',
+        key: `install-promo-${postOrdinal}`,
+        afterPostCount: postOrdinal,
+      });
+    }
   }
 
   return items;
@@ -250,9 +263,17 @@ export function FeedView({
   const unreadBadgeRef = useRef(0);
   /** Suppress stick-to-tip right after natural catch-up (divider removal resizes content). */
   const catchUpQuietUntilRef = useRef(0);
+  const pwaInstall = useFamilyPwaInstall();
+  const includeInstallPromos = pwaInstall.showMidFeedPromos && !pwaInstall.isInstalled;
   const feedItems = useMemo(
-    () => buildFeedItems(posts, isPreview ? null : unreadSplitId, unreadDividerCount),
-    [posts, isPreview, unreadSplitId, unreadDividerCount],
+    () =>
+      buildFeedItems(
+        posts,
+        isPreview ? null : unreadSplitId,
+        unreadDividerCount,
+        includeInstallPromos,
+      ),
+    [posts, isPreview, unreadSplitId, unreadDividerCount, includeInstallPromos],
   );
   const guestBlurredPostIds = useMemo(() => {
     if (previewMode !== 'guest') return new Set<number>();
@@ -1490,6 +1511,10 @@ export function FeedView({
         return <FeedUnreadDivider key={item.key} count={item.count} />;
       }
 
+      if (item.kind === 'install-promo') {
+        return <FamilyInstallPromoInline key={item.key} />;
+      }
+
       return (
         <PostCard
           key={item.key}
@@ -1568,6 +1593,7 @@ export function FeedView({
         guestStoriesLocked={previewMode === 'guest'}
         initialBranding={initialBranding}
         notificationsActive={notificationsOpen}
+        isLoggedIn={previewMode !== 'guest'}
         onOpenNotifications={onOpenNotifications}
         onCloseNotifications={onCloseNotifications}
       />
@@ -1628,6 +1654,7 @@ export function FeedView({
                 style={chromeInset > 0 ? { paddingTop: chromeInset } : undefined}
               >
               <div ref={feedContentRef} className="family-feed-content mx-auto flex w-full max-w-[680px] flex-col">
+              <FamilyInstallTopBanner />
               {isPreview && previewMode && posts.length > 0 && (
                 <div className="pt-4 sm:pt-5">
                   <FeedPreviewIntro mode={previewMode} />

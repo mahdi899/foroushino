@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   clampSeekPosition,
   cyclePlaybackSpeed,
@@ -172,25 +172,43 @@ export function FamilyMediaPlayerProvider({ children }: { children: ReactNode })
     setNowPlayingState(null);
   }, [activeId, nowPlaying]);
 
+  const value = useMemo(
+    () => ({
+      activeId,
+      nowPlaying,
+      playbackRate,
+      register,
+      unregister,
+      requestPlay,
+      notifyPaused,
+      setNowPlaying,
+      updateNowPlayingProgress,
+      toggleActivePlayback,
+      seekActiveTo,
+      setPlaybackRate,
+      cyclePlaybackRate: cyclePlaybackRateFn,
+      dismissNowPlaying,
+    }),
+    [
+      activeId,
+      nowPlaying,
+      playbackRate,
+      register,
+      unregister,
+      requestPlay,
+      notifyPaused,
+      setNowPlaying,
+      updateNowPlayingProgress,
+      toggleActivePlayback,
+      seekActiveTo,
+      setPlaybackRate,
+      cyclePlaybackRateFn,
+      dismissNowPlaying,
+    ],
+  );
+
   return (
-    <FamilyMediaPlayerContext.Provider
-      value={{
-        activeId,
-        nowPlaying,
-        playbackRate,
-        register,
-        unregister,
-        requestPlay,
-        notifyPaused,
-        setNowPlaying,
-        updateNowPlayingProgress,
-        toggleActivePlayback,
-        seekActiveTo,
-        setPlaybackRate,
-        cyclePlaybackRate: cyclePlaybackRateFn,
-        dismissNowPlaying,
-      }}
-    >
+    <FamilyMediaPlayerContext.Provider value={value}>
       {children}
     </FamilyMediaPlayerContext.Provider>
   );

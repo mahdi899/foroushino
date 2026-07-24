@@ -59,6 +59,9 @@ html[data-family-host='1'] body {
   --family-sidebar-from: var(--family-surface);
   --family-sidebar-to: var(--family-surface-soft);
   --family-overlay: var(--family-scrim);
+  /* Legacy names used by newer menu/install UI — must track theme text tokens */
+  --family-fg: var(--family-text);
+  --family-muted: var(--family-text-muted);
   --family-reaction-active-bg: color-mix(in oklab, var(--family-accent) 12%, transparent);
   --family-reaction-active-border: color-mix(in oklab, var(--family-accent) 35%, var(--family-border));
   --family-input-border: var(--family-border);
@@ -602,8 +605,15 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-comment-bubble__time {
+  display: block;
+  margin-top: 0.35rem;
+  /* Physical left — readable under RTL chat bubbles */
+  text-align: left;
   font-size: 0.6875rem;
+  line-height: 1.2;
   color: var(--family-tg-subtitle);
+  direction: ltr;
+  unicode-bidi: isolate;
 }
 
 .family-comment-body {
@@ -612,11 +622,22 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
 }
 
 .family-comment-input {
-  max-height: 2.5rem;
+  max-height: 7.5rem;
+  overflow-y: auto;
+  field-sizing: content;
 }
 
 .family-comment-submit {
   min-width: 4.25rem;
+}
+
+.family-comment-composer--page {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+.family-comments-panel--keyboard {
+  padding-bottom: var(--family-keyboard-inset, 0px);
+  transition: padding-bottom 120ms ease-out;
 }
 
 .family-voice-wave {
@@ -2264,16 +2285,39 @@ html[data-theme='dark'] .family-app .family-sidebar__card {
     box-shadow 200ms var(--family-tg-spring);
 }
 
-.family-post-bubble--swiping {
-  transition: none;
-  will-change: transform;
-  z-index: 2;
-  user-select: none;
+.family-reaction-icon-slot {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
-.family-post-bubble:has(.family-reaction-btn--slam, .family-reaction-btn--slam-land),
-.family-post-bubble--impact {
+.family-reaction-btn--pulse {
+  animation: family-reaction-pulse 0.28s ease-out both;
+}
+
+.family-reaction-btn-wrap--pulse {
   z-index: 2;
+}
+
+@keyframes family-reaction-pulse {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .family-reaction-btn--pulse {
+    animation: none;
+  }
 }
 
 .family-app[data-family-theme='light'] .family-post-bubble,
@@ -5571,5 +5615,662 @@ html[data-theme='light'] .family-app .family-action-number-bar {
   .family-action-celebrate-card__sparkle,
   .family-action-celebrate__spark {
     animation: none !important;
+  }
+}
+
+/* —— Family menu sheet + install banners —— */
+/* Must live in FamilyBodyPortal (document.body) — frame backdrop-filter clips fixed children. */
+.family-menu-root {
+  position: fixed;
+  inset: 0;
+  z-index: 10060;
+  pointer-events: none;
+}
+
+.family-menu-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  border: 0;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.family-menu-backdrop--in {
+  opacity: 1;
+}
+
+.family-menu-sheet {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  pointer-events: auto;
+  max-height: min(78dvh, 32rem);
+  overflow: auto;
+  border-radius: 1.125rem 1.125rem 0 0;
+  background: var(--family-surface-elevated, var(--family-surface));
+  color: var(--family-text);
+  padding: 0.5rem 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+  transform: translateY(100%);
+  transition:
+    transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 180ms ease;
+  box-shadow: 0 -8px 28px color-mix(in oklab, var(--family-text) 16%, transparent);
+}
+
+.family-menu-sheet--in {
+  transform: translateY(0);
+}
+
+/* Tablet+: constrained card, not full-bleed */
+@media (min-width: 640px) {
+  .family-menu-sheet {
+    inset-inline: auto;
+    left: 50%;
+    right: auto;
+    bottom: 1.25rem;
+    width: min(calc(100% - 2rem), 26rem);
+    max-height: min(72dvh, 30rem);
+    border-radius: 1.15rem;
+    padding: 0.75rem 1.15rem 1.15rem;
+    transform: translate(-50%, calc(100% + 1.5rem));
+    box-shadow:
+      0 18px 48px color-mix(in oklab, var(--family-text) 18%, transparent),
+      0 0 0 1px color-mix(in oklab, var(--family-border) 80%, transparent);
+  }
+
+  .family-menu-sheet--in {
+    transform: translate(-50%, 0);
+  }
+
+  .family-menu-sheet__grab {
+    display: none;
+  }
+}
+
+/* Desktop: centered modal */
+@media (min-width: 1024px) {
+  .family-menu-sheet {
+    bottom: auto;
+    top: 50%;
+    width: min(calc(100% - 2.5rem), 28rem);
+    max-height: min(70dvh, 28rem);
+    padding: 0.85rem 1.25rem 1.25rem;
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.96);
+    box-shadow:
+      0 24px 64px color-mix(in oklab, var(--family-text) 22%, transparent),
+      0 0 0 1px color-mix(in oklab, var(--family-border) 85%, transparent);
+  }
+
+  .family-menu-sheet--in {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  .family-menu-backdrop {
+    background: rgba(0, 0, 0, 0.42);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+}
+
+.family-menu-sheet__grab {
+  width: 2.25rem;
+  height: 0.25rem;
+  margin: 0.25rem auto 0.75rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--family-text-muted) 45%, transparent);
+}
+
+.family-menu-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.family-menu-sheet__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--family-text);
+}
+
+.family-menu-sheet__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--family-text-muted);
+}
+
+.family-menu-section {
+  padding: 0.5rem 0 0.75rem;
+  border-top: 1px solid color-mix(in oklab, var(--family-border) 90%, transparent);
+}
+
+.family-menu-section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.family-menu-section__label {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--family-text-muted);
+}
+
+.family-menu-theme {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.family-menu-theme__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--family-border);
+  background: color-mix(in oklab, var(--family-surface-soft) 70%, transparent);
+  color: var(--family-text);
+  font-size: 0.875rem;
+}
+
+.family-menu-theme__btn--active {
+  border-color: color-mix(in oklab, var(--family-accent) 55%, var(--family-border));
+  background: color-mix(in oklab, var(--family-accent) 14%, transparent);
+  color: var(--family-text);
+}
+
+.family-menu-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0.5rem 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--family-text);
+  text-align: start;
+}
+
+.family-menu-item--danger {
+  color: #c9343a;
+}
+
+.family-app[data-family-theme='dark'] .family-menu-item--danger,
+html[data-theme='dark'] .family-app .family-menu-item--danger,
+.family-body-portal[data-family-theme='dark'] .family-menu-item--danger {
+  color: #ff6b6b;
+}
+
+.family-menu-item__text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.family-menu-item__title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+
+.family-menu-item__sub {
+  font-size: 0.75rem;
+  color: var(--family-text-muted);
+}
+
+.family-menu-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--family-text-subtle);
+}
+
+.family-menu-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+}
+
+.family-menu-confirm__text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--family-text);
+}
+
+.family-menu-confirm__actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.family-menu-confirm__btn {
+  flex: 1;
+  min-height: 2.75rem;
+  border-radius: 0.75rem;
+  border: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.family-menu-confirm__btn--muted {
+  background: color-mix(in oklab, var(--family-text-muted) 16%, transparent);
+  color: var(--family-text);
+}
+
+.family-menu-confirm__btn--danger {
+  background: #e5484d;
+  color: #fff;
+}
+
+.family-install-banner {
+  margin: 0.75rem 0.75rem 0.25rem;
+  border-radius: 0.875rem;
+  border: 1px solid color-mix(in oklab, var(--family-accent) 35%, var(--family-border));
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--family-accent) 12%, var(--family-surface)),
+    var(--family-surface)
+  );
+  color: var(--family-text);
+  padding: 0.875rem;
+  animation: family-install-banner-in 180ms ease both;
+}
+
+.family-install-banner__content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.family-install-banner__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--family-text);
+}
+
+.family-install-banner__sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--family-text-muted);
+}
+
+.family-install-banner__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--family-text-subtle);
+}
+
+.family-install-banner__actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.family-install-banner__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.25rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: var(--family-accent);
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.family-install-banner__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  color: var(--family-text-muted);
+}
+
+.family-install-promo {
+  margin: 0.25rem 0.75rem;
+  border-radius: 0.875rem;
+  border: 1px dashed color-mix(in oklab, var(--family-accent) 40%, var(--family-border));
+  background: color-mix(in oklab, var(--family-accent) 8%, var(--family-surface));
+  color: var(--family-text);
+  padding: 0.875rem;
+}
+
+.family-install-promo__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--family-text);
+}
+
+.family-install-promo__sub {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--family-text-muted);
+}
+
+.family-install-promo__hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.7rem;
+  color: var(--family-text-subtle);
+}
+
+.family-install-promo__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+}
+
+.family-install-promo__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.15rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: var(--family-accent);
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.family-install-promo__dismiss {
+  min-height: 2.15rem;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--family-text-muted);
+}
+
+@keyframes family-install-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.family-install-hero {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 10055;
+  pointer-events: none;
+  padding:
+    calc(0.75rem + env(safe-area-inset-top, 0px))
+    0.875rem
+    0;
+  transform: translateY(-110%);
+  transition: transform 220ms ease;
+}
+
+.family-install-hero--in {
+  transform: translateY(0);
+}
+
+.family-install-hero__card {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  max-width: 28rem;
+  margin-inline: auto;
+  border-radius: 1.25rem;
+  border: 1px solid color-mix(in oklab, var(--family-accent) 35%, var(--family-border));
+  background:
+    radial-gradient(
+      120% 90% at 100% 0%,
+      color-mix(in oklab, var(--family-accent) 18%, transparent),
+      transparent 55%
+    ),
+    linear-gradient(
+      160deg,
+      color-mix(in oklab, var(--family-accent) 10%, var(--family-surface)),
+      var(--family-surface) 70%
+    );
+  color: var(--family-text);
+  box-shadow:
+    0 16px 40px color-mix(in oklab, var(--family-text) 14%, transparent),
+    0 0 0 1px color-mix(in oklab, var(--family-border) 80%, transparent);
+  padding: 1.15rem 1.1rem 1.2rem;
+}
+
+.family-app[data-family-theme='dark'] .family-install-hero__card,
+html[data-theme='dark'] .family-app .family-install-hero__card,
+.family-body-portal[data-family-theme='dark'] .family-install-hero__card {
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.35),
+    0 0 0 1px color-mix(in oklab, #fff 6%, transparent);
+}
+
+.family-install-hero__close {
+  position: absolute;
+  top: 0.55rem;
+  inset-inline-start: 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: color-mix(in oklab, var(--family-text-muted) 14%, transparent);
+  color: var(--family-text-muted);
+}
+
+.family-install-hero__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  margin-inline: auto;
+  border-radius: 1rem;
+  background: color-mix(in oklab, var(--family-accent) 16%, transparent);
+  color: var(--family-accent);
+}
+
+.family-install-hero__copy {
+  text-align: center;
+}
+
+.family-install-hero__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--family-text);
+}
+
+.family-install-hero__sub {
+  margin: 0.4rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: var(--family-text-muted);
+}
+
+.family-install-hero__hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--family-text-subtle);
+}
+
+.family-install-hero__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.family-install-hero__cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.85rem;
+  border: 0;
+  border-radius: 0.9rem;
+  background: var(--family-accent);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.family-install-hero__later {
+  min-height: 2.35rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  font-size: 0.8125rem;
+  color: var(--family-text-muted);
+}
+
+.family-push-optin {
+  pointer-events: none;
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 10050;
+  padding: 0 0.875rem calc(0.875rem + env(safe-area-inset-bottom, 0px));
+}
+
+.family-push-optin__card {
+  pointer-events: auto;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem 0.75rem;
+  max-width: 26rem;
+  margin-inline: auto;
+  border-radius: 1.1rem;
+  border: 1px solid color-mix(in oklab, var(--family-accent) 28%, var(--family-border));
+  background: var(--family-surface);
+  color: var(--family-text);
+  box-shadow: 0 14px 36px color-mix(in oklab, var(--family-text) 16%, transparent);
+  padding: 0.95rem 1rem 1rem;
+}
+
+.family-push-optin__close {
+  position: absolute;
+  top: 0.45rem;
+  inset-inline-start: 0.45rem;
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  color: var(--family-text-muted);
+}
+
+.family-push-optin__icon {
+  display: inline-flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.85rem;
+  background: color-mix(in oklab, var(--family-accent) 14%, transparent);
+  color: var(--family-accent);
+}
+
+.family-push-optin__copy {
+  min-width: 0;
+  padding-inline-end: 1.5rem;
+}
+
+.family-push-optin__title {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--family-text);
+}
+
+.family-push-optin__sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--family-text-muted);
+}
+
+.family-push-optin__error {
+  margin: 0.35rem 0 0;
+  font-size: 0.7rem;
+  color: #c9343a;
+}
+
+.family-push-optin__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.family-push-optin__cta {
+  min-height: 2.35rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: var(--family-accent);
+  padding: 0 0.9rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.family-push-optin__cta:disabled {
+  opacity: 0.65;
+}
+
+.family-push-optin__later {
+  min-height: 2.35rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  padding: 0 0.65rem;
+  font-size: 0.8125rem;
+  color: var(--family-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .family-menu-backdrop,
+  .family-menu-sheet,
+  .family-install-banner,
+  .family-install-hero,
+  .family-comments-panel--keyboard {
+    transition: none;
+    animation: none;
   }
 }

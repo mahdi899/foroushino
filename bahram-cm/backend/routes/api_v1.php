@@ -38,6 +38,7 @@ use App\Http\Controllers\Api\V1\Family\CommentController as FamilyCommentControl
 use App\Http\Controllers\Api\V1\Family\FeedController as FamilyFeedController;
 use App\Http\Controllers\Api\V1\Family\MediaProgressController as FamilyMediaProgressController;
 use App\Http\Controllers\Api\V1\Family\PostViewController as FamilyPostViewController;
+use App\Http\Controllers\Api\V1\Family\PushSubscriptionController as FamilyPushSubscriptionController;
 use App\Http\Controllers\Api\V1\Family\PulseController as FamilyPulseController;
 use App\Http\Controllers\Api\V1\Family\ReactionController as FamilyReactionController;
 use App\Http\Controllers\Api\V1\Family\FamilyMediaStreamController;
@@ -544,6 +545,8 @@ Route::prefix('family')->group(function () {
     Route::get('branding', [FamilyBrandingController::class, 'show'])->middleware('throttle:120,1');
     Route::get('posts/{post}', [FamilyFeedController::class, 'show'])->whereNumber('post')->middleware('throttle:120,1');
     Route::get('pulse', [FamilyPulseController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('push/vapid-public-key', [FamilyPushSubscriptionController::class, 'vapidPublicKey'])
+        ->middleware('throttle:60,1');
 
     Route::middleware(['auth:sanctum', 'student.active'])->group(function () {
         Route::get('me', [FamilyFeedController::class, 'me']);
@@ -581,6 +584,13 @@ Route::prefix('family')->group(function () {
         Route::get('notifications/unread-count', [StudentNotificationController::class, 'unreadCount']);
         Route::post('notifications/read-all', [StudentNotificationController::class, 'markAllRead']);
         Route::post('notifications/{notification}/read', [StudentNotificationController::class, 'markRead']);
+
+        Route::get('push/status', [FamilyPushSubscriptionController::class, 'status'])
+            ->middleware('throttle:60,1');
+        Route::post('push/subscriptions', [FamilyPushSubscriptionController::class, 'store'])
+            ->middleware('throttle:20,1');
+        Route::delete('push/subscriptions', [FamilyPushSubscriptionController::class, 'destroy'])
+            ->middleware('throttle:20,1');
     });
 });
 

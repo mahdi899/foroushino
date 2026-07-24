@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { EmojiRichText } from '@/components/emoji/EmojiRichText';
 import { CommentAvatar } from '@/components/family/CommentAvatar';
 import { useFamilyComments } from '@/lib/family/hooks/useFamilyComments';
@@ -19,6 +19,8 @@ type CommentsPanelProps = {
   className?: string;
 };
 
+const TEXTAREA_MAX_PX = 120;
+
 function CommentRow({
   comment,
   avatarSize,
@@ -32,11 +34,6 @@ function CommentRow({
       <div className="family-comment-bubble min-w-0 flex-1 overflow-hidden px-3 py-2">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="family-comment-bubble__author">{comment.user.name}</span>
-          {comment.created_at && (
-            <time dateTime={comment.created_at} className="family-comment-bubble__time">
-              {formatPostDateTime(comment.created_at)}
-            </time>
-          )}
           {comment.is_pending_mine && (
             <span className="rounded-full bg-[color-mix(in_oklab,var(--family-text)_8%,transparent)] px-2 py-0.5 text-[10px] text-[var(--family-tg-subtitle)]">
               در انتظار بررسی
@@ -49,6 +46,11 @@ function CommentRow({
           emojiMode="loop"
           className="family-comment-body mt-1 text-[15px] leading-[1.35] text-[var(--family-text)]"
         />
+        {comment.created_at ? (
+          <time dateTime={comment.created_at} className="family-comment-bubble__time">
+            {formatPostDateTime(comment.created_at)}
+          </time>
+        ) : null}
       </div>
     </li>
   );
@@ -67,8 +69,11 @@ export function CommentsPanel({
   const [value, setValue] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [justSent, setJustSent] = useState(false);
+  const [keyboardInset, setKeyboardInset] = useState(0);
   const listRef = useRef<HTMLDivElement | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const composerRef = useRef<HTMLDivElement | null>(null);
   const isPage = variant === 'page';
   const avatarSize = isPage ? 'md' : 'sm';
 
@@ -80,11 +85,23 @@ export function CommentsPanel({
     root.scrollTo({ top: root.scrollHeight, behavior });
   }, []);
 
+  const resizeTextarea = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const next = Math.min(el.scrollHeight, TEXTAREA_MAX_PX);
+    el.style.height = `${Math.max(40, next)}px`;
+  }, []);
+
   useEffect(() => {
     setValue('');
     setError(null);
     setJustSent(false);
   }, [postId]);
+
+  useLayoutEffect(() => {
+    resizeTextarea();
+  }, [value, resizeTextarea]);
 
   useLayoutEffect(() => {
     if (isLoading || orderedComments.length === 0) return;
@@ -97,6 +114,28 @@ export function CommentsPanel({
     if (!justSent) return;
     scrollToLatest('smooth');
   }, [justSent, orderedComments.length, scrollToLatest]);
+
+  /** Keep composer tight above the mobile keyboard (Telegram-like). */
+  useEffect(() => {
+    if (!isPage || typeof window === 'undefined' || !window.visualViewport) return;
+
+    const vv = window.visualViewport;
+    const sync = () => {
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKeyboardInset(inset > 48 ? inset : 0);
+      if (inset > 48) {
+        requestAnimationFrame(() => scrollToLatest('auto'));
+      }
+    };
+
+    sync();
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    return () => {
+      vv.removeEventListener('resize', sync);
+      vv.removeEventListener('scroll', sync);
+    };
+  }, [isPage, scrollToLatest]);
 
   const handleSubmit = async () => {
     const body = value.trim();
@@ -125,7 +164,19 @@ export function CommentsPanel({
   };
 
   return (
-    <section className={cn('flex min-h-0 min-w-0 flex-col overflow-x-hidden', variant === 'inline' && 'border-t border-[var(--family-border-subtle)]', className)}>
+    <section
+      className={cn(
+        'family-comments-panel flex min-h-0 min-w-0 flex-col overflow-x-hidden',
+        variant === 'inline' && 'border-t border-[var(--family-border-subtle)]',
+        isPage && keyboardInset > 0 && 'family-comments-panel--keyboard',
+        className,
+      )}
+      style={
+        isPage && keyboardInset > 0
+          ? ({ ['--family-keyboard-inset' as string]: `${keyboardInset}px` } as CSSProperties)
+          : undefined
+      }
+    >
       {!hideTitle && (
         <div className="shrink-0 px-4 py-3 sm:px-5">
           <h3 className="text-sm font-semibold text-bone/90">نظرات</h3>
@@ -135,7 +186,7 @@ export function CommentsPanel({
       <div
         ref={listRef}
         className={cn(
-          'family-feed-scroll min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain',
+          'family-feed-scroll family-comments-list min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-contain',
           isPage ? 'flex-1 px-3 py-3 sm:px-4 lg:px-5' : 'max-h-[280px] px-3 sm:px-4 lg:max-h-[320px]',
         )}
       >
@@ -178,9 +229,10 @@ export function CommentsPanel({
       </div>
 
       <div
+        ref={composerRef}
         className={cn(
-          'family-glass-bar shrink-0 p-3 sm:p-4',
-          isPage && 'pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:p-4',
+          'family-glass-bar family-comment-composer shrink-0 p-3 sm:p-4',
+          isPage && 'family-comment-composer--page',
         )}
       >
         {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
@@ -190,15 +242,19 @@ export function CommentsPanel({
             e.preventDefault();
             void handleSubmit();
           }}
-          className="flex items-center gap-2"
+          className="flex items-end gap-2"
         >
           <textarea
+            ref={textareaRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
+            onFocus={() => {
+              window.setTimeout(() => scrollToLatest('smooth'), 80);
+            }}
             maxLength={500}
             rows={1}
             placeholder="نظرت رو بنویس…"
-            className="family-input family-comment-input min-h-10 flex-1 resize-none rounded-full px-4 py-2 text-sm leading-5"
+            className="family-input family-comment-input min-h-10 flex-1 resize-none rounded-[1.25rem] px-4 py-2.5 text-sm leading-5"
           />
           <button
             type="submit"

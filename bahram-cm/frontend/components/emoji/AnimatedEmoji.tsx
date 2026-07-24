@@ -20,6 +20,7 @@ export function AnimatedEmoji({
   playKey = 0,
   className,
   label,
+  onComplete,
 }: {
   notoKey: NotoEmojiSlug;
   size?: number;
@@ -27,11 +28,14 @@ export function AnimatedEmoji({
   playKey?: number;
   className?: string;
   label?: string;
+  onComplete?: () => void;
 }) {
   const lottieRef = useRef<LottieRefCurrentProps>(null);
   const hostRef = useRef<HTMLSpanElement>(null);
   const playKeyRef = useRef(playKey);
   playKeyRef.current = playKey;
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
   const loop = mode === 'loop';
   const animationData = getNotoLottie(notoKey);
 
@@ -65,6 +69,7 @@ export function AnimatedEmoji({
     const lastFrame = Math.max(0, Math.floor(total) - 1);
     inst.goToAndStop(lastFrame, true);
     clampSvgSize();
+    onCompleteRef.current?.();
   }, [clampSvgSize]);
 
   useEffect(() => {

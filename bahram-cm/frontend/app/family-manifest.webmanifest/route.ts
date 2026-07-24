@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PWA_MANIFEST_ICONS } from '@/lib/pwa/manifest-icons';
 
-const FAMILY_DOMAIN = process.env.NEXT_PUBLIC_FAMILY_DOMAIN?.trim() || '';
+const FAMILY_DOMAIN = process.env.NEXT_PUBLIC_FAMILY_DOMAIN?.trim().toLowerCase() || '';
 
 /**
  * Dynamic PWA manifest for the Family app. Option B dual-domain: on
@@ -11,14 +11,14 @@ const FAMILY_DOMAIN = process.env.NEXT_PUBLIC_FAMILY_DOMAIN?.trim() || '';
  * in-scope for this PWA's install.
  */
 export function GET(request: NextRequest) {
-  const hostname = request.headers.get('host')?.split(':')[0] ?? '';
+  const hostname = (request.headers.get('host')?.split(':')[0] ?? '').toLowerCase();
   const isClubApex = Boolean(FAMILY_DOMAIN) && hostname === FAMILY_DOMAIN;
 
   const startUrl = isClubApex ? '/' : '/family';
   const scope = isClubApex ? '/' : '/family';
 
   const manifest = {
-    name: 'خانواده داداش بهرام',
+    name: 'خانواده',
     short_name: 'خانواده',
     description: 'فضای نزدیک داداش بهرام — پست، صوت، ویدیو و گفتگو',
     start_url: startUrl,

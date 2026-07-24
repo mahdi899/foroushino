@@ -26,10 +26,14 @@ async function unregisterFamilyServiceWorkers() {
 // Option B dual-domain: on rostami.club (apex), the family app is served at
 // `/`, so the service worker scope must be `/`. On the legacy single-domain
 // path (`rostami.app/family`, or local dev), scope stays `/family/`.
-const FAMILY_DOMAIN = process.env.NEXT_PUBLIC_FAMILY_DOMAIN?.trim() || '';
+const FAMILY_DOMAIN = process.env.NEXT_PUBLIC_FAMILY_DOMAIN?.trim().toLowerCase() || '';
 
 function familyServiceWorkerScope(): string {
-  if (FAMILY_DOMAIN && typeof window !== 'undefined' && window.location.hostname === FAMILY_DOMAIN) {
+  if (
+    FAMILY_DOMAIN &&
+    typeof window !== 'undefined' &&
+    window.location.hostname.toLowerCase() === FAMILY_DOMAIN
+  ) {
     return '/';
   }
   return '/family/';
@@ -45,9 +49,11 @@ export function FamilyServiceWorkerRegistrar() {
 
     if (!('serviceWorker' in navigator)) return;
 
-    void navigator.serviceWorker.register('/sw-family.js', { scope: familyServiceWorkerScope() }).catch(() => {
-      /* PWA is optional */
-    });
+    void navigator.serviceWorker
+      .register('/sw-family.js', { scope: familyServiceWorkerScope() })
+      .catch((error) => {
+        console.warn('[family-pwa] service worker registration failed', error);
+      });
   }, []);
 
   return null;

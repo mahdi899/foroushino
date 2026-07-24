@@ -1,20 +1,26 @@
 import type { ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { BackButton } from '@/components/layout/BackButton'
 
 interface TopBarProps {
   title?: string
   subtitle?: string
   onBack?: () => void
   showBack?: boolean
+  backFallback?: string
   action?: ReactNode
   transparent?: boolean
 }
 
-export function TopBar({ title, subtitle, onBack, showBack = true, action, transparent }: TopBarProps) {
-  const navigate = useNavigate()
-
+export function TopBar({
+  title,
+  subtitle,
+  onBack,
+  showBack = true,
+  backFallback = '/home',
+  action,
+  transparent,
+}: TopBarProps) {
   return (
     <header
       className={cn(
@@ -24,16 +30,9 @@ export function TopBar({ title, subtitle, onBack, showBack = true, action, trans
     >
       <div className="flex items-center gap-2">
         {showBack ? (
-          <button
-            type="button"
-            onClick={() => (onBack ? onBack() : navigate(-1))}
-            aria-label="بازگشت"
-            className="glass-inset flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#3390EC] shadow-sm transition-all active:scale-95 dark:text-[#8774E1]"
-          >
-            <ChevronRight size={20} strokeWidth={2.25} />
-          </button>
+          <BackButton onBack={onBack} fallback={backFallback} variant="glass" />
         ) : (
-          <span className="h-9 w-9 shrink-0" aria-hidden />
+          <span className="h-11 w-11 shrink-0" aria-hidden />
         )}
 
         <div className="min-w-0 flex-1 px-1 text-center">
@@ -43,14 +42,14 @@ export function TopBar({ title, subtitle, onBack, showBack = true, action, trans
             </h1>
           )}
           {subtitle && (
-            <p className="mt-0.5 truncate text-[13px] font-medium leading-none text-text-soft">
+            <p className="mt-0.5 truncate text-[12px] font-medium leading-none text-text-soft">
               {subtitle}
             </p>
           )}
         </div>
 
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center">
-          {action ?? <span className="h-9 w-9 shrink-0" aria-hidden />}
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center">
+          {action ?? <span className="h-11 w-11 shrink-0" aria-hidden />}
         </div>
       </div>
     </header>

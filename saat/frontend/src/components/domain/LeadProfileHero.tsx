@@ -103,7 +103,7 @@ export function LeadProfileHero({ lead }: { lead: Lead }) {
             </span>
           </div>
 
-          <div className="mt-5 flex items-center gap-2.5">
+          <div className="mt-5 flex flex-col items-center gap-1.5">
             <h2 className="text-[28px] font-bold tracking-tight text-neutral-900 dark:text-white">
               {lead.firstName} {lead.lastName}
             </h2>

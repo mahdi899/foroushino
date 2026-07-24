@@ -9,7 +9,7 @@ import { FamilyThemeBoot } from '@/app/family/FamilyThemeBoot';
 import { FamilyMediaPreconnect } from '@/components/family/FamilyMediaPreconnect';
 import { FamilyServiceWorkerRegistrar } from '@/components/family/FamilyServiceWorkerRegistrar';
 import { FamilyReactScan } from '@/components/family/FamilyReactScan';
-import { FamilyInstallCard } from '@/components/family/FamilyInstallCard';
+import { FamilyPwaInstallBoot } from '@/components/family/FamilyPwaInstallBoot';
 import { BahramUpdateBanner } from '@/components/pwa/BahramUpdateBanner';
 import {
   DEFAULT_SITE_THEME,
@@ -18,7 +18,7 @@ import {
 } from '@/lib/site-theme';
 
 export const metadata: Metadata = {
-  title: 'خانواده داداش بهرام',
+  title: 'خانواده',
   description: 'فضای نزدیک داداش بهرام با اعضای خانواده — پست، صوت، ویدیو و گفتگو.',
   robots: { index: false, follow: false },
   manifest: '/family-manifest.webmanifest',
@@ -37,6 +37,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  interactiveWidget: 'overlays-content',
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#d9e4ec' },
     { media: '(prefers-color-scheme: dark)', color: '#0b1419' },
@@ -66,7 +67,7 @@ export default async function FamilyLayout({ children }: { children: React.React
         <FamilyActionCelebrateProvider>
           <div className="family-app__frame relative mx-auto flex h-full min-h-0 w-full flex-col overflow-hidden">
             {children}
-            <FamilyInstallCard />
+            <FamilyPwaInstallBoot />
             <BahramUpdateBanner variant="family" />
           </div>
         </FamilyActionCelebrateProvider>

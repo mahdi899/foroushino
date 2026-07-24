@@ -26,7 +26,7 @@ const spring = { type: 'spring' as const, stiffness: 520, damping: 38 }
 export function LeadFilterBar({ filters, active, counts, onChange }: LeadFilterBarProps) {
   return (
     <LayoutGroup id="lead-filters">
-      <div className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1 py-1">
+      <div className="no-scrollbar -mx-1 flex w-full min-w-0 flex-nowrap gap-1.5 overflow-x-auto overscroll-x-contain px-1 py-1 touch-pan-x">
         {filters.map((f) => {
           const isActive = active === f.id
           const Icon = LEAD_FILTER_ICONS[f.id]
@@ -43,7 +43,7 @@ export function LeadFilterBar({ filters, active, counts, onChange }: LeadFilterB
                 onChange(f.id)
               }}
               className={cn(
-                'relative inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold',
+                'relative inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[12px] font-semibold',
                 isActive ? 'text-white' : cn(LEAD_FILTER_INACTIVE[f.id], 'bg-black/[0.04] dark:bg-white/[0.06]'),
               )}
             >

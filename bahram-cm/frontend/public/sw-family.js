@@ -1,4 +1,4 @@
-const CACHE = 'bahram-family-v6';
+const CACHE = 'bahram-family-v8';
 const PRECACHE = ['/family-manifest.webmanifest', '/pwa/icon/192', '/pwa/icon/512', '/apple-icon'];
 
 /**
@@ -91,6 +91,80 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+self.addEventListener('push', (event) => {
+  let data = {
+    title: 'خانواده',
+    body: 'امروز پیام‌های جدید در خانواده هست — بیا اپ را باز کن.',
+    url: shellFallback(),
+    tag: 'family-daily-unread',
+    badge: 0,
+  };
+
+  try {
+    if (event.data) {
+      const parsed = event.data.json();
+      data = { ...data, ...parsed };
+    }
+  } catch {
+    try {
+      const text = event.data?.text();
+      if (text) data.body = text;
+    } catch {
+      /* keep defaults */
+    }
+  }
+
+  const targetUrl = typeof data.url === 'string' && data.url ? data.url : shellFallback();
+
+  event.waitUntil(
+    (async () => {
+      if (typeof self.registration.setAppBadge === 'function' && data.badge > 0) {
+        try {
+          await self.registration.setAppBadge(Math.min(Number(data.badge) || 1, 99));
+        } catch {
+          /* ignore */
+        }
+      }
+
+      await self.registration.showNotification(data.title || 'خانواده', {
+        body: data.body || '',
+        icon: '/pwa/icon/192',
+        badge: '/pwa/icon/192',
+        tag: data.tag || 'family-daily-unread',
+        renotify: true,
+        data: { url: targetUrl },
+        dir: 'rtl',
+        lang: 'fa',
+      });
+    })(),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = event.notification?.data?.url || shellFallback();
+
+  event.waitUntil(
+    (async () => {
+      const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of allClients) {
+        if ('focus' in client) {
+          await client.focus();
+          if ('navigate' in client && typeof client.navigate === 'function') {
+            try {
+              await client.navigate(target);
+            } catch {
+              /* ignore */
+            }
+          }
+          return;
+        }
+      }
+      await self.clients.openWindow(target);
+    })(),
+  );
 });
 
 self.addEventListener('fetch', (event) => {

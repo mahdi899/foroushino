@@ -977,20 +977,56 @@ export function ManagementHome() {
               </button>
             </div>
             <div className="-mx-0.5 flex gap-2.5 overflow-x-auto px-0.5 pb-0.5 no-scrollbar">
-              {teamRows.map((team) => (
-                <motion.div
-                  key={team.id}
-                  whileTap={{ scale: 0.97 }}
-                  className="glass-card relative min-w-[130px] shrink-0 overflow-hidden rounded-[18px] border border-white/55 p-3.5 dark:border-white/10"
-                >
-                  <div className="pointer-events-none absolute -right-4 -top-4 h-14 w-14 rounded-full bg-[#3390EC]/12 blur-xl" />
-                  <p className="relative truncate text-[11px] font-bold text-text-soft">{team.name}</p>
-                  <p className={cn('relative mt-2 text-[22px] font-black tabular-nums leading-none', TG)}>
-                    {toFa(team.conversion)}٪
-                  </p>
-                  <p className="relative mt-1 text-[9px] font-semibold text-text-soft">نرخ تبدیل</p>
-                </motion.div>
-              ))}
+              {teamRows.map((team) => {
+                const trendUp = team.trend > 0
+                const trendFlat = team.trend === 0
+                const trendLabel = trendFlat
+                  ? 'هم‌تراز میانگین'
+                  : trendUp
+                    ? `${toFa(team.trend)}٪ بالاتر`
+                    : `${toFa(Math.abs(team.trend))}٪ پایین‌تر`
+
+                return (
+                  <button
+                    key={team.id}
+                    type="button"
+                    onClick={() => {
+                      haptic('selection')
+                      navigate('/team-reports')
+                    }}
+                    className="glass-card relative min-w-[168px] shrink-0 overflow-hidden rounded-[18px] border border-white/55 p-3.5 text-right dark:border-white/10"
+                  >
+                    <div className="pointer-events-none absolute -right-3 -top-3 h-12 w-12 rounded-full bg-[#3390EC]/10" />
+                    <div className="relative flex items-start justify-between gap-2">
+                      <p className="min-w-0 truncate text-[12px] font-extrabold text-text">{team.name}</p>
+                      <span
+                        className={cn(
+                          'shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold tabular-nums',
+                          trendFlat
+                            ? 'bg-black/[0.05] text-text-soft dark:bg-white/10'
+                            : trendUp
+                              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-rose-500/12 text-rose-700 dark:text-rose-300',
+                        )}
+                      >
+                        {trendFlat ? '—' : trendUp ? '↑' : '↓'} {trendFlat ? '۰' : toFa(Math.abs(team.trend))}
+                      </span>
+                    </div>
+                    <p className={cn('relative mt-2.5 text-[26px] font-black tabular-nums leading-none', TG)}>
+                      {toFa(team.conversion)}٪
+                    </p>
+                    <p className="relative mt-1 text-[10px] font-semibold text-text-soft">نرخ تبدیل · {trendLabel}</p>
+                    <div className="relative mt-3 flex items-center gap-3 border-t border-black/[0.05] pt-2.5 dark:border-white/10">
+                      <span className="text-[10px] font-bold text-text-soft">
+                        تماس <span className="tabular-nums text-text">{toFa(team.calls)}</span>
+                      </span>
+                      <span className="text-[10px] font-bold text-text-soft">
+                        موفق <span className="tabular-nums text-text">{toFa(team.successful)}</span>
+                      </span>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           </motion.section>
         )}
