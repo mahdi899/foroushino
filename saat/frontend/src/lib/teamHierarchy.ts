@@ -116,13 +116,19 @@ export function groupTeamsBySupervisor(
 
     const supervisor =
       row.team.supervisorId != null
-        ? agents.find((agent) => agent.id === row.team.supervisorId && agent.role === 'supervisor') ??
+        ? agents.find(
+            (agent) =>
+              agent.id === row.team.supervisorId &&
+              (agent.role === 'supervisor' || agent.role === 'manager'),
+          ) ??
+          agents.find((agent) => agent.id === row.team.supervisorId) ??
           null
         : null
 
     const supervisorName =
-      row.team.supervisorName ??
-      (supervisor ? `${supervisor.firstName} ${supervisor.lastName}`.trim() : 'بدون ناظر')
+      (row.team.supervisorName && row.team.supervisorName.trim()) ||
+      (supervisor ? `${supervisor.firstName} ${supervisor.lastName}`.trim() : '') ||
+      'بدون ناظر'
 
     groups.set(key, {
       supervisorId: row.team.supervisorId ?? null,
@@ -154,12 +160,21 @@ export function buildSupervisorHierarchyList(
       .map((group) => [group.supervisorId as string, group]),
   )
 
-  const result = supervisors
-    .map((supervisor) => {
+  const result: SupervisorHierarchyGroup[] = supervisors
+    .map((supervisor): SupervisorHierarchyGroup => {
       const existing = bySupervisorId.get(supervisor.id)
-      if (existing) return existing
-
       const name = `${supervisor.firstName} ${supervisor.lastName}`.trim()
+      if (existing) {
+        return {
+          ...existing,
+          supervisor,
+          supervisorName:
+            existing.supervisorName && existing.supervisorName !== 'بدون ناظر'
+              ? existing.supervisorName
+              : name,
+        }
+      }
+
       return {
         supervisorId: supervisor.id,
         supervisorName: name,
@@ -167,7 +182,7 @@ export function buildSupervisorHierarchyList(
         teams: [],
         teamCount: 0,
         agentCount: 0,
-      } satisfies SupervisorHierarchyGroup
+      }
     })
     .sort((a, b) => a.supervisorName.localeCompare(b.supervisorName, 'fa'))
 

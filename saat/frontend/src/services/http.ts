@@ -89,7 +89,16 @@ export async function request<T = unknown>(path: string, options: RequestOptions
 
   let response: Response
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: payload })
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers: {
+        ...headers,
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      },
+      body: payload,
+      cache: 'no-store',
+    })
   } catch {
     throw new NetworkError(networkErrorMessage())
   }

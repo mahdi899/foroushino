@@ -1,4 +1,4 @@
-import { useMemo, useState, memo, useCallback } from 'react'
+import { useEffect, useMemo, useState, memo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -31,8 +31,10 @@ import { haptic } from '@/lib/telegram'
 import {
   assignSupervisorTeams,
   createTeam,
+  refreshTeamsFromAdmin,
   updateTeam,
 } from '@/services/teamAdminActions'
+import { ensureAdminAgentsLoaded } from '@/services/userAdminActions'
 import { isManagerRole } from '@/lib/roles'
 import { cn } from '@/lib/cn'
 import type { Team } from '@/types'
@@ -174,6 +176,21 @@ export function SupervisorTeamsScreen() {
 
   const canManageTeams = hasPermission(permissions, 'teams.manage')
   const canAssignSupervisor = hasPermission(permissions, 'users.manage') && isManagerRole(role)
+  const canViewDirectory =
+    hasPermission(permissions, 'users.view') || hasPermission(permissions, 'teams.manage')
+
+  // Always refresh directory on /teams — otherwise supervisors stay "بدون ناظر"
+  // until the user opens مدیریت ناظران (which loads admin users/teams).
+  useEffect(() => {
+    if (!canViewDirectory) return
+    void Promise.all([
+      ensureAdminAgentsLoaded(true),
+      refreshTeamsFromAdmin(true),
+    ]).catch(() => {
+      /* sync toast covers hard failures */
+    })
+  }, [canViewDirectory])
+
   const { leaders, members, supervisors } = useMemo(
     () => buildTeamStaffOptions(agents, teams),
     [agents, teams],

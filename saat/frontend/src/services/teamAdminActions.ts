@@ -144,9 +144,8 @@ export async function refreshTeamsFromAdmin(force = false): Promise<Team[]> {
   if (!force) {
     const cached = readCachedAdminTeams()
     if (cached) {
-      if (useStore.getState().teams.length === 0) {
-        useStore.getState().setTeams(cached)
-      }
+      // Always hydrate store — supervisor fields must not stay stale in UI.
+      useStore.getState().setTeams(cached)
       return cached
     }
 

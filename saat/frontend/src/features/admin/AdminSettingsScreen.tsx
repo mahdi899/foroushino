@@ -319,10 +319,11 @@ export function AdminSettingsScreen() {
               <div className="space-y-5">
                 <CatalogSettingsSection />
                 <BahramBridgeSettingsSection settings={settings} setSettings={setSettings} />
+                <CloudflareSettingsSection />
               </div>
             )}
 
-              <BackupSettingsSection />
+            {tab === 'backup' && <BackupSettingsSection />}
 
             {tab === 'qa' && (
               <section className="space-y-3">

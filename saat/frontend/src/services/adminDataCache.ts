@@ -1,7 +1,8 @@
 import type { Agent, Team } from '@/types'
 
-const USERS_TTL_MS = 10_000
-const TEAMS_TTL_MS = 15_000
+/** Keep directory cache very short so agents/managers always see fresh roster. */
+const USERS_TTL_MS = 2_000
+const TEAMS_TTL_MS = 2_000
 
 type CacheEntry<T> = {
   at: number

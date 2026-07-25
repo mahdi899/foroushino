@@ -31,7 +31,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const pushToast = useStore((s) => s.pushToast)
   const lastErrorRef = useRef<string | null>(null)
   const lastSyncAtRef = useRef(0)
-  const MIN_BACKGROUND_SYNC_MS = 45_000
+  const MIN_BACKGROUND_SYNC_MS = 15_000
 
   useEffect(() => {
     if (apiMode !== 'http' || !isAuthed) return

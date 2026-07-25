@@ -68,11 +68,17 @@ export default defineConfig({
             handler: 'NetworkOnly',
           },
           {
+            // API must always be fresh for agents (leads, teams, live ops)
+            urlPattern: /\/api\/.*/i,
+            handler: 'NetworkOnly',
+          },
+          {
             urlPattern: /^https:\/\/telegram\.org\/.*/i,
-            handler: 'CacheFirst',
+            handler: 'NetworkFirst',
             options: {
               cacheName: 'telegram-sdk',
-              expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 4, maxAgeSeconds: 60 * 60 * 24 },
             },
           },
         ],

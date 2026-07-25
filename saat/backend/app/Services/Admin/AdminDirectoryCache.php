@@ -10,11 +10,11 @@ final class AdminDirectoryCache
 {
     private const VERSION_KEY = 'admin:directory:version';
 
-    private const USERS_TTL_SECONDS = 10;
+    private const USERS_TTL_SECONDS = 3;
 
-    private const TEAMS_TTL_SECONDS = 15;
+    private const TEAMS_TTL_SECONDS = 3;
 
-    private const LIVE_TTL_SECONDS = 10;
+    private const LIVE_TTL_SECONDS = 5;
 
     public static function usersKey(User $actor): string
     {

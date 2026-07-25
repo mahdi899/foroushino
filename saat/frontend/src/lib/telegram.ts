@@ -6,14 +6,38 @@ function getWebApp() {
   return typeof window !== 'undefined' ? window.Telegram?.WebApp : undefined
 }
 
+function applyTelegramViewportHeight() {
+  const wa = getWebApp() as
+    | (NonNullable<ReturnType<typeof getWebApp>> & {
+        viewportHeight?: number
+        onEvent?: (event: string, cb: () => void) => void
+      })
+    | undefined
+  const root = document.documentElement
+  const height = wa?.viewportStableHeight || wa?.viewportHeight || window.innerHeight
+  if (height > 0) {
+    root.style.setProperty('--tg-vh', `${height}px`)
+    root.style.setProperty('--app-vh', `${height}px`)
+  }
+}
+
 export function initTelegram() {
-  const wa = getWebApp()
-  if (!wa) return
+  const wa = getWebApp() as
+    | (NonNullable<ReturnType<typeof getWebApp>> & {
+        onEvent?: (event: string, cb: () => void) => void
+      })
+    | undefined
+  if (!wa) {
+    applyTelegramViewportHeight()
+    return
+  }
   try {
     wa.ready()
     wa.expand()
     wa.setHeaderColor?.('#ffffff')
     wa.setBackgroundColor?.('#F8FBFB')
+    applyTelegramViewportHeight()
+    wa.onEvent?.('viewportChanged', applyTelegramViewportHeight)
   } catch {
     // ignore – running outside Telegram
   }
