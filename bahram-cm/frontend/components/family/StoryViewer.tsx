@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type SyntheticEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X, Loader2 } from 'lucide-react';
@@ -412,6 +412,44 @@ export function StoryViewer({
     return clearSlideTimers;
   }, [clearSlideTimers, open]);
 
+  useEffect(() => {
+    if (!open) return;
+    const preventNativeMenu = (e: Event) => {
+      e.preventDefault();
+    };
+    document.addEventListener('contextmenu', preventNativeMenu, { capture: true });
+    return () => document.removeEventListener('contextmenu', preventNativeMenu, { capture: true });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !currentSrc || currentIsVideo) {
+      setImageReady(false);
+      return;
+    }
+
+    setImageReady(false);
+    let cancelled = false;
+    const probe = new Image();
+    probe.decoding = 'async';
+    probe.onload = () => {
+      if (!cancelled) setImageReady(true);
+    };
+    probe.onerror = () => {
+      if (!cancelled) setImageReady(false);
+    };
+    probe.src = currentSrc;
+
+    return () => {
+      cancelled = true;
+      probe.onload = null;
+      probe.onerror = null;
+    };
+  }, [open, current?.id, currentSrc, currentIsVideo]);
+
+  const blockStoryContextMenu = useCallback((e: SyntheticEvent) => {
+    e.preventDefault();
+  }, []);
+
   if (!mounted) return null;
 
   return createPortal(
@@ -437,12 +475,11 @@ export function StoryViewer({
             transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
             className="relative h-[100dvh] w-full max-w-none lg:h-[min(calc(100dvh-3rem),52rem)] lg:w-[min(calc(100vw-3rem),calc((min(calc(100dvh-3rem),52rem))*9/16))] lg:max-w-full"
             onClick={(e) => e.stopPropagation()}
-            onPointerDown={pauseSlide}
-            onPointerUp={resumeSlide}
-            onPointerLeave={resumeSlide}
-            onPointerCancel={resumeSlide}
           >
-            <div className="family-story-frame relative h-full w-full overflow-hidden bg-black lg:rounded-[1.35rem] lg:shadow-[0_24px_80px_rgba(0,0,0,0.55)] lg:ring-1 lg:ring-white/10">
+            <div
+              className="family-story-frame relative h-full w-full overflow-hidden bg-black lg:rounded-[1.35rem] lg:shadow-[0_24px_80px_rgba(0,0,0,0.55)] lg:ring-1 lg:ring-white/10"
+              onContextMenu={blockStoryContextMenu}
+            >
               <div className="absolute inset-x-0 top-0 z-20 flex gap-1 px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
                 {stories.map((story, i) => (
                   <div key={story.id} className="h-0.5 flex-1 overflow-hidden rounded-full bg-white/25">
@@ -491,20 +528,25 @@ export function StoryViewer({
                           ref={setVideoEl}
                           key={`${current.id}:${activeVideoSrc}`}
                           src={activeVideoSrc}
-                          className="h-full w-full object-cover"
+                          className="family-story-frame__media pointer-events-none absolute inset-0 h-full w-full object-cover"
                           playsInline
                           muted
                           autoPlay
                           preload="metadata"
+                          controls={false}
+                          controlsList="nodownload noplaybackrate noremoteplayback"
+                          disablePictureInPicture
+                          disableRemotePlayback
+                          onContextMenu={blockStoryContextMenu}
                           onTimeUpdate={(e) => handleVideoTimeUpdate(e.currentTarget)}
                         />
                         {videoSlideState === 'loading' && (
-                          <div className="absolute inset-0 z-[5] flex items-center justify-center bg-black/40">
+                          <div className="absolute inset-0 z-[15] flex items-center justify-center bg-black/40">
                             <Loader2 className="h-9 w-9 animate-spin text-white/90" aria-label="در حال بارگذاری ویدیو" />
                           </div>
                         )}
                         {videoSlideState === 'error' && (
-                          <div className="absolute inset-0 z-[5] flex flex-col items-center justify-center gap-3 bg-black/70 px-6 text-center text-white/90">
+                          <div className="absolute inset-0 z-[15] flex flex-col items-center justify-center gap-3 bg-black/70 px-6 text-center text-white/90">
                             <p className="text-sm">پخش ویدیو ممکن نشد.</p>
                             <div className="flex flex-wrap items-center justify-center gap-2">
                               <button
@@ -526,16 +568,28 @@ export function StoryViewer({
                         )}
                       </>
                     ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <div
                         key={current.id}
-                        src={currentSrc}
-                        alt={current.caption ?? ''}
-                        className="h-full w-full object-cover"
-                        decoding="async"
-                        onLoad={() => setImageReady(true)}
+                        role="img"
+                        aria-label={current.caption?.trim() || 'استوری تصویری'}
+                        className={cn(
+                          'family-story-frame__media-bg pointer-events-none absolute inset-0',
+                          !imageReady && 'opacity-0',
+                        )}
+                        style={
+                          currentSrc ? { backgroundImage: `url(${JSON.stringify(currentSrc)})` } : undefined
+                        }
                       />
                     )}
+                    <div
+                      className="family-story-touch-shield"
+                      aria-hidden
+                      onContextMenu={blockStoryContextMenu}
+                      onPointerDown={pauseSlide}
+                      onPointerUp={resumeSlide}
+                      onPointerLeave={resumeSlide}
+                      onPointerCancel={resumeSlide}
+                    />
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/55" />
                     {current.caption && (
                       <p className="absolute inset-x-0 bottom-0 z-10 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-10 text-center text-sm leading-relaxed text-white/95 drop-shadow-md">
@@ -550,8 +604,8 @@ export function StoryViewer({
                   </div>
                 )}
 
-                <button type="button" aria-label="قبلی" className="absolute inset-y-0 right-0 z-10 w-1/3" onClick={goPrev} />
-                <button type="button" aria-label="بعدی" className="absolute inset-y-0 left-0 z-10 w-1/3" onClick={goNext} />
+                <button type="button" aria-label="قبلی" className="absolute inset-y-0 right-0 z-[12] w-1/3" onClick={goPrev} />
+                <button type="button" aria-label="بعدی" className="absolute inset-y-0 left-0 z-[12] w-1/3" onClick={goNext} />
               </div>
             </div>
           </motion.div>

@@ -3,7 +3,7 @@
 import { useRef, useState, type PointerEvent, type TouchEvent } from 'react';
 import { Play } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { useLazyInViewOnce } from '@/hooks/useLazyInViewOnce';
+import { useFamilyFeedMediaInView } from '@/hooks/useFamilyFeedMediaInView';
 import { FamilyMediaDownloadButton } from '@/components/family/FamilyMediaDownloadButton';
 import { FamilyVideoModal } from '@/components/family/FamilyVideoModal';
 import { resolveFamilyMediaPlaybackUrl, resolveFamilyMediaPosterUrl } from '@/lib/family/mediaPlaybackUrl';
@@ -17,14 +17,13 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   const lastTapAtRef = useRef(0);
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [posterReady, setPosterReady] = useState(false);
   const [posterError, setPosterError] = useState(false);
 
   const streamUrl = resolveFamilyMediaPlaybackUrl(media.url);
   const downloadUrl = streamUrl ?? media.url;
   const posterUrl = resolveFamilyMediaPosterUrl(media.poster_url);
   const showFramePreview = !posterUrl && Boolean(streamUrl);
-  const shouldLoadPreview = useLazyInViewOnce(containerRef, Boolean(streamUrl));
+  const shouldLoadPreview = useFamilyFeedMediaInView(containerRef, Boolean(streamUrl));
 
   const openPlayer = () => {
     if (!streamUrl) return;
@@ -67,7 +66,7 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
   if (!streamUrl) {
     return (
       <div
-        className="flex aspect-video items-center justify-center rounded-2xl bg-[color-mix(in_oklab,var(--family-text)_8%,transparent)]"
+        className="flex aspect-video items-center justify-center rounded-2xl"
         style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
         aria-busy
         aria-label="در حال پردازش ویدیو"
@@ -89,25 +88,20 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
       <div
         ref={containerRef}
         className={cn(
-          'family-feed-video relative max-w-full overflow-hidden rounded-2xl bg-[color-mix(in_oklab,var(--family-text)_8%,transparent)]',
+          'family-feed-video relative max-w-full overflow-hidden rounded-2xl',
           isPortrait ? 'family-feed-video--portrait' : 'family-feed-video--landscape',
         )}
         style={videoAspectStyle}
       >
-        {!posterReady && !posterError && (
-          <span
-            className="absolute inset-0 bg-[color-mix(in_oklab,var(--family-text)_6%,transparent)]"
-            aria-hidden
-          />
-        )}
-
         {showPoster && posterUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={posterUrl}
             alt=""
+            decoding="async"
+            fetchPriority="high"
             className="pointer-events-none h-full w-full object-cover"
-            onLoad={() => setPosterReady(true)}
+            onLoad={() => {}}
             onError={() => setPosterError(true)}
             aria-hidden
           />
@@ -124,9 +118,8 @@ export function VideoBlock({ media, postId }: { media: FamilyMediaBlock; postId:
               } catch {
                 /* seek unsupported — first frame is fine */
               }
-              setPosterReady(true);
             }}
-            onLoadedData={() => setPosterReady(true)}
+            onLoadedData={() => {}}
             onError={() => setPosterError(true)}
             className="pointer-events-none h-full w-full object-cover"
             aria-hidden
