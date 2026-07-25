@@ -9,10 +9,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('push_subscriptions', function (Blueprint $table) {
-            $table->string('channel', 32)->default('family')->after('user_id');
-            $table->timestamp('last_notified_at')->nullable()->after('user_agent');
-        });
+        if (! Schema::hasColumn('push_subscriptions', 'channel')) {
+            Schema::table('push_subscriptions', function (Blueprint $table) {
+                $table->string('channel', 32)->default('family')->after('user_id');
+            });
+        }
+
+        if (! Schema::hasColumn('push_subscriptions', 'last_notified_at')) {
+            Schema::table('push_subscriptions', function (Blueprint $table) {
+                $table->timestamp('last_notified_at')->nullable()->after('user_agent');
+            });
+        }
 
         // Deduplicate endpoints before unique index (keep newest).
         $dupes = DB::table('push_subscriptions')
@@ -33,10 +40,24 @@ return new class extends Migration
             unset($keep);
         }
 
-        Schema::table('push_subscriptions', function (Blueprint $table) {
-            $table->unique('endpoint');
-            $table->index(['channel', 'user_id']);
-        });
+        if (! $this->indexExists('push_subscriptions', 'push_subscriptions_endpoint_unique')) {
+            Schema::table('push_subscriptions', function (Blueprint $table) {
+                $table->unique('endpoint');
+            });
+        }
+
+        if (! $this->indexExists('push_subscriptions', 'push_subscriptions_channel_user_id_index')) {
+            Schema::table('push_subscriptions', function (Blueprint $table) {
+                $table->index(['channel', 'user_id']);
+            });
+        }
+    }
+
+    private function indexExists(string $table, string $indexName): bool
+    {
+        $rows = DB::select('SHOW INDEX FROM `'.$table.'` WHERE Key_name = ?', [$indexName]);
+
+        return count($rows) > 0;
     }
 
     public function down(): void
