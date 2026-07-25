@@ -37,15 +37,23 @@ saat/deploy/deploy.env
 .tmp_*
 bahram-cm/deploy/scripts/_*
 bahram-cm/deploy/scripts/saat_probe.txt
+**/deploy/scripts/remote-*.py
+**/deploy/scripts/check-*.py
+**/deploy/scripts/debug-*.py
+**/deploy/scripts/fix-ssl-*.py
+**/deploy/scripts/verify-*.py
 
 # Ad-hoc one-off SSH/deploy/diagnostic scripts at repo root — these tend to
 # contain hardcoded server credentials and must never be committed.
 /*.py
+/_*.py
 /check_*.py
 /apply_*.py
 /deploy_*.py
 /fix_*.py
 /reload_*.py
+/run_*.py
+/tail_*.py
 /*.zip
 
 # Laravel compiled bootstrap cache
@@ -59,3 +67,5 @@ bahram-cm/backend/storage/logs/
 # Customer import dumps (license keys / PII) — keep local only
 bahram-cm/backend/database/data/spotplayer-licenses*.csv
 bahram-cm/backend/database/data/*licenses*.csv
+bahram-cm/backend/database/data/woocommerce*.csv
+bahram-cm/backend/database/data/*orders*.csv
