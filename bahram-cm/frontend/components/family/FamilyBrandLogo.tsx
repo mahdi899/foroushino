@@ -37,7 +37,7 @@ export function FamilyBrandLogo({
   const logo = (
     <div
       className={cn(
-        'relative shrink-0 overflow-hidden rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.35)] ring-1 ring-gold/30',
+        'relative shrink-0 overflow-hidden rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.35)] ring-1 ring-emerald/30',
         sizeClass[size],
         brandLogoDisplay.containerClass,
         !hasStoryRing && className,
@@ -58,7 +58,7 @@ export function FamilyBrandLogo({
   const content = hasStoryRing ? (
     <span
       className={cn(
-        'inline-flex rounded-full bg-gradient-to-tr from-gold via-amber-300 to-gold',
+        'inline-flex rounded-full bg-gradient-to-tr from-emerald via-emerald-glow to-emerald',
         storyPaddingClass[size],
         className,
       )}
@@ -75,7 +75,7 @@ export function FamilyBrandLogo({
         type="button"
         onClick={onClick}
         aria-label={ariaLabel ?? 'مشاهده استوری'}
-        className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/60"
+        className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald/60"
       >
         {content}
       </button>

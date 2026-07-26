@@ -90,7 +90,7 @@ export function FamilyInstallCard() {
   return (
     <div className="family-pwa-install pointer-events-auto fixed bottom-[max(1rem,env(safe-area-inset-bottom))] start-3 z-[60] max-w-[min(20rem,calc(100vw-1.5rem))] rounded-2xl border border-white/10 bg-[var(--family-surface,#132028)]/95 p-3 text-start shadow-lg backdrop-blur-md sm:start-auto sm:end-4">
       <div className="flex items-start gap-2">
-        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/5 text-[var(--family-accent,#3390ec)]">
+        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/5 text-[var(--family-accent)]">
           <Smartphone size={18} strokeWidth={1.75} aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
@@ -107,7 +107,7 @@ export function FamilyInstallCard() {
             <button
               type="button"
               onClick={() => void handleInstall()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--family-accent,#3390ec)] px-3 py-1.5 text-xs font-medium text-white"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--family-accent)] px-3 py-1.5 text-xs font-medium text-white"
             >
               <Download size={14} aria-hidden />
               {isIos && !installEvent ? 'راهنمای نصب' : 'نصب'}

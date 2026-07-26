@@ -34,6 +34,13 @@ vi.mock("@/components/family/FamilyBodyPortal", () => ({
   FamilyBodyPortal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+vi.mock("@/components/family/ReactionFlyBurst", () => ({
+  ReactionFlyBurst: ({ onComplete }: { onComplete: () => void }) => {
+    onComplete();
+    return null;
+  },
+}));
+
 const baseStats: FamilyPostStats = {
   fire: 2,
   heart: 0,
@@ -75,7 +82,8 @@ describe("ReactionBar", () => {
     fireEvent.click(screen.getByLabelText("افزودن واکنش"));
     fireEvent.click(within(screen.getByRole("menu")).getByLabelText("قلب"));
 
-    expect(screen.getByLabelText("قلب")).toHaveTextContent("1");
+    const bar = document.querySelector(".family-reaction-bar") as HTMLElement;
+    expect(within(bar).getByLabelText("قلب")).toHaveTextContent("1");
     await waitFor(() => expect(setReaction).toHaveBeenCalledWith(42, "heart"));
   });
 
@@ -113,9 +121,10 @@ describe("ReactionBar", () => {
     fireEvent.click(within(screen.getByRole("menu")).getByLabelText("آتشین"));
 
     await waitFor(() => expect(setReaction).toHaveBeenCalledWith(1, "fire"));
-    expect(screen.getByLabelText("آتشین")).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByLabelText("آتشین")).toHaveTextContent("3");
-    expect(screen.queryByLabelText("قلب")).not.toBeInTheDocument();
+    const bar = document.querySelector(".family-reaction-bar") as HTMLElement;
+    expect(within(bar).getByLabelText("آتشین")).toHaveAttribute("aria-pressed", "true");
+    expect(within(bar).getByLabelText("آتشین")).toHaveTextContent("3");
+    expect(within(bar).queryByLabelText("قلب")).not.toBeInTheDocument();
     expect(setReaction).toHaveBeenCalledTimes(1);
     expect(removeReaction).not.toHaveBeenCalled();
   });

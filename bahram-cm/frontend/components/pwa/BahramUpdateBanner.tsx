@@ -7,7 +7,7 @@ type Variant = 'site' | 'family' | 'panel';
 
 const ACCENT: Record<Variant, string> = {
   site: '#0b0f10',
-  family: '#3390ec',
+  family: '#008c96',
   panel: '#008c96',
 };
 

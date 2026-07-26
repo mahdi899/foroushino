@@ -15,7 +15,8 @@ import {
 import type { FamilyStory, FamilyStoryMedia } from '@/lib/family/types';
 import { familyHaptic } from '@/lib/family/haptics';
 
-const IMAGE_STORY_MS = 8000;
+const IMAGE_STORY_MS = 7000;
+const STORY_HOLD_PAUSE_MS = 200;
 const VIDEO_LOAD_TIMEOUT_MS = 25_000;
 const STORY_VIEW_RECORD_DELAY_MS = 1500;
 
@@ -53,7 +54,6 @@ export function StoryViewer({
   const [videoSlideState, setVideoSlideState] = useState<VideoSlideState>('loading');
   const [videoSrcIndex, setVideoSrcIndex] = useState(0);
   const [imageReady, setImageReady] = useState(false);
-  const [holding, setHolding] = useState(false);
 
   const advanceTimerRef = useRef<number | null>(null);
   const progressRafRef = useRef<number | null>(null);
@@ -63,6 +63,11 @@ export function StoryViewer({
   const recordedViewsRef = useRef<Set<number>>(new Set());
   const storyCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const pointerStartRef = useRef<{ x: number; y: number; t: number } | null>(null);
+  const holdPauseTimerRef = useRef<number | null>(null);
+  const holdPauseActiveRef = useRef(false);
+  const lastSlideIndexRef = useRef(-1);
+  const lastImageScheduleKeyRef = useRef('');
+  const lastVideoSetupKeyRef = useRef('');
 
   useEffect(() => {
     setMounted(true);
@@ -105,6 +110,8 @@ export function StoryViewer({
       finish();
       return;
     }
+    lastImageScheduleKeyRef.current = '';
+    lastVideoSetupKeyRef.current = '';
     setIndex((i) => i + 1);
     setSlideProgress(0);
     setVideoSlideState('loading');
@@ -113,6 +120,8 @@ export function StoryViewer({
   }, [finish, index, stories.length]);
 
   const goPrev = useCallback(() => {
+    lastImageScheduleKeyRef.current = '';
+    lastVideoSetupKeyRef.current = '';
     setIndex((i) => Math.max(0, i - 1));
     setSlideProgress(0);
     setVideoSlideState('loading');
@@ -177,7 +186,7 @@ export function StoryViewer({
   );
 
   const pauseSlide = useCallback(() => {
-    setHolding(true);
+    holdPauseActiveRef.current = true;
     const state = imageTimerRef.current;
     if (state && state.pausedAt == null) {
       state.pausedAt = performance.now();
@@ -192,7 +201,8 @@ export function StoryViewer({
   }, [videoEl]);
 
   const resumeSlide = useCallback(() => {
-    setHolding(false);
+    if (!holdPauseActiveRef.current) return;
+    holdPauseActiveRef.current = false;
     const state = imageTimerRef.current;
     if (state?.pausedAt != null) {
       state.accumulatedPauseMs += performance.now() - state.pausedAt;
@@ -207,6 +217,13 @@ export function StoryViewer({
       void videoEl.play().catch(() => {});
     }
   }, [goNext, videoEl, videoSlideState]);
+
+  const cancelHoldPauseTimer = useCallback(() => {
+    if (holdPauseTimerRef.current != null) {
+      window.clearTimeout(holdPauseTimerRef.current);
+      holdPauseTimerRef.current = null;
+    }
+  }, []);
 
   const current = stories[index];
   const currentMedia = current?.media ?? null;
@@ -227,6 +244,7 @@ export function StoryViewer({
   }, [videoCandidates.length, videoSrcIndex]);
 
   const retryVideo = useCallback(() => {
+    lastVideoSetupKeyRef.current = '';
     playAttemptRef.current += 1;
     setVideoSlideState('loading');
     setVideoSrcIndex(0);
@@ -237,7 +255,20 @@ export function StoryViewer({
   }, [videoEl]);
 
   useEffect(() => {
+    if (!open) return;
+    lastSlideIndexRef.current = -1;
+    lastImageScheduleKeyRef.current = '';
+    lastVideoSetupKeyRef.current = '';
+    holdPauseActiveRef.current = false;
+    cancelHoldPauseTimer();
+  }, [cancelHoldPauseTimer, open]);
+
+  useEffect(() => {
     if (!open || loading) return;
+    if (lastSlideIndexRef.current === index) return;
+    lastSlideIndexRef.current = index;
+    lastImageScheduleKeyRef.current = '';
+    lastVideoSetupKeyRef.current = '';
     clearSlideTimers();
     setSlideProgress(0);
   }, [clearSlideTimers, index, loading, open]);
@@ -266,30 +297,41 @@ export function StoryViewer({
   }, [current?.id, currentIsVideo, imageReady, loading, open, videoSlideState]);
 
   useEffect(() => {
-    if (!open || loading || !currentMedia || !currentSrc || currentIsVideo || !imageReady) return;
+    if (!open || loading || !currentMedia || !currentSrc || currentIsVideo || !imageReady || !current?.id) {
+      return;
+    }
+    const scheduleKey = String(current.id);
+    if (lastImageScheduleKeyRef.current === scheduleKey) return;
+    lastImageScheduleKeyRef.current = scheduleKey;
     scheduleImageSlide(IMAGE_STORY_MS);
     return clearSlideTimers;
   }, [
     clearSlideTimers,
+    current?.id,
     currentIsVideo,
     currentMedia,
     currentSrc,
     imageReady,
-    index,
     loading,
     open,
     scheduleImageSlide,
   ]);
 
   useEffect(() => {
-    if (!open || loading || !currentIsVideo || !activeVideoSrc || !videoEl) return;
+    if (!open || loading || !currentIsVideo || !activeVideoSrc || !videoEl || !current?.id) return;
+
+    const setupKey = `${current.id}:${activeVideoSrc}`;
+    const isNewSetup = lastVideoSetupKeyRef.current !== setupKey;
+    if (isNewSetup) {
+      lastVideoSetupKeyRef.current = setupKey;
+      clearSlideTimers();
+      setSlideProgress(0);
+      setVideoSlideState('loading');
+      playAttemptRef.current += 1;
+    }
+    const attempt = playAttemptRef.current;
 
     let cancelled = false;
-    clearSlideTimers();
-    setSlideProgress(0);
-    setVideoSlideState('loading');
-    playAttemptRef.current += 1;
-    const attempt = playAttemptRef.current;
 
     videoEl.muted = true;
     videoEl.playsInline = true;
@@ -382,11 +424,11 @@ export function StoryViewer({
   }, [
     activeVideoSrc,
     clearSlideTimers,
+    current?.id,
     currentIsVideo,
     currentMedia,
     currentSrc,
     goNext,
-    index,
     loading,
     open,
     tryNextVideoSource,
@@ -394,6 +436,7 @@ export function StoryViewer({
   ]);
 
   const handleVideoTimeUpdate = useCallback((video: HTMLVideoElement) => {
+    if (holdPauseActiveRef.current) return;
     const duration = video.duration;
     if (!Number.isFinite(duration) || duration <= 0) return;
     setSlideProgress(Math.min(1, video.currentTime / duration));
@@ -509,20 +552,29 @@ export function StoryViewer({
     (e: ReactPointerEvent<HTMLDivElement>) => {
       if (e.button !== 0 && e.pointerType === 'mouse') return;
       pointerStartRef.current = { x: e.clientX, y: e.clientY, t: Date.now() };
+      cancelHoldPauseTimer();
+      holdPauseTimerRef.current = window.setTimeout(() => {
+        holdPauseTimerRef.current = null;
+        pauseSlide();
+      }, STORY_HOLD_PAUSE_MS);
       try {
         e.currentTarget.setPointerCapture(e.pointerId);
       } catch {
         /* ignore */
       }
-      pauseSlide();
     },
-    [pauseSlide],
+    [cancelHoldPauseTimer, pauseSlide],
   );
 
   const onStoryPointerEnd = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       const start = pointerStartRef.current;
       pointerStartRef.current = null;
+      cancelHoldPauseTimer();
+      const wasHolding = holdPauseActiveRef.current;
+      if (wasHolding) {
+        resumeSlide();
+      }
       try {
         if (e.currentTarget.hasPointerCapture(e.pointerId)) {
           e.currentTarget.releasePointerCapture(e.pointerId);
@@ -530,12 +582,10 @@ export function StoryViewer({
       } catch {
         /* ignore */
       }
-      resumeSlide();
       if (!start) return;
       const dt = Date.now() - start.t;
       const moved = Math.hypot(e.clientX - start.x, e.clientY - start.y);
-      // Hold-to-pause: don't navigate on release
-      if (dt >= 280 || moved > 14) return;
+      if (wasHolding || dt >= 280 || moved > 14) return;
       const rect = e.currentTarget.getBoundingClientRect();
       if (rect.width <= 0) return;
       const ratio = (e.clientX - rect.left) / rect.width;
@@ -547,7 +597,7 @@ export function StoryViewer({
         goPrev();
       }
     },
-    [goNext, goPrev, resumeSlide],
+    [cancelHoldPauseTimer, goNext, goPrev, resumeSlide],
   );
 
   if (!mounted) return null;
@@ -584,13 +634,11 @@ export function StoryViewer({
                 {stories.map((story, i) => (
                   <div key={story.id} className="h-0.5 flex-1 overflow-hidden rounded-full bg-white/25">
                     <div
-                      className={cn(
-                        'h-full bg-gold transition-[width] ease-linear',
-                        holding ? '' : 'duration-75',
-                      )}
+                      className="h-full bg-emerald"
                       style={{
                         width:
                           i < index ? '100%' : i === index ? `${Math.round(slideProgress * 100)}%` : '0%',
+                        transition: 'none',
                       }}
                     />
                   </div>

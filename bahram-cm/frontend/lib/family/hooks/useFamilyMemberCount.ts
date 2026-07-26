@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { readFamilyShellSnapshot, writeFamilyShellSnapshot } from '@/lib/family/shellCache';
+import { writeFamilyShellSnapshot } from '@/lib/family/shellCache';
 
 export function useFamilyMemberCount(initial?: number) {
   // SSR + first client paint must match — never read localStorage in useState initializer.
@@ -12,12 +12,6 @@ export function useFamilyMemberCount(initial?: number) {
   useEffect(() => {
     if (typeof initial === 'number') {
       setMemberCount(initial);
-      return;
-    }
-
-    const cached = readFamilyShellSnapshot()?.memberCount;
-    if (typeof cached === 'number') {
-      setMemberCount(cached);
     }
   }, [initial]);
 

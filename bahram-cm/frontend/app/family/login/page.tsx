@@ -55,13 +55,13 @@ export default async function FamilyLoginPage({
         <div className="relative mx-auto mb-4 flex w-fit justify-center">
           <div
             aria-hidden
-            className="pointer-events-none absolute -inset-3 rounded-full bg-gradient-to-tr from-gold/25 via-transparent to-gold/10 opacity-60 blur-md"
+            className="pointer-events-none absolute -inset-3 rounded-full bg-gradient-to-tr from-emerald/25 via-transparent to-emerald-glow/10 opacity-60 blur-md"
           />
           <FamilyAuthorAvatar
             name={profileName}
             avatar={familyAvatar}
             size="xl"
-            className="relative shadow-[0_20px_50px_rgba(201,147,10,0.28)] ring-2 ring-gold/25"
+            className="relative shadow-[0_20px_50px_rgba(0,140,150,0.28)] ring-2 ring-emerald/25"
           />
         </div>
         <h1 className="text-lg font-bold text-bone lg:text-xl">ورود به {displayName}</h1>

@@ -40,11 +40,10 @@ export function FamilyStoryHint({
   }, []);
 
   const hasMembers = typeof memberCount === 'number';
-  const showMemberStat = maskMemberCount || hasMembers;
+  const displayReady = hasMembers && hour !== null;
+  const showMemberStat = maskMemberCount || displayReady;
   const displayMemberCount =
-    hasMembers && !maskMemberCount && hour !== null
-      ? inflatedMemberCount(memberCount, hour)
-      : null;
+    displayReady && !maskMemberCount ? inflatedMemberCount(memberCount, hour) : null;
 
   if (!showMemberStat && !hasUnseen) return null;
 
@@ -77,16 +76,16 @@ export function FamilyStoryHint({
         </span>
       </button>
     )
-  ) : (
+  ) : displayMemberCount !== null ? (
     <span className="family-topbar__subtitle--live" suppressHydrationWarning>
       {showOnlineDot && <span className="family-topbar__meta-dot" aria-hidden />}
-      {formatFa(displayMemberCount ?? memberCount ?? 0)} {memberLabel}
+      {formatFa(displayMemberCount)} {memberLabel}
     </span>
-  );
+  ) : null;
 
   return (
     <p className={className}>
-      {showMemberStat && memberStat}
+      {showMemberStat && memberStat != null && memberStat}
       {hasUnseen &&
         (nested ? (
           unseenLabel
