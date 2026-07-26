@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TelegramHost\Services;
 
 use TelegramHost\Account\AccountCache;
+use TelegramHost\Account\AccountSyncCoordinator;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Http\SyncClient;
@@ -22,7 +23,10 @@ final class HostRegistrationFlow
         private readonly ConversationRepository $conversations,
         private readonly MainMenu $mainMenu,
         private readonly SyncCache $cache,
+        private readonly AccountSyncCoordinator $accountSync,
     ) {}
+
+    private const REGISTRATION_TIMEOUT_SECONDS = 25;
 
     /**
      * Welcome + phone keyboard from host MySQL only (no registration/start API).
@@ -61,6 +65,12 @@ final class HostRegistrationFlow
     /** @param array<string, mixed> $contact */
     public function contact(int $chatId, int $telegramUserId, array $contact): void
     {
+        if ($this->accountSync->ensureFresh($telegramUserId, force: true) && $this->accounts->isVerified($telegramUserId)) {
+            $this->showMainMenu($chatId, $telegramUserId);
+
+            return;
+        }
+
         $phone = trim((string) ($contact['phone_number'] ?? ''));
         $contactUserId = (int) ($contact['user_id'] ?? 0);
 
@@ -69,11 +79,12 @@ final class HostRegistrationFlow
                 'telegram_user_id' => $telegramUserId,
                 'phone' => $phone,
                 'contact_user_id' => $contactUserId,
-            ]);
+            ], self::REGISTRATION_TIMEOUT_SECONDS);
             $this->apply($chatId, $telegramUserId, $response);
+            $this->accountSync->ensureFresh($telegramUserId, force: true);
         } catch (\Throwable $e) {
             error_log('[telegram-host] registration/contact: '.$e->getMessage());
-            if ($this->tryPullVerifiedAndMenu($chatId, $telegramUserId)) {
+            if ($this->pullVerifiedAndMenu($chatId, $telegramUserId)) {
                 return;
             }
             $this->api->sendMessage($chatId, $this->cache->message(
@@ -83,29 +94,23 @@ final class HostRegistrationFlow
         }
     }
 
-    private function tryPullVerifiedAndMenu(int $chatId, int $telegramUserId): bool
+    private function showMainMenu(int $chatId, int $telegramUserId): void
     {
-        try {
-            $response = $this->sync->call('account/fetch', [
-                'telegram_user_id' => $telegramUserId,
-                'include_snapshot' => true,
-            ]);
-            if (empty($response['found']) || ! is_array($response['account'] ?? null)) {
-                return false;
-            }
-            $this->accounts->store($telegramUserId, $response['account']);
-            if (! $this->accounts->isVerified($telegramUserId)) {
-                return false;
-            }
-            $this->conversations->set($telegramUserId, 'idle', []);
-            $this->api->sendMessage($chatId, $this->cache->message('main_menu_hint', 'منوی اصلی آکادمی بهرام'), [
-                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
-            ]);
+        $this->conversations->set($telegramUserId, 'idle', []);
+        $this->api->sendMessage($chatId, $this->cache->message('main_menu_hint', 'منوی اصلی آکادمی بهرام'), [
+            'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+        ]);
+    }
+
+    private function pullVerifiedAndMenu(int $chatId, int $telegramUserId): bool
+    {
+        if ($this->accountSync->ensureFresh($telegramUserId, force: true) && $this->accounts->isVerified($telegramUserId)) {
+            $this->showMainMenu($chatId, $telegramUserId);
 
             return true;
-        } catch (\Throwable) {
-            return false;
         }
+
+        return false;
     }
 
     public function name(int $chatId, int $telegramUserId, string $name): void
@@ -114,7 +119,7 @@ final class HostRegistrationFlow
             $response = $this->sync->call('registration/name', [
                 'telegram_user_id' => $telegramUserId,
                 'name' => $name,
-            ]);
+            ], self::REGISTRATION_TIMEOUT_SECONDS);
             $this->apply($chatId, $telegramUserId, $response);
         } catch (\Throwable $e) {
             error_log('[telegram-host] registration/name: '.$e->getMessage());

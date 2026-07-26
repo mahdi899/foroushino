@@ -129,6 +129,10 @@ class TelegramHostRegistrationService
         $account = $this->accountLinks->findOrCreateAccount($bot, $telegramUserId);
         $conversation = $this->conversations->forAccount($account);
 
+        if ($account->isLinked() && $account->hasVerifiedMobile()) {
+            return $this->verifiedMenu($bot, $account->fresh());
+        }
+
         if ($contactUserId <= 0 || $contactUserId !== $telegramUserId) {
             return $this->ok([
                 $this->reply('لطفاً فقط شماره تماس خودتان را با دکمه «ارسال شماره تماس» بفرستید.', [
@@ -432,10 +436,23 @@ class TelegramHostRegistrationService
         ];
 
         if ($includeAccount || ($account->hasVerifiedMobile() && $account->mobile_verified_at !== null)) {
-            $payload['account'] = $this->snapshots->accountPayload($account->fresh(['user', 'bot']));
+            $payload['account'] = $this->briefAccountPayload($account->fresh(['user', 'bot']));
         }
 
         return $payload;
+    }
+
+    /** @return array<string, mixed> */
+    private function briefAccountPayload(TelegramAccount $account): array
+    {
+        return [
+            'telegram_user_id' => (int) $account->telegram_user_id,
+            'user_id' => $account->user_id,
+            'mobile' => $account->mobile,
+            'mobile_verified_at' => $account->mobile_verified_at?->toIso8601String(),
+            'display_name' => $account->display_name,
+            'is_bot_admin' => (bool) $account->is_bot_admin,
+        ];
     }
 
     /** @param  array<string, mixed>  $options */

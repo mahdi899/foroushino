@@ -21,7 +21,7 @@ final class SyncClient
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    public function call(string $path, array $payload = []): array
+    public function call(string $path, array $payload = [], int $timeoutSeconds = 4): array
     {
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($json === false) {
@@ -36,8 +36,8 @@ final class SyncClient
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $encrypted,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 2,
-            CURLOPT_TIMEOUT => 4,
+            CURLOPT_CONNECTTIMEOUT => min(3, $timeoutSeconds),
+            CURLOPT_TIMEOUT => max(4, $timeoutSeconds),
             CURLOPT_ENCODING => '',
             CURLOPT_TCP_KEEPALIVE => 1,
             CURLOPT_HTTPHEADER => array_merge([

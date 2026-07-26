@@ -91,12 +91,12 @@ try {
     );
     $siteBaseUrl = rtrim((string) ($config['site_base_url'] ?? 'https://rostami.app'), '/');
 
+    $accountSync = new AccountSyncCoordinator($accounts, $sync);
+
     $mainMenu = new MainMenu($cache, $accounts);
-    $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache);
+    $registration = new HostRegistrationFlow($sync, $api, $accounts, $conversations, $mainMenu, $cache, $accountSync);
     $membership = new MembershipGate($cache, $api, $membershipCache);
     $purchaseFlow = new PurchaseFlow($api, $live, $cache, $conversations, $mainMenu);
-
-    $accountSync = new AccountSyncCoordinator($accounts, $sync);
 
     $messageHandler = new MessageHandler(
         $api,
