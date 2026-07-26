@@ -2,7 +2,6 @@
 
 namespace App\Modules\TelegramBot\Services;
 
-use App\Jobs\PushTelegramHostSyncJob;
 use App\Services\TelegramHostCatalogRevision;
 use App\Modules\TelegramBot\Models\TelegramBot;
 use App\Modules\TelegramBot\Models\TelegramBotMessage;

@@ -13,9 +13,7 @@ final class CatalogSyncCoordinator
 {
     private const REVISION_CHECK_INTERVAL_SECONDS = 45;
 
-    /** @param array<string, mixed> $hostConfig */
     public function __construct(
-        private readonly array $hostConfig,
         private readonly SyncCache $cache,
         private readonly SyncClient $sync,
     ) {}
@@ -35,7 +33,7 @@ final class CatalogSyncCoordinator
                 return;
             }
 
-            $this->cache->refreshAll($this->hostConfig);
+            $this->cache->refreshAll();
         } catch (\Throwable $e) {
             error_log('[telegram-host] catalog sync: '.$e->getMessage());
         }

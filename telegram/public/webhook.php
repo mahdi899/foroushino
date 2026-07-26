@@ -78,7 +78,7 @@ try {
     $sync = new SyncClient($config);
     $live = new LiveClient($sync);
     $cache = new SyncCache($pdo, $sync, $config);
-    (new CatalogSyncCoordinator($config, $cache, $sync))->ensureFresh();
+    (new CatalogSyncCoordinator($cache, $sync))->ensureFresh();
     $accounts = new AccountCache($pdo);
     $conversations = new ConversationRepository($pdo);
     $api = new BotApiClient((string) $config['bot_token']);

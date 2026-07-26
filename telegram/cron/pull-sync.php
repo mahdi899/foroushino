@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-// Run every 5 minutes via cPanel Cron Jobs:
-//   */5 * * * * php /home/USER/telegram/cron/pull-sync.php >> /home/USER/telegram/cron.log 2>&1
+// Run every 2 minutes via cPanel Cron Jobs:
+//   */2 * * * * php /home/USER/telegram/cron/pull-sync.php >> /home/USER/telegram/cron.log 2>&1
 
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Db\Connection;
