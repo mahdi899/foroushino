@@ -10,8 +10,10 @@ import { StudentLoginForm } from './StudentLoginForm';
 
 export function StudentLoginModal() {
   const { loginOpen, closeLogin, redirectTo, loginContext } = useStudentAuth();
-  const isFamilyLogin = loginContext === 'family';
-  const viewport = useVisualViewportBox(loginOpen && isFamilyLogin);
+  // Track the visual viewport (keyboard inset) for BOTH contexts — بهرام (panel)
+  // and خانواده (family) — so the card slides up above the mobile keyboard
+  // instead of getting covered by it, without ever resizing the page/background.
+  const viewport = useVisualViewportBox(loginOpen);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -60,39 +62,23 @@ export function StudentLoginModal() {
     <AnimatePresence>
       {loginOpen ? (
         <div
-          className={cn(
-            'fixed z-[100]',
-            isFamilyLogin
-              ? 'inset-x-0 flex flex-col overflow-y-auto overscroll-contain'
-              : 'inset-0 flex items-center justify-center p-4 sm:p-5',
-          )}
-          style={
-            isFamilyLogin
-              ? {
-                  top: viewport.offsetTop,
-                  height: viewport.height > 0 ? viewport.height : '100dvh',
-                  paddingBottom: `max(1rem, calc(${viewport.keyboardInset}px + env(safe-area-inset-bottom, 0px)))`,
-                }
-              : undefined
-          }
+          className="fixed inset-x-0 z-[100] flex flex-col overflow-y-auto overscroll-contain"
+          style={{
+            top: viewport.offsetTop,
+            height: viewport.height > 0 ? viewport.height : '100dvh',
+            paddingBottom: `max(1rem, calc(${viewport.keyboardInset}px + env(safe-area-inset-bottom, 0px)))`,
+          }}
         >
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className={cn(
-              'cursor-pointer border-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.35)_0%,rgba(0,0,0,0.72)_100%)] backdrop-blur-[3px]',
-              isFamilyLogin ? 'fixed inset-0' : 'absolute inset-0',
-            )}
-            style={
-              isFamilyLogin
-                ? {
-                    top: viewport.offsetTop,
-                    height: viewport.height > 0 ? viewport.height : '100dvh',
-                  }
-                : undefined
-            }
+            className="fixed inset-0 cursor-pointer border-0 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.35)_0%,rgba(0,0,0,0.72)_100%)] backdrop-blur-[3px]"
+            style={{
+              top: viewport.offsetTop,
+              height: viewport.height > 0 ? viewport.height : '100dvh',
+            }}
             aria-hidden
             onClick={closeLogin}
           />
@@ -103,11 +89,8 @@ export function StudentLoginModal() {
             exit={{ opacity: 0, scale: 0.98, y: 8 }}
             transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
             className={cn(
-              'relative z-10 w-full max-w-[20rem] p-4',
-              isFamilyLogin &&
-                (viewport.keyboardInset > 48
-                  ? 'mx-auto shrink-0'
-                  : 'mx-auto my-auto min-h-0 shrink-0'),
+              'relative z-10 mx-auto w-full max-w-[20rem] shrink-0 p-4',
+              viewport.keyboardInset > 48 ? 'mt-auto mb-4' : 'my-auto min-h-0',
             )}
           >
             <StudentLoginForm

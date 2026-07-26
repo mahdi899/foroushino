@@ -44,5 +44,10 @@ export const FAMILY_FEED_MEDIA_WARM_POSTS_AFTER = 4;
 /** Max parallel CDN image warmups (HTTP cache); keep low on mobile networks. */
 export const FAMILY_FEED_MEDIA_WARM_MAX_CONCURRENT = 4;
 
-/** Posts at feed tip to warm once after boot (visible conversation). */
-export const FAMILY_FEED_INITIAL_WARM_POST_COUNT = 10;
+/**
+ * Posts at feed tip to warm once after boot (visible conversation).
+ * Kept small so the first paint isn't blocked on a big warm batch — the
+ * scroll-anchored window (before/after above) keeps loading more as the
+ * user scrolls, Telegram-style, rather than warming everything up front.
+ */
+export const FAMILY_FEED_INITIAL_WARM_POST_COUNT = 5;

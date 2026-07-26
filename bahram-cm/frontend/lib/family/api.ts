@@ -60,8 +60,33 @@ export async function getBranding(): Promise<{ data: FamilyBranding }> {
   return run(() => familyFetch<{ data: FamilyBranding }>(`/branding`), 'دریافت برندینگ ناموفق بود.');
 }
 
-export async function getStories(): Promise<{ data: FamilyStory[] }> {
+let storiesPrefetch: Promise<{ data: FamilyStory[] }> | null = null;
+let storiesPrefetchAt = 0;
+const STORIES_PREFETCH_TTL_MS = 15_000;
+
+function fetchStoriesNow(): Promise<{ data: FamilyStory[] }> {
   return run(() => familyFetch<{ data: FamilyStory[] }>(`/stories`), 'دریافت استوری‌ها ناموفق بود.');
+}
+
+/** Fire-and-forget: warm the stories list + first media before the viewer opens. */
+export function prefetchStories(): void {
+  if (storiesPrefetch && Date.now() - storiesPrefetchAt < STORIES_PREFETCH_TTL_MS) return;
+  storiesPrefetchAt = Date.now();
+  storiesPrefetch = fetchStoriesNow().catch((err) => {
+    storiesPrefetch = null;
+    throw err;
+  });
+}
+
+export async function getStories(): Promise<{ data: FamilyStory[] }> {
+  if (storiesPrefetch && Date.now() - storiesPrefetchAt < STORIES_PREFETCH_TTL_MS) {
+    try {
+      return await storiesPrefetch;
+    } catch {
+      storiesPrefetch = null;
+    }
+  }
+  return fetchStoriesNow();
 }
 
 export async function recordStoryView(storyId: number): Promise<{ data: { recorded: boolean } }> {

@@ -134,11 +134,6 @@ final class CallbackQueryHandler
 
             return;
         }
-
-        if (str_starts_with($data, 'seminar:check:')) {
-            $seminarId = (int) substr($data, strlen('seminar:check:'));
-            $this->checkSeminarCapacity($chatId, $telegramUserId, $seminarId);
-        }
     }
 
     private function handleSupportCategory(int $chatId, int $telegramUserId, string $category): void
@@ -223,59 +218,4 @@ final class CallbackQueryHandler
         $this->purchaseFlow->promptDiscountCode($chatId, $telegramUserId, $productId, $title, $base, $sale);
     }
 
-    private function checkSeminarCapacity(int $chatId, int $telegramUserId, int $seminarId): void
-    {
-        $result = $this->live->capacityCheck($chatId, $telegramUserId, $seminarId);
-        if (! empty($result['offline'])) {
-            // Fall through to cached capacity_hint below.
-        } elseif (! empty($result['ok'])) {
-            if (! empty($result['is_full'])) {
-                $this->api->sendMessage($chatId, 'ظرفیت این سمینار تکمیل شده است.');
-
-                return;
-            }
-
-            $remaining = (int) ($result['remaining_seats'] ?? 0);
-            if ($remaining > 0) {
-                $this->api->sendMessage(
-                    $chatId,
-                    TelegramCustomEmoji::tag('check').' ظرفیت باز است ('.number_format($remaining).' صندلی باقی‌مانده).',
-                );
-
-                return;
-            }
-        }
-
-        $seminar = null;
-        foreach ($this->cache->seminars() as $row) {
-            if ((int) ($row['id'] ?? 0) === $seminarId) {
-                $seminar = $row;
-                break;
-            }
-        }
-
-        if ($seminar !== null) {
-            $hint = $seminar['capacity_hint'] ?? null;
-            if ($hint !== null && $hint !== '') {
-                $remaining = (int) $hint;
-                if ($remaining <= 0) {
-                    $this->api->sendMessage($chatId, 'ظرفیت این سمینار تکمیل شده است.');
-
-                    return;
-                }
-
-                $this->api->sendMessage(
-                    $chatId,
-                    TelegramCustomEmoji::tag('check').' ظرفیت باز است (حدود '.number_format($remaining).' صندلی — آخرین وضعیت هنگام پرداخت بررسی می‌شود).',
-                );
-
-                return;
-            }
-        }
-
-        $this->api->sendMessage(
-            $chatId,
-            TelegramCustomEmoji::tag('notes').' برای ثبت‌نام از دکمه پرداخت استفاده کنید. ظرفیت دقیق هنگام پرداخت بررسی می‌شود.',
-        );
-    }
 }

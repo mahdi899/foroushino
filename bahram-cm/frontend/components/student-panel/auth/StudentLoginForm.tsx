@@ -269,9 +269,9 @@ export function StudentLoginForm({
                   onChange={(e) => setPhone(sanitizePhoneInput(e.target.value))}
                   onBlur={() => setPhoneTouched(true)}
                   onFocus={(e) => {
-                    if (!isFamily) return;
+                    const target = e.currentTarget;
                     window.setTimeout(() => {
-                      e.currentTarget.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                      target.scrollIntoView({ block: 'center', behavior: 'smooth' });
                     }, 120);
                   }}
                   placeholder="09123456789"

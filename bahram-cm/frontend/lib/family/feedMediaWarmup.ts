@@ -35,6 +35,18 @@ function enqueueWarmUrl(url: string | null | undefined): void {
   drainQueue();
 }
 
+/** Fire-and-forget decode warmup for arbitrary URLs (e.g. story media). Jumps to
+ * front of the queue since these are usually about-to-be-viewed (priority). */
+export function warmupUrls(urls: (string | null | undefined)[]): void {
+  if (typeof window === 'undefined') return;
+  for (const url of urls) {
+    if (!url || warmedUrls.has(url)) continue;
+    warmedUrls.add(url);
+    queue.unshift(url);
+  }
+  drainQueue();
+}
+
 function mediaUrlsFromBlock(block: FamilyPostBlock): string[] {
   const urls: string[] = [];
   if (block.type !== 'image' && block.type !== 'video') return urls;

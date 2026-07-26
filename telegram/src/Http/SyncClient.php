@@ -21,7 +21,12 @@ final class SyncClient
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    public function call(string $path, array $payload = [], int $timeoutSeconds = 4): array
+    /**
+     * Default is 8s (was 4s) — Iran normally answers in well under 1s, but
+     * occasional GC/load spikes pushed real responses just past a 4s cutoff,
+     * making healthy-but-slightly-slow calls look like outages.
+     */
+    public function call(string $path, array $payload = [], int $timeoutSeconds = 8): array
     {
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($json === false) {
@@ -36,8 +41,8 @@ final class SyncClient
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $encrypted,
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => min(3, $timeoutSeconds),
-            CURLOPT_TIMEOUT => max(4, $timeoutSeconds),
+            CURLOPT_CONNECTTIMEOUT => min(4, $timeoutSeconds),
+            CURLOPT_TIMEOUT => max(6, $timeoutSeconds),
             CURLOPT_ENCODING => '',
             CURLOPT_TCP_KEEPALIVE => 1,
             CURLOPT_HTTPHEADER => array_merge([

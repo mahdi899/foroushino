@@ -8,6 +8,7 @@ import { cn } from '@/lib/cn';
 import { fontClassName } from '@/lib/fonts';
 import { getStories, recordStoryView } from '@/lib/family/api';
 import { rememberFamilyMediaView } from '@/lib/family/mediaCache';
+import { warmupUrls } from '@/lib/family/feedMediaWarmup';
 import {
   resolveFamilyMediaUrl,
   resolveFamilyMediaPlaybackCandidates,
@@ -97,6 +98,23 @@ export function StoryViewer({
       .catch(() => setStories([]))
       .finally(() => setLoading(false));
   }, [open]);
+
+  // Preload upcoming stories' media in the background (Telegram-like) so
+  // there's never a black flash while a slide's own media loads — by the
+  // time the user reaches it, the browser already has it cached.
+  useEffect(() => {
+    if (!open || stories.length === 0) return;
+    const from = Math.max(0, index);
+    const upcoming = stories.slice(from, from + 4);
+    const urls = upcoming
+      .map((story) => {
+        const media = story.media;
+        if (!media || isStoryVideo(media)) return null;
+        return resolveFamilyMediaUrl(media.url);
+      })
+      .filter((url): url is string => Boolean(url));
+    warmupUrls(urls);
+  }, [open, stories, index]);
 
   const finish = useCallback(() => {
     if (stories.length > 0) {

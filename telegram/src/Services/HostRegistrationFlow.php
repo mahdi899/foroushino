@@ -26,7 +26,12 @@ final class HostRegistrationFlow
         private readonly AccountSyncCoordinator $accountSync,
     ) {}
 
-    private const REGISTRATION_TIMEOUT_SECONDS = 25;
+    /**
+     * Short enough that a slow/unreachable Iran never makes the user feel a
+     * lag — on timeout we fall back to finishing registration locally (see
+     * contact()/name()) instead of making them wait or showing an error.
+     */
+    private const REGISTRATION_TIMEOUT_SECONDS = 8;
 
     /**
      * Welcome + phone keyboard from host MySQL only (no registration/start API).
@@ -71,12 +76,6 @@ final class HostRegistrationFlow
             return;
         }
 
-        if ($this->accountSync->ensureFresh($telegramUserId, force: true) && $this->accounts->isVerified($telegramUserId)) {
-            $this->showMainMenu($chatId, $telegramUserId);
-
-            return;
-        }
-
         $phone = trim((string) ($contact['phone_number'] ?? ''));
         $contactUserId = (int) ($contact['user_id'] ?? 0);
 
@@ -87,17 +86,25 @@ final class HostRegistrationFlow
                 'contact_user_id' => $contactUserId,
             ], self::REGISTRATION_TIMEOUT_SECONDS);
             $this->apply($chatId, $telegramUserId, $response);
-            $this->accountSync->ensureFresh($telegramUserId, force: true);
+
+            return;
         } catch (\Throwable $e) {
             error_log('[telegram-host] registration/contact: '.$e->getMessage());
-            if ($this->pullVerifiedAndMenu($chatId, $telegramUserId)) {
-                return;
-            }
-            $this->api->sendMessage($chatId, $this->cache->message(
-                'registration_contact_retry',
-                'ثبت شماره روی سرور اصلی موقتاً در دسترس نیست. چند دقیقه بعد دوباره شماره را بفرستید یا از سایت ثبت‌نام کنید.',
-            ));
         }
+
+        // Iran unreachable within the short timeout above — don't leave the
+        // user stuck or show an error. Store the phone locally and continue
+        // the form (name) right away; the account is reconciled with Iran in
+        // the background once it's reachable again.
+        $this->accounts->storePendingContact($telegramUserId, $phone);
+        $this->conversations->set($telegramUserId, 'waiting_for_name', [
+            'mobile' => $phone,
+            'contact_user_id' => $contactUserId,
+        ]);
+        $this->api->sendMessage($chatId, $this->cache->message(
+            'registration_ask_name_offline',
+            'شماره شما ثبت شد. لطفاً نام و نام خانوادگی خود را بفرستید تا ادامه دهیم.',
+        ), ['reply_markup' => ['remove_keyboard' => true]]);
     }
 
     private function showMainMenu(int $chatId, int $telegramUserId): void
@@ -108,17 +115,6 @@ final class HostRegistrationFlow
         ]);
     }
 
-    private function pullVerifiedAndMenu(int $chatId, int $telegramUserId): bool
-    {
-        if ($this->accountSync->ensureFresh($telegramUserId, force: true) && $this->accounts->isVerified($telegramUserId)) {
-            $this->showMainMenu($chatId, $telegramUserId);
-
-            return true;
-        }
-
-        return false;
-    }
-
     public function name(int $chatId, int $telegramUserId, string $name): void
     {
         try {
@@ -127,10 +123,25 @@ final class HostRegistrationFlow
                 'name' => $name,
             ], self::REGISTRATION_TIMEOUT_SECONDS);
             $this->apply($chatId, $telegramUserId, $response);
+
+            return;
         } catch (\Throwable $e) {
             error_log('[telegram-host] registration/name: '.$e->getMessage());
-            $this->api->sendMessage($chatId, 'ذخیره نام انجام نشد. دوباره تلاش کنید.');
         }
+
+        // Iran unreachable — finish registration locally right away so the
+        // user isn't stuck waiting or forced to restart; a background account
+        // sync reconciles the real record once Iran is reachable again.
+        $conversation = $this->conversations->get($telegramUserId);
+        $mobile = (string) ($conversation['context']['mobile'] ?? '');
+        $this->accounts->storeLocalOnlyRegistration($telegramUserId, $mobile, $name);
+        $this->conversations->set($telegramUserId, 'idle', []);
+        $this->api->sendMessage($chatId, $this->cache->message(
+            'main_menu_hint',
+            'ثبت‌نام شما ثبت شد. منوی اصلی آکادمی بهرام',
+        ), [
+            'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
+        ]);
     }
 
     public function callback(int $chatId, int $telegramUserId, string $data): void

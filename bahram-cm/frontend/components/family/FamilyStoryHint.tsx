@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { formatFa } from '@/lib/persian';
 import { inflatedMemberCount } from '@/lib/family/inflatedMemberCount';
+import { warmupUrls } from '@/lib/family/feedMediaWarmup';
+import { resolveFamilyMediaUrl } from '@/lib/family/mediaPlaybackUrl';
 
 type FamilyStoryHintProps = {
   memberCount?: number;
@@ -38,6 +40,39 @@ export function FamilyStoryHint({
     const id = window.setInterval(syncHour, 60_000);
     return () => window.clearInterval(id);
   }, []);
+
+  // Warm the stories list + first couple of media in the background as soon as
+  // the hint mounts, so opening the viewer never shows a black flash. The
+  // family API module is a server-action file, so it's imported lazily to
+  // keep this component's client bundle/test footprint untouched.
+  useEffect(() => {
+    if (!hasUnseen) return;
+    let cancelled = false;
+    void import('@/lib/family/api').then(({ prefetchStories, getStories }) => {
+      if (cancelled) return;
+      prefetchStories();
+      void getStories()
+        .then((res) => {
+          if (cancelled) return;
+          const urls = res.data
+            .slice(0, 3)
+            .map((story) => {
+              const media = story.media;
+              if (!media) return null;
+              const type = (media.type ?? '').toLowerCase();
+              const mime = (media.mime_type ?? '').toLowerCase();
+              if (type === 'video' || mime.startsWith('video/')) return null;
+              return resolveFamilyMediaUrl(media.url);
+            })
+            .filter((url): url is string => Boolean(url));
+          warmupUrls(urls);
+        })
+        .catch(() => {});
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasUnseen]);
 
   const hasMembers = typeof memberCount === 'number';
   const displayReady = hasMembers && hour !== null;

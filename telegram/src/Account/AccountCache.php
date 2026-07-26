@@ -103,6 +103,48 @@ final class AccountCache
         ]));
     }
 
+    /**
+     * Local-first registration step 1: remember the phone number right away,
+     * before/without waiting for Iran to confirm. Does not mark the account
+     * verified yet — that happens once the name is collected too, or once a
+     * real snapshot arrives from Iran.
+     */
+    public function storePendingContact(int $telegramUserId, string $mobile): void
+    {
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO telegram_accounts_cache (telegram_user_id, mobile, is_bot_admin, updated_at)
+             VALUES (:id, :mobile, 0, NOW())
+             ON DUPLICATE KEY UPDATE mobile = :mobile2, updated_at = NOW()',
+        );
+        $stmt->execute(['id' => $telegramUserId, 'mobile' => $mobile, 'mobile2' => $mobile]);
+    }
+
+    /**
+     * Local-first registration step 2 (fallback when Iran is unreachable):
+     * finish registration entirely on the host so the user isn't stuck. The
+     * account is treated as verified locally; the next background account
+     * sync reconciles it with the real Iran record once reachable again.
+     */
+    public function storeLocalOnlyRegistration(int $telegramUserId, string $mobile, string $displayName): void
+    {
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO telegram_accounts_cache (telegram_user_id, mobile, mobile_verified_at, display_name, is_bot_admin, updated_at)
+             VALUES (:id, :mobile, NOW(), :name, 0, NOW())
+             ON DUPLICATE KEY UPDATE
+                mobile = :mobile2,
+                mobile_verified_at = COALESCE(mobile_verified_at, NOW()),
+                display_name = :name2,
+                updated_at = NOW()',
+        );
+        $stmt->execute([
+            'id' => $telegramUserId,
+            'mobile' => $mobile,
+            'name' => $displayName,
+            'mobile2' => $mobile,
+            'name2' => $displayName,
+        ]);
+    }
+
     public function isVerified(int $telegramUserId): bool
     {
         $account = $this->get($telegramUserId);

@@ -16,9 +16,11 @@ final class LiveClient
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    private function live(string $path, array $payload): array
+    private function live(string $path, array $payload, ?int $timeoutSeconds = null): array
     {
-        return $this->sync->call('live/'.$path, $payload);
+        return $timeoutSeconds === null
+            ? $this->sync->call('live/'.$path, $payload)
+            : $this->sync->call('live/'.$path, $payload, $timeoutSeconds);
     }
 
     /** @param array<string, mixed> $update */
@@ -58,11 +60,13 @@ final class LiveClient
     /** @return array<string, mixed> */
     public function checkoutZarinpal(int $telegramUserId, int $productId, ?string $coupon = null): array
     {
+        // Chains to the Zarinpal gateway on Iran's side — needs more headroom
+        // than the default sync timeout so a real payment start isn't cut off.
         return $this->live('checkout/zarinpal/start', array_filter([
             'telegram_user_id' => $telegramUserId,
             'product_id' => $productId,
             'coupon' => $coupon,
-        ]));
+        ]), 15);
     }
 
     /** @return array<string, mixed> */
@@ -73,7 +77,7 @@ final class LiveClient
             'chat_id' => $chatId,
             'product_id' => $productId,
             'coupon' => $coupon,
-        ]));
+        ]), 12);
     }
 
     /** @return array<string, mixed> */

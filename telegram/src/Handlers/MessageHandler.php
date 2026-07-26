@@ -112,7 +112,9 @@ final class MessageHandler
         }
 
         if ($text !== '' && $this->mainMenu->isMenuButton($text)) {
-            $this->accountSync->ensureFresh($telegramUserId, force: true);
+            // Local cache first — instant reply. Iran sync happens in the
+            // background after the reply is sent (see HostBackgroundSync in
+            // webhook.php), so button presses never block on a network call.
             $this->handleMenuButton($chatId, $telegramUserId, $text, (array) ($message['from'] ?? []));
 
             return;
@@ -140,14 +142,11 @@ final class MessageHandler
             return;
         }
 
-        $this->accountSync->ensureFresh($telegramUserId, force: true);
-
-        if ($this->accounts->isVerified($telegramUserId)) {
-            $this->sendMainMenu($chatId, $telegramUserId);
-
-            return;
-        }
-
+        // Ask for the phone number immediately from local cache — no blocking
+        // Iran round-trip. If this Telegram user already has a verified
+        // account on Iran, the background sync triggered after this reply
+        // (see HostBackgroundSync in webhook.php) picks it up within this
+        // same request, so the very next button press already sees it.
         $this->registration->showLocalWelcome($chatId, $telegramUserId);
     }
 
@@ -229,18 +228,20 @@ final class MessageHandler
         $keyboard = [];
         foreach (array_slice($seminars, 0, 8) as $seminar) {
             $productId = (int) ($seminar['product_id'] ?? 0);
-            $seminarId = (int) ($seminar['id'] ?? 0);
             $title = trim((string) ($seminar['title'] ?? 'سمینار'));
-            $lines[] = '• '.htmlspecialchars($title, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-            $row = [];
+            $capacityHint = $seminar['capacity_hint'] ?? null;
+            $capacitySuffix = '';
+            if ($capacityHint !== null && $capacityHint !== '') {
+                $capacitySuffix = (int) $capacityHint > 0
+                    ? ' — '.number_format((int) $capacityHint).' صندلی باقی‌مانده'
+                    : ' — ظرفیت تکمیل';
+            }
+            $lines[] = '• '.htmlspecialchars($title, ENT_QUOTES | ENT_HTML5, 'UTF-8').$capacitySuffix;
+            // No separate "check capacity" step — capacity is already synced
+            // locally from Iran, so tapping the seminar goes straight to the
+            // purchase flow (which re-verifies with Iran at payment time).
             if ($productId > 0) {
-                $row[] = InlineButtons::buy($productId, 'ثبت‌نام / '.mb_substr($title, 0, 18));
-            }
-            if ($seminarId > 0) {
-                $row[] = InlineButtons::capacityCheck($seminarId);
-            }
-            if ($row !== []) {
-                $keyboard[] = $row;
+                $keyboard[] = [InlineButtons::buy($productId, 'ثبت‌نام / '.mb_substr($title, 0, 18))];
             }
         }
 

@@ -49,12 +49,6 @@ final class InlineButtons
     }
 
     /** @return array<string, mixed> */
-    public static function capacityCheck(int $seminarId): array
-    {
-        return self::callback('بررسی ظرفیت', 'seminar:check:'.$seminarId, 'user');
-    }
-
-    /** @return array<string, mixed> */
     public static function membershipRecheck(): array
     {
         return self::callback('عضو شدم', 'membership:recheck', 'check', 'success');
