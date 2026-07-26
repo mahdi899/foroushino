@@ -62,7 +62,7 @@ import {
   FAMILY_FEED_INITIAL_WARM_POST_COUNT,
   FAMILY_FEED_MEDIA_WARM_POSTS_AFTER,
   FAMILY_FEED_MEDIA_WARM_POSTS_BEFORE,
-  FAMILY_FEED_TOP_SENTINEL_ROOT_MARGIN,
+  familyFeedTopSentinelRootMargin,
   FAMILY_FEED_VIRTUAL_OVERSCAN,
 } from '@/lib/family/feedUx';
 import {
@@ -1520,6 +1520,10 @@ export function FeedView({
     const sentinel = topSentinelRef.current;
     if (!root || !sentinel || !hasMore || commentsTarget || notificationsOpen) return;
 
+    const rootMargin = familyFeedTopSentinelRootMargin(
+      root.clientHeight > 0 ? root.clientHeight : window.innerHeight,
+    );
+
     const observer = new IntersectionObserver(
       (entries) => {
         // Wait until boot tip/unread scroll finished — otherwise the top sentinel
@@ -1541,7 +1545,7 @@ export function FeedView({
         // If tip page was pruned by MAX_FEED_PAGES, treat as jumped-away.
         if (hasNewer) isJumpedAwayRef.current = true;
       },
-      { root, rootMargin: FAMILY_FEED_TOP_SENTINEL_ROOT_MARGIN, threshold: 0 },
+      { root, rootMargin, threshold: 0 },
     );
 
     observer.observe(sentinel);
