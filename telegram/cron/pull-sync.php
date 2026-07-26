@@ -14,7 +14,7 @@ $config = require __DIR__.'/../bootstrap.php';
 try {
     $pdo = Connection::get($config);
     $sync = new SyncClient($config);
-    $cache = new SyncCache($pdo, $sync);
+    $cache = new SyncCache($pdo, $sync, $config);
     $cache->refreshAll();
 
     echo '['.date('c')."] sync ok\n";

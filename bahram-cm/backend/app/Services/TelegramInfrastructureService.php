@@ -637,15 +637,19 @@ class TelegramInfrastructureService
 
         try {
             if ($this->usesHostBridge()) {
+                $this->queueHostWebhookRegistration($url, $secret);
                 $hostResult = app(TelegramHostPushService::class)->registerWebhook($url, $secret);
                 if (! ($hostResult['ok'] ?? false)) {
-                    $error = (string) ($hostResult['error'] ?? 'host_error');
-
                     return [
-                        'ok' => false,
-                        'message' => $this->formatHostWebhookPushError($error),
+                        'ok' => true,
+                        'message' => 'سرور ایران به هاست خارج (`host-sync.php`) وصل نمی‌شود؛ درخواست ثبت وب‌هوک در صف است.'
+                            .' تا حداکثر ۵ دقیقه cron هاست (`pull-sync.php`) وب‌هوک را در تلگرام ثبت می‌کند.'
+                            .' — هاست: '.$this->hostWebhookUrl(),
+                        'url' => $url,
+                        'queued' => true,
                     ];
                 }
+                $this->clearHostWebhookRegistration();
                 $url = (string) ($hostResult['url'] ?? $url);
             } else {
                 $clients->forBot($bot)->setWebhook($url, $secret);
@@ -684,6 +688,78 @@ class TelegramInfrastructureService
         }
 
         TelegramBot::query()->where('key', 'production')->update(['webhook_secret' => $secret]);
+    }
+
+    public function queueHostWebhookRegistration(string $url, ?string $secret): void
+    {
+        $next = $this->stored();
+        $next['host_pending_webhook'] = [
+            'nonce' => Str::random(32),
+            'url' => $url,
+            'secret' => $secret ?? '',
+            'requested_at' => now()->toIso8601String(),
+        ];
+
+        $this->settings->updateGroup(self::GROUP, [self::KEY => $next]);
+        self::forgetCachedConfig();
+    }
+
+    /** @return array<string, mixed> */
+    public function pendingHostWebhookBootstrapExtra(): array
+    {
+        $pending = $this->pendingHostWebhookForSync();
+        if ($pending === null) {
+            return [];
+        }
+
+        return [
+            'webhook_register' => [
+                'nonce' => $pending['nonce'],
+                'url' => $pending['url'],
+                'secret' => $pending['secret'],
+            ],
+        ];
+    }
+
+    /** @return array{nonce: string, url: string, secret: string, requested_at: string}|null */
+    public function pendingHostWebhookForSync(): ?array
+    {
+        $raw = $this->stored()['host_pending_webhook'] ?? null;
+        if (! is_array($raw)) {
+            return null;
+        }
+
+        $nonce = trim((string) ($raw['nonce'] ?? ''));
+        $url = trim((string) ($raw['url'] ?? ''));
+        if ($nonce === '' || $url === '') {
+            return null;
+        }
+
+        return [
+            'nonce' => $nonce,
+            'url' => $url,
+            'secret' => (string) ($raw['secret'] ?? ''),
+            'requested_at' => (string) ($raw['requested_at'] ?? ''),
+        ];
+    }
+
+    public function clearHostWebhookRegistration(?string $nonce = null): bool
+    {
+        $pending = $this->pendingHostWebhookForSync();
+        if ($pending === null) {
+            return false;
+        }
+
+        if ($nonce !== null && ! hash_equals($pending['nonce'], $nonce)) {
+            return false;
+        }
+
+        $next = $this->stored();
+        unset($next['host_pending_webhook']);
+        $this->settings->updateGroup(self::GROUP, [self::KEY => $next]);
+        self::forgetCachedConfig();
+
+        return true;
     }
 
     private function maskSecret(string $value): string

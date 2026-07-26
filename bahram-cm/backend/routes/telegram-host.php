@@ -20,6 +20,7 @@ Route::middleware(['proxy.origin:presence', 'telegram.host.signature', 'throttle
     ->group(function (): void {
         Route::post('/bootstrap', [TelegramHostSyncController::class, 'bootstrap']);
         Route::post('/catalog', [TelegramHostSyncController::class, 'catalog']);
+        Route::post('/webhook-register/ack', [TelegramHostSyncController::class, 'webhookRegisterAck']);
         Route::post('/otp/request', [TelegramHostSyncController::class, 'otpRequest'])->middleware('throttle:20,1');
         Route::post('/otp/verify', [TelegramHostSyncController::class, 'otpVerify'])->middleware('throttle:20,1');
         Route::post('/capacity-check', [TelegramHostSyncController::class, 'capacityCheck']);

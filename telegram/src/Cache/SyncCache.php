@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace TelegramHost\Cache;
 
 use TelegramHost\Http\SyncClient;
+use TelegramHost\Services\WebhookRegisterFromPull;
 
 /**
  * Reads/writes the long-lived cache tables (messages, feature flags,
@@ -13,11 +14,19 @@ use TelegramHost\Http\SyncClient;
  */
 final class SyncCache
 {
-    public function __construct(private readonly \PDO $pdo, private readonly SyncClient $sync) {}
+    /** @param array<string, mixed>|null $hostConfig */
+    public function __construct(
+        private readonly \PDO $pdo,
+        private readonly SyncClient $sync,
+        private readonly ?array $hostConfig = null,
+    ) {}
 
     public function refreshAll(): void
     {
         $bootstrap = $this->sync->call('bootstrap');
+        if ($this->hostConfig !== null) {
+            (new WebhookRegisterFromPull($this->hostConfig))->processIfRequested($bootstrap, $this->sync);
+        }
         $this->storeBootstrapOnly($bootstrap);
 
         $catalog = $this->sync->call('catalog');
