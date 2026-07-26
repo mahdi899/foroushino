@@ -278,7 +278,7 @@ class TelegramHostSyncController
             'is_bot_admin' => (bool) $account->is_bot_admin,
         ];
 
-        $includeSnapshot = ! array_key_exists('include_snapshot', $hostPayload) || ! empty($hostPayload['include_snapshot']);
+        $includeSnapshot = filter_var($hostPayload['include_snapshot'] ?? false, FILTER_VALIDATE_BOOLEAN);
         if ($includeSnapshot && $account->mobile_verified_at !== null) {
             $accountPayload['snapshot'] = $this->accountSnapshots->buildSnapshot($account);
         }

@@ -160,19 +160,10 @@ final class CallbackQueryHandler
             return;
         }
 
-        $owns = $this->accounts->ownsProduct($telegramUserId, $productId);
-        if (! $owns) {
-            $liveOwns = $this->live->accessOwns($telegramUserId, $productId);
-            $owns = ! empty($liveOwns['owns']);
-        }
-
-        if ($owns) {
+        if ($this->accounts->ownsProduct($telegramUserId, $productId)) {
             $present = $this->accounts->ownedPresent($telegramUserId, $productId);
-            if ($present === null) {
-                $present = $this->live->productPresent($telegramUserId, $productId);
-            }
-            if (! empty($present['ok']) || isset($present['text'])) {
-                $text = (string) ($present['text'] ?? '');
+            if ($present !== null && isset($present['text'])) {
+                $text = (string) $present['text'];
                 $options = (array) ($present['options'] ?? []);
                 $photo = (string) ($present['photo'] ?? '');
                 if ($photo !== '') {
@@ -180,7 +171,14 @@ final class CallbackQueryHandler
                 } else {
                     $this->api->sendMessage($chatId, $text, $options);
                 }
+
+                return;
             }
+
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'account_snapshot_pending',
+                'جزئیات دسترسی دوره در حال همگام‌سازی است. چند دقیقه بعد دوباره «خرید» را بزنید.',
+            ));
 
             return;
         }
@@ -201,24 +199,36 @@ final class CallbackQueryHandler
 
     private function checkSeminarCapacity(int $chatId, int $seminarId): void
     {
-        $result = $this->live->capacityCheck($seminarId);
-
-        if (empty($result['ok'])) {
-            $this->api->sendMessage($chatId, 'بررسی ظرفیت ناموفق بود — دوباره تلاش کنید.');
-
-            return;
+        $seminar = null;
+        foreach ($this->cache->seminars() as $row) {
+            if ((int) ($row['id'] ?? 0) === $seminarId) {
+                $seminar = $row;
+                break;
+            }
         }
 
-        if (! empty($result['is_full'])) {
-            $this->api->sendMessage($chatId, 'ظرفیت این سمینار تکمیل شده است.');
+        if ($seminar !== null) {
+            $hint = $seminar['capacity_hint'] ?? null;
+            if ($hint !== null && $hint !== '') {
+                $remaining = (int) $hint;
+                if ($remaining <= 0) {
+                    $this->api->sendMessage($chatId, 'ظرفیت این سمینار تکمیل شده است.');
 
-            return;
+                    return;
+                }
+
+                $this->api->sendMessage(
+                    $chatId,
+                    TelegramCustomEmoji::tag('check').' ظرفیت باز است (حدود '.number_format($remaining).' صندلی — آخرین وضعیت هنگام پرداخت بررسی می‌شود).',
+                );
+
+                return;
+            }
         }
 
-        $remaining = $result['remaining_seats'] ?? null;
         $this->api->sendMessage(
             $chatId,
-            TelegramCustomEmoji::tag('check').' ظرفیت باز است'.($remaining !== null ? " ({$remaining} صندلی باقی‌مانده)" : '').'.',
+            TelegramCustomEmoji::tag('notes').' برای ثبت‌نام از دکمه پرداخت استفاده کنید. ظرفیت دقیق هنگام پرداخت بررسی می‌شود.',
         );
     }
 }

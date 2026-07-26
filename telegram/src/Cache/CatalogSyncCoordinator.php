@@ -8,6 +8,7 @@ use TelegramHost\Http\SyncClient;
 
 /**
  * Pulls fresh catalog/bootstrap from Iran when catalog_revision changes.
+ * Called from cron/pull-sync.php only — webhook must not use this.
  */
 final class CatalogSyncCoordinator
 {

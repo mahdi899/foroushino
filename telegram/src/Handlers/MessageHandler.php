@@ -206,8 +206,13 @@ final class MessageHandler
     private function sendFamily(int $chatId, int $telegramUserId): void
     {
         $result = $this->accounts->familyResponse($telegramUserId);
-        if ($result === null) {
-            $result = $this->live->familySummary($telegramUserId);
+        if ($result === null || empty($result['text'])) {
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'account_snapshot_pending',
+                'اطلاعات خانواده هنوز روی سرور ربات ذخیره نشده. چند دقیقه بعد دوباره امتحان کنید.',
+            ));
+
+            return;
         }
         if (empty($result['ok']) && isset($result['message'])) {
             $this->api->sendMessage($chatId, (string) $result['message']);
@@ -230,7 +235,12 @@ final class MessageHandler
 
         $result = $this->accounts->referralResponse($telegramUserId);
         if ($result === null) {
-            $result = $this->live->referralSummary($telegramUserId);
+            $this->api->sendMessage($chatId, $this->cache->message(
+                'account_snapshot_pending',
+                'اطلاعات معرفی هنوز روی سرور ربات ذخیره نشده. چند دقیقه بعد دوباره امتحان کنید.',
+            ));
+
+            return;
         }
         if (empty($result['ok'])) {
             $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'لینک معرفی در دسترس نیست.'));
@@ -260,17 +270,30 @@ final class MessageHandler
     private function sendAccount(int $chatId, int $telegramUserId): void
     {
         $result = $this->accounts->profileResponse($telegramUserId);
-        if ($result === null || empty($result['ok'])) {
-            $result = $this->live->userProfile($telegramUserId);
-        }
-        if (empty($result['ok'])) {
-            $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'حساب یافت نشد.'));
+        if ($result !== null && ! empty($result['ok'])) {
+            $this->api->sendMessage($chatId, (string) $result['text'], (array) ($result['options'] ?? [
+                'parse_mode' => 'HTML',
+            ]));
 
             return;
         }
 
-        $this->api->sendMessage($chatId, (string) $result['text'], (array) ($result['options'] ?? [
-            'parse_mode' => 'HTML',
-        ]));
+        $row = $this->accounts->get($telegramUserId);
+        if ($row !== null && ! empty($row['display_name'])) {
+            $lines = [
+                TelegramCustomEmoji::tag('user').' <b>'.htmlspecialchars((string) $row['display_name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'</b>',
+            ];
+            if (! empty($row['mobile'])) {
+                $lines[] = 'موبایل: <code>'.htmlspecialchars((string) $row['mobile'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8').'</code>';
+            }
+            $this->api->sendMessage($chatId, implode("\n", $lines), ['parse_mode' => 'HTML']);
+
+            return;
+        }
+
+        $this->api->sendMessage($chatId, $this->cache->message(
+            'account_snapshot_pending',
+            'اطلاعات حساب هنوز روی سرور ربات ذخیره نشده. چند دقیقه بعد دوباره امتحان کنید.',
+        ));
     }
 }

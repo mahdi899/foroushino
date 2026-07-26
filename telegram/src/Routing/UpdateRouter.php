@@ -31,7 +31,7 @@ final class UpdateRouter
     {
         if ($this->delegation->shouldDelegate($update)) {
             $this->live->processUpdate($update);
-            $this->refreshAccountCache($this->extractTelegramUserId($update));
+            $this->refreshBasicAccountAfterDelegate($this->extractTelegramUserId($update));
 
             return;
         }
@@ -57,18 +57,22 @@ final class UpdateRouter
         }
     }
 
-    private function refreshAccountCache(int $telegramUserId): void
+    private function refreshBasicAccountAfterDelegate(int $telegramUserId): void
     {
         if ($telegramUserId <= 0) {
             return;
         }
 
-        $fresh = $this->sync->call('account/fetch', [
-            'telegram_user_id' => $telegramUserId,
-            'include_snapshot' => true,
-        ]);
-        if (! empty($fresh['found']) && is_array($fresh['account'] ?? null)) {
-            $this->accounts->store($telegramUserId, $fresh['account']);
+        try {
+            $fresh = $this->sync->call('account/fetch', [
+                'telegram_user_id' => $telegramUserId,
+                'include_snapshot' => false,
+            ]);
+            if (! empty($fresh['found']) && is_array($fresh['account'] ?? null)) {
+                $this->accounts->store($telegramUserId, $fresh['account']);
+            }
+        } catch (\Throwable $e) {
+            error_log('[telegram-host] basic account cache: '.$e->getMessage());
         }
     }
 

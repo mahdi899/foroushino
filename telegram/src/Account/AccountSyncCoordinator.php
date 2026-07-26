@@ -7,7 +7,7 @@ namespace TelegramHost\Account;
 use TelegramHost\Http\SyncClient;
 
 /**
- * Pulls fresh account snapshot from Iran when local copy is missing or stale.
+ * Pulls account snapshot from Iran — use only from cron/CLI, never from webhook.
  */
 final class AccountSyncCoordinator
 {

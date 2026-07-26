@@ -3,9 +3,7 @@
 declare(strict_types=1);
 
 use TelegramHost\Account\AccountCache;
-use TelegramHost\Account\AccountSyncCoordinator;
 use TelegramHost\Bot;
-use TelegramHost\Cache\CatalogSyncCoordinator;
 use TelegramHost\Cache\SyncCache;
 use TelegramHost\Conversation\ConversationRepository;
 use TelegramHost\Db\Connection;
@@ -79,18 +77,7 @@ try {
     $sync = new SyncClient($config);
     $live = new LiveClient($sync);
     $cache = new SyncCache($pdo, $sync, $config);
-    (new CatalogSyncCoordinator($cache, $sync))->ensureFresh();
     $accounts = new AccountCache($pdo);
-    $telegramUserId = 0;
-    foreach (['message', 'callback_query', 'edited_message'] as $key) {
-        $telegramUserId = (int) ($update[$key]['from']['id'] ?? 0);
-        if ($telegramUserId > 0) {
-            break;
-        }
-    }
-    if ($telegramUserId > 0) {
-        (new AccountSyncCoordinator($accounts, $sync))->ensureFresh($telegramUserId);
-    }
     $conversations = new ConversationRepository($pdo);
     $api = new BotApiClient((string) $config['bot_token']);
     $siteBaseUrl = rtrim((string) ($config['site_base_url'] ?? 'https://rostami.app'), '/');
