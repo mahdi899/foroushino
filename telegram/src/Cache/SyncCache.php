@@ -57,6 +57,12 @@ final class SyncCache
         if ($revision !== '') {
             $this->storeMessages(['__catalog_revision' => $revision]);
         }
+
+        $reportsChat = trim((string) ($bootstrap['bot']['reports_group_chat_id'] ?? ''));
+        if ($reportsChat !== '') {
+            $this->storeMessages(['__reports_group_chat_id' => $reportsChat]);
+        }
+
         $this->touchSyncMeta('bootstrap');
     }
 
@@ -152,6 +158,13 @@ final class SyncCache
     public function siteUrl(string $key, string $fallback = ''): string
     {
         return $this->message('site_url_'.$key, $fallback);
+    }
+
+    public function reportsGroupChatId(): ?string
+    {
+        $value = trim($this->message('__reports_group_chat_id', ''));
+
+        return $value !== '' ? $value : null;
     }
 
     public function botIsActive(): bool

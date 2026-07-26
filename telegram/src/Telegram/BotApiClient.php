@@ -70,6 +70,18 @@ final class BotApiClient
         }
     }
 
+    public function sendChatAction(int|string $chatId, string $action = 'typing'): void
+    {
+        try {
+            $this->call('sendChatAction', [
+                'chat_id' => $chatId,
+                'action' => $action,
+            ]);
+        } catch (\Throwable) {
+            // Non-critical — never block Iran calls if typing fails.
+        }
+    }
+
     public function answerCallbackQuery(string $callbackQueryId, string $text = '', bool $showAlert = false): void
     {
         $this->call('answerCallbackQuery', [

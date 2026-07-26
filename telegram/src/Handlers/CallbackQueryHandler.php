@@ -125,7 +125,7 @@ final class CallbackQueryHandler
 
         if (str_starts_with($data, 'seminar:check:')) {
             $seminarId = (int) substr($data, strlen('seminar:check:'));
-            $this->checkSeminarCapacity($chatId, $seminarId);
+            $this->checkSeminarCapacity($chatId, $telegramUserId, $seminarId);
         }
     }
 
@@ -135,7 +135,7 @@ final class CallbackQueryHandler
             return;
         }
 
-        $result = $this->live->supportPrepare($telegramUserId, $category);
+        $result = $this->live->supportPrepare($chatId, $telegramUserId, $category);
         if (empty($result['ok'])) {
             $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'امکان شروع پشتیبانی نیست.'));
 
@@ -198,8 +198,33 @@ final class CallbackQueryHandler
         $this->purchaseFlow->promptDiscountCode($chatId, $telegramUserId, $productId, $title, $base, $sale);
     }
 
-    private function checkSeminarCapacity(int $chatId, int $seminarId): void
+    private function checkSeminarCapacity(int $chatId, int $telegramUserId, int $seminarId): void
     {
+        $result = $this->live->capacityCheck($chatId, $telegramUserId, $seminarId);
+        if (! empty($result['offline'])) {
+            $this->api->sendMessage($chatId, (string) ($result['message'] ?? ''));
+
+            return;
+        }
+
+        if (! empty($result['ok'])) {
+            if (! empty($result['is_full'])) {
+                $this->api->sendMessage($chatId, 'ظرفیت این سمینار تکمیل شده است.');
+
+                return;
+            }
+
+            $remaining = (int) ($result['remaining_seats'] ?? 0);
+            if ($remaining > 0) {
+                $this->api->sendMessage(
+                    $chatId,
+                    TelegramCustomEmoji::tag('check').' ظرفیت باز است ('.number_format($remaining).' صندلی باقی‌مانده).',
+                );
+
+                return;
+            }
+        }
+
         $seminar = null;
         foreach ($this->cache->seminars() as $row) {
             if ((int) ($row['id'] ?? 0) === $seminarId) {

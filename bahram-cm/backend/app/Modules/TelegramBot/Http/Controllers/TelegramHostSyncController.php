@@ -76,6 +76,7 @@ class TelegramHostSyncController
                 'key' => $bot->key,
                 'features' => $bot->settings['features'] ?? [],
                 'is_active' => (bool) $bot->is_active,
+                'reports_group_chat_id' => $bot->reportsGroupChatId(),
             ],
             'messages' => $messages,
             'required_chats' => $requiredChats,

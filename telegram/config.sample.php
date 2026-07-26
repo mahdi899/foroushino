@@ -57,6 +57,9 @@ return [
     'pull_sync_min_interval_seconds' => 3600,
     'membership_cache_ttl_seconds' => 900,
 
+    // Optional override — normally synced from Iran bootstrap (گروه گزارشات پشتیبانی).
+    // 'reports_group_chat_id' => '-100xxxxxxxxxx',
+
     // Legacy hint (unused when pull_sync_enabled is false).
     'cache_ttl_seconds' => 300,
 ];

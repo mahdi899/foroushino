@@ -117,6 +117,23 @@ final class AccountCache
         return $account !== null && (int) ($account['is_bot_admin'] ?? 0) === 1;
     }
 
+    public function displayLabel(int $telegramUserId): string
+    {
+        $account = $this->get($telegramUserId);
+        if ($account !== null) {
+            $name = trim((string) ($account['display_name'] ?? ''));
+            if ($name !== '') {
+                return $name;
+            }
+            $mobile = trim((string) ($account['mobile'] ?? ''));
+            if ($mobile !== '') {
+                return $mobile;
+            }
+        }
+
+        return 'کاربر '.$telegramUserId;
+    }
+
     public function ownsProduct(int $telegramUserId, int $productId): bool
     {
         $account = $this->get($telegramUserId);

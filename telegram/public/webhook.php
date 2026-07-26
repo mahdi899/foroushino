@@ -78,18 +78,24 @@ try {
     }
 
     $sync = new SyncClient($config);
-    $live = new ResilientLiveClient(new LiveClient($sync));
+    $liveClient = new LiveClient($sync);
     $iranQueue = new IranUpdateQueue($pdo);
-    $maxRelay = max(0, (int) ($config['iran_relay_per_webhook'] ?? 2));
-    $iranRelay = new BackgroundIranRelay($iranQueue, new LiveClient($sync), $sync, maxPerRun: $maxRelay);
     $cache = new SyncCache($pdo, $sync, $config);
     $accounts = new AccountCache($pdo);
+    $conversations = new ConversationRepository($pdo);
+    $api = new BotApiClient((string) $config['bot_token']);
+
+    $reporter = new \TelegramHost\Services\IranFailureReporter($api, $cache, $accounts, $config);
+    $offlineUserMessage = new \TelegramHost\Services\IranOfflineUserMessage($cache);
+    $live = new ResilientLiveClient($liveClient, $api, $reporter, $offlineUserMessage);
+    $iranSync = new \TelegramHost\Routing\IranSyncRelay($liveClient, $api, $iranQueue, $reporter, $offlineUserMessage);
+
+    $maxRelay = max(0, (int) ($config['iran_relay_per_webhook'] ?? 2));
+    $iranRelay = new BackgroundIranRelay($iranQueue, $liveClient, $sync, maxPerRun: $maxRelay);
     $membershipCache = new \TelegramHost\Services\MembershipCheckCache(
         $pdo,
         max(300, (int) ($config['membership_cache_ttl_seconds'] ?? 900)),
     );
-    $conversations = new ConversationRepository($pdo);
-    $api = new BotApiClient((string) $config['bot_token']);
     $siteBaseUrl = rtrim((string) ($config['site_base_url'] ?? 'https://rostami.app'), '/');
 
     $mainMenu = new MainMenu($cache, $accounts);
@@ -122,7 +128,7 @@ try {
 
     $router = new UpdateRouter(
         new DelegationDetector($accounts, $conversations),
-        $iranQueue,
+        $iranSync,
         $accounts,
         $cache,
         $api,

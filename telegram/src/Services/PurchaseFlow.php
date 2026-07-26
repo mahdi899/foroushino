@@ -42,7 +42,7 @@ final class PurchaseFlow
             return;
         }
 
-        $preview = $this->live->discountPreview($telegramUserId, $productId, $code);
+        $preview = $this->live->discountPreview($chatId, $telegramUserId, $productId, $code);
         if (empty($preview['ok'])) {
             $this->api->sendMessage($chatId, ((string) ($preview['message'] ?? 'کد تخفیف معتبر نیست.'))."\n\nدوباره کد را بفرستید یا «بدون کد تخفیف» را بزنید.");
 
@@ -104,7 +104,7 @@ final class PurchaseFlow
     public function startZarinpal(int $chatId, int $telegramUserId, int $productId): void
     {
         $coupon = $this->couponFromContext($telegramUserId);
-        $result = $this->live->checkoutZarinpal($telegramUserId, $productId, $coupon);
+        $result = $this->live->checkoutZarinpal($chatId, $telegramUserId, $productId, $coupon);
 
         if (empty($result['ok'])) {
             $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'شروع پرداخت ناموفق بود.'));
@@ -132,7 +132,7 @@ final class PurchaseFlow
     public function startCardToCard(int $chatId, int $telegramUserId, int $productId): void
     {
         $coupon = $this->couponFromContext($telegramUserId);
-        $result = $this->live->checkoutC2c($telegramUserId, $chatId, $productId, $coupon);
+        $result = $this->live->checkoutC2c($chatId, $telegramUserId, $productId, $coupon);
 
         if (empty($result['ok'])) {
             $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'ثبت سفارش کارت‌به‌کارت ناموفق بود.'));

@@ -42,19 +42,18 @@ final class MessageHandler
         }
 
         if (isset($message['contact'])) {
-            $this->api->sendMessage($chatId, $this->cache->message(
-                'registration_contact_queued',
-                'شماره دریافت شد. ثبت‌نام روی سرور اصلی در پس‌زمینه انجام می‌شود؛ تا آن زمان منوهای ذخیره‌شده در دسترس است.',
-            ), [
-                'reply_markup' => $this->mainMenu->replyMarkup($telegramUserId),
-            ]);
-
+            // Unverified users: UpdateRouter relays to Iran synchronously.
             return;
         }
 
         if (isset($message['reply_to_message'])) {
-            $reply = $this->live->supportTryReply($telegramUserId, $message);
+            $reply = $this->live->supportTryReply($chatId, $telegramUserId, $message);
             if (! empty($reply['handled'])) {
+                return;
+            }
+            if (! empty($reply['offline'])) {
+                $this->api->sendMessage($chatId, (string) ($reply['message'] ?? ''));
+
                 return;
             }
         }
@@ -68,20 +67,11 @@ final class MessageHandler
         }
 
         if ($conversation['state'] === 'waiting_for_support_message') {
-            $this->api->sendMessage($chatId, $this->cache->message(
-                'support_message_queued',
-                'پیام شما ثبت شد. پس از اتصال سرور اصلی، برای پشتیبانی ارسال می‌شود.',
-            ));
-
+            // Relayed to Iran in UpdateRouter when this state is active.
             return;
         }
 
         if ($conversation['state'] === 'waiting_for_card_to_card_receipt') {
-            $this->api->sendMessage($chatId, $this->cache->message(
-                'c2c_receipt_queued',
-                'رسید دریافت شد و در صف ارسال به سرور اصلی است.',
-            ));
-
             return;
         }
 
@@ -241,7 +231,7 @@ final class MessageHandler
 
     private function openSat(int $chatId, int $telegramUserId): void
     {
-        $result = $this->live->satOpen($telegramUserId, $chatId);
+        $result = $this->live->satOpen($chatId, $telegramUserId);
         if (! empty($result['state'])) {
             $this->conversations->set($telegramUserId, (string) $result['state'], (array) ($result['context'] ?? []));
         }
