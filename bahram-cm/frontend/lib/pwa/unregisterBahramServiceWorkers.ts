@@ -54,3 +54,9 @@ export async function unregisterBahramServiceWorkers(): Promise<void> {
  * Keep this script tiny and dependency-free.
  */
 export const DEV_SERVICE_WORKER_CLEANUP_SCRIPT = `(function(){if(!('serviceWorker'in navigator))return;navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister()})});if('caches'in window){caches.keys().then(function(k){k.forEach(function(x){if(x.indexOf('bahram-')===0)caches.delete(x)})})}})();`;
+
+/**
+ * rostami.club apex must never keep `sw-site` (scope `/`). Older builds registered
+ * it on the club host and intercepts `/` with marketing-page fallbacks — breaks Family PWA.
+ */
+export const FAMILY_HOST_SITE_SW_CLEANUP_SCRIPT = `(function(){if(!('serviceWorker'in navigator))return;navigator.serviceWorker.getRegistrations().then(function(regs){regs.forEach(function(reg){var workers=[reg.active,reg.waiting,reg.installing].filter(Boolean);var urls=workers.map(function(w){return w.scriptURL});if(urls.some(function(u){return u.indexOf('sw-site')!==-1}))reg.unregister()})});if('caches'in window){caches.keys().then(function(keys){keys.forEach(function(k){if(k.indexOf('bahram-site-')===0)caches.delete(k)})})}})();`;

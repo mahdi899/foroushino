@@ -1,4 +1,4 @@
-const CACHE = 'bahram-family-v8';
+const CACHE = 'bahram-family-v9';
 const PRECACHE = ['/family-manifest.webmanifest', '/pwa/icon/192', '/pwa/icon/512', '/apple-icon'];
 
 /**
@@ -192,10 +192,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // HTML navigations must bypass the SW — Next.js shells change every deploy;
+  // serving a stale cached document (or an empty Response) breaks hydration and
+  // triggers the host browser/PWA "This page couldn't load" screen.
+  if (event.request.mode === 'navigate') {
+    return;
+  }
+
   if (isFamilyScope(url)) {
-    const fallback = shellFallback();
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request).then((c) => c || caches.match(fallback))),
-    );
+    event.respondWith(fetch(event.request));
   }
 });

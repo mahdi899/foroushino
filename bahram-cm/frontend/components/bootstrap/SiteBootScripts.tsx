@@ -15,9 +15,12 @@ const subscribe = () => () => {};
 export function SiteBootScripts({
   themeHtml,
   devCleanupHtml = null,
+  familyHostCleanupHtml = null,
 }: {
   themeHtml: string;
   devCleanupHtml?: string | null;
+  /** Production club apex — strip mistaken `sw-site` before React boots. */
+  familyHostCleanupHtml?: string | null;
 }) {
   const isServerOrHydration = useSyncExternalStore(
     subscribe,
@@ -35,6 +38,12 @@ export function SiteBootScripts({
         id="site-theme-boot"
         dangerouslySetInnerHTML={{ __html: themeHtml }}
       />
+      {familyHostCleanupHtml ? (
+        <script
+          id="bahram-family-host-sw-cleanup"
+          dangerouslySetInnerHTML={{ __html: familyHostCleanupHtml }}
+        />
+      ) : null}
       {devCleanupHtml ? (
         <script
           id="bahram-dev-sw-cleanup"
