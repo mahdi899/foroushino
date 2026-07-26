@@ -235,6 +235,7 @@ export function CommentsPanel({
         isPage && 'family-comment-composer--page',
         portalComposer && 'family-comment-composer--viewport-fixed',
       )}
+      dir="rtl"
       style={
         portalComposer
           ? {
@@ -247,6 +248,11 @@ export function CommentsPanel({
       {composerBody}
     </div>
   );
+
+  const portalTarget =
+    typeof document !== 'undefined'
+      ? (document.getElementById('family-root') ?? document.body)
+      : null;
 
   return (
     <section
@@ -315,8 +321,8 @@ export function CommentsPanel({
         )}
       </div>
 
-      {portalComposer && composerMounted
-        ? createPortal(composerNode, document.body)
+      {portalComposer && composerMounted && portalTarget
+        ? createPortal(composerNode, portalTarget)
         : composerNode}
     </section>
   );
