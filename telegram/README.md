@@ -20,6 +20,9 @@ Telegram → public/webhook.php → UpdateRouter
 6. یک‌بار دستی: `php cron/pull-sync.php`
 7. در پنل ادمین: حالت «هاست خارج» + ثبت webhook
 
+اگر پنل با timeout به `host-sync.php` خورد: روی هاست یک‌بار  
+`public/register-webhook.php?token=<webhook_secret>` را باز کنید (همان secret در `config.php`).
+
 ## قابلیت‌های کامل
 
 | بخش | اجرا |

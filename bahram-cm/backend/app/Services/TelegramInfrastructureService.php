@@ -643,9 +643,7 @@ class TelegramInfrastructureService
 
                     return [
                         'ok' => false,
-                        'message' => 'ثبت وب‌هوک ناموفق: '.$error
-                            .' — هاست: '.$this->hostWebhookUrl()
-                            .' (سرور ایران به api.telegram.org دسترسی ندارد؛ از هاست خارج ثبت می‌شود)',
+                        'message' => $this->formatHostWebhookPushError($error),
                     ];
                 }
                 $url = (string) ($hostResult['url'] ?? $url);
@@ -746,5 +744,26 @@ class TelegramInfrastructureService
             || str_contains($message, 'could not resolve')
             || str_contains($message, 'ssl')
             || str_contains($message, 'curl error');
+    }
+
+    private function formatHostWebhookPushError(string $error): string
+    {
+        $hostWebhook = $this->hostWebhookUrl();
+        $pushUrl = $this->hostPushUrl();
+        $base = 'ثبت وب‌هوک ناموفق: '.$error.' — هاست: '.$hostWebhook;
+
+        $lower = strtolower($error);
+        $hostUnreachable = str_contains($lower, 'timed out')
+            || str_contains($lower, 'timeout')
+            || str_contains($lower, 'could not resolve')
+            || $error === 'host_unreachable';
+
+        if ($hostUnreachable) {
+            return $base
+                .' — سرور اصلی به '.$pushUrl.' نرسید (فایروال/فیلتر یا MySQL هاست گیر کرده).'
+                .' روی هاست: diagnose.php و register-webhook.php?token=… را بزنید؛ MySQL و cron/pull-sync را چک کنید.';
+        }
+
+        return $base.' (ثبت setWebhook روی هاست خارج انجام می‌شود، نه از سرور ایران).';
     }
 }

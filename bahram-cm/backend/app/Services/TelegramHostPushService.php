@@ -103,7 +103,9 @@ class TelegramHostPushService
             $encrypted = AesGcmCipher::encrypt($json, $aesKey);
             $headers = HmacSigner::headersFor(['body' => $encrypted], $hmacSecret);
 
-            $response = Http::timeout(12)
+            $timeout = $action === 'register_webhook' ? 45 : 12;
+
+            $response = Http::timeout($timeout)
                 ->withHeaders(array_merge($headers, [
                     'Authorization' => 'Bearer '.$hmacSecret,
                     'X-Proxy-Origin' => self::PUSH_ORIGIN,

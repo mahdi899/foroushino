@@ -48,6 +48,12 @@ final class InboundSyncHandler
         }
 
         $action = (string) ($payload['action'] ?? 'refresh_all');
+
+        // Webhook registration only talks to api.telegram.org — never block on MySQL.
+        if ($action === 'register_webhook') {
+            return $this->registerWebhook($payload);
+        }
+
         $pdo = Connection::get($this->config);
         $sync = new SyncClient($this->config);
         $cache = new SyncCache($pdo, $sync);
@@ -57,7 +63,6 @@ final class InboundSyncHandler
             'refresh_catalog' => $this->refreshCatalog($cache),
             'refresh_all' => $this->refreshAll($cache),
             'push_account' => $this->pushAccount($pdo, $payload),
-            'register_webhook' => $this->registerWebhook($payload),
             default => $this->refreshAll($cache),
         };
     }
