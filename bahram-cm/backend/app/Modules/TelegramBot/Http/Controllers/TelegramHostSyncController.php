@@ -18,6 +18,7 @@ use App\Modules\TelegramBot\Support\TelegramSiteUrl;
 use App\Modules\TelegramBot\Services\TelegramUserSyncService;
 use App\Services\Exceptions\OtpException;
 use App\Services\OtpService;
+use App\Services\TelegramHostAccountSnapshotService;
 use App\Services\TelegramHostCatalogRevision;
 use App\Services\TelegramInfrastructureService;
 use App\Support\AesGcmCipher;
@@ -51,6 +52,7 @@ class TelegramHostSyncController
         private readonly TelegramCatalogMediaService $catalogMedia,
         private readonly TelegramInfrastructureService $infrastructure,
         private readonly TelegramHostCatalogRevision $catalogRevision,
+        private readonly TelegramHostAccountSnapshotService $accountSnapshots,
     ) {}
 
     public function bootstrap(Request $request): JsonResponse
@@ -257,8 +259,8 @@ class TelegramHostSyncController
 
     public function accountFetch(Request $request): JsonResponse
     {
-        $payload = $this->hostPayload($request);
-        $telegramUserId = (int) ($payload['telegram_user_id'] ?? 0);
+        $hostPayload = $this->hostPayload($request);
+        $telegramUserId = (int) ($hostPayload['telegram_user_id'] ?? 0);
 
         $bot = $this->productionBot();
         $account = $bot->accounts()->where('telegram_user_id', $telegramUserId)->first();
@@ -267,17 +269,24 @@ class TelegramHostSyncController
             return $this->encryptedResponse($request, ['ok' => true, 'found' => false]);
         }
 
+        $accountPayload = [
+            'telegram_user_id' => $telegramUserId,
+            'user_id' => $account->user_id,
+            'mobile' => $account->mobile,
+            'mobile_verified_at' => $account->mobile_verified_at?->toIso8601String(),
+            'display_name' => $account->display_name,
+            'is_bot_admin' => (bool) $account->is_bot_admin,
+        ];
+
+        $includeSnapshot = ! array_key_exists('include_snapshot', $hostPayload) || ! empty($hostPayload['include_snapshot']);
+        if ($includeSnapshot && $account->mobile_verified_at !== null) {
+            $accountPayload['snapshot'] = $this->accountSnapshots->buildSnapshot($account);
+        }
+
         return $this->encryptedResponse($request, [
             'ok' => true,
             'found' => true,
-            'account' => [
-                'telegram_user_id' => $telegramUserId,
-                'user_id' => $account->user_id,
-                'mobile' => $account->mobile,
-                'mobile_verified_at' => $account->mobile_verified_at?->toIso8601String(),
-                'display_name' => $account->display_name,
-                'is_bot_admin' => (bool) $account->is_bot_admin,
-            ],
+            'account' => $accountPayload,
         ]);
     }
 

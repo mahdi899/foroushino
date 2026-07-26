@@ -12,6 +12,8 @@ use App\Models\Seminar;
 use App\Models\SeminarAttendee;
 use App\Models\SpotplayerLicense;
 use App\Models\User;
+use App\Modules\TelegramBot\Models\TelegramAccount;
+use App\Services\TelegramHostAccountSync;
 use App\Services\AdminTelegramLogService;
 use App\Services\DiscountService;
 use App\Services\Exceptions\SpotPlayerException;
@@ -188,6 +190,13 @@ class FulfillOrderJob implements ShouldQueue
                     'message' => $e->getMessage(),
                 ]);
             }
+        }
+
+        if ($userId) {
+            TelegramAccount::query()
+                ->where('user_id', $userId)
+                ->whereHas('bot', fn ($q) => $q->where('key', 'production'))
+                ->each(fn (TelegramAccount $account) => app(TelegramHostAccountSync::class)->queuePush($account));
         }
     }
 

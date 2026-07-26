@@ -160,11 +160,19 @@ final class CallbackQueryHandler
             return;
         }
 
-        $owns = $this->live->accessOwns($telegramUserId, $productId);
-        if (! empty($owns['owns'])) {
-            $present = $this->live->productPresent($telegramUserId, $productId);
-            if (! empty($present['ok'])) {
-                $text = (string) $present['text'];
+        $owns = $this->accounts->ownsProduct($telegramUserId, $productId);
+        if (! $owns) {
+            $liveOwns = $this->live->accessOwns($telegramUserId, $productId);
+            $owns = ! empty($liveOwns['owns']);
+        }
+
+        if ($owns) {
+            $present = $this->accounts->ownedPresent($telegramUserId, $productId);
+            if ($present === null) {
+                $present = $this->live->productPresent($telegramUserId, $productId);
+            }
+            if (! empty($present['ok']) || isset($present['text'])) {
+                $text = (string) ($present['text'] ?? '');
                 $options = (array) ($present['options'] ?? []);
                 $photo = (string) ($present['photo'] ?? '');
                 if ($photo !== '') {

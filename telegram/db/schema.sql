@@ -52,6 +52,13 @@ CREATE TABLE IF NOT EXISTS telegram_accounts_cache (
     mobile_verified_at DATETIME NULL,
     display_name VARCHAR(191) NULL,
     is_bot_admin TINYINT(1) NOT NULL DEFAULT 0,
+    snapshot_revision VARCHAR(64) NULL,
+    owned_product_ids TEXT NULL,
+    profile_json MEDIUMTEXT NULL,
+    referral_json MEDIUMTEXT NULL,
+    family_json MEDIUMTEXT NULL,
+    owned_presents_json MEDIUMTEXT NULL,
+    snapshot_synced_at DATETIME NULL,
     updated_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

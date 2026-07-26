@@ -205,7 +205,10 @@ final class MessageHandler
 
     private function sendFamily(int $chatId, int $telegramUserId): void
     {
-        $result = $this->live->familySummary($telegramUserId);
+        $result = $this->accounts->familyResponse($telegramUserId);
+        if ($result === null) {
+            $result = $this->live->familySummary($telegramUserId);
+        }
         if (empty($result['ok']) && isset($result['message'])) {
             $this->api->sendMessage($chatId, (string) $result['message']);
 
@@ -225,7 +228,10 @@ final class MessageHandler
             return;
         }
 
-        $result = $this->live->referralSummary($telegramUserId);
+        $result = $this->accounts->referralResponse($telegramUserId);
+        if ($result === null) {
+            $result = $this->live->referralSummary($telegramUserId);
+        }
         if (empty($result['ok'])) {
             $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'لینک معرفی در دسترس نیست.'));
 
@@ -253,7 +259,10 @@ final class MessageHandler
 
     private function sendAccount(int $chatId, int $telegramUserId): void
     {
-        $result = $this->live->userProfile($telegramUserId);
+        $result = $this->accounts->profileResponse($telegramUserId);
+        if ($result === null || empty($result['ok'])) {
+            $result = $this->live->userProfile($telegramUserId);
+        }
         if (empty($result['ok'])) {
             $this->api->sendMessage($chatId, (string) ($result['message'] ?? 'حساب یافت نشد.'));
 

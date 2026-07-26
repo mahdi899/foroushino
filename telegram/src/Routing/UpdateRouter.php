@@ -63,7 +63,10 @@ final class UpdateRouter
             return;
         }
 
-        $fresh = $this->sync->call('account/fetch', ['telegram_user_id' => $telegramUserId]);
+        $fresh = $this->sync->call('account/fetch', [
+            'telegram_user_id' => $telegramUserId,
+            'include_snapshot' => true,
+        ]);
         if (! empty($fresh['found']) && is_array($fresh['account'] ?? null)) {
             $this->accounts->store($telegramUserId, $fresh['account']);
         }
